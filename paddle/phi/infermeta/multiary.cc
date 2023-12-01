@@ -76,6 +76,13 @@ void AdadeltaInferMeta(const MetaTensor& param,
       avg_squared_update.dims(),
       errors::InvalidArgument("Param and AvgSquaredUpdate input of AdadeltaOp "
                               "should have same dimension"));
+  if (master_param.initialized()) {
+    PADDLE_ENFORCE_EQ(
+        param_dims,
+        master_param.dims(),
+        errors::InvalidArgument("Param and MasterParam input of AdadeltaOp "
+                                "should have same dimension"));
+  }
 
   param_out->set_dims(param_dims);
   param_out->set_dtype(param.dtype());
@@ -85,6 +92,15 @@ void AdadeltaInferMeta(const MetaTensor& param,
 
   avg_squared_update_out->set_dims(param_dims);
   avg_squared_update_out->set_dtype(avg_squared_update.dtype());
+
+  auto MPType = (param.dtype() == phi::DataType::FLOAT16 ||
+                 param.dtype() == phi::DataType::BFLOAT16)
+                    ? phi::DataType::FLOAT32
+                    : param.dtype();
+  if (multi_precision && master_param.initialized()) {
+    master_param_out->set_dims(param_dims);
+    master_param_out->set_dtype(MPType);
+  }
 }
 
 void AdagradInferMeta(const MetaTensor& param,
@@ -109,11 +125,26 @@ void AdagradInferMeta(const MetaTensor& param,
       moment.dims(),
       phi::errors::InvalidArgument("Param and Moment input of AdagradOp "
                                    "should have the same dimension."));
+  if (master_param.initialized()) {
+    PADDLE_ENFORCE_EQ(
+        param_dims,
+        master_param.dims(),
+        errors::InvalidArgument("Param and MasterParam input of AdadeltaOp "
+                                "should have same dimension"));
+  }
 
   param_out->set_dims(param_dims);
   param_out->set_dtype(param.dtype());
   moment_out->set_dims(param_dims);
   moment_out->set_dtype(moment.dtype());
+  auto MPType = (param.dtype() == phi::DataType::FLOAT16 ||
+                 param.dtype() == phi::DataType::BFLOAT16)
+                    ? phi::DataType::FLOAT32
+                    : param.dtype();
+  if (multi_precision && master_param.initialized()) {
+    master_param_out->set_dims(param_dims);
+    master_param_out->set_dtype(MPType);
+  }
 }
 
 void AdamInferMeta(const MetaTensor& param,
@@ -183,6 +214,16 @@ void AdamInferMeta(const MetaTensor& param,
           "received Param dims: [%s], Moment2 dims: [%s].",
           param_dims,
           moment2.dims()));
+  if (master_param.initialized()) {
+    PADDLE_ENFORCE_EQ(
+        param_dims,
+        master_param.dims(),
+        errors::InvalidArgument(
+            "Param and Moment1 input of AdamOp should have same dimension. But "
+            "received Param dims: [%s], MasterParam dims: [%s].",
+            param_dims,
+            master_param.dims()));
+  }
 
   param_out->set_dims(param_dims);
   param_out->set_dtype(param.dtype());
@@ -196,6 +237,15 @@ void AdamInferMeta(const MetaTensor& param,
   beta1_pow_out->set_dtype(beta1_pow.dtype());
   beta2_pow_out->set_dims(beta2_pow_dims);
   beta2_pow_out->set_dtype(beta2_pow.dtype());
+
+  auto MPType = (param.dtype() == phi::DataType::FLOAT16 ||
+                 param.dtype() == phi::DataType::BFLOAT16)
+                    ? phi::DataType::FLOAT32
+                    : param.dtype();
+  if (multi_precision && master_param.initialized()) {
+    master_param_outs->set_dims(param_dims);
+    master_param_outs->set_dtype(MPType);
+  }
 }
 
 void AdamaxInferMeta(const MetaTensor& param,
@@ -246,6 +296,13 @@ void AdamaxInferMeta(const MetaTensor& param,
       inf_norm.dims(),
       errors::InvalidArgument(
           "Param and InfNorm input of AdamaxOp should have same dimension"));
+  if (master_param.initialized()) {
+    PADDLE_ENFORCE_EQ(
+        param_dims,
+        master_param.dims(),
+        errors::InvalidArgument("Param and MasterParam input of AdamaxOp "
+                                "should have same dimension"));
+  }
 
   param_out->set_dims(param_dims);
   param_out->set_dtype(param.dtype());
@@ -255,6 +312,15 @@ void AdamaxInferMeta(const MetaTensor& param,
 
   inf_norm_out->set_dims(param_dims);
   inf_norm_out->set_dtype(inf_norm.dtype());
+
+  auto MPType = (param.dtype() == phi::DataType::FLOAT16 ||
+                 param.dtype() == phi::DataType::BFLOAT16)
+                    ? phi::DataType::FLOAT32
+                    : param.dtype();
+  if (multi_precision && master_param.initialized()) {
+    master_param_outs->set_dims(param_dims);
+    master_param_outs->set_dtype(MPType);
+  }
 }
 
 void AdamwInferMeta(const MetaTensor& param,
@@ -1368,10 +1434,28 @@ void DGCMomentumInferMeta(const MetaTensor& param,
           param_dims,
           velocity_dims));
 
+  if (master_param.initialized()) {
+    PADDLE_ENFORCE_EQ(
+        param_dims,
+        master_param.dims(),
+        phi::errors::InvalidArgument(
+            "Param and MasterParam of MomentumOp should have the same "
+            "dimension. But received Param's dim [%s] and MasterParam [%s].",
+            param_dims,
+            master_param.dims()));
+  }
+
+  auto MPType = (param.dtype() == phi::DataType::FLOAT16 ||
+                 param.dtype() == phi::DataType::BFLOAT16)
+                    ? phi::DataType::FLOAT32
+                    : param.dtype();
+
   param_out->set_dims(param_dims);
   velocity_out->set_dims(param_dims);
-  if (master_param != nullptr) {
+  velocity_out->set_dtype(MPType);
+  if (multi_precision && master_param.initialized()) {
     master_param_out->set_dims(param_dims);
+    master_param_out->set_dtype(MPType);
   }
 }
 
@@ -2546,6 +2630,16 @@ void LambInferMeta(const MetaTensor& param,
           "received Param dims: [%s], Moment2 dims: [%s].",
           param_dims,
           moment2.dims()));
+  if (master_param.initialized()) {
+    PADDLE_ENFORCE_EQ(param_dims,
+                      master_param.dims(),
+                      errors::InvalidArgument(
+                          "Param and MasterParam input of AdamOp should have "
+                          "same dimension. But "
+                          "received Param dims: [%s], MasterParam dims: [%s].",
+                          param_dims,
+                          master_param.dims()));
+  }
 
   PADDLE_ENFORCE_NOT_NULL(
       param_out, errors::NotFound("The output param_out can not be nullptr"));
@@ -2563,23 +2657,24 @@ void LambInferMeta(const MetaTensor& param,
       errors::NotFound("The output beta2_pow_out can not be nullptr"));
   param_out->set_dims(param_dims);
 
-  phi::DataType dtype = param.dtype();
-  if (multi_precision && param.dtype() == phi::DataType::FLOAT16) {
-    dtype = phi::DataType::FLOAT32;
-  }
+  auto MPType = (param.dtype() == phi::DataType::FLOAT16 ||
+                 param.dtype() == phi::DataType::BFLOAT16)
+                    ? phi::DataType::FLOAT32
+                    : param.dtype();
 
   moment1_out->set_dims(param_dims);
-  moment1_out->set_dtype(dtype);
+  moment1_out->set_dtype(moment1.dtype());
   moment2_out->set_dims(param_dims);
-  moment2_out->set_dtype(dtype);
+  moment2_out->set_dtype(moment2.dtype());
 
   beta1_pow_out->set_dims(beta1_pow_dims);
-  beta1_pow_out->set_dtype(dtype);
+  beta1_pow_out->set_dtype(beta1_pow.dtype());
   beta2_pow_out->set_dims(beta2_pow_dims);
-  beta2_pow_out->set_dtype(dtype);
+  beta2_pow_out->set_dtype(beta2_pow.dtype());
 
-  if (master_param_outs) {
-    master_param_outs->set_dtype(dtype);
+  if (multi_precision && master_param.initialized()) {
+    master_param_outs->set_dims(param_dims);
+    master_param_outs->set_dtype(MPType);
   }
 }
 
@@ -2661,10 +2756,17 @@ void LarsMomentumInferMeta(
   }
 
   for (size_t i = 0; i < param_out.size(); i++) {
+    auto MPType = (param[i]->dtype() == phi::DataType::FLOAT16 ||
+                   param[i]->dtype() == phi::DataType::BFLOAT16)
+                      ? phi::DataType::FLOAT32
+                      : param[i]->dtype();
     param_out[i]->set_dims(param_dim[i]);
+    param_out[i]->set_dtype(param[i]->dtype());
     velocity_out[i]->set_dims(param_dim[i]);
+    velocity_out[i]->set_dtype(MPType);
     if (master_param != nullptr) {
       master_param_out[i]->set_dims(param_dim[i]);
+      master_param_out[i]->set_dtype(MPType);
     }
   }
 }
@@ -3334,6 +3436,17 @@ void RmspropInferMeta(const MetaTensor& param,
                         "received LearningRate's dim [%s]",
                         phi::product(lr_dim)));
 
+  if (master_param.initialized()) {
+    PADDLE_ENFORCE_EQ(param_dim,
+                      master_param.dims(),
+                      errors::InvalidArgument(
+                          "Param and MasterParam input of RmspropOp should "
+                          "have same dimension. But "
+                          "received Param dims: [%s], MasterParam dims: [%s].",
+                          param_dim,
+                          master_param.dims()));
+  }
+
   param_out->set_dims(param_dim);
   param_out->set_dtype(param.dtype());
   moment_out->set_dims(param_dim);
@@ -3343,6 +3456,14 @@ void RmspropInferMeta(const MetaTensor& param,
   if (centered) {
     mean_grad_out->set_dims(param_dim);
     mean_grad_out->set_dtype(mean_grad.dtype());
+  }
+  if (multi_precision && master_param.initialized()) {
+    auto MPType = (param.dtype() == phi::DataType::FLOAT16 ||
+                   param.dtype() == phi::DataType::BFLOAT16)
+                      ? phi::DataType::FLOAT32
+                      : param.dtype();
+    master_param_outs->set_dims(param_dim);
+    master_param_outs->set_dtype(MPType);
   }
 }
 

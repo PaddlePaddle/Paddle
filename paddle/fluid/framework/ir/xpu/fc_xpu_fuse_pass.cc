@@ -529,31 +529,83 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
   Node* filter_intx = nullptr;
   Node* filter_max = nullptr;
   Node* scale_max = nullptr;
-  bool per_channel_quant =
-      std::getenv("FLAGS_fc_gemm_use_per_channel") == nullptr ? false : true;
-  if (op_weights_precision != "int8") {
-    PrepareWeight<float, int16_t>(graph,
-                                  scope,
-                                  block,
-                                  mul_w_replicated_node,
-                                  &filter_intx,
-                                  &filter_max,
-                                  &scale_max,
-                                  !transpose_w,
-                                  weight_scale,
-                                  per_channel_quant);
-  } else {
-    PrepareWeight<int8_t, int8_t>(graph,
-                                  scope,
-                                  block,
-                                  mul_w_replicated_node,
-                                  &filter_intx,
-                                  &filter_max,
-                                  &scale_max,
-                                  !transpose_w,
-                                  weight_scale,
-                                  per_channel_quant);
+
+  std::map<std::string, int> default_type;
+  default_type.insert(std::make_pair("fc", -1));
+  auto quant_post_type =
+      Has("quant_post_dynamic_weight_methods")
+          ? Get<std::map<std::string, int>>("quant_post_dynamic_weight_methods")
+          : default_type;
+
+  for (auto it = quant_post_type.begin(); it != quant_post_type.end(); ++it) {
+    VLOG(5) << "Key:" << it->first;
+    VLOG(5) << "Value:" << it->second;
   }
+
+  if (op_weights_precision != "int8") {
+    if (quant_post_type.find("fc") != quant_post_type.end() &&
+            quant_post_type.find("fc")->second == 2 ||
+        quant_post_type.find("fc") != quant_post_type.end() &&
+            quant_post_type.find("fc")->second == -1) {
+      VLOG(5) << "Use int16 per-tensor weight";
+      PrepareWeight<float, int16_t>(graph,
+                                    scope,
+                                    block,
+                                    mul_w_replicated_node,
+                                    &filter_intx,
+                                    &filter_max,
+                                    &scale_max,
+                                    !transpose_w,
+                                    weight_scale,
+                                    false);
+    } else if (quant_post_type.find("fc") != quant_post_type.end() &&
+               quant_post_type.find("fc")->second == 3) {
+      VLOG(5) << "Use int16 per-channel weight";
+      PrepareWeight<float, int16_t>(graph,
+                                    scope,
+                                    block,
+                                    mul_w_replicated_node,
+                                    &filter_intx,
+                                    &filter_max,
+                                    &scale_max,
+                                    !transpose_w,
+                                    weight_scale,
+                                    true);
+    } else {
+      VLOG(5) << "Unsupported type weight by non-int8!";
+    }
+  } else {
+    if (quant_post_type.find("fc") != quant_post_type.end() &&
+        quant_post_type.find("fc")->second == 0) {
+      VLOG(5) << "Use int8  per-tensor weight";
+      PrepareWeight<int8_t, int8_t>(graph,
+                                    scope,
+                                    block,
+                                    mul_w_replicated_node,
+                                    &filter_intx,
+                                    &filter_max,
+                                    &scale_max,
+                                    !transpose_w,
+                                    weight_scale,
+                                    false);
+    } else if (quant_post_type.find("fc") != quant_post_type.end() &&
+               quant_post_type.find("fc")->second == 1) {
+      VLOG(5) << "Use int8  per-channel weight";
+      PrepareWeight<int8_t, int8_t>(graph,
+                                    scope,
+                                    block,
+                                    mul_w_replicated_node,
+                                    &filter_intx,
+                                    &filter_max,
+                                    &scale_max,
+                                    !transpose_w,
+                                    weight_scale,
+                                    true);
+    } else {
+      VLOG(5) << "Unsupported type weight!";
+    }
+  }
+
   (*fusion_nodes_map)["w"] = filter_intx;
   (*fusion_nodes_map)["w_max"] = filter_max;
   (*fusion_nodes_map)["scale_max"] = scale_max;

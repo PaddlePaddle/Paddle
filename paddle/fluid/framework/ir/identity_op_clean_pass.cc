@@ -139,7 +139,6 @@ FindTwoCastOpPattern::FindTwoCastOpPattern(PDPattern* pattern,
   cast_op_1->LinksFrom({pre_op_out}).LinksTo({cast_op_1_out});
   cast_op_2->LinksFrom({cast_op_1_out}).LinksTo({cast_op_2_out});
 }
-
 }  // namespace patterns
 
 int IdentityOpCleanPass::CleanUselessOp(ir::Graph* graph) const {

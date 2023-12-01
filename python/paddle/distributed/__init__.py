@@ -84,6 +84,7 @@ from .auto_parallel.api import (
     dtensor_from_fn,
     reshard,
     shard_layer,
+    shard_optimizer,
 )
 
 from .fleet import BoxPSDataset  # noqa: F401
@@ -157,4 +158,5 @@ __all__ = [
     "Shard",
     "Replicate",
     "Partial",
+    "shard_optimizer",
 ]
