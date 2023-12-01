@@ -25,12 +25,52 @@ from paddle.base import core
 def np_masked_scatter(x, mask, value):
     x, mask = np.broadcast_arrays(x, mask)
     mask_prefix_sum = np.clip(mask.cumsum() - 1, a_min=0, a_max=None)
-    print(mask_prefix_sum, value.size)
     value = value.flatten()[mask_prefix_sum].reshape(x.shape)
     return np.where(mask, value, x)
 
 
 paddle.enable_static()
+
+
+class TestMaskedScatterError(unittest.TestCase):
+    def setUp(self):
+        self.init()
+
+        self.x_np = np.random.random(self.x_shape).astype(self.dtype)
+        self.mask_np = np.array(
+            np.random.randint(2, size=self.mask_shape), dtype='bool'
+        )
+
+        self.value_np = np.random.randn(*self.value_shape).astype(self.dtype)
+
+    def init(self):
+        self.x_shape = (50, 3)
+        self.mask_shape = self.x_shape
+        self.dtype = "float32"
+        self.value_shape = (300, 300)
+
+    def test_mask_error(self):
+        x = paddle.to_tensor(self.x_np, dtype=self.dtype)
+        mask = paddle.to_tensor(self.mask_np).astype('int32')
+        value = paddle.to_tensor(self.value_np, dtype=self.dtype)
+
+        with np.testing.assert_raises(AssertionError):
+            paddle.masked_scatter(x, mask, value)
+
+    def test_dtype_error(self):
+        x = paddle.to_tensor(self.x_np, dtype=self.dtype)
+        mask = paddle.to_tensor(self.mask_np).astype('bool')
+        value = paddle.to_tensor(self.value_np, dtype='float64')
+        with np.testing.assert_raises(AssertionError):
+            paddle.masked_scatter(x, mask, value)
+
+    def test_numel_error(self):
+        self.value_np = np.random.randn(5, 5).astype(self.dtype)
+        x = paddle.to_tensor(self.x_np, dtype=self.dtype)
+        mask = paddle.to_tensor(self.mask_np).astype('bool')
+        value = paddle.to_tensor(self.value_np, dtype=self.dtype)
+        with np.testing.assert_raises(AssertionError):
+            paddle.masked_scatter(x, mask, value)
 
 
 class TestMaskedScatterAPI(unittest.TestCase):
