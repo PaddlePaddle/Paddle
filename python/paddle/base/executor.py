@@ -28,6 +28,7 @@ from ..pir import (
     Program as PirProgram,
     Value,
     translate_to_pir,
+    translate_to_pir_with_param_map,
 )
 from . import compiler, core, framework, get_flags, set_flags, unique_name
 from .data_feeder import convert_dtype
@@ -932,6 +933,53 @@ class _ExecutorCache:
             )
         )
 
+    def _translate_grad_var_to_var(self, grad_var_to_var, param_mapping):
+        pir_grad_var_to_var = {}
+        for grad_var, var in grad_var_to_var.items():
+            if grad_var in param_mapping.keys() and var in param_mapping.keys():
+                if (
+                    len(param_mapping[grad_var]) == 1
+                    and len(param_mapping[var]) == 1
+                ):
+                    new_grad_var = param_mapping[grad_var][0]
+                    new_var = param_mapping[var][0]
+                    pir_grad_var_to_var[new_grad_var] = new_var
+                else:
+                    new_grad_vars = []
+                    new_vars = []
+                    if len(param_mapping[grad_var]) == 1:
+                        new_grad_vars.append(param_mapping[grad_var][0])
+                    elif (
+                        len(param_mapping[grad_var]) == 2
+                        and param_mapping[grad_var][1].get_defining_op().name()
+                        == "builtin.slice"
+                    ):
+                        new_grad_vars.append(param_mapping[grad_var][1])
+                    else:
+                        last_op = param_mapping[grad_var][-1].get_defining_op()
+                        if last_op.name().endswith("_"):
+                            new_grad_vars.append(param_mapping[grad_var][0])
+
+                    if len(param_mapping[var]) == 1:
+                        new_vars.append(param_mapping[var][0])
+                    elif (
+                        len(param_mapping[var]) == 2
+                        and param_mapping[var][1].get_defining_op().name()
+                        == "builtin.slice"
+                    ):
+                        new_vars.append(param_mapping[var][1])
+                    else:
+                        last_op = param_mapping[var][-1].get_defining_op()
+                        if last_op.name().endswith("_"):
+                            new_vars.append(param_mapping[var][0])
+
+                    assert (
+                        len(new_grad_vars) == 1 and len(new_vars) == 1
+                    ), "translate pir_grad_var_to_var error"
+                    pir_grad_var_to_var[new_grad_vars[0]] = new_vars[0]
+
+        return pir_grad_var_to_var
+
     def _get_program_and_executor(self, cached_data):
         program = cached_data.program
         inner_program = (
@@ -1043,11 +1091,37 @@ class _ExecutorCache:
             if get_flags("FLAGS_enable_pir_in_executor")[
                 'FLAGS_enable_pir_in_executor'
             ]:
-                type_to_program = {
-                    "default": translate_to_pir(new_program.desc)
-                }
+                if (
+                    get_flags("FLAGS_enable_prim_after_distribute")[
+                        'FLAGS_enable_prim_after_distribute'
+                    ]
+                    and new_program._need_decomp
+                ):
+                    (
+                        pir_program,
+                        param_mapping,
+                    ) = translate_to_pir_with_param_map(new_program.desc)
+
+                    pir_grad_var_to_var = self._translate_grad_var_to_var(
+                        new_program._grad_var_to_var, param_mapping
+                    )
+
+                    from paddle.decomposition import decomp
+
+                    decomp.decompose_pir_program(
+                        pir_program, pir_grad_var_to_var, None
+                    )
+
+                    type_to_program = {"default": pir_program}
+
+                else:
+                    type_to_program = {
+                        "default": translate_to_pir(new_program.desc)
+                    }
+
             else:
                 type_to_program = {"default": new_program.desc}
+
             plan = core.Plan([default_job], type_to_program)
 
         if (

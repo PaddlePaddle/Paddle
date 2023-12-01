@@ -5762,6 +5762,9 @@ class Program:
         # to tag whether is startup_program
         self._is_start_up_program_ = False
 
+        self._need_decomp = False
+        self._grad_var_to_var = None
+
     def _find_var_class_kwargs(self, new_desc):
         # NOTE: not all variables support shape/dtype/lod_level methods.
         # For example: RAW, STEP_SCOPES, etc.
@@ -6384,6 +6387,10 @@ class Program:
                 p._pipeline_opt = self._pipeline_opt
             if hasattr(self, '_pass_opt'):
                 p._pass_opt = self._pass_opt
+            if hasattr(self, '_need_decomp'):
+                p._need_decomp = self._need_decomp
+            if hasattr(self, '_grad_var_to_var'):
+                p._grad_var_to_var = self._grad_var_to_var
             # NOTE(zhiqiu): we sync the cloned program, to update its program by
             # its desc.
             p._sync_with_cpp()

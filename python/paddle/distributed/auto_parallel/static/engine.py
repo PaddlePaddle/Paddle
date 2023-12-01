@@ -25,7 +25,6 @@ import paddle
 import paddle.distributed.auto_parallel.static.utils as auto_utils
 from paddle import static, utils
 from paddle.base.executor import _to_name_str
-from paddle.decomposition import decomp
 from paddle.distributed import fleet
 from paddle.framework import (
     IrGraph,
@@ -253,17 +252,14 @@ class Engine:
         self.history = None
 
         # whether to enable prim in distributed engine
-        if os.getenv("FLAGS_enable_prim_in_distribute") == "True":
-            self.enable_prim_in_distribute = True
+        if os.getenv("FLAGS_enable_prim_after_distribute") == "True":
+            self.enable_prim_after_distribute = True
+            self.is_main_program_masked_prim = False
+            paddle.framework.set_flags(
+                {'FLAGS_enable_prim_after_distribute': True}
+            )
         else:
-            self.enable_prim_in_distribute = False
-        # pir program infos
-        self.pir_prune_startup_program = None
-        self.pir_program = None
-        self.pir_fetch_list = None
-        self.pir_grad_var_to_var = None
-        self.is_pir_program_initialized = False
-        self.is_pir_program_decomposed = False
+            self.enable_prim_after_distribute = False
 
         paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 1})
         paddle.framework.set_flags({'FLAGS_new_executor_static_build': 1})
@@ -880,16 +876,7 @@ class Engine:
                 uninitialized.append(var)
             if uninitialized:
                 prune_startup_prog = dist_startup_prog._prune(uninitialized)
-                if self.enable_prim_in_distribute:
-                    self.pir_prune_startup_program = (
-                        paddle.pir.translate_to_pir(prune_startup_prog.desc)
-                    )
-                    with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-                        self.pir_prune_startup_program
-                    ):
-                        self._executor.run(self.pir_prune_startup_program)
-                else:
-                    self._executor.run(prune_startup_prog)
+                self._executor.run(prune_startup_prog)
 
             if hasattr(self, "_state_dict") and hasattr(self, "_dist_attr"):
                 self._set_state_dict(
@@ -1057,6 +1044,7 @@ class Engine:
                     batches = self._validate_batch(batch)
                 else:
                     batches = [{}]
+
                 try:
                     for micro_batch in batches:
                         with paddle.profiler.utils._nvprof_range(
@@ -1537,51 +1525,27 @@ class Engine:
             self.enable_job_schedule_profiler
         )
 
-        if self.enable_prim_in_distribute:
-            if not self.is_pir_program_initialized:
-                (
-                    pir_program,
-                    pir_fetch_list,
-                    pir_grad_var_to_var,
-                ) = auto_utils.translate_dist_program_to_pir(
-                    self.main_program,
-                    feed_dict,
-                    fetch_names,
-                    self._dist_contexts[self._mode],
-                    self._strategy,
-                )
-                self.pir_program = pir_program
-                self.pir_fetch_list = pir_fetch_list
-                self.pir_grad_var_to_var = pir_grad_var_to_var
-                self.is_pir_program_initialized = True
-
-            if not self.is_pir_program_decomposed:
-                decomp.decompose_pir_program(
-                    self.pir_program,
-                    self.pir_grad_var_to_var,
-                    self.pir_fetch_list,
-                )
-                self.is_pir_program_decomposed = True
-
-            with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-                self.pir_program,
-                self.pir_prune_startup_program,
-            ):
-                outs = self._executor.run(
-                    self.pir_program,
-                    feed=feed_dict,
-                    fetch_list=self.pir_fetch_list,
-                    use_program_cache=self._strategy.use_cache,
-                    return_numpy=self._strategy.return_numpy,
-                )
-        else:
-            outs = self._executor.run(
-                self.main_program,
-                feed=feed_dict,
-                fetch_list=fetch_names,
-                use_program_cache=self._strategy.use_cache,
-                return_numpy=self._strategy.return_numpy,
+        if (
+            self.enable_prim_after_distribute
+            and not self.is_main_program_masked_prim
+        ):
+            self.main_program._need_decomp = True
+            grad_var_to_var = auto_utils.get_grad_var_to_var(
+                self._dist_contexts[self._mode]
             )
+            auto_utils.update_grad_var_to_var(
+                self.main_program, self._strategy, grad_var_to_var
+            )
+            self.main_program._grad_var_to_var = grad_var_to_var
+            self.is_main_program_masked_prim = True
+
+        outs = self._executor.run(
+            self.main_program,
+            feed=feed_dict,
+            fetch_list=fetch_names,
+            use_program_cache=self._strategy.use_cache,
+            return_numpy=self._strategy.return_numpy,
+        )
 
         logs = self._prepare_logger(
             outs, None, None, None, fetch_names, fetch_indices, self._mode
