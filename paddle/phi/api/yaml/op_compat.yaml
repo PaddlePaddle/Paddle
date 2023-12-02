@@ -3402,10 +3402,6 @@
   outputs :
     out : Out
 
-- op: read_file
-  outputs :
-    out : Out
-
 - op: recv_v2
   outputs :
     out : Out

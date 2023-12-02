@@ -25,11 +25,7 @@ namespace phi {
 template <typename T, typename Context>
 void ReadFileKernel(const Context& dev_ctx,
                     const std::string& filename,
-                    DataType dtype UNUSED,
                     DenseTensor* out) {
-  std::cout << "_______________________________________________________________"
-               "_______________"
-            << std::endl;
   std::ifstream input(filename.c_str(),
                       std::ios::in | std::ios::binary | std::ios::ate);
   std::streamsize file_size = input.tellg();
@@ -37,7 +33,6 @@ void ReadFileKernel(const Context& dev_ctx,
   input.seekg(0, std::ios::beg);
 
   out->Resize({file_size});
-  std::cout << file_size << "__________________" << std::endl;
   uint8_t* data = dev_ctx.template Alloc<T>(out);
   input.read(reinterpret_cast<char*>(data), file_size);
 }
