@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _legacy_C_ops
+from paddle import _C_ops
 from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_mode
@@ -60,7 +60,7 @@ def identity_loss(x, reduction="none"):
             raise Exception("Unsupported reduction type.")
 
     if in_dynamic_mode():
-        return _legacy_C_ops.identity_loss(x, "reduction", reduction)
+        return _C_ops.identity_loss(x, reduction)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], "identity_loss")
     attrs = {'reduction': reduction}

@@ -37,10 +37,8 @@ phi::funcs::MatmulFusedType GetFwdFusedEpilogueType(
         fused_type = FusedType::kMatmulBiasRelu;
       } else {
         fused_type = FusedType::kMatmulBiasReluWithReservedData;
-        int64_t reserve_size =
-            SizeOf(phi::DataType::BOOL) * phi::product(reserve_space->dims());
-        ctx.template Alloc<phi::DataType::BOOL>(
-            reserve_space, static_cast<size_t>(reserve_size));
+        reserve_space->Resize({phi::product(reserve_space->dims())});
+        ctx.template Alloc<bool>(reserve_space);
       }
     } else if (activation == "gelu") {
       if (reserve_space == nullptr) {
@@ -77,7 +75,6 @@ void FusedGemmEpilogueKernel(const Context& dev_ctx,
       "The fused_gemm_epilogue operator only support CUDA 11.6 "
       "or higher version."));
 #endif
-
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 11060
 

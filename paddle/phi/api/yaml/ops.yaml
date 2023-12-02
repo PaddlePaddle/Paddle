@@ -1230,6 +1230,7 @@
   kernel :
     func : identity_loss
     data_type : x
+    backend : x
   inplace: (x -> out)
   backward : identity_loss_grad
 
