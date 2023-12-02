@@ -691,14 +691,15 @@ def decomp_bwd_op(
     return new_grads, bwd_has_decomposed
 
 
-def decompose_pir_program(pir_program, pir_grad_var_to_var):
+def decompose_pir_program(pir_program, param_mapping, grad_var_to_var):
     '''
     Decompose all backward ops in a pir program.
 
     Args:
         pir_program (Program): the program to be decomposed
-        pir_grad_var_to_var (dict): a dict obtained from distributed processing,
-            which maps the backward grad value to its corresponding forward value.
+        param_mapping (dict): a map of program variables to pir program opresults
+        grad_var_to_var (dict): a dict obtained from distributed processing,
+            which maps the backward grad variable to its corresponding forward variable.
     '''
 
     def _get_bwd_ops_name(pir_program):
@@ -711,6 +712,53 @@ def decompose_pir_program(pir_program, pir_grad_var_to_var):
                 bwd_ops.append(op.name())
         return bwd_ops
 
+    def _translate_gradvartovar_to_pir(param_mapping, grad_var_to_var):
+        pir_grad_var_to_var = {}
+        for grad_var, var in grad_var_to_var.items():
+            if grad_var in param_mapping.keys() and var in param_mapping.keys():
+                if (
+                    len(param_mapping[grad_var]) == 1
+                    and len(param_mapping[var]) == 1
+                ):
+                    new_grad_var = param_mapping[grad_var][0]
+                    new_var = param_mapping[var][0]
+                    pir_grad_var_to_var[new_grad_var] = new_var
+                else:
+                    new_grad_vars = []
+                    new_vars = []
+                    if len(param_mapping[grad_var]) == 1:
+                        new_grad_vars.append(param_mapping[grad_var][0])
+                    elif (
+                        len(param_mapping[grad_var]) == 2
+                        and param_mapping[grad_var][1].get_defining_op().name()
+                        == "builtin.slice"
+                    ):
+                        new_grad_vars.append(param_mapping[grad_var][1])
+                    else:
+                        last_op = param_mapping[grad_var][-1].get_defining_op()
+                        if last_op.name().endswith("_"):
+                            new_grad_vars.append(param_mapping[grad_var][0])
+
+                    if len(param_mapping[var]) == 1:
+                        new_vars.append(param_mapping[var][0])
+                    elif (
+                        len(param_mapping[var]) == 2
+                        and param_mapping[var][1].get_defining_op().name()
+                        == "builtin.slice"
+                    ):
+                        new_vars.append(param_mapping[var][1])
+                    else:
+                        last_op = param_mapping[var][-1].get_defining_op()
+                        if last_op.name().endswith("_"):
+                            new_vars.append(param_mapping[var][0])
+
+                    assert (
+                        len(new_grad_vars) == 1 and len(new_vars) == 1
+                    ), "translate pir_grad_var_to_var error"
+                    pir_grad_var_to_var[new_grad_vars[0]] = new_vars[0]
+
+        return pir_grad_var_to_var
+
     prev_fwd_prim_state = core._is_fwd_prim_enabled()
     prev_bwd_prim_state = core._is_bwd_prim_enabled()
     core._set_prim_forward_enabled(True)
@@ -719,13 +767,16 @@ def decompose_pir_program(pir_program, pir_grad_var_to_var):
     paddle.framework.set_flags({"FLAGS_enable_pir_api": True})
 
     with paddle.pir.core.program_guard(pir_program):
+        pir_grad_var_to_var = _translate_gradvartovar_to_pir(
+            param_mapping, grad_var_to_var
+        )
+
         ops = pir_program.global_block().ops
         bwd_ops = _get_bwd_ops_name(pir_program)
         num_bwd_ops_decomposed = 0
         num_bwd_ops_undecomposed = 0
         bwd_ops_decomposed = []
         bwd_ops_undecomposed = []
-
         for op in ops:
             if op.name() in bwd_ops:
                 new_grads, has_decomposed = decomp_bwd_op(

@@ -25,24 +25,6 @@ from paddle.decomposition import decomp
 paddle.enable_static()
 
 
-def check_param_mappings(param_mappings):
-    for VarDesc, Values in param_mappings.items():
-        if len(Values) < 0 or len(Values) > 1:
-            raise ValueError(
-                "This test currently only support one-to-one param_mappings"
-            )
-
-
-def get_pir_grad_var_to_var(param_mappings, grad_var_to_var):
-    pir_grad_var_to_var = {}
-    for grad_var, var in grad_var_to_var.items():
-        if grad_var in param_mappings.keys():
-            new_grad_var = param_mappings[grad_var][0]
-            new_var = param_mappings[var][0]
-            pir_grad_var_to_var[new_grad_var] = new_var
-    return pir_grad_var_to_var
-
-
 def get_pir_program_and_param_map():
     shape = [2, 3]
     mp = paddle.static.Program()
@@ -73,10 +55,8 @@ def get_pir_program_and_param_map():
         # construct backward graph
         gradients = paddle.static.gradients(out, [x, y, z])
 
-    pir_program, param_mappings = pir.translate_to_pir_with_param_map(mp.desc)
-    check_param_mappings(param_mappings)
-
-    return pir_program, param_mappings
+    pir_program, param_mapping = pir.translate_to_pir_with_param_map(mp.desc)
+    return pir_program, param_mapping
 
 
 class TestDecomposeOp(unittest.TestCase):
@@ -92,7 +72,7 @@ class TestDecomposeOp(unittest.TestCase):
     def net(self, flag=None):
         (
             pir_program,
-            param_mappings,
+            param_mapping,
         ) = get_pir_program_and_param_map()
 
         pir_ops = pir_program.global_block().ops
@@ -118,10 +98,9 @@ class TestDecomposeOp(unittest.TestCase):
                 'y@GRAD': 'y',
                 'z@GRAD': 'z',
             }
-            pir_grad_var_to_var = get_pir_grad_var_to_var(
-                param_mappings, grad_var_to_var
+            decomp.decompose_pir_program(
+                pir_program, param_mapping, grad_var_to_var
             )
-            decomp.decompose_pir_program(pir_program, pir_grad_var_to_var)
 
         with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
             pir_program
