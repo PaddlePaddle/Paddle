@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/default_data_parallel.h"
 #include "paddle/phi/infermeta/spmd_rules/elementwise.h"
 #include "paddle/phi/infermeta/spmd_rules/embedding.h"
+#include "paddle/phi/infermeta/spmd_rules/expand.h"
 #include "paddle/phi/infermeta/spmd_rules/flash_attention.h"
 #include "paddle/phi/infermeta/spmd_rules/flatten.h"
 #include "paddle/phi/infermeta/spmd_rules/full_like.h"
@@ -531,6 +532,11 @@ PD_REGISTER_SPMD_RULE(squeeze,
 PD_REGISTER_SPMD_RULE(flatten,
                       PD_INFER_SPMD(phi::distributed::FlattenInferSpmd),
                       PD_INFER_SPMD(phi::distributed::FlattenInferSpmdReverse));
+
+// expand rule
+PD_REGISTER_SPMD_RULE(expand,
+                      PD_INFER_SPMD(phi::distributed::ExpandInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::ExpandInferSpmdReverse));
 
 // embedding rule
 PD_REGISTER_SPMD_RULE(

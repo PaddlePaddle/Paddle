@@ -117,7 +117,12 @@ std::vector<std::shared_ptr<DimTrans>> MakeExpandDimTransReverse(
   std::vector<std::shared_ptr<DimTrans>> ret(x_ndim, nullptr);
 
   for (int64_t i = 0; i < x_ndim; i++) {
-    ret[i] = std::make_shared<InputDim>(num_padding + i);
+    int64_t out_dim_idx = num_padding + i;
+    if (x_shape[i] != out_shape[out_dim_idx]) {
+      ret[i] = std::make_shared<Singleton>();
+    } else {
+      ret[i] = std::make_shared<InputDim>(out_dim_idx);
+    }
   }
 
   return ret;
@@ -246,7 +251,7 @@ SpmdInfo ExpandInferSpmdReverse(const DistMetaTensor& x,
   }
 
   std::vector<std::shared_ptr<DimTrans>> trans =
-      MakeExpandDimTransReverse(out_shape, x_shape);
+      MakeExpandDimTransReverse(x_shape, out_shape);
   // Step2: Infer the dims mapping of input with
   // output's dims_mapping and the transformation.
   std::vector<std::vector<int64_t>> dims_mapping_vec =
