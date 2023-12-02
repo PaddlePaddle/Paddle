@@ -159,9 +159,6 @@ SpmdInfo ExpandInferSpmd(const DistMetaTensor& x,
   // Step1: Build the transformation from
   // the original shape to the target shape
 
-  // handle the case of dynamic shape ? like [-1, -1, ...] ?
-  // TODO(MarioLulab): to discuss
-
   // handle the '-1' value in target shape, where '-1' indicates the target
   // shape is equal to the source shape
   std::vector<int64_t> tgt_shape(shape);
@@ -237,10 +234,6 @@ SpmdInfo ExpandInferSpmdReverse(const DistMetaTensor& x,
   // from output to input so that we can infer the dims mapping
   // with the map from output axes to input axes.
 
-  // handle the case of dynamic shape ? like [-1, -1, ...] ?
-  // TODO(MarioLulab): to discuss
-
-  // FIXME(MarioLulab): Do we really need it ?
   // handle the '-1' value in target shape, where '-1' indicates the target
   // shape is equal to the source shape
   for (int64_t i = x_ndim - 1, tgt_idx = out_ndim - 1; i >= 0 && tgt_idx >= 0;
