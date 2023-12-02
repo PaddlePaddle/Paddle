@@ -19,7 +19,7 @@ from paddle.base.dygraph import base as imperative_base
 from paddle.base.framework import Program
 from paddle.base.layer_helper import LayerHelper
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
-from paddle.framework import in_dynamic_mode
+from paddle.framework import in_dynamic_or_pir_mode
 from paddle.optimizer import Optimizer
 
 __all__ = []
@@ -188,7 +188,7 @@ class ModelAverage(Optimizer):
         self.max_average_window = max_average_window
         self.type = "average_accumulates"
 
-        if not in_dynamic_mode():
+        if not in_dynamic_or_pir_mode():
             global_block = framework.default_main_program().global_block()
             all_parameters = (
                 parameters if parameters else global_block.all_parameters()
@@ -240,7 +240,7 @@ class ModelAverage(Optimizer):
         )
         num_updates = self._get_accumulator('num_updates', param_and_grad[0])
 
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             _, _, _, _, _, _ = _C_ops.average_accumulates_(
                 param_and_grad[0],
                 sum_1,
@@ -342,7 +342,7 @@ class ModelAverage(Optimizer):
                 >>> modelaverage.clear_grad()
 
         """
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             self.step()
 
     @framework.dygraph_only
@@ -431,7 +431,7 @@ class ModelAverage(Optimizer):
                 >>> for param in linear.parameters():
                 ...     print(param)
         """
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             for param in self._parameter_list:
                 num_accumulates = self._get_accumulator(
                     'num_accumulates', param
@@ -512,7 +512,7 @@ class ModelAverage(Optimizer):
                 >>> for param in linear.parameters():
                 ...     print(param)
         """
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             for param in self._parameter_list:
                 param_restore = self._get_accumulator('restore', param)
                 paddle.assign(param_restore, param)
