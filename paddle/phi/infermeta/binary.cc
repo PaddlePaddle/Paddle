@@ -3309,6 +3309,15 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
   out->set_dtype(out_dtype);
 }
 
+void IdentityLossGradInferMeta(const MetaTensor& x,
+                               const MetaTensor& out_grad,
+                               const int reduction,
+                               MetaTensor* x_grad) {
+  x_grad->set_dims(x.dims());
+  x_grad->share_lod(x);
+  x_grad->set_dtype(out_grad.dtype());
+}
+
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(add_raw, phi::ElementwiseRawInferMeta);

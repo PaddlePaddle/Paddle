@@ -39,7 +39,8 @@ phi::funcs::MatmulFusedType GetFwdFusedEpilogueType(
         fused_type = FusedType::kMatmulBiasReluWithReservedData;
         int64_t reserve_size =
             SizeOf(phi::DataType::BOOL) * phi::product(reserve_space->dims());
-        ctx.template Alloc<phi::DataType::BOOL>(reserve_space, reserve_size);
+        ctx.template Alloc<phi::DataType::BOOL>(
+            reserve_space, static_cast<size_t>(reserve_size));
       }
     } else if (activation == "gelu") {
       if (reserve_space == nullptr) {
@@ -50,7 +51,7 @@ phi::funcs::MatmulFusedType GetFwdFusedEpilogueType(
         ctx.template Alloc<T>(reserve_space, reserve_size);
       }
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "fused_gemm_epilogue's activate should be one of {none, relu, gelu},"
           " but received %s, please check",
           activation));

@@ -3363,6 +3363,12 @@
   outputs :
     out : Out
 
+- op: identity_loss
+  inputs :
+    x: X
+  outputs :
+    out : Out
+
 - op: logspace
   inputs:
     {start: Start, stop: Stop, num: Num, base: Base}

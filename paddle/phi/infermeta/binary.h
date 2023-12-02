@@ -516,4 +516,9 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
                                DataType out_dtype,
                                MetaTensor* out);
 
+void IdentityLossGradInferMeta(const MetaTensor& x,
+                               const MetaTensor& out_grad,
+                               const int reduction,
+                               MetaTensor* x_grad);
+
 }  // namespace phi
