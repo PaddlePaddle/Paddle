@@ -130,4 +130,4 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(c_gen_nccl_id, ops::CGenNCCLIdOp, ops::CGenNCCLIdOpMaker);
 
 PD_REGISTER_STRUCT_KERNEL(
-    c_gen_nccl_id, CPU, ALL_LAYOUT, ops::CGenNCCLIdKernel, float) {}
+    c_gen_nccl_id, CPU, ALL_LAYOUT, ops::CGenNCCLIdKernel, float, double) {}
