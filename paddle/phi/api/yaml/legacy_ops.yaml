@@ -896,6 +896,18 @@
     data_type : dtype
     backend : place
 
+- op : read_file
+  args : (str filename = "", DataType dtype=DataType::UINT8, Place place=CPUPlace())
+  output : Tensor(out)
+  infer_meta :
+    func : ReadFileInferMeta
+    param : [filename]
+  kernel :
+    func : read_file
+    param : [filename]
+    data_type : dtype
+    backend : place
+
 - op : remainder
   args : (Tensor x, Tensor y)
   output : Tensor (out)
@@ -1207,15 +1219,3 @@
   args : (Tensor x, DataType dtype=DataType::UNDEFINED, Place place = {})
   output : Tensor(out)
   invoke : full_like(x, 0, dtype, place)
-
-- op : read_file
-  args : (str filename = "", DataType dtype=DataType::UINT8, Place place=CPUPlace())
-  output : Tensor(out)
-  infer_meta :
-    func : ReadFileInferMeta
-    param : [filename]
-  kernel :
-    func : read_file
-    param : [filename]
-    data_type : dtype
-    backend : place

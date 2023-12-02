@@ -15,15 +15,10 @@
 
 namespace phi {
 
-KernelSignature ReadFileOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature("read_file",
-                         {},
-                         {"filename"},
-                         {"Out"});
+KernelSignature ReadFileOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("read_file", {}, {"filename"}, {"Out"});
 }
 
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(read_file,
-                           phi::ReadFileOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(read_file, phi::ReadFileOpArgumentMapping);
