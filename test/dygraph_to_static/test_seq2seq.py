@@ -20,7 +20,9 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_default_mode_only,
+    ToStaticMode,
+    set_to_static_mode,
+    test_legacy_only,
 )
 from seq2seq_dygraph_model import AttentionModel, BaseModel
 from seq2seq_utils import Seq2SeqModelHyperParams, get_data_iter
@@ -237,12 +239,14 @@ class TestSeq2seq(Dy2StTestBase):
             msg=f"\npred_dygraph = {pred_dygraph} \npred_static = {pred_static}",
         )
 
-    @test_default_mode_only
+    @set_to_static_mode(ToStaticMode.SOT)
+    @test_legacy_only
     def test_base_model(self):
         self._test_train(attn_model=False)
         self._test_predict(attn_model=False)
 
-    @test_default_mode_only
+    @set_to_static_mode(ToStaticMode.SOT)
+    @test_legacy_only
     def test_attn_model(self):
         self._test_train(attn_model=True)
         # TODO(liym27): add predict
