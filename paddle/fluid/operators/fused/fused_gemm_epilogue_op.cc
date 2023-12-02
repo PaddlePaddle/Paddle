@@ -131,7 +131,7 @@ DECLARE_INFER_SHAPE_FUNCTOR(fused_gemm_epilogue,
                             FusedGemmEpilogueInferShapeFunctor,
                             PD_INFER_META(phi::FusedGemmEpilogueInferMeta));
 DECLARE_INFER_SHAPE_FUNCTOR(fused_gemm_epilogue_grad,
-                            FusedGemmEpilogueInferShapeFunctor,
+                            FusedGemmEpilogueGradInferShapeFunctor,
                             PD_INFER_META(phi::FusedGemmEpilogueGradInferMeta));
 REGISTER_OPERATOR(fused_gemm_epilogue,
                   ops::FusedGemmEpilogueOp,
@@ -141,4 +141,4 @@ REGISTER_OPERATOR(fused_gemm_epilogue,
                   FusedGemmEpilogueInferShapeFunctor);
 REGISTER_OPERATOR(fused_gemm_epilogue_grad,
                   ops::FusedGemmEpilogueGradOp,
-                  FusedGemmEpilogueInferShapeFunctor);
+                  FusedGemmEpilogueGradInferShapeFunctor);
