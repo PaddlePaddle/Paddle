@@ -611,13 +611,21 @@ class TestXavierInitializerPir(unittest.TestCase):
     )
     def test_xavier_initializer_fp16(self):
         """Test the Xavier initializer with float16"""
-        main, startup = self.test_xavier_initializer_supplied_arguments(
+        main_1, startup_1 = self.test_xavier_initializer_supplied_arguments(
             "float16"
         )
         with paddle.pir_utils.IrGuard():
             exe = paddle.static.Executor(paddle.CUDAPlace(0))
-            exe.run(startup)
-            exe.run(main)
+            exe.run(startup_1)
+            exe.run(main_1)
+
+        main_2, startup_2 = self.test_xavier_initializer_supplied_arguments(
+            "float16", uniform=False
+        )
+        with paddle.pir_utils.IrGuard():
+            exe = paddle.static.Executor(paddle.CUDAPlace(0))
+            exe.run(startup_2)
+            exe.run(main_2)
 
     @unittest.skipIf(
         not paddle.base.core.is_compiled_with_cuda()
@@ -911,7 +919,9 @@ class TestMSRAInitializerPir(unittest.TestCase):
                 self.assertAlmostEqual(init_op.attrs()['std'], std, delta=DELTA)
                 self.assertEqual(init_op.attrs()['seed'], 0)
 
-    def test_msra_initializer_supplied_arguments(self, dtype="float32"):
+    def test_msra_initializer_supplied_arguments(
+        self, dtype="float32", uniform=True
+    ):
         """Test the MSRA initializer with supplied arguments"""
         with paddle.pir_utils.IrGuard():
             main = paddle.static.Program()
@@ -922,24 +932,30 @@ class TestMSRAInitializerPir(unittest.TestCase):
                     shape=[5, 10],
                     name="param",
                     initializer=paddle.nn.initializer.MSRAInitializer(
-                        fan_in=12, seed=134
+                        fan_in=12, seed=134, uniform=uniform
                     ),
                 )
                 block = startup.global_block()
-                checked_ops = self.get_init_ops_by_op_name(
-                    block, self.init_uniform_op_name
+                init_op_name = (
+                    self.init_uniform_op_name
+                    if uniform
+                    else self.init_normal_op_name
                 )
+
+                checked_ops = self.get_init_ops_by_op_name(block, init_op_name)
                 self.assertEqual(len(checked_ops), 1)
                 init_op = checked_ops[0]
-                limit = np.sqrt(6.0 / 12)
-                min = self.get_operand_definition_op_attrs(
-                    init_op, "min", "value"
-                )
-                max = self.get_operand_definition_op_attrs(
-                    init_op, "max", "value"
-                )
-                self.assertAlmostEqual(min, -limit, delta=DELTA)
-                self.assertAlmostEqual(max, limit, delta=DELTA)
+                if uniform:
+                    limit = np.sqrt(6.0 / 12)
+                    min = self.get_operand_definition_op_attrs(
+                        init_op, "min", "value"
+                    )
+                    max = self.get_operand_definition_op_attrs(
+                        init_op, "max", "value"
+                    )
+                    self.assertAlmostEqual(min, -limit, delta=DELTA)
+                    self.assertAlmostEqual(max, limit, delta=DELTA)
+
                 self.assertEqual(init_op.attrs()['seed'], 134)
 
         return main, startup
@@ -949,11 +965,21 @@ class TestMSRAInitializerPir(unittest.TestCase):
     )
     def test_msra_initializer_fp16(self):
         """Test the MSRA initializer with float16"""
-        main, startup = self.test_msra_initializer_supplied_arguments("float16")
+        main_1, startup_1 = self.test_msra_initializer_supplied_arguments(
+            "float16"
+        )
         with paddle.pir_utils.IrGuard():
             exe = paddle.static.Executor(paddle.CUDAPlace(0))
-            exe.run(startup)
-            exe.run(main)
+            exe.run(startup_1)
+            exe.run(main_1)
+
+        main_2, startup_2 = self.test_msra_initializer_supplied_arguments(
+            "float16", uniform=False
+        )
+        with paddle.pir_utils.IrGuard():
+            exe = paddle.static.Executor(paddle.CUDAPlace(0))
+            exe.run(startup_2)
+            exe.run(main_2)
 
     @unittest.skipIf(
         not paddle.base.core.is_compiled_with_cuda()
@@ -962,11 +988,21 @@ class TestMSRAInitializerPir(unittest.TestCase):
     )
     def test_msra_initializer_bf16(self):
         """Test the MSRA initializer with bfloat16"""
-        main, startup = self.test_msra_initializer_supplied_arguments("uint16")
+        main_1, startup_1 = self.test_msra_initializer_supplied_arguments(
+            "uint16"
+        )
         with paddle.pir_utils.IrGuard():
             exe = paddle.static.Executor(paddle.CUDAPlace(0))
-            exe.run(startup)
-            exe.run(main)
+            exe.run(startup_1)
+            exe.run(main_1)
+
+        main_2, startup_2 = self.test_msra_initializer_supplied_arguments(
+            "uint16", uniform=False
+        )
+        with paddle.pir_utils.IrGuard():
+            exe = paddle.static.Executor(paddle.CUDAPlace(0))
+            exe.run(startup_2)
+            exe.run(main_2)
 
 
 class TestBilinearInitializer(unittest.TestCase):
