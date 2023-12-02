@@ -7043,7 +7043,7 @@ def copysign(x, y, name=None):
 
     Args:
         x (Tensor): The input Tensor, magnitudes, the data type is float32, float64, int32 or int64.
-        y (Tensor or Number): contains value(s) whose signbit(s) are applied to the magnitudes in input.
+        y (Tensor): contains value(s) whose signbit(s) are applied to the magnitudes in input.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -7056,27 +7056,25 @@ def copysign(x, y, name=None):
             >>> import paddle
 
             >>> # example1
-            >>> x = paddle.to_tensor([1, 2, 3], dtype='float32')
-            >>> y = paddle.to_tensor([-1, 1, -1], dtype='float32')
+            >>> x = paddle.to_tensor([1, 2, 3], dtype='float64')
+            >>> y = paddle.to_tensor([-1, 1, -1], dtype='float64')
             >>> out = paddle.copysign(x, y)
             >>> print(out)
-            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
                 [-1.,  2., -3.])
 
             >>> # example2
-            >>> x = paddle.to_tensor([1, 2, 3], dtype='float32')
-            >>> y = paddle.to_tensor([-2], dtype='float32')
+            >>> x = paddle.to_tensor([1, 2, 3], dtype='float64')
+            >>> y = paddle.to_tensor([-2], dtype='float64')
             >>> res = paddle.copysign(x, y)
             >>> print(res)
-            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
             [-1. , -2. , -3.])
 
     """
     out_shape = broadcast_shape(x.shape, y.shape)
-    if x.dtype != 'float32':
-        x = x.astype('float32')
-    if isinstance(y, (int, float, bool)):
-        y = paddle.to_tensor([y], dtype='float32')
+    if x.dtype != paddle.float64:
+        x = x.astype(paddle.float64)
     y = y.astype(x.dtype)
     x = paddle.broadcast_to(x, out_shape)
     y = paddle.broadcast_to(y, out_shape)
@@ -7099,10 +7097,8 @@ def copysign_(x, y):
     Please refer to :ref:`api_paddle_copysign`.
     """
     out_shape = broadcast_shape(x.shape, y.shape)
-    if x.dtype != 'float32':
-        x = x.astype('float32')
-    if isinstance(y, (int, float, bool)):
-        y = paddle.to_tensor([y], dtype='float32')
+    if x.dtype != paddle.float64:
+        x = x.astype(paddle.float64)
     y = y.astype(x.dtype)
     x = paddle.broadcast_to(x, out_shape)
     y = paddle.broadcast_to(y, out_shape)

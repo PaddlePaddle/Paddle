@@ -103,29 +103,29 @@ class TestCopySignAPI(unittest.TestCase):
 class TestCopySignInt32(TestCopySignAPI):
     def input_init(self):
         dtype = np.int32
-        self.x = np.zeros(shape=(10, 20)).astype(dtype)
-        self.y = np.zeros(shape=(10, 20)).astype(dtype)
+        self.x = (np.random.randn(10, 20) * 10).astype(dtype)
+        self.y = (np.random.randn(10, 20) * 10).astype(dtype)
 
 
 class TestCopySignInt64(TestCopySignAPI):
     def input_init(self):
         dtype = np.int64
-        self.x = np.zeros(shape=(10, 20)).astype(dtype)
-        self.y = np.zeros(shape=(10, 20)).astype(dtype)
+        self.x = (np.random.randn(10, 20) * 10).astype(dtype)
+        self.y = (np.random.randn(10, 20) * 10).astype(dtype)
 
 
 class TestCopySignFloat32(TestCopySignAPI):
     def input_init(self):
         dtype = np.float32
-        self.x = np.zeros(shape=(10, 20)).astype(dtype)
-        self.y = np.zeros(shape=(10, 20)).astype(dtype)
+        self.x = (np.random.randn(10, 20) * 10).astype(dtype)
+        self.y = (np.random.randn(10, 20) * 10).astype(dtype)
 
 
 class TestCopySignFloat64(TestCopySignAPI):
     def input_init(self):
         dtype = np.float64
-        self.x = np.zeros(shape=(10, 20)).astype(dtype)
-        self.y = np.zeros(shape=(10, 20)).astype(dtype)
+        self.x = (np.random.randn(10, 20) * 10).astype(dtype)
+        self.y = (np.random.randn(10, 20) * 10).astype(dtype)
 
 
 class TestCopySignZeroCase1(TestCopySignAPI):
