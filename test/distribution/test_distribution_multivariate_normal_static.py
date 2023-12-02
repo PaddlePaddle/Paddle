@@ -31,12 +31,12 @@ paddle.enable_static()
     [
         (
             'one-batch',
-            parameterize.xrand((2,), dtype='float32', min=-2, max=2),
+            parameterize.xrand((2,), dtype='float32', min=1, max=2),
             np.array([[2.0, 1.0], [1.0, 2.0]]),
         ),
         (
             'multi-batch',
-            parameterize.xrand((2, 3), dtype='float32', min=-2, max=2),
+            parameterize.xrand((2, 3), dtype='float32', min=-2, max=-1),
             np.array([[6.0, 2.5, 3.0], [2.5, 4.0, 5.0], [3.0, 5.0, 7.0]]),
         ),
     ],
@@ -106,9 +106,9 @@ class TestMVN(unittest.TestCase):
         )
         sample_mean = self.large_samples.mean(axis=0)
         sample_variance = self.large_samples.var(axis=0)
-        np.testing.assert_allclose(sample_mean, self.mean, atol=0.05, rtol=0.40)
+        np.testing.assert_allclose(sample_mean, self.mean, atol=0.00, rtol=0.20)
         np.testing.assert_allclose(
-            sample_variance, self.var, atol=0.05, rtol=0.40
+            sample_variance, self.var, atol=0.00, rtol=0.20
         )
 
     def _np_variance(self):

@@ -29,12 +29,12 @@ from paddle.distribution.multivariate_normal import MultivariateNormal
     [
         (
             'one-batch',
-            parameterize.xrand((2,), dtype='float32', min=-2, max=2),
+            parameterize.xrand((2,), dtype='float32', min=1, max=2),
             np.array([[2.0, 1.0], [1.0, 2.0]]),
         ),
         (
             'multi-batch',
-            parameterize.xrand((2, 3), dtype='float32', min=-2, max=2),
+            parameterize.xrand((2, 3), dtype='float32', min=-2, max=-1),
             np.array([[4.0, 2.5, 2.0], [2.5, 3.0, 1.2], [2.0, 1.2, 4.0]]),
         ),
     ],
@@ -91,10 +91,10 @@ class TestMVN(unittest.TestCase):
         sample_variance = samples.var(axis=0)
 
         np.testing.assert_allclose(
-            sample_mean, self._dist.mean, atol=0.00, rtol=0.40
+            sample_mean, self._dist.mean, atol=0.00, rtol=0.20
         )
         np.testing.assert_allclose(
-            sample_variance, self._dist.variance, atol=0.00, rtol=0.40
+            sample_variance, self._dist.variance, atol=0.00, rtol=0.20
         )
 
     def _np_variance(self):
