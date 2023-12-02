@@ -70,9 +70,10 @@ std::vector<std::shared_ptr<DimTrans>> MakeExpandDimTrans(
       PADDLE_ENFORCE_GT(
           tgt_dim_val,
           0,
-          "The value of tgt_shape[%d] %d must not be less than zero.",
-          i,
-          tgt_dim_val);
+          phi::errors::InvalidArgument(
+              "The value of tgt_shape[%d] %d must be greater than zero.",
+              i,
+              tgt_dim_val));
       if (tgt_dim_val == 1) {
         ret.emplace_back(inp);
       } else {
@@ -221,7 +222,7 @@ SpmdInfo ExpandInferSpmdReverse(const DistMetaTensor& x,
       x_ndim,
       out_ndim,
       phi::errors::InvalidArgument(
-          "The Tensor X's ndim %d must not be larger than out_ndim %d.",
+          "The Tensor X's ndim %d must not be greater than out_ndim %d.",
           x_ndim,
           out_ndim));
 
