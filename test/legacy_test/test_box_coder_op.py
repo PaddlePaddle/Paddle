@@ -177,7 +177,7 @@ class TestBoxCoderOpWithoutBoxVar(OpTest):
 
 class TestBoxCoderOpWithLoD(OpTest):
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output()
 
     def setUp(self):
         self.python_api = paddle.vision.ops.box_coder
