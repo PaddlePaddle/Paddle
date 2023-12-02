@@ -2300,45 +2300,6 @@ struct LegacySetValueDispatcher : public OpTranscriber {
   }
 };
 
-struct FusedAttentionOpTranscriber : public OpTranscriber {
-  void HandleNonexistentAttribute(pir::IrContext* ctx,
-                                  pir::AttributeMap* attribute_map,
-                                  const OpAttributeInfo& info) override {
-    if (info.name == "num_heads") {
-      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, -1);
-    } else if (info.name == "transpose_qkv_wb") {
-      (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, false);
-    } else if (info.name == "pre_layer_norm") {
-      (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, "gelu");
-    } else if (info.name == "epsilon") {
-      (*attribute_map)[info.name] = pir::FloatAttribute::get(ctx, 1e-5f);
-    } else if (info.name == "attn_dropout_rate") {
-      (*attribute_map)[info.name] = pir::FloatAttribute::get(ctx, .5f);
-    } else if (info.name == "is_test") {
-      (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, .5f);
-    } else if (info.name == "attn_dropout_fix_seed") {
-      (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, true);
-    } else if (info.name == "attn_dropout_seed") {
-      (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, .5f);
-    } else if (info.name == "attn_dropout_implementation") {
-      (*attribute_map)[info.name] =
-          pir::StrAttribute::get(ctx, "upscale_in_train");
-    } else if (info.name == "dropout_rate") {
-      (*attribute_map)[info.name] = pir::FloatAttribute::get(ctx, .5f);
-    } else if (info.name == "dropout_fix_seed") {
-      (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, true);
-    } else if (info.name == "dropout_seed") {
-      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, 0);
-    } else if (info.name == "ln_epsilon") {
-      (*attribute_map)[info.name] = pir::FloatAttribute::get(ctx, 1e-5f);
-    } else if (info.name == "add_residual") {
-      (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, true);
-    } else if (info.name == "ring_id") {
-      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, -1);
-    }
-  }
-};
-
 struct FusedFeedForwardOpTranscriber : public OpTranscriber {
   void HandleNonexistentAttribute(pir::IrContext* ctx,
                                   pir::AttributeMap* attribute_map,
@@ -2691,9 +2652,22 @@ struct SliceOpTranscriber : public OpTranscriber {
                input_vars.size());
     const auto* input_var = op_desc.Block()->FindVarRecursive(input_vars[0]);
     if (input_var->GetType() == framework::proto::VarType::LOD_TENSOR_ARRAY) {
-      const auto& decrease_axis =
-          PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("decrease_axis"));
-      if (!decrease_axis.empty()) {
+      IR_ENFORCE(op_desc.HasOutput("Out"),
+                 "op %s should have input `Out`",
+                 op_desc.Type());
+      const auto& output_vars = op_desc.Output("Out");
+      IR_ENFORCE(output_vars.size() == 1,
+                 "op %s should have one input `Out`, but got %d.",
+                 op_desc.Type(),
+                 output_vars.size());
+      const auto* output_var =
+          op_desc.Block()->FindVarRecursive(output_vars[0]);
+      IR_ENFORCE(output_var != nullptr,
+                 "op %s should have non-empty output `%s`.",
+                 op_desc.Type(),
+                 output_vars[0]);
+
+      if (output_var->GetType() == framework::proto::VarType::LOD_TENSOR) {
         target_op_name = dialect::SliceArrayDenseOp::name();
       } else {
         target_op_name = dialect::SliceArrayOp::name();
@@ -2724,7 +2698,6 @@ OpTranslator::OpTranslator() {
   special_handlers["fetch"] = FetchOpTranscriber();
   special_handlers["fetch_v2"] = FetchOpTranscriber();
   special_handlers["fill_constant"] = FillConstantTranscriber();
-  special_handlers["fused_attention"] = FusedAttentionOpTranscriber();
   special_handlers["fused_feedforward"] = FusedFeedForwardOpTranscriber();
   special_handlers["fused_elemwise_add_activation"] =
       FusedElemwiseAddActivationOpTranscriber();
