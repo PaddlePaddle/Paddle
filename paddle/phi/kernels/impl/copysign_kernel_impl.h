@@ -26,8 +26,8 @@ struct CopySignFunctor {
       : x_data_(x_data), y_data_(y_data), out_data_(out_data), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    out_data_[idx] = static_cast<T>(std::copysignf(
-        static_cast<T>(x_data_[idx]), static_cast<T>(y_data_[idx])));
+    out_data_[idx] = static_cast<T>(std::copysign(
+        static_cast<float>(x_data_[idx]), static_cast<float>(y_data_[idx])));
   }
 
   const T* x_data_;
