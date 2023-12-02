@@ -1525,5 +1525,37 @@ void QuantLinearInferMeta(const MetaTensor& x,
   y->share_lod(x);
   y->set_dtype(x.dtype());
 }
+void TdmSamplerInferMeta(const MetaTensor& x,
+                         const MetaTensor& travel,
+                         const MetaTensor& layer,
+                         bool output_positive,
+                         const std::vector<int>& neg_samples_num_list,
+                         const std::vector<int>& layer_offset_lod,
+                         int seed,
+                         int dtype,
+                         MetaTensor* out,
+                         MetaTensor* labels,
+                         MetaTensor* mask,
+                         MetaConfig config) {
+  auto neg_samples_num_vec = neg_samples_num_list;
+  auto output_positive_flag = output_positive;
 
+  int64_t sample_res_length = 0;
+  for (auto sample_nums : neg_samples_num_vec) {
+    sample_res_length += sample_nums + (int64_t)output_positive_flag;
+  }
+  auto ddim = phi::make_ddim({-1, sample_res_length});
+  auto input_dims = x.dims();
+  if (config.is_runtime) {
+    auto output_dims = phi::vectorize(input_dims);
+    auto batch_size = output_dims[0];
+    out->set_dims(phi::make_ddim({batch_size, sample_res_length}));
+    labels->set_dims(phi::make_ddim({batch_size, sample_res_length}));
+    mask->set_dims(phi::make_ddim({batch_size, sample_res_length}));
+  } else {
+    out->set_dims(ddim);
+    labels->set_dims(ddim);
+    mask->set_dims(ddim);
+  }
+}
 }  // namespace phi

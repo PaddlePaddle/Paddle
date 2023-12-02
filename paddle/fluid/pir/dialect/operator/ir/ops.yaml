@@ -1216,6 +1216,16 @@
   inplace : (mean -> mean_out), (variance -> variance_out)
   optional : reserve_space
 
+- op : tdm_sampler
+  args: (Tensor x, Tensor travel, Tensor layer, bool output_positive=true, int[] neg_samples_num_list={}, int[] layer_offset_lod={}, int seed = 0, int dtype=2)
+  output: Tensor(out), Tensor(labels), Tensor(mask)
+  infer_meta:
+    func : TdmSamplerInferMeta
+  kernel:
+    func : tdm_sampler
+    data_type : x
+  optional : labels
+
 - op : tile
   args : (Tensor x, IntArray repeat_times = {})
   output : Tensor(out)

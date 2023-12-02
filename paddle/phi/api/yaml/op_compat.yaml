@@ -3060,6 +3060,12 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : tdm_sampler
+  inputs:
+    {x : X, travel : Travel, layer : Layer}
+  outputs:
+    {out : Out, labels : Labels, mask : Mask}
+
 - op : thresholded_relu
   inputs :
     x : X

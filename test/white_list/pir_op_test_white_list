@@ -289,6 +289,7 @@ test_sum_bf16_mkldnn_op
 test_sum_mkldnn_op
 test_svd_op
 test_take_along_axis_op
+test_tdm_sampler_op
 test_temporal_shift_op
 test_tile_op
 test_top_k_v2_op
