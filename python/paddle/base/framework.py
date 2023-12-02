@@ -5762,7 +5762,11 @@ class Program:
         # to tag whether is startup_program
         self._is_start_up_program_ = False
 
+        # distributed training combined with prim mechanism (prim is behind of distributed)
+        # after distributed partition, for subprogram or subgraph on a single card, decompose PHI grad ops into primitive ops
+        # _need_decomp, to tag whether this program needs to be decomposed
         self._need_decomp = False
+        # _grad_var_to_var, a dict which recording the mapping of backward grad variable to forward variable
         self._grad_var_to_var = None
 
     def _find_var_class_kwargs(self, new_desc):
