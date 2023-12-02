@@ -71,10 +71,10 @@ void TensorFromStream(std::istream& is,
 // If ctx_place and src_place are the same, src_ctx.Wait() is added
 // after memory::Copy; if ctx_place and dst_place are the same,
 // src_ctx.Wait() is added before memory::Copy.
-void TensorCopy(const phi::DenseTensor& src,
-                const platform::Place& dst_place,
-                const platform::DeviceContext& ctx,
-                phi::DenseTensor* dst);
+TEST_API void TensorCopy(const phi::DenseTensor& src,
+                         const platform::Place& dst_place,
+                         const platform::DeviceContext& ctx,
+                         phi::DenseTensor* dst);
 
 // NOTE(zcd): If the src.place() and dst_place are two different GPU,
 // the copy operation is carried out on the dst_place's stream. This is

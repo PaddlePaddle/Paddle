@@ -649,12 +649,12 @@ void Copy<phi::CPUPlace, phi::Place>(phi::CPUPlace dst_place,
 
 // NOTE: only for (CPUPlace) -> (CPUPlace, CUDAPlace and CUDAPinnedPlace).
 template <>
-void Copy<phi::Place, phi::CPUPlace>(phi::Place dst_place,
-                                     void* dst,
-                                     phi::CPUPlace src_place,
-                                     const void* src,
-                                     size_t num,
-                                     void* stream) {
+TEST_API void Copy<phi::Place, phi::CPUPlace>(phi::Place dst_place,
+                                              void* dst,
+                                              phi::CPUPlace src_place,
+                                              const void* src,
+                                              size_t num,
+                                              void* stream) {
   Copy(dst_place, dst, phi::Place(src_place.GetType()), src, num, stream);
 }
 

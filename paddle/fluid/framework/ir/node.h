@@ -317,11 +317,11 @@ class Node {
   DISABLE_COPY_AND_ASSIGN(Node);
 };
 
-std::unique_ptr<Node> CreateNodeForTest(const std::string& name,
-                                        Node::Type type);
-std::unique_ptr<Node> CreateNodeForTest(VarDesc* var_desc);
+TEST_API std::unique_ptr<Node> CreateNodeForTest(const std::string& name,
+                                                 Node::Type type);
+TEST_API std::unique_ptr<Node> CreateNodeForTest(VarDesc* var_desc);
 
-std::unique_ptr<Node> CreateNodeForTest(OpDesc* op_desc);
+TEST_API std::unique_ptr<Node> CreateNodeForTest(OpDesc* op_desc);
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

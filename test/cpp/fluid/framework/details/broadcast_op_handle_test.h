@@ -295,10 +295,10 @@ struct TestBroadcastOpHandle {
     }
   }
 
-  void LoDTensorEqual(const std::string& varname,
-                      const std::vector<float>& send_vec,
-                      const f::LoD& lod,
-                      framework::Scope* scope) {
+  TEST_API void LoDTensorEqual(const std::string& varname,
+                               const std::vector<float>& send_vec,
+                               const f::LoD& lod,
+                               framework::Scope* scope) {
     p::CPUPlace cpu_place;
     auto var = scope->FindVar(varname);
     PADDLE_ENFORCE_NOT_NULL(var,

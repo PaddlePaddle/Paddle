@@ -67,7 +67,7 @@ LoD SliceInLevel(const LoD& in,
  */
 LoD ToAbsOffset(const LoD& in);
 
-bool operator==(const LoD& a, const LoD& b);
+TEST_API bool operator==(const LoD& a, const LoD& b);
 
 /*
  * Check whether this lod's format is valid.
