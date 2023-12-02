@@ -1368,7 +1368,7 @@
     batched_out : BatchedOut
     hidden : Hidden
   extra :
-    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", float Scale_data = 1.0f, float Shift_data = 0.0f, 'float[] Scale_weights = {1.0f}', bool force_fp32_output = false]
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool force_fp32_output = false, float Scale_data = 1.0f, float Shift_data = 0.0f, 'float[] Scale_weights = {1.0f}']
 
 - op : fusion_repeated_fc_relu
   inputs :

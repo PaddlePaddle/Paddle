@@ -599,6 +599,20 @@ void FusionGRUKernel(const Context& dev_ctx,
                              dev_ctx.GetDnnAttr("Scale_weights"))
           : tmp_scale_weights;
   const bool is_bf16 = std::is_same<T, phi::dtype::bfloat16>::value;
+  std::cout << "Scale_data : " << scale_data << std::endl;
+  std::cout << "Shift_data : " << shift_data << std::endl;
+  std::cout << "data_type : " << mkldnn_data_type << std::endl;
+  std::cout << "has Scale_data : " << dev_ctx.HasDnnAttr("Scale_data")
+            << std::endl;
+  std::cout << "has scale_data : " << dev_ctx.HasDnnAttr("scale_data")
+            << std::endl;
+  std::cout << "has Shift_data : " << dev_ctx.HasDnnAttr("Shift_data")
+            << std::endl;
+  std::cout << "has shift_data : " << dev_ctx.HasDnnAttr("shift_data")
+            << std::endl;
+  std::cout << "_______________________________________________________________"
+               "______________"
+            << std::endl;
   // BF16 does not support force output
   if (!is_bf16 && force_fp32_output) {  // NOLINT
     RunKernel<T, float>(dev_ctx,
