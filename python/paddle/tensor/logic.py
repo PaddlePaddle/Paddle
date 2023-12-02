@@ -112,7 +112,7 @@ def logical_and(x, y, out=None, name=None):
 
         out = x \&\& y
 
-    Note:
+    .. note::
         ``paddle.logical_and`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
 
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
@@ -174,7 +174,7 @@ def logical_or(x, y, out=None, name=None):
 
         out = x || y
 
-    Note:
+    .. note::
         ``paddle.logical_or`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
 
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
@@ -235,7 +235,7 @@ def logical_xor(x, y, out=None, name=None):
 
         out = (x || y) \&\& !(x \&\& y)
 
-    Note:
+    .. note::
         ``paddle.logical_xor`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
 
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
@@ -297,7 +297,7 @@ def logical_not(x, out=None, name=None):
 
         out = !x
 
-    Note:
+    .. note::
         ``paddle.logical_not`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
 
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor

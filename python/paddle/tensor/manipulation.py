@@ -1342,7 +1342,7 @@ def broadcast_tensors(input, name=None):
     """
     Broadcast a list of tensors following broadcast semantics
 
-    Note:
+    .. note::
         If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
 
     .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor

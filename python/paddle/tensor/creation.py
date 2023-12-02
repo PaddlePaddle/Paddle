@@ -1838,7 +1838,7 @@ def diagflat(x, offset=0, name=None):
 
     Examples:
         .. code-block:: python
-            :name: code-example-1
+            :name: code-example1
 
             >>> import paddle
 
@@ -1867,7 +1867,7 @@ def diagflat(x, offset=0, name=None):
              [0, 0, 3, 0]])
 
         .. code-block:: python
-            :name: code-example-2
+            :name: code-example2
 
             >>> import paddle
 
@@ -2831,7 +2831,7 @@ def polar(abs, angle, name=None):
     Returns:
         Tensor: The output tensor. The data type is 'complex64' or 'complex128', with the same precision as ``abs`` and ``angle``.
 
-    Note:
+    .. note::
         ``paddle.polar`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
 
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
