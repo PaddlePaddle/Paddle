@@ -19,6 +19,7 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
+from paddle.framework import in_dynamic_mode
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -349,11 +350,12 @@ def pool2d_wrapper_not_use_cudnn(
     padding_algorithm="EXPLICIT",
     norm_type=2.0,
 ):
-    tmp = X._use_gpudnn(False)
+    if in_dynamic_mode():
+        X = X._use_gpudnn(False)
     if data_format == "AnyLayout":
         data_format = "NCDHW"
     return paddle._C_ops.pool2d(
-        tmp,
+        X,
         ksize,
         strides,
         paddings,
@@ -482,9 +484,13 @@ class TestPool2D_Op_Mixin:
                 atol=1e-5,
                 check_dygraph=(not self.use_mkldnn),
                 check_cinn=True,
+                check_pir=True,
             )
         else:
-            self.check_output(check_dygraph=(not self.use_mkldnn))
+            self.check_output(
+                check_dygraph=(not self.use_mkldnn),
+                check_pir=True,
+            )
 
     def test_check_grad(self):
         if self.dtype == np.float16:
@@ -498,6 +504,7 @@ class TestPool2D_Op_Mixin:
                 'Out',
                 check_dygraph=(not self.use_mkldnn),
                 check_cinn=True,
+                check_pir=True,
             )
         elif self.pool_type != "max":
             self.check_grad(
@@ -505,6 +512,7 @@ class TestPool2D_Op_Mixin:
                 'Out',
                 max_relative_error=0.07,
                 check_dygraph=(not self.use_mkldnn),
+                check_pir=True,
             )
 
     def init_data_format(self):
@@ -1071,11 +1079,20 @@ class TestCase5_Max(TestCase2):
         if self.has_cudnn() and self.pool_type == "max":
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, {'X'}, 'Out', max_relative_error=1.00, check_cinn=True
+                place,
+                {'X'},
+                'Out',
+                max_relative_error=1.00,
+                check_cinn=True,
+                check_pir=True,
             )
         elif self.pool_type == "max":
             self.check_grad(
-                {'X'}, 'Out', max_relative_error=1.00, check_cinn=True
+                {'X'},
+                'Out',
+                max_relative_error=1.00,
+                check_cinn=True,
+                check_pir=True,
             )
 
 

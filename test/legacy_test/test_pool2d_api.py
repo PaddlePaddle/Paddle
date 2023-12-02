@@ -37,7 +37,9 @@ class TestPool2D_API(unittest.TestCase):
             self.places.append(base.CUDAPlace(0))
 
     def check_avg_static_results(self, place):
-        with base.program_guard(base.Program(), base.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             input = paddle.static.data(
                 name="input", shape=[2, 3, 32, 32], dtype="float32"
             )
@@ -54,7 +56,6 @@ class TestPool2D_API(unittest.TestCase):
 
             exe = base.Executor(place)
             fetches = exe.run(
-                paddle.static.default_main_program(),
                 feed={"input": input_np},
                 fetch_list=[result],
             )
@@ -157,7 +158,9 @@ class TestPool2D_API(unittest.TestCase):
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def check_max_static_results(self, place):
-        with base.program_guard(base.Program(), base.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             input = paddle.static.data(
                 name="input", shape=[2, 3, 32, 32], dtype="float32"
             )
@@ -174,7 +177,6 @@ class TestPool2D_API(unittest.TestCase):
 
             exe = base.Executor(place)
             fetches = exe.run(
-                paddle.static.default_main_program(),
                 feed={"input": input_np},
                 fetch_list=[result],
             )

@@ -138,13 +138,13 @@ class TestSemiAutoParallelBasic(test_base.CommunicationTestDistBase):
                 user_defined_envs=envs,
             )
 
-    def test_custom_embedding_grad_api(self):
+    def test_embedding_api(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
         )
         for envs in envs_list:
             self.run_test_case(
-                "semi_auto_parallel_for_embedding_grad.py",
+                "semi_auto_parallel_for_embedding.py",
                 user_defined_envs=envs,
             )
 
@@ -165,6 +165,36 @@ class TestSemiAutoParallelBasic(test_base.CommunicationTestDistBase):
         for envs in envs_list:
             self.run_test_case(
                 "semi_auto_parallel_for_transpose.py",
+                user_defined_envs=envs,
+            )
+
+    def test_unary_elementwise_like_api(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_parallel_for_unary_elementwise_like.py",
+                user_defined_envs=envs,
+            )
+
+    def test_reshape_api(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_parallel_for_reshape.py",
+                user_defined_envs=envs,
+            )
+
+    def test_squeeze_api(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_parallel_for_squeeze.py",
                 user_defined_envs=envs,
             )
 

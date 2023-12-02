@@ -57,7 +57,6 @@ constexpr const char* kTaskCompletion = "TaskCompletion";
 
 namespace paddle {
 namespace framework {
-using HookFunc = std::function<void(OperatorBase*, Scope*)>;
 
 /// @brief InterpreterBaseImpl is a abstract Base Class and define necessary
 /// interface with virtual keywords for Derived class.
@@ -97,6 +96,8 @@ class InterpreterBaseImpl {
 
   virtual void SetOutputHooks(const std::vector<HookFunc>& hookfuncs) = 0;
 
+  virtual void SetInputHooks(const std::vector<HookFunc>& hookfuncs) = 0;
+
   virtual std::shared_ptr<std::vector<size_t>> GetDependencyCount() const = 0;
 
   virtual bool IsSharedResultsBuild() const = 0;
@@ -108,6 +109,9 @@ class InterpreterBaseImpl {
   virtual bool IsStaticBuild() const = 0;
 
   virtual std::tuple<double, double> InterpreterRunTime() = 0;
+
+  // Only for debug
+  virtual Variable* DebugVar(const std::string& name) const = 0;
 };
 
 inline void SetDeviceId(const platform::Place& place) {

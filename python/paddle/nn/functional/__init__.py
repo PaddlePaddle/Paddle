@@ -79,7 +79,12 @@ from .conv import (
     conv3d_transpose,
 )
 from .distance import pairwise_distance
-from .extension import diag_embed, gather_tree, sequence_mask, temporal_shift
+from .extension import (
+    diag_embed,  # noqa: F401
+    gather_tree,
+    sequence_mask,
+    temporal_shift,
+)
 from .flash_attention import (  # noqa: F401
     scaled_dot_product_attention,
     sdp_kernel,

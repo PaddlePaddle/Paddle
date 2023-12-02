@@ -70,8 +70,11 @@ class TestFlashAttentionSemiAutoParallel(SemiAutoParallelTestBase):
 
         # flash attention is not supported yet for cpu
         if self._backend == "gpu":
-            self.test_flash_att_forward()
-            self.test_flash_att_forward_reshard()
+            cuda_version_main = int(paddle.version.cuda().split(".")[0])
+            device_prop_main = paddle.device.cuda.get_device_capability()[0]
+            if cuda_version_main >= 11 and device_prop_main >= 8:
+                self.test_flash_att_forward()
+                self.test_flash_att_forward_reshard()
 
 
 if __name__ == '__main__':

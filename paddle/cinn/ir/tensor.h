@@ -54,6 +54,13 @@ class Tensor : public ir::IrNodeRef {
          FunctionRef fn,
          const std::vector<Var>& reduce_axis = {});
 
+  Tensor(const std::string& name,
+         Type dtype,
+         const std::vector<Dim>& sym_shape,
+         const std::vector<Dim>& sym_domain,
+         FunctionRef fn,
+         const std::vector<Var>& reduce_axis = {});
+
   //! Get number of dimensions.
   size_t ndims() const;
 
@@ -126,6 +133,8 @@ class _Tensor_ : public ExprNode<_Tensor_> {
   std::vector<Dim> sym_shape;
   //! Shape of this tensor(buffer).
   std::vector<Expr> shape;
+  //! The symbolic domain of each axis(without reduce_axis)
+  std::vector<Dim> sym_domain;
   //! The domain of each axis(without reduce_axis)
   // TODO(Superjomn) support ISL domain.
   std::vector<Expr> domain;
@@ -163,7 +172,7 @@ class _Tensor_ : public ExprNode<_Tensor_> {
   static Tensor Make(const std::string& name,
                      Type dtype,
                      const std::vector<Dim>& sym_shape,
-                     const std::vector<Expr>& domain,
+                     const std::vector<Dim>& sym_domain,
                      FunctionRef fn,
                      const std::vector<Var>& reduce_axis = {});
 
@@ -171,7 +180,7 @@ class _Tensor_ : public ExprNode<_Tensor_> {
   static Tensor Make(const std::string& name,
                      Type dtype,
                      const std::vector<Dim>& sym_shape,
-                     const std::vector<Expr>& domain,
+                     const std::vector<Dim>& sym_domain,
                      const std::vector<Var>& reduce_axis = {});
 
   void Verify() const override;

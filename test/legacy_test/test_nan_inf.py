@@ -21,6 +21,8 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.framework import in_pir_mode
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestNanInfBase(unittest.TestCase):
@@ -299,6 +301,7 @@ class TestCheckNumericsAPI(TestNanInfBase):
                 debug_mode=paddle.amp.debugging.DebugMode.CHECK_ALL,
             )
 
+    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         shape = [8, 8]
@@ -310,16 +313,22 @@ class TestCheckNumericsAPI(TestNanInfBase):
             x = paddle.static.data(name='x', shape=[8, 8], dtype="float32")
             y = paddle.static.data(name='y', shape=[8, 8], dtype="float32")
             out = paddle.add(x, y)
-            paddle.amp.debugging.check_numerics(
-                tensor=out,
-                op_type="elementwise_add",
-                var_name=out.name,
-                debug_mode=paddle.amp.debugging.DebugMode.CHECK_ALL,
-            )
+            if in_pir_mode():
+                paddle.amp.debugging.check_numerics(
+                    tensor=out,
+                    op_type="elementwise_add",
+                    var_name=out.id,
+                    debug_mode=paddle.amp.debugging.DebugMode.CHECK_ALL,
+                )
+            else:
+                paddle.amp.debugging.check_numerics(
+                    tensor=out,
+                    op_type="elementwise_add",
+                    var_name=out.name,
+                    debug_mode=paddle.amp.debugging.DebugMode.CHECK_ALL,
+                )
         exe = paddle.static.Executor(paddle.CPUPlace())
-        exe.run(
-            main_program, feed={"x": x_np, "y": y_np}, fetch_list=[out.name]
-        )
+        exe.run(main_program, feed={"x": x_np, "y": y_np}, fetch_list=[out])
         paddle.disable_static()
 
 
