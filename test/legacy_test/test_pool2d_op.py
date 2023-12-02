@@ -175,7 +175,7 @@ def lp_pool2D_forward_naive(
             c_end = np.min((c_end, W))
 
             x_masked = x[:, :, r_start:r_end, c_start:c_end]
-            x_masked = np.power(x_masked, norm_type)
+            x_masked = np.power(np.abs(x_masked), norm_type)
 
             if data_type == np.int8 or data_type == np.uint8:
                 out[:, :, i, j] = (
@@ -202,6 +202,7 @@ def pool2D_forward_naive(
     data_format='NCHW',
     pool_type="max",
     padding_algorithm="EXPLICIT",
+    norm_type=2.0,
 ):
     # update paddings
     def _get_padding_with_SAME(input_shape, pool_size, pool_stride):
@@ -346,6 +347,7 @@ def pool2d_wrapper_not_use_cudnn(
     global_pooling=False,
     adaptive=False,
     padding_algorithm="EXPLICIT",
+    norm_type=2.0,
 ):
     tmp = X._use_gpudnn(False)
     if data_format == "AnyLayout":
@@ -362,6 +364,7 @@ def pool2d_wrapper_not_use_cudnn(
         global_pooling,
         adaptive,
         padding_algorithm,
+        norm_type,
     )
 
 
@@ -377,6 +380,7 @@ def pool2d_wrapper_use_cudnn(
     global_pooling=False,
     adaptive=False,
     padding_algorithm="EXPLICIT",
+    norm_type=2.0,
 ):
     if data_format == "AnyLayout":
         data_format = "NCDHW"
@@ -392,6 +396,7 @@ def pool2d_wrapper_use_cudnn(
         global_pooling,
         adaptive,
         padding_algorithm,
+        norm_type,
     )
 
 
@@ -413,6 +418,7 @@ class TestPool2D_Op_Mixin:
         self.init_adaptive()
         self.init_data_format()
         self.init_shape()
+        self.init_norm_type()
 
         if self.is_bfloat16_op():
             input = np.random.random(self.shape).astype(np.float32)
@@ -431,6 +437,7 @@ class TestPool2D_Op_Mixin:
             self.data_format,
             self.pool_type,
             self.padding_algorithm,
+            self.norm_type,
         )
 
         if self.is_bfloat16_op():
@@ -453,6 +460,7 @@ class TestPool2D_Op_Mixin:
             'exclusive': self.exclusive,
             'adaptive': self.adaptive,
             "padding_algorithm": self.padding_algorithm,
+            "norm_type": self.norm_type,
         }
 
         self.outputs = {'Out': output}
@@ -534,6 +542,9 @@ class TestPool2D_Op_Mixin:
 
     def init_adaptive(self):
         self.adaptive = False
+
+    def init_norm_type(self):
+        self.norm_type = 2.0
 
 
 class TestPool2D_Op(TestPool2D_Op_Mixin, OpTest):

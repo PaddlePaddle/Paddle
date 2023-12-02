@@ -36,6 +36,7 @@ void PoolGradRawKernel(const Context& ctx,
                        bool global_pooling,
                        bool adaptive,
                        const std::string& padding_algorithm,
+                       float norm_type,
                        DenseTensor* dx) {
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
   std::vector<int> paddings_ = paddings;
@@ -100,6 +101,23 @@ void PoolGradRawKernel(const Context& ctx,
                           adaptive,
                           dx,
                           pool_process);
+        } else if (pooling_type == "lp") {
+          funcs::Pool2dGradFunctor<Context, funcs::LPPoolGrad<T>, T>
+              pool2d_backward;
+          funcs::LPPoolGrad<T> pool_process;
+          pool_process.setNormType(norm_type);
+          pool2d_backward(ctx,
+                          x,
+                          out,
+                          dout,
+                          kernel_size_,
+                          strides,
+                          paddings_,
+                          data_format,
+                          exclusive,
+                          adaptive,
+                          dx,
+                          pool_process);
         }
       } break;
       case 3: {
@@ -135,56 +153,6 @@ void PoolGradRawKernel(const Context& ctx,
       default: {
         PADDLE_THROW(
             errors::InvalidArgument("Pool op only supports 2D and 3D input."));
-      }
-    }
-  }
-}
-
-template <typename T, typename Context>
-void LPPoolGradRawKernel(const Context& ctx,
-                         const DenseTensor& x,
-                         const DenseTensor& out,
-                         const DenseTensor& dout,
-                         float norm_type,
-                         const std::vector<int>& kernel_size,
-                         const std::vector<int>& strides,
-                         const std::string& data_format,
-                         DenseTensor* dx) {
-  const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
-  std::vector<int> kernel_size_ = kernel_size;
-
-  auto x_dims = x.dims();
-  DDim data_dims;
-  if (channel_last) {
-    data_dims = slice_ddim(x_dims, 1, x_dims.size() - 1);
-  } else {
-    data_dims = slice_ddim(x_dims, 2, x_dims.size());
-  }
-
-  if (dx) {
-    ctx.template Alloc<T>(dx);
-    funcs::SetConstant<Context, T> set_constant;
-    set_constant(ctx, dx, static_cast<T>(0.0));
-
-    switch (kernel_size_.size()) {
-      case 2: {
-        funcs::LPPool2dGradFunctor<Context, funcs::LPPoolGrad<T>, T>
-            pool2d_backward;
-        funcs::LPPoolGrad<T> pool_process;
-        pool_process.setNormType(norm_type);
-        pool2d_backward(ctx,
-                        x,
-                        out,
-                        dout,
-                        kernel_size_,
-                        strides,
-                        data_format,
-                        dx,
-                        pool_process);
-      } break;
-      default: {
-        PADDLE_THROW(
-            errors::InvalidArgument("LPPool op only supports 2D input."));
       }
     }
   }
@@ -249,6 +217,7 @@ void Pool2dGradKernel(const Context& ctx,
                       bool global_pooling,
                       bool adaptive,
                       const std::string& padding_algorithm,
+                      float norm_type,
                       DenseTensor* dx) {
   std::vector<int> kernel_size_val(kernel_size.GetData().begin(),
                                    kernel_size.GetData().end());
@@ -265,24 +234,8 @@ void Pool2dGradKernel(const Context& ctx,
                                 global_pooling,
                                 adaptive,
                                 padding_algorithm,
+                                norm_type,
                                 dx);
-}
-
-template <typename T, typename Context>
-void LPPool2dGradKernel(const Context& ctx,
-                        const DenseTensor& x,
-                        const DenseTensor& out,
-                        const DenseTensor& dout,
-                        float norm_type,
-                        const IntArray& kernel_size,
-                        const std::vector<int>& strides,
-                        bool ceil_mode UNUSED,
-                        const std::string& data_format,
-                        DenseTensor* dx) {
-  std::vector<int> kernel_size_val(kernel_size.GetData().begin(),
-                                   kernel_size.GetData().end());
-  LPPoolGradRawKernel<T, Context>(
-      ctx, x, out, dout, norm_type, kernel_size_val, strides, data_format, dx);
 }
 
 template <typename T, typename Context>
@@ -315,6 +268,7 @@ void Pool2dDoubleGradKernel(const Context& ctx,
                              global_pooling,
                              adaptive,
                              padding_algorithm,
+                             2.0,
                              out);
   }
 }
@@ -371,6 +325,7 @@ void Pool3dGradKernel(const Context& ctx,
                                 global_pooling,
                                 adaptive,
                                 padding_algorithm,
+                                2.0,
                                 dx);
 }
 

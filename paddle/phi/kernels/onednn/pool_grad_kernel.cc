@@ -33,6 +33,7 @@ void Pool2dGradKernel(const Context& dev_ctx,
                       bool global_pooling,
                       bool adaptive,
                       const std::string& padding_algorithm,
+                      float norm_type,
                       DenseTensor* dx) {
   funcs::PoolingOneDNNHandler<T> handler(dev_ctx,
                                          pooling_type,

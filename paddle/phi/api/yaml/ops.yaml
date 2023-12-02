@@ -1606,17 +1606,6 @@
     func : logsigmoid
   backward : logsigmoid_grad
 
-- op : lp_pool2d
-  args : (Tensor x, float norm_type, IntArray kernel_size, int[] strides, bool ceil_mode, str data_format)
-  output : Tensor(out)
-  infer_meta :
-    func : LPPool2DInferMeta
-    param : [x, kernel_size, strides, ceil_mode, data_format]
-  kernel :
-    func : lp_pool2d
-    param : [x, norm_type, kernel_size, strides, ceil_mode, data_format]
-  backward : lp_pool2d_grad
-
 - op : lstsq
   args : (Tensor x, Tensor y, Scalar rcond=0.0f, str driver="gels")
   output : Tensor(solution), Tensor(residuals), Tensor(rank), Tensor(singular_values)

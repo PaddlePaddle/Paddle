@@ -311,22 +311,6 @@ void LogsumexpInferMeta(const MetaTensor& input,
                         bool reduce_all,
                         MetaTensor* out);
 
-void LPPoolInferMeta(const MetaTensor& x,
-                     const std::vector<int>& kernel_size,
-                     const std::vector<int>& strides,
-                     bool ceil_mode,
-                     const std::string& data_format,
-                     MetaTensor* out,
-                     MetaConfig config = MetaConfig());
-
-void LPPool2DInferMeta(const MetaTensor& x,
-                       const IntArray& kernel_size,
-                       const std::vector<int>& strides,
-                       bool ceil_mode,
-                       const std::string& data_format,
-                       MetaTensor* out,
-                       MetaConfig config = MetaConfig());
-
 void LUInferMeta(const MetaTensor& x,
                  bool pivot,
                  MetaTensor* out,
@@ -462,8 +446,23 @@ void Pool2DInferMeta(const MetaTensor& x,
                      bool global_pooling,
                      bool adaptive,
                      const std::string& padding_algorithm,
+                     float norm_type,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
+
+void Pool2DDoubleGradInferMeta(const MetaTensor& x,
+                               const IntArray& kernel_size,
+                               const std::vector<int>& strides,
+                               const std::vector<int>& paddings,
+                               bool ceil_mode,
+                               bool exclusive,
+                               const std::string& data_format,
+                               const std::string& pooling_type,
+                               bool global_pooling,
+                               bool adaptive,
+                               const std::string& padding_algorithm,
+                               MetaTensor* out,
+                               MetaConfig config = MetaConfig());
 
 void PSendInferMeta(const MetaTensor& x, int peer);
 

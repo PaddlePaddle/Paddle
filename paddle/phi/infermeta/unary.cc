@@ -2110,126 +2110,6 @@ void MatrixPowerInferMeta(const MetaTensor& x, int n, MetaTensor* out) {
   out->set_dtype(x.dtype());
 }
 
-void LPPoolInferMeta(const MetaTensor& x,
-                     const std::vector<int>& kernel_size,
-                     const std::vector<int>& strides,
-                     bool ceil_mode,
-                     const std::string& data_format,
-                     MetaTensor* out,
-                     MetaConfig config) {
-  std::vector<int> kernel_size_ = kernel_size;
-
-  auto x_dims = x.dims();
-  PADDLE_ENFORCE_EQ(
-      x_dims.size() == 4 || x_dims.size() == 5,
-      true,
-      errors::InvalidArgument(
-          "the input of Op(pool) should be 4-D or 5-D Tensor. But "
-          "received: %u-D Tensor and it's shape is [%s].",
-          x_dims.size(),
-          x_dims));
-
-  PADDLE_ENFORCE_EQ(x_dims.size() - kernel_size_.size(),
-                    2U,
-                    errors::InvalidArgument(
-                        "the dimension of input minus the size of "
-                        "Attr(kernel_size_) must be euqal to 2 in Op(pool). "
-                        "But received: the dimension of input minus the size "
-                        "of Attr(kernel_size_) is %d, the "
-                        "input's dimension is %d, the shape of input "
-                        "is [%s], the Attr(kernel_size_)'s size is %d, the "
-                        "Attr(kernel_size_) is [%s].",
-                        x_dims.size() - kernel_size_.size(),
-                        x_dims.size(),
-                        x_dims,
-                        kernel_size_.size(),
-                        make_ddim(kernel_size_)));
-
-  PADDLE_ENFORCE_EQ(
-      kernel_size_.size(),
-      strides.size(),
-      errors::InvalidArgument(
-          "the size of Attr(kernel_size_) and Attr(strides) in "
-          "Op(pool) must be equal. "
-          "But received: Attr(kernel_size_)'s size is %d, Attr(strides)'s "
-          "size is %d, Attr(kernel_size_) is [%s], Attr(strides)is [%s].",
-          kernel_size_.size(),
-          strides.size(),
-          make_ddim(kernel_size_),
-          make_ddim(strides)));
-
-  // MKL-DNN Kernels are using NCHW order of dims description
-  // so we ignore data_format consideration for MKL-DNN kernel
-  const bool channel_last = (config.is_run_mkldnn_kernel == false) &&
-                            (data_format == "NHWC" || data_format == "NDHWC");
-
-  // update paddings if "SAME" or global_pooling
-  DDim data_dims;
-  if (channel_last) {
-    data_dims = slice_ddim(x_dims, 1, x_dims.size() - 1);
-  } else {
-    data_dims = slice_ddim(x_dims, 2, x_dims.size());
-  }
-
-  std::vector<int64_t> output_shape;
-  for (int i = 0; i < data_dims.size(); ++i) {
-    if ((!config.is_runtime) && (data_dims[i] < 0)) {
-      output_shape.push_back(data_dims[i]);
-    } else {
-      output_shape.push_back(
-          funcs::PoolOutputSize(static_cast<int>(data_dims[i]),
-                                kernel_size_[i],
-                                0,
-                                0,
-                                strides[i],
-                                ceil_mode));
-    }
-  }
-
-  // output_N = input_N
-  output_shape.insert(output_shape.begin(), x_dims[0]);
-  // output_C = input_C
-  if (channel_last) {
-    output_shape.push_back(x_dims[x_dims.size() - 1]);
-  } else {
-    output_shape.insert(output_shape.begin() + 1, x_dims[1]);
-  }
-
-  out->set_dims(make_ddim(output_shape));
-  out->share_lod(x);
-  out->set_dtype(x.dtype());
-}
-
-void LPPool2DInferMeta(const MetaTensor& x,
-                       const IntArray& kernel_size,
-                       const std::vector<int>& strides,
-                       bool ceil_mode,
-                       const std::string& data_format,
-                       MetaTensor* out,
-                       MetaConfig config) {
-  const bool channel_last = (config.is_run_mkldnn_kernel == false) &&
-                            (data_format == "NHWC" || data_format == "NDHWC");
-  if (!config.is_runtime && kernel_size.FromTensor()) {
-    auto x_dims = x.dims();
-    std::vector<int64_t> output_shape = std::move(phi::vectorize(x_dims));
-    // set dims of HW -1
-    output_shape[x_dims.size() - 2] = -1;
-    if (channel_last) {  // for NHWC, NDHWC
-      output_shape[x_dims.size() - 3] = -1;
-    } else {  // for NCHW
-      output_shape[x_dims.size() - 1] = -1;
-    }
-    out->set_dims(make_ddim(output_shape));
-    out->share_lod(x);
-    out->set_dtype(x.dtype());
-  } else {
-    std::vector<int> kernel_size_val(kernel_size.GetData().begin(),
-                                     kernel_size.GetData().end());
-    LPPoolInferMeta(
-        x, kernel_size_val, strides, ceil_mode, data_format, out, config);
-  }
-}
-
 void LUInferMeta(const MetaTensor& x,
                  bool pivot,
                  MetaTensor* out,
@@ -3087,6 +2967,7 @@ void Pool2DInferMeta(const MetaTensor& x,
                      bool global_pooling,
                      bool adaptive,
                      const std::string& padding_algorithm,
+                     float norm_type,
                      MetaTensor* out,
                      MetaConfig config) {
   const bool channel_last = (config.is_run_mkldnn_kernel == false) &&
@@ -3121,6 +3002,35 @@ void Pool2DInferMeta(const MetaTensor& x,
                   out,
                   config);
   }
+}
+
+void Pool2DDoubleGradInferMeta(const MetaTensor& x,
+                               const IntArray& kernel_size,
+                               const std::vector<int>& strides,
+                               const std::vector<int>& paddings,
+                               bool ceil_mode,
+                               bool exclusive,
+                               const std::string& data_format,
+                               const std::string& pooling_type,
+                               bool global_pooling,
+                               bool adaptive,
+                               const std::string& padding_algorithm,
+                               MetaTensor* out,
+                               MetaConfig config) {
+  Pool2DInferMeta(x,
+                  kernel_size,
+                  strides,
+                  paddings,
+                  ceil_mode,
+                  exclusive,
+                  data_format,
+                  pooling_type,
+                  global_pooling,
+                  adaptive,
+                  padding_algorithm,
+                  2.0,
+                  out,
+                  config);
 }
 
 void PSendInferMeta(const MetaTensor& x, int peer) {

@@ -87,7 +87,7 @@ class LPPool {
     intermediate_res += static_cast<MT>(powf(fabsf(x), norm_type));
   }
 
-  DEVICE inline void finalize(T* y) {
+  DEVICE inline void finalize(const T& pool_field UNUSED, T* y) {
     *y = static_cast<T>(powf(intermediate_res, 1.0 / norm_type));
   }
 };
@@ -117,9 +117,12 @@ class LPPoolGrad {
   float norm_type;
 
  public:
+  static constexpr bool use_x = true;
+
   HOSTDEVICE inline void setNormType(float ntype) { norm_type = ntype; }
 
-  HOSTDEVICE inline void compute(const T& x, const T& y, const T& dy, T* dx) {
+  HOSTDEVICE inline void compute(
+      const T& x, const T& y, const T& dy, T scale UNUSED, T* dx) {
     *dx +=
         static_cast<T>(static_cast<double>(dy) * static_cast<double>(x) *
                        powf(fabsf(static_cast<double>(x)), norm_type - 2.0f) /
@@ -223,32 +226,6 @@ class Pool2dGradFunctor {
                   const std::string data_format,
                   bool exclusive,
                   bool adaptive,
-                  DenseTensor* input_grad,
-                  PoolProcess pool_compute);
-};
-
-template <typename Context, typename PoolProcess, typename T>
-class LPPool2dFunctor {
- public:
-  void operator()(const Context& context,
-                  const DenseTensor& input,
-                  const std::vector<int>& ksize,
-                  const std::vector<int>& strides,
-                  const std::string data_format,
-                  DenseTensor* output,
-                  PoolProcess pool_compute);
-};
-
-template <typename Context, typename PoolProcess, typename T>
-class LPPool2dGradFunctor {
- public:
-  void operator()(const Context& context,
-                  const DenseTensor& input,
-                  const DenseTensor& output,
-                  const DenseTensor& output_grad,
-                  const std::vector<int>& ksize,
-                  const std::vector<int>& strides,
-                  const std::string data_format,
                   DenseTensor* input_grad,
                   PoolProcess pool_compute);
 };

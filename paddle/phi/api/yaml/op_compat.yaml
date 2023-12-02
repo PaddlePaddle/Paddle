@@ -2320,6 +2320,9 @@
     {out : Out}
   attrs :
     {kernel_size : ksize}
+  # scalar :
+  #   norm_type :
+  #     data_type : float
   int_array:
     kernel_size :
       data_type : int

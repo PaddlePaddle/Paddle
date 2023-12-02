@@ -1429,17 +1429,6 @@
     func : logsigmoid_grad
   inplace : (out_grad -> x_grad)
 
-- backward_op : lp_pool2d_grad
-  forward : lp_pool2d(Tensor x, float norm_type, IntArray kernel_size, int[] strides, bool ceil_mode, str data_format) -> Tensor(out)
-  args : (Tensor x, Tensor out, Tensor out_grad, float norm_type, IntArray kernel_size, int[] strides, bool ceil_mode, str data_format)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param: [x]
-  kernel :
-    func : lp_pool2d_grad
-    param : [x, out, out_grad, norm_type, kernel_size, strides, ceil_mode, data_format]
-
 - backward_op : lu_grad
   forward : lu (Tensor x, bool pivot = true) -> Tensor(out), Tensor(pivots), Tensor(infos)
   args : (Tensor x, Tensor out, Tensor pivots, Tensor out_grad, bool pivot)

@@ -61,6 +61,7 @@ void PoolRawKernel(const Context& ctx,
                    bool global_pooling,
                    bool adaptive,
                    const std::string& padding_algorithm,
+                   float norm_type,
                    DenseTensor* out) {
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
   std::vector<int> paddings_ = paddings;
@@ -146,6 +147,20 @@ void PoolRawKernel(const Context& ctx,
                          out,
                          pool_process);
         }
+      } else if (pooling_type == "lp") {
+        funcs::Pool2dFunctor<Context, funcs::LPPool<T>, T> pool2d_forward;
+        funcs::LPPool<T> pool_process;
+        pool_process.setNormType(norm_type);
+        pool2d_forward(ctx,
+                       x,
+                       kernel_size_,
+                       strides,
+                       paddings_,
+                       data_format,
+                       exclusive,
+                       adaptive,
+                       out,
+                       pool_process);
       }
     } break;
     case 3: {
@@ -180,40 +195,6 @@ void PoolRawKernel(const Context& ctx,
     default: {
       PADDLE_THROW(
           errors::InvalidArgument("Pool op only supports 2D and 3D input."));
-    }
-  }
-}
-
-template <typename T, typename Context>
-void LPPoolRawKernel(const Context& ctx,
-                     const DenseTensor& x,
-                     float norm_type,
-                     const std::vector<int>& kernel_size,
-                     const std::vector<int>& strides,
-                     const std::string& data_format,
-                     DenseTensor* out) {
-  const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
-  std::vector<int> kernel_size_ = kernel_size;
-
-  auto x_dims = x.dims();
-  DDim data_dims;
-  if (channel_last) {
-    data_dims = slice_ddim(x_dims, 1, x_dims.size() - 1);
-  } else {
-    data_dims = slice_ddim(x_dims, 2, x_dims.size());
-  }
-
-  switch (kernel_size_.size()) {
-    case 2: {
-      funcs::LPPool2dFunctor<Context, funcs::LPPool<T>, T> pool2d_forward;
-      funcs::LPPool<T> pool_process;
-      pool_process.setNormType(norm_type);
-      pool2d_forward(
-          ctx, x, kernel_size_, strides, data_format, out, pool_process);
-    } break;
-    default: {
-      PADDLE_THROW(
-          errors::InvalidArgument("LPPool op only supports 2D input."));
     }
   }
 }
@@ -269,6 +250,7 @@ void Pool2dKernel(const Context& ctx,
                   bool global_pooling,
                   bool adaptive,
                   const std::string& padding_algorithm,
+                  float norm_type,
                   DenseTensor* out) {
   std::vector<int> kernel_size_val(kernel_size.GetData().begin(),
                                    kernel_size.GetData().end());
@@ -283,22 +265,8 @@ void Pool2dKernel(const Context& ctx,
                             global_pooling,
                             adaptive,
                             padding_algorithm,
+                            norm_type,
                             out);
-}
-
-template <typename T, typename Context>
-void LPPool2dKernel(const Context& ctx,
-                    const DenseTensor& x,
-                    float norm_type,
-                    const IntArray& kernel_size,
-                    const std::vector<int>& strides,
-                    bool ceil_mode UNUSED,
-                    const std::string& data_format,
-                    DenseTensor* out) {
-  std::vector<int> kernel_size_val(kernel_size.GetData().begin(),
-                                   kernel_size.GetData().end());
-  LPPoolRawKernel<T, Context>(
-      ctx, x, norm_type, kernel_size_val, strides, data_format, out);
 }
 
 template <typename T, typename Context>
@@ -347,6 +315,7 @@ void Pool3dKernel(const Context& ctx,
                             global_pooling,
                             adaptive,
                             padding_algorithm,
+                            2.0,
                             out);
 }
 
