@@ -505,11 +505,11 @@ class FormatArg {
 
  private:
   template <typename T>
-  TEST_API static void formatImpl(std::ostream &out,
-                                  const char *fmtBegin,
-                                  const char *fmtEnd,
-                                  int ntrunc,
-                                  const void *value) {
+  static void formatImpl(std::ostream &out,
+                         const char *fmtBegin,
+                         const char *fmtEnd,
+                         int ntrunc,
+                         const void *value) {
     formatValue(out, fmtBegin, fmtEnd, ntrunc, *static_cast<const T *>(value));
   }
 
