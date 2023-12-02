@@ -74,10 +74,10 @@ class FusedWeightOnlyLinearPattern
         res.Attr([](const pir::drr::MatchContext &match_ctx) -> std::any {
           return "weight_only_int8";
         });
-    int arch = getSMVersion();
+    // int arch = getSMVersion();
     const auto &weight_quantize_arch_attr =
         res.Attr([&](const pir::drr::MatchContext &match_ctx) -> std::any {
-          return arch;
+          return 80;
         });
 
     const auto &weight_quantize = res.Op(
@@ -93,7 +93,7 @@ class FusedWeightOnlyLinearPattern
         });
 
     const auto &weight_only_linear_arch_attr = res.Attr(
-        [&](const pir::drr::MatchContext &match_ctx) -> int { return arch; });
+        [&](const pir::drr::MatchContext &match_ctx) -> int { return 80; });
     const auto &weight_only_linear =
         res.Op("pd_op.weight_only_linear",
                {{"weight_dtype", weight_dtype_attr},
@@ -109,7 +109,7 @@ class FusedWeightOnlyLinearPattern
 class FusedWeightOnlyLinearPass : public pir::PatternRewritePass {
  public:
   FusedWeightOnlyLinearPass()
-      : pir::PatternRewritePass("fused_weight_only_linear_pass", 2) {}
+      : pir::PatternRewritePass("fused_weight_only_linear_pass", 4) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
@@ -119,7 +119,7 @@ class FusedWeightOnlyLinearPass : public pir::PatternRewritePass {
 
   bool CanApplyOn(pir::Operation *op) const override {
     int sm_vesion = getSMVersion();
-    if (sm_vesion != 70 || sm_vesion != 80 || sm_vesion != 86 ||
+    if (sm_vesion != 70 && sm_vesion != 80 && sm_vesion != 86 &&
         sm_vesion != 75) {
       return false;
     }
