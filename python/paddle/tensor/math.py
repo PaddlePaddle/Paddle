@@ -7073,9 +7073,8 @@ def copysign(x, y, name=None):
 
     """
     out_shape = broadcast_shape(x.shape, y.shape)
-    if x.dtype != paddle.float64:
-        x = x.astype(paddle.float64)
-    y = y.astype(x.dtype)
+    x = x.cast_(paddle.float64)
+    y = y.cast_(paddle.float64)
     x = paddle.broadcast_to(x, out_shape)
     y = paddle.broadcast_to(y, out_shape)
 
@@ -7097,10 +7096,8 @@ def copysign_(x, y):
     Please refer to :ref:`api_paddle_copysign`.
     """
     out_shape = broadcast_shape(x.shape, y.shape)
-    if x.dtype != paddle.float64:
-        x = x.astype(paddle.float64)
-    y = y.astype(x.dtype)
-    x = paddle.broadcast_to(x, out_shape)
+    x = x.cast_(paddle.float64)
+    y = y.cast_(paddle.float64)
     y = paddle.broadcast_to(y, out_shape)
 
     return _C_ops.copysign_(x, y)
