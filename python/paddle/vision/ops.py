@@ -675,7 +675,7 @@ def box_coder(
             ...     box_normalized=False)
             ...
     """
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         if isinstance(prior_box_var, (core.eager.Tensor, OpResult)):
             output_box = _C_ops.box_coder(
                 prior_box,
