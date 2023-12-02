@@ -60,6 +60,7 @@ from .conv import (  # noqa: F401
 from .distance import PairwiseDistance  # noqa: F401
 from .layers import Layer  # noqa: F401
 from .loss import (  # noqa: F401
+    AdaptiveLogSoftmaxWithLoss,
     BCELoss,
     BCEWithLogitsLoss,
     CrossEntropyLoss,

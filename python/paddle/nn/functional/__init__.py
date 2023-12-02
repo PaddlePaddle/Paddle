@@ -91,6 +91,7 @@ from .flash_attention import (  # noqa: F401
 )
 from .input import embedding, one_hot
 from .loss import (
+    adaptive_log_softmax_with_loss,
     binary_cross_entropy,
     binary_cross_entropy_with_logits,
     cosine_embedding_loss,
@@ -272,4 +273,5 @@ __all__ = [
     'soft_margin_loss',
     'gaussian_nll_loss',
     'scaled_dot_product_attention',
+    'adaptive_log_softmax_with_loss',
 ]
