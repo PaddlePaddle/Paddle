@@ -933,6 +933,7 @@
   output : Tensor(out), Tensor(xshape)
   infer_meta :
     func : ReshapeWithXShapeInferMeta
+    spmd_rule : ReshapeInferSpmdDynamic
   kernel :
     func : reshape
   inplace : (x -> out)

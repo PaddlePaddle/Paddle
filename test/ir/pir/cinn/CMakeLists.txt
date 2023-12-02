@@ -1,3 +1,5 @@
+add_subdirectory(adt)
+
 if(WITH_GPU)
   file(
     GLOB CINN_PIR_TEST
