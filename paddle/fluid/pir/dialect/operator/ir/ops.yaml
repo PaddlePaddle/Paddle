@@ -1133,6 +1133,16 @@
     func : slice
   backward : slice_grad
 
+- op : soft_relu
+  args : (Tensor x, float threshold = 20.0f)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : soft_relu
+  backward : soft_relu_grad
+
 - op : softmax
   args : (Tensor x, int axis)
   output : Tensor(out)
