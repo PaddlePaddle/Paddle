@@ -24,6 +24,7 @@
 #include <thrust/host_vector.h>
 
 #include <algorithm>
+#include <cstdint>
 #include <string>
 #ifdef CINN_WITH_CUDNN
 #include <cudnn.h>
@@ -80,7 +81,7 @@ class CublasHandle {
 
 int32_t cinn_get_value_in_cuda_kernel_args(void *v_args, int idx) {
   cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
-  return args[idx].operator int32_t();
+  return args[idx].operator int64_t();
 }
 
 void cinn_call_cuda_kernel(void *kernel_fn,

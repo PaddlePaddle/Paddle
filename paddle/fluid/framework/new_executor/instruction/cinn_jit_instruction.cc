@@ -51,7 +51,7 @@ class CinnJitInstruction::FnPtrImpl {
     for (const auto& int_arg_mp : cinn_kernel_info_.int_args_map) {
       func_args_.emplace_back(kernel_args[int_arg_mp.second.arg_idx]->dims().at(
           int_arg_mp.second.dim_idx));
-      func_args_.emplace_back(static_cast<int32_t>(
+      func_args_.emplace_back(static_cast<int64_t>(
           kernel_args[int_arg_mp.second.arg_idx]->dims().at(
               int_arg_mp.second.dim_idx)));
     }
