@@ -34,6 +34,7 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
+#include "paddle/phi/core/cuda_stream.h"
 #endif
 
 #if defined(PADDLE_WITH_MPI)
@@ -1230,6 +1231,21 @@ void BindDistributed(py::module *m) {
   py::class_<distributed::ProcessGroupNCCL,
              std::shared_ptr<distributed::ProcessGroupNCCL>>(
       *m, "ProcessGroupNCCL", ProcessGroup)
+      .def(
+          "get_cuda_stream",
+          [](distributed::ProcessGroupNCCL &self,
+             py::handle py_tensor,
+             bool use_calc_stream) {
+            auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+            if (use_calc_stream) {
+              return self.GetCUDAStreamOnCalcCtx(tensor.place());
+            } else {
+              return self.GetCUDAStreamOnCommCtx(tensor.place());
+            }
+          },
+          py::arg("tensor"),
+          py::arg("use_calc_stream"),
+          py::return_value_policy::reference)
       .def_static("create",
                   distributed::ProcessGroupNCCL::CreateProcessGroupNCCL,
                   py::arg("store"),
