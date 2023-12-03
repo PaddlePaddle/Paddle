@@ -80,7 +80,8 @@ foreach(ITEST ${LEGACY_ONLY_TEST_FILES})
   endif()
 endforeach()
 
-set(PIR_SEQUENTIAL_RUN_LIST test_slice test_for_enumerate test_list)
+set(PIR_SEQUENTIAL_RUN_LIST test_slice test_for_enumerate test_list
+                            test_jit_setitem)
 foreach(ITEST ${PIR_SEQUENTIAL_RUN_LIST})
   if(TEST ${ITEST})
     set_tests_properties(
