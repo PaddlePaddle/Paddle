@@ -120,6 +120,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'fused_scale_bias_add_relu',
     'recv_v2',
     'rnn_',
+    'row_conv',
     'seed',
     'send_v2',
     'shadow_feed',

@@ -2612,6 +2612,13 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : row_conv
+  backward : row_conv_grad
+  inputs :
+    {x : X, filter : Filter}
+  outputs :
+    {out : Out}
+
 - op : rsqrt
   backward : rsqrt_grad, rsqrt_double_grad (rsqrt_grad_grad)
   inputs :

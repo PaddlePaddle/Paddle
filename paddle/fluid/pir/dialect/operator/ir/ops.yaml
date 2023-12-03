@@ -1046,6 +1046,14 @@
   intermediate : reserve
   view : (dropout_state_in -> dropout_state_out)
 
+- op : row_conv
+  args : (Tensor x, Tensor filter)
+  output : Tensor(out)
+  infer_meta :
+     func: RowConvInferMeta
+  kernel :
+     func : row_conv
+
 - op : rrelu
   args : (Tensor x, float lower, float upper, bool is_test)
   output : Tensor(out), Tensor(noise)

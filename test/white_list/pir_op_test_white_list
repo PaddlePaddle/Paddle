@@ -255,6 +255,7 @@ test_reverse_op
 test_roi_align_op
 test_roi_pool_op
 test_roll_op
+test_row_conv_op
 test_rrelu_op
 test_scale_mkldnn_op
 test_scale_op

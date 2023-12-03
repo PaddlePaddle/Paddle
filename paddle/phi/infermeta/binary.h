@@ -403,6 +403,16 @@ void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
                                               const MetaTensor& repeats,
                                               int dim,
                                               MetaTensor* out);
+
+void RowConvGradInferMeta(const MetaTensor& out_grad,
+                          const MetaTensor& filter,
+                          MetaTensor* x_grad,
+                          MetaTensor* filter_grad);
+
+void RowConvInferMeta(const MetaTensor& x,
+                      const MetaTensor& filter,
+                      MetaTensor* out);
+
 void PriorBoxInferMeta(const MetaTensor& input,
                        const MetaTensor& image,
                        const std::vector<float>& min_sizes,

@@ -2675,6 +2675,34 @@ void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
   out->share_lod(x);
   out->set_dtype(x.dtype());
 }
+
+void RowConvGradInferMeta(const MetaTensor& out_grad,
+                          const MetaTensor& filter,
+                          MetaTensor* x_grad,
+                          MetaTensor* filter_grad) {
+  if (x_grad != nullptr) {
+    x_grad->set_dims(out_grad.dims());
+  }
+
+  if (filter_grad != nullptr) {
+    filter_grad->set_dims(filter.dims());
+  }
+}
+
+void RowConvInferMeta(const MetaTensor& x,
+                      const MetaTensor& filter,
+                      MetaTensor* out) {
+  auto filter_dims = filter.dims();
+  PADDLE_ENFORCE_EQ(filter_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "Input(Filter)'s dimensions should be 2. Received: "
+                        "Input(Filter)'s shape: [%s].",
+                        filter_dims));
+  out->set_dims(x.dims());
+  out->share_lod(x);
+}
+
 void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
                            const MetaTensor& value,
                            bool out_int32,
