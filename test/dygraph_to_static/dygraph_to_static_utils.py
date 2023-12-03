@@ -104,7 +104,6 @@ DISABLED_IR_TEST_FILES = {
         "test_save_inference_model",
         "test_tensor_hook",
         "test_lstm",
-        "test_jit_setitem",
         "test_reinforcement_learning",
         # TODO: only disable on Windows
         "test_program_translator",
