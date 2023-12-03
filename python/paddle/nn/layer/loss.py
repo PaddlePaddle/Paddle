@@ -2327,12 +2327,21 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
         self.n_clusters = len(self.cutoffs) - 1
         self.head_size = self.shortlist_size + self.n_clusters
 
-        self.head_weight = self.create_parameter(
-            shape=[self.in_features, self.head_size],
-            attr=None,
-            dtype=self._dtype,
-            is_bias=False,
-        )
+        if paddle.in_dynamic_mode():
+            self.head_weight = self.create_parameter(
+                shape=[self.in_features, self.head_size],
+                attr=None,
+                dtype=self._dtype,
+                is_bias=False,
+            )
+        else:
+            self.head_weight = paddle.to_tensor(
+                paddle.randn(
+                    shape=[self.in_features, self.head_size], dtype=self._dtype
+                ),
+                stop_gradient=False,
+            )
+
         self.head_bias = None
         if self.is_head_bias:
             self.head_bias = self.create_parameter(
@@ -2348,22 +2357,38 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
             hsz = int(self.in_features // (self.div_value ** (i + 1)))
             osz = self.cutoffs[i + 1] - self.cutoffs[i]
             projection = []
-            projection.append(
-                self.create_parameter(
-                    shape=[self.in_features, hsz],
-                    attr=None,
-                    dtype=self._dtype,
-                    is_bias=False,
+            if paddle.in_dynamic_mode():
+                projection.append(
+                    self.create_parameter(
+                        shape=[self.in_features, hsz],
+                        attr=None,
+                        dtype=self._dtype,
+                        is_bias=False,
+                    )
                 )
-            )
-            projection.append(
-                self.create_parameter(
-                    shape=[hsz, osz],
-                    attr=None,
-                    dtype=self._dtype,
-                    is_bias=False,
+                projection.append(
+                    self.create_parameter(
+                        shape=[hsz, osz],
+                        attr=None,
+                        dtype=self._dtype,
+                        is_bias=False,
+                    )
                 )
-            )
+            else:
+                projection.append(
+                    paddle.to_tensor(
+                        paddle.randn(
+                            shape=[self.in_features, hsz], dtype=self._dtype
+                        ),
+                        stop_gradient=False,
+                    )
+                )
+                projection.append(
+                    paddle.to_tensor(
+                        paddle.randn(shape=[hsz, osz], dtype=self._dtype),
+                        stop_gradient=False,
+                    )
+                )
 
             self.tail_weights.append(projection)
 
@@ -2392,7 +2417,7 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
                     slice(None, None, None),
                     slice(None, self.shortlist_size, None),
                 ),
-                head_logprob,
+                head_logprob[:, : self.shortlist_size],
             )
 
         for i, (start_idx, stop_idx) in enumerate(
