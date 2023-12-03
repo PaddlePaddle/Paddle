@@ -206,7 +206,7 @@ struct convertToInt<T, true> {
 
 // Format at most ntrunc characters to the given stream.
 template <typename T>
-inline void formatTruncated(std::ostream &out, const T &value, int ntrunc) {
+void formatTruncated(std::ostream &out, const T &value, int ntrunc) {
   std::ostringstream tmp;
   tmp << value;
   std::string result = tmp.str();
