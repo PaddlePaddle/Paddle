@@ -52,8 +52,7 @@ set(STATIC_INFERENCE_API
     reset_tensor_array
     analysis_config
     paddle_pass_builder
-    ${mkldnn_quantizer_cfg}
-    common)
+    ${mkldnn_quantizer_cfg})
 
 set(OP_LIST
     ""
@@ -70,8 +69,14 @@ if(WIN32 AND WITH_GPU)
   cc_library(paddle_inference DEPS ${fluid_modules} ${STATIC_INFERENCE_API}
                                    ${utils_modules})
 else()
-  create_static_lib(paddle_inference ${phi_modules} ${fluid_modules}
-                    ${ir_targets} ${STATIC_INFERENCE_API} ${utils_modules})
+  create_static_lib(
+    paddle_inference
+    ${phi_modules}
+    ${fluid_modules}
+    ${ir_targets}
+    ${STATIC_INFERENCE_API}
+    ${utils_modules}
+    common_static)
 endif()
 
 if(NOT APPLE)
