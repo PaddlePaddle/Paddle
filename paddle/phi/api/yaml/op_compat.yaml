@@ -2747,6 +2747,13 @@
     out : Out
     xout : XOut
 
+- op : shuffle_batch
+  backward: shuffle_batch_grad
+  inputs:
+    {x : X, seed : Seed}
+  outputs:
+    {out : Out, shuffle_idx : ShuffleIdx, seed_out : SeedOut}
+
 - op : shuffle_channel
   backward : shuffle_channel_grad
   extra :

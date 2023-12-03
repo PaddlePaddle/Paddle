@@ -269,6 +269,7 @@ test_sgd_op
 test_shape_mkldnn_op
 test_shape_op
 test_shard_index_op
+test_shuffle_batch_op
 test_sigmoid_cross_entropy_with_logits_op
 test_sign_op
 test_size_op
