@@ -119,10 +119,10 @@ std::vector<std::pair<std::string, std::string>> parseConfig(
     const std::string& op_type, const std::string& config) {
   std::vector<std::pair<std::string, std::string>> res;
   size_t start = 0;
-  size_t seg = config.find('+', start);
+  size_t seg = config.find("+", start);
   while (seg != std::string::npos) {
     std::string dtype_format = config.substr(start, seg - start);
-    size_t split_pos = dtype_format.find(':');
+    size_t split_pos = dtype_format.find(":");
     std::string dtype = dtype_format.substr(0, split_pos);
     std::string format;
     if (split_pos == std::string::npos) {
@@ -135,10 +135,10 @@ std::vector<std::pair<std::string, std::string>> parseConfig(
     validate(op_type, dtype, format);
     res.emplace_back(dtype, format);
     start = seg + 1;
-    seg = config.find('+', start);
+    seg = config.find("+", start);
   }
   std::string dtype_format = config.substr(start);
-  size_t split_pos = dtype_format.find(':');
+  size_t split_pos = dtype_format.find(":");
   std::string dtype = dtype_format.substr(0, split_pos);
   std::string format;
   if (split_pos == std::string::npos) {
