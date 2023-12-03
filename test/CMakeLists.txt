@@ -201,7 +201,7 @@ if(${len} GREATER_EQUAL 1)
       if(APPLE)
         target_link_libraries(
           ${test_name}
-          "-Wl,-rpath,$<TARGET_FILE_DIR:${paddle_lib}> -Wl,-rpath,$<TARGET_FILE_DIR:phi> -Wl,-rpath,$<TARGET_FILE_DIR:pir>"
+          "-Wl,-rpath,$<TARGET_FILE_DIR:${paddle_lib}> -Wl,-rpath,$<TARGET_FILE_DIR:phi> -Wl,-rpath,$<TARGET_FILE_DIR:pir> -Wl,-rpath,$<TARGET_FILE_DIR:pir>"
         )
       endif()
       if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
