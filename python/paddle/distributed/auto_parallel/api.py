@@ -103,6 +103,37 @@ class DistModel:
         self._engine = Engine(
             layer, loss, optimizer, metrics, strategy=strategy
         )
+        self._mode = None
+
+    def train(self):
+        """
+        Set the mode of DistModel to "train".
+        """
+        assert self._engine._has_prepared[
+            "train"
+        ], "The model for training has not been prepared."
+        self._mode = "train"
+        self._engine.to_mode("train")
+
+    def eval(self):
+        """
+        Set the mode of DistModel to "eval".
+        """
+        assert self._engine._has_prepared[
+            "eval"
+        ], "The model for evaluation has not been prepared."
+        self._mode = "eval"
+        self._engine.to_mode("eval")
+
+    def predict(self):
+        """
+        Set the mode of DistModel to "predict".
+        """
+        assert self._engine._has_prepared[
+            "predict"
+        ], "The model for prediction has not been prepared."
+        self._mode = "predict"
+        self._engine.to_mode("predict")
 
     def _make_feeds(self, data_list):
         if self._feed_name_list == []:
@@ -111,10 +142,21 @@ class DistModel:
         return dict(zip(self._feed_name_list, data_list))
 
     def __call__(self, data, label):
-        self._engine.to_mode("train")
+        assert (
+            self._mode is not None
+        ), "Please call train()/eval()/predict() first."
+        if self._mode == "train":
+            assert (
+                self._engine._optimizer is not None
+                and self._engine._loss is not None
+            ), "Please set optimizer and loss function before training."
+        if self._mode == "eval":
+            assert (
+                self._engine._loss is not None
+            ), "Please set loss function before evaluation."
         feeds = self._make_feeds([data, label])
-        print(feeds)
-        return self._engine.run(feeds)
+        outs = self._engine.run(feeds)
+        return outs["loss"]
 
 
 # Part2: DistTensor construction related APIs
@@ -122,7 +164,7 @@ class DistModel:
 
 def static_decorate(
     layer: paddle.nn.Layer,
-    loader: paddle.io.DataLoader,
+    loader=None,
     loss=None,
     optimizer=None,
     strategy=None,
@@ -143,24 +185,25 @@ def static_decorate(
     )
 
     if optimizer is not None and loss is not None:
+        # get the static graph in train mode
         dist_model._engine.prepare(
             inputs_spec, labels_spec, mode="train", init_parameters=False
         )
-    elif loss is not None:
+    if loss is not None:
+        # get the static graph in eval mode
         dist_model._engine.prepare(
             inputs_spec, labels_spec, mode="eval", init_parameters=False
         )
-    else:
-        dist_model._engine.prepare(
-            inputs_spec, labels_spec, mode="predict", init_parameters=False
-        )
+    # get the static graph in predict mode
+    dist_model._engine.prepare(
+        inputs_spec, None, mode="predict", init_parameters=False
+    )
 
     # get DistributedDataLoader for static mode auto-parallelism
     batch_size = dist_model._engine._validate_batch_size(batch_size)
     dist_loader = dist_model._engine._prepare_dataloader(
         loader.dataset, return_list=True, batch_size=batch_size
     )
-    # dist_loader = dist_model._engine.dataloader(loader.dataset, batch_size=batch_size)
 
     return dist_model, dist_loader
 
