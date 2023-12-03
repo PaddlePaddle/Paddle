@@ -176,7 +176,7 @@ def lp_pool2D_forward_naive(
             c_end = np.min((c_end, W))
 
             x_masked = x[:, :, r_start:r_end, c_start:c_end]
-            x_masked = np.power(x_masked, norm_type)
+            x_masked = np.power(np.fabs(x_masked), norm_type)
 
             if data_type == np.int8 or data_type == np.uint8:
                 out[:, :, i, j] = (
