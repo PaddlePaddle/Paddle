@@ -106,23 +106,28 @@ std::vector<ir::Tensor> CollectInputTensor(
     std::unordered_map<::pir::Value, ir::Tensor>* tensor_map) {
   std::vector<ir::Tensor> tensors;
   for (auto in_value : CompatibleInfo::RealOperandSources(*op)) {
-    VLOG(-4) << "input tensor name: " << CompatibleInfo::ValueName(in_value);
+    VLOG(4) << "input tensor name: " << CompatibleInfo::ValueName(in_value);
     ir::Tensor tensor = details::GetTensor(group, in_value);
-    VLOG(-4) << "shape: " << tensor->shape;
-    VLOG(-4) << "sym_shape: " << tensor->sym_shape;
+    VLOG(4) << "shape: " << tensor->shape;
+    VLOG(4) << "sym_shape: " << tensor->sym_shape;
 
     if (!tensor_map->count(in_value)) {
       // record tensor.
-      VLOG(-4) << "xxx input tensor name: "
-               << CompatibleInfo::ValueName(in_value);
       (*tensor_map)[in_value] = tensor;
       // record func input args
       if (func_args != nullptr) {
         func_args->push_back(tensor);
       }
     } else {
-      (*tensor_map)[in_value]->shape = tensor->shape;
+      // TODO(6clc): After supporting symbolic calculation,
+      // 1. Check that the shape of the tensor with the same name is the same
+      // size
+      // 2. Or make the symbol expression in compute output tensor consistent
+      //    with the one inferred in shape_analysis
       (*tensor_map)[in_value]->sym_shape = tensor->sym_shape;
+      (*tensor_map)[in_value]->shape = tensor->shape;
+      (*tensor_map)[in_value]->sym_domain = tensor->sym_domain;
+      (*tensor_map)[in_value]->domain = tensor->domain;
     }
     tensors.push_back(tensor);
   }
@@ -499,7 +504,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
       group->output_values.push_back(opresult);
       // output arg tensors
       group_func_arg_tensors->push_back(tensor);
-      VLOG(-1) << tensor->sym_shape.size() << " " << tensor;
       // output args
       group->output_names.push_back(tensor->name);
       group_func_args.emplace_back(tensor->buffer, ir::Argument::IO::kOutput);
@@ -519,7 +523,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
           continue;
         }
         auto tensor = tensor_map.at(opresult);
-        VLOG(-1) << tensor->sym_shape.size() << " " << tensor;
         if (args_set.count("_" + tensor->name) != 0) {
           continue;
         }
@@ -540,16 +543,11 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
        tensor_arg_idx++) {
     auto tensor_dim = (*group_func_arg_tensors)[tensor_arg_idx]->sym_shape;
     int tensor_dim_size = tensor_dim.size();
-    VLOG(-1) << tensor_dim_size << "xxx "
-             << (*group_func_arg_tensors)[tensor_arg_idx]->name
-             << (*group_func_arg_tensors)[tensor_arg_idx];
     for (int tensor_arg_dim_idx = 0; tensor_arg_dim_idx < tensor_dim_size;
          tensor_arg_dim_idx++) {
-      VLOG(-1) << tensor_arg_dim_idx;
       if (tensor_dim[tensor_arg_dim_idx]->IsDynamic()) {
         const std::string symbol_name =
             tensor_dim[tensor_arg_dim_idx]->GetSymbolName();
-        VLOG(-1) << "xxx " << symbol_name;
         if (int_args_set.count(symbol_name) != 0) {
           continue;
         }
@@ -601,7 +599,7 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
 
     std::vector<ir::Tensor> op_func_arg_tensors = details::CollectInputTensor(
         group, op, group_func_arg_tensors, tensor_map);
-    VLOG(-4) << "input size:" << op_func_arg_tensors.size();
+    VLOG(4) << "input size:" << op_func_arg_tensors.size();
 
     std::string cinn_op_name = CompatibleInfo::OpName(*op);
     const hlir::framework::Operator* cinn_op = Operator::Get(cinn_op_name);
@@ -654,7 +652,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
   std::string post = "";
   for (int idx = 0; idx < pack.size() - 1; ++idx) {
     Expr expr = pack[idx];
-    VLOG(-1) << "---- " << expr;
     // Insert the output tensor defined by Compute into the tensor_map
     if (pack.size() - 1 > op_results.size()) {
       // Some op may output multiple temp tensors in their Compute

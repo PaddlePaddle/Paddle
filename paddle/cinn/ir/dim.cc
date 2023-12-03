@@ -38,10 +38,8 @@ Dim _Dim_::Make(const std::string& name, const SymbolicDimOp& sym_dim) {
   n->name = name;
   n->sym_dim = sym_dim;
   if (sym_dim.IsDynamic()) {
-    VLOG(-1) << "dy " << sym_dim.GetSymName();
     n->dim_expr = Expr(Var(sym_dim.GetSymName(), common::Int(32)));
   } else {
-    VLOG(-1) << "none dy " << sym_dim.GetSymName();
     n->dim_expr = Expr(static_cast<int32_t>(sym_dim.GetDimSize()));
   }
 

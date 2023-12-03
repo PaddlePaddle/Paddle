@@ -24,7 +24,6 @@
 #include <thrust/host_vector.h>
 
 #include <algorithm>
-#include <cstdint>
 #include <string>
 #ifdef CINN_WITH_CUDNN
 #include <cudnn.h>
