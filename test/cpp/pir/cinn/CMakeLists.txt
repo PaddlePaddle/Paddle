@@ -33,6 +33,19 @@ if(WITH_TESTING AND WITH_CINN)
   set_tests_properties(dialect_convert_test PROPERTIES LABELS "RUN_TYPE=CINN")
 
   paddle_test(
+    test_sub_graph_extract
+    SRCS
+    sub_graph_extract_test.cc
+    DEPS
+    drr
+    pd_to_cinn_pass
+    op_dialect_vjp
+    cinn_op_dialect
+    pir_transforms
+    pir)
+  set_tests_properties(test_sub_graph_extract PROPERTIES LABELS "RUN_TYPE=CINN")
+
+  paddle_test(
     ir_op_fusion_test
     SRCS
     ir_op_fusion_test.cc
@@ -71,4 +84,7 @@ if(WITH_TESTING AND WITH_CINN)
               pir_transforms pir)
   set_tests_properties(test_pir_build_cinn_pass PROPERTIES LABELS
                                                            "RUN_TYPE=CINN")
+
+  paddle_test(test_compilation_task SRCS compilation_task_test.cc DEPS pir)
+  set_tests_properties(test_compilation_task PROPERTIES LABELS "RUN_TYPE=CINN")
 endif()

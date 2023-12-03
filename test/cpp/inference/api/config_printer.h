@@ -74,8 +74,6 @@ std::ostream &operator<<(std::ostream &os, const AnalysisConfig &config) {
   os << GenSpaces(num_spaces)
      << "cpu_num_threads: " << config.cpu_math_library_num_threads() << "\n";
   os << GenSpaces(num_spaces)
-     << "use_feed_fetch_ops: " << config.use_feed_fetch_ops_enabled() << "\n";
-  os << GenSpaces(num_spaces)
      << "use_tensorrt: " << config.tensorrt_engine_enabled() << "\n";
   os << GenSpaces(num_spaces) << "use_mkldnn: " << config.mkldnn_enabled()
      << "\n";

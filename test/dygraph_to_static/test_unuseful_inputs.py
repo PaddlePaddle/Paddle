@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase, test_legacy_and_pir
+from dygraph_to_static_utils import Dy2StTestBase
 
 import paddle
 from paddle import nn
@@ -68,7 +68,6 @@ class TestDuplicateOutput(Dy2StTestBase):
     dependent on tensor in Dygraph into Static `base.layers.cond`.
     """
 
-    @test_legacy_and_pir
     def test_case(self):
         # create network
         layer = Layer0(0)

@@ -681,9 +681,15 @@ class TrtLayerAutoScanTest(AutoScanTest):
             np.testing.assert_allclose(arr, baseline[key], rtol=rtol, atol=atol)
 
     def assert_op_size(self, trt_engine_num, paddle_op_num):
+        fp32_last_pass = "transpose_flatten_concat_fuse_pass"
+        fp16_last_pass = "tensorrt_subgraph_pass"
         last_passed_program = os.path.join(
-            self.cache_dir, "transpose_flatten_concat_fuse_pass.pdmodel"
+            self.cache_dir, f"{fp32_last_pass}.pdmodel"
         )
+        if not os.path.exists(last_passed_program):
+            last_passed_program = os.path.join(
+                self.cache_dir, f"{fp16_last_pass}.pdmodel"
+            )
         model_bytes = paddle.static.load_from_file(last_passed_program)
         pg = paddle.static.deserialize_program(model_bytes)
         main_block = pg.desc.block(0)
@@ -739,25 +745,15 @@ class TrtLayerAutoScanTest(AutoScanTest):
             if quant:
                 model, params = create_quant_model(model, params)
 
-            feed_data = {}
-            for name, tensor_config in prog_config.inputs.items():
-                feed_data[name] = {
-                    "data": tensor_config.data,
-                    "lod": tensor_config.lod,
-                }
-
             if not skip_baseline:
                 # baseline: gpu run, we only test float32
                 gpu_config = self.create_inference_config(use_trt=False)
-                prog_config = prog_config.set_input_type(
-                    np.float16
-                ).set_input_type(np.float32)
                 baseline_result = self.run_test_config(
                     model,
                     params,
                     prog_config,
                     gpu_config,
-                    feed_data,
+                    prog_config.get_feed_data(),
                 )
                 self.success_log(f"basline program_config: {prog_config}")
 
@@ -813,6 +809,10 @@ class TrtLayerAutoScanTest(AutoScanTest):
                     continue
 
                 try:
+                    model, params = create_fake_model(prog_config)
+                    if quant:
+                        model, params = create_quant_model(model, params)
+                    feed_data = prog_config.get_feed_data()
                     pred_config_deserialize = paddle_infer.Config(pred_config)
                     trt_result = self.run_test_config(
                         model, params, prog_config, pred_config, feed_data

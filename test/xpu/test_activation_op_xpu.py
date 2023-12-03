@@ -22,7 +22,7 @@ from get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 from op_test_xpu import XPUOpTest
 
 import paddle
@@ -97,10 +97,16 @@ class XPUTestSiluOP(XPUOpTestWrapper):
             self.init_shape()
 
             np.random.seed(1024)
-            x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+            x = np.random.uniform(-1, 1, self.shape)
+
+            if self.dtype == np.uint16:
+                # bfloat16 actually
+                new_x = convert_float_to_uint16(x)
+            else:
+                new_x = x.astype(self.dtype)
             out = x / (np.exp(-x) + 1)
 
-            self.inputs = {'X': x}
+            self.inputs = {'X': new_x}
             self.outputs = {'Out': out}
             self.attrs = {'use_xpu': True}
 
@@ -1150,7 +1156,13 @@ class XPUTestSwishOP(XPUOpTestWrapper):
             self.init_config()
             out = ref_swish(self.x)
 
-            self.inputs = {'X': self.x}
+            if self.dtype == np.uint16:
+                # bfloat16 actually
+                new_x = convert_float_to_uint16(self.x)
+            else:
+                new_x = self.x.astype(self.dtype)
+
+            self.inputs = {'X': new_x}
             self.outputs = {'Out': out}
             self.attrs = {'use_xpu': True}
 
@@ -1372,6 +1384,52 @@ class XPUTestCosOP(XPUOpTestWrapper):
 support_types = get_xpu_op_support_types('cos')
 for stype in support_types:
     create_test_class(globals(), XPUTestCosOP, stype)
+
+
+class XPUTestRsqrtOP(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = "rsqrt"
+        self.use_dynamic_create_class = False
+
+    class XPUTestRsqrtBase(TestActivationOPBase):
+        def set_case(self):
+            self.op_type = "rsqrt"
+            self.dtype = self.in_type
+            self.init_config()
+            out = np.reciprocal(np.sqrt(self.x))
+
+            self.inputs = {'X': self.x}
+            self.outputs = {'Out': out}
+            self.attrs = {'use_xpu': True}
+
+        def init_config(self):
+            self.x = np.random.uniform(0.01, 4, [11, 17]).astype(self.dtype)
+
+    class XPUTestRsqrt_ZeroDim(XPUTestRsqrtBase):
+        def init_config(self):
+            self.x = np.random.uniform(0.01, 4, []).astype(self.dtype)
+
+    class XPUTestRsqrt2(XPUTestRsqrtBase):
+        def init_config(self):
+            self.x = np.random.uniform(0.01, 4, [1024, 8]).astype(self.dtype)
+
+    class XPUTestRsqrt3(XPUTestRsqrtBase):
+        def init_config(self):
+            self.x = np.random.uniform(0.01, 4, [4, 512, 15, 15]).astype(
+                self.dtype
+            )
+
+    class XPUTestRsqrt4(XPUTestRsqrtBase):
+        def init_config(self):
+            self.x = np.random.uniform(0.01, 4, [4, 256, 22, 22]).astype(
+                self.dtype
+            )
+
+
+support_types = get_xpu_op_support_types('rsqrt')
+for stype in support_types:
+    create_test_class(globals(), XPUTestRsqrtOP, stype)
+
 
 if __name__ == "__main__":
     unittest.main()

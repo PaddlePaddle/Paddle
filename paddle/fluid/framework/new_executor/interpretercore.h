@@ -51,7 +51,13 @@ class InterpreterCore {
       bool need_fetch = true);
 
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
-                                   bool need_fetch = true);
+                                   bool need_fetch = true,
+                                   bool enable_job_schedule_profiler = false,
+                                   bool enable_op_profiling = false);
+
+  void RunProfile(const std::vector<std::string>& feed_names);
+
+  std::shared_ptr<ProgramDesc> GetMutableCopyProgram();
 
   void ShareWorkQueueFrom(std::shared_ptr<InterpreterCore> src);
 
@@ -75,10 +81,17 @@ class InterpreterCore {
 
   void SetOutputHooks(const std::vector<HookFunc>& hookfuncs);
 
+  void SetInputHooks(const std::vector<HookFunc>& hookfuncs);
+
   void Build(const std::vector<std::string>& feed_names,
              std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
 
   bool IsStaticBuild() const;
+
+  std::tuple<double, double> InterpreterRunTime();
+
+  // Only for debug
+  Variable* DebugVar(const std::string& name) const;
 
  private:
   DISABLE_COPY_AND_ASSIGN(InterpreterCore);

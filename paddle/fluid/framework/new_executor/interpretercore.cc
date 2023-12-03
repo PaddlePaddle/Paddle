@@ -71,8 +71,13 @@ FetchList InterpreterCore::Run(
 }
 
 FetchList InterpreterCore::Run(const std::vector<std::string>& feed_names,
-                               bool need_fetch) {
-  return impl_->Run(feed_names, need_fetch);
+                               bool need_fetch,
+                               bool enable_job_schedule_profiler,
+                               bool enable_op_profiling) {
+  return impl_->Run(feed_names,
+                    need_fetch,
+                    enable_job_schedule_profiler,
+                    enable_op_profiling);
 }
 
 void InterpreterCore::ShareWorkQueueFrom(std::shared_ptr<InterpreterCore> src) {
@@ -118,6 +123,10 @@ const platform::Place& InterpreterCore::GetPlace() const {
   return impl_->GetPlace();
 }
 
+void InterpreterCore::SetInputHooks(const std::vector<HookFunc>& hookfuncs) {
+  impl_->SetInputHooks(hookfuncs);
+}
+
 void InterpreterCore::SetOutputHooks(const std::vector<HookFunc>& hookfuncs) {
   impl_->SetOutputHooks(hookfuncs);
 }
@@ -129,6 +138,18 @@ void InterpreterCore::Build(
 }
 
 bool InterpreterCore::IsStaticBuild() const { return impl_->IsStaticBuild(); }
+
+std::tuple<double, double> InterpreterCore::InterpreterRunTime() {
+  return impl_->InterpreterRunTime();
+}
+
+std::shared_ptr<ProgramDesc> InterpreterCore::GetMutableCopyProgram() {
+  return impl_->GetMutableCopyProgram();
+}
+
+Variable* InterpreterCore::DebugVar(const std::string& name) const {
+  return impl_->DebugVar(name);
+}
 
 }  // namespace framework
 }  // namespace paddle

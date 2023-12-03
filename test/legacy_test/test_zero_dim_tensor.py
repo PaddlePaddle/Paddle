@@ -830,6 +830,7 @@ class TestSundryAPI(unittest.TestCase):
         np.testing.assert_allclose(out[1, 2, 3, 4], np.array(10))
         self.assertEqual(x.grad.shape, [2, 3, 4, 5])
         x_grad_expected = np.ones((2, 3, 4, 5)) * 2
+        x_grad_expected[1, 2, 3, 4] = 0
         np.testing.assert_allclose(x.grad, x_grad_expected)
 
         # case2: 0-D Tensor indice in some axis
@@ -847,6 +848,7 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out.shape, x.shape)
         np.testing.assert_allclose(out[1, 1], np.ones((4, 5)) * 0.5)
         x_grad_expected = np.ones((2, 3, 4, 5))
+        x_grad_expected[1, 1] = 0
         np.testing.assert_allclose(x.grad, x_grad_expected)
 
         # case3：0-D Tensor indice in some axis, value is a Tensor
@@ -5807,17 +5809,41 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (2, 3, 4))
 
-    def test_randint_and_randint_like(self):
-        out1 = paddle.randint(-10, 10, [])
-        out2 = paddle.randint_like(out1, -10, 10)
-        out3 = paddle.randint(-10, 10, self.shape)
+    @test_with_pir_api
+    def test_randint(self):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            out1 = paddle.randint(-10, 10, [])
 
-        res = self.exe.run(
-            paddle.static.default_main_program(), fetch_list=[out1, out2, out3]
-        )
+            shape = [
+                paddle.full([], 2, 'int32'),
+                paddle.full([], 3, 'int32'),
+                paddle.full([], 4, 'int32'),
+            ]
+            out2 = paddle.randint(-10, 10, shape)
+
+            res = self.exe.run(
+                paddle.static.default_main_program(), fetch_list=[out1, out2]
+            )
+
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (2, 3, 4))
+
+    @test_with_pir_api
+    def test_randint_like(self):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            out1 = paddle.rand([])
+            out2 = paddle.randint_like(out1, -10, 10)
+
+            res = self.exe.run(
+                paddle.static.default_main_program(), fetch_list=[out1, out2]
+            )
+
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
-        self.assertEqual(res[2].shape, (2, 3, 4))
 
     def test_standard_normal(self):
         out1 = paddle.standard_normal([])

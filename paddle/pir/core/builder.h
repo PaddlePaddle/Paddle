@@ -43,6 +43,7 @@ class IndexAttribute;
 class Int64Attribute;
 class ArrayAttribute;
 class PointerAttribute;
+class TensorNameAttribute;
 
 using InsertionPoint = std::pair<Block *, Block::Iterator>;
 ///
@@ -51,8 +52,19 @@ using InsertionPoint = std::pair<Block *, Block::Iterator>;
 ///
 class Builder {
  public:
-  Builder(IrContext *context, Block *block, Block::Iterator insert_point)
-      : context_(context), insertion_point_(block, insert_point) {}
+  Builder(IrContext *context,
+          Block *block,
+          Block::Iterator insertion_point,
+          bool forbid_insert_without_position = true)
+      : context_(context),
+        insertion_point_(block, insertion_point),
+        forbid_insert_without_position_(forbid_insert_without_position) {}
+
+  Builder(IrContext *context, bool forbid_insert_without_position)
+      : Builder(context,
+                nullptr,
+                Block::Iterator{},
+                forbid_insert_without_position) {}
 
   Builder(IrContext *context, Block *block)
       : Builder(context, block, block->end()) {}
@@ -136,6 +148,7 @@ class Builder {
   IR_API Int64Attribute int64_attr(int64_t value);
   IR_API ArrayAttribute array_attr(const std::vector<Attribute> &value);
   IR_API PointerAttribute pointer_attr(void *value);
+  IR_API TensorNameAttribute tensor_name_attr(const std::string &value);
 
  private:
   Operation *Insert(Operation *op);
@@ -143,6 +156,8 @@ class Builder {
   IrContext *context_;
 
   InsertionPoint insertion_point_;
+
+  bool forbid_insert_without_position_;
 };
 
 template <typename OpTy, typename... Args>

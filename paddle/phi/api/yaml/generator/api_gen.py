@@ -165,6 +165,29 @@ class ForwardAPI(BaseAPI):
                 ]
             return 'return std::make_tuple(' + ", ".join(selected_code) + ');'
 
+    def gene_fallback_code_after_gene_output_of_vector(
+        self, code_indent, output_idx, is_inplace, is_optional
+    ):
+        fallback_code = ""
+        if is_inplace and is_optional:
+            fallback_code = f"""
+{code_indent}  if (kernel_result.has_fallback_cpu) {{
+{code_indent}    for (size_t i = 0; i < kernel_out_{output_idx}.size(); ++i) {{
+{code_indent}      kernel_out_{output_idx}[i] = const_cast<phi::DenseTensor*>({PREFIX_TENSOR_NAME}{self.inplace_map[self.outputs['names'][output_idx]]}->at(i));
+{code_indent}    }}
+{code_indent}  }}"""
+        elif is_inplace:
+            fallback_code = f"""
+{code_indent}  if (kernel_result.has_fallback_cpu) {{
+{code_indent}    for (size_t i = 0; i < kernel_out_{output_idx}.size(); ++i) {{
+{code_indent}      kernel_out_{output_idx}[i] = const_cast<phi::DenseTensor*>({PREFIX_TENSOR_NAME}{self.inplace_map[self.outputs['names'][output_idx]]}[i]);
+{code_indent}    }}
+{code_indent}  }}"""
+        else:
+            fallback_code = ""
+
+        return fallback_code
+
     def gene_output(
         self,
         out_dtype_list,
@@ -271,14 +294,29 @@ class ForwardAPI(BaseAPI):
                                 "SetInplaceOptionalVectorKernelOutput"
                             )
                             get_out_code = f"std::get<{i}>(api_output)"
-                    output_create = (
-                        output_create
-                        + f"""
-{code_indent}  auto kernel_out_{i} = {set_out_func}({self.outputs['out_size_expr'][i]}, {get_out_code});
-{code_indent}  if (kernel_result.has_fallback_cpu) {{
-{code_indent}    TransDataBackend(kernel_out_{i}, actual_kernel_backend, kernel_out_{i});
-{code_indent}  }}"""
-                    )
+                            output_create = (
+                                output_create
+                                + f"""
+{code_indent}  auto kernel_out_{i} = {set_out_func}({self.outputs['out_size_expr'][i]}, {get_out_code});"""
+                                + self.gene_fallback_code_after_gene_output_of_vector(
+                                    code_indent, i, True, True
+                                )
+                            )
+                        else:
+                            output_create = (
+                                output_create
+                                + f"""
+{code_indent}  auto kernel_out_{i} = {set_out_func}({self.outputs['out_size_expr'][i]}, {get_out_code});"""
+                                + self.gene_fallback_code_after_gene_output_of_vector(
+                                    code_indent, i, True, False
+                                )
+                            )
+                    else:
+                        output_create = (
+                            output_create
+                            + f"""
+{code_indent}  auto kernel_out_{i} = {set_out_func}({self.outputs['out_size_expr'][i]}, {get_out_code});"""
+                        )
 
                 else:
                     output_create = (
