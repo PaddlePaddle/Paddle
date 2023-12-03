@@ -24,7 +24,7 @@ import weakref
 from typing import Any, Callable
 
 import paddle
-from paddle.utils import flatten, is_sequence, map_structure
+from paddle.utils import flatten, map_structure
 
 from ..utils import NameGenerator, OrderedSet, Singleton, flatten_extend
 
@@ -98,9 +98,9 @@ class Statement:
 
     def __str__(self):
         def to_string(inps):
-            if isinstance(inps, str) or not is_sequence(inps):
-                return inps.__str__()
-            inps = (x.__str__() for x in flatten(inps) if isinstance(x, Symbol))
+            inps = [x.__str__() for x in flatten(inps) if isinstance(x, Symbol)]
+            if len(inps) == 0:
+                return "(Empty)"
             return ", ".join(inps)
 
         return "{} || {} = {} ({}) ".format(

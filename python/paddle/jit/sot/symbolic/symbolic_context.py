@@ -134,14 +134,18 @@ class SymbolicTraceContext:
             ret_vals (list[Symbol]): the return values of the function.
         """
 
-        def dummy_func(*args, **kwargs):
-            return []
+        class DummyFunc:
+            def __call__(*args, **kwargs):
+                return []
+
+            def graph_size(self):
+                return 0
 
         # return None function
         dummy_stmt_ir = StatementIR("dummy_func")
         dummy_stmt_ir.outputs = []
         dummy_stmt_ir.inputs = []
-        return dummy_func, dummy_stmt_ir
+        return DummyFunc(), dummy_stmt_ir
 
     def compile_fn(self, ret_vals, **kwargs):
         """

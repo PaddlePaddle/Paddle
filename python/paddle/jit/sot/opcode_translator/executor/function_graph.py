@@ -37,7 +37,6 @@ from ...utils import (
     ENV_SHOW_TRACKERS,
     NameGenerator,
     OrderedSet,
-    flatten,
     inner_error_default_handler,
     is_inplace_api,
     is_paddle_api,
@@ -106,13 +105,15 @@ def convert_to_symbol(inputs: Any):
     return map_variables(func, inputs)
 
 
-def get_symbol_meta_map(structure):
+def get_symbol_meta_map(inputs):
     output = {}
 
-    for x in flatten(structure):
+    def func(x):
         if isinstance(x, TensorVariable):
             output[x.get_symbol()] = x.meta
+        return x
 
+    map_variables(func, inputs)
     return output
 
 
