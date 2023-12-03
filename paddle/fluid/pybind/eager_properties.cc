@@ -424,7 +424,8 @@ PyObject* tensor_properties_get_dist_attr(TensorObject* self, void* closure) {
 #ifdef PADDLE_WITH_DISTRIBUTE
     phi::distributed::DistTensor* dist_tensor =
         static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
-    return ToPyObject(&dist_tensor->dist_attr());
+    auto dist_attr = dist_tensor->dist_attr();
+    return ToPyObject(&dist_attr);
 #else
     PADDLE_THROW(platform::errors::Unavailable(
         "The `dist_attr()` property of (Dist)Tensor is not supported in the "

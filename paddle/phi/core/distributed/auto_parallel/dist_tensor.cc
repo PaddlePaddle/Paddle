@@ -24,6 +24,60 @@
 namespace phi {
 namespace distributed {
 
+TensorDistAttr ToTensorDistAttr(const DistTensorMeta& tensor_meta) {
+  // TensorDistAttr ToTensorDistAttr(const Placements& placements,
+  //                                 const ProcessMesh& process_mesh) {
+  paddle::flat_hash_map<int64_t, ReduceType> partial_status;
+  auto& placements = tensor_meta.placements();
+  for (size_t i = 0; i < placements.size(); ++i) {
+    auto& p = placements[i];
+    if (p->is_partial()) {
+      partial_status.insert({i, dynamic_cast<Partial&>(*p).get_reduce_type()});
+    }
+  }
+
+  TensorDistAttr dist_attr(vectorize(tensor_meta.dims()));
+  dist_attr.set_process_mesh(tensor_meta.process_mesh());
+  dist_attr.set_dims_mapping(tensor_meta.dim_mapping());
+  dist_attr.set_partial_status(partial_status);
+  dist_attr.mark_annotated("process_mesh");
+  dist_attr.mark_annotated("dims_mapping");
+  return dist_attr;
+}
+
+Placements ToPlacements(const TensorDistAttr& dist_attr) {
+  auto& process_mesh = dist_attr.process_mesh();
+  Placements placements;
+  placements.resize(process_mesh.size(), std::make_shared<Replicate>());
+
+  auto& partial_status = dist_attr.partial_status();
+  for (const auto& pair : partial_status) {
+    placements[pair.first] = std::make_shared<Partial>(pair.second);
+  }
+
+  auto& dim_mapping = dist_attr.dims_mapping();
+  for (size_t i = 0; i < dim_mapping.size(); ++i) {
+    auto& mesh_id = dim_mapping[i];
+    if (mesh_id >= 0) {
+      auto& p = placements[mesh_id];
+
+      if (p->is_shard()) {
+        PADDLE_THROW(phi::errors::Unimplemented(
+            "ProcessMesh dimension cann't be mapped to two  dimension of the "
+            "same tensor: {%d} and {%d}",
+            i,
+            dynamic_cast<Shard&>(*p).get_dim()));
+      } else if (p->is_partial()) {
+        PADDLE_THROW(phi::errors::Unimplemented(
+            "ProcessMesh dimension {%d} cannot be both shard and partial!",
+            mesh_id));
+      }
+      placements[mesh_id] = std::make_shared<Shard>(i);
+    }
+  }
+  return placements;
+}
+
 inline void check_defined(const DistTensor& dist_tensor,
                           std::string method_hint) {
   PADDLE_ENFORCE_EQ(

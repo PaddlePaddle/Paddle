@@ -286,7 +286,7 @@ SpmdInfo EmbeddingGradInferSpmd(const DistMetaTensor& x,
   // NOTE: Reshard happend on intemediate operators must be ensure propagated
   // back to first inputs.
   t0 = DistMetaTensor(t0.dims(), t0_dist_attr);
-  const auto& t0_dims = t0.dist_attr().dims_mapping();
+  auto t0_dims = t0.dist_attr().dims_mapping();
   if (x_dst.dist_attr().dims_mapping() !=
       std::vector<int64_t>(t0_dims.begin(), t0_dims.end() - 1)) {
     TensorDistAttr t0_new(t0.dist_attr());

@@ -17,8 +17,6 @@
 #include "glog/logging.h"
 
 #include "paddle/phi/api/profiler/event_tracing.h"
-#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
-#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 
 namespace phi {
 namespace distributed {
