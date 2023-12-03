@@ -14,9 +14,9 @@
 
 import paddle
 from paddle.base.data_feeder import check_variable_and_dtype
+from paddle.base.framework import in_dynamic_or_pir_mode
 from paddle.base.layer_helper import LayerHelper
 from paddle.distribution import exponential_family
-from paddle.framework import in_dynamic_mode
 
 
 class Dirichlet(exponential_family.ExponentialFamily):
@@ -156,7 +156,7 @@ class Dirichlet(exponential_family.ExponentialFamily):
 
 
 def _dirichlet(concentration, name=None):
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return paddle._C_ops.dirichlet(concentration)
     else:
         op_type = 'dirichlet'

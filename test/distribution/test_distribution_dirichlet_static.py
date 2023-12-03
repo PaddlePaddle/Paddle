@@ -33,7 +33,8 @@ paddle.enable_static()
 )
 class TestDirichlet(unittest.TestCase):
     def setUp(self):
-        self.program = paddle.static.Program()
+        self.old_ir_program = paddle.static.Program()
+        self.pir_program = paddle.static.Program()
         self.executor = paddle.static.Executor()
         with paddle.static.program_guard(self.program):
             conc = paddle.static.data(
@@ -126,3 +127,17 @@ class TestDirichlet(unittest.TestCase):
                 rtol=RTOL.get(str(self.concentration.dtype)),
                 atol=ATOL.get(str(self.concentration.dtype)),
             )
+
+    def test_all(self):
+        self.test_mean(self.old_ir_program)
+        self.test_variance(self.old_ir_program)
+        self.test_prob(self.old_ir_program)
+        self.test_log_prob(self.old_ir_program)
+        self.test_entropy(self.old_ir_program)
+
+        with paddle.pir_utils.IrGuard():
+            self.test_mean(self.pir_program)
+            self.test_variance(self.pir_program)
+            self.test_prob(self.pir_program)
+            self.test_log_prob(self.pir_program)
+            self.test_entropy(self.pir_program)

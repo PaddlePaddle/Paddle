@@ -33,16 +33,13 @@ class TestDirichletOp(OpTest):
         self.op_type = "dirichlet"
         self.alpha = np.array((1.0, 2.0))
         self.sample_shape = (100000, 2)
-        self.python_api = paddle.distribution.Dirichlet(self.alpha).sample(
-            self.sample_shape
-        )
 
         self.inputs = {'Alpha': np.broadcast_to(self.alpha, self.sample_shape)}
         self.attrs = {}
         self.outputs = {'Out': np.zeros(self.sample_shape)}
 
     def test_check_output(self):
-        self.check_output_customized(self._hypothesis_testing, check_pir=True)
+        self.check_output_customized(self._hypothesis_testing)
 
     def _hypothesis_testing(self, outs):
         self.assertEqual(outs[0].shape, self.sample_shape)
@@ -79,7 +76,7 @@ class TestDirichletFP16Op(OpTest):
         self.outputs = {'Out': np.zeros(self.sample_shape).astype(self.dtype)}
 
     def test_check_output(self):
-        self.check_output_customized(self._hypothesis_testing, check_pir=True)
+        self.check_output_customized(self._hypothesis_testing)
 
     def _hypothesis_testing(self, outs):
         self.assertEqual(outs[0].shape, self.sample_shape)
@@ -128,7 +125,7 @@ class TestDirichletBF16Op(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place_customized(
-            self._hypothesis_testing, place=core.CUDAPlace(0), check_pir=True
+            self._hypothesis_testing, place=core.CUDAPlace(0)
         )
 
     def _hypothesis_testing(self, outs):
