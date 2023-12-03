@@ -137,6 +137,7 @@ PADDLE_API std::shared_ptr<phi::distributed::DistTensor> reshard(
     } else {
       dist_out_ptr = std::static_pointer_cast<phi::distributed::DistTensor>(
           input_tensor_impl);
+      dist_out_ptr->unsafe_set_dist_attr(dist_attr);
     }
   }
   return dist_out_ptr;
