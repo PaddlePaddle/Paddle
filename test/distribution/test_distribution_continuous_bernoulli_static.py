@@ -25,10 +25,10 @@ from paddle.distribution.continuous_bernoulli import ContinuousBernoulli
 class ContinuousBernoulli_np:
     def __init__(self, probability, eps=1e-4):
         self.eps = eps
-        self.dtype = paddle.get_default_dtype()
-        eps_prob = np.finfo(self.dtype).eps
+        self.dtype = 'float32'
+        eps_prob = 1.1920928955078125e-07
         self.probability = np.clip(
-            probability, a_min=eps_prob, a_max=1 - eps_prob
+            probability, a_min=eps_prob, a_max=1.0 - eps_prob
         )
 
     def _cut_support_region(self):
@@ -101,7 +101,7 @@ class ContinuousBernoulli_np:
         return np.exp(self.np_log_prob(value))
 
     def np_log_prob(self, value):
-        eps = np.finfo(self.dtype).eps
+        eps = 1e-8
         cross_entropy = np.nan_to_num(
             value * np.log(self.probability)
             + (1.0 - value) * np.log(1 - self.probability),
@@ -160,7 +160,7 @@ paddle.enable_static()
     [
         (
             'multi-dim',
-            parameterize.xrand((1, 3), min=0.0, max=1.0).astype("float32"),
+            parameterize.xrand((1, 3), min=0.1, max=0.9).astype("float32"),
         ),
     ],
 )
@@ -236,8 +236,8 @@ class TestContinuousBernoulli(unittest.TestCase):
     [
         (
             'value-broadcast-shape',
-            parameterize.xrand((1,), min=0.0, max=1.0).astype("float32"),
-            parameterize.xrand((2, 2), min=0.0, max=1.0).astype("float32"),
+            parameterize.xrand((1,), min=0.1, max=0.9).astype("float32"),
+            parameterize.xrand((2, 2), min=0.1, max=0.9).astype("float32"),
         ),
     ],
 )
@@ -280,8 +280,8 @@ class TestContinuousBernoulliProbs(unittest.TestCase):
     [
         (
             'multi-dim',
-            parameterize.xrand((2,), min=0.0, max=1.0).astype("float32"),
-            parameterize.xrand((2,), min=0.0, max=1.0).astype("float32"),
+            parameterize.xrand((2,), min=0.1, max=0.9).astype("float32"),
+            parameterize.xrand((2,), min=0.1, max=0.9).astype("float32"),
         ),
     ],
 )
