@@ -133,6 +133,7 @@ class Partial : public Placement {
  public:
   explicit Partial(ReduceType reduce_type) : reduce_type_(reduce_type) {}
   bool is_partial() const override { return true; }
+  ReduceType get_reduce_type() const { return reduce_type_; }
 
   bool operator==(const Placement& other) const override {
     const Partial* other_partial = dynamic_cast<const Partial*>(&other);
@@ -178,6 +179,12 @@ class DistTensorMeta : public std::enable_shared_from_this<DistTensorMeta> {
   const ProcessMesh& process_mesh() const { return *process_mesh_; }
 
   const Placements& placements() const { return placements_; }
+
+  void SetPlacements(const Placements& placements) { placements_ = placements; }
+
+  void SetProcessMesh(const ProcessMesh& process_mesh) {
+    process_mesh_ = std::make_shared<const ProcessMesh>(process_mesh);
+  }
 
   int64_t num_shard() const;
 

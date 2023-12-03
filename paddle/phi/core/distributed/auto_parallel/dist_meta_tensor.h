@@ -46,7 +46,7 @@ class DistMetaTensor : public MetaTensor {
 
   DDim dims() const override;
 
-  const distributed::TensorDistAttr& dist_attr() const;
+  distributed::TensorDistAttr dist_attr() const;
 
  private:
   /**

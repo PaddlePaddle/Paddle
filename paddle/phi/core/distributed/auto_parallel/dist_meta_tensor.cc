@@ -33,7 +33,7 @@ phi::DDim DistMetaTensor::dims() const {
   }
 }
 
-const distributed::TensorDistAttr& DistMetaTensor::dist_attr() const {
+distributed::TensorDistAttr DistMetaTensor::dist_attr() const {
   // member values in tensor_ have higher priority than those in DistMetaTensor
   if (tensor_ != nullptr) {
     PADDLE_ENFORCE_EQ(this->is_dist(),

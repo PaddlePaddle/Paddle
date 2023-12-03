@@ -16,14 +16,74 @@
 
 #include <memory>
 
+#include "paddle/phi/common/reduce_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/placement_types.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace phi {
 namespace distributed {
 class ReshardFunction;
+class Shard;
+class Partial;
+class Replicate;
+// class ReduceType;
+
+TensorDistAttr ToTensorDistAttr(const DistTensorMeta& tensor_meta) {
+  // TensorDistAttr ToTensorDistAttr(const Placements& placements,
+  //                                 const ProcessMesh& process_mesh) {
+  paddle::flat_hash_map<int64_t, ReduceType> partial_status;
+  auto& placements = tensor_meta.placements();
+  for (size_t i = 0; i < placements.size(); ++i) {
+    auto& p = placements[i];
+    if (p->is_partial()) {
+      partial_status.insert({i, dynamic_cast<Partial&>(*p).get_reduce_type()});
+    }
+  }
+
+  TensorDistAttr dist_attr(vectorize(tensor_meta.dims()));
+  dist_attr.set_process_mesh(tensor_meta.process_mesh());
+  dist_attr.set_dims_mapping(tensor_meta.dim_mapping());
+  dist_attr.set_partial_status(partial_status);
+  dist_attr.mark_annotated("process_mesh");
+  dist_attr.mark_annotated("dims_mapping");
+  return dist_attr;
+}
+
+Placements ToPlacements(const TensorDistAttr& dist_attr) {
+  auto& process_mesh = dist_attr.process_mesh();
+  Placements placements;
+  placements.resize(process_mesh.size(), std::make_shared<Replicate>());
+
+  auto& partial_status = dist_attr.partial_status();
+  for (const auto& pair : partial_status) {
+    placements[pair.first] = std::make_shared<Partial>(pair.second);
+  }
+
+  auto& dim_mapping = dist_attr.dims_mapping();
+  for (size_t i = 0; i < dim_mapping.size(); ++i) {
+    auto& mesh_id = dim_mapping[i];
+    if (mesh_id >= 0) {
+      auto& p = placements[mesh_id];
+
+      if (p->is_shard()) {
+        PADDLE_THROW(phi::errors::Unimplemented(
+            "ProcessMesh dimension cann't be mapped to two  dimension of the "
+            "same tensor: {%d} and {%d}",
+            i,
+            dynamic_cast<Shard&>(*p).get_dim()));
+      } else if (p->is_partial()) {
+        PADDLE_THROW(phi::errors::Unimplemented(
+            "ProcessMesh dimension {%d} cannot be both shard and partial!",
+            mesh_id));
+      }
+      placements[mesh_id] = std::make_shared<Shard>(i);
+    }
+  }
+  return placements;
+}
 
 class DistTensor final
     : public phi::TensorBase,
@@ -69,7 +129,10 @@ class DistTensor final
 
   /// \brief Returns the dist attr of current dist tensor.
   /// \return The TensorDistAttr's const reference
-  const TensorDistAttr& dist_attr() const { return dist_attr_; }
+  TensorDistAttr dist_attr() const {
+    // dist_attr_;
+    return ToTensorDistAttr(dist_tensor_meta_);
+  }
 
   /// \brief Returns the process_mesh of current dist tensor.
   /// \return The ProcessMesh's const reference
@@ -149,7 +212,9 @@ class DistTensor final
   // The global dimensions(shape), will move to DistTensorMeta
   DDim dims_;
   // The distributed attributes, will remove in the future
-  TensorDistAttr dist_attr_;
+
+  // TensorDistAttr dist_attr_;
+
   // The local DenseTensor value
   std::shared_ptr<DenseTensor> value_;
 

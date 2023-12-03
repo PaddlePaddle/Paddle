@@ -38,7 +38,12 @@ DistTensor::DistTensor() : value_(std::make_shared<DenseTensor>()) {}
 
 DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
                        const TensorDistAttr& dist_attr)
-    : dims_(global_value->dims()), dist_attr_(dist_attr) {
+    : dims_(global_value->dims()) {
+  dist_tensor_meta_ = DistTensorMeta(
+      dist_attr.process_mesh(),
+      ToPlacements(dist_attr),
+      DenseTensorMeta(global_value->dtype(), global_value->dims()));
+
   // If the current rank doesn't in process_mesh, we should create an
   // uninitialized tensor only with tensor_meta.
   if (IsCurRankInMesh(dist_attr.process_mesh())) {
@@ -72,22 +77,23 @@ DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
       placements,
       DenseTensorMeta(global_value->dtype(), global_value->dims()));
 
-  std::vector<int64_t> partial_dims;
-  size_t idx = 0;
-  for (auto p : placements) {
-    if (p->is_partial()) {
-      partial_dims.push_back(idx);
-    }
-    idx++;
-  }
-  TensorDistAttr dist_attr(vectorize(dist_tensor_meta_.dims()));
-  dist_attr.set_process_mesh(dist_tensor_meta_.process_mesh());
-  dist_attr.set_dims_mapping(dist_tensor_meta_.dim_mapping());
-  dist_attr.set_partial_status(partial_dims);
-  dist_attr.mark_annotated("process_mesh");
-  dist_attr.mark_annotated("dims_mapping");
-  dist_attr_ = dist_attr;
+  // std::vector<int64_t> partial_dims;
+  // size_t idx = 0;
+  // for (auto p : placements) {
+  //   if (p->is_partial()) {
+  //     partial_dims.push_back(idx);
+  //   }
+  //   idx++;
+  // }
+  // TensorDistAttr dist_attr(vectorize(dist_tensor_meta_.dims()));
+  // dist_attr.set_process_mesh(dist_tensor_meta_.process_mesh());
+  // dist_attr.set_dims_mapping(dist_tensor_meta_.dim_mapping());
+  // dist_attr.set_partial_status(partial_dims);
+  // dist_attr.mark_annotated("process_mesh");
+  // dist_attr.mark_annotated("dims_mapping");
+  // dist_attr_ = dist_attr;
 
+  auto dist_attr = ToTensorDistAttr(dist_tensor_meta_);
   // If the current rank doesn't in process_mesh, we should create an
   // uninitialized tensor only with dist_tensor_meta_.
   if (IsCurRankInMesh(process_mesh)) {
@@ -114,7 +120,7 @@ DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
 
 DistTensor::DistTensor(const DDim& dims, const TensorDistAttr& dist_attr)
     : dims_(dims),
-      dist_attr_(dist_attr),
+      // dist_attr_(dist_attr),
       value_(std::make_shared<DenseTensor>()) {}
 
 void DistTensor::unsafe_set_dims(const DDim& dims) {
@@ -130,7 +136,14 @@ void DistTensor::unsafe_set_dist_attr(const TensorDistAttr& dist_attr) {
     VLOG(3) << "You try to set an initialized DistTensor's dist attr. "
                "Make sure you are aware of where you change its dist attr.";
   }
-  dist_attr_ = dist_attr;
+  // dist_tensor_meta_ = DistTensorMeta(
+  //   dist_attr.process_mesh(),
+  //   ToPlacements(dist_attr),
+  //  );
+
+  dist_tensor_meta_.SetPlacements(ToPlacements(dist_attr));
+  dist_tensor_meta_.SetProcessMesh(dist_attr.process_mesh());
+  // dist_attr_ = dist_attr;
 }
 
 int64_t DistTensor::numel() const {
