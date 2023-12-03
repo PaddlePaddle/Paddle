@@ -13,10 +13,13 @@
 # limitations under the License.
 
 import collections
+import os
+from contextlib import contextmanager
 from functools import reduce
 from itertools import product
 
 import paddle
+from paddle.distributed.fleet.utils.cuda_event_pool import EventPoolSingleThread
 from paddle.distributed.utils.nccl_utils import check_nccl_version_for_p2p
 
 from ..utils.log_util import logger
@@ -24,6 +27,10 @@ from ..utils.log_util import logger
 __all__ = ['CommunicateTopology', 'HybridCommunicateGroup']
 
 _HYBRID_PARALLEL_GROUP = None
+
+enable_profiler_timer_by_strategy = os.environ.get(
+    "FLAGS_enable_profiler_timer_by_strategy", None
+)
 
 
 class ParallelMode:
@@ -230,6 +237,19 @@ class HybridCommunicateGroup:
         )
         logger.info(debug_str)
 
+        self._strategy_timer_enabled = {
+            "data": False,
+            "model": False,
+            "pipe": False,
+            "sharding": False,
+        }
+        if enable_profiler_timer_by_strategy is not None:
+            self.cuda_event_pool = EventPoolSingleThread()
+            for k in self._strategy_timer_enabled.keys():
+                if k in enable_profiler_timer_by_strategy:
+                    self._strategy_timer_enabled[k] = True
+            self._get_baseline_event()
+
         global _HYBRID_PARALLEL_GROUP
         _HYBRID_PARALLEL_GROUP = self
 
@@ -401,6 +421,70 @@ class HybridCommunicateGroup:
         return self._topo.get_rank_from_stage(
             self.global_rank, pipe=stage_id, **kwargs
         )
+
+    def _get_baseline_event(self):
+        self._baseline_event = paddle.device.cuda.Event(enable_timing=True)
+        _global_group = paddle.distributed.collective._get_default_group()
+        tensor = paddle.ones(1024)
+        task = _global_group.process_group.all_reduce_on_calc_stream(
+            tensor=tensor
+        )
+        self._baseline_event.record(
+            _global_group._pg.get_cuda_stream(tensor, True)
+        )
+        task.wait()
+        self._baseline_event.synchronize()
+        logger.info("[Profiler] get baseline event done.")
+
+    def data_parallel_timer_enabled(self):
+        return self._strategy_timer_enabled["data"]
+
+    def model_parallel_timer_enabled(self):
+        return self._strategy_timer_enabled["model"]
+
+    def pipe_parallel_timer_enabled(self):
+        return self._strategy_timer_enabled["pipe"]
+
+    def sharding_parallel_timer_enabled(self):
+        return self._strategy_timer_enabled["sharding"]
+
+    @contextmanager
+    def record_event_with_tag(
+        self, enable_timer, tag, group, comm_tensor, use_calc_stream
+    ):
+        cuda_stream = group._pg.get_cuda_stream(comm_tensor, use_calc_stream)
+        if cuda_stream is None:
+            logger.warning("Get cuda stream failed, skip event record")
+            enable_timer = False
+        if enable_timer:
+            event = self.cuda_event_pool.get(
+                tag + "_start", preprocess_tag=True
+            )
+            if event is None:
+                logger.warning("Get cuda event failed, skip event record")
+            else:
+                event.record(cuda_stream)
+        yield
+        if enable_timer:
+            event = self.cuda_event_pool.get(tag + "_end", preprocess_tag=True)
+            if event is None:
+                logger.warning("Get cuda event failed, skip event record")
+            else:
+                event.record(cuda_stream)
+
+    def get_all_event_elapsed_time_and_release(self):
+        if not enable_profiler_timer_by_strategy:
+            logger.warning(
+                "profiler is not enabled, set FLAGS_enable_profiler_timer_by_strategy=pipe,model,sharding,data to enable it"
+            )
+            return
+        for k in list(self.cuda_event_pool.using.keys()):
+            event = self.cuda_event_pool.using[k]
+            event.synchronize()
+            elapsed_time = self._baseline_event.elapsed_time(event)
+            logger.info(f"[Profiler] event {k} elapsed time: {elapsed_time}")
+            self.cuda_event_pool.release(k)
+        self.cuda_event_pool.reset_global_count()
 
 
 class _CommunicateGroup:

@@ -277,7 +277,16 @@ def _partial_allgather_op(
         if use_calc_stream
         else group.process_group.all_gather_partial
     )
-    return comm_op(tensor, tensor, nranks, rank_id)
+    global _hcg
+    with _hcg.record_event_with_tag(
+        enable_timer=_hcg.pipe_parallel_timer_enabled(),
+        tag="partial_allgather",
+        group=group,
+        comm_tensor=tensor,
+        use_calc_stream=use_calc_stream,
+    ):
+        task = comm_op(tensor, tensor, nranks, rank_id)
+    return task
 
 
 def allgather_partial(
@@ -308,7 +317,15 @@ def batch_send_recv_on_calc_stream(p2p_op_list):
             comm_group = p2p_op.group
             nranks = p2p_op.nranks
             rank_id = p2p_op.rank_id
-            op(tensor, comm_group, peer, nranks, rank_id)
+            global _hcg
+            with _hcg.record_event_with_tag(
+                enable_timer=_hcg.pipe_parallel_timer_enabled(),
+                tag="batch_send_recv_on_calc_stream",
+                group=group,
+                comm_tensor=tensor,
+                use_calc_stream=True,
+            ):
+                op(tensor, comm_group, peer, nranks, rank_id)
 
 
 def _process_p2p_tuple_or_tensor(
