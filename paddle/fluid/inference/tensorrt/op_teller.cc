@@ -3262,7 +3262,7 @@ struct CustomGenericPluginTeller : public Teller {
         VLOG(3)
             << op_type
             << " has no trt supportsFormatCombination config. Please set by "
-               "SetTrtSupportFormatConfig.";
+               "SetTrtSupportsFormatConfig.";
         return false;
       }
       return true;

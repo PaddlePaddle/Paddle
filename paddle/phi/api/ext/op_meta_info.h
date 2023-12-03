@@ -1026,8 +1026,9 @@ class PADDLE_API OpMetaInfo {
 #ifdef PADDLE_WITH_TENSORRT
   // format: PD_TRT_INFER_SHAPE(...)
   OpMetaInfo& SetTrtInferShapeFn(TrtGetOutputDimsFunc&& func);
-  // format: {"<format_config1>", "<format_config2>"}
-  OpMetaInfo& SetTrtSupportFormatConfig(std::vector<std::string>&& config);
+  // format: {"<dtype1>:[format1]+<dtype2>:[format2]+...",
+  // "<dtype3>:[format3]+<dtype4>:[format4]+..."}
+  OpMetaInfo& SetTrtSupportsFormatConfig(std::vector<std::string>&& config);
 #endif
 
  private:
@@ -1116,7 +1117,7 @@ class PADDLE_API OpMetaInfoBuilder {
 
 #ifdef PADDLE_WITH_TENSORRT
   OpMetaInfoBuilder& SetTrtInferShapeFn(TrtGetOutputDimsFunc func);
-  OpMetaInfoBuilder& SetTrtSupportFormatConfig(
+  OpMetaInfoBuilder& SetTrtSupportsFormatConfig(
       std::vector<std::string>&& config);
 #endif
 

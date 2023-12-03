@@ -317,7 +317,7 @@ bool CustomGenericPlugin::supportsFormatCombination(
                     platform::errors::InvalidArgument(
                         "The %s op has no tensorrt plugin "
                         "supportsFormatCombination config!"
-                        "Please use SetTrtSupportFormatConfig to set.",
+                        "Please use SetTrtSupportsFormatConfig to set.",
                         op_desc_.Type().c_str()));
   // generate support format combaination function by config
   size_t input_num = OpMetaInfoHelper::GetInputs(op_info).size();

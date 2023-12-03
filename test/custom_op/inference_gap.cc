@@ -82,4 +82,4 @@ PD_BUILD_OP(gap)
     .SetInferShapeFn(PD_INFER_SHAPE(InferShape))
     .SetInferDtypeFn(PD_INFER_DTYPE(InferDtype))
     .SetTrtInferShapeFn(PD_TRT_INFER_SHAPE(getOutputDimensions))
-    .SetTrtSupportFormatConfig({"float32:LINEAR+float32:LINEAR"});
+    .SetTrtSupportsFormatConfig({"float32:LINEAR+float32:LINEAR"});

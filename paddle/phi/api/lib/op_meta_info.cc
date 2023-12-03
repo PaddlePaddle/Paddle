@@ -363,7 +363,7 @@ OpMetaInfo& OpMetaInfo::SetTrtInferShapeFn(TrtGetOutputDimsFunc&& func) {
   trt_infer_shape_fn_ = std::forward<TrtGetOutputDimsFunc>(func);
   return *this;
 }
-OpMetaInfo& OpMetaInfo::SetTrtSupportFormatConfig(
+OpMetaInfo& OpMetaInfo::SetTrtSupportsFormatConfig(
     std::vector<std::string>&& config) {
   trt_supports_format_config_ = std::forward<std::vector<std::string>>(config);
   return *this;
@@ -561,9 +561,9 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::SetTrtInferShapeFn(
   return *this;
 }
 
-OpMetaInfoBuilder& OpMetaInfoBuilder::SetTrtSupportFormatConfig(
+OpMetaInfoBuilder& OpMetaInfoBuilder::SetTrtSupportsFormatConfig(
     std::vector<std::string>&& config) {
-  info_ptr_->SetTrtSupportFormatConfig(
+  info_ptr_->SetTrtSupportsFormatConfig(
       std::forward<std::vector<std::string>>(config));
   return *this;
 }
