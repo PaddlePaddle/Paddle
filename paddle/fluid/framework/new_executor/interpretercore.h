@@ -52,7 +52,12 @@ class InterpreterCore {
 
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
                                    bool need_fetch = true,
-                                   bool enable_job_schedule_profiler = false);
+                                   bool enable_job_schedule_profiler = false,
+                                   bool enable_op_profiling = false);
+
+  void RunProfile(const std::vector<std::string>& feed_names);
+
+  std::shared_ptr<ProgramDesc> GetMutableCopyProgram();
 
   void ShareWorkQueueFrom(std::shared_ptr<InterpreterCore> src);
 
