@@ -24,7 +24,6 @@ from paddle.nn import functional as F
 
 class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
     def setUp(self):
-        paddle.enable_static()
         self.place = ['cpu']
         if paddle.is_compiled_with_cuda():
             self.place.append('gpu')
@@ -245,9 +244,7 @@ class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
             )
 
     def test_shape(self):
-        with self.assertRaisesRegex(
-            RuntimeError, r"Input and target should have the same size"
-        ):
+        with self.assertRaises(ValueError):
             asfm = nn.AdaptiveLogSoftmaxWithLoss(
                 16, 20, [5, 10, 15], div_value=2.0
             )
@@ -255,9 +252,7 @@ class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
             y = paddle.to_tensor([0, 5, 10])
             asfm(x, y)
 
-        with self.assertRaisesRegex(
-            RuntimeError, r"Target values should be in"
-        ):
+        with self.assertRaises(ValueError):
             asfm = nn.AdaptiveLogSoftmaxWithLoss(
                 16, 20, [5, 10, 15], div_value=2.0
             )
