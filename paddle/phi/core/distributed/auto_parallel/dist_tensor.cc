@@ -25,8 +25,6 @@ namespace phi {
 namespace distributed {
 
 TensorDistAttr ToTensorDistAttr(const DistTensorMeta& tensor_meta) {
-  // TensorDistAttr ToTensorDistAttr(const Placements& placements,
-  //                                 const ProcessMesh& process_mesh) {
   paddle::flat_hash_map<int64_t, ReduceType> partial_status;
   auto& placements = tensor_meta.placements();
   for (size_t i = 0; i < placements.size(); ++i) {
