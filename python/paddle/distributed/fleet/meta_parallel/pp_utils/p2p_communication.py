@@ -280,7 +280,7 @@ def _partial_allgather_op(
     global _hcg
     with _hcg.record_event_with_tag(
         enable_timer=_hcg.pipe_parallel_timer_enabled(),
-        tag="partial_allgather",
+        tag="Pipeline_partial_allgather",
         group=group,
         comm_tensor=tensor,
         use_calc_stream=use_calc_stream,
@@ -320,7 +320,7 @@ def batch_send_recv_on_calc_stream(p2p_op_list):
             global _hcg
             with _hcg.record_event_with_tag(
                 enable_timer=_hcg.pipe_parallel_timer_enabled(),
-                tag="batch_send_recv_on_calc_stream",
+                tag="Pipeline_batch_send_recv_on_calc_stream",
                 group=group,
                 comm_tensor=tensor,
                 use_calc_stream=True,
