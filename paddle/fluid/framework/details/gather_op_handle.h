@@ -38,9 +38,9 @@ namespace details {
 
 struct GatherOpHandle : public OpHandleBase {
  public:
-  TEST_API GatherOpHandle(ir::Node *node,
-                          const std::vector<Scope *> &local_scopes,
-                          const std::vector<platform::Place> &places);
+  GatherOpHandle(ir::Node *node,
+                 const std::vector<Scope *> &local_scopes,
+                 const std::vector<platform::Place> &places);
 
   std::string Name() const override;
 

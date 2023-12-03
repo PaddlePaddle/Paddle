@@ -83,13 +83,13 @@ TEST_API void TensorCopy(const phi::DenseTensor& src,
 // stream, if this copy operation is carried out on the src_place's stream,
 // when dst is used in dst_place's stream the copy operation may be
 // not completed.
-void TensorCopy(const phi::DenseTensor& src,
-                const platform::Place& dst_place,
-                phi::DenseTensor* dst);
+TEST_API void TensorCopy(const phi::DenseTensor& src,
+                         const platform::Place& dst_place,
+                         phi::DenseTensor* dst);
 
-void TensorCopySync(const phi::DenseTensor& src,
-                    const platform::Place& dst_place,
-                    phi::DenseTensor* dst);
+TEST_API void TensorCopySync(const phi::DenseTensor& src,
+                             const platform::Place& dst_place,
+                             phi::DenseTensor* dst);
 
 template <typename T>
 void TensorFromVector(const std::vector<T>& src,

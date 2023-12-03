@@ -56,7 +56,7 @@ class OpHandleBase {
     node_->WrappedBy(this);
   }
 
-  virtual ~OpHandleBase() PADDLE_MAY_THROW;
+  TEST_API virtual ~OpHandleBase() PADDLE_MAY_THROW;
 
   std::string DebugString() const;
 
