@@ -17,13 +17,17 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.static import InputSpec
 
 
-def apply_to_static(net, use_cinn):
+def apply_to_static(net, use_cinn, input_spec=None):
     build_strategy = paddle.static.BuildStrategy()
     build_strategy.build_cinn_pass = use_cinn
     return paddle.jit.to_static(
-        net, build_strategy=build_strategy, full_graph=True
+        net,
+        input_spec=input_spec,
+        build_strategy=build_strategy,
+        full_graph=True,
     )
 
 
@@ -151,6 +155,22 @@ class TestCinnSubGraphBase(unittest.TestCase):
         cinn_out = self.eval(use_cinn=True)
         dy_out = self.eval(use_cinn=False)
         np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
+
+    def eval_symbolic(self, use_cinn):
+        paddle.seed(2022)
+        net = CINNSubGraphNet()
+        input_spec = [
+            InputSpec(shape=[None, 128], dtype='float32'),
+            InputSpec(shape=[None, 128], dtype='float32'),
+        ]
+        net = apply_to_static(net, use_cinn, input_spec)
+        net.eval()
+        out = net(self.x)
+
+    # def test_eval_symolic(self):
+    #     cinn_out = self.eval(use_cinn=True)
+    #     dy_out = self.eval(use_cinn=False)
+    #     np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
 
 
 class TestCinnSoftmax(TestCinnSubGraphBase):

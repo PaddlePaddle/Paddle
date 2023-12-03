@@ -528,6 +528,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
   // update args for dynamic dim
   int num_tensor_args = static_cast<int>(group_func_args.size());
   int non_tensor_arg_idx = group_func_args.size();
+  std::unordered_set<std::string> int_args_set;
   for (int tensor_arg_idx = 0; tensor_arg_idx < num_tensor_args;
        tensor_arg_idx++) {
     auto tensor_dim = (*group_func_arg_tensors)[tensor_arg_idx]->sym_shape;
@@ -535,8 +536,13 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     for (int tensor_arg_dim_idx = 0; tensor_arg_dim_idx < tensor_dim_size;
          tensor_arg_dim_idx++) {
       if (tensor_dim[tensor_arg_dim_idx]->IsDynamic()) {
-        group_func_args.emplace_back(ir::_Var_::Make(
-            tensor_dim[tensor_arg_dim_idx]->GetSymbolName(), common::Int(32)));
+        const std::string symbol_name =
+            tensor_dim[tensor_arg_dim_idx]->GetSymbolName();
+        if (int_args_set.count(symbol_name) != 0) {
+          continue;
+        }
+        group_func_args.emplace_back(
+            ir::_Var_::Make(symbol_name, common::Int(32)));
         group->int_args_map[non_tensor_arg_idx++] = {tensor_arg_idx,
                                                      tensor_arg_dim_idx};
       }
