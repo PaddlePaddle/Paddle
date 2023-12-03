@@ -122,6 +122,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'rnn_',
     'seed',
     'send_v2',
+    'sequence_mask',
     'shadow_feed',
     'sparse_momentum',
     'uniform_random_batch_size_like',

@@ -1084,6 +1084,18 @@
     func : send_v2
     param : [x, ring_id, dynamic_shape, peer, use_calc_stream]
 
+- op : sequence_mask
+  args : (Tensor x, Tensor max_len_tensor, int out_dtype, int maxlen=-1)
+  output : Tensor(y)
+  infer_meta:
+     func : SequenceMaskInferMeta
+     param : [x, max_len_tensor, maxlen, out_dtype]
+  kernel :
+     func : sequence_mask
+     param : [x, max_len_tensor, maxlen, out_dtype]
+     data_type : x
+  optional : max_len_tensor
+
 - op : set_value
   args : (Tensor x, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes, int64_t[] shape, Scalar[] values)
   output : Tensor(out)

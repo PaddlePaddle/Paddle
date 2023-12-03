@@ -2709,6 +2709,12 @@
 - op : send_uv (graph_send_uv)
   backward : send_uv_grad (graph_send_uv_grad)
 
+- op : sequence_mask
+  inputs:
+    {x : X, max_len_tensor : MaxLenTensor}
+  outputs:
+    {y : Y}
+
 - op : sequence_softmax
   backward : sequence_softmax_grad
   extra :
