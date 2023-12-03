@@ -108,7 +108,6 @@ DISABLED_IR_TEST_FILES = {
         "test_reinforcement_learning",
         # TODO: only disable on Windows
         "test_program_translator",
-        "test_cache_program",
     ],
     IrMode.PIR: [],
 }
