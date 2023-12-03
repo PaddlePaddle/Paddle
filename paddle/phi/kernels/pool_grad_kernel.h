@@ -23,6 +23,18 @@
 namespace phi {
 
 template <typename T, typename Context>
+void LPPool2dGradKernel(const Context& ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& out,
+                        const DenseTensor& dout,
+                        float norm_type,
+                        const IntArray& kernel_size,
+                        const std::vector<int>& strides,
+                        bool ceil_mode UNUSED,
+                        const std::string& data_format,
+                        DenseTensor* dx);
+
+template <typename T, typename Context>
 void Pool2dGradKernel(const Context& ctx,
                       const DenseTensor& x,
                       const DenseTensor& out,
@@ -37,7 +49,6 @@ void Pool2dGradKernel(const Context& ctx,
                       bool global_pooling,
                       bool adaptive,
                       const std::string& padding_algorithm,
-                      float norm_type,
                       DenseTensor* dx);
 
 template <typename T, typename Context>
