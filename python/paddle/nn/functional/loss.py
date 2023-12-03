@@ -3175,7 +3175,7 @@ def sigmoid_focal_loss(
                 )
             )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         place = _current_expected_place()
         one = _C_ops.full(logit.shape, 1.0, logit.dtype, place)
 

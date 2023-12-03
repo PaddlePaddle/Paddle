@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 from paddle import base
+from paddle.pir_utils import test_with_pir_api
 
 
 def call_sfl_functional(
@@ -65,6 +66,7 @@ def test_static(
     return static_result
 
 
+@test_with_pir_api
 def test_dygraph(
     place,
     logit_np,

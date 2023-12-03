@@ -23,6 +23,7 @@ import paddle
 from paddle import base
 from paddle.base import framework
 from paddle.base.core import VarDesc
+from paddle.pir_utils import test_with_pir_api
 from paddle.regularizer import L2Decay
 
 DELTA = 0.00001
@@ -1323,19 +1324,8 @@ class TestDiracInitializer1(unittest.TestCase):
         np.testing.assert_array_equal(w_dygraph, w_static)
         np.testing.assert_array_equal(conv_out, conv_in[:, 0:2, 1:9])
 
-    def test_dirac(self):
-        self.config()
-        paddle.set_default_dtype(self.dtype)
-
-        paddle.disable_static()
-        conv = self.conv_layer(
-            self.in_channels,
-            self.out_channels,
-            self.kernel_size,
-            weight_attr=self.weight_attr,
-        )
-        weight_dygraph = conv.weight.numpy()
-
+    @test_with_pir_api
+    def test_static_dirac(self):
         paddle.enable_static()
         start_prog = paddle.static.Program()
         main_prog = paddle.static.Program()
@@ -1364,7 +1354,25 @@ class TestDiracInitializer1(unittest.TestCase):
             conv_input = fetch[0]
             conv_output = fetch[1]
             weight_static = fetch[2]
+            return weight_static, conv_input, conv_output
 
+    def test_dynamic_dirac(self):
+        self.config()
+        paddle.set_default_dtype(self.dtype)
+
+        paddle.disable_static()
+        conv = self.conv_layer(
+            self.in_channels,
+            self.out_channels,
+            self.kernel_size,
+            weight_attr=self.weight_attr,
+        )
+        weight_dygraph = conv.weight.numpy()
+        return weight_dygraph
+
+    def test_dirac(self):
+        weight_dygraph = self.test_dynamic_dirac()
+        weight_static, conv_input, conv_output = self.test_static_dirac()
         self.check_result(
             weight_dygraph, weight_static, conv_input, conv_output
         )
