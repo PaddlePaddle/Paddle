@@ -244,6 +244,32 @@ Tensor softmax_decomp(const Tensor& x, const int& axis) {
 }
 
 template <typename T>
+Tensor stack_decomp(const std::vector<Tensor>& x, const int& axis) {
+  auto tensor_dims = x[0].dims();
+  int tmp_axis = axis;
+
+  if (tmp_axis < 0) {
+    tmp_axis += tensor_dims.size() + 1;
+  }
+
+  std::vector<int64_t> one_dim;
+  one_dim.push_back(1);
+
+  auto shape_vector = phi::vectorize(phi::slice_ddim(tensor_dims, 0, axis));
+  shape_vector.push_back(1);
+  auto shape_v =
+      phi::vectorize(phi::slice_ddim(tensor_dims, axis, tensor_dims.size()));
+
+  auto shape = shape_vector + shape_v;
+  auto out_shape = phi::make_ddim(shape);
+  std::vector<Tensor> concat_x;
+  for (size_t i = 0; i < x.size(); ++i) {
+    concat_x.push_back(reshape<T>(x[i], out_shape));
+  }
+  return concat<T>(concat_x, axis);
+}
+
+template <typename T>
 Tensor silu_decomp(const Tensor& x) {
   auto org_dtype = x.dtype();
   auto x_tmp = x;

@@ -17,7 +17,7 @@ from .primitives import *  # noqa: F403
 from .register import register_decomp
 
 
-@register_decomp('pd_op.stack')
+# @register_decomp('pd_op.stack')
 def stack(x, axis):
     """
     define composite rule of op stack
