@@ -39,6 +39,7 @@ namespace hlir {
 namespace framework {
 namespace pir {
 
+class PrettyNamer;
 using GroupPtr = std::shared_ptr<Group>;
 
 using common::Target;
@@ -219,7 +220,33 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
   inline bool DyShapeScheduleDetermineFunction(::pir::Operation* op);
 
  private:
+  std::vector<ir::Tensor> CollectInputTensor(
+      const GroupPtr& group,
+      const ::pir::Operation* op,
+      std::vector<ir::Tensor>* func_args,
+      std::unordered_map<::pir::Value, ir::Tensor>* tensor_map);
+
+  ir::Tensor GetTensor(const GroupPtr& group, const ::pir::Value& value);
+
+  void CollectOutputInfo(::pir::Operation* op,
+                         std::vector<Type>* out_types,
+                         std::vector<std::vector<int>>* out_shapes);
+
+  std::string ValueName(::pir::Value value);
+
+  common::Type GetTensorDtype(
+      const std::string& name,
+      const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map);
+
+  bool IsInTensorMap(
+      const std::string& name,
+      const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map);
+
+  common::Type GetTensorDtype(const ::pir::Value& value);
+
   Target target_;
+
+  PrettyNamer* name_gene_;
 };
 
 }  // namespace pir
