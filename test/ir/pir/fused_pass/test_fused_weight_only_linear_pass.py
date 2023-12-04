@@ -49,7 +49,7 @@ class TestFusedWeightOnlyLinearPass_Fp32(PassTest):
         pir_program = None
         with paddle.pir_utils.IrGuard():
             pir_program = paddle.static.Program()
-            with paddle.pir.core.program_guard(self.pir_program):
+            with paddle.pir.core.program_guard(pir_program):
                 x = paddle.static.data(
                     name='x', shape=[3, 64, 64], dtype=self.dtype
                 )
