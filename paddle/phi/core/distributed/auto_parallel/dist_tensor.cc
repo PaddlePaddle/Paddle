@@ -66,7 +66,6 @@ TensorDistAttr ToTensorDistAttr(const ProcessMesh& process_mesh,
   // Step4: mark annotated
   dist_attr.mark_annotated("process_mesh");
   dist_attr.mark_annotated("dims_mapping");
-  VLOG(0) << "in ToTensorDistAttr:" << dist_attr;
   return dist_attr;
 }
 
@@ -75,7 +74,6 @@ Placements ToPlacements(const TensorDistAttr& dist_attr) {
   Placements placements;
   placements.resize(process_mesh.ndim(), std::make_shared<Replicate>());
 
-  VLOG(0) << "In ToPlacements, process_mesh size:" << process_mesh.size();
   auto& partial_status = dist_attr.partial_status();
   for (const auto& pair : partial_status) {
     placements[pair.first] = std::make_shared<Partial>(pair.second);
@@ -156,9 +154,6 @@ DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
   auto dist_attr = ToTensorDistAttr(process_mesh, placements, global_dims_);
   // If the current rank doesn't in process_mesh, we should create an
   // uninitialized tensor only with dist_tensor_meta_.
-
-  VLOG(0) << "After ToTensorDistAttr: DistTensor::DistTensor: " << dist_attr;
-
   if (IsCurRankInMesh(process_mesh)) {
     if (!dist_attr.is_replicated()) {
       value_ = std::make_shared<DenseTensor>();
@@ -179,11 +174,6 @@ DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
         std::make_shared<phi::Allocation>(nullptr, 0, global_value->place()),
         phi::DenseTensorMeta(global_value->meta()));
   }
-  // VLOG(0) << "After DistTensor::DistTensor: ";
-  // for(auto& p: placements_){
-  //     VLOG(0) << "After DistTensor::DistTensor: " << *p;
-  // }
-  VLOG(0) << "After DistTensor::DistTensor: " << PlacementsToString();
 }
 
 std::string DistTensor::PlacementsToString() const {
