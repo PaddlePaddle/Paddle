@@ -181,7 +181,7 @@ inline std::string GetPaddleDtype(const paddle::cpp::OpDesc& op_desc,
     return "";
   }
 
-  return common::Type2Str(dtype_cinn);
+  return cinn::common::Type2Str(dtype_cinn);
 }
 
 }  // namespace utils

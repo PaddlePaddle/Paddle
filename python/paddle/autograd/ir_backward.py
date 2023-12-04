@@ -55,6 +55,13 @@ def check_all_puts(block, inputs, outputs):
             )
 
 
+def get_real_op_inputs(op):
+    if op.name() in ["pd_op.if", "pd_op.while"]:
+        return get_used_external_value(op)
+    else:
+        return op.operands_source()
+
+
 def update_no_grad_set_by_stopgradient(block, no_grad_set):
     for op in block.ops:
         for value in op.results():
@@ -199,12 +206,7 @@ def prune_ops(total_ops, inputs_set, outputs_set, no_grad_set):
                 union_op_flags[i] = True
                 continue
 
-            op_inputs = (
-                get_used_external_value(op)
-                if op.name() in ["pd_op.if", "pd_op.while"]
-                else op.operands_source()
-            )
-            if some_in_set(op_inputs, inputs_set):
+            if some_in_set(get_real_op_inputs(op), inputs_set):
                 union_op_flags[i] = True
                 for value in op.results():
                     if value not in no_grad_set:
@@ -216,12 +218,7 @@ def prune_ops(total_ops, inputs_set, outputs_set, no_grad_set):
     for i, op in reversed(list(enumerate(total_ops))):
         if some_in_set(op.results(), outputs_set):
             union_op_flags[i] = True
-            op_inputs = (
-                get_used_external_value(op)
-                if op.name() in ["pd_op.if", "pd_op.while"]
-                else op.operands_source()
-            )
-            for operand in op_inputs:
+            for operand in get_real_op_inputs(op):
                 if operand not in no_grad_set:
                     outputs_set.add(operand)
         else:
@@ -269,13 +266,13 @@ def update_no_grad_set_after_prune(
     inputs_set = set(inputs)
     if inputs_set:
         for op in block.ops:
-            if some_in_set(op.operands_source(), inputs_set):
+            if some_in_set(get_real_op_inputs(op), inputs_set):
                 for value in op.results():
                     if value not in no_grad_set:
                         inputs_set.add(value)
 
         for op in effective_forward_ops:
-            for value in op.operands_source():
+            for value in get_real_op_inputs(op):
                 if value not in inputs_set:
                     no_grad_set.add(value)
 
@@ -284,11 +281,11 @@ def update_no_grad_set_after_prune(
     for op in reversed(effective_forward_ops):
         for output in op.results():
             if output not in outputs_set and not some_in_set(
-                [output], set(op.operands_source())
+                [output], set(get_real_op_inputs(op))
             ):
                 no_grad_set_tmp.add(output)
 
-        for input in op.operands_source():
+        for input in get_real_op_inputs(op):
             if input not in no_grad_set:
                 outputs_set.add(input)
 
@@ -309,9 +306,9 @@ def inverse_sort_op(ops):
     ops_set = set(ops)
     sorted_list = []
     for op in ops:
-        for x in op.operands():
-            if x.source() and x.source().get_defining_op() in ops_set:
-                pending_count[x.source().get_defining_op()] += 1
+        for x in get_real_op_inputs(op):
+            if x and x.get_defining_op() in ops_set:
+                pending_count[x.get_defining_op()] += 1
 
     queue = collections.deque()
 
@@ -323,8 +320,8 @@ def inverse_sort_op(ops):
         op = queue.popleft()
         sorted_list.append(op)
 
-        for x in op.operands():
-            x_op = x.source().get_defining_op()
+        for x in get_real_op_inputs(op):
+            x_op = x.get_defining_op()
             pending_count[x_op] -= 1
             if pending_count[x_op] == 0:
                 queue.append(x_op)
@@ -471,11 +468,6 @@ def append_backward_ops(
         return zero_flag, outputs, output_grads
 
     def make_input_with_input_stopgradient(op):
-        origin_inputs = (
-            get_used_external_value(op)
-            if op.name() in ["pd_op.if", "pd_op.while"]
-            else op.operands_source()
-        )
         inputs = []
         input_grad_stopgradients = []
         if op.name() in [
@@ -484,11 +476,15 @@ def append_backward_ops(
             "pd_op.while",
             "cf.tuple_push",
         ]:
-            grad_semantic_info = [True for _ in range(len(origin_inputs))]
+            grad_semantic_info = [
+                True for _ in range(len(get_real_op_inputs(op)))
+            ]
         else:
             grad_semantic_info = op.get_input_grad_semantics()
 
-        for input, grad_semantic in zip(origin_inputs, grad_semantic_info):
+        for input, grad_semantic in zip(
+            get_real_op_inputs(op), grad_semantic_info
+        ):
             if not grad_semantic:
                 if (
                     input.get_defining_op() is not None
@@ -570,7 +566,7 @@ def append_backward_ops(
 
     def append_yield(block, inputs):
         with block:
-            inputs_grad = [paddle.pir.fake_op_result()]
+            inputs_grad = []
             for value in inputs:
                 if value in state.value_to_valuegrad:
                     if len(state.value_to_valuegrad[value]) > 1:
@@ -677,7 +673,6 @@ def append_backward_ops(
                                 sub_backward_ops,
                                 sub_state,
                             )
-
                         # update input_grad map
                         update_input_grad_map(op, input_grads, origin_inputs)
                     else:
@@ -726,7 +721,7 @@ def prepare_backward_prune_set(inputs, outputs):
     outputs_fwd_set = set()
     for input_ in inputs:
         if not input_.use_empty():
-            for item in input_.first_use().owner().operands_source():
+            for item in get_real_op_inputs(input_.first_use().owner()):
                 outputs_fwd_set.add(item)
         else:
             logging.warning("input privided by inputs has no use")
@@ -754,7 +749,7 @@ def create_backward_prune_set(
     inputs_set_tmp = set()
     for out_grad in inputs_set:
         if not out_grad.use_empty():
-            for item in out_grad.first_use().owner().operands_source():
+            for item in get_real_op_inputs(out_grad.first_use().owner()):
                 inputs_set_tmp.add(item)
     inputs_set.update(inputs_set_tmp)
 
