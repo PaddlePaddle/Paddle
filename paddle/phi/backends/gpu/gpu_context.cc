@@ -24,7 +24,7 @@ limitations under the License. */
 #include <unordered_map>
 
 #include "glog/logging.h"
-#include "paddle/phi/api/ext/exception.h"
+#include "paddle/common/exception.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"

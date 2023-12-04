@@ -27,7 +27,7 @@ void TrilTriuKernel(const Context& ctx,
                     DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   ctx.template Alloc<T>(out);
-  auto xshape = vectorize<int>(x.dims());
+  auto xshape = common::vectorize<int>(x.dims());
   int r = 0;
   if (lower) {
     r = xpu::tril(ctx.x_context(),

@@ -113,7 +113,7 @@ void SetValueImpl(const Context& dev_ctx,
       none_axes_cur++;
     }
 
-    slice_dims_for_assign = phi::make_ddim(slice_dims_with_none);
+    slice_dims_for_assign = common::make_ddim(slice_dims_with_none);
   }
 
   auto place = dev_ctx.GetPlace();
@@ -336,7 +336,7 @@ void SetValueKernel(const Context& dev_ctx,
   }
   DenseTensor value_tensor = Empty<T>(dev_ctx, shape);
   phi::TensorFromVector(assgin_values, dev_ctx, &value_tensor);
-  value_tensor.Resize(phi::make_ddim(shape));
+  value_tensor.Resize(common::make_ddim(shape));
 
   SetTensorValueKernel<T, Context>(dev_ctx,
                                    x,

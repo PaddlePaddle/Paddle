@@ -43,6 +43,7 @@ cc_test(
   DEPS brpc_utils
        scope
        phi
+       common
        sendrecv_rpc
        ps_service
        ${COMMON_DEPS}
