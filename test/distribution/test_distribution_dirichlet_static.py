@@ -36,7 +36,13 @@ class TestDirichlet(unittest.TestCase):
         self.old_ir_program = paddle.static.Program()
         self.pir_program = paddle.static.Program()
         self.executor = paddle.static.Executor()
-        with paddle.static.program_guard(self.program):
+        with paddle.static.program_guard(self.old_ir_program):
+            conc = paddle.static.data(
+                'conc', self.concentration.shape, self.concentration.dtype
+            )
+            self._paddle_diric = paddle.distribution.Dirichlet(conc)
+            self.feeds = {'conc': self.concentration}
+        with paddle.static.program_guard(self.pir_program):
             conc = paddle.static.data(
                 'conc', self.concentration.shape, self.concentration.dtype
             )

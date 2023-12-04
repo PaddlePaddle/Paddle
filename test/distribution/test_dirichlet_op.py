@@ -63,9 +63,6 @@ class TestDirichletFP16Op(OpTest):
         self.alpha = np.array((1.0, 2.0))
         self.sample_shape = (100000, 2)
         self.dtype = np.float16
-        self.python_api = paddle.distribution.Dirichlet(self.alpha).sample(
-            self.sample_shape
-        )
 
         self.inputs = {
             'Alpha': np.broadcast_to(self.alpha, self.sample_shape).astype(
