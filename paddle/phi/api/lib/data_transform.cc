@@ -894,6 +894,24 @@ void ReshardKernelOutputToApiOutput(
   }
 }
 
+void ReshardKernelOutputToApiOutput(
+    phi::DeviceContext* dev_ctx,
+    const std::vector<std::shared_ptr<phi::distributed::DistTensor>>&
+        src_tensors,
+    const std::vector<Tensor*>& dst_tensors) {
+  PADDLE_ENFORCE_EQ(
+      src_tensors.size(),
+      dst_tensors.size(),
+      phi::errors::PreconditionNotMet(
+          "src_tensors.size() [%d] and dst_tensors.size() [%d] not match",
+          src_tensors.size(),
+          dst_tensors.size()));
+  auto size = src_tensors.size();
+  for (size_t i = 0; i < size; i++) {
+    ReshardKernelOutputToApiOutput(dev_ctx, src_tensors[i], dst_tensors[i]);
+  }
+}
+
 std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
     std::shared_ptr<phi::distributed::DistTensor> input,
     const phi::TensorArgDef& target_args_def,

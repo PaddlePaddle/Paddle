@@ -418,6 +418,19 @@ bool GenericPlugin::supportsFormatCombination(
     if (pos == 3 || pos == 2)
       return in_out[0].type == in_out[pos].type &&
              in_out[0].format == in_out[pos].format;
+  } else if (op_desc_.Type() == "solve") {
+    // input X
+    if (pos == 0)
+      return in_out[pos].type == nvinfer1::DataType::kFLOAT &&
+             in_out[pos].format == nvinfer1::TensorFormat::kLINEAR;
+    // input Y
+    if (pos == 1)
+      return in_out[pos].type == nvinfer1::DataType::kFLOAT &&
+             in_out[pos].format == nvinfer1::TensorFormat::kLINEAR;
+    // output
+    if (pos == 2)
+      return in_out[0].type == in_out[pos].type &&
+             in_out[0].format == in_out[pos].format;
   } else {
     return (in_out[pos].type == nvinfer1::DataType::kFLOAT ||
             (isFp16Supported() &&

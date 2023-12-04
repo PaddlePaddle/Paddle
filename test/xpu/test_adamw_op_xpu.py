@@ -84,7 +84,7 @@ class XPUTestAdamwOp1(XPUOpTestWrapper):
             # Test AdamW Op with supplied attributes
             self.op_type = "adamw"
             self.init_shape()
-            self.dtype = self.in_type_str
+            self.dtype = self.in_type
             param = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
             grad = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
             moment1 = np.random.uniform(-1, 1, self.shape).astype("float32")

@@ -23,7 +23,7 @@ from paddle import _C_ops
 from paddle.base import core
 from paddle.base.framework import dygraph_only
 
-from ..framework import LayerHelper, in_dynamic_mode
+from ..framework import LayerHelper, in_dynamic_or_pir_mode
 
 __all__ = [
     "DebugMode",
@@ -372,7 +372,7 @@ def check_numerics(
     stack_height_limit = -1
     output_dir = ""
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.check_numerics(
             tensor,
             op_type,
@@ -466,6 +466,7 @@ def enable_operator_stats_collection():
     Examples:
 
         ..  code-block:: python
+
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> paddle.device.set_device('gpu')

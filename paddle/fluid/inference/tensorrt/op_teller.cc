@@ -3163,6 +3163,25 @@ struct GenericPluginTeller : public Teller {
     if (op_type == "yolo_box") {
       if (!desc.HasAttr("iou_aware") && !desc.HasAttr("iou_aware_factor"))
         return false;
+    } else if (op_type == "solve") {
+      auto x_var_name = desc.Input("X")[0];
+      auto y_var_name = desc.Input("Y")[0];
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto* x_var_desc = block->FindVar(x_var_name);
+      auto* y_var_desc = block->FindVar(y_var_name);
+      auto x_dtype = x_var_desc->GetDataType();
+      auto y_dtype = y_var_desc->GetDataType();
+      if (x_dtype == framework::proto::VarType::FP64 ||
+          y_dtype == framework::proto::VarType::FP64) {
+        VLOG(3) << op_type << " not support input of FP64.";
+        return false;
+      }
     }
     if (use_no_calib_int8) {
       return false;
