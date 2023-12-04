@@ -1457,10 +1457,8 @@ class OpTest(unittest.TestCase):
             executor = Executor(place)
             new_program = None
             if isinstance(program, paddle.static.CompiledProgram):
-                new_strategy = program._build_strategy
-                new_strategy.build_cinn_pass = False
                 new_program = base.CompiledProgram(
-                    program._program, build_strategy=new_strategy
+                    program._program, build_strategy=program._build_strategy
                 )
             else:
                 new_program = program.clone()

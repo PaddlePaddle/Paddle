@@ -953,7 +953,6 @@ class _ExecutorCache:
                 else program._graph
             )
             build_strategy = compiled_program._build_strategy
-            # print( "build strategy", build_strategy)
             # print(f"Program before convert:\n {inner_program}", flush=True)
             use_cuda_graph = False
             # When using cuda graph, the cuda graph preparation logic in PE is not
