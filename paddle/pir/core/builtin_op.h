@@ -59,6 +59,7 @@ class IR_API ParameterOp : public pir::Op<ParameterOp> {
                     const std::string &name,
                     Type type);
   void VerifySig() const;
+  std::string param_name() const;
 
  private:
   static void PassStopGradients(OperationArgument &argument);  // NOLINT

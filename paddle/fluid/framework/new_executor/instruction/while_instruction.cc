@@ -61,25 +61,23 @@ WhileInstruction::WhileInstruction(size_t id,
 
   auto while_op = op->dyn_cast<paddle::dialect::WhileOp>();
 
-  cond_var_ = parent_exe_info->GetScope()->FindVar(
-      parent_exe_info->GetValue2VarName().at(while_op.operand_source(0)));
+  cond_var_ = parent_exe_info->GetVarByValue(while_op.operand_source(0));
 
   for (size_t i = 1; i < while_op.num_operands(); ++i) {
-    inputs_.push_back(parent_exe_info->GetScope()->FindVar(
-        parent_exe_info->GetValue2VarName().at(while_op.operand_source(i))));
+    inputs_.push_back(
+        parent_exe_info->GetVarByValue(while_op.operand_source(i)));
   }
 
   for (size_t i = 0; i < while_op.num_results(); ++i) {
-    outputs_.push_back(parent_exe_info->GetScope()->FindVar(
-        parent_exe_info->GetValue2VarName().at(while_op.result(i))));
+    outputs_.push_back(parent_exe_info->GetVarByValue(while_op.result(i)));
   }
 
-  body_block_ = &while_op.body_block();
+  body_block_ = &while_op.body();
 
   std::unordered_map<pir::Value, std::vector<int>> inputs;
   GetInputIds(op, *parent_exe_info, &inputs);
   auto body_outside_inputs =
-      GetOutsideOpInputs(body_block_, *parent_exe_info, &inputs);
+      GetExternalInputs(body_block_, *parent_exe_info, &inputs);
   SetInputs(inputs);
 
   std::unordered_map<pir::Value, std::vector<int>> outputs;
@@ -96,6 +94,7 @@ WhileInstruction::WhileInstruction(size_t id,
       std::vector<int> outputs_id = GetValueIds(value, *parent_exe_info);
       outputs.emplace(value, outputs_id);
     }
+    InsertTuplePushContinerToOuts(body_block_, *parent_exe_info, &outputs);
   }
   SetOutputs(outputs);
 
@@ -108,7 +107,7 @@ WhileInstruction::WhileInstruction(size_t id,
        << "body_block_arg_";
     auto var_name = ss.str() + std::to_string(i);
     body_scope->Var(var_name);
-    body_exe_info->Add(body_block_->argument(i), var_name);
+    body_exe_info->Add(body_block_->arg(i), var_name);
   }
   body_inter_ = std::unique_ptr<PirInterpreter>(new PirInterpreter(
       place, {}, body_block_, body_scope, body_exe_info, {}));
@@ -150,7 +149,7 @@ void WhileInstruction::CopyInputsToOutputs() {
 
 void WhileInstruction::PassArgsToBodyBlock() {
   for (size_t i = 0; i < body_block_->args_size(); ++i) {
-    auto block_arg = body_block_->argument(i);
+    auto block_arg = body_block_->arg(i);
     auto var_name = body_inter_->GetNameByValue(block_arg);
     auto* inner_var = body_inter_->local_scope()->GetVar(var_name);
     inner_var->GetMutable<phi::DenseTensor>()->ShareDataWith(

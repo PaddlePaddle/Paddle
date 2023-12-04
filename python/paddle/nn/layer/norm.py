@@ -1078,7 +1078,7 @@ class BatchNorm(Layer):
                 )
             else:
                 act_op = getattr(_C_ops, self._act)
-                return act_op(input)
+                return act_op(batch_norm_out)
         else:
             # create output
             # mean and mean_out share the same memory
