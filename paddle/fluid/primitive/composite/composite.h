@@ -85,8 +85,8 @@ template <typename T>
 Tensor pow_decomp(const Tensor& x, const paddle::Scalar& y) {
   auto org_dtype = x.dtype();
   auto x_cast = x;
-  bool need_cast = org_dtype == phi::DataType::FLOAT16 ||
-                   org_dtype == phi::DataType::BFLOAT16;
+
+  bool need_cast = is_half_dtype(org_dtype);
   if (need_cast) {
     x_cast = cast<T>(x, phi::DataType::FLOAT32);
   }
@@ -234,7 +234,7 @@ Tensor softmax_decomp(const Tensor& x, const int& axis) {
   }
 
   auto max_tmp = max<T>(x_tmp, axis_tmp, true);
-  auto molecular = exp<T>(subtract<T>(x_tmp, max_tmp));
+  auto molecular = exp<T>(x_tmp - max_tmp);
   auto res = molecular / sum<T>(molecular, axis_tmp, molecular.dtype(), true);
 
   if (need_cast) {
@@ -386,6 +386,14 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
 }
 
 template <typename T>
+Tensor full_like_decomp(const Tensor& x,
+                        const paddle::Scalar& value,
+                        const DataType& dtype,
+                        const Place& place) {
+  return full<T>(phi::vectorize(x.dims()), value, dtype, place);
+}
+
+template <typename T>
 std::tuple<Tensor, Tensor> dropout_decomp(
     const Tensor& x,
     const paddle::optional<Tensor>& seed_tensor,
@@ -396,7 +404,7 @@ std::tuple<Tensor, Tensor> dropout_decomp(
     bool fix_seed) {
   auto org_dtype = x.dtype();
   bool upscale_in_train = false;
-  if (mode.compare("upscale_in_train") == 0) {
+  if (mode == std::string("upscale_in_train")) {
     upscale_in_train = true;
   }
 
@@ -429,7 +437,7 @@ std::tuple<Tensor, Tensor> dropout_decomp(
         auto zero = full<T>(phi::vectorize(x.dims()), 0.0, org_dtype);
         return std::make_tuple(x * zero, cast<T>(zero, phi::DataType::UINT8));
       } else {
-        auto ans = divide<T>(x * mask, ones_p);
+        auto ans = (x * mask) / ones_p;
         return std::make_tuple(ans, cast<T>(mask, phi::DataType::UINT8));
       }
     }

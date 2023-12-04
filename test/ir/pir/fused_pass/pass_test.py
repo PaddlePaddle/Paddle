@@ -33,7 +33,7 @@ class PassTest(unittest.TestCase):
         if not isinstance(self.pass_list, list):
             self.pass_list = [self.pass_list]
 
-        pm = pir.PassManager()
+        pm = pir.PassManager(opt_level=4)
         for pass_name in self.pass_list:
             pm.add_pass(pass_name)
 

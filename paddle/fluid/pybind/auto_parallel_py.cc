@@ -209,8 +209,16 @@ void BindAutoParallel(py::module *m) {
       *m, "RToPReshardFunction", ReshardFunction)
       .def(py::init<>());
 
+  py::class_<phi::distributed::RToPReshardFunctionCrossMesh>(
+      *m, "RToPReshardFunctionCrossMesh", ReshardFunction)
+      .def(py::init<>());
+
   py::class_<phi::distributed::PToRReshardFunction>(
       *m, "PToRReshardFunction", ReshardFunction)
+      .def(py::init<>());
+
+  py::class_<phi::distributed::PToRReshardFunctionCrossMesh>(
+      *m, "PToRReshardFunctionCrossMesh", ReshardFunction)
       .def(py::init<>());
 
   py::class_<phi::distributed::SToSReshardFunction>(
