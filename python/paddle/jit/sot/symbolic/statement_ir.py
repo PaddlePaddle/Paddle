@@ -221,6 +221,7 @@ class StatementIR:
         new_sir.inputs = list(self.inputs)
         new_sir.outputs = list(self.outputs)
         new_sir.statements = list(self.statements)
+        new_sir.symbol_meta_map = dict(self.symbol_meta_map.items())
         return new_sir
 
     def add_input(self, input):
