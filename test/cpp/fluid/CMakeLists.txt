@@ -1,8 +1,8 @@
 add_subdirectory(benchmark)
 add_subdirectory(framework)
-if(WIN32)
-  add_subdirectory(inference)
-endif()
+
+add_subdirectory(inference)
+
 if(WITH_CINN)
   add_subdirectory(cinn)
 endif()
