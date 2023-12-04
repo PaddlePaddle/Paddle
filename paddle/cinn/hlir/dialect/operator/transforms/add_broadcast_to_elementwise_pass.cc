@@ -15,11 +15,12 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
 
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
+#include "paddle/cinn/hlir/framework/pir/utils.h"
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/api/match_context.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pattern_rewrite/pattern_applicator.h"
@@ -82,19 +83,6 @@ bool IsSameDim(const phi::DDim& first, const std::vector<int64_t>& second) {
   return false;
 }
 
-std::vector<int64_t> GetBroadcastAxis(const phi::DDim& in_shape,
-                                      const std::vector<int64_t>& out_shape) {
-  std::vector<int64_t> broadcast_axes(in_shape.size(), 0);
-  auto in_shape_size = in_shape.size();
-  if (in_shape_size >= 1) {
-    for (int i = 1; i <= in_shape_size; ++i) {
-      broadcast_axes[in_shape_size - i] = out_shape.size() - i;
-    }
-  }
-
-  return broadcast_axes;
-}
-
 bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
   auto x_dims = op->operand_source(0)
                     .type()
@@ -126,7 +114,7 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
       } else {
         auto new_transpose_op = rewriter->Build<cinn::dialect::BroadcastOp>(
             op->operand_source(0),
-            GetBroadcastAxis(x_dims, output_shape),
+            cinn::hlir::framework::pir::GetBroadcastAxis(x_dims, output_shape),
             output_shape);
 
         op->operand(0).set_source(new_transpose_op->result(0));
@@ -152,7 +140,7 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
       } else {
         auto new_transpose_op = rewriter->Build<cinn::dialect::BroadcastOp>(
             op->operand_source(1),
-            GetBroadcastAxis(y_dims, output_shape),
+            cinn::hlir::framework::pir::GetBroadcastAxis(y_dims, output_shape),
             output_shape);
 
         op->operand(1).set_source(new_transpose_op->result(0));

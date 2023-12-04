@@ -30,7 +30,7 @@ class CinnJitInstruction : public InstructionBase {
   CinnJitInstruction(size_t id,
                      const platform::Place& place,
                      ::pir::Operation* op,
-                     const ValueExecutionInfo& value_exec_info);
+                     const ValueExecutionInfo* value_exec_info);
 
   // TODO(Aurelius84): Only implement core interface and need implement GC and
   // Event logic.

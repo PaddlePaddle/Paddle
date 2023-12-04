@@ -32,7 +32,8 @@ class CondInstruction : public InstructionBase {
   CondInstruction(size_t id,
                   const platform::Place& place,
                   ::pir::Operation* op,
-                  ValueExecutionInfo* value_exe_info);
+                  ValueExecutionInfo* value_exe_info,
+                  const std::set<std::string>& skip_gc_vars);
 
   ~CondInstruction();
 
@@ -41,6 +42,10 @@ class CondInstruction : public InstructionBase {
   const std::string& Name() const override { return cond_name_; }
 
   ::pir::Operation* Operation() const override { return op_; }
+
+  PirInterpreter* TrueBranchInterpreter() const { return true_branch_inter_; }
+
+  PirInterpreter* FalseBranchInterpreter() const { return false_branch_inter_; }
 
  private:
   void CopyBranchOutput(const std::vector<std::string>& var_names,

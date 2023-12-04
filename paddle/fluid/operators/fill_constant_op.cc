@@ -38,7 +38,7 @@ class FillConstantOp : public framework::OperatorWithKernel {
                 "than 0. But received: shape[%u] = %d; shape = [%s].",
                 i,
                 shape[i],
-                phi::make_ddim(shape)));
+                common::make_ddim(shape)));
       }
     }
     if (shape.empty() && ctx->HasInput("ShapeTensor")) {
@@ -48,11 +48,11 @@ class FillConstantOp : public framework::OperatorWithKernel {
         num_ele *= static_cast<int>(shape_dims[i]);
       }
       auto vec_dims = std::vector<int>(num_ele, -1);
-      ctx->SetOutputDim("Out", phi::make_ddim(vec_dims));
+      ctx->SetOutputDim("Out", common::make_ddim(vec_dims));
 
       return;
     }
-    ctx->SetOutputDim("Out", phi::make_ddim(shape));
+    ctx->SetOutputDim("Out", common::make_ddim(shape));
   }
 
  protected:

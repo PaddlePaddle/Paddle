@@ -68,9 +68,8 @@ from .communication import (  # noqa: F401
 
 from .auto_parallel.process_mesh import ProcessMesh
 
+from paddle.base.core import ReduceType, Placement
 from .auto_parallel.placement_type import (
-    ReduceType,
-    Placement,
     Shard,
     Replicate,
     Partial,
@@ -84,6 +83,7 @@ from .auto_parallel.api import (
     dtensor_from_fn,
     reshard,
     shard_layer,
+    shard_optimizer,
 )
 
 from .fleet import BoxPSDataset  # noqa: F401
@@ -157,4 +157,5 @@ __all__ = [
     "Shard",
     "Replicate",
     "Partial",
+    "shard_optimizer",
 ]

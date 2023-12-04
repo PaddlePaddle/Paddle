@@ -16,10 +16,10 @@ limitations under the License. */
 
 #include <vector>
 
+#include "paddle/common/ddim.h"
+#include "paddle/common/layout.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/common/layout.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/utils/any.h"
 #include "paddle/utils/optional.h"
 #include "paddle/utils/test_macros.h"
@@ -42,6 +42,7 @@ namespace phi {
  *    0 2 5 7 10 12 15 20
  */
 using LoD = std::vector<std::vector<size_t>>;
+using DDim = phi::DDim;
 
 /// \brief The meta data of dense tensor. Take the structure type
 /// and use all default operations.
