@@ -173,13 +173,7 @@ class BaseTest(unittest.TestCase):
                         dtype = dtypes[i]
                         name = names[i]
 
-                        # TODO(megemini) reshape in pir need stop_gradient?
-                        _x = paddle.static.data(name, shape, dtype)
-                        _x.stop_gradient = False
-                        x.append(_x)
-
-                        # TODO(megemini) reshape not works in pir
-                        # x.append(paddle.static.data(name, shape, dtype))
+                        x.append(paddle.static.data(name, shape, dtype))
 
                         # the data feeded should NOT be a Tensor
                         feed[name] = (
