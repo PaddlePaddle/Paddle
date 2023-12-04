@@ -91,6 +91,12 @@ def save_state_dict(
             ...
 
     """
+    if not use_dist and (
+        paddle.distributed.get_world_size() > 1 or coordinator_rank != 0
+    ):
+        raise ValueError(
+            f"use_dist is False, please set coordinator_rank to 0 and paddle.distributed.get_world_size() to 1, world_size:{paddle.distributed.get_world_size()}, coordinator_rank:{coordinator_rank}"
+        )
     assert isinstance(
         state_dict, dict
     ), "The state_dict should be a dictionary."
@@ -98,13 +104,13 @@ def save_state_dict(
     if len(state_dict) > 0:
         for val in state_dict.values():
             assert isinstance(
-                val, (paddle.Tensor, paddle.base.framework.EagerParamBase)
+                val, paddle.Tensor
             ), "Only support dygraph Tensor now, support static DistributedTensor later"
 
     if not os.path.exists(path):
         os.makedirs(path, exist_ok=True)
 
-    if process_group is None:
+    if use_dist and process_group is None:
         # Init the default global process group
         not is_initialized() and paddle.distributed.init_parallel_env()
 
@@ -116,11 +122,12 @@ def save_state_dict(
             break
         unique_id += 1
     logger.info(f"file_name:{file_name}")
-    check_file_name(file_name, process_group)
-    # the parameter_name and order in state_dict should be the same
-    check_state_dict(state_dict, process_group)
-    local_state_dict = {}
+    if use_dist:
+        check_file_name(file_name, process_group)
+        # the parameter_name and order in state_dict should be the same
+        check_state_dict(state_dict, process_group)
     metadata = Metadata()
+    local_state_dict = {}
     local_tensor_metadata = {}
     local_storage_metadata = {}
     for key, val in state_dict.items():
@@ -139,24 +146,31 @@ def save_state_dict(
                 )
                 if not local_shape or not global_offset:
                     continue
-                local_tensor_metadata[key] = LocalTensorMetadata(
-                    global_offset, local_shape
-                )
-                local_storage_metadata[
-                    LocalTensorIndex(key, tuple(global_offset))
-                ] = file_name
                 local_tensor = val._local_value()
             else:
+                global_offset = [0] * len(val.shape)
+                local_shape = val.shape
                 local_tensor = val
             local_state_dict[key] = local_tensor
+            local_tensor_metadata[key] = LocalTensorMetadata(
+                global_offset, local_shape
+            )
+            local_storage_metadata[
+                LocalTensorIndex(key, tuple(global_offset))
+            ] = file_name
     global_tensor_metadata = []
     global_storage_metadata = []
-    paddle.distributed.all_gather_object(
-        global_tensor_metadata, local_tensor_metadata, process_group
-    )
-    paddle.distributed.all_gather_object(
-        global_storage_metadata, local_storage_metadata, process_group
-    )
+    if use_dist:
+        paddle.distributed.all_gather_object(
+            global_tensor_metadata, local_tensor_metadata, process_group
+        )
+        paddle.distributed.all_gather_object(
+            global_storage_metadata, local_storage_metadata, process_group
+        )
+    else:
+        global_tensor_metadata.append(local_tensor_metadata)
+        global_storage_metadata.append(local_storage_metadata)
+
     metadata.state_dict_metadata = merge_state_dict(global_tensor_metadata)
     metadata.storage_metadata = dedup_state_dict(global_storage_metadata)
     if coordinator_rank == paddle.distributed.get_rank():

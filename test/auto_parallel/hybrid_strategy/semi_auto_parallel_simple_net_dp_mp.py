@@ -43,7 +43,6 @@ class TestSimpleNetHybridStrategyForSemiAutoParallel(
             DemoNet("dp_mp_hybrid_strategy"), self._mesh, self.shard_fn
         )
 
-
         (
             self.dp_mp_loss,
             self.dp_mp_parameters,
@@ -70,7 +69,6 @@ class TestSimpleNetHybridStrategyForSemiAutoParallel(
             assert k in local_state_dict, k
             self.check_tensor_eq(v._local_value(), local_state_dict[k])
         os.system(f"rm -rf {ckpt_path}")
-
 
     def run_test_case(self):
         self.test_dp_mp_demo_net()
