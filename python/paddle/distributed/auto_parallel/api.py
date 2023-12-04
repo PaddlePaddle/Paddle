@@ -414,8 +414,8 @@ class _ShardOptimizer:
             optimizer is not None
         ), "The argument `optimizer` cannot be empty."
         assert isinstance(
-            optimizer, paddle.optimizer.AdamW
-        ), "`paddle.distributed.ShardOptimizer` only supports AdamW optimizer for now."
+            optimizer, (paddle.optimizer.AdamW, paddle.optimizer.SGD)
+        ), "`paddle.distributed.ShardOptimizer` only supports AdamW and SGD optimizer for now."
 
         self.target_block = (
             paddle.base.framework.default_main_program().global_block()

@@ -54,10 +54,10 @@ class PirInterpreter : public InterpreterBaseImpl {
       const std::vector<phi::DenseTensor>& feed_tensors,
       bool need_fetch = true) override;
 
-  paddle::framework::FetchList Run(
-      const std::vector<std::string>& feed_names,
-      bool need_fetch = true,
-      bool enable_job_schedule_profiler = false) override;
+  paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
+                                   bool need_fetch = true,
+                                   bool enable_job_schedule_profiler = false,
+                                   bool enable_op_profiling = false) override;
 
   void ShareWorkQueueFrom(InterpreterBaseImpl* src) override;
 
@@ -70,6 +70,8 @@ class PirInterpreter : public InterpreterBaseImpl {
   bool IsSharedResultsBuild() const override;
 
   void SetCopyProgram(std::shared_ptr<ProgramDesc> prog) override;
+
+  std::shared_ptr<ProgramDesc> GetMutableCopyProgram() override;
 
   void SetSkipGcVars(const std::set<std::string>& skip_gc_vars) override;
 

@@ -836,9 +836,12 @@ class _StandaloneExecutor:
                 )
             return tensors
 
+    def run_profile(self, feed_names) -> core.ProgramDesc:
+        program_desc = self._new_exe.run_profile(feed_names)
+        return program_desc
+
     def _create_new_executor(self):
         new_exe = core.StandaloneExecutor(self._place, self._plan, self._scope)
-
         return new_exe
 
 
