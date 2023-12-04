@@ -75,6 +75,9 @@ void OperatorDialect::initialize() {
               paddle::dialect::ArrayLengthOp,
               paddle::dialect::ArrayReadOp,
               paddle::dialect::ArrayWrite_Op,
+              paddle::dialect::SliceArrayOp,
+              paddle::dialect::SliceArrayDenseOp,
+              paddle::dialect::AssignArray_Op,
               paddle::dialect::ArrayToTensorOp>();
 
   RegisterInterfaces<ParameterConvertInterface>();

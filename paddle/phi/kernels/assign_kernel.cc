@@ -46,6 +46,9 @@ template <typename Context>
 void AssignArrayKernel(const Context& dev_ctx,
                        const TensorArray& x,
                        TensorArray* out) {
+  while (out->size() < x.size()) {
+    out->emplace_back();
+  }
   for (size_t i = 0; i < x.size(); ++i) {
     AssignKernel<Context>(dev_ctx, x[i], &out->at(i));
   }

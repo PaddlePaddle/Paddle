@@ -964,13 +964,23 @@ std::ostream& operator<<(std::ostream& os, const LoD& lod) {
 }
 
 TEST_API std::ostream& operator<<(std::ostream& os, const phi::DenseTensor& t) {
+  if (!t.valid()) {
+    os << "invalid\n";
+    return os;
+  }
+
   if (!t.lod().empty()) {
     os << "  - lod: " << t.lod() << "\n";
   }
-
-  os << "  - place: " << t.place() << "\n";
   os << "  - shape: [" << t.dims() << "]\n";
   os << "  - layout: " << phi::DataLayoutToString(t.layout()) << "\n";
+
+  if (!t.initialized()) {
+    os << "uninited\n";
+    return os;
+  }
+
+  os << "  - place: " << t.place() << "\n";
 
   DenseTensor tensor;
   tensor.Resize(t.dims());

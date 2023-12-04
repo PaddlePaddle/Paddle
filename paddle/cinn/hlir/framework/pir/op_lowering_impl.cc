@@ -118,6 +118,16 @@ std::vector<ir::Tensor> CollectInputTensor(
       if (func_args != nullptr) {
         func_args->push_back(tensor);
       }
+    } else {
+      // TODO(6clc): After supporting symbolic calculation,
+      // 1. Check that the shape of the tensor with the same name is the same
+      // size
+      // 2. Or make the symbol expression in compute output tensor consistent
+      //    with the one inferred in shape_analysis
+      (*tensor_map)[in_value]->sym_shape = tensor->sym_shape;
+      (*tensor_map)[in_value]->shape = tensor->shape;
+      (*tensor_map)[in_value]->sym_domain = tensor->sym_domain;
+      (*tensor_map)[in_value]->domain = tensor->domain;
     }
     tensors.push_back(tensor);
   }
@@ -528,6 +538,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
   // update args for dynamic dim
   int num_tensor_args = static_cast<int>(group_func_args.size());
   int non_tensor_arg_idx = group_func_args.size();
+  std::unordered_set<std::string> int_args_set;
   for (int tensor_arg_idx = 0; tensor_arg_idx < num_tensor_args;
        tensor_arg_idx++) {
     auto tensor_dim = (*group_func_arg_tensors)[tensor_arg_idx]->sym_shape;
@@ -535,8 +546,14 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     for (int tensor_arg_dim_idx = 0; tensor_arg_dim_idx < tensor_dim_size;
          tensor_arg_dim_idx++) {
       if (tensor_dim[tensor_arg_dim_idx]->IsDynamic()) {
-        group_func_args.emplace_back(ir::_Var_::Make(
-            tensor_dim[tensor_arg_dim_idx]->GetSymbolName(), common::Int(32)));
+        const std::string symbol_name =
+            tensor_dim[tensor_arg_dim_idx]->GetSymbolName();
+        if (int_args_set.count(symbol_name) != 0) {
+          continue;
+        }
+        int_args_set.insert(symbol_name);
+        group_func_args.emplace_back(
+            ir::_Var_::Make(symbol_name, common::Int(32)));
         group->int_args_map[non_tensor_arg_idx++] = {tensor_arg_idx,
                                                      tensor_arg_dim_idx};
       }
