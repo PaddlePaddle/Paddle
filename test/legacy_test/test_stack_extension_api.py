@@ -27,14 +27,12 @@ DTYPE_ALL = [
     'float16',
     'float32',
     'float64',
-    'int8',
     'int32',
     'int64',
     'bfloat16',
 ]
 
-# `paddle.numel` with `int8` will raise NotImplemetedError in static graph
-DTYPE_COLUMN_STACK = list(set(DTYPE_ALL) - {'int8'})
+DTYPE_COLUMN_STACK = DTYPE_ALL
 
 PLACES = [('cpu', paddle.CPUPlace())] + (
     [('gpu', paddle.CUDAPlace(0))] if core.is_compiled_with_cuda() else []
@@ -122,15 +120,17 @@ class BaseTest(unittest.TestCase):
                         paddle.static.append_backward(y)
                         out_grad = out.grad_name
 
-                    # paddle.static.append_backward(y)
-                    # out_grad = out.grad_name
-
                     fetch_list = [out, out_grad]
 
                     res, res_grad = exe.run(
                         main_program, feed=feed, fetch_list=fetch_list
                     )
-                    self.assertEqual(res_grad, [123.0])
+
+                    # convert grad value to bool if dtype is bool
+                    grad_value = 123.0 if dtypes[0] != 'bool' else True
+                    np.testing.assert_allclose(
+                        res_grad, np.ones_like(y) * grad_value
+                    )
 
                     out_ref = func_numpy(inputs)
                     for n, p in zip(out_ref, res):
