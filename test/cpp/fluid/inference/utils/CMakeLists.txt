@@ -5,5 +5,4 @@ paddle_test(
   DEPS
   infer_io_utils
   fleet_executor
-  parallel_executor
-  python)
+  parallel_executor)
