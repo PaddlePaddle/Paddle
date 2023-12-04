@@ -99,7 +99,6 @@ DISABLED_TO_STATIC_TEST_FILES = {
 DISABLED_IR_TEST_FILES = {
     IrMode.LEGACY_IR: [],
     IrMode.PT: [
-        "test_gradname_parse",
         "test_seq2seq",
         "test_save_inference_model",
         "test_tensor_hook",
