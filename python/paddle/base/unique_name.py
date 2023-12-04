@@ -35,11 +35,6 @@ class UniqueNameGenerator:
             prefix = ""
         self.prefix = prefix
 
-    def clone(self):
-        ret = UniqueNameGenerator(self.prefix)
-        ret.ids = deepcopy(self.ids)
-        return ret
-
     def __call__(self, key):
         return self.generate(key)
 
@@ -63,6 +58,29 @@ class UniqueNameGenerator:
             return _dygraph_tracer()._generate_unique_name()
 
         return self.generate(key)
+
+    def clone(self):
+        ret = UniqueNameGenerator(self.prefix)
+        ret.ids = deepcopy(self.ids)
+        return ret
+
+    def reset(self, new_generator=None):
+        if isinstance(new_generator, str):
+            self.prefix = new_generator
+            self.ids = collections.defaultdict(int)
+        elif isinstance(new_generator, bytes):
+            self.prefix = new_generator.decode()
+            self.ids = collections.defaultdict(int)
+        elif isinstance(new_generator, UniqueNameGenerator):
+            self.prefix = new_generator.prefix
+            self.ids = deepcopy(new_generator.ids)
+        elif new_generator is None:
+            self.prefix = ""
+            self.ids = self.ids = collections.defaultdict(int)
+        else:
+            raise RuntimeError(
+                f"Can not reset UniqueNameGenerator with type {type(new_generator)} !"
+            )
 
 
 class DygraphParameterNameChecker:
