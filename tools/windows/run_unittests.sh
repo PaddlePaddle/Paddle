@@ -55,7 +55,7 @@ disable_wingpu_test="^test_model$|\
 # /*=================Fixed Disabled Windows TRT MKL unittests=======================*/
 # TODO: fix these unittest that is bound to fail
 disable_win_trt_test="^test_trt_convert_conv2d$|\
-^test_trt_convert_conv2d_fusion$|\
+^test_trt_convert_fused_conv2d_add_act$|\
 ^test_trt_convert_conv2d_transpose$|\
 ^test_trt_convert_depthwise_conv2d$|\
 ^test_trt_convert_emb_eltwise_layernorm$|\
