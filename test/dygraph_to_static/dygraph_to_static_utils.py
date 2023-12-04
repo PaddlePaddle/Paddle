@@ -102,12 +102,7 @@ DISABLED_IR_TEST_FILES = {
         "test_seq2seq",
         "test_save_inference_model",
         "test_tensor_hook",
-        "test_len",
-        "test_list",
-        "test_slice",
         "test_lstm",
-        "test_for_enumerate",
-        "test_jit_setitem",
         # TODO: only disable on Windows
         "test_program_translator",
         "test_cache_program",

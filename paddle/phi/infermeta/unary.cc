@@ -3657,6 +3657,26 @@ void NumelInferMeta(const MetaTensor& input, MetaTensor* out) {
   out->set_dims(phi::make_ddim({}));
 }
 
+// This logic is copied from
+// `paddle/fluid/operators/slice_op.cc/Slcieop::InferShape`
+void SliceArrayInferMeta(const MetaTensor& input,
+                         const IntArray& starts,
+                         const IntArray& ends,
+                         MetaTensor* out,
+                         MetaConfig config) {
+  SliceArrayDenseInferMeta(input, starts, out, config);
+}
+
+void SliceArrayDenseInferMeta(const MetaTensor& input,
+                              const IntArray& starts,
+                              MetaTensor* out,
+                              MetaConfig config) {
+  if (config.is_runtime) {
+    return;
+  }
+  out->set_dims(input.dims());
+}
+
 void SliceRawInferMeta(const MetaTensor& input,
                        const std::vector<int64_t>& axes,
                        const IntArray& starts_arr,
@@ -4655,6 +4675,11 @@ void UnchangedExceptLayoutInferMeta(const MetaTensor& x, MetaTensor* out) {
 
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->share_meta(x);
+}
+
+void UnchangedArrayInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
 }
 
 // meta x -> out without change, check if axis in range [-Rank(x), Rank(x)-1]
