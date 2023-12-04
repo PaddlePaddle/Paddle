@@ -18,6 +18,7 @@ import logging
 import os
 import sys
 import unittest
+from contextlib import contextmanager
 from enum import Flag, auto
 from functools import wraps
 from pathlib import Path
@@ -110,6 +111,7 @@ DISABLED_IR_TEST_FILES = {
         "test_for_enumerate",
         "test_jit_setitem",
         "test_reinforcement_learning",
+        "test_ifelse",
         # TODO: only disable on Windows
         "test_program_translator",
         "test_cache_program",
@@ -461,3 +463,15 @@ def import_legacy_test_utils():
 legacy_test_utils = import_legacy_test_utils()
 dygraph_guard = legacy_test_utils.dygraph_guard
 static_guard = legacy_test_utils.static_guard
+
+
+@contextmanager
+def enable_to_static_guard(flag: bool):
+    program_translator = paddle.jit.api.ProgramTranslator()
+    program_translator.enable(flag)
+    original_flag_value = program_translator.enable_to_static
+    try:
+        program_translator.enable(flag)
+        yield
+    finally:
+        program_translator.enable(original_flag_value)

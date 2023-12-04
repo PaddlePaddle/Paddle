@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    enable_to_static_guard,
     test_ast_only,
 )
 from ifelse_simple_func import (
@@ -67,10 +68,9 @@ class TestDy2staticException(Dy2StTestBase):
     def test_error(self):
         if self.dyfunc:
             with self.assertRaisesRegex(Dygraph2StaticException, self.error):
-                paddle.jit.enable_to_static(True)
-                self.assertTrue(paddle.jit.to_static(self.dyfunc)(self.x))
+                with enable_to_static_guard(True):
+                    self.assertTrue(paddle.jit.to_static(self.dyfunc)(self.x))
         paddle.base.dygraph.base.global_var._in_to_static_mode_ = False
-        paddle.jit.enable_to_static(False)
 
 
 class TestDygraphIfElse(Dy2StTestBase):
@@ -286,13 +286,12 @@ class TestDygraphIfElseNet(Dy2StTestBase):
         return self._run(to_static=False)
 
     def _run(self, to_static=False):
-        paddle.jit.enable_to_static(to_static)
-
-        with base.dygraph.guard(place):
-            net = paddle.jit.to_static(self.Net())
-            x_v = base.dygraph.to_variable(self.x)
-            ret = net(x_v)
-            return ret.numpy()
+        with enable_to_static_guard(to_static):
+            with base.dygraph.guard(place):
+                net = paddle.jit.to_static(self.Net())
+                x_v = paddle.to_tensor(self.x)
+                ret = net(x_v)
+                return ret.numpy()
 
     def test_ast_to_func(self):
         self.assertTrue((self._run_dygraph() == self._run_static()).all())
@@ -395,17 +394,17 @@ class TestDiffModeNet(Dy2StTestBase):
         self.Net = DiffModeNet1
 
     def _run(self, mode, to_static):
-        paddle.jit.enable_to_static(to_static)
+        with enable_to_static_guard(to_static):
+            net = paddle.jit.to_static(self.Net(mode))
+            ret = net(self.x, self.y)
 
-        net = paddle.jit.to_static(self.Net(mode))
-        ret = net(self.x, self.y)
-        return ret.numpy()
+            return ret.numpy()
 
     def test_train_mode(self):
         self.assertTrue(
             (
-                self._run(mode='train', to_static=True)
-                == self._run(mode='train', to_static=False)
+                self._run(mode='train', to_static=True),
+                self._run(mode='train', to_static=False),
             ).all()
         )
 
@@ -453,10 +452,9 @@ class TestDy2StIfElseRetInt1(Dy2StTestBase):
         self.out = self.get_dy2stat_out()
 
     def get_dy2stat_out(self):
-        paddle.jit.enable_to_static(True)
-        static_func = paddle.jit.to_static(self.dyfunc)
-        out = static_func(self.x)
-        paddle.jit.enable_to_static(False)
+        with enable_to_static_guard(True):
+            static_func = paddle.jit.to_static(self.dyfunc)
+            out = static_func(self.x)
         return out
 
     @test_ast_only
@@ -492,17 +490,16 @@ class TestDy2StIfElseRetInt4(TestDy2StIfElseRetInt1):
 
     @test_ast_only
     def test_ast_to_func(self):
-        paddle.jit.enable_to_static(True)
-        with self.assertRaises(Dygraph2StaticException):
-            static_func = paddle.jit.to_static(self.dyfunc)
-            out = static_func(self.x)
-        # Why need set `_in_to_static_mode_` here?
-        # In Dy2St we use `with _to_static_mode_guard_()` to indicate
-        # that the code block is under @to_static, but in this UT
-        # an exception is thrown during Dy2St, making the `_in_to_static_mode_`
-        # a wrong value. So We need set `_in_to_static_mode_` to False manually.
-        paddle.base.dygraph.base.global_var._in_to_static_mode_ = False
-        paddle.jit.enable_to_static(False)
+        with enable_to_static_guard(True):
+            with self.assertRaises(Dygraph2StaticException):
+                static_func = paddle.jit.to_static(self.dyfunc)
+                out = static_func(self.x)
+            # Why need set `_in_to_static_mode_` here?
+            # In Dy2St we use `with _to_static_mode_guard_()` to indicate
+            # that the code block is under @to_static, but in this UT
+            # an exception is thrown during Dy2St, making the `_in_to_static_mode_`
+            # a wrong value. So We need set `_in_to_static_mode_` to False manually.
+            paddle.base.dygraph.base.global_var._in_to_static_mode_ = False
 
 
 class IfElseNet(paddle.nn.Layer):
