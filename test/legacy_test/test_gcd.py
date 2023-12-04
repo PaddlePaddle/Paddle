@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import base
 from paddle.base import core
 from paddle.pir_utils import test_with_pir_api
 
@@ -33,6 +32,10 @@ class TestGcdAPI(unittest.TestCase):
 
     @test_with_pir_api
     def test_static_graph(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
@@ -44,11 +47,7 @@ class TestGcdAPI(unittest.TestCase):
             )
             out = paddle.gcd(x, y)
             out_ref = np.gcd(self.x_np, self.y_np)
-            place = (
-                base.CUDAPlace(0)
-                if core.is_compiled_with_cuda()
-                else base.CPUPlace()
-            )
+
             exe = paddle.static.Executor(place)
             res = exe.run(
                 paddle.static.default_main_program(),
