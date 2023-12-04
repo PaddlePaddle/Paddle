@@ -34,7 +34,7 @@ class TestPlace(Dy2StTestBase):
             self.assertTrue(len(w) == 1)
             if paddle.framework.use_pir_api():
                 self.assertTrue(
-                    "OpResult do not have 'place'" in str(w[-1].message)
+                    "Value do not have 'place'" in str(w[-1].message)
                 )
 
 
