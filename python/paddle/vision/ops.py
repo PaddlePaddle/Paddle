@@ -14,8 +14,8 @@
 
 import numpy as np
 
+import paddle
 from paddle import _C_ops, _legacy_C_ops
-from paddle.pir import OpResult
 from paddle.tensor.math import _add_with_axis
 from paddle.utils import convert_to_list
 
@@ -676,7 +676,7 @@ def box_coder(
             ...
     """
     if in_dynamic_or_pir_mode():
-        if isinstance(prior_box_var, (core.eager.Tensor, OpResult)):
+        if isinstance(prior_box_var, (core.eager.Tensor, paddle.pir.Value)):
             output_box = _C_ops.box_coder(
                 prior_box,
                 prior_box_var,
