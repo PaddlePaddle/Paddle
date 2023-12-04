@@ -33,7 +33,7 @@ class NearestInterpolateOpConverter : public OpConverter {
 
     auto data_layout = !op_desc.HasAttr("data_layout")
                            ? phi::DataLayout::kNCHW
-                           : phi::StringToDataLayout(PADDLE_GET_CONST(
+                           : common::StringToDataLayout(PADDLE_GET_CONST(
                                  std::string, op_desc.GetAttr("data_layout")));
     auto interp_method =
         PADDLE_GET_CONST(std::string, op_desc.GetAttr("interp_method"));

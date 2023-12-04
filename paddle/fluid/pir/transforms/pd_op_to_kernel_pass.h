@@ -19,6 +19,8 @@
 namespace paddle {
 namespace dialect {
 
+pir::Type ConvertOpTypeToKernelType(pir::Type op_type);
+
 std::unique_ptr<pir::Program> PdOpLowerToKernelPass(
     pir::Program* prog, phi::Place place = phi::CPUPlace());
 

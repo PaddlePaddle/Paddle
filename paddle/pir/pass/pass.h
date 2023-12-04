@@ -18,8 +18,8 @@
 #include <string>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/enforce.h"
 #include "paddle/pir/pass/analysis_manager.h"
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 

@@ -53,6 +53,8 @@ class ConditionBlockCombination {
 
   const std::string& CondVarName() const;
 
+  std::set<std::string> GetInputNamesForIfOp() const;
+
   std::vector<std::vector<::paddle::framework::VarDesc*>> OutputVars() const;
 
   size_t MainOutputSize() const;
@@ -161,7 +163,7 @@ class ProgramTranslator {
       const std::string& var_name, TranslationContext* translation_ctx);
 
   const VariableDefiningInfo& CreateUndefinedVariable(
-      const std::string& var_name);
+      const std::string& var_name, const BlockDesc& block);
 
   /// Translate methods for control flow ops.
   pir::Operation* TranslateCondIfOperation(

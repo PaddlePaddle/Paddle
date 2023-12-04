@@ -144,7 +144,7 @@ bool NeedsMultiLevelTiling(const ir::ScheduleBlockRealize& sche_block_realize) {
   return total_unused_iter_vars >= 1;
 }
 
-ir::LoweredFunc UpdateFuncWithNewBody(const common::Target& target,
+ir::LoweredFunc UpdateFuncWithNewBody(const cinn::common::Target& target,
                                       const ir::LoweredFunc& old_func,
                                       ir::Expr& body) {  // NOLINT
   ir::ModuleExpr mod_expr(std::vector<ir::Expr>({body}));
@@ -179,7 +179,7 @@ ir::LoweredFunc UpdateFuncWithNewBody(const common::Target& target,
   ir::LoweredFunc new_func = ir::_LoweredFunc_::Make(
       old_func->name, old_func->args, updated_body, new_temp_bufs);
 #ifdef CINN_WITH_CUDA
-  if (target == common::DefaultNVGPUTarget()) {
+  if (target == cinn::common::DefaultNVGPUTarget()) {
     new_func->PrepareCudaAxisInfoFromBody();
   }
 #endif

@@ -27,6 +27,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
@@ -46,6 +47,23 @@
 PHI_DECLARE_bool(print_ir);
 namespace paddle {
 namespace dialect {
+
+pir::Type ConvertOpTypeToKernelType(pir::IrContext* ctx,
+                                    pir::Type op_type,
+                                    phi::Place place) {
+  if (op_type.isa<DenseTensorType>()) {
+    return AllocatedDenseTensorType::get(
+        ctx, place, op_type.dyn_cast<DenseTensorType>());
+  } else if (op_type.isa<DenseTensorArrayType>()) {
+    return AllocatedDenseTensorArrayType::get(
+        ctx, place, op_type.dyn_cast<DenseTensorArrayType>());
+  } else if (op_type.isa<SelectedRowsType>()) {
+    return AllocatedSelectedRowsType::get(
+        ctx, place, op_type.dyn_cast<SelectedRowsType>());
+  }
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "Not support op type %s in ConvertOpTypeToKernelType.", op_type));
+}
 
 std::unordered_map<std::string, phi::DataType> Str2PhiDataType = {
     {"DataType::FLOAT16", phi::DataType::FLOAT16},
@@ -205,6 +223,17 @@ static std::vector<std::shared_ptr<phi::TensorBase>> PrepareFakeTensors(
     return sr;
   };
 
+  auto fake_tensor_array = [](const AllocatedDenseTensorArrayType& type) {
+    auto ptr = new phi::Allocation(nullptr, 0, type.place());
+    std::shared_ptr<phi::Allocation> holder(ptr);
+    auto dtype = TransToPhiDataType(type.dtype());
+    phi::DenseTensorMeta meta(dtype, {});
+    phi::DenseTensor dt(holder, meta);
+    auto tensor_array = std::make_shared<phi::TensorArray>(0);
+    tensor_array->set_type(dtype);
+    return tensor_array;
+  };
+
   if (in_type.isa<AllocatedDenseTensorType>()) {
     res.push_back(fake_dt(in_type.dyn_cast<AllocatedDenseTensorType>()));
   } else if (in_type.isa<AllocatedSelectedRowsType>()) {
@@ -220,6 +249,9 @@ static std::vector<std::shared_ptr<phi::TensorBase>> PrepareFakeTensors(
             fake_sr(inner_types[i].dyn_cast<AllocatedSelectedRowsType>()));
       }
     }
+  } else if (in_type.isa<AllocatedDenseTensorArrayType>()) {
+    res.push_back(
+        fake_tensor_array(in_type.dyn_cast<AllocatedDenseTensorArrayType>()));
   }
   return res;
 }
@@ -869,8 +901,8 @@ void HandleForIfOp(
   auto old_ifop = op_item->dyn_cast<IfOp>();
   std::vector<pir::Type> new_ifop_outputs;
   for (size_t i = 0; i < old_ifop.num_results(); ++i) {
-    new_ifop_outputs.push_back(AllocatedDenseTensorType::get(
-        ctx, place, old_ifop.result(i).type().dyn_cast<DenseTensorType>()));
+    new_ifop_outputs.push_back(
+        ConvertOpTypeToKernelType(ctx, old_ifop.result(i).type(), place));
   }
   auto new_ifop = builder.Build<IfOp>(new_cond, std::move(new_ifop_outputs));
 
@@ -1236,6 +1268,9 @@ std::vector<pir::Type> BuildOutputs(pir::Operation* op_item,
 
   auto phi_kernel = phi::KernelFactory::Instance().SelectKernelWithGPUDNN(
       kernel_fn_str, kernel_key);
+  VLOG(6) << "[" << kernel_fn_str
+          << "] selected kernel(is_valid: " << phi_kernel.IsValid()
+          << " ): " << kernel_key;
 
   auto args_def = phi_kernel.args_def();
   auto output_defs = args_def.output_defs();

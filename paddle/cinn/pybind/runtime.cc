@@ -76,9 +76,9 @@ cinn_buffer_t *CreateBufferFromNumpy(py::array data,
 
 cinn_buffer_t *CreateBufferFromNumpy(
     py::array data,
-    common::Target target = common::DefaultHostTarget(),
+    cinn::common::Target target = cinn::common::DefaultHostTarget(),
     int align = 0) {
-  if (target == common::DefaultHostTarget()) {
+  if (target == cinn::common::DefaultHostTarget()) {
     return CreateBufferFromNumpy(data, cinn_x86_device);
   } else if (target.arch == Target::Arch::NVGPU) {
 #ifdef CINN_WITH_CUDA
@@ -276,7 +276,7 @@ void BindCinnRuntime(py::module *m) {
            arg("data"),
            arg("device"),
            arg("align") = 0)
-      .def(py::init(py::overload_cast<py::array, common::Target, int>(
+      .def(py::init(py::overload_cast<py::array, cinn::common::Target, int>(
                &CreateBufferFromNumpy)),
            arg("data"),
            arg("target"),

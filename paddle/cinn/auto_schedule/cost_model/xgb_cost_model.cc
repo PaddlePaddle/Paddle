@@ -96,7 +96,7 @@ void AddDistPkgToPythonSysPath() {
 }
 
 XgbCostModel::XgbCostModel() {
-  common::PythonInterpreterGuard::Guard();
+  cinn::common::PythonInterpreterGuard::Guard();
   int previous = xgb_cost_model_count_.fetch_add(1);
   if (previous == 0) {
     AddDistPkgToPythonSysPath();

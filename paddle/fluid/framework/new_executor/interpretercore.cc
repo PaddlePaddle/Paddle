@@ -66,8 +66,10 @@ InterpreterCore::~InterpreterCore() {
 FetchList InterpreterCore::Run(
     const std::vector<std::string>& feed_names,
     const std::vector<phi::DenseTensor>& feed_tensors,
-    bool need_fetch) {
-  return impl_->Run(feed_names, feed_tensors, need_fetch);
+    bool need_fetch,
+    bool enable_job_schedule_profiler) {
+  return impl_->Run(
+      feed_names, feed_tensors, need_fetch, enable_job_schedule_profiler);
 }
 
 FetchList InterpreterCore::Run(const std::vector<std::string>& feed_names,
