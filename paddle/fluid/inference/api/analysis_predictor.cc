@@ -105,7 +105,9 @@
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/fluid/pir/transforms/constant_folding_pass.h"
 #include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/conv2d_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/conv2d_add_act_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/conv2d_add_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/conv2d_bn_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/params_sync_among_devices_pass.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
@@ -782,7 +784,9 @@ bool AnalysisPredictor::PrepareExecutor() {
       ::pir::PassManager pm_for_op_program(::pir::IrContext::Instance(), 2);
       //----------------------------------------------------------------------------------------------//
       // Operator fusion pass
-      pm_for_op_program.AddPass(::pir::CreateConv2dFusePass());
+      pm_for_op_program.AddPass(::pir::CreateConv2dBnFusePass());
+      pm_for_op_program.AddPass(::pir::CreateConv2dAddActFusePass());
+      pm_for_op_program.AddPass(::pir::CreateConv2dAddFusePass());
       //----------------------------------------------------------------------------------------------//
 
       //----------------------------------------------------------------------------------------------//
