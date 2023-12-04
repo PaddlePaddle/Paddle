@@ -566,7 +566,7 @@ int FusedMultiTransformerXPUPass::FusedMultiTransformerXPUQuant(
       // Update dst var_desc in block
       VarDesc dst_desc(max_buffer_name);
       dst_desc.SetPersistable(true);
-      dst_desc.SetShape(vectorize(max_buffer_tensor.dims()));
+      dst_desc.SetShape(common::vectorize(max_buffer_tensor.dims()));
       dst_desc.SetDataType(
           framework::TransToProtoVarType(max_buffer_tensor.dtype()));
       max_buffer_node = graph->CreateVarNode(&dst_desc);

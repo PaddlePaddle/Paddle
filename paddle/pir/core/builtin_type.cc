@@ -23,9 +23,7 @@ const DenseTensorType::Dim& DenseTensorType::dims() const {
   return storage()->dims_;
 }
 
-DenseTensorType::DataLayout DenseTensorType::data_layout() const {
-  return storage()->layout_;
-}
+DataLayout DenseTensorType::data_layout() const { return storage()->layout_; }
 
 const DenseTensorType::LoD& DenseTensorType::lod() const {
   return storage()->lod_;

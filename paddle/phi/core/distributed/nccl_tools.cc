@@ -16,8 +16,8 @@
 
 #include <unordered_map>
 
+#include "paddle/common/errors.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 
 #if NCCL_VERSION_CODE >= 21300
 #define ENABLE_NCCL_GET_LAST_ERROR
