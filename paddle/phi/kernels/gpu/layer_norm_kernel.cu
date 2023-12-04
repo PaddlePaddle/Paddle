@@ -633,8 +633,7 @@ void LayerNormKernel(const Context &dev_ctx,
     }
   } else {
     // WarpShuffle intrinsics is involved in LaunchLayerNormKernel.
-    if (FLAGS_use_fast_math && feature_size <= 1024 &&
-        (!std::is_same<T, int8_t>::value)) {
+    if (false && feature_size <= 1024 && (!std::is_same<T, int8_t>::value)) {
       LaunchLayerNormKernel<Context, T, U>(dev_ctx,
                                            x_data,
                                            y_data,
