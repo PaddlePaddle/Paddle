@@ -46,12 +46,14 @@ class StaticShapeGroupScheduler : public GroupScheduler {
   StaticShapeGroupScheduler(
       ir::IRSchedule* ir_sch,
       const std::unordered_set<std::string>& output_tensor_names,
-      const common::Target& target)
+      const cinn::common::Target& target)
       : GroupScheduler(ir_sch, output_tensor_names, target) {}
 
   void Schedule() override;
 
-  std::vector<std::pair<SymbolicCondition, ir::Expr>> GetIRs() override;
+  void MapExprSchedule();
+
+  std::vector<std::pair<SymbolicPredicate, ir::Expr>> GetIRs() override;
 
  private:
   // Automatically align loops for each ScheduleBlock.

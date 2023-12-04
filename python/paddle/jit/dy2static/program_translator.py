@@ -12,24 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import collections
 import inspect
-import os
 import threading
 import warnings
 import weakref
+from typing import TYPE_CHECKING
 
 import paddle.pir.core as ir_static
-from paddle import decomposition
-from paddle.base import core, framework, in_pir_mode
+from paddle import decomposition, get_flags
+from paddle.base import core, framework
 from paddle.base.data_feeder import check_type
 from paddle.base.dygraph.base import (
     _to_static_mode_guard_,
     param_guard,
     switch_to_static_graph,
 )
-from paddle.base.unique_name import UniqueNameGenerator
-from paddle.base.unique_name import guard as UniqueNameGuard
+from paddle.base.unique_name import (
+    UniqueNameGenerator,
+    guard as UniqueNameGuard,
+)
 from paddle.framework import in_dynamic_mode, use_pir_api
 from paddle.nn.layer import layers
 from paddle.utils import flatten, gast
@@ -60,10 +64,14 @@ from .utils import (
     input_specs_compatible,
     is_paddle_func,
     make_hashable,
+    prim_is_enabled,
     prim_or_cinn_is_enabled,
     type_name,
     unwrap,
 )
+
+if TYPE_CHECKING:
+    from paddle.static.amp.fp16_utils import AmpOptions
 
 __all__ = []
 
@@ -228,7 +236,14 @@ class CacheKey:
         self._spec_names_id = _hash_spec_names(
             input_args_with_spec, input_kwargs_with_spec
         )
-        self._pir_flags = os.environ.get('FLAGS_enable_pir_in_executor', None)
+        self._pir_flags = (
+            get_flags('FLAGS_enable_pir_in_executor')[
+                'FLAGS_enable_pir_in_executor'
+            ]
+            or get_flags('FLAGS_enable_pir_with_pt_in_dy2st')[
+                'FLAGS_enable_pir_with_pt_in_dy2st'
+            ]
+        )
 
     @classmethod
     def from_func_and_args(cls, function_spec, args, kwargs, class_instance):
@@ -338,14 +353,8 @@ class StaticFunction:
         else:
             self._dygraph_function = function
             self._class_instance = None
-
-        if (
-            input_spec is not None
-            and prim_or_cinn_is_enabled(
-                kwargs.get("build_strategy", None), kwargs.get("backend", None)
-            )
-            and not in_pir_mode()
-        ):
+        # TODO(chenzhuo): Remove this after lowering prim into C++
+        if input_spec is not None and prim_is_enabled():
             from paddle.static import InputSpec
 
             for spec in flatten(input_spec):
@@ -367,6 +376,16 @@ class StaticFunction:
         self._cuda_graph_capture_mode = ""
         self._cuda_graph_pool_id = 0
         self._property = kwargs.get("property", False)
+        self._get_debug_name()
+
+    def _get_debug_name(self):
+        try:
+            if self._class_instance:
+                self._debug_name = self._class_instance.__class__.__name__
+            else:
+                self._debug_name = self._dygraph_function.__name__
+        except Exception:
+            self._debug_name = "static_function"
 
     @property
     def is_property(self):
@@ -769,7 +788,7 @@ class ASTStaticFunction(StaticFunction):
         args, kwargs = self._function_spec.unified_args_and_kwargs(args, kwargs)
 
         try:
-            concrete_program, partial_program_layer = self.get_concrete_program(
+            _, partial_program_layer = self.get_concrete_program(
                 *args, **kwargs, is_train=self._is_train_mode()
             )
             # 2. synchronize self.training attribute.
@@ -854,6 +873,7 @@ class ASTStaticFunction(StaticFunction):
             concrete_program, partial_program_layer = self._program_cache[
                 cache_key
             ]
+        partial_program_layer._debug_name = self._debug_name
         return concrete_program, partial_program_layer
 
     def get_concrete_program_with_cache_key(self, cached_key):
@@ -1202,8 +1222,8 @@ class ConcreteProgram:
 
                 # 2. Builds program only once and returns the output Variables.
                 with param_guard(
-                    get_parameters(class_instance, False)
-                ), param_guard(get_buffers(class_instance, False)):
+                    get_parameters(class_instance, True)
+                ), param_guard(get_buffers(class_instance, True)):
                     try:
                         # only for jit.save, do nothing while train and eval process
                         inputs = hook_helper.apply_pre_hooks(static_inputs)
@@ -1286,6 +1306,7 @@ class ConcreteProgram:
         )
 
         new_name_generator = UniqueNameGenerator()
+        ProgramTranslator.get_instance()._amp_records.clear()
 
         with framework.program_guard(main_program, startup_program):
             with _to_static_mode_guard_(is_to_static=True), UniqueNameGuard(
@@ -1305,8 +1326,8 @@ class ConcreteProgram:
 
                 # 2. Builds program only once and returns the output Variables.
                 with param_guard(
-                    get_parameters(class_instance, False)
-                ), param_guard(get_buffers(class_instance, False)):
+                    get_parameters(class_instance, True)
+                ), param_guard(get_buffers(class_instance, True)):
                     try:
                         # only for jit.save, do nothing while train and eval process
                         inputs = hook_helper.apply_pre_hooks(static_inputs)
@@ -1432,6 +1453,7 @@ class FallbackProgramLayer:
         'training',
         '_cuda_graph_capture_mode',
         '_cuda_graph_pool_id',
+        '_debug_name',
     ]
 
     def __init__(self, instance, dy_func):
@@ -1763,6 +1785,7 @@ class ProgramTranslator:
         self._program_cache = ProgramCache()
         self._params_recorder = ParametersRecorder()
         self._inplace_map = InplaceMap()
+        self._amp_records: dict[int, list[tuple[AmpOptions, int, int]]] = {}
         self.enable_to_static = True
 
     def enable(self, enable_to_static):

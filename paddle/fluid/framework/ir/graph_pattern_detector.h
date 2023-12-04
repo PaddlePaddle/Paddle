@@ -1821,7 +1821,6 @@ struct DeleteWeightQuantDequantLinearOpPattern : public PatternBase {
   PATTERN_DECL_NODE(weight_dequantize_linear_op_scale);
   PATTERN_DECL_NODE(weight_dequantize_linear_op);
   PATTERN_DECL_NODE(weight_dequantize_linear_op_out);
-  PATTERN_DECL_NODE(any_op2);
 };
 
 struct DeleteWeightDequantLinearOpEncoderPattern : public PatternBase {
@@ -1839,6 +1838,36 @@ struct DeleteWeightDequantLinearOpEncoderPattern : public PatternBase {
   PATTERN_DECL_NODE(weight_dequantize_linear_op);
   PATTERN_DECL_NODE(weight_dequantize_linear_op_out);
   PATTERN_DECL_NODE(any_op2);
+};
+
+struct QuantLinearFusePattern : public PatternBase {
+  QuantLinearFusePattern(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "quant_linear_fuse_pattern") {}
+
+  PDNode* operator()(bool with_bias, bool with_relu);
+
+  PATTERN_DECL_NODE(quantize_linear_op_x);
+  PATTERN_DECL_NODE(quantize_linear_op_scale);
+  PATTERN_DECL_NODE(quantize_linear_op);
+  PATTERN_DECL_NODE(quantize_linear_op_out);
+
+  PATTERN_DECL_NODE(dequantize_linear_op);
+  PATTERN_DECL_NODE(dequantize_linear_op_out);
+
+  PATTERN_DECL_NODE(weight_dequantize_linear_op_x);
+  PATTERN_DECL_NODE(weight_dequantize_linear_op_scale);
+  PATTERN_DECL_NODE(weight_dequantize_linear_op);
+  PATTERN_DECL_NODE(weight_dequantize_linear_op_out);
+
+  PATTERN_DECL_NODE(mul);
+  PATTERN_DECL_NODE(mul_out);
+
+  PATTERN_DECL_NODE(bias);
+  PATTERN_DECL_NODE(elementwise_add);
+  PATTERN_DECL_NODE(elementwise_add_out);
+
+  PATTERN_DECL_NODE(relu);
+  PATTERN_DECL_NODE(relu_out);
 };
 
 struct DeleteWeightDequantLinearOpDecoderPattern : public PatternBase {

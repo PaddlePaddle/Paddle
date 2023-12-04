@@ -19,6 +19,7 @@ set(PYBIND_DEPS
     layer
     tracer
     engine
+    common
     scope_pool
     analysis_predictor
     imperative_profiler
@@ -63,7 +64,8 @@ if(WITH_PSCORE)
   endif()
 endif()
 if(WITH_RPC)
-  set(PYBIND_DEPS ${PYBIND_DEPS} paddle_rpc ${EXTERNAL_BRPC_DEPS} zlib phi)
+  set(PYBIND_DEPS ${PYBIND_DEPS} paddle_rpc ${EXTERNAL_BRPC_DEPS} zlib phi
+                  common)
 endif()
 if(WITH_GPU OR WITH_ROCM)
   set(PYBIND_DEPS ${PYBIND_DEPS} dynload_cuda)
@@ -121,6 +123,7 @@ set(PYBIND_SRCS
     inference_api.cc
     ops_api.cc
     static_op_function.cc
+    control_flow_api.cc
     pir.cc
     graph.cc
     bind_fleet_executor.cc
@@ -191,7 +194,7 @@ if(WITH_GLOO)
 endif()
 
 if(WITH_CRYPTO)
-  set(PYBIND_DEPS ${PYBIND_DEPS} paddle_crypto)
+  set(PYBIND_DEPS ${PYBIND_DEPS} framework_io)
   set(PYBIND_SRCS ${PYBIND_SRCS} crypto.cc)
 endif()
 
@@ -359,6 +362,12 @@ if(WITH_PYTHON)
       list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/ir.dll)
     endif()
 
+    add_custom_command(
+      OUTPUT ${op_impl_path}/common.dll
+      COMMAND ${CMAKE_COMMAND} -E copy ${COMMON_LIB} ${op_impl_path}
+      DEPENDS common)
+    list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/common.dll)
+
     if(${CBLAS_PROVIDER} STREQUAL MKLML)
       add_custom_command(
         OUTPUT ${op_impl_path}/libiomp5md.dll
@@ -495,6 +504,7 @@ if(WITH_PYTHON)
     list(APPEND PYBIND_DEPS backward)
     list(APPEND PYBIND_DEPS grad_node_info)
     list(APPEND PYBIND_DEPS phi)
+    list(APPEND PYBIND_DEPS common)
     list(APPEND PYBIND_DEPS final_dygraph_function)
     list(APPEND PYBIND_DEPS final_dygraph_node)
     list(APPEND PYBIND_DEPS dygraph_function)

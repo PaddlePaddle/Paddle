@@ -18,8 +18,7 @@ else()
            gloo_context
            gloo_wrapper
            gloo
-           fs
-           shell)
+           framework_io)
     #set_tests_properties(heter_ccl_context_test PROPERTIES LABELS "RUN_TYPE=DIST")
   endif()
   if(WITH_XPU_BKCL)
@@ -33,7 +32,7 @@ endif()
 cc_test(
   test_gradient_accmulator
   SRCS test_gradient_accmulator.cc
-  DEPS memcpy selected_rows_utils gradient_accumulator phi phi_utils)
+  DEPS memcpy selected_rows_utils gradient_accumulator phi common phi_utils)
 cc_test(
   test_layer
   SRCS test_layer.cc

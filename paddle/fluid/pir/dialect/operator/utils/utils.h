@@ -18,6 +18,7 @@
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/attribute.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/value.h"
@@ -134,6 +135,14 @@ bool IsLegacyOp(const std::string& name);
 bool IsEmptyValue(const pir::Value& value);
 
 std::vector<int64_t> GetInt64Vector(const pir::Attribute& attr);
+
+void CheckValueDataType(const pir::Value& value,
+                        const std::string& input_name,
+                        const std::string& op_name);
+
+void CheckVectorOfValueDataType(const std::vector<pir::Value>& vector_value,
+                                const std::string& input_name,
+                                const std::string& op_name);
 
 }  // namespace dialect
 }  // namespace paddle

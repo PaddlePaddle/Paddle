@@ -17,7 +17,7 @@
 #include <algorithm>
 #include <cstdint>
 
-#include "paddle/pir/core/enforce.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/operation.h"
 
 namespace pir {
@@ -128,7 +128,10 @@ void RewriterBase::ReplaceOp(Operation* op,
 }
 
 void RewriterBase::EraseOp(Operation* op) {
-  IR_ENFORCE(op->use_empty(), "expected 'op' to have no uses");
+  IR_ENFORCE(
+      op->use_empty(),
+      "Erase op failed. op(%s) is used, the expectation is that it is not used",
+      op->name());
   NotifyOperationRemoved(op);
   op->Erase();
 }

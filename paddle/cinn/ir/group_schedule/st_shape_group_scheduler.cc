@@ -143,7 +143,14 @@ void StaticShapeGroupScheduler::Schedule() {
 #endif
 }
 
-std::vector<std::pair<SymbolicCondition, ir::Expr>>
+void StaticShapeGroupScheduler::MapExprSchedule() {
+  DoComputeInline();
+#ifdef CINN_WITH_CUDA
+  AllocateStorage();
+#endif
+}
+
+std::vector<std::pair<SymbolicPredicate, ir::Expr>>
 StaticShapeGroupScheduler::GetIRs() {
   return {{Expr(1), ir_sch_->GetModule().GetExprs()[0]}};
 }
@@ -665,7 +672,7 @@ void StaticShapeGroupScheduler::AllocateStorage() {
     int extent = 1;
     for (int idx = tensor->shape.size() - 1; idx >= 0; --idx) {
       strides.insert(strides.begin(), extent);
-      tensor->shape[idx] = common::AutoSimplify(tensor->shape[idx]);
+      tensor->shape[idx] = cinn::common::AutoSimplify(tensor->shape[idx]);
       CHECK(tensor->shape[idx].is_constant())
           << "Shape of tensor: " << tensor << " is not constant";
       extent *= tensor->shape[idx].get_constant();
@@ -674,12 +681,12 @@ void StaticShapeGroupScheduler::AllocateStorage() {
     for (int idx = 0; idx < indices.size(); ++idx) {
       flatten_indice = flatten_indice + ir::Expr(strides[idx]) * indices[idx];
     }
-    flatten_indice = common::AutoSimplify(flatten_indice);
+    flatten_indice = cinn::common::AutoSimplify(flatten_indice);
     for (int idx = 0; idx < iter_vars.size(); ++idx) {
       optim::ReplaceVarWithExpr(
           &flatten_indice, iter_vars[idx], iter_values[idx]);
     }
-    flatten_indice = common::AutoSimplify(flatten_indice);
+    flatten_indice = cinn::common::AutoSimplify(flatten_indice);
     VLOG(6) << "flatten_indice of " << load_or_store << " : " << flatten_indice;
     return flatten_indice;
   };
@@ -774,12 +781,12 @@ void StaticShapeGroupScheduler::AllocateStorage() {
     }
     VLOG(6) << "lower_bound before simplify of " << indice_value << " = "
             << copy_for_lower_bound;
-    copy_for_lower_bound =
-        common::AutoSimplify(common::AutoSimplify(copy_for_lower_bound));
+    copy_for_lower_bound = cinn::common::AutoSimplify(
+        cinn::common::AutoSimplify(copy_for_lower_bound));
     VLOG(6) << "upper_bound before simplify of " << indice_value << " = "
             << copy_for_upper_bound;
-    copy_for_upper_bound =
-        common::AutoSimplify(common::AutoSimplify(copy_for_upper_bound));
+    copy_for_upper_bound = cinn::common::AutoSimplify(
+        cinn::common::AutoSimplify(copy_for_upper_bound));
     VLOG(6) << "lower_bound of " << indice_value << " = "
             << copy_for_lower_bound;
     VLOG(6) << "upper_bound of " << indice_value << " = "
@@ -832,7 +839,7 @@ void StaticShapeGroupScheduler::AllocateStorage() {
               << indice_value << " = " << indice_copies[i] << ", range = ("
               << coef_and_ranges[i].second.min << ", "
               << coef_and_ranges[i].second.max << ")";
-      indice_copies[i] = common::AutoSimplify(indice_copies[i]);
+      indice_copies[i] = cinn::common::AutoSimplify(indice_copies[i]);
       VLOG(6) << "after simplify [" << i << "], the coefficient of "
               << indice_value << " = " << indice_copies << ", range = ("
               << coef_and_ranges[i].second.min << ", "

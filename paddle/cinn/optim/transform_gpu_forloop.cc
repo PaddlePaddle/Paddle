@@ -30,6 +30,7 @@
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/optim/resize_buffer.h"
+#include "paddle/cinn/optim/update_buffer_axis_pass.h"
 #include "paddle/cinn/poly/isl_utils.h"
 #include "paddle/cinn/poly/stage.h"
 #include "paddle/cinn/runtime/intrinsic.h"
@@ -105,7 +106,7 @@ void RemoveGpuForloopsAxis(Expr *expr) {
       if (for_n) {
         // for(i, 2, 100);
         //        ^
-        if (for_n->min != common::make_const(0)) {
+        if (for_n->min != cinn::common::make_const(0)) {
           condition_append(ir::GE::Make(for_n->loop_var, for_n->min));
         }
 
@@ -113,7 +114,7 @@ void RemoveGpuForloopsAxis(Expr *expr) {
         //            ^
         condition_append(ir::LT::Make(for_n->loop_var, for_n->extent));
       } else {
-        if (poly_for_n->init != common::make_const(0)) {
+        if (poly_for_n->init != cinn::common::make_const(0)) {
           condition_append(
               ir::GE::Make(poly_for_n->iterator, poly_for_n->init));
         }
@@ -163,7 +164,7 @@ void CudaSyncThreadsDropIfThenElse(Expr *expr) {
         if (!blocked_statement_stack.empty()) {
           auto *last_for = blocked_statement_stack.back()->As<ir::IfThenElse>();
           if (auto *eq_n = last_for->condition.As<ir::EQ>()) {
-            if (eq_n->b() == common::make_const(0)) {
+            if (eq_n->b() == cinn::common::make_const(0)) {
               *blocked_statement_stack.back() = *expr;
             }
           }
@@ -287,7 +288,7 @@ class CollectTensorLoopVisitor : public ir::IRMutator<> {
       buffer_tensor_loop_map_;
 };
 
-void UpdateBufferAxisPass(ir::Expr *expr) {
+void UpdateBufferAxisPassOld(ir::Expr *expr) {
   CollectTensorLoopVisitor collect_tensor_loop_visitor;
   collect_tensor_loop_visitor(expr);
 
@@ -374,15 +375,10 @@ void UpdateBufferAxisPass(ir::Expr *expr) {
         auto store = expr.As<ir::Store>();
         if (keep_loop_vars.size() == 0 ||
             !keep_loop_vars[idy].count(loop_var->name)) {
-          std::string tensor_name = load ? load->tensor.as_tensor_ref()->name
-                                         : store->tensor.as_tensor_ref()->name;
-          VLOG(6) << "Replacing var " << loop_var << " of tensor name "
-                  << tensor_name;
-          optim::ReplaceVarWithExpr(&expr, loop_var, ir::Expr(0), tensor_name);
           auto &indices = load ? load->indices : store->indices;
           for (auto &indice : indices) {
-            // optim::ReplaceVarWithExpr(&indice, loop_var, ir::Expr(0));
-            indice = common::AutoSimplify(indice);
+            optim::ReplaceVarWithExpr(&indice, loop_var, ir::Expr(0));
+            indice = cinn::common::AutoSimplify(indice);
           }
         }
       }
@@ -442,7 +438,7 @@ class SharedAxisVisitor : public ir::IRMutator<> {
         for (auto axis : gpu_axis) {
           optim::ReplaceVarWithExpr(&indice, ir::Var(axis), ir::Expr(0));
         }
-        indice = common::AutoSimplify(indice);
+        indice = cinn::common::AutoSimplify(indice);
       }
     }
     ir::IRMutator<>::Visit(op, expr);
@@ -463,7 +459,7 @@ class SharedAxisVisitor : public ir::IRMutator<> {
         for (auto axis : gpu_axis) {
           optim::ReplaceVarWithExpr(&indice, ir::Var(axis), ir::Expr(0));
         }
-        indice = common::AutoSimplify(indice);
+        indice = cinn::common::AutoSimplify(indice);
       }
     }
     ir::IRMutator<>::Visit(op, expr);
@@ -490,7 +486,7 @@ class LocalAxisVisitor : public ir::IRMutator<> {
         for (auto axis : gpu_axis) {
           optim::ReplaceVarWithExpr(&indice, ir::Var(axis), ir::Expr(0));
         }
-        indice = common::AutoSimplify(indice);
+        indice = cinn::common::AutoSimplify(indice);
       }
     }
     ir::IRMutator<>::Visit(op, expr);
@@ -511,7 +507,7 @@ class LocalAxisVisitor : public ir::IRMutator<> {
         for (auto axis : gpu_axis) {
           optim::ReplaceVarWithExpr(&indice, ir::Var(axis), ir::Expr(0));
         }
-        indice = common::AutoSimplify(indice);
+        indice = cinn::common::AutoSimplify(indice);
       }
     }
     ir::IRMutator<>::Visit(op, expr);
@@ -608,8 +604,8 @@ class ResizeBufferSizeVisitor : public ir::IRMutator<> {
         ReplaceVarWithExpr(&tmp, var, Expr(idx));
 
         if (deep == vars.size() - 1) {
-          auto simplify = common::AutoSimplify(tmp);
-          auto range = common::AutoSimplify(simplify);
+          auto simplify = cinn::common::AutoSimplify(tmp);
+          auto range = cinn::common::AutoSimplify(simplify);
           CHECK(range.is_constant());
           max_range = std::max(max_range, range.as_int32() + 1);
         } else {
@@ -641,7 +637,7 @@ class ReplaceVarToZero : public ir::IRMutator<> {
       for (auto var_ : loop_var_) {
         optim::ReplaceVarWithExpr(&indice, ir::Var(var_), ir::Expr(0));
       }
-      indice = common::AutoSimplify(indice);
+      indice = cinn::common::AutoSimplify(indice);
     }
     ir::IRMutator<>::Visit(op, expr);
   }
@@ -657,7 +653,7 @@ class ReplaceVarToZero : public ir::IRMutator<> {
       for (auto var_ : loop_var_) {
         optim::ReplaceVarWithExpr(&indice, ir::Var(var_), ir::Expr(0));
       }
-      indice = common::AutoSimplify(indice);
+      indice = cinn::common::AutoSimplify(indice);
     }
 
     ir::IRMutator<>::Visit(op, expr);
@@ -690,6 +686,7 @@ void OptimizeExprGPU(Expr *expr) {
 
   // resize buffer axis
   UpdateBufferAxisPass(expr);
+  // UpdateBufferAxisPassOld(expr);
 
   // replace var name with block/thread
   ReplaceLoopVarToGpu replace_loop_var_to_gpu;

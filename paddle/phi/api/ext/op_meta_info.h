@@ -20,7 +20,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/phi/api/ext/exception.h"
+#include "paddle/common/exception.h"
 #include "paddle/phi/api/include/dll_decl.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/utils/any.h"
@@ -108,6 +108,7 @@ class PADDLE_API CustomOpKernelContext {
   CustomOpKernelContext() = default;
 
   void EmplaceBackInput(Tensor&& input);
+  void EmplaceBackInput(const Tensor& input);
   void EmplaceBackInputs(const std::vector<Tensor>& inputs);
   void EmplaceBackOutput(Tensor&& output);
   void EmplaceBackOutputs(const std::vector<Tensor>& outputs);

@@ -22,6 +22,7 @@
 #include "paddle/cinn/hlir/framework/op_lowering_impl_base.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
 #include "paddle/cinn/hlir/framework/pir/group.h"
+#include "paddle/cinn/ir/group_schedule/base_group_scheduler.h"
 #include "paddle/cinn/ir/lowered_func.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
@@ -40,7 +41,7 @@ namespace pir {
 
 using GroupPtr = std::shared_ptr<Group>;
 
-using common::Target;
+using cinn::common::Target;
 class OpLowererImpl;
 
 typedef bool (OpLowererImpl::*ScheduleDetermineFunction)(::pir::Operation*);
@@ -60,6 +61,19 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
                                      bool apply_op_schedule = true,
                                      bool apply_group_schedule = true,
                                      bool apply_pass = true);
+
+  /**
+   * @brief Lower a dynamic shape group to CINN IR.
+   * @param group The group to be lowered.
+   * @param apply_op_schedule Whether to schedule at Op level.
+   * @param apply_group_schedule Whether to schedule at group level.
+   * @return The lowered funcs.
+   */
+  std::vector<std::pair<ir::SymbolicPredicate, ir::LoweredFunc>> BucketLower(
+      const GroupPtr& group,
+      bool apply_op_schedule = false,
+      bool apply_group_schedule = true,
+      bool apply_pass = true);
 
  private:
   /**
@@ -91,7 +105,7 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
    * @param tensor_map All tensors used for calculating the group.
    * @param done_op_schedule Mark whether the Op level schedule has been
    * applied.
-   * @param ir_sch The IRSchedule object of group.
+   * @param func_body The scheduled func body of group.
    * @param group_func_arg_tensors Tensors used as the group function arguments.
    * @return The lowered funcs after the post processing.
    */
@@ -99,8 +113,41 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
       const GroupPtr& group,
       const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
       bool done_op_schedule,
-      ir::IRSchedule* ir_sch,
+      ir::Expr func_body,
       std::vector<ir::Tensor>* group_func_arg_tensors);
+
+  /**
+   * @brief Lower an Op set to CINN IR.
+   * Compute and Lower will be performed one by one for each Op.
+   * @param group The group to be lowered.
+   * @param ops The Op to be lowered.
+   * @param group_func_arg_tensors Tensors used as the group function arguments.
+   * @param tensor_map All tensors used for calculating the group.
+   * @return The lowered func bodies of Op set.
+   */
+  void LowerOpsForMapExpr(
+      const GroupPtr& group,
+      const std::vector<::pir::Operation*>& ops,
+      std::vector<ir::Tensor>* group_func_arg_tensors,
+      std::unordered_map<::pir::Value, ir::Tensor>* tensor_map);
+
+  /**
+   * @brief Generate MapExpr and Lower it to std::vector<ir::LoweredFunc>
+   * @param group The group to be lowered.
+   * @param ops The Op to be lowered.
+   * @param apply_op_schedule Whether to schedule at Op level.
+   * @param apply_group_schedule Whether to schedule at group level.
+   * @param group_func_arg_tensors Tensors used as the group function arguments.
+   * @param tensor_map All tensors used for calculating the group.
+   * @return The lowered funcs after the post processing.
+   */
+  std::vector<ir::LoweredFunc> LowerMapExpr(
+      const GroupPtr& group,
+      const std::vector<::pir::Operation*>& ops,
+      bool apply_op_schedule,
+      bool apply_group_schedule,
+      std::vector<ir::Tensor>* group_func_arg_tensors,
+      std::unordered_map<::pir::Value, ir::Tensor>* tensor_map);
 
   /**
    * @brief Lower an Op set to CINN IR.
@@ -115,6 +162,7 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
    * @return The lowered func bodies of Op set.
    */
   std::vector<ir::Expr> LowerOps(
+      const GroupPtr& group,
       const std::vector<::pir::Operation*>& ops,
       bool apply_op_schedule,
       ScheduleDetermineFunction schedule_determine_func,
@@ -168,6 +216,7 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
   inline bool ReduceScheduleDetermineFunction(::pir::Operation* op);
   inline bool ElementwiseScheduleDetermineFunction(::pir::Operation* op);
   inline bool NonFusibleScheduleDetermineFunction(::pir::Operation* op);
+  inline bool DyShapeScheduleDetermineFunction(::pir::Operation* op);
 
  private:
   Target target_;

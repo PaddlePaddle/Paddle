@@ -16,7 +16,6 @@ from functools import reduce
 
 import paddle
 import paddle.base.param_attr as attr
-from paddle.jit.api import to_static
 from paddle.nn import Layer
 
 
@@ -484,7 +483,6 @@ class BOW(Layer):
         self.bow_layer_po = FCLayer(self.bow_dim, None, "fc").ops()
         self.softmax_layer = FCLayer(2, "softmax", "cos_sim").ops()
 
-    @to_static
     def forward(self, left, right):
         """
         Forward network

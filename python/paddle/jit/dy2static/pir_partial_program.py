@@ -25,11 +25,9 @@ from paddle.base import core, framework
 from paddle.base.compiler import BuildStrategy
 from paddle.base.data_feeder import check_type, convert_dtype
 from paddle.base.dygraph.base import switch_to_static_graph
-from paddle.framework import use_pir_api
 from paddle.optimizer.lr import LRScheduler
 from paddle.pir import OpResult, fake_op_result, is_fake_op_result
 
-from . import logging_utils
 from .utils import RETURN_NO_VALUE_MAGIC_NUM, backend_guard
 
 __all__ = []
@@ -52,60 +50,57 @@ class cached_property:
 class NestSequence:
     """
     A wrapper class that easily to flatten and restore the nest structure of
-    given sequence.
+    given sequence. It also remove the duplicate variables in the sequence.
+    For example:
+    >>> t = [v1, v2, v1]
+    >>> m = tolist(t)
+    [v1, v2]
+    >>> m.restore([t1, t2])
+    [t1, t2, t1]
     """
 
-    def __init__(self, raw_input, need_check=False):
-        self.__raw_input = raw_input
-        self.__input_list = self.tolist()
-        self.__var_ids = self._get_var_ids()
-        self._check_non_variable(need_check)
+    def __init__(self, raw_input):
+        self._raw_input = raw_input
+        self._var_map, self._var_list = self._tolist()
 
-    def tolist(self):
+    @property
+    def var_list(self):
+        return self._var_list
+
+    def _tolist(self):
         """
-        Flattens the nested sequences into single list.
+        Flattens the nested sequences into single list and remove duplicate variables + non-variable elements.
         """
-        return paddle.utils.flatten(self.__raw_input)
+        variable_map = {}  # opresult -> list idx
+        variable_list = []
+        for value in paddle.utils.flatten(self._raw_input):
+            if not isinstance(value, OpResult):
+                continue
+            if value in variable_map:
+                # remove duplicate opresults.
+                continue
+            variable_map[value] = len(variable_list)
+            variable_list.append(value)
+        return variable_map, variable_list
 
     def restore(self, value_list):
         """
         Restores the nested sequence from value list.
         """
-        assert len(self.__input_list) == len(value_list)
-        return paddle.utils.pack_sequence_as(self.__raw_input, value_list)
+        assert len(self._var_list) == len(value_list)
 
-    def _get_var_ids(self):
-        var_ids = []
-        for idx, var in enumerate(self.__input_list):
-            if isinstance(var, (OpResult, core.eager.Tensor)):
-                var_ids.append(idx)
+        def to_value(x):
+            if isinstance(x, OpResult):
+                return value_list[self._var_map[x]]
+            return x
 
-        return var_ids
-
-    def _check_non_variable(self, need_check):
-        """
-        Raises warning if output of traced function contains non-tensor type values.
-        """
-        if need_check:
-            warning_types = set()
-            for var in self.__input_list:
-                if not isinstance(var, (framework.Variable, core.eager.Tensor)):
-                    warning_types.add(type(var))
-            if warning_types:
-                logging_utils.warn(
-                    "Output of traced function contains non-tensor type values: {}. "
-                    "Currently, We don't support to update them while training and will return "
-                    "what we first saw. Please try to return them as tensor.".format(
-                        list(warning_types)
-                    )
-                )
-
-    @property
-    def var_ids(self):
-        return self.__var_ids
+        return paddle.utils.pack_sequence_as(
+            self._raw_input,
+            list(map(to_value, paddle.utils.flatten(self._raw_input))),
+        )
 
     def __getitem__(self, item):
-        return self.__input_list[item]
+        return self._var_list[item]
 
 
 class RunableProgram:
@@ -133,7 +128,7 @@ class RunableProgram:
                 ret[op.result(0)] = op.attrs()["name"]
             if op.name() == "builtin.set_parameter":
                 ret[op.operand(0).source()] = op.attrs()["parameter_name"]
-            if op.name() == "builtin.get_parameter":
+            if op.name() == "builtin.parameter":
                 ret[op.result(0)] = op.attrs()["parameter_name"]
         return ret
 
@@ -146,10 +141,7 @@ class RunableProgram:
             return []
         if isinstance(values[0], str):
             return values
-        try:
-            return [self.get_value_name_map[v] for v in values]
-        except:
-            breakpoint()
+        return [self.get_value_name_map[v] for v in values]
 
     @cached_property
     def x_values(self):
@@ -336,7 +328,7 @@ class PirPassContext:
     """
 
     INPUT_OP_NAME = "pd_op.data"
-    PARM_OP_NAME = "builtin.get_parameter"
+    PARM_OP_NAME = "builtin.parameter"
     OUTPUT_OP_NAME = "builtin.set_parameter"
 
     @classmethod
@@ -350,10 +342,10 @@ class PirPassContext:
             raise RuntimeError(
                 "Please install PaddlePaddle compiled with CINN while setting build_strategy.build_cinn_pass = True."
             )
-
-        fwd_program = paddle.base.libpaddle.pir.apply_pir_pass(
+        fwd_program, _ = paddle.base.libpaddle.pir.clone_program(
             runable_program.forward_program
         )
+        paddle.base.libpaddle.pir.apply_pir_pass(fwd_program)
         in_out_values = cls._prepare_attr(fwd_program)
         return RunableProgram(fwd_program, in_out_values)
 
@@ -379,10 +371,12 @@ class PirPassContext:
 
 
 class PartialProgramLayerHook:
-    def before_append_backward(self, forward_program):
+    def before_append_backward(self, forward_program, src_vars):
         ...
 
-    def after_append_backward(self, whole_program, backward_start_idx):
+    def after_append_backward(
+        self, whole_program, src_vars, backward_start_idx
+    ):
         ...
 
     def after_infer(self, infer_program):
@@ -398,7 +392,7 @@ class PartialProgramLayer:
         **1. This is a very low level API. Users should not use this API
              directly. Please use `partial_program_from(concrete_program)`
              to create it.
-        **2. LoDTensorArray is not currently supported in the output.
+        **2. TensorArray is not currently supported in the output.
 
     Args:
         main_program(Program): The main program that contains ops need to be executed.
@@ -415,7 +409,7 @@ class PartialProgramLayer:
     ):
         super().__init__()
         self._inputs = NestSequence(inputs)
-        self._outputs = NestSequence(outputs, need_check=True)
+        self._outputs = NestSequence(outputs)
         self._params, self._param_values = (
             parameters if parameters is not None else ([], [])
         )
@@ -451,22 +445,16 @@ class PartialProgramLayer:
         self._hooker = None
         self._backend = kwargs.get('backend', None)
         self._grad_var_names = {}
+        self._debug_name = None
 
     def __call__(self, inputs):
         """
         Execute static graph by Interpreter and Return dynamic Tensors.
         """
-        in_vars, out_vars = self._prepare(inputs)
+        in_vars = self._prepare_inputs(inputs)
+        out_vars = self._prepare_outputs()
         attrs = self._prepare_attributes()
-
-        # self._sync_lr_value_with_scheduler()
-
-        c_run_program_fn = None
-        if use_pir_api():
-            c_run_program_fn = _legacy_C_ops.pir_run_program
-        else:
-            c_run_program_fn = _legacy_C_ops.run_program
-        c_run_program_fn(
+        _legacy_C_ops.pir_run_program(
             self._valid_vars(in_vars),
             self._valid_vars(self._params),
             self._valid_vars(out_vars),
@@ -476,18 +464,31 @@ class PartialProgramLayer:
             self._cuda_graph_vec,
             *attrs,
         )
-        self._update_stop_gradient(out_vars)
         restored_nest_out = self._restore_out(out_vars)
         return self._remove_no_value(restored_nest_out)
 
+    def sot_call(self, inputs):
+        """
+        In sot, inputs and outputs of partial program only contain tensors, so we can skip some step to speed up
+        """
+        out_vars = self._prepare_outputs()
+        attrs = self._prepare_attributes()
+        _legacy_C_ops.pir_run_program(
+            self._valid_vars(inputs),
+            self._valid_vars(self._params),
+            self._valid_vars(out_vars),
+            self._create_scope_vec(
+                program_id=self.program_id, use_scope_cache=True
+            ),
+            self._cuda_graph_vec,
+            *attrs,
+        )
+        return out_vars
+
     @cached_property
     def origin_runable_program(self):
-        inputs = list(
-            filter(lambda x: isinstance(x, OpResult), self._inputs.tolist())
-        )
-        outputs = list(
-            filter(lambda x: isinstance(x, OpResult), self._outputs.tolist())
-        )
+        inputs = list(self._inputs.var_list)
+        outputs = list(self._outputs.var_list)
         params = self._param_values
         paddle.base.libpaddle.pir.append_set_parameters(
             self._origin_main_program,
@@ -536,11 +537,11 @@ class PartialProgramLayer:
         if is_infer_mode:
             # TODO(xiongkun) who to transfer the pruning program?
             infer_program = self.origin_runable_program.clone()
+            if self._hooker:
+                self._hooker.after_infer(infer_program)
             infer_program = PirPassContext.apply(
                 infer_program, self._build_strategy
             )
-            if self._hooker:
-                self._hooker.after_infer(infer_program)
             return infer_program
         else:
             train_program: RunableProgram = self.origin_runable_program.clone()
@@ -553,9 +554,17 @@ class PartialProgramLayer:
                 fwd, _ = paddle.base.libpaddle.pir.clone_program(
                     forward_program
                 )
+
+                if self._build_strategy.build_cinn_pass:
+                    paddle.base.libpaddle.pir.apply_pir_pass(fwd)
+
                 bwd, _ = paddle.base.libpaddle.pir.clone_program(
                     backward_program
                 )
+
+                if self._build_strategy.build_cinn_pass:
+                    paddle.base.libpaddle.pir.apply_pir_pass(bwd)
+
                 return fwd, bwd
 
             train_program.apply_pir_program_pass(pass_fn)
@@ -638,7 +647,7 @@ class PartialProgramLayer:
             """
             if exist a op whose inputs is var, then return True
             """
-            if not isinstance(var, framework.Variable) or var.type not in [
+            if var.type not in [
                 core.VarDesc.VarType.LOD_TENSOR,
                 core.VarDesc.VarType.SELECTED_ROWS,
             ]:
@@ -692,7 +701,7 @@ class PartialProgramLayer:
             return None
 
         to_processed_vars = list(
-            filter(_need_aggregation, self._outputs.tolist())
+            filter(_need_aggregation, self._outputs.var_list)
         )
         for _var in to_processed_vars:
             _insert_aggregation_ops_for_var(target_program, _var)
@@ -710,31 +719,58 @@ class PartialProgramLayer:
         params = train_runnable_program.param_values
         combined_inputs = list(itertools.chain(inputs, params))
         forward_end_idx = len(program.global_block().ops)
-        if targets:
-            with backend_guard(self._backend):
-                check_type(
-                    targets,
-                    'targets',
-                    (OpResult, list, tuple),
-                    'paddle.static.gradients',
-                )
-                with ir_static.program_guard(program, None):
-                    grad_info_map = grad(
-                        inputs=combined_inputs, outputs=targets
-                    )
+        grad_info_map = [None] * len(combined_inputs)
+        with backend_guard(self._backend):
+            check_type(
+                targets,
+                'targets',
+                (OpResult, list, tuple),
+                'paddle.static.gradients',
+            )
+            with ir_static.program_guard(program, None):
+                # create outputs_grad for backward to avoid full and full_like op.
                 forward_outputs_grads = []
-                not_stop_gradient_num = 0
-                for out_op_result in self._outputs.tolist():
+                for out_op_result in targets:
                     if out_op_result.stop_gradient is True:
-                        forward_outputs_grads.append(None)
-                        continue
-                    opres = (
-                        program.global_block()
-                        .ops[forward_end_idx + 2 * not_stop_gradient_num + 1]
-                        .results()[0]
+                        forward_outputs_grads.append(fake_op_result())
+                    else:
+                        value = paddle.full_like(
+                            out_op_result,
+                            fill_value=1.0,
+                            dtype=out_op_result.dtype,
+                        )
+                        forward_outputs_grads.append(value)
+                paddle.base.libpaddle.pir.append_set_parameters(
+                    program,
+                    forward_outputs_grads,
+                    len(program.global_block().ops),
+                    "grad_input_",
+                )
+                op_between_forward_and_backward = (
+                    len(program.global_block().ops) - forward_end_idx
+                )
+
+                # call grad to get backward ops.
+                if (
+                    len(
+                        list(
+                            filter(lambda x: x.stop_gradient is False, targets)
+                        )
                     )
-                    forward_outputs_grads.append(opres)
-                    not_stop_gradient_num += 1
+                    > 0
+                ):
+                    grad_info_map = grad(
+                        inputs=combined_inputs,
+                        outputs=list(
+                            filter(lambda x: x.stop_gradient is False, targets)
+                        ),
+                        grad_outputs=list(
+                            filter(
+                                lambda x: not is_fake_op_result(x),
+                                forward_outputs_grads,
+                            )
+                        ),
+                    )
 
             if self._hooker:
                 (
@@ -744,7 +780,6 @@ class PartialProgramLayer:
                 ) = self._hooker.after_append_backward(
                     program, targets, forward_end_idx
                 )
-
             # TODO: add later
             # self.prepare_gradient_aggregation(
             # start_idx + 1, main_program, program
@@ -759,9 +794,6 @@ class PartialProgramLayer:
         )
         p_grad_value = list(map(mapping_op_result, grad_info_map[inputs_size:]))
         o_grad_value = list(map(mapping_op_result, forward_outputs_grads))
-        backward_start_op_index = forward_end_idx + 2 * len(
-            list(filter(lambda r: r.stop_gradient is False, self._outputs))
-        )
 
         # insert grads name for RunableProgram (we need name for grad_inputs and grad_outputs)
         input_grads_to_append = list(
@@ -772,13 +804,6 @@ class PartialProgramLayer:
                 lambda x: not is_fake_op_result(x), x_grad_value + p_grad_value
             )
         )
-        paddle.base.libpaddle.pir.append_set_parameters(
-            program,
-            input_grads_to_append,
-            backward_start_op_index,
-            "grad_input_",
-        )
-        backward_start_op_index += len(input_grads_to_append)
         backward_end_op_index = len(program.global_block().ops)
         paddle.base.libpaddle.pir.append_set_parameters(
             program,
@@ -787,6 +812,9 @@ class PartialProgramLayer:
             "grad_output_",
         )
 
+        backward_start_op_index = (
+            forward_end_idx + op_between_forward_and_backward
+        )
         # construct a runnable program.
         return RunableProgram(
             program,
@@ -811,7 +839,9 @@ class PartialProgramLayer:
             if not param_value.use_empty():
                 required_params.append(param)
                 required_param_values.append(param_value)
-
+            else:
+                # in pir, we need remove the get_parameter op for unused parameters.
+                block.remove_op(param_value.get_defining_op())
         self._params = required_params
         self._param_values = required_param_values
 
@@ -841,7 +871,7 @@ class PartialProgramLayer:
             )
         return attrs
 
-    def _prepare(self, inputs):
+    def _prepare_inputs(self, inputs):
         """
         Prepare inputs, outputs, attrs.
         """
@@ -874,35 +904,12 @@ class PartialProgramLayer:
             else:
                 continue
             input_vars.append(var)
+        return input_vars
 
-        # mapping from name(string) -> Tensor
-        out_tensor_map = {}
-
-        def create_out(var_id):
-            var = self._outputs[var_id]
-            assert isinstance(var, OpResult)
-
-            if id(var) in out_tensor_map:
-                return out_tensor_map[id(var)]
-
-            if var.is_dense_tensor_type():
-                tensor_type = paddle.dtype(7)  # LOD TENSOR
-            else:
-                tensor_type = paddle.dtype(8)  # SELECT ROW TENSOR
-            out = core.eager.Tensor(
-                framework.paddle_type_to_proto_type[var.dtype],
-                var.shape,
-                "",
-                tensor_type,
-                False,
-            )
-            out.stop_gradient = var.stop_gradient
-            out_tensor_map[id(var)] = out
-            return out
-
-        # Create Tensor to receive output data.
-        out_vars = list(map(create_out, self._outputs.var_ids))
-        return input_vars, out_vars
+    def _prepare_outputs(self):
+        return paddle.framework.core.create_empty_tensors_with_op_results(
+            self._outputs.var_list
+        )
 
     def _create_scope_vec(self, program_id=None, use_scope_cache=False):
         inner_scope = self._get_scope(
@@ -923,26 +930,20 @@ class PartialProgramLayer:
 
     def _update_stop_gradient(self, out_vars):
         # Update stop_gradient for all outputs
-        def set_stop_gradient(var_id, eager_tensor):
-            var = self._outputs[var_id]
+        def set_stop_gradient(var, eager_tensor):
             assert isinstance(var, OpResult)
             eager_tensor.stop_gradient = var.stop_gradient
 
-        for idx, var in zip(self._outputs.var_ids, out_vars):
+        for idx, var in zip(self._outputs.var_list, out_vars):
             set_stop_gradient(idx, var)
 
     def _restore_out(self, out_vars):
         """
         Restores same nested outputs by only replacing the Variable with Tensor.
         """
-
-        flatten_outputs = self._outputs.tolist()
-        for i, idx in enumerate(self._outputs.var_ids):
-            flatten_outputs[idx] = out_vars[i]
-        outs = self._outputs.restore(flatten_outputs)
+        outs = self._outputs.restore(out_vars)
         if outs is not None and len(outs) == 1:
             outs = outs[0]
-
         return outs
 
     @switch_to_static_graph
