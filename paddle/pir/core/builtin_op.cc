@@ -13,10 +13,9 @@
 // limitations under the License.
 
 #include "paddle/pir/core/builtin_op.h"
-#include "paddle/phi/core/enforce.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/enforce.h"
 
 namespace pir {
 
@@ -84,11 +83,13 @@ Program *ModuleOp::program() {
       iter->second.dyn_cast<PointerAttribute>().data());
 }
 
-Block *ModuleOp::block() {
-  assert(operation() != nullptr);
-  assert(operation()->num_regions() == 1);
-  assert(operation()->region(0).size() == 1);
-  return &operation()->region(0).front();
+Block &ModuleOp::block() {
+  IR_ENFORCE(operation()->num_regions(),
+             "The region size of ModuleOp must be equal to 1.");
+  auto &region = (*this)->region(0);
+  IR_ENFORCE(region.size() == 1,
+             "The region size of ModuleOp must be equal to 1.");
+  return region.front();
 }
 
 ModuleOp ModuleOp::Create(IrContext *context, Program *pointer) {
@@ -144,6 +145,9 @@ void ParameterOp::PassStopGradients(OperationArgument &argument) {
       pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
 }
 
+std::string ParameterOp::param_name() const {
+  return attribute<StrAttribute>("parameter_name").AsString();
+}
 void ParameterOp::VerifySig() const {
   VLOG(4) << "Verifying inputs, outputs and attributes for: ParameterOp.";
   // Verify inputs:
@@ -264,6 +268,9 @@ void SliceOp::Build(Builder &builder,
                                          .dyn_cast<pir::VectorType>()
                                          .data()[static_cast<size_t>(index)]);
   PassStopGradients(argument, index);
+
+  argument.AddAttribute(
+      "index", pir::Int32Attribute::get(pir::IrContext::Instance(), index));
 }
 
 void SliceOp::PassStopGradients(OperationArgument &argument, int index) {
@@ -495,6 +502,25 @@ void ConstantOp::VerifySig() const {
 
 Attribute ConstantOp::value() const { return attributes().at("value"); }
 
+void ConstantTensorOp::VerifySig() const {
+  ConstantOp::VerifySig();
+  IR_ENFORCE(value().isa<pir::TensorNameAttribute>(),
+             "Type of value must be strattribute");
+}
+
+ConstantTensorOp ConstantTensorOp::dyn_cast(Operation *op) {
+  if (ConstantTensorOp::classof(op)) return ConstantTensorOp(op);
+  return ConstantTensorOp(nullptr);
+}
+
+bool ConstantTensorOp::classof(const Operation *op) {
+  return ConstantOp::classof(op) && op &&
+         op->attribute("value").isa<TensorNameAttribute>();
+}
+
+std::string ConstantTensorOp::tensor_name() {
+  return value().dyn_cast<pir::TensorNameAttribute>().data();
+}
 }  // namespace pir
 
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::ModuleOp)
@@ -506,3 +532,4 @@ IR_DEFINE_EXPLICIT_TYPE_ID(pir::SliceOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::SplitOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::ConstantLikeTrait)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::ConstantOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::ConstantTensorOp)

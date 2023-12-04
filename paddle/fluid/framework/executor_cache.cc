@@ -26,6 +26,7 @@
 #include "paddle/pir/pass/pass_manager.h"
 
 PHI_DECLARE_bool(pir_apply_inplace_pass);
+PHI_DECLARE_bool(print_ir);
 
 namespace paddle {
 namespace framework {
@@ -462,6 +463,11 @@ std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
     ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
     pm.AddPass(::pir::CreateInplacePass());
     pm.Run(ir_res.get());
+
+    if (FLAGS_print_ir) {
+      std::cout << "IR After inplace -------------------" << std::endl;
+      std::cout << *ir_res << std::endl;
+    }
   }
 
   return ir_res;
@@ -547,6 +553,10 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
       pm.EnableIRPrinting();
     }
     pm.Run(res.get());
+    if (FLAGS_print_ir) {
+      std::cout << "IR After inplace -------------------" << std::endl;
+      std::cout << *res << std::endl;
+    }
   }
 
   return res;

@@ -186,7 +186,7 @@ bool WithoutLastDimInReduce(const std::vector<int64_t>& inshape,
 }
 
 int GetSharedSize(::pir::Operation* op) {
-  auto inshape = phi::vectorize<int64_t>(GetValueShape(op->result(0)));
+  auto inshape = ::common::vectorize<int64_t>(GetValueShape(op->result(0)));
 
   auto axes = GetVectorAttr(op, "dim");
 
@@ -195,8 +195,9 @@ int GetSharedSize(::pir::Operation* op) {
     for (size_t idx = axes.back() + 1; idx < inshape.size(); ++idx) {
       lane = inshape[idx];
     }
-    // int max_num_threads = common::DefaultNVGPUTarget().max_num_threads();
-    // todo(phlrain): get gpu max threads
+    // int max_num_threads =
+    // cinn::common::DefaultNVGPUTarget().max_num_threads(); todo(phlrain): get
+    // gpu max threads
     int max_num_threads = 2048;
     if (lane > max_num_threads / 2) {
       return 0;
@@ -245,7 +246,10 @@ class OpFusionPassHelper {
  public:
   explicit OpFusionPassHelper(
       const std::vector<pir::Operation*>& op_list,
-      const std::vector<pir::Operation*>& output_op_list = {}) {
+      const std::vector<pir::Operation*>& output_op_list = {},
+      const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis =
+          nullptr)
+      : shape_analysis_(shape_analysis) {
     // init fusion relation
     InitFusionRelation();
     // filter op data, create group for each op
@@ -608,6 +612,11 @@ class OpFusionPassHelper {
 
     return false;
   }
+
+  std::shared_ptr<pir::ShapeConstraintIRAnalysis> shape_analysis() const {
+    return CHECK_NOTNULL(shape_analysis_.lock());
+  }
+
   std::vector<::pir::Operation*> ops_;
   std::unordered_map<const ::pir::Operation*, GroupPtr> fusion_groups_;
   std::unordered_set<const ::pir::Operation*> output_ops_set_;
@@ -625,14 +634,17 @@ class OpFusionPassHelper {
     std::unordered_map<OpPatternKind, ConditionFunction> fusion_op_kind = {};
   };
   std::unordered_map<OpPatternKind, FusionRelation> fusion_relation_map_;
+  std::weak_ptr<pir::ShapeConstraintIRAnalysis> shape_analysis_;
 };
 
 GroupList OpFusionPassInternal(
     const std::vector<pir::Operation*>& op_list,
-    const std::vector<pir::Operation*>& output_op_list) {
+    const std::vector<pir::Operation*>& output_op_list,
+    const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis) {
   VLOG(3) << "OpFusionPass...!";
 
-  auto op_fusion_helper = OpFusionPassHelper(op_list, output_op_list);
+  auto op_fusion_helper =
+      OpFusionPassHelper(op_list, output_op_list, shape_analysis);
   auto res = op_fusion_helper();
 
   if (VLOG_IS_ON(6)) {

@@ -137,14 +137,14 @@ void cinn_call_cholesky_host(
 CINN_REGISTER_HELPER(cinn_cpu_mkl) {
   using namespace cinn;  // NOLINT
   using backends::FunctionProto;
-  auto host_target = common::DefaultHostTarget();
+  auto host_target = cinn::common::DefaultHostTarget();
 
   FunctionProto::shape_inference_t inference_shape_gemm =
       [](const std::vector<Expr>& args, int offset) {
         CHECK_EQ(offset, 0UL) << "Only one output";
         CHECK_EQ(args.size(), 12UL) << "Wrong number of arguments passed in";
-        auto M = common::AutoSimplify(args[1]);
-        auto N = common::AutoSimplify(args[2]);
+        auto M = cinn::common::AutoSimplify(args[1]);
+        auto N = cinn::common::AutoSimplify(args[2]);
         std::vector<Expr> shape;
         shape.push_back(M);
         shape.push_back(N);
@@ -159,16 +159,16 @@ CINN_REGISTER_HELPER(cinn_cpu_mkl) {
         auto A_tensor = A.as_tensor();
         CHECK(A_tensor);
 
-        auto batch_size = common::AutoSimplify(args[1]);
+        auto batch_size = cinn::common::AutoSimplify(args[1]);
         int32_t batch_size_val = batch_size.as_int32();
 
-        auto M = common::AutoSimplify(args[2]);
-        auto N = common::AutoSimplify(args[3]);
+        auto M = cinn::common::AutoSimplify(args[2]);
+        auto N = cinn::common::AutoSimplify(args[3]);
 
         std::vector<Expr> shape;
         int total = 1;
         for (auto& v : A_tensor->shape) {
-          auto val = common::AutoSimplify(v);
+          auto val = cinn::common::AutoSimplify(v);
           CHECK(val.is_constant());
           shape.push_back(val);
           total *= val.as_int32();

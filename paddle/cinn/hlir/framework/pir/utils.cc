@@ -42,6 +42,7 @@ const std::unordered_map<std::string, std::string> CompatibleInfo::OP_NAMES = {
     {"pd_op.add", "elementwise_add"},
     {"pd_op.elementwise_pow", "pow"},
     {"pd_op.multiply", "elementwise_mul"},
+    {"pd_op.split_with_num", "split"},
     {"cinn_op.reshape", "reshape"},
     {"cinn_op.scale", "scale"},
     {"cinn_op.broadcast", "broadcast_to"},
@@ -228,10 +229,10 @@ utils::AttributeMap CompatibleInfo::ConvertAttributes(
 }
 
 #define CASE_TYPE(src, dst) \
-  else if (type.isa<::pir::src>()) return common::dst();
+  else if (type.isa<::pir::src>()) return cinn::common::dst();
 
-common::Type CompatibleInfo::ConvertIRType(::pir::Type type) {
-  if (type.isa<::pir::BFloat16Type>()) return common::BF16();
+cinn::common::Type CompatibleInfo::ConvertIRType(::pir::Type type) {
+  if (type.isa<::pir::BFloat16Type>()) return cinn::common::BF16();
   CASE_TYPE(Float16Type, F16)
   CASE_TYPE(Float32Type, F32)
   CASE_TYPE(Float64Type, F64)
@@ -269,7 +270,20 @@ OpPatternKind CompatibleInfo::OpKind(const ::pir::Operation& op) {
 
 std::vector<int> CompatibleInfo::ValueShape(const ::pir::Value& value) {
   auto& dim = value.type().dyn_cast<::pir::DenseTensorType>().dims();
-  return phi::vectorize<int>(dim);
+  return ::common::vectorize<int>(dim);
+}
+
+std::vector<int64_t> GetBroadcastAxis(const phi::DDim& in_shape,
+                                      const std::vector<int64_t>& out_shape) {
+  std::vector<int64_t> broadcast_axes(in_shape.size(), 0);
+  auto in_shape_size = in_shape.size();
+  if (in_shape_size >= 1) {
+    for (int i = 1; i <= in_shape_size; ++i) {
+      broadcast_axes[in_shape_size - i] = out_shape.size() - i;
+    }
+  }
+
+  return broadcast_axes;
 }
 
 }  // namespace pir
