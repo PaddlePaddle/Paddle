@@ -427,8 +427,6 @@ class Graph {
     }
     return res;
   }
-  // The block this SubGraph belongs to.
-  int block_id_{0};
 
  private:
   // TODO(levi): delete this interface after when we can convert all
@@ -482,6 +480,8 @@ class Graph {
   // parts: forward graph and backward graph, which can be executed
   // independently.
   bool is_partial_{false};
+  // The block this SubGraph belongs to.
+  int block_id_{0};
 };
 
 bool IsControlDepVar(const ir::Node &var);

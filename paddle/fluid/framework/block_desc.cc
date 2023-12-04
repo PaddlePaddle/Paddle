@@ -133,8 +133,7 @@ void BlockDesc::AppendAllocatedVar(VarDesc *var_desc) {
     return;
   } else {
     need_update_ = true;
-    VarDesc *new_var = new VarDesc(*var_desc);
-    vars_[name] = std::make_unique<VarDesc>(*new_var);
+    vars_[name] = std::make_unique<VarDesc>(*var_desc);
   }
 }
 
