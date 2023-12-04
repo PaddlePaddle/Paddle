@@ -183,6 +183,43 @@ std::vector<std::unique_ptr<Instruction>> PirCompiler::BuildInstructions(
   return instructions;
 }
 
+std::shared_ptr<Scope> BuildScope(const Target& target,
+                                  const ::pir::Program& program) {
+  std::unordered_set<::pir::Value> visited;
+  auto scope = std::make_shared<Scope>();
+
+  auto create_var = [&](::pir::Value value) {
+    if (!(value) || !(value.type())) {
+      return;
+    }
+    if (visited.count(value) > 0) return;
+    visited.emplace(value);
+
+    std::string name = pir::CompatibleInfo::ValueName(value);
+    auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
+    auto* var = scope->Var<Tensor>(name);
+    auto& tensor = absl::get<Tensor>(*var);
+
+    std::vector<Shape::dim_t> shape;
+    for (auto i = 0; i < type_info.dims().size(); ++i) {
+      shape.push_back(Shape::dim_t(type_info.dims()[i]));
+    }
+    tensor->Resize(Shape{shape});
+    tensor->set_type(pir::CompatibleInfo::ConvertIRType(type_info.dtype()));
+  };
+
+  for (auto& op : *program.block()) {
+    for (auto oprand : op.operands()) {
+      create_var(oprand.source());
+    }
+
+    for (auto result : op.results()) {
+      create_var(result);
+    }
+  }
+  return scope;
+}
+
 }  // namespace framework
 }  // namespace hlir
 }  // namespace cinn
