@@ -314,7 +314,7 @@ def nanmedian(x, axis=None, keepdim=False, name=None):
             >>> print(y4.numpy())
             2.0
     """
-    if not isinstance(x, (Variable, paddle.pir.OpResult)):
+    if not isinstance(x, (Variable, paddle.pir.Value)):
         raise TypeError("In median, the input x should be a Tensor.")
 
     if isinstance(axis, (list, tuple)) and len(axis) == 0:
@@ -404,7 +404,7 @@ def median(x, axis=None, keepdim=False, name=None):
             [[4., 5., 6., 7.]])
 
     """
-    if not isinstance(x, (Variable, paddle.pir.OpResult)):
+    if not isinstance(x, (Variable, paddle.pir.Value)):
         raise TypeError("In median, the input x should be a Tensor.")
 
     if in_dynamic_mode() and x.size == 0:

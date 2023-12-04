@@ -1108,7 +1108,7 @@ def is_tensor(x):
     """
     if in_dynamic_or_pir_mode():
         return isinstance(
-            x, (Tensor, paddle.base.core.eager.Tensor, paddle.pir.OpResult)
+            x, (Tensor, paddle.base.core.eager.Tensor, paddle.pir.Value)
         )
     else:
         return isinstance(x, Variable)
