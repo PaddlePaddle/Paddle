@@ -261,7 +261,7 @@ cc_test(
   SRCS dlpack_tensor_test.cc
   DEPS dlpack_tensor glog)
 
-paddle_test(
+cc_test(
   op_compatible_info_test
   SRCS
   op_compatible_info_test.cc
