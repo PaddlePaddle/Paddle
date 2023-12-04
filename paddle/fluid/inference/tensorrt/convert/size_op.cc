@@ -25,20 +25,19 @@ class SizeOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(4) << "convert Size op to tensorrt layer";
+    VLOG(4) << "convert size op to tensorrt layer";
 
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("Input")[0]);
-    nvinfer1::ILayer* layer = nullptr;
     nvinfer1::ITensor* input_shape_tensor = Shape(input);
     uint32_t reduce_dim = 1;
-    layer = TRT_ENGINE_ADD_LAYER(engine_,
-                                 Reduce,
-                                 *input_shape_tensor,
-                                 nvinfer1::ReduceOperation::kPROD,
-                                 reduce_dim,
-                                 false);
+    auto* layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                       Reduce,
+                                       *input_shape_tensor,
+                                       nvinfer1::ReduceOperation::kPROD,
+                                       reduce_dim,
+                                       false);
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "size", {output_name}, test_mode);
   }
