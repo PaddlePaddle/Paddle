@@ -5257,8 +5257,6 @@ def put_along_axis(
              [60, 40, 50]])
 
     """
-    if not include_self:
-        raise ValueError("`include_self` is only support True now.")
     if len(arr.shape) != len(indices.shape):
         raise ValueError(
             "`indices` and `arr` must have the same number of dimensions!"
@@ -5305,7 +5303,9 @@ def put_along_axis(
                 )
             )
     if in_dynamic_or_pir_mode():
-        return _C_ops.put_along_axis(arr, indices, values, axis, reduce)
+        return _C_ops.put_along_axis(
+            arr, indices, values, axis, reduce, include_self
+        )
     else:
         check_variable_and_dtype(
             arr,
@@ -5324,20 +5324,27 @@ def put_along_axis(
         check_variable_and_dtype(
             indices, 'index', ['int32', 'int64'], 'put_along_axis'
         )
+        check_type(include_self, 'include_self', bool, 'put_along_axis')
         helper = LayerHelper('put_along_axis', **locals())
         dtype = helper.input_dtype()
         result = helper.create_variable_for_type_inference(dtype)
         helper.append_op(
             type="put_along_axis",
             inputs={"Input": arr, "Index": indices, "Value": values},
-            attrs={"Axis": axis, "Reduce": reduce},
+            attrs={
+                "Axis": axis,
+                "Reduce": reduce,
+                "Include_self": include_self,
+            },
             outputs={"Result": result},
         )
         return result
 
 
 @inplace_apis_in_dygraph_only
-def put_along_axis_(arr, indices, values, axis, reduce='assign'):
+def put_along_axis_(
+    arr, indices, values, axis, reduce='assign', include_self=True
+):
     r"""
     Inplace version of ``put_along_axis`` API, the output Tensor will be inplaced with input ``arr``.
     Please refer to :ref:`api_paddle_put_along_axis`.
@@ -5356,7 +5363,9 @@ def put_along_axis_(arr, indices, values, axis, reduce='assign'):
     if broadcast_shape:
         indices = paddle.broadcast_to(indices, broadcast_shape)
     values = paddle.broadcast_to(values, indices.shape)
-    return _C_ops.put_along_axis_(arr, indices, values, axis, reduce)
+    return _C_ops.put_along_axis_(
+        arr, indices, values, axis, reduce, include_self
+    )
 
 
 def index_add(x, index, axis, value, name=None):
