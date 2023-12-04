@@ -123,9 +123,18 @@ __global__ void naive_conv2d_kernel(const half *input,
     case CONV2D_DEPTHWISE_BIAS_SILU:
       *out_ptr = x * (1.f / (1 + exp(-x)));
       break;
+    case CONV2D_BIAS_SILU_ADD:
+      x = x * (1.f / (1 + exp(-x)));
+      x += __half2float(*(residual + out_offset));
+      *out_ptr = x;
+      break;
     case CONV2D_BIAS_ADD_RELU:
       x += __half2float(*(residual + out_offset));
       *out_ptr = x > 0 ? x : 0;
+      break;
+    case CONV2D_BIAS_ADD:
+      x += __half2float(*(residual + out_offset));
+      *out_ptr = x;
       break;
     case CONV2D_BIAS_LEAKY_RELU:
       *out_ptr = x > 0 ? x : (x * alpha);
@@ -234,6 +243,12 @@ std::string OpType2String(OpType op_type) {
     case CONV2D_BIAS_ADD_RELU:
       return "conv2d_bias_add_relu";
       break;
+    case CONV2D_BIAS_ADD:
+      return "conv2d_bias_add";
+      break;
+    case CONV2D_BIAS_SILU_ADD:
+      return "conv2d_bias_silu_add";
+      break;
     case CONV2D_BIAS_LEAKY_RELU:
       return "conv2d_bias_leaky_relu";
     case CONV2D_DEPTHWISE_BIAS:
@@ -289,9 +304,10 @@ int ProfileToGetBestConfig(
       min_time = elapsed_time;
       min_time_index = i;
       // debug code
-      VLOG(3) << OpType2String(op_type) << ": tactic " << i << " has max diff "
-              << conv2d_diff_gpu(params, op_type) << " compared with baseline,"
-              << "cost_time: " << elapsed_time << "ms.";
+      std::cout << OpType2String(op_type) << ": tactic " << i
+                << " has max diff " << conv2d_diff_gpu(params, op_type)
+                << " compared with baseline,"
+                << "cost_time: " << elapsed_time << "ms." << std::endl;
     }
   }
 

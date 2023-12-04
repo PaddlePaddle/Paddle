@@ -83,16 +83,19 @@ ActTag = {
 SupportedEpilogue = [
     (CbrAct.Silu, "cutlass::plus", CbrAct.Identity),
     (CbrAct.Identity, "cutlass::plus", CbrAct.Relu),
+    (CbrAct.Identity, "cutlass::plus", CbrAct.Identity),
 ]
 
 UnderScoreName = {
     SupportedEpilogue[0]: "conv2d_bias_silu_add",
     SupportedEpilogue[1]: "conv2d_bias_add_relu",
+    SupportedEpilogue[2]: "conv2d_bias_add",
 }
 
 CamelName = {
     SupportedEpilogue[0]: "Conv2dBiasSiluAdd",
     SupportedEpilogue[1]: "Conv2dBiasAddRelu",
+    SupportedEpilogue[2]: "Conv2dBiasAdd",
 }
 
 # Generate sm75 TensorOp conv code.
