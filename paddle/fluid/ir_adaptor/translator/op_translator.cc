@@ -65,12 +65,12 @@ using OpAttributeInfo = dialect::OpAttributeInfo;
 using OpAttributeInfoList = std::vector<dialect::OpAttributeInfo>;
 using OpOutputInfo = dialect::OpOutputInfo;
 using OpOutputInfoList = std::vector<dialect::OpOutputInfo>;
-using InputHandlerFn = std::function<pir::OpResult(pir::IrContext*,
-                                                   TranslationContext*,
-                                                   const OpDesc&,
-                                                   const std::string&,
-                                                   const OpInputInfo&,
-                                                   pir::Block*)>;
+using InputHandlerFn = std::function<pir::Value(pir::IrContext*,
+                                                TranslationContext*,
+                                                const OpDesc&,
+                                                const std::string&,
+                                                const OpInputInfo&,
+                                                pir::Block*)>;
 using AttributeHandlerFn = std::function<pir::Attribute(
     pir::IrContext*, const OpDesc&, const OpAttributeInfo&)>;
 using DenseTensorTypeStorage = paddle::dialect::DenseTensorTypeStorage;
@@ -207,6 +207,18 @@ inline pir::Operation* InsertStackOperationForTarget(
   dialect::StackOp stack_op =
       builder.Build<dialect::StackOp>(combine_op->result(0), axis);
   return stack_op.operation();
+}
+
+inline pir::Operation* InsertCreateArrayOp(pir::IrContext* ctx,
+                                           pir::Block* block,
+                                           const VarDesc* var) {
+  pir::Builder builder(ctx, block);
+
+  auto var_desc_dtype = var->GetDataType();
+  phi::DataType phi_dtype = phi::TransToPhiDataType(var_desc_dtype);
+
+  auto create_array_op = builder.Build<dialect::CreateArrayOp>(phi_dtype);
+  return create_array_op.operation();
 }
 
 }  // namespace
@@ -413,7 +425,7 @@ std::vector<pir::Value> OpTranscriber::GenerateOperationInput(
 
   for (const auto& info : input_infos) {
     if (auto special_handler = this->GetSpecialInputHandlers(info.name)) {
-      pir::OpResult ret = special_handler(
+      pir::Value ret = special_handler(
           ctx, param_map, op_desc, normalized_op_name, info, block);
       op_inputs.push_back(ret);
       continue;
@@ -741,6 +753,34 @@ pir::Operation* OpTranscriber::operator()(pir::IrContext* ctx,
   return operation;
 }
 
+struct AssignOpTranscriber : public OpTranscriber {
+  pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
+                            const OpDesc& op_desc) override {
+    std::string target_op_name;
+
+    IR_ENFORCE(
+        op_desc.HasInput("X"), "op %s should have input `X`", op_desc.Type());
+    const auto& input_vars = op_desc.Input("X");
+    IR_ENFORCE(input_vars.size() == 1,
+               "op %s should have one input `X`, but got %d.",
+               op_desc.Type(),
+               input_vars.size());
+    const auto* input_var = op_desc.Block()->FindVarRecursive(input_vars[0]);
+    if (input_var->GetType() == framework::proto::VarType::LOD_TENSOR_ARRAY) {
+      target_op_name = dialect::AssignArray_Op::name();
+    } else {
+      return OpTranscriber::LoopkUpOpInfo(ctx, op_desc);
+    }
+
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW("Op assign should have corresponding OpInfo %s", target_op_name);
+    }
+
+    return op_info;
+  }
+};
+
 struct CastOpTranscriber : public OpTranscriber {
   pir::AttributeMap TranslateOpAttribute(
       pir::IrContext*,
@@ -978,9 +1018,9 @@ struct EmbeddingGradOpTranscriber : public OpTranscriber {
     bool is_sparse = paddle::get<bool>(op_desc.GetAttr("is_sparse"));
 
     if (is_sparse) {
-      target_op_name = "pd_op.embedding_grad_sparse";
+      target_op_name = "pd_op.embedding_sparse_grad";
     } else {
-      target_op_name = "pd_op.embedding_grad_dense";
+      target_op_name = "pd_op.embedding_grad";
     }
     VLOG(6) << "[op name normalizing: " << op_desc.Type() << " to "
             << target_op_name;
@@ -2202,7 +2242,7 @@ struct SetValueWithTensorOpTranscriber : public SetValueOpTranscriber {
               const OpDesc& op_desc,
               const std::string&,
               const OpInputInfo& info,
-              pir::Block* block) -> pir::OpResult {
+              pir::Block* block) -> pir::Value {
       std::vector<std::string> legacy_input_vars;
       IR_ENFORCE(op_desc.HasInput("ValueTensor"),
                  "[set_value] should have ValueTensor");
@@ -2218,7 +2258,7 @@ struct SetValueWithTensorOpTranscriber : public SetValueOpTranscriber {
             ctx, param_map, block, defining_info, var_name);
         defining_info = param_map->at(var_name).value;
       }
-      return defining_info.value.dyn_cast<pir::OpResult>();
+      return defining_info.value;
     };
   }
 };
@@ -2476,12 +2516,180 @@ struct FusedElemwiseAddActivationGradOpTranscriber
   }
 };
 
+struct LodArrayLengthOpTranscriber : public OpTranscriber {
+  pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
+                            const OpDesc& op_desc) override {
+    std::string target_op_name = dialect::ArrayLengthOp::name();
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW(
+          "Op lod_array_length should have corresponding OpInfo "
+          "pd_op.array_length");
+    }
+
+    return op_info;
+  }
+
+  InputHandlerFn GetSpecialInputHandlers(
+      const std::string& input_name) override {
+    if (input_name != "x") {
+      return nullptr;
+    }
+    return [](pir::IrContext* ctx,
+              TranslationContext* param_map,
+              const OpDesc& op_desc,
+              const std::string&,
+              const OpInputInfo& info,
+              pir::Block* block) -> pir::Value {
+      VLOG(10) << "[" << op_desc.Type() << "][input `array`]";
+      IR_ENFORCE(op_desc.HasInput("X"),
+                 "Op lod_array_length should have input `X` but not found");
+      const auto& vars = op_desc.Input("X");
+      IR_ENFORCE(vars.size() == 1,
+                 "Input `X` should be one variable %s",
+                 op_desc.Type());
+      VLOG(10) << "[" << op_desc.Type() << "][input `x`] from " << vars[0];
+      const VarDesc* var_desc = op_desc.Block()->FindVarRecursive(vars[0]);
+      IR_ENFORCE(var_desc != nullptr,
+                 "VarDesc `%s` should be exist in legacy program",
+                 vars[0]);
+      auto defining_value = pir::Value(nullptr);
+      if (param_map->count(var_desc->Name())) {
+        VLOG(10) << "[" << op_desc.Type() << "][input `x`] var: " << vars[0]
+                 << " have been created";
+        defining_value = param_map->at(var_desc->Name()).value;
+      } else {
+        VLOG(10) << "[" << op_desc.Type() << "][input `x`] var: " << vars[0]
+                 << " newly created";
+        auto create_array_op = InsertCreateArrayOp(ctx, block, var_desc);
+        defining_value = create_array_op->result(0);
+      }
+      return defining_value;
+    };
+  }
+};
+
+struct WriteArrayOpTranscriber : public OpTranscriber {
+  pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
+                            const OpDesc& op_desc) override {
+    std::string target_op_name = dialect::ArrayWrite_Op::name();
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW(
+          "Op write_to_array should have corresponding OpInfo "
+          "pd_op.array_write_");
+    }
+
+    return op_info;
+  }
+
+  InputHandlerFn GetSpecialInputHandlers(
+      const std::string& input_name) override {
+    if (input_name != "array") {
+      return nullptr;
+    }
+    return [](pir::IrContext* ctx,
+              TranslationContext* param_map,
+              const OpDesc& op_desc,
+              const std::string&,
+              const OpInputInfo& info,
+              pir::Block* block) -> pir::Value {
+      VLOG(10) << "[" << op_desc.Type() << "][input `array`]";
+      IR_ENFORCE(op_desc.HasOutput("Out"),
+                 "Op write_to_array should have output `Out` but not found");
+      const auto& vars = op_desc.Output("Out");
+      IR_ENFORCE(vars.size() == 1,
+                 "Output `Out` should be one variable %s",
+                 op_desc.Type());
+      VLOG(10) << "[" << op_desc.Type() << "][input `array`] from " << vars[0];
+      const VarDesc* var_desc = op_desc.Block()->FindVarRecursive(vars[0]);
+      IR_ENFORCE(var_desc != nullptr,
+                 "VarDesc `%s` should be exist in legacy program",
+                 vars[0]);
+      auto defining_value = pir::Value(nullptr);
+      if (param_map->count(var_desc->Name())) {
+        VLOG(10) << "[" << op_desc.Type() << "][input `array`] var: " << vars[0]
+                 << " have been created";
+        defining_value = param_map->at(var_desc->Name()).value;
+      } else {
+        VLOG(10) << "[" << op_desc.Type() << "][input `array`] var: " << vars[0]
+                 << " newly created";
+        auto create_array_op = InsertCreateArrayOp(ctx, block, var_desc);
+        defining_value = create_array_op->result(0);
+      }
+      return defining_value;
+    };
+  }
+};
+
+struct ReadArrayOpTranscriber : public OpTranscriber {
+  pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
+                            const OpDesc& op_desc) override {
+    std::string target_op_name = dialect::ArrayReadOp::name();
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW(
+          "Op read_from_array should have corresponding OpInfo "
+          "pd_op.read_array");
+    }
+
+    return op_info;
+  }
+};
+
+struct SliceOpTranscriber : public OpTranscriber {
+  pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
+                            const OpDesc& op_desc) override {
+    std::string target_op_name = dialect::SliceOp::name();
+
+    IR_ENFORCE(op_desc.HasInput("Input"),
+               "op %s should have input `Input`",
+               op_desc.Type());
+    const auto& input_vars = op_desc.Input("Input");
+    IR_ENFORCE(input_vars.size() == 1,
+               "op %s should have one input `Input`, but got %d.",
+               op_desc.Type(),
+               input_vars.size());
+    const auto* input_var = op_desc.Block()->FindVarRecursive(input_vars[0]);
+    if (input_var->GetType() == framework::proto::VarType::LOD_TENSOR_ARRAY) {
+      IR_ENFORCE(op_desc.HasOutput("Out"),
+                 "op %s should have input `Out`",
+                 op_desc.Type());
+      const auto& output_vars = op_desc.Output("Out");
+      IR_ENFORCE(output_vars.size() == 1,
+                 "op %s should have one input `Out`, but got %d.",
+                 op_desc.Type(),
+                 output_vars.size());
+      const auto* output_var =
+          op_desc.Block()->FindVarRecursive(output_vars[0]);
+      IR_ENFORCE(output_var != nullptr,
+                 "op %s should have non-empty output `%s`.",
+                 op_desc.Type(),
+                 output_vars[0]);
+
+      if (output_var->GetType() == framework::proto::VarType::LOD_TENSOR) {
+        target_op_name = dialect::SliceArrayDenseOp::name();
+      } else {
+        target_op_name = dialect::SliceArrayOp::name();
+      }
+    }
+
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW("Op slice should have corresponding OpInfo %s", target_op_name);
+    }
+
+    return op_info;
+  }
+};
+
 OpTranslator::OpTranslator() {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
   general_handler = OpTranscriber();
   special_handlers["add_n"] = AddNOpTranscriber();
+  special_handlers["assign"] = AssignOpTranscriber();
   special_handlers["assign_value"] = AssignValueOpTranscriber();
   special_handlers["range"] = ArangeOpTranscriber();
   special_handlers["cast"] = CastOpTranscriber();
@@ -2511,11 +2719,17 @@ OpTranslator::OpTranslator() {
   special_handlers["set_value_grad"] = SetValueGradOpTranscriber();
   special_handlers["shadow_output"] = ShadowOutputOpTranscriber();
   special_handlers["share_buffer"] = ShareBufferOpTranscriber();
+  special_handlers["slice"] = SliceOpTranscriber();
   special_handlers["split"] = SplitOpTranscriber();
   special_handlers["sum"] = AddNOpTranscriber();
   special_handlers["tril_triu"] = TrilAndTriuOpTranscriber();
   special_handlers["mul"] = MulOpTranscriber();
   special_handlers["mul_grad"] = MulGradOpTranscriber();
+
+  // To adapt LodTensorArray
+  special_handlers["lod_array_length"] = LodArrayLengthOpTranscriber();
+  special_handlers["write_to_array"] = WriteArrayOpTranscriber();
+  special_handlers["read_from_array"] = ReadArrayOpTranscriber();
 
   // special handler for elementwise ops with axis != -1
   // note(lyk): maybe we should do this by a pass, which seems more reasonable

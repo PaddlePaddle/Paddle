@@ -149,6 +149,32 @@ void ArrayLengthInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dims(make_ddim({1}));
 }
 
+void ArrayToTensorInferMeta(const MetaTensor& x,
+                            int axis,
+                            bool use_stack,
+                            MetaTensor* out,
+                            MetaTensor* out_index,
+                            MetaConfig config) {
+  if (config.is_runtime) return;
+  auto dims = x.dims();
+  // if the shape is empty
+  if (dims == phi::make_ddim({0UL})) return;
+  // otherwise, suppose the shape of array is the shape of tensor in the
+  // array, which is consistent with what tensor_array_read_write dose
+  if (use_stack) {
+    auto dim_vec = phi::vectorize<int>(dims);
+    // use -1 for the stack dim size
+    dim_vec.insert(dim_vec.begin() + axis, -1);
+    dims = phi::make_ddim(dim_vec);
+  } else {
+    // use -1 for the concat dim size
+    dims[axis] = -1;
+  }
+  out->set_dims(dims);
+  out_index->set_dtype(DataType::INT32);
+  out_index->set_dims(phi::make_ddim({-1}));
+}
+
 void ArgMinMaxInferMeta(const MetaTensor& x,
                         const Scalar& axis,
                         bool keepdims,
@@ -942,9 +968,17 @@ void EigInferMeta(const MetaTensor& x, MetaTensor* out_w, MetaTensor* out_v) {
   out_v->set_dtype(out_dtype);
 }
 
-void EmbeddingGradSparseInferMeta(const MetaTensor& x, MetaTensor* out) {
-  out->set_dims(x.dims());
-  out->set_dtype(x.dtype());
+void EmbeddingGradSparseInferMeta(const MetaTensor& x,
+                                  const MetaTensor& weight,
+                                  MetaTensor* out) {
+  if (weight) {
+    if (out->is_selected_rows()) {
+      out->set_dims(x.dims());
+      out->set_dtype(x.dtype());
+    } else {
+      out->share_dims(weight);
+    }
+  }
 }
 
 void EighInferMeta(const MetaTensor& x,
@@ -3625,6 +3659,26 @@ void NumelInferMeta(const MetaTensor& input, MetaTensor* out) {
   out->set_dims(phi::make_ddim({}));
 }
 
+// This logic is copied from
+// `paddle/fluid/operators/slice_op.cc/Slcieop::InferShape`
+void SliceArrayInferMeta(const MetaTensor& input,
+                         const IntArray& starts,
+                         const IntArray& ends,
+                         MetaTensor* out,
+                         MetaConfig config) {
+  SliceArrayDenseInferMeta(input, starts, out, config);
+}
+
+void SliceArrayDenseInferMeta(const MetaTensor& input,
+                              const IntArray& starts,
+                              MetaTensor* out,
+                              MetaConfig config) {
+  if (config.is_runtime) {
+    return;
+  }
+  out->set_dims(input.dims());
+}
+
 void SliceRawInferMeta(const MetaTensor& input,
                        const std::vector<int64_t>& axes,
                        const IntArray& starts_arr,
@@ -4623,6 +4677,11 @@ void UnchangedExceptLayoutInferMeta(const MetaTensor& x, MetaTensor* out) {
 
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->share_meta(x);
+}
+
+void UnchangedArrayInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
 }
 
 // meta x -> out without change, check if axis in range [-Rank(x), Rank(x)-1]

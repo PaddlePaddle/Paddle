@@ -15,10 +15,9 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import (
+from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
-    test_legacy_and_pir,
 )
 
 import paddle
@@ -38,7 +37,6 @@ class TestCpuCuda(Dy2StTestBase):
 
 
 class TestToTensor(Dy2StTestBase):
-    @test_legacy_and_pir
     def test_to_tensor_with_variable_list(self):
         def func(x):
             ones = paddle.to_tensor(1)
@@ -57,7 +55,6 @@ class TestToTensor(Dy2StTestBase):
 
 class TestToTensor1(Dy2StTestBase):
     @test_ast_only
-    @test_legacy_and_pir
     def test_to_tensor_with_variable_list(self):
         def func(x):
             ones = paddle.to_tensor([1])
@@ -76,7 +73,6 @@ class TestToTensor1(Dy2StTestBase):
         )
 
     @test_ast_only
-    @test_legacy_and_pir
     def test_to_tensor_with_variable_list_sot(self):
         def func(x):
             ones = paddle.to_tensor([1])
@@ -97,7 +93,6 @@ class TestToTensor1(Dy2StTestBase):
 
 class TestToTensor2(Dy2StTestBase):
     @test_ast_only
-    @test_legacy_and_pir
     def test_to_tensor_with_variable_list(self):
         def func(x):
             x = paddle.to_tensor([[1], [2], [3], [4]])
@@ -111,7 +106,6 @@ class TestToTensor2(Dy2StTestBase):
         )
 
     @test_ast_only
-    @test_legacy_and_pir
     def test_to_tensor_with_variable_list_sot(self):
         def func(x):
             x = paddle.to_tensor([[1], [2], [3], [4]])

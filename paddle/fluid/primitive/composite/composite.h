@@ -26,8 +26,8 @@ template <typename T>
 Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
   auto org_dtype = x.dtype();
   auto x_tmp = x;
-  bool need_cast = org_dtype == phi::DataType::FLOAT16 ||
-                   org_dtype == phi::DataType::BFLOAT16;
+
+  bool need_cast = is_half_dtype(org_dtype);
   if (need_cast) {
     x_tmp = cast<T>(x, phi::DataType::FLOAT32);
   }
@@ -85,8 +85,8 @@ template <typename T>
 Tensor pow_decomp(const Tensor& x, const paddle::Scalar& y) {
   auto org_dtype = x.dtype();
   auto x_cast = x;
-  bool need_cast = org_dtype == phi::DataType::FLOAT16 ||
-                   org_dtype == phi::DataType::BFLOAT16;
+
+  bool need_cast = is_half_dtype(org_dtype);
   if (need_cast) {
     x_cast = cast<T>(x, phi::DataType::FLOAT32);
   }
@@ -123,9 +123,7 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
   auto org_dtype = x.dtype();
   Tensor x_cast = x;
 
-  bool need_cast = org_dtype == phi::DataType::FLOAT16 ||
-                   org_dtype == phi::DataType::BFLOAT16;
-
+  bool need_cast = is_half_dtype(org_dtype);
   if (need_cast) {
     x_cast = cast<T>(x, phi::DataType::FLOAT32);
   }
@@ -229,18 +227,37 @@ Tensor softmax_decomp(const Tensor& x, const int& axis) {
   auto x_tmp = x;
   auto axis_tmp = IntArray({axis});
 
-  bool need_cast =
-      org_dtype == phi::DataType::FLOAT16 || org_dtype == phi::DataType::UINT16;
+  bool need_cast = is_half_dtype(org_dtype);
   if (need_cast) {
     x_tmp = cast<T>(x, phi::DataType::FLOAT32);
   }
 
   auto max_tmp = max<T>(x_tmp, axis_tmp, true);
-  auto molecular = exp<T>(subtract<T>(x_tmp, max_tmp));
+  auto molecular = exp<T>(x_tmp - max_tmp);
+  auto res = molecular / sum<T>(molecular, axis_tmp, molecular.dtype(), true);
 
-  auto denominator = sum<T>(molecular, axis_tmp, molecular.dtype(), true);
-  auto res = divide<T>(molecular, denominator);
+  if (need_cast) {
+    return cast<T>(res, org_dtype);
+  } else {
+    return res;
+  }
+}
 
+template <typename T>
+Tensor silu_decomp(const Tensor& x) {
+  auto org_dtype = x.dtype();
+  auto x_tmp = x;
+
+  bool need_cast = is_half_dtype(org_dtype);
+  if (need_cast) {
+    x_tmp = cast<T>(x, phi::DataType::FLOAT32);
+  }
+
+  // res = x / (1 + exp(-x))
+  auto one = full<T>(phi::vectorize(x.dims()), 1, x_tmp.dtype());
+  auto exp_temp =
+      exp<T>(full<T>(phi::vectorize(x.dims()), -1, x_tmp.dtype()) * x_tmp);
+  auto res = x_tmp / (exp_temp + one);
   if (need_cast) {
     return cast<T>(res, org_dtype);
   } else {
@@ -251,6 +268,25 @@ Tensor softmax_decomp(const Tensor& x, const int& axis) {
 template <typename T>
 Tensor relu_decomp(const Tensor& x) {
   return maximum<T>(x, full<T>(phi::vectorize(x.dims()), 0.0, x.dtype()));
+}
+
+template <typename T>
+Tensor rsqrt_decomp(const Tensor& x) {
+  auto org_dtype = x.dtype();
+  Tensor x_cast = x;
+
+  bool need_cast = is_half_dtype(org_dtype);
+  if (need_cast) {
+    x_cast = cast<T>(x, phi::DataType::FLOAT32);
+  }
+
+  auto ans = elementwise_pow<T>(
+      x_cast, full<T>(phi::vectorize(x_cast.dims()), -0.5, x_cast.dtype()));
+  if (need_cast) {
+    return cast<T>(ans, org_dtype);
+  } else {
+    return ans;
+  }
 }
 
 template <typename T>
@@ -283,8 +319,7 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
   auto org_dtype = x.dtype();
   Tensor x_cast = x;
 
-  bool need_cast = org_dtype == phi::DataType::FLOAT16 ||
-                   org_dtype == phi::DataType::BFLOAT16;
+  bool need_cast = is_half_dtype(org_dtype);
 
   // cast dtype to float32 if dtype =float16 or bfloat16
   if (need_cast) {
@@ -350,16 +385,80 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
 }
 
 template <typename T>
+Tensor full_like_decomp(const Tensor& x,
+                        const paddle::Scalar& value,
+                        const DataType& dtype,
+                        const Place& place) {
+  return full<T>(phi::vectorize(x.dims()), value, dtype, place);
+}
+
+template <typename T>
+std::tuple<Tensor, Tensor> dropout_decomp(
+    const Tensor& x,
+    const paddle::optional<Tensor>& seed_tensor,
+    const paddle::Scalar& p,
+    bool is_test,
+    const std::string& mode,
+    const int seed,
+    bool fix_seed) {
+  auto org_dtype = x.dtype();
+  bool upscale_in_train = false;
+  if (mode == std::string("upscale_in_train")) {
+    upscale_in_train = true;
+  }
+
+  int seed_tmp = 0;
+  if (fix_seed) {
+    seed_tmp = seed;
+  }
+
+  auto dtype_tmp = org_dtype;
+  if (is_half_dtype(org_dtype)) {
+    dtype_tmp = phi::DataType::FLOAT32;
+  }
+
+  auto uniform_tensor =
+      uniform<T>(phi::vectorize(x.dims()), dtype_tmp, 0.0, 1.0, seed_tmp);
+  auto mask =
+      cast<T>(greater_equal<T>(uniform_tensor,
+                               full<T>(phi::vectorize(x.dims()), p, dtype_tmp)),
+              org_dtype);
+  auto ones_p =
+      full<T>(phi::vectorize(x.dims()), 1.0 - p.to<float>(), org_dtype);
+  if (upscale_in_train) {
+    if (is_test) {
+      // inference: out = input
+      return std::make_tuple(x, cast<T>(mask, phi::DataType::UINT8));
+    } else {
+      // train: out = input * mask / ( 1.0 - p )
+      if (p.to<float>() == 1.0) {
+        // Process p=1. for avoid devide zero error (x*mask/(1.0-p))
+        auto zero = full<T>(phi::vectorize(x.dims()), 0.0, org_dtype);
+        return std::make_tuple(x * zero, cast<T>(zero, phi::DataType::UINT8));
+      } else {
+        auto ans = (x * mask) / ones_p;
+        return std::make_tuple(ans, cast<T>(mask, phi::DataType::UINT8));
+      }
+    }
+  } else {
+    if (is_test) {
+      // inference: out = input * (1.0 - p)
+      return std::make_tuple(x * ones_p, cast<T>(mask, phi::DataType::UINT8));
+    } else {
+      // train: out = input * mask
+      return std::make_tuple(x * mask, cast<T>(mask, phi::DataType::UINT8));
+    }
+  }
+}
+
+template <typename T>
 Tensor sqrt_decomp(const Tensor& x) {
   auto org_dtype = x.dtype();
-  bool need_cast =
-      org_dtype == phi::DataType::FLOAT16 || org_dtype == phi::DataType::UINT16;
+  Tensor x_cast = x;
 
-  Tensor x_cast;
+  bool need_cast = is_half_dtype(org_dtype);
   if (need_cast) {
     x_cast = cast<T>(x, phi::DataType::FLOAT32);
-  } else {
-    x_cast = x;
   }
 
   auto ans = elementwise_pow<T>(

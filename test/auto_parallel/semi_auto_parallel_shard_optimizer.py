@@ -79,14 +79,12 @@ class TestSemiAutoParallelShardOptimizer:
             opt.clear_grad()
         for key in opt._accumulators.keys():
             for k, v in opt._accumulators[key].items():
-                if 'momentum' in key:
+                if 'moment' in key:
                     assert opt._accumulators[key][k].is_dist()
-                    if 'w' in k:
-                        assert opt._accumulators[key][k].shape == [10, 10]
-                        assert opt._accumulators[key][k]._local_shape == [10, 5]
-                    else:
-                        assert opt._accumulators[key][k].shape == [10]
-                        assert opt._accumulators[key][k]._local_shape == [5]
+                    assert (
+                        opt._accumulators[key][k].shape[-1]
+                        == opt._accumulators[key][k]._local_shape[-1] * 2
+                    )
         self.check_tensor_eq(self.weight, linear.weight.numpy())
         self.check_tensor_eq(self.bias, linear.bias.numpy())
 
@@ -148,8 +146,7 @@ class TestSemiAutoParallelShardOptimizer:
         if self._backend == "gpu":
             self.test_adamw_mp()
             self.test_adamw_shard_optimizer(stage1=True)
-            # A problem has to be addressed if not shard batch.
-            # self.test_adamw_shard_optimizer(stage1=False)
+            self.test_adamw_shard_optimizer(stage1=False)
 
 
 if __name__ == '__main__':

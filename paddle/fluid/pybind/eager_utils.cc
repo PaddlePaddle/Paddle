@@ -39,6 +39,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/pir.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
+#include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -138,6 +139,10 @@ void ConvertToDistTensor(Tensor* x, const phi::distributed::ProcessMesh* mesh) {
         phi::vectorize(x->impl()->dims()));
     dist_attr.set_process_mesh(*mesh);
     auto dense_t = std::static_pointer_cast<phi::DenseTensor>(x->impl());
+    // auto parallel in dygraph doesn't support strided kernel.
+    if (!dense_t->meta().is_contiguous()) {
+      *dense_t = paddle::experimental::Trans2Contiguous(*dense_t);
+    }
     x->set_impl(
         std::make_shared<phi::distributed::DistTensor>(dense_t, dist_attr));
   }
@@ -1956,7 +1961,7 @@ PyObject* GetEmpytyTensorsWithVarDesc(PyObject* self, PyObject* args) {
 paddle::Tensor CreateTensorFromOpResult(const pir::OpResult& op_result) {
   auto tensor = paddle::Tensor();
 
-  auto dims = phi::vectorize(GetOpResultDims(op_result));
+  auto dims = phi::vectorize(GetValueDims(op_result));
   auto ddims = phi::make_ddim(dims);
   auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
   autograd_meta->SetPersistable(false);
