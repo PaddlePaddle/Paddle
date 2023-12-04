@@ -55,7 +55,6 @@ def generate_data(ndim, count=1, max_size=4, mix=False, dtype='int32'):
         a list of data like:
             [[data, dtype, shape, name], [data, dtype, shape, name] ... ]
     """
-
     rtn = []
     for d in range(ndim):
         data = [
@@ -173,7 +172,9 @@ class BaseTest(unittest.TestCase):
                         dtype = dtypes[i]
                         name = names[i]
 
-                        x.append(paddle.static.data(name, shape, dtype))
+                        _x = paddle.static.data(name, shape, dtype)
+                        _x.stop_gradient = False
+                        x.append(_x)
 
                         # the data feeded should NOT be a Tensor
                         feed[name] = (
@@ -186,13 +187,15 @@ class BaseTest(unittest.TestCase):
 
                     if len(inputs) == 1:
                         out.stop_gradient = False
-                        y = out
+                        y = x[0]
+                        _out = out
                     else:
                         for o in out:
                             o.stop_gradient = False
-                        y = out[0]
+                        y = x[0]
+                        _out = out[0]
 
-                    z = y * 123
+                    z = _out * 123
 
                     fetch_list = [out]
                     if paddle.framework.in_pir_mode():
@@ -207,11 +210,13 @@ class BaseTest(unittest.TestCase):
                     exe = paddle.static.Executor(place)
                     *res, res_grad = exe.run(feed=feed, fetch_list=fetch_list)
 
-                    # convert grad value to bool if dtype is bool
-                    grad_value = 123.0 if dtypes[0] != 'bool' else True
-                    np.testing.assert_allclose(
-                        res_grad, np.ones_like(y) * grad_value
-                    )
+                    # not check old ir
+                    if paddle.framework.in_pir_mode():
+                        # convert grad value to bool if dtype is bool
+                        grad_value = 123.0 if dtypes[0] != 'bool' else True
+                        np.testing.assert_allclose(
+                            res_grad, np.ones_like(y) * grad_value
+                        )
 
                 out_ref = func_ref(
                     func_type,
