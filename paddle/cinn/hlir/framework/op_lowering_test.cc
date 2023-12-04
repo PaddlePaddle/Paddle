@@ -34,7 +34,7 @@ using frontend::RunDecomposer;
 
 void CodeGen(const ir::LoweredFunc& func) {
 #ifdef CINN_WITH_CUDA
-  auto target = common::DefaultNVGPUTarget();
+  auto target = cinn::common::DefaultNVGPUTarget();
   Module::Builder builder("module_builder", target);
 
   builder.AddFunction(func);
@@ -44,7 +44,7 @@ void CodeGen(const ir::LoweredFunc& func) {
   std::string code = "";
   compiler->Build(module, code);
 #else
-  auto target = common::DefaultHostTarget();
+  auto target = cinn::common::DefaultHostTarget();
   ir::Module::Builder builder("Module_Builder", target);
   builder.AddFunction(func);
 
@@ -58,7 +58,7 @@ void CodeGen(const ir::LoweredFunc& func) {
 
 void Compile(NetBuilder& net_builder) {  // NOLINT
   auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
   RunDecomposer(&program, target);
 
   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
@@ -1204,9 +1204,9 @@ TEST(OP_LOWERING, Reduce_Fusion_Test_21) {
 */
 
 TEST(OpFusionPass, Block_Reduce_Fuse_Broadcast) {
-  int sm_count = common::DefaultNVGPUTarget().get_multi_processor_count();
+  int sm_count = cinn::common::DefaultNVGPUTarget().get_multi_processor_count();
   int max_threads_per_sm =
-      common::DefaultNVGPUTarget().get_max_threads_per_sm();
+      cinn::common::DefaultNVGPUTarget().get_max_threads_per_sm();
   int warp_reduce_threshold = sm_count * max_threads_per_sm / 32;
   int h = warp_reduce_threshold - 10;
   int w = 256;
@@ -1222,9 +1222,9 @@ TEST(OpFusionPass, Block_Reduce_Fuse_Broadcast) {
 }
 
 TEST(OpFusionPass, Block_Reduce_Fuse_Elementwise) {
-  int sm_count = common::DefaultNVGPUTarget().get_multi_processor_count();
+  int sm_count = cinn::common::DefaultNVGPUTarget().get_multi_processor_count();
   int max_threads_per_sm =
-      common::DefaultNVGPUTarget().get_max_threads_per_sm();
+      cinn::common::DefaultNVGPUTarget().get_max_threads_per_sm();
   int warp_reduce_threshold = sm_count * max_threads_per_sm / 32;
   int h = warp_reduce_threshold - 10;
   int w = 256;
@@ -1240,9 +1240,9 @@ TEST(OpFusionPass, Block_Reduce_Fuse_Elementwise) {
   Compile(net_builder);
 }
 TEST(OpFusionPass, Warp_Reduce_Fuse_Broadcast) {
-  int sm_count = common::DefaultNVGPUTarget().get_multi_processor_count();
+  int sm_count = cinn::common::DefaultNVGPUTarget().get_multi_processor_count();
   int max_threads_per_sm =
-      common::DefaultNVGPUTarget().get_max_threads_per_sm();
+      cinn::common::DefaultNVGPUTarget().get_max_threads_per_sm();
   int warp_reduce_threshold = sm_count * max_threads_per_sm / 32;
   int h = warp_reduce_threshold + 10;
   int w = 256;
@@ -1258,9 +1258,9 @@ TEST(OpFusionPass, Warp_Reduce_Fuse_Broadcast) {
 }
 
 TEST(OpFusionPass, Warp_Reduce_Fuse_Elementwise) {
-  int sm_count = common::DefaultNVGPUTarget().get_multi_processor_count();
+  int sm_count = cinn::common::DefaultNVGPUTarget().get_multi_processor_count();
   int max_threads_per_sm =
-      common::DefaultNVGPUTarget().get_max_threads_per_sm();
+      cinn::common::DefaultNVGPUTarget().get_max_threads_per_sm();
   int warp_reduce_threshold = sm_count * max_threads_per_sm / 32;
   int h = warp_reduce_threshold + 10;
   int w = 256;

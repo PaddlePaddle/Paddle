@@ -50,9 +50,9 @@ void ArgsortGradKernel(const Context& dev_ctx,
   if (axis == -1 || axis + 1 == in_dims.size()) {
     is_need_transpose = false;
   }
-  int len_before = phi::product(phi::slice_ddim(in_dims, 0, axis));
+  int len_before = common::product(common::slice_ddim(in_dims, 0, axis));
   int len_after =
-      phi::product(phi::slice_ddim(in_dims, axis + 1, in_dims.size()));
+      common::product(common::slice_ddim(in_dims, axis + 1, in_dims.size()));
   int m = len_before * len_after;
   int n = in_dims[axis];
   int len = m * n;

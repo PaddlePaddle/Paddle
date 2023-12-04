@@ -210,7 +210,7 @@ void Executor::Run(const std::vector<const Tensor *> &inputs,
     }
 
     auto *tensor = outputs[i];
-    tensor->Resize(phi::make_ddim(output_shape));
+    tensor->Resize(common::make_ddim(output_shape));
     auto fetch_dtype = fetch_info.dataType();
     auto paddle_type = PopartDType2VarType(fetch_dtype);
     tensor->mutable_data(ctx.GetPlace(),
@@ -427,7 +427,7 @@ void Executor::RunPopef(const std::vector<const Tensor *> &inputs,
 
     auto *tensor = outputs[i];
     // resize output size to make data_ptr valid.
-    tensor->Resize(phi::make_ddim(output_shape));
+    tensor->Resize(common::make_ddim(output_shape));
     tensor->mutable_data(ctx.GetPlace(),
                          framework::TransToPhiDataType(paddle_dtype));
 

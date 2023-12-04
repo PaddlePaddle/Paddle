@@ -82,7 +82,7 @@ void DiagEmbedKernel(const Context& dev_ctx,
   auto out_dims = out->dims();
   int dim1_ = dim1 < 0 ? out_dims.size() + dim1 : dim1;
   int dim2_ = dim2 < 0 ? out_dims.size() + dim2 : dim2;
-  auto stride = phi::stride(out_dims);
+  auto stride = common::stride(out_dims);
   int64_t diag_size;
   int64_t storage_offset = 0;
   if (offset >= 0) {
@@ -99,11 +99,11 @@ void DiagEmbedKernel(const Context& dev_ctx,
   } else {
     storage_offset -= offset * stride[dim1_];
   }
-  auto strides = vectorize(stride);
+  auto strides = common::vectorize(stride);
   strides.erase(strides.begin() + std::max(dim1_, dim2_));
   strides.erase(strides.begin() + std::min(dim1_, dim2_));
   strides.push_back(stride[dim1_] + stride[dim2_]);
-  const auto dims = vectorize(x.dims());
+  const auto dims = common::vectorize(x.dims());
 
 #if defined(__NVCC__) || defined(__HIPCC__)
   thrust::device_vector<int64_t> dims_vec(dims);

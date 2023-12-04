@@ -18,14 +18,16 @@ import numpy as np
 
 import paddle
 from paddle import base
+from paddle.pir_utils import test_with_pir_api
 
 
 class API_Test_Nansum(unittest.TestCase):
+    @test_with_pir_api
     def test_static_graph(self):
         paddle.enable_static()
-        startup_program = base.Program()
-        train_program = base.Program()
-        with base.program_guard(train_program, startup_program):
+        startup_program = paddle.static.Program()
+        train_program = paddle.static.Program()
+        with paddle.static.program_guard(train_program, startup_program):
             input = paddle.static.data(
                 name='input', dtype='float32', shape=[2, 4]
             )
@@ -75,6 +77,7 @@ class API_Test_Nansum(unittest.TestCase):
             )
 
     # test nansum api with float16
+    @test_with_pir_api
     def test_static_graph_fp16(self):
         paddle.enable_static()
         startup_program = paddle.static.Program()

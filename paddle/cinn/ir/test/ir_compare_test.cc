@@ -25,7 +25,7 @@ namespace cinn {
 namespace ir {
 namespace ir_utils {
 TEST(TestIrCompare, SingleFunction) {
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   ir::Expr M(32);
   ir::Expr N(32);
