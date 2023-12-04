@@ -946,6 +946,7 @@
   kernel :
     func : flash_attn_unpadded
     data_type : q
+  intermediate : softmax_lse, seed_offset
   backward : flash_attn_unpadded_grad
 
 - op : flatten
