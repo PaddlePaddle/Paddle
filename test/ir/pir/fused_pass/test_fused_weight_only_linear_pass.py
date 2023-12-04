@@ -45,6 +45,9 @@ def get_cuda_version():
     "weight_only_linear requires CUDA >= 11.2 and CUDA_ARCH >= 8",
 )
 class TestFusedWeightOnlyLinearPass_Fp32(PassTest):
+    def is_program_valid(self, program):
+        return True
+
     def build_ir_progam(self):
         pir_program = None
         with paddle.pir_utils.IrGuard():
