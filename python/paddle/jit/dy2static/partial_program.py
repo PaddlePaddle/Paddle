@@ -225,7 +225,6 @@ class PartialProgramLayer:
         """
         Execute static graph by Interpreter and Return dynamic Tensors.
         """
-
         in_vars, in_var_names = self._prepare_inputs(inputs)
         out_vars = self._prepare_outputs()
         self._cast_fp16_if_pure_fp16(in_vars)
@@ -254,7 +253,6 @@ class PartialProgramLayer:
         """
         In sot, inputs and outputs of partial program only contain tensors, so we can skip some step to speed up
         """
-
         out_vars = self._prepare_outputs()
         self._cast_fp16_if_pure_fp16(inputs)
         attrs = self._prepare_attributes()

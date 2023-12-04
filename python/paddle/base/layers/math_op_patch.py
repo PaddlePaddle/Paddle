@@ -17,8 +17,8 @@ import warnings
 
 from paddle.base.dygraph.base import in_to_static_mode
 
-from .. import core
-from ..framework import Variable, static_only, unique_name
+from .. import core, default_main_program
+from ..framework import Variable, static_only
 from .layer_function_generator import OpProtoHolder
 
 _supported_int_dtype_ = [
@@ -61,7 +61,7 @@ _already_patch_variable = False
 
 def monkey_patch_variable():
     def unique_tmp_name():
-        return unique_name.generate("tmp")
+        return default_main_program()._name_generator.generate("tmp")
 
     def safe_get_dtype(var):
         try:
