@@ -56,7 +56,8 @@ void CompilationTask::operator()() {
 
 void CompilationTask::Lowering() {
   auto op_lowerer = CreateOpLowerer<pir::GroupPtr>(context_->target_);
-  context_->SetLoweredFuncs(op_lowerer.BucketLower(context_->group_));
+  context_->SetLoweredFuncs(
+      op_lowerer.BucketLower(context_->group_, false, false, false));
 }
 
 void CompilationTask::CodegenAndJit() {

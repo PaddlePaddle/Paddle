@@ -23,6 +23,7 @@
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
+PD_DECLARE_bool(cinn_bucket_compile);
 
 namespace cinn {
 namespace hlir {
@@ -241,13 +242,22 @@ Tensor Broadcast(const FuncOp& op,
   // the counts of left-shift of tensor b so as to right alignment
   int axis_offset = 0;
 
-  GetBroadcastShape(a->shape,
-                    b->shape,
-                    &common_shape,
-                    &broadcast_flags1,
-                    &broadcast_flags2,
-                    &axis_offset,
-                    axis);
+  if (FLAGS_cinn_bucket_compile) {
+    // TODO(6clc): After supporting symbolic calculation,
+    // perfect the logic of shape equal judgment
+    common_shape = a->shape;
+    broadcast_flags1.resize(common_shape.size(), true);
+    broadcast_flags2.resize(common_shape.size(), true);
+  } else {
+    GetBroadcastShape(a->shape,
+                      b->shape,
+                      &common_shape,
+                      &broadcast_flags1,
+                      &broadcast_flags2,
+                      &axis_offset,
+                      axis);
+  }
+
   auto fn = [=](const std::vector<Expr>& indice) {
     std::vector<Expr> broadcast_indice1;
     std::vector<Expr> broadcast_indice2;

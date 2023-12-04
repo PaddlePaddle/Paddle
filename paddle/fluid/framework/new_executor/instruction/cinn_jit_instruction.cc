@@ -24,6 +24,7 @@
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #endif
+PD_DECLARE_bool(cinn_bucket_compile);
 
 namespace paddle {
 namespace framework {
@@ -50,6 +51,9 @@ class CinnJitInstruction::FnPtrImpl {
     for (const auto& int_arg_mp : cinn_kernel_info_.int_args_map) {
       func_args_.emplace_back(kernel_args[int_arg_mp.second.arg_idx]->dims().at(
           int_arg_mp.second.dim_idx));
+      func_args_.emplace_back(static_cast<int64_t>(
+          kernel_args[int_arg_mp.second.arg_idx]->dims().at(
+              int_arg_mp.second.dim_idx)));
     }
 
     // 3. Launch host kernel
@@ -100,13 +104,13 @@ CinnJitInstruction::CinnJitInstruction(
 
     tensor_args_.push_back(tensor);
 
-    out_tensor_ = tensor;
-
-    auto alloc_tensor_type =
-        result.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
-    tensor->set_type(
-        paddle::dialect::TransToPhiDataType(alloc_tensor_type.dtype()));
-    tensor->Resize(alloc_tensor_type.dims());
+    if (!FLAGS_cinn_bucket_compile) {
+      auto alloc_tensor_type =
+          result.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
+      tensor->set_type(
+          paddle::dialect::TransToPhiDataType(alloc_tensor_type.dtype()));
+      tensor->Resize(alloc_tensor_type.dims());
+    }
   }
 }
 
@@ -115,7 +119,14 @@ void CinnJitInstruction::Run() {
   auto gpu_ctx = static_cast<phi::GPUContext*>(dev_ctx_);
 
   auto stream = gpu_ctx->stream();
+
   for (size_t i = 0; i < tensor_args_.size(); ++i) {
+    // TODO(6clc): template infer shape from tensor_args_[0].
+    // After supporting symbolic calculation, perfect the code to query shape
+    // of output tensor
+    if (FLAGS_cinn_bucket_compile) {
+      tensor_args_[i]->Resize(tensor_args_[0]->dims());
+    }
     gpu_ctx->Alloc(tensor_args_[i], tensor_args_[i]->dtype());
   }
 

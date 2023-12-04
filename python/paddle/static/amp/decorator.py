@@ -301,7 +301,12 @@ class OptimizerWithMixedPrecision:
         self._to_fp16_var_names = None
 
     def amp_init(
-        self, place, scope=None, test_program=None, use_fp16_test=False
+        self,
+        place,
+        scope=None,
+        test_program=None,
+        use_fp16_test=False,
+        rewrite_master_weight=False,
     ):
         """
         Init the amp training, such as cast fp32 parameters to fp16 type.
@@ -369,6 +374,8 @@ class OptimizerWithMixedPrecision:
                 scope,
                 self._to_fp16_var_names,
                 self._amp_vartype,
+                rewrite_master_weight,
+                self._optimizer._master_weights,
             )
         if test_program is not None:
             if self._use_pure_fp16:
