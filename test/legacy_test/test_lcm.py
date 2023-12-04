@@ -43,7 +43,7 @@ class TestLcmAPI(unittest.TestCase):
                 name='input2', dtype='int32', shape=self.y_shape
             )
             out = paddle.lcm(x1, x2)
-
+            out_ref = np.lcm(self.x_np, self.y_np)
             place = (
                 base.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
@@ -55,9 +55,7 @@ class TestLcmAPI(unittest.TestCase):
                 feed={'input1': self.x_np, 'input2': self.y_np},
                 fetch_list=[out],
             )
-            self.assertTrue(
-                (np.array(res[0]) == np.lcm(self.x_np, self.y_np)).all()
-            )
+            self.assertTrue((res[0] == out_ref).all(), True)
 
     def test_dygraph(self):
         paddle.disable_static()
