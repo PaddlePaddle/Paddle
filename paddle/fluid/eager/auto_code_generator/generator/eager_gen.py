@@ -76,6 +76,7 @@ prim_white_list = [
 ]
 
 # white ops list whose kernel can automaically do type promotion.
+# future will get this list from same place with static graph.
 type_promote_white_list = {
     "add": ["x", "y"],
     "subtract": ["x", "y"],
@@ -527,7 +528,7 @@ AMP_LOGIC_TEMPLATE = """  if (egr::Controller::Instance().GetAMPLevel() != paddl
 
 TYPE_PROMOTION_LOGIC_TEMPLATE = """   {} {{
     VLOG(5) << "got different data type, run type protmotion automatically.";
-    LOG(WARNING) << "got different data type, run type protmotion automatically.";
+    LOG(WARNING) << "got different data type, run type protmotion automatically, this may cause data type been changed.";
     {}
     {}
     {}
