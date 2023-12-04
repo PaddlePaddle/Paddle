@@ -65,8 +65,6 @@ class PirCompiler final {
   std::vector<GroupCompilationContext> group_compilation_contexts_;
 };
 
-// std::shared_ptr<Scope> BuildScope(const Target&, const ::pir::Program&);
-
 class PirCompilerManager {
  public:
   static PirCompilerManager& Instance() {
