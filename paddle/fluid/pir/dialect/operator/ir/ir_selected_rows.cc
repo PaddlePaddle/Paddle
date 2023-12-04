@@ -13,8 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/ir/ir_selected_rows.h"
-
-#include "paddle/pir/core/enforce.h"
+#include "paddle/common/enforce.h"
 
 namespace paddle {
 namespace dialect {
@@ -51,7 +50,7 @@ IrSelectedRows& IrSelectedRows::operator=(IrSelectedRows&& other) noexcept {
   return *this;
 }
 
-int64_t IrSelectedRows::numel() const { return phi::product(dims_); }
+int64_t IrSelectedRows::numel() const { return common::product(dims_); }
 
 const phi::Place& IrSelectedRows::place() const {
   IR_THROW("Don't use IrSelectedRows::place method.");

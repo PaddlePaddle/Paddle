@@ -29,8 +29,8 @@
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/lang/placeholder.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/phi/core/ddim.h"
 
 PD_DECLARE_bool(cinn_use_cuda_vectorize);
 PD_DECLARE_bool(cinn_enable_map_expr);
@@ -42,8 +42,8 @@ namespace hlir {
 namespace framework {
 namespace pir {
 
+using cinn::common::Type;
 using cinn::hlir::op::ExternalApiRegistry;
-using common::Type;
 using framework::OpPatternKind;
 using framework::StrategyFunction;
 
@@ -382,10 +382,11 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerCustomCall(
   //   external_api = ExternalApiRegistry::Global()->GetExternalApi(node,
   //   target_);
   // }
-  std::vector<common::CINNValue> compute_args = {
-      common::CINNValue(group->FuncName()), common::CINNValue(external_api)};
-  common::CINNValuePack pack =
-      impl->fcompute(common::CINNValuePack{compute_args});
+  std::vector<cinn::common::CINNValue> compute_args = {
+      cinn::common::CINNValue(group->FuncName()),
+      cinn::common::CINNValue(external_api)};
+  cinn::common::CINNValuePack pack =
+      impl->fcompute(cinn::common::CINNValuePack{compute_args});
   CHECK_EQ(pack.size(), 1UL);
   // reset input names as extern api input args can't be remove duplicate.
   // group->input_names.clear();
@@ -463,6 +464,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
   // update args for dynamic dim
   int num_tensor_args = static_cast<int>(group_func_args.size());
   int non_tensor_arg_idx = group_func_args.size();
+  std::unordered_set<std::string> int_args_set;
   for (int tensor_arg_idx = 0; tensor_arg_idx < num_tensor_args;
        tensor_arg_idx++) {
     auto tensor_dim = (*group_func_arg_tensors)[tensor_arg_idx]->sym_shape;
@@ -470,8 +472,14 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     for (int tensor_arg_dim_idx = 0; tensor_arg_dim_idx < tensor_dim_size;
          tensor_arg_dim_idx++) {
       if (tensor_dim[tensor_arg_dim_idx]->IsDynamic()) {
-        group_func_args.emplace_back(ir::_Var_::Make(
-            tensor_dim[tensor_arg_dim_idx]->GetSymbolName(), common::Int(32)));
+        const std::string symbol_name =
+            tensor_dim[tensor_arg_dim_idx]->GetSymbolName();
+        if (int_args_set.count(symbol_name) != 0) {
+          continue;
+        }
+        int_args_set.insert(symbol_name);
+        group_func_args.emplace_back(
+            ir::_Var_::Make(symbol_name, cinn::common::Int(32)));
         group->int_args_map[non_tensor_arg_idx++] = {tensor_arg_idx,
                                                      tensor_arg_dim_idx};
       }
@@ -550,21 +558,21 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
     std::unordered_map<std::string, ir::Tensor>* tmp_tensor_info,
     std::vector<ir::Tensor>* op_func_arg_tensors) {
   VLOG(4) << "Do lower with Compute, op: " << op->name();
-  std::vector<common::CINNValue> cinn_inputs;
+  std::vector<cinn::common::CINNValue> cinn_inputs;
   for (const ir::Tensor& tensor : *op_func_arg_tensors) {
-    cinn_inputs.push_back(common::CINNValue(ir::Expr(tensor)));
+    cinn_inputs.push_back(cinn::common::CINNValue(ir::Expr(tensor)));
   }
 
   // set tensor name = operand hash name
   auto op_results = op->results();
   for (const auto& result : op_results) {
     std::string output_id = ValueName(result);
-    cinn_inputs.push_back(common::CINNValue(output_id));
+    cinn_inputs.push_back(cinn::common::CINNValue(output_id));
   }
 
   // 1.Do compute
-  common::CINNValuePack pack =
-      op_impl->fcompute(common::CINNValuePack{cinn_inputs});
+  cinn::common::CINNValuePack pack =
+      op_impl->fcompute(cinn::common::CINNValuePack{cinn_inputs});
 
   poly::StageMap tmp_stages = pack.back();
   std::string post = "";
@@ -591,7 +599,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
 
     // Insert output tensors into function arg
     if (!expr.as_tensor_ref()->buffer.defined() ||
-        this->target_ != common::DefaultNVGPUTarget()) {
+        this->target_ != cinn::common::DefaultNVGPUTarget()) {
       op_func_arg_tensors->push_back(expr.as_tensor_ref());
       expr.as_tensor_ref()->WithBuffer();
     }
@@ -628,18 +636,18 @@ ir::Expr OpLowererImpl::DoOpSchedule(
     const std::vector<ir::Tensor>& op_func_arg_tensors,
     const std::vector<ir::LoweredFunc>& lowered_funcs) {
   VLOG(4) << "Do op schedule";
-  std::vector<common::CINNValue> schedule_inputs;
+  std::vector<cinn::common::CINNValue> schedule_inputs;
   // 1.Collect tensors
   for (const ir::Tensor& op_func_arg_tensor : op_func_arg_tensors) {
-    schedule_inputs.push_back(common::CINNValue(op_func_arg_tensor));
+    schedule_inputs.push_back(cinn::common::CINNValue(op_func_arg_tensor));
   }
   // 2.Collect bodies to be scheduled
   for (const ir::LoweredFunc& func : lowered_funcs) {
-    schedule_inputs.push_back(common::CINNValue(func->body));
+    schedule_inputs.push_back(cinn::common::CINNValue(func->body));
   }
   // 3.Do schedule on AST
-  common::CINNValuePack expr_pack =
-      op_impl->fschedule(common::CINNValuePack{schedule_inputs});
+  cinn::common::CINNValuePack expr_pack =
+      op_impl->fschedule(cinn::common::CINNValuePack{schedule_inputs});
   VLOG(4) << "After op schedule: " << expr_pack[0].operator ir::Expr();
 
   return expr_pack[0].operator ir::Expr();
@@ -844,7 +852,7 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
 ir::Tensor OpLowererImpl::GetTensor(const GroupPtr& group,
                                     const ::pir::Value& value) {
   auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
-  auto in_shape = phi::vectorize<int>(type_info.dims());
+  auto in_shape = ::common::vectorize<int>(type_info.dims());
   auto dtype = type_info.dtype();
   std::string input_id = ValueName(value);
   if (group->shape_analysis != nullptr) {
@@ -881,6 +889,16 @@ std::vector<ir::Tensor> OpLowererImpl::CollectInputTensor(
       if (func_args != nullptr) {
         func_args->push_back(tensor);
       }
+    } else {
+      // TODO(6clc): After supporting symbolic calculation,
+      // 1. Check that the shape of the tensor with the same name is the same
+      // size
+      // 2. Or make the symbol expression in compute output tensor consistent
+      //    with the one inferred in shape_analysis
+      (*tensor_map)[in_value]->sym_shape = tensor->sym_shape;
+      (*tensor_map)[in_value]->shape = tensor->shape;
+      (*tensor_map)[in_value]->sym_domain = tensor->sym_domain;
+      (*tensor_map)[in_value]->domain = tensor->domain;
     }
     tensors.push_back(tensor);
   }
@@ -899,7 +917,7 @@ void OpLowererImpl::CollectOutputInfo(
         out_value.type().dyn_cast<paddle::dialect::DenseTensorType>();
 
     out_types->push_back(CompatibleInfo::ConvertIRType(type_info.dtype()));
-    auto out_shape = phi::vectorize<int>(type_info.dims());
+    auto out_shape = ::common::vectorize<int>(type_info.dims());
     out_shapes->push_back(std::move(out_shape));
   }
 }
@@ -924,7 +942,7 @@ common::Type OpLowererImpl::GetTensorDtype(
 
 common::Type OpLowererImpl::GetTensorDtype(const ::pir::Value& value) {
   auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
-  auto in_shape = phi::vectorize<int>(type_info.dims());
+  auto in_shape = ::common::vectorize<int>(type_info.dims());
   auto dtype = type_info.dtype();
   return CompatibleInfo::ConvertIRType(dtype);
 }
