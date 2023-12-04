@@ -135,15 +135,17 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
         if_op = main_program.global_block().ops[-1]
         self.assertEqual(if_op.name(), "pd_op.if")
         with paddle.pir.core.program_guard(main_program):
-            if_op.result(0).stop_gradient = False
+            self.assertEqual(
+                main_program.global_block().ops[-2].result(0).stop_gradient,
+                True,
+            )
+            self.assertEqual(if_op.result(0).stop_gradient, False)
             # check vjp interface for if_op
-            print("main_program ", main_program)
             grad_outs = grad(
                 if_op.results(),
                 [dataop0.result(0), dataop1.result(0)],
             )
 
-            print("main_program ", main_program)
             self.assertEqual(grad_outs[0].get_defining_op().name(), "pd_op.if")
             self.assertEqual(grad_outs[1].get_defining_op().name(), "pd_op.if")
 

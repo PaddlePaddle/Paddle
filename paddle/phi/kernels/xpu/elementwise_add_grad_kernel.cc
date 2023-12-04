@@ -61,7 +61,7 @@ void AddGradKernel(const Context& dev_ctx,
       }
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(dx->dims(), dz_dims, axis);
-      std::vector<int> dz_vector = phi::vectorize<int>(dz_dims);
+      std::vector<int> dz_vector = common::vectorize<int>(dz_dims);
 
       int ret =
           xpu::reduce_sum<XPUType>(dev_ctx.x_context(),
@@ -86,7 +86,7 @@ void AddGradKernel(const Context& dev_ctx,
     } else {
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(dy->dims(), dz_dims, axis);
-      std::vector<int> dz_vector = phi::vectorize<int>(dz_dims);
+      std::vector<int> dz_vector = common::vectorize<int>(dz_dims);
       int ret =
           xpu::reduce_sum<XPUType>(dev_ctx.x_context(),
                                    reinterpret_cast<const XPUType*>(dz_data),

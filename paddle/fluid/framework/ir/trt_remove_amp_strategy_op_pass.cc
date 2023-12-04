@@ -18,10 +18,10 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/common/errors.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/core/errors.h"
 
 namespace paddle {
 namespace framework {

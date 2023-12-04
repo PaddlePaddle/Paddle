@@ -42,7 +42,7 @@ void ReduceCudaAMaxAMinGrad(const Context& dev_ctx,
   // get reduce_dim and reduce_num for reduce_mean_grad
   int dim_size = in_x->dims().size();
   auto reduce_dims = funcs::details::GetReduceDim(dims, dim_size, reduce_all);
-  auto update_dims = vectorize(d_x->dims());
+  auto update_dims = common::vectorize(d_x->dims());
   int reduce_num = 1;
   for (auto i : reduce_dims) {
     reduce_num *= (in_x->dims())[i];
@@ -52,12 +52,12 @@ void ReduceCudaAMaxAMinGrad(const Context& dev_ctx,
   // make new tensor reduce_out
   phi::DenseTensor new_y(out_y->type());
   new_y.ShareDataWith(*out_y);
-  new_y.Resize(phi::make_ddim(update_dims));
+  new_y.Resize(common::make_ddim(update_dims));
 
   // make new tensor d_out
   phi::DenseTensor new_dout(d_out->type());
   new_dout.ShareDataWith(*d_out);
-  new_dout.Resize(phi::make_ddim(update_dims));
+  new_dout.Resize(common::make_ddim(update_dims));
   dev_ctx.Alloc(d_x, d_out->dtype());
 
   auto new_in = std::make_unique<phi::DenseTensor>(*in_x);
@@ -74,7 +74,7 @@ void ReduceCudaAMaxAMinGrad(const Context& dev_ctx,
 
   // make new tensor equal_count
   phi::DenseTensor* equal_count = new phi::DenseTensor();
-  equal_count->Resize(phi::make_ddim(update_dims));
+  equal_count->Resize(common::make_ddim(update_dims));
   dev_ctx.template Alloc<T>(equal_count);
 
   // compute
