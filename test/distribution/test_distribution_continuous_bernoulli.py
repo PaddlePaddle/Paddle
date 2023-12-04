@@ -23,7 +23,7 @@ from paddle.distribution.continuous_bernoulli import ContinuousBernoulli
 
 
 class ContinuousBernoulli_np:
-    def __init__(self, probability, eps=1e-4):
+    def __init__(self, probability, eps=0.02):
         self.eps = eps
         self.dtype = 'float32'
         eps_prob = 1.1920928955078125e-07
