@@ -54,8 +54,9 @@ class GreedyPatternRewriteDriver : public pir::PatternRewriter {
     }
   }
 
-  bool Simplify() {
-    bool changed = false;
+  std::vector<int64_t> Simplify() {
+    int64_t pattern_match_count = 0;
+    int64_t cur_count = 0;
     int64_t iteration = 0;
     do {
       // Check if the iteration limit was reached.
@@ -80,19 +81,18 @@ class GreedyPatternRewriteDriver : public pir::PatternRewriter {
         VLOG(6) << "worklist[" << i << "] is " << worklist_[i]->name();
       }
 
-      changed = ProcessWorklist();
-    } while (changed);
+      cur_count = ProcessWorklist();
+      pattern_match_count += cur_count;
+    } while (cur_count != 0);
 
-    return !changed;
+    return std::vector<int64_t>{cur_count, pattern_match_count};
   }
 
  private:
   /// Process ops until the worklist is empty or `config.max_num_rewrites`
   /// is reached. Return `true` if any IR was changed.
-  bool ProcessWorklist() {
-    bool changed = false;
+  int64_t ProcessWorklist() {
     int64_t num_rewrites = 0;
-
     while (!worklist_.empty() &&
            (num_rewrites < config_.max_num_rewrites ||
             config_.max_num_rewrites == pir::GreedyRewriteConfig::kNoLimit)) {
@@ -108,12 +108,10 @@ class GreedyPatternRewriteDriver : public pir::PatternRewriter {
 
       bool match_result = matcher_.MatchAndRewrite(op, *this);
       if (match_result) {
-        changed = true;
         ++num_rewrites;
       }
     }
-
-    return changed;
+    return num_rewrites;
   }
 
   // TODO(wilber): OpResult support GetUsers method.
@@ -214,18 +212,20 @@ class GreedyPatternRewriteDriver : public pir::PatternRewriter {
 
 namespace pir {
 
-bool ApplyPatternsGreedily(Region& region,  // NOLINT
-                           const FrozenRewritePatternSet& patterns,
-                           GreedyRewriteConfig config) {
+std::vector<int64_t> ApplyPatternsGreedily(
+    Region& region,  // NOLINT
+    const FrozenRewritePatternSet& patterns,
+    GreedyRewriteConfig config) {
   if (!config.region) config.region = &region;
 
   GreedyPatternRewriteDriver driver(region.ir_context(), patterns, config);
-  bool converged = driver.Simplify();
-  if (!converged) {
+  auto res = driver.Simplify();
+  auto max_iterations_match_cur_count = res[0];
+  if (max_iterations_match_cur_count > 0) {
     LOG(WARNING) << "The pattern rewrite did not converge after scaning "
                  << config.max_iterations << " times";
   }
-  return converged;
+  return res;
 }
 
 }  // namespace pir

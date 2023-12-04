@@ -90,6 +90,13 @@ class IR_API Pass {
 
   virtual bool Initialize(IrContext* context) { return true; }
 
+  void PrintPassMatchCount(int64_t pass_match_count) {
+    LOG(INFO) << "--- Running analysis [" << pass_info_.name << "]";
+    if (pass_match_count > 0) {
+      LOG(INFO) << "--- detected " << pass_match_count << " subgraphs!";
+    }
+  }
+
   AnalysisManager analysis_manager() { return pass_state().am; }
 
   detail::PassExecutionState& pass_state() {
@@ -136,7 +143,8 @@ class PatternRewritePass : public Pass {
     GreedyRewriteConfig cfg;
     cfg.use_top_down_traversal = true;
     cfg.max_iterations = 10;
-    ApplyPatternsGreedily(op->region(0), patterns_, cfg);
+    PrintPassMatchCount(
+        ApplyPatternsGreedily(op->region(0), patterns_, cfg)[1]);
   }
 
  private:
