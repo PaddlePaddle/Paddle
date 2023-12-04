@@ -121,7 +121,7 @@ def save_state_dict(
         if not os.path.exists(os.path.join(path, file_name)):
             break
         unique_id += 1
-    logger.info(f"file_name:{file_name}")
+    logger.debug(f"file_name:{file_name}")
     if use_dist:
         check_file_name(file_name, process_group)
         # the parameter_name and order in state_dict should be the same
@@ -174,9 +174,7 @@ def save_state_dict(
     metadata.state_dict_metadata = merge_state_dict(global_tensor_metadata)
     metadata.storage_metadata = dedup_state_dict(global_storage_metadata)
     if coordinator_rank == paddle.distributed.get_rank():
-        logger.info(f"global_tensor_metadata:{global_tensor_metadata}")
-        logger.info(f"global_storage_metadata:{global_storage_metadata}")
-        logger.info(f"metadata:{metadata}")
+        logger.debug(f"metadata:{metadata}")
         paddle.save(metadata, os.path.join(path, f"{unique_id}.metadata"))
-    logger.info(f"local_state_dict:{local_state_dict}")
+    logger.debug(f"local_state_dict:{local_state_dict}")
     paddle.save(local_state_dict, os.path.join(path, file_name))

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import os
 from dataclasses import dataclass
 from typing import Tuple
@@ -69,7 +70,7 @@ def get_rank_to_files(path, state_dict, process_group, use_dist):
     for files in global_data_files:
         tmp += files
     global_data_files_set = set(tmp)
-    logger.info(
+    logger.debug(
         f"necessary_data_files_set:{necessary_data_files_set}, global_data_files_set:{global_data_files_set}"
     )
     # check neccesary files in global_data_files
@@ -78,7 +79,10 @@ def get_rank_to_files(path, state_dict, process_group, use_dist):
         == necessary_data_files_set
     ), f"The checkpoint files are not complete. Please check the checkpoint directory:{path}.global_data_files_set:{global_data_files_set}, necessary_data_files_set:{necessary_data_files_set}"
     missing_keys = set(state_dict.keys()) - set(tensor_id_list)
-    logger.info(f"missing_keys:{missing_keys}")
+    if len(missing_keys) > 0:
+        logger.warning(
+            f"Missing keys:{missing_keys}, check whether the checkpoint is complete."
+        )
 
     rank_to_files = {}
     for rank, local_files in enumerate(global_data_files):
@@ -87,7 +91,7 @@ def get_rank_to_files(path, state_dict, process_group, use_dist):
                 f for f in local_files if f in necessary_data_files_set
             ]
             rank_to_files[rank] = local_files
-    logger.info(f"mapping rank_to_files:{rank_to_files}")
+    logger.debug(f"mapping rank_to_files:{rank_to_files}")
     return rank_to_files
 
 
@@ -111,17 +115,18 @@ def get_local_load_files(rank_to_files):
             if file not in file_to_ranks:
                 file_to_ranks[file] = []
             file_to_ranks[file].append(rank)
-    rank_to_read_files = {rank: [] for rank in rank_to_files.keys()}
+    rank_to_not_read_files = copy.copy(rank_to_files)
+    rank_to_read_files = {rank: [] for rank in rank_to_not_read_files.keys()}
     for file, ranks in file_to_ranks.items():
         if len(ranks) == 1:
             rank = ranks[0]
             rank_to_read_files[rank].append(file)
-            rank_to_files[rank].remove(file)
-            if len(rank_to_files[rank]) == 0:
-                rank_to_files.pop(rank)
+            rank_to_not_read_files[rank].remove(file)
+            if len(rank_to_not_read_files[rank]) == 0:
+                rank_to_not_read_files.pop(rank)
 
-    logger.info(
-        f"start rank_to_read_files:{rank_to_read_files}, rank_to_files:{rank_to_files}"
+    logger.debug(
+        f"rank_to_read_files:{rank_to_read_files}, rank_to_not_read_files:{rank_to_not_read_files}"
     )
 
     def get_least_read_files_ranks(rank_to_read_files):
@@ -132,28 +137,28 @@ def get_local_load_files(rank_to_files):
         ranks = [rank for rank, num in nums if num == nums[0][1]]
         return ranks
 
-    def get_read_rank_file(rank_to_files, ranks):
-        if len(rank_to_files) == 0:
+    def get_read_rank_file(rank_to_not_read_files, ranks):
+        if len(rank_to_not_read_files) == 0:
             return (None, None)
         nums = [
             (rank, len(files))
-            for rank, files in rank_to_files.items()
+            for rank, files in rank_to_not_read_files.items()
             if rank in ranks
         ]
         nums = sorted(nums, key=lambda x: x[1])
         rank = nums[0][0]
-        return (rank, rank_to_files[rank][0])
+        return (rank, rank_to_not_read_files[rank][0])
 
-    def update(rank_to_read_files, rank_to_files, rank_file):
+    def update(rank_to_read_files, rank_to_not_read_files, rank_file):
         rank, file = rank_file
         if rank is None and file is None:
             return
         if rank not in rank_to_read_files:
             rank_to_read_files[rank] = []
         rank_to_read_files[rank].append(file)
-        # update rank_to_files
+        # update rank_to_not_read_files
         file_to_ranks = {}
-        for r, files in rank_to_files.items():
+        for r, files in rank_to_not_read_files.items():
             for f in files:
                 if f not in file_to_ranks:
                     file_to_ranks[f] = []
@@ -161,26 +166,22 @@ def get_local_load_files(rank_to_files):
         logger.info(f"file_to_ranks:{file_to_ranks}")
         if file in file_to_ranks:
             for r in file_to_ranks[file]:
-                rank_to_files[r].remove(file)
-                if len(rank_to_files[r]) == 0:
-                    rank_to_files.pop(r)
+                rank_to_not_read_files[r].remove(file)
+                if len(rank_to_not_read_files[r]) == 0:
+                    rank_to_not_read_files.pop(r)
 
-    while len(rank_to_files) > 0:
+    while len(rank_to_not_read_files) > 0:
         ranks = get_least_read_files_ranks(rank_to_read_files)
-        rank_file = get_read_rank_file(rank_to_files, ranks)
-        update(rank_to_read_files, rank_to_files, rank_file)
-        logger.info(
-            f"update rank_to_read_files:{rank_to_read_files}, rank_to_files:{rank_to_files}, ranks:{ranks}, rank_file:{rank_file}"
+        rank_file = get_read_rank_file(rank_to_not_read_files, ranks)
+        update(rank_to_read_files, rank_to_not_read_files, rank_file)
+        logger.debug(
+            f"update rank_to_read_files:{rank_to_read_files}, rank_to_not_read_files:{rank_to_not_read_files}, ranks:{ranks}, rank_file:{rank_file}"
         )
-    logger.info(f"rank_to_read_files:{rank_to_read_files}")
     cur_rank = paddle.distributed.get_rank()
     if cur_rank in rank_to_read_files:
-        logger.info(
-            f"cur_rank:{cur_rank}, rank_to_read_files[cur_rank]:{rank_to_read_files[cur_rank]}"
-        )
         return rank_to_read_files[cur_rank]
     else:
-        logger.info(f"rank:{cur_rank} does not need to load checkpoint")
+        logger.warning(f"rank:{cur_rank} does not need to load checkpoint")
         return []
 
 
@@ -285,7 +286,7 @@ def get_read_items(path, state_dict, process_group, use_dist):
                 storage_state_dict_metadata[tensor_id] = []
             storage_state_dict_metadata[tensor_id] += local_tensor_metadata
     read_items = []
-    logger.info(f"storage_state_dict_metadata:{storage_state_dict_metadata}")
+    logger.debug(f"storage_state_dict_metadata:{storage_state_dict_metadata}")
     for tensor_id, val in state_dict.items():
         if isinstance(val, paddle.Tensor):
             if val.is_dist():
@@ -389,7 +390,7 @@ def load_state_dict(
     # slice the storage local tensor in (storage_offsets, lengths) to assign the current tensor in (cur_offsets, lengths) in rank.
     read_items = get_read_items(path, state_dict, process_group, use_dist)
     storage_file_to_state_dict = {}
-    logger.info(
+    logger.debug(
         f"before load, state_dict:{state_dict},\n load_infos:{load_infos},\n read_items:{read_items}"
     )
     for item in read_items:
@@ -474,6 +475,6 @@ def load_state_dict(
         if use_dist
         else state_dict
     )
-    logger.info(
+    logger.debug(
         f"after load, local_state_dict:{local_state_dict} \n state_dict:{state_dict}"
     )
