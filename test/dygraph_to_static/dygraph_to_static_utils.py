@@ -111,7 +111,6 @@ DISABLED_IR_TEST_FILES = {
         "test_for_enumerate",
         "test_jit_setitem",
         "test_reinforcement_learning",
-        "test_ifelse",
         # TODO: only disable on Windows
         "test_program_translator",
         "test_cache_program",
@@ -468,8 +467,8 @@ static_guard = legacy_test_utils.static_guard
 @contextmanager
 def enable_to_static_guard(flag: bool):
     program_translator = paddle.jit.api.ProgramTranslator()
-    program_translator.enable(flag)
     original_flag_value = program_translator.enable_to_static
+    program_translator.enable(flag)
     try:
         program_translator.enable(flag)
         yield

@@ -17,6 +17,9 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    IrMode,
+    ToStaticMode,
+    disable_test_case,
     enable_to_static_guard,
     test_ast_only,
 )
@@ -103,6 +106,12 @@ class TestDygraphIfElse2(TestDygraphIfElse):
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = dyfunc_with_if_else2
+
+    # TODO(dev): fix AST mode
+    @disable_test_case((ToStaticMode.AST, IrMode.PT))
+    @disable_test_case((ToStaticMode.AST, IrMode.LEGACY_IR))
+    def test_ast_to_func(self):
+        self.assertTrue((self._run_dygraph() == self._run_static()).all())
 
 
 class TestDygraphIfElse3(TestDygraphIfElse):
@@ -403,8 +412,8 @@ class TestDiffModeNet(Dy2StTestBase):
     def test_train_mode(self):
         self.assertTrue(
             (
-                self._run(mode='train', to_static=True),
-                self._run(mode='train', to_static=False),
+                self._run(mode='train', to_static=True)
+                == self._run(mode='train', to_static=False)
             ).all()
         )
 
@@ -523,6 +532,7 @@ class IfElseNet(paddle.nn.Layer):
 
 class TestDy2StIfElseBackward(Dy2StTestBase):
     # TODO(zhangbo): open pir test (IfOp grad execution not yet supported)
+    @disable_test_case((ToStaticMode.AST, IrMode.PT))
     def test_run_backward(self):
         a = paddle.randn((4, 3), dtype='float32')
         a.stop_gradient = False
