@@ -460,7 +460,7 @@ FORWARD_CC_FILE_TEMPLATE = """
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/fluid/eager/type_promotion_utils.h"
-#include "paddle/phi/common/type_promotion_table.h"
+#include "paddle/phi/common/type_promotion.h"
 PHI_DECLARE_bool(check_nan_inf);
 PHI_DECLARE_string(tensor_operants_mode);
 {}
