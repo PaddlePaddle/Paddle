@@ -46,6 +46,21 @@ bool ExprMathEqual(const Expr& expr1, const Expr& expr2) {
   return simplied.is_constant() && simplied.get_constant() == 0;
 }
 
+void FormalizeSingleIndex(const ir::Tensor& tensor,
+                          std::vector<ir::Expr>* indices) {
+  if (tensor->shape.size() > 1 && indices->size() == 1) {
+    ir::Expr origin_index_expr = (*indices)[0];
+    ir::Expr mul = Expr(1);
+    (*indices)[0] = ir::Mod::Make(origin_index_expr, tensor->shape.back());
+    for (int i = static_cast<int>(tensor->shape.size()) - 2; i >= 0; --i) {
+      mul = ir::Mul::Make(tensor->shape[i + 1], mul);
+      ir::Expr div_expr = ir::Div::Make(origin_index_expr, mul);
+      ir::Expr index_expr = ir::Mod::Make(div_expr, tensor->shape[i]);
+      indices->insert(indices->begin(), common::AutoSimplify(index_expr));
+    }
+  }
+}
+
 /**
  * This is a template pass to update the buffer access when using
  * single axis of a mult-dim tensor. For example, if the tensor t
@@ -83,7 +98,8 @@ class AnalyzeSingleAxisOfMultDimTensor : public ir::IRMutator<> {
   void AnalyzeSingleAxisAccess(const std::vector<Expr>& indices,
                                const ir::Tensor& tensor) {
     if (!tensor->buffer.defined() ||
-        tensor->buffer->memory_type == ir::MemoryType::Heap) {
+        tensor->buffer->memory_type == ir::MemoryType::Heap ||
+        tensor->buffer->memory_type == ir::MemoryType::GPUShared) {
       return;
     }
     CHECK(indices.size() > 0) << "Buffer access indices is empty";
@@ -123,10 +139,21 @@ class AnalyzeBufferAxis : public ir::IRMutator<> {
  public:
   void operator()(ir::Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
 
+  void Visit(const ir::For* op, Expr* expr) override {
+    if (op->is_gpu_thread_binded()) {
+      var_bind_threads.insert(op->loop_var->name);
+      IRMutator::Visit(op, expr);
+      var_bind_threads.erase(op->loop_var->name);
+      return;
+    }
+    IRMutator::Visit(op, expr);
+  }
+
   // Analyze the buffer access inside store
   void Visit(const ir::Store* op, Expr* expr) override {
     ir::Store* store = expr->As<ir::Store>();
     ir::Tensor tensor = store->tensor.as_tensor_ref();
+    FormalizeSingleIndex(tensor, &(store->indices));
     AnalyzeTensorAxis(store->indices, tensor);
     ir::IRMutator<>::Visit(op, expr);
   }
@@ -135,6 +162,7 @@ class AnalyzeBufferAxis : public ir::IRMutator<> {
   void Visit(const ir::Load* op, Expr* expr) override {
     ir::Load* load = expr->As<ir::Load>();
     ir::Tensor tensor = load->tensor.as_tensor_ref();
+    FormalizeSingleIndex(tensor, &(load->indices));
     AnalyzeTensorAxis(load->indices, tensor);
     ir::IRMutator<>::Visit(op, expr);
   }
@@ -161,8 +189,23 @@ class AnalyzeBufferAxis : public ir::IRMutator<> {
     const std::string& buffer_name = tensor->buffer->name;
     if (!buffer_name_access_same_index_expr.count(buffer_name)) {
       for (int i = 0; i < indices.size(); ++i) {
-        buffer_name_access_same_index_expr[buffer_name][i] =
-            GetIndexBindExpr(indices[i]);
+        if (tensor->buffer->memory_type == ir::MemoryType::GPUShared) {
+          // In GPUShared case, the thread vars cannot be simplied
+          std::set<ir::Expr> var_nodes =
+              ir::ir_utils::CollectIRNodesWithoutTensor(
+                  indices[i], [&](const Expr* x) {
+                    const ir::_Var_* var = x->As<ir::_Var_>();
+                    return var != nullptr && var_bind_threads.count(var->name);
+                  });
+          if (var_nodes.empty()) {
+            buffer_name_access_same_index_expr[buffer_name][i] =
+                GetIndexBindExpr(indices[i]);
+          }
+
+        } else {
+          buffer_name_access_same_index_expr[buffer_name][i] =
+              GetIndexBindExpr(indices[i]);
+        }
       }
       return;
     }
@@ -200,6 +243,7 @@ class AnalyzeBufferAxis : public ir::IRMutator<> {
 
  private:
   std::unordered_map<std::string, ir::Expr> iter_var_to_bind_expr_;
+  std::unordered_set<std::string> var_bind_threads;
 };
 
 class ReplaceSameAxisToZero : public ir::IRMutator<> {
@@ -264,6 +308,14 @@ class ReplaceSameAxisToZero : public ir::IRMutator<> {
 
 void UpdateBufferAxisPass(ir::Expr* expr) {
   VLOG(6) << "Before UpdateBufferAxisPass, Expr = \n" << *expr;
+
+  // AnalyzeSingleAxisOfMultDimTensor singler_axis_analyzer;
+  // singler_axis_analyzer(expr);
+  // for (auto p : singler_axis_analyzer.buffer_name_to_same_single_axis) {
+  //   VLOG(6) << "Single axis Buffer name: " << p.first;
+  //   VLOG(6) << "Single Expr: " << p.second;
+  // }
+  std::unordered_map<std::string, ir::Expr> dump;
   AnalyzeBufferAxis buffer_axis_analyzer;
   buffer_axis_analyzer(expr);
   for (auto p : buffer_axis_analyzer.buffer_name_access_same_index_expr) {
@@ -272,15 +324,11 @@ void UpdateBufferAxisPass(ir::Expr* expr) {
       VLOG(6) << "  Index: " << q.first << " Expr: " << q.second;
     }
   }
-  AnalyzeSingleAxisOfMultDimTensor singler_axis_analyzer;
-  singler_axis_analyzer(expr);
-  for (auto p : singler_axis_analyzer.buffer_name_to_same_single_axis) {
-    VLOG(6) << "Single axis Buffer name: " << p.first;
-    VLOG(6) << "Single Expr: " << p.second;
-  }
+
   ReplaceSameAxisToZero replacer(
       buffer_axis_analyzer.buffer_name_access_same_index_expr,
-      singler_axis_analyzer.buffer_name_to_same_single_axis);
+      // singler_axis_analyzer.buffer_name_to_same_single_axis);
+      dump);
   replacer(expr);
   VLOG(6) << "After UpdateBufferAxisPass, Expr = \n" << *expr;
 }
