@@ -1,6 +1,5 @@
 file(GLOB paddle2cinn_srcs "*.cc")
 set(paddle2cinn_deps
-    gtest
     absl
     isl
     xxhash
@@ -16,9 +15,14 @@ set(paddle2cinn_deps
     cinn_framework_proto
     schedule_desc_proto
     auto_schedule_proto
-    parallel_executor)
+    parallel_executor
+    common)
 if(WITH_MKLDNN)
   set(paddle2cinn ${paddle2cinn} mkldnn)
+endif()
+
+if(WITH_TESTING)
+  set(paddle2cinn_deps ${paddle2cinn_deps} gtest)
 endif()
 
 cc_library(

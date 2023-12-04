@@ -17,11 +17,11 @@
 #include <random>
 
 #include "gtest/gtest.h"
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/utils/flags.h"
 
 PD_DECLARE_bool(use_system_allocator);
@@ -80,13 +80,13 @@ static bool CopySameTensorTestMain(const DDim &dims,
 
   const void *ground_truth_ptr = src_cpu_tensor.data();
   const void *result_ptr = dst_cpu_tensor.data();
-  size_t byte_num = phi::product(dims) * sizeof(T);
+  size_t byte_num = common::product(dims) * sizeof(T);
   return std::memcmp(ground_truth_ptr, result_ptr, byte_num) == 0;
 }
 
 TEST(test_tensor_copy, test_copy_same_tensor) {
   using DataType = float;
-  auto dims = phi::make_ddim({3, 4, 5});
+  auto dims = common::make_ddim({3, 4, 5});
 
   auto places = CreatePlaceList();
   for (auto &src_p : places) {

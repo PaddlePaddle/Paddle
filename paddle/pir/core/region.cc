@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/pir/core/region.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/block.h"
-#include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/operation.h"
 
 namespace pir {
@@ -22,10 +22,10 @@ Region::~Region() { clear(); }
 
 void Region::push_back(Block *block) { insert(blocks_.end(), block); }
 
-Block *Region::emplace_back() {
+Block &Region::emplace_back() {
   auto block = new Block;
   insert(blocks_.end(), block);
-  return block;
+  return *block;
 }
 
 void Region::push_front(Block *block) { insert(blocks_.begin(), block); }

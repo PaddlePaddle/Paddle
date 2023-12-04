@@ -109,7 +109,7 @@ class AnchorGeneratorOpKernel : public framework::OpKernel<T> {
 
     phi::DenseTensor var_t;
     var_t.mutable_data<T>(
-        phi::make_ddim({1, static_cast<int>(variances.size())}),
+        common::make_ddim({1, static_cast<int>(variances.size())}),
         ctx.GetPlace());
     auto var_et = phi::EigenTensor<T, 2>::From(var_t);
     for (size_t i = 0; i < variances.size(); ++i) {

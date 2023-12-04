@@ -47,9 +47,10 @@ namespace detail {
 
 struct CollectHostFunctionVisitor : public ir::IRMutator<> {
   explicit CollectHostFunctionVisitor(const std::string& module_name)
-      : host_module_builder(module_name + "_host", common::DefaultHostTarget()),
+      : host_module_builder(module_name + "_host",
+                            cinn::common::DefaultHostTarget()),
         device_module_builder(module_name + "_gpu_device",
-                              common::DefaultNVGPUTarget()) {}
+                              cinn::common::DefaultNVGPUTarget()) {}
 
   std::tuple<ir::Module, ir::Module> operator()(Expr* expr) {
     ir::IRMutator<>::Visit(expr, expr);
@@ -162,22 +163,29 @@ struct CollectBucketStrategyHostFunctionVisitor
     CHECK_EQ(op->functions.size(), op->predicates.size());
     for (int i = 0; i < op->functions.size(); ++i) {
       ProcessLoweredFunc(op->functions[i], op->predicates[i]);
+      if (i == 0) {
+        ProcessArgs(op->functions[i]);
+      }
     }
 
     std::vector<ir::Argument> arguments = {
         ir::Argument(kernel_args_, ir::Argument::IO::kOutput),
         ir::Argument(kernel_args_num_, ir::Argument::IO::kInput),
         ir::Argument(kernel_stream_, ir::Argument::IO::kOutput)};
+    std::vector<ir::Expr> body_stmts(arg_defs_);
+    body_stmts.insert(body_stmts.end(), buckets_.begin(), buckets_.end());
     ir::Expr host_func =
         ir::_LoweredFunc_::Make(op->functions[0].as_lowered_func()->name,
                                 arguments,
-                                ir::Block::Make(buckets_),
+                                ir::Block::Make(body_stmts),
                                 {});
     host_module_builder.AddFunctionWithoutOptim(
         host_func.as_lowered_func_ref());
   }
 
   void ProcessLoweredFunc(ir::Expr func, ir::Expr predicate);
+
+  void ProcessArgs(ir::Expr func);
 
   Expr CreateDeviceFunction(ir::Expr expr, ir::Expr predicate);
 
@@ -186,6 +194,7 @@ struct CollectBucketStrategyHostFunctionVisitor
 
  private:
   std::vector<ir::Expr> buckets_;
+  std::vector<ir::Expr> arg_defs_;
 
   ir::Var kernel_args_;
   ir::Var kernel_args_num_;

@@ -30,6 +30,7 @@ limitations under the License. */
 #if defined(PADDLE_WITH_PSCORE)
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #endif
+#include "paddle/common/macros.h"
 #include "paddle/fluid/framework/barrier.h"
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
@@ -44,7 +45,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/timer.h"
 #include "paddle/phi/backends/dynload/port.h"
-#include "paddle/phi/core/macros.h"
 
 namespace paddle {
 namespace framework {
