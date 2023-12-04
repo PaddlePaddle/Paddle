@@ -12,8 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
-from paddle.base.framework import in_dygraph_mode
+from paddle.base.framework import (
+    in_dygraph_mode,
+    in_dynamic_or_pir_mode,
+)
 
 from ...base.data_feeder import check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
@@ -68,7 +72,7 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
                [ 0.03333333,  1.83333337],
                [-0.43333334,  2.23333335]]]])
     """
-    if not isinstance(theta, Variable):
+    if not isinstance(theta, (Variable, paddle.pir.OpResult)):
         raise ValueError("The theta should be a Tensor.")
 
     cudnn_version = get_cudnn_version()
@@ -83,25 +87,42 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
             False  # ROCM platform do not have MIOPEN kernel for affine_grid
         )
 
-    if in_dygraph_mode():
-        _out_shape = (
-            out_shape.tolist() if isinstance(out_shape, Variable) else out_shape
-        )
-        theta = theta._use_gpudnn(use_cudnn)
-        return _C_ops.affine_grid(theta, _out_shape, align_corners)
-    elif in_dynamic_mode():
-        _out_shape = (
-            out_shape.tolist() if isinstance(out_shape, Variable) else out_shape
-        )
-        return _legacy_C_ops.affine_grid(
-            theta,
-            "output_shape",
-            _out_shape,
-            "align_corners",
-            align_corners,
-            "use_cudnn",
-            use_cudnn,
-        )
+    if in_dynamic_or_pir_mode():
+        if in_dygraph_mode():
+            _out_shape = (
+                out_shape.tolist()
+                if isinstance(out_shape, (Variable, paddle.pir.OpResult))
+                else out_shape
+            )
+            theta = theta._use_gpudnn(use_cudnn)
+            return _C_ops.affine_grid(theta, _out_shape, align_corners)
+        elif in_dynamic_mode():
+            _out_shape = (
+                out_shape.tolist()
+                if isinstance(out_shape, (Variable, paddle.pir.OpResult))
+                else out_shape
+            )
+            return _legacy_C_ops.affine_grid(
+                theta,
+                "output_shape",
+                _out_shape,
+                "align_corners",
+                align_corners,
+                "use_cudnn",
+                use_cudnn,
+            )
+        else:
+            _out_shape = (
+                out_shape.tolist()
+                if isinstance(out_shape, (Variable, paddle.pir.OpResult))
+                else out_shape
+            )
+            return _C_ops.affine_grid(
+                theta,
+                _out_shape,
+                align_corners,
+                use_cudnn,
+            )
 
     helper = LayerHelper('affine_grid')
     check_variable_and_dtype(

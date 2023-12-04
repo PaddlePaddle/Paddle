@@ -22,7 +22,8 @@ from paddle import base
 from paddle.base import core
 from paddle.base.backward import append_backward
 from paddle.base.executor import Executor
-from paddle.base.framework import Program, grad_var_name
+from paddle.base.framework import grad_var_name
+from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(123)
 paddle.enable_static()
@@ -66,18 +67,14 @@ def create_tensor(np_data, place):
 
 
 class TestArgsortOpCPU(unittest.TestCase):
-    def setup_program(self):
-        self.main_program = Program()
-        self.startup_program = Program()
-        self.init_place()
-
+    @test_with_pir_api
     def setUp(self):
         self.init_axis()
         self.init_datatype()
         self.init_direction()
         self.init_inputshape()
 
-        self.setup_program()
+        self.init_place()
         self.feed_data_field = {"x", "label"}
         self.grad_data_field = {"x"}
 
@@ -85,7 +82,9 @@ class TestArgsortOpCPU(unittest.TestCase):
             self.input_shape, self.axis, self.descending, self.dtype
         )
 
-        with base.program_guard(self.main_program, self.startup_program):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             x = paddle.static.data(
                 name="x", shape=[-1] + list(self.input_shape), dtype=self.dtype
             )
@@ -114,7 +113,7 @@ class TestArgsortOpCPU(unittest.TestCase):
         }
         exe = Executor(self.place)
         out = exe.run(
-            self.main_program,
+            paddle.static.default_startup_program(),
             feed=self.feed_map,
             fetch_list=[self.index, self.sorted_x, self.loss],
         )
@@ -126,12 +125,12 @@ class TestArgsortOpCPU(unittest.TestCase):
             for x in self.feed_data_field
         }
         fetch_list = [
-            self.main_program.global_block().var(grad_var_name(x))
+            paddle.static.Program().global_block().var(grad_var_name(x))
             for x in self.grad_data_field
         ]
         exe = Executor(self.place)
         out = exe.run(
-            self.main_program,
+            paddle.static.default_startup_program(),
             feed=self.feed_map,
             fetch_list=fetch_list,
             return_numpy=False,
@@ -141,7 +140,9 @@ class TestArgsortOpCPU(unittest.TestCase):
     def test_backward(self, numeric_grad_delta=1e-5, max_relative_error=1e-7):
         self.check_forward()
 
-        with base.program_guard(self.main_program, self.startup_program):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             append_backward(self.loss)
 
         ana_grad = [np.array(x) for x in self.backward()]
@@ -392,8 +393,9 @@ class TestArgsort(unittest.TestCase):
             self.place = core.CPUPlace()
         self.data = np.random.rand(*self.input_shape)
 
+    @test_with_pir_api
     def test_api(self):
-        with base.program_guard(base.Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
             input = paddle.static.data(
                 name="input", shape=self.input_shape, dtype="float64"
             )
@@ -401,9 +403,11 @@ class TestArgsort(unittest.TestCase):
             output = paddle.argsort(input, axis=self.axis)
             output2 = paddle.argsort(input, axis=self.axis, descending=True)
 
-            exe = base.Executor(self.place)
+            exe = paddle.static.Executor(self.place)
             result, result2 = exe.run(
-                feed={'input': self.data}, fetch_list=[output, output2]
+                paddle.static.default_startup_program(),
+                feed={'input': self.data},
+                fetch_list=[output, output2],
             )
 
             np_result = np.argsort(self.data, axis=self.axis)
@@ -502,6 +506,7 @@ class TestArgsortWithInputNaN(unittest.TestCase):
 
 
 class TestArgsortOpFp16(unittest.TestCase):
+    @test_with_pir_api
     def test_fp16(self):
         x_np = np.random.random((2, 8)).astype('float16')
         with paddle.static.program_guard(paddle.static.Program()):
@@ -544,10 +549,10 @@ class TestArgsortFP16Op(OpTest):
         self.descending = False
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_dygraph=False)
+        self.check_grad(['X'], 'Out', check_dygraph=False, check_pir=True)
 
 
 class TestArgsortFP16OpDescendingTrue(TestArgsortFP16Op):
@@ -592,11 +597,13 @@ class TestArgsortBF16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', check_dygraph=False)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', check_dygraph=False, check_pir=True
+        )
 
 
 class TestArgsortBF16OpDescendingTrue(TestArgsortBF16Op):
