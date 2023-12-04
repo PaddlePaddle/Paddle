@@ -17,45 +17,17 @@
 namespace phi {
 namespace distributed {
 
-int64_t DistTensorMeta::num_shard() const {
-  int64_t num_shard = 1;
-  const auto& mesh_shape = process_mesh_->shape();
-  for (size_t i = 0; i < placements_.size(); i++) {
-    if (placements_[i]->is_shard()) {
-      num_shard *= mesh_shape[i];
-    }
-  }
-  return num_shard;
-}
-
-std::vector<int64_t> DistTensorMeta::dim_mapping() const {
-  int64_t ndim = dims().size();
-  std::vector<int64_t> dim_map(ndim, -1);
-  for (size_t i = 0; i < placements_.size(); i++) {
-    auto& placement = placements_[i];
-    if (placement->is_shard()) {
-      auto shard_dim = dynamic_cast<const Shard&>(*placement).get_dim();
-      PADDLE_ENFORCE_EQ(
-          dim_map[shard_dim],
-          -1,
-          phi::errors::InvalidArgument(
-              "Tensor dim %lld is already sharded on mesh dim %lld,"
-              " DistTensor operator implementation does not support things "
-              "like hybrid"
-              " sharding strategies yet (i.e. [Shard(0), Shard(0)])",
-              shard_dim,
-              dim_map[shard_dim]));
-      dim_map[shard_dim] = i;
-    }
-  }
-  return dim_map;
-}
-
-bool DistTensorMeta::is_replicated() const {
-  return std::all_of(placements_.cbegin(),
-                     placements_.cend(),
-                     [](const auto& p) { return p->is_replicated(); });
-}
+// std::ostream& operator<<(std::ostream& os, const Placements& placements) {
+//     std::string str="[";
+//     for (const auto& placementPtr : placements) {
+//       if (placementPtr) {
+//         str += placementPtr->to_string() + ", ";
+//       }
+//     }
+//     str += "]";
+//     os << str;
+//     return os;
+// }
 
 }  // namespace distributed
 }  // namespace phi

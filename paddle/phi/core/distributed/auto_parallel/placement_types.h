@@ -163,40 +163,8 @@ class Partial : public Placement {
 };
 
 using Placements = std::vector<std::shared_ptr<Placement>>;
-class DistTensorMeta : public std::enable_shared_from_this<DistTensorMeta> {
- public:
-  DistTensorMeta(const ProcessMesh& process_mesh,
-                 const Placements& placements,
-                 const DenseTensorMeta& tensor_meta)
-      : process_mesh_(std::make_shared<const ProcessMesh>(process_mesh)),
-        placements_(placements),
-        tensor_meta_(std::make_shared<const DenseTensorMeta>(tensor_meta)) {}
 
-  DistTensorMeta() = default;
-
-  const DDim& dims() const { return tensor_meta_->dims; }
-
-  const ProcessMesh& process_mesh() const { return *process_mesh_; }
-
-  const Placements& placements() const { return placements_; }
-
-  void SetPlacements(const Placements& placements) { placements_ = placements; }
-
-  void SetProcessMesh(const ProcessMesh& process_mesh) {
-    process_mesh_ = std::make_shared<const ProcessMesh>(process_mesh);
-  }
-
-  int64_t num_shard() const;
-
-  std::vector<int64_t> dim_mapping() const;
-
-  bool is_replicated() const;
-
- private:
-  std::shared_ptr<const ProcessMesh> process_mesh_;
-  Placements placements_;
-  std::shared_ptr<const DenseTensorMeta> tensor_meta_;
-};
+// std::ostream& operator<<(std::ostream& os, const Placements& placements);
 
 }  // namespace distributed
 }  // namespace phi

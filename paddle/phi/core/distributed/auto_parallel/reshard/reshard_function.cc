@@ -44,10 +44,11 @@ void ReshardFunction::SetDistProps(DistTensor* tensor,
                     phi::errors::InvalidArgument(
                         "The input dist_attr and dims are improper."));
 
-  tensor->dims_ = dims;
-  // tensor->dist_attr_ = dist_attr;
-  tensor->dist_tensor_meta_.SetPlacements(ToPlacements(dist_attr));
-  tensor->dist_tensor_meta_.SetProcessMesh(dist_attr.process_mesh());
+  tensor->global_dims_ = dims;
+  VLOG(0) << "SetDistProps: dist_attr " << dist_attr;
+  tensor->placements_ = ToPlacements(dist_attr);
+  VLOG(0) << "SetDistProps: placements_ " << tensor->PlacementsToString();
+  tensor->process_mesh_ = dist_attr.process_mesh();
 }
 
 void ReshardFunction::SetDistProps(DistTensor* tensor,
@@ -56,10 +57,9 @@ void ReshardFunction::SetDistProps(DistTensor* tensor,
                     true,
                     phi::errors::InvalidArgument(
                         "The input dist_attr and dims are improper."));
-
-  // tensor->dist_attr_ = dist_attr;
-  tensor->dist_tensor_meta_.SetPlacements(ToPlacements(dist_attr));
-  tensor->dist_tensor_meta_.SetProcessMesh(dist_attr.process_mesh());
+  VLOG(0) << "SetDistProps: dist_attr " << dist_attr;
+  tensor->placements_ = ToPlacements(dist_attr);
+  tensor->process_mesh_ = dist_attr.process_mesh();
 }
 
 DenseTensor* ReshardFunction::GetMutableTensor(DistTensor* tensor) {
