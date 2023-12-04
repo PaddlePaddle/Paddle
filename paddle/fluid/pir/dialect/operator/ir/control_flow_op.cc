@@ -22,8 +22,10 @@ paddle::dialect::IfOp, paddle::dialect::WhileOp, paddle::dialect::HasElementsOp
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/builder.h"
+#include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/ir_printer.h"
+#include "paddle/pir/core/op_trait.h"
 #include "paddle/pir/core/operation_utils.h"
 #include "paddle/pir/core/utils.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
@@ -31,6 +33,7 @@ paddle::dialect::IfOp, paddle::dialect::WhileOp, paddle::dialect::HasElementsOp
 
 using pir::TuplePopOp;
 using pir::TuplePushOp;
+constexpr char kStopGradientAttrName[] = "stop_gradient";
 namespace paddle {
 namespace dialect {
 
@@ -55,9 +58,28 @@ void IfOp::Build(pir::Builder &builder,             // NOLINT
       true_block->back().isa<pir::YieldOp>()) {
     auto &op = true_block->back();
 
+    std::vector<pir::Attribute> outs_stop_gradient;
     for (size_t i = 0; i < op.num_operands(); ++i) {
       argument.AddOutput(op.operand(i).type());
+      bool input_stop_gradient = true;
+      auto *defining_op = op.operand_source(i).defining_op();
+      if (defining_op && defining_op->HasAttribute(kStopGradientAttrName)) {
+        auto attrs = defining_op->attribute(kStopGradientAttrName)
+                         .dyn_cast<pir::ArrayAttribute>()
+                         .AsVector();
+        input_stop_gradient =
+            attrs[op.operand_source(i).dyn_cast<pir::OpResult>().index()]
+                .dyn_cast<pir::BoolAttribute>()
+                .data();
+      } else {
+        input_stop_gradient = false;
+      }
+      outs_stop_gradient.push_back(builder.bool_attr(input_stop_gradient));
     }
+
+    argument.AddAttribute(
+        kStopGradientAttrName,
+        pir::ArrayAttribute::get(builder.ir_context(), outs_stop_gradient));
   }
   if (false_block && !false_block->empty() &&
       false_block->back().isa<pir::YieldOp>()) {
@@ -88,6 +110,19 @@ void IfOp::Build(pir::Builder &builder,             // NOLINT
   argument.AddRegion().push_back(true_block.release());
   argument.AddRegion().push_back(false_block.release());
   argument.AddInput(cond);
+
+  auto cond_op = cond.defining_op();
+  if (cond_op && cond_op->HasAttribute(kStopGradientAttrName)) {
+    auto attrs = cond_op->attribute(kStopGradientAttrName)
+                     .dyn_cast<pir::ArrayAttribute>()
+                     .AsVector();
+    attrs[cond.dyn_cast<pir::OpResult>().index()] =
+        pir::BoolAttribute::get(pir::IrContext::Instance(), true);
+
+    cond_op->set_attribute(
+        kStopGradientAttrName,
+        pir::ArrayAttribute::get(pir::IrContext::Instance(), attrs));
+  }
 }
 
 pir::Block &IfOp::true_block() {
