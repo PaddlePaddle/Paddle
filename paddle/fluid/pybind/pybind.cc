@@ -2018,6 +2018,15 @@ All parameter, weight, gradient are variables in Paddle.
                ret = self.Run(feed_names, enable_job_schedule_profiler);
              }
              return py::cast(std::move(ret));
+           })
+      .def("run_profile",
+           [](StandaloneExecutor &self, std::vector<std::string> feed_names) {
+             std::shared_ptr<framework::ProgramDesc> program_desc;
+             {
+               pybind11::gil_scoped_release release;
+               program_desc = self.RunProfile(feed_names);
+             }
+             return py::cast(std::move(program_desc));
            });
 
   py::class_<framework::interpreter::Job,
@@ -2154,7 +2163,11 @@ All parameter, weight, gradient are variables in Paddle.
       py::arg("time_out") = 0,
       py::arg("sleep_inter") = 0,
       py::arg("redirect_stderr") = false);
-
+  m.def("set_variable",
+        static_cast<void (*)(  // NOLINT
+            Scope *,
+            const phi::DenseTensor &,
+            const std::string &)>(&framework::SetVariable));
   m.def("set_feed_variable",
         static_cast<void (*)(  // NOLINT
             Scope *,

@@ -11,32 +11,27 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import collective.test_communication_api_base as test_base
 
 
-class TestReshardPToS(test_base.CommunicationTestDistBase):
+class TestSemiAutoParallelBasic(test_base.CommunicationTestDistBase):
     def setUp(self):
-        super().setUp(num_of_devices=2, timeout=120)
-        self._default_envs = {
-            "shape": "(10, 20)",
-            "dtype": "float32",
-            "seeds": "2023",
-        }
-        self._changeable_envs = {
-            "shard": ["0", "1"],
-            "backend": ["gpu"],
-        }
+        super().setUp(
+            num_of_devices=2,
+            timeout=120,
+        )
+        self._default_envs = {"dtype": "float32", "seed": "2023"}
+        self._changeable_envs = {"backend": ["cpu", "gpu"]}
 
-    def test_reshard_p_to_s(self):
+    def test_compare_api(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
         )
         for envs in envs_list:
             self.run_test_case(
-                "reshard_p_to_s.py",
+                "semi_auto_parallel_for_compare.py",
                 user_defined_envs=envs,
             )
 
