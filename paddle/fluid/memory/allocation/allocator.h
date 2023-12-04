@@ -141,19 +141,19 @@ static T&& FillValue(T&& allocation) {
 #if defined(PADDLE_WITH_NCCL)
   if (allocation != nullptr) {
     if (FLAGS_sync_after_alloc || FLAGS_alloc_fill_value >= 0) {
-      PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+      cudaDeviceSynchronize();
       if (FLAGS_alloc_fill_value >= 0) {
         VLOG(10) << "Set " << FLAGS_alloc_fill_value << " on "
                  << allocation->ptr() << " " << allocation->place() << " "
                  << allocation->size();
         if (platform::is_gpu_place(allocation->place())) {
-          PADDLE_ENFORCE_GPU_SUCCESS(cudaMemset(
-              allocation->ptr(), FLAGS_alloc_fill_value, allocation->size()));
+          cudaMemset(
+              allocation->ptr(), FLAGS_alloc_fill_value, allocation->size());
         } else {
           std::memset(
               allocation->ptr(), FLAGS_alloc_fill_value, allocation->size());
         }
-        PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+        cudaDeviceSynchronize();
       }
     }
   }
