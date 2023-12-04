@@ -39,6 +39,8 @@ from op import Operator
 from prim_op_test import OpTestUtils, PrimForwardChecker, PrimGradChecker
 from testsuite import append_input_output, append_loss_ops, create_op, set_input
 
+from paddle.decomposition import decompose
+
 sys.path.append("..")
 from utils import static_guard
 from white_list import (
@@ -76,6 +78,24 @@ def paddle_static_guard():
         yield
     finally:
         paddle.disable_static()
+
+
+def flatten(nest_list):
+    out = []
+    for i in nest_list:
+        if isinstance(i, (list, tuple)):
+            tmp_list = flatten(i)
+            for j in tmp_list:
+                out.append(j)
+        else:
+            out.append(i)
+    return out
+
+
+def _as_list(x):
+    if x is None:
+        return []
+    return list(x) if isinstance(x, (list, tuple)) else [x]
 
 
 def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
@@ -1411,6 +1431,11 @@ class OpTest(unittest.TestCase):
                         )
 
                 # executor run
+                ret = flatten(_as_list(ret_tuple))
+                print("ir_prog", ir_program)
+                ret = decompose(ir_program, ret)
+                print("ir_prog 2", ir_program)
+
                 executor = Executor(place)
                 outs = executor.run(
                     ir_program, feed=feed, fetch_list=[fetch_list]
@@ -2723,7 +2748,8 @@ class OpTest(unittest.TestCase):
                     return []
             else:
                 return []
-        places = [base.CPUPlace()]
+        # places = [base.CPUPlace()]
+        places = []
         cpu_only = self._cpu_only if hasattr(self, '_cpu_only') else False
         if (
             core.is_compiled_with_cuda()

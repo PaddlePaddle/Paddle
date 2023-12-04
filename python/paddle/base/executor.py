@@ -21,7 +21,7 @@ from functools import lru_cache
 
 import numpy as np
 
-from paddle import pir
+from paddle import base, pir
 
 from ..pir import (
     OpResult,
@@ -1104,6 +1104,10 @@ class _ExecutorCache:
         _add_pir_fetch_ops(
             program, fetch_list=fetch_list, fetch_var_name=fetch_var_name
         )
+
+        print(place)
+        base.libpaddle.pir.apply_pir_pass(program)
+        print("after pir pass", program)
 
         default_job = core.Job("default")
         type_to_program = {"default": program}

@@ -1558,6 +1558,7 @@ void ApplyPirPass(Program &forward_program) {  // NOLINT
   pass_manager.AddPass(
       cinn::dialect::ir::CreateCinnGroupLoweringPass(shape_analysis));
 
+  // pass_manager.EnableIRPrinting();
   pass_manager.Run(&forward_program);
   VLOG(3) << "after BuildCinnPass, forward_program:\n" << forward_program;
 #else
