@@ -105,36 +105,44 @@ class BaseTest(unittest.TestCase):
                         shape = shapes[i]
                         dtype = dtypes[i]
                         name = names[i]
-                        x.append(paddle.static.data(name, shape, dtype))
+
+                        _x = paddle.static.data(name, shape, dtype)
+                        _x.stop_gradient = False
+                        x.append(_x)
+
                         # the data feeded should NOT be a Tensor
                         feed[name] = input
+
+                    x_for_grad = x[0]
 
                     out = func_paddle(x)
                     out.stop_gradient = False
                     y = out * 123
 
+                    # do not check for old ir
                     if paddle.framework.in_pir_mode():
-                        grads = paddle.autograd.ir_backward.grad(y, [out])
+                        grads = paddle.autograd.ir_backward.grad(
+                            y, [x_for_grad]
+                        )
                         out_grad = grads[0]
-                    else:
-                        paddle.static.append_backward(y)
-                        out_grad = out.grad_name
 
-                    fetch_list = [out, out_grad]
+                        fetch_list = [out, out_grad]
 
-                    res, res_grad = exe.run(
-                        main_program, feed=feed, fetch_list=fetch_list
-                    )
+                        res, res_grad = exe.run(
+                            main_program, feed=feed, fetch_list=fetch_list
+                        )
 
-                    # convert grad value to bool if dtype is bool
-                    grad_value = 123.0 if dtypes[0] != 'bool' else True
-                    np.testing.assert_allclose(
-                        res_grad, np.ones_like(y) * grad_value
-                    )
+                        # convert grad value to bool if dtype is bool
+                        grad_value = 123.0 if dtypes[0] != 'bool' else True
+                        np.testing.assert_allclose(
+                            res_grad, np.ones(x_for_grad.shape) * grad_value
+                        )
 
-                    out_ref = func_numpy(inputs)
-                    for n, p in zip(out_ref, res):
-                        np.testing.assert_allclose(n, p, rtol=RTOL, atol=ATOL)
+                        out_ref = func_numpy(inputs)
+                        for n, p in zip(out_ref, res):
+                            np.testing.assert_allclose(
+                                n, p, rtol=RTOL, atol=ATOL
+                            )
 
     def _test_dygraph_api(
         self,
