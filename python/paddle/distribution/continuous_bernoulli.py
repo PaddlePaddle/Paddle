@@ -84,7 +84,7 @@ class ContinuousBernoulli(distribution.Distribution):
             #        [0.20103613, 0.07641447])
     """
 
-    def __init__(self, probability, eps=1e-4):
+    def __init__(self, probability, eps=0.02):
         self.eps = paddle.to_tensor(eps)
         self.dtype = paddle.get_default_dtype()
         self.probability = self._to_tensor(probability)
@@ -225,7 +225,7 @@ class ContinuousBernoulli(distribution.Distribution):
         """
         cut_probs = self._cut_probs()
         tmp = paddle.divide(
-            paddle.square(cut_probs) - cut_probs,
+            cut_probs * (cut_probs - 1.0),
             paddle.square(1.0 - 2.0 * cut_probs),
         )
         propose = tmp + paddle.divide(

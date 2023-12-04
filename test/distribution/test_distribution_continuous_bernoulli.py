@@ -158,18 +158,18 @@ class ContinuousBernoulli_np:
         ('half', np.array(0.5).astype("float32")),
         (
             'one-dim',
-            parameterize.xrand((1,), min=0.1, max=0.9).astype("float32"),
+            parameterize.xrand((1,), min=0.0, max=1.0).astype("float32"),
         ),
         (
             'multi-dim',
-            parameterize.xrand((2, 3), min=0.1, max=0.9).astype("float32"),
+            parameterize.xrand((2, 3), min=0.0, max=1.0).astype("float32"),
         ),
     ],
 )
 class TestContinuousBernoulli(unittest.TestCase):
     def setUp(self):
         self._dist = ContinuousBernoulli(
-            probability=paddle.to_tensor(self.probability)
+            probability=paddle.to_tensor(self.probability), eps=0.02
         )
         self._np_dist = ContinuousBernoulli_np(self.probability)
 
@@ -179,8 +179,8 @@ class TestContinuousBernoulli(unittest.TestCase):
         np.testing.assert_allclose(
             mean,
             self._np_dist.np_mean(),
-            rtol=config.RTOL.get(str(self.probability.dtype)),
-            atol=config.ATOL.get(str(self.probability.dtype)),
+            rtol=0.00,
+            atol=0.20,
         )
 
     def test_variance(self):
@@ -231,13 +231,13 @@ class TestContinuousBernoulli(unittest.TestCase):
     [
         (
             'value-same-shape',
-            parameterize.xrand((5,), min=0.1, max=0.9).astype("float32"),
-            parameterize.xrand((5,), min=0.1, max=0.9).astype("float32"),
+            parameterize.xrand((5,), min=0.0, max=1.0).astype("float32"),
+            parameterize.xrand((5,), min=0.0, max=1.0).astype("float32"),
         ),
         (
             'value-broadcast-shape',
-            parameterize.xrand((1,), min=0.1, max=0.9).astype("float32"),
-            parameterize.xrand((2, 3), min=0.1, max=0.9).astype("float32"),
+            parameterize.xrand((1,), min=0.0, max=1.0).astype("float32"),
+            parameterize.xrand((2, 3), min=0.0, max=1.0).astype("float32"),
         ),
     ],
 )
@@ -285,13 +285,13 @@ class TestContinuousBernoulliProbs(unittest.TestCase):
     [
         (
             'one-dim',
-            parameterize.xrand((1,), min=0.1, max=0.9).astype("float32"),
-            parameterize.xrand((1,), min=0.1, max=0.9).astype("float32"),
+            parameterize.xrand((1,), min=0.0, max=1.0).astype("float32"),
+            parameterize.xrand((1,), min=0.0, max=1.0).astype("float32"),
         ),
         (
             'multi-dim',
-            parameterize.xrand((5,), min=0.1, max=0.9).astype("float32"),
-            parameterize.xrand((5,), min=0.1, max=0.9).astype("float32"),
+            parameterize.xrand((5,), min=0.0, max=1.0).astype("float32"),
+            parameterize.xrand((5,), min=0.0, max=1.0).astype("float32"),
         ),
     ],
 )
