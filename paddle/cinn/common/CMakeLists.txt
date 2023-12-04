@@ -20,7 +20,8 @@ gather_srcs(
   cas.cc
   union_find.cc
   python_interpreter_guard.cc
-  nvgpu_dev_info.cc)
+  nvgpu_dev_info.cc
+  integer_set.cc)
 
 message(STATUS "srcs: ${cinnapi_src}")
 
@@ -38,6 +39,7 @@ cinn_cc_test(test_arithmatic SRCS arithmatic_test.cc DEPS cinncore)
 cinn_cc_test(test_cas SRCS cas_test.cc DEPS cinncore)
 cinn_cc_test(test_type SRCS type_test.cc DEPS cinncore)
 cinn_cc_test(test_axis SRCS axis_test.cc DEPS cinncore)
+cinn_cc_test(test_integer_set SRCS integer_set_test.cc DEPS cinncore)
 
 cinn_cc_test(test_fp16_bf16_host SRCS float16_bfloat16_host_test.cc DEPS gtest
              glog)
