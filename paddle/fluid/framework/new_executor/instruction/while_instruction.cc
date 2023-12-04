@@ -142,8 +142,17 @@ WhileInstruction::WhileInstruction(size_t id,
 
 void WhileInstruction::CopyInputsToOutputs() {
   for (size_t i = 0; i < outputs_.size(); ++i) {
-    outputs_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
-        inputs_[i]->Get<phi::DenseTensor>());
+    if (inputs_[i]->IsType<phi::DenseTensor>()) {
+      outputs_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
+          inputs_[i]->Get<phi::DenseTensor>());
+    } else if (inputs_[i]->IsType<phi::TensorArray>()) {
+      const auto& input_array = inputs_[i]->Get<phi::TensorArray>();
+      auto* output_array = outputs_[i]->GetMutable<phi::TensorArray>();
+      *output_array = input_array;
+    } else {
+      PADDLE_THROW(phi::errors::Unimplemented("unsupported type %d",
+                                              inputs_[i]->Type()));
+    }
   }
 }
 
@@ -152,8 +161,20 @@ void WhileInstruction::PassArgsToBodyBlock() {
     auto block_arg = body_block_->arg(i);
     auto var_name = body_inter_->GetNameByValue(block_arg);
     auto* inner_var = body_inter_->local_scope()->GetVar(var_name);
-    inner_var->GetMutable<phi::DenseTensor>()->ShareDataWith(
-        outputs_[i]->Get<phi::DenseTensor>());
+
+    if (outputs_[i]->IsType<phi::DenseTensor>()) {
+      inner_var->GetMutable<phi::DenseTensor>()->ShareDataWith(
+          outputs_[i]->Get<phi::DenseTensor>());
+    } else if (outputs_[i]->IsType<phi::TensorArray>()) {
+      const auto& outer_array = outputs_[i]->Get<phi::TensorArray>();
+      auto* inner_array = inner_var->GetMutable<phi::TensorArray>();
+      *inner_array = outer_array;
+      VLOG(10) << inner_var
+               << " should be created: " << inner_var->IsInitialized();
+    } else {
+      PADDLE_THROW(
+          phi::errors::Unimplemented("unsupported type %d", inner_var->Type()));
+    }
   }
 }
 
@@ -166,8 +187,19 @@ void WhileInstruction::GetValueFromBodyBlock() {
     auto& out_var_name = body_outputs_[i + 1];
     auto* out_var = body_inter_->local_scope()->GetVar(out_var_name);
     VLOG(6) << "share data from " << out_var_name << " -> " << i << " output";
-    outputs_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
-        out_var->Get<phi::DenseTensor>());
+
+    if (out_var->IsType<phi::DenseTensor>()) {
+      outputs_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
+          out_var->Get<phi::DenseTensor>());
+    } else if (out_var->IsType<phi::TensorArray>()) {
+      const auto& inner_array = out_var->Get<phi::TensorArray>();
+      auto* output_array = outputs_[i]->GetMutable<phi::TensorArray>();
+      *output_array = inner_array;
+    } else {
+      PADDLE_THROW(
+          phi::errors::Unimplemented("unsupported type %d", out_var->Type()));
+    }
+
     VLOG(6) << "done";
   }
 }

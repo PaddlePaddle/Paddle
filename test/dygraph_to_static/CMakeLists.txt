@@ -79,3 +79,15 @@ foreach(ITEST ${LEGACY_ONLY_TEST_FILES})
       STATUS "PT Disabled OpTest: not found ${ITEST} in dygraph_to_static")
   endif()
 endforeach()
+
+set(PIR_SEQUENTIAL_RUN_LIST test_slice test_for_enumerate test_list
+                            test_jit_setitem)
+foreach(ITEST ${PIR_SEQUENTIAL_RUN_LIST})
+  if(TEST ${ITEST})
+    set_tests_properties(
+      ${ITEST} PROPERTIES ENVIRONMENT "FLAGS_new_executor_sequential_run=1")
+  else()
+    message(
+      STATUS "PIR_SEQUENTIAL_RUN_LIST: not found ${ITEST} in dygraph_to_static")
+  endif()
+endforeach()
