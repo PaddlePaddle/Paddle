@@ -54,4 +54,8 @@ from .comp_op_cost import (  # noqa: F401
     Transpose2OpCost,
 )
 from .estimate_cost import CostEstimator  # noqa: F401
+from .op_runtime_cost import (  # noqa: F401
+    check_if_op_supports_runtime_profiling,
+    measure_program_real_op_cost,
+)
 from .tensor_cost import TensorCost  # noqa: F401
