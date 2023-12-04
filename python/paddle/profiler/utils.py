@@ -234,13 +234,13 @@ def _nvprof_range(iter_id, start, end, exit_after_prof=True):
 
 
 @contextmanager
-def profiler_range(iter_id, start, end, exit_after_prof=True):
+def job_schedule_profiler_range(iter_id, start, end, exit_after_prof=True):
     if start >= end:
         yield False
         return
 
     try:
-        if (iter_id == start) or (iter_id >= start):
+        if iter_id >= start and iter_id < end:
             yield True
         else:
             yield False
