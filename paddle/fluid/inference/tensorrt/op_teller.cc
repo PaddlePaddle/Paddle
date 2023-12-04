@@ -20,6 +20,7 @@
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/inference/tensorrt/dynamic_shape_infermeta_factory.h"
+#include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
 
@@ -3237,6 +3238,40 @@ struct CustomPluginTeller : public Teller {
   }
 };
 
+struct CustomGenericPluginTeller : public Teller {
+  CustomGenericPluginTeller() = default;
+  bool operator()(const framework::OpDesc& desc,
+                  bool use_no_calib_int8 = false,
+                  bool with_dynamic_shape = false,
+                  bool use_explicit_quantization = false) override {
+    const std::string op_type = desc.Type();
+    auto& op_meta_info_map = OpMetaInfoMap::Instance();
+    const auto& meta_info_map = op_meta_info_map.GetMap();
+    if (meta_info_map.count(op_type) > 0) {
+      auto& op_info = meta_info_map.at(op_type).front();
+      auto& trt_infer_shape_fn = OpMetaInfoHelper::GetTrtInferShapeFn(op_info);
+      if (trt_infer_shape_fn == nullptr) {
+        VLOG(3) << op_type
+                << " has no trt getOutputDimensions function. Please set by "
+                   "SetTrtInferShapeFn.";
+        return false;
+      }
+      auto& trt_supports_formate_config =
+          OpMetaInfoHelper::GetTrtSupportsFormatConfig(op_info);
+      if (trt_supports_formate_config.empty()) {
+        VLOG(3)
+            << op_type
+            << " has no trt supportsFormatCombination config. Please set by "
+               "SetTrtSupportsFormatConfig.";
+        return false;
+      }
+      return true;
+    }
+    VLOG(3) << op_type << " has no meta info";
+    return false;
+  }
+};
+
 bool OpTeller::Tell(const framework::ir::Node* node,
                     bool use_no_calib_int8,
                     bool with_dynamic_shape,
@@ -3273,6 +3308,14 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     SetOpConverterType(node->Op(), OpConverterType::CustomPluginCreater);
     return true;
   }
+  auto& custom_generic_plugin_teller = GetCustomGenericPluginTeller();
+  if ((*custom_generic_plugin_teller)(desc,
+                                      use_no_calib_int8,
+                                      with_dynamic_shape,
+                                      use_explicit_quantization)) {
+    SetOpConverterType(node->Op(), OpConverterType::CustomGenericPluginCreater);
+    return true;
+  }
   return false;
 }
 
@@ -3280,6 +3323,7 @@ OpTeller::OpTeller() {  // NOLINT
   tellers_.emplace_back(new tensorrt::SimpleOpTypeSetTeller);
   tellers_.emplace_back(new tensorrt::GenericPluginTeller);
   tellers_.emplace_back(new tensorrt::CustomPluginTeller);
+  tellers_.emplace_back(new tensorrt::CustomGenericPluginTeller);
 }
 
 }  // namespace tensorrt
