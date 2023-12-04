@@ -18,7 +18,7 @@ set_source_files_properties(
 cc_library(
   graph_node
   SRCS ${graphDir}/graph_node.cc
-  DEPS WeightedSampler enforce)
+  DEPS WeightedSampler enforce common)
 set_source_files_properties(
   memory_dense_table.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 set_source_files_properties(
@@ -46,7 +46,8 @@ cc_library(
        string_helper
        simple_threadpool
        xxhash
-       phi)
+       phi
+       common)
 
 set_source_files_properties(
   tensor_accessor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
@@ -90,6 +91,7 @@ cc_library(
        string_helper
        device_context
        phi
+       common
        glog
        framework_io
        afs_wrapper

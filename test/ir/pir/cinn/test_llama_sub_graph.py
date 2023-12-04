@@ -51,7 +51,7 @@ class TestLlamaRMSNorm(TestCinnSubGraphBase):
         net = LlamaRMSNorm()
         # TODO(Aurelius84): Need to remove it after verify CINN
         if use_cinn:
-            net = apply_to_static(net, False)
+            net = apply_to_static(net, use_cinn)
         net.eval()
         out = net(self.hidden_states)
         return out

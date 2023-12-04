@@ -36,7 +36,7 @@ inline std::vector<int> get_new_shape(
   for (size_t i = 0; i < list_new_shape_tensor.size(); ++i) {
     auto tensor = list_new_shape_tensor[i];
     PADDLE_ENFORCE_EQ(tensor->dims(),
-                      phi::make_ddim({1}),
+                      common::make_ddim({1}),
                       platform::errors::InvalidArgument(
                           "The shape of dimension tensor should be [1],"
                           "but received d%.",
@@ -856,7 +856,7 @@ static void Interpolate1DCPUFwd(const framework::ExecutionContext& ctx,
                                 const phi::DenseTensor& input,
                                 phi::DenseTensor* output) {
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -930,7 +930,7 @@ static void Interpolate2DCPUFwd(const framework::ExecutionContext& ctx,
                                 const phi::DenseTensor& input,
                                 phi::DenseTensor* output) {
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -1047,7 +1047,7 @@ static void Interpolate3DCPUFwd(const framework::ExecutionContext& ctx,
                                 const phi::DenseTensor& input,
                                 phi::DenseTensor* output) {
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -1160,7 +1160,7 @@ static void Interpolate1DCPUBwd(const framework::ExecutionContext& ctx,
                                 const phi::DenseTensor& output_grad) {
   auto* input = ctx.Input<phi::DenseTensor>("X");
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   ExtractNCDWH(input->dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -1234,7 +1234,7 @@ static void Interpolate2DCPUBwd(const framework::ExecutionContext& ctx,
                                 const phi::DenseTensor& output_grad) {
   auto* input = ctx.Input<phi::DenseTensor>("X");
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   ExtractNCDWH(input->dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -1345,7 +1345,7 @@ static void Interpolate3DCPUBwd(const framework::ExecutionContext& ctx,
                                 const phi::DenseTensor output_grad) {
   auto* input = ctx.Input<phi::DenseTensor>("X");
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   ExtractNCDWH(input->dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 

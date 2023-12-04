@@ -33,7 +33,13 @@ class TestAddNApiForSemiAutoParallel:
         np.testing.assert_allclose(np1, np2, rtol=1e-05, verbose=True)
 
     def test_body(
-        self, x_shape, y_shape, x_specs, y_specs, trans_x=False, trans_y=False
+        self,
+        x_shape,
+        y_shape,
+        x_placements,
+        y_placements,
+        trans_x=False,
+        trans_y=False,
     ):
         paddle.seed(self._seed)
         np.random.seed(self._seed)
@@ -45,11 +51,8 @@ class TestAddNApiForSemiAutoParallel:
         x.stop_gradient = False
         y.stop_gradient = False
 
-        x_dist_attr = dist.DistAttr(mesh=self._mesh, sharding_specs=x_specs)
-        y_dist_attr = dist.DistAttr(mesh=self._mesh, sharding_specs=y_specs)
-
-        dist_x = dist.shard_tensor(x_np, dist_attr=x_dist_attr)
-        dist_y = dist.shard_tensor(y_np, dist_attr=y_dist_attr)
+        dist_x = dist.shard_tensor(x_np, self._mesh, x_placements)
+        dist_y = dist.shard_tensor(y_np, self._mesh, y_placements)
         dist_x.stop_gradient = False
         dist_y.stop_gradient = False
 
@@ -68,8 +71,8 @@ class TestAddNApiForSemiAutoParallel:
         self.test_body(
             x_shape=[64, 32],
             y_shape=[64, 32],
-            x_specs=[None, None],
-            y_specs=[None, None],
+            x_placements=[dist.Replicate()],
+            y_placements=[dist.Replicate()],
         )
 
     def run_test_case(self):

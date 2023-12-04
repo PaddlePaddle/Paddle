@@ -17,10 +17,10 @@
 #include <functional>
 #include <ostream>
 
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/attribute_base.h"
 #include "paddle/pir/core/dialect_interface.h"
-#include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/op_base.h"
 #include "paddle/pir/core/type_base.h"
@@ -96,7 +96,7 @@ class IR_API Dialect {
     ir_context()->RegisterOpInfo(this,
                                  TypeId::get<ConcreteOp>(),
                                  ConcreteOp::name(),
-                                 ConcreteOp::GetInterfaceMap(),
+                                 ConcreteOp::interface_set(),
                                  ConcreteOp::GetTraitSet(),
                                  ConcreteOp::attributes_num,
                                  ConcreteOp::attributes_name,

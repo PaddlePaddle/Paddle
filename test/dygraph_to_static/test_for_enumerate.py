@@ -17,9 +17,10 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import (
+from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_legacy_and_pir_exe_and_pir_api,
+    test_legacy_and_pt_and_pir,
+    test_sot_only,
 )
 
 import paddle
@@ -385,13 +386,15 @@ class TestTransformError(TestTransformBase):
             st_out = self.get_static_output()
 
 
-class TestForInRange(TestTransform):
+class TestForInRangeConfig(TestTransform):
     def set_input(self):
         self.input = np.array([5])
 
     def set_test_func(self):
         self.dygraph_func = for_in_range
 
+
+class TestForInRange(TestForInRangeConfig):
     def test_transformed_result_compare(self):
         self.set_test_func()
         self.transformed_result_compare()
@@ -401,7 +404,7 @@ class TestForIterList(TestTransform):
     def set_test_func(self):
         self.dygraph_func = for_iter_list
 
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pt_and_pir
     def test_transformed_result_compare(self):
         self.set_test_func()
         self.transformed_result_compare()
@@ -424,6 +427,7 @@ class TestForIterVarNumpy(TestTransform):
     def set_test_func(self):
         self.dygraph_func = for_iter_var_numpy
 
+    @test_legacy_and_pt_and_pir
     def test_transformed_result_compare(self):
         self.set_test_func()
         self.transformed_result_compare()
@@ -478,15 +482,30 @@ class TestForEnumerateVarWithNestedRange(TestForIterVarNumpy):
     def set_test_func(self):
         self.dygraph_func = for_enumerate_var_with_nested_range
 
+    # Remove this if we support control flow
+    def test_transformed_result_compare(self):
+        self.set_test_func()
+        self.transformed_result_compare()
 
-class TestForIterVarList(TestForInRange):
+
+class TestForIterVarList(TestForInRangeConfig):
     def set_test_func(self):
         self.dygraph_func = for_iter_var_list
 
+    @test_sot_only
+    def test_transformed_result_compare(self):
+        self.set_test_func()
+        self.transformed_result_compare()
 
-class TestForEnumerateVarList(TestForInRange):
+
+class TestForEnumerateVarList(TestForInRangeConfig):
     def set_test_func(self):
         self.dygraph_func = for_enumerate_var_list
+
+    @test_sot_only
+    def test_transformed_result_compare(self):
+        self.set_test_func()
+        self.transformed_result_compare()
 
 
 class TestForTupleAsIterVar(TestForIterVarNumpy):
@@ -513,7 +532,7 @@ class TestForOriginalList(TestTransformForOriginalList):
     def set_test_func(self):
         self.dygraph_func = for_original_list
 
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pt_and_pir
     def test_transformed_result_compare(self):
         self.set_test_func()
         self.transformed_result_compare()
@@ -536,7 +555,7 @@ class TestForZip(Dy2StTestBase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pt_and_pir
     def test_for_zip_error(self):
         with self.assertRaises(RuntimeError):
             model_path = os.path.join(self.temp_dir.name, 'for_zip_error')

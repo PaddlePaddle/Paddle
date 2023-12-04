@@ -65,7 +65,7 @@ static bool ReduceOpHasOptimizedOneDNNKernel(
 bool CanMKLDNNSupportPool(const framework::ExecutionContext& ctx) {
   if (ctx.Attr<bool>("adaptive") == false) return true;
   // oneDNN is supporting only unchangable in size pool window
-  auto src_tz = phi::vectorize(ctx.Input<phi::DenseTensor>("X")->dims());
+  auto src_tz = common::vectorize(ctx.Input<phi::DenseTensor>("X")->dims());
   if (!ctx.HasAttr("ksize")) {
     return false;
   }
@@ -228,7 +228,7 @@ phi::KernelKey GetSoftmaxExpectedKernelType(
     const framework::OperatorWithKernel* op_ptr) {
   // choose cudnn kernel if the runtime supported.
   std::string data_format = ctx.Attr<std::string>("data_format");
-  phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
+  phi::DataLayout layout_ = common::StringToDataLayout(data_format);
   auto input_data_type = op_ptr->IndicateVarDataType(ctx, "X");
   if (input_data_type == framework::proto::VarType::FP16) {
     PADDLE_ENFORCE_EQ(
@@ -248,7 +248,7 @@ phi::KernelKey GetSoftmaxGradExpectedKernelType(
     const framework::OperatorWithKernel* op_ptr) {
   // choose cudnn kernel if the runtime supported.
   std::string data_format = ctx.Attr<std::string>("data_format");
-  phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
+  phi::DataLayout layout_ = common::StringToDataLayout(data_format);
   auto input_data_type =
       op_ptr->IndicateVarDataType(ctx, framework::GradVarName("Out"));
   if (input_data_type == framework::proto::VarType::FP16) {

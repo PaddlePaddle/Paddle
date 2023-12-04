@@ -1186,7 +1186,9 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
     """
 
     def _check_attr(attr, message):
-        if isinstance(attr, ((Variable, core.eager.Tensor))):
+        if isinstance(
+            attr, ((Variable, core.eager.Tensor, paddle.pir.OpResult))
+        ):
             assert len(attr.shape) == 1 and attr.shape[0] in [1, -1]
         elif not isinstance(attr, int) or attr < 0:
             raise TypeError(f"{message} should be a non-negative int.")
@@ -2193,6 +2195,15 @@ def empty_like(x, dtype=None, name=None):
     if in_dynamic_mode():
         out = _C_ops.empty(
             x.shape,
+            convert_np_dtype_to_dtype_(dtype),
+            _current_expected_place(),
+        )
+        out.stop_gradient = True
+        return out
+    elif in_pir_mode():
+        shape = paddle.shape(x)
+        out = _C_ops.empty(
+            shape,
             convert_np_dtype_to_dtype_(dtype),
             _current_expected_place(),
         )

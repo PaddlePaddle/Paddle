@@ -128,7 +128,8 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
   if (is_found_inf_on_cpu) {
     if (*found_inf_data) {
       for (auto* out : outs) {
-        Full<T>(dev_ctx, vectorize(out->dims()), static_cast<T>(0), out);
+        Full<T>(
+            dev_ctx, common::vectorize(out->dims()), static_cast<T>(0), out);
       }
     }
   } else {
