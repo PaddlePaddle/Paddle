@@ -685,6 +685,15 @@ std::ostream &operator<<(std::ostream &os, Expr a) {
   return os;
 }
 
+std::ostream &operator<<(std::ostream &os, const ir::Module &m) {
+  os << "Module " << m->name << " {\n\n";
+  for (auto &fn : m->functions) {
+    os << fn << '\n';
+  }
+  os << "\n\n}";
+  return os;
+}
+
 std::ostream &operator<<(std::ostream &os, const std::vector<Expr> &a) {
   std::stringstream ss;
   IrPrinter printer(ss);
@@ -693,12 +702,11 @@ std::ostream &operator<<(std::ostream &os, const std::vector<Expr> &a) {
   return os;
 }
 
-std::ostream &operator<<(std::ostream &os, const ir::Module &m) {
-  os << "Module " << m->name << " {\n\n";
-  for (auto &fn : m->functions) {
-    os << fn << '\n';
-  }
-  os << "\n\n}";
+std::ostream &operator<<(std::ostream &os, const std::vector<Dim> &a) {
+  std::stringstream ss;
+  IrPrinter printer(ss);
+  printer.Print(std::vector<Expr>(a.begin(), a.end()));
+  os << ss.str();
   return os;
 }
 
