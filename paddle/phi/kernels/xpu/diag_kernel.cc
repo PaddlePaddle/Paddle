@@ -31,8 +31,8 @@ void DiagKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   auto* out_data = reinterpret_cast<XPUType*>(out->data<T>());
 
-  auto x_shape = vectorize<int>(x.dims());
-  auto out_shape = vectorize<int>(out->dims());
+  auto x_shape = common::vectorize<int>(x.dims());
+  auto out_shape = common::vectorize<int>(out->dims());
 
   if (x.dims().size() == 0) {
     x_shape = std::vector<int>({1});

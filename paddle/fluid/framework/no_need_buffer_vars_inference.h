@@ -20,10 +20,10 @@
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/phi/core/macros.h"
 
 namespace paddle {
 namespace framework {

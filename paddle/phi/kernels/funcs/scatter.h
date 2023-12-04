@@ -17,8 +17,8 @@ limitations under the License. */
 #include <string>
 #include <unordered_set>
 
+#include "paddle/common/ddim.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -276,8 +276,8 @@ void ScatterNdAdd(const phi::CPUContext& ctx,
   // final dim
   int64_t end_size = index_dims[index_dims_size - 1];
   // remain dim
-  auto remain_ddim = phi::slice_ddim(index_dims, 0, index_dims_size - 1);
-  int64_t remain_numel = phi::product(remain_ddim);
+  auto remain_ddim = common::slice_ddim(index_dims, 0, index_dims_size - 1);
+  int64_t remain_numel = common::product(remain_ddim);
   // slice size
   int64_t slice_size = 1;
   for (int64_t i = end_size; i < output_dims_size; ++i) {

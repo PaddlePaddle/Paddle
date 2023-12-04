@@ -141,7 +141,7 @@ TEST(lower, temp_buffer_collects) {
   auto output = Compute(
       {M}, [&](Expr i) -> Expr { return D(i); }, "output");
 
-  ir::Module::Builder b("somemodule", common::DefaultHostTarget());
+  ir::Module::Builder b("somemodule", cinn::common::DefaultHostTarget());
 
   auto stages = CreateStages({B, C, D, output});
 
