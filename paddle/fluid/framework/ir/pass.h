@@ -22,10 +22,10 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/phi/core/macros.h"
 #include "paddle/utils/any.h"
 
 namespace paddle {

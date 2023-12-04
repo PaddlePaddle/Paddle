@@ -167,7 +167,7 @@ class TestBCEWithLogitsLoss(unittest.TestCase):
                 np.testing.assert_allclose(dy_functional, expected, rtol=1e-05)
 
                 @test_with_pir_api
-                def test_dynamic_or_pir_mode():
+                def test_static_or_pir_mode():
                     static_result = test_static(
                         place, logit_np, label_np, reduction=reduction
                     )
@@ -192,7 +192,7 @@ class TestBCEWithLogitsLoss(unittest.TestCase):
                         static_functional, dy_functional, rtol=1e-05
                     )
 
-                test_dynamic_or_pir_mode()
+                test_static_or_pir_mode()
 
     def test_BCEWithLogitsLoss_weight(self):
         logit_np = np.random.uniform(0.1, 0.8, size=(2, 3, 4, 10)).astype(
@@ -230,7 +230,7 @@ class TestBCEWithLogitsLoss(unittest.TestCase):
             np.testing.assert_allclose(dy_functional, expected, rtol=1e-05)
 
             @test_with_pir_api
-            def test_dynamic_or_pir_mode():
+            def test_static_or_pir_mode():
                 static_result = test_static(
                     place,
                     logit_np,
@@ -257,7 +257,7 @@ class TestBCEWithLogitsLoss(unittest.TestCase):
                     static_functional, dy_functional, rtol=1e-05
                 )
 
-            test_dynamic_or_pir_mode()
+            test_static_or_pir_mode()
 
     def test_BCEWithLogitsLoss_pos_weight(self):
         logit_np = np.random.uniform(0.1, 0.8, size=(2, 3, 4, 10)).astype(
@@ -294,7 +294,7 @@ class TestBCEWithLogitsLoss(unittest.TestCase):
         np.testing.assert_allclose(dy_functional, expected, rtol=1e-05)
 
         @test_with_pir_api
-        def test_dynamic_or_pir_mode():
+        def test_static_or_pir_mode():
             static_result = test_static(
                 place, logit_np, label_np, weight_np, reduction, pos_weight_np
             )
@@ -315,7 +315,7 @@ class TestBCEWithLogitsLoss(unittest.TestCase):
                 static_functional, dy_functional, rtol=1e-05
             )
 
-        test_dynamic_or_pir_mode()
+        test_static_or_pir_mode()
 
     def test_BCEWithLogitsLoss_error(self):
         paddle.disable_static()
