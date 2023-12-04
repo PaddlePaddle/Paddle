@@ -99,7 +99,7 @@ struct FlashAttnFwdParamsV2 {
         max_seqlen_q(_max_seqlen_q),
         max_seqlen_k(_max_seqlen_k),
         num_heads(_num_heads),
-        num_heads_k(_num_heads),
+        num_heads_k(_num_heads_k),
         head_size(_head_size),
         scale(_scale),
         dropout(_dropout),

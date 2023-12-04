@@ -1,3 +1,4 @@
+
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,15 +14,14 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/fusion/gpu/block_multi_head_attention_kernel.h"
+#include <fstream>
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/flash_attn_kernel.h"
 #include "paddle/phi/kernels/fusion/cutlass/variable_length_memory_efficient_attention.h"
 #include "paddle/phi/kernels/fusion/gpu/block_attn.h"
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
 #include "paddle/utils/none.h"
-#include "paddle/phi/core/flags.h"
-#include <fstream>
-
 
 PHI_DECLARE_int32(max_enc_len_this_time_data);
 PHI_DECLARE_int32(max_dec_len_this_time_data);
@@ -68,14 +68,26 @@ void BlockMultiheadAttentionKernel(
       dev_ctx, fmha_out->data<T>(), fmha_out->numel(), static_cast<T>(0.));
   const auto& input_dims = qkv.dims();
   const auto& key_cache_dims = key_cache.dims();
-  const int token_num = input_dims[0];
-  const int num_head = key_cache_dims[1];
+  const int token_num = input_dims[0];    // 65
+  const int output_size = input_dims[1];  // 6144
+
+  const int gqa_group_size = key_cache_dims[1];  // 16
   const int dim_head = key_cache_dims[3];
+
+  int num_head = output_size / dim_head - 2 * gqa_group_size;  // 48
+
+  bool use_gqa_attention = false;
+  if (gqa_group_size != num_head) {
+    use_gqa_attention = true;
+  }
+
   const int bsz = cum_offsets.dims()[0];
   const int max_block_per_seq = block_tables.dims()[1];
   VLOG(1) << "bsz: " << bsz << " token_num: " << token_num
           << " num_head: " << num_head << " dim_head: " << dim_head
-          << " max_block_per_seq: " << max_block_per_seq;
+          << " max_block_per_seq: " << max_block_per_seq
+          << "gqa_group_size:  " << gqa_group_size
+          << "use_gqa_attention: " << use_gqa_attention;
   VLOG(1) << "fmha_out_dims: " << fmha_out->dims();
 
   bool causual = true;
@@ -106,19 +118,22 @@ void BlockMultiheadAttentionKernel(
   // int max_enc_len_this_time =
   //     GetMaxLen(dev_ctx, seq_lens_encoder, &max_enc_len_tensor, bsz);
 
- 
-
   int max_enc_len_this_time = 0;
   int max_dec_len_this_time = 0;
 
   std::ifstream infile("max_len.txt", std::ios::in);
   infile >> max_enc_len_this_time >> max_dec_len_this_time;
   infile.close();
-
+  PrintMatrix<T>(qkv.data<T>(), 15000, "qkv_input");
 
   phi::DenseTensor qkv_out_decoder;
   if (max_dec_len_this_time > 0) {
     qkv_out_decoder.Resize({{bsz, 3, num_head, dim_head}});
+    if (use_gqa_attention) {
+      qkv_out_decoder.Resize(
+          {{bsz, 1, num_head + 2 * gqa_group_size, dim_head}});
+    }
+
     auto* qkv_out_decoder_data = dev_ctx.template Alloc<T>(
         &qkv_out_decoder, qkv_out_decoder.numel() * sizeof(T));
   }
@@ -131,6 +146,10 @@ void BlockMultiheadAttentionKernel(
       unpadding_q.Resize({{token_num, num_head, dim_head}});
       unpadding_k.Resize({{token_num, num_head, dim_head}});
       unpadding_v.Resize({{token_num, num_head, dim_head}});
+      if (use_gqa_attention) {
+        unpadding_k.Resize({{token_num, gqa_group_size, dim_head}});
+        unpadding_v.Resize({{token_num, gqa_group_size, dim_head}});
+      }
 
       dev_ctx.template Alloc<T>(&unpadding_q, unpadding_q.numel() * sizeof(T));
       dev_ctx.template Alloc<T>(&unpadding_k, unpadding_k.numel() * sizeof(T));
@@ -169,10 +188,15 @@ void BlockMultiheadAttentionKernel(
                          max_seq_len,
                          rope_emb.get().dims()[2],
                          dim_head,
-                         use_neox_style);
+                         use_neox_style,
+                         gqa_group_size);
     }
+    PrintMatrix<T>(qkv.data<T>(), 15000, "qkv_rotary_qk_variable");
     VLOG(1) << "rope end";
     VLOG(1) << "causual: " << causual;
+    VLOG(1) << "qkv_out->data<T>(): ";
+    PrintMatrix<T>(qkv_out->data<T>(), 3072, "rotary_qk_variable");
+
     if (!use_pre_cache) {
       qkv_transpose_split<T>(dev_ctx,
                              unpadding_q.data<T>(),
@@ -185,8 +209,19 @@ void BlockMultiheadAttentionKernel(
                              bsz,
                              num_head,
                              max_seq_len,
-                             dim_head);
+                             dim_head,
+                             gqa_group_size);
       VLOG(1) << "qkv split end";
+      PrintMatrix<T>(unpadding_q.data<T>(), 4096, "unpadding_q");
+      PrintMatrix<T>(unpadding_k.data<T>(), 4096, "unpadding_k");
+      PrintMatrix<T>(unpadding_v.data<T>(), 4096, "unpadding_v");
+
+      VLOG(1) << "unpadding_q: " << unpadding_q.dims();
+      VLOG(1) << "unpadding_k: " << unpadding_k.dims();
+      VLOG(1) << "unpadding_v: " << unpadding_v.dims();
+
+      PrintMatrix<T>(qkv.data<T>(), 15000, "qkv_qkv_transpose_split");
+
       phi::FlashAttnUnpaddedKernel<T>(dev_ctx,
                                       unpadding_q,
                                       unpadding_k,
@@ -207,6 +242,9 @@ void BlockMultiheadAttentionKernel(
                                       &softmax_out,
                                       &softmax_lse,
                                       &seed_offset);
+      PrintMatrix<T>(fmha_out->data<T>(), 4096, "fmha_out");
+
+      PrintMatrix<T>(qkv.data<T>(), 15000, "qkv_FlashAttnUnpaddedKernel");
     } else {
       qkv_transpose_split<T>(
           dev_ctx,
@@ -270,6 +308,8 @@ void BlockMultiheadAttentionKernel(
                                  key_cache_out,
                                  value_cache_out);
     } else {
+      VLOG(1) << "qkv dims " << qkv.dims();
+      PrintMatrix<T>(qkv.data<T>(), 15000, "qkv_CacheKernel");
       CacheKernel<T>(dev_ctx,
                      qkv,
                      block_tables,
@@ -286,12 +326,16 @@ void BlockMultiheadAttentionKernel(
                      max_seq_len,
                      pre_cache_length,
                      key_cache_out,
-                     value_cache_out);
+                     value_cache_out,
+                     gqa_group_size);
+      PrintMatrix<T>(key_cache_out->data<T>(), 40960, "key_cache_out");
+      PrintMatrix<T>(value_cache_out->data<T>(), 40960, "value_cache_out");
     }
     VLOG(1) << "cache end";
   }
   VLOG(1) << "encoder done";
   VLOG(1) << "max_dec_len_this_time: " << max_dec_len_this_time;
+  PrintMatrix<T>(qkv.data<T>(), 15000, "qkv_GetDecoderTensor");
   if (max_dec_len_this_time > 0) {
     GetDecoderTensor<T>(dev_ctx,
                         qkv,
@@ -303,39 +347,41 @@ void BlockMultiheadAttentionKernel(
                         bsz,
                         num_head,
                         max_seq_len,
-                        dim_head);
+                        dim_head,
+                        gqa_group_size);
     VLOG(1) << "qkv_out_decoder: " << qkv_out_decoder.dims();
-    blha<T>(
-        dev_ctx,
-        qkv_out_decoder,
-        nullptr,  // qkv_bias
-        &block_tables,
-        tgt_mask ? &tgt_mask.get() : nullptr,
-        &cum_offsets,
-        &seq_lens_decoder,
-        rope_emb ? &rope_emb.get() : nullptr,  // rope_emb
-        key_cache_out,
-        value_cache_out,
-        fmha_out,
-        bsz,
-        max_block_per_seq,
-        block_size,
-        max_seq_len,
-        pre_cache_length,
-        num_head,
-        dim_head,
-        max_dec_len_this_time,
-        rope_emb ? 1 : 0,
-        1. / sqrt(dim_head),
-        /*compute_bias*/ false,
-        use_neox_style,
-        quant_round_type,
-        quant_max_bound,
-        quant_min_bound,
-        cache_k_quant_scales ? cache_k_quant_scales.get_ptr() : nullptr,
-        cache_v_quant_scales ? cache_v_quant_scales.get_ptr() : nullptr,
-        cache_k_dequant_scales ? cache_k_dequant_scales.get_ptr() : nullptr,
-        cache_v_dequant_scales ? cache_v_dequant_scales.get_ptr() : nullptr);
+    PrintMatrix<T>(qkv_out_decoder.data<T>(), 15000, "qkv_out_decoder");
+    blha<T>(dev_ctx,
+            qkv_out_decoder,
+            nullptr,  // qkv_bias
+            &block_tables,
+            tgt_mask ? &tgt_mask.get() : nullptr,
+            &cum_offsets,
+            &seq_lens_decoder,
+            rope_emb ? &rope_emb.get() : nullptr,  // rope_emb
+            key_cache_out,
+            value_cache_out,
+            fmha_out,
+            bsz,
+            max_block_per_seq,
+            block_size,
+            max_seq_len,
+            pre_cache_length,
+            num_head,
+            dim_head,
+            max_dec_len_this_time,
+            rope_emb ? 1 : 0,
+            1. / sqrt(dim_head),
+            /*compute_bias*/ false,
+            use_neox_style,
+            quant_round_type,
+            quant_max_bound,
+            quant_min_bound,
+            cache_k_quant_scales ? cache_k_quant_scales.get_ptr() : nullptr,
+            cache_v_quant_scales ? cache_v_quant_scales.get_ptr() : nullptr,
+            cache_k_dequant_scales ? cache_k_dequant_scales.get_ptr() : nullptr,
+            cache_v_dequant_scales ? cache_v_dequant_scales.get_ptr() : nullptr,
+            gqa_group_size);
     VLOG(1) << "blha end";
   }
   VLOG(1) << "decoder done";
