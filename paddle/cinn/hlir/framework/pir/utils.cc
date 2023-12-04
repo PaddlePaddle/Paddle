@@ -209,7 +209,8 @@ utils::AttributeMap CompatibleInfo::ConvertAttributes(
   utils::AttributeMap dst_attrs;
   for (auto& item : src_attrs) {
     VLOG(4) << "deal with " << item.first;
-    if (item.first == ::pir::kStopGradientAttrName) {
+    if (item.first == ::pir::kStopGradientAttrName ||
+        item.first == ::pir::kIsPersisableAttrName) {
       continue;
     } else if (item.second.isa<paddle::dialect::PlaceAttribute>()) {
       auto is_cpu =

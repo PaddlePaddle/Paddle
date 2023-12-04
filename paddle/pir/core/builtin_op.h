@@ -23,6 +23,7 @@ namespace pir {
 class Program;
 class Block;
 constexpr char kStopGradientAttrName[] = "stop_gradient";
+constexpr char kIsPersisableAttrName[] = "is_persisable";
 ///
 /// \brief ModuleOp
 ///

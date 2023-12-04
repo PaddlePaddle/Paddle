@@ -1284,6 +1284,18 @@ PHI_DEFINE_EXPORTED_bool(enable_pir_in_executor,
                          "Enable new IR in executor");
 
 /**
+ * Using PIR in executor  FLAG
+ * Name: enable_cinn_in_pir_executor
+ * Since Version: 2.6.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If Ture, executor will use new IR
+ */
+PHI_DEFINE_EXPORTED_bool(enable_cinn_in_pir_executor,
+                         false,
+                         "Enable cinn in new IR executor");
+
+/**
  * Using PIR by translating legacy program to pir program
  * for dy2st mode  FLAG
  * Name: enable_pir_in_executor

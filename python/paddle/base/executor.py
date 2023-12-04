@@ -21,14 +21,9 @@ from functools import lru_cache
 
 import numpy as np
 
-from paddle import pir
+from paddle import base, pir
 
-from ..pir import (
-    OpResult,
-    Program as PirProgram,
-    Value,
-    translate_to_pir,
-)
+from ..pir import OpResult, Program as PirProgram, Value, translate_to_pir
 from . import compiler, core, framework, get_flags, set_flags, unique_name
 from .data_feeder import convert_dtype
 from .framework import (
@@ -956,6 +951,7 @@ class _ExecutorCache:
                 else program._graph
             )
             build_strategy = compiled_program._build_strategy
+            # print( "build strategy", build_strategy)
             # print(f"Program before convert:\n {inner_program}", flush=True)
             use_cuda_graph = False
             # When using cuda graph, the cuda graph preparation logic in PE is not
@@ -1043,9 +1039,14 @@ class _ExecutorCache:
             if get_flags("FLAGS_enable_pir_in_executor")[
                 'FLAGS_enable_pir_in_executor'
             ]:
-                type_to_program = {
-                    "default": translate_to_pir(new_program.desc)
-                }
+                pir_prog = translate_to_pir(new_program.desc)
+
+                if get_flags("FLAGS_enable_cinn_in_pir_executor")[
+                    'FLAGS_enable_cinn_in_pir_executor'
+                ]:
+                    base.libpaddle.pir.apply_pir_pass(pir_prog)
+
+                type_to_program = {"default": pir_prog}
             else:
                 type_to_program = {"default": new_program.desc}
             plan = core.Plan([default_job], type_to_program)

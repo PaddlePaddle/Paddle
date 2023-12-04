@@ -1435,12 +1435,12 @@ class OpTest(unittest.TestCase):
             return
         if self.check_prim or self.check_prim_pir:
             return
-        if self._check_cinn:
-            return
+
         stored_flag = get_flags(
             [
                 'FLAGS_enable_pir_in_executor',
-                "FLAGS_pir_apply_inplace_pass",
+                'FLAGS_pir_apply_inplace_pass',
+                'FLAGS_enable_cinn_in_pir_executor',
             ]
         )
         try:
@@ -1448,17 +1448,21 @@ class OpTest(unittest.TestCase):
                 {
                     "FLAGS_enable_pir_in_executor": True,
                     "FLAGS_pir_apply_inplace_pass": 0,
+                    "FLAGS_enable_cinn_in_pir_executor": self._check_cinn,
                 }
             )
             new_scope = paddle.static.Scope()
             executor = Executor(place)
             new_program = None
             if isinstance(program, paddle.static.CompiledProgram):
+                new_strategy = program._build_strategy
+                new_strategy.build_cinn_pass = False
                 new_program = base.CompiledProgram(
-                    program._program, build_strategy=program._build_strategy
+                    program._program, build_strategy=new_strategy
                 )
             else:
                 new_program = program.clone()
+
             ir_outs = executor.run(
                 new_program,
                 feed=feed_map,
@@ -1477,6 +1481,14 @@ class OpTest(unittest.TestCase):
                 )
             if os.getenv("FLAGS_PIR_NO_CHECK", None) == "True":
                 check_method = lambda x, y, err_msg: None
+
+            def check_cinn(x, y, err_msg=""):
+                return np.testing.assert_allclose(
+                    x, y, err_msg=err_msg, atol=1e-6, rtol=1e-6
+                )
+
+            if self._check_cinn:
+                check_method = check_cinn
 
             for i in range(len(outs)):
                 check_method(
