@@ -13,8 +13,6 @@
 // limitations under the License.
 
 #include "paddle/pir/dialect/shape/ir/shape_op.h"
-// #include "paddle/phi/core/tensor_meta.h"
-// #include "paddle/common/enforce.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/builtin_type.h"
@@ -298,9 +296,9 @@ void ShapeOfOp::Build(Builder &builder,             // NOLINT
                            .dyn_cast<DenseTensorType>()
                            .dyn_cast<ShapedTypeInterface>()
                            .GetRank();
-  phi::DDim dims = {input_rank};
-  phi::DataLayout data_layout = phi::DataLayout::NCHW;
-  phi::LoD lod = {{0, 1, 2}};
+  pir::DDim dims = {input_rank};
+  pir::DataLayout data_layout = pir::DataLayout::NCHW;
+  pir::LoD lod = {{0, 1, 2}};
   size_t offset = 0;
 
   argument.output_types.emplace_back(
@@ -315,9 +313,9 @@ void FromElementsOp::Build(Builder &builder,             // NOLINT
   IrContext *ctx = IrContext::Instance();
   Type dtype = IndexType::get(ctx);
   int64_t num_elements = elements.size();
-  phi::DDim dims = {num_elements};
-  phi::DataLayout data_layout = phi::DataLayout::NCHW;
-  phi::LoD lod = {{0, 1, 2}};
+  pir::DDim dims = {num_elements};
+  pir::DataLayout data_layout = pir::DataLayout::NCHW;
+  pir::LoD lod = {{0, 1, 2}};
   size_t offset = 0;
 
   argument.output_types.emplace_back(

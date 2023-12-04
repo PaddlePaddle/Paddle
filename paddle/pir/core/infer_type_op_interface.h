@@ -32,14 +32,14 @@ class InferShapedTypeOpInterface
   struct Concept {
     explicit Concept(bool (*reify_return_type_shapes)(
         Operation* op,
-        Builder& builder,                            // NOLINT
-        std::vector<OpOperand> operands,             // NOLINT
+        Builder& builder,  // NOLINT
+        const std::vector<OpOperand>& operands,
         std::vector<Value>& reified_return_shapes))  // NOLINT
         : reify_return_type_shapes(reify_return_type_shapes) {}
     bool (*reify_return_type_shapes)(
         Operation* op,
         Builder& builder,
-        std::vector<OpOperand> operands,
+        const std::vector<OpOperand>& operands,
         std::vector<Value>& reified_return_shapes);  // NOLINT
   };
 
@@ -47,8 +47,8 @@ class InferShapedTypeOpInterface
   struct Model : public Concept {
     static inline bool ReifyReturnTypeShapes(
         Operation* op,
-        Builder& builder,                             // NOLINT
-        std::vector<OpOperand> operands,              // NOLINT
+        Builder& builder,  // NOLINT
+        const std::vector<OpOperand>& operands,
         std::vector<Value>& reified_return_shapes) {  // NOLINT
       return op->dyn_cast<ConcreteOp>().ReifyReturnTypeShapes(
           builder, operands, reified_return_shapes);
@@ -62,8 +62,8 @@ class InferShapedTypeOpInterface
       : pir::OpInterfaceBase<InferShapedTypeOpInterface>(op), impl_(impl) {}
 
   bool ReifyReturnTypeShapes(
-      Builder& builder,                            // NOLINT
-      std::vector<OpOperand> operands,             // NOLINT
+      Builder& builder,  // NOLINT
+      const std::vector<OpOperand>& operands,
       std::vector<Value>& reified_return_shapes);  // NOLINT
 
  private:

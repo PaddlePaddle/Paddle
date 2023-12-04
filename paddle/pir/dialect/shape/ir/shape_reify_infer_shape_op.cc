@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/pir/dialect/shape/ir/shape_reify_infer_shape_op.h"
-#include "paddle/phi/core/tensor_meta.h"
+#include "paddle/common/ddim.h"
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/dialect/shape/ir/shape_op.h"
 
@@ -50,9 +50,9 @@ void AbsOp::Build(Builder &builder, OperationArgument &argument, Value x) {
 
   IrContext *ctx = IrContext::Instance();
   Type dtype = x.type().dyn_cast<ShapedTypeInterface>().GetElementType();
-  phi::DDim dims = x.type().dyn_cast<DenseTensorType>().dims();
-  phi::DataLayout data_layout = phi::DataLayout::NCHW;
-  phi::LoD lod = {{0, 1, 2}};
+  pir::DDim dims = x.type().dyn_cast<DenseTensorType>().dims();
+  pir::DataLayout data_layout = pir::DataLayout::NCHW;
+  pir::LoD lod = {{0, 1, 2}};
   size_t offset = 0;
 
   argument.output_types.emplace_back(
@@ -60,7 +60,7 @@ void AbsOp::Build(Builder &builder, OperationArgument &argument, Value x) {
 }
 
 bool AbsOp::ReifyReturnTypeShapes(Builder &builder,
-                                  std::vector<OpOperand> operands,
+                                  const std::vector<OpOperand> &operands,
                                   std::vector<Value> &reified_return_shapes) {
   return DeriveShapeFromOperand(
       &builder, operands.front().source(), &reified_return_shapes);
@@ -86,10 +86,10 @@ void TransposeOp::Build(Builder &builder,
 
   IrContext *ctx = IrContext::Instance();
   Type dtype = IndexType::get(ctx);
-  phi::DDim in_dims = x.type().dyn_cast<DenseTensorType>().dims();
-  phi::DDim out_dims = in_dims.transpose(perm);
-  phi::DataLayout data_layout = phi::DataLayout::NCHW;
-  phi::LoD lod = {{0, 1, 2}};
+  pir::DDim in_dims = x.type().dyn_cast<DenseTensorType>().dims();
+  pir::DDim out_dims = in_dims.transpose(perm);
+  pir::DataLayout data_layout = pir::DataLayout::NCHW;
+  pir::LoD lod = {{0, 1, 2}};
   size_t offset = 0;
 
   argument.output_types.emplace_back(
@@ -103,7 +103,7 @@ std::vector<int64_t> TransposeOp::permutation() {
 
 bool TransposeOp::ReifyReturnTypeShapes(
     Builder &builder,
-    std::vector<OpOperand> operands,
+    const std::vector<OpOperand> &operands,
     std::vector<Value> &reified_return_shapes) {
   auto operand_type = operands[0].type().dyn_cast<DenseTensorType>();
   // Currently not support unranked type.
@@ -119,7 +119,7 @@ bool TransposeOp::ReifyReturnTypeShapes(
   };
 
   auto shaped_type = operand_type.dyn_cast<ShapedTypeInterface>();
-  auto shape_vector = vectorize(shaped_type.GetShape());
+  auto shape_vector = shaped_type.GetDyShape();
   for (auto [idx, element] = std::tuple{0, shape_vector.begin()};
        element != shape_vector.end();
        ++idx, ++element) {
@@ -147,7 +147,7 @@ void ConcatOp::Build(Builder &builder,
 
 bool ConcatOp::ReifyReturnTypeShapes(
     Builder &builder,
-    std::vector<OpOperand> operands,
+    const std::vector<OpOperand> &operands,
     std::vector<Value> &reified_return_shapes) {
   std::vector<Value> inputs = {x()};
 
@@ -169,7 +169,7 @@ bool ConcatOp::ReifyReturnTypeShapes(
     std::vector<Value> shape_values;
 
     auto shaped_type = operand_type.dyn_cast<ShapedTypeInterface>();
-    auto shape_vector = vectorize(shaped_type.GetShape());
+    auto shape_vector = shaped_type.GetDyShape();
     for (auto [idx, element] = std::tuple{0, shape_vector.begin()};
          element != shape_vector.end();
          ++idx, ++element) {

@@ -101,7 +101,8 @@ struct ExpandShapeOfOpPattern : public OpRewritePattern<shape::ShapeOfOp> {
       return false;
 
     std::vector<Value> dim_sizes;
-    for (int dim = 0, rank = type.dyn_cast<ShapedTypeInterface>().GetShape()[0];
+    for (int dim = 0,
+             rank = type.dyn_cast<ShapedTypeInterface>().GetDyShape()[0];
          dim < rank;
          ++dim) {
       dim_sizes.push_back(

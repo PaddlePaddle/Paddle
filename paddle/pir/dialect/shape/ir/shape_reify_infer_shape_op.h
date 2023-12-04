@@ -40,8 +40,8 @@ class IR_API AbsOp : public Op<AbsOp, InferShapedTypeOpInterface> {
   Value x() { return operand_source(0); }
   OpResult out() { return result(0); }
   bool ReifyReturnTypeShapes(
-      Builder &builder,                            // NOLINT
-      std::vector<OpOperand> operands,             // NOLINT
+      Builder &builder,  // NOLINT
+      const std::vector<OpOperand> &operands,
       std::vector<Value> &reified_return_shapes);  // NOLINT
 };
 
@@ -64,8 +64,8 @@ class IR_API TransposeOp : public Op<TransposeOp, InferShapedTypeOpInterface> {
   std::vector<int64_t> permutation();
 
   bool ReifyReturnTypeShapes(
-      Builder &builder,                            // NOLINT
-      std::vector<OpOperand> operands,             // NOLINT
+      Builder &builder,  // NOLINT
+      const std::vector<OpOperand> &operands,
       std::vector<Value> &reified_return_shapes);  // NOLINT
 };
 
@@ -88,8 +88,8 @@ class IR_API ConcatOp : public Op<ConcatOp, InferShapedTypeOpInterface> {
   int dimension() { return 0; }
 
   bool ReifyReturnTypeShapes(
-      Builder &builder,                            // NOLINT
-      std::vector<OpOperand> operands,             // NOLINT
+      Builder &builder,  // NOLINT
+      const std::vector<OpOperand> &operands,
       std::vector<Value> &reified_return_shapes);  // NOLINT
 };
 
