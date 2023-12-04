@@ -799,8 +799,10 @@ class TestConcatDoubleGradCheck(unittest.TestCase):
 
         data1 = paddle.static.data('data1', [2, 3], dtype)
         data1.persistable = True
+        data1.stop_gradient = False
         data2 = paddle.static.data('data2', [2, 3], dtype)
         data2.persistable = True
+        data2.stop_gradient = False
         out = paddle.concat([data1, data2])
         data1_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
         data2_arr = np.random.uniform(-1, 1, data2.shape).astype(dtype)
@@ -841,8 +843,10 @@ class TestConcatTripleGradCheck(unittest.TestCase):
 
         data1 = paddle.static.data('data1', [2, 3, 4], dtype)
         data1.persistable = True
+        data1.stop_gradient = False
         data2 = paddle.static.data('data2', [2, 3, 4], dtype)
         data2.persistable = True
+        data2.stop_gradient = False
         out = paddle.concat([data1, data2], 1)
         data1_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
         data2_arr = np.random.uniform(-1, 1, data2.shape).astype(dtype)

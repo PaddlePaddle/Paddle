@@ -53,3 +53,8 @@ from .comm_op_cost import IdentityOpCost
 from .comm_op_cost import BroadcastOpCost
 from .comm_op_cost import AllgatherOpCost
 from .comm_op_cost import AllreduceSumOpCost
+
+from .op_runtime_cost import (
+    measure_program_real_op_cost,
+    check_if_op_supports_runtime_profiling,
+)

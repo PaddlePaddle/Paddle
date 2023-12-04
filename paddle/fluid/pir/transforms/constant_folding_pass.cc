@@ -72,15 +72,21 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     // 1. Some ops do not need to be processed
     if (op->HasTrait<pir::SideEffectTrait>() ||
         op->isa<pir::ConstantTensorOp>() || op->isa<pir::ParameterOp>() ||
-        op->isa<paddle::dialect::FeedOp>())
+        op->isa<paddle::dialect::FeedOp>()) {
       return false;
+    }
 
     for (uint32_t i = 0; i < op->num_operands(); i++) {
+      if (!op->operand_source(i)) {
+        continue;
+      }
       // 2. inputs must come from parameter op or constant op
-      // 3. inputs must be a dense tensor type
       if (!(pir::GetDefiningOpForInput(op, i)->isa<pir::ParameterOp>() ||
-            pir::GetDefiningOpForInput(op, i)->isa<pir::ConstantTensorOp>()) ||
-          !op->operand_source(i)
+            pir::GetDefiningOpForInput(op, i)->isa<pir::ConstantTensorOp>())) {
+        return false;
+      }
+      // 3. inputs must be a dense tensor type
+      if (!op->operand_source(i)
                .type()
                .isa<paddle::dialect::DenseTensorType>()) {
         return false;
@@ -88,6 +94,9 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     }
 
     for (uint32_t i = 0; i < op->num_results(); i++) {
+      if (!op->result(i)) {
+        continue;
+      }
       // 4. outputs must be a dense tensor type
       if (!op->result(i).type().isa<paddle::dialect::DenseTensorType>()) {
         return false;
@@ -100,8 +109,9 @@ class ConstantFoldingPattern : public pir::RewritePattern {
   void Rewrite(pir::Operation* op,
                pir::PatternRewriter& rewriter) const override {  // NOLINT
     VLOG(4) << "constant_folding_pass applys on [" << op->name() << "] op";
-    pir::Program new_program(ir_context());
-    auto output_var_name = BuildProgramFromOperation(op, &new_program);
+    pir::Program new_program(rewriter.ir_context());
+    auto output_var_name =
+        BuildProgramFromOperation(op, &new_program, rewriter);
 
     // execute program
     exe_config_->skip_gc_vars.insert(output_var_name);
@@ -114,7 +124,24 @@ class ConstantFoldingPattern : public pir::RewritePattern {
 
     rewriter.SetInsertionPointToStart(rewriter.block());
     // TODO(liuyuanle): support multiple output
-    if (ReplaceResultByParameter(op)) {
+    if (ReplaceResultByParameterOp(op)) {
+      auto* output_var = scope_->FindVar(output_var_name);
+      PADDLE_ENFORCE_NOT_NULL(
+          output_var,
+          phi::errors::InvalidArgument("Parameter var [%s] not in scope.",
+                                       output_var_name));
+      if (output_var->IsType<phi::DenseTensor>()) {
+        auto* output_tensor = output_var->GetMutable<phi::DenseTensor>();
+        if (output_tensor->place().GetType() != place_.GetType()) {
+          phi::DenseTensor temp_tensor;
+          temp_tensor.Resize(output_tensor->dims());
+          paddle::framework::TensorCopySync(
+              *output_tensor, phi::CPUPlace{}, &temp_tensor);
+          output_tensor->clear();
+          paddle::framework::TensorCopySync(temp_tensor, place_, output_tensor);
+        }
+      }
+
       auto parameter_op = rewriter.Build<pir::ParameterOp>(
           output_var_name, op->result(0).type());
       parameter_op->set_attribute(
@@ -137,7 +164,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
   bool CheckUseOps(const std::vector<pir::Operation*>& use_ops) const {
     for (auto* use_op : use_ops) {
       if (use_op->isa<pir::CombineOp>()) {
-        if (!ReplaceResultByParameter(use_op)) return false;
+        if (!ReplaceResultByParameterOp(use_op)) return false;
       } else if (use_op->HasInterface<paddle::dialect::OpYamlInfoInterface>()) {
         auto [input_infos, _1, _2, _3, _4] =
             use_op->dyn_cast<paddle::dialect::OpYamlInfoInterface>()
@@ -155,7 +182,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     return true;
   }
 
-  bool ReplaceResultByParameter(pir::Operation* op) const {
+  bool ReplaceResultByParameterOp(pir::Operation* op) const {
     for (uint32_t i = 0; i < op->num_results(); i++) {
       auto use_ops = pir::GetUseOpsForOutput(op, i);
       if (!CheckUseOps(use_ops)) return false;
@@ -163,26 +190,39 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     return true;
   }
 
-  std::string BuildProgramFromOperation(pir::Operation* op,
-                                        pir::Program* new_program) const {
-    pir::Builder builder = pir::Builder(ir_context(), new_program->block());
+  std::string BuildProgramFromOperation(
+      pir::Operation* op,
+      pir::Program* new_program,
+      pir::PatternRewriter& rewriter) const {  // NOLINT
+    pir::Builder builder =
+        pir::Builder(rewriter.ir_context(), new_program->block());
 
     // prepare op inputs
     std::vector<pir::Value> op_inputs;
     for (uint32_t i = 0; i < op->num_operands(); i++) {
-      const auto& param_name =
-          pir::GetParameterNameFromValue(op->operand_source(i));
-      auto* param_var = scope_->FindVar(param_name);
-      PADDLE_ENFORCE_NOT_NULL(
-          param_var,
-          phi::errors::InvalidArgument("Parameter var not in scope."));
-      if (op->operand_source(i).use_count() == 1) {
-        deleted_vars_->push_back(param_name);
-      }
+      if (op->operand_source(i)) {
+        const auto& param_name =
+            pir::GetParameterNameFromValue(op->operand_source(i));
+        auto* param_var = scope_->FindVar(param_name);
+        PADDLE_ENFORCE_NOT_NULL(
+            param_var,
+            phi::errors::InvalidArgument("Parameter var [%s] not in scope.",
+                                         param_name));
 
-      auto parameter_op = builder.Build<pir::ParameterOp>(
-          param_name, op->operand_source(i).type());
-      op_inputs.push_back(parameter_op->result(0));
+        auto parameter_op = builder.Build<pir::ParameterOp>(
+            param_name, op->operand_source(i).type());
+        if (op->operand_source(i).use_count() <= 1) {
+          deleted_vars_->push_back(param_name);
+        } else {
+          parameter_op->set_attribute(
+              kAttrIsPersisable,
+              rewriter.array_attr({rewriter.bool_attr(true)}));
+        }
+        op_inputs.push_back(parameter_op->result(0));
+      } else {
+        op_inputs.push_back(
+            op->operand_source(i).dyn_cast<pir::OpResult>() /*nullptr*/);
+      }
     }
 
     // prepare op outputs

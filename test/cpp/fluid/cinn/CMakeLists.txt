@@ -6,6 +6,7 @@ if(WITH_TESTING)
     DEPS
     fleet_executor
     phi
+    common
     lod_tensor
     scope
     proto_desc
