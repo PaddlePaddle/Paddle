@@ -532,20 +532,11 @@ def monkey_patch_variable():
             rhs_dtype = safe_get_dtype(other_var)
 
             if lhs_dtype != rhs_dtype:
+                # NOTE(zoooo0820): Currently, we still keep the old illogical
+                # logic for compatibility reasons
                 if method_name in SUPPORT_PROMOTION_OPS:
-                    if core.need_type_promotion(lhs_dtype, rhs_dtype):
-                        common_dtype = core.get_promote_dtype(
-                            op_type, lhs_dtype, rhs_dtype
-                        )
-                        if rhs_dtype != common_dtype:
-                            other_var = astype(other_var, common_dtype)
-                        if lhs_dtype != common_dtype:
-                            self = astype(self, common_dtype)
-                    else:
-                        # NOTE(zoooo0820): Currently, we still keep the old illogical \
-                        # logic for compatibility reasons
+                    if not core.need_type_promotion(lhs_dtype, rhs_dtype):
                         other_var = astype(other_var, lhs_dtype)
-
                 else:
                     other_var = astype(other_var, lhs_dtype)
 
@@ -563,6 +554,13 @@ def monkey_patch_variable():
             # NOTE(zhiqiu): the output of compare operator should be bool.
             if method_name in compare_ops:
                 out = create_new_tmp_var(current_block(self), dtype="bool")
+            elif method_name in SUPPORT_PROMOTION_OPS:
+                out = create_new_tmp_var(
+                    current_block(self),
+                    dtype=core.get_promote_dtype(
+                        op_type, self.dtype, other_var.dtype
+                    ),
+                )
             else:
                 out = create_new_tmp_var(
                     current_block(self), dtype=safe_get_dtype(self)

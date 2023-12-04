@@ -56,6 +56,14 @@ ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 _global_flags_ = core.globals()
 
+# TODO(zoooo0820): unify this dict of dygraph and static at Pybind
+SUPPORT_PROMOTION_OPS_AND_INPUTNAME = {
+    "elementwise_add": ['X', 'Y'],
+    "elementwise_sub": ['X', 'Y'],
+    "elementwise_mul": ['X', 'Y'],
+    "where": ['X', 'Y'],
+}
+
 
 def _global_flags():
     return _global_flags_
@@ -4383,6 +4391,38 @@ class Block:
         param.stop_gradient = stop_gradient
         return param
 
+    def _type_promotion_for_inputs(self, op_type, inputs):
+        need_transed_var_names = SUPPORT_PROMOTION_OPS_AND_INPUTNAME.get(
+            op_type, None
+        )
+        if need_transed_var_names is None:
+            return
+
+        all_dtypes = []
+        for input_name in inputs.keys():
+            if input_name in need_transed_var_names:
+                var_dtype = (
+                    inputs[input_name][0].dtype
+                    if isinstance(inputs[input_name], (list, tuple))
+                    else inputs[input_name].dtype
+                )
+                all_dtypes.append(var_dtype)
+
+        common_dtype = core.get_promote_dtype(op_type, *all_dtypes)
+        for input_name in inputs.keys():
+            if input_name in need_transed_var_names:
+                var_dtype = (
+                    inputs[input_name][0].dtype
+                    if isinstance(inputs[input_name], (list, tuple))
+                    else inputs[input_name].dtype
+                )
+                if var_dtype != common_dtype:
+                    inputs[input_name] = (
+                        [inputs[input_name][0].astype(common_dtype)]
+                        if isinstance(inputs[input_name], (list, tuple))
+                        else inputs[input_name].astype(common_dtype)
+                    )
+
     def append_op(self, *args, **kwargs):
         """
         Appends a new Operator according to the giving arguments.
@@ -4394,6 +4434,7 @@ class Block:
         op_type = kwargs.get("type", None)
         if in_dygraph_mode():
             attrs = kwargs.get("attrs", {})
+            inputs = kwargs.get("inputs", {})
             warnings.warn(
                 "Op `%s` is executed through `append_op` under the dynamic mode, "
                 "the corresponding API implementation needs to be upgraded to "
@@ -4409,6 +4450,8 @@ class Block:
                 attrs=attrs,
             )
 
+            self._type_promotion_for_inputs(op_type, inputs)
+
             # record ops in tracer rather than blocks
             #
             # TODO(minqiyang): add op stop_gradient support in static graph mode too.
@@ -4416,7 +4459,7 @@ class Block:
 
             _dygraph_tracer().trace_op(
                 op_type,
-                kwargs.get("inputs", {}),
+                inputs,
                 kwargs.get("outputs", {}),
                 attrs if attrs else {},
                 kwargs.get("stop_gradient", False),
@@ -4440,9 +4483,11 @@ class Block:
                         if isinstance(var, Variable):
                             var.stop_gradient = True
 
-            op_desc = self.desc.append_op()
             inputs = kwargs.get("inputs", None)
             outputs = kwargs.get("outputs", None)
+
+            self._type_promotion_for_inputs(op_type, inputs)
+            op_desc = self.desc.append_op()
             # NOTE(Aurelius84): In case of @to_static, all Tensor(s) should
             # be converted into Variable(s) with same name and block location.
             # This is ONE and ONLY logic of type transformation of dy2static.
