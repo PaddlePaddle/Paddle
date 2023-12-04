@@ -206,6 +206,11 @@ PirInterpreter::~PirInterpreter() {
 #endif
 }
 
+std::shared_ptr<ProgramDesc> PirInterpreter::GetMutableCopyProgram() {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "GetMutableCopyProgram is not implemented in PirInterpreter."));
+}
+
 void PirInterpreter::SetSkipGcVars(const std::set<std::string>& skip_gc_vars) {
   PADDLE_ENFORCE_EQ(
       execution_config_.skip_gc_vars.empty(),
@@ -647,6 +652,14 @@ void PirInterpreter::BuildInstruction() {
     } else if (op.dialect()->name() == "pd_op") {
       if (op.isa<paddle::dialect::IfOp>()) {
         CREATE_INSTR(CondInstruction);
+        sub_blocks_.insert(
+            {&op.dyn_cast<paddle::dialect::IfOp>().true_block(),
+             dynamic_cast<CondInstruction*>(vec_instruction_base_.back().get())
+                 ->TrueBranchInterpreter()});
+        sub_blocks_.insert(
+            {&op.dyn_cast<paddle::dialect::IfOp>().false_block(),
+             dynamic_cast<CondInstruction*>(vec_instruction_base_.back().get())
+                 ->FalseBranchInterpreter()});
       } else if (op.isa<paddle::dialect::WhileOp>()) {
         vec_instruction_base_.emplace_back(
             std::make_unique<WhileInstruction>(op_idx++,
@@ -655,6 +668,10 @@ void PirInterpreter::BuildInstruction() {
                                                scope_,
                                                local_scope_,
                                                value_exe_info_.get()));
+        sub_blocks_.insert(
+            {&op.dyn_cast<paddle::dialect::WhileOp>().body(),
+             dynamic_cast<WhileInstruction*>(vec_instruction_base_.back().get())
+                 ->BodyInterpreter()});
       } else if (op.isa<paddle::dialect::HasElementsOp>()) {
         CREATE_INSTR(HasElementsInstruction);
       } else {
@@ -1224,7 +1241,13 @@ paddle::framework::FetchList PirInterpreter::Run(
 
 FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
                               bool need_fetch,
-                              bool enable_job_schedule_profiler) {
+                              bool enable_job_schedule_profiler,
+                              bool enable_op_profiling) {
+  if (enable_op_profiling) {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Currently PIR does not support op runtime profiling feature."));
+  }
+
   SetDeviceId(place_);
   CheckCUDAGraphBeforeRun(feed_names);
 
@@ -1638,6 +1661,21 @@ void PirInterpreter::SolvePersisableVarNames() {
       }
     }
   }
+}
+
+Variable* PirInterpreter::DebugVar(const std::string& name) const {
+  Scope* scope = HasLocalScope() ? local_scope_ : scope_;
+  auto* var = scope->FindVar(name);
+  if (var != nullptr) {
+    return var;
+  }
+  for (auto kv : sub_blocks_) {
+    var = kv.second->DebugVar(name);
+    if (var != nullptr) {
+      return var;
+    }
+  }
+  return var;
 }
 
 void PirInterpreter::Build(

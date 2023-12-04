@@ -12,88 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <iostream>
-#include <sstream>
-#include <string>
-
-#include "glog/logging.h"
-#include "gtest/gtest.h"
-
-#include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
-#include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
-#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
-#include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
-#include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
-#include "paddle/phi/core/distributed/type_defs.h"
-#include "paddle/phi/infermeta/spmd_rules/embedding.h"
-#include "paddle/phi/infermeta/spmd_rules/replicated.h"
-#include "paddle/phi/infermeta/spmd_rules/rules.h"
+#include "test/cpp/auto_parallel/spmd_rule_test_util.h"
 
 namespace paddle {
 namespace distributed {
 namespace auto_parallel {
-
-auto& get_dims_mapping(const phi::distributed::ArgDistAttr& dist_attr) {
-  EXPECT_TRUE(
-      paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr));
-  const auto& tensor_attr = paddle::get<0>(dist_attr);
-  return tensor_attr.dims_mapping();
-}
-
-bool is_partial(const phi::distributed::ArgDistAttr& dist_attr) {
-  EXPECT_TRUE(
-      paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr));
-  const auto& tensor_attr = paddle::get<0>(dist_attr);
-  return tensor_attr.is_partial();
-}
-
-auto get_partial_dims(const phi::distributed::ArgDistAttr& dist_attr) {
-  EXPECT_TRUE(
-      paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr));
-  const auto& tensor_attr = paddle::get<0>(dist_attr);
-  return tensor_attr.partial_dims();
-}
-
-void check_dim_mapping(const phi::distributed::ArgDistAttr& dist_attr,
-                       const std::vector<int64_t>& dim_mapping,
-                       const std::string& line = "") {
-  EXPECT_TRUE(
-      paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr))
-      << line;
-  EXPECT_EQ(get_dims_mapping(dist_attr), dim_mapping) << line;
-}
-
-void check_partial_dims(const phi::distributed::ArgDistAttr& dist_attr,
-                        const std::set<int64_t>& dims,
-                        const std::string& line = "") {
-  EXPECT_TRUE(
-      paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr))
-      << line;
-  EXPECT_EQ(get_partial_dims(dist_attr), dims) << line;
-}
-
-void clean_partial_status(phi::distributed::ArgDistAttr* dist_attr) {
-  EXPECT_TRUE(
-      paddle::holds_alternative<phi::distributed::TensorDistAttr>(*dist_attr));
-  auto& tensor_attr = paddle::get<0>(*dist_attr);
-  tensor_attr.clean_partial_status();
-}
-
-void clean_partial_dims(phi::distributed::ArgDistAttr* dist_attr,
-                        std::vector<int64_t> dims) {
-  EXPECT_TRUE(
-      paddle::holds_alternative<phi::distributed::TensorDistAttr>(*dist_attr));
-  auto& tensor_attr = paddle::get<0>(*dist_attr);
-  tensor_attr.clean_partial_dims(dims);
-}
-
-void set_partial_status(phi::distributed::ArgDistAttr* dist_attr,
-                        std::vector<int64_t> dims) {
-  EXPECT_TRUE(
-      paddle::holds_alternative<phi::distributed::TensorDistAttr>(*dist_attr));
-  auto& tensor_attr = paddle::get<0>(*dist_attr);
-  tensor_attr.set_partial_status(dims);
-}
 
 TEST(MatmulSPMDRule, Ctor) {
   // build input data class
