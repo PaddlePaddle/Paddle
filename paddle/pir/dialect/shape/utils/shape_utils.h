@@ -60,8 +60,8 @@ class IR_API ShapeConstraintIRAnalysis : public ShapeAnalysis {
   SymbolicDimMgr& symbolicDimMgr() { return mgr_; }
   const SymbolicDimMgr& symbolicDimMgr() const { return mgr_; }
 
-  const std::vector<shape::SymbolicDimOp>&
-  GetOrCreateSymbolicDimsForRankedValue(const Value& value);
+  std::vector<shape::SymbolicDimOp>& GetOrCreateSymbolicDimsForRankedValue(
+      const Value& value);
 
   // Returns true if the two value have the same symbolic shape.
   bool IsShapeEqual(Value lhs, Value rhs) override;

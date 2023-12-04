@@ -28,12 +28,11 @@ void InferUnaryElementwiseSymbolicShape(
   auto output = op.result(0);
   const auto& in_sym_dims =
       shape_analysis->GetOrCreateSymbolicDimsForRankedValue(input);
-  const auto& out_sym_dims =
+  auto& out_sym_dims =
       shape_analysis->GetOrCreateSymbolicDimsForRankedValue(output);
-  pir::SymbolicDimMgr& sym_dim_mgr = shape_analysis->symbolicDimMgr();
   for (auto i = 0; i < out_sym_dims.size(); ++i) {
     if (in_sym_dims[i].IsDynamic() || out_sym_dims[i].IsDynamic()) {
-      sym_dim_mgr.MapSymbolicDimEqual(in_sym_dims[i], out_sym_dims[i]);
+      out_sym_dims[i] = in_sym_dims[i];
     } else {
       // do nothing
     }
@@ -47,18 +46,42 @@ void InferBinaryElementwiseSymbolicShape(
   auto input0 = op.operand_source(0);
   auto input1 = op.operand_source(1);
   auto output = op.result(0);
-  const auto& in_sym_dims0 =
+  auto& in_sym_dims0 =
       shape_analysis->GetOrCreateSymbolicDimsForRankedValue(input0);
-  const auto& in_sym_dims1 =
+  auto& in_sym_dims1 =
       shape_analysis->GetOrCreateSymbolicDimsForRankedValue(input1);
-  const auto& out_sym_dims =
+  auto& out_sym_dims =
       shape_analysis->GetOrCreateSymbolicDimsForRankedValue(output);
-  pir::SymbolicDimMgr& sym_dim_mgr = shape_analysis->symbolicDimMgr();
+
+  auto choose_merged_sym_dim = [](const pir::SymbolicDimOp& dim1,
+                                  const pir::SymbolicDimOp& dim2) {
+    const auto& sym_name1 = dim1.GetSymName();
+    const auto& sym_name2 = dim2.GetSymName();
+    if (!dim1.IsDynamic()) {
+      return dim1;
+    }
+    if (!dim2.IsDynamic()) {
+      return dim2;
+    }
+    if (sym_name1.size() == sym_name2.size()) {
+      return sym_name1 < sym_name2 ? dim1 : dim2;
+    } else {
+      return sym_name1.size() < sym_name2.size() ? dim1 : dim2;
+    }
+  };
+
   for (auto i = 0; i < out_sym_dims.size(); ++i) {
     if (in_sym_dims0[i].IsDynamic() || in_sym_dims1[i].IsDynamic() ||
         out_sym_dims[i].IsDynamic()) {
-      sym_dim_mgr.MapSymbolicDimEqual(in_sym_dims0[i], out_sym_dims[i]);
-      sym_dim_mgr.MapSymbolicDimEqual(in_sym_dims1[i], out_sym_dims[i]);
+      const auto& target_dim =
+          choose_merged_sym_dim(in_sym_dims0[i], in_sym_dims1[i]);
+      out_sym_dims[i] = target_dim;
+      if (in_sym_dims0[i].GetSymName() != target_dim.GetSymName()) {
+        in_sym_dims0[i] = target_dim;
+      }
+      if (in_sym_dims1[i].GetSymName() != target_dim.GetSymName()) {
+        in_sym_dims1[i] = target_dim;
+      }
     } else {
       // do nothing
     }
