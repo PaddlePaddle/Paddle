@@ -33,7 +33,6 @@ void zero_copy_run() {
   PD_AnalysisConfig *config = PD_NewAnalysisConfig();
   PD_DisableGpu(config);
   PD_SetCpuMathLibraryNumThreads(config, 10);
-  PD_SwitchUseFeedFetchOps(config, false);
   PD_SwitchSpecifyInputNames(config, true);
   PD_SwitchIrDebug(config, true);
   PD_SetModel(config, prog_file.c_str(), params_file.c_str());
@@ -82,7 +81,6 @@ TEST(PD_AnalysisConfig, profile_mkldnn) {
   PD_AnalysisConfig *config = PD_NewAnalysisConfig();
   PD_DisableGpu(config);
   PD_SetCpuMathLibraryNumThreads(config, 10);
-  PD_SwitchUseFeedFetchOps(config, false);
   PD_SwitchSpecifyInputNames(config, true);
   PD_SwitchIrDebug(config, true);
   PD_EnableMKLDNN(config);

@@ -219,7 +219,7 @@ int get_xpu_max_ptr_size(int dev_id) {
       break;
     default:
       PADDLE_THROW(phi::errors::InvalidArgument(
-          "Only support get max ptr size of XPU1 or XPU2."));
+          "Only support get max ptr size of XPU1, XPU2 or XPU3."));
       break;
   }
   return max_ptr_size;

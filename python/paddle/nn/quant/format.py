@@ -48,7 +48,16 @@ class LinearQuanterDequanter(Layer):
 class LinearQuanter(Layer):
     def __init__(self, scales, zero_point=None, quant_axis=None, bit_length=8):
         super().__init__()
-        self._scales = paddle.to_tensor(scales, dtype="float32")
+        scales = paddle.to_tensor(scales, dtype="float32")
+        scale_attr = paddle.framework.ParamAttr(
+            name=paddle.utils.unique_name.generate('quant_dequant.scale'),
+            initializer=paddle.nn.initializer.Constant(1.0),
+            trainable=False,
+        )
+        self._scales = self.create_parameter(
+            shape=scales.shape, attr=scale_attr, dtype="float32"
+        )
+        self._scales.set_value(scales)
         self._zero_point = (
             paddle.zeros([1], dtype="float32")
             if zero_point is None
@@ -98,7 +107,16 @@ class LinearQuanter(Layer):
 class LinearDequanter(Layer):
     def __init__(self, scales, zero_point=None, quant_axis=None, bit_length=8):
         super().__init__()
-        self._scales = paddle.to_tensor(scales, dtype="float32")
+        scales = paddle.to_tensor(scales, dtype="float32")
+        scale_attr = paddle.framework.ParamAttr(
+            name=paddle.utils.unique_name.generate('quant_dequant.scale'),
+            initializer=paddle.nn.initializer.Constant(1.0),
+            trainable=False,
+        )
+        self._scales = self.create_parameter(
+            shape=scales.shape, attr=scale_attr, dtype="float32"
+        )
+        self._scales.set_value(scales)
         self._zero_point = (
             paddle.zeros([1], dtype="float32")
             if zero_point is None
@@ -224,12 +242,12 @@ class ConvertibleQuantedLayer(Layer, metaclass=abc.ABCMeta):
         qweight = quanter(weight)
         weight.set_value(qweight)
 
-    def _convert(self):
+    def _convert(self, remain_weight=False):
         r"""Convert current layer to onnx style for inference."""
         assert not self.converted, "The model should be converted only once."
         for weight_name, quanter_name in self.weights_to_quanters():
             qdq = self._convert_quanter_to_qdq(quanter_name)
-            if qdq is not None:
+            if qdq is not None and remain_weight is False:
                 self._quant_weights(weight_name, qdq._quanter)
                 qdq._quanter = None
                 qdq._sub_layers['_quanter'] = None
