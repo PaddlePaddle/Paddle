@@ -137,7 +137,7 @@ std::string GetValueInfo(Value v) {
     ss << "define_op_name=" << op_result.owner()->name();
     ss << ", index=" << op_result.index();
   } else if (auto arg = v.dyn_cast<BlockArgument>()) {
-    ss << "block_args, index = " << arg.index();
+    ss << "block_arg, index = " << arg.index();
   }
   ss << ", dtype=" << v.type();
   if (v.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
@@ -303,10 +303,13 @@ void BindBlock(py::module *m) {
                                }
                                return op_list;
                              })
-      .def("__enter__",
-           [](Block &self) {
-             ApiBuilder::Instance().PushInsertionPoint({&self, self.end()});
-           })
+      .def(
+          "__enter__",
+          [](Block &self) -> Block & {
+            ApiBuilder::Instance().PushInsertionPoint({&self, self.end()});
+            return self;
+          },
+          return_value_policy::reference)
       .def("__exit__",
            [](Block &self, py::object, py::object, py::object) {
              ApiBuilder::Instance().PopInsertionPoint();
