@@ -1,5 +1,6 @@
 add_subdirectory(benchmark)
 add_subdirectory(framework)
+add_subdirectory(memory)
 if(WITH_CINN)
   add_subdirectory(cinn)
 endif()
