@@ -125,6 +125,10 @@ class PrettyNamer {
 
   NameGenerator& GetNameGenerator() { return name_generator_; }
 
+  const std::unordered_map<::pir::Value, std::string>& GetNameMap() {
+    return pretty_names_;
+  }
+
  private:
   std::unordered_map<::pir::Value, std::string> pretty_names_;
   NameGenerator name_generator_;

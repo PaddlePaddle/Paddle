@@ -68,6 +68,10 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
     CINN_NOT_IMPLEMENTED;
   }
 
+  void InsertNameGeneToScope(std::shared_ptr<Scope> scope) {
+    CINN_NOT_IMPLEMENTED;
+  }
+
  private:
   /**
    * @brief Lower a group to CINN IR.

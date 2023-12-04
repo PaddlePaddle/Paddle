@@ -76,6 +76,8 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
       bool apply_group_schedule = true,
       bool apply_pass = true);
 
+  void InsertNameGeneToScope(std::shared_ptr<Scope> scope);
+
  private:
   /**
    * @brief Lower a group to CINN IR.
