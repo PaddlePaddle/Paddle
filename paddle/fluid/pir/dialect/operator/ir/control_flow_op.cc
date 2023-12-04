@@ -289,16 +289,16 @@ void WhileOp::Print(pir::IrPrinter &printer) {
   auto &os = printer.os;
   auto op = operation();
   printer.PrintOpResult(op);
-  os << " = \"" << name() << "\"(";
+  os << " = \"" << name() << "\"(cond=";
   printer.PrintValue(cond());
-  os << ") [";
+  os << ", inputs=";
   auto operands = (*this)->operands_source();
   pir::PrintInterleave(
       operands.begin() + 1,
       operands.end(),
       [&](pir::Value v) { printer.PrintValue(v); },
       [&]() { os << ", "; });
-  os << "] { \n ^";
+  os << ") { \n ^";
   pir::PrintInterleave(
       body().args_begin(),
       body().args_end(),

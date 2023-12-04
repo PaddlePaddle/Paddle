@@ -83,7 +83,7 @@ void EmptyTensorInitializer(TensorObject* self,
                             const std::vector<int>& dims = {0},
                             framework::proto::VarType::Type var_type =
                                 paddle::framework::proto::VarType::LOD_TENSOR) {
-  auto ddims = phi::make_ddim(dims);
+  auto ddims = common::make_ddim(dims);
   self->tensor.set_name(name);
   auto autograd_meta = egr::EagerUtils::autograd_meta(&(self->tensor));
   autograd_meta->SetPersistable(persistable);
@@ -126,7 +126,7 @@ void EmptyStringTensorInitializer(TensorObject* self,
                                   const std::string& name,
                                   const paddle::platform::Place& place,
                                   const std::vector<int>& dims = {}) {
-  auto ddims = phi::make_ddim(dims);
+  auto ddims = common::make_ddim(dims);
   self->tensor.set_name(name);
   // Note(zhoushunjie): Only support CPUPlace when create StringTensor
   auto actual_place = platform::CPUPlace();
@@ -135,7 +135,7 @@ void EmptyStringTensorInitializer(TensorObject* self,
   std::shared_ptr<phi::StringTensor> string_tensor =
       std::make_shared<phi::StringTensor>(&string_allocator,
                                           phi::StringTensorMeta{ddims});
-  if (phi::product(ddims) > 0) {
+  if (common::product(ddims) > 0) {
     string_tensor->mutable_data(actual_place);
   }
   self->tensor.set_impl(string_tensor);
@@ -153,7 +153,7 @@ void CreateDistTensorWithNumpyValue(TensorObject* self,
                                         paddle::framework::proto::VarType::FP32,
                                     const std::vector<int>& dims = {0}) {
 #ifdef PADDLE_WITH_DISTRIBUTE
-  auto ddims = phi::make_ddim(dims);
+  auto ddims = common::make_ddim(dims);
   self->tensor.set_name(name);
   auto autograd_meta = egr::EagerUtils::autograd_meta(&(self->tensor));
   autograd_meta->SetPersistable(persistable);
@@ -229,7 +229,7 @@ void CreateDistTensorWithNumpyValue(TensorObject* self,
                                         paddle::framework::proto::VarType::FP32,
                                     const std::vector<int>& dims = {0}) {
 #ifdef PADDLE_WITH_DISTRIBUTE
-  auto ddims = phi::make_ddim(dims);
+  auto ddims = common::make_ddim(dims);
   self->tensor.set_name(name);
   auto autograd_meta = egr::EagerUtils::autograd_meta(&(self->tensor));
   autograd_meta->SetPersistable(persistable);

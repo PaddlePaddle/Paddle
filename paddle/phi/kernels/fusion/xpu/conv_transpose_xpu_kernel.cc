@@ -48,7 +48,7 @@ void Conv2dTransposeXPUKernel(const Context& ctx,
 
   DDim in_data_dims = slice_ddim(x.dims(), 2, x.dims().size());  // hw
   DDim filter_data_dims = slice_ddim(filter.dims(), 2, filter.dims().size());
-  std::vector<int> ksize = vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
   std::vector<int> paddings_ = paddings;
   std::vector<int> dilations_ = dilations;
   UpdatePaddingAndDilation(

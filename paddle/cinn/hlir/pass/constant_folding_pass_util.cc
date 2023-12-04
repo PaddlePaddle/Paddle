@@ -65,8 +65,8 @@ class ConstantFoldingHelper {
  private:
   Node* CreateNewNode(const std::string& op_name,
                       const AttributeMap& attrs_map) {
-    auto* node =
-        new Node(Operator::Get(op_name), op_name, common::UniqName(op_name));
+    auto* node = new Node(
+        Operator::Get(op_name), op_name, cinn::common::UniqName(op_name));
     node->attrs.attr_store = attrs_map;
     graph_->RegisterNode(node->id(), node);
     return node;

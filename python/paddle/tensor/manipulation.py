@@ -5653,7 +5653,7 @@ def unflatten(x, axis, shape, name=None):
         new_shape = (
             list(x.shape[:axis]) + list(shape) + list(x.shape[axis + 1 :])
         )
-    elif isinstance(shape, Variable):
+    elif isinstance(shape, (Variable, paddle.pir.Value)):
         # The data type returned by `paddle.shape` is only 'int32'.
         new_shape = paddle.concat(
             [

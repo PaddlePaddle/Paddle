@@ -75,8 +75,8 @@ int InstanceNormPlugin::enqueue(int batch_size,
   int h = input_dims.d[1];
   int w = input_dims.d[2];
 
-  scale_t.Resize(phi::make_ddim({batch_size, c}));
-  bias_t.Resize(phi::make_ddim({batch_size, c}));
+  scale_t.Resize(common::make_ddim({batch_size, c}));
+  bias_t.Resize(common::make_ddim({batch_size, c}));
   int device_id;
   cudaGetDevice(&device_id);
   float *scale_d = scale_t.mutable_data<float>(platform::CUDAPlace(device_id));
@@ -170,8 +170,8 @@ int InstanceNormPluginDynamic::enqueue(
   int h = input_dims.d[2];
   int w = input_dims.d[3];
 
-  scale_t.Resize(phi::make_ddim({n, c}));
-  bias_t.Resize(phi::make_ddim({n, c}));
+  scale_t.Resize(common::make_ddim({n, c}));
+  bias_t.Resize(common::make_ddim({n, c}));
   int device_id;
   cudaGetDevice(&device_id);
   float *scale_d = scale_t.mutable_data<float>(platform::CUDAPlace(device_id));

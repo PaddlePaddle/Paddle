@@ -19,7 +19,7 @@ limitations under the License. */
 #include <sstream>
 #include <vector>
 
-#include "paddle/phi/api/ext/exception.h"
+#include "paddle/common/exception.h"
 #include "paddle/phi/common/data_type.h"
 
 namespace paddle {
