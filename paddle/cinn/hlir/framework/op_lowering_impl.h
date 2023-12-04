@@ -37,7 +37,7 @@ namespace hlir {
 namespace framework {
 
 using GroupPtr = std::shared_ptr<Graph::Group>;
-using common::Target;
+using cinn::common::Target;
 class OpLowererImpl;
 
 typedef bool (OpLowererImpl::*ScheduleDetermineFunction)(Node*);

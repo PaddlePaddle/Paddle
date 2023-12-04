@@ -69,7 +69,7 @@ pir::Type GetDataTypeFromValue(pir::Value value) {
 
 Operation* GetDefiningOpForInput(Operation* op, uint32_t index) {
   PADDLE_ENFORCE_EQ(
-      index < op->num_operands(),
+      index < op->num_operands() && op->operand_source(index),
       true,
       phi::errors::InvalidArgument("Intput operand's index must be valid."));
   return op->operand_source(index).dyn_cast<OpResult>().owner();
