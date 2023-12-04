@@ -14,7 +14,6 @@
 from typing import List
 
 import paddle
-from paddle.io import Dataset
 
 from ..features import MFCC, LogMelSpectrogram, MelSpectrogram, Spectrogram
 
@@ -27,7 +26,7 @@ feat_funcs = {
 }
 
 
-class AudioClassificationDataset(Dataset):
+class AudioClassificationDataset(paddle.io.Dataset):
     """
     Base class of audio classification dataset.
     """
