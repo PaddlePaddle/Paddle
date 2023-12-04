@@ -4409,6 +4409,11 @@ class Block:
                 all_dtypes.append(var_dtype)
 
         common_dtype = core.get_promote_dtype(op_type, *all_dtypes)
+
+        warnings.warn(
+            f"The input dtypes of OP {op_type} are {all_dtypes}, the output will be auto-promoted to {common_dtype}"
+        )
+
         for input_name in inputs.keys():
             if input_name in need_transed_var_names:
                 var_dtype = (
