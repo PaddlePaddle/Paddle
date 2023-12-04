@@ -50,7 +50,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/fluid/pybind/tensor_py.h"
-#include "paddle/phi/common/type_promotion_table.h"
+#include "paddle/phi/common/type_promotion.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 

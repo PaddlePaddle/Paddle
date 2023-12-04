@@ -44,6 +44,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             b = base.dygraph.to_variable(b_np)
             res = a + b
             res_t = b + a
+            np.testing.assert_equal(paddle.float32, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
             np.testing.assert_array_equal(res_t.numpy(), res.numpy())
             np.testing.assert_array_equal(res.numpy(), a_np + b_np)
 
@@ -55,6 +57,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             b = base.dygraph.to_variable(b_np)
             res = a + b
             res_t = b + a
+            np.testing.assert_equal(paddle.float64, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
             np.testing.assert_array_equal(res_t.numpy(), res.numpy())
             np.testing.assert_array_equal(res.numpy(), a_np + b_np)
 
@@ -66,6 +70,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             b = base.dygraph.to_variable(b_np)
             res = a + b
             res_t = b + a
+            np.testing.assert_equal(paddle.float64, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
             np.testing.assert_array_equal(res_t.numpy(), res.numpy())
             np.testing.assert_array_equal(res.numpy(), a_np + b_np)
 
@@ -78,6 +84,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             b = base.dygraph.to_variable(b_np).astype('bfloat16')
             res = a + b
             res_t = b + a
+            np.testing.assert_equal(paddle.float32, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
             np.testing.assert_array_equal(res_t.numpy(), res.numpy())
             np.testing.assert_array_equal(res.numpy(), a_np + b_np)
 
@@ -90,6 +98,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             b = base.dygraph.to_variable(b_np).astype('bfloat16')
             res = a + b
             res_t = b + a
+            np.testing.assert_equal(paddle.float32, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
             np.testing.assert_array_equal(res_t.numpy(), res.numpy())
             np.testing.assert_array_equal(res.numpy(), a_np + b_np)
 
@@ -102,6 +112,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             b = base.dygraph.to_variable(b_np).astype('bfloat16')
             res = a + b
             res_t = b + a
+            np.testing.assert_equal(paddle.float64, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
             np.testing.assert_array_equal(res_t.numpy(), res.numpy())
             np.testing.assert_array_equal(res.numpy(), a_np + b_np)
 
@@ -122,6 +134,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             b = base.dygraph.to_variable(b_np)
             res = a - b
             res_t = b - a
+            np.testing.assert_equal(paddle.float32, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
             np.testing.assert_array_equal(res.numpy(), a_np - b_np)
             np.testing.assert_array_equal(res_t.numpy(), b_np - a_np)
 
@@ -133,6 +147,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             b = base.dygraph.to_variable(b_np)
             res = a - b
             res_t = b - a
+            np.testing.assert_equal(paddle.float64, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
             np.testing.assert_array_equal(res.numpy(), a_np - b_np)
             np.testing.assert_array_equal(res_t.numpy(), b_np - a_np)
 
@@ -144,6 +160,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             b = base.dygraph.to_variable(b_np)
             res = a - b
             res_t = b - a
+            np.testing.assert_equal(paddle.float64, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
             np.testing.assert_array_equal(res.numpy(), a_np - b_np)
             np.testing.assert_array_equal(res_t.numpy(), b_np - a_np)
 
@@ -156,6 +174,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             b = base.dygraph.to_variable(b_np).astype('bfloat16')
             res = a - b
             res_t = b - a
+            np.testing.assert_equal(paddle.float32, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
             np.testing.assert_array_equal(res.numpy(), a_np - b_np)
             np.testing.assert_array_equal(res_t.numpy(), b_np - a_np)
 
@@ -168,6 +188,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             b = base.dygraph.to_variable(b_np).astype('bfloat16')
             res = a - b
             res_t = b - a
+            np.testing.assert_equal(paddle.float32, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
             np.testing.assert_array_equal(res.numpy(), a_np - b_np)
             np.testing.assert_array_equal(res_t.numpy(), b_np - a_np)
 
@@ -180,6 +202,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             b = base.dygraph.to_variable(b_np).astype('bfloat16')
             res = a - b
             res_t = b - a
+            np.testing.assert_equal(paddle.float64, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
             np.testing.assert_array_equal(res.numpy(), a_np - b_np)
             np.testing.assert_array_equal(res_t.numpy(), b_np - a_np)
 
@@ -200,6 +224,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             b = base.dygraph.to_variable(b_np)
             res = a * b
             res_t = b * a
+            np.testing.assert_equal(paddle.float32, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
             np.testing.assert_array_equal(res_t.numpy(), res.numpy())
             np.testing.assert_array_equal(res.numpy(), a_np * b_np)
 
@@ -211,6 +237,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             b = base.dygraph.to_variable(b_np)
             res = a * b
             res_t = b * a
+            np.testing.assert_equal(paddle.float64, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
             np.testing.assert_array_equal(res_t.numpy(), res.numpy())
             np.testing.assert_array_equal(res.numpy(), a_np * b_np)
 
@@ -222,6 +250,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             b = base.dygraph.to_variable(b_np)
             res = a * b
             res_t = b * a
+            np.testing.assert_equal(paddle.float64, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
             np.testing.assert_array_equal(res_t.numpy(), res.numpy())
             np.testing.assert_array_equal(res.numpy(), a_np * b_np)
 
@@ -234,6 +264,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             b = base.dygraph.to_variable(b_np).astype('bfloat16')
             res = a * b
             res_t = b * a
+            np.testing.assert_equal(paddle.float32, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
             np.testing.assert_array_equal(res_t.numpy(), res.numpy())
             np.testing.assert_array_equal(res.numpy(), a_np * b_np)
 
@@ -246,6 +278,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             b = base.dygraph.to_variable(b_np).astype('bfloat16')
             res = a * b
             res_t = b * a
+            np.testing.assert_equal(paddle.float32, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
             np.testing.assert_array_equal(res_t.numpy(), res.numpy())
             np.testing.assert_array_equal(res.numpy(), a_np * b_np)
 
@@ -258,6 +292,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             b = base.dygraph.to_variable(b_np).astype('bfloat16')
             res = a * b
             res_t = b * a
+            np.testing.assert_equal(paddle.float64, res.dtype)
+            np.testing.assert_equal(res_t.dtype, res.dtype)
             np.testing.assert_array_equal(res_t.numpy(), res.numpy())
             np.testing.assert_array_equal(res.numpy(), a_np * b_np)
 

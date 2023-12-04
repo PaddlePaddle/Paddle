@@ -462,6 +462,14 @@ class TestWhereDygraphAPI(unittest.TestCase):
             cond = np.array([False, False, True, True]).astype('bool')
             x = np.array([0.9383, 0.1983, 3.2, 1.2]).astype('float16')
             y = np.array([1.0, 1.0, 1.0, 1.0]).astype('float32')
+            np.testing.assert_equal(
+                paddle.float32,
+                paddle.where(
+                    paddle.to_tensor(cond),
+                    paddle.to_tensor(x),
+                    paddle.to_tensor(y),
+                ).dtype,
+            )
             np.testing.assert_array_equal(
                 np.where(cond, x, y),
                 paddle.where(
@@ -484,6 +492,14 @@ class TestWhereDygraphAPI(unittest.TestCase):
             cond = np.array([False, False, True, True]).astype('bool')
             x = np.array([0.9383, 0.1983, 3.2, 1.2]).astype('float16')
             y = np.array([1.0, 1.0, 1.0, 1.0]).astype('float64')
+            np.testing.assert_equal(
+                paddle.float64,
+                paddle.where(
+                    paddle.to_tensor(cond),
+                    paddle.to_tensor(x),
+                    paddle.to_tensor(y),
+                ).dtype,
+            )
             np.testing.assert_array_equal(
                 np.where(cond, x, y),
                 paddle.where(
@@ -506,6 +522,14 @@ class TestWhereDygraphAPI(unittest.TestCase):
             cond = np.array([False, False, True, True]).astype('bool')
             x = np.array([0.9383, 0.1983, 3.2, 1.2]).astype('float32')
             y = np.array([1.0, 1.0, 1.0, 1.0]).astype('float64')
+            np.testing.assert_equal(
+                paddle.float64,
+                paddle.where(
+                    paddle.to_tensor(cond),
+                    paddle.to_tensor(x),
+                    paddle.to_tensor(y),
+                ).dtype,
+            )
             np.testing.assert_array_equal(
                 np.where(cond, x, y),
                 paddle.where(
@@ -529,6 +553,14 @@ class TestWhereDygraphAPI(unittest.TestCase):
             x = np.array([0.9383, 0.1983, 3.2, 1.2]).astype('float16')
             y = np.array([1.0, 1.0, 1.0, 1.0]).astype('float32')
             y = convert_uint16_to_float(convert_float_to_uint16(y))
+            np.testing.assert_equal(
+                paddle.float32,
+                paddle.where(
+                    paddle.to_tensor(cond),
+                    paddle.to_tensor(x),
+                    paddle.to_tensor(y),
+                ).dtype,
+            )
             np.testing.assert_array_equal(
                 np.where(cond, x, y),
                 paddle.where(
@@ -552,6 +584,14 @@ class TestWhereDygraphAPI(unittest.TestCase):
             x = np.array([0.9383, 0.1983, 3.2, 1.2]).astype('float32')
             y = np.array([1.0, 1.0, 1.0, 1.0]).astype('float32')
             y = convert_uint16_to_float(convert_float_to_uint16(y))
+            np.testing.assert_equal(
+                paddle.float32,
+                paddle.where(
+                    paddle.to_tensor(cond),
+                    paddle.to_tensor(x),
+                    paddle.to_tensor(y),
+                ).dtype,
+            )
             np.testing.assert_array_equal(
                 np.where(cond, x, y),
                 paddle.where(
@@ -575,6 +615,14 @@ class TestWhereDygraphAPI(unittest.TestCase):
             x = np.array([0.9383, 0.1983, 3.2, 1.2]).astype('float64')
             y = np.array([1.0, 1.0, 1.0, 1.0]).astype('float32')
             y = convert_uint16_to_float(convert_float_to_uint16(y))
+            np.testing.assert_equal(
+                paddle.float64,
+                paddle.where(
+                    paddle.to_tensor(cond),
+                    paddle.to_tensor(x),
+                    paddle.to_tensor(y),
+                ).dtype,
+            )
             np.testing.assert_array_equal(
                 np.where(cond, x, y),
                 paddle.where(

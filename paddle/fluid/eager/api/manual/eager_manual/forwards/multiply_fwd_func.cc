@@ -23,7 +23,7 @@
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/api/include/sparse_api.h"
-#include "paddle/phi/common/type_promotion_table.h"
+#include "paddle/phi/common/type_promotion.h"
 #include "paddle/phi/core/flags.h"
 
 PHI_DECLARE_bool(check_nan_inf);
