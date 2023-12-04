@@ -248,7 +248,7 @@ DDim slice_ddim(const DDim& dim, int begin, int end);
 
 int arity(const DDim& ddim);
 
-TEST_API std::ostream& operator<<(std::ostream&, const DDim&);
+std::ostream& operator<<(std::ostream&, const DDim&);
 
 /**
  * \brief Flatten dim to 3d
