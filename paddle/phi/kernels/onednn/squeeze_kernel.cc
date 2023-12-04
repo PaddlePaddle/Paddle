@@ -26,7 +26,7 @@ void ExecuteSqueeze(const Context& dev_ctx,
                     const DDim& x_dims,
                     const DDim& out_dims,
                     DenseTensor* out) {
-  auto x_vec_dims = vectorize(x_dims);
+  auto x_vec_dims = common::vectorize(x_dims);
 
   funcs::ReorderOneDNNHandler reorder_handler(
       x_vec_dims,
@@ -48,8 +48,8 @@ void ExecuteSqueeze(const Context& dev_ctx,
 
   out->Resize(out_dims);
 
-  auto reshape_dims =
-      out_dims.size() != 0 ? vectorize(out_dims) : std::vector<int64_t>{1};
+  auto reshape_dims = out_dims.size() != 0 ? common::vectorize(out_dims)
+                                           : std::vector<int64_t>{1};
   out->set_mem_desc(reorder_dst_memory_p->get_desc().reshape(reshape_dims));
 }
 

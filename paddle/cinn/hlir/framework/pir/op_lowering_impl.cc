@@ -29,8 +29,8 @@
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/lang/placeholder.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/phi/core/ddim.h"
 
 PD_DECLARE_bool(cinn_use_cuda_vectorize);
 PD_DECLARE_bool(cinn_enable_map_expr);
@@ -42,8 +42,8 @@ namespace hlir {
 namespace framework {
 namespace pir {
 
+using cinn::common::Type;
 using cinn::hlir::op::ExternalApiRegistry;
-using common::Type;
 using framework::OpPatternKind;
 using framework::StrategyFunction;
 
@@ -60,14 +60,14 @@ bool IsInTensorMap(
   return false;
 }
 
-common::Type GetTensorDtype(const ::pir::Value& value) {
+cinn::common::Type GetTensorDtype(const ::pir::Value& value) {
   auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
-  auto in_shape = phi::vectorize<int>(type_info.dims());
+  auto in_shape = ::common::vectorize<int>(type_info.dims());
   auto dtype = type_info.dtype();
   return CompatibleInfo::ConvertIRType(dtype);
 }
 
-common::Type GetTensorDtype(
+cinn::common::Type GetTensorDtype(
     const std::string& name,
     const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map) {
   for (auto iter : tensor_map) {
@@ -76,12 +76,12 @@ common::Type GetTensorDtype(
     }
   }
   VLOG(4) << name << " is not in tensor map, return FP32 by default.";
-  return common::F32();
+  return cinn::common::F32();
 }
 
 ir::Tensor GetTensor(const GroupPtr& group, const ::pir::Value& value) {
   auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
-  auto in_shape = phi::vectorize<int>(type_info.dims());
+  auto in_shape = ::common::vectorize<int>(type_info.dims());
   auto dtype = type_info.dtype();
   std::string input_id = CompatibleInfo::ValueName(value);
   if (group->shape_analysis != nullptr) {
@@ -145,7 +145,7 @@ void CollectOutputInfo(::pir::Operation* op,
         out_value.type().dyn_cast<paddle::dialect::DenseTensorType>();
 
     out_types->push_back(CompatibleInfo::ConvertIRType(type_info.dtype()));
-    auto out_shape = phi::vectorize<int>(type_info.dims());
+    auto out_shape = ::common::vectorize<int>(type_info.dims());
     out_shapes->push_back(std::move(out_shape));
   }
 }
@@ -457,10 +457,11 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerCustomCall(
   //   external_api = ExternalApiRegistry::Global()->GetExternalApi(node,
   //   target_);
   // }
-  std::vector<common::CINNValue> compute_args = {
-      common::CINNValue(group->FuncName()), common::CINNValue(external_api)};
-  common::CINNValuePack pack =
-      impl->fcompute(common::CINNValuePack{compute_args});
+  std::vector<cinn::common::CINNValue> compute_args = {
+      cinn::common::CINNValue(group->FuncName()),
+      cinn::common::CINNValue(external_api)};
+  cinn::common::CINNValuePack pack =
+      impl->fcompute(cinn::common::CINNValuePack{compute_args});
   CHECK_EQ(pack.size(), 1UL);
   // reset input names as extern api input args can't be remove duplicate.
   // group->input_names.clear();
@@ -553,7 +554,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
         }
         int_args_set.insert(symbol_name);
         group_func_args.emplace_back(
-            ir::_Var_::Make(symbol_name, common::Int(32)));
+            ir::_Var_::Make(symbol_name, cinn::common::Int(32)));
         group->int_args_map[non_tensor_arg_idx++] = {tensor_arg_idx,
                                                      tensor_arg_dim_idx};
       }
@@ -632,21 +633,21 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
     std::unordered_map<std::string, ir::Tensor>* tmp_tensor_info,
     std::vector<ir::Tensor>* op_func_arg_tensors) {
   VLOG(4) << "Do lower with Compute, op: " << op->name();
-  std::vector<common::CINNValue> cinn_inputs;
+  std::vector<cinn::common::CINNValue> cinn_inputs;
   for (const ir::Tensor& tensor : *op_func_arg_tensors) {
-    cinn_inputs.push_back(common::CINNValue(ir::Expr(tensor)));
+    cinn_inputs.push_back(cinn::common::CINNValue(ir::Expr(tensor)));
   }
 
   // set tensor name = operand hash name
   auto op_results = op->results();
   for (const auto& result : op_results) {
     std::string output_id = CompatibleInfo::ValueName(result);
-    cinn_inputs.push_back(common::CINNValue(output_id));
+    cinn_inputs.push_back(cinn::common::CINNValue(output_id));
   }
 
   // 1.Do compute
-  common::CINNValuePack pack =
-      op_impl->fcompute(common::CINNValuePack{cinn_inputs});
+  cinn::common::CINNValuePack pack =
+      op_impl->fcompute(cinn::common::CINNValuePack{cinn_inputs});
 
   poly::StageMap tmp_stages = pack.back();
   std::string post = "";
@@ -673,7 +674,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
 
     // Insert output tensors into function arg
     if (!expr.as_tensor_ref()->buffer.defined() ||
-        this->target_ != common::DefaultNVGPUTarget()) {
+        this->target_ != cinn::common::DefaultNVGPUTarget()) {
       op_func_arg_tensors->push_back(expr.as_tensor_ref());
       expr.as_tensor_ref()->WithBuffer();
     }
@@ -710,18 +711,18 @@ ir::Expr OpLowererImpl::DoOpSchedule(
     const std::vector<ir::Tensor>& op_func_arg_tensors,
     const std::vector<ir::LoweredFunc>& lowered_funcs) {
   VLOG(4) << "Do op schedule";
-  std::vector<common::CINNValue> schedule_inputs;
+  std::vector<cinn::common::CINNValue> schedule_inputs;
   // 1.Collect tensors
   for (const ir::Tensor& op_func_arg_tensor : op_func_arg_tensors) {
-    schedule_inputs.push_back(common::CINNValue(op_func_arg_tensor));
+    schedule_inputs.push_back(cinn::common::CINNValue(op_func_arg_tensor));
   }
   // 2.Collect bodies to be scheduled
   for (const ir::LoweredFunc& func : lowered_funcs) {
-    schedule_inputs.push_back(common::CINNValue(func->body));
+    schedule_inputs.push_back(cinn::common::CINNValue(func->body));
   }
   // 3.Do schedule on AST
-  common::CINNValuePack expr_pack =
-      op_impl->fschedule(common::CINNValuePack{schedule_inputs});
+  cinn::common::CINNValuePack expr_pack =
+      op_impl->fschedule(cinn::common::CINNValuePack{schedule_inputs});
   VLOG(4) << "After op schedule: " << expr_pack[0].operator ir::Expr();
 
   return expr_pack[0].operator ir::Expr();
