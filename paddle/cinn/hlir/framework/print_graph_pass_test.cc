@@ -63,7 +63,7 @@ TEST(Operator, GetAttrs) {
   auto d = prog.add(c, b);
   auto e = prog.add(c, d);
   ASSERT_EQ(prog.size(), 3);
-  Graph* g = new Graph(prog, common::DefaultHostTarget());
+  Graph* g = new Graph(prog, cinn::common::DefaultHostTarget());
   ApplyPass(g, "PrintGraph");
   auto s = g->GetAttrs<std::string>("print_graph");
   LOG(INFO) << s;

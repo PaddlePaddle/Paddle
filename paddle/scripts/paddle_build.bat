@@ -110,7 +110,7 @@ if "%WITH_PYTHON%" == "ON" (
     where python
     where pip
     python -m pip install --upgrade pip
-    python -m pip install -r %work_dir%\paddle\scripts\windows_build\requirements.txt
+    python -m pip install -r %work_dir%\paddle\scripts\compile_requirements.txt
     python -m pip install -r %work_dir%\python\requirements.txt
     if !ERRORLEVEL! NEQ 0 (
         echo pip install requirements.txt failed!

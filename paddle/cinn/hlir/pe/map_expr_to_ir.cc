@@ -51,7 +51,7 @@ class MapExprToIrTranslator {
  public:
   explicit MapExprToIrTranslator(const MapExpr& map_expr,
                                  const Node2LoweredFuncs& node2lowered_funcs,
-                                 const common::Target& target)
+                                 const cinn::common::Target& target)
       : map_expr_(map_expr),
         node2lowered_funcs_(&node2lowered_funcs),
         target_(target) {
@@ -744,7 +744,7 @@ class MapExprToIrTranslator {
 
   MapExpr map_expr_;
   const Node2LoweredFuncs* node2lowered_funcs_;
-  const common::Target target_;
+  const cinn::common::Target target_;
   TensorIteratorExpr4TensorT TensorIteratorExpr4Tensor;
   LoopDescriptor4LoopIteratorT LoopDescriptor4LoopIterator;
 };
@@ -752,7 +752,7 @@ class MapExprToIrTranslator {
 }  // namespace
 
 ir::Expr MapExprToIr(const MapExprCtx& map_expr_ctx,
-                     const common::Target& target) {
+                     const cinn::common::Target& target) {
   const auto& expr =
       MapExprToIrTranslator(
           map_expr_ctx.map_expr(), map_expr_ctx.node2lowered_funcs(), target)

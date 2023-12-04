@@ -43,7 +43,7 @@ TEST_F(TestCooperativeProcess, Matmul) {
   int num_threads_x = 2;
   int steps_k = 8;
 
-  Initialize(common::DefaultNVGPUTarget());
+  Initialize(cinn::common::DefaultNVGPUTarget());
   frontend::Program matmul_op =
       tests::OpBuilder("matmul").Build({{"X", X_shape}, {"Y", Y_shape}});
   ir::IRSchedule ir_schedule = MakeIRSchedule(matmul_op, fixed_rand_seed);

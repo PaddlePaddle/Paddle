@@ -1017,27 +1017,6 @@ def get_mutable_attribute_grad_semantic(op_info, op_info_items):
     return mutable_attribute_grad_semantics
 
 
-def check_need_update_ops(op_yaml_files):
-    need_update_ops = False
-    update_yaml_file = None
-    for yaml_file in op_yaml_files:
-        if yaml_file.find("update_ops.parsed.yaml") != -1:
-            need_update_ops = True
-            update_yaml_file = yaml_file
-            break
-    return need_update_ops, update_yaml_file
-
-
-def update_ops(op_yaml_items, update_yaml_file):
-    with open(update_yaml_file, "r") as f:
-        update_ops = yaml.safe_load(f)
-    for i in range(len(op_yaml_items)):
-        for update_op in update_ops:
-            if op_yaml_items[i]['name'] == update_op['name']:
-                op_yaml_items[i] = update_op
-                break
-
-
 def OpGenerator(
     op_yaml_files,
     op_compat_yaml_file,

@@ -98,7 +98,7 @@ void TopkKernel(const Context& dev_ctx,
   if (axis == in_dims.size() - 1) {
     // if get the topK from the last axis
     const int64_t& input_height =
-        phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
+        common::product(common::slice_ddim(in_dims, 0, in_dims.size() - 1));
     const int64_t& input_width = in_dims[in_dims.size() - 1];
 
     if (k > input_width) {
@@ -264,8 +264,8 @@ void TopkKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<int64_t>(&trans_ind);
     dev_ctx.template Alloc<T>(&trans_out);
 
-    const int64_t input_height =
-        phi::product(phi::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
+    const int64_t input_height = common::product(
+        common::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
     const int64_t input_width = trans_dims[trans_dims.size() - 1];
 
     if (k > input_width) k = input_width;

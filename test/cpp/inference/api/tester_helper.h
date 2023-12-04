@@ -1098,8 +1098,8 @@ static bool CompareShape(const std::vector<int64_t> &a,
 
 static bool CompareTensorData(const phi::DenseTensor &a,
                               const phi::DenseTensor &b) {
-  auto a_shape = phi::vectorize(a.dims());
-  auto b_shape = phi::vectorize(b.dims());
+  auto a_shape = common::vectorize(a.dims());
+  auto b_shape = common::vectorize(b.dims());
   size_t a_size = std::accumulate(
       a_shape.begin(), a_shape.end(), size_t{1}, [](int a, int b) {
         return a * b;
@@ -1147,7 +1147,7 @@ static bool CompareTensor(const phi::DenseTensor &a,
   if (!CompareLoD(a.lod(), b.lod())) {
     return false;
   }
-  if (!CompareShape(phi::vectorize(a.dims()), phi::vectorize(b.dims()))) {
+  if (!CompareShape(common::vectorize(a.dims()), common::vectorize(b.dims()))) {
     return false;
   }
 
