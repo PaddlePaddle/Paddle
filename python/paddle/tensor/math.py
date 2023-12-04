@@ -6312,7 +6312,7 @@ def take(x, index, mode='raise', name=None):
 
     if in_dynamic_or_pir_mode():
         if not isinstance(
-            index, (paddle.Tensor, Variable, paddle.pir.OpResult)
+            index, (paddle.Tensor, Variable, paddle.pir.Value)
         ):
             raise TypeError(
                 f"The type of 'index' must be Tensor, but got {type(index)}"

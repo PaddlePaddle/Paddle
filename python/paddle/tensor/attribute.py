@@ -49,7 +49,7 @@ def rank(input):
             >>> print(rank.numpy())
             3
     """
-    check_type(input, 'input', (Variable, paddle.pir.OpResult), 'input')
+    check_type(input, 'input', (Variable, paddle.pir.Value), 'input')
     ndims = len(input.shape)
     out = assign(np.array(ndims, 'int32'))
 
