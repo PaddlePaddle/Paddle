@@ -208,7 +208,7 @@ class TestOpsNMS(unittest.TestCase):
                         0.1,
                         paddle.to_tensor(scores),
                         paddle.to_tensor(category_idxs),
-                        paddle.to_tensor(categories),
+                        categories,
                         10,
                     )
                     return out

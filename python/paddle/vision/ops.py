@@ -1975,7 +1975,7 @@ def nms(
 
     for category_id in categories:
         cur_category_boxes_idxs = paddle.where(
-            paddle.equal(category_idxs, category_id)
+            paddle.equal(category_idxs, paddle.to_tensor(category_id))
         )[0]
         shape = cur_category_boxes_idxs.shape[0]
         cur_category_boxes_idxs = paddle.reshape(
