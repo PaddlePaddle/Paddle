@@ -337,6 +337,65 @@ class Col2ImFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
   }
 };
 
+// Fuse
+template <class T, typename DeviceContext>
+class Im2ColFuseFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
+ public:
+  void operator()(const DeviceContext& context,
+                  const std::vector<T*>& im_datas,
+                  const int size,
+                  const int filter_height,
+                  const int filter_width,
+                  const int im_width,
+                  const int col_width,
+                  const int max_col_height,
+                  const int im_channels,
+                  const std::vector<int>& col_height,
+                  const std::vector<int>& im_height,
+                  const std::vector<size_t>& lod_level_0,
+                  const std::vector<int>& dilation,
+                  const std::vector<int>& stride,
+                  const std::vector<int>& padding,
+                  std::vector<T*>& col_datas,  // NOLINT
+                  const DataLayout data_layout) {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Im2ColFuseFunctor cpu version is not implemented, only gpu version is "
+        "supported"));
+  }
+};
+
+/*
+ * im = [input_channels, input_height, input_width]
+ * col =
+ *   [output_height, output_width, input_channels, filter_height, filter_width]
+ */
+template <class T, typename DeviceContext>
+class Col2ImFuseFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
+ public:
+  void operator()(const DeviceContext& context,
+                  const std::vector<T*>& col_datas,
+                  const int size,
+                  const int filter_height,
+                  const int filter_width,
+                  const int im_width,
+                  const int col_width,
+                  const int max_col_height,
+                  const int im_channels,
+                  const std::vector<int>& col_height,
+                  const std::vector<int>& im_height,
+                  const std::vector<size_t>& lod_level_0,
+                  const std::vector<int>& dilation,
+                  const std::vector<int>& stride,
+                  const std::vector<int>& padding,
+                  std::vector<T*>& im_datas,  // NOLINT
+                  const DataLayout data_layout) {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Col2ImFuseFunctor cpu version is not implemented, only gpu version is "
+        "supported"));
+  }
+};
+/// Fuse
+
 template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
                              phi::CPUContext,
                              float>;
@@ -361,5 +420,31 @@ template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
 template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
                              phi::CPUContext,
                              phi::dtype::complex<double>>;
+
+template class Im2ColFuseFunctor<phi::funcs::ColFormat::kOCF,
+                                 phi::CPUContext,
+                                 float>;
+template class Im2ColFuseFunctor<phi::funcs::ColFormat::kOCF,
+                                 phi::CPUContext,
+                                 double>;
+template class Im2ColFuseFunctor<phi::funcs::ColFormat::kOCF,
+                                 phi::CPUContext,
+                                 phi::dtype::complex<float>>;
+template class Im2ColFuseFunctor<phi::funcs::ColFormat::kOCF,
+                                 phi::CPUContext,
+                                 phi::dtype::complex<double>>;
+template class Col2ImFuseFunctor<phi::funcs::ColFormat::kOCF,
+                                 phi::CPUContext,
+                                 float>;
+template class Col2ImFuseFunctor<phi::funcs::ColFormat::kOCF,
+                                 phi::CPUContext,
+                                 double>;
+template class Col2ImFuseFunctor<phi::funcs::ColFormat::kOCF,
+                                 phi::CPUContext,
+                                 phi::dtype::complex<float>>;
+template class Col2ImFuseFunctor<phi::funcs::ColFormat::kOCF,
+                                 phi::CPUContext,
+                                 phi::dtype::complex<double>>;
+
 }  // namespace funcs
 }  // namespace phi

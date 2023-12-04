@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/funcs/im2col.h"
 
 namespace phi {
@@ -452,6 +453,156 @@ class Im2ColFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
   }
 };
 
+// Fuse
+template <class T>
+__global__ void im2colOCF_Fuse(T** im_data,
+                               const int size,
+                               const size_t* lod_level,
+                               int im_channels,
+                               int* im_height,
+                               int im_width,
+                               int filter_height,
+                               int filter_width,
+                               int stride_height,
+                               int stride_width,
+                               int padding_height,
+                               int padding_width,
+                               int* col_height,
+                               int col_width,
+                               T** col_data) {
+  int swid = blockIdx.x;
+  int shid = blockIdx.y;
+  int sid = blockIdx.z;
+  if (sid >= size) return;
+  if (shid >= col_height[sid]) return;
+  if (lod_level[sid] == lod_level[sid + 1]) return;
+
+  for (int channelid = threadIdx.z; channelid < im_channels;
+       channelid += blockDim.z) {
+    for (int idy = threadIdx.y; idy < filter_height; idy += blockDim.y) {
+      for (int idx = threadIdx.x; idx < filter_width; idx += blockDim.x) {
+        int width_offset = idx + swid * stride_width - padding_width;
+        int height_offset = idy + shid * stride_height - padding_height;
+        int im_offset = width_offset + height_offset * im_width +
+                        channelid * im_height[sid] * im_width;
+
+        int col_offset = idx + idy * filter_width +
+                         channelid * filter_height * filter_width +
+                         (shid * col_width + swid) *
+                             (im_channels * filter_height * filter_width);
+
+        col_data[sid][col_offset] =
+            (height_offset >= im_height[sid] || height_offset < 0 ||
+             width_offset >= im_width || width_offset < 0)
+                ? T(0)
+                : im_data[sid][im_offset];
+      }
+    }
+  }
+}
+
+/*
+ * im = [input_channels, input_height, input_width]
+ * col =
+ *   [output_height, output_width, input_channels, filter_height, filter_width]
+ */
+template <class DeviceContext, class T>
+class Im2ColFuseFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
+ public:
+  void operator()(const DeviceContext& context,
+                  const std::vector<T*>& im_datas,
+                  const int size,
+                  const int filter_height,
+                  const int filter_width,
+                  const int im_width,
+                  const int col_width,
+                  const int max_col_height,
+                  const int im_channels,
+                  const std::vector<int>& col_height,
+                  const std::vector<int>& im_height,
+                  const std::vector<size_t>& lod_level_0,
+                  const std::vector<int>& dilation,
+                  const std::vector<int>& stride,
+                  const std::vector<int>& padding,
+                  std::vector<T*>& col_datas,  // NOLINT
+                  const DataLayout data_layout) {
+    int thread_size = static_cast<int>(lod_level_0.size()) - 1;
+    auto gpu_place = context.GetPlace();
+    auto num_bytes =
+        (4 * thread_size + 1 + (4 * thread_size + 1) % 2) * sizeof(uint64_t);
+    auto all_hbm = phi::memory_utils::Alloc(gpu_place, num_bytes);
+    // auto all_hbm = paddle::memory::Alloc(
+    //     gpu_place,
+    //     (4 * thread_size + 1 + (4 * thread_size + 1) % 2) *
+    //     sizeof(uint64_t));
+
+    int* im_height_data = reinterpret_cast<int*>(all_hbm->ptr());
+    int* col_height_data = reinterpret_cast<int*>(im_height_data + thread_size);
+    size_t* lod_level_0_data =
+        reinterpret_cast<size_t*>(col_height_data + thread_size);
+    T** im_data = reinterpret_cast<T**>(lod_level_0_data + thread_size + 1);
+    T** col_data = reinterpret_cast<T**>(im_data + thread_size);
+
+    cudaMemcpy(im_height_data,
+               im_height.data(),
+               thread_size * sizeof(int),
+               cudaMemcpyHostToDevice);
+    cudaMemcpy(col_height_data,
+               col_height.data(),
+               thread_size * sizeof(int),
+               cudaMemcpyHostToDevice);
+    cudaMemcpy(lod_level_0_data,
+               lod_level_0.data(),
+               (thread_size + 1) * sizeof(size_t),
+               cudaMemcpyHostToDevice);
+    cudaMemcpy(im_data,
+               im_datas.data(),
+               thread_size * sizeof(T*),
+               cudaMemcpyHostToDevice);
+    cudaMemcpy(col_data,
+               col_datas.data(),
+               thread_size * sizeof(T*),
+               cudaMemcpyHostToDevice);
+
+    int block_dim_x = 0;
+    int block_dim_y = 0;
+    if (filter_height <= 4 && filter_width <= 4) {
+      block_dim_x = 4;
+      block_dim_y = 4;
+    } else if (filter_height <= 8 && filter_width <= 8) {
+      block_dim_x = 8;
+      block_dim_y = 8;
+    } else if (filter_height <= 16 && filter_width <= 16) {
+      block_dim_x = 16;
+      block_dim_y = 16;
+    } else {
+      block_dim_x = 32;
+      block_dim_y = 32;
+    }
+    // == Fuse ==
+    int block_dim_z = 1024 / block_dim_x / block_dim_y;
+    dim3 threads(block_dim_x, block_dim_y, std::min(block_dim_z, im_channels));
+    dim3 grid(col_width, max_col_height, size);
+    im2colOCF_Fuse<T><<<grid, threads, 0, context.stream()>>>(im_data,
+                                                              size,
+                                                              lod_level_0_data,
+                                                              im_channels,
+                                                              im_height_data,
+                                                              im_width,
+                                                              filter_height,
+                                                              filter_width,
+                                                              stride[0],
+                                                              stride[1],
+                                                              padding[0],
+                                                              padding[1],
+                                                              col_height_data,
+                                                              col_width,
+                                                              col_data);
+    // == Fuse ==
+  }
+};
+
+// Fuse
 template <class T>
 __global__ void col2imOCF(const T* col_data,
                           int im_channels,
@@ -579,6 +730,165 @@ class Col2ImFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
   }
 };
 
+// === Fuse ===
+template <class T>
+__global__ void col2imOCF_Fuse(T** col_data,
+                               const int size,
+                               const size_t* lod_level,
+                               int im_channels,
+                               int* im_height,
+                               int im_width,
+                               int filter_height,
+                               int filter_width,
+                               int stride_height,
+                               int stride_width,
+                               int padding_height,
+                               int padding_width,
+                               int* col_height,
+                               int col_width,
+                               T** im_data) {
+  int swid = blockIdx.x;
+  int shid = blockIdx.y;
+  int sid = blockIdx.z;
+  if (sid >= size) return;
+  if (shid >= col_height[sid]) return;
+  if (lod_level[sid] == lod_level[sid + 1]) return;
+
+  for (int channelid = threadIdx.z; channelid < im_channels;
+       channelid += blockDim.z) {
+    for (int idy = threadIdx.y; idy < filter_height; idy += blockDim.y) {
+      for (int idx = threadIdx.x; idx < filter_width; idx += blockDim.x) {
+        int width_offset = idx + swid * stride_width - padding_width;
+        int height_offset = idy + shid * stride_height - padding_height;
+        int im_offset = width_offset + height_offset * im_width +
+                        channelid * im_height[sid] * im_width;
+
+        int col_offset = idx + idy * filter_width +
+                         channelid * filter_height * filter_width +
+                         (shid * col_width + swid) *
+                             (im_channels * filter_height * filter_width);
+
+        if (height_offset >= 0 && height_offset < im_height[sid] &&
+            width_offset >= 0 && width_offset < im_width) {
+          phi::CudaAtomicAdd(im_data[sid] + im_offset,
+                             col_data[sid][col_offset]);
+        }
+      }
+    }
+  }
+}
+
+/*
+ * im = [input_channels, input_height, input_width]
+ * col =
+ *   [output_height, output_width, input_channels, filter_height, filter_width]
+ */
+template <class DeviceContext, class T>
+class Col2ImFuseFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
+ public:
+  void operator()(const DeviceContext& context,
+                  const std::vector<T*>& col_datas,
+                  const int size,
+                  const int filter_height,
+                  const int filter_width,
+                  const int im_width,
+                  const int col_width,
+                  const int max_col_height,
+                  const int im_channels,
+                  const std::vector<int>& col_height,
+                  const std::vector<int>& im_height,
+                  const std::vector<size_t>& lod_level_0,
+                  const std::vector<int>& dilation,
+                  const std::vector<int>& stride,
+                  const std::vector<int>& padding,
+                  std::vector<T*>& im_datas,  // NOLINT
+                  const DataLayout data_layout) {
+    PADDLE_ENFORCE_EQ(
+        (im_width + padding[1] + padding[3] -
+         (dilation[1] * (filter_width - 1) + 1)) /
+                stride[1] +
+            1,
+        col_width,
+        phi::errors::InvalidArgument("col_width and padding(padding_left, "
+                                     "padding_right) are inconsistent."));
+
+    int thread_size = static_cast<int>(lod_level_0.size()) - 1;
+    auto gpu_place = context.GetPlace();
+    auto num_bytes =
+        (4 * thread_size + 1 + (4 * thread_size + 1) % 2) * sizeof(uint64_t);
+    auto all_hbm = phi::memory_utils::Alloc(gpu_place, num_bytes);
+    // auto all_hbm = paddle::memory::Alloc(
+    //     gpu_place,
+    //     (4 * thread_size + 1 + (4 * thread_size + 1) % 2) *
+    //     sizeof(uint64_t));
+
+    int* im_height_data = reinterpret_cast<int*>(all_hbm->ptr());
+    int* col_height_data = reinterpret_cast<int*>(im_height_data + thread_size);
+    size_t* lod_level_0_data =
+        reinterpret_cast<size_t*>(col_height_data + thread_size);
+    T** im_data = reinterpret_cast<T**>(lod_level_0_data + thread_size + 1);
+    T** col_data = reinterpret_cast<T**>(im_data + thread_size);
+
+    cudaMemcpy(im_height_data,
+               im_height.data(),
+               thread_size * sizeof(int),
+               cudaMemcpyHostToDevice);
+    cudaMemcpy(col_height_data,
+               col_height.data(),
+               thread_size * sizeof(int),
+               cudaMemcpyHostToDevice);
+    cudaMemcpy(lod_level_0_data,
+               lod_level_0.data(),
+               (thread_size + 1) * sizeof(size_t),
+               cudaMemcpyHostToDevice);
+    cudaMemcpy(im_data,
+               im_datas.data(),
+               thread_size * sizeof(T*),
+               cudaMemcpyHostToDevice);
+    cudaMemcpy(col_data,
+               col_datas.data(),
+               thread_size * sizeof(T*),
+               cudaMemcpyHostToDevice);
+
+    int block_dim_x = 0;
+    int block_dim_y = 0;
+    if (filter_height <= 4 && filter_width <= 4) {
+      block_dim_x = 4;
+      block_dim_y = 4;
+    } else if (filter_height <= 8 && filter_width <= 8) {
+      block_dim_x = 8;
+      block_dim_y = 8;
+    } else if (filter_height <= 16 && filter_width <= 16) {
+      block_dim_x = 16;
+      block_dim_y = 16;
+    } else {
+      block_dim_x = 32;
+      block_dim_y = 32;
+    }
+
+    int block_dim_z = 1024 / block_dim_x / block_dim_y;
+    dim3 threads(block_dim_x, block_dim_y, std::min(block_dim_z, im_channels));
+    dim3 grid(col_width, max_col_height, size);
+
+    col2imOCF_Fuse<T><<<grid, threads, 0, context.stream()>>>(col_data,
+                                                              size,
+                                                              lod_level_0_data,
+                                                              im_channels,
+                                                              im_height_data,
+                                                              im_width,
+                                                              filter_height,
+                                                              filter_width,
+                                                              stride[0],
+                                                              stride[1],
+                                                              padding[0],
+                                                              padding[1],
+                                                              col_height_data,
+                                                              col_width,
+                                                              im_data);
+  }
+};
+// === Fuse ===
+
 template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
                              phi::GPUContext,
                              float>;
@@ -615,6 +925,43 @@ template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
 template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
                              phi::GPUContext,
                              phi::dtype::bfloat16>;
+
+template class Im2ColFuseFunctor<phi::funcs::ColFormat::kOCF,
+                                 phi::GPUContext,
+                                 float>;
+template class Im2ColFuseFunctor<phi::funcs::ColFormat::kOCF,
+                                 phi::GPUContext,
+                                 double>;
+template class Im2ColFuseFunctor<phi::funcs::ColFormat::kOCF,
+                                 phi::GPUContext,
+                                 phi::dtype::complex<float>>;
+template class Im2ColFuseFunctor<phi::funcs::ColFormat::kOCF,
+                                 phi::GPUContext,
+                                 phi::dtype::complex<double>>;
+template class Im2ColFuseFunctor<phi::funcs::ColFormat::kOCF,
+                                 phi::GPUContext,
+                                 phi::dtype::float16>;
+template class Im2ColFuseFunctor<phi::funcs::ColFormat::kOCF,
+                                 phi::GPUContext,
+                                 phi::dtype::bfloat16>;
+template class Col2ImFuseFunctor<phi::funcs::ColFormat::kOCF,
+                                 phi::GPUContext,
+                                 float>;
+template class Col2ImFuseFunctor<phi::funcs::ColFormat::kOCF,
+                                 phi::GPUContext,
+                                 double>;
+template class Col2ImFuseFunctor<phi::funcs::ColFormat::kOCF,
+                                 phi::GPUContext,
+                                 phi::dtype::complex<float>>;
+template class Col2ImFuseFunctor<phi::funcs::ColFormat::kOCF,
+                                 phi::GPUContext,
+                                 phi::dtype::complex<double>>;
+template class Col2ImFuseFunctor<phi::funcs::ColFormat::kOCF,
+                                 phi::GPUContext,
+                                 phi::dtype::float16>;
+template class Col2ImFuseFunctor<phi::funcs::ColFormat::kOCF,
+                                 phi::GPUContext,
+                                 phi::dtype::bfloat16>;
 
 }  // namespace funcs
 }  // namespace phi
