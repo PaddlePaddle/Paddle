@@ -92,9 +92,13 @@ if(WITH_TESTING AND WITH_CINN)
       test_compilation_task)
 
   foreach(test_name ${cinn_unit_tests})
-    set_tests_properties(
-      ${test_name} PROPERTIES LABELS "RUN_TYPE=CINN" ENVIRONMENT
-                              "FLAGS_cinn_new_group_scheduler=1")
+    get_property(
+      env
+      TEST ${test_name}
+      PROPERTY ENVIRONMENT)
+    set_property(TEST ${test_name}
+                 PROPERTY ENVIRONMENT "FLAGS_cinn_new_group_scheduler=1" ${env})
+    set_tests_properties(${test_name} PROPERTIES LABELS "RUN_TYPE=CINN")
   endforeach()
 
 endif()
