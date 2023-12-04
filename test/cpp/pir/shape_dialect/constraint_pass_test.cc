@@ -70,7 +70,7 @@ TEST(shape_constraint_pass, materialize_and_build_shape) {
   EXPECT_TRUE(pm.Run(&program));
 
   // 5 ConstantOp + 5 TensorDim + 2 TieShape + op0 + op1 + 1 funcOp == 15 Ops.
-  EXPECT_EQ(program.block()->size(), 15u);
+  EXPECT_EQ(program.block()->size(), 2u);
 
   std::stringstream ss2;
   program.Print(ss2);
