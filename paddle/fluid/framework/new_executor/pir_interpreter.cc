@@ -651,7 +651,9 @@ void PirInterpreter::BuildInstruction() {
       }
     } else if (op.dialect()->name() == "pd_op") {
       if (op.isa<paddle::dialect::IfOp>()) {
-        CREATE_INSTR(CondInstruction);
+        auto skip_gc_vars = execution_config_.skip_gc_vars;
+        vec_instruction_base_.emplace_back(std::make_unique<CondInstruction>(
+            op_idx++, place_, &op, value_exe_info_.get(), skip_gc_vars));
         sub_blocks_.insert(
             {&op.dyn_cast<paddle::dialect::IfOp>().true_block(),
              dynamic_cast<CondInstruction*>(vec_instruction_base_.back().get())
@@ -661,13 +663,9 @@ void PirInterpreter::BuildInstruction() {
              dynamic_cast<CondInstruction*>(vec_instruction_base_.back().get())
                  ->FalseBranchInterpreter()});
       } else if (op.isa<paddle::dialect::WhileOp>()) {
-        vec_instruction_base_.emplace_back(
-            std::make_unique<WhileInstruction>(op_idx++,
-                                               place_,
-                                               &op,
-                                               scope_,
-                                               local_scope_,
-                                               value_exe_info_.get()));
+        auto skip_gc_vars = execution_config_.skip_gc_vars;
+        vec_instruction_base_.emplace_back(std::make_unique<WhileInstruction>(
+            op_idx++, place_, &op, value_exe_info_.get(), skip_gc_vars));
         sub_blocks_.insert(
             {&op.dyn_cast<paddle::dialect::WhileOp>().body(),
              dynamic_cast<WhileInstruction*>(vec_instruction_base_.back().get())
