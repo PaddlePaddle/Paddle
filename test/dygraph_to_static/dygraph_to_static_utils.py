@@ -99,7 +99,6 @@ DISABLED_TO_STATIC_TEST_FILES = {
 DISABLED_IR_TEST_FILES = {
     IrMode.LEGACY_IR: [],
     IrMode.PT: [
-        "test_gradname_parse",
         "test_seq2seq",
         "test_save_inference_model",
         "test_tensor_hook",
@@ -109,7 +108,6 @@ DISABLED_IR_TEST_FILES = {
         "test_lstm",
         "test_for_enumerate",
         "test_jit_setitem",
-        "test_reinforcement_learning",
         # TODO: only disable on Windows
         "test_program_translator",
         "test_cache_program",
