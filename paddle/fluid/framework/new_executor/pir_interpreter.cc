@@ -1261,12 +1261,12 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
                               bool enable_job_schedule_profiler,
                               bool enable_op_profiling) {
   enable_job_schedule_profiler_ = enable_job_schedule_profiler;
-  
+
   if (enable_op_profiling) {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Currently PIR does not support op runtime profiling feature."));
   }
-  
+
   SetDeviceId(place_);
   CheckCUDAGraphBeforeRun(feed_names);
 
