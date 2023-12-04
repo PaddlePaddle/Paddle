@@ -13,9 +13,7 @@
 # limitations under the License.
 
 import functools
-import inspect
 import os
-import pathlib
 import random
 import struct
 import sys
@@ -32,7 +30,6 @@ from auto_parallel_op_test import (
     get_subprocess_command,
     get_subprocess_runtime_envs,
     get_test_info_and_generated_test_path,
-    is_ban_auto_parallel_test,
     run_subprocess,
 )
 from op import Operator
@@ -2574,7 +2571,11 @@ class OpTest(unittest.TestCase):
             return
 
         if check_auto_parallel:
-            if is_ban_auto_parallel_test(place):
+            if (
+                isinstance(place, paddle.base.libpaddle.CUDAPlace)
+                and paddle.device.cuda.device_count() < 2
+                or not paddle.is_compiled_with_distribute()
+            ):
                 pass
             else:
                 (
@@ -2589,24 +2590,11 @@ class OpTest(unittest.TestCase):
                     dump_test_info(
                         self, place, forward_test_info_path, backward=False
                     )
-                    python_api_info = {
-                        "api_name": self.python_api.__name__,
-                        "api_module": inspect.getmodule(
-                            self.python_api
-                        ).__name__
-                        if inspect.getmodule(
-                            self.python_api
-                        ).__name__.startswith("paddle")
-                        else pathlib.Path(
-                            inspect.getmodule(self.python_api).__file__
-                        ).stem,
-                    }
                     # code gen for auto parallel forward test
                     gen_auto_parallel_test_file(
                         check_grad=False,
                         test_info_path=forward_test_info_path,
                         test_file_path=generated_forward_test_path,
-                        python_api_info=python_api_info,
                     )
                     runtime_envs = get_subprocess_runtime_envs(place)
                     start_command = get_subprocess_command(
@@ -3048,7 +3036,11 @@ class OpTest(unittest.TestCase):
             return
 
         if check_auto_parallel:
-            if is_ban_auto_parallel_test(place):
+            if (
+                isinstance(place, paddle.base.libpaddle.CUDAPlace)
+                and paddle.device.cuda.device_count() < 2
+                or not paddle.is_compiled_with_distribute()
+            ):
                 pass
             else:
                 (
@@ -3076,24 +3068,11 @@ class OpTest(unittest.TestCase):
                         backward=True,
                         backward_extra_test_info=backward_extra_test_info,
                     )
-                    python_api_info = {
-                        "api_name": self.python_api.__name__,
-                        "api_module": inspect.getmodule(
-                            self.python_api
-                        ).__name__
-                        if inspect.getmodule(
-                            self.python_api
-                        ).__name__.startswith("paddle")
-                        else pathlib.Path(
-                            inspect.getmodule(self.python_api).__file__
-                        ).stem,
-                    }
                     # code gen for auto parallel grad test
                     gen_auto_parallel_test_file(
-                        check_grad=False,
+                        check_grad=True,
                         test_info_path=grad_test_info_path,
                         test_file_path=generated_grad_test_path,
-                        python_api_info=python_api_info,
                     )
                     runtime_envs = get_subprocess_runtime_envs(place)
                     start_command = get_subprocess_command(
