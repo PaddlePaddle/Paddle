@@ -468,15 +468,15 @@ def lp_pool2d(
         # TODO:下面这个可能有问题
         helper.append_op(
             type=op_type,
-            inputs={"X": x},
-            outputs={"Out": pool_out},
+            inputs={"x": x},
+            outputs={"out": pool_out},
             attrs={
                 "norm_type": norm_type,
-                "ksize": kernel_size,
+                "kernel_size": kernel_size,
                 "strides": stride,
-                "use_cudnn": True,
+                # "use_cudnn": True,
                 "ceil_mode": ceil_mode,
-                "use_mkldnn": False,
+                # "use_mkldnn": False,
                 "data_format": data_format,
             },
         )

@@ -61,6 +61,38 @@ class TestPool2D_API(unittest.TestCase):
             )
             np.testing.assert_allclose(fetches[0], result_np, rtol=1e-05)
 
+    def check_lp_static_results(self, place):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            input = paddle.static.data(
+                name="input", shape=[2, 3, 32, 32], dtype="float32"
+            )
+            norm_type = 2
+            result = lp_pool2d(
+                input,
+                norm_type,
+                kernel_size=2,
+                stride=2,
+                ceil_mode=True,
+            )
+
+            input_np = np.random.random([2, 3, 32, 32]).astype("float32")
+            result_np = lp_pool2D_forward_naive(
+                input_np,
+                norm_type,
+                ksize=[2, 2],
+                strides=[2, 2],
+                ceil_mode=True,
+            )
+
+            exe = base.Executor(place)
+            fetches = exe.run(
+                feed={"input": input_np},
+                fetch_list=[result],
+            )
+            np.testing.assert_allclose(fetches[0], result_np, rtol=1e-05)
+
     def check_avg_dygraph_results(self, place):
         with base.dygraph.guard(place):
             input_np = np.random.random([2, 3, 32, 32]).astype("float32")
@@ -407,6 +439,7 @@ class TestPool2D_API(unittest.TestCase):
         for place in self.places:
             self.check_max_static_results(place)
             self.check_avg_static_results(place)
+            self.check_lp_static_results(place)
         paddle.disable_static()
 
 
