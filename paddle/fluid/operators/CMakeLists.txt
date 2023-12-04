@@ -140,7 +140,11 @@ if (WITH_DGC)
     set(COMMON_OP_DEPS ${COMMON_OP_DEPS} dgc)
 endif()
 
-cc_library(common_infer_shape_functions SRCS common_infer_shape_functions.cc DEPS operator)
+cc_library(common_infer_shape_functions SRCS common_infer_shape_functions.cc DEPS framework_proto)
+if(WITH_MKLDNN)
+    add_dependencies(common_infer_shape_functions mkldnn)
+endif()
+
 cc_library(ops_extra_info SRCS ops_extra_info.cc DEPS attribute phi)
 
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} phi)

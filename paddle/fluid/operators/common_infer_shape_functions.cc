@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
-
+#include "paddle/fluid/framework/shape_inference.h"
 namespace paddle {
 namespace framework {
 class InferShapeContext;

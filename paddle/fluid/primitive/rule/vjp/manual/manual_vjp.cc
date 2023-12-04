@@ -21,8 +21,10 @@
 #include "paddle/fluid/primitive/rule/vjp/details.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 #include "paddle/fluid/primitive/utils/utils.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/pir/core/operation.h"
 
+PHI_DECLARE_string(tensor_operants_mode);
 namespace paddle {
 namespace primitive {
 

@@ -350,7 +350,7 @@ class AttrReader {
 };
 
 paddle::experimental::Scalar MakeScalarFromProto(const proto::Scalar& v);
-proto::Scalar MakeScalarProto(const paddle::experimental::Scalar& v);
+TEST_API proto::Scalar MakeScalarProto(const paddle::experimental::Scalar& v);
 paddle::experimental::Scalar MakeScalarFromAttribute(const Attribute& v);
 std::vector<paddle::experimental::Scalar> MakeScalarsFromAttribute(
     const Attribute& v);

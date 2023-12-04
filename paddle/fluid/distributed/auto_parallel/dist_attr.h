@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
-
+#include "paddle/utils/test_macros.h"
 namespace paddle {
 
 // Forward Declaration
@@ -55,9 +55,9 @@ using phi::distributed::auto_parallel::OperatorDistAttrProto;
 
 constexpr const char* kDefault = "default";
 
-std::vector<int64_t> get_tensor_shape(const VarDesc* tensor);
+TEST_API std::vector<int64_t> get_tensor_shape(const VarDesc* tensor);
 
-class OperatorDistAttr {
+class TEST_API OperatorDistAttr {
  public:
   OperatorDistAttr() = default;
 

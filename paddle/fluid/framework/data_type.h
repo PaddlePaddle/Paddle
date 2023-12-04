@@ -29,7 +29,7 @@ namespace paddle {
 namespace framework {
 
 TEST_API std::string DataTypeToString(const proto::VarType::Type type);
-extern size_t SizeOfType(proto::VarType::Type type);
+extern TEST_API size_t SizeOfType(proto::VarType::Type type);
 
 template <typename T>
 struct IsComplex : public std::false_type {};
