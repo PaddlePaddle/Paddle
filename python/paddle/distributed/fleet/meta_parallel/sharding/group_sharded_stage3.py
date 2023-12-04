@@ -171,7 +171,9 @@ class GroupShardedStage3(nn.Layer):
             )
             if self.use_main_grad:
                 self._optim._inner_opt._grad_clip = GroupShardedClipGrad(
-                    self._optim._grad_clip, paddle.get_device(), self._group
+                    self._optim._inner_opt._grad_clip,
+                    paddle.get_device(),
+                    self._group,
                 )
             else:
                 self._optim._grad_clip = GroupShardedClipGrad(
