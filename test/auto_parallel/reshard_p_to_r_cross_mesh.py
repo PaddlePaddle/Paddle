@@ -18,16 +18,18 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-from paddle.framework import core
+from paddle.base import core
 
 
-class TestReshardPToR:
+class TestReshardPToRCrossMesh:
     def __init__(self):
         self._shape = eval(os.getenv("shape"))
         self._dtype = os.getenv("dtype")
         self._seeds = eval(os.getenv("seeds"))
+        self._shard = eval(os.getenv("shard"))
         self._backend = os.getenv("backend")
-        self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+        self._in_mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+        self._out_mesh = dist.ProcessMesh([1, 0], dim_names=["x"])
 
     def run_test_case(self):
         if self._backend == "cpu":
@@ -39,12 +41,14 @@ class TestReshardPToR:
         dev_ctx = core.DeviceContext.create(place)
         a = paddle.ones(self._shape)
 
-        input_tensor = dist.shard_tensor(a, self._mesh, [dist.Partial()])
-        out = dist.reshard(input_tensor, self._mesh, [dist.Replicate()])
+        input_tensor = dist.shard_tensor(
+            a, self._in_mesh, [dist.Partial(dist.ReduceType.kRedSum)]
+        )
+        out = dist.reshard(input_tensor, self._out_mesh, [dist.Replicate()])
 
         assert np.equal(out.shape, input_tensor.shape).all()
         np.testing.assert_equal(out._local_value().numpy(), a.numpy())
 
 
 if __name__ == '__main__':
-    TestReshardPToR().run_test_case()
+    TestReshardPToRCrossMesh().run_test_case()
