@@ -13,32 +13,32 @@ cc_test(
 cc_test(
   phi_test_place
   SRCS test_place.cc
-  DEPS phi)
+  DEPS phi common)
 cc_test(
   phi_test_int_array
   SRCS test_int_array.cc
-  DEPS phi)
+  DEPS phi common)
 cc_test(
   phi_test_scalar_cpu
   SRCS test_scalar.cc
-  DEPS phi)
+  DEPS phi common)
 if(WITH_GPU)
   nv_test(
     phi_test_scalar
     SRCS test_scalar.cu
-    DEPS phi)
+    DEPS phi common)
   nv_test(
     transform_test
     SRCS transform_test.cu
-    DEPS memory place phi)
+    DEPS memory place phi common)
 endif()
 if(WITH_ROCM)
   hip_test(
     phi_test_scalar
     SRCS test_scalar.cu
-    DEPS phi)
+    DEPS phi common)
   hip_test(
     transform_test
     SRCS transform_test.cu
-    DEPS memory place phi)
+    DEPS memory place phi common)
 endif()

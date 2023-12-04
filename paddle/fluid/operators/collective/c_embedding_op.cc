@@ -40,9 +40,9 @@ class CEmbeddingOp : public framework::OperatorWithKernel {
                           table_dims.size(),
                           table_dims));
 
-    auto output_dims = phi::vectorize(ids_dims);
+    auto output_dims = common::vectorize(ids_dims);
     output_dims.push_back(table_dims[1]);
-    ctx->SetOutputDim("Out", phi::make_ddim(output_dims));
+    ctx->SetOutputDim("Out", common::make_ddim(output_dims));
 
     if (ctx->GetOutputsVarType("Out")[0] ==
         framework::proto::VarType::LOD_TENSOR) {

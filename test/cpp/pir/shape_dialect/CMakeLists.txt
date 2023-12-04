@@ -1,20 +1,12 @@
-paddle_test(
+cc_test(
   shape_op_test
-  SRCS
-  shape_op_test.cc
-  DEPS
-  pd_op_dialect
-  pir
-  gtest)
+  SRCS shape_op_test.cc
+  DEPS op_dialect_vjp pir gtest)
 
-paddle_test(
+cc_test(
   shape_struct_test
-  SRCS
-  shape_struct_test.cc
-  DEPS
-  pd_op_dialect
-  pir
-  gtest)
+  SRCS shape_struct_test.cc
+  DEPS op_dialect_vjp pir gtest)
 
 paddle_test(
   shape_optimization_test
@@ -22,7 +14,7 @@ paddle_test(
   shape_optimization_test.cc
   DEPS
   gtest
-  pd_op_dialect
+  op_dialect_vjp
   pir)
 
 set_tests_properties(

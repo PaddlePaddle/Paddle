@@ -1,4 +1,5 @@
 add_subdirectory(benchmark)
+add_subdirectory(framework)
 if(WITH_CINN)
   add_subdirectory(cinn)
 endif()
@@ -46,6 +47,7 @@ cc_test(
        generated_op
        elementwise_add_op
        phi
+       common
        generated_static_op)
 cc_test(
   gather_test
@@ -58,7 +60,7 @@ cc_test(
 cc_test(
   scatter_test
   SRCS scatter_test.cc
-  DEPS tensor phi)
+  DEPS tensor phi common)
 cc_test(
   beam_search_decode_op_test
   SRCS beam_search_decode_op_test.cc
@@ -72,13 +74,13 @@ cc_test(
   SRCS save_load_combine_op_test.cc
   DEPS save_combine_op load_combine_op)
 if(WITH_CINN)
-  set(CINN_DEPS cinn_compiler python)
+  set(CINN_DEPS python)
 endif()
 if(WITH_GPU)
   nv_test(
     dropout_op_test
     SRCS dropout_op_test.cc
-    DEPS dropout_op tensor phi)
+    DEPS dropout_op tensor phi common)
   nv_test(
     test_leaky_relu_grad_grad_functor
     SRCS test_leaky_relu_grad_grad_functor.cc
@@ -87,12 +89,18 @@ if(WITH_GPU)
   nv_test(
     feed_forward_test
     SRCS feed_forward_test.cu
-    DEPS fleet_executor elementwise_add_op matmul_op tensor phi ${CINN_DEPS})
+    DEPS fleet_executor
+         elementwise_add_op
+         matmul_op
+         tensor
+         phi
+         common
+         ${CINN_DEPS})
 elseif(WITH_ROCM)
   hip_test(
     dropout_op_test
     SRCS dropout_op_test.cc
-    DEPS dropout_op tensor phi)
+    DEPS dropout_op tensor phi common)
   hip_test(
     test_leaky_relu_grad_grad_functor
     SRCS test_leaky_relu_grad_grad_functor.cc
@@ -116,22 +124,28 @@ if(WITH_CINN)
     op_debug_string_test.cc
     DEPS
     executor
+    common
     fleet_executor
-    cinn_compiler
     recurrent_op_helper
     recurrent_op
     elementwise_add_op
     ${COMMON_OP_DEPS}
     python)
 else()
-  paddle_test(op_debug_string_test SRCS op_debug_string_test.cc)
+  paddle_test(op_debug_string_test SRCS op_debug_string_test.cc DEPS common)
 endif()
 
 if(WITH_GPU)
   cc_test(
     copy_cross_scope_test
     SRCS copy_cross_scope_test.cc
-    DEPS op_registry copy_cross_scope_op scope device_context enforce executor)
+    DEPS op_registry
+         copy_cross_scope_op
+         scope
+         device_context
+         enforce
+         executor
+         common)
 endif()
 
 if(WITH_ONNXRUNTIME AND WIN32)

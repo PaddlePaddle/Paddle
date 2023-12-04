@@ -38,6 +38,7 @@ struct EigenScale<Eigen::GpuDevice, T> {
   }
 };
 
+template struct EigenScale<Eigen::GpuDevice, bool>;
 template struct EigenScale<Eigen::GpuDevice, float>;
 template struct EigenScale<Eigen::GpuDevice, double>;
 template struct EigenScale<Eigen::GpuDevice, uint8_t>;

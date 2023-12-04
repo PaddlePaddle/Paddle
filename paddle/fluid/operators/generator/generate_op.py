@@ -92,6 +92,7 @@ def process_scalar(op_item, scalar_configs):
     scalar_map = {
         'Scalar': 'float',
         'Scalar(float)': 'float',
+        'Scalar(double)': 'double',
         'Scalar(int)': 'int',
         'Scalar(int64_t)': 'int64_t',
     }
@@ -115,6 +116,14 @@ def process_scalar(op_item, scalar_configs):
                     if 'data_type' in scalar_config
                     else scalar_map[attr_type]
                 )
+                if (
+                    attr_type == 'Scalar(double)'
+                    and attr_item['data_type'] == 'std::string'
+                    and 'default_value' in attr_item
+                ):
+                    attr_item['default_value'] = (
+                        '"' + attr_item['default_value'] + '"'
+                    )
                 if attr_item['is_support_tensor'] is False:
                     attr_item['tensor_name'] = scalar_config['tensor_name']
 

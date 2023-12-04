@@ -44,13 +44,13 @@ typedef SSIZE_T ssize_t;
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/fluid/pybind/tensor_py.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -247,6 +247,11 @@ static PyObject* tensor__add__method(TensorObject* self,
     }
   }
 
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+  }
+
   // 3. promote types or unify right var type to left var
   phi::DataType lhs_dtype = self_tensor.dtype();
   phi::DataType rhs_dtype = other_tensor.dtype();
@@ -348,6 +353,11 @@ static PyObject* tensor__sub__method(TensorObject* self,
     }
   }
 
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+  }
+
   // 3. promote types or unify right var type to left var
   phi::DataType lhs_dtype = self_tensor.dtype();
   phi::DataType rhs_dtype = other_tensor.dtype();
@@ -443,6 +453,11 @@ static PyObject* tensor__rsub__method(TensorObject* self,
       other_tensor = full_ad_func(
           self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
+  }
+
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
   }
 
   // 3. promote types or unify right var type to left var
@@ -548,6 +563,11 @@ static PyObject* tensor__mul__method(TensorObject* self,
     }
   }
 
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+  }
+
   // 3. promote types or unify right var type to left var
   phi::DataType lhs_dtype = self_tensor.dtype();
   phi::DataType rhs_dtype = other_tensor.dtype();
@@ -577,11 +597,6 @@ static PyObject* tensor__mul__method(TensorObject* self,
       eager_gil_scoped_release guard;
       other_tensor = cast_ad_func(other_tensor, lhs_dtype);
     }
-  }
-
-  const phi::distributed::ProcessMesh* mesh = nullptr;
-  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
-    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
   }
 
   // 4. calculation
@@ -657,6 +672,11 @@ static PyObject* tensor__div__method(TensorObject* self,
       other_tensor = full_ad_func(
           self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
+  }
+
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
   }
 
   // 3. promote types or unify right var type to left var
@@ -779,6 +799,11 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
     }
   }
 
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+  }
+
   // 3. promote types or unify right var type to left var
   phi::DataType lhs_dtype = self_tensor.dtype();
   phi::DataType rhs_dtype = other_tensor.dtype();
@@ -897,6 +922,11 @@ static PyObject* tensor__gt__method(TensorObject* self,
     }
   }
 
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+  }
+
   // 3. promote types or unify right var type to left var
   phi::DataType lhs_dtype = self_tensor.dtype();
   phi::DataType rhs_dtype = other_tensor.dtype();
@@ -985,6 +1015,11 @@ static PyObject* tensor__ge__method(TensorObject* self,
       other_tensor = full_ad_func(
           self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
+  }
+
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
   }
 
   // 3. promote types or unify right var type to left var
@@ -1078,6 +1113,11 @@ static PyObject* tensor__mod__method(TensorObject* self,
     }
   }
 
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+  }
+
   // 3. promote types or unify right var type to left var
   phi::DataType lhs_dtype = self_tensor.dtype();
   phi::DataType rhs_dtype = other_tensor.dtype();
@@ -1166,6 +1206,11 @@ static PyObject* tensor__matmul__method(TensorObject* self,
       other_tensor =
           full_ad_func({1}, value, self_tensor.dtype(), self_tensor.place());
     }
+  }
+
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
   }
 
   // 3. promote types or unify right var type to left var
@@ -1276,6 +1321,11 @@ static PyObject* tensor__lt__method(TensorObject* self,
     }
   }
 
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+  }
+
   // 3. promote types or unify right var type to left var
   phi::DataType lhs_dtype = self_tensor.dtype();
   phi::DataType rhs_dtype = other_tensor.dtype();
@@ -1364,6 +1414,11 @@ static PyObject* tensor__le__method(TensorObject* self,
       other_tensor = full_ad_func(
           self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
+  }
+
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
   }
 
   // 3. promote types or unify right var type to left var
@@ -1457,6 +1512,11 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
     }
   }
 
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+  }
+
   // 3. promote types or unify right var type to left var
   phi::DataType lhs_dtype = self_tensor.dtype();
   phi::DataType rhs_dtype = other_tensor.dtype();
@@ -1544,6 +1604,11 @@ static PyObject* tensor__pow__method(TensorObject* self,
       other_tensor =
           full_ad_func({1}, value, self_tensor.dtype(), self_tensor.place());
     }
+  }
+
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
   }
 
   // 3. promote types or unify right var type to left var
@@ -1638,6 +1703,11 @@ static PyObject* tensor__rpow__method(TensorObject* self,
     }
   }
 
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+  }
+
   // 3. promote types or unify right var type to left var
   phi::DataType lhs_dtype = self_tensor.dtype();
   phi::DataType rhs_dtype = other_tensor.dtype();
@@ -1728,6 +1798,11 @@ static PyObject* tensor__ne__method(TensorObject* self,
     }
   }
 
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+  }
+
   // 3. promote types or unify right var type to left var
   phi::DataType lhs_dtype = self_tensor.dtype();
   phi::DataType rhs_dtype = other_tensor.dtype();
@@ -1816,6 +1891,11 @@ static PyObject* tensor__eq__method(TensorObject* self,
       other_tensor =
           full_ad_func({1}, value, self_tensor.dtype(), self_tensor.place());
     }
+  }
+
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
   }
 
   // 3. promote types or unify right var type to left var

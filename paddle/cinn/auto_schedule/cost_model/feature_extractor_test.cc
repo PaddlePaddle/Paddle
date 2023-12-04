@@ -38,9 +38,9 @@ namespace auto_schedule {
 TEST(FeatureExtractor, SimpleAssign) {
   Context::Global().ResetNameId();
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
   ir::Expr M(32);
   ir::Expr N(32);
@@ -89,12 +89,13 @@ TEST(FeatureExtractor, SimpleAssign) {
   ASSERT_EQ(to_check[29], slog(3));
 }
 
+#ifdef CINN_WITH_CUDA
 TEST(FeatureExtractor, MatrixMultiply) {
   Context::Global().ResetNameId();
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
 
   ir::Expr M(2);
@@ -162,6 +163,6 @@ TEST(FeatureExtractor, MatrixMultiply) {
   // GpuBind loop
   ASSERT_EQ(to_check[37], slog(out_loop));
 }
-
+#endif
 }  // namespace auto_schedule
 }  // namespace cinn

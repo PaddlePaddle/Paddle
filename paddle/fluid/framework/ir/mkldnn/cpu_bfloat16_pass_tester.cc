@@ -15,7 +15,6 @@
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/framework/ir/mkldnn/cpu_bfloat16_pass.h"
-#include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/imperative/type_defs.h"
 
 namespace paddle {

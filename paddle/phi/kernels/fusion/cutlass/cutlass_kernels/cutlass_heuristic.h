@@ -106,7 +106,8 @@ static bool is_valid_split_k_factor(const int64_t m,
 static std::vector<CutlassTileConfig> get_candidate_tiles(
     const bool is_weight_only,
     const bool is_weight_only_encoder,
-    const bool simt_configs_only) {
+    const bool simt_configs_only,
+    const int sm) {
   std::vector<CutlassTileConfig> simt_configs{
       CutlassTileConfig::CtaShape128x128x8_WarpShape64x64x8};
 
@@ -116,11 +117,29 @@ static std::vector<CutlassTileConfig> get_candidate_tiles(
       CutlassTileConfig::CtaShape128x128x64_WarpShape64x32x64,
   };
 
-  std::vector<CutlassTileConfig> quant_B_configs{
+  std::vector<CutlassTileConfig> quant_B_configs_sm70{
       CutlassTileConfig::CtaShape32x128x64_WarpShape32x32x64,
       CutlassTileConfig::CtaShape64x128x64_WarpShape64x32x64,
-      CutlassTileConfig::CtaShape128x128x64_WarpShape128x32x64,
   };
+  std::vector<CutlassTileConfig> quant_B_configs_sm80{
+      CutlassTileConfig::CtaShape32x128x64_WarpShape32x32x64,
+      CutlassTileConfig::CtaShape64x128x64_WarpShape64x32x64,
+      CutlassTileConfig::CtaShape128x128x64_WarpShape128x32x64};
+
+  std::vector<CutlassTileConfig> quant_B_configs;
+  switch (sm) {
+    case 80:
+      quant_B_configs = quant_B_configs_sm80;
+      break;
+    case 75:
+    case 70:
+      quant_B_configs = quant_B_configs_sm70;
+      break;
+    default:
+      quant_B_configs = quant_B_configs_sm70;
+      break;
+  }
+
   std::vector<CutlassTileConfig> encoder_quant_B_configs{
       CutlassTileConfig::CtaShape128x256x64_WarpShape64x64x64
       //    CutlassTileConfig::CtaShape256x128x64_WarpShape64x64x64
@@ -138,7 +157,7 @@ static std::vector<CutlassGemmConfig> get_candidate_configs(
     const bool is_weight_only_encoder,
     const bool simt_configs_only) {
   std::vector<CutlassTileConfig> tiles = get_candidate_tiles(
-      is_weight_only, is_weight_only_encoder, simt_configs_only);
+      is_weight_only, is_weight_only_encoder, simt_configs_only, sm);
 
   std::vector<CutlassGemmConfig> candidate_configs;
   const int min_stages = 2;

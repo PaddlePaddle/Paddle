@@ -19,60 +19,63 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.base import Program, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 
 # Test python API
 class TestFullAPI(unittest.TestCase):
+    @test_with_pir_api
     def test_api(self):
-        positive_2_int32 = paddle.tensor.fill_constant([1], "int32", 2)
+        with paddle.static.program_guard(paddle.static.Program()):
+            positive_2_int32 = paddle.tensor.fill_constant([1], "int32", 2)
 
-        positive_2_int64 = paddle.tensor.fill_constant([1], "int64", 2)
-        shape_tensor_int32 = paddle.static.data(
-            name="shape_tensor_int32", shape=[2], dtype="int32"
-        )
+            positive_2_int64 = paddle.tensor.fill_constant([1], "int64", 2)
+            shape_tensor_int32 = paddle.static.data(
+                name="shape_tensor_int32", shape=[2], dtype="int32"
+            )
 
-        shape_tensor_int64 = paddle.static.data(
-            name="shape_tensor_int64", shape=[2], dtype="int64"
-        )
+            shape_tensor_int64 = paddle.static.data(
+                name="shape_tensor_int64", shape=[2], dtype="int64"
+            )
 
-        out_1 = paddle.full(shape=[1, 2], dtype="float32", fill_value=1.1)
+            out_1 = paddle.full(shape=[1, 2], dtype="float32", fill_value=1.1)
 
-        out_2 = paddle.full(
-            shape=[1, positive_2_int32], dtype="float32", fill_value=1.1
-        )
+            out_2 = paddle.full(
+                shape=[1, positive_2_int32], dtype="float32", fill_value=1.1
+            )
 
-        out_3 = paddle.full(
-            shape=[1, positive_2_int64], dtype="float32", fill_value=1.1
-        )
+            out_3 = paddle.full(
+                shape=[1, positive_2_int64], dtype="float32", fill_value=1.1
+            )
 
-        out_4 = paddle.full(
-            shape=shape_tensor_int32, dtype="float32", fill_value=1.2
-        )
+            out_4 = paddle.full(
+                shape=shape_tensor_int32, dtype="float32", fill_value=1.2
+            )
 
-        out_5 = paddle.full(
-            shape=shape_tensor_int64, dtype="float32", fill_value=1.1
-        )
+            out_5 = paddle.full(
+                shape=shape_tensor_int64, dtype="float32", fill_value=1.1
+            )
 
-        out_6 = paddle.full(
-            shape=shape_tensor_int64, dtype=np.float32, fill_value=1.1
-        )
+            out_6 = paddle.full(
+                shape=shape_tensor_int64, dtype=np.float32, fill_value=1.1
+            )
 
-        val = paddle.tensor.fill_constant(
-            shape=[1], dtype=np.float32, value=1.1
-        )
-        out_7 = paddle.full(
-            shape=shape_tensor_int64, dtype=np.float32, fill_value=val
-        )
+            val = paddle.tensor.fill_constant(
+                shape=[1], dtype=np.float32, value=1.1
+            )
+            out_7 = paddle.full(
+                shape=shape_tensor_int64, dtype=np.float32, fill_value=val
+            )
 
-        exe = base.Executor(place=base.CPUPlace())
-        res_1, res_2, res_3, res_4, res_5, res_6, res_7 = exe.run(
-            base.default_main_program(),
-            feed={
-                "shape_tensor_int32": np.array([1, 2]).astype("int32"),
-                "shape_tensor_int64": np.array([1, 2]).astype("int64"),
-            },
-            fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6, out_7],
-        )
+            exe = base.Executor(place=base.CPUPlace())
+            res_1, res_2, res_3, res_4, res_5, res_6, res_7 = exe.run(
+                paddle.static.default_main_program(),
+                feed={
+                    "shape_tensor_int32": np.array([1, 2]).astype("int32"),
+                    "shape_tensor_int64": np.array([1, 2]).astype("int64"),
+                },
+                fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6, out_7],
+            )
 
         np.testing.assert_array_equal(
             res_1, np.full([1, 2], 1.1, dtype="float32")

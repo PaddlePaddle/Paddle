@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import gc
 import traceback
 import types
 from typing import List, Tuple
@@ -32,7 +33,6 @@ from ...utils import (
 from ..custom_code import CustomCode
 from .guard import Guard
 from .opcode_executor import OpcodeExecutor, OpcodeExecutorBase
-from .pycode_generator import PyCodeGen
 
 GuardedFunction = Tuple[CustomCode, Guard]
 GuardedFunctions = List[GuardedFunction]
@@ -212,19 +212,17 @@ def start_translate(frame: types.FrameType, **kwargs) -> GuardedFunction:
             f"Unsupport Frame is {frame.f_code}, error message is: \n"
             + "".join(traceback.format_exception(type(e), e, e.__traceback__)),
         )
-
-        # NOTE: If resume fn need fallback, we should replace NullVariable using NULL otherwise will fail to run
-        py_codegen = PyCodeGen(frame)
-        new_code = py_codegen.replace_null_variable()
         # simulation not complete, not sure whether this code has sir, set disable_eval_frame = False
         guard_fn = (
             dummy_guard if e.disable_eval_frame is False else simulator.guard_fn
         )
         return (
-            CustomCode(new_code, e.disable_eval_frame),
+            CustomCode(None, e.disable_eval_frame),
             guard_fn,
         )
     except Exception as e:
         raise InnerError(OpcodeExecutorBase.error_message_summary(e)) from e
     finally:
         simulator.cleanup()
+        del simulator
+        gc.collect()

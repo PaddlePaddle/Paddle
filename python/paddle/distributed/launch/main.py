@@ -331,7 +331,19 @@ def launch():
 
         # copy training script args
         if ctx.args.training_script.endswith('.py'):
-            entrypoint = [sys.executable, "-u", ctx.args.training_script]
+            if os.environ.get("WITH_COVERAGE") == "ON":
+                entrypoint = [
+                    sys.executable,
+                    "-u",
+                    "-m",
+                    "coverage",
+                    "run",
+                    "--branch",
+                    "-p",
+                    ctx.args.training_script,
+                ]
+            else:
+                entrypoint = [sys.executable, "-u", ctx.args.training_script]
         else:
             entrypoint = [ctx.args.training_script]
         entrypoint.extend(ctx.args.training_script_args)
@@ -656,6 +668,7 @@ def launch():
                 elif "OK" not in status:
                     timeout_flag = False
 
+            has_error = False
             if err & (1 << 0):
                 ctx.logger.warning(
                     f"Read metric failed for parameters: {log_dir}"
@@ -665,6 +678,7 @@ def launch():
                 cur_cfg['time'] = -1
                 cur_cfg[tuner_cfg['metric_cfg']['name']] = None
                 cur_cfg["max_mem_usage"] = mem if not OOM_flag else "OOM"
+                has_error = True
 
             if err & (1 << 1):
                 ctx.logger.warning(f"Out of memory for parameters: {log_dir}")
@@ -673,6 +687,7 @@ def launch():
                 cur_cfg['time'] = -1
                 cur_cfg[tuner_cfg['metric_cfg']['name']] = None
                 cur_cfg["max_mem_usage"] = "OOM"
+                has_error = True
 
             # not err & (1 << 1): do not record memory usage when out of memory
             if err & (1 << 2) and not err & (1 << 1):
@@ -684,18 +699,20 @@ def launch():
                 )
                 cur_cfg["max_mem_usage"] = None if not OOM_flag else "OOM"
 
-            if not err and timeout_flag:
+            if not has_error and timeout_flag:
                 # for pruner use
                 cur_cfg['time'] = metric
                 cur_cfg[tuner_cfg['metric_cfg']['name']] = metric
                 cur_cfg["max_mem_usage"] = mem if not OOM_flag else "OOM"
 
-            if not err and not timeout_flag:
+            if not has_error and not timeout_flag:
                 cur_cfg['time'] = -1
                 cur_cfg[tuner_cfg['metric_cfg']['name']] = None
                 cur_cfg["max_mem_usage"] = None if not OOM_flag else "OOM"
 
             # record history
+            if tuner_cfg['metric_cfg']['name'] not in cur_cfg:
+                cur_cfg[tuner_cfg['metric_cfg']['name']] = None
             cur_cfg['job_id'] = job_id
             recorder.add_cfg(**cur_cfg)
             recorder.store_history(history_file_path)
@@ -794,6 +811,8 @@ def launch():
         ctx.logger.info(f"AutoTuner ends in {end_time-start_time}s.")
         logger.info(f"AutoTuner ends in {end_time-start_time}s.")
         # launch best cfg
+        if not tuner_cfg.get("run_best", True):
+            sys.exit()
         new_args = gen_new_args(raw_args, best_cfg, tuner_cfg, run_best=True)
         ctx.run_best = True
         ctx.args.training_script_args = new_args

@@ -31,7 +31,7 @@ namespace egr {
 TEST(EagerUtils, AutoGradMeta) {
   // Construct Eager Tensor
   phi::DenseTensorMeta meta =
-      phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 1}));
+      phi::DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim({1, 1}));
   std::shared_ptr<phi::DenseTensor> dt0 = std::make_shared<phi::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
@@ -169,7 +169,7 @@ TEST(EagerUtils, PassStopGradient) {
 }
 
 TEST(EagerUtils, TrySyncToVar) {
-  paddle::framework::DDim ddim = phi::make_ddim({2, 4, 4, 4});
+  paddle::framework::DDim ddim = common::make_ddim({2, 4, 4, 4});
   auto tensor = CreateTestCPUTensor(5.0f, ddim);
   std::vector<std::shared_ptr<egr::EagerVariable>> var_bases = {
       egr::EagerUtils::TrySyncToVar(tensor)};
@@ -187,7 +187,7 @@ TEST(EagerUtils, TrySyncToVar) {
 }
 
 TEST(EagerUtils, TrySyncToVars) {
-  paddle::framework::DDim ddim = phi::make_ddim({2, 4, 4, 4});
+  paddle::framework::DDim ddim = common::make_ddim({2, 4, 4, 4});
   std::vector<paddle::Tensor> tensors = {CreateTestCPUTensor(1.0f, ddim),
                                          CreateTestCPUTensor(2.0f, ddim)};
 

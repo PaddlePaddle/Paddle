@@ -25,7 +25,8 @@
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
 
-PHI_DECLARE_bool(new_ir_apply_inplace_pass);
+PHI_DECLARE_bool(pir_apply_inplace_pass);
+PHI_DECLARE_bool(print_ir);
 
 namespace paddle {
 namespace framework {
@@ -324,7 +325,7 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
   return core;
 }
 
-std::shared_ptr<InterpreterCore> CreateNewIRInterpreterCoreInfoToCache(
+std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
     std::unique_ptr<::pir::Program> ir_program,
     const platform::Place &place,
     bool is_grad,
@@ -458,10 +459,15 @@ std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
 
   auto ir_res = paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
 
-  if (FLAGS_new_ir_apply_inplace_pass) {
+  if (FLAGS_pir_apply_inplace_pass) {
     ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
     pm.AddPass(::pir::CreateInplacePass());
     pm.Run(ir_res.get());
+
+    if (FLAGS_print_ir) {
+      std::cout << "IR After inplace -------------------" << std::endl;
+      std::cout << *ir_res << std::endl;
+    }
   }
 
   return ir_res;
@@ -540,10 +546,17 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
 
   auto res = paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
 
-  if (FLAGS_new_ir_apply_inplace_pass) {
+  if (FLAGS_pir_apply_inplace_pass) {
     ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
     pm.AddPass(::pir::CreateInplacePass());
+    if (VLOG_IS_ON(6)) {
+      pm.EnableIRPrinting();
+    }
     pm.Run(res.get());
+    if (FLAGS_print_ir) {
+      std::cout << "IR After inplace -------------------" << std::endl;
+      std::cout << *res << std::endl;
+    }
   }
 
   return res;

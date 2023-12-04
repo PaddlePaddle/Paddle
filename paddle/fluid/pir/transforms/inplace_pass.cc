@@ -12,21 +12,40 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/transforms/inplace_pass.h"
+#include <numeric>
+#include <regex>
+#include <string>
+#include <unordered_set>
+
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/transforms/inplace_pass.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_registry.h"
 
+PHI_DECLARE_string(ir_inplace_kernel_blacklist);
+
 namespace details {
+
+using TensorType = paddle::dialect::AllocatedDenseTensorType;
+
+static std::unordered_set<std::string> relaxing_op_list = {
+    paddle::dialect::ReshapeOp::name(),
+    paddle::dialect::ReshapeGradOp::name(),
+    paddle::dialect::AddGradOp::name(),
+};
+
 // NOTE(zhangbo): Which kind of value can be deleted?
 // (1) Value's type needs to be AllocatedDenseTensorType or
 // AllocatedSelectedRowsType; (2) Value's is not persisable.
@@ -34,7 +53,7 @@ static bool CanBeDeleted(pir::Value value) {
   if (!value.type()) {
     return false;
   }
-  if (!value.type().isa<paddle::dialect::AllocatedDenseTensorType>() &&
+  if (!value.type().isa<TensorType>() &&
       !value.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
     return false;
   }
@@ -52,8 +71,76 @@ static bool CanBeDeleted(pir::Value value) {
 
 static bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
                          pir::Value input,
-                         pir::Value output) {
-  if (input.type() != output.type()) {
+                         pir::Value output,
+                         bool relax = false) {
+  if (!input.type() || !output.type()) {
+    return false;
+  }
+
+  if (input.type().isa<TensorType>() && output.type().isa<TensorType>()) {
+    auto input_alloc_tensor_type = input.type().dyn_cast<TensorType>();
+    auto output_alloc_tensor_type = output.type().dyn_cast<TensorType>();
+
+    if (input_alloc_tensor_type.dtype() != output_alloc_tensor_type.dtype()) {
+      VLOG(9) << "     -- input's dtype != output's dtype, can't do inplace";
+      return false;
+    }
+
+    auto is_numel_euqal = [](const TensorType& in,
+                             const TensorType& out) -> bool {
+      int64_t in_numel = 1;
+      int64_t out_numel = 1;
+      for (int i = 0; i < in.dims().size(); i++) {
+        if (in.dims()[i] == -1 && i != 0) {
+          VLOG(9) << "     -- input's shape has -1 and not in first dim, can't "
+                     "do inplace";
+          return false;
+        }
+        in_numel *= in.dims()[i];
+      }
+
+      for (int i = 0; i < out.dims().size(); i++) {
+        if (out.dims()[i] == -1 && i != 0) {
+          VLOG(9)
+              << "     -- output's shape has -1 and not in first dim, can't "
+                 "do inplace";
+          return false;
+        }
+        out_numel *= out.dims()[i];
+      }
+      return in_numel == out_numel;
+    };
+
+    // In this version, we don't consider the -1 in ddim, we just calculate the
+    // result.
+    auto is_numel_euqal_loose_version = [](const TensorType& in,
+                                           const TensorType& out) -> bool {
+      auto calculate_numel = [](const phi::DDim& ddim) -> int64_t {
+        int64_t numel = 1;
+        for (int i = 0; i < ddim.size(); i++) {
+          numel *= ddim[i];
+        }
+        return numel;
+      };
+      int64_t in_numel = calculate_numel((in.dims()));
+      int64_t out_numel = calculate_numel((out.dims()));
+      VLOG(10) << "in: " << in_numel << ", out: " << out_numel;
+      return in_numel == out_numel;
+    };
+
+    bool equal = false;
+    if (relax) {
+      equal = is_numel_euqal_loose_version(input_alloc_tensor_type,
+                                           output_alloc_tensor_type);
+    } else {
+      equal = is_numel_euqal(input_alloc_tensor_type, output_alloc_tensor_type);
+    }
+
+    if (!equal) {
+      VLOG(9) << "     -- input's numel != output's numel, can't do inplace";
+      return false;
+    }
+  } else if (input.type() != output.type()) {
     VLOG(9) << "     -- input's type != output's type, can't do inplace";
     return false;
   }
@@ -80,7 +167,7 @@ static bool IsNoNeedBuffer(pir::Operation* op, pir::Value value) {
         op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
     if (info_interface) {
       paddle::dialect::OpYamlInfoParser info_parser(
-          info_interface->get_op_info_());
+          info_interface->get_op_info_(), paddle::dialect::IsLegacyOp(op_name));
       auto& no_need_buffer_ids = info_parser.NoNeedBufferIds();
       for (size_t id = 0; id < no_need_buffer_ids.size(); id++) {
         if (value == op->operand_source(no_need_buffer_ids[id])) {
@@ -97,22 +184,23 @@ static bool IsNoNeedBuffer(pir::Operation* op, pir::Value value) {
 static std::unordered_set<pir::Value> GetSkipDeletionValues(pir::Block* block) {
   std::unordered_set<pir::Value> skip_dels;
   for (auto& op : *block) {
-    if (op->dialect()->name().compare(paddle::dialect::KernelDialect::name()) !=
+    if (op.dialect()->name().compare(paddle::dialect::KernelDialect::name()) !=
         0) {
       continue;
     }
-    IR_ENFORCE(op->attributes().count("op_name") > 0,
+    IR_ENFORCE(op.attributes().count("op_name") > 0,
                "kernel_dialect op should own an 'op_name' attribute.");
     auto upper_op_name =
-        op->attributes().at("op_name").dyn_cast<pir::StrAttribute>().AsString();
+        op.attributes().at("op_name").dyn_cast<pir::StrAttribute>().AsString();
 
-    if (upper_op_name == "pd_op.feed" || upper_op_name == "pd_op.data") {
-      skip_dels.insert(op->result(0));
+    if (upper_op_name == "pd_op.feed" || upper_op_name == "pd_op.data" ||
+        upper_op_name == "pd_op.shadow_feed") {
+      skip_dels.insert(op.result(0));
       continue;
     }
     if (upper_op_name == "pd_op.fetch" ||
         upper_op_name == "builtin.shadow_output") {
-      skip_dels.insert(op->operand_source(0));
+      skip_dels.insert(op.operand_source(0));
       continue;
     }
   }
@@ -127,44 +215,42 @@ static void GetEagerDelValueOfOp(
     const std::unordered_set<pir::Value>& skip_dels,
     std::unordered_map<pir::Value, pir::Operation*>* del_value_2_op) {
   for (auto& op : *block) {
-    std::string upper_op_name = op->name();
-    if (op->dialect()->name().compare(paddle::dialect::KernelDialect::name()) ==
+    std::string upper_op_name = op.name();
+    if (op.dialect()->name().compare(paddle::dialect::KernelDialect::name()) ==
         0) {
-      IR_ENFORCE(op->attributes().count("op_name") > 0,
+      IR_ENFORCE(op.attributes().count("op_name") > 0,
                  "kernel_dialect op should own an 'op_name' attribute.");
-      upper_op_name = op->attributes()
+      upper_op_name = op.attributes()
                           .at("op_name")
                           .dyn_cast<pir::StrAttribute>()
                           .AsString();
     }
 
-    for (size_t i = 0; i < op->num_operands(); ++i) {
-      auto input = op->operand_source(i);
-      if (skip_dels.count(input) > 0 || !input || !CanBeDeleted(input) ||
-          IsNoNeedBuffer(op, input)) {
+    for (size_t i = 0; i < op.num_operands(); ++i) {
+      auto input = op.operand_source(i);
+      if (skip_dels.count(input) > 0 || !input || !CanBeDeleted(input)) {
         VLOG(6) << "The " << i << "-th input value of the Operation("
                 << upper_op_name << ") can not be deleted.";
         VLOG(8) << " -- skip dels: " << skip_dels.count(input);
         VLOG(8) << " -- value is null: " << !input;
         VLOG(8) << " -- can be deleted: " << !CanBeDeleted(input);
-        VLOG(8) << " -- is no_need_buffer: " << IsNoNeedBuffer(op, input);
         continue;
       }
-      (*del_value_2_op)[input] = op;
+      (*del_value_2_op)[input] = &op;
     }
 
-    for (auto& result : op->results()) {
+    for (auto& result : op.results()) {
       pir::Value output = result;
       if (output && CanBeDeleted(output)) {
-        (*del_value_2_op)[output] = op;
+        (*del_value_2_op)[output] = &op;
       }
     }
 
-    if (op->isa<paddle::dialect::IfOp>()) {
-      auto if_op = op->dyn_cast<paddle::dialect::IfOp>();
-      GetEagerDelValueOfOp(if_op.true_block(), skip_dels, del_value_2_op);
+    if (op.isa<paddle::dialect::IfOp>()) {
+      auto if_op = op.dyn_cast<paddle::dialect::IfOp>();
+      GetEagerDelValueOfOp(&if_op.true_block(), skip_dels, del_value_2_op);
       VLOG(8) << "GetEagerDelValueOfOp for IfOp true block";
-      GetEagerDelValueOfOp(if_op.false_block(), skip_dels, del_value_2_op);
+      GetEagerDelValueOfOp(&if_op.false_block(), skip_dels, del_value_2_op);
       VLOG(8) << "GetEagerDelValueOfOp for IfOp false block";
     }
   }
@@ -197,22 +283,22 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
   std::unordered_set<pir::Value> reused_output_values;
 
   for (auto& op : *block) {
-    for (size_t i = 0; i < op->num_operands(); ++i) {
-      visited_values.insert(op->operand_source(i));
+    for (size_t i = 0; i < op.num_operands(); ++i) {
+      visited_values.insert(op.operand_source(i));
     }
 
-    if (op->dialect()->name().compare(paddle::dialect::KernelDialect::name()) !=
+    if (op.dialect()->name().compare(paddle::dialect::KernelDialect::name()) !=
         0) {
-      VLOG(6) << op->name()
+      VLOG(6) << op.name()
               << "is not a kernel_dialect op, inplace only support "
                  "kernel_dialect operators";
-      for (auto& result : op->results()) {
+      for (auto& result : op.results()) {
         visited_values.insert(result);
       }
       continue;
     }
 
-    auto upper_op_attrs = op->attributes();
+    auto upper_op_attrs = op.attributes();
     auto upper_op_name =
         upper_op_attrs.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
     VLOG(6) << "analyse op: " << upper_op_name;
@@ -226,7 +312,7 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
              .dyn_cast<paddle::dialect::KernelAttribute>()
              .data()
              .backend() == phi::Backend::CPU)) {
-      for (auto& result : op->results()) {
+      for (auto& result : op.results()) {
         visited_values.insert(result);
       }
       continue;
@@ -235,10 +321,10 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
     if (upper_op_attrs.count("is_inplace") != 0 &&
         upper_op_attrs.at("is_inplace").dyn_cast<pir::BoolAttribute>().data()) {
       VLOG(6) << upper_op_name << " is already an inplace op.";
-      for (size_t i = 0; i < op->num_operands(); ++i) {
-        reused_input_values.insert(op->operand_source(i));
+      for (size_t i = 0; i < op.num_operands(); ++i) {
+        reused_input_values.insert(op.operand_source(i));
       }
-      for (auto& result : op->results()) {
+      for (auto& result : op.results()) {
         reused_output_values.insert(result);
         visited_values.insert(result);
       }
@@ -248,11 +334,33 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
     pir::OpInfo upper_inplace_op_info =
         pir::IrContext::Instance()->GetRegisteredOpInfo(upper_op_name + "_");
 
-    if (eager_dels.count(op) == 0 || (!upper_inplace_op_info)) {
+    std::regex reg(",");
+    std::unordered_set<std::string> elems{
+        std::sregex_token_iterator(FLAGS_ir_inplace_kernel_blacklist.begin(),
+                                   FLAGS_ir_inplace_kernel_blacklist.end(),
+                                   reg,
+                                   -1),
+        std::sregex_token_iterator()};
+    elems.erase("");
+
+    if (elems.count(upper_op_name)) {
       VLOG(6) << upper_op_name
               << "'s value can't delete or doesn't have inplace op, so that "
                  "can't do inplace.";
-      for (auto& result : op->results()) {
+      for (size_t i = 0; i < op.num_results(); ++i) {
+        visited_values.insert(op.result(i));
+      }
+      continue;
+    }
+    if (eager_dels.count(&op) == 0 || (!upper_inplace_op_info) ||
+        upper_op_name == "pd_op.transpose") {
+      // NOTE(wanghuancoder): pd_op.transpose is not an
+      // inplace op, only strided transpose support
+      // inplace in dygraph
+      VLOG(6) << upper_op_name
+              << "'s value can't delete or doesn't have inplace op, so that "
+                 "can't do inplace.";
+      for (auto& result : op.results()) {
         visited_values.insert(result);
       }
       continue;
@@ -271,47 +379,61 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
         upper_inplace_op_info_parser.GetInplaceIdMap();
 
     bool can_do_inplace = true;
+    bool relax = (details::relaxing_op_list.count(upper_op_name) > 0);
     for (auto& kv : inplace_out_2_in) {
       uint32_t out_slot = kv.first;
       uint32_t in_slot = kv.second;
-      if ((in_slot >= op->num_operands()) || (out_slot >= op->num_results()) ||
-          (!CanDoInplace(eager_dels.at(op),
-                         op->operand_source(in_slot),
-                         op->result(out_slot))) ||
-          (visited_values.count(op->result(out_slot)) > 0) ||
-          (!CanBeDeleted(op->result(out_slot))) ||
-          (reused_input_values.count(op->operand_source(in_slot)) > 0) ||
-          (reused_output_values.count(op->result(out_slot)) > 0)) {
+      if ((in_slot >= op.num_operands()) || (out_slot >= op.num_results()) ||
+          (!CanDoInplace(eager_dels.at(&op),
+                         op.operand_source(in_slot),
+                         op.result(out_slot),
+                         relax)) ||
+          (visited_values.count(op.result(out_slot)) > 0) ||
+          (!CanBeDeleted(op.result(out_slot))) ||
+          (reused_input_values.count(op.operand_source(in_slot)) > 0) ||
+          (reused_output_values.count(op.result(out_slot)) > 0)) {
         can_do_inplace = false;
         VLOG(6) << upper_op_name
                 << "'s value has been visited or reused by other inplace op, "
-                   "so that can't do inplace.";
-        VLOG(8) << " -- operand " << in_slot << " and result " << out_slot
-                << " can do inplace: "
-                << CanDoInplace(eager_dels.at(op),
-                                op->operand_source(in_slot),
-                                op->result(out_slot));
-        VLOG(8) << " -- result " << out_slot << " visited: "
-                << (visited_values.count(op->result(out_slot)) > 0);
-        VLOG(8) << " -- operand " << in_slot << " has been reused: "
-                << (reused_input_values.count(op->operand_source(in_slot)) > 0);
-        VLOG(8) << " -- result " << out_slot << " has been reused: "
-                << (reused_output_values.count(op->result(out_slot)) > 0);
+                   "so that can't do inplace when setting relax to :"
+                << relax;
+        VLOG_IF(
+            8, ((in_slot < op.num_operands()) && (out_slot < op.num_results())))
+            << " -- operand " << in_slot << " and result " << out_slot
+            << " can do inplace: "
+            << CanDoInplace(eager_dels.at(&op),
+                            op.operand_source(in_slot),
+                            op.result(out_slot),
+                            relax);
+        VLOG_IF(8, out_slot < op.num_results())
+            << " -- result " << out_slot
+            << " visited: " << (visited_values.count(op.result(out_slot)) > 0);
+        VLOG_IF(8, in_slot < op.num_operands())
+            << " -- operand " << in_slot << " has been reused: "
+            << (reused_input_values.count(op.operand_source(in_slot)) > 0);
+        VLOG_IF(8, out_slot < op.num_results())
+            << " -- result " << out_slot << " has been reused: "
+            << (reused_output_values.count(op.result(out_slot)) > 0);
         break;
       }
     }
     if (can_do_inplace) {
-      inplace_ops[op] = upper_op_name + "_";
+      inplace_ops[&op] = upper_op_name + "_";
       for (auto& kv : inplace_out_2_in) {
-        reused_input_values.insert(op->operand_source(kv.second));
-        reused_output_values.insert(op->result(kv.first));
+        reused_input_values.insert(op.operand_source(kv.second));
+        reused_output_values.insert(op.result(kv.first));
       }
       VLOG(6) << upper_op_name
               << " will change to inplace version op: " << upper_op_name + "_";
     }
 
-    for (auto& result : op->results()) {
+    for (auto& result : op.results()) {
       visited_values.insert(result);
+    }
+  }
+  if (!FLAGS_ir_inplace_kernel_blacklist.empty()) {
+    for (auto i : inplace_ops) {
+      std::cout << i.second << std::endl;
     }
   }
   return inplace_ops;
@@ -325,9 +447,9 @@ class InplacePass : public pir::Pass {
   void Run(pir::Operation* op) override {
     auto module_op = op->dyn_cast<pir::ModuleOp>();
     IR_ENFORCE(module_op, "inplace_pass should run on module op.");
-    auto* block = module_op.block();
+    auto& block = module_op.block();
 
-    auto inplace_ops = details::GetInplaceOps(block);
+    auto inplace_ops = details::GetInplaceOps(&block);
 
     for (auto kv : inplace_ops) {
       VLOG(6) << "Do inplace for: "
@@ -336,8 +458,8 @@ class InplacePass : public pir::Pass {
                      .dyn_cast<pir::StrAttribute>()
                      .AsString();
       pir::Block::Iterator insert_pos =
-          std::find(block->begin(), block->end(), kv.first);
-      IR_ENFORCE(insert_pos != block->end(),
+          std::find(block.begin(), block.end(), *kv.first);
+      IR_ENFORCE(insert_pos != block.end(),
                  "Operator %s not found in block.",
                  kv.first->name());
 

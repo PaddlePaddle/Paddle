@@ -13,9 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/api/include/tensor_utils.h"
+#include "glog/logging.h"
 
 #include "paddle/phi/api/lib/api_registry.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
+#include "paddle/phi/core/enforce.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #ifdef PADDLE_WITH_CUDA
@@ -89,7 +92,7 @@ PADDLE_API Tensor from_blob(void* data,
   }
 
   auto meta =
-      phi::DenseTensorMeta(dtype, phi::make_ddim(shape.GetData()), layout);
+      phi::DenseTensorMeta(dtype, common::make_ddim(shape.GetData()), layout);
 
   size_t size = SizeOf(dtype) * (meta.is_scalar ? 1 : product(meta.dims));
 
@@ -105,4 +108,41 @@ PADDLE_API Tensor from_blob(void* data,
   return Tensor(std::make_shared<phi::DenseTensor>(alloc, meta));
 }
 
+#ifdef PADDLE_WITH_DISTRIBUTE
+PD_REGISTER_API(reshard)
+
+PADDLE_API std::shared_ptr<phi::distributed::DistTensor> reshard(
+    const paddle::Tensor& input,
+    const phi::distributed::TensorDistAttr& dist_attr) {
+  PADDLE_ENFORCE_EQ(input.is_dist_tensor(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The input tensor of ReshardFunction should be "
+                        "``phi::distributed::DistTensor``. "
+                        "However it's %s",
+                        typeid(input.impl().get()).name()));
+  auto dev_ctx = phi::distributed::GetDistTensorDeviceContext(
+      static_cast<phi::distributed::DistTensor*>(input.impl().get()));
+  auto input_tensor_impl = input.impl();
+  std::shared_ptr<phi::distributed::DistTensor> dist_out_ptr = nullptr;
+  if (input_tensor_impl) {
+    phi::distributed::DistTensor* dist_tensor =
+        static_cast<phi::distributed::DistTensor*>(input_tensor_impl.get());
+    if (dist_tensor->dist_attr() != dist_attr &&
+        (phi::distributed::IsCurRankInMesh(
+             dist_tensor->dist_attr().process_mesh()) ||
+         phi::distributed::IsCurRankInMesh(dist_attr.process_mesh()))) {
+      VLOG(6) << "reshard func, reshard tensor from "
+              << dist_tensor->dist_attr() << " to " << dist_attr;
+      auto* func = phi::distributed::ChooseProperReshardFunction(*dist_tensor,
+                                                                 dist_attr);
+      dist_out_ptr = func->Eval(dev_ctx, *dist_tensor, dist_attr);
+    } else {
+      dist_out_ptr = std::static_pointer_cast<phi::distributed::DistTensor>(
+          input_tensor_impl);
+    }
+  }
+  return dist_out_ptr;
+}
+#endif
 }  // namespace paddle

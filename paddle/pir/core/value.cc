@@ -16,7 +16,7 @@
 
 #include <cstddef>
 
-#include "paddle/pir/core/enforce.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/op_operand.h"
 #include "paddle/pir/core/op_result.h"
 #include "paddle/pir/core/operation.h"
@@ -45,6 +45,8 @@ bool Value::operator<(const Value &other) const { return impl_ < other.impl_; }
 Value::operator bool() const { return impl_; }
 
 pir::Type Value::type() const { return impl_ ? impl_->type() : nullptr; }
+
+Operation *Value::defining_op() const { return dyn_cast<OpResult>().owner(); }
 
 void Value::set_type(pir::Type type) {
   CHECK_VALUE_NULL_IMPL(set_type);
@@ -83,6 +85,8 @@ void Value::ReplaceUsesWithIf(
   for (auto it = use_begin(); it != use_end();) {
     if (should_replace(*it)) {
       (it++)->set_source(new_value);
+    } else {
+      it++;
     }
   }
 }

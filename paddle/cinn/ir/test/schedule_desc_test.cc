@@ -121,7 +121,7 @@ std::string SourceCodeGen(const ModuleExpr& module_expr,
 
 class TestScheduleDesc : public ::testing::Test {
  public:
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
   std::vector<ir::LoweredFunc> lowered_funcs;
   ScheduleDesc trace;
   void SetUp() override { Context::Global().ResetNameId(); }
@@ -779,6 +779,7 @@ TEST_F(TestScheduleDesc, StepKind_ReverseComputeInline) {
   CheckReplayResult(ir_sch, ir_sch.GetTraceDesc());
 }
 
+#ifdef CINN_WITH_CUDA
 TEST_F(TestScheduleDesc, StepKind_Bind) {
   lowered_funcs = LowerCompute({32, 128}, target);
   ir::IRSchedule ir_sch = MakeIRSchedule(lowered_funcs);
@@ -794,6 +795,7 @@ TEST_F(TestScheduleDesc, StepKind_Bind) {
   CheckReplayResult(ir_sch, trace);
   CheckReplayResult(ir_sch, ir_sch.GetTraceDesc());
 }
+#endif
 
 TEST_F(TestScheduleDesc, StepKind_Rfactor) {
   Expr M(32);

@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <memory>
 
-#include "paddle/phi/core/ddim.h"
+#include "paddle/common/ddim.h"
 #include "paddle/phi/core/utils/type_registry.h"
 
 #ifdef PADDLE_WITH_DNNL
@@ -48,6 +48,20 @@ struct NPUStorageProperties
   int64_t storage_format{-1};
   DDim storage_dims;
 };
+
+#ifdef PADDLE_WITH_XPU
+struct XPUStorageProperties
+    : public StorageProperties,
+      public TypeInfoTraits<StorageProperties, XPUStorageProperties> {
+  XPUStorageProperties() = default;
+  explicit XPUStorageProperties(float value) : xpu_scale_value(value) {}
+  virtual ~XPUStorageProperties() = default;
+  static const char* name() { return "XPUStorageProperties"; }
+  static constexpr float default_xpu_scale_value = -1.0f;
+
+  float xpu_scale_value{default_xpu_scale_value};
+};
+#endif
 
 // Add OneDNNStorageProperties firstly for unittest covergae
 #ifdef PADDLE_WITH_DNNL

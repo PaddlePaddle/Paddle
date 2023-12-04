@@ -27,16 +27,10 @@ TEST(shape_optimization, shape_optimization_pass) {
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   pir::Program program(ctx);
 
-  pir::Operation *op0 =
-      test::CreateDenseTensorOp(ctx,
-                                {pir::ShapedTypeInterface::kDynamic, 2},
-                                {"op0_attr"},
-                                {"create_dense_tensor_op0"});
-  pir::Operation *op1 =
-      test::CreateDenseTensorOp(ctx,
-                                {pir::ShapedTypeInterface::kDynamic, 2, 2},
-                                {"op1_attr"},
-                                {"create_dense_tensor_op1"});
+  pir::Operation *op0 = test::CreateDenseTensorOp(
+      ctx, {-1, 2}, {"op0_attr"}, {"create_dense_tensor_op0"});
+  pir::Operation *op1 = test::CreateDenseTensorOp(
+      ctx, {-1, 2, 2}, {"op1_attr"}, {"create_dense_tensor_op1"});
   program.block()->push_back(op0);
   program.block()->push_back(op1);
 

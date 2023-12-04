@@ -15,10 +15,10 @@
 #include <algorithm>
 #include <type_traits>
 
+#include "paddle/common/errors.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
@@ -37,6 +37,7 @@ void TransposeFlattenConcatFusionKernel(
     const int flatten_axis,
     const int concat_axis,
     DenseTensor* out) {
+#if defined(PADDLE_WITH_CUDA)
   dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
   auto odims = out->dims();
 
@@ -114,6 +115,10 @@ void TransposeFlattenConcatFusionKernel(
       phi::dynload::cudnnDestroyTensorDescriptor(in_desc));
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::cudnnDestroyTensorDescriptor(out_desc));
+#else
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "The fusion_transpose_flatten_concat operator is not supported on HIP."));
+#endif
 }
 
 }  // namespace fusion

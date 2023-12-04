@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/group_norm_grad_kernel.h"
 
+#include "paddle/common/layout.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/gpu/group_norm_utils.h"
@@ -280,7 +280,7 @@ void GroupNormGradKernel(const Context& dev_ctx,
                          DenseTensor* d_scale,
                          DenseTensor* d_bias) {
   using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
-  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
   const auto scale_ptr = scale.get_ptr();
   const auto bias_ptr = bias.get_ptr();
 

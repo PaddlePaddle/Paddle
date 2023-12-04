@@ -26,7 +26,7 @@
 namespace cinn {
 namespace common {
 
-using common::make_const;
+using cinn::common::make_const;
 using utils::GetStreamCnt;
 using utils::Join;
 using utils::Trim;
@@ -181,8 +181,8 @@ TEST(CAS, FracOp) {
   auto u4 = AutoSimplify(Expr(32768) * (((Expr(32) * x) + y) / 32));
   EXPECT_EQ(GetStreamCnt(u4), "((32768 * (y / 32)) + (32768 * x))");
 
-  common::cas_intervals_t var_intervals;
-  var_intervals.emplace("y", common::CasInterval(0, 31));
+  cinn::common::cas_intervals_t var_intervals;
+  var_intervals.emplace("y", cinn::common::CasInterval(0, 31));
   auto u = AutoSimplify((Expr(x) * 32 + y) / 32, var_intervals);
   EXPECT_EQ(GetStreamCnt(u), "x");
 

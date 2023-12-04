@@ -170,25 +170,10 @@ TEST(shape_struct_test, symbolic_dim_mgr_complex) {
       2,
       std::vector<pir::Value>{dim_op_s8, dim_op_s9, dim_op_s10, dim_op_s11});
 
-  auto op = test::CreateDenseTensorOp(ctx,
-                                      {pir::ShapedTypeInterface::kDynamic,
-                                       pir::ShapedTypeInterface::kDynamic,
-                                       pir::ShapedTypeInterface::kDynamic,
-                                       pir::ShapedTypeInterface::kDynamic,
-                                       pir::ShapedTypeInterface::kDynamic,
-                                       pir::ShapedTypeInterface::kDynamic},
-                                      {"op0_attr"},
-                                      {"op0_name"});
-  auto op_ = test::CreateDenseTensorOp(ctx,
-                                       {pir::ShapedTypeInterface::kDynamic,
-                                        pir::ShapedTypeInterface::kDynamic,
-                                        pir::ShapedTypeInterface::kDynamic,
-                                        pir::ShapedTypeInterface::kDynamic,
-                                        pir::ShapedTypeInterface::kDynamic,
-                                        10,
-                                        20},
-                                       {"op1_attr"},
-                                       {"op1_name"});
+  auto op = test::CreateDenseTensorOp(
+      ctx, {-1, -1, -1, -1, -1, -1}, {"op0_attr"}, {"op0_name"});
+  auto op_ = test::CreateDenseTensorOp(
+      ctx, {-1, -1, -1, -1, -1, 10, 20}, {"op1_attr"}, {"op1_name"});
   pir::OpResult res = op->result(0);
   pir::OpResult res_ = op_->result(0);
 
@@ -338,9 +323,9 @@ TEST(shape_struct_test, shape_analysis) {
   ::pir::Builder builder = ::pir::Builder(ctx, program.block());
   pir::shape::FuncOp func_op = builder.Build<pir::shape::FuncOp>();
 
-  phi::DDim dims_D_2 = {pir::ShapedTypeInterface::kDynamic, 2};
+  phi::DDim dims_D_2 = {-1, 2};
   phi::DDim dims_2_2 = {2, 2};
-  phi::DDim dims_D = {pir::ShapedTypeInterface::kDynamic};
+  phi::DDim dims_D = {-1};
 
   // same shape with dynamic: value1 == value2
   auto op1 =
@@ -408,6 +393,109 @@ TEST(shape_struct_test, shape_analysis) {
       pir::shape::SymbolicDimOp::GetSymbolicDimAttrName(), attr_op5);
 
   pir::ShapeConstraintIRAnalysis shape_analysis(program.module_op());
+  EXPECT_TRUE(shape_analysis.IsShapeEqual(value3, value4));
+  EXPECT_FALSE(shape_analysis.IsShapeEqual(value1, value2));
+  EXPECT_FALSE(shape_analysis.IsShapeEqual(value1, value3));
+  EXPECT_FALSE(shape_analysis.IsShapeEqual(value1, value5));
+  EXPECT_FALSE(shape_analysis.IsShapeEqual(value3, value5));
+  EXPECT_TRUE(shape_analysis.IsProductEqual(value1, {1}, value3, {0}));
+  EXPECT_TRUE(shape_analysis.IsSameNumElements(value4, value3));
+
+  shape_analysis.symbolicDimMgr().MapSymbolicDimEqual(sym_dim_s0, sym_dim_s1);
+  shape_analysis.symbolicDimMgr().MapSymbolicDimEqual(sym_dim_s0, sym_dim_s2);
+
+  const auto &val_sym_dim1 =
+      shape_analysis.GetOrCreateSymbolicDimsForRankedValue(value1);
+  const auto &val_sym_dim2 =
+      shape_analysis.GetOrCreateSymbolicDimsForRankedValue(value2);
+  EXPECT_TRUE(shape_analysis.symbolicDimMgr().IsSymbolicDimEqual(
+      val_sym_dim1[0], val_sym_dim2[0]));
+
+  EXPECT_TRUE(shape_analysis.IsShapeEqual(value1, value2));
+  EXPECT_FALSE(shape_analysis.IsShapeEqual(value1, value5));
+}
+
+TEST(shape_struct_test, shape_analysis_manager) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  pir::Program program(ctx);
+  ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ::pir::Builder builder = ::pir::Builder(ctx, program.block());
+  pir::shape::FuncOp func_op = builder.Build<pir::shape::FuncOp>();
+
+  phi::DDim dims_D_2 = {-1, 2};
+  phi::DDim dims_2_2 = {2, 2};
+  phi::DDim dims_D = {-1};
+
+  // same shape with dynamic: value1 == value2
+  auto op1 =
+      test::CreateDenseTensorOp(ctx, dims_D_2, {"op1_attr"}, {"op1_name"});
+  auto op2 =
+      test::CreateDenseTensorOp(ctx, dims_D_2, {"op2_attr"}, {"op2_name"});
+  pir::OpResult value1 = op1->result(0);
+  pir::OpResult value2 = op2->result(0);
+
+  // same shape with static: value3 == value4
+  auto op3 =
+      test::CreateDenseTensorOp(ctx, dims_2_2, {"op3_attr"}, {"op3_name"});
+  auto op4 =
+      test::CreateDenseTensorOp(ctx, dims_2_2, {"op4_attr"}, {"op4_name"});
+  pir::OpResult value3 = op3->result(0);
+  pir::OpResult value4 = op4->result(0);
+
+  // one dimension with dynamic: value5 != value1 != value3
+  auto op5 = test::CreateDenseTensorOp(ctx, dims_D, {"op5_attr"}, {"op5_name"});
+  pir::OpResult value5 = op5->result(0);
+
+  pir::shape::TieShapeOp tie_shape_op1 =
+      builder.Build<pir::shape::TieShapeOp>(value1);
+  pir::shape::TieShapeOp tie_shape_op2 =
+      builder.Build<pir::shape::TieShapeOp>(value2);
+  pir::shape::TieShapeOp tie_shape_op3 =
+      builder.Build<pir::shape::TieShapeOp>(value3);
+  pir::shape::TieShapeOp tie_shape_op4 =
+      builder.Build<pir::shape::TieShapeOp>(value4);
+  pir::shape::TieShapeOp tie_shape_op5 =
+      builder.Build<pir::shape::TieShapeOp>(value5);
+
+  builder.SetInsertionPointToEnd(func_op.block());
+  builder.Build<pir::shape::SymbolicDimOp>("C2", 2, true, false, true, true);
+  pir::shape::SymbolicDimOp sym_dim_s0 =
+      builder.Build<pir::shape::SymbolicDimOp>(
+          "S0", pir::ShapedTypeInterface::kDynamic, false, false, true, true);
+  pir::shape::SymbolicDimOp sym_dim_s1 =
+      builder.Build<pir::shape::SymbolicDimOp>(
+          "S1", pir::ShapedTypeInterface::kDynamic, false, false, true, true);
+  pir::shape::SymbolicDimOp sym_dim_s2 =
+      builder.Build<pir::shape::SymbolicDimOp>(
+          "S2", pir::ShapedTypeInterface::kDynamic, false, false, true, true);
+
+  pir::Attribute attr_s0 = pir::StrAttribute::get(ctx, "S0");
+  pir::Attribute attr_s1 = pir::StrAttribute::get(ctx, "S1");
+  pir::Attribute attr_s2 = pir::StrAttribute::get(ctx, "S2");
+  pir::Attribute attr_c2 = pir::StrAttribute::get(ctx, "C2");
+
+  auto attr_op1 = pir::ArrayAttribute::get(ctx, {attr_s0, attr_c2});
+  auto attr_op2 = pir::ArrayAttribute::get(ctx, {attr_s1, attr_c2});
+  auto attr_op3 = pir::ArrayAttribute::get(ctx, {attr_c2, attr_c2});
+  auto attr_op4 = pir::ArrayAttribute::get(ctx, {attr_c2, attr_c2});
+  auto attr_op5 = pir::ArrayAttribute::get(ctx, {attr_s2});
+
+  tie_shape_op1->set_attribute(
+      pir::shape::SymbolicDimOp::GetSymbolicDimAttrName(), attr_op1);
+  tie_shape_op2->set_attribute(
+      pir::shape::SymbolicDimOp::GetSymbolicDimAttrName(), attr_op2);
+  tie_shape_op3->set_attribute(
+      pir::shape::SymbolicDimOp::GetSymbolicDimAttrName(), attr_op3);
+  tie_shape_op4->set_attribute(
+      pir::shape::SymbolicDimOp::GetSymbolicDimAttrName(), attr_op4);
+  tie_shape_op5->set_attribute(
+      pir::shape::SymbolicDimOp::GetSymbolicDimAttrName(), attr_op5);
+
+  auto shape_analysis_mgr = pir::ShapeAnalysisManager::Instance();
+  pir::ShapeConstraintIRAnalysis &shape_analysis =
+      shape_analysis_mgr.Get(&program);
+
   EXPECT_TRUE(shape_analysis.IsShapeEqual(value3, value4));
   EXPECT_FALSE(shape_analysis.IsShapeEqual(value1, value2));
   EXPECT_FALSE(shape_analysis.IsShapeEqual(value1, value3));

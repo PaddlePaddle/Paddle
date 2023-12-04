@@ -101,6 +101,8 @@ void BuildOpFuncList(const platform::Place& place,
                      std::vector<OpFuncNode>* vec_func_list,
                      VariableScope* scope,
                      const ExecutionConfig& execution_config,
+                     const std::vector<HookFunc>& input_hookfuncs,
+                     const std::vector<HookFunc>& output_hookfuncs,
                      bool use_local_scope = true,
                      bool static_build = false);
 
@@ -126,9 +128,9 @@ const paddle::framework::Variable* GetVariableByName(
     const std::unordered_map<const paddle::framework::Variable*, std::string>&
         variable_2_var_name);
 
-std::vector<std::string> GetOriginInputNames(std::string op_name);
+std::vector<std::string> GetOriginInputNames(const std::string& op_name);
 
-std::vector<std::string> GetOriginOutputNames(std::string op_name);
+std::vector<std::string> GetOriginOutputNames(const std::string& op_name);
 
 void PrintValuesAndVariables(
     const pir::Block& block,

@@ -265,9 +265,7 @@ class DistributedInfer:
 
                     if w.name not in varname2tables.keys():
                         raise ValueError(
-                            "can not find variable {}, please check your configuration".format(
-                                w.name
-                            )
+                            f"can not find variable {w.name}, please check your configuration"
                         )
 
                     table_id = varname2tables[w.name]

@@ -13,11 +13,11 @@
 // limitations under the License.
 
 #include "paddle/pir/dialect/shape/ir/shape_op.h"
-#include "paddle/phi/core/tensor_meta.h"
+// #include "paddle/phi/core/tensor_meta.h"
+// #include "paddle/common/enforce.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/enforce.h"
 
 namespace pir::shape {
 
@@ -53,11 +53,11 @@ void SymbolicDimOp::Build(Builder &builder,
   argument.AddAttribute("known_non_size_zero", attr_known_non_size_zero);
 }
 
-const std::string SymbolicDimOp::GetSymName() {
+const std::string SymbolicDimOp::GetSymName() const {
   return attribute<StrAttribute>("sym_name").AsString();
 }
 
-int64_t SymbolicDimOp::GetDimSize() {
+int64_t SymbolicDimOp::GetDimSize() const {
   return attribute<Int64Attribute>("value").data();
 }
 
@@ -107,7 +107,7 @@ void SymbolicDimOp::UpdateKnownNonSizeZero(bool flag) {
                              BoolAttribute::get(IrContext::Instance(), flag));
 }
 
-bool SymbolicDimOp::IsDynamic() {
+bool SymbolicDimOp::IsDynamic() const {
   return GetDimSize() == ShapedTypeInterface::kDynamic;
 }
 
@@ -245,16 +245,16 @@ void FuncOp::Build(Builder &builder, OperationArgument &argument) {
 Block *FuncOp::block() {
   Region &region = (*this)->region(0);
   if (region.empty()) region.emplace_back();
-  return region.front();
+  return &region.front();
 }
 
 void FuncOp::Print(IrPrinter &printer) {
   auto &os = printer.os;
   os << " shape.func () ";
   os << "{";
-  for (auto item : *block()) {
+  for (auto &item : *block()) {
     os << "\n  ";
-    printer.PrintOperation(item);
+    printer.PrintOperation(&item);
   }
   os << "\n }";
 }
