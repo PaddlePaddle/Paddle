@@ -45,14 +45,18 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
         module_op,
         phi::errors::PreconditionNotMet(
             "params_sync_among_devices_pass should run on module op."));
-    auto* block = module_op.block();
-    for (auto& inner_op : *block) {
+    auto& block = module_op.block();
+    for (auto& inner_op : block) {
       if (inner_op.isa<pir::ParameterOp>()) {
         std::string param_name = inner_op.attributes()
                                      .at("parameter_name")
                                      .dyn_cast<pir::StrAttribute>()
                                      .AsString();
         auto* param_var = scope_->FindVar(param_name);
+        PADDLE_ENFORCE_NOT_NULL(
+            param_var,
+            phi::errors::InvalidArgument("Parameter var [%s] not in scope.",
+                                         param_name));
         if (param_var->IsType<phi::DenseTensor>()) {
           auto* param_tensor = param_var->GetMutable<phi::DenseTensor>();
           paddle::platform::CPUPlace cpu_place;

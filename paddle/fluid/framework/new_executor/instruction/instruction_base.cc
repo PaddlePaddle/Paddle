@@ -193,6 +193,21 @@ const std::vector<size_t>& InstructionBase::GCCheckVars() const {
   return gc_check_vars_;
 }
 
+void InstructionBase::AddEagerGCVar(Variable* var) {
+  eager_gc_vars_.push_back(var);
+}
+
+const std::vector<Variable*>& InstructionBase::EagerGCVars() const {
+  // NOTE(chenxi67): eager_gc_vars_ contains the vars that need to be gc. Some
+  // vars in Instruction Node are created temporarily and are not the input or
+  // output of an OP (e.g. copy_var created by TuplePushOp). We cannot determine
+  // whether they need to be gc by analyzing OP(using GCCheckVars() function).
+  // These vars are added to eager_gc_vars_ and directly gc.
+  return eager_gc_vars_;
+}
+
+void InstructionBase::ClearEagerGCVars() { eager_gc_vars_.clear(); }
+
 const std::vector<std::pair<Variable*, Variable*>>&
 InstructionBase::InplaceInfo() const {
   return vec_inplace_in_to_out_;

@@ -54,8 +54,7 @@ CondInstruction::CondInstruction(size_t id,
   VLOG(6) << "finish process analyse kernel type";
 
   auto cond_value = if_op.operand_source(0);
-  cond_var_ = value_exec_info->GetScope()->FindVar(
-      value_exec_info->GetValue2VarName().at(cond_value));
+  cond_var_ = value_exec_info->GetVarByValue(cond_value);
   for (size_t i = 0; i < if_op.num_results(); ++i) {
     output_vars_.push_back(value_exec_info->GetScope()->GetVar(
         value_exec_info->GetValue2VarName().at(if_op.result(i))));
@@ -65,14 +64,14 @@ CondInstruction::CondInstruction(size_t id,
   // NOTE(zhangbo): IfOp sub_block's inputs include two kind of value: one is
   // OpOperand of IfOp, and the other is external Values used in true_block or
   // false_block.
-  auto true_branch_block = if_op.true_block();
-  auto false_branch_block = if_op.false_block();
+  auto& true_branch_block = if_op.true_block();
+  auto& false_branch_block = if_op.false_block();
   std::unordered_map<pir::Value, std::vector<int>> inputs;
   GetInputIds(op, *value_exec_info, &inputs);
   auto true_outside_inputs =
-      GetOutsideOpInputs(true_branch_block, *value_exec_info, &inputs);
+      GetExternalInputs(&true_branch_block, *value_exec_info, &inputs);
   auto false_outside_inputs =
-      GetOutsideOpInputs(false_branch_block, *value_exec_info, &inputs);
+      GetExternalInputs(&false_branch_block, *value_exec_info, &inputs);
   SetInputs(inputs);
 
   std::unordered_map<pir::Value, std::vector<int>> outputs;
@@ -89,19 +88,22 @@ CondInstruction::CondInstruction(size_t id,
       outputs.emplace(value, GetValueIds(value, *value_exec_info));
     }
   }
+  InsertTuplePushContinerToOuts(&true_branch_block, *value_exec_info, &outputs);
+  InsertTuplePushContinerToOuts(
+      &false_branch_block, *value_exec_info, &outputs);
   SetOutputs(outputs);
   VLOG(6) << "finish process inputs outputs index";
 
   Scope* true_scope = &(value_exec_info->GetScope()->NewScope());
   true_branch_inter_ = new PirInterpreter(place,
                                           {},
-                                          true_branch_block,
+                                          &true_branch_block,
                                           true_scope,
                                           value_exec_info->NewChild(true_scope),
                                           {});
 
   std::set<std::string> true_skip_gc_names_set;
-  for (auto value : GetYiedOpInputs(true_branch_block)) {
+  for (auto value : GetYiedOpInputs(&true_branch_block)) {
     true_branch_outputs_.push_back(true_branch_inter_->GetNameByValue(value));
     true_skip_gc_names_.push_back(true_branch_inter_->GetNameByValue(value));
     true_skip_gc_names_set.insert(true_branch_inter_->GetNameByValue(value));
@@ -119,13 +121,13 @@ CondInstruction::CondInstruction(size_t id,
   false_branch_inter_ =
       new PirInterpreter(place,
                          {},
-                         false_branch_block,
+                         &false_branch_block,
                          false_scope,
                          value_exec_info->NewChild(false_scope),
                          {});
 
   std::set<std::string> false_skip_gc_names_set;
-  for (auto value : GetYiedOpInputs(false_branch_block)) {
+  for (auto value : GetYiedOpInputs(&false_branch_block)) {
     false_branch_outputs_.push_back(false_branch_inter_->GetNameByValue(value));
     false_skip_gc_names_.push_back(false_branch_inter_->GetNameByValue(value));
     false_skip_gc_names_set.insert(false_branch_inter_->GetNameByValue(value));

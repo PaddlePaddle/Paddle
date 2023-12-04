@@ -29,6 +29,16 @@ void set_output(const Tensor& x_tmp, Tensor* x);
 template <typename T>
 void by_pass(const Tensor& x_tmp, Tensor* x);
 
+// This function determine whether dtype is in [float16, bfloat16, uint16]
+static bool is_half_dtype(const DataType& dtype) {
+  if (dtype == phi::DataType::FLOAT16 || dtype == phi::DataType::BFLOAT16 ||
+      dtype == phi::DataType::UINT16) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 // This fucction compute unsqueeze dims for reshape to replace unsqueeze.
 static std::vector<int64_t> get_unsqueeze_dims(
     const Tensor& origin, const std::vector<int64_t>& axis) {
