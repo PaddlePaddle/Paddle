@@ -128,7 +128,9 @@ PADDLE_API std::shared_ptr<phi::distributed::DistTensor> reshard(
     phi::distributed::DistTensor* dist_tensor =
         static_cast<phi::distributed::DistTensor*>(input_tensor_impl.get());
     if (dist_tensor->dist_attr() != dist_attr &&
-        phi::distributed::IsCurRankInMesh(dist_attr.process_mesh())) {
+        (phi::distributed::IsCurRankInMesh(
+             dist_tensor->dist_attr().process_mesh()) ||
+         phi::distributed::IsCurRankInMesh(dist_attr.process_mesh()))) {
       VLOG(6) << "reshard func, reshard tensor from "
               << dist_tensor->dist_attr() << " to " << dist_attr;
       auto* func = phi::distributed::ChooseProperReshardFunction(*dist_tensor,
@@ -137,7 +139,6 @@ PADDLE_API std::shared_ptr<phi::distributed::DistTensor> reshard(
     } else {
       dist_out_ptr = std::static_pointer_cast<phi::distributed::DistTensor>(
           input_tensor_impl);
-      dist_out_ptr->unsafe_set_dist_attr(dist_attr);
     }
   }
   return dist_out_ptr;
