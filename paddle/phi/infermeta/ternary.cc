@@ -1537,6 +1537,7 @@ void TdmSamplerInferMeta(const MetaTensor& x,
                          MetaTensor* labels,
                          MetaTensor* mask,
                          MetaConfig config) {
+  PADDLE_ENFORCE_NE(0, 0, phi::errors::InvalidArgument("infer_meta executed"));
   auto neg_samples_num_vec = neg_samples_num_list;
   auto output_positive_flag = output_positive;
 
