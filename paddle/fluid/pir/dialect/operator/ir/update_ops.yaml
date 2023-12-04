@@ -20,7 +20,7 @@
   args: (Tensor x, Scalar(int) max_len, int out_dtype)
   output: Tensor(y)
   infer_meta:
-    func: SequenceMaskPIRInferMeta
+    func: SequenceMaskScalarInferMeta
   kernel:
-    func: sequence_mask_pir
+    func: sequence_mask_scalar
     data_type : x
