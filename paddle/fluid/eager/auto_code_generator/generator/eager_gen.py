@@ -527,6 +527,7 @@ AMP_LOGIC_TEMPLATE = """  if (egr::Controller::Instance().GetAMPLevel() != paddl
 
 TYPE_PROMOTION_LOGIC_TEMPLATE = """   {} {{
     VLOG(5) << "got different data type, run type protmotion automatically.";
+    LOG(WARNING) << "got different data type, run type protmotion automatically.";
     {}
     {}
     {}
