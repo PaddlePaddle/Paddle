@@ -574,7 +574,7 @@ void MultiEncoderXPUFusePass::PrepareQKVWeight(Graph* graph,
     // Update qkv_w_int16 var_desc in block
     VarDesc qkv_w_int16_desc(qkv_w_int16_name);
     qkv_w_int16_desc.SetPersistable(true);
-    qkv_w_int16_desc.SetShape(vectorize(qkv_w_int16_t.dims()));
+    qkv_w_int16_desc.SetShape(common::vectorize(qkv_w_int16_t.dims()));
     qkv_w_int16_desc.SetDataType(
         framework::TransToProtoVarType(qkv_w_int16_t.dtype()));
     *qkv_w_int16 = graph->CreateVarNode(&qkv_w_int16_desc);
@@ -586,7 +586,7 @@ void MultiEncoderXPUFusePass::PrepareQKVWeight(Graph* graph,
     // Update qkv_w_max var_desc in block
     VarDesc qkv_w_max_desc(qkv_w_max_name);
     qkv_w_max_desc.SetPersistable(true);
-    qkv_w_max_desc.SetShape(vectorize(qkv_w_max_t.dims()));
+    qkv_w_max_desc.SetShape(common::vectorize(qkv_w_max_t.dims()));
     qkv_w_max_desc.SetDataType(proto::VarType::Type::VarType_Type_FP32);
     *qkv_w_max = graph->CreateVarNode(&qkv_w_max_desc);
     auto* block_qkv_w_max_desc = block->Var(qkv_w_max_name);
@@ -671,7 +671,7 @@ void MultiEncoderXPUFusePass::PrepareQKVBias(Graph* graph,
     // Update qkv_bias var_desc in block
     VarDesc qkv_bias_desc(qkv_bias_name);
     qkv_bias_desc.SetPersistable(true);
-    qkv_bias_desc.SetShape(vectorize(qkv_bias_tensor.dims()));
+    qkv_bias_desc.SetShape(common::vectorize(qkv_bias_tensor.dims()));
     qkv_bias_desc.SetDataType(
         framework::TransToProtoVarType(qkv_bias_tensor.dtype()));
     *qkv_bias = graph->CreateVarNode(&qkv_bias_desc);

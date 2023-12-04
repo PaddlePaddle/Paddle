@@ -280,7 +280,7 @@ void DropoutFwGPUKernelDriver(
 
   if (!is_test && mask) {
     auto* mask_data = mask->data<uint8_t>();
-    size_t size = phi::product(mask->dims());
+    size_t size = common::product(mask->dims());
 
     if (dropout_prob == 1.0f) {
 #ifdef PADDLE_WITH_HIP

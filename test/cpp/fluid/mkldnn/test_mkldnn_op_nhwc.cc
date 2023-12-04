@@ -62,7 +62,7 @@ void Test_Pool2d_Transpose_NHWC(const std::string &transpose_type) {
   std::uniform_real_distribution<float> dist(static_cast<float>(10.0),
                                              static_cast<float>(20.0));
   std::mt19937 engine;
-  size_t numel = static_cast<size_t>(phi::product(dims));
+  size_t numel = static_cast<size_t>(common::product(dims));
   input_name.tensor->Resize(dims);
   auto data_ptr = input_name.tensor->mutable_data<float>(p);
   for (size_t i = 0; i < numel; ++i) {
@@ -123,7 +123,7 @@ TEST(test_pool2d_relu_relu_nhwc, cpu_place) {
   std::uniform_real_distribution<float> dist(static_cast<float>(10.0),
                                              static_cast<float>(20.0));
   std::mt19937 engine;
-  size_t numel = static_cast<size_t>(phi::product(dims));
+  size_t numel = static_cast<size_t>(common::product(dims));
   input_name.tensor->Resize(dims);
   auto data_ptr = input_name.tensor->mutable_data<float>(p);
   for (size_t i = 0; i < numel; ++i) {
@@ -186,7 +186,7 @@ TEST(test_pool2d_shape_nhwc, cpu_place) {
   std::uniform_real_distribution<float> dist(static_cast<float>(10.0),
                                              static_cast<float>(20.0));
   std::mt19937 engine;
-  size_t numel = static_cast<size_t>(phi::product(dims));
+  size_t numel = static_cast<size_t>(common::product(dims));
   input_name.tensor->Resize(dims);
   auto data_ptr = input_name.tensor->mutable_data<float>(p);
   for (size_t i = 0; i < numel; ++i) {
@@ -242,7 +242,7 @@ TEST(test_pool2d_crop_nhwc, cpu_place) {
   // Initialize input data
   std::uniform_real_distribution<float> dist(10.0f, 20.0f);
   std::mt19937 engine;
-  size_t numel = static_cast<size_t>(phi::product(dims));
+  size_t numel = static_cast<size_t>(common::product(dims));
   input_name.tensor->Resize(dims);
   auto data_ptr = input_name.tensor->mutable_data<float>(p);
   for (size_t i = 0; i < numel; ++i) {
@@ -250,11 +250,11 @@ TEST(test_pool2d_crop_nhwc, cpu_place) {
   }
   // Second input (Y) to crop is having no buffer
   // but as it is MKLDNN then its shape order should be NCHW
-  auto expected_dims_nchw = phi::vectorize<int64_t>(expected_dims);
+  auto expected_dims_nchw = common::vectorize<int64_t>(expected_dims);
   std::rotate(expected_dims_nchw.begin() + 1,
               expected_dims_nchw.end() - 1,
               expected_dims_nchw.end());
-  second_crop_input_name.tensor->Resize(phi::make_ddim(expected_dims_nchw));
+  second_crop_input_name.tensor->Resize(common::make_ddim(expected_dims_nchw));
   const auto second_crop_input_md =
       dnnl::memory::desc(expected_dims_nchw,
                          dnnl::memory::data_type::f32,
