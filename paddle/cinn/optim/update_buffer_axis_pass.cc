@@ -28,6 +28,24 @@
 namespace cinn {
 namespace optim {
 
+bool ExprMathEqual(const Expr& expr1, const Expr& expr2) {
+  ir::Expr cmp_expr = common::AutoSimplify(ir::Sub::Make(expr1, expr2));
+  // This is ugry code since AutoSimplify is not powerful enough. Modify it
+  // after we make auto simplify better
+  ir::Expr simplied = common::AutoSimplify(cmp_expr);
+  int count = 0;
+  while (simplied != cmp_expr) {
+    cmp_expr = simplied;
+    simplied = common::AutoSimplify(cmp_expr);
+    ++count;
+    // Control dead loop
+    if (count >= 5) {
+      break;
+    }
+  }
+  return simplied.is_constant() && simplied.get_constant() == 0;
+}
+
 /**
  * This is a template pass to update the buffer access when using
  * single axis of a mult-dim tensor. For example, if the tensor t
@@ -92,22 +110,7 @@ class AnalyzeSingleAxisOfMultDimTensor : public ir::IRMutator<> {
     } else {
       const ir::Expr& stored_index_expr =
           buffer_name_to_same_single_axis[buffer_name];
-      ir::Expr cmp_expr =
-          common::AutoSimplify(ir::Sub::Make(index_expr, stored_index_expr));
-      // This is ugry code since AutoSimplify is not powerful enough. Modify it
-      // after we make auto simplify better
-      ir::Expr simplied = common::AutoSimplify(cmp_expr);
-      int count = 0;
-      while (simplied != cmp_expr) {
-        cmp_expr = simplied;
-        simplied = common::AutoSimplify(cmp_expr);
-        ++count;
-        // Control dead loop
-        if (count >= 5) {
-          break;
-        }
-      }
-      if (!simplied.is_constant() || simplied.get_constant() != 0) {
+      if (!ExprMathEqual(index_expr, stored_index_expr)) {
         buffer_name_to_same_single_axis.erase(buffer_name);
       }
     }
@@ -168,9 +171,7 @@ class AnalyzeBufferAxis : public ir::IRMutator<> {
         buffer_name_access_same_index_expr[buffer_name];
     for (int i = 0; i < indices.size(); ++i) {
       if (index_expr.count(i)) {
-        if (index_expr[i] == GetIndexBindExpr(indices[i])) {
-          continue;
-        } else {
+        if (!ExprMathEqual(index_expr[i], GetIndexBindExpr(indices[i]))) {
           index_expr.erase(i);
         }
       }
