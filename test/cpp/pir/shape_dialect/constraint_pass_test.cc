@@ -20,6 +20,7 @@
 #include <sstream>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/pir/core/builder.h"
@@ -29,7 +30,6 @@
 #include "paddle/pir/core/builtin_type_interfaces.h"
 #include "paddle/pir/core/cast_utils.h"
 #include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/op_info.h"
 #include "paddle/pir/core/parameter.h"

@@ -132,6 +132,15 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   set_tests_properties(test_semi_auto_parallel_for_llama_subnet
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 300)
 
+  py_test_modules(test_semi_auto_parallel_softmax_basic MODULES
+                  test_semi_auto_parallel_softmax_basic)
+  set_tests_properties(test_semi_auto_parallel_softmax_basic
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
+
+  py_test_modules(test_semi_auto_parallel_compare_basic MODULES
+                  test_semi_auto_parallel_compare_basic)
+  set_tests_properties(test_semi_auto_parallel_compare_basic
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
   py_test_modules(test_semi_auto_parallel_pylayer MODULES
                   test_semi_auto_parallel_pylayer)
   set_tests_properties(test_semi_auto_parallel_pylayer

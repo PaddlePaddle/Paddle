@@ -77,7 +77,6 @@ class TestLlamaAttentionForSemiAutoParallel:
         self.init_single_card_net_result()
 
     def mp_shard_fn(self, layer_name, layer, process_mesh):
-        print(f"layer name {layer_name}")
         if layer_name == 'qkv_proj':
             layer.weight = dist.shard_tensor(
                 layer.weight, process_mesh, [Shard(1)]
@@ -236,13 +235,9 @@ class TestLlamaAttentionForSemiAutoParallel:
             self.check_tensor_eq(param.grad, param_base.grad)
 
     def run_test_case(self):
-        if self._backend == "gpu":
-            cuda_version_main = int(paddle.version.cuda().split(".")[0])
-            device_prop_main = paddle.device.cuda.get_device_capability()[0]
-            if cuda_version_main >= 11 and device_prop_main >= 8:
-                self.test_dp()
-                self.test_mp()
-                # self.test_dp_mp()
+        self.test_dp()
+        self.test_mp()
+        # self.test_dp_mp()
 
 
 if __name__ == '__main__':

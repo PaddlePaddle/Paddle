@@ -20,7 +20,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/phi/api/ext/exception.h"
+#include "paddle/common/exception.h"
 #include "paddle/phi/api/include/dll_decl.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/utils/any.h"

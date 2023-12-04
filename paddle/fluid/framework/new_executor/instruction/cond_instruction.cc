@@ -64,14 +64,14 @@ CondInstruction::CondInstruction(size_t id,
   // NOTE(zhangbo): IfOp sub_block's inputs include two kind of value: one is
   // OpOperand of IfOp, and the other is external Values used in true_block or
   // false_block.
-  auto true_branch_block = if_op.true_block();
-  auto false_branch_block = if_op.false_block();
+  auto& true_branch_block = if_op.true_block();
+  auto& false_branch_block = if_op.false_block();
   std::unordered_map<pir::Value, std::vector<int>> inputs;
   GetInputIds(op, *value_exec_info, &inputs);
   auto true_outside_inputs =
-      GetExternalInputs(true_branch_block, *value_exec_info, &inputs);
+      GetExternalInputs(&true_branch_block, *value_exec_info, &inputs);
   auto false_outside_inputs =
-      GetExternalInputs(false_branch_block, *value_exec_info, &inputs);
+      GetExternalInputs(&false_branch_block, *value_exec_info, &inputs);
   SetInputs(inputs);
 
   std::unordered_map<pir::Value, std::vector<int>> outputs;
@@ -88,21 +88,22 @@ CondInstruction::CondInstruction(size_t id,
       outputs.emplace(value, GetValueIds(value, *value_exec_info));
     }
   }
-  InsertTuplePushContinerToOuts(true_branch_block, *value_exec_info, &outputs);
-  InsertTuplePushContinerToOuts(false_branch_block, *value_exec_info, &outputs);
+  InsertTuplePushContinerToOuts(&true_branch_block, *value_exec_info, &outputs);
+  InsertTuplePushContinerToOuts(
+      &false_branch_block, *value_exec_info, &outputs);
   SetOutputs(outputs);
   VLOG(6) << "finish process inputs outputs index";
 
   Scope* true_scope = &(value_exec_info->GetScope()->NewScope());
   true_branch_inter_ = new PirInterpreter(place,
                                           {},
-                                          true_branch_block,
+                                          &true_branch_block,
                                           true_scope,
                                           value_exec_info->NewChild(true_scope),
                                           {});
 
   std::set<std::string> true_skip_gc_names_set;
-  for (auto value : GetYiedOpInputs(true_branch_block)) {
+  for (auto value : GetYiedOpInputs(&true_branch_block)) {
     true_branch_outputs_.push_back(true_branch_inter_->GetNameByValue(value));
     true_skip_gc_names_.push_back(true_branch_inter_->GetNameByValue(value));
     true_skip_gc_names_set.insert(true_branch_inter_->GetNameByValue(value));
@@ -120,13 +121,13 @@ CondInstruction::CondInstruction(size_t id,
   false_branch_inter_ =
       new PirInterpreter(place,
                          {},
-                         false_branch_block,
+                         &false_branch_block,
                          false_scope,
                          value_exec_info->NewChild(false_scope),
                          {});
 
   std::set<std::string> false_skip_gc_names_set;
-  for (auto value : GetYiedOpInputs(false_branch_block)) {
+  for (auto value : GetYiedOpInputs(&false_branch_block)) {
     false_branch_outputs_.push_back(false_branch_inter_->GetNameByValue(value));
     false_skip_gc_names_.push_back(false_branch_inter_->GetNameByValue(value));
     false_skip_gc_names_set.insert(false_branch_inter_->GetNameByValue(value));
@@ -153,8 +154,19 @@ void CondInstruction::CopyBranchOutput(
   for (size_t i = 0; i < var_names.size(); ++i) {
     auto* inner_var = inter->InnerScope()->GetVar(var_names[i]);
 
-    output_vars_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
-        inner_var->Get<phi::DenseTensor>());
+    if (inner_var->IsType<phi::DenseTensor>()) {
+      output_vars_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
+          inner_var->Get<phi::DenseTensor>());
+
+    } else if (inner_var->IsType<phi::TensorArray>()) {
+      const auto& inner_array = inner_var->Get<phi::TensorArray>();
+      auto* output_array = output_vars_[i]->GetMutable<phi::TensorArray>();
+      // output_array->clear();
+      *output_array = inner_array;
+    } else {
+      PADDLE_THROW(
+          phi::errors::Unimplemented("unsupported type %d", inner_var->Type()));
+    }
   }
 }
 
