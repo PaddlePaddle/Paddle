@@ -118,7 +118,7 @@ void ProgramInterpreter::RunImpl() {
 
   interpreter::ResetAtomicGuard guard(&deps_, &refs_);
 
-  if (execution_config_.used_for_inference ||
+  if (is_in_op_profiling_mode_ || execution_config_.used_for_inference ||
       ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
        (sync_op_num_ == 0))) {
     VLOG(4) << "Tracing Instruction List";
@@ -141,8 +141,10 @@ void ProgramInterpreter::RunImpl() {
 
 FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
                                   bool need_fetch,
-                                  bool enable_job_schedule_profiler) {
+                                  bool enable_job_schedule_profiler,
+                                  bool enable_op_profiling) {
   enable_job_schedule_profiler_ = enable_job_schedule_profiler;
+  is_in_op_profiling_mode_ = enable_op_profiling;
 
   std::vector<paddle::framework::OpFuncNode> op_func_nodes;
   Build(feed_names, &op_func_nodes);
@@ -166,6 +168,13 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
     ClearLoDTensorArrayInLocalScope();
   }
 
+  // NOTE (liuchenghao): we need to reset "is_in_op_profiling_mode_" to false.
+  // This is because ProgramInterpreter::Run(...) has two implementations, only
+  // this implementation correctly updates its state, if user switches to
+  // another implementation of Run(...) half way, its state can cause potential
+  // problems.
+  is_in_op_profiling_mode_ = false;
+
   if (need_fetch) {
     // return Fetch Tensors
     Scope* inner_scope =
@@ -185,6 +194,7 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
       return fetch_list;
     }
   }
+
   return {};
 }
 
@@ -948,12 +958,24 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
     }
   }
 
-  {
+  if (is_in_op_profiling_mode_ && interpreter::IsCommunicationOp(op)) {
+    // skip communication op if enabled runtime profiling feature since their
+    // run time are mainly determined by other ops and they require other
+    // sub-graphs also run on the same machine concurrently, which cannot be
+    // guaranteed in most of the time.
+  } else {
     platform::RecordEvent compute_event(
         "compute",
         platform::TracerEventType::OperatorInner,
         1,
         platform::EventRole::kInnerOp);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    if (is_in_op_profiling_mode_) {
+      platform::GpuDeviceSync();
+    }
+#endif
+
     if (op_with_kernel == nullptr) {  // operator base
       instr_node.OpBase()->Run(*local_scope, place_);
     } else {
@@ -978,6 +1000,17 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
       } else {  // fluid kernel
         instr_node.KernelFunc()(*instr_node.InnerExecutionContext().get());
       }
+    }
+
+    if (is_in_op_profiling_mode_ && op->Id() != UINT64_MAX) {
+      OperatorDistAttr* op_dist_attr = block_.Op(op->Id())->MutableDistAttr();
+      platform::Timer op_timer;
+      op_timer.Start();
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      platform::GpuDeviceSync();
+#endif
+      op_timer.Pause();
+      if (op_dist_attr) op_dist_attr->set_run_time_us(op_timer.ElapsedUS());
     }
   }
 
@@ -1475,6 +1508,10 @@ void ProgramInterpreter::Prepare(
   }
 }
 
+std::shared_ptr<ProgramDesc> ProgramInterpreter::GetMutableCopyProgram() {
+  return copy_program_;
+}
+
 void ProgramInterpreter::SetFeedVarsInplaceSkip(
     const std::vector<std::string>& feed_names) {
   for (auto& feed_name : feed_names) {
@@ -1634,5 +1671,9 @@ void ProgramInterpreter::AnalyseExecuteOrderForTrace() {
   }
 }
 
+Variable* ProgramInterpreter::DebugVar(const std::string& name) const {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "DebugVar is not implemented in ProgramInterpreter."));
+}
 }  // namespace framework
 }  // namespace paddle
