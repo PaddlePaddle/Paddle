@@ -21,7 +21,7 @@ import paddle
 import paddle.distributed as dist
 import paddle.nn.functional as F
 from paddle import nn
-from paddle.distributed import Shard
+from paddle.distributed import Replicate, Shard
 from paddle.nn.functional.flash_attention import flash_attention
 
 BATCH_NUM = 4
@@ -157,13 +157,10 @@ class TestLlamaDecoderForSemiAutoParallel:
         self._dtype = os.getenv("dtype", "float32")
         self._backend = os.getenv("backend", "gpu")
         self._seed = eval(os.getenv("seed", "2023"))
-
-        self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
         paddle.set_device(self._backend)
         self.init_single_card_net_result()
 
-    def mp_shard_fn(self, layer_name, layer, process_mesh):
-        print(f"layer name {layer_name}")
+    def dp_mp_shard_fn(self, layer_name, layer, process_mesh):
         col_linear = ["qkv_proj", "gate_proj", "up_proj"]
         row_linear = ["o_proj", "down_proj"]
 
@@ -175,13 +172,15 @@ class TestLlamaDecoderForSemiAutoParallel:
 
         if is_col_linear:
             layer.weight = dist.shard_tensor(
-                layer.weight, process_mesh, [Shard(1)]
+                layer.weight, process_mesh, [Replicate(), Shard(1)]
             )
-            layer.bias = dist.shard_tensor(layer.bias, process_mesh, [Shard(0)])
+            layer.bias = dist.shard_tensor(
+                layer.bias, process_mesh, [Replicate(), Shard(0)]
+            )
 
         if is_row_linear:
             layer.weight = dist.shard_tensor(
-                layer.weight, process_mesh, [Shard(0)]
+                layer.weight, process_mesh, [Replicate(), Shard(0)]
             )
 
     def set_random_seed(self, seed):
@@ -247,11 +246,13 @@ class TestLlamaDecoderForSemiAutoParallel:
 
         return check_func
 
-    def test_dp(self):
+    # python -m paddle.distributed.launch --devices=0,1,2,3 semi_auto_parallel_for_llama_decoder_dp_mp.py
+    def test_dp_mp(self):
         self.set_random_seed(self._seed)
-
-        dp_layer = LlamaLayerDecoder("dp_demo_weight")
-        input_layer_norm_pre_hook = self.get_shard_check_hook([0, -1, -1], True)
+        dp_mp_mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
+        dp_mp_layer = dist.shard_layer(
+            LlamaLayerDecoder("mp_demo_weight"), dp_mp_mesh, self.dp_mp_shard_fn
+        )
         input_layer_norm_post_hook = self.get_shard_check_hook([0, -1, -1])
         attn_pre_hook = self.get_shard_check_hook([0, -1, -1], True)
         attn_post_hook = self.get_shard_check_hook([0, -1, -1])
@@ -262,73 +263,28 @@ class TestLlamaDecoderForSemiAutoParallel:
         mlp_pre_hook = self.get_shard_check_hook([0, -1, -1], True)
         mlp_post_hook = self.get_shard_check_hook([0, -1, -1])
 
-        dp_layer.input_layernorm.register_forward_pre_hook(
-            input_layer_norm_pre_hook
-        )
-        dp_layer.input_layernorm.register_forward_post_hook(
+        dp_mp_layer.input_layernorm.register_forward_post_hook(
             input_layer_norm_post_hook
         )
 
-        dp_layer.self_attn.register_forward_pre_hook(attn_pre_hook)
-        dp_layer.self_attn.register_forward_post_hook(attn_post_hook)
+        dp_mp_layer.self_attn.register_forward_pre_hook(attn_pre_hook)
+        dp_mp_layer.self_attn.register_forward_post_hook(attn_post_hook)
 
-        dp_layer.post_attn_layernorm.register_forward_pre_hook(
+        dp_mp_layer.post_attn_layernorm.register_forward_pre_hook(
             post_attn_layer_norm_pre_hook
         )
-        dp_layer.post_attn_layernorm.register_forward_post_hook(
+        dp_mp_layer.post_attn_layernorm.register_forward_post_hook(
             post_attn_layer_norm_post_hook
         )
 
-        dp_layer.mlp.register_forward_pre_hook(mlp_pre_hook)
-        dp_layer.mlp.register_forward_post_hook(mlp_post_hook)
+        dp_mp_layer.mlp.register_forward_pre_hook(mlp_pre_hook)
+        dp_mp_layer.mlp.register_forward_post_hook(mlp_post_hook)
 
-        dp_out, dp_parameters = self.train_loop(
-            dp_layer,
-            self._mesh,
-            shard_input=[Shard(0)],
+        dp_mp_out, dp_mp_parameters = self.train_loop(
+            dp_mp_layer, dp_mp_mesh, shard_input=[Shard(0), Replicate()]
         )
-        self.check_tensor_eq(dp_out, self.base_out)
-        for param, param_base in zip(dp_parameters, self.base_parameters):
-            self.check_tensor_eq(param, param_base)
-            self.check_tensor_eq(param.grad, param_base.grad)
-
-    def test_mp(self):
-        self.set_random_seed(self._seed)
-
-        mp_layer = dist.shard_layer(
-            LlamaLayerDecoder("mp_demo_weight"), self._mesh, self.mp_shard_fn
-        )
-
-        input_layer_norm_post_hook = self.get_shard_check_hook([-1, -1, -1])
-        attn_pre_hook = self.get_shard_check_hook([-1, -1, -1], True)
-        attn_post_hook = self.get_shard_check_hook([-1, -1, -1])
-        post_attn_layer_norm_pre_hook = self.get_shard_check_hook(
-            [-1, -1, -1], True
-        )
-        post_attn_layer_norm_post_hook = self.get_shard_check_hook([-1, -1, -1])
-        mlp_pre_hook = self.get_shard_check_hook([-1, -1, -1], True)
-        mlp_post_hook = self.get_shard_check_hook([-1, -1, -1])
-
-        mp_layer.input_layernorm.register_forward_post_hook(
-            input_layer_norm_post_hook
-        )
-
-        mp_layer.self_attn.register_forward_pre_hook(attn_pre_hook)
-        mp_layer.self_attn.register_forward_post_hook(attn_post_hook)
-
-        mp_layer.post_attn_layernorm.register_forward_pre_hook(
-            post_attn_layer_norm_pre_hook
-        )
-        mp_layer.post_attn_layernorm.register_forward_post_hook(
-            post_attn_layer_norm_post_hook
-        )
-
-        mp_layer.mlp.register_forward_pre_hook(mlp_pre_hook)
-        mp_layer.mlp.register_forward_post_hook(mlp_post_hook)
-
-        mp_out, mp_parameters = self.train_loop(mp_layer, self._mesh)
-        self.check_tensor_eq(mp_out, self.base_out)
-        for param, param_base in zip(mp_parameters, self.base_parameters):
+        self.check_tensor_eq(dp_mp_out, self.base_out)
+        for param, param_base in zip(dp_mp_parameters, self.base_parameters):
             self.check_tensor_eq(param, param_base)
             self.check_tensor_eq(param.grad, param_base.grad)
 
@@ -337,8 +293,7 @@ class TestLlamaDecoderForSemiAutoParallel:
             cuda_version_main = int(paddle.version.cuda().split(".")[0])
             device_prop_main = paddle.device.cuda.get_device_capability()[0]
             if cuda_version_main >= 11 and device_prop_main >= 8:
-                self.test_dp()
-                self.test_mp()
+                self.test_dp_mp()
 
 
 if __name__ == '__main__':
