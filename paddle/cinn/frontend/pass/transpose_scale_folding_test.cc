@@ -40,7 +40,7 @@ TEST(ScaleFolding, FoldIntoDotBatchedCase1) {
   auto out = builder.Matmul(scale_x, y);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultTarget();
+  cinn::common::Target target = cinn::common::DefaultTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{x.id(), y.id()},
                     std::back_inserter(input_ids),
@@ -65,7 +65,7 @@ TEST(ScaleFolding, FoldIntoDotBatchedCase2) {
   auto out = builder.Matmul(scale_x, y);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultTarget();
+  cinn::common::Target target = cinn::common::DefaultTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{x.id(), y.id()},
                     std::back_inserter(input_ids),
@@ -90,7 +90,7 @@ TEST(ScaleFolding, FoldIntoDotBatchedCase3) {
   auto out = builder.Matmul(scale_x, y);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultTarget();
+  cinn::common::Target target = cinn::common::DefaultTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{x.id(), y.id()},
                     std::back_inserter(input_ids),
@@ -115,7 +115,7 @@ TEST(ScaleFolding, FoldIntoDotBatchedCase4) {
   auto out = builder.Matmul(x, scale_y);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultTarget();
+  cinn::common::Target target = cinn::common::DefaultTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{x.id(), y.id()},
                     std::back_inserter(input_ids),
@@ -141,7 +141,7 @@ TEST(ScaleFolding, FoldIntoDotBatchedCase5) {
   auto out = builder.Matmul(scale_x, scale_y);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultTarget();
+  cinn::common::Target target = cinn::common::DefaultTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{x.id(), y.id()},
                     std::back_inserter(input_ids),
@@ -168,7 +168,7 @@ TEST(ScaleFolding, FoldIntoDotBatchedCase6) {
   auto out = builder.Scale(orig_out, 2.0f);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultTarget();
+  cinn::common::Target target = cinn::common::DefaultTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{x.id(), y.id()},
                     std::back_inserter(input_ids),
@@ -198,7 +198,7 @@ TEST(TransposeScaleFolding, BatchComplexCase1) {
   auto out = builder.Transpose(scale_out, {0, 2, 1});
   auto program = builder.Build();
 
-  common::Target target = common::DefaultTarget();
+  cinn::common::Target target = cinn::common::DefaultTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{x.id(), y.id()},
                     std::back_inserter(input_ids),
@@ -228,7 +228,7 @@ TEST(TransposeScaleFolding, BatchComplexCase2) {
   auto out = builder.Scale(transpose_out, 2.0f);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultTarget();
+  cinn::common::Target target = cinn::common::DefaultTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{x.id(), y.id()},
                     std::back_inserter(input_ids),
@@ -254,7 +254,7 @@ TEST(TransposeScaleFolding, BatchComplexCase3) {
   auto out = builder.Matmul(transpose_x, scale_y);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultTarget();
+  cinn::common::Target target = cinn::common::DefaultTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{x.id(), y.id()},
                     std::back_inserter(input_ids),
@@ -279,7 +279,7 @@ TEST(TransposeScaleFolding, BatchComplexCase4) {
   auto out = builder.Matmul(transpose_x, scale_x);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultTarget();
+  cinn::common::Target target = cinn::common::DefaultTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{x.id()},
                     std::back_inserter(input_ids),
@@ -308,7 +308,7 @@ TEST(TransposeScaleFolding, BatchComplexCase5) {
   auto out = builder.Matmul(transpose_o, z);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultTarget();
+  cinn::common::Target target = cinn::common::DefaultTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{x.id(), y.id()},
                     std::back_inserter(input_ids),
@@ -335,7 +335,7 @@ TEST(TransposeScaleFolding, BatchComplexCase6) {
   auto out = builder.Transpose(out_matmul, {0, 2, 1});
   auto program = builder.Build();
 
-  common::Target target = common::DefaultTarget();
+  cinn::common::Target target = cinn::common::DefaultTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{x.id()},
                     std::back_inserter(input_ids),
@@ -364,7 +364,7 @@ TEST(TransposeBroadCastFolding, BatchComplexCase1) {
   auto out = builder.Scale(out_trans, 2.0f);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultTarget();
+  cinn::common::Target target = cinn::common::DefaultTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{x.id(), y.id()},
                     std::back_inserter(input_ids),
@@ -395,7 +395,7 @@ TEST(TransposeBroadCastFolding, BatchComplexCase2) {
   auto out = builder.Scale(out_trans, 2.0f);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultTarget();
+  cinn::common::Target target = cinn::common::DefaultTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{x.id(), y.id()},
                     std::back_inserter(input_ids),

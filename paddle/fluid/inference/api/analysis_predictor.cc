@@ -105,7 +105,9 @@
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/fluid/pir/transforms/constant_folding_pass.h"
 #include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/conv2d_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/conv2d_add_act_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/conv2d_add_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/conv2d_bn_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/params_sync_among_devices_pass.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
@@ -234,7 +236,7 @@ phi::Backend ConvertBackend(paddle_infer::PlaceType backend) {
 bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
                                phi::DenseTensor *t,
                                const platform::Place &place) {
-  framework::DDim ddim = phi::make_ddim(pt.shape);
+  framework::DDim ddim = common::make_ddim(pt.shape);
   void *input_ptr = nullptr;
   if (pt.dtype == PaddleDType::INT64) {
     input_ptr = t->mutable_data<int64_t>(ddim, place);
@@ -252,7 +254,7 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
   }
   // NOTE(Aurelius84): Some kernels support zero shape input
   // without memory holder, we should skip enforce logic.
-  bool has_zero_dim = (phi::product(ddim) == 0);
+  bool has_zero_dim = (common::product(ddim) == 0);
   VLOG(3) << "Found zero dim: " << has_zero_dim
           << " from input with ddim: " << ddim;
   if (!has_zero_dim) {
@@ -782,7 +784,9 @@ bool AnalysisPredictor::PrepareExecutor() {
       ::pir::PassManager pm_for_op_program(::pir::IrContext::Instance(), 2);
       //----------------------------------------------------------------------------------------------//
       // Operator fusion pass
-      pm_for_op_program.AddPass(::pir::CreateConv2dFusePass());
+      pm_for_op_program.AddPass(::pir::CreateConv2dBnFusePass());
+      pm_for_op_program.AddPass(::pir::CreateConv2dAddActFusePass());
+      pm_for_op_program.AddPass(::pir::CreateConv2dAddFusePass());
       //----------------------------------------------------------------------------------------------//
 
       //----------------------------------------------------------------------------------------------//
@@ -1134,7 +1138,7 @@ void AnalysisPredictor::MkldnnPreSet(
 #ifdef PADDLE_WITH_DNNL
   std::vector<std::vector<int>> inputs_shape;
   for (const auto &input : inputs) {
-    inputs_shape.emplace_back(phi::vectorize<int>(input.dims()));
+    inputs_shape.emplace_back(common::vectorize<int>(input.dims()));
   }
   MkldnnPreSet(inputs_shape);
 #endif
@@ -1412,7 +1416,7 @@ template <typename T>
 void AnalysisPredictor::GetFetchOne(const phi::DenseTensor &fetch,
                                     PaddleTensor *output) {
   // set shape.
-  auto shape = phi::vectorize(fetch.dims());
+  auto shape = common::vectorize(fetch.dims());
   output->shape.assign(shape.begin(), shape.end());
   // set data.
   int num_elems = inference::VecReduceToInt(shape);

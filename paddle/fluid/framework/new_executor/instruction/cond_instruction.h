@@ -32,7 +32,8 @@ class CondInstruction : public InstructionBase {
   CondInstruction(size_t id,
                   const platform::Place& place,
                   ::pir::Operation* op,
-                  ValueExecutionInfo* value_exe_info);
+                  ValueExecutionInfo* value_exe_info,
+                  const std::set<std::string>& skip_gc_vars);
 
   ~CondInstruction();
 

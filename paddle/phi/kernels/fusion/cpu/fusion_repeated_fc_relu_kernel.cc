@@ -51,7 +51,7 @@ void FusionRepeatedFCReluKernel(const Context& dev_ctx,
                                 DenseTensor* out) {
   int weight_sz = static_cast<int>(w.size());
 
-  auto i_dims = phi::vectorize<int>(x.dims());
+  auto i_dims = common::vectorize<int>(x.dims());
   const auto& w_dims = w[0]->dims();
   phi::jit::matmul_attr_t attr;
   attr.m = i_dims[0];

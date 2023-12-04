@@ -91,8 +91,8 @@ inline cublasStatus_t cublasGemm(cudaDataType_t dtype,
                         CUBLAS_COMPUTE_32F,
                         CUBLAS_GEMM_DEFAULT_TENSOR_OP);
 #else
-    common::float16 alpha_fp16{alpha};
-    common::float16 beta_fp16{beta};
+    cinn::common::float16 alpha_fp16{alpha};
+    cinn::common::float16 beta_fp16{beta};
     return cublasHgemm(handle,
                        transa,
                        transb,
@@ -221,8 +221,8 @@ inline cublasStatus_t cublasGemmStridedBatched(cudaDataType_t dtype,
                                       CUBLAS_COMPUTE_32F,
                                       CUBLAS_GEMM_DEFAULT_TENSOR_OP);
 #else
-    common::float16 alpha_fp16{alpha};
-    common::float16 beta_fp16{beta};
+    cinn::common::float16 alpha_fp16{alpha};
+    cinn::common::float16 beta_fp16{beta};
     return cublasHgemmStridedBatched(
         handle,
         transa,

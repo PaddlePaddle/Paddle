@@ -15,10 +15,10 @@ limitations under the License. */
 #pragma once
 #include <stddef.h>
 
+#include "paddle/common/errors.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
