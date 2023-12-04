@@ -16,7 +16,7 @@
 
 #include <unordered_set>
 
-#include "paddle/pir/core/enforce.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/region.h"
 
@@ -93,11 +93,11 @@ void Block::ResetOpListOrder(const OpListType &new_op_list) {
 
 void Block::ClearArguments() {
   for (auto &argument : arguments_) {
-    argument.Destroy();
+    argument.dyn_cast<BlockArgument>().Destroy();
   }
   arguments_.clear();
 }
-BlockArgument Block::AddArgument(Type type) {
+Value Block::AddArgument(Type type) {
   auto argument = BlockArgument::Create(type, this, arguments_.size());
   arguments_.emplace_back(argument);
   return argument;

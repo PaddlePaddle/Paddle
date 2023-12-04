@@ -243,6 +243,14 @@
     out : Out
     indices : Indices
 
+- op : array_to_tensor(tensor_array_to_tensor)
+  backward : tanh_shrink_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+    out_index : OutIndex
+
 - op : as_complex
   inputs :
     x : X
@@ -318,7 +326,7 @@
     {auc : AUC, stat_pos_out : StatPosOut, stat_neg_out : StatNegOut}
 
 - op : batch_norm
-  backward : batch_norm_grad
+  backward : batch_norm_grad, batch_norm_double_grad(batch_norm_grad_grad)
   inputs:
     x : X
     mean : Mean
@@ -3384,6 +3392,12 @@
   outputs :
     out : Out
 
+- op: lod_array_length
+  inputs :
+    {x: X}
+  outputs :
+    out : Out
+
 - op: logspace
   inputs:
     {start: Start, stop: Stop, num: Num, base: Base}
@@ -3408,6 +3422,13 @@
 - op: memcpy_d2h
   inputs :
     x : X
+  outputs :
+    out : Out
+
+- op: read_from_array
+  inputs:
+    array : X
+    i : I
   outputs :
     out : Out
 

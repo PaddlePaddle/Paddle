@@ -37,7 +37,8 @@ void ClipOpMapper(const paddle::cpp::OpDesc& op_desc,
         << "The [Min] tensor shape of clip op should be [1], but here ["
         << cinn::utils::Join(min_val_tensor->shape, ", ") << "]";
     if (x->type != min_val_tensor->type) {
-      min_val_tensor = builder->Cast(min_val_tensor, common::Type2Str(x->type));
+      min_val_tensor =
+          builder->Cast(min_val_tensor, cinn::common::Type2Str(x->type));
     }
     min_val_tensor = builder->BroadcastTo(min_val_tensor, x->shape);
     x = builder->Max(x, min_val_tensor);
@@ -48,8 +49,8 @@ void ClipOpMapper(const paddle::cpp::OpDesc& op_desc,
     auto min_val_tensor =
         builder->FillConstant(x->shape,
                               min_value,
-                              common::UniqName(x->id + "_min"),
-                              common::Type2Str(x->type));
+                              cinn::common::UniqName(x->id + "_min"),
+                              cinn::common::Type2Str(x->type));
     x = builder->Max(x, min_val_tensor);
   }
 
@@ -62,7 +63,8 @@ void ClipOpMapper(const paddle::cpp::OpDesc& op_desc,
         << "The [Max] tensor shape of clip op should be [1], but here ["
         << cinn::utils::Join(max_val_tensor->shape, ", ") << "]";
     if (x->type != max_val_tensor->type) {
-      max_val_tensor = builder->Cast(max_val_tensor, common::Type2Str(x->type));
+      max_val_tensor =
+          builder->Cast(max_val_tensor, cinn::common::Type2Str(x->type));
     }
     max_val_tensor = builder->BroadcastTo(max_val_tensor, x->shape);
     x = builder->Min(x, max_val_tensor);
@@ -70,10 +72,11 @@ void ClipOpMapper(const paddle::cpp::OpDesc& op_desc,
     CHECK(op_desc.HasAttr("max"))
         << "The clip op should has [max] attribute or [Max] tensor input.";
     auto max_value = op_desc.GetAttr<float>("max");
-    auto max_val_tensor = builder->FillConstant(x->shape,
-                                                max_value,
-                                                common::UniqName("constant"),
-                                                common::Type2Str(x->type));
+    auto max_val_tensor =
+        builder->FillConstant(x->shape,
+                              max_value,
+                              cinn::common::UniqName("constant"),
+                              cinn::common::Type2Str(x->type));
     x = builder->Min(x, max_val_tensor);
   }
 

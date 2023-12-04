@@ -31,6 +31,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include "paddle/common/macros.h"
 #include "paddle/fluid/framework/archive.h"
 #include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/channel.h"
@@ -41,7 +42,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/timer.h"
 #include "paddle/fluid/string/string_helper.h"
-#include "paddle/phi/core/macros.h"
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_utils.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
