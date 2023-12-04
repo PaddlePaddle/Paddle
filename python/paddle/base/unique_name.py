@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+from copy import deepcopy
 
 from .wrapped_decorator import signature_safe_contextmanager
 
@@ -33,6 +34,11 @@ class UniqueNameGenerator:
         if prefix is None:
             prefix = ""
         self.prefix = prefix
+
+    def clone(self):
+        ret = UniqueNameGenerator(self.prefix)
+        ret.ids = deepcopy(self.ids)
+        return ret
 
     def __call__(self, key):
         return self.generate(key)
