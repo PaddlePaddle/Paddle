@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING
 import paddle
 from paddle.amp.auto_cast import amp_state
 from paddle.base.data_feeder import convert_dtype
-from paddle.framework import _dygraph_tracer
+from paddle.framework import _dygraph_tracer, use_pir_api
 
 from ..infer_meta import convert_meta_to_input_spec
 from ..profiler import EventGuard
@@ -95,7 +95,10 @@ class FallbackWrapper:
                 self.concrete_program,
                 self.partial_program,
             ) = self.compiled_fn.get_concrete_program(input_spec)
-        return len(self.partial_program.program.block(0).ops)
+        if use_pir_api():
+            return len(self.partial_program.program.program.global_block().ops)
+        else:
+            return len(self.partial_program.program.block(0).ops)
 
     def __call__(self, *args, **kwargs):
         with EventGuard(f"FallbackWrapper: {self.SIR.name}"):
