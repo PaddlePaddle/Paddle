@@ -69,7 +69,7 @@ void TransferLayoutGeneral(const Context& dev_ctx,
     dst_dim[i] = src_dim[axis[i]];
   }
 
-  out->Resize(phi::make_ddim(dst_dim));
+  out->Resize(common::make_ddim(dst_dim));
   dev_ctx.Alloc(out, x.dtype());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // In GPU fp16 model, we will insert many transfer_layout ops in

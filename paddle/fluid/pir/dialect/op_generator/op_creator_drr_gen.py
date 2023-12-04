@@ -18,9 +18,7 @@ import yaml
 from op_gen import (
     OpCompatParser,
     OpInfoParser,
-    check_need_update_ops,
     to_pascal_case,
-    update_ops,
 )
 
 CPP_FILE_TEMPLATE = """
@@ -83,18 +81,12 @@ class OpCreatorCodeGen:
 
     def parse_yaml(self, op_yaml_files, op_compat_yaml_file):
         op_compat_parser = OpCompatParser(op_compat_yaml_file)
-        need_update_ops, update_yaml_file = check_need_update_ops(op_yaml_files)
 
         op_yaml_items = []
         for yaml_file in op_yaml_files:
-            if update_yaml_file == yaml_file:
-                continue
             with open(yaml_file, "r") as f:
                 ops = yaml.safe_load(f)
                 op_yaml_items = op_yaml_items + ops
-        # replace old ir ops with pir ops
-        if need_update_ops:
-            update_ops(op_yaml_items, update_yaml_file)
 
         op_info_items = []
         for op in op_yaml_items:

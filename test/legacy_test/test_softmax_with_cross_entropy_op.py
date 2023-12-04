@@ -160,11 +160,11 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
         if core.is_compiled_with_rocm():
             if self.python_api is not None:
                 self.check_grad(
-                    ["Logits"], "Loss", max_relative_error=5e-1, check_pir=False
+                    ["Logits"], "Loss", max_relative_error=5e-1, check_pir=True
                 )
             # HIP will have accuracy fail when using float32 in CPU place
             self.check_grad(
-                ["Logits"], "Loss", max_relative_error=5e-1, check_pir=False
+                ["Logits"], "Loss", max_relative_error=5e-1, check_pir=True
             )
         else:
             if self.python_api is not None:
@@ -172,10 +172,10 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
                     ["Logits"],
                     "Loss",
                     numeric_grad_delta=0.001,
-                    check_pir=False,
+                    check_pir=True,
                 )
             self.check_grad(
-                ["Logits"], "Loss", numeric_grad_delta=0.001, check_pir=False
+                ["Logits"], "Loss", numeric_grad_delta=0.001, check_pir=True
             )
 
 
@@ -517,9 +517,9 @@ class TestSoftmaxWithCrossEntropyOpFp16(TestSoftmaxWithCrossEntropyOp):
 
     def test_check_grad(self):
         if self.python_api is not None:
-            self.check_grad(["Logits"], "Loss", check_pir=False)
+            self.check_grad(["Logits"], "Loss", check_pir=True)
         self.check_grad(
-            ["Logits"], "Loss", max_relative_error=0.1, check_pir=False
+            ["Logits"], "Loss", max_relative_error=0.1, check_pir=True
         )
 
 
@@ -540,10 +540,10 @@ class TestSoftmaxWithCrossEntropyOpNoCudnnFp16(
     def test_check_grad(self):
         if self.python_api is not None:
             self.check_grad(
-                ["Logits"], "Loss", max_relative_error=0.1, check_pir=False
+                ["Logits"], "Loss", max_relative_error=0.1, check_pir=True
             )
         self.check_grad(
-            ["Logits"], "Loss", max_relative_error=0.1, check_pir=False
+            ["Logits"], "Loss", max_relative_error=0.1, check_pir=True
         )
 
 
@@ -574,15 +574,15 @@ class TestSoftmaxWithCrossEntropyOp2(TestSoftmaxWithCrossEntropyOp):
             # HIP will have accuracy fail when using float32 in CPU place
             if self.python_api is not None:
                 self.check_grad(
-                    ["Logits"], "Loss", max_relative_error=0.1, check_pir=False
+                    ["Logits"], "Loss", max_relative_error=0.1, check_pir=True
                 )
             self.check_grad(
-                ["Logits"], "Loss", max_relative_error=0.1, check_pir=False
+                ["Logits"], "Loss", max_relative_error=0.1, check_pir=True
             )
         else:
             if self.python_api is not None:
-                self.check_grad(["Logits"], "Loss", check_pir=False)
-            self.check_grad(["Logits"], "Loss", check_pir=False)
+                self.check_grad(["Logits"], "Loss", check_pir=True)
+            self.check_grad(["Logits"], "Loss", check_pir=True)
 
 
 class TestSoftmaxWithCrossEntropyOp3(TestSoftmaxWithCrossEntropyOp):

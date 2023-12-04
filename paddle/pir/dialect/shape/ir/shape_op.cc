@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #include "paddle/pir/dialect/shape/ir/shape_op.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/enforce.h"
 
 namespace pir::shape {
 
@@ -244,7 +244,7 @@ void FuncOp::Build(Builder &builder, OperationArgument &argument) {
 Block *FuncOp::block() {
   Region &region = (*this)->region(0);
   if (region.empty()) region.emplace_back();
-  return region.front();
+  return &region.front();
 }
 
 void FuncOp::Print(IrPrinter &printer) {

@@ -34,7 +34,6 @@ TEST(PD_AnalysisConfig, use_gpu) {
   PD_SetCpuMathLibraryNumThreads(config, 10);
   int num_thread = PD_CpuMathLibraryNumThreads(config);
   CHECK(10 == num_thread) << "NO";
-  PD_SwitchUseFeedFetchOps(config, false);
   PD_SwitchSpecifyInputNames(config, true);
   PD_SwitchIrDebug(config, true);
   PD_SetModel(config, model_dir.c_str(), nullptr);

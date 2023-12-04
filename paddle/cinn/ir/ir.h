@@ -44,8 +44,8 @@ class BufferRange;
 struct LoweredFunc;
 class Module;
 
-using common::Object;
-using common::Shared;
+using cinn::common::Object;
+using cinn::common::Shared;
 // NOTE attr_t only support POD, can not contain Expr or other IR nodes, or the
 // IRVisitor or IRCopy on PrimitiveNode will result in undefined behavior.
 using attr_t = absl::variant<int, float, bool, std::string>;
@@ -1002,6 +1002,7 @@ struct _Module_ : public ExprNode<_Module_> {
   std::vector<Expr> buffers;
   std::vector<Expr> functions;
   std::vector<Expr> submodules;
+  std::vector<Expr> predicates;
 
   static ir::Module Make(const std::string& name, Target target);
 

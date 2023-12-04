@@ -151,7 +151,7 @@ class SparseMomentumOp : public framework::OperatorWithKernel {
                    "VelocityOut",
                    "SparseMomentum");
 
-    auto lr_dims = phi::product(ctx->GetInputDim("LearningRate"));
+    auto lr_dims = common::product(ctx->GetInputDim("LearningRate"));
     PADDLE_ENFORCE_EQ(lr_dims != 0 && lr_dims == 1,
                       true,
                       platform::errors::InvalidArgument(

@@ -69,8 +69,14 @@ if(WIN32 AND WITH_GPU)
   cc_library(paddle_inference DEPS ${fluid_modules} ${STATIC_INFERENCE_API}
                                    ${utils_modules})
 else()
-  create_static_lib(paddle_inference ${phi_modules} ${fluid_modules}
-                    ${ir_targets} ${STATIC_INFERENCE_API} ${utils_modules})
+  create_static_lib(
+    paddle_inference
+    ${phi_modules}
+    ${fluid_modules}
+    ${ir_targets}
+    ${STATIC_INFERENCE_API}
+    ${utils_modules}
+    common_static)
 endif()
 
 if(NOT APPLE)
@@ -103,7 +109,7 @@ list(REMOVE_ITEM fluid_modules cinn_op_dialect)
 # shared library to prune library size.
 list(REMOVE_ITEM fluid_modules ${not_infer_modules})
 
-set(SHARED_INFERENCE_DEPS phi ${fluid_modules} analysis_predictor
+set(SHARED_INFERENCE_DEPS phi common ${fluid_modules} analysis_predictor
                           ${utils_modules})
 if(NOT WIN32)
   list(APPEND SHARED_INFERENCE_DEPS ${ir_targets})
@@ -134,9 +140,10 @@ target_link_libraries(paddle_inference_shared ${os_dependency_modules})
 if(WIN32)
   set_property(TARGET paddle_inference_shared
                PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
-  target_link_libraries(paddle_inference_shared phi)
+  target_link_libraries(paddle_inference_shared phi common)
 endif()
-
+set_target_properties(paddle_inference_shared PROPERTIES LINK_FLAGS
+                                                         "-Wl,-rpath,'$ORIGIN'")
 set_target_properties(paddle_inference_shared PROPERTIES OUTPUT_NAME
                                                          paddle_inference)
 if(NOT APPLE

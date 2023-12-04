@@ -35,10 +35,10 @@ namespace frontend {
 using cinn::utils::Attribute;
 
 PaddleModelConvertor::PaddleModelConvertor()
-    : PaddleModelConvertor(common::DefaultTarget(), nullptr, nullptr) {}
+    : PaddleModelConvertor(cinn::common::DefaultTarget(), nullptr, nullptr) {}
 
 PaddleModelConvertor::PaddleModelConvertor(
-    const common::Target& target,
+    const cinn::common::Target& target,
     std::shared_ptr<NetBuilder> builder,
     std::shared_ptr<hlir::framework::Scope> scope)
     : target_(target), builder_(builder), scope_(scope) {
@@ -241,7 +241,7 @@ Program PaddleModelConvertor::operator()() { return builder_->Build(); }
 void PaddleModelConvertor::CreateInput(const std::string& dtype,
                                        const cinn::utils::ShapeType& shape,
                                        const std::string& name) {
-  OpMapperContext::FeedInfo feed_info = {shape, common::Str2Type(dtype)};
+  OpMapperContext::FeedInfo feed_info = {shape, cinn::common::Str2Type(dtype)};
 
   ctx_->AddFeedInfo(name, feed_info);
   RunOp("feed", {}, {{"Out", {name}}}, {});
