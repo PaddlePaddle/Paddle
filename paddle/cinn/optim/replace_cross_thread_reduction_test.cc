@@ -33,7 +33,7 @@ TEST(CrossThreadReductionReplacer, basic) {
 #ifdef CINN_WITH_CUDA
   Context::Global().ResetNameId();
   Placeholder<float> A("A", {Expr(64), Expr(128)});
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
   Module::Builder builder("reduce_sum", target);
   Var reduce_j(128, "reduce_j");
   ir::Tensor B = Compute(

@@ -19,6 +19,7 @@ cc_test_old(
   op_dialect_vjp
   pir
   phi
+  common
   gtest)
 
 cc_test_old(
@@ -29,6 +30,7 @@ cc_test_old(
   op_dialect_vjp
   pir
   phi
+  common
   gtest)
 
 cc_test_old(

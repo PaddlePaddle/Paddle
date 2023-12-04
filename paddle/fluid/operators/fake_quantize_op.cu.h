@@ -82,7 +82,8 @@ struct FindAbsMaxFunctor<phi::GPUContext, T> {
     grid = (grid > block) ? block : grid;
 
     phi::DenseTensor max;
-    T *max_data = max.mutable_data<T>(phi::make_ddim({grid}), ctx.GetPlace());
+    T *max_data =
+        max.mutable_data<T>(common::make_ddim({grid}), ctx.GetPlace());
     FindAbsMaxKernel<T>
         <<<grid, block, 1024 * sizeof(T), ctx.stream()>>>(in, num, max_data);
     FindAbsMaxKernel<T>

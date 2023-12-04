@@ -41,7 +41,7 @@ namespace cinn {
 namespace hlir {
 namespace op {
 
-using common::CINNValuePack;
+using cinn::common::CINNValuePack;
 
 ir::Tensor OneHot(const ir::Tensor& indices,
                   const ir::Tensor& on_value,
@@ -94,7 +94,7 @@ ir::Tensor OneHot(const ir::Tensor& indices,
         return ir::Select::Make(
             ir::EQ::Make(elem, idx), on_value_cast, off_value_cast);
       },
-      common::UniqName(output_name));
+      cinn::common::UniqName(output_name));
 
   return res;
 }
@@ -144,7 +144,7 @@ std::vector<Type> InferDtypeForOneHot(const std::vector<Type>& inputs_type,
     dtype = absl::get<std::string>(attrs.at("dtype"));
   }
 
-  std::vector<Type> res{common::Str2Type(dtype)};
+  std::vector<Type> res{cinn::common::Str2Type(dtype)};
   return res;
 }
 
@@ -175,7 +175,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForOneHot(
                                              lang::RetValue* ret) {
     CHECK(!args.empty())
         << "The input argument of one_hot compute is empty! Please check.\n";
-    common::CINNValuePack pack_args = args[0];
+    cinn::common::CINNValuePack pack_args = args[0];
     CHECK(!pack_args.empty())
         << "at least one input tensor for transpose compute\n";
     CHECK_GE(pack_args.size(), 3U);
@@ -198,15 +198,15 @@ std::shared_ptr<framework::OpStrategy> StrategyForOneHot(
                             off_value,
                             depth,
                             axis,
-                            common::Str2Type(dtype),
+                            cinn::common::Str2Type(dtype),
                             tensor_name);
 
-    std::vector<common::CINNValue> res;
+    std::vector<cinn::common::CINNValue> res;
     auto stages = CreateStages({indices, on_value, off_value});
     stages->InsertLazily(out);
-    res.push_back(common::CINNValue(out));
-    res.push_back(common::CINNValue(stages));
-    *ret = common::CINNValuePack{res};
+    res.push_back(cinn::common::CINNValue(out));
+    res.push_back(cinn::common::CINNValue(stages));
+    *ret = cinn::common::CINNValuePack{res};
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
