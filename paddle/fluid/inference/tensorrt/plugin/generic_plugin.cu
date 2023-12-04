@@ -417,7 +417,11 @@ bool GenericPlugin::supportsFormatCombination(
       return (in_out[pos].type == in_out[0].type &&
               in_out[pos].format == in_out[0].format);
     }
-
+    // output indices
+    if (pos == 2) {
+      return (in_out[pos].type == nvinfer1::DataType::kINT32 &&
+              in_out[pos].format == in_out[0].format);
+    }
   } else if (op_desc_.Type() == "scatter") {
     // input X
     if (pos == 0)

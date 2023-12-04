@@ -3185,6 +3185,11 @@ struct GenericPluginTeller : public Teller {
       }
     }
     if (op_type == "argsort") {
+#if IS_TRT_VERSION_LT(7000)
+      VLOG(3) << "argsort is not supported in TRT version <7.0,you can use gpu "
+                 "inference instead.";
+      return false;
+#endif
       if (!with_dynamic_shape) {
         VLOG(3) << "Ops(" << op_type << ") do not support static shape yet.";
         return false;
