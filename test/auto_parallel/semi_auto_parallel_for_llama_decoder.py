@@ -34,7 +34,7 @@ N_HEAD = 8
 
 def create_numpy_like_random(name):
     return paddle.ParamAttr(
-        name=name, initializer=paddle.nn.initializer.Uniform(0, 1)
+        name=name, initializer=paddle.nn.initializer.Uniform(-0.1, 0.1)
     )
 
 
@@ -108,7 +108,7 @@ class LlamaRMSNorm(nn.Layer):
             dtype=paddle.get_default_dtype(),
             default_initializer=nn.initializer.Constant(1.0),
         )
-        self.variance_epsilon = 1e-5
+        self.variance_epsilon = 1.0
 
     def forward(self, hidden_states):
         with paddle.amp.auto_cast(False):
@@ -138,15 +138,15 @@ class LlamaLayerDecoder(nn.Layer):
         self.self_attn = LlamaAttention(param_prefix + "_att", hidden_size)
         self.mlp = LlamaMlp(param_prefix + "_mlp")
         self.input_layernorm = LlamaRMSNorm(hidden_size)
-        self.post_attention_layernorm = LlamaRMSNorm(hidden_size)
+        self.post_attn_layernorm = LlamaRMSNorm(hidden_size)
 
     def forward(self, x):
         residual = x
-        hidden_states = self.input_layernorm(x)
+        hidden_states = x  # self.input_layernorm(x)
         hidden_states = self.self_attn(hidden_states)
         hidden_states = residual + hidden_states
         residual = hidden_states
-        hidden_states = self.post_attention_layernorm(hidden_states)
+        hidden_states = self.post_attn_layernorm(hidden_states)
         hidden_states = self.mlp(hidden_states)
         hidden_states = residual + hidden_states
         return hidden_states
@@ -164,19 +164,37 @@ class TestLlamaDecoderForSemiAutoParallel:
 
     def mp_shard_fn(self, layer_name, layer, process_mesh):
         print(f"layer name {layer_name}")
-        if layer_name == 'qkv_proj':
+        col_linear = ["qkv_proj", "gate_proj", "up_proj"]
+        row_linear = ["o_proj", "down_proj"]
+
+        def contains(a, b):
+            return b in a
+
+        is_col_linear = any(contains(layer_name, e) for e in col_linear)
+        is_row_linear = any(contains(layer_name, e) for e in row_linear)
+
+        if is_col_linear:
             layer.weight = dist.shard_tensor(
                 layer.weight, process_mesh, [Shard(1)]
             )
             layer.bias = dist.shard_tensor(layer.bias, process_mesh, [Shard(0)])
 
-        elif layer_name == 'o_proj':
+        if is_row_linear:
             layer.weight = dist.shard_tensor(
                 layer.weight, process_mesh, [Shard(0)]
             )
 
     def dp_mp_shard_fn(self, layer_name, layer, process_mesh):
-        if layer_name == 'qkv_proj':
+        col_linear = ["qkv_proj", "gate_proj", "up_proj"]
+        row_linear = ["o_proj", "down_proj"]
+
+        def contains(a, b):
+            return b in a
+
+        is_col_linear = any(contains(layer_name, e) for e in col_linear)
+        is_row_linear = any(contains(layer_name, e) for e in row_linear)
+
+        if is_col_linear:
             layer.weight = dist.shard_tensor(
                 layer.weight, process_mesh, [Replicate(), Shard(1)]
             )
@@ -184,7 +202,7 @@ class TestLlamaDecoderForSemiAutoParallel:
                 layer.bias, process_mesh, [Replicate(), Shard(0)]
             )
 
-        elif layer_name == 'o_proj':
+        if is_row_linear:
             layer.weight = dist.shard_tensor(
                 layer.weight, process_mesh, [Replicate(), Shard(0)]
             )
@@ -204,7 +222,7 @@ class TestLlamaDecoderForSemiAutoParallel:
     def init_single_card_net_result(self):
         self.set_random_seed(self._seed)
         self.base_out, self.base_parameters = self.train_loop(
-            LlamaAttention("demo_weight")
+            LlamaLayerDecoder("demo_weight")
         )
 
     def train_loop(self, layer, process_mesh=None, shard_input=False):
@@ -303,25 +321,22 @@ class TestLlamaDecoderForSemiAutoParallel:
         mp_layer = dist.shard_layer(
             LlamaLayerDecoder("mp_demo_weight"), self._mesh, self.mp_shard_fn
         )
-        input_layer_norm_pre_hook = self.get_shard_check_hook([0, -1, -1], True)
-        input_layer_norm_post_hook = self.get_shard_check_hook([0, -1, -1])
-        attn_pre_hook = self.get_shard_check_hook([0, -1, -1], True)
-        attn_post_hook = self.get_shard_check_hook([0, -1, -1])
-        post_attn_layer_norm_pre_hook = self.get_shard_check_hook(
-            [0, -1, -1], True
-        )
-        post_attn_layer_norm_post_hook = self.get_shard_check_hook([0, -1, -1])
-        mlp_pre_hook = self.get_shard_check_hook([0, -1, -1], True)
-        mlp_post_hook = self.get_shard_check_hook([0, -1, -1])
 
-        mp_layer.input_layernorm.register_forward_pre_hook(
-            input_layer_norm_pre_hook
+        input_layer_norm_post_hook = self.get_shard_check_hook([-1, -1, -1])
+        attn_pre_hook = self.get_shard_check_hook([-1, -1, -1], True)
+        attn_post_hook = self.get_shard_check_hook([-1, -1, -1])
+        post_attn_layer_norm_pre_hook = self.get_shard_check_hook(
+            [-1, -1, -1], True
         )
+        post_attn_layer_norm_post_hook = self.get_shard_check_hook([-1, -1, -1])
+        mlp_pre_hook = self.get_shard_check_hook([-1, -1, -1], True)
+        mlp_post_hook = self.get_shard_check_hook([-1, -1, -1])
+
         mp_layer.input_layernorm.register_forward_post_hook(
             input_layer_norm_post_hook
         )
 
-        mp_layer.self_attn.register_forward_pre_hook(attn_pre_hook)
+        # mp_layer.self_attn.register_forward_pre_hook(attn_pre_hook)
         mp_layer.self_attn.register_forward_post_hook(attn_post_hook)
 
         mp_layer.post_attn_layernorm.register_forward_pre_hook(
@@ -370,7 +385,7 @@ class TestLlamaDecoderForSemiAutoParallel:
             device_prop_main = paddle.device.cuda.get_device_capability()[0]
             if cuda_version_main >= 11 and device_prop_main >= 8:
                 self.test_dp()
-                # self.test_mp()
+                self.test_mp()
                 # self.test_dp_mp()
 
 
