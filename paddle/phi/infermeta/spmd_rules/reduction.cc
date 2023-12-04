@@ -254,6 +254,8 @@ SpmdInfo ReductionGradInferSpmd(const DistMetaTensor& x,
     }
     x_dist_attr.set_dims_mapping(dims_mapping);
     x_grad_dist_attr.set_dims_mapping(dims_mapping);
+    x_dist_attr.set_default_dynamic_dims(dims_mapping);
+    x_grad_dist_attr.set_default_dynamic_dims(dims_mapping);
   }
 
   return {{x_dist_attr, out_grad_dist_attr}, {x_grad_dist_attr}};
