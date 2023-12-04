@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import collective.test_communication_api_base as test_base
+from auto_parallel.hybrid_strategy.save_state_dict import ckpt_path
 
 
 class TestSemiAutoParallelDPMPStrategy(test_base.CommunicationTestDistBase):
@@ -25,6 +27,7 @@ class TestSemiAutoParallelDPMPStrategy(test_base.CommunicationTestDistBase):
             "seed": "2023",
         }
         self._changeable_envs = {"backend": ["gpu"]}
+        os.system(f"rm -rf {ckpt_path()}")
 
     def test_simple_net_bybrid_strategy(self):
         envs_list = test_base.gen_product_envs_list(
@@ -49,6 +52,7 @@ class TestSemiAutoParallelHybridStrategy(test_base.CommunicationTestDistBase):
             "seed": "2023",
         }
         self._changeable_envs = {"backend": ["gpu"]}
+        os.system(f"rm -rf {ckpt_path()}")
 
     def test_simple_net_bybrid_strategy(self):
         envs_list = test_base.gen_product_envs_list(

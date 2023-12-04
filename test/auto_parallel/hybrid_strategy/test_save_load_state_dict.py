@@ -38,7 +38,6 @@ class TestSaveLoadStateDict(test_base.CommunicationTestDistBase):
         )
         for envs in envs_list:
             super().setUp(
-                save_log_dir="./log",
                 num_of_devices=int(envs["device_num"]),
                 timeout=120,
                 nnode=1,
@@ -61,7 +60,6 @@ class TestSaveLoadStateDict(test_base.CommunicationTestDistBase):
         )
         for envs in envs_list:
             super().setUp(
-                save_log_dir="./log",
                 num_of_devices=int(envs["device_num"]),
                 timeout=120,
                 nnode=1,
