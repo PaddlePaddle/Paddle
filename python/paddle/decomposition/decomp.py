@@ -28,6 +28,8 @@ from paddle.framework import core
 
 from . import register
 
+logging.basicConfig(level=logging.INFO)
+
 
 def _build_tensor_tuple(xs):
     if isinstance(xs, pir.OpResult):
@@ -188,7 +190,7 @@ def decompose(
 
     blacklist = core.prim_config["forward_blacklist"] | blacklist
 
-    logging.debug("Decompose composite forward ops begin...")
+    logging.info("Decompose composite forward ops begin...")
 
     if len(blacklist) > 0 and len(whitelist) > 0:
         op_filter = (
@@ -223,7 +225,7 @@ def decompose(
                 raise TypeError(
                     f"Each var in dst_vars should map corresponding var in src_vars, but got type {type(item)} in {dst_vars}."
                 )
-    logging.debug(
+    logging.info(
         "Decompose composite forward ops finish: {}".format(
             core.prim_config["composite_ops_record"]
         )
@@ -736,8 +738,16 @@ def _decomp_bwd_op(
     # check and ensure: bwd_inputs = out_grads + fwd_inputs[optional] + fwd_outputs[optional]
     fwd_op = _get_fwd_op(bwd_op, grad_var_to_var)
     if not _check_op(fwd_op, bwd_op):
+        logging.info(
+            "%s can not be decomposed due to the mismatch between forward op and backward op"
+            % (bwd_op.name())
+        )
         return None, False
     if _with_dynamic_shape(fwd_op) or _with_dynamic_shape(bwd_op):
+        logging.info(
+            "%s can not be decomposed due to the unsupported dynamic shape"
+            % (bwd_op.name())
+        )
         return None, False
 
     # try to decompose backward op directly
@@ -881,7 +891,6 @@ def decompose_pir_program(pir_program, param_mapping, grad_var_to_var):
                     if op.name() not in bwd_ops_undecomposed:
                         bwd_ops_undecomposed.append(op.name())
 
-        logging.getLogger().setLevel(logging.INFO)
         logging.info(
             "%d backward ops are successfully decomposed, op names are: %s"
             % (num_bwd_ops_decomposed, ', '.join(bwd_ops_decomposed))
