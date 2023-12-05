@@ -326,7 +326,7 @@ void CheckDataType(const phi::DataType& dtype,
               std::ostream_iterator<std::string>(joined, ", "));
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Check data type error for op: %s, dtype: %s, but "
-        "expected_dtype is %s",
+        "expected_dtype: %s",
         op_name,
         str_dtype,
         joined.str()));
