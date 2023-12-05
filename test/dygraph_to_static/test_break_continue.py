@@ -15,7 +15,11 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase, test_ast_only
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    enable_to_static_guard,
+    test_ast_only,
+)
 
 import paddle
 from paddle import base
@@ -36,10 +40,9 @@ class TestDy2staticException(Dy2StTestBase):
     def test_error(self):
         if self.dyfunc:
             with self.assertRaisesRegex(Dygraph2StaticException, self.error):
-                paddle.jit.enable_to_static(True)
-                self.assertTrue(to_static(self.dyfunc)(self.x))
+                with enable_to_static_guard(True):
+                    self.assertTrue(to_static(self.dyfunc)(self.x))
         paddle.base.dygraph.base.global_var._in_to_static_mode_ = False
-        paddle.jit.enable_to_static(False)
 
 
 def test_continue_in_for(x):
