@@ -73,7 +73,6 @@ class TestDy2staticException(Dy2StTestBase):
             with self.assertRaisesRegex(Dygraph2StaticException, self.error):
                 with enable_to_static_guard(True):
                     self.assertTrue(paddle.jit.to_static(self.dyfunc)(self.x))
-        paddle.base.dygraph.base.global_var._in_to_static_mode_ = False
 
 
 class TestDygraphIfElse(Dy2StTestBase):
