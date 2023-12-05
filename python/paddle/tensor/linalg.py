@@ -3873,8 +3873,11 @@ def householder_product(x, tau, name=None):
 def histogramdd(x, bins=10, ranges=None, density=False, weights=None, name=None):
     r"""
     Computes a multi-dimensional histogram of the values in a tensor.
+    
     Interprets the elements of an input tensor whose innermost dimension has size N as a collection of N-dimensional points. Maps each of the points into a set of N-dimensional bins and returns the number of points (or total weight) in each bin.
-    input must be a tensor with at least 2 dimensions. If input has shape (M, N), each of its M rows defines a point in N-dimensional space. If input has three or more dimensions, all but the last dimension are flattened.
+    
+    ``input`` must be a tensor with at least 2 dimensions. If input has shape (M, N), each of its M rows defines a point in N-dimensional space. If input has three or more dimensions, all but the last dimension are flattened.
+    
     Each dimension is independently associated with its own strictly increasing sequence of bin edges. Bin edges may be specified explicitly by passing a sequence of 1D tensors. Alternatively, bin edges may be constructed automatically by passing a sequence of integers specifying the number of equal-width bins in each dimension.
 
     Args:
