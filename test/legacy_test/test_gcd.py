@@ -20,8 +20,6 @@ import paddle
 from paddle.base import core
 from paddle.pir_utils import test_with_pir_api
 
-paddle.enable_static()
-
 
 class TestGcdAPI(unittest.TestCase):
     def setUp(self):
@@ -98,3 +96,8 @@ class TestGcdAPI5(TestGcdAPI):
         self.y_np = -20
         self.x_shape = []
         self.y_shape = []
+
+
+if __name__ == "__main__":
+    paddle.enable_static()
+    unittest.main()

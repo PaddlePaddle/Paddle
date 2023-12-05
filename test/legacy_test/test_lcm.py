@@ -20,8 +20,6 @@ import paddle
 from paddle.base import core
 from paddle.pir_utils import test_with_pir_api
 
-paddle.enable_static()
-
 
 class TestLcmAPI(unittest.TestCase):
     def setUp(self):
@@ -97,3 +95,8 @@ class TestLcmAPI5(TestLcmAPI):
         self.y_np = -20
         self.x_shape = []
         self.y_shape = []
+
+
+if __name__ == "__main__":
+    paddle.enable_static()
+    unittest.main()
