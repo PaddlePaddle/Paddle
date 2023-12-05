@@ -41,7 +41,7 @@ namespace pir {
 
 using GroupPtr = std::shared_ptr<Group>;
 
-using common::Target;
+using cinn::common::Target;
 class OpLowererImpl;
 
 typedef bool (OpLowererImpl::*ScheduleDetermineFunction)(::pir::Operation*);

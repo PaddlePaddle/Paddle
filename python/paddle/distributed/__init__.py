@@ -68,9 +68,8 @@ from .communication import (  # noqa: F401
 
 from .auto_parallel.process_mesh import ProcessMesh
 
+from paddle.base.core import ReduceType, Placement
 from .auto_parallel.placement_type import (
-    ReduceType,
-    Placement,
     Shard,
     Replicate,
     Partial,

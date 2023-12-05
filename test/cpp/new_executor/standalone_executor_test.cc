@@ -289,7 +289,7 @@ TEST(InterpreterCore, workqueue_multiplexing) {
   float data_a[] = {0, 1, 2, 3};
   float data_b[] = {0.0, 0.1, 0.2, 0.3};
 
-  phi::DDim dims = phi::make_ddim({2, 2});
+  phi::DDim dims = common::make_ddim({2, 2});
   const platform::CPUPlace place = platform::CPUPlace();
 
   phi::DenseTensor tensor_a = phi::DenseTensor();

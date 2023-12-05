@@ -28,7 +28,7 @@ void SplitKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   int axis = axis_scalar.to<int>();
   auto in_dims = x.dims();
-  auto input_shape = vectorize<int>(in_dims);
+  auto input_shape = common::vectorize<int>(in_dims);
   std::vector<XPUType*> out_ptrs;
   std::vector<int> split_lists;
   for (size_t j = 0; j < outs.size(); ++j) {

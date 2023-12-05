@@ -34,9 +34,9 @@ namespace cinn {
 namespace hlir {
 namespace op {
 
-using common::_CINNValuePack_;
-using common::CINNValue;
-using common::CINNValuePack;
+using cinn::common::_CINNValuePack_;
+using cinn::common::CINNValue;
+using cinn::common::CINNValuePack;
 using framework::OpStrategy;
 using framework::shape_t;
 using framework::StrategyFunction;
@@ -54,14 +54,14 @@ class CustomCallArgsFuncRegistry {
   }
 
   void Register(const std::string &custom_call,
-                const common::Target &target,
+                const cinn::common::Target &target,
                 ArgsFunc args_func) {
     auto id = custom_call + "_" + target.arch_str();
     func_map_[id] = args_func;
   }
 
   ArgsFunc Lookup(const std::string &custom_call,
-                  const common::Target &target) {
+                  const cinn::common::Target &target) {
     auto id = custom_call + "_" + target.arch_str();
     CHECK(func_map_.count(id))
         << "Can't find " << custom_call << " for target " << target.arch_str();
@@ -100,7 +100,7 @@ std::shared_ptr<OpStrategy> StrategyForCustomCall(
         ir::Argument(kernel_args, ir::Argument::IO::kOutput),
         ir::Argument(kernel_args_num, ir::Argument::IO::kInput)};
     // if target is nvgpu, add stream.
-    if (target == common::DefaultNVGPUTarget()) {
+    if (target == cinn::common::DefaultNVGPUTarget()) {
       ir::Var kernel_stream(KERNEL_STREAM, type_of<void *>());
 
       host_args.push_back(kernel_stream);
@@ -906,7 +906,7 @@ std::vector<ir::Expr> CustomCallArgsForMemset(
   }
 
   const auto &dtype =
-      common::Str2Type(absl::get<std::string>(attr_store.at("dtype")));
+      cinn::common::Str2Type(absl::get<std::string>(attr_store.at("dtype")));
   count *= dtype.bytes();
   VLOG(4) << "call memset custom_call with value="
           << utils::Attribute2String(value_attr) << " (" << value
@@ -939,60 +939,68 @@ std::vector<ir::Expr> CustomCallArgsForMemcpy(
 
 bool RegisteryCustomCallArgsFunc() {
 #ifdef CINN_WITH_CUDA
-  CustomCallArgsFuncRegistry::Global().Register("cinn_call_cublas",
-                                                common::DefaultNVGPUTarget(),
-                                                CustomCallArgsForCublas);
+  CustomCallArgsFuncRegistry::Global().Register(
+      "cinn_call_cublas",
+      cinn::common::DefaultNVGPUTarget(),
+      CustomCallArgsForCublas);
   CustomCallArgsFuncRegistry::Global().Register(
       "cinn_call_gaussian_random",
-      common::DefaultNVGPUTarget(),
+      cinn::common::DefaultNVGPUTarget(),
       CustomCallArgsForGaussianRandom);
-  CustomCallArgsFuncRegistry::Global().Register("cinn_call_uniform_random",
-                                                common::DefaultNVGPUTarget(),
-                                                CustomCallArgsForUniformRandom);
-  CustomCallArgsFuncRegistry::Global().Register("cinn_call_randint",
-                                                common::DefaultNVGPUTarget(),
-                                                CustomCallArgsForRandInt);
-  CustomCallArgsFuncRegistry::Global().Register("cinn_call_cholesky_nvgpu",
-                                                common::DefaultNVGPUTarget(),
-                                                CustomCallArgsForCholesky);
-  CustomCallArgsFuncRegistry::Global().Register("cinn_call_batched_cublas",
-                                                common::DefaultNVGPUTarget(),
-                                                CustomCallArgsForBatchedCublas);
+  CustomCallArgsFuncRegistry::Global().Register(
+      "cinn_call_uniform_random",
+      cinn::common::DefaultNVGPUTarget(),
+      CustomCallArgsForUniformRandom);
+  CustomCallArgsFuncRegistry::Global().Register(
+      "cinn_call_randint",
+      cinn::common::DefaultNVGPUTarget(),
+      CustomCallArgsForRandInt);
+  CustomCallArgsFuncRegistry::Global().Register(
+      "cinn_call_cholesky_nvgpu",
+      cinn::common::DefaultNVGPUTarget(),
+      CustomCallArgsForCholesky);
+  CustomCallArgsFuncRegistry::Global().Register(
+      "cinn_call_batched_cublas",
+      cinn::common::DefaultNVGPUTarget(),
+      CustomCallArgsForBatchedCublas);
   CustomCallArgsFuncRegistry::Global().Register(
       "cinn_call_triangular_solve_nvgpu",
-      common::DefaultNVGPUTarget(),
+      cinn::common::DefaultNVGPUTarget(),
       CustomCallArgsForTriangularSolve);
-  CustomCallArgsFuncRegistry::Global().Register("cinn_assert_true_nvgpu",
-                                                common::DefaultNVGPUTarget(),
-                                                CustomCallArgsForAssertTrue);
-  CustomCallArgsFuncRegistry::Global().Register("cinn_call_cuda_memset",
-                                                common::DefaultNVGPUTarget(),
-                                                CustomCallArgsForMemset);
-  CustomCallArgsFuncRegistry::Global().Register("cinn_call_cuda_memcpy",
-                                                common::DefaultNVGPUTarget(),
-                                                CustomCallArgsForMemcpy);
+  CustomCallArgsFuncRegistry::Global().Register(
+      "cinn_assert_true_nvgpu",
+      cinn::common::DefaultNVGPUTarget(),
+      CustomCallArgsForAssertTrue);
+  CustomCallArgsFuncRegistry::Global().Register(
+      "cinn_call_cuda_memset",
+      cinn::common::DefaultNVGPUTarget(),
+      CustomCallArgsForMemset);
+  CustomCallArgsFuncRegistry::Global().Register(
+      "cinn_call_cuda_memcpy",
+      cinn::common::DefaultNVGPUTarget(),
+      CustomCallArgsForMemcpy);
 #endif
 
 #ifdef CINN_WITH_CUDNN
   CustomCallArgsFuncRegistry::Global().Register(
       "cinn_call_cudnn_conv2d_forward",
-      common::DefaultNVGPUTarget(),
+      cinn::common::DefaultNVGPUTarget(),
       CustomCallArgsForCudnnConvForward);
   CustomCallArgsFuncRegistry::Global().Register(
       "cinn_call_cudnn_conv2d_backward_data",
-      common::DefaultNVGPUTarget(),
+      cinn::common::DefaultNVGPUTarget(),
       CustomCallArgsForCudnnConvBackwardData);
   CustomCallArgsFuncRegistry::Global().Register(
       "cinn_call_cudnn_conv2d_backward_filter",
-      common::DefaultNVGPUTarget(),
+      cinn::common::DefaultNVGPUTarget(),
       CustomCallArgsForCudnnConvBackwardFilter);
   CustomCallArgsFuncRegistry::Global().Register(
       "cinn_call_cudnn_pool2d_forward",
-      common::DefaultNVGPUTarget(),
+      cinn::common::DefaultNVGPUTarget(),
       CustomCallArgsForCudnnPoolForward);
   CustomCallArgsFuncRegistry::Global().Register(
       "cinn_call_cudnn_pool2d_backward",
-      common::DefaultNVGPUTarget(),
+      cinn::common::DefaultNVGPUTarget(),
       CustomCallArgsForCudnnPoolBackward);
 #endif
 
@@ -1002,15 +1010,17 @@ bool RegisteryCustomCallArgsFunc() {
 
 #ifdef CINN_WITH_MKL_CBLAS
 
-  CustomCallArgsFuncRegistry::Global().Register("cinn_call_cholesky_host",
-                                                common::DefaultHostTarget(),
-                                                CustomCallArgsForCholesky);
+  CustomCallArgsFuncRegistry::Global().Register(
+      "cinn_call_cholesky_host",
+      cinn::common::DefaultHostTarget(),
+      CustomCallArgsForCholesky);
 
 #endif
 
-  CustomCallArgsFuncRegistry::Global().Register("cinn_assert_true_host",
-                                                common::DefaultHostTarget(),
-                                                CustomCallArgsForAssertTrue);
+  CustomCallArgsFuncRegistry::Global().Register(
+      "cinn_assert_true_host",
+      cinn::common::DefaultHostTarget(),
+      CustomCallArgsForAssertTrue);
 
   return true;
 }

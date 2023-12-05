@@ -76,6 +76,34 @@ class TestTakeAlongAxisFP16Op(TestTakeAlongAxisOp):
         self.axis_type = "int64"
 
 
+class TestTakeAlongAxisOp(OpTest):
+    def setUp(self):
+        self.init_data()
+        self.op_type = "take_along_axis"
+        self.python_api = paddle.tensor.take_along_axis
+        self.check_cinn = True
+        self.xnp = np.random.random(self.x_shape).astype(self.x_type)
+        self.target = np.zeros((2, 3, 4)).astype(self.x_type)
+        for i in range(2):
+            for j in range(3):
+                for k in range(4):
+                    self.target[i, j, k] = self.xnp[i, j, self.index[i, j, k]]
+        self.inputs = {
+            'Input': self.xnp,
+            'Index': self.index,
+        }
+        self.attrs = {'Axis': self.axis, 'broadcast': False}
+        self.outputs = {'Result': self.target}
+
+    def init_data(self):
+        self.x_type = "float64"
+        self.x_shape = (10, 10, 10)
+        self.index_type = "int64"
+        self.index = np.random.randint(0, 10, (2, 3, 4)).astype(self.index_type)
+        self.axis = 2
+        self.axis_type = "int64"
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
@@ -208,6 +236,67 @@ class TestTakeAlongAxisAPICase1(TestTakeAlongAxisAPI):
         self.axis = 0
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
+
+
+class TestTakeAlongAxisAPICase2(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(0)
+        self.shape = [3, 3]
+        self.index_shape = [1, 3]
+        self.index_np = np.array([[0, 1, 2]]).astype('int64')
+        self.x_np = np.random.random(self.shape).astype(np.float32)
+        self.place = [paddle.CPUPlace()]
+        self.axis = 0
+        if core.is_compiled_with_cuda():
+            self.place.append(paddle.CUDAPlace(0))
+
+    @test_with_pir_api
+    def test_api_static(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data('X', self.shape)
+            index = paddle.static.data('Index', self.index_shape, "int64")
+            out = paddle.take_along_axis(x, index, self.axis, False)
+            exe = paddle.static.Executor(self.place[0])
+            res = exe.run(
+                feed={'X': self.x_np, 'Index': self.index_np}, fetch_list=[out]
+            )
+        out_ref = np.zeros_like(self.index_np, dtype=self.x_np.dtype)
+        for i in range(self.index_shape[0]):
+            for j in range(self.index_shape[1]):
+                out_ref[i, j] = self.x_np[self.index_np[i, j], j]
+        for out in res:
+            np.testing.assert_allclose(out, out_ref, rtol=0.001)
+
+    def test_api_dygraph(self):
+        paddle.disable_static(self.place[0])
+        x_tensor = paddle.to_tensor(self.x_np)
+        self.index = paddle.to_tensor(self.index_np)
+        out = paddle.take_along_axis(x_tensor, self.index, self.axis, False)
+        out_ref = np.zeros_like(self.index_np, dtype=self.x_np.dtype)
+        for i in range(self.index_shape[0]):
+            for j in range(self.index_shape[1]):
+                out_ref[i, j] = self.x_np[self.index_np[i, j], j]
+        np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
+        paddle.enable_static()
+
+    def test_error(self):
+        paddle.disable_static(self.place[0])
+        tensorx = paddle.to_tensor([[1, 2, 3], [4, 5, 6]]).astype("float32")
+        indices = paddle.to_tensor([1]).astype("int32")
+        # len(arr.shape) != len(indices.shape)
+        with self.assertRaises(ValueError):
+            res = paddle.take_along_axis(tensorx, indices, 0, False)
+        # the element of indices out of range
+        with self.assertRaises(RuntimeError):
+            indices = paddle.to_tensor([[100]]).astype("int32")
+            res = paddle.take_along_axis(tensorx, indices, 0, False)
+        # the shape of indices doesn't match
+        with self.assertRaises(RuntimeError):
+            indices = paddle.to_tensor(
+                [[1, 0, 0, 0], [1, 0, 0, 0], [1, 0, 0, 0]]
+            ).astype("int32")
+            res = paddle.take_along_axis(tensorx, indices, 0, False)
 
 
 if __name__ == "__main__":

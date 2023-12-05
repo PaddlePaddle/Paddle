@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/meta_tensor.h"
 
 namespace phi {

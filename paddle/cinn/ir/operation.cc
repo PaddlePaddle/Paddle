@@ -62,7 +62,7 @@ Operation ComputeOp::Make(const std::string &name,
   n->reduce_axis = reduce_axis;
   n->tag = tag;
   n->attrs = attrs;
-  n->axis = common::GenDefaultAxis(domain.size());
+  n->axis = cinn::common::GenDefaultAxis(domain.size());
   std::vector<Expr> tmp_axis;
   for (auto &x : n->axis) {
     tmp_axis.push_back(x);
