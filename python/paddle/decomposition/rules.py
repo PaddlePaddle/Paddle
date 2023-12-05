@@ -17,20 +17,6 @@ from .primitives import *  # noqa: F403
 from .register import register_decomp
 
 
-# @register_decomp('pd_op.stack')
-def stack(x, axis):
-    """
-    define composite rule of op stack
-    unsqueeze each dimension of the input (use reshape), and then concat
-    """
-    x_shape = x[0].shape
-    if axis < 0:
-        axis += len(x_shape) + 1
-    out_shape = x_shape[:axis] + [1] + x_shape[axis:]
-    out = concat([reshape(item, out_shape) for item in x], axis)
-    return out
-
-
 @register_decomp('pd_op.unsqueeze')
 def unsqueeze(x, axis):
     """define composite rule of op unsqueeze"""

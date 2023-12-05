@@ -251,17 +251,9 @@ Tensor stack_decomp(const std::vector<Tensor>& x, const int& axis) {
   if (tmp_axis < 0) {
     tmp_axis += tensor_dims.size() + 1;
   }
+  auto out_shape = phi::vectorize(tensor_dims);
+  out_shape.insert(out_shape.begin() + tmp_axis, 1);
 
-  std::vector<int64_t> one_dim;
-  one_dim.push_back(1);
-
-  auto shape_vector = phi::vectorize(phi::slice_ddim(tensor_dims, 0, axis));
-  shape_vector.push_back(1);
-  auto shape_v =
-      phi::vectorize(phi::slice_ddim(tensor_dims, axis, tensor_dims.size()));
-
-  auto shape = shape_vector + shape_v;
-  auto out_shape = phi::make_ddim(shape);
   std::vector<Tensor> concat_x;
   for (size_t i = 0; i < x.size(); ++i) {
     concat_x.push_back(reshape<T>(x[i], out_shape));
