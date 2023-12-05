@@ -89,14 +89,14 @@ class EigenGpuStreamDevice : public Eigen::StreamInterface {
   }
 
   void* scratchpad() const override {
-    if (scratch_ == NULL) {
+    if (scratch_ == nullptr) {
       scratch_ = allocate(Eigen::kGpuScratchSize + sizeof(unsigned int));
     }
     return scratch_;
   }
 
   unsigned int* semaphore() const override {
-    if (semaphore_ == NULL) {
+    if (semaphore_ == nullptr) {
       char* scratch = static_cast<char*>(scratchpad()) + Eigen::kGpuScratchSize;
       semaphore_ = reinterpret_cast<unsigned int*>(scratch);
 #ifdef PADDLE_WITH_HIP
