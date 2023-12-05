@@ -31,7 +31,7 @@ def stack(x, axis):
     return out
 
 
-@register_decomp('pd_op.unsqueeze')
+# @register_decomp('pd_op.unsqueeze')
 def unsqueeze(x, axis):
     """define composite rule of op unsqueeze"""
     """using reshape to implement unsqueeze op"""

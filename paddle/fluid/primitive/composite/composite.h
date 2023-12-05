@@ -301,6 +301,16 @@ std::tuple<Tensor, Tensor> squeeze_decomp(const Tensor& x,
 }
 
 template <typename T>
+std::tuple<Tensor, Tensor> unsqueeze_decomp(const Tensor& x,
+                                            const IntArray& axis) {
+  auto axis_ = process_dims(x, axis.GetData());
+  auto out_shape = get_unsqueeze_dims(x, axis_);
+  Tensor out = reshape<T>(x, out_shape);
+  Tensor xshape;
+  return std::make_tuple(out, xshape);
+}
+
+template <typename T>
 Tensor add_n_decomp(const std::vector<Tensor>& x) {
   Tensor res = x[0];
   for (size_t i = 1; i < x.size(); i++) {

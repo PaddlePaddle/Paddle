@@ -65,7 +65,7 @@ static std::vector<int64_t> get_unsqueeze_dims(
   return result;
 }
 
-// This fucction compute unsqueeze dims for reshape to replace unsqueeze.
+// This fucction compute squeeze dims for reshape to replace unsqueeze.
 static std::vector<int64_t> get_squeeze_dims(const Tensor& origin,
                                              const std::vector<int64_t>& axis) {
   auto origin_dims = origin.shape();
