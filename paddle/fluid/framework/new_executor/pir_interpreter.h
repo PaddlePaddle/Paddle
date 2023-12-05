@@ -18,6 +18,10 @@
 #include "paddle/fluid/framework/new_executor/interpreter_base_impl.h"
 #include "paddle/pir/core/value.h"
 
+#if defined(PADDLE_WITH_CUDA)
+#include "paddle/phi/kernels/autotune/gpu_timer.h"
+#endif
+
 namespace ir {
 class Block;
 }  // namespace ir
@@ -52,12 +56,13 @@ class PirInterpreter : public InterpreterBaseImpl {
   paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names,
       const std::vector<phi::DenseTensor>& feed_tensors,
-      bool need_fetch = true) override;
-
-  paddle::framework::FetchList Run(
-      const std::vector<std::string>& feed_names,
       bool need_fetch = true,
       bool enable_job_schedule_profiler = false) override;
+
+  paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
+                                   bool need_fetch = true,
+                                   bool enable_job_schedule_profiler = false,
+                                   bool enable_op_profiling = false) override;
 
   void ShareWorkQueueFrom(InterpreterBaseImpl* src) override;
 
@@ -70,6 +75,8 @@ class PirInterpreter : public InterpreterBaseImpl {
   bool IsSharedResultsBuild() const override;
 
   void SetCopyProgram(std::shared_ptr<ProgramDesc> prog) override;
+
+  std::shared_ptr<ProgramDesc> GetMutableCopyProgram() override;
 
   void SetSkipGcVars(const std::set<std::string>& skip_gc_vars) override;
 
@@ -96,6 +103,9 @@ class PirInterpreter : public InterpreterBaseImpl {
   }
 
   std::string GetNameByValue(::pir::Value value) const;
+
+  // Only for debug
+  Variable* DebugVar(const std::string& name) const override;
 
  private:
   // build graph
@@ -223,6 +233,8 @@ class PirInterpreter : public InterpreterBaseImpl {
 
   const ::pir::Block* ir_block_{nullptr};
 
+  std::unordered_map<::pir::Block*, PirInterpreter*> sub_blocks_;  // Not owned
+
   std::vector<std::unique_ptr<InstructionBase>> vec_instruction_base_;
 
   // value execution info
@@ -239,6 +251,12 @@ class PirInterpreter : public InterpreterBaseImpl {
   // Note(zhangbo): set_parameter_op's input and parameter_op's output
   // belongs to a parameter and cannot GC.
   std::unordered_set<std::string> parameter_var_names_;
+
+#if defined(PADDLE_WITH_CUDA)
+  std::unique_ptr<phi::CalculateStreamTimer> calculate_stream_timer_;
+#endif
+  size_t last_calculate_instr_id_;
+  bool enable_job_schedule_profiler_;
 };
 
 }  // namespace framework

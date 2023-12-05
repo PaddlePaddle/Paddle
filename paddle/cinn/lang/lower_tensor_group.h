@@ -49,7 +49,7 @@ class LowerTensorGroup {
                    const std::vector<ir::Var>& scalar_args,
                    ast_gen_ius::TensorGroup* tensor_group,
                    const std::vector<ir::Tensor>& temp_tensor_args = {},
-                   const Target& target = common::DefaultHostTarget());
+                   const Target& target = cinn::common::DefaultHostTarget());
 
   std::vector<ir::LoweredFunc> operator()();
 

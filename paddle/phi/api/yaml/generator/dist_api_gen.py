@@ -456,7 +456,8 @@ RESHAPE_CALCULATE_LOCAL_SHAPE_TEMPLATE = """
       for (size_t i = 0; i < shape.GetData().size(); i++) {
         auto& out_dist_attr = PADDLE_GET_CONST(phi::distributed::TensorDistAttr, spmd_info.second[0]);
         if (out_dist_attr.dims_mapping()[i] >= 0) {
-          int64_t mesh_dim = out_dist_attr.process_mesh().shape()[i];
+          int64_t dim = out_dist_attr.dims_mapping()[i];
+          int64_t mesh_dim = out_dist_attr.process_mesh().shape()[dim];
           // TODO: Support aliquant condition.
           PADDLE_ENFORCE_EQ(shape.GetData()[i] % mesh_dim,
                 0,

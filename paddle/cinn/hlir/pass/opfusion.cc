@@ -26,8 +26,8 @@ namespace cinn {
 namespace hlir {
 namespace pass {
 
-using common::GraphNode;
-using common::Type;
+using cinn::common::GraphNode;
+using cinn::common::Type;
 using framework::Graph;
 using framework::Node;
 using framework::NodeData;
@@ -203,8 +203,8 @@ class DomTree {
 struct GroupNode {
   GroupNode* parent{nullptr};
   OpPatternKind pattern;
-  common::GraphNode* ref_node{nullptr};
-  common::GraphNode* master_node{nullptr};
+  cinn::common::GraphNode* ref_node{nullptr};
+  cinn::common::GraphNode* master_node{nullptr};
   int index{0};
   int nodes_count{1};
   int op_nodes_count{0};
@@ -518,7 +518,7 @@ class GraphPartition {
       }
     }
   }
-  void SplitGroups(const std::vector<common::GraphNode*>& graph_nodes) {
+  void SplitGroups(const std::vector<cinn::common::GraphNode*>& graph_nodes) {
     // split groups sorted by topo order
     CHECK_EQ(graph_nodes.size(), group_nodes_.size());
     absl::flat_hash_map<int, std::vector<Node*>> group_maps;

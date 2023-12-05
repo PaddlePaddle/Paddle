@@ -149,7 +149,8 @@ def gen_op_vjp_str(
             index_0 = fwd_outputs_list.index(bw_input_name)
         else:
             vjp_param_name = 'out_grads'
-            grad_idx = fwd_outputs_list.index(bw_input_name[:-5])
+            offset = len('_grad')
+            grad_idx = fwd_outputs_list.index(bw_input_name[:-offset])
             index_0 = grad_idx
         if op_grad_info.input_optional_list[idx] == 'true':
             if input_type == 'Tensor':

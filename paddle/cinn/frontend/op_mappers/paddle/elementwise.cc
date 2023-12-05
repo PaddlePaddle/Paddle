@@ -223,7 +223,7 @@ void PowOpMapper(const paddle::cpp::OpDesc& op_desc,
     y = ctx.Builder()->FillConstant(x->shape,
                                     factor,
                                     cinn::UniqName(x_name + "_factor"),
-                                    common::Type2Str(x->type));
+                                    cinn::common::Type2Str(x->type));
   } else {
     LOG(FATAL) << "Cannot found [FactorTensor] input or [factor] attribute in "
                   "paddle.pow! Please check.";

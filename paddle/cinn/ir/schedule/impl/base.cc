@@ -363,7 +363,7 @@ std::vector<Expr> StScheduleImpl::SamplePerfectTile(
   CHECK_GE(n, 2) << "The number of tile factors should be at least 2";
   CHECK_GE(max_innermost_factor, 1)
       << "The max innermost factor should be at least 1";
-  CHECK(common::is_zero(loop.As<ir::For>()->min))
+  CHECK(cinn::common::is_zero(loop.As<ir::For>()->min))
       << "The For loop should start from 0";
   int loop_extent = GetLoopExtent(loop);
   std::vector<int> innermost_factors;

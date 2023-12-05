@@ -95,7 +95,7 @@ void HeterWrapper::SerializeToReq(const std::string& varname,
   req_var->set_data_type(static_cast<VariableMessage::Type>(
       framework::TransToProtoVarType(tensor->dtype())));
 
-  for (auto& dim : phi::vectorize(tensor->dims())) {
+  for (auto& dim : common::vectorize(tensor->dims())) {
     req_var->add_dims(dim);
   }
   const framework::LoD lod = tensor->lod();
@@ -154,7 +154,7 @@ void HeterWrapper::DeSerializeToTensor(Scope* scope,
   for (auto& x : req_var.dims()) {
     vec_dim.push_back(x);
   }
-  tensor->Resize(phi::make_ddim(vec_dim));
+  tensor->Resize(common::make_ddim(vec_dim));
 
   LoD lod;
   for (int i = 0; i < req_var.lod_level(); ++i) {
@@ -199,7 +199,7 @@ void HeterWrapper::DeSerializeToTensor(Scope* scope,
   for (auto& x : req_var.dims()) {
     vec_dim.push_back(x);
   }
-  tensor->Resize(phi::make_ddim(vec_dim));
+  tensor->Resize(common::make_ddim(vec_dim));
 
   LoD lod;
   for (int i = 0; i < req_var.lod_level(); ++i) {

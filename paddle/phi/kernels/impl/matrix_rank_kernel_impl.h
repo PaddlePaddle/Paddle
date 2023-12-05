@@ -21,37 +21,37 @@ namespace phi {
 
 namespace detail {
 static DDim GetEigenvalueDim(const DDim& dim, int k) {
-  auto vec = phi::vectorize(dim);
+  auto vec = common::vectorize(dim);
   vec.erase(vec.end() - 2, vec.end());
   vec.push_back(k);
-  return phi::make_ddim(vec);
+  return common::make_ddim(vec);
 }
 
 static DDim NewAxisDim(const DDim& dim, int k) {
-  auto vec = phi::vectorize(dim);
+  auto vec = common::vectorize(dim);
   vec.push_back(k);
-  return phi::make_ddim(vec);
+  return common::make_ddim(vec);
 }
 
 static DDim RemoveLastDim(const DDim& dim) {
-  auto vec = phi::vectorize(dim);
+  auto vec = common::vectorize(dim);
   if (vec.size() <= 1) {
-    return phi::make_ddim({1});
+    return common::make_ddim({1});
   }
   vec.erase(vec.end() - 1, vec.end());
-  return phi::make_ddim(vec);
+  return common::make_ddim(vec);
 }
 
 static DDim GetUDDim(const DDim& x_dim, int k) {
-  auto x_vec = phi::vectorize(x_dim);
+  auto x_vec = common::vectorize(x_dim);
   x_vec[x_vec.size() - 1] = k;
-  return phi::make_ddim(x_vec);
+  return common::make_ddim(x_vec);
 }
 
 static DDim GetVHDDim(const DDim& x_dim, int k) {
-  auto x_vec = phi::vectorize(x_dim);
+  auto x_vec = common::vectorize(x_dim);
   x_vec[x_vec.size() - 2] = k;
-  return phi::make_ddim(x_vec);
+  return common::make_ddim(x_vec);
 }
 }  // namespace detail
 

@@ -17,13 +17,13 @@
 #include <string>
 #include <vector>
 
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/var_helper.h"
 #include "paddle/fluid/imperative/variable_wrapper.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_factory.h"
 
 namespace paddle {
