@@ -186,6 +186,13 @@ pir::RewritePatternSet AddBroadcastToElementwisePass::InitializePatterns(
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::GreaterEqualOp>>(
       context);
 
+  // bitwise ops
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::BitwiseOrOp>>(
+      context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::BitwiseXorOp>>(
+      context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::BitwiseNotOp>>(
+      context);
   return ps;
 }
 

@@ -856,6 +856,7 @@ ir::Tensor OpLowererImpl::GetTensor(const GroupPtr& group,
   auto dtype = type_info.dtype();
   std::string input_id = ValueName(value);
   if (group->shape_analysis != nullptr) {
+    // std::cerr << "dy shape " << std::endl;
     auto sym_vec =
         group->shape_analysis->GetOrCreateSymbolicDimsForRankedValue(value);
     std::vector<ir::Dim> sym_shape;
@@ -865,6 +866,7 @@ ir::Tensor OpLowererImpl::GetTensor(const GroupPtr& group,
     return lang::CreatePlaceHolder(
         sym_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
   } else {
+    // std::cerr << "shape " << type_info.dims() << std::endl;
     return lang::CreatePlaceHolder(
         in_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
   }
