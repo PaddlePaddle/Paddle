@@ -2676,19 +2676,6 @@ void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
-void RowConvGradInferMeta(const MetaTensor& out_grad,
-                          const MetaTensor& filter,
-                          MetaTensor* x_grad,
-                          MetaTensor* filter_grad) {
-  if (x_grad != nullptr) {
-    x_grad->set_dims(out_grad.dims());
-  }
-
-  if (filter_grad != nullptr) {
-    filter_grad->set_dims(filter.dims());
-  }
-}
-
 void RowConvInferMeta(const MetaTensor& x,
                       const MetaTensor& filter,
                       MetaTensor* out) {
@@ -2701,6 +2688,7 @@ void RowConvInferMeta(const MetaTensor& x,
                         filter_dims));
   out->set_dims(x.dims());
   out->share_lod(x);
+  out->set_dtype(x.dtype());
 }
 
 void SearchsortedInferMeta(const MetaTensor& sorted_sequence,

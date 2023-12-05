@@ -404,11 +404,6 @@ void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
                                               int dim,
                                               MetaTensor* out);
 
-void RowConvGradInferMeta(const MetaTensor& out_grad,
-                          const MetaTensor& filter,
-                          MetaTensor* x_grad,
-                          MetaTensor* filter_grad);
-
 void RowConvInferMeta(const MetaTensor& x,
                       const MetaTensor& filter,
                       MetaTensor* out);
