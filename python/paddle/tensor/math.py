@@ -7073,9 +7073,6 @@ def copysign(x, y, name=None):
 
     """
     out_shape = broadcast_shape(x.shape, y.shape)
-    x = paddle.broadcast_to(x, out_shape)
-    y = paddle.broadcast_to(y, out_shape)
-
     if in_dynamic_mode():
         return _C_ops.copysign(x, y)
     else:
@@ -7094,8 +7091,6 @@ def copysign_(x, y):
     Please refer to :ref:`api_paddle_copysign`.
     """
     out_shape = broadcast_shape(x.shape, y.shape)
-    y = paddle.broadcast_to(y, out_shape)
-
     return _C_ops.copysign_(x, y)
 
 

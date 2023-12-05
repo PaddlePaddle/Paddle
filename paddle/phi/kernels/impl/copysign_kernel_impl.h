@@ -17,7 +17,6 @@
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/copysign_kernel.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
-
 namespace phi {
 
 template <typename T>
@@ -26,8 +25,8 @@ struct CopySignFunctor {
       : x_data_(x_data), y_data_(y_data), out_data_(out_data), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    out_data_[idx] = std::copysign(static_cast<double>(x_data_[idx]),
-                                   static_cast<double>(y_data_[idx]));
+    out_data_[idx] = copysign(static_cast<double>(x_data_[idx]),
+                              static_cast<double>(y_data_[idx]));
   }
 
   const T* x_data_;

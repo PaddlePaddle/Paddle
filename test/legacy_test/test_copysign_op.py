@@ -15,9 +15,10 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
+from paddle.base import core
 
 np.random.seed(100)
 paddle.seed(100)
@@ -50,6 +51,38 @@ class TestCopySignOp(OpTest):
     def init_config(self):
         self.x = np.random.randn(20, 6).astype('float64')
         self.y = np.random.randn(20, 6).astype('float64')
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestCopySignBF16(OpTest):
+    def setUp(self):
+        self.op_type = "copysign"
+        self.python_api = paddle.copysign
+        self.init_dtype()
+        np.random.seed(1024)
+        x = np.random.uniform(0.1, 1, [11, 17]).astype(np.float32)
+        y = np.random.uniform(0.1, 1, [11, 17]).astype(np.float32)
+        out = ref_copysign(x, y)
+        self.inputs = {
+            'x': OpTest.np_dtype_to_base_dtype(convert_float_to_uint16(x)),
+            'y': OpTest.np_dtype_to_base_dtype(convert_float_to_uint16(y)),
+        }
+        self.outputs = {'out': convert_float_to_uint16(out)}
+
+    def init_dtype(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['x'], ['out'])
 
 
 class TestCopySignAPI(unittest.TestCase):
@@ -124,6 +157,20 @@ class TestCopySignFloat32(TestCopySignAPI):
 class TestCopySignFloat64(TestCopySignAPI):
     def input_init(self):
         dtype = np.float64
+        self.x = (np.random.randn(10, 20) * 10).astype(dtype)
+        self.y = (np.random.randn(10, 20) * 10).astype(dtype)
+
+
+class TestCopySignUint8(TestCopySignAPI):
+    def input_init(self):
+        dtype = np.uint8
+        self.x = (np.random.randn(10, 20) * 10).astype(dtype)
+        self.y = (np.random.randn(10, 20) * 10).astype(dtype)
+
+
+class TestCopySignFloat16(TestCopySignAPI):
+    def input_init(self):
+        dtype = np.float16
         self.x = (np.random.randn(10, 20) * 10).astype(dtype)
         self.y = (np.random.randn(10, 20) * 10).astype(dtype)
 
