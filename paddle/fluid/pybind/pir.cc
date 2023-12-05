@@ -1532,6 +1532,7 @@ static bool HasDynamicShape(const Program &program) {
 void AddPirPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
                 Program &program) {                          // NOLINT
 #ifdef PADDLE_WITH_CINN
+  pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();

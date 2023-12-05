@@ -345,7 +345,9 @@ class PirPassContext:
         fwd_program, _ = paddle.base.libpaddle.pir.clone_program(
             runable_program.forward_program
         )
-        paddle.base.libpaddle.pir.apply_pir_pass(fwd_program)
+        pm = paddle.base.libpaddle.pir.PassManager()
+        paddle.base.libpaddle.pir.add_pir_pass(pm, fwd_program)
+        pm.run(fwd_program)
         in_out_values = cls._prepare_attr(fwd_program)
         return RunableProgram(fwd_program, in_out_values)
 
