@@ -377,10 +377,9 @@ class TestTransform(TestTransformBase):
 
 
 class TestTransformForOriginalList(TestTransform):
-    def _run(self, to_static):
-        with enable_to_static_guard(to_static):
-            self.dygraph_func = paddle.jit.to_static(self.dygraph_func)
-            return self.dygraph_func()
+    def _run(self):
+        self.dygraph_func = paddle.jit.to_static(self.dygraph_func)
+        return self.dygraph_func()
 
 
 class TestTransformError(TestTransformBase):

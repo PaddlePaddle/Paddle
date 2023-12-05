@@ -78,11 +78,11 @@ class TestPool2D(Dy2StTestBase):
 
     def train_static(self):
         with enable_to_static_guard(True):
-            return self.train(to_static=True)
+            return self.train()
 
     def train_dygraph(self):
         with enable_to_static_guard(False):
-            return self.train(to_static=False)
+            return self.train()
 
     @test_legacy_and_pt_and_pir
     def test_to_static(self):
