@@ -3869,3 +3869,252 @@ def householder_product(x, tau, name=None):
             )
     out = out.reshape(org_x_shape)
     return out
+
+
+# Reference: MatrixExponential, https://eigen.tuxfamily.org/dox/unsupported/MatrixExponential_8h_source.html
+def _matrix_exp_pade3(mat_a, mat_i, mat_a2):
+    """3rd-order Pade approximant."""
+    b = [120.0, 60.0, 12.0]
+    b = [paddle.full((), x, mat_a.dtype) for x in b]
+    tmp = mat_a2 + b[1] * mat_i
+    mat_u = paddle.matmul(mat_a, tmp)
+    mat_v = b[2] * mat_a + b[0] * mat_i
+    return mat_u, mat_v
+
+
+def _matrix_exp_pade5(mat_a, mat_i, mat_a2, mat_a4):
+    """5th-order Pade approximant."""
+    b = [30240.0, 15120.0, 3360.0, 420.0, 30.0]
+    b = [paddle.full((), x, mat_a.dtype) for x in b]
+    tmp = mat_a4 + b[3] * mat_a2 + b[1] * mat_i
+    mat_u = paddle.matmul(mat_a, tmp)
+    mat_v = b[4] * mat_a4 + b[2] * mat_a2 + b[0] * mat_i
+    return mat_u, mat_v
+
+
+def _matrix_exp_pade7(mat_a, mat_i, mat_a2, mat_a4, mat_a6):
+    """7th-order Pade approximant."""
+    b = [17297280.0, 8648640.0, 1995840.0, 277200.0, 25200.0, 1512.0, 56.0]
+    b = [paddle.full((), x, mat_a.dtype) for x in b]
+    tmp = mat_a6 + b[5] * mat_a4 + b[3] * mat_a2 + b[1] * mat_i
+    mat_u = paddle.matmul(mat_a, tmp)
+    mat_v = b[6] * mat_a6 + b[4] * mat_a4 + b[2] * mat_a2 + b[0] * mat_i
+    return mat_u, mat_v
+
+
+def _matrix_exp_pade9(mat_a, mat_i, mat_a2, mat_a4, mat_a6, mat_a8):
+    """9th-order Pade approximant."""
+    b = [
+        17643225600.0,
+        8821612800.0,
+        2075673600.0,
+        302702400.0,
+        30270240.0,
+        2162160.0,
+        110880.0,
+        3960.0,
+        90.0,
+    ]
+    b = [paddle.full((), x, mat_a.dtype) for x in b]
+    tmp = mat_a8 + b[7] * mat_a6 + b[5] * mat_a4 + b[3] * mat_a2 + b[1] * mat_i
+    mat_u = paddle.matmul(mat_a, tmp)
+    mat_v = (
+        b[8] * mat_a8
+        + b[6] * mat_a6
+        + b[4] * mat_a4
+        + b[2] * mat_a2
+        + b[0] * mat_i
+    )
+    return mat_u, mat_v
+
+
+def _matrix_exp_pade13(mat_a, mat_i, mat_a2, mat_a4, mat_a6):
+    """13th-order Pade approximant."""
+    b = [
+        64764752532480000.0,
+        32382376266240000.0,
+        7771770303897600.0,
+        1187353796428800.0,
+        129060195264000.0,
+        10559470521600.0,
+        670442572800.0,
+        33522128640.0,
+        1323241920.0,
+        40840800.0,
+        960960.0,
+        16380.0,
+        182.0,
+    ]
+    b = [paddle.full((), x, mat_a.dtype) for x in b]
+    tmp_u = (
+        paddle.matmul(mat_a6, mat_a6 + b[11] * mat_a4 + b[9] * mat_a2)
+        + b[7] * mat_a6
+        + b[5] * mat_a4
+        + b[3] * mat_a2
+        + b[1] * mat_i
+    )
+    mat_u = paddle.matmul(mat_a, tmp_u)
+    tmp_v = b[12] * mat_a6 + b[10] * mat_a4 + b[8] * mat_a2
+    mat_v = (
+        paddle.matmul(mat_a6, tmp_v)
+        + b[6] * mat_a6
+        + b[4] * mat_a4
+        + b[2] * mat_a2
+        + b[0] * mat_i
+    )
+    return mat_u, mat_v
+
+
+def _matrix_uv_where(vals, cases, l1_norm):
+    assert len(vals) == len(cases) - 1
+    if len(vals) == 1:
+        return paddle.where(
+            paddle.less_than(l1_norm, vals[0]), cases[0], cases[1]
+        )
+    else:
+        return paddle.where(
+            paddle.less_than(l1_norm, vals[0]),
+            cases[0],
+            _matrix_uv_where(vals[1:], cases[1:], l1_norm),
+        )
+
+
+def _matrix_uv_float32(mat_a, l1_norm, squarings):
+    mat_i = paddle.eye(mat_a.shape[-2], dtype=mat_a.dtype)
+    mat_a2 = paddle.matmul(mat_a, mat_a)
+    mat_a4 = paddle.matmul(mat_a2, mat_a2)
+    mat_a6 = paddle.matmul(mat_a4, mat_a2)
+
+    u3, v3 = _matrix_exp_pade3(mat_a, mat_i, mat_a2)
+    u5, v5 = _matrix_exp_pade5(mat_a, mat_i, mat_a2, mat_a4)
+    u7, v7 = _matrix_exp_pade7(
+        mat_a
+        / paddle.cast(
+            paddle.pow(paddle.full((), 2.0, mat_a.dtype), squarings),
+            mat_a.dtype,
+        ),
+        mat_i,
+        mat_a2,
+        mat_a4,
+        mat_a6,
+    )
+    conds = (
+        paddle.full((), 4.258730016922831e-001, mat_a.dtype),
+        paddle.full((), 1.880152677804762e000, mat_a.dtype),
+    )
+
+    u = _matrix_uv_where(conds, (u3, u5, u7), l1_norm)
+    v = _matrix_uv_where(conds, (v3, v5, v7), l1_norm)
+
+    return u, v
+
+
+def _matrix_uv_float64(mat_a, l1_norm, squarings):
+    mat_i = paddle.eye(mat_a.shape[-2], dtype=mat_a.dtype)
+    mat_a2 = paddle.matmul(mat_a, mat_a)
+    mat_a4 = paddle.matmul(mat_a2, mat_a2)
+    mat_a6 = paddle.matmul(mat_a4, mat_a2)
+    mat_a8 = paddle.matmul(mat_a6, mat_a2)
+
+    u3, v3 = _matrix_exp_pade3(mat_a, mat_i, mat_a2)
+    u5, v5 = _matrix_exp_pade5(mat_a, mat_i, mat_a2, mat_a4)
+    u7, v7 = _matrix_exp_pade7(mat_a, mat_i, mat_a2, mat_a4, mat_a6)
+    u9, v9 = _matrix_exp_pade9(mat_a, mat_i, mat_a2, mat_a4, mat_a6, mat_a8)
+    u13, v13 = _matrix_exp_pade13(
+        mat_a
+        / paddle.cast(
+            paddle.pow(paddle.full((), 2.0, mat_a.dtype), squarings),
+            mat_a.dtype,
+        ),
+        mat_i,
+        mat_a2,
+        mat_a4,
+        mat_a6,
+    )
+    conds = (
+        paddle.full((), 1.495585217958292e-002, mat_a.dtype),
+        paddle.full((), 2.539398330063230e-001, mat_a.dtype),
+        paddle.full((), 9.504178996162932e-001, mat_a.dtype),
+        paddle.full((), 2.097847961257068e000, mat_a.dtype),
+    )
+
+    u = _matrix_uv_where(conds, (u3, u5, u7, u9, u13), l1_norm)
+    v = _matrix_uv_where(conds, (v3, v5, v7, v9, v13), l1_norm)
+
+    return u, v
+
+
+def matrix_exp(input, name=None):
+    # convert to tensor if necessary
+    if not isinstance(
+        input,
+        (
+            paddle.Tensor,
+            paddle.base.framework.Variable,
+            paddle.base.libpaddle.pir.OpResult,
+        ),
+    ):
+        mat_a = paddle.to_tensor(input)
+    else:
+        mat_a = input
+
+    if list(mat_a.shape[-2:]) == [0, 0]:
+        return mat_a
+
+    l1_norm = paddle.unsqueeze(
+        paddle.max(paddle.sum(paddle.abs(mat_a), axis=mat_a.ndim - 2), axis=-1),
+        axis=[-1, -2],
+    )
+
+    if mat_a.dtype in [paddle.float32]:
+        maxnorm = paddle.full((), 3.925724783138660, mat_a.dtype)
+        squarings = paddle.floor(
+            paddle.log(l1_norm / maxnorm)
+            / paddle.log(paddle.full((), 2.0, mat_a.dtype))
+        )
+        squarings = paddle.maximum(squarings, paddle.zeros_like(squarings))
+
+        u, v = _matrix_uv_float32(mat_a, l1_norm, squarings)
+
+    elif mat_a.dtype in [paddle.float64]:
+        maxnorm = paddle.full((), 5.371920351148152, mat_a.dtype)
+        squarings = paddle.floor(
+            paddle.log(l1_norm / maxnorm)
+            / paddle.log(paddle.full((), 2.0, mat_a.dtype))
+        )
+        squarings = paddle.maximum(squarings, paddle.zeros_like(squarings))
+
+        u, v = _matrix_uv_float64(mat_a, l1_norm, squarings)
+
+    else:
+        raise ValueError(
+            f'matrix exponential does not support dtype {mat_a.dtype}'
+        )
+
+    is_finite = paddle.isfinite(paddle.max(l1_norm))
+    nan = paddle.full((), np.nan, mat_a.dtype)
+
+    result = paddle.static.nn.cond(
+        is_finite,
+        lambda: paddle.linalg.solve(-u + v, u + v),
+        lambda: paddle.full(mat_a.shape, nan),
+    )
+
+    max_squarings = paddle.max(squarings)
+    i = paddle.full((), 0.0, mat_a.dtype)
+
+    def c(i, _):
+        return paddle.static.nn.cond(
+            is_finite,
+            lambda: paddle.less_than(i, max_squarings),
+            lambda: paddle.full((), False),
+        )
+
+    def b(i, r):
+        return i + 1, paddle.where(
+            paddle.less_than(i, squarings), paddle.matmul(r, r), r
+        )
+
+    _, result = paddle.static.nn.while_loop(c, b, [i, result])
+
+    return result
