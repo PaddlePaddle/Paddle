@@ -22,5 +22,6 @@ void CopySignGradKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const DenseTensor& y,
                         const DenseTensor& out_grad,
-                        DenseTensor* x_grad);
+                        DenseTensor* x_grad,
+                        DenseTensor* y_grad);
 }  // namespace  phi

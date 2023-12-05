@@ -22,9 +22,18 @@ namespace phi {
 
 template <typename T>
 struct CopySignGradFunctor {
-  CopySignGradFunctor(
-      const T* x_data, const T* y_data, const T* dout, T* dx, int64_t numel)
-      : x_data_(x_data), y_data_(y_data), dout_(dout), dx_(dx), numel_(numel) {}
+  CopySignGradFunctor(const T* x_data,
+                      const T* y_data,
+                      const T* dout,
+                      T* dx,
+                      T* dy,
+                      int64_t numel)
+      : x_data_(x_data),
+        y_data_(y_data),
+        dout_(dout),
+        dx_(dx),
+        dy_(dy),
+        numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
     if (x_data_[idx] == static_cast<T>(0))
@@ -34,12 +43,14 @@ struct CopySignGradFunctor {
                  (std::copysign(static_cast<double>(x_data_[idx]),
                                 static_cast<double>(y_data_[idx])) /
                   static_cast<double>(x_data_[idx]));
+    dy_[idx] = static_cast<double>(0);
   }
 
   const T* x_data_;
   const T* y_data_;
   const T* dout_;
   T* dx_;
+  T* dy_;
   int64_t numel_;
 };
 
@@ -48,14 +59,17 @@ void CopySignGradKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const DenseTensor& y,
                         const DenseTensor& out_grad,
-                        DenseTensor* x_grad) {
+                        DenseTensor* x_grad,
+                        DenseTensor* y_grad) {
   dev_ctx.template Alloc<T>(x_grad);
+  dev_ctx.template Alloc<T>(y_grad);
   auto x_data = x.data<T>(), y_data = y.data<T>(),
        out_grad_data = out_grad.data<T>();
   auto x_grad_data = x_grad->data<T>();
+  auto y_grad_data = y_grad->data<T>();
   phi::funcs::ForRange<Context> for_range(dev_ctx, x.numel());
   phi::CopySignGradFunctor<T> functor(
-      x_data, y_data, out_grad_data, x_grad_data, x.numel());
+      x_data, y_data, out_grad_data, x_grad_data, y_grad_data, x.numel());
   for_range(functor);
 }
 }  // namespace  phi

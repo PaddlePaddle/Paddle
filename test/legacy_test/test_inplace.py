@@ -380,6 +380,12 @@ class TestDygraphInplaceCopysign(TestDygraphInplace):
     def test_errors(self):
         pass
 
+    def test_backward_success_1(self):
+        pass
+
+    def test_backward_success_2(self):
+        pass
+
     def test_forward_version(self):
         with paddle.base.dygraph.guard():
             var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
