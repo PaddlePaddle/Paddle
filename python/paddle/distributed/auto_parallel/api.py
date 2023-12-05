@@ -98,20 +98,22 @@ class DistModel:
     offers the APIs for training, evaluation and prediction.
     """
 
-    def __init__(self, layer, loss, optimizer, strategy, metrics):
+    def __init__(
+        self, layer, loss=None, optimizer=None, strategy=None, metrics=None
+    ):
         self._feed_name_list = []
         self._engine = Engine(
             layer, loss, optimizer, metrics, strategy=strategy
         )
         self._mode = None
+        self._feed_name_list = {}
 
     def train(self):
         """
         Set the mode of DistModel to "train".
         """
-        assert self._engine._has_prepared[
-            "train"
-        ], "The model for training has not been prepared."
+        if not self._engine._has_prepared["train"]:
+            raise RuntimeError("The model for training has not been prepared.")
         self._mode = "train"
         self._engine.to_mode("train")
 
@@ -119,9 +121,10 @@ class DistModel:
         """
         Set the mode of DistModel to "eval".
         """
-        assert self._engine._has_prepared[
-            "eval"
-        ], "The model for evaluation has not been prepared."
+        if not self._engine._has_prepared["eval"]:
+            raise RuntimeError(
+                "The model for evaluation has not been prepared."
+            )
         self._mode = "eval"
         self._engine.to_mode("eval")
 
@@ -129,34 +132,45 @@ class DistModel:
         """
         Set the mode of DistModel to "predict".
         """
-        assert self._engine._has_prepared[
-            "predict"
-        ], "The model for prediction has not been prepared."
+        if not self._engine._has_prepared["predict"]:
+            raise RuntimeError(
+                "The model for prediction has not been prepared."
+            )
         self._mode = "predict"
         self._engine.to_mode("predict")
 
     def _make_feeds(self, data_list):
-        if self._feed_name_list == []:
+        if (
+            self._mode not in self._feed_name_list
+            or self._feed_name_list[self._mode] == []
+        ):
             feed_list = self._engine.get_feed_list()
-            self._feed_name_list = [var.name for var in feed_list]
-        return dict(zip(self._feed_name_list, data_list))
+            self._feed_name_list[self._mode] = [var.name for var in feed_list]
+        feed_name_list = self._feed_name_list[self._mode]
+        if len(feed_name_list) != len(data_list):
+            raise ValueError(
+                "The input data and feed_list are not consistent."
+                "The model takes %s as input" % (str(feed_name_list))
+            )
+        return dict(zip(feed_name_list, data_list))
 
-    def __call__(self, data, label):
-        assert (
-            self._mode is not None
-        ), "Please call train()/eval()/predict() first."
+    def __call__(self, *args):
+        if self._mode is None:
+            raise ValueError("Please call train()/eval()/predict() first.")
         if self._mode == "train":
-            assert (
-                self._engine._optimizer is not None
-                and self._engine._loss is not None
-            ), "Please set optimizer and loss function before training."
+            if self._engine._optimizer is None or self._engine._loss is None:
+                raise ValueError(
+                    "Please set optimizer and loss function before training."
+                )
         if self._mode == "eval":
-            assert (
-                self._engine._loss is not None
-            ), "Please set loss function before evaluation."
-        feeds = self._make_feeds([data, label])
+            if self._engine._loss is None:
+                raise ValueError("Please set loss function before evaluation.")
+        feeds = self._make_feeds(list(args))
         outs = self._engine.run(feeds)
-        return outs["loss"]
+        if self._mode == "predict":
+            return outs["outputs"]
+        else:
+            return outs["loss"]
 
 
 # Part2: DistTensor construction related APIs
