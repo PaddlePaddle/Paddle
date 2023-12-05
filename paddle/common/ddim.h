@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #pragma once
 #include <initializer_list>
 #include <numeric>
@@ -233,27 +234,6 @@ TEST_API DDim stride(const DDim& ddim);
 
 TEST_API DDim stride_numel(const DDim& ddim);
 }  // namespace common
-
-namespace paddle {
-namespace framework {
-using DDim = common::DDim;
-}
-}  // namespace paddle
-
-namespace phi {
-using DDim = common::DDim;
-using common::arity;
-using common::contain_unknown_dim;
-using common::flatten_to_1d;
-using common::flatten_to_2d;
-using common::flatten_to_3d;
-using common::make_ddim;
-using common::product;
-using common::slice_ddim;
-using common::stride;
-using common::stride_numel;
-using common::vectorize;
-}  // namespace phi
 
 namespace pir {
 using DDim = common::DDim;
