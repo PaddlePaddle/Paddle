@@ -143,7 +143,7 @@ WhileInstruction::WhileInstruction(size_t id,
   }
 }
 
-void WhileInstruction::CopyInputsToOutputs() {
+void WhileInstruction::ShareInputsToOutputs() {
   for (size_t i = 0; i < outputs_.size(); ++i) {
     if (inputs_[i]->IsType<phi::DenseTensor>()) {
       outputs_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
@@ -159,29 +159,35 @@ void WhileInstruction::CopyInputsToOutputs() {
   }
 }
 
-void WhileInstruction::PassArgsToBodyBlock() {
+void WhileInstruction::CopyOutputsToBlockArgs() {
   for (size_t i = 0; i < body_block_->args_size(); ++i) {
     auto block_arg = body_block_->arg(i);
     auto var_name = body_inter_->GetNameByValue(block_arg);
     auto* inner_var = body_inter_->local_scope()->GetVar(var_name);
 
     if (outputs_[i]->IsType<phi::DenseTensor>()) {
-      inner_var->GetMutable<phi::DenseTensor>()->ShareDataWith(
-          outputs_[i]->Get<phi::DenseTensor>());
+      auto& src_tensor = outputs_[i]->Get<phi::DenseTensor>();
+      auto* dst_tensor = inner_var->GetMutable<phi::DenseTensor>();
+      dst_tensor->set_lod(src_tensor.lod());
+      framework::TensorCopy(src_tensor, src_tensor.place(), dst_tensor);
     } else if (outputs_[i]->IsType<phi::TensorArray>()) {
-      const auto& outer_array = outputs_[i]->Get<phi::TensorArray>();
-      auto* inner_array = inner_var->GetMutable<phi::TensorArray>();
-      *inner_array = outer_array;
-      VLOG(10) << inner_var
-               << " should be created: " << inner_var->IsInitialized();
+      auto src_tensor_array = outputs_[i]->Get<phi::TensorArray>();
+      auto* dst_tensor_array = inner_var->GetMutable<phi::TensorArray>();
+      dst_tensor_array->clear();
+      for (auto src_tensor : src_tensor_array) {
+        phi::DenseTensor* tmp_dst_tensor = new phi::DenseTensor();
+        framework::TensorCopy(src_tensor, src_tensor.place(), tmp_dst_tensor);
+        dst_tensor_array->push_back(*tmp_dst_tensor);
+      }
     } else {
       PADDLE_THROW(
           phi::errors::Unimplemented("unsupported type %d", inner_var->Type()));
     }
   }
+  DeviceContext().Wait();
 }
 
-void WhileInstruction::GetValueFromBodyBlock() {
+void WhileInstruction::ShareDatasToOutputs() {
   cond_var_->GetMutable<phi::DenseTensor>()->ShareDataWith(
       body_inter_->local_scope()
           ->GetVar(body_outputs_[0])
@@ -208,15 +214,15 @@ void WhileInstruction::GetValueFromBodyBlock() {
 }
 
 void WhileInstruction::Run() {
-  CopyInputsToOutputs();
+  ShareInputsToOutputs();
   VLOG(6) << "while instruction start loop ...";
   while (GetCondData(cond_var_->Get<phi::DenseTensor>())) {
     VLOG(6) << "while instruction pass args to body block";
-    PassArgsToBodyBlock();
+    CopyOutputsToBlockArgs();
     VLOG(6) << "while instruction interpretercore run";
     body_inter_->Run({}, false);
     VLOG(6) << "while instruction get value form body block";
-    GetValueFromBodyBlock();
+    ShareDatasToOutputs();
   }
   VLOG(6) << "while instruction run done";
 }
