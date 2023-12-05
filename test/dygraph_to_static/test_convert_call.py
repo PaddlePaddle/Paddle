@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    enable_to_static_guard,
     test_ast_only,
     test_legacy_and_pir,
 )
@@ -89,13 +90,13 @@ class TestRecursiveCall1(Dy2StTestBase):
         self.dyfunc = nested_func
 
     def get_dygraph_output(self):
-        paddle.jit.enable_to_static(False)
-        res = self.dyfunc(self.input).numpy()
+        with enable_to_static_guard(False):
+            res = self.dyfunc(self.input).numpy()
         return res
 
     def get_static_output(self):
-        paddle.jit.enable_to_static(True)
-        res = self.dyfunc(self.input).numpy()
+        with enable_to_static_guard(True):
+            res = self.dyfunc(self.input).numpy()
         return res
 
     @test_legacy_and_pir
@@ -180,12 +181,12 @@ class TestRecursiveCall2(Dy2StTestBase):
         return res.numpy()
 
     def get_dygraph_output(self):
-        paddle.jit.enable_to_static(False)
-        return self._run()
+        with enable_to_static_guard(False):
+            return self._run()
 
     def get_static_output(self):
-        paddle.jit.enable_to_static(True)
-        return self._run()
+        with enable_to_static_guard(True):
+            return self._run()
 
     def test_transformed_static_result(self):
         self.set_func()
