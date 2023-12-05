@@ -3464,6 +3464,7 @@ void ReshapeWithXShapeInferMeta(const MetaTensor& x,
   xshape->set_dims(common::make_ddim(xshape_dims));
   xshape->share_lod(x);
   xshape->set_strides(x.strides());
+  xshape->set_dtype(DataType::INT64);
   ReshapeInferMeta(x, shape, out, config);
 }
 
