@@ -1529,22 +1529,21 @@ static bool HasDynamicShape(const Program &program) {
   return false;
 }
 
-void ApplyPirPass(Program &forward_program) {  // NOLINT
+void AddPirPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
+                Program &program) {                          // NOLINT
 #ifdef PADDLE_WITH_CINN
-  pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
 
-  bool has_dynamic_shape = HasDynamicShape(forward_program);
+  bool has_dynamic_shape = HasDynamicShape(program);
 
   auto shape_analysis =
       has_dynamic_shape
           ? std::make_shared<pir::MockShapeConstraintIRAnalysis>(ctx)
           : nullptr;
 
-  pir::PassManager pass_manager(ctx);
-  cinn::dialect::ir::PdOp2CinnOpConverter(&forward_program);
+  cinn::dialect::ir::PdOp2CinnOpConverter(&program);
 
   pass_manager.AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
@@ -1558,8 +1557,7 @@ void ApplyPirPass(Program &forward_program) {  // NOLINT
   pass_manager.AddPass(
       cinn::dialect::ir::CreateCinnGroupLoweringPass(shape_analysis));
 
-  pass_manager.Run(&forward_program);
-  VLOG(3) << "after BuildCinnPass, forward_program:\n" << forward_program;
+  VLOG(3) << "after BuildCinnPass, program:\n" << program;
 #else
   PADDLE_THROW(platform::errors::Unimplemented(
       "Currently we only support CINN Pass for Pir under @to_static, please "
@@ -1567,7 +1565,7 @@ void ApplyPirPass(Program &forward_program) {  // NOLINT
 #endif
 }
 void BindIrPass(pybind11::module *m) {
-  m->def("apply_pir_pass", ApplyPirPass);
+  m->def("add_pir_pass", AddPirPass);
 
   py::class_<Pass, std::shared_ptr<Pass>> pass(*m,
                                                "Pass",

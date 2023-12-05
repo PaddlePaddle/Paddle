@@ -254,7 +254,7 @@ class RunableProgram:
         origin_fwd = self.forward_program
         origin_bwd = self.backward_program
         self.forward_program, self.backward_program = pass_fn(
-            self.forward_program, self.backward_program, program_name_attr
+            origin_fwd, origin_bwd, program_name_attr
         )
 
     # cached property can ensure program is splited only once.
@@ -551,21 +551,20 @@ class PartialProgramLayer:
 
             # (NOTE:@xiongkun) HOW TO APPLY PASS: this is a example for forward/backward clone pass, just replace with your cases.
             def pass_fn(forward_program, backward_program, name_attr):
-                fwd, _ = paddle.base.libpaddle.pir.clone_program(
-                    forward_program
-                )
+                fwd_pm = paddle.base.libpaddle.pir.PassManager()
+                bwd_pm = paddle.base.libpaddle.pir.PassManager()
 
                 if self._build_strategy.build_cinn_pass:
-                    paddle.base.libpaddle.pir.apply_pir_pass(fwd)
-
-                bwd, _ = paddle.base.libpaddle.pir.clone_program(
-                    backward_program
-                )
-
-                if self._build_strategy.build_cinn_pass:
-                    paddle.base.libpaddle.pir.apply_pir_pass(bwd)
-
-                return fwd, bwd
+                    paddle.base.libpaddle.pir.add_pir_pass(
+                        fwd_pm, forward_program
+                    )
+                    paddle.base.libpaddle.pir.add_pir_pass(
+                        bwd_pm, backward_program
+                    )
+                # pm.add("pass_name") to apply more pass strategy
+                fwd_pm.run(forward_program)
+                bwd_pm.run(backward_program)
+                return forward_program, backward_program
 
             train_program.apply_pir_program_pass(pass_fn)
             return train_program
