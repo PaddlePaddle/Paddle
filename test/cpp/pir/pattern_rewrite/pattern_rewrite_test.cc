@@ -27,15 +27,18 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/transforms/constant_folding_pass.h"
 #include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/conv2d_add_act_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/conv2d_add_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/conv2d_bn_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
 
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/cast_utils.h"
 #include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/op_info.h"
 #include "paddle/pir/core/parameter.h"
@@ -48,17 +51,9 @@
 #include "paddle/pir/pattern_rewrite/pattern_match.h"
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 
+#include "paddle/common/ddim.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
-
-// build Conv2dFusionOp
-#include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
-#include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
-#include "paddle/fluid/pir/transforms/fusion/conv2d_fuse_pass.h"
-#include "paddle/phi/api/lib/utils/allocator.h"
-#include "paddle/phi/infermeta/multiary.h"
-#include "paddle/pir/core/op_base.h"
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
@@ -257,660 +252,6 @@ class RedundantTransposeFusePattern
   }
 };
 
-namespace paddle {
-namespace dialect {
-class Conv2dFusionOpTest : public pir::Op<Conv2dFusionOpTest,
-                                          OpYamlInfoInterface,
-                                          InferMetaInterface> {
- public:
-  using Op::Op;
-  static const char *name() { return "pd_op.conv2d_fusion_test"; }
-  static const char *attributes_name[10];  // NOLINT
-  static constexpr uint32_t attributes_num = 10;
-  static OpInfoTuple GetOpInfo();
-  static void Build(pir::Builder &builder,             // NOLINT
-                    pir::OperationArgument &argument,  // NOLINT
-                    pir::OpResult input_,
-                    pir::OpResult filter_,
-                    pir::OpResult bias_,
-                    pir::OpResult residual_,
-                    const std::vector<int> &strides,
-                    const std::vector<int> &paddings_t,
-                    std::string padding_algorithm,
-                    const std::vector<int> &dilations_t,
-                    int groups,
-                    std::string data_format,
-                    std::string activation,
-                    bool exhaustive_search,
-                    const std::vector<int> &channels,
-                    int user_workspace_size);
-
-  static void Build(pir::Builder &builder,             // NOLINT
-                    pir::OperationArgument &argument,  // NOLINT
-                    pir::OpResult input_,
-                    pir::OpResult filter_,
-                    pir::OpResult bias_,
-                    pir::OpResult residual_,
-                    pir::AttributeMap attributes);
-  void VerifySig();
-  pir::Value input() { return operand_source(0); }
-  pir::Value filter() { return operand_source(1); }
-  pir::Value bias() { return operand_source(2); }
-  pir::Value residual() { return operand_source(3); }
-  pir::OpResult output() { return result(0); }
-  pir::OpResult outputs() { return result(1); }
-  pir::Attribute attribute(const std::string &name) {
-    {
-      PADDLE_ENFORCE(
-          attributes().count(name) > 0,
-          phi::errors::PreconditionNotMet("Attribute is not exist."));
-      return attributes().at(name);
-    }
-  }
-  template <typename T>
-  T attribute(const std::string &name) {
-    {
-      PADDLE_ENFORCE(
-          attributes().count(name) > 0 && attributes().at(name).isa<T>(),
-          phi::errors::PreconditionNotMet("Attribute is not right."));
-      return attributes().at(name).dyn_cast<T>();
-    }
-  }
-
-  static void InferMeta(phi::InferMetaContext *infer_meta);
-};
-
-const char *Conv2dFusionOpTest::attributes_name[10] = {  // NOLINT
-    "strides",
-    "paddings_t",
-    "padding_algorithm",
-    "dilations_t",
-    "groups",
-    "data_format",
-    "activation",
-    "exhaustive_search",
-    "channels",
-    "user_workspace_size"};
-
-OpInfoTuple Conv2dFusionOpTest::GetOpInfo() {
-  std::vector<paddle::dialect::OpInputInfo> inputs = {
-      OpInputInfo("input",
-                  "paddle::dialect::DenseTensorType",
-                  false,
-                  false,
-                  false,
-                  true),
-      OpInputInfo("filter",
-                  "paddle::dialect::DenseTensorType",
-                  false,
-                  false,
-                  false,
-                  true),
-      OpInputInfo("bias",
-                  "paddle::dialect::DenseTensorType",
-                  false,
-                  false,
-                  false,
-                  true),
-      OpInputInfo("residual",
-                  "paddle::dialect::DenseTensorType",
-                  true,
-                  false,
-                  false,
-                  true)};
-  std::vector<paddle::dialect::OpAttributeInfo> attributes = {
-      OpAttributeInfo(
-          "strides", "pir::ArrayAttribute<pir::Int32Attribute>", ""),
-      OpAttributeInfo(
-          "paddings_t", "pir::ArrayAttribute<pir::Int32Attribute>", ""),
-      OpAttributeInfo("padding_algorithm", "pir::StrAttribute", ""),
-      OpAttributeInfo(
-          "dilations_t", "pir::ArrayAttribute<pir::Int32Attribute>", ""),
-      OpAttributeInfo("groups", "pir::Int32Attribute", ""),
-      OpAttributeInfo("data_format", "pir::StrAttribute", ""),
-      OpAttributeInfo("activation", "pir::StrAttribute", ""),
-      OpAttributeInfo("exhaustive_search", "pir::BoolAttribute", ""),
-      OpAttributeInfo(
-          "channels", "pir::ArrayAttribute<pir::Int32Attribute>", ""),
-      OpAttributeInfo("user_workspace_size", "pir::Int32Attribute", "")};
-  std::vector<paddle::dialect::OpOutputInfo> outputs = {
-      OpOutputInfo("output", "paddle::dialect::DenseTensorType", false, false),
-      OpOutputInfo("outputs",
-                   "pir::VectorType<paddle::dialect::DenseTensorType>",
-                   false,
-                   false)};
-  paddle::dialect::OpRunTimeInfo run_time_info =
-      OpRunTimeInfo("Conv2dFusionInferMeta",
-                    {"input",
-                     "filter",
-                     "bias",
-                     "residual",
-                     "strides",
-                     "paddings_t",
-                     "padding_algorithm",
-                     "dilations_t",
-                     "groups",
-                     "data_format",
-                     "activation",
-                     "exhaustive_search",
-                     "channels",
-                     "user_workspace_size"},
-                    "ConvFusionKernel",
-                    {"input",
-                     "filter",
-                     "bias",
-                     "residual",
-                     "strides",
-                     "paddings_t",
-                     "padding_algorithm",
-                     "dilations_t",
-                     "groups",
-                     "data_format",
-                     "activation",
-                     "exhaustive_search",
-                     "channels",
-                     "user_workspace_size"},
-                    {"input"},
-                    {},
-                    {},
-                    {});
-
-  return std::make_tuple(
-      inputs, attributes, outputs, run_time_info, "conv2d_fusion_test");
-}
-
-void Conv2dFusionOpTest::Build(pir::Builder &builder,
-                               pir::OperationArgument &argument,
-                               pir::OpResult input_,
-                               pir::OpResult filter_,
-                               pir::OpResult bias_,
-                               pir::OpResult residual_,
-                               pir::AttributeMap attributes) {
-  std::vector<int> strides;
-  for (size_t i = 0;
-       i < attributes.at("strides").dyn_cast<pir::ArrayAttribute>().size();
-       i++) {
-    strides.push_back(attributes.at("strides")
-                          .dyn_cast<pir::ArrayAttribute>()
-                          .at(i)
-                          .dyn_cast<pir::Int32Attribute>()
-                          .data());
-  }
-
-  std::vector<int> paddings_t;
-  for (size_t i = 0;
-       i < attributes.at("paddings_t").dyn_cast<pir::ArrayAttribute>().size();
-       i++) {
-    paddings_t.push_back(attributes.at("paddings_t")
-                             .dyn_cast<pir::ArrayAttribute>()
-                             .at(i)
-                             .dyn_cast<pir::Int32Attribute>()
-                             .data());
-  }
-
-  std::string padding_algorithm = attributes.at("padding_algorithm")
-                                      .dyn_cast<pir::StrAttribute>()
-                                      .AsString();
-  std::vector<int> dilations_t;
-  for (size_t i = 0;
-       i < attributes.at("dilations_t").dyn_cast<pir::ArrayAttribute>().size();
-       i++) {
-    dilations_t.push_back(attributes.at("dilations_t")
-                              .dyn_cast<pir::ArrayAttribute>()
-                              .at(i)
-                              .dyn_cast<pir::Int32Attribute>()
-                              .data());
-  }
-  int groups = attributes.at("groups").dyn_cast<pir::Int32Attribute>().data();
-  std::string data_format =
-      attributes.at("data_format").dyn_cast<pir::StrAttribute>().AsString();
-  std::string activation =
-      attributes.at("activation").dyn_cast<pir::StrAttribute>().AsString();
-  bool exhaustive_search =
-      attributes.at("exhaustive_search").dyn_cast<pir::BoolAttribute>().data();
-  std::vector<int> channels;
-  for (size_t i = 0;
-       i < attributes.at("channels").dyn_cast<pir::ArrayAttribute>().size();
-       i++) {
-    channels.push_back(attributes.at("channels")
-                           .dyn_cast<pir::ArrayAttribute>()
-                           .at(i)
-                           .dyn_cast<pir::Int32Attribute>()
-                           .data());
-  }
-  int user_workspace_size = attributes.at("user_workspace_size")
-                                .dyn_cast<pir::Int32Attribute>()
-                                .data();
-
-  VLOG(4) << "Builder construction inputs";
-  std::vector<pir::OpResult> argument_inputs = {
-      input_, filter_, bias_, residual_};
-  argument.AddInputs(argument_inputs.begin(), argument_inputs.end());
-
-  VLOG(4) << "Builder construction attributes";
-  std::vector<pir::Attribute> vec_strides;
-  for (auto stride : strides) {
-    pir::Attribute attr_strides =
-        pir::Int32Attribute::get(pir::IrContext::Instance(), stride);
-
-    vec_strides.push_back(attr_strides);
-  }
-  pir::Attribute attr_strides =
-      pir::ArrayAttribute::get(pir::IrContext::Instance(), vec_strides);
-  argument.AddAttribute("strides", attr_strides);
-  std::vector<pir::Attribute> vec_paddings_t;
-  for (auto padding : paddings_t) {
-    pir::Attribute attr_paddings_t =
-        pir::Int32Attribute::get(pir::IrContext::Instance(), padding);
-
-    vec_paddings_t.push_back(attr_paddings_t);
-  }
-  pir::Attribute attr_paddings_t =
-      pir::ArrayAttribute::get(pir::IrContext::Instance(), vec_paddings_t);
-  argument.AddAttribute("paddings_t", attr_paddings_t);
-  pir::Attribute attr_padding_algorithm =
-      pir::StrAttribute::get(pir::IrContext::Instance(), padding_algorithm);
-  argument.AddAttribute("padding_algorithm", attr_padding_algorithm);
-  std::vector<pir::Attribute> vec_dilations_t;
-  for (auto dilation : dilations_t) {
-    pir::Attribute attr_dilations_t =
-        pir::Int32Attribute::get(pir::IrContext::Instance(), dilation);
-
-    vec_dilations_t.push_back(attr_dilations_t);
-  }
-  pir::Attribute attr_dilations_t =
-      pir::ArrayAttribute::get(pir::IrContext::Instance(), vec_dilations_t);
-  argument.AddAttribute("dilations_t", attr_dilations_t);
-  pir::Attribute attr_groups =
-      pir::Int32Attribute::get(pir::IrContext::Instance(), groups);
-  argument.AddAttribute("groups", attr_groups);
-  pir::Attribute attr_data_format =
-      pir::StrAttribute::get(pir::IrContext::Instance(), data_format);
-  argument.AddAttribute("data_format", attr_data_format);
-  pir::Attribute attr_activation =
-      pir::StrAttribute::get(pir::IrContext::Instance(), activation);
-  argument.AddAttribute("activation", attr_activation);
-  pir::Attribute attr_exhaustive_search =
-      pir::BoolAttribute::get(pir::IrContext::Instance(), exhaustive_search);
-  argument.AddAttribute("exhaustive_search", attr_exhaustive_search);
-  std::vector<pir::Attribute> vec_channels;
-  for (auto channel : channels) {
-    pir::Attribute attr_channels =
-        pir::Int32Attribute::get(pir::IrContext::Instance(), channel);
-
-    vec_channels.push_back(attr_channels);
-  }
-  pir::Attribute attr_channels =
-      pir::ArrayAttribute::get(pir::IrContext::Instance(), vec_channels);
-  argument.AddAttribute("channels", attr_channels);
-  pir::Attribute attr_user_workspace_size =
-      pir::Int32Attribute::get(pir::IrContext::Instance(), user_workspace_size);
-  argument.AddAttribute("user_workspace_size", attr_user_workspace_size);
-
-  VLOG(4) << "Builder construction outputs";
-  paddle::dialect::DenseTensorType input =
-      input_.type().dyn_cast<paddle::dialect::DenseTensorType>();
-  (void)input;
-  paddle::dialect::DenseTensorType filter =
-      filter_.type().dyn_cast<paddle::dialect::DenseTensorType>();
-  (void)filter;
-  paddle::dialect::DenseTensorType bias =
-      bias_.type().dyn_cast<paddle::dialect::DenseTensorType>();
-  (void)bias;
-  // paddle::dialect::DenseTensorType residual =
-  // residual_.type().dyn_cast<paddle::dialect::DenseTensorType>();
-  // (void)residual;
-
-  VLOG(4) << "Builder construction  dense_input";
-  phi::DenseTensor dense_input(
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace())
-          .get(),
-      phi::DenseTensorMeta(TransToPhiDataType(input.dtype()),
-                           input.dims(),
-                           input.data_layout(),
-                           input.lod(),
-                           input.offset()));
-  VLOG(4) << "Builder construction  meta_input";
-  phi::MetaTensor meta_input(&dense_input);
-
-  VLOG(4) << "Builder construction  dense_filter";
-  phi::DenseTensor dense_filter(
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace())
-          .get(),
-      phi::DenseTensorMeta(TransToPhiDataType(filter.dtype()),
-                           filter.dims(),
-                           filter.data_layout(),
-                           filter.lod(),
-                           filter.offset()));
-  VLOG(4) << "Builder construction  meta_filter";
-  phi::MetaTensor meta_filter(&dense_filter);
-
-  VLOG(4) << "Builder construction  dense_bias";
-  phi::DenseTensor dense_bias(
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace())
-          .get(),
-      phi::DenseTensorMeta(TransToPhiDataType(bias.dtype()),
-                           bias.dims(),
-                           bias.data_layout(),
-                           bias.lod(),
-                           bias.offset()));
-  VLOG(4) << "Builder construction  meta_bias";
-  phi::MetaTensor meta_bias(&dense_bias);
-
-  // VLOG(4) << "Builder construction  dense_residual";
-  // phi::DenseTensor
-  // dense_residual(std::make_unique<paddle::experimental::DefaultAllocator>(paddle::platform::CPUPlace()).get(),
-  //                               phi::DenseTensorMeta(TransToPhiDataType(residual.dtype()),
-  //                                                    residual.dims(),
-  //                                                    residual.data_layout(),
-  //                                                    residual.lod(),
-  //                                                    residual.offset()));
-  VLOG(4) << "Builder construction  meta_residual";
-  // phi::MetaTensor meta_residual(&dense_residual);
-  phi::MetaTensor meta_residual;
-  phi::DenseTensor dense_output;
-  phi::MetaTensor meta_output(&dense_output);
-  std::vector<phi::DenseTensor> vec_dense_outputs((channels.size()),
-                                                  phi::DenseTensor());
-  std::vector<phi::MetaTensor> vec_meta_outputs;
-  for (size_t i = 0; i < static_cast<size_t>(channels.size()); i++) {
-    vec_meta_outputs.push_back(phi::MetaTensor(&vec_dense_outputs[i]));
-  }
-  std::vector<phi::MetaTensor *> meta_outputs;
-  for (auto &vec_meta_output : vec_meta_outputs) {
-    meta_outputs.push_back(&vec_meta_output);
-  }
-
-  phi::FusedConvInferMeta(meta_input,
-                          meta_filter,
-                          meta_bias,
-                          meta_residual,
-                          strides,
-                          paddings_t,
-                          padding_algorithm,
-                          dilations_t,
-                          groups,
-                          data_format,
-                          "float32",
-                          "identity",
-                          false,
-                          false,
-                          &meta_output,
-                          phi::MetaConfig());
-
-  std::vector<pir::Type> argument_outputs;
-  auto output_dense_tensor_type = paddle::dialect::DenseTensorType::get(
-      pir::IrContext::Instance(),
-      TransToIrDataType(dense_output.dtype()),
-      dense_output.dims(),
-      dense_output.layout(),
-      dense_output.lod(),
-      dense_output.offset());
-  LOG(INFO) << output_dense_tensor_type;
-
-  argument_outputs.push_back(output_dense_tensor_type);
-
-  std::vector<pir::Type> outputs_types;
-  for (size_t i = 0; i < static_cast<size_t>(channels.size()); i++) {
-    outputs_types.push_back(paddle::dialect::DenseTensorType::get(
-        pir::IrContext::Instance(),
-        TransToIrDataType(vec_dense_outputs[i].dtype()),
-        vec_dense_outputs[i].dims(),
-        vec_dense_outputs[i].layout(),
-        vec_dense_outputs[i].lod(),
-        vec_dense_outputs[i].offset()));
-  }
-  pir::Type outputs_vector_type =
-      pir::VectorType::get(pir::IrContext::Instance(), outputs_types);
-  argument_outputs.push_back(outputs_vector_type);
-  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-}
-
-void Conv2dFusionOpTest::VerifySig() {
-  VLOG(4)
-      << "Start Verifying inputs, outputs and attributes for: Conv2dFusionOp.";
-  VLOG(4) << "Verifying inputs:";
-  {
-    auto input_size = num_operands();
-    PADDLE_ENFORCE_EQ(
-        input_size,
-        4u,
-        phi::errors::PreconditionNotMet(
-            "The size %d of inputs must be equal to 4.", input_size));
-    PADDLE_ENFORCE((*this)
-                       ->operand_source(0)
-                       .type()
-                       .isa<paddle::dialect::DenseTensorType>(),
-                   phi::errors::PreconditionNotMet(
-                       "Type validation failed for the 0th input."));
-    PADDLE_ENFORCE((*this)
-                       ->operand_source(1)
-                       .type()
-                       .isa<paddle::dialect::DenseTensorType>(),
-                   phi::errors::PreconditionNotMet(
-                       "Type validation failed for the 1th input."));
-    PADDLE_ENFORCE((*this)
-                       ->operand_source(2)
-                       .type()
-                       .isa<paddle::dialect::DenseTensorType>(),
-                   phi::errors::PreconditionNotMet(
-                       "Type validation failed for the 2th input."));
-    if (auto val = (*this)->operand(3)) {
-      PADDLE_ENFORCE(val.type().isa<paddle::dialect::DenseTensorType>(),
-                     phi::errors::PreconditionNotMet(
-                         "Type validation failed for the 3th input."));
-    }
-  }
-  VLOG(4) << "Verifying attributes:";
-  {
-    auto &attributes = this->attributes();
-    PADDLE_ENFORCE(attributes.count("strides") > 0 &&
-                       attributes.at("strides").isa<pir::ArrayAttribute>(),
-                   phi::errors::PreconditionNotMet(
-                       "Type of attribute: strides is not right."));
-    for (size_t i = 0;
-         i < attributes.at("strides").dyn_cast<pir::ArrayAttribute>().size();
-         i++) {
-      PADDLE_ENFORCE(attributes.at("strides")
-                         .dyn_cast<pir::ArrayAttribute>()
-                         .at(i)
-                         .isa<pir::Int32Attribute>(),
-                     phi::errors::PreconditionNotMet(
-                         "Type of attribute: strides is not right."));
-    }
-    PADDLE_ENFORCE(attributes.count("paddings_t") > 0 &&
-                       attributes.at("paddings_t").isa<pir::ArrayAttribute>(),
-                   phi::errors::PreconditionNotMet(
-                       "Type of attribute: paddings_t is not right."));
-    for (size_t i = 0;
-         i < attributes.at("paddings_t").dyn_cast<pir::ArrayAttribute>().size();
-         i++) {
-      PADDLE_ENFORCE(attributes.at("paddings_t")
-                         .dyn_cast<pir::ArrayAttribute>()
-                         .at(i)
-                         .isa<pir::Int32Attribute>(),
-                     phi::errors::PreconditionNotMet(
-                         "Type of attribute: paddings_t is not right."));
-    }
-    PADDLE_ENFORCE(
-        attributes.count("padding_algorithm") > 0 &&
-            attributes.at("padding_algorithm").isa<pir::StrAttribute>(),
-        phi::errors::PreconditionNotMet(
-            "Type of attribute: padding_algorithm is not right."));
-    PADDLE_ENFORCE(attributes.count("dilations_t") > 0 &&
-                       attributes.at("dilations_t").isa<pir::ArrayAttribute>(),
-                   phi::errors::PreconditionNotMet(
-                       "Type of attribute: dilations_t is not right."));
-    for (size_t i = 0;
-         i <
-         attributes.at("dilations_t").dyn_cast<pir::ArrayAttribute>().size();
-         i++) {
-      PADDLE_ENFORCE(attributes.at("dilations_t")
-                         .dyn_cast<pir::ArrayAttribute>()
-                         .at(i)
-                         .isa<pir::Int32Attribute>(),
-                     phi::errors::PreconditionNotMet(
-                         "Type of attribute: dilations_t is not right."));
-    }
-    PADDLE_ENFORCE(attributes.count("groups") > 0 &&
-                       attributes.at("groups").isa<pir::Int32Attribute>(),
-                   phi::errors::PreconditionNotMet(
-                       "Type of attribute: groups is not right."));
-    PADDLE_ENFORCE(attributes.count("data_format") > 0 &&
-                       attributes.at("data_format").isa<pir::StrAttribute>(),
-                   phi::errors::PreconditionNotMet(
-                       "Type of attribute: data_format is not right."));
-    PADDLE_ENFORCE(attributes.count("activation") > 0 &&
-                       attributes.at("activation").isa<pir::StrAttribute>(),
-                   phi::errors::PreconditionNotMet(
-                       "Type of attribute: activation is not right."));
-    PADDLE_ENFORCE(
-        attributes.count("exhaustive_search") > 0 &&
-            attributes.at("exhaustive_search").isa<pir::BoolAttribute>(),
-        phi::errors::PreconditionNotMet(
-            "Type of attribute: exhaustive_search is not right."));
-    PADDLE_ENFORCE(attributes.count("channels") > 0 &&
-                       attributes.at("channels").isa<pir::ArrayAttribute>(),
-                   phi::errors::PreconditionNotMet(
-                       "Type of attribute: channels is not right."));
-    for (size_t i = 0;
-         i < attributes.at("channels").dyn_cast<pir::ArrayAttribute>().size();
-         i++) {
-      PADDLE_ENFORCE(attributes.at("channels")
-                         .dyn_cast<pir::ArrayAttribute>()
-                         .at(i)
-                         .isa<pir::Int32Attribute>(),
-                     phi::errors::PreconditionNotMet(
-                         "Type of attribute: channels is not right."));
-    }
-    PADDLE_ENFORCE(
-        attributes.count("user_workspace_size") > 0 &&
-            attributes.at("user_workspace_size").isa<pir::Int32Attribute>(),
-        phi::errors::PreconditionNotMet(
-            "Type of attribute: user_workspace_size is not right."));
-  }
-  VLOG(4) << "Verifying outputs:";
-  {
-    auto output_size = num_results();
-    PADDLE_ENFORCE_EQ(
-        output_size,
-        2u,
-        phi::errors::PreconditionNotMet(
-            "The size %d of outputs must be equal to 2.", output_size));
-    PADDLE_ENFORCE(
-        (*this)->result(0).type().isa<paddle::dialect::DenseTensorType>(),
-        phi::errors::PreconditionNotMet(
-            "Type validation failed for the 0th output."));
-    auto output_1_type = (*this)->result(1).type();
-    if (auto vec_type = output_1_type.dyn_cast<pir::VectorType>()) {
-      for (size_t i = 0; i < vec_type.size(); i++) {
-        PADDLE_ENFORCE(vec_type[i].isa<paddle::dialect::DenseTensorType>(),
-                       phi::errors::PreconditionNotMet(
-                           "Type validation failed for the 1th output."));
-      }
-    } else {
-      PADDLE_ENFORCE(output_1_type.isa<paddle::dialect::DenseTensorType>(),
-                     phi::errors::PreconditionNotMet(
-                         "Type validation failed for the 1th output."));
-    }
-  }
-  VLOG(4) << "End Verifying for: Conv2dFusionOp.";
-}
-
-void Conv2dFusionOpTest::InferMeta(phi::InferMetaContext *infer_meta) {
-  auto fn = PD_INFER_META(phi::FusedConvInferMeta);
-  fn(infer_meta);
-}
-}  // namespace dialect
-}  // namespace paddle
-
-IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::Conv2dFusionOpTest)
-IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::Conv2dFusionOpTest)
-
-class Conv2dFusionTestDialect : public pir::Dialect {
- public:
-  explicit Conv2dFusionTestDialect(pir::IrContext *context)
-      : pir::Dialect(name(), context, pir::TypeId::get<TestDialect>()) {
-    initialize();
-  }
-  static const char *name() { return "con2d fusion test"; }
-
- private:
-  void initialize() { RegisterOps<paddle::dialect::Conv2dFusionOpTest>(); }
-};
-IR_DECLARE_EXPLICIT_TYPE_ID(Conv2dFusionTestDialect)
-IR_DEFINE_EXPLICIT_TYPE_ID(Conv2dFusionTestDialect)
-
-class Conv2dAddFusePattern
-    : public pir::OpRewritePattern<paddle::dialect::AddOp> {
- public:
-  using pir::OpRewritePattern<paddle::dialect::AddOp>::OpRewritePattern;
-  bool MatchAndRewrite(
-      paddle::dialect::AddOp op,
-      pir::PatternRewriter &rewriter) const override {  // NOLINT
-    // The next op should be add.
-    paddle::dialect::Conv2dOp conv2d_op =
-        pir::GetDefiningOpForInput(op, 0)
-            ->dyn_cast<paddle::dialect::Conv2dOp>();
-    if (!conv2d_op) return false;
-
-    pir::OpResult conv2d_out = conv2d_op.out();
-    if (!conv2d_out.HasOneUse()) return false;
-
-    pir::Value conv2d_filter = conv2d_op.filter();
-
-    pir::OpResult conv2d_filter_result =
-        conv2d_filter.dyn_cast<pir::OpResult>();
-    IR_ENFORCE(conv2d_filter_result);
-
-    pir::Value add_input = op.x();
-    IR_ENFORCE(add_input == conv2d_out);
-
-    pir::Value y = op.y();
-    pir::OpResult bias = y.dyn_cast<pir::OpResult>();
-    auto conv2d_attributes = conv2d_op.attributes();
-    std::vector<std::string> conv2d_fusion_attrStr = {"strides",
-                                                      "paddings_t",
-                                                      "padding_algorithm",
-                                                      "dilations_t",
-                                                      "groups",
-                                                      "data_format",
-                                                      "activation",
-                                                      "exhaustive_search",
-                                                      "channels",
-                                                      "user_workspace_size"};
-    std::vector<pir::Attribute> con2d_fusing_attr = {
-        conv2d_attributes.at("strides"),
-        conv2d_attributes.at("paddings"),
-        conv2d_attributes.at("padding_algorithm"),
-        conv2d_attributes.at("dilations"),
-        conv2d_attributes.at("groups"),
-        conv2d_attributes.at("data_format"),
-        rewriter.str_attr("identity"),
-        rewriter.bool_attr(true),
-        rewriter.array_attr(std::vector<pir::Attribute>{}),
-        rewriter.int32_attr(0)};
-    pir::AttributeMap conv2d_fusion_attributes;
-    for (size_t i = 0; i < conv2d_fusion_attrStr.size(); ++i) {
-      conv2d_fusion_attributes[conv2d_fusion_attrStr[i]] = con2d_fusing_attr[i];
-    }
-
-    pir::OpResult tmpResidual;
-
-    auto conv2d_fuse_op = rewriter.Build<paddle::dialect::Conv2dFusionOpTest>(
-        pir::GetDefiningOpForInput(conv2d_op, 0)->result(0),
-        conv2d_filter_result,
-        bias,
-        tmpResidual,
-        conv2d_fusion_attributes);
-    rewriter.ReplaceOp(op, std::vector<pir::Value>{conv2d_fuse_op.output()});
-    return true;
-  }
-};
-
 class TestPass : public pir::PatternRewritePass {
  public:
   TestPass() : pir::PatternRewritePass("test_pass", 1) {}
@@ -934,6 +275,48 @@ void BuildProgram(pir::Builder &builder) {  // NOLINT
                                              1.5,
                                              phi::DataType::FLOAT32,
                                              phi::CPUPlace());
+
+  paddle::dialect::FullOp full_input_op_1 =
+      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{4, 3, 16, 16},
+                                             1.5,
+                                             phi::DataType::FLOAT32,
+                                             phi::CPUPlace());
+
+  paddle::dialect::FullOp full_filter_op_1 =
+      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{64, 3, 3, 3},
+                                             1.5,
+                                             phi::DataType::FLOAT32,
+                                             phi::CPUPlace());
+
+  paddle::dialect::FullOp add_op_y =
+      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{1, 64, 1, 1},
+                                             1.5,
+                                             phi::DataType::FLOAT32,
+                                             phi::CPUPlace());
+
+  paddle::dialect::FullOp full_input_op_2 =
+      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{4, 3, 16, 16},
+                                             1.5,
+                                             phi::DataType::FLOAT32,
+                                             phi::CPUPlace());
+
+  paddle::dialect::FullOp full_filter_op_2 =
+      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{64, 3, 3, 3},
+                                             1.5,
+                                             phi::DataType::FLOAT32,
+                                             phi::CPUPlace());
+
+  paddle::dialect::FullOp add_op_y_1 =
+      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{1, 64, 1, 1},
+                                             1.5,
+                                             phi::DataType::FLOAT32,
+                                             phi::CPUPlace());
+
+  paddle::dialect::FullOp add_op_2_x = builder.Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{4, 64, 14, 14},
+      1.5,
+      phi::DataType::FLOAT32,
+      phi::CPUPlace());
 
   paddle::dialect::FullOp full_mean_op = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{64}, 1.5, phi::DataType::FLOAT32, phi::CPUPlace());
@@ -969,14 +352,34 @@ void BuildProgram(pir::Builder &builder) {  // NOLINT
                                                    "NCHW",
                                                    false,
                                                    false);
+  paddle::dialect::Conv2dOp conv2d_op_1 =
+      builder.Build<paddle::dialect::Conv2dOp>(full_input_op_1.out(),
+                                               full_filter_op_1.out());
+  paddle::dialect::AddOp add_op =
+      builder.Build<paddle::dialect::AddOp>(conv2d_op_1.out(), add_op_y.out());
+  paddle::dialect::ReluOp relu_op =
+      builder.Build<paddle::dialect::ReluOp>(add_op.out());
+
+  paddle::dialect::Conv2dOp conv2d_op_2 =
+      builder.Build<paddle::dialect::Conv2dOp>(full_input_op_2.out(),
+                                               full_filter_op_2.out());
+  paddle::dialect::AddOp add_op_1 = builder.Build<paddle::dialect::AddOp>(
+      conv2d_op_2.out(), add_op_y_1.out());
+  paddle::dialect::AddOp add_op_2 =
+      builder.Build<paddle::dialect::AddOp>(add_op_2_x.out(), add_op_1.out());
+  paddle::dialect::ReluOp relu_op_1 =
+      builder.Build<paddle::dialect::ReluOp>(add_op_2.out());
 
   auto transpose1_op = builder.Build<paddle::dialect::TransposeOp>(
       batch_norm_op.out(), std::vector<int>{0, 2, 3, 1});
 
   auto transpose2_op = builder.Build<paddle::dialect::TransposeOp>(
       transpose1_op.out(), std::vector<int>{0, 3, 1, 2});
-
-  builder.Build<paddle::dialect::FetchOp>(transpose2_op.out(), "out", 0);
+  auto add_out = builder.Build<paddle::dialect::AddOp>(transpose2_op.out(),
+                                                       relu_op_1.out());
+  auto add_out_1 =
+      builder.Build<paddle::dialect::AddOp>(add_out.out(), relu_op.out());
+  builder.Build<paddle::dialect::FetchOp>(add_out_1.out(), "out", 0);
 }
 
 TEST(pattern_rewrite, Patterns) {
@@ -984,21 +387,22 @@ TEST(pattern_rewrite, Patterns) {
 
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
-  auto *test_dialect = ctx->GetOrRegisterDialect<Conv2dFusionTestDialect>();
-  test_dialect->RegisterOp<paddle::dialect::Conv2dFusionOpTest>();
 
   pir::Program program(ctx);
   pir::Builder builder = pir::Builder(ctx, program.block());
   BuildProgram(builder);
 
-  EXPECT_EQ(program.block()->size(), 11u);
-  paddle::framework::Scope scope;
+  EXPECT_EQ(program.block()->size(), 27u);
+
   pir::PassManager pm(ctx);
   pm.AddPass(std::make_unique<TestPass>());
-  pm.AddPass(pir::CreateConv2dFusePass());
-  pm.AddPass(pir::CreateConstantFoldingPass(&scope));
+  pm.AddPass(pir::CreateConv2dBnFusePass());
+  pm.AddPass(pir::CreateConv2dAddActFusePass());
+  pm.AddPass(pir::CreateConv2dAddFusePass());
+  paddle::framework::Scope scope;
+  pm.AddPass(pir::CreateConstantFoldingPass(phi::CPUPlace{}, &scope));
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
-  pm.EnablePassTiming();
+  // pm.EnablePassTiming();
   pm.EnableIRPrinting();
   //   pm.EnableIRPrinting(std::make_unique<pir::PassManager::IRPrinterOption>(
   //       [](pir::Pass *pass, pir::Operation *op) {
@@ -1011,7 +415,7 @@ TEST(pattern_rewrite, Patterns) {
   //       true));
 
   CHECK_EQ(pm.Run(&program), true);
-  EXPECT_EQ(program.block()->size(), 2u);
+  EXPECT_EQ(program.block()->size(), 17u);
 }
 
 void BuildConstantFoldingProgram(pir::Program *program,
@@ -1068,7 +472,7 @@ TEST(constant_folding, ConstantFolding) {
   BuildConstantFoldingProgram(&program, ctx, &scope);
 
   pir::PassManager pm(ctx);
-  pm.AddPass(pir::CreateConstantFoldingPass(&scope));
+  pm.AddPass(pir::CreateConstantFoldingPass(phi::CPUPlace{}, &scope));
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.EnableIRPrinting();
 
@@ -1127,14 +531,14 @@ TEST(constant_folding, ConstantFolding_Combine) {
   ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
 
   pir::Program program(ctx);
-  paddle::framework::Scope scope;
   BuildConcatProgram(&program, ctx);
 
   pir::PassManager pm(ctx);
-  pm.AddPass(pir::CreateConstantFoldingPass(&scope));
+  paddle::framework::Scope scope;
+  pm.AddPass(pir::CreateConstantFoldingPass(phi::CPUPlace{}, &scope));
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.EnableIRPrinting();
 
   CHECK_EQ(pm.Run(&program), true);
-  // EXPECT_EQ(program.block()->size(), 6u);
+  EXPECT_EQ(program.block()->size(), 12u);
 }

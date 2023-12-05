@@ -888,6 +888,15 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         y = x._use_gpudnn(True)
         np.testing.assert_array_equal(x.numpy(), y.numpy())
 
+    def test_md5sum(self):
+        np_x = np.random.random((3, 8, 8))
+        x = paddle.to_tensor(np_x, dtype="float64")
+        y = paddle.to_tensor(np_x, dtype="float64")
+        self.assertEqual(x._md5sum(), y._md5sum())
+        x = paddle.to_tensor(np_x, dtype="bfloat16")
+        y = paddle.to_tensor(np_x, dtype="bfloat16")
+        self.assertEqual(x._md5sum(), y._md5sum())
+
 
 class EagerParamBaseUsageTestCase(unittest.TestCase):
     def test_print(self):

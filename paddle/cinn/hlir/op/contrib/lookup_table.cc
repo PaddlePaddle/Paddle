@@ -43,8 +43,8 @@ namespace cinn {
 namespace hlir {
 namespace op {
 
-using common::CINNValue;
-using common::CINNValuePack;
+using cinn::common::CINNValue;
+using cinn::common::CINNValuePack;
 
 ir::Tensor LookupTable(const ir::Tensor& table,
                        const ir::Tensor& ids,
@@ -65,7 +65,7 @@ ir::Tensor LookupTable(const ir::Tensor& table,
         offsets.emplace_back(Expr(0));
         // Because the current conversion rules have not been completed, static
         // conversion is done here.
-        auto ids_offset = ir::Cast::Make(common::I32(), ids(offsets));
+        auto ids_offset = ir::Cast::Make(cinn::common::I32(), ids(offsets));
         auto pred = ir::And::Make(
             Expr(padding_idx != -1),
             ir::EQ::Make(ids_offset, Expr(static_cast<int32_t>(padding_idx))));
@@ -73,7 +73,7 @@ ir::Tensor LookupTable(const ir::Tensor& table,
                                 ir::Cast::Make(table->type(), Expr(0)),
                                 table(ids_offset, indices.back()));
       },
-      common::UniqName(output_name));
+      cinn::common::UniqName(output_name));
 }
 
 std::shared_ptr<framework::OpStrategy> StrategyForLookupTable(

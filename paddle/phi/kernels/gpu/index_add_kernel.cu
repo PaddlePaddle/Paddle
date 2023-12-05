@@ -60,7 +60,7 @@ void IndexAddKernel(const Context& ctx,
   const auto& index_type = index.dtype();
   int dim = axis;
   dim = dim >= 0 ? dim : dim + input_dim.size();
-  auto stride_dim = phi::stride(input_dim);
+  auto stride_dim = common::stride(input_dim);
   int64_t stride = stride_dim[dim];
   int64_t size = add_value_dim[dim];
   int64_t delta = input_dim[dim] - size;

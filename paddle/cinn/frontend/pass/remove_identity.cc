@@ -144,7 +144,7 @@ class RemoveIdentityPass : public ProgramPass {
  protected:
   void ApplyImpl(Program* program,
                  const std::unordered_set<std::string>& fetch_ids,
-                 const common::Target& target) override {
+                 const cinn::common::Target& target) override {
     CollectInfo(*program, fetch_ids);
 
     VLOG(3) << "Total remove " << remove_idxs_.size() << " instructions.";

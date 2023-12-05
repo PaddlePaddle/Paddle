@@ -31,8 +31,8 @@ Type GetElementTypeOrSelf(Type type);
 /// have the same size and each pair of the elements are equal or one of them is
 /// dynamic.
 ///
-bool VerifyCompatibleShape(const phi::DDim& lhs_shape,
-                           const phi::DDim& rhs_shape);
+bool VerifyCompatibleShape(const pir::DDim& lhs_shape,
+                           const pir::DDim& rhs_shape);
 
 ///
 /// \brief Returns true if the given two types have compatible shape. That

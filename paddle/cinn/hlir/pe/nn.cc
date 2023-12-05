@@ -43,7 +43,7 @@ using ir::Min;
 using ir::Select;
 using ir::Tensor;
 
-std::string Type2StrForNN(common::Type type) {
+std::string Type2StrForNN(cinn::common::Type type) {
   std::string suffix;
   if (type.is_float(64)) {
     return "fp64";
@@ -139,7 +139,7 @@ std::vector<ir::Tensor> Conv2d_winograd_NCHW(const ir::Tensor &input,
         return ir::Select::Make(
             cond,
             weights(nn, cc, (yy / dilation_h), (xx / dilation_w)),
-            common::make_const(weights->type(), 0));
+            cinn::common::make_const(weights->type(), 0));
       },
       UniqName("weights_dilation"));
 
@@ -184,12 +184,12 @@ std::vector<ir::Tensor> Conv2d_winograd_NCHW(const ir::Tensor &input,
   output_shape = {
       input->shape[0],    // B
       weights->shape[0],  // O
-      common::AutoSimplify(
+      cinn::common::AutoSimplify(
           (input->shape[2] -
            ((weights_dilation->shape[2] - 1) * dilation_h + 1) + 2 * pad_h) /
               stride_h +
           1),  // H
-      common::AutoSimplify(
+      cinn::common::AutoSimplify(
           (input->shape[3] -
            ((weights_dilation->shape[3] - 1) * dilation_w + 1) + 2 * pad_w) /
               stride_w +
@@ -202,8 +202,8 @@ std::vector<ir::Tensor> Conv2d_winograd_NCHW(const ir::Tensor &input,
   ir::Tensor B = winograd_transform[1];
   ir::Tensor G = winograd_transform[2];
 
-  int nH = (common::AutoSimplify(output_shape[2]).as_int32() + m - 1) / m;
-  int nW = (common::AutoSimplify(output_shape[3]).as_int32() + m - 1) / m;
+  int nH = (cinn::common::AutoSimplify(output_shape[2]).as_int32() + m - 1) / m;
+  int nW = (cinn::common::AutoSimplify(output_shape[3]).as_int32() + m - 1) / m;
 
   int P = input->shape[0].as_int32() * nH * nW;
 
@@ -431,7 +431,7 @@ std::vector<ir::Tensor> Conv2d_NCHW_5D(const ir::Tensor &input,
                                        int dilation_w,
                                        std::string key,
                                        const std::string &output_name,
-                                       const common::Target &target) {
+                                       const cinn::common::Target &target) {
   // input: 4D to 5D, NCHW->NCHWc
   // [batch, in_channel, in_height, in_width] ->
   // [batch, in_channel_chunk, in_height, in_width, in_channel_block]
@@ -440,9 +440,9 @@ std::vector<ir::Tensor> Conv2d_NCHW_5D(const ir::Tensor &input,
   std::vector<Expr> shape_weights = weights->shape;
   CHECK_EQ(shape_input.size(), 4U) << "input's shape size should be 4";
   CHECK_EQ(shape_weights.size(), 4U) << "weight's shape size should be 4";
-  Expr c_in = common::AutoSimplify(shape_input[1]);
-  Expr c_filter = common::AutoSimplify(shape_weights[1]);
-  Expr c_out = common::AutoSimplify(shape_weights[0]);
+  Expr c_in = cinn::common::AutoSimplify(shape_input[1]);
+  Expr c_filter = cinn::common::AutoSimplify(shape_weights[1]);
+  Expr c_out = cinn::common::AutoSimplify(shape_weights[0]);
   absl::flat_hash_map<std::string, int> conv2d_factors;
   int oc = c_out.as_int32();
   int ic = c_in.as_int32();
@@ -507,12 +507,12 @@ std::vector<ir::Tensor> Conv2d_NCHW_5D(const ir::Tensor &input,
   std::vector<Expr> output_shape = {
       batch,  // B
       c_out,  // O
-      common::AutoSimplify((h_in - ((h_f - 1) * dilation_h + 1) + 2 * pad_h) /
-                               stride_h +
-                           1),  // H
-      common::AutoSimplify((w_in - ((w_f - 1) * dilation_w + 1) + 2 * pad_w) /
-                               stride_w +
-                           1)  // W
+      cinn::common::AutoSimplify(
+          (h_in - ((h_f - 1) * dilation_h + 1) + 2 * pad_h) / stride_h +
+          1),  // H
+      cinn::common::AutoSimplify(
+          (w_in - ((w_f - 1) * dilation_w + 1) + 2 * pad_w) / stride_w +
+          1)  // W
   };
   auto res = Compute(
       output_shape,
@@ -532,7 +532,7 @@ std::vector<ir::Tensor> Conv2d_NCHWc(const ir::Tensor &input,
                                      int dilation_h,
                                      int dilation_w,
                                      const std::string &output_name,
-                                     const common::Target &target) {
+                                     const cinn::common::Target &target) {
   // input: [N, c_in_outer, H, W, c_in_inner]
   // weight: [c_out_outer, c_filter_outer, filter_h, filter_w, c_filter_inner,
   // c_out_inner]
@@ -545,33 +545,33 @@ std::vector<ir::Tensor> Conv2d_NCHWc(const ir::Tensor &input,
       << "Conv2d_NCHWc weight's shape size should be 6";
 
   Expr batch = shape_input[0];
-  Expr c_in_outer = common::AutoSimplify(shape_input[1]);
+  Expr c_in_outer = cinn::common::AutoSimplify(shape_input[1]);
   Expr h_in = shape_input[2];
   Expr w_in = shape_input[3];
-  Expr c_in_inner = common::AutoSimplify(shape_input[4]);
+  Expr c_in_inner = cinn::common::AutoSimplify(shape_input[4]);
 
   Expr c_out_outer = shape_weights[0];
-  Expr c_filter_outer = common::AutoSimplify(shape_weights[1]);
+  Expr c_filter_outer = cinn::common::AutoSimplify(shape_weights[1]);
   Expr h_f = shape_weights[2];
   Expr w_f = shape_weights[3];
-  Expr c_filter_inner = common::AutoSimplify(shape_weights[4]);
-  Expr c_out_inner = common::AutoSimplify(shape_weights[5]);
+  Expr c_filter_inner = cinn::common::AutoSimplify(shape_weights[4]);
+  Expr c_out_inner = cinn::common::AutoSimplify(shape_weights[5]);
 
-  Expr c_filter = common::AutoSimplify(c_filter_outer * c_filter_inner);
-  Expr c_out = common::AutoSimplify(c_out_outer * c_out_inner);
-  Expr c_in = common::AutoSimplify(c_in_outer * c_in_inner);
+  Expr c_filter = cinn::common::AutoSimplify(c_filter_outer * c_filter_inner);
+  Expr c_out = cinn::common::AutoSimplify(c_out_outer * c_out_inner);
+  Expr c_in = cinn::common::AutoSimplify(c_in_outer * c_in_inner);
   Var fc(c_filter, UniqName("fc"));
   Var fy(h_f, UniqName("fy"));
   Var fx(w_f, UniqName("fx"));
   std::vector<Expr> output_shape = {
       batch,        // B
       c_out_outer,  // O
-      common::AutoSimplify((h_in - ((h_f - 1) * dilation_h + 1) + 2 * pad_h) /
-                               stride_h +
-                           1),  // H
-      common::AutoSimplify((w_in - ((w_f - 1) * dilation_w + 1) + 2 * pad_w) /
-                               stride_w +
-                           1),  // W
+      cinn::common::AutoSimplify(
+          (h_in - ((h_f - 1) * dilation_h + 1) + 2 * pad_h) / stride_h +
+          1),  // H
+      cinn::common::AutoSimplify(
+          (w_in - ((w_f - 1) * dilation_w + 1) + 2 * pad_w) / stride_w +
+          1),  // W
       c_out_inner};
 
   ir::Tensor input_pad;
@@ -583,18 +583,18 @@ std::vector<ir::Tensor> Conv2d_NCHWc(const ir::Tensor &input,
         },
         UniqName("input_pad"));
   } else {
-    auto pad_h_bound = common::AutoSimplify((output_shape[2] - 1) * stride_h +
-                                            (h_f - 1) * dilation_h + 1);
-    auto pad_w_bound = common::AutoSimplify((output_shape[3] - 1) * stride_w +
-                                            (w_f - 1) * dilation_w + 1);
+    auto pad_h_bound = cinn::common::AutoSimplify(
+        (output_shape[2] - 1) * stride_h + (h_f - 1) * dilation_h + 1);
+    auto pad_w_bound = cinn::common::AutoSimplify(
+        (output_shape[3] - 1) * stride_w + (w_f - 1) * dilation_w + 1);
     auto pad_out_h =
         std::min(pad_h_bound.as_int32(),
-                 common::AutoSimplify(h_in + 2 * pad_h).as_int32());
+                 cinn::common::AutoSimplify(h_in + 2 * pad_h).as_int32());
     auto pad_out_w =
         std::min(pad_w_bound.as_int32(),
-                 common::AutoSimplify(w_in + 2 * pad_w).as_int32());
-    auto h_in_pad = common::AutoSimplify(h_in + pad_h);
-    auto w_in_pad = common::AutoSimplify(w_in + pad_w);
+                 cinn::common::AutoSimplify(w_in + 2 * pad_w).as_int32());
+    auto h_in_pad = cinn::common::AutoSimplify(h_in + pad_h);
+    auto w_in_pad = cinn::common::AutoSimplify(w_in + pad_w);
     input_pad = Compute(
         {batch, c_in_outer, Expr(pad_out_h), Expr(pad_out_w), c_in_inner},
         [=](Expr n, Expr icc, Expr yy, Expr xx, Expr icb) {
@@ -614,20 +614,23 @@ std::vector<ir::Tensor> Conv2d_NCHWc(const ir::Tensor &input,
   auto packed_out = Compute(
       output_shape,
       [=](Expr n, Expr oc_chunk, Expr oh, Expr ow, Expr oc_block) {
-        Expr c_out_per_group = common::AutoSimplify(c_out * c_filter / c_in);
+        Expr c_out_per_group =
+            cinn::common::AutoSimplify(c_out * c_filter / c_in);
         Expr ic_outer, ic_inner;
         if (c_in == c_filter) {
-          ic_outer = common::AutoSimplify(fc / c_in_inner);
-          ic_inner = common::AutoSimplify(fc % c_in_inner);
+          ic_outer = cinn::common::AutoSimplify(fc / c_in_inner);
+          ic_inner = cinn::common::AutoSimplify(fc % c_in_inner);
         } else {
-          ic_outer = common::AutoSimplify(((oc_chunk * c_out_inner + oc_block) /
-                                               c_out_per_group * c_filter +
-                                           fc) /
-                                          c_in_inner);
-          ic_inner = common::AutoSimplify(((oc_chunk * c_out_inner + oc_block) /
-                                               c_out_per_group * c_filter +
-                                           fc) %
-                                          c_in_inner);
+          ic_outer =
+              cinn::common::AutoSimplify(((oc_chunk * c_out_inner + oc_block) /
+                                              c_out_per_group * c_filter +
+                                          fc) /
+                                         c_in_inner);
+          ic_inner =
+              cinn::common::AutoSimplify(((oc_chunk * c_out_inner + oc_block) /
+                                              c_out_per_group * c_filter +
+                                          fc) %
+                                         c_in_inner);
         }
         return lang::ReduceSum(input_pad(n,
                                          ic_outer,
@@ -754,7 +757,7 @@ std::vector<ir::Tensor> Conv2d_NHWC(const ir::Tensor &input,
         return ir::Select::Make(
             cond,
             weights(nn, cc, yy / dilation_h, xx / dilation_w),
-            common::make_const(weights->type(), 0));
+            cinn::common::make_const(weights->type(), 0));
       },
       UniqName("weights_dilation"));
 
@@ -923,8 +926,8 @@ ir::Tensor BatchNorm_NCHW(const ir::Tensor &input,
       input->shape,
       [=](Expr n, Expr c, Expr h, Expr w) {
         return (input(n, c, h, w) - mean(c)) * scale(c) /
-                   lang::Sqrt(variance(c) +
-                              common::make_const(input->type(), epsilon)) +
+                   lang::Sqrt(variance(c) + cinn::common::make_const(
+                                                input->type(), epsilon)) +
                bias(c);
       },
       UniqName(output_name));
@@ -954,8 +957,8 @@ ir::Tensor BatchNorm_NCHWc(const ir::Tensor &input,
       [=](Expr n, Expr icc, Expr h, Expr w, Expr icb) {
         Expr new_c = icc * ic_bn + icb;
         return (input(n, icc, h, w, icb) - mean(new_c)) * scale(new_c) /
-                   lang::Sqrt(variance(new_c) +
-                              common::make_const(input->type(), epsilon)) +
+                   lang::Sqrt(variance(new_c) + cinn::common::make_const(
+                                                    input->type(), epsilon)) +
                bias(new_c);
       },
       UniqName(output_name));
@@ -1101,8 +1104,8 @@ Tensor Pad(const Tensor &tensor,
     if (i >= pad_before.size()) {
       output_shape.push_back(tensor->shape[i]);
     } else {
-      auto shape =
-          common::AutoSimplify(tensor->shape[i] + pad_before[i] + pad_after[i]);
+      auto shape = cinn::common::AutoSimplify(tensor->shape[i] + pad_before[i] +
+                                              pad_after[i]);
       output_shape.push_back(shape);
     }
   }
@@ -1128,8 +1131,8 @@ Tensor Pad(const Tensor &tensor,
       }
       Expr sel_after;
       if (!MathEqual(pad_after[i], Expr(0))) {
-        sel_after =
-            common::AutoSimplify(ovars[i] < pad_before[i] + tensor->shape[i]);
+        sel_after = cinn::common::AutoSimplify(ovars[i] < pad_before[i] +
+                                                              tensor->shape[i]);
         sel.push_back(sel_after);
       }
       if (pad_mode == "edge") {
@@ -1229,7 +1232,7 @@ std::vector<Tensor> PoolImpl(const Tensor &tensor,
     do_pad = (do_pad) ? do_pad : (padding_size[i] || padding_size[i + k_size]);
 
     if (ceil_mode) {
-      pad_tail[i] = common::AutoSimplify(pad_tail[i] + stride[i] - 1);
+      pad_tail[i] = cinn::common::AutoSimplify(pad_tail[i] + stride[i] - 1);
     }
 
     daxis.emplace_back(Var(kernel[i], UniqName("kernel_idx")));
@@ -1237,7 +1240,7 @@ std::vector<Tensor> PoolImpl(const Tensor &tensor,
     pad_before[ii] = pad_head[i];
     pad_after[ii] = pad_tail[i];
 
-    auto out_dim = common::AutoSimplify(
+    auto out_dim = cinn::common::AutoSimplify(
         (tensor->shape[ii] - kernel[i] + pad_head[i] + pad_tail[i]) /
             stride[i] +
         1);
@@ -1292,13 +1295,13 @@ std::vector<Tensor> PoolImpl(const Tensor &tensor,
             auto temp_factor = make_const(Int(32), 1);
             for (int i = 0; i < k_size; i++) {
               int ii = axis[i];
-              start[i] =
-                  common::AutoSimplify(output[ii] * stride[i] - pad_head[i]);
+              start[i] = cinn::common::AutoSimplify(output[ii] * stride[i] -
+                                                    pad_head[i]);
               end[i] = Min::Make(start[i] + kernel[i], tensor->shape[ii]);
               start[i] = Max::Make(start[i], make_const(Int(32), 0));
               temp_factor = temp_factor * (end[i] - start[i]);
             }
-            common::AutoSimplify(temp_factor);
+            cinn::common::AutoSimplify(temp_factor);
             Expr divide_factor = Max::Make(temp_factor, make_const(Int(32), 1));
             return lang::ReduceSum(
                 ir::Div::Make(temp(indices),
@@ -1309,7 +1312,7 @@ std::vector<Tensor> PoolImpl(const Tensor &tensor,
             for (int i = 0; i < k_size; i++) {
               temp_factor = temp_factor * kernel[i];
             }
-            common::AutoSimplify(temp_factor);
+            cinn::common::AutoSimplify(temp_factor);
             return lang::ReduceSum(
                 ir::Div::Make(temp(indices),
                               ir::Cast::Make(temp->type(), temp_factor)),
@@ -1363,7 +1366,7 @@ std::vector<Tensor> PoolImpl(const Tensor &tensor,
                 Expr(static_cast<int>(tensor->shape[axis[i]].get_constant()) /
                      kernel_size[i]);
           }
-          common::AutoSimplify(temp_factor);
+          cinn::common::AutoSimplify(temp_factor);
           Expr divide_factor = Max::Make(temp_factor, make_const(Int(32), 1));
           return lang::ReduceSum(
               ir::Div::Make(temp(indices),
@@ -1421,8 +1424,8 @@ std::vector<Tensor> GlobalPool2d(const Tensor &tensor,
     auto temp = Compute(
         {tensor->shape[0], tensor->shape[1], Expr(32)},
         [=](Expr n, Expr c, Expr k) -> Expr {
-          Expr offset = common::IndiceToAbsOffset(tensor->shape,
-                                                  {n, c, Expr(0), Expr(0)});
+          Expr offset = cinn::common::IndiceToAbsOffset(
+              tensor->shape, {n, c, Expr(0), Expr(0)});
           return lang::CallExtern(
               "cinn_warp_reduce_max_" + Type2StrForNN(tensor->type()),
               {tensor, offset, extend});
@@ -1440,8 +1443,8 @@ std::vector<Tensor> GlobalPool2d(const Tensor &tensor,
     auto temp = Compute(
         {tensor->shape[0], tensor->shape[1], Expr(32)},
         [=](Expr n, Expr c, Expr k) -> Expr {
-          Expr offset = common::IndiceToAbsOffset(tensor->shape,
-                                                  {n, c, Expr(0), Expr(0)});
+          Expr offset = cinn::common::IndiceToAbsOffset(
+              tensor->shape, {n, c, Expr(0), Expr(0)});
           return lang::CallExtern(
               "cinn_warp_reduce_avg_" + Type2StrForNN(tensor->type()),
               {tensor, offset, extend});
@@ -1547,7 +1550,7 @@ Tensor DropoutInfer(const ir::Tensor &tensor,
         tensor->shape,
         [=](const std::vector<Expr> &indice) {
           return tensor(indice) *
-                 common::make_const(tensor->type(), 1 - dropout_prob);
+                 cinn::common::make_const(tensor->type(), 1 - dropout_prob);
         },
         output_name);
   } else if (dropout_implementation == "upscale_in_train") {
@@ -1572,7 +1575,7 @@ ir::Tensor Select(const ir::Tensor &condition,
   return lang::Compute(
       condition->shape,
       [=](const std::vector<Expr> &indice) {
-        return common::select(
+        return cinn::common::select(
             condition(indice), true_value(indice), false_value(indice));
       },
       output_name);
