@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import random
 import unittest
 
@@ -21,8 +20,7 @@ import numpy as np
 import paddle
 import paddle.distributed as dist
 from paddle import nn
-from paddle.distributed import Replicate, Shard
-from paddle.distributed.fleet.utils import recompute
+from paddle.distributed import Shard
 from paddle.io import DataLoader
 
 BATCH_SIZE = 4
@@ -58,14 +56,11 @@ class DemoNet(nn.Layer):
         param_prefix="",
         shard_input=False,
         shard_weight=False,
-        is_recompute=False,
     ):
         super().__init__()
         self._mesh = mesh
         self.shard_input = shard_input
         self.shard_weight = shard_weight
-        self.is_recompute = is_recompute
-        # self._pp_mesh0 = dist.ProcessMesh([0], dim_names=["x"])
         weight_attr_0 = create_numpy_like_random(param_prefix + "_0")
         weight_attr_1 = create_numpy_like_random(param_prefix + "_1")
 
@@ -75,13 +70,13 @@ class DemoNet(nn.Layer):
             self.linear_0.weight = dist.shard_tensor(
                 self.linear_0.weight,
                 self._mesh,
-                [Replicate(), Shard(1)],
+                [Shard(1)],
                 stop_gradient=False,
             )
             self.linear_1.weight = dist.shard_tensor(
                 self.linear_1.weight,
                 self._mesh,
-                [Replicate(), Shard(0)],
+                [Shard(0)],
                 stop_gradient=False,
             )
         self.relu = nn.ReLU()
@@ -93,29 +88,14 @@ class DemoNet(nn.Layer):
         return out
 
     def forward(self, x):
-        if self.shard_input:
-            x = dist.shard_tensor(x, self._mesh, [Shard(0), Replicate()])
-        if self.is_recompute:
-            return recompute(self._inner_forward_fn, x)
-        else:
-            return self._inner_forward_fn(x)
+        return self._inner_forward_fn(x)
 
 
 class TestSimpleNetForSemiAutoParallel(unittest.TestCase):
     def __init__(self):
-        # self._dtype = os.getenv("dtype")
-        # self._backend = os.getenv("backend")
-        self._seed = eval(os.getenv("seed"))
+        self._seed = 1234
         self.set_random_seed(self._seed)
         self.data_loader = self.create_data_loader()
-        # self._pp_mesh0 = dist.ProcessMesh([0], dim_names=["x"])
-        # self._pp_mesh1 = dist.ProcessMesh([1], dim_names=["x"])
-        # self.pp_reshard_dist_attr = dist.DistAttr(
-        #     mesh=self._pp_mesh1, sharding_specs=[None, None]
-        # )
-
-        # paddle.set_device(self._backend)
-        # self.init_single_card_net_result()
 
     def set_random_seed(self, seed):
         random.seed(seed)
@@ -170,6 +150,8 @@ class TestSimpleNetForSemiAutoParallel(unittest.TestCase):
             dist_model.eval()
             for batch_id, (image, label) in enumerate(dist_loader()):
                 loss = dist_model(image, label)
+        dist_model._engine._loss = loss_tmp
+        dist_model._engine._optimizer = opt_tmp
 
         # not prepared
         # NOTE: This use is not recommended, only for the test. In normal
@@ -188,7 +170,7 @@ class TestSimpleNetForSemiAutoParallel(unittest.TestCase):
         dist_model._engine._has_prepared["predict"] = True
 
     def test_dp_mp_demo_net(self):
-        mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
+        mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
 
         dy2static_layer = DemoNet(
             mesh, "dp_mp_demonet", shard_input=True, shard_weight=True
