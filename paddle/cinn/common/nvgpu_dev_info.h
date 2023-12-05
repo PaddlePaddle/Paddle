@@ -30,8 +30,8 @@ namespace common {
 
 class NVGPUDevInfo : public DevInfoBase {
  public:
-  explicit NVGPUDevInfo(int device) : device_num_(device) {
-    CUDA_CALL(cudaGetDeviceProperties(prop_, device));
+  explicit NVGPUDevInfo(int device_num = 0) : DevInfoBase(device_num) {
+    CUDA_CALL(cudaGetDeviceProperties(&prop_, device_num));
   }
 
   std::array<int, 3> GetMaxGridDims() const;
@@ -41,8 +41,7 @@ class NVGPUDevInfo : public DevInfoBase {
   int GetMaxThreadsPerBlock() const;
 
  private:
-  int device_num_;
-  cudaDeviceProp* prop_;
+  cudaDeviceProp prop_;
 };
 }  // namespace common
 }  // namespace cinn

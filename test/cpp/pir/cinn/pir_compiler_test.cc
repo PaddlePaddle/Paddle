@@ -72,13 +72,16 @@ ProgramInfo BuildProgram() {
   groups.emplace_back(
       std::make_shared<Group>(std::initializer_list<::pir::Operation*>(
           {full_op_x.operation()})));  // For coverage
+  groups[0]->output_ops.insert(groups[0]->ops.back());
   groups.emplace_back(std::make_shared<Group>(
       std::initializer_list<::pir::Operation*>({full_op_y.operation()})));
+  groups[1]->output_ops.insert(groups[1]->ops.back());
   groups.emplace_back(std::make_shared<Group>(
       std::vector<::pir::Operation*>({tan_op_x.operation(),
                                       relu_op_x.operation(),
                                       tan_op_y.operation(),
                                       relu_op_y.operation()})));
+  groups[2]->output_ops.insert(groups[2]->ops.back());
 
   return {program, groups};
 }
@@ -126,6 +129,7 @@ ProgramInfo BuildSoftmax() {
                                                 sum.owner(),
                                                 broadcast_2.owner(),
                                                 divide.owner()})));
+  groups[0]->output_ops.insert(groups[0]->ops.back());
 
   groups[0]->op_pattern_kind = cinn::hlir::framework::kReduction;
 
@@ -170,7 +174,7 @@ TEST(PirCompier, CompileSoftmax) {
 
   std::unordered_map<std::string, ::pir::Attribute> op_attrs{
       {cinn::dialect::JitKernelOp::kAttrName,
-       cinn::dialect::CUDAJITInfoAttribute::get(ctx, fn_ptr_res[0])},
+       cinn::dialect::CINNKernelInfoAttribute::get(ctx, fn_ptr_res[0])},
   };
 
   std::vector<pir::Type> vec_types;

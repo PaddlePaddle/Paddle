@@ -49,12 +49,13 @@ void ScaleOpMapper(const paddle::cpp::OpDesc& op_desc,
     CHECK(scale_tensor->shape == cinn::utils::ShapeType{1})
         << "The shape of [ScaleTensor] should be [1], but here ["
         << cinn::utils::Join(scale_tensor->shape, ", ") << "]";
-    scale_tensor = ctx.Builder()->Cast(scale_tensor, common::Type2Str(x->type));
+    scale_tensor =
+        ctx.Builder()->Cast(scale_tensor, cinn::common::Type2Str(x->type));
     scale_tensor = ctx.Builder()->BroadcastTo(scale_tensor, x->shape);
 
     if (bias != 0.0f) {
       auto bias_tensor = ctx.Builder()->FillConstant(
-          x->shape, bias, x->id + "_bias", common::Type2Str(x->type));
+          x->shape, bias, x->id + "_bias", cinn::common::Type2Str(x->type));
       if (bias_after_scale) {
         out = ctx.Builder()->Add(bias_tensor,
                                  ctx.Builder()->Multiply(x, scale_tensor));

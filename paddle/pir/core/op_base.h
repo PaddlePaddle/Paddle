@@ -15,7 +15,7 @@
 #pragma once
 #include <type_traits>
 
-#include "paddle/pir/core/enforce.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/interface_support.h"
 #include "paddle/pir/core/op_result.h"
 #include "paddle/pir/core/operation.h"
@@ -70,7 +70,7 @@ class IR_API OpBase {
 
   void VerifyRegion() {}
 
- private:
+ protected:
   Operation *operation_;  // Not owned
 };
 
@@ -156,8 +156,8 @@ class Op : public OpBase {
     return op && op->info().id() == TypeId::get<ConcreteOp>();
   }
 
-  static std::vector<InterfaceValue> GetInterfaceMap() {
-    return pir::detail::GetInterfaceMap<ConcreteOp, InterfaceList>();
+  static std::set<InterfaceValue> interface_set() {
+    return pir::detail::GetInterfaceSet<ConcreteOp, InterfaceList>();
   }
 
   static std::vector<TypeId> GetTraitSet() {

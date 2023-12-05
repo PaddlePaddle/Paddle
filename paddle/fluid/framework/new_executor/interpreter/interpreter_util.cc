@@ -561,6 +561,8 @@ void BuildOpFuncList(const platform::Place& place,
                      std::vector<OpFuncNode>* vec_func_list,
                      VariableScope* var_scope,
                      const ExecutionConfig& execution_config,
+                     const std::vector<HookFunc>& input_hookfuncs,
+                     const std::vector<HookFunc>& output_hookfuncs,
                      bool use_local_scope,
                      bool static_build) {
   Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
@@ -600,10 +602,20 @@ void BuildOpFuncList(const platform::Place& place,
   bool flag_log_is_printed = false;
   for (size_t i = 0; i < ops.size(); ++i) {
     auto op = ops[i].get();
+    op->SetId(i);
+
     const std::string& op_type = op->Type();
     if (execution_config.used_for_inference) {
       if (op_type == "feed" || op_type == "fetch") {
         continue;
+      }
+      for (auto& hook : input_hookfuncs) {
+        hook(op, local_scope);
+      }
+
+      if (op->Type() == "while") {
+        op->SetInputHooks(input_hookfuncs);
+        op->SetOutputHooks(output_hookfuncs);
       }
     }
 
@@ -1021,6 +1033,12 @@ void BuildOpFuncList(const platform::Place& place,
       }
     }
 
+    if (execution_config.used_for_inference) {
+      for (auto& hook : output_hookfuncs) {
+        hook(op, local_scope);
+      }
+    }
+
     VLOG(4) << "End run " << place << " "
             << op_func_node.operator_base_->DebugStringEx(local_scope);
 
@@ -1220,7 +1238,8 @@ std::unordered_set<std::string> GetSpecialOpNames() {
       "builtin.slice",
       "pd_op.feed",
       "builtin.set_parameter",
-      "builtin.get_parameter",
+      "builtin.parameter",
+      "builtin.constant",
       "pd_op.data",
       "builtin.shadow_output",
   };

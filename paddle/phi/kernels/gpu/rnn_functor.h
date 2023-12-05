@@ -99,14 +99,24 @@ class RNNDescriptors {
     // ------------------- cudnn dropout descriptors ---------------------
     size_t state_size;
     bool is_initialized = dropout_state->initialized();
-    if (!is_test_ && !is_initialized) {
 #ifdef PADDLE_WITH_HIP
+    if (!is_initialized) {
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::miopenDropoutGetStatesSize(handle, &state_size));
+      dropout_state->Resize({static_cast<int64_t>(state_size)});
+      dev_ctx.template Alloc<uint8_t>(dropout_state);
+    }
+    dropout_desc_.descriptor(handle,  // NOLINT
+                             dev_ctx.GetPlace(),
+                             is_initialized,
+                             dropout_prob_,
+                             dropout_state,
+                             seed_,
+                             state_size);
 #else
+    if (!is_test_ && !is_initialized) {
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::cudnnDropoutGetStatesSize(handle, &state_size));
-#endif
       dropout_state->Resize({static_cast<int64_t>(state_size)});
       dev_ctx.template Alloc<uint8_t>(dropout_state);
     }
@@ -117,6 +127,7 @@ class RNNDescriptors {
                              is_test_ ? nullptr : dropout_state,
                              seed_,
                              state_size);
+#endif
 
 // ------------------- cudnn rnn descriptors ---------------------
 #ifdef PADDLE_WITH_HIP

@@ -1,6 +1,6 @@
 if(NOT (NOT WITH_PYTHON AND ON_INFER))
   if(WITH_CINN)
-    set(eager_deps ${eager_deps} cinn_compiler python)
+    set(eager_deps ${eager_deps} python)
   endif()
   cc_library(performance_benchmark_utils SRCS benchmark_utils.cc)
   add_dependencies(
@@ -16,15 +16,15 @@ if(NOT (NOT WITH_PYTHON AND ON_INFER))
     eager_prim_api)
 
   paddle_test(test_egr_performance_benchmark_eager_cpu SRCS
-              benchmark_eager_cpu.cc DEPS performance_benchmark_utils)
+              benchmark_eager_cpu.cc DEPS performance_benchmark_utils common)
   paddle_test(test_egr_performance_benchmark_fluid_cpu SRCS
-              benchmark_fluid_cpu.cc DEPS performance_benchmark_utils)
+              benchmark_fluid_cpu.cc DEPS performance_benchmark_utils common)
 
   if(WITH_GPU)
     paddle_test(test_egr_performance_benchmark_eager_cuda SRCS
-                benchmark_eager_cuda.cc DEPS performance_benchmark_utils)
+                benchmark_eager_cuda.cc DEPS performance_benchmark_utils common)
     paddle_test(test_egr_performance_benchmark_fluid_cuda SRCS
-                benchmark_fluid_cuda.cc DEPS performance_benchmark_utils)
+                benchmark_fluid_cuda.cc DEPS performance_benchmark_utils common)
   endif()
 
   if(WITH_ONNXRUNTIME AND WIN32)

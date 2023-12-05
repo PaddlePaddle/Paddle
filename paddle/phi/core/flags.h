@@ -20,7 +20,7 @@
 #include <string>
 #include <type_traits>
 
-#include "paddle/phi/core/macros.h"
+#include "paddle/common/macros.h"
 #include "paddle/utils/flags.h"
 #include "paddle/utils/test_macros.h"
 #include "paddle/utils/variant.h"
