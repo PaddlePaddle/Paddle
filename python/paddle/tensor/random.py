@@ -139,7 +139,7 @@ def binomial(total_count, prob, name=None):
     """
     if in_dynamic_or_pir_mode():
         total_count, prob = paddle.broadcast_tensors(
-            [paddle.cast(total_count, dtype=paddle.get_default_dtype()), prob]
+            [paddle.cast(total_count, dtype=prob.dtype), prob]
         )
         return _C_ops.binomial(total_count, prob)
     else:
@@ -154,7 +154,7 @@ def binomial(total_count, prob, name=None):
         )
 
         total_count, prob = paddle.broadcast_tensors(
-            [paddle.cast(total_count, dtype=paddle.get_default_dtype()), prob]
+            [paddle.cast(total_count, dtype=prob.dtype), prob]
         )
         helper = LayerHelper("binomial", **locals())
         out = helper.create_variable_for_type_inference(
