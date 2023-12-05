@@ -29,6 +29,8 @@
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
+#include "paddle/cinn/optim/resize_buffer.h"
+#include "paddle/cinn/optim/update_buffer_axis_pass.h"
 #include "paddle/cinn/poly/isl_utils.h"
 #include "paddle/cinn/poly/stage.h"
 #include "paddle/cinn/runtime/intrinsic.h"
@@ -286,7 +288,7 @@ class CollectTensorLoopVisitor : public ir::IRMutator<> {
       buffer_tensor_loop_map_;
 };
 
-void UpdateBufferAxisPass(ir::Expr *expr) {
+void UpdateBufferAxisPassOld(ir::Expr *expr) {
   CollectTensorLoopVisitor collect_tensor_loop_visitor;
   collect_tensor_loop_visitor(expr);
 
@@ -683,7 +685,8 @@ void OptimizeExprGPU(Expr *expr) {
   replace_index_to_bind_expr(expr);
 
   // resize buffer axis
-  UpdateBufferAxisPass(expr);
+  // UpdateBufferAxisPass(expr);
+  UpdateBufferAxisPassOld(expr);
 
   // replace var name with block/thread
   ReplaceLoopVarToGpu replace_loop_var_to_gpu;
@@ -697,8 +700,9 @@ void OptimizeExprGPU(Expr *expr) {
   LocalAxisVisitor local_axis_visitor;
   local_axis_visitor(expr);
 
-  ResizeBufferSizeVisitor resize_buffer_size_visitor;
-  resize_buffer_size_visitor(expr);
+  ResizeBufferToMaxVarRange(expr);
+  // ResizeBufferSizeVisitor resize_buffer_size_visitor;
+  // resize_buffer_size_visitor(expr);
 
   ReplaceVarToZero replace_var_to_zero;
   replace_var_to_zero(expr);

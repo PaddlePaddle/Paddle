@@ -2116,7 +2116,7 @@ void FusedScaleBiasAddReluInferMeta(const MetaTensor& x1,
                                     const MetaTensor& bias2,
                                     bool fuse_dual,
                                     bool exhaustive_search,
-                                    MetaTensor* y) {
+                                    MetaTensor* out) {
   // check optional inputs
   if (fuse_dual) {
     bool has_scale2 = !!scale2;
@@ -2131,7 +2131,146 @@ void FusedScaleBiasAddReluInferMeta(const MetaTensor& x1,
                        fuse_dual));
   }
   // set output dims
-  y->set_dims(x1.dims());
+  out->set_dims(x1.dims());
+  out->set_dtype(x1.dtype());
+  out->set_layout(x1.layout());
+}
+
+void FusedDconvDreluDbnInferMeta(const MetaTensor& grad_output,
+                                 const MetaTensor& weight,
+                                 const MetaTensor& grad_output_add,
+                                 const MetaTensor& residual_input,
+                                 const MetaTensor& bn1_eqscale,
+                                 const MetaTensor& bn1_eqbias,
+                                 const MetaTensor& conv_input,
+                                 const MetaTensor& bn1_mean,
+                                 const MetaTensor& bn1_inv_std,
+                                 const MetaTensor& bn1_gamma,
+                                 const MetaTensor& bn1_beta,
+                                 const MetaTensor& bn1_input,
+                                 const MetaTensor& bn2_mean,
+                                 const MetaTensor& bn2_inv_std,
+                                 const MetaTensor& bn2_gamma,
+                                 const MetaTensor& bn2_beta,
+                                 const MetaTensor& bn2_input,
+                                 const std::vector<int>& paddings,
+                                 const std::vector<int>& dilations,
+                                 const std::vector<int>& strides,
+                                 const std::string& padding_algorithm,
+                                 int groups,
+                                 const std::string& data_format,
+                                 bool fuse_shortcut,
+                                 bool fuse_dual,
+                                 bool fuse_add,
+                                 bool exhaustive_search,
+                                 MetaTensor* grad_weight,
+                                 MetaTensor* grad_bn1_input,
+                                 MetaTensor* grad_bn1_gamma,
+                                 MetaTensor* grad_bn1_beta,
+                                 MetaTensor* grad_bn2_input,
+                                 MetaTensor* grad_bn2_gamma,
+                                 MetaTensor* grad_bn2_beta) {
+  // Check if data format is NHWC
+  PADDLE_ENFORCE_EQ(
+      data_format,
+      "NHWC",
+      phi::errors::InvalidArgument(
+          "Operator(FusedScaleBiasReluConvBnstats) only supports data format "
+          "of "
+          "channel last (NHWC) now. But recieved: data_format = '%s'.",
+          data_format));
+
+  PADDLE_ENFORCE_EQ(
+      groups,
+      1,
+      phi::errors::InvalidArgument("Expect group to be 1, got %d.", groups));
+
+  PADDLE_ENFORCE_EQ(
+      fuse_shortcut && fuse_dual,
+      0,
+      phi::errors::InvalidArgument(
+          "fuse_shortcut and fuse_dual should not be set at the same time."
+          "Got fuse_shortcut=%d, fuse_dual=%d.",
+          fuse_shortcut,
+          fuse_dual));
+
+  if (fuse_add) {
+    PADDLE_ENFORCE_EQ(
+        !!grad_output_add,
+        true,
+        phi::errors::InvalidArgument(
+            "grad_output_add must be provided when fuse_add = true."
+            "Got fuse_add=%d, grad_output_add=%d.",
+            fuse_add,
+            !!grad_output_add));
+  }
+  if (fuse_shortcut) {
+    PADDLE_ENFORCE_EQ(
+        !!residual_input,
+        true,
+        phi::errors::InvalidArgument(
+            "residual_input must be provided when fuse_shortcut = true."
+            "Got fuse_shortcut =%d, residual_input=%d.",
+            fuse_shortcut,
+            !!residual_input));
+  }
+  if (fuse_shortcut || fuse_dual) {
+    PADDLE_ENFORCE_EQ(
+        !!conv_input,
+        true,
+        phi::errors::InvalidArgument(
+            "conv_input must be provided when either fuse_shortcut "
+            "or fuse_dual is set to true. Got conv_input=%d, fuse_shortcut=%d, "
+            "fuse_dual=%d.",
+            !!conv_input,
+            fuse_shortcut,
+            fuse_dual));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        bn1_eqscale && bn1_eqbias,
+        true,
+        phi::errors::InvalidArgument(
+            "bn1_eqscale and bn1_eqbias must be provided when neither "
+            "fuse_shortcut "
+            "or fuse_dual is set. Got bn1_eqscale=%d, bn1_eqbias=%d.",
+            !!bn1_eqscale,
+            !!bn1_eqbias));
+  }
+  if (fuse_dual) {
+    PADDLE_ENFORCE_EQ(
+        bn2_mean && bn2_inv_std && bn2_gamma && bn2_beta && bn2_input,
+        true,
+        phi::errors::InvalidArgument("bn2_mean, bn2_inv_std, bn2_gamma, "
+                                     "bn2_beta, bn2_input must be provided "
+                                     "when fuse_dual is set. Got bn2_mean=%d, "
+                                     "bn2_inv_std=%d, bn2_gamma=%d, "
+                                     "bn2_beta=%d, bn2_input=%d.",
+                                     !!bn2_mean,
+                                     !!bn2_inv_std,
+                                     !!bn2_gamma,
+                                     !!bn2_beta,
+                                     !!bn2_input));
+  }
+
+  auto set_unchanged_meta = [](MetaTensor* out, const MetaTensor& input) {
+    out->set_dims(input.dims());
+    out->set_dtype(input.dtype());
+    out->set_layout(input.layout());
+  };
+
+  set_unchanged_meta(grad_weight, weight);
+  set_unchanged_meta(grad_bn1_input, bn1_input);
+  set_unchanged_meta(grad_bn1_gamma, bn1_gamma);
+  set_unchanged_meta(grad_bn1_beta, bn1_beta);
+  if (grad_bn2_input) {
+    set_unchanged_meta(grad_bn2_input, bn1_input);
+  }
+  if (grad_bn2_gamma) {
+    set_unchanged_meta(grad_bn2_gamma, bn1_gamma);
+  }
+  if (grad_bn2_beta) {
+    set_unchanged_meta(grad_bn2_beta, bn1_beta);
+  }
 }
 
 void SqueezeExcitationInferMeta(const MetaTensor& x,

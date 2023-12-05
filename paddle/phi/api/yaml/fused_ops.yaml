@@ -174,6 +174,16 @@
     data_type : input
   optional : bias, residual_data, outputs
 
+- op : fused_dconv_drelu_dbn
+  args : (Tensor grad_output, Tensor weight, Tensor grad_output_add, Tensor residual_input, Tensor bn1_eqscale, Tensor bn1_eqbias, Tensor conv_input, Tensor bn1_mean, Tensor bn1_inv_std, Tensor bn1_gamma, Tensor bn1_beta, Tensor bn1_input, Tensor bn2_mean, Tensor bn2_inv_std, Tensor bn2_gamma, Tensor bn2_beta, Tensor bn2_input, int[] paddings, int[] dilations, int[] strides, str padding_algorithm, int groups, str data_format, bool fuse_shortcut, bool fuse_dual, bool fuse_add, bool exhaustive_search)
+  output : Tensor(grad_weight), Tensor(grad_bn1_input), Tensor(grad_bn1_gamma), Tensor(grad_bn1_beta), Tensor(grad_bn2_input), Tensor(grad_bn2_gamma), Tensor(grad_bn2_beta)
+  optional : grad_output_add, residual_input, bn1_eqscale, bn1_eqbias, conv_input, bn2_mean, bn2_inv_std, bn2_gamma, bn2_beta, bn2_input, grad_bn2_input, grad_bn2_gamma, grad_bn2_beta
+  infer_meta :
+    func : FusedDconvDreluDbnInferMeta
+  kernel :
+    func : fused_dconv_drelu_dbn
+    data_type : grad_output
+
 - op : fused_dropout_add
   args : (Tensor x, Tensor y, Tensor seed_tensor, Scalar p, bool is_test, str mode, int seed = 0, bool fix_seed = false)
   optional : seed_tensor
@@ -252,7 +262,7 @@
 - op : fused_scale_bias_add_relu
   args : (Tensor x1, Tensor scale1, Tensor bias1, Tensor x2, Tensor scale2, Tensor bias2, bool fuse_dual, bool exhaustive_search)
   optional : scale2, bias2
-  output : Tensor(y)
+  output : Tensor(out)
   infer_meta :
     func : FusedScaleBiasAddReluInferMeta
   kernel :

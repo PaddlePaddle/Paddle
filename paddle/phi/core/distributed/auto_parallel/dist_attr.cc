@@ -268,6 +268,20 @@ bool TensorDistAttr::verify(const std::vector<int64_t>& tensor_shape) const {
   return true;
 }
 
+bool TensorDistAttr::verify_dynamic(
+    const std::vector<int64_t>& tensor_shape) const {
+  if (!verify_process_mesh(process_mesh_)) {
+    return false;
+  }
+  if (!verify_dims_mapping(dims_mapping_, tensor_shape)) {
+    return false;
+  }
+  if (!verify_partial_status()) {
+    return false;
+  }
+  return true;
+}
+
 std::string TensorDistAttr::to_string() const {
   std::string dist_str;
   dist_str += "{process_mesh: " + process_mesh_.to_string() + ", ";
