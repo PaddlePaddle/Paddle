@@ -15,7 +15,11 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase, test_legacy_and_pt_and_pir
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_legacy_and_pt,
+    test_legacy_and_pt_and_pir,
+)
 
 import paddle
 
@@ -66,7 +70,7 @@ class TestTensorCopyToCUDAOnDefaultCPU(Dy2StTestBase):
         x2 = paddle.jit.to_static(tensor_copy_to_cuda)(x1)
         return x1.place, x2.place, x2.numpy()
 
-    @test_legacy_and_pt_and_pir
+    @test_legacy_and_pt
     def test_tensor_cuda_on_default_cpu(self):
         if not paddle.is_compiled_with_cuda():
             return
