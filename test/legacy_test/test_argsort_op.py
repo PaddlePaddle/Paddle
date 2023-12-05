@@ -21,7 +21,6 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.base.backward import append_backward
-from paddle.base.executor import Executor
 from paddle.base.framework import grad_var_name
 from paddle.pir_utils import test_with_pir_api
 
@@ -109,7 +108,7 @@ class TestArgsortOpCPU(unittest.TestCase):
             x: create_tensor(getattr(self.py_argsort, x), self.place)
             for x in self.feed_data_field
         }
-        exe = Executor(self.place)
+        exe = paddle.static.Executor(self.place)
         out = exe.run(
             paddle.static.default_startup_program(),
             feed=self.feed_map,
@@ -126,7 +125,7 @@ class TestArgsortOpCPU(unittest.TestCase):
             paddle.static.Program().global_block().var(grad_var_name(x))
             for x in self.grad_data_field
         ]
-        exe = Executor(self.place)
+        exe = paddle.static.Executor(self.place)
         out = exe.run(
             paddle.static.default_startup_program(),
             feed=self.feed_map,
@@ -506,15 +505,17 @@ class TestArgsortWithInputNaN(unittest.TestCase):
 class TestArgsortOpFp16(unittest.TestCase):
     @test_with_pir_api
     def test_fp16(self):
-        x_np = np.random.random((2, 8)).astype('float16')
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data(shape=[2, 8], name='x', dtype='float16')
-            out = paddle.argsort(x)
-            if core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
+            paddle.enable_static()
+            x_np = np.random.random((2, 8)).astype('float16')
+            with paddle.static.program_guard(paddle.static.Program()):
+                x = paddle.static.data(shape=[2, 8], name='x', dtype='float16')
+                out = paddle.argsort(x)
                 place = paddle.CUDAPlace(0)
                 exe = paddle.static.Executor(place)
                 exe.run(paddle.static.default_startup_program())
                 out = exe.run(feed={'x': x_np}, fetch_list=[out])
+            paddle.disable_static()
 
 
 class TestArgsortFP16Op(OpTest):
