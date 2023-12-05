@@ -126,12 +126,6 @@ def pdist(x, p=2.0, name=None):
             >>> import paddle
             >>> paddle.seed(2023)
             >>> a = paddle.randn([4, 5])
-            >>> print(a)
-            Tensor(shape=[4, 5], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-                   [[-0.49133155,  0.53819323, -3.10416031, -1.51671720, -0.29990962],
-                    [ 0.22085167, -0.00404538,  0.40126652,  0.53417486,  0.84864247],
-                    [ 0.78248203, -1.59652555, -0.14399840,  1.29321253,  0.06063633],
-                    [-0.30991879, -0.99713278, -0.51025450, -0.42649266,  0.61627960]])
             >>> pdist_out=paddle.pdist(a)
             >>> print(pdist_out)
             Tensor(shape=[6], dtype=float32, place=Place(gpu:0), stop_gradient=True,
