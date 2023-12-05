@@ -824,7 +824,6 @@ class TestModelFunction(unittest.TestCase):
 
         for dynamic in [True, False]:
             paddle.disable_static() if dynamic else None
-            paddle.jit.enable_to_static(False) if not dynamic else None
 
             net = LeNet()
             inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]

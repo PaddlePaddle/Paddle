@@ -22,7 +22,7 @@ import numpy as np
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
-from dygraph_to_static_utils import Dy2StTestBase
+from dygraph_to_static_utils import Dy2StTestBase, enable_to_static_guard
 
 import paddle
 from paddle import _legacy_C_ops, base
@@ -531,93 +531,95 @@ class TestLACModel(Dy2StTestBase):
         self.dy_param_path = os.path.join(self.temp_dir.name, 'lac_dy_param')
 
     def train(self, args, to_static):
-        paddle.jit.enable_to_static(to_static)
-        place = (
-            base.CUDAPlace(0)
-            if base.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
-        with base.dygraph.guard(place):
-            paddle.seed(SEED)
-            paddle.framework.random._manual_program_seed(SEED)
-
-            reader = get_random_input_data(
-                args.batch_size, args.vocab_size, args.num_labels
+        with enable_to_static_guard(to_static):
+            place = (
+                base.CUDAPlace(0)
+                if base.is_compiled_with_cuda()
+                else base.CPUPlace()
             )
-            train_loader = create_dataloader(reader, place)
+            with base.dygraph.guard(place):
+                paddle.seed(SEED)
+                paddle.framework.random._manual_program_seed(SEED)
 
-            model = LexNet(args)
-            optimizer = paddle.optimizer.Adam(
-                learning_rate=args.base_learning_rate,
-                parameters=model.parameters(),
-            )
-            chunk_eval = ChunkEval(
-                int(math.ceil((args.num_labels - 1) / 2.0)), "IOB"
-            )
+                reader = get_random_input_data(
+                    args.batch_size, args.vocab_size, args.num_labels
+                )
+                train_loader = create_dataloader(reader, place)
 
-            step = 0
+                model = LexNet(args)
+                optimizer = paddle.optimizer.Adam(
+                    learning_rate=args.base_learning_rate,
+                    parameters=model.parameters(),
+                )
+                chunk_eval = ChunkEval(
+                    int(math.ceil((args.num_labels - 1) / 2.0)), "IOB"
+                )
 
-            loss_data = []
-            for epoch_id in range(args.epoch):
-                for batch in train_loader():
-                    words, targets, length = batch
-                    start_time = time.time()
-                    avg_cost, crf_decode = model(words, targets, length)
-                    loss_data.append(float(avg_cost))
+                step = 0
 
-                    # backward and optimization
-                    avg_cost.backward()
-                    optimizer.minimize(avg_cost)
-                    model.clear_gradients()
-                    end_time = time.time()
+                loss_data = []
+                for epoch_id in range(args.epoch):
+                    for batch in train_loader():
+                        words, targets, length = batch
+                        start_time = time.time()
+                        avg_cost, crf_decode = model(words, targets, length)
+                        loss_data.append(float(avg_cost))
 
-                    if step % args.print_steps == 0:
-                        (
-                            precision,
-                            recall,
-                            f1_score,
-                            num_infer_chunks,
-                            num_label_chunks,
-                            num_correct_chunks,
-                        ) = chunk_eval(
-                            input=crf_decode, label=targets, seq_length=length
-                        )
-                        outputs = [avg_cost, precision, recall, f1_score]
-                        avg_cost, precision, recall, f1_score = (
-                            np.mean(x.numpy()) for x in outputs
-                        )
+                        # backward and optimization
+                        avg_cost.backward()
+                        optimizer.minimize(avg_cost)
+                        model.clear_gradients()
+                        end_time = time.time()
 
-                        print(
-                            "[train] step = %d, loss = %f, P: %f, R: %f, F1: %f, elapsed time %f"
-                            % (
-                                step,
-                                avg_cost,
+                        if step % args.print_steps == 0:
+                            (
                                 precision,
                                 recall,
                                 f1_score,
-                                end_time - start_time,
+                                num_infer_chunks,
+                                num_label_chunks,
+                                num_correct_chunks,
+                            ) = chunk_eval(
+                                input=crf_decode,
+                                label=targets,
+                                seq_length=length,
                             )
-                        )
+                            outputs = [avg_cost, precision, recall, f1_score]
+                            avg_cost, precision, recall, f1_score = (
+                                np.mean(x.numpy()) for x in outputs
+                            )
 
-                    step += 1
-            # save inference model
-            if to_static:
-                paddle.jit.save(
-                    layer=model,
-                    path=self.model_save_prefix,
-                    input_spec=input_specs,
-                    output_spec=[crf_decode],
-                    input_names_after_prune=[
-                        input_specs[0].name,
-                        input_specs[-1].name,
-                    ],
-                )
-            else:
-                paddle.save(
-                    model.state_dict(), self.dy_param_path + '.pdparams'
-                )
+                            print(
+                                "[train] step = %d, loss = %f, P: %f, R: %f, F1: %f, elapsed time %f"
+                                % (
+                                    step,
+                                    avg_cost,
+                                    precision,
+                                    recall,
+                                    f1_score,
+                                    end_time - start_time,
+                                )
+                            )
 
-            return np.array(loss_data)
+                        step += 1
+                # save inference model
+                if to_static:
+                    paddle.jit.save(
+                        layer=model,
+                        path=self.model_save_prefix,
+                        input_spec=input_specs,
+                        output_spec=[crf_decode],
+                        input_names_after_prune=[
+                            input_specs[0].name,
+                            input_specs[-1].name,
+                        ],
+                    )
+                else:
+                    paddle.save(
+                        model.state_dict(), self.dy_param_path + '.pdparams'
+                    )
+
+                return np.array(loss_data)
 
     def test_train(self):
         st_out = self.train(self.args, to_static=True)
@@ -645,19 +647,21 @@ class TestLACModel(Dy2StTestBase):
 
     def predict_dygraph(self, batch):
         words, targets, length = batch
-        paddle.jit.enable_to_static(False)
-        with base.dygraph.guard(self.place):
-            model = LexNet(self.args)
-            # load dygraph trained parameters
-            model_dict = paddle.load(self.dy_param_path + ".pdparams")
-            model.set_dict(model_dict)
-            model.eval()
+        with enable_to_static_guard(False):
+            with base.dygraph.guard(self.place):
+                model = LexNet(self.args)
+                # load dygraph trained parameters
+                model_dict = paddle.load(self.dy_param_path + ".pdparams")
+                model.set_dict(model_dict)
+                model.eval()
 
-            _, pred_res = model(
-                to_variable(words), to_variable(targets), to_variable(length)
-            )
+                _, pred_res = model(
+                    to_variable(words),
+                    to_variable(targets),
+                    to_variable(length),
+                )
 
-            return pred_res.numpy()
+                return pred_res.numpy()
 
     def predict_static(self, batch):
         """
