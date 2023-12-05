@@ -258,31 +258,38 @@ std::set<std::string> GetRegisterDataType(const std::string& op_name) {
   return data_type;
 }
 
+std::string GetValueDataType(const pir::Value& value) {
+  if (value.type().isa<pir::DenseTensorType>()) {
+    return phi::DataTypeToString(dialect::TransToPhiDataType(
+        value.type().dyn_cast<pir::DenseTensorType>().dtype()));
+  } else if (value.type().isa<paddle::dialect::SelectedRowsType>()) {
+    return phi::DataTypeToString(dialect::TransToPhiDataType(
+        value.type().dyn_cast<paddle::dialect::SelectedRowsType>().dtype()));
+  } else {
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("Currently, we can only get dtype for "
+                                     "DenseTensorType and SelectedRowsType."));
+  }
+}
+
 void DoValueCheck(const pir::Value& value,
                   const std::string& input_name,
                   const std::set<std::string>& expected_dtype,
                   const std::string& op_name) {
-  if (value.type().isa<pir::DenseTensorType>()) {
-    std::string value_type = phi::DataTypeToString(dialect::TransToPhiDataType(
-        value.type().dyn_cast<pir::DenseTensorType>().dtype()));
-    if (expected_dtype.find(value_type) == expected_dtype.end()) {
-      std::ostringstream joined;
-      std::copy(expected_dtype.begin(),
-                expected_dtype.end(),
-                std::ostream_iterator<std::string>(joined, ","));
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "Check data type error for op: %s, input: %s, %s.dtype is %s, and "
-          "expected_dtype is %s",
-          op_name,
-          input_name,
-          input_name,
-          value_type,
-          joined.str()));
-    }
-  } else {
+  std::string value_type = GetValueDataType(value);
+  if (expected_dtype.find(value_type) == expected_dtype.end()) {
+    std::ostringstream joined;
+    std::copy(expected_dtype.begin(),
+              expected_dtype.end(),
+              std::ostream_iterator<std::string>(joined, ","));
     PADDLE_THROW(phi::errors::InvalidArgument(
-        "Currently, we can only get dtype for dense "
-        "tensor."));
+        "Check data type error for op: %s, input: %s, %s.dtype is %s, and "
+        "expected_dtype is %s",
+        op_name,
+        input_name,
+        input_name,
+        value_type,
+        joined.str()));
   }
 }
 

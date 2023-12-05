@@ -634,8 +634,21 @@ void BindValue(py::module *m) {
           "shape",
           [](Value self) { return phi::vectorize(GetValueDims(self)); },
           [](Value self, const std::vector<int> &shape) {
-            PADDLE_THROW(phi::errors::InvalidArgument(
-                "can't set shape when building static graph"));
+            if (self.type().isa<DenseTensorType>()) {
+              DenseTensorType src_type =
+                  self.type().dyn_cast<DenseTensorType>();
+              DenseTensorType dst_type =
+                  DenseTensorType::get(pir::IrContext::Instance(),
+                                       src_type.dtype(),
+                                       phi::make_ddim(shape),
+                                       src_type.data_layout(),
+                                       src_type.lod(),
+                                       src_type.offset());
+              self.set_type(dst_type);
+            } else {
+              PADDLE_THROW(phi::errors::InvalidArgument(
+                  "Currently, we can only set shape for dense tensor"));
+            }
           })
       .def_property(
           "dtype",
