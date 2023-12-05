@@ -182,6 +182,7 @@ class TestLenWithSelectedRows(Dy2StTestBase):
 
     @test_pir_only
     @test_ast_only
+    @test_pir_only
     def test_len(self):
         selected_rows_var_len, var_tensor_len = len_with_selected_rows(
             self.place
