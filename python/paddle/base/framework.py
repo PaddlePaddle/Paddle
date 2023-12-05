@@ -4408,25 +4408,25 @@ class Block:
                 )
                 all_dtypes.append(var_dtype)
 
-        common_dtype = core.get_promote_dtype(op_type, *all_dtypes)
+        if core.need_type_promotion(*all_dtypes):
+            common_dtype = core.get_promote_dtype(op_type, *all_dtypes)
+            warnings.warn(
+                f"The input dtypes of OP {op_type} are {all_dtypes}, the output will be auto-promoted to {common_dtype}"
+            )
 
-        warnings.warn(
-            f"The input dtypes of OP {op_type} are {all_dtypes}, the output will be auto-promoted to {common_dtype}"
-        )
-
-        for input_name in inputs.keys():
-            if input_name in need_transed_var_names:
-                var_dtype = (
-                    inputs[input_name][0].dtype
-                    if isinstance(inputs[input_name], (list, tuple))
-                    else inputs[input_name].dtype
-                )
-                if var_dtype != common_dtype:
-                    inputs[input_name] = (
-                        [inputs[input_name][0].astype(common_dtype)]
+            for input_name in inputs.keys():
+                if input_name in need_transed_var_names:
+                    var_dtype = (
+                        inputs[input_name][0].dtype
                         if isinstance(inputs[input_name], (list, tuple))
-                        else inputs[input_name].astype(common_dtype)
+                        else inputs[input_name].dtype
                     )
+                    if var_dtype != common_dtype:
+                        inputs[input_name] = (
+                            [inputs[input_name][0].astype(common_dtype)]
+                            if isinstance(inputs[input_name], (list, tuple))
+                            else inputs[input_name].astype(common_dtype)
+                        )
 
     def append_op(self, *args, **kwargs):
         """
