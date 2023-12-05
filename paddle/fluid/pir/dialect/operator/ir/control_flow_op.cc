@@ -59,32 +59,33 @@ void IfOp::Build(pir::Builder &builder,             // NOLINT
       argument.AddOutput(op.operand(i).type());
     }
   }
-  if (false_block && !false_block->empty() &&
-      false_block->back().isa<pir::YieldOp>()) {
-    auto &op = false_block->back();
-    auto size = op.num_operands();
-    PADDLE_ENFORCE_EQ(size,
-                      argument.output_types.size(),
-                      phi::errors::PreconditionNotMet(
-                          "The output size of true block and false block must "
-                          "be equal. but they are %u and %u, respectively",
-                          argument.output_types.size(),
-                          size));
-    for (size_t i = 0; i < size; ++i) {
-      PADDLE_ENFORCE_EQ(
-          op.operand(i).type(),
-          argument.output_types[i],
-          phi::errors::PreconditionNotMet("The output[%d] type of true block "
-                                          "and false block must be equal.",
-                                          i));
-    }
-  } else {
-    PADDLE_ENFORCE(argument.output_types.empty(),
-                   phi::errors::PreconditionNotMet(
-                       "The output size of true block and false block must be "
-                       "equal. but they are %u and 0, respectively",
-                       argument.output_types.size()));
-  }
+  // if (false_block && !false_block->empty() &&
+  //     false_block->back().isa<pir::YieldOp>()) {
+  //   auto &op = false_block->back();
+  //   auto size = op.num_operands();
+  //   PADDLE_ENFORCE_EQ(size,
+  //                     argument.output_types.size(),
+  //                     phi::errors::PreconditionNotMet(
+  //                         "The output size of true block and false block must
+  //                         " "be equal. but they are %u and %u, respectively",
+  //                         argument.output_types.size(),
+  //                         size));
+  //   for (size_t i = 0; i < size; ++i) {
+  //     PADDLE_ENFORCE_EQ(
+  //         op.operand(i).type(),
+  //         argument.output_types[i],
+  //         phi::errors::PreconditionNotMet("The output[%d] type of true block
+  //         "
+  //                                         "and false block must be equal.",
+  //                                         i));
+  //   }
+  // } else {
+  //   PADDLE_ENFORCE(argument.output_types.empty(),
+  //                  phi::errors::PreconditionNotMet(
+  //                      "The output size of true block and false block must be
+  //                      " "equal. but they are %u and 0, respectively",
+  //                      argument.output_types.size()));
+  // }
   argument.AddRegion().push_back(true_block.release());
   argument.AddRegion().push_back(false_block.release());
   argument.AddInput(cond);

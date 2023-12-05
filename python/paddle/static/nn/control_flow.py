@@ -1222,6 +1222,8 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         return None
 
     if in_pir_mode():
+        check_variable_and_dtype(pred, "pred", ['bool'], "base.layers.cond")
+        check_type(name, "name", (str, type(None)), "base.layers.cond")
         if_op = build_if_op(pred)
         true_output = None
         false_output = None
@@ -1232,10 +1234,10 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
                         type(true_fn).__name__
                     )
                 )
-        with if_op.true_block():
-            true_output = true_fn()
-            if true_output is not None:
-                cf_yield(flatten(true_output))
+            with if_op.true_block():
+                true_output = true_fn()
+                if true_output is not None:
+                    cf_yield(flatten(true_output))
         if false_fn is not None:
             if not callable(false_fn):
                 raise TypeError(
@@ -1243,16 +1245,16 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
                         type(false_fn).__name__
                     )
                 )
-        with if_op.false_block():
-            false_output = false_fn()
-            if false_output is not None:
-                cf_yield(flatten(false_output))
+            with if_op.false_block():
+                false_output = false_fn()
+                if false_output is not None:
+                    cf_yield(flatten(false_output))
 
         if true_output is None and false_output is None:
             return None
 
         if_op.update_output()
-        return if_op.results()
+        return pack_sequence_as(true_output, flatten(if_op.results()))
 
     check_variable_and_dtype(pred, "pred", ['bool'], "base.layers.cond")
     check_type(name, "name", (str, type(None)), "base.layers.cond")
