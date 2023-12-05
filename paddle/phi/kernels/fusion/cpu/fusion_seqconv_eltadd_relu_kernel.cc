@@ -15,9 +15,9 @@
 #include <algorithm>  // for min, max
 #include <string>
 
+#include "paddle/common/errors.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
@@ -37,8 +37,8 @@ void FusionSeqConvEltAddReluKernel(const Context& dev_ctx,
                                    DenseTensor* out,
                                    DenseTensor* col_mat) {
   auto x_lod = x.lod();
-  auto x_dims = phi::vectorize<int64_t>(x.dims());
-  auto w_dims = phi::vectorize<int64_t>(filter.dims());
+  auto x_dims = common::vectorize<int64_t>(x.dims());
+  auto w_dims = common::vectorize<int64_t>(filter.dims());
   PADDLE_ENFORCE_EQ(
       bias.numel(),
       w_dims[1],

@@ -42,7 +42,7 @@ TEST(CastCollapsing, FuseTwoCast) {
   auto out = builder.Cast(x_t, "float32");
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{x.id()},
                     std::back_inserter(input_ids),
@@ -63,7 +63,7 @@ TEST(CastCollapsing, FuseThreeCast) {
   auto out = builder.Cast(x_2t, "float32");
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{x.id()},
                     std::back_inserter(input_ids),
@@ -82,7 +82,7 @@ TEST(CastCollapsing, ReplaceUselessCastWithIndentity) {
   auto out = builder.Cast(x, "float32");
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{x.id()},
                     std::back_inserter(input_ids),
@@ -104,7 +104,7 @@ TEST(CastCollapsing, FuseCastToUseless) {
   auto out = builder.Add(x_3t, x_3t);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{x.id()},
                     std::back_inserter(input_ids),
@@ -128,7 +128,7 @@ TEST(TransposeCollapsing, FuseTransposeWithMultiOutput) {
   auto out3 = builder.Transpose(x_3t, {0, 2, 1});
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{x.id()},
                     std::back_inserter(input_ids),
@@ -159,7 +159,7 @@ TEST(TransposeCollapsing, FuseTwoSecTranspose) {
   auto out2 = builder.Transpose(x_2t, {0, 2, 1});
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{x.id()},
                     std::back_inserter(input_ids),
@@ -181,7 +181,7 @@ TEST(TransposeCollapsing, FuseTwoHorizontalTranspose) {
   auto out = builder.Add(y_t1, y_t2);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{x.id()},
                     std::back_inserter(input_ids),
@@ -203,7 +203,7 @@ TEST(TransposeCollapsing, FuseVerAndHorTranspose) {
   auto out = builder.Add(y_t2, y_t3);
   auto program = builder.Build();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
   absl::c_transform(std::vector<absl::string_view>{x.id()},
                     std::back_inserter(input_ids),

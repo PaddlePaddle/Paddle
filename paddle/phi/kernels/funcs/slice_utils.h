@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <glog/logging.h>
-#include <paddle/phi/core/ddim.h>
+#include <paddle/common/ddim.h>
 #include <string>
 #include <vector>
 #include "paddle/phi/core/flags.h"
@@ -210,7 +210,7 @@ inline DDim GetDecreasedDims(const DDim slice_dims,
       // slice. This will remove in release 2.6.
       new_shape.push_back(1);
     }
-    decreased_dims = phi::make_ddim(new_shape);
+    decreased_dims = common::make_ddim(new_shape);
   }
   return decreased_dims;
 }

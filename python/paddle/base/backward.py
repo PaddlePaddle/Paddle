@@ -21,10 +21,10 @@ import warnings
 from collections.abc import Sequence
 
 import paddle.base
-from paddle.base import framework, program_guard
 
-from . import core, log_helper, unique_name
+from . import core, framework, log_helper, unique_name
 from .data_feeder import check_type
+from .framework import program_guard
 from .proto import framework_pb2
 
 __all__ = []

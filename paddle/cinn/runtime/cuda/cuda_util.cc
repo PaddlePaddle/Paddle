@@ -80,7 +80,7 @@ class CublasHandle {
 
 int32_t cinn_get_value_in_cuda_kernel_args(void *v_args, int idx) {
   cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
-  return args[idx].operator int32_t();
+  return args[idx].operator int64_t();
 }
 
 void cinn_call_cuda_kernel(void *kernel_fn,
@@ -191,7 +191,7 @@ void cinn_call_cublas(void *v_args,
   bool is_float = type_code == cinn_type_float;
   bool is_bfloat16 = type_code == cinn_type_bfloat;
   int bytes = args[0].operator cinn_buffer_t *()->type.bits / CHAR_BIT;
-  if (is_float && bytes == sizeof(common::float16)) {
+  if (is_float && bytes == sizeof(cinn::common::float16)) {
     cuda_dtype = CUDA_R_16F;
   } else if (is_float && bytes == sizeof(float)) {
     cuda_dtype = CUDA_R_32F;
@@ -413,7 +413,7 @@ void cinn_call_batched_cublas(void *v_args,
   bool is_float = type_code == cinn_type_float;
   bool is_bfloat16 = type_code == cinn_type_bfloat;
   int bytes = args[0].operator cinn_buffer_t *()->type.bits / CHAR_BIT;
-  if (is_float && bytes == sizeof(common::float16)) {
+  if (is_float && bytes == sizeof(cinn::common::float16)) {
     cuda_dtype = CUDA_R_16F;
   } else if (is_float && bytes == sizeof(float)) {
     cuda_dtype = CUDA_R_32F;
@@ -1841,7 +1841,7 @@ void cinn_assert_true_nvgpu(
                    msg,
                    only_warning,
                    stream,
-                   common::DefaultNVGPUTarget());
+                   cinn::common::DefaultNVGPUTarget());
 }
 
 void cinn_gpu_cublas_mul(const std::vector<int> &attrs,
@@ -2172,11 +2172,11 @@ void cinn_gpu_cudnn_conv2d(const absl::flat_hash_map<std::string, int> &attr,
                            cinn_buffer_t *w,
                            cinn_buffer_t *y,
                            cudaStream_t stream,
-                           common::Layout target) {
+                           cinn::common::Layout target) {
   cudnnTensorFormat_t cudnn_tensor_format;
-  if (target == common::Layout::kNCHW) {
+  if (target == cinn::common::Layout::kNCHW) {
     cudnn_tensor_format = CUDNN_TENSOR_NCHW;
-  } else if (target == common::Layout::kNHWC) {
+  } else if (target == cinn::common::Layout::kNHWC) {
     cudnn_tensor_format = CUDNN_TENSOR_NHWC;
   } else {
     CINN_NOT_IMPLEMENTED

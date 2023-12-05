@@ -28,8 +28,10 @@ void relu(const Instruction& instr, const DecomposerContext& context) {
   auto output = instr->outputs[0];
   auto* builder = context.builder();
 
-  auto bcast_zero = builder->FillConstant(
-      x->shape, 0.0f, common::UniqName("zero"), common::Type2Str(x->type));
+  auto bcast_zero = builder->FillConstant(x->shape,
+                                          0.0f,
+                                          cinn::common::UniqName("zero"),
+                                          cinn::common::Type2Str(x->type));
   auto out = builder->Max(x, bcast_zero);
 
   // map the the output of decomposed operator to the original.
@@ -46,8 +48,10 @@ void relu_grad(const Instruction& instr, const DecomposerContext& context) {
   auto dx = instr->outputs[0];
   auto* builder = context.builder();
 
-  auto bcast_zero = builder->FillConstant(
-      out->shape, 0.0f, common::UniqName("zero"), common::Type2Str(out->type));
+  auto bcast_zero = builder->FillConstant(out->shape,
+                                          0.0f,
+                                          cinn::common::UniqName("zero"),
+                                          cinn::common::Type2Str(out->type));
   auto condition = builder->GreaterThan(out, bcast_zero);
   auto res = builder->Select(condition, dout, bcast_zero);
 
@@ -65,12 +69,14 @@ void gelu(const Instruction& instr, const DecomposerContext& context) {
   auto* builder = context.builder();
 
   // x * (0.5 + 0.5 * erf(sqrtf(0.5) * x))
-  auto p_5 = builder->FillConstant(
-      x->shape, 0.5f, common::UniqName("p_5"), common::Type2Str(x->type));
+  auto p_5 = builder->FillConstant(x->shape,
+                                   0.5f,
+                                   cinn::common::UniqName("p_5"),
+                                   cinn::common::Type2Str(x->type));
   auto p_7 = builder->FillConstant(x->shape,
                                    std::sqrt(0.5),
-                                   common::UniqName("p_7"),
-                                   common::Type2Str(x->type));
+                                   cinn::common::UniqName("p_7"),
+                                   cinn::common::Type2Str(x->type));
   auto erf = builder->Erf(builder->Multiply(x, p_7));
   auto cdf = builder->Add(p_5, builder->Multiply(p_5, erf));
   auto out = builder->Multiply(x, cdf);

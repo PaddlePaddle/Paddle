@@ -149,7 +149,7 @@ void LapackEig(DenseTensor* input,
   DenseTensor rwork;
   phi::dtype::Real<T>* rwork_data = nullptr;
 
-  rwork.Resize(phi::make_ddim({lda * 2}));
+  rwork.Resize(common::make_ddim({lda * 2}));
   rwork_data = dev_ctx.template Alloc<phi::dtype::Real<T>>(&rwork);
 
   // call lapackEig once to compute the size of work;
@@ -172,7 +172,7 @@ void LapackEig(DenseTensor* input,
   lwork = std::max<int>(
       1, static_cast<int>(phi::dtype::Real<T>(computed_work_size)));
   DenseTensor work;
-  work.Resize(phi::make_ddim({lwork}));
+  work.Resize(common::make_ddim({lwork}));
   T* work_data = dev_ctx.template Alloc<T>(&work);
 
   for (auto i = 0; i < batch_count; ++i) {
@@ -217,8 +217,8 @@ void ApplyEigKernel(const DenseTensor& input,
   DenseTensor vectors_row_major;
   int num_dims = input.dims().size();
 
-  // transfer to column-major memory layout i.e. make_ddim from tranposed_input:
-  // [batch,row,col]->[batch,col,row]
+  // transfer to column-major memory layout i.e. common::make_ddim from
+  // tranposed_input: [batch,row,col]->[batch,col,row]
   TransposeTwoAxis<T, Context>(
       input, &input_column_major, num_dims - 1, num_dims - 2, dev_ctx);
   // make sure 'vectors_row_major' holds memory before passed to LapackEig()

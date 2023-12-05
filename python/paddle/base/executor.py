@@ -29,7 +29,7 @@ from ..pir import (
     Value,
     translate_to_pir,
 )
-from . import compiler, core, framework, get_flags, set_flags, unique_name
+from . import compiler, core, framework, unique_name
 from .data_feeder import convert_dtype
 from .framework import (
     Operator,
@@ -38,8 +38,10 @@ from .framework import (
     _apply_pass,
     convert_np_dtype_to_dtype_,
     default_main_program,
+    get_flags,
     in_pir_mode,
     paddle_type_to_proto_type,
+    set_flags,
 )
 from .incubate.checkpoint import auto_checkpoint as acp
 from .trainer_factory import FetchHandlerMonitor, TrainerFactory
@@ -526,7 +528,10 @@ def _add_pir_fetch_ops(program, fetch_list, fetch_var_name):
                 assert isinstance(
                     fetch_input, (OpResult, Value)
                 ), f"Wrong type for fetch_list[{i}]: {type(fetch_input)}"
-                paddle._pir_ops.fetch(fetch_input, fetch_var_name + str(i), i)
+                out = paddle._pir_ops.fetch(
+                    fetch_input, fetch_var_name + str(i), i
+                )
+                out.persistable = True
 
 
 def _merge_tensors(tensor, micro_batch_num):
@@ -836,9 +841,12 @@ class _StandaloneExecutor:
                 )
             return tensors
 
+    def run_profile(self, feed_names) -> core.ProgramDesc:
+        program_desc = self._new_exe.run_profile(feed_names)
+        return program_desc
+
     def _create_new_executor(self):
         new_exe = core.StandaloneExecutor(self._place, self._plan, self._scope)
-
         return new_exe
 
 

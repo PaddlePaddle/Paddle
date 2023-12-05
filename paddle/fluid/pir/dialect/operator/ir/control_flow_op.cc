@@ -13,21 +13,27 @@
 // limitations under the License.
 #ifdef GET_OP_LIST
 #undef GET_OP_LIST
-paddle::dialect::IfOp, paddle::dialect::WhileOp
+paddle::dialect::IfOp, paddle::dialect::WhileOp, paddle::dialect::HasElementsOp
 #else
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
-#include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
+#include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/builder.h"
+#include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/ir_printer.h"
+#include "paddle/pir/core/op_trait.h"
 #include "paddle/pir/core/operation_utils.h"
 #include "paddle/pir/core/utils.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_type.h"
 
 using pir::TuplePopOp;
 using pir::TuplePushOp;
+constexpr char kStopGradientAttrName[] = "stop_gradient";
 namespace paddle {
 namespace dialect {
 
@@ -52,9 +58,28 @@ void IfOp::Build(pir::Builder &builder,             // NOLINT
       true_block->back().isa<pir::YieldOp>()) {
     auto &op = true_block->back();
 
+    std::vector<pir::Attribute> outs_stop_gradient;
     for (size_t i = 0; i < op.num_operands(); ++i) {
       argument.AddOutput(op.operand(i).type());
+      bool input_stop_gradient = true;
+      auto *defining_op = op.operand_source(i).defining_op();
+      if (defining_op && defining_op->HasAttribute(kStopGradientAttrName)) {
+        auto attrs = defining_op->attribute(kStopGradientAttrName)
+                         .dyn_cast<pir::ArrayAttribute>()
+                         .AsVector();
+        input_stop_gradient =
+            attrs[op.operand_source(i).dyn_cast<pir::OpResult>().index()]
+                .dyn_cast<pir::BoolAttribute>()
+                .data();
+      } else {
+        input_stop_gradient = false;
+      }
+      outs_stop_gradient.push_back(builder.bool_attr(input_stop_gradient));
     }
+
+    argument.AddAttribute(
+        kStopGradientAttrName,
+        pir::ArrayAttribute::get(builder.ir_context(), outs_stop_gradient));
   }
   if (false_block && !false_block->empty() &&
       false_block->back().isa<pir::YieldOp>()) {
@@ -85,17 +110,30 @@ void IfOp::Build(pir::Builder &builder,             // NOLINT
   argument.AddRegion().push_back(true_block.release());
   argument.AddRegion().push_back(false_block.release());
   argument.AddInput(cond);
+
+  auto cond_op = cond.defining_op();
+  if (cond_op && cond_op->HasAttribute(kStopGradientAttrName)) {
+    auto attrs = cond_op->attribute(kStopGradientAttrName)
+                     .dyn_cast<pir::ArrayAttribute>()
+                     .AsVector();
+    attrs[cond.dyn_cast<pir::OpResult>().index()] =
+        pir::BoolAttribute::get(pir::IrContext::Instance(), true);
+
+    cond_op->set_attribute(
+        kStopGradientAttrName,
+        pir::ArrayAttribute::get(pir::IrContext::Instance(), attrs));
+  }
 }
 
-pir::Block *IfOp::true_block() {
+pir::Block &IfOp::true_block() {
   pir::Region &region = true_region();
   if (region.empty()) region.emplace_back();
-  return &region.front();
+  return region.front();
 }
-pir::Block *IfOp::false_block() {
+pir::Block &IfOp::false_block() {
   pir::Region &region = false_region();
   if (region.empty()) region.emplace_back();
-  return &region.front();
+  return region.front();
 }
 
 void IfOp::Print(pir::IrPrinter &printer) {
@@ -107,12 +145,12 @@ void IfOp::Print(pir::IrPrinter &printer) {
   os << " -> ";
   printer.PrintOpReturnType(op);
   os << "{";
-  for (auto &item : *true_block()) {
+  for (auto &item : true_block()) {
     os << "\n  ";
     printer.PrintOperation(&item);
   }
   os << "\n } else {";
-  for (auto &item : *false_block()) {
+  for (auto &item : false_block()) {
     os << "\n  ";
     printer.PrintOperation(&item);
   }
@@ -251,16 +289,16 @@ void WhileOp::Print(pir::IrPrinter &printer) {
   auto &os = printer.os;
   auto op = operation();
   printer.PrintOpResult(op);
-  os << " = \"" << name() << "\"(";
+  os << " = \"" << name() << "\"(cond=";
   printer.PrintValue(cond());
-  os << ") [";
+  os << ", inputs=";
   auto operands = (*this)->operands_source();
   pir::PrintInterleave(
       operands.begin() + 1,
       operands.end(),
       [&](pir::Value v) { printer.PrintValue(v); },
       [&]() { os << ", "; });
-  os << "] { \n ^";
+  os << ") { \n ^";
   pir::PrintInterleave(
       body().args_begin(),
       body().args_end(),
@@ -299,10 +337,35 @@ std::vector<std::vector<pir::OpResult>> TuplePushOpVjpInterfaceModel::Vjp(
   }
   return res;
 }
+
+void HasElementsOp::Build(pir::Builder &builder,             // NOLINT
+                          pir::OperationArgument &argument,  // NOLINT
+                          pir::Value stack) {
+  argument.AddInput(stack);
+  argument.AddOutput(
+      DenseTensorType::get(builder.ir_context(), builder.bool_type(), {1}));
+}
+void HasElementsOp::VerifySig() {
+  VLOG(4) << "Verifying inputs, outputs ,attributes for: HasElementsOp.";
+  // Verify inputs:
+  IR_ENFORCE(num_operands() == 1u, "The size of inputs must equal to 1.");
+  IR_ENFORCE(operand_source(0).type().isa<pir::StackType>(),
+             "The first input of cf.has_elements must be stack_type.");
+
+  // No attributes should be verify.
+
+  // Verify outputs:
+  IR_ENFORCE(num_results() == 1u, "The size of outputs must be equal to 1.");
+  IR_ENFORCE((*this)->result_type(0).isa<DenseTensorType>() ||
+                 (*this)->result_type(0).isa<AllocatedDenseTensorType>(),
+             "The type of cf.has_elements' output is not correct.");
+}
+
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::IfOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::WhileOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::HasElementsOp)
 
 #endif
