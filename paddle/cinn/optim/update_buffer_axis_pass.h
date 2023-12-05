@@ -1,4 +1,4 @@
-// Copyright (c) 2021 CINN Authors. All Rights Reserved.
+// Copyright (c) 2023 CINN Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,15 +18,14 @@
 #include "paddle/cinn/ir/ir.h"
 
 namespace cinn {
-namespace ir {
-namespace ir_utils {
+namespace optim {
 
-//! Replace the variable \p from to expression \p to in expression \p expr.
-void IrReplaceVarBroadcast(ir::Expr* expr, ir::Expr from, ir::Expr to);
+/**
+ * Used in OptimizeExprGpu. Given Expr AST, analyze the Buffer axis, if it is
+ * shared/local GPU memory and access indices are same at the same axis, then
+ * it means we may not need that much memory. We set those indices to 0
+ */
+void UpdateBufferAxisPass(ir::Expr* expr);
 
-//! Replace the Expr \p from to expression \p to in expression \p expr.
-void IrReplace(ir::Expr* expr, ir::Expr from, ir::Expr to);
-
-}  // namespace ir_utils
-}  // namespace ir
+}  // namespace optim
 }  // namespace cinn

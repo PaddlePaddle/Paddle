@@ -1,4 +1,4 @@
-// Copyright (c) 2021 CINN Authors. All Rights Reserved.
+// Copyright (c) 2023 CINN Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,15 +18,15 @@
 #include "paddle/cinn/ir/ir.h"
 
 namespace cinn {
-namespace ir {
-namespace ir_utils {
+namespace optim {
 
-//! Replace the variable \p from to expression \p to in expression \p expr.
-void IrReplaceVarBroadcast(ir::Expr* expr, ir::Expr from, ir::Expr to);
+/**
+ * Given Expr AST, analyze the Buffer size by loop var range.
+ * Then resize the buffer to the range. It is an optimization
+ * so that we can allocate buffer to the size accessed by vars,
+ * which minimize the allocation.
+ */
+void ResizeBufferToMaxVarRange(ir::Expr* expr);
 
-//! Replace the Expr \p from to expression \p to in expression \p expr.
-void IrReplace(ir::Expr* expr, ir::Expr from, ir::Expr to);
-
-}  // namespace ir_utils
-}  // namespace ir
+}  // namespace optim
 }  // namespace cinn
