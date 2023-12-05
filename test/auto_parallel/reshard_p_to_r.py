@@ -21,7 +21,7 @@ import paddle.distributed as dist
 from paddle.framework import core
 
 
-class TestReshardSToR:
+class TestReshardPToR:
     def __init__(self):
         self._shape = eval(os.getenv("shape"))
         self._dtype = os.getenv("dtype")
@@ -47,4 +47,4 @@ class TestReshardSToR:
 
 
 if __name__ == '__main__':
-    TestReshardSToR().run_test_case()
+    TestReshardPToR().run_test_case()

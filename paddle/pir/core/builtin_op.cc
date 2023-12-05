@@ -13,10 +13,9 @@
 // limitations under the License.
 
 #include "paddle/pir/core/builtin_op.h"
-#include "paddle/phi/core/enforce.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/enforce.h"
 
 namespace pir {
 
@@ -146,6 +145,9 @@ void ParameterOp::PassStopGradients(OperationArgument &argument) {
       pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
 }
 
+std::string ParameterOp::param_name() const {
+  return attribute<StrAttribute>("parameter_name").AsString();
+}
 void ParameterOp::VerifySig() const {
   VLOG(4) << "Verifying inputs, outputs and attributes for: ParameterOp.";
   // Verify inputs:

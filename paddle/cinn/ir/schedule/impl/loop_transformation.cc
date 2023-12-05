@@ -261,7 +261,7 @@ std::vector<Expr> StScheduleImpl::Split(const Expr& loop,
   CHECK(loop.As<ir::For>())
       << "Expr param of Split must be For node! Please check.";
   auto* for_node = loop.As<ir::For>();
-  CHECK(common::is_zero(for_node->min))
+  CHECK(cinn::common::is_zero(for_node->min))
       << "The For node must start with 0! Please check.";
   CHECK(for_node->extent.is_constant())
       << "The For node's extent must be constant! Please check.";
@@ -283,12 +283,12 @@ std::vector<Expr> StScheduleImpl::Split(const Expr& loop,
   std::vector<Var> new_loop_vars;
   Expr substitute_value(0);
   for (int i = 0; i < processed_factors.size(); ++i) {
-    Var temp_var(common::UniqName(for_node->loop_var->name));
+    Var temp_var(cinn::common::UniqName(for_node->loop_var->name));
     substitute_value =
         Expr(temp_var) + substitute_value * Expr(processed_factors[i]);
     new_loop_vars.push_back(temp_var);
   }
-  substitute_value = common::AutoSimplify(substitute_value);
+  substitute_value = cinn::common::AutoSimplify(substitute_value);
   Expr new_node = ir::ir_utils::IRCopy(for_node->body);
   ReplaceExpr(&new_node, {for_node->loop_var}, {substitute_value});
   std::vector<Expr> splited_loops;
@@ -359,7 +359,7 @@ Expr StScheduleImpl::Fuse(const std::vector<Expr>& loops) {
   for (int i = 0; i < loops_number; ++i) {
     fused_extent = fused_extent * for_nodes[i]->extent;
   }
-  fused_extent = common::AutoSimplify(fused_extent);
+  fused_extent = cinn::common::AutoSimplify(fused_extent);
 
   if (!fused_body.As<ir::Block>()) fused_body = Block::Make({fused_body});
   Expr new_stmt = For::Make(fused_var,

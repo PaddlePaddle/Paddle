@@ -255,8 +255,8 @@ void FCElementwiseLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     int begin_norm_axis =
         PADDLE_GET_CONST(int, layer_norm->Op()->GetAttr("begin_norm_axis"));
     auto layer_norm_x_dims = fc_out->Var()->GetShape();
-    auto layer_norm_x_mat_dims =
-        phi::flatten_to_2d(phi::make_ddim(layer_norm_x_dims), begin_norm_axis);
+    auto layer_norm_x_mat_dims = common::flatten_to_2d(
+        common::make_ddim(layer_norm_x_dims), begin_norm_axis);
     if (fc_w->Var()->GetShape()[1] != layer_norm_x_mat_dims[1]) {
       return;
     }

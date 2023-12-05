@@ -57,7 +57,6 @@ constexpr const char* kTaskCompletion = "TaskCompletion";
 
 namespace paddle {
 namespace framework {
-using HookFunc = std::function<void(OperatorBase*, Scope*)>;
 
 /// @brief InterpreterBaseImpl is a abstract Base Class and define necessary
 /// interface with virtual keywords for Derived class.
@@ -68,18 +67,22 @@ class InterpreterBaseImpl {
   virtual paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names,
       const std::vector<phi::DenseTensor>& feed_tensors,
-      bool need_fetch = true) = 0;
+      bool need_fetch = true,
+      bool enable_job_schedule_profiler = false) = 0;
 
   virtual paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names,
       bool need_fetch = true,
-      bool enable_job_schedule_profiler = false) = 0;
+      bool enable_job_schedule_profiler = false,
+      bool enable_op_profiling = false) = 0;
 
   virtual void ShareWorkQueueFrom(InterpreterBaseImpl* src) = 0;
 
   virtual void ShareBuildResultsFrom(const InterpreterBaseImpl& src) = 0;
 
   virtual void SetCopyProgram(std::shared_ptr<ProgramDesc> prog) = 0;
+
+  virtual std::shared_ptr<ProgramDesc> GetMutableCopyProgram() = 0;
 
   virtual void SetSkipGcVars(const std::set<std::string>& skip_gc_vars) = 0;
 
@@ -97,6 +100,8 @@ class InterpreterBaseImpl {
 
   virtual void SetOutputHooks(const std::vector<HookFunc>& hookfuncs) = 0;
 
+  virtual void SetInputHooks(const std::vector<HookFunc>& hookfuncs) = 0;
+
   virtual std::shared_ptr<std::vector<size_t>> GetDependencyCount() const = 0;
 
   virtual bool IsSharedResultsBuild() const = 0;
@@ -108,6 +113,9 @@ class InterpreterBaseImpl {
   virtual bool IsStaticBuild() const = 0;
 
   virtual std::tuple<double, double> InterpreterRunTime() = 0;
+
+  // Only for debug
+  virtual Variable* DebugVar(const std::string& name) const = 0;
 };
 
 inline void SetDeviceId(const platform::Place& place) {

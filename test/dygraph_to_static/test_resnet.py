@@ -217,18 +217,21 @@ def reader_decorator(reader):
 
 
 class TransedFlowerDataSet(paddle.io.Dataset):
-    def __init__(self, flower_data, length):
+    def __init__(self, length):
         self.img = []
         self.label = []
-        self.flower_data = flower_data()
         self._generate(length)
 
     def _generate(self, length):
-        for i, data in enumerate(self.flower_data):
+        for i, data in enumerate(range(1000)):
+            image = paddle.randn((3, 224, 224)).astype("float32").cpu()
+            label = np.array(
+                [paddle.randint(0, 100, (1,)).astype("int64").item()]
+            )
             if i >= length:
                 break
-            self.img.append(data[0])
-            self.label.append(data[1])
+            self.img.append(image)
+            self.label.append(label)
 
     def __getitem__(self, idx):
         return self.img[idx], self.label[idx]
@@ -260,7 +263,6 @@ class ResNetHelper:
         paddle.framework.random._manual_program_seed(SEED)
 
         dataset = TransedFlowerDataSet(
-            reader_decorator(paddle.dataset.flowers.train(use_xmap=False)),
             batch_size * (10 + 1),
         )
         data_loader = paddle.io.DataLoader(
