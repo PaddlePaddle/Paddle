@@ -61,7 +61,7 @@ std::vector<ir::LoweredFunc> LowerTensorGroup::operator()() {
     func_body = ir::ScheduleBlockRealize::Make(
         {},
         ir::ScheduleBlock::Make(
-            {}, {}, {}, common::UniqName("root"), func_body));
+            {}, {}, {}, cinn::common::UniqName("root"), func_body));
     // 2. Assign buffer to tensors
     auto tensor_map = tensor_group_->AllocateBuffers();
     // copy the tensor(with buffer assigned) back to func's args.
@@ -217,7 +217,7 @@ std::vector<ir::Expr> LowerTensorGroup::GenerateFunctionBody(
           tensor->buffer.defined() &&
           (tensor->buffer->memory_type == ir::MemoryType::GPUShared ||
            tensor->buffer->memory_type == ir::MemoryType::GPULocal);
-      if (target_ == common::DefaultNVGPUTarget() && !gpu_local) {
+      if (target_ == cinn::common::DefaultNVGPUTarget() && !gpu_local) {
         result.push_back(bodies.size() == 1 ? bodies[0]
                                             : ir::Block::Make(bodies));
         bodies.clear();

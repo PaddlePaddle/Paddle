@@ -173,7 +173,7 @@ Expr AddUnitLoop(const std::vector<Expr>& exprs, const Expr& block) {
                 ->schedule_block.As<ir::ScheduleBlock>()
                 ->name == block_name) {
           auto block = ir::Block::Make({GetBlock(exprs, block_name)});
-          auto loop = ir::For::Make(ir::Var(common::UniqName("ix")),
+          auto loop = ir::For::Make(ir::Var(cinn::common::UniqName("ix")),
                                     ir::Expr(0),
                                     ir::Expr(1),
                                     ir::ForType::Serial,
@@ -186,7 +186,7 @@ Expr AddUnitLoop(const std::vector<Expr>& exprs, const Expr& block) {
     }
   } else if (visitor.target_->As<ir::For>()) {
     auto block = ir::Block::Make({visitor.target_->As<ir::For>()->body});
-    auto loop = ir::For::Make(ir::Var(common::UniqName("ix")),
+    auto loop = ir::For::Make(ir::Var(cinn::common::UniqName("ix")),
                               ir::Expr(0),
                               ir::Expr(1),
                               ir::ForType::Serial,
@@ -197,7 +197,7 @@ Expr AddUnitLoop(const std::vector<Expr>& exprs, const Expr& block) {
   } else if (visitor.target_->As<ir::ScheduleBlock>()) {
     auto block =
         ir::Block::Make({visitor.target_->As<ir::ScheduleBlock>()->body});
-    auto loop = ir::For::Make(ir::Var(common::UniqName("ix")),
+    auto loop = ir::For::Make(ir::Var(cinn::common::UniqName("ix")),
                               ir::Expr(0),
                               ir::Expr(1),
                               ir::ForType::Serial,

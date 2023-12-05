@@ -845,6 +845,22 @@ nvinfer1::DimsExprs ScatterInferMeta(
   return ref_dims;
 }
 
+nvinfer1::DimsExprs SolveInferMeta(
+    int output_index,
+    const nvinfer1::DimsExprs* inputs,
+    int nb_inputs,
+    nvinfer1::IExprBuilder& expr_builder,  // NOLINT
+    const framework::OpDesc& op_desc) {
+  PADDLE_ENFORCE_EQ(
+      nb_inputs,
+      2,
+      phi::errors::InvalidArgument("inputs of solve should be equal to 2, "
+                                   "But received (%s)",
+                                   nb_inputs));
+  const nvinfer1::DimsExprs ref_dims = inputs[1];
+  return ref_dims;
+}
+
 PD_REGISTER_DYNAMIC_INFER_META_FN(gather_nd, GatherNdInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(yolo_box, YoloBoxInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(instance_norm, InstanceNormInferMeta);
@@ -862,6 +878,7 @@ PD_REGISTER_DYNAMIC_INFER_META_FN(memory_efficient_attention,
                                   MemoryEfficientAttentionInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(pad, PadInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(scatter, ScatterInferMeta);
+PD_REGISTER_DYNAMIC_INFER_META_FN(solve, SolveInferMeta);
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle

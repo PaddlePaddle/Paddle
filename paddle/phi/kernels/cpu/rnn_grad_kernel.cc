@@ -82,7 +82,7 @@ struct GradCell {
     if (has_sequence_length) {
       auto& place = *dev_ctx.eigen_device();
       auto mask = EigenMatrix<T>::From(
-          mask_tensor, phi::make_ddim({mask_tensor.dims()[1], 1}));
+          mask_tensor, common::make_ddim({mask_tensor.dims()[1], 1}));
       auto mask_broadcast = mask.broadcast(Eigen::DSizes<int, 2>(
           1, static_cast<int>(grad_pre_hidden->dims()[2])));
       auto pre_hidden_grad = EigenMatrix<T>::Reshape(
@@ -394,7 +394,7 @@ struct GradLayer {
     std::vector<DenseTensor> mask_tensor_list;
     int mask_min_length = time_step;
     if (has_sequence_length) {
-      mask_matrix.Resize(phi::make_ddim({time_step, input->dims()[1]}));
+      mask_matrix.Resize(common::make_ddim({time_step, input->dims()[1]}));
       CreateMaskMatrix<T>(
           dev_ctx, sequence_length, &mask_matrix, is_reverse, &mask_min_length);
       mask_tensor_list = Unbind(mask_matrix);
@@ -598,7 +598,7 @@ struct GradLayer {
                        const std::string& mode) {
     auto& place = *dev_ctx.eigen_device();
     auto mask = EigenMatrix<T>::From(
-        mask_tensor, phi::make_ddim({mask_tensor.dims()[1], 1}));
+        mask_tensor, common::make_ddim({mask_tensor.dims()[1], 1}));
     auto mask_broadcast = mask.broadcast(
         Eigen::DSizes<int, 2>(1, static_cast<int>(grad_output->dims()[2])));
 
@@ -1121,8 +1121,8 @@ void RnnGradFunc(const CPUContext& dev_ctx,
   }
   // squeeze the hidden first dim
   for (auto& hidden_tensor : hidden_tensor_unbind) {
-    hidden_tensor.Resize(
-        phi::slice_ddim(hidden_tensor.dims(), 1, hidden_tensor.dims().size()));
+    hidden_tensor.Resize(common::slice_ddim(
+        hidden_tensor.dims(), 1, hidden_tensor.dims().size()));
   }
   // add the output tensor to the hidden vector
   DenseTensor tmp;

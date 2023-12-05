@@ -1,7 +1,7 @@
 cc_library(
   benchmark
   SRCS benchmark.cc
-  DEPS enforce)
+  DEPS enforce common)
 paddle_test(test_benchmark SRCS benchmark_tester.cc DEPS benchmark)
 cc_library(
   infer_io_utils
@@ -10,7 +10,7 @@ cc_library(
 cc_library(
   model_utils
   SRCS model_utils.cc
-  DEPS proto_desc enforce)
+  DEPS proto_desc enforce common)
 
 cc_test_old(
   infer_io_utils_tester

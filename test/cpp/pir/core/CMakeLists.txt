@@ -1,7 +1,10 @@
-paddle_test(type_test SRCS type_test.cc DEPS pir op_dialect_vjp)
+cc_test(
+  type_test
+  SRCS type_test.cc
+  DEPS pir op_dialect_vjp)
 cc_test_old(ir_attribute_test SRCS ir_attribute_test.cc DEPS pir gtest)
 cc_test_old(ir_value_test SRCS ir_value_test.cc DEPS pir gtest)
-paddle_test(
+cc_test_old(
   ir_op_test
   SRCS
   ir_op_test.cc
@@ -19,6 +22,7 @@ cc_test_old(
   op_dialect_vjp
   pir
   phi
+  common
   gtest)
 
 cc_test_old(
@@ -29,6 +33,7 @@ cc_test_old(
   op_dialect_vjp
   pir
   phi
+  common
   gtest)
 
 cc_test_old(
