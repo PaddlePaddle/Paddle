@@ -558,6 +558,12 @@ class DistForwardAPI(ForwardAPI):
             and 'grad' not in self.kernel['func'][0]
         )
 
+    def is_expand_kernel(self):
+        return (
+            "expand" == self.kernel['func'][0]
+            and 'grad' not in self.kernel['func'][0]
+        )
+
     def is_inplace_output(self, i):
         return self.outputs['names'][i] in self.inplace_map
 
@@ -1426,7 +1432,9 @@ class DistForwardAPI(ForwardAPI):
                     )
             elif param in attr_names:
                 # TODO(GhostScreaming): reshape kernel need specialized process
-                if self.is_reshape_kernel() and param == "shape":
+                if (
+                    self.is_reshape_kernel() or self.is_expand_kernel()
+                ) and param == "shape":
                     input_args_code = input_args_code + "local_shape" + ", "
                 else:
                     input_args_code = input_args_code + param + ", "
@@ -1460,7 +1468,7 @@ class DistForwardAPI(ForwardAPI):
 
         infer_meta_code = ""
         # TODO(GhostScreaming): reshape kernel need specialized process
-        if self.is_reshape_kernel():
+        if self.is_reshape_kernel() or self.is_expand_kernel():
             infer_meta_code = RESHAPE_CALCULATE_LOCAL_SHAPE_TEMPLATE
         infer_meta_code = infer_meta_code + INFER_META_TEMPLATE.format(
             infer_meta_func_code, input_args_code, output_args_code
@@ -1515,7 +1523,9 @@ class DistForwardAPI(ForwardAPI):
                 if 'IntArray' in self.attrs['attr_info'][arg][0]:
                     kernel_args_type_list.append('const phi::IntArray&')
                     # TODO(GhostScreaming): reshape kernel need specialized process
-                    if self.is_reshape_kernel() and arg == "shape":
+                    if (
+                        self.is_reshape_kernel() or self.is_expand_kernel()
+                    ) and arg == "shape":
                         arg = 'phi::IntArray(local_shape)'
                     else:
                         arg = 'phi::IntArray(' + arg + ')'
