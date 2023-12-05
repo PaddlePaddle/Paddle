@@ -3741,6 +3741,7 @@ def cdist(
         x[..., None, :] - y[..., None, :, :], p=p, axis=-1
     )
 
+
 def householder_product(x, tau, name=None):
     r"""
 
@@ -3869,15 +3870,18 @@ def householder_product(x, tau, name=None):
             )
     out = out.reshape(org_x_shape)
     return out
-  
-def histogramdd(x, bins=10, ranges=None, density=False, weights=None, name=None):
+
+
+def histogramdd(
+    x, bins=10, ranges=None, density=False, weights=None, name=None
+):
     r"""
     Computes a multi-dimensional histogram of the values in a tensor.
-    
-    Interprets the elements of an input tensor whose innermost dimension has size N as a collection of N-dimensional points. Maps each of the points into a set of N-dimensional bins and returns the number of points (or total weight) in each bin.
-    
-    ``input`` must be a tensor with at least 2 dimensions. If input has shape (M, N), each of its M rows defines a point in N-dimensional space. If input has three or more dimensions, all but the last dimension are flattened.
-    
+
+    Interprets the elements of an input tensor whose innermost dimension has size `N` as a collection of N-dimensional points. Maps each of the points into a set of N-dimensional bins and returns the number of points (or total weight) in each bin.
+
+    input `x` must be a tensor with at least 2 dimensions. If input has shape `(M, N)`, each of its `M` rows defines a point in N-dimensional space. If input has three or more dimensions, all but the last dimension are flattened.
+
     Each dimension is independently associated with its own strictly increasing sequence of bin edges. Bin edges may be specified explicitly by passing a sequence of 1D tensors. Alternatively, bin edges may be constructed automatically by passing a sequence of integers specifying the number of equal-width bins in each dimension.
 
     Args:
@@ -3891,8 +3895,11 @@ def histogramdd(x, bins=10, ranges=None, density=False, weights=None, name=None)
     Returns:
         N-dimensional Tensor containing the values of the histogram. ``bin_edges(Tensor[])``,  sequence of N 1D Tensors containing the bin edges.
 
+    Examples:
+        .. code-block:: python
+            :name: exampl
 
-
+            >>> import paddle
             >>> x = paddle.to_tensor([[0., 1.], [1., 0.], [2.,0.], [2., 2.]])
             >>> bins = [3,3]
             >>> weights = paddle.to_tensor([1., 2., 4., 8.])
@@ -3904,7 +3911,9 @@ def histogramdd(x, bins=10, ranges=None, density=False, weights=None, name=None)
                    [0.        , 0.66666669, 1.33333337, 2.        ]), Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
                    [0.        , 0.66666669, 1.33333337, 2.        ])])
 
+            :name: examp2
 
+            >>> import paddle
             >>> y = paddle.to_tensor([[0., 0.], [1., 1.], [2., 2.]])
             >>> bins = [2,2]
             >>> ranges = [0., 1., 0., 1.]
@@ -3918,6 +3927,7 @@ def histogramdd(x, bins=10, ranges=None, density=False, weights=None, name=None)
 
 
     """
+
     def __check_x(x):
         assert (
             len(x.shape) >= 2
@@ -4083,4 +4093,3 @@ def histogramdd(x, bins=10, ranges=None, density=False, weights=None, name=None)
         hist /= s
 
     return (hist, edges)
-
