@@ -19,6 +19,7 @@ from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
     test_legacy_and_pir,
+    test_legacy_only,
     test_pir_only,
 )
 
@@ -91,12 +92,11 @@ def len_with_selected_rows(place):
     # create selected_rows variable
     paddle.enable_static()
     non_used_initializer = paddle.nn.initializer.Constant(0.0)
-    var = paddle.static.data(
+    var = paddle.static.create_parameter(
         name="X",
         dtype="float32",
         shape=[5, 20],
     )
-    breakpoint()
     selected_var = (
         paddle.base.libpaddle.pir.create_selected_rows_type_by_dense_tensor(
             var.type()
@@ -109,7 +109,7 @@ def len_with_selected_rows(place):
 
     # z is inner tensor with shape [4, 2]
     z = clip.get_tensor_from_selected_rows(y)
-    z_len = Call(len)(z)
+    z_len = paddle.shape(z)[0]
 
     # set data for selected_rows
     x_rows = [0, 2, 2, 4, 19]
@@ -142,7 +142,6 @@ def legacy_len_with_selected_rows(place):
     )
     # y is Variable(SelectedRows)
     y = clip.merge_selected_rows(var)
-    breakpoint()
     y_len = Call(len)(y)
 
     # z is inner tensor with shape [4, 2]
@@ -173,13 +172,13 @@ class TestLenWithSelectedRows(Dy2StTestBase):
             else base.CPUPlace()
         )
 
-    # @test_legacy_only
-    # @test_ast_only
-    # def test_len_legacy(self):
-    # selected_rows_var_len, var_tensor_len = legacy_len_with_selected_rows(
-    # self.place
-    # )
-    # self.assertEqual(selected_rows_var_len, var_tensor_len)
+    @test_legacy_only
+    @test_ast_only
+    def test_len_legacy(self):
+        selected_rows_var_len, var_tensor_len = legacy_len_with_selected_rows(
+            self.place
+        )
+        self.assertEqual(selected_rows_var_len, var_tensor_len)
 
     @test_pir_only
     @test_ast_only
