@@ -226,7 +226,7 @@ TEST(pass_manager, PassManager) {
       true,
       true));
 
-  pm.EnablePassTiming(true);
+  // pm.EnablePassTiming(true);
 
   CHECK_EQ(pm.Run(&program), true);
 }

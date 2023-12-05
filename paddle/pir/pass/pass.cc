@@ -97,7 +97,6 @@ bool detail::PassAdaptor::RunPass(Pass* pass,
   pass->pass_state_ = PassExecutionState(op, am);
 
   PassInstrumentor* instrumentor = am.GetPassInstrumentor();
-
   if (auto* adaptor = dynamic_cast<PassAdaptor*>(pass)) {
     adaptor->Run(op, opt_level, verify);
   } else {

@@ -22,7 +22,6 @@
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/pass/analysis_manager.h"
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
-#include "paddle/utils/flags.h"
 #include "paddle/utils/string/pretty_log.h"
 
 namespace pir {
