@@ -16,7 +16,7 @@ import paddle
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
 from paddle.base.framework import (
     in_dygraph_mode,
-    in_dynamic_or_pir_mode,
+    in_pir_mode,
 )
 
 from ...base.data_feeder import check_variable_and_dtype
@@ -87,42 +87,39 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
             False  # ROCM platform do not have MIOPEN kernel for affine_grid
         )
 
-    if in_dynamic_or_pir_mode():
-        if in_dygraph_mode():
-            _out_shape = (
-                out_shape.tolist()
-                if isinstance(out_shape, (Variable, paddle.pir.OpResult))
-                else out_shape
-            )
-            theta = theta._use_gpudnn(use_cudnn)
-            return _C_ops.affine_grid(theta, _out_shape, align_corners)
-        elif in_dynamic_mode():
-            _out_shape = (
-                out_shape.tolist()
-                if isinstance(out_shape, (Variable, paddle.pir.OpResult))
-                else out_shape
-            )
-            return _legacy_C_ops.affine_grid(
+    if in_dynamic_mode():
+        if isinstance(out_shape, (Variable, paddle.pir.OpResult)):
+            out_shape = paddle.utils.convert_shape_to_list(out_shape)
+        out = _legacy_C_ops.affine_grid(
+            theta,
+            "output_shape",
+            out_shape,
+            "align_corners",
+            align_corners,
+            "use_cudnn",
+            use_cudnn,
+        )
+        return out
+    elif in_pir_mode():
+        theta = theta._use_gpudnn(use_cudnn)
+        if isinstance(out_shape, (list, tuple)):
+            if paddle.utils._contain_var(out_shape):
+                out_shape = paddle.utils.get_int_tensor_list(out_shape)
+                out = _C_ops.affine_grid(
+                    theta,
+                    out_shape,
+                    align_corners,
+                    use_cudnn,
+                )
+        elif isinstance(out_shape, paddle.pir.OpResult):
+            out_shape.stop_gradient = True
+            out = _C_ops.affine_grid(
                 theta,
-                "output_shape",
-                _out_shape,
-                "align_corners",
-                align_corners,
-                "use_cudnn",
-                use_cudnn,
-            )
-        else:
-            _out_shape = (
-                out_shape.tolist()
-                if isinstance(out_shape, Variable)
-                else out_shape
-            )
-            return _C_ops.affine_grid(
-                theta,
-                _out_shape,
+                out_shape,
                 align_corners,
                 use_cudnn,
             )
+        return out
 
     helper = LayerHelper('affine_grid')
     check_variable_and_dtype(
