@@ -562,20 +562,22 @@ class TestTensorAxis(unittest.TestCase):
 class TestCumSumOpFp16(unittest.TestCase):
     @test_with_pir_api
     def test_fp16(self):
-        paddle.enable_static()
-        x_np = np.random.random((100, 100)).astype('float16')
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data(shape=[100, 100], name='x', dtype='float16')
-            y1 = paddle.cumsum(x)
-            y2 = paddle.cumsum(x, axis=0)
-            y3 = paddle.cumsum(x, axis=-1)
-            y4 = paddle.cumsum(x, axis=-2)
-            if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda():
+            paddle.enable_static()
+            x_np = np.random.random((100, 100)).astype('float16')
+            with paddle.static.program_guard(paddle.static.Program()):
+                x = paddle.static.data(
+                    shape=[100, 100], name='x', dtype='float16'
+                )
+                y1 = paddle.cumsum(x)
+                y2 = paddle.cumsum(x, axis=0)
+                y3 = paddle.cumsum(x, axis=-1)
+                y4 = paddle.cumsum(x, axis=-2)
                 place = paddle.CUDAPlace(0)
                 exe = paddle.static.Executor(place)
                 exe.run(paddle.static.default_startup_program())
                 out = exe.run(feed={'x': x_np}, fetch_list=[y1, y2, y3, y4])
-        paddle.disable_static()
+            paddle.disable_static()
 
 
 if __name__ == '__main__':

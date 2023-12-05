@@ -16,7 +16,6 @@
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/enforce.h"
 
 namespace pir::shape {
 
@@ -52,11 +51,11 @@ void SymbolicDimOp::Build(Builder &builder,
   argument.AddAttribute("known_non_size_zero", attr_known_non_size_zero);
 }
 
-const std::string SymbolicDimOp::GetSymName() {
+const std::string SymbolicDimOp::GetSymName() const {
   return attribute<StrAttribute>("sym_name").AsString();
 }
 
-int64_t SymbolicDimOp::GetDimSize() {
+int64_t SymbolicDimOp::GetDimSize() const {
   return attribute<Int64Attribute>("value").data();
 }
 
@@ -106,7 +105,7 @@ void SymbolicDimOp::UpdateKnownNonSizeZero(bool flag) {
                              BoolAttribute::get(IrContext::Instance(), flag));
 }
 
-bool SymbolicDimOp::IsDynamic() {
+bool SymbolicDimOp::IsDynamic() const {
   return GetDimSize() == ShapedTypeInterface::kDynamic;
 }
 
@@ -244,16 +243,16 @@ void FuncOp::Build(Builder &builder, OperationArgument &argument) {
 Block *FuncOp::block() {
   Region &region = (*this)->region(0);
   if (region.empty()) region.emplace_back();
-  return region.front();
+  return &region.front();
 }
 
 void FuncOp::Print(IrPrinter &printer) {
   auto &os = printer.os;
   os << " shape.func () ";
   os << "{";
-  for (auto item : *block()) {
+  for (auto &item : *block()) {
     os << "\n  ";
-    printer.PrintOperation(item);
+    printer.PrintOperation(&item);
   }
   os << "\n }";
 }
@@ -290,12 +289,37 @@ void ShapeOfOp::Build(Builder &builder,             // NOLINT
                       OperationArgument &argument,  // NOLINT
                       Value input) {
   argument.AddInput(input);
+
+  IrContext *ctx = IrContext::Instance();
+  Type dtype = IndexType::get(ctx);
+  int64_t input_rank = input.type()
+                           .dyn_cast<DenseTensorType>()
+                           .dyn_cast<ShapedTypeInterface>()
+                           .GetRank();
+  pir::DDim dims = {input_rank};
+  pir::DataLayout data_layout = pir::DataLayout::NCHW;
+  pir::LoD lod = {{0, 1, 2}};
+  size_t offset = 0;
+
+  argument.output_types.emplace_back(
+      DenseTensorType::get(ctx, dtype, dims, data_layout, lod, offset));
 }
 
 void FromElementsOp::Build(Builder &builder,             // NOLINT
                            OperationArgument &argument,  // NOLINT
                            const std::vector<Value> &elements) {
   argument.AddInputs(elements);
+
+  IrContext *ctx = IrContext::Instance();
+  Type dtype = IndexType::get(ctx);
+  int64_t num_elements = elements.size();
+  pir::DDim dims = {num_elements};
+  pir::DataLayout data_layout = pir::DataLayout::NCHW;
+  pir::LoD lod = {{0, 1, 2}};
+  size_t offset = 0;
+
+  argument.output_types.emplace_back(
+      DenseTensorType::get(ctx, dtype, dims, data_layout, lod, offset));
 }
 
 std::vector<Value> FromElementsOp::elements() {
@@ -312,6 +336,8 @@ void ExtractOp::Build(Builder &builder,             // NOLINT
                       std::vector<Value> indices) {
   argument.AddInput(tensor);
   argument.AddInputs(indices);
+  auto type = tensor.type().dyn_cast<ShapedTypeInterface>().GetElementType();
+  argument.output_types.emplace_back(type);
 }
 
 std::vector<Value> ExtractOp::indices() {
@@ -334,6 +360,7 @@ void IndexCastOp::Build(Builder &builder,             // NOLINT
                         Type out,
                         Value in) {
   argument.AddInput(in);
+  argument.output_types.emplace_back(out);
 }
 
 }  // namespace pir::shape

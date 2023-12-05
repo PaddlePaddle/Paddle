@@ -14,8 +14,8 @@
 
 #include "glog/logging.h"
 
+#include "paddle/common/errors.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/autogen/memory_efficient_attention.h"
 #include "paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/gemm_kernel_utils.h"

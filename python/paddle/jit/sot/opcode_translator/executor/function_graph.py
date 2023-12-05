@@ -248,53 +248,32 @@ class FunctionGraph:
                 self._store_var_info = store_var_info
                 self._pycode_gen: PyCodeGen = pycode_gen
 
-            def load(self, var, allow_push_null=True):
+            def load(self, var):
                 if isinstance(var, NullVariable):
-                    # PUSH_NULL is an opcode
-                    if allow_push_null:
-                        var.reconstruct(self._pycode_gen)
-                    else:
-                        # Avoid passing NULL as a parameter to the resume function
-                        self._pycode_gen.gen_load_null_variable()
+                    var.reconstruct(self._pycode_gen)
                     return
-                # only restored vars in stack, so used gen_load to process global var
-                self._pycode_gen.gen_load(self._store_var_info[var])
+                self._pycode_gen.gen_load(self._store_var_info[var.id])
 
-        origin_instr = get_instructions(self.pycode_gen._origin_code)
+        origin_instrs = get_instructions(self.pycode_gen._origin_code)
 
-        for instr in origin_instr[0:instr_idx]:
-            if (
-                instr.opname == 'LOAD_FAST'
-                and instr.argval in self.pycode_gen._frame.f_locals.keys()
-                and isinstance(
-                    self.pycode_gen._frame.f_locals[instr.argval], NullVariable
-                )
-            ):
-                self.pycode_gen._frame.f_locals[instr.argval].reconstruct(
-                    self.pycode_gen
-                )
-            elif (
-                instr.opname == 'LOAD_GLOBAL'
-                and instr.argval in self.pycode_gen._frame.f_globals.keys()
-                and isinstance(
-                    self.pycode_gen._frame.f_globals[instr.argval], NullVariable
-                )
-            ):
-                self.pycode_gen._frame.f_globals[instr.argval].reconstruct(
-                    self.pycode_gen
-                )
-            else:
-                self.pycode_gen.extend_instrs([instr])
+        restore_instrs = origin_instrs[:instr_idx]
+        restore_instr_names = [
+            instr.opname for instr in restore_instrs[:instr_idx]
+        ]
+        # NOTE(SigureMo): Trailing KW_NAMES + PRECALL is no need to restore in Python 3.11+
+        if restore_instr_names[-2:] == ["KW_NAMES", "PRECALL"]:
+            restore_instrs = restore_instrs[:-2]
 
+        self.pycode_gen.extend_instrs(restore_instrs)
         nop = self.pycode_gen._add_instr("NOP")
 
-        for instr in origin_instr:
-            if instr.jump_to == origin_instr[instr_idx]:
+        for instr in origin_instrs:
+            if instr.jump_to == origin_instrs[instr_idx]:
                 instr.jump_to = nop
 
         self.pycode_gen.hooks.append(
             lambda: self.pycode_gen.extend_instrs(
-                iter(origin_instr[instr_idx + 1 :])
+                iter(origin_instrs[instr_idx + 1 :])
             )
         )
 
@@ -303,8 +282,8 @@ class FunctionGraph:
         name_gen = NameGenerator("__start_compile_saved_orig_")
 
         for var in stack_vars[::-1]:
-            store_var_info[var] = name_gen.next()
-            self.pycode_gen.gen_store_fast(store_var_info[var])
+            store_var_info[var.id] = name_gen.next()
+            self.pycode_gen.gen_store_fast(store_var_info[var.id])
 
         return VariableLoader(store_var_info, self.pycode_gen)
 
@@ -316,15 +295,9 @@ class FunctionGraph:
 
             def load(self, var, allow_push_null=True):
                 if isinstance(var, NullVariable):
-                    # PUSH_NULL is an opcode
-                    if allow_push_null:
-                        var.reconstruct(self._pycode_gen)
-                    else:
-                        # Avoid passing NULL as a parameter to the resume function
-                        self._pycode_gen.gen_load_null_variable()
+                    var.reconstruct(self._pycode_gen)
                     return
-                # all vars to be load are saved by this function, so load_fast is correct
-                self._pycode_gen.gen_load_fast(self._index_for_load[var.id])
+                self._pycode_gen.gen_load(self._index_for_load[var.id])
 
         # var_id -> local_name mapping
         index_for_load = {}

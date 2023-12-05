@@ -101,7 +101,7 @@ class TesBackward_1(unittest.TestCase):
             out = paddle.mean(tanh_out)
             input_grad = grad(out, input, no_grad_vars=[input])
             self.assertEqual(
-                pir_program.global_block().ops[-1].name(), "pd_op.full"
+                pir_program.global_block().ops[-1].name(), "pd_op.mean"
             )
 
     def test_split(self):

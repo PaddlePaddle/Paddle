@@ -41,7 +41,7 @@ class MemoryInterface {
  */
 class MemoryManager final {
  public:
-  using key_t = common::Target::Arch;
+  using key_t = cinn::common::Target::Arch;
 
   static MemoryManager& Global() {
     static auto* x = new MemoryManager;
@@ -69,7 +69,8 @@ class MemoryManager final {
  private:
   MemoryManager();
 
-  absl::flat_hash_map<common::Target::Arch, std::unique_ptr<MemoryInterface>>
+  absl::flat_hash_map<cinn::common::Target::Arch,
+                      std::unique_ptr<MemoryInterface>>
       memory_mngs_;
 
   CINN_DISALLOW_COPY_AND_ASSIGN(MemoryManager);

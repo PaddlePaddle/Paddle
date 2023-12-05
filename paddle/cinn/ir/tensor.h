@@ -28,6 +28,7 @@
 #include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/common/graph_utils.h"
 #include "paddle/cinn/ir/buffer.h"
+#include "paddle/cinn/ir/dim.h"
 #include "paddle/cinn/ir/function_base.h"
 #include "paddle/cinn/lang/buffer.h"
 #include "paddle/cinn/poly/stage.h"
@@ -50,6 +51,13 @@ class Tensor : public ir::IrNodeRef {
          Type dtype,
          const std::vector<Expr>& shape,
          const std::vector<Expr>& domain,
+         FunctionRef fn,
+         const std::vector<Var>& reduce_axis = {});
+
+  Tensor(const std::string& name,
+         Type dtype,
+         const std::vector<Dim>& sym_shape,
+         const std::vector<Dim>& sym_domain,
          FunctionRef fn,
          const std::vector<Var>& reduce_axis = {});
 
@@ -121,8 +129,12 @@ struct WriteCacheRelation;
  */
 class _Tensor_ : public ExprNode<_Tensor_> {
  public:
+  //! Symbolic Shape of this tensor(buffer).
+  std::vector<Dim> sym_shape;
   //! Shape of this tensor(buffer).
   std::vector<Expr> shape;
+  //! The symbolic domain of each axis(without reduce_axis)
+  std::vector<Dim> sym_domain;
   //! The domain of each axis(without reduce_axis)
   // TODO(Superjomn) support ISL domain.
   std::vector<Expr> domain;
@@ -154,6 +166,21 @@ class _Tensor_ : public ExprNode<_Tensor_> {
                      Type dtype,
                      const std::vector<Expr>& shape,
                      const std::vector<Expr>& domain,
+                     const std::vector<Var>& reduce_axis = {});
+
+  //! (Symbolic Shape) Generate a tensor from a function.
+  static Tensor Make(const std::string& name,
+                     Type dtype,
+                     const std::vector<Dim>& sym_shape,
+                     const std::vector<Dim>& sym_domain,
+                     FunctionRef fn,
+                     const std::vector<Var>& reduce_axis = {});
+
+  // (Symbolic Shape) Manual tensor construction, no FunctionRef information
+  static Tensor Make(const std::string& name,
+                     Type dtype,
+                     const std::vector<Dim>& sym_shape,
+                     const std::vector<Dim>& sym_domain,
                      const std::vector<Var>& reduce_axis = {});
 
   void Verify() const override;
@@ -279,7 +306,7 @@ class _Tensor_ : public ExprNode<_Tensor_> {
                   const Type& type = Void());
   Tensor GetInitTensor(
       poly::StageMap stages,
-      const Target& target = common::DefaultHostTarget()) const;
+      const Target& target = cinn::common::DefaultHostTarget()) const;
 
   /**
    * Create the initialization tensor.
@@ -289,7 +316,7 @@ class _Tensor_ : public ExprNode<_Tensor_> {
    */
   ir::Tensor InitReduction(
       poly::StageMap stages,
-      const Target& target = common::DefaultHostTarget()) const;
+      const Target& target = cinn::common::DefaultHostTarget()) const;
 
  private:
   //! Initialize the axis field after the shape field is assigned.

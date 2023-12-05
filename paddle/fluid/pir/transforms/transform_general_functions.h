@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "paddle/phi/core/ddim.h"
+#include "paddle/common/ddim.h"
+#include "paddle/common/errors.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/parameter.h"
 #include "paddle/pir/core/type.h"
@@ -27,7 +27,7 @@ namespace pir {
 /**
  * @brief Get the name of pararmeter from a value.
  *
- * @note The value must be a output of a GetParameterOp.
+ * @note The value must be a output of a ParameterOp or a ConstantTensorOp.
  *
  * @param pir::Value
  *
@@ -43,7 +43,7 @@ std::string GetParameterNameFromValue(pir::Value value);
  *
  * @return const phi::DDim&
  */
-const phi::DDim& GetShapeFromValue(pir::Value value);
+const common::DDim& GetShapeFromValue(pir::Value value);
 
 /**
  * @brief Get tensor's data type from a value.
@@ -65,14 +65,13 @@ pir::Type GetDataTypeFromValue(pir::Value value);
 Operation* GetDefiningOpForInput(Operation* op, uint32_t index);
 
 /**
- * @brief Get an operation that is the first to use the specific output of the
- * operation.
+ * @brief Get operations that use the specific output of the operation.
  *
  * @param Operation* pointer to an operation
  * @param uint32_t index of result of the operation
 
- * @return Operation*
+ * @return std::vector<Operation*>
  */
-Operation* GetFirstUseOperationForOutput(Operation* op, uint32_t index);
+std::vector<Operation*> GetUseOpsForOutput(Operation* op, uint32_t index);
 
 }  // namespace pir
