@@ -22,8 +22,10 @@ paddle::dialect::IfOp, paddle::dialect::WhileOp, paddle::dialect::HasElementsOp
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/builder.h"
+#include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/ir_printer.h"
+#include "paddle/pir/core/op_trait.h"
 #include "paddle/pir/core/operation_utils.h"
 #include "paddle/pir/core/utils.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
@@ -31,6 +33,7 @@ paddle::dialect::IfOp, paddle::dialect::WhileOp, paddle::dialect::HasElementsOp
 
 using pir::TuplePopOp;
 using pir::TuplePushOp;
+constexpr char kStopGradientAttrName[] = "stop_gradient";
 namespace paddle {
 namespace dialect {
 
@@ -55,9 +58,18 @@ void IfOp::Build(pir::Builder &builder,             // NOLINT
       true_block->back().isa<pir::YieldOp>()) {
     auto &op = true_block->back();
 
+    std::vector<pir::Attribute> outs_stop_gradient;
     for (size_t i = 0; i < op.num_operands(); ++i) {
       argument.AddOutput(op.operand(i).type());
+      auto bool_attr = op.operand_source(i).attribute<pir::BoolAttribute>(
+          kStopGradientAttrName);
+      outs_stop_gradient.push_back(bool_attr ? bool_attr
+                                             : builder.bool_attr(false));
     }
+
+    argument.AddAttribute(
+        kStopGradientAttrName,
+        pir::ArrayAttribute::get(builder.ir_context(), outs_stop_gradient));
   }
   // if (false_block && !false_block->empty() &&
   //     false_block->back().isa<pir::YieldOp>()) {
@@ -89,6 +101,7 @@ void IfOp::Build(pir::Builder &builder,             // NOLINT
   argument.AddRegion().push_back(true_block.release());
   argument.AddRegion().push_back(false_block.release());
   argument.AddInput(cond);
+  cond.set_attribute(kStopGradientAttrName, builder.bool_attr(true));
 }
 
 pir::Block &IfOp::true_block() {
@@ -255,16 +268,16 @@ void WhileOp::Print(pir::IrPrinter &printer) {
   auto &os = printer.os;
   auto op = operation();
   printer.PrintOpResult(op);
-  os << " = \"" << name() << "\"(";
+  os << " = \"" << name() << "\"(cond=";
   printer.PrintValue(cond());
-  os << ") [";
+  os << ", inputs=";
   auto operands = (*this)->operands_source();
   pir::PrintInterleave(
       operands.begin() + 1,
       operands.end(),
       [&](pir::Value v) { printer.PrintValue(v); },
       [&]() { os << ", "; });
-  os << "] { \n ^";
+  os << ") { \n ^";
   pir::PrintInterleave(
       body().args_begin(),
       body().args_end(),

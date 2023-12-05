@@ -67,7 +67,7 @@ class alignas(8) ValueImpl {
   }
 
   template <typename T>
-  bool isa() {
+  bool isa() const {
     return T::classof(*this);
   }
 

@@ -27,17 +27,16 @@ namespace ir {
 
 IRSchedule MakeIRSchedule(frontend::Program* program) {
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
   std::unordered_set<std::string> fetch_ids;
   auto graph = frontend::Optimize(program, fetch_ids, target);
   LOG_IF(WARNING, graph->fusion_groups.size() > 1)
       << "Test Graph has more than 1 group";
-  auto& dtype_dict =
-      graph->GetMutableAttrs<absl::flat_hash_map<std::string, common::Type>>(
-          "inferdtype");
+  auto& dtype_dict = graph->GetMutableAttrs<
+      absl::flat_hash_map<std::string, cinn::common::Type>>("inferdtype");
   auto& shape_dict = graph->GetMutableAttrs<
       absl::flat_hash_map<std::string, hlir::framework::shape_t>>("infershape");
   auto op_lowerer =

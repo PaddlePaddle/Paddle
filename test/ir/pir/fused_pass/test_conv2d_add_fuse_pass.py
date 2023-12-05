@@ -26,13 +26,28 @@ paddle.enable_static()
     not paddle.base.core.is_compiled_with_cuda(),
     "core is not complied with CUDA",
 )
-class TestConv2dFusePass(PassTest):
+class TestConv2dAddFusePass(PassTest):
+    r"""
+    x_var   f_var
+      \       /
+         conv2d
+           |
+          add
+    """
+
+    def is_program_valid(self, program=None):
+        return True
+
     def build_ir_progam(self):
+        pir_program = None
         with paddle.pir_utils.IrGuard():
-            self.pir_program = paddle.static.Program()
-            with paddle.pir.core.program_guard(self.pir_program):
+            pir_program = paddle.static.Program()
+            with paddle.pir.core.program_guard(pir_program):
                 x = paddle.static.data(
                     name='x', shape=[3, 1, 28, 28], dtype='float32'
+                )
+                y = paddle.static.data(
+                    name="y", shape=[3, 32, 28, 28], dtype="float32"
                 )
                 conv2d = paddle.nn.Conv2D(
                     in_channels=1,
@@ -42,29 +57,34 @@ class TestConv2dFusePass(PassTest):
                     data_format='NCHW',
                     bias_attr=False,
                 )
-                bn = paddle.nn.BatchNorm2D(num_features=32, data_format='NCHW')
-                out = bn(conv2d(x))
+                out = paddle.add(conv2d(x), y)
 
-        self.pass_list = ['conv2d_fuse_pass']
-        self.feeds = {"x": np.random.random((3, 1, 28, 28)).astype("float32")}
+        self.pass_list = ['conv2d_add_fuse_pass']
+        self.feeds = {
+            "x": np.random.random((3, 1, 28, 28)).astype("float32"),
+            "y": np.random.random((3, 32, 28, 28)).astype("float32"),
+        }
         self.fetch_list = [out]
         self.valid_op_map = {
-            "pd_op.conv2d": 1,
-            "pd_op.batch_norm": 0,
+            "pd_op.conv2d_fusion": 1,
+            "pd_op.conv2d": 0,
+            "pd_op.add": 0,
         }
+        return pir_program
+
+    def sample_program(self):
+        yield self.build_ir_progam(), False
 
     def setUp(self):
         self.place_runtime = "gpu"
-        self.build_ir_progam()
 
     def test_check_output(self):
         self.check_pass_correct()
 
 
-class TestConv2dFusePassWtihCpu(TestConv2dFusePass):
+class TestConv2dAddFusePassWtihCpu(TestConv2dAddFusePass):
     def setUp(self):
         self.place_runtime = "cpu"
-        self.build_ir_progam()
 
 
 if __name__ == "__main__":

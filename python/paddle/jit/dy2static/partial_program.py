@@ -238,7 +238,9 @@ class PartialProgramLayer:
         in_vars, in_var_names = self._prepare_inputs(inputs)
         out_vars = self._prepare_outputs()
         self._cast_fp16_if_pure_fp16(in_vars)
-        attrs = self._prepare_attributes()
+        # TODO(dev): Currently AST + PT has some issues in control flow, so we only
+        # enable SOT + PT in 2.6, we will fix it later.
+        attrs = self._prepare_attributes(force_not_use_pt=True)
         attrs.extend(["x_names", in_var_names])
 
         self._sync_lr_value_with_scheduler()
@@ -777,7 +779,7 @@ class PartialProgramLayer:
                     in_vars[i] = var.astype('float16')
                     in_vars[i].name = name
 
-    def _prepare_attributes(self):
+    def _prepare_attributes(self, force_not_use_pt=False):
         attrs = [
             'forward_global_block',
             self.forward_program.desc.block(0),
@@ -821,6 +823,8 @@ class PartialProgramLayer:
         in_cinn_backend = self._backend == "CINN"
         is_cinn_enabled = self._build_strategy.build_cinn_pass
         if is_prim_enabled or in_cinn_backend or is_cinn_enabled:
+            in_pir_pt_mode = False
+        if force_not_use_pt:
             in_pir_pt_mode = False
         attrs.extend(['in_pir_pt_mode', in_pir_pt_mode])
 

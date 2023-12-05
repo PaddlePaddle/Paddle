@@ -66,7 +66,9 @@ class TestElementwiseMulBroadcastDoubleGradCheck(unittest.TestCase):
         x = paddle.static.data('x', shape, dtype)
         y = paddle.static.data('y', shape[:-1], dtype)
         x.persistable = True
+        x.stop_gradient = False
         y.persistable = True
+        y.stop_gradient = False
         out = paddle.tensor.math._multiply_with_axis(x, y, axis=0)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr = np.random.uniform(-1, 1, shape[:-1]).astype(dtype)
@@ -268,7 +270,9 @@ class TestElementwiseDivBroadcastDoubleGradCheck(unittest.TestCase):
         x = paddle.static.data('x', shape, dtype)
         y = paddle.static.data('y', shape[1:-1], dtype)
         x.persistable = True
+        x.stop_gradient = False
         y.persistable = True
+        y.stop_gradient = False
         out = paddle.tensor.math._divide_with_axis(x, y, axis=1)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr = np.random.uniform(-1, 1, shape[1:-1]).astype(dtype)
