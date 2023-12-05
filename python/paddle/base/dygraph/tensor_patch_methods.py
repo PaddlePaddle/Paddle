@@ -367,7 +367,7 @@ def monkey_patch_tensor():
             return (np.array(self.grad), np.array(self.grad.rows()))
         return np.array(self.grad)
 
-    @framework.dygraph_only
+    # @framework.dygraph_only
     def register_hook(self, hook):
         """
         Registers a backward hook for current Tensor.

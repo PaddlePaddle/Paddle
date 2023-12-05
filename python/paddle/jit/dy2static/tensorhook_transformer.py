@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import ast
 import collections
 
 from paddle.utils import gast
@@ -58,7 +58,7 @@ class RegisterHookTransformer(BaseTransformer):
                         and node.attr == 'register_hook'
                     ):
                         # parameter name for register_hook
-                        param_name = node.value.id
+                        param_name = ast.unparse(node.value)
                         register_hook_pos_map[param_name].append(i)
             elif isinstance(body, gast.Assign):
                 for target in body.targets:

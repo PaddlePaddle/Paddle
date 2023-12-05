@@ -130,42 +130,41 @@ class TestStaticAnalysis(Dy2StTestBase):
             jit_layer.parameters()[0].grad.numpy(),
         )
 
-    # def test_hook_in_forward_for_layer(self):
-    #
-    #     IMAGE_SIZE = 784
-    #     CLASS_NUM = 10
-    #
-    #     class LinearNet(nn.Layer):
-    #         def __init__(self):
-    #             super().__init__()
-    #             self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
-    #
-    #         def forward(self, x):
-    #             def hook(grad):
-    #                 return grad * 2
-    #
-    #             res = self._linear(x)
-    #
-    #             # register_hook in forward
-    #             self._linear.parameters()[0].register_hook(hook)
-    #             return res
-    #
-    #     # create network
-    #     layer = LinearNet()
-    #     jit_layer = to_static(LinearNet())
-    #     data = np.random.random([IMAGE_SIZE]).astype('float32')
-    #     image = paddle.to_tensor(data)
-    #     image_jit = paddle.to_tensor(data)
-    #     loss = layer(image)
-    #     loss_jit = jit_layer(image_jit)
-    #     loss_jit.backward()
-    #     loss.backward()
-    #     self.assertTrue(
-    #         np.allclose(
-    #             layer.parameters()[0].grad.numpy(),
-    #             jit_layer.parameters()[0].grad.numpy(),
-    #         )
-    #     )
+    def test_hook_in_forward_for_layer(self):
+        IMAGE_SIZE = 784
+        CLASS_NUM = 10
+
+        class LinearNet(nn.Layer):
+            def __init__(self):
+                super().__init__()
+                self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
+
+            def forward(self, x):
+                def hook(grad):
+                    return grad * 2
+
+                res = self._linear(x)
+
+                # register_hook in forward
+                self._linear.parameters()[0].register_hook(hook)
+                return res
+
+        # create network
+        layer = LinearNet()
+        jit_layer = to_static(LinearNet())
+        data = np.random.random([IMAGE_SIZE]).astype('float32')
+        image = paddle.to_tensor(data)
+        image_jit = paddle.to_tensor(data)
+        loss = layer(image)
+        loss_jit = jit_layer(image_jit)
+        loss_jit.backward()
+        loss.backward()
+        self.assertTrue(
+            np.allclose(
+                layer.parameters()[0].grad.numpy(),
+                jit_layer.parameters()[0].grad.numpy(),
+            )
+        )
 
 
 if __name__ == '__main__':
