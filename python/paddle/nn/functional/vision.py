@@ -114,7 +114,7 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
         else:
             _out_shape = (
                 out_shape.tolist()
-                if isinstance(out_shape, (Variable, paddle.pir.OpResult))
+                if isinstance(out_shape, Variable)
                 else out_shape
             )
             return _C_ops.affine_grid(

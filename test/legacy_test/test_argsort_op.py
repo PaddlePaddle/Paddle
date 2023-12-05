@@ -89,13 +89,11 @@ class TestArgsortOpCPU(unittest.TestCase):
                 name="x", shape=[-1] + list(self.input_shape), dtype=self.dtype
             )
             x.stop_gradient = False
-            x.desc.set_need_check_feed(False)
             label = paddle.static.data(
                 name="label",
                 shape=[-1] + list(self.input_shape),
                 dtype=self.dtype,
             )
-            label.desc.set_need_check_feed(False)
             self.index = paddle.argsort(
                 x=x, axis=self.axis, descending=self.descending
             )
@@ -404,8 +402,8 @@ class TestArgsort(unittest.TestCase):
             output2 = paddle.argsort(input, axis=self.axis, descending=True)
 
             exe = paddle.static.Executor(self.place)
-            result, result2 = exe.run(
-                paddle.static.default_startup_program(),
+            [result, result2] = exe.run(
+                paddle.static.Program(),
                 feed={'input': self.data},
                 fetch_list=[output, output2],
             )
