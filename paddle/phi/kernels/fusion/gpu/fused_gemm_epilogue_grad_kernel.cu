@@ -14,7 +14,6 @@
 
 #include "glog/logging.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/fused_gemm_epilogue.h"
