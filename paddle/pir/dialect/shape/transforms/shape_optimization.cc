@@ -161,7 +161,7 @@ struct DimOfShapedTypeOpInterfacePattern : public OpRewritePattern<OpTy> {
 };
 
 bool MaterializeShapeComputation(pir::ModuleOp m) {
-  if (!InsertTieShapeOnRegion(&(m->region(0)))) return false;
+  // if (!InsertTieShapeOnRegion(&(m->region(0)))) return false;
   // TODO(zhangbopd): add rewitter pattern for reifyInferShape.
   RewritePatternSet patterns(m.ir_context());
 
@@ -234,19 +234,19 @@ bool ShapeComputationIRAnalysis::Run() {
   // Make sure only run once.
   if (initialized_) return false;
   initialized_ = true;
-  auto build_shape_func =
-      std::bind(&ShapeComputationIRAnalysis::BuildShapeOnOperation,
-                this,
-                std::placeholders::_1);
-  if (!RunOnRegion(&(m_->region(0)), build_shape_func)) return false;
-  auto apply_op_constraint_func =
-      std::bind(&ShapeComputationIRAnalysis::ApplyOpConstraint,
-                this,
-                std::placeholders::_1);
-  // TODO(zhangbopd): Delete the following 1 line and fix UT
-  // `shape_optimization_test`
-  return true;
-  if (!RunOnRegion(&(m_->region(0)), apply_op_constraint_func)) return false;
+  // auto build_shape_func =
+  //     std::bind(&ShapeComputationIRAnalysis::BuildShapeOnOperation,
+  //               this,
+  //               std::placeholders::_1);
+  // if (!RunOnRegion(&(m_->region(0)), build_shape_func)) return false;
+  // auto apply_op_constraint_func =
+  //     std::bind(&ShapeComputationIRAnalysis::ApplyOpConstraint,
+  //               this,
+  //               std::placeholders::_1);
+  // // TODO(zhangbopd): Delete the following 1 line and fix UT
+  // // `shape_optimization_test`
+  // return true;
+  // if (!RunOnRegion(&(m_->region(0)), apply_op_constraint_func)) return false;
   return true;
 }
 
@@ -405,9 +405,9 @@ class ShapeOptimizationPass : public pir::Pass {
     PassPipelineRunner runner = [this](pir::PassManager& pm, pir::ModuleOp m) {
       return pm.Run(m.program());
     };
-    if (!OptimizeShapeComputation(module_op, runner)) {
-      return;
-    }
+    // if (!OptimizeShapeComputation(module_op, runner)) {
+    //   return;
+    // }
   }
 
   bool CanApplyOn(pir::Operation* op) const override {

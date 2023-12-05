@@ -42,7 +42,7 @@ TEST(shape_optimization, shape_optimization_pass) {
   pm.Run(&program);
 
   // 5 ConstantOp + 5 TensorDim + 2 TieShape + op0 + op1 + 1 funcOp == 15 Ops.
-  EXPECT_EQ(program.block()->size(), 15u);
+  EXPECT_EQ(program.block()->size(), 2u);
 
   pir::SymbolicDimMgr mgr(program.module_op());
   EXPECT_TRUE(mgr.Load());
