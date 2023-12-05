@@ -7052,24 +7052,23 @@ def copysign(x, y, name=None):
     Examples:
 
         .. code-block:: python
+            :name: example1
 
             >>> import paddle
-
-            >>> # example1
             >>> x = paddle.to_tensor([1, 2, 3], dtype='float64')
             >>> y = paddle.to_tensor([-1, 1, -1], dtype='float64')
             >>> out = paddle.copysign(x, y)
             >>> print(out)
-            Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
-                [-1.,  2., -3.])
+            Tensor(shape=[3], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+                   [-1.,  2., -3.])
 
-            >>> # example2
+            :name: example2
             >>> x = paddle.to_tensor([1, 2, 3], dtype='float64')
             >>> y = paddle.to_tensor([-2], dtype='float64')
             >>> res = paddle.copysign(x, y)
             >>> print(res)
-            Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
-            [-1. , -2. , -3.])
+            Tensor(shape=[3], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+                   [-1.,  2.,  3.])
 
     """
     out_shape = broadcast_shape(x.shape, y.shape)
