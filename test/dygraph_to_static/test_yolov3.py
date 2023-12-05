@@ -17,7 +17,11 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase, test_default_mode_only
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    enable_to_static_guard,
+    test_default_mode_only,
+)
 from yolov3 import YOLOv3, cfg
 
 import paddle
@@ -78,91 +82,90 @@ fake_data_reader = FakeDataReader()
 
 
 def train(to_static):
-    paddle.jit.enable_to_static(to_static)
+    with enable_to_static_guard(to_static):
+        random.seed(0)
+        np.random.seed(0)
 
-    random.seed(0)
-    np.random.seed(0)
+        place = base.CUDAPlace(0) if cfg.use_gpu else base.CPUPlace()
+        with base.dygraph.guard(place):
+            base.default_startup_program().random_seed = 1000
+            base.default_main_program().random_seed = 1000
+            model = YOLOv3(3, is_train=True)
 
-    place = base.CUDAPlace(0) if cfg.use_gpu else base.CPUPlace()
-    with base.dygraph.guard(place):
-        base.default_startup_program().random_seed = 1000
-        base.default_main_program().random_seed = 1000
-        model = YOLOv3(3, is_train=True)
+            boundaries = cfg.lr_steps
+            gamma = cfg.lr_gamma
+            step_num = len(cfg.lr_steps)
+            learning_rate = cfg.learning_rate
+            values = [learning_rate * (gamma**i) for i in range(step_num + 1)]
 
-        boundaries = cfg.lr_steps
-        gamma = cfg.lr_gamma
-        step_num = len(cfg.lr_steps)
-        learning_rate = cfg.learning_rate
-        values = [learning_rate * (gamma**i) for i in range(step_num + 1)]
-
-        lr = paddle.optimizer.lr.PiecewiseDecay(
-            boundaries=boundaries, values=values
-        )
-
-        lr = paddle.optimizer.lr.LinearWarmup(
-            learning_rate=lr,
-            warmup_steps=cfg.warm_up_iter,
-            start_lr=0.0,
-            end_lr=cfg.learning_rate,
-        )
-        optimizer = paddle.optimizer.Momentum(
-            learning_rate=lr,
-            weight_decay=paddle.regularizer.L2Decay(cfg.weight_decay),
-            momentum=cfg.momentum,
-            parameters=model.parameters(),
-        )
-
-        start_time = time.time()
-        snapshot_loss = 0
-        snapshot_time = 0
-        total_sample = 0
-
-        input_size = cfg.input_size
-        shuffle = True
-        shuffle_seed = None
-        total_iter = cfg.max_iter
-        mixup_iter = total_iter - cfg.no_mixup_iter
-
-        train_reader = FakeDataReader().reader()
-
-        smoothed_loss = SmoothedValue()
-        ret = []
-        for iter_id, data in enumerate(train_reader()):
-            prev_start_time = start_time
-            start_time = time.time()
-            img = np.array([x[0] for x in data]).astype('float32')
-            img = to_variable(img)
-
-            gt_box = np.array([x[1] for x in data]).astype('float32')
-            gt_box = to_variable(gt_box)
-
-            gt_label = np.array([x[2] for x in data]).astype('int32')
-            gt_label = to_variable(gt_label)
-
-            gt_score = np.array([x[3] for x in data]).astype('float32')
-            gt_score = to_variable(gt_score)
-
-            loss = model(img, gt_box, gt_label, gt_score, None, None)
-            smoothed_loss.add_value(np.mean(loss.numpy()))
-            snapshot_loss += loss.numpy()
-            snapshot_time += start_time - prev_start_time
-            total_sample += 1
-
-            print(
-                "Iter {:d}, loss {:.6f}, time {:.5f}".format(
-                    iter_id,
-                    smoothed_loss.get_mean_value(),
-                    start_time - prev_start_time,
-                )
+            lr = paddle.optimizer.lr.PiecewiseDecay(
+                boundaries=boundaries, values=values
             )
-            ret.append(smoothed_loss.get_mean_value())
 
-            loss.backward()
+            lr = paddle.optimizer.lr.LinearWarmup(
+                learning_rate=lr,
+                warmup_steps=cfg.warm_up_iter,
+                start_lr=0.0,
+                end_lr=cfg.learning_rate,
+            )
+            optimizer = paddle.optimizer.Momentum(
+                learning_rate=lr,
+                weight_decay=paddle.regularizer.L2Decay(cfg.weight_decay),
+                momentum=cfg.momentum,
+                parameters=model.parameters(),
+            )
 
-            optimizer.minimize(loss)
-            model.clear_gradients()
+            start_time = time.time()
+            snapshot_loss = 0
+            snapshot_time = 0
+            total_sample = 0
 
-        return np.array(ret)
+            input_size = cfg.input_size
+            shuffle = True
+            shuffle_seed = None
+            total_iter = cfg.max_iter
+            mixup_iter = total_iter - cfg.no_mixup_iter
+
+            train_reader = FakeDataReader().reader()
+
+            smoothed_loss = SmoothedValue()
+            ret = []
+            for iter_id, data in enumerate(train_reader()):
+                prev_start_time = start_time
+                start_time = time.time()
+                img = np.array([x[0] for x in data]).astype('float32')
+                img = to_variable(img)
+
+                gt_box = np.array([x[1] for x in data]).astype('float32')
+                gt_box = to_variable(gt_box)
+
+                gt_label = np.array([x[2] for x in data]).astype('int32')
+                gt_label = to_variable(gt_label)
+
+                gt_score = np.array([x[3] for x in data]).astype('float32')
+                gt_score = to_variable(gt_score)
+
+                loss = model(img, gt_box, gt_label, gt_score, None, None)
+                smoothed_loss.add_value(np.mean(loss.numpy()))
+                snapshot_loss += loss.numpy()
+                snapshot_time += start_time - prev_start_time
+                total_sample += 1
+
+                print(
+                    "Iter {:d}, loss {:.6f}, time {:.5f}".format(
+                        iter_id,
+                        smoothed_loss.get_mean_value(),
+                        start_time - prev_start_time,
+                    )
+                )
+                ret.append(smoothed_loss.get_mean_value())
+
+                loss.backward()
+
+                optimizer.minimize(loss)
+                model.clear_gradients()
+
+            return np.array(ret)
 
 
 class TestYolov3(Dy2StTestBase):

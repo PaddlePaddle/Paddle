@@ -19,7 +19,11 @@ import sys
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase, test_default_mode_only
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    enable_to_static_guard,
+    test_default_mode_only,
+)
 from tsm_config_utils import merge_configs, parse_config, print_configs
 
 import paddle
@@ -292,96 +296,97 @@ def create_optimizer(cfg, params):
 
 
 def train(args, fake_data_reader, to_static):
-    paddle.jit.enable_to_static(to_static)
+    with enable_to_static_guard(to_static):
+        config = parse_config(args.config)
+        train_config = merge_configs(config, 'train', vars(args))
+        valid_config = merge_configs(config, 'valid', vars(args))
+        print_configs(train_config, 'Train')
 
-    config = parse_config(args.config)
-    train_config = merge_configs(config, 'train', vars(args))
-    valid_config = merge_configs(config, 'valid', vars(args))
-    print_configs(train_config, 'Train')
+        place = base.CUDAPlace(0) if args.use_gpu else base.CPUPlace()
 
-    place = base.CUDAPlace(0) if args.use_gpu else base.CPUPlace()
+        random.seed(0)
+        np.random.seed(0)
+        with base.dygraph.guard(place):
+            paddle.seed(1000)
+            paddle.framework.random._manual_program_seed(1000)
 
-    random.seed(0)
-    np.random.seed(0)
-    with base.dygraph.guard(place):
-        paddle.seed(1000)
-        paddle.framework.random._manual_program_seed(1000)
+            video_model = paddle.jit.to_static(
+                TSM_ResNet("TSM", train_config, 'Train')
+            )
 
-        video_model = paddle.jit.to_static(
-            TSM_ResNet("TSM", train_config, 'Train')
-        )
+            optimizer = create_optimizer(
+                train_config.TRAIN, video_model.parameters()
+            )
 
-        optimizer = create_optimizer(
-            train_config.TRAIN, video_model.parameters()
-        )
+            train_reader = fake_data_reader.create_reader()
 
-        train_reader = fake_data_reader.create_reader()
+            ret = []
+            for epoch in range(train_config.TRAIN.epoch):
+                video_model.train()
+                total_loss = 0.0
+                total_acc1 = 0.0
+                total_acc5 = 0.0
+                total_sample = 0
+                for batch_id, data in enumerate(train_reader()):
+                    x_data = np.array([item[0] for item in data])
+                    y_data = np.array([item[1] for item in data]).reshape(
+                        [-1, 1]
+                    )
 
-        ret = []
-        for epoch in range(train_config.TRAIN.epoch):
-            video_model.train()
-            total_loss = 0.0
-            total_acc1 = 0.0
-            total_acc5 = 0.0
-            total_sample = 0
-            for batch_id, data in enumerate(train_reader()):
-                x_data = np.array([item[0] for item in data])
-                y_data = np.array([item[1] for item in data]).reshape([-1, 1])
+                    imgs = to_variable(x_data)
+                    labels = to_variable(y_data)
+                    labels.stop_gradient = True
+                    outputs = video_model(imgs)
+                    loss = paddle.nn.functional.cross_entropy(
+                        input=outputs,
+                        label=labels,
+                        ignore_index=-1,
+                        reduction='none',
+                        use_softmax=False,
+                    )
+                    avg_loss = paddle.mean(loss)
+                    acc_top1 = paddle.static.accuracy(
+                        input=outputs, label=labels, k=1
+                    )
+                    acc_top5 = paddle.static.accuracy(
+                        input=outputs, label=labels, k=5
+                    )
 
-                imgs = to_variable(x_data)
-                labels = to_variable(y_data)
-                labels.stop_gradient = True
-                outputs = video_model(imgs)
-                loss = paddle.nn.functional.cross_entropy(
-                    input=outputs,
-                    label=labels,
-                    ignore_index=-1,
-                    reduction='none',
-                    use_softmax=False,
-                )
-                avg_loss = paddle.mean(loss)
-                acc_top1 = paddle.static.accuracy(
-                    input=outputs, label=labels, k=1
-                )
-                acc_top5 = paddle.static.accuracy(
-                    input=outputs, label=labels, k=5
-                )
+                    avg_loss.backward()
+                    optimizer.minimize(avg_loss)
+                    video_model.clear_gradients()
 
-                avg_loss.backward()
-                optimizer.minimize(avg_loss)
-                video_model.clear_gradients()
+                    total_loss += float(avg_loss)
+                    total_acc1 += float(acc_top1)
+                    total_acc5 += float(acc_top5)
+                    total_sample += 1
 
-                total_loss += float(avg_loss)
-                total_acc1 += float(acc_top1)
-                total_acc5 += float(acc_top5)
-                total_sample += 1
+                    print(
+                        'TRAIN Epoch {}, iter {}, loss = {}, acc1 {}, acc5 {}'.format(
+                            epoch,
+                            batch_id,
+                            float(avg_loss),
+                            float(acc_top1),
+                            float(acc_top5),
+                        )
+                    )
+                    ret.extend(
+                        [
+                            float(avg_loss),
+                            float(acc_top1),
+                            float(acc_top5),
+                        ]
+                    )
 
                 print(
-                    'TRAIN Epoch {}, iter {}, loss = {}, acc1 {}, acc5 {}'.format(
+                    'TRAIN End, Epoch {}, avg_loss= {}, avg_acc1= {}, avg_acc5= {}'.format(
                         epoch,
-                        batch_id,
-                        float(avg_loss),
-                        float(acc_top1),
-                        float(acc_top5),
+                        total_loss / total_sample,
+                        total_acc1 / total_sample,
+                        total_acc5 / total_sample,
                     )
                 )
-                ret.extend(
-                    [
-                        float(avg_loss),
-                        float(acc_top1),
-                        float(acc_top5),
-                    ]
-                )
-
-            print(
-                'TRAIN End, Epoch {}, avg_loss= {}, avg_acc1= {}, avg_acc5= {}'.format(
-                    epoch,
-                    total_loss / total_sample,
-                    total_acc1 / total_sample,
-                    total_acc5 / total_sample,
-                )
-            )
-        return ret
+            return ret
 
 
 class TestTsm(Dy2StTestBase):
