@@ -77,8 +77,8 @@ void FusedScaleBiasAddReluKernel(const Context& dev_ctx,
   auto tensor_format_math = CUDNN_DATA_FLOAT;
   auto compute_dtype = CUDNN_DATA_FLOAT;
 
-  auto dim_x =
-      phi::backends::gpu::TransformDimOrder(phi::vectorize<int64_t>(x1.dims()));
+  auto dim_x = phi::backends::gpu::TransformDimOrder(
+      common::vectorize<int64_t>(x1.dims()));
   std::vector<int64_t> dim_c(dim_x.size(), 1);
   dim_c[1] = dim_x[1];  //  [1, C, 1, 1]
 

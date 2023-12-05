@@ -131,7 +131,7 @@ void MatMulFunctionImplWithBlas(
             M,
             N));
     VLOG(3) << "MatMul's case 1";
-    Out->Resize(phi::make_ddim({}));
+    Out->Resize(common::make_ddim({}));
     dev_ctx.template Alloc<T>(Out);
     blas.GEMM(CblasNoTrans,
               CblasTrans,
@@ -178,7 +178,7 @@ void MatMulFunctionImplWithBlas(
       std::copy_n(y_dims.cbegin(), y_ndim - 2, out_dims.begin());
       out_dims.back() = y_dims.back();
     }
-    Out->ResizeAndAllocate(phi::make_ddim(out_dims));
+    Out->ResizeAndAllocate(common::make_ddim(out_dims));
     dev_ctx.template Alloc<T>(Out);
     if (trans_y) {
       const int M = Y.numel() / N;
@@ -256,7 +256,7 @@ void MatMulFunctionImplWithBlas(
     } else {
       std::copy_n(x_dims.cbegin(), x_ndim - 1, out_dims.begin());
     }
-    Out->ResizeAndAllocate(phi::make_ddim(out_dims));
+    Out->ResizeAndAllocate(common::make_ddim(out_dims));
     dev_ctx.template Alloc<T>(Out);
 
     if (trans_x) {
@@ -344,7 +344,7 @@ void MatMulFunctionImplWithBlas(
   out_broadcast_dims[ndim - 2] = M;
   out_broadcast_dims[ndim - 1] = N;
 
-  Out->ResizeAndAllocate(phi::make_ddim(out_broadcast_dims));
+  Out->ResizeAndAllocate(common::make_ddim(out_broadcast_dims));
   dev_ctx.template Alloc<T>(Out);
 
   const int batch_dim = ndim - 2;
@@ -521,7 +521,7 @@ void MatMulFunctionImplWithCublasLt(
             N));
 
     // MatMul's case 0  =>  vector * vector
-    Out->Resize(phi::make_ddim({}));
+    Out->Resize(common::make_ddim({}));
     dev_ctx.template Alloc<T>(Out);
     VLOG(3) << "MatMul with blaslt case 1";
     blaslt::Run(dev_ctx,
@@ -569,7 +569,7 @@ void MatMulFunctionImplWithCublasLt(
       std::copy_n(y_dims.cbegin(), y_ndim - 2, out_dims.begin());
       out_dims.back() = y_dims.back();
     }
-    Out->ResizeAndAllocate(phi::make_ddim(out_dims));
+    Out->ResizeAndAllocate(common::make_ddim(out_dims));
     dev_ctx.template Alloc<T>(Out);
     if (trans_y) {
       const int M = Y.numel() / N;
@@ -652,7 +652,7 @@ void MatMulFunctionImplWithCublasLt(
     } else {
       std::copy_n(x_dims.cbegin(), x_ndim - 1, out_dims.begin());
     }
-    Out->ResizeAndAllocate(phi::make_ddim(out_dims));
+    Out->ResizeAndAllocate(common::make_ddim(out_dims));
     dev_ctx.template Alloc<T>(Out);
 
     if (trans_x) {
@@ -745,7 +745,7 @@ void MatMulFunctionImplWithCublasLt(
   out_broadcast_dims[ndim - 2] = M;
   out_broadcast_dims[ndim - 1] = N;
 
-  Out->ResizeAndAllocate(phi::make_ddim(out_broadcast_dims));
+  Out->ResizeAndAllocate(common::make_ddim(out_broadcast_dims));
   dev_ctx.template Alloc<T>(Out);
 
   const int batch_dim = ndim - 2;
@@ -1030,7 +1030,7 @@ bool inline MatMulInt8Function(const phi::GPUContext& ctx,
       return false;
     }
 
-    out->Resize(phi::make_ddim({}));
+    out->Resize(common::make_ddim({}));
     ctx.template Alloc<int32_t>(out);
     blaslt::Run(ctx,
                 y_data,
@@ -1083,7 +1083,7 @@ bool inline MatMulInt8Function(const phi::GPUContext& ctx,
       std::copy_n(y_dims.cbegin(), y_ndim - 2, out_dims.begin());
       out_dims.back() = y_dims.back();
     }
-    out->ResizeAndAllocate(phi::make_ddim(out_dims));
+    out->ResizeAndAllocate(common::make_ddim(out_dims));
     ctx.template Alloc<int32_t>(out);
     if (trans_y) {
       const int M = y.numel() / N;
@@ -1170,7 +1170,7 @@ bool inline MatMulInt8Function(const phi::GPUContext& ctx,
     } else {
       std::copy_n(x_dims.cbegin(), x_ndim - 1, out_dims.begin());
     }
-    out->ResizeAndAllocate(phi::make_ddim(out_dims));
+    out->ResizeAndAllocate(common::make_ddim(out_dims));
     ctx.template Alloc<int32_t>(out);
 
     if (trans_x) {
@@ -1259,7 +1259,7 @@ bool inline MatMulInt8Function(const phi::GPUContext& ctx,
   out_broadcast_dims[ndim - 2] = M;
   out_broadcast_dims[ndim - 1] = N;
 
-  out->ResizeAndAllocate(phi::make_ddim(out_broadcast_dims));
+  out->ResizeAndAllocate(common::make_ddim(out_broadcast_dims));
   ctx.template Alloc<int32_t>(out);
 
   const int batch_dim = ndim - 2;
@@ -1475,17 +1475,17 @@ void MatmulKernel(const Context& ctx,
                   bool transpose_y,
                   DenseTensor* out) {
   PADDLE_ENFORCE_NE(
-      phi::product(x.dims()),
+      common::product(x.dims()),
       0,
       phi::errors::InvalidArgument("The Input(X) dims size must not be equal 0,"
                                    " but reviced dims size is 0. "));
   PADDLE_ENFORCE_NE(
-      phi::product(y.dims()),
+      common::product(y.dims()),
       0,
       phi::errors::InvalidArgument("The Input(Y) dims size must not be equal 0,"
                                    " but reviced dims size is 0. "));
-  const std::vector<std::int64_t> x_dims = vectorize(x.dims());
-  const std::vector<std::int64_t> y_dims = vectorize(y.dims());
+  const std::vector<std::int64_t> x_dims = common::vectorize(x.dims());
+  const std::vector<std::int64_t> y_dims = common::vectorize(y.dims());
   MatmulJudgeDtypeKernel<Context, T>(
       ctx, x, y, x_dims, y_dims, out, transpose_x, transpose_y);
 }

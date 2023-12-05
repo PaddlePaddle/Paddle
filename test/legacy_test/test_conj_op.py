@@ -130,17 +130,18 @@ class TestComplexConjOp(unittest.TestCase):
 class Testfp16ConjOp(unittest.TestCase):
     @test_with_pir_api
     def testfp16(self):
-        input_x = (
-            np.random.random((12, 14)) + 1j * np.random.random((12, 14))
-        ).astype('float16')
-        with static.program_guard(static.Program()):
-            x = static.data(name="x", shape=[12, 14], dtype='float16')
-            out = paddle.conj(x)
-            if paddle.is_compiled_with_cuda():
-                place = paddle.CUDAPlace(0)
-                exe = paddle.static.Executor(place)
-                exe.run(paddle.static.default_startup_program())
-                out = exe.run(feed={'x': input_x}, fetch_list=[out])
+        if paddle.is_compiled_with_cuda():
+            input_x = (
+                np.random.random((12, 14)) + 1j * np.random.random((12, 14))
+            ).astype('float16')
+            with static.program_guard(static.Program()):
+                x = static.data(name="x", shape=[12, 14], dtype='float16')
+                out = paddle.conj(x)
+                if paddle.is_compiled_with_cuda():
+                    place = paddle.CUDAPlace(0)
+                    exe = paddle.static.Executor(place)
+                    exe.run(paddle.static.default_startup_program())
+                    out = exe.run(feed={'x': input_x}, fetch_list=[out])
 
 
 class TestConjFP16OP(TestConjOp):

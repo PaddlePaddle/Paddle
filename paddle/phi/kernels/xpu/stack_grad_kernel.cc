@@ -29,7 +29,7 @@ void StackGradKernel(const Context& dev_ctx,
   auto dy_dims = out.dims();
 
   if (axis < 0) axis += dy_dims.size();
-  auto dy_shape = phi::vectorize<int>(dy_dims);
+  auto dy_shape = common::vectorize<int>(dy_dims);
 
   std::vector<int> dx_dims_list(x_grad.size(), 1);
   std::vector<XPUType*> dx_lists;
