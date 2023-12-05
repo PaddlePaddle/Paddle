@@ -23,6 +23,11 @@
 namespace cinn {
 namespace optim {
 
+/**
+ * Replace Mod to possible max value.
+ * a % b -> min(b - 1, a)
+ * either b - 1 or a is the possible max value of the mod expression.
+ */
 class ReplaceModToMaxMutator : public ir::IRMutator<> {
  public:
   void operator()(ir::Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
