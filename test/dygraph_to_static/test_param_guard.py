@@ -115,7 +115,7 @@ class TestRawParameterList(Dy2StTestBase):
     def init_net(self):
         self.net = paddle.jit.to_static(NetWithRawParamList(10, 3))
 
-    def train(self, to_static):
+    def train(self, to_static: bool):
         paddle.seed(self.seed)
         np.random.seed(self.seed)
         with enable_to_static_guard(to_static):
