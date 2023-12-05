@@ -29,8 +29,8 @@ class ReplaceModToMaxMutator : public ir::IRMutator<> {
 
   void Visit(const ir::Mod* op, ir::Expr* expr) override {
     ir::Mod* node = expr->As<ir::Mod>();
-    Expr base = node->operand(1);
-    *expr = ir::Sub::Make(base, Expr(1));
+    Expr base = ir::Sub::Make(node->operand(1), Expr(1));
+    *expr = ir::Min::Make(node->operand(0), base);
   }
 };
 

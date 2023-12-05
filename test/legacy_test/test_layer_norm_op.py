@@ -223,7 +223,6 @@ class TestLayerNormOpByOpTest(OpTest):
         }
 
 
-# '''
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or paddle.is_compiled_with_rocm()
@@ -1068,8 +1067,6 @@ class TestFastMathLayerNormBF16Op(TestFastMathLayerNormOp):
     def init_dtype(self):
         self.dtype = 'bfloat16'
 
-
-# '''
 
 if __name__ == '__main__':
     paddle.enable_static()
