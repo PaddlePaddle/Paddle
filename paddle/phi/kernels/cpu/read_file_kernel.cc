@@ -16,7 +16,6 @@
 #include <string>
 #include <vector>
 
-#include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/kernel_registry.h"
 
