@@ -25,7 +25,7 @@ namespace auto_schedule {
 
 class SkipRule : public AutoGenRule {
  public:
-  explicit SkipRule(const common::Target& target);
+  explicit SkipRule(const cinn::common::Target& target);
   ~SkipRule() = default;
 
   RuleApplyType Init(ir::IRSchedule* init_schedule) override;

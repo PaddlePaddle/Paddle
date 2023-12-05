@@ -334,7 +334,7 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
           "OP'attribute "));
     }
     weight_tensor->clear();  // clear int weight
-    weight_tensor->Resize(phi::make_ddim(phi::vectorize(w_dims)));
+    weight_tensor->Resize(common::make_ddim(common::vectorize(w_dims)));
     float* new_quantized_weight_data = dev_ctx->HostAlloc<float>(
         weight_tensor, weight_tensor->numel() * sizeof(float));
     memcpy(new_quantized_weight_data,

@@ -17,6 +17,8 @@ limitations under the License. */
 
 #include "paddle/phi/api/lib/api_registry.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
+#include "paddle/phi/core/enforce.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #ifdef PADDLE_WITH_CUDA
@@ -90,7 +92,7 @@ PADDLE_API Tensor from_blob(void* data,
   }
 
   auto meta =
-      phi::DenseTensorMeta(dtype, phi::make_ddim(shape.GetData()), layout);
+      phi::DenseTensorMeta(dtype, common::make_ddim(shape.GetData()), layout);
 
   size_t size = SizeOf(dtype) * (meta.is_scalar ? 1 : product(meta.dims));
 
@@ -142,7 +144,10 @@ PADDLE_API std::shared_ptr<phi::distributed::DistTensor> reshard(
       dist_tensor->unsafe_set_dist_attr(dist_attr);
     }
 
-    if (dist_tensor->dist_attr() != dist_attr) {
+    if (dist_tensor->dist_attr() != dist_attr &&
+        (phi::distributed::IsCurRankInMesh(
+             dist_tensor->dist_attr().process_mesh()) ||
+         phi::distributed::IsCurRankInMesh(dist_attr.process_mesh()))) {
       VLOG(6) << "reshard func, reshard tensor from "
               << dist_tensor->dist_attr() << " to " << dist_attr;
       auto* func = phi::distributed::ChooseProperReshardFunction(*dist_tensor,

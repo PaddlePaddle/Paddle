@@ -60,6 +60,7 @@ from .creation import (  # noqa: F401
     zeros,
     zeros_like,
 )
+
 from .einsum import einsum  # noqa: F401
 from .linalg import (  # noqa: F401
     bincount,
@@ -78,6 +79,7 @@ from .linalg import (  # noqa: F401
     eigvals,
     eigvalsh,
     histogram,
+    householder_product,
     lstsq,
     lu,
     lu_unpack,
@@ -226,6 +228,7 @@ from .math import (  # noqa: F401
     ceil_,
     clip,
     clip_,
+    combinations,
     conj,
     cos,
     cos_,
@@ -435,6 +438,7 @@ tensor_method_func = [
     'mv',
     'matrix_power',
     'qr',
+    'householder_product',
     'pca_lowrank',
     'eigvals',
     'eigvalsh',
@@ -759,6 +763,7 @@ tensor_method_func = [
     'atleast_2d',
     'atleast_3d',
     'diagonal_scatter',
+    "combinations",
 ]
 
 # this list used in math_op_patch.py for magic_method bind
