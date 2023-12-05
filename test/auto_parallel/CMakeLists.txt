@@ -127,7 +127,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_semi_auto_parallel_basic MODULES
                   test_semi_auto_parallel_basic)
   set_tests_properties(test_semi_auto_parallel_basic
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 500)
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 400)
 
   py_test_modules(test_semi_auto_parallel_for_llama_subnet MODULES
                   test_semi_auto_parallel_for_llama_subnet)
