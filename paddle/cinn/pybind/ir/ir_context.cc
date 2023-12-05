@@ -92,7 +92,7 @@ void IRBuilderNode::Reset() {
 }
 
 IRBuilder::IRBuilder() {
-  common::Shared<IRBuilderNode> n(new IRBuilderNode());
+  cinn::common::Shared<IRBuilderNode> n(new IRBuilderNode());
   n->Reset();
   data_ = n;
 }

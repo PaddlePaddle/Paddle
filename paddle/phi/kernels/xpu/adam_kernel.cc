@@ -49,17 +49,22 @@ void AdamDenseKernel(const Context& dev_ctx,
                      DenseTensor* beta1_pow_out,
                      DenseTensor* beta2_pow_out,
                      DenseTensor* master_param_outs) {
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   float* param_ptr = nullptr;
-  funcs::GetDataPointer<Context, float>(param, &param_ptr, dev_ctx);
+  funcs::GetDataPointer<Context, float>(
+      param, &param_ptr, dev_ctx, &RAII_GUARD);
 
   float* mom1_ptr = nullptr;
-  funcs::GetDataPointer<Context, float>(moment1, &mom1_ptr, dev_ctx);
+  funcs::GetDataPointer<Context, float>(
+      moment1, &mom1_ptr, dev_ctx, &RAII_GUARD);
 
   float* mom2_ptr = nullptr;
-  funcs::GetDataPointer<Context, float>(moment2, &mom2_ptr, dev_ctx);
+  funcs::GetDataPointer<Context, float>(
+      moment2, &mom2_ptr, dev_ctx, &RAII_GUARD);
 
   float* lr_ptr = nullptr;
-  funcs::GetDataPointer<Context, float>(learning_rate, &lr_ptr, dev_ctx);
+  funcs::GetDataPointer<Context, float>(
+      learning_rate, &lr_ptr, dev_ctx, &RAII_GUARD);
 
   float* beta1_pow_ptr = nullptr;
   const float* beta1_const_pow_ptr = nullptr;
@@ -68,12 +73,13 @@ void AdamDenseKernel(const Context& dev_ctx,
     phi::Copy(dev_ctx, beta1_pow, dev_ctx.GetPlace(), false, &xpu_beta1_pow);
     if (xpu_beta1_pow.dtype() == DataType::FLOAT16)
       funcs::GetDataPointer<Context, float>(
-          xpu_beta1_pow, &beta1_pow_ptr, dev_ctx);
+          xpu_beta1_pow, &beta1_pow_ptr, dev_ctx, &RAII_GUARD);
     else
       beta1_const_pow_ptr = xpu_beta1_pow.template data<float>();
   } else {
     if (beta1_pow.dtype() == DataType::FLOAT16)
-      funcs::GetDataPointer<Context, float>(beta1_pow, &beta1_pow_ptr, dev_ctx);
+      funcs::GetDataPointer<Context, float>(
+          beta1_pow, &beta1_pow_ptr, dev_ctx, &RAII_GUARD);
     else
       beta1_const_pow_ptr = beta1_pow.template data<float>();
   }
@@ -85,12 +91,13 @@ void AdamDenseKernel(const Context& dev_ctx,
     phi::Copy(dev_ctx, beta2_pow, dev_ctx.GetPlace(), false, &xpu_beta2_pow);
     if (xpu_beta2_pow.dtype() == DataType::FLOAT16)
       funcs::GetDataPointer<Context, float>(
-          xpu_beta2_pow, &beta2_pow_ptr, dev_ctx);
+          xpu_beta2_pow, &beta2_pow_ptr, dev_ctx, &RAII_GUARD);
     else
       beta2_const_pow_ptr = xpu_beta2_pow.template data<float>();
   } else {
     if (beta2_pow.dtype() == DataType::FLOAT16)
-      funcs::GetDataPointer<Context, float>(beta2_pow, &beta2_pow_ptr, dev_ctx);
+      funcs::GetDataPointer<Context, float>(
+          beta2_pow, &beta2_pow_ptr, dev_ctx, &RAII_GUARD);
     else
       beta2_const_pow_ptr = beta2_pow.template data<float>();
   }
@@ -163,7 +170,7 @@ void AdamDenseKernel(const Context& dev_ctx,
   auto epsilon_ = epsilon.to<float>();
 
   float* grad_c = nullptr;
-  funcs::GetDataPointer<Context, float>(grad, &grad_c, dev_ctx);
+  funcs::GetDataPointer<Context, float>(grad, &grad_c, dev_ctx, &RAII_GUARD);
 
   int r = xpu::adam(
       dev_ctx.x_context(),
@@ -184,11 +191,12 @@ void AdamDenseKernel(const Context& dev_ctx,
 
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "adam");
 
-  funcs::FreeData<float>(grad, grad_c);
-
-  funcs::CopyOutData<Context, float>(xpu_mom1_out, moment1_out, dev_ctx);
-  funcs::CopyOutData<Context, float>(xpu_mom2_out, moment2_out, dev_ctx);
-  funcs::CopyOutData<Context, float>(xpu_param_out, param_out, dev_ctx);
+  funcs::CopyOutData<Context, float>(
+      xpu_mom1_out, moment1_out, dev_ctx, &RAII_GUARD);
+  funcs::CopyOutData<Context, float>(
+      xpu_mom2_out, moment2_out, dev_ctx, &RAII_GUARD);
+  funcs::CopyOutData<Context, float>(
+      xpu_param_out, param_out, dev_ctx, &RAII_GUARD);
 
   if (!use_global_beta_pow) {
     // update in cpu and then copy to xpu
@@ -202,8 +210,12 @@ void AdamDenseKernel(const Context& dev_ctx,
       float* beta1_pow_out_p1 = nullptr;
 
       if (beta1_pow_out->dtype() == DataType::FLOAT16) {
-        funcs::Scale<Context, float>(
-            beta1_pow_out, beta1_pow, beta1_pow_ptr, beta1_, dev_ctx);
+        funcs::Scale<Context, float>(beta1_pow_out,
+                                     beta1_pow,
+                                     beta1_pow_ptr,
+                                     beta1_,
+                                     dev_ctx,
+                                     &RAII_GUARD);
       } else {
         const float* beta1_pow_data = beta1_pow.template data<float>();
         beta1_pow_out_p1 = dev_ctx.template Alloc<float>(beta1_pow_out);
@@ -219,8 +231,12 @@ void AdamDenseKernel(const Context& dev_ctx,
 
       float* beta2_pow_out_p1 = nullptr;
       if (beta2_pow_out->dtype() == DataType::FLOAT16) {
-        funcs::Scale<Context, float>(
-            beta2_pow_out, beta2_pow, beta2_pow_ptr, beta2_, dev_ctx);
+        funcs::Scale<Context, float>(beta2_pow_out,
+                                     beta2_pow,
+                                     beta2_pow_ptr,
+                                     beta2_,
+                                     dev_ctx,
+                                     &RAII_GUARD);
       } else {
         const float* beta2_pow_data = beta2_pow.template data<float>();
         beta2_pow_out_p1 = dev_ctx.template Alloc<float>(beta2_pow_out);
@@ -235,10 +251,6 @@ void AdamDenseKernel(const Context& dev_ctx,
       }
     }
   }
-  funcs::FreeData<float>(param, param_ptr);
-  funcs::FreeData<float>(moment1, mom1_ptr);
-  funcs::FreeData<float>(moment2, mom2_ptr);
-  funcs::FreeData<float>(learning_rate, lr_ptr);
 }
 
 template <typename T, typename Context>

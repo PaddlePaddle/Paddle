@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/kernels/empty_kernel.h"
 
 #ifdef PADDLE_WITH_FLASHATTN
 #include "paddle/phi/backends/dynload/flashattn.h"
@@ -60,7 +61,7 @@ static std::vector<int64_t> GetAttnMaskDims(const DenseTensor* attn_mask) {
         rank,
         4,
         phi::errors::InvalidArgument(
-            "The number of dimenstions of attn_mask is expected to be greater "
+            "The number of dimensions of attn_mask is expected to be greater "
             "or equal to 4, but recieved %d. The shape of attn_mask is {%s}",
             rank,
             origin_dims));
@@ -77,29 +78,80 @@ static std::vector<int64_t> GetAttnMaskDims(const DenseTensor* attn_mask) {
   return mask_dim_4d;
 }
 
-template <typename T>
-struct FlashAttnFwdParamsV2 {
+struct FlashAttnParamsBase {
   int batch_size;
   // for padded kernel, max_seqlen_q and seqlen_q is the same.
   int64_t max_seqlen_q;
   // for padded kernel, max_seqlen_k and seqlen_k is the same.
   int64_t max_seqlen_k;
-  int seqlen_q_rounded;
-  int seqlen_k_rounded;
   int num_heads;
   int num_heads_k;
   int head_size;
+
+  int seqlen_q_rounded;
+  int seqlen_k_rounded;
   int head_size_rounded;
-  float dropout;
-  float scale;
-  bool causal;
-  bool return_softmax;
+
   bool is_bf16;
+  float softmax_scale;
+  std::vector<int64_t> softmax_lse_dims;
+
+  bool causal;
+  std::vector<int64_t> mask_dims;
+  const DenseTensor* attn_mask_tensor;
+
+  FlashAttnParamsBase(const int _batch_size,
+                      const int64_t _max_seqlen_q,
+                      const int64_t _max_seqlen_k,
+                      const int _num_heads,
+                      const int _num_heads_k,
+                      const int _head_size,
+                      const float _scale,
+                      const bool _causal,
+                      const DataType q_dtype,
+                      const paddle::optional<DenseTensor>& attn_mask)
+      : batch_size(_batch_size),
+        max_seqlen_q(_max_seqlen_q),
+        max_seqlen_k(_max_seqlen_k),
+        num_heads(_num_heads),
+        num_heads_k(_num_heads),
+        head_size(_head_size),
+        softmax_scale(_scale),
+        causal(_causal),
+        attn_mask_tensor(attn_mask.get_ptr()) {
+    is_bf16 = q_dtype == DataType::BFLOAT16;
+
+    auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
+    head_size_rounded = round_multiple(head_size, 32);
+    seqlen_q_rounded = round_multiple(max_seqlen_q, 128);
+    seqlen_k_rounded = round_multiple(max_seqlen_k, 128);
+
+    softmax_lse_dims = {batch_size, num_heads, seqlen_q_rounded};
+
+    if (attn_mask_tensor) {
+      PADDLE_ENFORCE_NE(causal,
+                        true,
+                        phi::errors::InvalidArgument(
+                            "When attn_mask is set, causal can not be true."));
+
+      PADDLE_ENFORCE_EQ(
+          attn_mask->dtype(),
+          q_dtype,
+          phi::errors::InvalidArgument(
+              "attn_mask is expected to have the same data type with q."));
+
+      mask_dims = GetAttnMaskDims(attn_mask_tensor);
+    }
+  }
+};
+
+template <typename T>
+struct FlashAttnFwdParamsV2 : public FlashAttnParamsBase {
+  float dropout;
+  bool return_softmax;
   uint64_t seed;
   uint64_t offset;
-  std::vector<int64_t> mask_dims;
   DenseTensor rng_state;
-  const DenseTensor* attn_mask_tensor;
   DenseTensor* softmax;
   DenseTensor* softmax_lse;
   DenseTensor* seed_offset;
@@ -123,22 +175,22 @@ struct FlashAttnFwdParamsV2 {
                        DenseTensor* _softmax,
                        DenseTensor* _softmax_lse,
                        DenseTensor* _seed_offset)
-      : batch_size(_batch_size),
-        max_seqlen_q(_max_seqlen_q),
-        max_seqlen_k(_max_seqlen_k),
-        num_heads(_num_heads),
-        num_heads_k(_num_heads),
-        head_size(_head_size),
-        scale(_scale),
+      : FlashAttnParamsBase(_batch_size,
+                            _max_seqlen_q,
+                            _max_seqlen_k,
+                            _num_heads,
+                            _num_heads_k,
+                            _head_size,
+                            _scale,
+                            _causal,
+                            q_dtype,
+                            attn_mask),
         dropout(_dropout),
-        causal(_causal),
         return_softmax(_return_softmax),
         softmax(_softmax),
         softmax_lse(_softmax_lse),
-        seed_offset(_seed_offset),
-        attn_mask_tensor(attn_mask.get_ptr()) {
+        seed_offset(_seed_offset) {
     dropout = is_test ? 0.0f : _dropout;
-    is_bf16 = q_dtype == DataType::BFLOAT16;
 
     // (umiswing): There is no suitable kernel for uint64_t, allocate in int64_t
     // with the same size.
@@ -154,12 +206,7 @@ struct FlashAttnFwdParamsV2 {
     seed_offset_data[0] = static_cast<int64_t>(seed);
     seed_offset_data[1] = static_cast<int64_t>(offset);
 
-    auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
-    head_size_rounded = round_multiple(head_size, 32);
-    seqlen_q_rounded = round_multiple(max_seqlen_q, 128);
-    seqlen_k_rounded = round_multiple(max_seqlen_k, 128);
-
-    softmax_lse->Resize({batch_size, num_heads, max_seqlen_q});
+    softmax_lse->Resize(phi::make_ddim(softmax_lse_dims));
     ctx.template Alloc<float>(softmax_lse);
 
     if (return_softmax) {
@@ -173,39 +220,16 @@ struct FlashAttnFwdParamsV2 {
           {batch_size, num_heads, seqlen_q_rounded, seqlen_k_rounded});
       ctx.template Alloc<T>(softmax);
     }
-
-    mask_dims = GetAttnMaskDims(attn_mask_tensor);
-    if (attn_mask) {
-      PADDLE_ENFORCE_EQ(
-          attn_mask->dtype(),
-          q_dtype,
-          phi::errors::InvalidArgument(
-              "attn_mask is expected to have the same data type with q."));
-    }
   }
 };
 
-struct FlashAttnBwdParamsV2 {
-  int batch_size;
-  int64_t max_seqlen_q;
-  int64_t max_seqlen_k;
-  int seqlen_q_rounded;
-  int seqlen_k_rounded;
-  int num_heads;
-  int num_heads_k;
-  int head_size;
-  int head_size_rounded;
+struct FlashAttnBwdParamsV2 : public FlashAttnParamsBase {
   float dropout;
-  float scale;
-  bool causal;
-  bool is_bf16;
   uint64_t seed;
   uint64_t offset;
-  std::vector<int64_t> mask_dims;
   DenseTensor softmax_d;
   DenseTensor dq_accum;
   DenseTensor rng_state;
-  const DenseTensor* attn_mask_tensor;
 
   FlashAttnBwdParamsV2(const GPUContext& ctx,
                        const int _batch_size,
@@ -220,17 +244,17 @@ struct FlashAttnBwdParamsV2 {
                        const DataType q_dtype,
                        const paddle::optional<DenseTensor>& attn_mask,
                        const int64_t* seed_offset_data)
-      : batch_size(_batch_size),
-        max_seqlen_q(_max_seqlen_q),
-        max_seqlen_k(_max_seqlen_k),
-        num_heads(_num_heads),
-        num_heads_k(_num_heads_k),
-        head_size(_head_size),
-        dropout(_dropout),
-        scale(_scale),
-        causal(_causal),
-        attn_mask_tensor(attn_mask.get_ptr()) {
-    is_bf16 = q_dtype == DataType::BFLOAT16;
+      : FlashAttnParamsBase(_batch_size,
+                            _max_seqlen_q,
+                            _max_seqlen_k,
+                            _num_heads,
+                            _num_heads_k,
+                            _head_size,
+                            _scale,
+                            _causal,
+                            q_dtype,
+                            attn_mask),
+        dropout(_dropout) {
     seed = static_cast<uint64_t>(seed_offset_data[0]);
     offset = static_cast<uint64_t>(seed_offset_data[1]);
 
@@ -238,24 +262,12 @@ struct FlashAttnBwdParamsV2 {
     // with the same size.
     rng_state = Empty<int64_t>(ctx, {2});
 
-    auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
+    // gradient of softmax_lse
+    softmax_d = Empty<float>(ctx, softmax_lse_dims);
 
-    head_size_rounded = round_multiple(head_size, 32);
-    seqlen_q_rounded = round_multiple(max_seqlen_q, 128);
-    seqlen_k_rounded = round_multiple(max_seqlen_k, 128);
-
-    softmax_d = Empty<float>(ctx, {batch_size, num_heads, seqlen_q_rounded});
+    // an internal gradient of q, which will be further accumulated.
     dq_accum = Empty<float>(
         ctx, {batch_size, num_heads, seqlen_q_rounded, head_size_rounded});
-
-    mask_dims = GetAttnMaskDims(attn_mask_tensor);
-    if (attn_mask) {
-      PADDLE_ENFORCE_EQ(
-          attn_mask->dtype(),
-          q_dtype,
-          phi::errors::InvalidArgument(
-              "attn_mask is expected to have the same data type with q."));
-    }
   }
 };
 
@@ -266,27 +278,6 @@ static void CheckFlashAttnStatus(const bool status) {
                         "Error in Flash-Attention, detail information is: %s",
                         phi::dynload::flash_attn_error()));
 }
-
-template <typename T>
-__global__ void SimleScaleKernel(const T* input,
-                                 int64_t numel,
-                                 float scale,
-                                 T* ouput) {
-  CUDA_KERNEL_LOOP_TYPE(i, numel, int64_t) {
-    ouput[i] = static_cast<T>(scale * static_cast<float>(input[i]));
-  }
-}
-
-template <typename T, typename Context>
-void ComputeScaleQ(
-    const Context& ctx, int64_t numel, float scale, const T* input, T* output) {
-  auto gpu_config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, numel, 1);
-  SimleScaleKernel<<<gpu_config.block_per_grid,
-                     gpu_config.thread_per_block,
-                     0,
-                     ctx.stream()>>>(input, numel, scale, output);
-}
-
 #endif
 
 static void RaiseNotSupportedError() {

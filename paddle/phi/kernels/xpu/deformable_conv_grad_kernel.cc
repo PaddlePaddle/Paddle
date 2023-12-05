@@ -36,6 +36,7 @@ void DeformableConvGradKernel(const Context& dev_ctx,
                               DenseTensor* offset_grad,
                               DenseTensor* filter_grad,
                               DenseTensor* mask_grad) {
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   T* dx_data = nullptr;
   T* dw_data = nullptr;
   T* dmask_data = nullptr;
@@ -74,35 +75,31 @@ void DeformableConvGradKernel(const Context& dev_ctx,
                         "in deformable_conv_grad op."));
 
   const int batch_size = static_cast<int>(x.dims()[0]);
-  std::vector<int64_t> output_shape_vec(phi::vectorize(out_grad.dims()));
+  std::vector<int64_t> output_shape_vec(common::vectorize(out_grad.dims()));
   const T* output_grad_ptr = out_grad.data<T>();
   const T* input_ptr = x.data<T>();
   const T* filter_ptr = filter.data<T>();
   const float* offset_ptr = offset.data<float>();
   const float* mask_ptr = mask->data<float>();
   if (dx_data == nullptr) {
-    PADDLE_ENFORCE_EQ(
-        xpu_malloc(reinterpret_cast<void**>(&dx_data), x.numel() * sizeof(T)),
-        XPU_SUCCESS,
-        errors::ResourceExhausted("XPU has no enough memory"));
+    dx_data = RAII_GUARD.alloc_l3_or_gm<T>(x.numel());
+    PADDLE_ENFORCE_NOT_NULL(
+        dx_data, errors::ResourceExhausted("XPU has no enough memory"));
   }
   if (dw_data == nullptr) {
-    PADDLE_ENFORCE_EQ(xpu_malloc(reinterpret_cast<void**>(&dw_data),
-                                 filter.numel() * sizeof(T)),
-                      XPU_SUCCESS,
-                      errors::ResourceExhausted("XPU has no enough memory"));
+    dw_data = RAII_GUARD.alloc_l3_or_gm<T>(filter.numel());
+    PADDLE_ENFORCE_NOT_NULL(
+        dw_data, errors::ResourceExhausted("XPU has no enough memory"));
   }
   if (doffset_data == nullptr) {
-    PADDLE_ENFORCE_EQ(xpu_malloc(reinterpret_cast<void**>(&doffset_data),
-                                 offset.numel() * sizeof(T)),
-                      XPU_SUCCESS,
-                      errors::ResourceExhausted("XPU has no enough memory"));
+    doffset_data = RAII_GUARD.alloc_l3_or_gm<T>(offset.numel());
+    PADDLE_ENFORCE_NOT_NULL(
+        doffset_data, errors::ResourceExhausted("XPU has no enough memory"));
   }
   if (dmask_data == nullptr) {
-    PADDLE_ENFORCE_EQ(xpu_malloc(reinterpret_cast<void**>(&dmask_data),
-                                 mask->numel() * sizeof(T)),
-                      XPU_SUCCESS,
-                      errors::ResourceExhausted("XPU has no enough memory"));
+    dmask_data = RAII_GUARD.alloc_l3_or_gm<T>(mask->numel());
+    PADDLE_ENFORCE_NOT_NULL(
+        dmask_data, errors::ResourceExhausted("XPU has no enough memory"));
   }
 
   int input_dim = x.numel() / x.dims()[0];
@@ -118,11 +115,9 @@ void DeformableConvGradKernel(const Context& dev_ctx,
   int w = x.dims()[3];
   int f = filter.dims()[0];
 
-  T* filter_grad_tmp = nullptr;
-  PADDLE_ENFORCE_EQ(xpu_malloc(reinterpret_cast<void**>(&filter_grad_tmp),
-                               filter_grad->numel() * sizeof(T)),
-                    XPU_SUCCESS,
-                    errors::ResourceExhausted("XPU has no enough memory"));
+  T* filter_grad_tmp = RAII_GUARD.alloc_l3_or_gm<T>(filter_grad->numel());
+  PADDLE_ENFORCE_NOT_NULL(
+      filter_grad_tmp, errors::ResourceExhausted("XPU has no enough memory"));
 
   // set zeros for d_table_data
   const int zero = 0;
@@ -175,21 +170,6 @@ void DeformableConvGradKernel(const Context& dev_ctx,
     r = baidu::xpu::api::add<T>(
         dev_ctx.x_context(), filter_grad_tmp, dw_data, dw_data, filter.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "add");
-  }
-
-  dev_ctx.Wait();
-  xpu_free(filter_grad_tmp);
-  if (dx == nullptr) {
-    xpu_free(dx_data);
-  }
-  if (filter_grad == nullptr) {
-    xpu_free(dw_data);
-  }
-  if (offset_grad == nullptr) {
-    xpu_free(doffset_data);
-  }
-  if (mask_grad == nullptr) {
-    xpu_free(dmask_data);
   }
 }
 

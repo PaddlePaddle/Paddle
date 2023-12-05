@@ -43,9 +43,8 @@ namespace framework {
 WhileInstruction::WhileInstruction(size_t id,
                                    const platform::Place& place,
                                    pir::Operation* op,
-                                   Scope* scope,
-                                   Scope* local_scope,
-                                   ValueExecutionInfo* parent_exe_info)
+                                   ValueExecutionInfo* parent_exe_info,
+                                   const std::set<std::string>& skip_gc_vars)
     : InstructionBase(id, place) {
   op_ = op;
   VLOG(6) << "finish process dist attributes";
@@ -61,25 +60,23 @@ WhileInstruction::WhileInstruction(size_t id,
 
   auto while_op = op->dyn_cast<paddle::dialect::WhileOp>();
 
-  cond_var_ = parent_exe_info->GetScope()->FindVar(
-      parent_exe_info->GetValue2VarName().at(while_op.operand_source(0)));
+  cond_var_ = parent_exe_info->GetVarByValue(while_op.operand_source(0));
 
   for (size_t i = 1; i < while_op.num_operands(); ++i) {
-    inputs_.push_back(parent_exe_info->GetScope()->FindVar(
-        parent_exe_info->GetValue2VarName().at(while_op.operand_source(i))));
+    inputs_.push_back(
+        parent_exe_info->GetVarByValue(while_op.operand_source(i)));
   }
 
   for (size_t i = 0; i < while_op.num_results(); ++i) {
-    outputs_.push_back(parent_exe_info->GetScope()->FindVar(
-        parent_exe_info->GetValue2VarName().at(while_op.result(i))));
+    outputs_.push_back(parent_exe_info->GetVarByValue(while_op.result(i)));
   }
 
-  body_block_ = while_op.body_block();
+  body_block_ = &while_op.body();
 
   std::unordered_map<pir::Value, std::vector<int>> inputs;
   GetInputIds(op, *parent_exe_info, &inputs);
   auto body_outside_inputs =
-      GetOutsideOpInputs(body_block_, *parent_exe_info, &inputs);
+      GetExternalInputs(body_block_, *parent_exe_info, &inputs);
   SetInputs(inputs);
 
   std::unordered_map<pir::Value, std::vector<int>> outputs;
@@ -96,6 +93,7 @@ WhileInstruction::WhileInstruction(size_t id,
       std::vector<int> outputs_id = GetValueIds(value, *parent_exe_info);
       outputs.emplace(value, outputs_id);
     }
+    InsertTuplePushContinerToOuts(body_block_, *parent_exe_info, &outputs);
   }
   SetOutputs(outputs);
 
@@ -108,7 +106,7 @@ WhileInstruction::WhileInstruction(size_t id,
        << "body_block_arg_";
     auto var_name = ss.str() + std::to_string(i);
     body_scope->Var(var_name);
-    body_exe_info->Add(body_block_->argument(i), var_name);
+    body_exe_info->Add(body_block_->arg(i), var_name);
   }
   body_inter_ = std::unique_ptr<PirInterpreter>(new PirInterpreter(
       place, {}, body_block_, body_scope, body_exe_info, {}));
@@ -123,6 +121,10 @@ WhileInstruction::WhileInstruction(size_t id,
   for (auto value : body_outside_inputs) {
     body_skip_gc_names_.push_back(body_inter_->GetNameByValue(value));
     body_skip_gc_names_set.insert(body_inter_->GetNameByValue(value));
+  }
+  for (auto var_name : skip_gc_vars) {
+    body_skip_gc_names_.push_back(var_name);
+    body_skip_gc_names_set.insert(var_name);
   }
   body_inter_->SetSkipGcVars(body_skip_gc_names_set);
 
@@ -143,18 +145,39 @@ WhileInstruction::WhileInstruction(size_t id,
 
 void WhileInstruction::CopyInputsToOutputs() {
   for (size_t i = 0; i < outputs_.size(); ++i) {
-    outputs_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
-        inputs_[i]->Get<phi::DenseTensor>());
+    if (inputs_[i]->IsType<phi::DenseTensor>()) {
+      outputs_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
+          inputs_[i]->Get<phi::DenseTensor>());
+    } else if (inputs_[i]->IsType<phi::TensorArray>()) {
+      const auto& input_array = inputs_[i]->Get<phi::TensorArray>();
+      auto* output_array = outputs_[i]->GetMutable<phi::TensorArray>();
+      *output_array = input_array;
+    } else {
+      PADDLE_THROW(phi::errors::Unimplemented("unsupported type %d",
+                                              inputs_[i]->Type()));
+    }
   }
 }
 
 void WhileInstruction::PassArgsToBodyBlock() {
   for (size_t i = 0; i < body_block_->args_size(); ++i) {
-    auto block_arg = body_block_->argument(i);
+    auto block_arg = body_block_->arg(i);
     auto var_name = body_inter_->GetNameByValue(block_arg);
     auto* inner_var = body_inter_->local_scope()->GetVar(var_name);
-    inner_var->GetMutable<phi::DenseTensor>()->ShareDataWith(
-        outputs_[i]->Get<phi::DenseTensor>());
+
+    if (outputs_[i]->IsType<phi::DenseTensor>()) {
+      inner_var->GetMutable<phi::DenseTensor>()->ShareDataWith(
+          outputs_[i]->Get<phi::DenseTensor>());
+    } else if (outputs_[i]->IsType<phi::TensorArray>()) {
+      const auto& outer_array = outputs_[i]->Get<phi::TensorArray>();
+      auto* inner_array = inner_var->GetMutable<phi::TensorArray>();
+      *inner_array = outer_array;
+      VLOG(10) << inner_var
+               << " should be created: " << inner_var->IsInitialized();
+    } else {
+      PADDLE_THROW(
+          phi::errors::Unimplemented("unsupported type %d", inner_var->Type()));
+    }
   }
 }
 
@@ -167,8 +190,19 @@ void WhileInstruction::GetValueFromBodyBlock() {
     auto& out_var_name = body_outputs_[i + 1];
     auto* out_var = body_inter_->local_scope()->GetVar(out_var_name);
     VLOG(6) << "share data from " << out_var_name << " -> " << i << " output";
-    outputs_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
-        out_var->Get<phi::DenseTensor>());
+
+    if (out_var->IsType<phi::DenseTensor>()) {
+      outputs_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
+          out_var->Get<phi::DenseTensor>());
+    } else if (out_var->IsType<phi::TensorArray>()) {
+      const auto& inner_array = out_var->Get<phi::TensorArray>();
+      auto* output_array = outputs_[i]->GetMutable<phi::TensorArray>();
+      *output_array = inner_array;
+    } else {
+      PADDLE_THROW(
+          phi::errors::Unimplemented("unsupported type %d", out_var->Type()));
+    }
+
     VLOG(6) << "done";
   }
 }

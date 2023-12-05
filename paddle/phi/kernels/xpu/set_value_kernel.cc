@@ -122,7 +122,7 @@ void SetValueImpl(const Context& dev_ctx,
       none_axes_cur++;
     }
 
-    slice_dims_for_assign = phi::make_ddim(slice_dims_with_none);
+    slice_dims_for_assign = common::make_ddim(slice_dims_with_none);
   }
 
   // Here copy data from input to avoid data loss at PE and Graph level.
@@ -146,7 +146,7 @@ void SetValueImpl(const Context& dev_ctx,
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
 
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-  int64_t slice_numels = phi::product(slice_dims);
+  int64_t slice_numels = common::product(slice_dims);
   XPUType* slice_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(slice_numels);
 
   int in_size = in_dims.size();
@@ -227,8 +227,8 @@ void SetValueImpl(const Context& dev_ctx,
     }
   }
 
-  auto out_shape = phi::vectorize<int>(out->dims());
-  auto slice_shape = phi::vectorize<int>(slice_dims);
+  auto out_shape = common::vectorize<int>(out->dims());
+  auto slice_shape = common::vectorize<int>(slice_dims);
 
   if (need_flip) {
     r = xpu::flip(dev_ctx.x_context(),
@@ -407,7 +407,7 @@ void SetValueKernel(const Context& dev_ctx,
                      phi::CPUPlace(),
                      value_data_uint8_cpu,
                      values_length);
-  auto value_dims = phi::make_ddim(shape);
+  auto value_dims = common::make_ddim(shape);
 
   SetValueKernelImpl<T, Context>(dev_ctx,
                                  x,

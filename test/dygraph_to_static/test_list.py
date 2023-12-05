@@ -16,7 +16,10 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_sot_only,
+)
 
 import paddle
 from paddle import base
@@ -208,7 +211,7 @@ def test_list_pop_in_while_loop(x, iter_num):
     return a[0], b[2]
 
 
-class TestListWithoutControlFlow(Dy2StTestBase):
+class TestListWithoutControlFlowConfig(Dy2StTestBase):
     def setUp(self):
         self.place = (
             base.CUDAPlace(0)
@@ -250,7 +253,7 @@ class TestListWithoutControlFlow(Dy2StTestBase):
                 res = self.dygraph_func(self.input)
             return self.result_to_numpy(res)
 
-    def test_transformed_static_result(self):
+    def compare_transformed_static_result(self):
         for dyfunc in self.all_dygraph_funcs:
             self.dygraph_func = dyfunc
             static_res_list = self.run_static_mode()
@@ -266,12 +269,17 @@ class TestListWithoutControlFlow(Dy2StTestBase):
                 )
 
 
+class TestListWithoutControlFlow(TestListWithoutControlFlowConfig):
+    def test_transformed_static_result(self):
+        self.compare_transformed_static_result()
+
+
 class TestListInIf(TestListWithoutControlFlow):
     def init_dygraph_func(self):
         self.all_dygraph_funcs = [test_list_append_in_if]
 
 
-class TestListInWhileLoop(TestListWithoutControlFlow):
+class TestListInWhileLoop(TestListWithoutControlFlowConfig):
     def init_data(self):
         self.input = np.random.random(3).astype('int32')
         self.iter_num = 3
@@ -292,6 +300,10 @@ class TestListInWhileLoop(TestListWithoutControlFlow):
             else:
                 res = self.dygraph_func(self.input, self.iter_num)
             return self.result_to_numpy(res)
+
+    @test_sot_only
+    def test_transformed_static_result(self):
+        self.compare_transformed_static_result()
 
 
 class TestListInWhileLoopWithStack(TestListInWhileLoop):
