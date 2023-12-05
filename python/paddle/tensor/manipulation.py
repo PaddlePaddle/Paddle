@@ -4060,13 +4060,22 @@ def masked_scatter(x, mask, value, name=None):
 
             >>> import paddle
 
-            >>> x = paddle.randn([3,4])
-            >>> mask = paddle.randn([3,4])
+            >>> x = paddle.randn([2, 2])
+            Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            [[-0.22560297, -1.48127186],
+            [-1.12356818,  0.76581174]])
+            >>> mask = paddle.randn([2, 2])
             >>> mask = mask>0.6
-            >>> value = paddle.ones([2,4], dtype="float32")
+            Tensor(shape=[2, 2], dtype=bool, place=Place(gpu:0), stop_gradient=True,
+            [[False, True ],
+            [True, False]])
+            >>> value = paddle.to_tensor([1, 2, 3, 4, 5,], dtype="float32")
 
             >>> out = paddle.masked_scatter(x, mask, value)
-            >>> print(out.shape)
+            >>> print(out)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            [[-0.22560297, 1.],
+            [2,  0.76581174]])
 
     """
     # make sure the dtype of x and value is the same
