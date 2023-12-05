@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import random
 import unittest
 
@@ -93,7 +94,7 @@ class DemoNet(nn.Layer):
 
 class TestSimpleNetForSemiAutoParallel(unittest.TestCase):
     def __init__(self):
-        self._seed = 1234
+        self._seed = eval(os.getenv("seed"))
         self.set_random_seed(self._seed)
         self.data_loader = self.create_data_loader()
 
@@ -183,6 +184,7 @@ class TestSimpleNetForSemiAutoParallel(unittest.TestCase):
             dy2static_layer, dy2static_opt, self.data_loader, mesh
         )
 
+    # python -m paddle.distributed.launch --devices=0,1 semi_auto_parallel_static_decorate_api.py
     def run_test_case(self):
         self.test_dp_mp_demo_net()
 

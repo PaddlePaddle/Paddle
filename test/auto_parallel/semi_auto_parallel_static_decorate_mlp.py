@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import random
 
 import numpy as np
@@ -100,7 +101,7 @@ class DemoNet(nn.Layer):
 
 class TestSimpleNetForSemiAutoParallel:
     def __init__(self):
-        self._seed = 1234
+        self._seed = eval(os.getenv("seed"))
 
     def set_random_seed(self, seed):
         random.seed(seed)
@@ -210,6 +211,7 @@ class TestSimpleNetForSemiAutoParallel:
 
         np.testing.assert_allclose(dy_losses, dy2static_losses, rtol=1e-6)
 
+    # python -m paddle.distributed.launch --devices=0,1 semi_auto_parallel_static_decorate_mlp.py
     def run_test_case(self):
         self.test_dp_demo_net()
         self.test_mp_demo_net()
