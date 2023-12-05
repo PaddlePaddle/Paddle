@@ -17,8 +17,8 @@
 #include "paddle/phi/kernels/cpu/unique_consecutive_functor.h"
 #include "paddle/phi/kernels/unique_consecutive_kernel.h"
 
+#include "paddle/common/errors.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 

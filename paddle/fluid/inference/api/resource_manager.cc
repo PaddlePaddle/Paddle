@@ -20,6 +20,7 @@
 #include <unordered_map>
 #include <utility>
 
+#include "paddle/common/errors.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "paddle/phi/backends/gpu/forwards.h"
@@ -28,7 +29,6 @@
 #include "paddle/phi/backends/gpu/gpu_resources.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
-#include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/generator.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
@@ -89,14 +89,14 @@ class EigenGpuStreamDevice : public Eigen::StreamInterface {
   }
 
   void* scratchpad() const override {
-    if (scratch_ == NULL) {
+    if (scratch_ == nullptr) {
       scratch_ = allocate(Eigen::kGpuScratchSize + sizeof(unsigned int));
     }
     return scratch_;
   }
 
   unsigned int* semaphore() const override {
-    if (semaphore_ == NULL) {
+    if (semaphore_ == nullptr) {
       char* scratch = static_cast<char*>(scratchpad()) + Eigen::kGpuScratchSize;
       semaphore_ = reinterpret_cast<unsigned int*>(scratch);
 #ifdef PADDLE_WITH_HIP

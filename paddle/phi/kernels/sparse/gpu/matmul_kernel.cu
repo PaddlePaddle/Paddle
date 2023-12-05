@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include <vector>
 
+#include "paddle/common/ddim.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/meta_tensor.h"
@@ -38,8 +38,8 @@ void MatmulKernelImpl(const Context& dev_ctx,
                       const DenseTensor& y,
                       DenseTensor* out) {
 #if CUDA_VERSION >= 11000 || HIP_VERSION >= 402
-  std::vector<int64_t> xdim_vec = phi::vectorize(x.dims());
-  std::vector<int64_t> ydim_vec = phi::vectorize(y.dims());
+  std::vector<int64_t> xdim_vec = common::vectorize(x.dims());
+  std::vector<int64_t> ydim_vec = common::vectorize(y.dims());
   auto x_ndims = xdim_vec.size();
   auto y_ndims = ydim_vec.size();
   PADDLE_ENFORCE_EQ(
@@ -76,7 +76,7 @@ void MatmulKernelImpl(const Context& dev_ctx,
   out_dim_vec[y_ndims - 2] = xdim_vec[x_ndims - 2];
   out_dim_vec[y_ndims - 1] = ydim_vec[y_ndims - 1];
   MetaTensor meta_out(out);
-  meta_out.set_dims(phi::make_ddim(out_dim_vec));
+  meta_out.set_dims(common::make_ddim(out_dim_vec));
   meta_out.set_dtype(y.dtype());
 
   dev_ctx.template Alloc<T>(out);
@@ -125,9 +125,9 @@ void MaskedMatmulCsrKernel(const Context& dev_ctx,
                            const SparseCsrTensor& mask,
                            SparseCsrTensor* out) {
 #if CUDA_VERSION >= 11030
-  std::vector<int64_t> xdim_vec = phi::vectorize(x.dims());
-  std::vector<int64_t> ydim_vec = phi::vectorize(y.dims());
-  std::vector<int64_t> maskdim_vec = phi::vectorize(mask.dims());
+  std::vector<int64_t> xdim_vec = common::vectorize(x.dims());
+  std::vector<int64_t> ydim_vec = common::vectorize(y.dims());
+  std::vector<int64_t> maskdim_vec = common::vectorize(mask.dims());
 
   auto x_ndims = xdim_vec.size();
   auto y_ndims = ydim_vec.size();

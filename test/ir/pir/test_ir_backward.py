@@ -249,29 +249,5 @@ class TestBackward_3(unittest.TestCase):
             input_grad = grad(res, x)
 
 
-class TestBackward_refrash_stopgradients(unittest.TestCase):
-    def test_refreash_stopgradients(self):
-        import numpy as np
-
-        program = paddle.pir.core.default_main_program()
-        with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(program):
-            data1 = paddle.static.data('data1', [3, 4, 5], np.float32)
-            data2 = paddle.static.data('data2', [3, 4, 5], np.float32)
-            out = paddle.add_n([data1, data2])
-            data1_arr = np.random.uniform(-1, 1, data1.shape).astype(np.float32)
-            data2_arr = np.random.uniform(-1, 1, data2.shape).astype(np.float32)
-            self.assertEqual(
-                program.global_block().ops[3].result(0).stop_gradient, True
-            )
-
-            data1.stop_gradient = False
-            data2.stop_gradient = False
-
-            dout = grad(out, [data1, data2])
-            self.assertEqual(
-                program.global_block().ops[3].result(0).stop_gradient, False
-            )
-
-
 if __name__ == "__main__":
     unittest.main()

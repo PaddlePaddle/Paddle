@@ -14,8 +14,8 @@
 
 #pragma once
 
+#include "paddle/common/array.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
-#include "paddle/phi/core/utils/array.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 namespace phi {

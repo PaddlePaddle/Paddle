@@ -25,7 +25,8 @@ if(WITH_CUDA)
     DEPS
     cinncore_static
     cinn_runtime
-    pybind)
+    pybind
+    common)
   message("cuda_nvrtc: ${CUDA_NVRTC}")
   target_link_libraries(core_api ${CUDA_NVRTC_LIB} ${CUDA_LIBRARIES} cuda cudnn)
   if(NVTX_FOUND)
@@ -45,7 +46,7 @@ else()
     ${llvm_libs})
 endif()
 
-target_link_libraries(core_api ${MKLML_LIB} isl ginac)
+target_link_libraries(core_api ${MKLML_LIB} isl ginac common)
 if(USE_OPENMP STREQUAL "gnu")
   target_link_libraries(core_api ${OpenMP_CXX_LIBRARIES})
   message(STATUS "OpenMP lib: ${OpenMP_CXX_LIBRARIES}")
