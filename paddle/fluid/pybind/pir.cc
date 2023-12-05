@@ -1545,16 +1545,16 @@ void AddPirPass(std::shared_ptr<PassManager> &pass_manager,  // NOLINT
 
   cinn::dialect::ir::PdOp2CinnOpConverter(&program);
 
-  pass_manager.AddPass(
+  pass_manager->AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
-  pass_manager.AddPass(pir::CreateDeadCodeEliminationPass());
-  pass_manager.AddPass(pir::CreateBuildCinnPass());
+  pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
+  pass_manager->AddPass(pir::CreateBuildCinnPass());
 
   if (has_dynamic_shape) {
-    pass_manager.AddPass(pir::CreateInferSymbolicShapePass(shape_analysis));
+    pass_manager->AddPass(pir::CreateInferSymbolicShapePass(shape_analysis));
   }
 
-  pass_manager.AddPass(
+  pass_manager->AddPass(
       cinn::dialect::ir::CreateCinnGroupLoweringPass(shape_analysis));
 
   VLOG(3) << "after BuildCinnPass, program:\n" << program;
