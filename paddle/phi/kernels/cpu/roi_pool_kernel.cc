@@ -42,10 +42,10 @@ void RoiPoolKernel(const Context& dev_ctx,
     return;
   }
 
-  auto in_stride = phi::stride(x_dims);
-  auto arg_max_stride = phi::stride(arg_max->dims());
-  auto box_stride = phi::stride(boxes.dims());
-  auto out_stride = phi::stride(out->dims());
+  auto in_stride = common::stride(x_dims);
+  auto arg_max_stride = common::stride(arg_max->dims());
+  auto box_stride = common::stride(boxes.dims());
+  auto out_stride = common::stride(out->dims());
 
   const T* input_data = x.data<T>();
 

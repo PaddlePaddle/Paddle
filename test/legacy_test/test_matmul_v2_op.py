@@ -370,6 +370,50 @@ class TestMatMulOpBroadcast2(TestMatMulV2Op):
         self.trans_y = True
 
 
+class TestMatMulV2OpAutoParallel(OpTest):
+    def config(self):
+        self.x_shape = (32, 64)
+        self.y_shape = (48, 32)
+        self.trans_x = True
+        self.trans_y = True
+        self.placements = {
+            'X': [dist.Shard(1)],
+            'Y': [dist.Replicate()],
+        }
+
+    def init_kernel_type(self):
+        self.dtype = "float32" if core.is_compiled_with_rocm() else "float64"
+
+    def setUp(self):
+        self.init_kernel_type()
+        self.config()
+        self.op_type = "matmul_v2"
+        self.python_api = paddle.tensor.matmul
+        x = np.random.random(self.x_shape).astype(self.dtype)
+        y = np.random.random(self.y_shape).astype(self.dtype)
+        # -0.1 ~ 0.1
+        x = -0.1 + 0.2 * x
+        y = -0.1 + 0.2 * y
+        result = reference_matmul(x, y, self.trans_x, self.trans_y)
+        self.inputs = {
+            'X': x,
+            'Y': y,
+        }
+        self.attrs = {'trans_x': self.trans_x, 'trans_y': self.trans_y}
+        self.outputs = {'Out': result}
+
+    def test_check_grad(self):
+        if core.is_compiled_with_rocm():
+            self.check_grad(
+                ['X', 'Y'],
+                'Out',
+                max_relative_error=1e-2,
+                check_auto_parallel=True,
+            )
+        else:
+            self.check_grad(['X', 'Y'], 'Out', check_auto_parallel=True)
+
+
 # --------------------test matmul fp16--------------------
 
 
