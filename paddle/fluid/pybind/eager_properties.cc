@@ -836,6 +836,36 @@ PyObject* tensor_properties_get_place_str(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyObject* tensor_properties_get_placements_str(TensorObject* self,
+                                               void* closure) {
+  EAGER_TRY
+  if (self->tensor.is_dist_tensor()) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+    phi::distributed::DistTensor* dist_tensor =
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
+    std::string str = "[";
+    for (const auto& p : dist_tensor->placements()) {
+      if (p) {
+        str += p->to_string() + ", ";
+      }
+    }
+    str += "]";
+    std::stringstream ostr;
+    ostr << str;
+    return ToPyObject(ostr.str());
+#else
+    PADDLE_THROW(platform::errors::Unavailable(
+        "The `placements()` property of (Dist)Tensor is not supported in the "
+        "current PaddlePaddle, please recompile and installPaddlePaddle with "
+        "the "
+        "option of `WITH_DISTRIBUTE=ON`."));
+#endif
+  } else {
+    RETURN_PY_NONE
+  }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyDoc_STRVAR(tensor_dtype__doc__,
              R"DOC(dtype
 
@@ -995,6 +1025,11 @@ struct PyGetSetDef variable_properties[] = {  // NOLINT
      nullptr},
     {"_place_str",
      (getter)tensor_properties_get_place_str,
+     nullptr,
+     nullptr,
+     nullptr},
+    {"_placements_str",
+     (getter)tensor_properties_get_placements_str,
      nullptr,
      nullptr,
      nullptr},

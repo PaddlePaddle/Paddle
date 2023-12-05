@@ -372,7 +372,7 @@ def dist_tensor_to_string(tensor, prefix='Tensor'):
             place=tensor._place_str,
             stop_gradient=tensor.stop_gradient,
             process_mesh=tensor.process_mesh,
-            placements=tensor.placements,
+            placements=tensor._placements_str,
         )
     else:
         indent = len(prefix) + 1
@@ -385,7 +385,7 @@ def dist_tensor_to_string(tensor, prefix='Tensor'):
             place=tensor._place_str,
             stop_gradient=tensor.stop_gradient,
             process_mesh=tensor.process_mesh,
-            placements=tensor.placements,
+            placements=tensor._placements_str,
             indent=' ' * indent,
             data=data,
         )
