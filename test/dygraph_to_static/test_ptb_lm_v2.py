@@ -17,9 +17,10 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase
+from dygraph_to_static_utils import Dy2StTestBase, enable_to_static_guard
 
 import paddle
+from paddle.base.framework import unique_name
 
 PRINT_STEP = 20
 SEED = 2020
@@ -220,7 +221,7 @@ class PtbModel(paddle.nn.Layer):
         np.save("emb_grad", self.x_emb.gradient())
 
 
-def train(place):
+def train(to_static: bool):
     num_layers = 1
     batch_size = 4
     hidden_size = 10
@@ -231,110 +232,104 @@ def train(place):
     vocab_size = 1000
     batch_num = 200
 
-    paddle.disable_static(place)
-    paddle.seed(SEED)
-    paddle.framework.random._manual_program_seed(SEED)
-    ptb_model = paddle.jit.to_static(
-        PtbModel(
-            hidden_size=hidden_size,
-            vocab_size=vocab_size,
-            num_layers=num_layers,
-            num_steps=num_steps,
-            init_scale=init_scale,
-            dropout=dropout,
-        )
-    )
-
-    sgd = paddle.optimizer.SGD(
-        learning_rate=1e-3, parameters=ptb_model.parameters()
-    )
-
-    for epoch_id in range(max_epoch):
-        total_loss = 0.0
-        iters = 0.0
-        total_sample = 0
-
-        init_hidden_data = np.zeros(
-            (num_layers, batch_size, hidden_size), dtype='float32'
-        )
-        init_cell_data = np.zeros(
-            (num_layers, batch_size, hidden_size), dtype='float32'
-        )
-
-        init_hidden = paddle.to_tensor(
-            data=init_hidden_data, dtype=None, place=None, stop_gradient=True
-        )
-        init_cell = paddle.to_tensor(
-            data=init_cell_data, dtype=None, place=None, stop_gradient=True
-        )
-        for step_id in range(batch_num):
-            x_data = np.arange(12).reshape(4, 3).astype('int64')
-            y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
-            y_data = y_data.reshape((-1, 1))
-
-            x_data = x_data.reshape((-1, num_steps, 1))
-            y_data = y_data.reshape((-1, num_steps, 1))
-
-            x = paddle.to_tensor(
-                data=x_data, dtype=None, place=None, stop_gradient=True
-            )
-            y = paddle.to_tensor(
-                data=y_data, dtype=None, place=None, stop_gradient=True
+    with unique_name.guard():
+        with enable_to_static_guard(to_static):
+            paddle.seed(SEED)
+            paddle.framework.random._manual_program_seed(SEED)
+            ptb_model = paddle.jit.to_static(
+                PtbModel(
+                    hidden_size=hidden_size,
+                    vocab_size=vocab_size,
+                    num_layers=num_layers,
+                    num_steps=num_steps,
+                    init_scale=init_scale,
+                    dropout=dropout,
+                )
             )
 
-            dy_loss, last_hidden, last_cell = ptb_model(
-                x, y, init_hidden, init_cell
+            sgd = paddle.optimizer.SGD(
+                learning_rate=1e-3, parameters=ptb_model.parameters()
             )
-            out_loss = dy_loss.numpy()
 
-            dy_loss.backward()
-            sgd.minimize(dy_loss)
-            ptb_model.clear_gradients()
+            for epoch_id in range(max_epoch):
+                total_loss = 0.0
+                iters = 0.0
+                total_sample = 0
 
-            total_loss += out_loss
-            iters += num_steps
-            total_sample += 1
-            if step_id % PRINT_STEP == 0:
-                if step_id == 0:
-                    logging.info(
-                        "epoch %d | step %d, loss %0.3f"
-                        % (epoch_id, step_id, total_loss / total_sample)
+                init_hidden_data = np.zeros(
+                    (num_layers, batch_size, hidden_size), dtype='float32'
+                )
+                init_cell_data = np.zeros(
+                    (num_layers, batch_size, hidden_size), dtype='float32'
+                )
+
+                init_hidden = paddle.to_tensor(
+                    data=init_hidden_data,
+                    dtype=None,
+                    place=None,
+                    stop_gradient=True,
+                )
+                init_cell = paddle.to_tensor(
+                    data=init_cell_data,
+                    dtype=None,
+                    place=None,
+                    stop_gradient=True,
+                )
+                for step_id in range(batch_num):
+                    x_data = np.arange(12).reshape(4, 3).astype('int64')
+                    y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
+                    y_data = y_data.reshape((-1, 1))
+
+                    x_data = x_data.reshape((-1, num_steps, 1))
+                    y_data = y_data.reshape((-1, num_steps, 1))
+
+                    x = paddle.to_tensor(
+                        data=x_data, dtype=None, place=None, stop_gradient=True
                     )
-                    avg_batch_time = time.time()
-                else:
-                    speed = PRINT_STEP / (time.time() - avg_batch_time)
-                    logging.info(
-                        "epoch %d | step %d, loss %0.3f, speed %.3f steps/s"
-                        % (epoch_id, step_id, total_loss / total_sample, speed)
+                    y = paddle.to_tensor(
+                        data=y_data, dtype=None, place=None, stop_gradient=True
                     )
-                    avg_batch_time = time.time()
 
-    ret = out_loss, last_hidden.numpy(), last_cell.numpy()
-    paddle.enable_static()
-    return ret
+                    dy_loss, last_hidden, last_cell = ptb_model(
+                        x, y, init_hidden, init_cell
+                    )
+                    out_loss = dy_loss.numpy()
 
+                    dy_loss.backward()
+                    sgd.minimize(dy_loss)
+                    ptb_model.clear_gradients()
 
-def train_dygraph(place):
-    paddle.jit.enable_to_static(False)
-    return train(place)
+                    total_loss += out_loss
+                    iters += num_steps
+                    total_sample += 1
+                    if step_id % PRINT_STEP == 0:
+                        if step_id == 0:
+                            logging.info(
+                                "epoch %d | step %d, loss %0.3f"
+                                % (epoch_id, step_id, total_loss / total_sample)
+                            )
+                            avg_batch_time = time.time()
+                        else:
+                            speed = PRINT_STEP / (time.time() - avg_batch_time)
+                            logging.info(
+                                "epoch %d | step %d, loss %0.3f, speed %.3f steps/s"
+                                % (
+                                    epoch_id,
+                                    step_id,
+                                    total_loss / total_sample,
+                                    speed,
+                                )
+                            )
+                            avg_batch_time = time.time()
 
-
-def train_static(place):
-    paddle.jit.enable_to_static(True)
-    return train(place)
+            ret = out_loss, last_hidden.numpy(), last_cell.numpy()
+            return ret
 
 
 class TestPtb(Dy2StTestBase):
-    def setUp(self):
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
-
     def test_check_result(self):
-        loss_1, hidden_1, cell_1 = train_static(self.place)
-        loss_2, hidden_2, cell_2 = train_dygraph(self.place)
+        loss_1, hidden_1, cell_1 = train(True)
+        loss_2, hidden_2, cell_2 = train(False)
 
         np.testing.assert_allclose(loss_1, loss_2, rtol=1e-05)
         np.testing.assert_allclose(hidden_1, hidden_2, rtol=1e-05)

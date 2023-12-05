@@ -19,7 +19,11 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase, test_pt_only
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    enable_to_static_guard,
+    test_pt_only,
+)
 from predictor_utils import PredictorTools
 
 import paddle
@@ -266,7 +270,6 @@ class TestResnet(Dy2StTestBase):
         """
         Tests model decorated by `dygraph_to_static_output` in static graph mode. For users, the model is defined in dygraph mode and trained in static graph mode.
         """
-        paddle.disable_static(place)
         np.random.seed(SEED)
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
@@ -340,30 +343,28 @@ class TestResnet(Dy2StTestBase):
                             self.dy_state_dict_save_path + '.pdparams',
                         )
                     break
-        paddle.enable_static()
 
         return total_loss.numpy()
 
     def predict_dygraph(self, data):
-        paddle.jit.enable_to_static(False)
-        paddle.disable_static(place)
-        resnet = paddle.jit.to_static(ResNet())
+        with enable_to_static_guard(False):
+            resnet = paddle.jit.to_static(ResNet())
 
-        model_dict = paddle.load(self.dy_state_dict_save_path + '.pdparams')
-        resnet.set_dict(model_dict)
-        resnet.eval()
+            model_dict = paddle.load(self.dy_state_dict_save_path + '.pdparams')
+            resnet.set_dict(model_dict)
+            resnet.eval()
 
-        pred_res = resnet(
-            paddle.to_tensor(
-                data=data, dtype=None, place=None, stop_gradient=True
+            pred_res = resnet(
+                paddle.to_tensor(
+                    data=data, dtype=None, place=None, stop_gradient=True
+                )
             )
-        )
 
-        ret = pred_res.numpy()
-        paddle.enable_static()
-        return ret
+            ret = pred_res.numpy()
+            return ret
 
     def predict_static(self, data):
+        paddle.enable_static()
         exe = paddle.static.Executor(place)
         [
             inference_program,
@@ -381,18 +382,16 @@ class TestResnet(Dy2StTestBase):
             feed={feed_target_names[0]: data},
             fetch_list=fetch_targets,
         )
-
+        paddle.disable_static()
         return pred_res[0]
 
     def predict_dygraph_jit(self, data):
-        paddle.disable_static(place)
         resnet = paddle.jit.load(self.model_save_prefix)
         resnet.eval()
 
         pred_res = resnet(data)
 
         ret = pred_res.numpy()
-        paddle.enable_static()
         return ret
 
     def predict_analysis_inference(self, data):
@@ -406,8 +405,8 @@ class TestResnet(Dy2StTestBase):
         return out
 
     def train(self, to_static):
-        paddle.jit.enable_to_static(to_static)
-        return self.do_train(to_static)
+        with enable_to_static_guard(to_static):
+            return self.do_train(to_static)
 
     def verify_predict(self):
         image = np.random.random([1, 3, 224, 224]).astype('float32')

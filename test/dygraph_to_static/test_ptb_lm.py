@@ -17,7 +17,7 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase
+from dygraph_to_static_utils import Dy2StTestBase, enable_to_static_guard
 
 import paddle
 from paddle import base
@@ -310,13 +310,13 @@ def train(place):
         return out_loss, last_hidden.numpy(), last_cell.numpy()
 
 
+# TODO(gouzil): merge train_dygraph and train_static
 def train_dygraph(place):
-    paddle.jit.enable_to_static(False)
-    return train(place)
+    with enable_to_static_guard(False):
+        return train(place)
 
 
 def train_static(place):
-    paddle.jit.enable_to_static(True)
     return train(place)
 
 

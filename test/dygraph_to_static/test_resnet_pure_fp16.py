@@ -16,7 +16,11 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase, test_default_mode_only
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    enable_to_static_guard,
+    test_default_mode_only,
+)
 from test_resnet import SEED, ResNet, optimizer_setting
 
 import paddle
@@ -28,11 +32,11 @@ batch_size = 2
 epoch_num = 1
 
 
-if base.is_compiled_with_cuda():
-    base.set_flags({'FLAGS_cudnn_deterministic': True})
+if paddle.is_compiled_with_cuda():
+    paddle.set_flags({'FLAGS_cudnn_deterministic': True})
 
 
-def train(to_static, build_strategy=None):
+def train(build_strategy=None):
     """
     Tests model decorated by `dygraph_to_static_output` in static graph mode. For users, the model is defined in dygraph mode and trained in static graph mode.
     """
@@ -40,9 +44,7 @@ def train(to_static, build_strategy=None):
     paddle.seed(SEED)
     paddle.framework.random._manual_program_seed(SEED)
 
-    resnet = ResNet()
-    if to_static:
-        resnet = paddle.jit.to_static(resnet, build_strategy=build_strategy)
+    resnet = paddle.jit.to_static(ResNet(), build_strategy=build_strategy)
     optimizer = optimizer_setting(parameter_list=resnet.parameters())
     scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
 
@@ -113,13 +115,13 @@ def train(to_static, build_strategy=None):
 
 
 class TestResnet(Dy2StTestBase):
-    def train(self, to_static):
-        paddle.jit.enable_to_static(to_static)
-        build_strategy = paddle.static.BuildStrategy()
-        # Why set `build_strategy.enable_inplace = False` here?
-        # Because we find that this PASS strategy of PE makes dy2st training loss unstable.
-        build_strategy.enable_inplace = False
-        return train(to_static, build_strategy)
+    def train(self, to_static: bool):
+        with enable_to_static_guard(to_static):
+            build_strategy = paddle.static.BuildStrategy()
+            # Why set `build_strategy.enable_inplace = False` here?
+            # Because we find that this PASS strategy of PE makes dy2st training loss unstable.
+            build_strategy.enable_inplace = False
+            return train(build_strategy)
 
     @test_default_mode_only
     def test_resnet(self):
