@@ -199,7 +199,7 @@ class TestOneDNNMultiGruSeqFusePass(PassAutoScanTest):
             use_mkldnn=True,
             passes=['multi_gru_fuse_pass', 'multi_gru_seq_fuse_pass'],
         )
-        yield config, ['multi_gru'], (1e-5, 1e-5)
+        yield config, ['multi_gru', 'multi_gru'], (1e-5, 1e-5)
 
     def test(self):
         self.run_and_statis(
