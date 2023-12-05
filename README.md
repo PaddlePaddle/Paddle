@@ -81,9 +81,24 @@ We provide [English](https://www.paddlepaddle.org.cn/documentation/docs/en/guide
 
    We appreciate your contributions!
 
-## Communication
+## Open Source Community
 
 - [Github Issues](https://github.com/PaddlePaddle/Paddle/issues): bug reports, feature requests, install issues, usage issues, etc.
+
+- Open Source Contribution Activities:
+
+  - Beginner: Happy Open Source Activity（[Regular Season](https://github.com/PaddlePaddle/Paddle/issues/56689)、[Pre-Hackathon Camp](https://github.com/PaddlePaddle/Paddle/issues/58497)）
+  - Advanced: PaddlePaddle Hackathon（[Personal Challenge Competition](https://github.com/PaddlePaddle/Paddle/issues/57262)、[LLM Application Competition](https://github.com/PaddlePaddle/Paddle/issues/57585)、[Hackathon Code Camp](https://github.com/PaddlePaddle/Paddle/issues/57264)）
+
+- Community Organizations:
+  - Technical Organization: [Paddle Framework Contributor Club, PFCC](https://github.com/PaddlePaddle/community/tree/master/pfcc)
+  - Community Governance Organization: [PaddlePaddle OpenSource Development Working Group, PPOSDWG](https://github.com/PaddlePaddle/community/tree/master/pposdwg)
+
+- Community Blog: https://pfcc.blog/
+
+## Communication
+
+- [Github Issues](https://github.com/PaddlePaddle/Paddle/issues)
 - QQ discussion group: 441226485 (PaddlePaddle).
 - [Forums](https://aistudio.baidu.com/paddle/forum): discuss implementations, research, etc.
 
