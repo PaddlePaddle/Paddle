@@ -3194,8 +3194,8 @@ struct GenericPluginTeller : public Teller {
       }
     }
     if (op_type == "argsort") {
-#if IS_TRT_VERSION_LT(7100)
-      VLOG(3) << "argsort is not supported in TRT version <7.1,beacuse of the "
+#if IS_TRT_VERSION_LT(8100)
+      VLOG(3) << "argsort is not supported in TRT version <8.1,beacuse of the "
                  "cuda version is too low.";
       return false;
 #endif

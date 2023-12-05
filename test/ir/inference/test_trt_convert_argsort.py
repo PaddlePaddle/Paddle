@@ -32,14 +32,14 @@ class TrtConvertArgsort(TrtLayerAutoScanTest):
             compile_version[0] * 1000
             + compile_version[1] * 100
             + compile_version[2] * 10
-            < 7100
+            < 8100
         ):
             return False
         if (
             runtime_version[0] * 1000
             + runtime_version[1] * 100
             + runtime_version[2] * 10
-            < 7100
+            < 8100
         ):
             return False
         return True
