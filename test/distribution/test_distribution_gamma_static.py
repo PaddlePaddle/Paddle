@@ -35,12 +35,12 @@ paddle.enable_static()
         (
             'one-dim',
             parameterize.xrand(
-                (2,),
+                (6,),
                 dtype='float32',
                 min=np.finfo(dtype='float32').tiny,
             ),
             parameterize.xrand(
-                (2,),
+                (6,),
                 dtype='float32',
                 min=np.finfo(dtype='float32').tiny,
             ),
@@ -48,12 +48,12 @@ paddle.enable_static()
         (
             'multi-dim',
             parameterize.xrand(
-                (2, 3),
+                (10, 12),
                 dtype='float32',
                 min=np.finfo(dtype='float32').tiny,
             ),
             parameterize.xrand(
-                (2, 3),
+                (10, 12),
                 dtype='float32',
                 min=np.finfo(dtype='float32').tiny,
             ),
@@ -61,12 +61,12 @@ paddle.enable_static()
         (
             'broadcast',
             parameterize.xrand(
-                (2, 1),
+                (4, 1),
                 dtype='float32',
                 min=np.finfo(dtype='float32').tiny,
             ),
             parameterize.xrand(
-                (2, 3),
+                (4, 6),
                 dtype='float32',
                 min=np.finfo(dtype='float32').tiny,
             ),

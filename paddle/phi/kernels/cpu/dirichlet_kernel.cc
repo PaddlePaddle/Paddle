@@ -15,6 +15,7 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/cpu/dirichlet_util.h"
 #include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
@@ -23,26 +24,6 @@
 #include "paddle/phi/kernels/impl/dirichlet_kernel_impl.h"
 
 namespace phi {
-
-template <typename T, typename UniformSamplerT, typename NormalSamplerT>
-struct GammaCPUFunctor {
-  GammaCPUFunctor(const T* alpha,
-                  T* gamma,
-                  BaseSampler<T, UniformSamplerT> uniform,
-                  BaseSampler<T, NormalSamplerT> normal)
-      : alpha_(alpha), gamma_(gamma), uniform_(uniform), normal_(normal) {}
-
-  HOST void operator()(int64_t index) {
-    auto sample = sample_gamma<T, T, UniformSamplerT, NormalSamplerT>(
-        alpha_[index], uniform_, normal_);
-    gamma_[index] = std::max(std::numeric_limits<T>::min(), sample);
-  }
-
-  const T* alpha_;
-  T* gamma_;
-  BaseSampler<T, UniformSamplerT> uniform_;
-  BaseSampler<T, NormalSamplerT> normal_;
-};
 
 template <typename T>
 struct DirichletSampler<CPUContext, T> {

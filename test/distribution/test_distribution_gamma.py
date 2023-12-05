@@ -39,12 +39,12 @@ paddle.seed(2023)
         (
             'one-dim',
             parameterize.xrand(
-                (2,),
+                (6,),
                 dtype='float32',
                 min=np.finfo(dtype='float32').tiny,
             ),
             parameterize.xrand(
-                (2,),
+                (6,),
                 dtype='float32',
                 min=np.finfo(dtype='float32').tiny,
             ),
@@ -52,12 +52,12 @@ paddle.seed(2023)
         (
             'multi-dim',
             parameterize.xrand(
-                (2, 3),
+                (10, 12),
                 dtype='float32',
                 min=np.finfo(dtype='float32').tiny,
             ),
             parameterize.xrand(
-                (2, 3),
+                (10, 12),
                 dtype='float32',
                 min=np.finfo(dtype='float32').tiny,
             ),
@@ -65,12 +65,12 @@ paddle.seed(2023)
         (
             'broadcast',
             parameterize.xrand(
-                (2, 1),
+                (4, 1),
                 dtype='float32',
                 min=np.finfo(dtype='float32').tiny,
             ),
             parameterize.xrand(
-                (2, 3),
+                (4, 6),
                 dtype='float32',
                 min=np.finfo(dtype='float32').tiny,
             ),
@@ -118,39 +118,35 @@ class TestGamma(unittest.TestCase):
 
     def test_prob(self):
         value = [np.random.rand(*self._paddle_gamma.rate.shape)]
-
-        for v in value:
-            with paddle.base.dygraph.guard(self.place):
-                np.testing.assert_allclose(
-                    self._paddle_gamma.prob(paddle.to_tensor(v)),
-                    scipy.stats.gamma.pdf(
-                        v, self.concentration, scale=self.scale
-                    ),
-                    rtol=config.RTOL.get(
-                        str(self._paddle_gamma.concentration.numpy().dtype)
-                    ),
-                    atol=config.ATOL.get(
-                        str(self._paddle_gamma.concentration.numpy().dtype)
-                    ),
-                )
+        with paddle.base.dygraph.guard(self.place):
+            np.testing.assert_allclose(
+                self._paddle_gamma.prob(paddle.to_tensor(value)),
+                scipy.stats.gamma.pdf(
+                    value, self.concentration, scale=self.scale
+                ),
+                rtol=config.RTOL.get(
+                    str(self._paddle_gamma.concentration.numpy().dtype)
+                ),
+                atol=config.ATOL.get(
+                    str(self._paddle_gamma.concentration.numpy().dtype)
+                ),
+            )
 
     def test_log_prob(self):
         value = [np.random.rand(*self._paddle_gamma.rate.shape)]
-
-        for v in value:
-            with paddle.base.dygraph.guard(self.place):
-                np.testing.assert_allclose(
-                    self._paddle_gamma.log_prob(paddle.to_tensor(v)),
-                    scipy.stats.gamma.logpdf(
-                        v, self.concentration, scale=self.scale
-                    ),
-                    rtol=config.RTOL.get(
-                        str(self._paddle_gamma.concentration.numpy().dtype)
-                    ),
-                    atol=config.ATOL.get(
-                        str(self._paddle_gamma.concentration.numpy().dtype)
-                    ),
-                )
+        with paddle.base.dygraph.guard(self.place):
+            np.testing.assert_allclose(
+                self._paddle_gamma.log_prob(paddle.to_tensor(value)),
+                scipy.stats.gamma.logpdf(
+                    value, self.concentration, scale=self.scale
+                ),
+                rtol=config.RTOL.get(
+                    str(self._paddle_gamma.concentration.numpy().dtype)
+                ),
+                atol=config.ATOL.get(
+                    str(self._paddle_gamma.concentration.numpy().dtype)
+                ),
+            )
 
     def test_entropy(self):
         with paddle.base.dygraph.guard(self.place):

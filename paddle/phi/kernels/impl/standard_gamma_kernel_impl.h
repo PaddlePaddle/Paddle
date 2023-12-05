@@ -14,14 +14,23 @@
 
 #pragma once
 
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/standard_gamma_kernel.h"
 
 namespace phi {
 
-template <typename T, typename Context>
-void StandardGammaGradKernel(const Context& ctx,
-                             const DenseTensor& x,
-                             const DenseTensor& out_grad,
-                             DenseTensor* x_grad);
+template <typename Context, typename T>
+struct GammaSampler {
+  void operator()(const Context& dev_ctx,
+                  const DenseTensor& alpha,
+                  DenseTensor* out);
+};
 
+template <typename T, typename Context>
+void StandardGammaKernel(const Context& dev_ctx,
+                         const DenseTensor& alpha,
+                         DenseTensor* out) {
+  dev_ctx.template Alloc<T>(out);
+  GammaSampler<Context, T> sampler;
+  sampler(dev_ctx, alpha, out);
+}
 }  // namespace phi

@@ -38,7 +38,7 @@ paddle.seed(2023)
         (
             'one-dim',
             parameterize.xrand(
-                (2,),
+                (4,),
                 dtype='float32',
                 min=np.finfo(dtype='float32').tiny,
             ),
@@ -46,7 +46,7 @@ paddle.seed(2023)
         (
             'multi-dim',
             parameterize.xrand(
-                (2, 3),
+                (10, 12),
                 dtype='float32',
                 min=np.finfo(dtype='float32').tiny,
             ),
@@ -90,35 +90,31 @@ class TestExponential(unittest.TestCase):
 
     def test_prob(self):
         value = [np.random.rand(*self._paddle_expon.rate.shape)]
-
-        for v in value:
-            with paddle.base.dygraph.guard(self.place):
-                np.testing.assert_allclose(
-                    self._paddle_expon.prob(paddle.to_tensor(v)),
-                    scipy.stats.expon.pdf(v, scale=self.scale),
-                    rtol=config.RTOL.get(
-                        str(self._paddle_expon.rate.numpy().dtype)
-                    ),
-                    atol=config.ATOL.get(
-                        str(self._paddle_expon.rate.numpy().dtype)
-                    ),
-                )
+        with paddle.base.dygraph.guard(self.place):
+            np.testing.assert_allclose(
+                self._paddle_expon.prob(paddle.to_tensor(value)),
+                scipy.stats.expon.pdf(value, scale=self.scale),
+                rtol=config.RTOL.get(
+                    str(self._paddle_expon.rate.numpy().dtype)
+                ),
+                atol=config.ATOL.get(
+                    str(self._paddle_expon.rate.numpy().dtype)
+                ),
+            )
 
     def test_log_prob(self):
         value = [np.random.rand(*self._paddle_expon.rate.shape)]
-
-        for v in value:
-            with paddle.base.dygraph.guard(self.place):
-                np.testing.assert_allclose(
-                    self._paddle_expon.log_prob(paddle.to_tensor(v)),
-                    scipy.stats.expon.logpdf(v, scale=self.scale),
-                    rtol=config.RTOL.get(
-                        str(self._paddle_expon.rate.numpy().dtype)
-                    ),
-                    atol=config.ATOL.get(
-                        str(self._paddle_expon.rate.numpy().dtype)
-                    ),
-                )
+        with paddle.base.dygraph.guard(self.place):
+            np.testing.assert_allclose(
+                self._paddle_expon.log_prob(paddle.to_tensor(value)),
+                scipy.stats.expon.logpdf(value, scale=self.scale),
+                rtol=config.RTOL.get(
+                    str(self._paddle_expon.rate.numpy().dtype)
+                ),
+                atol=config.ATOL.get(
+                    str(self._paddle_expon.rate.numpy().dtype)
+                ),
+            )
 
     def test_entropy(self):
         with paddle.base.dygraph.guard(self.place):

@@ -34,7 +34,7 @@ paddle.enable_static()
         (
             'one-dim',
             parameterize.xrand(
-                (2,),
+                (4,),
                 dtype='float32',
                 min=np.finfo(dtype='float32').tiny,
             ),
@@ -42,7 +42,7 @@ paddle.enable_static()
         (
             'multi-dim',
             parameterize.xrand(
-                (2, 3),
+                (10, 12),
                 dtype='float32',
                 min=np.finfo(dtype='float32').tiny,
             ),

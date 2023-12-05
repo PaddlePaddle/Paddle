@@ -2297,7 +2297,7 @@
 
 - backward_op : standard_gamma_grad
   forward : standard_gamma (Tensor x) -> Tensor(out)
-  args : (Tensor out_grad)
+  args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta

@@ -28,7 +28,7 @@ namespace phi {
  */
 template <typename T, typename Context>
 void StandardGammaKernel(const Context& ctx,
-                         const DenseTensor& x,
+                         const DenseTensor& alpha,
                          DenseTensor* out);
 
 }  // namespace phi
