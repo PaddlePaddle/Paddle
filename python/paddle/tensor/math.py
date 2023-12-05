@@ -469,10 +469,10 @@ def pow(x, y, name=None):
     .. math::
         out = x^{y}
 
-    .. note::
+    Note:
         ``paddle.pow`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
 
-            .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
 
     Args:
@@ -784,7 +784,7 @@ def subtract(x, y, name=None):
     .. math::
         out = x - y
 
-    .. note::
+    Note:
         ``paddle.subtract`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
 
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
@@ -864,10 +864,10 @@ def divide(x, y, name=None):
     .. math::
         out = x / y
 
-    .. note::
+    Note:
         ``paddle.divide`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
 
-    .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
@@ -923,10 +923,10 @@ def floor_divide(x, y, name=None):
     - :math:`x`: Multidimensional Tensor.
     - :math:`y`: Multidimensional Tensor.
 
-    .. note::
+    Note:
         ``paddle.floor_divide`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
 
-    .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
         Also note that the name ``floor_divide`` can be misleading, as the quotinents are actually rounded toward zero, not toward negative infinite.
 
@@ -982,7 +982,7 @@ def remainder(x, y, name=None):
 
         out = x \% y
 
-    .. note::
+    Note:
         ``paddle.remainder`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
 
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
@@ -1064,7 +1064,7 @@ def multiply(x, y, name=None):
     .. math::
         out = x * y
 
-    .. note::
+    Note:
         Supported shape of :attr:`x` and :attr:`y` for this operator:
         1. `x.shape` == `y.shape`.
         2. `x.shape` could be the continuous subsequence of `y.shape`.
@@ -1196,7 +1196,7 @@ def maximum(x, y, name=None):
     .. math::
         out = max(x, y)
 
-    .. note::
+    Note:
         ``paddle.maximum`` supports broadcasting. If you want know more about broadcasting, please refer to  `Introduction to Tensor`_ .
 
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
@@ -1258,7 +1258,7 @@ def minimum(x, y, name=None):
     .. math::
         out = min(x, y)
 
-    .. note::
+    Note:
         ``paddle.minimum`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
 
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
@@ -1322,7 +1322,7 @@ def fmax(x, y, name=None):
     .. math::
         out = fmax(x, y)
 
-    .. note::
+    Note:
         ``paddle.fmax`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
 
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
@@ -1386,7 +1386,7 @@ def fmin(x, y, name=None):
     .. math::
         out = fmin(x, y)
 
-    .. note::
+    Note:
         ``paddle.fmin`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
 
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
@@ -1787,7 +1787,6 @@ def nanmean(x, axis=None, keepdim=False, name=None):
     Examples:
 
         .. code-block:: python
-            :name: code-example1
 
             >>> import paddle
             >>> # x is a 2-D Tensor:
@@ -4905,10 +4904,10 @@ def broadcast_shape(x_shape, y_shape):
     """
     The function returns the shape of doing operation with broadcasting on tensors of x_shape and y_shape.
 
-    .. note::
+    Note:
         If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
 
-    .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x_shape (list[int]|tuple[int]): A shape of tensor.
@@ -6073,10 +6072,10 @@ def heaviside(x, y, name=None):
                 \end{array}
             \right.
 
-    .. note::
+    Note:
         ``paddle.heaviside`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
 
-    .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x (Tensor): The input tensor of Heaviside step function, it's data type should be float16, float32, float64, int32 or int64.
