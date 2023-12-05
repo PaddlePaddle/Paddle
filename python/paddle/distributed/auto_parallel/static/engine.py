@@ -832,7 +832,6 @@ class Engine:
                     param.numpy(), dict_dist_attr
                 )
                 dense_tensor.set(sliced_param, self._place)
-                # dense_tensor._share_data_with(param.get_tensor())
             elif param.is_dist():
                 dense_tensor._share_data_with(param.get_tensor().get_tensor())
 
