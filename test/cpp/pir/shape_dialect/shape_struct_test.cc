@@ -13,18 +13,8 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
-#include <map>
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
-#include "paddle/pir/core/block.h"
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/builtin_type_interfaces.h"
-#include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/program.h"
 #include "paddle/pir/dialect/shape/ir/shape_dialect.h"
-#include "paddle/pir/dialect/shape/ir/shape_op.h"
-#include "paddle/pir/dialect/shape/utils/symbol_table.h"
-
 #include "test/cpp/pir/tools/test_pir_utils.h"
 
 TEST(shape_struct_test, symbolic_dim_product) {

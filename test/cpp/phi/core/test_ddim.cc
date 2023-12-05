@@ -15,7 +15,7 @@
 #include <sstream>
 
 #include "gtest/gtest.h"
-#include "paddle/common/ddim.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace phi {
 namespace tests {
