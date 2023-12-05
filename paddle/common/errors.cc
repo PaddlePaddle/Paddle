@@ -1,4 +1,4 @@
-/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,11 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/core/errors.h"
+#include "paddle/common/errors.h"
 
 #include <stdexcept>
 
-namespace phi {
+namespace common {
 std::string error_name(ErrorCode code) {
   switch (code) {
     case ErrorCode::LEGACY:
@@ -70,4 +70,4 @@ std::string ErrorSummary::to_string() const {
   result += error_message();
   return result;
 }
-}  // namespace phi
+}  // namespace common

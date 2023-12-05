@@ -102,7 +102,7 @@ class TestNLLLoss(unittest.TestCase):
         np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
         @test_with_pir_api
-        def test_dynamic_or_pir_mode():
+        def test_static_or_pir_mode():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
             with paddle.static.program_guard(prog, startup_prog):
@@ -125,7 +125,7 @@ class TestNLLLoss(unittest.TestCase):
                 np.testing.assert_allclose(static_result, expected, rtol=1e-05)
                 np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
 
-        test_dynamic_or_pir_mode()
+        test_static_or_pir_mode()
 
     def test_NLLLoss_1D_sum(self):
         np.random.seed(200)
@@ -141,7 +141,7 @@ class TestNLLLoss(unittest.TestCase):
         expected = nll_loss_1d(input_np, label_np, reduction='sum')[0]
 
         @test_with_pir_api
-        def test_dynamic_or_pir_mode():
+        def test_static_or_pir_mode():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
             with paddle.static.program_guard(prog, startup_prog):
@@ -179,7 +179,7 @@ class TestNLLLoss(unittest.TestCase):
             loss = eager_res.sum()
             loss.backward()
 
-        test_dynamic_or_pir_mode()
+        test_static_or_pir_mode()
 
         np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
         np.testing.assert_allclose(eager_result, expected, rtol=1e-05)
@@ -200,7 +200,7 @@ class TestNLLLoss(unittest.TestCase):
         expected = nll_loss_1d(input_np, label_np, weight=weight_np)[0]
 
         @test_with_pir_api
-        def test_dynamic_or_pir_mode():
+        def test_static_or_pir_mode():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
             with paddle.static.program_guard(prog, startup_prog):
@@ -247,7 +247,7 @@ class TestNLLLoss(unittest.TestCase):
             loss.backward()
             eager_result = eager_res.numpy()
 
-        test_dynamic_or_pir_mode()
+        test_static_or_pir_mode()
 
         np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
         np.testing.assert_allclose(eager_result, expected, rtol=1e-05)
@@ -281,7 +281,7 @@ class TestNLLLoss(unittest.TestCase):
         np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
         @test_with_pir_api
-        def test_dynamic_or_pir_mode():
+        def test_static_or_pir_mode():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
             with paddle.static.program_guard(prog, startup_prog):
@@ -312,7 +312,7 @@ class TestNLLLoss(unittest.TestCase):
                 np.testing.assert_allclose(static_result, expected, rtol=1e-05)
                 np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
 
-        test_dynamic_or_pir_mode()
+        test_static_or_pir_mode()
 
     def test_NLLLoss_1D_with_weight_mean_cpu(self):
         np.random.seed(200)
@@ -336,7 +336,7 @@ class TestNLLLoss(unittest.TestCase):
         np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
         @test_with_pir_api
-        def test_dynamic_or_pir_mode():
+        def test_static_or_pir_mode():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
             with paddle.static.program_guard(prog, startup_prog):
@@ -365,7 +365,7 @@ class TestNLLLoss(unittest.TestCase):
                 np.testing.assert_allclose(static_result, expected, rtol=1e-05)
                 np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
 
-        test_dynamic_or_pir_mode()
+        test_static_or_pir_mode()
 
     def test_NLLLoss_1D_with_weight_no_reduce_cpu(self):
         np.random.seed(200)
@@ -391,7 +391,7 @@ class TestNLLLoss(unittest.TestCase):
         np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
         @test_with_pir_api
-        def test_dynamic_or_pir_mode():
+        def test_static_or_pir_mode():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
             with paddle.static.program_guard(prog, startup_prog):
@@ -422,7 +422,7 @@ class TestNLLLoss(unittest.TestCase):
             np.testing.assert_allclose(static_result, expected, rtol=1e-05)
             np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
 
-        test_dynamic_or_pir_mode()
+        test_static_or_pir_mode()
 
     def test_NLLLoss_2D_mean(self):
         np.random.seed(200)
@@ -447,7 +447,7 @@ class TestNLLLoss(unittest.TestCase):
 
         # place = base.CPUPlace()
         @test_with_pir_api
-        def test_dynamic_or_pir_mode():
+        def test_static_or_pir_mode():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
             with paddle.static.program_guard(prog, startup_prog):
@@ -468,6 +468,8 @@ class TestNLLLoss(unittest.TestCase):
                 )
                 np.testing.assert_allclose(static_result, expected, rtol=1e-05)
                 np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+
+        test_static_or_pir_mode()
 
     def test_NLLLoss_2D_sum(self):
         np.random.seed(200)
@@ -494,7 +496,7 @@ class TestNLLLoss(unittest.TestCase):
         np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
         @test_with_pir_api
-        def test_dynamic_or_pir_mode():
+        def test_static_or_pir_mode():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
             with paddle.static.program_guard(prog, startup_prog):
@@ -515,6 +517,8 @@ class TestNLLLoss(unittest.TestCase):
                 )
                 np.testing.assert_allclose(static_result, expected, rtol=1e-05)
                 np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+
+        test_static_or_pir_mode()
 
     def test_NLLLoss_2D_with_weight_mean(self):
         np.random.seed(200)
@@ -543,7 +547,7 @@ class TestNLLLoss(unittest.TestCase):
 
         # place = base.CPUPlace()
         @test_with_pir_api
-        def test_dynamic_or_pir_mode():
+        def test_static_or_pir_mode():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
             with paddle.static.program_guard(prog, startup_prog):
@@ -573,6 +577,8 @@ class TestNLLLoss(unittest.TestCase):
                 np.testing.assert_allclose(static_result, expected, rtol=1e-05)
                 np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
 
+        test_static_or_pir_mode()
+
     def test_NLLLoss_2D_with_weight_mean_cpu(self):
         np.random.seed(200)
         input_np = np.random.random(size=(5, 3, 5, 5)).astype(np.float64)
@@ -594,7 +600,7 @@ class TestNLLLoss(unittest.TestCase):
         np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
         @test_with_pir_api
-        def test_dynamic_or_pir_mode():
+        def test_static_or_pir_mode():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
             with paddle.static.program_guard(prog, startup_prog):
@@ -624,6 +630,8 @@ class TestNLLLoss(unittest.TestCase):
             np.testing.assert_allclose(static_result, expected, rtol=1e-05)
             np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
 
+        test_static_or_pir_mode()
+
     def test_NLLLoss_2D_with_weight_sum(self):
         np.random.seed(200)
         input_np = np.random.random(size=(5, 3, 5, 5)).astype(np.float64)
@@ -652,7 +660,7 @@ class TestNLLLoss(unittest.TestCase):
         np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
         @test_with_pir_api
-        def test_dynamic_or_pir_mode():
+        def test_static_or_pir_mode():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
             with paddle.static.program_guard(prog, startup_prog):
@@ -684,6 +692,8 @@ class TestNLLLoss(unittest.TestCase):
                 np.testing.assert_allclose(static_result, expected, rtol=1e-05)
                 np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
 
+        test_static_or_pir_mode()
+
     def test_NLLLoss_in_dims_not_2or4_mean(self):
         np.random.seed(200)
         input_np = np.random.random(size=(5, 3, 5, 5, 5)).astype(np.float64)
@@ -713,7 +723,7 @@ class TestNLLLoss(unittest.TestCase):
         np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
         @test_with_pir_api
-        def test_dynamic_or_pir_mode():
+        def test_static_or_pir_mode():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
             with paddle.static.program_guard(prog, startup_prog):
@@ -735,7 +745,7 @@ class TestNLLLoss(unittest.TestCase):
             np.testing.assert_allclose(static_result, expected, rtol=1e-05)
             np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
 
-        test_dynamic_or_pir_mode()
+        test_static_or_pir_mode()
 
     def test_NLLLoss_in_dims_not_2or4_with_weight_mean(self):
         np.random.seed(200)
@@ -771,7 +781,7 @@ class TestNLLLoss(unittest.TestCase):
         np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
         @test_with_pir_api
-        def test_dynamic_or_pir_mode():
+        def test_static_or_pir_mode():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
             with paddle.static.program_guard(prog, startup_prog):
@@ -800,6 +810,8 @@ class TestNLLLoss(unittest.TestCase):
 
             np.testing.assert_allclose(static_result, expected, rtol=1e-05)
             np.testing.assert_allclose(dy_result, static_result, rtol=1e-05)
+
+        test_static_or_pir_mode()
 
     def test_NLLLoss_in_dims_not_2or4_with_weight_sum(self):
         np.random.seed(200)
@@ -839,7 +851,7 @@ class TestNLLLoss(unittest.TestCase):
         np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
         @test_with_pir_api
-        def test_dynamic_or_pir_mode():
+        def test_static_or_pir_mode():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
             with paddle.static.program_guard(prog, startup_prog):
@@ -870,7 +882,7 @@ class TestNLLLoss(unittest.TestCase):
             np.testing.assert_allclose(static_result, expected, rtol=1e-05)
             np.testing.assert_allclose(dy_result, static_result, rtol=1e-05)
 
-        test_dynamic_or_pir_mode()
+        test_static_or_pir_mode()
 
     def test_NLLLoss_in_dims_not_2or4_with_weight_no_reduce(self):
         np.random.seed(200)
@@ -912,7 +924,7 @@ class TestNLLLoss(unittest.TestCase):
         np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
         @test_with_pir_api
-        def test_dynamic_or_pir_mode():
+        def test_static_or_pir_mode():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
             with paddle.static.program_guard(prog, startup_prog):
@@ -943,7 +955,7 @@ class TestNLLLoss(unittest.TestCase):
                 np.testing.assert_allclose(static_result, expected, rtol=1e-05)
                 np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
 
-        test_dynamic_or_pir_mode()
+        test_static_or_pir_mode()
 
     def test_NLLLoss_in_dims_not_2or4_with_weight_no_reduce_cpu(self):
         np.random.seed(200)
@@ -979,7 +991,7 @@ class TestNLLLoss(unittest.TestCase):
         place = base.CPUPlace()
 
         @test_with_pir_api
-        def test_dynamic_or_pir_mode():
+        def test_static_or_pir_mode():
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
             with paddle.static.program_guard(prog, startup_prog):

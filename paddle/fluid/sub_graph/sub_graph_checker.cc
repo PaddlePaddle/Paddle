@@ -336,7 +336,7 @@ void SubGraphChecker::InitInputs(const std::vector<pir::Value>& input_values,
   for (size_t i = 0; i < input_values.size(); ++i) {
     auto tensor_type =
         input_values[i].type().dyn_cast<paddle::dialect::DenseTensorType>();
-    auto shape = phi::vectorize<int64_t>(tensor_type.dims());
+    auto shape = common::vectorize<int64_t>(tensor_type.dims());
     auto random =
         builder
             .Build<paddle::dialect::UniformOp>(

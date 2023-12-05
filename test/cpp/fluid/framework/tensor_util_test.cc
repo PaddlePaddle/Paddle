@@ -26,7 +26,7 @@ TEST(TensorCopy, Tensor) {
   phi::DenseTensor dst_tensor;
   phi::CPUContext cpu_ctx((platform::CPUPlace()));
 
-  int* src_ptr = src_tensor.mutable_data<int>(phi::make_ddim({3, 3}),
+  int* src_ptr = src_tensor.mutable_data<int>(common::make_ddim({3, 3}),
                                               platform::CPUPlace());
 
   std::array<int, 9> arr = {1, 2, 3, 4, 5, 6, 7, 8, 9};
@@ -65,7 +65,7 @@ TEST(TensorCopy, Tensor) {
     phi::DenseTensor gpu_tensor;
     phi::DenseTensor dst_tensor;
 
-    int* src_ptr = src_tensor.mutable_data<int>(phi::make_ddim({3, 3}),
+    int* src_ptr = src_tensor.mutable_data<int>(common::make_ddim({3, 3}),
                                                 platform::CPUPlace());
 
     int arr[9] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
@@ -129,7 +129,7 @@ TEST(TensorFromVector, Tensor) {
     phi::DenseTensor cpu_tensor;
 
     // Copy to CPU phi::DenseTensor
-    cpu_tensor.Resize(phi::make_ddim({3, 3}));
+    cpu_tensor.Resize(common::make_ddim({3, 3}));
     auto cpu_place = new paddle::platform::CPUPlace();
     paddle::framework::TensorFromVector<int>(src_vec, &cpu_tensor);
 
@@ -142,7 +142,7 @@ TEST(TensorFromVector, Tensor) {
     }
 
     src_vec.erase(src_vec.begin(), src_vec.begin() + 5);
-    cpu_tensor.Resize(phi::make_ddim({2, 2}));
+    cpu_tensor.Resize(common::make_ddim({2, 2}));
     paddle::framework::TensorFromVector<int>(src_vec, &cpu_tensor);
     cpu_ptr = cpu_tensor.data<int>();
     src_ptr = src_vec.data();
@@ -162,13 +162,13 @@ TEST(TensorFromVector, Tensor) {
     phi::DenseTensor dst_tensor;
 
     // Copy to CPU phi::DenseTensor
-    cpu_tensor.Resize(phi::make_ddim({3, 3}));
+    cpu_tensor.Resize(common::make_ddim({3, 3}));
     auto cpu_place = new paddle::platform::CPUPlace();
     phi::CPUContext cpu_ctx(*cpu_place);
     paddle::framework::TensorFromVector<int>(src_vec, cpu_ctx, &cpu_tensor);
 
     // Copy to GPUTensor
-    gpu_tensor.Resize(phi::make_ddim({3, 3}));
+    gpu_tensor.Resize(common::make_ddim({3, 3}));
     auto gpu_place = new paddle::platform::CUDAPlace();
     phi::GPUContext gpu_ctx(*gpu_place);
     gpu_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
@@ -193,9 +193,9 @@ TEST(TensorFromVector, Tensor) {
 
     src_vec.erase(src_vec.begin(), src_vec.begin() + 5);
 
-    cpu_tensor.Resize(phi::make_ddim({2, 2}));
+    cpu_tensor.Resize(common::make_ddim({2, 2}));
     paddle::framework::TensorFromVector<int>(src_vec, cpu_ctx, &cpu_tensor);
-    gpu_tensor.Resize(phi::make_ddim({2, 2}));
+    gpu_tensor.Resize(common::make_ddim({2, 2}));
     paddle::framework::TensorFromVector<int>(src_vec, gpu_ctx, &gpu_tensor);
     paddle::framework::TensorCopy(gpu_tensor, *cpu_place, gpu_ctx, &dst_tensor);
 
@@ -307,7 +307,7 @@ TEST(TensorFromDLPack, Tensor) {
     std::vector<int> src_vec = {1, 2, 3, 4, 5, 6, 7, 8, 9};
     phi::DenseTensor cpu_tensor;
 
-    cpu_tensor.Resize(phi::make_ddim({3, 3}));
+    cpu_tensor.Resize(common::make_ddim({3, 3}));
     paddle::platform::CPUPlace cpu_place;
     phi::CPUContext cpu_ctx(cpu_place);
     paddle::framework::TensorFromVector<int>(src_vec, cpu_ctx, &cpu_tensor);
@@ -333,13 +333,13 @@ TEST(TensorFromDLPack, Tensor) {
     phi::DenseTensor gpu_tensor_from_dlpack;
 
     // Copy to CPU phi::DenseTensor
-    cpu_tensor.Resize(phi::make_ddim({3, 3}));
+    cpu_tensor.Resize(common::make_ddim({3, 3}));
     paddle::platform::CPUPlace cpu_place;
     phi::CPUContext cpu_ctx(cpu_place);
     paddle::framework::TensorFromVector<int>(src_vec, cpu_ctx, &cpu_tensor);
 
     // Copy to GPUTensor
-    gpu_tensor.Resize(phi::make_ddim({3, 3}));
+    gpu_tensor.Resize(common::make_ddim({3, 3}));
     paddle::platform::CUDAPlace gpu_place;
     auto& gpu_ctx =
         *paddle::platform::DeviceContextPool::Instance().GetByPlace(gpu_place);

@@ -18,8 +18,7 @@
 #include <memory>
 #include <unordered_map>
 
-#include "paddle/pir/core/enforce.h"
-#include "paddle/pir/core/macros.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/pass/pass.h"
 
 namespace pir {

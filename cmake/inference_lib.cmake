@@ -288,6 +288,10 @@ include_directories(${CMAKE_BINARY_DIR}/../paddle/fluid/framework/io)
 # copy api headers for phi & custom op
 copy(
   inference_lib_dist
+  SRCS ${PADDLE_SOURCE_DIR}/paddle/common/*.h
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/common/)
+copy(
+  inference_lib_dist
   SRCS ${PADDLE_SOURCE_DIR}/paddle/phi/api/ext/*.h
   DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi/api/ext/)
 copy(
@@ -304,8 +308,17 @@ copy(
   DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi/common/)
 copy(
   inference_lib_dist
-  SRCS ${PADDLE_SOURCE_DIR}/paddle/phi/core/macros.h
+  SRCS ${PADDLE_SOURCE_DIR}/paddle/phi/core/enforce.h
   DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi/core/)
+copy(
+  inference_lib_dist
+  SRCS ${PADDLE_SOURCE_DIR}/paddle/utils/string/*.h
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/utils/string/)
+copy(
+  inference_lib_dist
+  SRCS ${PADDLE_SOURCE_DIR}/paddle/utils/string/tinyformat/tinyformat.h
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/utils/string/tinyformat/
+)
 copy(
   inference_lib_dist
   SRCS ${PADDLE_SOURCE_DIR}/paddle/phi/core/visit_type.h
@@ -320,39 +333,12 @@ copy(
   DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi/)
 copy(
   inference_lib_dist
-  SRCS ${PADDLE_SOURCE_DIR}/paddle/utils/any.h
-  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/utils/)
-copy(
-  inference_lib_dist
-  SRCS ${PADDLE_SOURCE_DIR}/paddle/utils/optional.h
-  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/utils/)
-copy(
-  inference_lib_dist
-  SRCS ${PADDLE_SOURCE_DIR}/paddle/utils/none.h
-  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/utils/)
-copy(
-  inference_lib_dist
-  SRCS ${PADDLE_SOURCE_DIR}/paddle/utils/flat_hash_map.h
-  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/utils/)
-copy(
-  inference_lib_dist
-  SRCS ${PADDLE_SOURCE_DIR}/paddle/utils/flags.h
-  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/utils/)
-copy(
-  inference_lib_dist
-  SRCS ${PADDLE_SOURCE_DIR}/paddle/utils/test_macros.h
+  SRCS ${PADDLE_SOURCE_DIR}/paddle/utils/*.h
   DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/utils/)
 copy(
   inference_lib_dist
   SRCS ${PADDLE_SOURCE_DIR}/paddle/extension.h
   DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/)
-
-if(NOT WITH_GFLAGS)
-  copy(
-    inference_lib_dist
-    SRCS ${PADDLE_SOURCE_DIR}/paddle/utils/flags_native.h
-    DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/utils/)
-endif()
 
 # the include path of phi needs to be changed to adapt to inference api path
 add_custom_command(
