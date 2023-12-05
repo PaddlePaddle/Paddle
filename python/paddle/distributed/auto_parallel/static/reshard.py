@@ -2470,13 +2470,6 @@ class Resharder:
                         and self.dist_context.process_meshes
                     ):
                         is_union_process_mesh_tensor = True
-                        print(
-                            "var:",
-                            var_name,
-                            "process meshes:",
-                            self.dist_context.process_meshes,
-                        )
-                        print("dist_attr:", dist_tensor.dist_attr)
                         assert dist_tensor.dist_attr.dims_mapping.count(
                             -1
                         ) == len(dist_tensor.dist_attr.dims_mapping)
