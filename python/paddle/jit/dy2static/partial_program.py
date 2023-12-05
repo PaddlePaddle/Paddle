@@ -824,7 +824,10 @@ class PartialProgramLayer:
         )
         if is_prim_enabled or is_cinn_enabled:
             in_pir_pt_mode = False
-        if force_not_use_pt:
+
+        pt_flag = 'FLAGS_enable_pir_with_pt_in_dy2st'
+        is_pt_flag_opened = get_flags(pt_flag)[pt_flag]
+        if force_not_use_pt and is_pt_flag_opened:
             in_pir_pt_mode = False
         attrs.extend(['in_pir_pt_mode', in_pir_pt_mode])
 
