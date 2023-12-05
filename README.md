@@ -96,12 +96,6 @@ We provide [English](https://www.paddlepaddle.org.cn/documentation/docs/en/guide
 
 - Community Blog: https://pfcc.blog/
 
-## Communication
-
-- [Github Issues](https://github.com/PaddlePaddle/Paddle/issues)
-- QQ discussion group: 441226485 (PaddlePaddle).
-- [Forums](https://aistudio.baidu.com/paddle/forum): discuss implementations, research, etc.
-
 ## Courses
 
 - [Server Deployments](https://aistudio.baidu.com/aistudio/course/introduce/19084): Courses introducing high performance server deployments via local and remote services.
