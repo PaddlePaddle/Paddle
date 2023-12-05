@@ -3870,9 +3870,7 @@ def householder_product(x, tau, name=None):
     out = out.reshape(org_x_shape)
     return out
   
-def histogramdd(
-    x, bins=10, ranges=None, density=False, weights=None, name=None
-):
+def histogramdd(x, bins=10, ranges=None, density=False, weights=None, name=None):
     r"""
     Computes a multi-dimensional histogram of the values in a tensor.
     Interprets the elements of an input tensor whose innermost dimension has size N as a collection of N-dimensional points. Maps each of the points into a set of N-dimensional bins and returns the number of points (or total weight) in each bin.
