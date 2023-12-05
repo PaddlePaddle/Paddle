@@ -258,10 +258,10 @@ std::set<std::string> GetRegisterDataType(const std::string& op_name) {
   return data_type;
 }
 
-void DoCheck(const pir::Value& value,
-             const std::string& input_name,
-             const std::set<std::string>& expected_dtype,
-             const std::string& op_name) {
+void DoValueCheck(const pir::Value& value,
+                  const std::string& input_name,
+                  const std::set<std::string>& expected_dtype,
+                  const std::string& op_name) {
   if (value.type().isa<pir::DenseTensorType>()) {
     std::string value_type = phi::DataTypeToString(dialect::TransToPhiDataType(
         value.type().dyn_cast<pir::DenseTensorType>().dtype()));
@@ -291,7 +291,7 @@ void CheckValueDataType(const pir::Value& value,
                         const std::string& op_name) {
   VLOG(6) << "CheckValueDataType for " << op_name << ", input: " << input_name;
   std::set<std::string> expected_dtype = GetRegisterDataType(op_name);
-  DoCheck(value, input_name, expected_dtype, op_name);
+  DoValueCheck(value, input_name, expected_dtype, op_name);
 }
 
 void CheckVectorOfValueDataType(const std::vector<pir::Value>& vector_value,
@@ -301,7 +301,40 @@ void CheckVectorOfValueDataType(const std::vector<pir::Value>& vector_value,
           << ", input: " << input_name;
   std::set<std::string> expected_dtype = GetRegisterDataType(op_name);
   for (auto& value : vector_value) {
-    DoCheck(value, input_name, expected_dtype, op_name);
+    DoValueCheck(value, input_name, expected_dtype, op_name);
+  }
+}
+
+void CheckDataType(const phi::DataType& dtype,
+                   const std::string& dtype_name,
+                   const std::string& op_name) {
+  VLOG(6) << "CheckDataType for " << op_name << ", input dtype: " << dtype_name;
+  std::set<std::string> expected_dtype = GetRegisterDataType(op_name);
+
+  std::string str_dtype = phi::DataTypeToString(dtype);
+  if (expected_dtype.find(str_dtype) == expected_dtype.end()) {
+    std::ostringstream joined;
+    std::copy(expected_dtype.begin(),
+              expected_dtype.end(),
+              std::ostream_iterator<std::string>(joined, ","));
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Check data type error for op: %s, dtype is %s, and "
+        "expected_dtype is %s",
+        op_name,
+        str_dtype,
+        joined.str()));
+  }
+}
+
+void CheckDataTypeOrValue(const phi::DataType& dtype,
+                          const std::string& dtype_name,
+                          const pir::Value& value,
+                          const std::string& value_name,
+                          const std::string& op_name) {
+  if (dtype == phi::DataType::UNDEFINED) {
+    CheckValueDataType(value, value_name, op_name);
+  } else {
+    CheckDataType(dtype, dtype_name, op_name);
   }
 }
 

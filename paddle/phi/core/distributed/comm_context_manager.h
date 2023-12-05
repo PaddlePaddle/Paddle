@@ -20,9 +20,9 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/distributed/comm_context.h"
-#include "paddle/phi/core/macros.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/backends/gpu/forwards.h"
@@ -91,6 +91,14 @@ class CommContextManager {
   static void CreateXCCLCommContext(const std::shared_ptr<Store>& store,
                                     const std::string& unique_comm_key,
                                     const phi::Place& place,
+                                    int rank,
+                                    int size,
+                                    const std::string& hash_key = "");
+#endif
+
+#if defined(PADDLE_WITH_XPU_BKCL)
+  static void CreateBKCLCommContext(const std::shared_ptr<Store>& store,
+                                    const std::string& unique_comm_key,
                                     int rank,
                                     int size,
                                     const std::string& hash_key = "");

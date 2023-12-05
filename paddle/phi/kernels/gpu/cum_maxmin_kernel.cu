@@ -275,7 +275,7 @@ void ScanWithIndicesKernel(const Context& dev_ctx,
             x_data, values_data, indices_data, num_rows, row_size, init, op);
   } else {
     int64_t row_size = x.dims()[axis];
-    auto sizes = phi::vectorize(x.dims());
+    auto sizes = common::vectorize(x.dims());
 
     const int64_t num_orows =
         std::accumulate(sizes.begin(),

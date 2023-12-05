@@ -28,4 +28,4 @@ cc_library(
 cc_library(
   staticgraph_executor_statistics
   SRCS executor_statistics.cc
-  DEPS enforce glog phi)
+  DEPS enforce glog phi common)

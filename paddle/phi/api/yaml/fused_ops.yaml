@@ -392,7 +392,7 @@
   infer_meta :
     func : SkipLayerNormInferMeta
   kernel :
-    func : skip_layer
+    func : skip_layernorm
     data_type : x
 
 - op : squeeze_excitation_block

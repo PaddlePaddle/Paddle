@@ -6,5 +6,5 @@ endif()
 register_operators()
 
 if(WITH_UNITY_BUILD)
-  target_link_libraries(paddle_operators_sequence_ops_unity phi)
+  target_link_libraries(paddle_operators_sequence_ops_unity phi common)
 endif()

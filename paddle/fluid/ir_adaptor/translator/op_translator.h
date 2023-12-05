@@ -49,12 +49,12 @@ struct OpTranscriber {
   using OpAttributeInfoList = std::vector<dialect::OpAttributeInfo>;
   using OpOutputInfo = dialect::OpOutputInfo;
   using OpOutputInfoList = std::vector<dialect::OpOutputInfo>;
-  using InputHandlerFn = std::function<pir::OpResult(pir::IrContext*,
-                                                     TranslationContext*,
-                                                     const OpDesc&,
-                                                     const std::string&,
-                                                     const OpInputInfo&,
-                                                     pir::Block*)>;
+  using InputHandlerFn = std::function<pir::Value(pir::IrContext*,
+                                                  TranslationContext*,
+                                                  const OpDesc&,
+                                                  const std::string&,
+                                                  const OpInputInfo&,
+                                                  pir::Block*)>;
   using AttributeHandlerFn = std::function<pir::Attribute(
       pir::IrContext*, const OpDesc&, const OpAttributeInfo&)>;
 
