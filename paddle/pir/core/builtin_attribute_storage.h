@@ -142,6 +142,7 @@ struct ArrayAttributeStorage : public AttributeStorage {
                size_);
     return data_[index];
   }
+  Attribute operator[](size_t index) const { return data_[index]; }
 
  private:
   Attribute *data_;
