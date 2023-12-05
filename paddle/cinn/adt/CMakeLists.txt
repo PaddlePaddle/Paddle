@@ -37,6 +37,8 @@ if(NOT CINN_ONLY)
   cinn_cc_test(inline_translator_test SRCS inline_translator_test.cc DEPS gtest
                glog)
 
+  cinn_cc_test(union_find_test SRCS union_find_test.cc DEPS gtest glog)
+
   cinn_cc_test(
     dim_expr_test
     SRCS
