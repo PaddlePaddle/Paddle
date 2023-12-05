@@ -18,6 +18,7 @@ import logging
 import os
 import sys
 import unittest
+from contextlib import contextmanager
 from enum import Flag, auto
 from functools import wraps
 from pathlib import Path
@@ -456,3 +457,15 @@ def import_legacy_test_utils():
 legacy_test_utils = import_legacy_test_utils()
 dygraph_guard = legacy_test_utils.dygraph_guard
 static_guard = legacy_test_utils.static_guard
+
+
+@contextmanager
+def enable_to_static_guard(flag: bool):
+    program_translator = paddle.jit.api.ProgramTranslator()
+    original_flag_value = program_translator.enable_to_static
+    program_translator.enable(flag)
+    try:
+        program_translator.enable(flag)
+        yield
+    finally:
+        program_translator.enable(original_flag_value)
