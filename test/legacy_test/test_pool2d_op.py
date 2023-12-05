@@ -176,15 +176,22 @@ def lp_pool2D_forward_naive(
             c_end = np.min((c_end, W))
 
             x_masked = x[:, :, r_start:r_end, c_start:c_end]
-            x_masked = np.power(np.fabs(x_masked), norm_type)
 
-            if data_type == np.int8 or data_type == np.uint8:
+            if norm_type == 0:
+                x_masked = x_masked != 0
+                out[:, :, i, j] = (np.sum(x_masked, axis=(2, 3))).astype(
+                    data_type
+                )
+            elif norm_type == np.inf:
                 out[:, :, i, j] = (
-                    np.rint(
-                        np.power(np.sum(x_masked, axis=(2, 3)), 1.0 / norm_type)
-                    )
+                    np.max(np.fabs(x_masked), axis=(2, 3))
+                ).astype(data_type)
+            elif norm_type == -np.inf:
+                out[:, :, i, j] = (
+                    np.min(np.fabs(x_masked), axis=(2, 3))
                 ).astype(data_type)
             else:
+                x_masked = np.power(np.fabs(x_masked), norm_type)
                 out[:, :, i, j] = (
                     np.power(np.sum(x_masked, axis=(2, 3)), 1.0 / norm_type)
                 ).astype(data_type)

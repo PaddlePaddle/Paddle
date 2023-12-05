@@ -79,16 +79,36 @@ class LPPool {
   HOSTDEVICE inline void setNormType(float ntype) { norm_type = ntype; }
 
   DEVICE inline T initial() {
-    intermediate_res = static_cast<MT>(0.0f);
+    if (norm_type == -INFINITY) {
+      intermediate_res = static_cast<MT>(INFINITY);
+    } else {
+      intermediate_res = static_cast<MT>(0.0f);
+    }
     return static_cast<T>(0);
   }
 
   DEVICE inline void compute(const T& x, T* y UNUSED) {
-    intermediate_res += static_cast<MT>(powf(fabsf(x), norm_type));
+    if (norm_type == 0) {
+      intermediate_res += static_cast<MT>(x != static_cast<T>(0));
+    } else if (norm_type == INFINITY) {
+      intermediate_res = intermediate_res > static_cast<MT>(fabsf(x))
+                             ? intermediate_res
+                             : static_cast<MT>(fabsf(x));
+    } else if (norm_type == -INFINITY) {
+      intermediate_res = intermediate_res < static_cast<MT>(fabsf(x))
+                             ? intermediate_res
+                             : static_cast<MT>(fabsf(x));
+    } else {
+      intermediate_res += static_cast<MT>(powf(fabsf(x), norm_type));
+    }
   }
 
   DEVICE inline void finalize(T* y) {
-    *y = static_cast<T>(powf(intermediate_res, 1.0 / norm_type));
+    if (norm_type == 0 || norm_type == INFINITY || norm_type == -INFINITY) {
+      *y = static_cast<T>(intermediate_res);
+    } else {
+      *y = static_cast<T>(powf(intermediate_res, 1.0 / norm_type));
+    }
   }
 };
 
@@ -120,10 +140,16 @@ class LPPoolGrad {
   HOSTDEVICE inline void setNormType(float ntype) { norm_type = ntype; }
 
   HOSTDEVICE inline void compute(const T& x, const T& y, const T& dy, T* dx) {
-    *dx +=
-        static_cast<T>(static_cast<double>(dy) * static_cast<double>(x) *
-                       powf(fabsf(static_cast<double>(x)), norm_type - 2.0f) /
-                       powf(static_cast<double>(y), norm_type - 1.0f));
+    if (norm_type == 0) {
+      *dx += static_cast<T>(0);
+    } else if (norm_type == INFINITY || norm_type == -INFINITY) {
+      *dx += dy * static_cast<T>(x == y);
+    } else {
+      *dx +=
+          static_cast<T>(static_cast<double>(dy) * static_cast<double>(x) *
+                         powf(fabsf(static_cast<double>(x)), norm_type - 2.0f) /
+                         powf(static_cast<double>(y), norm_type - 1.0f));
+    }
   }
 };
 

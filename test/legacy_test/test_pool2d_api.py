@@ -415,7 +415,100 @@ class TestPool2D_API(unittest.TestCase):
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
             lp_pool2d_dg = paddle.nn.layer.LPPool2D(
-                norm_type=2,
+                norm_type=norm_type,
+                kernel_size=2,
+                stride=2,
+                ceil_mode=False,
+            )
+            result = lp_pool2d_dg(input)
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+
+    def check_lp_dygraph_results_norm_type_is_zero(self, place):
+        with base.dygraph.guard(place):
+            input_np = np.random.random([2, 3, 32, 32]).astype("float32")
+            input = base.dygraph.to_variable(input_np)
+            norm_type = 0
+            result = lp_pool2d(
+                input,
+                norm_type,
+                kernel_size=2,
+                stride=2,
+                ceil_mode=False,
+            )
+
+            result_np = lp_pool2D_forward_naive(
+                input_np,
+                norm_type,
+                ksize=[2, 2],
+                strides=[2, 2],
+                ceil_mode=False,
+            )
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+
+            lp_pool2d_dg = paddle.nn.layer.LPPool2D(
+                norm_type=norm_type,
+                kernel_size=2,
+                stride=2,
+                ceil_mode=False,
+            )
+            result = lp_pool2d_dg(input)
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+
+    def check_lp_dygraph_results_norm_type_is_inf(self, place):
+        with base.dygraph.guard(place):
+            input_np = np.random.random([2, 3, 32, 32]).astype("float32")
+            input = base.dygraph.to_variable(input_np)
+            norm_type = np.inf
+            result = lp_pool2d(
+                input,
+                norm_type,
+                kernel_size=2,
+                stride=2,
+                ceil_mode=False,
+            )
+
+            result_np = lp_pool2D_forward_naive(
+                input_np,
+                norm_type,
+                ksize=[2, 2],
+                strides=[2, 2],
+                ceil_mode=False,
+            )
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+
+            lp_pool2d_dg = paddle.nn.layer.LPPool2D(
+                norm_type=norm_type,
+                kernel_size=2,
+                stride=2,
+                ceil_mode=False,
+            )
+            result = lp_pool2d_dg(input)
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+
+    def check_lp_dygraph_results_norm_type_is_negative_inf(self, place):
+        with base.dygraph.guard(place):
+            input_np = np.random.random([2, 3, 32, 32]).astype("float32")
+            input = base.dygraph.to_variable(input_np)
+            norm_type = -np.inf
+            result = lp_pool2d(
+                input,
+                norm_type,
+                kernel_size=2,
+                stride=2,
+                ceil_mode=False,
+            )
+
+            result_np = lp_pool2D_forward_naive(
+                input_np,
+                norm_type,
+                ksize=[2, 2],
+                strides=[2, 2],
+                ceil_mode=False,
+            )
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+
+            lp_pool2d_dg = paddle.nn.layer.LPPool2D(
+                norm_type=norm_type,
                 kernel_size=2,
                 stride=2,
                 ceil_mode=False,
@@ -446,7 +539,7 @@ class TestPool2D_API(unittest.TestCase):
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
             lp_pool2d_dg = paddle.nn.layer.LPPool2D(
-                norm_type=2,
+                norm_type=norm_type,
                 kernel_size=2,
                 stride=2,
                 ceil_mode=True,
@@ -541,6 +634,9 @@ class TestPool2D_API(unittest.TestCase):
             self.check_lp_dygraph_stride_is_none(place)
             self.check_lp_dygraph_ceilmode_results(place)
             self.check_lp_dygraph_nhwc_results(place)
+            self.check_lp_dygraph_results_norm_type_is_zero(place)
+            self.check_lp_dygraph_results_norm_type_is_inf(place)
+            self.check_lp_dygraph_results_norm_type_is_negative_inf(place)
 
     @test_with_pir_api
     def test_pool2d_static(self):
