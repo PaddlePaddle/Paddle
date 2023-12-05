@@ -227,28 +227,26 @@ class DistributedCrossEntropyImpl0(DistributedOperatorImpl):
             'cross_entropy_with_softmax',
         )
 
-        cross_entropy_op = copy_op_without_infer_shape(
-            src_op, main_block, ctx, kwargs
-        )
+        copy_op_without_infer_shape(src_op, main_block, ctx, kwargs)
 
-        # set dist op's dist_attr with serial op's dist_attr
-        copied_op_dist_attr = OperatorDistAttr()
-        copied_op_dist_attr.process_mesh = op_dist_attr.process_mesh
-        copied_op_dist_attr.impl_type = op_dist_attr.impl_type
-        copied_op_dist_attr.impl_idx = op_dist_attr.impl_idx
-        for input_varname in cross_entropy_op.desc.input_arg_names():
-            input_dist_attr = op_dist_attr.get_input_dist_attr(input_varname)
-            assert input_dist_attr is not None, f"dist_attr is {op_dist_attr}"
-            copied_op_dist_attr.set_input_dist_attr(
-                input_varname, input_dist_attr
-            )
-        for output_varname in cross_entropy_op.desc.output_arg_names():
-            output_dist_attr = op_dist_attr.get_output_dist_attr(output_varname)
-            assert output_dist_attr is not None, f"dist_attr is {op_dist_attr}"
-            copied_op_dist_attr.set_output_dist_attr(
-                output_varname, output_dist_attr
-            )
-        ctx.set_op_dist_attr_for_program(cross_entropy_op, copied_op_dist_attr)
+        # # set dist op's dist_attr with serial op's dist_attr
+        # copied_op_dist_attr = OperatorDistAttr()
+        # copied_op_dist_attr.process_mesh = op_dist_attr.process_mesh
+        # copied_op_dist_attr.impl_type = op_dist_attr.impl_type
+        # copied_op_dist_attr.impl_idx = op_dist_attr.impl_idx
+        # for input_varname in cross_entropy_op.desc.input_arg_names():
+        #     input_dist_attr = op_dist_attr.get_input_dist_attr(input_varname)
+        #     assert input_dist_attr is not None, f"dist_attr is {op_dist_attr}"
+        #     copied_op_dist_attr.set_input_dist_attr(
+        #         input_varname, input_dist_attr
+        #     )
+        # for output_varname in cross_entropy_op.desc.output_arg_names():
+        #     output_dist_attr = op_dist_attr.get_output_dist_attr(output_varname)
+        #     assert output_dist_attr is not None, f"dist_attr is {op_dist_attr}"
+        #     copied_op_dist_attr.set_output_dist_attr(
+        #         output_varname, output_dist_attr
+        #     )
+        # ctx.set_op_dist_attr_for_program(cross_entropy_op, copied_op_dist_attr)
 
     @staticmethod
     def backward(ctx, *args, **kwargs):

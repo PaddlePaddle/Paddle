@@ -435,6 +435,7 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
                     dist_attr.process_mesh,
                     X_grad_dist_attr,
                     ctx,
+                    chunk_id=dist_attr.chunk_id,
                 )
     else:
         # replicate
@@ -1112,6 +1113,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
             op_dist_attr.process_mesh,
             out_var_dist_attr,
             ctx,
+            chunk_id=op_dist_attr.chunk_id,
         )
 
         # init param sync
@@ -1803,6 +1805,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
             op_dist_attr.process_mesh,
             out_var_dist_attr,
             ctx,
+            chunk_id=op_dist_attr.chunk_id,
         )
 
         # init param sync
@@ -2472,6 +2475,7 @@ class DistributedMulImpl1(DistributedOperatorImpl):
             op_dist_attr.process_mesh,
             out_var_dist_attr,
             ctx,
+            chunk_id=op_dist_attr.chunk_id,
         )
 
         # init param sync
