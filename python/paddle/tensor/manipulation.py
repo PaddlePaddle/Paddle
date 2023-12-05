@@ -5928,8 +5928,8 @@ def select_scatter(x, values, axis, index, name=None):
     Embeds the values of the values tensor into x at the given index of axis.
 
     Args:
-        x (Tensor) : The Destination Tensor.
-        values (Tensor) : The tensor to embed into x.
+        x (Tensor) : The Destination Tensor. Supported data types are `bool`, `float16`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `bfloat16`, `complex64`, `complex64`.
+        values (Tensor) : The tensor to embed into x. Supported data types are `bool`, `float16`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `bfloat16`, `complex64`, `complex64`.
         axis (int) : the dimension to insert the slice into.
         index (int) : the index to select with.
         name (str, optional): Name for the operation (optional, default is None).
