@@ -2410,7 +2410,15 @@ def update_grad_var_to_var(program, strategy, grad_var_to_var):
             op.has_attr("op_namescope")
             and op.attr("op_namescope") == "/auto_parallel/reshard"
         ):
-            if op.desc.type() == "split" or op.desc.type() == "assign":
+            reshard_op_types = [
+                "split",
+                "assign",
+                "cast",
+                "c_concat",
+                "concat",
+                "c_allgather",
+            ]
+            if op.desc.type() in reshard_op_types:
                 input_names = op.desc.input("X")
                 output_names = op.desc.output("Out")
                 if input_names[0] in grad_var_to_var.keys():
