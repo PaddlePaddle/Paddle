@@ -98,6 +98,8 @@ class FallbackWrapper:
         if use_pir_api():
             return len(self.partial_program.program.program.global_block().ops)
         else:
+            if self.partial_program.program.num_blocks > 1:
+                return -1
             return len(self.partial_program.program.block(0).ops)
 
     def __call__(self, *args, **kwargs):
