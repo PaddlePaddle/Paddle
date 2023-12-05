@@ -16,6 +16,7 @@
 #include <Python.h>
 #include <algorithm>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -23,7 +24,6 @@
 
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
-#include "paddle/pir/core/builtin_op.h"
 
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
@@ -32,6 +32,7 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
+#include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
@@ -40,15 +41,21 @@
 #include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_dropout_add_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_linear_param_grad_add_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/fused_weight_only_linear_pass.h"
+#include "paddle/fluid/pir/transforms/infer_symbolic_shape_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
+#include "paddle/fluid/pybind/control_flow_api.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/block.h"
 #include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/core/builtin_op.h"
+#include "paddle/pir/core/parser/ir_parser.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/type.h"
 #include "paddle/pir/core/value.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pass/pass_registry.h"
@@ -56,17 +63,26 @@
 #include "pybind11/stl.h"
 
 #ifdef PADDLE_WITH_CINN
-#include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_lowering_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/cinn_group_lowering_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
+#include "paddle/pir/dialect/shape/ir/shape_dialect.h"
 #endif
 
 namespace py = pybind11;
-using paddle::dialect::APIBuilder;
+using paddle::dialect::ApiBuilder;
+using paddle::dialect::DenseTensorArrayType;
 using paddle::dialect::DenseTensorType;
+using paddle::dialect::IfOp;
 using paddle::dialect::SelectedRowsType;
+
 using pir::Attribute;
 using pir::Block;
+using pir::BlockArgument;
+using pir::IrParser;
 using pir::Operation;
 using pir::OpOperand;
 using pir::OpResult;
@@ -81,9 +97,13 @@ USE_PIR_PASS(dead_code_elimination_pass);
 USE_PIR_PASS(attention_fuse_pass);
 USE_PIR_PASS(fused_gemm_epilogue_pass);
 USE_PIR_PASS(fused_dropout_add_pass);
+USE_PIR_PASS(fused_weight_only_linear_pass);
 USE_PIR_PASS(fused_linear_param_grad_add_pass);
 USE_PIR_PASS(inplace_pass);
 USE_PIR_PASS(replace_fetch_with_shadow_output_pass);
+USE_PIR_PASS(conv2d_bn_fuse_pass);
+USE_PIR_PASS(conv2d_add_fuse_pass);
+USE_PIR_PASS(conv2d_add_act_fuse_pass);
 
 PHI_DECLARE_bool(print_ir);
 
@@ -117,8 +137,12 @@ inline void SetProgramInt64Attr(std::shared_ptr<Program> program,
 
 std::string GetValueInfo(Value v) {
   std::stringstream ss;
-  ss << "define_op_name=" << v.dyn_cast<OpResult>().owner()->name();
-  ss << ", index=" << v.dyn_cast<OpResult>().index();
+  if (auto op_result = v.dyn_cast<OpResult>()) {
+    ss << "define_op_name=" << op_result.owner()->name();
+    ss << ", index=" << op_result.index();
+  } else if (auto arg = v.dyn_cast<BlockArgument>()) {
+    ss << "block_arg, index = " << arg.index();
+  }
   ss << ", dtype=" << v.type();
   if (v.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
     ss << ", place="
@@ -236,6 +260,28 @@ void BindProgram(py::module *m) {
           });
 }
 
+std::shared_ptr<Program> ParseProgram(const std::string &program_str) {
+  std::stringstream ss(program_str);
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  auto program = IrParser(ctx, ss).ParseProgram();
+  return program;
+}
+
+void BindIrParser(py::module *m) { m->def("parse_program", &ParseProgram); }
+
+void RefreshOpStopgradients(Operation *op) {
+  if (op->num_operands() == 0 || op->isa<pir::ParameterOp>() ||
+      op->isa<paddle::dialect::UniformOp>()) {
+    return;
+  } else if (op->isa<pir::SliceOp>()) {
+    op->dyn_cast<pir::SliceOp>().RefreshStopGradients();
+  } else if (op->isa<pir::SplitOp>()) {
+    op->dyn_cast<pir::SplitOp>().RefreshStopGradients();
+  } else {
+    RefreshStopGradientsDefaultly(op);
+  }
+}
+
 void BindBlock(py::module *m) {
   py::class_<Block> block(*m, "Block", R"DOC(
     In IR, a Block has a list of Operation and can represent a sub computational graph.
@@ -244,24 +290,40 @@ void BindBlock(py::module *m) {
         The constructor of Block should not be invoked directly. You can
         use `Program.block()` to get a block.
   )DOC");
-  block.def("front", &Block::front, return_value_policy::reference)
+  block
+      .def(
+          "front",
+          [](Block &self) { return &self.front(); },
+          return_value_policy::reference)
       .def_property_readonly(
           "program",
           [](Block &self) { return self.GetParentOp()->GetParentProgram(); },
           return_value_policy::reference)
-      .def_property_readonly(
-          "ops",
-          [](Block &self) -> py::list {
-            py::list op_list;
-            for (auto iter = self.begin(); iter != self.end(); iter++) {
-              op_list.append(*iter);
-            }
-            return op_list;
-          })
+      .def_property_readonly("ops",
+                             [](Block &self) -> py::list {
+                               py::list op_list;
+                               for (auto &op : self) {
+                                 op_list.append(&op);
+                               }
+                               return op_list;
+                             })
+      .def(
+          "__enter__",
+          [](Block &self) -> Block & {
+            ApiBuilder::Instance().PushInsertionPoint({&self, self.end()});
+            return self;
+          },
+          return_value_policy::reference)
+      .def("__exit__",
+           [](Block &self, py::object, py::object, py::object) {
+             ApiBuilder::Instance().PopInsertionPoint();
+           })
+      .def("__len__", [](Block &self) { return self.size(); })
+      .def("args", &Block::args, return_value_policy::reference)
       .def(
           "remove_op",
           [](Block &self, Operation *op) {
-            auto op_iter = std::find(self.begin(), self.end(), op);
+            auto op_iter = std::find(self.begin(), self.end(), *op);
             self.erase(op_iter);
           },
           R"DOC(
@@ -292,24 +354,29 @@ void BindBlock(py::module *m) {
               None
 
         )DOC")
-      .def("all_parameters", [](Block &self) -> py::list {
-        py::list param_list;
-        for (auto iter = self.begin(); iter != self.end(); iter++) {
-          auto op = *iter;
-          if (op->HasAttribute(kAttrIsPersisable)) {
-            auto attrs = op->attribute(kAttrIsPersisable)
-                             .dyn_cast<pir::ArrayAttribute>()
-                             .AsVector();
-            for (uint32_t i = 0; i < attrs.size(); i++) {
-              bool is_persistable =
-                  attrs[i].dyn_cast<pir::BoolAttribute>().data();
-              if (is_persistable) {
-                param_list.append(op->result(i));
-              }
-            }
-          }
+      .def("all_parameters",
+           [](Block &self) -> py::list {
+             py::list param_list;
+             for (auto &op : self) {
+               if (op.HasAttribute(kAttrIsPersisable)) {
+                 auto attrs = op.attribute(kAttrIsPersisable)
+                                  .dyn_cast<pir::ArrayAttribute>()
+                                  .AsVector();
+                 for (uint32_t i = 0; i < attrs.size(); i++) {
+                   bool is_persistable =
+                       attrs[i].dyn_cast<pir::BoolAttribute>().data();
+                   if (is_persistable) {
+                     param_list.append(op.result(i));
+                   }
+                 }
+               }
+             }
+             return param_list;
+           })
+      .def("refresh_stopgradient", [](Block &self) {
+        for (auto &op : self) {
+          RefreshOpStopgradients(&op);
         }
-        return param_list;
       });
 }
 
@@ -335,6 +402,10 @@ void BindOperation(py::module *m) {
       .def("operand_source", &Operation::operand_source)
       .def("operands", &Operation::operands)
       .def("results", &Operation::results)
+      .def(
+          "blocks",
+          [](Operation &self) { return &self.blocks(); },
+          return_value_policy::reference)
       .def("attrs",
            [](Operation &self) -> py::dict {
              py::dict attrs_dict;
@@ -354,6 +425,13 @@ void BindOperation(py::module *m) {
            })
       .def("get_input_names",
            [](Operation &self) -> py::list {
+             if (self.HasInterface<paddle::dialect::OpYamlInfoInterface>() ==
+                 false) {
+               PADDLE_THROW(phi::errors::InvalidArgument(
+                   "Currently, we can only get input names of Operation that "
+                   "has OpYamlInfoInterface"));
+             }
+
              py::list op_list;
              paddle::dialect::OpYamlInfoInterface yaml_interface =
                  self.dyn_cast<paddle::dialect::OpYamlInfoInterface>();
@@ -410,10 +488,22 @@ void BindOperation(py::module *m) {
       .def("replace_all_uses_with",
            [](Operation &self, const std::vector<OpResult> &op_results) {
              self.ReplaceAllUsesWith(op_results);
-           });
+           })
+      .def("as_if_op",
+           [](Operation &self) { return PyIfOp(self.dyn_cast<IfOp>()); });
+  py::class_<Operation::BlockContainer> block_container(
+      *m, "Operation_BlockContainer", R"DOC(
+    The Operation_BlockContainer only use to walk all blocks in the operation.
+     )DOC");
+  block_container.def(
+      "__iter__",
+      [](Operation::BlockContainer &self) {
+        return py::make_iterator(self.begin(), self.end());
+      },
+      py::keep_alive<0, 1>());
 }
 
-py::str Value2String(const Value &self) {
+py::str Value2String(Value self) {
   std::ostringstream print_stream;
   print_stream << "Value(";
   print_stream << GetValueInfo(self);
@@ -421,7 +511,7 @@ py::str Value2String(const Value &self) {
   return print_stream.str();
 }
 
-phi::DataType GetValueDtype(const Value &value) {
+phi::DataType GetValueDtype(Value value) {
   if (value.type().isa<DenseTensorType>()) {
     return paddle::dialect::TransToPhiDataType(
         value.type().dyn_cast<DenseTensorType>().dtype());
@@ -435,7 +525,7 @@ phi::DataType GetValueDtype(const Value &value) {
   }
 }
 
-phi::DDim GetValueDims(const Value &value) {
+const phi::DDim &GetValueDims(Value value) {
   if (value.type().isa<DenseTensorType>()) {
     return value.type().dyn_cast<DenseTensorType>().dims();
   } else {
@@ -445,6 +535,55 @@ phi::DDim GetValueDims(const Value &value) {
   }
 }
 
+#define OVERRIDE_OPERATOR(operator, api, other_type)      \
+  value.def(#operator, [](Value self, other_type other) { \
+    return paddle::dialect::api(self, other);             \
+  });
+
+#define OVERRIDE_OPERATOR_WITH_SCALE(operator,            \
+                                     other_type,          \
+                                     scale_value,         \
+                                     bias_value,          \
+                                     bias_after_scale)    \
+  value.def(#operator, [](Value self, other_type other) { \
+    return paddle::dialect::scale(                        \
+        self, scale_value, bias_value, bias_after_scale); \
+  });
+
+#define OVERRIDE_OPERATOR_FOR_EACH(operator,         \
+                                   api,              \
+                                   scale_value,      \
+                                   bias_value,       \
+                                   bias_after_scale) \
+  OVERRIDE_OPERATOR(operator, api, Value)            \
+  OVERRIDE_OPERATOR_WITH_SCALE(operator,             \
+                               int,                  \
+                               scale_value,          \
+                               bias_value,           \
+                               bias_after_scale)     \
+  OVERRIDE_OPERATOR_WITH_SCALE(operator,             \
+                               float,                \
+                               scale_value,          \
+                               bias_value,           \
+                               bias_after_scale)     \
+  OVERRIDE_OPERATOR_WITH_SCALE(operator,             \
+                               double,               \
+                               scale_value,          \
+                               bias_value,           \
+                               bias_after_scale)
+
+#define OVERRIDE_COMPARE_OP_WITH_FULL(operator, api, other_type)         \
+  value.def(#operator, [](Value self, other_type other) {                \
+    auto rhs =                                                           \
+        paddle::dialect::full(/*shape=*/{}, other, GetValueDtype(self)); \
+    return paddle::dialect::api(self, rhs);                              \
+  });
+
+#define OVERRIDE_COMPARE_OP_FOR_EACH(operator, api)   \
+  OVERRIDE_OPERATOR(operator, api, Value)             \
+  OVERRIDE_COMPARE_OP_WITH_FULL(operator, api, int)   \
+  OVERRIDE_COMPARE_OP_WITH_FULL(operator, api, float) \
+  OVERRIDE_COMPARE_OP_WITH_FULL(operator, api, double)
 void BindValue(py::module *m) {
   py::class_<Value> value(*m, "Value", R"DOC(
     Value class represents the SSA value in the IR system. It is a directed edge
@@ -457,45 +596,113 @@ void BindValue(py::module *m) {
   )DOC");
   g_ir_value_pytype = reinterpret_cast<PyTypeObject *>(value.ptr());
   value
+      .def_property_readonly(
+          "block",
+          [](Value self) {
+            if (auto op_result = self.dyn_cast<OpResult>()) {
+              return op_result.owner()->GetParent();
+            }
+            return self.dyn_cast<BlockArgument>().owner();
+          },
+          return_value_policy::reference)
+      .def_property_readonly(
+          "id",
+          [](Value self) {
+            if (self.impl() == nullptr) {
+              PADDLE_THROW(phi::errors::InvalidArgument(
+                  "Currently, we can only get id of Value whose impl "
+                  "is not nullptr"));
+            } else {
+              std::stringstream ss;
+              ss << std::hex << self.impl();
+              return ss.str();
+            }
+          })
+      .def_property_readonly(
+          "name",
+          [](Value self) {
+            if (auto param_op = self.defining_op<::pir::ParameterOp>()) {
+              return param_op.param_name();
+            } else {
+              PADDLE_THROW(phi::errors::InvalidArgument(
+                  "Currently, we can only get name of Value that "
+                  "is "
+                  "persistable"));
+            }
+          })
+      .def_property(
+          "shape",
+          [](Value self) { return phi::vectorize(GetValueDims(self)); },
+          [](Value self, const std::vector<int> &shape) {
+            PADDLE_THROW(phi::errors::InvalidArgument(
+                "can't set shape when building static graph"));
+          })
+      .def_property(
+          "dtype",
+          [](Value self) { return GetValueDtype(self); },
+          [](Value self, phi::DataType dtype) {
+            PADDLE_THROW(phi::errors::InvalidArgument(
+                "can't set dtype when building static graph"));
+          })
       .def(
           "get_defining_op",
-          [](const Value &self) -> pir::Operation * {
+          [](Value self) -> pir::Operation * {
             if (auto op_result = self.dyn_cast<pir::OpResult>()) {
               return op_result.owner();
             }
             return nullptr;
           },
           return_value_policy::reference)
+      .def("numel", [](Value self) { return phi::product(GetValueDims(self)); })
+      .def("type", &Value::type)
+      .def("is_dense_tensor_type",
+           [](Value self) {
+             if (self.type().isa<DenseTensorType>()) {
+               return true;
+             } else {
+               return false;
+             }
+           })
+      .def("is_selected_row_type",
+           [](Value self) {
+             if (self.type().isa<SelectedRowsType>()) {
+               return true;
+             } else {
+               return false;
+             }
+           })
+      .def("is_dense_tensor_array_type",
+           [](Value self) {
+             if (self.type().isa<DenseTensorArrayType>()) {
+               return true;
+             } else {
+               return false;
+             }
+           })
+      .def("replace_all_uses_with",
+           [](Value self, Value value) { self.ReplaceAllUsesWith(value); })
+      .def("set_type", [](Value self, Type type) { self.set_type(type); })
       .def("first_use", &Value::first_use, return_value_policy::reference)
       .def("has_one_use", &Value::HasOneUse)
       .def("use_empty", &Value::use_empty)
-      .def("replace_all_uses_with",
-           [](Value &self, Value &op_value) {
-             self.ReplaceAllUsesWith(op_value);
+      .def("__neg__",
+           [](Value self) {
+             return paddle::dialect::scale(self, -1.0, 0.0, true);
            })
       .def("__eq__", &Value::operator==)
-      .def("__eq__",
-           [](Value &self, OpResult &other) {
-             return self.impl() == other.Value::impl();
-           })
-      .def("__hash__",
-           [](const Value &self) { return std::hash<pir::Value>{}(self); })
+      .def("__hash__", [](Value self) { return std::hash<pir::Value>{}(self); })
       .def("__str__", &Value2String)
-      .def("__repr__", &Value2String)
-      .def_property(
-          "shape",
-          [](Value &self) { return phi::vectorize(GetValueDims(self)); },
-          [](Value &self, const std::vector<int> &shape) {
-            PADDLE_THROW(phi::errors::InvalidArgument(
-                "can't set shape when building static graph"));
-          })
-      .def_property(
-          "dtype",
-          [](Value &self) { return GetValueDtype(self); },
-          [](Value &self, phi::DataType dtype) {
-            PADDLE_THROW(phi::errors::InvalidArgument(
-                "can't set dtype when building static graph"));
-          });
+      .def("__repr__", &Value2String);
+  // For basaic operators
+  OVERRIDE_OPERATOR_FOR_EACH(__add__, add, 1.0, other, true);
+  OVERRIDE_OPERATOR_FOR_EACH(__sub__, subtract, 1.0, -1.0 * other, true);
+  OVERRIDE_OPERATOR_FOR_EACH(__mul__, multiply, other, 0.0, false);
+  OVERRIDE_OPERATOR_FOR_EACH(__truediv__, divide, 1.0 / other, 0.0, false);
+  // For compare opeartors
+  OVERRIDE_COMPARE_OP_FOR_EACH(__lt__, less_than);
+  OVERRIDE_COMPARE_OP_FOR_EACH(__le__, less_equal);
+  OVERRIDE_COMPARE_OP_FOR_EACH(__gt__, greater_than);
+  OVERRIDE_COMPARE_OP_FOR_EACH(__ge__, greater_equal);
 }
 
 void BindOpOperand(py::module *m) {
@@ -562,82 +769,8 @@ void SetOpResultBoolAttr(const OpResult &self,
       attr_name, pir::ArrayAttribute::get(pir::IrContext::Instance(), attrs));
 }
 
-phi::DataType GetOpResultDtype(const OpResult &result) {
-  if (result.type().isa<DenseTensorType>()) {
-    return paddle::dialect::TransToPhiDataType(
-        result.type().dyn_cast<DenseTensorType>().dtype());
-  } else if (result.type().isa<SelectedRowsType>()) {
-    return paddle::dialect::TransToPhiDataType(
-        result.type().dyn_cast<SelectedRowsType>().dtype());
-  } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "Currently, we can only get phi::DataType from DenseTensorType and "
-        "SelectedRowsType."));
-  }
-}
-
-const phi::DDim &GetOpResultDims(const OpResult &result) {
-  if (result.type().isa<DenseTensorType>()) {
-    return result.type().dyn_cast<DenseTensorType>().dims();
-  } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "Currently, we can only get shape for dense "
-        "tensor."));
-  }
-}
-
-#define OVERRIDE_OPERATOR(operator, api, other_type)              \
-  op_result.def(#operator, [](OpResult &self, other_type other) { \
-    return paddle::dialect::api(self, other);                     \
-  });
-
-#define OVERRIDE_OPERATOR_WITH_SCALE(operator,                    \
-                                     other_type,                  \
-                                     scale_value,                 \
-                                     bias_value,                  \
-                                     bias_after_scale)            \
-  op_result.def(#operator, [](OpResult &self, other_type other) { \
-    return paddle::dialect::scale(                                \
-        self, scale_value, bias_value, bias_after_scale);         \
-  });
-
-#define OVERRIDE_OPERATOR_FOR_EACH(operator,         \
-                                   api,              \
-                                   scale_value,      \
-                                   bias_value,       \
-                                   bias_after_scale) \
-  OVERRIDE_OPERATOR(operator, api, OpResult)         \
-  OVERRIDE_OPERATOR_WITH_SCALE(operator,             \
-                               int,                  \
-                               scale_value,          \
-                               bias_value,           \
-                               bias_after_scale)     \
-  OVERRIDE_OPERATOR_WITH_SCALE(operator,             \
-                               float,                \
-                               scale_value,          \
-                               bias_value,           \
-                               bias_after_scale)     \
-  OVERRIDE_OPERATOR_WITH_SCALE(operator,             \
-                               double,               \
-                               scale_value,          \
-                               bias_value,           \
-                               bias_after_scale)
-
-#define OVERRIDE_COMPARE_OP_WITH_FULL(operator, api, other_type)            \
-  op_result.def(#operator, [](OpResult &self, other_type other) {           \
-    auto rhs =                                                              \
-        paddle::dialect::full(/*shape=*/{}, other, GetOpResultDtype(self)); \
-    return paddle::dialect::api(self, rhs);                                 \
-  });
-
-#define OVERRIDE_COMPARE_OP_FOR_EACH(operator, api)   \
-  OVERRIDE_OPERATOR(operator, api, OpResult)          \
-  OVERRIDE_COMPARE_OP_WITH_FULL(operator, api, int)   \
-  OVERRIDE_COMPARE_OP_WITH_FULL(operator, api, float) \
-  OVERRIDE_COMPARE_OP_WITH_FULL(operator, api, double)
-
 void BindOpResult(py::module *m) {
-  py::class_<OpResult> op_result(*m, "OpResult", R"DOC(
+  py::class_<OpResult, Value> op_result(*m, "OpResult", R"DOC(
     OpResult class represents the value(output) defined by a result of operation.
 
     Notes:
@@ -645,33 +778,11 @@ void BindOpResult(py::module *m) {
         when build network.
   )DOC");
   g_ir_opresult_pytype = reinterpret_cast<PyTypeObject *>(op_result.ptr());
-  op_result.def(
-      "__init__",
-      [](OpResult &self) { new (&self) OpResult(); },
-      pybind11::return_value_policy::reference);
-
-  // For basaic operators
-  OVERRIDE_OPERATOR_FOR_EACH(__add__, add, 1.0, other, true);
-  OVERRIDE_OPERATOR_FOR_EACH(__sub__, subtract, 1.0, -1.0 * other, true);
-  OVERRIDE_OPERATOR_FOR_EACH(__mul__, multiply, other, 0.0, false);
-  OVERRIDE_OPERATOR_FOR_EACH(__truediv__, divide, 1.0 / other, 0.0, false);
-  // For compare opeartors
-  OVERRIDE_COMPARE_OP_FOR_EACH(__lt__, less_than);
-  OVERRIDE_COMPARE_OP_FOR_EACH(__le__, less_equal);
-  OVERRIDE_COMPARE_OP_FOR_EACH(__gt__, greater_than);
-  OVERRIDE_COMPARE_OP_FOR_EACH(__ge__, greater_equal);
-
-  op_result.def("__eq__", &OpResult::operator==)
-      .def("__eq__",
-           [](OpResult &self, Value &other) {
-             return self.Value::impl() == other.impl();
-           })
-      .def("__neg__",
-           [](OpResult &self) {
-             return paddle::dialect::scale(self, -1.0, 0.0, true);
-           })
-      .def("__hash__",
-           [](OpResult &self) { return std::hash<pir::Value>{}(self); })
+  op_result
+      .def(
+          "__init__",
+          [](OpResult &self) { new (&self) OpResult(); },
+          pybind11::return_value_policy::reference)
       .def("__str__",
            [](OpResult &self) -> py::str {
              std::ostringstream print_stream;
@@ -685,32 +796,6 @@ void BindOpResult(py::module *m) {
              print_stream << ")";
              return print_stream.str();
            })
-      .def(
-          "get_defining_op",
-          [](const OpResult &self) -> pir::Operation * {
-            return self ? self.owner() : nullptr;
-          },
-          return_value_policy::reference)
-      .def_property_readonly(
-          "block",
-          [](OpResult &self) { return self.owner()->GetParent(); },
-          return_value_policy::reference)
-      .def_property_readonly(
-          "name",
-          [](OpResult &self) {
-            if (self.owner()->isa<::pir::GetParameterOp>()) {
-              auto param_name =
-                  self.owner()
-                      ->attribute<pir::StrAttribute>("parameter_name")
-                      .AsString();
-              return param_name;
-            } else {
-              PADDLE_THROW(phi::errors::InvalidArgument(
-                  "Currently, we can only get name of OpResult that "
-                  "is "
-                  "persistable"));
-            }
-          })
       .def("initialized",
            [](OpResult &self) {
              if (self.impl() == nullptr || self.type().storage() == nullptr) {
@@ -718,32 +803,6 @@ void BindOpResult(py::module *m) {
              } else {
                return true;
              }
-           })
-      .def("first_use", &OpResult::first_use, return_value_policy::reference)
-      .def("has_one_use", &Value::HasOneUse)
-      .def("use_empty", &OpResult::use_empty)
-      .def("type", &OpResult::type)
-      .def("is_dense_tensor_type",
-           [](OpResult &self) {
-             if (self.type().isa<DenseTensorType>()) {
-               return true;
-             } else {
-               return false;
-             }
-           })
-      .def("is_selected_row_type",
-           [](OpResult &self) {
-             if (self.type().isa<SelectedRowsType>()) {
-               return true;
-             } else {
-               return false;
-             }
-           })
-      .def("numel",
-           [](OpResult &self) { return phi::product(GetOpResultDims(self)); })
-      .def("replace_all_uses_with",
-           [](OpResult &self, OpResult &op_result) {
-             self.ReplaceAllUsesWith(op_result);
            })
       .def_property(
           "stop_gradient",
@@ -759,40 +818,17 @@ void BindOpResult(py::module *m) {
                                 /*default_value=*/true);
           })
       .def_property(
-          "is_persistable",
+          "persistable",
           [](OpResult &self) {
             return GetOpResultBoolAttr(self, kAttrIsPersisable);
           },
-          [](OpResult &self, bool is_persistable) {
+          [](OpResult &self, bool persistable) {
             // NOTE(Aurelius84): For other OpResult, set theirs
-            // is_persistable default value as false.
+            // persistable default value as false.
             SetOpResultBoolAttr(self,
                                 kAttrIsPersisable,
-                                is_persistable,
+                                persistable,
                                 /*default_value=*/false);
-          })
-      .def_property(
-          "shape",
-          [](OpResult &self) { return phi::vectorize(GetOpResultDims(self)); },
-          [](OpResult &self, const std::vector<int> &shape) {
-            PADDLE_THROW(phi::errors::InvalidArgument(
-                "can't set shape when building static graph"));
-          })
-      .def_property(
-          "dtype",
-          [](OpResult &self) {
-            if (self.type().isa<DenseTensorType>()) {
-              return paddle::dialect::TransToPhiDataType(
-                  self.type().dyn_cast<DenseTensorType>().dtype());
-            } else {
-              PADDLE_THROW(phi::errors::InvalidArgument(
-                  "Currently, we can only get dtype for dense "
-                  "tensor."));
-            }
-          },
-          [](OpResult &self, phi::DataType dtype) {
-            PADDLE_THROW(phi::errors::InvalidArgument(
-                "can't set dtype when building static graph"));
           });
 }
 
@@ -930,7 +966,7 @@ pir::OpResult FakeOpResult() {
 
 bool IsFakeOpResult(const pir::OpResult &result) {
   // create a fake opresults to simplify `ForwardBackwardSplit`.
-  return result.Value::impl() == nullptr;
+  return result.Value::impl() == nullptr || !result.Value::type();
 }
 
 static auto GetNoNeedBufferValue(const ::pir::Block *whole_block,
@@ -973,10 +1009,7 @@ static auto GetNoNeedBufferValue(const ::pir::Block *whole_block,
 
 using OpResultMap = std::unordered_map<pir::OpResult, pir::OpResult>;
 std::pair<std::shared_ptr<Program>, OpResultMap> CloneProgram(
-    const Program &program,
-    const std::vector<pir::OpResult> &op_result_forward_inputs,
-    const std::vector<pir::OpResult> &op_result_forward_params,
-    const std::vector<pir::OpResult> &op_result_forward_outputs) {
+    const Program &program) {
   // Limitation of this function:
   // 1. don't support Parameters.
   // 2. don't support Regions in operator.
@@ -984,7 +1017,7 @@ std::pair<std::shared_ptr<Program>, OpResultMap> CloneProgram(
   auto cloned_program = std::make_shared<Program>(ctx);
   std::unordered_map<pir::Value, pir::Value> value_map;
   for (auto &op : *program.block()) {
-    auto *cloned_op = BuildOpFrom(op, value_map);
+    auto *cloned_op = BuildOpFrom(&op, value_map);
     cloned_program->block()->push_back(cloned_op);
   }
   std::unordered_map<pir::OpResult, pir::OpResult> op_result_map;
@@ -993,6 +1026,47 @@ std::pair<std::shared_ptr<Program>, OpResultMap> CloneProgram(
         pair.second.dyn_cast<pir::OpResult>();
   }
   return std::make_pair(cloned_program, op_result_map);
+}
+
+void AppendSetParameter(Program *forward_program,
+                        const pir::OpResult &result,
+                        const std::string &name,
+                        size_t start_point) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  auto op_info = ctx->GetRegisteredOpInfo(pir::SetParameterOp::name());
+  pir::AttributeMap attribute_map = {
+      {"parameter_name", pir::StrAttribute::get(ctx, name)},
+  };
+  pir::Operation *operation =
+      pir::Operation::Create({result}, attribute_map, {}, op_info);
+  auto position = forward_program->block()->begin();
+  std::advance(position, start_point);
+  if (position == forward_program->block()->end()) {
+    forward_program->block()->push_back(operation);
+  } else {
+    forward_program->block()->insert(position, operation);
+  }
+}
+
+int AppendSetParameters(Program *forward_program,
+                        const std::vector<pir::OpResult> &outputs_op_result,
+                        int start_point,
+                        std::string name_prefix) {
+  int counter = 0;
+  std::unordered_set<pir::OpResult> added_op_result;
+
+  for (const auto &result : outputs_op_result) {
+    if (!added_op_result.count(result)) {
+      std::string parameter_name = name_prefix + std::to_string(counter);
+      AppendSetParameter(
+          forward_program, result, parameter_name, start_point + counter);
+      counter += 1;
+
+      added_op_result.insert(result);
+    }
+  }
+  // return the inserted op.
+  return counter;
 }
 
 SplitedResult SplitForwardBackward(
@@ -1080,7 +1154,7 @@ SplitedResult SplitForwardBackward(
     }
     auto value_type = v.type().dyn_cast<DenseTensorType>();
     auto dtype = paddle::dialect::TransToPhiDataType(value_type.dtype());
-    auto shape = phi::vectorize(value_type.dims());
+    auto shape = common::vectorize(value_type.dims());
     auto place = phi::Place();
 
     paddle::dialect::DataOp op =
@@ -1104,21 +1178,26 @@ SplitedResult SplitForwardBackward(
     // calling SplitForwardBackward multi-times.
     std::string parameter_name =
         std::string("output_") + std::to_string(counter);
+    std::unordered_set<pir::Value> inserted_value;
     for (auto it = forward_program->block()->rbegin();
          it != forward_program->block()->rend();
          ++it) {
-      auto *op = *it;
-      if (op->isa<pir::SetParameterOp>()) {
+      if (it->isa<pir::SetParameterOp>()) {
         auto out_name =
-            op->attribute<pir::StrAttribute>("parameter_name").AsString();
+            it->attribute<pir::StrAttribute>("parameter_name").AsString();
         if (out_name == parameter_name) {
           VLOG(4) << out_name
                   << " has been inserted SetParameterOp, skip it now.";
           return;
         }
+
+        inserted_value.insert(it->operand_source(0));
       }
     }
 
+    if (inserted_value.count(forward_value_map[v])) {
+      return;
+    }
     auto op_info = ctx->GetRegisteredOpInfo(pir::SetParameterOp::name());
     pir::AttributeMap attribute_map = {
         {"parameter_name", pir::StrAttribute::get(ctx, parameter_name)},
@@ -1248,23 +1327,49 @@ SplitedResult SplitForwardBackward(
   return std::make_pair(programs, attr);
 }
 
+pir::Type CreateSelectedRowsTypeByDenseTensor(pir::Type dense_tensor_type) {
+  if (dense_tensor_type.isa<DenseTensorType>()) {
+    DenseTensorType type = dense_tensor_type.dyn_cast<DenseTensorType>();
+    return SelectedRowsType::get(pir::IrContext::Instance(),
+                                 type.dtype(),
+                                 type.dims(),
+                                 type.data_layout(),
+                                 type.lod(),
+                                 type.offset());
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, input is not a dense tensor type."));
+  }
+}
+
 void BindUtils(pybind11::module *m) {
   m->def("clone_program", CloneProgram);
   m->def("split_program", SplitForwardBackward);
+  m->def("append_set_parameters", AppendSetParameters);
   m->def("fake_op_result", FakeOpResult);
   m->def("is_fake_op_result", IsFakeOpResult);
   m->def("set_global_program",
-         [](Program *program) { APIBuilder::Instance().SetProgram(program); });
+         [](Program *program) { ApiBuilder::Instance().SetProgram(program); });
+  m->def(
+      "cur_insertion_point",
+      []() { return ApiBuilder::Instance().insertion_point(); },
+      return_value_policy::reference);
+  m->def("set_insertion_point", [](const pir::InsertionPoint &insertion_point) {
+    ApiBuilder::Instance().set_insertion_point(insertion_point);
+  });
   m->def("set_insertion_point",
-         [](Operation *op) { APIBuilder::Instance().SetInsertionPoint(op); });
+         [](Operation *op) { ApiBuilder::Instance().set_insertion_point(op); });
   m->def("reset_insertion_point_to_start",
-         []() { APIBuilder::Instance().ResetInsertionPointToStart(); });
+         []() { ApiBuilder::Instance().ResetInsertionPointToStart(); });
   m->def("reset_insertion_point_to_end",
-         []() { APIBuilder::Instance().ResetInsertionPointToEnd(); });
+         []() { ApiBuilder::Instance().ResetInsertionPointToEnd(); });
   m->def("register_paddle_dialect", []() {
     pir::IrContext::Instance()
         ->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+    pir::IrContext::Instance()->GetOrRegisterDialect<pir::ControlFlowDialect>();
   });
+  m->def("create_selected_rows_type_by_dense_tensor",
+         CreateSelectedRowsTypeByDenseTensor);
   m->def(
       "translate_to_pir",
       [](const ::paddle::framework::ProgramDesc &legacy_program) {
@@ -1407,24 +1512,59 @@ void BindUtils(pybind11::module *m) {
   });
 }
 
-// TODO(Aurelius84): Need consider to make an agreement about
-// what a Pass should receive and return. Existed Passes have
-// mutable and immutable interface.
-std::shared_ptr<Program> ApplyPirPass(Program &forward_program) {  // NOLINT
+static bool HasDynamicShape(const Program &program) {
+  for (const auto &op : *program.block()) {
+    if (op.isa<pir::CombineOp>()) {
+      continue;
+    }
+    for (uint32_t i = 0; i < op.num_results(); ++i) {
+      if (op.result(i) && op.result(i)
+                              .type()
+                              .dyn_cast<pir::ShapedTypeInterface>()
+                              .IsDynamicShape()) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+void ApplyPirPass(Program &forward_program) {  // NOLINT
 #ifdef PADDLE_WITH_CINN
   pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
+
+  bool has_dynamic_shape = HasDynamicShape(forward_program);
+
+  auto shape_analysis =
+      has_dynamic_shape
+          ? std::make_shared<pir::MockShapeConstraintIRAnalysis>(ctx)
+          : nullptr;
+
   pir::PassManager pass_manager(ctx);
+  cinn::dialect::ir::PdOp2CinnOpConverter(&forward_program);
+
+  pass_manager.AddPass(
+      std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
+  pass_manager.AddPass(pir::CreateDeadCodeEliminationPass());
   pass_manager.AddPass(pir::CreateBuildCinnPass());
+
+  if (has_dynamic_shape) {
+    pass_manager.AddPass(pir::CreateInferSymbolicShapePass(shape_analysis));
+  }
+
+  pass_manager.AddPass(
+      cinn::dialect::ir::CreateCinnGroupLoweringPass(shape_analysis));
+
   pass_manager.Run(&forward_program);
   VLOG(3) << "after BuildCinnPass, forward_program:\n" << forward_program;
-  std::unique_ptr<pir::Program> new_program =
-      cinn::dialect::ir::CINNGroupLoweringPass(&forward_program);
-  VLOG(3) << "after CINNGroupLoweringPass, forward_program:\n" << *new_program;
-  return std::move(new_program);
-#endif
+#else
   PADDLE_THROW(platform::errors::Unimplemented(
       "Currently we only support CINN Pass for Pir under @to_static, please "
       "compile PaddlePaddle with CINN"));
+#endif
 }
 void BindIrPass(pybind11::module *m) {
   m->def("apply_pir_pass", ApplyPirPass);
@@ -1487,8 +1627,10 @@ void BindPir(pybind11::module *module) {
   BindUtils(&ir_module);
   BindIrPass(&ir_module);
   BindPassManager(&ir_module);
+  BindControlFlowApi(&ir_module);
   auto ops_modules = ir_module.def_submodule("ops");
   BindOpsAPI(&ops_modules);
+  BindIrParser(&ir_module);
 }
 
 }  // namespace pybind

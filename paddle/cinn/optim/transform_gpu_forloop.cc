@@ -104,7 +104,7 @@ void RemoveGpuForloopsAxis(Expr *expr) {
       if (for_n) {
         // for(i, 2, 100);
         //        ^
-        if (for_n->min != common::make_const(0)) {
+        if (for_n->min != cinn::common::make_const(0)) {
           condition_append(ir::GE::Make(for_n->loop_var, for_n->min));
         }
 
@@ -112,7 +112,7 @@ void RemoveGpuForloopsAxis(Expr *expr) {
         //            ^
         condition_append(ir::LT::Make(for_n->loop_var, for_n->extent));
       } else {
-        if (poly_for_n->init != common::make_const(0)) {
+        if (poly_for_n->init != cinn::common::make_const(0)) {
           condition_append(
               ir::GE::Make(poly_for_n->iterator, poly_for_n->init));
         }
@@ -162,7 +162,7 @@ void CudaSyncThreadsDropIfThenElse(Expr *expr) {
         if (!blocked_statement_stack.empty()) {
           auto *last_for = blocked_statement_stack.back()->As<ir::IfThenElse>();
           if (auto *eq_n = last_for->condition.As<ir::EQ>()) {
-            if (eq_n->b() == common::make_const(0)) {
+            if (eq_n->b() == cinn::common::make_const(0)) {
               *blocked_statement_stack.back() = *expr;
             }
           }
@@ -376,7 +376,7 @@ void UpdateBufferAxisPass(ir::Expr *expr) {
           auto &indices = load ? load->indices : store->indices;
           for (auto &indice : indices) {
             optim::ReplaceVarWithExpr(&indice, loop_var, ir::Expr(0));
-            indice = common::AutoSimplify(indice);
+            indice = cinn::common::AutoSimplify(indice);
           }
         }
       }
@@ -396,7 +396,7 @@ class ReplaceLoopVarToGpu : public ir::IRMutator<> {
     auto bind_info = for_ir->bind_info();
 
     std::string var_name = "";
-    if (bind_info.offset == 0)
+    if (bind_info.offset <= 0)
       var_name = "x";
     else if (bind_info.offset == 1)
       var_name = "y";
@@ -436,7 +436,7 @@ class SharedAxisVisitor : public ir::IRMutator<> {
         for (auto axis : gpu_axis) {
           optim::ReplaceVarWithExpr(&indice, ir::Var(axis), ir::Expr(0));
         }
-        indice = common::AutoSimplify(indice);
+        indice = cinn::common::AutoSimplify(indice);
       }
     }
     ir::IRMutator<>::Visit(op, expr);
@@ -457,7 +457,7 @@ class SharedAxisVisitor : public ir::IRMutator<> {
         for (auto axis : gpu_axis) {
           optim::ReplaceVarWithExpr(&indice, ir::Var(axis), ir::Expr(0));
         }
-        indice = common::AutoSimplify(indice);
+        indice = cinn::common::AutoSimplify(indice);
       }
     }
     ir::IRMutator<>::Visit(op, expr);
@@ -484,7 +484,7 @@ class LocalAxisVisitor : public ir::IRMutator<> {
         for (auto axis : gpu_axis) {
           optim::ReplaceVarWithExpr(&indice, ir::Var(axis), ir::Expr(0));
         }
-        indice = common::AutoSimplify(indice);
+        indice = cinn::common::AutoSimplify(indice);
       }
     }
     ir::IRMutator<>::Visit(op, expr);
@@ -505,7 +505,7 @@ class LocalAxisVisitor : public ir::IRMutator<> {
         for (auto axis : gpu_axis) {
           optim::ReplaceVarWithExpr(&indice, ir::Var(axis), ir::Expr(0));
         }
-        indice = common::AutoSimplify(indice);
+        indice = cinn::common::AutoSimplify(indice);
       }
     }
     ir::IRMutator<>::Visit(op, expr);
@@ -602,8 +602,8 @@ class ResizeBufferSizeVisitor : public ir::IRMutator<> {
         ReplaceVarWithExpr(&tmp, var, Expr(idx));
 
         if (deep == vars.size() - 1) {
-          auto simplify = common::AutoSimplify(tmp);
-          auto range = common::AutoSimplify(simplify);
+          auto simplify = cinn::common::AutoSimplify(tmp);
+          auto range = cinn::common::AutoSimplify(simplify);
           CHECK(range.is_constant());
           max_range = std::max(max_range, range.as_int32() + 1);
         } else {
@@ -635,7 +635,7 @@ class ReplaceVarToZero : public ir::IRMutator<> {
       for (auto var_ : loop_var_) {
         optim::ReplaceVarWithExpr(&indice, ir::Var(var_), ir::Expr(0));
       }
-      indice = common::AutoSimplify(indice);
+      indice = cinn::common::AutoSimplify(indice);
     }
     ir::IRMutator<>::Visit(op, expr);
   }
@@ -651,7 +651,7 @@ class ReplaceVarToZero : public ir::IRMutator<> {
       for (auto var_ : loop_var_) {
         optim::ReplaceVarWithExpr(&indice, ir::Var(var_), ir::Expr(0));
       }
-      indice = common::AutoSimplify(indice);
+      indice = cinn::common::AutoSimplify(indice);
     }
 
     ir::IRMutator<>::Visit(op, expr);

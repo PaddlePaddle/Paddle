@@ -17,6 +17,7 @@
 #include <iostream>
 
 #include "absl/types/optional.h"
+#include "paddle/cinn/adt/op_equation_context.h"
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
@@ -30,9 +31,9 @@
 namespace cinn {
 namespace hlir {
 namespace op {
-using common::_CINNValuePack_;
-using common::CINNValue;
-using common::CINNValuePack;
+using cinn::common::_CINNValuePack_;
+using cinn::common::CINNValue;
+using cinn::common::CINNValuePack;
 using framework::OpStrategy;
 using framework::shape_t;
 using framework::StrategyFunction;
@@ -107,6 +108,13 @@ std::vector<Type> InferDtypeForElementwise(
   return res;
 }
 
+void GenerateEquationsForElementwise(
+    cinn::adt::config::OpEquationContext *ctx) {
+  CHECK(ctx->GetInTensorsRanks().size() != 0)
+      << "The inputs is empty! Please check again.";
+  ctx->Equal(ctx->GetInIteratorTuple(0), ctx->GetOutIteratorTuple(0));
+}
+
 std::vector<Type> InferDtypeForElementwiseBool(
     const std::vector<Type> &inputs_type, const framework::AttrMapType &attrs) {
   CHECK(!inputs_type.empty())
@@ -157,23 +165,32 @@ std::shared_ptr<OpStrategy> StrategyForScale(
         CHECK(pack_args[1].is_string());
         std::string tensor_name = pack_args[1].operator std::string();
 
-        if (bias_after_scale) {
-          out = Compute(
-              A->shape,
-              [=](const std::vector<Expr> &indice) {
-                return ir::Cast::Make(A->type(), Expr(scale)) * A(indice) +
-                       ir::Cast::Make(A->type(), Expr(bias));
-              },
-              tensor_name);
-        } else {
-          out = Compute(
-              A->shape,
-              [=](const std::vector<Expr> &indice) {
-                return ir::Cast::Make(A->type(), Expr(scale)) *
-                       (A(indice) + ir::Cast::Make(A->type(), Expr(bias)));
-              },
-              tensor_name);
-        }
+        // Paddle upscale float16 or bfloat16 compute to float32,
+        // we made CINN consistent with this behavior of Paddle
+        bool should_upscale_fp32 = A->type() == cinn::common::F16() ||
+                                   A->type() == cinn::common::BF16();
+
+        out = Compute(
+            A->shape,
+            [=](const std::vector<Expr> &indice) {
+              Expr cast_scale = should_upscale_fp32
+                                    ? Expr(scale)
+                                    : ir::Cast::Make(A->type(), Expr(scale));
+              Expr cast_bias = should_upscale_fp32
+                                   ? Expr(bias)
+                                   : ir::Cast::Make(A->type(), Expr(bias));
+              Expr cast_A_indice =
+                  should_upscale_fp32
+                      ? ir::Cast::Make(cinn::common::F32(), A(indice))
+                      : A(indice);
+              Expr add_result = bias_after_scale
+                                    ? cast_scale * cast_A_indice + cast_bias
+                                    : cast_scale * (cast_A_indice + cast_bias);
+              return should_upscale_fp32 ? ir::Cast::Make(A->type(), add_result)
+                                         : add_result;
+            },
+            tensor_name);
+
         auto stages = CreateStages({out});
         *ret = CINNValuePack{{CINNValue(Expr(out.get())), CINNValue(stages)}};
       });
@@ -274,7 +291,7 @@ std::vector<Type> InferDtypeForConstScalar(
   if (attrs.find("dtype") != attrs.end()) {
     auto dtype_str = absl::get<std::string>(attrs.at("dtype"));
     if (!dtype_str.empty()) {
-      out_type = common::Str2Type(dtype_str);
+      out_type = cinn::common::Str2Type(dtype_str);
     }
   } else {
     auto scalar = GetScalarExpr(attrs.at("value"));
@@ -352,7 +369,7 @@ std::shared_ptr<OpStrategy> StrategyForFillConstant(
         CHECK(attrs.attr_store.count("force_cpu"));
         force_cpu = absl::get<bool>(attrs.attr_store.at("force_cpu"));
 
-        if (force_cpu && target != common::DefaultHostTarget()) {
+        if (force_cpu && target != cinn::common::DefaultHostTarget()) {
           LOG(WARNING) << "The attribute \"force_cpu\" of \"fill_constant\" "
                           "not supported in CINN! The \"fill_constant\"'s "
                           "output tensor will placed on "
@@ -396,21 +413,26 @@ std::vector<shape_t> InferShapeForFillConstant(
 
 std::vector<Type> InferDtypeForFillConstant(
     const std::vector<Type> &inputs_type, const framework::AttrMapType &attrs) {
-  common::Type out_type;
+  cinn::common::Type out_type;
   CHECK(attrs.count("value"));
   if (attrs.find("dtype") != attrs.end()) {
     // attribute [dtype] are given
     auto dtype_str = absl::get<std::string>(attrs.at("dtype"));
-    out_type = common::Str2Type(dtype_str);
+    out_type = cinn::common::Str2Type(dtype_str);
     VLOG(3) << "FillConstant output dtype (from [dtype]): " << dtype_str;
   } else {
     // attribute [dtype] no given, inferred by value's type
     auto scalar = GetScalarExpr(attrs.at("value"));
     out_type = scalar->type();
     VLOG(3) << "FillConstant scalar type (from [value]): "
-            << common::Type2Str(out_type);
+            << cinn::common::Type2Str(out_type);
   }
   return {out_type};
+}
+
+void GenerateEquationsForFillConstant(
+    cinn::adt::config::OpEquationContext *ctx) {
+  // Do nothing
 }
 
 std::vector<std::vector<std::string>> InferLayoutForFillConstant(
@@ -521,7 +543,7 @@ std::vector<Type> InferDtypeForAssignValue(
     auto dtype_str = absl::get<std::string>(attrs.at("dtype"));
     if (!dtype_str.empty()) {
       // if the [dtype] is not empty, output as the given type
-      out_type = common::Str2Type(dtype_str);
+      out_type = cinn::common::Str2Type(dtype_str);
     }
   }
 
@@ -534,10 +556,10 @@ std::vector<Type> InferDtypeForAssignValue(
 
 #define EXPAND_ATTR_TO_GET_DTYPE(TYPE)                           \
   else if (absl::get_if<TYPE>(&value)) { /*NOLINT*/              \
-    out_type = common::type_of<TYPE>();                          \
+    out_type = cinn::common::type_of<TYPE>();                    \
   }                                                              \
   else if (absl::get_if<std::vector<TYPE>>(&value)) { /*NOLINT*/ \
-    out_type = common::type_of<TYPE>();                          \
+    out_type = cinn::common::type_of<TYPE>();                    \
   }
 
     if (false) {  // NOLINT
@@ -897,7 +919,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForCast(
 std::vector<Type> InferDtypeForCast(const std::vector<Type> &inputs_type,
                                     const framework::AttrMapType &attrs) {
   CHECK(attrs.count("dtype"));
-  return {common::Str2Type(absl::get<std::string>(attrs.at("dtype")))};
+  return {cinn::common::Str2Type(absl::get<std::string>(attrs.at("dtype")))};
 }
 
 std::shared_ptr<framework::OpStrategy> StrategyForArange(
@@ -915,7 +937,8 @@ std::shared_ptr<framework::OpStrategy> StrategyForArange(
   auto start = absl::get<float>(attr_store.at("start"));
   auto stop = absl::get<float>(attr_store.at("stop"));
   auto step = absl::get<float>(attr_store.at("step"));
-  auto dtype = common::Str2Type(absl::get<std::string>(attr_store.at("dtype")));
+  auto dtype =
+      cinn::common::Str2Type(absl::get<std::string>(attr_store.at("dtype")));
 
   framework::CINNCompute arange_compute(
       [=](lang::Args args, lang::RetValue *ret) {
@@ -927,10 +950,10 @@ std::shared_ptr<framework::OpStrategy> StrategyForArange(
         std::string tensor_name = pack_args[0].operator std::string();
 
         auto out = pe::Arange(start, stop, step, dtype, tensor_name);
-        std::vector<common::CINNValue> res;
+        std::vector<cinn::common::CINNValue> res;
         auto stages = CreateStages({out});
-        res.push_back(common::CINNValue(out));
-        res.push_back(common::CINNValue(stages));
+        res.push_back(cinn::common::CINNValue(out));
+        res.push_back(cinn::common::CINNValue(stages));
         *ret = CINNValuePack{res};
       });
 
@@ -963,12 +986,12 @@ std::vector<std::vector<int>> InferShapeForArange(
 std::vector<Type> InferDtypeForArange(const std::vector<Type> &inputs_type,
                                       const framework::AttrMapType &attrs) {
   CHECK(attrs.count("dtype"));
-  return {common::Str2Type(absl::get<std::string>(attrs.at("dtype")))};
+  return {cinn::common::Str2Type(absl::get<std::string>(attrs.at("dtype")))};
 }
 
 std::vector<Type> InferDtypeForLogicalNot(const std::vector<Type> &inputs_type,
                                           const framework::AttrMapType &attrs) {
-  return {common::Bool()};
+  return {cinn::common::Bool()};
 }
 
 }  // namespace op
@@ -987,6 +1010,9 @@ CINN_REGISTER_HELPER(elementwise_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForElementwise))  \
       .set_attr("inferdtype",                                              \
                 MakeOpFunction(cinn::hlir::op::InferDtypeForElementwise))  \
+      .set_attr(                                                           \
+          "generate_equations",                                            \
+          MakeOpFunction(cinn::hlir::op::GenerateEquationsForElementwise)) \
       .set_attr("inferlayout",                                             \
                 MakeOpFunction(cinn::hlir::op::InferLayoutForElementwise)) \
       .set_attr<cinn::hlir::framework::OpPatternKind>(                     \
@@ -1108,6 +1134,9 @@ CINN_REGISTER_HELPER(elementwise_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForFillConstant))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForFillConstant))
+      .set_attr(
+          "generate_equations",
+          MakeOpFunction(cinn::hlir::op::GenerateEquationsForFillConstant))
 #ifndef CINN_WITH_CUDA
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForFillConstant))

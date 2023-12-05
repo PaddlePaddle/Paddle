@@ -104,16 +104,13 @@ class FallbackWrapper:
                 ),
             )
             if self.partial_program is None:
-                with EventGuard("FallbackWrapper: call compiled_fn"):
-                    outputs = self.compiled_fn(*args, **kwargs)
+                with EventGuard("FallbackWrapper: get_concrete_program"):
                     (
                         self.concrete_program,
                         self.partial_program,
                     ) = self.compiled_fn.get_concrete_program(*args, **kwargs)
-            else:
-                # Speed up Resnet from 0.0068 --> 0.0057
-                with EventGuard("FallbackWrapper: call partial_program"):
-                    outputs = self.partial_program(*args, **kwargs)
+            with EventGuard("FallbackWrapper: sot call partial_program"):
+                outputs = self.partial_program.sot_call(*args, **kwargs)
 
             clear_eager_tensor_name(outputs)
             log_do(

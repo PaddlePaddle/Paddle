@@ -60,7 +60,7 @@ class AffineChannelCUDAKernel : public framework::OpKernel<T> {
     y->mutable_data<T>(ctx.GetPlace());
 
     const phi::DataLayout layout =
-        phi::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
+        common::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
     auto dims = x->dims();
@@ -147,7 +147,7 @@ class AffineChannelGradCUDAKernel : public framework::OpKernel<T> {
     auto* dbias = ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
 
     const phi::DataLayout layout =
-        phi::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
+        common::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
     auto dims = dy->dims();

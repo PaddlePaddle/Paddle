@@ -65,6 +65,10 @@ PD_DEFINE_bool(cinn_new_group_scheduler,
                BoolFromEnv("FLAGS_cinn_new_group_scheduler", false),
                "Whether to use new group scheduler.");
 
+PD_DEFINE_bool(cinn_bucket_compile,
+               BoolFromEnv("FLAGS_cinn_bucket_compile", false),
+               "Whether to enable bucket compile for dynamic shape.");
+
 PD_DEFINE_bool(cinn_use_common_subexpression_elimination,
                BoolFromEnv("FLAGS_cinn_use_common_subexpression_elimination",
                            false),
@@ -74,6 +78,18 @@ PD_DEFINE_string(
     cinn_custom_call_deny_ops,
     StringFromEnv("FLAGS_cinn_custom_call_deny_ops", ""),
     "a blacklist of op are denied by MarkCustomCallOps pass, separated by ;");
+
+PD_DEFINE_bool(cinn_enable_map_expr,
+               BoolFromEnv("FLAGS_cinn_enable_map_expr", false),
+               "It controls whether to use cinn with map_expr");
+
+PD_DEFINE_bool(cinn_enable_map_expr_schedule,
+               BoolFromEnv("FLAGS_cinn_enable_map_expr_schedule", false),
+               "It controls whether to schedule by map_expr");
+
+PD_DEFINE_bool(cinn_enable_map_expr_inline,
+               BoolFromEnv("FLAGS_cinn_enable_map_expr_inline", false),
+               "It controls whether to inline by map_expr");
 
 PD_DEFINE_bool(
     cinn_use_custom_call,
@@ -111,6 +127,14 @@ PD_DEFINE_bool(
 PD_DEFINE_bool(cinn_compile_with_nvrtc,
                BoolFromEnv("FLAGS_cinn_compile_with_nvrtc", true),
                "Whether nvrtc compile cuda source with nvrtc(default nvcc).");
+
+PD_DEFINE_bool(
+    cinn_nvrtc_cubin_with_fmad,
+    BoolFromEnv("FLAGS_cinn_nvrtc_cubin_with_fmad", true),
+    "Whether nvrtc enables fmad when compile to cubin. This flag only works "
+    "when FLAGS_nvrtc_compile_to_cubin=true. Fmad is the cuda speed up "
+    "technique which contract fp mulitplication and addition/subtraction into "
+    "multiply-add operation. It may result in different fp precision.");
 
 // FLAGS for performance analysis and accuracy debug
 PD_DEFINE_bool(cinn_sync_run,
@@ -203,6 +227,10 @@ PD_DEFINE_double(cinn_infer_model_version,
                  "Paddle has different model format in inference model. We use "
                  "a flag to load different versions.");
 
+PD_DEFINE_bool(cinn_use_cutlass,
+               BoolFromEnv("FLAGS_cinn_use_cutlass", false),
+               "Whether to use cutlass kernels");
+
 namespace cinn {
 namespace runtime {
 
@@ -276,10 +304,11 @@ bool IsCompiledWithCUDNN() {
 #endif
 }
 
-common::Target CurrentTarget::target_ = common::DefaultTarget();
+cinn::common::Target CurrentTarget::target_ = cinn::common::DefaultTarget();
 
-void CurrentTarget::SetCurrentTarget(const common::Target& target) {
-  if (!IsCompiledWithCUDA() && target.arch == common::Target::Arch::NVGPU) {
+void CurrentTarget::SetCurrentTarget(const cinn::common::Target& target) {
+  if (!IsCompiledWithCUDA() &&
+      target.arch == cinn::common::Target::Arch::NVGPU) {
     LOG(FATAL) << "Current CINN version does not support NVGPU, please try to "
                   "recompile with -DWITH_CUDA.";
   } else {
@@ -287,7 +316,7 @@ void CurrentTarget::SetCurrentTarget(const common::Target& target) {
   }
 }
 
-common::Target& CurrentTarget::GetCurrentTarget() { return target_; }
+cinn::common::Target& CurrentTarget::GetCurrentTarget() { return target_; }
 
 }  // namespace runtime
 }  // namespace cinn

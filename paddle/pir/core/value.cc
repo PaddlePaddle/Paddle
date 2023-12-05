@@ -16,7 +16,7 @@
 
 #include <cstddef>
 
-#include "paddle/pir/core/enforce.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/op_operand.h"
 #include "paddle/pir/core/op_result.h"
 #include "paddle/pir/core/operation.h"
@@ -85,6 +85,8 @@ void Value::ReplaceUsesWithIf(
   for (auto it = use_begin(); it != use_end();) {
     if (should_replace(*it)) {
       (it++)->set_source(new_value);
+    } else {
+      it++;
     }
   }
 }

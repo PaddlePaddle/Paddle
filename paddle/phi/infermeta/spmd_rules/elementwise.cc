@@ -81,7 +81,7 @@ void GetBinaryNotations(const std::vector<int64_t>& x_shape,
 
 SpmdInfo ElementwiseUnaryInferSpmd(const DistMetaTensor& x) {
   // Step0: Verify Input Args Based on Elementwise Logic
-  auto x_shape = phi::vectorize(x.dims());
+  auto x_shape = common::vectorize(x.dims());
   int x_ndim = x_shape.size();
   TensorDistAttr x_dist_attr_src = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
@@ -113,23 +113,23 @@ SpmdInfo ElementwiseUnaryInferSpmd(const DistMetaTensor& x) {
   // input dist_attr.
   TensorDistAttr out_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
   out_dist_attr.set_dims_mapping(out_dims_mapping);
+  TensorDistAttr x_dst_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
+  x_dst_dist_attr.set_dims_mapping(out_dims_mapping);
 
-  // Step3: Handle partial
-  // Handle input tensor partial (TODO)
   VLOG(4) << "ElementwiseSPMDRule InferForward:";
   VLOG(4) << "Input0 shape: [" << str_join(x_shape) << "] "
           << "src_dims_mapping: [" << str_join(x_dims_mapping) << "] ";
   VLOG(4) << "Output dims_mapping: [" + str_join(out_dims_mapping) + "]\n\n";
 
-  return {{x_dist_attr_src}, {out_dist_attr}};
+  return {{x_dst_dist_attr}, {out_dist_attr}};
 }
 
 SpmdInfo ElementwiseUnaryInferSpmdReverse(const DistMetaTensor& x,
                                           const DistMetaTensor& out) {
   // Step0: Verify Input Args Based on Elementwise Logic
-  auto x_shape = phi::vectorize(x.dims());
+  auto x_shape = common::vectorize(x.dims());
   int x_ndim = x_shape.size();
-  auto out_shape = phi::vectorize(out.dims());
+  auto out_shape = common::vectorize(out.dims());
   int out_ndim = out_shape.size();
   TensorDistAttr out_dist_attr = out.dist_attr();
   std::vector<int64_t> out_dims_mapping = out_dist_attr.dims_mapping();
@@ -181,9 +181,9 @@ SpmdInfo ElementwiseUnaryInferSpmdReverse(const DistMetaTensor& x,
 SpmdInfo ElementwiseBinaryInferSpmd(const DistMetaTensor& x,
                                     const DistMetaTensor& y) {
   // Step0: Verify Input Args Based on Elementwise Logic
-  auto x_shape = phi::vectorize(x.dims());
+  auto x_shape = common::vectorize(x.dims());
   int x_ndim = x_shape.size();
-  auto y_shape = phi::vectorize(y.dims());
+  auto y_shape = common::vectorize(y.dims());
   int y_ndim = y_shape.size();
   TensorDistAttr x_dist_attr_src = x.dist_attr();
   TensorDistAttr y_dist_attr_src = y.dist_attr();
@@ -224,8 +224,8 @@ SpmdInfo ElementwiseBinaryInferSpmd(const DistMetaTensor& x,
   out_dist_attr.set_dims_mapping(out_dims_mapping);
 
   // Step2.3: Update inputs' dims mapping with merged one.
-  TensorDistAttr x_dist_attr_dst(x_dist_attr_src);
-  TensorDistAttr y_dist_attr_dst(y_dist_attr_src);
+  TensorDistAttr x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
+  TensorDistAttr y_dist_attr_dst = CopyTensorDistAttrForOutput(y_dist_attr_src);
   x_dist_attr_dst.set_dims_mapping(
       GetDimsMappingForAxes(x_axes, axis_to_dim_map));
   y_dist_attr_dst.set_dims_mapping(
@@ -251,11 +251,11 @@ SpmdInfo ElementwiseBinaryInferSpmdReverse(const DistMetaTensor& x,
                                            const DistMetaTensor& y,
                                            const DistMetaTensor& out) {
   // Step0: Verify Input Args Based on Elementwise Logic
-  auto x_shape = phi::vectorize(x.dims());
+  auto x_shape = common::vectorize(x.dims());
   int x_ndim = x_shape.size();
-  auto y_shape = phi::vectorize(y.dims());
+  auto y_shape = common::vectorize(y.dims());
   int y_ndim = y_shape.size();
-  auto out_shape = phi::vectorize(out.dims());
+  auto out_shape = common::vectorize(out.dims());
   int out_ndim = out_shape.size();
   int max_ndim = std::max(x_ndim, y_ndim);
   TensorDistAttr out_dist_attr = out.dist_attr();
@@ -361,7 +361,9 @@ SpmdInfo ElementwiseBinaryGradInferSpmd(const DistMetaTensor& x,
     auto dims_mapping = x_dist_attr.dims_mapping();
     dims_mapping.erase(dims_mapping.begin(), dims_mapping.begin() + diff);
     x_dist_attr.set_dims_mapping(dims_mapping);
+    x_dist_attr.set_default_dynamic_dims(dims_mapping);
     x_grad_dist_attr.set_dims_mapping(dims_mapping);
+    x_grad_dist_attr.set_default_dynamic_dims(dims_mapping);
     for (int64_t i = 0; i < diff; ++i) {
       if (out_grad.dist_attr().dims_mapping()[i] != -1) {
         x_grad_dist_attr.set_partial_status(
@@ -375,7 +377,9 @@ SpmdInfo ElementwiseBinaryGradInferSpmd(const DistMetaTensor& x,
     auto dims_mapping = y_dist_attr.dims_mapping();
     dims_mapping.erase(dims_mapping.begin(), dims_mapping.begin() + diff);
     y_dist_attr.set_dims_mapping(dims_mapping);
+    y_dist_attr.set_default_dynamic_dims(dims_mapping);
     y_grad_dist_attr.set_dims_mapping(dims_mapping);
+    y_grad_dist_attr.set_default_dynamic_dims(dims_mapping);
     for (int64_t i = 0; i < diff; ++i) {
       if (out_grad.dist_attr().dims_mapping()[i] != -1) {
         y_grad_dist_attr.set_partial_status(

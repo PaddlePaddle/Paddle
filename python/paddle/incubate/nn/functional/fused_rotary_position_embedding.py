@@ -100,6 +100,13 @@ def fused_rotary_position_embedding(
     out_v = (
         helper.create_variable_for_type_inference(dtype=v.dtype) if v else None
     )
+
+    outputs = {'out_q': out_q}
+    if out_k:
+        outputs.update({'out_k': out_k})
+    if out_v:
+        outputs.update({'out_v': out_v})
+
     helper.append_op(
         type='fused_rotary_position_embedding',
         inputs={
@@ -110,7 +117,7 @@ def fused_rotary_position_embedding(
             'cos': cos,
             'position_ids': position_ids,
         },
-        outputs={'out_q': out_q, 'out_k': out_k, 'out_v': out_v},
+        outputs=outputs,
         attrs={
             'use_neox_rotary_style': use_neox_rotary_style,
         },

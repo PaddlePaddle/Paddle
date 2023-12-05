@@ -16,10 +16,10 @@ limitations under the License. */
 
 #include <vector>
 
+#include "paddle/common/ddim.h"
+#include "paddle/common/layout.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/common/layout.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/utils/any.h"
 #include "paddle/utils/optional.h"
 #include "paddle/utils/test_macros.h"
@@ -42,6 +42,7 @@ namespace phi {
  *    0 2 5 7 10 12 15 20
  */
 using LoD = std::vector<std::vector<size_t>>;
+using DDim = phi::DDim;
 
 /// \brief The meta data of dense tensor. Take the structure type
 /// and use all default operations.
@@ -83,23 +84,13 @@ struct TEST_API DenseTensorMeta {
   LoD lod;
   size_t offset{0};
   DDim strides;
-
-#ifdef PADDLE_WITH_XPU
-  // for per tensor scale
-  float scale_value{-1.0f};
-#endif
 };
 
 inline bool operator==(const DenseTensorMeta& lhs, const DenseTensorMeta& rhs) {
   return (lhs.is_scalar == rhs.is_scalar) && lhs.use_gpudnn == rhs.use_gpudnn &&
          (lhs.dims == rhs.dims) && (lhs.dtype == rhs.dtype) &&
          (lhs.layout == rhs.layout) && (lhs.lod == rhs.lod) &&
-#ifdef PADDLE_WITH_XPU
-         (lhs.offset == rhs.offset) && (lhs.strides == rhs.strides) &&
-         (lhs.scale_value == rhs.scale_value);
-#else
          (lhs.offset == rhs.offset) && (lhs.strides == rhs.strides);
-#endif
 }
 
 struct StringTensorMeta {

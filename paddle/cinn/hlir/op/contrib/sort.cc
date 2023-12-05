@@ -40,20 +40,20 @@ namespace cinn {
 namespace hlir {
 namespace op {
 
-using common::CINNValue;
-using common::CINNValuePack;
+using cinn::common::CINNValue;
+using cinn::common::CINNValuePack;
 
 std::vector<ir::Tensor> ArgSort(const ir::Tensor &A,
-                                const common::Target &target,
+                                const cinn::common::Target &target,
                                 poly::StageMap stages,
                                 const int &axis,
                                 const bool &is_ascend,
                                 const std::string &name) {
   std::string find_func_name;
   std::string index_func_name;
-  if (target.arch == common::Target::Arch::NVGPU) {
+  if (target.arch == cinn::common::Target::Arch::NVGPU) {
     find_func_name.assign("cinn_nvgpu_next_smallest_int32");
-  } else if (target.arch == common::Target::Arch::X86) {
+  } else if (target.arch == cinn::common::Target::Arch::X86) {
     find_func_name.assign("cinn_host_next_smallest_int32");
   } else {
     LOG(FATAL) << "ArgSort only supports X86 and NVGPU ! Please Check.\n";
@@ -84,8 +84,8 @@ std::vector<ir::Tensor> ArgSort(const ir::Tensor &A,
             stride = stride * A->shape[i];
           }
         }
-        offset = common::AutoSimplify(offset);
-        stride = common::AutoSimplify(stride);
+        offset = cinn::common::AutoSimplify(offset);
+        stride = cinn::common::AutoSimplify(stride);
         auto A_shape_axis = A->shape[pos_axis];
         return lang::CallExtern(index_func_name,
                                 {A, A_shape_axis, A(indices), offset, stride});
@@ -106,8 +106,8 @@ std::vector<ir::Tensor> ArgSort(const ir::Tensor &A,
             stride = stride * A->shape[i];
           }
         }
-        offset = common::AutoSimplify(offset);
-        stride = common::AutoSimplify(stride);
+        offset = cinn::common::AutoSimplify(offset);
+        stride = cinn::common::AutoSimplify(stride);
 
         auto A_shape_axis = A->shape[pos_axis];
         auto idx = lang::CallExtern(
@@ -121,7 +121,7 @@ std::vector<ir::Tensor> ArgSort(const ir::Tensor &A,
 }
 
 std::vector<ir::Tensor> Sort(const ir::Tensor &A,
-                             const common::Target &target,
+                             const cinn::common::Target &target,
                              poly::StageMap stages,
                              const int &axis,
                              const bool &is_ascend,
@@ -192,7 +192,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForSort(
       [=](lang::Args args, lang::RetValue *ret) {
         CHECK(!args.empty())
             << "The input argument of sort_schedule is empty! Please check.\n";
-        common::CINNValuePack arg_pack = args[0];
+        cinn::common::CINNValuePack arg_pack = args[0];
         std::vector<Expr> vec_ast;
         for (int i = 0; i < arg_pack.size(); i++) {
           if (arg_pack[i].is_expr()) {
@@ -218,9 +218,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForSort(
           pe::IRScheduleInjectiveCPU(
               ir_sch, output_shapes.front(), target, true);
         }
-        std::vector<common::CINNValue> res{
-            common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-        *ret = common::CINNValuePack{res};
+        std::vector<cinn::common::CINNValue> res{
+            cinn::common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+        *ret = cinn::common::CINNValuePack{res};
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -275,7 +275,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgSort(
                                                lang::RetValue *ret) {
     CHECK(!args.empty())
         << "The input argument of argsort_schedule is empty! Please check.\n";
-    common::CINNValuePack arg_pack = args[0];
+    cinn::common::CINNValuePack arg_pack = args[0];
     std::vector<Expr> vec_ast;
     for (int i = 0; i < arg_pack.size(); i++) {
       if (arg_pack[i].is_expr()) {
@@ -300,9 +300,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgSort(
     if (prod_size > 1 && target.arch == Target::Arch::X86) {
       pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target, true);
     }
-    std::vector<common::CINNValue> res{
-        common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-    *ret = common::CINNValuePack{res};
+    std::vector<cinn::common::CINNValue> res{
+        cinn::common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+    *ret = cinn::common::CINNValuePack{res};
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();

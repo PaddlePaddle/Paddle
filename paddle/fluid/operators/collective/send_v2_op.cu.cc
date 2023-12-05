@@ -225,8 +225,8 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
           PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
               x.data<T>(), numel, dtype, peer, comm->comm(), stream));
         }
-        VLOG(3) << "rank " << comm->rank() << " send " << phi::product(x.dims())
-                << " to " << peer;
+        VLOG(3) << "rank " << comm->rank() << " send "
+                << common::product(x.dims()) << " to " << peer;
       }
       return;
     }
@@ -251,8 +251,8 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
           platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
           x->data<T>(), numel, dtype, peer, comm->comm(), stream));
-      VLOG(3) << "rank " << comm->rank() << " send " << phi::product(x->dims())
-              << " to " << peer;
+      VLOG(3) << "rank " << comm->rank() << " send "
+              << common::product(x->dims()) << " to " << peer;
     }
 #else
     PADDLE_THROW(platform::errors::Unavailable(

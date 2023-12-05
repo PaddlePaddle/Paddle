@@ -14,10 +14,13 @@
 
 ######
 import os
+import warnings
+from distutils.util import strtobool
 from functools import reduce
 
 import paddle
 from paddle import framework
+from paddle.base.dygraph import base as imperative_base
 from paddle.base.framework import EagerParamBase
 from paddle.distributed import fleet
 
@@ -74,6 +77,7 @@ class DygraphShardingOptimizer:
             )
         # the self._parameter_list holds the whole model paramters
         self._parameter_list = optimizer._parameter_list
+        self._origin_parameter_list = self._parameter_list
         self._inner_opt = optimizer
         self._hcg = hcg
         self._sharding_world_size = self._hcg.get_sharding_parallel_world_size()
@@ -90,6 +94,9 @@ class DygraphShardingOptimizer:
         self.comm_overlap = strategy.hybrid_configs[
             'sharding_configs'
         ].comm_overlap
+        self.fuse_optimizer = strategy.hybrid_configs[
+            'sharding_configs'
+        ].fuse_optimizer
         pp_overlap = strategy.hybrid_configs['pp_configs'].sharding_comm_overlap
         if self.tensor_fusion or self.comm_overlap:
             assert (
@@ -109,6 +116,23 @@ class DygraphShardingOptimizer:
             self._set_inner_opt_attr('_parameter_list', local_params)
             self._set_inner_opt_attr('_param_groups', local_params)
         else:
+            if self.fuse_optimizer:
+                lr = None
+                for param in self._origin_parameter_list:
+                    if hasattr(param, "optimize_attr"):
+                        param_lr = param.optimize_attr['learning_rate']
+                        if lr is None:
+                            lr = param_lr
+                        elif lr != param_lr:
+                            warnings.warn(
+                                "Parameters have different learning rate, "
+                                "won't do fusion on the optimizer."
+                            )
+                            self.fuse_optimizer = False
+                            break
+            self.origin_decay_param_fun = getattr(
+                self._inner_opt, '_apply_decay_param_fun', None
+            )
             self._tensor_fusion()
 
             decay_params = [
@@ -132,10 +156,7 @@ class DygraphShardingOptimizer:
                 # Without comm overlap, all grads will be communicated after check_finite,
                 # which means each sharding rank should do check_finite to all grads.
                 self._local_parameter_list = local_fused_params
-            origin_decay_param_fun = getattr(
-                self._inner_opt, '_apply_decay_param_fun', None
-            )
-            if origin_decay_param_fun is not None:
+            if self.origin_decay_param_fun is not None:
                 self._set_inner_opt_attr(
                     '_apply_decay_param_fun', apply_decay_param_fun
                 )
@@ -185,6 +206,7 @@ class DygraphShardingOptimizer:
                 dst=dst,
                 acc_step=self.accumulate_steps,
                 scale_after_comm=False,
+                apply_decay_param_fun=self.origin_decay_param_fun,
             )
             if self.comm_overlap:
                 self._comm_buffers += all_buffer
@@ -208,7 +230,17 @@ class DygraphShardingOptimizer:
         for rank_ in range(self._sharding_world_size):
             mapping[rank_] = []
         sizes = [0] * self._sharding_world_size
-        for param in self._parameter_list:
+
+        parameters = list(self._parameter_list)
+        need_sort_parameters = strtobool(
+            os.getenv('FLAGS_sharding_sort_parameters', '1')
+        )
+        if need_sort_parameters:
+            parameters.sort(
+                key=lambda p: reduce(lambda x, y: x * y, p.shape), reverse=True
+            )
+
+        for param in parameters:
             rank = sizes.index(min(sizes))
             mapping[rank].append(param)
             numel = reduce(lambda x, y: x * y, param.shape, 1)
@@ -285,7 +317,6 @@ class DygraphShardingOptimizer:
         """
         # TODO speed up this functional
 
-        logger.debug("sharding start sync parameters")
         with framework.no_grad():
             # TODO detach not need (?)
             valid_rank_to_params = (
@@ -332,6 +363,8 @@ class DygraphShardingOptimizer:
 
         return result
 
+    @imperative_base.no_grad
+    @framework.dygraph_only
     def step(self):
         # TODO Check whether the model trainable param changed and update state accordingly
 
@@ -339,9 +372,14 @@ class DygraphShardingOptimizer:
         # otherwise the self._inner_opt will only grad_clip the self._rank2params[self._sharding_rank] params
         # TODO(pangengzheng): remove the hacked grad_clip codes here when there is no diff in calculating global norm values in HybridParallelClipGrad compared to dp.
         origin_clip = self._inner_opt._grad_clip
-        if not isinstance(self._parameter_list[0], dict):
+        target_param_list = (
+            self._origin_parameter_list
+            if (not self.tensor_fusion or not self.fuse_optimizer)
+            else self._parameter_list
+        )
+        if not isinstance(target_param_list[0], dict):
             params_grads = []
-            for param in self._parameter_list:
+            for param in target_param_list:
                 if (
                     hasattr(param, "regularizer")
                     and param.regularizer is not None
@@ -355,14 +393,13 @@ class DygraphShardingOptimizer:
                 if hasattr(param, "main_grad") and param.main_grad is not None:
                     grad_var = param.main_grad
                 params_grads.append((param, grad_var))
-
             if g_shard_norm_align_dp:
                 params_grads = self._inner_opt._grad_clip(params_grads)
                 # set inner_opt._grad_clip None to avoid repeatedly grad_clip gradients inside inner_opt._apply_optimize
                 self._set_inner_opt_attr('_grad_clip', None)
             rank_params = (
                 self._rank2params[self._sharding_rank]
-                if not self.tensor_fusion
+                if (not self.tensor_fusion or not self.fuse_optimizer)
                 else self._rank2fused[self._sharding_rank]
             )
             update_param_names = [p.name for p in rank_params]

@@ -38,6 +38,7 @@ sys.path.append(
 
 from decomp_interface_gen_op_list import (
     decomp_interface_implementation_gen_op_list,
+    decomp_ops_contain_unused_output,
 )
 from op_gen import attr_types_map, to_pascal_case
 
@@ -145,7 +146,6 @@ def process_optional_output_info(apis):
 
 def gen(
     fwd_path: pathlib.Path,
-    fwd_legacy_path: pathlib.Path,
     compat_path: pathlib.Path,
     fwd_pd_op_path: pathlib.Path,
     templates_dir: pathlib.Path,
@@ -157,11 +157,7 @@ def gen(
     Args:
         prim_path (pathlib.Path): The YAML file path of the primitive API.
         fwd_path (pathlib.Path):  The YAML file path of the forwad API.
-        fwd_legacy_path (pathlib.Path): The YAML file path of the legacy
-            forwad API.
         rev_path (pathlib.Path): The YAML file path of the backward API.
-        rev_legacy_path (pathlib.Path): The YAML file path of the legacy
-            backward API.
         compat_path: (pathlib.Path): The YAML file path of the ops compat.
         fwd_pd_op_path (pathlib.Path): The YAML file path of the ir forward API.
         rev_pd_op_path (pathlib.Path): The YAML file path of the ir backward API.
@@ -173,19 +169,17 @@ def gen(
     """
     (
         fwds,
-        legacy_fwds,
         compats,
         ir_fwds,
     ) = (
         load(fwd_path),
-        load(fwd_legacy_path),
         load(compat_path),
         load(fwd_pd_op_path),
     )
     filter_compat_info(compats)
     apis = [
         {**api, **{'class_name': to_pascal_case(api["name"]) + "Op"}}
-        for api in fwds + legacy_fwds + ir_fwds
+        for api in fwds + ir_fwds
     ]
 
     apis = extend_compat_info(apis, compats)
@@ -196,7 +190,7 @@ def gen(
         for attr_item in item["attrs"]:
             if attr_item["typename"] not in attr_types_map.keys():
                 raise TypeError
-            attr_item["mapped_type"] = attr_types_map[attr_item["typename"]][0]
+            attr_item["mapped_type"] = attr_types_map[attr_item["typename"]]
         for out_item in item["outputs"]:
             if out_item["typename"] not in output_type_map.keys():
                 name = out_item["typename"]
@@ -214,6 +208,7 @@ def gen(
         destination_dir,
         apis=apis,
         decomp_white_list=decomp_interface_implementation_gen_op_list,
+        decomp_ops_list_contain_unused_output=decomp_ops_contain_unused_output,
     )
 
 
@@ -223,11 +218,6 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         '--fwd_path', type=str, help='The parsed ops yaml file.'
-    )
-    parser.add_argument(
-        '--fwd_legacy_path',
-        type=str,
-        help='The parsed ops yaml file.',
     )
     parser.add_argument(
         '--compat_path',
@@ -253,7 +243,6 @@ if __name__ == "__main__":
 
     gen(
         pathlib.Path(args.fwd_path),
-        pathlib.Path(args.fwd_legacy_path),
         pathlib.Path(args.compat_path),
         pathlib.Path(args.fwd_pd_op_path),
         pathlib.Path(args.templates_dir),

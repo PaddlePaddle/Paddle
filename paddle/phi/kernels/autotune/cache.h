@@ -57,7 +57,8 @@ enum class AlgorithmType {
   kConvBackwardFilterV8 = 12,
   kScaleBiasReluConvBNstats = 13,
   kBNFinalize = 14,
-  kAlgorithmCount = 15
+  kScaleBiasAddRelu = 15,
+  kAlgorithmCount = 16
 #endif
 };
 
@@ -181,7 +182,7 @@ class AutoTuneCache {
       }
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
     } else if (algo_type >= AlgorithmType::kConvForwardV8 &&
-               algo_type <= AlgorithmType::kBNFinalize) {
+               algo_type < AlgorithmType::kAlgorithmCount) {
       int64_t key = static_cast<int64_t>(algo_type);
       if (cudnn_v8_auto_tune_map_.find(key) == cudnn_v8_auto_tune_map_.end()) {
         CudnnFrontendPlanCache cache;
