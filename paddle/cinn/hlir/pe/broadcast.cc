@@ -29,7 +29,7 @@ namespace cinn {
 namespace hlir {
 namespace pe {
 
-using common::make_zero;
+using cinn::common::make_zero;
 using ir::Tensor;
 using lang::Compute;
 
@@ -323,8 +323,8 @@ Tensor Atan2(const Tensor& A,
 
   auto fn = [&](const Expr& elem_a, const Expr& elem_b) {
     auto atan = lang::Atan(elem_a / elem_b);
-    auto pi = common::make_const(atan->type(), PI);
-    auto half_pi = common::make_const(atan->type(), PI / 2);
+    auto pi = cinn::common::make_const(atan->type(), PI);
+    auto half_pi = cinn::common::make_const(atan->type(), PI / 2);
     auto zero = ir::Zero(atan->type());
     return ir::Select::Make(
         ir::EQ::Make(elem_b, zero),

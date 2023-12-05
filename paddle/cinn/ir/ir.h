@@ -44,8 +44,8 @@ class BufferRange;
 struct LoweredFunc;
 class Module;
 
-using common::Object;
-using common::Shared;
+using cinn::common::Object;
+using cinn::common::Shared;
 // NOTE attr_t only support POD, can not contain Expr or other IR nodes, or the
 // IRVisitor or IRCopy on PrimitiveNode will result in undefined behavior.
 using attr_t = absl::variant<int, float, bool, std::string>;
@@ -687,6 +687,21 @@ struct BindInfo {
   inline bool valid() const {
     return offset >= 0 && offset < 3 &&
            (for_type == ForType::GPUThread || for_type == ForType::GPUBlock);
+  }
+
+  friend std::ostream& operator<<(std::ostream& os, const BindInfo& bind_info) {
+    CHECK(bind_info.valid()) << "Make invalid BindInfo to stream";
+    char axis_name = 'x' + bind_info.offset;
+    std::string prefix =
+        bind_info.for_type == ForType::GPUBlock ? "blockIdx." : "threadIdx.";
+    os << prefix + axis_name;
+    return os;
+  }
+
+  operator std::string() const {
+    std::ostringstream os;
+    os << *this;
+    return os.str();
   }
 };
 

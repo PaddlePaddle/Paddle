@@ -64,9 +64,9 @@ class CUDNNGridSampleOpKernel : public framework::OpKernel<T> {
     ScopedTensorDescriptor input_desc;
     ScopedTensorDescriptor output_desc;
     cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
-        DataLayout::kNCHW, phi::vectorize<int>(input->dims()));
+        DataLayout::kNCHW, common::vectorize<int>(input->dims()));
     cudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
-        DataLayout::kNCHW, phi::vectorize<int>(output->dims()));
+        DataLayout::kNCHW, common::vectorize<int>(output->dims()));
 
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSpatialTfSamplerForward(
         handle,
@@ -123,13 +123,13 @@ class CUDNNGridSampleGradOpKernel : public framework::OpKernel<T> {
     ScopedTensorDescriptor input_grad_desc;
     ScopedTensorDescriptor output_grad_desc;
     cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
-        DataLayout::kNCHW, phi::vectorize<int>(input->dims()));
+        DataLayout::kNCHW, common::vectorize<int>(input->dims()));
     cudnnTensorDescriptor_t cudnn_input_grad_desc =
-        input_grad_desc.descriptor<T>(DataLayout::kNCHW,
-                                      phi::vectorize<int>(input_grad->dims()));
+        input_grad_desc.descriptor<T>(
+            DataLayout::kNCHW, common::vectorize<int>(input_grad->dims()));
     cudnnTensorDescriptor_t cudnn_output_grad_desc =
         output_grad_desc.descriptor<T>(
-            DataLayout::kNCHW, phi::vectorize<int>(output_grad->dims()));
+            DataLayout::kNCHW, common::vectorize<int>(output_grad->dims()));
 
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSpatialTfSamplerBackward(
         handle,

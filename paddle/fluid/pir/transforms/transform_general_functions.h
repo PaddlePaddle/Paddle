@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "paddle/phi/core/ddim.h"
+#include "paddle/common/ddim.h"
+#include "paddle/common/errors.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/parameter.h"
 #include "paddle/pir/core/type.h"

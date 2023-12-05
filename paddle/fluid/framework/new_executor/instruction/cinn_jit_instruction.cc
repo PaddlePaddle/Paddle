@@ -18,9 +18,9 @@
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
 #include "paddle/cinn/hlir/framework/instruction.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
+#include "paddle/common/errors.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/framework/paddle2cinn/transform_type.h"
-#include "paddle/phi/core/errors.h"
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #endif

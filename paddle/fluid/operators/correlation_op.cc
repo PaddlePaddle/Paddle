@@ -106,7 +106,7 @@ class CorrelationOp : public framework::OperatorWithKernel {
                               kernel_size,
                               pad_size,
                               max_displacement);
-    ctx->SetOutputDim("Output", phi::make_ddim(output_shape));
+    ctx->SetOutputDim("Output", common::make_ddim(output_shape));
   }
 
  protected:

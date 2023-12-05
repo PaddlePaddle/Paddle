@@ -16,7 +16,7 @@
 
 #include <cstddef>
 
-#include "paddle/pir/core/enforce.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/op_operand.h"
 #include "paddle/pir/core/op_result.h"
 #include "paddle/pir/core/operation.h"

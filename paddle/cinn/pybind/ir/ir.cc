@@ -41,7 +41,7 @@ std::vector<Expr> AxisMap(const std::string& kinds,
 
     // TODO(6clc): set bound of IterVar
 
-    Var iter_var = ir::_Var_::Make("iter_tmp", common::Int(32));
+    Var iter_var = ir::_Var_::Make("iter_tmp", cinn::common::Int(32));
     if (c == 'S') {
       iter_var->is_reduce_axis = false;
     } else if (c == 'R') {
@@ -89,7 +89,7 @@ IRContext Sequential(Expr min, Expr extent) {
   ForContextNode* for_ctx_node = new ForContextNode();
   for_ctx_node->min = min;
   for_ctx_node->extent = extent;
-  for_ctx_node->loop_var = ir::_Var_::Make("v", common::Int(32));
+  for_ctx_node->loop_var = ir::_Var_::Make("v", cinn::common::Int(32));
   return IRContext(for_ctx_node);
 }
 

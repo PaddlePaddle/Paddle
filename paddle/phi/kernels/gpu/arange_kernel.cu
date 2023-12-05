@@ -14,12 +14,12 @@
 
 #include "paddle/phi/kernels/arange_kernel.h"
 
+#include "paddle/common/errors.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/range_function.h"
@@ -47,7 +47,7 @@ void ArangeTensorKernel(const Context& dev_ctx,
 
   int64_t size = 0;
   phi::funcs::GetSize(start_value, end_value, step_value, &size);
-  out->Resize(phi::make_ddim({size}));
+  out->Resize(common::make_ddim({size}));
   T* out_data = dev_ctx.template Alloc<T>(out);
 
   auto stream = dev_ctx.stream();
@@ -68,7 +68,7 @@ void ArangeNullaryKernel(const Context& dev_ctx,
                          DenseTensor* out) {
   int64_t size = 0;
   phi::funcs::GetSize(start_value, end_value, step_value, &size);
-  out->Resize(phi::make_ddim({size}));
+  out->Resize(common::make_ddim({size}));
   T* out_data = dev_ctx.template Alloc<T>(out);
 
   auto stream = dev_ctx.stream();

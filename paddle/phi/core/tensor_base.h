@@ -14,12 +14,12 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/common/ddim.h"
+#include "paddle/common/layout.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/utils/type_registry.h"
 
 namespace phi {

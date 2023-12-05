@@ -5,6 +5,7 @@ if(WITH_TESTING)
       device_context
       gtest
       phi
+      common
       init
       memory
       phi_utils
