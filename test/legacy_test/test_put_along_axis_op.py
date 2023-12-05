@@ -583,6 +583,7 @@ class TestPutAlongAxisOpMaxIncludeSelf(TestPutAlongAxisOp):
         self.axis = 1
         self.axis_type = "int64"
 
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
