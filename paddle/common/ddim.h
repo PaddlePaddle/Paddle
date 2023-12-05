@@ -257,7 +257,8 @@ using common::vectorize;
 
 namespace pir {
 using DDim = common::DDim;
-}
+using LoD = std::vector<std::vector<size_t>>;
+}  // namespace pir
 
 namespace std {
 template <>
