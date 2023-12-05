@@ -12,59 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .quantization_pass import (
-    QuantizationTransformPass,
-)
-from .quantization_pass import (
-    QuantizationFreezePass,
-)
-from .quantization_pass import (
-    ConvertToInt8Pass,
-)
-from .quantization_pass import (
-    TransformForMobilePass,
-)
-from .quantization_pass import (
-    OutScaleForTrainingPass,
-)
-from .quantization_pass import (
-    OutScaleForInferencePass,
-)
-from .quantization_pass import (
-    AddQuantDequantPass,
-)
-from .quantization_pass import (
-    ReplaceFakeQuantDequantPass,
-)
-from .quantization_pass import (
-    QuantWeightPass,
-)
-from .quantization_pass import (
-    QuantizationTransformPassV2,
-)
-from .quantization_pass import (
-    AddQuantDequantPassV2,
-)
-from .quantization_pass import (
-    AddQuantDequantForInferencePass,
-)
-from .quant_int8_mkldnn_pass import (
-    QuantInt8MkldnnPass,
-)
-from .quant2_int8_mkldnn_pass import (
-    Quant2Int8MkldnnPass,
-)
-
-from .post_training_quantization import (
+from .post_training_quantization import (  # noqa: F401
     PostTrainingQuantization,
-)
-from .post_training_quantization import (
     PostTrainingQuantizationProgram,
-)
-from .post_training_quantization import (
     WeightQuantization,
 )
-from .quanter import (
-    quant_aware,
+from .quant2_int8_mkldnn_pass import (  # noqa: F401
+    Quant2Int8MkldnnPass,
+)
+from .quant_int8_mkldnn_pass import (  # noqa: F401
+    QuantInt8MkldnnPass,
+)
+from .quanter import (  # noqa: F401
     convert,
+    quant_aware,
+)
+from .quantization_pass import (  # noqa: F401
+    AddQuantDequantForInferencePass,
+    AddQuantDequantPass,
+    AddQuantDequantPassV2,
+    ConvertToInt8Pass,
+    OutScaleForInferencePass,
+    OutScaleForTrainingPass,
+    QuantizationFreezePass,
+    QuantizationTransformPass,
+    QuantizationTransformPassV2,
+    QuantWeightPass,
+    ReplaceFakeQuantDequantPass,
+    TransformForMobilePass,
 )

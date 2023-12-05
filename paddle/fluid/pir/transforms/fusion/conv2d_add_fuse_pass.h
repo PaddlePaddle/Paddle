@@ -11,21 +11,16 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #pragma once
 
-namespace pir {
-// TODO(Aurelius84): We also has DISABLE_COPY_AND_ASSIGN in phi/core/maros.h,
-// howere it's not recommended to use it in ir namspace. So we define this again
-// here.
+#include <memory>
+#include "paddle/pir/core/dll_decl.h"
 
-// Disable the copy and assignment operator for a class.
-#ifndef DISABLE_COPY_AND_ASSIGN
-#define DISABLE_COPY_AND_ASSIGN(classname)         \
- private:                                          \
-  classname(const classname&) = delete;            \
-  classname(classname&&) = delete;                 \
-  classname& operator=(const classname&) = delete; \
-  classname& operator=(classname&&) = delete
-#endif
+namespace pir {
+
+class Pass;
+
+IR_API std::unique_ptr<Pass> CreateConv2dAddFusePass();
 
 }  // namespace pir

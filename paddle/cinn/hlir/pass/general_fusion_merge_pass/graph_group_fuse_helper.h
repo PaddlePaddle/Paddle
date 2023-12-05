@@ -97,7 +97,7 @@ class GraphGroupFuseHelper final : public FuseHelper {
             Visit(node_producer);
           }
         };
-    common::IsReachablePredicator<OpGroupPtr> is_reachable(
+    cinn::common::IsReachablePredicator<OpGroupPtr> is_reachable(
         MinDepth4Node, MaxDepth4Node, VisitNextNodes);
     return is_reachable(consumer, producer, [](OpGroupPtr) {});
   }
@@ -120,7 +120,7 @@ class GraphGroupFuseHelper final : public FuseHelper {
             Visit(node_producer);
           }
         };
-    common::IsReachablePredicator<OpGroupPtr> is_reachable(
+    cinn::common::IsReachablePredicator<OpGroupPtr> is_reachable(
         MinDepth4Node, MaxDepth4Node, VisitNextNodes);
     return is_reachable(consumer, producer, [](OpGroupPtr) {});
   }

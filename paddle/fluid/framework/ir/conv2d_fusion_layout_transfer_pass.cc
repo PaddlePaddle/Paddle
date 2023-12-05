@@ -18,9 +18,9 @@
 #include <unordered_set>
 #include "paddle/fluid/framework/ir/cutlass_teller.h"
 
+#include "paddle/common/layout.h"
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 

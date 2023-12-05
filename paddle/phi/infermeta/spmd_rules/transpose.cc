@@ -50,7 +50,7 @@ void BuildEinsumNotation(const size_t x_ndim,
 SpmdInfo TransposeInferSpmd(const DistMetaTensor& x,
                             const std::vector<int>& perm) {
   // Step0: Verify input args based on transpose logic
-  std::vector<int64_t> x_shape = phi::vectorize(x.dims());
+  std::vector<int64_t> x_shape = common::vectorize(x.dims());
   size_t x_ndim = x_shape.size();
   const TensorDistAttr& x_dist_attr_src = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
@@ -107,8 +107,8 @@ SpmdInfo TransposeInferSpmdReverse(const DistMetaTensor& x,
                                    const DistMetaTensor& out,
                                    const std::vector<int>& perm) {
   // Step0: Verify input args based on transpose logic
-  const std::vector<int64_t> x_shape = phi::vectorize(x.dims());
-  const std::vector<int64_t> out_shape = phi::vectorize(out.dims());
+  const std::vector<int64_t> x_shape = common::vectorize(x.dims());
+  const std::vector<int64_t> out_shape = common::vectorize(out.dims());
   int x_ndim = x_shape.size();
   int out_ndim = out_shape.size();
   TensorDistAttr out_dist_attr_src = out.dist_attr();
@@ -171,7 +171,8 @@ SpmdInfo TransposeInferSpmdReverse(const DistMetaTensor& x,
 
 SpmdInfo TransposeGradInferSpmd(const DistMetaTensor& out_grad,
                                 const std::vector<int>& perm) {
-  const std::vector<int64_t> out_grad_shape = phi::vectorize(out_grad.dims());
+  const std::vector<int64_t> out_grad_shape =
+      common::vectorize(out_grad.dims());
   size_t out_grad_ndim = out_grad_shape.size();
   const std::vector<int64_t> out_grad_dims_mapping =
       out_grad.dist_attr().dims_mapping();
