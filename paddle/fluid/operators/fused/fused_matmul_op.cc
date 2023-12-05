@@ -37,7 +37,7 @@ static std::vector<int64_t> GetInputShape(phi::DDim dim,
   if (is_input_fused) {
     dim = dim.reshape(shape).transpose(axis);
   }
-  return phi::vectorize(dim);
+  return common::vectorize(dim);
 }
 
 class FusedMatmulOp : public framework::OperatorWithKernel {
@@ -50,8 +50,8 @@ class FusedMatmulOp : public framework::OperatorWithKernel {
     bool trans_x = ctx->Attrs().Get<bool>("trans_x");
     bool trans_y = ctx->Attrs().Get<bool>("trans_y");
 
-    std::vector<int64_t> dims_x = phi::vectorize(ctx->GetInputDim("X"));
-    std::vector<int64_t> dims_y = phi::vectorize(ctx->GetInputDim("Y"));
+    std::vector<int64_t> dims_x = common::vectorize(ctx->GetInputDim("X"));
+    std::vector<int64_t> dims_y = common::vectorize(ctx->GetInputDim("Y"));
     auto ndims_x = dims_x.size();
     auto ndims_y = dims_y.size();
     PADDLE_ENFORCE_GT(
@@ -112,7 +112,7 @@ class FusedMatmulOp : public framework::OperatorWithKernel {
       new_dims.push_back(N);  // NOLINT
     }
 
-    ctx->SetOutputDim("Out", phi::make_ddim(new_dims));
+    ctx->SetOutputDim("Out", common::make_ddim(new_dims));
     ctx->ShareLoD("X", "Out");
   };
 

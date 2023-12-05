@@ -14,9 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/common/layout.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/ddim.h"
@@ -26,8 +26,6 @@ namespace phi {
 
 class TensorBase {
  public:
-  using DDim = phi::DDim;
-
   virtual ~TensorBase() = default;
 
   /// \brief Returns the number of elements contained in tensor.

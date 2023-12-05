@@ -30,7 +30,7 @@ namespace cinn {
 namespace hlir {
 namespace framework {
 
-using common::Target;
+using cinn::common::Target;
 using GroupPtr = std::shared_ptr<hlir::framework::Graph::Group>;
 
 template <typename T>

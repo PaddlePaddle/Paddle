@@ -38,7 +38,7 @@ from setuptools.dist import Distribution
 # check python
 python_version = platform.python_version()
 version_detail = sys.version_info
-version = str(version_detail[0]) + '.' + str(version_detail[1]) 
+version = str(version_detail[0]) + '.' + str(version_detail[1])
 env_version = str(os.getenv("PY_VERSION"))
 
 if version_detail < (3, 7):
@@ -47,16 +47,22 @@ if version_detail < (3, 7):
         f"you are using Python {python_version}"
     )
 elif env_version is None:
-    print(f"export PY_VERSION = { python_version }")
+    print(f"Export PY_VERSION = { python_version }")
     os.environ["PY_VERSION"] = python_version
 
 elif env_version != version:
     warnings.warn(
         f"You set PY_VERSION={env_version}, but "
         f"your current python environment is {version} "
-        f"we will use your current python version to execute."
+        f"we will attempt to use the python version you set to execute."
     )
-    os.environ["PY_VERSION"] = python_version
+    cmd = 'which python' + env_version
+    res = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE)
+    if res.returncode == 0:
+        os.environ["PYTHON_EXECUTABLE"] = res
+    else:
+        raise RuntimeError("We can't find the version you set in your machine")
+
 
 # check cmake
 CMAKE = shutil.which('cmake3') or shutil.which('cmake')
@@ -1173,7 +1179,7 @@ def get_package_data_and_package_dir():
                     + '.so'
                 )
                 commands.append(
-                    "install_name_tool -add_rpath '@loader_path' "
+                    "install_name_tool -add_rpath '@loader_path/../libs/' "
                     + env_dict.get("PADDLE_BINARY_DIR")
                     + '/python/paddle/libs/'
                     + env_dict.get("COMMON_NAME")
@@ -1257,6 +1263,9 @@ def get_headers():
         )
         + list(  # phi api
             find_files('*.h', paddle_source_dir + '/paddle/phi/common')
+        )
+        + list(  # common api
+            find_files('*.h', paddle_source_dir + '/paddle/common')
         )
         # phi level api headers (low level api, for training only)
         + list(  # phi extension header
@@ -1387,6 +1396,7 @@ def get_setup_parameters():
         'paddle.incubate.nn',
         'paddle.incubate.asp',
         'paddle.incubate.passes',
+        'paddle.incubate.framework',
         'paddle.distribution',
         'paddle.distributed.utils',
         'paddle.distributed.sharding',

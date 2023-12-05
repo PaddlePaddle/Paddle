@@ -435,7 +435,7 @@ class TestMinOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestMinOp_ZeroDim(OpTest):
@@ -451,7 +451,7 @@ class TestMinOp_ZeroDim(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestMin6DOp(OpTest):
@@ -469,7 +469,7 @@ class TestMin6DOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestMin8DOp(OpTest):
@@ -487,7 +487,7 @@ class TestMin8DOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 @skip_check_grad_ci(
@@ -522,7 +522,7 @@ class TestMinFP16Op(OpTest):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 @unittest.skipIf(
@@ -536,7 +536,7 @@ class TestMinBF16Op(TestMinFP16Op):
         self.dtype = np.uint16
 
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0))
+        self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
 
 
 def raw_reduce_prod(x, dim=[0], keep_dim=False):
@@ -566,10 +566,10 @@ class TestProdOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
 
 
 @unittest.skipIf(
@@ -580,11 +580,11 @@ class TestProdFP16OP(TestProdOp):
         self.data_type = "float16"
 
     def test_check_output(self):
-        self.check_output_with_place(place=paddle.CUDAPlace(0))
+        self.check_output_with_place(place=paddle.CUDAPlace(0), check_pir=True)
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True
+            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True, check_pir=True
         )
 
 
@@ -608,11 +608,11 @@ class TestProdBFP16OP(TestProdOp):
         self.enable_cinn = False
 
     def test_check_output(self):
-        self.check_output_with_place(place=paddle.CUDAPlace(0))
+        self.check_output_with_place(place=paddle.CUDAPlace(0), check_pir=True)
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True
+            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True, check_pir=True
         )
 
 
@@ -637,10 +637,10 @@ class TestProdOp_ZeroDim(OpTest):
         self.attrs = {'dim': [], 'reduce_all': True}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
 
 
 class TestProdOp_ZeroDim1(TestProdOp):
@@ -694,10 +694,10 @@ class TestProd6DOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
 
 
 @unittest.skipIf(
@@ -708,11 +708,11 @@ class TestProd6DFP16OP(TestProd6DOp):
         self.data_type = "float16"
 
     def test_check_output(self):
-        self.check_output_with_place(place=paddle.CUDAPlace(0))
+        self.check_output_with_place(place=paddle.CUDAPlace(0), check_pir=True)
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True
+            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True, check_pir=True
         )
 
 
@@ -737,11 +737,11 @@ class TestProd6DBFP16OP(TestProd6DOp):
         self.enable_cinn = False
 
     def test_check_output(self):
-        self.check_output_with_place(place=paddle.CUDAPlace(0))
+        self.check_output_with_place(place=paddle.CUDAPlace(0), check_pir=True)
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True
+            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True, check_pir=True
         )
 
 
@@ -770,10 +770,10 @@ class TestProd8DOp(OpTest):
         )
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 @unittest.skipIf(
@@ -784,10 +784,12 @@ class TestProd8DFP16OP(TestProd8DOp):
         self.data_type = "float16"
 
     def test_check_output(self):
-        self.check_output_with_place(place=paddle.CUDAPlace(0))
+        self.check_output_with_place(place=paddle.CUDAPlace(0), check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad_with_place(paddle.CUDAPlace(0), ['X'], 'Out')
+        self.check_grad_with_place(
+            paddle.CUDAPlace(0), ['X'], 'Out', check_pir=True
+        )
 
 
 @unittest.skipIf(
@@ -808,10 +810,12 @@ class TestProd8DBFP16OP(TestProd8DOp):
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
-        self.check_output_with_place(place=paddle.CUDAPlace(0))
+        self.check_output_with_place(place=paddle.CUDAPlace(0), check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad_with_place(paddle.CUDAPlace(0), ['X'], 'Out')
+        self.check_grad_with_place(
+            paddle.CUDAPlace(0), ['X'], 'Out', check_pir=True
+        )
 
 
 def reduce_all_wrapper(x, axis=None, keepdim=False, reduce_all=True, name=None):

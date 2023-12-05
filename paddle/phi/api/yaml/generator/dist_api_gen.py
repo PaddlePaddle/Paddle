@@ -99,9 +99,11 @@ OPTIONAL_VECTOR_DIST_META_IN_TEMPLATE = """
     }}"""
 INFER_SPMD_TEMPLATE = """
     auto spmd_info = phi::distributed::{}({});
+    DebugInfoForInferSpmd("{}", spmd_info);
 """
 GENERAL_INFER_SPMD_TEMPLATE = """
     auto spmd_info = phi::distributed::VariadicReplicatedInferSpmdDynamic({});
+    DebugInfoForInferSpmd("{}", spmd_info);
 """
 UNSUPPORTED_INFER_SPMD_COMMENT_TEMPLATE = """
     // API `{}` does not support InferSpmd now
@@ -286,6 +288,13 @@ UNSUPPORTED_RESHARD_INPUT_COMMENT_TEMPLATE = """
 """
 
 # 6. PrepareData
+VIEW_OUTPUT_SHARE_MEM_WITH_INPUT_TEMPLATE = """
+      // {dense_out} is view output, it shares memory with input.
+      // If input is resharded, {dense_out} may hold
+      // different memory with origin input.
+      {dense_out}->ShareBufferWith({dense_input});
+      {dense_out}->ShareInplaceVersionCounterWith({dense_input});
+"""
 SINGLE_PREPARE_DATA_TEMPLATE = """
       dist_input_{name} = PrepareDataForDistTensor(dist_input_{name}, GetKernelInputArgDef(kernel.InputAt({idx}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
       auto input_{name} = &dist_input_{name}->value();
@@ -416,13 +425,13 @@ SET_VECTOR_OUT_REPLICATED_DIST_ATTR_TEMPLATE = """
 """
 
 SET_SINGLE_OR_VECTOR_INPLACE_OUT_TEMPLATE = """
-    // Set correct dist_attr for nplace output:
+    // Set correct dist_attr for inplace output:
     // If no_spmd_rules, reshard it to origin dist_attr,
     // Or set correct spmd output dist_attr
     SetInplaceOutputCorrectDistAttr(dev_ctx, api_output, {dist_out_attr}, {need_reshard});
 """
 SET_MULTI_SINGLE_OR_VECTOR_INPLACE_OUT_TEMPLATE = """
-    // Set correct dist_attr for nplace output:
+    // Set correct dist_attr for inplace output:
     // If no_spmd_rules, reshard it to origin dist_attr,
     // Or set correct spmd output dist_attr
     auto& output_{idx} = std::get<{idx}>(api_output);
@@ -430,7 +439,7 @@ SET_MULTI_SINGLE_OR_VECTOR_INPLACE_OUT_TEMPLATE = """
 """
 
 SET_MULTI_SINGLE_OR_VECTOR_OPTIONAL_INPLACE_OUT_TEMPLATE = """
-    // Set correct dist_attr for nplace output:
+    // Set correct dist_attr for inplace output:
     // If no_spmd_rules, reshard it to origin dist_attr,
     // Or set correct spmd output dist_attr
     auto& output_{idx} = std::get<{idx}>(api_output);
@@ -441,6 +450,30 @@ SET_MULTI_SINGLE_OR_VECTOR_OPTIONAL_INPLACE_OUT_TEMPLATE = """
 
 NONEED_TO_SET_DIST_ATTR_COMMENT_TEMPLATE = """
     // API `{}` does not need to set DistAttr for output."""
+
+# TODO(GhostScreaming): Support aliquant condition.
+# Specialized Code, for example, reshape needs to calculate local_shape
+RESHAPE_CALCULATE_LOCAL_SHAPE_TEMPLATE = """
+      std::vector<int64_t> local_shape;
+      for (size_t i = 0; i < shape.GetData().size(); i++) {
+        auto& out_dist_attr = PADDLE_GET_CONST(phi::distributed::TensorDistAttr, spmd_info.second[0]);
+        if (out_dist_attr.dims_mapping()[i] >= 0) {
+          int64_t dim = out_dist_attr.dims_mapping()[i];
+          int64_t mesh_dim = out_dist_attr.process_mesh().shape()[dim];
+          // TODO: Support aliquant condition.
+          PADDLE_ENFORCE_EQ(shape.GetData()[i] % mesh_dim,
+                0,
+                phi::errors::InvalidArgument(
+                    "Reshape only support local shape dim is divisible"
+                    "by the mesh dim, however local_shape[%d] is %d",
+                    "and shard mesh dims is %d",
+                    i, shape.GetData()[i], mesh_dim));
+          local_shape.push_back(shape.GetData()[i] / mesh_dim);
+        } else {
+          local_shape.push_back(shape.GetData()[i]);
+        }
+      }
+"""
 
 # BaseAPI members:
 # inputs:
@@ -515,6 +548,17 @@ class DistForwardAPI(ForwardAPI):
             not self.inplace_flag
             and self.view_map is not None
             and self.outputs['names'][i] in self.view_map
+        )
+
+    def need_to_generate_code_for_inplace_or_view_impl(self, i):
+        return self.need_to_generate_code_for_inplace_impl(
+            i
+        ) or self.need_to_generate_code_for_view_impl(i)
+
+    def is_reshape_kernel(self):
+        return (
+            "reshape" in self.kernel['func'][0]
+            and 'grad' not in self.kernel['func'][0]
         )
 
     def is_inplace_output(self, i):
@@ -760,6 +804,11 @@ class DistForwardAPI(ForwardAPI):
         if kernel_params is None:
             kernel_params = input_names + attr_names
 
+        # TODO(GhostScreaming): specialized case for reshape_grad
+        # xshape is not kernel params, but inferspmd needs it.
+        if "reshape_grad" in self.kernel['func'][0]:
+            kernel_params = ["xshape"] + kernel_params
+
         input_decl_code = ""
         input_args_code = ""
         for param in kernel_params:
@@ -767,6 +816,14 @@ class DistForwardAPI(ForwardAPI):
                 if self.inputs['input_info'][param] == "const Tensor&":
                     input_decl_code += SINGLE_DIST_META_IN_TEMPLATE.format(
                         name=param
+                    )
+                    input_args_code += "meta_dist_input_" + param + ", "
+                elif (
+                    self.inputs['input_info'][param]
+                    == "const paddle::optional<Tensor>&"
+                ):
+                    input_decl_code += (
+                        OPTIONAL_SINGLE_DIST_META_IN_TEMPLATE.format(name=param)
                     )
                     input_args_code += "meta_dist_input_" + param + ", "
                 elif (
@@ -791,7 +848,10 @@ class DistForwardAPI(ForwardAPI):
                         f"{self.api} : Param of infer_spmd error : {self.inputs['input_info'][param]} type is not supported."
                     )
             elif param in attr_names:
-                input_args_code = input_args_code + param + ", "
+                if self.attrs['attr_info'][param][0] == "const IntArray&":
+                    input_args_code = input_args_code + param + ".GetData(), "
+                else:
+                    input_args_code = input_args_code + param + ", "
             elif isinstance(param, str):
                 input_args_code = input_args_code + "\"" + param + "\", "
             elif isinstance(param, bool):
@@ -802,7 +862,9 @@ class DistForwardAPI(ForwardAPI):
         infer_spmd_code = ""
         infer_spmd_func_code = self.infer_meta['spmd_rule']
         infer_spmd_code = INFER_SPMD_TEMPLATE.format(
-            infer_spmd_func_code, input_args_code[:-2]
+            infer_spmd_func_code,
+            input_args_code[:-2],
+            self.api,
         )
         self.generate_infer_spmd = True
 
@@ -863,7 +925,8 @@ class DistForwardAPI(ForwardAPI):
             return UNSUPPORTED_INFER_SPMD_COMMENT_TEMPLATE.format(self.api)
 
         infer_spmd_code = GENERAL_INFER_SPMD_TEMPLATE.format(
-            input_args_code[:-2]
+            input_args_code[:-2],
+            self.api,
         )
         self.generate_infer_spmd = True
         self.generate_general_infer_spmd = True
@@ -882,9 +945,6 @@ class DistForwardAPI(ForwardAPI):
         return_type = self.get_return_type_with_intermediate(self.inplace_flag)
         output_creation_code = ""
         output_creation_code += "\n    phi::DeviceContext* dev_ctx = nullptr;"
-        has_spmd_rules = (
-            self.generate_infer_spmd or self.generate_general_infer_spmd
-        )
         if output_num == 1:
             # api output generate
             if self.need_to_generate_code_for_inplace_impl(0):
@@ -901,9 +961,12 @@ class DistForwardAPI(ForwardAPI):
             # kernel output generate
             self.dist_output_args.append('dist_out')
             self.dense_output_args.append('dense_out')
-            if self.outputs['types'][0] == 'Tensor':
+            if (
+                self.outputs['types'][0] == 'Tensor'
+                or self.outputs['types'][0] == 'const paddle::optional<Tensor>'
+            ):
                 if (
-                    self.need_to_generate_code_for_inplace_impl(0)
+                    self.need_to_generate_code_for_inplace_or_view_impl(0)
                     and self.generate_general_infer_spmd
                 ):
                     output_creation_code += SINGLE_INPLACE_OUT_DIST_ATTR
@@ -914,7 +977,7 @@ class DistForwardAPI(ForwardAPI):
             elif self.outputs['types'][0] == 'std::vector<Tensor>':
                 # SetKernelDistOutput arg
                 if (
-                    self.need_to_generate_code_for_inplace_impl(0)
+                    self.need_to_generate_code_for_inplace_or_view_impl(0)
                     and self.generate_general_infer_spmd
                 ):
                     output_creation_code += VECTOR_INPLACE_OUT_DIST_ATTR
@@ -931,7 +994,7 @@ class DistForwardAPI(ForwardAPI):
             if self.inplace_flag:
                 inplace_assign_code = ""
                 for i, out_name in enumerate(self.outputs['names']):
-                    if self.need_to_generate_code_for_inplace_impl(i):
+                    if self.need_to_generate_code_for_inplace_or_view_impl(i):
                         inplace_assign_code += self.inplace_map[out_name] + ', '
                     else:
                         inplace_assign_code += 'Tensor(), '
@@ -957,7 +1020,9 @@ class DistForwardAPI(ForwardAPI):
                         )
                     else:
                         if (
-                            self.need_to_generate_code_for_inplace_impl(i)
+                            self.need_to_generate_code_for_inplace_or_view_impl(
+                                i
+                            )
                             and self.generate_general_infer_spmd
                         ):
                             output_creation_code += (
@@ -991,7 +1056,9 @@ class DistForwardAPI(ForwardAPI):
                         )
                     else:
                         if (
-                            self.need_to_generate_code_for_inplace_impl(i)
+                            self.need_to_generate_code_for_inplace_or_view_impl(
+                                i
+                            )
                             and self.generate_general_infer_spmd
                         ):
                             output_creation_code += (
@@ -1295,6 +1362,30 @@ class DistForwardAPI(ForwardAPI):
                                 )
                             )
 
+        for i, name in enumerate(self.outputs['names']):
+            if self.need_to_generate_code_for_view_impl(i):
+                dense_out = (
+                    'dense_out'
+                    if len(self.outputs['names']) == 1
+                    else f'dense_out_{i}'
+                )
+                input_name = self.view_map[self.outputs['names'][i]]
+
+                kernel_params = self.kernel['param']
+                if kernel_params is None:
+                    kernel_params = self.inputs['names'] + self.attrs['names']
+
+                if input_name in kernel_params:
+                    dense_input = f"*input_{input_name}"
+                else:
+                    dense_input = f"std::static_pointer_cast<phi::distributed::DistTensor>({input_name}.impl())->value()"
+                input_tensor_code += (
+                    VIEW_OUTPUT_SHARE_MEM_WITH_INPUT_TEMPLATE.format(
+                        dense_out=dense_out,
+                        dense_input=dense_input,
+                    )
+                )
+
         return input_tensor_code, input_name_tensor_map
 
     def generate_infer_meta_code(self) -> str:
@@ -1340,7 +1431,11 @@ class DistForwardAPI(ForwardAPI):
                         f"{self.api} : Param of infer_meta error : {self.inputs['input_info'][param]} type is not supported."
                     )
             elif param in attr_names:
-                input_args_code = input_args_code + param + ", "
+                # TODO(GhostScreaming): reshape kernel need specialized process
+                if self.is_reshape_kernel() and param == "shape":
+                    input_args_code = input_args_code + "local_shape" + ", "
+                else:
+                    input_args_code = input_args_code + param + ", "
             elif isinstance(param, str):
                 input_args_code = input_args_code + "\"" + param + "\", "
             elif isinstance(param, bool):
@@ -1369,9 +1464,15 @@ class DistForwardAPI(ForwardAPI):
                     )
         output_args_code = output_args_code[:-2]
 
-        return output_decl_code + INFER_META_TEMPLATE.format(
+        infer_meta_code = ""
+        # TODO(GhostScreaming): reshape kernel need specialized process
+        if self.is_reshape_kernel():
+            infer_meta_code = RESHAPE_CALCULATE_LOCAL_SHAPE_TEMPLATE
+        infer_meta_code = infer_meta_code + INFER_META_TEMPLATE.format(
             infer_meta_func_code, input_args_code, output_args_code
         )
+
+        return output_decl_code + infer_meta_code
 
     def generate_kernel_call_code(self) -> str:
         dense_input_trans_map = {
@@ -1419,7 +1520,11 @@ class DistForwardAPI(ForwardAPI):
             elif arg in attr_names:
                 if 'IntArray' in self.attrs['attr_info'][arg][0]:
                     kernel_args_type_list.append('const phi::IntArray&')
-                    arg = 'phi::IntArray(' + arg + ')'
+                    # TODO(GhostScreaming): reshape kernel need specialized process
+                    if self.is_reshape_kernel() and arg == "shape":
+                        arg = 'phi::IntArray(local_shape)'
+                    else:
+                        arg = 'phi::IntArray(' + arg + ')'
                 elif 'vector<phi::Scalar>' in self.attrs['attr_info'][arg][0]:
                     kernel_args_type_list.append(
                         'const std::vector<phi::Scalar>&'
@@ -1463,6 +1568,36 @@ class DistForwardAPI(ForwardAPI):
                     result += MULTI_SINGLE_SET_DIST_OUT_DIMS.format(i, i)
         return result
 
+    def dist_branch_reset_view_after_fallback(
+        self, out_dtype_list, inplace_flag=False
+    ):
+        remap_code = ''
+
+        if len(out_dtype_list) == 1:
+            if (
+                not inplace_flag
+                and self.view_map is not None
+                and self.outputs['names'][0] in self.view_map
+            ):
+                remap_code += f"""
+        phi::DenseTensor* {self.view_map[self.outputs['names'][0]]}_remap = static_cast<phi::distributed::DistTensor*>({self.view_map[self.outputs['names'][0]]}.impl().get())->unsafe_mutable_value();
+        {self.view_map[self.outputs['names'][0]]}_remap->ShareBufferWith(dist_out->value());
+        dist_out->unsafe_mutable_value()->ShareInplaceVersionCounterWith(*{self.view_map[self.outputs['names'][0]]}_remap);
+"""
+        elif len(out_dtype_list) > 1:
+            for i in range(len(out_dtype_list)):
+                if (
+                    not inplace_flag
+                    and self.view_map is not None
+                    and self.outputs['names'][i] in self.view_map
+                ):
+                    remap_code += f"""
+        phi::DenseTensor* {self.view_map[self.outputs['names'][i]]}_remap = static_cast<phi::distributed::DistTensor*>({self.view_map[self.outputs['names'][i]]}.impl().get())->unsafe_mutable_value();
+        {self.view_map[self.outputs['names'][i]]}_remap->ShareBufferWith(dist_out_{i}->value());
+        dist_out_{i}->unsafe_mutable_value()->ShareInplaceVersionCounterWith(*{self.view_map[self.outputs['names'][i]]}_remap);
+"""
+        return remap_code
+
     def generate_fallback_code(self) -> str:
         fallback_code = ""
         fallback_code += """
@@ -1475,8 +1610,8 @@ class DistForwardAPI(ForwardAPI):
         if len(self.inplace_map) > 0:
             inplace_flag = True
 
-        fallback_code += self.reset_view_after_fallback(
-            self.outputs['types'], '        ', inplace_flag
+        fallback_code += self.dist_branch_reset_view_after_fallback(
+            self.outputs['types'], inplace_flag
         )
 
         fallback_code += """
@@ -1507,7 +1642,13 @@ class DistForwardAPI(ForwardAPI):
         # Inplace output should reshard to origin state.
         if self.generate_infer_spmd:
             for i, out_name in enumerate(self.dist_output_args):
-                if self.need_to_generate_code_for_inplace_impl(i):
+                # TODO(GhostScreaming): for inplace view operators like reshape,
+                # input and output may have different shape. If they have no specified
+                # InferSPMD rules, just set replicated dist_attr for them.
+                if (
+                    self.need_to_generate_code_for_inplace_impl(i)
+                    and self.outputs['names'][i] not in self.view_map
+                ):
                     need_reshard = (
                         "true" if self.generate_general_infer_spmd else "false"
                     )
@@ -1547,26 +1688,6 @@ class DistForwardAPI(ForwardAPI):
     def generate_return_code(self) -> str:
         return self.gene_return_code()
 
-    def generate_strided_handle_code(self) -> str:
-        pre_save_stride = ""
-        transdata2strided = ""
-
-        if len(self.inplace_map) > 0 and self.kernel['func'][0] not in [
-            "squeeze",
-            "unsqueeze",
-            "reshape",
-            "flatten",
-            "transpose",
-        ]:
-            i = 0
-            for kernel_out in self.dense_output_args:
-                pre_save_stride += f"""
-      auto backup{i} = ProcessStrideBackup(&{kernel_out});"""
-                transdata2strided += f"""
-      TransStride(dev_ctx, {kernel_out}, backup{i});"""
-                i = i + 1
-        return pre_save_stride, transdata2strided
-
     def generate_auto_paralel_branch(self) -> str:
         # if no tensor input, do not genetate auto parallel branch
         if len(self.inputs['names']) == 0:
@@ -1591,11 +1712,6 @@ class DistForwardAPI(ForwardAPI):
         fallback_code = self.generate_fallback_code()
         output_dist_attr_setting = self.generate_output_dist_attr_setting()
         return_code = self.generate_return_code()
-        pre_save_stride, transdata2strided = self.generate_strided_handle_code()
-        if len(pre_save_stride) != 0:
-            kernel_call_code = (
-                pre_save_stride + kernel_call_code + transdata2strided
-            )
 
         return MAIN_DIST_BRANCH_TEMPLATE.format(
             infer_spmd_code,
@@ -1653,7 +1769,6 @@ class DistForwardAPI(ForwardAPI):
                     'sparse' not in kernel_name
                     and '_sr' not in kernel_name
                     and len(self.inputs['names']) > 0
-                    and len(self.view_map) == 0
                     and self.check_argument_whether_support_auto_parallel()
                     and not self.api.endswith("_double_grad")
                     and not self.api.endswith("_triple_grad")
@@ -1676,7 +1791,6 @@ class DistForwardAPI(ForwardAPI):
             dist_branch_code = ""
             if (
                 len(self.inputs['names']) > 0
-                and len(self.view_map) == 0
                 and self.check_argument_whether_support_auto_parallel()
                 and not self.api.endswith("_double_grad")
                 and not self.api.endswith("_triple_grad")

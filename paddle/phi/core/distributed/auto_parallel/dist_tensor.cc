@@ -17,6 +17,7 @@
 #include "glog/logging.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function_registry.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/core/distributed/store/store_utils.h"
 
@@ -44,7 +45,8 @@ DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
     if (!dist_attr.is_replicated()) {
       value_ = std::make_shared<DenseTensor>();
       // 1. create replicated global tensor
-      TensorDistAttr replicated_dist_attr(vectorize(global_value->dims()));
+      TensorDistAttr replicated_dist_attr(
+          common::vectorize(global_value->dims()));
       replicated_dist_attr.set_process_mesh(dist_attr.process_mesh());
       DistTensor replicated_tensor(global_value, replicated_dist_attr);
 
@@ -71,9 +73,18 @@ DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
       placements,
       DenseTensorMeta(global_value->dtype(), global_value->dims()));
 
-  TensorDistAttr dist_attr(vectorize(dist_tensor_meta_.dims()));
+  std::vector<int64_t> partial_dims;
+  size_t idx = 0;
+  for (auto p : placements) {
+    if (p->is_partial()) {
+      partial_dims.push_back(idx);
+    }
+    idx++;
+  }
+  TensorDistAttr dist_attr(common::vectorize(dist_tensor_meta_.dims()));
   dist_attr.set_process_mesh(dist_tensor_meta_.process_mesh());
   dist_attr.set_dims_mapping(dist_tensor_meta_.dim_mapping());
+  dist_attr.set_partial_status(partial_dims);
   dist_attr.mark_annotated("process_mesh");
   dist_attr.mark_annotated("dims_mapping");
   dist_attr_ = dist_attr;
@@ -84,7 +95,8 @@ DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
     if (!dist_tensor_meta_.is_replicated()) {
       value_ = std::make_shared<DenseTensor>();
       // 1. create replicated global tensor
-      TensorDistAttr replicated_dist_attr(vectorize(global_value->dims()));
+      TensorDistAttr replicated_dist_attr(
+          common::vectorize(global_value->dims()));
       replicated_dist_attr.set_process_mesh(process_mesh);
       DistTensor replicated_tensor(global_value, replicated_dist_attr);
 

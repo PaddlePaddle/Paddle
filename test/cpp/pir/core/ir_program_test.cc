@@ -105,9 +105,9 @@ TEST(program_test, program) {
   program.SetParameter("b", std::move(parameter_b));
   EXPECT_EQ(program.parameters_num() == 2, true);
 
-  // (4) Def a = GetParameterOp("a"), and create DenseTensor for a.
+  // (4) Def a = ParameterOp("a"), and create DenseTensor for a.
   pir::Builder builder(ctx, program.block());
-  auto op1 = builder.Build<pir::GetParameterOp>("a", dense_tensor_dtype);
+  auto op1 = builder.Build<pir::ParameterOp>("a", dense_tensor_dtype);
 
   EXPECT_EQ(&program, op1->GetParentProgram());
   EXPECT_EQ(op1->result_type(0).dialect().id(), paddle_dialect->id());
@@ -127,8 +127,8 @@ TEST(program_test, program) {
     EXPECT_EQ(*(a_tensor.data<float>() + i), data_a[i]);
   }
 
-  // (5) Def b = GetParameterOp("b"), and create DenseTensor for b.
-  auto op2 = builder.Build<pir::GetParameterOp>("b", dense_tensor_dtype);
+  // (5) Def b = ParameterOp("b"), and create DenseTensor for b.
+  auto op2 = builder.Build<pir::ParameterOp>("b", dense_tensor_dtype);
 
   EXPECT_EQ(op2->result_type(0).dialect().id(), paddle_dialect->id());
   Interface *b_interface =
@@ -217,8 +217,8 @@ TEST(program_test, slice_combine_test) {
   // (3) Create a float32 DenseTensor Parameter and save into Program
   pir::Type fp32_dtype = pir::Float32Type::get(ctx);
 
-  // (4) Def a = GetParameterOp("a")
-  std::string op1_name = pir::GetParameterOp::name();
+  // (4) Def a = ParameterOp("a")
+  std::string op1_name = pir::ParameterOp::name();
   pir::OpInfo op1_info = ctx->GetRegisteredOpInfo(op1_name);
   std::unordered_map<std::string, pir::Attribute> op1_attribute{
       {"parameter_name", pir::StrAttribute::get(ctx, "a")}};
@@ -278,7 +278,7 @@ TEST(program_test, builder) {
   EXPECT_EQ(
       full_op_output.dyn_cast<paddle::dialect::DenseTensorType>().offset() == 0,
       true);
-  for (auto dim : phi::vectorize(
+  for (auto dim : common::vectorize(
            full_op_output.dyn_cast<paddle::dialect::DenseTensorType>()
                .dims())) {
     EXPECT_EQ(dim == 2, true);

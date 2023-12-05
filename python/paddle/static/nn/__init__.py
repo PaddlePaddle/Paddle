@@ -13,10 +13,10 @@
 # limitations under the License.
 
 from ...tensor.creation import create_parameter  # noqa: F401
-from .common import (  # noqa: F401
+from .common import (
     batch_norm,
     bilinear_tensor_product,
-    continuous_value_model,
+    continuous_value_model,  # noqa: F401
     conv2d,
     conv2d_transpose,
     conv3d,

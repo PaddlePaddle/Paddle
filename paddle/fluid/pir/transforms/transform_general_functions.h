@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "paddle/phi/core/ddim.h"
+#include "paddle/common/ddim.h"
+#include "paddle/common/errors.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/parameter.h"
 #include "paddle/pir/core/type.h"
@@ -27,7 +27,7 @@ namespace pir {
 /**
  * @brief Get the name of pararmeter from a value.
  *
- * @note The value must be a output of a GetParameterOp.
+ * @note The value must be a output of a ParameterOp or a ConstantTensorOp.
  *
  * @param pir::Value
  *
@@ -43,7 +43,7 @@ std::string GetParameterNameFromValue(pir::Value value);
  *
  * @return const phi::DDim&
  */
-const phi::DDim& GetShapeFromValue(pir::Value value);
+const common::DDim& GetShapeFromValue(pir::Value value);
 
 /**
  * @brief Get tensor's data type from a value.

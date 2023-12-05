@@ -158,7 +158,6 @@ void GPUScatterAssign(const phi::GPUContext& ctx,
   } else {
     for (int i = 0; i < src_dims.size(); ++i) slice_size *= src_dims[i];
   }
-
   const T* p_src = src.data<T>();
   const IndexT* p_index = index.data<IndexT>();
   T* p_output = output->data<T>();
@@ -230,8 +229,8 @@ void GPUScatterNdAdd(const phi::GPUContext& ctx,
   // final dim
   int64_t end_size = index_dims[index_dims_size - 1];
   // remain dim
-  auto remain_ddim = phi::slice_ddim(index_dims, 0, index_dims_size - 1);
-  int64_t remain_numel = phi::product(remain_ddim);
+  auto remain_ddim = common::slice_ddim(index_dims, 0, index_dims_size - 1);
+  int64_t remain_numel = common::product(remain_ddim);
   // slice size
   int64_t slice_size = 1;
   for (int64_t i = end_size; i < output_dims_size; ++i) {

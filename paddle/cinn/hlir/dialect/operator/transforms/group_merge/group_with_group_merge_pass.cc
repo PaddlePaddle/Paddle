@@ -193,7 +193,7 @@ class GraphGroupFuseHelper final : public FuseHelper {
             Visit(node_producer);
           }
         };
-    common::IsReachablePredicator<OpGroupPtr> is_reachable(
+    cinn::common::IsReachablePredicator<OpGroupPtr> is_reachable(
         MinDepth4Node, MaxDepth4Node, VisitNextNodes);
     return is_reachable(consumer, producer, [](OpGroupPtr) {});
   }
@@ -468,12 +468,12 @@ struct HorizontalFuseUtil {
     }
 
     size_t size_ele =
-        phi::product(GetMasterNode(*ele_group).outputs()[0].shape());
+        ::common::product(GetMasterNode(*ele_group).outputs()[0].shape());
 
     bool can_fuse = false;
     reduce_group->WalkOpNodes([&](const cinn::dialect::ir::OpNode& op) {
       if (op.kind() == OpPatternKind::kReduction) {
-        size_t size_master = phi::product(op.outputs()[0].shape());
+        size_t size_master = ::common::product(op.outputs()[0].shape());
         if (size_ele == size_master) {
           can_fuse = true;
         }
@@ -1033,7 +1033,10 @@ class FusionPassRegistrar final : public Registrar {
 // code generation.
 class GeneralFusionMergePassHelper {
  public:
-  explicit GeneralFusionMergePassHelper(const GroupList& group_list) {
+  explicit GeneralFusionMergePassHelper(
+      const GroupList& group_list,
+      const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis)
+      : shape_analysis_(shape_analysis) {
     fusion_groups_ = group_list;
     // init input to consumers.
     InitInputToConsumers();
@@ -1395,7 +1398,8 @@ class GeneralFusionMergePassHelper {
       }
       // master node
       for (auto& node : consumer->master_ops) {
-        if (GetOpKind(node->name()) == OpPatternKind::kReduction) {
+        if (hlir::framework::pir::CompatibleInfo::OpKind(*node) ==
+            OpPatternKind::kReduction) {
           fused_group->master_ops.insert(node);
         }
       }
@@ -1474,7 +1478,8 @@ class GeneralFusionMergePassHelper {
            ++consumer) {
         ::pir::Operation* master_node = nullptr;
         for (auto& node : (*consumer)->master_ops) {
-          if (GetOpKind(node->name()) != OpPatternKind::kReduction) {
+          if (hlir::framework::pir::CompatibleInfo::OpKind(*node) !=
+              OpPatternKind::kReduction) {
             master_node = node;
             break;
           }
@@ -1609,7 +1614,8 @@ class GeneralFusionMergePassHelper {
       }
       // master nodes
       for (auto& node : producer->master_ops) {
-        if (GetOpKind(node->name()) == OpPatternKind::kReduction) {
+        if (hlir::framework::pir::CompatibleInfo::OpKind(*node) ==
+            OpPatternKind::kReduction) {
           fused_group->master_ops.insert(node);
         }
       }
@@ -1874,13 +1880,13 @@ class GeneralFusionMergePassHelper {
           continue;
         }
 
-        auto producer_output_shape = phi::vectorize(
+        auto producer_output_shape = ::common::vectorize(
             GetValueShape((*producer->output_ops.begin())->result(0)));
 
-        auto consumer_output_shape = phi::vectorize(
+        auto consumer_output_shape = ::common::vectorize(
             GetValueShape((*consumer->output_ops.begin())->result(0)));
 
-        auto consumer_master_input_shape = phi::vectorize(GetValueShape(
+        auto consumer_master_input_shape = ::common::vectorize(GetValueShape(
             (*(consumer->master_ops.begin()))->operand_source(0)));
 
         int producer_output_numel =
@@ -1927,9 +1933,9 @@ class GeneralFusionMergePassHelper {
           continue;
         }
 
-        auto shape0 = phi::vectorize(
+        auto shape0 = ::common::vectorize(
             GetValueShape((*producer->output_ops.begin())->result(0)));
-        auto shape1 = phi::vectorize(
+        auto shape1 = ::common::vectorize(
             GetValueShape((*consumer->output_ops.begin())->result(0)));
 
         if (std::accumulate(
@@ -2120,21 +2126,29 @@ class GeneralFusionMergePassHelper {
     }
   }
 
+  std::shared_ptr<pir::ShapeConstraintIRAnalysis> shape_analysis() const {
+    return CHECK_NOTNULL(shape_analysis_.lock());
+  }
+
   GroupList fusion_groups_;
   std::unordered_map<GroupPtr, int> fusion_groups_index_;
   std::unordered_set<const ::pir::Operation*> output_ops_set_;
   std::unordered_map<::pir::Value,
                      std::unordered_set<GroupPtr, Hasher, Comparator>>
       input_to_consumers_;
+  std::weak_ptr<pir::ShapeConstraintIRAnalysis> shape_analysis_;
 };
 
-GroupList GeneralFusionMergePassInternal(const GroupList& group_list) {
+GroupList GeneralFusionMergePassInternal(
+    const GroupList& group_list,
+    const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis) {
   if (group_list.size() <= 1) {
     VLOG(3) << "Don't do Fusoin Merge Pass...!";
     return group_list;
   }
 
-  GeneralFusionMergePassHelper fusion_merge_pass_helper(group_list);
+  GeneralFusionMergePassHelper fusion_merge_pass_helper(group_list,
+                                                        shape_analysis);
   auto res = fusion_merge_pass_helper();
 
   if (VLOG_IS_ON(6)) {

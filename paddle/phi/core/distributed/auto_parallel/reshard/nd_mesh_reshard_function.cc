@@ -120,13 +120,13 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
       ProcessMesh sub_mesh = GetSubProcessMesh(process_mesh, kv.first);
 
       // 1.3 Calculate the input one dim dist attr
-      TensorDistAttr in_one_dim_dist_attr(vectorize(in.dims()));
+      TensorDistAttr in_one_dim_dist_attr(common::vectorize(in.dims()));
       in_one_dim_dist_attr.set_process_mesh(sub_mesh);
       in_one_dim_dist_attr.set_partial_status(std::vector<int64_t>{0},
                                               kv.second);
 
       // 1.4 Calculate the output one dim dist attr
-      TensorDistAttr out_one_dim_dist_attr(vectorize(in.dims()));
+      TensorDistAttr out_one_dim_dist_attr(common::vectorize(in.dims()));
       out_one_dim_dist_attr.set_process_mesh(sub_mesh);
 
       // 1.5 Change from partial to replicated
@@ -158,7 +158,7 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
       ProcessMesh sub_mesh = GetSubProcessMesh(process_mesh, in_mesh_axis);
 
       // 2.3 Calculate the input one dim dist attr
-      TensorDistAttr in_one_dim_dist_attr(vectorize(in.dims()));
+      TensorDistAttr in_one_dim_dist_attr(common::vectorize(in.dims()));
       in_one_dim_dist_attr.set_process_mesh(sub_mesh);
       std::vector<int64_t> in_one_dims_mapping =
           in_one_dim_dist_attr.dims_mapping();
@@ -166,7 +166,7 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
       in_one_dim_dist_attr.set_dims_mapping(in_one_dims_mapping);
 
       // 2.4 Calculate the output one dim dist attr
-      TensorDistAttr out_one_dim_dist_attr(vectorize(in.dims()));
+      TensorDistAttr out_one_dim_dist_attr(common::vectorize(in.dims()));
       out_one_dim_dist_attr.set_process_mesh(sub_mesh);
 
       // 2.5 Change from shard to replicated
@@ -198,11 +198,11 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
       ProcessMesh sub_mesh = GetSubProcessMesh(process_mesh, kv.first);
 
       // 3.3 Calculate the input one dim dist attr
-      TensorDistAttr in_one_dim_dist_attr(vectorize(in.dims()));
+      TensorDistAttr in_one_dim_dist_attr(common::vectorize(in.dims()));
       in_one_dim_dist_attr.set_process_mesh(sub_mesh);
 
       // 3.4 Calculate the output one dim dist attr
-      TensorDistAttr out_one_dim_dist_attr(vectorize(in.dims()));
+      TensorDistAttr out_one_dim_dist_attr(common::vectorize(in.dims()));
       out_one_dim_dist_attr.set_process_mesh(sub_mesh);
       out_one_dim_dist_attr.set_partial_status(std::vector<int64_t>{0});
 
@@ -238,11 +238,11 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
       ProcessMesh sub_mesh = GetSubProcessMesh(process_mesh, out_mesh_axis);
 
       // 4.3 Calculate the input one dim dist attr
-      TensorDistAttr in_one_dim_dist_attr(vectorize(in.dims()));
+      TensorDistAttr in_one_dim_dist_attr(common::vectorize(in.dims()));
       in_one_dim_dist_attr.set_process_mesh(sub_mesh);
 
       // 4.4 Calculate the output one dim dist attr
-      TensorDistAttr out_one_dim_dist_attr(vectorize(in.dims()));
+      TensorDistAttr out_one_dim_dist_attr(common::vectorize(in.dims()));
       out_one_dim_dist_attr.set_process_mesh(sub_mesh);
       std::vector<int64_t> out_one_dims_mapping =
           out_one_dim_dist_attr.dims_mapping();
@@ -265,8 +265,6 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
     }
   }
 }
-
-REGISTER_RESHARD_FUNC(SameNdMeshReshardFunction);
 
 }  // namespace distributed
 }  // namespace phi

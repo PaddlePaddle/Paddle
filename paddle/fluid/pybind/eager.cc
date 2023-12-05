@@ -40,6 +40,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/tensor_py.h"
+#include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/placement_types.h"
@@ -82,7 +83,7 @@ void EmptyTensorInitializer(TensorObject* self,
                             const std::vector<int>& dims = {0},
                             framework::proto::VarType::Type var_type =
                                 paddle::framework::proto::VarType::LOD_TENSOR) {
-  auto ddims = phi::make_ddim(dims);
+  auto ddims = common::make_ddim(dims);
   self->tensor.set_name(name);
   auto autograd_meta = egr::EagerUtils::autograd_meta(&(self->tensor));
   autograd_meta->SetPersistable(persistable);
@@ -125,7 +126,7 @@ void EmptyStringTensorInitializer(TensorObject* self,
                                   const std::string& name,
                                   const paddle::platform::Place& place,
                                   const std::vector<int>& dims = {}) {
-  auto ddims = phi::make_ddim(dims);
+  auto ddims = common::make_ddim(dims);
   self->tensor.set_name(name);
   // Note(zhoushunjie): Only support CPUPlace when create StringTensor
   auto actual_place = platform::CPUPlace();
@@ -134,7 +135,7 @@ void EmptyStringTensorInitializer(TensorObject* self,
   std::shared_ptr<phi::StringTensor> string_tensor =
       std::make_shared<phi::StringTensor>(&string_allocator,
                                           phi::StringTensorMeta{ddims});
-  if (phi::product(ddims) > 0) {
+  if (common::product(ddims) > 0) {
     string_tensor->mutable_data(actual_place);
   }
   self->tensor.set_impl(string_tensor);
@@ -152,7 +153,7 @@ void CreateDistTensorWithNumpyValue(TensorObject* self,
                                         paddle::framework::proto::VarType::FP32,
                                     const std::vector<int>& dims = {0}) {
 #ifdef PADDLE_WITH_DISTRIBUTE
-  auto ddims = phi::make_ddim(dims);
+  auto ddims = common::make_ddim(dims);
   self->tensor.set_name(name);
   auto autograd_meta = egr::EagerUtils::autograd_meta(&(self->tensor));
   autograd_meta->SetPersistable(persistable);
@@ -228,7 +229,7 @@ void CreateDistTensorWithNumpyValue(TensorObject* self,
                                         paddle::framework::proto::VarType::FP32,
                                     const std::vector<int>& dims = {0}) {
 #ifdef PADDLE_WITH_DISTRIBUTE
-  auto ddims = phi::make_ddim(dims);
+  auto ddims = common::make_ddim(dims);
   self->tensor.set_name(name);
   auto autograd_meta = egr::EagerUtils::autograd_meta(&(self->tensor));
   autograd_meta->SetPersistable(persistable);
@@ -390,12 +391,22 @@ void InitDistTensorWithTensor(TensorObject* self,
   if (place == src.place()) {
     std::shared_ptr<phi::DenseTensor> tensor =
         std::static_pointer_cast<phi::DenseTensor>(src.impl());
+    // auto parallel in dygraph doesn't support strided kernel.
+    if (!tensor->meta().is_contiguous()) {
+      VLOG(4) << "Same place and not contiguous, trans it to contiguous";
+      *tensor = paddle::experimental::Trans2Contiguous(*tensor);
+    }
     self->tensor.set_impl(std::make_shared<DistTensor>(tensor, dist_attr));
     VLOG(4) << "Same place, do ShareDataWith for DistTensor.";
   } else {
     std::shared_ptr<phi::DenseTensor> tensor =
         std::static_pointer_cast<phi::DenseTensor>(
             src.copy_to(place, true).impl());
+    // auto parallel in dygraph doesn't support strided kernel.
+    if (!tensor->meta().is_contiguous()) {
+      VLOG(4) << "Different place and not contiguous, trans it to contiguous";
+      *tensor = paddle::experimental::Trans2Contiguous(*tensor);
+    }
     self->tensor.set_impl(std::make_shared<DistTensor>(tensor, dist_attr));
     VLOG(4) << "Different place, do TensorCopy for DistTensor.";
   }

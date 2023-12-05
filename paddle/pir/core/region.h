@@ -30,6 +30,7 @@ class Program;
 
 class IR_API Region {
  public:
+  using Element = Block;
   using Iterator = PointerListIterator<Block>;
   using ConstIterator = PointerListConstIterator<Block>;
   using ReverseIterator = std::reverse_iterator<Iterator>;
@@ -58,7 +59,7 @@ class IR_API Region {
   const Block &back() const { return *blocks_.back(); }
 
   void push_back(Block *block);
-  Block *emplace_back();
+  Block &emplace_back();
   void push_front(Block *block);
   Iterator insert(ConstIterator position, Block *block);
   Iterator erase(ConstIterator position);

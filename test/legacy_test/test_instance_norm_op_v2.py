@@ -21,7 +21,8 @@ from utils import static_guard
 
 import paddle
 from paddle import base
-from paddle.base import Program, core, program_guard
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def instance_norm_wrapper(
@@ -140,6 +141,7 @@ class TestInstanceNorm(unittest.TestCase):
             y2 = compute_v2(x)
             np.testing.assert_allclose(y1, y2, rtol=1e-05)
 
+    @test_with_pir_api
     def test_static(self):
         with static_guard():
             places = [base.CPUPlace()]
@@ -152,24 +154,28 @@ class TestInstanceNorm(unittest.TestCase):
                 shape = [4, 10, 16, 16]
 
                 def compute_v1(x_np):
-                    with program_guard(Program(), Program()):
+                    with paddle.static.program_guard(
+                        paddle.static.Program(), paddle.static.Program()
+                    ):
                         ins = paddle.nn.InstanceNorm2D(shape[1])
                         x = paddle.static.data(
                             name='x', shape=x_np.shape, dtype=x_np.dtype
                         )
                         y = ins(x)
-                        exe.run(base.default_startup_program())
+                        exe.run(paddle.static.default_startup_program())
                         r = exe.run(feed={'x': x_np}, fetch_list=[y])[0]
                     return r
 
                 def compute_v2(x_np):
-                    with program_guard(Program(), Program()):
+                    with paddle.static.program_guard(
+                        paddle.static.Program(), paddle.static.Program()
+                    ):
                         ins = paddle.nn.InstanceNorm2D(shape[1])
                         x = paddle.static.data(
                             name='x', shape=x_np.shape, dtype=x_np.dtype
                         )
                         y = ins(x)
-                        exe.run(base.default_startup_program())
+                        exe.run(paddle.static.default_startup_program())
                         r = exe.run(feed={'x': x_np}, fetch_list=[y])[0]
                     return r
 
@@ -213,10 +219,17 @@ class TestInstanceNormFP32OP(OpTest):
         )
 
     def test_check_output(self):
-        self.check_output(atol=self.atol, check_prim=self.check_prim)
+        self.check_output(
+            atol=self.atol, check_prim=self.check_prim, check_pir=True
+        )
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Scale', 'Bias'], 'Y', check_prim=self.check_prim)
+        self.check_grad(
+            ['X', 'Scale', 'Bias'],
+            'Y',
+            check_prim=self.check_prim,
+            check_pir=True,
+        )
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -259,7 +272,7 @@ class TestInstanceNormFP16OP(TestInstanceNormFP32OP):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         self.check_output_with_place(
-            place, atol=self.atol, check_prim=self.check_prim
+            place, atol=self.atol, check_prim=self.check_prim, check_pir=True
         )
 
     def test_check_grad(self):
@@ -270,6 +283,7 @@ class TestInstanceNormFP16OP(TestInstanceNormFP32OP):
             'Y',
             max_relative_error=self.max_relative_error,
             check_prim=self.check_prim,
+            check_pir=True,
         )
 
 
@@ -329,7 +343,9 @@ class TestInstanceNormBF16OP(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_prim=self.check_prim)
+        self.check_output_with_place(
+            place, check_prim=self.check_prim, check_pir=True
+        )
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
@@ -339,6 +355,7 @@ class TestInstanceNormBF16OP(OpTest):
             'Y',
             user_defined_grads=self.user_defined_grads,
             check_prim=self.check_prim,
+            check_pir=True,
         )
 
 

@@ -41,7 +41,7 @@ class PirCompiler final {
 
   std::unique_ptr<Program> Build();
 
-  std::vector<pir::CUDAJITInfo> BuildCUDAJITInfo(
+  std::vector<pir::CINNKernelInfo> BuildCUDAJITInfo(
       const std::vector<pir::GroupPtr>& groups);
 
   std::unique_ptr<Program> Build(const std::vector<pir::GroupPtr>& groups);
@@ -72,6 +72,16 @@ class PirCompilerManager {
   static PirCompilerManager& Instance() {
     static PirCompilerManager instance;
     return instance;
+  }
+
+  static std::shared_ptr<PirCompiler> Create(
+      const ::pir::Program& prog,
+      const Target& target,
+      const std::shared_ptr<Scope>& scope) {
+    std::shared_ptr<PirCompiler> compiler =
+        std::make_shared<PirCompiler>(prog, target, scope);
+    PirCompilerManager::Instance().insert(compiler);
+    return compiler;
   }
 
   void insert(const std::shared_ptr<PirCompiler>& compiler) {

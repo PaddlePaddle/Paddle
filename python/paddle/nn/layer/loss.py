@@ -1742,18 +1742,18 @@ class TripletMarginWithDistanceLoss(Layer):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Shapes:
-        input (Tensor):Input tensor, the data type is float32 or float64.
-    the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
+      - input (Tensor):Input tensor, the data type is float32 or float64.
+        the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
 
-        positive (Tensor):Positive tensor, the data type is float32 or float64.
-    The shape of label is the same as the shape of input.
+      - positive (Tensor):Positive tensor, the data type is float32 or float64.
+        The shape of label is the same as the shape of input.
 
-        negative (Tensor):Negative tensor, the data type is float32 or float64.
-    The shape of label is the same as the shape of input.
+      - negative (Tensor):Negative tensor, the data type is float32 or float64.
+        The shape of label is the same as the shape of input.
 
-        output(Tensor): The tensor variable storing the triplet_margin_with_distance_loss of input and positive and negative.
+      - output(Tensor): The tensor variable storing the triplet_margin_with_distance_loss of input and positive and negative.
 
-    Return：
+    Return:
         A callable object of TripletMarginWithDistanceLoss
 
     Examples:

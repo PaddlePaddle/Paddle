@@ -830,6 +830,7 @@
   infer_meta :
     func : FlashAttnGradInferMeta
     param : [q, k, v]
+    spmd_rule : FlashAttGradInferSpmd
   kernel :
     func : flash_attn_grad
     data_type: q
@@ -1571,6 +1572,8 @@
     func : multiplex_grad
     param : [index, out_grad]
     data_type : out_grad
+  data_transform :
+    skip_transform : index
 
 - backward_op : mv_grad
   forward : mv (Tensor x, Tensor vec) -> Tensor(out)
@@ -1716,6 +1719,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [x]
+    spmd_rule: PowGradInferSpmd
   kernel :
     func : pow_grad
     data_type : out_grad
@@ -2278,6 +2282,7 @@
   infer_meta :
     func : KernelWithXShapeInferMeta
     param: [xshape, out_grad]
+    spmd_rule : SqueezeGradInferSpmd
   kernel :
     func : squeeze_grad
     data_type : out_grad
@@ -2523,6 +2528,7 @@
   infer_meta :
     func : KernelWithXShapeInferMeta
     param: [xshape, out_grad]
+    spmd_rule : UnsqueezeGradInferSpmd
   kernel :
     func : unsqueeze_grad
     param : [xshape, out_grad]

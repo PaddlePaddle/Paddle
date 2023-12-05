@@ -25,7 +25,11 @@ void FlattenInferStridedKernel(const Context& dev_ctx,
                                int stop_axis UNUSED,
                                DenseTensor* out) {
   ReshapeStridedKernel<Context>(
-      dev_ctx, x, IntArray(phi::vectorize<int64_t>(out->dims())), out, nullptr);
+      dev_ctx,
+      x,
+      IntArray(common::vectorize<int64_t>(out->dims())),
+      out,
+      nullptr);
 }
 
 template <typename Context>
