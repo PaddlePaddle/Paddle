@@ -102,6 +102,74 @@ def bernoulli(x, name=None):
         return out
 
 
+def binomial(total_count, prob, name=None):
+    r"""
+    Returns a tensor filled with random number from the Binomial Distribution.
+
+    .. math::
+
+        out_i \sim Binomial (n = total_count, p = prob)
+
+    Args:
+        total_count(Tensor): A tensor specifying the size of the Binomial Distribution. The input data
+            type should be int32 or int64.
+        prob(Tensor): A tensor specifying the probability of success in the binomial experiment.
+            The input data type should be bfloat16, float16, float32, float64.
+        name(str, optional): The default value is None. Normally there is no need for user to set this
+            property. For more information, please refer to :ref:`api_guide_Name`.
+    Returns:
+        Tensor: A Tensor filled with binomial random values with the same shape ``total_count``. The
+            data type is int64.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.set_device('cpu')
+            >>> paddle.seed(100)
+
+            >>> n = paddle.to_tensor([10.0, 50.0])
+            >>> p = paddle.to_tensor([0.2, 0.6])
+            >>> out = paddle.binomial(n, p)
+            >>> print(out)
+            >>> # doctest: +SKIP("Random output")
+            Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [1 , 31])
+            >>> # doctest: -SKIP
+    """
+    if in_dynamic_or_pir_mode():
+        total_count, prob = paddle.broadcast_tensors(
+            [paddle.cast(total_count, dtype=paddle.get_default_dtype()), prob]
+        )
+        return _C_ops.binomial(total_count, prob)
+    else:
+        check_variable_and_dtype(
+            total_count, "total_count", ["int32", "int64"], "binomial"
+        )
+        check_variable_and_dtype(
+            prob,
+            "prob",
+            ["bfloat16", "float16", "float32", "float64"],
+            "binomial",
+        )
+
+        total_count, prob = paddle.broadcast_tensors(
+            [paddle.cast(total_count, dtype=paddle.get_default_dtype()), prob]
+        )
+        helper = LayerHelper("binomial", **locals())
+        out = helper.create_variable_for_type_inference(
+            dtype=convert_np_dtype_to_dtype_('int64')
+        )
+        helper.append_op(
+            type='binomial',
+            inputs={"total_count": total_count, "prob": prob},
+            outputs={'out': out},
+            attrs={},
+        )
+        out.stop_gradient = True
+        return out
+
+
 def poisson(x, name=None):
     r"""
     Returns a tensor filled with random number from a Poisson Distribution.

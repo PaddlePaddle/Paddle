@@ -423,6 +423,7 @@ from .tensor.math import (  # noqa: F401
 )
 
 from .tensor.random import (
+    binomial,
     bernoulli,
     poisson,
     multinomial,
@@ -746,6 +747,7 @@ __all__ = [
     'expm1',
     'expm1_',
     'bernoulli',
+    'binomial',
     'poisson',
     'sinh',
     'sinh_',
