@@ -21,7 +21,7 @@ import paddle
 import paddle.nn.functional as F
 from paddle import base
 from paddle.base import core
-
+from paddle.pir_utils import test_with_pir_api
 
 def channel_shuffle_np(x, groups, data_format="NCHW"):
     if data_format == "NCHW":
@@ -71,10 +71,10 @@ class TestChannelShuffleOp(OpTest):
         self.format = "NCHW"
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out',check_pir=True)
 
 
 class TestChannelLast(TestChannelShuffleOp):
@@ -88,7 +88,7 @@ class TestChannelShuffleAPI(unittest.TestCase):
         self.x_2_np = np.random.random([2, 4, 4, 9]).astype("float64")
         self.out_1_np = channel_shuffle_np(self.x_1_np, 3)
         self.out_2_np = channel_shuffle_np(self.x_2_np, 3, "NHWC")
-
+    @test_with_pir_api
     def test_static_graph_functional(self):
         for use_cuda in (
             [False, True] if core.is_compiled_with_cuda() else [False]
@@ -124,6 +124,7 @@ class TestChannelShuffleAPI(unittest.TestCase):
             np.testing.assert_allclose(res_2[0], self.out_2_np)
 
     # same test between layer and functional in this op.
+    @test_with_pir_api
     def test_static_graph_layer(self):
         for use_cuda in (
             [False, True] if core.is_compiled_with_cuda() else [False]
@@ -162,7 +163,7 @@ class TestChannelShuffleAPI(unittest.TestCase):
 
             np.testing.assert_allclose(res_1[0], out_1_np)
             np.testing.assert_allclose(res_2[0], out_2_np)
-
+    @test_with_pir_api
     def run_dygraph(self, groups, data_format):
         n, c, h, w = 2, 9, 4, 4
 
@@ -200,10 +201,10 @@ class TestChannelShuffleAPI(unittest.TestCase):
             if data_format != 'NCHW':
                 channel_shuffle_str += f', data_format={data_format}'
             self.assertEqual(channel_shuffle.extra_repr(), channel_shuffle_str)
-
+    @test_with_pir_api
     def test_dygraph1(self):
         self.run_dygraph(3, "NCHW")
-
+    @test_with_pir_api
     def test_dygraph2(self):
         self.run_dygraph(3, "NHWC")
 
@@ -308,14 +309,14 @@ class TestChannelShuffleBF16OP(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place,check_pir=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
             place,
             ['X'],
-            'Out',
+            'Out',check_pir=True
         )
 
 

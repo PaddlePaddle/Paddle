@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
-from paddle.base.framework import in_dygraph_mode
+from paddle.base.framework import in_dygraph_mode,in_dynamic_or_pir_mode
 
 from ...base.data_feeder import check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
@@ -508,7 +508,7 @@ def channel_shuffle(x, groups, data_format="NCHW", name=None):
             f"But recevie Attr(data_format): {data_format} "
         )
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.channel_shuffle(x, groups, data_format)
 
     helper = LayerHelper("channel_shuffle", **locals())

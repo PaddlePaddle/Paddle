@@ -21,7 +21,7 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle.base import core
 from paddle.nn import clip
-
+from paddle.pir_utils import test_with_pir_api
 
 class TestClipByNormOp(OpTest):
     def setUp(self):
@@ -45,7 +45,7 @@ class TestClipByNormOp(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def initTestCase(self):
         self.shape = (100,)
@@ -133,7 +133,7 @@ class TestClipByNormBF16Op(OpTest):
         self.place = core.CUDAPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place)
+        self.check_output_with_place(self.place,check_pir=True)
 
     def initTestCase(self):
         self.shape = (100,)
@@ -185,7 +185,7 @@ class TestClipByNormOpWithSelectedRows(unittest.TestCase):
             atol=1e-05,
             equal_nan=False,
         )
-
+    @test_with_pir_api
     def test_clip_by_norm_with_selected_ros(self):
         places = [core.CPUPlace()]
         if core.is_compiled_with_cuda():
