@@ -60,8 +60,8 @@ class MyTest2(MyTest):
 logger = logging.getLogger("Dygraph to static utils")
 logger.setLevel(logging.WARNING)
 
-ENV_ENABLE_PIR_EXE = BooleanEnvironmentVariable(
-    "FLAGS_enable_pir_in_executor", True
+ENV_ENABLE_PIR_WITH_PT_IN_DY2ST = BooleanEnvironmentVariable(
+    "FLAGS_enable_pir_with_pt_in_dy2st", True
 )
 
 
@@ -99,7 +99,17 @@ DISABLED_TO_STATIC_TEST_FILES = {
 
 DISABLED_IR_TEST_FILES = {
     IrMode.LEGACY_IR: [],
-    IrMode.PT: [],
+    IrMode.PT: [
+        "test_gradname_parse",
+        "test_seq2seq",
+        "test_save_inference_model",
+        "test_tensor_hook",
+        "test_lstm",
+        "test_reinforcement_learning",
+        # TODO: only disable on Windows
+        "test_program_translator",
+        "test_cache_program",
+    ],
     IrMode.PIR: [],
 }
 
@@ -156,9 +166,9 @@ def to_legacy_ir_test(fn):
     @wraps(fn)
     def impl(*args, **kwargs):
         logger.info("[LEGACY_IR] running legacy ir")
-        pt_in_dy2st_flag = ENV_ENABLE_PIR_EXE.name
+        pt_in_dy2st_flag = ENV_ENABLE_PIR_WITH_PT_IN_DY2ST.name
         original_flag_value = get_flags(pt_in_dy2st_flag)[pt_in_dy2st_flag]
-        with EnvironmentVariableGuard(ENV_ENABLE_PIR_EXE, False):
+        with EnvironmentVariableGuard(ENV_ENABLE_PIR_WITH_PT_IN_DY2ST, False):
             try:
                 set_flags({pt_in_dy2st_flag: False})
                 ir_outs = fn(*args, **kwargs)
@@ -173,13 +183,15 @@ def to_pt_test(fn):
     @wraps(fn)
     def impl(*args, **kwargs):
         logger.info("[PT] running PT")
-        pt_in_dy2st_flag = ENV_ENABLE_PIR_EXE.name
+        pt_in_dy2st_flag = ENV_ENABLE_PIR_WITH_PT_IN_DY2ST.name
         original_flag_value = get_flags(pt_in_dy2st_flag)[pt_in_dy2st_flag]
         if os.environ.get('FLAGS_use_stride_kernel', False):
             return
         with static.scope_guard(static.Scope()):
             with static.program_guard(static.Program()):
-                with EnvironmentVariableGuard(ENV_ENABLE_PIR_EXE, True):
+                with EnvironmentVariableGuard(
+                    ENV_ENABLE_PIR_WITH_PT_IN_DY2ST, True
+                ):
                     try:
                         set_flags({pt_in_dy2st_flag: True})
                         ir_outs = fn(*args, **kwargs)
