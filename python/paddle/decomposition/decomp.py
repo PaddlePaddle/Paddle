@@ -834,12 +834,15 @@ def decompose_pir_program(pir_program, param_mapping, grad_var_to_var):
                     ):
                         new_vars.append(param_mapping[var][1])
                     else:
-                        for i in range(0, len(param_mapping[var])):
-                            new_vars.append(param_mapping[var][i])
+                        last_op = param_mapping[var][-1].get_defining_op()
+                        if last_op.name().endswith("_"):
+                            new_vars.append(param_mapping[var][0])
 
+                    assert (
+                        len(new_vars) == 1
+                    ), "translate pir_grad_var_to_var error"
                     for i in range(0, len(new_grad_vars)):
-                        for j in range(0, len(new_vars)):
-                            pir_grad_var_to_var[new_grad_vars[i]] = new_vars[j]
+                        pir_grad_var_to_var[new_grad_vars[i]] = new_vars[0]
         return pir_grad_var_to_var
 
     prev_fwd_prim_state = core._is_fwd_prim_enabled()
