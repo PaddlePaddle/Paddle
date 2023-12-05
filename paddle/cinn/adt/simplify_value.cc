@@ -159,6 +159,38 @@ struct SimplifyListGetItem {
   }
 };
 
+// Match: IndexDotValue([i_59, i_60], [sym_17, 1])
+// After: IndexDotValue([i_59], [sym_17])
+struct SimplifyIndexDotValue {
+  using source_pattern_type = IndexDotValue<List<Value>, List<DimExpr>>;
+
+  Value MatchAndRewrite(const Value& value, const IndexExprInferContext& ctx) {
+    const auto& [index_dot_values, dot_dims] =
+        value.Get<IndexDotValue<Value, List<DimExpr>>>().tuple();
+    const auto& iterators = index_dot_values.Get<List<Value>>();
+    List<Value> ret_iterators{};
+    List<DimExpr> ret_dot_dims{};
+    for (std::int64_t i = 0; i < dot_dims->size(); ++i) {
+      const auto& dot_dim = dot_dims->at(i);
+      if (dot_dim.Has<std::int64_t>() && dot_dim.Get<std::int64_t>() == 1) {
+        // Do nothing
+      } else {
+        ret_iterators->emplace_back(iterators->at(i));
+        ret_dot_dims->emplace_back(dot_dim);
+      }
+    }
+
+    if (ret_iterators != iterators || ret_dot_dims != dot_dims) {
+      CHECK_EQ(ret_iterators->size(), ret_dot_dims->size());
+      CHECK(!ret_iterators->empty());
+      return IndexDotValue<Value, List<DimExpr>>{ret_iterators, ret_dot_dims};
+    } else {
+      return value;
+    }
+    LOG(FATAL) << "Dead code";
+  }
+};
+
 // Match: IndexDotValue([BI(i_59, sym_17), i_60], [sym_17, 64])
 // After: IndexDotValue([i_59, i_60], [sym_17, 64])
 struct SymbolicDim_SimplifyDotBroadcatedIterator {
@@ -204,6 +236,49 @@ struct SymbolicDim_SimplifyDotBroadcatedIterator {
       CHECK_EQ(ret_iterators->size(), ret_dot_dims->size());
       CHECK(!ret_iterators->empty());
       return IndexDotValue<Value, List<DimExpr>>{ret_iterators, ret_dot_dims};
+    } else {
+      return value;
+    }
+    LOG(FATAL) << "Dead code";
+  }
+};
+
+// Match: ListGetItem(IndexUnDot(ok, [sym_17, 1]), 1)
+// After: 0
+// Match: ListGetItem(IndexUnDot(ok, [sym_17, 1, 64]), 2)
+// After: ListGetItem(IndexUnDot(ok, [sym_17, 64]), 1)
+struct SimplifyListOfIndexUnDotValue {
+  using source_pattern_type =
+      ListGetItem<IndexUnDotValue<Value, List<DimExpr>>, std::int64_t>;
+
+  Value MatchAndRewrite(const Value& value, const IndexExprInferContext& ctx) {
+    const auto& [list_get_item_value, constant] =
+        value.Get<ListGetItem<Value, DimExpr>>().tuple();
+    std::int64_t list_idx = constant.Get<std::int64_t>();
+    std::int64_t undot_dim_before_get_item_cnt = 0;
+    const auto& [index_undot_value, undot_dims] =
+        list_get_item_value.Get<IndexUnDotValue<Value, List<DimExpr>>>()
+            .tuple();
+    List<DimExpr> ret_undot_dims{};
+    for (std::int64_t i = 0; i < undot_dims->size(); ++i) {
+      const auto& undot_dim = undot_dims->at(i);
+      if (undot_dim.Has<std::int64_t>() && undot_dim.Get<std::int64_t>() == 1) {
+        if (i < list_idx) {
+          undot_dim_before_get_item_cnt++;
+        } else if (i == list_idx) {
+          return Value{DimExpr{0}};
+        } else {
+          // Do nothing
+        }
+      } else {
+        ret_undot_dims->emplace_back(undot_dim);
+      }
+    }
+    if (ret_undot_dims != undot_dims) {
+      const auto& ret_undot_value = IndexUnDotValue<Value, List<DimExpr>>{
+          index_undot_value, ret_undot_dims};
+      return ListGetItem<Value, DimExpr>{
+          ret_undot_value, DimExpr{list_idx - undot_dim_before_get_item_cnt}};
     } else {
       return value;
     }
@@ -563,6 +638,8 @@ struct SymbolicDim_SimplifyDotDot {
 Value SimplifyValue(Value value, const IndexExprInferContext& ctx) {
   value = MatchAndRewrite<SimplifyList>(value, ctx);
   value = MatchAndRewrite<SimplifyListGetItem>(value, ctx);
+  value = MatchAndRewrite<SimplifyIndexDotValue>(value, ctx);
+  value = MatchAndRewrite<SimplifyListOfIndexUnDotValue>(value, ctx);
   value = MatchAndRewrite<SimplifyBroadcastedIterator>(value, ctx);
   value = MatchAndRewrite<SimplifyRedundantBroadcastedIterator>(value, ctx);
   value = MatchAndRewrite<SimplifyDotUndot>(value, ctx);
@@ -571,8 +648,8 @@ Value SimplifyValue(Value value, const IndexExprInferContext& ctx) {
   value = MatchAndRewrite<SimplifyGcdShape>(value, ctx);
   value = MatchAndRewrite<SimplifyDotDot>(value, ctx);
   // For symbolic dim simplification
-  value =
-      MatchAndRewrite<SymbolicDim_SimplifyDotBroadcatedIterator>(value, ctx);
+  // value =
+  // MatchAndRewrite<SymbolicDim_SimplifyDotBroadcatedIterator>(value, ctx);
   value = MatchAndRewrite<SymbolicDim_SimplifyDotUndot>(value, ctx);
   value = MatchAndRewrite<SymbolicDim_SimplifyUndotDot>(value, ctx);
   // value = MatchAndRewrite<SymbolicDim_SimplifyGcdShape>(value, ctx);

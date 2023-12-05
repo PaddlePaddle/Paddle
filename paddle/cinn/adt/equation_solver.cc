@@ -215,38 +215,24 @@ std::unordered_map<Variable, Value> InferValues(const Function* function,
 
 DEFINE_ADT_TAG(tValueInferSuccess);
 
-template <typename OnFailT>
 tValueInferSuccess<bool> MergeInferedValuesIntoCtx(const Function* function,
-                                                   IndexExprInferContext* ctx,
-                                                   const OnFailT& OnFail) {
+                                                   IndexExprInferContext* ctx) {
   auto output_variable2value = InferValues(function, ctx);
   for (const auto& [variable, unsimplified_value] : output_variable2value) {
     Value simplified_value({SimplifyValue(unsimplified_value, *ctx)});
-    if (simplified_value.Has<Undefined>()) {
-      return OnFail(std::optional<Value>{std::nullopt}, simplified_value);
-    }
-    if (!ctx->HasValue(variable)) {
-      ctx->SetValue(variable, simplified_value);
+    bool is_success = ctx->SetValue(variable, simplified_value);
+    if (is_success) {
+      // Do nothing
     } else {
       std::optional<Value> opt_old_value = ctx->GetValue(variable);
-      if (simplified_value != opt_old_value.value()) {
-        return OnFail(opt_old_value, simplified_value);
+      if (opt_old_value.has_value()) {
+        VLOG(1) << "opt_old_value = " << ToTxtString(opt_old_value.value());
       }
+      VLOG(1) << "simplified_value = " << ToTxtString(simplified_value);
+      return tValueInferSuccess<bool>{false};
     }
   }
   return tValueInferSuccess<bool>{true};
-}
-
-tValueInferSuccess<bool> MergeInferedValuesIntoCtx(const Function* function,
-                                                   IndexExprInferContext* ctx) {
-  return MergeInferedValuesIntoCtx(
-      function, ctx, [&](const std::optional<Value>& lhs, const Value& rhs) {
-        if (lhs.has_value()) {
-          VLOG(1) << "opt_old_value = " << ToTxtString(lhs.value());
-        }
-        VLOG(1) << "simplified = " << ToTxtString(rhs);
-        return tValueInferSuccess<bool>{false};
-      });
 }
 
 void SolveEquations(
@@ -266,15 +252,9 @@ void CheckEquationsSolvable(
     const Variable& start,
     IndexExprInferContext* ctx) {
   const auto& CheckNoConflictInferedValue = [&](const Function* function) {
-    MergeInferedValuesIntoCtx(
-        function,
-        ctx,
-        [&](const auto& opt_old_value, const auto& simplified_value) {
-          LOG(ERROR) << "old_value: " << ToTxtString(opt_old_value);
-          LOG(ERROR) << "simplified_value: " << ToTxtString(simplified_value);
-          LOG(FATAL) << "CheckEquationsSolvable Failed";
-          return tValueInferSuccess<bool>{false};
-        });
+    tValueInferSuccess<bool> has_unique_value =
+        MergeInferedValuesIntoCtx(function, ctx);
+    CHECK(has_unique_value.value());
   };
 
   walker.WalkFunction(start, CheckNoConflictInferedValue);
