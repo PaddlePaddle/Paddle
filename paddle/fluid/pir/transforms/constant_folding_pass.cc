@@ -278,12 +278,12 @@ class ConstantFoldingPass : public pir::Pass {
     pir::GreedyRewriteConfig cfg;
     cfg.use_top_down_traversal = true;
     cfg.max_iterations = 10;
-    auto [_, num_rewrites] = pir::ApplyPatternsGreedily(op, patterns_, cfg);
-    PrintStatistics(num_rewrites);
+    pir::ApplyPatternsGreedily(op, patterns_, cfg);
+
+    PrintStatistics(" --- detected : [" + std::to_string(counter_) + "/" +
+                    std::to_string(op_nums) + "] subgraph!");
     // delete old parameter var
     scope_->EraseVars(deleted_vars_);
-    LOG(INFO) << " ------ constant_folding_pass done: [" << counter_ << "/"
-              << op_nums << "]";
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
