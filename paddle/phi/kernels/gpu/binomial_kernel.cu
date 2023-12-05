@@ -21,8 +21,10 @@ limitations under the License. */
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/binomial_kernel.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 
 namespace phi {
 
