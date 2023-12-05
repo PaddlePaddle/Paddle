@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import random
 
 import numpy as np
@@ -35,9 +34,6 @@ def create_numpy_like_random(name):
     return paddle.ParamAttr(
         name=name, initializer=paddle.nn.initializer.Uniform(0, 1)
     )
-
-
-# mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
 
 
 class RandomDataset(paddle.io.Dataset):
@@ -67,7 +63,6 @@ class DemoNet(nn.Layer):
         self.shard_input = shard_input
         self.shard_weight = shard_weight
         self.is_recompute = is_recompute
-        # self._pp_mesh0 = dist.ProcessMesh([0], dim_names=["x"])
         weight_attr_0 = create_numpy_like_random(param_prefix + "_0")
         weight_attr_1 = create_numpy_like_random(param_prefix + "_1")
 
@@ -105,17 +100,7 @@ class DemoNet(nn.Layer):
 
 class TestSimpleNetForSemiAutoParallel:
     def __init__(self):
-        # self._dtype = os.getenv("dtype")
-        # self._backend = os.getenv("backend")
-        self._seed = eval(os.getenv("seed"))
-        # self._pp_mesh0 = dist.ProcessMesh([0], dim_names=["x"])
-        # self._pp_mesh1 = dist.ProcessMesh([1], dim_names=["x"])
-        # self.pp_reshard_dist_attr = dist.DistAttr(
-        #     mesh=self._pp_mesh1, sharding_specs=[None, None]
-        # )
-
-        # paddle.set_device(self._backend)
-        # self.init_single_card_net_result()
+        self._seed = 1234
 
     def set_random_seed(self, seed):
         random.seed(seed)
@@ -148,10 +133,8 @@ class TestSimpleNetForSemiAutoParallel:
     def run_dynamic(self, layer, opt, data_loader):
         # create loss
         loss_fn = nn.MSELoss()
-        # run forward and backward
 
         loss_list = []
-        # TODO: solve the derivation issue of AdamW
         for _ in range(5):
             for batch_id, (image, label) in enumerate(data_loader()):
                 out = layer(image)
@@ -234,4 +217,3 @@ class TestSimpleNetForSemiAutoParallel:
 
 if __name__ == '__main__':
     TestSimpleNetForSemiAutoParallel().run_test_case()
-    # out_run_dy2static()
