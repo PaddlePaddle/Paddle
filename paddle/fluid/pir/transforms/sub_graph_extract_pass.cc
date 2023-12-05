@@ -55,8 +55,6 @@ class SubGraphExtractPass : public pir::Pass {
     std::vector<GroupOpsVec> groups =
         ::pir::SubgraphDetector(&block, IsSplitOp)();
     PrintStatistics(static_cast<int64_t>(groups.size()));
-    LOG(INFO) << "--- [sub_graph_extract_pass] detected " << groups.size()
-              << " cinn supported subgraphs";
     for (auto& group_ops : groups) {
       VLOG(4) << "current group_ops.size(): " << group_ops.size();
       ::pir::ReplaceWithGroupOp(&block, group_ops);

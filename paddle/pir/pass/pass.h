@@ -98,6 +98,12 @@ class IR_API Pass {
                                   pass_match_count);
     }
   }
+  void PrintStatistics(const std::string& pass_log) {
+    paddle::string::PrettyLogH1("--- Running analysis [%s]", pass_info_.name);
+    if (!pass_log.empty()) {
+      paddle::string::PrettyLogH2(pass_log);
+    }
+  }
 
   AnalysisManager analysis_manager() { return pass_state().am; }
 
@@ -145,8 +151,8 @@ class PatternRewritePass : public Pass {
     GreedyRewriteConfig cfg;
     cfg.use_top_down_traversal = true;
     cfg.max_iterations = 10;
-    PrintStatistics(
-        ApplyPatternsGreedily(op->region(0), patterns_, cfg).second);
+    auto [_, num_rewrites] = ApplyPatternsGreedily(op, patterns_, cfg);
+    PrintStatistics(num_rewrites);
   }
 
  private:

@@ -472,8 +472,6 @@ class InplacePass : public pir::Pass {
       num_rewrites_++;
     }
     PrintStatistics(num_rewrites_);
-    LOG_FIRST_N(INFO, 1)
-        << "Apply inplace pass on lowering ::pir::Program to Kernel Dialect.";
   }
 
   bool CanApplyOn(pir::Operation* op) const override {

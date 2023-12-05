@@ -77,16 +77,16 @@ inline IR_API std::pair<bool, int64_t> ApplyPatternsGreedily(
     Operation* op,
     const FrozenRewritePatternSet& patterns,
     GreedyRewriteConfig config = GreedyRewriteConfig()) {
-  bool failed = false;
-  int64_t regions_num_rewrites = 0;
+  bool sum_converged = true;
+  int64_t sum_num_rewrites = 0;
   for (uint32_t i = 0; i < op->num_regions(); ++i) {
     Region& region = op->region(i);
     auto [converged, num_rewrites] =
         ApplyPatternsGreedily(region, patterns, config);
-    failed |= !converged;
-    regions_num_rewrites += num_rewrites;
+    sum_converged &= converged;
+    sum_num_rewrites += num_rewrites;
   }
-  return std::make_pair(failed, regions_num_rewrites);
+  return std::make_pair(sum_converged, sum_num_rewrites);
 }
 
 }  // namespace pir

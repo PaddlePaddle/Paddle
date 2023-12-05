@@ -24,6 +24,7 @@
 #include "paddle/phi/core/enforce.h"
 
 #include "paddle/common/errors.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/pass/pass.h"
@@ -38,7 +39,8 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
         place_(place),
         scope_(scope) {
     PADDLE_ENFORCE(
-        place_ == paddle::PlaceType::kCPU || place == paddle::PlaceType::kGPU,
+        paddle::platform::is_gpu_place(place_) ||
+            paddle::platform::is_cpu_place(place_),
         phi::errors::PreconditionNotMet(
             "params_sync_among_devices_pass should run on cpu or gpu."));
   }
@@ -80,7 +82,7 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
 
   bool CanApplyOn(pir::Operation* op) const override {
     return op->isa<::pir::ModuleOp>() && op->num_regions() > 0 &&
-           place_ == paddle::PlaceType::kGPU;
+           paddle::platform::is_gpu_place(place_);
   }
 
  private:
