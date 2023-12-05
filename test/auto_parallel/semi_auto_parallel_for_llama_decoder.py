@@ -163,7 +163,6 @@ class TestLlamaDecoderForSemiAutoParallel:
         self.init_single_card_net_result()
 
     def mp_shard_fn(self, layer_name, layer, process_mesh):
-        print(f"layer name {layer_name}")
         col_linear = ["qkv_proj", "gate_proj", "up_proj"]
         row_linear = ["o_proj", "down_proj"]
 
