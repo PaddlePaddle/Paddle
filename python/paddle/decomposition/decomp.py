@@ -364,6 +364,27 @@ def _decomp_fwd_op(
             return tuple(orig_outs), False
 
 
+def _check_combine_inputs(input1, input2):
+    assert (
+        input1.get_defining_op().name() == "builtin.combine"
+    ), "not a vector<densetensor> type from builtin.combine"
+    assert (
+        input2.get_defining_op().name() == "builtin.combine"
+    ), "not a vector<densetensor> type from builtin.combine"
+    builtin_combine_op1 = input1.get_defining_op()
+    builtin_combine_op2 = input2.get_defining_op()
+    if builtin_combine_op1.num_operands() != builtin_combine_op2.num_operands():
+        return False
+    else:
+        for i in range(builtin_combine_op1.num_operands()):
+            if not (
+                builtin_combine_op1.operand_source(i)
+                == builtin_combine_op2.operand_source(i)
+            ):
+                return False
+    return True
+
+
 def _decomp_bwd_with_vjp(
     block: Block,
     fwd_op: pir.Operation,
@@ -385,7 +406,23 @@ def _decomp_bwd_with_vjp(
         has_decomposed: whether the backward op has been successfully decomposed. If a fwd op does not have composite vjp rules and can not be decomposed directly, this function will return False.
     '''
 
-    def _prepare_output_grads(fwd_op, bwd_op):
+    def _prepare_inputs(fwd_op):
+        new_inputs = []
+        for input in fwd_op.operands():
+            if (
+                input.source().get_defining_op().name() == "builtin.combine"
+            ):  # for pir::VectorType<paddle::dialect::DenseTensorType>
+                builtin_combine_op = input.source().get_defining_op()
+                new_input = [
+                    builtin_combine_op.operand_source(i)
+                    for i in range(0, builtin_combine_op.num_operands())
+                ]
+                new_inputs.append(new_input)
+            else:
+                new_inputs.append([input.source()])  # for DenseTensorType
+        return new_inputs
+
+    def _prepare_grad_outputs(fwd_op, bwd_op):
         # check forward outputs and backward inputs
         fwd_outputs = fwd_op.results()
         fwd_output_names = fwd_op.get_output_names()
@@ -400,14 +437,35 @@ def _decomp_bwd_with_vjp(
 
         # cut gradients from backward op's inputs
         fwd_inputs = [x.source() for x in fwd_op.operands()]
+        fwd_vec_inputs = [
+            x.source()
+            for x in fwd_op.operands()
+            if x.source().get_defining_op().name() == "builtin.combine"
+        ]
         grad_outputs = []
         grad_output_names = []
         for bwd_input in bwd_inputs:
-            if not (bwd_input in fwd_inputs or bwd_input in fwd_outputs):
-                grad_outputs.append([bwd_input])
-                grad_output_names.append(
-                    bwd_input_names[bwd_inputs.index(bwd_input)]
-                )
+            if (
+                bwd_input.get_defining_op().name() == "builtin.combine"
+            ):  # for pir::VectorType<paddle::dialect::DenseTensorType>
+                in_fwd = False
+                for vec_input in fwd_vec_inputs:
+                    if _check_combine_inputs(bwd_input, vec_input):
+                        in_fwd = True
+                        break
+                if not in_fwd:
+                    grad_outputs.append([bwd_input])
+                    grad_output_names.append(
+                        bwd_input_names[bwd_inputs.index(bwd_input)]
+                    )
+            else:
+                if not (
+                    bwd_input in fwd_inputs or bwd_input in fwd_outputs
+                ):  # for paddle::dialect::DenseTensorType
+                    grad_outputs.append([bwd_input])
+                    grad_output_names.append(
+                        bwd_input_names[bwd_inputs.index(bwd_input)]
+                    )
 
         # add fake grads for forward op's outputs which are not used in backward op
         # this is necessary for the call_vjp(), which ensures that len(out_grads) must be equal to len(outputs)
@@ -419,20 +477,22 @@ def _decomp_bwd_with_vjp(
                 index += 1
             else:
                 new_grad_outputs.append([pir.fake_op_result()])
-
         return new_grad_outputs
 
-    fwd_inputs_ = [
-        [fwd_op.operand_source(i)] for i in range(0, fwd_op.num_operands())
-    ]
+    def _prepare_stop_gradients(fwd_inputs, bwd_outputs):
+        stop_gradients = []
+        for idx, bwd_output in enumerate(bwd_outputs):
+            if bwd_output.initialized():
+                stop_gradient = [False] * len(fwd_inputs[idx])
+            else:
+                stop_gradient = [True] * len(fwd_inputs[idx])
+            stop_gradients.append(stop_gradient)
+        return stop_gradients
+
+    fwd_inputs_ = _prepare_inputs(fwd_op)
     fwd_outputs_ = [[fwd_output] for fwd_output in fwd_op.results()]
-    grad_outputs_ = _prepare_output_grads(fwd_op, bwd_op)
-    stop_gradients_ = []
-    for grad_input in bwd_op.results():
-        if grad_input.initialized():
-            stop_gradients_.append([False])
-        else:
-            stop_gradients_.append([True])
+    grad_outputs_ = _prepare_grad_outputs(fwd_op, bwd_op)
+    stop_gradients_ = _prepare_stop_gradients(fwd_inputs_, bwd_op.results())
 
     # record the backward op's position for subsequent replacement
     bwd_op_idx = block.ops.index(bwd_op)
@@ -451,6 +511,8 @@ def _decomp_bwd_with_vjp(
         return None, False
     else:
         # record new outputs of the decomposed backward op
+        if block.ops[-1].name() == "builtin.split":
+            new_grad_inputs = [[block.ops[-1].operand(0).source()]]
         res = []
         for grad_input in new_grad_inputs:
             if grad_input[0] is not None and grad_input[0].initialized():
@@ -597,15 +659,49 @@ def _check_op(
             fwd_op_related_inputs_outputs.append(bwd_inputs[idx])
     fwd_inputs = [x.source() for x in fwd_op.operands()]
     fwd_outputs = fwd_op.results()
+    fwd_vec_inputs = [
+        x.source()
+        for x in fwd_op.operands()
+        if x.source().get_defining_op().name() == "builtin.combine"
+    ]
+
+    inserted_op_name_list = ["pd_op.full_int_array", "pd_op.full"]
     for operand in fwd_op_related_inputs_outputs:
-        if not (
-            operand in fwd_inputs
-            or operand in fwd_outputs
-            or operand.get_defining_op().name() == "pd_op.full_int_array"
-        ):
-            return False
+        if (
+            operand.get_defining_op().name() == "builtin.combine"
+        ):  # for pir::VectorType<paddle::dialect::DenseTensorType>
+            in_fwd = False
+            for vec_input in fwd_vec_inputs:
+                if _check_combine_inputs(operand, vec_input):
+                    in_fwd = True
+                    break
+            if not in_fwd:
+                return False
+        else:  # for pir::VectorType<paddle::dialect::DenseTensorType>
+            if not (
+                operand in fwd_inputs
+                or operand in fwd_outputs
+                or operand.get_defining_op().name() in inserted_op_name_list
+            ):
+                return False
 
     return True
+
+
+def _with_dynamic_shape(
+    op: pir.Operation,
+):
+    for input in op.operands():
+        if (
+            input.source().get_defining_op().name() == "builtin.combine"
+        ):  # for pir::VectorType<paddle::dialect::DenseTensorType>
+            for orig_input in input.source().get_defining_op().operands():
+                if -1 in orig_input.source().shape:
+                    return True
+        else:
+            if -1 in input.source().shape:
+                return True
+    return False
 
 
 def _decomp_bwd_op(
@@ -640,6 +736,8 @@ def _decomp_bwd_op(
     # check and ensure: bwd_inputs = out_grads + fwd_inputs[optional] + fwd_outputs[optional]
     fwd_op = _get_fwd_op(bwd_op, grad_var_to_var)
     if not _check_op(fwd_op, bwd_op):
+        return None, False
+    if _with_dynamic_shape(fwd_op) or _with_dynamic_shape(bwd_op):
         return None, False
 
     # try to decompose backward op directly
