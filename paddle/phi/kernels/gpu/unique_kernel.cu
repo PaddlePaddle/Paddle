@@ -121,7 +121,7 @@ UniqueFlattendCUDATensor(const Context& context,
   phi::Copy(context, in, context.GetPlace(), false, &in_hat);
   auto* in_data_hat = context.template Alloc<InT>(&in_hat);
 
-  indices->Resize(phi::make_ddim({num_input}));
+  indices->Resize(common::make_ddim({num_input}));
   auto* indices_data = context.template Alloc<IndexT>(indices);
 
   thrust::sequence(thrust::device, indices_data, indices_data + num_input);
@@ -130,7 +130,7 @@ UniqueFlattendCUDATensor(const Context& context,
 
   // 1. Calculate op result: 'out'
   DenseTensor range;
-  range.Resize(phi::make_ddim({num_input + 1}));
+  range.Resize(common::make_ddim({num_input + 1}));
   auto* range_data_ptr = context.template Alloc<IndexT>(&range);
   thrust::sequence(
       thrust::device, range_data_ptr, range_data_ptr + num_input + 1);
@@ -142,14 +142,14 @@ UniqueFlattendCUDATensor(const Context& context,
           thrust::device, out_data, out_data + num_input, range_data_ptr, equal)
           .first -
       out_data;
-  out->Resize(phi::make_ddim({num_out}));
+  out->Resize(common::make_ddim({num_out}));
 
   // 3. Calculate inverse index: 'inverse'
   if (return_inverse) {
-    index->Resize(phi::make_ddim({num_input}));
+    index->Resize(common::make_ddim({num_input}));
     auto* inverse_data = context.template Alloc<IndexT>(index);
     DenseTensor inv_loc;
-    inv_loc.Resize(phi::make_ddim({num_input}));
+    inv_loc.Resize(common::make_ddim({num_input}));
     auto inv_loc_data_ptr = context.template Alloc<IndexT>(&inv_loc);
     thrust::adjacent_difference(thrust::device,
                                 in_data_hat,
@@ -172,7 +172,7 @@ UniqueFlattendCUDATensor(const Context& context,
   // 2. Calculate sorted index: 'indices'
   if (return_index) {
     DenseTensor tmp_indices;
-    tmp_indices.Resize(phi::make_ddim({num_input}));
+    tmp_indices.Resize(common::make_ddim({num_input}));
     auto* tmp_indices_data_ptr = context.template Alloc<IndexT>(&tmp_indices);
     thrust::copy(thrust::device,
                  in_data_hat,
@@ -183,12 +183,12 @@ UniqueFlattendCUDATensor(const Context& context,
                           tmp_indices_data_ptr + num_input,
                           indices_data,
                           equal);
-    indices->Resize(phi::make_ddim({num_out}));
+    indices->Resize(common::make_ddim({num_out}));
   }
 
   // 4. Calculate 'counts'
   if (return_counts) {
-    counts->Resize(phi::make_ddim({num_out}));
+    counts->Resize(common::make_ddim({num_out}));
     auto count_data = context.template Alloc<IndexT>(counts);
     // init 'count_data' as 0
     thrust::fill(thrust::device, count_data, count_data + num_out, 0);
@@ -219,12 +219,12 @@ UniqueFlattendCUDATensor(const Context& context,
   // 1. Sort indices
   DenseTensor in_resize;
   in_resize.ShareDataWith(in);
-  in_resize.Resize(phi::make_ddim({num_input}));
+  in_resize.Resize(common::make_ddim({num_input}));
   const InT* in_data = in_resize.data<InT>();
   auto equal = BinaryEqual<InT>(1, in_data);
   auto not_equal = BinaryNotEqual<InT>(1, in_data);
 
-  indices->Resize(phi::make_ddim({num_input}));
+  indices->Resize(common::make_ddim({num_input}));
   auto* indices_data = context.template Alloc<IndexT>(indices);
 
   thrust::sequence(thrust::device, indices_data, indices_data + num_input);
@@ -235,10 +235,10 @@ UniqueFlattendCUDATensor(const Context& context,
 
   // 2. Calculate inverse indices: 'index'
   if (return_inverse) {
-    index->Resize(phi::make_ddim({num_input}));
+    index->Resize(common::make_ddim({num_input}));
     auto* inverse_data = context.template Alloc<IndexT>(index);
     DenseTensor inv_loc;
-    inv_loc.Resize(phi::make_ddim({num_input}));
+    inv_loc.Resize(common::make_ddim({num_input}));
     auto inv_loc_data_ptr = context.template Alloc<IndexT>(&inv_loc);
     thrust::adjacent_difference(thrust::device,
                                 indices_data,
@@ -260,7 +260,7 @@ UniqueFlattendCUDATensor(const Context& context,
 
   // 3. Calculate op result and sorted index: 'out' & 'indices'
   DenseTensor range;
-  range.Resize(phi::make_ddim({num_input + 1}));
+  range.Resize(common::make_ddim({num_input + 1}));
   auto* range_data_ptr = context.template Alloc<IndexT>(&range);
   thrust::sequence(
       thrust::device, range_data_ptr, range_data_ptr + num_input + 1);
@@ -272,14 +272,14 @@ UniqueFlattendCUDATensor(const Context& context,
                                   equal)
                 .first -
             indices_data;
-  indices->Resize(phi::make_ddim({num_out}));
-  out->Resize(phi::make_ddim({num_out}));
+  indices->Resize(common::make_ddim({num_out}));
+  out->Resize(common::make_ddim({num_out}));
   context.template Alloc<InT>(out);
   phi::IndexSelectKernel<InT, Context>(context, in_resize, *indices, 0, out);
 
   // 4. Calculate 'counts'
   if (return_counts) {
-    counts->Resize(phi::make_ddim({num_out}));
+    counts->Resize(common::make_ddim({num_out}));
     auto count_data = context.template Alloc<IndexT>(counts);
     // init 'count_data' as 0
     thrust::fill(thrust::device, count_data, count_data + num_out, 0);
@@ -312,10 +312,10 @@ static void ComputeUniqueDims(const Context& context,
                               not_equal_T not_equal,
                               int64_t row) {
   // 1. inverse indices: 'inverse'
-  inverse->Resize(phi::make_ddim({row}));
+  inverse->Resize(common::make_ddim({row}));
   auto* inverse_data = context.template Alloc<IndexT>(inverse);
   DenseTensor inv_loc;
-  inv_loc.Resize(phi::make_ddim({row}));
+  inv_loc.Resize(common::make_ddim({row}));
   auto inv_loc_data_ptr = context.template Alloc<IndexT>(&inv_loc);
   thrust::adjacent_difference(thrust::device,
                               sorted_indices_data,
@@ -336,7 +336,7 @@ static void ComputeUniqueDims(const Context& context,
 
   // 2. sorted indices
   DenseTensor range;
-  range.Resize(phi::make_ddim({row + 1}));
+  range.Resize(common::make_ddim({row + 1}));
   auto range_data_ptr = context.template Alloc<IndexT>(&range);
   thrust::sequence(thrust::device, range_data_ptr, range_data_ptr + row + 1);
   int num_out;
@@ -349,10 +349,10 @@ static void ComputeUniqueDims(const Context& context,
             sorted_indices_data;
   thrust::device_ptr<IndexT> range_data_ptr_dev(range_data_ptr);
   range_data_ptr_dev[num_out] = row;
-  sorted_indices->Resize(phi::make_ddim({num_out}));
+  sorted_indices->Resize(common::make_ddim({num_out}));
 
   // 3. counts: 'counts'
-  counts->Resize(phi::make_ddim({num_out}));
+  counts->Resize(common::make_ddim({num_out}));
   auto* count_data = context.template Alloc<IndexT>(counts);
   thrust::fill(thrust::device, count_data, count_data + num_out, 0);
   thrust::adjacent_difference(thrust::device,
@@ -376,8 +376,8 @@ static void UniqueDimsCUDATensor(const Context& context,
   // 1. Transpose & reshape
   // Transpose tensor: eg. axis=1, [dim0, dim1, dim2] -> [dim1, dim0, dim2]
   DenseTensor in_trans;
-  std::vector<int64_t> in_trans_dims_vec(phi::vectorize(in.dims()));
-  auto in_trans_dims = phi::make_ddim(in_trans_dims_vec);
+  std::vector<int64_t> in_trans_dims_vec(common::vectorize(in.dims()));
+  auto in_trans_dims = common::make_ddim(in_trans_dims_vec);
   std::vector<int> permute(in.dims().size());
   bool is_transpose = axis != 0;
   if (is_transpose) {
@@ -386,7 +386,7 @@ static void UniqueDimsCUDATensor(const Context& context,
     permute[0] = axis;
     in_trans_dims_vec[axis] = in.dims()[0];
     in_trans_dims_vec[0] = in.dims()[axis];
-    in_trans_dims = phi::make_ddim(in_trans_dims_vec);
+    in_trans_dims = common::make_ddim(in_trans_dims_vec);
     in_trans.Resize(in_trans_dims);
     context.template Alloc<InT>(&in_trans);
     phi::funcs::TransCompute<Context, InT>(
@@ -399,7 +399,7 @@ static void UniqueDimsCUDATensor(const Context& context,
     in_trans.ShareDataWith(in);
   }
   // Reshape tensor: eg. [dim1, dim0, dim2] -> [dim1, dim0*dim2]
-  auto in_trans_flat_dims = phi::flatten_to_2d(in_trans_dims, 1);
+  auto in_trans_flat_dims = common::flatten_to_2d(in_trans_dims, 1);
   in_trans.Resize(in_trans_flat_dims);
 
   // now 'in_trans' is 2D
@@ -407,7 +407,7 @@ static void UniqueDimsCUDATensor(const Context& context,
   int64_t row = in_trans.dims()[0];
   const InT* in_trans_data = in_trans.data<InT>();
 
-  indices->Resize(phi::make_ddim({row}));
+  indices->Resize(common::make_ddim({row}));
   auto* sorted_indices_data = context.template Alloc<IndexT>(indices);
 
   // 2. Calculate 'indices', 'inverse', 'counts'
@@ -437,19 +437,19 @@ static void UniqueDimsCUDATensor(const Context& context,
   out_trans_dims_vec[0] = indices->numel();
   if (is_transpose) {
     DenseTensor out_trans;
-    out_trans.Resize(phi::make_ddim(out_trans_dims_vec));
+    out_trans.Resize(common::make_ddim(out_trans_dims_vec));
     context.template Alloc<InT>(&out_trans);
 
     phi::IndexSelectKernel<InT, Context>(
         context, in_trans, *indices, 0, &out_trans);
 
     std::swap(out_trans_dims_vec[0], out_trans_dims_vec[axis]);
-    out->Resize(phi::make_ddim(out_trans_dims_vec));
+    out->Resize(common::make_ddim(out_trans_dims_vec));
     context.template Alloc<InT>(out);
     phi::funcs::TransCompute<Context, InT>(
         out_trans.dims().size(), context, out_trans, out, permute);
   } else {
-    out->Resize(phi::make_ddim(out_trans_dims_vec));
+    out->Resize(common::make_ddim(out_trans_dims_vec));
     context.template Alloc<InT>(out);
 
     phi::IndexSelectKernel<InT, Context>(context, in_trans, *indices, 0, out);

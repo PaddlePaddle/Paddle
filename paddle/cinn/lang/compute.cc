@@ -128,7 +128,7 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
                    std::function<Expr(const std::vector<Expr> &)> fn,
                    const std::string &name,
                    const std::vector<Expr> &shape) {
-  auto axises = common::GenDefaultAxis(domain.size());
+  auto axises = cinn::common::GenDefaultAxis(domain.size());
   std::vector<Expr> _axis;
   for (auto &x : axises) _axis.push_back(x);
   Expr fn_body = fn(_axis);
@@ -172,7 +172,7 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
 
   // check reduce_axis not include the reserved axis name
   for (auto &ra : reduce_axis) {
-    CHECK(!common::IsAxisNameReserved(ra->name))
+    CHECK(!cinn::common::IsAxisNameReserved(ra->name))
         << "reduce axis [" << ra->name << "]'s name is reserved";
   }
 

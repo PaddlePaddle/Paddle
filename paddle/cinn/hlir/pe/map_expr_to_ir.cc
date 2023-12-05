@@ -57,7 +57,7 @@ class MapExprToIrTranslator {
       const Node2LoweredFuncs& node2lowered_funcs,
       const std::unordered_map<SymbolicDim, ::pir::shape::SymbolicDimOp>&
           map_expr_symbolic2dialect_symbolic,
-      const common::Target& target)
+      const cinn::common::Target& target)
       : map_expr_(map_expr),
         node2lowered_funcs_(&node2lowered_funcs),
         map_expr_symbolic2dialect_symbolic_(map_expr_symbolic2dialect_symbolic),
@@ -870,7 +870,7 @@ class MapExprToIrTranslator {
 
   MapExpr map_expr_;
   const Node2LoweredFuncs* node2lowered_funcs_;
-  const common::Target target_;
+  const cinn::common::Target target_;
   TensorIteratorExpr4TensorT TensorIteratorExpr4Tensor;
   LoopDescriptor4LoopIteratorT LoopDescriptor4LoopIterator;
   std::unordered_map<SymbolicDim, ::pir::shape::SymbolicDimOp>
@@ -880,7 +880,7 @@ class MapExprToIrTranslator {
 }  // namespace
 
 ir::Expr MapExprToIr(const MapExprCtx& map_expr_ctx,
-                     const common::Target& target) {
+                     const cinn::common::Target& target) {
   const auto& expr =
       MapExprToIrTranslator(map_expr_ctx.map_expr(),
                             map_expr_ctx.node2lowered_funcs(),

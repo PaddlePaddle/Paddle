@@ -17,6 +17,7 @@
 #include <unordered_map>
 
 #include "glog/logging.h"
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/attribute_translator.h"
@@ -33,7 +34,6 @@
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/value.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
@@ -130,6 +130,25 @@ ConditionBlockCombination::ConditionBlockCombination(
 
 const std::string& ConditionBlockCombination::CondVarName() const {
   return op_list_[0]->Input("Cond")[0];
+}
+
+std::set<std::string> ConditionBlockCombination::GetInputNamesForIfOp() const {
+  std::set<std::string> input_names;
+  if (op_list_.size() == 0) {
+    return input_names;
+  }
+
+  if (TrueBlockId() != -1) {
+    auto vars = op_list_[0]->Input("Input");
+    input_names.insert(vars.begin(), vars.end());
+  }
+
+  if (FalseBlockId() != -1) {
+    auto vars = op_list_[2]->Input("Input");
+    input_names.insert(vars.begin(), vars.end());
+  }
+
+  return input_names;
 }
 
 std::vector<std::vector<::paddle::framework::VarDesc*>>
@@ -411,6 +430,10 @@ void ProgramTranslator::TranslateBlock(
     std::vector<pir::Value> yeild_inputs;
     for (auto output_name : cond_sub_block_outputs) {
       if (assign_output_2_input.count(output_name) != 0) {
+        if (translation_ctx->count(assign_output_2_input[output_name]) == 0) {
+          CreateUndefinedVariable(assign_output_2_input[output_name],
+                                  src_block);
+        }
         yeild_inputs.emplace_back(
             (*translation_ctx)[assign_output_2_input[output_name]].value);
       } else {
@@ -434,6 +457,12 @@ pir::Operation* ProgramTranslator::TranslateCondIfOperation(
   std::vector<pir::Value> op_inputs = {
       (*translation_ctx)[cond_ops.CondVarName()].value};
 
+  auto input_names = cond_ops.GetInputNamesForIfOp();
+  for (auto input_name : input_names) {
+    VLOG(6) << "[general op][conditional_block][inputs: " << input_name << "]";
+    GetValueOrCreateInTop(input_name, translation_ctx);
+  }
+
   // NOTE(zhangbo): Now paddle::dialect::IfOp has 0 attribute
   pir::AttributeMap attribute_map;
 
@@ -454,6 +483,9 @@ pir::Operation* ProgramTranslator::TranslateCondIfOperation(
   for (size_t i = 0; i < output_vardescs.size(); i++) {
     translation_ctx->PushValue(output_vardescs[i]->Name(),
                                VariableDefiningInfo(operation->result(i)));
+    VLOG(4) << "[general op][conditional_block] var "
+            << output_vardescs[i]->Name() << " was mapped to If's " << i
+            << "-th output.";
   }
 
   dst_block->push_back(operation);
@@ -752,18 +784,27 @@ void ProgramTranslator::SetStopGradientAttributeForAllValue(
 const VariableDefiningInfo& ProgramTranslator::GetValueOrCreateInTop(
     const std::string& var_name, TranslationContext* translation_ctx) {
   if (translation_ctx->Has(var_name)) return translation_ctx->at(var_name);
-  return CreateUndefinedVariable(var_name);
+  return CreateUndefinedVariable(var_name, legacy_program_->Block(0));
 }
 const VariableDefiningInfo& ProgramTranslator::CreateUndefinedVariable(
-    const std::string& var_name) {
-  auto var_desc = legacy_program_->Block(0).FindVar(var_name);
+    const std::string& var_name, const BlockDesc& block) {
+  VLOG(10) << "[undefined variable]" << var_name;
+  auto var_desc = block.FindVarRecursive(var_name);
   pir::Builder builder(ctx_, program_->block(), program_->block()->begin());
-  auto shape = var_desc->GetShape();
   auto dtype = ::phi::TransToPhiDataType(var_desc->GetDataType());
-  auto val =
-      builder
-          .Build<paddle::dialect::DataOp>(var_name, shape, dtype, phi::Place())
-          .out();
+  auto val = pir::OpResult(nullptr);
+  if (var_desc->GetType() ==
+      paddle::framework::proto::VarType::LOD_TENSOR_ARRAY) {
+    val = builder.Build<dialect::CreateArrayOp>(dtype).result(0);
+    VLOG(10) << "[undefined variable] " << var_name << " " << val.type();
+  } else {
+    auto shape = var_desc->GetShape();
+    val = builder
+              .Build<paddle::dialect::DataOp>(
+                  var_name, shape, dtype, phi::Place())
+              .out();
+    VLOG(10) << "[undefined variable] " << var_name << " " << val.type();
+  }
   param_map_.PushValue(var_name, val);
   return param_map_.at(var_name);
 }

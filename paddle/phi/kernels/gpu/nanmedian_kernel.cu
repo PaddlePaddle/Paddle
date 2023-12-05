@@ -166,10 +166,10 @@ void ProcessMedianKernel(const Context& dev_ctx,
 
   bool ignore_nan = true;
   if (ignore_nan) {
-    nan_counts.Resize(phi::make_ddim({pre_dim}));
+    nan_counts.Resize(common::make_ddim({pre_dim}));
     dev_ctx.template Alloc<int64_t>(&nan_counts);
     nan_counts_ptr = nan_counts.data<int64_t>();
-    nan_stat.Resize(phi::make_ddim({2}));
+    nan_stat.Resize(common::make_ddim({2}));
     int64_t* nan_stat_mem = dev_ctx.template Alloc<int64_t>(&nan_stat);
     int64_t* nan_stat_ptr = nan_stat.data<int64_t>();
 

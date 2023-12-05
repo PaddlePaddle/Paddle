@@ -2304,6 +2304,7 @@
   output : Tensor(param_out), Tensor(master_param_out)
   infer_meta :
     func : SgdInferMeta
+    spmd_rule : SgdInferSpmd
   kernel :
     func : sgd {dense, dense, dense, dense -> dense, dense},
            sgd_dense_param_sparse_grad {dense, dense, selected_rows, dense -> dense, dense},

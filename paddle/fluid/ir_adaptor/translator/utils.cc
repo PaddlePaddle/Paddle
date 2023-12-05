@@ -16,12 +16,12 @@
 
 #include <unordered_map>
 
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/ir_adaptor/translator/op_translator.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/utils.h"
 
 namespace paddle {

@@ -149,7 +149,7 @@ list(
 
 set(op_dialect_srcs ${op_dialect_srcs} ${op_source_file} ${api_source_file})
 
-set(op_dialect_deps phi pir type_info string_helper)
+set(op_dialect_deps phi common pir type_info string_helper)
 
 cc_library(
   op_dialect

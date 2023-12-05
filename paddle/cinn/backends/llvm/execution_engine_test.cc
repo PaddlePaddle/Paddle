@@ -107,10 +107,10 @@ auto CreateTestCinnModule() {
       {M, N}, [&](Var i, Var j) { return A(i, j) + B(i, j); }, "C");
   C->Bind(C_buf);
 
-  common::Target target;
-  target.arch = common::Target::Arch::X86;
-  target.bits = common::Target::Bit::k32;
-  target.os = common::Target::OS::Linux;
+  cinn::common::Target target;
+  target.arch = cinn::common::Target::Arch::X86;
+  target.bits = cinn::common::Target::Bit::k32;
+  target.os = cinn::common::Target::OS::Linux;
   ir::Module::Builder builder("module1", target);
 
   auto stages = CreateStages({C});
@@ -154,7 +154,7 @@ TEST(llvm_test01, elementwise_add) {
 }
 
 TEST(llvm, module_call_lowered_func) {
-  ir::Module::Builder builder("some_module", common::DefaultHostTarget());
+  ir::Module::Builder builder("some_module", cinn::common::DefaultHostTarget());
   ir::Expr M(kM);
   ir::Expr N(kN);
   {  // define fn
@@ -184,7 +184,7 @@ TEST(llvm, module_call_lowered_func) {
     auto main_fn = lang::Lower("main", stages, {a, b, c}, {});
     builder.AddFunction(main_fn);
 
-    CodeGenC codegen(common::DefaultHostTarget());
+    CodeGenC codegen(cinn::common::DefaultHostTarget());
     codegen.SetInlineBuiltinCodes(false);
     LOG(INFO) << "module:\n"
               << codegen.Compile(builder.Build(), CodeGenC::OutputKind::CImpl);
@@ -318,7 +318,7 @@ TEST(ExecutionEngine, call_extern) {
   stages[add_out]->ComputeInline();
   auto func = Lower("comp", stages, {x, y, res});
 
-  Module::Builder builder("module0", common::DefaultHostTarget());
+  Module::Builder builder("module0", cinn::common::DefaultHostTarget());
   builder.AddFunction(func);
 
   auto engine = backends::ExecutionEngine::Create({1});

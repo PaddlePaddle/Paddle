@@ -32,9 +32,9 @@
 namespace cinn {
 namespace hlir {
 namespace op {
-using common::_CINNValuePack_;
-using common::CINNValue;
-using common::CINNValuePack;
+using cinn::common::_CINNValuePack_;
+using cinn::common::CINNValue;
+using cinn::common::CINNValuePack;
 using framework::OpStrategy;
 using framework::shape_t;
 using framework::StrategyFunction;
@@ -481,7 +481,7 @@ std::vector<shape_t> InferShapeForConv2d(
                          -1,
                          -1,
                          Float(32),
-                         common::DefaultHostTarget(),
+                         cinn::common::DefaultHostTarget(),
                          key);
     int ic_bn = conv2d_factors["ic_bn"];
     int oc_bn = conv2d_factors["oc_bn"];
@@ -885,7 +885,7 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
       [=](lang::Args args, lang::RetValue *ret) {
         CHECK(!args.empty()) << "The input argument of InjectiveSchedule is "
                                 "empty! Please check.\n";
-        common::CINNValuePack arg_pack = args[0];
+        cinn::common::CINNValuePack arg_pack = args[0];
         std::vector<Expr> vec_ast;
         std::vector<Expr> vec_tensor;
         for (int i = 0; i < arg_pack.size(); i++) {
@@ -906,9 +906,9 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
         } else {
           CINN_NOT_IMPLEMENTED
         }
-        std::vector<common::CINNValue> res{
-            common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-        *ret = common::CINNValuePack{res};
+        std::vector<cinn::common::CINNValue> res{
+            cinn::common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+        *ret = cinn::common::CINNValuePack{res};
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();

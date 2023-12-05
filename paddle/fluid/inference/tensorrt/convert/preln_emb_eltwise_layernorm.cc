@@ -63,8 +63,8 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
     framework::DDim bias_dims, scale_dims;
     TensorRTEngine::Weight bias_weight, scale_weight;
 
-    int64_t bias_size = phi::product(bias_dims);
-    int64_t scale_size = phi::product(scale_dims);
+    int64_t bias_size = common::product(bias_dims);
+    int64_t scale_size = common::product(scale_dims);
 
     std::vector<std::string> id_names = op_desc.Input("Ids");
     std::vector<std::string> emb_names = op_desc.Input("Embs");
@@ -135,8 +135,8 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
     }
     bias_weight = GetWeight(op_desc.Input("Bias").front(), &bias_dims);
     scale_weight = GetWeight(op_desc.Input("Scale").front(), &scale_dims);
-    bias_size = phi::product(bias_dims);
-    scale_size = phi::product(scale_dims);
+    bias_size = common::product(bias_dims);
+    scale_size = common::product(scale_dims);
     // other_id(except pos_id)
     engine_->SetITensor("word_id", input_ids[1]);
 

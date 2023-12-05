@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #include <memory>
+#include "paddle/common/errors.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/expect.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
@@ -84,8 +84,8 @@ class FCOneDNNHandler
         dev_ctx_(dev_ctx) {
     this->memory_key_ = dev_ctx.GetInputsName("W")[0];
 
-    auto x_vec_dims = phi::vectorize(x->dims());
-    auto weights_vec_dims = phi::vectorize(weights->dims());
+    auto x_vec_dims = common::vectorize(x->dims());
+    auto weights_vec_dims = common::vectorize(weights->dims());
 
     int MB = 1;
     for (int i = 0; i < in_num_col_dims; ++i) {
@@ -382,7 +382,7 @@ void RecomputeOutputDims(const int in_num_col_dims,
                            output_dims,
                            in_num_col_dims,
                            padding_weights);
-  out->Resize(phi::make_ddim(output_dims));
+  out->Resize(common::make_ddim(output_dims));
   out->set_lod(x->lod());
 }
 
@@ -436,8 +436,8 @@ void RunKernel(const phi::OneDNNContext& dev_ctx,
       phi::funcs::CreateKey(dev_ctx,
                             dev_ctx.GetInputsName("Input")[0],
                             dev_ctx.GetInputsName("W")[0],
-                            phi::vectorize(input.dims()),
-                            phi::vectorize(w.dims())));
+                            common::vectorize(input.dims()),
+                            common::vectorize(w.dims())));
 
   auto inner_product_cache =
       std::static_pointer_cast<InnerProductCache>(dev_ctx.GetBlob(cache_key));
@@ -547,7 +547,7 @@ void RunKernel(const phi::OneDNNContext& dev_ctx,
   }
 
   const auto out_md =
-      dst_memory_p->get_desc().reshape(phi::vectorize(out->dims()));
+      dst_memory_p->get_desc().reshape(common::vectorize(out->dims()));
 
   if (dev_ctx.HasDnnAttr("fused_reshape2_shape")) {
     phi::funcs::SetOutMemDescWithReshape2FuseSupport(

@@ -15,9 +15,9 @@
 #pragma once
 #if !defined(_WIN32)
 
+#include "paddle/common/layout.h"
 #include "paddle/phi/capi/include/c_data_type.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace phi {

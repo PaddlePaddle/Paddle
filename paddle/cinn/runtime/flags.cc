@@ -312,10 +312,11 @@ bool IsCompiledWithCUDNN() {
 #endif
 }
 
-common::Target CurrentTarget::target_ = common::DefaultTarget();
+cinn::common::Target CurrentTarget::target_ = cinn::common::DefaultTarget();
 
-void CurrentTarget::SetCurrentTarget(const common::Target& target) {
-  if (!IsCompiledWithCUDA() && target.arch == common::Target::Arch::NVGPU) {
+void CurrentTarget::SetCurrentTarget(const cinn::common::Target& target) {
+  if (!IsCompiledWithCUDA() &&
+      target.arch == cinn::common::Target::Arch::NVGPU) {
     LOG(FATAL) << "Current CINN version does not support NVGPU, please try to "
                   "recompile with -DWITH_CUDA.";
   } else {
@@ -323,7 +324,7 @@ void CurrentTarget::SetCurrentTarget(const common::Target& target) {
   }
 }
 
-common::Target& CurrentTarget::GetCurrentTarget() { return target_; }
+cinn::common::Target& CurrentTarget::GetCurrentTarget() { return target_; }
 
 }  // namespace runtime
 }  // namespace cinn
