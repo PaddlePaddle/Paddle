@@ -13,18 +13,8 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
-#include <map>
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
-#include "paddle/pir/core/block.h"
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/builtin_type_interfaces.h"
-#include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/program.h"
 #include "paddle/pir/dialect/shape/ir/shape_dialect.h"
-#include "paddle/pir/dialect/shape/ir/shape_op.h"
-#include "paddle/pir/dialect/shape/utils/symbol_table.h"
-
 #include "test/cpp/pir/tools/test_pir_utils.h"
 
 TEST(shape_struct_test, symbolic_dim_product) {
@@ -413,6 +403,13 @@ TEST(shape_struct_test, shape_analysis) {
 
   shape_analysis.symbolicDimMgr().MapSymbolicDimEqual(sym_dim_s0, sym_dim_s1);
   shape_analysis.symbolicDimMgr().MapSymbolicDimEqual(sym_dim_s0, sym_dim_s2);
+
+  const auto &val_sym_dim1 =
+      shape_analysis.GetOrCreateSymbolicDimsForRankedValue(value1);
+  const auto &val_sym_dim2 =
+      shape_analysis.GetOrCreateSymbolicDimsForRankedValue(value2);
+  EXPECT_TRUE(shape_analysis.symbolicDimMgr().IsSymbolicDimEqual(
+      val_sym_dim1[0], val_sym_dim2[0]));
 
   EXPECT_TRUE(shape_analysis.IsShapeEqual(value1, value2));
   EXPECT_FALSE(shape_analysis.IsShapeEqual(value1, value5));

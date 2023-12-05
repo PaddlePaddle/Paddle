@@ -105,7 +105,7 @@ class VariableCreator:
     """
 
     def __init__(self):
-        # TODO(dev): Remove the program and var_cache shims after PIR become default state.
+        # TODO(cleanup-legacy-ir): Remove the program and var_cache shims after PIR become default state.
         # self.var_cache = {}
         # self.main_program = paddle.static.Program()
         # self.startup_program = paddle.static.Program()

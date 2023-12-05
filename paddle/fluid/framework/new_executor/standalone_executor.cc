@@ -59,6 +59,8 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     if (FLAGS_enable_pir_api || FLAGS_enable_pir_in_executor) {
       ir_program = plan_.IrProgram(job_type);
     } else {
+      // NOTE (liuchenghao): std::make_shared will duplicate ProgramDesc object,
+      // maybe std::make_unique is better?
       program = std::make_shared<ProgramDesc>(*(plan_.Program(job_type)));
     }
 
@@ -201,7 +203,9 @@ paddle::framework::FetchList StandaloneExecutor::Run(
     if (FLAGS_enable_pir_in_executor) {
       interpretercores_[job_idx]->Run(feed_names,
                                       splited_feeds[job->MicroBatchId()],
-                                      /*need_fetch = */ false);
+                                      /*need_fetch = */ false,
+                                      /*enable_job_schedule_profiler = */
+                                      enable_job_schedule_profiler);
 
       FetchTensors(job->FetchVarNames(),
                    fetch_var_names_,
@@ -261,6 +265,29 @@ paddle::framework::FetchList StandaloneExecutor::Run(
       return {};
     }
   }
+}
+
+std::shared_ptr<framework::ProgramDesc> StandaloneExecutor::RunProfile(
+    const std::vector<std::string>& feed_names) {
+  platform::RecordEvent record_event("StandaloneExecutor::run_profile",
+                                     platform::TracerEventType::UserDefined,
+                                     1);
+
+  // in profiling run, there can be one and only one job ("default")
+  interpretercores_[0]->Run(feed_names,
+                            /*need_fetch = */ false,
+                            /*enable_job_schedule_profiler = */ false,
+                            /*enable_op_profiling = */ true);
+
+  // Don't return program desc directly, instead, return a copy of it since we
+  // don't know how the program desc will be further processed in Python side.
+  // If we return a raw shared_ptr, the program desc will be easily altered
+  // externally, result in unexpected behavior during the next profiling run.
+  std::shared_ptr<framework::ProgramDesc> copy_desc =
+      std::make_shared<framework::ProgramDesc>(
+          *(interpretercores_[0]->GetMutableCopyProgram()));
+
+  return copy_desc;
 }
 
 }  // namespace framework

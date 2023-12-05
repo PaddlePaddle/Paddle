@@ -24,7 +24,8 @@
 namespace cinn {
 namespace auto_schedule {
 
-AutoGenRule::AutoGenRule(const common::Target& target) : target_(&target) {}
+AutoGenRule::AutoGenRule(const cinn::common::Target& target)
+    : target_(&target) {}
 
 int AutoGenRule::NumberApplicable() const {
   CHECK_GE(num_applicable_, 0)

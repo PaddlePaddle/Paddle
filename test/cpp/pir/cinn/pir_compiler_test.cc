@@ -174,7 +174,7 @@ TEST(PirCompier, CompileSoftmax) {
 
   std::unordered_map<std::string, ::pir::Attribute> op_attrs{
       {cinn::dialect::JitKernelOp::kAttrName,
-       cinn::dialect::CUDAJITInfoAttribute::get(ctx, fn_ptr_res[0])},
+       cinn::dialect::CINNKernelInfoAttribute::get(ctx, fn_ptr_res[0])},
   };
 
   std::vector<pir::Type> vec_types;

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/pir/core/block_argument.h"
-#include "paddle/pir/core/enforce.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/value_impl.h"
 
 #define CHECK_NULL_IMPL(func_name) \
@@ -62,7 +62,7 @@ Block *BlockArgument::owner() const {
   return IMPL_->owner_;
 }
 
-uint32_t BlockArgument::arg_index() const {
+uint32_t BlockArgument::index() const {
   CHECK_NULL_IMPL(arg_index);
   return IMPL_->index_;
 }
@@ -79,7 +79,7 @@ void BlockArgument::Destroy() {
   }
 }
 
-void BlockArgument::set_arg_index(uint32_t index) {
+void BlockArgument::set_index(uint32_t index) {
   CHECK_NULL_IMPL(set_arg_number);
   IMPL_->index_ = index;
 }

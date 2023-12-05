@@ -119,6 +119,10 @@ static int GetRowSize(const Scope& scope, const std::string& name) {
 
   if (var->IsType<phi::SelectedRows>()) {
     return static_cast<int>(var->Get<phi::SelectedRows>().rows().size());
+  } else if (var->IsType<VariableRefArray>()) {
+    return var->Get<VariableRefArray>().size();
+  } else if (var->IsType<phi::TensorArray>()) {
+    return var->Get<phi::TensorArray>().size();
   }
 
   return -1;
@@ -192,6 +196,21 @@ void InstructionBase::AddGCCheckVar(size_t id) { gc_check_vars_.push_back(id); }
 const std::vector<size_t>& InstructionBase::GCCheckVars() const {
   return gc_check_vars_;
 }
+
+void InstructionBase::AddEagerGCVar(Variable* var) {
+  eager_gc_vars_.push_back(var);
+}
+
+const std::vector<Variable*>& InstructionBase::EagerGCVars() const {
+  // NOTE(chenxi67): eager_gc_vars_ contains the vars that need to be gc. Some
+  // vars in Instruction Node are created temporarily and are not the input or
+  // output of an OP (e.g. copy_var created by TuplePushOp). We cannot determine
+  // whether they need to be gc by analyzing OP(using GCCheckVars() function).
+  // These vars are added to eager_gc_vars_ and directly gc.
+  return eager_gc_vars_;
+}
+
+void InstructionBase::ClearEagerGCVars() { eager_gc_vars_.clear(); }
 
 const std::vector<std::pair<Variable*, Variable*>>&
 InstructionBase::InplaceInfo() const {
