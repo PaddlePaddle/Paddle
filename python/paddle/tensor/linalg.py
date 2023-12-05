@@ -3886,7 +3886,7 @@ def histogramdd(x, bins=10, ranges=None, density=False, weights=None, name=None)
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        N-dimensional Tensor containing the values of the histogram. bin_edges(Tensor[]): sequence of N 1D Tensors containing the bin edges.
+        N-dimensional Tensor containing the values of the histogram. ``bin_edges(Tensor[])``,  sequence of N 1D Tensors containing the bin edges.
 
 
 
