@@ -19,10 +19,10 @@
 #include <vector>
 
 #include "paddle/common/enforce.h"
-#include "paddle/fluid/string/pretty_log.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/pass/analysis_manager.h"
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace pir {
 
@@ -91,7 +91,7 @@ class IR_API Pass {
 
   virtual bool Initialize(IrContext* context) { return true; }
 
-  void PrintPassMatchCount(int64_t pass_match_count) {
+  void PrintStatistics(int64_t pass_match_count) {
     paddle::string::PrettyLogH1("--- Running analysis [%s]", pass_info_.name);
     if (pass_match_count > 0) {
       paddle::string::PrettyLogH2("--- detected [%lld] subgraphs!",
@@ -145,7 +145,7 @@ class PatternRewritePass : public Pass {
     GreedyRewriteConfig cfg;
     cfg.use_top_down_traversal = true;
     cfg.max_iterations = 10;
-    PrintPassMatchCount(
+    PrintStatistics(
         ApplyPatternsGreedily(op->region(0), patterns_, cfg).second);
   }
 

@@ -469,7 +469,9 @@ class InplacePass : public pir::Pass {
       kv.first->set_attribute(
           "is_inplace",
           pir::BoolAttribute::get(pir::IrContext::Instance(), true));
+      num_rewrites_++;
     }
+    PrintStatistics(num_rewrites_);
     LOG_FIRST_N(INFO, 1)
         << "Apply inplace pass on lowering ::pir::Program to Kernel Dialect.";
   }
@@ -477,6 +479,9 @@ class InplacePass : public pir::Pass {
   bool CanApplyOn(pir::Operation* op) const override {
     return op->isa<::pir::ModuleOp>() && op->num_regions() > 0;
   }
+
+ private:
+  int64_t num_rewrites_{0};
 };
 
 namespace pir {

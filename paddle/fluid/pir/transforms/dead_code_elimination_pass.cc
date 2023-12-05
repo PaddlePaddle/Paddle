@@ -75,7 +75,9 @@ class DeadCodeEliminationPass : public pir::Pass {
     pir::GreedyRewriteConfig cfg;
     cfg.use_top_down_traversal = true;
     cfg.max_iterations = 10;
-    pir::ApplyPatternsGreedily(op->region(0), patterns_, cfg);
+    auto [_, num_rewrites] =
+        pir::ApplyPatternsGreedily(op->region(0), patterns_, cfg);
+    PrintStatistics(num_rewrites);
   }
 
  private:

@@ -36,7 +36,12 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
                              paddle::framework::Scope* scope)
       : pir::Pass("params_sync_among_devices_pass", 0),
         place_(place),
-        scope_(scope) {}
+        scope_(scope) {
+    PADDLE_ENFORCE(
+        place_ == paddle::PlaceType::kCPU || place == paddle::PlaceType::kGPU,
+        phi::errors::PreconditionNotMet(
+            "params_sync_among_devices_pass should run on cpu or gpu."));
+  }
 
   void Run(pir::Operation* op) override {
     VLOG(6) << "apply ParamsSyncAmongDevicesPass";
@@ -66,18 +71,22 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
               *param_tensor, cpu_place, &temp_tensor);
           param_tensor->clear();
           paddle::framework::TensorCopySync(temp_tensor, place_, param_tensor);
+          num_rewrites_++;
         }
       }
     }
+    PrintStatistics(num_rewrites_);
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
-    return op->isa<::pir::ModuleOp>() && op->num_regions() > 0;
+    return op->isa<::pir::ModuleOp>() && op->num_regions() > 0 &&
+           place_ == paddle::PlaceType::kGPU;
   }
 
  private:
   phi::Place place_;
   paddle::framework::Scope* scope_{nullptr};
+  int64_t num_rewrites_{0};
 };
 
 }  // namespace

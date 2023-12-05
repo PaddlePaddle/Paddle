@@ -75,7 +75,6 @@ class InferSymbolicShapePass : public pir::Pass {
   void Run(pir::Operation* op) override {
     auto module_op = op->dyn_cast<pir::ModuleOp>();
     IR_ENFORCE(module_op, "infer_symbolic_shape_pass should run on module op.");
-
     for (auto& op : module_op.block()) {
       if (op.isa<cinn::dialect::GroupOp>()) {
         for (auto* local_op : op.dyn_cast<cinn::dialect::GroupOp>().ops()) {
@@ -85,6 +84,7 @@ class InferSymbolicShapePass : public pir::Pass {
         InferSymbolicShape(op);
       }
     }
+    PrintStatistics(num_rewrites_);
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
@@ -102,6 +102,7 @@ class InferSymbolicShapePass : public pir::Pass {
 
     if (it != infer_sym_shape_map.end()) {
       it->second(op, shape_analysis_);
+      num_rewrites_++;
     } else {
       LOG(WARNING) << "[" << op.name()
                    << "] is not supported for infer_symbolic_shape pass.";
@@ -117,6 +118,7 @@ class InferSymbolicShapePass : public pir::Pass {
   }
 
   std::shared_ptr<pir::ShapeConstraintIRAnalysis> shape_analysis_;
+  int64_t num_rewrites_{0};
 };
 
 }  // namespace
