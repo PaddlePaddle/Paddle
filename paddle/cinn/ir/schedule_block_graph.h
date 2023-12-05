@@ -40,7 +40,7 @@ class ScheduleBlockNode : public cinn::common::GraphNode {
 
   // Get all control stmts containing the schedule_block, now only the For node
   // is being considered.
-  std::vector<Expr> ControlStmts() const;
+  std::vector<Expr> GetLoops() const;
 
   // Get all the upstream nodes that this node depends on.
   std::unordered_set<std::string> UpstreamNodes() const {
