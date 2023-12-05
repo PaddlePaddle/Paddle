@@ -117,19 +117,21 @@ class BaseTest(unittest.TestCase):
 
                     out = func_paddle(x)
                     out.stop_gradient = False
+
                     y = out * 123
 
-                    # do not check for old ir
+                    # do not check grad for old ir
+                    fetch_list = [out]
                     if paddle.framework.in_pir_mode():
                         grads = paddle.autograd.ir_backward.grad(
                             y, [x_for_grad]
                         )
                         out_grad = grads[0]
+                        fetch_list.append(out_grad)
 
-                        fetch_list = [out, out_grad]
-
+                        exe = paddle.static.Executor(place)
                         res, res_grad = exe.run(
-                            main_program, feed=feed, fetch_list=fetch_list
+                            feed=feed, fetch_list=fetch_list
                         )
 
                         # convert grad value to bool if dtype is bool
@@ -138,11 +140,13 @@ class BaseTest(unittest.TestCase):
                             res_grad, np.ones(x_for_grad.shape) * grad_value
                         )
 
-                        out_ref = func_numpy(inputs)
-                        for n, p in zip(out_ref, res):
-                            np.testing.assert_allclose(
-                                n, p, rtol=RTOL, atol=ATOL
-                            )
+                    else:
+                        exe = paddle.static.Executor(place)
+                        res = exe.run(feed=feed, fetch_list=fetch_list)[0]
+
+                    out_ref = func_numpy(inputs)
+                    for n, p in zip(out_ref, res):
+                        np.testing.assert_allclose(n, p, rtol=RTOL, atol=ATOL)
 
     def _test_dygraph_api(
         self,
