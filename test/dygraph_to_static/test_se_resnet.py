@@ -20,7 +20,12 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase, test_ast_only, test_pt_only
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    enable_to_static_guard,
+    test_ast_only,
+    test_pt_only,
+)
 from predictor_utils import PredictorTools
 
 import paddle
@@ -372,125 +377,130 @@ class TestSeResnet(Dy2StTestBase):
         self.temp_dir.cleanup()
 
     def train(self, train_reader, to_static):
-        paddle.jit.enable_to_static(to_static)
+        with enable_to_static_guard(to_static):
+            np.random.seed(SEED)
 
-        np.random.seed(SEED)
+            with base.dygraph.guard(place):
+                paddle.seed(SEED)
+                paddle.framework.random._manual_program_seed(SEED)
+                se_resnext = SeResNeXt()
+                optimizer = optimizer_setting(
+                    train_parameters, se_resnext.parameters()
+                )
 
-        with base.dygraph.guard(place):
-            paddle.seed(SEED)
-            paddle.framework.random._manual_program_seed(SEED)
-            se_resnext = SeResNeXt()
-            optimizer = optimizer_setting(
-                train_parameters, se_resnext.parameters()
-            )
+                for epoch_id in range(EPOCH_NUM):
+                    total_loss = 0.0
+                    total_acc1 = 0.0
+                    total_acc5 = 0.0
+                    total_sample = 0
+                    step_idx = 0
+                    speed_list = []
+                    for step_id, data in enumerate(train_reader()):
+                        dy_x_data = np.array(
+                            [x[0].reshape(3, 224, 224) for x in data]
+                        ).astype('float32')
+                        y_data = (
+                            np.array([x[1] for x in data])
+                            .astype('int64')
+                            .reshape(BATCH_SIZE, 1)
+                        )
 
-            for epoch_id in range(EPOCH_NUM):
-                total_loss = 0.0
-                total_acc1 = 0.0
-                total_acc5 = 0.0
-                total_sample = 0
-                step_idx = 0
-                speed_list = []
-                for step_id, data in enumerate(train_reader()):
-                    dy_x_data = np.array(
-                        [x[0].reshape(3, 224, 224) for x in data]
-                    ).astype('float32')
-                    y_data = (
-                        np.array([x[1] for x in data])
-                        .astype('int64')
-                        .reshape(BATCH_SIZE, 1)
-                    )
+                        img = to_variable(dy_x_data)
+                        label = to_variable(y_data)
+                        label.stop_gradient = True
 
-                    img = to_variable(dy_x_data)
-                    label = to_variable(y_data)
-                    label.stop_gradient = True
+                        pred, avg_loss, acc_top1, acc_top5 = se_resnext(
+                            img, label
+                        )
 
-                    pred, avg_loss, acc_top1, acc_top5 = se_resnext(img, label)
+                        dy_out = avg_loss.numpy()
+                        avg_loss.backward()
 
-                    dy_out = avg_loss.numpy()
-                    avg_loss.backward()
+                        optimizer.minimize(avg_loss)
+                        se_resnext.clear_gradients()
 
-                    optimizer.minimize(avg_loss)
-                    se_resnext.clear_gradients()
-
-                    lr = optimizer._global_learning_rate().numpy()
-                    total_loss += dy_out
-                    total_acc1 += acc_top1.numpy()
-                    total_acc5 += acc_top5.numpy()
-                    total_sample += 1
-                    if step_id % PRINT_STEP == 0:
-                        if step_id == 0:
-                            logging.info(
-                                "epoch %d | step %d, loss %0.3f, acc1 %0.3f, acc5 %0.3f"
-                                % (
-                                    epoch_id,
-                                    step_id,
-                                    total_loss / total_sample,
-                                    total_acc1 / total_sample,
-                                    total_acc5 / total_sample,
+                        lr = optimizer._global_learning_rate().numpy()
+                        total_loss += dy_out
+                        total_acc1 += acc_top1.numpy()
+                        total_acc5 += acc_top5.numpy()
+                        total_sample += 1
+                        if step_id % PRINT_STEP == 0:
+                            if step_id == 0:
+                                logging.info(
+                                    "epoch %d | step %d, loss %0.3f, acc1 %0.3f, acc5 %0.3f"
+                                    % (
+                                        epoch_id,
+                                        step_id,
+                                        total_loss / total_sample,
+                                        total_acc1 / total_sample,
+                                        total_acc5 / total_sample,
+                                    )
                                 )
-                            )
-                            avg_batch_time = time.time()
-                        else:
-                            speed = PRINT_STEP / (time.time() - avg_batch_time)
-                            speed_list.append(speed)
-                            logging.info(
-                                "epoch %d | step %d, loss %0.3f, acc1 %0.3f, acc5 %0.3f, speed %.3f steps/s"
-                                % (
-                                    epoch_id,
-                                    step_id,
-                                    total_loss / total_sample,
-                                    total_acc1 / total_sample,
-                                    total_acc5 / total_sample,
-                                    speed,
+                                avg_batch_time = time.time()
+                            else:
+                                speed = PRINT_STEP / (
+                                    time.time() - avg_batch_time
                                 )
-                            )
-                            avg_batch_time = time.time()
+                                speed_list.append(speed)
+                                logging.info(
+                                    "epoch %d | step %d, loss %0.3f, acc1 %0.3f, acc5 %0.3f, speed %.3f steps/s"
+                                    % (
+                                        epoch_id,
+                                        step_id,
+                                        total_loss / total_sample,
+                                        total_acc1 / total_sample,
+                                        total_acc5 / total_sample,
+                                        speed,
+                                    )
+                                )
+                                avg_batch_time = time.time()
 
-                    step_idx += 1
-                    if step_idx == STEP_NUM:
-                        if to_static:
-                            paddle.jit.save(
-                                se_resnext,
-                                self.model_save_prefix,
-                                output_spec=[pred],
-                                input_names_after_prune=['x'],
-                                input_spec=[
-                                    InputSpec(
-                                        shape=[None, 3, 224, 224], name='x'
-                                    ),
-                                    InputSpec(shape=[None, 1], name='y'),
-                                ],
-                                clip_extra=False,
-                            )
-                        else:
-                            paddle.save(
-                                se_resnext.state_dict(),
-                                self.dy_state_dict_save_path + '.pdparams',
-                            )
-                        break
-            return (
-                pred.numpy(),
-                avg_loss.numpy(),
-                acc_top1.numpy(),
-                acc_top5.numpy(),
-            )
+                        step_idx += 1
+                        if step_idx == STEP_NUM:
+                            if to_static:
+                                paddle.jit.save(
+                                    se_resnext,
+                                    self.model_save_prefix,
+                                    output_spec=[pred],
+                                    input_names_after_prune=['x'],
+                                    input_spec=[
+                                        InputSpec(
+                                            shape=[None, 3, 224, 224], name='x'
+                                        ),
+                                        InputSpec(shape=[None, 1], name='y'),
+                                    ],
+                                    clip_extra=False,
+                                )
+                            else:
+                                paddle.save(
+                                    se_resnext.state_dict(),
+                                    self.dy_state_dict_save_path + '.pdparams',
+                                )
+                            break
+                return (
+                    pred.numpy(),
+                    avg_loss.numpy(),
+                    acc_top1.numpy(),
+                    acc_top5.numpy(),
+                )
 
     def predict_dygraph(self, data):
-        paddle.jit.enable_to_static(False)
-        with base.dygraph.guard(place):
-            se_resnext = SeResNeXt()
+        with enable_to_static_guard(False):
+            with base.dygraph.guard(place):
+                se_resnext = SeResNeXt()
 
-            model_dict = paddle.load(self.dy_state_dict_save_path + '.pdparams')
-            se_resnext.set_dict(model_dict)
-            se_resnext.eval()
+                model_dict = paddle.load(
+                    self.dy_state_dict_save_path + '.pdparams'
+                )
+                se_resnext.set_dict(model_dict)
+                se_resnext.eval()
 
-            label = np.random.random([1, 1]).astype("int64")
-            img = base.dygraph.to_variable(data)
-            label = base.dygraph.to_variable(label)
-            pred_res, _, _, _ = se_resnext(img, label)
+                label = np.random.random([1, 1]).astype("int64")
+                img = base.dygraph.to_variable(data)
+                label = base.dygraph.to_variable(label)
+                pred_res, _, _, _ = se_resnext(img, label)
 
-            return pred_res.numpy()
+                return pred_res.numpy()
 
     def predict_static(self, data):
         paddle.enable_static()

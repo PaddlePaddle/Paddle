@@ -21,6 +21,7 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     ToStaticMode,
+    enable_to_static_guard,
     set_to_static_mode,
     test_legacy_only,
 )
@@ -208,18 +209,18 @@ class TestSeq2seq(Dy2StTestBase):
         self.temp_dir.cleanup()
 
     def run_dygraph(self, mode="train", attn_model=False):
-        paddle.jit.enable_to_static(False)
-        if mode == "train":
-            return train(self.args, attn_model)
-        else:
-            return infer(self.args, attn_model)
+        with enable_to_static_guard(False):
+            if mode == "train":
+                return train(self.args, attn_model)
+            else:
+                return infer(self.args, attn_model)
 
     def run_static(self, mode="train", attn_model=False):
-        paddle.jit.enable_to_static(True)
-        if mode == "train":
-            return train(self.args, attn_model)
-        else:
-            return infer(self.args, attn_model)
+        with enable_to_static_guard(True):
+            if mode == "train":
+                return train(self.args, attn_model)
+            else:
+                return infer(self.args, attn_model)
 
     def _test_train(self, attn_model=False):
         dygraph_loss = self.run_dygraph(mode="train", attn_model=attn_model)

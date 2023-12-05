@@ -15,7 +15,11 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase, test_ast_only
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    enable_to_static_guard,
+    test_ast_only,
+)
 from ifelse_simple_func import dyfunc_with_if_else
 
 import paddle
@@ -278,14 +282,14 @@ class TestReturnBase(Dy2StTestBase):
         self.dygraph_func = test_return_base
 
     def _run(self, to_static=False):
-        paddle.jit.enable_to_static(to_static)
-        with base.dygraph.guard():
-            res = self.dygraph_func(self.input)
-            if isinstance(res, (tuple, list)):
-                return tuple(r.numpy() for r in res)
-            elif isinstance(res, core.eager.Tensor):
-                return res.numpy()
-            return res
+        with enable_to_static_guard(to_static):
+            with base.dygraph.guard():
+                res = self.dygraph_func(self.input)
+                if isinstance(res, (tuple, list)):
+                    return tuple(r.numpy() for r in res)
+                elif isinstance(res, core.eager.Tensor):
+                    return res.numpy()
+                return res
 
     def _test_value_impl(self):
         dygraph_res = self._run(to_static=False)

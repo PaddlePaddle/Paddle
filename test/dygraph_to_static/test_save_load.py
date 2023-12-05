@@ -19,6 +19,7 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    enable_to_static_guard,
     test_ast_only,
 )
 from test_fetch_feed import Linear
@@ -72,37 +73,36 @@ class TestDyToStaticSaveLoad(Dy2StTestBase):
         x_data = np.random.randn(30, 10, 32).astype('float32')
         batch_num = 3
 
-        paddle.jit.enable_to_static(True)
-        x = base.dygraph.to_variable(x_data)
-        net = Linear(32, 64)
-        adam = Adam(learning_rate=0.1, parameters=net.parameters())
+        with enable_to_static_guard(True):
+            x = base.dygraph.to_variable(x_data)
+            net = Linear(32, 64)
+            adam = Adam(learning_rate=0.1, parameters=net.parameters())
 
-        for i in range(batch_num):
+            for i in range(batch_num):
+                static_out, static_loss = net(x)
+                # Update parameters
+                static_loss.backward()
+                adam.minimize(static_loss)
+                net.clear_gradients()
+            # Save parameters
+
+            paddle.save(net.state_dict(), self.model_path + '.pdparams')
+            # minimize() will update parameter, call net() to get output and avg_loss.
+            # Switch into eval mode.
+            net.eval()
             static_out, static_loss = net(x)
-            # Update parameters
-            static_loss.backward()
-            adam.minimize(static_loss)
-            net.clear_gradients()
-        # Save parameters
 
-        paddle.save(net.state_dict(), self.model_path + '.pdparams')
-        # minimize() will update parameter, call net() to get output and avg_loss.
-        # Switch into eval mode.
-        net.eval()
-        static_out, static_loss = net(x)
+            # load parameters into dygraph
+            dygraph_net = Linear(32, 64)
 
-        # load parameters into dygraph
-        dygraph_net = Linear(32, 64)
+            # Load parameters
+            model_dict = paddle.load(self.model_path + '.pdparams')
+            dygraph_net.set_dict(model_dict)
+            # Switch into eval mode.
+            dygraph_net.eval()
 
-        # Load parameters
-        model_dict = paddle.load(self.model_path + '.pdparams')
-        dygraph_net.set_dict(model_dict)
-        # Switch into eval mode.
-        dygraph_net.eval()
-
-        x = base.dygraph.to_variable(x_data)
-        # predict output
-        paddle.jit.enable_to_static(False)
+            x = base.dygraph.to_variable(x_data)
+            # predict output
         dygraph_out, dygraph_loss = dygraph_net(x)
 
         np.testing.assert_allclose(
