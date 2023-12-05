@@ -321,57 +321,6 @@ class RunableProgram:
         return self._forward_backward_program[0][1]
 
 
-class PirPassContext:
-    """
-    PirPassContext is a class that only has staticmethod currently.
-    It will create a new RunableProgram after calling apply method.
-    """
-
-    INPUT_OP_NAME = "pd_op.data"
-    PARM_OP_NAME = "builtin.parameter"
-    OUTPUT_OP_NAME = "builtin.set_parameter"
-
-    @classmethod
-    def apply(cls, runable_program, build_strategy):
-        # TODO(Aurelius84): Currently only support infer mode,
-        # and we just use forward_program because backward_program
-        # is empty.
-        if not build_strategy.build_cinn_pass:
-            return runable_program
-        elif not paddle.is_compiled_with_cinn():
-            raise RuntimeError(
-                "Please install PaddlePaddle compiled with CINN while setting build_strategy.build_cinn_pass = True."
-            )
-        fwd_program, _ = paddle.base.libpaddle.pir.clone_program(
-            runable_program.forward_program
-        )
-        pm = paddle.base.libpaddle.pir.PassManager()
-        paddle.base.libpaddle.pir.add_pir_pass(pm, fwd_program)
-        pm.run(fwd_program)
-        in_out_values = cls._prepare_attr(fwd_program)
-        return RunableProgram(fwd_program, in_out_values)
-
-    @classmethod
-    def _prepare_attr(cls, program):
-        """
-        After applying Pass, we need to update the Input/Parameter/Output Value
-        that refer to the new program.
-
-        NOTE: We assume that Inputs come from INPUT_OP, Params come from
-              PARM_OP and Output come from OUTPUT_OP.
-        """
-        inputs, params, outputs = [], [], []
-        for op in program.global_block().ops:
-            op_name = op.name()
-            if op_name == cls.INPUT_OP_NAME:
-                inputs.append(op.result(0))
-            elif op_name == cls.PARM_OP_NAME:
-                params.append(op.result(0))
-            elif op_name == cls.OUTPUT_OP_NAME:
-                outputs.append(op.operand(0).source())
-        return inputs, params, outputs
-
-
 class PartialProgramLayerHook:
     def before_append_backward(self, forward_program, src_vars):
         ...
@@ -537,13 +486,19 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _create_program(self, is_infer_mode=False):
         if is_infer_mode:
+
+            def pass_fn(forward_program, backward_program, name_attr):
+                pm = paddle.base.libpaddle.pir.PassManager()
+                if self._build_strategy.build_cinn_pass:
+                    paddle.base.libpaddle.pir.add_pir_pass(pm, forward_program)
+                    pm.run(forward_program)
+                return forward_program, backward_program
+
             # TODO(xiongkun) who to transfer the pruning program?
             infer_program = self.origin_runable_program.clone()
             if self._hooker:
                 self._hooker.after_infer(infer_program)
-            infer_program = PirPassContext.apply(
-                infer_program, self._build_strategy
-            )
+            infer_program.apply_pir_program_pass(pass_fn)
             return infer_program
         else:
             train_program: RunableProgram = self.origin_runable_program.clone()
@@ -563,9 +518,9 @@ class PartialProgramLayer:
                     paddle.base.libpaddle.pir.add_pir_pass(
                         bwd_pm, backward_program
                     )
-                # pm.add("pass_name") to apply more pass strategy
-                fwd_pm.run(forward_program)
-                bwd_pm.run(backward_program)
+                    # pm.add("pass_name") to apply more pass strategy
+                    fwd_pm.run(forward_program)
+                    bwd_pm.run(backward_program)
                 return forward_program, backward_program
 
             train_program.apply_pir_program_pass(pass_fn)
