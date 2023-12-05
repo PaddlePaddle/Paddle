@@ -143,13 +143,6 @@ void cpu_scatter_input_grad_kernel(phi::DenseTensor self,
                                    const phi::DeviceContext& ctx);
 
 template <typename tensor_t, typename index_t>
-void cpu_scatter_value_grad_kernel(phi::DenseTensor self,
-                                   int dim,
-                                   const phi::DenseTensor& index,
-                                   phi::DenseTensor grad,
-                                   const phi::DeviceContext& ctx);
-
-template <typename tensor_t, typename index_t>
 void cpu_scatter_mul_min_max_input_grad_kernel(phi::DenseTensor self,
                                                int dim,
                                                const phi::DenseTensor& index,
