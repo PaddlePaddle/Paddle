@@ -1106,8 +1106,10 @@ def is_tensor(x):
             False
 
     """
-    if in_dynamic_mode():
-        return isinstance(x, (Tensor, paddle.base.core.eager.Tensor))
+    if in_dynamic_or_pir_mode():
+        return isinstance(
+            x, (Tensor, paddle.base.core.eager.Tensor, paddle.pir.Value)
+        )
     else:
         return isinstance(x, Variable)
 

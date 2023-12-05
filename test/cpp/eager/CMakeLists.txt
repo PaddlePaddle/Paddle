@@ -1,5 +1,6 @@
 set(eager_deps
     phi
+    common
     hook_utils
     utils
     global_utils

@@ -18,9 +18,9 @@
 #include <map>
 #include <type_traits>
 
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/attribute_base.h"
-#include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/type.h"
 #include "paddle/pir/core/utils.h"
 
