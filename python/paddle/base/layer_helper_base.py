@@ -376,9 +376,12 @@ class LayerHelperBase:
                 else default_initializer
             )
         if attr.name is None:
-            attr.name = self.main_program._name_generator.generate(
-                ".".join([self.name, suffix])
-            )
+            if in_dygraph_mode():
+                attr.name = unique_name.generate(".".join([self.name, suffix]))
+            else:
+                attr.name = self.main_program._name_generator.generate(
+                    ".".join([self.name, suffix])
+                )
 
         if default_initializer is None and attr.initializer is None:
             if isinstance(dtype, core.VarDesc.VarType):

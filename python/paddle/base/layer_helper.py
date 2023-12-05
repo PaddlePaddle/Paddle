@@ -16,6 +16,7 @@ import copy
 
 import paddle
 
+from . import unique_name
 from .dygraph_utils import _append_activation_in_dygraph
 from .framework import (
     Parameter,
@@ -35,9 +36,12 @@ class LayerHelper(LayerHelperBase):
         # can not use both `layer_type` and `name`. Deprecate LayerHelper
         # and write a Helper for dygraph mode.
         if name is None:
-            self.kwargs['name'] = self.main_program._name_generator.generate(
-                layer_type
-            )
+            if in_dygraph_mode():
+                self.kwargs['name'] = unique_name.generate(layer_type)
+            else:
+                self.kwargs[
+                    'name'
+                ] = self.main_program._name_generator.generate(layer_type)
 
         super().__init__(self.kwargs['name'], layer_type=layer_type)
 
