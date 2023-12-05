@@ -41,15 +41,15 @@ void FrameGradKernel(const Context& dev_ctx,
     DDim dx_resized_dims;
     DDim dout_resized_dims;
     if (axis == 0) {
-      preserved_dims = phi::slice_ddim(dx->dims(), 1, dx_rank);
-      dx_resized_dims = {seq_length, phi::product(preserved_dims)};
+      preserved_dims = common::slice_ddim(dx->dims(), 1, dx_rank);
+      dx_resized_dims = {seq_length, common::product(preserved_dims)};
       dout_resized_dims = {
-          n_frames, frame_length, phi::product(preserved_dims)};
+          n_frames, frame_length, common::product(preserved_dims)};
     } else {
-      preserved_dims = phi::slice_ddim(dx->dims(), 0, dx_rank - 1);
-      dx_resized_dims = {phi::product(preserved_dims), seq_length};
+      preserved_dims = common::slice_ddim(dx->dims(), 0, dx_rank - 1);
+      dx_resized_dims = {common::product(preserved_dims), seq_length};
       dout_resized_dims = {
-          phi::product(preserved_dims), frame_length, n_frames};
+          common::product(preserved_dims), frame_length, n_frames};
     }
     dx->Resize(dx_resized_dims);
     dout_tmp.Resize(dout_resized_dims);
@@ -64,31 +64,31 @@ void FrameGradKernel(const Context& dev_ctx,
       trans_dx = *dx;
 
       std::vector<int> perm_dout{1, 0};
-      auto dout_dims_vec = phi::vectorize(dout_tmp.dims());
+      auto dout_dims_vec = common::vectorize(dout_tmp.dims());
       for (int i = 0; i < dout_tmp.dims().size(); ++i) {
         dout_dims_vec[i] = dout_tmp.dims()[perm_dout[i]];
       }
-      trans_dout.Resize(phi::make_ddim(dout_dims_vec));
+      trans_dout.Resize(common::make_ddim(dout_dims_vec));
       dev_ctx.template Alloc<T>(&trans_dout);
       phi::funcs::TransCompute<Context, T>(
           perm_dout.size(), dev_ctx, dout_tmp, &trans_dout, perm_dout);
     } else {
       std::vector<int> perm_dx{1, 0};
-      auto dx_dims_vec = phi::vectorize(dx->dims());
+      auto dx_dims_vec = common::vectorize(dx->dims());
       for (int i = 0; i < dx->dims().size(); ++i) {
         dx_dims_vec[i] = dx->dims()[perm_dx[i]];
       }
-      trans_dx.Resize(phi::make_ddim(dx_dims_vec));
+      trans_dx.Resize(common::make_ddim(dx_dims_vec));
       dev_ctx.template Alloc<T>(&trans_dx);
       phi::funcs::TransCompute<Context, T>(
           perm_dx.size(), dev_ctx, *dx, &trans_dx, perm_dx);
 
       std::vector<int> perm_dout{2, 1, 0};
-      auto dout_dims_vec = phi::vectorize(dout_tmp.dims());
+      auto dout_dims_vec = common::vectorize(dout_tmp.dims());
       for (int i = 0; i < dout_tmp.dims().size(); ++i) {
         dout_dims_vec[i] = dout_tmp.dims()[perm_dout[i]];
       }
-      trans_dout.Resize(phi::make_ddim(dout_dims_vec));
+      trans_dout.Resize(common::make_ddim(dout_dims_vec));
       dev_ctx.template Alloc<T>(&trans_dout);
       phi::funcs::TransCompute<Context, T>(
           perm_dout.size(), dev_ctx, dout_tmp, &trans_dout, perm_dout);
@@ -129,7 +129,7 @@ void FrameGradKernel(const Context& dev_ctx,
       restored_dx_shape.push_back(seq_length);
     }
 
-    dx->Resize(phi::make_ddim(restored_dx_shape));
+    dx->Resize(common::make_ddim(restored_dx_shape));
   }
 }
 }  // namespace phi

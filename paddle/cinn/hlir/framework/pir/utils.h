@@ -20,7 +20,7 @@
 #include "paddle/cinn/common/type.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/utils/type_defs.h"
-#include "paddle/phi/core/ddim.h"
+#include "paddle/common/ddim.h"
 #include "paddle/pir/core/operation.h"
 
 namespace cinn {
@@ -84,7 +84,7 @@ struct CompatibleInfo {
 
   static utils::AttributeMap ConvertAttributes(const ::pir::Operation& op);
 
-  static common::Type ConvertIRType(::pir::Type type);
+  static cinn::common::Type ConvertIRType(::pir::Type type);
 
   static std::vector<int> ValueShape(const ::pir::Value& value);
 
@@ -93,7 +93,7 @@ struct CompatibleInfo {
   static OpPatternKind OpKind(const ::pir::Operation& op);
 };
 
-std::vector<int64_t> GetBroadcastAxis(const phi::DDim& in_shape,
+std::vector<int64_t> GetBroadcastAxis(const ::common::DDim& in_shape,
                                       const std::vector<int64_t>& out_shape);
 
 }  // namespace pir

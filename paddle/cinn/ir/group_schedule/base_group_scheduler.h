@@ -29,7 +29,7 @@ class GroupScheduler {
  public:
   GroupScheduler(ir::IRSchedule* ir_sch,
                  const std::unordered_set<std::string>& output_tensor_names,
-                 const common::Target& target)
+                 const cinn::common::Target& target)
       : ir_sch_(ir_sch),
         output_tensor_names_(output_tensor_names),
         target_(target) {
@@ -39,7 +39,7 @@ class GroupScheduler {
   static std::unique_ptr<GroupScheduler> Make(
       ir::IRSchedule* ir_sch,
       const std::unordered_set<std::string>& output_tensor_names,
-      const common::Target& target,
+      const cinn::common::Target& target,
       bool is_dy_shape = false);
 
   virtual ~GroupScheduler() = default;
@@ -51,7 +51,7 @@ class GroupScheduler {
  protected:
   ir::IRSchedule* ir_sch_;
   const std::unordered_set<std::string>& output_tensor_names_;
-  const common::Target& target_;
+  const cinn::common::Target& target_;
   // Graph in units of ScheduleBlockNode, each node corresponds to a
   // ScheduleBlock in IR.
   std::unique_ptr<ir::ScheduleBlockGraph> schedule_block_graph_;

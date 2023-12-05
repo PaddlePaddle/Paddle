@@ -80,7 +80,7 @@ void CumsumOpMapper(const paddle::cpp::OpDesc& op_desc,
   mask = ctx.Builder()->BroadcastTo(mask, broadcast_shape);
   x = ctx.Builder()->BroadcastTo(x, broadcast_shape);
   auto false_value = ctx.Builder()->FillConstant(
-      x->shape, 0, UniqName("false_value"), common::Type2Str(x->type));
+      x->shape, 0, UniqName("false_value"), cinn::common::Type2Str(x->type));
   // Select elements with mask
   auto selected_x = ctx.Builder()->Select(mask, x, false_value);
   // Do reduce sum

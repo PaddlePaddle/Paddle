@@ -369,10 +369,11 @@ void ExecuteFusedMatmul(const OneDNNContext &dev_ctx,
   if (is_output_fused && !funcs::is_int8<T_out>()) {
     auto permuted_md =
         dst_memory_p->get_desc().permute_axes(fused_transpose_Out);
-    out->set_mem_desc(permuted_md.reshape(vectorize<int64_t>(out->dims())));
-  } else {
     out->set_mem_desc(
-        dst_memory_p->get_desc().reshape(vectorize<int64_t>(out->dims())));
+        permuted_md.reshape(common::vectorize<int64_t>(out->dims())));
+  } else {
+    out->set_mem_desc(dst_memory_p->get_desc().reshape(
+        common::vectorize<int64_t>(out->dims())));
   }
 }
 
@@ -380,9 +381,9 @@ std::vector<int64_t> GetInputShape(DDim input_dims,
                                    std::vector<int> shape,
                                    std::vector<int> axis) {
   if (!shape.empty() && !axis.empty()) {
-    return vectorize(input_dims.reshape(shape).transpose(axis));
+    return common::vectorize(input_dims.reshape(shape).transpose(axis));
   }
-  return vectorize(input_dims);
+  return common::vectorize(input_dims);
 }
 
 void CalculateMatrixDims(const std::vector<int64_t> &x_dims,
@@ -413,7 +414,7 @@ void CalculateMatrixDims(const std::vector<int64_t> &x_dims,
   }
 
   if (!is_output_fused && x_dims.size() > 2 && y_dims.size() > 2) {
-    auto out_dims = vectorize(out->dims());
+    auto out_dims = common::vectorize(out->dims());
     for (size_t i = 0; i < (*x_bd_dims).size() - 2; ++i) {
       PADDLE_ENFORCE_EQ(
           (*x_bd_dims)[i] == (*y_bd_dims)[i] || (*x_bd_dims)[i] == 1 ||
@@ -429,7 +430,7 @@ void CalculateMatrixDims(const std::vector<int64_t> &x_dims,
               (*y_bd_dims)[i]));
       (out_dims)[i] = std::max((*x_bd_dims)[i], (*y_bd_dims)[i]);
     }
-    out->Resize(make_ddim((out_dims)));
+    out->Resize(common::make_ddim((out_dims)));
   }
 }
 

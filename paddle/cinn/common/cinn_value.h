@@ -50,7 +50,7 @@ class CINNValuePack;
 /**
  * A _CINNValuePack_ is a shared Array of multiple CINNValue.
  */
-struct _CINNValuePack_ : public common::Object {
+struct _CINNValuePack_ : public cinn::common::Object {
   /**
    * Create a new CINNValuePack instance.
    * @param array The list of CINNValues.
