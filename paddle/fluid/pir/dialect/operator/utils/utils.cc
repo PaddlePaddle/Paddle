@@ -283,7 +283,7 @@ void DoValueCheck(const pir::Value& value,
               expected_dtype.end(),
               std::ostream_iterator<std::string>(joined, ", "));
     PADDLE_THROW(phi::errors::InvalidArgument(
-        "Check data type error for op: %s, input: %s, %s.dtype: %s, but "
+        "Check data type error for op: %s, input: %s, %s.dtype: %s, and "
         "expected_dtype: %s",
         op_name,
         input_name,
@@ -325,7 +325,7 @@ void CheckDataType(const phi::DataType& dtype,
               expected_dtype.end(),
               std::ostream_iterator<std::string>(joined, ", "));
     PADDLE_THROW(phi::errors::InvalidArgument(
-        "Check data type error for op: %s, dtype: %s, but "
+        "Check data type error for op: %s, dtype: %s, and "
         "expected_dtype: %s",
         op_name,
         str_dtype,
