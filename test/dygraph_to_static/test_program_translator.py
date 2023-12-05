@@ -18,7 +18,11 @@ import unittest
 
 import astor
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase, test_ast_only
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    enable_to_static_guard,
+    test_ast_only,
+)
 from ifelse_simple_func import (
     dyfunc_with_if_else_early_return1,
     dyfunc_with_if_else_early_return2,
@@ -220,25 +224,23 @@ class TestEnableDeclarative(Dy2StTestBase):
     @test_ast_only
     def test_raise_error(self):
         with base.dygraph.guard():
-            paddle.jit.enable_to_static(True)
             net = NetWithError()
             with self.assertRaises(ValueError):
                 net(base.dygraph.to_variable(self.x))
 
     def test_enable_disable_declarative(self):
-        paddle.jit.enable_to_static(True)
         with base.dygraph.guard():
             static_output = decorated_simple_func(self.x, self.weight)
 
-        paddle.jit.enable_to_static(False)
-        with base.dygraph.guard():
-            dygraph_output = decorated_simple_func(self.x, self.weight)
-            np.testing.assert_allclose(
-                static_output.numpy(),
-                dygraph_output.numpy(),
-                rtol=1e-05,
-                atol=1e-4,
-            )
+        with enable_to_static_guard(False):
+            with base.dygraph.guard():
+                dygraph_output = decorated_simple_func(self.x, self.weight)
+                np.testing.assert_allclose(
+                    static_output.numpy(),
+                    dygraph_output.numpy(),
+                    rtol=1e-05,
+                    atol=1e-4,
+                )
 
 
 class Net(paddle.nn.Layer):
