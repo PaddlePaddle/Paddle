@@ -843,15 +843,21 @@ PyObject* tensor_properties_get_placements_str(TensorObject* self,
 #ifdef PADDLE_WITH_DISTRIBUTE
     phi::distributed::DistTensor* dist_tensor =
         static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
-    std::string str = "[";
+
+    std::stringstream ostr;
+    ostr << "[";
+
+    bool isFirst = true;
     for (const auto& p : dist_tensor->placements()) {
       if (p) {
-        str += p->to_string() + ", ";
+        if (!isFirst) {
+          ostr << ", ";
+        }
+        ostr << p->to_string();
+        isFirst = false;
       }
     }
-    str += "]";
-    std::stringstream ostr;
-    ostr << str;
+    ostr << "]";
     return ToPyObject(ostr.str());
 #else
     PADDLE_THROW(platform::errors::Unavailable(
