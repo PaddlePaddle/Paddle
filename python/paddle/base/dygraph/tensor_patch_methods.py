@@ -150,20 +150,12 @@ def monkey_patch_tensor():
 
         if self.dist_attr is not None:  # import for shard tensor api
             import paddle.distributed as dist
-            from paddle.distributed.auto_parallel.static.utils import (
-                convert_to_shard_spec,
-            )
 
-            dist_attr = dist.DistAttr(
-                mesh=self.dist_attr.process_mesh,
-                sharding_specs=convert_to_shard_spec(
-                    self.dist_attr.dims_mapping, self.dist_attr.process_mesh
-                ),
-            )
             static_var = dist.shard_tensor(
                 static_var,
+                self.dist_attr.process_mesh,
+                self.placements,
                 stop_gradient=static_var.stop_gradient,
-                dist_attr=dist_attr,
             )
         return static_var
 

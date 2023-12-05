@@ -812,13 +812,27 @@ class Engine:
     def _share_parameters(self):
         # mapping from {variable -> parameter}
         named_params = self.program_helper.named_parameters()
+        dist_context = self._dist_contexts[self._mode]
+        dist_main_program = dist_context.dist_main_programs[self._cur_rank]
+
         for name, param in named_params.items():
             var = global_scope().var(name)
+            dense_tensor = var.get_tensor()
             if param.is_dense():
-                dense_tensor = var.get_tensor()
-                dense_tensor._share_data_with(param.get_tensor())
+                var_in_program = dist_main_program.global_block().vars[name]
+                var_dist_attr = dist_context.get_tensor_dist_attr_for_program(
+                    var_in_program
+                )
+                dict_dist_attr = {
+                    "dims_mapping": var_dist_attr.dims_mapping,
+                    "process_shape": var_dist_attr.process_mesh.shape,
+                    "process_group": var_dist_attr.process_mesh.process_ids,
+                }
+                sliced_param = Converter.slice_with_dist_attr(
+                    param.numpy(), dict_dist_attr
+                )
+                dense_tensor.set(sliced_param, self._place)
             elif param.is_dist():
-                dense_tensor = var.get_tensor()
                 dense_tensor._share_data_with(param.get_tensor().get_tensor())
 
     def _initialize(self, mode, init_parameters=True):
@@ -1544,6 +1558,29 @@ class Engine:
             outs, None, None, None, fetch_names, fetch_indices, self._mode
         )
         return logs
+
+    def get_feed_list(self):
+        dist_context = self._dist_contexts[self._mode]
+        dist_main_prog = dist_context.dist_main_programs[self._cur_rank]
+        dist_startup_prog = dist_context.dist_startup_programs[self._cur_rank]
+        dist_main_block = dist_main_prog.global_block()
+
+        # NOTE: Get feed_list, then insert dataloader op with sharded var shape.
+        # Cause predict_program does not contain labels var,
+        # then we will add labels var from serial_program to dist_program,
+        # that maintains the length of feed_list equal to the length of dataset's values.
+        inputs_var = dist_context.serial_feed_vars["inputs"]
+        labels_var = dist_context.serial_feed_vars["labels"]
+        feed_list = []
+        for var in inputs_var + labels_var:
+            if var.name in dist_main_block.vars:
+                feed_list.append(dist_main_block.vars[var.name])
+            else:
+                copy_var = dist_main_block._clone_variable(var, var.persistable)
+                copy_var.desc.set_original_id(var.desc.original_id())
+                feed_list.append(copy_var)
+
+        return feed_list
 
     def _prepare_dataloader(
         self,
