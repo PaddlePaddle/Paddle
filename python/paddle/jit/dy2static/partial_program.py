@@ -815,14 +815,14 @@ class PartialProgramLayer:
                 )
             )
 
-        pir_dy2st_flag = 'FLAGS_enable_pir_with_pt_in_dy2st'
-        in_pir_pt_mode = get_flags(pir_dy2st_flag)[pir_dy2st_flag]
+        in_pir_pt_mode = True
         is_prim_enabled = (
             core._is_fwd_prim_enabled() or core._is_bwd_prim_enabled()
         )
-        in_cinn_backend = self._backend == "CINN"
-        is_cinn_enabled = self._build_strategy.build_cinn_pass
-        if is_prim_enabled or in_cinn_backend or is_cinn_enabled:
+        is_cinn_enabled = (
+            self._backend == "CINN" or self._build_strategy.build_cinn_pass
+        )
+        if is_prim_enabled or is_cinn_enabled:
             in_pir_pt_mode = False
         if force_not_use_pt:
             in_pir_pt_mode = False

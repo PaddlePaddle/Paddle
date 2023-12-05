@@ -691,11 +691,11 @@ inline void RunProgramAPI(
     details::ShareTensorsIntoScope(params, global_inner_scope);
     // Step 2. create new interpretercore
 
-    bool in_pir_pt_mode = False;
+    bool in_pir_pt_mode = false;
     if (attrs.count("in_pir_pt_mode")) {
       in_pir_pt_mode = PADDLE_GET_CONST(bool, attrs.at("in_pir_pt_mode"));
     }
-    in_pir_pt_mode |= FLAGS_enable_pir_with_pt_in_dy2st;
+    in_pir_pt_mode &= FLAGS_enable_pir_with_pt_in_dy2st;
 
     if (FLAGS_enable_pir_in_executor || in_pir_pt_mode) {
       // build new ir program
