@@ -217,7 +217,7 @@ struct TestBroadcastOpHandle {
                             platform::errors::NotFound(
                                 "Variable %s is not found in scope.", varname));
     auto lod_tensor = var->GetMutable<phi::DenseTensor>();
-    std::vector<float> send_vector(static_cast<size_t>(phi::product(kDims)));
+    std::vector<float> send_vector(static_cast<size_t>(common::product(kDims)));
     for (size_t k = 0; k < send_vector.size(); ++k) {
       send_vector[k] = k + val_scalar;
     }
@@ -233,7 +233,7 @@ struct TestBroadcastOpHandle {
                                       const std::vector<int64_t>& rows,
                                       int height,
                                       float value_scalar = 0.0) {
-    std::vector<float> send_vector(static_cast<size_t>(phi::product(kDims)));
+    std::vector<float> send_vector(static_cast<size_t>(common::product(kDims)));
     for (size_t k = 0; k < send_vector.size(); ++k) {
       send_vector[k] = k + value_scalar;
     }
@@ -290,7 +290,7 @@ struct TestBroadcastOpHandle {
     f::TensorCopySync(rt, cpu_place, &result_tensor);
     float* ct = result_tensor.data<float>();
 
-    for (int64_t i = 0; i < phi::product(kDims); ++i) {
+    for (int64_t i = 0; i < common::product(kDims); ++i) {
       ASSERT_NEAR(ct[i], send_vector[i], 1e-5);
     }
   }
@@ -315,7 +315,7 @@ struct TestBroadcastOpHandle {
     phi::DenseTensor result_tensor;
     f::TensorCopySync(tensor, cpu_place, &result_tensor);
     float* ct = result_tensor.mutable_data<float>(cpu_place);
-    for (int64_t k = 0; k < phi::product(kDims); ++k) {
+    for (int64_t k = 0; k < common::product(kDims); ++k) {
       ASSERT_NEAR(ct[k], send_vec[k], 1e-5);
     }
   }

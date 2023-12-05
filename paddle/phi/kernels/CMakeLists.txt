@@ -66,14 +66,14 @@ if(WITH_CUTLASS)
     COMMAND
       ${PYTHON_EXECUTABLE}
       ${PADDLE_SOURCE_DIR}/paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/generate_kernels.py
-      --cuda_arch "${NVCC_ARCH_BIN}"
+      --cuda_arch "${NVCC_ARCH_BIN}" --gen_dir "autogen_tmp"
     RESULT_VARIABLE memory_efficient_attention_gen_res)
 
   execute_process(
     COMMAND
       ${PYTHON_EXECUTABLE}
       ${PADDLE_SOURCE_DIR}/paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/generate_variable_forward_kernels.py
-      --cuda_arch "${NVCC_ARCH_BIN}"
+      --cuda_arch "${NVCC_ARCH_BIN}" --gen_dir "autogen_variable_tmp"
     RESULT_VARIABLE memory_efficient_attention_gen_res)
 
   if(NOT memory_efficient_attention_gen_res EQUAL 0)
@@ -82,6 +82,67 @@ if(WITH_CUTLASS)
         "The memory efficient attention kernel generation errors with NVCC_ARCH_BIN=${NVCC_ARCH_BIN}"
     )
   endif()
+
+  set(autogen_tmp_dir
+      ${PADDLE_SOURCE_DIR}/paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/autogen_tmp
+  )
+  set(autogen_variable_tmp_dir
+      ${PADDLE_SOURCE_DIR}/paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/autogen_variable_tmp
+  )
+  set(autogen_dir
+      ${PADDLE_SOURCE_DIR}/paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/autogen
+  )
+  set(autogen_variable_dir
+      ${PADDLE_SOURCE_DIR}/paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/autogen_variable
+  )
+
+  file(GLOB generated_files ${autogen_tmp_dir}/*.h ${autogen_tmp_dir}/impl/*.cu)
+
+  file(GLOB variable_generated_files ${autogen_variable_tmp_dir}/*.h
+       ${autogen_variable_tmp_dir}/impl/*.cu)
+
+  if(EXISTS ${autogen_dir})
+    foreach(gen_file ${generated_files})
+      string(REPLACE "autogen_tmp" "autogen" now_file ${gen_file})
+      execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                              "${gen_file}" "${now_file}")
+    endforeach()
+    message("copy if different ${autogen_dir}")
+  else()
+    foreach(gen_file ${generated_files})
+      string(REPLACE "autogen_tmp" "autogen" now_file ${gen_file})
+      execute_process(COMMAND ${CMAKE_COMMAND} -E copy "${gen_file}"
+                              "${now_file}")
+    endforeach()
+    message("copy ${autogen_dir}")
+  endif()
+
+  if(EXISTS ${autogen_variable_dir})
+    foreach(gen_file ${variable_generated_files})
+      string(REPLACE "autogen_variable_tmp" "autogen_variable" now_file
+                     ${gen_file})
+      execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                              "${gen_file}" "${now_file}")
+    endforeach()
+    message("copy if different ${autogen_variable_dir}")
+  else()
+    foreach(gen_file ${variable_generated_files})
+      string(REPLACE "autogen_variable_tmp" "autogen_variable" now_file
+                     ${gen_file})
+      execute_process(COMMAND ${CMAKE_COMMAND} -E copy "${gen_file}"
+                              "${now_file}")
+    endforeach()
+    message("copy ${autogen_variable_dir}")
+  endif()
+
+  file(
+    REMOVE_RECURSE
+    ${PADDLE_SOURCE_DIR}/paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/autogen_tmp
+  )
+  file(
+    REMOVE_RECURSE
+    ${PADDLE_SOURCE_DIR}/paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/autogen_variable_tmp
+  )
 
   execute_process(
     COMMAND
@@ -107,9 +168,10 @@ if(WITH_CUTLASS)
 endif()
 
 if(NOT WITH_CUDNN_FRONTEND)
-  list(REMOVE_ITEM kernel_cu
-       "fusion/gpu/fused_scale_bias_relu_conv_bn_kernel.cu"
-       "fusion/gpu/fused_scale_bias_add_relu_kernel.cu")
+  list(
+    REMOVE_ITEM kernel_cu "fusion/gpu/fused_scale_bias_relu_conv_bn_kernel.cu"
+    "fusion/gpu/fused_scale_bias_add_relu_kernel.cu"
+    "fusion/gpu/fused_dconv_drelu_dbn_kernel.cu")
 endif()
 
 set(cc_search_pattern

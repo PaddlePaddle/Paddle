@@ -20,12 +20,12 @@ limitations under the License. */
 #include <vector>
 
 #include "gtest/gtest.h"
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/paddle2cinn/build_cinn_pass.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/phi/core/ddim.h"
 
 namespace paddle::operators {
 

@@ -61,7 +61,7 @@ void FullKernel(const Context& dev_ctx,
   const auto& onednn_engine = dev_ctx.GetEngine();
 
   T fill_value = val.to<T>();
-  out->Resize(make_ddim(shape.GetData()));
+  out->Resize(common::make_ddim(shape.GetData()));
 
   funcs::FillConstantOneDNNHandler<T> handler(
       out, onednn_engine, dev_ctx.GetPlace());
@@ -92,7 +92,7 @@ void FullKernel(const Context& dev_ctx,
 
   // src0_memory_p's md was just to allow the usage of a binary
   // primitive as a memset, and now we need to create a real one
-  out->set_mem_desc({vectorize(out->dims()),
+  out->set_mem_desc({common::vectorize(out->dims()),
                      funcs::OneDNNGetDataType<T>(),
                      funcs::GetPlainOneDNNFormat(out->dims().size())});
 }

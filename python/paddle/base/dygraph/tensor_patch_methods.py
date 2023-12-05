@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import hashlib
 import inspect
 import sys
 import warnings
@@ -32,7 +33,6 @@ from ..framework import (
     EagerParamBase,
     Parameter,
     Variable,
-    _setitem_impl_,
     convert_np_dtype_to_dtype_,
 )
 from .base import switch_to_static_graph
@@ -881,9 +881,6 @@ def monkey_patch_tensor():
         return self._getitem_dygraph(item)
 
     def __setitem__(self, item, value):
-        if core.is_compiled_with_xpu():
-            # (NOTE): Currently, there is no index_put_xpu kernel.
-            return _setitem_impl_(self, item, value)
         item, value = pre_deal_index_and_value(self, item, value)
         return self._setitem_dygraph(item, value)
 
@@ -1057,6 +1054,30 @@ def monkey_patch_tensor():
 
         return _C_ops.sparse_to_sparse_coo(self, sparse_dim)
 
+    @framework.dygraph_only
+    def _md5sum(self):
+        """
+        **Notes**:
+            **This API is ONLY available in Dygraph mode**
+
+        Calculate the md5sum of current Tensor.
+
+        Returns:
+            str: The md5sum of current Tensor.
+
+        Examples:
+
+            .. code-block:: python
+
+                >>> import paddle
+                >>> x = paddle.to_tensor([1, 2, 3])
+                >>> print(x._md5sum())
+                >>> #'1f68049372c5b2a4e0d049044450
+        """
+        numpy_array = np.array(self)
+        array_bytes = numpy_array.tobytes()
+        return hashlib.md5(array_bytes).hexdigest()
+
     def __hash__(self):
         return hash(id(self))
 
@@ -1131,6 +1152,7 @@ def monkey_patch_tensor():
         ("_clear_data", _clear_data),
         ("__hash__", __hash__),
         ("_use_gpudnn", _use_gpudnn),
+        ("_md5sum", _md5sum),
     ):
         setattr(core.eager.Tensor, method_name, method)
 

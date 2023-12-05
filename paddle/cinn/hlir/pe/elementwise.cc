@@ -250,7 +250,7 @@ ir::Tensor Arange(const float start,
         return ir::Cast::Make(
             dtype,
             Expr(start) +
-                Expr(step) * ir::Cast::Make(common::F32(), indices[0]));
+                Expr(step) * ir::Cast::Make(cinn::common::F32(), indices[0]));
       },
       output_name);
   return res;

@@ -21,6 +21,9 @@ namespace phi {
 
 template <typename T, typename Context>
 void FetchKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
+  if (!x.IsInitialized()) {
+    return;
+  }
   phi::Copy(ctx, x, phi::CPUPlace(), true, out);
 }
 

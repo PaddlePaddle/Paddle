@@ -23,7 +23,7 @@ TEST(TensorWrapper, Basic) {
   VLOG(6) << "Test Full reserved";
   paddle::Tensor et1;
   phi::DenseTensorMeta meta =
-      phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 2}));
+      phi::DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim({1, 2}));
   std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
@@ -52,7 +52,7 @@ TEST(TensorWrapper, Basic) {
   VLOG(6) << "Test reconstruct";
   paddle::Tensor et2;
   phi::DenseTensorMeta meta2 =
-      phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 2}));
+      phi::DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim({1, 2}));
   std::shared_ptr<phi::DenseTensor> dt2 = std::make_shared<phi::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())

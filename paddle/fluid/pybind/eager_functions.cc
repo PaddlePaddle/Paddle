@@ -512,7 +512,7 @@ static PyObject* eager_api__get_custom_operator_inplace_reverse_idx(
 // This function copies from function `EmptyTensorInitializer` with default
 // parameters
 static Tensor InitializedEmptyTensor() {
-  auto ddims = phi::make_ddim({0});
+  auto ddims = common::make_ddim({0});
   auto tensor = paddle::Tensor();
   tensor.set_name(
       egr::Controller::Instance().GenerateUniqueName("generated_tensor"));
@@ -587,7 +587,8 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
 
   const phi::distributed::ProcessMesh* mesh = nullptr;
   if (InputsContainDistTensor(&mesh, *(ctx.AllMutableInput()))) {
-    ctx.AllMutableInput()->clear();
+    paddle::CustomOpKernelContext empty_ctx;
+    ctx = empty_ctx;
     for (size_t i = 0; i < inputs.size(); ++i) {
       const auto& input = inputs.at(i);
       // Parse op_type first, so that use i + 1
@@ -610,7 +611,7 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
                 << " to CustomOpKernelContext. Add vector<Tensor> size = "
                 << ctx.InputRangeAt(i).second - ctx.InputRangeAt(i).first;
       } else {
-        const paddle::Tensor& tensor = CastPyArg2Tensor(obj, i + 1);  // NOLINT
+        paddle::Tensor& tensor = CastPyArg2Tensor(obj, i + 1);  // NOLINT
         ConvertAllInputsToDistTensor(mesh, tensor);
         ctx.EmplaceBackInput(tensor);
         VLOG(7) << "Custom operator add input " << input
@@ -881,7 +882,7 @@ static PyObject* eager_api_sparse_coo_tensor(PyObject* self,
     // sort and merge duplicate indices
     std::shared_ptr<phi::SparseCooTensor> coo_tensor =
         std::make_shared<phi::SparseCooTensor>(
-            *dense_indices, *dense_elements, phi::make_ddim(dense_shape));
+            *dense_indices, *dense_elements, common::make_ddim(dense_shape));
     tensor.set_impl(coo_tensor);
     auto name =
         egr::Controller::Instance().GenerateUniqueName("generated_tensor");
@@ -931,7 +932,7 @@ static PyObject* eager_api_sparse_csr_tensor(PyObject* self,
         std::make_shared<phi::SparseCsrTensor>(*dense_crows,
                                                *dense_cols,
                                                *dense_elements,
-                                               phi::make_ddim(dense_shape));
+                                               common::make_ddim(dense_shape));
     tensor.set_impl(csr_tensor);
     auto name =
         egr::Controller::Instance().GenerateUniqueName("generated_tensor");
