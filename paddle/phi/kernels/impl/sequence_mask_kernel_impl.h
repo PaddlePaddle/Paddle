@@ -23,8 +23,8 @@ limitations under the License. */
 #endif
 
 #include "paddle/phi/core/tensor_utils.h"
-#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/sequence_mask.h"
+
 namespace phi {
 
 template <typename T, typename Context>
@@ -53,11 +53,10 @@ void SequenceMaskScalarKernel(const Context& ctx,
       maxlen = static_cast<int>(*std::max_element(x_data, x_data + x_numel));
 #endif
     }
+    auto y_dim = common::vectorize<int>(x.dims());
+    y_dim.push_back(maxlen);
+    y->Resize(common::make_ddim(y_dim));
   }
-
-  auto y_dim = phi::vectorize<int>(x.dims());
-  y_dim.push_back(maxlen);
-  y->Resize(phi::make_ddim(y_dim));
 
   phi::VisitDataType(phi::TransToPhiDataType(out_dtype),
                      phi::funcs::SequenceMaskFunctor<Context, T>(
@@ -80,6 +79,11 @@ void SequenceMaskKernel(const Context& ctx,
     } else {
       maxlen = *max_len_tensor.get_ptr()->data<int32_t>();
     }
+
+    auto y_dim = common::vectorize<int>(x.dims());
+    y_dim.push_back(maxlen);
+    y->Resize(common::make_ddim(y_dim));
+
     PADDLE_ENFORCE_GT(
         maxlen,
         0,
