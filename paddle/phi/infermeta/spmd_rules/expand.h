@@ -30,5 +30,9 @@ SpmdInfo ExpandInferSpmdReverse(const DistMetaTensor& x,
                                 const DistMetaTensor& out,
                                 const std::vector<int64_t>& shape);
 
+SpmdInfo ExpandGradInferSpmd(const DistMetaTensor& x,
+                             const DistMetaTensor& out_grad,
+                             const std::vector<int64_t>& shape);
+
 }  // namespace distributed
 }  // namespace phi
