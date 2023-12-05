@@ -17,7 +17,7 @@ from typing import Callable
 import paddle
 import paddle.distributed as dist
 from paddle import nn
-from paddle.base.framework import EagerParamBase
+from paddle.base.framework import EagerParamBase, default_main_program
 from paddle.distributed.auto_parallel.interface import (
     shard_tensor as shard_tensor_static,
 )
@@ -250,10 +250,12 @@ def reshard(dist_tensor, mesh, placements):
 
         return paddle.base.core.reshard(dist_tensor, dist_attr)
     else:
-        # TODO(GhostScreaming): Support static DistTensor later.
-        raise RuntimeError(
-            "paddle.dist.reshard only support dynamic graph now. It will be supported for static graph later."
-        )
+        sharding_specs = get_shard_spec(mesh, placements, dist_tensor.ndim)
+        main_program = default_main_program()
+        print("in reshard static")
+        print(type(dist_tensor), dist_tensor)
+        print(sharding_specs)
+        print(main_program)
 
 
 def shard_layer(
