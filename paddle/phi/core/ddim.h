@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,17 +13,25 @@
 // limitations under the License.
 
 #pragma once
-
-#include <pybind11/pybind11.h>
-#include "paddle/phi/common/data_type.h"
-#include "paddle/phi/core/ddim.h"
-#include "paddle/pir/core/op_result.h"
+#include "paddle/common/ddim.h"
 
 namespace paddle {
-namespace pybind {
-using pir::OpResult;
-void BindPir(pybind11::module *m);
-const phi::DDim &GetValueDims(pir::Value value);
-bool GetOpResultBoolAttr(const OpResult &self, const std::string &attr_name);
-}  // namespace pybind
+namespace framework {
+using DDim = common::DDim;
+}
 }  // namespace paddle
+
+namespace phi {
+using DDim = common::DDim;
+using common::arity;
+using common::contain_unknown_dim;
+using common::flatten_to_1d;
+using common::flatten_to_2d;
+using common::flatten_to_3d;
+using common::make_ddim;
+using common::product;
+using common::slice_ddim;
+using common::stride;
+using common::stride_numel;
+using common::vectorize;
+}  // namespace phi

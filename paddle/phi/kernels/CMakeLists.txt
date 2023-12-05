@@ -168,9 +168,10 @@ if(WITH_CUTLASS)
 endif()
 
 if(NOT WITH_CUDNN_FRONTEND)
-  list(REMOVE_ITEM kernel_cu
-       "fusion/gpu/fused_scale_bias_relu_conv_bn_kernel.cu"
-       "fusion/gpu/fused_scale_bias_add_relu_kernel.cu")
+  list(
+    REMOVE_ITEM kernel_cu "fusion/gpu/fused_scale_bias_relu_conv_bn_kernel.cu"
+    "fusion/gpu/fused_scale_bias_add_relu_kernel.cu"
+    "fusion/gpu/fused_dconv_drelu_dbn_kernel.cu")
 endif()
 
 set(cc_search_pattern
