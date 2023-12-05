@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "paddle/common/enforce.h"
+#include "paddle/fluid/string/pretty_log.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/pass/analysis_manager.h"
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
@@ -91,9 +92,10 @@ class IR_API Pass {
   virtual bool Initialize(IrContext* context) { return true; }
 
   void PrintPassMatchCount(int64_t pass_match_count) {
-    LOG(INFO) << "--- Running analysis [" << pass_info_.name << "]";
+    paddle::string::PrettyLogH1("--- Running analysis [%s]", pass_info_.name);
     if (pass_match_count > 0) {
-      LOG(INFO) << "--- detected " << pass_match_count << " subgraphs!";
+      paddle::string::PrettyLogH2("--- detected [%lld] subgraphs!",
+                                  pass_match_count);
     }
   }
 
