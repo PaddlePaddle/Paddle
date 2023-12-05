@@ -18,21 +18,41 @@ from paddle.profiler.utils import job_schedule_profiler_range
 
 
 class TestJobScheDuleProfilerRange(unittest.TestCase):
-    def test_exit_after_prof_1(self):
-        status_list = [False, False, False, True, True]
+    def test_not_exit_after_prof_1(self):
+        status_list = [
+            False,
+            False,
+            False,
+            True,
+            True,
+            True,
+            False,
+            False,
+            False,
+            False,
+        ]
         for i in range(10):
-            with job_schedule_profiler_range(i, 3, 5) as status:
+            with job_schedule_profiler_range(i, 3, 6, False) as status:
                 self.assertEqual(status, status_list[i])
-            assert i < 5
 
-    def test_exit_after_prof_2(self):
-        status_list = [True, True, True, True, True]
+    def test_not_exit_after_prof_2(self):
+        status_list = [
+            True,
+            True,
+            True,
+            True,
+            True,
+            False,
+            False,
+            False,
+            False,
+            False,
+        ]
         for i in range(10):
-            with job_schedule_profiler_range(i, 0, 5) as status:
+            with job_schedule_profiler_range(i, 0, 5, False) as status:
                 self.assertEqual(status, status_list[i])
-            assert i < 5
 
-    def test_not_exit_after_prof(self):
+    def test_not_exit_after_prof_3(self):
         status_list = [
             False,
             False,
