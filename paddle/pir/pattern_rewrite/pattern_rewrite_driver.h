@@ -64,31 +64,31 @@ class IR_API GreedyRewriteConfig {
 /// apply the Pattern with the highest benefit, and repeat this process until
 /// convergence or the upper limit of iterations.
 ///
-/// Returns true if the iteration converges and no patterns can be applied.
-std::vector<int64_t> IR_API
+/// Returns pair<bool,int64_t>
+// the first is true if the iteration converges and no patterns can be applied.
+// the second is the number of total match count.
+std::pair<bool, int64_t> IR_API
 ApplyPatternsGreedily(Region& region,  // NOLINT
                       const FrozenRewritePatternSet& patterns,
                       GreedyRewriteConfig config = GreedyRewriteConfig());
 
 /// Perform a match and rewrite process for all regions of a given op.
-inline IR_API std::vector<int64_t> ApplyPatternsGreedily(
+inline IR_API std::pair<bool, int64_t> ApplyPatternsGreedily(
     Operation* op,
     const FrozenRewritePatternSet& patterns,
     GreedyRewriteConfig config = GreedyRewriteConfig()) {
-  int64_t max_iterations_match_count = 0;
-  int64_t pass_all_match_count = 0;
+  bool failed = false;
+  int64_t regions_pass_match_count = 0;
   for (uint32_t i = 0; i < op->num_regions(); ++i) {
     Region& region = op->region(i);
-    auto res = ApplyPatternsGreedily(region, patterns, config);
-    auto max_iterations_match_cur_count = res[0];
-    auto pass_cur_match_count = res[1];
-    max_iterations_match_count =
-        max_iterations_match_cur_count > max_iterations_match_count
-            ? max_iterations_match_cur_count
-            : max_iterations_match_count;
-    pass_all_match_count += pass_cur_match_count;
+    auto converged_total_match_nums_pair =
+        ApplyPatternsGreedily(region, patterns, config);
+    auto converged = converged_total_match_nums_pair.first;
+    auto pass_region_match_count = converged_total_match_nums_pair.second;
+    failed |= !converged;
+    regions_pass_match_count += pass_region_match_count;
   }
-  return std::vector<int64_t>{max_iterations_match_count, pass_all_match_count};
+  return std::make_pair(failed, regions_pass_match_count);
 }
 
 }  // namespace pir

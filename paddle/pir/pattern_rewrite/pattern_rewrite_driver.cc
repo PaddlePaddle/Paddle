@@ -54,9 +54,9 @@ class GreedyPatternRewriteDriver : public pir::PatternRewriter {
     }
   }
 
-  std::vector<int64_t> Simplify() {
-    int64_t pattern_match_count = 0;
-    int64_t cur_count = 0;
+  std::pair<bool, int64_t> Simplify() {
+    int64_t sum_pattern_match_count = 0;
+    int64_t cur_iterations_count = 0;
     int64_t iteration = 0;
     do {
       // Check if the iteration limit was reached.
@@ -81,11 +81,11 @@ class GreedyPatternRewriteDriver : public pir::PatternRewriter {
         VLOG(6) << "worklist[" << i << "] is " << worklist_[i]->name();
       }
 
-      cur_count = ProcessWorklist();
-      pattern_match_count += cur_count;
-    } while (cur_count != 0);
-
-    return std::vector<int64_t>{cur_count, pattern_match_count};
+      cur_iterations_count = ProcessWorklist();
+      sum_pattern_match_count += cur_iterations_count;
+    } while (cur_iterations_count != 0);
+    bool converged = cur_iterations_count == 0 ? true : false;
+    return std::make_pair(converged, sum_pattern_match_count);
   }
 
  private:
@@ -212,20 +212,20 @@ class GreedyPatternRewriteDriver : public pir::PatternRewriter {
 
 namespace pir {
 
-std::vector<int64_t> ApplyPatternsGreedily(
+std::pair<bool, int64_t> ApplyPatternsGreedily(
     Region& region,  // NOLINT
     const FrozenRewritePatternSet& patterns,
     GreedyRewriteConfig config) {
   if (!config.region) config.region = &region;
 
   GreedyPatternRewriteDriver driver(region.ir_context(), patterns, config);
-  auto res = driver.Simplify();
-  auto max_iterations_match_cur_count = res[0];
-  if (max_iterations_match_cur_count > 0) {
+  auto converged_total_match_nums_pair = driver.Simplify();
+  auto converged = converged_total_match_nums_pair.first;
+  if (!converged) {
     LOG(WARNING) << "The pattern rewrite did not converge after scaning "
                  << config.max_iterations << " times";
   }
-  return res;
+  return converged_total_match_nums_pair;
 }
 
 }  // namespace pir

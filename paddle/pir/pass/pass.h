@@ -146,7 +146,7 @@ class PatternRewritePass : public Pass {
     cfg.use_top_down_traversal = true;
     cfg.max_iterations = 10;
     PrintPassMatchCount(
-        ApplyPatternsGreedily(op->region(0), patterns_, cfg)[1]);
+        ApplyPatternsGreedily(op->region(0), patterns_, cfg).second);
   }
 
  private:
