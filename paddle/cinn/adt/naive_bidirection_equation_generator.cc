@@ -16,7 +16,6 @@
 
 #include "paddle/cinn/adt/equation_graph.h"
 #include "paddle/cinn/adt/equation_solver.h"
-#include "paddle/cinn/adt/naive_equation_function_constants_provider.h"
 
 namespace cinn::adt {
 
