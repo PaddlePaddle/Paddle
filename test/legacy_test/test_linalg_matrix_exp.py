@@ -53,6 +53,13 @@ class MatrixExpTestCase(unittest.TestCase):
             x = paddle.to_tensor(self._input_data, place=place)
             out = paddle.linalg.matrix_exp(x).numpy()
 
+            np.testing.assert_allclose(
+                out,
+                self._output_data,
+                rtol=RTOL.get(self.dtype),
+                atol=ATOL.get(self.dtype),
+            )
+
     # @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
@@ -69,12 +76,21 @@ class MatrixExpTestCase(unittest.TestCase):
                     shape=self._input_shape,
                     dtype=self._input_data.dtype,
                 )
+
                 out = paddle.linalg.matrix_exp(x)
                 exe = paddle.static.Executor(place)
-                fetches = exe.run(
+
+                res = exe.run(
                     feed={"input": self._input_data},
                     fetch_list=[out],
-                )
+                )[0]
+
+            np.testing.assert_allclose(
+                res,
+                self._output_data,
+                rtol=RTOL.get(self.dtype),
+                atol=ATOL.get(self.dtype),
+            )
 
     def test_grad(self):
         for place in self.places:
@@ -84,6 +100,42 @@ class MatrixExpTestCase(unittest.TestCase):
             out = paddle.linalg.matrix_exp(x)
             out.backward()
             x_grad = x.grad
+
+            self.assertEqual(list(x_grad.shape), list(x.shape))
+            self.assertEqual(x_grad.dtype, x.dtype)
+
+
+class MatrixExpTestCaseFloat32(MatrixExpTestCase):
+    def init_config(self):
+        self.dtype = 'float32'
+
+
+class MatrixExpTestCase3D(MatrixExpTestCase):
+    def generate_input(self):
+        self._input_shape = (2, 5, 5)
+        np.random.seed(123)
+        self._input_data = np.random.random(self._input_shape).astype(
+            self.dtype
+        )
+
+
+class MatrixExpTestCase3DFloat32(MatrixExpTestCase3D):
+    def init_config(self):
+        self.dtype = 'float32'
+
+
+class MatrixExpTestCase4D(MatrixExpTestCase):
+    def generate_input(self):
+        self._input_shape = (2, 3, 5, 5)
+        np.random.seed(123)
+        self._input_data = np.random.random(self._input_shape).astype(
+            self.dtype
+        )
+
+
+class MatrixExpTestCase4DFloat32(MatrixExpTestCase4D):
+    def init_config(self):
+        self.dtype = 'float32'
 
 
 if __name__ == '__main__':

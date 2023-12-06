@@ -4058,6 +4058,10 @@ def matrix_exp(input, name=None):
     else:
         mat_a = input
 
+    if mat_a.ndim < 2:
+        raise ValueError('The input tensor must be at least two-dimensional')
+    if mat_a.shape[-1] != mat_a.shape[-2]:
+        raise ValueError('Last 2 dimensions of the tensor must be square')
     if list(mat_a.shape[-2:]) == [0, 0]:
         return mat_a
 
@@ -4092,29 +4096,28 @@ def matrix_exp(input, name=None):
         )
 
     is_finite = paddle.isfinite(paddle.max(l1_norm))
-    nan = paddle.full((), np.nan, mat_a.dtype)
 
     result = paddle.static.nn.cond(
         is_finite,
         lambda: paddle.linalg.solve(-u + v, u + v),
-        lambda: paddle.full(mat_a.shape, nan),
+        lambda: paddle.full(mat_a.shape, np.nan, mat_a.dtype),
     )
 
     max_squarings = paddle.max(squarings)
     i = paddle.full((), 0.0, mat_a.dtype)
 
-    def c(i, _):
+    def cond(i, _):
         return paddle.static.nn.cond(
             is_finite,
             lambda: paddle.less_than(i, max_squarings),
             lambda: paddle.full((), False),
         )
 
-    def b(i, r):
+    def body(i, r):
         return i + 1, paddle.where(
             paddle.less_than(i, squarings), paddle.matmul(r, r), r
         )
 
-    _, result = paddle.static.nn.while_loop(c, b, [i, result])
+    _, result = paddle.static.nn.while_loop(cond, body, [i, result])
 
     return result
