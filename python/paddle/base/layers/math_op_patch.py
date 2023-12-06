@@ -537,6 +537,10 @@ def monkey_patch_variable():
                         common_dtype = core.get_promote_dtype(
                             op_type, lhs_dtype, rhs_dtype
                         )
+                        warnings.warn(
+                            f"The input dtypes of OP {op_type} are {lhs_dtype} and {rhs_dtype}, "
+                            "the output will be auto-promoted to {common_dtype}"
+                        )
                         if rhs_dtype != common_dtype:
                             other_var = astype(other_var, common_dtype)
                         if lhs_dtype != common_dtype:
