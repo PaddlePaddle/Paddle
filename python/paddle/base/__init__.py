@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import atexit
-import os  # noqa: F401
+import os
 import platform
 import sys
 
