@@ -18,9 +18,9 @@
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
 // Phi deps
+#include "paddle/common/macros.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/compat/convert_utils.h"
-#include "paddle/phi/core/macros.h"
 
 namespace egr {
 

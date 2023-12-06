@@ -330,7 +330,9 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
           true,
           phi::errors::InvalidArgument(
               "The forward input DistTensor's dist attr is empty."));
-      meta.SetDistAttr(dist_tensor->dist_attr());
+      auto dist_attr = dist_tensor->dist_attr();
+      dist_attr.clean_partial_status();
+      meta.SetDistAttr(dist_attr);
       meta.SetDistTensorGlobalDims(dist_tensor->dims());
       SetIsRunAutoParallel(true);
     } else {

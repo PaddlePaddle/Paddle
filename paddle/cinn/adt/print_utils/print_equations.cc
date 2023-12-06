@@ -18,24 +18,25 @@
 #include <string>
 
 #include "paddle/cinn/adt/equation_function.h"
+#include "paddle/cinn/adt/equation_graph.h"
+#include "paddle/cinn/adt/print_utils/print_dim_expr.h"
+#include "paddle/cinn/hlir/framework/pir/utils.h"
+#include "paddle/pir/core/operation.h"
 
 namespace cinn::adt {
 
 namespace {
 
-std::string ToTxtString(const tDim<UniqueId>& constant) {
-  std::size_t constant_unique_id = constant.value().unique_id();
-  return "dim_" + std::to_string(constant_unique_id);
+std::string OpImpl(const ::pir::Operation* op) {
+  return hlir::framework::pir::CompatibleInfo::OpName(*op);
 }
 
-std::string OpImpl(const hlir::framework::Node* op) { return op->op()->name; }
-
-std::string OpImpl(const tReduceInit<const hlir::framework::Node*>& op) {
-  return op.value()->op()->name + "_init";
+std::string OpImpl(const tReduceInit<const ::pir::Operation*>& op) {
+  return OpImpl(op.value()) + "_init";
 }
 
-std::string OpImpl(const tReduceAcc<const hlir::framework::Node*>& op) {
-  return op.value()->op()->name + "_acc";
+std::string OpImpl(const tReduceAcc<const ::pir::Operation*>& op) {
+  return OpImpl(op.value()) + "_acc";
 }
 
 }  // namespace
@@ -95,19 +96,6 @@ std::string ToTxtString(const List<Iterator>& iterators) {
       ret += ", ";
     }
     ret += ToTxtString(iterators.Get(idx));
-  }
-  ret += "]";
-  return ret;
-}
-
-std::string ToTxtString(const List<Dim>& dim_list) {
-  std::string ret;
-  ret += "[";
-  for (std::size_t idx = 0; idx < dim_list->size(); ++idx) {
-    if (idx != 0) {
-      ret += ", ";
-    }
-    ret += ToTxtString(dim_list.Get(idx));
   }
   ret += "]";
   return ret;
@@ -180,7 +168,8 @@ struct ToTxtStringStruct {
   }
 
   std::string operator()(
-      const IndexDot<List<Dim>, tOut<Index>, tIn<List<Iterator>>>& dot) const {
+      const IndexDot<List<DimExpr>, tOut<Index>, tIn<List<Iterator>>>& dot)
+      const {
     std::string ret;
     const auto& [dim_list, out_index_tag, in_iterator_list_tag] = dot.tuple();
     const Index& out_index = out_index_tag.value();
@@ -191,7 +180,7 @@ struct ToTxtStringStruct {
   }
 
   std::string operator()(
-      const GetBroadcastedIterator<Dim, tOut<Iterator>, tIn<Iterator>>&
+      const GetBroadcastedIterator<DimExpr, tOut<Iterator>, tIn<Iterator>>&
           broadcast) const {
     std::string ret;
     const auto& [dim, out_iterator, in_iterator] = broadcast.tuple();
@@ -201,7 +190,7 @@ struct ToTxtStringStruct {
   }
 
   std::string operator()(
-      const IndexUnDot<List<Dim>, tOut<List<Iterator>>, tIn<Index>>& undot)
+      const IndexUnDot<List<DimExpr>, tOut<List<Iterator>>, tIn<Index>>& undot)
       const {
     std::string ret;
     const auto& [dim_list, out_iterator_list_tag, in_index_tag] = undot.tuple();
@@ -234,7 +223,9 @@ struct ToTxtStringStruct {
   std::string operator()(
       const ConstantFunction<tOut<Iterator>, tIn<Index>>& constant) const {
     std::string ret{};
-
+    const auto& [out_iterator, in_index, c] = constant.tuple();
+    ret += ToTxtString(out_iterator.value()) + " = ConstantFunction(" +
+           ToTxtString(in_index.value()) + ", " + ToTxtString(c) + ")";
     return ret;
   }
 };
@@ -300,7 +291,8 @@ std::string ToDotString(
   std::unordered_set<Variable> variables{};
   for (const auto& equation : *equations) {
     const auto& [in_variables, out_variables] =
-        CollectInputAndOutputVariables(equation);
+        GraphTrait<Variable, Function>::CollectInputAndOutputVariables(
+            equation);
     ss << GetFunctionUid(equation) << "["
        << "label=\"" << GetFunctionTypeName(equation) << "<"
        << GetFunctionDataPtr(equation) << ">"

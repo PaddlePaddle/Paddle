@@ -17,11 +17,10 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import (
+from dygraph_to_static_utils import (
     Dy2StTestBase,
-    compare_legacy_with_pir,
+    compare_legacy_with_pt,
     test_ast_only,
-    test_legacy_and_pir,
 )
 
 import paddle
@@ -191,7 +190,7 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
             output_spec=fetch if fetch else None,
         )
         if enable_pir:
-            wrapped_load_and_run_inference = compare_legacy_with_pir(
+            wrapped_load_and_run_inference = compare_legacy_with_pt(
                 self.load_and_run_inference
             )
             infer_out = wrapped_load_and_run_inference(
@@ -230,7 +229,6 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
 
 class TestPartialProgramRaiseError(Dy2StTestBase):
     @test_ast_only
-    @test_legacy_and_pir
     def test_param_type(self):
         paddle.jit.enable_to_static(True)
         x_data = np.random.random((20, 20)).astype('float32')

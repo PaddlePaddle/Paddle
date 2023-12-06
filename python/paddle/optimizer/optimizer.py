@@ -20,7 +20,7 @@ import numpy as np
 import paddle
 import paddle.autograd as imperative_base
 from paddle import _C_ops
-from paddle._pir_ops import get_parameter, set_parameter
+from paddle._pir_ops import parameter, set_parameter
 from paddle.base import core
 from paddle.base.framework import (
     Variable,
@@ -31,6 +31,7 @@ from paddle.base.framework import (
     in_dynamic_or_pir_mode,
     in_pir_mode,
     name_scope,
+    use_pir_api,
 )
 from paddle.regularizer import L2Decay
 
@@ -277,6 +278,7 @@ class Optimizer:
         self._auxiliary_vars = {}
         self._already_create_accumulater = set()
 
+        self._master_weights = {}
         # create master gradients' states
         self._create_master_grad_states()
 
@@ -478,7 +480,7 @@ class Optimizer:
                     if not isinstance(lr_var, paddle.pir.OpResult):
                         self._learning_rate._var_name = lr_name
                         with paddle.static.program_guard(main_program):
-                            param = get_parameter(lr_name, _lr_dtype, [])
+                            param = parameter(lr_name, _lr_dtype, [])
                         param.stop_gradient = True
                         param.persistable = True
                         main_program.lr_scheduler = self._learning_rate
@@ -527,11 +529,14 @@ class Optimizer:
                             )
                         self._learning_rate_map[
                             paddle.static.default_main_program()
-                        ] = paddle._pir_ops.full(
-                            [],
-                            self._learning_rate,
-                            _lr_dtype,
-                            place,
+                        ] = paddle.pir.core.create_parameter(
+                            dtype=_lr_dtype,
+                            shape=[],
+                            name=unique_name.generate("learning_rate"),
+                            trainable=False,
+                            initializer=paddle.nn.initializer.ConstantInitializer(
+                                value=float(self._learning_rate)
+                            ),
                         )
                 else:
                     if isinstance(lr, framework.Variable):
@@ -785,12 +790,19 @@ class Optimizer:
                 if param_lr == 1.0:
                     return self._global_learning_rate()
                 else:
-                    with paddle.static.default_main_program()._lr_schedule_guard(
-                        is_with_opt=True
-                    ), framework.name_scope(
-                        'scale_with_param_lr'
-                    ):
-                        return self._global_learning_rate() * param_lr
+                    if not use_pir_api():
+                        with paddle.static.default_main_program()._lr_schedule_guard(
+                            is_with_opt=True
+                        ), framework.name_scope(
+                            'scale_with_param_lr'
+                        ):
+                            return self._global_learning_rate() * param_lr
+                    else:
+                        # TODO(dev): Currently there has not equivalent of op_role in PIR
+                        # mode, so we simply remove _lr_schedule_guard here, this should
+                        # be fixed in the future.
+                        with framework.name_scope('scale_with_param_lr'):
+                            return self._global_learning_rate() * param_lr
         else:
             return self._global_learning_rate()
 

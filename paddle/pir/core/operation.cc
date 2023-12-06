@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstdint>
 #include <ostream>
 
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/block.h"
 #include "paddle/pir/core/block_operand_impl.h"
 #include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/op_info.h"
 #include "paddle/pir/core/op_result_impl.h"
 #include "paddle/pir/core/operation.h"
@@ -200,7 +201,8 @@ Operation::Operation(const AttributeMap &attributes,
       num_results_(num_results),
       num_operands_(num_operands),
       num_regions_(num_regions),
-      num_successors_(num_successors) {}
+      num_successors_(num_successors),
+      id_(GenerateId()) {}
 
 ///
 /// \brief op ouput related public interfaces implementation
@@ -232,6 +234,17 @@ std::vector<Value> Operation::operands_source() const {
   std::vector<Value> res;
   for (uint32_t i = 0; i < num_operands(); ++i) {
     res.push_back(operand_source(i));
+  }
+  return res;
+}
+
+int32_t Operation::operand_index(const OpOperand &op_operand) const {
+  int32_t res = -1;
+  for (uint32_t i = 0; i < num_operands(); ++i) {
+    if (op_operand == operand(i)) {
+      res = i;
+      break;
+    }
   }
   return res;
 }

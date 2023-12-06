@@ -59,6 +59,8 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     if (FLAGS_enable_pir_api || FLAGS_enable_pir_in_executor) {
       ir_program = plan_.IrProgram(job_type);
     } else {
+      // NOTE (liuchenghao): std::make_shared will duplicate ProgramDesc object,
+      // maybe std::make_unique is better?
       program = std::make_shared<ProgramDesc>(*(plan_.Program(job_type)));
     }
 
@@ -152,7 +154,8 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
 }
 
 paddle::framework::FetchList StandaloneExecutor::Run(
-    const std::vector<std::string>& feed_names) {
+    const std::vector<std::string>& feed_names,
+    const bool enable_job_schedule_profiler) {
   platform::RecordEvent record_event(
       "StandaloneExecutor::run", platform::TracerEventType::UserDefined, 1);
 
@@ -190,7 +193,7 @@ paddle::framework::FetchList StandaloneExecutor::Run(
     VLOG(6) << "Run job (" << job_idx << "), type = " << job_type
             << ", micro_batch_id =" << job->MicroBatchId();
 
-    // Note(sonder): Share build results don't work for new IR now.
+    // NOTE(sonder): Share build results don't work for new IR now.
     if (type_to_first_id.count(job_type) != 0 &&
         !FLAGS_enable_pir_in_executor) {
       interpretercores_[job_idx]->ShareBuildResultsFrom(
@@ -200,7 +203,9 @@ paddle::framework::FetchList StandaloneExecutor::Run(
     if (FLAGS_enable_pir_in_executor) {
       interpretercores_[job_idx]->Run(feed_names,
                                       splited_feeds[job->MicroBatchId()],
-                                      /*need_fetch = */ false);
+                                      /*need_fetch = */ false,
+                                      /*enable_job_schedule_profiler = */
+                                      enable_job_schedule_profiler);
 
       FetchTensors(job->FetchVarNames(),
                    fetch_var_names_,
@@ -211,12 +216,41 @@ paddle::framework::FetchList StandaloneExecutor::Run(
       if (jobs.size() > 1 && job_type != "forward") {
         const std::vector<std::string> tmp_feed_names = {};
         interpretercores_[job_idx]->Run(tmp_feed_names,
-                                        /*need_fetch = */ false);
+                                        /*need_fetch = */ false,
+                                        /*enable_job_schedule_profiler = */
+                                        enable_job_schedule_profiler);
       } else {
-        interpretercores_[job_idx]->Run(feed_names, /*need_fetch = */ false);
+        interpretercores_[job_idx]->Run(feed_names,
+                                        /*need_fetch = */ false,
+                                        /*enable_job_schedule_profiler = */
+                                        enable_job_schedule_profiler);
       }
     }
   }
+
+  // record each job's run time
+#if defined(PADDLE_WITH_CUDA)
+  if (enable_job_schedule_profiler) {
+    for (size_t job_idx = 0; job_idx < jobs.size(); ++job_idx) {
+      const auto& job = jobs[job_idx];
+      const std::string& job_type = job->Type();
+      double start_time, end_time;
+      std::tie(start_time, end_time) =
+          interpretercores_[job_idx]->InterpreterRunTime();
+
+      // Note(sonder): Used to record the runtime of each job in order to
+      // generate a parallel pipeline timeline. Job runtime information can be
+      // extracted from the logs using the scripts "profiler_helper_static.py".
+      // Do not modify, as it may affect the results of regular expression
+      // matching.
+      VLOG(0) << "Profiler Info: Job (" << job->MicroBatchId()
+              << "), type = " << job_type
+              << ", micro_batch_id = " << job->MicroBatchId()
+              << ", job_start_time = " << std::to_string(start_time)
+              << ", job_end_time = " << std::to_string(end_time);
+    }
+  }
+#endif
 
   // return Fetch Tensors
   if (FLAGS_enable_pir_in_executor) {
@@ -231,6 +265,29 @@ paddle::framework::FetchList StandaloneExecutor::Run(
       return {};
     }
   }
+}
+
+std::shared_ptr<framework::ProgramDesc> StandaloneExecutor::RunProfile(
+    const std::vector<std::string>& feed_names) {
+  platform::RecordEvent record_event("StandaloneExecutor::run_profile",
+                                     platform::TracerEventType::UserDefined,
+                                     1);
+
+  // in profiling run, there can be one and only one job ("default")
+  interpretercores_[0]->Run(feed_names,
+                            /*need_fetch = */ false,
+                            /*enable_job_schedule_profiler = */ false,
+                            /*enable_op_profiling = */ true);
+
+  // Don't return program desc directly, instead, return a copy of it since we
+  // don't know how the program desc will be further processed in Python side.
+  // If we return a raw shared_ptr, the program desc will be easily altered
+  // externally, result in unexpected behavior during the next profiling run.
+  std::shared_ptr<framework::ProgramDesc> copy_desc =
+      std::make_shared<framework::ProgramDesc>(
+          *(interpretercores_[0]->GetMutableCopyProgram()));
+
+  return copy_desc;
 }
 
 }  // namespace framework
