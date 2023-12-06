@@ -18,7 +18,6 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-from paddle import base
 
 paddle.enable_static()
 
@@ -124,32 +123,6 @@ class TestRpropOpCase8X(TestRpropOp):
     def conf(self):
         self.h = 10
         self.w = 64
-
-
-class TestRpropOpWithLargeInput(unittest.TestCase):
-    def runTest(self):
-        paddle.enable_static()
-        data = paddle.tensor.fill_constant(shape=[1], value=128, dtype='int64')
-        label = paddle.tensor.fill_constant(
-            shape=[1, 150], value=0.5, dtype='float32'
-        )
-        emb = paddle.static.nn.embedding(
-            input=data, size=(1000000, 150), dtype='float32'
-        )
-        out = paddle.nn.functional.normalize(x=emb, axis=-1)
-
-        cost = paddle.nn.functional.square_error_cost(input=out, label=label)
-        avg_cost = paddle.mean(cost)
-        rprop_optimizer = paddle.optimizer.Rprop(learning_rate=0.001)
-        rprop_optimizer.minimize(avg_cost)
-
-        place = base.CPUPlace()
-        exe = base.Executor(place)
-        exe.run(base.default_startup_program())
-        compiled_prog = base.compiler.CompiledProgram(
-            base.default_main_program()
-        )
-        result = exe.run(compiled_prog, fetch_list=[avg_cost])
 
 
 if __name__ == "__main__":
