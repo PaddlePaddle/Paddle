@@ -44,6 +44,7 @@ typedef SSIZE_T ssize_t;
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/python_headers.h"
@@ -51,7 +52,6 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/common/type_promotion.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {

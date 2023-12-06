@@ -55,8 +55,8 @@ namespace cinn {
 namespace backends {
 
 using BinaryInstruction = llvm::Instruction::BinaryOps;
-using common::bfloat16;
-using common::float16;
+using cinn::common::bfloat16;
+using cinn::common::float16;
 
 namespace {
 
@@ -69,9 +69,11 @@ auto NodeToExpr(const T *node) {
   return oss.str();
 }
 
-bool is_integral_type(common::Type t) { return t.is_int() || t.is_uint(); }
+bool is_integral_type(cinn::common::Type t) {
+  return t.is_int() || t.is_uint();
+}
 
-bool is_floating_type(common::Type t) { return t.is_float(); }
+bool is_floating_type(cinn::common::Type t) { return t.is_float(); }
 
 llvm::Value *EmitComparison(llvm::CmpInst::Predicate predicate,
                             llvm::Value *lhs,
@@ -405,7 +407,8 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Cast *op) {
   // pod_value_t cast to a value.
   if (op->v().type().is_customized_type() &&
       op->v().type().customized_type() ==
-          common::customized_type::kpod_value_t) {  // pod_value_t operator
+          cinn::common::customized_type::kpod_value_t) {  // pod_value_t
+                                                          // operator
     llvm::Function *callee{};
     if (op->type().is_bool()) {
       callee = m_->getFunction(runtime::intrinsic::pod_value_to_bool);
@@ -970,7 +973,7 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Store *op) {
       // fit the total_lanes in native_lanes(split into multiple native steps)
       for (int offset = 0; offset < total_lanes; offset += total_lanes) {
         int lanes = total_lanes;
-        Expr base = common::AutoSimplify(ramp->base + offset);
+        Expr base = cinn::common::AutoSimplify(ramp->base + offset);
         optim::VarModSimplify(&base);
         auto *ptr =
             CreateBufferPtr(op->type().ElementOf(), buffer, Visit(&base));
@@ -1283,7 +1286,7 @@ llvm::Value *CodeGenLLVM::DenseVectorLoad(const ir::Load *op) {
 
   for (int i = 0; i < load_lanes; i += load_lanes) {
     int slice_lanes = load_lanes;
-    auto slice_base = common::AutoSimplify(ramp->base + i);
+    auto slice_base = cinn::common::AutoSimplify(ramp->base + i);
     optim::VarModSimplify(&slice_base);
     auto slide_stride = Expr(1);
     auto slide_index = slice_base;

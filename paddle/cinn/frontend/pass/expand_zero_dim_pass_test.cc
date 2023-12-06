@@ -85,7 +85,7 @@ TEST(ExpandZeroDimPass, expand_zero_dim_1) {
   auto y = builder.CreateInput(Float(32), {}, "y");
   auto out = builder.Add(x, y);
   auto program = builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
 
   size_t origin_size = program.size();
   VLOG(1) << "Program Before ExpandZeroDimPass:\n" << program;
@@ -125,7 +125,7 @@ TEST(ExpandZeroDimPass, expand_zero_dim_2) {
   auto y = builder.CreateInput(Float(32), {}, "y");
   auto out = builder.Add(x, y);
   auto program = builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
 
   size_t origin_size = program.size();
   VLOG(1) << "Program Before ExpandZeroDimPass:\n" << program;

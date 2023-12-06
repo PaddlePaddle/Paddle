@@ -1634,8 +1634,16 @@ def nan_to_num(x, nan=0.0, posinf=None, neginf=None, name=None):
     posinf_value = paddle.full_like(x, float("+inf"))
     neginf_value = paddle.full_like(x, float("-inf"))
     nan = paddle.full_like(x, nan)
-    assert x.dtype in [paddle.float32, paddle.float64]
-    is_float32 = x.dtype == paddle.float32
+    assert x.dtype in [
+        paddle.float32,
+        paddle.float64,
+        paddle.base.core.DataType.FLOAT32,
+        paddle.base.core.DataType.FLOAT64,
+    ]
+    is_float32 = (
+        x.dtype == paddle.float32
+        or x.dtype == paddle.base.core.DataType.FLOAT32
+    )
     if posinf is None:
         posinf = (
             np.finfo(np.float32).max if is_float32 else np.finfo(np.float64).max
@@ -1647,8 +1655,8 @@ def nan_to_num(x, nan=0.0, posinf=None, neginf=None, name=None):
         )
     neginf = paddle.full_like(x, neginf)
     x = paddle.where(paddle.isnan(x), nan, x)
-    x = paddle.where(x == posinf_value, posinf, x)
-    x = paddle.where(x == neginf_value, neginf, x)
+    x = paddle.where(paddle.equal(x, posinf_value), posinf, x)
+    x = paddle.where(paddle.equal(x, neginf_value), neginf, x)
     return x
 
 
@@ -4596,7 +4604,7 @@ def sign(x, name=None):
     Returns sign of every element in `x`: 1 for positive, -1 for negative and 0 for zero.
 
     Args:
-        x (Tensor): The input tensor. The data type can be int8, int16, int32, int64, float16, float32 or float64.
+        x (Tensor): The input tensor. The data type can be uint8, int8, int16, int32, int64, float16, float32 or float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -4620,6 +4628,7 @@ def sign(x, name=None):
             x,
             'x',
             [
+                'uint8',
                 'int8',
                 'int16',
                 'int32',
@@ -4627,7 +4636,6 @@ def sign(x, name=None):
                 'float16',
                 'float32',
                 'float64',
-                'uint16',
             ],
             'sign',
         )
@@ -6429,9 +6437,16 @@ def _trapezoid(y, x=None, dx=None, axis=-1, mode='sum'):
 
     if not (x is None or dx is None):
         raise ValueError("Not permitted to specify both x and dx input args.")
-    if y.dtype not in [paddle.float16, paddle.float32, paddle.float64]:
+    if y.dtype not in [
+        paddle.float16,
+        paddle.float32,
+        paddle.float64,
+        paddle.base.core.DataType.FLOAT16,
+        paddle.base.core.DataType.FLOAT32,
+        paddle.base.core.DataType.FLOAT64,
+    ]:
         raise TypeError(
-            f"The data type of input must be Tensor, and dtype should be one of ['paddle.float16', 'paddle.float32', 'paddle.float64'], but got {y.dtype}"
+            f"The data type of input must be Tensor, and dtype should be one of ['paddle.float16', 'paddle.float32', 'paddle.float64', 'paddle.base.core.DataType.FLOAT16', 'paddle.base.core.DataType.FLOAT32', 'paddle.base.core.DataType.FLOAT64'], but got {y.dtype}"
         )
 
     y_shape = y.shape
@@ -6445,9 +6460,16 @@ def _trapezoid(y, x=None, dx=None, axis=-1, mode='sum'):
         if dx.dim() > 1:
             raise ValueError(f'Expected dx to be a scalar, got dx={dx}')
     else:
-        if x.dtype not in [paddle.float16, paddle.float32, paddle.float64]:
+        if x.dtype not in [
+            paddle.float16,
+            paddle.float32,
+            paddle.float64,
+            paddle.base.core.DataType.FLOAT16,
+            paddle.base.core.DataType.FLOAT32,
+            paddle.base.core.DataType.FLOAT64,
+        ]:
             raise TypeError(
-                f"The data type of input must be Tensor, and dtype should be one of ['paddle.float16', 'paddle.float32', 'paddle.float64'], but got {x.dtype}"
+                f"The data type of input must be Tensor, and dtype should be one of ['paddle.float16', 'paddle.float32', 'paddle.float64', 'paddle.base.core.DataType.FLOAT16', 'paddle.base.core.DataType.FLOAT32', 'paddle.base.core.DataType.FLOAT64'], but got {x.dtype}"
             )
         # Reshape to correct shape
         if x.dim() == 1:
@@ -7071,3 +7093,69 @@ def hypot_(x, y, name=None):
 
     out = x.pow_(2).add_(y.pow(2)).sqrt_()
     return out
+
+
+def combinations(x, r=2, with_replacement=False, name=None):
+    """
+
+    Compute combinations of length r of the given tensor. The behavior is similar to python's itertools.combinations
+    when with_replacement is set to False, and itertools.combinations_with_replacement when with_replacement is set to True.
+
+    Args:
+        x (Tensor): 1-D input Tensor, the data type is float16, float32, float64, int32 or int64.
+        r (int, optional):  number of elements to combine, default value is 2.
+        with_replacement (bool, optional):  whether to allow duplication in combination, default value is False.
+        name (str, optional): Name for the operation (optional, default is None).For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor). Tensor concatenated by combinations, same dtype with x.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([1, 2, 3], dtype='int32')
+            >>> res = paddle.combinations(x)
+            >>> print(res)
+            Tensor(shape=[3, 2], dtype=int32, place=Place(gpu:0), stop_gradient=True,
+                   [[1, 2],
+                    [1, 3],
+                    [2, 3]])
+
+    """
+    if len(x.shape) != 1:
+        raise TypeError(f"Expect a 1-D vector, but got x shape {x.shape}")
+    if not isinstance(r, int) or r < 0:
+        raise ValueError(f"Expect a non-negative int, but got r={r}")
+
+    if r == 0:
+        return paddle.empty(shape=[0], dtype=x.dtype)
+
+    if (r > x.shape[0] and not with_replacement) or (
+        x.shape[0] == 0 and with_replacement
+    ):
+        return paddle.empty(shape=[0, r], dtype=x.dtype)
+
+    if r > 1:
+        t_l = [x for i in range(r)]
+        grids = paddle.meshgrid(t_l)
+    else:
+        grids = [x]
+    num_elements = x.numel()
+    t_range = paddle.arange(num_elements, dtype='int64')
+    if r > 1:
+        t_l = [t_range for i in range(r)]
+        index_grids = paddle.meshgrid(t_l)
+    else:
+        index_grids = [t_range]
+    mask = paddle.full(x.shape * r, True, dtype='bool')
+    if with_replacement:
+        for i in range(r - 1):
+            mask *= index_grids[i] <= index_grids[i + 1]
+    else:
+        for i in range(r - 1):
+            mask *= index_grids[i] < index_grids[i + 1]
+    for i in range(r):
+        grids[i] = grids[i].masked_select(mask)
+
+    return paddle.stack(grids, 1)

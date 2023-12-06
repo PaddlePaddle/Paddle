@@ -23,13 +23,14 @@
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/hlir/op/external_api_registry.h"
 #include "paddle/cinn/hlir/pe/map_expr_to_ir.h"
+#include "paddle/cinn/ir/dim.h"
 #include "paddle/cinn/ir/group_schedule/base_group_scheduler.h"
 #include "paddle/cinn/ir/group_schedule/st_shape_group_scheduler.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/lang/placeholder.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/phi/core/ddim.h"
 
 PD_DECLARE_bool(cinn_use_cuda_vectorize);
 PD_DECLARE_bool(cinn_enable_map_expr);
@@ -41,8 +42,8 @@ namespace hlir {
 namespace framework {
 namespace pir {
 
+using cinn::common::Type;
 using cinn::hlir::op::ExternalApiRegistry;
-using common::Type;
 using framework::OpPatternKind;
 using framework::StrategyFunction;
 
@@ -59,14 +60,14 @@ bool IsInTensorMap(
   return false;
 }
 
-common::Type GetTensorDtype(const ::pir::Value& value) {
+cinn::common::Type GetTensorDtype(const ::pir::Value& value) {
   auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
-  auto in_shape = phi::vectorize<int>(type_info.dims());
+  auto in_shape = ::common::vectorize<int>(type_info.dims());
   auto dtype = type_info.dtype();
   return CompatibleInfo::ConvertIRType(dtype);
 }
 
-common::Type GetTensorDtype(
+cinn::common::Type GetTensorDtype(
     const std::string& name,
     const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map) {
   for (auto iter : tensor_map) {
@@ -75,26 +76,41 @@ common::Type GetTensorDtype(
     }
   }
   VLOG(4) << name << " is not in tensor map, return FP32 by default.";
-  return common::F32();
+  return cinn::common::F32();
 }
 
-ir::Tensor GetTensor(const ::pir::Value& value) {
+ir::Tensor GetTensor(const GroupPtr& group, const ::pir::Value& value) {
   auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
-  auto in_shape = phi::vectorize<int>(type_info.dims());
+  auto in_shape = ::common::vectorize<int>(type_info.dims());
   auto dtype = type_info.dtype();
   std::string input_id = CompatibleInfo::ValueName(value);
-  return lang::CreatePlaceHolder(
-      in_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
+  if (group->shape_analysis != nullptr) {
+    auto sym_vec =
+        group->shape_analysis->GetOrCreateSymbolicDimsForRankedValue(value);
+    std::vector<ir::Dim> sym_shape;
+    for (auto& sym : sym_vec) {
+      sym_shape.emplace_back(ir::Dim(input_id + "_" + sym.GetSymName(), sym));
+    }
+    return lang::CreatePlaceHolder(
+        sym_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
+  } else {
+    return lang::CreatePlaceHolder(
+        in_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
+  }
 }
 
 std::vector<ir::Tensor> CollectInputTensor(
+    const GroupPtr& group,
     const ::pir::Operation* op,
     std::vector<ir::Tensor>* func_args,
     std::unordered_map<::pir::Value, ir::Tensor>* tensor_map) {
   std::vector<ir::Tensor> tensors;
   for (auto in_value : CompatibleInfo::RealOperandSources(*op)) {
     VLOG(4) << "input tensor name: " << CompatibleInfo::ValueName(in_value);
-    ir::Tensor tensor = details::GetTensor(in_value);
+    ir::Tensor tensor = details::GetTensor(group, in_value);
+    VLOG(4) << "shape: " << tensor->shape;
+    VLOG(4) << "sym_shape: " << tensor->sym_shape;
+
     if (!tensor_map->count(in_value)) {
       // record tensor.
       (*tensor_map)[in_value] = tensor;
@@ -102,6 +118,16 @@ std::vector<ir::Tensor> CollectInputTensor(
       if (func_args != nullptr) {
         func_args->push_back(tensor);
       }
+    } else {
+      // TODO(6clc): After supporting symbolic calculation,
+      // 1. Check that the shape of the tensor with the same name is the same
+      // size
+      // 2. Or make the symbol expression in compute output tensor consistent
+      //    with the one inferred in shape_analysis
+      (*tensor_map)[in_value]->sym_shape = tensor->sym_shape;
+      (*tensor_map)[in_value]->shape = tensor->shape;
+      (*tensor_map)[in_value]->sym_domain = tensor->sym_domain;
+      (*tensor_map)[in_value]->domain = tensor->domain;
     }
     tensors.push_back(tensor);
   }
@@ -119,7 +145,7 @@ void CollectOutputInfo(::pir::Operation* op,
         out_value.type().dyn_cast<paddle::dialect::DenseTensorType>();
 
     out_types->push_back(CompatibleInfo::ConvertIRType(type_info.dtype()));
-    auto out_shape = phi::vectorize<int>(type_info.dims());
+    auto out_shape = ::common::vectorize<int>(type_info.dims());
     out_shapes->push_back(std::move(out_shape));
   }
 }
@@ -187,7 +213,8 @@ OpLowererImpl::BucketLower(const GroupPtr& group,
   // XX_0, XX_1, so we log them in tmp_tensor_info;
   std::unordered_map<std::string, ir::Tensor> tmp_tensor_info;
   std::vector<ir::Expr> func_bodies =
-      LowerOps(ops,
+      LowerOps(group,
+               ops,
                apply_op_schedule,
                &OpLowererImpl::DyShapeScheduleDetermineFunction,
                &group_func_arg_tensors,
@@ -215,7 +242,7 @@ OpLowererImpl::BucketLower(const GroupPtr& group,
     group_scheduler->Schedule();
     cond2func_bodies = group_scheduler->GetIRs();
   } else {
-    cond2func_bodies.emplace_back(ir::Expr(1),
+    cond2func_bodies.emplace_back(ir::Expr(true),
                                   ir_sch.GetModule().GetExprs()[0]);
   }
 
@@ -275,8 +302,8 @@ void OpLowererImpl::LowerOpsForMapExpr(
     VLOG(4) << "out_types.size(): " << out_types.size();
     NodeAttr node_attrs = details::CollectAttrs(*op);
 
-    std::vector<ir::Tensor> op_func_arg_tensors =
-        details::CollectInputTensor(op, group_func_arg_tensors, tensor_map);
+    std::vector<ir::Tensor> op_func_arg_tensors = details::CollectInputTensor(
+        group, op, group_func_arg_tensors, tensor_map);
     VLOG(4) << "input size:" << op_func_arg_tensors.size();
 
     std::string cinn_op_name = CompatibleInfo::OpName(*op);
@@ -369,7 +396,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
                         &group_func_arg_tensors,
                         &tensor_map);
   }
-  std::vector<ir::Expr> func_bodies = LowerOps(ops,
+  std::vector<ir::Expr> func_bodies = LowerOps(group,
+                                               ops,
                                                do_op_schedule,
                                                schedule_determine_func,
                                                &group_func_arg_tensors,
@@ -404,7 +432,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerCustomCall(
   ::pir::Operation* op = ops[0];
   std::unordered_map<::pir::Value, ir::Tensor> tensor_map;
   std::vector<ir::Tensor> op_func_arg_tensors =
-      details::CollectInputTensor(op, nullptr, &tensor_map);
+      details::CollectInputTensor(group, op, nullptr, &tensor_map);
   VLOG(4) << "inputs.size(): " << op_func_arg_tensors.size();
 
   std::vector<Type> out_types;
@@ -429,10 +457,11 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerCustomCall(
   //   external_api = ExternalApiRegistry::Global()->GetExternalApi(node,
   //   target_);
   // }
-  std::vector<common::CINNValue> compute_args = {
-      common::CINNValue(group->FuncName()), common::CINNValue(external_api)};
-  common::CINNValuePack pack =
-      impl->fcompute(common::CINNValuePack{compute_args});
+  std::vector<cinn::common::CINNValue> compute_args = {
+      cinn::common::CINNValue(group->FuncName()),
+      cinn::common::CINNValue(external_api)};
+  cinn::common::CINNValuePack pack =
+      impl->fcompute(cinn::common::CINNValuePack{compute_args});
   CHECK_EQ(pack.size(), 1UL);
   // reset input names as extern api input args can't be remove duplicate.
   // group->input_names.clear();
@@ -488,28 +517,48 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     for (auto arg : group_func_args) {
       args_set.insert(arg.name());
     }
-
-    for (auto& tensor_pair : tensor_map) {
-      if (args_set.count("_" + tensor_pair.second->name)) {
-        continue;
+    for (auto& op : group->ops) {
+      // collect all output tensor.
+      for (auto opresult : op->results()) {
+        if (tensor_map.count(opresult) == 0) {
+          continue;
+        }
+        auto tensor = tensor_map.at(opresult);
+        if (args_set.count("_" + tensor->name) != 0) {
+          continue;
+        }
+        group->output_values.push_back(opresult);
+        group_func_arg_tensors->push_back(tensor);
+        group->output_names.push_back(tensor->name);
+        group_func_args.emplace_back(tensor->buffer, ir::Argument::IO::kOutput);
       }
-      group_func_arg_tensors->push_back(tensor_pair.second);
-      // use the underlying tensor name to be consistent with the argument name
-      // in the lowered function
-      group->output_names.push_back(tensor_pair.second->name);
-      group_func_args.emplace_back(tensor_pair.second->buffer,
-                                   ir::Argument::IO::kOutput);
     }
   }
 
-  // add fake symbolic args for test
-  if (FLAGS_cinn_bucket_compile) {
-    group_func_args.emplace_back(ir::_Var_::Make("fake_symbol1", Int(32)),
-                                 ir::Argument::IO::kOutput);
-    group_func_args.emplace_back(ir::_Var_::Make("fake_symbol2", Int(32)),
-                                 ir::Argument::IO::kOutput);
-    group->output_names.push_back("fake_symbol1");
-    group->output_names.push_back("fake_symbol2");
+  std::map<int, CINNKernelInfo::ArgDimIdx> mps;
+  // update args for dynamic dim
+  int num_tensor_args = static_cast<int>(group_func_args.size());
+  int non_tensor_arg_idx = group_func_args.size();
+  std::unordered_set<std::string> int_args_set;
+  for (int tensor_arg_idx = 0; tensor_arg_idx < num_tensor_args;
+       tensor_arg_idx++) {
+    auto tensor_dim = (*group_func_arg_tensors)[tensor_arg_idx]->sym_shape;
+    int tensor_dim_size = tensor_dim.size();
+    for (int tensor_arg_dim_idx = 0; tensor_arg_dim_idx < tensor_dim_size;
+         tensor_arg_dim_idx++) {
+      if (tensor_dim[tensor_arg_dim_idx]->IsDynamic()) {
+        const std::string symbol_name =
+            tensor_dim[tensor_arg_dim_idx]->GetSymbolName();
+        if (int_args_set.count(symbol_name) != 0) {
+          continue;
+        }
+        int_args_set.insert(symbol_name);
+        group_func_args.emplace_back(
+            ir::_Var_::Make(symbol_name, cinn::common::Int(32)));
+        group->int_args_map[non_tensor_arg_idx++] = {tensor_arg_idx,
+                                                     tensor_arg_dim_idx};
+      }
+    }
   }
 
 #ifdef CINN_WITH_CUDA
@@ -532,6 +581,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
 }
 
 std::vector<ir::Expr> OpLowererImpl::LowerOps(
+    const GroupPtr& group,
     const std::vector<::pir::Operation*>& ops,
     bool apply_op_schedule,
     ScheduleDetermineFunction schedule_determine_func,
@@ -548,8 +598,8 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
     VLOG(4) << "out_types.size(): " << out_types.size();
     NodeAttr node_attrs = details::CollectAttrs(*op);
 
-    std::vector<ir::Tensor> op_func_arg_tensors =
-        details::CollectInputTensor(op, group_func_arg_tensors, tensor_map);
+    std::vector<ir::Tensor> op_func_arg_tensors = details::CollectInputTensor(
+        group, op, group_func_arg_tensors, tensor_map);
     VLOG(4) << "input size:" << op_func_arg_tensors.size();
 
     std::string cinn_op_name = CompatibleInfo::OpName(*op);
@@ -583,21 +633,21 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
     std::unordered_map<std::string, ir::Tensor>* tmp_tensor_info,
     std::vector<ir::Tensor>* op_func_arg_tensors) {
   VLOG(4) << "Do lower with Compute, op: " << op->name();
-  std::vector<common::CINNValue> cinn_inputs;
+  std::vector<cinn::common::CINNValue> cinn_inputs;
   for (const ir::Tensor& tensor : *op_func_arg_tensors) {
-    cinn_inputs.push_back(common::CINNValue(ir::Expr(tensor)));
+    cinn_inputs.push_back(cinn::common::CINNValue(ir::Expr(tensor)));
   }
 
   // set tensor name = operand hash name
   auto op_results = op->results();
   for (const auto& result : op_results) {
     std::string output_id = CompatibleInfo::ValueName(result);
-    cinn_inputs.push_back(common::CINNValue(output_id));
+    cinn_inputs.push_back(cinn::common::CINNValue(output_id));
   }
 
   // 1.Do compute
-  common::CINNValuePack pack =
-      op_impl->fcompute(common::CINNValuePack{cinn_inputs});
+  cinn::common::CINNValuePack pack =
+      op_impl->fcompute(cinn::common::CINNValuePack{cinn_inputs});
 
   poly::StageMap tmp_stages = pack.back();
   std::string post = "";
@@ -624,7 +674,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
 
     // Insert output tensors into function arg
     if (!expr.as_tensor_ref()->buffer.defined() ||
-        this->target_ != common::DefaultNVGPUTarget()) {
+        this->target_ != cinn::common::DefaultNVGPUTarget()) {
       op_func_arg_tensors->push_back(expr.as_tensor_ref());
       expr.as_tensor_ref()->WithBuffer();
     }
@@ -661,18 +711,18 @@ ir::Expr OpLowererImpl::DoOpSchedule(
     const std::vector<ir::Tensor>& op_func_arg_tensors,
     const std::vector<ir::LoweredFunc>& lowered_funcs) {
   VLOG(4) << "Do op schedule";
-  std::vector<common::CINNValue> schedule_inputs;
+  std::vector<cinn::common::CINNValue> schedule_inputs;
   // 1.Collect tensors
   for (const ir::Tensor& op_func_arg_tensor : op_func_arg_tensors) {
-    schedule_inputs.push_back(common::CINNValue(op_func_arg_tensor));
+    schedule_inputs.push_back(cinn::common::CINNValue(op_func_arg_tensor));
   }
   // 2.Collect bodies to be scheduled
   for (const ir::LoweredFunc& func : lowered_funcs) {
-    schedule_inputs.push_back(common::CINNValue(func->body));
+    schedule_inputs.push_back(cinn::common::CINNValue(func->body));
   }
   // 3.Do schedule on AST
-  common::CINNValuePack expr_pack =
-      op_impl->fschedule(common::CINNValuePack{schedule_inputs});
+  cinn::common::CINNValuePack expr_pack =
+      op_impl->fschedule(cinn::common::CINNValuePack{schedule_inputs});
   VLOG(4) << "After op schedule: " << expr_pack[0].operator ir::Expr();
 
   return expr_pack[0].operator ir::Expr();

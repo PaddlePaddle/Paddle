@@ -103,12 +103,7 @@ DISABLED_IR_TEST_FILES = {
         "test_seq2seq",
         "test_save_inference_model",
         "test_tensor_hook",
-        "test_len",
-        "test_list",
-        "test_slice",
         "test_lstm",
-        "test_for_enumerate",
-        "test_jit_setitem",
         "test_reinforcement_learning",
         # TODO: only disable on Windows
         "test_program_translator",
@@ -395,6 +390,19 @@ def test_default_mode_only(fn):
     # Some unittests has high time complexity, we only test them with default mode
     fn = set_to_static_mode(ToStaticMode.SOT)(fn)
     fn = set_ir_mode(IrMode.PT)(fn)
+    return fn
+
+
+def test_sot_with_pir_only(fn):
+    fn = set_to_static_mode(ToStaticMode.SOT)(fn)
+    fn = set_ir_mode(IrMode.PIR)(fn)
+    return fn
+
+
+def test_default_and_pir(fn):
+    # Some unittests has high time complexity, we only test them with default mode
+    fn = set_to_static_mode(ToStaticMode.SOT)(fn)
+    fn = set_ir_mode(IrMode.PT | IrMode.PIR)(fn)
     return fn
 
 

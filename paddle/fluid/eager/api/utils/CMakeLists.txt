@@ -7,10 +7,10 @@ if(NOT (NOT WITH_PYTHON AND ON_INFER))
   cc_library(
     hook_utils
     SRCS hook_utils.cc
-    DEPS phi autograd_meta grad_node_info utils accumulation_node)
+    DEPS phi common autograd_meta grad_node_info utils accumulation_node)
 else()
   cc_library(
     hook_utils
     SRCS hook_utils.cc
-    DEPS phi autograd_meta grad_node_info utils)
+    DEPS phi common autograd_meta grad_node_info utils)
 endif()

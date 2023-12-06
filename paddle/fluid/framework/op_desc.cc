@@ -367,7 +367,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     DDim res;
     try {
       auto shape = var->GetShape();
-      res = phi::make_ddim(shape);
+      res = common::make_ddim(shape);
     } catch (...) {
       VLOG(5) << "GetDim of variable " << name << " error";
       std::rethrow_exception(std::current_exception());
@@ -1319,7 +1319,7 @@ std::vector<DDim> CompileTimeInferShapeContext::GetRepeatedDims(
   try {
     auto shapes = var->GetShapes();
     for (const auto &s : shapes) {
-      res.push_back(phi::make_ddim(s));
+      res.push_back(common::make_ddim(s));
     }
   } catch (...) {
     VLOG(5) << "GetRepeatedDim of variable " << name << " error.";
@@ -1330,7 +1330,7 @@ std::vector<DDim> CompileTimeInferShapeContext::GetRepeatedDims(
 
 void CompileTimeInferShapeContext::SetDim(const std::string &name,
                                           const DDim &dim) {
-  block_.FindVarRecursive(name)->SetShape(vectorize(dim));
+  block_.FindVarRecursive(name)->SetShape(common::vectorize(dim));
 }
 
 void CompileTimeInferShapeContext::SetRepeatedDims(
@@ -1339,7 +1339,8 @@ void CompileTimeInferShapeContext::SetRepeatedDims(
   PADDLE_ENFORCE_NOT_NULL(
       var, platform::errors::NotFound("Variable %s is not found.", name));
   std::vector<std::vector<int64_t>> dim_vec(dims.size());
-  std::transform(dims.begin(), dims.end(), dim_vec.begin(), phi::vectorize<>);
+  std::transform(
+      dims.begin(), dims.end(), dim_vec.begin(), common::vectorize<>);
   var->SetShapes(dim_vec);
 }
 

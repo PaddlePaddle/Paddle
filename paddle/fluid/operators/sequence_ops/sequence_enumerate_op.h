@@ -35,7 +35,7 @@ class SequenceEnumerateKernel : public framework::OpKernel<T> {
             "Input(X) phi::DenseTensor of SequenceEnumerateOp does not contain "
             "LoD information."));
 
-    auto in_dims = phi::vectorize<int>(in->dims());
+    auto in_dims = common::vectorize<int>(in->dims());
     auto lod0 = in->lod()[0];
     PADDLE_ENFORCE_EQ(
         static_cast<uint64_t>(in_dims[0]),

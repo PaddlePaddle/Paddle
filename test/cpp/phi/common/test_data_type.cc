@@ -17,7 +17,7 @@ limitations under the License. */
 #include <iostream>
 #include <sstream>
 
-#include "paddle/phi/api/ext/exception.h"
+#include "paddle/common/exception.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/type_traits.h"
 

@@ -119,7 +119,9 @@ def shard_tensor(x, process_mesh=None, shard_spec=None):
     return x
 
 
-def shard_op(op, process_mesh=None, in_shard_specs=None, out_shard_specs=None):
+def shard_op(
+    op, process_mesh=None, in_shard_specs=None, out_shard_specs=None, **kwargs
+):
     """
     Shard an operation on a process mesh according to its input and output shard specification.
 
@@ -199,7 +201,7 @@ def shard_op(op, process_mesh=None, in_shard_specs=None, out_shard_specs=None):
             else:
                 out_dims_mappings.append(None)
     op = DistributedOperatorHelper(
-        op, process_mesh, in_dims_mappings, out_dims_mappings
+        op, process_mesh, in_dims_mappings, out_dims_mappings, kwargs
     )
     return op
 

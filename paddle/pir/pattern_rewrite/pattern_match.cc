@@ -17,7 +17,7 @@
 #include <algorithm>
 #include <cstdint>
 
-#include "paddle/pir/core/enforce.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/operation.h"
 
 namespace pir {

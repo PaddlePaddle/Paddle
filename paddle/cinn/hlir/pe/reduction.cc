@@ -73,7 +73,7 @@ void GetRealAxes(int ndim,
   }
 }
 
-std::string Type2StrForReduce(common::Type type) {
+std::string Type2StrForReduce(cinn::common::Type type) {
   std::string suffix;
   if (type.is_int(32)) {
     return "_int32";
@@ -114,7 +114,7 @@ void GetOutputShape(const std::vector<int>& real_axes,
   if (keep_dims) {
     for (size_t i = 0; i < ndim; ++i) {
       if (std::find(real_axes.begin(), real_axes.end(), i) != real_axes.end()) {
-        output_shape->push_back(common::make_one());
+        output_shape->push_back(cinn::common::make_one());
       } else {
         output_shape->push_back(tensor->shape[i]);
       }
@@ -127,7 +127,7 @@ void GetOutputShape(const std::vector<int>& real_axes,
     }
   }
   if (output_shape->empty()) {
-    output_shape->push_back(common::make_one());
+    output_shape->push_back(cinn::common::make_one());
   }
 }
 
@@ -300,7 +300,7 @@ std::vector<Tensor> WarpReduce(const ir::Tensor& A,
           tmp_indexs.push_back(Expr(0));
         }
         CHECK_EQ(A->shape.size(), tmp_indexs.size());
-        Expr offset = common::IndiceToAbsOffset(A->shape, tmp_indexs);
+        Expr offset = cinn::common::IndiceToAbsOffset(A->shape, tmp_indexs);
         return lang::CallExtern(reduce_type, {A, offset, reduce_width});
       },
       UniqName(output_name + "_" + reduce_type));
@@ -530,7 +530,7 @@ std::vector<ir::Tensor> BlockReduce(const ir::Tensor& A,
         // checkout input shape size equals tmp indexs size.
         CHECK_EQ(A->shape.size(), tmp_indexs.size());
         // compute offset.
-        Expr offset = common::IndiceToAbsOffset(A->shape, tmp_indexs);
+        Expr offset = cinn::common::IndiceToAbsOffset(A->shape, tmp_indexs);
         // call block reduce sum
         return lang::CallExtern(reduce_type, {A, offset, reduce_width});
       },
@@ -753,7 +753,7 @@ std::vector<ir::Tensor> ReduceInternal(const ir::Tensor& A,
       const std::vector<int>& axes,                                            \
       const bool keep_dim,                                                     \
       const std::string& output_name) {                                        \
-    if (common::GetMaxThreads() / GetParallelSize(A, axes) <= 1) {             \
+    if (cinn::common::GetMaxThreads() / GetParallelSize(A, axes) <= 1) {       \
       return {Reduce##name(A, axes, keep_dim, output_name)};                   \
     } else {                                                                   \
       auto rs = ReduceInternal(                                                \
@@ -824,7 +824,7 @@ std::vector<ir::Tensor> TwoStepBlockReduceInternal(
   // If the number of current device SM is smaller than the number of SM
   // required by Warp Reduce, the performance of Warp Reduce is better.
   // Otherwise, use Block Reduce.
-  auto max_num_threads = common::DefaultNVGPUTarget().max_num_threads();
+  auto max_num_threads = cinn::common::DefaultNVGPUTarget().max_num_threads();
   int need_reduce_last_count = 1;
   for (int i = 0; i < A->shape.size(); i++) {
     if (find(axes.begin(), axes.end(), i) == axes.end()) {
@@ -834,9 +834,9 @@ std::vector<ir::Tensor> TwoStepBlockReduceInternal(
   int warp_reduce_need_sm_count =
       ceil((need_reduce_last_count * 32) /
            static_cast<float>(
-               common::DefaultNVGPUTarget().get_max_threads_per_sm()));
+               cinn::common::DefaultNVGPUTarget().get_max_threads_per_sm()));
   // Set Num_max_threads to 32 is Warp Reduce
-  if (common::DefaultNVGPUTarget().get_multi_processor_count() <
+  if (cinn::common::DefaultNVGPUTarget().get_multi_processor_count() <
       warp_reduce_need_sm_count) {
     max_num_threads = 32;
   }

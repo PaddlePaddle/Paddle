@@ -38,15 +38,16 @@ class WhileInstruction : public InstructionBase {
   WhileInstruction(size_t id,
                    const platform::Place& place,
                    ::pir::Operation* op,
-                   Scope* scope,
-                   Scope* local_scope,
-                   ValueExecutionInfo* parent_exe_info);
+                   ValueExecutionInfo* parent_exe_info,
+                   const std::set<std::string>& skip_gc_vars);
 
   void Run() override;
 
   const std::string& Name() const override { return name_; }
 
   ::pir::Operation* Operation() const override { return op_; }
+
+  PirInterpreter* BodyInterpreter() const { return body_inter_.get(); }
 
  private:
   // 'output' = 'input'

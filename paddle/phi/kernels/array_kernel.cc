@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/array_kernel.h"
 
+#include "paddle/common/layout.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/concat_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
@@ -92,9 +92,9 @@ void ArrayToTensorKernel(const Context& dev_ctx,
       }
     }
   }
-  auto vec = phi::vectorize<int>(out_dims);
+  auto vec = common::vectorize<int>(out_dims);
   vec.insert(vec.begin() + axis, x.size());  // NOLINT
-  out->Resize(phi::make_ddim(vec));
+  out->Resize(common::make_ddim(vec));
   std::vector<DenseTensor> tmp_inputs(x.size());
   std::vector<const DenseTensor*> inputs;
 
@@ -115,7 +115,7 @@ void ArrayToTensorKernel(const Context& dev_ctx,
     ConcatKernel<T, Context>(dev_ctx, inputs, axis, out);
   }
 
-  out_index->Resize(phi::make_ddim({static_cast<int>(x.size())}));
+  out_index->Resize(common::make_ddim({static_cast<int>(x.size())}));
   StackKernel<int, Context>(dev_ctx, indexs, 0, out_index);
 }
 

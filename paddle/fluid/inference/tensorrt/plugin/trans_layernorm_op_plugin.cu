@@ -337,7 +337,7 @@ int TransLayerNormPluginDynamic::enqueue(
   std::vector<int> trans_result_shape{
       input_shape[0], input_shape[2], input_shape[3], input_shape[1]};
 
-  const auto input_ddim = phi::make_ddim(input_shape);
+  const auto input_ddim = common::make_ddim(input_shape);
   int feature_size = static_cast<int>(input_ddim[1]);
   PADDLE_ENFORCE_EQ(feature_size,
                     scale_.size(),
@@ -371,8 +371,8 @@ int TransLayerNormPluginDynamic::enqueue(
   auto *device_context = static_cast<phi::GPUContext *>(pool.Get(place));
   const phi::GPUContext &dev_ctx = *device_context;
 
-  mean_t.Resize(phi::make_ddim(mean_shape_));
-  variance_t.Resize(phi::make_ddim(variance_shape_));
+  mean_t.Resize(common::make_ddim(mean_shape_));
+  variance_t.Resize(common::make_ddim(variance_shape_));
   float *mean_d =
       dev_ctx.template Alloc<float>(&mean_t, mean_shape_[0] * sizeof(float));
   float *variance_d = dev_ctx.template Alloc<float>(
@@ -388,15 +388,15 @@ int TransLayerNormPluginDynamic::enqueue(
     int trans_result_numel = input_numel;
     int norm_result_numel = input_numel;
     phi::DenseTensorMeta input_meta(phi::DataType::FLOAT32,
-                                    phi::make_ddim(input_shape));
+                                    common::make_ddim(input_shape));
     phi::DenseTensorMeta bias_meta(phi::DataType::FLOAT32,
-                                   phi::make_ddim({feature_size}));
+                                   common::make_ddim({feature_size}));
     phi::DenseTensorMeta scale_meta(phi::DataType::FLOAT32,
-                                    phi::make_ddim({feature_size}));
-    phi::DenseTensorMeta trans_result_meta(phi::DataType::FLOAT32,
-                                           phi::make_ddim(trans_result_shape));
-    phi::DenseTensorMeta norm_result_meta(phi::DataType::FLOAT32,
-                                          phi::make_ddim(trans_result_shape));
+                                    common::make_ddim({feature_size}));
+    phi::DenseTensorMeta trans_result_meta(
+        phi::DataType::FLOAT32, common::make_ddim(trans_result_shape));
+    phi::DenseTensorMeta norm_result_meta(
+        phi::DataType::FLOAT32, common::make_ddim(trans_result_shape));
     std::shared_ptr<phi::Allocation> input_alloc(new phi::Allocation(
         static_cast<void *>(const_cast<float *>(input)),  // NOLINT
         input_numel * sizeof(float),
@@ -446,13 +446,13 @@ int TransLayerNormPluginDynamic::enqueue(
     if (input_desc[0].format == nvinfer1::PluginFormat::kLINEAR) {
       VLOG(1) << "TRT Plugin format selected. trans_layernorm-->kLINEAR";
       phi::DenseTensorMeta input_meta(phi::DataType::FLOAT16,
-                                      phi::make_ddim(input_shape));
+                                      common::make_ddim(input_shape));
       std::shared_ptr<phi::Allocation> input_alloc(new phi::Allocation(
           static_cast<void *>(const_cast<half *>(input)),  // NOLINT
           input_numel * sizeof(half),
           place));
       phi::DenseTensorMeta trans_result_meta(
-          phi::DataType::FLOAT16, phi::make_ddim(trans_result_shape));
+          phi::DataType::FLOAT16, common::make_ddim(trans_result_shape));
       std::shared_ptr<phi::Allocation> trans_result_alloc(
           new phi::Allocation(static_cast<void *>(dst),  // NOLINT
                               trans_result_numel * sizeof(half),
