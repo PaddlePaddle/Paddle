@@ -1863,6 +1863,49 @@ struct FillConstantTranscriber : public OpTranscriber {
   }
 };
 
+struct SelectInputOpTranscriber : public OpTranscriber {
+  pir::Operation* operator()(pir::IrContext* ctx,
+                             TranslationContext* param_map,
+                             const OpDesc& op_desc,
+                             pir::Block* block) override {
+    VLOG(10) << "[op select_input] start transcribing";
+    auto op_info = this->LoopkUpOpInfo(ctx, op_desc);
+
+    std::vector<pir::Value> op_inputs = {};
+    auto Mask_name = op_desc.Input("Mask")[0];
+    auto& Input_name = op_desc.Input("X");
+    IR_ENFORCE(param_map->count(Mask_name) > 0,
+               "Expected op[%s]'s input %s has been parsed",
+               op_desc.Type(),
+               Mask_name);
+    op_inputs.push_back(param_map->at(Mask_name).value);
+    for (auto in_name : Input_name) {
+      IR_ENFORCE(param_map->count(in_name) > 0,
+                 "Expected op[%s]'s input %s has been parsed",
+                 op_desc.Type(),
+                 in_name);
+      op_inputs.push_back(param_map->at(in_name).value);
+    }
+
+    pir::AttributeMap attribute_map;
+
+    OpOutputMapping arg_to_idx;
+    OpOutputTypeList op_output_types;
+    auto Out_name = op_desc.Output("Out")[0];
+    VarDesc* var = op_desc.Block()->FindVarRecursive(Out_name);
+    arg_to_idx[var->Name()] = {0, 0};
+    op_output_types.push_back(op_inputs[1].type());
+
+    pir::Operation* operation = pir::Operation::Create(
+        op_inputs, attribute_map, op_output_types, op_info);
+    block->push_back(operation);
+    RecordOpResultMapping(ctx, param_map, op_desc, operation, arg_to_idx);
+
+    VLOG(10) << "[op assign_value] translation finished";
+    return operation;
+  }
+};
+
 pir::OpResult TranslateNumClassesForOneHot(
     pir::IrContext* ctx,
     TranslationContext* param_map,
@@ -2726,6 +2769,7 @@ OpTranslator::OpTranslator() {
   special_handlers["tril_triu"] = TrilAndTriuOpTranscriber();
   special_handlers["mul"] = MulOpTranscriber();
   special_handlers["mul_grad"] = MulGradOpTranscriber();
+  special_handlers["select_input"] = SelectInputOpTranscriber();
 
   // To adapt LodTensorArray
   special_handlers["lod_array_length"] = LodArrayLengthOpTranscriber();

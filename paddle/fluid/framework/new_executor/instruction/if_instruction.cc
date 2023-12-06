@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/new_executor/instruction/cond_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/if_instruction.h"
 
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
@@ -39,11 +39,11 @@
 namespace paddle {
 namespace framework {
 
-CondInstruction::CondInstruction(size_t id,
-                                 const platform::Place& place,
-                                 pir::Operation* op,
-                                 ValueExecutionInfo* value_exec_info,
-                                 const std::set<std::string>& skip_gc_vars)
+IfInstruction::IfInstruction(size_t id,
+                             const platform::Place& place,
+                             pir::Operation* op,
+                             ValueExecutionInfo* value_exec_info,
+                             const std::set<std::string>& skip_gc_vars)
     : InstructionBase(id, place) {
   PADDLE_ENFORCE(
       op->isa<paddle::dialect::IfOp>(),
@@ -149,7 +149,7 @@ CondInstruction::CondInstruction(size_t id,
   VLOG(6) << "finish process false branch interpreter";
 }
 
-CondInstruction::~CondInstruction() {
+IfInstruction::~IfInstruction() {
   if (true_branch_inter_ != nullptr) {
     delete true_branch_inter_;
   }
@@ -158,8 +158,8 @@ CondInstruction::~CondInstruction() {
   }
 }
 
-void CondInstruction::CopyBranchOutput(
-    const std::vector<std::string>& var_names, const PirInterpreter* inter) {
+void IfInstruction::CopyBranchOutput(const std::vector<std::string>& var_names,
+                                     const PirInterpreter* inter) {
   for (size_t i = 0; i < var_names.size(); ++i) {
     auto* inner_var = inter->InnerScope()->GetVar(var_names[i]);
 
@@ -179,7 +179,7 @@ void CondInstruction::CopyBranchOutput(
   }
 }
 
-void CondInstruction::Run() {
+void IfInstruction::Run() {
   DeviceContext().Wait();
   if (cond_var_->Get<phi::DenseTensor>().data<bool>()[0]) {
     true_branch_inter_->Run({}, false);
