@@ -73,7 +73,7 @@ def dedup_storage_metadata(global_state_dict):
 
 def save_state_dict(
     state_dict,
-    path: str,
+    path,
     process_group=None,
     coordinator_rank=0,
 ) -> None:
