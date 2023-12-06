@@ -533,6 +533,9 @@ class DygraphShardingOptimizerV2:
         self.pp_overlap = strategy.hybrid_configs[
             'pp_configs'
         ].sharding_comm_overlap
+        self.pp_release_grads = strategy.hybrid_configs[
+            'pp_configs'
+        ].release_gradients
 
         # TODO(liuzhenhai):support it latter
         assert not self.comm_overlap, "not supported yet"
@@ -553,6 +556,7 @@ class DygraphShardingOptimizerV2:
                 parameters,
                 comm_group,
                 act=HOOK_ACTION.REDUCE_SCATTER,
+                release_grads=self.pp_release_grads,
             )
             self._comm_buffer_list.append(buffer)
 
@@ -560,7 +564,8 @@ class DygraphShardingOptimizerV2:
         """
         should clear grad for all parameters in model
         """
-        assert set_to_zero, "should not erase grad buffer"
+        if not self.pp_release_grads:
+            assert set_to_zero, "should not erase grad buffer"
 
         def clear_grad_func(p):
             if hasattr(p, "main_grad") and p.main_grad is not None:
@@ -583,6 +588,10 @@ class DygraphShardingOptimizerV2:
         for p in self._parameter_list:
             clear_grad_func(p)
 
+        if self.pp_release_grads and not self.pp_overlap:
+            for comm_buffer in self._comm_buffer_list:
+                comm_buffer._clear_grad_storage()
+
     def filter_parameters(self, parameter_list, hcg):
         parameter_list = [
             self._slice_params[param.name] for param in parameter_list
@@ -597,6 +606,9 @@ class DygraphShardingOptimizerV2:
         logger.debug("sharding start gradients sync")
         with framework.no_grad():
             for comm_buffer in self._comm_buffer_list:
+                if self.pp_release_grads and comm_buffer.grad_storage is None:
+                    for param in comm_buffer.params:
+                        comm_buffer._copy_grad_to_buffer(param)
                 comm_buffer._comm_grads()
                 comm_buffer.scale_grads()
 
@@ -660,6 +672,9 @@ class DygraphShardingOptimizerV2:
             for param in comm_buffer.params:
                 assert param.name in self._slice_params
                 slice_param = self._slice_params[param.name]
+                if self.pp_release_grads and hasattr(slice_param, "main_grad"):
+                    assert not slice_param.main_grad._is_initialized()
+                    del slice_param.main_grad
                 comm_buffer.assign_slice_grad(param, slice_param)
 
         assert param_num == len(self._parameter_list)
