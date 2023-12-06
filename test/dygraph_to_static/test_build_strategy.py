@@ -21,7 +21,7 @@ from dygraph_to_static_utils import (
     test_default_and_pir,
     test_pt_only,
 )
-from test_resnet import ResNetHelper
+from test_resnetx import ResNetHelper
 
 import paddle
 

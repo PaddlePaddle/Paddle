@@ -48,14 +48,14 @@ set_tests_properties(test_build_strategy PROPERTIES TIMEOUT 120)
 
 if(NOT WIN32)
   set_tests_properties(test_tsm PROPERTIES TIMEOUT 900)
-  set_tests_properties(test_resnet PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_resnetx PROPERTIES TIMEOUT 300)
 endif()
 
 if(APPLE)
   set_tests_properties(test_bmn PROPERTIES TIMEOUT 300)
   set_tests_properties(test_build_strategy PROPERTIES TIMEOUT 300)
   set_tests_properties(test_mobile_net PROPERTIES TIMEOUT 300)
-  set_tests_properties(test_resnet PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_resnetx PROPERTIES TIMEOUT 300)
 endif()
 
 if(WITH_GPU)
