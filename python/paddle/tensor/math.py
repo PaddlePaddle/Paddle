@@ -472,7 +472,7 @@ def pow(x, y, name=None):
     Note:
         ``paddle.pow`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
 
-        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensors
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
 
     Args:
@@ -1795,7 +1795,6 @@ def nanmean(x, axis=None, keepdim=False, name=None):
     Examples:
 
         .. code-block:: python
-            :name: code-example1
 
             >>> import paddle
             >>> # x is a 2-D Tensor:
