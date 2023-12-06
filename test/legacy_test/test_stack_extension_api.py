@@ -120,9 +120,9 @@ class BaseTest(unittest.TestCase):
 
                     y = out * 123
 
-                    # do not check grad for old ir
-                    fetch_list = [out]
+                    # not check old ir
                     if paddle.framework.in_pir_mode():
+                        fetch_list = [out]
                         grads = paddle.autograd.ir_backward.grad(
                             y, [x_for_grad]
                         )
@@ -140,13 +140,11 @@ class BaseTest(unittest.TestCase):
                             res_grad, np.ones(x_for_grad.shape) * grad_value
                         )
 
-                    else:
-                        exe = paddle.static.Executor(place)
-                        res = exe.run(feed=feed, fetch_list=fetch_list)[0]
-
-                    out_ref = func_numpy(inputs)
-                    for n, p in zip(out_ref, res):
-                        np.testing.assert_allclose(n, p, rtol=RTOL, atol=ATOL)
+                        out_ref = func_numpy(inputs)
+                        for n, p in zip(out_ref, res):
+                            np.testing.assert_allclose(
+                                n, p, rtol=RTOL, atol=ATOL
+                            )
 
     def _test_dygraph_api(
         self,
