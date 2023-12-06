@@ -49,8 +49,8 @@
 #include "paddle/pir/core/value.h"
 #include "paddle/utils/string/string_helper.h"
 
-PHI_DECLARE_string(save_load_path);
-PHI_DECLARE_bool(save_tensor);
+PHI_DECLARE_string(static_runtime_data_save_path);
+PHI_DECLARE_bool(save_static_runtime_data);
 namespace paddle {
 namespace operators::details {
 
@@ -193,10 +193,11 @@ void CinnLaunchContext::BuildVarNameMap(
           "Size of variables is not euqal, paddle[%ld] vs cinn[%ld]",
           paddle2cinn_varmap_.size(),
           cinn2paddle_varmap_.size()));
-  if (FLAGS_save_tensor) {
+  if (FLAGS_save_static_runtime_data) {
     paddle::framework::save_paddle2cinn_varmap(
         paddle2cinn_varmap_,
-        FLAGS_save_load_path + "/paddle2cinn_varmap/paddle2cinn_varmap.txt");
+        FLAGS_static_runtime_data_save_path +
+            "/paddle2cinn_varmap/paddle2cinn_varmap.txt");
   }
 }
 

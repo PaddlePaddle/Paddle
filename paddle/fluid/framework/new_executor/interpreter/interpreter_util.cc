@@ -50,8 +50,8 @@
 
 PHI_DECLARE_bool(use_mkldnn);
 PHI_DECLARE_bool(check_nan_inf);
-PHI_DECLARE_string(save_load_path);
-PHI_DECLARE_bool(save_tensor);
+PHI_DECLARE_string(static_runtime_data_save_path);
+PHI_DECLARE_bool(save_static_runtime_data);
 
 namespace paddle {
 namespace framework {
@@ -966,9 +966,9 @@ void BuildOpFuncList(const platform::Place& place,
       std::rethrow_exception(std::current_exception());
     }
 
-    if (FLAGS_save_tensor) {
+    if (FLAGS_save_static_runtime_data) {
       VLOG(6) << "start to save paddle variable";
-      auto root_path = FLAGS_save_load_path;
+      auto root_path = FLAGS_static_runtime_data_save_path;
       for (auto& vname : op->InputVars()) {
         auto* var = local_scope->FindVar(vname);
         if (var == nullptr) continue;

@@ -767,13 +767,13 @@ PHI_DEFINE_EXPORTED_string(tracer_mkldnn_ops_on,
 
 /**
  * Debug related FLAG
- * Name: save_load_path
+ * Name: static_runtime_data_save_path
  * Since Version: 2.6.0
  * Value Range: string, default=./
  * Example:
  * Note: set the static runtime tensor save path.
  */
-PHI_DEFINE_EXPORTED_string(save_load_path,
+PHI_DEFINE_EXPORTED_string(static_runtime_data_save_path,
                            "./",
                            "set the static runtime tensor save path");
 
@@ -853,14 +853,14 @@ PHI_DEFINE_EXPORTED_bool(
 
 /**
  * Debug related FLAG
- * Name: FLAGS_save_tensor
+ * Name: FLAGS_save_static_runtime_data
  * Since Version: 2.6.0
  * Value Range: bool, default=false
  * Example:
  * Note: It controls whether to save runtime tensor in static mode.
  */
 PHI_DEFINE_EXPORTED_bool(
-    save_tensor,
+    save_static_runtime_data,
     false,
     "It controls whether to save runtime tensor in static mode");
 
