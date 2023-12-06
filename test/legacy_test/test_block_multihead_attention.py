@@ -27,6 +27,21 @@ from paddle.static import Program, program_guard
 paddle.seed(2023)
 
 
+is_sm8x = (
+    core.is_compiled_with_cuda()
+    and paddle.device.cuda.get_device_capability()[0] == 8
+    and paddle.device.cuda.get_device_capability()[1] >= 0
+)
+
+is_sm90 = (
+    core.is_compiled_with_cuda()
+    and paddle.device.cuda.get_device_capability()[0] == 9
+    and paddle.device.cuda.get_device_capability()[1] == 0
+)
+
+is_sm_supported = is_sm8x or is_sm90
+
+
 def get_cuda_version():
     result = os.popen("nvcc --version").read()
     regex = r'release (\S+),'
@@ -209,11 +224,15 @@ def block_cache_to_naive_cache(
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "core is not compiled with CUDA",
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11040
+    or not is_sm_supported,
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
+    "and device's compute capability must be 8.x or 90",
 )
 class TestBlockMultiHeadAttnEncDec(unittest.TestCase):
     def setUp(self):
+        paddle.disable_static()
         self.name = "TestBlockMultiHeadAttnEncDec"
         self.place = paddle.CUDAPlace(0)
         self.batch_size = 2
@@ -449,11 +468,15 @@ class TestBlockMultiHeadAttnEncDec(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "core is not compiled with CUDA",
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11040
+    or not is_sm_supported,
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
+    "and device's compute capability must be 8.x or 90",
 )
 class TestBlockMultiHeadAttnRoPE(unittest.TestCase):
     def setUp(self):
+        paddle.disable_static()
         self.name = "TestBlockMultiHeadAttnRoPE"
         self.place = paddle.CUDAPlace(0)
         self.batch_size = 2
@@ -733,11 +756,15 @@ class TestBlockMultiHeadAttnRoPE(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "core is not compiled with CUDA",
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11040
+    or not is_sm_supported,
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
+    "and device's compute capability must be 8.x or 90",
 )
 class TestBlockMultiHeadAttnPreCacbe(unittest.TestCase):
     def setUp(self):
+        paddle.disable_static()
         self.name = "TestBlockMultiHeadAttnPreCacbe"
         self.place = paddle.CUDAPlace(0)
         self.batch_size = 2
@@ -996,11 +1023,15 @@ class TestBlockMultiHeadAttnPreCacbe(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "core is not compiled with CUDA",
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11040
+    or not is_sm_supported,
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
+    "and device's compute capability must be 8.x or 90",
 )
 class TestBlockMultiHeadAttnEncStatic(unittest.TestCase):
     def setUp(self):
+        paddle.disable_static()
         self.name = "TestBlockMultiHeadAttnEncStatic"
         self.place = paddle.CUDAPlace(0)
         self.batch_size = 2

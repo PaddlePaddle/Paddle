@@ -201,6 +201,7 @@ void BlockMultiheadAttentionKernel(
           max_seq_len,
           pre_cache_length,
           dim_head);
+#ifdef PADDLE_WITH_MEMORY_EFFICIENT_ATTENTION
       phi::fusion::MultiHeadAttentionVariableForwardKernel<T, phi::GPUContext>(
           dev_ctx,
           q_trans,
@@ -213,6 +214,10 @@ void BlockMultiheadAttentionKernel(
           /*causual*/ false,
           pre_cache_length,
           &qktv_out);
+#else
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Not supports MultiHeadAttentionVariableForwardKernel."));
+#endif
       InvokeTransposeRemovePadding<T>(dev_ctx,
                                       qktv_out.data<T>(),
                                       sequence_lengths_data,
@@ -289,9 +294,17 @@ void BlockMultiheadAttentionKernel(
 }  // namespace fusion
 }  // namespace phi
 
+#if CUDA_VERSION >= 11000 && defined(CUDA_BFLOAT16_AVALIABLE)
 PD_REGISTER_KERNEL(block_multihead_attention,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::BlockMultiheadAttentionKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16) {}
+#else
+PD_REGISTER_KERNEL(block_multihead_attention,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::fusion::BlockMultiheadAttentionKernel,
+                   phi::dtype::float16) {}
+#endif

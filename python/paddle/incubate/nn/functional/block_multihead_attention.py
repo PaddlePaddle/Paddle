@@ -102,6 +102,26 @@ def block_multihead_attention(
             ...         output[start_idx:end_idx, :] = inputs[i, :seq_len_now, :]
             ...     return output
 
+            >>> def create_attn_mask(
+            ...     mask_type,
+            ...     batch_size,
+            ...     seq_lens,
+            ...     pre_cache_length=0,
+            ... ):
+            ...     max_seq_len = max(seq_lens)
+            ...     mask = paddle.zeros(
+            ...         [batch_size, 1, max_seq_len, max_seq_len + pre_cache_length],
+            ...         dtype=mask_type,
+            ...     )
+            ...     mask[:, :, :, :pre_cache_length] = 1
+            ...     for i in range(batch_size):
+            ...         seq_len = seq_lens[i]
+            ...         mask[i, 0, :seq_len, :seq_len] = (
+            ...             paddle.tril(paddle.ones(shape=(seq_len, seq_len), dtype=mask_type))
+            ...             - 1
+            ...         ) * 1e4
+            ...     return mask
+
             >>> def naive_attention_impl(query, key, value, cache_k, cache_v, pre_cache_k, pre_cache_v, mask, scale=1.0):
             ...     batch = query.shape[0]
             ...     heads = query.shape[1]
@@ -176,8 +196,8 @@ def block_multihead_attention(
             >>> cache_k = paddle.zeros(cache_shape, dtype=dtype)
             >>> cache_v = paddle.zeros(cache_shape, dtype=dtype)
             >>> block_tables = paddle.zeros(shape=(batch_size, block_num_per_seq), dtype="int32")
-            >>> for i in range(self.batch_size):
-            ...     need_block_num = (eq_len + max_dec_len + block_size - 1) // block_size
+            >>> for i in range(batch_size):
+            ...     need_block_num = (seq_len + max_dec_len + block_size - 1) // block_size
             ...     for j in range(need_block_num):
             ...         block_tables[i, j] = free_list.pop()
             >>> padding_offset, cum_offset, cu_seqlens_q, cu_seqlens_k = get_padding_offset(batch_size, seq_len, seq_lens_this_time)
@@ -198,8 +218,8 @@ def block_multihead_attention(
             ...     None, # rotary_embs
             ...     None, # attn_mask
             ...     None, # tgt_mask
-            ...     self.seq_len,
-            ...     self.blocksize
+            ...     seq_len,
+            ...     block_size
             ... )[0]
 
             >>> attention_mask = create_attn_mask(
@@ -210,14 +230,6 @@ def block_multihead_attention(
             ...     ]
             ...     * batch_size,
             ... )
-
-            >>> def naive_attention_impl(query, key, value, mask, scale):
-            ...     qk_res = paddle.matmul(query, key, transpose_y=True)
-            ...     attention = qk_res * scale
-            ...     attention = attention + mask
-            ...     softmax_result = paddle.nn.functional.softmax(attention, -1)
-            ...     result = paddle.matmul(softmax_result, value)
-            ...     return result
 
             >>> out_ref = naive_attention_impl(q, k, v, None, None, None, None, attention_mask, scale)
             >>> out_ref = remove_padding(seq_lens_this_time, cu_seqlens_q, out_ref, token_num)

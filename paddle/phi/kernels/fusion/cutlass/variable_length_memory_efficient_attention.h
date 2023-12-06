@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #pragma once
-
-#include "paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/autogen_variable/cutlass_forward.h"
+#ifdef PADDLE_WITH_MEMORY_EFFICIENT_ATTENTION
+#include "./memory_efficient_attention/autogen_variable/cutlass_forward.h"
 
 namespace phi {
 namespace fusion {
@@ -35,3 +35,4 @@ void MultiHeadAttentionVariableForwardKernel(
 
 }  // namespace fusion
 }  // namespace phi
+#endif  // PADDLE_WITH_MEMORY_EFFICIENT_ATTENTION
