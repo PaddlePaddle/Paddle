@@ -212,6 +212,18 @@ class TestPowerError(unittest.TestCase):
         y = int(np.random.rand() * 10)
         self.assertRaises(TypeError, paddle.pow, x, str(y))
 
+    def test_pir_error(self):
+        with paddle.pir_utils.IrGuard():
+
+            def x_dtype_error():
+                with paddle.static.program_guard(
+                    paddle.static.Program(), paddle.static.Program()
+                ):
+                    x = paddle.static.data('x', [2, 2], dtype='int8')
+                    out = paddle.pow(x, 2)
+
+            self.assertRaises(ValueError, x_dtype_error)
+
 
 if __name__ == '__main__':
     unittest.main()
