@@ -110,6 +110,34 @@ class TestSimpleNetForSemiAutoParallel(unittest.TestCase):
         loader = DataLoader(dataset, batch_size=BATCH_SIZE)
         return loader
 
+    def get_program_test(self, dist_model):
+        with self.assertRaises(ValueError):
+            main_program = dist_model.dist_main_program()
+
+        dist_model.train()
+        main_program = dist_model.dist_main_program()
+        startup_program = dist_model.dist_startup_program()
+        self.assertNotEqual(main_program, None)
+        self.assertNotEqual(startup_program, None)
+
+        main_program = dist_model.dist_main_program("eval")
+        startup_program = dist_model.dist_startup_program("eval")
+        self.assertNotEqual(main_program, None)
+        self.assertNotEqual(startup_program, None)
+
+        serial_main_program = dist_model.serial_main_program()
+        serial_startup_program = dist_model.serial_startup_program()
+        self.assertNotEqual(serial_main_program, None)
+        self.assertNotEqual(serial_startup_program, None)
+
+        serial_main_program = dist_model.serial_main_program("eval")
+        serial_startup_program = dist_model.serial_startup_program("eval")
+        self.assertNotEqual(serial_main_program, None)
+        self.assertNotEqual(serial_startup_program, None)
+
+        with self.assertRaises(ValueError):
+            main_program = dist_model.dist_main_program("prediction")
+
     def run_dy2static(self, layer, opt, data_loader, mesh):
         # create loss
         loss_fn = nn.MSELoss()
@@ -118,6 +146,14 @@ class TestSimpleNetForSemiAutoParallel(unittest.TestCase):
         dist_model, dist_loader = dist.static_decorate(
             layer, data_loader, loss_fn, opt
         )
+
+        # execute __call__ before calling train()/eval()/predict()
+        with self.assertRaises(ValueError):
+            for batch_id, (image, label) in enumerate(dist_loader()):
+                loss = dist_model(image, label)
+
+        self.get_program_test(dist_model)
+
         dist_model.train()
         for epoch in range(2):
             for batch_id, (image, label) in enumerate(dist_loader()):

@@ -2038,6 +2038,18 @@ class Engine:
 
         return global_cost.time, max_memory
 
+    def get_dist_main_program(self, mode):
+        return self._dist_contexts[mode].dist_main_programs[self._cur_rank]
+
+    def get_dist_startup_program(self, mode):
+        return self._dist_contexts[mode].dist_startup_programs[self._cur_rank]
+
+    def get_serial_main_program(self, mode):
+        return self._dist_contexts[mode].serial_main_program
+
+    def get_serial_startup_program(self, mode):
+        return self._dist_contexts[mode].serial_startup_program
+
     @property
     def main_program(self):
         dist_context = self._dist_contexts[self._mode]

@@ -152,6 +152,49 @@ class DistModel:
         self._mode = "predict"
         self._engine.to_mode("predict")
 
+    def __validate_mode(self, mode):
+        if mode is None and self._mode is None:
+            raise ValueError(
+                "Please set the mode or call train()/eval()/predict() first."
+            )
+        if mode is None:
+            mode = self._mode
+        if mode not in ["train", "eval", "predict"]:
+            raise ValueError("mode can only be 'train', 'eval' or 'predict'.")
+        return mode
+
+    def dist_main_program(self, mode=None):
+        """
+        Get the distributed main program of ``mode``. The ``mode``
+        arg can be "train", "eval" or "predict", if it is not set,
+        ``self._mode`` will be used.
+        """
+        mode = self.__validate_mode(mode)
+        return self._engine.get_dist_main_program(mode)
+
+    def dist_startup_program(self, mode=None):
+        """
+        Get the distributed startup program of ``mode``. The ``mode``
+        arg can be "train", "eval" or "predict", if it is not set,
+        ``self._mode`` will be used.
+        """
+        mode = self.__validate_mode(mode)
+        return self._engine.get_dist_startup_program(mode)
+
+    def serial_main_program(self, mode=None):
+        """
+        Get the serial main program of ``mode``.
+        """
+        mode = self.__validate_mode(mode)
+        return self._engine.get_serial_main_program(mode)
+
+    def serial_startup_program(self, mode=None):
+        """
+        Get the serial startup program of ``mode``.
+        """
+        mode = self.__validate_mode(mode)
+        return self._engine.get_serial_startup_program(mode)
+
     def _make_feeds(self, data_list):
         if (
             self._mode not in self._feed_name_list
