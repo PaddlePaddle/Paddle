@@ -238,7 +238,7 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
           PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
               out->data<T>(), numel, dtype, peer, comm->comm(), stream));
           VLOG(3) << "rank " << comm->rank() << " recv "
-                  << phi::product(out_dims) << " from " << peer;
+                  << common::product(out_dims) << " from " << peer;
         }
       }
       return;
@@ -277,7 +277,7 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
           out->data<T>(), numel, dtype, peer, comm->comm(), stream));
       VLOG(3) << "rank " << comm->rank() << " recv "
-              << phi::product(out->dims()) << " from " << peer;
+              << common::product(out->dims()) << " from " << peer;
     }
 #else
     PADDLE_THROW(platform::errors::Unavailable(

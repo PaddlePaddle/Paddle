@@ -85,7 +85,7 @@ void FusedScaleBiasReluConvBnstatsImpl(
   auto filter_dims = w_transformed.dims();
   DDim in_data_dims = slice_ddim(in_dims, 1, in_dims.size() - 1);
   DDim filter_data_dims = slice_ddim(filter_dims, 1, filter_dims.size() - 1);
-  std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
   phi::UpdatePaddingAndDilation(&paddings_vec,
                                 &dilations_vec,
                                 padding_algorithm,
@@ -122,12 +122,12 @@ void FusedScaleBiasReluConvBnstatsImpl(
   auto compute_dtype = CUDNN_DATA_FLOAT;
 
   // get dims in CUDNN manner: [N, C, H, W]
-  auto dim_x =
-      phi::backends::gpu::TransformDimOrder(phi::vectorize<int64_t>(in_dims));
+  auto dim_x = phi::backends::gpu::TransformDimOrder(
+      common::vectorize<int64_t>(in_dims));
   auto dim_filt = phi::backends::gpu::TransformDimOrder(
-      phi::vectorize<int64_t>(filter_dims));
+      common::vectorize<int64_t>(filter_dims));
   auto dim_y = phi::backends::gpu::TransformDimOrder(
-      phi::vectorize<int64_t>(output->dims()));
+      common::vectorize<int64_t>(output->dims()));
   std::vector<int64_t> dim_scale(dim_x.size(), 1);
   dim_scale[1] = dim_x[1];                        //  [1, C, 1, 1]
   std::vector<int64_t> dim_sum(dim_x.size(), 1);  // [1, K, 1, 1]
@@ -323,7 +323,7 @@ void BNFinalizeImpl(const Context& dev_ctx,
   auto tensor_format = phi::backends::gpu::ToCudnnDataType(eq_scale->dtype());
   auto compute_dtype = CUDNN_DATA_FLOAT;
   // create tensor descriptors
-  auto dim_input = phi::vectorize<int64_t>(sum_tensor.dims());
+  auto dim_input = common::vectorize<int64_t>(sum_tensor.dims());
   std::vector<int64_t> dim_c = {1, dim_input[0], 1, 1};  //  [1, C, 1, 1]
   std::vector<int64_t> dim_scalar = {1, 1, 1, 1};
   std::vector<int64_t> stride_scalar = {1, 1, 1, 1};
@@ -555,7 +555,7 @@ void FusedScaleBiasReluConvBnKernel(const Context& dev_ctx,
   if (accumulation_count == 0) {
     // dim_out = [N, H, W, C]
     // accumulation_count = N * H * W
-    auto dim_out = phi::vectorize<int64_t>(out->dims());
+    auto dim_out = common::vectorize<int64_t>(out->dims());
     accumulation_count = dim_out[0] * dim_out[1] * dim_out[2];
   }
 

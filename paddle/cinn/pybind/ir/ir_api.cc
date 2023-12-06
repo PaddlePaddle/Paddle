@@ -21,6 +21,7 @@
 #include <type_traits>
 
 #include "paddle/cinn/common/shared.h"
+#include "paddle/cinn/ir/dim.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/ir_printer.h"
@@ -134,8 +135,8 @@ void BindNode(py::module *m) {
   DefineShared<IrNode>(m, "IrNode");
 
   // class IrNodeRef : public Shared<IrNode>
-  py::class_<ir::IrNodeRef, common::Shared<IrNode>> ir_node_ref(*m,
-                                                                "IrNodeRef");
+  py::class_<ir::IrNodeRef, cinn::common::Shared<IrNode>> ir_node_ref(
+      *m, "IrNodeRef");
   ir_node_ref.def(py::init<>())
       .def(py::init<const ir::IrNodeRef &>())
       .def(py::init<ir::IrNode *>())
@@ -476,9 +477,9 @@ void BindIrIr(py::module *m) {
   py::class_<Var, IrNodeRef> var(*m, "Var");
   var.def(py::init<>())
       .def(py::init<IrNode *>())
-      .def(py::init<const std::string &, common::Type>(),
+      .def(py::init<const std::string &, cinn::common::Type>(),
            arg("name_hint"),
-           arg("t") = common::type_of<int>())
+           arg("t") = cinn::common::type_of<int>())
       .def(py::init<Expr, Expr, const std::string &>())
       .def(py::init<int, const std::string &>())
       .def(py::init<Expr, const std::string &>())
@@ -585,7 +586,14 @@ void BindOperation(py::module *m) {
   py::class_<ir::PlaceholderOp> placeholder_op(*m, "PlaceholderOp");
   placeholder_op.def_readwrite("shape", &ir::PlaceholderOp::shape)
       .def_readwrite("dtype", &ir::PlaceholderOp::dtype)
-      .def_static("make", &ir::PlaceholderOp::Make)
+      .def_static("make",
+                  py::overload_cast<const std::string &,
+                                    const std::vector<Expr> &,
+                                    Type>(&ir::PlaceholderOp::Make))
+      .def_static("make",
+                  py::overload_cast<const std::string &,
+                                    const std::vector<ir::Dim> &,
+                                    Type>(&ir::PlaceholderOp::Make))
       .def("func_type", &ir::PlaceholderOp::func_type);
 
   py::class_<ir::CallOp> call_op(*m, "CallOp");
@@ -726,7 +734,7 @@ void BindIrTensor(py::module *m) {
 
 auto PackedFuncCall(lang::PackedFunc &self, py::args args) {  // NOLINT
   lang::Args cinn_args;
-  using common::CINNValue;
+  using cinn::common::CINNValue;
   for (auto handle : args) {
     if (py::isinstance<py::int_>(handle)) {
       cinn_args.Append(CINNValue(py::cast<int64_t>(handle)));
@@ -758,7 +766,9 @@ void BindPackedFunc(py::module *m) {
           [](lang::Args &self, int i) { return self[i]; },
           py::return_value_policy::reference)
       .def("__setitem__",
-           [](lang::Args &self, int i, common::CINNValue &v) { self[i] = v; });
+           [](lang::Args &self, int i, cinn::common::CINNValue &v) {
+             self[i] = v;
+           });
 
   py::class_<lang::PackedFunc> packed_func(*m, "PackedFunc");
   packed_func.def(py::init<>())

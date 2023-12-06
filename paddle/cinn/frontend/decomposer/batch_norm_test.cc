@@ -189,7 +189,7 @@ TEST(Decomposer, BatchNormTrain) {
   }
   auto program = net_builder.Build();
 
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
   RunDecomposer(&program,
                 target,
                 cinn::frontend::DefaultTrainingOptimizeOptions().program_passes,
@@ -389,7 +389,7 @@ TEST(Decomposer, BatchNormGrad) {
   }
   auto program = net_builder.Build();
 
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
   RunDecomposer(&program,
                 target,
                 cinn::frontend::DefaultTrainingOptimizeOptions().program_passes,
