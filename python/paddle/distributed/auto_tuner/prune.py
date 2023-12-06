@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import subprocess
+
 _PRUNE_FUNC = []
 
 
@@ -353,3 +356,46 @@ def prune_by_num_gpus(tuner_cfg, cur_cfg, history_cfgs):
         return True
 
     return False
+
+
+@register_prune
+def prune_by_memory_estimation(tuner_cfg, cur_cfg, history_cfgs):
+    memory_estimation_tool = tuner_cfg.get("memory_estimation_tool", None)
+    max_memory_usage = tuner_cfg.get("max_mem_usage", None)
+    model_cfg = tuner_cfg["model_cfg"]
+
+    if memory_estimation_tool is None:
+        return False
+
+    if not os.path.exists(memory_estimation_tool):
+        raise ValueError(
+            f"memory_estimation_tool shoule be a valid path, but got {memory_estimation_tool}"
+        )
+
+    if max_memory_usage is None:
+        raise ValueError(
+            "max_mem_usage should be set when using memory estimation tool"
+        )
+
+    memory_estimation_cmd = f"python {memory_estimation_tool} --dp_degree {cur_cfg['dp_degree']} \
+                                --mp_degree {cur_cfg['mp_degree']} --pp_degree {cur_cfg['pp_degree']} \
+                                --sharding_degree {cur_cfg['sharding_degree']} --sharding_stage {cur_cfg['sharding_stage']} \
+                                --use_recompute {cur_cfg['use_recompute']} --micro_batch_size {cur_cfg['micro_batch_size']} \
+                                --recompute_granularity {cur_cfg['recompute_granularity']} \
+                                --hidden_size {model_cfg['hidden_size']} --num_attention_heads {model_cfg['num_attention_heads']} \
+                                --num_hidden_layers {model_cfg['num_hidden_layers']} \
+                                --max_sequence_length {model_cfg['max_sequence_length']} \
+                                --vocab_size {model_cfg['vocab_size']} --intermediate_size {model_cfg['intermediate_size']} "
+    result = subprocess.run(
+        memory_estimation_cmd,
+        shell=True,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode == 0:
+        cur_memory_usage = float(result.stdout)
+        return cur_memory_usage > max_memory_usage
+    else:
+        raise ValueError(
+            f"memory_estimation_tool failed with error: {result.stderr}"
+        )
