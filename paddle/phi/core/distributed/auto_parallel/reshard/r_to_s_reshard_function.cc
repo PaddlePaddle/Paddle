@@ -121,12 +121,12 @@ void RToSReshardFunctionCrossMesh::Eval(phi::DeviceContext* dev_ctx,
   if (in_dist_attr.process_mesh().contains(cur_global_rank)) {
     RToSReshardFunction r_to_s_func;
     PADDLE_ENFORCE(
-        r_to_s_func.IsSuitable(tmp_result, in_dist_attr_shard),
+        r_to_s_func.IsSuitable(in, in_dist_attr_shard),
         phi::errors::InvalidArgument(
             "Invoke the r to s reshard function is not valid from %s to %s.",
-            tmp_result.dist_attr(),
-            out_dist_attr));
-    r_to_s_func.Eval(dev_ctx, tmp_result, in_dist_attr_shard, out);
+            in.dist_attr(),
+            in_dist_attr_shard));
+    r_to_s_func.Eval(dev_ctx, in, in_dist_attr_shard, &tmp_result);
   } else {
     SetDistProps(&tmp_result, in.dims(), in_dist_attr_shard);
     SetValue(&tmp_result, in.value());

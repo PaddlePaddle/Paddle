@@ -858,6 +858,7 @@ void ReshardKernelOutputToApiOutput(
     phi::distributed::DistTensor* dist_tensor =
         static_cast<phi::distributed::DistTensor*>(tensor_out.get());
     dist_tensor->unsafe_set_dims(src_tensor->dims());
+    // TODO(GhostScreaming): Support partial status flow.
     if (ReshardIsNeededWithPartial(src_tensor->dist_attr(),
                                    dist_tensor->dist_attr())) {
       VLOG(4) << "BwdAPI KernelOut to ApiOut - \n"
