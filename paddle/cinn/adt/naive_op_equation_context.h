@@ -24,7 +24,7 @@
 #include "paddle/cinn/adt/adt.h"
 #include "paddle/cinn/adt/equation.h"
 #include "paddle/cinn/adt/logical.h"
-#include "paddle/cinn/adt/m_expr.h"
+#include "paddle/cinn/adt/map_expr.h"
 #include "paddle/cinn/adt/op_arg_pos.h"
 #include "paddle/cinn/adt/op_equation_context.h"
 #include "paddle/cinn/hlir/framework/node.h"
@@ -36,8 +36,9 @@ class NaiveOpEquationContext final : public OpEquationContext {
   NaiveOpEquationContext(const NaiveOpEquationContext&) = delete;
   NaiveOpEquationContext(NaiveOpEquationContext&&) = delete;
 
-  // TODO(Hongyu Jia): std::optional<std::int64_t> -> Constant
   using GetArgStaticDimT = std::function<std::optional<std::int64_t>(
+      std::size_t tensor_idx, std::size_t dim_idx)>;
+  using GetArgSymbolicDimT = std::function<std::optional<DimExpr>(
       std::size_t tensor_idx, std::size_t dim_idx)>;
 
   explicit NaiveOpEquationContext(
@@ -45,18 +46,22 @@ class NaiveOpEquationContext final : public OpEquationContext {
       const std::vector<std::uint64_t>& out_tensors_ranks,
       GetArgStaticDimT GetInDim,
       GetArgStaticDimT GetOutDim,
+      GetArgSymbolicDimT GetSymbolicInDim,
+      GetArgSymbolicDimT GetSymbolicOutDim,
       cinn::utils::AttributeMap attr_map_type)
       : in_tensors_ranks_(in_tensors_ranks),
         out_tensors_ranks_(out_tensors_ranks),
         GetInDim_(GetInDim),
         GetOutDim_(GetOutDim),
+        GetSymbolicInDim_(GetSymbolicInDim),
+        GetSymbolicOutDim_(GetSymbolicOutDim),
         equations_{},
         attr_map_type_(attr_map_type),
         fake_op_placeholder_{UniqueId::New()} {
     Init<Iterator>(&in_iterator_tuples_, in_tensors_ranks);
     Init<Iterator>(&out_iterator_tuples_, out_tensors_ranks);
-    Init<Dim>(&in_dim_tuples_, in_tensors_ranks);
-    Init<Dim>(&out_dim_tuples_, out_tensors_ranks);
+    InitInputDimExpr(&in_dim_tuples_, in_tensors_ranks);
+    InitOutputDimExpr(&out_dim_tuples_, out_tensors_ranks);
     in_indexes_ = MakeArgIndexes(in_tensors_ranks.size());
     out_indexes_ = MakeArgIndexes(out_tensors_ranks.size());
     GenerateDots();
@@ -88,22 +93,21 @@ class NaiveOpEquationContext final : public OpEquationContext {
   }
 
   Iterator GetBroadcastedInputIterator(const Iterator& out_tensor_iterator,
-                                       const Dim& dim) override {
+                                       const DimExpr& dim) override {
     Iterator input_tensor_iterator{UniqueId::New()};
-    using Function = GetBroadcastedIterator<Dim, tOut<Iterator>, tIn<Iterator>>;
+    using Function =
+        GetBroadcastedIterator<DimExpr, tOut<Iterator>, tIn<Iterator>>;
     equations_->emplace_back(
         Function{dim, input_tensor_iterator, out_tensor_iterator});
     return input_tensor_iterator;
   }
 
-  Iterator MakeConstantIterator(std::size_t constant,
-                                Equations* equations) const {
+  Iterator GetConstantIterator(const Index& in_index, int constant) override {
+    Iterator output_tensor_iterator{UniqueId::New()};
     using ConstF = ConstantFunction<tOut<Iterator>, tIn<Index>>;
-    Iterator const_iter{UniqueId::New()};
-    VisitEachTensorIndex([&](const auto& in_msg_index) {
-      (*equations)->emplace_back(ConstF{const_iter, in_msg_index, constant});
-    });
-    return const_iter;
+    equations_->emplace_back(
+        ConstF{output_tensor_iterator, in_index, DimExpr{constant}});
+    return output_tensor_iterator;
   }
 
   const IteratorTuple& GetInIteratorTuple(
@@ -204,9 +208,7 @@ class NaiveOpEquationContext final : public OpEquationContext {
     return Undefined{};
   }
 
-  std::int64_t GetDimSize(const Dim& dim) const;
-
-  Dim GetDim(bool is_out, std::size_t arg_idx, std::size_t axis) const {
+  DimExpr GetDim(bool is_out, std::size_t arg_idx, std::size_t axis) const {
     if (is_out) {
       return out_dim_tuples_.at(arg_idx)->at(axis);
     } else {
@@ -214,25 +216,20 @@ class NaiveOpEquationContext final : public OpEquationContext {
     }
   }
 
-  Constant GetDimSize(bool is_out,
-                      std::size_t arg_idx,
-                      std::size_t axis) const {
+  std::optional<std::int64_t> GetStaticDimSize(bool is_out,
+                                               std::size_t arg_idx,
+                                               std::size_t axis) const {
     const auto* Get = (is_out ? &GetOutDim_ : &GetInDim_);
     const auto& opt_dim = (*Get)(arg_idx, axis);
-    CHECK(opt_dim.has_value());
-    return opt_dim.value();
+    return opt_dim;
   }
 
-  OpArgDimPos GetArgDimPosDescriptor(const Dim& dim) const {
-    const auto& input_pos = FindArgDimPos(in_dim_tuples_, dim);
-    if (input_pos.has_value()) {
-      return tIn<ArgDimPosDescriptor>{input_pos.value()};
-    }
-    const auto& output_pos = FindArgDimPos(out_dim_tuples_, dim);
-    if (output_pos.has_value()) {
-      return tOut<ArgDimPosDescriptor>{output_pos.value()};
-    }
-    return Undefined{};
+  std::optional<DimExpr> GetSymbolicDimSize(bool is_out,
+                                            std::size_t arg_idx,
+                                            std::size_t axis) const {
+    const auto* Get = (is_out ? &GetSymbolicOutDim_ : &GetSymbolicInDim_);
+    const auto& opt_dim = (*Get)(arg_idx, axis);
+    return opt_dim;
   }
 
   void Print() const;
@@ -248,15 +245,39 @@ class NaiveOpEquationContext final : public OpEquationContext {
     }
   }
 
+  void InitInputDimExpr(std::vector<DimTuple>* vec,
+                        const std::vector<std::uint64_t>& tensors_ranks) {
+    for (std::size_t i = 0; i < tensors_ranks.size(); ++i) {
+      vec->push_back(DimTuple{});
+      for (std::size_t j = 0; j < tensors_ranks.at(i); ++j) {
+        const auto& opt_expr = GetSymbolicInDim_(i, j);
+        CHECK(opt_expr.has_value());
+        vec->at(i)->emplace_back(opt_expr.value());
+      }
+    }
+  }
+
+  void InitOutputDimExpr(std::vector<DimTuple>* vec,
+                         const std::vector<std::uint64_t>& tensors_ranks) {
+    for (std::size_t i = 0; i < tensors_ranks.size(); ++i) {
+      vec->push_back(DimTuple{});
+      for (std::size_t j = 0; j < tensors_ranks.at(i); ++j) {
+        const auto& opt_expr = GetSymbolicOutDim_(i, j);
+        CHECK(opt_expr.has_value());
+        vec->at(i)->emplace_back(opt_expr.value());
+      }
+    }
+  }
+
   Index IndexDot(const IteratorTuple& iterator_tuple,
                  const DimTuple& dim_tuple) {
     CHECK(iterator_tuple->size() == dim_tuple->size());
     Index index{UniqueId::New()};
     equations_->emplace_back(
-        adt::IndexDot<List<Dim>, tOut<Index>, tIn<List<Iterator>>>{
+        adt::IndexDot<List<DimExpr>, tOut<Index>, tIn<List<Iterator>>>{
             dim_tuple, index, iterator_tuple});
     equations_->emplace_back(
-        adt::IndexUnDot<List<Dim>, tOut<List<Iterator>>, tIn<Index>>{
+        adt::IndexUnDot<List<DimExpr>, tOut<List<Iterator>>, tIn<Index>>{
             dim_tuple, iterator_tuple, index});
     return index;
   }
@@ -296,18 +317,6 @@ class NaiveOpEquationContext final : public OpEquationContext {
     return std::nullopt;
   }
 
-  static std::optional<ArgDimPosDescriptor> FindArgDimPos(
-      const std::vector<DimTuple>& dim_tuples, const Dim& dim) {
-    for (std::size_t i = 0; i < dim_tuples.size(); ++i) {
-      for (std::size_t j = 0; j < dim_tuples.at(i)->size(); ++j) {
-        if (dim_tuples.at(i)->at(j) == dim) {
-          return ArgDimPosDescriptor{i, j};
-        }
-      }
-    }
-    return std::nullopt;
-  }
-
   const utils::Attribute& GetAttribute(const std::string& name) const {
     const auto& iter = attr_map_type_.find(name);
     CHECK(iter != attr_map_type_.end())
@@ -319,6 +328,8 @@ class NaiveOpEquationContext final : public OpEquationContext {
   std::vector<std::uint64_t> out_tensors_ranks_;
   GetArgStaticDimT GetInDim_;
   GetArgStaticDimT GetOutDim_;
+  GetArgSymbolicDimT GetSymbolicInDim_;
+  GetArgSymbolicDimT GetSymbolicOutDim_;
   Equations equations_;
   const cinn::utils::AttributeMap attr_map_type_;
   FakeOpPlaceHolder fake_op_placeholder_;

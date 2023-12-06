@@ -65,15 +65,16 @@ class IR_API alignas(8) Operation final
   ///
   /// \brief op attribute related public interfaces
   ///
-  Attribute attribute(const std::string &key) const {
-    return attributes_.at(key);
-  }
   const AttributeMap &attributes() const { return attributes_; }
+  // return nullptr if attribute not found.
+  Attribute attribute(const std::string &key) const {
+    auto iter = attributes_.find(key);
+    return iter == attributes_.end() ? nullptr : iter->second;
+  }
+
   template <typename T>
-  T attribute(const std::string &name) {
-    Attribute attr = attribute(name);
-    IR_ENFORCE(attr.isa<T>(), "Attribute (%s) type is not right.", name);
-    return attr.dyn_cast<T>();
+  T attribute(const std::string &key) const {
+    return attribute(key).dyn_cast<T>();
   }
   void set_attribute(const std::string &key, Attribute value) {
     attributes_[key] = value;

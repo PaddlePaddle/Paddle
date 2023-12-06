@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 CINN Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,13 +13,19 @@
 // limitations under the License.
 
 #pragma once
-
 #include <string>
 
-namespace cinn::adt {
+#include "paddle/cinn/ir/ir.h"
 
-class Constant;
+namespace cinn {
+namespace optim {
 
-std::string ToTxtString(const Constant& constant);
+/**
+ * Used in OptimizeExprGpu. Given Expr AST, analyze the Buffer axis, if it is
+ * shared/local GPU memory and access indices are same at the same axis, then
+ * it means we may not need that much memory. We set those indices to 0
+ */
+void UpdateBufferAxisPass(ir::Expr* expr);
 
-}  // namespace cinn::adt
+}  // namespace optim
+}  // namespace cinn

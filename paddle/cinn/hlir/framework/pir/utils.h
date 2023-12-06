@@ -88,7 +88,7 @@ struct CompatibleInfo {
   static OpPatternKind OpKind(const ::pir::Operation& op);
 };
 
-std::vector<int64_t> GetBroadcastAxis(const phi::DDim& in_shape,
+std::vector<int64_t> GetBroadcastAxis(const ::common::DDim& in_shape,
                                       const std::vector<int64_t>& out_shape);
 
 struct NameGenerator {

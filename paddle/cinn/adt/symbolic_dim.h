@@ -15,12 +15,23 @@
 #pragma once
 
 #include "paddle/cinn/adt/adt.h"
+#include "paddle/cinn/adt/unique_id.h"
 
 namespace cinn::adt {
 
-class LoopSize;
+DEFINE_ADT_TAG(tSymbolicDim);
 
-std::string ToTxtString(const LoopSize& loop_size);
+using SymbolicDim = tSymbolicDim<UniqueId>;
 
-std::string ToTxtString(const List<LoopSize>& loop_sizes);
 }  // namespace cinn::adt
+
+namespace std {
+
+template <>
+struct hash<cinn::adt::SymbolicDim> final {
+  std::size_t operator()(const cinn::adt::SymbolicDim& symbolic_dim) const {
+    return symbolic_dim.value().unique_id();
+  }
+};
+
+}  // namespace std
