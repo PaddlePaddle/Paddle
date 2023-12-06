@@ -5,7 +5,7 @@ if(WITH_CRYPTO)
 endif()
 
 if(WITH_MKLDNN)
-  add_dependencies(save_load_tensor mkldnn)
+  add_dependencies(framework_io_srcs mkldnn)
 endif()
 
 set(framework_io_deps glog timer)
