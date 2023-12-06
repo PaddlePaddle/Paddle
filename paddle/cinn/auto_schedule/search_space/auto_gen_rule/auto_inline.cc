@@ -36,7 +36,7 @@ namespace cinn {
 namespace auto_schedule {
 
 AutoInline::AutoInline(
-    const common::Target& target,
+    const cinn::common::Target& target,
     const std::unordered_set<std::string>& no_inline_output_names)
     : AutoGenRule(target), no_inline_output_names_(no_inline_output_names) {}
 

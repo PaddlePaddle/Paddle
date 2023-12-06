@@ -85,6 +85,7 @@
   output : Tensor(param_out), Tensor(moment1_out), Tensor(moment2_out), Tensor(beta1_pow_out), Tensor(beta2_pow_out), Tensor(master_param_out)
   infer_meta :
     func : AdamwInferMeta
+    spmd_rule : AdamwInferSpmdDynamic
   kernel :
     func : adamw
     data_type : param
@@ -929,10 +930,10 @@
   infer_meta :
     func : FlashAttnInferMeta
     param : [q, k, v]
+    spmd_rule : FlashAttInferSpmd
   kernel :
     func : flash_attn
     data_type : q
-  intermediate : softmax_lse, seed_offset
   backward : flash_attn_grad
 
 - op : flash_attn_unpadded
@@ -1049,8 +1050,6 @@
     func : gather_nd
     data_type : x
   backward : gather_nd_grad
-  data_transform :
-    skip_transform : index
 
 - op : gather_tree
   args : (Tensor ids, Tensor parents)
@@ -1410,6 +1409,7 @@
   output : Tensor(out), Tensor(mean), Tensor(variance)
   infer_meta :
     func : LayerNormInferMeta
+    spmd_rule : LayerNormInferSpmd
   kernel :
     func : layer_norm
     data_type : x
@@ -1828,6 +1828,8 @@
     func : multiplex
     data_type : inputs
   backward : multiplex_grad
+  data_transform :
+    skip_transform : index
 
 - op : mv
   args : (Tensor x, Tensor vec)
@@ -1914,6 +1916,7 @@
   output : Tensor(size)
   infer_meta :
     func : NumelInferMeta
+    spmd_rule : NumelInferSpmd
   kernel :
     func : numel
     data_type : x
@@ -1993,6 +1996,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [x]
+    spmd_rule: PowInferSpmd
   kernel :
     func : pow
     data_type : x
@@ -2203,6 +2207,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ScaleInferSpmd
   kernel :
     func : scale {dense -> dense},
            scale_sr {selected_rows -> selected_rows}
@@ -2298,6 +2303,7 @@
   output : Tensor(param_out), Tensor(master_param_out)
   infer_meta :
     func : SgdInferMeta
+    spmd_rule : SgdInferSpmd
   kernel :
     func : sgd {dense, dense, dense, dense -> dense, dense},
            sgd_dense_param_sparse_grad {dense, dense, selected_rows, dense -> dense, dense},
@@ -2308,16 +2314,6 @@
   optional : master_param, master_param_out
   inplace : (param -> param_out), (master_param -> master_param_out)
 
-- op : shadow_output
-  args : (Tensor x, str name)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel:
-    func : shadow_output
-    param : [x]
-
 - op : shape
   args : (Tensor input)
   output : Tensor(out)
@@ -2325,7 +2321,7 @@
     func : ShapeInferMeta
   kernel :
     func : shape {dense -> dense},
-           shape_sr {selected_rows -> selected_rows}
+           shape_sr {selected_rows -> dense}
   data_transform:
     skip_transform : input
 
@@ -2493,6 +2489,7 @@
   output : Tensor(out), Tensor(xshape)
   infer_meta :
     func : SqueezeWithXShapeInferMeta
+    spmd_rule : SqueezeInferSpmd
   kernel :
     func : squeeze
     data_type : x
@@ -2506,6 +2503,7 @@
   output : Tensor (out)
   infer_meta :
     func : StackInferMeta
+    spmd_rule : StackInferSpmd
   kernel :
     func : stack
   backward : stack_grad
@@ -2600,6 +2598,16 @@
     func : thresholded_relu
   inplace: (x -> out)
   backward : thresholded_relu_grad
+
+- op : top_p_sampling
+  args : (Tensor x, Tensor ps, Tensor threshold, int seed=-1)
+  output : Tensor (out), Tensor(ids)
+  infer_meta :
+    func : TopPSamplingInferMeta
+  kernel :
+    func : top_p_sampling
+    data_type : x
+  optional : threshold
 
 - op : topk
   args : (Tensor x, Scalar(int) k = 1, int axis = -1, bool largest = true, bool sorted = true)
@@ -2707,6 +2715,7 @@
   output : Tensor(out), Tensor(xshape)
   infer_meta :
     func : UnsqueezeWithXShapeInferMeta
+    spmd_rule : UnsqueezeInferSpmd
   kernel :
     func : unsqueeze
     data_type : x
@@ -2812,7 +2821,7 @@
     data_type : out_dtype
 
 - op : weight_only_linear
-  args : (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, str weight_dtype)
+  args : (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, str weight_dtype, int arch = 80)
   output : Tensor(out)
   infer_meta :
     func : WeightOnlyLinearInferMeta
@@ -2823,7 +2832,7 @@
   backward: weight_only_linear_grad
 
 - op : weight_quantize
-  args : (Tensor x, str algo="weight_only_int8")
+  args : (Tensor x, str algo = "weight_only_int8", int arch = 80)
   output : Tensor(out), Tensor(scale)
   infer_meta :
     func : WeightQuantizeInferMeta
@@ -2845,6 +2854,7 @@
   output : Tensor(out)
   infer_meta :
     func : WhereInferMeta
+    spmd_rule: WhereInferSpmd
   kernel :
     func : where
   inplace: (x -> out)

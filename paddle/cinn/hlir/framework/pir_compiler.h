@@ -21,6 +21,7 @@
 
 #include "paddle/cinn/hlir/framework/graph_compiler.h"
 #include "paddle/cinn/hlir/framework/op_lowering.h"
+#include "paddle/cinn/hlir/framework/pir/compilation_task.h"
 
 namespace cinn {
 namespace hlir {
@@ -40,7 +41,7 @@ class PirCompiler final {
 
   std::unique_ptr<Program> Build();
 
-  std::vector<pir::CUDAJITInfo> BuildCUDAJITInfo(
+  std::vector<pir::CINNKernelInfo> BuildCUDAJITInfo(
       const std::vector<pir::GroupPtr>& groups);
 
   std::unique_ptr<Program> Build(const std::vector<pir::GroupPtr>& groups);
@@ -61,8 +62,10 @@ class PirCompiler final {
   Target target_;
   std::shared_ptr<Scope> scope_;
   std::unordered_map<std::string, std::string> func_names_;
+  std::vector<GroupCompilationContext> group_compilation_contexts_;
 };
 
+// TODO(phlrain): pir compiler don't need Scope, need to remove this
 std::shared_ptr<Scope> BuildScope(const Target&, const ::pir::Program&);
 
 class PirCompilerManager {
@@ -70,6 +73,16 @@ class PirCompilerManager {
   static PirCompilerManager& Instance() {
     static PirCompilerManager instance;
     return instance;
+  }
+
+  static std::shared_ptr<PirCompiler> Create(
+      const ::pir::Program& prog,
+      const Target& target,
+      const std::shared_ptr<Scope>& scope) {
+    std::shared_ptr<PirCompiler> compiler =
+        std::make_shared<PirCompiler>(prog, target, scope);
+    PirCompilerManager::Instance().insert(compiler);
+    return compiler;
   }
 
   void insert(const std::shared_ptr<PirCompiler>& compiler) {

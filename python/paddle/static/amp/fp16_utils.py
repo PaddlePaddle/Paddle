@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import logging
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -38,6 +41,26 @@ _valid_types = [
 ]
 
 _fp16_guard_pattern = "__use_fp16__"
+
+
+@dataclass
+class AmpOptions:
+    enable: bool
+    custom_white_list: list[str] | None
+    custom_black_list: list[str] | None
+    level: str
+    dtype: str
+    use_promote: bool
+
+
+DEFAULT_AMP_OPTIONS = AmpOptions(
+    enable=True,
+    custom_white_list=None,
+    custom_black_list=None,
+    level='O1',
+    dtype='float16',
+    use_promote=True,
+)
 
 
 def _rename_arg(op, old_name, new_name):
@@ -586,6 +609,43 @@ def process_op_input_and_outputs(op, block, global_block, dtype):
     return low_precison_var_names
 
 
+def map_block(block, fn, parent_op=None):
+    fn(block, parent_op)
+    program = block.program
+    for op in block.ops:
+        if not op.has_attr("sub_block"):
+            continue
+        sub_block = program.blocks[op.attr("sub_block").id]
+        map_block(sub_block, fn, op)
+
+
+def prepare_op_amp_options(
+    program: paddle.static.Program,
+    amp_records: dict[int, list[tuple[AmpOptions, int, int]]],
+    global_amp_options: AmpOptions,
+):
+    op_amp_options_map: dict[paddle.static.Operator, AmpOptions] = {}
+
+    def fill_amp_enable_op_map(block, parent_op):
+        block_idx = block.idx
+        ops = block.ops
+        for op in ops:
+            # Set the default options to global_amp_options if the op has not parent op.
+            current_op_amp_options = op_amp_options_map.get(
+                parent_op, global_amp_options
+            )
+            if block_idx in amp_records:
+                for amp_options, start, end in amp_records[block_idx]:
+                    if op.idx in range(start, end):
+                        current_op_amp_options = amp_options
+                        break
+            op_amp_options_map[op] = current_op_amp_options
+
+    map_block(program.global_block(), fill_amp_enable_op_map)
+    for op, enable in op_amp_options_map.items():
+        op.set_amp_options(enable)
+
+
 def cast_model_to_fp16(
     program,
     amp_lists=None,
@@ -786,12 +846,23 @@ def _convert_float_to_bfloat16(place, fp32_array):
     return bf16_array
 
 
+def _convert_to_float(place, org_array):
+    paddle.disable_static()
+    framework._set_expected_place(place)
+    org_tensor = paddle.to_tensor(org_array)
+    fp32_array = paddle.cast(org_tensor, paddle.float32).numpy()
+    paddle.enable_static()
+    return fp32_array
+
+
 def cast_parameters_to_fp16(
     place,
     program,
     scope=None,
     to_fp16_var_names=None,
     dest_type=core.VarDesc.VarType.FP16,
+    rewrite_master_weight=False,
+    master_weights={},
 ):
     """
     Traverse all parameters in the whole model and set them to the FP16 data type.
@@ -822,10 +893,19 @@ def cast_parameters_to_fp16(
                 param_t = var_scope.find_var(param.name).get_tensor()
                 data = np.array(param_t)
                 if dest_type == core.VarDesc.VarType.BF16:
-                    bf16_data = _convert_float_to_bfloat16(place, data)
-                    param_t.set(bf16_data, place)
+                    p_array = _convert_float_to_bfloat16(place, data)
+                    param_t.set(p_array, place)
                 else:
-                    param_t.set(np.float16(data), place)
+                    p_array = np.float16(data)
+                    param_t.set(p_array, place)
+                # rewrite master weight
+                if rewrite_master_weight and param.name in master_weights:
+                    master_p_var = var_scope.find_var(
+                        master_weights[param.name].name
+                    )
+                    master_p_t = master_p_var.get_tensor()
+                    master_p_array = _convert_to_float(place, p_array)
+                    master_p_t.set(master_p_array, place)
             else:
                 _logger.warning(f"Cannot find {param.name}")
 

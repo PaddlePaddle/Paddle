@@ -532,7 +532,9 @@ __global__ void masked_multihead_attention_kernel(
         int right_id = tid / stride_all_lastdim * stride_all_lastdim +
                        (tid + stride) % (stride_all_lastdim);
         int qk_right_offset = qkv_base_offset + right_id * QK_VEC_SIZE;
-        int qk_right_bias_offset = hi * Dh + right_id * QK_VEC_SIZE;
+        int q_right_bias_offset = hi * Dh + right_id * QK_VEC_SIZE;
+        int k_right_bias_offset =
+            hi / num_head_per_group * Dh + right_id * QK_VEC_SIZE;
         Qk_vec q_right;
         zero(q_right);
         // q_right =
@@ -549,8 +551,10 @@ __global__ void masked_multihead_attention_kernel(
         //         ? *reinterpret_cast<const Qk_vec *>(&k_base[qk_right_offset])
         //         : k_right;
         if (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh) {
-          load_func.template load<Qk_vec>(
-              k_right, params.num_head * Dh + qk_right_offset);
+          load_func.template load<Qk_vec>(k_right,
+                                          params.num_head * Dh +
+                                              qk_right_offset - hi * Dh +
+                                              hi / num_head_per_group * Dh);
         }
 
         if (params.add_qkv_bias) {
@@ -558,13 +562,13 @@ __global__ void masked_multihead_attention_kernel(
           zero(q_right_bias);
           q_right_bias = (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh)
                              ? *reinterpret_cast<const Qk_vec *>(
-                                   &q_bias_base[qk_right_bias_offset])
+                                   &q_bias_base[q_right_bias_offset])
                              : q_right_bias;
           Qk_vec k_right_bias;
           zero(k_right_bias);
           k_right_bias = (Dh == Dh_MAX || right_id * QK_VEC_SIZE < Dh)
                              ? *reinterpret_cast<const Qk_vec *>(
-                                   &k_bias_base[qk_right_bias_offset])
+                                   &k_bias_base[k_right_bias_offset])
                              : k_right_bias;
 
           q_right = add(q_right, q_right_bias);
@@ -818,8 +822,8 @@ __global__ void masked_multihead_attention_kernel(
                                        hi / num_head_per_group * Dh);
     if (params.add_qkv_bias) {
       v_bias = *reinterpret_cast<const V_vec *>(
-          &params
-               .qkv_bias[(kv_num_head + params.num_head) * Dh + hi * Dh + vi]);
+          &params.qkv_bias[(kv_num_head + params.num_head) * Dh +
+                           hi / num_head_per_group * Dh + vi]);
       v = add(v, v_bias);
     }
 

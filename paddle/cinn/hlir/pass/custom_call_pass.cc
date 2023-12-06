@@ -18,6 +18,7 @@
 #include "paddle/cinn/utils/string.h"
 
 PD_DECLARE_string(cinn_custom_call_deny_ops);
+PD_DECLARE_bool(cinn_use_cutlass);
 
 namespace cinn {
 namespace hlir {
@@ -37,10 +38,10 @@ class GraphAlterHelper {
       deny_ops_ = {splited_names.begin(), splited_names.end()};
     }
   }
-  void TransToCustomCall(const common::Target& target) {
+  void TransToCustomCall(const cinn::common::Target& target) {
     // collect candidate nodes
     auto mark_nodes = graph_->CollectNodes(
-        [this, &target](const common::GraphNode* graph_node) -> bool {
+        [this, &target](const cinn::common::GraphNode* graph_node) -> bool {
           if (graph_node->safe_as<Node>()) {
             auto node = graph_node->safe_as<Node>();
             auto&& op_name = node->op()->name;
@@ -62,7 +63,7 @@ class GraphAlterHelper {
       // codegen-registered is not consistent with cudnn
       if ((node->op()->name == "conv2d" ||
            node->op()->name == "depthwise_conv2d") &&
-          target == common::DefaultNVGPUTarget()) {
+          target == cinn::common::DefaultNVGPUTarget()) {
         auto out_links = node->outlinks_in_order();
         for (int idx = 1; idx < out_links.size(); ++idx) {
           auto link = out_links[idx];
@@ -72,8 +73,10 @@ class GraphAlterHelper {
         }
       }
 
-      node->attrs.attr_store["original_op"] = node->op()->name;
-      node->attrs.op = framework::Operator::Get("custom_call");
+      if (!FLAGS_cinn_use_cutlass || node->op()->name != "matmul") {
+        node->attrs.attr_store["original_op"] = node->op()->name;
+        node->attrs.op = framework::Operator::Get("custom_call");
+      }
     }
   }
 

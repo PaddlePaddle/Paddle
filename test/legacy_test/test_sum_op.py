@@ -652,6 +652,7 @@ class TestAddNDoubleGradCheck(unittest.TestCase):
     def add_n_wrapper(self, x):
         return paddle.add_n(x)
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -660,12 +661,13 @@ class TestAddNDoubleGradCheck(unittest.TestCase):
 
         data1 = paddle.static.data('data1', [3, 4, 5], dtype)
         data1.persistable = True
+        data1.stop_gradient = False
         data2 = paddle.static.data('data2', [3, 4, 5], dtype)
         data2.persistable = True
+        data2.stop_gradient = False
         out = paddle.add_n([data1, data2])
         data1_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
         data2_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
-
         gradient_checker.double_grad_check(
             [data1, data2],
             out,
@@ -694,6 +696,7 @@ class TestAddNTripleGradCheck(unittest.TestCase):
     def add_n_wrapper(self, x):
         return paddle.add_n(x)
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -702,8 +705,10 @@ class TestAddNTripleGradCheck(unittest.TestCase):
 
         data1 = paddle.static.data('data1', [3, 4, 5], dtype)
         data1.persistable = True
+        data1.stop_gradient = False
         data2 = paddle.static.data('data2', [3, 4, 5], dtype)
         data2.persistable = True
+        data2.stop_gradient = False
         out = paddle.add_n([data1, data2])
         data1_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
         data2_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
@@ -736,6 +741,7 @@ class TestSumDoubleGradCheck(unittest.TestCase):
     def sum_wrapper(self, x):
         return paddle.sum(x[0], axis=1, keepdim=True)
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -767,6 +773,7 @@ class TestSumTripleGradCheck(unittest.TestCase):
     def sum_wrapper(self, x):
         return paddle.sum(x[0], axis=1, keepdim=True)
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.

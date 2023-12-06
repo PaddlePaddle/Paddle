@@ -40,12 +40,12 @@ limitations under the License. */
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device_context.h"
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
-#include "paddle/phi/core/macros.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/test_macros.h"
 
@@ -378,7 +378,10 @@ class TEST_API OperatorBase {
 
   using HookFunc = std::function<void(OperatorBase*, Scope*)>;
   void SetOutputHooks(const std::vector<HookFunc>& hookfuncs) {
-    hookfuncs_ = hookfuncs;
+    output_hookfuncs_ = hookfuncs;
+  }
+  void SetInputHooks(const std::vector<HookFunc>& hookfuncs) {
+    input_hookfuncs_ = hookfuncs;
   }
 
  protected:
@@ -409,7 +412,8 @@ class TEST_API OperatorBase {
   // Whether this operator executes in an Executor.
   bool run_by_executor_{true};
 
-  std::vector<HookFunc> hookfuncs_;
+  std::vector<HookFunc> output_hookfuncs_;
+  std::vector<HookFunc> input_hookfuncs_;
 
  private:
   void GenerateTemporaryNames();
