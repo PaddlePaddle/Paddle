@@ -240,11 +240,9 @@ def static_decorate(
         ...         self.images = images
         ...         self.labels = labels
         ...         self.num_samples = num_samples
-
-        >>>     def __getitem__(self, idx):
+        ...     def __getitem__(self, idx):
         ...         return self.images[idx], self.labels[idx]
-
-        >>>     def __len__(self):
+        ...     def __len__(self):
         ...         return self.num_samples
 
         >>> class DemoNet(nn.Layer):
@@ -313,6 +311,10 @@ def static_decorate(
         ...     # where the value of "out0" is the first output.
         ...     outs = dist_model(image)
         ...     print(outs['out0'])
+
+        >>> # This case need to be excuted in multi-card environment
+        >>> # export CUDA_VISIBLE_DEVICES=0,1
+        >>> # python -m paddle.distributed.launch {test_case}.py
     """
     dist_model = DistModel(layer, loss, optimizer, strategy)
 
