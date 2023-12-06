@@ -2727,6 +2727,16 @@ struct SliceOpTranscriber : public OpTranscriber {
   }
 };
 
+struct CEmbeddingOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "vocab_size") {
+      (*attribute_map)[info.name] = pir::Int64Attribute::get(ctx, -1);
+    }
+  }
+};
+
 OpTranslator::OpTranslator() {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -2794,6 +2804,7 @@ OpTranslator::OpTranslator() {
   special_handlers["elementwise_min_grad"] = ElementwiseGradTranscriber();
   special_handlers["elementwise_mod_grad"] = ElementwiseGradTranscriber();
   special_handlers["elementwise_floordiv_grad"] = ElementwiseGradTranscriber();
+  special_handlers["c_embedding"] = CEmbeddingOpTranscriber();
 }
 
 }  // namespace translator

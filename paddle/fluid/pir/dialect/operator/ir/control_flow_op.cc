@@ -61,20 +61,10 @@ void IfOp::Build(pir::Builder &builder,             // NOLINT
     std::vector<pir::Attribute> outs_stop_gradient;
     for (size_t i = 0; i < op.num_operands(); ++i) {
       argument.AddOutput(op.operand(i).type());
-      bool input_stop_gradient = true;
-      auto *defining_op = op.operand_source(i).defining_op();
-      if (defining_op && defining_op->HasAttribute(kStopGradientAttrName)) {
-        auto attrs = defining_op->attribute(kStopGradientAttrName)
-                         .dyn_cast<pir::ArrayAttribute>()
-                         .AsVector();
-        input_stop_gradient =
-            attrs[op.operand_source(i).dyn_cast<pir::OpResult>().index()]
-                .dyn_cast<pir::BoolAttribute>()
-                .data();
-      } else {
-        input_stop_gradient = false;
-      }
-      outs_stop_gradient.push_back(builder.bool_attr(input_stop_gradient));
+      auto bool_attr = op.operand_source(i).attribute<pir::BoolAttribute>(
+          kStopGradientAttrName);
+      outs_stop_gradient.push_back(bool_attr ? bool_attr
+                                             : builder.bool_attr(false));
     }
 
     argument.AddAttribute(
@@ -110,19 +100,7 @@ void IfOp::Build(pir::Builder &builder,             // NOLINT
   argument.AddRegion().push_back(true_block.release());
   argument.AddRegion().push_back(false_block.release());
   argument.AddInput(cond);
-
-  auto cond_op = cond.defining_op();
-  if (cond_op && cond_op->HasAttribute(kStopGradientAttrName)) {
-    auto attrs = cond_op->attribute(kStopGradientAttrName)
-                     .dyn_cast<pir::ArrayAttribute>()
-                     .AsVector();
-    attrs[cond.dyn_cast<pir::OpResult>().index()] =
-        pir::BoolAttribute::get(pir::IrContext::Instance(), true);
-
-    cond_op->set_attribute(
-        kStopGradientAttrName,
-        pir::ArrayAttribute::get(pir::IrContext::Instance(), attrs));
-  }
+  cond.set_attribute(kStopGradientAttrName, builder.bool_attr(true));
 }
 
 pir::Block &IfOp::true_block() {
@@ -186,12 +164,13 @@ void IfOp::VerifySig() {
 }
 
 void IfOp::VerifyRegion() {
-  VLOG(4) << "Start Verifying sub regions for: IfOp.";
-  PADDLE_ENFORCE_EQ(
-      (*this)->region(0).size(),
-      1u,
-      phi::errors::PreconditionNotMet("The size %d of true_region must be 1.",
-                                      (*this)->region(0).size()));
+  // VLOG(4) << "Start Verifying sub regions for: IfOp.";
+  // PADDLE_ENFORCE_EQ(
+  //     (*this)->region(0).size(),
+  //     1u,
+  //     phi::errors::PreconditionNotMet("The size %d of true_region must
+  //     be 1.",
+  //                                     (*this)->region(0).size()));
 
   // if ((*this)->num_results() != 0) {
   //   PADDLE_ENFORCE_EQ(
