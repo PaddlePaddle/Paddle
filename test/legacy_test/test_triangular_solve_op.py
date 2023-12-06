@@ -286,7 +286,6 @@ class TestTriangularSolveOpCp643b3(TestTriangularSolveOp):
             'Out',
             check_cinn=True,
             check_pir=True,
-            max_relative_error=0.05,
         )
 
 
@@ -315,7 +314,7 @@ class TestTriangularSolveOpCp6422Up(TestTriangularSolveOp):
             'Out',
             check_cinn=True,
             check_pir=True,
-            max_relative_error=0.05,
+            max_relative_error=0.02,
         )
 
 
@@ -344,7 +343,6 @@ class TestTriangularSolveOpCp6423T(TestTriangularSolveOp):
             'Out',
             check_cinn=True,
             check_pir=True,
-            max_relative_error=0.05,
         )
 
 
@@ -400,7 +398,7 @@ class TestTriangularSolveOpCp644b4b(TestTriangularSolveOp):
             'Out',
             check_cinn=True,
             check_pir=True,
-            max_relative_error=0.05,
+            max_relative_error=0.008,
         )
 
 
@@ -429,7 +427,6 @@ class TestTriangularSolveOpCp643b4bUp(TestTriangularSolveOp):
             'Out',
             check_cinn=True,
             check_pir=True,
-            max_relative_error=0.05,
         )
 
 
@@ -458,7 +455,6 @@ class TestTriangularSolveOpCp643b5(TestTriangularSolveOp):
             'Out',
             check_cinn=True,
             check_pir=True,
-            max_relative_error=0.05,
         )
 
 
@@ -487,14 +483,13 @@ class TestTriangularSolveOpCp6454b(TestTriangularSolveOp):
             'Out',
             check_cinn=True,
             check_pir=True,
-            max_relative_error=0.05,
         )
 
 
 # 3D(broadcast) + 3D complex128
-class TestTriangularSolveCp128(TestTriangularSolveOp):
+class TestTriangularSolveOpCp1283b3(TestTriangularSolveOp):
     """
-    case complex128
+    case 18
     """
 
     def config(self):
@@ -509,6 +504,209 @@ class TestTriangularSolveCp128(TestTriangularSolveOp):
         x = np.tril(self.inputs['X'])
         y = self.inputs['Y']
         self.output = np.linalg.solve(x, y)
+
+    def test_check_grad_normal(self):
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            check_cinn=True,
+            check_pir=True,
+        )
+
+
+# 2D + 2D upper complex128
+class TestTriangularSolveOpCp12822Up(TestTriangularSolveOp):
+    """
+    case 19
+    """
+
+    def config(self):
+        self.x_shape = [12, 12]
+        self.y_shape = [12, 10]
+        self.upper = False
+        self.transpose = False
+        self.unitriangular = False
+        self.dtype = np.complex128
+
+    def set_output(self):
+        x = np.tril(self.inputs['X'])
+        y = self.inputs['Y']
+        self.output = np.linalg.solve(x, y)
+
+    def test_check_grad_normal(self):
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            check_cinn=True,
+            check_pir=True,
+        )
+
+
+# 2D(broadcast) + 3D, test 'transpose' complex128
+class TestTriangularSolveOpCp12823T(TestTriangularSolveOp):
+    """
+    case 20
+    """
+
+    def config(self):
+        self.x_shape = [10, 10]
+        self.y_shape = [3, 10, 8]
+        self.upper = False
+        self.transpose = True
+        self.unitriangular = False
+        self.dtype = np.complex128
+
+    def set_output(self):
+        x = np.tril(self.inputs['X']).transpose(1, 0)
+        y = self.inputs['Y']
+        self.output = np.linalg.solve(x, y)
+
+    def test_check_grad_normal(self):
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            check_cinn=True,
+            check_pir=True,
+        )
+
+
+# 2D + 2D , test 'unitriangular' complex128
+class TestTriangularSolveOpCp12822Un(TestTriangularSolveOp):
+    """
+    case 21
+    """
+
+    def config(self):
+        self.x_shape = [10, 10]
+        self.y_shape = [10, 10]
+        self.upper = True
+        self.transpose = False
+        self.unitriangular = True
+        self.dtype = np.complex128
+
+    def set_output(self):
+        x = np.triu(self.inputs['X'])
+        np.fill_diagonal(x, 1.0 + 0j)
+        y = self.inputs['Y']
+        self.output = np.linalg.solve(x, y)
+
+    def test_check_grad_normal(self):
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+        )
+
+
+# 4D(broadcast) + 4D(broadcast) complex128
+class TestTriangularSolveOpCp1284b4b(TestTriangularSolveOp):
+    """
+    case 22
+    """
+
+    def config(self):
+        self.x_shape = [1, 3, 10, 10]
+        self.y_shape = [2, 3, 10, 5]
+        self.upper = False
+        self.transpose = False
+        self.unitriangular = False
+        self.dtype = np.complex128
+
+    def set_output(self):
+        x = np.tril(self.inputs['X'])
+        y = self.inputs['Y']
+        self.output = np.linalg.solve(x, y)
+
+    def test_check_grad_normal(self):
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            check_cinn=True,
+            check_pir=True,
+        )
+
+
+# 3D(broadcast) + 4D(broadcast), test 'upper' complex128
+class TestTriangularSolveOpCp1283b4bUp(TestTriangularSolveOp):
+    """
+    case 23
+    """
+
+    def config(self):
+        self.x_shape = [2, 10, 10]
+        self.y_shape = [5, 1, 10, 2]
+        self.upper = True
+        self.transpose = True
+        self.unitriangular = False
+        self.dtype = np.complex128
+
+    def set_output(self):
+        x = np.triu(self.inputs['X']).transpose(0, 2, 1)
+        y = self.inputs['Y']
+        self.output = np.linalg.solve(x, y)
+
+    def test_check_grad_normal(self):
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            check_cinn=True,
+            check_pir=True,
+        )
+
+
+# 3D(broadcast) + 5D complex128
+class TestTriangularSolveOpCp1283b5(TestTriangularSolveOp):
+    """
+    case 24
+    """
+
+    def config(self):
+        self.x_shape = [12, 3, 3]
+        self.y_shape = [2, 3, 12, 3, 2]
+        self.upper = False
+        self.transpose = False
+        self.unitriangular = False
+        self.dtype = np.complex128
+
+    def set_output(self):
+        x = np.tril(self.inputs['X'])
+        y = self.inputs['Y']
+        self.output = np.linalg.solve(x, y)
+
+    def test_check_grad_normal(self):
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            check_cinn=True,
+            check_pir=True,
+        )
+
+
+# 5D + 4D(broadcast) complex128
+class TestTriangularSolveOpCp12854b(TestTriangularSolveOp):
+    """
+    case 25
+    """
+
+    def config(self):
+        self.x_shape = [2, 4, 2, 3, 3]
+        self.y_shape = [4, 1, 3, 10]
+        self.upper = False
+        self.transpose = False
+        self.unitriangular = False
+        self.dtype = np.complex128
+
+    def set_output(self):
+        x = np.tril(self.inputs['X'])
+        y = self.inputs['Y']
+        self.output = np.matmul(np.linalg.inv(x), y)
+
+    def test_check_grad_normal(self):
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            check_cinn=True,
+            check_pir=True,
+        )
 
 
 class TestTriangularSolveAPI(unittest.TestCase):
