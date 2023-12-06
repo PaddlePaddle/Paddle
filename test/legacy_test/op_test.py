@@ -1432,8 +1432,10 @@ class OpTest(unittest.TestCase):
 
     def _check_ir_output(self, place, program, feed_map, fetch_list, outs):
         if os.getenv("FLAGS_PIR_OPTEST") is None:
+            raise Exception('test FLAGS_PIR_OPTEST')
             return
         if os.getenv("FLAGS_PIR_OPTEST_WHITE_LIST") is None:
+            raise Exception('test FLAGS_PIR_OPTEST_WHITE_LIST')
             return
         raise Exception('test')
         if self.check_prim or self.check_prim_pir:
