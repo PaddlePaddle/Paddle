@@ -508,6 +508,7 @@ class PipelineLayer(nn.Layer):
                                     'weight_attr': self.shared_weight_attrs[
                                         key
                                     ],
+                                    "layer_idx": shared_layers,
                                     'layer': self.shared_layers[key],
                                 }
         return shared_comm
