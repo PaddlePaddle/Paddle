@@ -44,6 +44,7 @@ _g_elementwise_ops = [
     "cast",
     # "gather",
     # "concat",
+    "silu",
     "fused_softmax_mask_upper_triangle",
 ]
 BACKWARD_ONLY_DIST_OPS = {'check_finite_and_unscale', 'update_loss_scaling'}
