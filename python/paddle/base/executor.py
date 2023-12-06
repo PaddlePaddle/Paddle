@@ -1105,6 +1105,7 @@ class _ExecutorCache:
             from paddle.decomposition import decompose
 
             print("base prog", program)
+            core._set_prim_forward_enabled(True)
             fetch_list = decompose(program, fetch_list)
             print("prim prog", program)
 

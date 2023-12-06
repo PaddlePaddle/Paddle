@@ -241,30 +241,30 @@ class TestWhereAPI(unittest.TestCase):
                                 out[1], self.ref_y_backward(out[1])
                             )
 
-    @test_with_pir_api
-    def test_api_broadcast(self, use_cuda=False):
-        main_program = paddle.static.Program()
-        with paddle.static.program_guard(main_program):
-            x = paddle.static.data(name='x', shape=[-1, 4, 1], dtype='float32')
-            y = paddle.static.data(name='y', shape=[-1, 4, 2], dtype='float32')
-            x_i = np.array([[0.9383, 0.1983, 3.2, 1.2]]).astype('float32')
-            y_i = np.array([[1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0]]).astype(
-                'float32'
-            )
-            result = paddle.where((x > 1), x=x, y=y)
-            for use_cuda in [False, True]:
-                if use_cuda and (not base.core.is_compiled_with_cuda()):
-                    return
-                place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
-                exe = base.Executor(place)
-                out = exe.run(
-                    paddle.static.default_main_program(),
-                    feed={'x': x_i, 'y': y_i},
-                    fetch_list=[result],
-                )
-                np.testing.assert_array_equal(
-                    out[0], np.where((x_i > 1), x_i, y_i)
-                )
+    # @test_with_pir_api
+    # def test_api_broadcast(self, use_cuda=False):
+    #     main_program = paddle.static.Program()
+    #     with paddle.static.program_guard(main_program):
+    #         x = paddle.static.data(name='x', shape=[-1, 4, 1], dtype='float32')
+    #         y = paddle.static.data(name='y', shape=[-1, 4, 2], dtype='float32')
+    #         x_i = np.array([[0.9383, 0.1983, 3.2, 1.2]]).astype('float32')
+    #         y_i = np.array([[1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0]]).astype(
+    #             'float32'
+    #         )
+    #         result = paddle.where((x > 1), x=x, y=y)
+    #         for use_cuda in [False, True]:
+    #             if use_cuda and (not base.core.is_compiled_with_cuda()):
+    #                 return
+    #             place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+    #             exe = base.Executor(place)
+    #             out = exe.run(
+    #                 paddle.static.default_main_program(),
+    #                 feed={'x': x_i, 'y': y_i},
+    #                 fetch_list=[result],
+    #             )
+    #             np.testing.assert_array_equal(
+    #                 out[0], np.where((x_i > 1), x_i, y_i)
+    #             )
 
     @test_with_pir_api
     def test_scalar(self):

@@ -38,7 +38,6 @@ const std::unordered_map<std::string, std::string> CompatibleInfo::OP_NAMES = {
     {"pd_op.full", "fill_constant"},
     {"pd_op.sum", "reduce_sum"},
     {"pd_op.max", "reduce_max"},
-    {"pd_op.mean", "reduce_mean"},
     {"pd_op.add", "elementwise_add"},
     {"pd_op.elementwise_pow", "pow"},
     {"pd_op.multiply", "elementwise_mul"},
@@ -183,7 +182,8 @@ utils::AttributeMap CompatibleInfo::ConvertAttributes(
   utils::AttributeMap dst_attrs;
   for (auto& item : src_attrs) {
     VLOG(4) << "deal with " << item.first;
-    if (item.first == ::pir::kStopGradientAttrName) {
+    if (item.first == ::pir::kStopGradientAttrName ||
+        item.first == ::pir::kIsPersisableAttrName) {
       continue;
     } else if (item.second.isa<paddle::dialect::PlaceAttribute>()) {
       auto is_cpu =
