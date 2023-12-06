@@ -114,7 +114,13 @@ class RNNDescriptors {
                              seed_,
                              state_size);
 #else
-    if (!is_test_ && !is_initialized) {
+    // Note(lvyongkang): delete `is_initialized` in condition, cause this will
+    // lead to bug in PIR mode, where rnn op has an input named
+    // `dropout_state_in`. `dropout_state_in` will share same buffer with
+    // `dropout_state_out`, this buffer is the dropput_state in kernel. And
+    // since `dropout_state_in` is input, so this buffer will be initialized in
+    // kernel.
+    if (!is_test_) {
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::cudnnDropoutGetStatesSize(handle, &state_size));
       dropout_state->Resize({static_cast<int64_t>(state_size)});

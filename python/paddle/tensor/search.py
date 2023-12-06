@@ -99,7 +99,7 @@ def argsort(x, axis=-1, descending=False, name=None):
               [1, 1, 0, 2],
               [0, 2, 1, 1]]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         _, ids = _C_ops.argsort(x, axis, descending)
         return ids
     else:

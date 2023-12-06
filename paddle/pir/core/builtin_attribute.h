@@ -118,7 +118,11 @@ class IR_API ArrayAttribute : public Attribute {
 
   bool empty() const;
 
+  // Returns element at specified location pos, with bounds checking.
   Attribute at(size_t index) const;
+
+  // Returns element at specified location pos. No bounds checking is performed.
+  Attribute operator[](size_t index) const;
 
   static ArrayAttribute get(IrContext* ctx,
                             const std::vector<Attribute>& value);
