@@ -113,7 +113,7 @@ class Exponential(exponential_family.ExponentialFamily):
 
         .. math::
 
-            {f(x; \theta) = \theta e^{- \theta x }}
+            { f(x; \theta) = \theta e^{- \theta x} }
 
         Args:
             value (Tensor): Value to be evaluated.
