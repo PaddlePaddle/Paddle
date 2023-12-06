@@ -48,7 +48,7 @@ TEST(Operator, Operator_ElementWise_Add_Test0) {
   NodeAttr attrs;
   std::vector<ir::Tensor> inputs{A.tensor(), B.tensor()};
   std::vector<Type> type{Float(32)};
-  common::Target target = common::DefaultHostTarget();
+  cinn::common::Target target = cinn::common::DefaultHostTarget();
   auto impl = OpStrategy::SelectImpl(strategy[add](
       attrs, inputs, type, {{M.as_int32(), N.as_int32()}}, target));
   ASSERT_EQ(impl->name, "strategy.elementwise_add.x86");
@@ -58,10 +58,10 @@ TEST(Operator, Operator_ElementWise_Add_Test0) {
   Module::Builder builder("module0", target);
 
   std::string out_name = "C";
-  common::CINNValuePack cinn_input =
-      common::CINNValuePack{{common::CINNValue(A),
-                             common::CINNValue(B),
-                             common::CINNValue(out_name)}};
+  cinn::common::CINNValuePack cinn_input =
+      cinn::common::CINNValuePack{{cinn::common::CINNValue(A),
+                                   cinn::common::CINNValue(B),
+                                   cinn::common::CINNValue(out_name)}};
   std::vector<std::string> input_output_names{"A", "B", out_name};
 
   auto funcs = framework::GetFuncFromImpl(
@@ -83,28 +83,29 @@ TEST(Operator, Operator_ElementWise_Add_Test0) {
   cinn_buffer_t *B_buf;
   int set_value = 0;
   if (set_value != 0) {
-    A_buf = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+    A_buf = cinn::common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
                 .set_align(512)
                 .set_val(set_value)
                 .Build();
-    B_buf = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+    B_buf = cinn::common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
                 .set_align(512)
                 .set_val(set_value)
                 .Build();
   } else {
-    A_buf = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+    A_buf = cinn::common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
                 .set_align(512)
                 .set_random()
                 .Build();
-    B_buf = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+    B_buf = cinn::common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
                 .set_align(512)
                 .set_random()
                 .Build();
   }
-  auto *C_buf = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
-                    .set_align(512)
-                    .set_zero()
-                    .Build();
+  auto *C_buf =
+      cinn::common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+          .set_align(512)
+          .set_zero()
+          .Build();
 
   cinn_pod_value_t a_arg(A_buf), b_arg(B_buf), c_arg(C_buf);
   cinn_pod_value_t args[] = {a_arg, b_arg, c_arg};
@@ -131,7 +132,7 @@ TEST(Operator, Operator_ElementWise_Add_Test1) {
   attrs.attr_store["axis"] = 1;
   std::vector<ir::Tensor> inputs{A.tensor(), B.tensor()};
   std::vector<Type> type{Float(32)};
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
   auto impl = OpStrategy::SelectImpl(
       strategy[add](attrs, inputs, type, {{100, 32}}, target));
   ASSERT_EQ(impl->name, "strategy.elementwise_add.x86");
@@ -141,10 +142,10 @@ TEST(Operator, Operator_ElementWise_Add_Test1) {
   Module::Builder builder("module", target);
 
   std::string out_name = "C";
-  common::CINNValuePack cinn_input =
-      common::CINNValuePack{{common::CINNValue(A),
-                             common::CINNValue(B),
-                             common::CINNValue(out_name)}};
+  cinn::common::CINNValuePack cinn_input =
+      cinn::common::CINNValuePack{{cinn::common::CINNValue(A),
+                                   cinn::common::CINNValue(B),
+                                   cinn::common::CINNValue(out_name)}};
   std::vector<std::string> input_output_names{"A", "B", out_name};
 
   auto funcs = framework::GetFuncFromImpl(
@@ -181,7 +182,7 @@ TEST(Operator, Operator_BroadcastTo) {
 
   std::vector<ir::Tensor> inputs{B.tensor()};
   std::vector<Type> type{Float(32)};
-  common::Target target = common::DefaultHostTarget();
+  cinn::common::Target target = cinn::common::DefaultHostTarget();
 
   auto impl = OpStrategy::SelectImpl(
       strategy[broadcast_to](attrs, inputs, type, {out_shape}, target));
@@ -189,8 +190,8 @@ TEST(Operator, Operator_BroadcastTo) {
   std::string func_name = "broadcast_to";
 
   std::string out_name = "C";
-  common::CINNValuePack cinn_input = common::CINNValuePack{
-      {common::CINNValue(B), common::CINNValue(out_name)}};
+  cinn::common::CINNValuePack cinn_input = cinn::common::CINNValuePack{
+      {cinn::common::CINNValue(B), cinn::common::CINNValue(out_name)}};
   std::vector<std::string> input_output_names{"B", out_name};
 
   auto funcs = framework::GetFuncFromImpl(
@@ -201,12 +202,12 @@ TEST(Operator, Operator_BroadcastTo) {
   }
 }
 
-common::CINNValuePack GetComputeResult(
+cinn::common::CINNValuePack GetComputeResult(
     const std::shared_ptr<OpImpl> &impl,
-    std::vector<common::CINNValue> &cinn_inputs,  // NOLINT
+    std::vector<cinn::common::CINNValue> &cinn_inputs,  // NOLINT
     const std::string &output_name = "") {
   cinn_inputs.emplace_back(output_name);
-  return impl->fcompute(common::CINNValuePack{cinn_inputs});
+  return impl->fcompute(cinn::common::CINNValuePack{cinn_inputs});
 }
 
 TEST(Operator, Operator_BroadcastTo_0) {
@@ -233,21 +234,22 @@ TEST(Operator, Operator_BroadcastTo_0) {
   attrs.attr_store["dim"] = dim;
 
   std::vector<Type> type{Float(32)};
-  common::Target target = common::DefaultHostTarget();
+  cinn::common::Target target = cinn::common::DefaultHostTarget();
 
   auto impl_0 = OpStrategy::SelectImpl(strategy[const_scalar](
       attrs, std::vector<ir::Tensor>{}, type, {out_shape}, target));
-  std::vector<common::CINNValue> cinn_inputs;
-  common::CINNValuePack rets_0 = GetComputeResult(impl_0, cinn_inputs, "out_0");
+  std::vector<cinn::common::CINNValue> cinn_inputs;
+  cinn::common::CINNValuePack rets_0 =
+      GetComputeResult(impl_0, cinn_inputs, "out_0");
   ir::Expr out_0 = rets_0[0];
   auto tensor_0 = out_0.as_tensor_ref();
   poly::StageMap stages_0 = rets_0.back();
 
   auto impl_1 = OpStrategy::SelectImpl(
       strategy[broadcast_to](attrs, {tensor_0}, type, {out_shape}, target));
-  std::vector<common::CINNValue> cinn_inputs_1 = {
-      {common::CINNValue(tensor_0)}};
-  common::CINNValuePack rets_1 =
+  std::vector<cinn::common::CINNValue> cinn_inputs_1 = {
+      {cinn::common::CINNValue(tensor_0)}};
+  cinn::common::CINNValuePack rets_1 =
       GetComputeResult(impl_1, cinn_inputs_1, "out_1");
 
   ir::Expr out_1 = rets_1[0];
@@ -256,18 +258,18 @@ TEST(Operator, Operator_BroadcastTo_0) {
 
   auto impl_2 = OpStrategy::SelectImpl(
       strategy[reduce_sum](attrs, {A.tensor()}, type, {out_shape}, target));
-  std::vector<common::CINNValue> cinn_inputs_2 = {
-      {common::CINNValue(A.tensor())}};
-  common::CINNValuePack rets_2 =
+  std::vector<cinn::common::CINNValue> cinn_inputs_2 = {
+      {cinn::common::CINNValue(A.tensor())}};
+  cinn::common::CINNValuePack rets_2 =
       GetComputeResult(impl_2, cinn_inputs_2, "out_2");
 
   ir::Expr out_2 = rets_2[0];
   auto tensor_2 = out_2.as_tensor_ref();
   poly::StageMap stages_2 = rets_2.back();
 
-  std::vector<common::CINNValue> cinn_inputs_4 = {
-      {common::CINNValue(A.tensor())}};
-  common::CINNValuePack rets_4 =
+  std::vector<cinn::common::CINNValue> cinn_inputs_4 = {
+      {cinn::common::CINNValue(A.tensor())}};
+  cinn::common::CINNValuePack rets_4 =
       GetComputeResult(impl_2, cinn_inputs_4, "out_4");
   ir::Expr out_4 = rets_4[0];
   auto tensor_4 = out_4.as_tensor_ref();
@@ -275,9 +277,9 @@ TEST(Operator, Operator_BroadcastTo_0) {
 
   auto impl_3 = OpStrategy::SelectImpl(strategy[elementwise_add](
       attrs, {tensor_1, tensor_2}, type, {out_shape}, target));
-  std::vector<common::CINNValue> cinn_inputs_3 = {
-      {common::CINNValue(tensor_1), common::CINNValue(tensor_2)}};
-  common::CINNValuePack rets_3 =
+  std::vector<cinn::common::CINNValue> cinn_inputs_3 = {
+      {cinn::common::CINNValue(tensor_1), cinn::common::CINNValue(tensor_2)}};
+  cinn::common::CINNValuePack rets_3 =
       GetComputeResult(impl_3, cinn_inputs_3, "out_3");
 
   ir::Expr out_3 = rets_3[0];

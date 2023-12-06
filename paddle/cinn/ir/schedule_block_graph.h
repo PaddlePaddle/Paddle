@@ -28,7 +28,7 @@ namespace cinn {
 namespace ir {
 
 // Node in units of ScheduleBlock.
-class ScheduleBlockNode : public common::GraphNode {
+class ScheduleBlockNode : public cinn::common::GraphNode {
  public:
   ScheduleBlockNode(Expr block, const IRSchedule& ir_sch);
 
@@ -40,7 +40,7 @@ class ScheduleBlockNode : public common::GraphNode {
 
   // Get all control stmts containing the schedule_block, now only the For node
   // is being considered.
-  std::vector<Expr> ControlStmts() const;
+  std::vector<Expr> GetLoops() const;
 
   // Get all the upstream nodes that this node depends on.
   std::unordered_set<std::string> UpstreamNodes() const {
@@ -66,8 +66,10 @@ class ScheduleBlockNode : public common::GraphNode {
   }
 
  private:
-  std::vector<common::Shared<common::GraphEdge>> OrderedInLinks() const;
-  std::vector<common::Shared<common::GraphEdge>> OrderedOutLinks() const;
+  std::vector<cinn::common::Shared<cinn::common::GraphEdge>> OrderedInLinks()
+      const;
+  std::vector<cinn::common::Shared<cinn::common::GraphEdge>> OrderedOutLinks()
+      const;
 
  private:
   std::string id_;
@@ -78,7 +80,7 @@ class ScheduleBlockNode : public common::GraphNode {
 
 // Graph in units of ScheduleBlockNode, each node corresponds to a ScheduleBlock
 // in IR.
-class ScheduleBlockGraph : public common::Graph {
+class ScheduleBlockGraph : public cinn::common::Graph {
  public:
   explicit ScheduleBlockGraph(const IRSchedule& ir_sch);
 
@@ -88,7 +90,8 @@ class ScheduleBlockGraph : public common::Graph {
   // Retrieve a node in the graph by id, the id is same as the name of
   // ScheduleBlock.
   ScheduleBlockNode* RetrieveNode(const std::string& id) {
-    return dynamic_cast<ScheduleBlockNode*>(common::Graph::RetrieveNode(id));
+    return dynamic_cast<ScheduleBlockNode*>(
+        cinn::common::Graph::RetrieveNode(id));
   }
 
   // Get all block name in order,

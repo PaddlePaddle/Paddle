@@ -55,7 +55,7 @@ void BatchNormKernel(const Context& ctx,
 
   bool global_stats = test_mode || use_global_stats;
 
-  auto data_layout = phi::StringToDataLayout(data_layout_str);
+  auto data_layout = common::StringToDataLayout(data_layout_str);
 
   const auto& x_dims = x.dims();
   PADDLE_ENFORCE_GE(

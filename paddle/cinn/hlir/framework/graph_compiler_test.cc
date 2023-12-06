@@ -30,7 +30,7 @@ namespace cinn {
 namespace hlir {
 namespace framework {
 
-using common::Float;
+using cinn::common::Float;
 using frontend::Placeholder;
 
 TEST(GraphCompilerTest, TestRemoveInvaildVariables) {
@@ -41,7 +41,7 @@ TEST(GraphCompilerTest, TestRemoveInvaildVariables) {
   auto c = builder.Add(a, b, 1);
   auto d = builder.Relu(c);
 
-  auto target = common::DefaultHostTarget();
+  auto target = cinn::common::DefaultHostTarget();
   auto program = builder.Build();
   auto graph = Optimize(&program, {}, target);
 
@@ -66,7 +66,7 @@ TEST(GraphCompilerTest, TestInsertBufferHandlers) {
   auto c = builder.Add(a, b, 1);
   auto d = builder.Relu(c);
 
-  auto target = common::DefaultHostTarget();
+  auto target = cinn::common::DefaultHostTarget();
   auto program = builder.Build();
   auto graph = Optimize(&program, {}, target);
   auto scope = BuildScope(target, graph);
@@ -191,7 +191,7 @@ void RunCublas(
   auto C = net_builder.Matmul(A, B, trans_a, trans_b);
 
   auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
 
   hlir::framework::ApplyPass(graph.get(), "TransToCustomCallPass");
@@ -245,7 +245,7 @@ TEST(GraphCompilerTest, TestLowering) {
   auto c = builder.Add(a, b, 1);
   auto d = builder.Relu(c);
 
-  auto target = common::DefaultNVGPUTarget();
+  auto target = cinn::common::DefaultNVGPUTarget();
   auto program = builder.Build();
   auto graph = Optimize(&program, {}, target);
   auto scope = BuildScope(target, graph);
@@ -265,7 +265,7 @@ TEST(GraphCompilerTest, TestCodegenAndJit) {
   auto c = builder.Add(a, b, 1);
   auto d = builder.Relu(c);
 
-  auto target = common::DefaultNVGPUTarget();
+  auto target = cinn::common::DefaultNVGPUTarget();
   auto program = builder.Build();
   auto graph = Optimize(&program, {}, target);
   auto scope = BuildScope(target, graph);
@@ -285,7 +285,7 @@ TEST(GraphCompilerTest, TestBuildInstruction) {
   auto c = builder.Add(a, b, 1);
   auto d = builder.Relu(c);
 
-  auto target = common::DefaultNVGPUTarget();
+  auto target = cinn::common::DefaultNVGPUTarget();
   auto program = builder.Build();
   auto graph = Optimize(&program, {}, target);
   auto scope = BuildScope(target, graph);

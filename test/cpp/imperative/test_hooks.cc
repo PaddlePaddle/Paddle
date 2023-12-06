@@ -85,7 +85,7 @@ TEST(TestHooks, TestGradVarLeafBackwardHook) {
   auto* x_tensor = x->MutableVar()->GetMutable<phi::DenseTensor>();
   auto* y_tensor = y->MutableVar()->GetMutable<phi::DenseTensor>();
 
-  x_tensor->Resize(phi::make_ddim(x_dims));
+  x_tensor->Resize(common::make_ddim(x_dims));
   auto* mutable_x = x_tensor->mutable_data<float>(place);
   memory::Copy(place,
                mutable_x,
@@ -93,7 +93,7 @@ TEST(TestHooks, TestGradVarLeafBackwardHook) {
                src_data.data(),
                sizeof(float) * src_data.size());
 
-  y_tensor->Resize(phi::make_ddim(y_dims));
+  y_tensor->Resize(common::make_ddim(y_dims));
   auto* mutable_y = y_tensor->mutable_data<float>(place);
   memory::Copy(place,
                mutable_y,
@@ -175,7 +175,7 @@ void GradVarLeafBackwardHookWithGradAccmulatedTest() {
   auto* y_tensor = y->MutableVar()->GetMutable<phi::DenseTensor>();
   auto* z_tensor = z->MutableVar()->GetMutable<phi::DenseTensor>();
 
-  x_tensor->Resize(phi::make_ddim(x_dims));
+  x_tensor->Resize(common::make_ddim(x_dims));
   auto* mutable_x = x_tensor->mutable_data<float>(place);
   memory::Copy(place,
                mutable_x,
@@ -183,7 +183,7 @@ void GradVarLeafBackwardHookWithGradAccmulatedTest() {
                src_data.data(),
                sizeof(float) * src_data.size());
 
-  y_tensor->Resize(phi::make_ddim(y_dims));
+  y_tensor->Resize(common::make_ddim(y_dims));
   auto* mutable_y = y_tensor->mutable_data<float>(place);
   memory::Copy(place,
                mutable_y,
@@ -191,7 +191,7 @@ void GradVarLeafBackwardHookWithGradAccmulatedTest() {
                src_data.data(),
                sizeof(float) * src_data.size());
 
-  z_tensor->Resize(phi::make_ddim(z_dims));
+  z_tensor->Resize(common::make_ddim(z_dims));
   auto* mutable_z = z_tensor->mutable_data<float>(place);
   memory::Copy(place,
                mutable_z,

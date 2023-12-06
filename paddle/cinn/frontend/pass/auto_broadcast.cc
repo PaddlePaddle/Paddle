@@ -118,7 +118,7 @@ class AutoBroadcastPass : public ProgramPass {
  protected:
   void ApplyImpl(Program* program,
                  const std::unordered_set<std::string>& fetch_ids,
-                 const common::Target& target) override {
+                 const cinn::common::Target& target) override {
     NetBuilder builder("auto_broadcast_builder");
     for (auto& var : program->GetInputs()) {
       builder.CreateInput(var);
