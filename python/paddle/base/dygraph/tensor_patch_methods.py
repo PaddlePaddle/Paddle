@@ -200,10 +200,7 @@ def monkey_patch_tensor():
         assert isinstance(
             value, (np.ndarray, base_tensor, dict, str)
         ), "Variable set_value function, arguments type only support Variable, numpy, Tensor, dict, string."
-        set_value_for_dist_tensor = hasattr(
-            paddle.base.libpaddle, "DistTensor"
-        ) and isinstance(self.value().get_tensor(), paddle.base.core.DistTensor)
-        if set_value_for_dist_tensor:
+        if self.is_dist():
             assert isinstance(
                 value, (np.ndarray, base_tensor)
             ), "For set_value function of dist tensor, arguments type only support numpy or Tensor."
@@ -239,7 +236,7 @@ def monkey_patch_tensor():
             # NOTE(wuweilong): self could be Tensor, the subsequent behavior are defined in different files
             # if self is Tensor, method value() return self that defined in this file, get_tensor() defined in eager_method.cc
             # this Interface behavior will be unifed in the future.
-            if set_value_for_dist_tensor:
+            if self.is_dist():
                 # calling set method bound for DistTensor
                 value = paddle.distributed.shard_tensor(
                     value, self.value().process_mesh, self.value().placements
