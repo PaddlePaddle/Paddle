@@ -200,6 +200,10 @@ def monkey_patch_tensor():
         assert isinstance(
             value, (np.ndarray, base_tensor, dict, str)
         ), "Variable set_value function, arguments type only support Variable, numpy, Tensor, dict, string."
+        if self.is_dist():
+            assert isinstance(
+                value, (np.ndarray, base_tensor)
+            ), "For set_value function of dist tensor, arguments type only support numpy or Tensor."
 
         if isinstance(value, (dict, str)):
             assert len(self) == len(
@@ -232,6 +236,13 @@ def monkey_patch_tensor():
             # NOTE(wuweilong): self could be Tensor, the subsequent behavior are defined in different files
             # if self is Tensor, method value() return self that defined in this file, get_tensor() defined in eager_method.cc
             # this Interface behavior will be unifed in the future.
+            if self.is_dist():
+                # calling set method bound for DistTensor
+                value = paddle.distributed.shard_tensor(
+                    value, self.value().process_mesh, self.value().placements
+                )
+                self.value().get_tensor().set(value.get_tensor())
+                return
             self.value().get_tensor().set(
                 value, framework._current_expected_place()
             )

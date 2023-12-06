@@ -45,6 +45,7 @@
 #include "paddle/fluid/framework/new_executor/instruction/cinn_jit_instruction.h"
 #endif
 
+#include "paddle/fluid/framework/new_executor/instruction/builtin_combine_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/has_elements_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/if_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
@@ -651,7 +652,11 @@ void PirInterpreter::BuildInstruction() {
   for (auto& op : *ir_block_) {
     VLOG(6) << "Build Instruction for op: " << op_idx;
     if (op.dialect()->name() == "builtin") {
-      if (interpreter::GetSpecialOpNames().count(op.name())) {
+      if (op.isa<pir::CombineOp>()) {
+        vec_instruction_base_.emplace_back(
+            std::make_unique<BuiltinCombineInstruction>(
+                op_idx++, place_, &op, value_exe_info_.get()));
+      } else if (interpreter::GetSpecialOpNames().count(op.name())) {
         VLOG(6) << "skip process builtin dialect op: " << op.name();
         continue;
       }
