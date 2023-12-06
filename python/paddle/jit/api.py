@@ -1071,6 +1071,7 @@ def save(layer, path, input_spec=None, **configs):
     extra_var_info = {}
     if isinstance(layer, Layer):
         functions = list(set(dir(inner_layer)))
+        functions = sorted(functions)
         if inner_layer._forward_pre_hooks or inner_layer._forward_post_hooks:
             with_hook = True
     else:
