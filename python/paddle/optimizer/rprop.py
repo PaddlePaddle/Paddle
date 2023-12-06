@@ -15,7 +15,7 @@
 import warnings
 
 from paddle import _C_ops
-from paddle.tensor.creation import zeros_like
+from paddle.tensor.creation import full_like, to_tensor, zeros_like
 
 from ..base import framework
 from ..base.dygraph import no_grad
@@ -50,22 +50,34 @@ class Rprop(Optimizer):
             name=name,
         )
         self.type = "rprop"
+        self._initial_learning_rate = learning_rate
         self._multi_precision = multi_precision
         self._master_weights = {}
         self._prevs = []
         self._learning_rates = []
-        self._learning_rate_range = learning_rate_range
-        self._etas = etas
+        self._learning_rate_range = to_tensor(learning_rate_range)
+        self._etas = to_tensor(etas)
+        self._already_init_prev_lr = set()
+
+    def _init_prev_lr(self, block, parameters):
+        assert isinstance(block, framework.Block)
+
         for p in parameters:
-            prev = zeros_like(p)
-            self._prevs.append(prev)
-            lr = p.new().resize_as_(p).fill_(learning_rate)
-            self._learning_rates.append(lr)
+            if p.name in self._already_init_prev_lr:
+                continue
+            for p in parameters:
+                prev = zeros_like(p)
+                self._prevs.append(prev)
+                lr = full_like(p, self._initial_learning_rate)
+                self._learning_rates.append(lr)
+                self._already_init_prev_lr.add(p.name)
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
         if isinstance(parameters, dict):
             parameters = self._update_param_group(parameters)
+
+        self._init_prev_lr(block, parameters)
 
         # Create accumulator tensors for first and second moments
         for p in parameters:

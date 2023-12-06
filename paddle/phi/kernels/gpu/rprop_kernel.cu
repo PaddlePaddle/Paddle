@@ -137,7 +137,7 @@ PD_REGISTER_KERNEL(rprop,
                    double) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
       kernel_key.dtype() == phi::DataType::BFLOAT16) {
-    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
   }
 }
 #endif
@@ -151,7 +151,7 @@ PD_REGISTER_KERNEL(rprop,
                    float,
                    double) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
-    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
   }
 }
 #endif

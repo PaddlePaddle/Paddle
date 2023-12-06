@@ -3570,6 +3570,16 @@ void RpropInferMeta(const MetaTensor& param,
       phi::errors::InvalidArgument(
           "Output(ParamOut) of RpropOp should not be null."));
 
+  PADDLE_ENFORCE_NOT_NULL(
+      prev_out,
+      phi::errors::InvalidArgument(
+          "Output(PrevOut) of RpropOp should not be null."));
+
+  PADDLE_ENFORCE_NOT_NULL(
+      learning_rate_out,
+      phi::errors::InvalidArgument(
+          "Output(LearningRateOut) of RpropOp should not be null."));
+
   param_out->set_dims(param.dims());
   param_out->set_dtype(param.dtype());
   prev_out->set_dims(prev.dims());

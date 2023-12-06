@@ -20,18 +20,18 @@
 namespace phi {
 
 template <typename T, typename Context>
-void RpropDenseKernel(const Context& dev_ctx,
-                      const DenseTensor& param,
-                      const DenseTensor& grad,
-                      const DenseTensor& prev,
-                      const DenseTensor& learning_rate,
-                      const paddle::optional<DenseTensor>& master_param,
-                      const DenseTensor& learning_rate_range,
-                      const DenseTensor& etas,
-                      bool multi_precision,
-                      DenseTensor* param_out,
-                      DenseTensor* prev_out,
-                      DenseTensor* learning_rate_out,
-                      DenseTensor* master_param_out);
+void RpropKernel(const Context& dev_ctx,
+                 const DenseTensor& param,
+                 const DenseTensor& grad,
+                 const DenseTensor& prev,
+                 const DenseTensor& learning_rate,
+                 const paddle::optional<DenseTensor>& master_param,
+                 const DenseTensor& learning_rate_range,
+                 const DenseTensor& etas,
+                 bool multi_precision,
+                 DenseTensor* param_out,
+                 DenseTensor* prev_out,
+                 DenseTensor* learning_rate_out,
+                 DenseTensor* master_param_out);
 
 }  // namespace phi
