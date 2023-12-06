@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import os
-from typing import List
+from typing import Dict, List
 
 import paddle
 from paddle.distributed.communication.group import is_initialized
@@ -72,16 +72,19 @@ def dedup_storage_metadata(global_state_dict):
 
 
 def save_state_dict(
-    state_dict, path, process_group=None, coordinator_rank=0
+    state_dict: Dict[str, paddle.Tensor],
+    path: str,
+    process_group: paddle.distributed.collective.Group = None,
+    coordinator_rank: int = 0,
 ) -> None:
     """
     Save the state_dict of model to path.
 
     Args:
-        state_dict: The state_dict to save.
-        path: The directory to save state_dict.
-        process_group: ProcessGroup to be used for cross-rank synchronization. Use the default process group which contains all cards.
-        coordinator_rank: The rank used to save non distributed values. Rank0 is used by default.
+        state_dict(Dict[str, paddle.Tensor]): The state_dict to save.
+        path(str): The directory to save state_dict.
+        process_group(paddle.distributed.collective.Group): ProcessGroup to be used for cross-rank synchronization. Use the default process group which contains all cards.
+        coordinator_rank(int): The rank used to save non distributed values. Rank0 is used by default.
 
     Examples:
         .. code-block:: python

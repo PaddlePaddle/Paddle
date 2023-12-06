@@ -15,7 +15,7 @@
 import copy
 import os
 from dataclasses import dataclass
-from typing import Tuple
+from typing import Dict, Tuple
 
 import paddle
 from paddle.distributed.communication.group import is_initialized
@@ -43,15 +43,15 @@ def get_rank_to_files(path, state_dict, process_group, use_dist):
         len(metadata_files) > 0
     ), "No metadata file found in the checkpoint directory:{path}."
     # The neccesary files to be read
-    tensor_id_list = []
+    tensor_key_list = []
     necessary_files = []
     for metadata_file in metadata_files:
         metadata = paddle.load(os.path.join(path, metadata_file))
         for local_tensor_index, file_name in metadata.storage_metadata.items():
             assert (
-                local_tensor_index not in tensor_id_list
+                local_tensor_index not in tensor_key_list
             ), f"Duplicate tensor_key:{local_tensor_index} found. Check whether the metadata_file:{metadata_file} contains the same tensor metadata."
-            tensor_id_list.append(local_tensor_index.tensor_key)
+            tensor_key_list.append(local_tensor_index.tensor_key)
             if local_tensor_index.tensor_key in state_dict:
                 necessary_files.append(file_name)
     necessary_data_files_set = set(necessary_files)
@@ -78,7 +78,7 @@ def get_rank_to_files(path, state_dict, process_group, use_dist):
         global_data_files_set & necessary_data_files_set
         == necessary_data_files_set
     ), f"The checkpoint files are not complete. Please check the checkpoint directory:{path}.global_data_files_set:{global_data_files_set}, necessary_data_files_set:{necessary_data_files_set}"
-    missing_keys = set(state_dict.keys()) - set(tensor_id_list)
+    missing_keys = set(state_dict.keys()) - set(tensor_key_list)
     if len(missing_keys) > 0:
         logger.warning(
             f"Missing keys:{missing_keys}, check whether the checkpoint is complete."
@@ -347,15 +347,18 @@ def get_read_items(path, state_dict, process_group, use_dist):
 
 
 def load_state_dict(
-    state_dict, path, process_group=None, coordinator_rank=0
+    state_dict: Dict[str, paddle.Tensor],
+    path: str,
+    process_group: paddle.distributed.collective.Group = None,
+    coordinator_rank: int = 0,
 ) -> None:
     """
     Load the state_dict inplace from a checkpoint path.
     Args:
-        state_dict: The state_dict to load. It will be modified inplace after loading.
-        path: The directory to load checkpoint files.
-        process_group: ProcessGroup to be used for cross-rank synchronization. Use the default process group which contains all cards.
-        coordinator_rank: The rank used to coordinate the checkpoint. Rank0 is used by default.
+        state_dict(Dict[str, paddle.Tensor]): The state_dict to load. It will be modified inplace after loading.
+        path(str): The directory to load checkpoint files.
+        process_group(paddle.distributed.collective.Group): ProcessGroup to be used for cross-rank synchronization. Use the default process group which contains all cards.
+        coordinator_rank(int): The rank used to coordinate the checkpoint. Rank0 is used by default.
     Example:
         .. code-block:: python
             >>> # doctest: +SKIP('Load state dict.')
