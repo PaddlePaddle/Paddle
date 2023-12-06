@@ -20,7 +20,6 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     compare_legacy_with_pt,
-    enable_to_static_guard,
     test_ast_only,
 )
 
@@ -231,31 +230,30 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
 class TestPartialProgramRaiseError(Dy2StTestBase):
     @test_ast_only
     def test_param_type(self):
-        with enable_to_static_guard(True):
-            x_data = np.random.random((20, 20)).astype('float32')
+        x_data = np.random.random((20, 20)).astype('float32')
 
-            with base.dygraph.guard(base.CPUPlace()):
-                net = SimpleFcLayer(20)
-                x = base.dygraph.to_variable(x_data)
-                out = net(x)
+        with base.dygraph.guard(base.CPUPlace()):
+            net = SimpleFcLayer(20)
+            x = base.dygraph.to_variable(x_data)
+            out = net(x)
 
-                program_cache = net.forward.program_cache
-                _, (concrete_program, _) = program_cache.last()
+            program_cache = net.forward.program_cache
+            _, (concrete_program, _) = program_cache.last()
 
-                params = concrete_program.parameters
+            params = concrete_program.parameters
 
-                concrete_program.parameters = params[0]
-                # TypeError: Type of self._params should be list or tuple,
-                # but received <class 'paddle.base.framework.EagerParamBase'>.
-                with self.assertRaises(TypeError):
-                    partial_program_from(concrete_program)
+            concrete_program.parameters = params[0]
+            # TypeError: Type of self._params should be list or tuple,
+            # but received <class 'paddle.base.framework.EagerParamBase'>.
+            with self.assertRaises(TypeError):
+                partial_program_from(concrete_program)
 
-                params[0] = "linear.w.0"
-                concrete_program.parameters = params
-                # TypeError: Type of self._params[0] should be framework.EagerParamBase,
-                # but received <type 'str'>.
-                with self.assertRaises(TypeError):
-                    partial_program_from(concrete_program)
+            params[0] = "linear.w.0"
+            concrete_program.parameters = params
+            # TypeError: Type of self._params[0] should be framework.EagerParamBase,
+            # but received <type 'str'>.
+            with self.assertRaises(TypeError):
+                partial_program_from(concrete_program)
 
 
 if __name__ == '__main__':

@@ -216,11 +216,10 @@ class TestSeq2seq(Dy2StTestBase):
                 return infer(self.args, attn_model)
 
     def run_static(self, mode="train", attn_model=False):
-        with enable_to_static_guard(True):
-            if mode == "train":
-                return train(self.args, attn_model)
-            else:
-                return infer(self.args, attn_model)
+        if mode == "train":
+            return train(self.args, attn_model)
+        else:
+            return infer(self.args, attn_model)
 
     def _test_train(self, attn_model=False):
         dygraph_loss = self.run_dygraph(mode="train", attn_model=attn_model)
