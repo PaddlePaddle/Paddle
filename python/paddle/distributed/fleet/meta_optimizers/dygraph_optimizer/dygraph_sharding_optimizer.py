@@ -324,16 +324,20 @@ class DygraphShardingOptimizer:
                 if not self.tensor_fusion
                 else self._rank2fused
             )
+            broadcast_tasks = []
             for rank, params in valid_rank_to_params.items():
                 for param in params:
-                    paddle.distributed.broadcast(
+                    task = paddle.distributed.broadcast(
                         param,
                         # the collective API need src rank to be the global rank id
                         # instead of the relative logic rank id within group
                         src=self._hcg.get_sharding_parallel_group().ranks[rank],
                         group=self._hcg.get_sharding_parallel_group(),
-                        sync_op=True,
+                        sync_op=False,
                     )
+                    broadcast_tasks.append(task)
+            for task in broadcast_tasks:
+                task.wait()
 
     def _update_trainable(self):
         """
