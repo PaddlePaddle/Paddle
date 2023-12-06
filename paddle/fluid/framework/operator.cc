@@ -1530,11 +1530,21 @@ bool OperatorWithKernel::SupportsKernelType(
 // 2. Whether this op has specific implementation;
 // 3. Whether mkldnn kernel can be used.
 #ifdef PADDLE_WITH_DNNL
-  if ((!this->DnnFallback() && !paddle::platform::in_mkldnn_white_list(type_) &&
-       this->CanMKLDNNBeUsed(exe_ctx, kernel_type.data_type_)) ||
-      (platform::is_cpu_place(exe_ctx.GetPlace()) &&
-       this->SupportsMKLDNN(phi::TransToPhiDataType(kernel_type.data_type_)) &&
-       this->ContainsBF16TensorInputs(exe_ctx))) {
+  if (!this->DnnFallback() && !paddle::platform::in_mkldnn_white_list(type_) &&
+      this->CanMKLDNNBeUsed(exe_ctx, kernel_type.data_type_)) {
+    auto tmp_kernel_type = kernel_type;
+    tmp_kernel_type.library_type_ = framework::LibraryType::kMKLDNN;
+    tmp_kernel_type.data_layout_ = framework::DataLayout::ONEDNN;
+    return kernels.find(tmp_kernel_type) != kernels.end();
+  } else if (platform::is_cpu_place(exe_ctx.GetPlace()) &&
+             HasAttr("use_mkldnn") &&
+             this->SupportsMKLDNN(
+                 phi::TransToPhiDataType(kernel_type.data_type_)) &&
+             this->ContainsBF16TensorInputs(exe_ctx)) {
+    // SetAttr("use_mkldnn", paddle::framework::Attribute(false));
+    // if (HasAttr("mkldnn_data_type")) {
+    //   SetAttr("mkldnn_data_type", paddle::framework::Attribute("bfloat16"));
+    // }
     auto tmp_kernel_type = kernel_type;
     tmp_kernel_type.library_type_ = framework::LibraryType::kMKLDNN;
     tmp_kernel_type.data_layout_ = framework::DataLayout::ONEDNN;
@@ -1567,9 +1577,6 @@ bool OperatorWithKernel::CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
 
 bool OperatorWithKernel::ContainsBF16TensorInputs(
     const framework::ExecutionContext& ctx) const {
-  if (type_ == "reshape2" || type_ == "cast") {
-    return false;
-  }
   for (auto* name : ctx.InNameList()) {
     if (ctx.InputSize(*name) == 1UL) {
       if (ctx.InputVar(*name)->Get<phi::DenseTensor>().dtype() ==
@@ -1826,13 +1833,21 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 // 2. Whether this op has specific implementation;
 // 3. Whether mkldnn kernel can be used.
 #ifdef PADDLE_WITH_DNNL
-      if ((!this->DnnFallback() &&
-           !paddle::platform::in_mkldnn_white_list(type_) &&
-           this->CanMKLDNNBeUsed(exe_ctx, kernel_type_->data_type_)) ||
-          (platform::is_cpu_place(exe_ctx.GetPlace()) &&
-           this->SupportsMKLDNN(
-               phi::TransToPhiDataType(kernel_type_->data_type_)) &&
-           this->ContainsBF16TensorInputs(exe_ctx))) {
+      if (!this->DnnFallback() &&
+          !paddle::platform::in_mkldnn_white_list(type_) &&
+          this->CanMKLDNNBeUsed(exe_ctx, kernel_type_->data_type_)) {
+        kernel_type_->library_type_ = framework::LibraryType::kMKLDNN;
+        kernel_type_->data_layout_ = framework::DataLayout::ONEDNN;
+      } else if (platform::is_cpu_place(exe_ctx.GetPlace()) &&
+                 HasAttr("use_mkldnn") &&
+                 this->SupportsMKLDNN(
+                     phi::TransToPhiDataType(kernel_type_->data_type_)) &&
+                 this->ContainsBF16TensorInputs(exe_ctx)) {
+        // SetAttr("use_mkldnn", paddle::framework::Attribute(false));
+        // if (HasAttr("mkldnn_data_type")) {
+        //   SetAttr("mkldnn_data_type",
+        //   paddle::framework::Attribute("bfloat16"));
+        // }
         kernel_type_->library_type_ = framework::LibraryType::kMKLDNN;
         kernel_type_->data_layout_ = framework::DataLayout::ONEDNN;
       }
@@ -2157,12 +2172,18 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 // 2. Whether this op has specific implementation;
 // 3. Whether mkldnn kernel can be used.
 #ifdef PADDLE_WITH_DNNL
-  if ((!this->DnnFallback() && !paddle::platform::in_mkldnn_white_list(type_) &&
-       this->CanMKLDNNBeUsed(ctx, expected_kernel_key.data_type_)) ||
-      (platform::is_cpu_place(ctx.GetPlace()) &&
-       this->SupportsMKLDNN(
-           phi::TransToPhiDataType(expected_kernel_key.data_type_)) &&
-       this->ContainsBF16TensorInputs(ctx))) {
+  if (!this->DnnFallback() && !paddle::platform::in_mkldnn_white_list(type_) &&
+      this->CanMKLDNNBeUsed(ctx, expected_kernel_key.data_type_)) {
+    expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
+    expected_kernel_key.data_layout_ = framework::DataLayout::ONEDNN;
+  } else if (platform::is_cpu_place(ctx.GetPlace()) && HasAttr("use_mkldnn") &&
+             this->SupportsMKLDNN(
+                 phi::TransToPhiDataType(expected_kernel_key.data_type_)) &&
+             this->ContainsBF16TensorInputs(ctx)) {
+    // SetAttr("use_mkldnn", paddle::framework::Attribute(false));
+    // if (HasAttr("mkldnn_data_type")) {
+    //   SetAttr("mkldnn_data_type", paddle::framework::Attribute("bfloat16"));
+    // }
     expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
     expected_kernel_key.data_layout_ = framework::DataLayout::ONEDNN;
   }
