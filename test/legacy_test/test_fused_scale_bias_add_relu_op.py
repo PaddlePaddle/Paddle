@@ -90,7 +90,7 @@ class TestFusedScaleBiasAddReluOp(OpTest):
             }
 
         self.outputs = {
-            'y': y_output,
+            'out': y_output,
         }
 
     def has_cuda(self):
