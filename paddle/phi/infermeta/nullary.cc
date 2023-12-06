@@ -312,4 +312,10 @@ void TriuIndicesInferMeta(
   out->set_dims(out_dims);
   out->set_dtype(dtype);
 }
+
+void ReadFileInferMeta(const std::string& filename, MetaTensor* out) {
+  auto out_dims = std::vector<int>(1, -1);
+  out->set_dims(phi::make_ddim(out_dims));
+}
+
 }  // namespace phi

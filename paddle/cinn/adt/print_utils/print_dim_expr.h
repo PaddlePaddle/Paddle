@@ -14,12 +14,12 @@
 
 #pragma once
 
-#include <string>
+#include "paddle/cinn/adt/adt.h"
+#include "paddle/cinn/adt/dim_expr.h"
 
 namespace cinn::adt {
 
-class Constant;
+std::string ToTxtString(const DimExpr& loop_size);
 
-std::string ToTxtString(const Constant& constant);
-
+std::string ToTxtString(const List<DimExpr>& loop_sizes);
 }  // namespace cinn::adt
