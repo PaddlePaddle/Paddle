@@ -25,7 +25,6 @@ import paddle
 from paddle import base
 from paddle.base import core, framework
 from paddle.base.backward import append_backward
-from paddle.base.framework import Program, program_guard
 from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(123)
@@ -56,8 +55,8 @@ class TestCondInputOutput(unittest.TestCase):
             )
 
         main_program = paddle.static.Program()
-        startup_program = Program()
-        with program_guard(main_program, startup_program):
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             x = paddle.tensor.fill_constant(
                 shape=[1], dtype='float32', value=0.1
             )
@@ -99,8 +98,8 @@ class TestCondInputOutput(unittest.TestCase):
             return paddle.full(shape=[], dtype='int32', fill_value=-1)
 
         main_program = paddle.static.Program()
-        startup_program = Program()
-        with program_guard(main_program, startup_program):
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             x = paddle.full(shape=[1], dtype='float32', fill_value=0.1)
             y = paddle.full(shape=[1], dtype='float32', fill_value=0.23)
             pred = paddle.greater_equal(y, x)
@@ -137,8 +136,8 @@ class TestCondInputOutput(unittest.TestCase):
             return paddle.full(shape=[3, 3], dtype='int32', fill_value=-1)
 
         main_program = paddle.static.Program()
-        startup_program = Program()
-        with program_guard(main_program, startup_program):
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             x = paddle.full(shape=[], dtype='float32', fill_value=0.1)
             y = paddle.full(shape=[], dtype='float32', fill_value=0.23)
             pred = paddle.greater_equal(y, x)
@@ -252,8 +251,8 @@ class TestCondInputOutput(unittest.TestCase):
             ), paddle.tensor.fill_constant(shape=[4, 5], dtype='int64', value=2)
 
         main_program = paddle.static.Program()
-        startup_program = Program()
-        with program_guard(main_program, startup_program):
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             pred = paddle.tensor.fill_constant(
                 shape=[1], dtype='bool', value=True
             )
@@ -297,8 +296,8 @@ class TestCondInputOutput(unittest.TestCase):
             return a
 
         main_program = paddle.static.Program()
-        startup_program = Program()
-        with program_guard(main_program, startup_program):
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             a = paddle.tensor.fill_constant(
                 shape=[3, 2, 1], dtype='int32', value=7
             )
@@ -345,8 +344,8 @@ class TestCondInputOutput(unittest.TestCase):
             return None
 
         main_program = paddle.static.Program()
-        startup_program = Program()
-        with program_guard(main_program, startup_program):
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             i = paddle.static.data(name="i", shape=[1], dtype='int32')
             pred = (i % 2) == 0
             out1 = paddle.static.nn.cond(pred, true_func, false_func)
@@ -387,8 +386,8 @@ class TestCondInputOutput(unittest.TestCase):
             ), paddle.tensor.fill_constant(shape=[3, 1], dtype='int32', value=8)
 
         main_program = paddle.static.Program()
-        startup_program = Program()
-        with program_guard(main_program, startup_program):
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             i = paddle.static.data(name="i", shape=[1], dtype='int32')
             pred = (i % 2) == 0
             with self.assertRaises(TypeError):
@@ -486,8 +485,6 @@ class TestCondNestedControlFlow(unittest.TestCase):
                 else:
                     return a / a
         """
-        if not paddle.framework.in_pir_mode():
-            pass
         paddle.enable_static()
 
         def less_than_branch(i, a):
@@ -660,7 +657,7 @@ class TestCondBackward(unittest.TestCase):
         main_program.random_seed = 123
         startup_program = paddle.static.Program()
         startup_program.random_seed = 123
-        with program_guard(main_program, startup_program):
+        with paddle.static.program_guard(main_program, startup_program):
             img = paddle.static.data(
                 name='image', shape=[-1, 9], dtype='float32'
             )
@@ -718,8 +715,8 @@ class TestCondBackward(unittest.TestCase):
         Test that program is runnable when add optimizer
         """
         main_program = paddle.static.Program()
-        startup_program = Program()
-        with program_guard(main_program, startup_program):
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             img = paddle.static.data(
                 name='image', shape=[-1, 784], dtype='float32'
             )
