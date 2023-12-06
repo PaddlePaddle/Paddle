@@ -119,8 +119,8 @@ class TestQuantileAndNanquantile(unittest.TestCase):
         )
 
     def test_nanquantile_interpolation(self):
-        input_data = np.full(shape=[2, 3], fill_value=np.nan)
-        input_data[0, 2] = 0
+        input_data = np.random.randn(2, 3, 4)
+        input_data[0, 1, 1] = np.nan
         x = paddle.to_tensor(input_data)
         for mode in ['lower', 'higher', 'midpoint', 'nearest']:
             paddle_res = paddle.nanquantile(
