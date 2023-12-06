@@ -76,11 +76,6 @@ class TestDy2staticException(Dy2StTestBase):
 
 
 class TestDygraphIfElse(Dy2StTestBase):
-    """
-    TestCase for the transformation from control flow `if/else`
-    dependent on tensor in Dygraph into Static `base.layers.cond`.
-    """
-
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = dyfunc_with_if_else

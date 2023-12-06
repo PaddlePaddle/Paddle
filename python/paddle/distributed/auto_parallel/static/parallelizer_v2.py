@@ -239,6 +239,8 @@ class Parallelizer:
             )
         self._completer.complete_backward_annotation(main_program)
         self._dist_context.block_state.parse_backward_blocks(main_program)
+        # NOTE(zhaoyingli): temporary method: complete all vars' chunk_id attr of main_program
+        self._completer._complete_var_chunk_id(main_program)
         return params_grads
 
     def _generate_optimizer(
@@ -482,4 +484,6 @@ class Parallelizer:
                 "num_micro_batches": self._strategy.pipeline.accumulate_steps,
                 "pp_degree": len(self._dist_context.process_meshes),
                 "pp_stage": get_pp_stage(self._dist_context, rank),
+                "vpp_degree": self._dist_context._num_model_chunks,
+                "dist_context": self._dist_context,
             }

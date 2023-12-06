@@ -12,26 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/adt/print_utils/print_loop_size.h"
-#include "paddle/cinn/adt/schedule_descriptor.h"
+#pragma once
+#include "paddle/common/ddim.h"
 
-namespace cinn::adt {
-
-std::string ToTxtString(const LoopSize& loop_size) {
-  return std::to_string(loop_size.Get<std::int64_t>());
+namespace paddle {
+namespace framework {
+using DDim = common::DDim;
 }
+}  // namespace paddle
 
-std::string ToTxtString(const List<LoopSize>& loop_sizes) {
-  std::string ret;
-  ret += "[";
-  for (std::size_t idx = 0; idx < loop_sizes->size(); ++idx) {
-    if (idx != 0) {
-      ret += ", ";
-    }
-    ret += ToTxtString(loop_sizes.Get(idx));
-  }
-  ret += "]";
-  return ret;
-}
-
-}  // namespace cinn::adt
+namespace phi {
+using DDim = common::DDim;
+using common::arity;
+using common::contain_unknown_dim;
+using common::flatten_to_1d;
+using common::flatten_to_2d;
+using common::flatten_to_3d;
+using common::make_ddim;
+using common::product;
+using common::slice_ddim;
+using common::stride;
+using common::stride_numel;
+using common::vectorize;
+}  // namespace phi
