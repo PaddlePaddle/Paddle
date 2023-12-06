@@ -917,13 +917,15 @@ void HandleForIfOp(
                map_value_pair);
 
   // process false block
-  auto& false_block = new_ifop.false_block();
-  ProcessBlock(place,
-               &old_ifop.false_block(),
-               &false_block,
-               ctx,
-               map_op_pair,
-               map_value_pair);
+  if (old_ifop.false_region().size() != 0) {
+    auto& false_block = new_ifop.false_block();
+    ProcessBlock(place,
+                 &old_ifop.false_block(),
+                 &false_block,
+                 ctx,
+                 map_op_pair,
+                 map_value_pair);
+  }
 
   // update map
   (*map_op_pair)[op_item] = new_ifop;

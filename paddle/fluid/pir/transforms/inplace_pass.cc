@@ -250,8 +250,10 @@ static void GetEagerDelValueOfOp(
       auto if_op = op.dyn_cast<paddle::dialect::IfOp>();
       GetEagerDelValueOfOp(&if_op.true_block(), skip_dels, del_value_2_op);
       VLOG(8) << "GetEagerDelValueOfOp for IfOp true block";
-      GetEagerDelValueOfOp(&if_op.false_block(), skip_dels, del_value_2_op);
-      VLOG(8) << "GetEagerDelValueOfOp for IfOp false block";
+      if (if_op.false_region().size() != 0) {
+        GetEagerDelValueOfOp(&if_op.false_block(), skip_dels, del_value_2_op);
+        VLOG(8) << "GetEagerDelValueOfOp for IfOp false block";
+      }
     }
   }
 }

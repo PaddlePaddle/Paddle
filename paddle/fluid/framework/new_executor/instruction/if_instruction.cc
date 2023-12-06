@@ -66,13 +66,17 @@ IfInstruction::IfInstruction(size_t id,
   // OpOperand of IfOp, and the other is external Values used in true_block or
   // false_block.
   auto& true_branch_block = if_op.true_block();
-  auto& false_branch_block = if_op.false_block();
+
   std::unordered_map<pir::Value, std::vector<int>> inputs;
   GetInputIds(op, *value_exec_info, &inputs);
   auto true_outside_inputs =
       GetExternalInputs(&true_branch_block, *value_exec_info, &inputs);
-  auto false_outside_inputs =
-      GetExternalInputs(&false_branch_block, *value_exec_info, &inputs);
+  std::vector<pir::Value> false_outside_inputs;
+  if (if_op.false_region().size() != 0) {
+    auto& false_branch_block = if_op.false_block();
+    false_outside_inputs =
+        GetExternalInputs(&false_branch_block, *value_exec_info, &inputs);
+  }
   SetInputs(inputs);
 
   std::unordered_map<pir::Value, std::vector<int>> outputs;
@@ -90,8 +94,10 @@ IfInstruction::IfInstruction(size_t id,
     }
   }
   InsertTuplePushContinerToOuts(&true_branch_block, *value_exec_info, &outputs);
-  InsertTuplePushContinerToOuts(
-      &false_branch_block, *value_exec_info, &outputs);
+  if (if_op.false_region().size() != 0) {
+    InsertTuplePushContinerToOuts(
+        &if_op.false_block(), *value_exec_info, &outputs);
+  }
   SetOutputs(outputs);
   VLOG(6) << "finish process inputs outputs index";
 
@@ -122,30 +128,37 @@ IfInstruction::IfInstruction(size_t id,
   true_branch_inter_->SetSkipGcVars(true_skip_gc_names_set);
   VLOG(6) << "finish process true branch interpreter";
 
-  Scope* false_scope = &(value_exec_info->GetScope()->NewScope());
-  false_branch_inter_ =
-      new PirInterpreter(place,
-                         {},
-                         &false_branch_block,
-                         false_scope,
-                         value_exec_info->NewChild(false_scope),
-                         {});
-
-  std::set<std::string> false_skip_gc_names_set;
-  for (auto value : GetYiedOpInputs(&false_branch_block)) {
-    false_branch_outputs_.push_back(false_branch_inter_->GetNameByValue(value));
-    false_skip_gc_names_.push_back(false_branch_inter_->GetNameByValue(value));
-    false_skip_gc_names_set.insert(false_branch_inter_->GetNameByValue(value));
+  if (if_op.false_region().size() != 0) {
+    auto& false_branch_block = if_op.false_block();
+    Scope* false_scope = &(value_exec_info->GetScope()->NewScope());
+    false_branch_inter_ =
+        new PirInterpreter(place,
+                           {},
+                           &if_op.false_block(),
+                           false_scope,
+                           value_exec_info->NewChild(false_scope),
+                           {});
+    std::set<std::string> false_skip_gc_names_set;
+    for (auto value : GetYiedOpInputs(&false_branch_block)) {
+      false_branch_outputs_.push_back(
+          false_branch_inter_->GetNameByValue(value));
+      false_skip_gc_names_.push_back(
+          false_branch_inter_->GetNameByValue(value));
+      false_skip_gc_names_set.insert(
+          false_branch_inter_->GetNameByValue(value));
+    }
+    for (auto value : false_outside_inputs) {
+      false_skip_gc_names_.push_back(
+          false_branch_inter_->GetNameByValue(value));
+      false_skip_gc_names_set.insert(
+          false_branch_inter_->GetNameByValue(value));
+    }
+    for (auto var_name : skip_gc_vars) {
+      false_skip_gc_names_.push_back(var_name);
+      false_skip_gc_names_set.insert(var_name);
+    }
+    false_branch_inter_->SetSkipGcVars(false_skip_gc_names_set);
   }
-  for (auto value : false_outside_inputs) {
-    false_skip_gc_names_.push_back(false_branch_inter_->GetNameByValue(value));
-    false_skip_gc_names_set.insert(false_branch_inter_->GetNameByValue(value));
-  }
-  for (auto var_name : skip_gc_vars) {
-    false_skip_gc_names_.push_back(var_name);
-    false_skip_gc_names_set.insert(var_name);
-  }
-  false_branch_inter_->SetSkipGcVars(false_skip_gc_names_set);
   VLOG(6) << "finish process false branch interpreter";
 }
 
@@ -185,10 +198,11 @@ void IfInstruction::Run() {
     true_branch_inter_->Run({}, false);
     CopyBranchOutput(true_branch_outputs_, true_branch_inter_);
   } else {
-    false_branch_inter_->Run({}, false);
-    CopyBranchOutput(false_branch_outputs_, false_branch_inter_);
+    if (false_branch_inter_) {
+      false_branch_inter_->Run({}, false);
+      CopyBranchOutput(false_branch_outputs_, false_branch_inter_);
+    }
   }
-
   // copy ouptut
 }
 

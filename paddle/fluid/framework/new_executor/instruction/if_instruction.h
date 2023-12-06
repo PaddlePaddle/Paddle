@@ -59,9 +59,9 @@ class IfInstruction : public InstructionBase {
 
   std::vector<Variable*> output_vars_;
 
-  PirInterpreter* true_branch_inter_;
+  PirInterpreter* true_branch_inter_ = nullptr;
 
-  PirInterpreter* false_branch_inter_;
+  PirInterpreter* false_branch_inter_ = nullptr;
 
   std::vector<std::string> true_branch_outputs_;
 
