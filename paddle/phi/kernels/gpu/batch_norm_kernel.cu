@@ -50,6 +50,8 @@ template <typename T>
 using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
 template <typename T>
 using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
+template <typename T>
+using EigenVectorArrayMap = Eigen::Map<Eigen::Array<T, Eigen::Dynamic, 1>>;
 
 template <typename T, phi::DataLayout layout>
 static __global__ void BNForwardInference(const T *x,
@@ -845,6 +847,15 @@ void BatchNormKernel(const Context &ctx,
         }
       }
     } else {
+      int64_t reserve_space_size = 0;
+      void *reserve_space_ptr = nullptr;
+      DenseTensor reserve_space_tensor;
+      if (reserve_space == nullptr) {
+        reserve_space = &reserve_space_tensor;
+      }
+      reserve_space->Resize({reserve_space_size});
+      ctx.template Alloc<T>(reserve_space);
+
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::cudnnBatchNormalizationForwardInference(
               handle,
