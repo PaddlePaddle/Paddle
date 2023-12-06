@@ -142,8 +142,9 @@ if(WIN32)
                PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
   target_link_libraries(paddle_inference_shared phi common)
 endif()
-set_target_properties(paddle_inference_shared PROPERTIES LINK_FLAGS
-                                                         "-Wl,-rpath,'$ORIGIN'")
+set(INFERENCE_SHARED_LINKFLAGS "-Wl,--rpath='$ORIGIN'")
+set_target_properties(paddle_inference_shared
+                      PROPERTIES LINK_FLAGS "${INFERENCE_SHARED_LINKFLAGS}")
 set_target_properties(paddle_inference_shared PROPERTIES OUTPUT_NAME
                                                          paddle_inference)
 if(NOT APPLE
@@ -151,11 +152,11 @@ if(NOT APPLE
    AND NOT WITH_TESTING
    AND NOT WITH_INFERENCE_API_TEST)
   # TODO(liuyiqun): Temporarily disable the link flag because it is not support on Mac.
-  set(LINK_FLAGS
-      "-Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/paddle_inference.map")
-
-  set_target_properties(paddle_inference_shared PROPERTIES LINK_FLAGS
-                                                           "${LINK_FLAGS}")
+  set(INFERENCE_SHARED_LINKFLAGS
+      "${INFERENCE_SHARED_LINKFLAGS},--version-script=${CMAKE_CURRENT_SOURCE_DIR}/paddle_inference.map"
+  )
+  set_target_properties(paddle_inference_shared
+                        PROPERTIES LINK_FLAGS "${INFERENCE_SHARED_LINKFLAGS}")
   # check symbol hidden
   file(
     WRITE ${CMAKE_CURRENT_BINARY_DIR}/check_symbol.cmake
