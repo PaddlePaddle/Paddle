@@ -38,6 +38,7 @@ def get_paddle_api():
         paddle.signal,
         paddle.fft,
         paddle.vision.ops,
+        paddle.metric,
     ]
     special_paddle_apis = [paddle.tensor.fill_constant]
     non_operator_related_apis = [

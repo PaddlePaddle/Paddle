@@ -696,6 +696,16 @@
   backward : slice_double_grad
   no_need_buffer : input
 
+- backward_op : soft_relu_grad
+  forward : soft_relu (Tensor x, float threshold) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad, float threshold)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
+  kernel :
+    func : soft_relu_grad
+
 - backward_op : softmax_grad
   forward : softmax (Tensor x, int axis) -> Tensor(out)
   args : (Tensor out, Tensor out_grad, int axis)

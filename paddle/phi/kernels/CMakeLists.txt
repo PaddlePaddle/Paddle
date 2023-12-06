@@ -146,6 +146,9 @@ if(WITH_CUTLASS)
 
   execute_process(
     COMMAND
+      ${CMAKE_COMMAND} -E remove_directory
+      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen"
+    COMMAND
       ${CMAKE_COMMAND} -E make_directory
       "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen"
     COMMAND ${PYTHON_EXECUTABLE} generic_mixed_gemm_kernelLauncher.py
@@ -168,9 +171,10 @@ if(WITH_CUTLASS)
 endif()
 
 if(NOT WITH_CUDNN_FRONTEND)
-  list(REMOVE_ITEM kernel_cu
-       "fusion/gpu/fused_scale_bias_relu_conv_bn_kernel.cu"
-       "fusion/gpu/fused_scale_bias_add_relu_kernel.cu")
+  list(
+    REMOVE_ITEM kernel_cu "fusion/gpu/fused_scale_bias_relu_conv_bn_kernel.cu"
+    "fusion/gpu/fused_scale_bias_add_relu_kernel.cu"
+    "fusion/gpu/fused_dconv_drelu_dbn_kernel.cu")
 endif()
 
 set(cc_search_pattern

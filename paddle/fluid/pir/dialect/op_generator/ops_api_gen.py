@@ -76,6 +76,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'fused_multi_transformer_xpu',
     'fused_scale_bias_relu_conv_bn',
     'fused_scale_bias_add_relu',
+    'fused_dconv_drelu_dbn',
     'fusion_transpose_flatten_concat',
     'skip_layernorm',
     'generate_sequence_xpu',
@@ -111,6 +112,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'c_identity',
     'c_reduce_sum',
     'c_reducescatter',
+    'decayed_adagrad',
     'dpsgd',
     'embedding_grad_sparse',
     'fused_batch_norm_act_',
@@ -118,6 +120,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'fused_elemwise_add_activation',
     'fused_scale_bias_relu_conv_bn',
     'fused_scale_bias_add_relu',
+    'fused_dconv_drelu_dbn',
     'recv_v2',
     'rnn_',
     'row_conv',
@@ -125,6 +128,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'send_v2',
     'shadow_feed',
     'sparse_momentum',
+    'soft_relu',
     'uniform_random_batch_size_like',
 ]
 

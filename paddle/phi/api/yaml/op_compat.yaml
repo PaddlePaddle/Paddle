@@ -243,6 +243,14 @@
     out : Out
     indices : Indices
 
+- op : array_to_tensor(tensor_array_to_tensor)
+  backward : tanh_shrink_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+    out_index : OutIndex
+
 - op : as_complex
   inputs :
     x : X
@@ -2827,6 +2835,13 @@
   outputs :
     out : Out
 
+- op : soft_relu
+  backward : soft_relu_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : softmax
   backward : softmax_grad
   inputs :
@@ -3352,6 +3367,12 @@
   outputs:
     {out: Out}
 
+- op: decayed_adagrad
+  inputs:
+    {param : Param, grad : Grad, moment : Moment, learning_rate : LearningRate}
+  outputs:
+    {param_out : ParamOut, moment_out : MomentOut}
+
 - op: dpsgd
   inputs:
     {param: Param,grad: Grad,learning_rate: LearningRate}
@@ -3391,6 +3412,12 @@
   outputs :
     out : Out
 
+- op: lod_array_length
+  inputs :
+    {x: X}
+  outputs :
+    out : Out
+
 - op: logspace
   inputs:
     {start: Start, stop: Stop, num: Num, base: Base}
@@ -3415,6 +3442,13 @@
 - op: memcpy_d2h
   inputs :
     x : X
+  outputs :
+    out : Out
+
+- op: read_from_array
+  inputs:
+    array : X
+    i : I
   outputs :
     out : Out
 

@@ -41,7 +41,7 @@ enum class AutoInlineType : int {
 
 class AutoInline : public AutoGenRule {
  public:
-  AutoInline(const common::Target& target,
+  AutoInline(const cinn::common::Target& target,
              const std::unordered_set<std::string>& no_inline_output_names);
   ~AutoInline() = default;
 
