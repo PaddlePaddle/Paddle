@@ -14,28 +14,12 @@
 
 #pragma once
 
-#include "paddle/cinn/adt/direction_equation_generator.h"
+#include "paddle/cinn/adt/adt.h"
+#include "paddle/cinn/adt/dim_expr.h"
 
 namespace cinn::adt {
 
-class NoCtrlDirectionEquationGenerator final
-    : public DirectionEquationGenerator {
- public:
-  NoCtrlDirectionEquationGenerator(const NoCtrlDirectionEquationGenerator&) =
-      delete;
-  NoCtrlDirectionEquationGenerator(NoCtrlDirectionEquationGenerator&&) = delete;
+std::string ToTxtString(const DimExpr& loop_size);
 
-  NoCtrlDirectionEquationGenerator();
-
-  Equations GetDirectionEquations() const override;
-
-  std::function<const OpStmt*(const FakeOpPlaceHolder&)>
-  MakeGetterOpStmt4OpPlaceHolder() const override;
-
-  std::optional<Index> OutMsgIndex4InMsgIndex(
-      const Index& index) const override;
-
- private:
-};
-
+std::string ToTxtString(const List<DimExpr>& loop_sizes);
 }  // namespace cinn::adt

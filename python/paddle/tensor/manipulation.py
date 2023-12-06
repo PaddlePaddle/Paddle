@@ -1345,7 +1345,7 @@ def broadcast_tensors(input, name=None):
     Note:
         If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
 
-    .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         input (list|tuple): ``input`` is a Tensor list or Tensor tuple which is with data type bool,
@@ -3122,7 +3122,6 @@ def scatter(x, index, updates, overwrite=True, name=None):
     Output is obtained by updating the input on selected indices based on updates.
 
     .. code-block:: python
-        :name: code-example1
 
         >>> import paddle
         >>> #input:
@@ -4107,8 +4106,19 @@ def atleast_1d(*inputs, name=None):
             [[1.23000002]])]
     """
     out = []
-    for tensor in inputs:
-        tensor = paddle.to_tensor(tensor)
+    for input in inputs:
+        if not isinstance(
+            input,
+            (
+                paddle.Tensor,
+                paddle.base.framework.Variable,
+                paddle.base.libpaddle.pir.OpResult,
+            ),
+        ):
+            tensor = paddle.to_tensor(input)
+        else:
+            tensor = input
+
         if tensor.dim() == 0:
             result = tensor.reshape((1,))
         else:
@@ -4164,8 +4174,19 @@ def atleast_2d(*inputs, name=None):
             [[[1.23000002]]])]
     """
     out = []
-    for tensor in inputs:
-        tensor = paddle.to_tensor(tensor)
+    for input in inputs:
+        if not isinstance(
+            input,
+            (
+                paddle.Tensor,
+                paddle.base.framework.Variable,
+                paddle.base.libpaddle.pir.OpResult,
+            ),
+        ):
+            tensor = paddle.to_tensor(input)
+        else:
+            tensor = input
+
         if tensor.dim() == 0:
             result = tensor.reshape((1, 1))
         elif tensor.dim() == 1:
@@ -4223,8 +4244,19 @@ def atleast_3d(*inputs, name=None):
             [[[[1.23000002]]]])]
     """
     out = []
-    for tensor in inputs:
-        tensor = paddle.to_tensor(tensor)
+    for input in inputs:
+        if not isinstance(
+            input,
+            (
+                paddle.Tensor,
+                paddle.base.framework.Variable,
+                paddle.base.libpaddle.pir.OpResult,
+            ),
+        ):
+            tensor = paddle.to_tensor(input)
+        else:
+            tensor = input
+
         if tensor.dim() == 0:
             result = tensor.reshape((1, 1, 1))
         elif tensor.dim() == 1:

@@ -124,7 +124,7 @@ void FusionSeqExpandConcatFCKernel(const Context& dev_ctx,
      ref_in_data,
      w_data,
      out_data,
-     fc_bias ? fc_bias->data<T>() : NULL);
+     fc_bias ? fc_bias->data<T>() : nullptr);
   w_data = w_data + M0 * D;
   // first write on
   blas.MatMul(N, D, M1, in1_data, w_data, fc_out_data);

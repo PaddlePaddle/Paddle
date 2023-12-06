@@ -43,7 +43,7 @@ std::string GetParameterNameFromValue(pir::Value value);
  *
  * @return const phi::DDim&
  */
-const phi::DDim& GetShapeFromValue(pir::Value value);
+const common::DDim& GetShapeFromValue(pir::Value value);
 
 /**
  * @brief Get tensor's data type from a value.

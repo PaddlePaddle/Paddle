@@ -135,6 +135,9 @@ class DistributedContext:
 
         self._json_config = json_config
 
+        # record vpp chunk size
+        self._num_model_chunks = 0
+
     @property
     def serial_main_program(self):
         return self._serial_main_program
@@ -1199,9 +1202,7 @@ class BlockState:
         self.backward_to_forward_index_map = {}
 
     def parse_forward_blocks(self, program):
-        while program.current_block_idx != 0:
-            program._rollback()
-
+        program._roll_to_global_block()
         assert program.current_block_idx == 0
 
         for idx, block in enumerate(program.blocks):

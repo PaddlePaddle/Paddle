@@ -13,23 +13,25 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/common/ddim.h"
 
-#include <optional>
+namespace paddle {
+namespace framework {
+using DDim = common::DDim;
+}
+}  // namespace paddle
 
-#include "paddle/cinn/adt/equation_constant.h"
-
-namespace cinn::adt {
-
-class EquationFunctionConstantsProvider {
- public:
-  virtual ~EquationFunctionConstantsProvider() = default;
-
-  virtual Constant GetDimSize(const Dim& dim) const = 0;
-
-  virtual bool AddDim(const Dim& dim, const Constant& dim_value) = 0;
-
- protected:
-  EquationFunctionConstantsProvider() = default;
-};
-
-}  // namespace cinn::adt
+namespace phi {
+using DDim = common::DDim;
+using common::arity;
+using common::contain_unknown_dim;
+using common::flatten_to_1d;
+using common::flatten_to_2d;
+using common::flatten_to_3d;
+using common::make_ddim;
+using common::product;
+using common::slice_ddim;
+using common::stride;
+using common::stride_numel;
+using common::vectorize;
+}  // namespace phi
