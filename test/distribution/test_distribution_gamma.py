@@ -311,6 +311,16 @@ class TestGammaSample(unittest.TestCase):
             self.assertEqual(grads[1].dtype, self._paddle_gamma.rate.dtype)
             self.assertEqual(grads[1].shape, self._paddle_gamma.rate.shape)
 
+            samples.backward()
+            self.assertEqual(
+                list(self._paddle_gamma.concentration.gradient().shape),
+                self._paddle_gamma.concentration.shape,
+            )
+            self.assertEqual(
+                list(self._paddle_gamma.rate.gradient().shape),
+                self._paddle_gamma.rate.shape,
+            )
+
 
 @parameterize.place(config.DEVICES)
 @parameterize.parameterize_cls(
