@@ -65,8 +65,8 @@ def create_tensor(np_data, place):
     return tensor
 
 
+@test_with_pir_api
 class TestArgsortOpCPU(unittest.TestCase):
-    @test_with_pir_api
     def setUp(self):
         self.init_axis()
         self.init_datatype()
@@ -375,6 +375,7 @@ class TestArgsortErrorOnGPU(TestArgsortErrorOnCPU):
             self.place = core.CPUPlace()
 
 
+@test_with_pir_api
 class TestArgsort(unittest.TestCase):
     def init(self):
         self.input_shape = [
@@ -390,7 +391,6 @@ class TestArgsort(unittest.TestCase):
             self.place = core.CPUPlace()
         self.data = np.random.rand(*self.input_shape)
 
-    @test_with_pir_api
     def test_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
             input = paddle.static.data(
