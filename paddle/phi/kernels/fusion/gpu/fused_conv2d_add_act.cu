@@ -352,24 +352,24 @@ class CudnnConvDescManager {
 }  // namespace
 
 template <typename T, typename Context>
-void Conv2dFusionKernel(const Context& ctx,
-                        const DenseTensor& input,
-                        const DenseTensor& filter,
-                        const DenseTensor& bias,
-                        const paddle::optional<DenseTensor>& residual,
-                        const std::vector<int>& strides,
-                        const std::vector<int>& paddings_t,
-                        const std::string& padding_algorithm,
-                        const std::vector<int>& dilations_t,
-                        int groups,
-                        const std::string& data_format,
-                        const std::string& activation,
-                        const std::vector<int>& split_channels,
-                        bool exhaustive_search,
-                        int workspace_size_MB,
-                        float fuse_alpha,
-                        DenseTensor* output,
-                        std::vector<DenseTensor*> outputs) {
+void FusedConv2dAddActKernel(const Context& ctx,
+                             const DenseTensor& input,
+                             const DenseTensor& filter,
+                             const DenseTensor& bias,
+                             const paddle::optional<DenseTensor>& residual,
+                             const std::vector<int>& strides,
+                             const std::vector<int>& paddings_t,
+                             const std::string& padding_algorithm,
+                             const std::vector<int>& dilations_t,
+                             int groups,
+                             const std::string& data_format,
+                             const std::string& activation,
+                             const std::vector<int>& split_channels,
+                             bool exhaustive_search,
+                             int workspace_size_MB,
+                             float fuse_alpha,
+                             DenseTensor* output,
+                             std::vector<DenseTensor*> outputs) {
   auto handle = ctx.cudnn_handle();
   ctx.template Alloc<T>(output);
   auto workspace_handle = ctx.cudnn_workspace_handle();
@@ -393,7 +393,7 @@ void Conv2dFusionKernel(const Context& ctx,
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
   // Choose NHWC or NCHW by data_format attr.
   auto compute_format = channel_last ? CUDNN_TENSOR_NHWC : CUDNN_TENSOR_NCHW;
-  VLOG(3) << "Compute ConvFusionOp with cuDNN:"
+  VLOG(3) << "Compute FusedConv2dAddActOp with cuDNN:"
           << " data_format=" << data_format << " compute_format="
           << (compute_format == CUDNN_TENSOR_NHWC ? "NHWC" : "NCHW");
 
@@ -643,10 +643,10 @@ void Conv2dFusionKernel(const Context& ctx,
 }  // namespace fusion
 }  // namespace phi
 
-PD_REGISTER_KERNEL(conv2d_fusion,  // cuda_only
+PD_REGISTER_KERNEL(fused_conv2d_add_act,  // cuda_only
                    GPUDNN,
                    ALL_LAYOUT,
-                   phi::fusion::Conv2dFusionKernel,
+                   phi::fusion::FusedConv2dAddActKernel,
                    float,
                    double,
                    phi::dtype::float16) {}
