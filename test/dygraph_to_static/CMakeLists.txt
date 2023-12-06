@@ -4,7 +4,7 @@ file(
   "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 set(SOT_ENVS SOT_LOG_LEVEL=0 COST_MODEL=False MIN_GRAPH_SIZE=0
-             STRICT_MODE=False)
+             STRICT_MODE=False DY2ST_TEST=True)
 set(GC_ENVS FLAGS_eager_delete_tensor_gb=0.0)
 
 list(REMOVE_ITEM TEST_OPS test_lac)

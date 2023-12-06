@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from copy import deepcopy
 
 import numpy as np
@@ -240,7 +241,8 @@ class PartialProgramLayer:
         self._cast_fp16_if_pure_fp16(in_vars)
         # TODO(dev): Currently AST + PT has some issues in control flow, so we only
         # enable SOT + PT in 2.6, we will fix it later.
-        attrs = self._prepare_attributes(force_not_use_pt=True)
+        is_dy2st_test = os.environ.get("DY2ST_TEST", None) == "True"
+        attrs = self._prepare_attributes(force_not_use_pt=(not is_dy2st_test))
         attrs.extend(["x_names", in_var_names])
 
         self._sync_lr_value_with_scheduler()
@@ -847,22 +849,19 @@ class PartialProgramLayer:
                 )
             )
 
-        pt_flag = 'FLAGS_enable_pir_with_pt_in_dy2st'
-        is_pt_flag_opened = get_flags(pt_flag)[pt_flag]
-
-        in_pir_pt_mode = is_pt_flag_opened
+        pir_dy2st_flag = 'FLAGS_enable_pir_with_pt_in_dy2st'
+        in_pir_pt_mode = get_flags(pir_dy2st_flag)[pir_dy2st_flag]
         is_prim_enabled = (
             core._is_fwd_prim_enabled() or core._is_bwd_prim_enabled()
         )
-        is_cinn_enabled = (
-            self._backend == "CINN" or self._build_strategy.build_cinn_pass
-        )
-        if is_prim_enabled or is_cinn_enabled:
+        in_cinn_backend = self._backend == "CINN"
+        is_cinn_enabled = self._build_strategy.build_cinn_pass
+        if is_prim_enabled or in_cinn_backend or is_cinn_enabled:
             in_pir_pt_mode = False
-
         if force_not_use_pt:
             in_pir_pt_mode = False
         attrs.extend(['in_pir_pt_mode', in_pir_pt_mode])
+
         return attrs
 
     @switch_to_static_graph

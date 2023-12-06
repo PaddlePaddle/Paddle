@@ -1294,7 +1294,7 @@ PHI_DEFINE_EXPORTED_bool(enable_pir_in_executor,
  * and then run in executor for dy2st mode.
  */
 PHI_DEFINE_EXPORTED_bool(enable_pir_with_pt_in_dy2st,
-                         false,
+                         true,
                          "Enable new IR in executor");
 
 /**
