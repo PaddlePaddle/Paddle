@@ -20,6 +20,7 @@ import time
 from paddle.distributed.passes import PassManager, new_pass
 from paddle.framework import get_flags
 from paddle.static import append_backward, program_guard
+from paddle.utils import unique_name
 
 from ...utils.log_utils import get_logger
 from ..random import init_auto_parallel_rng
@@ -255,9 +256,11 @@ class Parallelizer:
         self._dist_context._serial_optimizer._learning_rate = learning_rate
         optimizer._sorted = False
 
-        main_program._name_generator.reset("opt_")
         with program_guard(main_program, startup_program):
-            optimizer_ops = optimizer.apply_gradients(params_grads)
+            with unique_name.swith_program_name_generator_guard(
+                main_program, "opt_"
+            ):
+                optimizer_ops = optimizer.apply_gradients(params_grads)
         self._completer.complete_update_annotation(main_program)
         return optimizer_ops
 
