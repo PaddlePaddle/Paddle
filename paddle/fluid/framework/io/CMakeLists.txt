@@ -4,6 +4,10 @@ if(WITH_CRYPTO)
   set(framework_io_srcs ${framework_io_srcs} ${framework_io_crypto_srcs})
 endif()
 
+if(WITH_MKLDNN)
+  add_dependencies(save_load_tensor mkldnn)
+endif()
+
 set(framework_io_deps glog timer)
 if(WITH_CRYPTO)
   set(framework_io_deps ${framework_io_deps} cryptopp)
