@@ -697,7 +697,6 @@ class TestCondBackward(unittest.TestCase):
                 img_grad, numerical_grad, rtol=0.05, atol=0.05
             )
 
-    # @test_with_pir_api
     def add_optimizer_helper(self, cond_func, use_cuda):
         """
         Test that program is runnable when add optimizer
