@@ -318,7 +318,10 @@ class Node {
   TEST_API friend std::unique_ptr<Node> CreateNodeForTest(VarDesc* var_desc);
   TEST_API friend std::unique_ptr<Node> CreateNodeForTest(OpDesc* op_desc);
 };
-
+std::unique_ptr<Node> CreateNodeForTest(const std::string& name,
+                                        Node::Type type);
+std::unique_ptr<Node> CreateNodeForTest(VarDesc* var_desc);
+std::unique_ptr<Node> CreateNodeForTest(OpDesc* op_desc);
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
