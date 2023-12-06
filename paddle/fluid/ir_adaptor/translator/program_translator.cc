@@ -512,14 +512,6 @@ pir::Operation* ProgramTranslator::TranslateCondIfOperation(
   pir::Operation* operation = pir::Operation::Create(
       op_inputs, attribute_map, op_output_types, op_info, 2);
 
-  for (size_t i = 0; i < output_vardescs.size(); i++) {
-    translation_ctx->PushValue(output_vardescs[i]->Name(),
-                               VariableDefiningInfo(operation->result(i)));
-    VLOG(4) << "[general op][conditional_block] var "
-            << output_vardescs[i]->Name() << " was mapped to If's " << i
-            << "-th output.";
-  }
-
   dst_block->push_back(operation);
   VLOG(4) << "[general op][conditional_block] IfOp creation end.";
 
@@ -558,6 +550,14 @@ pir::Operation* ProgramTranslator::TranslateCondIfOperation(
                    cond_ops.FalseBlockInitOps());
   }
   VLOG(4) << "[general op][conditional_block] IfOp false block translate end.";
+
+  for (size_t i = 0; i < output_vardescs.size(); i++) {
+    translation_ctx->PushValue(output_vardescs[i]->Name(),
+                               VariableDefiningInfo(operation->result(i)));
+    VLOG(4) << "[general op][conditional_block] var "
+            << output_vardescs[i]->Name() << " was mapped to If's " << i
+            << "-th output.";
+  }
 
   operation->Verify();
   VLOG(4) << "[general op][conditional_block] IfOp translate end.";
