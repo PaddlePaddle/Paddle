@@ -17,10 +17,10 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import (
+from dygraph_to_static_utils import (
     Dy2StTestBase,
+    enable_to_static_guard,
     test_ast_only,
-    test_legacy_and_pir,
 )
 from test_basic_api_transformation import dyfunc_to_variable
 
@@ -124,7 +124,6 @@ class TestInputSpec(Dy2StTestBase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    @test_legacy_and_pir
     @test_ast_only
     def test_with_input_spec(self):
         with base.dygraph.guard(base.CPUPlace()):
@@ -226,7 +225,6 @@ class TestDifferentInputSpecCacheProgram(Dy2StTestBase):
     def setUp(self):
         paddle.jit.enable_to_static(True)
 
-    @test_legacy_and_pir
     @test_ast_only
     def test_with_different_input(self):
         with base.dygraph.guard(base.CPUPlace()):
@@ -314,7 +312,6 @@ class TestDifferentInputSpecCacheProgram(Dy2StTestBase):
                 InputSpec([10]), InputSpec([10]), e=4
             )
 
-    @test_legacy_and_pir
     @test_ast_only
     def test_concrete_program(self):
         with base.dygraph.guard(base.CPUPlace()):
@@ -375,20 +372,18 @@ class TestDeclarativeAPI(Dy2StTestBase):
         with self.assertRaises(RuntimeError):
             func(np.ones(5).astype("int32"))
 
-        paddle.jit.enable_to_static(False)
-        with self.assertRaises(AssertionError):
-            # AssertionError: We Only support to_variable in imperative mode,
-            #  please use base.dygraph.guard() as context to run it in imperative Mode
-            func(np.ones(5).astype("int32"))
+        with enable_to_static_guard(False):
+            with self.assertRaises(AssertionError):
+                # AssertionError: We Only support to_variable in imperative mode,
+                #  please use base.dygraph.guard() as context to run it in imperative Mode
+                func(np.ones(5).astype("int32"))
 
 
 class TestDecorateModelDirectly(Dy2StTestBase):
     def setUp(self):
         paddle.disable_static()
-        paddle.jit.enable_to_static(True)
         self.x = to_variable(np.ones([4, 10]).astype('float32'))
 
-    @test_legacy_and_pir
     @test_ast_only
     def test_fake_input(self):
         net = SimpleNet()
@@ -454,7 +449,6 @@ class CallNonForwardFuncSubNet(paddle.nn.Layer):
 
 
 class TestCallNonForwardFunc(Dy2StTestBase):
-    @test_legacy_and_pir
     def test_call_non_forward(self):
         paddle.disable_static()
         net = CallNonForwardFuncNet()
@@ -494,7 +488,6 @@ class TestSetBuffers(Dy2StTestBase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    @test_legacy_and_pir
     def test_set_buffers1(self):
         paddle.disable_static()
         net = SetBuffersNet1()

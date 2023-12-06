@@ -60,8 +60,11 @@ size_t CountDownstreamMap(
 const std::string StringizeDownstreamMap(
     const std::map<size_t, std::set<size_t>>& downstream_map) {
   std::ostringstream oss;
+  oss << "\n"
+      << std::left << std::setw(7) << "id" << std::setw(40) << "down_stream_id"
+      << "\n";
   for (auto const& pair : downstream_map) {
-    oss << pair.first << " -> ";
+    oss << std::setw(7) << pair.first << std::setw(40) << " -> ";
     std::copy(pair.second.begin(),
               pair.second.end(),
               std::ostream_iterator<size_t>(oss, " "));
@@ -383,7 +386,6 @@ void DependencyBuilder::AddDownstreamOp(size_t prior_op_idx,
   for (size_t op_idx : prior_of_prior) {
     update_op_happen_before(op_idx, posterior_op_idx);
   }
-
   // All ops after posterior-op are also after prior-op
   for (size_t op_idx : posterior_of_posterior) {
     update_op_happen_before(prior_op_idx, op_idx);

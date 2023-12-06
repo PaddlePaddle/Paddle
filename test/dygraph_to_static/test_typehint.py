@@ -15,9 +15,9 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import (
+from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_legacy_and_pir_exe_and_pir_api,
+    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -66,7 +66,7 @@ class TestTypeHint(Dy2StTestBase):
         else:
             return ret
 
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pt_and_pir
     def test_ast_to_func(self):
         static_numpy = self._run_static()
         dygraph_numpy = self._run_dygraph()

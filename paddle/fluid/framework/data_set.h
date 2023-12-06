@@ -26,7 +26,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
-#include "paddle/phi/core/macros.h"
+#include "paddle/common/macros.h"
 #ifdef PADDLE_WITH_GLOO
 #include <gloo/broadcast.h>
 

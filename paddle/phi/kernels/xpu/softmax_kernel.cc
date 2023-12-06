@@ -77,5 +77,10 @@ void SoftmaxKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    softmax, XPU, ALL_LAYOUT, phi::SoftmaxKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(softmax,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::SoftmaxKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

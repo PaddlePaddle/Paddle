@@ -32,7 +32,7 @@ cc_library(
 cc_library(
   cost_model
   SRCS cost_model.cc
-  DEPS executor graph profiler proto_desc phi)
+  DEPS executor graph profiler proto_desc phi common)
 
 set(GRAPH_PATTERN_DETECTOR_DEPS graph graph_helper graph_traits)
 if(WITH_TESTING)
@@ -238,7 +238,7 @@ if(WITH_XPU)
   cc_library(
     xpu_quant_utils
     SRCS xpu/quant_utils.cc
-    DEPS pass phi)
+    DEPS pass phi common)
   cc_library(
     xpu_pass_utils
     SRCS xpu/pass_utils.cc
@@ -284,11 +284,15 @@ if(WITH_XPU)
                ${XPU_PASS_DEPS})
   pass_library(fused_multi_transformer_xpu_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
+  pass_library(fused_multi_transformer_int8_xpu_quant_pass inference DIR xpu
+               DEPS ${XPU_PASS_DEPS})
   pass_library(stack_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(duplicated_transpose_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(fused_multi_transformer_cachekv_layout_trans_pass inference DIR
                xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(fused_multi_transformer_int8_cachekv_layout_trans_pass inference
+               DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(add_activation_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(add_layernorm_xpu_fuse_pass inference DIR xpu DEPS
@@ -537,7 +541,8 @@ if(WITH_MKLDNN)
       concat_and_split
       naive_executor
       device_context
-      phi)
+      phi
+      common)
   if(WITH_GPU OR WITH_ROCM)
     set(TEST_CONV_BN_PASS_DEPS ${TEST_CONV_BN_PASS_DEPS} depthwise_conv)
   endif()
@@ -596,6 +601,10 @@ if(WITH_XPU)
     SRCS xpu/fused_multi_transformer_xpu_pass_tester.cc
     DEPS fused_multi_transformer_xpu_pass)
   cc_test(
+    test_fused_multi_transformer_int8_xpu_quant_pass
+    SRCS xpu/fused_multi_transformer_int8_xpu_quant_pass_tester.cc
+    DEPS fused_multi_transformer_int8_xpu_quant_pass)
+  cc_test(
     test_one_beam_size_fuse_pass
     SRCS xpu/one_beam_size_fuse_pass_test.cc
     DEPS one_beam_size_fuse_pass)
@@ -607,6 +616,10 @@ if(WITH_XPU)
     test_fused_multi_transformer_cachekv_layout_trans_pass
     SRCS xpu/fused_multi_transformer_cachekv_layout_trans_pass_test.cc
     DEPS fused_multi_transformer_cachekv_layout_trans_pass)
+  cc_test(
+    test_fused_multi_transformer_int8_cachekv_layout_trans_pass
+    SRCS xpu/fused_multi_transformer_int8_cachekv_layout_trans_pass_test.cc
+    DEPS fused_multi_transformer_int8_cachekv_layout_trans_pass)
   cc_test(
     test_multi_encoder_xpu_adaptive_seqlen_fuse_pass
     SRCS xpu/multi_encoder_xpu_adaptive_seqlen_fuse_pass_test.cc

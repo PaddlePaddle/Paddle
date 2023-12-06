@@ -64,4 +64,5 @@ PD_REGISTER_KERNEL(softmax_grad,
                    ALL_LAYOUT,
                    phi::SoftmaxGradKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

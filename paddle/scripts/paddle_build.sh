@@ -156,6 +156,7 @@ function cmake_base() {
             -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.8.0/include/python3.8
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.8.0/lib/libpython3.so"
                 pip3.8 install -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.8 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
             elif [ "$1" == "cp39-cp39" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.9.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.9.0/bin/:${PATH}
@@ -163,6 +164,7 @@ function cmake_base() {
             -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.9.0/include/python3.9
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.9.0/lib/libpython3.so"
                 pip3.9 install -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.9 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
             elif [ "$1" == "cp310-cp310" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.10.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.10.0/bin/:${PATH}
@@ -170,6 +172,7 @@ function cmake_base() {
             -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.10.0/include/python3.10
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.10.0/lib/libpython3.so"
                 pip3.10 install -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.10 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
             elif [ "$1" == "cp311-cp311" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.11.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.11.0/bin/:${PATH}
@@ -177,6 +180,7 @@ function cmake_base() {
             -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.11.0/include/python3.11
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.11.0/lib/libpython3.so"
                 pip3.11 install -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.11 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
             elif [ "$1" == "conda-python3.7" ]; then
                 export LD_LIBRARY_PATH=/opt/conda/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/conda/bin/:${PATH}
@@ -689,7 +693,7 @@ EOF
         fi
         check_approvals_of_unittest 2
         # serial_list: Some single tests need to reduce concurrency
-        single_list="^test_cdist$|^test_resnet$|^test_resnet_v2$|^test_concat_op$|^test_transformer$|^test_bert_with_stride$|^test_paddle_save_load$"
+        single_list="^test_cdist$|^test_resnet$|^test_concat_op$|^test_transformer$|^test_bert_with_stride$|^test_paddle_save_load$"
         get_precision_ut_mac
         if [[ "$on_precision" == "0" ]];then
           ctest -E "($disable_ut_quickly|$single_list)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
@@ -810,7 +814,7 @@ set -x
         fi
         if [ -a "$PADDLE_ROOT/added_ut" ];then
             added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
-            ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
+            ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE|RUN_TYPE=HYBRID" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
             ctest -R "(${added_uts})" -L "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error_1=$?
             if [ "$added_ut_error" != 0 ] && [ "$added_ut_error_1" != 0 ];then
                 echo "========================================"
@@ -1541,7 +1545,7 @@ set -x
         fi
         if [ -a "$PADDLE_ROOT/added_ut" ];then
             added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
-            env CUDA_VISIBLE_DEVICES=0 ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
+            env CUDA_VISIBLE_DEVICES=0 ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE|RUN_TYPE=HYBRID" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
             ctest -R "(${added_uts})" -L "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error_1=$?
             if [ "$added_ut_error" != 0 ] && [ "$added_ut_error_1" != 0 ];then
                 echo "========================================"
@@ -2540,7 +2544,7 @@ set -x
         fi
         if [ -a "$PADDLE_ROOT/added_ut" ];then
             added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
-            env CUDA_VISIBLE_DEVICES=0 ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
+            env CUDA_VISIBLE_DEVICES=0 ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE|RUN_TYPE=HYBRID" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
             ctest -R "(${added_uts})" -L "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error_1=$?
             if [ "$added_ut_error" != 0 ] && [ "$added_ut_error_1" != 0 ];then
                 echo "========================================"
@@ -2844,6 +2848,27 @@ set +x
         fi
 set -ex
     fi
+}
+
+function is_run_distribute_in_op_test() {
+    DISTRIBUTE_FILES=("python/paddle/distributed"
+                      "python/phi/infermeta/spmd_rules"
+                      "paddle/phi/core/distributed")
+    cd ${PADDLE_ROOT}
+    for DISTRIBUTE_FILE in ${DISTRIBUTE_FILES[*]}; do
+        DISTRIBUTE_CHANGE=`git diff --name-only upstream/$BRANCH | grep -F "${DISTRIBUTE_FILE}"|| true`
+        if [ "${DISTRIBUTE_CHANGE}" ] && [ "${GIT_PR_ID}" != "" ]; then
+            export FLAGS_COVERAGE_RUN_AUTO_PARALLEL_IN_OP_TEST=1
+        fi
+    done
+    ALL_CHANGE_FILES=`git diff --numstat upstream/$BRANCH | awk '{print $3}' | grep ".py"|| true`
+    echo ${ALL_CHANGE_FILES}
+    for CHANGE_FILE in ${ALL_CHANGE_FILES}; do
+        ALL_OPTEST_BAN_AUTO_PARALLEL_TEST=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/${CHANGE_FILE} | grep "+" | grep "check_auto_parallel=" || true`
+        if [ "${ALL_OPTEST_BAN_AUTO_PARALLEL_TEST}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+            export FLAGS_COVERAGE_RUN_AUTO_PARALLEL_IN_OP_TEST=1
+        fi
+    done
 }
 
 function parallel_test() {
@@ -3587,6 +3612,7 @@ function run_setup(){
                 export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.8.0/include/python3.8
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.8.0/lib/libpython3.so
                 pip3.8 install -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.8 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
             elif [ "$1" == "cp39-cp39" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.9.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.9.0/bin/:${PATH}
@@ -3595,6 +3621,7 @@ function run_setup(){
                 export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.9.0/include/python3.9
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.9.0/lib/libpython3.so
                 pip3.9 install -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.9 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
             elif [ "$1" == "cp310-cp310" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.10.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.10.0/bin/:${PATH}
@@ -3603,6 +3630,7 @@ function run_setup(){
                 export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.10.0/include/python3.10
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.10.0/lib/libpython3.so
                 pip3.10 install -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.10 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
             elif [ "$1" == "cp311-cp311" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.11.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.11.0/bin/:${PATH}
@@ -3611,6 +3639,7 @@ function run_setup(){
                 export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.11.0/include/python3.11
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.11.0/lib/libpython3.so
                 pip3.11 install -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.11 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
             elif [ "$1" == "cp312-cp312" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.12.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.12.0/bin/:${PATH}
@@ -3619,6 +3648,7 @@ function run_setup(){
                 export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.12.0/include/python3.12
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.12.0/lib/libpython3.so
                 pip3.12 install -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.12 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
            fi
         else
             pip install -r ${PADDLE_ROOT}/python/requirements.txt
@@ -4146,6 +4176,8 @@ function main() {
         ;;
       gpu_cicheck_coverage)
         export FLAGS_PIR_OPTEST=True
+        export COVERAGE_FILE=${PADDLE_ROOT}/build/python-coverage.data 
+        is_run_distribute_in_op_test
         parallel_test
         check_coverage
         ;;

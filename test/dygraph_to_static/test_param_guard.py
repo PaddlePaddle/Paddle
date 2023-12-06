@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import (
+from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_legacy_and_pir_exe_and_pir_api,
+    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -79,7 +80,7 @@ class TestParameterList(Dy2StTestBase):
 
         return loss
 
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pt_and_pir
     def test_parameter_list(self):
         static_loss = self.train(False, to_static=True)
         dygraph_loss = self.train(False, to_static=False)
@@ -131,7 +132,7 @@ class TestRawParameterList(Dy2StTestBase):
 
         return loss
 
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pt_and_pir
     def test_parameter_list(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)

@@ -17,9 +17,11 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/cinn/adt/dim_expr.h"
+#include "paddle/cinn/adt/dim_expr_simplifier.h"
 #include "paddle/cinn/adt/equation_value_match_trait.h"
 #include "paddle/cinn/adt/inline_translator.h"
-#include "paddle/cinn/adt/m_expr.h"
+#include "paddle/cinn/adt/map_expr.h"
 #include "paddle/cinn/adt/map_expr_ctx.h"
 #include "paddle/cinn/adt/match.h"
 #include "paddle/cinn/adt/no_inline_translator.h"
@@ -29,6 +31,7 @@
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/runtime/flags.h"
+#include "paddle/pir/dialect/shape/ir/shape_op.h"
 
 PD_DECLARE_bool(cinn_enable_map_expr_inline);
 
@@ -49,11 +52,15 @@ using LoopDescriptor4LoopIteratorT =
 
 class MapExprToIrTranslator {
  public:
-  explicit MapExprToIrTranslator(const MapExpr& map_expr,
-                                 const Node2LoweredFuncs& node2lowered_funcs,
-                                 const common::Target& target)
+  explicit MapExprToIrTranslator(
+      const MapExpr& map_expr,
+      const Node2LoweredFuncs& node2lowered_funcs,
+      const std::unordered_map<SymbolicDim, ::pir::shape::SymbolicDimOp>&
+          map_expr_symbolic2dialect_symbolic,
+      const cinn::common::Target& target)
       : map_expr_(map_expr),
         node2lowered_funcs_(&node2lowered_funcs),
+        map_expr_symbolic2dialect_symbolic_(map_expr_symbolic2dialect_symbolic),
         target_(target) {
     const auto& [anchored_map_stmts, _0, _1] = map_expr.tuple();
     CHECK_EQ(anchored_map_stmts->size(), 1);
@@ -275,6 +282,8 @@ class MapExprToIrTranslator {
     for (int i = 0; i < op_expr_children->size(); ++i) {
       const auto& opt_operant = TranslateOpExpr(
           op_expr_children->at(i), std::nullopt, IterExprs4Tensor);
+      // Note: Only handles read_args here, consider handles other variables in
+      // ir::Call
       if (opt_operant.has_value()) {
         store_rvalue.As<ir::Call>()->read_args.at(i) = opt_operant.value();
       } else {
@@ -304,29 +313,80 @@ class MapExprToIrTranslator {
     return store_rvalue;
   }
 
+  std::optional<ir::Expr> MakeScaleRvalueExpr(
+      const ir::Expr& input_expr,
+      const List<OpExpr>& op_expr_children,
+      const IterExprs4TensorT& IterExprs4Tensor) const {
+    // Scale Expr example: ((float32(0.00130208337f) * var_4[i0_4, i1_4, i2_2])
+    // + float32(0.00000000f))
+    ir::Expr store_rvalue = ir::ir_utils::IRCopy(input_expr);
+    CHECK_EQ(op_expr_children->size(), 1);
+    CHECK_EQ(store_rvalue->operands.size(), 2);
+    const auto& opt_operant = TranslateOpExpr(
+        op_expr_children->at(0), std::nullopt, IterExprs4Tensor);
+
+    ir::Mul* mul_operant = store_rvalue->operands.at(0).As<ir::Mul>();
+    if (opt_operant.has_value()) {
+      mul_operant->operands().at(1) = opt_operant.value();
+    } else {
+      mul_operant->operands().at(1).As<ir::Load>()->indices =
+          TranslateTensorIndex(op_expr_children->at(0), IterExprs4Tensor);
+    }
+    return store_rvalue;
+  }
+
+  typedef std::optional<ir::Expr> (
+      MapExprToIrTranslator::*MakeStoreRvalueExprT)(
+      const ir::Expr&, const List<OpExpr>&, const IterExprs4TensorT&) const;
+
+  static std::unordered_map<std::string, MakeStoreRvalueExprT>
+  MakeGetterMakeStoreRvalueExpr4Op() {
+    std::unordered_map<std::string, MakeStoreRvalueExprT> ret{
+        {"elementwise_mul", &MapExprToIrTranslator::MakeGeneralExpr},
+        {"subtract", &MapExprToIrTranslator::MakeGeneralExpr},
+        {"broadcast_to", &MapExprToIrTranslator::MakeGeneralExpr},
+
+        {"exp", &MapExprToIrTranslator::MakeCallExpr},
+        {"rsqrt", &MapExprToIrTranslator::MakeCallExpr},
+
+        {"scale", &MapExprToIrTranslator::MakeScaleRvalueExpr},
+    };
+    return ret;
+  }
+
+  MakeStoreRvalueExprT GetMakeStoreRvalueExpr4Op(
+      const std::string& op_name, const ir::Expr& store_expr) const {
+    static std::unordered_map<std::string, MakeStoreRvalueExprT>
+        MakeStoreRvalueExpr4Op(MakeGetterMakeStoreRvalueExpr4Op());
+    const auto& iter = MakeStoreRvalueExpr4Op.find(op_name);
+    CHECK(iter != MakeStoreRvalueExpr4Op.end())
+        << "Operation " << op_name
+        << " not supported yet! store_expr: " << store_expr;
+    return iter->second;
+  }
+
   std::optional<ir::Expr> TranslateOpCallImpl(
-      const ::pir::Operation*,
+      const ::pir::Operation* op,
       const OpCall<OpExpr>& op_expr,
       const std::optional<Tensor>& opt_output_tensor,
       const IterExprs4TensorT& IterExprs4Tensor) const {
     const auto& [_, op_expr_children] = op_expr.tuple();
+    if (op_expr_children->empty()) {
+      return GetStoreExpr(op_expr).value().As<ir::Store>()->value;
+    }
     std::optional<ir::Expr> store_expr = GetStoreExpr(op_expr);
     CHECK(store_expr.has_value());
     ir::Expr store_rvalue = store_expr.value().As<ir::Store>()->value;
-
     if (store_rvalue.As<ir::Load>()) {
       return MakeLoadExpr(store_rvalue, op_expr_children, IterExprs4Tensor);
-    } else if (store_rvalue.As<ir::Call>()) {
-      return MakeCallExpr(store_rvalue, op_expr_children, IterExprs4Tensor);
     } else {
-      if (!op_expr_children->empty()) {
-        return MakeGeneralExpr(
-            store_rvalue, op_expr_children, IterExprs4Tensor);
-      } else {
-        // Do nothing
-      }
+      const auto& op_name = hlir::framework::pir::CompatibleInfo::OpName(*op);
+      const auto& make_store_rvalue_expr =
+          GetMakeStoreRvalueExpr4Op(op_name, store_expr.value());
+      return (this->*make_store_rvalue_expr)(
+          store_rvalue, op_expr_children, IterExprs4Tensor);
     }
-    return store_rvalue;
+    LOG(FATAL) << "Dead code";
   }
 
   std::optional<ir::Expr> TranslateOpCallImpl(
@@ -575,8 +635,7 @@ class MapExprToIrTranslator {
 
   ir::Expr GetLoopSize(const LoopDescriptor& ld) const {
     const auto& [_, loop_size] = ld.tuple();
-    CHECK(loop_size.Has<std::int64_t>());
-    return ir::Expr{IteratorInt(loop_size.Get<std::int64_t>())};
+    return TranslateDimExpr(loop_size);
   }
 
   std::tuple<ir::ForType, ir::VectorizeInfo, ir::BindInfo>
@@ -648,53 +707,58 @@ class MapExprToIrTranslator {
         loop_type.variant());
   }
 
-  ir::Expr Mul(const ir::Expr& a, std::int64_t b) const {
-    if (b == 1) {
-      return a;
-    } else {
-      ir::Expr b_expr{IteratorInt(b)};
-      return ir::Mul::Make(a, b_expr);
-    }
-  }
-
-  ir::Expr Accumulate(const std::vector<ir::Expr>& strided_exprs) const {
-    if (strided_exprs.size() == 0) {
+  ir::Expr Accumulate(const std::vector<ir::Expr>& ir_exprs) const {
+    if (ir_exprs.size() == 0) {
       LOG(FATAL) << "Dead code";
-    } else if (strided_exprs.size() == 1) {
-      return strided_exprs.at(0);
+    } else if (ir_exprs.size() == 1) {
+      return ir_exprs.at(0);
     } else {
-      ir::Expr ret = strided_exprs.at(0);
-      for (int i = 1; i < strided_exprs.size(); ++i) {
-        ret = ir::Add::Make(ret, strided_exprs.at(i));
+      ir::Expr ret = ir_exprs.at(0);
+      for (int i = 1; i < ir_exprs.size(); ++i) {
+        ret = ir::Add::Make(ret, ir_exprs.at(i));
       }
       return ret;
     }
     LOG(FATAL) << "Dead code";
   }
 
-  std::int64_t GetStride(const List<Constant>& dims, int start) const {
+  ir::Expr Multiply(const std::vector<ir::Expr>& ir_exprs) const {
+    if (ir_exprs.size() == 0) {
+      LOG(FATAL) << "Dead code";
+    } else if (ir_exprs.size() == 1) {
+      return ir_exprs.at(0);
+    } else {
+      ir::Expr ret = ir_exprs.at(0);
+      for (int i = 1; i < ir_exprs.size(); ++i) {
+        ret = ir::Mul::Make(ret, ir_exprs.at(i));
+      }
+      return ret;
+    }
+    LOG(FATAL) << "Dead code";
+  }
+
+  ir::Expr GetStride(const List<DimExpr>& dims, int start) const {
     CHECK_GE(start, -1);
-    std::int64_t ret = 1;
-    for (int idx = start + 1; idx < dims->size(); ++idx) {
-      CHECK(dims->at(idx).Has<std::int64_t>());
-      ret *= dims->at(idx).Get<std::int64_t>();
+    CHECK_LT(start + 1, dims->size());
+    ir::Expr ret = TranslateDimExpr(dims->at(start + 1));
+    for (int idx = start + 2; idx < dims->size(); ++idx) {
+      ret = ir::Mul::Make(ret, TranslateDimExpr(dims->at(idx)));
     }
     return ret;
   }
 
   using IndexDotValueOfList = IndexDotValue<List<Value>, List<std::int64_t>>;
   ir::Expr TranslateIndexDotValueOfList(const Value& value) const {
-    const auto& [list_value, dot_dims_value] =
-        value.Get<IndexDotValue<Value, Constant>>().tuple();
+    const auto& [list_value, dim_values] =
+        value.Get<IndexDotValue<Value, List<DimExpr>>>().tuple();
     const auto& values = list_value.Get<List<Value>>();
-    const auto& dim_values = dot_dims_value.Get<List<Constant>>();
     CHECK_EQ(values->size(), dim_values->size());
 
     std::vector<ir::Expr> strided_exprs{};
     for (std::size_t i = 0; i < values->size(); ++i) {
       const auto& value_expr = TranslateTensorIterator(values->at(i));
       const auto& stride_value = GetStride(dim_values, i);
-      strided_exprs.emplace_back(Mul(value_expr, stride_value));
+      strided_exprs.emplace_back(ir::Mul::Make(value_expr, stride_value));
     }
     return Accumulate(strided_exprs);
   }
@@ -703,15 +767,14 @@ class MapExprToIrTranslator {
       ListGetItem<IndexUnDotValue<Value, List<std::int64_t>>, std::int64_t>;
   ir::Expr TranslateListGetItemOfUnDot(const Value& value) const {
     const auto& [undot_value, idx_value] =
-        value.Get<ListGetItem<Value, Constant>>().tuple();
-    const auto& [tensor_index_value, dims_value] =
-        undot_value.Get<IndexUnDotValue<Value, Constant>>().tuple();
+        value.Get<ListGetItem<Value, DimExpr>>().tuple();
+    const auto& [tensor_index_value, dims] =
+        undot_value.Get<IndexUnDotValue<Value, List<DimExpr>>>().tuple();
     ir::Expr tensor_index_expr = TranslateTensorIterator(tensor_index_value);
     std::int64_t idx = idx_value.Get<std::int64_t>();
-    const auto& dims = dims_value.Get<List<Constant>>();
 
-    ir::Expr mod_operand{IteratorInt(GetStride(dims, idx - 1))};
-    ir::Expr div_operant{IteratorInt(GetStride(dims, idx))};
+    ir::Expr mod_operand = GetStride(dims, idx - 1);
+    ir::Expr div_operant = GetStride(dims, idx);
     return ir::Div::Make(ir::Mod::Make(tensor_index_expr, mod_operand),
                          div_operant);
   }
@@ -721,6 +784,65 @@ class MapExprToIrTranslator {
     return ir::Var("v_" + std::to_string(iterator.value().unique_id()));
   }
 
+  ir::Expr TranslateDimExprImpl(std::int64_t dim_expr) const {
+    return ir::Expr(IteratorInt(dim_expr));
+  }
+
+  ir::Expr TranslateDimExprImpl(const SymbolicDim& dim_expr) const {
+    CHECK_GT(map_expr_symbolic2dialect_symbolic_.count(dim_expr), 0);
+    return ir::Var{
+        map_expr_symbolic2dialect_symbolic_.at(dim_expr).GetSymName()};
+  }
+
+  ir::Expr TranslateDimExprImpl(const Negative<DimExpr>& dim_expr) const {
+    const auto& [inner_dim_expr] = dim_expr.tuple();
+    ir::Expr inner_expr = TranslateDimExpr(inner_dim_expr);
+    return ir::Sub::Make(ir::Expr(0), inner_expr);
+  }
+
+  ir::Expr TranslateDimExprImpl(const Reciprocal<DimExpr>& dim_expr) const {
+    const auto& [inner_dim_expr] = dim_expr.tuple();
+    ir::Expr inner_expr = TranslateDimExpr(inner_dim_expr);
+    return ir::Div::Make(ir::Expr(1), inner_expr);
+  }
+
+  ir::Expr TranslateDimExprImpl(const Sum<DimExpr>& dim_expr) const {
+    std::vector<ir::Expr> ir_exprs{};
+    const auto& [exprs] = dim_expr.tuple();
+    for (const auto& expr : *exprs) {
+      ir_exprs.emplace_back(TranslateDimExpr(expr));
+    }
+    return Accumulate(ir_exprs);
+  }
+
+  ir::Expr TranslateDimExprImpl(const Product<DimExpr>& dim_expr) const {
+    std::vector<ir::Expr> ir_exprs{};
+    const auto& [exprs] = dim_expr.tuple();
+    for (const auto& expr : *exprs) {
+      ir_exprs.emplace_back(TranslateDimExpr(expr));
+    }
+    return Multiply(ir_exprs);
+  }
+
+  ir::Expr TranslateDimExprImpl(const BroadcastedDim<DimExpr>& dim_expr) const {
+    LOG(FATAL) << "Not Supported yet";
+  }
+
+  ir::Expr TranslateDimExpr(const Value& value) const {
+    const auto& dim_expr = value.Get<DimExpr>();
+    return std::visit(
+        [&](const auto& impl) { return TranslateDimExprImpl(impl); },
+        dim_expr.variant());
+  }
+
+  // ADT_TODO(Hongyu Jia) : Directly return BI iterator maybe a little tricky
+  using BroadcastedSymbolicIterator = BroadcastedIterator<Value, SymbolicDim>;
+  ir::Expr TranslateBI(const Value& value) const {
+    const auto& [iterator, symbolic_dim] =
+        value.Get<BroadcastedIterator<Value, DimExpr>>().tuple();
+    return TranslateIterator(iterator);
+  }
+
   ir::Expr TranslateTensorIterator(const Value& value) const {
     if (Match<IndexDotValueOfList>(value)) {
       return TranslateIndexDotValueOfList(value);
@@ -728,6 +850,10 @@ class MapExprToIrTranslator {
       return TranslateListGetItemOfUnDot(value);
     } else if (Match<Iterator>(value)) {
       return TranslateIterator(value);
+    } else if (Match<DimExpr>(value)) {
+      return TranslateDimExpr(value);
+    } else if (Match<BroadcastedSymbolicIterator>(value)) {
+      return TranslateBI(value);
     } else {
       LOG(FATAL) << "Not supported yet! " << ToTxtString(value);
     }
@@ -744,18 +870,22 @@ class MapExprToIrTranslator {
 
   MapExpr map_expr_;
   const Node2LoweredFuncs* node2lowered_funcs_;
-  const common::Target target_;
+  const cinn::common::Target target_;
   TensorIteratorExpr4TensorT TensorIteratorExpr4Tensor;
   LoopDescriptor4LoopIteratorT LoopDescriptor4LoopIterator;
+  std::unordered_map<SymbolicDim, ::pir::shape::SymbolicDimOp>
+      map_expr_symbolic2dialect_symbolic_;
 };
 
 }  // namespace
 
 ir::Expr MapExprToIr(const MapExprCtx& map_expr_ctx,
-                     const common::Target& target) {
+                     const cinn::common::Target& target) {
   const auto& expr =
-      MapExprToIrTranslator(
-          map_expr_ctx.map_expr(), map_expr_ctx.node2lowered_funcs(), target)
+      MapExprToIrTranslator(map_expr_ctx.map_expr(),
+                            map_expr_ctx.node2lowered_funcs(),
+                            map_expr_ctx.map_expr_symbolic2dialect_symbolic(),
+                            target)
           .Translate();
   VLOG(1) << "Finish MapExprToIr\n" << expr;
   return expr;

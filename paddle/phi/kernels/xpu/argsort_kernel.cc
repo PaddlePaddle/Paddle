@@ -186,9 +186,9 @@ void ArgsortKernel(const Context& dev_ctx,
     return;
   }
 
-  int len_before = phi::product(phi::slice_ddim(in_dims, 0, axis));
+  int len_before = common::product(common::slice_ddim(in_dims, 0, axis));
   int len_after =
-      phi::product(phi::slice_ddim(in_dims, axis + 1, in_dims.size()));
+      common::product(common::slice_ddim(in_dims, axis + 1, in_dims.size()));
   std::vector<int> permute_vec{0, 2, 1};
   std::vector<int> data_shape{len_before, n, len_after};
 

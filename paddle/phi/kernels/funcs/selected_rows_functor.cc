@@ -19,7 +19,7 @@ limitations under the License. */
 #include <set>
 #include <vector>
 
-#include "paddle/phi/core/ddim.h"
+#include "paddle/common/ddim.h"
 #include "paddle/phi/core/mixed_vector.h"
 
 #ifdef PADDLE_WITH_XPU
@@ -561,7 +561,7 @@ struct MergeAddImpl {
 
     out.set_height(input_height);
     DenseTensor* out_tensor = out.mutable_value();
-    out_tensor->Resize(phi::make_ddim(
+    out_tensor->Resize(common::make_ddim(
         {static_cast<int64_t>(merged_row_set.size()), input_width}));
     auto* out_data = context.template Alloc<T>(out_tensor);
 
@@ -677,8 +677,8 @@ struct MergeAdd<phi::XPUContext, T> {
     out.set_rows(merge_rows);
     out.set_height(input.height());
     DenseTensor* out_tensor = out.mutable_value();
-    out_tensor->Resize(
-        phi::make_ddim({static_cast<int64_t>(merge_rows.size()), input_width}));
+    out_tensor->Resize(common::make_ddim(
+        {static_cast<int64_t>(merge_rows.size()), input_width}));
     context.template Alloc<T>(out_tensor);
 
     std::unordered_map<int64_t, size_t> rows_to_id;
@@ -768,7 +768,7 @@ struct MergeAdd<phi::XPUContext, T> {
     out.set_height(input_height);
 
     DenseTensor* out_tensor = out.mutable_value();
-    out_tensor->Resize(phi::make_ddim(
+    out_tensor->Resize(common::make_ddim(
         {static_cast<int64_t>(merged_row_set.size()), input_width}));
     context.template Alloc<T>(out_tensor);
 
@@ -877,7 +877,7 @@ struct MergeAverage<phi::CPUContext, T> {
     out.set_height(input_height);
 
     DenseTensor* out_tensor = out.mutable_value();
-    out_tensor->Resize(phi::make_ddim(
+    out_tensor->Resize(common::make_ddim(
         {static_cast<int64_t>(merged_row_set.size()), input_width}));
     auto* out_data = context.template Alloc<T>(out_tensor);
 

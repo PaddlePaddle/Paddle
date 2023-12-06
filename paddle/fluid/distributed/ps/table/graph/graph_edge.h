@@ -19,7 +19,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <vector>
-#include "paddle/phi/core/macros.h"
+#include "paddle/common/macros.h"
 namespace paddle {
 namespace distributed {
 
