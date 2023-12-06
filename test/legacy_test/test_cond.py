@@ -402,7 +402,6 @@ class TestCondInputOutput(unittest.TestCase):
                 out = paddle.static.nn.cond(
                     pred, func_return_none, func_return_one_tensor
                 )
-            print("str(e.exception)", str(e.exception))
             self.assertTrue(
                 "Incompatible return values of true_fn and false_fn in cond"
                 in str(e.exception)
