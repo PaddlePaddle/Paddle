@@ -28,6 +28,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    enable_to_static_guard,
     test_legacy_and_pt_and_pir,
 )
 
@@ -537,12 +538,11 @@ def optimizer_setting(parameters):
     return optimizer
 
 
-def train(args, to_static):
+def train(args):
     place = (
         base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
     )
 
-    paddle.jit.enable_to_static(to_static)
     with base.dygraph.guard(place):
         max_images_num = args.max_images_num
         data_shape = [-1] + args.image_shape
@@ -687,7 +687,8 @@ class TestCycleGANModel(Dy2StTestBase):
         self.args = Args()
 
     def train(self, to_static):
-        out = train(self.args, to_static)
+        with enable_to_static_guard(to_static):
+            out = train(self.args)
         return out
 
     @test_legacy_and_pt_and_pir
