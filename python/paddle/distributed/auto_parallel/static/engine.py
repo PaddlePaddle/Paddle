@@ -850,12 +850,9 @@ class Engine:
         dist_context = self._dist_contexts[mode]
         dist_main_program = dist_context.dist_main_programs[self._cur_rank]
         if self._dygraph_mode:
-            if not init_parameters:
-                self._share_parameters()
-            else:
-                self.program_helper.init(
-                    dist_main_program, self._place, dist_context
-                )
+            self.program_helper.init(
+                dist_main_program, self._place, dist_context
+            )
             # The model's instance variables (not paramters), used in forward function,
             # have been initialized when initialize model in dynamic mode.
             if self._model and len(self._model.buffers()) > 0:
