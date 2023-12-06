@@ -18,11 +18,11 @@ from collections import Counter
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    IrMode,
+    ToStaticMode,
+    disable_test_case,
     test_ast_only,
     test_legacy_and_pt_and_pir,
-    disable_test_case,
-    ToStaticMode,
-    IrMode,
 )
 from test_fetch_feed import Linear, Pool2D
 
