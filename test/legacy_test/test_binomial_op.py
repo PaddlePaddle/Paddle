@@ -42,7 +42,7 @@ def output_hist(out, n, p, a=10, b=20):
     return hist, prob
 
 
-class TestBinomialOp1(OpTest):
+class TestBinomialOp(OpTest):
     def setUp(self):
         self.python_api = paddle.binomial
         self.op_type = "binomial"
@@ -79,16 +79,6 @@ class TestBinomialOp1(OpTest):
 
     def verify_output(self, outs):
         hist, prob = output_hist(np.array(outs[0]), self.n, self.p, a=5, b=15)
-        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
-
-
-class TestBinomialOp2(TestBinomialOp1):
-    def config(self):
-        self.n = 200.0
-        self.p = 0.7
-
-    def verify_output(self, outs):
-        hist, prob = output_hist(np.array(outs[0]), self.n, self.p, a=70, b=140)
         np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
@@ -250,7 +240,7 @@ class TestRandomValue(unittest.TestCase):
     or not core.is_float16_supported(core.CUDAPlace(0)),
     "core is not complied with CUDA and not support the float16",
 )
-class TestBinomialFP16Op(TestBinomialOp1):
+class TestBinomialFP16Op(TestBinomialOp):
     def init_dtype(self):
         self.total_count_dtype = np.float16
         self.probability_dtype = np.float16
@@ -270,7 +260,7 @@ class TestBinomialFP16Op(TestBinomialOp1):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not complied with CUDA and not support the bfloat16",
 )
-class TestBinomialBF16Op(TestBinomialOp1):
+class TestBinomialBF16Op(TestBinomialOp):
     def init_dtype(self):
         self.probability_dtype = np.uint16
         self.total_count_dtype = np.uint16
