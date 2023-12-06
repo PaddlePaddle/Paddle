@@ -24,7 +24,7 @@ namespace pass {
 
 void InferShape(
     framework::Node* node,
-    absl::flat_hash_map<std::string, common::Type>& dtype_dict,  // NOLINT
+    absl::flat_hash_map<std::string, cinn::common::Type>& dtype_dict,  // NOLINT
     absl::flat_hash_map<std::string, framework::shape_t>&
         shape_dict);  // NOLINT
 

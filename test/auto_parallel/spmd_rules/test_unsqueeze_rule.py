@@ -48,7 +48,7 @@ class TestUnsqueezeSPMDRule(unittest.TestCase):
         infered_output_dist_attrs = result_dist_attrs[1]
 
         self.assertEqual(len(infered_input_dist_attrs), 1)
-        self.assertEqual(len(infered_output_dist_attrs), 1)
+        self.assertEqual(len(infered_output_dist_attrs), 2)
         self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [0, 1])
         self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [-1, 0, 1])
 

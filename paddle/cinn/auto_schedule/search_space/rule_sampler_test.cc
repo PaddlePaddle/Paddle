@@ -23,9 +23,9 @@ namespace cinn {
 namespace auto_schedule {
 
 #ifdef CINN_WITH_CUDA
-Target target = common::DefaultNVGPUTarget();
+Target target = cinn::common::DefaultNVGPUTarget();
 #else
-Target target = common::DefaultHostTarget();
+Target target = cinn::common::DefaultHostTarget();
 #endif
 
 std::vector<AutoGenRule*> GenerateTestRules() {

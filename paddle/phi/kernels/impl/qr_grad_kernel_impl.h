@@ -38,7 +38,7 @@ static DenseTensor Fill(const Context& ctx,
                         std::vector<int> shape,
                         float fill_value) {
   DenseTensor ret;
-  ret.Resize(make_ddim(shape));
+  ret.Resize(common::make_ddim(shape));
   ctx.template Alloc<T>(&ret);
   funcs::SetConstant<Context, T>()(ctx, &ret, T(fill_value));
   return ret;
@@ -101,7 +101,7 @@ void QrGradKernel(const Context& ctx,
       R_term =
           Matmul<T, Context>(ctx, R, TransposeLast2Dim<T, Context>(ctx, dR));
     } else {
-      R_term = Fill<T, Context>(ctx, phi::vectorize<int>(R.dims()), 0);
+      R_term = Fill<T, Context>(ctx, common::vectorize<int>(R.dims()), 0);
     }
 
     // dQ^H * Q
@@ -110,7 +110,7 @@ void QrGradKernel(const Context& ctx,
       Q_term =
           Matmul<T, Context>(ctx, TransposeLast2Dim<T, Context>(ctx, dQ), Q);
     } else {
-      Q_term = Fill<T, Context>(ctx, phi::vectorize<int>(R.dims()), 0);
+      Q_term = Fill<T, Context>(ctx, common::vectorize<int>(R.dims()), 0);
     }
 
     DenseTensor M_tmp1 = Subtract<T, Context>(ctx, R_term, Q_term);
@@ -160,8 +160,8 @@ void QrGradKernel(const Context& ctx,
       dQ_prime =
           Matmul<T, Context>(ctx, Y, TransposeLast2Dim<T, Context>(ctx, dV));
     } else {
-      dV = Fill<T, Context>(ctx, phi::vectorize<int>(Y.dims()), 0);
-      dQ_prime = Fill<T, Context>(ctx, phi::vectorize<int>(Q.dims()), 0);
+      dV = Fill<T, Context>(ctx, common::vectorize<int>(Y.dims()), 0);
+      dQ_prime = Fill<T, Context>(ctx, common::vectorize<int>(Q.dims()), 0);
     }
 
     if (dQ.initialized()) {

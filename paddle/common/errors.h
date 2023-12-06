@@ -145,3 +145,9 @@ REGISTER_ERROR(External, ErrorCode::EXTERNAL)
 
 }  // namespace errors
 }  // namespace common
+
+namespace phi {
+namespace errors = ::common::errors;
+using ErrorCode = ::common::ErrorCode;
+using ErrorSummary = ::common::ErrorSummary;
+}  // namespace phi

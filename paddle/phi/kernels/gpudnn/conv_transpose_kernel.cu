@@ -16,11 +16,11 @@ limitations under the License. */
 
 #include <algorithm>
 
+#include "paddle/common/ddim.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/padding.h"
@@ -57,8 +57,8 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
   const GPUDNNDataLayout data_layout =
       (data_format != "NHWC" ? GPUDNNDataLayout::kNCHW
                              : GPUDNNDataLayout::kNHWC);
-  std::vector<int> x_vec = vectorize<int>(x.dims());
-  std::vector<int> out_vec = vectorize<int>(out->dims());
+  std::vector<int> x_vec = common::vectorize<int>(x.dims());
+  std::vector<int> out_vec = common::vectorize<int>(out->dims());
   // if channel_last, transpose to channel_first
   DenseTensor x_transpose;
   if (data_layout == GPUDNNDataLayout::kNHWC) {
@@ -87,7 +87,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
   DDim x_data_dims;
   x_data_dims = slice_ddim(x_dims, 2, x_dims.size());
   DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings_, &dilations_, padding_algorithm, x_data_dims, strides, ksize);
 
@@ -110,7 +110,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
       x_pad[2 * i + 4] = paddings_[2 * i] - padding_common[i];
       x_pad[2 * i + 4 + 1] = paddings_[2 * i + 1] - padding_common[i];
     }
-    DDim new_x_shape(make_ddim(new_x_shape_vec));
+    DDim new_x_shape(common::make_ddim(new_x_shape_vec));
     transformed_x.Resize(new_x_shape);
     ctx.template Alloc<T>(&transformed_x);
 
@@ -152,7 +152,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
   }
 
   const T* x_data = transformed_x.data<T>();
-  x_vec = vectorize<int>(transformed_x.dims());
+  x_vec = common::vectorize<int>(transformed_x.dims());
 
   std::vector<int> transformed_out_vec = out_vec;
   for (size_t i = 0; i < data_dim; ++i) {
@@ -163,12 +163,12 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
 
   DenseTensor transformed_out;
   if (!is_sys_pad) {
-    transformed_out.Resize(make_ddim(transformed_out_vec));
+    transformed_out.Resize(common::make_ddim(transformed_out_vec));
     ctx.template Alloc<T>(&transformed_out);
   } else {
     ctx.template Alloc<T>(out);
     transformed_out.ShareDataWith(*out);
-    transformed_out.Resize(make_ddim(transformed_out_vec));
+    transformed_out.Resize(common::make_ddim(transformed_out_vec));
   }
   T* transformed_out_data = transformed_out.data<T>();
 
@@ -288,7 +288,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
     DenseTensor out_transpose;
     DenseTensor out_nchw;
     out_nchw.ShareDataWith(*out);
-    out_nchw.Resize(make_ddim(out_vec));
+    out_nchw.Resize(common::make_ddim(out_vec));
 
     if (strides.size() == 2U) {
       out_transpose = Transpose<T, Context>(ctx, out_nchw, {0, 2, 3, 1});
