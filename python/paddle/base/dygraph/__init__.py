@@ -12,20 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import base
-from .base import (
-    no_grad,
-    no_grad_,
+from . import (  # noqa: F401
+    base,
+    tracer,
+)
+from .base import (  # noqa: F401
+    disable_dygraph,
+    enable_dygraph,
+    enabled,
     grad,
     guard,
-    enable_dygraph,
-    disable_dygraph,
-    enabled,
+    no_grad,
+    no_grad_,
     to_variable,
 )
-
-from . import tracer
-from .tracer import Tracer
-
+from .tracer import Tracer  # noqa: F401
 
 __all__ = []

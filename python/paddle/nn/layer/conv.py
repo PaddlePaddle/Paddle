@@ -601,7 +601,7 @@ class Conv2D(_ConvNd):
         out_channels(int): The number of output channels produced by the convolution.
         kernel_size(int|list|tuple): The size of the convolving kernel.
         stride(int|list|tuple, optional): The stride size. If stride is a list/tuple, it must
-            contain three integers, (stride_H, stride_W). Otherwise, the
+            contain two integers, (stride_H, stride_W). Otherwise, the
             stride_H = stride_W = stride. The default value is 1.
         padding(int|str|tuple|list, optional): The padding size. Padding coule be in one of the following forms.
             1. a string in ['valid', 'same'].
@@ -611,9 +611,9 @@ class Conv2D(_ConvNd):
             5. a list or tuple of pairs of ints. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension are also included. Each pair of integers correspond to the amount of padding for a dimension of the input. Padding in batch dimension and channel dimension should be [0, 0] or (0, 0).
             The default value is 0.
         dilation(int|list|tuple, optional): The dilation size. If dilation is a list/tuple, it must
-            contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
-            dilation_D = dilation_H = dilation_W = dilation. The default value is 1.
-        groups(int, optional): The groups number of the Conv3D Layer. According to grouped
+            contain two integers, (dilation_H, dilation_W). Otherwise, the
+            dilation_H = dilation_W = dilation. The default value is 1.
+        groups(int, optional): The groups number of the Conv2D Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only

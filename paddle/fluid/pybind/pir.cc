@@ -528,6 +528,8 @@ phi::DataType GetValueDtype(Value value) {
 const phi::DDim &GetValueDims(Value value) {
   if (value.type().isa<DenseTensorType>()) {
     return value.type().dyn_cast<DenseTensorType>().dims();
+  } else if (value.type().isa<SelectedRowsType>()) {
+    return value.type().dyn_cast<SelectedRowsType>().dims();
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Currently, we can only get shape for dense "

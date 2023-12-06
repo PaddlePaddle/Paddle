@@ -20,7 +20,7 @@ import sys
 import unittest
 
 sys.path.append("../distributed_passes")
-from dist_pass_test_base import remove_path_if_exists  # noqa: F401
+from dist_pass_test_base import remove_path_if_exists
 
 
 class FlPsTest(unittest.TestCase):
