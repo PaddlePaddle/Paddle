@@ -14,9 +14,7 @@ limitations under the License. */
 #include <iostream>
 #include <unordered_map>
 #include "paddle/fluid/framework/ir/graph_helper.h"
-#include "paddle/fluid/framework/ir/graph_printer.h"
 #include "paddle/fluid/framework/ir/node.h"
-#include "paddle/fluid/framework/paddle2cinn/transform_desc.h"
 
 namespace paddle {
 namespace framework {
