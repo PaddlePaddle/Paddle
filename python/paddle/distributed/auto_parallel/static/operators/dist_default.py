@@ -114,12 +114,13 @@ class DistributedDefault(DistributedOperatorImplContainer):
         op_desc = dist_op.serial_op.desc
         input_arg_names = op_desc.input_arg_names()
         output_arg_names = op_desc.output_arg_names()
+        main_block = dist_op.serial_op.block
 
         num_inputs = len(input_arg_names)
         input_specs = []
         for i in range(num_inputs):
             assert not is_parameter_related(
-                input_arg_names[i]
+                input_arg_names[i], main_block
             ), "input {} of op {} is parameter, op should not use default rule.".format(
                 input_arg_names[i], str(dist_op.serial_op)
             )
@@ -130,7 +131,7 @@ class DistributedDefault(DistributedOperatorImplContainer):
         output_specs = []
         for i in range(num_outputs):
             assert not is_parameter_related(
-                output_arg_names[i]
+                output_arg_names[i], main_block
             ), "output {} of op {} is parameter, op should not use default rule.".format(
                 output_arg_names[i], str(dist_op.serial_op)
             )
