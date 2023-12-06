@@ -539,7 +539,9 @@ class TestlayernormStaticOp(unittest.TestCase):
                     "residual_static": residual_np.astype(dtype),
                     "bias_static": bias_np.astype(dtype),
                 },
-                fetch_list=[outs],
+                fetch_list=[
+                    outs[0]
+                ],  # NOTE: Only fetch `out`, because `residual_out` will not be initialized if both `norm_weight` and `norm_bias` are None.
             )
         return out_s, paddle_naive_residual_out
 
