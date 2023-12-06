@@ -141,13 +141,17 @@ PADDLE_API std::shared_ptr<phi::distributed::DistTensor> reshard(
       VLOG(3) << "reshard tensor which is not in current mesh, just set its "
                  "dist_attr "
               << "from " << dist_tensor->dist_attr() << " to " << dist_attr;
-      dist_tensor->unsafe_set_dist_attr(dist_attr);
+
+      phi::distributed::DistTensor* dist_tensor =
+          static_cast<phi::distributed::DistTensor*>(input_tensor_impl.get());
+      dist_out_ptr = std::make_shared<phi::distributed::DistTensor>(
+          dist_tensor->dims(), dist_attr);
+      phi::DenseTensor* dense_out = dist_out_ptr->unsafe_mutable_value();
+      *dense_out = dist_tensor->value();
+      return dist_out_ptr;
     }
 
-    if (dist_tensor->dist_attr() != dist_attr &&
-        (phi::distributed::IsCurRankInMesh(
-             dist_tensor->dist_attr().process_mesh()) ||
-         phi::distributed::IsCurRankInMesh(dist_attr.process_mesh()))) {
+    if (dist_tensor->dist_attr() != dist_attr) {
       VLOG(6) << "reshard func, reshard tensor from "
               << dist_tensor->dist_attr() << " to " << dist_attr;
       auto* func = phi::distributed::ChooseProperReshardFunction(*dist_tensor,

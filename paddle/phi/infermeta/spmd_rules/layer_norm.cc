@@ -383,12 +383,8 @@ SpmdInfo LayerNormGradInferSpmd(const DistMetaTensor& x,
   const auto& dim_mapping = x_dist_attr.dims_mapping();
   for (int i = 0; i < begin_norm_axis; ++i) {
     auto mapping = dim_mapping[i];
-    VLOG(4) << "mapping: " << mapping << ", i: " << i
-            << ", begin_norm_axis: " << begin_norm_axis;
     if (mapping != -1) {
-      partial_on_dims.push_back(dim_mapping[i]);
-      VLOG(4) << "partial_on_dims.push_back(dim_mapping[i]): "
-              << dim_mapping[i];
+      partial_on_dims.push_back(mapping);
     }
   }
   scale_grad_dist_attr.set_partial_status(partial_on_dims);

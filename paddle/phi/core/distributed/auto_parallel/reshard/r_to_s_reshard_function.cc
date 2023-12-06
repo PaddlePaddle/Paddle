@@ -116,14 +116,6 @@ void RToSReshardFunctionCrossMesh::Eval(phi::DeviceContext* dev_ctx,
   DistTensor tmp_result;
   TensorDistAttr in_dist_attr_shard = in_dist_attr;
   in_dist_attr_shard.set_dims_mapping(out_dist_attr.dims_mapping());
-  // RToSReshardFunction r_to_s_func;
-  // PADDLE_ENFORCE(
-  //     r_to_s_func.IsSuitable(in, in_dist_attr_shard),
-  //     phi::errors::InvalidArgument(
-  //         "Invoke the r to s reshard function is not valid from %s to %s.",
-  //         tmp_result.dist_attr(),
-  //         out_dist_attr));
-  // r_to_s_func.Eval(dev_ctx, in, in_dist_attr_shard, &tmp_result);
 
   int64_t cur_global_rank = phi::distributed::GetCurGlobalRank();
   if (in_dist_attr.process_mesh().contains(cur_global_rank)) {

@@ -64,13 +64,6 @@ void PToRReshardFunction::Eval(DeviceContext* dev_ctx,
   VLOG(3) << "Transfer from partial to replicated status with reduce type "
           << reduce_type;
 
-  // const auto& out_process_ids = out_dist_attr.process_mesh().process_ids();
-  // VLOG(3) << "in_process_ids: " << in_process_ids;
-  // VLOG(3) << "out_process_ids: " << out_process_ids;
-
-  VLOG(3) << "in_dist_attr: " << in_dist_attr;
-  VLOG(3) << "out_dist_attr: " << out_dist_attr;
-
   RESHARD_FUNCTOR_WITH_COMM(dev_ctx,
                             AllReduce,
                             dtype,
@@ -145,7 +138,6 @@ void PToRReshardFunctionCrossMesh::Eval(phi::DeviceContext* dev_ctx,
     SetDistProps(out, in.dims(), out_dist_attr);
     SetValue(out, tmp_result.value());
   }
-  // p_to_r_func.Eval(dev_ctx, tmp_result, out_dist_attr, out);
 }
 
 }  // namespace distributed

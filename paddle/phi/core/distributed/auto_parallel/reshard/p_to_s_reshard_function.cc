@@ -64,15 +64,9 @@ void PToSReshardFunction::Eval(DeviceContext* dev_ctx,
       axis.emplace_back(i);
     }
     std::swap(axis[0], axis[out_split_axis]);
-    VLOG(3) << "out_split_axis: " << out_split_axis;
-    for (size_t i = 0; i < axis.size(); i++)
-      VLOG(3) << "axis[" << i << "]: " << axis[i];
     RESHARD_FUNCTOR(
         dev_ctx, Transpose, dtype, in.value(), axis, &in_reduce_scatter);
   }
-
-  for (size_t i = 0; i < in_process_ids.size(); i++)
-    VLOG(3) << "in_process_ids[" << i << "]: " << in_process_ids[i];
 
   DenseTensor out_reduce_scatter;
   RESHARD_FUNCTOR_WITH_COMM(dev_ctx,
@@ -142,7 +136,6 @@ void PToSReshardFunctionCrossMesh::Eval(phi::DeviceContext* dev_ctx,
     SetDistProps(out, in.dims(), out_dist_attr);
     SetValue(out, tmp_result.value());
   }
-  // p_to_r_func.Eval(dev_ctx, tmp_result, out_dist_attr, out);
 }
 
 }  // namespace distributed

@@ -122,37 +122,24 @@ bool SToRReshardFunctionCrossMesh::IsSuitable(
   const auto& in_dims_mapping = in_dist_attr.dims_mapping();
 
   RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.is_shard());
-  VLOG(3) << "RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.is_shard());";
   RESHARD_SHORTCUT_IF_FALSE(out_dist_attr.is_replicated());
-  VLOG(3) << "RESHARD_SHORTCUT_IF_FALSE(out_dist_attr.is_replicated());";
 
   const auto& in_process_mesh = in_dist_attr.process_mesh();
   const auto& out_process_mesh = out_dist_attr.process_mesh();
 
   int split_axis = GetSplitAxisWithDimsMapping(in_dims_mapping).begin()->first;
   int64_t num_of_process = in_process_mesh.size();
-  VLOG(3) << "in.local_dims()[static_cast<int>(split_axis)]: "
-          << in.local_dims()[static_cast<int>(split_axis)];
-  VLOG(3) << "num_of_process: " << num_of_process;
-  VLOG(3) << "in.dims()[static_cast<int>(split_axis)]): "
-          << in.dims()[static_cast<int>(split_axis)];
   if (in.initialized()) {
     RESHARD_SHORTCUT_IF_FALSE(in.local_dims()[static_cast<int>(split_axis)] *
                                   num_of_process ==
                               in.dims()[static_cast<int>(split_axis)]);
   }
-  VLOG(3) << "in.local_dims()[static_cast<int>(split_axis)] * num_of_process "
-             "== in.dims()[static_cast<int>(split_axis)]";
 
   RESHARD_SHORTCUT_IF_FALSE(in_process_mesh.ndim() == 1);
-  VLOG(3) << "in_process_mesh.ndim() == 1";
   RESHARD_SHORTCUT_IF_FALSE(out_process_mesh.ndim() == 1);
-  VLOG(3) << "out_process_mesh.ndim() == 1";
   RESHARD_SHORTCUT_IF_FALSE(in_process_mesh.shape() ==
                             out_process_mesh.shape());
-  VLOG(3) << "in_process_mesh.shape() == out_process_mesh.shape()";
   RESHARD_SHORTCUT_IF_FALSE(in_process_mesh != out_process_mesh);
-  VLOG(3) << "in_process_mesh != out_process_mesh";
 
   return true;
 }
@@ -185,8 +172,6 @@ void SToRReshardFunctionCrossMesh::Eval(DeviceContext* dev_ctx,
     SetDistProps(out, in.dims(), out_dist_attr);
     SetValue(out, tmp_result.value());
   }
-  // SToRReshardFunction s_to_r_func;
-  // s_to_r_func.Eval(dev_ctx, tmp_result, out_dist_attr, out);
 }
 
 }  // namespace distributed
