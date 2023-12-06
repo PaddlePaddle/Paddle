@@ -16,6 +16,7 @@
 
 #include <unordered_map>
 
+#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
@@ -35,7 +36,9 @@ class ReplaceModToMaxMutator : public ir::IRMutator<> {
   void Visit(const ir::Mod* op, ir::Expr* expr) override {
     ir::Mod* node = expr->As<ir::Mod>();
     Expr base = ir::Sub::Make(node->operand(1), Expr(1));
-    *expr = ir::Min::Make(node->operand(0), base);
+    Expr min_expr = ir::Min::Make(node->operand(0), base);
+    *expr = cinn::common::AutoSimplify(min_expr);
+    ir::IRMutator<>::Visit(expr, expr);
   }
 };
 
