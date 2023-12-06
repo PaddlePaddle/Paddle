@@ -9,7 +9,7 @@ if(NOT WITH_ROCM)
     pir_transforms
     op_dialect
     gtest)
-  
+
   cc_test_old(
     while_op_test
     SRCS

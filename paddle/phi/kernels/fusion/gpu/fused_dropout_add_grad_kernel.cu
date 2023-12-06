@@ -204,16 +204,15 @@ void FusedDropoutAddGradKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_HIP
     VectorizedDropoutBackward<T, NoMaskBwFunctor<T, float>>
-        <<<grid_size, block_size, 0, stream>>>(
-            0,
-            numel,
-            seed_data,  //  idx: 2 need save
-            x_grad_data,
-            y_grad_data,
-            out_grad_data,
-            increment,  //  idx: 6 need save
-            main_offset,
-            functor);
+        <<<grid_size, block_size, 0, stream>>>(0,
+                                               numel,
+                                               seed_data,  //  idx: 2 need save
+                                               x_grad_data,
+                                               y_grad_data,
+                                               out_grad_data,
+                                               increment,  //  idx: 6 need save
+                                               main_offset,
+                                               functor);
 #else
     // we assume seed/offset is same across iterations
     // seed_offset_data should preserved by cudaGraph pool

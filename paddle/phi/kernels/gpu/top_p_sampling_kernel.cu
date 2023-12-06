@@ -15,15 +15,15 @@
 #include "paddle/phi/kernels/top_p_sampling_kernel.h"
 
 #ifdef PADDLE_WITH_HIP
-#include <hip/hip_runtime.h>
 #include <hip/hip_fp16.h>
-#include <hipcub/hipcub.hpp>
+#include <hip/hip_runtime.h>
 #include <hiprand_kernel.h>
+#include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
 #else
 #include <cuda_fp16.h>
-#include <cub/cub.cuh>
 #include <curand_kernel.h>
+#include <cub/cub.cuh>
 #endif
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -64,7 +64,7 @@ struct DataTypeTraits<phi::dtype::float16> {
   FIXED_BLOCK_DIM_BASE(512, ##__VA_ARGS__);  \
   FIXED_BLOCK_DIM_BASE(256, ##__VA_ARGS__);  \
   FIXED_BLOCK_DIM_BASE(128, ##__VA_ARGS__);  \
-  FIXED_BLOCK_DIM_BASE(64, ##__VA_ARGS__);   
+  FIXED_BLOCK_DIM_BASE(64, ##__VA_ARGS__);
 #else
 #define WARP_SIZE 32
 #define FIXED_BLOCK_DIM(...)                 \
@@ -290,7 +290,7 @@ __device__ __forceinline__ void BlockReduce(Pair<T> shared_max[],
       if (*beam >= MaxLength) break;
     } else {
 #ifdef PADDLE_WITH_HIP
-      unsigned long long int mask = 0;
+      uint64 mask = 0;
       mask = __ballot(true);
       if (tid_max / WARP_SIZE == wid) {
         if (__shfl_down(*beam, tid_max % WARP_SIZE, WARP_SIZE) == MaxLength)
@@ -300,7 +300,8 @@ __device__ __forceinline__ void BlockReduce(Pair<T> shared_max[],
       unsigned mask = 0u;
       mask = __ballot_sync(FINAL_MASK, true);
       if (tid_max / WARP_SIZE == wid) {
-        if (__shfl_down_sync(FINAL_MASK, *beam, tid_max % WARP_SIZE, WARP_SIZE) == MaxLength)
+        if (__shfl_down_sync(
+                FINAL_MASK, *beam, tid_max % WARP_SIZE, WARP_SIZE) == MaxLength)
           break;
       }
 #endif

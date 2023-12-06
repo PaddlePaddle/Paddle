@@ -77,7 +77,8 @@ void QuantLinearKernel(const Context& dev_ctx,
           "received weight's datatype is %d",
           static_cast<int>(w.dtype())));
 #ifdef PADDLE_WITH_HIP
-  PADDLE_THROW(phi::errors::Unimplemented("FCInt8Functor not surpport for rocm"));
+  PADDLE_THROW(
+      phi::errors::Unimplemented("FCInt8Functor not surpport for rocm"));
 #else
   phi::funcs::FCInt8Functor<Context, T> fc;
   fc(dev_ctx,
