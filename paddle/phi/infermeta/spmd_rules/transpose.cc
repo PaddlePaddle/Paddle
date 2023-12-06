@@ -92,8 +92,6 @@ SpmdInfo TransposeInferSpmd(const DistMetaTensor& x,
   out_dist_attr.set_dims_mapping(out_dims_mapping);
   out_dist_attr.set_partial_status(x_dist_attr_src.partial_status());
 
-  // Step3  Handle Partial (TODO)
-
   VLOG(4) << "TransposeInferSpmd:";
   VLOG(4) << "Input: shape: [" << str_join(x_shape) << "] "
           << "src_dims_mapping: [" << str_join(x_dims_mapping) << "] "
