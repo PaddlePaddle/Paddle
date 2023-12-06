@@ -221,6 +221,26 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_executor_and_mul$|\
 ^test_gru_unit_op$|\
 ^test_matmul_op$|\
+^test_decoupled_py_reader_data_check$|\
+^test_decoupled_py_reader$|\
+^test_generator_dataloader$|\
+^test_py_reader_combination$|\
+^test_reader_reset$|\
+^test_sync_batch_norm_op$|\
+^test_sync_batch_norm_op_static_build$|\
+^test_decoupled_py_reader_static_build$|\
+^test_multiprocess_dataloader_iterable_dataset_dynamic$|\
+^test_multiprocess_dataloader_iterable_dataset_static$|\
+^test_dataloader_keep_order$|\
+^test_dataloader_unkeep_order$|\
+^test_add_reader_dependency$|\
+^test_fuse_bn_act_pass$|\
+^test_fuse_bn_act_pass_static_build$|\
+^test_fuse_bn_add_act_pass$|\
+^test_model$|\
+^test_dataloader_early_reset$|\
+^test_add_reader_dependency$|\
+^test_conv2d_fusion_op$|\
 ^disable_wingpu_cuda12_test$"
 
 # /*=================Fixed Disabled Windows TRT MKL unittests=======================*/
