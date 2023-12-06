@@ -4931,7 +4931,7 @@ def repeat_interleave(x, repeats, axis=None, name=None):
         x = paddle.flatten(x)
         axis = 0
     if in_dynamic_or_pir_mode():
-        if isinstance(repeats, (Variable, paddle.pir.OpResult)):
+        if isinstance(repeats, (Variable, paddle.pir.Value)):
             return _C_ops.repeat_interleave_with_tensor_index(x, repeats, axis)
         return _C_ops.repeat_interleave(x, repeats, axis)
 
