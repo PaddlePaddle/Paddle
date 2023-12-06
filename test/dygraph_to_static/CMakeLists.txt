@@ -18,6 +18,7 @@ endif()
 if(WIN32 AND NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_resnet_amp
   )# disable on Windows CPU CI for timeout
+  set_tests_properties(test_resnetx PROPERTIES TIMEOUT 300)
 endif()
 
 if(NOT WITH_GPU)
