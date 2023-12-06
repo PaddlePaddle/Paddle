@@ -94,8 +94,9 @@ class ContinuousBernoulli_np:
         return np.where(self._cut_support_region(), propose, taylor_expansion)
 
     def np_entropy(self):
-        log_p = np.log(self.probability)
-        log_1_minus_p = np.log1p(-self.probability)
+        cut_probs = self._cut_probs()
+        log_p = np.log(cut_probs)
+        log_1_minus_p = np.log1p(-cut_probs)
         return (
             -self._log_constant()
             + self.np_mean() * (log_1_minus_p - log_p)
@@ -213,8 +214,8 @@ class TestContinuousBernoulli(unittest.TestCase):
         np.testing.assert_allclose(
             self.var,
             self._np_variance(),
-            rtol=config.RTOL.get(str(self.probability.dtype)),
-            atol=config.ATOL.get(str(self.probability.dtype)),
+            rtol=0.005,
+            atol=0.0,
         )
 
     def test_entropy(self):

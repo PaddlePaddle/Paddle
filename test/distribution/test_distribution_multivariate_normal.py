@@ -286,8 +286,8 @@ class MVNTestError(unittest.TestCase):
         ]
     )
     def test_bad_cov_matrix(self, loc, matrix, error):
-        # with paddle.base.dygraph.guard(self.place):
-        self.assertRaises(error, MultivariateNormal, loc, matrix)
+        with paddle.base.dygraph.guard(self.place):
+            self.assertRaises(error, MultivariateNormal, loc, matrix)
 
     @parameterize_func(
         [
@@ -300,10 +300,10 @@ class MVNTestError(unittest.TestCase):
         ]
     )
     def test_bad_kl_div(self, loc1, loc2, matrix1, matrix2):
-        # with paddle.base.dygraph.guard(self.place):
-        rv = MultivariateNormal(loc1, covariance_matrix=matrix1)
-        rv_other = MultivariateNormal(loc2, covariance_matrix=matrix2)
-        self.assertRaises(ValueError, rv.kl_divergence, rv_other)
+        with paddle.base.dygraph.guard(self.place):
+            rv = MultivariateNormal(loc1, covariance_matrix=matrix1)
+            rv_other = MultivariateNormal(loc2, covariance_matrix=matrix2)
+            self.assertRaises(ValueError, rv.kl_divergence, rv_other)
 
 
 if __name__ == '__main__':

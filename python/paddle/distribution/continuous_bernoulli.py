@@ -322,10 +322,16 @@ class ContinuousBernoulli(distribution.Distribution):
         log_p = paddle.log(self.probability)
         log_1_minus_p = paddle.log1p(-self.probability)
 
-        return (
-            -self._log_constant()
-            + self.mean * (log_1_minus_p - log_p)
-            - log_1_minus_p
+        return paddle.where(
+            paddle.equal(
+                self.probability, paddle.to_tensor(0.5, dtype=self.dtype)
+            ),
+            paddle.full_like(self.probability, 0.0),
+            (
+                -self._log_constant()
+                + self.mean * (log_1_minus_p - log_p)
+                - log_1_minus_p
+            ),
         )
 
     def cdf(self, value):
