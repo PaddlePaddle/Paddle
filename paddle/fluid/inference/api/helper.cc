@@ -16,8 +16,13 @@
 
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
+#include "paddle/phi/core/flags.h"
+#include "paddle/pir/core/ir_context.h"
+
+PHI_DECLARE_bool(enable_pir_in_executor);
 
 namespace paddle {
 namespace inference {
@@ -49,6 +54,21 @@ void RegisterAllCustomOperator() {
   auto &op_meta_info_map = OpMetaInfoMap::Instance();
   const auto &meta_info_map = op_meta_info_map.GetMap();
   for (auto &pair : meta_info_map) {
+    if (FLAGS_enable_pir_in_executor) {
+      ::pir::IrContext *ctx = ::pir::IrContext::Instance();
+      auto *custom_dialect =
+          ctx->GetOrRegisterDialect<paddle::dialect::CustomOpDialect>();
+      if (custom_dialect->HasRegistered(pair.first)) {
+        LOG(INFO) << "The operator `" << pair.first
+                  << "` has been registered. "
+                     "Therefore, we will not repeat the registration here.";
+        continue;
+      }
+      for (const auto &meta_info : pair.second) {
+        LOG(INFO) << "register pir custom op :" << pair.first;
+        custom_dialect->RegisterCustomOp(meta_info);
+      }
+    }
     const auto &all_op_kernels{framework::OperatorWithKernel::AllOpKernels()};
     if (all_op_kernels.find(pair.first) == all_op_kernels.end()) {
       framework::RegisterOperatorWithMetaInfo(pair.second);

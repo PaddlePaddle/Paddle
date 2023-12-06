@@ -127,7 +127,8 @@ static bool IsNoNeedBuffer(pir::Operation* op, pir::Value value) {
         op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
     if (info_interface) {
       paddle::dialect::OpYamlInfoParser info_parser(
-          info_interface->get_op_info_(), paddle::dialect::IsLegacyOp(op_name));
+          info_interface->get_op_info_(op_name),
+          paddle::dialect::IsLegacyOp(op_name));
       auto& no_need_buffer_ids = info_parser.NoNeedBufferIds();
       for (size_t id = 0; id < no_need_buffer_ids.size(); id++) {
         if (value == op->operand_source(no_need_buffer_ids[id])) {
@@ -152,7 +153,6 @@ static std::unordered_set<pir::Value> GetSkipDeletionValues(pir::Block* block) {
                "kernel_dialect op should own an 'op_name' attribute.");
     auto upper_op_name =
         op.attributes().at("op_name").dyn_cast<pir::StrAttribute>().AsString();
-
     if (upper_op_name == "pd_op.feed" || upper_op_name == "pd_op.data") {
       skip_dels.insert(op.result(0));
       continue;
@@ -218,23 +218,19 @@ static void GetEagerDelValueOfOp(
 static std::unordered_map<pir::Operation*, std::unordered_set<pir::Value>>
 GetEagerDeletionValues(pir::Block* block) {
   std::unordered_set<pir::Value> skip_dels = GetSkipDeletionValues(block);
-
   std::unordered_map<pir::Value, pir::Operation*> del_value_2_op;
   GetEagerDelValueOfOp(block, skip_dels, &del_value_2_op);
-
   std::unordered_map<pir::Operation*, std::unordered_set<pir::Value>>
       eager_dels;
   for (auto& kv : del_value_2_op) {
     eager_dels[kv.second].insert(kv.first);
   }
-
   return eager_dels;
 }
 
 static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
     pir::Block* block) {
   const auto eager_dels = GetEagerDeletionValues(block);
-
   std::unordered_map<pir::Operation*, std::string> inplace_ops;
 
   std::unordered_set<pir::Value> visited_values;
@@ -256,7 +252,6 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
       }
       continue;
     }
-
     auto upper_op_attrs = op.attributes();
     auto upper_op_name =
         upper_op_attrs.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
@@ -333,7 +328,7 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
         phi::errors::PreconditionNotMet(
             "can not find OpYamlInfoInterface from [%s]", upper_op_name + "_"));
     paddle::dialect::OpYamlInfoParser upper_inplace_op_info_parser(
-        upper_inplace_op_interface->get_op_info_());
+        upper_inplace_op_interface->get_op_info_(upper_op_name + "_"));
     std::unordered_map<uint32_t, uint32_t> inplace_out_2_in =
         upper_inplace_op_info_parser.GetInplaceIdMap();
 

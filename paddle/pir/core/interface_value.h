@@ -38,7 +38,8 @@ class IR_API InterfaceValue {
   void *model() const { return model_; }
 
   InterfaceValue() = default;
-  explicit InterfaceValue(TypeId type_id) : type_id_(type_id) {}
+  explicit InterfaceValue(TypeId type_id, void *model = nullptr)
+      : type_id_(type_id), model_(model) {}
   InterfaceValue(const InterfaceValue &) = delete;
   InterfaceValue(InterfaceValue &&) noexcept;
   InterfaceValue &operator=(const InterfaceValue &) = delete;

@@ -36,7 +36,25 @@ class KernelDialect : public pir::Dialect {
   void initialize();
 };
 
+class CustomKernelDialect : public pir::Dialect {
+ public:
+  explicit CustomKernelDialect(pir::IrContext* context);
+
+  static const char* name() { return "custom_kernel"; }
+
+  void PrintType(pir::Type type, std::ostream& os) const override;
+
+  void PrintAttribute(pir::Attribute attr, std::ostream& os) const override;
+
+  void PrintOperation(pir::Operation* op,
+                      pir::IrPrinter& printer) const override;  // NOLINT
+
+ private:
+  void initialize();
+};
+
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::KernelDialect)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::CustomKernelDialect)

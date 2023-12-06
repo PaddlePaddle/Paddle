@@ -111,7 +111,6 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
       base_ptr += sizeof(detail::BlockOperandImpl);
     }
   }
-
   // 3.5. Construct Regions
   if (num_regions > 0) {
     op->regions_ = reinterpret_cast<Region *>(base_ptr);
@@ -120,7 +119,6 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
       base_ptr += sizeof(Region);
     }
   }
-
   // 0. Verify
   if (op_info) {
     try {

@@ -751,10 +751,8 @@ bool AnalysisPredictor::PrepareExecutor() {
 #endif
   }
   DisablePrepareDataOpt(inference_program_, 0, false);
-
   executor_->Prepare(
       sub_scope_, *inference_program_, 0, config_.use_feed_fetch_ops_);
-
   if (config_.new_executor_enabled()) {
     framework::interpreter::ExecutionConfig execution_config;
     execution_config.create_local_scope = false;
@@ -765,11 +763,9 @@ bool AnalysisPredictor::PrepareExecutor() {
     auto output_names = GetOutputNames();
     execution_config.skip_gc_vars.insert(output_names.begin(),
                                          output_names.end());
-
     if (FLAGS_enable_pir_in_executor) {
       pir_program_ = std::move(
           paddle::TranslateLegacyProgramToProgram(*inference_program_));
-
       ::pir::PassManager pm_for_op_program(::pir::IrContext::Instance(), 2);
       // TODO(liuyuanle): Uncomment constant_folding_pass after fix it
       // pm_for_op_program.AddPass(::pir::CreateConstantFoldingPass(sub_scope_));
