@@ -111,6 +111,7 @@ class FallbackWrapper:
                         self.concrete_program,
                         self.partial_program,
                     ) = self.compiled_fn.get_concrete_program(*args, **kwargs)
+                    self.partial_program.training = self.is_training
             with EventGuard("FallbackWrapper: sot call partial_program"):
                 outputs = self.partial_program.sot_call(*args, **kwargs)
 
