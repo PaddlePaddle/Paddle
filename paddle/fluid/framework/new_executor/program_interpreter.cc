@@ -230,7 +230,10 @@ void ProgramInterpreter::Build(
 FetchList ProgramInterpreter::Run(
     const std::vector<std::string>& feed_names,
     const std::vector<phi::DenseTensor>& feed_tensors,
-    bool need_fetch) {
+    bool need_fetch,
+    bool enable_job_schedule_profiler) {
+  enable_job_schedule_profiler_ = enable_job_schedule_profiler;
+
   SetDeviceId(place_);
   CheckCUDAGraphBeforeRun(feed_names);
 
@@ -1104,7 +1107,7 @@ void ProgramInterpreter::RunInstruction(const Instruction& instr_node) {
     instr_node.WaitEvent(place_);
 #if defined(PADDLE_WITH_CUDA)
     if (enable_job_schedule_profiler_) {
-      if (!calculate_stream_timer_->IsStarted() &&
+      if (!calculate_stream_timer_->IsStarted() && op->Type() != "feed" &&
           !interpreter::IsCommunicationOp(instr_node)) {
         VLOG(3) << "Start calculated stream timer from op: " << op->Type();
         calculate_stream_timer_->Start();
@@ -1121,6 +1124,15 @@ void ProgramInterpreter::RunInstruction(const Instruction& instr_node) {
     }
 
     instr_node.RecordEvent(place_);
+#if defined(PADDLE_WITH_CUDA)
+    if (enable_job_schedule_profiler_) {
+      if (instr_node.Id() == last_calculate_instr_id_ &&
+          calculate_stream_timer_->IsStarted()) {
+        VLOG(3) << "Stop calculated stream timer from op: " << op->Type();
+        calculate_stream_timer_->Stop();
+      }
+    }
+#endif
   } catch (platform::EnforceNotMet& ex) {
     framework::InsertCallStackInfo(op->Type(), op->Attrs(), &ex);
     exception_holder_.Catch(std::make_exception_ptr(ex));
@@ -1170,7 +1182,7 @@ void ProgramInterpreter::ExecuteInstructionList(
       auto& instr_node = vec_instr[i];
       if (!interpreter::IsCommunicationOp(instr_node)) {
         VLOG(3) << "Last calculated op type: " << instr_node.OpBase()->Type();
-        last_calculate_instr_id_ = i;
+        last_calculate_instr_id_ = instr_node.Id();
         break;
       }
     }
@@ -1286,17 +1298,6 @@ void ProgramInterpreter::RunInstructionAsync(size_t instr_id) {
     auto& instr_node = vec_instruction_.at(instr_id);
 
     RunInstruction(instr_node);
-
-#if defined(PADDLE_WITH_CUDA)
-    if (enable_job_schedule_profiler_) {
-      if (instr_id == last_calculate_instr_id_ &&
-          calculate_stream_timer_->IsStarted()) {
-        VLOG(3) << "Stop calculated stream timer from op: "
-                << instr_node.OpBase()->Type();
-        calculate_stream_timer_->Stop();
-      }
-    }
-#endif
 
     if (UNLIKELY(exception_holder_.IsCaught())) {
       VLOG(4) << "Exception caught";

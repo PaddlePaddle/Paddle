@@ -17,6 +17,7 @@
 #include <unordered_map>
 
 #include "glog/logging.h"
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/attribute_translator.h"
@@ -33,7 +34,6 @@
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/value.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
@@ -151,26 +151,55 @@ std::set<std::string> ConditionBlockCombination::GetInputNamesForIfOp() const {
   return input_names;
 }
 
-std::vector<std::vector<::paddle::framework::VarDesc*>>
-ConditionBlockCombination::OutputVars() const {
-  std::vector<::paddle::framework::VarDesc*> if_outputs;
-  std::vector<::paddle::framework::VarDesc*> true_block_outputs;
-  std::vector<::paddle::framework::VarDesc*> false_block_outputs;
+// NOTE(zhangbo): Special cases need to be handled for the following:
+// a,b,c = true_cond(...)
+// d,e   = false_cond(...)
+// f     = select_input(a,d)
+// g     = select_input(b,e)
+// If op output includes: f,g,c
+// If op true branch output includes: a,b,c
+// If op false branch output includes: d,e,c
+std::tuple<std::vector<::paddle::framework::VarDesc*>,
+           std::vector<std::string>,
+           std::vector<std::string>>
+ConditionBlockCombination::CondOutputVars() const {
+  std::set<std::string> if_outputs;
+  std::unordered_map<std::string, std::string> true_out_map;
+  std::unordered_map<std::string, std::string> false_out_map;
   for (::paddle::framework::OpDesc* op : op_list_) {
+    if (op->Type() == "conditional_block") {
+      if_outputs.insert(op->Output("Out").begin(), op->Output("Out").end());
+    }
     if (op->Type() == "select_input") {
-      if_outputs.emplace_back(
-          op->Block()->FindVarRecursive(op->Output("Out")[0]));
-      true_block_outputs.emplace_back(
-          op->Block()->FindVarRecursive(op->Input("X")[1]));
-      false_block_outputs.emplace_back(
-          op->Block()->FindVarRecursive(op->Input("X")[0]));
+      if_outputs.insert(op->Output("Out")[0]);
+      if_outputs.erase(op->Input("X")[0]);
+      if_outputs.erase(op->Input("X")[1]);
+      false_out_map[op->Output("Out")[0]] = op->Input("X")[0];
+      true_out_map[op->Output("Out")[0]] = op->Input("X")[1];
     }
   }
-  return {if_outputs, true_block_outputs, false_block_outputs};
+  std::vector<::paddle::framework::VarDesc*> if_output_vars;
+  std::vector<std::string> true_outputs;
+  std::vector<std::string> false_outputs;
+  for (auto cond_out : if_outputs) {
+    if_output_vars.emplace_back(
+        op_list_[0]->Block()->FindVarRecursive(cond_out));
+    if (true_out_map.find(cond_out) != true_out_map.end()) {
+      true_outputs.emplace_back(true_out_map[cond_out]);
+    } else {
+      true_outputs.emplace_back(cond_out);
+    }
+    if (false_out_map.find(cond_out) != false_out_map.end()) {
+      false_outputs.emplace_back(false_out_map[cond_out]);
+    } else {
+      false_outputs.emplace_back(cond_out);
+    }
+  }
+  return {if_output_vars, true_outputs, false_outputs};
 }
 
 size_t ConditionBlockCombination::MainOutputSize() const {
-  return OutputVars()[0].size();
+  return std::get<0>(CondOutputVars()).size();
 }
 
 std::vector<std::string> ConditionBlockCombination::TrueBlockOutputVarNames()
@@ -437,6 +466,9 @@ void ProgramTranslator::TranslateBlock(
         yeild_inputs.emplace_back(
             (*translation_ctx)[assign_output_2_input[output_name]].value);
       } else {
+        if (translation_ctx->count(output_name) == 0) {
+          CreateUndefinedVariable(output_name, src_block);
+        }
         yeild_inputs.emplace_back((*translation_ctx)[output_name].value);
       }
     }
@@ -468,7 +500,7 @@ pir::Operation* ProgramTranslator::TranslateCondIfOperation(
 
   std::vector<pir::Type> op_output_types;
   std::vector<::paddle::framework::VarDesc*> output_vardescs =
-      cond_ops.OutputVars()[0];
+      std::get<0>(cond_ops.CondOutputVars());
   for (auto var_desc : output_vardescs) {
     IR_ENFORCE(var_desc != nullptr, "[control flow] Output should not be null");
     pir::Type translated_var_type =
@@ -479,14 +511,6 @@ pir::Operation* ProgramTranslator::TranslateCondIfOperation(
 
   pir::Operation* operation = pir::Operation::Create(
       op_inputs, attribute_map, op_output_types, op_info, 2);
-
-  for (size_t i = 0; i < output_vardescs.size(); i++) {
-    translation_ctx->PushValue(output_vardescs[i]->Name(),
-                               VariableDefiningInfo(operation->result(i)));
-    VLOG(4) << "[general op][conditional_block] var "
-            << output_vardescs[i]->Name() << " was mapped to If's " << i
-            << "-th output.";
-  }
 
   dst_block->push_back(operation);
   VLOG(4) << "[general op][conditional_block] IfOp creation end.";
@@ -505,7 +529,7 @@ pir::Operation* ProgramTranslator::TranslateCondIfOperation(
                    true_block_context,
                    &true_region.front(),
                    true,
-                   cond_ops.TrueBlockOutputVarNames(),
+                   std::get<1>(cond_ops.CondOutputVars()),
                    cond_ops.TrueBlockInitOps());
   }
   VLOG(4) << "[general op][conditional_block] IfOp true block translate end.";
@@ -522,10 +546,18 @@ pir::Operation* ProgramTranslator::TranslateCondIfOperation(
                    false_block_context,
                    &false_region.front(),
                    true,
-                   cond_ops.FalseBlockOutputVarNames(),
+                   std::get<2>(cond_ops.CondOutputVars()),
                    cond_ops.FalseBlockInitOps());
   }
   VLOG(4) << "[general op][conditional_block] IfOp false block translate end.";
+
+  for (size_t i = 0; i < output_vardescs.size(); i++) {
+    translation_ctx->PushValue(output_vardescs[i]->Name(),
+                               VariableDefiningInfo(operation->result(i)));
+    VLOG(4) << "[general op][conditional_block] var "
+            << output_vardescs[i]->Name() << " was mapped to If's " << i
+            << "-th output.";
+  }
 
   operation->Verify();
   VLOG(4) << "[general op][conditional_block] IfOp translate end.";

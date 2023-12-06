@@ -22,8 +22,8 @@
 #include "paddle/fluid/pir/transforms/fusion/conv2d_add_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
 
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/pir/pass/pass.h"
 
 namespace {
@@ -48,8 +48,8 @@ class Conv2dAddFusePattern
 
     pir::drr::ResultPattern res = pat.ResultPattern();
 
-    const auto &conv2d_fusion = res.Op(
-        paddle::dialect::Conv2dFusionOp::name(),
+    const auto &fused_conv2d_add_act = res.Op(
+        paddle::dialect::FusedConv2dAddActOp::name(),
         {{
             {"strides", pat.Attr("strides")},
             {"paddings", pat.Attr("paddings")},
@@ -77,11 +77,11 @@ class Conv2dAddFusePattern
              })},
         }});
 
-    conv2d_fusion({&res.Tensor("input"),
-                   &res.Tensor("filter"),
-                   &res.Tensor("bias"),
-                   &res.NoneTensor()},
-                  {&res.Tensor("add_out")});
+    fused_conv2d_add_act({&res.Tensor("input"),
+                          &res.Tensor("filter"),
+                          &res.Tensor("bias"),
+                          &res.NoneTensor()},
+                         {&res.Tensor("add_out")});
   }
 };
 

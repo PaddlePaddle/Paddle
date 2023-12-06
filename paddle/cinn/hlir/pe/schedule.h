@@ -35,11 +35,11 @@ class ScheduleParam {
   ScheduleParam(const ScheduleParam &) = delete;
   ScheduleParam &operator=(const ScheduleParam &) = delete;
   static ScheduleParam &get_cuda_instance() {
-    static ScheduleParam instance{common::Target::Arch::NVGPU};
+    static ScheduleParam instance{cinn::common::Target::Arch::NVGPU};
     return instance;
   }
   static ScheduleParam &get_x86_instance() {
-    static ScheduleParam instance{common::Target::Arch::X86};
+    static ScheduleParam instance{cinn::common::Target::Arch::X86};
     return instance;
   }
   absl::flat_hash_map<std::string,
@@ -54,7 +54,7 @@ class ScheduleParam {
   int Count(const std::string &key) { return param_data.count(key); }
 
  private:
-  explicit ScheduleParam(common::Target::Arch arch);
+  explicit ScheduleParam(cinn::common::Target::Arch arch);
   absl::flat_hash_map<std::string,
                       absl::flat_hash_map<std::string, std::vector<int>>>
       param_data;
@@ -66,37 +66,37 @@ int GetVectorizeFactor(int shape, int split_factor);
 
 int SplitEven(int origin);
 
-int GetBasicFactor(const Type &type, const common::Target &target);
+int GetBasicFactor(const Type &type, const cinn::common::Target &target);
 
 int GetBetterSplitFactor(int shape, int split_factor);
 
 int GetArrayPackingFactor(int shape,
                           const Type &type,
-                          const common::Target &target);
+                          const cinn::common::Target &target);
 
 void ScheduleInjectiveCPU(poly::Stage *stage,
                           const std::vector<int> &output_shape,
-                          const common::Target &target,
+                          const cinn::common::Target &target,
                           bool vectorizable = true);
 // to deprecate
 void ScheduleInjectiveCPU1(poly::Stage *stage,
                            const std::vector<int> &output_shape,
-                           const common::Target &target,
+                           const cinn::common::Target &target,
                            bool vectorizable = true);
 
 void MatmulScheduleCUDA(poly::StageMap stages,
                         const ir::Tensor &output,
-                        const common::Target &target);
+                        const cinn::common::Target &target);
 
 void MatmulScheduleCPU(poly::StageMap stage,
                        const ir::Tensor &output,
                        const ir::Tensor &packedB,
-                       const common::Target &target);
+                       const cinn::common::Target &target);
 
 void MulScheduleCPU(poly::StageMap stage,
                     const ir::Tensor &output,
                     const ir::Tensor &input_tensor,
-                    const common::Target &target);
+                    const cinn::common::Target &target);
 
 void SoftmaxScheduleCPU(poly::StageMap stage,
                         const ir::Tensor &output,
@@ -110,7 +110,7 @@ void GetConv2dFactors(absl::flat_hash_map<std::string, int> *factors,
                       int oh,
                       int ow,
                       const Type &type,
-                      const common::Target &target,
+                      const cinn::common::Target &target,
                       const std::string &key = "",
                       bool import_params = true);
 
@@ -120,7 +120,7 @@ void GetConv2d1x1Factors(absl::flat_hash_map<std::string, int> *factors,
                          int oh,
                          int ow,
                          const Type &type,
-                         const common::Target &target);
+                         const cinn::common::Target &target);
 
 void Conv2d_NCHWc_Schedule_CPU(poly::StageMap stages,
                                const ir::Tensor &res,
@@ -128,18 +128,18 @@ void Conv2d_NCHWc_Schedule_CPU(poly::StageMap stages,
                                const ir::Tensor &input_pad,
                                const ir::Tensor &weights_dilation,
                                const ir::Tensor &data,
-                               const common::Target &target,
+                               const cinn::common::Target &target,
                                const std::string &key,
                                bool do_padding);
 void GlobalPoolScheduleGPU(poly::StageMap stages,
                            const std::vector<ir::Tensor> &output,
-                           const common::Target &target);
+                           const cinn::common::Target &target);
 void PoolScheduleCPU(poly::StageMap stages,
                      const ir::Tensor &output,
-                     const common::Target &target);
+                     const cinn::common::Target &target);
 void PoolScheduleGPU(poly::StageMap stages,
                      const ir::Tensor &output,
-                     const common::Target &target);
+                     const cinn::common::Target &target);
 
 void Conv2d_NCHWc_Schedule_CPU_Nofuse(poly::StageMap stages,
                                       const ir::Tensor &res,
@@ -147,7 +147,7 @@ void Conv2d_NCHWc_Schedule_CPU_Nofuse(poly::StageMap stages,
                                       const ir::Tensor &input_pad,
                                       const ir::Tensor &weights_dilation,
                                       const ir::Tensor &data,
-                                      const common::Target &target);
+                                      const cinn::common::Target &target);
 
 void Conv2d_NCHWc_1X1_Schedule_CPU(poly::StageMap stages,
                                    const ir::Tensor &res,
@@ -155,7 +155,7 @@ void Conv2d_NCHWc_1X1_Schedule_CPU(poly::StageMap stages,
                                    const ir::Tensor &input_pad,
                                    const ir::Tensor &weights_dilation,
                                    const ir::Tensor &data,
-                                   const common::Target &target,
+                                   const cinn::common::Target &target,
                                    const std::string &key,
                                    bool do_padding);
 
@@ -165,7 +165,7 @@ void Conv2d_NCHWc_1X1_Schedule_CPU_Nofuse(poly::StageMap stages,
                                           const ir::Tensor &input_pad,
                                           const ir::Tensor &weights_dilation,
                                           const ir::Tensor &data,
-                                          const common::Target &target);
+                                          const cinn::common::Target &target);
 
 void Depthwise_Conv2d_NCHWc_Schedule_CPU_Nofuse(
     poly::StageMap stages,
@@ -174,78 +174,78 @@ void Depthwise_Conv2d_NCHWc_Schedule_CPU_Nofuse(
     const ir::Tensor &input_pad,
     const ir::Tensor &weights_dilation,
     const ir::Tensor &data,
-    const common::Target &target,
+    const cinn::common::Target &target,
     bool do_padding);
 
 void CudaScheduleMul(poly::StageMap stages,
                      ir::Tensor output,
                      const std::vector<int> &output_shape,
-                     const common::Target &target);
+                     const cinn::common::Target &target);
 
 // reduce shedules.
 void CudaReduceSchedule(poly::StageMap stages,
                         ir::Tensor output,
                         int last_dimension_num,
-                        const common::Target &target);
+                        const cinn::common::Target &target);
 
 void CudaWarpReduceSchedule(poly::StageMap stages,
                             ir::Tensor tmp_out,
                             ir::Tensor out,
-                            const common::Target &target);
+                            const cinn::common::Target &target);
 
 void CudaBlockReduceInternalSchedule(poly::StageMap stages,
                                      ir::Tensor tmp_out,
                                      ir::Tensor out,
-                                     const common::Target &target);
+                                     const cinn::common::Target &target);
 
 void CudaBlockReduceSchedule(poly::StageMap stages,
                              ir::Tensor reduce_tmp_out,
                              ir::Tensor tmp_out,
                              ir::Tensor out,
-                             const common::Target &target);
+                             const cinn::common::Target &target);
 
 void CudaBlockShuffleReduceSchedule(poly::StageMap stages,
                                     ir::Tensor reduce_reshape,
                                     ir::Tensor reduce_internal,
                                     ir::Tensor reduce_out,
-                                    const common::Target &target);
+                                    const cinn::common::Target &target);
 
 void CudaTwoStepReduceSchedule(poly::StageMap stages,
                                ir::Tensor reshape,
                                ir::Tensor internal,
                                ir::Tensor tmp_out,
                                ir::Tensor out,
-                               const common::Target &target);
+                               const cinn::common::Target &target);
 
 void CudaScheduleDepthwiseConv(poly::StageMap stages,
                                ir::Tensor &output,  // NOLINT
-                               const common::Target &target);
+                               const cinn::common::Target &target);
 
 void CudaScheduleConv(poly::StageMap stages,
                       ir::Tensor &input_pad,  // NOLINT
                       ir::Tensor &weights,    // NOLINT
                       ir::Tensor &output,     // NOLINT
-                      const common::Target &target);
+                      const cinn::common::Target &target);
 
 void CudaScheduleWinogradConv(poly::StageMap wino_stages,
                               std::vector<ir::Tensor> &all_tensors,  // NOLINT
-                              const common::Target &target);
+                              const cinn::common::Target &target);
 
 void CudaScheduleConv2(poly::StageMap stages,
                        ir::Tensor &input_pad,  // NOLINT
                        ir::Tensor &weights,    // NOLINT
                        ir::Tensor &output,     // NOLINT
-                       const common::Target &target,
+                       const cinn::common::Target &target,
                        const std::string &key);
 
 void CudaScheduleInjective(poly::Stage *stage,
                            const std::vector<int> &output_shape,
-                           const common::Target &target);
+                           const cinn::common::Target &target);
 
-void CudaSplitSchedule(common::CINNValuePack *arg_pack,
+void CudaSplitSchedule(cinn::common::CINNValuePack *arg_pack,
                        const std::vector<std::vector<int>> &output_shapes,
                        int axis,
-                       const common::Target &target);
+                       const cinn::common::Target &target);
 
 void CreateCudaSerialData(const std::string &file_name = "default_serial.log");
 
