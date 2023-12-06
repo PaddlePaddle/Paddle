@@ -2828,6 +2828,13 @@
   outputs :
     out : Out
 
+- op : soft_relu
+  backward : soft_relu_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : softmax
   backward : softmax_grad
   inputs :

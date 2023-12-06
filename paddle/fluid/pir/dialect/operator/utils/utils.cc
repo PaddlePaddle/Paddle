@@ -50,7 +50,9 @@ const std::unordered_set<std::string> LegacyOpList = {
     SeedOp::name(),
     ShareDataOp::name(),
     SparseMomentumOp::name(),
-    GetTensorFromSelectedRowsOp::name()};
+    GetTensorFromSelectedRowsOp::name(),
+    SoftReluOp::name(),
+    SoftReluGradOp::name()};
 
 enum class AttrType {
   UNDEFINED = 0,
