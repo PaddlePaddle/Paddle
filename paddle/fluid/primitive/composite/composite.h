@@ -247,10 +247,10 @@ template <typename T>
 Tensor stack_decomp(const std::vector<Tensor>& x, const int& axis) {
   auto tensor_dims = x[0].dims();
   int tmp_axis = axis;
-
   if (tmp_axis < 0) {
     tmp_axis += tensor_dims.size() + 1;
   }
+
   auto out_shape = phi::vectorize(tensor_dims);
   out_shape.insert(out_shape.begin() + tmp_axis, 1);
 
