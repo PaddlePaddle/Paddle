@@ -54,6 +54,8 @@ extern uint64_t Release(const platform::CUDAPlace& place, gpuStream_t stream);
 
 void RecordStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
 
+void EraseStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
+
 gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation);
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
