@@ -24,6 +24,7 @@
 #include "paddle/cinn/common/debug_manager.h"
 #include "paddle/cinn/common/info_registry.h"
 #include "paddle/cinn/common/target.h"
+#include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/utils/flags.h"
 
 namespace cinn {
@@ -50,22 +51,6 @@ struct NameGenerator {
  private:
   absl::flat_hash_map<std::string, uint32_t> name_hint_idx_;
   mutable std::mutex mutex_;
-};
-
-struct PrettyNamer {
-  const std::string& GetOrNew(const size_t hash_key,
-                              const std::string& name_hint) {
-    if (pretty_names_.find(hash_key) == pretty_names_.end()) {
-      pretty_names_[hash_key] = name_generator_.New(name_hint);
-    }
-    return pretty_names_.at(hash_key);
-  }
-
-  NameGenerator& GetNameGenerator() { return name_generator_; }
-
- private:
-  absl::flat_hash_map<size_t, std::string> pretty_names_;
-  NameGenerator name_generator_;
 };
 
 class Context {
@@ -103,7 +88,7 @@ class Context {
  private:
   Context() = default;
 
-  PrettyNamer pretty_namer_;
+  ::cinn::hlir::framework::pir::PrettyNamer pretty_namer_;
   std::vector<std::string> runtime_include_dir_;
   mutable std::mutex mutex_;
 
