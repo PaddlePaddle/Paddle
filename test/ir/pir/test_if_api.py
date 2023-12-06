@@ -60,7 +60,13 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
 
     def test_if_with_multiple_output(self):
         main_program = self.construct_program_with_if()
-        cond_value = main_program.global_block().ops[-1].operand_source(0)
+        cond_value = (
+            main_program.global_block()
+            .ops[-1]
+            .operand_source(0)
+            .get_defining_op()
+            .result(0)
+        )
         with paddle.pir.core.program_guard(main_program):
             paddle.static.nn.cond(cond_value, true_func, false_func)
         last_op = main_program.global_block().ops[-1]
