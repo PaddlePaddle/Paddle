@@ -86,8 +86,8 @@ void CSplitKernel(const Context& ctx,
   int64_t end_size = dims[dims_size - 1];
 
   // remain dim
-  auto remain_ddim = phi::slice_ddim(dims, 0, dims_size - 1);
-  int64_t remain_numel = phi::product(remain_ddim);
+  auto remain_ddim = common::slice_ddim(dims, 0, dims_size - 1);
+  int64_t remain_numel = common::product(remain_ddim);
 
   int64_t limit = x.numel();
   int64_t blocks = NumBlocks(limit);

@@ -16,9 +16,10 @@
 
 #include <ostream>
 #include <vector>
+#include "paddle/common/enforce.h"
+#include "paddle/common/macros.h"
 #include "paddle/pir/core/block.h"
-#include "paddle/pir/core/enforce.h"
-#include "paddle/pir/core/macros.h"
+#include "paddle/pir/core/iterator.h"
 #include "paddle/pir/core/op_info.h"
 #include "paddle/pir/core/operation_utils.h"
 #include "paddle/pir/core/type.h"
@@ -34,7 +35,8 @@ class OpResultImpl;
 class OpOperendImpl;
 }  // namespace detail
 
-class IR_API alignas(8) Operation final {
+class IR_API alignas(8) Operation final
+    : public DoubleLevelContainer<Operation> {
  public:
   ///
   /// \brief Malloc memory and construct objects in the following order:
@@ -58,18 +60,21 @@ class IR_API alignas(8) Operation final {
 
   Dialect *dialect() const;
 
+  bool operator==(const Operation &other) const { return this == &other; }
+
   ///
   /// \brief op attribute related public interfaces
   ///
-  Attribute attribute(const std::string &key) const {
-    return attributes_.at(key);
-  }
   const AttributeMap &attributes() const { return attributes_; }
+  // return nullptr if attribute not found.
+  Attribute attribute(const std::string &key) const {
+    auto iter = attributes_.find(key);
+    return iter == attributes_.end() ? nullptr : iter->second;
+  }
+
   template <typename T>
-  T attribute(const std::string &name) {
-    Attribute attr = attribute(name);
-    IR_ENFORCE(attr.isa<T>(), "Attribute (%s) type is not right.", name);
-    return attr.dyn_cast<T>();
+  T attribute(const std::string &key) const {
+    return attribute(key).dyn_cast<T>();
   }
   void set_attribute(const std::string &key, Attribute value) {
     attributes_[key] = value;
@@ -82,15 +87,15 @@ class IR_API alignas(8) Operation final {
   /// \brief op ouput related public interfaces
   ///
   uint32_t num_results() const { return num_results_; }
-  OpResult result(uint32_t index) { return op_result_impl(index); }
-  Type result_type(uint32_t index) { return result(index).type(); }
+  OpResult result(uint32_t index) const { return op_result_impl(index); }
+  Type result_type(uint32_t index) const { return result(index).type(); }
   std::vector<OpResult> results();
 
   ///
   /// \brief op input related public interfaces
   ///
   uint32_t num_operands() const { return num_operands_; }
-  OpOperand operand(uint32_t index) { return op_operand_impl(index); }
+  OpOperand operand(uint32_t index) const { return op_operand_impl(index); }
   std::vector<OpOperand> operands();
   Value operand_source(uint32_t index) const;
   std::vector<Value> operands_source() const;
@@ -107,9 +112,20 @@ class IR_API alignas(8) Operation final {
   ///
   /// \brief region related public interfaces
   ///
+  using Element = Region;
+  using Iterator = Region *;
+  using ConstIterator = const Region *;
   uint32_t num_regions() const { return num_regions_; }
   Region &region(unsigned index);
   const Region &region(unsigned index) const;
+  ConstIterator begin() const { return regions_; }
+  ConstIterator end() const { return regions_ + num_regions_; }
+  Iterator begin() { return regions_; }
+  Iterator end() { return regions_ + num_regions_; }
+
+  /// \brief block related public interfaces
+  using BlockContainer = DoubleLevelContainer<Operation>;
+  BlockContainer &blocks() { return *this; }
 
   ///
   /// \brief parent related public interfaces
@@ -167,6 +183,8 @@ class IR_API alignas(8) Operation final {
 
   void Verify();
 
+  uint64_t id() { return id_; }
+
  private:
   DISABLE_COPY_AND_ASSIGN(Operation);
   Operation(const AttributeMap &attribute,
@@ -177,12 +195,10 @@ class IR_API alignas(8) Operation final {
             uint32_t num_successors);
 
   int32_t ComputeOpResultOffset(uint32_t index) const;
-  detail::OpResultImpl *op_result_impl(uint32_t index);
-  const detail::OpResultImpl *op_result_impl(uint32_t index) const;
+  detail::OpResultImpl *op_result_impl(uint32_t index) const;
 
   int32_t ComputeOpOperandOffset(uint32_t index) const;
-  detail::OpOperandImpl *op_operand_impl(uint32_t index);
-  const detail::OpOperandImpl *op_operand_impl(uint32_t index) const;
+  detail::OpOperandImpl *op_operand_impl(uint32_t index) const;
 
   template <typename To, typename Enabler = void>
   struct CastUtil {
@@ -206,10 +222,16 @@ class IR_API alignas(8) Operation final {
 
   OpInfo info_;
 
+  static uint64_t GenerateId() {
+    static std::atomic<std::uint64_t> uid{0};
+    return ++uid;
+  }
+
   const uint32_t num_results_ = 0;
   const uint32_t num_operands_ = 0;
   const uint32_t num_regions_ = 0;
   const uint32_t num_successors_ = 0;
+  const uint64_t id_ = 0;
 
   detail::BlockOperandImpl *block_operands_{nullptr};
   Region *regions_{nullptr};

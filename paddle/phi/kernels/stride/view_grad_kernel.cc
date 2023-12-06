@@ -25,7 +25,7 @@ void ViewShapeGradKernel(const Context& dev_ctx,
                          const std::vector<int64_t>& dims,
                          DenseTensor* input_grad) {
   ViewShapeKernel<Context>(
-      dev_ctx, out_grad, phi::vectorize<int64_t>(input.dims()), input_grad);
+      dev_ctx, out_grad, common::vectorize<int64_t>(input.dims()), input_grad);
 }
 
 template <typename Context>

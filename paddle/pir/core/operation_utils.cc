@@ -22,9 +22,9 @@ OperationArgument::OperationArgument(IrContext* ir_context,
   info = ir_context->GetRegisteredOpInfo(name);
 }
 
-Region* OperationArgument::AddRegion() {
+Region& OperationArgument::AddRegion() {
   regions.emplace_back(new Region);
-  return regions.back().get();
+  return *regions.back();
 }
 
 /// Take a region that should be attached to the Operation.

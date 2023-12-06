@@ -38,10 +38,10 @@ class BprLossOp : public framework::OperatorWithKernel {
             "Input(X) and Input(Label) shall have the same rank."));
 
     if (ctx->IsRuntime() ||
-        (phi::product(x_dims) > 0 && phi::product(label_dims) > 0)) {
+        (common::product(x_dims) > 0 && common::product(label_dims) > 0)) {
       PADDLE_ENFORCE_EQ(
-          phi::slice_ddim(x_dims, 0, rank - 1),
-          phi::slice_ddim(label_dims, 0, rank - 1),
+          common::slice_ddim(x_dims, 0, rank - 1),
+          common::slice_ddim(label_dims, 0, rank - 1),
           platform::errors::InvalidArgument(
               "Input(X) and Input(Label) shall have the same shape "
               "except the last dimension."));
@@ -93,13 +93,13 @@ class BprLossGradientOp : public framework::OperatorWithKernel {
         rank,
         platform::errors::InvalidArgument(
             "Input(Label) and Input(X) should have the same rank."));
-    PADDLE_ENFORCE_EQ(phi::slice_ddim(x_dims, 0, rank - 1),
-                      phi::slice_ddim(label_dims, 0, rank - 1),
+    PADDLE_ENFORCE_EQ(common::slice_ddim(x_dims, 0, rank - 1),
+                      common::slice_ddim(label_dims, 0, rank - 1),
                       platform::errors::InvalidArgument(
                           "The Input(X) and Input(Label) should have the same "
                           "shape except the last dimension."));
-    PADDLE_ENFORCE_EQ(phi::slice_ddim(x_dims, 0, rank - 1),
-                      phi::slice_ddim(dy_dims, 0, rank - 1),
+    PADDLE_ENFORCE_EQ(common::slice_ddim(x_dims, 0, rank - 1),
+                      common::slice_ddim(dy_dims, 0, rank - 1),
                       platform::errors::InvalidArgument(
                           "The Input(X) and Input(Y@Grad) should have the same "
                           "shape except the last dimension."));

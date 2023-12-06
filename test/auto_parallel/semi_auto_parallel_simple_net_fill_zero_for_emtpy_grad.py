@@ -34,24 +34,20 @@ class TestSimpleNetWithEmtpyGradForSemiAutoParallel(
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
 
         paddle.set_device(self._backend)
-        self.init_input_data()
 
     def run_dynamic_empty_grad(self, layer, shard_input=False):
         # create loss
         loss_fn = nn.MSELoss()
         # run forward and backward
-        image = paddle.to_tensor(self.image)
+        image, label = self.init_input_data()
         if shard_input:
-            image = dist.shard_tensor(
-                image,
-                dist_attr=dist.DistAttr(
-                    mesh=self._mesh, sharding_specs=['x', None]
-                ),
-            )
+            image = dist.shard_tensor(image, self._mesh, [dist.Shard(0)])
+
+            label = dist.shard_tensor(image, self.mesh, [dist.Shard(0)])
+
         out = layer(image)
         out = paddle.split(out, 2)[0]
 
-        label = paddle.to_tensor(self.label)
         label = paddle.split(label, 2)[0]
         loss = loss_fn(out, label)
 

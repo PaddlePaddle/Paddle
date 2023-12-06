@@ -35,6 +35,7 @@ void RealStridedKernel(const Context& dev_ctx,
   out->set_offset(x.offset());
   out->set_strides(stride);
   out->ResetHolder(x.Holder());
+  out->ShareInplaceVersionCounterWith(x);
 }
 
 template <typename T, typename Context>
@@ -54,6 +55,7 @@ void ImagStridedKernel(const Context& dev_ctx,
   out->set_strides(stride);
   out->set_offset(x.offset() + phi::SizeOf(out->dtype()));
   out->ResetHolder(x.Holder());
+  out->ShareInplaceVersionCounterWith(x);
 }
 
 }  // namespace phi

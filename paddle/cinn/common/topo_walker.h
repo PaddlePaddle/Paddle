@@ -26,16 +26,17 @@ namespace common {
 template <typename NodeType>
 class TopoWalker final {
  public:
-  TopoWalker(const TopoWalker&) = delete;
-  TopoWalker(TopoWalker&&) = delete;
+  TopoWalker(const TopoWalker&) = default;
+  TopoWalker(TopoWalker&&) = default;
 
   using NodeHandlerType = std::function<void(NodeType)>;
   using NodesVisitorType =
       std::function<void(NodeType, const NodeHandlerType&)>;
 
-  TopoWalker(const NodesVisitorType& VisitPrevNodes,
-             const NodesVisitorType& VisitNextNodes)
-      : VisitPrevNodes_(VisitPrevNodes), VisitNextNodes_(VisitNextNodes) {}
+  TopoWalker(const NodesVisitorType& VisitPrevNodesValue,
+             const NodesVisitorType& VisitNextNodesValue)
+      : VisitPrevNodes(VisitPrevNodesValue),
+        VisitNextNodes(VisitNextNodesValue) {}
 
   void operator()(NodeType node, const NodeHandlerType& NodeHandler) const {
     std::array<NodeType, 1> nodes{node};
@@ -61,9 +62,9 @@ class TopoWalker final {
       NodeType node = node_queue.front();
       node_queue.pop();
       NodeHandler(node);
-      VisitNextNodes_(node, [&](NodeType node) {
+      VisitNextNodes(node, [&](NodeType node) {
         size_t num_unfinished_inputs = 0;
-        VisitPrevNodes_(node, [&](NodeType in_node) {
+        VisitPrevNodes(node, [&](NodeType in_node) {
           num_unfinished_inputs += (queued_nodes.count(in_node) > 0 ? 0 : 1);
         });
         if (num_unfinished_inputs == 0) {
@@ -73,9 +74,8 @@ class TopoWalker final {
     }
   }
 
- private:
-  NodesVisitorType VisitPrevNodes_;
-  NodesVisitorType VisitNextNodes_;
+  NodesVisitorType VisitPrevNodes;
+  NodesVisitorType VisitNextNodes;
 };
 
 }  // namespace common

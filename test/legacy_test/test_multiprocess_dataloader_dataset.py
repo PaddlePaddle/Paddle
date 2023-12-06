@@ -21,6 +21,7 @@ from paddle import base
 from paddle.io import (
     ChainDataset,
     ComposeDataset,
+    ConcatDataset,
     DataLoader,
     Dataset,
     IterableDataset,
@@ -438,6 +439,55 @@ class TestDatasetWithDropLast(unittest.TestCase):
     def test_iterable_dataset(self):
         dataset = RandomIterableDataset(10)
         self.run_main(dataset, 10, 3)
+
+
+class TestConcatDataset(unittest.TestCase):
+    def run_main(self, num_workers, places):
+        result = ConcatDataset([[0], [1]])
+        self.assertEqual(2, len(result))
+        self.assertEqual(0, result[0])
+        self.assertEqual(1, result[1])
+
+        result = ConcatDataset([[0, 1, 2, 3, 4], [5, 6, 7, 8, 9]])
+        self.assertEqual(10, len(result))
+        self.assertEqual(0, result[0])
+        self.assertEqual(5, result[5])
+
+        result = ConcatDataset([[0, 1, 2, 3, 4], [], [5, 6, 7, 8, 9]])
+        self.assertEqual(10, len(result))
+        self.assertEqual(0, result[0])
+        self.assertEqual(5, result[5])
+
+        result = ConcatDataset([[0, 1, 2, 3, 4], [5, 6, 7, 8, 9]])
+        with self.assertRaises(IndexError):
+            result[11]
+
+    def test_main(self):
+        places = [paddle.CPUPlace()]
+        if paddle.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+        for p in places:
+            self.run_main(num_workers=0, places=p)
+
+    def test_iterable_dataset_err(self):
+        d1 = TensorDataset([paddle.rand((7, 3, 28, 28)), paddle.rand((7,))])
+        it1 = RandomIterableDataset(10)
+        it2 = RandomIterableDataset(10)
+
+        with self.assertRaisesRegex(
+            AssertionError, "does not support IterableDataset"
+        ):
+            ConcatDataset([d1, it2, it1])
+
+        with self.assertRaisesRegex(
+            AssertionError, "does not support IterableDataset"
+        ):
+            ConcatDataset([it2])
+
+        with self.assertRaisesRegex(
+            AssertionError, "does not support IterableDataset"
+        ):
+            ConcatDataset([it1, d1])
 
 
 if __name__ == '__main__':

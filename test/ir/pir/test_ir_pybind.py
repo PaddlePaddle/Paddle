@@ -54,7 +54,7 @@ class TestPybind(unittest.TestCase):
         ops = block.ops
         self.assertEqual(
             len(ops), 6
-        )  # pir program add "builtin.get_parameter" by default, so size is 4
+        )  # pir program add "builtin.parameter" by default, so size is 4
         block.remove_op(ops[5])
         self.assertEqual(len(block.ops), 5)
 
@@ -145,6 +145,12 @@ class TestPybind(unittest.TestCase):
         self.assertEqual(
             matmul_op.result(0).type() == add_op.result(0).type(), True
         )
+        add_op.result(0).set_type(
+            paddle.base.libpaddle.pir.create_selected_rows_type_by_dense_tensor(
+                add_op.result(0).type()
+            )
+        )
+        self.assertEqual(add_op.result(0).is_selected_row_type(), True)
 
     def test_attr(self):
         main_program, start_program = (
@@ -204,6 +210,38 @@ class TestPybind(unittest.TestCase):
 
         p.global_seed(10)
         self.assertEqual(p._seed, 10)
+
+    def test_opresult_id(self):
+        with paddle.pir_utils.IrGuard():
+            a = paddle.static.data(name='a', shape=[4, 4], dtype='float32')
+            result = paddle.tanh(a)
+
+        self.assertIsInstance(a.id, str)
+        self.assertIsInstance(result.id, str)
+
+    def test_operation_get_input_names_error(self):
+        """It will Raise error if operation `builtin.set_parameter` calls `get_input_names`. Because `builtin.set_parameter` does not have OpYamlInfoInterface"""
+        with paddle.pir_utils.IrGuard():
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                param1 = paddle.pir.core.create_parameter(
+                    dtype="float32",
+                    shape=[5, 10],
+                    name="param1",
+                    initializer=paddle.nn.initializer.Uniform(),
+                )
+
+                block = startup.global_block()
+                set_parameter_ops = [
+                    op
+                    for op in block.ops
+                    if op.name() == 'builtin.set_parameter'
+                ]
+                set_parameter_op = set_parameter_ops[0]
+                parameter_name = set_parameter_op.attrs()["parameter_name"]
+                with self.assertRaises(ValueError):
+                    input_names = set_parameter_op.get_input_names()
 
 
 if __name__ == "__main__":

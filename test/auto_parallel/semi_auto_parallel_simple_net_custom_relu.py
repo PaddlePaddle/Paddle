@@ -76,12 +76,8 @@ CLASS_NUM = 10
 class PPDemoNet(nn.Layer):
     def __init__(self, mesh0, mesh1, param_suffix=""):
         super().__init__()
-        self.replicate_dist_attr0 = dist.DistAttr(
-            mesh=mesh0, sharding_specs=[None, None]
-        )
-        self.replicate_dist_attr1 = dist.DistAttr(
-            mesh=mesh1, sharding_specs=[None, None]
-        )
+        self.mesh0 = mesh0
+        self.mesh1 = mesh1
         self.w0 = dist.shard_tensor(
             self.create_parameter(
                 shape=[IMAGE_SIZE, IMAGE_SIZE],
@@ -90,7 +86,8 @@ class PPDemoNet(nn.Layer):
                     initializer=paddle.nn.initializer.Uniform(0, 1),
                 ),
             ),
-            dist_attr=self.replicate_dist_attr0,
+            mesh0,
+            [dist.Replicate(), dist.Replicate()],
         )
         self.w1 = dist.shard_tensor(
             self.create_parameter(
@@ -100,14 +97,17 @@ class PPDemoNet(nn.Layer):
                     initializer=paddle.nn.initializer.Uniform(0, 1),
                 ),
             ),
-            dist_attr=self.replicate_dist_attr1,
+            mesh1,
+            [dist.Replicate(), dist.Replicate()],
         )
 
     def forward(self, x):
         out = F.linear(x, self.w0)
         out = custom_ops.custom_relu(out)
         # out = F.relu(out)
-        out = dist.reshard(out, dist_attr=self.replicate_dist_attr1)
+        out = dist.reshard(
+            out, self.mesh1, [dist.Replicate(), dist.Replicate()]
+        )
         out = F.linear(out, self.w1)
         return out
 
@@ -124,23 +124,15 @@ class TestSimpleNetWithCustomReluForSemiAutoParallel(
         self._pp_mesh1 = dist.ProcessMesh([1], dim_names=["x"])
 
         paddle.set_device(self._backend)
-        self.init_input_data()
 
     def run_dynamic_custom_relu(self, layer, shard_input=False):
         # create loss
         loss_fn = nn.MSELoss()
         # run forward and backward
-        image = paddle.to_tensor(self.image)
+        image, label = self.init_input_data()
         if shard_input:
-            image = dist.shard_tensor(
-                image,
-                dist_attr=dist.DistAttr(
-                    mesh=self._mesh, sharding_specs=['x', None]
-                ),
-            )
+            image = dist.shard_tensor(image, self._mesh, [dist.Shard(0)])
         out = layer(image)
-
-        label = paddle.to_tensor(self.label)
         loss = loss_fn(out, label)
 
         loss.backward()

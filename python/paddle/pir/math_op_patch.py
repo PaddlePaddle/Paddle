@@ -15,11 +15,13 @@
 
 import warnings
 
+from paddle import _C_ops
 from paddle.base.libpaddle import DataType
+from paddle.base.wrapped_decorator import wrap_decorator
 
-from . import OpResult
+from . import Value
 
-_already_patch_opresult = False
+_already_patch_value = False
 
 _supported_int_dtype_ = [
     DataType.BOOL,
@@ -31,8 +33,23 @@ _supported_int_dtype_ = [
 ]
 
 
+def _fake_interface_only_(func):
+    def __impl__(*args, **kwargs):
+        raise AssertionError(
+            f"'{func.__name__}' only can be called by `paddle.Tensor` in dynamic graph mode. Suggestions:\n"
+            "  1. If you are in static graph mode, you can switch to dynamic graph mode by turning off `paddle.enable_static()` or calling `paddle.disable_static()`.\n"
+            "  2. If you are using `@paddle.jit.to_static`, you can call `paddle.jit.enable_to_static(False)`. "
+            f"If you have to translate dynamic graph to static graph, please use other API to replace '{func.__name__}'."
+        )
+
+    return __impl__
+
+
+fake_interface_only = wrap_decorator(_fake_interface_only_)
+
+
 def create_tensor_with_batchsize(ref_var, value, dtype):
-    assert isinstance(ref_var, OpResult)
+    assert isinstance(ref_var, Value)
     value = float(value)
     batch_dim = -1
     out_shape = []
@@ -46,7 +63,7 @@ def create_tensor_with_batchsize(ref_var, value, dtype):
         else:
             out_shape.append(d)
     assert batch_dim != -1
-    from paddle import _C_ops
+
     from paddle.framework import core
 
     out = _C_ops.full_batch_size_like(
@@ -57,7 +74,7 @@ def create_tensor_with_batchsize(ref_var, value, dtype):
     return out
 
 
-def monkey_patch_opresult():
+def monkey_patch_value():
     def safe_get_dtype(var):
         try:
             dtype = var.dtype
@@ -65,20 +82,79 @@ def monkey_patch_opresult():
             raise ValueError("Cannot get data type from var")
         return dtype
 
+    def cpu(self):
+        """
+        In dy2static, OpResult also needs cpu() and cuda() interface.
+        But, the underneath operator has only forward op but not backward one.
+
+        Returns:
+            The tensor which has copied to cpu place.
+
+        Examples:
+            In Static Graph Mode:
+
+            .. code-block:: python
+
+                >>> import paddle
+                >>> paddle.enable_static()
+
+                >>> x = paddle.static.data(name="x", shape=[2,2], dtype='float32')
+                >>> y = x.cpu()
+        """
+
+        # 0 means cpu place, see paddle/phi/kernels/memcpy_kernel.cc
+        return _C_ops.memcpy(self, 0)
+
+    def cuda(self, device_id=None, blocking=True):
+        """
+        In dy2static, OpResult also needs cpu() and cuda() interface.
+        But, the underneath operator has only forward op but not backward one.
+
+        Args:
+            self(OpResult): The variable itself.
+            device_id(int, optional): The destination GPU device id. Default: None, means current device.
+                We add this argument for dy2static translation, please do not use it.
+            blocking(bool, optional): Whether blocking or not, Default: True.
+                We add this argument for dy2static translation, please do not use it.
+
+        Returns:
+            The tensor which has copied to cuda place.
+
+        Examples:
+            In Static Graph Mode:
+
+            .. code-block:: python
+
+                >>> import paddle
+                >>> paddle.enable_static()
+
+                >>> x = paddle.static.data(name="x", shape=[2,2], dtype='float32')
+                >>> y = x.cpu()
+                >>> z = y.cuda()
+        """
+
+        if device_id is not None:
+            warnings.warn("device_id is not supported, and it will be ignored.")
+        if blocking is not True:
+            warnings.warn("blocking is not supported, and it will be ignored.")
+
+        # 1 means cuda place, see paddle/phi/kernels/memcpy_kernel.cc
+        return _C_ops.memcpy(self, 1)
+
     def place(self):
         """
-        OpResult don't have 'place' interface in static graph mode
+        Value don't have 'place' interface in static graph mode
         But this interface can greatly facilitate dy2static.
         So we give a warnning here and return None.
         """
         warnings.warn(
-            "OpResult do not have 'place' interface for pir graph mode, try not to use it. None will be returned."
+            "Value do not have 'place' interface for pir graph mode, try not to use it. None will be returned."
         )
 
     @property
     def _ndim(self):
         """
-        Returns the dimension of current OpResult
+        Returns the dimension of current Value
 
         Returns:
             the dimension
@@ -90,9 +166,9 @@ def monkey_patch_opresult():
 
                 >>> paddle.enable_static()
 
-                >>> # create a static OpResult
+                >>> # create a static Value
                 >>> x = paddle.static.data(name='x', shape=[3, 2, 1])
-                >>> # print the dimension of the OpResult
+                >>> # print the dimension of the Value
                 >>> print(x.ndim)
                 3
         """
@@ -100,7 +176,7 @@ def monkey_patch_opresult():
 
     def ndimension(self):
         """
-        Returns the dimension of current OpResult
+        Returns the dimension of current Value
 
         Returns:
             the dimension
@@ -112,9 +188,9 @@ def monkey_patch_opresult():
 
                 >>> paddle.enable_static()
 
-                >>> # create a static OpResult
+                >>> # create a static Value
                 >>> x = paddle.static.data(name='x', shape=[3, 2, 1])
-                >>> # print the dimension of the OpResult
+                >>> # print the dimension of the Value
                 >>> print(x.ndimension())
                 3
         """
@@ -122,7 +198,7 @@ def monkey_patch_opresult():
 
     def dim(self):
         """
-        Returns the dimension of current OpResult
+        Returns the dimension of current Value
 
         Returns:
             the dimension
@@ -134,9 +210,9 @@ def monkey_patch_opresult():
 
                 >>> paddle.enable_static()
 
-                >>> # create a static OpResult
+                >>> # create a static Value
                 >>> x = paddle.static.data(name='x', shape=[3, 2, 1])
-                >>> # print the dimension of the OpResult
+                >>> # print the dimension of the Value
                 >>> print(x.dim())
                 3
         """
@@ -149,7 +225,7 @@ def monkey_patch_opresult():
         """
         if len(self.shape) > 1:
             raise TypeError(
-                f"Required input var should be 1-D OpResult, but received {self.shape}"
+                f"Required input var should be 1-D Value, but received {self.shape}"
             )
         return self
 
@@ -157,16 +233,16 @@ def monkey_patch_opresult():
         """
         **Notes**:
 
-        Cast a OpResult to a specified data type.
+        Cast a Value to a specified data type.
 
         Args:
 
-            self(OpResult): The source OpResult
+            self(Value): The source Value
 
             dtype: The target data type
 
         Returns:
-            OpResult: OpResult with new dtype
+            Value: Value with new dtype
 
         Examples:
             In Static Graph Mode:
@@ -180,12 +256,11 @@ def monkey_patch_opresult():
                 >>> with paddle.static.program_guard(startup_prog, main_prog):
                 ...     original_value = paddle.static.data(name = "new_value", shape=[2,2], dtype='float32')
                 ...     new_value = original_value.astype('int64')
-                ...     print("new value's dtype is: {}".format(new_value.dtype))
+                ...     print(f"new value's dtype is: {new_value.dtype}")
                 ...
-                new OpResult's dtype is: paddle.int64
+                new Value's dtype is: paddle.int64
 
         """
-        from paddle import _C_ops
 
         if not isinstance(dtype, DataType):
             dtype = paddle.pir.core.convert_np_dtype_to_dtype_(dtype)
@@ -247,75 +322,179 @@ def monkey_patch_opresult():
                 # do nothing
                 pass
 
-            # 2. create OpResult for scalar
+            # 2. create Value for scalar
             lhs_dtype = safe_get_dtype(self)
-            other_var_opresult = other_var
-            if not isinstance(other_var, OpResult):
+            other_var_value = other_var
+            if not isinstance(other_var, Value):
                 if reverse:
                     for elem in self.shape:
                         if elem < 0:
-                            other_var_opresult = create_tensor_with_batchsize(
+                            other_var_value = create_tensor_with_batchsize(
                                 self, other_var, lhs_dtype
                             )
 
                             break
                     else:
                         # when break is not triggered, enter the else branch
-                        other_var_opresult = (
-                            paddle.tensor.creation.fill_constant(
-                                self.shape,
-                                lhs_dtype,
-                                other_var,
-                            )
+                        other_var_value = paddle.tensor.creation.fill_constant(
+                            self.shape,
+                            lhs_dtype,
+                            other_var,
                         )
                 else:
                     # add fill_op to current_block
-                    other_var_opresult = paddle.tensor.creation.fill_constant(
+                    other_var_value = paddle.tensor.creation.fill_constant(
                         [],
                         lhs_dtype,
                         other_var,
                     )
 
             # 3. unify right var type to left var
-            rhs_dtype = safe_get_dtype(other_var_opresult)
+            rhs_dtype = safe_get_dtype(other_var_value)
             if lhs_dtype != rhs_dtype:
-                other_var_opresult = paddle.cast(other_var_opresult, lhs_dtype)
+                other_var_value = paddle.cast(other_var_value, lhs_dtype)
             if reverse:
                 tmp = self
-                self = other_var_opresult
-                other_var_opresult = tmp
+                self = other_var_value
+                other_var_value = tmp
 
             if (
                 python_api == paddle.divide
             ) and self.dtype in _supported_int_dtype_:
                 self = paddle.cast(self, DataType.FLOAT32)
-                other_var_opresult = paddle.cast(
-                    other_var_opresult, DataType.FLOAT32
-                )
+                other_var_value = paddle.cast(other_var_value, DataType.FLOAT32)
 
-            out = python_api(self, other_var_opresult)
+            out = python_api(self, other_var_value)
             return out
 
         __impl__.__doc__ = """
             Args:
-                self(OpResult): left hand OpResult
-                other_var(OpResult|float|int): right hand OpResult
+                self(Value): left hand Value
+                other_var(Value|float|int): right hand Value
 
             Returns:
-                OpResult
+                Value
             """
         __impl__.__name__ = method_name
         return __impl__
 
+    @property
+    def _size_(self):
+        """
+        Returns the number of elements for current Value, which is a int64 Value with shape [] .
+
+        Returns:
+            Value, the number of elements for current Value
+
+        Examples:
+            .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.enable_static()
+            >>> startup_prog = paddle.static.Program()
+            >>> main_prog = paddle.static.Program()
+            >>> with paddle.static.program_guard(startup_prog, main_prog):
+            ...     x = paddle.assign(np.random.rand(2, 3, 4).astype("float32"))
+            ...     (output_x,) = exe.run(main_program, fetch_list=[x.size])
+            ...     print(f"value's size is: {output_x}")
+            ...
+            value's size is: 24
+        """
+        return paddle.numel(self)
+
+    def clone(self):
+        """
+        Returns a new static Value, which is the clone of the original static
+        Value. It remains in the current graph, that is, the cloned Value
+        provides gradient propagation. Calling ``out = tensor.clone()`` is same
+        as ``out = assign(tensor)`` .
+
+        Returns:
+            Value, The cloned Value.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+
+                >>> paddle.enable_static()
+
+                >>> # create a static Value
+                >>> x = paddle.static.data(name='x', shape=[3, 2, 1])
+                >>> # create a cloned Value
+                >>> y = x.clone()
+
+        """
+        return paddle.assign(self)
+
+    @fake_interface_only
+    def clear_gradient(self):
+        """
+        **Notes**:
+            **1. This API is ONLY available in Dygraph mode**
+
+            **2. Use it only OpResult has gradient, normally we use this for Parameters since other temporal OpResult will be deleted by Python's GC**
+
+        Clear  (set to ``0`` ) the Gradient of Current OpResult
+
+        Returns:  None
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> import paddle.base as base
+                >>> import numpy as np
+
+                >>> x = np.ones([2, 2], np.float32)
+                >>> inputs2 = []
+                >>> for _ in range(10):
+                >>>     tmp = base.dygraph.base.to_variable(x)
+                >>>     tmp.stop_gradient=False
+                >>>     inputs2.append(tmp)
+                >>> ret2 = paddle.add_n(inputs2)
+                >>> loss2 = paddle.sum(ret2)
+                >>> loss2.retain_grads()
+                >>> loss2.backward()
+                >>> print(loss2.gradient())
+                >>> loss2.clear_gradient()
+                >>> print("After clear {}".format(loss2.gradient()))
+                1.0
+                After clear 0.0
+        """
+        pass
+
+    def append(self, var):
+        """
+        **Notes**:
+           **The type Value must be LoD Tensor Array.
+
+        """
+        if not self.is_dense_tensor_array_type():
+            raise TypeError(
+                "Only Value with pd_op.tensor_array support `append` method, but received type: {}".format(
+                    self.type()
+                )
+            )
+        from paddle.tensor.array import array_length, array_write
+
+        array_write(x=var, i=array_length(self), array=self)
+
     import paddle
 
-    opresult_methods = [
+    value_methods = [
+        ('cpu', cpu),
+        ('cuda', cuda),
         ('place', place),
         ('item', _item),
         ('dim', dim),
         ('ndimension', ndimension),
         ('ndim', _ndim),
         ('astype', astype),
+        ('size', _size_),
+        ('clone', clone),
+        ('clear_gradient', clear_gradient),
+        ('append', append),
         (
             '__add__',
             _binary_creator_('__add__', paddle.tensor.add, False, _scalar_add_),
@@ -424,32 +603,32 @@ def monkey_patch_opresult():
         ),
     ]
 
-    global _already_patch_opresult
-    if not _already_patch_opresult:
-        for method in opresult_methods:
+    global _already_patch_value
+    if not _already_patch_value:
+        for method in value_methods:
             method_name = method[0]
             method_impl = method[1]
-            setattr(OpResult, method_name, method_impl)
+            setattr(Value, method_name, method_impl)
 
         # Handling Tensor Methods
         import paddle.tensor
 
         for method_name in paddle.tensor.tensor_method_func:
-            if hasattr(OpResult, method_name):
+            if hasattr(Value, method_name):
                 continue
             method_impl = getattr(paddle.tensor, method_name, None)
             if method_impl:
-                setattr(OpResult, method_name, method_impl)
+                setattr(Value, method_name, method_impl)
 
         # Bit operation symbol
         for magic_method, origin_method in paddle.tensor.magic_method_func:
             impl = getattr(paddle.tensor, origin_method, None)
             if impl:
-                setattr(OpResult, magic_method, impl)
+                setattr(Value, magic_method, impl)
 
         # Handling __getitem__
         from ..base.variable_index import _getitem_static
 
-        OpResult.__getitem__ = _getitem_static
+        Value.__getitem__ = _getitem_static
 
-        _already_patch_opresult = True
+        _already_patch_value = True

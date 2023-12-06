@@ -42,7 +42,6 @@ parallel_list="^init_phi_test$|\
 ^test_conv1d_layer$|\
 ^test_conv1d_transpose_layer$|\
 ^test_conv2d_api$|\
-^test_conv2d_fusion_op$|\
 ^test_conv2d_layer$|\
 ^test_conv2d_op_depthwise_conv$|\
 ^test_conv2d_transpose_layer$|\
@@ -71,6 +70,7 @@ parallel_list="^init_phi_test$|\
 ^test_fused_attention_op_api$|\
 ^test_fused_attention_op_api_static_build$|\
 ^test_fused_attention_op_static_build$|\
+^test_fused_dconv_drelu_dbn_op$|\
 ^test_fused_bias_dropout_residual_layer_norm_op$|\
 ^test_fused_bias_dropout_residual_layer_norm_op_api$|\
 ^test_fused_comm_buffer$|\
@@ -95,7 +95,8 @@ parallel_list="^init_phi_test$|\
 ^test_fused_multi_transformer_int8_op$|\
 ^test_fused_residual_dropout_bias$|\
 ^test_fused_rotary_position_embedding$|\
-^test_fused_scale_bias_relu_conv_bnstats_op$|\
+^test_fused_scale_bias_add_relu_op$|\
+^test_fused_scale_bias_relu_conv_bn_op$|\
 ^test_fused_token_prune_op$|\
 ^test_fused_transformer_encoder_layer$|\
 ^test_fused_transformer_with_amp_decorator$|\

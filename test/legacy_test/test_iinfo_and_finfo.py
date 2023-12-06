@@ -30,6 +30,13 @@ class TestIInfoAndFInfoAPI(unittest.TestCase):
             paddle.complex64,
             paddle.complex128,
             paddle.bool,
+            'float16',
+            'float32',
+            'float64',
+            'uint16',
+            'complex64',
+            'complex128',
+            'bool',
         ]:
             with self.assertRaises(ValueError):
                 _ = paddle.iinfo(dtype)
@@ -41,6 +48,11 @@ class TestIInfoAndFInfoAPI(unittest.TestCase):
             (paddle.int16, np.int16),
             (paddle.int8, np.int8),
             (paddle.uint8, np.uint8),
+            ('int64', np.int64),
+            ('int32', np.int32),
+            ('int16', np.int16),
+            ('int8', np.int8),
+            ('uint8', np.uint8),
         ]:
             xinfo = paddle.iinfo(paddle_dtype)
             xninfo = np.iinfo(np_dtype)
@@ -53,6 +65,8 @@ class TestIInfoAndFInfoAPI(unittest.TestCase):
         for paddle_dtype, np_dtype in [
             (paddle.float32, np.float32),
             (paddle.float64, np.float64),
+            ('float32', np.float32),
+            ('float64', np.float64),
         ]:
             xinfo = paddle.finfo(paddle_dtype)
             xninfo = np.finfo(np_dtype)
@@ -71,6 +85,8 @@ class TestIInfoAndFInfoAPI(unittest.TestCase):
         for paddle_dtype, np_dtype in [
             (paddle.complex64, np.complex64),
             (paddle.complex128, np.complex128),
+            ('complex64', np.complex64),
+            ('complex128', np.complex128),
         ]:
             xinfo = paddle.finfo(paddle_dtype)
             xninfo = np.finfo(np_dtype)
@@ -87,6 +103,16 @@ class TestIInfoAndFInfoAPI(unittest.TestCase):
                 )
 
         xinfo = paddle.finfo(paddle.float16)
+        self.assertEqual(xinfo.dtype, "float16")
+        self.assertEqual(xinfo.bits, 16)
+        self.assertAlmostEqual(xinfo.max, 65504.0)
+        self.assertAlmostEqual(xinfo.min, -65504.0)
+        self.assertAlmostEqual(xinfo.eps, 0.0009765625)
+        self.assertAlmostEqual(xinfo.tiny, 6.103515625e-05)
+        self.assertAlmostEqual(xinfo.resolution, 0.001)
+        self.assertAlmostEqual(xinfo.smallest_normal, 6.103515625e-05)
+
+        xinfo = paddle.finfo('float16')
         self.assertEqual(xinfo.dtype, "float16")
         self.assertEqual(xinfo.bits, 16)
         self.assertAlmostEqual(xinfo.max, 65504.0)
