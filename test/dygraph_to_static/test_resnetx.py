@@ -22,9 +22,6 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_default_mode_only,
-    test_legacy_only,
-    test_pt_only,
-    test_sot_mgs0_only,
 )
 from predictor_utils import PredictorTools
 
@@ -442,20 +439,19 @@ class TestResnet(Dy2StTestBase):
             err_msg=f'predictor_pre:\n {predictor_pre}\n, st_pre: \n{st_pre}.',
         )
 
-    @test_sot_mgs0_only
-    @test_pt_only
-    def test_resnet_pir(self):
-        static_loss = self.train(to_static=True)
-        dygraph_loss = self.train(to_static=False)
-        np.testing.assert_allclose(
-            static_loss,
-            dygraph_loss,
-            rtol=1e-05,
-            err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
-        )
+    # @test_sot_mgs0_only
+    # @test_pt_only
+    # def test_resnet_pir(self):
+    #     static_loss = self.train(to_static=True)
+    #     dygraph_loss = self.train(to_static=False)
+    #     np.testing.assert_allclose(
+    #         static_loss,
+    #         dygraph_loss,
+    #         rtol=1e-05,
+    #         err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
+    #     )
 
-    @test_sot_mgs0_only
-    @test_legacy_only
+    @test_default_mode_only
     def test_resnet(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)

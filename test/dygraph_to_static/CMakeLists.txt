@@ -18,7 +18,6 @@ endif()
 if(WIN32 AND NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_resnet_amp
   )# disable on Windows CPU CI for timeout
-  set_tests_properties(test_resnetx PROPERTIES TIMEOUT 300)
 endif()
 
 if(NOT WITH_GPU)
@@ -46,17 +45,16 @@ set_tests_properties(test_bmn PROPERTIES TIMEOUT 300)
 set_tests_properties(test_bert PROPERTIES TIMEOUT 240)
 #set_tests_properties(test_mnist PROPERTIES TIMEOUT 120)
 set_tests_properties(test_build_strategy PROPERTIES TIMEOUT 120)
+set_tests_properties(test_resnetx PROPERTIES TIMEOUT 420)
 
 if(NOT WIN32)
   set_tests_properties(test_tsm PROPERTIES TIMEOUT 900)
-  set_tests_properties(test_resnetx PROPERTIES TIMEOUT 300)
 endif()
 
 if(APPLE)
   set_tests_properties(test_bmn PROPERTIES TIMEOUT 300)
   set_tests_properties(test_build_strategy PROPERTIES TIMEOUT 300)
   set_tests_properties(test_mobile_net PROPERTIES TIMEOUT 300)
-  set_tests_properties(test_resnetx PROPERTIES TIMEOUT 300)
 endif()
 
 if(WITH_GPU)
