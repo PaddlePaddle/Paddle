@@ -41,7 +41,6 @@ from paddle.distributed.auto_parallel.static.reshard import Resharder
 from paddle.distributed.auto_parallel.static.utils import debug_program
 from paddle.distributed.passes import PassContext, new_pass
 from paddle.static import append_backward, program_guard
-from paddle.utils import unique_name
 
 from ..utils import get_logger
 from .algorithms import new_algorithm
@@ -343,11 +342,11 @@ class OptimizationTuner:
 
         # Generate optimizer
         # FIXME should be remove from apply pass after pass support optimizers
+        dist_main_prog._name_generator.reset("opt_")
         with program_guard(dist_main_prog, dist_startup_prog):
-            with unique_name.guard("opt_"):
-                optimizer_ops = dist_context.serial_optimizer.apply_gradients(
-                    dist_params_grads
-                )
+            optimizer_ops = dist_context.serial_optimizer.apply_gradients(
+                dist_params_grads
+            )
         completer.complete_update_annotation(dist_main_prog)
 
         resharder = Resharder(
