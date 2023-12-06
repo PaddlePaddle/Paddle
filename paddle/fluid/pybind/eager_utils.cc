@@ -1916,7 +1916,7 @@ paddle::Tensor CreateTensorFromVarDesc(
   return tensor;
 }
 
-PyObject* GetEmpytyTensorsWithVarDesc(PyObject* self, PyObject* args) {
+PyObject* GetEmptyTensorsWithVarDesc(PyObject* self, PyObject* args) {
   std::vector<paddle::Tensor> result;
   std::unordered_map<std::string, paddle::Tensor> out_tensor_map;
 
@@ -2671,9 +2671,9 @@ void DistTensorConverter::operator()(paddle::optional<std::vector<Tensor>>* x) {
 
 static PyMethodDef EagerUtilMethods[] = {
     {"create_empty_tensors_with_var_descs",
-     (PyCFunction)(void (*)(void))GetEmpytyTensorsWithVarDesc,
+     (PyCFunction)(void (*)(void))GetEmptyTensorsWithVarDesc,
      METH_VARARGS,
-     "GetEmpytyTensorsWithVarDesc"},
+     "GetEmptyTensorsWithVarDesc"},
     {"create_empty_tensors_with_op_results",
      (PyCFunction)(void (*)(void))GetEmpytyTensorsWithOpResult,
      METH_VARARGS,
