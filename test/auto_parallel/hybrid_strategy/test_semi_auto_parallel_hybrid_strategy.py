@@ -62,10 +62,11 @@ class TestSemiAutoParallelHybridStrategy(test_base.CommunicationTestDistBase):
                 user_defined_envs=envs,
             )
 
+
 class TestSemiAutoParallelCrossMeshReshard(test_base.CommunicationTestDistBase):
     def setUp(self):
         super().setUp(
-            num_of_devices=8,
+            num_of_devices=4,
             timeout=120,
             nnode=1,
         )
@@ -75,7 +76,7 @@ class TestSemiAutoParallelCrossMeshReshard(test_base.CommunicationTestDistBase):
         }
         self._changeable_envs = {"backend": ["gpu"]}
 
-    def test_simple_net_hybrid_strategy(self):
+    def test_simple_net_cross_mesh_reshard(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
         )
@@ -97,7 +98,7 @@ class TestSemiAutoParallelLlamaDPMPStrategy(
         }
         self._changeable_envs = {"backend": ["gpu"]}
 
-    def test_simple_net_bybrid_strategy(self):
+    def test_simple_net_hybrid_strategy(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
         )
