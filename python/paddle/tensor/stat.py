@@ -468,7 +468,9 @@ def median(x, axis=None, keepdim=False, name=None):
     return out_tensor
 
 
-def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
+def _compute_quantile(
+    x, q, axis=None, keepdim=False, interpolation="linear", ignore_nan=False
+):
     """
     Compute the quantile of the input along the specified axis.
 
@@ -486,6 +488,8 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
             the output Tensor is the same as ``x`` except in the reduced
             dimensions(it is of size 1 in this case). Otherwise, the shape of
             the output Tensor is squeezed in ``axis`` . Default is False.
+        interpolation (str, optional): The interpolation method to use
+            when the desired quantile falls between two data points. Default is linear.
         ignore_nan: (bool, optional): Whether to ignore NaN of input Tensor.
             If ``ignore_nan`` is True, it will calculate nanquantile.
             Otherwise it will calculate quantile. Default is False.
@@ -520,6 +524,18 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
         if q_num < 0 or q_num > 1:
             raise ValueError("q should be in range [0, 1]")
 
+    if interpolation not in [
+        'linear',
+        'lower',
+        'higher',
+        'nearest',
+        'midpoint',
+    ]:
+        raise ValueError(
+            "interpolation must be one of 'linear', 'lower', 'higher', 'nearest' or 'midpoint', but got {}".format(
+                interpolation
+            )
+        )
     # Validate axis
     dims = len(x.shape)
     out_shape = list(x.shape)
@@ -581,24 +597,40 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
 
     sorted_tensor = paddle.sort(x, axis)
 
-    outputs = []
+    def _compute_index(index):
+        if interpolation == "nearest":
+            idx = paddle.round(index).astype(paddle.int32)
+            return paddle.take_along_axis(sorted_tensor, idx, axis=axis)
 
-    # TODO(chenjianye): replace the for-loop to directly take elements.
-    for index in indices:
         indices_below = paddle.floor(index).astype(paddle.int32)
+        tensor_below = paddle.take_along_axis(
+            sorted_tensor, indices_below, axis=axis
+        )
+        if interpolation == "lower":
+            return tensor_below
+
         indices_upper = paddle.ceil(index).astype(paddle.int32)
         tensor_upper = paddle.take_along_axis(
             sorted_tensor, indices_upper, axis=axis
         )
-        tensor_below = paddle.take_along_axis(
-            sorted_tensor, indices_below, axis=axis
-        )
+        if interpolation == "higher":
+            return tensor_upper
+
+        if interpolation == "midpoint":
+            return (tensor_upper + tensor_below) / 2
+
         weights = (index - indices_below).astype('float64')
-        out = paddle.lerp(
+        return paddle.lerp(
             tensor_below.astype("float64"),
             tensor_upper.astype("float64"),
             weights,
         )
+
+    outputs = []
+
+    # TODO(chenjianye): replace the for-loop to directly take elements.
+    for index in indices:
+        out = _compute_index(index)
         if not keepdim:
             out = paddle.squeeze(out, axis=axis)
         else:
@@ -613,7 +645,7 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
     return outputs
 
 
-def quantile(x, q, axis=None, keepdim=False):
+def quantile(x, q, axis=None, keepdim=False, interpolation="linear"):
     """
     Compute the quantile of the input along the specified axis.
     If any values in a reduced row are NaN, then the quantiles for that reduction will be NaN.
@@ -632,6 +664,8 @@ def quantile(x, q, axis=None, keepdim=False):
             the output Tensor is the same as ``x`` except in the reduced
             dimensions(it is of size 1 in this case). Otherwise, the shape of
             the output Tensor is squeezed in ``axis`` . Default is False.
+        interpolation (str, optional): The interpolation method to use
+            when the desired quantile falls between two data points. Default is linear.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -678,10 +712,17 @@ def quantile(x, q, axis=None, keepdim=False):
              [6.80000000]])
 
     """
-    return _compute_quantile(x, q, axis=axis, keepdim=keepdim, ignore_nan=False)
+    return _compute_quantile(
+        x,
+        q,
+        axis=axis,
+        keepdim=keepdim,
+        interpolation=interpolation,
+        ignore_nan=False,
+    )
 
 
-def nanquantile(x, q, axis=None, keepdim=False):
+def nanquantile(x, q, axis=None, keepdim=False, interpolation="linear"):
     """
     Compute the quantile of the input as if NaN values in input did not exist.
     If all values in a reduced row are NaN, then the quantiles for that reduction will be NaN.
@@ -700,6 +741,8 @@ def nanquantile(x, q, axis=None, keepdim=False):
             the output Tensor is the same as ``x`` except in the reduced
             dimensions(it is of size 1 in this case). Otherwise, the shape of
             the output Tensor is squeezed in ``axis`` . Default is False.
+        interpolation (str, optional): The interpolation method to use
+            when the desired quantile falls between two data points. Default is linear.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -748,4 +791,11 @@ def nanquantile(x, q, axis=None, keepdim=False):
              [nan]])
 
     """
-    return _compute_quantile(x, q, axis=axis, keepdim=keepdim, ignore_nan=True)
+    return _compute_quantile(
+        x,
+        q,
+        axis=axis,
+        keepdim=keepdim,
+        interpolation=interpolation,
+        ignore_nan=True,
+    )

@@ -118,6 +118,19 @@ class TestQuantileAndNanquantile(unittest.TestCase):
             paddle_res.numpy(), np_res, rtol=1e-05, equal_nan=True
         )
 
+    def test_nanquantile_interpolation(self):
+        input_data = np.full(shape=[2, 3], fill_value=np.nan)
+        input_data[0, 2] = 0
+        x = paddle.to_tensor(input_data)
+        for mode in ['lower', 'higher', 'midpoint', 'nearest']:
+            paddle_res = paddle.nanquantile(
+                x, q=0.35, axis=0, interpolation=mode
+            )
+            np_res = np.nanquantile(input_data, q=0.35, axis=0, method=mode)
+            np.testing.assert_allclose(
+                paddle_res.numpy(), np_res, rtol=1e-05, equal_nan=True
+            )
+
     def test_backward(self):
         def check_grad(x, q, axis, target_gard, apis=None):
             for op, _ in apis or API_list:
@@ -274,6 +287,13 @@ class TestError(unittest.TestCase):
             paddle_res = paddle.quantile(self.x, q={1}, axis=[1, -10])
 
         self.assertRaises(TypeError, test_type_q)
+
+        def test_interpolation():
+            paddle_res = paddle.quantile(
+                self.x, q={1}, axis=[1, -10], interpolation=' '
+            )
+
+        self.assertRaises(TypeError, test_interpolation)
 
 
 class TestQuantileRuntime(unittest.TestCase):
