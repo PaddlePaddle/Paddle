@@ -7008,9 +7008,9 @@ def ldexp_(x, y, name=None):
     Inplace version of ``polygamma`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_polygamma`.
     """
-    if not isinstance(x, paddle.Tensor, Variable):
+    if not isinstance(x, (paddle.Tensor, Variable)):
         raise TypeError(f"x must be tensor type, but got {type(x)}")
-    if not isinstance(y, paddle.Tensor, Variable):
+    if not isinstance(y, (paddle.Tensor, Variable)):
         raise TypeError(f"y must be tensor type, but got {type(y)}")
     if x.dtype == paddle.float64 or y.dtype == paddle.float64:
         out_dtype = paddle.float64
