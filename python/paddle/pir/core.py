@@ -300,22 +300,13 @@ def _convert_into_opresult(tensor):
     Convert Tensor into OpResult.
     """
     import paddle
-    from paddle.base import core, framework
     from paddle.jit.pir_dy2static.parameter_recorder import (
         _global_parameter_recorder,
     )
 
-    if isinstance(tensor, core.eager.Tensor):
-        # Check whether has been created before.
-        new_var = tensor.block._find_var_recursive(tensor.name)
-        is_persistable = True
-        if new_var is not None:
-            assert isinstance(new_var, framework.Variable)
-        else:
-            new_var = _global_parameter_recorder.get(
-                paddle.pir.core.default_main_program(), tensor
-            )
-        # add param into parameter recorder to collect all the params used in this program.
-        return new_var
+    if isinstance(tensor, paddle.Tensor):
+        return _global_parameter_recorder.get(
+            paddle.pir.core.default_main_program(), tensor
+        )
     else:
         return tensor
