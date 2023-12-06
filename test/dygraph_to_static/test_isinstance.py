@@ -28,6 +28,7 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    enable_to_static_guard,
     test_legacy_and_pt_and_pir,
 )
 
@@ -77,10 +78,9 @@ class SequentialLayer(nn.Layer):
 
 
 def train(model, to_static):
-    paddle.jit.enable_to_static(to_static)
-
-    x = paddle.ones(shape=[2, 3], dtype='int32')
-    out = model(x)
+    with enable_to_static_guard(to_static):
+        x = paddle.ones(shape=[2, 3], dtype='int32')
+        out = model(x)
 
     return out.numpy()
 

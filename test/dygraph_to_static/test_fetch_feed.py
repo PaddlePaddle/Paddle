@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    enable_to_static_guard,
     test_legacy_and_pt_and_pir,
 )
 
@@ -66,8 +67,7 @@ class TestPool2D(Dy2StTestBase):
         self.dygraph_class = Pool2D
         self.data = np.random.random((1, 2, 4, 4)).astype('float32')
 
-    def train(self, to_static=False):
-        paddle.jit.enable_to_static(to_static)
+    def train(self):
         dy_layer = paddle.jit.to_static(self.dygraph_class())
         x = paddle.to_tensor(self.data)
         prediction = dy_layer(x)
@@ -77,10 +77,12 @@ class TestPool2D(Dy2StTestBase):
         return prediction.numpy()
 
     def train_static(self):
-        return self.train(to_static=True)
+        with enable_to_static_guard(True):
+            return self.train()
 
     def train_dygraph(self):
-        return self.train(to_static=False)
+        with enable_to_static_guard(False):
+            return self.train()
 
     @test_legacy_and_pt_and_pir
     def test_to_static(self):

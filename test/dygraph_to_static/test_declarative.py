@@ -19,6 +19,7 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    enable_to_static_guard,
     test_ast_only,
     test_legacy_and_pt_and_pir,
 )
@@ -378,12 +379,11 @@ class TestDeclarativeAPI(Dy2StTestBase):
         with self.assertRaises(RuntimeError):
             func(np.ones(5).astype("int32"))
 
-        paddle.jit.enable_to_static(False)
-        with self.assertRaises(AssertionError):
-            # AssertionError: We Only support to_variable in imperative mode,
-            #  please use base.dygraph.guard() as context to run it in imperative Mode
-            func(np.ones(5).astype("int32"))
-        paddle.jit.enable_to_static(True)
+        with enable_to_static_guard(False):
+            with self.assertRaises(AssertionError):
+                # AssertionError: We Only support to_variable in imperative mode,
+                #  please use base.dygraph.guard() as context to run it in imperative Mode
+                func(np.ones(5).astype("int32"))
 
         paddle.disable_static()
 
@@ -391,7 +391,6 @@ class TestDeclarativeAPI(Dy2StTestBase):
 class TestDecorateModelDirectly(Dy2StTestBase):
     def setUp(self):
         paddle.disable_static()
-        paddle.jit.enable_to_static(True)
         self.x = paddle.to_tensor(np.ones([4, 10]).astype('float32'))
 
     @test_ast_only
