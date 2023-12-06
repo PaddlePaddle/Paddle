@@ -85,6 +85,10 @@ enum ErrorCode {
   // Third-party library error.
   // Error type string: "ExternalError"
   EXTERNAL = 12,
+
+  // Client specified an unmatched type.
+  // Error type string: "UnmatchedTypeError"
+  UNMATCHED_TYPE = 13,
 };
 
 class ErrorSummary {
@@ -140,6 +144,7 @@ REGISTER_ERROR(Unimplemented, ErrorCode::UNIMPLEMENTED)
 REGISTER_ERROR(Unavailable, ErrorCode::UNAVAILABLE)
 REGISTER_ERROR(Fatal, ErrorCode::FATAL)
 REGISTER_ERROR(External, ErrorCode::EXTERNAL)
+REGISTER_ERROR(UnmatchedTypeError, ErrorCode::UNMATCHED_TYPE)
 
 #undef REGISTER_ERROR
 

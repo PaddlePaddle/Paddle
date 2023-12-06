@@ -32,6 +32,7 @@ namespace pybind {
  *   - UnavailableError -> RuntimeError
  *   - FatalError -> SystemError
  *   - ExternalError -> OSError
+ *   - UnmatchedTypeError -> PyExc_TypeError
  */
 
 void BindException(pybind11::module* m) {
@@ -71,6 +72,9 @@ void BindException(pybind11::module* m) {
           break;
         case paddle::platform::error::EXTERNAL:
           PyErr_SetString(PyExc_OSError, e.what());
+          break;
+        case paddle::platform::error::UNMATCHED_TYPE:
+          PyErr_SetString(PyExc_TypeError, e.what());
           break;
         default:
           exc(e.what());
@@ -123,6 +127,9 @@ void ThrowExceptionToPython(std::exception_ptr p) {
         break;
       case paddle::platform::error::EXTERNAL:
         PyErr_SetString(PyExc_OSError, e.what());
+        break;
+      case paddle::platform::error::UNMATCHED_TYPE:
+        PyErr_SetString(PyExc_TypeError, e.what());
         break;
       default:
         PyErr_SetString(EnforceNotMetException, e.what());
