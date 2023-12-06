@@ -457,7 +457,7 @@ void ProgramTranslator::TranslateIfOperation(
   }
   auto if_op_info = ctx_->GetRegisteredOpInfo(paddle::dialect::IfOp::name());
   pir::Operation* operation = pir::Operation::Create(
-      if_op_inputs, attribute_map, if_op_output_types, if_op_info, 1);
+      if_op_inputs, attribute_map, if_op_output_types, if_op_info, 2);
 
   dst_block->push_back(operation);
   VLOG(4) << "[general op][conditional_block] IfOp creation end.";
