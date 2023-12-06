@@ -128,7 +128,6 @@ class Controller {
     while (!force_sequential_nodes_.empty()) {
       force_sequential_nodes_.pop();
     }
-    z
   }
   void PushBackForceSequentialNodes(GradNodeBase* node) {
     force_sequential_nodes_.push(node);
