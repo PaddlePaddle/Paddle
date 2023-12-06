@@ -730,7 +730,7 @@ class SymbolicStaticFunction(StaticFunction):
         traced_fun = symbolic_translate(
             self._dygraph_function,
             build_strategy=build_strategy,
-            training=self._training,
+            training=self._is_train_mode(),
             backend=backend,
         )
         if self._class_instance is not None:
