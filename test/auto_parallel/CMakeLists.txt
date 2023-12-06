@@ -244,4 +244,4 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
 endif()
 
 py_test_modules(test_job_schedule_profiler_range MODULES
-                  test_job_schedule_profiler_range)
+                test_job_schedule_profiler_range)
