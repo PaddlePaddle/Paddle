@@ -18,7 +18,6 @@
 
 namespace phi {
 namespace distributed {
-
 class SameStatusReshardFunction final : public ReshardFunction {
  public:
   bool IsSuitable(const DistTensor& in,

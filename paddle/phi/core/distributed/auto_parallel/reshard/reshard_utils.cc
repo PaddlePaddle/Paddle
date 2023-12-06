@@ -180,5 +180,18 @@ phi::DeviceContext* GetDistTensorDeviceContext(
   return phi::DeviceContextPool::Instance().Get(place);
 }
 
+std::vector<int64_t> GetUnionProcessIds(std::vector<int64_t> in_process_ids,
+                                        std::vector<int64_t> out_process_ids) {
+  std::vector<int64_t> result;
+  std::sort(in_process_ids.begin(), in_process_ids.end());
+  std::sort(out_process_ids.begin(), out_process_ids.end());
+  std::set_union(in_process_ids.begin(),
+                 in_process_ids.end(),
+                 out_process_ids.begin(),
+                 out_process_ids.end(),
+                 std::back_inserter(result));
+  return result;
+}
+
 }  // namespace distributed
 }  // namespace phi
