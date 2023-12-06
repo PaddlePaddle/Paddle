@@ -11,25 +11,14 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "paddle/phi/core/compat/op_utils.h"
 
 namespace phi {
-KernelSignature CEmbeddingOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "c_embedding", {"W", "Ids"}, {"start_index", "vocab_size"}, {"Out"});
+
+KernelSignature ReadFileOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("read_file", {}, {"filename"}, {"Out"});
 }
 
-KernelSignature CEmbeddingGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature("c_embedding_grad",
-                         {"W", "Ids", "Out@GRAD"},
-                         {"start_index"},
-                         {"W@GRAD"});
-}
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(c_embedding, phi::CEmbeddingOpArgumentMapping);
-
-PD_REGISTER_ARG_MAPPING_FN(c_embedding_grad,
-                           phi::CEmbeddingGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(read_file, phi::ReadFileOpArgumentMapping);
