@@ -815,7 +815,10 @@ class PartialProgramLayer:
                 )
             )
 
-        in_pir_pt_mode = True
+        pt_flag = 'FLAGS_enable_pir_with_pt_in_dy2st'
+        is_pt_flag_opened = get_flags(pt_flag)[pt_flag]
+
+        in_pir_pt_mode = is_pt_flag_opened
         is_prim_enabled = (
             core._is_fwd_prim_enabled() or core._is_bwd_prim_enabled()
         )
@@ -825,12 +828,9 @@ class PartialProgramLayer:
         if is_prim_enabled or is_cinn_enabled:
             in_pir_pt_mode = False
 
-        pt_flag = 'FLAGS_enable_pir_with_pt_in_dy2st'
-        is_pt_flag_opened = get_flags(pt_flag)[pt_flag]
-        if force_not_use_pt and is_pt_flag_opened:
+        if force_not_use_pt:
             in_pir_pt_mode = False
         attrs.extend(['in_pir_pt_mode', in_pir_pt_mode])
-
         return attrs
 
     @switch_to_static_graph
