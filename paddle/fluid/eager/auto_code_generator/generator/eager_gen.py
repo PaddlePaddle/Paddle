@@ -526,13 +526,16 @@ AMP_LOGIC_TEMPLATE = """  if (egr::Controller::Instance().GetAMPLevel() != paddl
   }}
 """
 
-TYPE_PROMOTION_LOGIC_TEMPLATE = """   {} {{
+TYPE_PROMOTION_LOGIC_TEMPLATE = """   if (phi::NeedTypePromotion({x}.dtype(), {y}.dtype())) {{
     VLOG(5) << "got different data type, run type protmotion automatically.";
     LOG(WARNING) << "got different data type, run type protmotion automatically, this may cause data type been changed.";
-    {}
-    {}
-    {}
-    {}
+    {op_name}
+    auto promotion_type = phi::GetPromoteDtype(op_name, {x}.dtype(), {y}.dtype());
+
+    auto new_{x} = egr::PromoteCast("{x}", {x}, promotion_type);
+    auto new_{y} = egr::PromoteCast("{y}", {y}, promotion_type);
+
+    {return_value}
   }}
 """
 
@@ -1844,19 +1847,12 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 type_promote_inputs_call_list
             )
             type_promote_call_list = f"return {forward_ad_function_name}({type_promote_inputs_call_args_str});"
-            need_type_promote_str = (
-                f"if (phi::NeedTypePromotion({x}.dtype(), {y}.dtype()))"
-            )
-            type_promote_get_dst_dtype_str = f"auto promotion_type = phi::GetPromoteDtype(op_name, {x}.dtype(),{y}.dtype());\n"
-            type_promote_list_str = f"auto new_{x} = egr::PromoteCast(\"{x}\", {x}, promotion_type);\n"
-            type_promote_list_str += f"    auto new_{y} = egr::PromoteCast(\"{y}\", {y}, promotion_type);\n"
 
             type_promotion_logic_str = TYPE_PROMOTION_LOGIC_TEMPLATE.format(
-                need_type_promote_str,
-                kernel_trans2_op_name_str,
-                type_promote_get_dst_dtype_str,
-                type_promote_list_str,
-                type_promote_call_list,
+                x=x,
+                y=y,
+                op_name=kernel_trans2_op_name_str,
+                return_value=type_promote_call_list,
             )
         else:
             type_promotion_logic_str = (
