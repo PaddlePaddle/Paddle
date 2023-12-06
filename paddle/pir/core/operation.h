@@ -16,6 +16,7 @@
 
 #include <ostream>
 #include <vector>
+
 #include "paddle/common/enforce.h"
 #include "paddle/common/macros.h"
 #include "paddle/pir/core/block.h"
