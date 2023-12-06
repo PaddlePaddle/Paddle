@@ -14,12 +14,10 @@
 
 #pragma once
 
-#include <string>
+#include "paddle/cinn/adt/dim_expr_match_trait.h"
 
 namespace cinn::adt {
 
-class Constant;
+DimExpr SimplifyDimExpr(const DimExpr&);
 
-std::string ToTxtString(const Constant& constant);
-
-}  // namespace cinn::adt
+}

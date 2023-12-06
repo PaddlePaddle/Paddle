@@ -14,6 +14,7 @@
 
 import numpy as np
 
+import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.tensor.math import _add_with_axis
 from paddle.utils import convert_to_list
@@ -674,8 +675,8 @@ def box_coder(
             ...     box_normalized=False)
             ...
     """
-    if in_dygraph_mode():
-        if isinstance(prior_box_var, core.eager.Tensor):
+    if in_dynamic_or_pir_mode():
+        if isinstance(prior_box_var, (core.eager.Tensor, paddle.pir.Value)):
             output_box = _C_ops.box_coder(
                 prior_box,
                 prior_box_var,
@@ -1937,7 +1938,7 @@ def nms(
     """
 
     def _nms(boxes, iou_threshold):
-        if in_dygraph_mode():
+        if in_dynamic_or_pir_mode():
             return _C_ops.nms(boxes, iou_threshold)
 
         else:
@@ -1971,10 +1972,12 @@ def nms(
         categories is not None
     ), "if category_idxs is given, categories which is a list of unique id of all categories is necessary"
 
-    mask = paddle.zeros_like(scores, dtype=paddle.int32)
+    mask = paddle.zeros_like(scores, dtype='int32')
 
     for category_id in categories:
-        cur_category_boxes_idxs = paddle.where(category_idxs == category_id)[0]
+        cur_category_boxes_idxs = paddle.where(
+            paddle.equal(category_idxs, paddle.to_tensor(category_id))
+        )[0]
         shape = cur_category_boxes_idxs.shape[0]
         cur_category_boxes_idxs = paddle.reshape(
             cur_category_boxes_idxs, [shape]
@@ -1999,7 +2002,7 @@ def nms(
 
         updates = paddle.ones_like(
             cur_category_boxes_idxs[cur_category_keep_boxes_sub_idxs],
-            dtype=paddle.int32,
+            dtype='int32',
         )
         mask = paddle.scatter(
             mask,
