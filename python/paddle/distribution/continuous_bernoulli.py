@@ -50,10 +50,11 @@ class ContinuousBernoulli(distribution.Distribution):
 
     Args:
         probability(int|float|Tensor): The probability of Continuous Bernoulli distribution between [0, 1],
-                    which characterize the shape of the pdf. The data type of `probability` will be convert to the global default dtype.
+        which characterize the shape of the pdf. If the input data type is int or float, the data type of
+        `probability` will be convert to a 1-D Tensor the paddle global default dtype.
         eps(float): Specify the bandwith of the unstable calculation region near 0.5. The unstable calculation region
-                    would be [0.5 - eps, 0.5 + eps], where the calculation is approximated by talyor expansion. The
-                    default value is 1e-4.
+        would be [0.5 - eps, 0.5 + eps], where the calculation is approximated by talyor expansion. The
+        default value is 1e-4.
 
     Examples:
         .. code-block:: python
@@ -85,9 +86,13 @@ class ContinuousBernoulli(distribution.Distribution):
     """
 
     def __init__(self, probability, eps=0.02):
-        self.eps = paddle.to_tensor(eps)
         self.dtype = paddle.get_default_dtype()
         self.probability = self._to_tensor(probability)
+        self.eps = paddle.to_tensor(eps, dtype=self.dtype)
+        if not self._check_constraint(self.probability):
+            raise ValueError(
+                'Every element of input parameter `probability` should be nonnegative.'
+            )
 
         # eps_prob is used to clip the input `probability` in the range of [eps_prob, 1-eps_prob]
         eps_prob = paddle.finfo(self.probability.dtype).eps
@@ -95,10 +100,6 @@ class ContinuousBernoulli(distribution.Distribution):
             self.probability, min=eps_prob, max=1 - eps_prob
         )
 
-        if not self._check_constraint(self.probability):
-            raise ValueError(
-                'Every element of input parameter `rate` should be nonnegative.'
-            )
         if self.probability.shape == []:
             batch_shape = (1,)
         else:
@@ -106,15 +107,16 @@ class ContinuousBernoulli(distribution.Distribution):
         super().__init__(batch_shape)
 
     def _to_tensor(self, probability):
-        """Convert the input parameters into tensors with the global default dtype
+        """Convert the input parameters into tensors
 
         Returns:
             Tensor: converted probability.
         """
         # convert type
         if isinstance(probability, (float, int)):
-            probability = [probability]
-        probability = paddle.to_tensor(probability, dtype=self.dtype)
+            probability = paddle.to_tensor([probability], dtype=self.dtype)
+        else:
+            self.dtype = probability.dtype
         return probability
 
     def _check_constraint(self, value):
@@ -169,26 +171,27 @@ class ContinuousBernoulli(distribution.Distribution):
             Tensor: logarithm of the constant factor
         """
         cut_probs = self._cut_probs()
+        half = paddle.to_tensor(0.5, dtype=self.dtype)
         cut_probs_below_half = paddle.where(
-            paddle.less_equal(cut_probs, paddle.to_tensor(0.5)),
+            paddle.less_equal(cut_probs, half),
             cut_probs,
             paddle.zeros_like(cut_probs),
         )
         cut_probs_above_half = paddle.where(
-            paddle.greater_equal(cut_probs, paddle.to_tensor(0.5)),
+            paddle.greater_equal(cut_probs, half),
             cut_probs,
             paddle.ones_like(cut_probs),
         )
         log_constant_propose = paddle.log(
             2.0 * paddle.abs(self._tanh_inverse(1.0 - 2.0 * cut_probs))
         ) - paddle.where(
-            paddle.less_equal(cut_probs, paddle.to_tensor(0.5)),
+            paddle.less_equal(cut_probs, half),
             paddle.log1p(-2.0 * cut_probs_below_half),
             paddle.log(2.0 * cut_probs_above_half - 1.0),
         )
         x = paddle.square(self.probability - 0.5)
         taylor_expansion = (
-            paddle.log(paddle.to_tensor(2.0))
+            paddle.log(paddle.to_tensor(2.0, dtype=self.dtype))
             + (4.0 / 3.0 + 104.0 / 45.0 * x) * x
         )
         return paddle.where(
@@ -230,7 +233,7 @@ class ContinuousBernoulli(distribution.Distribution):
         )
         propose = tmp + paddle.divide(
             paddle.to_tensor(1.0, dtype=self.dtype),
-            paddle.square(2.0 * self._tanh_inverse(1.0 - 2.0 * cut_probs)),
+            paddle.square(paddle.log1p(-cut_probs) - paddle.log(cut_probs)),
         )
         x = paddle.square(self.probability - 0.5)
         taylor_expansion = 1.0 / 12.0 - (1.0 / 15.0 - 128.0 / 945.0 * x) * x
@@ -245,7 +248,7 @@ class ContinuousBernoulli(distribution.Distribution):
             shape (Sequence[int], optional): Prepended shape of the generated samples.
 
         Returns:
-            Tensor, Sampled data with shape `sample_shape` + `batch_shape`. The data type is the global default dtype.
+            Tensor, Sampled data with shape `sample_shape` + `batch_shape`.
         """
         with paddle.no_grad():
             return self.rsample(shape)
@@ -257,7 +260,7 @@ class ContinuousBernoulli(distribution.Distribution):
             shape (Sequence[int], optional): Prepended shape of the generated samples.
 
         Returns:
-            Tensor, Sampled data with shape `sample_shape` + `batch_shape`. The data type is the global default dtype.
+            Tensor, Sampled data with shape `sample_shape` + `batch_shape`.
         """
         if not isinstance(shape, Sequence):
             raise TypeError('sample shape must be Sequence object.')
@@ -314,7 +317,7 @@ class ContinuousBernoulli(distribution.Distribution):
         * :math:\Omega: is the support of the distribution.
 
         Returns:
-            Tensor, Shannon entropy of Continuous Bernoulli distribution. The data type is the global default dtype.
+            Tensor, Shannon entropy of Continuous Bernoulli distribution.
         """
         log_p = paddle.log(self.probability)
         log_1_minus_p = paddle.log1p(-self.probability)
@@ -359,10 +362,12 @@ class ContinuousBernoulli(distribution.Distribution):
         ) / (2.0 * cut_probs - 1.0)
         unbounded_cdfs = paddle.where(self._cut_support_region(), cdfs, value)
         return paddle.where(
-            paddle.less_equal(value, paddle.to_tensor(0.0)),
+            paddle.less_equal(value, paddle.to_tensor(0.0, dtype=self.dtype)),
             paddle.zeros_like(value),
             paddle.where(
-                paddle.greater_equal(value, paddle.to_tensor(1.0)),
+                paddle.greater_equal(
+                    value, paddle.to_tensor(1.0, dtype=self.dtype)
+                ),
                 paddle.ones_like(value),
                 unbounded_cdfs,
             ),
@@ -416,7 +421,7 @@ class ContinuousBernoulli(distribution.Distribution):
             other (ContinuousBernoulli): instance of Continuous Bernoulli.
 
         Returns:
-            Tensor, kl-divergence between two Continuous Bernoulli distributions. The data type is the global default dtype.
+            Tensor, kl-divergence between two Continuous Bernoulli distributions.
 
         """
 

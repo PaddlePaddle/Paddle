@@ -18,6 +18,11 @@ import numpy as np
 import parameterize
 import scipy
 from distribution import config
+from parameterize import (
+    TEST_CASE_NAME,
+    parameterize_cls,
+    parameterize_func,
+)
 
 import paddle
 from paddle.distribution.multivariate_normal import MultivariateNormal
@@ -34,7 +39,7 @@ from paddle.distribution.multivariate_normal import MultivariateNormal
         ),
         (
             'multi-batch',
-            parameterize.xrand((2, 3), dtype='float32', min=-2, max=-1),
+            parameterize.xrand((2, 3), dtype='float64', min=-2, max=-1),
             np.array([[4.0, 2.5, 2.0], [2.5, 3.0, 1.2], [2.0, 1.2, 4.0]]),
         ),
     ],
@@ -90,11 +95,12 @@ class TestMVN(unittest.TestCase):
         sample_mean = samples.mean(axis=0)
         sample_variance = samples.var(axis=0)
 
+        # `atol` and `rtol` refer to ``test_distribution_normal`` and ``test_distribution_lognormal``
         np.testing.assert_allclose(
-            sample_mean, self._dist.mean, atol=0.00, rtol=0.20
+            sample_mean, self._dist.mean, atol=0.0, rtol=0.1
         )
         np.testing.assert_allclose(
-            sample_variance, self._dist.variance, atol=0.00, rtol=0.20
+            sample_variance, self._dist.variance, atol=0.0, rtol=0.1
         )
 
     def _np_variance(self):
@@ -136,16 +142,16 @@ class TestMVN(unittest.TestCase):
         ),
         (
             'value-broadcast-shape',
-            parameterize.xrand((2,), dtype='float32', min=-2, max=2),
+            parameterize.xrand((2,), dtype='float64', min=-2, max=2),
             np.array([[2.0, 1.0], [1.0, 2.0]]),
-            parameterize.xrand((3, 2), dtype='float32', min=-5, max=5),
+            parameterize.xrand((3, 2), dtype='float64', min=-5, max=5),
         ),
     ],
 )
 class TestMVNProbs(unittest.TestCase):
     def setUp(self):
         self._dist = MultivariateNormal(
-            loc=self.loc,
+            loc=paddle.to_tensor(self.loc),
             precision_matrix=paddle.to_tensor(self.precision_matrix),
         )
         self.cov = np.linalg.inv(self.precision_matrix)
@@ -246,6 +252,58 @@ class TestMVNKL(unittest.TestCase):
         tmp = np.linalg.solve(t2, self.mu_1 - self.mu_2)
         expectation += np.matmul(tmp.T, tmp)
         return half_log_det_2 - half_log_det_1 + 0.5 * (expectation - 2.0)
+
+
+@parameterize.place(config.DEVICES)
+@parameterize_cls([TEST_CASE_NAME], ['MVNTestError'])
+class MVNTestError(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static(self.place)
+
+    @parameterize_func(
+        [
+            (5, None, ValueError),  # no matrix input
+            (
+                5,
+                paddle.to_tensor([2.0, 3.0]),
+                ValueError,
+            ),  # wrong input matrix dim
+            (
+                5,
+                paddle.to_tensor([[2.0, 3.0, 4.0], [2.0, 3.0, 4.0]]),
+                ValueError,
+            ),  # non-sqaure input matrix
+            (
+                5,
+                paddle.to_tensor([[2.0, 3.0], [2.0, 3.0]]),
+                ValueError,
+            ),  # non-symmetric input matrix
+            (
+                5,
+                paddle.to_tensor([[-2.0, 3.0], [3.0, -1.0]]),
+                ValueError,
+            ),  # non-psd input matrix
+        ]
+    )
+    def test_bad_cov_matrix(self, loc, matrix, error):
+        # with paddle.base.dygraph.guard(self.place):
+        self.assertRaises(error, MultivariateNormal, loc, matrix)
+
+    @parameterize_func(
+        [
+            (
+                1.0,
+                2.0,
+                paddle.to_tensor([[3.0, 2.0], [2.0, 3.0]]),
+                paddle.to_tensor([[2.0, 1.0], [1.0, 2.0]]),
+            ),
+        ]
+    )
+    def test_bad_kl_div(self, loc1, loc2, matrix1, matrix2):
+        # with paddle.base.dygraph.guard(self.place):
+        rv = MultivariateNormal(loc1, covariance_matrix=matrix1)
+        rv_other = MultivariateNormal(loc2, covariance_matrix=matrix2)
+        self.assertRaises(ValueError, rv.kl_divergence, rv_other)
 
 
 if __name__ == '__main__':

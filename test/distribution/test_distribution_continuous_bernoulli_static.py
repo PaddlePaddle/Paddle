@@ -17,13 +17,18 @@ import unittest
 import numpy as np
 import parameterize
 from distribution import config
+from parameterize import (
+    TEST_CASE_NAME,
+    parameterize_cls,
+    parameterize_func,
+)
 
 import paddle
 from paddle.distribution.continuous_bernoulli import ContinuousBernoulli
 
 
 class ContinuousBernoulli_np:
-    def __init__(self, probability, eps=1e-4):
+    def __init__(self, probability, eps=0.02):
         self.eps = eps
         self.dtype = 'float32'
         eps_prob = 1.1920928955078125e-07
@@ -160,7 +165,7 @@ paddle.enable_static()
     [
         (
             'multi-dim',
-            parameterize.xrand((1, 3), min=0.1, max=0.9).astype("float32"),
+            parameterize.xrand((1, 3), min=0.0, max=1.0).astype("float32"),
         ),
     ],
 )
@@ -178,7 +183,7 @@ class TestContinuousBernoulli(unittest.TestCase):
             mean = dist.mean
             var = dist.variance
             entropy = dist.entropy()
-            large_samples = dist.sample(shape=(1000,))
+            large_samples = dist.sample(shape=(50000,))
         fetch_list = [mean, var, entropy, large_samples]
         feed = {'probability': self.probability}
 
@@ -195,7 +200,10 @@ class TestContinuousBernoulli(unittest.TestCase):
             str(self.mean.dtype).split('.')[-1], self.probability.dtype
         )
         np.testing.assert_allclose(
-            self.mean, self._np_mean(), rtol=0.20, atol=0
+            self.mean,
+            self._np_mean(),
+            rtol=config.RTOL.get(str(self.probability.dtype)),
+            atol=config.ATOL.get(str(self.probability.dtype)),
         )
 
     def test_variance(self):
@@ -203,7 +211,10 @@ class TestContinuousBernoulli(unittest.TestCase):
             str(self.var.dtype).split('.')[-1], self.probability.dtype
         )
         np.testing.assert_allclose(
-            self.var, self._np_variance(), rtol=0.20, atol=0
+            self.var,
+            self._np_variance(),
+            rtol=config.RTOL.get(str(self.probability.dtype)),
+            atol=config.ATOL.get(str(self.probability.dtype)),
         )
 
     def test_entropy(self):
@@ -211,14 +222,14 @@ class TestContinuousBernoulli(unittest.TestCase):
             str(self.entropy.dtype).split('.')[-1], self.probability.dtype
         )
         np.testing.assert_allclose(
-            self.entropy, self._np_entropy(), rtol=0.20, atol=0
+            self.entropy, self._np_entropy(), rtol=0.005, atol=0
         )
 
     def test_sample(self):
         sample_mean = self.large_samples.mean(axis=0)
         sample_variance = self.large_samples.var(axis=0)
-        np.testing.assert_allclose(sample_mean, self.mean, atol=0, rtol=0.20)
-        np.testing.assert_allclose(sample_variance, self.var, atol=0, rtol=0.20)
+        np.testing.assert_allclose(sample_mean, self.mean, atol=0, rtol=0.02)
+        np.testing.assert_allclose(sample_variance, self.var, atol=0, rtol=0.02)
 
     def _np_variance(self):
         return self._np_dist.np_variance()
@@ -236,8 +247,8 @@ class TestContinuousBernoulli(unittest.TestCase):
     [
         (
             'value-broadcast-shape',
-            parameterize.xrand((1,), min=0.1, max=0.9).astype("float32"),
-            parameterize.xrand((2, 2), min=0.1, max=0.9).astype("float32"),
+            parameterize.xrand((1,), min=0.0, max=1.0).astype("float32"),
+            parameterize.xrand((2, 2), min=0.0, max=1.0).astype("float64"),
         ),
     ],
 )
@@ -280,8 +291,8 @@ class TestContinuousBernoulliProbs(unittest.TestCase):
     [
         (
             'multi-dim',
-            parameterize.xrand((2,), min=0.1, max=0.9).astype("float32"),
-            parameterize.xrand((2,), min=0.1, max=0.9).astype("float32"),
+            parameterize.xrand((2,), min=0.0, max=1.0).astype("float32"),
+            parameterize.xrand((2,), min=0.0, max=1.0).astype("float32"),
         ),
     ],
 )
@@ -314,7 +325,40 @@ class TestContinuousBernoulliKL(unittest.TestCase):
 
         self.assertEqual(tuple(kl0.shape), self.p_1.shape)
         self.assertEqual(tuple(kl1.shape), self.p_1.shape)
-        np.testing.assert_allclose(kl0, kl1, rtol=0, atol=0.2)
+        np.testing.assert_allclose(
+            kl0,
+            kl1,
+            rtol=0.005,
+            atol=0.0,
+        )
+
+
+@parameterize.place(config.DEVICES)
+@parameterize_cls([TEST_CASE_NAME], ['ContinuousBernoulliTestError'])
+class ContinuousBernoulliTestError(unittest.TestCase):
+    def setUp(self):
+        self.program = paddle.static.Program()
+        self.executor = paddle.static.Executor(self.place)
+
+    @parameterize_func(
+        [
+            (100,),  # int
+            (100.0,),  # float
+        ]
+    )
+    def test_bad_sample_shape_type(self, shape):
+        with paddle.static.program_guard(self.program):
+            rv = ContinuousBernoulli(0.3)
+
+            with self.assertRaises(TypeError):
+                [_] = self.executor.run(
+                    self.program, feed={}, fetch_list=[rv.sample(shape)]
+                )
+
+            with self.assertRaises(TypeError):
+                [_] = self.executor.run(
+                    self.program, feed={}, fetch_list=[rv.rsample(shape)]
+                )
 
 
 if __name__ == '__main__':

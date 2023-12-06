@@ -17,6 +17,11 @@ import unittest
 import numpy as np
 import parameterize
 from distribution import config
+from parameterize import (
+    TEST_CASE_NAME,
+    parameterize_cls,
+    parameterize_func,
+)
 
 import paddle
 from paddle.distribution.continuous_bernoulli import ContinuousBernoulli
@@ -158,7 +163,7 @@ class ContinuousBernoulli_np:
         ('half', np.array(0.5).astype("float32")),
         (
             'one-dim',
-            parameterize.xrand((1,), min=0.0, max=1.0).astype("float32"),
+            parameterize.xrand((1,), min=0.0, max=1.0).astype("float64"),
         ),
         (
             'multi-dim',
@@ -171,7 +176,7 @@ class TestContinuousBernoulli(unittest.TestCase):
         self._dist = ContinuousBernoulli(
             probability=paddle.to_tensor(self.probability), eps=0.02
         )
-        self._np_dist = ContinuousBernoulli_np(self.probability)
+        self._np_dist = ContinuousBernoulli_np(self.probability, eps=0.02)
 
     def test_mean(self):
         mean = self._dist.mean
@@ -179,8 +184,8 @@ class TestContinuousBernoulli(unittest.TestCase):
         np.testing.assert_allclose(
             mean,
             self._np_dist.np_mean(),
-            rtol=0.00,
-            atol=0.20,
+            rtol=config.RTOL.get(str(self.probability.dtype)),
+            atol=config.ATOL.get(str(self.probability.dtype)),
         )
 
     def test_variance(self):
@@ -189,8 +194,8 @@ class TestContinuousBernoulli(unittest.TestCase):
         np.testing.assert_allclose(
             var,
             self._np_dist.np_variance(),
-            rtol=0.00,
-            atol=0.20,
+            rtol=config.RTOL.get(str(self.probability.dtype)),
+            atol=config.ATOL.get(str(self.probability.dtype)),
         )
 
     def test_entropy(self):
@@ -199,8 +204,8 @@ class TestContinuousBernoulli(unittest.TestCase):
         np.testing.assert_allclose(
             entropy,
             self._np_dist.np_entropy(),
-            rtol=0.00,
-            atol=0.20,
+            rtol=0.005,
+            atol=0.0,
         )
 
     def test_sample(self):
@@ -212,16 +217,22 @@ class TestContinuousBernoulli(unittest.TestCase):
             sample_shape + self._dist.batch_shape + self._dist.event_shape,
         )
 
-        sample_shape = (5000,)
+        sample_shape = (50000,)
         samples = self._dist.sample(sample_shape)
         sample_mean = samples.mean(axis=0)
         sample_variance = samples.var(axis=0)
 
         np.testing.assert_allclose(
-            sample_mean, self._dist.mean, atol=0, rtol=0.20
+            sample_mean,
+            self._dist.mean,
+            rtol=0.02,
+            atol=0.0,
         )
         np.testing.assert_allclose(
-            sample_variance, self._dist.variance, atol=0, rtol=0.20
+            sample_variance,
+            self._dist.variance,
+            rtol=0.02,
+            atol=0.0,
         )
 
 
@@ -236,15 +247,17 @@ class TestContinuousBernoulli(unittest.TestCase):
         ),
         (
             'value-broadcast-shape',
-            parameterize.xrand((1,), min=0.0, max=1.0).astype("float32"),
-            parameterize.xrand((2, 3), min=0.0, max=1.0).astype("float32"),
+            parameterize.xrand((1,), min=0.0, max=1.0).astype("float64"),
+            parameterize.xrand((2, 3), min=0.0, max=1.0).astype("float64"),
         ),
     ],
 )
 class TestContinuousBernoulliProbs(unittest.TestCase):
     def setUp(self):
-        self._dist = ContinuousBernoulli(probability=self.probability)
-        self._np_dist = ContinuousBernoulli_np(self.probability)
+        self._dist = ContinuousBernoulli(
+            probability=paddle.to_tensor(self.probability), eps=0.02
+        )
+        self._np_dist = ContinuousBernoulli_np(self.probability, eps=0.02)
 
     def test_prob(self):
         np.testing.assert_allclose(
@@ -290,8 +303,8 @@ class TestContinuousBernoulliProbs(unittest.TestCase):
         ),
         (
             'multi-dim',
-            parameterize.xrand((5,), min=0.0, max=1.0).astype("float32"),
-            parameterize.xrand((5,), min=0.0, max=1.0).astype("float32"),
+            parameterize.xrand((5,), min=0.0, max=1.0).astype("float64"),
+            parameterize.xrand((5,), min=0.0, max=1.0).astype("float64"),
         ),
     ],
 )
@@ -299,13 +312,13 @@ class TestContinuousBernoulliKL(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
         self._dist1 = ContinuousBernoulli(
-            probability=paddle.to_tensor(self.p_1)
+            probability=paddle.to_tensor(self.p_1), eps=0.02
         )
         self._dist2 = ContinuousBernoulli(
-            probability=paddle.to_tensor(self.p_2)
+            probability=paddle.to_tensor(self.p_2), eps=0.02
         )
-        self._np_dist1 = ContinuousBernoulli_np(self.p_1)
-        self._np_dist2 = ContinuousBernoulli_np(self.p_2)
+        self._np_dist1 = ContinuousBernoulli_np(self.p_1, eps=0.02)
+        self._np_dist2 = ContinuousBernoulli_np(self.p_2, eps=0.02)
 
     def test_kl_divergence(self):
         kl0 = self._dist1.kl_divergence(self._dist2)
@@ -313,7 +326,58 @@ class TestContinuousBernoulliKL(unittest.TestCase):
 
         self.assertEqual(tuple(kl0.shape), self._dist1.batch_shape)
         self.assertEqual(tuple(kl1.shape), self._dist1.batch_shape)
-        np.testing.assert_allclose(kl0, kl1, rtol=0.1, atol=0.1)
+        np.testing.assert_allclose(
+            kl0,
+            kl1,
+            rtol=0.005,
+            atol=0.0,
+        )
+
+
+@parameterize.place(config.DEVICES)
+@parameterize_cls([TEST_CASE_NAME], ['ContinuousBernoulliTestError'])
+class ContinuousBernoulliTestError(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static(self.place)
+
+    @parameterize_func(
+        [
+            (-0.1, ValueError),
+            (1.1, ValueError),
+        ]
+    )
+    def test_bad_init(self, probs, error):
+        with paddle.base.dygraph.guard(self.place):
+            self.assertRaises(error, ContinuousBernoulli, probs)
+
+    @parameterize_func(
+        [
+            (
+                paddle.to_tensor([0.3, 0.5]),
+                paddle.to_tensor([-0.1, 1.2]),
+            ),
+        ]
+    )
+    def test_bad_log_prob_value(self, probs, value):
+        with paddle.base.dygraph.guard(self.place):
+            rv = ContinuousBernoulli(probs)
+            self.assertRaises(ValueError, rv.cdf, value)
+            self.assertRaises(ValueError, rv.log_prob, value)
+            self.assertRaises(ValueError, rv.icdf, value)
+
+    @parameterize_func(
+        [
+            (
+                paddle.to_tensor([0.3, 0.5]),
+                paddle.to_tensor([0.2, 0.8, 0.6]),
+            ),
+        ]
+    )
+    def test_bad_kl_div(self, probs1, probs2):
+        with paddle.base.dygraph.guard(self.place):
+            rv = ContinuousBernoulli(probs1)
+            rv_other = ContinuousBernoulli(probs2)
+            self.assertRaises(ValueError, rv.kl_divergence, rv_other)
 
 
 if __name__ == '__main__':

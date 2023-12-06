@@ -38,10 +38,14 @@ class MultivariateNormal(distribution.Distribution):
     * :math:`covariance_matrix = \Sigma`: is the k-by-k covariance matrix.
 
     Args:
-        loc(int|float|Tensor): The mean of Multivariate Normal distribution. The data type of `loc` will be convert to the global default dtype.
-        covariance_matrix(Tensor): The covariance matrix of Multivariate Normal distribution. The data type of `covariance_matrix` will be convert to the global default dtype.
-        precision_matrix(Tensor): The inverse of the covariance matrix. The data type of `precision_matrix` will be convert to the global default dtype.
-        scale_tril(Tensor): The cholesky decomposition (lower triangular matrix) of the covariance matrix. The data type of `scale_tril` will be convert to the global default dtype.
+        loc(int|float|Tensor): The mean of Multivariate Normal distribution. If the input data type is int or float, the data type of `loc` will be
+        convert to a 1-D Tensor the paddle global default dtype.
+        covariance_matrix(Tensor): The covariance matrix of Multivariate Normal distribution. The data type of `covariance_matrix` will be convert
+        to be the same as the type of loc.
+        precision_matrix(Tensor): The inverse of the covariance matrix. The data type of `precision_matrix` will be convert to be the same as the
+        type of loc.
+        scale_tril(Tensor): The cholesky decomposition (lower triangular matrix) of the covariance matrix. The data type of `scale_tril` will be
+        convert to be the same as the type of loc.
 
     Examples:
         .. code-block:: python
@@ -87,8 +91,9 @@ class MultivariateNormal(distribution.Distribution):
     ):
         self.dtype = paddle.get_default_dtype()
         if isinstance(loc, (float, int)):
-            loc = [loc]
-        loc = paddle.to_tensor(loc, dtype=self.dtype)
+            loc = paddle.to_tensor([loc], dtype=self.dtype)
+        else:
+            self.dtype = loc.dtype
         if loc.dim() < 1:
             loc = loc.reshape((1,))
         self.covariance_matrix = None
@@ -295,7 +300,7 @@ class MultivariateNormal(distribution.Distribution):
         if not isinstance(shape, Sequence):
             raise TypeError('sample shape must be Sequence object.')
         output_shape = self._extend_shape(shape)
-        eps = paddle.normal(shape=output_shape)
+        eps = paddle.cast(paddle.normal(shape=output_shape), dtype=self.dtype)
         return self.loc + paddle.matmul(
             self._unbroadcasted_scale_tril, eps.unsqueeze(-1)
         ).squeeze(-1)

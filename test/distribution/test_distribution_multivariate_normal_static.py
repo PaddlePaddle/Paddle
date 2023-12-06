@@ -36,7 +36,7 @@ paddle.enable_static()
         ),
         (
             'multi-batch',
-            parameterize.xrand((2, 3), dtype='float32', min=-2, max=-1),
+            parameterize.xrand((2, 3), dtype='float64', min=-2, max=-1),
             np.array([[6.0, 2.5, 3.0], [2.5, 4.0, 5.0], [3.0, 5.0, 7.0]]),
         ),
     ],
@@ -106,10 +106,10 @@ class TestMVN(unittest.TestCase):
         )
         sample_mean = self.large_samples.mean(axis=0)
         sample_variance = self.large_samples.var(axis=0)
-        np.testing.assert_allclose(sample_mean, self.mean, atol=0.00, rtol=0.20)
-        np.testing.assert_allclose(
-            sample_variance, self.var, atol=0.00, rtol=0.20
-        )
+
+        # `atol` and `rtol` refer to ``test_distribution_normal`` and ``test_distribution_lognormal``
+        np.testing.assert_allclose(sample_mean, self.mean, atol=0, rtol=0.1)
+        np.testing.assert_allclose(sample_variance, self.var, atol=0, rtol=0.1)
 
     def _np_variance(self):
         batch_shape = np.broadcast_shapes(
@@ -150,9 +150,9 @@ class TestMVN(unittest.TestCase):
         ),
         (
             'value-broadcast-shape',
-            parameterize.xrand((2,), dtype='float32', min=-2, max=2),
+            parameterize.xrand((2,), dtype='float64', min=-2, max=2),
             np.array([[2.0, 1.0], [1.0, 2.0]]),
-            parameterize.xrand((3, 2), dtype='float32', min=-5, max=5),
+            parameterize.xrand((3, 2), dtype='float64', min=-5, max=5),
         ),
     ],
 )
