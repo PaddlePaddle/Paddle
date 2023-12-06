@@ -276,6 +276,7 @@
     func : UnchangedInferMeta
   kernel :
     func : bernoulli
+  backward : bernoulli_grad
 
 - op : bicubic_interp
   args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_layout="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)

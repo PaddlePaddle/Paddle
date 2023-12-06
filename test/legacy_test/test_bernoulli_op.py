@@ -52,12 +52,25 @@ class TestBernoulliOp(OpTest):
         hist, prob = output_hist(np.array(outs[0]))
         np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
+    def test_check_grad_normal(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            user_defined_grads=[np.zeros([1000, 784], dtype=self.dtype)],
+            user_defined_grad_outputs=[
+                np.random.rand(1000, 784).astype(self.dtype)
+            ],
+        )
+
 
 class TestBernoulliApi(unittest.TestCase):
     def test_dygraph(self):
         paddle.disable_static()
         x = paddle.rand([1024, 1024])
         out = paddle.bernoulli(x)
+        out.backward()
+        np.testing.assert_array_equal(np.zeros_like(x), x.gradient())
+
         paddle.enable_static()
         hist, prob = output_hist(out.numpy())
         np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
