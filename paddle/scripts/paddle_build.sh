@@ -693,7 +693,7 @@ EOF
         fi
         check_approvals_of_unittest 2
         # serial_list: Some single tests need to reduce concurrency
-        single_list="^test_cdist$|^test_resnet$|^test_resnet_v2$|^test_concat_op$|^test_transformer$|^test_bert_with_stride$|^test_paddle_save_load$"
+        single_list="^test_cdist$|^test_resnet$|^test_concat_op$|^test_transformer$|^test_bert_with_stride$|^test_paddle_save_load$"
         get_precision_ut_mac
         if [[ "$on_precision" == "0" ]];then
           ctest -E "($disable_ut_quickly|$single_list)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
@@ -814,7 +814,7 @@ set -x
         fi
         if [ -a "$PADDLE_ROOT/added_ut" ];then
             added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
-            ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
+            ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE|RUN_TYPE=HYBRID" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
             ctest -R "(${added_uts})" -L "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error_1=$?
             if [ "$added_ut_error" != 0 ] && [ "$added_ut_error_1" != 0 ];then
                 echo "========================================"
@@ -1545,7 +1545,7 @@ set -x
         fi
         if [ -a "$PADDLE_ROOT/added_ut" ];then
             added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
-            env CUDA_VISIBLE_DEVICES=0 ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
+            env CUDA_VISIBLE_DEVICES=0 ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE|RUN_TYPE=HYBRID" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
             ctest -R "(${added_uts})" -L "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error_1=$?
             if [ "$added_ut_error" != 0 ] && [ "$added_ut_error_1" != 0 ];then
                 echo "========================================"
@@ -2544,7 +2544,7 @@ set -x
         fi
         if [ -a "$PADDLE_ROOT/added_ut" ];then
             added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
-            env CUDA_VISIBLE_DEVICES=0 ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
+            env CUDA_VISIBLE_DEVICES=0 ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE|RUN_TYPE=HYBRID" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
             ctest -R "(${added_uts})" -L "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error_1=$?
             if [ "$added_ut_error" != 0 ] && [ "$added_ut_error_1" != 0 ];then
                 echo "========================================"

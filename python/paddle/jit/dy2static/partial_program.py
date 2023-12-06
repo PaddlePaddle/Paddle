@@ -264,6 +264,38 @@ class PartialProgramLayer:
 
     def sot_call(self, inputs):
         """
+        Same as __call__, but set force_not_use_pt to False.
+        Currently _sot_call will cause CUDA 700 error, so we disable it temporarily.
+        """
+        old_generator, old_para_name_checker = switch(self._name_generator)
+
+        in_vars, in_var_names = self._prepare_inputs(inputs)
+        out_vars = self._prepare_outputs()
+        self._cast_fp16_if_pure_fp16(in_vars)
+        attrs = self._prepare_attributes(force_not_use_pt=False)
+        attrs.extend(["x_names", in_var_names])
+
+        self._sync_lr_value_with_scheduler()
+
+        _legacy_C_ops.run_program(
+            self._valid_vars(in_vars),
+            self._valid_vars(self._params),
+            self._valid_vars(out_vars),
+            self._create_scope_vec(
+                program_id=self.program_id, use_scope_cache=True
+            ),
+            self._cuda_graph_vec,
+            *attrs
+        )
+
+        restored_nest_out = self._restore_out(out_vars)
+        restored_nest_out = self._remove_no_value(restored_nest_out)
+
+        switch(old_generator, old_para_name_checker)
+        return restored_nest_out
+
+    def _sot_call(self, inputs):
+        """
         In sot, inputs and outputs of partial program only contain tensors, so we can skip some step to speed up
         """
         old_generator, old_para_name_checker = switch(self._name_generator)
