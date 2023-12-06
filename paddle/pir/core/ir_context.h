@@ -20,7 +20,7 @@
 #include <vector>
 
 #include "paddle/pir/core/dll_decl.h"
-
+#include "paddle/utils/test_macros.h"
 namespace pir {
 class IrContextImpl;
 class StorageManager;
