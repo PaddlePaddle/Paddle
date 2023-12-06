@@ -41,7 +41,7 @@ if(NOT CINN_ONLY)
     DEPS
     gtest
     glog
-    cinncore)
+    absl)
 
   cinn_cc_test(
     dim_expr_test
