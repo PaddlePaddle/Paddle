@@ -347,7 +347,7 @@ def get_read_items(path, state_dict, process_group, use_dist):
 
 
 def load_state_dict(
-    state_dict, path, process_group=None, coordinator_rank=0, use_dist=True
+    state_dict, path, process_group=None, coordinator_rank=0
 ) -> None:
     """
     Load the state_dict inplace from a checkpoint path.
@@ -356,7 +356,6 @@ def load_state_dict(
         path: The directory to load checkpoint files.
         process_group: ProcessGroup to be used for cross-rank synchronization. Use the default process group which contains all cards.
         coordinator_rank: The rank used to coordinate the checkpoint. Rank0 is used by default.
-        use_dist: Whether to load the state_dict in distributed mode. Set True by default.
     Example:
         .. code-block:: python
             >>> # doctest: +SKIP('Load state dict.')
@@ -380,12 +379,6 @@ def load_state_dict(
              [24, 25, 26, 27, 28, 29, 30, 31]])}
             >>> # doctest: -SKIP
     """
-    if not use_dist and (
-        paddle.distributed.get_world_size() > 1 or coordinator_rank != 0
-    ):
-        raise ValueError(
-            f"use_dist is False, please set coordinator_rank to 0 and paddle.distributed.get_world_size() to 1, world_size:{paddle.distributed.get_world_size()}, coordinator_rank:{coordinator_rank}"
-        )
     assert isinstance(
         state_dict, dict
     ), "The state_dict should be a dictionary."
@@ -396,9 +389,11 @@ def load_state_dict(
                 val, paddle.Tensor
             ), "Only support dygraph Tensor now, support static DistributedTensor later"
 
-    if use_dist and process_group is None:
+    use_dist = True if paddle.distributed.get_world_size() > 1 else False
+
+    if use_dist and process_group is None and not is_initialized():
         # Init the default global process group
-        not is_initialized() and paddle.distributed.init_parallel_env()
+        paddle.distributed.init_parallel_env()
 
     rank_to_files = get_rank_to_files(path, state_dict, process_group, use_dist)
     local_load_files = get_local_load_files(rank_to_files)

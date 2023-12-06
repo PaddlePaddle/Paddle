@@ -37,7 +37,7 @@ class TestSaveStateDict:
         keys = list(global_state_dict.keys())
         w1, w2 = list(global_state_dict.values())
         state_dict = dict(zip(keys, [w1, w2]))
-        save_state_dict(state_dict, ckpt_path(), use_dist=False)
+        save_state_dict(state_dict, ckpt_path())
 
     def test_save_state_dict_with_four_devices(self):
         global_state_dict = get_global_state_dict()

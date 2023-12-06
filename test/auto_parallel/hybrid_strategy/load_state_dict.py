@@ -49,7 +49,7 @@ class TestLoadStateDict:
         w1 = paddle.zeros_like(saved_w1)
         w2 = paddle.zeros_like(saved_w2)
         state_dict = dict(zip(list(global_state_dict.keys()), [w1, w2]))
-        load_state_dict(state_dict, ckpt_path(), use_dist=False)
+        load_state_dict(state_dict, ckpt_path())
         # check
         expect_w1 = saved_w1
         expect_w2 = saved_w2
