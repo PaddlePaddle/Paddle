@@ -337,6 +337,7 @@ def append_backward_ops(
     no_grad_set,
     backward_ops,
     state,
+    inside_value_to_outside_value_map,
 ):
     '''
     add grad_op in order of topological inverse sort
@@ -405,7 +406,7 @@ def append_backward_ops(
                 if value in control_flow_value_to_copyvalue_map
                 else [value]
             )
-            if value in inside_value_to_outside_value_map:
+            while value in inside_value_to_outside_value_map:
                 value = inside_value_to_outside_value_map[value]
 
             if (
@@ -555,7 +556,7 @@ def append_backward_ops(
                 if value_grad is None:
                     continue
 
-                if value in inside_value_to_outside_value_map:
+                while value in inside_value_to_outside_value_map:
                     value = inside_value_to_outside_value_map[value]
 
                 if value in state.value_to_valuegrad:
@@ -580,8 +581,7 @@ def append_backward_ops(
     control_flow_value_to_copyvalue_map = {}
     # tuple_push value to pop value
     control_flow_copyvalue_to_value_map = {}
-    # sub_block op output to parent_block op output
-    inside_value_to_outside_value_map = {}
+
     if (
         len(effective_forward_ops) > 1
         and effective_forward_ops[-1].name() == "cf.yield"
@@ -600,7 +600,6 @@ def append_backward_ops(
     for op in inverse_effective_forward_ops:
         if op.name() != "builtin.combine" and op.name() != "builtin.split":
             clear_effective_forward_ops.append(op)
-
     with bwd_block:
         for op in clear_effective_forward_ops:
             if paddle.framework.core.has_vjp(op):
@@ -657,6 +656,9 @@ def append_backward_ops(
                             op.blocks(), grad_op.blocks()
                         ):
                             sub_state = state.copy(sub_fwd_block)
+                            sub_inside_value_to_outside_value_map = (
+                                inside_value_to_outside_value_map.copy()
+                            )
                             sub_backward_ops = []
                             append_backward_ops(
                                 op,
@@ -668,6 +670,7 @@ def append_backward_ops(
                                 no_grad_set,
                                 sub_backward_ops,
                                 sub_state,
+                                sub_inside_value_to_outside_value_map,
                             )
                         # update input_grad map
                         update_input_grad_map(op, input_grads, origin_inputs)
@@ -806,6 +809,9 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
         inputs, complete_outputs
     )
 
+    # sub_block op output to parent_block op output
+    inside_value_to_outside_value_map = {}
+
     append_backward_ops(
         None,
         None,
@@ -816,6 +822,7 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
         no_grad_set,
         backward_ops,
         state,
+        inside_value_to_outside_value_map,
     )
     # now value_to_valuegrad should be value <-> value (add sum op for the same values's gradvalue)
     outputs_set, inputs_set, no_gradvar_set = create_backward_prune_set(
@@ -1023,12 +1030,11 @@ def append_backward(loss, parameter_list=None, no_grad_set=None):
         parameter_list = (
             loss.get_defining_op().get_parent_block().all_parameters()
         )
-        # parameters = [param for param in params if param.trainable]
 
-    inputs_grad = grad(loss, parameter_list)
+    inputs_grad = paddle.autograd.ir_backward.grad(loss, parameter_list)
 
-    input_inputs_grad = [
-        (input, grad) for input, grad in zip(parameter_list, inputs_grad)
-    ]
+    input_inputs_grad = []
+    for input, input_grad in zip(parameter_list, inputs_grad):
+        input_inputs_grad.append((input, input_grad))
 
     return input_inputs_grad

@@ -469,6 +469,7 @@ class TestCondInputOutput(unittest.TestCase):
 
 
 class TestCondNestedControlFlow(unittest.TestCase):
+    @test_with_pir_api
     def test_cond_inside_cond(self):
         """
         pseudocode:
@@ -530,12 +531,21 @@ class TestCondNestedControlFlow(unittest.TestCase):
             else:
                 expected_ret = expected_a * expected_a if feed_i < 8 else 1.0
                 expected_a_grad = 2.0 * expected_a if feed_i < 8 else 0.0
-
-            ret = exe.run(
-                main_program,
-                feed={'i': np.full((1), feed_i, np.float32)},
-                fetch_list=[out.name, a.grad_name],
-            )
+            if paddle.framework.in_pir_mode():
+                for p, g in grad_list:
+                    if p == a:
+                        da = g
+                ret = exe.run(
+                    main_program,
+                    feed={'i': np.full((1), feed_i)},
+                    fetch_list=[out, da],
+                )
+            else:
+                ret = exe.run(
+                    main_program,
+                    feed={'i': np.full((1), feed_i, np.float32)},
+                    fetch_list=[out.name, a.grad_name],
+                )
             self.assertEqual(ret[0][0], expected_ret)
             self.assertEqual(ret[1][0], expected_a_grad)
 
@@ -577,14 +587,16 @@ class TestCondNestedControlFlow(unittest.TestCase):
         with paddle.static.program_guard(main_program, startup_program):
             i = paddle.full(fill_value=3.0, shape=[], dtype='float32')
             i.stop_gradient = False
+            i.persistable = True
             a = 2.0 * i
+            a.persistable = True
             out = paddle.static.nn.cond(
                 i < 5.0,
                 lambda: less_than_branch(i, a),
                 lambda: greater_equal_branch(i, a),
             )
             mean = paddle.mean(out)
-            append_backward(out)
+            grad_list = append_backward(out)
 
         place = (
             base.CUDAPlace(0)
@@ -592,10 +604,16 @@ class TestCondNestedControlFlow(unittest.TestCase):
             else base.CPUPlace()
         )
         exe = base.Executor(place)
-        ret = exe.run(
-            main_program,
-            fetch_list=[out.name, i.grad_name],
-        )
+        if paddle.framework.in_pir_mode():
+            for p, g in grad_list:
+                if p == i:
+                    di = g
+            ret = exe.run(main_program, fetch_list=[out, di])
+        else:
+            ret = exe.run(
+                main_program,
+                fetch_list=[out.name, i.grad_name],
+            )
         np.testing.assert_allclose(
             np.asarray(ret[0]), np.array(7.0), rtol=1e-05
         )
