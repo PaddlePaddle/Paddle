@@ -26,7 +26,7 @@ namespace paddle {
 
 class DecompProgram {
  public:
-  DecompProgram(const pir::Program* program,
+  DecompProgram(pir::Program* program,
                 const std::vector<pir::OpResult>& src_vars,
                 const std::set<std::string>& blacklist,
                 const std::set<std::string>& whitelist);
@@ -44,7 +44,7 @@ class DecompProgram {
   bool enable_decomp(const std::string& op_name);
 
  private:
-  const pir::Program* program_;
+  pir::Program* program_;
   std::vector<pir::OpResult> src_vars_;
   std::set<std::string> blacklist_;
   std::set<std::string> whitelist_;

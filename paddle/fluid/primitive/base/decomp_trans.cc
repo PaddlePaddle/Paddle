@@ -118,7 +118,7 @@ std::vector<std::vector<pir::OpResult>> call_decomp_rule(pir::Operation* op) {
   return decomp_res;
 }
 
-DecompProgram::DecompProgram(const pir::Program* program,
+DecompProgram::DecompProgram(pir::Program* program,
                              const std::vector<pir::OpResult>& src_vars,
                              const std::set<std::string>& blacklist,
                              const std::set<std::string>& whitelist)
@@ -139,7 +139,7 @@ std::vector<pir::OpResult> DecompProgram::decomp_program() {
     return src_vars_;
   }
   std::vector<pir::OpResult> tar_vars(src_vars_.size());
-  pir::Block* block = const_cast<pir::Block*>(program_->block());
+  pir::Block* block = program_->block();
   std::vector<pir::Operation*> ops_list;
   for (auto& op : *block) {
     ops_list.push_back(&op);
