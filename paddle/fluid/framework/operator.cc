@@ -1567,6 +1567,9 @@ bool OperatorWithKernel::CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
 
 bool OperatorWithKernel::ContainsBF16TensorInputs(
     const framework::ExecutionContext& ctx) const {
+  if (type_ == "reshape2" || type_ == "cast") {
+    return false;
+  }
   for (auto* name : ctx.InNameList()) {
     if (ctx.InputSize(*name) == 1UL) {
       if (ctx.InputVar(*name)->Get<phi::DenseTensor>().dtype() ==
