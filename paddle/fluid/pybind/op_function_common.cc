@@ -976,6 +976,7 @@ void ConstructAttrMapForRunProgram(
     PyObject* args,
     ssize_t attr_start,
     ssize_t attr_end,
+    std::vector<PyObject*>& blocks_to_hold,    // NOLINT
     paddle::framework::AttributeMap& attrs) {  // NOLINT
   PADDLE_ENFORCE_EQ((attr_end - attr_start) % 2,
                     0,
@@ -1008,11 +1009,11 @@ void ConstructAttrMapForRunProgram(
 
     if (std::set<std::string>({"cuda_graph_capture_mode"}).count(key)) {
       CastPyArg2AttrString(obj, attrs, key, op_type, arg_pos);
-    } else if (std::set<std::string>({"global_block",
-                                      "forward_global_block",
-                                      "backward_global_block"})
+    } else if (std::set<std::string>(
+                   {"global_block", "forward_program", "backward_program"})
                    .count(key)) {
       CastPyArg2AttrIRBlock(obj, attrs, key, op_type, arg_pos);
+      blocks_to_hold.push_back(obj);
     } else if (std::set<std::string>({"is_test", "use_interpretorcore"})
                    .count(key)) {
       CastPyArg2AttrBoolean(obj, attrs, key, op_type, arg_pos);

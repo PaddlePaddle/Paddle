@@ -210,6 +210,7 @@ inline void pir_run_program_ad_func(
     const std::vector<paddle::Tensor>& params,
     std::vector<paddle::Tensor*>& out,                   // NOLINT
     std::vector<paddle::framework::Scope*>& step_scope,  // NOLINT
+    const std::vector<PyObject*>& blocks_to_hold,
     const paddle::framework::AttributeMap& attrs) {
   // Prepare Autograd Meta
   VLOG(2) << "start run pir run_program ad function.";
@@ -245,6 +246,7 @@ inline void pir_run_program_ad_func(
     grad_node = std::make_shared<PirGradNodeRunProgram>(1, 2);
     grad_node->GetMiddle().resize(middle_size);
     grad_node->GetOutputs().resize(output_size);
+    grad_node->SetBlocks(blocks_to_hold);
     for (size_t i = 0; i < middle_size; ++i) {
       grad_node->GetMiddle()[i] =
           paddle::Tensor(std::make_shared<phi::DenseTensor>());
