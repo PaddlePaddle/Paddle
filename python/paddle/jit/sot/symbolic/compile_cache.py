@@ -62,7 +62,6 @@ class FallbackWrapper:
         self.concrete_program = None
         self.SIR = SIR  # for debug
         self.is_training = is_training
-        self.compiled_fn.eval() if not is_training else self.compiled_fn.train()
 
     def amp_cast_inputs(self, args, kwargs):
         """Prepare inputs for amp, cast float16 into float32 if needed."""
