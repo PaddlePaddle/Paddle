@@ -45,7 +45,7 @@ set_tests_properties(test_bmn PROPERTIES TIMEOUT 300)
 set_tests_properties(test_bert PROPERTIES TIMEOUT 240)
 #set_tests_properties(test_mnist PROPERTIES TIMEOUT 120)
 set_tests_properties(test_build_strategy PROPERTIES TIMEOUT 120)
-set_tests_properties(test_resnetx PROPERTIES TIMEOUT 420)
+set_tests_properties(test_resnetx PROPERTIES TIMEOUT 300)
 
 if(NOT WIN32)
   set_tests_properties(test_tsm PROPERTIES TIMEOUT 900)
