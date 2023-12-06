@@ -2884,6 +2884,7 @@ void VariableLengthMemoryEfficientAttentionInferMeta(
     const MetaTensor& mask,
     float scale,
     bool causal,
+    int pre_cache_length,
     MetaTensor* out) {
   PADDLE_ENFORCE_EQ(
       query.dims().size(),
@@ -4181,6 +4182,10 @@ void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
                                       const MetaTensor& cache_v_quant_scales,
                                       const MetaTensor& cache_k_dequant_scales,
                                       const MetaTensor& cache_v_dequant_scales,
+                                      const MetaTensor &qkv_out_scale,
+                                      const MetaTensor &qkv_bias,
+                                      const MetaTensor &out_shift,
+                                      const MetaTensor &out_smooth,
                                       int max_seq_len,
                                       int block_size,
                                       bool use_neox_style,
@@ -4188,6 +4193,8 @@ void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
                                       const int quant_round_type,
                                       const float quant_max_bound,
                                       const float quant_min_bound,
+                                      const float out_scale,
+                                      const std::string& compute_dtype,
                                       MetaTensor* fmha_out,
                                       MetaTensor* qkv_out,
                                       MetaTensor* key_cache_out,
@@ -4195,13 +4202,95 @@ void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
   auto input_dims = qkv.dims();
   auto key_cache_dims = key_cache.dims();
   fmha_out->set_dims({input_dims[0], key_cache_dims[1] * key_cache_dims[3]});
-  fmha_out->set_dtype(qkv.dtype());
+  
   qkv_out->set_dims(qkv.dims());
-  qkv_out->set_dtype(qkv.dtype());
+  
   key_cache_out->set_dims(key_cache_dims);
   key_cache_out->set_dtype(key_cache.dtype());
   value_cache_out->set_dims(key_cache_dims);
   value_cache_out->set_dtype(value_cache.dtype());
+
+  auto FBADtypeCheck = [](const MetaTensor& check_tensor,
+                          const std::string& tensor_name,
+                          const std::string& compute_dtype) {
+    if (compute_dtype == "bf16") {
+      PADDLE_ENFORCE_EQ(
+          check_tensor.dtype(),
+          phi::DataType::BFLOAT16,
+          phi::errors::InvalidArgument(
+              "Input(%s) dtype must be the same with Attr(compute_dtype)",
+              tensor_name));
+    } else if (compute_dtype == "fp16") {
+      PADDLE_ENFORCE_EQ(
+          check_tensor.dtype(),
+          phi::DataType::FLOAT16,
+          phi::errors::InvalidArgument(
+              "Input(%s) dtype must be the same with Attr(compute_dtype)",
+              tensor_name));
+    } else if (compute_dtype == "fp32") {
+      PADDLE_ENFORCE_EQ(
+          check_tensor.dtype(),
+          phi::DataType::FLOAT32,
+          phi::errors::InvalidArgument(
+              "Input(%s) dtype must be the same with Attr(compute_dtype)",
+              tensor_name));
+    }
+  };
+
+  // In the case of quantization enabled, the dtype for computation is
+  // determined based on compute_dtype.
+  if (qkv.dtype() == phi::DataType::INT32) {
+    PADDLE_ENFORCE_NE(
+        compute_dtype,
+        "default",
+        phi::errors::InvalidArgument(
+            "If Input(x) dtype is INT32, Attr(compute_dtype) must be set."));
+
+    // if (bias) {
+    //   FBADtypeCheck(bias, "bias", compute_dtype);
+    // }
+
+    if (out_scale > 0) {
+      fmha_out->set_dtype(phi::DataType::INT8);
+    } else {
+      if (compute_dtype == "bf16") {
+        fmha_out->set_dtype(phi::DataType::BFLOAT16);
+      } else if (compute_dtype == "fp16") {
+        fmha_out->set_dtype(phi::DataType::FLOAT16);
+      } else if (compute_dtype == "fp32") {
+        fmha_out->set_dtype(phi::DataType::FLOAT32);
+      } else {
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "In the case of quantization enabled with Input(x) INT32, "
+            "Attr(compute_dtype) must be set in (bf16, fp16, fp32), "
+            "but get compute_dtype (%s)",
+            compute_dtype));
+      }
+    }
+  } else {
+    // if (bias) {
+    //   if (compute_dtype != "default") {
+    //     FBADtypeCheck(bias, "bias", compute_dtype);
+    //     FBADtypeCheck(x, "x", compute_dtype);
+    //   } else {
+    //     PADDLE_ENFORCE_EQ(
+    //         x.dtype(),
+    //         bias.dtype(),
+    //         phi::errors::InvalidArgument("Input(x) and Input(bias) must be the "
+    //                                      "same dtype in this situation"));
+    //   }
+    // } else {
+      // bias not exist
+      if (compute_dtype != "default") {
+        FBADtypeCheck(qkv, "qkv", compute_dtype);
+      }
+    // }
+    if (out_scale > 0) {
+      fmha_out->set_dtype(phi::DataType::INT8);
+    } else {
+      fmha_out->set_dtype(qkv.dtype());
+    }
+  }
 }
 
 void MoeInferMeta(const MetaTensor& x,

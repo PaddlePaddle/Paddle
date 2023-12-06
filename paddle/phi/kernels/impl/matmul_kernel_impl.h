@@ -995,9 +995,27 @@ bool inline MatMulInt8Function(const phi::GPUContext& ctx,
   if (x.dtype() != DataType::INT8 || y.dtype() != DataType::INT8) {
     return false;
   }
-#if CUDA_VERSION >= 11060
+
   const int x_ndim = x_dims.size();
   const int y_ndim = y_dims.size();
+  const int m = trans_x ? x_dims[x_ndim - 1] : x_dims[x_ndim - 2];
+  const int k = trans_x ? x_dims[x_ndim - 2] : x_dims[x_ndim - 1];
+  const int n = trans_y ? y_dims[y_ndim - 2] : y_dims[y_ndim - 1];
+
+  ctx.template Alloc<int32_t>(out);
+
+  auto cublasLt_helper =
+        std::make_unique<CublasLtHelper>(m, k, n, ctx.cublaslt_handle());
+  cublasLt_helper->GEMM(x.data<int8_t>(),
+                y.data<int8_t>(),
+                out->data<int32_t>(),
+                ctx.stream(),
+                nullptr);
+  return true;
+
+
+
+#if CUDA_VERSION >= 11060
   const int8_t* x_data = x.data<int8_t>();
   const int8_t* y_data = y.data<int8_t>();
   using blaslt = phi::funcs::MatmulWithCublasLt<int8_t, int32_t>;

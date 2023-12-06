@@ -34,6 +34,10 @@ def block_multihead_attention(
     cache_v_quant_scales=None,
     cache_k_dequant_scales=None,
     cache_v_dequant_scales=None,
+    qkv_out_scale=None,
+    qkv_bias=None,
+    out_shift=None,
+    out_smooth=None,
     rope_emb=None,
     mask=None,
     tgt_mask=None,
@@ -44,6 +48,8 @@ def block_multihead_attention(
     quant_round_type=1,
     quant_max_bound=127.0,
     quant_min_bound=-127.0,
+    out_scale=-1,
+    compute_dtype="default",
 ):
     r"""
     Block Multi-head attention for text summarization.
@@ -71,6 +77,10 @@ def block_multihead_attention(
             cache_v_quant_scales,
             cache_k_dequant_scales,
             cache_v_dequant_scales,
+            qkv_out_scale,
+            qkv_bias,
+            out_shift,
+            out_smooth,
             max_seq_len,
             block_size,
             use_neox_style,
@@ -78,6 +88,8 @@ def block_multihead_attention(
             quant_round_type,
             quant_max_bound,
             quant_min_bound,
+            out_scale,
+            compute_dtype,
         )
 
     helper = LayerHelper('block_multihead_attention', **locals())
@@ -113,6 +125,14 @@ def block_multihead_attention(
         inputs["cache_k_dequant_scales"] = cache_k_dequant_scales
     if cache_v_dequant_scales is not None:
         inputs["cache_v_dequant_scales"] = cache_v_dequant_scales
+    if qkv_out_scale is not None:
+        inputs["qkv_out_scale"] = qkv_out_scale
+    if qkv_bias is not None:
+        inputs["qkv_bias"] = qkv_bias
+    if out_shift is not None:
+        inputs["out_shift"] = out_shift
+    if out_smooth is not None:
+        inputs["out_smooth"] = out_smooth
 
     outputs = {
         'fmha_out': out,
@@ -132,6 +152,8 @@ def block_multihead_attention(
             'quant_round_type': quant_round_type,
             'quant_max_bound': quant_max_bound,
             'quant_min_bound': quant_min_bound,
+            'out_scale': out_scale,
+            'compute_dtype': compute_dtype,
         },
     )
     return out, qkv, key_cache, value_cache
