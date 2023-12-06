@@ -25,7 +25,7 @@ SelectInputInstruction::SelectInputInstruction(
     const platform::Place &place,
     ::pir::Operation *op,
     ValueExecutionInfo *value_exe_info)
-    : op_(op), InstructionBase(id, place) {
+    : InstructionBase(id, place), op_(op) {
   VLOG(6) << "construct select_input instruction";
 
   std::unordered_map<pir::Value, std::vector<int>> inputs;
