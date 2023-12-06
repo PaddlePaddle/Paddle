@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstdint>
 #include <ostream>
 
 #include "paddle/common/enforce.h"
@@ -237,6 +238,15 @@ std::vector<Value> Operation::operands_source() const {
     res.push_back(operand_source(i));
   }
   return res;
+}
+
+int32_t Operation::operand_index(const OpOperand &op_operand) const {
+  for (uint32_t i = 0; i < num_operands(); ++i) {
+    if (op_operand == operand(i)) {
+      return i;
+    }
+  }
+  return -1;
 }
 
 ///
