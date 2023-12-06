@@ -88,7 +88,7 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
         )
 
     if in_dynamic_mode():
-        if isinstance(out_shape, (Variable, paddle.pir.OpResult)):
+        if isinstance(out_shape, (Variable, paddle.pir.Value)):
             out_shape = paddle.utils.convert_shape_to_list(out_shape)
             out = _legacy_C_ops.affine_grid(
                 theta,
@@ -110,7 +110,8 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
                     align_corners,
                     use_cudnn,
                 )
-        elif isinstance(out_shape, paddle.pir.OpResult):
+                return out
+        elif isinstance(out_shape, paddle.pir.Value):
             out_shape.stop_gradient = True
             out = _C_ops.affine_grid(
                 theta,
@@ -118,7 +119,7 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
                 align_corners,
                 use_cudnn,
             )
-        return out
+            return out
 
     helper = LayerHelper('affine_grid')
     check_variable_and_dtype(

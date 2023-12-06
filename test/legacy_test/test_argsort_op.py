@@ -65,15 +65,17 @@ def create_tensor(np_data, place):
     return tensor
 
 
-@test_with_pir_api
 class TestArgsortOpCPU(unittest.TestCase):
     def setUp(self):
         self.init_axis()
-        self.init_datatype()
         self.init_direction()
-        self.init_inputshape()
-
         self.init_place()
+
+    @test_with_pir_api
+    def test_static_api(self):
+        self.dtype = "float64"
+        self.input_shape = (2, 2, 2, 2, 3)
+
         self.feed_data_field = {"x", "label"}
         self.grad_data_field = {"x"}
 
@@ -218,14 +220,8 @@ class TestArgsortOpCPU(unittest.TestCase):
     def init_axis(self):
         self.axis = -1
 
-    def init_datatype(self):
-        self.dtype = "float64"
-
     def init_direction(self):
         self.descending = False
-
-    def init_inputshape(self):
-        self.input_shape = (2, 2, 2, 2, 3)
 
     def init_place(self):
         self.place = core.CPUPlace()
@@ -353,15 +349,16 @@ class TestArgsortErrorOnCPU(unittest.TestCase):
     def setUp(self):
         self.place = core.CPUPlace()
 
+    @test_with_pir_api
     def test_error(self):
         def test_base_var_type():
-            with base.program_guard(base.Program()):
+            with paddle.static.program_guard(paddle.static.Program()):
                 x = [1]
                 output = paddle.argsort(x=x)
             self.assertRaises(TypeError, test_base_var_type)
 
         def test_paddle_var_type():
-            with base.program_guard(base.Program()):
+            with paddle.static.program_guard(paddle.static.Program()):
                 x = [1]
                 output = paddle.argsort(x=x)
             self.assertRaises(TypeError, test_paddle_var_type)
@@ -375,7 +372,6 @@ class TestArgsortErrorOnGPU(TestArgsortErrorOnCPU):
             self.place = core.CPUPlace()
 
 
-@test_with_pir_api
 class TestArgsort(unittest.TestCase):
     def init(self):
         self.input_shape = [
@@ -391,6 +387,7 @@ class TestArgsort(unittest.TestCase):
             self.place = core.CPUPlace()
         self.data = np.random.rand(*self.input_shape)
 
+    @test_with_pir_api
     def test_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
             input = paddle.static.data(
