@@ -147,6 +147,52 @@ class TestExponential(unittest.TestCase):
                 atol=config.ATOL.get(str(self.rate.dtype)),
             )
 
+    def test_cdf(self):
+        with paddle.static.program_guard(self.program):
+            value = paddle.static.data(
+                'value',
+                self._paddle_expon.rate.shape,
+                self._paddle_expon.rate.dtype,
+            )
+            cdf = self._paddle_expon.cdf(value)
+
+            random_number = np.random.rand(
+                *self._paddle_expon.rate.shape
+            ).astype(self.rate.dtype)
+            feeds = dict(self.feeds, value=random_number)
+            [cdf] = self.executor.run(
+                self.program, feed=feeds, fetch_list=[cdf]
+            )
+            np.testing.assert_allclose(
+                cdf,
+                scipy.stats.expon.cdf(random_number, scale=self.scale),
+                rtol=config.RTOL.get(str(self.rate.dtype)),
+                atol=config.ATOL.get(str(self.rate.dtype)),
+            )
+
+    def test_icdf(self):
+        with paddle.static.program_guard(self.program):
+            value = paddle.static.data(
+                'value',
+                self._paddle_expon.rate.shape,
+                self._paddle_expon.rate.dtype,
+            )
+            icdf = self._paddle_expon.icdf(value)
+
+            random_number = np.random.rand(
+                *self._paddle_expon.rate.shape
+            ).astype(self.rate.dtype)
+            feeds = dict(self.feeds, value=random_number)
+            [icdf] = self.executor.run(
+                self.program, feed=feeds, fetch_list=[icdf]
+            )
+            np.testing.assert_allclose(
+                icdf,
+                scipy.stats.expon.ppf(random_number, scale=self.scale),
+                rtol=config.RTOL.get(str(self.rate.dtype)),
+                atol=config.ATOL.get(str(self.rate.dtype)),
+            )
+
 
 @parameterize.place(config.DEVICES)
 @parameterize.parameterize_cls(

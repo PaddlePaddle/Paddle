@@ -89,7 +89,7 @@ class TestExponential(unittest.TestCase):
             )
 
     def test_prob(self):
-        value = [np.random.rand(*self._paddle_expon.rate.shape)]
+        value = np.random.rand(*self._paddle_expon.rate.shape)
         with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 self._paddle_expon.prob(paddle.to_tensor(value)),
@@ -102,12 +102,26 @@ class TestExponential(unittest.TestCase):
                 ),
             )
 
-    def test_log_prob(self):
-        value = [np.random.rand(*self._paddle_expon.rate.shape)]
+    def test_cdf(self):
+        value = np.random.rand(*self._paddle_expon.rate.shape)
         with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
-                self._paddle_expon.log_prob(paddle.to_tensor(value)),
-                scipy.stats.expon.logpdf(value, scale=self.scale),
+                self._paddle_expon.cdf(paddle.to_tensor(value)),
+                scipy.stats.expon.cdf(value, scale=self.scale),
+                rtol=config.RTOL.get(
+                    str(self._paddle_expon.rate.numpy().dtype)
+                ),
+                atol=config.ATOL.get(
+                    str(self._paddle_expon.rate.numpy().dtype)
+                ),
+            )
+
+    def test_icdf(self):
+        value = np.random.rand(*self._paddle_expon.rate.shape)
+        with paddle.base.dygraph.guard(self.place):
+            np.testing.assert_allclose(
+                self._paddle_expon.icdf(paddle.to_tensor(value)),
+                scipy.stats.expon.ppf(value, scale=self.scale),
                 rtol=config.RTOL.get(
                     str(self._paddle_expon.rate.numpy().dtype)
                 ),

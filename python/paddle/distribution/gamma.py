@@ -163,10 +163,9 @@ class Gamma(exponential_family.ExponentialFamily):
         shape = distribution.Distribution._extend_shape(
             self, sample_shape=shape
         )
-        return paddle.divide(
-            paddle.standard_gamma(self.concentration.expand(shape)),
-            self.rate.expand(shape),
-        )
+        return paddle.standard_gamma(
+            self.concentration.expand(shape)
+        ) / self.rate.expand(shape)
 
     def kl_divergence(self, other):
         """The KL-divergence between two gamma distributions.

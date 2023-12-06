@@ -117,7 +117,7 @@ class TestGamma(unittest.TestCase):
             )
 
     def test_prob(self):
-        value = [np.random.rand(*self._paddle_gamma.rate.shape)]
+        value = np.random.rand(*self._paddle_gamma.rate.shape)
         with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 self._paddle_gamma.prob(paddle.to_tensor(value)),
@@ -133,7 +133,7 @@ class TestGamma(unittest.TestCase):
             )
 
     def test_log_prob(self):
-        value = [np.random.rand(*self._paddle_gamma.rate.shape)]
+        value = np.random.rand(*self._paddle_gamma.rate.shape)
         with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 self._paddle_gamma.log_prob(paddle.to_tensor(value)),

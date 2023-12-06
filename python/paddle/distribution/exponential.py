@@ -111,6 +111,10 @@ class Exponential(exponential_family.ExponentialFamily):
     def prob(self, value):
         """Probability density funciotn evaluated at value
 
+        .. math::
+
+            {f(x; \theta) = \theta e^{- \theta x }}
+
         Args:
             value (Tensor): Value to be evaluated.
 
@@ -137,6 +141,38 @@ class Exponential(exponential_family.ExponentialFamily):
             Tensor: Entropy.
         """
         return 1.0 - paddle.log(self.rate)
+
+    def cdf(self, value):
+        r"""Cumulative distribution function(CDF) evaluated at value.
+
+        .. math::
+
+
+            { cdf(x; \theta) = 1 - e^{- \theta x }, (x \ge 0) }
+
+        Args:
+            value (Tensor): Value to be evaluated.
+
+        Returns:
+            Tensor: CDF evaluated at value.
+        """
+        return 1.0 - paddle.exp(-self.rate * value)
+
+    def icdf(self, value):
+        r"""Inverse cumulative distribution function(CDF) evaluated at value.
+
+        .. math::
+
+
+            { icdf(x; \theta) = -\frac{ 1 }{ \theta } ln(1 + x), (x \ge 0) }
+
+        Args:
+            value (Tensor): Value to be evaluated.
+
+        Returns:
+            Tensor: CDF evaluated at value.
+        """
+        return -paddle.log1p(-value) / self.rate
 
     def kl_divergence(self, other):
         """The KL-divergence between two exponential distributions.
