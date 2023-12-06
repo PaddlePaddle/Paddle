@@ -11,6 +11,17 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#ifdef GET_OP_LIST
+#undef GET_OP_LIST
+paddle::dialect::AddNOp, paddle::dialect::AddN_Op,
+    paddle::dialect::AddNWithKernelOp, paddle::dialect::FusedGemmEpilogueOp,
+    paddle::dialect::FusedGemmEpilogueGradOp, paddle::dialect::SplitGradOp,
+    paddle::dialect::ExpandOp, paddle::dialect::CreateArrayOp,
+    paddle::dialect::ArrayLengthOp, paddle::dialect::ArrayReadOp,
+    paddle::dialect::ArrayWrite_Op, paddle::dialect::SliceArrayOp,
+    paddle::dialect::SliceArrayDenseOp, paddle::dialect::AssignArray_Op,
+    paddle::dialect::ArrayToTensorOp, paddle::dialect::SelectInputOp
+#else
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_meta_tensor.h"
@@ -2181,6 +2192,33 @@ phi::DataType ExpandOp::GetKernelTypeForVar(
   return expected_kernel_dtype;
 }
 
+void SelectInputOp::VerifySig() {
+  VLOG(4) << "Verifying inputs, outputs and attributes for: SelectInputOp.";
+  VLOG(4) << "Verifying inputs:";
+  {
+    auto in_size = num_operands();
+    IR_ENFORCE(in_size == 3u, "Size %d of inputs must be >= 3.", in_size);
+    IR_ENFORCE((*this)
+                   ->operand_source(0)
+                   .type()
+                   .isa<paddle::dialect::DenseTensorType>(),
+               "Type validation failed for the 0th input, but got %s.",
+               (*this)->operand_source(0).type());
+    IR_ENFORCE(
+        (*this)->operand_source(1).type() == (*this)->operand_source(2).type(),
+        "The 1st input type %s should be equal to 2ed input type %s.",
+        (*this)->operand_source(1).type(),
+        (*this)->operand_source(2).type());
+  }
+  VLOG(4) << "Verifying outputs:";
+  {
+    auto out_size = num_results();
+    IR_ENFORCE(
+        out_size == 1u, "Size %d of outputs must be equal to 1.", out_size);
+  }
+  VLOG(4) << "End Verifying for: AssignArray_Op.";
+}
+
 }  // namespace dialect
 }  // namespace paddle
 
@@ -2199,3 +2237,5 @@ IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SliceArrayDenseOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AssignArray_Op)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayToTensorOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ExpandOp)
+
+#endif
