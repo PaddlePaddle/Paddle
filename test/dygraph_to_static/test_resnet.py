@@ -24,7 +24,7 @@ from dygraph_to_static_utils import (
     test_default_mode_only,
     test_legacy_only,
     test_pt_only,
-    test_sot_only,
+    test_sot_mgs0_only,
 )
 from predictor_utils import PredictorTools
 
@@ -442,7 +442,7 @@ class TestResnet(Dy2StTestBase):
             err_msg=f'predictor_pre:\n {predictor_pre}\n, st_pre: \n{st_pre}.',
         )
 
-    @test_sot_only
+    @test_sot_mgs0_only
     @test_pt_only
     def test_resnet_pir(self):
         static_loss = self.train(to_static=True)
@@ -454,7 +454,7 @@ class TestResnet(Dy2StTestBase):
             err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
         )
 
-    @test_sot_only
+    @test_sot_mgs0_only
     @test_legacy_only
     def test_resnet(self):
         static_loss = self.train(to_static=True)
