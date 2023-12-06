@@ -15,7 +15,7 @@
 #include "paddle/cinn/adt/print_utils/print_value.h"
 
 #include "paddle/cinn/adt/equation_value.h"
-#include "paddle/cinn/adt/print_utils/print_constant.h"
+#include "paddle/cinn/adt/print_utils/print_dim_expr.h"
 #include "paddle/cinn/adt/print_utils/print_equations.h"
 
 namespace cinn::adt {
@@ -38,7 +38,7 @@ struct ToTxtStringStruct {
     return ret;
   }
 
-  std::string operator()(const Constant& value) {
+  std::string operator()(const DimExpr& value) {
     std::string ret;
     ret += ToTxtString(value);
     return ret;
@@ -59,7 +59,7 @@ struct ToTxtStringStruct {
     return ret;
   }
 
-  std::string operator()(const IndexDotValue<Value, Constant>& value) {
+  std::string operator()(const IndexDotValue<Value, List<DimExpr>>& value) {
     std::string ret;
     const auto& [iters, constant] = value.tuple();
     ret +=
@@ -67,7 +67,7 @@ struct ToTxtStringStruct {
     return ret;
   }
 
-  std::string operator()(const IndexUnDotValue<Value, Constant>& value) {
+  std::string operator()(const IndexUnDotValue<Value, List<DimExpr>>& value) {
     std::string ret;
     const auto& [_, constant] = value.tuple();
     const Value& value_ = value.GetIndexValue();
@@ -76,7 +76,7 @@ struct ToTxtStringStruct {
     return ret;
   }
 
-  std::string operator()(const ListGetItem<Value, Constant>& list_get_item) {
+  std::string operator()(const ListGetItem<Value, DimExpr>& list_get_item) {
     std::string ret;
     const auto& [value, constant] = list_get_item.tuple();
     ret += "ListGetItem(" + ToTxtString(value) + ", " + ToTxtString(constant) +
@@ -84,12 +84,10 @@ struct ToTxtStringStruct {
     return ret;
   }
 
-  std::string operator()(
-      const BroadcastedIterator<Value, Constant>& broadcast) {
+  std::string operator()(const BroadcastedIterator<Value, DimExpr>& broadcast) {
     std::string ret;
     const auto& [value, constant] = broadcast.tuple();
-    ret += "BroadcastedIterator(" + ToTxtString(value) + ", " +
-           ToTxtString(constant) + ")";
+    ret += "BI(" + ToTxtString(value) + ", " + ToTxtString(constant) + ")";
     return ret;
   }
 

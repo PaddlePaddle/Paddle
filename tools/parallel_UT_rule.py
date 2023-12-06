@@ -1209,7 +1209,6 @@ FOURTH_HIGH_PARALLEL_JOB_NEW = [
     'test_weight_decay_extend',
     'test_accuracy_op',
     'test_cond',
-    'test_resnet_v2',
     'test_adagrad_op',
     'test_mv_op',
     'test_print_op',

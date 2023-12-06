@@ -12,24 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/fluid/framework/new_executor/instruction/builtin_combine_instruction.h"
+#include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 
-#include <optional>
+namespace paddle {
+namespace framework {
 
-#include "paddle/cinn/adt/equation_constant.h"
+BuiltinCombineInstruction::BuiltinCombineInstruction(
+    size_t id,
+    const platform::Place& place,
+    ::pir::Operation* op,
+    ValueExecutionInfo* value_exe_info)
+    : InstructionBase(id, place) {
+  op_ = op;
 
-namespace cinn::adt {
+  InitInputsOutputsIds(op, *value_exe_info);
 
-class EquationFunctionConstantsProvider {
- public:
-  virtual ~EquationFunctionConstantsProvider() = default;
+  SetArtificial(true);
+}
 
-  virtual Constant GetDimSize(const Dim& dim) const = 0;
+void BuiltinCombineInstruction::Run() {}
 
-  virtual bool AddDim(const Dim& dim, const Constant& dim_value) = 0;
-
- protected:
-  EquationFunctionConstantsProvider() = default;
-};
-
-}  // namespace cinn::adt
+}  // namespace framework
+}  // namespace paddle
