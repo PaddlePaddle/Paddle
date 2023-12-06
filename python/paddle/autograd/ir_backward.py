@@ -568,6 +568,9 @@ def append_backward_ops(
         with block:
             inputs_grad = []
             for value in inputs:
+                if value in inside_value_to_outside_value_map:
+                    value = inside_value_to_outside_value_map[value]
+
                 if value in state.value_to_valuegrad:
                     if len(state.value_to_valuegrad[value]) > 1:
                         append_add_n(block, value)
@@ -819,7 +822,6 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
         backward_ops,
         state,
     )
-
     # now value_to_valuegrad should be value <-> value (add sum op for the same values's gradvalue)
     outputs_set, inputs_set, no_gradvar_set = create_backward_prune_set(
         outputs_fwd_set, inputs_fwd_set, no_grad_set, state
@@ -980,3 +982,58 @@ def grad(
     input_grad = calc_gradient(outputs, inputs, grad_outputs, no_grad_set)
 
     return input_grad
+
+
+# only for test
+def append_backward(loss, parameter_list=None, no_grad_set=None):
+    '''
+    Parameters:
+        loss (Value): The loss Tensor of the network
+        parameter_list (Value|list(Value)|tuple(Value)):  List/Tuple of Parameters
+            that need to be updated by optimizers.
+            If it is None, all parameters
+            will be updated.
+            Default: None.
+        no_grad_vars (Value|list(Value)|tuple(Value)|set(Value), optional):
+            the Values whose gradients are not needed to compute. Default None.
+
+    Returns:
+        list of tuple (Value): Pairs of parameter and its corresponding gradients.
+        The key is the parameter and the value is gradient Tensor.
+    '''
+
+    check_type(
+        loss,
+        'loss',
+        (paddle.pir.Value, paddle.pir.OpResult),
+        'paddle.autograd.ir_backward.append_backward',
+    )
+
+    if parameter_list is not None:
+        check_type(
+            parameter_list,
+            'parameter_list',
+            (list, tuple, set),
+            'paddle.autograd.ir_backwardappend_backward',
+        )
+        for i, param in enumerate(parameter_list):
+            check_type(
+                param,
+                'parameter_list[%s]' % i,
+                (paddle.pir.Value, paddle.pir.OpResult),
+                'base.backward.append_backward',
+            )
+
+    else:
+        parameter_list = (
+            loss.get_defining_op().get_parent_block().all_parameters()
+        )
+        # parameters = [param for param in params if param.trainable]
+
+    inputs_grad = grad(loss, parameter_list)
+
+    input_inputs_grad = [
+        (input, grad) for input, grad in zip(parameter_list, inputs_grad)
+    ]
+
+    return input_inputs_grad

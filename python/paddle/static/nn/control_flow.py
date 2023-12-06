@@ -1252,7 +1252,9 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
             return None
 
         if_op.update_output()
-        return if_op.results()
+        return (
+            if_op.results()[0] if len(if_op.results()) == 1 else if_op.results()
+        )
 
     check_variable_and_dtype(pred, "pred", ['bool'], "base.layers.cond")
     check_type(name, "name", (str, type(None)), "base.layers.cond")
