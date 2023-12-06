@@ -90,16 +90,16 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
     if in_dynamic_mode():
         if isinstance(out_shape, (Variable, paddle.pir.OpResult)):
             out_shape = paddle.utils.convert_shape_to_list(out_shape)
-        out = _legacy_C_ops.affine_grid(
-            theta,
-            "output_shape",
-            out_shape,
-            "align_corners",
-            align_corners,
-            "use_cudnn",
-            use_cudnn,
-        )
-        return out
+            out = _legacy_C_ops.affine_grid(
+                theta,
+                "output_shape",
+                out_shape,
+                "align_corners",
+                align_corners,
+                "use_cudnn",
+                use_cudnn,
+            )
+            return out
     elif in_pir_mode():
         if isinstance(out_shape, (list, tuple)):
             if paddle.utils._contain_var(out_shape):
