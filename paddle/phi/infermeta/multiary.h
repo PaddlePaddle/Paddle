@@ -869,3 +869,10 @@ void FullWithTensorInferMeta(const MetaTensor& shape,
                              MetaTensor* out);
 
 }  // namespace phi
+
+void RetinanetDetectionOutputInferMeta(const std::vector<const MetaTensor*>& bboxes,
+                                       const std::vector<const MetaTensor*>& scores,
+                                       const std::vector<const MetaTensor*>& anchors,
+                                       const MetaTensor& iminfo,
+                                       MetaTensor* out,
+                                       MetaConfig config = MetaConfig());

@@ -4391,6 +4391,110 @@ void MultiheadMatmulInferMeta(const MetaTensor& input,
   out->share_lod(input);
 }
 
+void RetinanetDetectionOutputInferMeta(const std::vector<const MetaTensor*>& bboxes,
+                                       const std::vector<const MetaTensor*>& scores,
+                                       const std::vector<const MetaTensor*>& anchors,
+                                       const MetaTensor& iminfo,
+                                       MetaTensor* out,
+                                       MetaConfig config) {
+    auto bboxes_dims = bboxes.dims();
+    auto scores_dims = scores.dims();
+    auto anchors_dims = anchors.dims();
+    auto im_info_dims = iminfo.dims();
+
+    const size_t b_n = bboxes_dims.size();
+    PADDLE_ENFORCE_GT(b_n,
+                      0,
+                      platform::errors::InvalidArgument(
+                          "The number of Variables in Input(BBoxes) "
+                          "should be greater than 0, "
+                          "but received number is:%d.",
+                          b_n));
+    const size_t s_n = scores_dims.size();
+    PADDLE_ENFORCE_GT(s_n,
+                      0,
+                      platform::errors::InvalidArgument(
+                          "The number of Variables in Input(Scores) "
+                          "should be greater than 0, "
+                          "but received number is:%d.",
+                          s_n));
+    const size_t a_n = anchors_dims.size();
+    PADDLE_ENFORCE_GT(a_n,
+                      0,
+                      platform::errors::InvalidArgument(
+                          "The number of Variables in Input(Anchors) "
+                          "should be greater than 0, "
+                          "but received number is:%d.",
+                          a_n));
+    auto bbox_dims = bboxes_dims[0];
+    auto score_dims = scores_dims[0];
+    auto anchor_dims = anchors_dims[0];
+    if (config.is_runtime) {
+      PADDLE_ENFORCE_EQ(
+          score_dims.size(),
+          3,
+          platform::errors::InvalidArgument(
+              "The rank of each Variable in Input(Scores) must be 3, "
+              "but received rank is:%d.",
+              score_dims.size()));
+      PADDLE_ENFORCE_EQ(
+          bbox_dims.size(),
+          3,
+          platform::errors::InvalidArgument(
+              "The rank of each Variable in Input(BBoxes) must be 3, "
+              "but received rank is:%d.",
+              bbox_dims.size()));
+      PADDLE_ENFORCE_EQ(
+          anchor_dims.size(),
+          2,
+          platform::errors::InvalidArgument(
+              "The rank of each Variable in Input(Anchors) must be 2, "
+              "but received rank is:%d.",
+              anchor_dims.size()));
+      PADDLE_ENFORCE_EQ(
+          bbox_dims[2],
+          4,
+          platform::errors::InvalidArgument(
+              "The last dimension of each Variable in Input(BBoxes) must be 4 "
+              "representing the layout of coordinate [xmin, ymin, xmax, ymax], "
+              "but received dimension is:%d.",
+              bbox_dims[2]));
+      PADDLE_ENFORCE_EQ(bbox_dims[1],
+                        score_dims[1],
+                        platform::errors::InvalidArgument(
+                            "The 2nd dimension of Variables in Input(BBoxes) "
+                            "and Input(Scores) "
+                            "must be same, which represents the number of the "
+                            "predicted boxes, "
+                            "but received BBoxes 2nd dimension is:%d, Scores "
+                            "2nd dimension is:%d.",
+                            bbox_dims[1],
+                            score_dims[1]));
+      PADDLE_ENFORCE_EQ(
+          anchor_dims[0],
+          bbox_dims[1],
+          platform::errors::InvalidArgument(
+              "The 1st dimension of each Variables in Input(Anchors) must be "
+              "equal "
+              "to the 2nd dimension of corresponding Variables in "
+              "Input(BBoxes), "
+              "which represents the number of the predicted boxes, but "
+              "received "
+              "Anchors 1st dimension is:%d, BBoxes 2nd dimension is:%d.",
+              anchor_dims[0],
+              bbox_dims[1]));
+      PADDLE_ENFORCE_EQ(im_info_dims.size(),
+                        2,
+                        platform::errors::InvalidArgument(
+                            "The rank of Input(ImInfo) must be 2,  but "
+                            "received ImInfo rank is:%d.",
+                            im_info_dims.size()));
+    }
+    // Here the box_dims[0] is not the real dimension of output.
+    // It will be rewritten in the computing kernel.
+    out -> set_dims({bbox_dims[1], bbox_dims[2] + 2});
+    }
+
 void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
                                        const MetaTensor& cache_kv,
                                        const MetaTensor& bias,
