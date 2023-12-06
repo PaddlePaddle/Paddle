@@ -69,6 +69,23 @@ class TestJobScheDuleProfilerRange(unittest.TestCase):
             with job_schedule_profiler_range(i, 3, 5, False) as status:
                 self.assertEqual(status, status_list[i])
 
+    def test_end_less_than_start(self):
+        status_list = [
+            False,
+            False,
+            False,
+            False,
+            False,
+            False,
+            False,
+            False,
+            False,
+            False,
+        ]
+        for i in range(10):
+            with job_schedule_profiler_range(i, 5, 3, False) as status:
+                self.assertEqual(status, status_list[i])
+
 
 if __name__ == "__main__":
     unittest.main()
