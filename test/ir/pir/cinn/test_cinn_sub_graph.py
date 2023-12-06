@@ -17,14 +17,23 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.static import InputSpec
 
 
-def apply_to_static(net, use_cinn):
+def apply_to_static(net, use_cinn, input_spec=None):
     build_strategy = paddle.static.BuildStrategy()
     build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(
-        net, build_strategy=build_strategy, full_graph=True
-    )
+    if input_spec is None:
+        return paddle.jit.to_static(
+            net, build_strategy=build_strategy, full_graph=True
+        )
+    else:
+        return paddle.jit.to_static(
+            net,
+            build_strategy=build_strategy,
+            full_graph=True,
+            input_spec=input_spec,
+        )
 
 
 def exp_sub(x):
@@ -143,6 +152,29 @@ class TestCinnSubGraphBase(unittest.TestCase):
         paddle.seed(2022)
         net = CINNSubGraphNet()
         net = apply_to_static(net, use_cinn)
+        net.eval()
+        out = net(self.x)
+        return out
+
+    def test_eval(self):
+        cinn_out = self.eval(use_cinn=True)
+        dy_out = self.eval(use_cinn=False)
+        np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
+
+
+class TestCinnDyShapeBase(TestCinnSubGraphBase):
+    def prepare_data(self):
+        self.shape = [4, 256]
+        self.axis = -1
+        self.x = paddle.randn(self.shape, dtype="float32")
+        self.x.stop_gradient = False
+
+    def eval(self, use_cinn):
+        paddle.seed(2022)
+        net = CINNSubGraphNet()
+        net = apply_to_static(
+            net, use_cinn, [InputSpec(shape=[None, 256], name='x')]
+        )
         net.eval()
         out = net(self.x)
         return out
