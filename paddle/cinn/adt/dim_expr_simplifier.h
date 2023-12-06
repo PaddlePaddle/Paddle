@@ -14,22 +14,10 @@
 
 #pragma once
 
-#include <optional>
-
-#include "paddle/cinn/adt/equation_constant.h"
+#include "paddle/cinn/adt/dim_expr_match_trait.h"
 
 namespace cinn::adt {
 
-class EquationFunctionConstantsProvider {
- public:
-  virtual ~EquationFunctionConstantsProvider() = default;
+DimExpr SimplifyDimExpr(const DimExpr&);
 
-  virtual Constant GetDimSize(const Dim& dim) const = 0;
-
-  virtual bool AddDim(const Dim& dim, const Constant& dim_value) = 0;
-
- protected:
-  EquationFunctionConstantsProvider() = default;
-};
-
-}  // namespace cinn::adt
+}
