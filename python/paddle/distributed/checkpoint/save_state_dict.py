@@ -45,7 +45,7 @@ def check_file_name(file_name, process_group):
         ), f"id:{id} !=  all_unique_id[0]:{file_name}"
 
 
-def merge_state_dict(global_state_dict):
+def merge_state_dict_metadata(global_state_dict):
     assert isinstance(
         global_state_dict, List
     ), "The global_state_dict should be a list."
@@ -61,7 +61,7 @@ def merge_state_dict(global_state_dict):
     return out
 
 
-def dedup_state_dict(global_state_dict):
+def dedup_storage_metadata(global_state_dict):
     out = {}
     for state_dict in global_state_dict:
         for key, val in state_dict.items():
@@ -81,12 +81,12 @@ def save_state_dict(
         state_dict: The state_dict to save.
         path: The directory to save state_dict.
         process_group: ProcessGroup to be used for cross-rank synchronization. Use the default process group which contains all cards.
-        coordinator_rank: The rank used to coordinate the checkpoint. Rank0 is used by default.
+        coordinator_rank: The rank used to save non distributed values. Rank0 is used by default.
         use_dist: Whether to save the state_dict in distributed mode. Set True by default.
 
     Examples:
         .. code-block:: python
-            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> # doctest: +SKIP('Save state dict.')
             >>> import paddle
             >>> import paddle.distributed as dist
             >>> w1 = paddle.arange(32).reshape([4, 8])
@@ -94,6 +94,7 @@ def save_state_dict(
             >>> sharded_w1 = dist.shard_tensor(w1, mesh, [dist.Shard(0), dist.Replicate()])
             >>> state_dict = {"w1": sharded_w1}
             >>> dist.save_state_dict(state_dict, "./checkpoint")
+            >>> # doctest: -SKIP
 
     """
     if not use_dist and (
@@ -133,7 +134,7 @@ def save_state_dict(
         check_state_dict(state_dict, process_group)
     metadata = Metadata()
     local_state_dict = {}
-    local_tensor_metadata = {}
+    local_state_dict_metadata = {}
     local_storage_metadata = {}
     for key, val in state_dict.items():
         if isinstance(val, paddle.Tensor):
@@ -157,27 +158,29 @@ def save_state_dict(
                 local_shape = val.shape
                 local_tensor = val
             local_state_dict[key] = local_tensor
-            local_tensor_metadata[key] = LocalTensorMetadata(
+            local_state_dict_metadata[key] = LocalTensorMetadata(
                 global_offset, local_shape
             )
             local_storage_metadata[
                 LocalTensorIndex(key, tuple(global_offset))
             ] = file_name
-    global_tensor_metadata = []
+    global_state_dict_metadata = []
     global_storage_metadata = []
     if use_dist:
         paddle.distributed.all_gather_object(
-            global_tensor_metadata, local_tensor_metadata, process_group
+            global_state_dict_metadata, local_state_dict_metadata, process_group
         )
         paddle.distributed.all_gather_object(
             global_storage_metadata, local_storage_metadata, process_group
         )
     else:
-        global_tensor_metadata.append(local_tensor_metadata)
+        global_state_dict_metadata.append(local_state_dict_metadata)
         global_storage_metadata.append(local_storage_metadata)
 
-    metadata.state_dict_metadata = merge_state_dict(global_tensor_metadata)
-    metadata.storage_metadata = dedup_state_dict(global_storage_metadata)
+    metadata.state_dict_metadata = merge_state_dict_metadata(
+        global_state_dict_metadata
+    )
+    metadata.storage_metadata = dedup_storage_metadata(global_storage_metadata)
     if coordinator_rank == paddle.distributed.get_rank():
         logger.debug(f"metadata:{metadata}")
         paddle.save(metadata, os.path.join(path, f"{unique_id}.metadata"))

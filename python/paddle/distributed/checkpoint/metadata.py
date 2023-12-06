@@ -32,7 +32,7 @@ class LocalTensorIndex:
     The identifier of a local tensor.
     """
 
-    tensor_id: str
+    tensor_key: str
     global_offset: Tuple[int]
 
 

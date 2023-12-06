@@ -58,7 +58,6 @@ class TestLoadStateDict:
         )
         for k, v in state_dict.items():
             assert k in expect_state_dict, k
-            print(f"k:{k}, v:{v}, expect_state_dict[k]:{expect_state_dict[k]}")
             self.check_tensor_eq(v, expect_state_dict[k])
 
     def test_load_state_dict_with_four_devices(self):
@@ -86,7 +85,6 @@ class TestLoadStateDict:
         )
         for k, v in state_dict.items():
             assert k in expect_state_dict, k
-            print(f"k:{k}, v:{v}, expect_state_dict[k]:{expect_state_dict[k]}")
             self.check_tensor_eq(v._local_value(), expect_state_dict[k])
 
     def test_load_state_dict_with_two_devices(self):
@@ -110,7 +108,6 @@ class TestLoadStateDict:
         )
         for k, v in state_dict.items():
             assert k in expect_state_dict, k
-            print(f"k:{k}, v:{v}, expect_state_dict[k]:{expect_state_dict[k]}")
             self.check_tensor_eq(v._local_value(), expect_state_dict[k])
 
     def test_load_state_dict_with_eight_devices(self):
@@ -136,9 +133,6 @@ class TestLoadStateDict:
             offset + length
             for offset, length in zip(global_offset, local_shape)
         ]
-        print(
-            f"local_shape:{local_shape}, global_offset:{global_offset}, end_offset:{end_offset}"
-        )
         expect_w1 = paddle.slice(
             saved_w1, axes=[0, 1], starts=global_offset, ends=end_offset
         )
@@ -151,7 +145,6 @@ class TestLoadStateDict:
         )
         for k, v in state_dict.items():
             assert k in expect_state_dict, k
-            print(f"k:{k}, v:{v}, expect_state_dict[k]:{expect_state_dict[k]}")
             self.check_tensor_eq(v._local_value(), expect_state_dict[k])
 
     def check_tensor_eq(self, a, b, verbose=True):

@@ -50,9 +50,9 @@ def get_rank_to_files(path, state_dict, process_group, use_dist):
         for local_tensor_index, file_name in metadata.storage_metadata.items():
             assert (
                 local_tensor_index not in tensor_id_list
-            ), f"Duplicate tensor_id:{local_tensor_index} found. Check whether the metadata_file:{metadata_file} contains the same tensor metadata."
-            tensor_id_list.append(local_tensor_index.tensor_id)
-            if local_tensor_index.tensor_id in state_dict:
+            ), f"Duplicate tensor_key:{local_tensor_index} found. Check whether the metadata_file:{metadata_file} contains the same tensor metadata."
+            tensor_id_list.append(local_tensor_index.tensor_key)
+            if local_tensor_index.tensor_key in state_dict:
                 necessary_files.append(file_name)
     necessary_data_files_set = set(necessary_files)
     # allgather all accessible files
@@ -279,15 +279,15 @@ def get_read_items(path, state_dict, process_group, use_dist):
     for metadata_file in metadata_files:
         metadata = paddle.load(os.path.join(path, metadata_file))
         for (
-            tensor_id,
+            tensor_key,
             local_tensor_metadata,
         ) in metadata.state_dict_metadata.items():
-            if tensor_id not in storage_state_dict_metadata:
-                storage_state_dict_metadata[tensor_id] = []
-            storage_state_dict_metadata[tensor_id] += local_tensor_metadata
+            if tensor_key not in storage_state_dict_metadata:
+                storage_state_dict_metadata[tensor_key] = []
+            storage_state_dict_metadata[tensor_key] += local_tensor_metadata
     read_items = []
     logger.debug(f"storage_state_dict_metadata:{storage_state_dict_metadata}")
-    for tensor_id, val in state_dict.items():
+    for tensor_key, val in state_dict.items():
         if isinstance(val, paddle.Tensor):
             if val.is_dist():
                 (
@@ -305,10 +305,10 @@ def get_read_items(path, state_dict, process_group, use_dist):
                 continue
             cur_chunk_metadata = LocalTensorMetadata(global_offset, local_shape)
             assert (
-                tensor_id in storage_state_dict_metadata
-            ), f"tensor_id:{tensor_id} not found in storage_state_dict_metadata:{storage_state_dict_metadata}."
+                tensor_key in storage_state_dict_metadata
+            ), f"tensor_key:{tensor_key} not found in storage_state_dict_metadata:{storage_state_dict_metadata}."
             for storage_local_tensor_metadata in storage_state_dict_metadata[
-                tensor_id
+                tensor_key
             ]:
                 if not_overlap(
                     cur_chunk_metadata, storage_local_tensor_metadata
@@ -318,7 +318,7 @@ def get_read_items(path, state_dict, process_group, use_dist):
                     cur_chunk_metadata, storage_local_tensor_metadata
                 )
                 storage_local_tensor_index = LocalTensorIndex(
-                    tensor_id,
+                    tensor_key,
                     tuple(storage_local_tensor_metadata.global_offset),
                 )
                 read_items.append(
@@ -359,7 +359,7 @@ def load_state_dict(
         use_dist: Whether to load the state_dict in distributed mode. Set True by default.
     Example:
         .. code-block:: python
-            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> # doctest: +SKIP('Load state dict.')
             >>> import paddle
             >>> import paddle.distributed as dist
             >>> ckpt_path = "./checkpoint"
@@ -378,6 +378,7 @@ def load_state_dict(
              [8 , 9 , 10, 11, 12, 13, 14, 15],
              [16, 17, 18, 19, 20, 21, 22, 23],
              [24, 25, 26, 27, 28, 29, 30, 31]])}
+            >>> # doctest: -SKIP
     """
     if not use_dist and (
         paddle.distributed.get_world_size() > 1 or coordinator_rank != 0
@@ -425,9 +426,9 @@ def load_state_dict(
                     os.path.join(path, file_name)
                 )
             storage_state_dict = storage_file_to_state_dict[file_name]
-            assert item.local_tensor_index.tensor_id in storage_state_dict
+            assert item.local_tensor_index.tensor_key in storage_state_dict
             storage_local_tensor = storage_state_dict[
-                item.local_tensor_index.tensor_id
+                item.local_tensor_index.tensor_key
             ]
             storage_offsets = item.storage_offset
             storage_lengths = item.lengths
@@ -447,12 +448,12 @@ def load_state_dict(
         # The read item rank need to be assigned
         if item.rank == paddle.distributed.get_rank():
             assert (
-                item.local_tensor_index.tensor_id in state_dict
+                item.local_tensor_index.tensor_key in state_dict
             ), f"item:{item}, state_dict:{state_dict}"
             cur_local_tensor = (
-                state_dict[item.local_tensor_index.tensor_id]._local_value()
+                state_dict[item.local_tensor_index.tensor_key]._local_value()
                 if use_dist
-                else state_dict[item.local_tensor_index.tensor_id]
+                else state_dict[item.local_tensor_index.tensor_key]
             )
             cur_offsets = item.cur_offset
             cur_lengths = item.lengths
@@ -470,7 +471,7 @@ def load_state_dict(
         else:
             cur_chunk_tensor = paddle.zeros(
                 item.lengths,
-                dtype=state_dict[item.local_tensor_index.tensor_id].dtype,
+                dtype=state_dict[item.local_tensor_index.tensor_key].dtype,
             )
 
         if src_rank == item.rank:
