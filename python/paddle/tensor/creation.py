@@ -1838,7 +1838,7 @@ def diagflat(x, offset=0, name=None):
 
     Examples:
         .. code-block:: python
-            :name: code-example-a
+            :name: diagflat-example-1
 
             >>> import paddle
 
@@ -1867,7 +1867,7 @@ def diagflat(x, offset=0, name=None):
              [0, 0, 3, 0]])
 
         .. code-block:: python
-            :name: code-example-b
+            :name: diagflat-example-2
 
             >>> import paddle
 
