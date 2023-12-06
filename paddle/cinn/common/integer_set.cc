@@ -21,6 +21,11 @@
 namespace cinn {
 namespace common {
 
+ir::Expr SymbolicExprLimit::positive_inf =
+    ir::Expr(ir::Var("positive_infinity"));
+ir::Expr SymbolicExprLimit::negative_inf =
+    ir::Expr(ir::Var("negative_infinity"));
+
 bool SymbolicExprAnalyzer::CanProve(const ir::Expr& condition) const {
   if (condition.As<ir::EQ>()) {
     return CanProveEQ(condition.As<ir::EQ>()->a(), condition.As<ir::EQ>()->b());

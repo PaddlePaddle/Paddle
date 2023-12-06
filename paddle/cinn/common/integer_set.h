@@ -45,10 +45,6 @@ struct SymbolicExprLimit {
   static ir::Expr positive_inf;
   static ir::Expr negative_inf;
 };
-ir::Expr SymbolicExprLimit::positive_inf =
-    ir::Expr(ir::Var("positive_infinity"));
-ir::Expr SymbolicExprLimit::negative_inf =
-    ir::Expr(ir::Var("negative_infinity"));
 
 // The set consisting of all integers in the interval from min to max
 class SingleIntervalIntSet {
