@@ -150,11 +150,13 @@ class TensorVectorizeTeller : public ir::IRMutator<const Expr *> {
 
     // check tensor accessed sequentially by comparing index one by one
     Expr first_idx = ir::ir_utils::IRCopy(indices.back());
-    cinn::ir::ir_utils::IrReplace(&first_idx, Expr(iter_var_), Expr(0));
+    cinn::ir::ir_utils::IrReplaceVarBroadcast(
+        &first_idx, Expr(iter_var_), Expr(0));
     const auto &interval = var_intervals_->at(iter_var_->name);
     for (int i = 1; i < interval.r; ++i) {
       Expr next_idx = ir::ir_utils::IRCopy(indices.back());
-      cinn::ir::ir_utils::IrReplace(&next_idx, Expr(iter_var_), Expr(i));
+      cinn::ir::ir_utils::IrReplaceVarBroadcast(
+          &next_idx, Expr(iter_var_), Expr(i));
       auto gap = cinn::common::AutoSimplify(Expr(next_idx - first_idx));
       if (!gap.As<IntImm>() || gap.as_int32() != i) {
         VLOG(5) << "Tensor:" << tensor->name
@@ -313,7 +315,7 @@ class CudaVectorizer : public IRMutator<Expr *> {
 
     // generate a get_addr expr to get the address of the tensor
     Expr converted_tensor = Load::Make(tensor, indices);
-    cinn::ir::ir_utils::IrReplace(
+    cinn::ir::ir_utils::IrReplaceVarBroadcast(
         &converted_tensor, iter_var_, Expr(int32_t(0)));
     auto get_addr = ir::intrinsics::GetAddr::Make(converted_tensor);
 
@@ -897,7 +899,7 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
                                      ForType::Serial,
                                      DeviceAPI::UNK,
                                      ir::ir_utils::IRCopy(inner_for->body))});
-          cinn::ir::ir_utils::IrReplace(
+          cinn::ir::ir_utils::IrReplaceVarBroadcast(
               &inner_for_b, inner_for->loop_var, Expr(new_iterator_inner));
 
           Expr out_for_b = For::Make(new_iterator_outer,
@@ -907,7 +909,7 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
                                      outer_for->device_api,
                                      inner_for_b,
                                      outer_for->vectorize_info());
-          cinn::ir::ir_utils::IrReplace(
+          cinn::ir::ir_utils::IrReplaceVarBroadcast(
               &out_for_b, outer_for->loop_var, Expr(new_iterator_outer));
           *expr = Block::Make({out_for_a, out_for_b});
           VLOG(2) << *expr;
@@ -970,7 +972,7 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
       } else {
         new_index = Expr(forloop->loop_var) * factor + Expr(new_iterator);
       }
-      cinn::ir::ir_utils::IrReplace(
+      cinn::ir::ir_utils::IrReplaceVarBroadcast(
           &forloop->body, forloop->loop_var, new_index);
       auto new_forloop = For::Make(new_iterator,
                                    forloop->min,
