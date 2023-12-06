@@ -275,7 +275,7 @@ inline void SyncCUDAStream() {
 #else
 inline void SyncCUDAStream() {
 #if !defined(_WIN32)
-  cudaStreamSynchronize(0);
+  cudaStreamSynchronize(nullptr);
 #else
   cudaError_t e_sync = cudaSuccess;
   while (e_sync = cudaStreamQuery(0)) {

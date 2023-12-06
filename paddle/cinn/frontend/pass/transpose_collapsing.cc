@@ -78,7 +78,7 @@ class TransposeCollapsingPass : public ProgramPass {
 
   void ApplyImpl(Program* program,
                  const std::unordered_set<std::string>& fetch_ids,
-                 const common::Target& target) const override {
+                 const cinn::common::Target& target) const override {
     // `out2instr` is used to represent the mapping of Output to Instruction.
     OutputToOpMap out2instr;
     // `in2instr` is used to represent the mapping of Input to Instruction.

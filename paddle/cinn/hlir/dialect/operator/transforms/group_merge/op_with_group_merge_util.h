@@ -97,14 +97,14 @@ inline bool is_same_size(::pir::Operation* producer,
   if (producer_shape == consumer_shape) {
     return true;
   }
-  auto psize = phi::product(producer_shape);
-  auto csize = phi::product(consumer_shape);
+  auto psize = ::common::product(producer_shape);
+  auto csize = ::common::product(consumer_shape);
   return psize == csize;
 }
 
 inline bool without_last_dimension_in_reduce(
     ::pir::Operation* producer, const std::shared_ptr<Group>& consumer) {
-  auto in_shape = phi::vectorize<int64_t>(GetFirstInputShape(producer));
+  auto in_shape = ::common::vectorize<int64_t>(GetFirstInputShape(producer));
   auto reduce_axes = GetVectorAttr(producer, "dim");
   return WithoutLastDimInReduce(in_shape, reduce_axes);
 }
@@ -121,14 +121,14 @@ inline bool reduce_fuse_reduce(::pir::Operation* producer,
   }
   // check reduce has same input shape and output shape
   auto producer_input_shape =
-      phi::vectorize<int64_t>(GetValueShape(producer->operand_source(0)));
+      ::common::vectorize<int64_t>(GetValueShape(producer->operand_source(0)));
   auto producer_output_shape =
-      phi::vectorize<int64_t>(GetValueShape(producer->result(0)));
+      ::common::vectorize<int64_t>(GetValueShape(producer->result(0)));
 
   auto reducer_input_shape =
-      phi::vectorize<int64_t>(GetValueShape(reducer->operand_source(0)));
+      ::common::vectorize<int64_t>(GetValueShape(reducer->operand_source(0)));
   auto reducer_output_shape =
-      phi::vectorize<int64_t>(GetValueShape(reducer->result(0)));
+      ::common::vectorize<int64_t>(GetValueShape(reducer->result(0)));
 
   auto producer_reduce_dim = GetVectorAttr(producer, "dim");
   auto reducer_reduce_dim = GetVectorAttr(reducer, "dim");
@@ -238,7 +238,7 @@ inline bool horizontal_or_vertical_reduce_relation(
   }
 
   // check producer has same shape with reducer op.
-  auto reduce_shape = phi::vectorize(GetFirstInputShape(reducer));
+  auto reduce_shape = ::common::vectorize(GetFirstInputShape(reducer));
   auto reduce_axes = GetVectorAttr(reducer, "dim");
 
   for (auto& axis : reduce_axes) {
@@ -248,8 +248,9 @@ inline bool horizontal_or_vertical_reduce_relation(
     }
   }
 
-  auto op_shape = phi::vectorize<int64_t>(GetValueShape(producer->result(0)));
-  // auto op_shape = phi::vectorize<int64_t>(GetFirstInputShape(producer));
+  auto op_shape =
+      ::common::vectorize<int64_t>(GetValueShape(producer->result(0)));
+  // auto op_shape = ::common::vectorize<int64_t>(GetFirstInputShape(producer));
   auto op_size = std::accumulate(
       op_shape.begin(), op_shape.end(), 1, std::multiplies<int>());
   auto reduce_size = std::accumulate(
@@ -273,7 +274,7 @@ inline bool horizontal_or_vertical_reduce_relation(
     break;
   }
 
-  // helper->target_ == common::DefaultNVGPUTarget()
+  // helper->target_ == cinn::common::DefaultNVGPUTarget()
   // succesive_reduce_dimension <= helper->target_.max_num_threads()
   // TODO(phlrain): support is_gpu_target and max_thread
   bool is_gpu_target = true;
@@ -330,11 +331,12 @@ inline bool reduce_fuse_broadcast(::pir::Operation* producer,
     return false;
   }
 
-  // if (helper->target_ != common::DefaultNVGPUTarget()) {
+  // if (helper->target_ != cinn::common::DefaultNVGPUTarget()) {
   //   return true;
   // }
 
-  auto rinput_shape = phi::vectorize<int64_t>(GetFirstInputShape(producer));
+  auto rinput_shape =
+      ::common::vectorize<int64_t>(GetFirstInputShape(producer));
   auto reduce_axes = GetVectorAttr(producer, "dim");
   auto keep_dim = producer->attributes()
                       .at("keep_dim")
@@ -359,7 +361,7 @@ inline bool reduce_fuse_broadcast(::pir::Operation* producer,
   // }
 
   auto routput_shape =
-      phi::vectorize<int64_t>(GetValueShape(producer->result(0)));
+      ::common::vectorize<int64_t>(GetValueShape(producer->result(0)));
   auto find_reducer =
       [&](::pir::Operation* op,
           ::pir::Operation* reducer,

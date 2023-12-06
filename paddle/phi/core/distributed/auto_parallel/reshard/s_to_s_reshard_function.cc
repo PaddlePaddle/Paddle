@@ -62,7 +62,7 @@ void SToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   // 1. preprocess, reshape and transpose the input tensor
   if (out_split_axis != 0) {
     // 1.1 calc the shape and reshape
-    std::vector<int64_t> pre_shape_vec = vectorize(logical_ddim);
+    std::vector<int64_t> pre_shape_vec = common::vectorize(logical_ddim);
     pre_shape_vec[in_split_axis] /= nranks;
     pre_shape_vec[out_split_axis] /= nranks;
     pre_shape_vec.insert(pre_shape_vec.begin() + out_split_axis, nranks);
@@ -102,7 +102,7 @@ void SToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   // 3. postprocess, reshape and transpose the output tensor
   if (in_split_axis != 0) {
     // 3.1 calc the shape and reshape
-    std::vector<int64_t> post_shape_vec = vectorize(logical_ddim);
+    std::vector<int64_t> post_shape_vec = common::vectorize(logical_ddim);
     post_shape_vec[in_split_axis] /= nranks;
     post_shape_vec[out_split_axis] /= nranks;
     post_shape_vec.insert(post_shape_vec.begin(), nranks);

@@ -17,9 +17,7 @@ import random
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import (
-    Dy2StTestBase,
-)
+from dygraph_to_static_utils import Dy2StTestBase, test_legacy_and_pt_and_pir
 from simnet_dygraph_model import BOW, HingeLoss
 
 import paddle
@@ -180,6 +178,7 @@ def train(conf_dict, to_static):
 
 
 class TestSimnet(Dy2StTestBase):
+    @test_legacy_and_pt_and_pir
     def test_dygraph_static_same_loss(self):
         if base.is_compiled_with_cuda():
             base.set_flags({"FLAGS_cudnn_deterministic": True})

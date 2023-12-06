@@ -44,9 +44,9 @@ void SequenceMaskKernel(const Context& ctx,
       maxlen = *max_len_tensor.get_ptr()->data<int32_t>();
     }
 
-    auto y_dim = phi::vectorize<int>(x.dims());
+    auto y_dim = common::vectorize<int>(x.dims());
     y_dim.push_back(maxlen);
-    y->Resize(phi::make_ddim(y_dim));
+    y->Resize(common::make_ddim(y_dim));
 
     PADDLE_ENFORCE_GT(
         maxlen,
@@ -76,9 +76,9 @@ void SequenceMaskKernel(const Context& ctx,
       maxlen = static_cast<int>(*std::max_element(x_data, x_data + x_numel));
 #endif
     }
-    auto y_dim = phi::vectorize<int>(x.dims());
+    auto y_dim = common::vectorize<int>(x.dims());
     y_dim.push_back(maxlen);
-    y->Resize(phi::make_ddim(y_dim));
+    y->Resize(common::make_ddim(y_dim));
   }
 
   phi::VisitDataType(phi::TransToPhiDataType(out_dtype),

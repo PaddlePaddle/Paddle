@@ -25,7 +25,7 @@ namespace optim {
 
 namespace {
 
-struct BufferUFNode : public common::UnionFindNode {
+struct BufferUFNode : public cinn::common::UnionFindNode {
   explicit BufferUFNode(const std::string& x) : tensor_name(x) {}
 
   const char* type_info() const override { return __type_info__; }
@@ -57,7 +57,7 @@ std::map<std::string, ir::Tensor> InitialAssignBuffer(
     Expr* expr,
     poly::StageMap stages,
     const std::map<std::string, ir::Tensor>& all_tensor_map,
-    const common::Graph* comp_graph,
+    const cinn::common::Graph* comp_graph,
     const std::set<std::string>& temp_tensor_names) {
   // The tensor map helps to reserve only one tensor instance for a
   // tensor(called the same name).
@@ -69,7 +69,7 @@ std::map<std::string, ir::Tensor> InitialAssignBuffer(
   }
 
   // union-find to cluster the tensors with the same buffer.
-  common::UnionFind union_find;
+  cinn::common::UnionFind union_find;
 
   // unify all the tensor occurance with a global one, e.g. there are multiple
   // tensor B exists in the expression, replace them with a shared one.
@@ -107,7 +107,7 @@ std::map<std::string, ir::Tensor> InitialAssignBuffer(
   auto _topo_order_topo_edges_ = comp_graph->topological_order();
   auto& topo_order = std::get<0>(_topo_order_topo_edges_);
   auto& topo_edges = std::get<1>(_topo_order_topo_edges_);
-  for (common::GraphNode* n : topo_order) {
+  for (cinn::common::GraphNode* n : topo_order) {
     auto nn = n->safe_as<lang::detail::CompuGraphNode>();
     CHECK(nn);
     {
@@ -124,7 +124,7 @@ std::map<std::string, ir::Tensor> InitialAssignBuffer(
   // Get a center of the cluster, it will consider the following rules
   // 1. Prefer a tensor arg than a temp tensor.
   auto cluster_get_center_tensor =
-      [&](const std::vector<common::UnionFindNode*>& cluster) {
+      [&](const std::vector<cinn::common::UnionFindNode*>& cluster) {
         ir::Tensor some_tensor;
         // try to find a node that is a tensor_arg, allocate buffer for it, and
         // make others share buffer with it.

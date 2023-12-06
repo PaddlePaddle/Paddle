@@ -19,6 +19,7 @@ from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
     test_legacy_and_pir,
+    test_legacy_only,
     test_pir_only,
 )
 
@@ -89,28 +90,33 @@ class TestLenWithTensorArray(TestLen):
 # The unittest is used to test coverage by fake transformed code.
 def len_with_selected_rows(place):
     # create selected_rows variable
+    paddle.enable_static()
     non_used_initializer = paddle.nn.initializer.Constant(0.0)
-    var = paddle.pir.core.create_parameter(
+    var = paddle.static.create_parameter(
+        name="X",
         dtype="float32",
         shape=[5, 20],
-        type=base.core.VarDesc.VarType.SELECTED_ROWS,
-        initializer=non_used_initializer,
     )
-    x_name = var.name
+    selected_var = (
+        paddle.base.libpaddle.pir.create_selected_rows_type_by_dense_tensor(
+            var.type()
+        )
+    )
+    var.set_type(selected_var)
     # y is Variable(SelectedRows)
     y = clip.merge_selected_rows(var)
     y_len = Call(len)(y)
 
     # z is inner tensor with shape [4, 2]
     z = clip.get_tensor_from_selected_rows(y)
-    z_len = Call(len)(z)
+    z_len = paddle.shape(z)[0]
 
     # set data for selected_rows
     x_rows = [0, 2, 2, 4, 19]
     row_numel = 2
     np_array = np.ones((len(x_rows), row_numel)).astype("float32")
 
-    x_var = base.global_scope().var(x_name).get_selected_rows()
+    x_var = base.global_scope().var("X").get_selected_rows()
     x_var.set_rows(x_rows)
     x_var.set_height(20)
     x_tensor = x_var.get_tensor()
@@ -124,6 +130,7 @@ def len_with_selected_rows(place):
 
 
 def legacy_len_with_selected_rows(place):
+    paddle.enable_static()
     block = paddle.static.default_main_program().global_block()
     # create selected_rows variable
     var = block.create_var(
@@ -165,6 +172,7 @@ class TestLenWithSelectedRows(Dy2StTestBase):
             else base.CPUPlace()
         )
 
+    @test_legacy_only
     @test_ast_only
     def test_len_legacy(self):
         selected_rows_var_len, var_tensor_len = legacy_len_with_selected_rows(

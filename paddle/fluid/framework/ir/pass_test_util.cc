@@ -187,7 +187,8 @@ void InitLoDTensorHolder(const Scope& scope,
                          const T* data) {
   auto var = scope.FindLocalVar(var_name);
   auto tensor = var->GetMutable<phi::DenseTensor>();
-  auto* tensor_mem_ptr = tensor->mutable_data<T>(phi::make_ddim(dims), place);
+  auto* tensor_mem_ptr =
+      tensor->mutable_data<T>(common::make_ddim(dims), place);
   if (data != nullptr) {
     std::memcpy(tensor_mem_ptr, data, tensor->memory_size());
   } else {
