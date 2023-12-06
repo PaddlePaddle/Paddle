@@ -413,7 +413,7 @@ def append_backward_ops(
                 value in state.value_to_valuegrad
                 and len(state.value_to_valuegrad[value]) > 1
             ):
-                append_add_n(bwd_block, value)
+                append_add_n(value)
 
             if (
                 value not in state.value_to_valuegrad
@@ -705,7 +705,7 @@ def append_backward_ops(
                 if op.num_operands() == 0 and op.num_results() != 0:
                     for value in op.results():
                         if len(state.value_to_valuegrad[value]) > 1:
-                            append_add_n(bwd_block, value)
+                            append_add_n(value)
                         else:
                             state.op_to_opgrad[op] = []
                 else:
