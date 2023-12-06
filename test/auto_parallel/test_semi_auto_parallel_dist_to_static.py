@@ -31,7 +31,7 @@ class TestSemiAutoParallelStaticDecorate(test_base.CommunicationTestDistBase):
         )
         for envs in envs_list:
             self.run_test_case(
-                "semi_auto_parallel_static_decorate_api.py",
+                "semi_auto_parallel_dist_to_static_api.py",
                 user_defined_envs=envs,
             )
 
@@ -41,7 +41,7 @@ class TestSemiAutoParallelStaticDecorate(test_base.CommunicationTestDistBase):
         )
         for envs in envs_list:
             self.run_test_case(
-                "semi_auto_parallel_static_decorate_mlp.py",
+                "semi_auto_parallel_dist_to_static_mlp.py",
                 user_defined_envs=envs,
             )
 

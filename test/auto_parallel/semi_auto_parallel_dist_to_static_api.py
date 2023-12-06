@@ -138,16 +138,23 @@ class TestSimpleNetForSemiAutoParallel(unittest.TestCase):
         with self.assertRaises(ValueError):
             main_program = dist_model.dist_main_program("prediction")
 
-    def run_dy2static(self, layer, opt, data_loader, mesh):
+    def run_test(self):
+        mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+
+        layer = DemoNet(mesh, "dp_mp_demonet", shard_weight=True)
+        opt = paddle.optimizer.SGD(
+            learning_rate=0.1, parameters=layer.parameters()
+        )
+
         # create loss
         loss_fn = nn.MSELoss()
 
         # static training
-        dist_model, dist_loader = dist.static_decorate(
-            layer, data_loader, loss_fn, opt
+        dist_model, dist_loader = dist.to_static(
+            layer, self.data_loader, loss_fn, opt
         )
 
-        # execute __call__ before calling train()/eval()/predict()
+        dist_model._mode = None
         with self.assertRaises(ValueError):
             for batch_id, (image, label) in enumerate(dist_loader()):
                 loss = dist_model(image, label)
@@ -206,23 +213,9 @@ class TestSimpleNetForSemiAutoParallel(unittest.TestCase):
         dist_model._engine._has_prepared["eval"] = True
         dist_model._engine._has_prepared["predict"] = True
 
-    def test_dp_mp_demo_net(self):
-        mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
-
-        dy2static_layer = DemoNet(
-            mesh, "dp_mp_demonet", shard_input=True, shard_weight=True
-        )
-        dy2static_opt = paddle.optimizer.SGD(
-            learning_rate=0.1, parameters=dy2static_layer.parameters()
-        )
-
-        self.run_dy2static(
-            dy2static_layer, dy2static_opt, self.data_loader, mesh
-        )
-
     # python -m paddle.distributed.launch --devices=0,1 semi_auto_parallel_static_decorate_api.py
     def run_test_case(self):
-        self.test_dp_mp_demo_net()
+        self.run_test()
 
 
 if __name__ == '__main__':

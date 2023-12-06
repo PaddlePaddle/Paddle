@@ -120,7 +120,7 @@ class TestSimpleNetForSemiAutoParallel:
         loss_fn = nn.MSELoss()
 
         # static training
-        dist_model, dist_loader = dist.static_decorate(
+        dist_model, dist_loader = dist.to_static(
             layer, data_loader, loss_fn, opt
         )
         loss_list = []
