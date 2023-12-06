@@ -20,6 +20,7 @@
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/same_status_reshard_function.h"
+#include "paddle/phi/core/distributed/store/store_utils.h"
 #include "paddle/phi/kernels/all_reduce_kernel.h"
 #include "paddle/phi/kernels/elementwise_divide_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
@@ -62,6 +63,13 @@ void PToRReshardFunction::Eval(DeviceContext* dev_ctx,
   int64_t reduce_type = static_cast<int64_t>(in_reduce_type);
   VLOG(3) << "Transfer from partial to replicated status with reduce type "
           << reduce_type;
+
+  // const auto& out_process_ids = out_dist_attr.process_mesh().process_ids();
+  // VLOG(3) << "in_process_ids: " << in_process_ids;
+  // VLOG(3) << "out_process_ids: " << out_process_ids;
+
+  VLOG(3) << "in_dist_attr: " << in_dist_attr;
+  VLOG(3) << "out_dist_attr: " << out_dist_attr;
 
   RESHARD_FUNCTOR_WITH_COMM(dev_ctx,
                             AllReduce,
@@ -123,14 +131,21 @@ void PToRReshardFunctionCrossMesh::Eval(phi::DeviceContext* dev_ctx,
   tmp_dist_attr.set_process_mesh(out_process_mesh);
   same_status_func.Eval(dev_ctx, in, tmp_dist_attr, &tmp_result);
 
-  PToRReshardFunction p_to_r_func;
-  PADDLE_ENFORCE(
-      p_to_r_func.IsSuitable(tmp_result, out_dist_attr),
-      phi::errors::InvalidArgument(
-          "Invoke the p to r reshard function is not valid from %s to %s.",
-          tmp_result.dist_attr(),
-          out_dist_attr));
-  p_to_r_func.Eval(dev_ctx, tmp_result, out_dist_attr, out);
+  int64_t cur_global_rank = phi::distributed::GetCurGlobalRank();
+  if (out_process_mesh.contains(cur_global_rank)) {
+    PToRReshardFunction p_to_r_func;
+    PADDLE_ENFORCE(
+        p_to_r_func.IsSuitable(tmp_result, out_dist_attr),
+        phi::errors::InvalidArgument(
+            "Invoke the p to r reshard function is not valid from %s to %s.",
+            tmp_result.dist_attr(),
+            out_dist_attr));
+    p_to_r_func.Eval(dev_ctx, tmp_result, out_dist_attr, out);
+  } else {
+    SetDistProps(out, in.dims(), out_dist_attr);
+    SetValue(out, tmp_result.value());
+  }
+  // p_to_r_func.Eval(dev_ctx, tmp_result, out_dist_attr, out);
 }
 
 }  // namespace distributed

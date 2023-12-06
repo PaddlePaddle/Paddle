@@ -1640,10 +1640,12 @@ class DistForwardAPI(ForwardAPI):
                 # TODO(GhostScreaming): for inplace view operators like reshape,
                 # input and output may have different shape. If they have no specified
                 # InferSPMD rules, just set replicated dist_attr for them.
-                if (
-                    self.need_to_generate_code_for_inplace_impl(i)
-                    and self.outputs['names'][i] not in self.view_map
-                ):
+                if self.need_to_generate_code_for_inplace_impl(i):
+                    if (
+                        self.generate_general_infer_spmd
+                        and self.outputs['names'][i] in self.view_map
+                    ):
+                        continue
                     need_reshard = (
                         "true" if self.generate_general_infer_spmd else "false"
                     )

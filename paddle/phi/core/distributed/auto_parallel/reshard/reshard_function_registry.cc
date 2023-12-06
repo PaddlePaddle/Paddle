@@ -61,6 +61,7 @@ REGISTER_RESHARD_FUNC(RToPReshardFunctionCrossMesh);
 REGISTER_RESHARD_FUNC(PToRReshardFunction);
 REGISTER_RESHARD_FUNC(PToRReshardFunctionCrossMesh);
 REGISTER_RESHARD_FUNC(PToSReshardFunction);
+REGISTER_RESHARD_FUNC(PToSReshardFunctionCrossMesh);
 REGISTER_RESHARD_FUNC(SToSReshardFunction);
 REGISTER_RESHARD_FUNC(SameStatusReshardFunction);
 REGISTER_RESHARD_FUNC(SameNdMeshReshardFunction);

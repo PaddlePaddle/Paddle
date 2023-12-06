@@ -875,7 +875,8 @@ void ReshardKernelOutputToApiOutput(
     phi::distributed::DistTensor* dist_tensor =
         static_cast<phi::distributed::DistTensor*>(tensor_out.get());
     dist_tensor->unsafe_set_dims(src_tensor->dims());
-    if (ReshardIsNeeded(src_tensor->dist_attr(), dist_tensor->dist_attr())) {
+    if (ReshardIsNeededWithPartial(src_tensor->dist_attr(),
+                                   dist_tensor->dist_attr())) {
       VLOG(6) << "BwdAPI KernelOut to ApiOut - "
               << ReshardDebugInfo(*src_tensor, dist_tensor->dist_attr());
       auto* func = phi::distributed::ChooseProperReshardFunction(
