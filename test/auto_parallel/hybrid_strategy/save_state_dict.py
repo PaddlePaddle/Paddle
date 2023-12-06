@@ -25,19 +25,16 @@ def get_global_state_dict():
     return {"w1": w1, "w2": w2}
 
 
-def ckpt_path():
-    return os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "tmp_ckpt_output"
-    )
-
-
 class TestSaveStateDict:
+    def __init__(self):
+        self._ckpt_path = os.getenv("ckpt_path")
+
     def test_save_state_dict_with_one_device(self):
         global_state_dict = get_global_state_dict()
         keys = list(global_state_dict.keys())
         w1, w2 = list(global_state_dict.values())
         state_dict = dict(zip(keys, [w1, w2]))
-        save_state_dict(state_dict, ckpt_path())
+        save_state_dict(state_dict, self._ckpt_path)
 
     def test_save_state_dict_with_four_devices(self):
         global_state_dict = get_global_state_dict()
@@ -52,7 +49,7 @@ class TestSaveStateDict:
             w2, mesh2, [dist.Shard(0), dist.Replicate()]
         )
         state_dict = dict(zip(keys, [sharded_w1, sharded_w2]))
-        save_state_dict(state_dict, ckpt_path())
+        save_state_dict(state_dict, self._ckpt_path)
 
     def run_test_case(self):
         device_num = int(os.getenv("device_num"))

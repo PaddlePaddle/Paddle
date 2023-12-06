@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
+import tempfile
 import unittest
 
 import collective.test_communication_api_base as test_base
-from auto_parallel.hybrid_strategy.save_state_dict import ckpt_path
 
 
 class TestSemiAutoParallelDPMPStrategy(test_base.CommunicationTestDistBase):
@@ -27,17 +26,19 @@ class TestSemiAutoParallelDPMPStrategy(test_base.CommunicationTestDistBase):
             "seed": "2023",
         }
         self._changeable_envs = {"backend": ["gpu"]}
-        os.system(f"rm -rf {ckpt_path()}")
 
     def test_simple_net_bybrid_strategy(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
         )
         for envs in envs_list:
+            ckpt_path = tempfile.TemporaryDirectory()
+            envs["ckpt_path"] = ckpt_path.name
             self.run_test_case(
                 "semi_auto_parallel_simple_net_dp_mp.py",
                 user_defined_envs=envs,
             )
+            ckpt_path.cleanup()
 
 
 class TestSemiAutoParallelHybridStrategy(test_base.CommunicationTestDistBase):
@@ -52,17 +53,19 @@ class TestSemiAutoParallelHybridStrategy(test_base.CommunicationTestDistBase):
             "seed": "2023",
         }
         self._changeable_envs = {"backend": ["gpu"]}
-        os.system(f"rm -rf {ckpt_path()}")
 
     def test_simple_net_bybrid_strategy(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
         )
         for envs in envs_list:
+            ckpt_path = tempfile.TemporaryDirectory()
+            envs["ckpt_path"] = ckpt_path.name
             self.run_test_case(
                 "semi_auto_parallel_simple_net_dp_mp_pp.py",
                 user_defined_envs=envs,
             )
+            ckpt_path.cleanup()
 
 
 if __name__ == "__main__":

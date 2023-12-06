@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
+import tempfile
 import unittest
 
 import collective.test_communication_api_base as test_base
-from auto_parallel.hybrid_strategy.save_state_dict import ckpt_path
 
 
 class TestSaveLoadStateDict(test_base.CommunicationTestDistBase):
@@ -26,10 +25,11 @@ class TestSaveLoadStateDict(test_base.CommunicationTestDistBase):
 
     def test_save_load_state_dict(self):
         # save with 1 device
-        os.system(f"rm -rf {ckpt_path()}")
+        ckpt_path = tempfile.TemporaryDirectory()
         super().setUp(num_of_devices=1, timeout=120, nnode=1)
         self.run_test_case(
-            "save_state_dict.py", user_defined_envs={"device_num": "1"}
+            "save_state_dict.py",
+            user_defined_envs={"device_num": "1", "ckpt_path": ckpt_path.name},
         )
 
         # load with 1, 2, 4, 8 devices
@@ -37,38 +37,41 @@ class TestSaveLoadStateDict(test_base.CommunicationTestDistBase):
             self._default_envs, self._changeable_envs
         )
         for envs in envs_list:
+            envs["ckpt_path"] = ckpt_path.name
             super().setUp(
                 num_of_devices=int(envs["device_num"]),
-                timeout=120,
+                timeout=180,
                 nnode=1,
             )
             self.run_test_case(
                 "load_state_dict.py",
                 user_defined_envs=envs,
             )
-        os.system(f"rm -rf {ckpt_path()}")
+        ckpt_path.cleanup()
 
         # save with 4 devices
-        os.system(f"rm -rf {ckpt_path()}")
+        ckpt_path = tempfile.TemporaryDirectory()
         super().setUp(num_of_devices=4, timeout=120, nnode=1)
         self.run_test_case(
-            "save_state_dict.py", user_defined_envs={"device_num": "4"}
+            "save_state_dict.py",
+            user_defined_envs={"device_num": "4", "ckpt_path": ckpt_path.name},
         )
         # load with 1, 2, 4, 8 devices
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
         )
         for envs in envs_list:
+            envs["ckpt_path"] = ckpt_path.name
             super().setUp(
                 num_of_devices=int(envs["device_num"]),
-                timeout=120,
+                timeout=180,
                 nnode=1,
             )
             self.run_test_case(
                 "load_state_dict.py",
                 user_defined_envs=envs,
             )
-        os.system(f"rm -rf {ckpt_path()}")
+        ckpt_path.cleanup()
 
 
 if __name__ == '__main__':

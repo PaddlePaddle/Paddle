@@ -41,7 +41,7 @@ def get_rank_to_files(path, state_dict, process_group, use_dist):
     ]
     assert (
         len(metadata_files) > 0
-    ), "No metadata file found in the checkpoint directory:{path}."
+    ), f"No metadata file found in the checkpoint directory:{path}."
     # The neccesary files to be read
     tensor_key_list = []
     necessary_files = []
@@ -163,7 +163,7 @@ def get_local_load_files(rank_to_files):
                 if f not in file_to_ranks:
                     file_to_ranks[f] = []
                 file_to_ranks[f].append(r)
-        logger.info(f"file_to_ranks:{file_to_ranks}")
+        logger.debug(f"file_to_ranks:{file_to_ranks}")
         if file in file_to_ranks:
             for r in file_to_ranks[file]:
                 rank_to_not_read_files[r].remove(file)

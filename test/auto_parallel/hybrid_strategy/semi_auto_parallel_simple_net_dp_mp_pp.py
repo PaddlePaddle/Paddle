@@ -14,7 +14,6 @@
 
 import os
 
-from auto_parallel.hybrid_strategy.save_state_dict import ckpt_path
 from auto_parallel.semi_auto_parallel_simple_net import (
     DemoNet,
     TestSimpleNetForSemiAutoParallel,
@@ -32,6 +31,7 @@ class TestSimpleNetHybridStrategyForSemiAutoParallel(
         self._dtype = os.getenv("dtype")
         self._backend = os.getenv("backend")
         self._seed = eval(os.getenv("seed"))
+        self._ckpt_path = os.getenv("ckpt_path")
         self._mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
         self._pp_mesh0 = dist.ProcessMesh(
             [[0, 1], [2, 3]], dim_names=["x", "y"]
@@ -111,15 +111,14 @@ class TestSimpleNetHybridStrategyForSemiAutoParallel(
             local_state_dict[k] = (
                 v._local_value().clone() if v._is_initialized() else None
             )
-        paddle.distributed.save_state_dict(state_dict, ckpt_path())
+        paddle.distributed.save_state_dict(state_dict, self._ckpt_path)
         for k, v in state_dict.items():
             v._local_value().add_(paddle.ones_like(v._local_value()))
-        paddle.distributed.load_state_dict(state_dict, ckpt_path())
+        paddle.distributed.load_state_dict(state_dict, self._ckpt_path)
         for k, v in state_dict.items():
             assert k in local_state_dict, k
             if v._is_initialized():
                 self.check_tensor_eq(v._local_value(), local_state_dict[k])
-        os.system(f"rm -rf {ckpt_path()}")
 
     def run_test_case(self):
         self.test_dp_mp_pp_demo_net()

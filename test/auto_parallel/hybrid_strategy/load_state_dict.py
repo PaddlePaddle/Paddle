@@ -16,7 +16,6 @@ import os
 
 import numpy as np
 from auto_parallel.hybrid_strategy.save_state_dict import (
-    ckpt_path,
     get_global_state_dict,
 )
 
@@ -30,13 +29,16 @@ from paddle.distributed.checkpoint.utils import (
 
 
 class TestLoadStateDict:
+    def __init__(self):
+        self._ckpt_path = os.getenv("ckpt_path")
+
     def test_load_state_dict_with_one_device(self):
         global_state_dict = get_global_state_dict()
         saved_w1, saved_w2 = list(global_state_dict.values())
         w1 = paddle.zeros_like(saved_w1)
         w2 = paddle.zeros_like(saved_w2)
         state_dict = dict(zip(list(global_state_dict.keys()), [w1, w2]))
-        load_state_dict(state_dict, ckpt_path())
+        load_state_dict(state_dict, self._ckpt_path)
         # check
         expect_w1 = saved_w1
         expect_w2 = saved_w2
@@ -62,7 +64,7 @@ class TestLoadStateDict:
         state_dict = dict(
             zip(list(global_state_dict.keys()), [sharded_w1, sharded_w2])
         )
-        load_state_dict(state_dict, ckpt_path())
+        load_state_dict(state_dict, self._ckpt_path)
         # check
         cur_rank = paddle.distributed.get_rank()
         expect_w1 = saved_w1.split(4, axis=0)[cur_rank]
@@ -85,7 +87,7 @@ class TestLoadStateDict:
         state_dict = dict(
             zip(list(global_state_dict.keys()), [sharded_w1, sharded_w2])
         )
-        load_state_dict(state_dict, ckpt_path())
+        load_state_dict(state_dict, self._ckpt_path)
         # check
         cur_rank = paddle.distributed.get_rank()
         expect_w1 = saved_w1.split(2, axis=0)[cur_rank]
@@ -108,7 +110,7 @@ class TestLoadStateDict:
         state_dict = dict(
             zip(list(global_state_dict.keys()), [sharded_w1, sharded_w2])
         )
-        load_state_dict(state_dict, ckpt_path())
+        load_state_dict(state_dict, self._ckpt_path)
         # check
         cur_rank = paddle.distributed.get_rank()
         local_shape, global_offset = compute_local_shape_and_global_offset(
@@ -150,7 +152,7 @@ class TestLoadStateDict:
         elif device_num == 8:
             self.test_load_state_dict_with_eight_devices()
         else:
-            raise ValueError("device_num should be 2,4 or 8")
+            raise ValueError("device_num should be 1, 2, 4 or 8")
 
 
 if __name__ == '__main__':
