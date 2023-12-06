@@ -910,7 +910,8 @@ class LSTMCell(RNNCellBase):
         input_size (int): The input size.
         hidden_size (int): The hidden size.
         proj_size (int, optional): If specified, the output hidden state
-            will be projected to `proj_size`.
+            will be projected to `proj_size`. `proj_size` must be smaller than
+            `hidden_size`. Default: None.
         weight_ih_attr(ParamAttr, optional): The parameter attribute for
             `weight_ih`. Default: None.
         weight_hh_attr(ParamAttr, optional): The parameter attribute for
@@ -983,6 +984,16 @@ class LSTMCell(RNNCellBase):
                     self.__class__.__name__, hidden_size
                 )
             )
+        if proj_size and proj_size <= 0:
+            raise ValueError(
+                "proj_size of {} must be greater than 0, but now equals to {}".format(
+                    self.__class__.__name__, hidden_size
+                )
+            )
+
+        if proj_size and proj_size >= hidden_size:
+            raise ValueError("proj_size must be smaller than hidden_size")
+
         std = 1.0 / math.sqrt(hidden_size)
         if weight_ih_attr is not False:
             self.weight_ih = self.create_parameter(
@@ -1912,7 +1923,7 @@ class LSTM(RNNBase):
 
         \widetilde{c}_{t} & = \tanh (W_{ig}x_{t} + b_{ig} + W_{hg}h_{t-1} + b_{hg})
 
-        c_{t} & = f_{t} * c_{t-1} + i_{t} * \widetilde{c}_{t}
+        c_{t} & = f_{t} * c_{t-2} + i_{t} * \widetilde{c}_{t}
 
         h_{t} & = o_{t} * \tanh(c_{t})
 
@@ -1931,7 +1942,8 @@ class LSTM(RNNBase):
             or "bidirect"(or "bidirectional"). When "bidirect", the way to merge
             outputs of forward and backward is concatenating. Defaults to "forward".
         proj_size (int, optional): If specified, the output hidden state of each layer
-            will be projected to `proj_size`.
+            will be projected to `proj_size`. `proj_size` must be smaller than `hidden_size`.
+            Default to None.
         time_major (bool, optional): Whether the first dimension of the input
             means the time steps. If time_major is True, the shape of Tensor is
             [time_steps,batch_size,input_size], otherwise [batch_size, time_steps,input_size].
