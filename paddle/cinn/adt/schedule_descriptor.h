@@ -120,4 +120,8 @@ class ScheduleMesh;
 LoopDescriptors CreateScheduleDescriptor(const ScheduleMesh& sched_mesh,
                                          const List<LoopType>& loop_types);
 
+LoopDescriptors CreateScheduleDescriptor(const List<ScheduleMesh>& sched_meshs,
+                                         const List<List<LoopType>> loop_types,
+                                         int shardable_prefix_size);
+
 }  // namespace cinn::adt

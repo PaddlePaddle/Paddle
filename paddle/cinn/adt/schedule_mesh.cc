@@ -172,20 +172,36 @@ class ScheduleMeshPolicy {
   ScheduleMeshPolicy(ScheduleMeshPolicy&&) = delete;
   virtual ~ScheduleMeshPolicy() = default;
 
-  virtual bool Match(const List<ScheduleDim>& loop_sizes) const = 0;
+  virtual bool Match(const ShardableDimAndPerm& dim_perm) const = 0;
 
   virtual std::tuple<ScheduleMesh, List<LoopType>> Optimize(
-      const List<ScheduleDim>& loop_sizes) const = 0;
+      const ShardableDimAndPerm& dim_perm) const = 0;
 
  protected:
   ScheduleMeshPolicy() = default;
 };
 
+List<int> ExpandToN(const List<int>& perm, int n) {
+  CHECK_LE(perm->size(), n);
+  List<int> ret{};
+  ret->insert(ret->begin(), perm->begin(), perm->end());
+  for (int i = 0; i < n; ++i) {
+    if (std::find(perm->begin(), perm->end(), i) == perm->end()) {
+      ret->push_back(i);
+    } else {
+      // Do nothing
+    }
+  }
+  CHECK_EQ(ret->size(), n);
+  return ret;
+}
+
 class NaiveInjectiveScheduleMeshPolicy final : public ScheduleMeshPolicy {
  public:
   NaiveInjectiveScheduleMeshPolicy() = default;
 
-  bool Match(const List<ScheduleDim>& loop_sizes) const override {
+  bool Match(const ShardableDimAndPerm& dim_perm) const override {
+    const auto& [loop_sizes, _] = dim_perm;
     for (const auto& sched_dim : *loop_sizes) {
       if (!sched_dim.Has<tInjective<LoopSize>>()) {
         return false;
@@ -195,9 +211,16 @@ class NaiveInjectiveScheduleMeshPolicy final : public ScheduleMeshPolicy {
   }
 
   std::tuple<ScheduleMesh, List<LoopType>> Optimize(
-      const List<ScheduleDim>& loop_sizes) const override {
+      const ShardableDimAndPerm& dim_perm) const override {
     VLOG(4) << "Match NaiveInjectiveScheduleMeshPolicy";
+    const auto& [loop_sizes, perm] = dim_perm;
     ScheduleMesh sched_mesh{loop_sizes};
+    if (!perm->empty()) {
+      sched_mesh =
+          MeshTranspose(sched_mesh, ExpandToN(perm, loop_sizes->size()));
+    } else {
+      // Do nothing
+    }
     List<LoopType> loop_types{};
     for (const auto& _ : *loop_sizes) {
       loop_types->emplace_back(Temporal{});
@@ -206,11 +229,29 @@ class NaiveInjectiveScheduleMeshPolicy final : public ScheduleMeshPolicy {
   }
 };
 
+List<ScheduleDim> PermuteLoopSizes(const List<ScheduleDim>& loop_sizes,
+                                   const List<int>& perm) {
+  CHECK_GE(loop_sizes->size(), perm->size());
+  List<ScheduleDim> ret{};
+  for (std::size_t i = 0; i < perm->size(); ++i) {
+    ret->push_back(loop_sizes->at(perm->at(i)));
+  }
+  for (std::size_t i = 0; i < loop_sizes->size(); ++i) {
+    if (std::find(perm->begin(), perm->end(), i) == perm->end()) {
+      ret->push_back(loop_sizes->at(i));
+    } else {
+      // Do nothing
+    }
+  }
+  return ret;
+}
+
 class NaiveReduceScheduleMeshPolicy final : public ScheduleMeshPolicy {
  public:
   NaiveReduceScheduleMeshPolicy() = default;
 
-  bool Match(const List<ScheduleDim>& loop_sizes) const override {
+  bool Match(const ShardableDimAndPerm& dim_perm) const override {
+    const auto& [loop_sizes, _] = dim_perm;
     for (const auto& sched_dim : *loop_sizes) {
       if (!sched_dim.Has<tInjective<LoopSize>>()) {
         return true;
@@ -220,9 +261,17 @@ class NaiveReduceScheduleMeshPolicy final : public ScheduleMeshPolicy {
   }
 
   std::tuple<ScheduleMesh, List<LoopType>> Optimize(
-      const List<ScheduleDim>& loop_sizes) const override {
+      const ShardableDimAndPerm& dim_perm) const override {
     VLOG(4) << "Match NaiveReduceScheduleMeshPolicy";
+    auto [loop_sizes, perm] = dim_perm;
     ScheduleMesh sched_mesh{loop_sizes};
+    if (!perm->empty()) {
+      sched_mesh =
+          MeshTranspose(sched_mesh, ExpandToN(perm, loop_sizes->size()));
+      loop_sizes = PermuteLoopSizes(loop_sizes, perm);
+    } else {
+      // Do nothing
+    }
     List<LoopType> loop_types{};
     List<int> non_reduce_axes{};
     List<int> reduce_axes{};
@@ -235,118 +284,12 @@ class NaiveReduceScheduleMeshPolicy final : public ScheduleMeshPolicy {
         reduce_axes->emplace_back(i);
       }
     }
-    List<int> perm{};
-    perm->insert(perm->end(), non_reduce_axes->begin(), non_reduce_axes->end());
-    perm->insert(perm->end(), reduce_axes->begin(), reduce_axes->end());
-    sched_mesh = MeshTranspose(sched_mesh, perm);
-    return std::make_tuple(sched_mesh, loop_types);
-  }
-};
-
-class AllInjectiveScheduleMeshPolicy final : public ScheduleMeshPolicy {
- public:
-  AllInjectiveScheduleMeshPolicy() = default;
-
-  bool Match(const List<ScheduleDim>& loop_sizes) const override {
-    for (const auto& sched_dim : *loop_sizes) {
-      if (!sched_dim.Has<tInjective<LoopSize>>()) {
-        return false;
-      }
-      if (!GetLoopSize(sched_dim).Has<std::int64_t>()) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  std::tuple<ScheduleMesh, List<LoopType>> Optimize(
-      const List<ScheduleDim>& loop_sizes) const override {
-    ScheduleMesh sched_mesh{loop_sizes};
-    std::int64_t acc = 1;
-    for (const auto& sched_dim : *loop_sizes) {
-      acc *= GetLoopSize(sched_dim).Get<std::int64_t>();
-    }
-    sched_mesh = MeshReshape(sched_mesh, {acc});
-    sched_mesh = MeshPaddingRoundUp(sched_mesh, {kThreadSize});
-    sched_mesh = MeshReshape(sched_mesh, {-1, kThreadSize});
-
-    return std::make_tuple(sched_mesh, List<LoopType>{S0x{}, S1x{}});
-  }
-};
-
-List<int> ConcatIntLists(const List<int>& lhs, const List<int>& rhs) {
-  List<int> ret{};
-  for (int i : *lhs) {
-    ret->emplace_back(i);
-  }
-  for (int i : *rhs) {
-    ret->emplace_back(i);
-  }
-  return ret;
-}
-
-std::vector<std::int64_t> ConcatIntLists(const std::vector<std::int64_t>& lhs,
-                                         const std::vector<std::int64_t>& rhs) {
-  std::vector<std::int64_t> ret{};
-  for (int i : lhs) {
-    ret.emplace_back(i);
-  }
-  for (int i : rhs) {
-    ret.emplace_back(i);
-  }
-  return ret;
-}
-
-std::vector<std::optional<std::int64_t>> ConcatIntListsToOptionalList(
-    const std::vector<std::int64_t>& lhs,
-    const std::vector<std::int64_t>& rhs) {
-  std::vector<std::optional<std::int64_t>> ret{};
-  for (int i : lhs) {
-    ret.emplace_back(i);
-  }
-  for (int i : rhs) {
-    ret.emplace_back(i);
-  }
-  return ret;
-}
-
-class GeneralScheduleMeshPolicy final : public ScheduleMeshPolicy {
- public:
-  GeneralScheduleMeshPolicy() = default;
-
-  bool Match(const List<ScheduleDim>& loop_sizes) const override {
-    for (const auto& sched_dim : *loop_sizes) {
-      if (!GetLoopSize(sched_dim).Has<std::int64_t>()) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  std::tuple<ScheduleMesh, List<LoopType>> Optimize(
-      const List<ScheduleDim>& loop_sizes) const override {
-    const auto& injective_axes = GetInjectiveAxis(loop_sizes);
-    const auto& reduce_axes = GetReduceAxis(loop_sizes);
-
-    std::vector<std::int64_t> reduce_shape{};
-    for (int reduce_axis : *reduce_axes) {
-      reduce_shape.emplace_back(
-          GetLoopSize(loop_sizes->at(reduce_axis)).Get<std::int64_t>());
-    }
-
-    ScheduleMesh sched_mesh{loop_sizes};
-    sched_mesh =
-        MeshTranspose(sched_mesh, ConcatIntLists(injective_axes, reduce_axes));
-    sched_mesh = MeshReshape(sched_mesh, ConcatIntLists({-1}, reduce_shape));
-    sched_mesh = MeshPaddingRoundUp(
-        sched_mesh, ConcatIntListsToOptionalList({kThreadSize}, reduce_shape));
-    sched_mesh = MeshReshape(sched_mesh,
-                             ConcatIntLists({-1, kThreadSize}, reduce_shape));
-
-    List<LoopType> loop_types{S0x{}, S1x{}};
-    for (std::size_t i = 0; i < reduce_axes->size(); ++i) {
-      loop_types->emplace_back(Temporal{});
-    }
+    List<int> reduce_perm{};
+    reduce_perm->insert(
+        reduce_perm->end(), non_reduce_axes->begin(), non_reduce_axes->end());
+    reduce_perm->insert(
+        reduce_perm->end(), reduce_axes->begin(), reduce_axes->end());
+    sched_mesh = MeshTranspose(sched_mesh, reduce_perm);
     return std::make_tuple(sched_mesh, loop_types);
   }
 };
@@ -356,21 +299,32 @@ GetAllScheduleMeshPolicies() {
   static std::vector<std::unique_ptr<ScheduleMeshPolicy>> policies{};
   policies.emplace_back(std::make_unique<NaiveInjectiveScheduleMeshPolicy>());
   policies.emplace_back(std::make_unique<NaiveReduceScheduleMeshPolicy>());
-  policies.emplace_back(std::make_unique<AllInjectiveScheduleMeshPolicy>());
-  policies.emplace_back(std::make_unique<GeneralScheduleMeshPolicy>());
   return policies;
 }
 
 }  // namespace
 
 std::tuple<ScheduleMesh, List<LoopType>> CreateOptimizedScheduleMesh(
-    const List<ScheduleDim>& loop_sizes) {
+    const ShardableDimAndPerm& dim_perm) {
   for (const auto& policy : GetAllScheduleMeshPolicies()) {
-    if (policy->Match(loop_sizes)) {
-      return policy->Optimize(loop_sizes);
+    if (policy->Match(dim_perm)) {
+      return policy->Optimize(dim_perm);
     }
   }
   LOG(FATAL) << "Dead code, no valid schedule mesh policy found";
+}
+
+std::tuple<List<ScheduleMesh>, List<List<LoopType>>>
+CreateOptimizedScheduleMeshs(const List<ShardableDimAndPerm> dim_perms) {
+  List<ScheduleMesh> ret_mesh{};
+  List<List<LoopType>> ret_looptypes{};
+  for (const auto& dim_perm : *dim_perms) {
+    const auto& [mesh, loop_types] = CreateOptimizedScheduleMesh(dim_perm);
+    VLOG(1) << "Finish CreateOptimizedScheduleMesh";
+    ret_mesh->emplace_back(mesh);
+    ret_looptypes->emplace_back(loop_types);
+  }
+  return std::make_tuple(ret_mesh, ret_looptypes);
 }
 
 ScheduleMesh MeshReshape(const ScheduleMesh& sched_mesh,

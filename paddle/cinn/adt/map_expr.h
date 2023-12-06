@@ -155,25 +155,20 @@ using TensorIteratorExpr4TensorT =
 using LoopDescriptor4LoopIteratorT =
     std::function<LoopDescriptor(const Iterator&)>;
 
-// AnchoredMapStmt = (MapStmt Stmt, ScheduleMesh, tAnchor Tensor,
-// TensorIndexExpr4TensorT, TensorIteratorExpr4TensorT,
-// LoopDescriptor4LoopIteratorT)
+// AnchoredMapStmt = (MapStmt Stmt, TensorIndexExpr4TensorT,
+// TensorIteratorExpr4TensorT, LoopDescriptor4LoopIteratorT)
 class AnchoredMapStmt final : public Tuple<MapStmt<Stmt>,
-                                           ScheduleMesh,
-                                           tAnchor<Tensor>,
                                            TensorIndexExpr4TensorT,
                                            TensorIteratorExpr4TensorT,
                                            LoopDescriptor4LoopIteratorT> {
  public:
   using Tuple<MapStmt<Stmt>,
-              ScheduleMesh,
-              tAnchor<Tensor>,
               TensorIndexExpr4TensorT,
               TensorIteratorExpr4TensorT,
               LoopDescriptor4LoopIteratorT>::Tuple;
 
   TensorIndexExpr GetTensorIndexExpr(const Tensor& tensor) const {
-    const auto& TensorIndexExpr4Tensor = std::get<3>(tuple());
+    const auto& TensorIndexExpr4Tensor = std::get<1>(tuple());
     return TensorIndexExpr4Tensor(tensor);
   }
 };
@@ -191,12 +186,10 @@ class ConditionalAnchoredMapStmt
 using KernelBody = Tree<ConditionalAnchoredMapStmt, AnchoredMapStmt>;
 
 // Kernel = (KernelBody, In [Tensor], Out [Tensor])
-class Kernel final : public Tuple<List<AnchoredMapStmt>,
-                                  tIn<List<Tensor>>,
-                                  tOut<List<Tensor>>> {
+class Kernel final
+    : public Tuple<AnchoredMapStmt, tIn<List<Tensor>>, tOut<List<Tensor>>> {
  public:
-  using Tuple<List<AnchoredMapStmt>, tIn<List<Tensor>>, tOut<List<Tensor>>>::
-      Tuple;
+  using Tuple<AnchoredMapStmt, tIn<List<Tensor>>, tOut<List<Tensor>>>::Tuple;
 };
 
 // MapExpr = Kernel;

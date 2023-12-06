@@ -54,6 +54,13 @@ class IGroup final {
 
   const List<OpStmt>& op_stmts() const { return op_stmts_; }
 
+  template <typename DoEachT>
+  void VisitEachOpStmt(const DoEachT& DoEach) const {
+    for (const auto& op_stmt : *op_stmts_) {
+      DoEach(op_stmt);
+    }
+  }
+
   const AnchorIndex& anchor_index() const { return anchor_index_; }
 
   const Tensor& anchor_tensor() const { return GetTensor(anchor_index()); }

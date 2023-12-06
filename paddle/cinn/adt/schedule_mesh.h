@@ -69,7 +69,8 @@ List<DimExpr> GetOutputDimValues(const ScheduleMesh& sched_mesh);
 
 ScheduleMesh GetInputScheduleMesh(const ScheduleMesh& sched_mesh);
 
-std::tuple<ScheduleMesh, List<LoopType>> CreateOptimizedScheduleMesh(
-    const List<ScheduleDim>& loop_sizes);
+using ShardableDimAndPerm = std::pair<List<ScheduleDim>, List<int>>;
+std::tuple<List<ScheduleMesh>, List<List<LoopType>>>
+CreateOptimizedScheduleMeshs(const List<ShardableDimAndPerm>);
 
 }  // namespace cinn::adt

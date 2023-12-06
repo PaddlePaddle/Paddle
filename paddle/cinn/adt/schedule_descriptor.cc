@@ -32,6 +32,29 @@ LoopDescriptors CreateScheduleDescriptor(const ScheduleMesh& sched_mesh,
   return ret;
 }
 
+LoopDescriptors CreateScheduleDescriptor(const List<ScheduleMesh>& sched_meshs,
+                                         const List<List<LoopType>> loop_types,
+                                         int shardable_prefix_size) {
+  LoopDescriptors ret{};
+  const auto& sched_dims = GetOutputDimValues(sched_meshs->at(0));
+  CHECK_EQ(sched_dims->size(), loop_types->at(0)->size());
+  for (std::size_t i = 0; i < sched_dims->size(); ++i) {
+    ret->emplace_back(
+        LoopDescriptor{loop_types->at(0)->at(i), sched_dims->at(i)});
+  }
+  for (std::size_t i = 1; i < sched_meshs->size(); ++i) {
+    const auto& cur_sched_dims = GetOutputDimValues(sched_meshs->at(i));
+    const auto& cur_loop_types = loop_types->at(i);
+    CHECK_EQ(cur_sched_dims->size(), cur_loop_types->size());
+    for (std::size_t j = shardable_prefix_size; j < cur_sched_dims->size();
+         ++j) {
+      ret->emplace_back(
+          LoopDescriptor{cur_loop_types->at(j), cur_sched_dims->at(j)});
+    }
+  }
+  return ret;
+}
+
 List<LoopSize> GenerateLoopSizeFromSd(const LoopDescriptors& sd) {
   List<LoopSize> sd_sizes{};
   for (const auto& loop_descriptor : *sd) {

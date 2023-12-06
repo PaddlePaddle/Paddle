@@ -62,11 +62,9 @@ class MapExprToIrTranslator {
         node2lowered_funcs_(&node2lowered_funcs),
         map_expr_symbolic2dialect_symbolic_(map_expr_symbolic2dialect_symbolic),
         target_(target) {
-    const auto& [anchored_map_stmts, _0, _1] = map_expr.tuple();
-    CHECK_EQ(anchored_map_stmts->size(), 1);
-    TensorIteratorExpr4Tensor = std::get<4>(anchored_map_stmts->at(0).tuple());
-    LoopDescriptor4LoopIterator =
-        std::get<5>(anchored_map_stmts->at(0).tuple());
+    const auto& [anchored_map_stmt, _0, _1] = map_expr.tuple();
+    TensorIteratorExpr4Tensor = std::get<2>(anchored_map_stmt.tuple());
+    LoopDescriptor4LoopIterator = std::get<3>(anchored_map_stmt.tuple());
   }
 
   ir::Expr Translate() const {
@@ -177,9 +175,8 @@ class MapExprToIrTranslator {
   }
 
   ir::Expr Translate(const MapExpr& map_expr) const {
-    const auto& [anchored_map_stmts, _0, _1] = map_expr.tuple();
-    CHECK_EQ(anchored_map_stmts->size(), 1);
-    return Translate(anchored_map_stmts->at(0));
+    const auto& [anchored_map_stmt, _0, _1] = map_expr.tuple();
+    return Translate(anchored_map_stmt);
   }
 
   ir::Expr Translate(const AnchoredMapStmt& anchored_map_stmt) const {

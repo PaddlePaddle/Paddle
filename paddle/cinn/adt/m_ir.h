@@ -32,6 +32,8 @@ class MapIr final {
       : op_stmts_{op_stmts}, loop_iterators_(loop_iterators) {}
   MapIr(const MapIr&) = default;
   MapIr(MapIr&&) = default;
+  MapIr& operator=(const MapIr&) = default;
+  MapIr& operator=(MapIr&&) = default;
 
   const List<OpStmt>& op_stmts() const { return op_stmts_; }
 
