@@ -410,7 +410,7 @@ class SelectInputOp : public pir::Op<SelectInputOp> {
   void VerifySig();
   pir::Value mask() { return operand_source(0); }
   pir::OpResult out() { return result(0); }
-}
+};
 
 }  // namespace dialect
 }  // namespace paddle
