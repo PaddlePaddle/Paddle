@@ -23,7 +23,8 @@ paddle_test(
   DEPS
   gtest
   op_dialect_vjp
-  pir)
+  pir
+  pir_transforms)
 
 set_tests_properties(shape_optimization_test
                      PROPERTIES ENVIRONMENT "FLAGS_enable_pir_in_executor=true")
