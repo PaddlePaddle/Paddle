@@ -27,8 +27,6 @@
 namespace phi {
 namespace distributed {
 
-namespace {
-
 std::vector<int64_t> GetUnionProcessIds(std::vector<int64_t> in_process_ids,
                                         std::vector<int64_t> out_process_ids) {
   std::vector<int64_t> result;
@@ -41,8 +39,6 @@ std::vector<int64_t> GetUnionProcessIds(std::vector<int64_t> in_process_ids,
                  std::back_inserter(result));
   return result;
 }
-
-}  // namespace
 
 bool SameStatusReshardFunction::IsSuitable(
     const DistTensor& in, const TensorDistAttr& out_dist_attr) {
