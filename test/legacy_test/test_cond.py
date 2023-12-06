@@ -425,7 +425,7 @@ class TestCondInputOutput(unittest.TestCase):
                 in str(e.exception)
             )
 
-    # @test_with_pir_api
+    @test_with_pir_api
     def test_extremely_simple_net_with_op_in_condition(self):
         paddle.enable_static()
         main_program = base.Program()
@@ -450,17 +450,17 @@ class TestCondInputOutput(unittest.TestCase):
             else base.CPUPlace()
         )
         exe = base.Executor(place)
-        # if paddle.framework.in_pir_mode():
-        #     for p, g in grad_list:
-        #         if p == a:
-        #             da = g
-        #         if p == b:
-        #             db = g
-        #     ret = exe.run(main_program, fetch_list=[out, b, da, db])
-        # else:
-        ret = exe.run(
-            main_program, fetch_list=[out, b, a.grad_name, b.grad_name]
-        )
+        if paddle.framework.in_pir_mode():
+            for p, g in grad_list:
+                if p == a:
+                    da = g
+                if p == b:
+                    db = g
+            ret = exe.run(main_program, fetch_list=[out, b, da, db])
+        else:
+            ret = exe.run(
+                main_program, fetch_list=[out, b, a.grad_name, b.grad_name]
+            )
         # Note: fill_constant has loss of precision, you have to assertEqual
         # with values doens't lose precision in float-point number.
         self.assertEqual(ret[0][0], ret[1][0])

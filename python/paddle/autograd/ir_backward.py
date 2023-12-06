@@ -575,8 +575,17 @@ def append_backward_ops(
                     if len(state.value_to_valuegrad[value]) > 1:
                         append_add_n(block, value)
                     inputs_grad.append(state.value_to_valuegrad[value][0][0])
-
+                else:
+                    value_grad = paddle.full_like(
+                        value,
+                        0.0,
+                        dtype=value.dtype,
+                    )
+                    full_likeop = value_grad.get_defining_op()
+                    fullop = full_likeop.operand_source(1).get_defining_op()
+                    inputs_grad.append(full_likeop.result(0))
             paddle.base.libpaddle.pir.cf_yield(inputs_grad)
+
 
     # there are four patterns:
     # [builtin.combine , op1] (op1's one input is vectorType, outputs are not vectorType)
