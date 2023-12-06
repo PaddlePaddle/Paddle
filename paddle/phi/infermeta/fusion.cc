@@ -2627,21 +2627,21 @@ void FusedFCElementwiseLayerNormInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
-void Conv2dFusionInferMeta(const MetaTensor& input,
-                           const MetaTensor& filter,
-                           const MetaTensor& bias,
-                           const MetaTensor& residual_data,
-                           const std::vector<int>& strides,
-                           const std::vector<int>& paddings,
-                           const std::string& padding_algorithm,
-                           const std::vector<int>& dilations,
-                           int groups,
-                           const std::string& data_format,
-                           const std::string& activation,
-                           const std::vector<int>& split_channels,
-                           MetaTensor* output,
-                           std::vector<MetaTensor*> outputs,
-                           MetaConfig config) {
+void FusedConv2dAddActInferMeta(const MetaTensor& input,
+                                const MetaTensor& filter,
+                                const MetaTensor& bias,
+                                const MetaTensor& residual_data,
+                                const std::vector<int>& strides,
+                                const std::vector<int>& paddings,
+                                const std::string& padding_algorithm,
+                                const std::vector<int>& dilations,
+                                int groups,
+                                const std::string& data_format,
+                                const std::string& activation,
+                                const std::vector<int>& split_channels,
+                                MetaTensor* output,
+                                std::vector<MetaTensor*> outputs,
+                                MetaConfig config) {
   // TODO(liuyuanle): mkldnn seems only support nchw.
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
   std::vector<int64_t> out_shape = ComputeOutputShape(input,
@@ -2670,7 +2670,8 @@ void Conv2dFusionInferMeta(const MetaTensor& input,
         outputs.size(),
         split_channels.size(),
         phi::errors::InvalidArgument(
-            "The number of Output(Outputs) of operator 'conv2d_fusion' is "
+            "The number of Output(Outputs) of operator 'fused_conv2d_add_act' "
+            "is "
             "expected to be equal to the length of Attr(split_channels). But "
             "reiceved: the number of Output(Outputs) = %u; the length of "
             "Attr(split_channels) = %u, the content = [%s].",
