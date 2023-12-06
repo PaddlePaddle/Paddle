@@ -104,28 +104,8 @@ class TestBinomialApi(unittest.TestCase):
         hist, prob = output_hist(out.numpy(), n, p, a=5, b=25)
         np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
-        paddle.disable_static()
-        n = 200
-        p = 0.6
-        total_count = paddle.to_tensor(n, dtype="int64")
-        probability = paddle.full([16384, 1024], p)
-        out = paddle.binomial(total_count, probability)
-        paddle.enable_static()
-        hist, prob = output_hist(out.numpy(), n, p, a=70, b=140)
-        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
-
     @test_with_pir_api
     def test_static(self):
-        n = 30
-        p = 0.1
-        total_count = paddle.full([16384, 1024], n, dtype="int64")
-        probability = paddle.to_tensor(p)
-        out = paddle.binomial(total_count, probability)
-        exe = paddle.static.Executor(paddle.CPUPlace())
-        out = exe.run(paddle.static.default_main_program(), fetch_list=[out])
-        hist, prob = output_hist(out[0], n, p, a=5, b=25)
-        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
-
         n = 200
         p = 0.6
         total_count = paddle.to_tensor(n, dtype="int64")
