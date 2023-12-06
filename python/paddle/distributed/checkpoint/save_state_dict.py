@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import os
-from typing import Dict, List
+from typing import List
 
 import paddle
 from paddle.distributed.communication.group import is_initialized
@@ -72,10 +72,10 @@ def dedup_storage_metadata(global_state_dict):
 
 
 def save_state_dict(
-    state_dict: Dict[str, paddle.Tensor],
+    state_dict,
     path: str,
-    process_group: paddle.distributed.collective.Group = None,
-    coordinator_rank: int = 0,
+    process_group=None,
+    coordinator_rank=0,
 ) -> None:
     """
     Save the state_dict of model to path.

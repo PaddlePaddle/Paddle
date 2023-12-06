@@ -15,7 +15,7 @@
 import copy
 import os
 from dataclasses import dataclass
-from typing import Dict, Tuple
+from typing import Tuple
 
 import paddle
 from paddle.distributed.communication.group import is_initialized
@@ -347,10 +347,10 @@ def get_read_items(path, state_dict, process_group, use_dist):
 
 
 def load_state_dict(
-    state_dict: Dict[str, paddle.Tensor],
-    path: str,
-    process_group: paddle.distributed.collective.Group = None,
-    coordinator_rank: int = 0,
+    state_dict,
+    path,
+    process_group=None,
+    coordinator_rank=0,
 ) -> None:
     """
     Load the state_dict inplace from a checkpoint path.
