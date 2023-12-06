@@ -594,11 +594,8 @@ class CodeGen:
             for name in op_info.input_name_list[::-1]:
                 type = mapping_input_name_to_type[name]
                 optional = mapping_input_name_to_optional[name]
-                if (
-                    function_name := mapping_type_to_function_name.get(
-                        type, None
-                    )
-                ) is None:
+                function_name = mapping_type_to_function_name.get(type, None)
+                if function_name is None:
                     continue
 
                 if optional == 'false':
@@ -638,9 +635,8 @@ class CodeGen:
             if name not in mapping_name_to_type:
                 return ""
             type = mapping_name_to_type[name]
-            if (
-                function_name := mapping_type_to_function_name.get(type, None)
-            ) is None:
+            function_name = mapping_type_to_function_name.get(type, None)
+            if function_name is None:
                 return ""
             return CHECK_DATA_TYPE_TEMPLATE.format(
                 function=function_name,
