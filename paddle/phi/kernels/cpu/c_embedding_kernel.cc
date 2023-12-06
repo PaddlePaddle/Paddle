@@ -46,6 +46,7 @@ void CEmbeddingKernel(const Context& ctx,
                       const DenseTensor& w,
                       const DenseTensor& ids,
                       int64_t start_index,
+                      int64_t vocab_size,
                       DenseTensor* out) {
   VLOG(10) << "table_dims:" << w.dims();
   const T* table_data = w.data<T>();

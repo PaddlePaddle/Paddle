@@ -47,7 +47,7 @@ void quant_compute(const DeviceContext& dev_ctx,
   DDim dims = {num};
   const T* x_data = x.data<T>();
   D* out_data = out->data<D>();
-  float* scale_data = scale->data<float>();
+  T* scale_data = scale->data<T>();
 
   DenseTensor x_int(out->type());
 
@@ -108,7 +108,7 @@ void WeightQuantizeKernel(const Context& dev_ctx,
                           DenseTensor* out,
                           DenseTensor* scale) {
   dev_ctx.template Alloc<int8_t>(out);
-  dev_ctx.template Alloc<float>(scale);
+  dev_ctx.template Alloc<T>(scale);
   if (algo == "weight_only_int8" || algo == "llm.int8") {
     quant_compute<Context, T, int8_t, 8>(dev_ctx, x, out, scale, algo, arch);
   } else if (algo == "weight_only_int4") {

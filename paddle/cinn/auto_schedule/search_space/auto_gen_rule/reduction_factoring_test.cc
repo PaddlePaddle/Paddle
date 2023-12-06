@@ -39,7 +39,7 @@ class TestReductionFactoring : public TestAutoGenRuleBase {
                          const std::vector<int>& reduce_dim,
                          const std::string& block_name,
                          const std::string& expected_ir) {
-    Initialize(common::DefaultNVGPUTarget());
+    Initialize(cinn::common::DefaultNVGPUTarget());
     // In order to forcibly use the most basic Compute of reduction
     FLAGS_cinn_new_group_scheduler = 1;
     auto test_program = tests::ReduceBuilder().Build(
@@ -71,7 +71,7 @@ class TestReductionFactoring : public TestAutoGenRuleBase {
 
 TEST_F(TestReductionFactoring, AnalyseApplyType) {
   Context::Global().ResetNameId();
-  Initialize(common::DefaultNVGPUTarget());
+  Initialize(cinn::common::DefaultNVGPUTarget());
   auto test_program =
       tests::OpBuilder("elementwise_add").Build({{"X", {4, 5}}, {"Y", {4, 5}}});
   ir::IRSchedule ir_schedule = MakeIRSchedule(test_program);

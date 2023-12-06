@@ -158,6 +158,7 @@ class TEST_API TensorDistAttr {
   bool verify_partial_status() const;
 
   bool verify(const std::vector<int64_t>& tensor_shape) const;
+  bool verify_dynamic(const std::vector<int64_t>& tensor_shape) const;
 
   // TensorDistAttr from_string(const std::string& dist_str);
   std::string to_string() const;
