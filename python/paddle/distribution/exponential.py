@@ -109,11 +109,11 @@ class Exponential(exponential_family.ExponentialFamily):
         return -paddle.log(uniform) / self.rate
 
     def prob(self, value):
-        """Probability density funciotn evaluated at value
+        r"""Probability density funciotn evaluated at value.
 
         .. math::
 
-            { f(x; \theta) = \theta e^{- \theta x} }
+            { f(x; \theta) = \theta e^{- \theta x}, (x \ge 0 ) }
 
         Args:
             value (Tensor): Value to be evaluated.
@@ -124,7 +124,7 @@ class Exponential(exponential_family.ExponentialFamily):
         return self.rate * paddle.exp(-self.rate * value)
 
     def log_prob(self, value):
-        """Log probability density function evaluated at value
+        """Log probability density function evaluated at value.
 
         Args:
             value (Tensor): Value to be evaluated
@@ -135,7 +135,7 @@ class Exponential(exponential_family.ExponentialFamily):
         return paddle.log(self.rate) - self.rate * value
 
     def entropy(self):
-        """Entropy of exponential distribution
+        """Entropy of exponential distribution.
 
         Returns:
             Tensor: Entropy.
