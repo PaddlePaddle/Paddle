@@ -462,7 +462,7 @@ RESHAPE_CALCULATE_LOCAL_SHAPE_TEMPLATE = """
                 0,
                 phi::errors::InvalidArgument(
                     "Reshape only support local shape dim is divisible"
-                    "by the mesh dim, however local_shape[%d] is %d",
+                    "by the mesh dim, however local_shape[%d] is %d"
                     "and shard mesh dims is %d",
                     i, shape.GetData()[i], mesh_dim));
           local_shape.push_back(shape.GetData()[i] / mesh_dim);
