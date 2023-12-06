@@ -503,5 +503,22 @@ std::vector<int64_t> GetDimsMappingForAxes(
   return dims_mapping;
 }
 
+void DebugInfoForInferSpmd(const std::string& rule_name,
+                           const SpmdInfo& infer_result) {
+  VLOG(4) << "The infer spmd result of " << rule_name << " is as below:";
+  auto dist_attr_for_inputs = infer_result.first;
+  VLOG(4) << "======= The dist attr of inputs after inferspmd =======";
+  for (size_t i = 0; i < dist_attr_for_inputs.size(); ++i) {
+    VLOG(4) << "The dist attr of the " << i << "th input need to be "
+            << PADDLE_GET(TensorDistAttr, dist_attr_for_inputs[i]);
+  }
+  VLOG(4) << "======= The dist attr of outputs after inferspmd =======";
+  auto dist_attr_for_outputs = infer_result.second;
+  for (size_t i = 0; i < dist_attr_for_outputs.size(); ++i) {
+    VLOG(4) << "The dist attr of the " << i << "th output need to be "
+            << PADDLE_GET(TensorDistAttr, dist_attr_for_outputs[i]);
+  }
+}
+
 }  // namespace distributed
 }  // namespace phi

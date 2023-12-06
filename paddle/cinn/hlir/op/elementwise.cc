@@ -1088,6 +1088,8 @@ CINN_REGISTER_HELPER(elementwise_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForElementwise))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForElementwise))
+      .set_attr("generate_equations",
+                MakeOpFunction(cinn::hlir::op::GenerateEquationsForElementwise))
 #ifndef CINN_WITH_CUDA
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForElementwise))

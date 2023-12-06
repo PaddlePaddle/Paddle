@@ -2840,6 +2840,13 @@
   outputs :
     out : Out
 
+- op : soft_relu
+  backward : soft_relu_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : softmax
   backward : softmax_grad
   inputs :
@@ -3364,6 +3371,12 @@
     {x: X}
   outputs:
     {out: Out}
+
+- op: decayed_adagrad
+  inputs:
+    {param : Param, grad : Grad, moment : Moment, learning_rate : LearningRate}
+  outputs:
+    {param_out : ParamOut, moment_out : MomentOut}
 
 - op: dpsgd
   inputs:

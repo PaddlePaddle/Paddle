@@ -32,6 +32,9 @@ if(WITH_DISTRIBUTE)
     spmd_rule_test_util
     spmd_rules
     phi)
+
 endif()
 
-cc_test_old(dist_mapper_test SRCS dist_mapper_test.cc DEPS phi common)
+
+cc_test(dist_mapper_test SRCS dist_mapper_test.cc DEPS phi)
+

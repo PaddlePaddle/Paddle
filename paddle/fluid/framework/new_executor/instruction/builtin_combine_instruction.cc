@@ -12,14 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/fluid/framework/new_executor/instruction/builtin_combine_instruction.h"
+#include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 
-#include <string>
+namespace paddle {
+namespace framework {
 
-namespace cinn::adt {
+BuiltinCombineInstruction::BuiltinCombineInstruction(
+    size_t id,
+    const platform::Place& place,
+    ::pir::Operation* op,
+    ValueExecutionInfo* value_exe_info)
+    : InstructionBase(id, place) {
+  op_ = op;
 
-class Constant;
+  InitInputsOutputsIds(op, *value_exe_info);
 
-std::string ToTxtString(const Constant& constant);
+  SetArtificial(true);
+}
 
-}  // namespace cinn::adt
+void BuiltinCombineInstruction::Run() {}
+
+}  // namespace framework
+}  // namespace paddle
