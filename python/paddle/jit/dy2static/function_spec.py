@@ -337,7 +337,6 @@ def _replace_value_with_input_spec(args):
             input_var.stop_gradient = stop_gradient
         elif isinstance(input_var, paddle.pir.Value):
             stop_gradient = input_var.stop_gradient
-            # TODO(gouzil): change input_var_name to input_var.name
             input_var = paddle.static.InputSpec(
                 input_var.shape, input_var.dtype, input_var.name
             )
