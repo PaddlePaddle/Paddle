@@ -59,15 +59,9 @@ class DpEstimationSearch(SearchAlgo):
         super().__init__(tuner_cfg)
         self.idx = 0
         self.all_tasks = search_by_dp_estimation(tuner_cfg)
-        assert len(self.all_tasks) > 0, "Unable to perform this search."
-        # change global_batch_size and dp_degree
-        tuner_cfg["model_cfg"]["global_batch_size"] = (
-            tuner_cfg["model_cfg"]["global_batch_size"]
-            // self.all_tasks[0]["dp_degree"]
-        )
-        for task in self.all_tasks:
-            task["estimated_dp_degree"] = task["dp_degree"]
-            task["dp_degree"] = 1
+        assert (
+            len(self.all_tasks) > 0
+        ), "Unable to perform single dp estimation search."
 
     def search_once(self, history_cfgs):
         new_cfg = None
