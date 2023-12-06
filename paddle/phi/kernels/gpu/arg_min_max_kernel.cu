@@ -28,7 +28,7 @@ namespace cub = hipcub;
 #endif
 #include <limits>
 
-#include "paddle/phi/core/ddim.h"
+#include "paddle/common/ddim.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 namespace phi {
@@ -171,7 +171,7 @@ struct VisitDataCudaArgMinMaxFunctor {
     phi::DDim x_dims;
     int new_axis = axis;
     if (flatten) {
-      x_dims = phi::make_ddim({x.numel()});
+      x_dims = common::make_ddim({x.numel()});
       // if flatten, the axis just as 0
       new_axis = 0;
     } else {

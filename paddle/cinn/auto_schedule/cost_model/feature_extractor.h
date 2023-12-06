@@ -40,7 +40,8 @@ namespace auto_schedule {
 class FeatureExtractor : public ir::IRVisitorRequireReImpl<void> {
  public:
   FeatureExtractor();
-  Feature Extract(const ir::ModuleExpr& mod_expr, const common::Target& target);
+  Feature Extract(const ir::ModuleExpr& mod_expr,
+                  const cinn::common::Target& target);
 
   void Visit(const Expr* x) override;
 

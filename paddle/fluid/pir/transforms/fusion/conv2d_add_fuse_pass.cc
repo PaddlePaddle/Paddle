@@ -22,8 +22,8 @@
 #include "paddle/fluid/pir/transforms/fusion/conv2d_add_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
 
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/pir/pass/pass.h"
 
 namespace {

@@ -44,7 +44,7 @@ void Buffer::Resize(uint32_t alignment, uint32_t size) {
   }
 }
 
-void Buffer::SetTarget(const common::Target& target) {
+void Buffer::SetTarget(const cinn::common::Target& target) {
   target_ = target;
   memory_mng_cache_ = MemoryManager::Global().RetrieveSafely(target_.arch);
 }
@@ -59,7 +59,7 @@ void Buffer::ResizeLazy(uint32_t alignment, uint32_t size) {
   Resize(alignment, size);
 }
 
-void Buffer::Resize(uint32_t size, const common::Target& target) {
+void Buffer::Resize(uint32_t size, const cinn::common::Target& target) {
   if (target.arch != target_.arch) {
     Free();
     SetTarget(target);
@@ -69,7 +69,7 @@ void Buffer::Resize(uint32_t size, const common::Target& target) {
 
 void Buffer::Resize(uint32_t alignment,
                     uint32_t size,
-                    const common::Target& target) {
+                    const cinn::common::Target& target) {
   if (target.arch != target_.arch) {
     Free();
     SetTarget(target);
@@ -77,7 +77,7 @@ void Buffer::Resize(uint32_t alignment,
   Resize(alignment, size);
 }
 
-void Buffer::ResizeLazy(uint32_t size, const common::Target& target) {
+void Buffer::ResizeLazy(uint32_t size, const cinn::common::Target& target) {
   if (target.arch != target_.arch) {
     Free();
     SetTarget(target);
@@ -87,7 +87,7 @@ void Buffer::ResizeLazy(uint32_t size, const common::Target& target) {
 
 void Buffer::ResizeLazy(uint32_t alignment,
                         uint32_t size,
-                        const common::Target& target) {
+                        const cinn::common::Target& target) {
   if (target.arch != target_.arch) {
     Free();
     SetTarget(target);

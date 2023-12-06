@@ -17,10 +17,10 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/transforms/fusion/conv2d_bn_fuse_pass.h"
 
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
-#include "paddle/phi/core/ddim.h"
 
 namespace {
 
@@ -60,7 +60,7 @@ class Conv2dBnFusePattern
         bn_variance.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
     float epsilon = op.attribute<pir::FloatAttribute>("epsilon").data();
     paddle::dialect::FullOp full_op = rewriter.Build<paddle::dialect::FullOp>(
-        phi::vectorize(bn_variance_shape), epsilon);
+        common::vectorize(bn_variance_shape), epsilon);
     paddle::dialect::AddOp add_op = rewriter.Build<paddle::dialect::AddOp>(
         bn_variance.dyn_cast<pir::OpResult>(), full_op.out());
     paddle::dialect::SqrtOp sqrt_op =

@@ -61,7 +61,8 @@ void CompilationTask::Lowering() {
 }
 
 void CompilationTask::CodegenAndJit() {
-  ir::Module::Builder builder(common::UniqName("module"), context_->target_);
+  ir::Module::Builder builder(cinn::common::UniqName("module"),
+                              context_->target_);
   CHECK_EQ(context_->predicates_.size(), context_->lowered_funcs_.size());
   for (const ir::Expr predicate : context_->predicates_) {
     builder.AddPredicate(predicate);

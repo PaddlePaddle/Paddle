@@ -38,7 +38,7 @@ class TestAutoBind : public TestAutoGenRuleBase {
 
   void TestApplyOnElementWiseAdd(const std::vector<int>& shape,
                                  const std::string& block_name) {
-    Initialize(common::DefaultNVGPUTarget());
+    Initialize(cinn::common::DefaultNVGPUTarget());
     auto test_program =
         tests::OpBuilder("elementwise_add").Build({{"X", shape}, {"Y", shape}});
     // construct input parameter
@@ -107,7 +107,7 @@ class TestAutoBind : public TestAutoGenRuleBase {
 };
 
 TEST_F(TestAutoBind, AnalyseApplyType) {
-  Initialize(common::DefaultNVGPUTarget());
+  Initialize(cinn::common::DefaultNVGPUTarget());
   ir::IRSchedule ir_schedule = MakeIRSchedule(
       tests::OpBuilder("matmul").Build({{"X", {32, 64}}, {"Y", {64, 32}}}));
   SearchState state(ir_schedule, 0, {});

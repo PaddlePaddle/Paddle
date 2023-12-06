@@ -94,10 +94,11 @@ void LayerNormOpMapper(const paddle::cpp::OpDesc& op_desc,
   std::vector<int> shape{left, right};
   auto x_reshape = builder->Reshape(x, shape);
   auto x_reduce = builder->ReduceSum(x_reshape, {1});
-  auto ele_num = builder->FillConstant({left},
-                                       static_cast<float>(right),
-                                       common::UniqName("layer_norm_ele_num"),
-                                       common::Type2Str(x->type));
+  auto ele_num =
+      builder->FillConstant({left},
+                            static_cast<float>(right),
+                            cinn::common::UniqName("layer_norm_ele_num"),
+                            cinn::common::Type2Str(x->type));
   auto x_mean = builder->Divide(x_reduce, ele_num);
 
   // use `E[|x|^2] - |E[x]|^2` instead of `E[|x - E[x]|^2])` to compute variance
@@ -107,8 +108,8 @@ void LayerNormOpMapper(const paddle::cpp::OpDesc& op_desc,
   auto x_mean2 = builder->Multiply(x_mean, builder->Identity(x_mean));
   auto zero = builder->FillConstant({left},
                                     0.f,
-                                    common::UniqName("layer_norm_zero"),
-                                    common::Type2Str(x->type));
+                                    cinn::common::UniqName("layer_norm_zero"),
+                                    cinn::common::Type2Str(x->type));
   auto x_var = builder->Max(builder->Subtract(x2_mean, x_mean2), zero);
 
   // compute x norm
@@ -117,8 +118,8 @@ void LayerNormOpMapper(const paddle::cpp::OpDesc& op_desc,
   auto epsilon_var =
       builder->FillConstant({left},
                             epsilon,
-                            common::UniqName("layer_norm_epsilon"),
-                            common::Type2Str(x->type));
+                            cinn::common::UniqName("layer_norm_epsilon"),
+                            cinn::common::Type2Str(x->type));
   auto x_var_eps = builder->Add(x_var, epsilon_var);
   auto x_var_sqrt = builder->Sqrt(x_var_eps);
   auto y_out =

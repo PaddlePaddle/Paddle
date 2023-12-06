@@ -1,15 +1,15 @@
 cc_test(
   selected_rows_functor_test
   SRCS selected_rows_functor_test.cc
-  DEPS allocator phi)
+  DEPS allocator phi common)
 cc_test(
   im2col_test
   SRCS im2col_test.cc
-  DEPS phi)
+  DEPS phi common)
 cc_test(
   vol2col_test
   SRCS vol2col_test.cc
-  DEPS phi)
+  DEPS phi common)
 cc_test(
   beam_search_test
   SRCS beam_search_test.cc
@@ -18,13 +18,13 @@ if(WITH_GPU)
   nv_test(
     selected_rows_functor_gpu_test
     SRCS selected_rows_functor_test.cu.cc
-    DEPS phi)
+    DEPS phi common)
 endif()
 if(WITH_ROCM)
   hip_test(
     selected_rows_functor_gpu_test
     SRCS selected_rows_functor_test.cu.cc
-    DEPS phi)
+    DEPS phi common)
 endif()
 cc_test(
   concat_test
