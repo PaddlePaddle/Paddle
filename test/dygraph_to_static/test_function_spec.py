@@ -17,7 +17,6 @@ import unittest
 from test_declarative import foo_func
 
 import paddle
-from paddle.framework import in_pir_mode
 from paddle.jit.dy2static.function_spec import FunctionSpec
 from paddle.pir_utils import test_with_pir_api
 from paddle.static import InputSpec
@@ -105,9 +104,7 @@ class TestFunctionSpec(unittest.TestCase):
         self.assertTupleEqual(
             tuple(input_with_spec[1].shape), (4, 10)
         )  # b.shape
-        if not in_pir_mode():
-            # TODO(gouzil): remove this if when OpResult.name is OK
-            self.assertEqual(input_with_spec[1].name, 'b_var')  # b.name
+        self.assertEqual(input_with_spec[1].name, 'b_var')  # b.name
 
         # case 3
         # assert kwargs is None if set `input_spec`
