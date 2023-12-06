@@ -124,6 +124,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'send_v2',
     'shadow_feed',
     'sparse_momentum',
+    'tril_triu',
     'uniform_random_batch_size_like',
 ]
 

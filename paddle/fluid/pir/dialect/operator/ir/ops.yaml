@@ -1267,6 +1267,15 @@
     data_type : dtype
     backend : place
 
+- op : tril_triu
+  args : (Tensor x, int diagonal = 0, bool lower = false)
+  output : Tensor(out)
+  infer_meta :
+    func : TrilTriuInferMeta
+  kernel :
+    func : tril_triu
+  backward : tril_triu_grad
+
 - op : triu
   args : (Tensor x, int diagonal)
   output : Tensor(out)

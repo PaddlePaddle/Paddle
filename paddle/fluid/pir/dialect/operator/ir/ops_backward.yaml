@@ -852,6 +852,16 @@
   kernel :
     func : tril_grad
 
+- backward_op : tril_triu_grad
+  forward : tril_triu (Tensor x, int diagonal = 0, bool lower = false)  -> Tensor(out)
+  args : (Tensor out_grad, int diagonal, bool lower)
+  output : Tensor(x_grad)
+  infer_meta :
+      func : UnchangedInferMeta
+      param : [out_grad]
+  kernel:
+    func : tril_triu_grad
+
 - backward_op : triu_grad
   forward : triu(Tensor x,  int diagonal) -> Tensor(out)
   args : (Tensor out_grad,  int diagonal)
