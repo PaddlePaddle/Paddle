@@ -12,12 +12,6 @@ cc_library(
   SRCS model_utils.cc
   DEPS proto_desc enforce common)
 
-if(WITH_ONNXRUNTIME AND WIN32)
-  # Copy onnxruntime for some c++ test in Windows, since the test will
-  # be build only in CI, so suppose the generator in Windows is Ninja.
-  copy_onnx(infer_io_utils_tester)
-endif()
-
 cc_library(table_printer SRCS table_printer.cc)
 paddle_test(test_table_printer SRCS table_printer_tester.cc)
 
