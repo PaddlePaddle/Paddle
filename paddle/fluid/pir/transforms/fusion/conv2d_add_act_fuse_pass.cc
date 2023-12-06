@@ -47,9 +47,9 @@ class Conv2dAddActFusePattern
     if (!add_out.HasOneUse()) return false;
 
     auto next_op_list = pir::GetUseOpsForOutput(op, 0);
-    if (next_op_list.size() == 0) return false;
+    if (next_op_list.size() != 1) return false;
 
-    auto next_op = next_op_list[0];
+    auto next_op = next_op_list[0].first;
     std::string act_name = "";
     if (next_op->isa<paddle::dialect::ReluOp>()) {
       act_name = "relu";
@@ -108,8 +108,9 @@ class Conv2dAdd2ActFusePattern
     if (!conv2d_out.HasOneUse()) return false;
 
     auto next_op_list = pir::GetUseOpsForOutput(add2_op, 0);
-    if (next_op_list.size() == 0) return false;
-    auto next_op = next_op_list[0];
+    if (next_op_list.size() != 1) return false;
+
+    auto next_op = next_op_list[0].first;
     std::string act_name = "";
     if (next_op->isa<paddle::dialect::ReluOp>()) {
       act_name = "relu";
