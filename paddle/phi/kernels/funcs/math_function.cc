@@ -238,8 +238,8 @@ void set_constant_with_place<phi::CustomPlace>(
                                     const phi::Scalar&,
                                     DataType,
                                     phi::DenseTensor*);
-  const T* num_ptr = reinterpret_cast<const T*>(value);
-  T num = *num_ptr;
+  const float* num_ptr = reinterpret_cast<const float*>(value);
+  float num = *num_ptr;
   VLOG(0) << "UT num:" << num;
   auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
   (*kernel_fn)(context,
