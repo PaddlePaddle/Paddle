@@ -2276,17 +2276,17 @@ def split(x, num_or_sections, axis=0, name=None):
         return outs
 
 
-def tensor_split(x, indices_or_sections, axis=0, name=None):
+def tensor_split(x, num_or_indices, axis=0, name=None):
     """
     Split the input tensor into multiple sub-Tensors along ``axis``, allowing not being of equal size.
 
     Args:
-        x (Tensor): A Tensor whose dimension must be greater than 0. The data type is bool, bfloat16, float16, float32, float64, uint8, int8, int32 or int64.
-        indices_or_sections (int|list|tuple): If ``indices_or_sections`` is an int ``n``, ``x`` is split into ``n`` sections along ``axis``.
+        x (Tensor): A Tensor whose dimension must be greater than 0. The data type is bool, bfloat16, float16, float32, float64, uint8, int32 or int64.
+        num_or_indices (int|list|tuple): If ``num_or_indices`` is an int ``n``, ``x`` is split into ``n`` sections along ``axis``.
             If ``x`` is divisible by ``n``, each section will be ``x.shape[axis] / n``. If ``x`` is not divisible by ``n``, the first
             ``int(x.shape[axis] % n)`` sections will have size ``int(x.shape[axis] / n) + 1``, and the rest will be ``int(x.shape[axis] / n).
-            If ``indices_or_sections`` is a list or tuple of integter indices, ``x`` is split along ``axis`` at each of the indices. For instance,
-            ``indices_or_sections=[2, 4]`` with ``axis=0`` would split ``x`` into ``x[:2]``, ``x[2:4]`` and ``x[4:]`` along axis 0.
+            If ``num_or_indices`` is a list or tuple of integter indices, ``x`` is split along ``axis`` at each of the indices. For instance,
+            ``num_or_indices=[2, 4]`` with ``axis=0`` would split ``x`` into ``x[:2]``, ``x[2:4]`` and ``x[4:]`` along axis 0.
         axis (int|Tensor, optional): The axis along which to split, it can be a integer or a ``0-D Tensor``
             with shape [] and data type  ``int32`` or ``int64``.
             If :math::`axis < 0`, the axis to split along is :math:`rank(x) + axis`. Default is 0.
@@ -2303,14 +2303,14 @@ def tensor_split(x, indices_or_sections, axis=0, name=None):
             >>> # x is a Tensor of shape [8]
             >>> # evenly split
             >>> x = paddle.rand([8])
-            >>> out0, out1 = paddle.tensor_split(x, indices_or_sections=2)
+            >>> out0, out1 = paddle.tensor_split(x, num_or_indices=2)
             >>> print(out0.shape)
             [4]
             >>> print(out1.shape)
             [4]
 
             >>> # not evenly split
-            >>> out0, out1, out2 = paddle.tensor_split(x, indices_or_sections=3)
+            >>> out0, out1, out2 = paddle.tensor_split(x, num_or_indices=3)
             >>> print(out0.shape)
             [3]
             >>> print(out1.shape)
@@ -2319,7 +2319,7 @@ def tensor_split(x, indices_or_sections, axis=0, name=None):
             [2]
 
             >>> # split with indices
-            >>> out0, out1, out2 = paddle.tensor_split(x, indices_or_sections=[2, 3])
+            >>> out0, out1, out2 = paddle.tensor_split(x, num_or_indices=[2, 3])
             >>> print(out0.shape)
             [2]
             >>> print(out1.shape)
@@ -2330,13 +2330,13 @@ def tensor_split(x, indices_or_sections, axis=0, name=None):
             >>> # split along axis
             >>> # x is a Tensor of shape [7, 8]
             >>> x = paddle.rand([7, 8])
-            >>> out0, out1 = paddle.tensor_split(x, indices_or_sections=2, axis=1)
+            >>> out0, out1 = paddle.tensor_split(x, num_or_indices=2, axis=1)
             >>> print(out0.shape)
             [7, 4]
             >>> print(out1.shape)
             [7, 4]
 
-            >>> out0, out1, out2 = paddle.tensor_split(x, indices_or_sections=[2, 3], axis=1)
+            >>> out0, out1, out2 = paddle.tensor_split(x, num_or_indices=[2, 3], axis=1)
             >>> print(out0.shape)
             [7, 2]
             >>> print(out1.shape)
@@ -2375,37 +2375,33 @@ def tensor_split(x, indices_or_sections, axis=0, name=None):
 
     def _tensor_split_sections(x, total_n, sections, axis):
         if sections <= 0:
-            raise ValueError('indices_or_sections must be larger than 0.')
+            raise ValueError('num_or_indices must be larger than 0.')
 
         base, mod = divmod(total_n, sections)
         num_or_sections = [base + 1] * mod + [base] * (sections - mod)
         return split(x, num_or_sections, axis)
 
-    if isinstance(indices_or_sections, int):
-        return _tensor_split_sections(x, total_n, indices_or_sections, axis)
+    if isinstance(num_or_indices, int):
+        return _tensor_split_sections(x, total_n, num_or_indices, axis)
 
-    elif isinstance(indices_or_sections, (list, tuple)):
-        return _tensor_split_indices(x, total_n, indices_or_sections, axis)
+    elif isinstance(num_or_indices, (list, tuple)):
+        return _tensor_split_indices(x, total_n, num_or_indices, axis)
 
     else:
         raise ValueError(
-            f"The indices_or_sections should be int, list or tuple of ints, but got {type(indices_or_sections)}"
+            f"The num_or_indices should be int, list or tuple of ints, but got {type(num_or_indices)}"
         )
 
 
-def hsplit(x, num_or_sections, name=None):
+def hsplit(x, num_or_indices, name=None):
     """
-    Split the input tensor into multiple sub-Tensors along the horizontal axis, which is equivalent to ``paddle.split`` with ``axis=1``
-    when ``x`` 's dimension is larger than 1, or equivalent to ``paddle.split`` with ``axis=0`` when ``x`` 's dimension is 1.
+    Split the input tensor into multiple sub-Tensors along the horizontal axis, which is equivalent to ``paddle.tensor_split`` with ``axis=1``
+    when ``x`` 's dimension is larger than 1, or equivalent to ``paddle.tensor_split`` with ``axis=0`` when ``x`` 's dimension is 1.
 
     Args:
-        x (Tensor): A Tensor whose dimension must be greater than 0. The data type is bool, bfloat16, float16, float32, float64, uint8, int8, int32 or int64.
-        num_or_sections (int|list|tuple): If ``num_or_sections`` is an int, then ``num_or_sections``
-            indicates the number of equal sized sub-Tensors that the ``x`` will be divided into.
-            If ``num_or_sections`` is a list or tuple, the length of it indicates the number of
-            sub-Tensors and the elements in it indicate the sizes of sub-Tensors'  dimension orderly.
-            The length of the list must not be larger than the ``x`` 's size of axis 1 when ``x`` 's dimension is larger than 1,
-            or axis 0 when ``x`` 's dimension is 1.
+        x (Tensor): A Tensor whose dimension must be greater than 0. The data type is bool, bfloat16, float16, float32, float64, uint8, int32 or int64.
+        num_or_indices (int|list|tuple): If ``num_or_indices`` is an int ``n``, ``x`` is split into ``n`` sections.
+            If ``num_or_indices`` is a list or tuple of integter indices, ``x`` is split at each of the indices.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
     Returns:
@@ -2418,7 +2414,7 @@ def hsplit(x, num_or_sections, name=None):
 
             >>> # x is a Tensor of shape [8]
             >>> x = paddle.rand([8])
-            >>> out0, out1 = paddle.hsplit(x, num_or_sections=2)
+            >>> out0, out1 = paddle.hsplit(x, num_or_indices=2)
             >>> print(out0.shape)
             [4]
             >>> print(out1.shape)
@@ -2426,13 +2422,13 @@ def hsplit(x, num_or_sections, name=None):
 
             >>> # x is a Tensor of shape [7, 8]
             >>> x = paddle.rand([7, 8])
-            >>> out0, out1 = paddle.hsplit(x, num_or_sections=2)
+            >>> out0, out1 = paddle.hsplit(x, num_or_indices=2)
             >>> print(out0.shape)
             [7, 4]
             >>> print(out1.shape)
             [7, 4]
 
-            >>> out0, out1, out2 = paddle.hsplit(x, num_or_sections=[1, 3, 4])
+            >>> out0, out1, out2 = paddle.hsplit(x, num_or_indices=[1, 4])
             >>> print(out0.shape)
             [7, 1]
             >>> print(out1.shape)
@@ -2440,35 +2436,25 @@ def hsplit(x, num_or_sections, name=None):
             >>> print(out2.shape)
             [7, 4]
 
-            >>> out0, out1, out2 = paddle.hsplit(x, num_or_sections=[2, 3, -1])
-            >>> print(out0.shape)
-            [7, 2]
-            >>> print(out1.shape)
-            [7, 3]
-            >>> print(out2.shape)
-            [7, 3]
     """
     if x.ndim < 1:
         raise ValueError(
             f"The input tensor's dimension must be greater than 0, but got {x.ndim}"
         )
     if x.ndim > 1:
-        return split(x, num_or_sections, axis=1, name=name)
+        return tensor_split(x, num_or_indices, axis=1, name=name)
     else:
-        return split(x, num_or_sections, axis=0, name=name)
+        return tensor_split(x, num_or_indices, axis=0, name=name)
 
 
-def dsplit(x, num_or_sections, name=None):
+def dsplit(x, num_or_indices, name=None):
     """
-    Split the input tensor into multiple sub-Tensors along the depth axis, which is equivalent to ``paddle.split`` with ``axis=2``.
+    Split the input tensor into multiple sub-Tensors along the depth axis, which is equivalent to ``paddle.tensor_split`` with ``axis=2``.
 
     Args:
-        x (Tensor): A Tensor whose dimension must be greater than 2. The data type is bool, bfloat16, float16, float32, float64, uint8, int8, int32 or int64.
-        num_or_sections (int|list|tuple): If ``num_or_sections`` is an int, then ``num_or_sections``
-            indicates the number of equal sized sub-Tensors that the ``x`` will be divided into.
-            If ``num_or_sections`` is a list or tuple, the length of it indicates the number of
-            sub-Tensors and the elements in it indicate the sizes of sub-Tensors'  dimension orderly.
-            The length of the list must not be larger than the ``x`` 's size of axis 2.
+        x (Tensor): A Tensor whose dimension must be greater than 2. The data type is bool, bfloat16, float16, float32, float64, uint8, int32 or int64.
+        num_or_indices (int|list|tuple): If ``num_or_indices`` is an int ``n``, ``x`` is split into ``n`` sections.
+            If ``num_or_indices`` is a list or tuple of integter indices, ``x`` is split at each of the indices.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
     Returns:
@@ -2481,13 +2467,13 @@ def dsplit(x, num_or_sections, name=None):
 
             >>> # x is a Tensor of shape [7, 6, 8]
             >>> x = paddle.rand([7, 6, 8])
-            >>> out0, out1 = paddle.dsplit(x, num_or_sections=2)
+            >>> out0, out1 = paddle.dsplit(x, num_or_indices=2)
             >>> print(out0.shape)
             [7, 6, 4]
             >>> print(out1.shape)
             [7, 6, 4]
 
-            >>> out0, out1, out2 = paddle.dsplit(x, num_or_sections=[1, 3, 4])
+            >>> out0, out1, out2 = paddle.dsplit(x, num_or_indices=[1, 4])
             >>> print(out0.shape)
             [7, 6, 1]
             >>> print(out1.shape)
@@ -2495,32 +2481,22 @@ def dsplit(x, num_or_sections, name=None):
             >>> print(out2.shape)
             [7, 6, 4]
 
-            >>> out0, out1, out2 = paddle.dsplit(x, num_or_sections=[2, 3, -1])
-            >>> print(out0.shape)
-            [7, 6, 2]
-            >>> print(out1.shape)
-            [7, 6, 3]
-            >>> print(out2.shape)
-            [7, 6, 3]
     """
     if x.ndim < 3:
         raise ValueError(
             f"The input tensor's dimension must be greater than 2, but got {x.ndim}"
         )
-    return split(x, num_or_sections, axis=2, name=name)
+    return tensor_split(x, num_or_indices, axis=2, name=name)
 
 
-def vsplit(x, num_or_sections, name=None):
+def vsplit(x, num_or_indices, name=None):
     """
-    Split the input tensor into multiple sub-Tensors along the vertical axis, which is equivalent to ``paddle.split`` with ``axis=0``.
+    Split the input tensor into multiple sub-Tensors along the vertical axis, which is equivalent to ``paddle.tensor_split`` with ``axis=0``.
 
     Args:
-        x (Tensor): A Tensor whose dimension must be greater than 1. The data type is bool, bfloat16, float16, float32, float64, uint8, int8, int32 or int64.
-        num_or_sections (int|list|tuple): If ``num_or_sections`` is an int, then ``num_or_sections``
-            indicates the number of equal sized sub-Tensors that the ``x`` will be divided into.
-            If ``num_or_sections`` is a list or tuple, the length of it indicates the number of
-            sub-Tensors and the elements in it indicate the sizes of sub-Tensors'  dimension orderly.
-            The length of the list must not be larger than the ``x`` 's size of axis 0.
+        x (Tensor): A Tensor whose dimension must be greater than 1. The data type is bool, bfloat16, float16, float32, float64, uint8, int32 or int64.
+        num_or_indices (int|list|tuple): If ``num_or_indices`` is an int ``n``, ``x`` is split into ``n`` sections.
+            If ``num_or_indices`` is a list or tuple of integter indices, ``x`` is split at each of the indices.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
     Returns:
@@ -2533,13 +2509,13 @@ def vsplit(x, num_or_sections, name=None):
 
             >>> # x is a Tensor of shape [8, 6, 7]
             >>> x = paddle.rand([8, 6, 7])
-            >>> out0, out1 = paddle.vsplit(x, num_or_sections=2)
+            >>> out0, out1 = paddle.vsplit(x, num_or_indices=2)
             >>> print(out0.shape)
             [4, 6, 7]
             >>> print(out1.shape)
             [4, 6, 7]
 
-            >>> out0, out1, out2 = paddle.vsplit(x, num_or_sections=[1, 3, 4])
+            >>> out0, out1, out2 = paddle.vsplit(x, num_or_indices=[1, 4])
             >>> print(out0.shape)
             [1, 6, 7]
             >>> print(out1.shape)
@@ -2547,19 +2523,12 @@ def vsplit(x, num_or_sections, name=None):
             >>> print(out2.shape)
             [4, 6, 7]
 
-            >>> out0, out1, out2 = paddle.vsplit(x, num_or_sections=[2, 3, -1])
-            >>> print(out0.shape)
-            [2, 6, 7]
-            >>> print(out1.shape)
-            [3, 6, 7]
-            >>> print(out2.shape)
-            [3, 6, 7]
     """
     if x.ndim < 2:
         raise ValueError(
             f"The input tensor's dimension must be greater than 1, but got {x.ndim}"
         )
-    return split(x, num_or_sections, axis=0, name=name)
+    return tensor_split(x, num_or_indices, axis=0, name=name)
 
 
 def squeeze(x, axis=None, name=None):

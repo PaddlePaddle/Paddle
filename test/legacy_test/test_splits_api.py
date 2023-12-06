@@ -31,7 +31,6 @@ DTYPE_ALL_CPU = {
     'bool',
     'uint8',
     'int32',
-    'int8',
     'int64',
 }
 
@@ -47,18 +46,6 @@ DTYPE_ALL_GPU = DTYPE_ALL_CPU | (
 PLACES = [paddle.CPUPlace()] + (
     [paddle.CUDAPlace(0)] if core.is_compiled_with_cuda() else []
 )
-
-
-def convert_num_or_sections(num_or_sections):
-    # hsplit, vsplit, dsplit
-    # Convert the num_or_sections in paddle to indices_or_sections in numpy
-    # Do not support -1
-    if isinstance(num_or_sections, int):
-        indices_or_sections = num_or_sections
-    else:
-        indices_or_sections = np.cumsum(num_or_sections)[:-1]
-
-    return indices_or_sections
 
 
 def generate_data(shape, dtype='int64'):
@@ -120,10 +107,24 @@ class BaseTest(unittest.TestCase):
 
             with paddle.static.program_guard(program):
                 input = paddle.static.data(name, shape, dtype)
+                input.stop_gradient = False
+
                 feed = {name: x}
 
                 out = func_paddle(input, split_paddle)
-                res = exe.run(feed=feed, fetch_list=[out])
+
+                if paddle.framework.in_pir_mode():
+                    fetch_list = [out]
+                    grads = paddle.autograd.ir_backward.grad(out, [input])
+                    out_grad = grads[0]
+                    fetch_list.append(out_grad)
+
+                    *res, res_grad = exe.run(feed=feed, fetch_list=fetch_list)
+
+                    self.assertEqual(list(res_grad.shape), list(input.shape))
+
+                else:
+                    res = exe.run(feed=feed, fetch_list=[out])
 
                 if split_numpy is not None:
                     out_ref = func_numpy(x, split_numpy)
@@ -191,18 +192,20 @@ class TestHSplit(BaseTest):
             {
                 **x,
                 'split_paddle': [2, 4],
-                'split_numpy': convert_num_or_sections([2, 4]),
+                'split_numpy': [2, 4],
             }
         )
         self._test_all(
             {
                 **x,
                 'split_paddle': (2, 1, 3),
-                'split_numpy': convert_num_or_sections((2, 1, 3)),
+                'split_numpy': (2, 1, 3),
             }
         )
-        self._test_all({**x, 'split_paddle': [-1, 1, 3], 'split_numpy': [2, 3]})
-        self._test_all({**x, 'split_paddle': [-1], 'split_numpy': []})
+        self._test_all(
+            {**x, 'split_paddle': [-1, 1, 3], 'split_numpy': [-1, 1, 3]}
+        )
+        self._test_all({**x, 'split_paddle': [-1], 'split_numpy': [-1]})
 
         x = generate_data([4, 6])
         self._test_all({**x, 'split_paddle': 3, 'split_numpy': 3})
@@ -212,18 +215,20 @@ class TestHSplit(BaseTest):
             {
                 **x,
                 'split_paddle': [2, 4],
-                'split_numpy': convert_num_or_sections([2, 4]),
+                'split_numpy': [2, 4],
             }
         )
         self._test_all(
             {
                 **x,
                 'split_paddle': (2, 1, 3),
-                'split_numpy': convert_num_or_sections((2, 1, 3)),
+                'split_numpy': (2, 1, 3),
             }
         )
-        self._test_all({**x, 'split_paddle': [-1, 1, 3], 'split_numpy': [2, 3]})
-        self._test_all({**x, 'split_paddle': [-1], 'split_numpy': []})
+        self._test_all(
+            {**x, 'split_paddle': [-1, 1, 3], 'split_numpy': [-1, 1, 3]}
+        )
+        self._test_all({**x, 'split_paddle': [-1], 'split_numpy': [-1]})
 
         x = generate_data([4, 6, 3])
         self._test_all({**x, 'split_paddle': 3, 'split_numpy': 3})
@@ -233,18 +238,20 @@ class TestHSplit(BaseTest):
             {
                 **x,
                 'split_paddle': [2, 4],
-                'split_numpy': convert_num_or_sections([2, 4]),
+                'split_numpy': [2, 4],
             }
         )
         self._test_all(
             {
                 **x,
                 'split_paddle': (2, 1, 3),
-                'split_numpy': convert_num_or_sections((2, 1, 3)),
+                'split_numpy': (2, 1, 3),
             }
         )
-        self._test_all({**x, 'split_paddle': [-1, 1, 3], 'split_numpy': [2, 3]})
-        self._test_all({**x, 'split_paddle': [-1], 'split_numpy': []})
+        self._test_all(
+            {**x, 'split_paddle': [-1, 1, 3], 'split_numpy': [-1, 1, 3]}
+        )
+        self._test_all({**x, 'split_paddle': [-1], 'split_numpy': [-1]})
 
     def test_dtype(self):
         for dtype in DTYPE_ALL_CPU:
@@ -276,32 +283,8 @@ class TestHSplit(BaseTest):
 
     def test_error_split(self):
         x = generate_data([5])
-
-        # test not evenly split
-        with self.assertRaises(ValueError):
-            self._test_all({**x, 'split_paddle': 2, 'split_numpy': None})
-
         with self.assertRaises(ValueError):
             self._test_all({**x, 'split_paddle': 0, 'split_numpy': None})
-
-        # test bad split sections
-        with self.assertRaises(ValueError):
-            self._test_all({**x, 'split_paddle': [2, 1], 'split_numpy': None})
-
-        with self.assertRaises(ValueError):
-            self._test_all({**x, 'split_paddle': [2, 4], 'split_numpy': None})
-
-        # test more `-1`
-        with self.assertRaises(ValueError):
-            self._test_all(
-                {**x, 'split_paddle': [-1, 2, -1], 'split_numpy': None}
-            )
-
-        # test `-1` infer to `0`
-        with self.assertRaises(ValueError):
-            self._test_all(
-                {**x, 'split_paddle': [-1, 2, 3], 'split_numpy': None}
-            )
 
 
 class TestVSplit(BaseTest):
@@ -318,18 +301,20 @@ class TestVSplit(BaseTest):
             {
                 **x,
                 'split_paddle': [2, 4],
-                'split_numpy': convert_num_or_sections([2, 4]),
+                'split_numpy': [2, 4],
             }
         )
         self._test_all(
             {
                 **x,
                 'split_paddle': (2, 1, 3),
-                'split_numpy': convert_num_or_sections((2, 1, 3)),
+                'split_numpy': (2, 1, 3),
             }
         )
-        self._test_all({**x, 'split_paddle': [-1, 1, 3], 'split_numpy': [2, 3]})
-        self._test_all({**x, 'split_paddle': [-1], 'split_numpy': []})
+        self._test_all(
+            {**x, 'split_paddle': [-1, 1, 3], 'split_numpy': [-1, 1, 3]}
+        )
+        self._test_all({**x, 'split_paddle': [-1], 'split_numpy': [-1]})
 
         x = generate_data([6, 4, 3])
         self._test_all({**x, 'split_paddle': 3, 'split_numpy': 3})
@@ -339,18 +324,20 @@ class TestVSplit(BaseTest):
             {
                 **x,
                 'split_paddle': [2, 4],
-                'split_numpy': convert_num_or_sections([2, 4]),
+                'split_numpy': [2, 4],
             }
         )
         self._test_all(
             {
                 **x,
                 'split_paddle': (2, 1, 3),
-                'split_numpy': convert_num_or_sections((2, 1, 3)),
+                'split_numpy': (2, 1, 3),
             }
         )
-        self._test_all({**x, 'split_paddle': [-1, 1, 3], 'split_numpy': [2, 3]})
-        self._test_all({**x, 'split_paddle': [-1], 'split_numpy': []})
+        self._test_all(
+            {**x, 'split_paddle': [-1, 1, 3], 'split_numpy': [-1, 1, 3]}
+        )
+        self._test_all({**x, 'split_paddle': [-1], 'split_numpy': [-1]})
 
     def test_dtype(self):
         for dtype in DTYPE_ALL_CPU:
@@ -387,32 +374,8 @@ class TestVSplit(BaseTest):
 
     def test_error_split(self):
         x = generate_data([5, 4])
-
-        # test not evenly split
-        with self.assertRaises(ValueError):
-            self._test_all({**x, 'split_paddle': 2, 'split_numpy': None})
-
         with self.assertRaises(ValueError):
             self._test_all({**x, 'split_paddle': 0, 'split_numpy': None})
-
-        # test bad split sections
-        with self.assertRaises(ValueError):
-            self._test_all({**x, 'split_paddle': [2, 1], 'split_numpy': None})
-
-        with self.assertRaises(ValueError):
-            self._test_all({**x, 'split_paddle': [2, 4], 'split_numpy': None})
-
-        # test more `-1`
-        with self.assertRaises(ValueError):
-            self._test_all(
-                {**x, 'split_paddle': [-1, 2, -1], 'split_numpy': None}
-            )
-
-        # test `-1` infer to `0`
-        with self.assertRaises(ValueError):
-            self._test_all(
-                {**x, 'split_paddle': [-1, 2, 3], 'split_numpy': None}
-            )
 
 
 class TestDSplit(BaseTest):
@@ -429,18 +392,20 @@ class TestDSplit(BaseTest):
             {
                 **x,
                 'split_paddle': [2, 4],
-                'split_numpy': convert_num_or_sections([2, 4]),
+                'split_numpy': [2, 4],
             }
         )
         self._test_all(
             {
                 **x,
                 'split_paddle': (2, 1, 3),
-                'split_numpy': convert_num_or_sections((2, 1, 3)),
+                'split_numpy': (2, 1, 3),
             }
         )
-        self._test_all({**x, 'split_paddle': [-1, 1, 3], 'split_numpy': [2, 3]})
-        self._test_all({**x, 'split_paddle': [-1], 'split_numpy': []})
+        self._test_all(
+            {**x, 'split_paddle': [-1, 1, 3], 'split_numpy': [-1, 1, 3]}
+        )
+        self._test_all({**x, 'split_paddle': [-1], 'split_numpy': [-1]})
 
     def test_dtype(self):
         for dtype in DTYPE_ALL_CPU:
@@ -482,32 +447,8 @@ class TestDSplit(BaseTest):
 
     def test_error_split(self):
         x = generate_data([3, 6, 5])
-
-        # test not evenly split
-        with self.assertRaises(ValueError):
-            self._test_all({**x, 'split_paddle': 2, 'split_numpy': None})
-
         with self.assertRaises(ValueError):
             self._test_all({**x, 'split_paddle': 0, 'split_numpy': None})
-
-        # test bad split sections
-        with self.assertRaises(ValueError):
-            self._test_all({**x, 'split_paddle': [2, 1], 'split_numpy': None})
-
-        with self.assertRaises(ValueError):
-            self._test_all({**x, 'split_paddle': [2, 4], 'split_numpy': None})
-
-        # test more `-1`
-        with self.assertRaises(ValueError):
-            self._test_all(
-                {**x, 'split_paddle': [-1, 2, -1], 'split_numpy': None}
-            )
-
-        # test `-1` infer to `0`
-        with self.assertRaises(ValueError):
-            self._test_all(
-                {**x, 'split_paddle': [-1, 2, 3], 'split_numpy': None}
-            )
 
 
 class TestTensorSplit(BaseTest):
