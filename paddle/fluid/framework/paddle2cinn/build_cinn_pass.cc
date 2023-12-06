@@ -43,8 +43,8 @@ limitations under the License. */
 
 PD_DECLARE_string(allow_cinn_ops);
 PD_DECLARE_string(deny_cinn_ops);
-PHI_DECLARE_string(save_load_path);
-PHI_DECLARE_bool(save_tensor);
+PHI_DECLARE_string(static_runtime_data_save_path);
+PHI_DECLARE_bool(save_static_runtime_data);
 
 namespace paddle {
 namespace framework {
@@ -753,14 +753,15 @@ void SearchAllSubgraphs(Graph* graph, bool is_inference_stage) {
           subgraph->GetOrInit<std::unordered_set<std::string>>(kSkipGcVarNames);
       sub_skip_gc_vars = all_skip_gc_vars;
     }
-    if (FLAGS_save_tensor) {
+    if (FLAGS_save_static_runtime_data) {
       paddle::framework::save_runtime_cinn_graph(
           *subgraph,
           cluster_debug_info(cluster_set),
           cluster_debug_info(cluster_inputs),
           cluster_debug_info(cluster_outputs),
           cluster_debug_info(cluster_internals),
-          FLAGS_save_load_path + "/cluster_" + std::to_string(++i));
+          FLAGS_static_runtime_data_save_path + "/cluster_" +
+              std::to_string(++i));
     }
     auto compilation_key = cinn_compiler->AddGraph(std::move(subgraph));
     VLOG(4) << "Compilation Key:\n"
