@@ -241,7 +241,9 @@ void testIm2col<phi::GPUContext, paddle::platform::CUDAPlace>() {
   float* out_cfo_ptr;
   if (paddle::platform::is_cpu_place(*place)) {
     out_cfo_ptr = output_cfo.data<float>();
+    VLOG(0) << "UT TEST place 1";
   } else {
+    VLOG(0) << "UT TEST place 2";
     paddle::framework::TensorCopySync(
         output_cfo, paddle::platform::CPUPlace(), &output_tmp);
     out_cfo_ptr = output_tmp.data<float>();

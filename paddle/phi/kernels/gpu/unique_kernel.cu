@@ -177,7 +177,8 @@ UniqueFlattendCUDATensor(const Context& context,
                                   inv_loc_data_ptr,
                                   num_input,
                                   context.stream());
-    auto d_temp_storage = phi::memory_utils::Alloc(place, temp_storage_bytes);
+    auto d_temp_storage =
+        phi::memory_utils::Alloc(context.GetPlace(), temp_storage_bytes);
     cub::DeviceScan::InclusiveSum(d_temp_storage->ptr(),
                                   temp_storage_bytes,
                                   inv_loc_data_ptr,

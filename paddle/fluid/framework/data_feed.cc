@@ -1449,20 +1449,25 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
   ins_id_vec_.reserve(ins_vec.size());
   for (const auto& r : ins_vec) {
     VLOG(0) << "PutToFeedVec ins_id: " << r.ins_id_
-            << " size:" << ins_vec.size();
+            << " content: " << r.content_ << " size:" << ins_vec.size();
     ins_id_vec_.push_back(r.ins_id_);
     ins_content_vec_.push_back(r.content_);
     for (auto& item : r.float_feasigns_) {
+      VLOG(0) << item.slot()
+              << " item.sign().float_feasign_:" << item.sign().float_feasign_;
       batch_float_feasigns_[item.slot()].push_back(item.sign().float_feasign_);
       visit_[item.slot()] = true;
     }
     for (auto& item : r.uint64_feasigns_) {
+      VLOG(0) << item.slot()
+              << " item.sign().uint64_feasign_:" << item.sign().uint64_feasign_;
       batch_uint64_feasigns_[item.slot()].push_back(
           item.sign().uint64_feasign_);
       visit_[item.slot()] = true;
     }
     for (size_t j = 0; j < use_slots_.size(); ++j) {
       const auto& type = all_slots_type_[j];
+      VLOG(0) << " j:" << j << " type: " << type << " visit: " << visit_[j];
       if (visit_[j]) {
         visit_[j] = false;
       } else {
@@ -1476,6 +1481,8 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
       // get offset of this ins in this slot
       if (type[0] == 'f') {  // float
         offset_[j].push_back(batch_float_feasigns_[j].size());
+        VLOG(0) << "PutToFeedVec slot offset_[" << j
+                << "] : " << batch_uint64_feasigns_[j].size();
       } else if (type[0] == 'u') {  // uint64
         offset_[j].push_back(batch_uint64_feasigns_[j].size());
         VLOG(0) << "PutToFeedVec slot offset_[" << j
