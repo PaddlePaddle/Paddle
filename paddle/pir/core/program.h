@@ -40,12 +40,12 @@ class IR_API Program {
  public:
   using ParameterMap =
       std::unordered_map<std::string, std::unique_ptr<Parameter>>;
-  explicit Program(IrContext* context);
+  TEST_API explicit Program(IrContext* context);
   Program(Program&&) = delete;
   Program(const Program& program) = delete;
   Program& operator=(const Program&) = delete;
   Program& operator=(Program&&);
-  ~Program();
+  TEST_API ~Program();
   size_t parameters_num() const { return parameters_.size(); }
 
   ModuleOp module_op() const { return module_; }

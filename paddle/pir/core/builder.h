@@ -114,7 +114,7 @@ class Builder {
   const InsertionPoint &insertion_point() const { return insertion_point_; }
 
   /// Creates an operation given the fields represented as an OperationState.
-  IR_API Operation *Build(OperationArgument &&argument);
+  TEST_API Operation *Build(OperationArgument &&argument);
 
   /// Creates an operation with the given fields.
   IR_API Operation *Build(const std::vector<Value> &inputs,

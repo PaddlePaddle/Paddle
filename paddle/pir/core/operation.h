@@ -115,8 +115,8 @@ class IR_API alignas(8) Operation final
   using Iterator = Region *;
   using ConstIterator = const Region *;
   uint32_t num_regions() const { return num_regions_; }
-  Region &region(unsigned index);
-  const Region &region(unsigned index) const;
+  TEST_API Region &region(unsigned index);
+  TEST_API const Region &region(unsigned index) const;
   ConstIterator begin() const { return regions_; }
   ConstIterator end() const { return regions_ + num_regions_; }
   Iterator begin() { return regions_; }
@@ -139,7 +139,7 @@ class IR_API alignas(8) Operation final
 
   void Print(std::ostream &os);
   pir::OpInfo info() const { return info_; }
-  std::string name() const;
+  TEST_API std::string name() const;
 
   ///
   /// \brief Remove this operation from its parent block and delete it.
@@ -194,7 +194,7 @@ class IR_API alignas(8) Operation final
             uint32_t num_successors);
 
   int32_t ComputeOpResultOffset(uint32_t index) const;
-  detail::OpResultImpl *op_result_impl(uint32_t index) const;
+  TEST_API detail::OpResultImpl *op_result_impl(uint32_t index) const;
 
   int32_t ComputeOpOperandOffset(uint32_t index) const;
   detail::OpOperandImpl *op_operand_impl(uint32_t index) const;

@@ -165,7 +165,7 @@ struct PassInstrumentorImpl {
 PassInstrumentor::PassInstrumentor()
     : impl_(new detail::PassInstrumentorImpl{}) {}
 
-PassInstrumentor::~PassInstrumentor() = default;
+TEST_API PassInstrumentor::~PassInstrumentor() = default;
 
 void PassInstrumentor::RunBeforePipeline(Operation* op) {
   if (op->num_regions() == 0) return;
@@ -183,7 +183,7 @@ void PassInstrumentor::RunAfterPipeline(Operation* op) {
   }
 }
 
-void PassInstrumentor::RunBeforePass(Pass* pass, Operation* op) {
+TEST_API void PassInstrumentor::RunBeforePass(Pass* pass, Operation* op) {
   if (op->num_regions() == 0) return;
   for (auto& instr : impl_->instrumentations) {
     instr->RunBeforePass(pass, op);
@@ -208,9 +208,9 @@ void PassInstrumentor::RunBeforeAnalysis(const std::string& name,
   }
 }
 
-void PassInstrumentor::RunAfterAnalysis(const std::string& name,
-                                        TypeId id,
-                                        Operation* op) {
+TEST_API void PassInstrumentor::RunAfterAnalysis(const std::string& name,
+                                                 TypeId id,
+                                                 Operation* op) {
   if (op->num_regions() == 0) return;
   for (auto it = impl_->instrumentations.rbegin();
        it != impl_->instrumentations.rend();

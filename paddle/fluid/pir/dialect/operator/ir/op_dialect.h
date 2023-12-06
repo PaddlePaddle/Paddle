@@ -21,7 +21,7 @@ namespace dialect {
 
 class OperatorDialect : public pir::Dialect {
  public:
-  explicit OperatorDialect(pir::IrContext* context);
+  TEST_API explicit OperatorDialect(pir::IrContext* context);
 
   static const char* name() { return "pd_op"; }
 
