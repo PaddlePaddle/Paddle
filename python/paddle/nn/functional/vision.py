@@ -125,7 +125,7 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
     check_variable_and_dtype(
         theta, 'theta', ['float32', 'float64'], 'affine_grid'
     )
-    out = helper.create_variable_for_type_inference(theta.dtype)
+    out = helper.create_variable_for_type_inference(dtype=theta.dtype)
     ipts = {'Theta': theta}
     attrs = {"align_corners": align_corners, "use_cudnn": use_cudnn}
     if isinstance(out_shape, Variable):

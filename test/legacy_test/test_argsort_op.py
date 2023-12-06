@@ -70,14 +70,13 @@ class TestArgsortOpCPU(unittest.TestCase):
         self.init_axis()
         self.init_direction()
         self.init_place()
+        self.feed_data_field = {"x", "label"}
+        self.grad_data_field = {"x"}
 
     @test_with_pir_api
     def test_static_api(self):
         self.dtype = "float64"
         self.input_shape = (2, 2, 2, 2, 3)
-
-        self.feed_data_field = {"x", "label"}
-        self.grad_data_field = {"x"}
 
         self.py_argsort = PyArgsort(
             self.input_shape, self.axis, self.descending, self.dtype
