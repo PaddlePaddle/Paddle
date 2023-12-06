@@ -17,6 +17,7 @@ import unittest
 from test_declarative import foo_func
 
 import paddle
+from paddle.framework import in_pir_mode
 from paddle.jit.dy2static.function_spec import FunctionSpec
 from paddle.pir_utils import test_with_pir_api
 from paddle.static import InputSpec
@@ -104,6 +105,14 @@ class TestFunctionSpec(unittest.TestCase):
         self.assertTupleEqual(
             tuple(input_with_spec[1].shape), (4, 10)
         )  # b.shape
+
+        if in_pir_mode():
+            self.assertTupleEqual(input_with_spec[1].shape, [4, 10])  # b.shape
+        else:
+            self.assertTupleEqual(
+                tuple(input_with_spec[1].shape), (4, 10)
+            )  # b.shape
+
         self.assertEqual(input_with_spec[1].name, 'b_var')  # b.name
 
         # case 3
