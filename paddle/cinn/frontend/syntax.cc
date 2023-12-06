@@ -44,7 +44,8 @@ void Instruction::PrepareOutputs() {
 Instruction::Instruction(absl::string_view op_type,
                          const std::vector<Variable>& inputs,
                          Program* parent)
-    : common::Shared<_Instruction_>(common::make_shared<_Instruction_>()) {
+    : cinn::common::Shared<_Instruction_>(
+          cinn::common::make_shared<_Instruction_>()) {
   get()->op_type = std::string(op_type);
   get()->parent_program = parent;
   get()->inputs = inputs;
@@ -173,7 +174,7 @@ Variable Program::fused_meta_batchnorm_inference(
     epsilon = absl::get<float>(attr_store.at("epsilon"));
   }
   auto eps_var =
-      primitive_const_scalar<float>(epsilon, common::UniqName("epsilon"));
+      primitive_const_scalar<float>(epsilon, cinn::common::UniqName("epsilon"));
   CHECK(!scale->shape.empty()) << "scale's shape is empty.";
   auto broadcast_eps = primitive_broadcast_to(eps_var, scale->shape, {0});
   auto var_add_eps = add(variance, broadcast_eps);
@@ -203,7 +204,7 @@ Variable Program::fused_batchnorm_inference(
     epsilon = absl::get<float>(attr_store.at("epsilon"));
   }
   auto eps_var =
-      primitive_const_scalar<float>(epsilon, common::UniqName("epsilon"));
+      primitive_const_scalar<float>(epsilon, cinn::common::UniqName("epsilon"));
   CHECK(!scale->shape.empty()) << "scale's shape is empty.";
   auto var_add_eps = elementwise_add(variance, eps_var);
   auto rsrqt_var = primitive_rsqrt(var_add_eps);
@@ -301,7 +302,7 @@ LoadPaddleProgram(const std::string& model_dir,
                   std::unordered_map<std::string, std::vector<int>>&
                       input_shape_map,  // NOLINT
                   bool is_combined,
-                  const common::Target& target) {
+                  const cinn::common::Target& target) {
   VLOG(1) << "Loading Paddle model from " << model_dir;
   PaddleModelToProgram paddle_to_program(scope, input_shape_map, target);
   return std::make_tuple(paddle_to_program(model_dir, is_combined),

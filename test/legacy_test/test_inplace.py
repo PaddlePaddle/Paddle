@@ -837,6 +837,22 @@ class TestDygraphInplaceDigamma(TestDygraphInplaceWithContinuous):
         return paddle.digamma(var)
 
 
+class TestDygraphInplaceMutilgammaln(TestDygraphInplaceWithContinuous):
+    def init_data(self):
+        self.input_var_numpy = np.random.rand(10, 20).astype('float32') + 1.0
+        self.dtype = "float32"
+        self.p = 2
+
+    def inplace_api_processing(self, var):
+        return paddle.multigammaln_(var, self.p)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.multigammaln(var, self.p)
+
+    def test_leaf_inplace_var_error(self):
+        pass
+
+
 class TestDygraphInplaceNeg(TestDygraphInplaceWithContinuous):
     def inplace_api_processing(self, var):
         return paddle.neg_(var)

@@ -14,7 +14,8 @@
 
 #pragma once
 
-#include "paddle/cinn/adt/m_expr.h"
+#include "paddle/cinn/adt/map_expr.h"
+#include "paddle/cinn/adt/map_expr_ctx.h"
 #include "paddle/cinn/ir/ir.h"
 
 namespace cinn::common {
@@ -24,6 +25,6 @@ struct Target;
 namespace cinn::adt {
 
 ir::Expr MapExprToIr(const MapExprCtx& map_expr_ctx,
-                     const common::Target& target);
+                     const cinn::common::Target& target);
 
 }

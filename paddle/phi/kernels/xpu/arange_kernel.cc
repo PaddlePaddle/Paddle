@@ -32,7 +32,7 @@ void ArangeTensorKernel(const Context& dev_ctx,
 
   int64_t size = 0;
   phi::funcs::GetSize(start_value, end_value, step_value, &size);
-  out->Resize(phi::make_ddim({size}));
+  out->Resize(common::make_ddim({size}));
   auto* out_data = dev_ctx.template Alloc<T>(out);
 
   int ret = xpu::range<T>(

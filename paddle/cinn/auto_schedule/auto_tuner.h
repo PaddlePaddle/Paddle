@@ -46,7 +46,7 @@ class AutoTuner {
     DatabaseConfig database_config;
   };
 
-  AutoTuner(const common::Target& target, hlir::framework::Graph* graph);
+  AutoTuner(const cinn::common::Target& target, hlir::framework::Graph* graph);
 
   // Initialize tuner with specific config and auxiliary objects.
   void Initialize(const Config& config,
@@ -56,7 +56,7 @@ class AutoTuner {
   TuningResult Tune(const TuningOptions& options);
 
  private:
-  const common::Target& target_;
+  const cinn::common::Target& target_;
   hlir::framework::Graph* graph_;
   std::unique_ptr<hlir::framework::OpLowerer<GroupPtr>> op_lowerer_;
 

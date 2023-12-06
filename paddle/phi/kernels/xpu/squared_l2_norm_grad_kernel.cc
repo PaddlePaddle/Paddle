@@ -22,7 +22,6 @@
 namespace phi {
 
 template <typename T, typename Context>
-
 void SquaredL2NormGradKernel(const Context& dev_ctx,
                              const DenseTensor& x,
                              const DenseTensor& dout,
@@ -65,4 +64,5 @@ PD_REGISTER_KERNEL(squared_l2_norm_grad,
                    ALL_LAYOUT,
                    phi::SquaredL2NormGradKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

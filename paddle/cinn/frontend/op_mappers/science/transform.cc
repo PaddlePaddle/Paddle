@@ -413,7 +413,7 @@ void CastOpMapper(const paddle::cpp::OpDesc& op_desc,
       op_desc, "dtype", static_cast<int>(paddle::cpp::VarDescAPI::Type::FP32));
   auto dtype_pd = static_cast<paddle::cpp::VarDescAPI::Type>(dtype_id);
   auto dtype_cinn = utils::CppVarType2CommonType(dtype_pd);
-  auto dtype = common::Type2Str(dtype_cinn);
+  auto dtype = cinn::common::Type2Str(dtype_cinn);
 
   VLOG(4) << out_name << " = cast(" << x_name << ", dtype=" << dtype << ")";
 

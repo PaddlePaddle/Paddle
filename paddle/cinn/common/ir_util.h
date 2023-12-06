@@ -69,10 +69,10 @@ inline Expr make_one() {
   return make_const(static_cast<T>(1));
 }
 inline Expr make_bool(bool x) {
-  return common::make_shared<ir::UIntImm>(Bool(), x);
+  return cinn::common::make_shared<ir::UIntImm>(Bool(), x);
 }
 inline Expr make_bool(bool x, int lanes) {
-  return common::make_shared<ir::UIntImm>(Bool(lanes), x);
+  return cinn::common::make_shared<ir::UIntImm>(Bool(lanes), x);
 }
 // @}
 

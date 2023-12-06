@@ -142,6 +142,13 @@ void SetReduceFunc(P* opts, int reduce_type) {
           static_cast<void (*)(void*, const void*, const void*, size_t)>(
               &gloo::product<T>));
       break;
+    case ReduceType::kRedAll:
+      // NOTE(zhonghui): There is no reduce_all math function for gloo, just use
+      // min to replace
+      opts->setReduceFunction(
+          static_cast<void (*)(void*, const void*, const void*, size_t)>(
+              &gloo::min<T>));
+      break;
     default:
       PADDLE_THROW(
           errors::InvalidArgument("Unsupport reduce type: %d.", reduce_type));

@@ -48,8 +48,8 @@ void GatherNdGradKernel(const Context &ctx,
         0,
         phi::errors::InvalidArgument("end_size[%d] should be 0", end_size));
     // remain dim
-    auto remain_ddim = phi::slice_ddim(index_dims, 0, index_dims_size - 1);
-    int64_t remain_numel = phi::product(remain_ddim);
+    auto remain_ddim = common::slice_ddim(index_dims, 0, index_dims_size - 1);
+    int64_t remain_numel = common::product(remain_ddim);
 
     int64_t x_numel = x.numel();
     int64_t out_grad_numel = out_grad.numel();
@@ -85,8 +85,8 @@ void GatherNdGradKernel(const Context &ctx,
                                    phi::DataType::INT32,
                                    phi::DataType::INT64));
 
-  auto x_shape = phi::vectorize<int64_t>(x_grad->dims());
-  auto index_shape = phi::vectorize<int64_t>(index.dims());
+  auto x_shape = common::vectorize<int64_t>(x_grad->dims());
+  auto index_shape = common::vectorize<int64_t>(index.dims());
   if (index_shape.size() == 1) {
     index_shape.insert(index_shape.begin(), 1);
   }
