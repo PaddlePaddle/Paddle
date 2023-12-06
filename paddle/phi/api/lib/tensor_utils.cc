@@ -156,12 +156,6 @@ PADDLE_API std::shared_ptr<phi::distributed::DistTensor> reshard(
     } else {
       dist_out_ptr = std::static_pointer_cast<phi::distributed::DistTensor>(
           input_tensor_impl);
-      // phi::distributed::DistTensor* dist_tensor =
-      //     static_cast<phi::distributed::DistTensor*>(input_tensor_impl.get());
-      // dist_out_ptr = std::make_shared<phi::distributed::DistTensor>(
-      //     dist_tensor->dims(), dist_attr);
-      // phi::DenseTensor* dense_out = dist_out_ptr->unsafe_mutable_value();
-      // *dense_out = dist_tensor->value();
     }
   }
   return dist_out_ptr;

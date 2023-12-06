@@ -30,7 +30,7 @@ void WeightQuantizeKernel(const Context& dev_ctx,
                           DenseTensor* scale) {
   DenseTensor quanted_x;
   dev_ctx.template Alloc<int8_t>(out);
-  dev_ctx.template Alloc<float>(scale);
+  dev_ctx.template Alloc<T>(scale);
   size_t m = x.dims()[0];
   size_t n = x.dims()[1];
   quanted_x.Resize({static_cast<int64_t>(m), static_cast<int64_t>(n)});
@@ -49,14 +49,14 @@ void WeightQuantizeKernel(const Context& dev_ctx,
     weight_quant_gpu<T, Context>(dev_ctx,
                                  x.data<T>(),
                                  quanted_x.data<int8_t>(),
-                                 scale->data<float>(),
+                                 scale->data<T>(),
                                  weight_shape);
     trans(dev_ctx, quanted_x, out, axis);
   } else if (algo == "weight_only_int8") {
     weight_quant_gpu<T, Context>(dev_ctx,
                                  x.data<T>(),
                                  quanted_x.data<int8_t>(),
-                                 scale->data<float>(),
+                                 scale->data<T>(),
                                  weight_shape);
     weight_permute_gpu<Context>(dev_ctx,
                                 quanted_x.data<int8_t>(),

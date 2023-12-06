@@ -18,6 +18,7 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 
 def box_decoder(t_box, p_box, pb_v, output_box, norm, axis=0):
@@ -109,7 +110,7 @@ def batch_box_coder(p_box, pb_v, t_box, lod, code_type, norm, axis=0):
 
 class TestBoxCoderOp(OpTest):
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def setUp(self):
         self.op_type = "box_coder"
@@ -142,7 +143,7 @@ class TestBoxCoderOp(OpTest):
 
 class TestBoxCoderOpWithoutBoxVar(OpTest):
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def setUp(self):
         self.python_api = paddle.vision.ops.box_coder
@@ -207,7 +208,7 @@ class TestBoxCoderOpWithLoD(OpTest):
 
 class TestBoxCoderOpWithAxis(OpTest):
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def setUp(self):
         self.python_api = paddle.vision.ops.box_coder
@@ -286,7 +287,7 @@ def wrapper_box_coder(
 
 class TestBoxCoderOpWithVariance(OpTest):
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def setUp(self):
         self.op_type = "box_coder"
@@ -370,6 +371,7 @@ class TestBoxCoderAPI(unittest.TestCase):
         self.prior_box_var_np = np.random.random((80, 4)).astype('float32')
         self.target_box_np = np.random.random((20, 80, 4)).astype('float32')
 
+    @test_with_pir_api
     def test_dygraph_with_static(self):
         paddle.enable_static()
         exe = paddle.static.Executor()
@@ -428,6 +430,7 @@ class TestBoxCoderSupporttuple(unittest.TestCase):
         self.prior_box_np = np.random.random((80, 4)).astype('float32')
         self.target_box_np = np.random.random((20, 80, 4)).astype('float32')
 
+    @test_with_pir_api
     def test_support_tuple(self):
         paddle.enable_static()
         exe = paddle.static.Executor()

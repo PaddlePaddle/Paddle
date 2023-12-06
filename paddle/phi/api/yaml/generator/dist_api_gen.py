@@ -99,9 +99,11 @@ OPTIONAL_VECTOR_DIST_META_IN_TEMPLATE = """
     }}"""
 INFER_SPMD_TEMPLATE = """
     auto spmd_info = phi::distributed::{}({});
+    DebugInfoForInferSpmd("{}", spmd_info);
 """
 GENERAL_INFER_SPMD_TEMPLATE = """
     auto spmd_info = phi::distributed::VariadicReplicatedInferSpmdDynamic({});
+    DebugInfoForInferSpmd("{}", spmd_info);
 """
 UNSUPPORTED_INFER_SPMD_COMMENT_TEMPLATE = """
     // API `{}` does not support InferSpmd now
@@ -860,7 +862,9 @@ class DistForwardAPI(ForwardAPI):
         infer_spmd_code = ""
         infer_spmd_func_code = self.infer_meta['spmd_rule']
         infer_spmd_code = INFER_SPMD_TEMPLATE.format(
-            infer_spmd_func_code, input_args_code[:-2]
+            infer_spmd_func_code,
+            input_args_code[:-2],
+            self.api,
         )
         self.generate_infer_spmd = True
 
@@ -921,7 +925,8 @@ class DistForwardAPI(ForwardAPI):
             return UNSUPPORTED_INFER_SPMD_COMMENT_TEMPLATE.format(self.api)
 
         infer_spmd_code = GENERAL_INFER_SPMD_TEMPLATE.format(
-            input_args_code[:-2]
+            input_args_code[:-2],
+            self.api,
         )
         self.generate_infer_spmd = True
         self.generate_general_infer_spmd = True

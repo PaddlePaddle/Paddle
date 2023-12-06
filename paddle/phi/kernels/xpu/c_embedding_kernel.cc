@@ -24,6 +24,7 @@ void CEmbeddingKernel(const Context& dev_ctx,
                       const DenseTensor& w,
                       const DenseTensor& ids,
                       int64_t start_index,
+                      int64_t vocab_size,
                       DenseTensor* out) {
   const T* table_data = w.data<T>();
   T* output_data = dev_ctx.template Alloc<T>(out);
