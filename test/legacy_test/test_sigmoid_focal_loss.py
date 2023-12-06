@@ -30,6 +30,7 @@ def call_sfl_functional(
     return res
 
 
+@test_with_pir_api
 def test_static(
     place,
     logit_np,
@@ -66,7 +67,6 @@ def test_static(
     return static_result
 
 
-@test_with_pir_api
 def test_dygraph(
     place,
     logit_np,

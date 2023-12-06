@@ -132,7 +132,7 @@ class Dirac(Initializer):
         else:
             out_var = var
         op = None
-        if framework.in_dynamic_or_pir_mode():
+        if framework.in_dygraph_mode():
             with base.dygraph.no_grad():
                 place = _current_expected_place()
                 _C_ops.full_(
@@ -175,7 +175,7 @@ class Dirac(Initializer):
                     else:
                         offset += origin_shape[k] // 2 * stride
                 idx_list.append(offset)
-        if framework.in_dynamic_or_pir_mode():
+        if framework.in_dygraph_mode():
             with base.dygraph.no_grad():
                 tmp_out = _C_ops.reshape(out_var, [-1])
                 tmp_out._share_underline_tensor_to(out_var)
@@ -202,7 +202,7 @@ class Dirac(Initializer):
             stop_gradient=True,
         )
 
-        if framework.in_dynamic_or_pir_mode():
+        if framework.in_dygraph_mode():
             with base.dygraph.no_grad():
                 tmp_tensor = framework._create_tensor()
                 _C_ops.assign_value_(
@@ -231,7 +231,7 @@ class Dirac(Initializer):
             stop_gradient=True,
         )
 
-        if framework.in_dynamic_or_pir_mode():
+        if framework.in_dygraph_mode():
             with base.dygraph.no_grad():
                 tmp_tensor = framework._create_tensor()
                 _C_ops.assign_value_(
@@ -255,7 +255,7 @@ class Dirac(Initializer):
                 stop_gradient=True,
             )
 
-        if framework.in_dynamic_or_pir_mode():
+        if framework.in_dygraph_mode():
             with base.dygraph.no_grad():
                 tmp_out = _C_ops.scatter(
                     out_var, index_tensor, value_tensor, True
