@@ -3193,13 +3193,7 @@ struct GenericPluginTeller : public Teller {
         return false;
       }
     }
-    // TODO(lizexu123): the tensorrt version on Windows supports low-level
-    // and inconsistent supportformation
     if (op_type == "argsort") {
-#if IS_TRT_VERSION_LT(8100)
-      VLOG(3) << "argsort is not supported in TRT version <8.1";
-      return false;
-#endif
       if (!with_dynamic_shape) {
         VLOG(3) << "Ops(" << op_type << ") do not support static shape yet.";
         return false;
