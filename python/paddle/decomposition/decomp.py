@@ -314,7 +314,7 @@ def _decompose_subgraph(block, orig_vars, dst_vars, op_filter):
 
 
 def _decomp_fwd_op(
-    block: Block, fwd_op: pir.Operation, grad_var_to_var: dict
+    block: Block, fwd_op: pir.Operation, grad_var_to_var: dict, tmp_op=None
 ) -> tuple:
     '''
     Decompose the forward op into a list of primitive ops.
@@ -342,8 +342,11 @@ def _decomp_fwd_op(
         lower = decom_rule or has_sink_decomp_rule
 
         if lower:
+            if tmp_op is not None:
+                pir.set_insertion_point(tmp_op)
+            else:
+                pir.set_insertion_point(fwd_op)
             input_args = _prepare_python_api_arguments(fwd_op)
-            pir.set_insertion_point(fwd_op)
             if has_sink_decomp_rule:
                 decomp_outs = call_decomp(fwd_op)
                 new_outs = _analyse_decomp_results(
@@ -359,8 +362,30 @@ def _decomp_fwd_op(
                 if var in orig_outs:
                     grad_var_to_var[grad_var] = new_outs[orig_outs.index(var)]
 
-            fwd_op.replace_all_uses_with(new_outs)
+            if fwd_op.name() in decomp_ops_contain_unused_output.keys():
+                for idx in range(len(orig_outs)):
+                    if (
+                        idx
+                        not in decomp_ops_contain_unused_output[fwd_op.name()]
+                    ):
+                        orig_outs[idx].replace_all_uses_with(new_outs[idx])
+            else:
+                if fwd_op.name() in decomp_ops_contain_unused_output.keys():
+                    orig_outs[0].replace_all_uses_with(new_outs[0])
+                else:
+                    fwd_op.replace_all_uses_with(new_outs)
             block.remove_op(fwd_op)
+
+            if tmp_op is not None:
+                remove_op = True
+                for item in tmp_op.results():
+                    if item.has_one_use():
+                        remove_op = False
+                        break
+                if remove_op:
+                    block.remove_op(tmp_op)
+                tmp_op = None
+
             return new_outs, True
         else:
             return tuple(orig_outs), False
@@ -794,9 +819,28 @@ def _decomp_bwd_op(
     return new_grads, bwd_has_decomposed
 
 
+def _print_decomp_infos(decomp_ops, undecomp_ops):
+    logging.info(
+        "Following forward ops can be decomposed successfully: %s"
+        % (', '.join(decomp_ops["fwd"]))
+    )
+    logging.info(
+        "Following forward ops can not be decomposed successfully: %s"
+        % (', '.join(undecomp_ops["fwd"]))
+    )
+    logging.info(
+        "Following backward ops can be decomposed successfully: %s"
+        % (', '.join(decomp_ops["bwd"]))
+    )
+    logging.info(
+        "Following backward ops can not be decomposed successfully: %s"
+        % (', '.join(undecomp_ops["bwd"]))
+    )
+
+
 def decompose_pir_program(pir_program, param_mapping, grad_var_to_var):
     '''
-    Decompose all backward ops in a pir program.
+    Decompose all PHI ops into prim ops in a pir program.
 
     Args:
         pir_program (Program): the program to be decomposed
@@ -865,53 +909,80 @@ def decompose_pir_program(pir_program, param_mapping, grad_var_to_var):
     prev_bwd_prim_state = core._is_bwd_prim_enabled()
     core._set_prim_forward_enabled(True)
     core._set_prim_backward_enabled(True)
-    prev_pir_api_flag = paddle.base.framework.get_flags("FLAGS_enable_pir_api")
+    prev_pir_api_flag = paddle.base.framework.get_flags("FLAGS_enable_pir_api")[
+        "FLAGS_enable_pir_api"
+    ]
     paddle.framework.set_flags(
         {"FLAGS_enable_pir_api": True}
     )  # set in pir mode for operator overloading
+    paddle.base.framework.global_var._use_pir_api_ = True
 
     with paddle.pir.core.program_guard(pir_program):
         pir_grad_var_to_var = _translate_gradvartovar_to_pir(
             param_mapping, grad_var_to_var
         )
 
-        ops = pir_program.global_block().ops
         bwd_ops = _get_bwd_ops_name(pir_program)
-        num_bwd_ops_decomposed = 0
-        num_bwd_ops_undecomposed = 0
-        bwd_ops_decomposed = []
-        bwd_ops_undecomposed = []
+        decomposed_ops = {"fwd": [], "bwd": []}
+        undecomposed_ops = {"fwd": [], "bwd": []}
+
+        ops = pir_program.global_block().ops
         for op in ops:
             if op.name() in bwd_ops:
-                new_grads, has_decomposed = _decomp_bwd_op(
+                bwd_op_name = op.name()
+                bwd_has_decomposed = False
+                new_input_grads, bwd_has_decomposed = _decomp_bwd_op(
                     pir_program.global_block(),
                     op,
                     pir_grad_var_to_var,
                 )
-                if has_decomposed:
-                    num_bwd_ops_decomposed += 1
-                    if op.name() not in bwd_ops_decomposed:
-                        bwd_ops_decomposed.append(op.name())
-                if not has_decomposed:
-                    num_bwd_ops_undecomposed += 1
-                    if op.name() not in bwd_ops_undecomposed:
-                        bwd_ops_undecomposed.append(op.name())
+                if (
+                    bwd_has_decomposed
+                    and bwd_op_name not in decomposed_ops["bwd"]
+                ):
+                    decomposed_ops["bwd"].append(bwd_op_name)
+                elif (
+                    not bwd_has_decomposed
+                    and bwd_op_name not in undecomposed_ops["bwd"]
+                ):
+                    undecomposed_ops["bwd"].append(bwd_op_name)
 
-        logging.info(
-            "%d backward ops are successfully decomposed, op names are: %s"
-            % (num_bwd_ops_decomposed, ', '.join(bwd_ops_decomposed))
-        )
-        logging.info(
-            "%d backward ops can not be successfully decomposed, op names are: %s"
-            % (
-                num_bwd_ops_undecomposed,
-                ', '.join(bwd_ops_undecomposed),
-            )
-        )
+        ops = pir_program.global_block().ops
+        prev_op = None
+        black_fwd_ops = ["pd_op.layer_norm", "pd_op.stack", "pd_op.squeeze"]
+        for op in ops:
+            if op.name() not in bwd_ops and op.name() not in black_fwd_ops:
+                fwd_op_name = op.name()
+                fwd_has_decomposed = False
+                (
+                    new_fwd_outputs,
+                    fwd_has_decomposed,
+                ) = _decomp_fwd_op(
+                    pir_program.global_block(),
+                    op,
+                    pir_grad_var_to_var,
+                    prev_op,
+                )
+                if (
+                    fwd_has_decomposed
+                    and fwd_op_name not in decomposed_ops["fwd"]
+                ):
+                    decomposed_ops["fwd"].append(fwd_op_name)
+                elif (
+                    not fwd_has_decomposed
+                    and fwd_op_name not in undecomposed_ops["fwd"]
+                ):
+                    undecomposed_ops["fwd"].append(fwd_op_name)
+            if op.name() == "builtin.combine":
+                prev_op = op
+            else:
+                prev_op = None
+
+        _print_decomp_infos(decomposed_ops, undecomposed_ops)
 
         core._set_prim_forward_enabled(prev_fwd_prim_state)
         core._set_prim_backward_enabled(prev_bwd_prim_state)
-        paddle.base.framework.set_flags(prev_pir_api_flag)
-        paddle.base.framework.global_var._use_pir_api_ = prev_pir_api_flag[
-            "FLAGS_enable_pir_api"
-        ]
+        paddle.framework.set_flags(
+            {"FLAGS_enable_pir_api": prev_pir_api_flag}
+        )  # set in pir mode for operator overloading
+        paddle.base.framework.global_var._use_pir_api_ = prev_pir_api_flag
