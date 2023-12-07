@@ -175,6 +175,7 @@ from .manipulation import (  # noqa: F401
     scatter_,
     scatter_nd,
     scatter_nd_add,
+    select_scatter,
     shard_index,
     slice,
     split,
@@ -228,6 +229,7 @@ from .math import (  # noqa: F401
     ceil_,
     clip,
     clip_,
+    combinations,
     conj,
     cos,
     cos_,
@@ -696,6 +698,7 @@ tensor_method_func = [
     'repeat_interleave',
     'take_along_axis',
     'put_along_axis',
+    'select_scatter',
     'put_along_axis_',
     'exponential_',
     'heaviside',
@@ -762,6 +765,7 @@ tensor_method_func = [
     'atleast_2d',
     'atleast_3d',
     'diagonal_scatter',
+    "combinations",
 ]
 
 # this list used in math_op_patch.py for magic_method bind

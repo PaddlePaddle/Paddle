@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/adt/print_utils/print_schedule_dim.h"
-#include "paddle/cinn/adt/print_utils/print_loop_size.h"
+#include "paddle/cinn/adt/print_utils/print_dim_expr.h"
 #include "paddle/cinn/adt/schedule_dim.h"
 
 namespace cinn::adt {
@@ -34,6 +34,20 @@ std::string ToTxtString(const ScheduleDim& schedule_dim) {
   return std::visit(
       [&](const auto& impl) { return ToTxtStringScheduleDimImpl(impl); },
       schedule_dim.variant());
+}
+
+std::string ToTxtString(const List<ScheduleDim>& schedule_dims) {
+  std::string ret;
+  ret += "[";
+  int count = 0;
+  for (const auto& schedule_dim : *schedule_dims) {
+    if (count++ != 0) {
+      ret += ", ";
+    }
+    ret += ToTxtString(schedule_dim);
+  }
+  ret += "]";
+  return ret;
 }
 
 }  // namespace cinn::adt

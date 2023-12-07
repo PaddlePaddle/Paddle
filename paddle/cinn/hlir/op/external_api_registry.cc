@@ -18,13 +18,13 @@ namespace cinn {
 namespace hlir {
 namespace op {
 
-ExternalApiInfo& ExternalApiRegistry::Register(const std::string& op_name,
-                                               const common::Target& target) {
+ExternalApiInfo& ExternalApiRegistry::Register(
+    const std::string& op_name, const cinn::common::Target& target) {
   return __REGISTER__(GenKey(op_name, target));
 }
 
-std::string ExternalApiRegistry::GetExternalApi(const framework::Node* op_node,
-                                                const common::Target& target) {
+std::string ExternalApiRegistry::GetExternalApi(
+    const framework::Node* op_node, const cinn::common::Target& target) {
   CHECK(op_node->attrs.attr_store.count("original_op"))
       << "a custom_call op must store its original op name";
   std::string op_name =
@@ -44,7 +44,7 @@ std::string ExternalApiRegistry::GetExternalApi(const framework::Node* op_node,
 }
 
 std::string ExternalApiRegistry::GenKey(const std::string& op_name,
-                                        const common::Target& target) {
+                                        const cinn::common::Target& target) {
   std::ostringstream oss;
   oss << target;
   return op_name + "_" + oss.str();

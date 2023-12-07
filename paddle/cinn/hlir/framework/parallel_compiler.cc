@@ -229,13 +229,14 @@ void ParallelCompiler::Task::CodegenAndJit() {
   VLOG(2) << "Start Codegen and JIT on Group " << group_id
           << " at thread: " << std::this_thread::get_id();
   // build module
-  ir::Module::Builder builder(common::UniqName("module"), context->target);
+  ir::Module::Builder builder(cinn::common::UniqName("module"),
+                              context->target);
   for (auto& func : pcompiler->result_.LoweredFuncs(group_id)) {
     builder.AddFunction(func);
   }
 
   auto ir_module = builder.Build();
-  if (context->target == common::DefaultNVGPUTarget()) {
+  if (context->target == cinn::common::DefaultNVGPUTarget()) {
 #ifdef CINN_WITH_CUDA
     auto splited_module = backends::SplitCudaAndHostModule(ir_module);
     auto hmodule = std::get<0>(splited_module);

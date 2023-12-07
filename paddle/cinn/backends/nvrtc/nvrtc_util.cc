@@ -176,7 +176,7 @@ std::string Compiler::CompileWithNvcc(const std::string& cuda_c) {
   }
 
   // get unqiue prefix name
-  prefix_name_ = dir + "/" + common::UniqName("rtc_tmp");
+  prefix_name_ = dir + "/" + cinn::common::UniqName("rtc_tmp");
 
   auto cuda_c_file = prefix_name_ + ".cu";
   std::ofstream ofs(cuda_c_file, std::ios::out);
@@ -194,7 +194,7 @@ std::string Compiler::CompileWithNvcc(const std::string& cuda_c) {
 // std::ios::in); }
 
 void Compiler::CompileToPtx() {
-  auto include_dir = common::Context::Global().runtime_include_dir();
+  auto include_dir = cinn::common::Context::Global().runtime_include_dir();
   std::string include_dir_str = "";
   for (auto dir : include_dir) {
     if (include_dir_str.empty()) {

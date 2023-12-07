@@ -70,11 +70,11 @@ void LstsqKernel(const Context& dev_ctx,
   int ldb = std::max<int>(1, std::max(m, n));
 
   DenseTensor* new_x = new DenseTensor();
-  new_x->Resize(phi::make_ddim({batch_count, m, n}));
+  new_x->Resize(common::make_ddim({batch_count, m, n}));
   dev_ctx.template Alloc<T>(new_x);
   phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), true, new_x);
 
-  solution->Resize(phi::make_ddim({batch_count, std::max(m, n), nrhs}));
+  solution->Resize(common::make_ddim({batch_count, std::max(m, n), nrhs}));
   dev_ctx.template Alloc<T>(solution);
 
   if (m >= n) {
@@ -122,7 +122,7 @@ void LstsqKernel(const Context& dev_ctx,
   DenseTensor* jpvt = new DenseTensor();
   int* jpvt_data = nullptr;
   if (driver == LapackDriverType::Gelsy) {
-    jpvt->Resize(phi::make_ddim({std::max<int>(1, n)}));
+    jpvt->Resize(common::make_ddim({std::max<int>(1, n)}));
     jpvt_data = dev_ctx.template Alloc<int>(jpvt);
   }
 
@@ -185,7 +185,7 @@ void LstsqKernel(const Context& dev_ctx,
 
   lwork = std::max<int>(1, static_cast<int>(phi::dtype::Real<T>(wkopt)));
   DenseTensor* work = new DenseTensor();
-  work->Resize(phi::make_ddim({lwork}));
+  work->Resize(common::make_ddim({lwork}));
   T* work_data = dev_ctx.template Alloc<T>(work);
 
   // "rwork" only used for complex inputs and "gelsy/gelsd/gelss" drivers
@@ -200,7 +200,7 @@ void LstsqKernel(const Context& dev_ctx,
     } else if (driver == LapackDriverType::Gelsd) {
       rwork_len = std::max<int>(1, rwkopt);
     }
-    rwork->Resize(phi::make_ddim({rwork_len}));
+    rwork->Resize(common::make_ddim({rwork_len}));
     rwork_data = dev_ctx.template Alloc<ValueType>(rwork);
   }
 
@@ -208,7 +208,7 @@ void LstsqKernel(const Context& dev_ctx,
   DenseTensor* iwork = new DenseTensor();
   int* iwork_data = nullptr;
   if (driver == LapackDriverType::Gelsd) {
-    iwork->Resize(phi::make_ddim({std::max<int>(1, iwkopt)}));
+    iwork->Resize(common::make_ddim({std::max<int>(1, iwkopt)}));
     iwork_data = dev_ctx.template Alloc<int>(iwork);
   }
 
@@ -293,7 +293,7 @@ void LstsqKernel(const Context& dev_ctx,
   if (batch_count > 1) {
     solution->Resize(solution_dim);
   } else {
-    solution->Resize(phi::make_ddim({n, nrhs}));
+    solution->Resize(common::make_ddim({n, nrhs}));
   }
 
   GetResidualsTensor<Context, T>(dev_ctx, x, y, solution, residuals);
