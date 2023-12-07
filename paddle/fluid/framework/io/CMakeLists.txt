@@ -4,10 +4,6 @@ if(WITH_CRYPTO)
   set(framework_io_srcs ${framework_io_srcs} ${framework_io_crypto_srcs})
 endif()
 
-if(WITH_MKLDNN)
-  add_dependencies(framework_io_srcs mkldnn)
-endif()
-
 set(framework_io_deps glog timer)
 if(WITH_CRYPTO)
   set(framework_io_deps ${framework_io_deps} cryptopp)
@@ -17,3 +13,7 @@ cc_library(
   framework_io
   SRCS ${framework_io_srcs}
   DEPS ${framework_io_deps})
+
+if(WITH_MKLDNN)
+  add_dependencies(framework_io mkldnn)
+endif()
