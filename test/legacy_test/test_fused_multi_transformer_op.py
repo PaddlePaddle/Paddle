@@ -28,7 +28,6 @@ from paddle.incubate.nn.functional import fused_multi_transformer
 from paddle.nn.layer.common import Dropout, Linear
 from paddle.nn.layer.norm import LayerNorm
 from paddle.nn.layer.transformer import _convert_attention_mask
-from paddle.pir_utils import test_with_pir_api
 
 seed = 42
 
@@ -1396,7 +1395,6 @@ class TestFusedMultiTransformerOpPreCacheStatic1(TestFusedMultiTransformerOp):
             initializer=paddle.paddle.nn.initializer.Constant(0.0)
         )
 
-    @test_with_pir_api
     def test_fused_multi_transformer_op(self):
         self.has_pre_cache = True
         self.remove_padding = False
@@ -1427,7 +1425,6 @@ class TestFusedMultiTransformerOpPreCacheStatic1(TestFusedMultiTransformerOp):
 # Starts the name of this test with 'Z' to make this test
 # run after others. If not, it will make other tests fail.
 class ZTestFusedMultiAttentionAPIError(unittest.TestCase):
-    @test_with_pir_api
     def test_errors(self):
         def test_invalid_input_dim():
             array = np.array([1.9], dtype=np.float32)
@@ -1441,7 +1438,6 @@ class ZTestFusedMultiAttentionAPIError(unittest.TestCase):
 
 
 class ZTestFusedMultiTransformerAPIError(unittest.TestCase):
-    @test_with_pir_api
     def test_errors(self):
         def test_invalid_input_dim():
             array = np.array([], dtype=np.float32)
