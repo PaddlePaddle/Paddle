@@ -105,6 +105,7 @@ USE_PIR_PASS(conv2d_bn_fuse_pass);
 USE_PIR_PASS(conv2d_add_fuse_pass);
 USE_PIR_PASS(conv2d_add_act_fuse_pass);
 USE_PIR_PASS(identity_op_clean_pass);
+USE_PIR_PASS(matmul_scale_fuse_pass);
 
 PHI_DECLARE_bool(print_ir);
 

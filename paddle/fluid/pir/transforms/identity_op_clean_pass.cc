@@ -120,14 +120,13 @@ class RemoveRedundentScalePattern
                                       {"dtype", pat.Attr("dtype_1")},
                                       {"place", pat.Attr("place_1")}});
     const auto &scale_op_res =
-        res.Op(paddle::dialect::ScaleOp::name(),
+        res.Op("pd_op.scale",
                {{"bias", bais_res},
                 {"bias_after_scale",
                  res.Attr([](const pir::drr::MatchContext &match_ctx) -> bool {
                    return true;
                  })}});
-    full_op_res({}, {&res.Tensor("full_op_res_out")});
-    scale_op_res({&res.Tensor("x"), &res.Tensor("full_op_res_out")},
+    scale_op_res({&res.Tensor("x"), &full_op_res()},
                  {&res.Tensor("scale_2_out")});
   }
 };

@@ -79,19 +79,17 @@ class PassTest(unittest.TestCase):
             self.place_runtime == "cpu" or self.place_runtime == "gpu",
             "The place param must be either GPU or CPU ",
         )
-        for place_runtime in self.sample_place():
-            self.place_runtime = place_runtime
-            if self.place_runtime == "cpu":
-                executor = paddle.static.Executor(paddle.base.CPUPlace())
-            elif self.place_runtime == "gpu":
-                try:
-                    executor = paddle.static.Executor(paddle.base.CUDAPlace(0))
-                except Exception as e:
-                    executor = paddle.static.Executor(paddle.base.CPUPlace())
-            for program, need_translate_to_pir in self.sample_program():
-                if need_translate_to_pir:
-                    program = pir.translate_to_pir(program.desc)
-                if not self.is_program_valid(program):
-                    continue
-                program = self.run_pir_pass(program)
-                self.check_fused_ops(program)
+        if self.place_runtime == "cpu":
+            executor = paddle.static.Executor(paddle.base.CPUPlace())
+        elif self.place_runtime == "gpu":
+            executor = paddle.static.Executor(paddle.base.CUDAPlace(0))
+        import pdb
+
+        pdb.set_trace()
+        for program, need_translate_to_pir in self.sample_program():
+            if need_translate_to_pir:
+                program = pir.translate_to_pir(program.desc)
+            if not self.is_program_valid(program):
+                continue
+            program = self.run_pir_pass(program)
+            self.check_fused_ops(program)
