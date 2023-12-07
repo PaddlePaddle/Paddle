@@ -22,7 +22,7 @@ This is a Triton implementation of the Flash Attention algorithm
 (see: Dao et al., https://arxiv.org/pdf/2205.14135v2.pdf; Rabe and Staats https://arxiv.org/pdf/2112.05682v2.pdf)
 """
 
-import torch
+#import torch
 import triton
 import triton.language as tl
 
@@ -39,14 +39,30 @@ def fused_attention_kernel(
 ):
     start_m = tl.program_id(0)
     off_hz = tl.program_id(1)
+    # N * d
     stride_h = BLOCK_DMODEL * seq_len
 
     # initialize offsets
+    # Bc tile的范围
+    # 【0，1，2】
     offs_m = start_m * BLOCK_M + tl.arange(0, BLOCK_M)
+    # Br tile的范围
+    #【0，1】
     offs_n = tl.arange(0, BLOCK_N)
+     # 【0，1，2 ，3】
     offs_d = tl.arange(0, BLOCK_DMODEL)
+    # Bc * d
+    #   [[0, 0 , 0,0],
+    #   [1,1,1,1],
+    #   [2,2,2,2],]
+
+    #   [[0,1,2,3],
+    #   [0,1,2,3]]
     off_q = off_hz * stride_h + offs_m[:, None] * BLOCK_DMODEL + offs_d[None, :]
+    # d * Br 
+    # [i,j] -> [j,i] ->i*d+j
     off_k = off_hz * stride_h + offs_n[None, :] * BLOCK_DMODEL + offs_d[:, None]
+    # Bc * d
     off_v = off_hz * stride_h + offs_n[:, None] * BLOCK_DMODEL + offs_d[None, :]
     # Initialize pointers to Q, K, V
     q_ptrs = Q + off_q
@@ -65,6 +81,7 @@ def fused_attention_kernel(
         qk = tl.zeros([BLOCK_M, BLOCK_N], dtype=tl.float32)
         qk += tl.dot(q, k)
         qk *= sm_scale
+        # 
         qk = tl.where(offs_m[:, None] >= (start_n + offs_n[None, :]), qk, float("-inf"))
         # compute new m
         m_curr = tl.maximum(tl.max(qk, 1), m_prev)
@@ -76,6 +93,7 @@ def fused_attention_kernel(
         # rescale operands of matmuls
         l_rcp = 1. / l_curr
         p *= l_rcp[:, None]
+        # 上一轮迭代的结果进行修正
         acc *= (l_prev * l_rcp)[:, None]
         # update acc
         p = p.to(Q.dtype.element_ty)
