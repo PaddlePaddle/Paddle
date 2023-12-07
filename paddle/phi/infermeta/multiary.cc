@@ -4506,7 +4506,6 @@ void RetinanetDetectionOutputInferMeta(const std::vector<const MetaTensor*>& bbo
     out -> set_dims({bbox_dims[1], bbox_dims[2] + 2});
     }
 
-
 void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
                                        const MetaTensor& cache_kv,
                                        const MetaTensor& bias,
