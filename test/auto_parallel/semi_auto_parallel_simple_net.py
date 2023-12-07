@@ -60,10 +60,6 @@ class DemoNet(nn.Layer):
         if self.is_pp:
             out = dist.reshard(out, *self.pp_reshard_dist_attr)
         out = self.linear_1(out)
-        if out.is_dist():
-            print("dist out: ", out)
-        else:
-            print("origin out: ", out)
         return out
 
     def forward(self, x):
@@ -228,9 +224,9 @@ class TestSimpleNetForSemiAutoParallel:
         #     self.check_tensor_eq(param.grad, param_base.grad)
 
     def run_test_case(self):
-        # self.test_dp_demo_net()
+        self.test_dp_demo_net()
         self.test_mp_demo_net()
-        # self.test_pp_demo_net()
+        self.test_pp_demo_net()
 
 
 if __name__ == '__main__':
