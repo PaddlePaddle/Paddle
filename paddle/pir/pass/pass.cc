@@ -101,7 +101,7 @@ bool detail::PassAdaptor::RunPass(Pass* pass,
     adaptor->Run(op, opt_level, verify);
   } else {
     if (instrumentor) instrumentor->RunBeforePass(pass, op);
-    paddle::string::PrettyLogH1("--- Running analysis [%s]",
+    paddle::string::PrettyLogH1("--- Running PIR pass [%s]",
                                 pass->pass_info().name);
     pass->Run(op);
     if (instrumentor) instrumentor->RunAfterPass(pass, op);

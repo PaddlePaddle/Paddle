@@ -91,11 +91,13 @@ class IR_API Pass {
 
   virtual bool Initialize(IrContext* context) { return true; }
 
-  void PrintStatistics(int64_t pass_match_count) {
-    if (pass_match_count > 0) {
-      paddle::string::PrettyLogH2("--- detected [%lld] subgraphs!",
-                                  pass_match_count);
-    }
+  void PrintStatistics(int64_t match_count) {
+    paddle::string::PrettyLogH2("--- detected [%lld] subgraphs!", match_count);
+  }
+
+  void PrintStatistics(int64_t match_count, int64_t all_count) {
+    paddle::string::PrettyLogH2(
+        "--- detected [%lld/%lld] subgraphs!", match_count, all_count);
   }
 
   void PrintStatistics(const std::string& pass_log) {
