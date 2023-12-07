@@ -3911,6 +3911,7 @@ def histogramdd(
                    [0.        , 0.66666669, 1.33333337, 2.        ]), Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
                    [0.        , 0.66666669, 1.33333337, 2.        ])])
 
+        .. code-block:: python
             :name: examp2
 
             >>> import paddle
