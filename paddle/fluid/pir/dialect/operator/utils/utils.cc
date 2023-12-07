@@ -19,6 +19,7 @@
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/phi/core/kernel_factory.h"
@@ -267,6 +268,23 @@ void DoValueCheck(const pir::Value& value,
   if (value.type().isa<pir::DenseTensorType>()) {
     std::string value_type = phi::DataTypeToString(dialect::TransToPhiDataType(
         value.type().dyn_cast<pir::DenseTensorType>().dtype()));
+    if (expected_dtype.find(value_type) == expected_dtype.end()) {
+      std::ostringstream joined;
+      std::copy(expected_dtype.begin(),
+                expected_dtype.end(),
+                std::ostream_iterator<std::string>(joined, ","));
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Check data type error for op: %s, input: %s, %s.dtype is %s, and "
+          "expected_dtype is %s",
+          op_name,
+          input_name,
+          input_name,
+          value_type,
+          joined.str()));
+    }
+  } else if (value.type().isa<paddle::dialect::SelectedRowsType>()) {
+    std::string value_type = phi::DataTypeToString(dialect::TransToPhiDataType(
+        value.type().dyn_cast<paddle::dialect::SelectedRowsType>().dtype()));
     if (expected_dtype.find(value_type) == expected_dtype.end()) {
       std::ostringstream joined;
       std::copy(expected_dtype.begin(),

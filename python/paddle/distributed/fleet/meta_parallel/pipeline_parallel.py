@@ -112,7 +112,11 @@ class FakeMicroDataset:
                         self._acc_steps,
                         len(data),
                     )
-                    output.append(data[micro_step].detach())
+                    output.append(
+                        data[micro_step].detach()
+                        if data[micro_step] is not None
+                        else None
+                    )
                 elif data is not None:
                     self._check_data_vaild(data)
                     output.append(data[begin:end, :].detach())
@@ -249,14 +253,14 @@ class PipelineParallel(MetaParallelBase):
         if self._sharding_comm_overlap:
             assert self.use_sharding_parallel and self.num_stages > 1
 
+        assert not (
+            self._dp_comm_overlap and self._sharding_comm_overlap
+        ), "Cannot use dp pp overlap and sharding pp overlap at the same time."
+
         self._chunk_2_comm_buffers = defaultdict(list)
         self._comm_overlap = (
             self._dp_comm_overlap or self._sharding_comm_overlap
         )
-
-        assert (
-            self._comm_overlap or not self._release_gradients
-        ), "Cannot use release_gradients without comm_overlap."
 
         if self._enable_timer:
             if not timer.is_timer_initialized():
@@ -324,14 +328,7 @@ class PipelineParallel(MetaParallelBase):
     def set_virtual_pipeline_rank(self, rank):
         self._virtual_pp_rank = rank
 
-    def bw_hook_func(self, buffer, param):
-        @paddle.autograd.no_grad()
-        def fused_allreduce(*_):
-            buffer.add_grad(param)
-
-        return fused_allreduce
-
-    def register_allreduce_overlap_hook(
+    def fused_gradient(
         self, model, comm_group, acc_steps, dp, group_size=128 * 1024 * 1024
     ):
         if model.get_num_virtual_stages() > 1:
@@ -345,8 +342,6 @@ class PipelineParallel(MetaParallelBase):
             assert hasattr(self, "optimizer")
             assert hasattr(self.optimizer, "_param2rank")
             _param2rank = self.optimizer._param2rank
-
-        # Note: after sharding change to reduce operation, here need to be cleared
 
         for chunk_idx, model in enumerate(models):
             # For virtual pipeline. Will separate parameters in different chunk into
@@ -376,8 +371,6 @@ class PipelineParallel(MetaParallelBase):
                 if act == HOOK_ACTION.REDUCE:
                     # parse the relative dst rank to absolute dst rank for sharding
                     dst = comm_group.ranks[dst]
-                else:
-                    dst = -1
                 var_groups = assign_group_by_size(parameter_list, group_size)
 
                 for group_idx, parameters in var_groups.items():
@@ -391,10 +384,27 @@ class PipelineParallel(MetaParallelBase):
                         release_grads=self._release_gradients,
                     )
                     self._chunk_2_comm_buffers[chunk_idx].append(buffer)
-                    for param in parameters:
-                        param._register_backward_hook(
-                            self.bw_hook_func(buffer, param)
-                        )
+
+        return self._chunk_2_comm_buffers
+
+    def bw_hook_func(self, buffer, param):
+        @paddle.autograd.no_grad()
+        def fused_allreduce(*_):
+            buffer.add_grad(param)
+
+        return fused_allreduce
+
+    def register_allreduce_overlap_hook(
+        self, model, comm_group, acc_steps, dp, group_size=128 * 1024 * 1024
+    ):
+        # register hook
+        self.fused_gradient(model, comm_group, acc_steps, dp, group_size)
+        for _, buffers in self._chunk_2_comm_buffers.items():
+            for buffer in buffers:
+                for param in buffer._params:
+                    param._register_backward_hook(
+                        self.bw_hook_func(buffer, param)
+                    )
 
     def timer_printer(self):
         if not self._enable_timer:
@@ -574,7 +584,7 @@ class PipelineParallel(MetaParallelBase):
             ), "comm buffers should be created"
             for _, buffers in self._chunk_2_comm_buffers.items():
                 for buffer in buffers:
-                    buffer.scale_grads()
+                    buffer.comm_grads()
 
         if self._enable_timer:
             self.timers("allreduce_shared_weight_gradients").start()
@@ -918,6 +928,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
         assert layers.get_num_virtual_stages() > 1
 
         # setup for interleave scheduler
+        self._check_sanity()
         self.num_model_chunks = layers.get_num_virtual_stages()
         self.model_chunks = layers.get_model_chunks()
         assert self.model_chunks is not None
@@ -926,7 +937,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
         self._virtual_pp_rank = 0
         self._reset_counter()
 
-        self._check_sanity()
+        self._assign_vpp_info(self.model_chunks)
 
     def _check_sanity(self):
         assert (
@@ -1051,7 +1062,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
             for _, buffers in self._chunk_2_comm_buffers.items():
                 for buffer in buffers:
-                    buffer.scale_grads()
+                    buffer.comm_grads()
 
     def _backward_step_helper(self, micro_step):
         virtual_pp_rank = self._get_virtual_pp_rank(micro_step, forward=False)
@@ -1535,7 +1546,7 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
 
         for buffers in self._chunk_2_comm_buffers.values():
             for buffer in buffers:
-                buffer.scale_and_split_grads()
+                buffer.comm_grads()
 
     def forward_backward_pipeline(
         self, data, scaler, forward_only=False, compute_loss=True

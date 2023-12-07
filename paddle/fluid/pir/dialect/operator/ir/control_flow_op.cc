@@ -164,43 +164,45 @@ void IfOp::VerifySig() {
 }
 
 void IfOp::VerifyRegion() {
-  VLOG(4) << "Start Verifying sub regions for: IfOp.";
-  PADDLE_ENFORCE_EQ(
-      (*this)->region(0).size(),
-      1u,
-      phi::errors::PreconditionNotMet("The size %d of true_region must be 1.",
-                                      (*this)->region(0).size()));
+  // VLOG(4) << "Start Verifying sub regions for: IfOp.";
+  // PADDLE_ENFORCE_EQ(
+  //     (*this)->region(0).size(),
+  //     1u,
+  //     phi::errors::PreconditionNotMet("The size %d of true_region must
+  //     be 1.",
+  //                                     (*this)->region(0).size()));
 
-  if ((*this)->num_results() != 0) {
-    PADDLE_ENFORCE_EQ(
-        (*this)->region(0).size(),
-        (*this)->region(1).size(),
-        phi::errors::PreconditionNotMet("The size %d of true_region must be "
-                                        "equal to the size %d of false_region.",
-                                        (*this)->region(0).size(),
-                                        (*this)->region(1).size()));
+  // if ((*this)->num_results() != 0) {
+  //   PADDLE_ENFORCE_EQ(
+  //       (*this)->region(0).size(),
+  //       (*this)->region(1).size(),
+  //       phi::errors::PreconditionNotMet("The size %d of true_region must be "
+  //                                       "equal to the size %d of
+  //                                       false_region.",
+  //                                       (*this)->region(0).size(),
+  //                                       (*this)->region(1).size()));
 
-    auto &true_last_op = (*this)->region(0).front().back();
-    auto &false_last_op = (*this)->region(1).front().back();
-    PADDLE_ENFORCE_EQ(true,
-                      true_last_op.isa<pir::YieldOp>(),
-                      phi::errors::PreconditionNotMet(
-                          "The last of true block must be YieldOp"));
-    PADDLE_ENFORCE_EQ(true_last_op.num_operands(),
-                      (*this)->num_results(),
-                      phi::errors::PreconditionNotMet(
-                          "The size of last of true block op's input must be "
-                          "equal to IfOp's outputs num."));
-    PADDLE_ENFORCE_EQ(true,
-                      false_last_op.isa<pir::YieldOp>(),
-                      phi::errors::PreconditionNotMet(
-                          "The last of false block must be YieldOp"));
-    PADDLE_ENFORCE_EQ(false_last_op.num_operands(),
-                      (*this)->num_results(),
-                      phi::errors::PreconditionNotMet(
-                          "The size of last of false block op's input must be "
-                          "equal to IfOp's outputs num."));
-  }
+  //   auto &true_last_op = (*this)->region(0).front().back();
+  //   auto &false_last_op = (*this)->region(1).front().back();
+  //   PADDLE_ENFORCE_EQ(true,
+  //                     true_last_op.isa<pir::YieldOp>(),
+  //                     phi::errors::PreconditionNotMet(
+  //                         "The last of true block must be YieldOp"));
+  //   PADDLE_ENFORCE_EQ(true_last_op.num_operands(),
+  //                     (*this)->num_results(),
+  //                     phi::errors::PreconditionNotMet(
+  //                         "The size of last of true block op's input must be
+  //                         " "equal to IfOp's outputs num."));
+  //   PADDLE_ENFORCE_EQ(true,
+  //                     false_last_op.isa<pir::YieldOp>(),
+  //                     phi::errors::PreconditionNotMet(
+  //                         "The last of false block must be YieldOp"));
+  //   PADDLE_ENFORCE_EQ(false_last_op.num_operands(),
+  //                     (*this)->num_results(),
+  //                     phi::errors::PreconditionNotMet(
+  //                         "The size of last of false block op's input must be
+  //                         " "equal to IfOp's outputs num."));
+  // }
 }
 
 std::vector<std::vector<pir::OpResult>> IfOp::Vjp(
