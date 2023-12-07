@@ -33,6 +33,7 @@ decomp_interface_declare_gen_op_list = [
     "softmax",
     "sqrt",
     "squeeze",
+    "stack",
     "unsqueeze",
 ]
 
@@ -52,6 +53,8 @@ decomp_interface_implementation_gen_op_list = [
     "softmax",
     "sqrt",
     "squeeze",
+    "unsqueeze",
+    "stack",
     "unsqueeze",
 ]
 

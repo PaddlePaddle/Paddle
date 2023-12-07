@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/conv2d_fusion_layout_transfer_pass.h"
+#include "paddle/fluid/framework/ir/fused_conv2d_add_act_layout_transfer_pass.h"
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -99,11 +99,11 @@ void InsertLayoutTransOp(ir::Graph *graph,
 
 }  // namespace
 
-void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
+void FusedConv2dAddActLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph,
       platform::errors::PreconditionNotMet("graph should not be nullptr."));
-  FusePassBase::Init("conv2d_fusion_layout_transfer", graph);
+  FusePassBase::Init("fused_conv2d_add_act_layout_transfer", graph);
   auto *scope = param_scope();
 
   // only float16 compute precision need insert transfer_layout.
@@ -118,12 +118,12 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
                     true,
                     platform::errors::InvalidArgument(
                         "the graph should be main graph when applying "
-                        "conv2d_fusion_layout_transfer_pass"));
+                        "fused_conv2d_add_act_layout_transfer_pass"));
 
   PADDLE_ENFORCE_NOT_NULL(
       scope,
       platform::errors::Fatal("scope must not be nullptr when applying "
-                              "conv2d_fusion_layout_transfer_pass"));
+                              "fused_conv2d_add_act_layout_transfer_pass"));
 
   // Not support multiple block now.
   std::unordered_map<ir::Node *, ir::Node *> cache;
@@ -131,23 +131,23 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
   auto iter = op_nodes.cbegin();
   auto *block_desc = (*iter)->Op()->Block();
 
-  // Process multiple conv2d_fusion shares weight.
+  // Process multiple fused_conv2d_add_act shares weight.
   std::unordered_set<std::string> weights_shape_nhwc;
 
   // Used to control the insertion of transfer_layout op.
   std::unordered_set<ir::Node *> vars_shape_nhwc;
 
-  // Only support conv2d_fusion now.
-  std::string target_op_type = "conv2d_fusion";
+  // Only support fused_conv2d_add_act now.
+  std::string target_op_type = "fused_conv2d_add_act";
   std::unordered_set<ir::Node *> valid_ops;
 
-  // Determine if this conv2d_fusion can run in cuDNN's NHWC mode,
+  // Determine if this fused_conv2d_add_act can run in cuDNN's NHWC mode,
   // will not set or change any attribute in op_desc
   auto cuDNNIsValid = [&](ir::Node *op_node) -> bool {
     auto filter_names = op_node->Op()->Input("Filter");
     constexpr int CUDNN_ALIGNMENT = 8;
-    // If filter's channel is not multiple of CUDNN_ALIGNMENT, conv2d_fusion not
-    // run at nhwc.
+    // If filter's channel is not multiple of CUDNN_ALIGNMENT,
+    // fused_conv2d_add_act not run at nhwc.
     for (const auto &filter_name : filter_names) {
       auto *filter_var = scope->FindLocalVar(filter_name);
       const auto &filter_tensor = filter_var->Get<phi::DenseTensor>();
@@ -195,7 +195,7 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
       auto *op_desc = op_node->Op();
 
       if (CutlassIsValid(op_node)) {
-        // conv2d_fusion must have this attribute because of signature.
+        // fused_conv2d_add_act must have this attribute because of signature.
         if (!op_desc->HasAttr("fuse_alpha")) {
           op_desc->SetAttr("fuse_alpha", 0.f);
         }
@@ -289,5 +289,5 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(conv2d_fusion_layout_transfer_pass,
-              paddle::framework::ir::Conv2dFusionLayoutTransferPass);
+REGISTER_PASS(fused_conv2d_add_act_layout_transfer_pass,
+              paddle::framework::ir::FusedConv2dAddActLayoutTransferPass);

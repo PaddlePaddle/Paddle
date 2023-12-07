@@ -39,6 +39,21 @@ static bool is_half_dtype(const DataType& dtype) {
   }
 }
 
+// This function expands the dimension of origin Tensor based on the value of
+// axis
+static std::vector<int64_t> get_expand_dims(const Tensor& origin,
+                                            const std::vector<int64_t>& axis) {
+  std::vector<int64_t> result(origin.shape());
+  for (size_t i = 0; i < axis.size(); ++i) {
+    int64_t offset = axis[i];
+    if (offset < 0) {
+      offset += result.size() + 1;
+    }
+    result.insert(result.begin() + offset, 1);
+  }
+  return result;
+}
+
 // This fucction compute unsqueeze dims for reshape to replace unsqueeze.
 static std::vector<int64_t> get_unsqueeze_dims(
     const Tensor& origin, const std::vector<int64_t>& axis) {
@@ -65,29 +80,7 @@ static std::vector<int64_t> get_unsqueeze_dims(
   return result;
 }
 
-static std::vector<int64_t> get_unsqueeze_dims_tmp(
-    const Tensor& origin, const std::vector<int64_t>& axis) {
-  auto origin_dims = origin.shape();
-  auto axis_tmp = axis;
-  std::sort(axis_tmp.begin(), axis_tmp.end());
-  std::vector<int64_t> result;
-  size_t j = 0;
-  for (size_t i = 0; i < origin_dims.size(); ++i) {
-    while (j < axis_tmp.size() && axis_tmp[j] == int64_t(i)) {
-      result.push_back(1);
-      j++;
-    }
-
-    result.push_back(origin_dims[i]);
-  }
-  if (axis_tmp[j] == int64_t(origin_dims.size())) {
-    result.push_back(1);
-  }
-
-  return result;
-}
-
-// This fucction compute squeeze dims for reshape to replace unsqueeze.
+// This fucction compute unsqueeze dims for reshape to replace unsqueeze.
 static std::vector<int64_t> get_squeeze_dims(const Tensor& origin,
                                              const std::vector<int64_t>& axis) {
   auto origin_dims = origin.shape();
@@ -107,8 +100,7 @@ static std::vector<int64_t> get_squeeze_dims(const Tensor& origin,
 }
 
 static std::vector<int64_t> process_dims(const Tensor& origin,
-                                         const std::vector<int64_t>& axis,
-                                         const std::string& taget = "squeeze") {
+                                         const std::vector<int64_t>& axis) {
   auto origin_dims = origin.shape();
   auto total_shape_size = origin_dims.size();
   std::vector<int64_t> result;
@@ -120,15 +112,7 @@ static std::vector<int64_t> process_dims(const Tensor& origin,
   } else {
     for (size_t i = 0; i < axis_size; ++i) {
       if (axis[i] < 0) {
-        if (taget == "squeeze") {
-          result.push_back(axis[i] + total_shape_size);
-        } else if (taget == "unsqueeze") {
-          result.push_back(axis[i] + total_shape_size + 1);
-        } else {
-          // modifications may be necessary，Depending on the specific
-          // application scenario
-          result.push_back(axis[i] + total_shape_size);
-        }
+        result.push_back(axis[i] + total_shape_size);
       } else {
         result.push_back(axis[i]);
       }
