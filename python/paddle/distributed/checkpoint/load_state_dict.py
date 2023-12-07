@@ -361,7 +361,8 @@ def load_state_dict(
         coordinator_rank(int): The rank used to coordinate the checkpoint. Rank0 is used by default.
     Example:
         .. code-block:: python
-            >>> # doctest: +SKIP('Load state dict.')
+
+            >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> import paddle.distributed as dist
             >>> ckpt_path = "./checkpoint"
@@ -380,7 +381,6 @@ def load_state_dict(
              [8 , 9 , 10, 11, 12, 13, 14, 15],
              [16, 17, 18, 19, 20, 21, 22, 23],
              [24, 25, 26, 27, 28, 29, 30, 31]])}
-            >>> # doctest: -SKIP
     """
     assert isinstance(
         state_dict, dict
