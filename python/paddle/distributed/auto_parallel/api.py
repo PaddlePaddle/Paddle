@@ -286,7 +286,7 @@ def to_static(
 ):
     """
     Converts the model and data loader used in dygraph auto-parallelism to
-    that in static mode auto-parallelism. static_decorate returns a DistModel
+    that in static mode auto-parallelism. to_static returns a DistModel
     instance that provides APIs and a DistributedDataLoader to generate data
     for static mode auto-parallel training, evaluation and prediction.
 
@@ -372,7 +372,7 @@ def to_static(
             ... )
             >>> loss_fn = nn.MSELoss()
 
-            >>> dist_model, dist_loader = dist.static_decorate(
+            >>> dist_model, dist_loader = dist.to_static(
             ...     layer, loader, loss_fn, opt
             ... )
 

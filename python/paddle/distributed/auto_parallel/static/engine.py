@@ -809,32 +809,6 @@ class Engine:
                 for process_group in all_process_groups:
                     process_group.instantiate()
 
-    def _share_parameters(self):
-        # mapping from {variable -> parameter}
-        named_params = self.program_helper.named_parameters()
-        dist_context = self._dist_contexts[self._mode]
-        dist_main_program = dist_context.dist_main_programs[self._cur_rank]
-
-        for name, param in named_params.items():
-            var = global_scope().var(name)
-            dense_tensor = var.get_tensor()
-            if param.is_dense():
-                var_in_program = dist_main_program.global_block().vars[name]
-                var_dist_attr = dist_context.get_tensor_dist_attr_for_program(
-                    var_in_program
-                )
-                dict_dist_attr = {
-                    "dims_mapping": var_dist_attr.dims_mapping,
-                    "process_shape": var_dist_attr.process_mesh.shape,
-                    "process_group": var_dist_attr.process_mesh.process_ids,
-                }
-                sliced_param = Converter.slice_with_dist_attr(
-                    param.numpy(), dict_dist_attr
-                )
-                dense_tensor.set(sliced_param, self._place)
-            elif param.is_dist():
-                dense_tensor._share_data_with(param.get_tensor().get_tensor())
-
     def _initialize(self, mode, init_parameters=True):
         self._place = _get_device()
         if isinstance(self._place, paddle.framework.CUDAPlace):
