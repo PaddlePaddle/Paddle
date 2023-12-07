@@ -253,16 +253,16 @@ class TestResnet(Dy2StTestBase):
 
         self.model_save_dir = os.path.join(self.temp_dir.name, "./inference")
         self.model_save_prefix = os.path.join(
-            self.temp_dir.name, "./inference/resnet_v2"
+            self.temp_dir.name, "./inference/resnet"
         )
         self.model_filename = (
-            "resnet_v2" + paddle.jit.translated_layer.INFER_MODEL_SUFFIX
+            "resnet" + paddle.jit.translated_layer.INFER_MODEL_SUFFIX
         )
         self.params_filename = (
-            "resnet_v2" + paddle.jit.translated_layer.INFER_PARAMS_SUFFIX
+            "resnet" + paddle.jit.translated_layer.INFER_PARAMS_SUFFIX
         )
         self.dy_state_dict_save_path = os.path.join(
-            self.temp_dir.name, "./resnet_v2.dygraph"
+            self.temp_dir.name, "./resnet.dygraph"
         )
 
     def tearDown(self):
@@ -415,7 +415,7 @@ class TestResnet(Dy2StTestBase):
         (out,) = output()
         return out
 
-    def train(self, to_static):
+    def train(self, to_static, build_strategy=None):
         paddle.jit.enable_to_static(to_static)
         return self.do_train(to_static)
 
