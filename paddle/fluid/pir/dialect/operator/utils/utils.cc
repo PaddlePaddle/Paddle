@@ -53,7 +53,7 @@ const std::unordered_set<std::string> LegacyOpList = {
     SparseMomentumOp::name(),
     GetTensorFromSelectedRowsOp::name(),
     RowConvOp::name(),
-    RowConvGradOp::name()};
+    RowConvGradOp::name(),
     SoftReluOp::name(),
     SoftReluGradOp::name()};
 
