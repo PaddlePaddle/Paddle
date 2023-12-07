@@ -45,7 +45,7 @@ int32_t OpOperandImpl::index() const {
   const char *start =
       reinterpret_cast<const char *>(owner_) + sizeof(Operation);
   const char *end = reinterpret_cast<const char *>(this);
-  int32_t index = (start - end) / sizeof(OpOperandImpl);
+  int32_t index = (end - start) / sizeof(OpOperandImpl);
   return index;
 }
 
