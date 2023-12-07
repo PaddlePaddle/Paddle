@@ -33,6 +33,8 @@ class OpOperandImpl {
 
   void set_source(Value value);
 
+  int32_t index() const;
+
   /// Remove this op_operand from the current use list.
   void RemoveFromUdChain();
 

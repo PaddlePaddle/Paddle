@@ -57,6 +57,8 @@ class IR_API OpOperand {
 
   Operation *owner() const;
 
+  int32_t index() const;
+
   void RemoveFromUdChain();
 
   friend Operation;

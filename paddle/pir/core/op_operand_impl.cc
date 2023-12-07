@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/pir/core/op_operand_impl.h"
+#include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/value_impl.h"
 
 namespace pir {
@@ -38,6 +39,14 @@ OpOperandImpl::OpOperandImpl(pir::Value source, pir::Operation *owner)
     return;
   }
   InsertToUdChain();
+}
+
+int32_t OpOperandImpl::index() const {
+  const char *start =
+      reinterpret_cast<const char *>(owner_) + sizeof(Operation);
+  const char *end = reinterpret_cast<const char *>(this);
+  int32_t index = (start - end) / sizeof(OpOperandImpl);
+  return index;
 }
 
 void OpOperandImpl::InsertToUdChain() {
