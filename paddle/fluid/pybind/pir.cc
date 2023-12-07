@@ -694,7 +694,7 @@ void BindValue(py::module *m) {
              return paddle::dialect::scale(self, -1.0, 0.0, true);
            })
       .def("is_same", &Value::operator==)
-      .def("__hash__",
+      .def("hash",
            [](const Value &self) { return std::hash<pir::Value>{}(self); })
       .def("__str__", &Value2String)
       .def("__repr__", &Value2String);

@@ -17,17 +17,13 @@ import collections
 from collections.abc import Sequence
 from typing import Any
 
-from paddle import pir
-
 
 class ValueWrapper:
     def __init__(self, value) -> None:
         self.value = value.value if isinstance(value, ValueWrapper) else value
 
     def __hash__(self) -> int:
-        if isinstance(self.value, pir.OpResult):
-            return hash(self.value.to_value())
-        return hash(self.value)
+        return self.value.hash()
 
     def __eq__(self, other) -> bool:
         tmp_other = other.value if isinstance(other, ValueWrapper) else other
