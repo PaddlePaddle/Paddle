@@ -201,14 +201,14 @@
     func : c_concat
 
 - op : c_embedding
-  args : (Tensor weight, Tensor x, int64_t start_index=0)
+  args : (Tensor weight, Tensor x, int64_t start_index=0, int64_t vocab_size=-1)
   output : Tensor(out)
   infer_meta :
     func : CEmbeddingInferMeta
     param : [weight, x, start_index]
   kernel :
     func : c_embedding
-    param : [weight, x, start_index]
+    param : [weight, x, start_index, vocab_size]
     data_type : weight
   backward : c_embedding_grad
 
@@ -1141,6 +1141,16 @@
   kernel :
     func : slice
   backward : slice_grad
+
+- op : soft_relu
+  args : (Tensor x, float threshold = 20.0f)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : soft_relu
+  backward : soft_relu_grad
 
 - op : softmax
   args : (Tensor x, int axis)

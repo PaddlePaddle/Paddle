@@ -472,7 +472,7 @@ def pow(x, y, name=None):
     Note:
         ``paddle.pow`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
 
-        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensors
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
 
     Args:
@@ -1795,7 +1795,6 @@ def nanmean(x, axis=None, keepdim=False, name=None):
     Examples:
 
         .. code-block:: python
-            :name: code-example1
 
             >>> import paddle
             >>> # x is a 2-D Tensor:
@@ -7009,12 +7008,14 @@ def ldexp(x, y, name=None):
             [4. , 8. , 12.])
 
     """
-    if not isinstance(x, (paddle.Tensor, Variable)):
+    if not isinstance(x, (paddle.Tensor, Variable, paddle.pir.Value)):
         raise TypeError(f"x must be tensor type, but got {type(x)}")
-    if not isinstance(y, (paddle.Tensor, Variable)):
+    if not isinstance(y, (paddle.Tensor, Variable, paddle.pir.Value)):
         raise TypeError(f"y must be tensor type, but got {type(y)}")
     if x.dtype == paddle.float64 or y.dtype == paddle.float64:
         out_dtype = paddle.float64
+    elif x.dtype == DataType.FLOAT64 or y.dtype == DataType.FLOAT64:
+        out_dtype = DataType.FLOAT64
     else:
         out_dtype = paddle.get_default_dtype()
     x = paddle.cast(x, dtype=out_dtype)
