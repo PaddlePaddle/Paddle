@@ -1714,21 +1714,9 @@ void PirInterpreter::SolvePersisableVarNames() {
   for (auto kv : value_exe_info_->GetValue2VarName()) {
     ::pir::Value value = kv.first;
     const std::string& var_name = kv.second;
-    ::pir::OpResult result = value.dyn_cast<::pir::OpResult>();
-    if (!result) {
-      continue;
-    }
-    auto* defining_op = result.owner();
-    if (defining_op->HasAttribute(kAttrIsPersisable)) {
-      auto is_persisables =
-          defining_op->attribute<::pir::ArrayAttribute>(kAttrIsPersisable)
-              .AsVector();
-      if (is_persisables[result.index()]
-              .dyn_cast<::pir::BoolAttribute>()
-              .data()) {
-        VLOG(6) << "parameter_var_names_ include: " << var_name;
-        parameter_var_names_.insert(var_name);
-      }
+    auto bool_attr = value.attribute<::pir::BoolAttribute>(kAttrIsPersisable);
+    if (bool_attr && bool_attr.data()) {
+      parameter_var_names_.insert(var_name);
     }
   }
 }

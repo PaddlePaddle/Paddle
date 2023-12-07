@@ -57,16 +57,8 @@ static bool CanBeDeleted(pir::Value value) {
       !value.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
     return false;
   }
-  if (auto op_result = value.dyn_cast<pir::OpResult>()) {
-    auto def_op = op_result.owner();
-    if (def_op->HasAttribute(kAttrIsPersisable)) {
-      return !(def_op->attribute<pir::ArrayAttribute>(kAttrIsPersisable)
-                   .AsVector()[op_result.index()]
-                   .dyn_cast<pir::BoolAttribute>()
-                   .data());
-    }
-  }
-  return true;
+  auto persist_attr = value.attribute<pir::BoolAttribute>(kAttrIsPersisable);
+  return !(persist_attr && persist_attr.data());
 }
 
 static bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
