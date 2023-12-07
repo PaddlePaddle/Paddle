@@ -350,7 +350,7 @@ class TestGenerateProposalsOp(OpTest):
 
     def test_check_output(self):
         # NODE(yjjiang11): This op will be deprecated.
-        self.check_output(check_dygraph=False)
+        self.check_output(check_dygraph=False, check_pir=True)
 
     def setUp(self):
         self.op_type = "generate_proposals"

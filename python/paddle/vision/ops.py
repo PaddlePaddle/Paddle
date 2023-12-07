@@ -2122,7 +2122,7 @@ def generate_proposals(
             [1, 1])
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         assert (
             return_rois_num
         ), "return_rois_num should be True in dygraph mode."

@@ -223,7 +223,7 @@ class TestGenerateProposalsV2Op(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def setUp(self):
         self.op_type = "generate_proposals_v2"
