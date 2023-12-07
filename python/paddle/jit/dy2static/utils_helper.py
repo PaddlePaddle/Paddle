@@ -190,7 +190,7 @@ def set_dynamic_shape(variable, shape_list):
         if isinstance(variable, paddle.base.framework.Variable):
             variable.desc.set_shape(shape_list)
         elif isinstance(variable, paddle.pir.Value):
-            variable.shape = shape_list
+            variable.set_shape(shape_list)
         else:
             raise TypeError(
                 "In to_static mode, variable must be a Variable or Value"

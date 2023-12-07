@@ -636,21 +636,8 @@ void BindValue(py::module *m) {
           "shape",
           [](Value self) { return phi::vectorize(GetValueDims(self)); },
           [](Value self, const std::vector<int> &shape) {
-            if (self.type().isa<DenseTensorType>()) {
-              DenseTensorType src_type =
-                  self.type().dyn_cast<DenseTensorType>();
-              DenseTensorType dst_type =
-                  DenseTensorType::get(pir::IrContext::Instance(),
-                                       src_type.dtype(),
-                                       phi::make_ddim(shape),
-                                       src_type.data_layout(),
-                                       src_type.lod(),
-                                       src_type.offset());
-              self.set_type(dst_type);
-            } else {
-              PADDLE_THROW(phi::errors::InvalidArgument(
-                  "Currently, we can only set shape for dense tensor"));
-            }
+            PADDLE_THROW(phi::errors::InvalidArgument(
+                "can't set shape when building static graph"));
           })
       .def_property(
           "dtype",
@@ -855,6 +842,23 @@ void BindType(py::module *m) {
         print_stream << self;
         return print_stream.str();
       });
+
+  m->def("set_value_shape", [](Value &value, const std::vector<int> &shape) {
+    if (value.type().isa<DenseTensorType>()) {
+      DenseTensorType src_type = value.type().dyn_cast<DenseTensorType>();
+      DenseTensorType dst_type =
+          DenseTensorType::get(pir::IrContext::Instance(),
+                               src_type.dtype(),
+                               phi::make_ddim(shape),
+                               src_type.data_layout(),
+                               src_type.lod(),
+                               src_type.offset());
+      value.set_type(dst_type);
+    } else {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Currently, we can only set shape for dense tensor"));
+    }
+  });
 }
 
 void BindAttribute(py::module *m) {
