@@ -1897,6 +1897,7 @@ def diagflat(x, offset=0, name=None):
              [0, 2, 0, 0, 0],
              [0, 0, 3, 0, 0],
              [0, 0, 0, 4, 0]])
+
     """
     if in_dynamic_or_pir_mode():
         if len(x.shape) <= 1:
@@ -2360,6 +2361,8 @@ def assign(x, output=None):
                     'uint8',
                     'int8',
                     'bool',
+                    'complex64',
+                    'complex128',
                 ],
                 'assign',
                 '(When the type of input in assign is Variable.)',
@@ -2439,10 +2442,19 @@ def assign(x, output=None):
         elif dtype in [core.VarDesc.VarType.INT64, core.DataType.INT64]:
             value_name = "int64_values"
             values = [int(v) for v in input.flat]
+        elif dtype in [core.VarDesc.VarType.COMPLEX64, core.DataType.COMPLEX64]:
+            value_name = "complex64_values"
+            values = [int(v) for v in input.flat]
+        elif dtype in [
+            core.VarDesc.VarType.COMPLEX128,
+            core.DataType.COMPLEX128,
+        ]:
+            value_name = "complex128_values"
+            values = [int(v) for v in input.flat]
         else:
             raise TypeError(
                 "When the type of 'input' in assign is numpy.ndarray, "
-                "the data type of 'input' must be bool, float32, int32 or int64, but "
+                "the data type of 'input' must be bool, float16, float32, int32, int64, complex64 or complex128 but "
                 "received %s." % convert_dtype(dtype)
             )
         if input.size > 1024 * 1024:

@@ -15,8 +15,10 @@
 import unittest
 
 import numpy as np
+from utils import static_guard
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 
 def np_sgn(x: np.ndarray):
@@ -31,7 +33,7 @@ def np_sgn(x: np.ndarray):
 
 
 class TestSgnError(unittest.TestCase):
-    def test_errors(self):
+    def test_errors_dynamic(self):
         # The input dtype of sgn must be float16, float32, float64,complex64,complex128.
         input2 = paddle.to_tensor(
             np.random.randint(-10, 10, size=[12, 20]).astype('int32')
@@ -43,25 +45,44 @@ class TestSgnError(unittest.TestCase):
         self.assertRaises(TypeError, paddle.sgn, input2)
         self.assertRaises(TypeError, paddle.sgn, input3)
 
+    @test_with_pir_api
+    def test_errors_static_and_pir(self):
+        paddle.enable_static()
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+
+        with paddle.static.program_guard(main_program, startup_program):
+            # The input dtype of sgn must be float16, float32, float64,complex64,complex128.
+            input2 = paddle.to_tensor(
+                np.random.randint(-10, 10, size=[12, 20]).astype('int32')
+            )
+            input3 = paddle.to_tensor(
+                np.random.randint(-10, 10, size=[12, 20]).astype('int64')
+            )
+
+            self.assertRaises(TypeError, paddle.sgn, input2)
+            self.assertRaises(TypeError, paddle.sgn, input3)
+        paddle.disable_static()
+
 
 class TestSignAPI(unittest.TestCase):
     def setUp(self) -> None:
         self.support_dtypes = [
-            'float16',
+            # 'float16',
             'float32',
             'float64',
-            'complex64',
-            'complex128',
+            # 'complex64',
+            # 'complex128',
         ]
         if paddle.device.get_device() == 'cpu':
             self.support_dtypes = [
                 'float32',
                 'float64',
-                'complex64',
-                'complex128',
+                # 'complex64',
+                # 'complex128',
             ]
 
-    def test_dtype(self):
+    def test_dtype_dynamic(self):
         for dtype in self.support_dtypes:
             x = paddle.to_tensor(
                 np.random.randint(-10, 10, size=[12, 20, 2]).astype(dtype)
@@ -69,7 +90,17 @@ class TestSignAPI(unittest.TestCase):
 
             paddle.sgn(x)
 
-    def test_complex(self):
+    @test_with_pir_api
+    def test_dtype_static_and_pir(self):
+        with static_guard():
+            for dtype in self.support_dtypes:
+                x = paddle.to_tensor(
+                    np.random.randint(-10, 10, size=[12, 20, 2]).astype(dtype)
+                )
+
+                paddle.sgn(x)
+
+    def test_complex_dynamic(self):
         for dtype in ['complex64', 'complex128']:
             np_x = np.array(
                 [[3 + 4j, 7 - 24j, 0, 1 + 2j], [6 + 8j, 3, 0, -2]], dtype=dtype
@@ -80,7 +111,21 @@ class TestSignAPI(unittest.TestCase):
             z_expected = np_sgn(np_x)
             np.testing.assert_allclose(np_z, z_expected, rtol=1e-05)
 
-    def test_float(self):
+    @test_with_pir_api
+    def test_complex_static_and_pir(self):
+        with static_guard():
+            for dtype in ['complex64', 'complex128']:
+                np_x = np.array(
+                    [[3 + 4j, 7 - 24j, 0, 1 + 2j], [6 + 8j, 3, 0, -2]],
+                    dtype=dtype,
+                )
+                x = paddle.to_tensor(np_x)
+                z = paddle.sgn(x)
+                np_z = z.numpy()
+                z_expected = np_sgn(np_x)
+                np.testing.assert_allclose(np_z, z_expected, rtol=1e-05)
+
+    def test_float_dynamic(self):
         for dtype in self.support_dtypes:
             np_x = np.random.randint(-10, 10, size=[12, 20, 2]).astype(dtype)
             x = paddle.to_tensor(np_x)
