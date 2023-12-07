@@ -307,7 +307,7 @@ void TensorCopySync(const phi::DenseTensor& src,
     return;
   }
 
-  VLOG(3) << "TensorCopySync " << src.dims() << " from " << src.place()
+  VLOG(0) << "TensorCopySync " << src.dims() << " from " << src.place()
           << " to " << dst_place;
   src.check_memory_size();
   dst->Resize(src.dims());
@@ -396,52 +396,32 @@ void TensorCopySync(const phi::DenseTensor& src,
   }
   else if (platform::is_gpu_place(src_place) &&  // NOLINT
            platform::is_cuda_pinned_place(dst_place)) {
-    auto stream = dynamic_cast<phi::GPUContext*>(
-                      platform::DeviceContextPool::Instance().Get(src_place))
-                      ->stream();
-    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
-    platform::GpuStreamSync(stream);
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, nullptr);
   }
   else if (platform::is_gpu_place(src_place) &&  // NOLINT
            platform::is_cpu_place(dst_place)) {
     auto src_gpu_place = src_place;
     auto dst_cpu_place = dst_place;
-    auto stream = dynamic_cast<phi::GPUContext*>(
-                      platform::DeviceContextPool::Instance().Get(src_place))
-                      ->stream();
-    memory::Copy(dst_cpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
-    platform::GpuStreamSync(stream);
+    memory::Copy(dst_cpu_place, dst_ptr, src_gpu_place, src_ptr, size, nullptr);
   }
   else if (platform::is_cpu_place(src_place) &&  // NOLINT
            platform::is_gpu_place(dst_place)) {
     auto src_cpu_place = src_place;
     auto dst_gpu_place = dst_place;
-    auto stream = dynamic_cast<phi::GPUContext*>(
-                      platform::DeviceContextPool::Instance().Get(dst_place))
-                      ->stream();
-    memory::Copy(dst_gpu_place, dst_ptr, src_cpu_place, src_ptr, size, stream);
-    platform::GpuStreamSync(stream);
+    memory::Copy(dst_gpu_place, dst_ptr, src_cpu_place, src_ptr, size, nullptr);
   }
   else if (platform::is_gpu_place(src_place) &&  // NOLINT
            platform::is_gpu_place(dst_place)) {
     auto src_gpu_place = src_place;
     auto dst_gpu_place = dst_place;
-    auto stream = dynamic_cast<phi::GPUContext*>(
-                      platform::DeviceContextPool::Instance().Get(src_place))
-                      ->stream();
-    memory::Copy(dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
-    platform::GpuStreamSync(stream);
+    memory::Copy(dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, nullptr);
   }
   else if (platform::is_cuda_pinned_place(src_place) &&  // NOLINT
            platform::is_gpu_place(dst_place)) {
     auto src_pinned_place = src_place;
     auto dst_gpu_place = dst_place;
-    auto stream = dynamic_cast<phi::GPUContext*>(
-                      platform::DeviceContextPool::Instance().Get(dst_place))
-                      ->stream();
     memory::Copy(
-        dst_gpu_place, dst_ptr, src_pinned_place, src_ptr, size, stream);
-    platform::GpuStreamSync(stream);
+        dst_gpu_place, dst_ptr, src_pinned_place, src_ptr, size, nullptr);
   }
   else {  // NOLINT
     PADDLE_THROW(platform::errors::Unimplemented(
