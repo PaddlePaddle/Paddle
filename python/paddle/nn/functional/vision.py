@@ -118,7 +118,7 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
                 use_cudnn,
             )
     else:
-        helper = LayerHelper('affine_grid')
+        helper = LayerHelper('affine_grid', **locals())
         check_variable_and_dtype(
             theta, 'theta', ['float32', 'float64'], 'affine_grid'
         )
