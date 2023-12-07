@@ -612,6 +612,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
         }
       } else {
 #if IS_TRT_VERSION_GE(6000)
+        bool isShapeInferenceIO{false};
         isShapeInferenceIO = engine->engine()->isShapeBinding(bind_index);
         if (!isShapeInferenceIO) {
           trt_context->setBindingDimensions(
