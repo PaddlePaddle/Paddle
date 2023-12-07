@@ -3466,6 +3466,7 @@ void ReshapeWithXShapeInferMeta(const MetaTensor& x,
   xshape->set_dims(common::make_ddim(xshape_dims));
   xshape->share_lod(x);
   xshape->set_strides(x.strides());
+  xshape->set_dtype(DataType::INT64);
   ReshapeInferMeta(x, shape, out, config);
 }
 
@@ -5223,8 +5224,8 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
 
   out->set_dtype(DataType::INT8);
 
-  scale->set_dims(common::make_ddim(dim_scale));
-  scale->set_dtype(DataType::FLOAT32);
+  scale->set_dims(phi::make_ddim(dim_scale));
+  scale->set_dtype(x.dtype());
 }
 
 void ChannelShuffleInferMeta(const MetaTensor& x,

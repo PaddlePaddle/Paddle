@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,22 +14,21 @@
 
 #pragma once
 
-#include <optional>
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 
-#include "paddle/cinn/adt/equation_constant.h"
+namespace paddle {
+namespace framework {
+namespace ir {
 
-namespace cinn::adt {
-
-class EquationFunctionConstantsProvider {
+class FusedConv2dAddActLayoutTransferPass : public FusePassBase {
  public:
-  virtual ~EquationFunctionConstantsProvider() = default;
-
-  virtual Constant GetDimSize(const Dim& dim) const = 0;
-
-  virtual bool AddDim(const Dim& dim, const Constant& dim_value) = 0;
+  FusedConv2dAddActLayoutTransferPass() = default;
+  virtual ~FusedConv2dAddActLayoutTransferPass() = default;
 
  protected:
-  EquationFunctionConstantsProvider() = default;
+  void ApplyImpl(ir::Graph* graph) const override;
 };
 
-}  // namespace cinn::adt
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
