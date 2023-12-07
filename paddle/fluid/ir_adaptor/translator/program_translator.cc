@@ -435,11 +435,14 @@ pir::Operation* ProgramTranslator::InsertFullOrDataOpToBlock(
         0,
         paddle::dialect::TransToPhiDataType(tensor_type.dtype()),
         phi::CPUPlace());
+    full_op.out().set_type(type);
     return full_op.operation();
   } else if (type.isa<paddle::dialect::DenseTensorArrayType>()) {
     auto array_type = type.dyn_cast<paddle::dialect::DenseTensorArrayType>();
     paddle::dialect::CreateArrayOp array_op =
-        builder.Build<paddle::dialect::CreateArrayOp>(array_type.dtype());
+        builder.Build<paddle::dialect::CreateArrayOp>(
+            paddle::dialect::TransToPhiDataType(array_type.dtype()));
+    array_op.out().set_type(type);
     return array_op.operation();
   }
   return nullptr;
@@ -523,7 +526,7 @@ void ProgramTranslator::TranslateIfOperation(
                 "Only support insert full or data op for DenseTensor or "
                 "DenseTensorArray to false block failed."));
         false_block_context->PushValue(
-            cond_op_outputs[id], VariableDefiningInfo(init_op->result(i)));
+            cond_op_outputs[id], VariableDefiningInfo(init_op->result(0)));
       }
       false_yeild_inputs.push_back(
           false_block_context->at(cond_op_outputs[id]).value);
