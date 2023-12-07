@@ -19,6 +19,8 @@
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/same_status_reshard_function.h"
+#include "paddle/phi/core/distributed/store/store_utils.h"
 #include "paddle/phi/kernels/all_gather_kernel.h"
 #include "paddle/phi/kernels/concat_kernel.h"
 #include "paddle/phi/kernels/split_kernel.h"
@@ -126,11 +128,15 @@ bool SToRReshardFunctionCrossMesh::IsSuitable(
   const auto& in_process_mesh = in_dist_attr.process_mesh();
   const auto& out_process_mesh = out_dist_attr.process_mesh();
 
-  int split_axis = GetSplitAxisWithDimsMapping(in_dims_mapping).begin()->first;
-  int64_t num_of_process = in_process_mesh.size();
-  RESHARD_SHORTCUT_IF_FALSE(in.local_dims()[static_cast<int>(split_axis)] *
-                                num_of_process ==
-                            in.dims()[static_cast<int>(split_axis)]);
+  int64_t cur_global_rank = GetCurGlobalRank();
+  if (in_process_mesh.contains(cur_global_rank)) {
+    int split_axis =
+        GetSplitAxisWithDimsMapping(in_dims_mapping).begin()->first;
+    int64_t num_of_process = in_process_mesh.size();
+    RESHARD_SHORTCUT_IF_FALSE(in.local_dims()[static_cast<int>(split_axis)] *
+                                  num_of_process ==
+                              in.dims()[static_cast<int>(split_axis)]);
+  }
 
   RESHARD_SHORTCUT_IF_FALSE(in_process_mesh.ndim() == 1);
   RESHARD_SHORTCUT_IF_FALSE(out_process_mesh.ndim() == 1);
@@ -155,8 +161,20 @@ void SToRReshardFunctionCrossMesh::Eval(DeviceContext* dev_ctx,
   tmp_dist_attr.set_process_mesh(out_process_mesh);
   same_status_func.Eval(dev_ctx, in, tmp_dist_attr, &tmp_result);
 
-  SToRReshardFunction s_to_r_func;
-  s_to_r_func.Eval(dev_ctx, tmp_result, out_dist_attr, out);
+  int64_t cur_global_rank = GetCurGlobalRank();
+  if (out_process_mesh.contains(cur_global_rank)) {
+    SToRReshardFunction s_to_r_func;
+    PADDLE_ENFORCE(
+        s_to_r_func.IsSuitable(tmp_result, out_dist_attr),
+        phi::errors::InvalidArgument(
+            "Invoke the s to r reshard function is not valid from %s to %s.",
+            tmp_result.dist_attr(),
+            out_dist_attr));
+    s_to_r_func.Eval(dev_ctx, tmp_result, out_dist_attr, out);
+  } else {
+    SetDistProps(out, in.dims(), out_dist_attr);
+    SetValue(out, tmp_result.value());
+  }
 }
 
 }  // namespace distributed

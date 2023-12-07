@@ -237,7 +237,7 @@ std::string AccuracyChecker::CheckTensor(const Tensor& tensor,
                                          const std::string& arg_name) {
   Tensor cpu_tensor;
   cpu_tensor->Resize(tensor->shape());
-  T* dst = cpu_tensor->mutable_data<T>(common::DefaultHostTarget());
+  T* dst = cpu_tensor->mutable_data<T>(cinn::common::DefaultHostTarget());
 
   const T* src = tensor->data<T>();
   size_t numel = tensor->shape().numel();
@@ -259,7 +259,7 @@ std::string AccuracyChecker::CheckBuffer(const cinn_buffer_t* buffer,
 
   Tensor cpu_tensor;
   cpu_tensor->Resize(Shape(shape));
-  T* dst = cpu_tensor->mutable_data<T>(common::DefaultHostTarget());
+  T* dst = cpu_tensor->mutable_data<T>(cinn::common::DefaultHostTarget());
 
   const T* src = reinterpret_cast<const T*>(buffer->memory);
   size_t numel = cpu_tensor->shape().numel();
@@ -273,12 +273,12 @@ std::string AccuracyChecker::CheckBuffer(const cinn_buffer_t* buffer,
 template <typename T>
 void AccuracyChecker::MemcpyDeviceToHost(const T* src, size_t numel, T* dst) {
 #ifdef CINN_WITH_CUDA
-  if (target_ == common::DefaultNVGPUTarget()) {
+  if (target_ == cinn::common::DefaultNVGPUTarget()) {
     cudaMemcpy(dst, src, numel * sizeof(T), cudaMemcpyDeviceToHost);
     return;
   }
 #endif
-  if (target_ == common::DefaultHostTarget()) {
+  if (target_ == cinn::common::DefaultHostTarget()) {
     for (size_t i = 0; i < numel; ++i) {
       dst[i] = src[i];
     }

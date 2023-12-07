@@ -28,7 +28,7 @@ void UniformRawKernel(const Context &dev_ctx,
                       int diag_step,
                       float diag_val,
                       DenseTensor *out) {
-  out->Resize(phi::make_ddim(shape.GetData()));
+  out->Resize(common::make_ddim(shape.GetData()));
   T *data = dev_ctx.template Alloc<T>(out);
   auto size = out->numel();
   std::shared_ptr<std::mt19937_64> engine;

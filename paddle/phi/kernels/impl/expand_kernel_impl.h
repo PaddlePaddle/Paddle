@@ -31,7 +31,7 @@ void Expand(const Context& ctx,
             DenseTensor* out) {
   auto in_dims = x.dims();
   auto expand_shape = shape.GetData();
-  auto vec_in_dims = phi::vectorize<int>(in_dims);
+  auto vec_in_dims = common::vectorize<int>(in_dims);
   auto diff = expand_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   std::vector<int> repeat_times(vec_in_dims.size());
@@ -83,7 +83,7 @@ void Expand(const Context& ctx,
     bcast_dims[i] = repeat_times[i];
   }
 
-  DDim new_in_dims = phi::make_ddim(vec_in_dims);
+  DDim new_in_dims = common::make_ddim(vec_in_dims);
   DDim out_dims(new_in_dims);
   for (size_t i = 0; i < repeat_times.size(); ++i) {
     out_dims[i] *= repeat_times[i];

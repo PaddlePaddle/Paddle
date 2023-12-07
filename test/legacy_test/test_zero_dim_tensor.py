@@ -5809,17 +5809,41 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (2, 3, 4))
 
-    def test_randint_and_randint_like(self):
-        out1 = paddle.randint(-10, 10, [])
-        out2 = paddle.randint_like(out1, -10, 10)
-        out3 = paddle.randint(-10, 10, self.shape)
+    @test_with_pir_api
+    def test_randint(self):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            out1 = paddle.randint(-10, 10, [])
 
-        res = self.exe.run(
-            paddle.static.default_main_program(), fetch_list=[out1, out2, out3]
-        )
+            shape = [
+                paddle.full([], 2, 'int32'),
+                paddle.full([], 3, 'int32'),
+                paddle.full([], 4, 'int32'),
+            ]
+            out2 = paddle.randint(-10, 10, shape)
+
+            res = self.exe.run(
+                paddle.static.default_main_program(), fetch_list=[out1, out2]
+            )
+
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (2, 3, 4))
+
+    @test_with_pir_api
+    def test_randint_like(self):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            out1 = paddle.rand([])
+            out2 = paddle.randint_like(out1, -10, 10)
+
+            res = self.exe.run(
+                paddle.static.default_main_program(), fetch_list=[out1, out2]
+            )
+
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
-        self.assertEqual(res[2].shape, (2, 3, 4))
 
     def test_standard_normal(self):
         out1 = paddle.standard_normal([])
@@ -5915,6 +5939,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         res = self.exe.run(prog, fetch_list=[emb])
         self.assertEqual(res[0].shape, (3,))
 
+    @test_with_pir_api
     def test_one_hot_label(self):
         label = paddle.full(shape=[], fill_value=2, dtype='int64')
         one_hot_label = paddle.nn.functional.one_hot(label, num_classes=4)

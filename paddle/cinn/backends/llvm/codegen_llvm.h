@@ -118,7 +118,7 @@ class CodeGenLLVM : public LLVMIRVisitor, public IrBuilderMixin<CodeGenLLVM> {
       llvm::Module *m,
       llvm::IRBuilder<> *b,
       const std::shared_ptr<SymbolTable> &symbol_table = nullptr,
-      const Target &target = common::DefaultHostTarget());
+      const Target &target = cinn::common::DefaultHostTarget());
 
   // Common llvm types
   // @{

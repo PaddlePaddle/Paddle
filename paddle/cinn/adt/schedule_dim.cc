@@ -14,7 +14,6 @@
 
 #include "paddle/cinn/adt/schedule_dim.h"
 
-#include "paddle/cinn/adt/equation_function_constants_provider.h"
 #include "paddle/cinn/adt/equation_graph.h"
 #include "paddle/cinn/adt/equation_solver.h"
 #include "paddle/cinn/adt/igroup.h"
@@ -50,16 +49,13 @@ List<Iterator> GetOpEquationCtxInputIterators(
 
 std::shared_ptr<IndexExprInferContext> InitIndexExprInferContext(
     const std::shared_ptr<config::NaiveOpEquationContext>& ctx,
-    const List<Iterator>& input_iterators,
-    const std::shared_ptr<const EquationFunctionConstantsProvider>&
-        constants_provider) {
+    const List<Iterator>& input_iterators) {
   std::unordered_map<Variable, const Value> init_var2value;
   for (const auto& iterator : *input_iterators) {
     CHECK(init_var2value.emplace(iterator, iterator).second);
   }
 
-  return std::make_shared<IndexExprInferContext>(init_var2value,
-                                                 constants_provider);
+  return std::make_shared<IndexExprInferContext>(init_var2value);
 }
 
 template <typename DoEachT>
@@ -110,15 +106,13 @@ void FilterReducedIterator(
 }
 
 std::unordered_set<Iterator> GenerateReducedIterator(
-    const std::shared_ptr<config::NaiveOpEquationContext>& ctx,
-    const std::shared_ptr<const EquationFunctionConstantsProvider>&
-        constants_provider) {
-  const auto& graph_view = Graph::New(ctx->equations())->GetGraphView();
+    const std::shared_ptr<config::NaiveOpEquationContext>& ctx) {
+  const auto& graph_view =
+      Graph<Variable, Equation>::New(ctx->equations())->GetGraphView();
 
   std::unordered_set<Iterator> ret{};
   VisitEachInputIteratorTuple(ctx, [&](const List<Iterator>& input_iterators) {
-    const auto& infer_ctx =
-        InitIndexExprInferContext(ctx, input_iterators, constants_provider);
+    const auto& infer_ctx = InitIndexExprInferContext(ctx, input_iterators);
 
     std::vector<Variable> starts{};
     for (const auto& iterator : *input_iterators) {
@@ -147,7 +141,7 @@ std::unordered_set<Iterator> FilterTemporalIterators(
   VisitEachOpEquationContext(
       igroup, [&](const std::shared_ptr<config::NaiveOpEquationContext>& ctx) {
         std::unordered_set<Iterator> reduced_iterators =
-            GenerateReducedIterator(ctx, igroup.constants_provider());
+            GenerateReducedIterator(ctx);
         for (const auto& input_reduced_iterator : reduced_iterators) {
           const auto& sd_iterator_expr = Value4Iterator(input_reduced_iterator);
           CollectTensorIndexIterators(sd_iterator_expr, &ret);

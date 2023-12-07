@@ -766,6 +766,8 @@ def get_pir_static_double_grad(
     """
     if program is None:
         program = paddle.static.default_main_program()
+    exe = paddle.static.Executor(place)
+    exe.run(paddle.static.default_startup_program())
     if dy_init is None:
         y_grads = []
         y_grads_init = []
@@ -855,7 +857,7 @@ def get_pir_static_double_grad(
 
     # append second order backward
     ddx = base.gradients(y, x, dys)
-    exe = paddle.static.Executor()
+
     # filter None in dx for DX/DY may be None in kernel
     # only fetch not None dx in exe.run
     filted = [(i, dxi) for i, dxi in enumerate(ddx) if dxi is not None]

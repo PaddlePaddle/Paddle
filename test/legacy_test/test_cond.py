@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
 
 import numpy as np
 from simple_nets import batchnorm_fc_with_inputs, simple_fc_net_with_inputs
-
-sys.path.append("../dygraph_to_static")
-from dygraph_to_static_utils_new import compare_legacy_with_pir
+from utils import compare_legacy_with_pt
 
 import paddle
 from paddle import base
@@ -31,7 +28,7 @@ np.random.seed(123)
 
 
 class TestCondInputOutput(unittest.TestCase):
-    @compare_legacy_with_pir
+    @compare_legacy_with_pt
     def test_return_single_var(self):
         """
         pseudocode:
@@ -78,7 +75,7 @@ class TestCondInputOutput(unittest.TestCase):
             np.asarray(ret), np.full((3, 2), -1, np.int32), rtol=1e-05
         )
 
-    @compare_legacy_with_pir
+    @compare_legacy_with_pt
     def test_return_0d_tensor(self):
         """
         pseudocode:
@@ -116,7 +113,7 @@ class TestCondInputOutput(unittest.TestCase):
         np.testing.assert_allclose(np.asarray(ret), np.array(2), rtol=1e-05)
         self.assertEqual(ret.shape, ())
 
-    @compare_legacy_with_pir
+    @compare_legacy_with_pt
     def test_0d_tensor_as_cond(self):
         """
         pseudocode:
@@ -217,7 +214,7 @@ class TestCondInputOutput(unittest.TestCase):
         )
         self.assertEqual(a.grad.shape, [])
 
-    @compare_legacy_with_pir
+    @compare_legacy_with_pt
     def test_return_var_tuple(self):
         """
         pseudocode:
@@ -265,7 +262,7 @@ class TestCondInputOutput(unittest.TestCase):
             np.asarray(ret[1]), np.full((2, 3), True, bool), rtol=1e-05
         )
 
-    @compare_legacy_with_pir
+    @compare_legacy_with_pt
     def test_pass_and_modify_var(self):
         """
         pseudocode:
@@ -356,7 +353,7 @@ class TestCondInputOutput(unittest.TestCase):
             self.assertIsNone(out2)
             self.assertIsNone(out3)
 
-    @compare_legacy_with_pir
+    @compare_legacy_with_pt
     def test_wrong_structure_exception(self):
         """
         test returning different number of tensors cannot merge into output

@@ -227,7 +227,8 @@ static std::vector<std::vector<phi::DDim>> RunInferShapeFunc(
         auto duplicable_input_pair = ctx.InputRangeAt(inplace_reverse_map[i]);
         result.push_back({ctx.InputAt(duplicable_input_pair.first).dims()});
       } else {
-        result.push_back({phi::make_ddim(output_shapes[output_shape_idx++])});
+        result.push_back(
+            {common::make_ddim(output_shapes[output_shape_idx++])});
       }
     }
   }
@@ -436,7 +437,7 @@ paddle::Tensor BuildEmptyDistPaddleTensor(
   meta.dims = dims;
   meta.dtype = dtype;
 
-  auto dist_attr = phi::distributed::TensorDistAttr(phi::vectorize(dims));
+  auto dist_attr = phi::distributed::TensorDistAttr(common::vectorize(dims));
   dist_attr.set_process_mesh(process_mesh);
 
   auto dist_t = std::make_shared<phi::distributed::DistTensor>(
@@ -604,7 +605,7 @@ void TransCtxTensorsToDistTensors(
     for (size_t i = 0; i < output_all->size(); ++i) {
       auto& tensor = output_all->at(i);
       phi::distributed::TensorDistAttr dist_attr =
-          phi::distributed::TensorDistAttr(phi::vectorize(tensor.dims()));
+          phi::distributed::TensorDistAttr(common::vectorize(tensor.dims()));
       dist_attr.set_process_mesh(current_process_mesh);
       auto dist_t = std::make_shared<phi::distributed::DistTensor>(
           std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl()),
@@ -615,7 +616,7 @@ void TransCtxTensorsToDistTensors(
     for (size_t i = 0; i < input_all->size(); ++i) {
       auto& tensor = input_all->at(i);
       phi::distributed::TensorDistAttr dist_attr =
-          phi::distributed::TensorDistAttr(phi::vectorize(tensor.dims()));
+          phi::distributed::TensorDistAttr(common::vectorize(tensor.dims()));
       dist_attr.set_process_mesh(current_process_mesh);
       auto dist_t = std::make_shared<phi::distributed::DistTensor>(
           std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl()),
