@@ -171,6 +171,8 @@ def is_complex(x):
     is_complex_dtype = (
         dtype == core.VarDesc.VarType.COMPLEX64
         or dtype == core.VarDesc.VarType.COMPLEX128
+        or dtype == core.DataType.COMPLEX64
+        or dtype == core.DataType.COMPLEX128
     )
     return is_complex_dtype
 
