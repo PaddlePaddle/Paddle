@@ -94,13 +94,16 @@ class ContinuousBernoulli_np:
         return np.where(self._cut_support_region(), propose, taylor_expansion)
 
     def np_entropy(self):
-        cut_probs = self._cut_probs()
-        log_p = np.log(cut_probs)
-        log_1_minus_p = np.log1p(-cut_probs)
-        return (
-            -self._log_constant()
-            + self.np_mean() * (log_1_minus_p - log_p)
-            - log_1_minus_p
+        log_p = np.log(self.probability)
+        log_1_minus_p = np.log1p(-self.probability)
+        return np.where(
+            np.equal(self.probability, 0.5),
+            np.full_like(self.probability, 0.0),
+            (
+                -self._log_constant()
+                + self.np_mean() * (log_1_minus_p - log_p)
+                - log_1_minus_p
+            ),
         )
 
     def np_prob(self, value):
