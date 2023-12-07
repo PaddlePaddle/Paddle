@@ -469,33 +469,11 @@ create_test_bf16_class(TestCase7)
 create_test_bf16_class(TestCastAdaptive2d)
 
 
-def max_pool2d_v2_wrapper(
-    x,
-    kernel_size=[],
-    strides=[],
-    paddings=[],
-    data_format="NCHW",
-    global_pooling=False,
-    adaptive=False,
-    use_cudnn=True,
-):
-    return paddle._C_ops.max_pool2d_v2(
-        x,
-        kernel_size,
-        strides,
-        paddings,
-        data_format,
-        global_pooling,
-        adaptive,
-        use_cudnn,
-    )
-
-
 def skip_unit_test():
     return (
         not core.is_compiled_with_cuda()
+        or not core.is_compiled_with_cudnn_frontend()
         or paddle.device.cuda.get_device_capability()[0] < 8
-        or not hasattr(paddle._C_ops, "max_pool2d_v2")
     )
 
 
@@ -542,7 +520,6 @@ class TestMaxPool2dV2Op(OpTest):
             'data_format': self.data_format,
             'global_pooling': self.global_pool,
             'adaptive': self.adaptive,
-            'use_cudnn': True,
         }
 
         if self.data_format == 'NHWC':
@@ -578,21 +555,23 @@ class TestMaxPool2dV2Op(OpTest):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, no_check_set=['saved_idx'])
+            self.check_output_with_place(
+                place, no_check_set=['saved_idx'], check_dygraph=False
+            )
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, {'x'}, ['out'], max_relative_error=0.05
+                place,
+                {'x'},
+                ['out'],
+                max_relative_error=0.05,
+                check_dygraph=False,
             )
 
     def init_test_case(self):
         self.op_type = "max_pool2d_v2"
-        self.python_api = max_pool2d_v2_wrapper
-        self.python_out_sig = [
-            "out",
-        ]
         self.pool_forward_naive = max_pool2D_forward_naive
         self.shape = [2, 3, 7, 7]
         self.ksize = [3, 3]
@@ -614,17 +593,17 @@ class TestCase8(TestMaxPool2dV2Op):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, {'x'}, ['out'], max_relative_error=0.5
+                place,
+                {'x'},
+                ['out'],
+                max_relative_error=0.5,
+                check_dygraph=False,
             )
 
 
 class TestCase9(TestMaxPool2dV2Op):
     def init_test_case(self):
         self.op_type = "max_pool2d_v2"
-        self.python_api = max_pool2d_v2_wrapper
-        self.python_out_sig = [
-            "out",
-        ]
         self.pool_forward_naive = max_pool2D_forward_naive
         self.shape = [2, 3, 7, 7]
         self.ksize = [3, 3]
@@ -650,13 +629,15 @@ def create_test_fp16_class(parent):
                 place = core.CUDAPlace(0)
                 if core.is_float16_supported(place):
                     self.check_output_with_place(
-                        place, no_check_set=['saved_idx']
+                        place, no_check_set=['saved_idx'], check_dygraph=False
                     )
 
         def test_check_grad(self):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_grad_with_place(place, {'x'}, ['out'])
+                self.check_grad_with_place(
+                    place, {'x'}, ['out'], check_dygraph=False
+                )
 
     cls_name = "{}_{}".format(parent.__name__, "FP16OP")
     TestMaxPool2dV2FP16.__name__ = cls_name
@@ -697,14 +678,20 @@ def create_test_bf16_class(parent):
         def test_check_output(self):
             place = core.CUDAPlace(0)
             if core.is_bfloat16_supported(place):
-                self.check_output_with_place(place, no_check_set=['saved_idx'])
+                self.check_output_with_place(
+                    place, no_check_set=['saved_idx'], check_dygraph=False
+                )
 
         def test_check_grad(self):
             place = core.CUDAPlace(0)
             numeric_grads = self.get_numeric_grad(place, 'x')
             if core.is_bfloat16_supported(place):
                 self.check_grad_with_place(
-                    place, {'x'}, ['out'], user_defined_grads=[numeric_grads]
+                    place,
+                    {'x'},
+                    ['out'],
+                    user_defined_grads=[numeric_grads],
+                    check_dygraph=False,
                 )
 
     cls_name = "{}_{}".format(parent.__name__, "BF16OP")

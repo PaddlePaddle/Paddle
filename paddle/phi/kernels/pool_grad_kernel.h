@@ -144,20 +144,4 @@ void MaxPool3dWithIndexGradKernel(const Context& ctx,
                                   bool adaptive,
                                   DenseTensor* dx);
 
-#ifdef PADDLE_WITH_CUDNN_FRONTEND
-template <typename T, typename Context>
-void MaxPool2dV2GradCUDNNKernel(const Context& ctx,
-                                const DenseTensor& x,
-                                const DenseTensor& out,
-                                const DenseTensor& saved_idx,
-                                const DenseTensor& dout,
-                                const std::vector<int>& kernel_size,
-                                const std::vector<int>& strides,
-                                const std::vector<int>& paddings,
-                                const std::string& data_format,
-                                bool global_pooling,
-                                bool adaptive,
-                                DenseTensor* dx);
-#endif
-
 }  // namespace phi

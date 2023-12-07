@@ -128,6 +128,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'fused_dconv_drelu_dbn',
     'fused_dot_product_attention',
     'lars_momentum',
+    'max_pool2d_v2',
     'recv_v2',
     'rnn_',
     'row_conv',
