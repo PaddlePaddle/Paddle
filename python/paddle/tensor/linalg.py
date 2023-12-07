@@ -4061,13 +4061,13 @@ def matrix_exp(x, name=None):
 
         exp(A) = \sum_{n=0}^\infty A^n/n!
 
-    The input tensor x should be of square matrices with shape like (*, M, M), and the
+    The input tensor x should be of square matrices with shape like :math:`(*, M, M)`, and the
     exponential output is computed by Pade approximation of the scaling and squaring method.
 
     [1] Nicholas J. Higham, The scaling and squaring method for the matrix exponential revisited.
 
     Args:
-        x (Tensor): A tensor with shape (*, M, M) where * is zero or more batch dimensions. The data type should be one of float32, float64.
+        x (Tensor): A tensor with shape :math:`(*, M, M)` where :math:`*` is zero or more batch dimensions. The data type should be one of float32, float64.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
