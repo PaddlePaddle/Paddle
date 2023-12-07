@@ -483,6 +483,9 @@ def monkey_patch_value():
     def value_hash(self):
         raise NotImplementedError('In python Value can not hash!')
 
+    def value_eq(self):
+        raise NotImplementedError('In python Value can not eq!')
+
     import paddle
 
     value_methods = [
@@ -499,6 +502,7 @@ def monkey_patch_value():
         ('clear_gradient', clear_gradient),
         ('append', append),
         ('__hash__', value_hash),
+        ('__eq__', value_eq),
         (
             '__add__',
             _binary_creator_('__add__', paddle.tensor.add, False, _scalar_add_),
