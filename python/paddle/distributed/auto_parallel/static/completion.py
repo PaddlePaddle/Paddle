@@ -63,7 +63,6 @@ def mark_as_sharding_propagation_skip_op(op):
 
 
 def is_sharding_propagation_skip_op(op):
-    print("in skip func:", op.type())
     if isinstance(op, paddle.base.libpaddle.OpDesc):
         op_desc = op
     elif isinstance(op, Operator):
@@ -270,7 +269,6 @@ class Completer:
         else:
             dims_mapping_list = []
             for succ_op_node in tensor_node.outputs:
-                print("update tensor from output op! ")
                 if succ_op_node.op() is not None:
                     if (
                         succ_op_node.op().type() == "create_py_reader"
@@ -279,9 +277,6 @@ class Completer:
                         or succ_op_node.op().type() == "read"
                         or is_sharding_propagation_skip_op(succ_op_node.op())
                     ):
-                        print(
-                            "tensor update bwd skip: ", str(succ_op_node.op())
-                        )
                         continue
                     op_dist_attr = (
                         self._dist_context.get_op_dist_attr_for_graph(
