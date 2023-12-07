@@ -105,7 +105,10 @@ class TestSignAPI(unittest.TestCase):
                 np.testing.assert_allclose(z, z_expected, rtol=1e-05)
 
     def test_float_dynamic(self):
-        for dtype in ['float16', 'float32', 'float64']:
+        dtype_list = ['float32', 'float64']
+        if paddle.is_compiled_with_cuda():
+            dtype_list.append('float16')
+        for dtype in dtype_list:
             np_x = np.random.randint(-10, 10, size=[12, 20, 2]).astype(dtype)
             x = paddle.to_tensor(np_x)
             z = paddle.sgn(x)
@@ -115,8 +118,11 @@ class TestSignAPI(unittest.TestCase):
 
     @test_with_pir_api
     def test_float_static_and_pir(self):
+        dtype_list = ['float32', 'float64']
+        if paddle.is_compiled_with_cuda():
+            dtype_list.append('float16')
         with static_guard():
-            for dtype in ['float16', 'float32', 'float64']:
+            for dtype in dtype_list:
                 exe = paddle.static.Executor()
 
                 train_program = paddle.static.Program()
