@@ -52,6 +52,22 @@ class TestAssignOp(op_test.OpTest):
         paddle.disable_static()
 
 
+class TestAssignOpComplex64(TestAssignOp):
+    def setUp(self):
+        super().setUp()
+        x = np.random.random(size=self.shape).astype('complex64')
+        self.inputs = {'X': x}
+        self.outputs = {'Out': x}
+
+
+class TestAssignOpComplex128(TestAssignOp):
+    def setUp(self):
+        super().setUp()
+        x = np.random.random(size=self.shape).astype('complex128')
+        self.inputs = {'X': x}
+        self.outputs = {'Out': x}
+
+
 class TestAssignOp_ZeroDim(TestAssignOp):
     def init_input_configs(self):
         self.shape = ()
