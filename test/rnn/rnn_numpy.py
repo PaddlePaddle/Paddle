@@ -447,7 +447,7 @@ class RNNMixin(LayerListMixin):
 
             dims = ((proj_size or self.hidden_size,), (self.hidden_size,))
             if self.state_components == 1:
-                initial_states = np.zeros(state_shape, dtype)
+                initial_states = np.zeros(state_shape + dims[0], dtype)
             else:
                 initial_states = tuple(
                     [

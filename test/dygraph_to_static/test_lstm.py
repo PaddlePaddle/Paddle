@@ -27,7 +27,11 @@ class LSTMLayer(nn.Layer):
     def __init__(self, in_channels, hidden_size, proj_size=None):
         super().__init__()
         self.cell = nn.LSTM(
-            in_channels, hidden_size, direction='bidirectional', num_layers=2
+            in_channels,
+            hidden_size,
+            direction='bidirectional',
+            num_layers=2,
+            proj_size=proj_size,
         )
 
     def forward(self, x):
@@ -122,7 +126,7 @@ class TestLstm(Dy2StTestBase):
         self.save_in_eval(with_training=True)
 
 
-class TestLstmWithProjsize(unittest.TestCase):
+class TestLstmWithProjsize(TestLstm):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.net = Net(12, 2, 4)
