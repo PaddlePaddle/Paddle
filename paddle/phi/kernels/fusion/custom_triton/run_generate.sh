@@ -21,7 +21,7 @@ mkdir -p ${matmul_dir}
 # -o : the output file name 
 # --out-name : the name of the kernel in c++ for your invoke
 python3.8  ${compile_file}     \
-/zhoukangkang/triton/python/tutorials/03-matrix-multiplication-paddle.py     \
+matmul_triton.py    \
 -n matmul_kernel   \
 -o ${matmul_dir}/matmul_fp16     \
 --out-name matmul_kernel_fp16     \
@@ -71,7 +71,7 @@ done
 # 安装triton算子和运行单元测试
 
 python3.8 setup_cuda.py install
-#python3.8 test.py
+python3.8 matmul_test.py
 
 
 

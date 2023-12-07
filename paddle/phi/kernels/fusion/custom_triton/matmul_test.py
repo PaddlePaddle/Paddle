@@ -5,8 +5,8 @@ from triton_ops import triton_matmul
 
 import paddle
 
-a = paddle.rand([4096,4096],dtype="float16")
-b = paddle.rand([4096,4096],dtype="float16")
+a = paddle.rand([512,512],dtype="float16")
+b = paddle.rand([512,512],dtype="float16")
 c1 = triton_matmul(a,b)
 c2 = paddle.matmul(a,b)
 
