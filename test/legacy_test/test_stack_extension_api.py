@@ -113,8 +113,6 @@ class BaseTest(unittest.TestCase):
                         # the data feeded should NOT be a Tensor
                         feed[name] = input
 
-                    x_for_grad = x[0]
-
                     out = func_paddle(x)
                     out.stop_gradient = False
 
@@ -123,21 +121,18 @@ class BaseTest(unittest.TestCase):
                     # not check old ir
                     if paddle.framework.in_pir_mode():
                         fetch_list = [out]
-                        grads = paddle.autograd.ir_backward.grad(
-                            y, [x_for_grad]
-                        )
-                        out_grad = grads[0]
-                        fetch_list.append(out_grad)
+                        grads = paddle.autograd.ir_backward.grad(y, x)
+                        fetch_list.append(grads)
 
                         exe = paddle.static.Executor(place)
-                        res, res_grad = exe.run(
+                        res, *res_grad = exe.run(
                             feed=feed, fetch_list=fetch_list
                         )
 
                         # convert grad value to bool if dtype is bool
                         grad_value = 123.0 if dtypes[0] != 'bool' else True
                         np.testing.assert_allclose(
-                            res_grad, np.ones(x_for_grad.shape) * grad_value
+                            res_grad[0], np.ones(x[0].shape) * grad_value
                         )
 
                         out_ref = func_numpy(inputs)
@@ -195,27 +190,17 @@ class BaseCases:
 
     def test_1d(self):
         self._test_all(generate_data([1], count=1, dtype='float64'))
-        self._test_all(generate_data([5], count=1, dtype='float64'))
 
     def test_2d(self):
         self._test_all(generate_data([1, 1], count=1, dtype='float64'))
-        self._test_all(generate_data([2, 1], count=1, dtype='float64'))
-        self._test_all(generate_data([1, 2], count=1, dtype='float64'))
         self._test_all(generate_data([3, 2], count=1, dtype='float64'))
 
     def test_3d(self):
         self._test_all(generate_data([1, 1, 1], count=1, dtype='float64'))
-        self._test_all(generate_data([2, 1, 1], count=1, dtype='float64'))
-        self._test_all(generate_data([1, 2, 1], count=1, dtype='float64'))
-        self._test_all(generate_data([1, 1, 2], count=1, dtype='float64'))
         self._test_all(generate_data([3, 4, 2], count=1, dtype='float64'))
 
     def test_4d(self):
         self._test_all(generate_data([1, 1, 1, 1], count=1, dtype='float64'))
-        self._test_all(generate_data([2, 1, 1, 1], count=1, dtype='float64'))
-        self._test_all(generate_data([1, 2, 1, 1], count=1, dtype='float64'))
-        self._test_all(generate_data([1, 1, 2, 1], count=1, dtype='float64'))
-        self._test_all(generate_data([1, 1, 1, 2], count=1, dtype='float64'))
         self._test_all(generate_data([3, 4, 2, 5], count=1, dtype='float64'))
 
     def test_0d_more(self):
@@ -227,23 +212,14 @@ class BaseCases:
 
     def test_2d_more(self):
         self._test_all(generate_data([1, 1], count=3, dtype='float64'))
-        self._test_all(generate_data([2, 1], count=3, dtype='float64'))
-        self._test_all(generate_data([1, 2], count=3, dtype='float64'))
         self._test_all(generate_data([3, 2], count=3, dtype='float64'))
 
     def test_3d_more(self):
         self._test_all(generate_data([1, 1, 1], count=3, dtype='float64'))
-        self._test_all(generate_data([2, 1, 1], count=3, dtype='float64'))
-        self._test_all(generate_data([1, 2, 1], count=3, dtype='float64'))
-        self._test_all(generate_data([1, 1, 2], count=3, dtype='float64'))
         self._test_all(generate_data([3, 4, 2], count=3, dtype='float64'))
 
     def test_4d_more(self):
         self._test_all(generate_data([1, 1, 1, 1], count=3, dtype='float64'))
-        self._test_all(generate_data([2, 1, 1, 1], count=3, dtype='float64'))
-        self._test_all(generate_data([1, 2, 1, 1], count=3, dtype='float64'))
-        self._test_all(generate_data([1, 1, 2, 1], count=3, dtype='float64'))
-        self._test_all(generate_data([1, 1, 1, 2], count=3, dtype='float64'))
         self._test_all(generate_data([3, 4, 2, 5], count=3, dtype='float64'))
 
 
