@@ -506,7 +506,6 @@ if(NOT WITH_GPU
   list(REMOVE_ITEM TEST_OPS test_build_strategy_fusion_group_pass)
 endif()
 
-set_tests_properties(test_fuse_resunit_pass PROPERTIES TIMEOUT 300)
 if(NOT WITH_CUDNN_FRONTEND)
   list(REMOVE_ITEM TEST_OPS test_fused_scale_bias_relu_conv_bn_op)
   list(REMOVE_ITEM TEST_OPS test_fused_scale_bias_add_relu_op)
@@ -1196,6 +1195,10 @@ if(WITH_GLOO)
                        PROPERTIES TIMEOUT 120)
   set_tests_properties(test_parallel_dygraph_sparse_embedding_over_height_gloo
                        PROPERTIES TIMEOUT 120)
+endif()
+
+if(WITH_CUDNN_FRONTEND)
+  set_tests_properties(test_fuse_resunit_pass PROPERTIES TIMEOUT 300)
 endif()
 
 set(TEST_CINN_OPS
