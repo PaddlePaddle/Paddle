@@ -20,6 +20,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -34,6 +35,7 @@
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/utils/flags.h"
 
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/transforms/sub_graph_detector.h"
 
 PD_DECLARE_string(allow_cinn_ops);
@@ -169,6 +171,26 @@ bool HaveZeroDimInput(pir::Operation* op) {
   return have_zero_dim;
 }
 
+bool InputContainCompexe(pir::Operation* op) {
+  bool contain_complex = false;
+  for (size_t i = 0; i < op->num_operands(); ++i) {
+    auto in = op->operand_source(i);
+    if (in) {
+      if (auto tensor_type =
+              in.type().dyn_cast<paddle::dialect::DenseTensorType>()) {
+        if (paddle::dialect::TransToPhiDataType(tensor_type.dtype()) ==
+                phi::DataType::COMPLEX128 ||
+            paddle::dialect::TransToPhiDataType(tensor_type.dtype()) ==
+                phi::DataType::COMPLEX64) {
+          contain_complex = true;
+        }
+      }
+    }
+  }
+
+  return contain_complex;
+}
+
 bool AllInputDenseTensor(pir::Operation* op) {
   bool all_denese_tensor = true;
   for (size_t i = 0; i < op->num_operands(); ++i) {
@@ -192,6 +214,10 @@ bool IsSupportCinn(pir::Operation* op) {
     return false;
   }
 
+  if (InputContainCompexe(op)) {
+    return false;
+  }
+
   auto allow_ops = StringSplit(FLAGS_allow_cinn_ops, kDelim);
   auto deny_ops = StringSplit(FLAGS_deny_cinn_ops, kDelim);
   VLOG(4) << "The allowed Cinn Ops: " << GetDebugInfo(allow_ops);
@@ -204,7 +230,8 @@ bool IsSupportCinn(pir::Operation* op) {
 
   // Strip the dialect, like pd_op.abs -> abs
   const auto op_name = CompatibleInfo::OpName(*op);
-  if (op_name == "mean" || op_name == "matmul") {
+  if (op_name == "mean" || op_name == "matmul" || op_name == "relu_grad" ||
+      op_name == "pool2d") {
     return false;
   }
   OpTransInfo trans_info;

@@ -112,12 +112,20 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
                 .data());
         op->operand(0).set_source(new_full->result(0));
       } else {
-        auto new_transpose_op = rewriter->Build<cinn::dialect::BroadcastOp>(
-            op->operand_source(0),
-            cinn::hlir::framework::pir::GetBroadcastAxis(x_dims, output_shape),
-            output_shape);
+        if (x_dims.size() > 0) {
+          auto new_transpose_op = rewriter->Build<cinn::dialect::BroadcastOp>(
+              op->operand_source(0),
+              cinn::hlir::framework::pir::GetBroadcastAxis(x_dims,
+                                                           output_shape),
+              output_shape);
 
-        op->operand(0).set_source(new_transpose_op->result(0));
+          op->operand(0).set_source(new_transpose_op->result(0));
+        } else {
+          auto new_transpose_op = rewriter->Build<paddle::dialect::ExpandOp>(
+              op->operand_source(0), output_shape);
+
+          op->operand(0).set_source(new_transpose_op->result(0));
+        }
       }
     }
 
@@ -138,12 +146,20 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
 
         op->operand(1).set_source(new_full->result(0));
       } else {
-        auto new_transpose_op = rewriter->Build<cinn::dialect::BroadcastOp>(
-            op->operand_source(1),
-            cinn::hlir::framework::pir::GetBroadcastAxis(y_dims, output_shape),
-            output_shape);
+        if (y_dims.size() > 0) {
+          auto new_transpose_op = rewriter->Build<cinn::dialect::BroadcastOp>(
+              op->operand_source(1),
+              cinn::hlir::framework::pir::GetBroadcastAxis(y_dims,
+                                                           output_shape),
+              output_shape);
 
-        op->operand(1).set_source(new_transpose_op->result(0));
+          op->operand(1).set_source(new_transpose_op->result(0));
+        } else {
+          auto new_transpose_op = rewriter->Build<paddle::dialect::ExpandOp>(
+              op->operand_source(1), output_shape);
+
+          op->operand(1).set_source(new_transpose_op->result(0));
+        }
       }
     }
 

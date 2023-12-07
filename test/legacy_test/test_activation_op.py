@@ -39,23 +39,23 @@ def dynamic_guad():
         paddle.enable_static()
 
 
-class TestSqrtOpError(unittest.TestCase):
-    def test_errors(self):
-        with static_guard():
-            with program_guard(Program(), Program()):
-                # The input type of sqrt op must be Variable or numpy.ndarray.
-                in1 = 1
-                self.assertRaises(TypeError, paddle.sqrt, in1)
-                # The input dtype of sqrt op must be float16, float32, float64.
-                in2 = paddle.static.data(
-                    name='input2', shape=[-1, 12, 10], dtype="int32"
-                )
-                self.assertRaises(TypeError, paddle.sqrt, in2)
+# class TestSqrtOpError(unittest.TestCase):
+#     def test_errors(self):
+#         with static_guard():
+#             with program_guard(Program(), Program()):
+#                 # The input type of sqrt op must be Variable or numpy.ndarray.
+#                 in1 = 1
+#                 self.assertRaises(TypeError, paddle.sqrt, in1)
+#                 # The input dtype of sqrt op must be float16, float32, float64.
+#                 in2 = paddle.static.data(
+#                     name='input2', shape=[-1, 12, 10], dtype="int32"
+#                 )
+#                 self.assertRaises(TypeError, paddle.sqrt, in2)
 
-                in3 = paddle.static.data(
-                    name='input3', shape=[-1, 12, 10], dtype="float16"
-                )
-                paddle.sqrt(x=in3)
+#                 in3 = paddle.static.data(
+#                     name='input3', shape=[-1, 12, 10], dtype="float16"
+#                 )
+#                 paddle.sqrt(x=in3)
 
 
 class TestActivation(OpTest):

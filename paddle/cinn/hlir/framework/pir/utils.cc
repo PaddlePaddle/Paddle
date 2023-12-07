@@ -45,7 +45,6 @@ const std::unordered_map<std::string, std::string> CompatibleInfo::OP_NAMES = {
     {"pd_op.floor_divide", "floor_divide"},
     {"pd_op.maximum", "max"},
     {"pd_op.minimum", "min"},
-    {"pd_op.split_with_num", "split"},
     {"cinn_op.reshape", "reshape"},
     {"cinn_op.scale", "scale"},
     {"cinn_op.broadcast", "broadcast_to"},
