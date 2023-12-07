@@ -1,4 +1,4 @@
-/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,13 +21,74 @@ limitations under the License. */
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/platform/collective_helper.h"
 
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#endif
+
+#if defined(PADDLE_WITH_XPU_BKCL)
+#include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
+#endif
+
 namespace paddle {
 namespace operators {
 
 template <typename T, typename DeviceContext>
-class CCommInitAllCpuKernel : public framework::OpKernel<T> {
+class CCommInitAllKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {}
+  void Compute(const framework::ExecutionContext& ctx) const override {
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+    std::vector<int> devices = ctx.Attr<std::vector<int>>("devices");
+    if (devices.empty()) {
+      devices = platform::GetSelectedDevices();
+    }
+
+    int rid = ctx.Attr<int>("ring_id");
+
+    platform::NCCLCommContext::Instance().CreateAllNCCLComms(devices, rid);
+#else if defined(PADDLE_WITH_XPU_BKCL)
+    std::vector<int> devices = ctx.Attr<std::vector<int>>("devices");
+    int ring_id = ctx.Attr<int>("ring_id");
+
+    if (devices.empty()) {
+      int count = platform::GetXPUDeviceCount();
+      for (int i = 0; i < count; ++i) {
+        devices.push_back(i);
+      }
+    }
+
+    if (devices.size() > 1) {
+      std::vector<platform::Place> place_list_;
+      for (size_t i = 0; i < devices.size(); ++i) {
+        auto p = platform::XPUPlace(devices[i]);
+        place_list_.push_back(p);
+      }
+
+      // create pthread to bkcl_init_rank on all devices
+      auto ptr = new platform::BKCLContextMap(place_list_);
+      ptr->init();
+
+      for (size_t i = 0; i < devices.size(); ++i) {
+        platform::BKCLCommContext::Instance().AssignBKCLComm(
+            ptr->contexts_.at(devices[i]).comm_,
+            devices.size(),
+            devices[i],
+            devices[i],
+            ring_id);
+
+        VLOG(0) << "bkcl communicator of rank " << devices[i] << " in ring "
+                << ring_id << " has been created on device " << devices[i];
+
+        // TODO(WorgenZhang): need release comm_map_ when quit
+        // std::call_once(once_flag_, []() {
+        //   std::atexit([]() {
+        //   platform::BKCLCommContext::Instance().ReleaseBKCLComms(); });
+        // });
+      }
+
+      VLOG(0) << "done bkcl_init_rank on all devices";
+    }
+#endif
+  }
 };
 
 }  // namespace operators

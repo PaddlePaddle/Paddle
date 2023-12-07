@@ -55,10 +55,3 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(c_comm_init_all,
                   ops::CCommInitAllOp,
                   ops::CCommInitAllOpMaker);
-
-PD_REGISTER_STRUCT_KERNEL(c_comm_init_all,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::CCommInitAllCpuKernel,
-                          float,
-                          double) {}
