@@ -50,8 +50,6 @@ template <typename T>
 using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
 template <typename T>
 using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
-template <typename T>
-using EigenVectorArrayMap = Eigen::Map<Eigen::Array<T, Eigen::Dynamic, 1>>;
 
 template <typename T, phi::DataLayout layout>
 static __global__ void BNForwardInference(const T *x,
