@@ -104,7 +104,7 @@ class TestFunctionSpec(unittest.TestCase):
         self.assertTrue(input_with_spec[0] == a_spec)  # a
 
         if in_pir_mode():
-            self.assertTupleEqual(input_with_spec[1].shape, [4, 10])  # b.shape
+            self.assertEqual(input_with_spec[1].shape, [4, 10])  # b.shape
         else:
             self.assertTupleEqual(
                 tuple(input_with_spec[1].shape), (4, 10)
