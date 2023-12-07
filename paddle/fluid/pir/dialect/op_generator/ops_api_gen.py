@@ -122,6 +122,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'fused_scale_bias_add_relu',
     'fused_dconv_drelu_dbn',
     'recv_v2',
+    'retinanet_detection_output',
     'rnn_',
     'seed',
     'send_v2',

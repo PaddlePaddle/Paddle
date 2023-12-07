@@ -3455,6 +3455,12 @@
   outputs :
     {reindex_src : Reindex_Src, reindex_dst : Reindex_Dst, out_nodes : Out_Nodes}
 
+- op: retinanet_detection_output
+  inputs :
+    {bboxes: BBoxes, scores: Scores , anchors: Anchors, iminfo: ImInfo}
+  outputs:
+    out : Out
+
 - op: rrelu
   inputs:
     {x: X}
