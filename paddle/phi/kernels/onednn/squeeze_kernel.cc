@@ -65,10 +65,8 @@ void SqueezeInferKernel(const Context& dev_ctx,
   // Currently there is only tranformation for tensors, while attr axes still
   // follows default dtype instead of oneDNN dtype, so here manually change it
   if ((x_dims_tz >= 3) &&
-      (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
-           phi::DataLayout::NHWC ||
-       phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
-           phi::DataLayout::NDHWC)) {
+      phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
+          phi::DataLayout::NHWC) {
     int axes_size = tmp.size();
     for (int i = 0; i < axes_size; i++) {
       if (tmp[i] < 0) {
