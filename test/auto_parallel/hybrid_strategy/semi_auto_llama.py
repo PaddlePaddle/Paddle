@@ -123,7 +123,7 @@ class TestLlamaAuto:
             num_workers=0,
         )
 
-        global_step = 0
+        global_step = 1
         tr_loss = float(0)
 
         model.train()
@@ -136,12 +136,9 @@ class TestLlamaAuto:
                     tr_loss_step /= self.gradient_accumulation_steps
 
                 tr_loss_step.backward()
-
                 tr_loss += tr_loss_step
-                if (
-                    global_step > 0
-                    and global_step % self.gradient_accumulation_steps == 0
-                ):
+
+                if global_step % self.gradient_accumulation_steps == 0:
                     print(
                         f"step: {global_step // self.gradient_accumulation_steps}  loss: {tr_loss.numpy()}"
                     )
