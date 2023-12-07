@@ -72,7 +72,7 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
                [ 0.03333333,  1.83333337],
                [-0.43333334,  2.23333335]]]])
     """
-    if not isinstance(theta, (Variable, paddle.pir.OpResult)):
+    if not isinstance(theta, (Variable, paddle.pir.Value)):
         raise ValueError("The theta should be a Tensor.")
 
     cudnn_version = get_cudnn_version()
@@ -90,7 +90,7 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
     if in_dynamic_mode():
         if isinstance(out_shape, (Variable, paddle.pir.Value)):
             out_shape = paddle.utils.convert_shape_to_list(out_shape)
-            out = _legacy_C_ops.affine_grid(
+            return _legacy_C_ops.affine_grid(
                 theta,
                 "output_shape",
                 out_shape,
@@ -99,50 +99,47 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
                 "use_cudnn",
                 use_cudnn,
             )
-            return out
     elif in_pir_mode():
         if isinstance(out_shape, (list, tuple)):
             if paddle.utils._contain_var(out_shape):
                 out_shape = paddle.utils.get_int_tensor_list(out_shape)
-                out = _C_ops.affine_grid(
+                return _C_ops.affine_grid(
                     theta,
                     out_shape,
                     align_corners,
                     use_cudnn,
                 )
-                return out
         elif isinstance(out_shape, paddle.pir.Value):
             out_shape.stop_gradient = True
-            out = _C_ops.affine_grid(
+            return _C_ops.affine_grid(
                 theta,
                 out_shape,
                 align_corners,
                 use_cudnn,
             )
-            return out
-
-    helper = LayerHelper('affine_grid')
-    check_variable_and_dtype(
-        theta, 'theta', ['float32', 'float64'], 'affine_grid'
-    )
-    out = helper.create_variable_for_type_inference(dtype=theta.dtype)
-    ipts = {'Theta': theta}
-    attrs = {"align_corners": align_corners, "use_cudnn": use_cudnn}
-    if isinstance(out_shape, Variable):
-        ipts['OutputShape'] = out_shape
-        check_variable_and_dtype(
-            out_shape, 'out_shape', ['int32'], 'affine_grid'
-        )
     else:
-        attrs['output_shape'] = out_shape
+        helper = LayerHelper('affine_grid')
+        check_variable_and_dtype(
+            theta, 'theta', ['float32', 'float64'], 'affine_grid'
+        )
+        out = helper.create_variable_for_type_inference(dtype=theta.dtype)
+        ipts = {'Theta': theta}
+        attrs = {"align_corners": align_corners, "use_cudnn": use_cudnn}
+        if isinstance(out_shape, Variable):
+            ipts['OutputShape'] = out_shape
+            check_variable_and_dtype(
+                out_shape, 'out_shape', ['int32'], 'affine_grid'
+            )
+        else:
+            attrs['output_shape'] = out_shape
 
-    helper.append_op(
-        type='affine_grid',
-        inputs=ipts,
-        outputs={'Output': out},
-        attrs=None if len(attrs) == 0 else attrs,
-    )
-    return out
+        helper.append_op(
+            type='affine_grid',
+            inputs=ipts,
+            outputs={'Output': out},
+            attrs=None if len(attrs) == 0 else attrs,
+        )
+        return out
 
 
 def grid_sample(
