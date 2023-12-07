@@ -351,9 +351,11 @@ class TestQuantileRuntime(unittest.TestCase):
                 )
                 np_res = res_func(np_input_data, q=0.5, axis=1)
                 np_res_fp64 = res_func(np_input_data_fp64, q=0.5, axis=1)
-                self.assertTrue(
-                    np.allclose(paddle_res, np_res)
-                    and np.allclose(paddle_res_fp64, np_res_fp64)
+                np.testing.assert_allclose(
+                    paddle_res.numpy(), np_res, rtol=1e-05
+                )
+                np.testing.assert_allclose(
+                    paddle_res_fp64.numpy(), np_res_fp64, rtol=1e-05
                 )
 
     def test_static_tensor(self):
@@ -392,9 +394,11 @@ class TestQuantileRuntime(unittest.TestCase):
                 np_res_fp64 = res_func(
                     np_input_data_fp64, q=[0.5, 0.5, 0.5], axis=1
                 )
-                self.assertTrue(
-                    np.allclose(paddle_res, np_res)
-                    and np.allclose(paddle_res_fp64, np_res_fp64)
+                np.testing.assert_allclose(
+                    paddle_res.numpy(), np_res, rtol=1e-05
+                )
+                np.testing.assert_allclose(
+                    paddle_res_fp64.numpy(), np_res_fp64, rtol=1e-05
                 )
 
 
