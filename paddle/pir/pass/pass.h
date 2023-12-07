@@ -22,7 +22,6 @@
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/pass/analysis_manager.h"
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
-#include "paddle/utils/string/pretty_log.h"
 
 namespace pir {
 
@@ -92,18 +91,16 @@ class IR_API Pass {
   virtual bool Initialize(IrContext* context) { return true; }
 
   void PrintStatistics(int64_t match_count) {
-    paddle::string::PrettyLogH2("--- detected [%lld] subgraphs!", match_count);
+    LOG(INFO) << "--- detected [" << match_count << "] subgraphs!";
   }
 
   void PrintStatistics(int64_t match_count, int64_t all_count) {
-    paddle::string::PrettyLogH2(
-        "--- detected [%lld/%lld] subgraphs!", match_count, all_count);
+    LOG(INFO) << "--- detected [" << match_count << "/" << all_count
+              << "] subgraphs!";
   }
 
-  void PrintStatistics(const std::string& pass_log) {
-    if (!pass_log.empty()) {
-      paddle::string::PrettyLogH2(pass_log.data());
-    }
+  void PrintStatistics(const std::string& custom_log) {
+    LOG(INFO) << custom_log;
   }
 
   AnalysisManager analysis_manager() { return pass_state().am; }
