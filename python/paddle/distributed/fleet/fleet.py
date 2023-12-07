@@ -877,15 +877,21 @@ class Fleet:
 
     def all_reduce(self, input, mode="sum"):
         """
-        all reduce
+        all reduce input between all workers, mode can be sum, mean or max, default is sum
+
+        Returns:
+            list/int: all reduce result
+
+        Examples:
+
+            .. code-block:: python
+
+                >>> import paddle.distributed.fleet as fleet
+                >>> fleet.init()
+                >>> res = fleet.all_reduce(5)
+
         """
         return self._role_maker._all_reduce(input, mode, "worker")
-
-    def all_gather(self, input):
-        """
-        all gather
-        """
-        return self._role_maker._all_gather(input, "worker")
 
     @is_non_distributed_check
     @inited_runtime_handler

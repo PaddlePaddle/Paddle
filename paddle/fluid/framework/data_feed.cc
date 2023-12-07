@@ -1446,6 +1446,7 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
     ins_id_vec_.push_back(r.ins_id_);
     ins_content_vec_.push_back(r.content_);
     for (auto& item : r.float_feasigns_) {
+      batch_float_feasigns_[item.slot()].push_back(item.sign().float_feasign_);
       visit_[item.slot()] = true;
     }
     for (auto& item : r.uint64_feasigns_) {

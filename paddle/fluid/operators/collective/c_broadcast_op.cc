@@ -28,12 +28,6 @@ class CBroadcastOp : public framework::OperatorWithKernel {
  protected:
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    int out_dtype = ctx.Attr<int>("out_dtype");
-    if (out_dtype >= 0) {
-      return phi::KernelKey(
-          static_cast<framework::proto::VarType::Type>(out_dtype),
-          ctx.GetPlace());
-    }
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                           ctx.GetPlace());
   }
@@ -53,7 +47,6 @@ class CBroadcastOpMaker : public framework::OpProtoAndCheckerMaker {
         "use_calc_stream",
         "(bool default false) eject CUDA operations to calculation stream.")
         .SetDefault(false);
-    AddAttr<int>("out_dtype", "output data type").SetDefault(-1);
     AddComment(R"DOC(
 CBroadcast Operator
 
