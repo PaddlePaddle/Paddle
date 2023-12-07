@@ -85,7 +85,7 @@ void CopyFromVector(const std::vector<T>& vec,
   size_t numel = tensor->shape().numel();
   CHECK_EQ(vec.size(), numel);
 
-  if (target == common::DefaultNVGPUTarget()) {
+  if (target == cinn::common::DefaultNVGPUTarget()) {
 #ifdef CINN_WITH_CUDA
     cudaMemcpy(data, vec.data(), numel * sizeof(T), cudaMemcpyHostToDevice);
 #else
@@ -204,7 +204,7 @@ void RunAndCheckShape(NetBuilder* builder,
                       T high = 1,
                       const std::vector<std::string>& passes = {"Decomposer"}) {
   auto prog = builder->Build();
-  Target target = common::DefaultTarget();
+  Target target = cinn::common::DefaultTarget();
   RunDecomposer(&prog, target, passes, output_names);
   auto graph = std::make_shared<hlir::framework::Graph>(prog, target);
   hlir::framework::ApplyPasses(graph.get(), DefaultOpFusionPasses());

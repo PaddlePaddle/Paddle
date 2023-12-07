@@ -41,6 +41,7 @@
 #include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_dropout_add_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_linear_param_grad_add_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/fused_weight_only_linear_pass.h"
 #include "paddle/fluid/pir/transforms/infer_symbolic_shape_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
@@ -96,10 +97,13 @@ USE_PIR_PASS(dead_code_elimination_pass);
 USE_PIR_PASS(attention_fuse_pass);
 USE_PIR_PASS(fused_gemm_epilogue_pass);
 USE_PIR_PASS(fused_dropout_add_pass);
+USE_PIR_PASS(fused_weight_only_linear_pass);
 USE_PIR_PASS(fused_linear_param_grad_add_pass);
 USE_PIR_PASS(inplace_pass);
 USE_PIR_PASS(replace_fetch_with_shadow_output_pass);
-USE_PIR_PASS(conv2d_fuse_pass);
+USE_PIR_PASS(conv2d_bn_fuse_pass);
+USE_PIR_PASS(conv2d_add_fuse_pass);
+USE_PIR_PASS(conv2d_add_act_fuse_pass);
 
 PHI_DECLARE_bool(print_ir);
 
@@ -524,6 +528,8 @@ phi::DataType GetValueDtype(Value value) {
 const phi::DDim &GetValueDims(Value value) {
   if (value.type().isa<DenseTensorType>()) {
     return value.type().dyn_cast<DenseTensorType>().dims();
+  } else if (value.type().isa<SelectedRowsType>()) {
+    return value.type().dyn_cast<SelectedRowsType>().dims();
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Currently, we can only get shape for dense "
@@ -619,11 +625,13 @@ void BindValue(py::module *m) {
           [](Value self) {
             if (auto param_op = self.defining_op<::pir::ParameterOp>()) {
               return param_op.param_name();
+            } else if (auto data_op =
+                           self.defining_op<paddle::dialect::DataOp>()) {
+              return data_op.attribute<pir::StrAttribute>("name").AsString();
             } else {
               PADDLE_THROW(phi::errors::InvalidArgument(
                   "Currently, we can only get name of Value that "
-                  "is "
-                  "persistable"));
+                  "is persistable"));
             }
           })
       .def_property(
@@ -1150,7 +1158,7 @@ SplitedResult SplitForwardBackward(
     }
     auto value_type = v.type().dyn_cast<DenseTensorType>();
     auto dtype = paddle::dialect::TransToPhiDataType(value_type.dtype());
-    auto shape = phi::vectorize(value_type.dims());
+    auto shape = common::vectorize(value_type.dims());
     auto place = phi::Place();
 
     paddle::dialect::DataOp op =

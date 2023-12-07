@@ -14,7 +14,7 @@
 
 #include <string>
 
-#include "paddle/cinn/adt/m_expr.h"
+#include "paddle/cinn/adt/map_expr.h"
 #include "paddle/cinn/adt/print_utils/print_equations.h"
 #include "paddle/cinn/adt/print_utils/print_map_expr.h"
 #include "paddle/cinn/adt/print_utils/print_schedule_descriptor.h"
@@ -22,6 +22,9 @@
 #include "paddle/cinn/adt/print_utils/print_value.h"
 #include "paddle/cinn/adt/schedule_descriptor.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
+#include "paddle/cinn/runtime/flags.h"
+
+PD_DECLARE_bool(cinn_enable_map_expr_index_detail);
 
 namespace cinn::adt {
 
@@ -51,19 +54,38 @@ void VisitEachArg(const List<Arg>& out_args,
   }
 }
 
-std::string ToTxtString(const Tensor& tensor) {
-  CHECK(tensor.Has<adapter::Tensor>());
+namespace {
+
+std::string ToTxtStringImpl(const adapter::Tensor& tensor) {
   std::string ret;
   ret += "t_";
-  ret += hlir::framework::pir::CompatibleInfo::ValueName(
-      tensor.Get<adapter::Tensor>().node_data);
+  ret += hlir::framework::pir::CompatibleInfo::ValueName(tensor.node_data);
   return ret;
 }
 
-std::string ToTxtString(const List<Arg>& out_args,
-                        const List<Arg>& in_args,
-                        bool with_semicolon,
-                        const AnchoredMapStmt* anchored_map_stmt) {
+std::string ToTxtStringImpl(const adapter::DynamicTensor& tensor) {
+  std::string ret;
+  ret += "t_";
+  ret += hlir::framework::pir::CompatibleInfo::ValueName(tensor.node_data);
+  return ret;
+}
+
+std::string ToTxtStringImpl(const TempStorage& tensor) {
+  LOG(FATAL) << "Not supported yet";
+}
+
+}  // namespace
+
+std::string ToTxtString(const Tensor& tensor) {
+  return std::visit([&](const auto& impl) { return ToTxtStringImpl(impl); },
+                    tensor.variant());
+}
+
+std::string ArgsToTxtString(
+    const List<Arg>& out_args,
+    const List<Arg>& in_args,
+    const std::function<std::string(Arg)>& GetPrevArgStr,
+    const std::function<std::string(Arg)>& GetPostArgStr) {
   std::string ret;
   ret += "(";
   std::size_t count = 0;
@@ -71,21 +93,21 @@ std::string ToTxtString(const List<Arg>& out_args,
     if (count++ > 0) {
       ret += ", ";
     }
+    ret += GetPrevArgStr(arg);
     if (as_output.value()) {
       ret += "&";
     }
     ret += ToTxtString(arg);
-    ret += "[";
-    if (anchored_map_stmt != nullptr) {
-      ret += ToTxtString(anchored_map_stmt->GetTensorIndexExpr(arg));
-    }
-    ret += "]";
+    ret += GetPostArgStr(arg);
   });
   ret += ")";
-  if (with_semicolon) {
-    ret += ";\n";
-  }
   return ret;
+}
+
+std::string ArgsToTxtString(const List<Arg>& out_args,
+                            const List<Arg>& in_args) {
+  const auto& GetEmptyStr = [&](Arg) -> std::string { return ""; };
+  return ArgsToTxtString(out_args, in_args, GetEmptyStr, GetEmptyStr);
 }
 
 std::string ToTxtStringOpImpl(const ::pir::Operation* op) {
@@ -112,8 +134,32 @@ std::string ToTxtStringImpl(const OpStmt& op_stmt,
   const auto& [op, in_args, out_args] = op_stmt.tuple();
   ret += GetIndentString(indent_size * kIndentSpaceSize);
   ret += ToTxtString(op);
-  ret +=
-      ToTxtString(out_args.value(), in_args.value(), true, anchored_map_stmt);
+
+  const auto& GetPrevArgStr = [&](Arg) -> std::string {
+    if (FLAGS_cinn_enable_map_expr_index_detail) {
+      if (anchored_map_stmt != nullptr) {
+        return std::string("\n") +
+               GetIndentString((indent_size + 2) * kIndentSpaceSize);
+      }
+    }
+    return "";
+  };
+
+  const auto& GetPostArgStr = [&](Arg arg) -> std::string {
+    std::string tmp;
+    if (FLAGS_cinn_enable_map_expr_index_detail) {
+      if (anchored_map_stmt != nullptr) {
+        tmp += "[";
+        tmp += ToTxtString(anchored_map_stmt->GetTensorIndexExpr(arg));
+        tmp += "]";
+      }
+    }
+    return tmp;
+  };
+
+  ret += ArgsToTxtString(
+      out_args.value(), in_args.value(), GetPrevArgStr, GetPostArgStr);
+  ret += ";\n";
   return ret;
 }
 
@@ -149,6 +195,10 @@ std::string ToTxtString(const Stmt& stmt,
   return ret;
 }
 
+std::string ToTxtString(const Stmt& stmt) {
+  return ToTxtString(stmt, 0, nullptr);
+}
+
 std::string ToTxtStringImpl(const MapStmt<Stmt>& map_stmt,
                             std::size_t indent_size,
                             const AnchoredMapStmt* anchored_map_stmt) {
@@ -181,7 +231,7 @@ std::string ToTxtString(const std::string& group_id, const MapExpr& map_expr) {
   std::string ret;
   const auto& [anchored_map_stmts, inputs, outputs] = map_expr.tuple();
   ret += "\n" + group_id;
-  ret += ToTxtString(outputs.value(), inputs.value(), false, nullptr);
+  ret += ArgsToTxtString(outputs.value(), inputs.value());
 
   ret += " {\n";
   for (const auto& anchored_map_stmt : *anchored_map_stmts) {

@@ -18,9 +18,9 @@
 
 #include <unordered_set>
 
+#include "paddle/common/errors.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 
 /*============================ Dict Tree ================================*/
 
@@ -39,7 +39,7 @@ class TreeNode {
 
 void TreeNode::clear() {
   for (int i = 0; i < 256; i++) {
-    if (children[i] != NULL) delete children[i];
+    if (children[i] != nullptr) delete children[i];
   }
 }
 
@@ -48,7 +48,7 @@ int TreeNode::add_prefix(const char* filepath) {
   if (filepath[0] == '\0') return 1;
 
   int ch = (int)filepath[0];  // NOLINT
-  if (children[ch] == NULL) {
+  if (children[ch] == nullptr) {
     TreeNode* node = new TreeNode();
     children[ch] = node;
   }
@@ -64,7 +64,7 @@ int TreeNode::check_filename(const char* filename) {
 
   while (filename[cur_idx] != '\0') {
     cur_node = cur_node->children[(int)filename[cur_idx]];  // NOLINT
-    if (cur_node == NULL) return 0;
+    if (cur_node == nullptr) return 0;
     if (cur_node->is_prefix) return 1;
     cur_idx += 1;
   }

@@ -24,9 +24,9 @@
 #include <type_traits>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/dll_decl.h"
-#include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/op_info.h"
 #include "paddle/pir/core/operation.h"

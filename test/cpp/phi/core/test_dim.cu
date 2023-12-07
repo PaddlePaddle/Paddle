@@ -17,21 +17,21 @@
 #include <sstream>
 
 #include "gtest/gtest.h"
-#include "paddle/phi/core/utils/dim.h"
+#include "paddle/common/dim.h"
 
 namespace phi {
 namespace tests {
 
-__global__ void test(phi::Dim<2>* o) { o[0] = phi::make_dim(5, 6); }
+__global__ void test(phi::Dim<2>* o) { o[0] = common::make_dim(5, 6); }
 
 __global__ void dyn_idx_gpu(int64_t* o) {
-  auto d = phi::make_dim(5, 6);
+  auto d = common::make_dim(5, 6);
   o[0] = d[1];
 }
 
 TEST(Dim, Equality) {
   // construct a Dim on the CPU
-  auto a = phi::make_dim(3, 4);
+  auto a = common::make_dim(3, 4);
   EXPECT_EQ(a[0], 3);
   EXPECT_EQ(a[1], 4);
 
@@ -48,10 +48,10 @@ TEST(Dim, Equality) {
   EXPECT_EQ(a[1], 6);
 
   // product
-  EXPECT_EQ(phi::product(a), 30);
+  EXPECT_EQ(common::product(a), 30);
 
   // mutate a Dim
-  auto b = phi::make_dim(7, 8);
+  auto b = common::make_dim(7, 8);
   b[1] = 10;
   EXPECT_EQ(b[0], 7);
   EXPECT_EQ(b[1], 10);
@@ -74,9 +74,9 @@ TEST(Dim, Equality) {
 }
 
 TEST(Dim, Bool) {
-  auto a = phi::make_dim(3, 4);
-  auto b = phi::make_dim(5, 6);
-  auto c = phi::make_dim(3, 4);
+  auto a = common::make_dim(3, 4);
+  auto b = common::make_dim(5, 6);
+  auto c = common::make_dim(3, 4);
 
   // comparison
   EXPECT_TRUE(a == a);
@@ -87,13 +87,13 @@ TEST(Dim, Bool) {
 TEST(Dim, Print) {
   {
     std::stringstream ss;
-    auto a = phi::make_dim(2, 3);
+    auto a = common::make_dim(2, 3);
     ss << a;
     EXPECT_EQ(ss.str(), "2, 3");
   }
   {
     std::stringstream ss;
-    ss << phi::make_dim(8);
+    ss << common::make_dim(8);
     EXPECT_EQ(ss.str(), "8");
   }
 }
