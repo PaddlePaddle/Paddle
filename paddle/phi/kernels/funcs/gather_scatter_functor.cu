@@ -1129,9 +1129,9 @@ __global__ void ScatterMulValueGradGPUKernel(tensor_t* grad_data,
                                i * outer_dim_size_self * self_select_dim_size;
   int64_t replace_index_grad = k + j * outer_dim_size_grad +
                                i * outer_dim_size_grad * grad_select_dim_size;
-  grad_data[replace_index_grad] = self_data[replace_index_self] *
-                                  out_data[replace_index_self] /
-                                  value_data[replace_index_grad];
+  grad_data[replace_index_grad] =
+      self_data[replace_index_self] *
+      (out_data[replace_index_self] / value_data[replace_index_grad]);
 }
 
 template <typename tensor_t, typename index_t>

@@ -5381,6 +5381,12 @@ def put_along_axis(
                 )
             )
     if in_dynamic_or_pir_mode():
+        if convert_dtype(indices.dtype) not in ['int32', 'int64']:
+            raise TypeError(
+                "The data type of indices should be one of ['int32', 'int64'], but got {}".format(
+                    str(convert_dtype(indices.dtype))
+                )
+            )
         return _C_ops.put_along_axis(
             arr, indices, values, axis, reduce, include_self
         )

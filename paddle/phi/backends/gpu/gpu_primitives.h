@@ -426,6 +426,7 @@ CUDA_ATOMIC_WRAPPER(Mul, unsigned long long int) {  // NOLINT
     assumed = old;
     old = atomicCAS(address, assumed, val * assumed);
   } while (assumed != old);
+  return old;
 }
 
 CUDA_ATOMIC_WRAPPER(Mul, int64_t) {

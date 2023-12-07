@@ -73,9 +73,9 @@ struct cpu_gather_scatter_functor {
   template <typename func_t>
   void operator()(phi::DenseTensor self,
                   int dim,
-                  const phi::DenseTensor& index UNUSED,
+                  const phi::DenseTensor& index,
                   const phi::DenseTensor& src,
-                  const std::string& method_name UNUSED,
+                  const std::string& method_name,
                   const func_t& reduce_op,
                   bool include_self,
                   const phi::DeviceContext& ctx UNUSED) {
@@ -115,7 +115,7 @@ struct cpu_gather_scatter_functor {
       outer_dim_size_src *= src_dims[i];
     }
     int64_t index_idx = 0;
-    int* nums_of_elements = new int[self.numel()]();
+    std::vector<int> nums_of_elements(self.numel(), 0);
     // N layer loop squeezed into 3 layers loop
     for (int64_t i = 0; i < inner_dim_size; i++) {
       for (int64_t j = 0; j < select_dim_size; j++) {
@@ -177,7 +177,6 @@ struct cpu_gather_scatter_functor {
         }
       }
     }
-    delete[] nums_of_elements;
   }
 };
 
@@ -331,8 +330,7 @@ void cpu_scatter_mul_min_max_input_grad_kernel(phi::DenseTensor self UNUSED,
                                                const phi::DenseTensor& index,
                                                const phi::DenseTensor& out,
                                                const phi::DenseTensor& x,
-                                               const phi::DenseTensor& value
-                                                   UNUSED,
+                                               const phi::DenseTensor& value,
                                                phi::DenseTensor grad,
                                                const std::string& reduce,
                                                bool include_self UNUSED,
@@ -366,7 +364,7 @@ void cpu_scatter_mul_min_max_input_grad_kernel(phi::DenseTensor self UNUSED,
   }
 
   int64_t index_idx = 0;
-  int* num_elements = new int[grad_size]();
+  std::vector<int> num_elements(grad_size, 0);
   for (int64_t i = 0; i < inner_dim_size; i++) {
     for (int64_t j = 0; j < select_dim_size; j++) {
       for (int64_t k = 0; k < outer_dim_size; k++) {
@@ -432,7 +430,7 @@ void cpu_scatter_mean_input_grad_kernel(phi::DenseTensor self UNUSED,
   }
 
   int64_t index_idx = 0;
-  int* num_elements = new int[grad_size]();
+  std::vector<int> num_elements(grad_size, 0);
   for (int64_t i = 0; i < inner_dim_size; i++) {
     for (int64_t j = 0; j < select_dim_size; j++) {
       for (int64_t k = 0; k < outer_dim_size; k++) {
@@ -447,7 +445,6 @@ void cpu_scatter_mean_input_grad_kernel(phi::DenseTensor self UNUSED,
   for (int64_t i = 0; i < grad_size; i++)
     if (num_elements[i])
       grad_data[i] = grad_data[i] / static_cast<tensor_t>(num_elements[i] + 1);
-  delete[] num_elements;
 }
 
 template <typename tensor_t, typename index_t>
@@ -466,11 +463,7 @@ void cpu_scatter_value_grad_kernel(phi::DenseTensor self,
   auto grad_dims = grad.dims();
 
   int64_t self_size = self.numel();
-  bool* is_self_grad_used = new bool[self_size];
-
-  for (int i = 0; i < self_size; i++) {
-    is_self_grad_used[i] = false;
-  }
+  std::vector<bool> is_self_grad_used(self_size, false);
 
   int64_t inner_dim_size = 1;
   int64_t outer_dim_size = 1;
@@ -507,7 +500,6 @@ void cpu_scatter_value_grad_kernel(phi::DenseTensor self,
       }
     }
   }
-  delete[] is_self_grad_used;
 }
 
 template <typename tensor_t, typename index_t>
@@ -532,14 +524,13 @@ void cpu_scatter_add_mean_value_grad_kernel(
 
   int64_t self_size = self.numel();
   int64_t grad_size = grad.numel();
-  int* num_elements = nullptr;
+  std::vector<int> num_elements;
   if (reduce == "mean") {
-    num_elements = new int[self_size];
     for (int i = 0; i < self_size; i++) {
       if (include_self)
-        num_elements[i] = 1;
+        num_elements.push_back(1);
       else
-        num_elements[i] = 0;
+        num_elements.push_back(0);
     }
   }
 
@@ -598,7 +589,6 @@ void cpu_scatter_add_mean_value_grad_kernel(
       }
     }
   }
-  delete[] num_elements;
 }
 
 template <typename tensor_t, typename index_t>
@@ -624,11 +614,10 @@ void cpu_scatter_mul_min_max_value_grad_kernel(phi::DenseTensor self,
   auto grad_dims = grad.dims();
 
   int64_t self_size = self.numel();
-  int* num_elements = nullptr;
+  std::vector<int> num_elements;
   if (reduce == "amin" || reduce == "amax") {
-    num_elements = new int[self_size];
     for (int i = 0; i < self_size; i++) {
-      num_elements[i] = 0;
+      num_elements.push_back(0);
     }
   }
   int64_t inner_dim_size = 1;
@@ -662,9 +651,9 @@ void cpu_scatter_mul_min_max_value_grad_kernel(phi::DenseTensor self,
             out_data[replace_index_self] == value_data[replace_index_grad]) {
           num_elements[replace_index_self] += 1;
         } else if (reduce == "mul" || reduce == "multiply") {
-          grad_data[replace_index_grad] = self_data[replace_index_self] *
-                                          out_data[replace_index_self] /
-                                          value_data[replace_index_grad];
+          grad_data[replace_index_grad] =
+              self_data[replace_index_self] *
+              (out_data[replace_index_self] / value_data[replace_index_grad]);
         }
         index_idx++;
       }
@@ -697,7 +686,6 @@ void cpu_scatter_mul_min_max_value_grad_kernel(phi::DenseTensor self,
       }
     }
   }
-  delete[] num_elements;
 }
 
 Instantiate_Template_Function(cpu_gather_kernel)                  // NOLINT
