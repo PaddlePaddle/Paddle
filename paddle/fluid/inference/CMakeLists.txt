@@ -142,7 +142,7 @@ if(WIN32)
                PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
   target_link_libraries(paddle_inference_shared phi common)
 endif()
-set(INFERENCE_SHARED_LINKFLAGS "-Wl,--rpath='$ORIGIN'")
+set(INFERENCE_SHARED_LINKFLAGS "-Wl,-rpath,'$ORIGIN'")
 set_target_properties(paddle_inference_shared
                       PROPERTIES LINK_FLAGS "${INFERENCE_SHARED_LINKFLAGS}")
 set_target_properties(paddle_inference_shared PROPERTIES OUTPUT_NAME
