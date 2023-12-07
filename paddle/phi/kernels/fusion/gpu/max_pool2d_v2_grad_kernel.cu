@@ -14,27 +14,18 @@ limitations under the License. */
 
 #include <array>
 
-#include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/autotune/cache.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
-#include "paddle/phi/kernels/gpudnn/pool_gpudnn.h"
-#include "paddle/phi/kernels/pool_kernel.h"
-
-#ifdef PADDLE_WITH_CUDNN_FRONTEND
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_frontend.h"
-#endif
+#include "paddle/phi/kernels/gpudnn/pool_gpudnn.h"
 
 PHI_DECLARE_bool(cudnn_exhaustive_search);
 
 namespace phi {
-
-#ifdef PADDLE_WITH_CUDNN_FRONTEND
 
 template <typename Context, typename T1, typename T2 = int>
 void MaxPoolV2GradCUDNNKernel(const Context& ctx,
@@ -252,7 +243,6 @@ void MaxPool2dV2GradCUDNNKernel(const Context& ctx,
 
 using phi::dtype::float16;
 
-#if defined(PADDLE_WITH_CUDNN_FRONTEND) && (CUDNN_VERSION >= 8600)
 PD_REGISTER_KERNEL(max_pool2d_v2_grad,  // cuda_only
                    GPU,
                    ALL_LAYOUT,
@@ -262,4 +252,3 @@ PD_REGISTER_KERNEL(max_pool2d_v2_grad,  // cuda_only
                    phi::dtype::bfloat16) {
   kernel->InputAt(2).SetDataType(phi::CppTypeToDataType<int>::Type());
 }
-#endif
