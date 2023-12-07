@@ -15,7 +15,7 @@
 
 from abc import ABC, abstractmethod
 
-from .prune import _PRUNE_FUNC
+from .prune import _PRUNE_HISTORY_FUNC
 from .utils import gbs_search_all, search_all, search_by_dp_estimation
 
 
@@ -28,7 +28,7 @@ class SearchAlgo(ABC):
         pass
 
     def prune(self, tuner_cfg, cur_cfg, history_cfgs):
-        for func in _PRUNE_FUNC:
+        for func in _PRUNE_HISTORY_FUNC:
             result = func(tuner_cfg, cur_cfg, history_cfgs)
             if result:
                 return True
