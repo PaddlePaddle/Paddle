@@ -85,6 +85,20 @@ PHI_DEFINE_EXPORTED_bool(
 
 /**
  * Operator related FLAG
+ * Name: FLAGS_flash_attention_with_advanced
+ * Since Version: 2.6.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Use advanced function like additional mask or faster compute
+ */
+PHI_DEFINE_EXPORTED_bool(
+    flash_attention_with_advanced,
+    false,
+    "Checking whether use advanced flash_attention function support,"
+    "like additional mask or faster compute when seqlen_q is equal to seqlen_k.");
+
+/**
+ * Operator related FLAG
  * Name: FLAGS_check_nan_inf_level
  * Since Version: 2.5.0
  * Value Range: int32, default=0

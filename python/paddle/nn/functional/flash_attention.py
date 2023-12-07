@@ -501,6 +501,7 @@ def scaled_dot_product_attention(
         out, _ = flash_attention(query, key, value, dropout_p, is_causal)
         return out
     else:
+        paddle.base.set_flags({"FLAGS_flash_attention_with_advanced": True})
         if in_dynamic_mode():
             fixed_seed_offset = (None,)
             return_softmax = False

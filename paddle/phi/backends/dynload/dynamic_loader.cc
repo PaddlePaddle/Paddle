@@ -29,7 +29,7 @@ limitations under the License. */
 // (maybe not use gflags).
 #include "glog/logging.h"
 #include "paddle/phi/core/flags.h"
-
+PD_DECLARE_bool(flash_attention_with_advanced);
 PHI_DEFINE_string(cudnn_dir,  // NOLINT
                   "",
                   "Specify path for loading libcudnn.so. For instance, "
@@ -503,7 +503,11 @@ void* GetFlashAttnDsoHandle() {
 #elif defined(_WIN32)
   return GetDsoHandleFromSearchPath(flashattn_dir, "flashattn.dll");
 #else
-  return GetDsoHandleFromSearchPath(flashattn_dir, "libflashattn.so");
+  if(FLAGS_flash_attention_with_advanced) {
+    return GetDsoHandleFromSearchPath(flashattn_dir, "libflashattn_advanced.so");
+  } else {
+    return GetDsoHandleFromSearchPath(flashattn_dir, "libflashattn.so");
+  }
 #endif
 }
 
