@@ -113,29 +113,6 @@ void PToSReshardFunctionCrossMesh::Eval(DeviceContext* dev_ctx,
                                         const TensorDistAttr& out_dist_attr,
                                         DistTensor* out) {
   VLOG(3) << "Call PToSReshardFunctionCrossMesh Eval";
-  // const auto& out_process_mesh = out_dist_attr.process_mesh();
-
-  // DistTensor tmp_result;
-
-  // SameStatusReshardFunction same_status_func;
-  // TensorDistAttr tmp_dist_attr = in.dist_attr();
-  // tmp_dist_attr.set_process_mesh(out_process_mesh);
-  // same_status_func.Eval(dev_ctx, in, tmp_dist_attr, &tmp_result);
-
-  // int64_t cur_global_rank = phi::distributed::GetCurGlobalRank();
-  // if (out_process_mesh.contains(cur_global_rank)) {
-  //   PToSReshardFunction p_to_s_func;
-  //   PADDLE_ENFORCE(
-  //       p_to_s_func.IsSuitable(tmp_result, out_dist_attr),
-  //       phi::errors::InvalidArgument(
-  //           "Invoke the p to r reshard function is not valid from %s to %s.",
-  //           tmp_result.dist_attr(),
-  //           out_dist_attr));
-  //   p_to_s_func.Eval(dev_ctx, tmp_result, out_dist_attr, out);
-  // } else {
-  //   SetDistProps(out, in.dims(), out_dist_attr);
-  //   SetValue(out, tmp_result.value());
-  // }
   const auto& in_dist_attr = in.dist_attr();
 
   DistTensor tmp_result;
@@ -155,6 +132,7 @@ void PToSReshardFunctionCrossMesh::Eval(DeviceContext* dev_ctx,
     p_to_s_func.Eval(dev_ctx, in, in_dist_attr_shard, &tmp_result);
   } else {
     SetDistProps(&tmp_result, in.dims(), in_dist_attr_shard);
+    SetValue(&tmp_result, in.value());
   }
 
   SameStatusReshardFunction same_status_func;

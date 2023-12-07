@@ -131,13 +131,7 @@ void RToSReshardFunctionCrossMesh::Eval(phi::DeviceContext* dev_ctx,
     SetDistProps(&tmp_result, in.dims(), in_dist_attr_shard);
     SetValue(&tmp_result, in.value());
   }
-
-  // Step 2: Same status from the input mesh to output mesh
-  // =======
-  //   }
-
-  // >>>>>>> 95778564b50e233ea5aeebf97c930d976468043e
-  SameStatusReshardFunction same_status_func;
+  g SameStatusReshardFunction same_status_func;
   PADDLE_ENFORCE(
       same_status_func.IsSuitable(tmp_result, out_dist_attr),
       phi::errors::InvalidArgument("Invoke the same status reshard function "
