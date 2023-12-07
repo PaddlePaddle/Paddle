@@ -23,6 +23,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/allocator.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/flags.h"
 
 #ifdef PADDLE_WITH_NCCL
@@ -152,8 +153,8 @@ static T&& FillValue(T&& allocation) {
                  << allocation->ptr() << " " << allocation->place() << " "
                  << allocation->size();
         if (platform::is_gpu_place(allocation->place())) {
-          PADDLE_ENFORCE_GPU_SUCCES(cudaMemset(
-              allocation->ptr(), FLAGS_alloc_fill_value, allocation->size()));
+          cudaMemset(
+              allocation->ptr(), FLAGS_alloc_fill_value, allocation->size());
         } else {
           std::memset(
               allocation->ptr(), FLAGS_alloc_fill_value, allocation->size());
