@@ -27,6 +27,10 @@ inline int getSMVersion() {
 #if defined(PADDLE_WITH_CUDA)
   sm_version = paddle::platform::GetGPUComputeCapability(
       paddle::platform::GetCurrentDeviceId());
+#else
+  PADDLE_THROW(
+      platform::errors::Unavailable("platform::GetGPUComputeCapability is not "
+                                    "supported in CPU only version."));
 #endif
   return sm_version;
 }
