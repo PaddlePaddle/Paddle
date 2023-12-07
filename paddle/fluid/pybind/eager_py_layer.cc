@@ -172,6 +172,8 @@ PyObject* pylayer_method_apply(PyObject* cls,
   ctx->forward_input_tensor_is_duplicable.clear();
   ctx->forward_input_tensor_is_duplicable.reserve(inputs_size);
   std::set<phi::TensorBase*> input_tensorbases;
+
+  const phi::distributed::ProcessMesh* mesh = nullptr;
   for (size_t i = 0; i < inputs_size; i++) {
     PyObject* obj = nullptr;
     if (i >= args_size) {
@@ -180,6 +182,56 @@ PyObject* pylayer_method_apply(PyObject* cls,
       obj = PyTuple_GET_ITEM(args, i);
     }
     if (PyCheckTensor(obj)) {
+      paddle::Tensor& tensor = reinterpret_cast<TensorObject*>(obj)->tensor;
+      if (tensor.defined() && tensor.is_dist_tensor()) {
+        mesh = &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                     tensor.impl())
+                     ->dist_attr()
+                     .process_mesh());
+      }
+    } else if (PyList_Check(obj)) {
+      Py_ssize_t len = PyList_Size(obj);
+      for (Py_ssize_t j = 0; j < len; j++) {
+        PyObject* o = PyList_GetItem(obj, j);
+        if (PyCheckTensor(o)) {
+          paddle::Tensor& tensor = reinterpret_cast<TensorObject*>(o)->tensor;
+          if (tensor.defined() && tensor.is_dist_tensor()) {
+            mesh = &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                         tensor.impl())
+                         ->dist_attr()
+                         .process_mesh());
+          }
+        }
+      }
+    } else if (PyTuple_Check(obj)) {
+      Py_ssize_t len = PyTuple_Size(obj);
+      for (Py_ssize_t j = 0; j < len; j++) {
+        PyObject* o = PyTuple_GetItem(obj, j);
+        if (PyCheckTensor(o)) {
+          paddle::Tensor& tensor = reinterpret_cast<TensorObject*>(o)->tensor;
+          if (tensor.defined() && tensor.is_dist_tensor()) {
+            mesh = &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                         tensor.impl())
+                         ->dist_attr()
+                         .process_mesh());
+          }
+        }
+      }
+    }
+  }
+
+  for (size_t i = 0; i < inputs_size; i++) {
+    PyObject* obj = nullptr;
+    if (i >= args_size) {
+      obj = PyList_GetItem(kwargs_value_list, i - args_size);  // NOLINT
+    } else {
+      obj = PyTuple_GET_ITEM(args, i);
+    }
+    if (PyCheckTensor(obj)) {
+      if (mesh) {
+        ConvertToDistTensor(&(reinterpret_cast<TensorObject*>(obj)->tensor),
+                            mesh);
+      }
       input_tensorbases.insert(
           reinterpret_cast<TensorObject*>(obj)->tensor.impl().get());
       auto autograd_meta = egr::EagerUtils::nullable_autograd_meta(
@@ -199,6 +251,10 @@ PyObject* pylayer_method_apply(PyObject* cls,
       for (Py_ssize_t j = 0; j < len; j++) {
         PyObject* o = PyList_GetItem(obj, j);
         if (PyCheckTensor(o)) {
+          if (mesh) {
+            ConvertToDistTensor(&(reinterpret_cast<TensorObject*>(o)->tensor),
+                                mesh);
+          }
           input_tensorbases.insert(
               reinterpret_cast<TensorObject*>(o)->tensor.impl().get());
           tensors.push_back(&(reinterpret_cast<TensorObject*>(o)->tensor));
@@ -222,6 +278,10 @@ PyObject* pylayer_method_apply(PyObject* cls,
       for (Py_ssize_t j = 0; j < len; j++) {
         PyObject* o = PyTuple_GetItem(obj, j);
         if (PyCheckTensor(o)) {
+          if (mesh) {
+            ConvertToDistTensor(&(reinterpret_cast<TensorObject*>(o)->tensor),
+                                mesh);
+          }
           input_tensorbases.insert(
               reinterpret_cast<TensorObject*>(o)->tensor.impl().get());
           tensors.push_back(&(reinterpret_cast<TensorObject*>(o)->tensor));
@@ -449,6 +509,10 @@ PyObject* pylayer_method_apply(PyObject* cls,
       Py_INCREF(outputs);
       Py_XDECREF(outputs_tuple);
     }
+  }
+
+  if (PyList_Check(outputs)) {
+    Py_XDECREF(outputs_tuple);
   }
 
   Py_XDECREF(forward_args);

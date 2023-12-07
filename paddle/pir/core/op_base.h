@@ -24,6 +24,7 @@
 namespace pir {
 class Builder;
 class IrPrinter;
+class Block;
 
 class IR_API OpBase {
  public:
@@ -46,6 +47,8 @@ class IR_API OpBase {
 
   uint32_t num_operands() const { return operation()->num_operands(); }
 
+  Block *parent() const { return operation()->GetParent(); }
+
   const AttributeMap &attributes() const { return operation()->attributes(); }
 
   Value operand_source(uint32_t index) const {
@@ -67,7 +70,7 @@ class IR_API OpBase {
 
   void VerifyRegion() {}
 
- private:
+ protected:
   Operation *operation_;  // Not owned
 };
 
@@ -153,8 +156,8 @@ class Op : public OpBase {
     return op && op->info().id() == TypeId::get<ConcreteOp>();
   }
 
-  static std::vector<InterfaceValue> GetInterfaceMap() {
-    return pir::detail::GetInterfaceMap<ConcreteOp, InterfaceList>();
+  static std::set<InterfaceValue> interface_set() {
+    return pir::detail::GetInterfaceSet<ConcreteOp, InterfaceList>();
   }
 
   static std::vector<TypeId> GetTraitSet() {
