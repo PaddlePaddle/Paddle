@@ -146,14 +146,14 @@ struct Group {
           continue;
         }
 
-        if (std::find(this->input_names.begin(),
-                      this->input_names.end(),
-                      CompatibleInfo::ValueName(value)) !=
-            this->input_names.end()) {
-          // if the input data in group's input_names
-          group_inputs.insert(value);
-          continue;
-        }
+        // if (std::find(this->input_names.begin(),
+        //               this->input_names.end(),
+        //               CompatibleInfo::ValueName(value)) !=
+        //     this->input_names.end()) {
+        //   // if the input data in group's input_names
+        //   group_inputs.insert(value);
+        //   continue;
+        // }
       }
     }
 

@@ -18,9 +18,7 @@ import sys
 from darknet import ConvBNLayer, DarkNet53_conv_body
 
 import paddle
-from paddle import _legacy_C_ops, base
-from paddle.base.param_attr import ParamAttr
-from paddle.jit.api import to_static
+from paddle import ParamAttr, _legacy_C_ops
 from paddle.regularizer import L2Decay
 
 
@@ -107,11 +105,11 @@ cfg.batch_size = 1 if sys.platform == 'darwin' or os.name == 'nt' else 4
 # derived learning rate the to get the final learning rate.
 cfg.learning_rate = 0.001
 # maximum number of iterations
-cfg.max_iter = 20 if base.is_compiled_with_cuda() else 1
+cfg.max_iter = 20 if paddle.is_compiled_with_cuda() else 1
 # Disable mixup in last N iter
-cfg.no_mixup_iter = 10 if base.is_compiled_with_cuda() else 1
+cfg.no_mixup_iter = 10 if paddle.is_compiled_with_cuda() else 1
 # warm up to learning rate
-cfg.warm_up_iter = 10 if base.is_compiled_with_cuda() else 1
+cfg.warm_up_iter = 10 if paddle.is_compiled_with_cuda() else 1
 cfg.warm_up_factor = 0.0
 # lr steps_with_decay
 cfg.lr_steps = [400000, 450000]
@@ -124,7 +122,7 @@ cfg.momentum = 0.9
 # ENV options
 #
 # support both CPU and GPU
-cfg.use_gpu = base.is_compiled_with_cuda()
+cfg.use_gpu = paddle.is_compiled_with_cuda()
 # Class number
 cfg.class_num = 80
 
@@ -274,7 +272,6 @@ class YOLOv3(paddle.nn.Layer):
                 self.route_blocks_2.append(route)
             self.upsample = Upsample()
 
-    @to_static
     def forward(
         self,
         inputs,
