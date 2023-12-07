@@ -39,7 +39,7 @@ if(WITH_CRYPTO)
   list(APPEND paddle_inference_api_deps framework_io)
 endif()
 if(WITH_CUSTOM_DEVICE)
-  set(paddle_inference_api_deps ${paddle_inference_api_deps} phi)
+  set(paddle_inference_api_deps ${paddle_inference_api_deps} phi common)
 endif()
 
 if(WIN32)
@@ -61,7 +61,7 @@ cc_library(
        table_printer utf8proc)
 
 if(WIN32)
-  target_link_libraries(paddle_inference_api phi)
+  target_link_libraries(paddle_inference_api phi common)
 endif()
 
 set(inference_deps

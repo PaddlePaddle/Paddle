@@ -54,6 +54,9 @@ bool ArrayAttribute::empty() const { return storage()->empty(); }
 Attribute ArrayAttribute::at(size_t index) const {
   return storage()->at(index);
 }
+Attribute ArrayAttribute::operator[](size_t index) const {
+  return storage()->operator[](index);
+}
 
 ArrayAttribute ArrayAttribute::get(IrContext* ctx,
                                    const std::vector<Attribute>& value) {

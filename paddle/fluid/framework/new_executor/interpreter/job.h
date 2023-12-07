@@ -16,9 +16,9 @@
 #include <glog/logging.h>
 #include <set>
 
+#include "paddle/common/errors.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
-#include "paddle/phi/core/macros.h"
 
 namespace paddle {
 namespace framework {

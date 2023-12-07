@@ -45,7 +45,7 @@ void TileKernel(const Context& dev_ctx,
             repeat_times_data[i]));
   }
 
-  auto vec_x_dims = phi::vectorize<int>(x_dims);
+  auto vec_x_dims = common::vectorize<int>(x_dims);
   if (repeat_times_data.size() < vec_x_dims.size()) {
     int diff = vec_x_dims.size() - repeat_times_data.size();
     repeat_times_data.insert(repeat_times_data.begin(), diff, 1);
@@ -63,19 +63,19 @@ void TileKernel(const Context& dev_ctx,
           vec_x_dims.size(),
           repeat_times_data.size()));
 
-  DDim new_x_dims = make_ddim(vec_x_dims);
+  DDim new_x_dims = common::make_ddim(vec_x_dims);
   DDim out_dims(new_x_dims);
   DenseTensor new_x = x;
   vec_x_dims.insert(vec_x_dims.begin(), 1, 1);
   for (size_t i = 0; i < repeat_times_data.size(); ++i) {
     out_dims[i] *= repeat_times_data[i];
-    new_x.Resize(make_ddim(vec_x_dims));
+    new_x.Resize(common::make_ddim(vec_x_dims));
     std::vector<const DenseTensor*> ins = {&new_x};
     vec_x_dims[i] *= repeat_times_data[i];
     if (i != repeat_times_data.size() - 1) {
       if (repeat_times_data[i] != 1) {
         DenseTensor tmp_out;
-        tmp_out.Resize(make_ddim(vec_x_dims));
+        tmp_out.Resize(common::make_ddim(vec_x_dims));
         dev_ctx.template Alloc<T>(&tmp_out);
         std::vector<DenseTensor*> outs = {&tmp_out};
         phi::funcs::BroadcastKernel<T>(
@@ -86,7 +86,7 @@ void TileKernel(const Context& dev_ctx,
       vec_x_dims[i] *= vec_x_dims[i + 1];
       vec_x_dims[i + 1] = 1;
     } else {
-      out->Resize(make_ddim(vec_x_dims));
+      out->Resize(common::make_ddim(vec_x_dims));
       dev_ctx.template Alloc<T>(out);
       std::vector<DenseTensor*> outs = {out};
       phi::funcs::BroadcastKernel<T>(

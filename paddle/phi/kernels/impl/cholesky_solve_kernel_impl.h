@@ -75,7 +75,7 @@ void CholeskySolveKernel(const Context& dev_ctx,
   int x_bst_ndim = x_bst_dims_vec.size();
   int M = static_cast<int>(x_bst_dims_vec[x_bst_ndim - 2]);
   int N = static_cast<int>(x_bst_dims_vec[x_bst_ndim - 1]);
-  int batchsize = product(phi::slice_ddim(x_bst.dims(), 0, x_bst_ndim - 2));
+  int batchsize = product(common::slice_ddim(x_bst.dims(), 0, x_bst_ndim - 2));
 
   DenseTensor info = phi::Empty<int, Context>(dev_ctx, IntArray({batchsize}));
   int* info_data = info.data<int>();
@@ -94,7 +94,7 @@ void CholeskySolveKernel(const Context& dev_ctx,
 
   // calculate out's conjugate for complex
   result = phi::TransposeLast2Dim<T>(dev_ctx, result);
-  out->Resize(phi::make_ddim(x_bst_dims_vec));
+  out->Resize(common::make_ddim(x_bst_dims_vec));
   ConjKernel<T, Context>(dev_ctx, result, out);
 }
 
