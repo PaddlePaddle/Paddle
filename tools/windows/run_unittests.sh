@@ -241,6 +241,7 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_dataloader_early_reset$|\
 ^test_add_reader_dependency$|\
 ^test_conv2d_fusion_op$|\
+^test_fused_conv2d_add_act_op$|\
 ^disable_wingpu_cuda12_test$"
 
 # /*=================Fixed Disabled Windows TRT MKL unittests=======================*/
