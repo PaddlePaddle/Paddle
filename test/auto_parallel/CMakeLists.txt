@@ -127,7 +127,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_semi_auto_parallel_basic MODULES
                   test_semi_auto_parallel_basic)
   set_tests_properties(test_semi_auto_parallel_basic
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 300)
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 400)
 
   py_test_modules(test_semi_auto_parallel_for_llama_subnet MODULES
                   test_semi_auto_parallel_for_llama_subnet)
@@ -259,3 +259,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()
+
+py_test_modules(test_job_schedule_profiler_range MODULES
+                test_job_schedule_profiler_range)

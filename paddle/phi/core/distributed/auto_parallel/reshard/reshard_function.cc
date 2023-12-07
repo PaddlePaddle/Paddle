@@ -50,7 +50,7 @@ void ReshardFunction::SetDistProps(DistTensor* tensor,
                         dist_attr.to_string(),
                         str_join(vectorize(dims))));
 
-  tensor->dims_ = dims;
+  tensor->global_dims_ = dims;
   tensor->dist_attr_ = dist_attr;
 }
 

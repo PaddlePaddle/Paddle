@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
 
 import numpy as np
 from simple_nets import batchnorm_fc_with_inputs, simple_fc_net_with_inputs
-
-sys.path.append("../dygraph_to_static")
-from dygraph_to_static_utils import compare_legacy_with_pt
+from utils import compare_legacy_with_pt
 
 import paddle
 from paddle import base

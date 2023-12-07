@@ -528,6 +528,8 @@ phi::DataType GetValueDtype(Value value) {
 const phi::DDim &GetValueDims(Value value) {
   if (value.type().isa<DenseTensorType>()) {
     return value.type().dyn_cast<DenseTensorType>().dims();
+  } else if (value.type().isa<SelectedRowsType>()) {
+    return value.type().dyn_cast<SelectedRowsType>().dims();
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Currently, we can only get shape for dense "
@@ -623,11 +625,13 @@ void BindValue(py::module *m) {
           [](Value self) {
             if (auto param_op = self.defining_op<::pir::ParameterOp>()) {
               return param_op.param_name();
+            } else if (auto data_op =
+                           self.defining_op<paddle::dialect::DataOp>()) {
+              return data_op.attribute<pir::StrAttribute>("name").AsString();
             } else {
               PADDLE_THROW(phi::errors::InvalidArgument(
                   "Currently, we can only get name of Value that "
-                  "is "
-                  "persistable"));
+                  "is persistable"));
             }
           })
       .def_property(

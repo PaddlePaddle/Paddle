@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,21 +14,12 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/cinn/adt/adt.h"
+#include "paddle/cinn/adt/dim_expr.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace cinn::adt {
 
-class Conv2dFusionLayoutTransferPass : public FusePassBase {
- public:
-  Conv2dFusionLayoutTransferPass() = default;
-  virtual ~Conv2dFusionLayoutTransferPass() = default;
+std::string ToTxtString(const DimExpr& loop_size);
 
- protected:
-  void ApplyImpl(ir::Graph* graph) const override;
-};
-
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+std::string ToTxtString(const List<DimExpr>& loop_sizes);
+}  // namespace cinn::adt

@@ -89,7 +89,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'fusion_gru',
     'fusion_seqconv_eltadd_relu',
     'fusion_seqexpand_concat_fc',
-    'conv2d_fusion',
+    'fused_conv2d_add_act',
     'fusion_repeated_fc_relu',
     'fusion_squared_mat_sub',
     'fused_attention',
@@ -112,6 +112,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'c_identity',
     'c_reduce_sum',
     'c_reducescatter',
+    'decayed_adagrad',
     'dpsgd',
     'embedding_grad_sparse',
     'fused_batch_norm_act_',
@@ -126,6 +127,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'send_v2',
     'shadow_feed',
     'sparse_momentum',
+    'soft_relu',
     'uniform_random_batch_size_like',
 ]
 
