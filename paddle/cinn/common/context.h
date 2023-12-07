@@ -53,6 +53,22 @@ struct NameGenerator {
   mutable std::mutex mutex_;
 };
 
+struct PrettyNamer {
+  const std::string& GetOrNew(const size_t hash_key,
+                              const std::string& name_hint) {
+    if (pretty_names_.find(hash_key) == pretty_names_.end()) {
+      pretty_names_[hash_key] = name_generator_.New(name_hint);
+    }
+    return pretty_names_.at(hash_key);
+  }
+
+  NameGenerator& GetNameGenerator() { return name_generator_; }
+
+ private:
+  absl::flat_hash_map<size_t, std::string> pretty_names_;
+  NameGenerator name_generator_;
+};
+
 class Context {
  public:
   static Context& Global();
@@ -88,7 +104,7 @@ class Context {
  private:
   Context() = default;
 
-  ::cinn::hlir::framework::pir::PrettyNamer pretty_namer_;
+  PrettyNamer pretty_namer_;
   std::vector<std::string> runtime_include_dir_;
   mutable std::mutex mutex_;
 
