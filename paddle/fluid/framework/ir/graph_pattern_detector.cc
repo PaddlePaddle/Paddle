@@ -5165,18 +5165,17 @@ PDNode *patterns::ConvBNActConvBNStats::operator()(
   auto *act_op = pattern->NewNode(act_op_repr())->assert_is_ops(act_types);
   auto *act_out_var =
       pattern->NewNode(act_out_repr())->assert_is_ops_output(act_types, "Out");
-  act_out_var->assert_is_op_input("fused_scale_bias_relu_conv_bnstats", "x");
+  act_out_var->assert_is_op_input("fused_scale_bias_relu_conv_bn", "x");
   if (is_training) {
-    // has link to conv_grad, relu_grad and fused_scale_bias_relu_conv_bnstats
+    // has link to conv_grad, relu_grad and fused_scale_bias_relu_conv_bn
     act_out_var->assert_has_n_outputs(3);
   } else {
     act_out_var->AsIntermediate();
   }
   // ConvBNStats
-  auto *conv_bnstats_op =
-      pattern->NewNode(conv_bnstats_op_repr())
-          ->assert_is_op("fused_scale_bias_relu_conv_bnstats")
-          ->assert_op_attr<bool>("fuse_prologue", false);
+  auto *conv_bnstats_op = pattern->NewNode(conv_bnstats_op_repr())
+                              ->assert_is_op("fused_scale_bias_relu_conv_bn")
+                              ->assert_op_attr<bool>("fuse_prologue", false);
 
   // Links
   conv_op->LinksFrom({conv_x_var, conv_w_var}).LinksTo({conv_out_var});
