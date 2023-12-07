@@ -474,8 +474,7 @@ void ProgramTranslator::TranslateIfOperation(
                    &true_region.front());
     // insert yeild op to true block
     auto yeild_info = ctx_->GetRegisteredOpInfo(pir::YieldOp::name());
-    std::vector<pir::Value> yeild_inputs{
-        true_block_context->at(cond_op_cond).value};
+    std::vector<pir::Value> yeild_inputs;
     for (auto& out_name : cond_op_outputs) {
       yeild_inputs.push_back(true_block_context->at(out_name).value);
     }
