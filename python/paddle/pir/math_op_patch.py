@@ -484,7 +484,14 @@ def monkey_patch_value():
         assert (
             paddle.base.dygraph.base.in_to_static_mode()
         ), "We only support call 'set_shape' in to_static mode."
-        paddle.pir.set_value_shape(self, shape)
+
+        if self.is_dense_tensor_type() or self.is_selected_row_type():
+            type = paddle.pir.change_type_shape(self.type(), shape)
+            self.set_type(type)
+        else:
+            raise ValueError(
+                "Currently, we can only set shape for dense tensor"
+            )
 
     import paddle
 
