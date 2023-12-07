@@ -22,6 +22,7 @@
 #include "paddle/pir/pass/pass_adaptor.h"
 #include "paddle/pir/pass/pass_instrumentation.h"
 #include "paddle/pir/pass/pass_manager.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace pir {
 
