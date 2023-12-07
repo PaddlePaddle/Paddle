@@ -19,10 +19,12 @@ target-version = "py37"
 
 [tool.ruff.lint]
 select = [
-    # Pyflakes
-    "F",
+    # Pycodestyle
     "E",
     "W",
+
+    # Pyflakes
+    "F",
 
     # Isort
     "I",
@@ -77,14 +79,8 @@ unfixable = [
     "NPY001"
 ]
 ignore = [
-    # `name` may be undefined, or defined from star imports: `module`
-    "F405",
-    # Local variable name is assigned to but never used
-    "F841",
-    # It not met the "Explicit is better than implicit" rule
-    "UP015",
-    # It will cause the performance regression on python3.10
-    "UP038",
+    # Whitespace before ‘,’, ‘;’, or ‘:’, it is not compatible with black
+    "E203",
     # Module level import not at top of file
     "E402",
     # Line too long (82 > 79 characters)
@@ -95,8 +91,16 @@ ignore = [
     "E722",
     # Do not assign a lambda expression, use a def
     "E731",
+    # Do not use variables named ‘l’, ‘O’, or ‘I’
     "E741",
-    "C901",
+    # `name` may be undefined, or defined from star imports: `module`
+    "F405",
+    # Local variable name is assigned to but never used
+    "F841",
+    # It not met the "Explicit is better than implicit" rule
+    "UP015",
+    # It will cause the performance regression on python3.10
+    "UP038",
 ]
 
 [tool.ruff.lint.isort]
@@ -106,6 +110,10 @@ known-first-party = ["paddle"]
 [tool.ruff.lint.per-file-ignores]
 # Ignore unused imports in __init__.py
 "__init__.py" = ["F401", "I001"]
+# These files need tabs for testing.
+"test/dygraph_to_static/test_legacy_error.py" = ["E101", "W191"]
+# Ignore compare with True in sot unittest
+"test/sot/test_dup_top.py" = ["E712"]
 # Ignore undefined variables in CMake config and some dygraph_to_static tests
 ".cmake-format.py" = ["F821"]
 "test/dygraph_to_static/test_closure_analysis.py" = ["F821"]
@@ -116,5 +124,3 @@ known-first-party = ["paddle"]
 "test/dygraph_to_static/test_loop.py" = ["C416", "F821"]
 # Ignore unnecessary lambda in dy2st unittest test_lambda
 "test/dygraph_to_static/test_lambda.py" = ["PLC3002"]
-# Ignore compare with True in sot unittest
-"test/sot/test_dup_top.py" = ["E712"]

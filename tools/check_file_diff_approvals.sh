@@ -224,9 +224,9 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "python/paddle/autograd/ir_backward.py" ] || [ "${API_FILE}" == "python/paddle/autograd/backward_utils.py" ]; then
             echo_line="You must be approved by Aurelius84(zhangliujie) or cxxly(chenxiaoxu) or xiaoguoguo626807(wangruting) or changeyoung98(chenzhiyang) for python/paddle/autograd/ir_backward.py or python/paddle/autograd/backward_utils.py changes.\n"
             check_approval 1 Aurelius84 cxxly xiaoguoguo626807 changeyoung98
-      elif [ "${API_FILE}" == "paddle/scripts/paddle_build.sh" ]; then 
-	      echo_line="You must have one RD (tianshuo78520a or risemeup1 or zhangbo9674 or XieYunshen) for ${API_FILE} changes, which manages the Paddle CI on Linux.\n " 
-            check_approval 1 tianshuo78520a risemeup1 zhangbo9674 XieYunshen 
+      elif [ "${API_FILE}" == "paddle/scripts/paddle_build.sh" ]; then
+	      echo_line="You must have one RD (tianshuo78520a or risemeup1 or zhangbo9674 or XieYunshen) for ${API_FILE} changes, which manages the Paddle CI on Linux.\n "
+            check_approval 1 tianshuo78520a risemeup1 zhangbo9674 XieYunshen
       else
           echo_line="You must have one RD (XiaoguangHu01,chenwhql,zhiqiu,Xreki,luotao1,qili93,Aurelius84) approval for ${API_FILE}, which manages the underlying code for fluid.\n"
           check_approval 1 XiaoguangHu01 chenwhql zhiqiu Xreki luotao1 qili93 Aurelius84
@@ -386,8 +386,8 @@ fi
 
 DEPRECATED_FLAKE8=`git diff --name-only upstream/$BRANCH | grep ".flake8" || true`
 if [ "${DEPRECATED_FLAKE8}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must have one RD sigureMo approval and @gouzil for file changes in .flake8, we are about to abandon Flake8 and replace it with Ruff.\n"
-    check_approval 1 sigureMo
+    echo_line="You must have one SigureMo or gouzil approval for file changes in .flake8, we are planned to replace Flake8 with Ruff in the future.\n"
+    check_approval 1 SigureMo gouzil
 fi
 
 HAS_MODIFIED_PHI_FILES=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/" || true`
