@@ -55,29 +55,36 @@ class Rprop(Optimizer):
         self._master_weights = {}
         self._prevs = []
         self._learning_rates = []
-        self._learning_rate_range = to_tensor(learning_rate_range)
-        self._etas = to_tensor(etas)
-        self._already_init_prev_lr = set()
+        self._learning_rate_range = [learning_rate_range]
+        self._etas = [etas]
+        self._sign = True
 
-    def _init_prev_lr(self, block, parameters):
+    def _init_prev_lr(self, block, param):
         assert isinstance(block, framework.Block)
 
-        for p in parameters:
-            if p.name in self._already_init_prev_lr:
-                continue
-            for p in parameters:
+        for p in param:
+            for p in param:
                 prev = zeros_like(p)
                 self._prevs.append(prev)
                 lr = full_like(p, self._initial_learning_rate)
                 self._learning_rates.append(lr)
-                self._already_init_prev_lr.add(p.name)
+
+    def _to_tensor(self, block):
+        assert isinstance(block, framework.Block)
+        self._prevs = to_tensor(self._prevs)
+        self._learning_rates = to_tensor(self._learning_rates)
+        self._learning_rate_range = to_tensor(self._learning_rate_range)
+        self._etas = to_tensor(self._etas)
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
         if isinstance(parameters, dict):
             parameters = self._update_param_group(parameters)
 
-        self._init_prev_lr(block, parameters)
+        if self._sign:
+            self._init_prev_lr(block, parameters[0])
+            self._to_tensor(block)
+            self._sign = False
 
         # Create accumulator tensors for first and second moments
         for p in parameters:

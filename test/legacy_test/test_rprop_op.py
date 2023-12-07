@@ -125,5 +125,49 @@ class TestRpropOpCase8X(TestRpropOp):
         self.w = 64
 
 
+class TestRpropV2(unittest.TestCase):
+    def test_rprop_dygraph(self):
+        paddle.disable_static()
+        value = np.arange(26).reshape(1, 26).astype("float32")
+        a = paddle.to_tensor(value)
+        linear = paddle.nn.Linear(26, 5)
+
+        rprop = paddle.optimizer.Rprop(
+            learning_rate=0.01,
+            parameters=linear.parameters(),
+        )
+        out = linear(a)
+        out.backward()
+        rprop.step()
+        rprop.clear_gradients()
+
+    def test_raise_error(self):
+        self.assertRaises(
+            ValueError, paddle.optimizer.Rprop, learning_rate=None
+        )
+
+    def test_rprop_group_dygraph(self):
+        paddle.disable_static()
+        value = np.arange(26).reshape(1, 26).astype("float32")
+        a = paddle.to_tensor(value)
+        linear_1 = paddle.nn.Linear(26, 5)
+        linear_2 = paddle.nn.Linear(5, 3)
+        rprop = paddle.optimizer.Rprop(
+            learning_rate=0.01,
+            parameters=[
+                {'params': linear_1.parameters()},
+                {
+                    'params': linear_2.parameters(),
+                    'learning_rate': 0.1,
+                },
+            ],
+        )
+        out = linear_1(a)
+        out = linear_2(out)
+        out.backward()
+        rprop.step()
+        rprop.clear_gradients()
+
+
 if __name__ == "__main__":
     unittest.main()
