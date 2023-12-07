@@ -390,7 +390,6 @@ def to_static(
             ...     # in eval mode, executing the __call__ method will
             ...     # return the loss
             ...     loss = dist_model(image, label)
-            ...     print(loss)
 
             >>> # prediction
             >>> dist_model.predict()
@@ -399,7 +398,6 @@ def to_static(
             ...     # return a dict that contains the outputs of the model,
             ...     # where the value of "out0" is the first output.
             ...     outs = dist_model(image)
-            ...     print(outs['out0'])
 
             >>> # This case need to be excuted in multi-card environment
             >>> # export CUDA_VISIBLE_DEVICES=0,1
