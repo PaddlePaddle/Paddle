@@ -12,10 +12,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/io/save_load_tensor.h"
 
 #include <cstdint>
-
 #include <fstream>
 #include <numeric>
-#include <string>
 
 #include "glog/logging.h"
 #include "paddle/fluid/framework/lod_tensor.h"

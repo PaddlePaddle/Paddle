@@ -11,13 +11,9 @@ limitations under the License. */
 
 #pragma once
 
-#include <cstdint>
-
-#include <fstream>
-#include <numeric>
 #include <string>
 
-#include "paddle/fluid/framework/version.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace paddle {
 namespace framework {
