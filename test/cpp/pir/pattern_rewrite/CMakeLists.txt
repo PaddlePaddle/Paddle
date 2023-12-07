@@ -3,6 +3,9 @@ cc_test(
   SRCS pattern_rewrite_test.cc
   DEPS gtest op_dialect_vjp pir pir_transforms)
 
+cc_test_old(auto_mixed_precision_test SRCS auto_mixed_precision_test.cc DEPS
+            ${PATTERN_REWRITE_TEST_DEPS})
+
 cc_test(
   drr_test
   SRCS drr_test.cc

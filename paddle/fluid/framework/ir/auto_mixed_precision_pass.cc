@@ -26,6 +26,8 @@
 #include "paddle/phi/backends/device_manager.h"
 #endif
 
+PHI_DECLARE_bool(enable_pir_in_executor);
+
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -40,6 +42,9 @@ bool PhiKernelSupportPrecision(
     phi::DataType data_type,
     phi::DataLayout layout = phi::DataLayout::ALL_LAYOUT) {
   const auto& kernels = phi::KernelFactory::Instance().kernels();
+  // for (auto [k, v] : kernels) {
+  //   LOG(INFO) << "kernel name " << k << std::endl;
+  // }
   if (kernels.count(op_type) == 0) {
     return false;
   }
@@ -270,6 +275,9 @@ void AutoMixedPrecisionPass::Init(Graph* graph) const {
 }
 
 void AutoMixedPrecisionPass::ApplyImpl(Graph* graph) const {
+  if (FLAGS_enable_pir_in_executor) {
+    return;
+  }
   PADDLE_ENFORCE_NOT_NULL(graph,
                           platform::errors::PreconditionNotMet(
                               "During the auto_mixed_precision_pass, the graph "

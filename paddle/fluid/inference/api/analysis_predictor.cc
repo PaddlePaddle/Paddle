@@ -103,6 +103,7 @@
 #endif
 
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
+#include "paddle/fluid/pir/transforms/auto_mixed_precision_pass.h"
 #include "paddle/fluid/pir/transforms/constant_folding_pass.h"
 #include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/conv2d_add_act_fuse_pass.h"
@@ -801,6 +802,10 @@ bool AnalysisPredictor::PrepareExecutor() {
 
         //----------------------------------------------------------------------------------------------//
         // Functional pass
+        // Do auto mixed precision pass first, so do not need to handle
+        // shadowoutput.
+        pm_for_op_program.AddPass(::pir::CreateAutoMixedPrecisionPass(
+            place_, ConvertPrecision(config_.mixed_precision_mode_)));
         gpu_pm.AddPass(::pir::CreateIdentityOpCleanPass());
         //----------------------------------------------------------------------------------------------//
 
