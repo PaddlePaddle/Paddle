@@ -483,7 +483,7 @@ def monkey_patch_value():
     def value_hash(self):
         raise NotImplementedError('In python Value can not hash!')
 
-    def value_eq(self):
+    def value_eq(self, other):
         raise NotImplementedError('In python Value can not eq!')
 
     import paddle

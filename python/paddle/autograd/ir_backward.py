@@ -812,7 +812,7 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
     )
 
     # sub_block op output to parent_block op output
-    inside_value_to_outside_value_map = {}
+    inside_value_to_outside_value_map = ValueDict()
 
     append_backward_ops(
         None,
