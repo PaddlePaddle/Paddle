@@ -110,7 +110,10 @@ class TestCondInputOutput(unittest.TestCase):
             else base.CPUPlace()
         )
         exe = base.Executor(place)
-        (ret,) = exe.run(main_program, fetch_list=[out.name])
+        if paddle.framework.in_pir_mode():
+            (ret,) = exe.run(main_program, fetch_list=[out])
+        else:
+            (ret,) = exe.run(main_program, fetch_list=[out.name])
         np.testing.assert_allclose(np.asarray(ret), np.array(2), rtol=1e-05)
         self.assertEqual(ret.shape, ())
 
@@ -149,7 +152,10 @@ class TestCondInputOutput(unittest.TestCase):
             else base.CPUPlace()
         )
         exe = base.Executor(place)
-        (ret,) = exe.run(main_program, fetch_list=[out.name])
+        if paddle.framework.in_pir_mode():
+            (ret,) = exe.run(main_program, fetch_list=[out])
+        else:
+            (ret,) = exe.run(main_program, fetch_list=[out.name])
         np.testing.assert_allclose(
             np.asarray(ret), np.full((3, 3), 2, np.int32), rtol=1e-05
         )
