@@ -110,3 +110,9 @@
 	path = third_party/cccl
 	url = https://github.com/NVIDIA/cccl.git
 	ignore = dirty
+[submodule "third_party/ginac"]
+	path = third_party/ginac
+	url = git://www.ginac.de/ginac.git
+[submodule "third_party/cln"]
+	path = third_party/cln
+	url = git://www.ginac.de/cln.git
