@@ -22,7 +22,7 @@ namespace pir {
 
 class IR_API InterfaceValue {
  public:
-  template <typename ConcreteT, typename Interface, typename Model>
+  template <typename Interface, typename Model>
   static InterfaceValue Get();
   TypeId type_id() const { return type_id_; }
   void *model() const { return model_; }
@@ -52,7 +52,7 @@ class IR_API InterfaceValue {
   void *model_{nullptr};
 };
 
-template <typename ConcreteT, typename Interface, typename Model>
+template <typename Interface, typename Model>
 InterfaceValue InterfaceValue::Get() {
   InterfaceValue val;
   val.type_id_ = TypeId::get<Interface>();

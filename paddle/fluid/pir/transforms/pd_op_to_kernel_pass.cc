@@ -1271,15 +1271,12 @@ void HandleForCustomOp(
 
   for (size_t i = 0; i < op_item->num_results(); ++i) {
     phi::Place out_place = phi::TransToPhiPlace(kernel_key.backend());
-
-    phi::DataType out_phi_dtype = phi::DataType::UNDEFINED;
-
     auto result_type = op_item->result(i).type();
+
     if (!result_type) {
       op_output_types.push_back(result_type);
     } else if (result_type.isa<DenseTensorType>()) {
-      op_output_types.push_back(
-          BuildOutputType(result_type, out_place, out_phi_dtype, ctx));
+      op_output_types.push_back(BuildOutputType(result_type, out_place, ctx));
     } else if (result_type.isa<pir::VectorType>()) {
       std::vector<pir::Type> vec_inner_types;
       auto base_types = result_type.dyn_cast<pir::VectorType>().data();
@@ -1287,7 +1284,7 @@ void HandleForCustomOp(
         if (base_type) {
           if (base_type.isa<DenseTensorType>()) {
             vec_inner_types.push_back(
-                BuildOutputType(base_type, out_place, out_phi_dtype, ctx));
+                BuildOutputType(base_type, out_place, ctx));
           } else {
             PADDLE_THROW(phi::errors::Unimplemented(
                 "only support dense tensor and selected rows in vector type "
