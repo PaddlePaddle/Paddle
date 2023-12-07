@@ -56,6 +56,10 @@ class OpLowerer {
         group, apply_op_schedule, apply_group_schedule, apply_pass);
   }
 
+  void InsertNameGeneToScope(std::shared_ptr<Scope> scope) {
+    return impl_->InsertNameGeneToScope(scope);
+  }
+
  private:
   std::shared_ptr<OpLowererImplBase<T>> impl_;
 };

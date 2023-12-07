@@ -44,6 +44,7 @@ _g_elementwise_ops = [
     "cast",
     # "gather",
     # "concat",
+    "silu",
     "fused_softmax_mask_upper_triangle",
 ]
 BACKWARD_ONLY_DIST_OPS = {'check_finite_and_unscale', 'update_loss_scaling'}
@@ -811,4 +812,5 @@ def copy_op_without_infer_shape(src_op, block, ctx, varname_kwargs):
         new_op_desc.set_input(input_name, varname_kwargs[input_name])
     for output_name in src_op.desc.output_names():
         new_op_desc.set_output(output_name, varname_kwargs[output_name])
+    # TODO: should we add a new dist attr for the new op here?
     return new_op

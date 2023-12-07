@@ -231,3 +231,20 @@ def _nvprof_range(iter_id, start, end, exit_after_prof=True):
             core.nvprof_stop()
             if exit_after_prof:
                 sys.exit()
+
+
+@contextmanager
+def job_schedule_profiler_range(iter_id, start, end, exit_after_prof=True):
+    if start >= end:
+        yield False
+        return
+
+    try:
+        if iter_id >= start and iter_id < end:
+            yield True
+        else:
+            yield False
+    finally:
+        if iter_id == end - 1:
+            if exit_after_prof:
+                sys.exit()
