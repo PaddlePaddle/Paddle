@@ -1162,7 +1162,7 @@ class RuleBasedTuner:
             with program_guard(
                 self.full_main_program, self.full_startup_program
             ):
-                with self.full_main_program.swith_name_generator_guard("opt_"):
+                with self.full_main_program.switch_name_generator_guard("opt_"):
                     optimizer_ops = optimizer.apply_gradients(params_grads)
 
             # op original id to grad op id
