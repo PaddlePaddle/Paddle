@@ -17,10 +17,25 @@ from typing import Callable
 import paddle
 import paddle.distributed as dist
 from paddle import nn
-from paddle.base.framework import EagerParamBase, default_main_program
+from paddle.base import unique_name
+from paddle.base.framework import (
+    EagerParamBase,
+    Variable,
+    default_main_program,
+)
 from paddle.distributed.auto_parallel import Engine
 from paddle.distributed.auto_parallel.interface import (
     shard_tensor as shard_tensor_static,
+)
+from paddle.distributed.auto_parallel.static.completion import (
+    mark_as_sharding_propagation_skip_op,
+)
+from paddle.distributed.auto_parallel.static.dist_context import (
+    get_default_distributed_context,
+)
+from paddle.distributed.auto_parallel.static.dist_op import DistributedOperator
+from paddle.distributed.auto_parallel.static.utils import (
+    convert_to_dims_mapping,
 )
 from paddle.framework import core
 
@@ -503,12 +518,55 @@ def reshard(dist_tensor, mesh, placements):
 
         return paddle.base.core.reshard(dist_tensor, dist_attr)
     else:
+        assert isinstance(
+            dist_tensor, Variable
+        ), "in dy2static mode, reshard's input should be Variable, but got [{}]".format(
+            dist_tensor
+        )
         sharding_specs = get_shard_spec(mesh, placements, dist_tensor.ndim)
         main_program = default_main_program()
-        print("in reshard static")
-        print(type(dist_tensor), dist_tensor)
-        print(sharding_specs)
-        print(main_program)
+        default_dist_ctx = get_default_distributed_context()
+
+        # output variable
+        out_var = main_program.current_block().create_var(
+            name=unique_name.generate_with_ignorable_key(
+                ".".join(['reshard_api', 'tmp'])
+            ),
+            dtype=dist_tensor.dtype,
+            shape=dist_tensor.shape,
+            type=dist_tensor.type,
+            persistable=dist_tensor.persistable,
+            stop_gradient=dist_tensor.stop_gradient,
+        )
+
+        # transition op
+        # optimization in future to remove redundant D2D memory copy
+        target_dims_mapping = convert_to_dims_mapping(sharding_specs, mesh)
+        trans_op = main_program.current_block().append_op(
+            type='assign',
+            inputs={'X': [dist_tensor]},
+            outputs={'Out': [out_var]},
+        )
+        dist_op = DistributedOperator(trans_op)
+        dist_op.dist_attr.process_mesh = mesh
+        dist_op.dist_attr.mark_annotated("process_mesh")
+        dist_op.dist_attr.chunk_id = 0
+
+        input_dist_attr = dist_op.dist_attr.get_input_dist_attr(
+            dist_tensor.name
+        )
+        input_dist_attr.dims_mapping = target_dims_mapping
+        input_dist_attr.mark_annotated("dims_mapping")
+        output_dist_attr = dist_op.dist_attr.get_output_dist_attr(out_var.name)
+        output_dist_attr.dims_mapping = target_dims_mapping
+        output_dist_attr.mark_annotated("dims_mapping")
+
+        default_dist_ctx.add_dist_op_for_program(dist_op)
+        mark_as_sharding_propagation_skip_op(trans_op)
+        # trans_op = shard_op_static(paddle.assign, mesh, [sharding_specs])
+        # out_var = trans_op(dist_tensor)
+
+        return out_var
 
 
 def shard_layer(
