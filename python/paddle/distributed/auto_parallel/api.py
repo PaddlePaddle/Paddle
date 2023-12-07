@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
 from collections import defaultdict
 from typing import Callable
 
@@ -551,6 +552,9 @@ def _init_global_tcp_store():
         paddle.base.core.is_compiled_with_distribute()
         and paddle.in_dynamic_mode()
     ):
-        world_size = paddle.distributed.get_world_size()
-        if world_size > 1:
-            paddle.base.core.create_or_get_global_tcp_store()
+        end_point = os.getenv("PADDLE_TRAINER_ENDPOINTS", None)
+        master_port = os.getenv("PADDLE_MASTER", None)
+        if end_point is not None or master_port is not None:
+            world_size = paddle.distributed.get_world_size()
+            if world_size > 1:
+                paddle.base.core.create_or_get_global_tcp_store()
