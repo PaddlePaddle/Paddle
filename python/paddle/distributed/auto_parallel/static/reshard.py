@@ -399,39 +399,6 @@ class Inserter:
         recv_op._set_attr('op_namescope', "/auto_parallel/reshard")
 
     @staticmethod
-    def insert_print_op(block, idx, tensor, message, op_role):
-        out_name = paddle.utils.unique_name.generate_with_ignorable_key(
-            ".".join(["print", "tmp"])
-        )
-        out_var = block.create_var(
-            name=out_name,
-            shape=tensor.shape,
-            dtype=tensor.dtype,
-            persistable=False,
-            type=core.VarDesc.VarType.LOD_TENSOR,
-        )
-        print_op = block._insert_op(
-            idx,
-            type="print",
-            inputs={'In': [tensor]},
-            outputs={'Out': [out_var]},
-            attrs={
-                'first_n': -1,
-                'summarize': 20,
-                'message': tensor.name + ":" + message,
-                'print_tensor_name': True,
-                'print_tensor_type': True,
-                'print_tensor_shape': True,
-                'print_tensor_layout': True,
-                'print_tensor_lod': True,
-                'print_phase': 'both'.upper(),
-                'is_forward': True,
-                "op_role": op_role,
-            },
-        )
-        print_op._set_attr('op_namescope', "/auto_parallel/reshard")
-
-    @staticmethod
     def insert_reset_lod_op(block, idx, X, Y, op_role):
         """Insert reset_lod op into block at the given index."""
 
@@ -1378,10 +1345,6 @@ class Resharder:
                     op_process_mesh,
                 ]
             ):
-                print(
-                    "tensor_dims_mapping != op_input_dims_mapping:",
-                    tensor_dims_mapping != op_input_dims_mapping,
-                )
                 # judge whether need reshard by dims_mapping
                 if tensor_dims_mapping != op_input_dims_mapping:
                     if (
@@ -1394,21 +1357,8 @@ class Resharder:
                                 raise ValueError(
                                     "The dim must be -1 when tensor process mesh is a union."
                                 )
-                        # tensor process_mesh: [0, 1, 2, 3], dims_mapping: [-1, -1]
-                        # op process_mesh: [4, 5], dims_mapping: [0, -1]
-                        # reshard is not supported such as above
-                        # if not is_reshard:
-                        #     return is_reshard
-                        # else:
-                        #     raise ValueError(
-                        #         "it is not supported that tensor process mesh is a union and needs reshard."
-                        #     )
                     is_reshard = True
 
-                print(
-                    "tensor_process_mesh != op_process_mesh:",
-                    tensor_process_mesh != op_process_mesh,
-                )
                 # judge whether need reshard by process_mesh
                 if tensor_process_mesh != op_process_mesh:
                     is_reshard = True
@@ -1492,6 +1442,10 @@ class Resharder:
         target_process_group = target_process_mesh.process_ids
         target_process_shape = target_process_mesh.shape
 
+        # NOTE(zhaoyingli):
+        # tensor's attr is process_mesh([0, 1, 2, 3]) dims_mapping([-1, -1]), which means the tensor is an union process_mesh tensor
+        # op input's attr is process_mesh([0, 1]) dims_mapping([0, -1])
+        # reshard will insert split op before the reshard_op
         if is_union_process_mesh_tensor:
             assert (
                 len(set(source_dims_mapping)) == 1
@@ -2090,22 +2044,6 @@ class Resharder:
                             self.dist_context,
                             chunk_id=dst_input_attr[2],
                         )
-                        # if paddle.distributed.get_rank() == 3:
-                        #     Inserter.insert_print_op(
-                        #         block,
-                        #         idx+1,
-                        #         recv_tensor,
-                        #         "after recv",
-                        #         op_role,
-                        #     )
-                        #     naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-                        #         block.ops[idx+1],
-                        #         dst_input_attr[0], # process_mesh
-                        #         dst_input_attr[1], # dims_mapping
-                        #         self.dist_context,
-                        #         chunk_id=dst_input_attr[2],
-                        #     )
-                        #     idx += 1
 
                         # for lod tensor, need reset lod after received
                         if recv_tensor.lod_level != 0:
@@ -2370,9 +2308,9 @@ class Resharder:
                     has_exist = False
                     for output_attr in output_attrs:
                         if (
-                            process_mesh == output_attrs[0]
-                            and output_dims_mapping == output_attrs[1]
-                            and chunk_id == output_attrs[2]
+                            process_mesh == output_attr[0]
+                            and output_dims_mapping == output_attr[1]
+                            and chunk_id == output_attr[2]
                         ):
                             has_exist = True
                             break
@@ -2581,37 +2519,6 @@ class Resharder:
                             ):
                                 continue
 
-                        if var_name == "tmp_1" and op.type == "reshape2":
-                            print("var:", var)
-                            print("op:", op)
-                            print("dist_tensor:", dist_tensor)
-                            print(
-                                "input_attr:",
-                                input_attr[0],
-                                ", ",
-                                input_attr[1],
-                                ", ",
-                                input_attr[2],
-                            )
-                            print(
-                                "need_reshard:",
-                                self.need_reshard(dist_tensor, input_attr),
-                            )
-                            print(
-                                "is_union_process_mesh_tensor:",
-                                is_union_process_mesh_tensor,
-                            )
-                            print(
-                                "set(input_attr[0].process_ids):",
-                                set(input_attr[0].process_ids),
-                            )
-                            print(
-                                "set(dist_tensor.dist_attr.process_mesh.process_ids):",
-                                set(
-                                    dist_tensor.dist_attr.process_mesh.process_ids
-                                ),
-                            )
-
                         if dist_tensor is not None and self.need_reshard(
                             dist_tensor, input_attr
                         ):
@@ -2770,21 +2677,6 @@ class Resharder:
                         self.dist_context,
                         chunk_id=dst_tensor_attr.chunk_id,
                     )
-                    # if paddle.distributed.get_rank() == 3:
-                    #     Inserter.insert_print_op(
-                    #         block,
-                    #         idx+2,
-                    #         var,
-                    #         "after recv",
-                    #         op.attr('op_role'),
-                    #     )
-                    #     naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-                    #         block.ops[idx + 2],
-                    #         dst_tensor_attr.process_mesh,
-                    #         dst_tensor_attr.dims_mapping,
-                    #         self.dist_context,
-                    #         chunk_id=dst_tensor_attr.chunk_id,
-                    #     )
 
     def _handle_send(
         self,
@@ -2864,15 +2756,6 @@ class Resharder:
                         dist_op.dist_attr.get_output_dims_mapping(var_name),
                         dist_op.dist_attr.chunk_id,
                     ]
-                    if var_name == "tmp_1" and op.type == "reshape2":
-                        print("var:", var)
-                        print("op:", op)
-                        print("dist_tensor:", dist_tensor)
-                        print("input_attr:", output_attr)
-                        print(
-                            "need_reshard:",
-                            self.need_reshard(dist_tensor, output_attr),
-                        )
                     if dist_tensor is not None and self.need_reshard(
                         dist_tensor, output_attr, False
                     ):
