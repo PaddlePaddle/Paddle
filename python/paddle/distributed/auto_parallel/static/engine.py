@@ -850,12 +850,9 @@ class Engine:
         dist_context = self._dist_contexts[mode]
         dist_main_program = dist_context.dist_main_programs[self._cur_rank]
         if self._dygraph_mode:
-            if not init_parameters:
-                self._share_parameters()
-            else:
-                self.program_helper.init(
-                    dist_main_program, self._place, dist_context
-                )
+            self.program_helper.init(
+                dist_main_program, self._place, dist_context
+            )
             # The model's instance variables (not paramters), used in forward function,
             # have been initialized when initialize model in dynamic mode.
             if self._model and len(self._model.buffers()) > 0:
@@ -2037,6 +2034,18 @@ class Engine:
         global_cost, max_memory = get_cost_from_engine(self, mode)
 
         return global_cost.time, max_memory
+
+    def get_dist_main_program(self, mode):
+        return self._dist_contexts[mode].dist_main_programs[self._cur_rank]
+
+    def get_dist_startup_program(self, mode):
+        return self._dist_contexts[mode].dist_startup_programs[self._cur_rank]
+
+    def get_serial_main_program(self, mode):
+        return self._dist_contexts[mode].serial_main_program
+
+    def get_serial_startup_program(self, mode):
+        return self._dist_contexts[mode].serial_startup_program
 
     @property
     def main_program(self):

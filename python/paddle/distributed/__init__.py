@@ -84,7 +84,7 @@ from .auto_parallel.api import (
     reshard,
     shard_layer,
     shard_optimizer,
-    static_decorate,
+    to_static,
 )
 
 from .fleet import BoxPSDataset  # noqa: F401
@@ -159,5 +159,5 @@ __all__ = [
     "Replicate",
     "Partial",
     "shard_optimizer",
-    "static_decorate",
+    "to_static",
 ]
