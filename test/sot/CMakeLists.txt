@@ -9,3 +9,7 @@ set(SOT_ENVS SOT_LOG_LEVEL=0 COST_MODEL=False MIN_GRAPH_SIZE=0 STRICT_MODE=True
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS ${SOT_ENVS})
 endforeach()
+
+if(WIN32)
+  set_tests_properties(test_sot_resnet50_backward PROPERTIES TIMEOUT 420)
+endif()
