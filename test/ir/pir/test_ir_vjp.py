@@ -16,7 +16,7 @@ import unittest
 
 import paddle
 from paddle import pir
-from paddle.base.core import call_vjp, has_vjp
+from paddle.base.core import call_vjp_rule, has_vjp
 
 paddle.enable_static()
 
@@ -43,7 +43,7 @@ class TestTanhVjp(unittest.TestCase):
         out_grads = [[fill_constant_op.result(0)]]
         stop_gradients = [[False]]
         with paddle.pir.core.program_guard(pir_program):
-            grad_outs = call_vjp(
+            grad_outs = call_vjp_rule(
                 tanh_op,
                 [[tanh_op.operand_source(0)]],
                 [[tanh_op.result(0)]],
@@ -80,7 +80,7 @@ class TestTanhVjp(unittest.TestCase):
         out_grads = [[fill_constant_op.result(0)]]
         stop_gradients = [[True]]
         with paddle.pir.core.program_guard(pir_program):
-            grad_outs = call_vjp(
+            grad_outs = call_vjp_rule(
                 tanh_op,
                 [[tanh_op.operand_source(0)]],
                 [[tanh_op.result(0)]],
@@ -107,7 +107,7 @@ class TestMeanVjp(unittest.TestCase):
         out_grads = [[fill_constant_op.result(0)]]
         stop_gradients = [[False]]
         with paddle.pir.core.program_guard(pir_program):
-            grad_outs = call_vjp(
+            grad_outs = call_vjp_rule(
                 mean_op,
                 [[mean_op.operand_source(0)]],
                 [[mean_op.result(0)]],
@@ -153,7 +153,7 @@ class TestMeanVjp(unittest.TestCase):
         out_grads = [[fill_constant_op.result(0)]]
         stop_gradients = [[True]]
         with paddle.pir.core.program_guard(pir_program):
-            grad_outs = call_vjp(
+            grad_outs = call_vjp_rule(
                 mean_op,
                 [[mean_op.operand_source(0)]],
                 [[mean_op.result(0)]],

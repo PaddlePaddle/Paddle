@@ -16,7 +16,7 @@ import unittest
 
 import paddle
 from paddle.autograd.ir_backward import grad
-from paddle.base.core import call_vjp, has_vjp
+from paddle.base.core import call_vjp_rule, has_vjp
 from paddle.base.libpaddle.pir import (
     build_pipe_for_block,
     get_used_external_value,
@@ -98,7 +98,7 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
             if_output = [if_op.results()]
             if_output_grad = [[out_grad]]
             self.assertEqual(has_vjp(if_op), True)
-            grad_outs = call_vjp(
+            grad_outs = call_vjp_rule(
                 if_op,
                 if_input,
                 if_output,
@@ -116,7 +116,7 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
                 self.assertEqual(push_op.name(), "cf.tuple_push")
                 self.assertEqual(has_vjp(push_op), True)
                 print([[value] for value in push_op.operands_source()])
-                pop_outs = call_vjp(
+                pop_outs = call_vjp_rule(
                     push_op,
                     [[value] for value in push_op.operands_source()],
                     [[]],

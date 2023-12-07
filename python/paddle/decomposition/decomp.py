@@ -475,7 +475,7 @@ def decompose_bwd_op_directly(
 ) -> tuple:
     '''
     Decompose the bwd_op into a list of primitive ops.
-    If fwd_op has composite vjp rules (including custom vjp), call call_vjp() to get a list of primitive operators in backward graph, then replace bwd_op.
+    If fwd_op has composite vjp rules (including custom vjp), call call_vjp_rule() to get a list of primitive operators in backward graph, then replace bwd_op.
 
     Args:
         block (Block): the block to which the bwd_op belongs.
@@ -500,7 +500,7 @@ def decompose_bwd_op_directly(
     grad_inputs = bwd_op.results()
     res = []
 
-    # prepare the input args of call_vjp(fwd_op, inputs, outputs, out_grads, stop_gradients)
+    # prepare the input args of call_vjp_rule(fwd_op, inputs, outputs, out_grads, stop_gradients)
     grad_outputs = []
     for bwd_input in bwd_inputs:
         if not (bwd_input in fwd_inputs or bwd_input in fwd_outputs):
@@ -520,13 +520,13 @@ def decompose_bwd_op_directly(
     bwd_op_idx = block.ops.index(bwd_op)
     before_num_ops = len(block.ops)
     # generate primitive operators corresponding to the backward op
-    new_grad_inputs = core.call_vjp(
+    new_grad_inputs = core.call_vjp_rule(
         fwd_op, fwd_inputs_, fwd_outputs_, grad_outputs, stop_gradients
     )
     after_num_ops = len(block.ops)
     num_appended_ops = after_num_ops - before_num_ops
 
-    # if forward op has no composite vjp rules, call_vjp() appends the same op as original backward op,
+    # if forward op has no composite vjp rules, call_vjp_rule() appends the same op as original backward op,
     # which means the backward op can not be decomposed directly, return False
     if num_appended_ops == 1 and block.ops[-1].name() == bwd_op.name():
         block.remove_op(block.ops[-1])
