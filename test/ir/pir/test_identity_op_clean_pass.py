@@ -22,10 +22,11 @@ import paddle
 paddle.enable_static()
 
 
+@unittest.skipIf(
+    not paddle.base.core.is_compiled_with_cuda(),
+    "core is not complied with CUDA",
+)
 class TestRemoveUselessScalePattern(PassTest):
-    def sample_place(self):
-        yield from ["gpu", "cpu"]
-
     def is_program_valid(self, program=None):
         return True
 
@@ -52,12 +53,13 @@ class TestRemoveUselessScalePattern(PassTest):
         self.check_pass_correct()
 
 
+@unittest.skipIf(
+    not paddle.base.core.is_compiled_with_cuda(),
+    "core is not complied with CUDA",
+)
 class TestRemoveRedundentScalePattern(PassTest):
     def is_program_valid(self, program=None):
         return True
-
-    def sample_place(self):
-        yield from ["gpu", "cpu"]
 
     def sample_program(self):
         for bias_after_scale_1 in [True, False]:
@@ -93,10 +95,11 @@ class TestRemoveRedundentScalePattern(PassTest):
         self.check_pass_correct()
 
 
+@unittest.skipIf(
+    not paddle.base.core.is_compiled_with_cuda(),
+    "core is not complied with CUDA",
+)
 class TestRemoveUselessCastPattern(PassTest):
-    def sample_place(self):
-        yield from ["gpu", "cpu"]
-
     def is_program_valid(self, program=None):
         return True
 
@@ -122,10 +125,11 @@ class TestRemoveUselessCastPattern(PassTest):
         self.check_pass_correct()
 
 
+@unittest.skipIf(
+    not paddle.base.core.is_compiled_with_cuda(),
+    "core is not complied with CUDA",
+)
 class TestRemoveUselessConcatPattern(PassTest):
-    def sample_place(self):
-        yield from ["gpu", "cpu"]
-
     def is_program_valid(self, program=None):
         return True
 
@@ -150,12 +154,13 @@ class TestRemoveUselessConcatPattern(PassTest):
         self.check_pass_correct()
 
 
+@unittest.skipIf(
+    not paddle.base.core.is_compiled_with_cuda(),
+    "core is not complied with CUDA",
+)
 class TestRemoveRedundentCastPattern(PassTest):
     def is_program_valid(self, program=None):
         return True
-
-    def sample_place(self):
-        yield from ["gpu", "cpu"]
 
     def sample_program(self):
         for type_1 in ["float16"]:
@@ -180,12 +185,13 @@ class TestRemoveRedundentCastPattern(PassTest):
         self.check_pass_correct()
 
 
+@unittest.skipIf(
+    not paddle.base.core.is_compiled_with_cuda(),
+    "core is not complied with CUDA",
+)
 class TestRemoveRedundentTransposePattern(PassTest):
     def is_program_valid(self, program=None):
         return True
-
-    def sample_place(self):
-        yield from ["gpu", "cpu"]
 
     def sample_program(self):
         for perm1_shape in [[1, 2, 0]]:
@@ -212,12 +218,13 @@ class TestRemoveRedundentTransposePattern(PassTest):
         self.check_pass_correct()
 
 
+@unittest.skipIf(
+    not paddle.base.core.is_compiled_with_cuda(),
+    "core is not complied with CUDA",
+)
 class TestRemoveRedundentReshapePattern(PassTest):
     def is_program_valid(self, program=None):
         return True
-
-    def sample_place(self):
-        yield from ["gpu", "cpu"]
 
     def sample_program(self):
         for shape_1 in [[1, 6, 8]]:
@@ -242,6 +249,48 @@ class TestRemoveRedundentReshapePattern(PassTest):
 
     def test_check_output(self):
         self.check_pass_correct()
+
+    def setUp(self):
+        self.place_runtime = "gpu"
+
+
+class TestRemoveRedundentReshapePatternWithCpu(
+    TestRemoveRedundentReshapePattern
+):
+    def setUp(self):
+        self.place_runtime = "cpu"
+
+
+class TestRemoveRedundentTransposePatternWithCpu(
+    TestRemoveRedundentTransposePattern
+):
+    def setUp(self):
+        self.place_runtime = "cpu"
+
+
+class TestRemoveRedundentCastPatternWithCpu(TestRemoveRedundentCastPattern):
+    def setUp(self):
+        self.place_runtime = "cpu"
+
+
+class TestRemoveUselessCastPatternWithCpu(TestRemoveUselessCastPattern):
+    def setUp(self):
+        self.place_runtime = "cpu"
+
+
+class TestRemoveUselessConcatPatternWithCpu(TestRemoveUselessConcatPattern):
+    def setUp(self):
+        self.place_runtime = "cpu"
+
+
+class TestRemoveRedundentScalePatternWithCpu(TestRemoveRedundentScalePattern):
+    def setUp(self):
+        self.place_runtime = "cpu"
+
+
+class TestRemoveUselessScalePatternWithCpu(TestRemoveUselessScalePattern):
+    def setUp(self):
+        self.place_runtime = "cpu"
 
 
 if __name__ == "__main__":
