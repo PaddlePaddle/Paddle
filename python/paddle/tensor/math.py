@@ -7008,12 +7008,14 @@ def ldexp(x, y, name=None):
             [4. , 8. , 12.])
 
     """
-    if not isinstance(x, (paddle.Tensor, Variable)):
+    if not isinstance(x, (paddle.Tensor, Variable, paddle.pir.Value)):
         raise TypeError(f"x must be tensor type, but got {type(x)}")
-    if not isinstance(y, (paddle.Tensor, Variable)):
+    if not isinstance(y, (paddle.Tensor, Variable, paddle.pir.Value)):
         raise TypeError(f"y must be tensor type, but got {type(y)}")
     if x.dtype == paddle.float64 or y.dtype == paddle.float64:
         out_dtype = paddle.float64
+    elif x.dtype == DataType.FLOAT64 or y.dtype == DataType.FLOAT64:
+        out_dtype = DataType.FLOAT64
     else:
         out_dtype = paddle.get_default_dtype()
     x = paddle.cast(x, dtype=out_dtype)
