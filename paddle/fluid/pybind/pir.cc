@@ -1542,10 +1542,9 @@ void ApplyPirPass(Program &forward_program) {  // NOLINT
 
   bool has_dynamic_shape = HasDynamicShape(forward_program);
 
-  auto shape_analysis = has_dynamic_shape
-                            ? std::make_shared<pir::ShapeConstraintIRAnalysis>(
-                                  forward_program.module_op())
-                            : nullptr;
+  auto shape_analysis =
+      has_dynamic_shape ? std::make_shared<pir::ShapeConstraintIRAnalysis>(ctx)
+                        : nullptr;
 
   pir::PassManager pass_manager(ctx);
   cinn::dialect::ir::PdOp2CinnOpConverter(&forward_program);

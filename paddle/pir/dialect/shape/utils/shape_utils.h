@@ -80,6 +80,18 @@ class IR_API ShapeConstraintIRAnalysis : public ShapeAnalysis {
   // dimension size of the memref value.
   std::unordered_map<Value, std::vector<shape::SymbolicDimOp>>
       value_to_sym_dims_;
+
+ public:
+  explicit ShapeConstraintIRAnalysis(std::shared_ptr<pir::Program>&& program)
+      : ShapeConstraintIRAnalysis(program->module_op()) {
+    program_ = std::move(program);
+  }
+
+  explicit ShapeConstraintIRAnalysis(pir::IrContext* ctx)
+      : ShapeConstraintIRAnalysis(std::make_shared<pir::Program>(ctx)) {}
+
+ private:
+  std::shared_ptr<pir::Program> program_;
 };
 
 class IR_API ShapeAnalysisManager {
