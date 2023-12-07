@@ -763,6 +763,11 @@ void Conv2dXPUFusePass::CreateFusionWeightsAndBias(
                                     false,
                                     weight_scale,
                                     true);
+    } else if (quant_post_type.find("conv2d") != quant_post_type.end() &&
+                   quant_post_type.find("conv2d")->second == 0 ||
+               quant_post_type.find("conv2d") != quant_post_type.end() &&
+                   quant_post_type.find("conv2d")->second == 1) {
+      VLOG(5) << "Unsupported int8 post quant !";
     } else {
       VLOG(5) << "Unsupported type weight by non-int8!";
     }

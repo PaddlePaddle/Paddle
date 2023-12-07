@@ -572,6 +572,11 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
                                     !transpose_w,
                                     weight_scale,
                                     true);
+    } else if (quant_post_type.find("fc") != quant_post_type.end() &&
+                   quant_post_type.find("fc")->second == 0 ||
+               quant_post_type.find("fc") != quant_post_type.end() &&
+                   quant_post_type.find("fc")->second == 1) {
+      VLOG(5) << "Unsupported int8 post quant!";
     } else {
       VLOG(5) << "Unsupported type weight by non-int8!";
     }
