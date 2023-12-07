@@ -21,10 +21,10 @@ import warnings
 from collections.abc import Sequence
 
 import paddle.base
-from paddle.base import framework, program_guard
 
-from . import core, log_helper, unique_name
+from . import core, framework, log_helper, unique_name
 from .data_feeder import check_type
+from .framework import program_guard
 from .proto import framework_pb2
 
 __all__ = []
@@ -2044,6 +2044,11 @@ def append_backward(
             >>> p_g_list6 = paddle.static.append_backward(loss=avg_loss, parameter_list=all_weights, no_grad_set=set(all_weights))
 
     """
+    if framework.in_pir_mode():
+        return paddle.autograd.ir_backward.append_backward(
+            loss, parameter_list, no_grad_set
+        )
+
     grad_op_id_to_fwd_op = (
         {}
     )  # for cuda graph usage, recording the mapping between grad op original id to fwd op

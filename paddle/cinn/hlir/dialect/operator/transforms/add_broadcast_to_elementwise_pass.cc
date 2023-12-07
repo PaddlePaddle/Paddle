@@ -170,12 +170,21 @@ AddBroadcastToElementwisePass::AddBroadcastToElementwisePass()
 pir::RewritePatternSet AddBroadcastToElementwisePass::InitializePatterns(
     pir::IrContext* context) {
   pir::RewritePatternSet ps(context);
+  // elementwise ops
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::AddOp>>(context);
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::SubtractOp>>(context);
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::MultiplyOp>>(context);
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::DivideOp>>(context);
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::ElementwisePowOp>>(
       context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::RemainderOp>>(
+      context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::FloorDivideOp>>(
+      context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::MaximumOp>>(context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::MinimumOp>>(context);
+
+  // compare ops
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::LessThanOp>>(context);
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::LessEqualOp>>(
       context);
@@ -184,6 +193,14 @@ pir::RewritePatternSet AddBroadcastToElementwisePass::InitializePatterns(
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::GreaterThanOp>>(
       context);
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::GreaterEqualOp>>(
+      context);
+
+  // bitwise ops
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::BitwiseOrOp>>(
+      context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::BitwiseXorOp>>(
+      context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::BitwiseNotOp>>(
       context);
 
   return ps;

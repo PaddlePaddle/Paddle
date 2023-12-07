@@ -79,8 +79,10 @@ namespace common {
 #endif
 
 #ifndef PADDLE_WITH_MUSL
-#if defined(__FLT_MAX__)
+#ifndef FLT_MAX  //  Fix windows_cuda12.0
+#ifdef __FLT_MAX__
 #define FLT_MAX __FLT_MAX__
+#endif
 #endif  // __FLT_MAX__
 #endif  // PADDLE_WITH_MUSL
 

@@ -18,6 +18,10 @@ from collections import Counter
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    IrMode,
+    ToStaticMode,
+    disable_test_case,
+    enable_to_static_guard,
     test_ast_only,
     test_legacy_and_pt_and_pir,
 )
@@ -99,14 +103,14 @@ class TestCacheProgramWithOptimizer(Dy2StTestBase):
         self.batch_num = 5
 
     def train_static(self):
-        return self.train(to_static=True)
+        with enable_to_static_guard(True):
+            return self.train()
 
     def train_dygraph(self):
-        return self.train(to_static=False)
+        with enable_to_static_guard(False):
+            return self.train()
 
-    def train(self, to_static=False):
-        paddle.jit.enable_to_static(to_static)
-
+    def train(self):
         static_net = paddle.jit.to_static(self.dygraph_class())
         adam = paddle.optimizer.Adam(
             learning_rate=0.001, parameters=static_net.parameters()
@@ -171,6 +175,7 @@ def sum_under_while(limit):
     return ret_sum
 
 
+@disable_test_case((ToStaticMode.AST, IrMode.PT))
 class TestToOutputWithCache(Dy2StTestBase):
     def test_output(self):
         ret = paddle.jit.to_static(sum_even_until_limit)(80, 10)

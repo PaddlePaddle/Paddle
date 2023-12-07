@@ -597,7 +597,9 @@ class TestChainTransform(unittest.TestCase):
                         transform.AffineTransform(
                             paddle.to_tensor([0.0]), paddle.to_tensor([-1.0])
                         ),
-                        transform.PowerTransform(paddle.to_tensor([2.0])),
+                        transform.PowerTransform(
+                            paddle.to_tensor([2.0], dtype='float64')
+                        ),
                     )
                 ),
                 np.array([1.0, 2.0, 3.0]),
