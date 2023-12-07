@@ -17,7 +17,7 @@ import logging
 from collections.abc import Sequence
 
 import paddle.pir
-from paddle.autograd.backward_utils import State
+from paddle.autograd.backward_utils import State, vjp_guard
 from paddle.base.libpaddle.pir import (
     build_pipe_for_block,
     get_used_external_value,
@@ -29,6 +29,13 @@ from paddle.base.libpaddle.pir import (
     calc_gradient_helper: for dygraph to static .
 """
 __all__ = ['grad', 'calc_gradient', 'calc_gradient_helper']
+
+
+def call_vjp(op, inputs, outputs, output_grads, input_grad_stopgradients):
+    with vjp_guard(op, inputs):
+        return paddle.base.core.call_vjp_rule(
+            op, inputs, outputs, output_grads, input_grad_stopgradients
+        )
 
 
 def check_type(input, input_name, expected_type, op_name, extra_message=''):
@@ -622,7 +629,7 @@ def append_backward_ops(
                 ) = make_input_with_input_stopgradient(op)
 
                 if op.name() == "cf.tuple_push":
-                    copy_out = paddle.framework.core.call_vjp(
+                    copy_out = call_vjp(
                         op,
                         inputs,
                         outputs,
@@ -649,7 +656,7 @@ def append_backward_ops(
                         origin_inputs = get_used_external_value(op)
                         for sub_block in op.blocks():
                             build_pipe_for_block(sub_block)
-                        input_grads = paddle.framework.core.call_vjp(
+                        input_grads = call_vjp(
                             op,
                             inputs,
                             outputs,
@@ -678,7 +685,7 @@ def append_backward_ops(
                     else:
                         # create grad_op
                         before_ops_num = len(bwd_block.ops)
-                        input_grads = paddle.framework.core.call_vjp(
+                        input_grads = call_vjp(
                             op,
                             inputs,
                             outputs,
