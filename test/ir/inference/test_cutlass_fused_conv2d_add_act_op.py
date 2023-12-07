@@ -24,7 +24,7 @@ import paddle.inference as paddle_infer
 
 
 # cba pattern
-class TestCutlassConv2dFusionOp1(CutlassAutoScanTest):
+class TestCutlassFusedConv2dAddActOp1(CutlassAutoScanTest):
     def sample_program_configs(self, *args, **kwargs):
         def generate_input1(input_shape):
             return (np.random.random(input_shape) - 0.5).astype(np.float32)
@@ -143,7 +143,7 @@ class TestCutlassConv2dFusionOp1(CutlassAutoScanTest):
 
 
 # cbaa pattern
-class TestCutlassConv2dFusionOp2(CutlassAutoScanTest):
+class TestCutlassFusedConv2dAddActOp2(CutlassAutoScanTest):
     def sample_program_configs(self, *args, **kwargs):
         def generate_input(input_shape):
             return (np.random.random(input_shape) * 2 - 1).astype(np.float32)

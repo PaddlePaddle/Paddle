@@ -16,6 +16,8 @@ import unittest
 
 import collective.test_communication_api_base as test_base
 
+import paddle
+
 
 class TestSemiAutoParallelDPMPStrategy(test_base.CommunicationTestDistBase):
     def setUp(self):
@@ -26,7 +28,7 @@ class TestSemiAutoParallelDPMPStrategy(test_base.CommunicationTestDistBase):
         }
         self._changeable_envs = {"backend": ["gpu"]}
 
-    def test_simple_net_bybrid_strategy(self):
+    def test_simple_net_hybrid_strategy(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
         )
@@ -50,7 +52,7 @@ class TestSemiAutoParallelHybridStrategy(test_base.CommunicationTestDistBase):
         }
         self._changeable_envs = {"backend": ["gpu"]}
 
-    def test_simple_net_bybrid_strategy(self):
+    def test_simple_net_hybrid_strategy(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
         )
@@ -59,6 +61,55 @@ class TestSemiAutoParallelHybridStrategy(test_base.CommunicationTestDistBase):
                 "semi_auto_parallel_simple_net_dp_mp_pp.py",
                 user_defined_envs=envs,
             )
+
+
+class TestSemiAutoParallelCrossMeshReshard(test_base.CommunicationTestDistBase):
+    def setUp(self):
+        super().setUp(
+            num_of_devices=4,
+            timeout=120,
+            nnode=1,
+        )
+        self._default_envs = {
+            "dtype": "float32",
+            "seed": "2023",
+        }
+        self._changeable_envs = {"backend": ["gpu"]}
+
+    def test_simple_net_cross_mesh_reshard(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_parallel_cross_mesh_reshard.py",
+                user_defined_envs=envs,
+            )
+
+
+class TestSemiAutoParallelLlamaDPMPStrategy(
+    test_base.CommunicationTestDistBase
+):
+    def setUp(self):
+        super().setUp(num_of_devices=4, timeout=200, nnode=1)
+        self._default_envs = {
+            "dtype": "float32",
+            "seed": "2023",
+        }
+        self._changeable_envs = {"backend": ["gpu"]}
+
+    def test_simple_net_hybrid_strategy(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        cuda_version_main = int(paddle.version.cuda().split(".")[0])
+        device_prop_main = paddle.device.cuda.get_device_capability()[0]
+        if cuda_version_main >= 11 and device_prop_main >= 8:
+            for envs in envs_list:
+                self.run_test_case(
+                    "semi_auto_parallel_for_llama_decoder_dp_mp.py",
+                    user_defined_envs=envs,
+                )
 
 
 if __name__ == "__main__":

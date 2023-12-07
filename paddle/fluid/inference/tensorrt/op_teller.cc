@@ -255,7 +255,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "conv2d" || op_type == "conv2d_transpose" ||
-        op_type == "conv2d_fusion" || op_type == "depthwise_conv2d" ||
+        op_type == "fused_conv2d_add_act" || op_type == "depthwise_conv2d" ||
         op_type == "depthwise_conv2d_transpose") {
       if (desc.Input("Input").size() != 1) {
         VLOG(3) << "TRT Conv2d expect 1 input, but got "
@@ -270,7 +270,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
 
       if (desc.HasAttr("enable_int8")) {
-        if (op_type == "conv2d" || op_type == "conv2d_fusion") {
+        if (op_type == "conv2d" || op_type == "fused_conv2d_add_act") {
           if (!desc.HasAttr("Input_scale")) {
             VLOG(3) << "Input scale not found. TRT int8"
                        " requires conv/deconv to have "
@@ -304,7 +304,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 
 // strides > 1 and 'SAME' is only supported by trt7.0 above
 #if !IS_TRT_VERSION_GE(7000)
-      if (op_type == "conv2d" || op_type == "conv2d_fusion" ||
+      if (op_type == "conv2d" || op_type == "fused_conv2d_add_act" ||
           op_type == "depthwise_conv2d") {
         if (desc.HasAttr("padding_algorithm") && with_dynamic_shape) {
           auto padding_algorithm =
@@ -2818,7 +2818,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "bmm",
       "range",
       "conv2d",
-      "conv2d_fusion",
+      "fused_conv2d_add_act",
       "pool2d",
       "relu",
       "elu",
@@ -2989,7 +2989,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "bmm",
       "range",
       "conv2d",
-      "conv2d_fusion",
+      "fused_conv2d_add_act",
       "pool2d",
       "relu",
       "elu",
