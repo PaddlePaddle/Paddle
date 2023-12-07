@@ -60,7 +60,7 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
     substitute_value = Expr(temp_var) + substitute_value * process_factors[i];
     new_loop_vars.push_back(temp_var);
   }
-
+  substitute_value = cinn::common::AutoSimplify(substitute_value);
   Expr new_node = ir::ir_utils::IRCopy(for_node->body);
   ReplaceExpr(&new_node, {for_node->loop_var}, {substitute_value});
   std::vector<Expr> splited_loops;
