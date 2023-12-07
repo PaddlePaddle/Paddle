@@ -156,7 +156,7 @@ def deform_conv2d_wrapper(
 class TestModulatedDeformableConvOp(OpTest):
     def setUp(self):
         self.python_api = deform_conv2d_wrapper
-        self.op_type = "deform_conv2d"
+        self.op_type = "deformable_conv"
         self.init_type()
         self.init_group()
         self.init_dilation()
@@ -470,9 +470,7 @@ class TestDeformConv2DAPI(unittest.TestCase):
             mask = paddle.static.data(
                 name='mask_v2', shape=[None, 2, 32, 32], dtype='float32'
             )
-            out = paddle.static.nn.deform_conv2d(
-                input, offset, mask, num_filters=4, filter_size=1
-            )
+            out = paddle.vision.ops.deform_conv2d(input, offset, mask=mask)
 
             assert out.shape == (-1, 4, 32, 32)
 

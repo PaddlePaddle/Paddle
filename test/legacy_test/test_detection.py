@@ -67,9 +67,9 @@ class LayerTest(unittest.TestCase):
         self, feed, fetch_list, with_lod=False, force_to_use_cpu=False
     ):
         exe = base.Executor(self._get_place(force_to_use_cpu))
-        exe.run(base.default_startup_program())
+        exe.run(paddle.static.default_startup_program())
         return exe.run(
-            base.default_main_program(),
+            paddle.static.default_main_program(),
             feed=feed,
             fetch_list=fetch_list,
             return_numpy=(not with_lod),

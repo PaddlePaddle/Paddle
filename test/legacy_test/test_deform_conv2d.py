@@ -145,36 +145,25 @@ class TestDeformConv2D(TestCase):
             )
 
             y_v1 = paddle.vision.ops.deform_conv2d(
-                input=x,
+                x,
                 offset=offset,
                 mask=None,
-                num_filters=self.out_channels,
-                filter_size=self.filter_shape,
                 stride=self.stride,
                 padding=self.padding,
                 dilation=self.dilation,
                 groups=self.groups,
                 deformable_groups=self.deformable_groups,
-                im2col_step=1,
-                param_attr=I.Assign(self.weight),
-                bias_attr=False if self.no_bias else I.Assign(self.bias),
-                modulated=False,
             )
 
             y_v2 = paddle.vision.ops.deform_conv2d(
-                input=x,
+                x,
                 offset=offset,
                 mask=mask,
-                num_filters=self.out_channels,
-                filter_size=self.filter_shape,
                 stride=self.stride,
                 padding=self.padding,
                 dilation=self.dilation,
                 groups=self.groups,
                 deformable_groups=self.deformable_groups,
-                im2col_step=1,
-                param_attr=I.Assign(self.weight),
-                bias_attr=False if self.no_bias else I.Assign(self.bias),
             )
 
         exe = paddle.static.Executor(self.place)
@@ -358,36 +347,25 @@ class TestDeformConv2DFunctional(TestCase):
             )
 
             y_v1 = paddle.vision.ops.deform_conv2d(
-                input=x,
+                x,
                 offset=offset,
                 mask=None,
-                num_filters=self.out_channels,
-                filter_size=self.filter_shape,
                 stride=self.stride,
                 padding=self.padding,
                 dilation=self.dilation,
                 groups=self.groups,
                 deformable_groups=self.deformable_groups,
-                im2col_step=1,
-                param_attr=I.Assign(self.weight),
-                bias_attr=False if self.no_bias else I.Assign(self.bias),
-                modulated=False,
             )
 
             y_v2 = paddle.vision.ops.deform_conv2d(
-                input=x,
+                x,
                 offset=offset,
                 mask=mask,
-                num_filters=self.out_channels,
-                filter_size=self.filter_shape,
                 stride=self.stride,
                 padding=self.padding,
                 dilation=self.dilation,
                 groups=self.groups,
                 deformable_groups=self.deformable_groups,
-                im2col_step=1,
-                param_attr=I.Assign(self.weight),
-                bias_attr=False if self.no_bias else I.Assign(self.bias),
             )
 
         exe = paddle.static.Executor(self.place)
@@ -412,7 +390,7 @@ class TestDeformConv2DFunctional(TestCase):
         bias = None if self.no_bias else paddle.to_tensor(self.bias)
 
         y_v1 = paddle.vision.ops.deform_conv2d(
-            x=x,
+            x,
             offset=offset,
             weight=weight,
             bias=bias,
@@ -424,7 +402,7 @@ class TestDeformConv2DFunctional(TestCase):
         )
 
         y_v2 = paddle.vision.ops.deform_conv2d(
-            x=x,
+            x,
             offset=offset,
             mask=mask,
             weight=weight,
@@ -484,7 +462,7 @@ class TestDeformConv2DFunctional(TestCase):
                 bias = paddle.static.data("bias", [-1], dtype=self.dtype)
 
             y_v1 = paddle.vision.ops.deform_conv2d(
-                x=x,
+                x,
                 offset=offset,
                 weight=weight,
                 bias=None if self.no_bias else bias,
@@ -496,7 +474,7 @@ class TestDeformConv2DFunctional(TestCase):
             )
 
             y_v2 = paddle.vision.ops.deform_conv2d(
-                x=x,
+                x,
                 offset=offset,
                 mask=mask,
                 weight=weight,
@@ -742,8 +720,8 @@ class TestDeformConv2DError(unittest.TestCase):
             mask = paddle.static.data(
                 name='error_mask_1', shape=[0, 0, 0], dtype='float32'
             )
-            out = paddle.static.nn.deform_conv2d(
-                x, offset, mask, 0, 0, deformable_groups=0
+            out = paddle.vision.ops.deform_conv2d(
+                x, offset, mask=mask, deformable_groups=0
             )
 
         self.assertRaises(ValueError, test_input_rank_error)
