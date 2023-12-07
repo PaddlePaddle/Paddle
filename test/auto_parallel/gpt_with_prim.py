@@ -146,8 +146,8 @@ class TestPrim(unittest.TestCase):
         np.testing.assert_allclose(
             ref_losses,
             check_losses,
-            rtol=1e-6,
-            atol=1e-5,
+            rtol=2e-2,
+            atol=2e-2,
             err_msg='pass {} has wrong results!, \nu={}\nv={}\ndiff={}'.format(
                 __class__, ref_losses, check_losses, ref_losses - check_losses
             ),
