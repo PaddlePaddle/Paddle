@@ -181,6 +181,219 @@ class TestSemiAutoParallelNdCrossMeshReshard:
                 expect_out[dist.get_rank() % 2].numpy(),
             )
 
+    def test_sp_to_ps(self):
+        a = paddle.ones(self._shape)
+        expect_out = paddle.split(a, axis=1, num_or_sections=2)
+        expect_out_shape = [20, 10]
+        b = paddle.zeros(expect_out_shape)
+
+        input_tensor = dist.shard_tensor(
+            a,
+            self._mesh0,
+            [dist.Shard(0), dist.Partial(dist.ReduceType.kRedSum)],
+        )
+        out = dist.reshard(
+            input_tensor,
+            self._mesh1,
+            [dist.Partial(dist.ReduceType.kRedSum), dist.Shard(1)],
+        )
+
+        if dist.get_rank() in self._dst_rank:
+            assert np.equal(out.shape, input_tensor.shape).all()
+            assert np.equal(out._local_shape, expect_out_shape).all()
+            if dist.get_rank() in [4, 5]:
+                np.testing.assert_equal(
+                    out._local_value().numpy(),
+                    expect_out[dist.get_rank() % 2].numpy(),
+                )
+            else:
+                np.testing.assert_equal(
+                    out._local_value().numpy(),
+                    b.numpy(),
+                )
+
+    def test_sp_to_rs(self):
+        a = paddle.ones(self._shape)
+        expect_out = paddle.split(a, axis=1, num_or_sections=2)
+        expect_out_shape = [20, 10]
+
+        input_tensor = dist.shard_tensor(
+            a,
+            self._mesh0,
+            [dist.Shard(0), dist.Partial(dist.ReduceType.kRedSum)],
+        )
+        out = dist.reshard(
+            input_tensor, self._mesh1, [dist.Replicate(), dist.Shard(1)]
+        )
+
+        if dist.get_rank() in self._dst_rank:
+            assert np.equal(out.shape, input_tensor.shape).all()
+            assert np.equal(out._local_shape, expect_out_shape).all()
+            np.testing.assert_equal(
+                out._local_value().numpy(),
+                expect_out[dist.get_rank() % 2].numpy(),
+            )
+
+    def test_sp_to_rp(self):
+        a = paddle.ones(self._shape)
+        b = paddle.zeros(self._shape)
+
+        input_tensor = dist.shard_tensor(
+            a,
+            self._mesh0,
+            [dist.Shard(0), dist.Partial(dist.ReduceType.kRedSum)],
+        )
+        out = dist.reshard(
+            input_tensor,
+            self._mesh1,
+            [dist.Replicate(), dist.Partial(dist.ReduceType.kRedSum)],
+        )
+
+        if dist.get_rank() in self._dst_rank:
+            assert np.equal(out.shape, input_tensor.shape).all()
+            if dist.get_rank() % 2 == 0:
+                np.testing.assert_equal(out._local_value().numpy(), a.numpy())
+            else:
+                np.testing.assert_equal(out._local_value().numpy(), b.numpy())
+
+    def test_sr_to_ps(self):
+        a = paddle.ones(self._shape)
+        expect_out = paddle.split(a, axis=1, num_or_sections=2)
+        expect_out_shape = [20, 10]
+        b = paddle.zeros(expect_out_shape)
+
+        input_tensor = dist.shard_tensor(
+            a, self._mesh0, [dist.Shard(0), dist.Replicate()]
+        )
+        out = dist.reshard(
+            input_tensor,
+            self._mesh1,
+            [dist.Partial(dist.ReduceType.kRedSum), dist.Shard(1)],
+        )
+        if dist.get_rank() in self._dst_rank:
+            assert np.equal(out.shape, input_tensor.shape).all()
+            assert np.equal(out._local_shape, expect_out_shape).all()
+            if dist.get_rank() in [4, 5]:
+                np.testing.assert_equal(
+                    out._local_value().numpy(),
+                    expect_out[dist.get_rank() % 2].numpy(),
+                )
+            else:
+                np.testing.assert_equal(
+                    out._local_value().numpy(),
+                    b.numpy(),
+                )
+
+    def test_sr_to_rs(self):
+        a = paddle.ones(self._shape)
+        expect_out = paddle.split(a, axis=1, num_or_sections=2)
+        expect_out_shape = [20, 10]
+
+        input_tensor = dist.shard_tensor(
+            a, self._mesh0, [dist.Shard(0), dist.Replicate()]
+        )
+        out = dist.reshard(
+            input_tensor, self._mesh1, [dist.Replicate(), dist.Shard(1)]
+        )
+        if dist.get_rank() in self._dst_rank:
+            assert np.equal(out.shape, input_tensor.shape).all()
+            assert np.equal(out._local_shape, expect_out_shape).all()
+            np.testing.assert_equal(
+                out._local_value().numpy(),
+                expect_out[dist.get_rank() % 2].numpy(),
+            )
+
+    def test_sr_to_rp(self):
+        a = paddle.ones(self._shape)
+        b = paddle.zeros(self._shape)
+
+        input_tensor = dist.shard_tensor(
+            a, self._mesh0, [dist.Shard(0), dist.Replicate()]
+        )
+        out = dist.reshard(
+            input_tensor,
+            self._mesh1,
+            [dist.Replicate(), dist.Partial(dist.ReduceType.kRedSum)],
+        )
+        if dist.get_rank() in self._dst_rank:
+            assert np.equal(out.shape, input_tensor.shape).all()
+            if dist.get_rank() % 2 == 0:
+                np.testing.assert_equal(out._local_value().numpy(), a.numpy())
+            else:
+                np.testing.assert_equal(out._local_value().numpy(), b.numpy())
+
+    def test_pr_to_ps(self):
+        a = paddle.ones(self._shape)
+        expect_out = paddle.split(a, axis=1, num_or_sections=2)
+        expect_out_shape = [20, 10]
+        b = paddle.zeros(expect_out_shape)
+
+        input_tensor = dist.shard_tensor(
+            a,
+            self._mesh0,
+            [dist.Partial(dist.ReduceType.kRedSum), dist.Replicate()],
+        )
+        out = dist.reshard(
+            input_tensor,
+            self._mesh1,
+            [dist.Partial(dist.ReduceType.kRedSum), dist.Shard(1)],
+        )
+        if dist.get_rank() in self._dst_rank:
+            assert np.equal(out.shape, input_tensor.shape).all()
+            assert np.equal(out._local_shape, expect_out_shape).all()
+            if dist.get_rank() in [4, 5]:
+                np.testing.assert_equal(
+                    out._local_value().numpy(),
+                    expect_out[dist.get_rank() % 2].numpy(),
+                )
+            else:
+                np.testing.assert_equal(
+                    out._local_value().numpy(),
+                    b.numpy(),
+                )
+
+    def test_pr_to_rs(self):
+        a = paddle.ones(self._shape)
+        expect_out = paddle.split(a, axis=1, num_or_sections=2)
+        expect_out_shape = [20, 10]
+
+        input_tensor = dist.shard_tensor(
+            a,
+            self._mesh0,
+            [dist.Partial(dist.ReduceType.kRedSum), dist.Replicate()],
+        )
+        out = dist.reshard(
+            input_tensor, self._mesh1, [dist.Replicate(), dist.Shard(1)]
+        )
+        if dist.get_rank() in self._dst_rank:
+            assert np.equal(out.shape, input_tensor.shape).all()
+            assert np.equal(out._local_shape, expect_out_shape).all()
+            np.testing.assert_equal(
+                out._local_value().numpy(),
+                expect_out[dist.get_rank() % 2].numpy(),
+            )
+
+    def test_pr_to_rp(self):
+        a = paddle.ones(self._shape)
+        b = paddle.zeros(self._shape)
+
+        input_tensor = dist.shard_tensor(
+            a,
+            self._mesh0,
+            [dist.Partial(dist.ReduceType.kRedSum), dist.Replicate()],
+        )
+        out = dist.reshard(
+            input_tensor,
+            self._mesh1,
+            [dist.Replicate(), dist.Partial(dist.ReduceType.kRedSum)],
+        )
+        if dist.get_rank() in self._dst_rank:
+            assert np.equal(out.shape, input_tensor.shape).all()
+            if dist.get_rank() % 2 == 0:
+                np.testing.assert_equal(out._local_value().numpy(), a.numpy())
+            else:
+                np.testing.assert_equal(out._local_value().numpy(), b.numpy())
+
     def run_test_case(self):
         self.test_pp_to_rr()
         self.test_pp_to_ss()
@@ -189,6 +402,15 @@ class TestSemiAutoParallelNdCrossMeshReshard:
         self.test_ss_to_pp()
         self.test_ss_to_rr()
         self.test_ss_to_ss()
+        self.test_sp_to_ps()
+        self.test_sp_to_rs()
+        self.test_sp_to_rp()
+        self.test_sr_to_ps()
+        self.test_sr_to_rs()
+        self.test_sr_to_rp()
+        self.test_pr_to_ps()
+        self.test_pr_to_rs()
+        self.test_pr_to_rp()
 
 
 if __name__ == '__main__':
