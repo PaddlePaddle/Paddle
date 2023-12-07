@@ -127,16 +127,6 @@ std::vector<std::string> BlockDesc::AllVarsName() const {
   return res;
 }
 
-void BlockDesc::AppendAllocatedVar(VarDesc *var_desc) {
-  auto name = var_desc->Name();
-  if (this->HasVar(name)) {
-    return;
-  } else {
-    need_update_ = true;
-    vars_[name] = std::make_unique<VarDesc>(*var_desc);
-  }
-}
-
 OpDesc *BlockDesc::AppendOp() {
   need_update_ = true;
   ops_.emplace_back(new OpDesc(this));

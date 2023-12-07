@@ -67,7 +67,12 @@ void SetSubgraphEdge::ApplyImpl(Graph *graph) const {
     auto *block_op = ops->Op();
 
     // block inputs
-    auto block_inputs = block_op->Input("Input");
+    std::vector<std::string> block_inputs = {};
+    if (block_op->Type() == "while") {
+      block_inputs = block_op->Input("X");
+    } else {
+      block_inputs = block_op->Input("Input");
+    }
 
     // block outputs
     auto block_outputs = block_op->Output("Out");

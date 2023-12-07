@@ -159,9 +159,6 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromBlock(
         auto desc_and_block_id = name_to_desc_block_id.at(each_var_name);
         var = CreateVarNode(desc_and_block_id.first, desc_and_block_id.second);
         var_nodes[each_var_name].push_back(var);
-
-        // append all var
-        block.AppendAllocatedVar(desc_and_block_id.first);
       } else {
         // Operation input var can be optional (dispensable). Which means
         // the operation doesn't really need the var at runtime. In this
