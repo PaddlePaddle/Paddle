@@ -52,7 +52,7 @@ void ConcatGradKernel(const Context& dev_ctx,
       out_grad.mem_desc(), funcs::to_void_cast(out_grad.data<T>()));
 
   for (auto& grad : x_grad) {
-    if (grad->numel() != 0UL) {
+    if (grad && grad->numel() != 0UL) {
       auto x_grad_vec_dims = common::vectorize(grad->dims());
       auto slice_mem_p = reorder_handler.AcquireSubmemory(
           x_grad_vec_dims, offset, reorder_src_memory_p);
