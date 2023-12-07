@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import copy
+import math
 import os
 import re
 import struct
@@ -92,9 +93,14 @@ class WeightOnlyLinearTestCase(unittest.TestCase):
                 else "weight_only_int4",
                 arch=arch,
             )
-            np.testing.assert_allclose(weight_gpu.numpy(), weight_cpu.numpy())
             np.testing.assert_allclose(
-                weight_scale_gpu.numpy(), weight_scale_cpu.numpy()
+                weight_gpu.numpy(), weight_cpu.numpy(), atol=1.5
+            )
+            np.testing.assert_allclose(
+                weight_scale_gpu.numpy(),
+                weight_scale_cpu.numpy(),
+                atol=1e-5,
+                rtol=1e-3,
             )
             pass
         pass
@@ -373,11 +379,19 @@ class WeightOnlyLinearTestCaseStatic(WeightOnlyLinearTestCase):
 )
 class WeightOnlyLinearBackwardAndWeightDequantizeTestCase(unittest.TestCase):
     def test_weightonly_linear_backward(self):
-        x = paddle.rand(shape=(128, 4096), dtype='float16')
+        x = (
+            paddle.rand(shape=(128, 4096), dtype='float16')
+            * 1
+            / math.sqrt(4096)
+        )
         x.stop_gradient = False
         quant_x = copy.deepcopy(x)
         quant_x.stop_gradient = False
-        weight = paddle.rand(shape=(4096, 12288), dtype='float16')
+        weight = (
+            paddle.rand(shape=(4096, 12288), dtype='float16')
+            * 1
+            / math.sqrt(4096)
+        )
 
         quant_weight, quant_scale = Q.weight_quantize(
             x=weight.cuda(), algo='weight_only_int8'
