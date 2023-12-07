@@ -237,7 +237,6 @@ void MaxPool2dV2GradCUDNNKernel(const Context& ctx,
                                        adaptive,
                                        dx);
 }
-#endif
 
 }  // namespace phi
 

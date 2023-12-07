@@ -27,7 +27,6 @@ PHI_DECLARE_bool(cudnn_exhaustive_search);
 
 namespace phi {
 
-#ifdef PADDLE_WITH_CUDNN_FRONTEND
 template <typename Context, typename T1, typename T2 = int>
 void MaxPoolV2CUDNNKernel(const Context& ctx,
                           const DenseTensor& x,
