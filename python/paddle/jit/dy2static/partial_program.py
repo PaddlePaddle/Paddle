@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from copy import deepcopy
 
 import numpy as np
@@ -240,7 +241,8 @@ class PartialProgramLayer:
         self._cast_fp16_if_pure_fp16(in_vars)
         # TODO(dev): Currently AST + PT has some issues in control flow, so we only
         # enable SOT + PT in 2.6, we will fix it later.
-        attrs = self._prepare_attributes(force_not_use_pt=True)
+        is_dy2st_test = os.environ.get("DY2ST_TEST", None) == "True"
+        attrs = self._prepare_attributes(force_not_use_pt=(not is_dy2st_test))
         attrs.extend(["x_names", in_var_names])
 
         self._sync_lr_value_with_scheduler()

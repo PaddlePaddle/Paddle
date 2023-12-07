@@ -358,6 +358,24 @@ bool TensorSortHelper(const paddle::Tensor &t1, const paddle::Tensor &t2) {
   return t1.name() < t2.name();
 }
 
+std::unique_ptr<::pir::Program> ApplyIrPass(::pir::Program *program,
+                                            phi::Place place) {
+  auto ir_res = paddle::dialect::PdOpLowerToKernelPass(program, place);
+
+  if (FLAGS_pir_apply_inplace_pass) {
+    ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
+    pm.AddPass(::pir::CreateInplacePass());
+    pm.Run(ir_res.get());
+
+    if (FLAGS_print_ir) {
+      std::cout << "IR After inplace -------------------" << std::endl;
+      std::cout << *ir_res << std::endl;
+    }
+  }
+
+  return ir_res;
+}
+
 std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
     const paddle::framework::BlockDesc *forward_global_block,
     const paddle::framework::BlockDesc *backward_global_block,
@@ -456,21 +474,7 @@ std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
                                                            program.get());
 
   program_translator.Translate();
-
-  auto ir_res = paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
-
-  if (FLAGS_pir_apply_inplace_pass) {
-    ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
-    pm.AddPass(::pir::CreateInplacePass());
-    pm.Run(ir_res.get());
-
-    if (FLAGS_print_ir) {
-      std::cout << "IR After inplace -------------------" << std::endl;
-      std::cout << *ir_res << std::endl;
-    }
-  }
-
-  return ir_res;
+  return ApplyIrPass(program.get(), place);
 }
 
 std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
