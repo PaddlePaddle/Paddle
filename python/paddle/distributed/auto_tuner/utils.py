@@ -487,7 +487,8 @@ def add_overlap_performance(cur_cfg, tuner_cfg, history_cfgs):
 
 def gen_sharding_overlap_args(res_args, cfg, tuner_cfg):
     """Generate args of sharding overlap."""
-    assert "sharding_overlap" in tuner_cfg["search_algo"]
+    if "sharding_overlap" not in tuner_cfg["search_algo"]:
+        return
     cmd = copy.deepcopy(tuner_cfg["search_algo"]["sharding_overlap"])
     if cfg.get("sharding_overlap", False):
         valid_hybrid_strategy = ["sharding_mp", "sharding_pp", "sharding_mp_pp"]
