@@ -203,22 +203,6 @@ def switch(new_generator=None, new_para_name_checker=None):
 
 
 @signature_safe_contextmanager
-def swith_program_name_generator_guard(program, new_generator):
-    old_generator = program._name_generator
-
-    if isinstance(new_generator, str):
-        new_generator = UniqueNameGenerator(new_generator)
-    elif isinstance(new_generator, bytes):
-        new_generator = UniqueNameGenerator(new_generator.decode())
-
-    program._name_generator = new_generator
-
-    yield
-
-    program._name_generator = old_generator
-
-
-@signature_safe_contextmanager
 def guard(new_generator=None):
     """
     Change the namespace of unique name with :code:`with` statement. After calling it,

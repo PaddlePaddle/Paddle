@@ -925,9 +925,7 @@ class QuantizationTransformPass:
         tmp_program = Program()
         startup_program = Program()
         with program_guard(tmp_program, startup_program):
-            with unique_name.swith_program_name_generator_guard(
-                tmp_program, var_node.name() + "_"
-            ):
+            with tmp_program.swith_name_generator_guard(var_node.name() + "_"):
                 in_node = data(
                     var_node.name() + '_tmp_input',
                     shape=var_node.shape(),

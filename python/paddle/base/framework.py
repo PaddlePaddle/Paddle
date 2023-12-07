@@ -6393,6 +6393,22 @@ class Program:
         p._name_generator = self._name_generator.clone()
         return p
 
+    @signature_safe_contextmanager
+    def switch_name_generator_guard(self, new_generator):
+        if isinstance(new_generator, str):
+            new_generator = unique_name.UniqueNameGenerator(new_generator)
+        elif isinstance(new_generator, bytes):
+            new_generator = unique_name.UniqueNameGenerator(
+                new_generator.decode()
+            )
+
+        old_generator = self._name_generator
+        self._name_generator = new_generator
+        try:
+            yield
+        finally:
+            self._name_generator = old_generator
+
     def _prune(self, targets):
         """
         Prune operators and variables which are not needed to generate
