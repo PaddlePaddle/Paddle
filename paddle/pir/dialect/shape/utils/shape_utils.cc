@@ -136,7 +136,7 @@ bool ShapeConstraintIRAnalysis::IsProductEqual(Value lhs,
   return mgr_.IsSymbolicDimProductEqual(lhs_prod, rhs_prod);
 }
 
-const std::vector<shape::SymbolicDimOp>&
+std::vector<shape::SymbolicDimOp>&
 ShapeConstraintIRAnalysis::GetOrCreateSymbolicDimsForRankedValue(
     const Value& value) {
   if (value_to_sym_dims_.find(value) == value_to_sym_dims_.end()) {
