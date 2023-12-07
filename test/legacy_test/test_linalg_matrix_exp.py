@@ -138,5 +138,55 @@ class MatrixExpTestCase4DFloat32(MatrixExpTestCase4D):
         self.dtype = 'float32'
 
 
+class MatrixExpTestCaseEmpty(MatrixExpTestCase):
+    def generate_input(self):
+        self._input_shape = ()
+        np.random.seed(123)
+        self._input_data = np.random.random(self._input_shape).astype(
+            self.dtype
+        )
+
+
+class MatrixExpTestCaseEmptyFloat32(MatrixExpTestCaseEmpty):
+    def init_config(self):
+        self.dtype = 'float32'
+
+
+class MatrixExpTestCaseScalar(MatrixExpTestCase):
+    def generate_input(self):
+        self._input_shape = (2, 3, 1, 1)
+        np.random.seed(123)
+        self._input_data = np.random.random(self._input_shape).astype(
+            self.dtype
+        )
+
+
+class MatrixExpTestCaseScalarFloat32(MatrixExpTestCaseScalar):
+    def init_config(self):
+        self.dtype = 'float32'
+
+
+class MatrixExpTestCaseError(unittest.TestCase):
+    def test_error_dtype(self):
+        with self.assertRaises(ValueError):
+            x = np.array(123, dtype=int)
+            paddle.linalg.matrix_exp(x)
+
+    def test_error_ndim(self):
+        # 1-d
+        with self.assertRaises(ValueError):
+            x = np.random.rand(1)
+            paddle.linalg.matrix_exp(x)
+
+        # not square
+        with self.assertRaises(ValueError):
+            x = np.random.rand(3, 4)
+            paddle.linalg.matrix_exp(x)
+
+        with self.assertRaises(ValueError):
+            x = np.random.rand(2, 3, 4)
+            paddle.linalg.matrix_exp(x)
+
+
 if __name__ == '__main__':
     unittest.main()
