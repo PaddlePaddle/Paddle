@@ -189,6 +189,10 @@ def start_translate(frame: types.FrameType, **kwargs) -> GuardedFunction:
     Returns:
         GuardedFunction | None: The translated code object and its guard function, or None if translation fails.
     """
+    for const in frame.f_code.co_consts:
+        if isinstance(const, types.CodeType) and const.co_name.startswith("<"):
+            log(2, f"Found code object {const.co_name}, skip it\n")
+            return CustomCode(None, False), dummy_guard
     simulator = OpcodeExecutor(frame, **kwargs)
     try:
         simulator.check_code_simulatable()
