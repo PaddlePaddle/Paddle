@@ -16,12 +16,14 @@
 # BUILD_MAP (new)
 # BUILD_CONST_KEY_MAP (new)
 
+import sys
 import unittest
 
 from test_case_base import TestCaseBase
 
 import paddle
 from paddle.jit.sot.psdb import check_no_breakgraph
+from paddle.jit.sot.utils.envs import strict_mode_guard
 
 
 @check_no_breakgraph
@@ -242,7 +244,12 @@ class TestDictMethods(TestCaseBase):
         self.assert_results(dict_construct_from_dict)
         self.assert_results(dict_construct_from_list)
         self.assert_results(dict_construct_from_tuple)
-        self.assert_results(dict_construct_from_comprehension)
+        if sys.version_info >= (3, 11):
+            # Temporarily fallback for comprehension in python3.11
+            with strict_mode_guard(False):
+                self.assert_results(dict_construct_from_comprehension)
+        else:
+            self.assert_results(dict_construct_from_comprehension)
 
     def test_dict_noargs(self):
         self.assert_results(dict_no_arguments)
