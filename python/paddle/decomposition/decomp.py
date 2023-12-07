@@ -412,7 +412,8 @@ def _decomp_bwd_with_vjp(
         new_inputs = []
         for input in fwd_op.operands():
             if (
-                input.source().get_defining_op().name() == "builtin.combine"
+                input.source().initialized()
+                and input.source().get_defining_op().name() == "builtin.combine"
             ):  # for pir::VectorType<paddle::dialect::DenseTensorType>
                 builtin_combine_op = input.source().get_defining_op()
                 new_input = [
@@ -442,13 +443,15 @@ def _decomp_bwd_with_vjp(
         fwd_vec_inputs = [
             x.source()
             for x in fwd_op.operands()
-            if x.source().get_defining_op().name() == "builtin.combine"
+            if x.source().initialized()
+            and x.source().get_defining_op().name() == "builtin.combine"
         ]
         grad_outputs = []
         grad_output_names = []
         for bwd_input in bwd_inputs:
             if (
-                bwd_input.get_defining_op().name() == "builtin.combine"
+                bwd_input.initialized()
+                and bwd_input.get_defining_op().name() == "builtin.combine"
             ):  # for pir::VectorType<paddle::dialect::DenseTensorType>
                 in_fwd = False
                 for vec_input in fwd_vec_inputs:
@@ -664,13 +667,15 @@ def _check_op(
     fwd_vec_inputs = [
         x.source()
         for x in fwd_op.operands()
-        if x.source().get_defining_op().name() == "builtin.combine"
+        if x.source().initialized()
+        and x.source().get_defining_op().name() == "builtin.combine"
     ]
 
     inserted_op_name_list = ["pd_op.full_int_array", "pd_op.full"]
     for operand in fwd_op_related_inputs_outputs:
         if (
-            operand.get_defining_op().name() == "builtin.combine"
+            operand.initialized()
+            and operand.get_defining_op().name() == "builtin.combine"
         ):  # for pir::VectorType<paddle::dialect::DenseTensorType>
             in_fwd = False
             for vec_input in fwd_vec_inputs:
@@ -695,13 +700,14 @@ def _with_dynamic_shape(
 ):
     for input in op.operands():
         if (
-            input.source().get_defining_op().name() == "builtin.combine"
+            input.source().initialized()
+            and input.source().get_defining_op().name() == "builtin.combine"
         ):  # for pir::VectorType<paddle::dialect::DenseTensorType>
             for orig_input in input.source().get_defining_op().operands():
                 if -1 in orig_input.source().shape:
                     return True
         else:
-            if -1 in input.source().shape:
+            if input.source().initialized() and -1 in input.source().shape:
                 return True
     return False
 
