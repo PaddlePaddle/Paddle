@@ -20,6 +20,7 @@ import numpy as np
 from test_nms_op import nms
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 
 def _find(condition):
@@ -138,56 +139,60 @@ class TestOpsNMS(unittest.TestCase):
                     err_msg=f'paddle out: {out}\n py out: {out_py}\n',
                 )
 
+    @test_with_pir_api
     def test_multiclass_nms_static(self):
         for device in self.devices:
             for dtype in self.dtypes:
-                paddle.enable_static()
-                boxes, scores, category_idxs, categories = gen_args(
-                    self.num_boxes, dtype
-                )
-                boxes_static = paddle.static.data(
-                    shape=boxes.shape, dtype=boxes.dtype, name="boxes"
-                )
-                scores_static = paddle.static.data(
-                    shape=scores.shape, dtype=scores.dtype, name="scores"
-                )
-                category_idxs_static = paddle.static.data(
-                    shape=category_idxs.shape,
-                    dtype=category_idxs.dtype,
-                    name="category_idxs",
-                )
-                out = paddle.vision.ops.nms(
-                    boxes_static,
-                    self.threshold,
-                    scores_static,
-                    category_idxs_static,
-                    categories,
-                    self.topk,
-                )
-                place = paddle.CPUPlace()
-                if device == 'gpu':
-                    place = paddle.CUDAPlace(0)
-                exe = paddle.static.Executor(place)
-                out = exe.run(
-                    paddle.static.default_main_program(),
-                    feed={
-                        'boxes': boxes,
-                        'scores': scores,
-                        'category_idxs': category_idxs,
-                    },
-                    fetch_list=[out],
-                )
-                paddle.disable_static()
-                out_py = multiclass_nms(
-                    boxes, scores, category_idxs, self.threshold, self.topk
-                )
-                out = np.array(out)
-                out = np.squeeze(out)
-                np.testing.assert_array_equal(
-                    out,
-                    out_py,
-                    err_msg=f'paddle out: {out}\n py out: {out_py}\n',
-                )
+                with paddle.static.program_guard(
+                    paddle.static.Program(), paddle.static.Program()
+                ):
+                    paddle.enable_static()
+                    boxes, scores, category_idxs, categories = gen_args(
+                        self.num_boxes, dtype
+                    )
+                    boxes_static = paddle.static.data(
+                        shape=boxes.shape, dtype=boxes.dtype, name="boxes"
+                    )
+                    scores_static = paddle.static.data(
+                        shape=scores.shape, dtype=scores.dtype, name="scores"
+                    )
+                    category_idxs_static = paddle.static.data(
+                        shape=category_idxs.shape,
+                        dtype=category_idxs.dtype,
+                        name="category_idxs",
+                    )
+                    out = paddle.vision.ops.nms(
+                        boxes_static,
+                        self.threshold,
+                        scores_static,
+                        category_idxs_static,
+                        categories,
+                        self.topk,
+                    )
+                    place = paddle.CPUPlace()
+                    if device == 'gpu':
+                        place = paddle.CUDAPlace(0)
+                    exe = paddle.static.Executor(place)
+                    out = exe.run(
+                        paddle.static.default_main_program(),
+                        feed={
+                            'boxes': boxes,
+                            'scores': scores,
+                            'category_idxs': category_idxs,
+                        },
+                        fetch_list=[out],
+                    )
+                    paddle.disable_static()
+                    out_py = multiclass_nms(
+                        boxes, scores, category_idxs, self.threshold, self.topk
+                    )
+                    out = np.array(out)
+                    out = np.squeeze(out)
+                    np.testing.assert_array_equal(
+                        out,
+                        out_py,
+                        err_msg=f'paddle out: {out}\n py out: {out_py}\n',
+                    )
 
     def test_multiclass_nms_dynamic_to_static(self):
         for device in self.devices:
