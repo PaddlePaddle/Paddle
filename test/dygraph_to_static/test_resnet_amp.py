@@ -14,10 +14,10 @@
 
 import time
 import unittest
-from test.dygraph_to_static.test_resnet import SEED, ResNet, optimizer_setting
 
 import numpy as np
 from dygraph_to_static_utils import Dy2StTestBase, test_default_mode_only
+from test_resnet import SEED, ResNet, optimizer_setting
 
 import paddle
 from paddle import base
