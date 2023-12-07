@@ -72,10 +72,7 @@ class MatmulScaleFusePattern
                  res.Attr([](const pir::drr::MatchContext &match_ctx) -> float {
                    return 0.0;
                  })},
-                {"bias_after_scale",
-                 res.Attr([](const pir::drr::MatchContext &match_ctx) -> bool {
-                   return true;
-                 })}});
+                {"bias_after_scale", pat.Attr("bias_after_scale")}});
     const auto &matmul_op_res =
         res.Op(paddle::dialect::MatmulOp::name(),
                {{"transpose_x", pat.Attr("transpose_x")},
