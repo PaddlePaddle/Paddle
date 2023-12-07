@@ -173,7 +173,7 @@ def weight_only_linear(
 
     assert (
         arch == 70 or arch == 80 or arch == 86 or arch == 75
-    ), "Currently weight only gemm support SM70/75/80/86. "
+    ), f"Currently weight_quantize only support SM70/75/80/86. but got {arch} "
 
     if in_dynamic_mode():
         out = _C_ops.weight_only_linear(
