@@ -207,30 +207,6 @@ void BilinearInferMeta(const MetaTensor& x,
                        MetaTensor* out,
                        MetaConfig config = MetaConfig());
 
-void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
-                                      const MetaTensor& key_cache,
-                                      const MetaTensor& value_cache,
-                                      const MetaTensor& seq_lens_encoder,
-                                      const MetaTensor& seq_lens_decoder,
-                                      const MetaTensor& seq_lens_this_time,
-                                      const MetaTensor& padding_offsets,
-                                      const MetaTensor& cum_offsets,
-                                      const MetaTensor& cu_seqlens_q,
-                                      const MetaTensor& cu_seqlens_k,
-                                      const MetaTensor& block_tables,
-                                      const MetaTensor& pre_key_cache,
-                                      const MetaTensor& pre_value_cache,
-                                      const MetaTensor& rope_emb,
-                                      const MetaTensor& mask,
-                                      const MetaTensor& tgt_mask,
-                                      int max_seq_len,
-                                      int block_size,
-                                      bool use_neox_style,
-                                      MetaTensor* fmha_out,
-                                      MetaTensor* qkv_out,
-                                      MetaTensor* key_cache_out,
-                                      MetaTensor* value_cache_out);
-
 void BroadcastTensorsInferMeta(const std::vector<const MetaTensor*>& x,
                                std::vector<MetaTensor*> out);
 
@@ -567,18 +543,6 @@ void MemoryEfficientAttentionInferMeta(const MetaTensor& query,
                                        MetaTensor* output,
                                        MetaTensor* logsumexp,
                                        MetaTensor* seed_and_offset);
-
-void VariableLengthMemoryEfficientAttentionInferMeta(
-    const MetaTensor& query,
-    const MetaTensor& key,
-    const MetaTensor& value,
-    const MetaTensor& seq_lens,
-    const MetaTensor& kv_seq_lens,
-    const MetaTensor& mask,
-    float scale,
-    bool causal,
-    int pre_cache_length,
-    MetaTensor* out);
 
 void MeshgridInferMeta(const std::vector<const MetaTensor*>& inputs,
                        std::vector<MetaTensor*> outputs);
