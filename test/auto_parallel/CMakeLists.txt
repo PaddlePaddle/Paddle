@@ -259,3 +259,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()
+
+py_test_modules(test_job_schedule_profiler_range MODULES
+                test_job_schedule_profiler_range)

@@ -124,7 +124,7 @@ void PToRReshardFunctionCrossMesh::Eval(phi::DeviceContext* dev_ctx,
   tmp_dist_attr.set_process_mesh(out_process_mesh);
   same_status_func.Eval(dev_ctx, in, tmp_dist_attr, &tmp_result);
 
-  int64_t cur_global_rank = phi::distributed::GetCurGlobalRank();
+  int64_t cur_global_rank = GetCurGlobalRank();
   if (out_process_mesh.contains(cur_global_rank)) {
     PToRReshardFunction p_to_r_func;
     PADDLE_ENFORCE(

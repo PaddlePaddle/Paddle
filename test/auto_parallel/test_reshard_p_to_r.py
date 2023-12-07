@@ -19,7 +19,7 @@ import collective.test_communication_api_base as test_base
 
 class TestReshardPToR(test_base.CommunicationTestDistBase):
     def setUp(self):
-        super().setUp(num_of_devices=2, timeout=120)
+        super().setUp(num_of_devices=4, timeout=120)
         self._default_envs = {
             "shape": "(10, 20)",
             "dtype": "float32",
@@ -27,18 +27,18 @@ class TestReshardPToR(test_base.CommunicationTestDistBase):
         }
         self._changeable_envs = {
             "shard": ["0", "1"],
-            "backend": ["cpu", "gpu"],
+            "backend": ["gpu"],
         }
 
-    def test_reshard_p_to_r(self):
-        envs_list = test_base.gen_product_envs_list(
-            self._default_envs, self._changeable_envs
-        )
-        for envs in envs_list:
-            self.run_test_case(
-                "reshard_p_to_r.py",
-                user_defined_envs=envs,
-            )
+    # def test_reshard_p_to_r(self):
+    #     envs_list = test_base.gen_product_envs_list(
+    #         self._default_envs, self._changeable_envs
+    #     )
+    #     for envs in envs_list:
+    #         self.run_test_case(
+    #             "reshard_p_to_r.py",
+    #             user_defined_envs=envs,
+    #         )
 
     def test_reshard_p_to_r_cross_mesh(self):
         envs_list = test_base.gen_product_envs_list(

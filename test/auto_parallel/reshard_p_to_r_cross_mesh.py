@@ -28,8 +28,9 @@ class TestReshardPToRCrossMesh:
         self._seeds = eval(os.getenv("seeds"))
         self._shard = eval(os.getenv("shard"))
         self._backend = os.getenv("backend")
-        self._in_mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
-        self._out_mesh = dist.ProcessMesh([1, 0], dim_names=["x"])
+        self._in_mesh = dist.ProcessMesh([0, 1, 2, 3], dim_names=["x"])
+        # self._out_mesh = dist.ProcessMesh([1, 0], dim_names=["x"])
+        self._out_mesh = dist.ProcessMesh([3, 2, 1, 0], dim_names=["x"])
 
     def run_test_case(self):
         if self._backend == "cpu":

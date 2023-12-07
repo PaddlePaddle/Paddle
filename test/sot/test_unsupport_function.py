@@ -12,27 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
 
-from .primitives import *  # noqa: F403
-from .register import register_decomp
+from test_case_base import TestCaseBase
+
+import paddle
+from paddle.jit.sot.utils import strict_mode_guard
 
 
-@register_decomp('pd_op.unsqueeze')
-def unsqueeze(x, axis):
-    """define composite rule of op unsqueeze"""
-    """using reshape to implement unsqueeze op"""
-    axis = axis.get_defining_op().attrs()["value"]
-    x_shape = list(x.shape)
-    axis_list = list(axis)
-    for i in axis_list:
-        if i < 0:
-            i += len(x_shape) + 1
-        x_shape = (
-            x_shape[:i]
-            + [
-                1,
-            ]
-            + x_shape[i:]
-        )
-    out = reshape(x, x_shape)
-    return [out, None]
+def call_locals(x: int, y: paddle.Tensor):
+    tmp = locals()
+    return x + y + len(list(tmp.keys())), list(tmp.keys())
+
+
+class TestUnsupportFunction(TestCaseBase):
+    @strict_mode_guard(False)
+    def test_locals(self):
+        x = paddle.to_tensor([2])
+        y = paddle.to_tensor([3])
+        self.assert_results(call_locals, x, y)
+
+
+if __name__ == "__main__":
+    unittest.main()
