@@ -230,7 +230,6 @@ class TestBatchNormDoubleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func_pir(self, place):
-        print("in pir mode: ", paddle.framework.in_pir_mode())
         prog = base.Program()
         with base.program_guard(prog):
             np.random.seed()
@@ -245,9 +244,9 @@ class TestBatchNormDoubleGradCheck(unittest.TestCase):
             )
             z = bn(x)
             x_arr = np.random.uniform(-1, 1, self.shape).astype(dtype)
-            # gradient_checker.double_grad_check(
-            #     [x], z, x_init=x_arr, atol=atol, place=place, eps=eps
-            # )
+            gradient_checker.double_grad_check(
+                [x], z, x_init=x_arr, atol=atol, place=place, eps=eps
+            )
             gradient_checker.double_grad_check_for_dygraph(
                 self.batch_norm_wrapper,
                 [x],
@@ -259,12 +258,11 @@ class TestBatchNormDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CUDAPlace(0)]
-        # places =[]
-        # if core.is_compiled_with_cuda():
-        #     places.append(base.CUDAPlace(0))
+        places = [base.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
         for p in places:
-            # self.func(p)
+            self.func(p)
             self.func_pir(p)
 
 
@@ -399,14 +397,6 @@ class TestBatchNormDoubleGradCheckCase5(TestBatchNormDoubleGradCheck):
                 atol=atol,
                 place=place,
                 eps=eps,
-            )
-            gradient_checker.double_grad_check_for_dygraph(
-                self.batch_norm_wrapper,
-                [x, w, b],
-                z,
-                x_init=[x_arr, w_arr, b_arr],
-                atol=atol,
-                place=place,
             )
 
 
