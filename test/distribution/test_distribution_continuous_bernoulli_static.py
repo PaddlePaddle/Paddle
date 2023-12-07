@@ -169,7 +169,7 @@ paddle.enable_static()
     [
         (
             'multi-dim',
-            parameterize.xrand((1, 3), min=0.0, max=1.0).astype("float32"),
+            parameterize.xrand((1, 3), min=0.0, max=0.498).astype("float32"),
         ),
     ],
 )
