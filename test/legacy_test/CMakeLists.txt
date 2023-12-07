@@ -506,6 +506,7 @@ if(NOT WITH_GPU
   list(REMOVE_ITEM TEST_OPS test_build_strategy_fusion_group_pass)
 endif()
 
+set_tests_properties(test_fuse_resunit_pass PROPERTIES TIMEOUT 300)
 if(NOT WITH_CUDNN_FRONTEND)
   list(REMOVE_ITEM TEST_OPS test_fused_scale_bias_relu_conv_bn_op)
   list(REMOVE_ITEM TEST_OPS test_fused_scale_bias_add_relu_op)

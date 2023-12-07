@@ -214,10 +214,10 @@ class TestFuseResUnitBase(unittest.TestCase):
             self.assertTrue(
                 verify_node_count(
                     program._graph,
-                    "fused_scale_bias_relu_conv_bnstats",
+                    "fused_scale_bias_relu_conv_bn",
                     conv_bnstats_count,
                 ),
-                "[{}] The number of fused_scale_bias_relu_conv_bnstats is miss-matched in the computing graph.".format(
+                "[{}] The number of fused_scale_bias_relu_conv_bn is miss-matched in the computing graph.".format(
                     type(self).__name__
                 ),
             )

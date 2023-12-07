@@ -263,7 +263,7 @@ class TestFuseResUnitPass(DistPassTestBase):
         for op in main_prog.global_block().ops:
             op_type.append(op.type)
         self.assertTrue("fused_scale_bias_add_relu" in op_type)
-        self.assertTrue("fused_scale_bias_relu_conv_bnstats" in op_type)
+        self.assertTrue("fused_scale_bias_relu_conv_bn" in op_type)
         self.assertTrue("fused_dconv_drelu_dbn" in op_type)
 
     def test_fuse_resunit(self):
