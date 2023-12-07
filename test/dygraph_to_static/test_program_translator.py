@@ -20,10 +20,10 @@ import astor
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_ast_only,
-    disable_test_case,
-    ToStaticMode, 
     IrMode,
+    ToStaticMode,
+    disable_test_case,
+    test_ast_only,
 )
 from ifelse_simple_func import (
     dyfunc_with_if_else_early_return1,
@@ -316,6 +316,7 @@ class TestIfElseEarlyReturn(Dy2StTestBase):
         static_func = paddle.jit.to_static(dyfunc_with_if_else_early_return2)
         out = static_func()
         np.testing.assert_allclose(answer, out[0].numpy(), rtol=1e-05)
+
 
 class TestRemoveCommentInDy2St(Dy2StTestBase):
     def func_with_comment(self):
