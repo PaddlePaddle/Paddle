@@ -17,6 +17,7 @@ from ..base.unique_name import (
     generate_with_ignorable_key,  # noqa: F401
     guard,
     switch,
+    swith_program_name_generator_guard,
 )
 
-__all__ = ['generate', 'switch', 'guard']
+__all__ = ['generate', 'switch', 'guard', 'swith_program_name_generator_guard']
