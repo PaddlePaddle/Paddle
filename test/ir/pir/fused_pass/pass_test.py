@@ -70,10 +70,6 @@ class PassTest(unittest.TestCase):
         """
         raise NotImplementedError
 
-    @abc.abstractmethod
-    def sample_place(self):
-        return self.place_runtime
-
     def check_pass_correct(self, atol=1e-5):
         self.assertTrue(
             self.place_runtime == "cpu" or self.place_runtime == "gpu",
@@ -83,9 +79,7 @@ class PassTest(unittest.TestCase):
             executor = paddle.static.Executor(paddle.base.CPUPlace())
         elif self.place_runtime == "gpu":
             executor = paddle.static.Executor(paddle.base.CUDAPlace(0))
-        import pdb
 
-        pdb.set_trace()
         for program, need_translate_to_pir in self.sample_program():
             if need_translate_to_pir:
                 program = pir.translate_to_pir(program.desc)
