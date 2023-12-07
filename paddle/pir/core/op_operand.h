@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-
+#include <cstdint>
 #include "paddle/pir/core/dll_decl.h"
 
 namespace pir {
@@ -57,7 +57,7 @@ class IR_API OpOperand {
 
   Operation *owner() const;
 
-  int32_t index() const;
+  uint32_t index() const;
 
   void RemoveFromUdChain();
 

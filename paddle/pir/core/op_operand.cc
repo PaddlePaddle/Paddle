@@ -53,7 +53,7 @@ Operation *OpOperand::owner() const {
   return impl_->owner();
 }
 
-int32_t OpOperand::index() const {
+uint32_t OpOperand::index() const {
   CHECK_OPOPEREND_NULL_IMPL(index);
   return impl_->index();
 }
