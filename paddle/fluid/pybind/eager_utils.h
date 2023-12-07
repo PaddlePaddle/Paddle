@@ -418,6 +418,15 @@ class eager_gil_scoped_release {
   PyThreadState* tstate{nullptr};
 };
 
+// inline static PyObject *static_op_arg_pre_cast_hook_get() ;
+
+// inline static void static_op_arg_pre_cast_hook_set(PyObject *obj) ;
+
+// static PyObject *set_static_op_arg_pre_cast_hook(PyObject *new_callback,
+// PyThreadState *tstate) ;
+
+// PyObject *SetStaticOpArgPreCastHook(PyObject *callback) ;
+
 /* ------------------ for auto parallel ----------------------- */
 using paddle::experimental::detail::ArgsIterator;
 
