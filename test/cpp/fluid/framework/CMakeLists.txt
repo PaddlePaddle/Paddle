@@ -312,7 +312,7 @@ cc_test(
   DEPS fleet_wrapper gloo_wrapper framework_io string_helper)
 
 if(WITH_CINN)
-  cc_test_old(
+  paddle_test(
     cinn_cache_key_test
     SRCS
     paddle2cinn/cinn_cache_key_test.cc
@@ -327,17 +327,17 @@ if(WITH_CINN)
   set_tests_properties(build_cinn_pass_test PROPERTIES LABELS "RUN_TYPE=CINN")
   # target_link_libraries(build_cinn_pass_test ${PYTHON_LIBRARIES})
 
-  cc_test_old(cinn_zero_tensor_trick_pass_test SRCS
+  paddle_test(cinn_zero_tensor_trick_pass_test SRCS
               paddle2cinn/cinn_zero_tensor_trick_pass_test.cc DEPS paddle2cinn)
   set_tests_properties(cinn_zero_tensor_trick_pass_test
                        PROPERTIES LABELS "RUN_TYPE=CINN")
   target_link_libraries(cinn_zero_tensor_trick_pass_test ${PYTHON_LIBRARIES})
 
-  cc_test_old(transform_desc_test SRCS paddle2cinn/transform_desc_test.cc DEPS
+  paddle_test(transform_desc_test SRCS paddle2cinn/transform_desc_test.cc DEPS
               paddle2cinn)
   set_tests_properties(transform_desc_test PROPERTIES LABELS "RUN_TYPE=CINN")
 
-  cc_test_old(
+  paddle_test(
     transform_type_test
     SRCS
     paddle2cinn/transform_type_test.cc
