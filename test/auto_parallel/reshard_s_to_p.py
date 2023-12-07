@@ -20,15 +20,16 @@ import paddle
 import paddle.distributed as dist
 
 
-class TestReshardSToR:
+class TestReshardSToP:
     def __init__(self):
         self._shape = eval(os.getenv("shape"))
         self._dtype = os.getenv("dtype")
         self._seeds = eval(os.getenv("seeds"))
         self._backend = os.getenv("backend")
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+        self._other_mesh = dist.ProcessMesh([1, 0], dim_names=["x"])
 
-    def run_test_case(self):
+    def reshard_same_mesh(self):
         if self._backend == "cpu":
             paddle.set_device("cpu")
 
@@ -54,6 +55,24 @@ class TestReshardSToR:
         assert np.equal(out.shape, input_tensor.shape).all()
         assert np.equal(out._local_shape, input_tensor.shape).all()
 
+    def reshard_cross_mesh(self):
+        if self._backend != "gpu":
+            return
+
+        a = paddle.ones([10, 10])
+        input_tensor = dist.shard_tensor(
+            a, mesh=self._mesh, placements=[dist.Shard(0)]
+        )
+        dist.reshard(
+            input_tensor,
+            mesh=self._other_mesh,
+            placements=[dist.Partial(dist.ReduceType.kRedSum)],
+        )
+
+    def run_test_case(self):
+        self.reshard_same_mesh()
+        self.reshard_cross_mesh()
+
 
 if __name__ == '__main__':
-    TestReshardSToR().run_test_case()
+    TestReshardSToP().run_test_case()

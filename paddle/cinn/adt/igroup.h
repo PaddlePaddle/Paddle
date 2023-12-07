@@ -21,12 +21,10 @@
 #include "paddle/cinn/adt/adt.h"
 #include "paddle/cinn/adt/anchor_sd_equation_context.h"
 #include "paddle/cinn/adt/equation.h"
-#include "paddle/cinn/adt/equation_function_constants_provider.h"
 #include "paddle/cinn/adt/equation_graph.h"
-#include "paddle/cinn/adt/m_expr.h"
 #include "paddle/cinn/adt/m_ir.h"
+#include "paddle/cinn/adt/map_expr.h"
 #include "paddle/cinn/adt/naive_bidirection_equation_generator.h"
-#include "paddle/cinn/adt/naive_equation_function_constants_provider.h"
 #include "paddle/cinn/adt/naive_op_equation_context.h"
 #include "paddle/cinn/adt/partition_op_stmts.h"
 #include "paddle/cinn/adt/schedule_dim.h"
@@ -38,28 +36,17 @@ using EquationCtx4OpStmtT =
     std::function<std::shared_ptr<config::NaiveOpEquationContext>(
         const OpStmt&)>;
 
-/**
- * IGroup = Inline Group.
- * Each IGroup must have an AnchorTensor as a representative.
- * Each index of the AnchorTensor can be mapped to the unique index of any other
- * Tensor in the IGroup. IGroup solves the problem of cross-thread data usage.
- * Please note that syncthreads needs to be called in time.
- */
 class IGroup final {
  public:
   IGroup(const IGroup&) = delete;
   IGroup(IGroup&&) = delete;
 
-  explicit IGroup(
-      const List<OpStmt>& op_stmts,
-      const AnchorIndex& anchor_index,
-      const EquationCtx4OpStmtT& EquationCtx4OpStmt,
-      const std::shared_ptr<const EquationFunctionConstantsProvider>&
-          constants_provider)
+  explicit IGroup(const List<OpStmt>& op_stmts,
+                  const AnchorIndex& anchor_index,
+                  const EquationCtx4OpStmtT& EquationCtx4OpStmt)
       : op_stmts_(op_stmts),
         anchor_index_(anchor_index),
-        EquationCtx4OpStmt_(EquationCtx4OpStmt),
-        constants_provider_(constants_provider) {
+        EquationCtx4OpStmt_(EquationCtx4OpStmt) {
     GenerateIndex2Tensor(
         op_stmts, EquationCtx4OpStmt, &index2tensor_, &tensor2indexes_);
     InitAnchorScheduleDims();
@@ -77,11 +64,6 @@ class IGroup final {
 
   const EquationCtx4OpStmtT& EquationCtx4OpStmt() const {
     return EquationCtx4OpStmt_;
-  }
-
-  const std::shared_ptr<const EquationFunctionConstantsProvider>&
-  constants_provider() const {
-    return constants_provider_;
   }
 
   GraphView GetDefaultGraphView() const {
@@ -107,12 +89,6 @@ class IGroup final {
 
   void set_anchor_sd_equation_ctx(const config::AnchorSdEquationContext& ctx) {
     anchor_sd_equation_ctx_ = ctx;
-    auto* mut_constants_provider =
-        const_cast<EquationFunctionConstantsProvider*>(
-            constants_provider_.get());
-    for (const auto& [dim, dim_value] : ctx.dim2constant()) {
-      CHECK(mut_constants_provider->AddDim(dim, dim_value));
-    }
   }
 
   const List<Iterator>& loop_iterators() const {
@@ -129,6 +105,8 @@ class IGroup final {
   List<Iterator> GetAnchorIterators() const {
     return GetIndexIterators(anchor_index_);
   }
+
+  List<LoopSize> GetAnchorTensorLoopSize() const;
 
  private:
   void InitAnchorScheduleDims();
@@ -162,7 +140,6 @@ class IGroup final {
   std::unordered_map<Index, Tensor> index2tensor_;
   std::unordered_map<Tensor, std::vector<Index>> tensor2indexes_;
   std::optional<config::AnchorSdEquationContext> anchor_sd_equation_ctx_;
-  std::shared_ptr<const EquationFunctionConstantsProvider> constants_provider_;
   List<ScheduleDim> anchor_schedule_dims_;
 };
 

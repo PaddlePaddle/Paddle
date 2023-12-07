@@ -32,8 +32,7 @@ std::shared_ptr<IndexExprInferContext> MakeIndexExprInferContext(
               .second);
   }
 
-  return std::make_shared<IndexExprInferContext>(anchor_iterator2value,
-                                                 igroup.constants_provider());
+  return std::make_shared<IndexExprInferContext>(anchor_iterator2value);
 }
 
 std::function<Value(const Iterator&)> MakeGetterValue4Iterator(
@@ -50,21 +49,43 @@ std::function<Value(const Iterator&)> MakeGetterValue4Iterator(
   return [ctx](const Iterator& iterator) { return ctx->GetValue(iterator); };
 }
 
-List<LoopSize> MakeAnchorLoopSize(const Tensor& tensor) {
+List<LoopSize> MakeLoopSizeForTensorImpl(const adapter::Tensor& tensor) {
   List<LoopSize> ret{};
-  CHECK(tensor.Has<adapter::Tensor>());
-  for (const auto& dim : tensor.Get<adapter::Tensor>().GetShape()) {
-    ret->emplace_back(dim);
+  for (int32_t dim : tensor.GetShape()) {
+    ret->emplace_back(LoopSize{dim});
   }
   return ret;
 }
 
+List<LoopSize> MakeLoopSizeForTensorImpl(const adapter::DynamicTensor& tensor) {
+  List<LoopSize> ret{};
+  for (const std::optional<DimExpr>& dim : tensor.GetShape()) {
+    CHECK(dim.has_value());
+    ret->emplace_back(dim.value());
+  }
+  return ret;
+}
+
+List<LoopSize> MakeLoopSizeForTensorImpl(const TempStorage& tensor) {
+  ADT_TODO();
+}
+
+List<LoopSize> MakeLoopSizeForTensor(const Tensor& tensor) {
+  return std::visit(
+      [&](const auto& impl) { return MakeLoopSizeForTensorImpl(impl); },
+      tensor.variant());
+}
+
 }  // namespace
+
+List<LoopSize> IGroup::GetAnchorTensorLoopSize() const {
+  return MakeLoopSizeForTensor(this->anchor_tensor());
+}
 
 void IGroup::InitAnchorScheduleDims() {
   const auto& Value4Iterator = MakeGetterValue4Iterator(this);
 
-  const auto& loop_size = MakeAnchorLoopSize(this->anchor_tensor());
+  const auto& loop_size = GetAnchorTensorLoopSize();
 
   anchor_schedule_dims_ = MakeAnchorScheduleDims(
       *this, Value4Iterator, loop_size, this->GetAnchorIterators());

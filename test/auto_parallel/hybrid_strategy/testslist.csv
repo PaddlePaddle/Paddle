@@ -1,2 +1,3 @@
 name,os,arch,timeout,run_type,launcher,num_port,run_serial,envs,conditions
 test_semi_auto_parallel_hybrid_strategy,LINUX,GPU,120,HYBRID,test_runner.py,,,http_proxy=;https_proxy=;PYTHONPATH=../..,
+test_save_load_state_dict,LINUX,GPU,120,HYBRID,test_runner.py,,,http_proxy=;https_proxy=;PYTHONPATH=../..,

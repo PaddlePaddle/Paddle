@@ -16,8 +16,70 @@ import os
 import shutil
 import unittest
 
+import numpy as np
+
 import paddle
+from paddle.base.data_feeder import convert_dtype
 from paddle.jit.dy2static.export_subgraph import get_saving_dir
+
+
+class ProgramInfo:
+    def __init__(self, program, feeds, fetchs):
+        self.program = program
+        # {name: [shape, dtype]}
+        self.feeds = feeds
+        # {name: shape}
+        self.fetchs = fetchs
+
+    def random_feeds(self):
+        feed_dict = {}
+        for name, info in self.feeds.items():
+            data = np.random.random(info[0]).astype(convert_dtype(info[1]))
+            feed_dict[name] = data
+
+        return feed_dict
+
+    def fetch_list(self):
+        return list(self.fetchs.keys())
+
+
+class Parser:
+    def __init__(self):
+        self.feed_op_name = 'pd_op.data'
+        self.fetch_op_name = 'pd_op.fetch'
+
+    def run(self, file):
+        program = self.load_from(file)
+        feeds = self.parse_feeds(program)
+        fetchs = self.parse_fetchs(program)
+
+        return ProgramInfo(program, feeds, fetchs)
+
+    def load_from(self, file):
+        with open(file, 'r') as f:
+            content = f.read()
+
+        return paddle.pir.parse_program(content)
+
+    def parse_feeds(self, program):
+        feeds = {}
+        for op in program.global_block().ops:
+            if op.name() == self.feed_op_name:
+                in_val = op.result(0)
+                # shape, dtype
+                info = [in_val.shape, in_val.dtype]
+                feeds[op.attrs()['name']] = info
+
+        return feeds
+
+    def parse_fetchs(self, program):
+        fetchs = {}
+        for op in program.global_block().ops:
+            if op.name() == self.fetch_op_name:
+                in_val = op.operand_source(0)
+                fetchs[op.attrs()['name']] = in_val.shape
+
+        return fetchs
 
 
 class Net(paddle.nn.Layer):
@@ -50,52 +112,77 @@ class TestSaveFwdBwdProg(unittest.TestCase):
         out = self.net(x)
         self.check_export()
 
+    def run_program(self, program, feed, fetch_list):
+        paddle.enable_static()
+        exe = paddle.static.Executor(paddle.CPUPlace())
+        outs = exe._run_pir_impl(
+            program,
+            feed=feed,
+            fetch_list=fetch_list,
+            feed_var_name="feed",
+            fetch_var_name='fetch',
+            scope=None,
+            return_numpy=True,
+        )
+        paddle.disable_static()
+        return outs
+
     def check_export(self):
         for prog_file in os.listdir(self.root_dir):
             if "forward" in prog_file:
                 self.check_fwd(prog_file)
-                return
             elif "backward" in prog_file:
                 self.check_bwd(prog_file)
             else:
                 raise RuntimeError("Not Support.")
 
     def check_fwd(self, prog_file):
-        prog_info = [
-            "pt_input_0",
-            "pt_output_0",
-            "pt_output_1",
-            "pt_intermediate_0",
-            "pt_intermediate_1",
-            "pt_intermediate_2",
-        ]
         path = os.path.join(self.root_dir, prog_file)
-        with open(path, 'r') as f:
-            content = f.readlines()
-        index = 0
-        for op_str in content:
-            if "pd_op.data" in op_str or "pd_op.fetch" in op_str:
-                self.assertIn(prog_info[index], op_str)
-                index += 1
+        program_info = Parser().run(path)
+        feed = program_info.random_feeds()
+        fetch_list = program_info.fetch_list()
+        outs = self.run_program(program_info.program, feed, fetch_list)
+
+        self.assertEqual(len(outs), len(fetch_list))
+        fetchs = program_info.fetchs
+        for name, out in zip(fetch_list, outs):
+            self.assertListEqual(list(out.shape), fetchs[name])
 
     def check_bwd(self, prog_file):
-        prog_info = [
-            "pt_input_6",
-            "pt_input_5",
-            "pt_input_4",
-            "pt_input_3",
-            "pt_input_2",
-            "pt_input_1",
-            "pt_input_0",
-        ]
         path = os.path.join(self.root_dir, prog_file)
-        with open(path, 'r') as f:
-            content = f.readlines()
-        index = 0
-        for op_str in content:
-            if "pd_op.data" in op_str or "pd_op.fetch" in op_str:
-                self.assertIn(prog_info[index], op_str)
-                index += 1
+        program_info = Parser().run(path)
+        feed = program_info.random_feeds()
+        fetch_list = program_info.fetch_list()
+        outs = self.run_program(program_info.program, feed, fetch_list)
+
+        self.assertEqual(len(outs), len(fetch_list))
+
+
+class TestSaveInferProg(TestSaveFwdBwdProg):
+    def test_export(self):
+        x = paddle.randn([4, 4])
+        self.net.eval()
+        out = self.net(x)
+        self.check_export()
+
+    def check_export(self):
+        for prog_file in os.listdir(self.root_dir):
+            if "infer" in prog_file:
+                self.check_infer(prog_file)
+            else:
+                raise RuntimeError("Not Support.")
+
+    def check_infer(self, prog_file):
+        path = os.path.join(self.root_dir, prog_file)
+        program_info = Parser().run(path)
+        feed = program_info.random_feeds()
+        fetch_list = program_info.fetch_list()
+        outs = self.run_program(program_info.program, feed, fetch_list)
+
+        self.assertEqual(len(outs), len(fetch_list))
+        fetchs = program_info.fetchs
+        for name, out in zip(fetch_list, outs):
+            self.assertListEqual(list(out.shape), fetchs[name])
 
 
 if __name__ == "__main__":

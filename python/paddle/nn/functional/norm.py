@@ -440,7 +440,7 @@ def instance_norm(
                [ 0.74275863, -0.11246002,  1.73788261]]]])
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.instance_norm(x, weight, bias, eps)
         return out
     else:

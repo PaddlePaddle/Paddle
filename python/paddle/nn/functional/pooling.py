@@ -253,7 +253,7 @@ def avg_pool1d(
     # use 2d to implenment 1d should expand padding in advance.
     padding = _expand_low_nd_padding(padding)
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         output = _C_ops.pool2d(
             x,
             kernel_size,
@@ -503,7 +503,7 @@ def avg_pool3d(
     _check_value_limitation(kernel_size, "kernel_size", min_limit=1e-3)
     _check_value_limitation(stride, "stride", min_limit=1e-3)
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         pool_out = _C_ops.pool3d(
             x,
             kernel_size,
@@ -626,7 +626,7 @@ def max_pool1d(
     # use 2d to implenment 1d should expand padding in advance.
     padding = _expand_low_nd_padding(padding)
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         if return_mask:
             pool_out = _C_ops.max_pool2d_with_index(
                 x, kernel_size, stride, padding, False, False
@@ -825,7 +825,7 @@ def max_unpool1d(
         x, kernel_size, stride, padding, output_size
     )
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         output = _C_ops.unpool(
             x, indices, kernel_size, stride, padding, output_size, data_format
         )
@@ -975,7 +975,7 @@ def max_unpool2d(
         x, kernel_size, stride, padding, output_size
     )
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         output = _C_ops.unpool(
             x, indices, kernel_size, stride, padding, output_size, data_format
         )
@@ -1122,7 +1122,7 @@ def max_unpool3d(
         x, kernel_size, stride, padding, output_size
     )
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         output = _C_ops.unpool3d(
             x, indices, kernel_size, stride, padding, output_size, data_format
         )
@@ -1417,7 +1417,7 @@ def max_pool3d(
             "When setting return_mask to true, data_format must be set to NCDHW in API:max_pool3d"
         )
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         if return_mask:
             output = _C_ops.max_pool3d_with_index(
                 x, kernel_size, stride, padding, False, False
@@ -1644,7 +1644,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
         output_size = _convert_to_tensor_list(output_size)
 
     if in_dynamic_or_pir_mode():
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             x = x._use_gpudnn(False)
         return _C_ops.pool2d(
             x,

@@ -18,6 +18,7 @@ import logging
 import os
 import sys
 import unittest
+from contextlib import contextmanager
 from enum import Flag, auto
 from functools import wraps
 from pathlib import Path
@@ -103,12 +104,6 @@ DISABLED_IR_TEST_FILES = {
         "test_seq2seq",
         "test_save_inference_model",
         "test_tensor_hook",
-        "test_len",
-        "test_list",
-        "test_slice",
-        "test_lstm",
-        "test_for_enumerate",
-        "test_jit_setitem",
         "test_reinforcement_learning",
         # TODO: only disable on Windows
         "test_program_translator",
@@ -210,9 +205,10 @@ def to_pir_test(fn):
     @wraps(fn)
     def impl(*args, **kwargs):
         logger.info("[PIR] running pir")
-        ir_outs = None
+        in_dygraph_mode = paddle.in_dynamic_mode()
         with paddle.pir_utils.IrGuard():
-            paddle.disable_static()
+            if in_dygraph_mode:
+                paddle.disable_static()
             ir_outs = fn(*args, **kwargs)
         return ir_outs
 
@@ -398,6 +394,19 @@ def test_default_mode_only(fn):
     return fn
 
 
+def test_sot_with_pir_only(fn):
+    fn = set_to_static_mode(ToStaticMode.SOT)(fn)
+    fn = set_ir_mode(IrMode.PIR)(fn)
+    return fn
+
+
+def test_default_and_pir(fn):
+    # Some unittests has high time complexity, we only test them with default mode
+    fn = set_to_static_mode(ToStaticMode.SOT)(fn)
+    fn = set_ir_mode(IrMode.PT | IrMode.PIR)(fn)
+    return fn
+
+
 # NOTE: This is a special decorator for comparing legacy and pt
 def compare_legacy_with_pt(fn):
     @wraps(fn)
@@ -448,3 +457,15 @@ def import_legacy_test_utils():
 legacy_test_utils = import_legacy_test_utils()
 dygraph_guard = legacy_test_utils.dygraph_guard
 static_guard = legacy_test_utils.static_guard
+
+
+@contextmanager
+def enable_to_static_guard(flag: bool):
+    program_translator = paddle.jit.api.ProgramTranslator()
+    original_flag_value = program_translator.enable_to_static
+    program_translator.enable(flag)
+    try:
+        program_translator.enable(flag)
+        yield
+    finally:
+        program_translator.enable(original_flag_value)

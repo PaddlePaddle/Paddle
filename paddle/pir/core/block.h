@@ -95,9 +95,9 @@ class IR_API Block {
   ///
   /// \brief Block argument management
   ///
-  using BlockArgListType = std::vector<BlockArgument>;
-  using ArgsIterator = BlockArgListType::iterator;
-  using ConstArgsIterator = BlockArgListType::const_iterator;
+  using ArgListType = std::vector<Value>;
+  using ArgsIterator = ArgListType::iterator;
+  using ConstArgsIterator = ArgListType::const_iterator;
 
   ArgsIterator args_begin() { return arguments_.begin(); }
   ArgsIterator args_end() { return arguments_.end(); }
@@ -105,11 +105,11 @@ class IR_API Block {
   ConstArgsIterator args_end() const { return arguments_.end(); }
   bool args_empty() const { return arguments_.empty(); }
   uint32_t args_size() const { return arguments_.size(); }
-  const BlockArgListType &args() const { return arguments_; }
-  BlockArgument arg(uint32_t index) { return arguments_[index]; }
+  const ArgListType &args() const { return arguments_; }
+  Value arg(uint32_t index) { return arguments_[index]; }
   Type arg_type(uint32_t index) const { return arguments_[index].type(); }
   void ClearArguments();
-  BlockArgument AddArgument(Type type);
+  Value AddArgument(Type type);
   template <class TypeIter>
   void AddArguments(TypeIter first, TypeIter last);
   template <class TypeContainer>
@@ -137,9 +137,9 @@ class IR_API Block {
  private:
   Region::Iterator position_;
   BlockOperand first_use_;
-  OpListType ops_;              // owned
-  BlockArgListType arguments_;  // owned
-  Region *parent_;              // not owned
+  OpListType ops_;         // owned
+  ArgListType arguments_;  // owned
+  Region *parent_;         // not owned
 };
 
 template <class TypeIter>

@@ -26,19 +26,19 @@
 namespace cinn::common {
 
 template <typename NodeT, typename IterT>
-common::TopoWalker<NodeT> MakeSubgraphWalker(
-    const common::TopoWalker<NodeT>& walker,
+cinn::common::TopoWalker<NodeT> MakeSubgraphWalker(
+    const cinn::common::TopoWalker<NodeT>& walker,
     IterT src_begin,
     IterT src_end,
     IterT sink_begin,
     IterT sink_end) {
-  common::TopoWalker<NodeT> reversed_walker(walker.VisitNextNodes,
-                                            walker.VisitPrevNodes);
+  cinn::common::TopoWalker<NodeT> reversed_walker(walker.VisitNextNodes,
+                                                  walker.VisitPrevNodes);
   auto ReachableToOneSrc =
-      common::MakeIsReachableFromSrcPredicator<NodeT, IterT>(
+      cinn::common::MakeIsReachableFromSrcPredicator<NodeT, IterT>(
           walker, src_begin, src_end);
   auto ReachableToOneSink =
-      common::MakeIsReachableFromSrcPredicator<NodeT, IterT>(
+      cinn::common::MakeIsReachableFromSrcPredicator<NodeT, IterT>(
           reversed_walker, sink_begin, sink_end);
 
   auto VisitPrevNodes = [ReachableToOneSrc, ReachableToOneSink, walker](
@@ -61,7 +61,7 @@ common::TopoWalker<NodeT> MakeSubgraphWalker(
     });
   };
 
-  return common::TopoWalker<NodeT>(VisitPrevNodes, VisitNextNodes);
+  return cinn::common::TopoWalker<NodeT>(VisitPrevNodes, VisitNextNodes);
 }
 
 }  // namespace cinn::common

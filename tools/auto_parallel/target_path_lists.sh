@@ -27,6 +27,7 @@ target_lists_for_hybrid_ci=(
 
 target_lists_for_pir_ci=(
     "paddle/fluid/framework/new_executor"
+    "paddle/fluid/ir_adaptor/"
     "paddle/fluid/pir/dialect"
     "paddle/fluid/pir/transforms"
     "paddle/pir"
