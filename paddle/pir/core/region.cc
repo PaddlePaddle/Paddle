@@ -18,7 +18,7 @@
 #include "paddle/pir/core/operation.h"
 
 namespace pir {
-TEST_API Region::~Region() { clear(); }
+Region::~Region() { clear(); }
 
 void Region::push_back(Block *block) { insert(blocks_.end(), block); }
 
