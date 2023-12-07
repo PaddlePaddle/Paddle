@@ -199,15 +199,6 @@ def prune_by_vpp(tuner_cfg, cur_cfg, history_cfgs=[]):
         if vpp_degree not in vpp_degree_candidates:
             return True
 
-    cfgs = same_cfgs_beside("vpp_degree", cur_cfg, history_cfgs)
-    if cfgs:
-        for cfg in cfgs:
-            # memory prune
-            if (
-                cfg["vpp_degree"] > vpp_degree
-                and cfg.get("max_mem_usage") == "OOM"
-            ):
-                return True
     return False
 
 
@@ -282,7 +273,7 @@ def prune_by_mbs(tuner_cfg, cur_cfg, history_cfgs=[]):
 @register_prune_history
 def prune_by_mbs_history(tuner_cfg, cur_cfg, history_cfgs=[]):
     micro_batch_size = cur_cfg.get("micro_batch_size", None)
-    if micro_batch_size is not None:
+    if micro_batch_size is None:
         return False
     cfgs = same_cfgs_beside("micro_batch_size", cur_cfg, history_cfgs)
     if cfgs:
@@ -340,6 +331,18 @@ def prune_by_sharding(tuner_cfg, cur_cfg, history_cfgs=[]):
     if pp_degree and pp_degree != 1 and sharding_stage != 1:
         return True
 
+    return False
+
+
+@register_prune_history
+def prune_by_sharding_history(tuner_cfg, cur_cfg, history_cfgs=[]):
+    sharding_degree = cur_cfg.get("sharding_degree", None)
+    if sharding_degree is None:
+        return False
+
+    sharding_stage = cur_cfg.get("sharding_stage", None)
+    if sharding_stage is None:
+        return False
     cfgs = same_cfgs_beside("sharding_stage", cur_cfg, history_cfgs)
     if cfgs:
         for cfg in cfgs:
@@ -362,37 +365,6 @@ def prune_by_sharding(tuner_cfg, cur_cfg, history_cfgs=[]):
             return True
 
     return False
-
-
-@register_prune_history
-def prune_by_sharding_history(tuner_cfg, cur_cfg, history_cfgs=[]):
-    sharding_degree = cur_cfg.get("sharding_degree", None)
-    if not sharding_degree:
-        return False
-
-    sharding_stage = cur_cfg.get("sharding_stage", None)
-    if not sharding_stage:
-        return False
-    cfgs = same_cfgs_beside("sharding_stage", cur_cfg, history_cfgs)
-    if cfgs:
-        for cfg in cfgs:
-            if (
-                cfg["sharding_stage"] < sharding_stage
-                and cfg.get("time", -1) > 0
-            ):
-                return True
-
-            # memory prune
-            if (
-                cfg["sharding_stage"] > sharding_stage
-                and cfg.get("max_mem_usage") == "OOM"
-            ):
-                return True
-
-    if sharding_degree == 1:
-        cfgs = same_cfgs_beside("sharding_stage", cur_cfg, history_cfgs)
-        if cfgs:
-            return True
 
 
 @register_prune
@@ -424,28 +396,6 @@ def prune_by_recompute(tuner_cfg, cur_cfg, history_cfgs=[]):
         if recompute_granularity not in recompute_granularity_candidates:
             return True
 
-    cfgs = same_cfgs_beside("use_recompute", cur_cfg, history_cfgs)
-    if cfgs:
-        for cfg in cfgs:
-            if (
-                not cfg["use_recompute"]
-                and use_recompute
-                and cfg.get("time", -1) > 0
-            ):
-                return True
-
-            if (
-                cfg["use_recompute"]
-                and not use_recompute
-                and cfg.get("max_mem_usage") == "OOM"
-            ):
-                return True
-
-    if not use_recompute:
-        cfgs = same_cfgs_beside("recompute_granularity", cur_cfg, history_cfgs)
-        if cfgs:
-            return True
-
     return False
 
 
@@ -475,6 +425,7 @@ def prune_by_recompute_history(tuner_cfg, cur_cfg, history_cfgs=[]):
         cfgs = same_cfgs_beside("recompute_granularity", cur_cfg, history_cfgs)
         if cfgs:
             return True
+
     return False
 
 
