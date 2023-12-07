@@ -90,6 +90,7 @@ API_FILES=("CMakeLists.txt"
            "python/paddle/autograd/ir_backward.py"
            "python/paddle/autograd/backward_utils.py"
            "paddle/scripts/paddle_build.sh"
+           "python/phi/infermeta/spmd_rules"
            )
 
 approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
@@ -227,6 +228,9 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "paddle/scripts/paddle_build.sh" ]; then 
 	      echo_line="You must have one RD (tianshuo78520a or risemeup1 or zhangbo9674 or XieYunshen) for ${API_FILE} changes, which manages the Paddle CI on Linux.\n " 
             check_approval 1 tianshuo78520a risemeup1 zhangbo9674 XieYunshen 
+      elif [ "${API_FILE}" == "python/phi/infermeta/spmd_rules" ]; then 
+	      echo_line="You must have one RD (liuzhenhai(liuzhenhai93) or liyurui(LiYuRio) or shenliang03(ForFishes) or zhangyichen03(pkuzyc) or chenqiuliang(zhiqiu)) approval for changing ${API_FILE} , which manages the code for spmd_rules.\n"
+            check_approval 1 liuzhenhai93 LiYuRio ForFishes pkuzyc zhiqiu
       else
           echo_line="You must have one RD (XiaoguangHu01,chenwhql,zhiqiu,Xreki,luotao1,qili93,Aurelius84) approval for ${API_FILE}, which manages the underlying code for fluid.\n"
           check_approval 1 XiaoguangHu01 chenwhql zhiqiu Xreki luotao1 qili93 Aurelius84
