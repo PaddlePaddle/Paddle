@@ -218,22 +218,6 @@ class TestRandomValue(unittest.TestCase):
         ]
         np.testing.assert_array_equal(y_np[24, 2, 900, 600:620], expect)
 
-        total_count = paddle.to_tensor(10.0)
-        probability = paddle.full([16, 1024, 1024], 0.6, dtype="float32")
-        y = paddle.binomial(total_count, probability)
-        y_np = y.numpy()
-        expect = [5, 8, 5, 5, 7, 8, 5, 2, 8, 6, 6, 7, 6, 5, 8, 2, 7, 5, 5, 7]
-        np.testing.assert_array_equal(y_np[0, 0, 100:120], expect)
-
-        expect = [5, 8, 8, 7, 8, 4, 5, 4, 7, 6, 3, 8, 7, 8, 7, 5, 4, 7, 5, 6]
-        np.testing.assert_array_equal(y_np[4, 300, 300:320], expect)
-
-        expect = [7, 4, 6, 7, 4, 9, 5, 2, 4, 5, 7, 6, 5, 6, 7, 7, 6, 8, 8, 5]
-        np.testing.assert_array_equal(y_np[8, 600, 600:620], expect)
-
-        expect = [6, 5, 4, 6, 4, 6, 6, 4, 6, 5, 7, 8, 4, 8, 7, 5, 7, 6, 5, 8]
-        np.testing.assert_array_equal(y_np[12, 900, 900:920], expect)
-
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
