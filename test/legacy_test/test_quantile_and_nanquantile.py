@@ -176,6 +176,7 @@ class TestQuantileAndNanquantile(unittest.TestCase):
                         rtol=1e-05,
                         equal_nan=True,
                     )
+            paddle.disable_static()
 
         check_grad([1, 2, 3], 0.5, 0, [0, 1, 0])
         check_grad(
