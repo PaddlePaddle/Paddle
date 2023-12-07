@@ -689,7 +689,7 @@ static int GetNCCLVersion() {
 
 void BindVjp(pybind11::module *m) {
   m->def(
-      "call_vjp_rule",
+      "call_vjp",
       [](pir::Operation &fwd_op,
          const std::vector<std::vector<pir::Value>> &inputs,
          const std::vector<std::vector<pir::OpResult>> &outputs,

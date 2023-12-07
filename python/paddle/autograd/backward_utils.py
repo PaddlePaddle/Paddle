@@ -76,9 +76,7 @@ class State:
 
 def _check_vjp_dynamic_shape(op, inputs):
     for items in inputs:
-        # breakpoint()
         for item in items:
-            # breakpoint()
             shape = item.shape
             if -1 in shape:
                 warnings.warn(
@@ -89,16 +87,16 @@ def _check_vjp_dynamic_shape(op, inputs):
 
 # Prim currently does not support dynamic shape, when dynamic shape exits in shape of op inputs, prim will be skipped its vjp op.
 @signature_safe_contextmanager
-def vjp_guard(op, inputs):
-    skip_prim_dynamic = (
+def dynamic_shape_prim_vjp_guard(op, inputs):
+    skip_prim = (
         core._is_bwd_prim_enabled()
         and core._enable_prim_dynamic_shape()
         and _check_vjp_dynamic_shape(op, inputs)
     )
     try:
-        if skip_prim_dynamic:
+        if skip_prim:
             core._set_prim_backward_enabled(False)
         yield
     finally:
-        if skip_prim_dynamic:
+        if skip_prim:
             core._set_prim_backward_enabled(True)

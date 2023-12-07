@@ -66,7 +66,7 @@ class TestPrimMode(unittest.TestCase):
         return outs
 
     def test_prim_all_dynamic(self):
-        os.environ["FLAGS_prim_dynamic"] = "1"
+        os.environ["FLAGS_prim_skip_dynamic"] = "1"
         res_ref = self.base_net()
         res = self.base_net("all")
         for ref, actual in zip(res_ref, res):

@@ -16,7 +16,7 @@ import unittest
 
 import paddle
 from paddle import pir
-from paddle.base.core import call_vjp_rule
+from paddle.base.core import call_vjp
 
 paddle.enable_static()
 
@@ -71,7 +71,7 @@ class TestVjpPrim(unittest.TestCase):
             stop_gradients = [[False], [False]]
             divide_op = pir_program.global_block().ops[-1]
             with paddle.pir.core.program_guard(pir_program):
-                grad_outs = call_vjp_rule(
+                grad_outs = call_vjp(
                     divide_op,
                     [[value] for value in divide_op.operands_source()],
                     [[value] for value in divide_op.results()],
@@ -119,7 +119,7 @@ class TestVjpPrim(unittest.TestCase):
         stop_gradients = [[False], [False]]
         divide_op = pir_program.global_block().ops[-1]
         with paddle.pir.core.program_guard(pir_program):
-            grad_outs = call_vjp_rule(
+            grad_outs = call_vjp(
                 divide_op,
                 [[value] for value in divide_op.operands_source()],
                 [[value] for value in divide_op.results()],
@@ -144,7 +144,7 @@ class TestVjpPrim(unittest.TestCase):
             stop_gradients = [[False]]
             sum_op = pir_program.global_block().ops[-1]
             with paddle.pir.core.program_guard(pir_program):
-                grad_outs = call_vjp_rule(
+                grad_outs = call_vjp(
                     sum_op,
                     [[value] for value in sum_op.operands_source()],
                     [[value] for value in sum_op.results()],
@@ -177,7 +177,7 @@ class TestVjpPrim(unittest.TestCase):
         stop_gradients = [[False]]
         sum_op = pir_program.global_block().ops[-1]
         with paddle.pir.core.program_guard(pir_program):
-            grad_outs = call_vjp_rule(
+            grad_outs = call_vjp(
                 sum_op,
                 [[value] for value in sum_op.operands_source()],
                 [[value] for value in sum_op.results()],
