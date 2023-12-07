@@ -24,7 +24,7 @@ from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 import paddle.inference as paddle_infer
 
 
-class TrtConvertConv2dFusionTest(TrtLayerAutoScanTest):
+class TrtConvertFusedConv2dAddActTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         inputs = program_config.inputs
         weights = program_config.weights

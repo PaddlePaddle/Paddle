@@ -47,9 +47,9 @@ class Conv2dAddActFusePattern
     if (!add_out.HasOneUse()) return false;
 
     auto next_op_list = pir::GetUseOpsForOutput(op, 0);
-    if (next_op_list.size() == 0) return false;
+    if (next_op_list.size() != 1) return false;
 
-    auto next_op = next_op_list[0];
+    auto next_op = next_op_list[0].first;
     std::string act_name = "";
     if (next_op->isa<paddle::dialect::ReluOp>()) {
       act_name = "relu";
@@ -63,19 +63,19 @@ class Conv2dAddActFusePattern
 #endif
     if (act_name == "") return false;
 
-    auto conv2d_fusion_attributes = conv2d_op->attributes();
-    conv2d_fusion_attributes["activation"] = rewriter.str_attr(act_name);
-    conv2d_fusion_attributes["split_channels"] =
+    auto op_attributes = conv2d_op->attributes();
+    op_attributes["activation"] = rewriter.str_attr(act_name);
+    op_attributes["split_channels"] =
         rewriter.array_attr(std::vector<pir::Attribute>{});
-    conv2d_fusion_attributes["exhaustive_search"] = rewriter.bool_attr(false);
-    conv2d_fusion_attributes["workspace_size_MB"] = rewriter.int32_attr(32);
-    conv2d_fusion_attributes["fuse_alpha"] = rewriter.float_attr(0.0f);
-    auto conv2d_fuse_op = rewriter.Build<paddle::dialect::Conv2dFusionOp>(
+    op_attributes["exhaustive_search"] = rewriter.bool_attr(false);
+    op_attributes["workspace_size_MB"] = rewriter.int32_attr(32);
+    op_attributes["fuse_alpha"] = rewriter.float_attr(0.0f);
+    auto conv2d_fuse_op = rewriter.Build<paddle::dialect::FusedConv2dAddActOp>(
         conv2d_op.input().dyn_cast<pir::OpResult>(),
         conv2d_op.filter().dyn_cast<pir::OpResult>(),
         op.y().dyn_cast<pir::OpResult>(),
         pir::Value{}.dyn_cast<pir::OpResult>(),
-        conv2d_fusion_attributes);
+        op_attributes);
     rewriter.ReplaceOp(next_op,
                        std::vector<pir::Value>{conv2d_fuse_op.output()});
     rewriter.EraseOp(op);
@@ -108,8 +108,9 @@ class Conv2dAdd2ActFusePattern
     if (!conv2d_out.HasOneUse()) return false;
 
     auto next_op_list = pir::GetUseOpsForOutput(add2_op, 0);
-    if (next_op_list.size() == 0) return false;
-    auto next_op = next_op_list[0];
+    if (next_op_list.size() != 1) return false;
+
+    auto next_op = next_op_list[0].first;
     std::string act_name = "";
     if (next_op->isa<paddle::dialect::ReluOp>()) {
       act_name = "relu";
@@ -125,19 +126,19 @@ class Conv2dAdd2ActFusePattern
       return false;
     }
 
-    auto conv2d_fusion_attributes = conv2d_op->attributes();
-    conv2d_fusion_attributes["activation"] = rewriter.str_attr(act_name);
-    conv2d_fusion_attributes["split_channels"] =
+    auto op_attributes = conv2d_op->attributes();
+    op_attributes["activation"] = rewriter.str_attr(act_name);
+    op_attributes["split_channels"] =
         rewriter.array_attr(std::vector<pir::Attribute>{});
-    conv2d_fusion_attributes["exhaustive_search"] = rewriter.bool_attr(false);
-    conv2d_fusion_attributes["workspace_size_MB"] = rewriter.int32_attr(32);
-    conv2d_fusion_attributes["fuse_alpha"] = rewriter.float_attr(0.0f);
-    auto conv2d_fuse_op = rewriter.Build<paddle::dialect::Conv2dFusionOp>(
+    op_attributes["exhaustive_search"] = rewriter.bool_attr(false);
+    op_attributes["workspace_size_MB"] = rewriter.int32_attr(32);
+    op_attributes["fuse_alpha"] = rewriter.float_attr(0.0f);
+    auto conv2d_fuse_op = rewriter.Build<paddle::dialect::FusedConv2dAddActOp>(
         conv2d_op.input().dyn_cast<pir::OpResult>(),
         conv2d_op.filter().dyn_cast<pir::OpResult>(),
         add1_op.y().dyn_cast<pir::OpResult>(),
         add2_op.x().dyn_cast<pir::OpResult>(),
-        conv2d_fusion_attributes);
+        op_attributes);
     rewriter.ReplaceOp(next_op,
                        std::vector<pir::Value>{conv2d_fuse_op.output()});
 
@@ -160,16 +161,18 @@ class Conv2dAddActFusePass : public pir::PatternRewritePass {
         std::make_unique<Conv2dAddActFusePattern>(
             context,
             1,
-            std::vector<std::string>{paddle::dialect::Conv2dFusionOp::name()});
+            std::vector<std::string>{
+                paddle::dialect::FusedConv2dAddActOp::name()});
     auto conv2d_doublue_add_act_fuse_pattern =
         std::make_unique<Conv2dAdd2ActFusePattern>(
             context,
             1,
-            std::vector<std::string>{paddle::dialect::Conv2dFusionOp::name()});
+            std::vector<std::string>{
+                paddle::dialect::FusedConv2dAddActOp::name()});
 
-    // conv2d+add+add+act->conv2d_fusion
+    // conv2d+add+add+act->fused_conv2d_add_act
     ps.Add(std::move(conv2d_doublue_add_act_fuse_pattern));
-    // conv2d+add+act->conv2d_fusion
+    // conv2d+add+act->fused_conv2d_add_act
     ps.Add(std::move(conv2d_add_act_fuse_pattern));
     return ps;
   }
