@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+import os
 import unittest
 from functools import partial
 from typing import List
@@ -29,14 +29,17 @@ class TrtConvertArgsort(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        # 生成输入数据
-        def generate_input1(batch):
-            if self.dims == 4:
-                return np.random.random([batch, 3, 3, 24]).astype(np.float32)
-            elif self.dims == 3:
-                return np.random.random([batch, 3, 24]).astype(np.float16)
-            elif self.dims == 2:
-                return np.random.random([batch, 24]).astype(np.float16)
+        if os.name != 'nt':
+            # 1. Declare input
+            def generate_input1(batch):
+                if self.dims == 4:
+                    return np.random.random([batch, 3, 3, 24]).astype(
+                        np.float32
+                    )
+                elif self.dims == 3:
+                    return np.random.random([batch, 3, 24]).astype(np.float16)
+                elif self.dims == 2:
+                    return np.random.random([batch, 24]).astype(np.float16)
 
         for dims in [2, 3, 4]:
             for batch in [1, 6, 9]:
