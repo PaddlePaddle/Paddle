@@ -21,6 +21,8 @@ target-version = "py37"
 select = [
     # Pyflakes
     "F",
+    "E",
+    "W",
 
     # Isort
     "I",
@@ -83,6 +85,18 @@ ignore = [
     "UP015",
     # It will cause the performance regression on python3.10
     "UP038",
+    # Module level import not at top of file
+    "E402",
+    # Line too long (82 > 79 characters)
+    "E501",
+    # Do not compare types, use `isinstance()`
+    "E721",
+    # Do not use bare except, specify exception instead
+    "E722",
+    # Do not assign a lambda expression, use a def
+    "E731",
+    "E741",
+    "C901",
 ]
 
 [tool.ruff.lint.isort]
@@ -102,3 +116,5 @@ known-first-party = ["paddle"]
 "test/dygraph_to_static/test_loop.py" = ["C416", "F821"]
 # Ignore unnecessary lambda in dy2st unittest test_lambda
 "test/dygraph_to_static/test_lambda.py" = ["PLC3002"]
+# Ignore compare with True in sot unittest
+"test/sot/test_dup_top.py" = ["E712"]

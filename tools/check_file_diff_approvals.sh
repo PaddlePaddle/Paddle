@@ -384,6 +384,12 @@ if [ "${INVALID_UNITTEST_ASSERT_CHECK}" != "" ] && [ "${GIT_PR_ID}" != "" ]; the
     check_approval 1 qili93 luotao1 Aurelius84
 fi
 
+DEPRECATED_FLAKE8=`git diff --name-only upstream/$BRANCH | grep ".flake8" || true`
+if [ "${DEPRECATED_FLAKE8}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must have one RD sigureMo approval and @gouzil for file changes in .flake8, we are about to abandon Flake8 and replace it with Ruff.\n"
+    check_approval 1 sigureMo
+fi
+
 HAS_MODIFIED_PHI_FILES=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/" || true`
 PHI_INCLUDE_FLUID_FILES=""
 for CHANGE_FILE in ${HAS_MODIFIED_PHI_FILES}; do

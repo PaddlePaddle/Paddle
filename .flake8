@@ -28,3 +28,4 @@ per-file-ignores =
 
     # Ignore compare with True in sot unittest
     test/sot/test_dup_top.py:E712
+    # test file diff
