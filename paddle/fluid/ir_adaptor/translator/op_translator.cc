@@ -1928,7 +1928,9 @@ struct SelectInputOpTranscriber : public OpTranscriber {
             tensor1.offset() != tensor2.offset()) {
           IR_THROW(
               "select_input only support same type or DenseTensorType with "
-              "only different dim.");
+              "only different dim, but get %s != %s.",
+              tensor1,
+              tensor2);
         }
         auto dim1 = input1.dyn_cast<paddle::dialect::DenseTensorType>().dims();
         auto dim2 = input2.dyn_cast<paddle::dialect::DenseTensorType>().dims();
@@ -1944,7 +1946,9 @@ struct SelectInputOpTranscriber : public OpTranscriber {
       }
       IR_THROW(
           "select_input only support same type or DenseTensorType with only "
-          "different dim.");
+          "different dim, now is %s != %s.",
+          input1,
+          input2);
     }
 
     pir::Operation* operation = pir::Operation::Create(

@@ -173,36 +173,27 @@ void IfOp::VerifyRegion() {
       1u,
       phi::errors::PreconditionNotMet("The size %d of true_region must be 1.",
                                       (*this)->region(0).size()));
-  VLOG(0) << "Start Verifying true branch 1.";
   auto &true_last_op = (*this)->region(0).front().back();
-  VLOG(0) << "Start Verifying true branch 2.";
   PADDLE_ENFORCE_EQ(true,
                     true_last_op.isa<pir::YieldOp>(),
                     phi::errors::PreconditionNotMet(
                         "The last of true block must be YieldOp"));
-  VLOG(0) << "Start Verifying true branch 3.";
   PADDLE_ENFORCE_EQ(true_last_op.num_operands(),
                     (*this)->num_results(),
                     phi::errors::PreconditionNotMet(
                         "The size of last of true block op's input must be "
                         "equal to IfOp's outputs num."));
-  VLOG(0) << "Start Verifying true branch 4.";
-  VLOG(0) << "size block: " << (*this)->region(1).size();
-  VLOG(0) << "size op: " << (*this)->region(1).front().size();
   VLOG(4) << "Start Verifying false branch.";
   PADDLE_ENFORCE_EQ(
       (*this)->region(1).size(),
       1u,
       phi::errors::PreconditionNotMet("The size %d of false_region must be 1.",
                                       (*this)->region(0).size()));
-  VLOG(0) << "Start Verifying true branch 5.";
   auto &false_last_op = (*this)->region(1).front().back();
-  VLOG(0) << "Start Verifying true branch 6.";
   PADDLE_ENFORCE_EQ(true,
                     false_last_op.isa<pir::YieldOp>(),
                     phi::errors::PreconditionNotMet(
                         "The last of false block must be YieldOp"));
-  VLOG(0) << "Start Verifying true branch 7.";
   PADDLE_ENFORCE_EQ(false_last_op.num_operands(),
                     (*this)->num_results(),
                     phi::errors::PreconditionNotMet(
