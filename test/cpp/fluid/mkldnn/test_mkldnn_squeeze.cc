@@ -82,7 +82,7 @@ void test_squeeze2() {
   desc.SetInput("X", {"squeeze-X"});
   desc.SetOutput("Out", {"squeeze-Out"});
   // DataLayout::kNHWC will make it become {2, 1, 3, 2}
-  AddVarToScope<float>("squeeze-X", &scope, {2, 3, 2, 1});  
+  AddVarToScope<float>("squeeze-X", &scope, {2, 3, 2, 1});
   AddVarToScope<float>("squeeze-Out", &scope, {2, 3, 2});
   // transform will make it become -3(1)
   std::vector<int> axes({-1});
