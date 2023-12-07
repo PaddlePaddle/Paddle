@@ -644,7 +644,6 @@ class DygraphShardingOptimizerV2:
         logger.debug("sharding start gradients sync")
         with framework.no_grad():
             for comm_buffer in self._comm_buffer_list:
-                # comm_buffer._comm_grads()
                 if not self.comm_overlap:
                     comm_buffer._comm_grads()
 
