@@ -495,14 +495,15 @@ class SplitWithNumOpPattern
       auto cinn_split = rewriter.Build<cinn::dialect::SplitOp>(
           op->operand_source(0), sections, axis);
 
-      int index = 0;
-      auto orig_out = op.result(0);
-      for (auto it = orig_out.use_begin(); it != orig_out.use_end();) {
-        auto split_op = (it++)->owner();
-        rewriter.ReplaceAllUsesWith(split_op->result(0),
-                                    cinn_split.result(index++));
-        rewriter.EraseOp(split_op);
+      auto build_split =
+          op->result(0).first_use().owner()->dyn_cast<::pir::SplitOp>();
+
+      for (size_t i = 0; i < build_split->num_results(); ++i) {
+        rewriter.ReplaceAllUsesWith(build_split->result(i),
+                                    cinn_split.result(i));
       }
+
+      rewriter.EraseOp(build_split);
 
       rewriter.EraseOp(op);
 

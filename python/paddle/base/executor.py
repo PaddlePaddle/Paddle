@@ -21,7 +21,7 @@ from functools import lru_cache
 
 import numpy as np
 
-from paddle import pir
+from paddle import base, pir
 
 from ..pir import (
     OpResult,
@@ -1103,9 +1103,22 @@ class _ExecutorCache:
         place = cached_data.place
         scope = cached_data.scope
 
+        if not isinstance(place, core.CPUPlace):
+            from paddle.decomposition import decompose
+
+            print("base prog", program)
+            core._set_prim_forward_enabled(True)
+            fetch_list = decompose(program, fetch_list)
+            print("prim prog", program)
+
         _add_pir_fetch_ops(
             program, fetch_list=fetch_list, fetch_var_name=fetch_var_name
         )
+
+        if not isinstance(place, core.CPUPlace):
+            print(place)
+            base.libpaddle.pir.apply_pir_pass(program)
+            print("after pir pass", program)
 
         default_job = core.Job("default")
         type_to_program = {"default": program}

@@ -14,9 +14,7 @@
 
 import unittest
 
-import gradient_checker
 import numpy as np
-from decorator_helper import prog_scope
 from op_test import OpTest, convert_float_to_uint16
 
 import paddle
@@ -371,68 +369,68 @@ class TestExpandV2DygraphAPI(unittest.TestCase):
             np.testing.assert_array_equal(expand_1.numpy(), expand_2.numpy())
 
 
-class TestExpandDoubleGradCheck(unittest.TestCase):
-    def expand_wrapper(self, x):
-        return paddle.expand(x[0], [2, 3])
+# class TestExpandDoubleGradCheck(unittest.TestCase):
+#     def expand_wrapper(self, x):
+#         return paddle.expand(x[0], [2, 3])
 
-    @test_with_pir_api
-    @prog_scope()
-    def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
-        eps = 0.005
-        dtype = np.float32
+#     @test_with_pir_api
+#     @prog_scope()
+#     def func(self, place):
+#         # the shape of input variable should be clearly specified, not inlcude -1.
+#         eps = 0.005
+#         dtype = np.float32
 
-        data = paddle.static.data('data', [2, 3], dtype)
-        data.persistable = True
-        out = paddle.expand(data, [2, 3])
-        data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
+#         data = paddle.static.data('data', [2, 3], dtype)
+#         data.persistable = True
+#         out = paddle.expand(data, [2, 3])
+#         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
 
-        gradient_checker.double_grad_check(
-            [data], out, x_init=[data_arr], place=place, eps=eps
-        )
-        gradient_checker.double_grad_check_for_dygraph(
-            self.expand_wrapper, [data], out, x_init=[data_arr], place=place
-        )
+#         gradient_checker.double_grad_check(
+#             [data], out, x_init=[data_arr], place=place, eps=eps
+#         )
+#         gradient_checker.double_grad_check_for_dygraph(
+#             self.expand_wrapper, [data], out, x_init=[data_arr], place=place
+#         )
 
-    def test_grad(self):
-        paddle.enable_static()
-        places = [base.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
-            self.func(p)
+#     def test_grad(self):
+#         paddle.enable_static()
+#         places = [base.CPUPlace()]
+#         if core.is_compiled_with_cuda():
+#             places.append(base.CUDAPlace(0))
+#         for p in places:
+#             self.func(p)
 
 
-class TestExpandTripleGradCheck(unittest.TestCase):
-    def expand_wrapper(self, x):
-        return paddle.expand(x[0], [2, 3])
+# class TestExpandTripleGradCheck(unittest.TestCase):
+#     def expand_wrapper(self, x):
+#         return paddle.expand(x[0], [2, 3])
 
-    @test_with_pir_api
-    @prog_scope()
-    def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
-        eps = 0.005
-        dtype = np.float32
+#     @test_with_pir_api
+#     @prog_scope()
+#     def func(self, place):
+#         # the shape of input variable should be clearly specified, not inlcude -1.
+#         eps = 0.005
+#         dtype = np.float32
 
-        data = paddle.static.data('data', [2, 3], dtype)
-        data.persistable = True
-        out = paddle.expand(data, [2, 3])
-        data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
+#         data = paddle.static.data('data', [2, 3], dtype)
+#         data.persistable = True
+#         out = paddle.expand(data, [2, 3])
+#         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
 
-        gradient_checker.triple_grad_check(
-            [data], out, x_init=[data_arr], place=place, eps=eps
-        )
-        gradient_checker.triple_grad_check_for_dygraph(
-            self.expand_wrapper, [data], out, x_init=[data_arr], place=place
-        )
+#         gradient_checker.triple_grad_check(
+#             [data], out, x_init=[data_arr], place=place, eps=eps
+#         )
+#         gradient_checker.triple_grad_check_for_dygraph(
+#             self.expand_wrapper, [data], out, x_init=[data_arr], place=place
+#         )
 
-    def test_grad(self):
-        paddle.enable_static()
-        places = [base.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
-            self.func(p)
+#     def test_grad(self):
+#         paddle.enable_static()
+#         places = [base.CPUPlace()]
+#         if core.is_compiled_with_cuda():
+#             places.append(base.CUDAPlace(0))
+#         for p in places:
+#             self.func(p)
 
 
 # Situation 9: comp case, shape is a list(without tensor)

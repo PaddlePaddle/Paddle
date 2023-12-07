@@ -7,7 +7,8 @@ if(WITH_TESTING AND WITH_CINN)
     op_with_group_merge_pass
     op_dialect_vjp
     cinn_op_dialect
-    pir)
+    pir
+    pir_transforms)
   set_tests_properties(map_expr_test PROPERTIES LABELS "RUN_TYPE=CINN")
 
 endif()
