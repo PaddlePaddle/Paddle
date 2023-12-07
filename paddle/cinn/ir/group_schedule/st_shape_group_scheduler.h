@@ -23,7 +23,7 @@ namespace ir {
 // and secondly considering the amount of calculated data.
 struct NodePriority {
   bool has_loop_binded;
-  double score;
+  int64_t score;
 
   bool operator<(const NodePriority& other) const {
     if (has_loop_binded ^ other.has_loop_binded) {

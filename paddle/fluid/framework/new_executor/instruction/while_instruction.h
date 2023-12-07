@@ -51,13 +51,13 @@ class WhileInstruction : public InstructionBase {
 
  private:
   // 'output' = 'input'
-  void CopyInputsToOutputs();
+  void ShareInputsToOutputs();
 
   // Pass argument to body_block for execution.
-  void PassArgsToBodyBlock();
+  void CopyOutputsToBlockArgs();
 
   // Get return value from body_block after each execution.
-  void GetValueFromBodyBlock();
+  void ShareDatasToOutputs();
 
   std::string name_{"while_instruction"};
 

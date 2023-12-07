@@ -20,6 +20,7 @@
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/inference/tensorrt/dynamic_shape_infermeta_factory.h"
+#include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
 
@@ -254,7 +255,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "conv2d" || op_type == "conv2d_transpose" ||
-        op_type == "conv2d_fusion" || op_type == "depthwise_conv2d" ||
+        op_type == "fused_conv2d_add_act" || op_type == "depthwise_conv2d" ||
         op_type == "depthwise_conv2d_transpose") {
       if (desc.Input("Input").size() != 1) {
         VLOG(3) << "TRT Conv2d expect 1 input, but got "
@@ -269,7 +270,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
 
       if (desc.HasAttr("enable_int8")) {
-        if (op_type == "conv2d" || op_type == "conv2d_fusion") {
+        if (op_type == "conv2d" || op_type == "fused_conv2d_add_act") {
           if (!desc.HasAttr("Input_scale")) {
             VLOG(3) << "Input scale not found. TRT int8"
                        " requires conv/deconv to have "
@@ -303,7 +304,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 
 // strides > 1 and 'SAME' is only supported by trt7.0 above
 #if !IS_TRT_VERSION_GE(7000)
-      if (op_type == "conv2d" || op_type == "conv2d_fusion" ||
+      if (op_type == "conv2d" || op_type == "fused_conv2d_add_act" ||
           op_type == "depthwise_conv2d") {
         if (desc.HasAttr("padding_algorithm") && with_dynamic_shape) {
           auto padding_algorithm =
@@ -1811,6 +1812,12 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
     }
+    if (op_type == "size") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "Ops(" << op_type << ") do not support static shape yet.";
+        return false;
+      }
+    }
 
     if (op_type == "pad3d") {
 #if !IS_TRT_VERSION_GE(8200)
@@ -2812,7 +2819,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "bmm",
       "range",
       "conv2d",
-      "conv2d_fusion",
+      "fused_conv2d_add_act",
       "pool2d",
       "relu",
       "elu",
@@ -2975,14 +2982,15 @@ struct SimpleOpTypeSetTeller : public Teller {
       "dequantize_linear",
       "share_data",
       "bitwise_and",
-      "bitwise_or"};
+      "bitwise_or",
+      "size"};
 
   std::unordered_set<std::string> teller_set{
       "matrix_multiply",
       "bmm",
       "range",
       "conv2d",
-      "conv2d_fusion",
+      "fused_conv2d_add_act",
       "pool2d",
       "relu",
       "elu",
@@ -3146,7 +3154,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "dequantize_linear",
       "share_data",
       "bitwise_and",
-      "bitwise_or"};
+      "bitwise_or",
+      "size"};
 };
 
 struct GenericPluginTeller : public Teller {
@@ -3249,6 +3258,40 @@ struct CustomPluginTeller : public Teller {
   }
 };
 
+struct CustomGenericPluginTeller : public Teller {
+  CustomGenericPluginTeller() = default;
+  bool operator()(const framework::OpDesc& desc,
+                  bool use_no_calib_int8 = false,
+                  bool with_dynamic_shape = false,
+                  bool use_explicit_quantization = false) override {
+    const std::string op_type = desc.Type();
+    auto& op_meta_info_map = OpMetaInfoMap::Instance();
+    const auto& meta_info_map = op_meta_info_map.GetMap();
+    if (meta_info_map.count(op_type) > 0) {
+      auto& op_info = meta_info_map.at(op_type).front();
+      auto& trt_infer_shape_fn = OpMetaInfoHelper::GetTrtInferShapeFn(op_info);
+      if (trt_infer_shape_fn == nullptr) {
+        VLOG(3) << op_type
+                << " has no trt getOutputDimensions function. Please set by "
+                   "SetTrtInferShapeFn.";
+        return false;
+      }
+      auto& trt_supports_formate_config =
+          OpMetaInfoHelper::GetTrtSupportsFormatConfig(op_info);
+      if (trt_supports_formate_config.empty()) {
+        VLOG(3)
+            << op_type
+            << " has no trt supportsFormatCombination config. Please set by "
+               "SetTrtSupportsFormatConfig.";
+        return false;
+      }
+      return true;
+    }
+    VLOG(3) << op_type << " has no meta info";
+    return false;
+  }
+};
+
 bool OpTeller::Tell(const framework::ir::Node* node,
                     bool use_no_calib_int8,
                     bool with_dynamic_shape,
@@ -3285,6 +3328,14 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     SetOpConverterType(node->Op(), OpConverterType::CustomPluginCreater);
     return true;
   }
+  auto& custom_generic_plugin_teller = GetCustomGenericPluginTeller();
+  if ((*custom_generic_plugin_teller)(desc,
+                                      use_no_calib_int8,
+                                      with_dynamic_shape,
+                                      use_explicit_quantization)) {
+    SetOpConverterType(node->Op(), OpConverterType::CustomGenericPluginCreater);
+    return true;
+  }
   return false;
 }
 
@@ -3292,6 +3343,7 @@ OpTeller::OpTeller() {  // NOLINT
   tellers_.emplace_back(new tensorrt::SimpleOpTypeSetTeller);
   tellers_.emplace_back(new tensorrt::GenericPluginTeller);
   tellers_.emplace_back(new tensorrt::CustomPluginTeller);
+  tellers_.emplace_back(new tensorrt::CustomGenericPluginTeller);
 }
 
 }  // namespace tensorrt
