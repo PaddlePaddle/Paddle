@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 from op_test import OpTest
+from utils import dygraph_guard
 
 import paddle
 
@@ -167,6 +168,173 @@ class TestRpropV2(unittest.TestCase):
         out.backward()
         rprop.step()
         rprop.clear_gradients()
+
+
+class TestRpropMultiPrecision2_0(unittest.TestCase):
+    def dygraph_rprop_mp(self, mp):
+        paddle.disable_static()
+        paddle.seed(10)
+        paddle.set_device('gpu')
+        input = paddle.randn((2, 2))
+        model = paddle.nn.Linear(2, 2)
+        optimizer = paddle.optimizer.Rprop(
+            parameters=model.parameters(), multi_precision=mp
+        )
+        if mp:
+            model = paddle.amp.decorate(models=model, level='O2')
+            scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+        for idx in range(5):
+            if mp:
+                with paddle.amp.auto_cast(level='O2'):
+                    output = model(input)
+                    loss = paddle.mean(output)
+                scaled = scaler.scale(loss)
+                scaled.backward()
+                scaler.minimize(optimizer, scaled)
+                optimizer.clear_grad()
+            else:
+                output = model(input)
+                loss = paddle.mean(output)
+                optimizer.step()
+                optimizer.clear_grad()
+
+        return output, model.parameters()
+
+    def static_rprop_mp(self, mp):
+        paddle.enable_static()
+        paddle.seed(10)
+        np.random.seed(10)
+        exe = paddle.static.Executor('gpu')
+        train_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        optimizer = paddle.optimizer.Rprop(multi_precision=mp)
+
+        if mp:
+            optimizer = paddle.static.amp.decorate(
+                optimizer,
+                init_loss_scaling=128.0,
+                use_dynamic_loss_scaling=True,
+                use_pure_fp16=True,
+                use_fp16_guard=False,
+            )
+        with paddle.static.program_guard(train_program, startup_program):
+            if mp:
+                data = paddle.static.data(
+                    shape=[2, 2], name='X', dtype='float16'
+                )
+            else:
+                data = paddle.static.data(
+                    shape=[2, 2], name='X', dtype='float32'
+                )
+            hidden = paddle.static.nn.fc(x=data, size=10)
+            loss = paddle.mean(hidden)
+            optimizer.minimize(loss)
+        exe.run(startup_program)
+
+        if mp:
+            optimizer.amp_init(
+                place=paddle.CUDAPlace(0), scope=paddle.static.global_scope()
+            )
+            x = np.random.random(size=(2, 2)).astype('float16')
+        else:
+            x = np.random.random(size=(2, 2)).astype('float32')
+        out = []
+        for idx in range(5):
+            (loss_data,) = exe.run(
+                train_program, feed={"X": x}, fetch_list=[loss.name]
+            )
+            out.append(loss_data)
+        return out
+
+    def test_main(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        "Test dygraph mode"
+        output1_dy, params1_dy = self.dygraph_rprop_mp(mp=True)
+        output2_dy, params2_dy = self.dygraph_rprop_mp(mp=False)
+        np.testing.assert_allclose(
+            output1_dy.astype('float32').numpy(),
+            output2_dy.astype('float32').numpy(),
+            rtol=1e-05,
+            atol=0.1,
+        )
+        for idx in range(len(params1_dy)):
+            np.testing.assert_allclose(
+                params1_dy[idx].astype('float32').numpy(),
+                params2_dy[idx].astype('float32').numpy(),
+                rtol=1e-05,
+                atol=0.1,
+            )
+        "Test static graph mode"
+        output1_st = self.static_rprop_mp(mp=True)
+        output2_st = self.static_rprop_mp(mp=False)
+        for idx in range(len(output1_st)):
+            np.testing.assert_allclose(
+                output1_st[idx].astype('float32'),
+                output2_st[idx].astype('float32'),
+                rtol=1e-05,
+                atol=0.1,
+            )
+
+
+class TestRpropSimple(unittest.TestCase):
+    def setUp(self) -> None:
+        self.data = np.random.random(size=(2, 2)).astype('float32')
+
+    def run_static(self):
+        with paddle.pir_utils.IrGuard():
+            paddle.seed(10)
+            np.random.seed(10)
+
+            exe = paddle.static.Executor('gpu')
+            train_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+
+            with paddle.static.program_guard(train_program, startup_program):
+                input = paddle.static.data(
+                    shape=[2, 2], name='input', dtype='float32'
+                )
+                model = paddle.nn.Linear(2, 2)
+                output = model(input)
+                loss = paddle.mean(output)
+
+                optimizer = paddle.optimizer.Rprop()
+                optimizer.minimize(loss)
+
+            exe.run(startup_program)
+
+            out = []
+            for _ in range(5):
+                (loss_data,) = exe.run(
+                    train_program, feed={"input": self.data}, fetch_list=[loss]
+                )
+                out.append(loss_data)
+            return out
+
+    def run_dygraph(self):
+        with dygraph_guard():
+            paddle.seed(10)
+            np.random.seed(10)
+
+            out = []
+            model = paddle.nn.Linear(2, 2)
+            optimizer = paddle.optimizer.Rprop(parameters=model.parameters())
+            for _ in range(5):
+                output = model(paddle.to_tensor(self.data))
+                loss = paddle.mean(output)
+                out.append(loss.numpy())
+                loss.backward()
+                optimizer.step()
+                optimizer.clear_grad()
+
+            return out
+
+    def test_main(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        out1 = self.run_dygraph()
+        out2 = self.run_static()
+        np.testing.assert_allclose(out1, out2)
 
 
 if __name__ == "__main__":
