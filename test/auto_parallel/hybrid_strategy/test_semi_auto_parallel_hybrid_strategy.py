@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import tempfile
 import unittest
 
 import collective.test_communication_api_base as test_base
@@ -33,10 +34,13 @@ class TestSemiAutoParallelDPMPStrategy(test_base.CommunicationTestDistBase):
             self._default_envs, self._changeable_envs
         )
         for envs in envs_list:
+            ckpt_path = tempfile.TemporaryDirectory()
+            envs["ckpt_path"] = ckpt_path.name
             self.run_test_case(
                 "semi_auto_parallel_simple_net_dp_mp.py",
                 user_defined_envs=envs,
             )
+            ckpt_path.cleanup()
 
 
 class TestSemiAutoParallelHybridStrategy(test_base.CommunicationTestDistBase):
@@ -57,10 +61,13 @@ class TestSemiAutoParallelHybridStrategy(test_base.CommunicationTestDistBase):
             self._default_envs, self._changeable_envs
         )
         for envs in envs_list:
+            ckpt_path = tempfile.TemporaryDirectory()
+            envs["ckpt_path"] = ckpt_path.name
             self.run_test_case(
                 "semi_auto_parallel_simple_net_dp_mp_pp.py",
                 user_defined_envs=envs,
             )
+            ckpt_path.cleanup()
 
 
 class TestSemiAutoParallelCrossMeshReshard(test_base.CommunicationTestDistBase):
