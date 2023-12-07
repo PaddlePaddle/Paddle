@@ -52,9 +52,10 @@ class TensorNode final {
 
   class ConsumerOpListView {
    public:
-    ConsumerOpListView(const std::set<common::Shared<common::GraphEdge>,
-                                      common::GraphEdgeCompare>& edges,
-                       const hlir::framework::Graph* graph)
+    ConsumerOpListView(
+        const std::set<cinn::common::Shared<cinn::common::GraphEdge>,
+                       cinn::common::GraphEdgeCompare>& edges,
+        const hlir::framework::Graph* graph)
         : edges_(edges), graph_(graph) {}
 
     ConsumerOpListView(const ConsumerOpListView& other) = delete;
@@ -64,8 +65,8 @@ class TensorNode final {
 
     class Iterator {
      public:
-      Iterator(std::set<common::Shared<common::GraphEdge>,
-                        common::GraphEdgeCompare>::const_iterator it,
+      Iterator(std::set<cinn::common::Shared<cinn::common::GraphEdge>,
+                        cinn::common::GraphEdgeCompare>::const_iterator it,
                const hlir::framework::Graph* graph)
           : iter_(it), graph_(graph) {}
 
@@ -89,8 +90,8 @@ class TensorNode final {
       OpNode operator*() const;
 
      private:
-      std::set<common::Shared<common::GraphEdge>,
-               common::GraphEdgeCompare>::const_iterator iter_;
+      std::set<cinn::common::Shared<cinn::common::GraphEdge>,
+               cinn::common::GraphEdgeCompare>::const_iterator iter_;
       const hlir::framework::Graph* graph_;
     };
 
@@ -101,7 +102,8 @@ class TensorNode final {
     Iterator end() const { return Iterator(this->edges_.end(), graph_); }
 
    private:
-    const std::set<Shared<common::GraphEdge>, common::GraphEdgeCompare>& edges_;
+    const std::set<Shared<cinn::common::GraphEdge>,
+                   cinn::common::GraphEdgeCompare>& edges_;
     const hlir::framework::Graph* graph_;
   };
 

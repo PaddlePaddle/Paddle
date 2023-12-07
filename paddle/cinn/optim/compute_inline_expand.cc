@@ -115,7 +115,7 @@ struct TensorInlineExpandMutator : public ir::IRMutator<> {
           auto shapes = tensor->shape;
           CHECK_EQ(shapes.size(), node->indices.size());
           for (int i = 0; i < shapes.size(); i++) {
-            if (common::is_zero(shapes[i] - 1)) {
+            if (cinn::common::is_zero(shapes[i] - 1)) {
               node->indices[i] = Expr(0);
             }
           }
@@ -175,7 +175,7 @@ struct TensorInlineExpandMutator : public ir::IRMutator<> {
   }
 };
 
-struct SSANode : public common::GraphNode {
+struct SSANode : public cinn::common::GraphNode {
   std::string id_;
 
   explicit SSANode(const std::string &id) : id_(id) {}
@@ -191,7 +191,7 @@ struct SSANode : public common::GraphNode {
 // ir::CollectIRNodes method collects all the tensors recursively, so it can not
 // reserve the level information, fix it.
 struct SSABuilder : public ir::IRMutator<> {
-  common::Graph graph;
+  cinn::common::Graph graph;
 
   SSABuilder &operator()(Expr *expr) {
     ir::IRMutator<>::Visit(expr, expr);

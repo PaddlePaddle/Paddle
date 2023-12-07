@@ -17,6 +17,7 @@
 import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.base.framework import _current_expected_place
+from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import Variable
 from paddle.framework import (
     in_dynamic_mode,
@@ -987,16 +988,27 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
     if dtype is None:
         dtype = core.VarDesc.VarType.INT64
         if in_pir_mode():
-            from paddle.base.libpaddle import DataType
-
             dtype = DataType.INT64
     elif not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         shape = paddle.utils.convert_shape_to_list(shape)
-        place = _current_expected_place()
-        return _C_ops.randint(low, high, shape, dtype, place)
+        return _C_ops.randint(
+            low, high, shape, dtype, _current_expected_place()
+        )
+    elif in_pir_mode():
+        check_type(
+            shape, 'shape', (list, tuple, paddle.pir.OpResult), 'randint'
+        )
+        check_dtype(dtype, 'dtype', ['int32', 'int64'], 'randint')
+        if paddle.utils._contain_var(shape):
+            shape = paddle.utils.get_int_tensor_list(
+                shape, _current_expected_place()
+            )
+        return _C_ops.randint(
+            low, high, shape, dtype, _current_expected_place()
+        )
     else:
         check_shape(shape, 'randint')
         check_dtype(dtype, 'dtype', ['int32', 'int64'], 'randint')
@@ -1172,8 +1184,9 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
         low = 0
     if dtype is None:
         dtype = x.dtype
-    if not isinstance(dtype, core.VarDesc.VarType):
-        dtype = convert_np_dtype_to_dtype_(dtype)
+    else:
+        if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
+            dtype = convert_np_dtype_to_dtype_(dtype)
     shape = paddle.shape(x)
 
     if low >= high:
@@ -1182,20 +1195,41 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
             f"high = {high}"
         )
 
-    if in_dynamic_mode():
-        shape = paddle.utils.convert_shape_to_list(shape)
-        out = _legacy_C_ops.randint(
-            'shape',
-            shape,
-            'low',
-            low,
-            'high',
-            high,
-            'seed',
-            0,
-            'dtype',
-            core.VarDesc.VarType.INT64,
-        )
+    if in_dynamic_or_pir_mode():
+        if in_dynamic_mode():
+            shape = paddle.utils.convert_shape_to_list(shape)
+            out = _legacy_C_ops.randint(
+                'shape',
+                shape,
+                'low',
+                low,
+                'high',
+                high,
+                'seed',
+                0,
+                'dtype',
+                core.VarDesc.VarType.INT64,
+            )
+        else:
+            check_type(
+                shape,
+                'shape',
+                (list, tuple, paddle.pir.OpResult),
+                'randint_like',
+            )
+            check_dtype(
+                dtype,
+                'dtype',
+                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+                'randint_like',
+            )
+            if paddle.utils._contain_var(shape):
+                shape = paddle.utils.get_int_tensor_list(
+                    shape, _current_expected_place()
+                )
+            out = _C_ops.randint(
+                low, high, shape, DataType.INT64, _current_expected_place()
+            )
         out = paddle.cast(out, dtype)
         return out
     else:
