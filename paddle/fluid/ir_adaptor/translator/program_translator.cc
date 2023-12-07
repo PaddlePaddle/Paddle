@@ -424,6 +424,27 @@ void ProgramTranslator::TranslateBlock(const BlockDesc& src_block,
   }
 }
 
+pir::Operation* ProgramTranslator::InsertFullOrDataOpToBlock(
+    pir::Block* insert_block, pir::Type type) {
+  pir::Builder builder(ctx_, insert_block, insert_block->begin());
+  if (type.isa<paddle::dialect::DenseTensorType>()) {
+    auto tensor_type = type.dyn_cast<paddle::dialect::DenseTensorType>();
+    std::vector<int64_t> shape = common::vectorize(tensor_type.dims());
+    paddle::dialect::FullOp full_op = builder.Build<paddle::dialect::FullOp>(
+        shape,
+        0,
+        paddle::dialect::TransToPhiDataType(tensor_type.dtype()),
+        phi::CPUPlace());
+    return full_op.operation();
+  } else if (type.isa<paddle::dialect::DenseTensorArrayType>()) {
+    auto array_type = type.dyn_cast<paddle::dialect::DenseTensorArrayType>();
+    paddle::dialect::CreateArrayOp array_op =
+        builder.Build<paddle::dialect::CreateArrayOp>(array_type.dtype());
+    return array_op.operation();
+  }
+  return nullptr;
+}
+
 // NOTE(zhangbo): All condition_block_op will be translated as an if_op with
 // only a true branch.
 void ProgramTranslator::TranslateIfOperation(
@@ -494,11 +515,15 @@ void ProgramTranslator::TranslateIfOperation(
     for (size_t id = 0; id < cond_op_outputs.size(); id++) {
       if (false_block_context->count(cond_op_outputs[id]) == 0) {
         auto true_type = true_yeild_inputs[id].type();
-        if (true_type.isa<paddle::dialect::DenseTensorType>()) {
-          InsertFullOpToBlock(&false_region.front(), true_type);
-        } else {
-          CreateUndefinedVariable(cond_op_outputs[id], sub_block);
-        }
+        pir::Operation* init_op =
+            InsertFullOrDataOpToBlock(&false_region.front(), true_type);
+        PADDLE_ENFORCE_NOT_NULL(
+            init_op,
+            phi::errors::PreconditionNotMet(
+                "Only support insert full or data op for DenseTensor or "
+                "DenseTensorArray to false block failed."));
+        false_block_context->PushValue(
+            cond_op_outputs[id], VariableDefiningInfo(init_op->result(i)));
       }
       false_yeild_inputs.push_back(
           false_block_context->at(cond_op_outputs[id]).value);
@@ -797,24 +822,6 @@ const VariableDefiningInfo& ProgramTranslator::CreateUndefinedVariable(
   }
   param_map_.PushValue(var_name, val);
   return param_map_.at(var_name);
-}
-
-const VariableDefiningInfo& ProgramTranslator::InsertFullOpToBlock(
-    pir::Block* insert_block, pir::Type type) {
-  PADDLE_ENFORCE_EQ(
-      type.isa<paddle::dialect::DenseTensorType>(),
-      true,
-      platform::errors::InvalidArgument(
-          "only support insert FullOp for DenseTensorType, but now is %s",
-          type));
-  pir::Builder builder(ctx_, insert_block, insert_block->begin());
-  auto tensor_type = type.dyn_cast<paddle::dialect::DenseTensorType>();
-  std::vector<int64_t> shape = common::vectorize(tensor_type.dims());
-  paddle::dialect::FullOp full_op = builder.Build<paddle::dialect::FullOp>(
-      shape,
-      0,
-      paddle::dialect::TransToPhiDataType(tensor_type.dtype()),
-      phi::CPUPlace());
 }
 
 void ProgramTranslator::SetIsPersisableAttributeForAllValue(
