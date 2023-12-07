@@ -74,15 +74,15 @@ class FusedWeightOnlyLinearPattern
         res.Attr([](const pir::drr::MatchContext &match_ctx) -> std::any {
           return "weight_only_int8";
         });
-    // int arch = getSMVersion();
-    const auto &weight_quantize_arch_attr =
+    int arch = getSMVersion();
+    const auto &arch_attr =
         res.Attr([&](const pir::drr::MatchContext &match_ctx) -> std::any {
-          return 80;
+          return arch;
         });
 
-    const auto &weight_quantize = res.Op(
-        "pd_op.weight_quantize",
-        {{"algo", weight_only_int8_attr}, {"arch", weight_quantize_arch_attr}});
+    const auto &weight_quantize =
+        res.Op("pd_op.weight_quantize",
+               {{"algo", weight_only_int8_attr}, {"arch", arch_attr}});
     weight_quantize({&res.Tensor("w")},
                     {&res.Tensor("quanted_weight_tensor"),
                      &res.Tensor("weight_scale_tensor")});
@@ -92,12 +92,9 @@ class FusedWeightOnlyLinearPattern
           return "int8";
         });
 
-    const auto &weight_only_linear_arch_attr = res.Attr(
-        [&](const pir::drr::MatchContext &match_ctx) -> int { return 80; });
     const auto &weight_only_linear =
         res.Op("pd_op.weight_only_linear",
-               {{"weight_dtype", weight_dtype_attr},
-                {"arch", weight_only_linear_arch_attr}});
+               {{"weight_dtype", weight_dtype_attr}, {"arch", arch_attr}});
     weight_only_linear({&res.Tensor("x"),
                         &res.Tensor("quanted_weight_tensor"),
                         &res.Tensor("bias"),
@@ -119,8 +116,8 @@ class FusedWeightOnlyLinearPass : public pir::PatternRewritePass {
 
   bool CanApplyOn(pir::Operation *op) const override {
     int sm_vesion = getSMVersion();
-    if (sm_vesion != 70 && sm_vesion != 80 && sm_vesion != 86 &&
-        sm_vesion != 75) {
+    // TODO(Wanglongzhi2001): only support sm80 for now
+    if (sm_vesion != 80) {
       return false;
     }
     return op->num_regions() > 0;
