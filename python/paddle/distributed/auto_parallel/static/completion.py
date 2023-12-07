@@ -29,10 +29,10 @@ from ..process_mesh import ProcessMesh, compute_compatible_process_mesh
 from .dist_attribute import OperatorDistAttr, TensorDistAttr
 from .dist_context import _node_id
 from .operators.common import (
+    _gradient_sync_by_partial_ops,
     find_compatible_distributed_operator_impls,
     find_distributed_operator_impl_container,
 )
-from .operators.common import _gradient_sync_by_partial_ops
 from .process_group import get_world_process_group
 from .utils import (
     __no_shape_var_type__,
@@ -152,6 +152,7 @@ def _can_apply_infer_spmd_rule(dist_op):
         "transpose2",
         "split",
         "unsqueeze2",
+        "silu",
     ]
     parallel_ce = os.getenv("PARALLEL_CROSS_ENTROPY")
     if parallel_ce == "true":
