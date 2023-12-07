@@ -154,7 +154,9 @@ bool ComputeInliner::BodyPatternAllowInline() {
       inlined_store_, [&](const Expr* x) { return x->as_var(); });
   std::set<Var, CompVar> vars_set;
   for (auto& i : find_vars) {
-    if (i.as_var_ref()->name == "S0" || i.as_var_ref()->name == "S1") continue;
+    if (i.as_var_ref()->name[0] == 'S') continue;
+    // if (i.as_var_ref()->name == "S0" || i.as_var_ref()->name == "S1")
+    // continue;
     vars_set.insert(i.as_var_ref());
   }
 
