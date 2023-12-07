@@ -226,7 +226,7 @@ class PtbModel(paddle.nn.Layer):
         np.save("emb_grad", self.x_emb.gradient())
 
 
-def train(to_static: bool):
+def train():
     num_layers = 1
     batch_size = 4
     hidden_size = 10
@@ -237,88 +237,96 @@ def train(to_static: bool):
     vocab_size = 1000
     batch_num = 200
 
-    with enable_to_static_guard(to_static):
-        with unique_name.guard():
-            paddle.seed(SEED)
-            paddle.framework.random._manual_program_seed(SEED)
-            ptb_model = paddle.jit.to_static(
-                PtbModel(
-                    hidden_size=hidden_size,
-                    vocab_size=vocab_size,
-                    num_layers=num_layers,
-                    num_steps=num_steps,
-                    init_scale=init_scale,
-                    dropout=dropout,
-                )
+    with unique_name.guard():
+        paddle.seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
+        ptb_model = paddle.jit.to_static(
+            PtbModel(
+                hidden_size=hidden_size,
+                vocab_size=vocab_size,
+                num_layers=num_layers,
+                num_steps=num_steps,
+                init_scale=init_scale,
+                dropout=dropout,
+            )
+        )
+
+        sgd = SGD(learning_rate=1e-3, parameters=ptb_model.parameters())
+
+        for epoch_id in range(max_epoch):
+            total_loss = 0.0
+            iters = 0.0
+            total_sample = 0
+
+            init_hidden_data = np.zeros(
+                (num_layers, batch_size, hidden_size), dtype='float32'
+            )
+            init_cell_data = np.zeros(
+                (num_layers, batch_size, hidden_size), dtype='float32'
             )
 
-            sgd = SGD(learning_rate=1e-3, parameters=ptb_model.parameters())
+            init_hidden = paddle.to_tensor(init_hidden_data)
+            init_cell = paddle.to_tensor(init_cell_data)
+            for step_id in range(batch_num):
+                x_data = np.arange(12).reshape(4, 3).astype('int64')
+                y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
+                y_data = y_data.reshape((-1, 1))
 
-            for epoch_id in range(max_epoch):
-                total_loss = 0.0
-                iters = 0.0
-                total_sample = 0
+                x_data = x_data.reshape((-1, num_steps, 1))
+                y_data = y_data.reshape((-1, num_steps, 1))
 
-                init_hidden_data = np.zeros(
-                    (num_layers, batch_size, hidden_size), dtype='float32'
+                x = paddle.to_tensor(x_data)
+                y = paddle.to_tensor(y_data)
+
+                dy_loss, last_hidden, last_cell = ptb_model(
+                    x, y, init_hidden, init_cell
                 )
-                init_cell_data = np.zeros(
-                    (num_layers, batch_size, hidden_size), dtype='float32'
-                )
+                out_loss = dy_loss.numpy()
 
-                init_hidden = paddle.to_tensor(init_hidden_data)
-                init_cell = paddle.to_tensor(init_cell_data)
-                for step_id in range(batch_num):
-                    x_data = np.arange(12).reshape(4, 3).astype('int64')
-                    y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
-                    y_data = y_data.reshape((-1, 1))
+                dy_loss.backward()
+                sgd.minimize(dy_loss)
+                ptb_model.clear_gradients()
 
-                    x_data = x_data.reshape((-1, num_steps, 1))
-                    y_data = y_data.reshape((-1, num_steps, 1))
-
-                    x = paddle.to_tensor(x_data)
-                    y = paddle.to_tensor(y_data)
-
-                    dy_loss, last_hidden, last_cell = ptb_model(
-                        x, y, init_hidden, init_cell
-                    )
-                    out_loss = dy_loss.numpy()
-
-                    dy_loss.backward()
-                    sgd.minimize(dy_loss)
-                    ptb_model.clear_gradients()
-
-                    total_loss += out_loss
-                    iters += num_steps
-                    total_sample += 1
-                    if step_id % PRINT_STEP == 0:
-                        if step_id == 0:
-                            logging.info(
-                                "epoch %d | step %d, loss %0.3f"
-                                % (epoch_id, step_id, total_loss / total_sample)
+                total_loss += out_loss
+                iters += num_steps
+                total_sample += 1
+                if step_id % PRINT_STEP == 0:
+                    if step_id == 0:
+                        logging.info(
+                            "epoch %d | step %d, loss %0.3f"
+                            % (epoch_id, step_id, total_loss / total_sample)
+                        )
+                        avg_batch_time = time.time()
+                    else:
+                        speed = PRINT_STEP / (time.time() - avg_batch_time)
+                        logging.info(
+                            "epoch %d | step %d, loss %0.3f, speed %.3f steps/s"
+                            % (
+                                epoch_id,
+                                step_id,
+                                total_loss / total_sample,
+                                speed,
                             )
-                            avg_batch_time = time.time()
-                        else:
-                            speed = PRINT_STEP / (time.time() - avg_batch_time)
-                            logging.info(
-                                "epoch %d | step %d, loss %0.3f, speed %.3f steps/s"
-                                % (
-                                    epoch_id,
-                                    step_id,
-                                    total_loss / total_sample,
-                                    speed,
-                                )
-                            )
-                            avg_batch_time = time.time()
+                        )
+                        avg_batch_time = time.time()
 
-            return out_loss, last_hidden.numpy(), last_cell.numpy()
+        return out_loss, last_hidden.numpy(), last_cell.numpy()
+
+
+def train_dygraph():
+    with enable_to_static_guard(False):
+        return train()
+
+
+def train_static():
+    return train()
 
 
 class TestPtb(Dy2StTestBase):
     @test_legacy_and_pt_and_pir
     def test_check_result(self):
-        loss_1, hidden_1, cell_1 = train(to_static=False)
-        loss_2, hidden_2, cell_2 = train(to_static=True)
+        loss_1, hidden_1, cell_1 = train_dygraph()
+        loss_2, hidden_2, cell_2 = train_static()
 
         np.testing.assert_allclose(loss_1, loss_2, rtol=1e-05)
         np.testing.assert_allclose(hidden_1, hidden_2, rtol=1e-05)
