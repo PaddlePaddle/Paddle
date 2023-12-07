@@ -576,35 +576,17 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
       VLOG(5) << "Unsupported type weight by non-int8!";
     }
   } else {
-    if (quant_post_type.find("fc") != quant_post_type.end() &&
-        quant_post_type.find("fc")->second == 0) {
-      VLOG(5) << "Use int8  per-tensor weight";
-      PrepareWeight<int8_t, int8_t>(graph,
-                                    scope,
-                                    block,
-                                    mul_w_replicated_node,
-                                    &filter_intx,
-                                    &filter_max,
-                                    &scale_max,
-                                    !transpose_w,
-                                    weight_scale,
-                                    false);
-    } else if (quant_post_type.find("fc") != quant_post_type.end() &&
-               quant_post_type.find("fc")->second == 1) {
-      VLOG(5) << "Use int8  per-channel weight";
-      PrepareWeight<int8_t, int8_t>(graph,
-                                    scope,
-                                    block,
-                                    mul_w_replicated_node,
-                                    &filter_intx,
-                                    &filter_max,
-                                    &scale_max,
-                                    !transpose_w,
-                                    weight_scale,
-                                    true);
-    } else {
-      VLOG(5) << "Unsupported type weight!";
-    }
+    VLOG(5) << "Use int8  quant weight";
+    PrepareWeight<int8_t, int8_t>(graph,
+                                  scope,
+                                  block,
+                                  mul_w_replicated_node,
+                                  &filter_intx,
+                                  &filter_max,
+                                  &scale_max,
+                                  !transpose_w,
+                                  weight_scale,
+                                  false);
   }
 
   (*fusion_nodes_map)["w"] = filter_intx;

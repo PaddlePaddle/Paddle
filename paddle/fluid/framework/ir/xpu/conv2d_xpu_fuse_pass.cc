@@ -768,22 +768,16 @@ void Conv2dXPUFusePass::CreateFusionWeightsAndBias(
     }
 
   } else {
-    if (quant_post_type.find("conv2d") != quant_post_type.end() &&
-            quant_post_type.find("conv2d")->second == 0 ||
-        quant_post_type.find("conv2d") != quant_post_type.end() &&
-            quant_post_type.find("conv2d")->second == 1) {
-      PrepareWeight<int8_t, int8_t>(graph,
-                                    scope,
-                                    block,
-                                    conv_filter_replicated_node,
-                                    &filter_intx,
-                                    &filter_max,
-                                    &scale_max,
-                                    false,
-                                    weight_scale);
-    } else {
-      VLOG(5) << "Unsupported type weight!";
-    }
+    VLOG(5) << "Use int8 quant weight";
+    PrepareWeight<int8_t, int8_t>(graph,
+                                  scope,
+                                  block,
+                                  conv_filter_replicated_node,
+                                  &filter_intx,
+                                  &filter_max,
+                                  &scale_max,
+                                  false,
+                                  weight_scale);
   }
 
   (*fusion_nodes_map)["filter"] = filter_intx;
