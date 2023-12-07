@@ -36,7 +36,7 @@ class TrtConvertArgsort(TrtLayerAutoScanTest):
             elif self.dims == 3:
                 return np.random.random([batch, 3, 24]).astype(np.float16)
             elif self.dims == 2:
-                return np.random.random([batch, 24]).astype(np.int32)
+                return np.random.random([batch, 24]).astype(np.float16)
 
         for dims in [2, 3, 4]:
             for batch in [1, 6, 9]:
