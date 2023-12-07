@@ -450,7 +450,7 @@ class InplacePass : public pir::Pass {
     auto& block = module_op.block();
 
     auto inplace_ops = details::GetInplaceOps(&block);
-
+    int64_t num_rewrites_{0};
     for (auto kv : inplace_ops) {
       VLOG(6) << "Do inplace for: "
               << kv.first->attributes()
@@ -477,9 +477,6 @@ class InplacePass : public pir::Pass {
   bool CanApplyOn(pir::Operation* op) const override {
     return op->isa<::pir::ModuleOp>() && op->num_regions() > 0;
   }
-
- private:
-  int64_t num_rewrites_{0};
 };
 
 namespace pir {

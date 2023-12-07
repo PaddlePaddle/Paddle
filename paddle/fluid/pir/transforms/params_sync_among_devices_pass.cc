@@ -53,6 +53,7 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
         phi::errors::PreconditionNotMet(
             "params_sync_among_devices_pass should run on module op."));
     auto& block = module_op.block();
+    int64_t num_rewrites_{0};
     for (auto& inner_op : block) {
       if (inner_op.isa<pir::ParameterOp>()) {
         std::string param_name = inner_op.attributes()
@@ -88,7 +89,6 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
  private:
   phi::Place place_;
   paddle::framework::Scope* scope_{nullptr};
-  int64_t num_rewrites_{0};
 };
 
 }  // namespace
