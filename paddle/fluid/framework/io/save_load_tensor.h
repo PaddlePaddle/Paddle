@@ -17,7 +17,6 @@ limitations under the License. */
 #include <numeric>
 #include <string>
 
-#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/version.h"
 
 namespace paddle {
