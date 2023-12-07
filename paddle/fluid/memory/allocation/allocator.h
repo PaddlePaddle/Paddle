@@ -153,8 +153,8 @@ static T&& FillValue(T&& allocation) {
                  << allocation->ptr() << " " << allocation->place() << " "
                  << allocation->size();
         if (platform::is_gpu_place(allocation->place())) {
-          cudaMemset(
-              allocation->ptr(), FLAGS_alloc_fill_value, allocation->size());
+          PADDLE_ENFORCE_GPU_SUCCESS(cudaMemset(
+              allocation->ptr(), FLAGS_alloc_fill_value, allocation->size()));
         } else {
           std::memset(
               allocation->ptr(), FLAGS_alloc_fill_value, allocation->size());
