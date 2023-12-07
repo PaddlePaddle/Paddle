@@ -29,7 +29,7 @@ struct Linspace<phi::CPUContext, T> {
                   bool align_corners,
                   DenseTensor* numbers,
                   const phi::CPUContext& dev_ctx) {
-    numbers->Resize(phi::make_ddim({count}));
+    numbers->Resize(common::make_ddim({count}));
     T* number_data = dev_ctx.template Alloc<T>(numbers);
     T slice = (end - start) / (T)(count - 1);
     if (!align_corners) {
@@ -55,7 +55,7 @@ void AffineGridGrad4DKernel(const Context& dev_ctx,
   int w = 0;
   h = static_cast<int>(size_attr[2]);
   w = static_cast<int>(size_attr[3]);
-  theta_grad->Resize(phi::make_ddim({n, 2, 3}));
+  theta_grad->Resize(common::make_ddim({n, 2, 3}));
   dev_ctx.template Alloc<T>(theta_grad);
   phi::funcs::SetConstant<Context, T>()(dev_ctx, theta_grad, static_cast<T>(0));
   DenseTensor grid;
@@ -94,7 +94,7 @@ void AffineGridGrad5DKernel(const Context& dev_ctx,
   d = static_cast<int>(size_attr[2]);
   h = static_cast<int>(size_attr[3]);
   w = static_cast<int>(size_attr[4]);
-  theta_grad->Resize(phi::make_ddim({n, 3, 4}));
+  theta_grad->Resize(common::make_ddim({n, 3, 4}));
   dev_ctx.template Alloc<T>(theta_grad);
   phi::funcs::SetConstant<Context, T>()(dev_ctx, theta_grad, static_cast<T>(0));
   DenseTensor grid;

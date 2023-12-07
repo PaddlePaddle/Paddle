@@ -42,20 +42,17 @@ SpmdInfo StackInferSpmd(const std::vector<DistMetaTensor>& x, int axis) {
                  x.end(),
                  std::back_inserter(tensor_shapes),
                  [](const DistMetaTensor& meta) {
-                   return phi::vectorize<int64_t>(meta.dims());
+                   return common::vectorize<int64_t>(meta.dims());
                  });
   bool all_empty =
       std::all_of(tensor_shapes.begin(), tensor_shapes.end(), IsEmpty);
-  if (all_empty) {
-    return SpmdInfo();
-  }
 
   auto non_empty_iter =
       std::find_if(tensor_shapes.begin(), tensor_shapes.end(), [](auto& shape) {
         return !IsEmpty(shape);
       });
 
-  auto non_empty_index = non_empty_iter - tensor_shapes.begin();
+  auto non_empty_index = all_empty ? 0 : non_empty_iter - tensor_shapes.begin();
   auto ndim = tensor_shapes[non_empty_index].size();
   // normlize dim
   auto dim = axis < 0 ? static_cast<int64_t>(ndim) + axis : axis;
@@ -64,10 +61,12 @@ SpmdInfo StackInferSpmd(const std::vector<DistMetaTensor>& x, int axis) {
       x.begin(), x.end(), std::back_inserter(input_attrs), [](auto& meta) {
         return meta.dist_attr();
       });
-  std::string notation = FillStackNotation(ndim);
-  std::vector<std::string> axis_names(input_attrs.size(), notation);
-  AlignDimsSharding(
-      &input_attrs, tensor_shapes, axis_names, {}, notation, true);
+  if (!all_empty) {
+    std::string notation = FillStackNotation(ndim);
+    std::vector<std::string> axis_names(input_attrs.size(), notation);
+    AlignDimsSharding(
+        &input_attrs, tensor_shapes, axis_names, {}, notation, true);
+  }
 
   TensorDistAttr output_attr =
       CopyTensorDistAttrForOutput(input_attrs[non_empty_index]);

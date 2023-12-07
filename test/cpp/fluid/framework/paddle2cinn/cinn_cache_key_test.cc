@@ -18,10 +18,10 @@
 #include <unordered_set>
 
 #include "gtest/gtest.h"
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace framework {
@@ -47,7 +47,7 @@ TEST(CinnCacheKeyTest, TestAsUnorderedKeyByStructure) {
   std::map<std::string, const phi::DenseTensor *> feed_tensors = {
       {"X", tensor_pointer}};
 
-  DDim ddim = phi::make_ddim({1, 2, 3});
+  DDim ddim = common::make_ddim({1, 2, 3});
   std::map<std::string, DDim> feed_shapes = {{"X", ddim}};
   std::map<std::string, DataType> feed_dtypes = {{"X", fp32}};
 
@@ -125,7 +125,7 @@ TEST(CinnCacheKeyTest, TestAsUnorderedKeyByAddress) {
   std::map<std::string, const phi::DenseTensor *> feed_tensors = {
       {"X", tensor_pointer}};
 
-  DDim ddim = phi::make_ddim({1, 2, 3});
+  DDim ddim = common::make_ddim({1, 2, 3});
   std::map<std::string, DDim> feed_shapes = {{"X", ddim}};
   std::map<std::string, DataType> feed_dtypes = {{"X", fp32}};
   std::map<std::string, DataType> new_dtypes = {{"X", DataType::FLOAT64}};

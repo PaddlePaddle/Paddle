@@ -25,7 +25,7 @@ namespace cinn {
 namespace hlir {
 namespace framework {
 
-using common::Target;
+using cinn::common::Target;
 
 namespace {
 

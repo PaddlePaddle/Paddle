@@ -17,7 +17,7 @@
 #include <type_traits>
 #include <utility>
 
-#include "paddle/phi/core/macros.h"
+#include "paddle/common/macros.h"
 
 namespace phi {
 

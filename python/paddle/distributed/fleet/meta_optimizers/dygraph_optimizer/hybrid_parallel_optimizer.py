@@ -200,6 +200,13 @@ class HybridParallelClipGrad:
             + global_norm_not_dist_fp32
         )
 
+        return self._comm_and_clip(
+            params_grads, global_norm_var_dist, global_norm_var_not_dist
+        )
+
+    def _comm_and_clip(
+        self, params_grads, global_norm_var_dist, global_norm_var_not_dist
+    ):
         self._global_norm(global_norm_var_dist, global_norm_var_not_dist)
 
         global_norm_var_fp32 = paddle.sqrt(
