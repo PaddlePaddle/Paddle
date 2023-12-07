@@ -226,7 +226,6 @@ void set_constant_with_place<phi::CustomPlace>(
     phi::DenseTensor* tensor,
     const void* value) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  VLOG(0) << "UT tensor->dtype():" << tensor->dtype();
   auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       "full",
       {paddle::experimental::ParseBackend(tensor->place()),
@@ -240,7 +239,6 @@ void set_constant_with_place<phi::CustomPlace>(
                                     phi::DenseTensor*);
   const float* num_ptr = reinterpret_cast<const float*>(value);
   float num = *num_ptr;
-  VLOG(0) << "UT num:" << num;
   auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
   (*kernel_fn)(context,
                phi::IntArray(common::vectorize(tensor->dims())),

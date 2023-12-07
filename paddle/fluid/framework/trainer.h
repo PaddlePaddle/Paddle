@@ -157,7 +157,6 @@ class DistMultiTrainer : public MultiTrainer {
 
  protected:
   std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
-  std::vector<std::thread> threads_;
 };
 
 #if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_HIP || \

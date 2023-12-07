@@ -1731,8 +1731,8 @@ class Fleet:
             )
 
             context["valid_strategy"] = copy.deepcopy(valid_strategy)
-            logger.info("valid_strategy: " + str(context["valid_strategy"]))
-            logger.info(
+            logger.debug("valid_strategy: " + str(context["valid_strategy"]))
+            logger.debug(
                 "user_defined_strategy: "
                 + str(context["user_defined_strategy"])
             )
@@ -1774,7 +1774,7 @@ class Fleet:
                 )
 
             if meta_optimizer:
-                logger.info(
+                logger.debug(
                     "before minimize program id: " + str(id(loss.block.program))
                 )
                 optimize_ops, params_grads = meta_optimizer.minimize(
@@ -1783,15 +1783,15 @@ class Fleet:
                     parameter_list,
                     no_grad_set=no_grad_set,
                 )
-                logger.info(
+                logger.debug(
                     "after minimize program id: " + str(id(loss.block.program))
                 )
                 default_program = paddle.static.default_main_program()
-                logger.info("default program id: " + str(id(default_program)))
+                logger.debug("default program id: " + str(id(default_program)))
 
                 if id(default_program) != id(loss.block.program):
                     paddle.framework.switch_main_program(loss.block.program)
-                logger.info(
+                logger.debug(
                     "default program id after switch: "
                     + str(id(default_program))
                 )
@@ -1811,7 +1811,7 @@ class Fleet:
             context["program_params_grads"] = params_grads
 
             if graph_optimizer:
-                logger.info(
+                logger.debug(
                     "before graph minimize program id: "
                     + str(id(loss.block.program))
                 )
