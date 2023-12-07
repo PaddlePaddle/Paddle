@@ -35,22 +35,27 @@ ReshardFunction* ChooseProperReshardFunction(
   auto all_process_ids =
       GetUnionProcessIds(in.process_mesh().process_ids(),
                          out_dist_attr.process_mesh().process_ids());
-  auto world_size = GetGlobalWorldSize();
-  auto min_value = all_process_ids.front();
-  auto max_value = all_process_ids.back();
-  PADDLE_ENFORCE_GE(
-      min_value,
-      0,
-      phi::errors::OutOfRange(
-          "The process id should be non-negative, but received %d.",
-          min_value));
-  PADDLE_ENFORCE_LT(
-      max_value,
-      world_size,
-      phi::errors::OutOfRange(
-          "The process id should be less than %d, but received %d.",
-          world_size,
-          max_value));
+
+  if (!all_process_ids.empty()) {
+    auto world_size = GetGlobalWorldSize();
+    auto min_value = all_process_ids.front();
+    auto max_value = all_process_ids.back();
+    PADDLE_ENFORCE_GE(
+        min_value,
+        0,
+        phi::errors::OutOfRange(
+            "The process id should be non-negative, but received %d. Please "
+            "check the number of processes launched and process_mesh.",
+            min_value));
+    PADDLE_ENFORCE_LT(
+        max_value,
+        world_size,
+        phi::errors::OutOfRange(
+            "The process id should be less than %d, but received %d. Please "
+            "check the number of processes launched and process_mesh.",
+            world_size,
+            max_value));
+  }
 
   for (const auto& func : GetReshardFunctionList()) {
     if (func->IsSuitable(in, out_dist_attr)) {

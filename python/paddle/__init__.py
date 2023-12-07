@@ -557,6 +557,10 @@ from .pir_utils import IrGuard
 ir_guard = IrGuard()
 ir_guard._switch_to_pir()
 
+from paddle.distributed.auto_parallel.api import _init_global_tcp_store
+
+_init_global_tcp_store()
+
 __all__ = [
     'iinfo',
     'finfo',

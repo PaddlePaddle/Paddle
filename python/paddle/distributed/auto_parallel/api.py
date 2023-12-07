@@ -544,3 +544,13 @@ def shard_optimizer(optimizer, shard_fn=None):
 
     """
     return _ShardOptimizer(optimizer, shard_fn)
+
+
+def _init_global_tcp_store():
+    if (
+        paddle.base.core.is_compiled_with_distribute()
+        and paddle.in_dynamic_mode()
+    ):
+        world_size = paddle.distributed.get_world_size()
+        if world_size > 1:
+            paddle.base.core.create_or_get_global_tcp_store()
