@@ -15,7 +15,7 @@
 from paddle import _C_ops
 from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.layer_helper import LayerHelper
-from paddle.framework import in_dynamic_mode
+from paddle.framework import in_dynamic_or_pir_mode
 from paddle.utils import deprecated
 
 
@@ -130,7 +130,7 @@ def graph_reindex(
                 "be None if `flag_buffer_hashtable` is True."
             )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         reindex_src, reindex_dst, out_nodes = _C_ops.reindex_graph(
             x,
             neighbors,
