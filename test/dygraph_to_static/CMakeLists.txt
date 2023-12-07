@@ -4,7 +4,7 @@ file(
   "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 set(SOT_ENVS SOT_LOG_LEVEL=0 COST_MODEL=False MIN_GRAPH_SIZE=0
-             STRICT_MODE=False)
+             STRICT_MODE=False DY2ST_TEST=True)
 set(GC_ENVS FLAGS_eager_delete_tensor_gb=0.0)
 
 list(REMOVE_ITEM TEST_OPS test_lac)
@@ -47,7 +47,6 @@ set_tests_properties(test_bert PROPERTIES TIMEOUT 240)
 set_tests_properties(test_build_strategy PROPERTIES TIMEOUT 120)
 
 if(NOT WIN32)
-  set_tests_properties(test_resnet_v2 PROPERTIES TIMEOUT 180)
   set_tests_properties(test_tsm PROPERTIES TIMEOUT 900)
   set_tests_properties(test_resnet PROPERTIES TIMEOUT 300)
 endif()
@@ -56,10 +55,26 @@ if(APPLE)
   set_tests_properties(test_bmn PROPERTIES TIMEOUT 300)
   set_tests_properties(test_build_strategy PROPERTIES TIMEOUT 300)
   set_tests_properties(test_mobile_net PROPERTIES TIMEOUT 300)
-  set_tests_properties(test_resnet_v2 PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_resnet PROPERTIES TIMEOUT 300)
 endif()
 
 if(WITH_GPU)
   set_tests_properties(test_train_step_resnet18_sgd PROPERTIES TIMEOUT 240)
   set_tests_properties(test_train_step_resnet18_adam PROPERTIES TIMEOUT 240)
 endif()
+
+# Legacy IR only tests for dygraph_to_static
+set(LEGACY_ONLY_TEST_FILES test_legacy_error test_pylayer)
+foreach(ITEST ${LEGACY_ONLY_TEST_FILES})
+  if(TEST ${ITEST})
+    set_tests_properties(
+      ${ITEST} PROPERTIES ENVIRONMENT "FLAGS_enable_pir_with_pt_in_dy2st=0")
+    message(
+      STATUS
+        "PT Disabled OpTest: set FLAGS_enable_pir_with_pt_in_dy2st to False for ${ITEST}"
+    )
+  else()
+    message(
+      STATUS "PT Disabled OpTest: not found ${ITEST} in dygraph_to_static")
+  endif()
+endforeach()

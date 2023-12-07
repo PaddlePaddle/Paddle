@@ -36,7 +36,7 @@ LegacyKernelInstruction::LegacyKernelInstruction(
     size_t id,
     const platform::Place& place,
     pir::Operation* op,
-    const ValueExecutionInfo& value_exec_info)
+    const ValueExecutionInfo* value_exec_info)
     : InstructionBase(id, place), value_exec_info_(value_exec_info) {
   auto& op_attributes = op->attributes();
   auto op_name =
@@ -100,7 +100,7 @@ LegacyKernelInstruction::LegacyKernelInstruction(
         phi::MetaTensor,
         paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
         paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
-        false>(op, value_exec_info_, yaml_info_parser, &infer_meta_context_);
+        false>(op, *value_exec_info_, yaml_info_parser, &infer_meta_context_);
   }
   VLOG(6) << "finish process infer meta context";
 
@@ -116,9 +116,9 @@ LegacyKernelInstruction::LegacyKernelInstruction(
       phi_kernel_->IsValid(), true, "not found kernel for [%s]", kernel_name);
   VLOG(6) << "finish process select kernel: " << kernel_name;
 
-  const Scope* inner_scope = value_exec_info_.GetScope();
+  const Scope* inner_scope = value_exec_info_->GetScope();
 
-  operator_base_ = BuildOperatorBase(op, value_exec_info_, yaml_info_parser);
+  operator_base_ = BuildOperatorBase(op, *value_exec_info_, yaml_info_parser);
 
   paddle::framework::VariableValueMap in_map;
   paddle::framework::VariableValueMap out_map;
@@ -128,7 +128,7 @@ LegacyKernelInstruction::LegacyKernelInstruction(
   runtime_context_ = std::make_shared<paddle::framework::RuntimeContext>(
       paddle::framework::RuntimeContext(in_map, out_map));
   BuildRuntimeContext(
-      op, value_exec_info, yaml_info_parser, runtime_context_.get());
+      op, *value_exec_info, yaml_info_parser, runtime_context_.get());
 
   kernel_context_ = new paddle::framework::ExecutionContext(
       *operator_base_, *inner_scope, *dev_ctx, *(runtime_context_.get()));
@@ -143,7 +143,7 @@ LegacyKernelInstruction::LegacyKernelInstruction(
                          GetStreamPriority()));
   VLOG(6) << "finish process device context";
 
-  InitInputsOutputsIds(op, value_exec_info);
+  InitInputsOutputsIds(op, *value_exec_info);
   VLOG(6) << "finish process inputs outputs index";
 
   auto& no_need_buffer_ids = yaml_info_parser.NoNeedBufferIds();

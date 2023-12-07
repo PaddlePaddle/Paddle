@@ -29,7 +29,7 @@ TEST(load_x86_params, load_x86_params) {
   ASSERT_EQ(res.count(key), 1);
 
   absl::flat_hash_map<std::string, int> conv2d_factors;
-  auto target = common::DefaultHostTarget();
+  auto target = cinn::common::DefaultHostTarget();
   std::vector<int> shape_input = {1, 64, 56, 56};
   std::vector<int> shape_weights = {64, 64, 3, 3};
   std::vector<int> strides = {1, 1};

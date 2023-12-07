@@ -176,7 +176,8 @@ class FusionHelperBase {
       for (int idx = axes.back() + 1; idx < inshape.size(); ++idx) {
         lane = inshape[idx];
       }
-      int max_num_threads = common::DefaultNVGPUTarget().max_num_threads();
+      int max_num_threads =
+          cinn::common::DefaultNVGPUTarget().max_num_threads();
       if (lane > max_num_threads / 2) {
         return 0;
       }
@@ -212,7 +213,7 @@ class FusionHelperBase {
     return 0;
   }
   // target
-  const common::Target& target_;
+  const cinn::common::Target& target_;
   // output node set
   std::unordered_set<const Node*> output_nodes_set_;
   // shape dict

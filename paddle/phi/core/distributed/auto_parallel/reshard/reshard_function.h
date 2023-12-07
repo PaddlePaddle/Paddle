@@ -43,6 +43,8 @@ class ReshardFunction {
                     const TensorDistAttr& out_dist_attr,
                     DistTensor* out) = 0;
 
+  virtual std::string Name() { return "ReshardBase"; }
+
  protected:
   void SetValue(DistTensor* tensor, const DenseTensor& value);
   void SetDistProps(DistTensor* tensor,
@@ -51,20 +53,6 @@ class ReshardFunction {
   void SetDistProps(DistTensor* tensor, const TensorDistAttr& dist_attr);
   DenseTensor* GetMutableTensor(DistTensor* tensor);
 };
-
-std::vector<std::unique_ptr<ReshardFunction>>& GetReshardFunctionList();
-
-#define REGISTER_RESHARD_FUNC(func_type)                                    \
-  class __RegisterReshard_##func_type {                                     \
-   public:                                                                  \
-    __RegisterReshard_##func_type() {                                       \
-      GetReshardFunctionList().emplace_back(std::make_unique<func_type>()); \
-    }                                                                       \
-  };                                                                        \
-  static __RegisterReshard_##func_type local_reshard_func_##func_type
-
-ReshardFunction* ChooseProperReshardFunction(
-    const DistTensor& in, const TensorDistAttr& out_dist_attr);
 
 }  // namespace distributed
 }  // namespace phi

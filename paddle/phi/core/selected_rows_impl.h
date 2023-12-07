@@ -21,8 +21,8 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/common/ddim.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/utils/rw_lock.h"
@@ -142,9 +142,9 @@ class SelectedRowsImpl {
    * @brief Get complete Dims before
    */
   phi::DDim GetCompleteDims() const {
-    std::vector<int64_t> dims = vectorize(value_->dims());
+    std::vector<int64_t> dims = common::vectorize(value_->dims());
     dims[0] = height_;
-    return phi::make_ddim(dims);
+    return common::make_ddim(dims);
   }
 
   /// \brief Returns the number of elements contained in tensor.

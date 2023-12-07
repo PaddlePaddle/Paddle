@@ -88,7 +88,8 @@ TypeTranslator::TypeTranslator() {
 
          pir::Type dtype =
              this->operator[](var_desc.GetDataType())(ctx, var_desc);
-         DenseTensorTypeStorage::Dim dim = phi::make_ddim(var_desc.GetShape());
+         DenseTensorTypeStorage::Dim dim =
+             common::make_ddim(var_desc.GetShape());
          DenseTensorTypeStorage::DataLayout layout =
              DenseTensorTypeStorage::DataLayout::UNDEFINED;
          DenseTensorTypeStorage::LoD lod = {};
@@ -99,8 +100,12 @@ TypeTranslator::TypeTranslator() {
        [&](pir::IrContext* ctx, const VarDesc& var_desc) -> pir::Type {
          VLOG(10) << "[vartype translating]"
                   << "[" << var_desc.Name() << "] from LOD_TENSOR_ARRAY";
+         pir::Type dtype =
+             this->operator[](var_desc.GetDataType())(ctx, var_desc);
+         DenseTensorTypeStorage::DataLayout layout =
+             DenseTensorTypeStorage::DataLayout::UNDEFINED;
 
-         return pir::VectorType::get(ctx, std::vector<pir::Type>{});
+         return paddle::dialect::DenseTensorArrayType::get(ctx, dtype, layout);
        }},
       {VarType::SELECTED_ROWS,
        [&](pir::IrContext* ctx, const VarDesc& var_desc) -> pir::Type {
@@ -110,7 +115,8 @@ TypeTranslator::TypeTranslator() {
          pir::Type dtype =
              this->operator[](var_desc.GetDataType())(ctx, var_desc);
 
-         SelectedRowsTypeStorage::Dim dim = phi::make_ddim(var_desc.GetShape());
+         SelectedRowsTypeStorage::Dim dim =
+             common::make_ddim(var_desc.GetShape());
          SelectedRowsTypeStorage::DataLayout layout =
              SelectedRowsTypeStorage::DataLayout::UNDEFINED;
          SelectedRowsTypeStorage::LoD lod = {};

@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/stats.h"
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/memory/allocation/spin_lock.h"
 #include "paddle/fluid/platform/flags.h"
-#include "paddle/phi/core/macros.h"
 
 PADDLE_DEFINE_EXPORTED_bool(
     log_memory_stats,
