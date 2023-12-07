@@ -136,6 +136,9 @@ inline void SetProgramInt64Attr(std::shared_ptr<Program> program,
 }
 
 std::string GetValueInfo(Value v) {
+  if (v.impl() == nullptr) {
+    return "nullptr value";
+  }
   std::stringstream ss;
   if (auto op_result = v.dyn_cast<OpResult>()) {
     ss << "define_op_name=" << op_result.owner()->name();
@@ -1061,12 +1064,11 @@ int AppendSetParameters(Program *forward_program,
   std::unordered_set<pir::OpResult> added_op_result;
 
   for (const auto &result : outputs_op_result) {
-    if (!added_op_result.count(result)) {
+    if (!added_op_result.count(result) || IsFakeOpResult(result)) {
       std::string parameter_name = name_prefix + std::to_string(counter);
       AppendSetParameter(
           forward_program, result, parameter_name, start_point + counter);
       counter += 1;
-
       added_op_result.insert(result);
     }
   }

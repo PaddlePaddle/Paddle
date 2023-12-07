@@ -896,7 +896,7 @@ class DistributedContext:
         # NOTE(zhaoyingli):
         # The order of process_meshes is execution order of the ops,
         # which will help pipeline strategy to get pp_rank info.
-        self.process_meshes = process_meshes
+        self.process_meshes = copy.deepcopy(process_meshes)
         # TODO: the completion algorithm will skipped orphan tensors,
         # here we just set there process_mesh to the first one.
         for orphan_node in self._serial_orphan_tensor_nodes:
