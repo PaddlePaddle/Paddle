@@ -317,10 +317,7 @@ class AMPState:
                     )
                 elif self._is_fp16_op(op.desc.original_id()) is True:
                     if self.amp_dtype == "bfloat16":
-                        if op.has_attr('use_mkldnn'):
-                            op._set_attr('use_mkldnn', True)
-                            op._set_attr('mkldnn_data_type', 'bfloat16')
-                        elif (
+                        if (
                             op.has_attr('dtype')
                             and op.attr('dtype') == core.VarDesc.VarType.FP32
                         ):
@@ -361,10 +358,7 @@ class AMPState:
                         self._is_fp16_op(op.desc.original_id()) is True
                     ):  # fp16/bf16
                         if self.amp_dtype == "bfloat16":
-                            if op.has_attr('use_mkldnn'):
-                                op._set_attr('use_mkldnn', True)
-                                op._set_attr('mkldnn_data_type', 'bfloat16')
-                            elif (
+                            if (
                                 op.has_attr('dtype')
                                 and op.attr('dtype')
                                 == core.VarDesc.VarType.FP32

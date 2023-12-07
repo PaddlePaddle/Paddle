@@ -67,12 +67,6 @@ def set_op_dtype_to_fp16(op):
     if op.has_attr('dtype') and op.attr('dtype') == core.VarDesc.VarType.FP32:
         op._set_attr('dtype', __target_dtype__)
 
-    if __target_dtype__ == core.VarDesc.VarType.BF16:
-        if op.has_attr('use_mkldnn'):
-            op._set_attr('use_mkldnn', True)
-        if op.has_attr('mkldnn_data_type'):
-            op._set_attr('mkldnn_data_type', 'bfloat16')
-
 
 # adapot for backward op
 # TODO check if bf16 and fp16 still share the same logic
