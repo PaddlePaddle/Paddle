@@ -6,6 +6,7 @@ option(WITH_STATIC_LIB
        "Compile demo with static/shared library, default use static." ON)
 option(USE_TENSORRT "Compile demo with TensorRT." OFF)
 option(WITH_ONNXRUNTIME "Compile demo with ONNXRuntime" OFF)
+option(WITH_SHARED_PHI "Compile demo with phi shared lib" ON)
 
 if(NOT WITH_STATIC_LIB)
   add_definitions("-DPADDLE_WITH_SHARED_LIB")
@@ -177,9 +178,6 @@ if(WITH_STATIC_LIB)
   set(DEPS
       ${PADDLE_LIB}/paddle/lib/libpaddle_inference${CMAKE_STATIC_LIBRARY_SUFFIX}
   )
-  if(NOT WIN32)
-    set(DEPS ${DEPS} ${PADDLE_LIB}/paddle/lib/libphi.so)
-  endif()
 else()
   if(WIN32)
     set(DEPS
@@ -208,6 +206,10 @@ if(NOT WIN32)
       cryptopp
       utf8proc
       ${EXTERNAL_LIB})
+  if(WITH_SHARED_PHI)
+    set(DEPS ${DEPS}
+             ${PADDLE_LIB}/paddle/lib/libphi${CMAKE_SHARED_LIBRARY_SUFFIX})
+  endif()
 else()
   set(DEPS
       ${DEPS}

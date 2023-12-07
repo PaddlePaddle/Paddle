@@ -143,8 +143,7 @@ class TestEmbeddingApiForSemiAutoParallel:
         self.test_non_shard()
         self.test_x_row_shard()
         self.test_x_col_shard()
-        # Sharding along weight's row axis is not supported by raw embdding kernel.
-        # self.test_w_row_shard()
+        self.test_w_row_shard()
         self.test_w_col_shard()
         self.test_x_row_w_col_shard()
         self.test_x_col_w_row_shard()
