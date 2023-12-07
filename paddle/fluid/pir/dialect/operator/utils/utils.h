@@ -144,5 +144,14 @@ void CheckVectorOfValueDataType(const std::vector<pir::Value>& vector_value,
                                 const std::string& input_name,
                                 const std::string& op_name);
 
+void CheckDataType(const phi::DataType& dtype,
+                   const std::string& dtype_name,
+                   const std::string& op_name);
+
+void CheckDataTypeOrValue(const phi::DataType& dtype,
+                          const std::string& dtype_name,
+                          const pir::Value& value,
+                          const std::string& value_name,
+                          const std::string& op_name);
 }  // namespace dialect
 }  // namespace paddle

@@ -42,7 +42,8 @@ namespace framework {
 CondInstruction::CondInstruction(size_t id,
                                  const platform::Place& place,
                                  pir::Operation* op,
-                                 ValueExecutionInfo* value_exec_info)
+                                 ValueExecutionInfo* value_exec_info,
+                                 const std::set<std::string>& skip_gc_vars)
     : InstructionBase(id, place) {
   PADDLE_ENFORCE(
       op->isa<paddle::dialect::IfOp>(),
@@ -114,6 +115,10 @@ CondInstruction::CondInstruction(size_t id,
     true_skip_gc_names_.push_back(true_branch_inter_->GetNameByValue(value));
     true_skip_gc_names_set.insert(true_branch_inter_->GetNameByValue(value));
   }
+  for (auto var_name : skip_gc_vars) {
+    true_skip_gc_names_.push_back(var_name);
+    true_skip_gc_names_set.insert(var_name);
+  }
   true_branch_inter_->SetSkipGcVars(true_skip_gc_names_set);
   VLOG(6) << "finish process true branch interpreter";
 
@@ -135,6 +140,10 @@ CondInstruction::CondInstruction(size_t id,
   for (auto value : false_outside_inputs) {
     false_skip_gc_names_.push_back(false_branch_inter_->GetNameByValue(value));
     false_skip_gc_names_set.insert(false_branch_inter_->GetNameByValue(value));
+  }
+  for (auto var_name : skip_gc_vars) {
+    false_skip_gc_names_.push_back(var_name);
+    false_skip_gc_names_set.insert(var_name);
   }
   false_branch_inter_->SetSkipGcVars(false_skip_gc_names_set);
   VLOG(6) << "finish process false branch interpreter";
