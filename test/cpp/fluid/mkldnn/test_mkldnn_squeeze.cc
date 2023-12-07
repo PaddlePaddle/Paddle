@@ -71,7 +71,32 @@ void test_squeeze() {
   op->Run(scope, cpu_place);
 }
 
+void test_squeeze2() {
+  framework::Scope scope;
+  paddle::platform::CPUPlace cpu_place;
+  // Prepare Op description
+  framework::OpDesc desc;
+  // We assume it is HNWC, so that can use this transformation
+  phi::OneDNNContext::tls().set_cur_paddle_data_layout(DataLayout::kNHWC);
+  desc.SetType("squeeze2");
+  desc.SetInput("X", {"squeeze-X"});
+  desc.SetOutput("Out", {"squeeze-Out"});
+  // DataLayout::kNHWC will make it become {2, 1, 3, 2}
+  AddVarToScope<float>("squeeze-X", &scope, {2, 3, 2, 1});  
+  AddVarToScope<float>("squeeze-Out", &scope, {2, 3, 2});
+  // transform will make it become -3(1)
+  std::vector<int> axes({-1});
+
+  desc.SetAttr("axes", axes);
+  desc.SetAttr("use_mkldnn", true);
+
+  auto op = paddle::framework::OpRegistry::CreateOp(desc);
+
+  op->Run(scope, cpu_place);
+}
+
 TEST(SqueezeOpConverter, normal) { test_squeeze(); }
+TEST(SqueezeOpConverter_2, normal) { test_squeeze2(); }
 
 }  // namespace tensorrt
 }  // namespace inference
