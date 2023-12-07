@@ -239,13 +239,11 @@ void StaticShapeGroupScheduler::DoLoopAlignment() {
         [&](const ir::Expr* x) {
           bool find_reduce_var = false;
           if (x->As<ir::Load>()) {
-            int i = 0;
             for (ir::Expr index : x->As<ir::Load>()->indices) {
               if (index.as_var() &&
                   reduce_var_names.count(index.as_var_ref()->name) > 0) {
                 find_reduce_var = true;
               }
-              ++i;
             }
           }
           return find_reduce_var;
@@ -256,6 +254,7 @@ void StaticShapeGroupScheduler::DoLoopAlignment() {
     std::vector<ir::Expr> indices =
         reduce_loads.begin()->As<ir::Load>()->indices;
     for (ir::Expr index : indices) {
+      if (index.is_constant()) continue;
       CHECK_NOTNULL(index.as_var());
       int idx = 0;
       bool is_reduce_var = false;
@@ -265,11 +264,9 @@ void StaticShapeGroupScheduler::DoLoopAlignment() {
           is_reduce_var = iter_var->is_reduce_axis;
           break;
         }
-        auto& iter_value = master_iter_values[iter_idx];
-        if (!iter_value.is_constant() || iter_value.get_constant() != 0) {
-          ++idx;
-        }
+        ++idx;
       }
+      if (master_iter_values[idx].is_constant()) continue;
       std::vector<ir::Var> loop_vars_in_order;
       ir::ir_utils::CollectIRNodesInOrder(
           master_iter_values[idx], [&](const ir::Expr* x) {
