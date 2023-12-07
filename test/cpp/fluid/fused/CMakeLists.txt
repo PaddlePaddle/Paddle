@@ -16,6 +16,7 @@ if(WITH_GPU OR WITH_ROCM)
            generated_op
            device_context
            phi
+           common
            memory)
     nv_test(
       test_fused_dropout_act_bias
@@ -26,6 +27,7 @@ if(WITH_GPU OR WITH_ROCM)
            generated_op
            device_context
            phi
+           common
            memory)
     nv_test(
       test_fused_layernorm_residual_dropout_bias
@@ -37,6 +39,7 @@ if(WITH_GPU OR WITH_ROCM)
            generated_op
            device_context
            phi
+           common
            memory
            ${CINN_DEPS})
   endif()
@@ -51,6 +54,7 @@ if(WITH_GPU OR WITH_ROCM)
            op_registry
            device_context
            phi
+           common
            memory)
     cc_test(
       test_cudnn_bn_add_relu
@@ -61,6 +65,7 @@ if(WITH_GPU OR WITH_ROCM)
            op_registry
            device_context
            phi
+           common
            memory)
   endif()
 endif()

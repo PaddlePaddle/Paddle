@@ -129,7 +129,7 @@ void BKCLCommContext::Recv(phi::DenseTensor* out_tensor,
                                        ToBKCLDataType(out_tensor->dtype()),
                                        stream));
   VLOG(3) << "rank " << GetRank() << " recv "
-          << phi::product(out_tensor->dims()) << " from " << peer;
+          << common::product(out_tensor->dims()) << " from " << peer;
 }
 
 void BKCLCommContext::AllReduce(phi::DenseTensor* out_tensor,

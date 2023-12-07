@@ -434,7 +434,7 @@ static void RunInferShapeFunc(
                        vec_ddim.end(),
                        std::back_inserter(vec_shape),
                        [&](const DDim& ddim) -> std::vector<int64_t> {
-                         return phi::vectorize(ddim);
+                         return common::vectorize(ddim);
                        });
 
       } else {  // optional inputs, `vec_shape` is empty
@@ -450,7 +450,7 @@ static void RunInferShapeFunc(
     } else {
       if (ctx->HasInput(in_name)) {  // general inputs
         auto ddim = ctx->GetInputDim(in_name);
-        input_shapes.emplace_back(phi::vectorize(ddim));
+        input_shapes.emplace_back(common::vectorize(ddim));
       } else {  // optional inputs
         PADDLE_ENFORCE(
             detail::IsOptionalVar(in_name),
@@ -582,7 +582,7 @@ static void RunInferShapeFunc(
       } else {
         // Set output dims by the output of InferShapeFn
         ctx->SetOutputDim(out_name,
-                          phi::make_ddim(output_shapes[output_shape_idx++]));
+                          common::make_ddim(output_shapes[output_shape_idx++]));
       }
     }
   }

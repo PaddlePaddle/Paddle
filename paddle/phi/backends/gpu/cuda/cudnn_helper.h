@@ -17,14 +17,14 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/common/errors.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
-#include "paddle/phi/core/macros.h"
 #include "paddle/utils/flags.h"
 
 PD_DECLARE_bool(cudnn_deterministic);
@@ -374,7 +374,8 @@ class ScopedDropoutDescriptor {
       PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetDropoutDescriptor(
           desc_, handle, dropout_prob_, dropout_state_data, state_size, seed));
     } else {
-      auto dropout_state_dims = phi::vectorize<int64_t>(dropout_state_->dims());
+      auto dropout_state_dims =
+          common::vectorize<int64_t>(dropout_state_->dims());
       state_size = dropout_state_dims[0];
       PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnRestoreDropoutDescriptor(
           desc_, handle, dropout_prob_, dropout_state_data, state_size, 0));

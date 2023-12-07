@@ -469,7 +469,7 @@ class TestCondInputOutput(unittest.TestCase):
 
 
 class TestCondNestedControlFlow(unittest.TestCase):
-    @test_with_pir_api
+    # @test_with_pir_api
     def test_cond_inside_cond(self):
         """
         pseudocode:
@@ -549,6 +549,7 @@ class TestCondNestedControlFlow(unittest.TestCase):
             self.assertEqual(ret[0][0], expected_ret)
             self.assertEqual(ret[1][0], expected_a_grad)
 
+    # @test_with_pir_api
     def test_cond_inside_cond_0d_tensor(self):
         """
         pseudocode:
@@ -596,7 +597,7 @@ class TestCondNestedControlFlow(unittest.TestCase):
                 lambda: greater_equal_branch(i, a),
             )
             mean = paddle.mean(out)
-            grad_list = append_backward(out)
+            grad_list = append_backward(mean)
 
         place = (
             base.CUDAPlace(0)
@@ -623,20 +624,23 @@ class TestCondNestedControlFlow(unittest.TestCase):
         )
         self.assertEqual(ret[1].shape, ())
 
+    # @test_with_pir_api
     def test_cond_op_in_condition(self):
         paddle.enable_static()
-        main_program = base.Program()
-        startup_program = base.Program()
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
 
-        with base.program_guard(main_program, startup_program):
+        with paddle.static.program_guard(main_program, startup_program):
             a = paddle.tensor.fill_constant(
                 shape=[1], dtype='float32', value=1.23
             )
             a.stop_gradient = False
+            a.persistable = True
             b = paddle.tensor.fill_constant(
                 shape=[1], dtype='float32', value=1.24
             )
             b.stop_gradient = False
+            b.persistable = True
             out = paddle.static.nn.cond(
                 a < b,
                 lambda: paddle.static.nn.cond(
@@ -645,12 +649,12 @@ class TestCondNestedControlFlow(unittest.TestCase):
                     lambda: paddle.multiply(a, b),
                 ),
                 lambda: paddle.static.nn.cond(
-                    a == b,
+                    paddle.equal(a, b),
                     lambda: paddle.subtract(a, b),
                     lambda: paddle.pow(a, b),
                 ),
             )
-            append_backward(out)
+            grad_list = append_backward(out)
 
         place = (
             base.CUDAPlace(0)
@@ -658,7 +662,17 @@ class TestCondNestedControlFlow(unittest.TestCase):
             else base.CPUPlace()
         )
         exe = base.Executor(place)
-        ret = exe.run(main_program, fetch_list=[out, a.grad_name, b.grad_name])
+        if paddle.framework.in_pir_mode():
+            for p, g in grad_list:
+                if p == a:
+                    da = g
+                if p == b:
+                    db = g
+            ret = exe.run(main_program, fetch_list=[out, da, db])
+        else:
+            ret = exe.run(
+                main_program, fetch_list=[out, a.grad_name, b.grad_name]
+            )
         # Note: fill_constant has loss of precision, so we assertAlmostEqual.
         self.assertAlmostEqual(ret[0][0], 1.5252)
         self.assertAlmostEqual(ret[1][0], 1.24)

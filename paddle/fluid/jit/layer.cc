@@ -14,9 +14,9 @@
 
 #include "paddle/fluid/jit/layer.h"
 
+#include "paddle/common/errors.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 
 #include "paddle/fluid/jit/compilation_unit.h"
 #include "paddle/fluid/jit/engine/base_engine.h"

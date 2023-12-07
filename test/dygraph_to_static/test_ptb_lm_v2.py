@@ -17,7 +17,10 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_legacy_and_pt_and_pir,
+)
 
 import paddle
 
@@ -332,6 +335,7 @@ class TestPtb(Dy2StTestBase):
             else paddle.CPUPlace()
         )
 
+    @test_legacy_and_pt_and_pir
     def test_check_result(self):
         loss_1, hidden_1, cell_1 = train_static(self.place)
         loss_2, hidden_2, cell_2 = train_dygraph(self.place)
