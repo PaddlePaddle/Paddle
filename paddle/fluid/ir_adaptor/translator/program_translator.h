@@ -165,6 +165,9 @@ class ProgramTranslator {
   const VariableDefiningInfo& CreateUndefinedVariable(
       const std::string& var_name, const BlockDesc& block);
 
+  const VariableDefiningInfo& InsertFullOpToBlock(pir::Block* insert_block,
+                                                  pir::Type type);
+
   void TranslateIfOperation(const OpDesc* op,
                             TranslationContext* translation_ctx,
                             pir::Block* dst_block);

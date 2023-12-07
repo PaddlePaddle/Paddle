@@ -1863,6 +1863,23 @@ struct FillConstantTranscriber : public OpTranscriber {
   }
 };
 
+static std::vector<int64_t> ParseCompatibleShapes(
+    const std::vector<int64_t>& dim1, const std::vector<int64_t>& dim2) {
+  IR_ENFORCE(dim1.size() == dim2.size(),
+             "Does not support rank inconsistency: dim1=%d, dim2=%d",
+             dim1.size(),
+             dim2.size());
+  std::vector<int64_t> result;
+  for (size_t i = 0; i < dim1.size(); ++i) {
+    if (dim1[i] != dim2[i]) {
+      result.push_back(-1);
+    } else {
+      result.push_back(dim1[i]);
+    }
+  }
+  return result;
+}
+
 struct SelectInputOpTranscriber : public OpTranscriber {
   pir::Operation* operator()(pir::IrContext* ctx,
                              TranslationContext* param_map,
@@ -1894,7 +1911,41 @@ struct SelectInputOpTranscriber : public OpTranscriber {
     auto Out_name = op_desc.Output("Out")[0];
     VarDesc* var = op_desc.Block()->FindVarRecursive(Out_name);
     arg_to_idx[var->Name()] = {0, 0};
-    op_output_types.push_back(op_inputs[1].type());
+
+    // NOTE(zhangbo): Only support
+    auto input1 = op_inputs[1].type();
+    auto input2 = op_inputs[2].type();
+    if (input1 == input2) {
+      op_output_types.push_back(op_inputs[1].type());
+    } else {
+      if (input1.isa<paddle::dialect::DenseTensorType>() &&
+          input2.isa<paddle::dialect::DenseTensorType>()) {
+        auto tensor1 = input1.dyn_cast<paddle::dialect::DenseTensorType>();
+        auto tensor2 = input2.dyn_cast<paddle::dialect::DenseTensorType>();
+        if (tensor1.dtype() != tensor2.dtype() ||
+            tensor1.data_layout() != tensor2.data_layout() ||
+            tensor1.lod() != tensor2.lod() ||
+            tensor1.offset() != tensor2.offset()) {
+          IR_THROW(
+              "select_input only support same type or DenseTensorType with "
+              "only different dim.");
+        }
+        auto dim1 = input1.dyn_cast<paddle::dialect::DenseTensorType>().dims();
+        auto dim2 = input2.dyn_cast<paddle::dialect::DenseTensorType>().dims();
+        std::vector<int64_t> compat_shape = ParseCompatibleShapes(
+            common::vectorize(dim1), common::vectorize(dim2));
+        op_output_types.push_back(paddle::dialect::DenseTensorType::get(
+            ctx,
+            tensor1.dtype(),
+            common::make_ddim(compat_shape),
+            tensor1.data_layout(),
+            tensor1.lod(),
+            tensor1.offset()));
+      }
+      IR_THROW(
+          "select_input only support same type or DenseTensorType with only "
+          "different dim.");
+    }
 
     pir::Operation* operation = pir::Operation::Create(
         op_inputs, attribute_map, op_output_types, op_info);

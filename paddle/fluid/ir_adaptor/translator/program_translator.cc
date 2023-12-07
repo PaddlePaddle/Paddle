@@ -463,6 +463,7 @@ void ProgramTranslator::TranslateIfOperation(
   VLOG(4) << "[general op][conditional_block] IfOp creation end.";
 
   if (op->GetBlockAttrId("sub_block") != -1) {
+    // Translate true branch by sub_block.
     auto& sub_block = legacy_program_->Block(op->GetBlockAttrId("sub_block"));
     pir::Region& true_region = operation->region(0);
     if (true_region.empty()) true_region.emplace_back();
@@ -474,12 +475,36 @@ void ProgramTranslator::TranslateIfOperation(
                    &true_region.front());
     // insert yeild op to true block
     auto yeild_info = ctx_->GetRegisteredOpInfo(pir::YieldOp::name());
-    std::vector<pir::Value> yeild_inputs;
+    std::vector<pir::Value> true_yeild_inputs;
     for (auto& out_name : cond_op_outputs) {
-      yeild_inputs.push_back(true_block_context->at(out_name).value);
+      true_yeild_inputs.push_back(true_block_context->at(out_name).value);
     }
     true_region.front().push_back(
-        pir::Operation::Create(yeild_inputs, {}, {}, yeild_info));
+        pir::Operation::Create(true_yeild_inputs, {}, {}, yeild_info));
+
+    // NOTE(zhangbo): The if_op of PIR requires that both true and false
+    // branches must exist, and the number of outputs and dtypes must be
+    // consistent. Only inconsistent shape is allowed. To be compatible with the
+    // old IR design, only true branches are allowed. The false branch may
+    // require yeild some fake variables.
+    pir::Region& false_region = operation->region(1);
+    if (false_region.empty()) false_region.emplace_back();
+    auto* false_block_context = translation_ctx->CreateInnerContext();
+    std::vector<pir::Value> false_yeild_inputs;
+    for (size_t id = 0; id < cond_op_outputs.size(); id++) {
+      if (false_block_context->count(cond_op_outputs[id]) == 0) {
+        auto true_type = true_yeild_inputs[id].type();
+        if (true_type.isa<paddle::dialect::DenseTensorType>()) {
+          InsertFullOpToBlock(&false_region.front(), true_type);
+        } else {
+          CreateUndefinedVariable(cond_op_outputs[id], sub_block);
+        }
+      }
+      false_yeild_inputs.push_back(
+          false_block_context->at(cond_op_outputs[id]).value);
+    }
+    false_region.front().push_back(
+        pir::Operation::Create(false_yeild_inputs, {}, {}, yeild_info));
   }
   VLOG(4) << "[general op][conditional_block] IfOp true block translate end.";
 
@@ -744,11 +769,13 @@ void ProgramTranslator::SetStopGradientAttributeForAllValue(
     }
   }
 }
+
 const VariableDefiningInfo& ProgramTranslator::GetValueOrCreateInTop(
     const std::string& var_name, TranslationContext* translation_ctx) {
   if (translation_ctx->Has(var_name)) return translation_ctx->at(var_name);
   return CreateUndefinedVariable(var_name, legacy_program_->Block(0));
 }
+
 const VariableDefiningInfo& ProgramTranslator::CreateUndefinedVariable(
     const std::string& var_name, const BlockDesc& block) {
   VLOG(10) << "[undefined variable]" << var_name;
@@ -771,6 +798,25 @@ const VariableDefiningInfo& ProgramTranslator::CreateUndefinedVariable(
   param_map_.PushValue(var_name, val);
   return param_map_.at(var_name);
 }
+
+const VariableDefiningInfo& ProgramTranslator::InsertFullOpToBlock(
+    pir::Block* insert_block, pir::Type type) {
+  PADDLE_ENFORCE_EQ(
+      type.isa<paddle::dialect::DenseTensorType>(),
+      true,
+      platform::errors::InvalidArgument(
+          "only support insert FullOp for DenseTensorType, but now is %s",
+          type));
+  pir::Builder builder(ctx_, insert_block, insert_block->begin());
+  auto tensor_type = type.dyn_cast<paddle::dialect::DenseTensorType>();
+  std::vector<int64_t> shape = common::vectorize(tensor_type.dims());
+  paddle::dialect::FullOp full_op = builder.Build<paddle::dialect::FullOp>(
+      shape,
+      0,
+      paddle::dialect::TransToPhiDataType(tensor_type.dtype()),
+      phi::CPUPlace());
+}
+
 void ProgramTranslator::SetIsPersisableAttributeForAllValue(
     const BlockDesc& block) {
   // Currently we set is persisable for operation that generated a value
