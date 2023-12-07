@@ -614,6 +614,7 @@ class TensorRTEngine {
 
  public:
   thread_local static int predictor_id_per_thread;
+  std::vector<std::string> m_IOTensorNames;
 };  // class TensorRTEngine
 
 // Add a layer__ into engine__ with args ARGS.

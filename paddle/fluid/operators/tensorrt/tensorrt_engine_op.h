@@ -506,6 +506,13 @@ class TensorRTEngineOp : public framework::OperatorBase {
     // Get the total over all profiles
     const int num_bindings = engine->GetNbBindings();
     std::vector<void *> buffers(num_bindings, nullptr);
+    std::vector<std::string> m_IOTensorNames;
+
+    int32_t const endBindingIndex = engine->engine()->getNbIOTensors();
+    for (int i = 0; i < endBindingIndex; ++i) {
+      const auto tensorName = engine->engine()->getIOTensorName(i);
+      m_IOTensorNames.emplace_back(tensorName);
+    }
 
     int binding_offset = 0;
     nvinfer1::IExecutionContext *trt_context = nullptr;
@@ -611,9 +618,35 @@ class TensorRTEngineOp : public framework::OperatorBase {
           }
         }
       } else {
-#if IS_TRT_VERSION_GE(6000)
-        isShapeInferenceIO = engine->engine()->isShapeBinding(bind_index);
+//         bool isShapeInferenceIO{false};
+// #if IS_TRT_VERSION_GE(8500)
+//         auto const &binding_name =
+//             engine->engine()->getIOTensorName(bind_index);
+//         std::cout << "binding_name:" << binding_name << std::endl;
+//         isShapeInferenceIO = engine->engine()->isShapeInferenceIO(binding_name);
+//         std::cout << "isShapeInferenceIO:" << isShapeInferenceIO << std::endl;
+//         bool const useEnqueueV3 =
+//             !engine->engine()->hasImplicitBatchDimension();
+//         if (useEnqueueV3) {
+//           std::cout << "useEnqueueV3" << std::endl;
+//           if (!isShapeInferenceIO) {
+//             trt_context->setInputShape(
+//                 binding_name,
+//                 inference::tensorrt::Vec2TRT_Dims(t_shape, x, true));
+//           }
+//         }
+// #endif
+#if IS_TRT_VERSION_GE(6000) && IS_TRT_VERSION_LT(8500)
+        // auto const *binding_name =
+        //     engine->engine()->getIOTensorName(bind_index);
+        // std::cout << "enqueueV3 binding_name:" << binding_name << std::endl;
+        // isShapeInferenceIO = engine->engine()->isShapeBinding(bind_index);
         if (!isShapeInferenceIO) {
+          std::cout << "t_shape dimensions: ";
+          for (auto dim : t_shape) {
+            std::cout << dim << " ";
+          }
+          std::cout << std::endl;
           trt_context->setBindingDimensions(
               bind_index, inference::tensorrt::Vec2TRT_Dims(t_shape, x, true));
         } else {
@@ -703,7 +736,11 @@ class TensorRTEngineOp : public framework::OperatorBase {
             "float/double/int32_t/int64_t/float16/bool input."));
       }
     }
-
+#if IS_TRT_VERSION_GE(8500)
+    for (size_t j = 0; j < buffers.size(); j++) {
+      trt_context->setTensorAddress(m_IOTensorNames[j].c_str(), buffers[j]);
+    }
+#endif
     // Bind output tensor to TRT.
     int output_index = 0;
     std::vector<int> origin_output_rank =
