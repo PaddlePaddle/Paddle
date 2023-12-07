@@ -250,8 +250,6 @@ def remove_load_store_pass(instrs, code_options):
 
 def remove_duplicate_resume(instrs, code_options):
     resumes = list(filter(lambda instr: instr.opname == "RESUME", instrs))
-    # if code_options["co_name"] == "parse_pattern_str":
-    print(f"{code_options['co_name']} num_resumes: {len(resumes)}", flush=True)
     if not resumes:
         return
     for resume in resumes[1:]:
