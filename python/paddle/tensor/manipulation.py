@@ -4922,10 +4922,7 @@ def repeat_interleave(x, repeats, axis=None, name=None):
             Tensor(shape=[12], dtype=int64, place=Place(cpu), stop_gradient=True,
             [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6])
     """
-    if (
-        isinstance(repeats, (Variable, paddle.pir.Value))
-        and not repeats.shape
-    ):
+    if isinstance(repeats, (Variable, paddle.pir.Value)) and not repeats.shape:
         repeats = paddle.reshape(repeats, [1])
     if axis is None:
         x = paddle.flatten(x)
