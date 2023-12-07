@@ -114,7 +114,11 @@ class TestMMHAOp(unittest.TestCase):
         bsz,
     ):
         if qkv_out_scale is not None:
-            x = x.cast(cache_kv_out.dtype) * qkv_out_scale + bias
+            x = (
+                x.cast(cache_kv_out.dtype)
+                * qkv_out_scale.cast(cache_kv_out.dtype)
+                + bias
+            )
         else:
             x = x + bias
 
