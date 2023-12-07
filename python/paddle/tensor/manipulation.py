@@ -1345,7 +1345,7 @@ def broadcast_tensors(input, name=None):
     Note:
         If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
 
-    .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         input (list|tuple): ``input`` is a Tensor list or Tensor tuple which is with data type bool,
@@ -3122,7 +3122,6 @@ def scatter(x, index, updates, overwrite=True, name=None):
     Output is obtained by updating the input on selected indices based on updates.
 
     .. code-block:: python
-        :name: code-example1
 
         >>> import paddle
         >>> #input:
@@ -4107,8 +4106,19 @@ def atleast_1d(*inputs, name=None):
             [[1.23000002]])]
     """
     out = []
-    for tensor in inputs:
-        tensor = paddle.to_tensor(tensor)
+    for input in inputs:
+        if not isinstance(
+            input,
+            (
+                paddle.Tensor,
+                paddle.base.framework.Variable,
+                paddle.base.libpaddle.pir.OpResult,
+            ),
+        ):
+            tensor = paddle.to_tensor(input)
+        else:
+            tensor = input
+
         if tensor.dim() == 0:
             result = tensor.reshape((1,))
         else:
@@ -4164,8 +4174,19 @@ def atleast_2d(*inputs, name=None):
             [[[1.23000002]]])]
     """
     out = []
-    for tensor in inputs:
-        tensor = paddle.to_tensor(tensor)
+    for input in inputs:
+        if not isinstance(
+            input,
+            (
+                paddle.Tensor,
+                paddle.base.framework.Variable,
+                paddle.base.libpaddle.pir.OpResult,
+            ),
+        ):
+            tensor = paddle.to_tensor(input)
+        else:
+            tensor = input
+
         if tensor.dim() == 0:
             result = tensor.reshape((1, 1))
         elif tensor.dim() == 1:
@@ -4223,8 +4244,19 @@ def atleast_3d(*inputs, name=None):
             [[[[1.23000002]]]])]
     """
     out = []
-    for tensor in inputs:
-        tensor = paddle.to_tensor(tensor)
+    for input in inputs:
+        if not isinstance(
+            input,
+            (
+                paddle.Tensor,
+                paddle.base.framework.Variable,
+                paddle.base.libpaddle.pir.OpResult,
+            ),
+        ):
+            tensor = paddle.to_tensor(input)
+        else:
+            tensor = input
+
         if tensor.dim() == 0:
             result = tensor.reshape((1, 1, 1))
         elif tensor.dim() == 1:
@@ -5172,7 +5204,7 @@ def infer_broadcast_shape(arr, indices, axis):
     return broadcast_shape
 
 
-def take_along_axis(arr, indices, axis):
+def take_along_axis(arr, indices, axis, broadcast=True):
     """
     Take values from the input array by given indices matrix along the designated axis.
 
@@ -5181,6 +5213,7 @@ def take_along_axis(arr, indices, axis):
         indices (Tensor) : Indices to take along each 1d slice of arr. This must match the dimension of arr,
             and need to broadcast against arr. Supported data type are int and int64.
         axis (int) : The axis to take 1d slices along.
+        broadcast (bool, optional): whether the indices broadcast.
 
     Returns:
         Tensor, The indexed element, same dtype with arr
@@ -5203,16 +5236,33 @@ def take_along_axis(arr, indices, axis):
             "`indices` and `arr` must have the same number of dimensions!"
         )
     axis = non_negative_axis(arr, axis)
-    broadcast_shape = infer_broadcast_shape(arr, indices, axis)
-    if not broadcast_shape:
-        # if indices matrix have larger size than arr, arr should broadcast into indices shape.
-        broadcast_shape = indices.shape
-    if in_dynamic_or_pir_mode():
+    if broadcast:
+        broadcast_shape = infer_broadcast_shape(arr, indices, axis)
+        if not broadcast_shape:
+            # if indices matrix have larger size than arr, arr should broadcast into indices shape.
+            broadcast_shape = indices.shape
         indices = paddle.broadcast_to(indices, broadcast_shape)
         broadcast_shape_list = list(broadcast_shape)
         broadcast_shape_list[axis] = list(arr.shape)[axis]
         broadcast_shape = tuple(broadcast_shape_list)
         arr = paddle.broadcast_to(arr, broadcast_shape)
+    else:
+        for i in range(len(arr.shape)):
+            if i != axis and arr.shape[i] < indices.shape[i]:
+                raise RuntimeError(
+                    "Size does not match at dimension {} expected index {} to be smaller than self {} apart from dimension {}".format(
+                        i, indices.shape, arr.shape, axis
+                    )
+                )
+
+        axis_max_size = arr.shape[axis]
+        if not (indices < axis_max_size).all():
+            raise RuntimeError(
+                "one of element of indices is out of bounds for dimension {} with size {}".format(
+                    axis, axis_max_size
+                )
+            )
+    if in_dynamic_or_pir_mode():
         return _C_ops.take_along_axis(arr, indices, axis)
     else:
         check_variable_and_dtype(
@@ -5232,11 +5282,6 @@ def take_along_axis(arr, indices, axis):
         check_variable_and_dtype(
             indices, 'index', ['int32', 'int64'], 'take_along_axis'
         )
-        indices = paddle.broadcast_to(indices, broadcast_shape)
-        broadcast_shape_list = list(broadcast_shape)
-        broadcast_shape_list[axis] = list(arr.shape)[axis]
-        broadcast_shape = tuple(broadcast_shape_list)
-        arr = paddle.broadcast_to(arr, broadcast_shape)
         helper = LayerHelper('take_along_axis', **locals())
         dtype = helper.input_dtype()
         result = helper.create_variable_for_type_inference(dtype)
@@ -5249,7 +5294,15 @@ def take_along_axis(arr, indices, axis):
         return result
 
 
-def put_along_axis(arr, indices, values, axis, reduce='assign'):
+def put_along_axis(
+    arr,
+    indices,
+    values,
+    axis,
+    reduce='assign',
+    include_self=True,
+    broadcast=True,
+):
     """
     Put values into the destination array by given indices matrix along the designated axis.
 
@@ -5259,6 +5312,8 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
             and need to broadcast against arr. Supported data type are int and int64.
         axis (int) : The axis to put 1d slices along.
         reduce (str, optional): The reduce operation, default is 'assign', support 'add', 'assign', 'mul' and 'multiply'.
+        include_self (bool, optional): whether to reduce with the elements of arr. (Only support True now)
+        broadcast (bool, optional): whether to broadcast indices.
 
     Returns:
         Tensor, The indexed element, same dtype with arr
@@ -5279,21 +5334,54 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
              [60, 40, 50]])
 
     """
+    if not include_self:
+        raise ValueError("`include_self` is only support True now.")
     if len(arr.shape) != len(indices.shape):
         raise ValueError(
             "`indices` and `arr` must have the same number of dimensions!"
         )
     axis = non_negative_axis(arr, axis)
-    broadcast_shape = infer_broadcast_shape(arr, indices, axis)
-    if in_dynamic_or_pir_mode():
-        values = (
-            paddle.to_tensor(values)
-            if not isinstance(values, (paddle.Tensor, paddle.pir.OpResult))
-            else values
-        )
+    if broadcast:
+        broadcast_shape = infer_broadcast_shape(arr, indices, axis)
+        if in_dynamic_or_pir_mode():
+            values = (
+                paddle.to_tensor(values)
+                if not isinstance(values, (paddle.Tensor, paddle.pir.OpResult))
+                else values
+            )
         if broadcast_shape:
             indices = paddle.broadcast_to(indices, broadcast_shape)
         values = paddle.broadcast_to(values, indices.shape)
+    else:
+        if isinstance(values, (paddle.Tensor, paddle.pir.OpResult)):
+            if len(indices.shape) != len(values.shape):
+                raise ValueError(
+                    "`indices` and `values` must have the same number of dimensions!"
+                )
+            for i in range(len(arr.shape)):
+                if (
+                    i != axis and arr.shape[i] < indices.shape[i]
+                ) or indices.shape[i] > values.shape[i]:
+                    raise RuntimeError(
+                        "Size does not match at dimension {} expected index {} to be smaller than self {} apart from dimension {} and to be smaller size than values {}".format(
+                            i, indices.shape, arr.shape, axis, values.shape
+                        )
+                    )
+        else:
+            values = paddle.to_tensor(values).astype(arr.dtype)
+            elements = 1
+            for num in values.shape:
+                elements *= num
+            if elements == 1:  # paddle.pir.OpResult has no attribute 'size'
+                values = paddle.broadcast_to(values, indices.shape)
+        axis_max_size = arr.shape[axis]
+        if not (indices < axis_max_size).all():
+            raise RuntimeError(
+                "one of element of indices is out of bounds for dimension {} with size {}".format(
+                    axis, axis_max_size
+                )
+            )
+    if in_dynamic_or_pir_mode():
         return _C_ops.put_along_axis(arr, indices, values, axis, reduce)
     else:
         check_variable_and_dtype(
@@ -5313,9 +5401,6 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
         check_variable_and_dtype(
             indices, 'index', ['int32', 'int64'], 'put_along_axis'
         )
-        if broadcast_shape:
-            indices = paddle.broadcast_to(indices, broadcast_shape)
-        values = paddle.broadcast_to(values, indices.shape)
         helper = LayerHelper('put_along_axis', **locals())
         dtype = helper.input_dtype()
         result = helper.create_variable_for_type_inference(dtype)
@@ -5600,7 +5685,7 @@ def unflatten(x, axis, shape, name=None):
         new_shape = (
             list(x.shape[:axis]) + list(shape) + list(x.shape[axis + 1 :])
         )
-    elif isinstance(shape, Variable):
+    elif isinstance(shape, (Variable, paddle.pir.Value)):
         # The data type returned by `paddle.shape` is only 'int32'.
         new_shape = paddle.concat(
             [
@@ -5921,3 +6006,109 @@ def diagonal_scatter(x, y, offset=0, axis1=0, axis2=1, name=None):
 
     """
     return fill_diagonal_tensor(x, y, offset, axis1, axis2, name)
+
+
+def select_scatter(x, values, axis, index, name=None):
+    """
+    Embeds the values of the values tensor into x at the given index of axis.
+
+    Args:
+        x (Tensor) : The Destination Tensor. Supported data types are `bool`, `float16`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `bfloat16`, `complex64`, `complex128`.
+        values (Tensor) : The tensor to embed into x. Supported data types are `bool`, `float16`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `bfloat16`, `complex64`, `complex128`.
+        axis (int) : the dimension to insert the slice into.
+        index (int) : the index to select with.
+        name (str, optional): Name for the operation (optional, default is None).
+
+    Returns:
+        Tensor, same dtype and shape with x
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.zeros((2,3,4)).astype("float32")
+            >>> values = paddle.ones((2,4)).astype("float32")
+            >>> res = paddle.select_scatter(x,values,1,1)
+            >>> print(res)
+            Tensor(shape=[2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[[0., 0., 0., 0.],
+                     [1., 1., 1., 1.],
+                     [0., 0., 0., 0.]],
+                    [[0., 0., 0., 0.],
+                     [1., 1., 1., 1.],
+                     [0., 0., 0., 0.]]])
+
+    """
+    x_shape = x.shape
+    value_shape = values.shape
+    if not isinstance(x_shape, list):
+        x_shape = list(x_shape)
+    if index < 0:
+        index += x_shape[axis]
+    if axis < 0:
+        axis += len(x_shape)
+    del x_shape[axis]
+    if len(x_shape) != len(value_shape):
+        raise RuntimeError(
+            "expected values to have a size equal to the slice of x. value size = "
+            + str(value_shape)
+            + " slice size = "
+            + str(x_shape)
+        )
+    for i in range(len(x_shape)):
+        if x_shape[i] != value_shape[i]:
+            raise RuntimeError(
+                "expected values to have a size equal to the slice of x. value size = "
+                + str(value_shape)
+                + " slice size = "
+                + str(x_shape)
+            )
+    from ..base.framework import default_main_program
+
+    starts = [index]
+    ends = [index + 1]
+    steps = [1]
+    axes = [axis]
+    none_axes = []
+    decrease_axes = [axis]
+    inputs = {'Input': x}
+    attrs = {
+        'axes': axes,
+        'starts': starts,
+        'ends': ends,
+        'steps': steps,
+        'decrease_axes': decrease_axes,
+        'none_axes': none_axes,
+    }
+
+    dtype = x.dtype
+    attrs['dtype'] = dtype
+
+    values = values.astype(dtype)
+    inputs["ValueTensor"] = values
+
+    if in_dynamic_or_pir_mode():
+        return _C_ops.set_value_with_tensor(
+            x,
+            values,
+            starts,
+            ends,
+            steps,
+            axes,
+            decrease_axes,
+            none_axes,
+        )
+    else:
+        helper = LayerHelper('select_scatter', **locals())
+        output = helper.create_variable_for_type_inference(dtype=x.dtype)
+        cur_block = default_main_program().current_block()
+        cur_block.append_op(
+            type="set_value",
+            inputs=inputs,
+            outputs={'Out': output},
+            attrs=attrs,
+            inplace_map={"Input": "Out"},
+        )
+
+        return output

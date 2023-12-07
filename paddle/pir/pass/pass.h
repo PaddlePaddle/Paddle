@@ -18,8 +18,8 @@
 #include <string>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/enforce.h"
 #include "paddle/pir/pass/analysis_manager.h"
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 
@@ -59,6 +59,7 @@ struct PassInfo {
   // opt_level=1: constant fold, cse, memory optimize, etc.
   // opt_level=2: the fusion logical pass.
   // opt_level=3: layout, etc.
+  // opt_level=4: the radical optimization.
   uint8_t opt_level;
 
   // The list which pass depends on.

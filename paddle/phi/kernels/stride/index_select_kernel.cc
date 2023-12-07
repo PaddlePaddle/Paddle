@@ -30,8 +30,8 @@ void IndexSelectStridedKernel(const Context& ctx,
   auto input_dim = x.dims();
   dim = dim >= 0 ? dim : dim + input_dim.size();
 
-  std::vector<int64_t> shape = phi::vectorize<int64_t>(x.dims());
-  std::vector<int64_t> stride = phi::vectorize<int64_t>(x.strides());
+  std::vector<int64_t> shape = common::vectorize<int64_t>(x.dims());
+  std::vector<int64_t> stride = common::vectorize<int64_t>(x.strides());
   int64_t offset = static_cast<int64_t>(x.offset());
 
   offset = static_cast<int64_t>(offset +

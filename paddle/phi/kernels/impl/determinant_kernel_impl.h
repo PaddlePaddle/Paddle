@@ -105,7 +105,7 @@ template <typename T, typename Context>
 void DeterminantKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        DenseTensor* out) {
-  auto input_dim = vectorize(x.dims());
+  auto input_dim = common::vectorize(x.dims());
   auto input_dim_size = input_dim.size();
 
   auto batch_count = detail::GetBatchCount(x.dims());
@@ -121,12 +121,12 @@ void DeterminantKernel(const Context& dev_ctx,
                         "the input matrix should be square matrix."));
   auto rank = input_dim[input_dim_size - 1];  // square matrix length
   DeterminantFunctor<T, Context>()(dev_ctx, x, rank, batch_count, out);
-  auto output_dims = phi::slice_ddim(x.dims(), 0, input_dim_size - 2);
+  auto output_dims = common::slice_ddim(x.dims(), 0, input_dim_size - 2);
   if (input_dim_size > 2) {
     out->Resize(output_dims);
   } else {
     // when input is a two-dimension matrix, The det value is a number.
-    out->Resize(phi::make_ddim({}));
+    out->Resize(common::make_ddim({}));
   }
   VLOG(10) << "output dim:" << out->dims();
 }

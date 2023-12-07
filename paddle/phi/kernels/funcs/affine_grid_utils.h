@@ -45,7 +45,7 @@ inline void GetIdxMap4D(int n,
                         DenseTensor* grid,
                         const Context& dev_ctx) {
   auto& place = *dev_ctx.eigen_device();
-  grid->Resize(phi::make_ddim({n, h, w, 3}));
+  grid->Resize(common::make_ddim({n, h, w, 3}));
   dev_ctx.template Alloc<T>(grid);
   auto grid_t = EigenTensor<T, 4>::From(*grid);
   // Get indexes of height with shape [height, width, 1]
@@ -59,7 +59,7 @@ inline void GetIdxMap4D(int n,
   auto w_idx_t = EigenTensor<T, 1>::From(w_idx);
   // Get constant ones tensor with shape [height, width, 1]
   DenseTensor ones;
-  ones.Resize(phi::make_ddim({h, w, 1}));
+  ones.Resize(common::make_ddim({h, w, 1}));
   dev_ctx.template Alloc<T>(&ones);
 
   phi::funcs::SetConstant<Context, T>()(dev_ctx, &ones, static_cast<T>(1));
@@ -67,22 +67,22 @@ inline void GetIdxMap4D(int n,
   // Get grid tensor with shape [n, h, w, 3] by concatenating h_idx, w_idx and
   // ones
   DenseTensor w_idx_map;
-  w_idx_map.Resize(phi::make_ddim({h, w, 1}));
+  w_idx_map.Resize(common::make_ddim({h, w, 1}));
   dev_ctx.template Alloc<T>(&w_idx_map);
   auto w_idx_map_t = EigenTensor<T, 3>::From(w_idx_map);
 
   DenseTensor h_idx_map;
-  h_idx_map.Resize(phi::make_ddim({h, w, 1}));
+  h_idx_map.Resize(common::make_ddim({h, w, 1}));
   dev_ctx.template Alloc<T>(&h_idx_map);
   auto h_idx_map_t = EigenTensor<T, 3>::From(h_idx_map);
 
   DenseTensor w_h_idx_map;
-  w_h_idx_map.Resize(phi::make_ddim({h, w, 2}));
+  w_h_idx_map.Resize(common::make_ddim({h, w, 2}));
   dev_ctx.template Alloc<T>(&w_h_idx_map);
   auto w_h_idx_map_t = EigenTensor<T, 3>::From(w_h_idx_map);
 
   DenseTensor w_h_one_idx_map;
-  w_h_one_idx_map.Resize(phi::make_ddim({h, w, 3}));
+  w_h_one_idx_map.Resize(common::make_ddim({h, w, 3}));
   dev_ctx.template Alloc<T>(&w_h_one_idx_map);
   auto w_h_one_idx_map_t = EigenTensor<T, 3>::From(w_h_one_idx_map);
 
@@ -109,7 +109,7 @@ inline void GetIdxMap5D(int n,
                         DenseTensor* grid,
                         const Context& dev_ctx) {
   auto& place = *dev_ctx.eigen_device();
-  grid->Resize(phi::make_ddim({n, d, h, w, 4}));
+  grid->Resize(common::make_ddim({n, d, h, w, 4}));
   dev_ctx.template Alloc<T>(grid);
   auto grid_t = EigenTensor<T, 5>::From(*grid);
   // Get indexes of height with shape [depth, height, width, 1]
@@ -127,7 +127,7 @@ inline void GetIdxMap5D(int n,
   auto w_idx_t = EigenTensor<T, 1>::From(w_idx);
   // Get constant ones tensor with shape [depth, height, width, 1]
   DenseTensor ones;
-  ones.Resize(phi::make_ddim({d, h, w, 1}));
+  ones.Resize(common::make_ddim({d, h, w, 1}));
   dev_ctx.template Alloc<T>(&ones);
 
   phi::funcs::SetConstant<Context, T>()(dev_ctx, &ones, static_cast<T>(1));
@@ -135,32 +135,32 @@ inline void GetIdxMap5D(int n,
   // Get grid tensor with shape [n, d, h, w, 4] by concatenating d_idx, h_idx,
   // w_idx and ones
   DenseTensor w_idx_map;
-  w_idx_map.Resize(phi::make_ddim({d, h, w, 1}));
+  w_idx_map.Resize(common::make_ddim({d, h, w, 1}));
   dev_ctx.template Alloc<T>(&w_idx_map);
   auto w_idx_map_t = EigenTensor<T, 4>::From(w_idx_map);
 
   DenseTensor h_idx_map;
-  h_idx_map.Resize(phi::make_ddim({d, h, w, 1}));
+  h_idx_map.Resize(common::make_ddim({d, h, w, 1}));
   dev_ctx.template Alloc<T>(&h_idx_map);
   auto h_idx_map_t = EigenTensor<T, 4>::From(h_idx_map);
 
   DenseTensor d_idx_map;
-  d_idx_map.Resize(phi::make_ddim({d, h, w, 1}));
+  d_idx_map.Resize(common::make_ddim({d, h, w, 1}));
   dev_ctx.template Alloc<T>(&d_idx_map);
   auto d_idx_map_t = EigenTensor<T, 4>::From(d_idx_map);
 
   DenseTensor w_h_idx_map;
-  w_h_idx_map.Resize(phi::make_ddim({d, h, w, 2}));
+  w_h_idx_map.Resize(common::make_ddim({d, h, w, 2}));
   dev_ctx.template Alloc<T>(&w_h_idx_map);
   auto w_h_idx_map_t = EigenTensor<T, 4>::From(w_h_idx_map);
 
   DenseTensor w_h_d_idx_map;
-  w_h_d_idx_map.Resize(phi::make_ddim({d, h, w, 3}));
+  w_h_d_idx_map.Resize(common::make_ddim({d, h, w, 3}));
   dev_ctx.template Alloc<T>(&w_h_d_idx_map);
   auto w_h_d_idx_map_t = EigenTensor<T, 4>::From(w_h_d_idx_map);
 
   DenseTensor w_h_d_one_idx_map;
-  w_h_d_one_idx_map.Resize(phi::make_ddim({d, h, w, 4}));
+  w_h_d_one_idx_map.Resize(common::make_ddim({d, h, w, 4}));
   dev_ctx.template Alloc<T>(&w_h_d_one_idx_map);
   auto w_h_d_one_idx_map_t = EigenTensor<T, 4>::From(w_h_d_one_idx_map);
 

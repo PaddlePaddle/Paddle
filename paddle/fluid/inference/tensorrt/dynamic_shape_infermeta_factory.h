@@ -17,10 +17,10 @@
 #include <NvInfer.h>
 #include <string>
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/macros.h"
 #include "paddle/utils/flat_hash_map.h"
 
 namespace paddle {
