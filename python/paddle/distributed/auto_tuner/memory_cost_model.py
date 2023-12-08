@@ -19,30 +19,63 @@ def parse_arguments():
     parser = ArgumentParser()
 
     # for distributed strategy
-    parser.add_argument("dp_degree", type=int, help="dp degree")
-    parser.add_argument("pp_degree", type=int, help="pp degree")
-    parser.add_argument("mp_degree", type=int, help="mp degree")
-    parser.add_argument("sharding_degree", type=int, help="sharding degree")
-    parser.add_argument("sharding_stage", type=int, help="sharding stage")
-    parser.add_argument("micro_batch_size", type=int, help="micro batch size")
-    parser.add_argument("use_recompute", type=bool, help="use recompute")
     parser.add_argument(
-        "recompute_granularity", type=int, help="recompute granularity"
+        "--dp_degree", type=int, required=True, help="dp degree"
+    )
+    parser.add_argument(
+        "--pp_degree", type=int, required=True, help="pp degree"
+    )
+    parser.add_argument(
+        "--mp_degree", type=int, required=True, help="mp degree"
+    )
+    parser.add_argument(
+        "--sharding_degree", type=int, required=True, help="sharding degree"
+    )
+    parser.add_argument(
+        "--sharding_stage", type=int, required=True, help="sharding stage"
+    )
+    parser.add_argument(
+        "--micro_batch_size", type=int, required=True, help="micro batch size"
+    )
+    parser.add_argument(
+        "--use_recompute", type=bool, required=True, help="use recompute"
+    )
+    parser.add_argument(
+        "--recompute_granularity",
+        type=str,
+        required=True,
+        choices=["None", "core_attn", "full_attn", "full"],
+        help="recompute granularity",
     )
 
     # for model config
-    parser.add_argument("hidden_size", type=int, help="hidden size")
     parser.add_argument(
-        "num_attention_heads", type=int, help="number of attention heads"
+        "--hidden_size", type=int, required=False, help="hidden size"
     )
     parser.add_argument(
-        "num_hidden_layers", type=int, help="number of hidden layers"
+        "--num_attention_heads",
+        type=int,
+        required=False,
+        help="number of attention heads",
     )
     parser.add_argument(
-        "max_sequence_length", type=int, help="maximum sequence length"
+        "--num_layers", type=int, required=False, help="number of hidden layers"
     )
-    parser.add_argument("vocab_size", type=int, help="vocabulary size")
-    parser.add_argument("intermediate_size", type=int, help="intermediate size")
+    parser.add_argument(
+        "--max_sequence_length",
+        type=int,
+        required=False,
+        help="maximum sequence length",
+    )
+    parser.add_argument(
+        "--vocab_size", type=int, required=False, help="vocabulary size"
+    )
+    parser.add_argument(
+        "--intermediate_size",
+        type=int,
+        required=False,
+        help="intermediate size",
+    )
 
     return parser.parse_args()
 

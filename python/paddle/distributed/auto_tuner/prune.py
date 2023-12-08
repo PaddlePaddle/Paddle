@@ -474,8 +474,7 @@ def prune_by_memory_estimation(tuner_cfg, cur_cfg, history_cfgs):
                                 --use_recompute {cur_cfg['use_recompute']} --micro_batch_size {cur_cfg['micro_batch_size']} \
                                 --recompute_granularity {cur_cfg['recompute_granularity']} \
                                 --hidden_size {model_cfg['hidden_size']} --num_attention_heads {model_cfg['num_attention_heads']} \
-                                --num_hidden_layers {model_cfg['num_hidden_layers']} \
-                                --max_sequence_length {model_cfg['max_sequence_length']} \
+                                --num_layers {model_cfg['num_layers']} --max_sequence_length {model_cfg['max_sequence_length']} \
                                 --vocab_size {model_cfg['vocab_size']} --intermediate_size {model_cfg['intermediate_size']} "
     result = subprocess.run(
         memory_estimation_cmd,
