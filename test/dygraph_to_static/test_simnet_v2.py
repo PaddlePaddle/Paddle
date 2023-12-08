@@ -124,59 +124,59 @@ simnet_process = FakeReaderProcessor(
 )
 
 
-def train(conf_dict, to_static):
+def train(conf_dict):
     """
     train process
     """
-    with enable_to_static_guard(to_static):
-        # Get device
-        if paddle.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
-        else:
-            place = paddle.CPUPlace()
 
-        paddle.disable_static(place)
-        paddle.seed(SEED)
-        paddle.framework.random._manual_program_seed(SEED)
+    # Get device
+    if paddle.is_compiled_with_cuda():
+        place = paddle.CUDAPlace(0)
+    else:
+        place = paddle.CPUPlace()
 
-        conf_dict['dict_size'] = len(vocab)
-        conf_dict['seq_len'] = args.seq_len
+    paddle.disable_static(place)
+    paddle.seed(SEED)
+    paddle.framework.random._manual_program_seed(SEED)
 
-        net = BOW(conf_dict)
-        loss = HingeLoss(conf_dict)
-        optimizer = paddle.optimizer.Adam(
-            learning_rate=0.001,
-            beta1=0.9,
-            beta2=0.999,
-            epsilon=1e-08,
-            parameters=net.parameters(),
-        )
+    conf_dict['dict_size'] = len(vocab)
+    conf_dict['seq_len'] = args.seq_len
 
-        metric = paddle.metric.Auc(name="auc")
+    net = BOW(conf_dict)
+    loss = HingeLoss(conf_dict)
+    optimizer = paddle.optimizer.Adam(
+        learning_rate=0.001,
+        beta1=0.9,
+        beta2=0.999,
+        epsilon=1e-08,
+        parameters=net.parameters(),
+    )
 
-        global_step = 0
-        losses = []
+    metric = paddle.metric.Auc(name="auc")
 
-        train_loader = paddle.io.DataLoader(
-            simnet_process, batch_size=args.batch_size
-        )
+    global_step = 0
+    losses = []
 
-        for left, pos_right, neg_right in train_loader():
-            left = paddle.reshape(left, shape=[-1, 1])
-            pos_right = paddle.reshape(pos_right, shape=[-1, 1])
-            neg_right = paddle.reshape(neg_right, shape=[-1, 1])
-            net.train()
-            global_step += 1
-            left_feat, pos_score = net(left, pos_right)
-            pred = pos_score
-            _, neg_score = net(left, neg_right)
-            avg_cost = loss.compute(pos_score, neg_score)
-            losses.append(np.mean(avg_cost.numpy()))
-            avg_cost.backward()
-            optimizer.minimize(avg_cost)
-            net.clear_gradients()
-        paddle.enable_static()
-        return losses
+    train_loader = paddle.io.DataLoader(
+        simnet_process, batch_size=args.batch_size
+    )
+
+    for left, pos_right, neg_right in train_loader():
+        left = paddle.reshape(left, shape=[-1, 1])
+        pos_right = paddle.reshape(pos_right, shape=[-1, 1])
+        neg_right = paddle.reshape(neg_right, shape=[-1, 1])
+        net.train()
+        global_step += 1
+        left_feat, pos_score = net(left, pos_right)
+        pred = pos_score
+        _, neg_score = net(left, neg_right)
+        avg_cost = loss.compute(pos_score, neg_score)
+        losses.append(np.mean(avg_cost.numpy()))
+        avg_cost.backward()
+        optimizer.minimize(avg_cost)
+        net.clear_gradients()
+    paddle.enable_static()
+    return losses
 
 
 class TestSimnet(Dy2StTestBase):
@@ -185,7 +185,9 @@ class TestSimnet(Dy2StTestBase):
         if paddle.is_compiled_with_cuda():
             paddle.base.set_flags({"FLAGS_cudnn_deterministic": True})
         conf_dict = create_conf_dict()
-        dygraph_loss = train(conf_dict, to_static=False)
+        with enable_to_static_guard(False):
+            dygraph_loss = train(conf_dict, to_static=False)
+
         static_loss = train(conf_dict, to_static=True)
 
         self.assertEqual(len(dygraph_loss), len(static_loss))

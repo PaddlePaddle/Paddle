@@ -281,19 +281,19 @@ class TestReturnBase(Dy2StTestBase):
     def init_dygraph_func(self):
         self.dygraph_func = test_return_base
 
-    def _run(self, to_static=False):
-        with enable_to_static_guard(to_static):
-            with base.dygraph.guard():
-                res = self.dygraph_func(self.input)
-                if isinstance(res, (tuple, list)):
-                    return tuple(r.numpy() for r in res)
-                elif isinstance(res, core.eager.Tensor):
-                    return res.numpy()
-                return res
+    def _run(self):
+        with base.dygraph.guard():
+            res = self.dygraph_func(self.input)
+            if isinstance(res, (tuple, list)):
+                return tuple(r.numpy() for r in res)
+            elif isinstance(res, core.eager.Tensor):
+                return res.numpy()
+            return res
 
     def _test_value_impl(self):
-        dygraph_res = self._run(to_static=False)
-        static_res = self._run(to_static=True)
+        with enable_to_static_guard(False):
+            dygraph_res = self._run()
+        static_res = self._run()
         if isinstance(dygraph_res, tuple):
             self.assertTrue(isinstance(static_res, tuple))
             self.assertEqual(len(dygraph_res), len(static_res))
