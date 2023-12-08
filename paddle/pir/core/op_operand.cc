@@ -53,6 +53,11 @@ Operation *OpOperand::owner() const {
   return impl_->owner();
 }
 
+uint32_t OpOperand::index() const {
+  CHECK_OPOPEREND_NULL_IMPL(index);
+  return impl_->index();
+}
+
 void OpOperand::RemoveFromUdChain() {
   CHECK_OPOPEREND_NULL_IMPL(RemoveFromUdChain);
   return impl_->RemoveFromUdChain();

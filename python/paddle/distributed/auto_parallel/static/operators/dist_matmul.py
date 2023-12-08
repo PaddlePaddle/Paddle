@@ -392,7 +392,7 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
                 ctx, main_block, backward_op, **kwargs
             )
         else:
-            # col parallel: matmul + allreduce
+            # col parallel: matmul_grad + allreduce
             col_parallel = True
             assert Y_var_dim_mapping[0] < 0
             parallel_axis = Y_var_dim_mapping[1]
@@ -457,6 +457,7 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
             dist_attr.process_mesh,
             X_grad_dist_attr,
             ctx,
+            chunk_id=dist_attr.chunk_id,
         )
 
     if trans_x:
@@ -1115,6 +1116,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
             op_dist_attr.process_mesh,
             out_var_dist_attr,
             ctx,
+            chunk_id=op_dist_attr.chunk_id,
         )
 
         # init param sync
@@ -1806,6 +1808,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
             op_dist_attr.process_mesh,
             out_var_dist_attr,
             ctx,
+            chunk_id=op_dist_attr.chunk_id,
         )
 
         # init param sync
@@ -2475,6 +2478,7 @@ class DistributedMulImpl1(DistributedOperatorImpl):
             op_dist_attr.process_mesh,
             out_var_dist_attr,
             ctx,
+            chunk_id=op_dist_attr.chunk_id,
         )
 
         # init param sync

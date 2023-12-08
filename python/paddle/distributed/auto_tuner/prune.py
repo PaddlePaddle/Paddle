@@ -16,9 +16,10 @@ import os
 import subprocess
 
 _PRUNE_FUNC = []
+_PRUNE_HISTORY_FUNC = []
 
 
-def same_cfgs_beside(attr, cur_cfg, history_cfgs):
+def same_cfgs_beside(attr, cur_cfg, history_cfgs=[]):
     """
     Compare the current configuration with the history configuration,
     and obtain the same configurations as the current configuration except for the given attr.
@@ -39,6 +40,30 @@ def same_cfgs_beside(attr, cur_cfg, history_cfgs):
     return results
 
 
+def same_cfgs_beside_sharding_overlap(tuner_cfg, cur_cfg, history_cfgs=[]):
+    result = None
+    for cfg in history_cfgs:
+        keys = [
+            "dp_degree",
+            "mp_degree",
+            "pp_degree",
+            "vpp_degree",
+            "micro_batch_size",
+            "use_recompute",
+            "recompute_granularity",
+            "sharding_stage",
+        ]
+        same = True
+        for key in keys:
+            if cfg[key] != cur_cfg[key]:
+                same = False
+                break
+        if same:
+            result = cfg
+            break
+    return result
+
+
 def register_prune(func):
     def wrapper(*args, **kwargs):
         return func(*args, **kwargs)
@@ -47,8 +72,16 @@ def register_prune(func):
     return wrapper
 
 
+def register_prune_history(func):
+    def wrapper(*args, **kwargs):
+        return func(*args, **kwargs)
+
+    _PRUNE_HISTORY_FUNC.append(wrapper)
+    return wrapper
+
+
 @register_prune
-def prune_by_mp(tuner_cfg, cur_cfg, history_cfgs=None):
+def prune_by_mp(tuner_cfg, cur_cfg, history_cfgs=[]):
     """
     Prune by mp, the rules are:
     1. MP degree should be evenly divided by hidden size and vocab size
@@ -92,7 +125,7 @@ def prune_by_mp(tuner_cfg, cur_cfg, history_cfgs=None):
 
 
 @register_prune
-def prune_by_pp(tuner_cfg, cur_cfg, history_cfgs=None):
+def prune_by_pp(tuner_cfg, cur_cfg, history_cfgs=[]):
     """
     Prune by pp (pipeline-parallelism), the rules are:
     1. PP degree should be evenly divided by number of layers.
@@ -101,7 +134,9 @@ def prune_by_pp(tuner_cfg, cur_cfg, history_cfgs=None):
     """
     pp_degree = cur_cfg.get("pp_degree", None)
     num_layers = tuner_cfg["model_cfg"].get("num_layers", None)
-    num_nodes = tuner_cfg.get("nodes", 1)
+    num_nodes = (
+        cur_cfg["nodes"] if "nodes" in cur_cfg else tuner_cfg.get("nodes", 1)
+    )
 
     if pp_degree is None:
         return False
@@ -123,7 +158,7 @@ def prune_by_pp(tuner_cfg, cur_cfg, history_cfgs=None):
 
 
 @register_prune
-def prune_by_vpp(tuner_cfg, cur_cfg, history_cfgs=None):
+def prune_by_vpp(tuner_cfg, cur_cfg, history_cfgs=[]):
     """
     Prune by vpp (virtual pipeline parallelism), the rules are:
     1. VPP degree should be evenly divided by number of layers.
@@ -140,6 +175,19 @@ def prune_by_vpp(tuner_cfg, cur_cfg, history_cfgs=None):
         return False
 
     if num_layers:
+        global_batch_size = (
+            cur_cfg["global_batch_size"]
+            if "global_batch_size" in cur_cfg
+            else tuner_cfg["model_cfg"].get("global_batch_size", None)
+        )
+        acc_steps = (
+            global_batch_size
+            // cur_cfg["dp_degree"]
+            // cur_cfg["sharding_degree"]
+            // cur_cfg["micro_batch_size"]
+        )
+        if vpp_degree > 1 and acc_steps % pp_degree != 0:
+            return True
         if num_layers % (pp_degree * vpp_degree) != 0:
             return True
         if pp_degree == 1 and vpp_degree != 1:
@@ -154,6 +202,14 @@ def prune_by_vpp(tuner_cfg, cur_cfg, history_cfgs=None):
         if vpp_degree not in vpp_degree_candidates:
             return True
 
+    return False
+
+
+@register_prune_history
+def prune_by_vpp_history(tuner_cfg, cur_cfg, history_cfgs=[]):
+    vpp_degree = cur_cfg.get("vpp_degree", None)
+    if vpp_degree is None:
+        return False
     cfgs = same_cfgs_beside("vpp_degree", cur_cfg, history_cfgs)
     if cfgs:
         for cfg in cfgs:
@@ -167,7 +223,7 @@ def prune_by_vpp(tuner_cfg, cur_cfg, history_cfgs=None):
 
 
 @register_prune
-def prune_by_mbs(tuner_cfg, cur_cfg, history_cfgs=None):
+def prune_by_mbs(tuner_cfg, cur_cfg, history_cfgs=[]):
     """
     Prune by mbs (micro batch size), the rules are:
     1. Micro batch size should be evenly divided by the local batch size.
@@ -175,7 +231,11 @@ def prune_by_mbs(tuner_cfg, cur_cfg, history_cfgs=None):
     3. Prune if a similar configuration with a larger micro batch size resulted in a valid run.
     """
     micro_batch_size = cur_cfg.get("micro_batch_size", None)
-    global_batch_size = tuner_cfg["model_cfg"].get("global_batch_size", None)
+    global_batch_size = (
+        cur_cfg["global_batch_size"]
+        if "global_batch_size" in cur_cfg
+        else tuner_cfg["model_cfg"].get("global_batch_size", None)
+    )
     if global_batch_size == "auto":
         global_batch_size = cur_cfg["global_batch_size"]
     if global_batch_size:
@@ -210,6 +270,14 @@ def prune_by_mbs(tuner_cfg, cur_cfg, history_cfgs=None):
         if micro_batch_size not in mbs_candidates:
             return True
 
+    return False
+
+
+@register_prune_history
+def prune_by_mbs_history(tuner_cfg, cur_cfg, history_cfgs=[]):
+    micro_batch_size = cur_cfg.get("micro_batch_size", None)
+    if micro_batch_size is None:
+        return False
     cfgs = same_cfgs_beside("micro_batch_size", cur_cfg, history_cfgs)
     if cfgs:
         for cfg in cfgs:
@@ -225,12 +293,11 @@ def prune_by_mbs(tuner_cfg, cur_cfg, history_cfgs=None):
                 and cfg.get("max_mem_usage") == "OOM"
             ):
                 return True
-
     return False
 
 
 @register_prune
-def prune_by_sharding(tuner_cfg, cur_cfg, history_cfgs):
+def prune_by_sharding(tuner_cfg, cur_cfg, history_cfgs=[]):
     """
     Prune by sharding parameters, the rules are:
     1. Sharding stage and sharding degree should be specified.
@@ -267,6 +334,18 @@ def prune_by_sharding(tuner_cfg, cur_cfg, history_cfgs):
     if pp_degree and pp_degree != 1 and sharding_stage != 1:
         return True
 
+    return False
+
+
+@register_prune_history
+def prune_by_sharding_history(tuner_cfg, cur_cfg, history_cfgs=[]):
+    sharding_degree = cur_cfg.get("sharding_degree", None)
+    if sharding_degree is None:
+        return False
+
+    sharding_stage = cur_cfg.get("sharding_stage", None)
+    if sharding_stage is None:
+        return False
     cfgs = same_cfgs_beside("sharding_stage", cur_cfg, history_cfgs)
     if cfgs:
         for cfg in cfgs:
@@ -292,7 +371,7 @@ def prune_by_sharding(tuner_cfg, cur_cfg, history_cfgs):
 
 
 @register_prune
-def prune_by_recompute(tuner_cfg, cur_cfg, history_cfgs):
+def prune_by_recompute(tuner_cfg, cur_cfg, history_cfgs=[]):
     """
     Prune by recompute parameters, the rules are:
     1. If recompute is not used, return False directly.
@@ -320,6 +399,14 @@ def prune_by_recompute(tuner_cfg, cur_cfg, history_cfgs):
         if recompute_granularity not in recompute_granularity_candidates:
             return True
 
+    return False
+
+
+@register_prune_history
+def prune_by_recompute_history(tuner_cfg, cur_cfg, history_cfgs=[]):
+    use_recompute = cur_cfg.get("use_recompute", None)
+    if use_recompute is None:
+        return False
     cfgs = same_cfgs_beside("use_recompute", cur_cfg, history_cfgs)
     if cfgs:
         for cfg in cfgs:
@@ -346,8 +433,12 @@ def prune_by_recompute(tuner_cfg, cur_cfg, history_cfgs):
 
 
 @register_prune
-def prune_by_num_gpus(tuner_cfg, cur_cfg, history_cfgs):
-    num_gpus = tuner_cfg.get("num_gpus")
+def prune_by_num_gpus(tuner_cfg, cur_cfg, history_cfgs=[]):
+    num_gpus = (
+        cur_cfg["num_gpus"]
+        if "num_gpus" in cur_cfg
+        else tuner_cfg.get("num_gpus")
+    )
     dp_degree = cur_cfg.get("dp_degree", 1)
     mp_degree = cur_cfg.get("mp_degree", 1)
     pp_degree = cur_cfg.get("pp_degree", 1)
@@ -399,3 +490,16 @@ def prune_by_memory_estimation(tuner_cfg, cur_cfg, history_cfgs):
         raise ValueError(
             f"memory_estimation_tool failed with error: {result.stderr}"
         )
+
+
+def prune_by_sharding_overlap(tuner_cfg, cur_cfg, history_cfgs=[]):
+    """Prune by sharding overlap for single dp estimation"""
+    if "sharding_overlap" in cur_cfg:
+        result = same_cfgs_beside_sharding_overlap(
+            tuner_cfg, cur_cfg, history_cfgs
+        )
+        if not result:
+            return True
+        if not result[tuner_cfg['metric_cfg']['name']]:
+            return True
+    return False
