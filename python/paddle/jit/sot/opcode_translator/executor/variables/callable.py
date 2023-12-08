@@ -521,6 +521,8 @@ class PaddleLayerVariable(LayerVariable):
         super().__init__(layer, graph, tracker)
 
     def call_function(self, /, *args, **kwargs):
+        if self.value.__class__.__name__ in ['Linear', 'Conv2D']:
+            raise BreakGraphError()
         self.graph.add_global_guarded_variable(self)
         # when layer is created in forward function, we use strong ref because it can't have
         # weigths and buffers, see PaddleLayerClassVariable for details.
