@@ -29,6 +29,12 @@ namespace ir {
 
 // Delete dequantize_linear_op, then dequantize weight
 void SetSubgraphEdge::ApplyImpl(Graph *graph) const {
+  if (!FLAGS_convert_all_blocks) {
+    VLOG(3) << "Running set_subgraph_edge_pass need set environment variables: "
+               "export FLAGS_convert_all_blocks = true";
+    return;
+  }
+
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
 
