@@ -156,7 +156,7 @@ def shard_tensor(
                 tensor,
                 process_mesh=mesh,
                 placements=placements,
-                **tensor.__dict__
+                **tensor.__dict__,
             )
         else:
             return paddle.Tensor(
@@ -494,6 +494,74 @@ class _ShardOptimizer:
                 self._inner_opt._apply_optimize(
                     loss=None, startup_program=None, params_grads=params_grads
                 )
+
+    def state_dict(self):
+        # 1. check if the accumulator is dist
+        state_dict = self._inner_opt.state_dict()
+        # TODO(pangengzheng): deal with master_weights and LR_Scheduler later
+        # is_dist is True when:
+        # 1. after training, the accumulators are already created and sharded.
+        # 2. before training, but the accumulators are created and sharded explicitly.
+        is_dist = any(
+            v.is_dist()
+            for k, v in state_dict.items()
+            if k not in ["master_weights", "LR_Scheduler"]
+        )
+        if is_dist:
+            return state_dict
+
+        # 2. fake the parameter gradient and invoke step to implicitly create the accumulators.
+        if not isinstance(self._inner_opt._parameter_list[0], dict):
+            for param in self._inner_opt._parameter_list:
+                if param.stop_gradient:
+                    continue
+                if hasattr(param, "main_grad"):
+                    if (
+                        param.main_grad is not None
+                        and paddle.sum(param.main_grad) != 0.0
+                    ):
+                        raise ValueError(
+                            f"gradient should be None or zero, but is {param.main_grad}"
+                        )
+                    param.main_grad = paddle.zeros_like(
+                        param, dtype=paddle.float32
+                    )
+                else:
+                    if param.grad is not None and paddle.sum(param.grad) != 0.0:
+                        raise ValueError(
+                            f"gradient should be None or zero, but is {param.grad}"
+                        )
+                    param.grad = paddle.zeros_like(param, dtype=param.dtype)
+        else:
+            for param_group in self._inner_opt._param_groups:
+                for param in param_group['params']:
+                    if param.stop_gradient:
+                        continue
+                    if hasattr(param, "main_grad"):
+                        if (
+                            param.main_grad is not None
+                            and paddle.sum(param.main_grad) != 0.0
+                        ):
+                            raise ValueError(
+                                f"gradient should be None or zero, but is {param.main_grad}"
+                            )
+                        param.main_grad = paddle.zeros_like(
+                            param, dtype=paddle.float32
+                        )
+                    else:
+                        if (
+                            param.grad is not None
+                            and paddle.sum(param.grad) != 0.0
+                        ):
+                            raise ValueError(
+                                f"gradient should be None or zero, but is {param.grad}"
+                            )
+                        param.grad = paddle.zeros_like(param, dtype=param.dtype)
+        self.step()
+        # 3. clear the parameter gradient
+        self._inner_opt.clear_grad(set_to_zero=False)
+
+        return self._inner_opt.state_dict()
 
     def __getattr__(self, item):
         return getattr(self._inner_opt, item)
