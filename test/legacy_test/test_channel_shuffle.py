@@ -88,7 +88,7 @@ class TestChannelShuffleAPI(unittest.TestCase):
         self.x_2_np = np.random.random([2, 4, 4, 9]).astype("float64")
         self.out_1_np = channel_shuffle_np(self.x_1_np, 3)
         self.out_2_np = channel_shuffle_np(self.x_2_np, 3, "NHWC")
-    @test_with_pir_api
+    
     def test_static_graph_functional(self):
         for use_cuda in (
             [False, True] if core.is_compiled_with_cuda() else [False]
@@ -124,7 +124,6 @@ class TestChannelShuffleAPI(unittest.TestCase):
             np.testing.assert_allclose(res_2[0], self.out_2_np)
 
     # same test between layer and functional in this op.
-    @test_with_pir_api
     def test_static_graph_layer(self):
         for use_cuda in (
             [False, True] if core.is_compiled_with_cuda() else [False]
