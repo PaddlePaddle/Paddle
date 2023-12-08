@@ -91,12 +91,28 @@ class AutoMixedPrecisionPattern : public pir::RewritePattern {
     // if enable_low_precision_io_ is true, all the op will be transformed into,
     // input and output included
     if (op->isa<pir::ParameterOp>() || op->isa<pir::SetParameterOp>() ||
-        op->isa<paddle::dialect::CastOp>() ||
         op->isa<paddle::dialect::FullIntArrayOp>())
       return false;
 
     if (!enable_low_precision_io_) {
       if (op->isa<paddle::dialect::FeedOp>()) return false;
+    }
+
+    // is op is a cast op, its input type should be not be float
+    if (op->isa<paddle::dialect::CastOp>()) {
+      auto cast_operand = op->operand(0);
+      auto cast_operand_dtype = OperandDataType(cast_operand);
+      return !IsDataTypeFloat(cast_operand_dtype);
+    }
+
+    // if op is a full op, its user cannot be a scale op
+    if (op->isa<paddle::dialect::FullOp>()) {
+      auto use_ops = GetUseOpsForOutput(op, 0);
+      for (auto [use_op, idx] : use_ops) {
+        if (use_op->isa<paddle::dialect::ScaleOp>()) {
+          return false;
+        }
+      }
     }
 
     if (!IsBuiltinOp(op)) {
@@ -374,6 +390,7 @@ class AutoMixedPrecisionPattern : public pir::RewritePattern {
       auto result_dtype = paddle::dialect::TransToPhiDataType(
           pir::GetDataTypeFromValue(op->result(0)));
       if (fetch_operand_dtype != result_dtype) {
+        LOG(INFO) << "Insert CastOp for FetchOp" << std::endl;
         InsertCastOp(op, fetch_operand, result_dtype, rewriter);
       }
       return;
@@ -381,6 +398,15 @@ class AutoMixedPrecisionPattern : public pir::RewritePattern {
     // Rewrite FeedOp
     if (op->isa<paddle::dialect::FeedOp>() && enable_low_precision_io_) {
       SetResultDataType(op->result(0), precision_mode_, rewriter.ir_context());
+      return;
+    }
+
+    // Rewrite ShareDataOp
+    if (op->isa<paddle::dialect::ShareDataOp>()) {
+      auto share_data_operand = op->operand(0);
+      auto share_data_operand_dtype = OperandDataType(share_data_operand);
+      SetResultDataType(
+          op->result(0), share_data_operand_dtype, rewriter.ir_context());
       return;
     }
 
@@ -426,7 +452,8 @@ class AutoMixedPrecisionPattern : public pir::RewritePattern {
         phi::DataType out_phi_dtype = output_defs[i].dtype;
         LOG(INFO) << "result dtype = " << phi::DataTypeToString(out_phi_dtype)
                   << std::endl;
-        if (out_phi_dtype == phi::DataType::UNDEFINED) continue;
+        if (out_phi_dtype == phi::DataType::UNDEFINED)
+          out_phi_dtype = precision_mode_;
         SetResultDataType(result, out_phi_dtype, rewriter.ir_context());
       }
 
@@ -438,6 +465,8 @@ class AutoMixedPrecisionPattern : public pir::RewritePattern {
         if (!IsOperandHasDenseTensorType(operand)) continue;
         auto operand_dtype = OperandDataType(operand);
         if (IsDataTypeFloat(operand_dtype) && operand_dtype != in_phi_dtype) {
+          LOG(INFO) << "Support low precision, insert CastOp for " << op->name()
+                    << " operand " << i << std::endl;
           InsertCastOp(op, operand, in_phi_dtype, rewriter);
         }
       }
@@ -450,6 +479,8 @@ class AutoMixedPrecisionPattern : public pir::RewritePattern {
         auto operand_dtype = OperandDataType(operand);
         if (IsDataTypeFloat(operand_dtype) &&
             operand_dtype == precision_mode_) {
+          LOG(INFO) << "Not support low precision, insert CastOp for "
+                    << op->name() << " operand " << i << std::endl;
           InsertCastOp(op, operand, phi_dtype, rewriter);
         }
       }
@@ -475,7 +506,7 @@ class AutoMixedPrecisionPass : public pir::Pass {
   void Run(pir::Operation* op) override {
     pir::GreedyRewriteConfig cfg;
     cfg.use_top_down_traversal = true;
-    cfg.max_iterations = 5;
+    cfg.max_iterations = 1;
     pir::ApplyPatternsGreedily(op->region(0), patterns_, cfg);
   }
 
