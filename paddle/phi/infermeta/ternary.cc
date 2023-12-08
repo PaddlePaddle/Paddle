@@ -1497,6 +1497,8 @@ void QuantLinearInferMeta(const MetaTensor& x,
 void EmbeddingBagInferMeta(const MetaTensor& input,
                            const MetaTensor& weight,
                            const MetaTensor& per_sample_weight,
+                           int64_t padding_idx,
+                           const std::string& mode,
                            MetaTensor* out) {
   const auto& table_dims = weight.dims();
   const auto& ids_dims = input.dims();
@@ -1528,10 +1530,8 @@ void EmbeddingBagInferMeta(const MetaTensor& input,
   output_dims.push_back(table_dims[1]);
   out->set_dims(phi::make_ddim(output_dims));
   for (auto i : output_dims) {
-    VLOG(5) << i << " ";
   }
   out->set_dtype(weight.dtype());
-  VLOG(5) << "EmbeddingBagInferMeta End.";
 }
 
 }  // namespace phi

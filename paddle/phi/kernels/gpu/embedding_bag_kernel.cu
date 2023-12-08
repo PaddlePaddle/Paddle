@@ -101,10 +101,14 @@ struct EmbeddingBagCUDAFunctor {
     const T *weight_d = weight_.data<T>();
     const IdT *ids_d = input_.data<IdT>();
     const T *per_sample_weight_d = per_sample_weight_.data<T>();
-    printf("Before Alloc\n");
+    printf(
+        "dev_ctx_ MaxPhysicalThreadCount: %d; SMCount: %d; MaxThreadsPerBlock: "
+        "%d\n",
+        dev_ctx_.GetMaxPhysicalThreadCount(),
+        dev_ctx_.GetSMCount(),
+        dev_ctx_.GetMaxThreadsPerBlock());
     auto *output_d = dev_ctx_.template Alloc<T>(out_);
     auto stream = dev_ctx_.stream();
-    printf("After Alloc\n");
 
     CalMode mode_enum = CalMode::ksum;
     if (mode_ == "mean") mode_enum = CalMode::kmean;

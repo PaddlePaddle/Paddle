@@ -795,12 +795,10 @@
   output : Tensor
   infer_meta :
     func : EmbeddingBagInferMeta
-    param : [input, weight, per_sample_weight]
+    param : [input, weight, per_sample_weight, padding_idx, mode]
   kernel :
     func : embedding_bag
-    param : [input, weight, per_sample_weight]
-    data_type : weight
-  backward : embedding_bag_grad
+    param : [input, weight, per_sample_weight, padding_idx, mode]
 
 - op : equal_all
   args : (Tensor x, Tensor y)
