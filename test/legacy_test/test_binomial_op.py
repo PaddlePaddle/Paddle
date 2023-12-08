@@ -50,14 +50,14 @@ class TestBinomialOp(OpTest):
         self.config()
         self.init_test_case()
         self.inputs = {
-            "total_count": self.total_count,
+            "count": self.count,
             "prob": self.probability,
         }
         self.attrs = {}
         self.outputs = {"out": self.out}
 
     def init_dtype(self):
-        self.total_count_dtype = np.float32
+        self.count_dtype = np.float32
         self.probability_dtype = np.float32
         self.outputs_dtype = np.int64
 
@@ -66,9 +66,7 @@ class TestBinomialOp(OpTest):
         self.p = 0.2
 
     def init_test_case(self):
-        self.total_count = np.full(
-            [2048, 1024], self.n, dtype=self.total_count_dtype
-        )
+        self.count = np.full([2048, 1024], self.n, dtype=self.count_dtype)
         self.probability = np.full(
             [2048, 1024], self.p, dtype=self.probability_dtype
         )
@@ -89,9 +87,9 @@ class TestBinomialApi(unittest.TestCase):
         paddle.disable_static()
         n = 30
         p = 0.1
-        total_count = paddle.full([16384, 1024], n, dtype="int64")
+        count = paddle.full([16384, 1024], n, dtype="int64")
         probability = paddle.to_tensor(p)
-        out = paddle.binomial(total_count, probability)
+        out = paddle.binomial(count, probability)
         paddle.enable_static()
         hist, prob = output_hist(out.numpy(), n, p, a=5, b=25)
         # setting of `rtol` and `atol` refer to ``test_bernoulli_op``, ``test_poisson_op``
@@ -102,9 +100,9 @@ class TestBinomialApi(unittest.TestCase):
     def test_static(self):
         n = 200
         p = 0.6
-        total_count = paddle.to_tensor(n, dtype="int64")
+        count = paddle.to_tensor(n, dtype="int64")
         probability = paddle.full([16384, 1024], p)
-        out = paddle.binomial(total_count, probability)
+        out = paddle.binomial(count, probability)
         exe = paddle.static.Executor(paddle.CPUPlace())
         out = exe.run(paddle.static.default_main_program(), fetch_list=[out])
         hist, prob = output_hist(out[0], n, p, a=70, b=140)
@@ -122,9 +120,9 @@ class TestRandomValue(unittest.TestCase):
         paddle.disable_static()
         paddle.set_device('gpu')
         paddle.seed(2023)
-        total_count = paddle.full([32, 3, 1024, 768], 100.0, dtype="float32")
+        count = paddle.full([32, 3, 1024, 768], 100.0, dtype="float32")
         probability = paddle.to_tensor(0.4)
-        y = paddle.binomial(total_count, probability)
+        y = paddle.binomial(count, probability)
         y_np = y.numpy()
 
         expect = [
@@ -231,7 +229,7 @@ class TestRandomValue(unittest.TestCase):
 )
 class TestBinomialFP16Op(TestBinomialOp):
     def init_dtype(self):
-        self.total_count_dtype = np.float16
+        self.count_dtype = np.float16
         self.probability_dtype = np.float16
         self.outputs_dtype = np.int64
 
@@ -254,7 +252,7 @@ class TestBinomialFP16Op(TestBinomialOp):
 class TestBinomialBF16Op(TestBinomialOp):
     def init_dtype(self):
         self.probability_dtype = np.uint16
-        self.total_count_dtype = np.uint16
+        self.count_dtype = np.uint16
         self.outputs_dtype = np.int64
 
     def test_check_output(self):
@@ -262,7 +260,7 @@ class TestBinomialBF16Op(TestBinomialOp):
         self.check_output_with_place_customized(self.verify_output, place)
 
     def init_test_case(self):
-        self.total_count = convert_float_to_uint16(
+        self.count = convert_float_to_uint16(
             np.full([2048, 1024], self.n).astype("float32")
         )
         self.probability = convert_float_to_uint16(
