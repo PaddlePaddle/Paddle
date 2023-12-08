@@ -217,7 +217,7 @@ if __name__ == "__main__":
     args = parse_args()
     archs = args.cuda_arch
     header_all = DefineHeader
-    header_name = "autogen/arch_define.h"
+    header_name = "autogen_tmp/arch_define.h"
     if archs:
         for arch in archs:
             define_line = "#define USE_FPAINTB_GEMM_WITH_SM%s\n" % str(arch)
@@ -231,7 +231,7 @@ if __name__ == "__main__":
             for arch in archs:
                 for epilogue_tag in EpilogueTags.keys():
                     for stages in StagesList[arch]:
-                        file_name = "autogen/generic_mixed_gemm_kernelLauncher_{}_sm{}_stages{}_{}.cu".format(
+                        file_name = "autogen_tmp/generic_mixed_gemm_kernelLauncher_{}_sm{}_stages{}_{}.cu".format(
                             element_type, arch, stages, epilogue_tag
                         )
                         if not args.gen_cu_list_only:

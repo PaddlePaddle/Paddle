@@ -54,26 +54,35 @@ if(DEFINED REDUCE_INFERENCE_LIB_SIZE)
 endif()
 
 if(WITH_CUTLASS)
-  set(GENERATED_CONV2D_CU_FILES
-      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d/generated/conv2d_bias_act.cu"
-      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d/generated/conv2d_bias_residual.cu"
-      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d/generated/conv2d_depthwise_bias_act.cu"
-  )
-  add_custom_command(
-    OUTPUT ${GENERATED_CONV2D_CU_FILES}
+  execute_process(
     COMMAND ${CMAKE_COMMAND} -E make_directory
-            "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d/generated"
-    COMMAND ${PYTHON_EXECUTABLE} conv2d_bias_act.py
-    COMMAND ${PYTHON_EXECUTABLE} conv2d_bias_residual.py
-    COMMAND ${PYTHON_EXECUTABLE} conv2d_depthwise_bias_act.py
-    DEPENDS
-      ${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d/conv2d_bias_act.py
-      ${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d/conv2d_bias_residual.py
-      ${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d/conv2d_depthwise_bias_act.py
+            "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d/generated_tmp"
+    COMMAND ${PYTHON_EXECUTABLE} "conv2d_bias_act.py"
+    COMMAND ${PYTHON_EXECUTABLE} "conv2d_bias_residual.py"
+    COMMAND ${PYTHON_EXECUTABLE} "conv2d_depthwise_bias_act.py"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d")
+  set(generated_tmp_dir
+      ${PADDLE_SOURCE_DIR}/paddle/phi/kernels/fusion/cutlass/conv2d/generated_tmp
+  )
+  set(generated_dir
+      ${PADDLE_SOURCE_DIR}/paddle/phi/kernels/fusion/cutlass/conv2d/generated)
+  file(GLOB con2d_generated_files ${generated_tmp_dir}/*.cu)
 
-  add_custom_target(generate-conv2d-kernel-sources
-                    DEPENDS ${GENERATED_CONV2D_CU_FILES})
+  if(EXISTS ${generated_dir})
+    foreach(gen_file ${con2d_generated_files})
+      string(REPLACE "generated_tmp" "generated" now_file ${gen_file})
+      execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                              "${gen_file}" "${now_file}")
+    endforeach()
+    message("copy if different ${generated_dir}")
+  else()
+    foreach(gen_file ${con2d_generated_files})
+      string(REPLACE "generated_tmp" "generated" now_file ${gen_file})
+      execute_process(COMMAND ${CMAKE_COMMAND} -E copy "${gen_file}"
+                              "${now_file}")
+    endforeach()
+    message("copy ${generated_dir}")
+  endif()
 
   execute_process(
     COMMAND
@@ -160,42 +169,37 @@ if(WITH_CUTLASS)
   execute_process(
     COMMAND
       ${CMAKE_COMMAND} -E make_directory
-      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen"
-    COMMAND
-      ${PYTHON_EXECUTABLE} generic_mixed_gemm_kernelLauncher.py --cuda_arch
-      "${NVCC_ARCH_BIN}" --gen_cu_list_only --gen_cu_list_path
-      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/fpA_intB_gemm_cu_list.list"
-    WORKING_DIRECTORY
-      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm"
-  )
-
-  file(
-    STRINGS
-    "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/fpA_intB_gemm_cu_list.list"
-    file_path)
-  set(generated_fpA_intB_gemm_files
-      ${file_path}
-      ${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/arch_define.h
-  )
-
-  add_custom_command(
-    OUTPUT ${generated_fpA_intB_gemm_files}
-    COMMAND
-      ${CMAKE_COMMAND} -E make_directory
-      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen"
+      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen_tmp"
     COMMAND ${PYTHON_EXECUTABLE} generic_mixed_gemm_kernelLauncher.py
             --cuda_arch "${NVCC_ARCH_BIN}"
-    DEPENDS
-      ${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/generic_mixed_gemm_kernelLauncher.py
-      ${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/fpA_intB_gemm_cu_list.list
     WORKING_DIRECTORY
       "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm"
   )
+  set(fpA_intB_gemm_autogen_tmp_dir
+      ${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen_tmp
+  )
+  set(fpA_intB_gemm_autogen_dir
+      ${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen
+  )
 
-  add_custom_target(generate-fpA-intB-gemm-sources
-                    DEPENDS ${generated_fpA_intB_gemm_files})
-  add_library(fpA_intB_gem_kernels_gen INTERFACE)
-  add_dependencies(fpA_intB_gem_kernels_gen generate-fpA-intB-gemm-sources)
+  file(GLOB fpA_intB_gemm_autogen_files ${fpA_intB_gemm_autogen_tmp_dir}/*.h
+       ${fpA_intB_gemm_autogen_tmp_dir}/*.cu)
+
+  if(EXISTS ${fpA_intB_gemm_autogen_dir})
+    foreach(gen_file ${fpA_intB_gemm_autogen_files})
+      string(REPLACE "autogen_tmp" "autogen" now_file ${gen_file})
+      execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                              "${gen_file}" "${now_file}")
+    endforeach()
+    message("copy if different ${fpA_intB_gemm_autogen_dir}")
+  else()
+    foreach(gen_file ${fpA_intB_gemm_autogen_files})
+      string(REPLACE "autogen_tmp" "autogen" now_file ${gen_file})
+      execute_process(COMMAND ${CMAKE_COMMAND} -E copy "${gen_file}"
+                              "${now_file}")
+    endforeach()
+    message("copy ${fpA_intB_gemm_autogen_dir}")
+  endif()
 
   file(
     GLOB cutlass_cu
