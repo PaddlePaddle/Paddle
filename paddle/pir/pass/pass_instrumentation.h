@@ -17,6 +17,7 @@
 #include <memory>
 
 #include "paddle/pir/core/type_id.h"
+#include "paddle/utils/test_macros.h"
 
 namespace pir {
 
@@ -60,7 +61,7 @@ class PassInstrumentation {
 class IR_API PassInstrumentor {
  public:
   PassInstrumentor();
-  ~PassInstrumentor();
+  TEST_API ~PassInstrumentor();
   PassInstrumentor(PassInstrumentor&&) = delete;
   PassInstrumentor(const PassInstrumentor&) = delete;
 
@@ -70,13 +71,15 @@ class IR_API PassInstrumentor {
 
   void RunAfterPipeline(Operation* op);
 
-  void RunBeforePass(Pass* pass, Operation* op);
+  TEST_API void RunBeforePass(Pass* pass, Operation* op);
 
   void RunAfterPass(Pass* pass, Operation* op);
 
   void RunBeforeAnalysis(const std::string& name, TypeId id, Operation* op);
 
-  void RunAfterAnalysis(const std::string& name, TypeId id, Operation* op);
+  TEST_API void RunAfterAnalysis(const std::string& name,
+                                 TypeId id,
+                                 Operation* op);
 
   // TODO(wilber): Add other hooks.
 
