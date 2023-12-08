@@ -20,6 +20,7 @@ import paddle
 import paddle.base.dygraph as dg
 import paddle.nn.functional as F
 from paddle import base
+from paddle.pir_utils import test_with_pir_api
 
 
 class GridSampleTestCase(unittest.TestCase):
@@ -45,6 +46,7 @@ class GridSampleTestCase(unittest.TestCase):
         self.x = np.random.randn(*(self.x_shape)).astype(self.dtype)
         self.grid = np.random.uniform(-1, 1, self.grid_shape).astype(self.dtype)
 
+    @test_with_pir_api
     def static_functional(self, place):
         main = base.Program()
         start = base.Program()
@@ -140,6 +142,7 @@ def load_tests(loader, standard_tests, pattern):
 
 
 class TestGridSampleAPI(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         with self.assertRaises(ValueError):
             x = paddle.randn([1, 1, 3, 3])

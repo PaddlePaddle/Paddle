@@ -14,6 +14,7 @@
 
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
 from paddle.base.framework import in_dygraph_mode
+from paddle.framework import in_dynamic_or_pir_mode
 
 from ...base.data_feeder import check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
@@ -298,7 +299,7 @@ def grid_sample(
     if len(grid.shape) == 5:
         use_cudnn = False
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.grid_sample(x, grid, mode, padding_mode, align_corners)
     elif in_dynamic_mode():
         attrs = (
