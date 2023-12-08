@@ -17,6 +17,7 @@
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/tensor_wrapper.h"
+#include "paddle/fluid/framework/executor_cache.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
@@ -289,6 +290,7 @@ static void ShareTensorsFromScopeByValue(
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto &name = names[i];
     auto &value = values[i];
+    VLOG(2) << "share " << name << " from scope";
     if (value.impl() == nullptr) {
       // skip stop_gradient.
       continue;
@@ -306,7 +308,7 @@ static void ShareTensorsFromScopeByValue(
       auto &src_tensor = var->Get<phi::DenseTensor>();
       auto *dst_tensor = const_cast<phi::DenseTensor *>(
           dynamic_cast<const phi::DenseTensor *>(tensors[i]->impl().get()));
-      VLOG(2) << "share " << name << " from scope";
+      VLOG(2) << "actually do sharing " << name << " from scope";
       *dst_tensor = src_tensor;
     } else if (var->IsType<phi::SelectedRows>()) {
       auto &src_tensor = var->Get<phi::SelectedRows>();
@@ -500,10 +502,16 @@ inline void PirRunProgramAPI(
     details::ShareTensorsIntoScopeByValue(
         forward_global_block, params, param_values, global_inner_scope);
     // Step 2. create new interpretercore
-    auto kernel_forward_program =
-        paddle::dialect::PdOpLowerToKernelPass(forward_program, place);
+    auto passed_kernel_program =
+        paddle::framework::ApplyIrPass(forward_program, place);
+    if (FLAGS_print_ir) {
+      std::ostringstream print_stream;
+      print_stream << "LoweredProgram( AfterPass ) is :\n";
+      passed_kernel_program->Print(print_stream);
+      std::cout << print_stream.str() << std::endl;
+    }
     interpreter_core = paddle::framework::CreatePirInterpreterCoreInfoToCache(
-        std::move(kernel_forward_program),
+        std::move(passed_kernel_program),
         place,
         /*is_grad=*/false,
         program_id,
@@ -1037,10 +1045,16 @@ inline void PirRunProgramGradAPI(
         1);
     VLOG(2) << "No interpretercore cahce, so create a new interpretercore";
     // Step 1. share input_vars & parameters into scope
-    auto kernel_backward_program =
-        paddle::dialect::PdOpLowerToKernelPass(backward_program, place);
+    auto passed_kernel_program =
+        paddle::framework::ApplyIrPass(backward_program, place);
+    if (FLAGS_print_ir) {
+      std::ostringstream print_stream;
+      print_stream << "LoweredProgram( AfterPass | Backward ) is :\n";
+      passed_kernel_program->Print(print_stream);
+      std::cout << print_stream.str() << std::endl;
+    }
     interpreter_core = paddle::framework::CreatePirInterpreterCoreInfoToCache(
-        std::move(kernel_backward_program),
+        std::move(passed_kernel_program),
         place,
         /*is_grad=*/true,
         program_id,
@@ -1346,9 +1360,7 @@ class PirGradNodeRunProgram : public egr::GradNodeBase {
         x_grad_ptr.emplace_back(&i);
       }
       for (auto &i : params_grad) {
-        if (i.defined()) {
-          params_grad_ptr.emplace_back(&i);
-        }
+        params_grad_ptr.emplace_back(&i);
       }
     }
 
