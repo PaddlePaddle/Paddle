@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <type_traits>
 #include "paddle/fluid/operators/fused/fused_softmax_mask.cu.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
@@ -23,10 +24,34 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/functors.h"
 #include "paddle/phi/kernels/funcs/transpose_function.cu.h"
+#include "paddle/phi/kernels/fusion/fused_multihead_attention_kernel.h"
+#include "paddle/phi/kernels/fusion/fused_multihead_attention_variable_kernel.h"
+#include "paddle/phi/kernels/fusion/fused_softmax_mask_kernel.h"
 #include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
+
+DECLARE_string(fmha_mode);
+
+DECLARE_bool(print_matrix);
+DECLARE_bool(fuse_softmax);
 
 namespace paddle {
 namespace operators {
+template <paddle::DataType D>
+class PDTraits;
+
+template <>
+class PDTraits<paddle::DataType::FLOAT32> {
+ public:
+  typedef float DataType;
+  typedef float data_t;
+};
+
+template <>
+class PDTraits<paddle::DataType::FLOAT16> {
+ public:
+  typedef half DataType;
+  typedef paddle::float16 data_t;
+};
 
 class AttnDropoutParam {
  public:
@@ -65,17 +90,19 @@ class AttnDropoutParam {
 
 template <typename T, int VecSize>
 __global__ void TransposeRemovingPadding(const T* input_data,
+                                         const int* seq_lens,
                                          T* output_data,
                                          const int batch_size,
                                          const int num_head,
+                                         const int max_len_this_time,
                                          const int seq_len,
                                          const int head_dim,
                                          const int token_num,
                                          const int elem_cnt,
                                          const int* padding_offset) {
   // transpose and remove padding
-  // [batch_size, num_head, seq_len, head_dim] -> [token_num, num_head,
-  // head_dim]
+  // [batch_size, num_head, max_len_this_time, head_dim] -> [token_num,
+  // num_head, head_dim]
   int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
   const int dim_embed = num_head * head_dim;
   using LoadT = phi::AlignedVector<T, VecSize>;
@@ -89,11 +116,12 @@ __global__ void TransposeRemovingPadding(const T* input_data,
     const int ori_token_idx =
         token_idx + (padding_offset == nullptr ? 0 : padding_offset[token_idx]);
     const int ori_batch_id = ori_token_idx / seq_len;
+    if (seq_lens && seq_lens[ori_batch_id] == 0) continue;
     const int ori_seq_id = ori_token_idx % seq_len;
     const int ori_head_id = (linear_index % dim_embed) / head_dim;
     const int ori_head_lane = (linear_index % dim_embed) % head_dim;
-    const int ori_idx = ori_batch_id * num_head * seq_len * head_dim +
-                        ori_head_id * seq_len * head_dim +
+    const int ori_idx = ori_batch_id * num_head * max_len_this_time * head_dim +
+                        ori_head_id * max_len_this_time * head_dim +
                         ori_seq_id * head_dim + ori_head_lane;
     phi::Load<T, VecSize>(&input_data[ori_idx], &src_vec);
     phi::Store<T, VecSize>(src_vec, &output_data[linear_index]);
@@ -103,15 +131,17 @@ __global__ void TransposeRemovingPadding(const T* input_data,
 template <typename T>
 void InvokeTransposeRemovePadding(const phi::GPUContext& dev_ctx,
                                   const T* input_data,
+                                  const int* seq_lens,
                                   T* output_data,
                                   const int batch_size,
                                   const int num_head,
+                                  const int max_len_this_time,
                                   const int seq_len,
                                   const int head_dim,
                                   const int token_num,
                                   const int* padding_offset) {
-  // [batch_size, num_head, seq_len, head_dim] -> [token_num, num_head,
-  // head_dim]
+  // [batch_size, num_head, max_len_this_time, head_dim] -> [token_num,
+  // num_head, head_dim]
   constexpr int VEC_16B = 16;
   const int elem_cnt = token_num * num_head * head_dim;
   constexpr int PackSize = VEC_16B / sizeof(T);
@@ -125,9 +155,11 @@ void InvokeTransposeRemovePadding(const phi::GPUContext& dev_ctx,
   int32_t grid_size = (pack_num + block_size - 1) / block_size;
   TransposeRemovingPadding<T, PackSize>
       <<<grid_size, block_size, 0, dev_ctx.stream()>>>(input_data,
+                                                       seq_lens,
                                                        output_data,
                                                        batch_size,
                                                        num_head,
+                                                       max_len_this_time,
                                                        seq_len,
                                                        head_dim,
                                                        token_num,
@@ -147,192 +179,102 @@ class FMHARef {
       : dev_ctx_(dev_ctx),
         batch_size_(batch_size),
         seq_len_(seq_len),
+        ori_seq_len_(seq_len),
+        num_head_(num_head),
+        head_dim_(head_dim),
+        dropout_param_(param) {}
+
+  FMHARef(const phi::GPUContext& dev_ctx,
+          int64_t batch_size,
+          int64_t seq_len,
+          int64_t ori_seq_len,
+          int64_t num_head,
+          int64_t head_dim,
+          AttnDropoutParam param)
+      : dev_ctx_(dev_ctx),
+        batch_size_(batch_size),
+        seq_len_(seq_len),
+        ori_seq_len_(ori_seq_len),
         num_head_(num_head),
         head_dim_(head_dim),
         dropout_param_(param) {}
 
   ~FMHARef() {}
 
-  void ComputeForward(const phi::DenseTensor& qkv_input_tensor,
-                      const phi::DenseTensor* cache_kv_tensor,
-                      const phi::DenseTensor* src_mask_tensor,
-                      phi::DenseTensor* transpose_2_out_tensor,
-                      phi::DenseTensor* cache_kv_out_tensor,
-                      phi::DenseTensor* qk_out_tensor,
-                      phi::DenseTensor* src_mask_out_tensor,
-                      phi::DenseTensor* softmax_out_tensor,
-                      phi::DenseTensor* dropout_mask_out_tensor,
-                      phi::DenseTensor* dropout_out_tensor,
-                      phi::DenseTensor* qktv_out_tensor,
-                      phi::DenseTensor* fmha_out_tensor) {
-    // input shape: [bs, seq_len, 3, num_head, head_dim]
-    // transpose with perm [2, 0, 3, 1, 4],
-    // output_shape: [3, bs, num_head, seq_len, head_dim]
-    std::vector<int> perm_1 = {2, 0, 3, 1, 4};
-    phi::funcs::TransposeGPUKernelDriver<T>(
-        dev_ctx_, qkv_input_tensor, perm_1, transpose_2_out_tensor);
-    T* qkv_data = transpose_2_out_tensor->data<T>();
-    T* qk_out_data = qk_out_tensor->data<T>();
-    T* qktv_out_data = qktv_out_tensor->data<T>();
-    T* softmax_out_data = softmax_out_tensor->data<T>();
-    T* fmha_out_data = fmha_out_tensor->data<T>();
-
-    auto out_seq_len = seq_len_;
-    if (cache_kv_tensor) {
-      // kv [2, bs, num_head, seq_len, head_dim]
-      auto kv_tensor = transpose_2_out_tensor->Slice(1, 3);
-      phi::funcs::ConcatFunctor<phi::GPUContext, T> concat;
-      // out [2, bs, num_head, cache_seq_len + seq_len, head_dim]
-      concat(dev_ctx_, {*cache_kv_tensor, kv_tensor}, 3, cache_kv_out_tensor);
-      out_seq_len = cache_kv_out_tensor->dims()[3];
-    }
-
-    int64_t q_size = batch_size_ * seq_len_ * num_head_ * head_dim_;
-    T* q_ptr = qkv_data;
-    T* k_ptr = nullptr;
-    T* v_ptr = nullptr;
-
-    if (cache_kv_tensor) {
-      int64_t k_size = cache_kv_out_tensor->numel() / 2;
-      k_ptr = cache_kv_out_tensor->data<T>();
-      v_ptr = k_ptr + k_size;
+  void Compute(const phi::DenseTensor* cache_kv_tensor,
+               const phi::DenseTensor* src_mask_tensor,
+               const phi::DenseTensor* padding_offset_tensor,
+               const phi::DenseTensor* sequence_lengths_tensor,
+               phi::DenseTensor* q_transpose_out_tensor,
+               phi::DenseTensor* kv_transpose_out_tensor,
+               phi::DenseTensor* cache_kv_out_tensor,
+               phi::DenseTensor* qk_out_tensor,
+               phi::DenseTensor* src_mask_out_tensor,
+               phi::DenseTensor* softmax_out_tensor,
+               phi::DenseTensor* dropout_mask_out_tensor,
+               phi::DenseTensor* dropout_out_tensor,
+               phi::DenseTensor* qktv_out_tensor,
+               phi::DenseTensor* fmha_out_tensor,
+               const int token_num,
+               const bool mask_broadcast_num_heads = true) {
+    /*
+    Note(Zhengzekang):
+    There is some reason to pass some “unused” params for unify the interface.
+    - sequence_lengths_tensor(optional): It is only used in cutlass Variable
+    length FMHA.
+    - softmax_out_tensor(optional): It is not need when use cutlass FMHA, since
+    cutlass FMHA fused all the operations, it do not need to product
+    intermediate result for softmax.
+    - mask_broadcast_num_heads(optional): It is only need in Naive FMHA.
+    */
+    if (FLAGS_fmha_mode == "cutlass") {
+#ifdef PADDLE_WITH_CUTLASS
+      // Here Use cutlass Fused Multihead Attention Kernel.
+      ComputeForwardWithCutlassFMHA(cache_kv_tensor,
+                                    src_mask_tensor,
+                                    padding_offset_tensor,
+                                    sequence_lengths_tensor,
+                                    q_transpose_out_tensor,
+                                    kv_transpose_out_tensor,
+                                    cache_kv_out_tensor,
+                                    qk_out_tensor,
+                                    src_mask_out_tensor,
+                                    softmax_out_tensor,
+                                    dropout_mask_out_tensor,
+                                    dropout_out_tensor,
+                                    qktv_out_tensor,
+                                    fmha_out_tensor,
+                                    token_num);
+#else 
+      PADDLE_THROW(platform::errors::Unimplemented(
+        "CUTLASS need CUDA_VERSION >= 11.0"));   
+#endif
     } else {
-      int64_t k_size = q_size;
-      k_ptr = q_ptr + q_size;
-      v_ptr = k_ptr + k_size;
+      // Here Use Naive Attention Kernel.
+      ComputeForwardWithoutTranspose(cache_kv_tensor,
+                                     src_mask_tensor,
+                                     padding_offset_tensor,
+                                     sequence_lengths_tensor,
+                                     q_transpose_out_tensor,
+                                     kv_transpose_out_tensor,
+                                     cache_kv_out_tensor,
+                                     qk_out_tensor,
+                                     src_mask_out_tensor,
+                                     softmax_out_tensor,
+                                     dropout_mask_out_tensor,
+                                     dropout_out_tensor,
+                                     qktv_out_tensor,
+                                     fmha_out_tensor,
+                                     token_num,
+                                     mask_broadcast_num_heads);
     }
-
-    {
-      // NOTE(wangxi): We scale Q with 1/sqrt(Dh) before QK^T, because for
-      // float16 calculation, INF may appear in QK^T if we do not scale before.
-      float alpha = 1.0 / sqrt(head_dim_);
-      auto q_tensor = transpose_2_out_tensor->Slice(0, 1);
-      auto functor = phi::funcs::ScaleFunctor<T>(alpha);
-      std::vector<const phi::DenseTensor*> ins = {&q_tensor};
-      std::vector<phi::DenseTensor*> outs = {&q_tensor};
-      phi::funcs::ElementwiseKernel<T>(dev_ctx_, ins, &outs, functor);
-    }
-
-    // q*k^t, batched_gemm
-    CBLAS_TRANSPOSE transA = CblasNoTrans;
-    CBLAS_TRANSPOSE transB = CblasTrans;
-    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx_);
-    int gemm_batch_size = batch_size_ * num_head_;
-    int gemm_m = seq_len_;
-    int gemm_n = out_seq_len;
-    int gemm_k = head_dim_;
-    T alpha = static_cast<T>(1.0);
-    T beta = static_cast<T>(0.0);
-    int64_t stride_a = gemm_m * gemm_k;
-    int64_t stride_b = gemm_k * gemm_n;
-    blas.BatchedGEMM(transA,
-                     transB,
-                     gemm_m,
-                     gemm_n,
-                     gemm_k,
-                     alpha,
-                     q_ptr,
-                     k_ptr,
-                     beta,
-                     qk_out_data,
-                     gemm_batch_size,
-                     stride_a,
-                     stride_b);
-    int softmax_axis = -1;
-    if (src_mask_tensor != nullptr) {
-      if (src_mask_out_tensor == nullptr && seq_len_ == out_seq_len) {
-        LaunchFusedSoftmaxMaskKernel<T>(qk_out_data,
-                                        src_mask_tensor->data<T>(),
-                                        softmax_out_data,
-                                        batch_size_,
-                                        num_head_,
-                                        seq_len_,
-                                        dev_ctx_.stream());
-      } else {
-        std::vector<const phi::DenseTensor*> ins;
-        std::vector<phi::DenseTensor*> outs;
-        ins.emplace_back(qk_out_tensor);
-        ins.emplace_back(src_mask_tensor);
-        outs.emplace_back(src_mask_out_tensor);
-        int elewise_add_axis = -1;
-        phi::funcs::BroadcastKernel<phi::ElementwiseType::kBinary, T, T>(
-            dev_ctx_,
-            ins,
-            &outs,
-            elewise_add_axis,
-            phi::funcs::AddFunctor<T>());
-
-        phi::SoftmaxForwardCUDAKernelDriver<T>(
-            dev_ctx_, *src_mask_out_tensor, softmax_axis, softmax_out_tensor);
-      }
-    } else {
-      phi::SoftmaxForwardCUDAKernelDriver<T>(
-          dev_ctx_, *qk_out_tensor, softmax_axis, softmax_out_tensor);
-    }
-
-    transB = CblasNoTrans;
-    gemm_m = seq_len_;
-    gemm_n = head_dim_;
-    gemm_k = out_seq_len;
-    alpha = static_cast<T>(1.0);
-    stride_a = gemm_m * gemm_k;
-    stride_b = gemm_k * gemm_n;
-
-    if (dropout_param_.dropout_prob_) {
-      phi::funcs::DropoutFwGPUKernelDriver<T>(
-          static_cast<const phi::GPUContext&>(dev_ctx_),
-          dropout_param_.is_test_,
-          dropout_param_.dropout_prob_,
-          dropout_param_.is_upscale_in_train_,
-          dropout_param_.is_fix_seed_,
-          dropout_param_.seed_val_,
-          static_cast<const phi::DenseTensor&>(*softmax_out_tensor),
-          dropout_param_.seed_,
-          dropout_mask_out_tensor,
-          dropout_out_tensor,
-          false);
-      T* dropout_out_data = dropout_out_tensor->data<T>();
-      blas.BatchedGEMM(transA,
-                       transB,
-                       gemm_m,
-                       gemm_n,
-                       gemm_k,
-                       alpha,
-                       dropout_out_data,
-                       v_ptr,
-                       beta,
-                       qktv_out_data,
-                       gemm_batch_size,
-                       stride_a,
-                       stride_b);
-    } else {
-      // softmax_out * v, batched_gemm
-      // output shape: [batch_size, num_heads, seq_len, head_dim]
-      blas.BatchedGEMM(transA,
-                       transB,
-                       gemm_m,
-                       gemm_n,
-                       gemm_k,
-                       alpha,
-                       softmax_out_data,
-                       v_ptr,
-                       beta,
-                       qktv_out_data,
-                       gemm_batch_size,
-                       stride_a,
-                       stride_b);
-    }
-    // transpose: [0, 2, 1, 3]
-    // output shape: [batch_size, seq_len, num_heads, head_dim]
-    std::vector<int> perm_3 = {0, 2, 1, 3};
-    phi::funcs::TransposeGPUKernelDriver<T>(
-        dev_ctx_, *qktv_out_tensor, perm_3, fmha_out_tensor);
   }
 
-  void ComputeForwardWithoutTranspose(
+  void ComputeForwardWithCutlassFMHA(
       const phi::DenseTensor* cache_kv_tensor,
       const phi::DenseTensor* src_mask_tensor,
       const phi::DenseTensor* padding_offset_tensor,
+      const phi::DenseTensor* sequence_lengths_tensor,
       phi::DenseTensor* q_transpose_out_tensor,
       phi::DenseTensor* kv_transpose_out_tensor,
       phi::DenseTensor* cache_kv_out_tensor,
@@ -344,13 +286,126 @@ class FMHARef {
       phi::DenseTensor* qktv_out_tensor,
       phi::DenseTensor* fmha_out_tensor,
       const int token_num) {
+#ifdef PADDLE_WITH_CUTLASS
+    // input shape: [bs, seq_len, 3, num_head, head_dim]
+    // transpose with perm [2, 0, 3, 1, 4],
+    // output_shape: [3, bs, num_head, seq_len, head_dim]
+    T* qktv_out_data = qktv_out_tensor->data<T>();
+    T* fmha_out_data = fmha_out_tensor->data<T>();
+
+    int prompt_num = 0;
+
+    auto out_seq_len = seq_len_;
+    if (cache_kv_tensor) {
+      prompt_num = cache_kv_tensor->dims()[3];
+      // kv [2, bs, num_head, seq_len, head_dim]
+      phi::funcs::ConcatFunctor<phi::GPUContext, T> concat;
+      // out [2, bs, num_head, cache_seq_len + seq_len, head_dim]
+      concat(dev_ctx_,
+             {*cache_kv_tensor, *kv_transpose_out_tensor},
+             3,
+             cache_kv_out_tensor);
+      out_seq_len = cache_kv_out_tensor->dims()[3];
+    }
+
+    int64_t q_size = batch_size_ * seq_len_ * num_head_ * head_dim_;
+    T* q_ptr = q_transpose_out_tensor->data<T>();
+    T* k_ptr = nullptr;
+    T* v_ptr = nullptr;
+
+    if (cache_kv_tensor) {
+      int64_t k_size = cache_kv_out_tensor->numel() / 2;
+      k_ptr = cache_kv_out_tensor->data<T>();
+      v_ptr = k_ptr + k_size;
+    } else {
+      int64_t k_size = q_size;
+      k_ptr = kv_transpose_out_tensor->data<T>();
+      v_ptr = k_ptr + k_size;
+    }
+
+    float scale = 1.0f / sqrt(float(head_dim_));  // NOLINT
+    if (sequence_lengths_tensor) {
+      phi::fusion::MultiHeadAttentionVariableWrapper<T, phi::GPUContext>(
+          dev_ctx_,
+          q_ptr,
+          k_ptr,
+          v_ptr,
+          sequence_lengths_tensor->data<int>(),
+          prompt_num == 0 ? nullptr : src_mask_tensor,
+          scale,
+          prompt_num == 0 ? true : false,
+          batch_size_,
+          num_head_,
+          seq_len_,
+          out_seq_len,
+          head_dim_,
+          head_dim_,
+          prompt_num,
+          qktv_out_data);
+    } else {
+      // Author(zhengzekang): we will check src_mask_tensor == nullptr in
+      // MultiHeadAttentionForwardWrapper.
+      phi::fusion::cutlass_internal::
+          MultiHeadAttentionForwardWrapper<T, phi::GPUContext>(dev_ctx_,
+                                                               q_ptr,
+                                                               k_ptr,
+                                                               v_ptr,
+                                                               src_mask_tensor,
+                                                               scale,
+                                                               false, /*causal*/
+                                                               batch_size_,
+                                                               num_head_,
+                                                               seq_len_,
+                                                               out_seq_len,
+                                                               head_dim_,
+                                                               qktv_out_data);
+    }
+
+    // transpose: [0, 2, 1, 3]
+    // output shape: [batch_size, seq_len, num_heads, head_dim]
+    if (!padding_offset_tensor) {
+      std::vector<int> perm_3 = {0, 2, 1, 3};
+      phi::funcs::TransposeGPUKernelDriver<T>(
+          dev_ctx_, *qktv_out_tensor, perm_3, fmha_out_tensor);
+    } else {
+      InvokeTransposeRemovePadding<T>(dev_ctx_,
+                                      qktv_out_data,
+                                      sequence_lengths_tensor->data<int>(),
+                                      fmha_out_data,
+                                      batch_size_,
+                                      num_head_,
+                                      seq_len_,
+                                      ori_seq_len_,
+                                      head_dim_,
+                                      token_num,
+                                      padding_offset_tensor->data<int>());
+    }
+#endif
+  }
+
+  void ComputeForwardWithoutTranspose(
+      const phi::DenseTensor* cache_kv_tensor,
+      const phi::DenseTensor* src_mask_tensor,
+      const phi::DenseTensor* padding_offset_tensor,
+      const phi::DenseTensor* sequence_lengths_tensor,
+      phi::DenseTensor* q_transpose_out_tensor,
+      phi::DenseTensor* kv_transpose_out_tensor,
+      phi::DenseTensor* cache_kv_out_tensor,
+      phi::DenseTensor* qk_out_tensor,
+      phi::DenseTensor* src_mask_out_tensor,
+      phi::DenseTensor* softmax_out_tensor,
+      phi::DenseTensor* dropout_mask_out_tensor,
+      phi::DenseTensor* dropout_out_tensor,
+      phi::DenseTensor* qktv_out_tensor,
+      phi::DenseTensor* fmha_out_tensor,
+      const int token_num,
+      const bool mask_broadcast_num_heads = true) {
     // input shape: [bs, seq_len, 3, num_head, head_dim]
     // transpose with perm [2, 0, 3, 1, 4],
     // output_shape: [3, bs, num_head, seq_len, head_dim]
     T* qk_out_data = qk_out_tensor->data<T>();
     T* qktv_out_data = qktv_out_tensor->data<T>();
     T* softmax_out_data = softmax_out_tensor->data<T>();
-    T* dropout_out_data = dropout_out_tensor->data<T>();
     T* fmha_out_data = fmha_out_tensor->data<T>();
 
     auto out_seq_len = seq_len_;
@@ -424,7 +479,10 @@ class FMHARef {
                                         batch_size_,
                                         num_head_,
                                         seq_len_,
+                                        mask_broadcast_num_heads,
                                         dev_ctx_.stream());
+        // phi::fusion::FusedSoftmaxMaskKernel<T, phi::GPUContext>(dev_ctx_,
+        // *qk_out_tensor, *src_mask_tensor, softmax_out_tensor);
       } else {
         std::vector<const phi::DenseTensor*> ins;
         std::vector<phi::DenseTensor*> outs;
@@ -456,6 +514,7 @@ class FMHARef {
     stride_b = gemm_k * gemm_n;
 
     if (dropout_param_.dropout_prob_) {
+      T* dropout_out_data = dropout_out_tensor->data<T>();
       phi::funcs::DropoutFwGPUKernelDriver<T>(
           static_cast<const phi::GPUContext&>(dev_ctx_),
           dropout_param_.is_test_,
@@ -507,14 +566,196 @@ class FMHARef {
     } else {
       InvokeTransposeRemovePadding<T>(dev_ctx_,
                                       qktv_out_data,
+                                      sequence_lengths_tensor->data<int>(),
                                       fmha_out_data,
                                       batch_size_,
                                       num_head_,
                                       seq_len_,
+                                      ori_seq_len_,
                                       head_dim_,
                                       token_num,
                                       padding_offset_tensor->data<int>());
     }
+  }
+
+  void ComputeForward(const phi::DenseTensor& qkv_input_tensor,
+                      const phi::DenseTensor* cache_kv_tensor,
+                      const phi::DenseTensor* src_mask_tensor,
+                      phi::DenseTensor* transpose_2_out_tensor,
+                      phi::DenseTensor* cache_kv_out_tensor,
+                      phi::DenseTensor* qk_out_tensor,
+                      phi::DenseTensor* src_mask_out_tensor,
+                      phi::DenseTensor* softmax_out_tensor,
+                      phi::DenseTensor* dropout_mask_out_tensor,
+                      phi::DenseTensor* dropout_out_tensor,
+                      phi::DenseTensor* qktv_out_tensor,
+                      phi::DenseTensor* fmha_out_tensor,
+                      const bool mask_broadcast_num_heads = true) {
+    // input shape: [bs, seq_len, 3, num_head, head_dim]
+    // transpose with perm [2, 0, 3, 1, 4],
+    // output_shape: [3, bs, num_head, seq_len, head_dim]
+    std::vector<int> perm_1 = {2, 0, 3, 1, 4};
+    phi::funcs::TransposeGPUKernelDriver<T>(
+        dev_ctx_, qkv_input_tensor, perm_1, transpose_2_out_tensor);
+    T* qkv_data = transpose_2_out_tensor->data<T>();
+    T* qk_out_data = qk_out_tensor->data<T>();
+    T* qktv_out_data = qktv_out_tensor->data<T>();
+    T* softmax_out_data = softmax_out_tensor->data<T>();
+    T* fmha_out_data = fmha_out_tensor->data<T>();
+
+    auto out_seq_len = seq_len_;
+    if (cache_kv_tensor) {
+      // kv [2, bs, num_head, seq_len, head_dim]
+      auto kv_tensor = transpose_2_out_tensor->Slice(1, 3);
+      phi::funcs::ConcatFunctor<phi::GPUContext, T> concat;
+      // out [2, bs, num_head, cache_seq_len + seq_len, head_dim]
+      concat(dev_ctx_, {*cache_kv_tensor, kv_tensor}, 3, cache_kv_out_tensor);
+      out_seq_len = cache_kv_out_tensor->dims()[3];
+    }
+
+    int64_t q_size = batch_size_ * seq_len_ * num_head_ * head_dim_;
+    T* q_ptr = qkv_data;
+    T* k_ptr = nullptr;
+    T* v_ptr = nullptr;
+
+    int64_t k_size;
+
+    if (cache_kv_tensor) {
+      k_size = cache_kv_out_tensor->numel() / 2;
+      k_ptr = cache_kv_out_tensor->data<T>();
+      v_ptr = k_ptr + k_size;
+    } else {
+      int64_t k_size = q_size;
+      k_ptr = q_ptr + q_size;
+      v_ptr = k_ptr + k_size;
+    }
+
+    {
+      // NOTE(wangxi): We scale Q with 1/sqrt(Dh) before QK^T, because for
+      // float16 calculation, INF may appear in QK^T if we do not scale before.
+      float alpha = 1.0 / sqrt(head_dim_);
+      auto q_tensor = transpose_2_out_tensor->Slice(0, 1);
+      auto functor = phi::funcs::ScaleFunctor<T>(alpha);
+      std::vector<const phi::DenseTensor*> ins = {&q_tensor};
+      std::vector<phi::DenseTensor*> outs = {&q_tensor};
+      phi::funcs::ElementwiseKernel<T>(dev_ctx_, ins, &outs, functor);
+    }
+
+    // q*k^t, batched_gemm
+    CBLAS_TRANSPOSE transA = CblasNoTrans;
+    CBLAS_TRANSPOSE transB = CblasTrans;
+    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx_);
+    int gemm_batch_size = batch_size_ * num_head_;
+    int gemm_m = seq_len_;
+    int gemm_n = out_seq_len;
+    int gemm_k = head_dim_;
+    T alpha = static_cast<T>(1.0);
+    T beta = static_cast<T>(0.0);
+    int64_t stride_a = gemm_m * gemm_k;
+    int64_t stride_b = gemm_k * gemm_n;
+    blas.BatchedGEMM(transA,
+                     transB,
+                     gemm_m,
+                     gemm_n,
+                     gemm_k,
+                     alpha,
+                     q_ptr,
+                     k_ptr,
+                     beta,
+                     qk_out_data,
+                     gemm_batch_size,
+                     stride_a,
+                     stride_b);
+    int softmax_axis = -1;
+    if (src_mask_tensor != nullptr) {
+      if (src_mask_out_tensor == nullptr && seq_len_ == out_seq_len) {
+        LaunchFusedSoftmaxMaskKernel<T>(qk_out_data,
+                                        src_mask_tensor->data<T>(),
+                                        softmax_out_data,
+                                        batch_size_,
+                                        num_head_,
+                                        seq_len_,
+                                        mask_broadcast_num_heads,
+                                        dev_ctx_.stream());
+      } else {
+        std::vector<const phi::DenseTensor*> ins;
+        std::vector<phi::DenseTensor*> outs;
+        ins.emplace_back(qk_out_tensor);
+        ins.emplace_back(src_mask_tensor);
+        outs.emplace_back(src_mask_out_tensor);
+        int elewise_add_axis = -1;
+        phi::funcs::BroadcastKernel<phi::ElementwiseType::kBinary, T, T>(
+            dev_ctx_,
+            ins,
+            &outs,
+            phi::funcs::AddFunctor<T>(),
+            elewise_add_axis);
+
+        phi::SoftmaxForwardCUDAKernelDriver<T>(
+            dev_ctx_, *src_mask_out_tensor, softmax_axis, softmax_out_tensor);
+      }
+    } else {
+      phi::SoftmaxForwardCUDAKernelDriver<T>(
+          dev_ctx_, *qk_out_tensor, softmax_axis, softmax_out_tensor);
+    }
+
+    transB = CblasNoTrans;
+    gemm_m = seq_len_;
+    gemm_n = head_dim_;
+    gemm_k = out_seq_len;
+    alpha = static_cast<T>(1.0);
+    stride_a = gemm_m * gemm_k;
+    stride_b = gemm_k * gemm_n;
+
+    if (dropout_param_.dropout_prob_) {
+      phi::funcs::DropoutFwGPUKernelDriver<T>(
+          static_cast<const phi::GPUContext&>(dev_ctx_),
+          dropout_param_.is_test_,
+          dropout_param_.dropout_prob_,
+          dropout_param_.is_upscale_in_train_,
+          dropout_param_.is_fix_seed_,
+          dropout_param_.seed_val_,
+          static_cast<const phi::DenseTensor&>(*softmax_out_tensor),
+          dropout_param_.seed_,
+          dropout_mask_out_tensor,
+          dropout_out_tensor,
+          false);
+      T* dropout_out_data = dropout_out_tensor->data<T>();
+      blas.BatchedGEMM(transA,
+                       transB,
+                       gemm_m,
+                       gemm_n,
+                       gemm_k,
+                       alpha,
+                       dropout_out_data,
+                       v_ptr,
+                       beta,
+                       qktv_out_data,
+                       gemm_batch_size,
+                       stride_a,
+                       stride_b);
+    } else {
+      // softmax_out * v, batched_gemm
+      // output shape: [batch_size, num_heads, seq_len, head_dim]
+      blas.BatchedGEMM(transA,
+                       transB,
+                       gemm_m,
+                       gemm_n,
+                       gemm_k,
+                       alpha,
+                       softmax_out_data,
+                       v_ptr,
+                       beta,
+                       qktv_out_data,
+                       gemm_batch_size,
+                       stride_a,
+                       stride_b);
+    }
+    // transpose: [0, 2, 1, 3]
+    // output shape: [batch_size, seq_len, num_heads, head_dim]
+    std::vector<int> perm_3 = {0, 2, 1, 3};
+    phi::funcs::TransposeGPUKernelDriver<T>(
+        dev_ctx_, *qktv_out_tensor, perm_3, fmha_out_tensor);
   }
 
   void ComputeBackward(const phi::DenseTensor& transpose_2_out_tensor,
@@ -742,6 +983,7 @@ class FMHARef {
 
   int64_t batch_size_;
   int64_t seq_len_;
+  int64_t ori_seq_len_;
   int64_t num_head_;
   int64_t head_dim_;
 

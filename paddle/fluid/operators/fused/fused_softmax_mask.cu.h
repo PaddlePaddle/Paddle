@@ -148,6 +148,7 @@ __global__ void FusedSoftmaxMaskVecKernel(T* dst,
   }
 
 // template <typename T, typename MaskT = T>
+// TODO(@wufeisheng): mask_broadcast_num_heads
 template <typename T>
 void LaunchFusedSoftmaxMaskKernel(const T* src,
                                   const T* mask,
@@ -155,6 +156,7 @@ void LaunchFusedSoftmaxMaskKernel(const T* src,
                                   const int batch_size,
                                   const int head_num,
                                   const int seq_len,
+                                  const bool mask_broadcast_num_heads,
                                   cudaStream_t stream) {
   PADDLE_ENFORCE_EQ(
       seq_len > 0 && seq_len <= 4096,

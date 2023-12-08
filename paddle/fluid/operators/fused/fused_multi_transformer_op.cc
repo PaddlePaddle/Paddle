@@ -106,13 +106,6 @@ class FusedMultiTransformerOp : public framework::OperatorWithKernel {
                         paddle::platform::errors::InvalidArgument(
                             "The first dim of CacheKV must be 2, but got %d",
                             c_dim[0]));  // 2
-      PADDLE_ENFORCE_EQ(c_dim[1],
-                        x_dim[0],
-                        paddle::platform::errors::InvalidArgument(
-                            "The second dim of CacheKV must be equal with "
-                            "batch size %d, but got %d",
-                            x_dim[0],
-                            c_dim[1]));  // batch_size
       PADDLE_ENFORCE_EQ(c_dim[2],
                         trans_qkvw ? y_dim[1] : y_dim[2],
                         paddle::platform::errors::InvalidArgument(
@@ -166,6 +159,7 @@ class FusedMultiTransformerOpOpMaker
     AddInput("LnBias",
              "Bias is a 1-dimensional tensor of size "
              "H. Here, H represents the last dimension of its input tensor.")
+        .AsDispensable()
         .AsDuplicable();
     AddInput("QKVW", "The qkv weight tensor.").AsDuplicable();
     AddInput("QKVBias", "The qkv bias tensor.").AsDispensable().AsDuplicable();
@@ -179,6 +173,9 @@ class FusedMultiTransformerOpOpMaker
     AddInput("RotaryPosEmb",
              "(optional) The RoPE embeddings for generation inference.")
         .AsDispensable();
+    AddInput("BeamCacheOffset",
+             "(optional) The offset of CacheKV when using BeamSearch.")
+        .AsDispensable();
     AddInput("TimeStep",
              "(optional, int) The time step for generation inference.")
         .AsDispensable();
@@ -190,10 +187,10 @@ class FusedMultiTransformerOpOpMaker
     AddInput("OutLinearBias", "The out_linear bias tensor.")
         .AsDispensable()
         .AsDuplicable();
-
     AddInput("FFNLnScale", "The layer_norm scale of FusedFeedForward op")
         .AsDuplicable();
     AddInput("FFNLnBias", "The layer_norm bias of FusedFeedForward op")
+        .AsDispensable()
         .AsDuplicable();
     AddInput("FFN1Weight", "The linear1 weight of FusedFeedForward op")
         .AsDuplicable();
@@ -205,12 +202,10 @@ class FusedMultiTransformerOpOpMaker
     AddInput("FFN2Bias", "The linear2 bias input of FusedFeedForward op")
         .AsDispensable()
         .AsDuplicable();
-
     AddOutput("CacheKVOut", "The updated cache KV. Inplace with CacheKV")
         .AsDispensable()
         .AsDuplicable();
     AddOutput("Out", "Result after multi .");
-
     AddAttr<bool>("pre_layer_norm",
                   "if true, the attention op uses pre_layer_norm architecure, "
                   "else, uses post_layer_norm architecuture. "
@@ -249,6 +244,10 @@ class FusedMultiTransformerOpOpMaker
                                 "'dropout_rate' must be between 0.0 and 1.0."));
         });
 
+    AddAttr<float>("residual_alpha",
+                   "Constant for residual_alpha [default 1.0].")
+        .SetDefault(1.0f);
+
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
@@ -269,12 +268,14 @@ class FusedMultiTransformerOpOpMaker
     AddAttr<std::string>("act_method", "act_method")
         .SetDefault("gelu")
         .AddCustomChecker([](const std::string &act_type) {
-          PADDLE_ENFORCE_EQ(
-              act_type == "gelu" || act_type == "relu" || act_type == "none",
-              true,
-              platform::errors::InvalidArgument(
-                  "Only support `gelu`, `relu`, `none` activation in "
-                  "FusedMultiTransformer. "));
+          PADDLE_ENFORCE_EQ(act_type == "gelu" || act_type == "geglu" ||
+                                act_type == "swiglu" || act_type == "relu" ||
+                                act_type == "none",
+                            true,
+                            platform::errors::InvalidArgument(
+                                "Only support `gelu`, `geglu`, `swiglu`, "
+                                "`relu`, `none` activation in "
+                                "FusedMultiTransformer. "));
         });
 
     AddAttr<bool>(
@@ -289,6 +290,68 @@ class FusedMultiTransformerOpOpMaker
         "ring_id",
         "ring id for tensor model parallel. distributed training and inference")
         .SetDefault(-1);
+
+    AddAttr<std::string>("norm_type", "norm_type")
+        .SetDefault("layernorm")
+        .AddCustomChecker([](const std::string &norm_type) {
+          PADDLE_ENFORCE_EQ(
+              norm_type == "layernorm" || norm_type == "rmsnorm",
+              true,
+              platform::errors::InvalidArgument(
+                  "Only support `layernorm`, `rmsnorm` method for in"
+                  "FusedMultiTransformerDyquant. "));
+        });
+
+    AddAttr<bool>("use_neox_rotary_style",
+                  "Whether use neox rotary embedding. ")
+        .SetDefault(false);
+    AddAttr<std::vector<float>>(
+        "cache_k_scale",
+        "cache_k_scale is used to quantize cache kv tensor."
+        "in_scale is generated by PTQ or QAT, which represents valid max range "
+        "of this tensor."
+        "the size of cache_k_scale should be num_layers, which is equal to "
+        "len(CacheKV)")
+        .SetDefault({});
+    AddAttr<std::vector<float>>(
+        "cache_v_scale",
+        "cache_v_scale is used to quantize cache kv tensor."
+        "in_scale is generated by PTQ or QAT, which represents valid max range "
+        "of this tensor."
+        "the size of cache_v_scale should be num_layers, which is equal to "
+        "len(CacheKV)")
+        .SetDefault({});
+    AddAttr<std::vector<float>>(
+        "cache_k_out_scale",
+        "cache_k_out_scale is used to dequantize cache kv tensor."
+        "in_scale is generated by PTQ or QAT, which represents valid max range "
+        "of this tensor."
+        "the size of cache_k_out_scale should be num_layers, which is equal to "
+        "len(CacheKV)")
+        .SetDefault({});
+    AddAttr<std::vector<float>>(
+        "cache_v_out_scale",
+        "cache_v_out_scale is used to dequantize cache kv tensor."
+        "in_scale is generated by PTQ or QAT, which represents valid max range "
+        "of this tensor."
+        "the size of cache_v_out_scale should be num_layers, which is equal to "
+        "len(CacheKV)")
+        .SetDefault({});
+    AddAttr<int>(
+        "quant_round_type",
+        "(int, default 1) The round type of fp32 to int."
+        "0: rounding to nearest ties to even. Eg: round(1.5)=2, round(2.5)=2"
+        "1: rounding to nearest ties away from zero. Eg: round(1.5)=2, "
+        "round(-2.5)=-3")
+        .SetDefault(0);
+    AddAttr<float>(
+        "quant_max_bound",
+        "(float, default 127.0) the max bound of float type to int type")
+        .SetDefault(127.0);
+    AddAttr<float>(
+        "quant_min_bound",
+        "(float, default -127.0) the min bound of float type to int type")
+        .SetDefault(-127.0);
 
     AddComment(R"DOC(fused multi transformer layers op)DOC");
   }
