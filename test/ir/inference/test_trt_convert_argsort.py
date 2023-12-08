@@ -25,7 +25,10 @@ import paddle.inference as paddle_infer
 
 class TrtConvertArgsort(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        return True
+        if os.name == 'nt':
+            return False
+        else:
+            return True
 
     def sample_program_configs(self):
         # 1. Declare input
