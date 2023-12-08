@@ -485,6 +485,9 @@ def prune_by_memory_estimation(tuner_cfg, cur_cfg, history_cfgs):
     )
     if result.returncode == 0:
         cur_memory_usage = float(result.stdout)
+        print(
+            f"Estimatied memory of current config: {cur_cfg} is {cur_memory_usage}"
+        )
         return cur_memory_usage > max_memory_usage
     else:
         raise ValueError(
