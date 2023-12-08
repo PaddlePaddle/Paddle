@@ -45,7 +45,7 @@ class DecompProgram {
       const std::vector<pir::OpResult>& orig_outs,
       const std::vector<pir::OpResult>& decomp_outs,
       std::unordered_map<pir::OpResult, int> orig_vars_dict);
-  bool enable_decomp(const std::string& op_name);
+  bool enable_decomp_by_filter(const std::string& op_name);
 
  private:
   pir::Program* program_;

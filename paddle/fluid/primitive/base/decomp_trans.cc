@@ -161,7 +161,7 @@ std::vector<pir::OpResult> DecompProgram::construct_dst_vars(
   return tar_vars;
 }
 
-bool DecompProgram::enable_decomp(const std::string& op_name) {
+bool DecompProgram::enable_decomp_by_filter(const std::string& op_name) {
   bool flag = true;
 
   if (whitelist_.size() > 0) {
@@ -217,13 +217,14 @@ std::vector<pir::OpResult> DecompProgram::decomp_program() {
   }
   for (size_t i = 0; i < ops_list.size(); i++) {
     auto op = ops_list[i];
-    bool flag_has_decomp = has_decomp_rule(*op);
-    bool enable_prim = true;
-    if (flag_has_decomp) {
-      enable_prim = enable_decomp(op->name());
+    bool enable_prim =
+        has_decomp_rule(*op) && enable_decomp_by_filter(op->name());
+    if (enable_prim && FLAGS_prim_skip_dynamic &&
+        check_decomp_dynamic_shape(op)) {
+      enable_prim = false;
     }
     VLOG(4) << "enable_prim flag ======= " << enable_prim;
-    if (flag_has_decomp && enable_prim) {
+    if (enable_prim) {
       VLOG(4) << "decomp op name ======= " << op->name();
 
       auto& builder = *(paddle::dialect::ApiBuilder::Instance().GetBuilder());
