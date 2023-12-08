@@ -50,16 +50,23 @@ def dist_degree_with_customized_range(
 
 def dist_degree(mode, num_gpus, num_nodes, tuner_cfg=None):
     """Return the degree of different parallel modes by gpus and nodes num."""
-    assert mode in ["dp", "mp", "pp", "sharding", "mbs", "vpp"]
+    assert mode in [
+        "dp_degree",
+        "mp_degree",
+        "pp_degree",
+        "sharding_degree",
+        "micro_batch_size",
+        "vpp_degree",
+    ]
     results = []
     prune_results = []
-    if mode == "dp":
+    if mode == "dp_degree":
         if tuner_cfg.get("schedule_mode", "memory") != "performance":
             results = divisor(num_gpus, reverse=False)
         else:
             results = divisor(num_gpus, reverse=True)
 
-    elif mode == "pp":
+    elif mode == "pp_degree":
         if num_nodes > 1 and tuner_cfg.get("enable_pp_prune", True):
             results = list(range(num_nodes + 1, 0, -1))
         else:
@@ -76,7 +83,7 @@ def dist_degree(mode, num_gpus, num_nodes, tuner_cfg=None):
                 prune_results.append(pp_degree)
         results = prune_results
 
-    elif mode == "mp":
+    elif mode == "mp_degree":
         if tuner_cfg.get("enable_mp_prune", True):
             gpus_per_node = num_gpus // num_nodes
             if tuner_cfg.get("schedule_mode", "memory") != "performance":
@@ -119,10 +126,10 @@ def dist_degree(mode, num_gpus, num_nodes, tuner_cfg=None):
                 prune_results.append(mp_degree)
         results = prune_results
 
-    elif mode == "sharding":
+    elif mode == "sharding_degree":
         results = divisor(num_gpus, reverse=True)
 
-    elif mode == "mbs":
+    elif mode == "micro_batch_size":
         if tuner_cfg.get("schedule_mode", "memory") != "performance":
             results = divisor(
                 tuner_cfg["model_cfg"]["global_batch_size"], reverse=False
@@ -132,7 +139,7 @@ def dist_degree(mode, num_gpus, num_nodes, tuner_cfg=None):
                 tuner_cfg["model_cfg"]["global_batch_size"], reverse=True
             )
 
-    elif mode == "vpp":
+    elif mode == "vpp_degree":
         if tuner_cfg.get("schedule_mode", "memory") != "performance":
             results = divisor(
                 tuner_cfg["model_cfg"]["num_layers"], reverse=False
@@ -180,7 +187,11 @@ def default_candidates(tuner_cfg):
         "vpp_degree",
     )
     candidates["vpp_degree"] = dist_degree_with_customized_range(
-        "vpp", num_gpus, num_nodes, vpp_degree_customized_range, tuner_cfg
+        "vpp_degree",
+        num_gpus,
+        num_nodes,
+        vpp_degree_customized_range,
+        tuner_cfg,
     )
 
     mbs_customized_range = _param2range(
@@ -189,7 +200,7 @@ def default_candidates(tuner_cfg):
         "micro_batch_size",
     )
     candidates["micro_batch_size"] = dist_degree_with_customized_range(
-        "mbs", num_gpus, num_nodes, mbs_customized_range, tuner_cfg
+        "micro_batch_size", num_gpus, num_nodes, mbs_customized_range, tuner_cfg
     )
 
     schedule_mode = tuner_cfg.get("schedule_mode", "memory")
@@ -213,6 +224,7 @@ def default_candidates(tuner_cfg):
         candidates["use_recompute"] = (
             [True, False] if schedule_mode != "performance" else [False, True]
         )
+        tuner_cfg["recompute_granularity"] = "auto"
     elif isinstance(use_recompute, bool):
         candidates["use_recompute"] = [use_recompute]
     else:
@@ -234,11 +246,11 @@ def default_candidates(tuner_cfg):
             ]
         else:
             raise ValueError(
-                f"recompute_granularity only supports auto/{'/'.join(__SUPPORTED_RECOMPUTE_GRANULARITY__)}"
+                f"recompute_granularity only supports auto/{'/'.join(__SUPPORTED_RECOMPUTE_GRANULARITY__)}, but got {recompute_granularity}"
             )
     else:
         raise ValueError(
-            f"recompute_granularity only supports auto/{'/'.join(__SUPPORTED_RECOMPUTE_GRANULARITY__)}"
+            f"recompute_granularity only supports auto/{'/'.join(__SUPPORTED_RECOMPUTE_GRANULARITY__)}, but got {recompute_granularity}"
         )
 
     return candidates
