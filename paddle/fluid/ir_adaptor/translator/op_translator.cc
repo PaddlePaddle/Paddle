@@ -1917,33 +1917,39 @@ struct SelectInputOpTranscriber : public OpTranscriber {
     auto input2 = op_inputs[2].type();
     if (input1 == input2) {
       op_output_types.push_back(op_inputs[1].type());
-    } else {
-      if (input1.isa<paddle::dialect::DenseTensorType>() &&
-          input2.isa<paddle::dialect::DenseTensorType>()) {
-        auto tensor1 = input1.dyn_cast<paddle::dialect::DenseTensorType>();
-        auto tensor2 = input2.dyn_cast<paddle::dialect::DenseTensorType>();
-        if (tensor1.dtype() != tensor2.dtype() ||
-            tensor1.data_layout() != tensor2.data_layout() ||
-            tensor1.lod() != tensor2.lod() ||
-            tensor1.offset() != tensor2.offset()) {
-          IR_THROW(
-              "select_input only support same type or DenseTensorType with "
-              "only different dim, but get %s != %s.",
-              tensor1,
-              tensor2);
-        }
-        auto dim1 = input1.dyn_cast<paddle::dialect::DenseTensorType>().dims();
-        auto dim2 = input2.dyn_cast<paddle::dialect::DenseTensorType>().dims();
-        std::vector<int64_t> compat_shape = ParseCompatibleShapes(
-            common::vectorize(dim1), common::vectorize(dim2));
-        op_output_types.push_back(paddle::dialect::DenseTensorType::get(
-            ctx,
+    } else if (input1.isa<paddle::dialect::DenseTensorType>() &&
+               input2.isa<paddle::dialect::DenseTensorType>()) {
+      auto tensor1 = input1.dyn_cast<paddle::dialect::DenseTensorType>();
+      auto tensor2 = input2.dyn_cast<paddle::dialect::DenseTensorType>();
+      if (tensor1.dtype() != tensor2.dtype() ||
+          tensor1.data_layout() != tensor2.data_layout() ||
+          tensor1.lod() != tensor2.lod() ||
+          tensor1.offset() != tensor2.offset()) {
+        IR_THROW(
+            "select_input only support same type or DenseTensorType with "
+            "only different dim, but get dtype:[%s, %s], layout:[%s, %s], "
+            "lod:[%s, %s], offset:[%s, %s].",
             tensor1.dtype(),
-            common::make_ddim(compat_shape),
+            tensor2.dtype(),
             tensor1.data_layout(),
+            tensor2.data_layout(),
             tensor1.lod(),
-            tensor1.offset()));
+            tensor2.lod(),
+            tensor1.offset(),
+            tensor2.offset());
       }
+      auto dim1 = input1.dyn_cast<paddle::dialect::DenseTensorType>().dims();
+      auto dim2 = input2.dyn_cast<paddle::dialect::DenseTensorType>().dims();
+      std::vector<int64_t> compat_shape = ParseCompatibleShapes(
+          common::vectorize(dim1), common::vectorize(dim2));
+      op_output_types.push_back(
+          paddle::dialect::DenseTensorType::get(ctx,
+                                                tensor1.dtype(),
+                                                common::make_ddim(compat_shape),
+                                                tensor1.data_layout(),
+                                                tensor1.lod(),
+                                                tensor1.offset()));
+    } else {
       IR_THROW(
           "select_input only support same type or DenseTensorType with only "
           "different dim, now is %s != %s.",
