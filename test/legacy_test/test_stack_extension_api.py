@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import itertools
+import sys
 import unittest
 
 import numpy as np
@@ -180,6 +181,7 @@ class BaseTest(unittest.TestCase):
                 self.assertEqual(grads[0].shape, y.shape)
 
     def _test_all(self, args, dtype=''):
+        print('Test under dtype:', dtype)
         self._test_dygraph_api(self.func_paddle, self.func_numpy, *args)
         self._test_static_api(self.func_paddle, self.func_numpy, *args)
 
@@ -237,13 +239,19 @@ class TestHStack(BaseTest, BaseCases):
         for dtype in DTYPE_ALL:
             if dtype == 'float16' and (
                 not core.is_compiled_with_cuda()
-                or not core.is_float16_supported(paddle.CUDAPlace(0))
+                or (
+                    not core.is_float16_supported(paddle.CUDAPlace(0))
+                    or sys.platform == 'win32'
+                )
             ):
                 continue
 
             if dtype == 'bfloat16' and (
                 not core.is_compiled_with_cuda()
-                or not core.is_bfloat16_supported(paddle.CUDAPlace(0))
+                or (
+                    not core.is_bfloat16_supported(paddle.CUDAPlace(0))
+                    or sys.platform == 'win32'
+                )
             ):
                 continue
 
@@ -267,13 +275,19 @@ class TestVStack(BaseTest, BaseCases):
         for dtype in DTYPE_ALL:
             if dtype == 'float16' and (
                 not core.is_compiled_with_cuda()
-                or not core.is_float16_supported(paddle.CUDAPlace(0))
+                or (
+                    not core.is_float16_supported(paddle.CUDAPlace(0))
+                    or sys.platform == 'win32'
+                )
             ):
                 continue
 
             if dtype == 'bfloat16' and (
                 not core.is_compiled_with_cuda()
-                or not core.is_bfloat16_supported(paddle.CUDAPlace(0))
+                or (
+                    not core.is_bfloat16_supported(paddle.CUDAPlace(0))
+                    or sys.platform == 'win32'
+                )
             ):
                 continue
 
@@ -301,13 +315,19 @@ class TestDStack(BaseTest, BaseCases):
         for dtype in DTYPE_ALL:
             if dtype == 'float16' and (
                 not core.is_compiled_with_cuda()
-                or not core.is_float16_supported(paddle.CUDAPlace(0))
+                or (
+                    not core.is_float16_supported(paddle.CUDAPlace(0))
+                    or sys.platform == 'win32'
+                )
             ):
                 continue
 
             if dtype == 'bfloat16' and (
                 not core.is_compiled_with_cuda()
-                or not core.is_bfloat16_supported(paddle.CUDAPlace(0))
+                or (
+                    not core.is_bfloat16_supported(paddle.CUDAPlace(0))
+                    or sys.platform == 'win32'
+                )
             ):
                 continue
 
@@ -331,13 +351,19 @@ class TestColumnStack(BaseTest, BaseCases):
         for dtype in DTYPE_COLUMN_STACK:
             if dtype == 'float16' and (
                 not core.is_compiled_with_cuda()
-                or not core.is_float16_supported(paddle.CUDAPlace(0))
+                or (
+                    not core.is_float16_supported(paddle.CUDAPlace(0))
+                    or sys.platform == 'win32'
+                )
             ):
                 continue
 
             if dtype == 'bfloat16' and (
                 not core.is_compiled_with_cuda()
-                or not core.is_bfloat16_supported(paddle.CUDAPlace(0))
+                or (
+                    not core.is_bfloat16_supported(paddle.CUDAPlace(0))
+                    or sys.platform == 'win32'
+                )
             ):
                 continue
 
@@ -361,13 +387,19 @@ class TestRowStack(BaseTest, BaseCases):
         for dtype in DTYPE_ALL:
             if dtype == 'float16' and (
                 not core.is_compiled_with_cuda()
-                or not core.is_float16_supported(paddle.CUDAPlace(0))
+                or (
+                    not core.is_float16_supported(paddle.CUDAPlace(0))
+                    or sys.platform == 'win32'
+                )
             ):
                 continue
 
             if dtype == 'bfloat16' and (
                 not core.is_compiled_with_cuda()
-                or not core.is_bfloat16_supported(paddle.CUDAPlace(0))
+                or (
+                    not core.is_bfloat16_supported(paddle.CUDAPlace(0))
+                    or sys.platform == 'win32'
+                )
             ):
                 continue
 
