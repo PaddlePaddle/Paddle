@@ -57,6 +57,17 @@ void OperationFactory::RegisterManualOpCreator() {
                               pir::PatternRewriter& rewriter) {
                              return rewriter.Build<pir::CombineOp>(inputs);
                            });
+  RegisterOperationCreator(
+      "pd_op.scale",
+      [](const std::vector<Value>& inputs,
+         const pir::AttributeMap& attrs,
+         pir::PatternRewriter& rewriter) {
+        return rewriter.Build<paddle::dialect::ScaleOp>(
+            inputs[0].dyn_cast<pir::OpResult>(),
+            inputs[1].dyn_cast<pir::OpResult>(),
+            attrs.at("bias").dyn_cast<pir::FloatAttribute>().data(),
+            attrs.at("bias_after_scale").dyn_cast<pir::BoolAttribute>().data());
+      });
 }
 
 static pir::Attribute CreateIrAttribute(const std::any& obj) {
