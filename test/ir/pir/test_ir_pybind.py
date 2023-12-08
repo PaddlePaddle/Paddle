@@ -72,11 +72,11 @@ class TestPybind(unittest.TestCase):
         self.assertEqual(len(matmul_op.get_attr_names()), 2)
         self.assertEqual(len(matmul_op.get_output_names()), 1)
         # test oprand.index
-        self.assertEqual(matmul_op.oprand(0).index(), 0)
-        self.assertEqual(matmul_op.oprand(1).index(), 1)
-        self.assertEqual(add_op.oprand(0).index(), 0)
-        self.assertEqual(add_op.oprand(1).index(), 1)
-        self.assertEqual(tanh_op.oprand(0).index(), 0)
+        self.assertEqual(matmul_op.operand(0).index(), 0)
+        self.assertEqual(matmul_op.operand(1).index(), 1)
+        self.assertEqual(add_op.operand(0).index(), 0)
+        self.assertEqual(add_op.operand(1).index(), 1)
+        self.assertEqual(tanh_op.operand(0).index(), 0)
 
     def test_value(self):
         pir_program = get_ir_program()
