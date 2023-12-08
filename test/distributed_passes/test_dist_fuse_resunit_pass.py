@@ -237,6 +237,15 @@ class TestFuseResUnitPass(DistPassTestBase):
             "init_loss_scaling": 128.0,
             "use_dynamic_loss_scaling": True,
         }
+        build_strategy = paddle.static.BuildStrategy()
+        settings = {
+            "fuse_bn_act_ops": False,
+            "fuse_bn_add_act_ops": False,
+            "enable_inplace": False,
+        }
+        for k, v in settings.items():
+            setattr(build_strategy, k, v)
+        dist_strategy.build_strategy = build_strategy
         fleet.init(is_collective=True, strategy=dist_strategy)
         optimizer = fleet.distributed_optimizer(optimizer)
         optimizer.minimize(loss)
