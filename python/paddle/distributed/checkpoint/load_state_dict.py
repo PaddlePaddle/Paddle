@@ -55,9 +55,12 @@ def get_rank_to_files(path, state_dict, process_group, use_dist):
             if local_tensor_index.tensor_key in state_dict:
                 necessary_files.append(file_name)
     necessary_data_files_set = set(necessary_files)
-    assert (
-        len(necessary_data_files_set) > 0
-    ), f"No necessary data files found in the checkpoint directory:{path}. Please check the metadata_files:{metadata_files}"
+    if len(necessary_data_files_set) <= 0:
+        logger.warning(
+            f"No necessary data files found in the checkpoint directory:{path}. Please check the metadata_files:{metadata_files}"
+        )
+        return {}
+
     # allgather all accessible files
     local_data_files = [
         file for file in accessible_files if file.endswith(".distcp")
@@ -402,6 +405,8 @@ def load_state_dict(
         paddle.distributed.init_parallel_env()
 
     rank_to_files = get_rank_to_files(path, state_dict, process_group, use_dist)
+    if len(rank_to_files) <= 0:
+        return
     local_load_files = get_local_load_files(rank_to_files)
     # load_infos: {LocalTensorIndex: (rank, file_name)}, which local tensor located in which file, and the file is load in which rank.
     load_infos = get_load_infos(path, local_load_files, process_group, use_dist)
