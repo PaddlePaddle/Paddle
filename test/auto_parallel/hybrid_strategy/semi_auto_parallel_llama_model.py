@@ -415,11 +415,11 @@ class LlamaModelAuto(nn.Layer):
             self.vocab_size,
             self.hidden_size,
         )
-        self.embed_tokens.weight = dist.shard_tensor(
-            self.embed_tokens.weight,
-            get_mesh(),
-            [dist.Replicate(), dist.Shard(1)],
-        )
+        # self.embed_tokens.weight = dist.shard_tensor(
+        #     self.embed_tokens.weight,
+        #     get_mesh(),
+        #     [dist.Replicate(), dist.Shard(1)],
+        # )
 
         def get_layer_ipp(layer_index):
             global _global_mesh
@@ -462,7 +462,7 @@ class LlamaModelAuto(nn.Layer):
                     combined_attention_mask = dist.shard_tensor(
                         combined_attention_mask,
                         get_mesh(),
-                        [dist.Shard(0), dist.Replicate()],
+                        [dist.Replicate(), dist.Replicate()],
                     )
                     expanded_attn_mask = (
                         expanded_attn_mask & combined_attention_mask
@@ -543,7 +543,7 @@ class LlamaModelAuto(nn.Layer):
                 (batch_size, seq_length)
             )
             position_ids = dist.shard_tensor(
-                position_ids, get_mesh(), [dist.Shard(0), dist.Replicate()]
+                position_ids, get_mesh(), [dist.Replicate(), dist.Replicate()]
             )
 
         attention_mask = self._prepare_decoder_attention_mask(
@@ -566,7 +566,7 @@ class LlamaModelAuto(nn.Layer):
         all_self_attns = () if output_attentions else None
         next_decoder_cache = () if use_cache else None
 
-        pre_ipp = 0
+        pre_ipp = None
         for idx, (decoder_layer) in enumerate(self.layers):
             if output_hidden_states:
                 all_hidden_states += (hidden_states,)
@@ -576,7 +576,7 @@ class LlamaModelAuto(nn.Layer):
 
             has_gradient = not hidden_states.stop_gradient
 
-            if decoder_layer.ipp is not None and pre_ipp != decoder_layer.ipp:
+            if pre_ipp != decoder_layer.ipp:
                 hidden_states = dist.reshard(
                     hidden_states,
                     get_mesh(decoder_layer.ipp),
@@ -667,6 +667,9 @@ class LlamaPretrainingCriterionAuto(paddle.nn.Layer):
         )
 
     def forward(self, prediction_scores, masked_lm_labels):
+        masked_lm_labels = dist.shard_tensor(
+            masked_lm_labels, get_mesh(-1), [dist.Shard(0), dist.Replicate()]
+        )
         masked_lm_loss = self.loss_func(
             prediction_scores.astype("float32"), masked_lm_labels.unsqueeze(2)
         )
@@ -691,7 +694,7 @@ class LlamaForCausalLMAuto(nn.Layer):
 
         self.llama = LlamaModelAuto(config)
         self.lm_head = LlamaLMHeadAuto(config)
-        self.criterion = LlamaPretrainingCriterionAuto(config)
+        # self.criterion = LlamaPretrainingCriterionAuto(config)
 
     def forward(
         self,
