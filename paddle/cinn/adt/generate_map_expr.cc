@@ -263,59 +263,28 @@ std::unordered_map<Variable, const Value> MakeSdIterator2Iterator(
   return ret;
 }
 
-std::shared_ptr<IndexExprInferContext> SolveEquationsThenReturnCtx(
-    const std::shared_ptr<IGroup>& igroup, const ScheduleMesh& sched_mesh) {
-  const auto& sd_equation_graph_view =
-      GenerateSdEquationGraphView(igroup, sched_mesh);
-
-  GraphView igroup_view = igroup->GetDefaultGraphView();
-  GraphView merged_view = igroup_view.Merge(sd_equation_graph_view);
-
-  const auto& init_var2value = MakeSdIterator2Iterator(*igroup);
-  auto ctx = std::make_shared<IndexExprInferContext>(init_var2value);
-
-  std::vector<Variable> starts{};
-  for (const auto& loop_iterator : *igroup->loop_iterators()) {
-    starts.emplace_back(loop_iterator);
-  }
-  SolveEquations(merged_view, starts, ctx.get());
-  return ctx;
-}
-
 std::function<TensorIndexExpr(const Tensor&)> MakeGetterTensorIndexExpr(
     const std::shared_ptr<IndexExprInferContext>& ctx,
-    const std::vector<std::shared_ptr<IGroup>>& igroups) {
-  return [ctx, igroups](const Tensor& tensor) {
-    for (const auto& igroup : igroups) {
-      // All indexes of same tensor have the same Value.
-      const auto& indexes = igroup->GetIndexes(tensor);
-      if (!indexes.empty()) {
-        return ctx->GetValue(indexes.at(0));
-      } else {
-        // Do nothing
-      }
-    }
-    LOG(FATAL) << "Tensor not found!";
+    const std::shared_ptr<IGroup>& igroup) {
+  return [ctx, igroup](const Tensor& tensor) {
+    // All indexes of same tensor have the same Value.
+    const auto& indexes = igroup->GetIndexes(tensor);
+    CHECK(!indexes.empty());
+    return ctx->GetValue(indexes.at(0));
   };
 }
 
 TensorIteratorExpr4TensorT MakeGetterTensorIteratorExpr4Tensor(
     const std::shared_ptr<IndexExprInferContext>& ctx,
-    const std::vector<std::shared_ptr<IGroup>>& igroups) {
-  return [ctx, igroups](const Tensor& tensor) -> List<TensorIteratorExpr> {
-    for (const auto& igroup : igroups) {
-      if (!igroup->GetIndexes(tensor).empty()) {
-        const auto& iterators = igroup->GetTensorIterators(tensor);
-        List<TensorIteratorExpr> ret{};
-        for (const auto& iterator : *iterators) {
-          ret->emplace_back(ctx->GetValue(iterator));
-        }
-        return ret;
-      } else {
-        // Do nothing
-      }
+    const std::shared_ptr<IGroup>& igroup) {
+  return [ctx, igroup](const Tensor& tensor) -> List<TensorIteratorExpr> {
+    CHECK(!igroup->GetIndexes(tensor).empty());
+    const auto& iterators = igroup->GetTensorIterators(tensor);
+    List<TensorIteratorExpr> ret{};
+    for (const auto& iterator : *iterators) {
+      ret->emplace_back(ctx->GetValue(iterator));
     }
-    LOG(FATAL) << "Dead code, Tensor not found";
+    return ret;
   };
 }
 
@@ -542,9 +511,8 @@ void UpdateUnionFindByInterfaceTensor(
 std::shared_ptr<UnionFind<Iterator>> CreateAnchorIteratorUf(
     const std::vector<std::shared_ptr<IGroup>>& igroups,
     std::unordered_map<Tensor, std::unordered_set<std::shared_ptr<IGroup>>>&
-        interface_tensor2igroups) {
-  const auto& InferContext4IGroup = MakeGetterInferContext4IGroup(igroups);
-
+        interface_tensor2igroups,
+    const InferContext4IGroupT& InferContext4IGroup) {
   auto uf = std::make_shared<UnionFind<Iterator>>();
   for (const auto& [tensor, interface_igroups] : interface_tensor2igroups) {
     UpdateUnionFindByInterfaceTensor(
@@ -556,45 +524,112 @@ std::shared_ptr<UnionFind<Iterator>> CreateAnchorIteratorUf(
 using ShardableDimAndPerm = std::pair<List<ScheduleDim>, List<int>>;
 
 List<int> GenerateAnchorIteratorPerm(
-    const List<Iterator>& iterators,
-    const std::shared_ptr<UnionFind<Iterator>>& uf,
-    std::size_t igroup_size) {
-  const auto& IsShardableIterator = [&](const Iterator& iterator) -> bool {
-    return uf->NodeCluster(iterator).size() == igroup_size;
+    const List<Iterator>& igroup_iterators,
+    const List<Iterator>& shardable_igroup_iterators,
+    const std::shared_ptr<UnionFind<Iterator>>& uf) {
+  const auto& FindIteratorPerm =
+      [&](const Iterator& shardable_iterator) -> int {
+    for (std::size_t i = 0; i < igroup_iterators->size(); ++i) {
+      if (uf->IsConnected(igroup_iterators->at(i), shardable_iterator)) {
+        return i;
+      } else {
+        // Do nothing
+      }
+    }
+    LOG(FATAL) << "Iterator not found";
   };
   List<int> shardable_idx{};
-  for (std::size_t i = 0; i < iterators->size(); ++i) {
-    if (IsShardableIterator(iterators->at(i))) {
-      shardable_idx->push_back(i);
-    } else {
-      // Do nothing
-    }
+  for (const auto& shardable_iterator : *shardable_igroup_iterators) {
+    shardable_idx->push_back(FindIteratorPerm(shardable_iterator));
   }
   return shardable_idx;
 }
 
 List<ShardableDimAndPerm> GenerateShardableDimWithOrder(
     const std::vector<std::shared_ptr<IGroup>>& igroups,
+    const List<Iterator>& shardable_igroup_iterators,
     const std::shared_ptr<UnionFind<Iterator>>& uf) {
   List<ShardableDimAndPerm> ret{};
   for (const auto& igroup : igroups) {
-    ret->emplace_back(
-        std::make_pair(igroup->anchor_schedule_dims(),
-                       GenerateAnchorIteratorPerm(
-                           igroup->GetAnchorIterators(), uf, igroups.size())));
+    ret->emplace_back(std::make_pair(
+        igroup->anchor_schedule_dims(),
+        GenerateAnchorIteratorPerm(
+            igroup->GetAnchorIterators(), shardable_igroup_iterators, uf)));
   }
   return ret;
 }
 
+List<Iterator> GetIntersectionShardableIterators(
+    const List<Iterator>& lhs,
+    const List<Iterator>& rhs,
+    const std::shared_ptr<UnionFind<Iterator>>& uf) {
+  List<Iterator> ret{};
+  for (const auto& lhs_iterator : *lhs) {
+    for (const auto& rhs_iterator : *rhs) {
+      if (uf->IsConnected(lhs_iterator, rhs_iterator)) {
+        ret->push_back(lhs_iterator);
+      } else {
+        // Do nothing
+      }
+    }
+  }
+  return ret;
+}
+
+List<Iterator> FilterShardableIterators(
+    const std::vector<std::shared_ptr<IGroup>>& igroups,
+    const std::unordered_map<Tensor,
+                             std::unordered_set<std::shared_ptr<IGroup>>>&
+        interface_tensor2igroups,
+    const std::shared_ptr<UnionFind<Iterator>>& uf,
+    const InferContext4IGroupT& InferContext4IGroup) {
+  const auto& FilterIterators =
+      [&](const List<Value>& iterator_exprs) -> List<Iterator> {
+    List<Iterator> ret{};
+    for (const auto& iterator_expr : *iterator_exprs) {
+      if (iterator_expr.Has<Iterator>() &&
+          uf->NodeCluster(iterator_expr.Get<Iterator>()).size() ==
+              igroups.size()) {
+        ret->push_back(iterator_expr.Get<Iterator>());
+      }
+    }
+    return ret;
+  };
+
+  std::optional<List<Iterator>> opt_ret{std::nullopt};
+  for (const auto& [tensor, interface_igroups] : interface_tensor2igroups) {
+    const auto& interface_igroup = *interface_igroups.begin();
+    const auto& iterator_exprs = CollectTensorIteratorExpr(
+        tensor, interface_igroup, InferContext4IGroup);
+    List<Iterator> shardable_iterators = FilterIterators(iterator_exprs);
+    if (opt_ret.has_value()) {
+      opt_ret = GetIntersectionShardableIterators(
+          opt_ret.value(), shardable_iterators, uf);
+    } else {
+      opt_ret = shardable_iterators;
+    }
+  }
+  if (opt_ret.has_value()) {
+    return opt_ret.value();
+  } else {
+    return List<Iterator>{};
+  }
+}
+
 List<ShardableDimAndPerm> CollectShardableScheduleDims(
     const std::vector<std::shared_ptr<IGroup>>& igroups) {
+  const auto& InferContext4IGroup = MakeGetterInferContext4IGroup(igroups);
+
   std::unordered_map<Tensor, std::unordered_set<std::shared_ptr<IGroup>>>
       interface_tensor2igroups = CollectInterfaceTensors(igroups);
+  const auto& iterator_uf = CreateAnchorIteratorUf(
+      igroups, interface_tensor2igroups, InferContext4IGroup);
 
-  const auto& iterator_uf =
-      CreateAnchorIteratorUf(igroups, interface_tensor2igroups);
+  const auto& shardable_igroup_iterators = FilterShardableIterators(
+      igroups, interface_tensor2igroups, iterator_uf, InferContext4IGroup);
 
-  return GenerateShardableDimWithOrder(igroups, iterator_uf);
+  return GenerateShardableDimWithOrder(
+      igroups, shardable_igroup_iterators, iterator_uf);
 }
 
 List<Iterator> MakeSoleIGroupScheduleIterator(
@@ -633,22 +668,12 @@ std::unordered_map<Variable, const Value> MakeStartScheduleIteratorMap(
   return ret;
 }
 
-GraphView CollectIGroupView(const std::vector<std::shared_ptr<IGroup>>& igroups,
-                            int idx) {
-  CHECK_LT(idx, igroups.size());
-
-  const auto& opt_sd_equation_ctx = igroups.at(idx)->anchor_sd_equation_ctx();
+GraphView CollectIGroupView(const std::shared_ptr<IGroup>& igroup) {
+  const auto& opt_sd_equation_ctx = igroup->anchor_sd_equation_ctx();
   CHECK(opt_sd_equation_ctx.has_value());
   Equations equations = opt_sd_equation_ctx.value().equations();
   GraphView sd_view = Graph<Variable, Equation>::New(equations)->GetGraphView();
-  GraphView igroup_view = sd_view.Merge(igroups.at(idx)->GetDefaultGraphView());
-
-  if (idx + 1 == igroups.size()) {
-    return igroup_view;
-  } else {
-    return igroup_view.Merge(CollectIGroupView(igroups, idx + 1));
-  }
-  LOG(FATAL) << "Dead code";
+  return sd_view.Merge(igroup->GetDefaultGraphView());
 }
 
 GraphView GenerateShardableDimEquationView(
@@ -669,12 +694,11 @@ GraphView GenerateShardableDimEquationView(
 }
 
 std::shared_ptr<IndexExprInferContext> SolveEquationsThenReturnCtx(
-    const std::vector<std::shared_ptr<IGroup>>& igroups,
-    const std::unordered_map<Variable, const Value>& init_var2value,
-    int shardable_prefix_size) {
-  GraphView igroup_view = CollectIGroupView(igroups, 0);
-  GraphView merged_view = igroup_view.Merge(
-      GenerateShardableDimEquationView(igroups, shardable_prefix_size));
+    const std::shared_ptr<IGroup>& igroup,
+    const GraphView shardable_equation_view,
+    const std::unordered_map<Variable, const Value>& init_var2value) {
+  GraphView igroup_view = CollectIGroupView(igroup);
+  GraphView merged_view = igroup_view.Merge(shardable_equation_view);
 
   auto ctx = std::make_shared<IndexExprInferContext>(init_var2value);
   std::vector<Variable> infer_start{};
@@ -693,46 +717,49 @@ int GetShardablePrefixSize(
   return perm->size();
 }
 
-MapIrList GenerateIGroupsMapIrList(
-    const std::vector<std::shared_ptr<IGroup>>& igroups,
+AnchoredMapStmt GenerateAnchoredMapStmt(
+    const std::shared_ptr<IGroup>& igroup,
+    const GraphView& shardable_equation_view,
     const List<Iterator>& schedule_iters,
-    const TensorIndexExpr4TensorT& TensorIndexExpr4Tensor) {
-  MapIrList ret = GenerateMapIrListForLoopFuse(
-      igroups.at(0)->op_stmts(), schedule_iters, TensorIndexExpr4Tensor);
-  for (std::size_t i = 1; i < igroups.size(); ++i) {
-    MapIrList ir_list = GenerateMapIrListForLoopFuse(
-        igroups.at(i)->op_stmts(), schedule_iters, TensorIndexExpr4Tensor);
-    ret->insert(ret->end(), ir_list->begin(), ir_list->end());
-  }
-  return ret;
+    const LoopDescriptors& sd) {
+  const auto& init_var2value = MakeStartScheduleIteratorMap(schedule_iters);
+  const auto& ctx = SolveEquationsThenReturnCtx(
+      igroup, shardable_equation_view, init_var2value);
+
+  const auto& TensorIndexExpr4Tensor = MakeGetterTensorIndexExpr(ctx, igroup);
+  const auto& map_irs = GenerateMapIrListForLoopFuse(
+      igroup->op_stmts(), schedule_iters, TensorIndexExpr4Tensor);
+
+  return AnchoredMapStmt{MakeMapStmt(map_irs),
+                         TensorIndexExpr4Tensor,
+                         MakeGetterTensorIteratorExpr4Tensor(ctx, igroup),
+                         MakeGetterLoopDescriptor4IterVar(schedule_iters, sd)};
 }
 
-AnchoredMapStmt GenerateAnchoredMapStmt(
+List<AnchoredMapStmt> GenerateAnchoredMapStmts(
     const std::vector<std::shared_ptr<IGroup>>& igroups) {
   const auto& shardable_schedule_dims = CollectShardableScheduleDims(igroups);
   const auto& [sched_meshs, loop_types] =
       CreateOptimizedScheduleMeshs(shardable_schedule_dims);
+
   const auto& sd = CreateScheduleDescriptor(
       sched_meshs, loop_types, GetShardablePrefixSize(shardable_schedule_dims));
-
   const auto& schedule_iters = CollectScheduleIterators(
       igroups, sched_meshs, GetShardablePrefixSize(shardable_schedule_dims));
-  const auto& init_var2value = MakeStartScheduleIteratorMap(schedule_iters);
-  const auto& ctx = SolveEquationsThenReturnCtx(
-      igroups, init_var2value, GetShardablePrefixSize(shardable_schedule_dims));
+  const auto& shardable_equation_view = GenerateShardableDimEquationView(
+      igroups, GetShardablePrefixSize(shardable_schedule_dims));
 
-  const auto& TensorIndexExpr4Tensor = MakeGetterTensorIndexExpr(ctx, igroups);
-  const auto& map_irs =
-      GenerateIGroupsMapIrList(igroups, schedule_iters, TensorIndexExpr4Tensor);
-
-  return AnchoredMapStmt{MakeMapStmt(map_irs),
-                         TensorIndexExpr4Tensor,
-                         MakeGetterTensorIteratorExpr4Tensor(ctx, igroups),
-                         MakeGetterLoopDescriptor4IterVar(schedule_iters, sd)};
+  List<AnchoredMapStmt> ret{};
+  for (std::size_t i = 0; i < igroups.size(); ++i) {
+    ret->emplace_back(GenerateAnchoredMapStmt(
+        igroups.at(i), shardable_equation_view, schedule_iters, sd));
+  }
+  return ret;
 }
 
-AnchoredMapStmt MakeAnchoredMapStmts(const std::shared_ptr<KGroup>& kgroup) {
-  return GenerateAnchoredMapStmt(kgroup->igroups());
+List<AnchoredMapStmt> MakeAnchoredMapStmts(
+    const std::shared_ptr<KGroup>& kgroup) {
+  return GenerateAnchoredMapStmts(kgroup->igroups());
 }
 
 MapExpr GenerateMapExpr(const std::shared_ptr<KGroup>& kgroup) {

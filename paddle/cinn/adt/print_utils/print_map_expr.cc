@@ -227,12 +227,14 @@ std::string ToTxtString(const AnchoredMapStmt& anchored_map_stmt,
 
 std::string ToTxtString(const std::string& group_id, const MapExpr& map_expr) {
   std::string ret;
-  const auto& [anchored_map_stmt, inputs, outputs] = map_expr.tuple();
+  const auto& [anchored_map_stmts, inputs, outputs] = map_expr.tuple();
   ret += "\n" + group_id;
   ret += ArgsToTxtString(outputs.value(), inputs.value());
 
   ret += " {\n";
-  ret += ToTxtString(anchored_map_stmt, 1);
+  for (const auto& anchored_map_stmt : *anchored_map_stmts) {
+    ret += ToTxtString(anchored_map_stmt, 1);
+  }
   ret += "}\n";
   return ret;
 }

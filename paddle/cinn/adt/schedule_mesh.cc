@@ -196,6 +196,23 @@ List<int> ExpandToN(const List<int>& perm, int n) {
   return ret;
 }
 
+List<ScheduleDim> PermuteLoopSizes(const List<ScheduleDim>& loop_sizes,
+                                   const List<int>& perm) {
+  CHECK_GE(loop_sizes->size(), perm->size());
+  List<ScheduleDim> ret{};
+  for (std::size_t i = 0; i < perm->size(); ++i) {
+    ret->push_back(loop_sizes->at(perm->at(i)));
+  }
+  for (std::size_t i = 0; i < loop_sizes->size(); ++i) {
+    if (std::find(perm->begin(), perm->end(), i) == perm->end()) {
+      ret->push_back(loop_sizes->at(i));
+    } else {
+      // Do nothing
+    }
+  }
+  return ret;
+}
+
 class NaiveInjectiveScheduleMeshPolicy final : public ScheduleMeshPolicy {
  public:
   NaiveInjectiveScheduleMeshPolicy() = default;
@@ -213,38 +230,23 @@ class NaiveInjectiveScheduleMeshPolicy final : public ScheduleMeshPolicy {
   std::tuple<ScheduleMesh, List<LoopType>> Optimize(
       const ShardableDimAndPerm& dim_perm) const override {
     VLOG(4) << "Match NaiveInjectiveScheduleMeshPolicy";
-    const auto& [loop_sizes, perm] = dim_perm;
+    auto [loop_sizes, perm] = dim_perm;
     ScheduleMesh sched_mesh{loop_sizes};
     if (!perm->empty()) {
       sched_mesh =
           MeshTranspose(sched_mesh, ExpandToN(perm, loop_sizes->size()));
+      loop_sizes = PermuteLoopSizes(loop_sizes, perm);
     } else {
       // Do nothing
     }
     List<LoopType> loop_types{};
-    for (const auto& _ : *loop_sizes) {
+    loop_types->emplace_back(S0x{});
+    for (std::size_t i = 1; i < loop_sizes->size(); ++i) {
       loop_types->emplace_back(Temporal{});
     }
     return std::make_tuple(sched_mesh, loop_types);
   }
 };
-
-List<ScheduleDim> PermuteLoopSizes(const List<ScheduleDim>& loop_sizes,
-                                   const List<int>& perm) {
-  CHECK_GE(loop_sizes->size(), perm->size());
-  List<ScheduleDim> ret{};
-  for (std::size_t i = 0; i < perm->size(); ++i) {
-    ret->push_back(loop_sizes->at(perm->at(i)));
-  }
-  for (std::size_t i = 0; i < loop_sizes->size(); ++i) {
-    if (std::find(perm->begin(), perm->end(), i) == perm->end()) {
-      ret->push_back(loop_sizes->at(i));
-    } else {
-      // Do nothing
-    }
-  }
-  return ret;
-}
 
 class NaiveReduceScheduleMeshPolicy final : public ScheduleMeshPolicy {
  public:
@@ -273,10 +275,13 @@ class NaiveReduceScheduleMeshPolicy final : public ScheduleMeshPolicy {
       // Do nothing
     }
     List<LoopType> loop_types{};
+    loop_types->emplace_back(S0x{});
+    for (std::size_t i = 1; i < loop_sizes->size(); ++i) {
+      loop_types->emplace_back(Temporal{});
+    }
     List<int> non_reduce_axes{};
     List<int> reduce_axes{};
-    for (std::int64_t i = 0; i < loop_sizes->size(); ++i) {
-      loop_types->emplace_back(Temporal{});
+    for (std::size_t i = 0; i < loop_sizes->size(); ++i) {
       const auto& loop_size = loop_sizes->at(i);
       if (loop_size.Has<tInjective<LoopSize>>()) {
         non_reduce_axes->emplace_back(i);
