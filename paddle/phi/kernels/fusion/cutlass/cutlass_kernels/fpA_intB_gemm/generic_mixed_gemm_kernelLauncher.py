@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import argparse
-import os
 import re
 
 # this is a file's header part
@@ -169,18 +168,6 @@ def parse_args():
         default=convert_to_arch_list("All"),
         help="The CUDA architecture to be generated.",
     )
-    parser.add_argument(
-        "--gen_cu_list_only",
-        action='store_true',
-        default=False,
-        help="only gen .cu file list in cu_list_txt.",
-    )
-    parser.add_argument(
-        "--gen_cu_list_path",
-        type=str,
-        default=False,
-        help="only gen .cu file list in cu_list_txt.",
-    )
     args = parser.parse_args()
     return args
 
@@ -225,7 +212,6 @@ if __name__ == "__main__":
     with open(header_name, "w") as f:
         f.write(header_all)
         f.close()
-    all_cu_list = []
     if archs:
         for element_type in ElementTypes.keys():
             for arch in archs:
@@ -234,21 +220,9 @@ if __name__ == "__main__":
                         file_name = "autogen_tmp/generic_mixed_gemm_kernelLauncher_{}_sm{}_stages{}_{}.cu".format(
                             element_type, arch, stages, epilogue_tag
                         )
-                        if not args.gen_cu_list_only:
-                            all_code = generate_source_cu(
-                                element_type, arch, epilogue_tag, stages
-                            )
-                            with open(file_name, "w") as f:
-                                f.write(all_code)
-                                f.close()
-                        else:
-                            all_cu_list.append(file_name)
-    if args.gen_cu_list_only:
-        current_file_path = os.path.realpath(__file__)
-        current_directory = os.path.dirname(os.path.realpath(__file__))
-        with open(args.gen_cu_list_path, "w") as f:
-            f.writelines(
-                os.path.join(current_directory, line) + '\n'
-                for line in all_cu_list
-            )
-            f.close()
+                        all_code = generate_source_cu(
+                            element_type, arch, epilogue_tag, stages
+                        )
+                        with open(file_name, "w") as f:
+                            f.write(all_code)
+                            f.close()
