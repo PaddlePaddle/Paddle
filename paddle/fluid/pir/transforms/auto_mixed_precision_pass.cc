@@ -17,6 +17,9 @@
 #include <string>
 #include <unordered_set>
 
+#include "paddle/common/enforce.h"
+#include "paddle/common/errors.h"
+
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
@@ -34,8 +37,6 @@
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/ir_context.h"
@@ -359,8 +360,8 @@ class AutoMixedPrecisionPattern : public pir::RewritePattern {
     // Rewrite FetchOp
     if (op->isa<paddle::dialect::FetchOp>()) {
       auto fetch_operand = op->operand(0);
-      auto fetch_operand_dtype =
-          pir::GetDataTypeFromValue(fetch_operand.source());
+      auto fetch_operand_dtype = paddle::dialect::TransToPhiDataType(
+          pir::GetDataTypeFromValue(fetch_operand.source()));
       if (enable_low_precision_io_) {
         SetResultDataType(
             op->result(0), precision_mode_, rewriter.ir_context());
