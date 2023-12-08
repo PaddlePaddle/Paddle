@@ -339,8 +339,9 @@ void CodeGenCUDA_Dev::Visit(const ir::Let *op) {
   // identify vectorized tensors by checking their dtypes are customized_type
   // with customized_type::kcuda_builtin_vector_t prefix, and save their names
   if (op->type().is_customized() &&
-      utils::Startswith(op->type().customized_type(),
-                        common::customized_type::kcuda_builtin_vector_t)) {
+      utils::Startswith(
+          op->type().customized_type(),
+          cinn::common::customized_type::kcuda_builtin_vector_t)) {
     str_ += GetTypeRepr(op->type());
     if (op->type().is_cpp_handle()) {
       str_ += " ";

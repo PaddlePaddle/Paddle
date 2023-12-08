@@ -129,7 +129,7 @@ void SpectralNormKernel(const Context& dev_ctx,
         real_dims.push_back(dims[i]);
       }
     }
-    weight_mat.Resize(phi::make_ddim(real_dims));
+    weight_mat.Resize(common::make_ddim(real_dims));
     dev_ctx.template Alloc<T>(&weight_mat);
     TransCompute2DTo5D<Context, T>(dev_ctx, weight, rank, perm, &weight_mat);
   } else {
@@ -168,7 +168,11 @@ void SpectralNormKernel(const Context& dev_ctx,
     out->Resize(dims);
     dev_ctx.template Alloc<T>(out);
     TransCompute2DTo5D<Context, T>(
-        dev_ctx, weight_mat.Resize(phi::make_ddim(real_dims)), rank, perm, out);
+        dev_ctx,
+        weight_mat.Resize(common::make_ddim(real_dims)),
+        rank,
+        perm,
+        out);
   } else {
     phi::Copy(dev_ctx, weight_mat.Resize(dims), dev_ctx.GetPlace(), true, out);
   }

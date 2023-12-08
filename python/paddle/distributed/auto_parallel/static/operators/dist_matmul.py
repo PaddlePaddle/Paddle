@@ -382,6 +382,8 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
         if dim >= 0 and process_mesh_shape[dim] > 0:
             Y_var_partitioned = True
             break
+
+    col_parallel = False
     if is_parameter_related(Y_var.name, main_block) and Y_var_partitioned:
         if Y_var_dim_mapping[0] >= 0:
             # row parallel: matmul_grad
@@ -391,6 +393,7 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
             )
         else:
             # col parallel: matmul_grad + allreduce
+            col_parallel = True
             assert Y_var_dim_mapping[0] < 0
             parallel_axis = Y_var_dim_mapping[1]
             new_kwargs = copy.deepcopy(kwargs)
@@ -406,36 +409,6 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
             matmul_op_desc = copy_op_with_new_input_output(
                 ctx, main_block, backward_op, **new_kwargs
             )
-
-            # NOTE (JZ-LIANG) trick to skip one allreduce if left operand has not grad
-            if has_x_grad:
-                group_ranks = _get_comm_group(
-                    process_mesh_group,
-                    process_mesh_shape,
-                    parallel_axis,
-                    rank_id,
-                )
-                group = new_process_group(group_ranks)
-                c_allreduce_sum_op = main_block.append_op(
-                    type='c_allreduce_sum',
-                    inputs={'X': kwargs['X@GRAD']},
-                    outputs={'Out': kwargs['X@GRAD']},
-                    attrs={
-                        'ring_id': group.id,
-                        'use_calc_stream': True,
-                        'use_model_parallel': True,
-                        OP_ROLE_KEY: OpRole.Backward,
-                    },
-                )
-                c_allreduce_sum_op._set_attr(
-                    'op_namescope', '/' + ParallelMode.TensorParallel
-                )
-                set_comm_op_dist_attr_for_program(
-                    c_allreduce_sum_op,
-                    dist_attr.process_mesh,
-                    X_grad_dist_attr,
-                    ctx,
-                )
     else:
         # replicate
         matmul_op_desc = copy_op_with_new_input_output(
@@ -444,7 +417,6 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
 
     # data parallel gradient synchronization
     act_grad_names = [X_var.name]
-
     out_grad_names = []
     if is_parameter_related(Y_var.name, main_block):
         out_grad_names = [kwargs['Y@GRAD'][0]]
@@ -455,6 +427,38 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
     gradient_synchronization(
         ctx, backward_op, act_grad_names, out_grad_names, rank_id
     )
+
+    if col_parallel and has_x_grad:
+        # NOTE (JZ-LIANG) trick to skip one allreduce if left operand has not grad
+        # NOTE make the allreduce of MP behind DP for later optimization.
+        group_ranks = _get_comm_group(
+            process_mesh_group,
+            process_mesh_shape,
+            parallel_axis,
+            rank_id,
+        )
+        group = new_process_group(group_ranks)
+        c_allreduce_sum_op = main_block.append_op(
+            type='c_allreduce_sum',
+            inputs={'X': kwargs['X@GRAD']},
+            outputs={'Out': kwargs['X@GRAD']},
+            attrs={
+                'ring_id': group.id,
+                'use_calc_stream': True,
+                'use_model_parallel': True,
+                OP_ROLE_KEY: OpRole.Backward,
+            },
+        )
+        c_allreduce_sum_op._set_attr(
+            'op_namescope', '/' + ParallelMode.TensorParallel
+        )
+        set_comm_op_dist_attr_for_program(
+            c_allreduce_sum_op,
+            dist_attr.process_mesh,
+            X_grad_dist_attr,
+            ctx,
+            chunk_id=dist_attr.chunk_id,
+        )
 
     if trans_x:
         trans_x_y_dims_mapping(True, False, X_var_dims_mapping, None)
@@ -1112,6 +1116,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
             op_dist_attr.process_mesh,
             out_var_dist_attr,
             ctx,
+            chunk_id=op_dist_attr.chunk_id,
         )
 
         # init param sync
@@ -1803,6 +1808,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
             op_dist_attr.process_mesh,
             out_var_dist_attr,
             ctx,
+            chunk_id=op_dist_attr.chunk_id,
         )
 
         # init param sync
@@ -2472,6 +2478,7 @@ class DistributedMulImpl1(DistributedOperatorImpl):
             op_dist_attr.process_mesh,
             out_var_dist_attr,
             ctx,
+            chunk_id=op_dist_attr.chunk_id,
         )
 
         # init param sync

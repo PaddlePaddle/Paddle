@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 
 def numpy_unflatten(x, axis, shape):
@@ -91,6 +92,7 @@ class TestUnflattenAPI(unittest.TestCase):
         self.setUp()
         self.func_dygraph()
 
+    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         places = [paddle.CPUPlace()]
@@ -269,34 +271,45 @@ class TestLayer(unittest.TestCase):
             self.places.append(paddle.CUDAPlace(0))
 
     def test_layer(self):
-        paddle.enable_static()
         places = [paddle.CPUPlace()]
         if paddle.device.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         for place in places:
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
-                x = paddle.static.data(
-                    name="x", dtype=self.x.dtype, shape=self.x.shape
-                )
-                exe = paddle.static.Executor(place)
-                unflatten = paddle.nn.Unflatten(self.axis, self.shape)
-                out = unflatten(x)
-                static_ret = exe.run(
-                    paddle.static.default_main_program(),
-                    feed={"x": self.x, "axis": self.axis, "shape": self.shape},
-                    fetch_list=[out],
-                )[0]
-        for place in self.places:
             paddle.disable_static()
             x = paddle.to_tensor(self.x, dtype='float32', place=place)
             unflatten = paddle.nn.Unflatten(self.axis, self.shape)
-            dy_ret_value = unflatten(self.x)
-        np.testing.assert_array_equal(static_ret, dy_ret_value)
+            dy_ret_value = unflatten(x)
+
+            paddle.enable_static()
+
+            @test_with_pir_api
+            def test_static_or_pir_mode():
+                with paddle.static.program_guard(
+                    paddle.static.Program(), paddle.static.Program()
+                ):
+                    x = paddle.static.data(
+                        name="x", dtype=self.x.dtype, shape=self.x.shape
+                    )
+                    exe = paddle.static.Executor(place)
+                    unflatten = paddle.nn.Unflatten(self.axis, self.shape)
+                    out = unflatten(x)
+                    static_ret = exe.run(
+                        paddle.static.default_main_program(),
+                        feed={
+                            "x": self.x,
+                            "axis": self.axis,
+                            "shape": self.shape,
+                        },
+                        fetch_list=[out],
+                    )[0]
+
+                np.testing.assert_array_equal(static_ret, dy_ret_value)
+
+            test_static_or_pir_mode()
 
 
 class TestLayerName(unittest.TestCase):
+    @test_with_pir_api
     def test_name(self):
         self.x = np.random.randn(3, 4, 4, 5).astype('float32')
         self.axis = 1

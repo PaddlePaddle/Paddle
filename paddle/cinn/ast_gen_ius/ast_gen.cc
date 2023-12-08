@@ -92,7 +92,7 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
     std::vector<ir::Expr> iter_values;
     // reduce body and reduce init schedule block should have different objects
     // for same axis so we re-create objects
-    std::vector<Var> axis_vars = common::GenDefaultAxis(axis_len);
+    std::vector<Var> axis_vars = cinn::common::GenDefaultAxis(axis_len);
     for (int i = 0; i < shape.size(); ++i) {
       if (FLAGS_cinn_new_group_scheduler && shape[i] == Expr(1)) {
         optim::ReplaceVarWithExpr(&init_body, axis[i], Expr(0));
@@ -124,7 +124,7 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
     std::vector<ir::Expr> reduce_iter_values;
     // reduce body and reduce init schedule block should have different objects
     // for same axis so we re-create objects
-    std::vector<Var> reduce_axis_vars = common::GenDefaultAxis(axis_len);
+    std::vector<Var> reduce_axis_vars = cinn::common::GenDefaultAxis(axis_len);
     for (int i = 0; i < shape.size(); ++i) {
       if (FLAGS_cinn_new_group_scheduler && shape[i] == Expr(1)) {
         optim::ReplaceVarWithExpr(&reduce_body, axis[i], Expr(0));
@@ -203,7 +203,7 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
     // create schedule block itervars, i0,i1...
     std::vector<ir::Var> block_vars;
     std::vector<ir::Expr> iter_values;
-    std::vector<Var> axis_vars = common::GenDefaultAxis(axis_len);
+    std::vector<Var> axis_vars = cinn::common::GenDefaultAxis(axis_len);
     for (int i = 0; i < shape.size(); ++i) {
       block_vars.push_back(Var(
           Expr(0), shape[i], cinn::UniqName("i" + std::to_string(i)), false));

@@ -1,11 +1,12 @@
 if(WITH_TESTING)
-  cc_test_old(
+  paddle_test(
     cinn_launch_context_test
     SRCS
     cinn_launch_context_test.cc
     DEPS
     fleet_executor
     phi
+    common
     lod_tensor
     scope
     proto_desc
@@ -22,7 +23,7 @@ if(WITH_TESTING)
       "OMP_NUM_THREADS=1;runtime_include_dir=${CINN_INCLUDE_DIR}/paddle/cinn/runtime/cuda/"
   )
 
-  cc_test_old(
+  paddle_test(
     cinn_instruction_run_op_test
     SRCS
     cinn_instruction_run_op_test.cc

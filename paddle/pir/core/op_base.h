@@ -15,7 +15,7 @@
 #pragma once
 #include <type_traits>
 
-#include "paddle/pir/core/enforce.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/interface_support.h"
 #include "paddle/pir/core/op_result.h"
 #include "paddle/pir/core/operation.h"
@@ -49,22 +49,21 @@ class IR_API OpBase {
 
   Block *parent() const { return operation()->GetParent(); }
 
+  // Attribtue related interfaces
   const AttributeMap &attributes() const { return operation()->attributes(); }
+  Attribute attribute(const std::string &key) const {
+    return operation()->attribute(key);
+  }
+  template <typename T>
+  T attribute(const std::string &key) const {
+    return operation()->attribute<T>(key);
+  }
 
   Value operand_source(uint32_t index) const {
     return operation()->operand_source(index);
   }
 
   OpResult result(uint32_t index) const { return operation()->result(index); }
-
-  pir::Attribute attribute(const std::string &name) const {
-    return operation()->attribute(name);
-  }
-
-  template <typename T>
-  T attribute(const std::string &name) const {
-    return operation()->attribute<T>(name);
-  }
 
   void VerifySig() {}
 

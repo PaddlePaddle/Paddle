@@ -69,21 +69,22 @@ pir::Type GetDataTypeFromValue(pir::Value value) {
 
 Operation* GetDefiningOpForInput(Operation* op, uint32_t index) {
   PADDLE_ENFORCE_EQ(
-      index < op->num_operands(),
+      index < op->num_operands() && op->operand_source(index),
       true,
       phi::errors::InvalidArgument("Intput operand's index must be valid."));
   return op->operand_source(index).dyn_cast<OpResult>().owner();
 }
 
-std::vector<Operation*> GetUseOpsForOutput(Operation* op, uint32_t index) {
+std::vector<std::pair<Operation*, int32_t>> GetUseOpsForOutput(Operation* op,
+                                                               uint32_t index) {
   PADDLE_ENFORCE_EQ(
       index < op->num_results(),
       true,
       phi::errors::InvalidArgument("Output op result's index must be valid."));
   auto result = op->result(index);
-  std::vector<Operation*> use_ops;
+  std::vector<std::pair<Operation*, int32_t>> use_ops;
   for (auto it = result.use_begin(); it != result.use_end(); ++it) {
-    use_ops.push_back(it->owner());
+    use_ops.push_back(std::make_pair(it->owner(), it->index()));
   }
   return use_ops;
 }

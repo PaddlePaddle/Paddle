@@ -19,12 +19,12 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
-
 namespace phi {
 
 // check whether the tensor with dimension of second can assign to the
@@ -89,7 +89,6 @@ void SetValueImpl(const Context& dev_ctx,
       in_dims, axes, starts_local, ends_local, &steps_local);
   auto decrease_slice_dims =
       phi::funcs::GetDecreasedDims(slice_dims, decrease_axes);
-
   auto slice_dims_for_assign = decrease_slice_dims;
   if (!none_axes.empty()) {
     std::vector<int64_t> slice_dims_with_none;
@@ -113,35 +112,38 @@ void SetValueImpl(const Context& dev_ctx,
       none_axes_cur++;
     }
 
-    slice_dims_for_assign = phi::make_ddim(slice_dims_with_none);
+    slice_dims_for_assign = common::make_ddim(slice_dims_with_none);
   }
+  CheckIsDimsMatch(slice_dims_for_assign, value.dims());
+
+  auto value_shape = phi::vectorize<int64_t>(value.dims());
+
+  DenseTensor value_tensor = Empty<T>(dev_ctx, IntArray{value_shape});
+  value_tensor = value;
+  auto it = value_shape.begin();
+  while (it != value_shape.end() && *it == 1) {
+    it = value_shape.erase(it);
+  }
+  if (value_shape.empty()) value_shape.push_back(1);
+  value_tensor.Resize(phi::make_ddim(value_shape));
+
+  auto expand_shape = phi::vectorize<int64_t>(slice_dims_for_assign);
+  for (size_t i = 0; i <= expand_shape.size(); i++) {
+    if (expand_shape[i] == 0) expand_shape[i] = 1;
+  }
+  if (expand_shape.empty()) expand_shape.push_back(1);
+  DenseTensor expand_tensor = Empty<T>(dev_ctx, IntArray{expand_shape});
 
   auto place = dev_ctx.GetPlace();
   auto& eigen_place = *dev_ctx.eigen_device();
 
-  // Here copy data from input to avoid data loss at PE and Graph level.
-  // TODO(liym27): Speed up in the future version.
-  // - Q: Why don't call ShareDataWith to speed up?
-  // - A: Because it's not supported to ShareDataWith on OP's input and output
-  // https://github.com/PaddlePaddle/Paddle/wiki/ShareDataWith-and-ShareBufferWith-are-prohibited-in-OP
-  // - Q: Why don't delete Input, after all, the input and output are the same
-  // Tensor at program level?
-  // - A: If deleting Input, the graph will be complex, such as there will
-  // be two ops points to the output in graph: op1 -> output <- set_value.
-  // In this case, we have to find a way to handle the running order of
-  // set_value is what we want.
   Copy(dev_ctx, in, place, false, out);
+  ExpandKernel<T, Context>(
+      dev_ctx, value_tensor, IntArray{expand_shape}, &expand_tensor);
+  expand_tensor.Resize(slice_dims);
 
-  DenseTensor slice_tensor =
-      Empty<T>(dev_ctx, IntArray{slice_dims.Get(), slice_dims.size()});
-  DenseTensor pad_tensor =
-      Empty<T>(dev_ctx, IntArray{in_dims.Get(), in_dims.size()});
-  auto pad_e = EigenTensor<T, RANK>::From(pad_tensor, in_dims);
   auto out_e = EigenTensor<T, RANK>::From(*out);
-  auto slice_e = EigenTensor<T, RANK>::From(slice_tensor, slice_dims);
-
-  // Step 1: Set the value of out at `_index` to zero
-  slice_e.device(eigen_place) = slice_e.constant(T(0));
+  auto value_e = EigenTensor<T, RANK>::From(expand_tensor);
 
   auto starts_indices = Eigen::DSizes<Eigen::DenseIndex, RANK>();
   auto ends_indices = Eigen::DSizes<Eigen::DenseIndex, RANK>();
@@ -164,65 +166,7 @@ void SetValueImpl(const Context& dev_ctx,
   }
 
   out_e.stridedSlice(starts_indices, ends_indices, strides_indices)
-      .device(eigen_place) = slice_e;
-
-  // Step 2: Set a tensor with the same shape as out tensor. And its data at
-  // '_index' is the same as value, and data out of '_index' to zero
-
-  // - Step 2.1 Set slice tensor with value
-
-  // NOTE(liym27): [ Why resize slice_tensor here? ]
-  // A: When do broadcasting on slice_tensor and value, the shape of
-  // slice_tensor should be decreased dims.
-  // e.g.
-  //  x[:,0] = value
-  // x's shape = [3, 4], value's shape = [3]
-  // We get slice_dims = [3, 1],  decrease_slice_dims = [3]
-  // If do broadcasting on Tensor with shape [3, 1] and [3], the result's
-  // shape is [3, 3], which cross the border;
-  // If do broadcasting on Tensor with shape [3] and [3], the result's shape
-  // is [3], which is right.
-
-  slice_tensor.Resize(slice_dims_for_assign);
-
-  CheckIsDimsMatch(slice_dims_for_assign, value.dims());
-
-  bool is_gpu_place = dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU;
-  if (is_gpu_place || slice_tensor.dims().size() >= value.dims().size()) {
-    // [Why here we confirm running device]
-    //    ElementwiseComputeEx can do broadcasting in two cases:
-    //    1. The place is GPU.
-    //    2. The place is CPU, and the 'x' does not need broadcast.
-    //    Please see the note in
-    //    paddle/fluid/operators/elementwise/elementwise_op_function.h
-    // So, here we choose different logic depending on the device to avoid
-    // numerical problems, temporarily.
-    //
-    // TODO(zoooo0820): Reimplement logic of set_value to avoid using
-    // elementwise-sub.
-    funcs::ElementwiseCompute<funcs::SubtractFunctor<T>, T>(
-        dev_ctx,
-        slice_tensor,
-        value,
-        funcs::SubtractFunctor<T>(),
-        &slice_tensor);
-  } else {
-    funcs::ElementwiseCompute<funcs::InverseSubtractFunctor<T>, T>(
-        dev_ctx,
-        slice_tensor,
-        value,
-        funcs::InverseSubtractFunctor<T>(),
-        &slice_tensor);
-  }
-  slice_tensor.Resize(slice_dims);
-
-  // - Step 2.2 Pad slice tensor with 0
-  pad_e.device(eigen_place) = pad_e.constant(T(0));
-  pad_e.stridedSlice(starts_indices, ends_indices, strides_indices)
-      .device(eigen_place) = slice_e;
-
-  // Step 3: Set out tensor with value
-  out_e.device(eigen_place) = out_e - pad_e;
+      .device(eigen_place) = value_e;
 }
 
 template <typename T, typename Context>
@@ -336,7 +280,7 @@ void SetValueKernel(const Context& dev_ctx,
   }
   DenseTensor value_tensor = Empty<T>(dev_ctx, shape);
   phi::TensorFromVector(assgin_values, dev_ctx, &value_tensor);
-  value_tensor.Resize(phi::make_ddim(shape));
+  value_tensor.Resize(common::make_ddim(shape));
 
   SetTensorValueKernel<T, Context>(dev_ctx,
                                    x,

@@ -476,7 +476,7 @@ struct RfMutator : public ir::IRMutator<> {
       auto* rf_for = rf_loop_.As<For>();
       CHECK(rf_for);
       CHECK(is_zero(rf_for->min)) << "rfactor loop's min should be zero";
-      auto extent = common::AutoSimplify(rf_for->extent);
+      auto extent = cinn::common::AutoSimplify(rf_for->extent);
       auto& shape = tensor->shape;
       auto& domain = tensor->domain;
       CHECK_LE(rf_axis_, shape.size())
@@ -578,14 +578,14 @@ struct LoopReconstructor : public ir::IRMutator<> {
       const auto& range = iter_ranges[i];
       if (keep_unit_loops || range.extent != Expr(1)) {
         std::string var_name =
-            common::UniqName("ax" + std::to_string(loop_vars.size()));
+            cinn::common::UniqName("ax" + std::to_string(loop_vars.size()));
         new_var_names.push_back(var_name);
         Var var(var_name, Int(32));
         loop_vars.push_back(var);
         loop_extents.push_back(range.extent);
-        iter_values.push_back(common::AutoSimplify(range.min) + var);
+        iter_values.push_back(cinn::common::AutoSimplify(range.min) + var);
       } else {
-        iter_values.push_back(common::AutoSimplify(range.min));
+        iter_values.push_back(cinn::common::AutoSimplify(range.min));
       }
     }
     auto schedule_block_node =
