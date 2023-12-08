@@ -1487,6 +1487,10 @@ class Optimizer:
         Returns:
             list: A list of operators appended to the current program.
         """
+
+        if framework.in_dygraph_mode() and g_shard_bypass_dygraph_optimizer:
+            return
+
         if in_dynamic_or_pir_mode():
             with paddle.static.program_guard(
                 paddle.static.default_main_program(),
@@ -1819,13 +1823,12 @@ class Optimizer:
                     grad_var = param._grad_ivar()
                     params_grads.append((param, grad_var))
 
-            if not g_shard_bypass_dygraph_optimizer:
-                self._apply_optimize(
-                    loss=None,
-                    startup_program=None,
-                    params_grads=params_grads,
-                    param_group_idx=0,
-                )
+            self._apply_optimize(
+                loss=None,
+                startup_program=None,
+                params_grads=params_grads,
+                param_group_idx=0,
+            )
 
         else:
             # optimize parameters in groups
@@ -1840,13 +1843,12 @@ class Optimizer:
                 params_grads.update(
                     {k: v for k, v in param_group.items() if k != 'params'}
                 )
-                if not g_shard_bypass_dygraph_optimizer:
-                    self._apply_optimize(
-                        loss=None,
-                        startup_program=None,
-                        params_grads=params_grads,
-                        param_group_idx=idx,
-                    )
+                self._apply_optimize(
+                    loss=None,
+                    startup_program=None,
+                    params_grads=params_grads,
+                    param_group_idx=idx,
+                )
 
     def _add_param_group(self, param_group):
         """
