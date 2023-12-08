@@ -362,7 +362,7 @@ def load_state_dict(
     Example:
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:GPU)
+            >>> # doctest: +SKIP('run in distributed mode.')
             >>> import paddle
             >>> import paddle.distributed as dist
             >>> ckpt_path = "./checkpoint"
@@ -381,6 +381,7 @@ def load_state_dict(
              [8 , 9 , 10, 11, 12, 13, 14, 15],
              [16, 17, 18, 19, 20, 21, 22, 23],
              [24, 25, 26, 27, 28, 29, 30, 31]])}
+            >>> # doctest: -SKIP
     """
     assert isinstance(
         state_dict, dict

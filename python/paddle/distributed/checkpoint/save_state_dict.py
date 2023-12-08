@@ -89,7 +89,7 @@ def save_state_dict(
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:GPU)
+            >>> # doctest: +SKIP('run in distributed mode')
             >>> import paddle
             >>> import paddle.distributed as dist
             >>> w1 = paddle.arange(32).reshape([4, 8])
@@ -97,6 +97,7 @@ def save_state_dict(
             >>> sharded_w1 = dist.shard_tensor(w1, mesh, [dist.Shard(0), dist.Replicate()])
             >>> state_dict = {"w1": sharded_w1}
             >>> dist.save_state_dict(state_dict, "./checkpoint")
+            >>> # doctest: -SKIP
 
     """
     assert isinstance(
