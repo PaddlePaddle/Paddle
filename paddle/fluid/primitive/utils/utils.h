@@ -50,7 +50,7 @@ static std::vector<int64_t> get_expand_dims(const Tensor& origin,
       offset += result.size() + 1;
     }
 
-    PADDLE_ENFORCE_LT(
+    PADDLE_ENFORCE_LE(
         offset,
         result.size(),
         platform::errors::OutOfRange("Your index [%lu] exceeds the number of "
