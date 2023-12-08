@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifdef PADDLE_WITH_CUDA
 #include <xxhash.h>
 
 #include <algorithm>
@@ -649,3 +650,4 @@ PD_REGISTER_KERNEL(fused_conv2d_add_act,  // cuda_only
                    float,
                    double,
                    phi::dtype::float16) {}
+#endif

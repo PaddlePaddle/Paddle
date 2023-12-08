@@ -51,7 +51,6 @@ from . import (  # noqa: F401
     io,
     layers,
     trainer_desc,
-    type_promotion,
     unique_name,
 )
 from .backward import (  # noqa: F401
