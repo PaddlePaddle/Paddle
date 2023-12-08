@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -103,72 +104,77 @@ class TestWhileOP(unittest.TestCase):
             )
 
     def test_all(self):
-        from paddle.inference import Config, create_predictor
+        if os.name != 'nt':
+            from paddle.inference import Config, create_predictor
 
-        np_data = np.ones((32, 3, 224, 224)).astype("float32")
+            np_data = np.ones((32, 3, 224, 224)).astype("float32")
 
-        # load inference model
-        model_path = "./model"
+            # load inference model
+            model_path = "./model"
 
-        config_trt = Config(model_path + ".pdmodel", model_path + ".pdiparams")
-        config_trt.enable_use_gpu(100, 0)
-        config_trt.enable_tensorrt_engine(
-            workspace_size=1 << 30,
-            max_batch_size=1,
-            min_subgraph_size=0,
-            precision_mode=paddle.inference.PrecisionType.Float32,
-            use_static=False,
-            use_calib_mode=False,
-        )
-        config_trt.set_trt_dynamic_shape_info(
-            {
-                "x": [32, 3, 224, 224],
-                "fill_constant_3.tmp_0": [1],
-                "fill_constant_1.tmp_0": [1],
-                "fill_constant_5.tmp_0": [32, 2, 222, 222],
-            },
-            {
-                "x": [32, 3, 224, 224],
-                "fill_constant_3.tmp_0": [1],
-                "fill_constant_1.tmp_0": [1],
-                "fill_constant_5.tmp_0": [32, 2, 222, 222],
-            },
-            {
-                "x": [32, 3, 224, 224],
-                "fill_constant_3.tmp_0": [1],
-                "fill_constant_1.tmp_0": [1],
-                "fill_constant_5.tmp_0": [32, 2, 222, 222],
-            },
-        )
-        predictor_trt = create_predictor(config_trt)
-        input_tensor_trt = predictor_trt.get_input_handle(
-            predictor_trt.get_input_names()[0]
-        )
-        input_tensor_trt.reshape(np_data.shape)
-        input_tensor_trt.copy_from_cpu(np_data.copy())
-        predictor_trt.run()
-        predict_trt = predictor_trt.get_output_handle(
-            predictor_trt.get_output_names()[0]
-        ).copy_to_cpu()
+            config_trt = Config(
+                model_path + ".pdmodel", model_path + ".pdiparams"
+            )
+            config_trt.enable_use_gpu(100, 0)
+            config_trt.enable_tensorrt_engine(
+                workspace_size=1 << 30,
+                max_batch_size=1,
+                min_subgraph_size=0,
+                precision_mode=paddle.inference.PrecisionType.Float32,
+                use_static=False,
+                use_calib_mode=False,
+            )
+            config_trt.set_trt_dynamic_shape_info(
+                {
+                    "x": [32, 3, 224, 224],
+                    "fill_constant_3.tmp_0": [1],
+                    "fill_constant_1.tmp_0": [1],
+                    "fill_constant_5.tmp_0": [32, 2, 222, 222],
+                },
+                {
+                    "x": [32, 3, 224, 224],
+                    "fill_constant_3.tmp_0": [1],
+                    "fill_constant_1.tmp_0": [1],
+                    "fill_constant_5.tmp_0": [32, 2, 222, 222],
+                },
+                {
+                    "x": [32, 3, 224, 224],
+                    "fill_constant_3.tmp_0": [1],
+                    "fill_constant_1.tmp_0": [1],
+                    "fill_constant_5.tmp_0": [32, 2, 222, 222],
+                },
+            )
+            predictor_trt = create_predictor(config_trt)
+            input_tensor_trt = predictor_trt.get_input_handle(
+                predictor_trt.get_input_names()[0]
+            )
+            input_tensor_trt.reshape(np_data.shape)
+            input_tensor_trt.copy_from_cpu(np_data.copy())
+            predictor_trt.run()
+            predict_trt = predictor_trt.get_output_handle(
+                predictor_trt.get_output_names()[0]
+            ).copy_to_cpu()
 
-        config_gpu = Config(model_path + ".pdmodel", model_path + ".pdiparams")
-        config_gpu.enable_use_gpu(100, 0)
-        predictor_gpu = create_predictor(config_gpu)
-        input_tensor_gpu = predictor_gpu.get_input_handle(
-            predictor_gpu.get_input_names()[0]
-        )
-        input_tensor_gpu.reshape(np_data.shape)
-        input_tensor_gpu.copy_from_cpu(np_data.copy())
-        predictor_gpu.run()
-        predict_gpu = predictor_gpu.get_output_handle(
-            predictor_gpu.get_output_names()[0]
-        ).copy_to_cpu()
+            config_gpu = Config(
+                model_path + ".pdmodel", model_path + ".pdiparams"
+            )
+            config_gpu.enable_use_gpu(100, 0)
+            predictor_gpu = create_predictor(config_gpu)
+            input_tensor_gpu = predictor_gpu.get_input_handle(
+                predictor_gpu.get_input_names()[0]
+            )
+            input_tensor_gpu.reshape(np_data.shape)
+            input_tensor_gpu.copy_from_cpu(np_data.copy())
+            predictor_gpu.run()
+            predict_gpu = predictor_gpu.get_output_handle(
+                predictor_gpu.get_output_names()[0]
+            ).copy_to_cpu()
 
-        check_output_allclose(
-            np.array(predict_trt).flatten(),
-            np.array(predict_gpu).flatten(),
-            "predict",
-        )
+            check_output_allclose(
+                np.array(predict_trt).flatten(),
+                np.array(predict_gpu).flatten(),
+                "predict",
+            )
 
 
 if __name__ == '__main__':
