@@ -414,6 +414,10 @@ set(IR_PASS_DEPS
     fused_feedforward_pass
     delete_dropout_op_pass)
 
+if(WITH_CUDNN_FRONTEND)
+  set(IR_PASS_DEPS ${IR_PASS_DEPS} fuse_dot_product_attention_pass)
+endif()
+
 if(WITH_CINN)
   set(IR_PASS_DEPS ${IR_PASS_DEPS} paddle2cinn)
 endif()

@@ -32,6 +32,7 @@ from .fused_rms_norm import fused_rms_norm
 from .fused_layer_norm import fused_layer_norm
 from .masked_multihead_attention import masked_multihead_attention
 from .block_multihead_attention import block_multihead_attention
+from .fused_dot_product_attention import fused_dot_product_attention
 
 __all__ = [
     'fused_multi_head_attention',
