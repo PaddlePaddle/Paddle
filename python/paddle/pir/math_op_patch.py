@@ -490,7 +490,7 @@ def monkey_patch_value():
             self.set_type(type)
         else:
             raise ValueError(
-                "Currently, we can only set shape for dense tensor"
+                "Currently, we can only set shape for dense and selected_row tensor"
             )
 
     import paddle
