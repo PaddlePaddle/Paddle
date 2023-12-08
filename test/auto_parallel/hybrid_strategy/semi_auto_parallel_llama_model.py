@@ -731,16 +731,17 @@ class LlamaForCausalLMAuto(nn.Layer):
 
         # if labels is None，means we need full output, instead of tensor_parallel_output
         logits = self.lm_head(hidden_states)
-        loss = None
-        if labels is not None:
-            labels.stop_gradient = True
-            labels = dist.shard_tensor(
-                labels, get_mesh(-1), [dist.Shard(0), dist.Replicate()]
-            )
-            loss = self.criterion(logits, labels)
+        # loss = None
+        # if labels is not None:
+        #     labels.stop_gradient = True
+        #     labels = dist.shard_tensor(
+        #         labels, get_mesh(-1), [dist.Shard(0), dist.Replicate()]
+        #     )
+        #     loss = self.criterion(logits, labels)
 
-        output = (logits,) + outputs[1:]
-        return (loss,) + output if loss is not None else output
+        # output = (logits,) + outputs[1:]
+        # return (loss,) + output if loss is not None else output
+        return logits
 
 
 def _expand_2d_mask(mask, dtype, tgt_length):
