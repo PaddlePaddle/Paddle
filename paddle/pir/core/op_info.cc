@@ -33,7 +33,7 @@ Dialect *OpInfo::dialect() const { return impl_ ? impl_->dialect() : nullptr; }
 
 const char *OpInfo::name() const { return impl_ ? impl_->name() : nullptr; }
 
-TEST_API TypeId OpInfo::id() const { return impl_ ? impl_->id() : TypeId(); }
+TypeId OpInfo::id() const { return impl_ ? impl_->id() : TypeId(); }
 
 void OpInfo::Verify(Operation *operation) const {
   VerifySig(operation);
