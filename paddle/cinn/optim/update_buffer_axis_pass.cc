@@ -153,6 +153,11 @@ class AnalyzeBufferAxis : public ir::IRMutator<> {
   void Visit(const ir::Store* op, Expr* expr) override {
     ir::Store* store = expr->As<ir::Store>();
     ir::Tensor tensor = store->tensor.as_tensor_ref();
+    if (!tensor->buffer.defined() ||
+        tensor->buffer->memory_type == ir::MemoryType::Heap) {
+      ir::IRMutator<>::Visit(op, expr);
+      return;
+    }
     FormalizeSingleIndex(tensor, &(store->indices));
     AnalyzeTensorAxis(store->indices, tensor);
     ir::IRMutator<>::Visit(op, expr);
@@ -162,6 +167,11 @@ class AnalyzeBufferAxis : public ir::IRMutator<> {
   void Visit(const ir::Load* op, Expr* expr) override {
     ir::Load* load = expr->As<ir::Load>();
     ir::Tensor tensor = load->tensor.as_tensor_ref();
+    if (!tensor->buffer.defined() ||
+        tensor->buffer->memory_type == ir::MemoryType::Heap) {
+      ir::IRMutator<>::Visit(op, expr);
+      return;
+    }
     FormalizeSingleIndex(tensor, &(load->indices));
     AnalyzeTensorAxis(load->indices, tensor);
     ir::IRMutator<>::Visit(op, expr);

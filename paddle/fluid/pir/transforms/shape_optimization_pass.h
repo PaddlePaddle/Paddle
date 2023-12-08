@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,21 +14,18 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include <memory>
+#include "paddle/pir/core/dll_decl.h"
+#include "paddle/pir/dialect/shape/utils/shape_utils.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace pir {
 
-class Conv2dFusionLayoutTransferPass : public FusePassBase {
- public:
-  Conv2dFusionLayoutTransferPass() = default;
-  virtual ~Conv2dFusionLayoutTransferPass() = default;
+class Pass;
 
- protected:
-  void ApplyImpl(ir::Graph* graph) const override;
-};
+// Apply some shape-related optimization.
+IR_API std::unique_ptr<Pass> CreateInferSymbolicShapePass(
+    const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis);
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+IR_API std::unique_ptr<Pass> CreateShapeOptimizationPass();
+
+}  // namespace pir
