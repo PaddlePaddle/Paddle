@@ -83,6 +83,8 @@ class TestSemiAutoParallelShardOptimizerAPI:
         ckpt_state_dict = opt.state_dict()
         ckpt_state_dict_keys = list(ckpt_state_dict.keys())
         dist.save_state_dict(ckpt_state_dict, self._ckpt_path)
+        linear = paddle.nn.Linear(10, 10)
+        dist.shard_layer(linear, self._mesh, self.shard_layer_fn)
         new_opt = paddle.optimizer.AdamW(parameters=linear.parameters())
         new_opt = dist.shard_optimizer(new_opt)
         new_state_dict = new_opt.state_dict()
@@ -91,6 +93,7 @@ class TestSemiAutoParallelShardOptimizerAPI:
             for i, (k, v) in enumerate(new_state_dict.items())
         }
         dist.load_state_dict(new_state_dict, self._ckpt_path)
+        assert len(new_state_dict) > 0, "load_state_dict fail"
         for k, v in new_state_dict.items():
             assert k in ckpt_state_dict
             if k in ["master_weights", "LR_Scheduler"]:
@@ -114,6 +117,7 @@ class TestSemiAutoParallelShardOptimizerAPI:
         ckpt_state_dict = opt.state_dict()
         ckpt_state_dict_keys = list(ckpt_state_dict.keys())
         dist.save_state_dict(ckpt_state_dict, self._ckpt_path)
+        linear = paddle.nn.Linear(10, 10)
         new_opt = paddle.optimizer.AdamW(parameters=linear.parameters())
         new_opt = dist.shard_optimizer(new_opt)
         new_state_dict = new_opt.state_dict()
@@ -122,6 +126,7 @@ class TestSemiAutoParallelShardOptimizerAPI:
             for i, (k, v) in enumerate(new_state_dict.items())
         }
         dist.load_state_dict(new_state_dict, self._ckpt_path)
+        assert len(new_state_dict) > 0, "load_state_dict fail"
         for k, v in new_state_dict.items():
             assert k in ckpt_state_dict
             if k in ["master_weights", "LR_Scheduler"]:
