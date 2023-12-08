@@ -135,7 +135,6 @@ class TestLlamaAuto:
         for epoch_idx in range(1):
             for step, inputs in enumerate(train_dataloader):
                 input_ids, labels = inputs
-                # tr_loss_step, _ = model(input_ids, labels=labels)
                 logits = model(input_ids)
                 tr_loss_step = criterion(logits, labels)
 
@@ -190,10 +189,14 @@ class TestLlamaAuto:
             model, train_dataloader, criterion, opt
         )
 
+        dist_model.train()
         for step, inputs in enumerate(dist_loader()):
             input_ids, labels = inputs
             loss = dist_model(input_ids, labels)
             print(step, loss)
+
+            if step >= 10:
+                break
 
     def run_test_cases(self):
         self.run_dynamic()
