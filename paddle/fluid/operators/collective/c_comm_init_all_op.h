@@ -45,7 +45,7 @@ class CCommInitAllKernel : public framework::OpKernel<T> {
     int rid = ctx.Attr<int>("ring_id");
 
     platform::NCCLCommContext::Instance().CreateAllNCCLComms(devices, rid);
-#else if defined(PADDLE_WITH_XPU_BKCL)
+#elif defined(PADDLE_WITH_XPU_BKCL)
     std::vector<int> devices = ctx.Attr<std::vector<int>>("devices");
     int ring_id = ctx.Attr<int>("ring_id");
 
