@@ -165,8 +165,6 @@ void IfOp::VerifySig() {
 
 void IfOp::VerifyRegion() {
   VLOG(4) << "Start Verifying sub regions for: IfOp.";
-  (*this)->Print(std::cout);
-  std::cout << std::endl;
   VLOG(4) << "Start Verifying true branch.";
   PADDLE_ENFORCE_EQ(
       (*this)->region(0).size(),

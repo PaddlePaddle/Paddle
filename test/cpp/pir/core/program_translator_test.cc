@@ -85,9 +85,6 @@ TEST(OperatorDialectTest, ConditionBlock) {
   ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
   auto program = paddle::TranslateLegacyProgramToProgram(p);
 
-  program->Print(std::cout);
-  std::cout << std::endl;
-
   EXPECT_EQ(program->block()->size(), 9u);
   size_t id = 0;
   for (auto &op : *program->block()) {
