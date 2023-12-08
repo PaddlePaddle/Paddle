@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+import os
 from collections import defaultdict
 
 import numpy as np
@@ -42,6 +43,10 @@ from ..base.layer_helper import LayerHelper
 from .lr import LRScheduler
 
 __all__ = []
+
+g_shard_bypass_dygraph_optimizer = int(
+    os.environ.get("FLAGS_shard_bypass_dygraph_optimizer", 0)
+)
 
 
 @framework.static_only
@@ -1814,12 +1819,13 @@ class Optimizer:
                     grad_var = param._grad_ivar()
                     params_grads.append((param, grad_var))
 
-            self._apply_optimize(
-                loss=None,
-                startup_program=None,
-                params_grads=params_grads,
-                param_group_idx=0,
-            )
+            if not g_shard_bypass_dygraph_optimizer:
+                self._apply_optimize(
+                    loss=None,
+                    startup_program=None,
+                    params_grads=params_grads,
+                    param_group_idx=0,
+                )
 
         else:
             # optimize parameters in groups
@@ -1834,12 +1840,13 @@ class Optimizer:
                 params_grads.update(
                     {k: v for k, v in param_group.items() if k != 'params'}
                 )
-                self._apply_optimize(
-                    loss=None,
-                    startup_program=None,
-                    params_grads=params_grads,
-                    param_group_idx=idx,
-                )
+                if not g_shard_bypass_dygraph_optimizer:
+                    self._apply_optimize(
+                        loss=None,
+                        startup_program=None,
+                        params_grads=params_grads,
+                        param_group_idx=idx,
+                    )
 
     def _add_param_group(self, param_group):
         """
