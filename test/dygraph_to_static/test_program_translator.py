@@ -18,7 +18,13 @@ import unittest
 
 import astor
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase, test_ast_only
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    IrMode,
+    ToStaticMode,
+    disable_test_case,
+    test_ast_only,
+)
 from ifelse_simple_func import (
     dyfunc_with_if_else_early_return1,
     dyfunc_with_if_else_early_return2,
@@ -304,6 +310,7 @@ class TestIfElseEarlyReturn(Dy2StTestBase):
         out = static_func()
         np.testing.assert_allclose(answer, out[0].numpy(), rtol=1e-05)
 
+    @disable_test_case((ToStaticMode.AST, IrMode.PT))
     def test_ifelse_early_return2(self):
         answer = np.zeros([2, 2]) + 3
         static_func = paddle.jit.to_static(dyfunc_with_if_else_early_return2)

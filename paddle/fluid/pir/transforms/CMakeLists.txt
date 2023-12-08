@@ -6,7 +6,7 @@ if(NOT WITH_CINN)
     ${CMAKE_CURRENT_SOURCE_DIR}/build_cinn_pass.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/sub_graph_extract_pass.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/sub_graph_detector.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/infer_symbolic_shape_pass.cc)
+    ${CMAKE_CURRENT_SOURCE_DIR}/shape_optimization_pass.cc)
 endif()
 
 set(transforms_deps drr op_dialect op_dialect_vjp standalone_executor pir)

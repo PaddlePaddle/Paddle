@@ -173,6 +173,11 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_semi_auto_parallel_saved_tensor_hook)
   set_tests_properties(test_semi_auto_parallel_saved_tensor_hook
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
+
+  py_test_modules(test_semi_auto_parallel_dist_to_static MODULES
+                  test_semi_auto_parallel_dist_to_static)
+  set_tests_properties(test_semi_auto_parallel_dist_to_static
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 300)
   # End of unittests WITH multi cards and timeout
 
   # NOTE(zyl): unittests WITH multi cards and WITHOUT timeout
