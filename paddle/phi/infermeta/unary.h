@@ -348,6 +348,18 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
                                MetaTensor* mask,
                                MetaConfig config = MetaConfig());
 
+void FractionalMaxPoolWithIndexInferMeta(const MetaTensor& x,
+                                         const std::vector<int>& kernel_size,
+                                         const std::vector<int>& strides,
+                                         const std::vector<int>& paddings,
+                                         bool global_pooling,
+                                         bool adaptive,
+                                         bool fractional,
+                                         float random_u,
+                                         MetaTensor* out,
+                                         MetaTensor* mask,
+                                         MetaConfig config = MetaConfig());
+
 void MeanAllInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void ModeInferMeta(const MetaTensor& x,

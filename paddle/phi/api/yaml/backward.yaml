@@ -911,6 +911,24 @@
     data_type : out_grad
   no_need_buffer : x
 
+- backward_op : fractional_max_pool2d_with_index_grad
+  forward : fractional_max_pool2d_with_index(Tensor x, int[] kernel_size, int[] strides = {1, 1}, int[] paddings = {0, 0}, bool global_pooling = false, bool adaptive = false, bool fractional = false, float random_u = 0.0) -> Tensor(out), Tensor(mask)
+  args : (Tensor x, Tensor mask, Tensor out_grad, int[] kernel_size, int[] strides, int[] paddings, bool global_pooling, bool adaptive, bool fractional, float random_u)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : FractionalMaxPoolWithIndexGradInferMeta
+  kernel :
+    func : fractional_max_pool2d_with_index_grad
+
+- backward_op : fractional_max_pool3d_with_index_grad
+  forward : fractional_max_pool3d_with_index(Tensor x, int[] kernel_size, int[] strides = {1, 1, 1}, int[] paddings = {0, 0, 0}, bool global_pooling = false, bool adaptive = false, bool fractional = false, float random_u = 0.0) -> Tensor(out), Tensor(mask)
+  args : (Tensor x, Tensor mask, Tensor out_grad, int[] kernel_size, int[] strides, int[] paddings, bool global_pooling, bool adaptive, bool fractional, float random_u)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : FractionalMaxPoolWithIndexGradInferMeta
+  kernel :
+    func : fractional_max_pool3d_with_index_grad
+
 - backward_op : frame_grad
   forward : frame(Tensor x, int frame_length, int hop_length, int axis=-1) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, int frame_length, int hop_length, int axis)

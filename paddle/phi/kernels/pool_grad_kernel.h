@@ -144,4 +144,32 @@ void MaxPool3dWithIndexGradKernel(const Context& ctx,
                                   bool adaptive,
                                   DenseTensor* dx);
 
+template <typename T, typename Context>
+void FractionalMaxPool2dWithIndexGradKernel(const Context& ctx,
+                                            const DenseTensor& x,
+                                            const DenseTensor& mask,
+                                            const DenseTensor& dout,
+                                            const std::vector<int>& kernel_size,
+                                            const std::vector<int>& strides,
+                                            const std::vector<int>& paddings,
+                                            bool global_pooling,
+                                            bool adaptive,
+                                            bool fractional,
+                                            float random_u,
+                                            DenseTensor* dx);
+
+template <typename T, typename Context>
+void FractionalMaxPool3dWithIndexGradKernel(const Context& ctx,
+                                            const DenseTensor& x,
+                                            const DenseTensor& mask,
+                                            const DenseTensor& dout,
+                                            const std::vector<int>& kernel_size,
+                                            const std::vector<int>& strides,
+                                            const std::vector<int>& paddings,
+                                            bool global_pooling,
+                                            bool adaptive,
+                                            bool fractional,
+                                            float random_u,
+                                            DenseTensor* dx);
+
 }  // namespace phi

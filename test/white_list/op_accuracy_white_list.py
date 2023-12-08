@@ -43,6 +43,8 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'matmul',
     'max_pool2d_with_index',
     'max_pool3d_with_index',
+    'fractional_max_pool2d_with_index',
+    'fractional_max_pool3d_with_index',
     'minus',
     'modified_huber_loss',
     'nce',

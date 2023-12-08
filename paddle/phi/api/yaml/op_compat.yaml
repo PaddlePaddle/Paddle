@@ -1171,6 +1171,22 @@
   outputs :
     out : Y
 
+- op : fractional_max_pool2d_with_index
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out, mask : Mask}
+  attrs :
+    kernel_size : ksize
+
+- op : fractional_max_pool3d_with_index
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out, mask : Mask}
+  attrs :
+    kernel_size : ksize
+
 - op : frame
   backward : frame_grad
   inputs :

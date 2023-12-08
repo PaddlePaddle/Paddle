@@ -1011,6 +1011,24 @@
     func: fold
   backward: fold_grad
 
+- op : fractional_max_pool2d_with_index
+  args : (Tensor x, int[] kernel_size, int[] strides= {1, 1}, int[] paddings = {0, 0}, bool global_pooling = false, bool adaptive = false, bool fractional = false, float random_u = 0.0)
+  output : Tensor(out), Tensor(mask)
+  infer_meta :
+    func : FractionalMaxPoolWithIndexInferMeta
+  kernel :
+    func : fractional_max_pool2d_with_index
+  backward : fractional_max_pool2d_with_index_grad
+
+- op : fractional_max_pool3d_with_index
+  args : (Tensor x, int[] kernel_size, int[] strides = {1, 1, 1}, int[] paddings = {0, 0, 0}, bool global_pooling = false, bool adaptive = false, bool fractional = false, float random_u = 0.0)
+  output : Tensor(out), Tensor(mask)
+  infer_meta :
+    func : FractionalMaxPoolWithIndexInferMeta
+  kernel :
+    func : fractional_max_pool3d_with_index
+  backward : fractional_max_pool3d_with_index_grad
+
 - op : frame
   args : (Tensor x, int frame_length, int hop_length, int axis=-1)
   output : Tensor(out)

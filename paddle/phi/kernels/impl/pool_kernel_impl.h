@@ -322,4 +322,124 @@ void MaxPool3dWithIndexKernel(const Context& ctx,
                                         mask);
 }
 
+template <typename Context, typename T1, typename T2 = int>
+void FractionalMaxPoolWithIndexRawKernel(const Context& ctx,
+                                         const DenseTensor& x,
+                                         const std::vector<int>& kernel_size,
+                                         const std::vector<int>& strides,
+                                         const std::vector<int>& paddings,
+                                         bool global_pooling,
+                                         bool adaptive,
+                                         bool fractional,
+                                         float random_u,
+                                         DenseTensor* out,
+                                         DenseTensor* mask) {
+  std::vector<int> paddings_ = paddings;
+  std::vector<int> kernel_size_ = kernel_size;
+
+  if (global_pooling) {
+    for (size_t i = 0; i < kernel_size_.size(); ++i) {
+      paddings_[i] = 0;
+      kernel_size_[i] = static_cast<int>(x.dims()[i + 2]);
+    }
+  }
+
+  switch (kernel_size_.size()) {
+    case 2: {
+      if (fractional) {
+        funcs::FractionalMaxPool2dWithIndexFunctor<Context, T1, T2>
+            pool2d_forward;
+        pool2d_forward(ctx,
+                       x,
+                       kernel_size_,
+                       strides,
+                       paddings_,
+                       adaptive,
+                       fractional,
+                       random_u,
+                       out,
+                       mask);
+      } else {
+        funcs::MaxPool2dWithIndexFunctor<Context, T1, T2> pool2d_forward;
+        pool2d_forward(
+            ctx, x, kernel_size_, strides, paddings_, adaptive, out, mask);
+      }
+    } break;
+    case 3: {
+      if (fractional) {
+        funcs::FractionalMaxPool3dWithIndexFunctor<Context, T1, T2>
+            pool3d_forward;
+        pool3d_forward(ctx,
+                       x,
+                       kernel_size_,
+                       strides,
+                       paddings_,
+                       adaptive,
+                       fractional,
+                       random_u,
+                       out,
+                       mask);
+      } else {
+        funcs::MaxPool3dWithIndexFunctor<Context, T1, T2> pool3d_forward;
+        pool3d_forward(
+            ctx, x, kernel_size_, strides, paddings_, adaptive, out, mask);
+      }
+    } break;
+    default: {
+      PADDLE_THROW(
+          errors::InvalidArgument("Pool op only supports 2D and 3D input."));
+    }
+  }
+}
+
+template <typename T, typename Context>
+void FractionalMaxPool2dWithIndexKernel(const Context& ctx,
+                                        const DenseTensor& x,
+                                        const std::vector<int>& kernel_size,
+                                        const std::vector<int>& strides,
+                                        const std::vector<int>& paddings,
+                                        bool global_pooling,
+                                        bool adaptive,
+                                        bool fractional,
+                                        float random_u,
+                                        DenseTensor* out,
+                                        DenseTensor* mask) {
+  FractionalMaxPoolWithIndexRawKernel<Context, T>(ctx,
+                                                  x,
+                                                  kernel_size,
+                                                  strides,
+                                                  paddings,
+                                                  global_pooling,
+                                                  adaptive,
+                                                  fractional,
+                                                  random_u,
+                                                  out,
+                                                  mask);
+}
+
+template <typename T, typename Context>
+void FractionalMaxPool3dWithIndexKernel(const Context& ctx,
+                                        const DenseTensor& x,
+                                        const std::vector<int>& kernel_size,
+                                        const std::vector<int>& strides,
+                                        const std::vector<int>& paddings,
+                                        bool global_pooling,
+                                        bool adaptive,
+                                        bool fractional,
+                                        float random_u,
+                                        DenseTensor* out,
+                                        DenseTensor* mask) {
+  FractionalMaxPoolWithIndexRawKernel<Context, T>(ctx,
+                                                  x,
+                                                  kernel_size,
+                                                  strides,
+                                                  paddings,
+                                                  global_pooling,
+                                                  adaptive,
+                                                  fractional,
+                                                  random_u,
+                                                  out,
+                                                  mask);
+}
+
 }  // namespace phi

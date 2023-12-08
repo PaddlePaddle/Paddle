@@ -14,12 +14,21 @@ limitations under the License. */
 
 #include <algorithm>
 #include <vector>
+#ifdef __NVCC__
+#include <curand_kernel.h>
+#endif
+#ifdef __HIPCC__
+#include <hiprand_kernel.h>
+#endif
 
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/primitive/datamover_primitives.h"
+
+#include "paddle/phi/kernels/funcs/distribution_helper.h"
+#include "paddle/phi/kernels/funcs/random.cuh"
 
 namespace phi {
 namespace funcs {
@@ -2576,6 +2585,830 @@ template class MaxPool3dWithIndexFunctor<phi::GPUContext, dtype::bfloat16, int>;
 template class MaxPool3dWithIndexGradFunctor<phi::GPUContext,
                                              dtype::bfloat16,
                                              int>;
+// fractional max pool
+template <typename T1, typename T2>
+__global__ void FractionalKernelMaxPool2dWithIdx(const int nthreads,
+                                                 const T1* input_data,
+                                                 const int channels,
+                                                 const int input_height,
+                                                 const int input_width,
+                                                 const int output_height,
+                                                 const int output_width,
+                                                 const int ksize_height,
+                                                 const int ksize_width,
+                                                 const int stride_height,
+                                                 const int stride_width,
+                                                 const int padding_height,
+                                                 const int padding_width,
+                                                 bool adaptive,
+                                                 bool fractional,
+                                                 float random_u,
+                                                 T1* output_data,
+                                                 T2* mask_data,
+                                                 FastDivModForPooling divmods) {
+  float alpha_height = 0, alpha_width = 0, alpha_depth = 0;
+  float u_height = 0, u_width = 0, u_depth = 0;
+  if (fractional) {
+    float u = 0;
+    if (random_u == 0) {
+      size_t thread_idx =
+          static_cast<size_t>(blockIdx.x * blockDim.x + threadIdx.x);
+#if defined(__NVCC__)
+      curandStatePhilox4_32_10_t state;
+      curand_init(seed, thread_idx, offset, &state);
+#else
+      hiprandStatePhilox4_32_10_t state;
+      hiprand_init(seed, thread_idx, offset, &state);
+#endif
+      phi::funcs::uniform_distribution<float> dist;
+      float4 rand = dist(&state);
+      u = (&rand.x)[0];
+    } else {
+      u = random_u;
+    }
+
+    alpha_height = static_cast<float>(input_height) / output_height;
+    alpha_width = static_cast<float>(input_width) / output_width;
+
+    u_height =
+        FractionalRationalU(u, alpha_height, input_height, output_height);
+    u_width = FractionalRationalU(u, alpha_width, input_width, output_width);
+  }
+
+  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
+       index += blockDim.x * gridDim.x) {
+    int hstart, hend, wstart, wend;
+    int w_offset, h_offset, c_offset, input_offset;
+    OffsetPreparationFor4Dimension<FastDivModForPooling>(index,
+                                                         false,
+                                                         divmods,
+                                                         0,
+                                                         0,
+                                                         input_width,
+                                                         input_height,
+                                                         &w_offset,
+                                                         &h_offset,
+                                                         &c_offset,
+                                                         &input_offset);
+    input_data += input_offset;
+
+    if (adaptive) {
+      hstart = AdaptStartIndex(h_offset, input_height, output_height);
+      hend = AdaptEndIndex(h_offset, input_height, output_height);
+
+      wstart = AdaptStartIndex(w_offset, input_width, output_width);
+      wend = AdaptEndIndex(w_offset, input_width, output_width);
+    } else if (fractional) {
+      hstart = FractionalStartIndex(h_offset, alpha_height, u_height);
+      hend = FractionalEndIndex(h_offset, alpha_height, u_height);
+      hstart = std::max(hstart, 0);
+      hend = std::min(hend, input_height);
+
+      wstart = FractionalStartIndex(w_offset, alpha_width, u_width);
+      wend = FractionalEndIndex(w_offset, alpha_width, u_width);
+      wstart = std::max(wstart, 0);
+      wend = std::min(wend, input_width);
+    } else {
+      hstart = h_offset * stride_height - padding_height;
+      hend = min(hstart + ksize_height, input_height);
+      hstart = max(hstart, 0);
+
+      wstart = w_offset * stride_width - padding_width;
+      wend = min(wstart + ksize_width, input_width);
+      wstart = max(wstart, 0);
+    }
+
+    T1 ele = static_cast<T1>(-FLT_MAX);
+    int max_index = -1;
+    for (int h = hstart; h < hend; ++h) {
+      for (int w = wstart; w < wend; ++w) {
+        int input_index = h * input_width + w;
+        if (ele < input_data[input_index]) {
+          max_index = input_index;
+          ele = input_data[input_index];
+        }
+      }
+    }
+    output_data[index] = ele;
+    mask_data[index] = max_index;
+  }
+}
+
+// TODO(megemini): use mask?
+template <typename T1, typename T2>
+__global__ void FractionalKernelMaxPool2DWithIdxGrad(
+    const int nthreads,
+    const T1* output_grad,
+    const T2* mask_data,
+    const int channels,
+    const int input_height,
+    const int input_width,
+    const int output_height,
+    const int output_width,
+    const int ksize_height,
+    const int ksize_width,
+    const int stride_height,
+    const int stride_width,
+    const int padding_height,
+    const int padding_width,
+    bool adaptive,
+    bool fractional,
+    float random_u,
+    T1* input_grad,
+    FastDivModForPooling divmods) {
+  float alpha_height = 0, alpha_width = 0, alpha_depth = 0;
+  float u_height = 0, u_width = 0, u_depth = 0;
+  if (fractional) {
+    float u = 0;
+    if (random_u == 0) {
+      size_t thread_idx =
+          static_cast<size_t>(blockIdx.x * blockDim.x + threadIdx.x);
+#if defined(__NVCC__)
+      curandStatePhilox4_32_10_t state;
+      curand_init(seed, thread_idx, offset, &state);
+#else
+      hiprandStatePhilox4_32_10_t state;
+      hiprand_init(seed, thread_idx, offset, &state);
+#endif
+      phi::funcs::uniform_distribution<float> dist;
+      float4 rand = dist(&state);
+      u = (&rand.x)[0];
+    } else {
+      u = random_u;
+    }
+
+    alpha_height = static_cast<float>(input_height) / output_height;
+    alpha_width = static_cast<float>(input_width) / output_width;
+
+    u_height =
+        FractionalRationalU(u, alpha_height, input_height, output_height);
+    u_width = FractionalRationalU(u, alpha_width, input_width, output_width);
+  }
+
+  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
+       index += blockDim.x * gridDim.x) {
+    int phstart, phend, pwstart, pwend;
+    int w_offset, h_offset, c_offset, output_offset;
+    OffsetPreparationFor4Dimension<FastDivModForPooling>(index,
+                                                         false,
+                                                         divmods,
+                                                         0,
+                                                         0,
+                                                         output_width,
+                                                         output_height,
+                                                         &w_offset,
+                                                         &h_offset,
+                                                         &c_offset,
+                                                         &output_offset);
+    mask_data += output_offset;
+    output_grad += output_offset;
+
+    if (adaptive) {
+      phstart = h_offset * output_height / input_height;
+      phend =
+          min((h_offset + 1) * output_height / input_height + 1, output_height);
+      pwstart = w_offset * output_width / input_width;
+      pwend =
+          min((w_offset + 1) * output_width / input_width + 1, output_width);
+    } else if (fractional) {
+      phstart = FractionalStartIndex(h_offset, alpha_height, u_height);
+      phend = FractionalEndIndex(h_offset, alpha_height, u_height);
+      phstart = std::max(phstart, 0);
+      phend = std::min(phend, input_height);
+
+      pwstart = FractionalStartIndex(w_offset, alpha_width, u_width);
+      pwend = FractionalEndIndex(w_offset, alpha_width, u_width);
+      pwstart = std::max(pwstart, 0);
+      pwend = std::min(pwend, input_width);
+    } else {
+      phstart =
+          (h_offset + padding_height < ksize_height)
+              ? 0
+              : (h_offset + padding_height - ksize_height) / stride_height + 1;
+      pwstart =
+          (w_offset + padding_width < ksize_width)
+              ? 0
+              : (w_offset + padding_width - ksize_width) / stride_width + 1;
+      phend =
+          min((h_offset + padding_height) / stride_height + 1, output_height);
+      pwend = min((w_offset + padding_width) / stride_width + 1, output_width);
+    }
+
+    T1 input_grad_data = static_cast<T1>(0);
+    int input_current_featuremap_idx = h_offset * input_width + w_offset;
+    for (int ph = phstart; ph < phend; ++ph) {
+      for (int pw = pwstart; pw < pwend; ++pw) {
+        if (mask_data[ph * output_width + pw] == input_current_featuremap_idx)
+          input_grad_data += output_grad[ph * output_width + pw];
+      }
+    }
+    input_grad[index] = input_grad_data;
+  }
+}
+
+/*
+ * All tensors are in NCHW format.
+ * Ksize, strides, paddings are two elements. These two elements represent
+ * height and width, respectively.
+ */
+template <typename T1, typename T2>
+class FractionalMaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
+ public:
+  void operator()(const phi::GPUContext& context,
+                  const DenseTensor& input,
+                  const std::vector<int>& ksize,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings,
+                  bool adaptive,
+                  bool fractional,
+                  float random_u,
+                  DenseTensor* output,
+                  DenseTensor* mask) {
+    const int batch_size = input.dims()[0];
+    const int input_channels = input.dims()[1];
+    const int input_height = input.dims()[2];
+    const int input_width = input.dims()[3];
+    const int output_channels = output->dims()[1];
+    const int output_height = output->dims()[2];
+    const int output_width = output->dims()[3];
+    const int ksize_height = ksize[0];
+    const int ksize_width = ksize[1];
+    const int stride_height = strides[0];
+    const int stride_width = strides[1];
+    const int padding_height = paddings[0];
+    const int padding_width = paddings[1];
+
+    const T1* input_data = input.data<T1>();
+    T1* output_data = context.template Alloc<T1>(output);
+    T2* mask_data = context.template Alloc<T2>(mask);
+
+    int nthreads = batch_size * output_channels * output_height * output_width;
+    auto pool_divmods =
+        FastDivModForPooling(input_channels, output_width, output_height);
+    if (adaptive && output_height > 1 && output_width > 1) {
+      int max_threads = 512;
+      int thread_num = std::min(
+          phi::funcs::details::GetLastPow2(output_height * output_width),
+          max_threads);
+      int blocks = std::min(max_threads / thread_num, output_channels);
+      dim3 threads(thread_num, blocks, 1);
+      dim3 grid(
+          std::max((output_channels + blocks - 1) / blocks, 1), batch_size, 1);
+      AdaptiveKernelMaxPool2dWithIdx<T1, T2>
+          <<<grid, threads, 0, context.stream()>>>(nthreads,
+                                                   input_data,
+                                                   input_channels,
+                                                   input_height,
+                                                   input_width,
+                                                   output_height,
+                                                   output_width,
+                                                   ksize_height,
+                                                   ksize_width,
+                                                   stride_height,
+                                                   stride_width,
+                                                   padding_height,
+                                                   padding_width,
+                                                   output_data,
+                                                   mask_data,
+                                                   pool_divmods);
+    } else {
+      int thread_num = 1024;
+#ifdef WITH_NV_JETSON
+      backends::gpu::ChangeThreadNum(context, &thread_num);
+#endif
+      int blocks = (nthreads + thread_num - 1) / thread_num;
+      dim3 threads(thread_num, 1);
+      dim3 grid(blocks, 1);
+
+      uint64_t seed = 0;
+      uint64_t offset = 0;
+      if (fractional) {
+        // generate seed for fractional pool
+        auto gen_cuda = context.GetGenerator();
+        constexpr int increment_offset = 1 * 4;  // one seed with multiple of 4
+        auto seed_offset = gen_cuda->IncrementOffset(increment_offset);
+        seed = seed_offset.first;
+        offset = seed_offset.second;
+      }
+
+      FractionalKernelMaxPool2dWithIdx<T1, T2>
+          <<<grid, threads, 0, context.stream()>>>(nthreads,
+                                                   input_data,
+                                                   input_channels,
+                                                   input_height,
+                                                   input_width,
+                                                   output_height,
+                                                   output_width,
+                                                   ksize_height,
+                                                   ksize_width,
+                                                   stride_height,
+                                                   stride_width,
+                                                   padding_height,
+                                                   padding_width,
+                                                   adaptive,
+                                                   fractional,
+                                                   random_u,
+                                                   seed,
+                                                   offset,
+                                                   output_data,
+                                                   mask_data,
+                                                   pool_divmods);
+    }
+  }
+};
+
+/*
+ * All tensors are in NCHW format.
+ * Ksize, strides, paddings are two elements. These two elements represent
+ * height and width, respectively.
+ */
+template <typename T1, typename T2>
+class FractionalMaxPool2dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
+ public:
+  void operator()(const phi::GPUContext& context,
+                  const DenseTensor& output_grad,
+                  const DenseTensor& mask,
+                  const std::vector<int>& ksize,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings,
+                  bool adaptive,
+                  bool fractional,
+                  float random_u,
+                  DenseTensor* input_grad) {
+    const int batch_size = input_grad->dims()[0];
+    const int input_channels = input_grad->dims()[1];
+    const int input_height = input_grad->dims()[2];
+    const int input_width = input_grad->dims()[3];
+    const int output_height = output_grad.dims()[2];
+    const int output_width = output_grad.dims()[3];
+    const int ksize_height = ksize[0];
+    const int ksize_width = ksize[1];
+    const int stride_height = strides[0];
+    const int stride_width = strides[1];
+    const int padding_height = paddings[0];
+    const int padding_width = paddings[1];
+
+    const T2* mask_data = mask.data<T2>();
+    const T1* output_grad_data = output_grad.data<T1>();
+    T1* input_grad_data = context.template Alloc<T1>(input_grad);
+
+    int nthreads = batch_size * input_channels * input_height * input_width;
+    int blocks = (nthreads + 1024 - 1) / 1024;
+    dim3 threads(1024, 1);
+    dim3 grid(blocks, 1);
+
+    auto pool_divmods =
+        FastDivModForPooling(input_channels, input_width, input_height);
+
+    uint64_t seed = 0;
+    uint64_t offset = 0;
+    if (fractional) {
+      // generate seed for fractional pool
+      auto gen_cuda = context.GetGenerator();
+      constexpr int increment_offset = 1 * 4;  // one seed with multiple of 4
+      auto seed_offset = gen_cuda->IncrementOffset(increment_offset);
+      seed = seed_offset.first;
+      offset = seed_offset.second;
+    }
+
+    FractionalKernelMaxPool2DWithIdxGrad<T1, T2>
+        <<<grid, threads, 0, context.stream()>>>(nthreads,
+                                                 output_grad_data,
+                                                 mask_data,
+                                                 input_channels,
+                                                 input_height,
+                                                 input_width,
+                                                 output_height,
+                                                 output_width,
+                                                 ksize_height,
+                                                 ksize_width,
+                                                 stride_height,
+                                                 stride_width,
+                                                 padding_height,
+                                                 padding_width,
+                                                 adaptive,
+                                                 fractional,
+                                                 random_u,
+                                                 seed,
+                                                 offset,
+                                                 input_grad_data,
+                                                 pool_divmods);
+  }
+};
+
+template class FractionalMaxPool2dWithIndexFunctor<phi::GPUContext, float, int>;
+template class FractionalMaxPool2dWithIndexGradFunctor<phi::GPUContext,
+                                                       float,
+                                                       int>;
+template class FractionalMaxPool2dWithIndexFunctor<phi::GPUContext,
+                                                   double,
+                                                   int>;
+template class FractionalMaxPool2dWithIndexGradFunctor<phi::GPUContext,
+                                                       double,
+                                                       int>;
+template class FractionalMaxPool2dWithIndexFunctor<phi::GPUContext,
+                                                   dtype::float16,
+                                                   int>;
+template class FractionalMaxPool2dWithIndexGradFunctor<phi::GPUContext,
+                                                       dtype::float16,
+                                                       int>;
+template class FractionalMaxPool2dWithIndexFunctor<phi::GPUContext,
+                                                   dtype::bfloat16,
+                                                   int>;
+template class FractionalMaxPool2dWithIndexGradFunctor<phi::GPUContext,
+                                                       dtype::bfloat16,
+                                                       int>;
+
+template <typename T1, typename T2>
+__global__ void FractionalKernelMaxPool3DWithIdx(
+    const int ncd,
+    const T1* input_data,
+    const int channels,
+    const int input_depth,
+    const int input_height,
+    const int input_width,
+    const int output_depth,
+    const int output_height,
+    const int output_width,
+    const int ksize_depth,
+    const int ksize_height,
+    const int ksize_width,
+    const int stride_depth,
+    const int stride_height,
+    const int stride_width,
+    const int padding_depth,
+    const int padding_height,
+    const int padding_width,
+    bool adaptive,
+    bool fractional,
+    float random_u,
+    T1* output_data,
+    T2* mask_data,
+    FastDivModForPooling3D divmods_output) {
+  float alpha_height = 0, alpha_width = 0, alpha_depth = 0;
+  float u_height = 0, u_width = 0, u_depth = 0;
+  if (fractional) {
+    float u = 0;
+    if (random_u == 0) {
+      size_t thread_idx =
+          static_cast<size_t>(blockIdx.x * blockDim.x + threadIdx.x);
+#if defined(__NVCC__)
+      curandStatePhilox4_32_10_t state;
+      curand_init(seed, thread_idx, offset, &state);
+#else
+      hiprandStatePhilox4_32_10_t state;
+      hiprand_init(seed, thread_idx, offset, &state);
+#endif
+      phi::funcs::uniform_distribution<float> dist;
+      float4 rand = dist(&state);
+      u = (&rand.x)[0];
+    } else {
+      u = random_u;
+    }
+
+    alpha_depth = static_cast<float>(input_depth) / output_depth;
+    alpha_height = static_cast<float>(input_height) / output_height;
+    alpha_width = static_cast<float>(input_width) / output_width;
+
+    u_depth = FractionalRationalU(u, alpha_depth, input_depth, output_depth);
+    u_height =
+        FractionalRationalU(u, alpha_height, input_height, output_height);
+    u_width = FractionalRationalU(u, alpha_width, input_width, output_width);
+  }
+
+  int w_offset, h_offset, d_offset, nc_offset;
+  int dstart, dend, hstart, hend, wstart, wend;
+  const T1* input_data_cur;
+
+  w_offset = blockIdx.x * blockDim.x + threadIdx.x;
+  h_offset = blockIdx.y * blockDim.y + threadIdx.y;
+
+  if (w_offset < output_width && h_offset < output_height) {
+    for (int index_z = blockIdx.z * blockDim.z + threadIdx.z; index_z < ncd;
+         index_z += gridDim.z * blockDim.z) {
+      auto output_depth_divmod = divmods_output.depth.Divmod(index_z);
+      d_offset = output_depth_divmod.val[1];
+      nc_offset = output_depth_divmod.val[0];
+      int output_index =
+          nc_offset * output_depth * output_height * output_width +
+          d_offset * output_height * output_width + h_offset * output_width +
+          w_offset;
+      int input_offset = nc_offset * input_depth * input_height * input_width;
+      input_data_cur = input_data + input_offset;
+
+      if (adaptive) {
+        dstart = AdaptStartIndex(d_offset, input_depth, output_depth);
+        dend = AdaptEndIndex(d_offset, input_depth, output_depth);
+
+        hstart = AdaptStartIndex(h_offset, input_height, output_height);
+        hend = AdaptEndIndex(h_offset, input_height, output_height);
+
+        wstart = AdaptStartIndex(w_offset, input_width, output_width);
+        wend = AdaptEndIndex(w_offset, input_width, output_width);
+      } else if (fractional) {
+        dstart = FractionalStartIndex(d_offset, alpha_depth, u_depth);
+        dend = FractionalEndIndex(d_offset, alpha_depth, u_depth);
+        dstart = std::max(dstart, 0);
+        dend = std::min(dend, input_depth);
+
+        hstart = FractionalStartIndex(h_offset, alpha_height, u_height);
+        hend = FractionalEndIndex(h_offset, alpha_height, u_height);
+        hstart = std::max(hstart, 0);
+        hend = std::min(hend, input_height);
+
+        wstart = FractionalStartIndex(w_offset, alpha_width, u_width);
+        wend = FractionalEndIndex(w_offset, alpha_width, u_width);
+        wstart = std::max(wstart, 0);
+        wend = std::min(wend, input_width);
+      } else {
+        dstart = d_offset * stride_depth - padding_depth;
+        hstart = h_offset * stride_height - padding_height;
+        wstart = w_offset * stride_width - padding_width;
+        dend = min(dstart + ksize_depth, input_depth);
+        hend = min(hstart + ksize_height, input_height);
+        wend = min(wstart + ksize_width, input_width);
+        dstart = max(dstart, 0);
+        hstart = max(hstart, 0);
+        wstart = max(wstart, 0);
+      }
+
+      T1 ele = static_cast<T1>(-FLT_MAX);
+      int max_index = -1;
+      for (int d = dstart; d < dend; ++d) {
+        for (int h = hstart; h < hend; ++h) {
+          for (int w = wstart; w < wend; ++w) {
+            if (ele <
+                input_data_cur[(d * input_height + h) * input_width + w]) {
+              max_index = (d * input_height + h) * input_width + w;
+              ele = input_data_cur[max_index];
+            }
+          }
+        }
+      }
+      output_data[output_index] = ele;
+      mask_data[output_index] = max_index;
+    }
+  }
+}
+
+template <typename T1, typename T2>
+__global__ void FractionalKernelMaxPool3DWithIdxGrad(
+    const int ncd,
+    const T1* output_grad,
+    const T2* mask,
+    const int channels,
+    const int input_depth,
+    const int input_height,
+    const int input_width,
+    const int output_depth,
+    const int output_height,
+    const int output_width,
+    const int ksize_depth,
+    const int ksize_height,
+    const int ksize_width,
+    const int stride_depth,
+    const int stride_height,
+    const int stride_width,
+    const int padding_depth,
+    const int padding_height,
+    const int padding_width,
+    bool adaptive,
+    bool fractional,
+    float random_u,
+    T1* input_grad,
+    FastDivModForPooling3D divmods_output) {
+  int w_offset, h_offset, d_offset, nc_offset;
+
+  w_offset = blockIdx.x * blockDim.x + threadIdx.x;
+  h_offset = blockIdx.y * blockDim.y + threadIdx.y;
+
+  if (w_offset < output_width && h_offset < output_height) {
+    for (int index_z = blockIdx.z * blockDim.z + threadIdx.z; index_z < ncd;
+         index_z += gridDim.z * blockDim.z) {
+      auto output_depth_divmod = divmods_output.depth.Divmod(index_z);
+      d_offset = output_depth_divmod.val[1];
+      nc_offset = output_depth_divmod.val[0];
+      int output_index =
+          nc_offset * output_depth * output_height * output_width +
+          d_offset * output_height * output_width + h_offset * output_width +
+          w_offset;
+      int max_index = mask[output_index];
+      if (max_index != -1) {
+        phi::CudaAtomicAdd(
+            &input_grad[nc_offset * input_depth * input_height * input_width +
+                        max_index],
+            output_grad[output_index]);
+      }
+    }
+  }
+}
+
+/*
+ * All tensors are in NCDHW format.
+ * Ksize, strides, paddings are three elements. These three elements represent
+ * depth, height and width, respectively.
+ */
+template <typename T1, typename T2>
+class FractionalMaxPool3dWithIndexFunctor<phi::GPUContext, T1, T2> {
+ public:
+  void operator()(const phi::GPUContext& context,
+                  const DenseTensor& input,
+                  const std::vector<int>& ksize,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings,
+                  bool adaptive,
+                  bool fractional,
+                  float random_u,
+                  DenseTensor* output,
+                  DenseTensor* mask) {
+    const int batch_size = input.dims()[0];
+    const int input_channels = input.dims()[1];
+    const int input_depth = input.dims()[2];
+    const int input_height = input.dims()[3];
+    const int input_width = input.dims()[4];
+    const int output_channels = output->dims()[1];
+    const int output_depth = output->dims()[2];
+    const int output_height = output->dims()[3];
+    const int output_width = output->dims()[4];
+    const int ksize_depth = ksize[0];
+    const int ksize_height = ksize[1];
+    const int ksize_width = ksize[2];
+    const int stride_depth = strides[0];
+    const int stride_height = strides[1];
+    const int stride_width = strides[2];
+    const int padding_depth = paddings[0];
+    const int padding_height = paddings[1];
+    const int padding_width = paddings[2];
+
+    const T1* input_data = input.data<T1>();
+    T1* output_data = context.template Alloc<T1>(output);
+    T2* mask_data = context.template Alloc<T2>(mask);
+
+    int ncd = batch_size * input_channels * output_depth;
+
+    int thread_x = 32;
+    int thread_y = 8;
+    int thread_z = 1;
+    dim3 threads(thread_x, thread_y, thread_z);
+    std::array<int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
+    int block_x = (output_width + threads.x - 1) / threads.x;
+    int block_y = (output_height + threads.y - 1) / threads.y;
+    int block_z = (ncd > max_grid_dim[2] * threads.z)
+                      ? max_grid_dim[2]
+                      : (ncd + threads.z - 1) / threads.z;
+    dim3 grid(block_x, block_y, block_z);
+
+    auto pool_divmods_output = FastDivModForPooling3D(
+        input_channels, output_width, output_height, output_depth);
+
+    uint64_t seed = 0;
+    uint64_t offset = 0;
+    if (fractional) {
+      // generate seed for fractional pool
+      auto gen_cuda = context.GetGenerator();
+      constexpr int increment_offset = 1 * 4;  // one seed with multiple of 4
+      auto seed_offset = gen_cuda->IncrementOffset(increment_offset);
+      seed = seed_offset.first;
+      offset = seed_offset.second;
+    }
+
+    FractionalKernelMaxPool3DWithIdx<T1, T2>
+        <<<grid, threads, 0, context.stream()>>>(ncd,
+                                                 input_data,
+                                                 input_channels,
+                                                 input_depth,
+                                                 input_height,
+                                                 input_width,
+                                                 output_depth,
+                                                 output_height,
+                                                 output_width,
+                                                 ksize_depth,
+                                                 ksize_height,
+                                                 ksize_width,
+                                                 stride_depth,
+                                                 stride_height,
+                                                 stride_width,
+                                                 padding_depth,
+                                                 padding_height,
+                                                 padding_width,
+                                                 adaptive,
+                                                 fractional,
+                                                 random_u,
+                                                 seed,
+                                                 offset,
+                                                 output_data,
+                                                 mask_data,
+                                                 pool_divmods_output);
+  }
+};
+
+/*
+ * All tensors are in NCDHW format.
+ * Ksize, strides, paddings are three elements. These three elements represent
+ * depth, height and width, respectively.
+ */
+template <typename T1, typename T2>
+class FractionalMaxPool3dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
+ public:
+  void operator()(const phi::GPUContext& context,
+                  const DenseTensor& output_grad,
+                  const DenseTensor& mask,
+                  const std::vector<int>& ksize,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings,
+                  bool adaptive,
+                  bool fractional,
+                  float random_u,
+                  DenseTensor* input_grad) {
+    const int batch_size = input_grad->dims()[0];
+    const int input_channels = input_grad->dims()[1];
+    const int input_depth = input_grad->dims()[2];
+    const int input_height = input_grad->dims()[3];
+    const int input_width = input_grad->dims()[4];
+    const int output_depth = output_grad.dims()[2];
+    const int output_height = output_grad.dims()[3];
+    const int output_width = output_grad.dims()[4];
+    const int ksize_depth = ksize[0];
+    const int ksize_height = ksize[1];
+    const int ksize_width = ksize[2];
+    const int stride_depth = strides[0];
+    const int stride_height = strides[1];
+    const int stride_width = strides[2];
+    const int padding_depth = paddings[0];
+    const int padding_height = paddings[1];
+    const int padding_width = paddings[2];
+
+    const T1* output_grad_data = output_grad.data<T1>();
+    const T2* mask_data = mask.data<T2>();
+    T1* input_grad_data = context.template Alloc<T1>(input_grad);
+
+    int ncd = batch_size * input_channels * output_depth;
+
+    int thread_x = 32;
+    int thread_y = 8;
+    int thread_z = 1;
+    dim3 threads(thread_x, thread_y, thread_z);
+    std::array<int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
+    int block_x = (output_width + threads.x - 1) / threads.x;
+    int block_y = (output_height + threads.y - 1) / threads.y;
+    int block_z = (ncd > max_grid_dim[2] * threads.z)
+                      ? max_grid_dim[2]
+                      : (ncd + threads.z - 1) / threads.z;
+    dim3 grid(block_x, block_y, block_z);
+
+    auto pool_divmods_output = FastDivModForPooling3D(
+        input_channels, output_width, output_height, output_depth);
+
+    FractionalKernelMaxPool3DWithIdxGrad<T1, T2>
+        <<<grid, threads, 0, context.stream()>>>(ncd,
+                                                 output_grad_data,
+                                                 mask_data,
+                                                 input_channels,
+                                                 input_depth,
+                                                 input_height,
+                                                 input_width,
+                                                 output_depth,
+                                                 output_height,
+                                                 output_width,
+                                                 ksize_depth,
+                                                 ksize_height,
+                                                 ksize_width,
+                                                 stride_depth,
+                                                 stride_height,
+                                                 stride_width,
+                                                 padding_depth,
+                                                 padding_height,
+                                                 padding_width,
+                                                 adaptive,
+                                                 fractional,
+                                                 random_u,
+                                                 input_grad_data,
+                                                 pool_divmods_output);
+  }
+};
+
+template class FractionalMaxPool3dWithIndexFunctor<phi::GPUContext, float, int>;
+template class FractionalMaxPool3dWithIndexGradFunctor<phi::GPUContext,
+                                                       float,
+                                                       int>;
+template class FractionalMaxPool3dWithIndexFunctor<phi::GPUContext,
+                                                   double,
+                                                   int>;
+template class FractionalMaxPool3dWithIndexGradFunctor<phi::GPUContext,
+                                                       double,
+                                                       int>;
+template class FractionalMaxPool3dWithIndexFunctor<phi::GPUContext,
+                                                   dtype::float16,
+                                                   int>;
+template class FractionalMaxPool3dWithIndexGradFunctor<phi::GPUContext,
+                                                       dtype::float16,
+                                                       int>;
+template class FractionalMaxPool3dWithIndexFunctor<phi::GPUContext,
+                                                   dtype::bfloat16,
+                                                   int>;
+template class FractionalMaxPool3dWithIndexGradFunctor<phi::GPUContext,
+                                                       dtype::bfloat16,
+                                                       int>;
 
 }  // namespace funcs
 }  // namespace phi
