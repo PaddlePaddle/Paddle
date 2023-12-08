@@ -348,6 +348,23 @@ def _decompose_subgraph(block, orig_vars, dst_vars, op_filter):
     )
 
 
+def _with_dynamic_shape(
+    op: pir.Operation,
+):
+    for input in op.operands():
+        if (
+            input.source().initialized()
+            and input.source().get_defining_op().name() == "builtin.combine"
+        ):  # for pir::VectorType<paddle::dialect::DenseTensorType>
+            for orig_input in input.source().get_defining_op().operands():
+                if -1 in orig_input.source().shape:
+                    return True
+        else:
+            if input.source().initialized() and -1 in input.source().shape:
+                return True
+    return False
+
+
 def _decomp_fwd_op(
     block: Block, fwd_op: pir.Operation, grad_var_to_var: dict, tmp_op=None
 ) -> tuple:
@@ -377,6 +394,13 @@ def _decomp_fwd_op(
         lower = decom_rule or has_sink_decomp_rule
 
         if lower:
+            if _with_dynamic_shape(fwd_op):
+                logging.info(
+                    "%s can not be decomposed due to the unsupported dynamic shape"
+                    % (fwd_op.name())
+                )
+                return None, False
+
             if tmp_op is not None:
                 pir.set_insertion_point(tmp_op)
             else:
@@ -753,23 +777,6 @@ def _check_op(
                 return False
 
     return True
-
-
-def _with_dynamic_shape(
-    op: pir.Operation,
-):
-    for input in op.operands():
-        if (
-            input.source().initialized()
-            and input.source().get_defining_op().name() == "builtin.combine"
-        ):  # for pir::VectorType<paddle::dialect::DenseTensorType>
-            for orig_input in input.source().get_defining_op().operands():
-                if -1 in orig_input.source().shape:
-                    return True
-        else:
-            if input.source().initialized() and -1 in input.source().shape:
-                return True
-    return False
 
 
 def _decomp_bwd_op(
