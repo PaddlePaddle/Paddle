@@ -55,7 +55,7 @@ detail::PassExecutionState& Pass::pass_state() {
 //===----------------------------------------------------------------------===//
 // PatternRewritePass
 //===----------------------------------------------------------------------===//
-bool PatternRewritePass::Initialize(IrContext* context) final {
+bool PatternRewritePass::Initialize(IrContext* context) {
   RewritePatternSet ps = InitializePatterns(context);
   IR_ENFORCE(ps.Empty() == false,
              "Pass creation failed."
@@ -68,7 +68,7 @@ bool PatternRewritePass::Initialize(IrContext* context) final {
   return true;
 }
 
-void PatternRewritePass::Run(Operation* op) override {
+void PatternRewritePass::Run(Operation* op) {
   GreedyRewriteConfig cfg;
   cfg.use_top_down_traversal = true;
   cfg.max_iterations = 10;
