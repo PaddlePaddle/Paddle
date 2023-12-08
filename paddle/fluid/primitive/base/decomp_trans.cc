@@ -18,15 +18,54 @@
 #include "paddle/fluid/primitive/base/decomp_trans.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/prim/utils/utils.h"
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/core/program.h"
 
-PHI_DECLARE_bool(debug_prim);
+PHI_DECLARE_bool(prim_skip_dynamic);
+
+using paddle::dialect::DenseTensorType;
+using paddle::dialect::SelectedRowsType;
 
 namespace paddle {
 
 using Program = pir::Program;
+
+static bool find_value(const std::vector<int64_t>& vec, int64_t value) {
+  if (std::find(vec.begin(), vec.end(), value) != vec.end()) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+static const phi::DDim& GetValueDims(pir::Value value) {
+  if (value.type().isa<DenseTensorType>()) {
+    return value.type().dyn_cast<DenseTensorType>().dims();
+  } else if (value.type().isa<SelectedRowsType>()) {
+    return value.type().dyn_cast<SelectedRowsType>().dims();
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we can only get shape for dense "
+        "tensor."));
+  }
+}
+
+static bool check_dynamic_shape(const pir::OpOperand& item,
+                                const pir::Operation& op) {
+  auto dims = GetValueDims(item.source());
+  std::vector<int64_t> shape = common::vectorize<int64_t>(dims);
+  if (find_value(shape, -1)) {
+    LOG(WARNING)
+        << "[Prim] Decomp op does not support dynamic shape -1, but got "
+           "shape "
+        << dims << "in inputs of op " << op.name();
+    return true;
+  } else {
+    return false;
+  }
+}
 
 bool has_decomp_rule(const pir::Operation& op) {
   pir::IrContext* ctx = pir::IrContext::Instance();
@@ -35,6 +74,38 @@ bool has_decomp_rule(const pir::Operation& op) {
       op_info.GetInterfaceImpl<paddle::dialect::DecompInterface>();
   if (decomp_interface_impl == nullptr) return false;
   return true;
+}
+
+bool DecompProgram::check_decomp_dynamic_shape(pir::Operation* op) {
+  for (auto item : op->operands()) {
+    auto value = item.source();
+    // check if initialized in case of optional input.
+    if (value.impl() && value.type().storage()) {
+      pir::Operation* prev_op = value.dyn_cast<pir::OpResult>().owner();
+      if (prev_op->name() == "builtin.combine") {
+        for (pir::OpOperand& sub_item : prev_op->operands()) {
+          if (check_dynamic_shape(sub_item, *op)) {
+            return true;
+          }
+        }
+      } else {
+        if (check_dynamic_shape(item, *op)) {
+          return true;
+        }
+      }
+      // PADDLE_ENFORCE_NOT_NULL(
+      //     prev_op, platform::errors::PreconditionNotMet("prev_op should not
+      //     be null"));
+    }
+  }
+  return false;
+}
+
+void DecompProgram::check_decomp_outputs(
+    const std::string& op_name,
+    const std::vector<pir::OpResult>& orig_outs,
+    const std::vector<pir::OpResult>& decomp_outs) {
+  return;
 }
 
 std::vector<pir::OpResult> DecompProgram::format_decomp_res(

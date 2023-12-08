@@ -1372,7 +1372,9 @@ PHI_DEFINE_EXPORTED_int32(
     "been dropped when you are profiling, try increasing this value.");
 
 PHI_DEFINE_EXPORTED_bool(print_ir, false, "Whether print ir debug str.");
-PHI_DEFINE_EXPORTED_bool(debug_prim, false, "Whether print ir debug str.");
+PHI_DEFINE_EXPORTED_bool(prim_skip_dynamic,
+                         false,
+                         "Whether print ir debug str.");
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_XPU_BKCL)

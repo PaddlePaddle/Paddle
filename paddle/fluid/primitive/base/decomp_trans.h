@@ -32,6 +32,10 @@ class DecompProgram {
                 const std::set<std::string>& whitelist);
 
   std::vector<pir::OpResult> decomp_program();
+  bool check_decomp_dynamic_shape(pir::Operation* op);
+  void check_decomp_outputs(const std::string& op_name,
+                            const std::vector<pir::OpResult>& orig_outs,
+                            const std::vector<pir::OpResult>& decomp_outs);
   std::vector<pir::OpResult> format_decomp_res(
       const std::string& op_name,
       const std::vector<pir::OpResult>& orig_outs,
