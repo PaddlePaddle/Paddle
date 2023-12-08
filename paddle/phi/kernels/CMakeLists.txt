@@ -157,9 +157,7 @@ if(WITH_CUTLASS)
     ${PADDLE_SOURCE_DIR}/paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/autogen_variable_tmp
   )
 
-  add_custom_command(
-    OUTPUT
-      ${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/fpA_intB_gemm_cu_list.list
+  execute_process(
     COMMAND
       ${CMAKE_COMMAND} -E make_directory
       "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen"
@@ -167,8 +165,6 @@ if(WITH_CUTLASS)
       ${PYTHON_EXECUTABLE} generic_mixed_gemm_kernelLauncher.py --cuda_arch
       "${NVCC_ARCH_BIN}" --gen_cu_list_only --gen_cu_list_path
       "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/fpA_intB_gemm_cu_list.list"
-    DEPENDS
-      ${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/generic_mixed_gemm_kernelLauncher.py
     WORKING_DIRECTORY
       "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm"
   )
@@ -181,6 +177,7 @@ if(WITH_CUTLASS)
       ${file_path}
       ${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/arch_define.h
   )
+
   add_custom_command(
     OUTPUT ${generated_fpA_intB_gemm_files}
     COMMAND
