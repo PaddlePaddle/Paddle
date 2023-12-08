@@ -66,7 +66,7 @@ void BincountInferMeta(const MetaTensor& x,
                        const Scalar& minlength,
                        MetaTensor* out);
 
-void BinomialInferMeta(const MetaTensor& total_count,
+void BinomialInferMeta(const MetaTensor& count,
                        const MetaTensor& prob,
                        MetaTensor* out,
                        MetaConfig config = MetaConfig());

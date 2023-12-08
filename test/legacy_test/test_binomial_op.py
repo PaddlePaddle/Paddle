@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -79,6 +79,8 @@ class TestBinomialOp(OpTest):
 
     def verify_output(self, outs):
         hist, prob = output_hist(np.array(outs[0]), self.n, self.p, a=5, b=15)
+        # setting of `rtol` and `atol` refer to ``test_bernoulli_op``, ``test_poisson_op``
+        # and ``test_multinomial_op``
         np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
@@ -92,6 +94,8 @@ class TestBinomialApi(unittest.TestCase):
         out = paddle.binomial(total_count, probability)
         paddle.enable_static()
         hist, prob = output_hist(out.numpy(), n, p, a=5, b=25)
+        # setting of `rtol` and `atol` refer to ``test_bernoulli_op``, ``test_poisson_op``
+        # and ``test_multinomial_op``
         np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
     @test_with_pir_api
@@ -104,6 +108,8 @@ class TestBinomialApi(unittest.TestCase):
         exe = paddle.static.Executor(paddle.CPUPlace())
         out = exe.run(paddle.static.default_main_program(), fetch_list=[out])
         hist, prob = output_hist(out[0], n, p, a=70, b=140)
+        # setting of `rtol` and `atol` refer to ``test_bernoulli_op``, ``test_poisson_op``
+        # and ``test_multinomial_op``
         np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
@@ -113,7 +119,6 @@ class TestRandomValue(unittest.TestCase):
         if not paddle.is_compiled_with_cuda():
             return
 
-        print("Test Fixed Random number on GPU------>")
         paddle.disable_static()
         paddle.set_device('gpu')
         paddle.seed(2023)
@@ -236,6 +241,8 @@ class TestBinomialFP16Op(TestBinomialOp):
 
     def verify_output(self, outs):
         hist, prob = output_hist(np.array(outs[0]), self.n, self.p, a=5, b=15)
+        # setting of `rtol` and `atol` refer to ``test_bernoulli_op``, ``test_poisson_op``
+        # and ``test_multinomial_op``
         np.testing.assert_allclose(hist, prob, atol=0.01)
 
 
@@ -265,6 +272,8 @@ class TestBinomialBF16Op(TestBinomialOp):
 
     def verify_output(self, outs):
         hist, prob = output_hist(np.array(outs[0]), self.n, self.p, a=5, b=15)
+        # setting of `rtol` and `atol` refer to ``test_bernoulli_op``, ``test_poisson_op``
+        # and ``test_multinomial_op``
         np.testing.assert_allclose(hist, prob, atol=0.01)
 
 

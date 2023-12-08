@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,21 +22,22 @@ namespace phi {
 
 template <typename T, typename Context>
 void BinomialKernel(const Context& ctx,
-                    const DenseTensor& total_count,
+                    const DenseTensor& count,
                     const DenseTensor& prob,
                     DenseTensor* out) {
-  auto numel = total_count.numel();
-  auto* total_count_data = total_count.data<T>();
+  auto numel = count.numel();
+  auto* count_data = count.data<T>();
   auto* prob_data = prob.data<T>();
   int64_t* out_data = ctx.template Alloc<int64_t>(out);
 
   for (int64_t i = 0; i < numel; ++i) {
-    out_data[i] =
-        funcs::BinomialFunctor<T>(ctx, total_count_data[i], prob_data[i]);
+    out_data[i] = funcs::BinomialFunctor<T>(ctx, count_data[i], prob_data[i]);
   }
 }
 
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    binomial, CPU, ALL_LAYOUT, phi::BinomialKernel, float, double) {}
+    binomial, CPU, ALL_LAYOUT, phi::BinomialKernel, float, double) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::INT64);
+}

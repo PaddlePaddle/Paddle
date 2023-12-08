@@ -1,4 +1,4 @@
-/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -165,13 +165,13 @@ __global__ void BinomialSampling(const T* n,
 
 template <typename T, typename Context>
 void BinomialKernel(const Context& ctx,
-                    const DenseTensor& total_count,
+                    const DenseTensor& count,
                     const DenseTensor& prob,
                     DenseTensor* out) {
-  const T* total_count_data = total_count.data<T>();
+  const T* count_data = count.data<T>();
   const T* prob_data = prob.data<T>();
   int64_t* out_data = ctx.template Alloc<int64_t>(out);
-  const int size = total_count.numel();
+  const int size = count.numel();
   const int kMaxBlockDim = 256;
 
   int block_size = std::min(kMaxBlockDim, ctx.GetMaxThreadsPerBlock());
@@ -184,7 +184,7 @@ void BinomialKernel(const Context& ctx,
   uint64_t seed = seed_offset.first;
   uint64_t offset = seed_offset.second;
   BinomialSampling<T><<<dim_grid, dim_block>>>(
-      total_count_data, prob_data, out_data, size, seed, offset);
+      count_data, prob_data, out_data, size, seed, offset);
 }
 
 }  // namespace phi
@@ -196,4 +196,6 @@ PD_REGISTER_KERNEL(binomial,
                    float,
                    double,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::INT64);
+}

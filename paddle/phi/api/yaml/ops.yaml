@@ -324,7 +324,7 @@
   optional: weights
 
 - op : binomial
-  args : (Tensor total_count, Tensor prob)
+  args : (Tensor count, Tensor prob)
   output : Tensor(out)
   infer_meta :
     func : BinomialInferMeta

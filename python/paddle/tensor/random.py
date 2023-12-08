@@ -102,23 +102,23 @@ def bernoulli(x, name=None):
         return out
 
 
-def binomial(total_count, prob, name=None):
+def binomial(count, prob, name=None):
     r"""
     Returns a tensor filled with random number from the Binomial Distribution.
 
     .. math::
 
-        out_i \sim Binomial (n = total_count, p = prob)
+        out_i \sim Binomial (n = count, p = prob)
 
     Args:
-        total_count(Tensor): A tensor specifying the size of the Binomial Distribution. The input data
+        count(Tensor): A tensor specifying the size of the Binomial Distribution. The input data
             type should be int32 or int64.
         prob(Tensor): A tensor specifying the probability of success in the binomial experiment.
             The input data type should be bfloat16, float16, float32, float64.
         name(str, optional): The default value is None. Normally there is no need for user to set this
             property. For more information, please refer to :ref:`api_guide_Name`.
     Returns:
-        Tensor: A Tensor filled with binomial random values with the same shape ``total_count``. The
+        Tensor: A Tensor filled with binomial random values with the same shape ``count``. The
             data type is int64.
 
     Examples:
@@ -138,14 +138,12 @@ def binomial(total_count, prob, name=None):
             >>> # doctest: -SKIP
     """
     if in_dynamic_or_pir_mode():
-        total_count, prob = paddle.broadcast_tensors(
-            [paddle.cast(total_count, dtype=prob.dtype), prob]
+        count, prob = paddle.broadcast_tensors(
+            [paddle.cast(count, dtype=prob.dtype), prob]
         )
-        return _C_ops.binomial(total_count, prob)
+        return _C_ops.binomial(count, prob)
     else:
-        check_variable_and_dtype(
-            total_count, "total_count", ["int32", "int64"], "binomial"
-        )
+        check_variable_and_dtype(count, "count", ["int32", "int64"], "binomial")
         check_variable_and_dtype(
             prob,
             "prob",
@@ -153,8 +151,8 @@ def binomial(total_count, prob, name=None):
             "binomial",
         )
 
-        total_count, prob = paddle.broadcast_tensors(
-            [paddle.cast(total_count, dtype=prob.dtype), prob]
+        count, prob = paddle.broadcast_tensors(
+            [paddle.cast(count, dtype=prob.dtype), prob]
         )
         helper = LayerHelper("binomial", **locals())
         out = helper.create_variable_for_type_inference(
@@ -162,7 +160,7 @@ def binomial(total_count, prob, name=None):
         )
         helper.append_op(
             type='binomial',
-            inputs={"total_count": total_count, "prob": prob},
+            inputs={"count": count, "prob": prob},
             outputs={'out': out},
             attrs={},
         )

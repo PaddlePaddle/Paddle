@@ -277,32 +277,31 @@ void BincountInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
-void BinomialInferMeta(const MetaTensor& total_count,
+void BinomialInferMeta(const MetaTensor& count,
                        const MetaTensor& prob,
                        MetaTensor* out,
                        MetaConfig config) {
-  auto total_count_dims = total_count.dims();
+  auto count_dims = count.dims();
   auto prob_dims = prob.dims();
 
   bool check = true;
   if ((!config.is_runtime) &&
-      (phi::product(total_count_dims) <= 0 || phi::product(prob_dims) <= 0)) {
+      (phi::product(count_dims) <= 0 || phi::product(prob_dims) <= 0)) {
     check = false;
   }
 
   if (check) {
-    PADDLE_ENFORCE_EQ(
-        total_count_dims,
-        prob_dims,
-        phi::errors::InvalidArgument(
-            "Input(total_count) and Input(prob) shall have the same "
-            "shape. But received: the shape of Input(total_count) is "
-            "[%s], the shape of Input(prob) is [%s].",
-            total_count_dims,
-            prob_dims));
+    PADDLE_ENFORCE_EQ(count_dims,
+                      prob_dims,
+                      phi::errors::InvalidArgument(
+                          "Input(count) and Input(prob) shall have the same "
+                          "shape. But received: the shape of Input(count) is "
+                          "[%s], the shape of Input(prob) is [%s].",
+                          count_dims,
+                          prob_dims));
   }
 
-  out->set_dims(total_count_dims);
+  out->set_dims(count_dims);
   out->set_dtype(DataType::INT64);
 }
 

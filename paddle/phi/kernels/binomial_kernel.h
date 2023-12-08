@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ namespace phi {
 /**
  * @brief This kernel generate random value that follow binomial distribution.
  * @param  ctx          device context
- * @param  total_count  A Tensor with each element inidicating the number of
+ * @param  count  A Tensor with each element inidicating the number of
  * bernoulli experiments
  * @param  prob         A Tensor with each element inidicating probability of
  * success for one bernoulli experiment
@@ -30,7 +30,7 @@ namespace phi {
  */
 template <typename T, typename Context>
 void BinomialiKernel(const Context& ctx,
-                     const DenseTensor& total_count,
+                     const DenseTensor& count,
                      const DenseTensor& prob,
                      DenseTensor* out);
 
