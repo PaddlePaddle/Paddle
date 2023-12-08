@@ -177,9 +177,12 @@ if(WITH_CUTLASS)
     STRINGS
     "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/fpA_intB_gemm_cu_list.list"
     file_path)
-
+  set(generated_fpA_intB_gemm_files
+      ${file_path}
+      ${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/arch_define.h
+  )
   add_custom_command(
-    OUTPUT ${file_path}
+    OUTPUT ${generated_fpA_intB_gemm_files}
     COMMAND
       ${CMAKE_COMMAND} -E make_directory
       "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen"
@@ -192,7 +195,8 @@ if(WITH_CUTLASS)
       "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm"
   )
 
-  add_custom_target(generate-fpA-intB-gemm-sources DEPENDS ${file_path})
+  add_custom_target(generate-fpA-intB-gemm-sources
+                    DEPENDS ${generated_fpA_intB_gemm_files})
 
   file(
     GLOB cutlass_cu
