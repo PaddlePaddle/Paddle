@@ -250,13 +250,13 @@ class LlamaAttentionAuto(nn.Layer):
         else:
             attn_output = outputs
 
+        attn_output = self.o_proj(attn_output)
+
         if self.config.sequence_parallel:
             attn_output = paddle.transpose(attn_output, [1, 0, 2])
             attn_output = dist.reshard(
                 attn_output, get_mesh(self.ipp), [dist.Shard(1), dist.Shard(0)]
             )
-
-        attn_output = self.o_proj(attn_output)
 
         if not output_attentions:
             attn_weights = None
@@ -607,7 +607,7 @@ class LlamaModelAuto(nn.Layer):
         all_self_attns = () if output_attentions else None
         next_decoder_cache = () if use_cache else None
 
-        pre_ipp = None
+        pre_ipp = 0
         for idx, (decoder_layer) in enumerate(self.layers):
             if output_hidden_states:
                 all_hidden_states += (hidden_states,)
@@ -770,14 +770,14 @@ class LlamaForCausalLMAuto(nn.Layer):
 
         hidden_states = outputs[0]  # [bs, seq_len, dim]
 
-        # if labels is None，means we need full output, instead of tensor_parallel_output
-        logits = self.lm_head(hidden_states)
         if self.config.sequence_parallel:
-            logits = dist.reshard(
-                logits, get_mesh(-1), [dist.Shard(1), dist.Replicate()]
+            hidden_states = dist.reshard(
+                hidden_states, get_mesh(-1), [dist.Shard(1), dist.Replicate()]
             )
             # [S, B, H] -> [B, S, H]
-            logits = paddle.transpose(logits, [1, 0, 2])
+            hidden_states = paddle.transpose(hidden_states, [1, 0, 2])
+        # if labels is None，means we need full output, instead of tensor_parallel_output
+        logits = self.lm_head(hidden_states)
 
         loss = None
         if labels is not None:

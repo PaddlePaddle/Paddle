@@ -1188,6 +1188,106 @@ TEST(Transpose, Ctor) {
   check_partial_dims(backward_spmd_info.second[0], {});
 }
 
+TEST(FuseRope, Ctor) {
+  std::vector<int64_t> mesh_shape = {2, 2};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+
+  auto build_input = [&](const std::vector<int64_t>& shape,
+                         const std::vector<int64_t>& dim_mapping) {
+    TensorDistAttr t_dist_attr;
+    t_dist_attr.set_process_mesh(process_mesh);
+    t_dist_attr.set_dims_mapping(dim_mapping);
+    t_dist_attr.set_dynamic_dims(std::vector<bool>(shape.size(), false));
+    auto input =
+        phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+    return input;
+  };
+
+  phi::distributed::DistMetaTensor q =
+      build_input({16, 2048, 64, 128}, {0, 1, -1, -1});
+  phi::distributed::DistMetaTensor none;
+
+  // 1. test forward
+  // 1.1 only q input
+  phi::distributed::SpmdInfo forward_spmd_info =
+      phi::distributed::FuseRopeInferSpmd(
+          q, none, none, none, none, none, false);
+  EXPECT_EQ(forward_spmd_info.first.size(), static_cast<size_t>(6));
+  EXPECT_EQ(forward_spmd_info.second.size(), static_cast<size_t>(3));
+  check_dim_mapping(forward_spmd_info.first[0], {0, -1, -1, -1});
+  check_dim_mapping(forward_spmd_info.first[1], {});
+  check_dim_mapping(forward_spmd_info.first[2], {});
+  check_dim_mapping(forward_spmd_info.first[3], {});
+  check_dim_mapping(forward_spmd_info.first[4], {});
+  check_dim_mapping(forward_spmd_info.first[5], {});
+  check_dim_mapping(forward_spmd_info.second[0], {0, -1, -1, -1});
+  check_dim_mapping(forward_spmd_info.second[1], {});
+  check_dim_mapping(forward_spmd_info.second[2], {});
+  check_partial_dims(forward_spmd_info.second[0], {});
+
+  // 1.2 q, k, sin, cos, position_ids
+  phi::distributed::DistMetaTensor k =
+      build_input({16, 2048, 64, 128}, {-1, 1, -1, 0});
+  phi::distributed::DistMetaTensor sin =
+      build_input({1, 2048, 1, 128}, {-1, 0, -1, 1});
+  phi::distributed::DistMetaTensor cos =
+      build_input({1, 2048, 1, 128}, {-1, 1, -1, -1});
+  phi::distributed::DistMetaTensor position_ids =
+      build_input({16, 2048}, {0, 1});
+  forward_spmd_info = phi::distributed::FuseRopeInferSpmd(
+      q, k, none, sin, cos, position_ids, false);
+  EXPECT_EQ(forward_spmd_info.first.size(), static_cast<size_t>(6));
+  EXPECT_EQ(forward_spmd_info.second.size(), static_cast<size_t>(3));
+  check_dim_mapping(forward_spmd_info.first[0], {0, -1, -1, -1});
+  check_dim_mapping(forward_spmd_info.first[1], {0, -1, -1, -1});
+  check_dim_mapping(forward_spmd_info.first[2], {});
+  check_dim_mapping(forward_spmd_info.first[3], {-1, -1, -1, -1});
+  check_dim_mapping(forward_spmd_info.first[4], {-1, -1, -1, -1});
+  check_dim_mapping(forward_spmd_info.first[5], {0, -1});
+  check_dim_mapping(forward_spmd_info.second[0], {0, -1, -1, -1});
+  check_dim_mapping(forward_spmd_info.second[1], {0, -1, -1, -1});
+  check_dim_mapping(forward_spmd_info.second[2], {});
+  check_partial_dims(forward_spmd_info.second[0], {});
+  check_partial_dims(forward_spmd_info.second[1], {});
+  // 2. test backward
+  phi::distributed::SpmdInfo backward_spmd_info =
+      FuseRopeGradInferSpmd(sin, cos, position_ids, q, k, none, false);
+  EXPECT_EQ(backward_spmd_info.first.size(), static_cast<size_t>(6));
+  EXPECT_EQ(backward_spmd_info.second.size(), static_cast<size_t>(3));
+  check_dim_mapping(backward_spmd_info.first[0], {-1, -1, -1, -1});
+  check_dim_mapping(backward_spmd_info.first[1], {-1, -1, -1, -1});
+  check_dim_mapping(backward_spmd_info.first[2], {0, -1});
+  check_dim_mapping(backward_spmd_info.first[3], {0, -1, -1, -1});
+  check_dim_mapping(backward_spmd_info.first[4], {0, -1, -1, -1});
+  check_dim_mapping(backward_spmd_info.first[5], {});
+  check_dim_mapping(backward_spmd_info.second[0], {0, -1, -1, -1});
+  check_dim_mapping(backward_spmd_info.second[1], {0, -1, -1, -1});
+  check_dim_mapping(backward_spmd_info.second[2], {});
+  check_partial_dims(backward_spmd_info.second[0], {});
+  check_partial_dims(backward_spmd_info.second[1], {});
+
+  // 3. test reverse
+  phi::distributed::DistMetaTensor out_q =
+      build_input({16, 2048, 64, 128}, {0, 1, -1, -1});
+  phi::distributed::DistMetaTensor out_k =
+      build_input({16, 2048, 64, 128}, {-1, 1, -1, 0});
+  phi::distributed::SpmdInfo reverse_spmd_info = FuseRopeInferSpmdReverse(
+      q, k, none, sin, cos, position_ids, out_q, out_k, none, false);
+  EXPECT_EQ(reverse_spmd_info.first.size(), static_cast<size_t>(6));
+  EXPECT_EQ(reverse_spmd_info.second.size(), static_cast<size_t>(3));
+  check_dim_mapping(reverse_spmd_info.first[0], {0, -1, -1, -1});
+  check_dim_mapping(reverse_spmd_info.first[1], {0, -1, -1, -1});
+  check_dim_mapping(reverse_spmd_info.first[2], {});
+  check_dim_mapping(reverse_spmd_info.first[3], {-1, -1, -1, -1});
+  check_dim_mapping(reverse_spmd_info.first[4], {-1, -1, -1, -1});
+  check_dim_mapping(reverse_spmd_info.first[5], {0, -1});
+  check_dim_mapping(reverse_spmd_info.second[0], {0, -1, -1, -1});
+  check_dim_mapping(reverse_spmd_info.second[1], {0, -1, -1, -1});
+  check_dim_mapping(reverse_spmd_info.second[2], {});
+}
+
 TEST(Reshape, Ctor) {
   std::vector<int64_t> mesh_shape = {2, 2};
   std::vector<int64_t> process_ids = {0, 1, 2, 3};
