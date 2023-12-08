@@ -244,11 +244,9 @@ class TestDictMethods(TestCaseBase):
         self.assert_results(dict_construct_from_dict)
         self.assert_results(dict_construct_from_list)
         self.assert_results(dict_construct_from_tuple)
-        if sys.version_info >= (3, 11):
-            # Temporarily fallback for comprehension in python3.11
-            with strict_mode_guard(False):
-                self.assert_results(dict_construct_from_comprehension)
-        else:
+        # Temporarily fallback for comprehension in python3.11
+        use_strict_mode = sys.version_info < (3, 11)
+        with strict_mode_guard(use_strict_mode):
             self.assert_results(dict_construct_from_comprehension)
 
     def test_dict_noargs(self):
