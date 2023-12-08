@@ -52,7 +52,7 @@ class TestGcdAPI(unittest.TestCase):
                 feed={'input1': self.x_np, 'input2': self.y_np},
                 fetch_list=[out],
             )
-            self.assertTrue((res[0] == out_ref).all(), True)
+            self.assertTrue((res[0] == out_ref).all())
 
     def test_dygraph(self):
         paddle.disable_static()
