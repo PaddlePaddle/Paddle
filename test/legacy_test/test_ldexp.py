@@ -18,58 +18,64 @@ import numpy as np
 
 import paddle
 from paddle.base import core
-from paddle.static import Program, program_guard
-
-DYNAMIC = 1
-STATIC = 2
+from paddle.pir_utils import test_with_pir_api
 
 
-def _run_ldexp(mode, x, y, device='cpu'):
+def _run_ldexp_dynamic(x, y, device='cpu'):
     # dynamic mode
-    if mode == DYNAMIC:
-        paddle.disable_static()
-        # Set device
-        paddle.set_device(device)
-        x_ = paddle.to_tensor(x)
-        # y is scalar
-        if isinstance(y, (int)):
-            y_ = y
-        # y is tensor
-        else:
-            y_ = paddle.to_tensor(y)
-        res = paddle.ldexp(x_, y_)
-        return res.numpy()
+    paddle.disable_static()
+    # Set device
+    paddle.set_device(device)
+    x_ = paddle.to_tensor(x)
+    # y is scalar
+    if isinstance(y, (int)):
+        y_ = y
+    # y is tensor
+    else:
+        y_ = paddle.to_tensor(y)
+    res = paddle.ldexp(x_, y_)
+    return res.numpy()
+
+
+def _run_ldexp_static(x, y, device='cpu'):
     # static graph mode
-    elif mode == STATIC:
-        paddle.enable_static()
-        # y is scalar
-        if isinstance(y, (int)):
-            with program_guard(Program(), Program()):
-                x_ = paddle.static.data(name="x", shape=x.shape, dtype=x.dtype)
-                y_ = y
-                res = paddle.ldexp(x_, y_)
-                place = (
-                    paddle.CPUPlace()
-                    if device == 'cpu'
-                    else paddle.CUDAPlace(0)
-                )
-                exe = paddle.static.Executor(place)
-                outs = exe.run(feed={'x': x, 'y': y}, fetch_list=[res])
-                return outs[0]
-        # y is tensor
-        else:
-            with program_guard(Program(), Program()):
-                x_ = paddle.static.data(name="x", shape=x.shape, dtype=x.dtype)
-                y_ = paddle.static.data(name="y", shape=y.shape, dtype=y.dtype)
-                res = paddle.ldexp(x_, y_)
-                place = (
-                    paddle.CPUPlace()
-                    if device == 'cpu'
-                    else paddle.CUDAPlace(0)
-                )
-                exe = paddle.static.Executor(place)
-                outs = exe.run(feed={'x': x, 'y': y}, fetch_list=[res])
-                return outs[0]
+    paddle.enable_static()
+    # y is scalar
+    if isinstance(y, (int)):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x_ = paddle.static.data(name="x", shape=x.shape, dtype=x.dtype)
+            y_ = y
+            res = paddle.ldexp(x_, y_)
+            place = (
+                paddle.CPUPlace() if device == 'cpu' else paddle.CUDAPlace(0)
+            )
+            exe = paddle.static.Executor(place)
+            outs = exe.run(
+                paddle.static.default_main_program(),
+                feed={'x': x, 'y': y},
+                fetch_list=[res],
+            )
+            return outs[0]
+    # y is tensor
+    else:
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x_ = paddle.static.data(name="x", shape=x.shape, dtype=x.dtype)
+            y_ = paddle.static.data(name="y", shape=y.shape, dtype=y.dtype)
+            res = paddle.ldexp(x_, y_)
+            place = (
+                paddle.CPUPlace() if device == 'cpu' else paddle.CUDAPlace(0)
+            )
+            exe = paddle.static.Executor(place)
+            outs = exe.run(
+                paddle.static.default_main_program(),
+                feed={'x': x, 'y': y},
+                fetch_list=[res],
+            )
+            return outs[0]
 
 
 def check_dtype(input, desired_dtype):
@@ -81,33 +87,27 @@ def check_dtype(input, desired_dtype):
         )
 
 
-class TestLdexpAPI(unittest.TestCase):
+class TestLdexpAPIWithDynamic(unittest.TestCase):
     def setUp(self):
         self.places = ['cpu']
         if core.is_compiled_with_cuda():
             self.places.append('gpu')
 
-    def test_ldexp(self):
+    def test_ldexp_dynamic(self):
         np.random.seed(7)
         for place in self.places:
             # test 1-d float tensor and 1-d int tensor
             dims = (np.random.randint(200, 300),)
             x = (np.random.rand(*dims) * 10).astype(np.float64)
             y = (np.random.randint(-10, 10, dims)).astype(np.int32)
-            res = _run_ldexp(DYNAMIC, x, y, place)
-            check_dtype(res, np.float64)
-            np.testing.assert_allclose(res, np.ldexp(x, y))
-            res = _run_ldexp(STATIC, x, y, place)
+            res = _run_ldexp_dynamic(x, y, place)
             check_dtype(res, np.float64)
             np.testing.assert_allclose(res, np.ldexp(x, y))
 
             dims = (np.random.randint(200, 300),)
             x = (np.random.rand(*dims) * 10).astype(np.float32)
             y = (np.random.randint(-10, 10, dims)).astype(np.int32)
-            res = _run_ldexp(DYNAMIC, x, y, place)
-            check_dtype(res, np.float32)
-            np.testing.assert_allclose(res, np.ldexp(x, y))
-            res = _run_ldexp(STATIC, x, y, place)
+            res = _run_ldexp_dynamic(x, y, place)
             check_dtype(res, np.float32)
             np.testing.assert_allclose(res, np.ldexp(x, y))
 
@@ -115,20 +115,14 @@ class TestLdexpAPI(unittest.TestCase):
             dims = (np.random.randint(200, 300),)
             x = (np.random.randint(-10, 10, dims)).astype(np.int64)
             y = (np.random.randint(-10, 10, dims)).astype(np.int32)
-            res = _run_ldexp(DYNAMIC, x, y, place)
-            check_dtype(res, np.float32)
-            np.testing.assert_allclose(res, np.ldexp(x, y))
-            res = _run_ldexp(STATIC, x, y, place)
+            res = _run_ldexp_dynamic(x, y, place)
             check_dtype(res, np.float32)
             np.testing.assert_allclose(res, np.ldexp(x, y))
 
             dims = (np.random.randint(200, 300),)
             x = (np.random.randint(-10, 10, dims)).astype(np.int32)
             y = (np.random.randint(-10, 10, dims)).astype(np.int32)
-            res = _run_ldexp(DYNAMIC, x, y, place)
-            check_dtype(res, np.float32)
-            np.testing.assert_allclose(res, np.ldexp(x, y))
-            res = _run_ldexp(STATIC, x, y, place)
+            res = _run_ldexp_dynamic(x, y, place)
             check_dtype(res, np.float32)
             np.testing.assert_allclose(res, np.ldexp(x, y))
 
@@ -140,10 +134,59 @@ class TestLdexpAPI(unittest.TestCase):
             )
             x = (np.random.rand(*dims) * 10).astype(np.float64)
             y = (np.random.randint(-10, 10, dims[-1])).astype(np.int32)
-            res = _run_ldexp(DYNAMIC, x, y)
+            res = _run_ldexp_dynamic(x, y)
             check_dtype(res, np.float64)
             np.testing.assert_allclose(res, np.ldexp(x, y))
-            res = _run_ldexp(STATIC, x, y)
+
+
+class TestLdexpAPIWithStatic(unittest.TestCase):
+    def setUp(self):
+        self.places = ['cpu']
+        if core.is_compiled_with_cuda():
+            self.places.append('gpu')
+
+    @test_with_pir_api
+    def test_ldexp_static(self):
+        np.random.seed(7)
+        for place in self.places:
+            dims = (np.random.randint(200, 300),)
+            x = (np.random.rand(*dims) * 10).astype(np.float64)
+            y = (np.random.randint(-10, 10, dims)).astype(np.int32)
+            res = _run_ldexp_static(x, y, place)
+            check_dtype(res, np.float64)
+            np.testing.assert_allclose(res, np.ldexp(x, y))
+
+            dims = (np.random.randint(200, 300),)
+            x = (np.random.rand(*dims) * 10).astype(np.float32)
+            y = (np.random.randint(-10, 10, dims)).astype(np.int32)
+            res = _run_ldexp_static(x, y, place)
+            check_dtype(res, np.float32)
+            np.testing.assert_allclose(res, np.ldexp(x, y))
+
+            # test 1-d int tensor and 1-d int tensor
+            dims = (np.random.randint(200, 300),)
+            x = (np.random.randint(-10, 10, dims)).astype(np.int64)
+            y = (np.random.randint(-10, 10, dims)).astype(np.int32)
+            res = _run_ldexp_static(x, y, place)
+            check_dtype(res, np.float32)
+            np.testing.assert_allclose(res, np.ldexp(x, y))
+
+            dims = (np.random.randint(200, 300),)
+            x = (np.random.randint(-10, 10, dims)).astype(np.int32)
+            y = (np.random.randint(-10, 10, dims)).astype(np.int32)
+            res = _run_ldexp_static(x, y, place)
+            check_dtype(res, np.float32)
+            np.testing.assert_allclose(res, np.ldexp(x, y))
+
+            # test broadcast
+            dims = (
+                np.random.randint(1, 10),
+                np.random.randint(5, 10),
+                np.random.randint(5, 10),
+            )
+            x = (np.random.rand(*dims) * 10).astype(np.float64)
+            y = (np.random.randint(-10, 10, dims[-1])).astype(np.int32)
+            res = _run_ldexp_static(x, y)
             check_dtype(res, np.float64)
             np.testing.assert_allclose(res, np.ldexp(x, y))
 

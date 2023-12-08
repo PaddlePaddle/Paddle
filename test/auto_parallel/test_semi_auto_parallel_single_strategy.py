@@ -95,6 +95,16 @@ class TestSemiAutoParallelInSingleStrategy(test_base.CommunicationTestDistBase):
                 user_defined_envs=envs,
             )
 
+    def test_set_value(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_parallel_set_value.py",
+                user_defined_envs=envs,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
