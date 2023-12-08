@@ -748,7 +748,7 @@ def _decomp_bwd_op(
     (1) try to decompose backward op by calling _decompose_bwd_with_vjp, if forward op has composite vjp rules (including custom vjp),
     _decompose_bwd_with_vjp will call call_vjp() to get a list of primitive operators in backward graph, then replace backward op successfully and return True;
     (2) when _decompose_bwd_with_vjp return False, means there is no composite vjp rules,
-    try to decompose forward op firstly by calling _decompose_fwd_op firstly and get corresponding primitive operators in backward graph by calling _decompose_bwd_without_vjp secondly, then replace backward op successfully and return True;
+    try to decompose forward op firstly by calling _decomp_fwd_op firstly and get corresponding primitive operators in backward graph by calling _decompose_bwd_without_vjp secondly, then replace backward op successfully and return True;
     (3) if the backward op is still not decomposed by the above two steps, returns False.
 
     Args:
@@ -949,7 +949,9 @@ def decompose_pir_program(pir_program, param_mapping, grad_var_to_var):
 
         ops = pir_program.global_block().ops
         prev_op = None
+        # ops including compile-time infermeta, causing mismatched input shape and output shape, which is unsupported when decompoing.
         black_fwd_ops = ["pd_op.stack", "pd_op.squeeze"]
+        undecomposed_ops["fwd"] += black_fwd_ops
         for op in ops:
             if op.name() not in bwd_ops and op.name() not in black_fwd_ops:
                 fwd_op_name = op.name()
