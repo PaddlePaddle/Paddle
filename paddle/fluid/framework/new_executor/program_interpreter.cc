@@ -1055,7 +1055,8 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
     }
   }
 
-  if (op_with_kernel != nullptr && FLAGS_save_static_runtime_data) {
+  // for debug
+  if (FLAGS_save_static_runtime_data) {
     VLOG(6) << "start to save paddle variable";
     auto root_path = FLAGS_static_runtime_data_save_path;
     for (auto& vname : op->InputVars()) {
