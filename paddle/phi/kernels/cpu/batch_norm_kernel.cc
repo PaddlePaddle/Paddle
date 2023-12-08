@@ -83,8 +83,10 @@ void BatchNormKernel(const Context& ctx,
   ctx.template Alloc<T>(variance_out);
   ctx.template Alloc<T>(saved_mean);
   ctx.template Alloc<T>(saved_variance);
-  reserve_space->Resize({0});
-  ctx.template Alloc<T>(reserve_space);
+  if (reserve_space != nullptr) {
+    reserve_space->Resize({0});
+    ctx.template Alloc<T>(reserve_space);
+  }
 
   // input dimension is 2 and the format is NCHW. The input can be regarded
   // as NHWC format
