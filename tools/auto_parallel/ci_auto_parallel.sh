@@ -94,7 +94,6 @@ fi
 # Get the list of pending cases
 get_diff_TO_case
 # Remove duplicates and store the results back to the original list
-case_list=($(awk -v RS=' ' '!a[$1]++' <<< ${case_list[*]}))
 
 ####################
 if [[ "${case_list[*]}" == *"gpt-3_auto"* ]] && [[ "${case_list[*]}" == *"gpt-3_auto_pir"* ]]; then
@@ -106,6 +105,7 @@ if [[ "${case_list[*]}" == *"gpt-3_auto"* ]] && [[ "${case_list[*]}" == *"gpt-3_
 fi
 ####################
 
+case_list=($(awk -v RS=' ' '!a[$1]++' <<< ${case_list[*]}))
 if [[ ${#case_list[*]} -ne 0 ]];then
     echo -e "\033[31m =======CI Check case========= \033"
     echo -e "\033[31m ---- case_list length: ${#case_list[*]}, cases: ${case_list[*]} \033"
