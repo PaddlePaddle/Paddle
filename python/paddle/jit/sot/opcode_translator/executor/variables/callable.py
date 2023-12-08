@@ -555,7 +555,7 @@ class PaddleLayerVariable(LayerVariable):
                 and value._forward_pre_hooks
                 or hasattr(value, "_forward_post_hooks")
                 and value._forward_post_hooks
-                or is_not_supported_paddle_layer(value.get_py_type())
+                or is_not_supported_paddle_layer(type(value))
             ):
                 return None
             if value.__module__.startswith("paddle.nn."):
