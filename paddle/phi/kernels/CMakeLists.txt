@@ -72,6 +72,9 @@ if(WITH_CUTLASS)
       ${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d/conv2d_depthwise_bias_act.py
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d")
 
+  add_custom_target(generate-conv2d-kernel-sources
+                    DEPENDS ${GENERATED_CONV2D_CU_FILES})
+
   execute_process(
     COMMAND
       ${PYTHON_EXECUTABLE}
@@ -186,6 +189,9 @@ if(WITH_CUTLASS)
     WORKING_DIRECTORY
       "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm"
   )
+
+  add_custom_target(generate-fpA-intB-gemm-sources
+                    DEPENDS ${generated_fpA_intB_gemm_cu_files})
 
   file(
     GLOB cutlass_cu
