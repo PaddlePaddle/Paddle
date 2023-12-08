@@ -728,6 +728,7 @@ echo    Step 4. Running unit tests ...
 echo    ========================================
 
 pip install -r %work_dir%\python\unittest_py\requirements.txt
+pip install -i https://pypi.anaconda.org/scientific-python-nightly-wheels/simple numpy --force-reinstall --no-cache-dir
 if %ERRORLEVEL% NEQ 0 (
     echo pip install unittest requirements.txt failed!
     exit /b 5
