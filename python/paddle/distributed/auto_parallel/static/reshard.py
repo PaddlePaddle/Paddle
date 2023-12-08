@@ -2167,21 +2167,22 @@ class Resharder:
                     assert len(end_vars) == 1
                     target_tensor = end_vars[0]
 
-                assert target_tensor is not None
-                set_var_dist_attr(
-                    self.dist_context,
-                    target_tensor,
-                    dst_input_attr[1],  # dims_mapping
-                    dst_input_attr[0],  # process_mesh
-                    chunk_id=dst_input_attr[2],
-                )
-                naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-                    block.ops[idx],
-                    dst_input_attr[0],  # process_mesh
-                    dst_input_attr[1],  # dims_mapping
-                    self.dist_context,
-                    chunk_id=dst_input_attr[2],
-                )
+                if not isinstance(op_desc, EndOpDesc):
+                    assert target_tensor is not None
+                    set_var_dist_attr(
+                        self.dist_context,
+                        target_tensor,
+                        dst_input_attr[1],  # dims_mapping
+                        dst_input_attr[0],  # process_mesh
+                        chunk_id=dst_input_attr[2],
+                    )
+                    naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+                        block.ops[idx],
+                        dst_input_attr[0],  # process_mesh
+                        dst_input_attr[1],  # dims_mapping
+                        self.dist_context,
+                        chunk_id=dst_input_attr[2],
+                    )
 
                 if reshard_op.type == "while":
                     # var_reshard_mapping means the while op input need be changed to
@@ -2925,10 +2926,6 @@ class Resharder:
             # reshard output
             # NOTE: Only support that insert send and recv op if output process mesh is different from tensor process mesh
             self._reshard_output(block)
-
-        # print("before remove:")
-        # print_program_with_dist_attr(self.auto_parallel_main_prog, self.dist_context)
-        # exit(0)
 
         # remove no need vars and ops in the main program
         Remover.remove_no_need_in_main(
