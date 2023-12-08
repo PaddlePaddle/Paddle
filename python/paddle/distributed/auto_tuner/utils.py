@@ -227,6 +227,9 @@ def default_candidates(tuner_cfg):
         tuner_cfg["recompute_granularity"] = "auto"
     elif isinstance(use_recompute, bool):
         candidates["use_recompute"] = [use_recompute]
+    # TODO: should remove this case in the future
+    elif use_recompute is None:
+        candidates["use_recompute"] = [None]
     else:
         raise ValueError("use_recompute supports auto/True/False")
 
@@ -244,6 +247,9 @@ def default_candidates(tuner_cfg):
             candidates["recompute_granularity"] = [
                 recompute_granularity.lower()
             ]
+        # TODO: should remove this case in the future
+        elif recompute_granularity is None:
+            candidates["recompute_granularity"] = [None]
         else:
             raise ValueError(
                 f"recompute_granularity only supports auto/{'/'.join(__SUPPORTED_RECOMPUTE_GRANULARITY__)}, but got {recompute_granularity}"
@@ -1299,6 +1305,7 @@ def load_configs_from_csv(configs_csv):
         "dp_degree",
         "mp_degree",
         "pp_degree",
+        "vpp_degree",
         "micro_batch_size",
         "sharding_degree",
         "sharding_stage",
@@ -1327,9 +1334,13 @@ def load_configs_from_csv(configs_csv):
 
         recompute_granularity = raw_config.get("recompute_granularity", "")
         assert (
-            recompute_granularity.lower() in __SUPPORTED_RECOMPUTE_GRANULARITY__
+            recompute_granularity == ""
+            or recompute_granularity.lower()
+            in __SUPPORTED_RECOMPUTE_GRANULARITY__
         ), f"{recompute_granularity} must be one of {__SUPPORTED_RECOMPUTE_GRANULARITY__}, but got {recompute_granularity}."
-        config["recompute_granularity"] = recompute_granularity
+        config["recompute_granularity"] = (
+            recompute_granularity if recompute_granularity != "" else None
+        )
 
         all_configs.append(config)
 
