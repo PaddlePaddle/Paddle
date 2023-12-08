@@ -1051,6 +1051,10 @@ class _ExecutorCache:
             if get_flags("FLAGS_enable_pir_in_executor")[
                 'FLAGS_enable_pir_in_executor'
             ]:
+                # if enables distributed training with prim mechanism (prim is behind of distributed)
+                # step 1: translate program to pir program.
+                # step 2: decompose PHI ops in pir program into prim ops.
+                #         When decomposing backward ops, the grad_var_to_var in distributed context is needed to finding correpsonding forward op.
                 if (
                     os.getenv("FLAGS_enable_prim_after_distribute") == "True"
                     and new_program._need_decomp

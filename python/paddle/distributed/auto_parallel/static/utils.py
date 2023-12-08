@@ -2401,6 +2401,8 @@ def get_dist_tensor_spec(dist_op, name, is_input=True):
     return DistTensorSpec(tensor_shape, tensor_dist_attr)
 
 
+# get grad_var_to_var from distributed context, recording the mapping from backward grad variable to forward variable
+# which is used for decomposing backward ops when enabling prim after distributed
 def get_grad_var_to_var(dist_context):
     # get grad_var_to_var in distributed context
     grad_var_to_var_map = dist_context._dist_op_context.grad_var_to_var
@@ -2409,6 +2411,7 @@ def get_grad_var_to_var(dist_context):
     return grad_var_to_var
 
 
+# update grad_var_to_var manually according to different distributed pass or strategy, thus recording complete and correct mapping between backward to forward
 def update_grad_var_to_var(program, strategy, grad_var_to_var):
     from paddle.distributed.fleet.meta_optimizers.common import (
         OP_ROLE_KEY,
