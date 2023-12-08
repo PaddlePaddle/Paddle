@@ -1331,7 +1331,7 @@ class Resharder:
         tensor_dims_mapping = tensor_dist_attr.dims_mapping
         tensor_process_mesh = tensor_dist_attr.process_mesh
 
-        # dist_attr is [process_mesh, dims_mapping, chunk_id] and process_mesh is not a union
+        # dist_attr is [process_mesh, dims_mapping, chunk_id, op_role] and process_mesh is not a union
         op_process_mesh = dist_attr[0]
 
         if op_input:
@@ -1599,6 +1599,16 @@ class Resharder:
                         Resharder.concat_partitions(
                             partition_index_list, source_partition_index
                         )
+                        # TODO(zhaoyingli): Remove the method to a pass.
+                        # Current method to get all pp_ranks' relationship must rely on reshard.
+                        # When reshard insert send/recv pair, the process_group has the pp relationship.
+                        # But the mothod to obtain pp_ranks' relationship is only supported in 'reshard_input',
+                        # casue 'reshard_output' only has current process_group view instead of global view.
+                        op_role = dist_attr[-1]
+                        if int(op_role) == int(OpRole.Forward):
+                            self.dist_context.up_down_streams.add_pair_stream(
+                                to_send_process, target_process
+                            )
 
                 # append concat op desc
                 op_desc_seq[target_process].append(
@@ -2282,7 +2292,12 @@ class Resharder:
                             break
                     if not has_exist:
                         input_attrs.append(
-                            [process_mesh, input_dims_mapping, chunk_id]
+                            [
+                                process_mesh,
+                                input_dims_mapping,
+                                chunk_id,
+                                op.attr('op_role'),
+                            ]
                         )
         return input_attrs
 
@@ -2320,6 +2335,7 @@ class Resharder:
                                 process_mesh,
                                 output_dims_mapping,
                                 chunk_id,
+                                op.attr('op_role'),
                             ]
                         )
         return output_attrs
@@ -2345,7 +2361,9 @@ class Resharder:
         chunk_id = dist_attr.chunk_id
         input_attrs = []
         for process_mesh in process_meshes:
-            input_attrs.append([process_mesh, input_dims_mapping, chunk_id])
+            input_attrs.append(
+                [process_mesh, input_dims_mapping, chunk_id, op.attr('op_role')]
+            )
 
         return input_attrs
 
@@ -2755,6 +2773,7 @@ class Resharder:
                         dist_op.dist_attr.process_mesh,
                         dist_op.dist_attr.get_output_dims_mapping(var_name),
                         dist_op.dist_attr.chunk_id,
+                        op.attr("op_role"),
                     ]
                     if dist_tensor is not None and self.need_reshard(
                         dist_tensor, output_attr, False
@@ -2953,7 +2972,8 @@ class Resharder:
                 dist_attr = [
                     process_mesh,
                     dims_mapping,
-                    dist_op.serial_op.attr('op_role'),
+                    dist_op.dist_attr.chunk_id,
+                    op.attr('op_role'),
                 ]
                 if dist_tensor is not None and self.need_reshard(
                     dist_tensor, dist_attr
