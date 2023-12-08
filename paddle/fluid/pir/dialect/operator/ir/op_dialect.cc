@@ -41,7 +41,7 @@ static std::unordered_map<std::string, std::string> kCustomTypeMap = {
     {"std::vector<int64_t>", "pir::ArrayAttribute<pir::Int64Attribute>"},
     {"std::vector<std::string>", "pir::ArrayAttribute<pir::StrAttribute>"}};
 
-void PrintOpType(pir::Type type, std::ostream& os) {
+void PrintTypeImpl(pir::Type type, std::ostream& os) {
   os << type.dialect().name();
   os << '.';
   if (auto tensor_type = type.dyn_cast<DenseTensorType>()) {
@@ -66,7 +66,7 @@ void PrintOpType(pir::Type type, std::ostream& os) {
     os << ">";
   }
 }
-void PrintOpAttribute(pir::Attribute attr, std::ostream& os) {
+void PrintAttributeImpl(pir::Attribute attr, std::ostream& os) {
   os << "(" << attr.dialect().name();
   os << '.';
   if (auto int_array_attr = attr.dyn_cast<IntArrayAttribute>()) {
@@ -91,7 +91,8 @@ void PrintOpAttribute(pir::Attribute attr, std::ostream& os) {
   }
 }
 
-void PrintOperation(pir::Operation* op, pir::IrPrinter& printer) {  // NOLINT
+void PrintOperationImpl(pir::Operation* op,
+                        pir::IrPrinter& printer) {  // NOLINT
   if (auto if_op = op->dyn_cast<IfOp>()) {
     if_op.Print(printer);
   } else if (auto while_op = op->dyn_cast<WhileOp>()) {
@@ -155,12 +156,12 @@ void OperatorDialect::initialize() {
 }
 
 void OperatorDialect::PrintType(pir::Type type, std::ostream& os) const {
-  PrintOpType(type, os);
+  PrintTypeImpl(type, os);
 }
 
 void OperatorDialect::PrintAttribute(pir::Attribute attr,
                                      std::ostream& os) const {
-  PrintOpAttribute(attr, os);
+  PrintAttributeImpl(attr, os);
 }
 
 pir::Type OperatorDialect::ParseType(pir::IrParser& parser) {  // NOLINT
@@ -214,7 +215,7 @@ pir::Attribute OperatorDialect::ParseAttribute(
 
 void OperatorDialect::PrintOperation(pir::Operation* op,
                                      pir::IrPrinter& printer) const {
-  PrintOperation(op, printer);
+  PrintOperationImpl(op, printer);
 }
 
 class IdManager {
@@ -350,17 +351,17 @@ CustomOpDialect::CustomOpDialect(pir::IrContext* context)
     : pir::Dialect(name(), context, pir::TypeId::get<CustomOpDialect>()) {}
 
 void CustomOpDialect::PrintType(pir::Type type, std::ostream& os) const {
-  PrintOpType(type, os);
+  PrintTypeImpl(type, os);
 }
 
 void CustomOpDialect::PrintAttribute(pir::Attribute attr,
                                      std::ostream& os) const {
-  PrintOpAttribute(attr, os);
+  PrintAttributeImpl(attr, os);
 }
 
 void CustomOpDialect::PrintOperation(pir::Operation* op,
                                      pir::IrPrinter& printer) const {
-  PrintOperation(op, printer);
+  PrintOperationImpl(op, printer);
 }
 
 void CustomOpDialect::RegisterCustomOp(const paddle::OpMetaInfo& op_meta) {
