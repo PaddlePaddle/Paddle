@@ -1561,9 +1561,8 @@ void EmbeddingBagInferMeta(const MetaTensor& input,
       phi::vectorize(phi::slice_ddim(ids_dims, 0, ids_dims_size - 1));
   output_dims.push_back(table_dims[1]);
   out->set_dims(phi::make_ddim(output_dims));
-  for (auto i : output_dims) {
-  }
   out->set_dtype(weight.dtype());
+  out->share_lod(input);
 }
 
 }  // namespace phi
