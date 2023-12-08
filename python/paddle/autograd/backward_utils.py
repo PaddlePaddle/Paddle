@@ -15,11 +15,12 @@ from __future__ import annotations
 
 import collections
 import warnings
-
-from paddle.base import core
-from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from collections.abc import Sequence
 from typing import Any
+
+from paddle import pir
+from paddle.base import core
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
 
 class ValueWrapper:
@@ -27,7 +28,10 @@ class ValueWrapper:
         self.value = value.value if isinstance(value, ValueWrapper) else value
 
     def __hash__(self) -> int:
-        return self.value.hash()
+        if isinstance(self.value, pir.Value):
+            return self.value.hash()
+        else:
+            return hash(self.value)
 
     def __eq__(self, other) -> bool:
         tmp_other = other.value if isinstance(other, ValueWrapper) else other
