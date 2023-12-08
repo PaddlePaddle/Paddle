@@ -239,16 +239,22 @@ class TestArgsortOpCPU(unittest.TestCase):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
-            x_np = np.array([[2, 3, 4], [1, 2, 3]]).astype('float32')
-            x = paddle.static.data(shape=[2, 3], name='x', dtype='float32')
-            result = paddle.argsort(x, self.axis)
+            x_np = np.array(
+                [
+                    [[5, 8, 9, 5], [0, 0, 1, 7], [6, 9, 2, 4]],
+                    [[5, 2, 4, 2], [4, 7, 7, 9], [1, 7, 0, 6]],
+                ]
+            ).astype('float32')
+            x = paddle.static.data(shape=[2, 3, 4], name='x', dtype='float32')
+            out = paddle.argsort(x, self.axis)
             exe = paddle.static.Executor(self.place)
-            out = exe.run(
+            res = exe.run(
                 paddle.static.default_main_program(),
                 feed={'x': x_np},
-                fetch_list=[result],
+                fetch_list=[out],
             )
-            self.assertEqual(out.numpy() == np.argsort(x_np, self.axis))
+            expected_result = np.argsort(x_np, self.axis)
+            np.testing.assert_array_equal(res, expected_result)
         paddle.disable_static()
 
 
