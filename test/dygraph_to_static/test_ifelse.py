@@ -517,7 +517,7 @@ class IfElseNet(paddle.nn.Layer):
         a = paddle.matmul(a, self.param)
         a = paddle.reshape(a, (2, 4))
         cond = paddle.to_tensor([10])
-        if cond == 10:
+        if paddle.equal(cond, 10):
             a_argmax = a.argmax(axis=-1)
             b = b + self.param
         else:

@@ -42,6 +42,7 @@
 #include "paddle/fluid/distributed/ps/table/common_table.h"
 #include "paddle/fluid/distributed/ps/table/graph/class_macro.h"
 #include "paddle/fluid/distributed/ps/table/graph/graph_node.h"
+#include "paddle/fluid/distributed/ps/thirdparty/round_robin.h"
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/core/utils/rw_lock.h"
 
@@ -121,7 +122,9 @@ class GraphShard {
   }
   GraphNode *add_graph_node(uint64_t id);
   GraphNode *add_graph_node(Node *node);
-  FeatureNode *add_feature_node(uint64_t id, bool is_overlap = true);
+  FeatureNode *add_feature_node(uint64_t id,
+                                bool is_overlap = true,
+                                int float_fea_num = 0);
   Node *find_node(uint64_t id);
   void delete_node(uint64_t id);
   void clear();
@@ -437,68 +440,71 @@ class ScaledLRU {
   std::shared_ptr<::ThreadPool> thread_pool;
   friend class RandomSampleLRU<K, V>;
 };
-
-/*
-#ifdef PADDLE_WITH_HETERPS
-enum GraphSamplerStatus { waiting = 0, running = 1, terminating = 2 };
-class GraphTable;
-class GraphSampler {
- public:
-  GraphSampler() {
-    status = GraphSamplerStatus::waiting;
-    thread_pool.reset(new ::ThreadPool(1));
-    callback = [](std::vector<paddle::framework::GpuPsCommGraph> &res) {
-      return;
-    };
-  }
-  virtual int loadData(const std::string &path){
-    return 0;
-  }
-  virtual int run_graph_sampling() = 0;
-  virtual int start_graph_sampling() {
-    if (status != GraphSamplerStatus::waiting) {
+enum GraphTableType { EDGE_TABLE, FEATURE_TABLE, NODE_TABLE };
+class GraphTable : public Table {
+  class GraphNodeRank {
+   public:
+    GraphNodeRank() {}
+    ~GraphNodeRank() {}
+    void init(const int node_num, const int shard_num) {
+      shard_num_ = shard_num;
+      node_num_ = node_num;
+      rank_nodes_.resize(node_num);
+      rank_sizes_.resize(node_num, 0);
+      for (int i = 0; i < node_num_; ++i) {
+        rank_nodes_[i].resize(shard_num_);
+      }
+    }
+    void clear(void) {
+      rank_nodes_.clear();
+      rank_nodes_.shrink_to_fit();
+    }
+    void rehash(const int &shard_id, const size_t count) {
+      size_t per_count = (count + node_num_ - 1) / node_num_;
+      for (int i = 0; i < node_num_; ++i) {
+        rank_nodes_[i][shard_id].rehash(per_count);
+      }
+    }
+    bool empty(void) { return rank_nodes_.empty(); }
+    const size_t &nodes_num(const int &rank) { return rank_sizes_[rank]; }
+    bool add(const uint64_t &key, const int &rank) {
+      auto &hash = rank_nodes_[rank][key % shard_num_];
+      auto it = hash.find(key);
+      if (it != hash.end()) {
+        return false;
+      }
+      hash.insert(key);
+      ++rank_sizes_[rank];
+      return true;
+    }
+    void insert(const uint64_t &key, const int &rank) {
+      rank_nodes_[rank][key % shard_num_].insert(key);
+      ++rank_sizes_[rank];
+    }
+    int find(const uint64_t &key) {
+      int shard_id = key % shard_num_;
+      for (int i = 0; i < node_num_; ++i) {
+        auto &hash = rank_nodes_[i][shard_id];
+        auto it = hash.find(key);
+        if (it == hash.end()) {
+          continue;
+        }
+        return i;
+      }
       return -1;
     }
-    std::promise<int> prom;
-    std::future<int> fut = prom.get_future();
-    graph_sample_task_over = thread_pool->enqueue([&prom, this]() {
-      prom.set_value(0);
-      status = GraphSamplerStatus::running;
-      return run_graph_sampling();
-    });
-    return fut.get();
-  }
-  virtual void init(size_t gpu_num, GraphTable *graph_table,
-                    std::vector<std::string> args) = 0;
-  virtual void set_graph_sample_callback(
-      std::function<void(std::vector<paddle::framework::GpuPsCommGraph> &)>
-          callback) {
-    this->callback = callback;
-  }
-
-  virtual int end_graph_sampling() {
-    if (status == GraphSamplerStatus::running) {
-      status = GraphSamplerStatus::terminating;
-      return graph_sample_task_over.get();
+    std::vector<std::vector<robin_hood::unordered_set<uint64_t>>>
+    get_rank_nodes() {
+      return rank_nodes_;
     }
-    return -1;
-  }
-  virtual GraphSamplerStatus get_graph_sampler_status() { return status; }
 
- protected:
-  std::function<void(std::vector<paddle::framework::GpuPsCommGraph> &)>
-      callback;
-  std::shared_ptr<::ThreadPool> thread_pool;
-  GraphSamplerStatus status;
-  std::future<int> graph_sample_task_over;
-  std::vector<paddle::framework::GpuPsCommGraph> sample_res;
-};
-#endif
-*/
+   private:
+    int node_num_ = -1;
+    int shard_num_ = -1;
+    std::vector<std::vector<robin_hood::unordered_set<uint64_t>>> rank_nodes_;
+    std::vector<size_t> rank_sizes_;
+  };
 
-enum GraphTableType { EDGE_TABLE, FEATURE_TABLE };
-
-class GraphTable : public Table {
  public:
   GraphTable() {
     use_cache = false;
@@ -567,15 +573,18 @@ class GraphTable : public Table {
                                   std::string graph_data_local_path,
                                   int part_num,
                                   bool reverse,
-                                  const std::vector<bool> &is_reverse_edge_map);
+                                  const std::vector<bool> &is_reverse_edge_map,
+                                  bool use_weight);
   int32_t parse_edge_and_load(std::string etype2files,
                               std::string graph_data_local_path,
                               int part_num,
                               bool reverse,
-                              const std::vector<bool> &is_reverse_edge_map);
+                              const std::vector<bool> &is_reverse_edge_map,
+                              bool use_weight);
   int32_t parse_node_and_load(std::string ntype2files,
                               std::string graph_data_local_path,
-                              int part_num);
+                              int part_num,
+                              bool load_slot = true);
   std::string get_inverse_etype(std::string &etype);  // NOLINT
   int32_t parse_type_to_typepath(
       std::string &type2files,  // NOLINT
@@ -584,7 +593,8 @@ class GraphTable : public Table {
       std::unordered_map<std::string, std::string> &res_type2path);  // NOLINT
   int32_t load_edges(const std::string &path,
                      bool reverse,
-                     const std::string &edge_type);
+                     const std::string &edge_type,
+                     bool use_weight = false);
   int get_all_id(GraphTableType table_type,
                  int slice_num,
                  std::vector<std::vector<uint64_t>> *output);
@@ -606,14 +616,18 @@ class GraphTable : public Table {
   int get_node_embedding_ids(int slice_num,
                              std::vector<std::vector<uint64_t>> *output);
   int32_t load_nodes(const std::string &path,
-                     std::string node_type = std::string());
+                     std::string node_type = std::string(),
+                     bool load_slot = true);
   std::pair<uint64_t, uint64_t> parse_edge_file(const std::string &path,
                                                 int idx,
-                                                bool reverse);
+                                                bool reverse,
+                                                bool use_weight);
   std::pair<uint64_t, uint64_t> parse_node_file(const std::string &path,
                                                 const std::string &node_type,
-                                                int idx);
-  std::pair<uint64_t, uint64_t> parse_node_file(const std::string &path);
+                                                int idx,
+                                                bool load_slot = true);
+  std::pair<uint64_t, uint64_t> parse_node_file_parallel(
+      const std::string &path, bool load_slot = true);
   int32_t add_graph_node(int idx,
                          std::vector<uint64_t> &id_list,      // NOLINT
                          std::vector<bool> &is_weight_list);  // NOLINT
@@ -623,6 +637,10 @@ class GraphTable : public Table {
   int32_t get_server_index_by_id(uint64_t id);
   Node *find_node(GraphTableType table_type, int idx, uint64_t id);
   Node *find_node(GraphTableType table_type, uint64_t id);
+  // query all ids rank
+  void query_all_ids_rank(const size_t &total,
+                          const uint64_t *ids,
+                          uint32_t *ranks);
 
   virtual int32_t Pull(TableContext &context UNUSED) { return 0; }  // NOLINT
   virtual int32_t Push(TableContext &context UNUSED) { return 0; }  // NOLINT
@@ -636,6 +654,12 @@ class GraphTable : public Table {
                        const std::string &converter UNUSED) {
     return 0;
   }
+#ifdef PADDLE_WITH_GPU_GRAPH
+  virtual int32_t Save_v2(const std::string &path,
+                          const std::string &converter) {
+    return 0;
+  }
+#endif
   virtual int32_t InitializeShard() { return 0; }
   virtual int32_t SetShard(size_t shard_idx, size_t server_num) {
     _shard_idx = shard_idx;
@@ -648,6 +672,7 @@ class GraphTable : public Table {
     this->server_num = server_num;
     return 0;
   }
+
   virtual uint32_t get_thread_pool_index_by_shard_index(uint64_t shard_index);
   virtual uint32_t get_thread_pool_index(uint64_t node_id);
   virtual int parse_feature(int idx,
@@ -672,6 +697,7 @@ class GraphTable : public Table {
   void clear_graph(int idx);
   void clear_edge_shard();
   void clear_feature_shard();
+  void clear_node_shard();
   void feature_shrink_to_fit();
   void merge_feature_shard();
   void release_graph();
@@ -690,18 +716,6 @@ class GraphTable : public Table {
   }
   virtual void load_node_weight(int type_id, int idx, std::string path);
 #ifdef PADDLE_WITH_HETERPS
-  // virtual int32_t start_graph_sampling() {
-  //   return this->graph_sampler->start_graph_sampling();
-  // }
-  // virtual int32_t end_graph_sampling() {
-  //   return this->graph_sampler->end_graph_sampling();
-  // }
-  // virtual int32_t set_graph_sample_callback(
-  //     std::function<void(std::vector<paddle::framework::GpuPsCommGraph> &)>
-  //         callback) {
-  //   graph_sampler->set_graph_sample_callback(callback);
-  //   return 0;
-  // }
   virtual void make_partitions(int idx, int64_t gb_size, int device_len);
   virtual void export_partition_files(int idx, std::string file_path);
   virtual char *random_sample_neighbor_from_ssd(
@@ -716,6 +730,11 @@ class GraphTable : public Table {
       int idx, const std::vector<uint64_t> &ids);
   virtual ::paddle::framework::GpuPsCommGraphFea make_gpu_ps_graph_fea(
       int gpu_id, std::vector<uint64_t> &node_ids, int slot_num);  // NOLINT
+  virtual paddle::framework::GpuPsCommGraphFloatFea make_gpu_ps_graph_float_fea(
+      int gpu_id,
+      std::vector<uint64_t> &node_ids,  // NOLINT
+      int float_slot_num);
+  virtual paddle::framework::GpuPsCommRankFea make_gpu_ps_rank_fea(int gpu_id);
   int32_t Load_to_ssd(const std::string &path, const std::string &param);
   int64_t load_graph_to_memory_from_ssd(int idx,
                                         std::vector<uint64_t> &ids);  // NOLINT
@@ -735,6 +754,14 @@ class GraphTable : public Table {
                             const std::string &edge_type);
   int32_t load_next_partition(int idx);
   void set_search_level(int search_level) { this->search_level = search_level; }
+
+  void graph_partition(bool is_edge);
+  void dbh_graph_edge_partition();
+  void dbh_graph_feature_partition();
+  void fennel_graph_edge_partition();
+  void filter_graph_edge_nodes();
+  void fennel_graph_feature_partition();
+
   int search_level;
   int64_t total_memory_cost;
   std::vector<std::vector<std::vector<uint64_t>>> partitions;
@@ -747,15 +774,31 @@ class GraphTable : public Table {
 
   void build_graph_total_keys();
   void build_graph_type_keys();
+  void calc_edge_type_limit();
+  void build_node_iter_type_keys();
+  bool is_key_for_self_rank(const uint64_t &id);
+  int partition_key_for_rank(const uint64_t &key);
+  void fix_feature_node_shards(bool load_slot);
+  void stat_graph_edge_info(int type);
+  std::string node_types_idx_to_node_type_str(int node_types_idx);
+  std::string index_to_node_type_str(int index);
 
   std::vector<uint64_t> graph_total_keys_;
   std::vector<std::vector<uint64_t>> graph_type_keys_;
   std::unordered_map<int, int> type_to_index_;
+  std::unordered_map<int, int> index_to_type_;
+  std::vector<std::string> node_types_;
+  robin_hood::unordered_set<uint64_t> unique_all_edge_keys_;
+  // node 2 rank
+  GraphNodeRank egde_node_rank_;
+  std::unordered_map<int, int> type_to_neighbor_limit_;
 
-  std::vector<std::vector<GraphShard *>> edge_shards, feature_shards;
+  std::vector<std::vector<GraphShard *>> edge_shards, feature_shards,
+      node_shards;
   size_t shard_start, shard_end, server_num, shard_num_per_server, shard_num;
   int task_pool_size_ = 64;
-  int load_thread_num = 160;
+  int load_thread_num_ = 160;
+  std::vector<std::vector<std::vector<uint64_t>>> edge_shards_keys_;
 
   const int random_sample_nodes_ranges = 3;
 
@@ -763,12 +806,20 @@ class GraphTable : public Table {
   std::vector<std::vector<std::string>> feat_name;
   std::vector<std::vector<std::string>> feat_dtype;
   std::vector<std::vector<int32_t>> feat_shape;
+  std::vector<std::vector<std::string>> float_feat_name;
+  std::vector<std::vector<std::string>> float_feat_dtype;
+  std::vector<std::vector<int32_t>> float_feat_shape;
+  // int slot_fea_num_{-1};
+  // int float_fea_num_{-1};
   std::vector<std::unordered_map<std::string, int32_t>> feat_id_map;
-  std::unordered_map<std::string, int> feature_to_id, edge_to_id;
+  std::vector<std::unordered_map<std::string, int32_t>> float_feat_id_map;
+  std::unordered_map<std::string, int> node_type_str_to_node_types_idx,
+      edge_to_id;
   std::vector<std::string> id_to_feature, id_to_edge;
   std::string table_name;
   std::string table_type;
   std::vector<std::string> edge_type_size;
+  std::vector<std::vector<int>> nodeid_to_edgeids_;
 
   std::vector<std::shared_ptr<::ThreadPool>> _shards_task_pool;
   std::vector<std::shared_ptr<::ThreadPool>> _cpu_worker_pool;
@@ -795,51 +846,10 @@ class GraphTable : public Table {
   std::string feature_separator_ = std::string(" ");
   std::vector<int> slot_feature_num_map_;
   bool is_parse_node_fail_ = false;
+  int node_num_ = 1;
+  int node_id_ = 0;
+  bool is_weighted_ = false;
 };
-
-/*
-#ifdef PADDLE_WITH_HETERPS
-REGISTER_PSCORE_REGISTERER(GraphSampler);
-class CompleteGraphSampler : public GraphSampler {
- public:
-  CompleteGraphSampler() {}
-  ~CompleteGraphSampler() {}
-  // virtual pthread_rwlock_t *export_rw_lock();
-  virtual int run_graph_sampling();
-  virtual void init(size_t gpu_num, GraphTable *graph_table,
-                    std::vector<std::string> args_);
-
- protected:
-  GraphTable *graph_table;
-  std::vector<std::vector<paddle::framework::GpuPsGraphNode>> sample_nodes;
-  std::vector<std::vector<uint64_t>> sample_neighbors;
-  // std::vector<GpuPsCommGraph> sample_res;
-  // std::shared_ptr<std::mt19937_64> random;
-  int gpu_num;
-};
-
-class BasicBfsGraphSampler : public GraphSampler {
- public:
-  BasicBfsGraphSampler() {}
-  ~BasicBfsGraphSampler() {}
-  // virtual pthread_rwlock_t *export_rw_lock();
-  virtual int run_graph_sampling();
-  virtual void init(size_t gpu_num, GraphTable *graph_table,
-                    std::vector<std::string> args_);
-
- protected:
-  GraphTable *graph_table;
-  // std::vector<std::vector<GpuPsGraphNode>> sample_nodes;
-  std::vector<std::vector<paddle::framework::GpuPsGraphNode>> sample_nodes;
-  std::vector<std::vector<uint64_t>> sample_neighbors;
-  size_t gpu_num;
-  int init_search_size, node_num_for_each_shard, edge_num_for_each_node;
-  int rounds, interval;
-  std::vector<std::unordered_map<uint64_t, std::vector<uint64_t>>>
-      sample_neighbors_map;
-};
-#endif
-*/
 }  // namespace distributed
 
 };  // namespace paddle

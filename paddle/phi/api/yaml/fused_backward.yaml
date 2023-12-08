@@ -34,6 +34,7 @@
   optional :  sin, cos, position_ids, out_k_grad, out_v_grad, k_grad, v_grad
   infer_meta :
     func : FusedRopeGradInferMeta
+    spmd_rule : FuseRopeGradInferSpmd
   kernel :
     func : fused_rotary_position_embedding_grad
     data_type : out_q_grad

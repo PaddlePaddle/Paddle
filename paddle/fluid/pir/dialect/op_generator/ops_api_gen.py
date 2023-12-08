@@ -99,6 +99,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'self_dp_attention',
     'get_tensor_from_selected_rows',
     'print',
+    'sequence_mask',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
