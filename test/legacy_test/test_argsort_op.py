@@ -239,8 +239,8 @@ class TestArgsortOpCPU(unittest.TestCase):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
-            x_np = np.random.random((2, 4)).astype('float32')
-            x = paddle.static.data(shape=[2, 4], name='x', dtype='float32')
+            x_np = np.array([[2, 3, 4], [1, 2, 3]]).astype('float32')
+            x = paddle.static.data(shape=[2, 3], name='x', dtype='float32')
             result = paddle.argsort(x)
             for use_cuda in [False, True]:
                 if use_cuda and (not base.core.is_compiled_with_cuda()):
