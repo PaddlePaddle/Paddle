@@ -47,11 +47,11 @@ class Rprop(Optimizer):
         if (
             not 0.0
             < learning_rate_range[0]
-            < learning_rate
-            < learning_rate_range[1]
+            <= learning_rate
+            <= learning_rate_range[1]
         ):
             raise ValueError(
-                "'0.0 < learning_rate_range[0] < learning_rate < learning_rate_range[1]' must be true"
+                "'0.0 < learning_rate_range[0] <= learning_rate <= learning_rate_range[1]' must be true"
             )
         if not 0.0 < etas[0] < 1.0 < etas[1]:
             raise ValueError("'0.0 < etas[0] < 1.0 < etas[1]' must be true")
