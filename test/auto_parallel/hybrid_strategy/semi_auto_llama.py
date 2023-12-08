@@ -101,7 +101,7 @@ class TestLlamaAuto:
         global_mesh = dist.ProcessMesh(mesh_arr, dim_names)
         set_global_mesh(global_mesh)
 
-    def run_test_cases(self):
+    def run_dynamic(self):
         model = LlamaForCausalLMAuto(self.config)
 
         lr_scheduler = paddle.optimizer.lr.LinearWarmup(
@@ -150,6 +150,72 @@ class TestLlamaAuto:
                 global_step += 1
                 if global_step // self.gradient_accumulation_steps >= 10:
                     break
+
+    def run_dy2static(self):
+        model = LlamaForCausalLMAuto(self.config)
+
+        lr_scheduler = paddle.optimizer.lr.LinearWarmup(
+            learning_rate=0.0001, warmup_steps=2, start_lr=0, end_lr=0.0001
+        )
+        optimizer = create_optimizer(model, lr_scheduler)
+        optimizer = dist.shard_optimizer(optimizer)
+
+        train_dataset = RandomDataset(self.config.seq_length)
+        train_sampler = BatchSampler(
+            train_dataset,
+            batch_size=2,
+            shuffle=True,
+            drop_last=True,
+        )
+        train_dataloader = DataLoader(
+            train_dataset,
+            batch_sampler=train_sampler,
+            num_workers=0,
+        )
+
+        if isinstance(optimizer, dist.auto_parallel.api._ShardOptimizer):
+            opt = optimizer._inner_opt
+        else:
+            opt = optimizer
+
+        dist_model, dist_loader = dist.to_static(
+            model, train_dataloader, model.criterion, opt
+        )
+
+        for step, inputs in enumerate(dist_loader()):
+            input_ids, labels = inputs
+            loss = dist_model(input_ids, labels)
+        # global_step = 1
+        # tr_loss = float(0)
+
+        # model.train()
+        # for epoch_idx in range(1):
+        #     for step, inputs in enumerate(train_dataloader):
+        #         input_ids, labels = inputs
+        #         tr_loss_step, _ = model(input_ids, labels=labels)
+
+        #         if self.gradient_accumulation_steps > 1:
+        #             tr_loss_step /= self.gradient_accumulation_steps
+
+        #         tr_loss_step.backward()
+        #         tr_loss += tr_loss_step
+
+        #         if global_step % self.gradient_accumulation_steps == 0:
+        #             print(
+        #                 f"step: {global_step // self.gradient_accumulation_steps}  loss: {tr_loss.numpy()}"
+        #             )
+        #             optimizer.step()
+        #             optimizer.clear_grad()
+        #             lr_scheduler.step()
+        #             tr_loss = 0
+
+        #         global_step += 1
+        #         if global_step // self.gradient_accumulation_steps >= 10:
+        #             break
+
+    def run_test_cases(self):
+        # self.run_dynamic()
+        self.run_dy2static()
 
 
 if __name__ == '__main__':
