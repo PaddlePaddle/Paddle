@@ -33,6 +33,7 @@
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/device_manager.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/framework/io/save_load_tensor.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
@@ -42,7 +43,8 @@ PHI_DECLARE_bool(dynamic_static_unified_comm);
 
 PD_DECLARE_bool(enable_host_event_recorder_hook);
 PD_DECLARE_bool(log_memory_stats);
-
+PHI_DECLARE_string(static_runtime_data_save_path);
+PHI_DECLARE_bool(save_static_runtime_data);
 namespace paddle {
 namespace framework {
 
@@ -1051,6 +1053,44 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
     for (auto& hook : output_hookfuncs_) {
       hook(op, local_scope);
     }
+  }
+
+  if (op_with_kernel != nullptr && FLAGS_save_static_runtime_data) {
+    VLOG(6) << "start to save paddle variable";
+    auto root_path = FLAGS_static_runtime_data_save_path;
+    for (auto& vname : op->InputVars()) {
+      auto* var = local_scope->FindVar(vname);
+      if (var == nullptr) continue;
+      const phi::DenseTensor* tensor{nullptr};
+      if (var->IsType<phi::DenseTensor>()) {
+        tensor = &var->Get<phi::DenseTensor>();
+      } else {
+        VLOG(6) << vname << " is not DenseTensor";
+        continue;
+      }
+      if (!tensor->IsInitialized()) continue;
+      paddle::framework::SaveTensor(
+          *tensor,
+          root_path + "/saved_tensors/" + op->Type() + "-input-" + vname,
+          false);
+    }
+    for (auto& vname : op->OutputVars(true)) {
+      auto* var = local_scope->FindVar(vname);
+      if (var == nullptr) continue;
+      const phi::DenseTensor* tensor{nullptr};
+      if (var->IsType<phi::DenseTensor>()) {
+        tensor = &var->Get<phi::DenseTensor>();
+      } else {
+        VLOG(6) << vname << "  is not DenseTensor";
+        continue;
+      }
+      if (!tensor->IsInitialized()) continue;
+      paddle::framework::SaveTensor(
+          *tensor,
+          root_path + "/saved_tensors/" + op->Type() + "-output-" + vname,
+          false);
+    }
+    VLOG(6) << "end save paddle variable";
   }
 
   // for debug nan/inf
