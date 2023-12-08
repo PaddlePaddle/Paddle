@@ -730,7 +730,8 @@ void BindOpOperand(py::module *m) {
            [](OpOperand &self, const OpResult &result) {
              self.set_source(result);
            })
-      .def("owner", &OpOperand::owner, return_value_policy::reference);
+      .def("owner", &OpOperand::owner, return_value_policy::reference)
+      .def("index", &OpOperand::index);
 }
 
 bool GetOpResultBoolAttr(const OpResult &self, const std::string &attr_name) {
