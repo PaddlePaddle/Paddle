@@ -330,13 +330,13 @@ def amp_guard(
 
     # check amp_level: O0-O2
     level = level.upper()
-    if not (level in ['O0', 'OD', 'O1', 'O2']):
+    if level not in ['O0', 'OD', 'O1', 'O2']:
         raise ValueError("level should be O0, OD, O1 or O2.")
 
     # check amp_dtype: float16 or bfloat16
     dtype = dtype.lower()
     if enable:
-        if not (dtype in ['float16', 'bfloat16']):
+        if dtype not in ['float16', 'bfloat16']:
             raise ValueError(
                 "If enable amp, dtype should be 'float16' or 'bfloat16'."
             )
@@ -576,11 +576,11 @@ def amp_decorate(
             ...     print(output.dtype)
             paddle.float16
     """
-    if not (level in ['O1', 'O2']):
+    if level not in ['O1', 'O2']:
         raise ValueError(
             "level should be O1 or O2, O1 represent AMP train mode, O2 represent Pure fp16 train mode."
         )
-    if not (dtype in ['float16', 'bfloat16']):
+    if dtype not in ['float16', 'bfloat16']:
         raise ValueError("dtype only support float16 or bfloat16.")
 
     if level == 'O1':
@@ -660,7 +660,7 @@ def amp_decorate(
                 "optimizers must be either a single optimizer or a list of optimizers."
             )
         # support master_weight
-        use_multi_precision = not (master_weight is False)
+        use_multi_precision = master_weight is not False
         for opt in optimizers:
             _set_multi_precision(opt, use_multi_precision)
 
@@ -673,7 +673,7 @@ def amp_decorate(
                 )
 
     if save_dtype is not None:
-        if not (save_dtype in ['float16', 'bfloat16', 'float32', 'float64']):
+        if save_dtype not in ['float16', 'bfloat16', 'float32', 'float64']:
             raise ValueError(
                 "save_dtype can only be float16 float32 or float64, but your input save_dtype is %s."
                 % save_dtype

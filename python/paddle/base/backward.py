@@ -2044,6 +2044,11 @@ def append_backward(
             >>> p_g_list6 = paddle.static.append_backward(loss=avg_loss, parameter_list=all_weights, no_grad_set=set(all_weights))
 
     """
+    if framework.in_pir_mode():
+        return paddle.autograd.ir_backward.append_backward(
+            loss, parameter_list, no_grad_set
+        )
+
     grad_op_id_to_fwd_op = (
         {}
     )  # for cuda graph usage, recording the mapping between grad op original id to fwd op

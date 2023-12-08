@@ -211,7 +211,6 @@ class TestSimpleNetForSemiAutoParallel:
 
         np.testing.assert_allclose(dy_losses, dy2static_losses, rtol=1e-6)
 
-    # python -m paddle.distributed.launch --devices=0,1 semi_auto_parallel_static_decorate_mlp.py
     def run_test_case(self):
         self.test_dp_demo_net()
         self.test_mp_demo_net()

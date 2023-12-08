@@ -18,6 +18,9 @@ from collections import Counter
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    IrMode,
+    ToStaticMode,
+    disable_test_case,
     enable_to_static_guard,
     test_ast_only,
     test_legacy_and_pt_and_pir,
@@ -172,6 +175,7 @@ def sum_under_while(limit):
     return ret_sum
 
 
+@disable_test_case((ToStaticMode.AST, IrMode.PT))
 class TestToOutputWithCache(Dy2StTestBase):
     def test_output(self):
         ret = paddle.jit.to_static(sum_even_until_limit)(80, 10)

@@ -173,7 +173,7 @@ void dispatch_gemm_to_cutlass(const T* A,
   // fpA_intB. We also only instantiate configs here where threadblockShapeM ==
   // warpShapeM since those usually perform the best for mixed type gemms.
   switch (gemm_config.tile_config) {
-#ifndef USE_FPAINTB_GEMM_WITH_SM70
+#if defined(USE_FPAINTB_GEMM_WITH_SM80) || defined(USE_FPAINTB_GEMM_WITH_SM86)
     case CutlassTileConfig::CtaShape16x128x64_WarpShape16x32x64:
       dispatch_gemm_config<T,
                            WeightType,
@@ -238,7 +238,7 @@ void dispatch_gemm_to_cutlass(const T* A,
           stream,
           occupancy);
       break;
-#ifndef USE_FPAINTB_GEMM_WITH_SM70
+#if defined(USE_FPAINTB_GEMM_WITH_SM80) || defined(USE_FPAINTB_GEMM_WITH_SM86)
     case CutlassTileConfig::CtaShape128x128x64_WarpShape64x64x64:
       dispatch_gemm_config<T,
                            WeightType,
@@ -300,6 +300,84 @@ void dispatch_gemm_to_cutlass(const T* A,
   }
 }
 
+template <typename T, typename WeightType, typename arch, typename EpilogueTag>
+void dispatch_gemm_to_cutlass_sm7x(const T* A,
+                                   const WeightType* B,
+                                   const T* weight_scales,
+                                   const T* biases,
+                                   T* C,
+                                   int m,
+                                   int n,
+                                   int k,
+                                   char* workspace,
+                                   size_t workspace_bytes,
+                                   CutlassGemmConfig gemm_config,
+                                   cudaStream_t stream,
+                                   int* occupancy) {
+  // VLOG(3)<<__PRETTY_FUNCTION__;
+  // Note that SIMT configs are omitted here since they are not supported for
+  // fpA_intB. We also only instantiate configs here where threadblockShapeM ==
+  // warpShapeM since those usually perform the best for mixed type gemms.
+  switch (gemm_config.tile_config) {
+    case CutlassTileConfig::CtaShape32x128x64_WarpShape32x32x64:
+      dispatch_gemm_config<T,
+                           WeightType,
+                           arch,
+                           EpilogueTag,
+                           cutlass::gemm::GemmShape<32, 128, 64>,
+                           cutlass::gemm::GemmShape<32, 32, 64>>(
+          A,
+          B,
+          weight_scales,
+          biases,
+          C,
+          m,
+          n,
+          k,
+          gemm_config,
+          workspace,
+          workspace_bytes,
+          stream,
+          occupancy);
+      break;
+    case CutlassTileConfig::CtaShape64x128x64_WarpShape64x64x64:
+      dispatch_gemm_config<T,
+                           WeightType,
+                           arch,
+                           EpilogueTag,
+                           cutlass::gemm::GemmShape<64, 128, 64>,
+                           cutlass::gemm::GemmShape<64, 64, 64>>(
+          A,
+          B,
+          weight_scales,
+          biases,
+          C,
+          m,
+          n,
+          k,
+          gemm_config,
+          workspace,
+          workspace_bytes,
+          stream,
+          occupancy);
+      break;
+    case CutlassTileConfig::Undefined:
+      throw std::runtime_error(
+          "[fpA_intB][dispatch_gemm_to_cutlass] gemm config undefined.");
+      break;
+    case CutlassTileConfig::ChooseWithHeuristic:
+      throw std::runtime_error(
+          "[fpA_intB][dispatch_gemm_to_cutlass] gemm config should have "
+          "already been set by heuristic.");
+      break;
+    default:
+      throw std::runtime_error(
+          "[fpA_intB][dispatch_gemm_to_cutlass] Config is invalid for mixed "
+          "type GEMM.");
+      break;
+  }
+}
+
 template <typename T, typename WeightType>
 CutlassFpAIntBGemmRunner<T, WeightType>::CutlassFpAIntBGemmRunner() {
   // VLOG(3)<<__PRETTY_FUNCTION__;
@@ -334,20 +412,22 @@ void CutlassFpAIntBGemmRunner<T, WeightType>::dispatch_to_arch<EpilogueTag>(
   // VLOG(3)<<__PRETTY_FUNCTION__;
   if (sm_ >= 70 && sm_ < 75) {
 #if defined(USE_FPAINTB_GEMM_WITH_SM70)
-    dispatch_gemm_to_cutlass<T, WeightType, cutlass::arch::Sm70, EpilogueTag>(
-        A,
-        B,
-        weight_scales,
-        biases,
-        C,
-        m,
-        n,
-        k,
-        workspace_ptr,
-        workspace_bytes,
-        gemm_config,
-        stream,
-        occupancy);
+    dispatch_gemm_to_cutlass_sm7x<T,
+                                  WeightType,
+                                  cutlass::arch::Sm70,
+                                  EpilogueTag>(A,
+                                               B,
+                                               weight_scales,
+                                               biases,
+                                               C,
+                                               m,
+                                               n,
+                                               k,
+                                               workspace_ptr,
+                                               workspace_bytes,
+                                               gemm_config,
+                                               stream,
+                                               occupancy);
 #else
     throw std::runtime_error(
         "[CutlassFpAIntBGemmRunner][GEMM Dispatch] Arch unsupported for "
@@ -355,20 +435,22 @@ void CutlassFpAIntBGemmRunner<T, WeightType>::dispatch_to_arch<EpilogueTag>(
 #endif
   } else if (sm_ >= 75 && sm_ < 80) {
 #if defined(USE_FPAINTB_GEMM_WITH_SM75)
-    dispatch_gemm_to_cutlass<T, WeightType, cutlass::arch::Sm75, EpilogueTag>(
-        A,
-        B,
-        weight_scales,
-        biases,
-        C,
-        m,
-        n,
-        k,
-        workspace_ptr,
-        workspace_bytes,
-        gemm_config,
-        stream,
-        occupancy);
+    dispatch_gemm_to_cutlass_sm7x<T,
+                                  WeightType,
+                                  cutlass::arch::Sm75,
+                                  EpilogueTag>(A,
+                                               B,
+                                               weight_scales,
+                                               biases,
+                                               C,
+                                               m,
+                                               n,
+                                               k,
+                                               workspace_ptr,
+                                               workspace_bytes,
+                                               gemm_config,
+                                               stream,
+                                               occupancy);
 #else
     throw std::runtime_error(
         "[CutlassFpAIntBGemmRunner][GEMM Dispatch] Arch unsupported for "

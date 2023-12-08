@@ -306,7 +306,7 @@ class XPUOpTest(OpTest):
         for input_to_check in inputs_to_check:
             set_input(self.scope, self.op, self.inputs, place)
 
-        if not type(output_names) is list:
+        if type(output_names) is not list:
             output_names = [output_names]
 
         if self.dtype not in mean_grad_op_types_np:
