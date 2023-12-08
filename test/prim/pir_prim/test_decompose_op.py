@@ -51,7 +51,8 @@ def get_pir_program_and_param_map():
         )
         tmp6 = paddle.nn.functional.dropout(tmp5, p=0.5)
         tmp7 = paddle.add(x, tmp6)
-        out = paddle.mean(tmp7)
+        tmp8 = paddle.concat(tmp7)
+        out = paddle.mean(tmp8)
         # construct backward graph
         gradients = paddle.static.gradients(out, [x, y, z])
 
@@ -84,6 +85,7 @@ class TestDecomposeOp(unittest.TestCase):
 
             # get the grad_var_to_var
             grad_var_to_var = {
+                'concat_1.tmp_0@GRAD': 'concat_1.tmp_0',
                 'dropout_1.tmp_0@GRAD': 'dropout_1.tmp_0',
                 'elementwise_add_2@GRAD': 'elementwise_add_2',
                 'elementwise_add_3@GRAD': 'elementwise_add_3',
