@@ -452,6 +452,7 @@ def prune_by_num_gpus(tuner_cfg, cur_cfg, history_cfgs=[]):
 @register_prune
 def prune_by_memory_estimation(tuner_cfg, cur_cfg, history_cfgs):
     memory_estimation_tool = tuner_cfg.get("memory_estimation_tool", None)
+    # TODO(@gexiao): get from system api
     max_memory_usage = tuner_cfg.get("max_mem_usage", None)
     model_cfg = tuner_cfg["model_cfg"]
 
@@ -483,10 +484,8 @@ def prune_by_memory_estimation(tuner_cfg, cur_cfg, history_cfgs):
         text=True,
     )
     if result.returncode == 0:
-        cur_memory_usage = float(result.stdout)
-        print(
-            f"Estimatied memory of current config: {cur_cfg} is {cur_memory_usage}"
-        )
+        cur_memory_usage = round(float(result.stdout), 2)
+        cur_cfg["estimated_memory_usage"] = cur_memory_usage
         return cur_memory_usage > max_memory_usage
     else:
         raise ValueError(
