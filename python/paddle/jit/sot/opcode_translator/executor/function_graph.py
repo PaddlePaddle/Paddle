@@ -260,9 +260,13 @@ class FunctionGraph:
         restore_instr_names = [
             instr.opname for instr in restore_instrs[:instr_idx]
         ]
-        # NOTE(SigureMo): Trailing KW_NAMES + PRECALL is no need to restore in Python 3.11+
-        if restore_instr_names[-2:] == ["KW_NAMES", "PRECALL"]:
-            restore_instrs = restore_instrs[:-2]
+        # NOTE(SigureMo): Trailing KW_NAMES or PRECALL is no need to restore in Python 3.11+
+        if restore_instr_names[-1:] == ["PRECALL"]:
+            restore_instrs = restore_instrs[:-1]
+            restore_instr_names = restore_instr_names[:-1]
+        if restore_instr_names[-1:] == ["KW_NAMES"]:
+            restore_instrs = restore_instrs[:-1]
+            restore_instr_names = restore_instr_names[:-1]
 
         self.pycode_gen.extend_instrs(restore_instrs)
         nop = self.pycode_gen._add_instr("NOP")
