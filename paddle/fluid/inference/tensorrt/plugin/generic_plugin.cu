@@ -418,6 +418,19 @@ bool GenericPlugin::supportsFormatCombination(
     if (pos == 3 || pos == 2)
       return in_out[0].type == in_out[pos].type &&
              in_out[0].format == in_out[pos].format;
+  } else if (op_desc_.Type() == "solve") {
+    // input X
+    if (pos == 0)
+      return in_out[pos].type == nvinfer1::DataType::kFLOAT &&
+             in_out[pos].format == nvinfer1::TensorFormat::kLINEAR;
+    // input Y
+    if (pos == 1)
+      return in_out[pos].type == nvinfer1::DataType::kFLOAT &&
+             in_out[pos].format == nvinfer1::TensorFormat::kLINEAR;
+    // output
+    if (pos == 2)
+      return in_out[0].type == in_out[pos].type &&
+             in_out[0].format == in_out[pos].format;
   } else {
     return (in_out[pos].type == nvinfer1::DataType::kFLOAT ||
             (isFp16Supported() &&
@@ -580,7 +593,7 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     for (int k = 0; k < input_shape.size(); k++) input_numel *= input_shape[k];
     auto data_type_and_size = nvType2PhiType(input_desc[i].type);
     phi::DenseTensorMeta input_meta(data_type_and_size.first,
-                                    phi::make_ddim(input_shape));
+                                    common::make_ddim(input_shape));
     std::shared_ptr<phi::Allocation> input_alloc(
         new phi::Allocation((void*)(inputs[i]),  // NOLINT
                             input_numel * data_type_and_size.second,
@@ -604,7 +617,7 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
 
     auto data_type_and_size = nvType2PhiType(output_desc[i].type);
     phi::DenseTensorMeta output_meta(data_type_and_size.first,
-                                     phi::make_ddim(output_shape));
+                                     common::make_ddim(output_shape));
     std::shared_ptr<phi::Allocation> output_alloc(
         new phi::Allocation(reinterpret_cast<void*>(outputs[i]),
                             output_numel * data_type_and_size.second,

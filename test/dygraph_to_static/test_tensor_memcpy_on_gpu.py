@@ -16,7 +16,10 @@ import os
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_legacy_and_pt_and_pir,
+)
 
 import paddle
 
@@ -46,14 +49,12 @@ class TestTensorCopyToCpuOnDefaultGPU(Dy2StTestBase):
         x2 = paddle.jit.to_static(tensor_copy_to_cpu)(x1)
         return x1.place, x2.place, x2.numpy()
 
+    @test_legacy_and_pt_and_pir
     def test_tensor_cpu_on_default_gpu(self):
-        if paddle.base.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(
-                int(os.environ.get('FLAGS_selected_gpus', 0))
-            )
-        else:
+        if not paddle.is_compiled_with_cuda():
             return
-        paddle.base.framework._set_expected_place(place)
+        place = paddle.CUDAPlace(int(os.environ.get('FLAGS_selected_gpus', 0)))
+        paddle.framework._set_expected_place(place)
         dygraph_x1_place, dygraph_place, dygraph_res = self._run(
             to_static=False
         )
@@ -72,14 +73,12 @@ class TestTensorCopyToCUDAOnDefaultGPU(Dy2StTestBase):
         x2 = paddle.jit.to_static(tensor_copy_to_cuda)(x1)
         return x1.place, x2.place, x2.numpy()
 
+    @test_legacy_and_pt_and_pir
     def test_tensor_cuda_on_default_gpu(self):
-        if paddle.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(
-                int(os.environ.get('FLAGS_selected_gpus', 0))
-            )
-        else:
+        if not paddle.is_compiled_with_cuda():
             return
-        paddle.base.framework._set_expected_place(place)
+        place = paddle.CUDAPlace(int(os.environ.get('FLAGS_selected_gpus', 0)))
+        paddle.framework._set_expected_place(place)
         dygraph_x1_place, dygraph_place, dygraph_res = self._run(
             to_static=False
         )
@@ -100,14 +99,12 @@ class TestTensorCopyToCUDAWithWarningOnGPU(unittest.TestCase):
         )
         return x1.place, x2.place, x2.numpy()
 
+    @test_legacy_and_pt_and_pir
     def test_with_warning_on_gpu(self):
-        if paddle.base.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(
-                int(os.environ.get('FLAGS_selected_gpus', 0))
-            )
-        else:
+        if not paddle.is_compiled_with_cuda():
             return
-        paddle.base.framework._set_expected_place(place)
+        place = paddle.CUDAPlace(int(os.environ.get('FLAGS_selected_gpus', 0)))
+        paddle.framework._set_expected_place(place)
 
         x1 = paddle.ones([1, 2, 3])
         with self.assertWarns(UserWarning, msg="ignored") as cm:

@@ -63,6 +63,7 @@ class CompilationTask {
   void Lowering();
   void CodegenAndJit();
   std::unique_ptr<Instruction> BuildInstruction();
+  pir::CINNKernelInfo BuildPirCINNKernelInfo();
 
  private:
   GroupCompilationContext* context_;

@@ -24,10 +24,10 @@
 #include <string>
 #include <vector>
 
+#include "paddle/common/errors.h"
 #include "paddle/phi/common/reduce_type.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/tensor_meta.h"
 
 namespace phi {
@@ -133,6 +133,7 @@ class Partial : public Placement {
  public:
   explicit Partial(ReduceType reduce_type) : reduce_type_(reduce_type) {}
   bool is_partial() const override { return true; }
+  ReduceType get_reduce_type() const { return reduce_type_; }
 
   bool operator==(const Placement& other) const override {
     const Partial* other_partial = dynamic_cast<const Partial*>(&other);

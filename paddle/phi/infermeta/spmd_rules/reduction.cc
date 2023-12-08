@@ -70,7 +70,7 @@ SpmdInfo ReductionInferSpmdBase(const DistMetaTensor& x,
                                 bool keep_dim,
                                 int reduce_type) {
   // Step0: Verify input args based on reduction logic
-  auto x_shape = phi::vectorize(x.dims());
+  auto x_shape = common::vectorize(x.dims());
   int x_ndim = x_shape.size();
   auto x_dist_attr_src = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
@@ -112,7 +112,6 @@ SpmdInfo ReductionInferSpmdBase(const DistMetaTensor& x,
       ResoluteOutputPartialDimension(axis_to_dim_map, out_axes);
   out_dist_attr.set_partial_status(partial_on_dims,
                                    static_cast<ReduceType>(reduce_type));
-
   // Step3.2  handle input tensor partial (TODO)
   // If the op is a linear op, i.e. `linearity` is true, it supports
   // the input to be partial. Otherwise, the input cannot be partial
@@ -171,8 +170,8 @@ SpmdInfo ReductionInferSpmdReverse(const DistMetaTensor& x,
                                    const std::vector<int64_t>& axis,
                                    bool keep_dim) {
   // Step0: Verify input args based on reduction logic
-  auto x_shape = phi::vectorize(x.dims());
-  auto out_shape = phi::vectorize(out.dims());
+  auto x_shape = common::vectorize(x.dims());
+  auto out_shape = common::vectorize(out.dims());
   int x_ndim = x_shape.size();
   int out_ndim = out_shape.size();
   auto out_dist_attr_src = out.dist_attr();
@@ -229,8 +228,8 @@ SpmdInfo ReductionGradInferSpmd(const DistMetaTensor& x,
   TensorDistAttr x_dist_attr = out_grad_dist_attr;
   TensorDistAttr x_grad_dist_attr = out_grad_dist_attr;
 
-  std::vector<int64_t> x_dim = phi::vectorize(x.dims());
-  std::vector<int64_t> out_grad_dim = phi::vectorize(out_grad.dims());
+  std::vector<int64_t> x_dim = common::vectorize(x.dims());
+  std::vector<int64_t> out_grad_dim = common::vectorize(out_grad.dims());
 
   if (x_dim.size() != out_grad_dim.size()) {
     auto dims_mapping = x_dist_attr.dims_mapping();
@@ -255,6 +254,8 @@ SpmdInfo ReductionGradInferSpmd(const DistMetaTensor& x,
     }
     x_dist_attr.set_dims_mapping(dims_mapping);
     x_grad_dist_attr.set_dims_mapping(dims_mapping);
+    x_dist_attr.set_default_dynamic_dims(dims_mapping);
+    x_grad_dist_attr.set_default_dynamic_dims(dims_mapping);
   }
 
   return {{x_dist_attr, out_grad_dist_attr}, {x_grad_dist_attr}};
