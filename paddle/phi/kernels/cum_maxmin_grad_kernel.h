@@ -24,7 +24,7 @@ void CummaxGradKernel(const Context& dev_ctx,
                       const DenseTensor& indices,
                       const DenseTensor& out_grad,
                       int axis,
-                      int dtype,
+                      DataType dtype,
                       DenseTensor* x_grad);
 
 template <typename T, typename Context>
@@ -33,7 +33,7 @@ void CumminGradKernel(const Context& dev_ctx,
                       const DenseTensor& indices,
                       const DenseTensor& out_grad,
                       int axis,
-                      int dtype,
+                      DataType dtype,
                       DenseTensor* x_grad);
 
 }  // namespace phi

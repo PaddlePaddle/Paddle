@@ -504,6 +504,23 @@ ops_contain_none = {
 }
 
 
+# some intermediate outputs like xshape will no longer used after decomp, but return none to keep output num the same as origin op
+# key is the name of op, and value is the index of output in op.outputs
+decomp_ops_contain_unused_output = {
+    "pd_op.squeeze": [1],
+    "pd_op.unsqueeze": [1],
+    "pd_op.batch_norm": [5],
+}
+
+
+# This api is used for development for dynamic shape in prim, and will be removed in future.
+def _enable_prim_dynamic_shape():
+    if os.getenv("FLAGS_prim_skip_dynamic") == "1":
+        return True
+    else:
+        return False
+
+
 def _set_prim_forward_blacklist(*args):
     for item in args:
         if not isinstance(item, str):

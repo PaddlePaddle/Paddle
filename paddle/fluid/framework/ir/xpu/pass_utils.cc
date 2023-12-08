@@ -105,7 +105,7 @@ size_t HashTensor(const phi::DenseTensor& in) {
   auto in_dims = in.dims();
   HashCombine(&ret,
               phi::DataTypeToString(in.dtype()),
-              phi::DataLayoutToString(in.layout()),
+              common::DataLayoutToString(in.layout()),
               in_dims.size());
   for (int i = 0; i < in_dims.size(); i++) {
     HashCombine(&ret, in_dims[i]);
@@ -135,15 +135,23 @@ void PrepareWeight(Graph* graph,
                    Node* weight,
                    Node** dst_weight,
                    Node** dst_weight_max,
+                   Node** dst_scale_max,
                    bool transpose,
-                   const std::vector<float>& weight_scales) {
+                   const std::vector<float>& weight_scales,
+                   bool per_channel_quant) {
   auto weight_name = weight->Name();
   auto* weight_tensor = scope->Var(weight_name)->GetMutable<phi::DenseTensor>();
   phi::DenseTensor dst_weight_tensor;
   Assign(*weight_tensor, &dst_weight_tensor);
   phi::DenseTensor dst_weight_max_tensor;
-  ConvertWeightWrapper<Tcpu, Txpu>(
-      &dst_weight_tensor, &dst_weight_max_tensor, transpose, weight_scales);
+  phi::DenseTensor dst_scale_max_tensor;
+  ConvertWeightWrapper<Tcpu, Txpu>(&dst_weight_tensor,
+                                   &dst_weight_max_tensor,
+                                   &dst_scale_max_tensor,
+                                   transpose,
+                                   weight_scales,
+                                   per_channel_quant);
+
   size_t dst_weight_hash = HashTensor<Txpu>(dst_weight_tensor);
   size_t dst_weight_max_hash = HashTensor<float>(dst_weight_max_tensor);
   std::string pre_name = GetPrefixWithoutHash(weight_name);
@@ -151,13 +159,14 @@ void PrepareWeight(Graph* graph,
       pre_name + "_#" + std::to_string(dst_weight_hash);
   std::string dst_weight_max_name =
       pre_name + "_max_#" + std::to_string(dst_weight_max_hash);
+
   *dst_weight = FindNodeWithName(graph, dst_weight_name);
   if (*dst_weight == nullptr) {
     // Create dst_weight node
     // Update dst_weight var_desc in block
     VarDesc dst_weight_desc(dst_weight_name);
     dst_weight_desc.SetPersistable(true);
-    dst_weight_desc.SetShape(vectorize(dst_weight_tensor.dims()));
+    dst_weight_desc.SetShape(common::vectorize(dst_weight_tensor.dims()));
     dst_weight_desc.SetDataType(
         framework::TransToProtoVarType(dst_weight_tensor.dtype()));
     *dst_weight = graph->CreateVarNode(&dst_weight_desc);
@@ -169,7 +178,8 @@ void PrepareWeight(Graph* graph,
     // Update dst_weight_max var_desc in block
     VarDesc dst_weight_max_desc(dst_weight_max_name);
     dst_weight_max_desc.SetPersistable(true);
-    dst_weight_max_desc.SetShape(vectorize(dst_weight_max_tensor.dims()));
+    dst_weight_max_desc.SetShape(
+        common::vectorize(dst_weight_max_tensor.dims()));
     dst_weight_max_desc.SetDataType(proto::VarType::Type::VarType_Type_FP32);
     *dst_weight_max = graph->CreateVarNode(&dst_weight_max_desc);
     auto* block_dst_weight_max_desc = block->Var(dst_weight_max_name);
@@ -207,6 +217,43 @@ void PrepareWeight(Graph* graph,
                                 dst_weight_name,
                                 weight_name));
   }
+
+  if (dst_scale_max_tensor.initialized()) {
+    size_t dst_scale_max_hash = HashTensor<float>(dst_scale_max_tensor);
+    std::string dst_scale_max_name =
+        pre_name + "_scale_max_#" + std::to_string(dst_scale_max_hash);
+    if (*dst_scale_max == nullptr) {
+      // Create dst_scale_max node
+      // Update dst_scale_max var_desc in block
+      VarDesc dst_scale_max_desc(dst_scale_max_name);
+      dst_scale_max_desc.SetPersistable(true);
+      dst_scale_max_desc.SetShape(
+          common::vectorize(dst_weight_max_tensor.dims()));
+      dst_scale_max_desc.SetDataType(proto::VarType::Type::VarType_Type_FP32);
+      *dst_scale_max = graph->CreateVarNode(&dst_scale_max_desc);
+      auto* block_dst_scale_max_desc = block->Var(dst_scale_max_name);
+      block_dst_scale_max_desc->SetPersistable(
+          dst_scale_max_desc.Persistable());
+      block_dst_scale_max_desc->SetShape(dst_scale_max_desc.GetShape());
+      block_dst_scale_max_desc->SetDataType(dst_scale_max_desc.GetDataType());
+      // Find dst/dst_max variable in scope
+      auto* dst_scale_max_var = scope->FindVar(dst_scale_max_name);
+      if (dst_scale_max_var == nullptr) {
+        Assign(dst_scale_max_tensor,
+               scope->Var(dst_scale_max_name)->GetMutable<phi::DenseTensor>());
+      } else {
+        // Share the same variable
+        PADDLE_ENFORCE_NOT_NULL(
+            scope->FindVar(dst_scale_max_name),
+            platform::errors::Fatal("dst_scale_max(%s) variable should not be "
+                                    "nullptr if dst_weight(%s) "
+                                    "variable is exist. (weight_name is %s)",
+                                    dst_scale_max_name,
+                                    dst_weight_name,
+                                    weight_name));
+      }
+    }
+  }
 }
 
 template void PrepareWeight<float, int16_t>(
@@ -216,8 +263,10 @@ template void PrepareWeight<float, int16_t>(
     Node* weight,
     Node** dst_weight,
     Node** dst_weight_max,
+    Node** dst_scale_max,
     bool transpose,
-    const std::vector<float>& weight_scales);
+    const std::vector<float>& weight_scales,
+    bool per_channel_quant = false);
 
 template void PrepareWeight<float, int8_t>(
     Graph* graph,
@@ -226,8 +275,10 @@ template void PrepareWeight<float, int8_t>(
     Node* weight,
     Node** dst_weight,
     Node** dst_weight_max,
+    Node** dst_scale_max,
     bool transpose,
-    const std::vector<float>& weight_scales);
+    const std::vector<float>& weight_scales,
+    bool per_channel_quant = false);
 
 template void PrepareWeight<int8_t, int8_t>(
     Graph* graph,
@@ -236,8 +287,10 @@ template void PrepareWeight<int8_t, int8_t>(
     Node* weight,
     Node** dst_weight,
     Node** dst_weight_max,
+    Node** dst_scale_max,
     bool transpose,
-    const std::vector<float>& weight_scales);
+    const std::vector<float>& weight_scales,
+    bool per_channel_quant = false);
 
 void PrepareBias(
     Graph* graph, Scope* scope, BlockDesc* block, Node* src, Node** dst) {
@@ -258,7 +311,7 @@ void PrepareBias(
     // Update dst var_desc in block
     VarDesc dst_desc(dst_name);
     dst_desc.SetPersistable(true);
-    dst_desc.SetShape(vectorize(dst_tensor.dims()));
+    dst_desc.SetShape(common::vectorize(dst_tensor.dims()));
     dst_desc.SetDataType(framework::TransToProtoVarType(dst_tensor.dtype()));
     *dst = graph->CreateVarNode(&dst_desc);
     auto* block_dst_desc = block->Var(dst_name);

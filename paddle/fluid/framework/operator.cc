@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_set>
 
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/data_type_transform.h"
@@ -37,7 +38,6 @@ limitations under the License. */
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/compat/get_kerneltype_forvar_utils.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
@@ -606,6 +606,28 @@ RuntimeInferShapeContext::GetPhiDefaultKernelSignature() const {
 }
 
 void RuntimeInferShapeContext::SetSkipLoD(bool skip) { can_skip_lod_ = skip; }
+
+bool RuntimeInferShapeContext::HasRuntimeAttributes() const {
+  bool is_runtime = false;
+  if (phi::DefaultKernelSignatureMap::Instance().Has(op_.Type())) {
+    auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
+        GetPhiDefaultKernelSignature()->name);
+    if (!phi_kernels.empty()) {
+      const auto& args_def = phi_kernels.cbegin()->second.args_def();
+      const auto& attr_defs = args_def.attribute_defs();
+      for (size_t i = 0; i < attr_defs.size(); ++i) {
+        if (attr_defs[i].type_index == phi::AttributeType::SCALAR ||
+            attr_defs[i].type_index == phi::AttributeType::INT_ARRAY) {
+          is_runtime = true;
+          break;
+        }
+      }
+    }
+  } else {
+    is_runtime = true;
+  }
+  return is_runtime;
+}
 
 std::vector<LoD> RuntimeInferShapeContext::GetOutputsLod(
     const std::string& out) const {

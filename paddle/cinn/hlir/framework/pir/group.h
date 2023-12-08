@@ -16,11 +16,19 @@
 #include <string>
 #include <vector>
 
+#include "paddle/cinn/adt/graph_symbolic_dim_infer_ctx.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/pir/core/operation.h"
+#include "paddle/pir/core/value.h"
+#include "paddle/pir/dialect/shape/utils/shape_utils.h"
 
 namespace cinn {
+
+namespace adt {
+class MapExprCtx;
+}  // namespace adt
+
 namespace hlir {
 namespace framework {
 namespace pir {
@@ -30,6 +38,9 @@ using framework::OpPatternKind;
 struct Group {
  public:
   Group() = default;
+  Group(const Group&) = delete;
+  Group(Group&&) = delete;
+
   explicit Group(const std::vector<::pir::Operation*>& group_ops)
       : ops(group_ops) {}
 
@@ -52,7 +63,7 @@ struct Group {
   // output ops of the group.
   std::unordered_set<::pir::Operation*> output_ops;
   // op pattern kind.
-  OpPatternKind op_pattern_kind{kReduction};
+  OpPatternKind op_pattern_kind{kElementWise};
   // internal op, the output is used by multi-op.
   // internal op can't use compute inline, should use buffer.
   std::unordered_set<::pir::Operation*> internal_ops;
@@ -64,10 +75,14 @@ struct Group {
   // if as sub-group, used for belong groups.
   std::unordered_set<std::shared_ptr<Group>> belong_groups;
 
+  std::shared_ptr<::pir::ShapeConstraintIRAnalysis> shape_analysis = nullptr;
+
   // for op lowering.
   std::vector<std::string> input_names;
   std::vector<std::string> output_names;
+  std::vector<::pir::Value> output_values;
   std::string fn_name{""};
+  std::map<int, CINNKernelInfo::ArgDimIdx> int_args_map;
 
   struct SharedGroupHasher {
     size_t operator()(const std::shared_ptr<Group>& group) const noexcept {
@@ -81,7 +96,7 @@ struct Group {
     }
   };
 
-  std::vector<::pir::Operation*> CollectOps() {
+  std::vector<::pir::Operation*> CollectOps() const {
     if (fused_sub_groups.size()) {
       std::vector<::pir::Operation*> tmp_ops;
       for (auto& group : fused_sub_groups) {
@@ -107,7 +122,7 @@ struct Group {
     }
   }
 
-  std::unordered_set<::pir::Operation*> OpSet() {
+  std::unordered_set<::pir::Operation*> OpSet() const {
     std::unordered_set<::pir::Operation*> op_set;
     for (auto op : CollectOps()) {
       op_set.insert(op);
@@ -115,11 +130,72 @@ struct Group {
     return op_set;
   }
 
-  // TODO(phlrain) : impliment GetInputNodeDatas GetOutputNodeDatas func
-  // std::unordered_set<::pir::Value> GetInputNodeDatas() { return {}; }
-  // std::unordered_set<::pir::Value> GetOutputNodeDatas() { return {}; }
+  std::unordered_set<::pir::Value> GetInputOpValues() const {
+    std::unordered_set<::pir::Value> group_inputs;
+    auto ops_set = this->OpSet();
+    // count all op's input Value
+    for (auto op : this->CollectOps()) {
+      for (auto& value : op->operands_source()) {
+        if (!value || !value.type()) {
+          continue;
+        }
+
+        if (!ops_set.count(value.dyn_cast<::pir::OpResult>().owner())) {
+          // if the input value owner op is not in OpSet, it's the group's input
+          group_inputs.insert(value);
+          continue;
+        }
+      }
+    }
+
+    return group_inputs;
+  }
+
+  std::unordered_set<::pir::Value> GetOutputOpValues() const {
+    std::unordered_set<::pir::Value> group_outputs;
+
+    for (auto op : this->output_ops) {
+      for (auto& result : op->results()) {
+        if (!result || result.type()) {
+          continue;
+        }
+
+        group_outputs.insert(result);
+      }
+    }
+    return group_outputs;
+  }
 
   std::string GetFuncName() { return "fn_" + group_id + unique_id; }
+
+  std::shared_ptr<adt::MapExprCtx> mut_map_expr_ctx() {
+    CHECK_NOTNULL(map_expr_ctx_);
+    return map_expr_ctx_;
+  }
+
+  const adt::MapExprCtx& map_expr_ctx() const {
+    return *CHECK_NOTNULL(map_expr_ctx_);
+  }
+
+  void set_map_expr_ctx(const std::shared_ptr<adt::MapExprCtx>& map_expr_ctx) {
+    map_expr_ctx_ = map_expr_ctx;
+  }
+
+  void set_graph_symbolic_dim_infer_ctx(
+      std::unique_ptr<adt::config::GraphSymbolicDimInferCtx>&&
+          graph_symbolic_dim_infer_ctx) {
+    CHECK_EQ(this, graph_symbolic_dim_infer_ctx->group());
+    graph_symbolic_dim_infer_ctx_ = std::move(graph_symbolic_dim_infer_ctx);
+  }
+
+  const adt::config::GraphSymbolicDimInferCtx* graph_symbolic_dim_infer_ctx()
+      const {
+    return graph_symbolic_dim_infer_ctx_.get();
+  }
+
+  adt::config::GraphSymbolicDimInferCtx* mut_graph_symbolic_dim_infer_ctx() {
+    return graph_symbolic_dim_infer_ctx_.get();
+  }
 
  public:
   const std::unordered_set<std::shared_ptr<Group>,
@@ -171,6 +247,9 @@ struct Group {
                      SharedGroupHasher,
                      SharedGroupComparator>
       consumer_groups_;
+  std::shared_ptr<adt::MapExprCtx> map_expr_ctx_;
+  std::unique_ptr<adt::config::GraphSymbolicDimInferCtx>
+      graph_symbolic_dim_infer_ctx_;
 };
 
 }  // namespace pir

@@ -16,6 +16,7 @@
 
 import paddle
 from paddle import _C_ops
+from paddle.base.libpaddle import DataType
 from paddle.framework import in_dynamic_mode, in_dynamic_or_pir_mode
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
@@ -159,8 +160,8 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
     out = paddle.sum(paddle.pow((x - u), 2), axis, keepdim=keepdim, name=name)
 
     dtype = x.dtype
-    n = paddle.cast(paddle.numel(x), paddle.int64) / paddle.cast(
-        paddle.numel(out), paddle.int64
+    n = paddle.cast(paddle.numel(x), "int64") / paddle.cast(
+        paddle.numel(out), "int64"
     )
     n = n.astype(dtype)
     if unbiased:
@@ -221,7 +222,7 @@ def std(x, axis=None, unbiased=True, keepdim=False, name=None):
             [1.       2.081666]
 
     """
-    if not in_dynamic_mode():
+    if not in_dynamic_or_pir_mode():
         check_variable_and_dtype(
             x, 'x', ['float16', 'float32', 'float64'], 'std'
         )
@@ -313,7 +314,7 @@ def nanmedian(x, axis=None, keepdim=False, name=None):
             >>> print(y4.numpy())
             2.0
     """
-    if not isinstance(x, Variable):
+    if not isinstance(x, (Variable, paddle.pir.Value)):
         raise TypeError("In median, the input x should be a Tensor.")
 
     if isinstance(axis, (list, tuple)) and len(axis) == 0:
@@ -403,10 +404,11 @@ def median(x, axis=None, keepdim=False, name=None):
             [[4., 5., 6., 7.]])
 
     """
-    if not isinstance(x, Variable):
+    if not isinstance(x, (Variable, paddle.pir.Value)):
         raise TypeError("In median, the input x should be a Tensor.")
 
-    if x.size == 0:
+    if in_dynamic_mode() and x.size == 0:
+        # TODO: Currently, `__eq__` don't support arguments (`pir.Value` & `int`)
         raise ValueError("In median, the size of input x should not be 0.")
 
     is_flatten = False
@@ -435,7 +437,11 @@ def median(x, axis=None, keepdim=False, name=None):
     sz = x.shape[axis]
     kth = sz >> 1
     tensor_topk, idx = paddle.topk(x, kth + 1, axis=axis, largest=False)
-    dtype = 'float64' if x.dtype == core.VarDesc.VarType.FP64 else 'float32'
+    dtype = (
+        'float64'
+        if x.dtype in [core.VarDesc.VarType.FP64, DataType.FLOAT64]
+        else 'float32'
+    )
     if sz & 1 == 0:
         out_tensor = paddle.slice(
             tensor_topk, axes=[axis], starts=[kth - 1], ends=[kth]

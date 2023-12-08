@@ -316,8 +316,8 @@ def set_skip_gc_vars(num_micro_batches, job_types, sub_programs, jobs):
         job.set_skip_gc_vars(skip_gc_vars)
         suffixed_required_vars[micro_batch_id] |= required_vars
 
-    if get_flags("FLAGS_enable_new_ir_in_executor")[
-        'FLAGS_enable_new_ir_in_executor'
+    if get_flags("FLAGS_enable_pir_in_executor")[
+        'FLAGS_enable_pir_in_executor'
     ]:
         for i, type in enumerate(job_types):
             if i == len(job_types) - 1:
@@ -614,9 +614,9 @@ def _program_for_fthenb_and_1f1b(program, enable_send_recv_overlap=False):
     bwd_prog._sync_with_cpp()
     opt_prog._sync_with_cpp()
 
-    fwd_prog._rollback()
-    bwd_prog._rollback()
-    opt_prog._rollback()
+    fwd_prog._roll_to_global_block()
+    bwd_prog._roll_to_global_block()
+    opt_prog._roll_to_global_block()
 
     # It MUST return in this order
     return [fwd_prog, bwd_prog, opt_prog]

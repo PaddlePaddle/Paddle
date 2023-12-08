@@ -185,14 +185,6 @@ class TestEncorderMulitMicroBatchRun(unittest.TestCase):
             for program_id in range(program_num):
                 job = Job(f"P{program_id}")
                 job.set_micro_batch_id(micro_batch_id)
-                # Set col_attr info for fetch_op to fetch the correct data after running multiple micro batch
-                if program_id == program_num - 1:
-                    fetch_op_id_to_col_attr = {}
-                    for i in range(fetch_op_num):
-                        job.set_col_attr_for_fetch_op(
-                            fetch_op_indics[i],
-                            i * micro_batch_num + micro_batch_id,
-                        )
                 job_list.append(job)
 
         job_types = []

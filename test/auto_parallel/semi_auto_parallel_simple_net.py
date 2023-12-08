@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import os
+import random
 
 import numpy as np
 
 import paddle
 import paddle.distributed as dist
 from paddle import nn
+from paddle.distributed import Replicate, Shard
 from paddle.distributed.fleet.utils import recompute
 
 BATCH_SIZE = 16
@@ -56,7 +58,7 @@ class DemoNet(nn.Layer):
         out = self.linear_0(x)
         out = self.relu(out)
         if self.is_pp:
-            out = dist.reshard(out, self.pp_reshard_dist_attr)
+            out = dist.reshard(out, *self.pp_reshard_dist_attr)
         out = self.linear_1(out)
         return out
 
@@ -75,105 +77,89 @@ class TestSimpleNetForSemiAutoParallel:
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
         self._pp_mesh0 = dist.ProcessMesh([0], dim_names=["x"])
         self._pp_mesh1 = dist.ProcessMesh([1], dim_names=["x"])
-        self.pp_reshard_dist_attr = dist.DistAttr(
-            mesh=self._pp_mesh1, sharding_specs=[None, None]
-        )
+        self.pp_reshard_dist_attr = (self._pp_mesh1, [Replicate()])
 
         paddle.set_device(self._backend)
-
-        self.init_input_data()
-
         self.init_single_card_net_result()
 
     def shard_fn(self, layer_name, layer, process_mesh):
         if layer_name == 'linear_0':
-            dist_attr = dist.DistAttr(
-                mesh=process_mesh, sharding_specs=[None, 'x']
+            layer.weight = dist.shard_tensor(
+                layer.weight, process_mesh, [Shard(1)]
             )
-            layer.weight = dist.shard_tensor(layer.weight, dist_attr=dist_attr)
         elif layer_name == 'linear_1':
-            dist_attr = dist.DistAttr(
-                mesh=process_mesh, sharding_specs=['x', None]
+            layer.weight = dist.shard_tensor(
+                layer.weight, process_mesh, [Shard(0)]
             )
-            layer.weight = dist.shard_tensor(layer.weight, dist_attr=dist_attr)
 
     def pp_shard_fn(self, layer_name, layer, process_mesh):
         if layer_name == 'linear_0':
             # shard_layer doens't support cross-mesh now.
             # input process_mesh of pp_shard_fn is useless,
             # it's defined just for unified format.
-            weight_dist_attr = dist.DistAttr(
-                mesh=self._pp_mesh0, sharding_specs=[None, None]
-            )
-            bias_dist_attr = dist.DistAttr(
-                mesh=self._pp_mesh0, sharding_specs=[None]
-            )
-            layer.weight = dist.shard_tensor(
-                layer.weight, dist_attr=weight_dist_attr
-            )
-            layer.bias = dist.shard_tensor(layer.bias, dist_attr=bias_dist_attr)
+            weight_dist_attr = (self._pp_mesh0, [Replicate()])
+            bias_dist_attr = (self._pp_mesh0, [Replicate()])
+
+            layer.weight = dist.shard_tensor(layer.weight, *weight_dist_attr)
+            layer.bias = dist.shard_tensor(layer.bias, *bias_dist_attr)
         elif layer_name == 'linear_1':
-            weight_dist_attr = dist.DistAttr(
-                mesh=self._pp_mesh1, sharding_specs=[None, None]
-            )
-            bias_dist_attr = dist.DistAttr(
-                mesh=self._pp_mesh1, sharding_specs=[None]
-            )
-            layer.weight = dist.shard_tensor(
-                layer.weight, dist_attr=weight_dist_attr
-            )
-            layer.bias = dist.shard_tensor(layer.bias, dist_attr=bias_dist_attr)
+            weight_dist_attr = (self._pp_mesh1, [Replicate()])
+            bias_dist_attr = (self._pp_mesh1, [Replicate()])
+            layer.weight = dist.shard_tensor(layer.weight, *weight_dist_attr)
+            layer.bias = dist.shard_tensor(layer.bias, *bias_dist_attr)
+
+    def set_random_seed(self, seed):
+        random.seed(seed)
+        np.random.seed(seed)
+        paddle.seed(seed)
 
     def init_input_data(self):
-        paddle.seed(self._seed)
-        np.random.seed(self._seed)
-
-        self.image = np.random.random([BATCH_SIZE, IMAGE_SIZE]).astype(
-            'float32'
-        )
-        self.label = np.random.random([BATCH_SIZE, CLASS_NUM]).astype('float32')
+        image = np.random.random([BATCH_SIZE, IMAGE_SIZE]).astype('float32')
+        label = np.random.random([BATCH_SIZE, CLASS_NUM]).astype('float32')
+        return paddle.to_tensor(image), paddle.to_tensor(label)
 
     def run_dynamic(self, layer, shard_input=False, is_pp=False):
-        paddle.seed(self._seed)
-        np.random.seed(self._seed)
-
         # create loss
         loss_fn = nn.MSELoss()
-
         # run forward and backward
-        image = paddle.to_tensor(self.image)
-        input_mesh = self._pp_mesh0 if is_pp else self._mesh
-        if shard_input:
-            image = dist.shard_tensor(
-                image,
-                dist_attr=dist.DistAttr(
-                    mesh=input_mesh, sharding_specs=['x', None]
-                ),
-            )
+        if is_pp:
+            input_dist_attr = (self._pp_mesh0, [Shard(0)])
+        else:
+            input_dist_attr = (self._mesh, [Shard(0)])
 
-        out = layer(image)
-        label = paddle.to_tensor(self.label)
-
-        loss = loss_fn(out, label)
-
-        loss.backward()
         opt = paddle.optimizer.SGD(
             learning_rate=0.1, parameters=layer.parameters()
         )
-        opt.step()
+        opt = dist.shard_optimizer(opt)
+        for _ in range(5):
+            image, label = self.init_input_data()
+            if shard_input:
+                image = dist.shard_tensor(image, *input_dist_attr)
+
+            out = layer(image)
+            loss = loss_fn(out, label)
+            loss.backward()
+
+            opt.step()
+            opt.clear_grad()
         return loss, layer.parameters()
 
     def init_single_card_net_result(self):
+        self.set_random_seed(self._seed)
         self.base_loss, self.base_parameters = self.run_dynamic(
             DemoNet("demo_weight")
         )
 
-    def check_tensor_eq(self, a, b):
-        np1 = a.numpy()
-        np2 = b.numpy()
-        np.testing.assert_allclose(np1, np2, rtol=1e-05, verbose=True)
+    def check_tensor_eq(self, a, b, rtol=1e-05, atol=0, verbose=True):
+        np1 = a.astype("float32").numpy()
+        np2 = b.astype("float32").numpy()
+        np.testing.assert_allclose(
+            np1, np2, rtol=rtol, atol=atol, verbose=verbose
+        )
 
     def test_dp_demo_net(self):
+        self.set_random_seed(self._seed)
+
         self.dp_loss, self.dp_parameters = self.run_dynamic(
             DemoNet("dp_demo_weight"),
             shard_input=True,
@@ -184,6 +170,8 @@ class TestSimpleNetForSemiAutoParallel:
             self.check_tensor_eq(param.grad, param_base.grad)
 
     def test_mp_demo_net(self):
+        self.set_random_seed(self._seed)
+
         mp_layer = dist.shard_layer(
             DemoNet("mp_demo_weight"), self._mesh, self.shard_fn
         )
@@ -196,6 +184,8 @@ class TestSimpleNetForSemiAutoParallel:
             self.check_tensor_eq(param.grad, param_base.grad)
 
     def test_pp_demo_net(self):
+        self.set_random_seed(self._seed)
+
         # Send/Recv operators doens't support CPU now.
         if self._backend != "gpu":
             return

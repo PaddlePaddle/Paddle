@@ -135,6 +135,8 @@ class TensorArray : public TensorBase,
   }
 
  private:
+  DataType dtype_{DataType::UNDEFINED};
+  DataLayout layout_{DataLayout::NCHW};
   std::vector<DenseTensor> tensors_;
 };
 

@@ -34,13 +34,26 @@ class IR_API OpResult : public Value {
   uint32_t index() const;
   bool operator==(const OpResult &other) const;
 
+  Attribute attribute(const std::string &key) const;
+  void set_attribute(const std::string &key, Attribute value);
+
  private:
   friend Operation;
   OpResult(detail::OpResultImpl *impl);  // NOLINT
   // Access classof annd dyn_cast_from.
   friend Value;
+  friend struct std::hash<OpResult>;
   static bool classof(Value value);
   static OpResult dyn_cast_from(Value value);
 };
 
 }  // namespace pir
+
+namespace std {
+template <>
+struct hash<pir::OpResult> {
+  std::size_t operator()(const pir::OpResult &obj) const {
+    return std::hash<pir::Value>()(obj);
+  }
+};
+}  // namespace std

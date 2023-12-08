@@ -243,6 +243,14 @@
     out : Out
     indices : Indices
 
+- op : array_to_tensor(tensor_array_to_tensor)
+  backward : tanh_shrink_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+    out_index : OutIndex
+
 - op : as_complex
   inputs :
     x : X
@@ -318,7 +326,7 @@
     {auc : AUC, stat_pos_out : StatPosOut, stat_neg_out : StatNegOut}
 
 - op : batch_norm
-  backward : batch_norm_grad
+  backward : batch_norm_grad, batch_norm_double_grad(batch_norm_grad_grad)
   inputs:
     x : X
     mean : Mean
@@ -568,15 +576,6 @@
              int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
   get_expected_kernel_type :
     conv2d : GetConvExpectedKernelType
-
-- op : conv2d_fusion
-  extra :
-    attrs : [bool is_test = false, bool use_cudnn = false, bool fuse_relu_before_depthwise_conv = false, bool use_mkldnn = false,
-             bool use_quantizer = false, str mkldnn_data_type = "float32", bool fuse_relu = false,
-             str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f, bool use_addto = false,
-             bool fuse_residual_connection = false, float Scale_in = 1.0f, float Scale_out = 1.0f,
-             float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}', bool force_fp32_output = false,
-             int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
 
 - op : conv2d_transpose
   backward : conv2d_transpose_grad, conv2d_transpose_double_grad (conv2d_transpose_grad_grad)
@@ -1033,6 +1032,20 @@
   extra :
     attrs : [int round_type = 1]
 
+- op : fc
+  inputs :
+    input : Input
+    w : W
+    bias : Bias
+  outputs :
+    out : Out
+  attrs :
+    scale_in : Scale_in
+    scale_weights : Scale_weights
+    scale_out : Scale_out
+  extra :
+    [bool @ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE@ = true]
+
 - op : feed
   outputs: {out: Out}
 
@@ -1233,6 +1246,21 @@
     saved_variance: SavedVariance
     reserve_space: ReserveSpace
 
+- op : fused_bias_dropout_residual_layer_norm
+  backward : fused_bias_dropout_residual_layer_norm_grad
+  inputs :
+    x : X
+    residual : Residual
+    bias : Bias
+    ln_scale : LnScale
+    ln_bias : LnBias
+  outputs :
+    bias_dropout_residual_out : BiasDropoutResidualOut
+    dropout_mask_out : DropoutMaskOut
+    ln_mean : LnMean
+    ln_variance : LnVariance
+    y : Y
+
 - op : fused_bn_add_activation_ (fused_bn_add_activation)
   backward : fused_bn_add_activation_grad
   inputs:
@@ -1254,6 +1282,24 @@
   extra :
     attrs : [bool use_cudnn = false, float fuse_alpha = 0.0f, float fuse_beta = 0.0f, float Scale_in = 1.0f,
              float Scale_out = 1.0f, float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}']
+
+- op : fused_conv2d_add_act
+  inputs :
+    input : Input
+    filter : Filter
+    bias : Bias
+    residual_data : ResidualData
+  outputs :
+    output : Output
+    outputs : Outputs
+  extra :
+    attrs : [bool is_test = false, bool use_cudnn = true, bool fuse_relu_before_depthwise_conv = false, bool use_mkldnn = false,
+             bool use_quantizer = false, str mkldnn_data_type = "float32", bool fuse_relu = false,
+             str fuse_activation = "", float fuse_beta = 0.0f, bool use_addto = false,
+             bool fuse_residual_connection = false, float Scale_in = 1.0f, float Scale_out = 1.0f,
+             float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}', bool force_fp32_output = false]
+  get_expected_kernel_type :
+    fused_conv2d_add_act : GetConvExpectedKernelType
 
 - op : fused_embedding_eltwise_layernorm
   inputs :
@@ -1342,6 +1388,15 @@
     scale_data : Scale_data
     shift_data : Shift_data
     scale_weights : Scale_weights
+
+- op : fusion_repeated_fc_relu
+  inputs :
+    x : X
+    w : W
+    bias : Bias
+  outputs :
+    relu_out : ReluOut
+    out : Out
 
 - op : fusion_seqconv_eltadd_relu
   inputs :
@@ -2624,6 +2679,12 @@
   outputs :
     {out : Out, summed_ids : SummedIds}
 
+- op : self_dp_attention
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : selu
   backward : selu_grad
   inputs :
@@ -2670,10 +2731,6 @@
     sgd_ : GetSgdExpectedKernelType
   extra :
     attrs : [bool use_mkldnn=false]
-
-- op : shadow_output
-  inputs: {x: x}
-  outputs: {out: out}
 
 - op : shape
   inputs :
@@ -2768,6 +2825,13 @@
   backward : slogdet_grad(slogdeterminant_grad)
   inputs :
     x : Input
+  outputs :
+    out : Out
+
+- op : soft_relu
+  backward : soft_relu_grad
+  inputs :
+    x : X
   outputs :
     out : Out
 
@@ -2929,6 +2993,7 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+  complex_promote : [X, Y]
 
 - op : sum (reduce_sum)
   backward : sum_grad (reduce_sum_grad), sum_double_grad
@@ -3271,6 +3336,12 @@
   outputs :
     out: Out
 
+- op: c_reducescatter
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
 - op: c_sync_calc_stream
   inputs :
     x : X
@@ -3289,6 +3360,12 @@
   outputs:
     {out: Out}
 
+- op: decayed_adagrad
+  inputs:
+    {param : Param, grad : Grad, moment : Moment, learning_rate : LearningRate}
+  outputs:
+    {param_out : ParamOut, moment_out : MomentOut}
+
 - op: dpsgd
   inputs:
     {param: Param,grad: Grad,learning_rate: LearningRate}
@@ -3305,9 +3382,32 @@
   outputs:
     {out: Out}
 
+- op: fused_elemwise_add_activation
+  backward: fused_elemwise_add_activation_grad
+  inputs :
+    {x: X, y: Y}
+  outputs :
+    {out : Out, intermediate_out : IntermediateOut}
+
+- op: fusion_squared_mat_sub
+  inputs :
+    x : X
+    y : Y
+  outputs :
+    squared_x : SquaredX
+    squared_y : SquaredY
+    squared_xy : SquaredXY
+    out : Out
+
 - op: get_tensor_from_selected_rows
   inputs :
     x : X
+  outputs :
+    out : Out
+
+- op: lod_array_length
+  inputs :
+    {x: X}
   outputs :
     out : Out
 
@@ -3335,6 +3435,13 @@
 - op: memcpy_d2h
   inputs :
     x : X
+  outputs :
+    out : Out
+
+- op: read_from_array
+  inputs:
+    array : X
+    i : I
   outputs :
     out : Out
 
@@ -3405,6 +3512,22 @@
   outputs :
     out : Out
 
+- op: skip_layernorm
+  inputs :
+    {x: X, y: Y, scale: Scale, bias : Bias}
+  outputs :
+    out : Out
+
+- op: sparse_momentum
+  inputs :
+    {param: Param, grad: Grad, velocity: Velocity, index: Index, axis: Axis, learning_rate: LearningRate,master_param: MasterParam}
+  outputs :
+    {param_out: ParamOut, velocity_out: VelocityOut, master_param_out: MasterParamOut}
+  scalar:
+   axis:
+     datatype : int
+     tensor_name : Axis
+
 - op: squared_l2_norm
   backward: squared_l2_norm_grad
   inputs :
@@ -3418,6 +3541,12 @@
     x : X
   outputs :
     out : Out
+
+- op: uniform_random_batch_size_like
+  inputs:
+     input : Input
+  outputs:
+     out: Out
 
 - op: write_to_array
   inputs :

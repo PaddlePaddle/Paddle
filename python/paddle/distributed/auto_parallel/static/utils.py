@@ -42,6 +42,15 @@ __no_shape_var_type__ = [
 ]
 
 __not_naive_data_parallel_op__ = ["expand_v2"]
+_g_gradient_clip_ops = [
+    "sum",
+    "sqrt",
+    "fill_constant",
+    "elementwise_max",
+    "elementwise_div",
+    "stack",
+    "reduce_sum",
+]
 
 
 def get_logger(log_level, name="auto_parallel"):
@@ -1249,6 +1258,12 @@ def is_gradient_clip_op(op):
     ).startswith("/gradient_clip")
 
 
+def is_reshard_op(op):
+    return op.desc.has_attr(
+        "op_namescope"
+    ) and "/auto_parallel/reshard" in op.desc.attr('op_namescope')
+
+
 def is_prim_op(op):
     return op.type.endswith("_p")
 
@@ -1287,12 +1302,14 @@ def set_var_dist_attr(dist_context, var, dims_mapping, process_mesh, **kwargs):
     if "mark_annotated" in kwargs and kwargs["mark_annotated"]:
         tensor_dist_attr.mark_annotated("dims_mapping")
         tensor_dist_attr.mark_annotated("process_mesh")
+    if "chunk_id" in kwargs and kwargs["chunk_id"]:
+        tensor_dist_attr.chunk_id = kwargs["chunk_id"]
     dist_context.set_tensor_dist_attr_for_program(var, tensor_dist_attr)
     return tensor_dist_attr
 
 
 def naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-    new_op, process_mesh, ref_mapping, ctx
+    new_op, process_mesh, ref_mapping, ctx, **kwargs
 ):
     assert process_mesh is not None
     assert ref_mapping is not None
@@ -1305,27 +1322,32 @@ def naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
         new_op_dist_attr.set_output_dims_mapping(output_varname, ref_mapping)
 
     new_op_dist_attr.process_mesh = process_mesh
+    if "chunk_id" in kwargs and kwargs["chunk_id"]:
+        new_op_dist_attr.chunk_id = kwargs["chunk_id"]
     ctx.set_op_dist_attr_for_program(new_op, new_op_dist_attr)
 
 
 def naive_set_dist_op_attr_for_program_by_mesh(
-    new_op, process_mesh, ctx, is_recompute=False
+    new_op, process_mesh, ctx, **kwargs
 ):
     assert process_mesh is not None
 
     new_op_dist_attr = OperatorDistAttr()
 
     for input_varname in new_op.desc.input_arg_names():
-        var = ctx.serial_main_program.global_block().var(input_varname)
+        var = new_op.block.var(input_varname)
         mapping = ctx.get_tensor_dist_attr_for_program(var).dims_mapping
         new_op_dist_attr.set_input_dims_mapping(input_varname, mapping)
     for output_varname in new_op.desc.output_arg_names():
-        var = ctx.serial_main_program.global_block().var(output_varname)
+        var = new_op.block.var(output_varname)
         mapping = ctx.get_tensor_dist_attr_for_program(var).dims_mapping
         new_op_dist_attr.set_output_dims_mapping(output_varname, mapping)
 
     new_op_dist_attr.process_mesh = process_mesh
-    new_op_dist_attr.is_recompute = is_recompute
+    if "is_recompute" in kwargs:
+        new_op_dist_attr.is_recompute = kwargs["is_recompute"]
+    if "chunk_id" in kwargs:
+        new_op_dist_attr.chunk_id = kwargs["chunk_id"]
     ctx.set_op_dist_attr_for_program(new_op, new_op_dist_attr)
 
 
@@ -1939,6 +1961,10 @@ def validate_opt(optimizer):
     if optimizer is not None:
         optimizer._parameter_list = None
         optimizer._param_groups = None
+        if optimizer._grad_clip and isinstance(
+            optimizer._grad_clip, paddle.nn.ClipGradByGlobalNorm
+        ):
+            optimizer._grad_clip._async_add_n = True
     return optimizer
 
 

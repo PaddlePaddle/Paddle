@@ -173,7 +173,7 @@ class FunctionSpec:
         return args_with_spec, kwargs_with_spec
 
     @switch_to_static_graph
-    def newir_to_static_inputs_with_spec(self, input_with_spec, main_program):
+    def pir_to_static_inputs_with_spec(self, input_with_spec, main_program):
         """
         Constructs feed layer by inputs with InputSpec information for main program.
 
@@ -329,7 +329,9 @@ def _replace_value_with_input_spec(args):
             stop_gradient = input_var.stop_gradient
             input_var = paddle.static.InputSpec.from_tensor(input_var)
             input_var.stop_gradient = stop_gradient
-        elif isinstance(input_var, paddle.base.framework.Variable):
+        elif isinstance(
+            input_var, (paddle.base.framework.Variable, paddle.pir.Value)
+        ):
             stop_gradient = input_var.stop_gradient
             input_var = paddle.static.InputSpec(
                 input_var.shape, input_var.dtype, input_var.name

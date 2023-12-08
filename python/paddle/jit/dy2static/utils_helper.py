@@ -18,7 +18,7 @@ import inspect
 import astor
 import numpy as np  # noqa: F401
 
-import paddle  # noqa: F401
+import paddle
 from paddle import base  # noqa: F401
 from paddle.base import dygraph, layers  # noqa: F401
 from paddle.base.dygraph import to_variable  # noqa: F401

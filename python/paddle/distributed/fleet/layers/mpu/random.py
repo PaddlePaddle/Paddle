@@ -51,10 +51,11 @@ class RNGStatesTracker:
         self.seeds_.add(seed)
         if name in self.states_:
             raise ValueError(f'state {name} already exists')
-        orig_rng_state = paddle.get_rng_state()
+        orig_rng_state_index = paddle.incubate.get_rng_state(use_index=True)
+        # register a new state and set that state with the seed, store the indices into states_
+        self.states_[name] = paddle.incubate.register_rng_state_as_index()
         paddle.seed(seed)
-        self.states_[name] = paddle.get_rng_state()
-        paddle.set_rng_state(orig_rng_state)
+        paddle.incubate.set_rng_state(orig_rng_state_index, use_index=True)
 
     def get_states_tracker(self):
         states = {}
@@ -69,13 +70,13 @@ class RNGStatesTracker:
     def rng_state(self, name=MODEL_PARALLEL_RNG):
         if name not in self.states_:
             raise ValueError(f'state {name} does not exist')
-        orig_rng_state = paddle.get_rng_state()
-        paddle.set_rng_state(self.states_[name])
+        orig_rng_state_index = paddle.incubate.get_rng_state(use_index=True)
+        paddle.incubate.set_rng_state(self.states_[name], use_index=True)
         try:
             yield
         finally:
-            self.states_[name] = paddle.get_rng_state()
-            paddle.set_rng_state(orig_rng_state)
+            self.states_[name] = paddle.incubate.get_rng_state(use_index=True)
+            paddle.incubate.set_rng_state(orig_rng_state_index, use_index=True)
 
 
 RNG_STATE_TRACKER = RNGStatesTracker()

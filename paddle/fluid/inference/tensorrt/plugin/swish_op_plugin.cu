@@ -31,10 +31,12 @@ void SwishPlugin::terminate() TRT_NOEXCEPT {}
 bool SwishPlugin::supportsFormat(
     nvinfer1::DataType type, nvinfer1::PluginFormat format) const TRT_NOEXCEPT {
   if (with_fp16_) {
-    return type == nvinfer1::DataType::kFLOAT ||
-           type == nvinfer1::DataType::kHALF;
+    return (type == nvinfer1::DataType::kFLOAT ||
+            type == nvinfer1::DataType::kHALF) &&
+           (format == nvinfer1::TensorFormat::kLINEAR);
   }
-  return type == nvinfer1::DataType::kFLOAT;
+  return (type == nvinfer1::DataType::kFLOAT) &&
+         (format == nvinfer1::TensorFormat::kLINEAR);
 }
 
 nvinfer1::Dims SwishPlugin::getOutputDimensions(int index,
@@ -179,13 +181,11 @@ bool SwishPluginDynamic::supportsFormatCombination(
     if (with_fp16_) {
       bool res = (in.type == nvinfer1::DataType::kFLOAT ||
                   in.type == nvinfer1::DataType::kHALF);
-// encounter trt crash bug
-#if IS_TRT_VERSION_LT(8000)
       res = res && (in.format == nvinfer1::TensorFormat::kLINEAR);
-#endif
       return res;
     } else {
-      return in.type == nvinfer1::DataType::kFLOAT;
+      return (in.type == nvinfer1::DataType::kFLOAT) &&
+             (in.format == nvinfer1::TensorFormat::kLINEAR);
     }
   }
   const nvinfer1::PluginTensorDesc &prev = in_out[pos - 1];

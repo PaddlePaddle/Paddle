@@ -266,7 +266,9 @@ void InverseGradInferMeta(const MetaTensor& out,
                           const MetaTensor& dout,
                           MetaTensor* dx);
 
-void KernelWithXShapeInferMeta(const MetaTensor& xshape, MetaTensor* dx);
+void KernelWithXShapeInferMeta(const MetaTensor& xshape,
+                               const MetaTensor& out,
+                               MetaTensor* dx);
 
 void LUGradInferMeta(const MetaTensor& x,
                      const MetaTensor& out,
@@ -451,6 +453,7 @@ void WeightOnlyLinearGradInferMeta(const MetaTensor& x,
                                    const MetaTensor& weight_scale,
                                    const MetaTensor& out_grad,
                                    const std::string& weight_dtype,
+                                   const int32_t arch,
                                    MetaTensor* x_grad);
 
 void YoloLossGradInferMeta(const MetaTensor& x,

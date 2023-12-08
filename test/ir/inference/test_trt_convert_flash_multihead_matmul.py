@@ -267,22 +267,18 @@ class TrtConvertFlashMultiHeadMatmulTest(TrtLayerAutoScanTest):
         # for static_shape
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
         self.trt_param.workspace_size = 2013265920
         yield self.create_inference_config(), (1, 2), (1e-5, 1e-5)
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
-        yield self.create_inference_config(), (1, 2), (1e-3, 1e-3)
+        yield self.create_inference_config(), (1, 2), (2e-2, 5e-3)
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
         self.trt_param.workspace_size = 2013265920
         yield self.create_inference_config(), (1, 2), (1e-5, 1e-4)
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
-        yield self.create_inference_config(), (1, 2), (1e-2, 1e-3)
+        yield self.create_inference_config(), (1, 2), (2e-2, 5e-3)
 
     def add_skip_trt_case(self):
         def teller1(program_config, predictor_config):

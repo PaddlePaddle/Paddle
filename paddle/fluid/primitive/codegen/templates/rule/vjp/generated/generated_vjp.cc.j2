@@ -103,7 +103,7 @@ vjp_res = ConstructVjpResultByStopGradients(vjp_res, stop_gradients);
 
 {% macro body_prim(api) %}
 FLAGS_tensor_operants_mode = "static";
-VLOG(4) << "Call PIR Decomposed backward op {{api.name}}";
+VLOG(4) << "Call Pir Decomposed backward op {{api.name}}";
   {% for i in range(api.outputs|length) %}
     {% if api.outputs[i].typename=='Tensor' %}
 paddle::Tensor* {{api.outputs[i].name}} = !stop_gradients[{{i}}][0] ? &vjp_res[{{i}}][0] : nullptr; 
