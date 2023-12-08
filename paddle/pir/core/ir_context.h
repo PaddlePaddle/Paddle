@@ -136,7 +136,7 @@ class IR_API IrContext {
   /// \return The dialect of the DialectT class in the context.
   ///
   template <typename DialectT>
-  TEST_API DialectT *GetOrRegisterDialect() {
+  DialectT *GetOrRegisterDialect() {
     return static_cast<DialectT *>(
         GetOrRegisterDialect(DialectT::name(), [this]() {
           DialectT *dialect = new DialectT(this);
@@ -154,8 +154,8 @@ class IR_API IrContext {
   ///
   /// \return The dialect named "dialect_name" in the context.
   ///
-  Dialect *GetOrRegisterDialect(const std::string &dialect_name,
-                                std::function<Dialect *()> constructor);
+  TEST_API Dialect *GetOrRegisterDialect(
+      const std::string &dialect_name, std::function<Dialect *()> constructor);
 
   ///
   /// \brief Get the dialect list registered to the context.
