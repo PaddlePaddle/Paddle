@@ -182,6 +182,13 @@ class LlamaAttentionAuto(nn.Layer):
             self.head_dim,
         ]
 
+        if self.config.sequence_parallel:
+            hidden_states = dist.reshard(
+                hidden_states,
+                get_mesh(self.ipp),
+                [dist.Shard(1), dist.Replicate()],
+            )
+
         query_states = self.q_proj(hidden_states).reshape(
             shape=target_query_shape
         )
@@ -193,21 +200,6 @@ class LlamaAttentionAuto(nn.Layer):
         )
 
         if self.config.sequence_parallel:
-            query_states = dist.reshard(
-                query_states,
-                get_mesh(self.ipp),
-                [dist.Shard(1), dist.Replicate()],
-            )
-            key_states = dist.reshard(
-                key_states,
-                get_mesh(self.ipp),
-                [dist.Shard(1), dist.Replicate()],
-            )
-            value_states = dist.reshard(
-                value_states,
-                get_mesh(self.ipp),
-                [dist.Shard(1), dist.Replicate()],
-            )
             query_states = paddle.transpose(query_states, [1, 0, 2, 3])
             key_states = paddle.transpose(key_states, [1, 0, 2, 3])
             value_states = paddle.transpose(value_states, [1, 0, 2, 3])
