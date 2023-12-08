@@ -1677,7 +1677,10 @@ class Layer:
 
             _remove_if_exist(self.__dict__, self._buffers, self._sub_layers)
             params[name] = value
-        elif isinstance(value, paddle.pir.OpResult) and value.persistable:
+        elif (
+            isinstance(value, paddle.pir.OpResult)
+            and value.get_defining_op().name() == 'builtin.parameter'
+        ):
             if params is None:
                 raise ValueError("super().__init__() should be called first")
             _remove_if_exist(self.__dict__, self._buffers, self._sub_layers)
@@ -1729,7 +1732,9 @@ class Layer:
                     # Note(Aurelius84): In Dy2stat, the value of the Buffer may be modified in
                     # decorated function, such as `self.buffer = new_tensor`. So we update its
                     # value via `assign`.
-                    if type(value) == framework.Variable:
+                    if type(value) == framework.Variable or isinstance(
+                        value, paddle.pir.OpResult
+                    ):
                         from paddle import assign
 
                         # Note(zhhsplendid): the condition below happens in PaddleGan model,

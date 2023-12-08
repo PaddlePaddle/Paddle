@@ -97,4 +97,16 @@ void Value::ReplaceAllUsesWith(Value new_value) const {
   }
 }
 
+Attribute Value::attribute(const std::string &key) const {
+  auto op_result = dyn_cast<OpResult>();
+  if (op_result) return op_result.attribute(key);
+  return dyn_cast<BlockArgument>().attribute(key);
+}
+
+void Value::set_attribute(const std::string &key, Attribute value) {
+  auto op_result = dyn_cast<OpResult>();
+  if (op_result) return op_result.set_attribute(key, value);
+  return dyn_cast<BlockArgument>().set_attribute(key, value);
+}
+
 }  // namespace pir
