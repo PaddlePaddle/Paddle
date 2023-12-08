@@ -12,19 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/pass/pass_registry.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
-
-#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-
+#include "paddle/fluid/pir/transforms/fusion/matmul_scale_fuse_pass.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/fluid/pir/transforms/fusion/matmul_scale_fuse_pass.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
 
 #include "paddle/common/ddim.h"
-#include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
+
 #include "paddle/pir/pass/pass.h"
+#include "paddle/pir/pass/pass_registry.h"
+#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace {
 
@@ -36,6 +35,9 @@ class MatmulScaleFusePattern
     const auto &matmul_op = pat.Op(paddle::dialect::MatmulOp::name(),
                                    {{"transpose_x", pat.Attr("transpose_x")},
                                     {"transpose_y", pat.Attr("transpose_y")}});
+
+    matmul_op({&pat.Tensor("x"), &pat.Tensor("y")},
+              {&pat.Tensor("matmul_out")});
     const auto &full_op = pat.Op(paddle::dialect::FullOp::name(),
                                  {{"shape", pat.Attr("shape")},
                                   {"value", pat.Attr("value")},
@@ -45,19 +47,11 @@ class MatmulScaleFusePattern
         pat.Op(paddle::dialect::ScaleOp::name(),
                {{"bias", pat.Attr("bias")},
                 {"bias_after_scale", pat.Attr("bias_after_scale")}});
-
-    matmul_op({&pat.Tensor("x"), &pat.Tensor("y")},
-              {&pat.Tensor("matmul_out")});
-    full_op({}, {&pat.Tensor("full_out")});
-    scale_op({&pat.Tensor("matmul_out"), &pat.Tensor("full_out")},
+    scale_op({&pat.Tensor("matmul_out"), &full_op()},
              {&pat.Tensor("scale_out")});
 
     pat.RequireNativeCall([&](const pir::drr::MatchContext &match_ctx) {
-      if (std::abs(match_ctx.Attr<float>("bias")) > 1e-5) {
-        return false;
-      } else {
-        return true;
-      }
+      return std::abs(match_ctx.Attr<float>("bias")) <= 1e-6;
     });
 
     pir::drr::ResultPattern res = pat.ResultPattern();

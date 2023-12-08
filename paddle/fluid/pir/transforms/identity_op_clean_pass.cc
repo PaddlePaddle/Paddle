@@ -43,17 +43,15 @@ class RemoveUselessScalePattern
         pat.Op(paddle::dialect::ScaleOp::name(),
                {{"bias", pat.Attr("bias")},
                 {"bias_after_scale", pat.Attr("bias_after_scale")}});
-    full_op({}, {&pat.Tensor("scale")});
-    scale_op({&pat.Tensor("x"), &pat.Tensor("scale")},
-             {&pat.Tensor("scale_out")});
+    scale_op({&pat.Tensor("x"), &full_op()}, {&pat.Tensor("scale_out")});
 
     pat.RequireNativeCall([&](const pir::drr::MatchContext &match_ctx) {
       return (match_ctx.Attr<float>("value") == 1.0 &&
               match_ctx.Attr<float>("bias") == 0.0);
     });
+
     pir::drr::ResultPattern res = pat.ResultPattern();
-    const auto &assign = res.Op(paddle::dialect::AssignOp::name());
-    assign({&res.Tensor("x")}, {&res.Tensor("scale_out")});
+    res.Tensor("scale_out").Assign(res.Tensor("x"));
   }
 };
 
@@ -80,11 +78,8 @@ class RemoveRedundentScalePattern
         pat.Op(paddle::dialect::ScaleOp::name(),
                {{"bias", pat.Attr("bias_2")},
                 {"bias_after_scale", pat.Attr("bias_after_scale_2")}});
-    full_op_1({}, {&pat.Tensor("scale_1")});
-    scale_op_1({&pat.Tensor("x"), &pat.Tensor("scale_1")},
-               {&pat.Tensor("scale_1_out")});
-    full_op_2({}, {&pat.Tensor("scale_2")});
-    scale_op_2({&pat.Tensor("scale_1_out"), &pat.Tensor("scale_2")},
+    scale_op_1({&pat.Tensor("x"), &full_op_1()}, {&pat.Tensor("scale_1_out")});
+    scale_op_2({&pat.Tensor("scale_1_out"), &full_op_2()},
                {&pat.Tensor("scale_2_out")});
 
     pir::drr::ResultPattern res = pat.ResultPattern();
@@ -209,27 +204,6 @@ class RemoveRedundentTransposePattern
   }
 };
 
-class RemoveRedundentReshapePattern
-    : public pir::drr::DrrPatternBase<RemoveRedundentReshapePattern> {
- public:
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    // Source patterns
-    pir::drr::SourcePattern pat = ctx->SourcePattern();
-    const auto &reshape1 = pat.Op("pd_op.reshape");
-    const auto &reshape2 = pat.Op("pd_op.reshape");
-
-    reshape1({&pat.Tensor("arg0"), &pat.Tensor("shape0")},
-             {&pat.Tensor("out1"), &pat.Tensor("xshape_0")});
-    reshape2({&pat.Tensor("out1"), &pat.Tensor("shape1")},
-             {&pat.Tensor("ret"), &pat.Tensor("xshape_1")});
-
-    // Result patterns
-    pir::drr::ResultPattern res = pat.ResultPattern();
-    res.Op("pd_op.reshape")({&res.Tensor("arg0"), &res.Tensor("shape1")},
-                            {&res.Tensor("ret"), &res.Tensor("xshape_1")});
-  }
-};
-
 class IdentityOpCleanPass : public pir::PatternRewritePass {
  public:
   IdentityOpCleanPass()
@@ -243,7 +217,6 @@ class IdentityOpCleanPass : public pir::PatternRewritePass {
     ps.Add(RemoveUselessConcatPattern().Build(context));
     ps.Add(RemoveRedundentCastPattern().Build(context));
     ps.Add(RemoveRedundentTransposePattern().Build(context));
-    ps.Add(RemoveRedundentReshapePattern().Build(context));
     return ps;
   }
 };

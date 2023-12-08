@@ -471,13 +471,13 @@ void DrrRewritePattern::DeleteSourcePatternOp(
     const ResultPatternGraph& result_pattern_graph,
     const MatchContextImpl& src_match_ctx,
     pir::PatternRewriter& rewriter) const {  // NOLINT
-
   std::queue<Operation*> delete_ops_que;
   std::unordered_set<Operation*> delete_ops_set;
   GraphTopo graph_topo_visit(&source_pattern_graph);
   graph_topo_visit.WalkGraphNodesTopoOrder([&](const OpCall& op_call) {
     Operation* op = src_match_ctx.Operation(&op_call).get();
-    if (op->use_empty()) {
+    VLOG(5) << "DRR delete op: " << op->name() << " pointer: " << op;
+    if (delete_ops_set.count(op) == 0 && op->use_empty()) {
       delete_ops_que.push(op);
       delete_ops_set.insert(op);
     }

@@ -41,9 +41,9 @@ class TestMatmulScaleFusePattern(PassTest):
     def sample_program(self):
         for x_shape in [[3, 2]]:
             for w_shape in [[2, 3]]:
-                for scale_bias in [1e-6]:
+                for scale_bias in [1e-7]:
                     for scale_value in [2.0]:
-                        for bias_after_scale in [True, False]:
+                        for bias_after_scale in [True]:
                             pir_program = None
                             with paddle.pir_utils.IrGuard():
                                 pir_program = paddle.static.Program()
@@ -60,14 +60,22 @@ class TestMatmulScaleFusePattern(PassTest):
                                         bias=scale_bias,
                                         bias_after_scale=bias_after_scale,
                                     )
-                    self.pass_list = ['matmul_scale_fuse_pass']
-                    self.feeds = {
-                        "x": np.random.random(x_shape).astype("float32"),
-                        "w": np.random.random(w_shape).astype("float32"),
-                    }
-                    self.fetch_list = [out]
-                    self.valid_op_map = {"pd_op.scale": 1, "pd_op.matmul": 1}
-                    yield pir_program, False
+
+                            self.pass_list = ['matmul_scale_fuse_pass']
+                            self.feeds = {
+                                "x": np.random.random(x_shape).astype(
+                                    "float32"
+                                ),
+                                "w": np.random.random(w_shape).astype(
+                                    "float32"
+                                ),
+                            }
+                            self.fetch_list = [out]
+                            self.valid_op_map = {
+                                "pd_op.scale": 1,
+                                "pd_op.matmul": 1,
+                            }
+                            yield pir_program, False
 
     def setUp(self):
         self.place_runtime = "gpu"

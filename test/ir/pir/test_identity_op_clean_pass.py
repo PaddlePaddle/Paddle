@@ -218,49 +218,6 @@ class TestRemoveRedundentTransposePattern(PassTest):
         self.check_pass_correct()
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_cuda(),
-    "core is not complied with CUDA",
-)
-class TestRemoveRedundentReshapePattern(PassTest):
-    def is_program_valid(self, program=None):
-        return True
-
-    def sample_program(self):
-        for shape_1 in [[1, 6, 8]]:
-            for shape_2 in [[2, 2, 3, 4]]:
-                pir_program = None
-                with paddle.pir_utils.IrGuard():
-                    pir_program = paddle.static.Program()
-                    with paddle.pir.core.program_guard(pir_program):
-                        x = paddle.static.data(
-                            name='x', shape=[2, 4, 6], dtype="float32"
-                        )
-                        out = paddle.reshape(
-                            paddle.reshape(x, shape_1), shape_2
-                        )
-                self.pass_list = ['identity_op_clean_pass']
-                self.feeds = {
-                    "x": np.random.random((2, 4, 6)).astype("float32")
-                }
-                self.fetch_list = [out]
-                self.valid_op_map = {"pd_op.reshape": 1}
-                yield pir_program, False
-
-    def test_check_output(self):
-        self.check_pass_correct()
-
-    def setUp(self):
-        self.place_runtime = "gpu"
-
-
-class TestRemoveRedundentReshapePatternWithCpu(
-    TestRemoveRedundentReshapePattern
-):
-    def setUp(self):
-        self.place_runtime = "cpu"
-
-
 class TestRemoveRedundentTransposePatternWithCpu(
     TestRemoveRedundentTransposePattern
 ):
