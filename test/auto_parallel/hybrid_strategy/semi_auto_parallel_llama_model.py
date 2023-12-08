@@ -566,7 +566,7 @@ class LlamaModelAuto(nn.Layer):
         all_self_attns = () if output_attentions else None
         next_decoder_cache = () if use_cache else None
 
-        pre_ipp = None
+        pre_ipp = 0
         for idx, (decoder_layer) in enumerate(self.layers):
             if output_hidden_states:
                 all_hidden_states += (hidden_states,)
@@ -576,7 +576,7 @@ class LlamaModelAuto(nn.Layer):
 
             has_gradient = not hidden_states.stop_gradient
 
-            if pre_ipp != decoder_layer.ipp:
+            if decoder_layer.ipp is not None and pre_ipp != decoder_layer.ipp:
                 hidden_states = dist.reshard(
                     hidden_states,
                     get_mesh(decoder_layer.ipp),
