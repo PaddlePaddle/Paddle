@@ -36,6 +36,7 @@ class Config:
     rms_norm_eps = 1e-6
     use_cache = True
     use_flash_attention = False
+    sequence_parallel = False
     rope = True
 
 
@@ -80,6 +81,8 @@ class TestLlamaAuto:
         self.dp = int(os.getenv("dp"))
         self.mp = int(os.getenv("mp"))
         self.pp = int(os.getenv("pp"))
+        if os.getenv("use_sp") == "true":
+            self.config.sequence_parallel = True
         self.gradient_accumulation_steps = int(os.getenv("acc_step"))
 
         self.init_dist_env()
@@ -185,33 +188,17 @@ class TestLlamaAuto:
         for step, inputs in enumerate(dist_loader()):
             input_ids, labels = inputs
             loss = dist_model(input_ids, labels)
-        # global_step = 1
-        # tr_loss = float(0)
 
-        # model.train()
-        # for epoch_idx in range(1):
-        #     for step, inputs in enumerate(train_dataloader):
-        #         input_ids, labels = inputs
-        #         tr_loss_step, _ = model(input_ids, labels=labels)
+        dist_ctx = dist_model._engine._dist_contexts["train"]
+        from paddle.distributed.auto_parallel.static.dist_context import (
+            set_default_distributed_context,
+        )
 
-        #         if self.gradient_accumulation_steps > 1:
-        #             tr_loss_step /= self.gradient_accumulation_steps
-
-        #         tr_loss_step.backward()
-        #         tr_loss += tr_loss_step
-
-        #         if global_step % self.gradient_accumulation_steps == 0:
-        #             print(
-        #                 f"step: {global_step // self.gradient_accumulation_steps}  loss: {tr_loss.numpy()}"
-        #             )
-        #             optimizer.step()
-        #             optimizer.clear_grad()
-        #             lr_scheduler.step()
-        #             tr_loss = 0
-
-        #         global_step += 1
-        #         if global_step // self.gradient_accumulation_steps >= 10:
-        #             break
+        set_default_distributed_context(dist_ctx)
+        with open(f"./11program.txt.{dist.get_rank()}", "w+") as fr:
+            fr.write(
+                str(dist_ctx.dist_main_programs[dist_model._engine._cur_rank])
+            )
 
     def run_test_cases(self):
         # self.run_dynamic()
