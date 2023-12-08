@@ -18,7 +18,7 @@ import warnings
 
 from paddle import pir
 from paddle.autograd import ir_backward
-from paddle.autograd.backward_utils import ValueDict
+from paddle.autograd.backward_utils import ValueDict, ValueSet
 from paddle.base.core import (
     call_decomp,
     decomp_ops_contain_unused_output,
@@ -377,7 +377,7 @@ def get_leaf_ops(block, global_outputs):
 
     for global_output in global_outputs:
         for op in op_to_op_valid_result.keys():
-            if global_output in op_to_op_valid_result[op]:
+            if global_output in ValueSet(op_to_op_valid_result[op]):
                 if op not in related_ops:
                     related_ops.append(op)
                     related_ops_output_indexes.append(

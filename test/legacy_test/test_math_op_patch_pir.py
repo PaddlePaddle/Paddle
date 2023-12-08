@@ -399,7 +399,7 @@ class TestMathOpPatchesPir(unittest.TestCase):
                     3,
                 ],
             )
-            self.assertTrue(y.item() == y)
+            self.assertTrue(y.item().is_same(y))
             with self.assertRaises(TypeError):
                 x.item()
 
