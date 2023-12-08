@@ -468,8 +468,8 @@ def prune_by_memory_estimation(tuner_cfg, cur_cfg, history_cfgs):
             "max_mem_usage should be set when using memory estimation tool"
         )
 
-    memory_estimation_cmd = f"python {memory_estimation_tool} --dp_degree {cur_cfg['dp_degree']} \
-                                --mp_degree {cur_cfg['mp_degree']} --pp_degree {cur_cfg['pp_degree']} \
+    memory_estimation_cmd = f"python {memory_estimation_tool} --dp_degree {cur_cfg['dp_degree']} --mp_degree {cur_cfg['mp_degree']} \
+                                --pp_degree {cur_cfg['pp_degree']} --vpp_degree {cur_cfg['vpp_degree']} \
                                 --sharding_degree {cur_cfg['sharding_degree']} --sharding_stage {cur_cfg['sharding_stage']} \
                                 --use_recompute {cur_cfg['use_recompute']} --micro_batch_size {cur_cfg['micro_batch_size']} \
                                 --recompute_granularity {cur_cfg['recompute_granularity']} \

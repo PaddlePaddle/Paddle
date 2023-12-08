@@ -23,10 +23,13 @@ def parse_arguments():
         "--dp_degree", type=int, required=True, help="dp degree"
     )
     parser.add_argument(
+        "--mp_degree", type=int, required=True, help="mp degree"
+    )
+    parser.add_argument(
         "--pp_degree", type=int, required=True, help="pp degree"
     )
     parser.add_argument(
-        "--mp_degree", type=int, required=True, help="mp degree"
+        "--vpp_degree", type=int, required=True, help="vpp degree"
     )
     parser.add_argument(
         "--sharding_degree", type=int, required=True, help="sharding degree"
