@@ -685,7 +685,7 @@ def _check_op(
     ), "backward op names do not match backward op inputs"
     fwd_op_related_inputs_outputs = []
     for idx, name in enumerate(bwd_op_input_names):
-        if not ("_grad" in name):
+        if "_grad" not in name:
             fwd_op_related_inputs_outputs.append(bwd_inputs[idx])
     fwd_inputs = [x.source() for x in fwd_op.operands()]
     fwd_outputs = fwd_op.results()
@@ -949,7 +949,7 @@ def decompose_pir_program(pir_program, param_mapping, grad_var_to_var):
 
         ops = pir_program.global_block().ops
         prev_op = None
-        black_fwd_ops = ["pd_op.layer_norm", "pd_op.stack", "pd_op.squeeze"]
+        black_fwd_ops = ["pd_op.stack", "pd_op.squeeze"]
         for op in ops:
             if op.name() not in bwd_ops and op.name() not in black_fwd_ops:
                 fwd_op_name = op.name()
