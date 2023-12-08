@@ -102,9 +102,6 @@ DISABLED_IR_TEST_FILES = {
     IrMode.PT: [
         "test_save_inference_model",
         "test_tensor_hook",
-        # TODO: only disable on Windows
-        "test_program_translator",
-        "test_cache_program",
     ],
     IrMode.PIR: [],
 }

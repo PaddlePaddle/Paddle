@@ -38,12 +38,9 @@ const std::unordered_map<std::string, std::string> CompatibleInfo::OP_NAMES = {
     {"pd_op.full", "fill_constant"},
     {"pd_op.sum", "reduce_sum"},
     {"pd_op.max", "reduce_max"},
-    {"pd_op.mean", "reduce_mean"},
     {"pd_op.add", "elementwise_add"},
     {"pd_op.elementwise_pow", "pow"},
     {"pd_op.multiply", "elementwise_mul"},
-    {"pd_op.remainder", "remainder"},
-    {"pd_op.floor_divide", "floor_divide"},
     {"pd_op.maximum", "max"},
     {"pd_op.minimum", "min"},
     {"pd_op.split_with_num", "split"},
@@ -93,12 +90,6 @@ std::string CompatibleInfo::OpName(const ::pir::Operation& op) {
   return cinn_op_name;
 }
 
-std::string CompatibleInfo::ValueName(const ::pir::Value& value) {
-  size_t hash_key = std::hash<::pir::Value>()(value);
-  return cinn::common::Context::Global().PrettyUniqName(
-      hash_key, CompatibleInfo::kNamePrefix);
-}
-
 std::string CompatibleInfo::OpFuncName(const ::pir::Operation& op) {
   std::string op_name = OpName(op);
   std::string func_name =
@@ -116,30 +107,10 @@ std::string CompatibleInfo::GroupOpsName(
   return name;
 }
 
-std::vector<std::string> CompatibleInfo::InputNames(const ::pir::Operation& op,
-                                                    bool allow_duplicate) {
-  std::vector<std::string> names;
-  std::unordered_set<std::string> repeat;
-  for (int i = 0; i < op.num_operands(); ++i) {
-    auto value = op.operand_source(i);
-    std::string name = CompatibleInfo::ValueName(value);
-    if (!allow_duplicate && repeat.count(name)) {
-      continue;
-    }
-    repeat.insert(name);
-    names.push_back(name);
-  }
-  return names;
-}
-
-std::vector<std::string> CompatibleInfo::OutputNames(::pir::Operation& op) {
-  std::vector<std::string> names;
-  for (int i = 0; i < op.num_results(); ++i) {
-    auto value = op.result(i);
-    std::string name = CompatibleInfo::ValueName(value);
-    names.push_back(std::move(name));
-  }
-  return names;
+std::string CompatibleInfo::ValueName(const ::pir::Value& value) {
+  size_t hash_key = std::hash<::pir::Value>()(value);
+  return cinn::common::Context::Global().PrettyUniqName(
+      hash_key, CompatibleInfo::kNamePrefix);
 }
 
 std::vector<::pir::Value> CompatibleInfo::RealOperandSources(

@@ -28,6 +28,21 @@ namespace distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
+SpmdInfo EmbeddingInferSpmdUnspportVocabParallel(const DistMetaTensor& x,
+                                                 const DistMetaTensor& weight,
+                                                 int padding_idx,
+                                                 bool sparse) {
+  DistMetaTensor w(weight.dims(), weight.dist_attr());
+  if (weight.dist_attr().dims_mapping()[0] >= 0) {
+    auto w_dims_mapping = weight.dist_attr().dims_mapping();
+    w_dims_mapping[0] = -1;
+    TensorDistAttr w_dist(weight.dist_attr());
+    w_dist.set_dims_mapping(w_dims_mapping);
+    w = DistMetaTensor(w.dims(), w_dist);
+  }
+  return EmbeddingInferSpmd(x, w, padding_idx, sparse);
+}
+
 SpmdInfo EmbeddingInferSpmd(const DistMetaTensor& x,
                             const DistMetaTensor& weight,
                             int padding_idx,
