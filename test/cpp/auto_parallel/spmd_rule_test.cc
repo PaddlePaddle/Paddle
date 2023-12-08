@@ -1188,7 +1188,7 @@ TEST(Transpose, Ctor) {
   check_partial_dims(backward_spmd_info.second[0], {});
 }
 
-TEST(FuseRope, Ctor) {
+TEST(FusedRope, Ctor) {
   std::vector<int64_t> mesh_shape = {2, 2};
   std::vector<int64_t> process_ids = {0, 1, 2, 3};
   std::vector<std::string> dim_names = {"x", "y"};
@@ -1212,7 +1212,7 @@ TEST(FuseRope, Ctor) {
   // 1. test forward
   // 1.1 only q input
   phi::distributed::SpmdInfo forward_spmd_info =
-      phi::distributed::FuseRopeInferSpmd(
+      phi::distributed::FusedRopeInferSpmd(
           q, none, none, none, none, none, false);
   EXPECT_EQ(forward_spmd_info.first.size(), static_cast<size_t>(6));
   EXPECT_EQ(forward_spmd_info.second.size(), static_cast<size_t>(3));
@@ -1236,7 +1236,7 @@ TEST(FuseRope, Ctor) {
       build_input({1, 2048, 1, 128}, {-1, 1, -1, -1});
   phi::distributed::DistMetaTensor position_ids =
       build_input({16, 2048}, {0, 1});
-  forward_spmd_info = phi::distributed::FuseRopeInferSpmd(
+  forward_spmd_info = phi::distributed::FusedRopeInferSpmd(
       q, k, none, sin, cos, position_ids, false);
   EXPECT_EQ(forward_spmd_info.first.size(), static_cast<size_t>(6));
   EXPECT_EQ(forward_spmd_info.second.size(), static_cast<size_t>(3));
@@ -1253,7 +1253,7 @@ TEST(FuseRope, Ctor) {
   check_partial_dims(forward_spmd_info.second[1], {});
   // 2. test backward
   phi::distributed::SpmdInfo backward_spmd_info =
-      FuseRopeGradInferSpmd(sin, cos, position_ids, q, k, none, false);
+      FusedRopeGradInferSpmd(sin, cos, position_ids, q, k, none, false);
   EXPECT_EQ(backward_spmd_info.first.size(), static_cast<size_t>(6));
   EXPECT_EQ(backward_spmd_info.second.size(), static_cast<size_t>(3));
   check_dim_mapping(backward_spmd_info.first[0], {-1, -1, -1, -1});
@@ -1273,7 +1273,7 @@ TEST(FuseRope, Ctor) {
       build_input({16, 2048, 64, 128}, {0, 1, -1, -1});
   phi::distributed::DistMetaTensor out_k =
       build_input({16, 2048, 64, 128}, {-1, 1, -1, 0});
-  phi::distributed::SpmdInfo reverse_spmd_info = FuseRopeInferSpmdReverse(
+  phi::distributed::SpmdInfo reverse_spmd_info = FusedRopeInferSpmdReverse(
       q, k, none, sin, cos, position_ids, out_q, out_k, none, false);
   EXPECT_EQ(reverse_spmd_info.first.size(), static_cast<size_t>(6));
   EXPECT_EQ(reverse_spmd_info.second.size(), static_cast<size_t>(3));
