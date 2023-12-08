@@ -149,6 +149,7 @@ def decompose(
     blacklist=frozenset(),
     whitelist=frozenset(),
 ):
+    blacklist = core.prim_config["forward_blacklist"] | blacklist
     return core.decomp_tmp(program, src_vars, blacklist, whitelist)
 
 
