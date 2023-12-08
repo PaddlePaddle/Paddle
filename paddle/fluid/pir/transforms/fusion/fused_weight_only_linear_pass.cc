@@ -22,7 +22,7 @@
 
 namespace {
 
-inline int getSMVersion() {
+int getSMVersion() {
   int sm_version = 80;
 #if defined(PADDLE_WITH_CUDA)
   sm_version = paddle::platform::GetGPUComputeCapability(
@@ -78,10 +78,10 @@ class FusedWeightOnlyLinearPattern
         res.Attr([](const pir::drr::MatchContext &match_ctx) -> std::any {
           return "weight_only_int8";
         });
-    int arch = getSMVersion();
+
     const auto &arch_attr =
-        res.Attr([&](const pir::drr::MatchContext &match_ctx) -> std::any {
-          return arch;
+        res.Attr([&](const pir::drr::MatchContext &match_ctx) -> int {
+          return getSMVersion();
         });
 
     const auto &weight_quantize =
