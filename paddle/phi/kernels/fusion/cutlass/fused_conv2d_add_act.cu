@@ -21,24 +21,24 @@ namespace fusion {
 namespace cutlass_internal {
 
 template <typename T, typename Context>
-void Conv2dFusionKernel(const Context& ctx,
-                        const DenseTensor& x,
-                        const DenseTensor& filter,
-                        const DenseTensor& bias,
-                        const paddle::optional<DenseTensor>& residual,
-                        const std::vector<int>& strides,
-                        const std::vector<int>& paddings,
-                        const std::string& padding_algorithm,
-                        const std::vector<int>& dilations,
-                        int groups,
-                        const std::string& data_format,
-                        const std::string& activation,
-                        const std::vector<int>& split_channels,
-                        bool exhaustive_search,
-                        int workspace_size_MB,
-                        float fuse_alpha,
-                        DenseTensor* output,
-                        std::vector<DenseTensor*> outputs) {
+void FusedConv2dAddActKernel(const Context& ctx,
+                             const DenseTensor& x,
+                             const DenseTensor& filter,
+                             const DenseTensor& bias,
+                             const paddle::optional<DenseTensor>& residual,
+                             const std::vector<int>& strides,
+                             const std::vector<int>& paddings,
+                             const std::string& padding_algorithm,
+                             const std::vector<int>& dilations,
+                             int groups,
+                             const std::string& data_format,
+                             const std::string& activation,
+                             const std::vector<int>& split_channels,
+                             bool exhaustive_search,
+                             int workspace_size_MB,
+                             float fuse_alpha,
+                             DenseTensor* output,
+                             std::vector<DenseTensor*> outputs) {
   ctx.template Alloc<T>(output);
   auto in_dims = x.dims();
   auto filter_dims = filter.dims();
@@ -70,10 +70,11 @@ void Conv2dFusionKernel(const Context& ctx,
     pad_w0 = paddings[2];
     pad_w1 = paddings[3];
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "Attr paddins in conv2d_fusion must have 2 or 4 elements, but now have "
-        "%u elements.",
-        paddings.size()));
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("Attr paddins in fused_conv2d_add_act "
+                                     "must have 2 or 4 elements, but now have "
+                                     "%u elements.",
+                                     paddings.size()));
   }
 
   const int stride_h = strides[0];
@@ -135,7 +136,7 @@ void Conv2dFusionKernel(const Context& ctx,
     return;
   }
 
-  // below: conv2d_fusion && groups == 1
+  // below: fused_conv2d_add_act && groups == 1
   CHECK_EQ(groups == 1, true);
   if (residual) {
     if (activation == "relu") {
@@ -166,9 +167,9 @@ void Conv2dFusionKernel(const Context& ctx,
 }  // namespace fusion
 }  // namespace phi
 
-PD_REGISTER_KERNEL(conv2d_fusion,
+PD_REGISTER_KERNEL(fused_conv2d_add_act,
                    GPU,
                    ALL_LAYOUT,
-                   phi::fusion::cutlass_internal::Conv2dFusionKernel,
+                   phi::fusion::cutlass_internal::FusedConv2dAddActKernel,
                    float,
                    phi::dtype::float16) {}

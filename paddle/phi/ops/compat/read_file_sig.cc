@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,24 +11,14 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include "paddle/phi/core/compat/op_utils.h"
 
-#pragma once
+namespace phi {
 
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+KernelSignature ReadFileOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("read_file", {}, {"filename"}, {"Out"});
+}
 
-namespace paddle {
-namespace framework {
-namespace ir {
+}  // namespace phi
 
-class Conv2dFusionLayoutTransferPass : public FusePassBase {
- public:
-  Conv2dFusionLayoutTransferPass() = default;
-  virtual ~Conv2dFusionLayoutTransferPass() = default;
-
- protected:
-  void ApplyImpl(ir::Graph* graph) const override;
-};
-
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+PD_REGISTER_ARG_MAPPING_FN(read_file, phi::ReadFileOpArgumentMapping);

@@ -12,16 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/fluid/framework/new_executor/instruction/builtin_combine_instruction.h"
+#include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 
-#include <memory>
-#include "paddle/pir/core/dll_decl.h"
+namespace paddle {
+namespace framework {
 
-namespace pir {
+BuiltinCombineInstruction::BuiltinCombineInstruction(
+    size_t id,
+    const platform::Place& place,
+    ::pir::Operation* op,
+    ValueExecutionInfo* value_exe_info)
+    : InstructionBase(id, place) {
+  op_ = op;
 
-class Pass;
+  InitInputsOutputsIds(op, *value_exe_info);
 
-// Apply some shape-related optimization.
-IR_API std::unique_ptr<Pass> CreateShapeOptimizationPass();
+  SetArtificial(true);
+}
 
-}  // namespace pir
+void BuiltinCombineInstruction::Run() {}
+
+}  // namespace framework
+}  // namespace paddle

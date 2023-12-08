@@ -22,10 +22,7 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
-    test_default_mode_only,
-    test_legacy_only,
-    test_pt_only,
-    test_sot_only,
+    test_default_and_pir,
 )
 from predictor_utils import PredictorTools
 
@@ -341,7 +338,12 @@ class TestResnet(Dy2StTestBase):
                     )
                 if batch_id == 10:
                     if to_static:
-                        paddle.jit.save(resnet, self.model_save_prefix)
+                        # TODO(@xiongkun): open after save / load supported in pir.
+                        if (
+                            to_static
+                            and not paddle.base.framework.use_pir_api()
+                        ):
+                            paddle.jit.save(resnet, self.model_save_prefix)
                     else:
                         paddle.save(
                             resnet.state_dict(),
@@ -439,20 +441,7 @@ class TestResnet(Dy2StTestBase):
             err_msg=f'predictor_pre:\n {predictor_pre}\n, st_pre: \n{st_pre}.',
         )
 
-    @test_sot_only
-    @test_pt_only
-    def test_resnet_pir(self):
-        static_loss = self.train(to_static=True)
-        dygraph_loss = self.train(to_static=False)
-        np.testing.assert_allclose(
-            static_loss,
-            dygraph_loss,
-            rtol=1e-05,
-            err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
-        )
-
-    @test_sot_only
-    @test_legacy_only
+    @test_default_and_pir
     def test_resnet(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)
@@ -462,9 +451,11 @@ class TestResnet(Dy2StTestBase):
             rtol=1e-05,
             err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
         )
-        self.verify_predict()
+        # TODO(@xiongkun): open after save / load supported in pir.
+        if not paddle.base.framework.use_pir_api():
+            self.verify_predict()
 
-    @test_default_mode_only
+    @test_default_and_pir
     def test_resnet_composite(self):
         core._set_prim_backward_enabled(True)
         core._add_skip_comp_ops("batch_norm")
@@ -478,7 +469,7 @@ class TestResnet(Dy2StTestBase):
             err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
         )
 
-    @test_default_mode_only
+    @test_default_and_pir
     def test_in_static_mode_mkldnn(self):
         paddle.base.set_flags({'FLAGS_use_mkldnn': True})
         try:

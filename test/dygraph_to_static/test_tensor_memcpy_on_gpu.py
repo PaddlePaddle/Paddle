@@ -51,13 +51,10 @@ class TestTensorCopyToCpuOnDefaultGPU(Dy2StTestBase):
 
     @test_legacy_and_pt_and_pir
     def test_tensor_cpu_on_default_gpu(self):
-        if paddle.base.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(
-                int(os.environ.get('FLAGS_selected_gpus', 0))
-            )
-        else:
+        if not paddle.is_compiled_with_cuda():
             return
-        paddle.base.framework._set_expected_place(place)
+        place = paddle.CUDAPlace(int(os.environ.get('FLAGS_selected_gpus', 0)))
+        paddle.framework._set_expected_place(place)
         dygraph_x1_place, dygraph_place, dygraph_res = self._run(
             to_static=False
         )
@@ -78,13 +75,10 @@ class TestTensorCopyToCUDAOnDefaultGPU(Dy2StTestBase):
 
     @test_legacy_and_pt_and_pir
     def test_tensor_cuda_on_default_gpu(self):
-        if paddle.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(
-                int(os.environ.get('FLAGS_selected_gpus', 0))
-            )
-        else:
+        if not paddle.is_compiled_with_cuda():
             return
-        paddle.base.framework._set_expected_place(place)
+        place = paddle.CUDAPlace(int(os.environ.get('FLAGS_selected_gpus', 0)))
+        paddle.framework._set_expected_place(place)
         dygraph_x1_place, dygraph_place, dygraph_res = self._run(
             to_static=False
         )
@@ -107,13 +101,10 @@ class TestTensorCopyToCUDAWithWarningOnGPU(unittest.TestCase):
 
     @test_legacy_and_pt_and_pir
     def test_with_warning_on_gpu(self):
-        if paddle.base.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(
-                int(os.environ.get('FLAGS_selected_gpus', 0))
-            )
-        else:
+        if not paddle.is_compiled_with_cuda():
             return
-        paddle.base.framework._set_expected_place(place)
+        place = paddle.CUDAPlace(int(os.environ.get('FLAGS_selected_gpus', 0)))
+        paddle.framework._set_expected_place(place)
 
         x1 = paddle.ones([1, 2, 3])
         with self.assertWarns(UserWarning, msg="ignored") as cm:
