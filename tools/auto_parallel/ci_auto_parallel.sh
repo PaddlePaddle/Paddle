@@ -104,18 +104,20 @@ if [[ ${#case_list[*]} -ne 0 ]];then
     # Install paddle
     install_paddle
     case_num=1
-    export FLAGS_before_hook=0
+    export FLAGS_install_deps=0
     for case in ${case_list[*]};do
         echo -e "\033[31m ---- running case $case_num/${#case_list[*]}: ${case} \033"
         if [[ ${case} == "gpt-3_auto" ]];then
-            bash /workspace/PaddleNLP/scripts/distribute/ci_case_auto.sh case_list_auto $FLAGS_before_hook
+            bash /workspace/PaddleNLP/scripts/distribute/ci_case_auto.sh gpt_case_list_auto $FLAGS_install_deps $FLAGS_download_data
             print_info $? `ls -lt ${log_path} | grep "gpt" | grep -v "pir" | head -n 1 | awk '{print $9}'` ${case}
-            export FLAGS_before_hook=1
+            export FLAGS_install_deps=1
+            export FLAGS_download_data="gpt ""$FLAGS_download_data"
             let case_num++
         elif [[ ${case} == "gpt-3_auto_pir" ]];then
-            bash /workspace/PaddleNLP/scripts/distribute/ci_case_auto.sh case_list_auto_pir $FLAGS_before_hook
+            bash /workspace/PaddleNLP/scripts/distribute/ci_case_auto.sh case_list_auto_pir $FLAGS_install_deps $FLAGS_download_data
             print_info $? `ls -lt ${log_path} | grep "pir" | head -n 1 | awk '{print $9}'` ${case}
-            export FLAGS_before_hook=1
+            export FLAGS_install_deps=1
+            export FLAGS_download_data="gpt ""$FLAGS_download_data"
             let case_num++
         elif [[ ${case} == "unit_test" ]];then
             bash /workspace/Paddle/tools/auto_parallel/ci_case_unit.sh
