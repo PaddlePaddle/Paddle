@@ -25,25 +25,10 @@ import paddle.inference as paddle_infer
 
 class TrtConvertArgsort(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        compile_version = paddle_infer.get_trt_compile_version()
-        runtime_version = paddle_infer.get_trt_runtime_version()
-        if (
-            compile_version[0] * 1000
-            + compile_version[1] * 100
-            + compile_version[2] * 10
-            < 8100
-        ):
-            return False
-        if (
-            runtime_version[0] * 1000
-            + runtime_version[1] * 100
-            + runtime_version[2] * 10
-            < 8100
-        ):
-            return False
         return True
 
     def sample_program_configs(self):
+        # 1. Declare input
         def generate_input1(batch):
             if self.dims == 4:
                 return np.random.random([batch, 3, 3, 24]).astype(np.float32)
