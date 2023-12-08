@@ -2439,17 +2439,6 @@ def update_grad_var_to_var(program, strategy, grad_var_to_var):
                         grad_var_to_var[output_name] = grad_var_to_var[
                             input_names[0]
                         ]
-            elif op.desc.type() == "recv_v2":
-                output_names = op.desc.output("Out")
-                original_var_name = (
-                    output_names[0][: output_names[0].rfind("@recv")]
-                    if output_names[0].rfind("@recv") != -1
-                    else ""
-                )
-                if original_var_name in grad_var_to_var.keys():
-                    grad_var_to_var[output_names[0]] = grad_var_to_var[
-                        original_var_name
-                    ]
 
         # process amp pass in distributed training
         if (
