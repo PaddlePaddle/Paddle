@@ -12,7 +12,4 @@ endforeach()
 
 if(WIN32)
   set_tests_properties(test_sot_resnet50_backward PROPERTIES TIMEOUT 420)
-  set_tests_properties(
-    test_sot_resnet50_backward PROPERTIES ENVIRONMENT
-                                          "FLAGS_enable_pir_with_pt_in_dy2st=0")
 endif()
