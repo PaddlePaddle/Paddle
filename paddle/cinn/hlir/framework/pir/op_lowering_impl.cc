@@ -666,9 +666,7 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
         group->output_ops.begin(),
         group->output_ops.end(),
         std::inserter(output_tensor_names, output_tensor_names.begin()),
-        [](::pir::Operation* op) {
-          return CompatibleInfo::ValueName(op->result(0));
-        });
+        [&](::pir::Operation* op) { return ValueName(op->result(0)); });
     std::unique_ptr<ir::GroupScheduler> group_scheduler =
         ir::GroupScheduler::Make(
             &ir_sch, output_tensor_names, target_, /* is_dy_shape = */ false);
