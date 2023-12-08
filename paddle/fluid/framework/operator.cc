@@ -1625,6 +1625,7 @@ bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
 
 bool OperatorWithKernel::ContainsOneDNNTensorInputs(
     const framework::ExecutionContext& ctx) const {
+  return false;
   for (auto* name : ctx.InNameList()) {
     if (ctx.InputSize(*name) == 1UL) {
       if (ctx.HasInput(*name)) {
