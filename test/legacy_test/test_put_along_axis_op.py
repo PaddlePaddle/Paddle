@@ -1141,6 +1141,55 @@ class TestPutAlongAxisAPIMulInt64(unittest.TestCase):
         run(paddle.CUDAPlace(0))
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not complied with CUDA",
+)
+class TestPutAlongAxisAPIMulUint8(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(0)
+        self.dtype = 'uint8'
+        self.x_type = "uint8"
+        self.x_shape = (10, 10, 10)
+        self.value_type = "uint8"
+        self.value = np.random.randint(1, 5, (5, 5, 5)).astype(self.value_type)
+        self.index_type = "int64"
+        self.index = np.zeros((5, 5, 5)).astype(self.index_type)
+        self.axis = 1
+        self.axis_type = "int64"
+        self.op_type = "put_along_axis"
+        self.python_api = paddle.tensor.put_along_axis
+        self.xnp = np.random.randint(1, 5, self.x_shape).astype(self.x_type)
+        # numpy put_along_axis is an inplace operation.
+        self.target = copy.deepcopy(self.xnp)
+        for i in range(5):
+            for j in range(5):
+                for k in range(5):
+                    self.target[i, self.index[i, j, k], k] *= self.value[
+                        i, j, k
+                    ]
+
+    def test_api_dygraph(self):
+        def run(place):
+            paddle.disable_static(place)
+            x_tensor = paddle.to_tensor(self.xnp)
+            index_tensor = paddle.to_tensor(self.index)
+            value_tensor = paddle.to_tensor(self.value)
+            out = paddle.put_along_axis(
+                x_tensor,
+                index_tensor,
+                value_tensor,
+                self.axis,
+                "mul",
+                True,
+                False,
+            )
+            out_ref = self.target
+            np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
+
+        run(paddle.CUDAPlace(0))
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
