@@ -300,6 +300,11 @@ class AutoMixedPrecisionPattern : public pir::RewritePattern {
            dtype == phi::DataType::BFLOAT16;
   }
 
+  phi::DataType OperandDataType(const pir::OpOperand& operand) const {
+    auto dtype = pir::GetDataTypeFromValue(operand.source());
+    return paddle::dialect::TransToPhiDataType(dtype);
+  }
+
   bool IsOperandHasDenseTensorType(pir::OpOperand operand) const {
     return operand.type() &&
            operand.type().isa<paddle::dialect::DenseTensorType>();
@@ -360,8 +365,7 @@ class AutoMixedPrecisionPattern : public pir::RewritePattern {
     // Rewrite FetchOp
     if (op->isa<paddle::dialect::FetchOp>()) {
       auto fetch_operand = op->operand(0);
-      auto fetch_operand_dtype = paddle::dialect::TransToPhiDataType(
-          pir::GetDataTypeFromValue(fetch_operand.source()));
+      auto fetch_operand_dtype = OperandDataType(fetch_operand);
       if (enable_low_precision_io_) {
         SetResultDataType(
             op->result(0), precision_mode_, rewriter.ir_context());
@@ -430,12 +434,10 @@ class AutoMixedPrecisionPattern : public pir::RewritePattern {
       // input_defs will always be the smaller one?
       for (size_t i = 0; i < input_defs.size(); i++) {
         auto operand = op->operand(i);
+        auto in_phi_dtype = input_defs[i].dtype;
         if (!IsOperandHasDenseTensorType(operand)) continue;
-        auto operand_dtype = pir::GetDataTypeFromValue(operand.source());
-        if (!IsDataTypeFloat(
-                paddle::dialect::TransToPhiDataType(operand_dtype)))
-          continue;
-        if (operand_dtype != in_phi_dtype) {
+        auto operand_dtype = OperandDataType(operand);
+        if (IsDataTypeFloat(operand_dtype) && operand_dtype != in_phi_dtype) {
           InsertCastOp(op, operand, in_phi_dtype, rewriter);
         }
       }
@@ -445,13 +447,9 @@ class AutoMixedPrecisionPattern : public pir::RewritePattern {
       for (size_t i = 0; i < op->num_operands(); i++) {
         auto operand = op->operand(i);
         if (!IsOperandHasDenseTensorType(operand)) continue;
-        auto operand_dtype = pir::GetDataTypeFromValue(operand.source());
-        if (!IsDataTypeFloat(
-                paddle::dialect::TransToPhiDataType(operand_dtype)))
-          continue;
-
-        // Only cast float16 or bfloat16 to float32
-        if (operand_dtype != precision_mode_) {
+        auto operand_dtype = OperandDataType(operand);
+        if (IsDataTypeFloat(operand_dtype) &&
+            operand_dtype == precision_mode_) {
           InsertCastOp(op, operand, phi_dtype, rewriter);
         }
       }
