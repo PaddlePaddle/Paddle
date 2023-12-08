@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 from functools import partial
 from typing import List
@@ -26,6 +25,22 @@ import paddle.inference as paddle_infer
 
 class TrtConvertArgsort(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        compile_version = paddle_infer.get_trt_compile_version()
+        runtime_version = paddle_infer.get_trt_runtime_version()
+        if (
+            compile_version[0] * 1000
+            + compile_version[1] * 100
+            + compile_version[2] * 10
+            < 8100
+        ):
+            return False
+        if (
+            runtime_version[0] * 1000
+            + runtime_version[1] * 100
+            + runtime_version[2] * 10
+            < 8100
+        ):
+            return False
         return True
 
     def sample_program_configs(self):
@@ -127,8 +142,7 @@ class TrtConvertArgsort(TrtLayerAutoScanTest):
         yield self.create_inference_config(), (1, 3), 1e-3
 
     def test(self):
-        if os.name != 'nt':
-            self.run_test()
+        self.run_test()
 
 
 if __name__ == "__main__":

@@ -414,10 +414,8 @@ bool GenericPlugin::supportsFormatCombination(
     }
     // output out
     if (pos == 1) {
-      return ((in_out[pos].type == nvinfer1::DataType::kFLOAT ||
-               (isFp16Supported() &&
-                in_out[pos].type == nvinfer1::DataType::kHALF)) &&
-              in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
+      return (in_out[pos].type == in_out[0].type &&
+              in_out[pos].format == in_out[0].format);
     }
     // output indices
     if (pos == 2) {
