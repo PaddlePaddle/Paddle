@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import copy
 from collections import defaultdict
 from typing import Callable
 
@@ -18,7 +19,7 @@ import paddle
 import paddle.distributed as dist
 from paddle import nn
 from paddle.base.framework import EagerParamBase
-from paddle.distributed.auto_parallel import Engine
+from paddle.distributed.auto_parallel import Engine, strategy
 from paddle.distributed.auto_parallel.interface import (
     shard_tensor as shard_tensor_static,
 )
@@ -277,6 +278,71 @@ class DistModel:
 # Part2: DistTensor construction related APIs
 
 
+class Strategy(strategy.BaseConfig):
+    """
+    The `Strategy` object is used to configure the parallelization
+    and optimization strategies for static graph. Currently supports
+    configuring ``sharding``, ``fused_passes``, ``gradient_merge``
+    and ``pipline``. More strategies will be supported in the future.
+
+    Args:
+        config (dict|None, optional): If ``config`` is None, the default
+        configurations will be set. If it is a dict, the itmes inside
+        the dict will be used to set the configurations, the others remain
+        the default values.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> from paddle.distributed as dist
+
+            >>> strategy = dist.Strategy()
+            >>> sharding = strategy.sharding
+            >>> assert sharding.enable == False
+            >>> assert sharding.stage == 1
+            >>> assert sharding.degree == 8
+
+            >>> sharding.enable = True
+            >>> sharding.stage = 2
+            >>> sharding.degree = 2
+            >>> assert sharding.enable == True
+            >>> assert sharding.stage == 2
+            >>> assert sharding.degree == 2
+
+    """
+
+    def __init__(self, config=None):
+        if config is not None:
+            if isinstance(config, dict):
+                self._config_dict = copy.deepcopy(config)
+            else:
+                raise ValueError(
+                    f"Expected a dictionary. But received: {config}"
+                )
+        else:
+            self._config_dict = {}
+
+        category = strategy.constants.BASE
+        super().__init__(category, self._config_dict)
+
+        config_dict = self._config_dict.get(strategy.constants.SHARDING, None)
+        self.sharding = strategy.ShardingConfig(config_dict)
+
+        config_dict = self._config_dict.get(
+            strategy.constants.GRADIENT_MERGE, None
+        )
+        self.gradient_merge = strategy.GradientMergeConfig(config_dict)
+
+        config_dict = self._config_dict.get(strategy.constants.PIPELINE, None)
+        self.pipeline = strategy.PipelineConfig(config_dict)
+
+        config_dict = self._config_dict.get(
+            strategy.constants.FUSED_PASSES, None
+        )
+        self.fused_passes = strategy.FusedPassesConfig(config_dict)
+
+
 def to_static(
     layer: paddle.nn.Layer,
     loader=None,
@@ -472,7 +538,7 @@ def shard_tensor(
                 tensor,
                 process_mesh=mesh,
                 placements=placements,
-                **tensor.__dict__
+                **tensor.__dict__,
             )
         else:
             return paddle.Tensor(
