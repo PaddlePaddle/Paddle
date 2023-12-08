@@ -194,6 +194,8 @@ if(WITH_CUTLASS)
 
   add_custom_target(generate-fpA-intB-gemm-sources
                     DEPENDS ${generated_fpA_intB_gemm_files})
+  add_library(fpA_intB_gem_kernels_gen INTERFACE)
+  add_dependencies(fpA_intB_gem_kernels_gen generate-fpA-intB-gemm-sources)
 
   file(
     GLOB cutlass_cu
@@ -205,6 +207,7 @@ if(WITH_CUTLASS)
     "fusion/cutlass/memory_efficient_attention/autogen_variable/impl/*.cu"
     "fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/*.cu"
     "fusion/cutlass/cutlass_kernels/fpA_intB_gemm/*.cu")
+
   list(APPEND kernel_cu ${cutlass_cu})
 endif()
 
