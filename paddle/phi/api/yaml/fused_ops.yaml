@@ -163,6 +163,27 @@
   optional : bias, residual, norm_weight, norm_bias, residual_out
   support_dygraph_mode : true
 
+- op : fused_conv2d_add_act
+  args : (Tensor input, Tensor filter, Tensor bias, Tensor residual_data, int[] strides={1, 1}, int[] paddings={0, 0}, str padding_algorithm="EXPLICIT", int[] dilations={1, 1} , int groups=1, str data_format="NCHW", str activation="relu", int[] split_channels={}, bool exhaustive_search=false, int workspace_size_MB=32, float fuse_alpha=0.0f)
+  output : Tensor(output), Tensor[](outputs){split_channels.size()}
+  infer_meta :
+    func : FusedConv2dAddActInferMeta
+    param : [input, filter, bias, residual_data, strides, paddings, padding_algorithm, dilations, groups, data_format, activation, split_channels]
+  kernel :
+    func : fused_conv2d_add_act
+    data_type : input
+  optional : bias, residual_data, outputs
+
+- op : fused_dconv_drelu_dbn
+  args : (Tensor grad_output, Tensor weight, Tensor grad_output_add, Tensor residual_input, Tensor bn1_eqscale, Tensor bn1_eqbias, Tensor conv_input, Tensor bn1_mean, Tensor bn1_inv_std, Tensor bn1_gamma, Tensor bn1_beta, Tensor bn1_input, Tensor bn2_mean, Tensor bn2_inv_std, Tensor bn2_gamma, Tensor bn2_beta, Tensor bn2_input, int[] paddings, int[] dilations, int[] strides, str padding_algorithm, int groups, str data_format, bool fuse_shortcut, bool fuse_dual, bool fuse_add, bool exhaustive_search)
+  output : Tensor(grad_weight), Tensor(grad_bn1_input), Tensor(grad_bn1_gamma), Tensor(grad_bn1_beta), Tensor(grad_bn2_input), Tensor(grad_bn2_gamma), Tensor(grad_bn2_beta)
+  optional : grad_output_add, residual_input, bn1_eqscale, bn1_eqbias, conv_input, bn2_mean, bn2_inv_std, bn2_gamma, bn2_beta, bn2_input, grad_bn2_input, grad_bn2_gamma, grad_bn2_beta
+  infer_meta :
+    func : FusedDconvDreluDbnInferMeta
+  kernel :
+    func : fused_dconv_drelu_dbn
+    data_type : grad_output
+
 - op : fused_dropout_add
   args : (Tensor x, Tensor y, Tensor seed_tensor, Scalar p, bool is_test, str mode, int seed = 0, bool fix_seed = false)
   optional : seed_tensor
@@ -241,7 +262,7 @@
 - op : fused_scale_bias_add_relu
   args : (Tensor x1, Tensor scale1, Tensor bias1, Tensor x2, Tensor scale2, Tensor bias2, bool fuse_dual, bool exhaustive_search)
   optional : scale2, bias2
-  output : Tensor(y)
+  output : Tensor(out)
   infer_meta :
     func : FusedScaleBiasAddReluInferMeta
   kernel :
@@ -381,7 +402,7 @@
   infer_meta :
     func : SkipLayerNormInferMeta
   kernel :
-    func : skip_layer
+    func : skip_layernorm
     data_type : x
 
 - op : squeeze_excitation_block

@@ -42,6 +42,10 @@ const std::unordered_map<std::string, std::string> CompatibleInfo::OP_NAMES = {
     {"pd_op.add", "elementwise_add"},
     {"pd_op.elementwise_pow", "pow"},
     {"pd_op.multiply", "elementwise_mul"},
+    {"pd_op.remainder", "remainder"},
+    {"pd_op.floor_divide", "floor_divide"},
+    {"pd_op.maximum", "max"},
+    {"pd_op.minimum", "min"},
     {"pd_op.split_with_num", "split"},
     {"cinn_op.reshape", "reshape"},
     {"cinn_op.scale", "scale"},
@@ -89,12 +93,6 @@ std::string CompatibleInfo::OpName(const ::pir::Operation& op) {
   return cinn_op_name;
 }
 
-std::string CompatibleInfo::ValueName(const ::pir::Value& value) {
-  size_t hash_key = std::hash<::pir::Value>()(value);
-  return cinn::common::Context::Global().PrettyUniqName(
-      hash_key, CompatibleInfo::kNamePrefix);
-}
-
 std::string CompatibleInfo::OpFuncName(const ::pir::Operation& op) {
   std::string op_name = OpName(op);
   std::string func_name =
@@ -112,30 +110,10 @@ std::string CompatibleInfo::GroupOpsName(
   return name;
 }
 
-std::vector<std::string> CompatibleInfo::InputNames(const ::pir::Operation& op,
-                                                    bool allow_duplicate) {
-  std::vector<std::string> names;
-  std::unordered_set<std::string> repeat;
-  for (int i = 0; i < op.num_operands(); ++i) {
-    auto value = op.operand_source(i);
-    std::string name = CompatibleInfo::ValueName(value);
-    if (!allow_duplicate && repeat.count(name)) {
-      continue;
-    }
-    repeat.insert(name);
-    names.push_back(name);
-  }
-  return names;
-}
-
-std::vector<std::string> CompatibleInfo::OutputNames(::pir::Operation& op) {
-  std::vector<std::string> names;
-  for (int i = 0; i < op.num_results(); ++i) {
-    auto value = op.result(i);
-    std::string name = CompatibleInfo::ValueName(value);
-    names.push_back(std::move(name));
-  }
-  return names;
+std::string CompatibleInfo::ValueName(const ::pir::Value& value) {
+  size_t hash_key = std::hash<::pir::Value>()(value);
+  return cinn::common::Context::Global().PrettyUniqName(
+      hash_key, CompatibleInfo::kNamePrefix);
 }
 
 std::vector<::pir::Value> CompatibleInfo::RealOperandSources(
@@ -229,10 +207,10 @@ utils::AttributeMap CompatibleInfo::ConvertAttributes(
 }
 
 #define CASE_TYPE(src, dst) \
-  else if (type.isa<::pir::src>()) return common::dst();
+  else if (type.isa<::pir::src>()) return cinn::common::dst();
 
-common::Type CompatibleInfo::ConvertIRType(::pir::Type type) {
-  if (type.isa<::pir::BFloat16Type>()) return common::BF16();
+cinn::common::Type CompatibleInfo::ConvertIRType(::pir::Type type) {
+  if (type.isa<::pir::BFloat16Type>()) return cinn::common::BF16();
   CASE_TYPE(Float16Type, F16)
   CASE_TYPE(Float32Type, F32)
   CASE_TYPE(Float64Type, F64)
@@ -270,7 +248,20 @@ OpPatternKind CompatibleInfo::OpKind(const ::pir::Operation& op) {
 
 std::vector<int> CompatibleInfo::ValueShape(const ::pir::Value& value) {
   auto& dim = value.type().dyn_cast<::pir::DenseTensorType>().dims();
-  return phi::vectorize<int>(dim);
+  return ::common::vectorize<int>(dim);
+}
+
+std::vector<int64_t> GetBroadcastAxis(const phi::DDim& in_shape,
+                                      const std::vector<int64_t>& out_shape) {
+  std::vector<int64_t> broadcast_axes(in_shape.size(), 0);
+  auto in_shape_size = in_shape.size();
+  if (in_shape_size >= 1) {
+    for (int i = 1; i <= in_shape_size; ++i) {
+      broadcast_axes[in_shape_size - i] = out_shape.size() - i;
+    }
+  }
+
+  return broadcast_axes;
 }
 
 }  // namespace pir

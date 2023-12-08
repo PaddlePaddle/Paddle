@@ -104,7 +104,7 @@ void RegisterCpuIntrinRule() {
         Expr arg = node->read_args[0];
         Type type = arg->type();
         if (type.is_int() || type.is_uint()) {
-          *rv = common::make_bool(false, type.lanes());
+          *rv = cinn::common::make_bool(false, type.lanes());
         } else if (type.is_float()) {
           *rv = ir::EQ::Make(lang::Abs(arg), lang::Infinity(type)) &&
                 !(lang::IsNan(arg));

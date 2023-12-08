@@ -1337,6 +1337,18 @@ PHI_DEFINE_EXPORTED_string(
     ir_inplace_kernel_blacklist,
     "",
     "It controls the ir inplace kernel subset do not use.");
+/**
+ * Specify the directory of saving PIR sugraph from @to_static
+ * Name: pir_subgraph_saving_dir
+ * Since Version: 2.6.0
+ * Value Range: str, default=""
+ * Example:
+ * Note: "/workspace/my_path", it will save into my_path dir;
+ */
+PHI_DEFINE_EXPORTED_string(
+    pir_subgraph_saving_dir,
+    "",
+    "Specify the directory of saving PIR sugraph from @to_static.");
 
 PHI_DEFINE_EXPORTED_bool(enable_record_memory, false, "Enable memory recorder");
 
@@ -1361,7 +1373,8 @@ PHI_DEFINE_EXPORTED_int32(
 
 PHI_DEFINE_EXPORTED_bool(print_ir, false, "Whether print ir debug str.");
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_XPU_BKCL)
 /**
  * Communication library related FLAG
  * Name: FLAGS_dynamic_static_unified_comm
@@ -1391,3 +1404,17 @@ PHI_DEFINE_EXPORTED_bool(enable_async_trace,
                          "enable collective async trace");
 
 PHI_DEFINE_EXPORTED_int32(async_trace_count, 5, "collective async trace count");
+
+PHI_DEFINE_EXPORTED_bool(
+    use_auto_growth_pinned_allocator,
+    false,
+    "Whether to use the auto_growth CUDA pinned allocator.");
+
+PHI_DEFINE_EXPORTED_bool(
+    sync_after_alloc,
+    false,
+    "Whether to perform device synchronization after allocation.");
+PHI_DEFINE_EXPORTED_int64(alloc_fill_value,
+                          -1,
+                          "Whether to fill fixed value after allocation. "
+                          "This is usefull for debugging.");

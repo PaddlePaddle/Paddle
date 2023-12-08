@@ -58,7 +58,7 @@ void FillDiagonalTensorKernel(const Context &ctx,
 
   auto out_dims = out->dims();
   auto matdims = y.dims();
-  auto fill_dims = phi::flatten_to_2d(matdims, matdims.size() - 1);
+  auto fill_dims = common::flatten_to_2d(matdims, matdims.size() - 1);
 
   int64_t new_dims[2];
   std::vector<int64_t> memory_block;
@@ -89,7 +89,7 @@ void FillDiagonalTensorKernel(const Context &ctx,
 
   auto stream = ctx.stream();
   DenseTensor tensor_tmp;
-  tensor_tmp.Resize(phi::make_ddim({2 + fill_dims[0]}));
+  tensor_tmp.Resize(common::make_ddim({2 + fill_dims[0]}));
   int64_t *memory_block_cu = ctx.template Alloc<int64_t>(&tensor_tmp);
   const auto gpu_place = ctx.GetPlace();
   memory_utils::Copy(gpu_place,

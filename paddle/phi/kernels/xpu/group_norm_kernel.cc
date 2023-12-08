@@ -19,8 +19,8 @@
 #include <numeric>
 #include <string>
 
+#include "paddle/common/layout.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -38,11 +38,11 @@ void GroupNormKernel(const Context& dev_ctx,
                      DenseTensor* var) {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
-  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
   const auto scale_ptr = scale.get_ptr();
   const auto bias_ptr = bias.get_ptr();
 
-  const auto x_dims = phi::vectorize<int>(x.dims());
+  const auto x_dims = common::vectorize<int>(x.dims());
   const int N = x_dims[0];
   const bool channel_first =
       data_layout == DataLayout::kNCHW || data_layout == DataLayout::kNCDHW;

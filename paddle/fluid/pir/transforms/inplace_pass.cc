@@ -248,9 +248,9 @@ static void GetEagerDelValueOfOp(
 
     if (op.isa<paddle::dialect::IfOp>()) {
       auto if_op = op.dyn_cast<paddle::dialect::IfOp>();
-      GetEagerDelValueOfOp(if_op.true_block(), skip_dels, del_value_2_op);
+      GetEagerDelValueOfOp(&if_op.true_block(), skip_dels, del_value_2_op);
       VLOG(8) << "GetEagerDelValueOfOp for IfOp true block";
-      GetEagerDelValueOfOp(if_op.false_block(), skip_dels, del_value_2_op);
+      GetEagerDelValueOfOp(&if_op.false_block(), skip_dels, del_value_2_op);
       VLOG(8) << "GetEagerDelValueOfOp for IfOp false block";
     }
   }
@@ -447,9 +447,9 @@ class InplacePass : public pir::Pass {
   void Run(pir::Operation* op) override {
     auto module_op = op->dyn_cast<pir::ModuleOp>();
     IR_ENFORCE(module_op, "inplace_pass should run on module op.");
-    auto* block = module_op.block();
+    auto& block = module_op.block();
 
-    auto inplace_ops = details::GetInplaceOps(block);
+    auto inplace_ops = details::GetInplaceOps(&block);
 
     for (auto kv : inplace_ops) {
       VLOG(6) << "Do inplace for: "
@@ -458,8 +458,8 @@ class InplacePass : public pir::Pass {
                      .dyn_cast<pir::StrAttribute>()
                      .AsString();
       pir::Block::Iterator insert_pos =
-          std::find(block->begin(), block->end(), *kv.first);
-      IR_ENFORCE(insert_pos != block->end(),
+          std::find(block.begin(), block.end(), *kv.first);
+      IR_ENFORCE(insert_pos != block.end(),
                  "Operator %s not found in block.",
                  kv.first->name());
 
