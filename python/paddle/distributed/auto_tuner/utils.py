@@ -19,6 +19,8 @@ import os
 import re
 from typing import Tuple
 
+from .prune import _PRUNE_FUNC
+
 
 def divisor(num, reverse=False):
     """Return the divisor of the given number."""
@@ -42,7 +44,10 @@ def dist_degree(mode, num_gpus, num_nodes, tuner_cfg=None):
     results = []
     prune_results = []
     if mode == "dp":
-        results = divisor(num_gpus, reverse=False)
+        if tuner_cfg.get("schedule_mode", "memory") != "performance":
+            results = divisor(num_gpus, reverse=False)
+        else:
+            results = divisor(num_gpus, reverse=True)
 
     elif mode == "pp":
         if num_nodes > 1 and tuner_cfg.get("enable_pp_prune", True):
@@ -64,9 +69,16 @@ def dist_degree(mode, num_gpus, num_nodes, tuner_cfg=None):
     elif mode == "mp":
         if tuner_cfg.get("enable_mp_prune", True):
             gpus_per_node = num_gpus // num_nodes
-            results = divisor(gpus_per_node, reverse=True)
+            if tuner_cfg.get("schedule_mode", "memory") != "performance":
+                results = divisor(gpus_per_node, reverse=True)
+            else:
+                results = divisor(gpus_per_node, reverse=False)
         else:
-            results = divisor(num_gpus, reverse=True)
+            if tuner_cfg.get("schedule_mode", "memory") != "performance":
+                results = divisor(num_gpus, reverse=True)
+            else:
+                results = divisor(num_gpus, reverse=False)
+
         for mp_degree in results:
             prune_flag = False
             hidden_size = tuner_cfg["model_cfg"].get("hidden_size", None)
@@ -101,10 +113,24 @@ def dist_degree(mode, num_gpus, num_nodes, tuner_cfg=None):
         results = divisor(num_gpus, reverse=True)
 
     elif mode == "mbs":
-        results = divisor(tuner_cfg["model_cfg"]["global_batch_size"])
+        if tuner_cfg.get("schedule_mode", "memory") != "performance":
+            results = divisor(
+                tuner_cfg["model_cfg"]["global_batch_size"], reverse=False
+            )
+        else:
+            results = divisor(
+                tuner_cfg["model_cfg"]["global_batch_size"], reverse=True
+            )
 
     elif mode == "vpp":
-        results = divisor(tuner_cfg["model_cfg"]["num_layers"], reverse=True)
+        if tuner_cfg.get("schedule_mode", "memory") != "performance":
+            results = divisor(
+                tuner_cfg["model_cfg"]["num_layers"], reverse=False
+            )
+        else:
+            results = divisor(
+                tuner_cfg["model_cfg"]["num_layers"], reverse=True
+            )
 
     return results
 
@@ -112,15 +138,21 @@ def dist_degree(mode, num_gpus, num_nodes, tuner_cfg=None):
 def default_candidates(tuner_cfg):
     """Return the default candidates of every hyper param which user defined auto"""
     candidates = {}
+    estimated_num_gpus = None
+    if (
+        "search_algo" in tuner_cfg
+        and "estimated_num_gpus" in tuner_cfg["search_algo"]
+    ):
+        estimated_num_gpus = tuner_cfg["search_algo"]["estimated_num_gpus"]
     num_gpus = (
         tuner_cfg["num_gpus"]
-        if "estimated_num_gpus" not in tuner_cfg
-        else tuner_cfg["estimated_num_gpus"]
+        if estimated_num_gpus is None
+        else estimated_num_gpus
     )
     num_nodes = (
         tuner_cfg["nodes"]
-        if "estimated_num_gpus" not in tuner_cfg
-        else tuner_cfg["estimated_num_gpus"] // 8
+        if estimated_num_gpus is None
+        else estimated_num_gpus // tuner_cfg["gpus_per_node"]
     )
     assert num_gpus > 0
 
@@ -170,21 +202,38 @@ def default_candidates(tuner_cfg):
         candidates["sharding_degree"] = [1]
 
     if tuner_cfg.get("sharding_stage", None) == "auto":
-        candidates["sharding_stage"] = [3, 2, 1]
+        if tuner_cfg.get("schedule_mode", "memory") != "performance":
+            candidates["sharding_stage"] = [3, 2, 1]
+        else:
+            candidates["sharding_stage"] = [1, 2, 3]
     elif tuner_cfg.get("sharding_stage", None):
         candidates["sharding_stage"] = tuner_cfg.get("sharding_stage")
     else:
         candidates["sharding_stage"] = [None]
 
     if tuner_cfg.get("use_recompute", None) == "auto":
-        candidates["use_recompute"] = [True, False]
+        if tuner_cfg.get("schedule_mode", "memory") != "performance":
+            candidates["use_recompute"] = [True, False]
+        else:
+            candidates["use_recompute"] = [False, True]
     elif tuner_cfg.get("use_recompute", None):
         candidates["use_recompute"] = tuner_cfg.get("use_recompute")
     else:
         candidates["use_recompute"] = [None]
 
     if tuner_cfg.get("recompute_granularity", None) == "auto":
-        candidates["recompute_granularity"] = ["full_attn", "full"]
+        if tuner_cfg.get("schedule_mode", "memory") != "performance":
+            candidates["recompute_granularity"] = [
+                "full",
+                "full_attn",
+                "core_attn",
+            ]
+        else:
+            candidates["recompute_granularity"] = [
+                "core_attn",
+                "full_attn",
+                "full",
+            ]
     elif tuner_cfg.get("recompute_granularity", None):
         candidates["recompute_granularity"] = tuner_cfg.get(
             "recompute_granularity"
@@ -220,8 +269,9 @@ def search_all(tuner_cfg):
 
     num_gpus = (
         tuner_cfg["num_gpus"]
-        if "estimated_num_gpus" not in tuner_cfg
-        else tuner_cfg["estimated_num_gpus"]
+        if "search_algo" not in tuner_cfg
+        or "estimated_num_gpus" not in tuner_cfg["search_algo"]
+        else tuner_cfg["search_algo"]["estimated_num_gpus"]
     )
     valid_degrees = []
 
@@ -303,23 +353,215 @@ def search_all(tuner_cfg):
         for idx, val in enumerate(cfg):
             new_cfg[mapping[idx]] = val
         new_all_cfgs.append(new_cfg)
-    return new_all_cfgs
+
+    pruned_all_cfgs = []
+    tuner_cfg["num_gpus"] = num_gpus
+    for cur_cfg in new_all_cfgs:
+        pruned = False
+        for func in _PRUNE_FUNC:
+            result = func(tuner_cfg, cur_cfg, [])
+            if result:
+                pruned = True
+                break
+        if not pruned:
+            pruned_all_cfgs.append(cur_cfg)
+    return pruned_all_cfgs
 
 
 def search_by_dp_estimation(tuner_cfg):
-    from .cost_model import get_not_oom_cfgs
-
     all_cfgs = search_all(tuner_cfg)
-    not_oom_cfgs = get_not_oom_cfgs(all_cfgs, tuner_cfg)
-    num_gpus_per_dp_degree = tuner_cfg["num_gpus"]
-    estimated_dp_degree = (
-        tuner_cfg["estimated_num_gpus"] // num_gpus_per_dp_degree
+    estimated_num_gpus = tuner_cfg["search_algo"].get(
+        "estimated_num_gpus", None
     )
-    result_cfgs = []
-    for cfg in not_oom_cfgs:
-        if cfg["dp_degree"] == estimated_dp_degree:
-            result_cfgs.append(cfg)
-    return result_cfgs
+    assert estimated_num_gpus is not None
+    # change global_batch_size, dp_degree, sharding_degree
+    new_all_cfgs = []
+    for task in all_cfgs:
+        task["estimated_dp_degree"] = int(
+            task["dp_degree"] * task["sharding_degree"]
+        )
+        task["dp_degree"] = 1
+        task["sharding_degree"] = 1
+        task["sharding_stage"] = 1
+        task["num_gpus"] = task["mp_degree"] * task["pp_degree"]
+        if task["num_gpus"] >= tuner_cfg["gpus_per_node"]:
+            task["nodes"] = task["num_gpus"] // tuner_cfg["gpus_per_node"]
+        else:
+            task["nodes"] = 1
+        task["global_batch_size"] = (
+            tuner_cfg["model_cfg"]["global_batch_size"]
+            // task["estimated_dp_degree"]
+        )
+        if task not in new_all_cfgs and task["nodes"] <= tuner_cfg["nodes"]:
+            new_all_cfgs.append(task)
+
+    # expanding sharding degree to run overlap and nonoverlap to calculate overlap benefits
+    if tuner_cfg["search_algo"].get("sharding_overlap", None):
+        sharding_all_cfgs = []
+        for task in new_all_cfgs:
+            new_task = copy.deepcopy(task)
+            given_num_gpus = tuner_cfg["nodes"] * tuner_cfg["gpus_per_node"]
+            sharding_degree = given_num_gpus // task["num_gpus"]
+            if sharding_degree > 1:
+                new_task["sharding_degree"] = sharding_degree
+                new_task["sharding_stage"] = 1
+                new_task["estimated_dp_degree"] = None
+                new_task["num_gpus"] = (
+                    new_task["mp_degree"]
+                    * new_task["pp_degree"]
+                    * new_task["sharding_degree"]
+                )
+                if new_task["num_gpus"] >= tuner_cfg["gpus_per_node"]:
+                    new_task["nodes"] = (
+                        new_task["num_gpus"] // tuner_cfg["gpus_per_node"]
+                    )
+                else:
+                    new_task["nodes"] = 1
+                new_task["global_batch_size"] = (
+                    task["global_batch_size"] * sharding_degree
+                )
+                new_task["sharding_overlap"] = False
+                sharding_all_cfgs.append(new_task)
+
+                overlap_new_task = copy.deepcopy(new_task)
+                overlap_new_task["sharding_overlap"] = True
+                sharding_all_cfgs.append(overlap_new_task)
+
+    new_all_cfgs.extend(sharding_all_cfgs)
+    return new_all_cfgs
+
+
+def add_overlap_performance(cur_cfg, tuner_cfg, history_cfgs):
+    """
+    In single dp search scenario,
+    the overlay acceleration ratio is obtained by automatically running overlap and non overlap tasks,
+    and the estimated performance of the multi dp after overlap is obtained.
+    """
+    if cur_cfg[tuner_cfg['metric_cfg']['name']]:
+        non_overlap_cfg = None
+        raw_cfg = None
+        for cfg in history_cfgs:
+            keys = [
+                "dp_degree",
+                "mp_degree",
+                "pp_degree",
+                "vpp_degree",
+                "micro_batch_size",
+                "use_recompute",
+                "recompute_granularity",
+                "sharding_stage",
+            ]
+            same = True
+            for key in keys:
+                if cfg[key] != cur_cfg[key]:
+                    same = False
+                    break
+            if same:
+                if "sharding_overlap" not in cfg:
+                    raw_cfg = cfg
+                elif not cfg["sharding_overlap"]:
+                    if cfg["sharding_degree"] == cur_cfg["sharding_degree"]:
+                        non_overlap_cfg = cfg
+        assert non_overlap_cfg is not None
+        assert raw_cfg is not None
+
+        before_overlap_performance = non_overlap_cfg[
+            tuner_cfg['metric_cfg']['name']
+        ]
+        overlap_performance = cur_cfg[tuner_cfg['metric_cfg']['name']]
+        raw_performance = raw_cfg[tuner_cfg['metric_cfg']['name']]
+        if (
+            raw_performance
+            and overlap_performance
+            and before_overlap_performance
+        ):
+            ratio = (
+                overlap_performance - before_overlap_performance
+            ) / before_overlap_performance
+            keys = copy.deepcopy(list(raw_cfg.keys()))
+            for key in keys:
+                if key.startswith("bw_") and raw_cfg[key]:
+                    mew_key = "overlap_" + key
+                    raw_cfg[mew_key] = round(raw_cfg[key] * (1 + ratio), 5)
+
+
+def gen_sharding_overlap_args(res_args, cfg, tuner_cfg):
+    """Generate args of sharding overlap."""
+    if "sharding_overlap" not in tuner_cfg["search_algo"]:
+        return
+    cmd = copy.deepcopy(tuner_cfg["search_algo"]["sharding_overlap"])
+    if cfg.get("sharding_overlap", False):
+        valid_hybrid_strategy = ["sharding_mp", "sharding_pp", "sharding_mp_pp"]
+        for key in cmd:
+            if key not in valid_hybrid_strategy:
+                raise ValueError(
+                    f"Only support {valid_hybrid_strategy}, but got {key}."
+                )
+        sharding_degree = cfg["sharding_degree"]
+        assert sharding_degree > 1
+        mp_degree = cfg["mp_degree"]
+        pp_degree = cfg["pp_degree"]
+        arg = None
+        if mp_degree > 1 and pp_degree == 1:
+            arg = "sharding_mp"
+        elif mp_degree == 1 and pp_degree > 1:
+            arg = "sharding_pp"
+        elif mp_degree > 1 and pp_degree > 1:
+            arg = "sharding_mp_pp"
+        else:
+            return
+        assert arg is not None
+        if arg in cmd:
+            if "--" in cmd[arg][0]:
+                res_args.extend(cmd[arg])
+            elif "-o" in cmd[arg][0]:
+                res_args.extend(cmd[arg])
+            elif ".json" in cmd[arg][0]:
+                import json
+
+                file_path = cmd[arg][0]
+                try:
+                    with open(file_path, "r") as f:
+                        cmd_cfg = json.load(f)
+                except:
+                    raise ValueError(
+                        "Please check your auto tuner json whether valid."
+                    )
+                keys = cmd[arg][1].split(".")
+                value = None
+                for key in keys[: len(keys) - 1]:
+                    if value:
+                        value = value[key]
+                    else:
+                        value = cmd_cfg[key]
+                if value:
+                    value[keys[-1]] = cmd[arg][2]
+                else:
+                    cmd_cfg[keys[-1]] = cmd[arg][2]
+                json.dump(cmd_cfg, open(cmd[arg][0], "w"))
+            elif ".yaml" in cmd[arg][0]:
+                import yaml
+
+                file_path = cmd[arg][0]
+                try:
+                    with open(file_path, "r") as f:
+                        cmd_cfg = yaml.safe_load(f)
+                except:
+                    raise ValueError(
+                        "Please check your auto tuner json whether valid."
+                    )
+                keys = cmd[arg][1].split(".")
+                value = None
+                for key in keys[: len(keys) - 1]:
+                    if value:
+                        value = cmd_cfg[key]
+                    else:
+                        value = value[key]
+                if value:
+                    value[keys[-1]] = cmd[arg][2]
+                else:
+                    cmd_cfg[keys[-1]] = cmd[arg][2]
+                yaml.dump(cmd_cfg, open(cmd[arg][0], "w"))
 
 
 def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
@@ -394,10 +636,14 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
                     )
                 yaml.dump(cmd_cfg, open(cmd[arg][0], "w"))
         elif arg == "local_batch_size" and arg in cmd:
+            global_batch_size = (
+                cfg["global_batch_size"]
+                if "global_batch_size"
+                in tuner_cfg["model_cfg"]["global_batch_size"]
+                else tuner_cfg["model_cfg"]["global_batch_size"]
+            )
             local_batch_size = (
-                tuner_cfg["model_cfg"]["global_batch_size"]
-                // cfg["sharding_degree"]
-                // cfg["dp_degree"]
+                global_batch_size // cfg["sharding_degree"] // cfg["dp_degree"]
             )
             if "--" in cmd["local_batch_size"][0]:
                 cmd["local_batch_size"][1] = cmd["local_batch_size"][1] + str(
@@ -480,8 +726,14 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
 
         elif arg == "gradient_accumulation_steps" and arg in cmd:
             try:
+                global_batch_size = (
+                    cfg["global_batch_size"]
+                    if "global_batch_size"
+                    in tuner_cfg["model_cfg"]["global_batch_size"]
+                    else tuner_cfg["model_cfg"]["global_batch_size"]
+                )
                 gradient_accumulation_steps = (
-                    tuner_cfg["model_cfg"]["global_batch_size"]
+                    global_batch_size
                     // cfg["sharding_degree"]
                     // cfg["dp_degree"]
                     // cfg["micro_batch_size"]
@@ -694,7 +946,39 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
                     cmd_cfg[keys[-1]] = cmd[arg][2]
                 yaml.dump(cmd_cfg, open(cmd[arg][0], "w"))
 
+    # sharding overlap args
+    gen_sharding_overlap_args(res_args, cfg, tuner_cfg)
+
     return res_args
+
+
+def gen_new_ctx(ctx, cur_cfg, tuner_cfg):
+    """Generate new running context."""
+    new_ctx = copy.deepcopy(ctx)
+    if (
+        "search_algo" in tuner_cfg
+        and "estimated_num_gpus" in tuner_cfg["search_algo"]
+    ):
+        assert cur_cfg["dp_degree"] == 1
+        assert cur_cfg["sharding_stage"] == 1
+        actual_cards = (
+            cur_cfg["mp_degree"]
+            * cur_cfg["pp_degree"]
+            * cur_cfg["sharding_degree"]
+        )
+        if actual_cards <= tuner_cfg["gpus_per_node"]:
+            new_ctx.args.devices = ",".join(
+                [str(i) for i in range(actual_cards)]
+            )
+            if new_ctx.args.master:
+                new_ctx.args.nnodes = "1:1"
+        else:
+            new_ctx.args.devices = ",".join(
+                [str(i) for i in range(tuner_cfg["gpus_per_node"])]
+            )
+            nnodes = actual_cards // tuner_cfg["gpus_per_node"]
+            new_ctx.args.nnodes = f"{nnodes}:{nnodes}"
+    return new_ctx
 
 
 def read_metric_log(
@@ -756,6 +1040,46 @@ def read_metric_log(
         # round to 5 decimal places
         metric_ave = round(metric_ave, 5)
     res = metric_ave, err_code
+    return res
+
+
+def read_step_time_log(
+    path, file="workerlog.0", target_metric='interval_runtime'
+) -> Tuple[float, int]:
+    target_file = path + "/" + file
+    if not os.path.exists(target_file):
+        return None
+    with open(target_file, "r") as f:
+        # read file
+        re_metric_pattern = (
+            target_metric + r":* *(\d+(\.\d*)?)|(\d+(\.\d*)?) *" + target_metric
+        )
+        metric_list = []
+        lines = f.readlines()
+        for line in lines:
+            metric = re.findall(re_metric_pattern, line)
+            if metric:
+                value = None
+                for item in metric[0]:
+                    try:
+                        value = float(item)
+                        metric_list.append(value)
+                        break
+                    except:
+                        continue
+                assert value is not None
+        if not metric_list:
+            metric_ave = None
+            return None
+        elif len(metric_list) < 10:
+            metric_ave = metric_list[-1]
+        elif len(metric_list) < 20:
+            metric_ave = sum(metric_list[9:]) / (len(metric_list[9:]))
+        else:
+            metric_ave = sum(metric_list[-10:]) / 10
+        # round to 5 decimal places
+        metric_ave = round(metric_ave, 5)
+    res = metric_ave
     return res
 
 
