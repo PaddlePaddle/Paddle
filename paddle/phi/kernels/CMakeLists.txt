@@ -55,9 +55,9 @@ endif()
 
 if(WITH_CUTLASS)
   set(GENERATED_CONV2D_CU_FILES
-      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d/generate/conv2d_bias_act.cu"
-      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d/generate/conv2d_bias_residual.cu"
-      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d/generate/conv2d_depthwise_bias_act.cu"
+      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d/generated/conv2d_bias_act.cu"
+      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d/generated/conv2d_bias_residual.cu"
+      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d/generated/conv2d_depthwise_bias_act.cu"
   )
   add_custom_command(
     OUTPUT ${GENERATED_CONV2D_CU_FILES}
