@@ -16,6 +16,22 @@
   kernel :
     func : frobenius_norm
 
+- op : reduce_min
+  args : (Tensor x, int64_t[] dim,  bool keep_dim)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceInferMeta
+  kernel :
+    func : frobenius_norm
+
+- op : reduce_prod
+  args : (Tensor x, int64_t[] dim,  bool keep_dim)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceInferMeta
+  kernel :
+    func : frobenius_norm
+
 - op : reduce_sum
   args : (Tensor x, int64_t[] dim,  bool keep_dim)
   output : Tensor(out)

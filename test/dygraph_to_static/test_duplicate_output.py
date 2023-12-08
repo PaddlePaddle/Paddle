@@ -42,11 +42,6 @@ class SimpleNet(paddle.nn.Layer):
 
 
 class TestDuplicateOutput(Dy2StTestBase):
-    """
-    TestCase for the transformation from control flow `if/else`
-    dependent on tensor in Dygraph into Static `base.layers.cond`.
-    """
-
     def _run_static(self):
         net = paddle.jit.to_static(SimpleNet())
         x = paddle.to_tensor([1.0])

@@ -20,6 +20,7 @@
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/same_status_reshard_function.h"
+#include "paddle/phi/core/distributed/store/store_utils.h"
 #include "paddle/phi/kernels/assign_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 
@@ -104,14 +105,20 @@ void RToPReshardFunctionCrossMesh::Eval(phi::DeviceContext* dev_ctx,
   tmp_dist_attr.set_process_mesh(out_process_mesh);
   same_status_func.Eval(dev_ctx, in, tmp_dist_attr, &tmp_result);
 
-  RToPReshardFunction r_to_p_func;
-  PADDLE_ENFORCE(
-      r_to_p_func.IsSuitable(tmp_result, out_dist_attr),
-      phi::errors::InvalidArgument(
-          "Invoke the r to p reshard function is not valid from %s to %s.",
-          tmp_result.dist_attr(),
-          out_dist_attr));
-  r_to_p_func.Eval(dev_ctx, tmp_result, out_dist_attr, out);
+  int64_t cur_global_rank = GetCurGlobalRank();
+  if (out_process_mesh.contains(cur_global_rank)) {
+    RToPReshardFunction r_to_p_func;
+    PADDLE_ENFORCE(
+        r_to_p_func.IsSuitable(tmp_result, out_dist_attr),
+        phi::errors::InvalidArgument(
+            "Invoke the r to p reshard function is not valid from %s to %s.",
+            tmp_result.dist_attr(),
+            out_dist_attr));
+    r_to_p_func.Eval(dev_ctx, tmp_result, out_dist_attr, out);
+  } else {
+    SetDistProps(out, in.dims(), out_dist_attr);
+    SetValue(out, tmp_result.value());
+  }
 }
 
 }  // namespace distributed

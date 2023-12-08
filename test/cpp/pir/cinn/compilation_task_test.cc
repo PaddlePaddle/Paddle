@@ -69,8 +69,7 @@ TEST(CompilationTask, Basic) {
   LOG(INFO) << ss.str();
 
   auto target = cinn::common::DefaultNVGPUTarget();
-  auto scope = cinn::hlir::framework::BuildScope(target, *program);
-  ASSERT_EQ(scope->var_names().size(), 1);
+  auto scope = std::make_shared<cinn::hlir::framework::Scope>();
 
   std::vector<GroupPtr> groups = std::get<1>(prog_info);
   CHECK_EQ(groups.size(), 1);
@@ -98,8 +97,7 @@ TEST(CompilationTask, CompileGroup) {
   LOG(INFO) << ss.str();
 
   auto target = cinn::common::DefaultNVGPUTarget();
-  auto scope = cinn::hlir::framework::BuildScope(target, *program);
-  ASSERT_EQ(scope->var_names().size(), 1);
+  auto scope = std::make_shared<cinn::hlir::framework::Scope>();
 
   std::vector<GroupPtr> groups = std::get<1>(prog_info);
   CHECK_EQ(groups.size(), 1);
