@@ -1084,10 +1084,7 @@ class PADDLE_API OpMetaInfoMap {
   // this function's impl should keep in header file.
   // if move to cc file, meta info can not be added
   // into map
-  static OpMetaInfoMap& Instance() {
-    static OpMetaInfoMap g_custom_op_meta_info_map;
-    return g_custom_op_meta_info_map;
-  }
+  static OpMetaInfoMap& Instance();
 
   std::vector<OpMetaInfo>& operator[](const std::string& name);
 
