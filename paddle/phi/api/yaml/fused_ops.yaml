@@ -32,6 +32,18 @@
     func : addcmul_xpu
     data_type : x
 
+- op : block_multihead_attention_
+  args : (Tensor qkv, Tensor key_cache, Tensor value_cache, Tensor seq_lens_encoder, Tensor seq_lens_decoder, Tensor seq_lens_this_time, Tensor padding_offsets, Tensor cum_offsets, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor block_tables, Tensor pre_key_cache, Tensor pre_value_cache, Tensor rope_emb, Tensor mask,  Tensor tgt_mask, int max_seq_len, int block_size, bool use_neox_style)
+  output : Tensor(fmha_out), Tensor(qkv_out), Tensor(key_cache_out), Tensor(value_cache_out)
+  infer_meta :
+    func : BlockMultiheadAttentionInferMeta
+  kernel :
+    func : block_multihead_attention
+    data_type : qkv
+  optional : pre_key_cache, pre_value_cache, rope_emb, mask, tgt_mask
+  inplace : (qkv -> qkv_out), (key_cache -> key_cache_out), (value_cache -> value_cache_out)
+  support_dygraph_mode : true
+
 - op : bn_act_xpu
   args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, float momentum, float epsilon, str data_layout, int act_type)
   output : Tensor(out)
@@ -252,6 +264,7 @@
   output : Tensor(out_q), Tensor(out_k), Tensor(out_v)
   infer_meta :
     func : FusedRopeInferMeta
+    spmd_rule : FuseRopeInferSpmd
   optional : k, v, sin, cos, position_ids, out_k, out_v
   kernel :
     func : fused_rotary_position_embedding
@@ -414,6 +427,17 @@
     func : squeeze_excitation_block
     data_type : x
   optional : bias, branch
+
+- op : variable_length_memory_efficient_attention
+  args : (Tensor query, Tensor key, Tensor value, Tensor seq_lens, Tensor kv_seq_lens, Tensor mask, float scale, bool causal, int pre_cache_length)
+  output : Tensor
+  infer_meta :
+    func : VariableLengthMemoryEfficientAttentionInferMeta
+  kernel :
+    func : variable_length_memory_efficient_attention
+    data_type : query
+  optional : mask
+  support_dygraph_mode : true
 
 - op : yolo_box_xpu
   args : (Tensor x, Tensor x_max, Tensor grid, Tensor stride, Tensor anchor_grid, float offset)

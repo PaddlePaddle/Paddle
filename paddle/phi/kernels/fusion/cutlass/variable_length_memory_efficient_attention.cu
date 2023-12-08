@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/autogen_variable/cutlass_forward.h"
+#include "paddle/phi/kernels/fusion/cutlass/variable_length_memory_efficient_attention.h"
 
 namespace phi {
 namespace fusion {
@@ -28,6 +28,7 @@ void MultiHeadAttentionVariableForwardKernel(
     const paddle::optional<DenseTensor>& mask,
     const float scale,
     const bool causal,
+    const int pre_cache_length,
     DenseTensor* output) {
   ctx.template Alloc<T>(output);
   Params params{};
@@ -62,6 +63,7 @@ void MultiHeadAttentionVariableForwardKernel(
 
   params.scale = scale;
   params.causal = causal;
+  params.pre_cache_length = pre_cache_length;
 
   if (mask) {
     // [B, 1, S, D]

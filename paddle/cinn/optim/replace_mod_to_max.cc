@@ -16,6 +16,7 @@
 
 #include <unordered_map>
 
+#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
@@ -23,14 +24,21 @@
 namespace cinn {
 namespace optim {
 
+/**
+ * Replace Mod to possible max value.
+ * a % b -> min(b - 1, a)
+ * either b - 1 or a is the possible max value of the mod expression.
+ */
 class ReplaceModToMaxMutator : public ir::IRMutator<> {
  public:
   void operator()(ir::Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
 
   void Visit(const ir::Mod* op, ir::Expr* expr) override {
     ir::Mod* node = expr->As<ir::Mod>();
-    Expr base = node->operand(1);
-    *expr = ir::Sub::Make(base, Expr(1));
+    Expr base = ir::Sub::Make(node->operand(1), Expr(1));
+    Expr min_expr = ir::Min::Make(node->operand(0), base);
+    *expr = cinn::common::AutoSimplify(min_expr);
+    ir::IRMutator<>::Visit(expr, expr);
   }
 };
 

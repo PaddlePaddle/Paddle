@@ -128,11 +128,9 @@ bool SToRReshardFunctionCrossMesh::IsSuitable(
   const auto& in_process_mesh = in_dist_attr.process_mesh();
   const auto& out_process_mesh = out_dist_attr.process_mesh();
 
-  int64_t cur_global_rank = GetCurGlobalRank();
-  if (in_process_mesh.contains(cur_global_rank)) {
-    int split_axis =
-        GetSplitAxisWithDimsMapping(in_dims_mapping).begin()->first;
-    int64_t num_of_process = in_process_mesh.size();
+  int split_axis = GetSplitAxisWithDimsMapping(in_dims_mapping).begin()->first;
+  int64_t num_of_process = in_process_mesh.size();
+  if (in.initialized()) {
     RESHARD_SHORTCUT_IF_FALSE(in.local_dims()[static_cast<int>(split_axis)] *
                                   num_of_process ==
                               in.dims()[static_cast<int>(split_axis)]);
