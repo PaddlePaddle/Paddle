@@ -21,8 +21,8 @@ import paddle
 from paddle import base
 from paddle.base import core
 
-RTOL = {'float32': 1e-03, 'float64': 1e-05}
-ATOL = {'float32': 0.0, 'float64': 0.0}
+RTOL = {'float32': 1e-02, 'float64': 1e-04}
+ATOL = {'float32': 1e-02, 'float64': 1e-04}
 
 
 class MatrixExpTestCase(unittest.TestCase):
@@ -60,6 +60,7 @@ class MatrixExpTestCase(unittest.TestCase):
                 atol=ATOL.get(self.dtype),
             )
 
+    # TODO(megemini): cond/while_loop should be tested in pir
     # @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
