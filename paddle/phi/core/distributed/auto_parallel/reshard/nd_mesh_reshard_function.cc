@@ -255,6 +255,7 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
       if (is_partial) {
         PToSReshardFunction func;
         func.Eval(dev_ctx, *out, out_one_dim_dist_attr, &tmp_result);
+        real_out_dist_attr.clean_partial_status();
       } else {
         RToSReshardFunction func;
         func.Eval(dev_ctx, *out, out_one_dim_dist_attr, &tmp_result);
