@@ -245,17 +245,6 @@ std::vector<Value> Operation::operands_source() const {
   return res;
 }
 
-int32_t Operation::operand_index(const OpOperand &op_operand) const {
-  int32_t res = -1;
-  for (uint32_t i = 0; i < num_operands(); ++i) {
-    if (op_operand == operand(i)) {
-      res = i;
-      break;
-    }
-  }
-  return res;
-}
-
 ///
 /// \brief op successor related public interfaces
 ///
