@@ -284,10 +284,17 @@ class DistModel:
                 raise ValueError("Please set loss function before evaluation.")
         feeds = self._make_feeds(list(args))
         outs = self._engine.run(feeds)
+
         if self._mode == "predict":
-            return outs["outputs"]
+            if "outputs" in outs:
+                return outs["outputs"]
+            else:
+                return None
         else:
-            return outs["loss"]
+            if "loss" in outs:
+                return outs["loss"]
+            else:
+                return None
 
 
 # Part2: DistTensor construction related APIs
