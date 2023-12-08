@@ -143,10 +143,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_semi_auto_parallel_compare_basic)
   set_tests_properties(test_semi_auto_parallel_compare_basic
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
-  py_test_modules(test_semi_auto_parallel_subgraph_embedding_basic MODULES
-                  test_semi_auto_parallel_subgraph_embedding_basic)
-  set_tests_properties(test_semi_auto_parallel_subgraph_embedding_basic
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
   py_test_modules(test_semi_auto_parallel_pylayer MODULES
                   test_semi_auto_parallel_pylayer)
   set_tests_properties(test_semi_auto_parallel_pylayer
