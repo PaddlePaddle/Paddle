@@ -82,6 +82,7 @@ struct Group {
   std::vector<std::string> output_names;
   std::vector<::pir::Value> output_values;
   std::string fn_name{""};
+  std::map<int, CINNKernelInfo::ArgDimIdx> int_args_map;
 
   struct SharedGroupHasher {
     size_t operator()(const std::shared_ptr<Group>& group) const noexcept {
@@ -141,15 +142,6 @@ struct Group {
 
         if (!ops_set.count(value.dyn_cast<::pir::OpResult>().owner())) {
           // if the input value owner op is not in OpSet, it's the group's input
-          group_inputs.insert(value);
-          continue;
-        }
-
-        if (std::find(this->input_names.begin(),
-                      this->input_names.end(),
-                      CompatibleInfo::ValueName(value)) !=
-            this->input_names.end()) {
-          // if the input data in group's input_names
           group_inputs.insert(value);
           continue;
         }

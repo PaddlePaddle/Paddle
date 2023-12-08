@@ -373,6 +373,7 @@ template class FCFunctor<GPUContext, float16>;
 template class FCFunctor<GPUContext, float>;
 template class FCFunctor<GPUContext, double>;
 
+#ifndef PADDLE_WITH_HIP
 template <typename DeviceContext, typename T>
 void FCInt8Functor<DeviceContext, T>::operator()(
     const DeviceContext& context,
@@ -397,8 +398,8 @@ void FCInt8Functor<DeviceContext, T>::operator()(
   const int8_t* W = w_tensor->data<int8_t>();
 
   DenseTensor quant_x_tensor, quant_y_tensor;
-  quant_x_tensor.Resize(phi::make_ddim({M, K}));
-  quant_y_tensor.Resize(phi::make_ddim({M, N}));
+  quant_x_tensor.Resize(common::make_ddim({M, K}));
+  quant_y_tensor.Resize(common::make_ddim({M, N}));
   context.template Alloc<int8_t>(&quant_x_tensor,
                                  quant_x_tensor.numel() * sizeof(int8_t));
   context.template Alloc<int32_t>(&quant_y_tensor,
@@ -417,7 +418,7 @@ void FCInt8Functor<DeviceContext, T>::operator()(
       context, quant_x_tensor, *w_tensor, false, false, &quant_y_tensor);
 
   DenseTensor scale_weights_dev;
-  scale_weights_dev.Resize(phi::make_ddim({N}));
+  scale_weights_dev.Resize(common::make_ddim({N}));
   context.template Alloc<float>(&scale_weights_dev,
                                 scale_weights_dev.numel() * sizeof(float));
   float* scale_weights_dev_ptr = scale_weights_dev.data<float>();
@@ -454,5 +455,6 @@ void FCInt8Functor<DeviceContext, T>::operator()(
 template class FCInt8Functor<GPUContext, float16>;
 template class FCInt8Functor<GPUContext, float>;
 template class FCInt8Functor<GPUContext, double>;
+#endif
 }  // namespace funcs
 }  // namespace phi

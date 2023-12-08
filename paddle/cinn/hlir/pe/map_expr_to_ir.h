@@ -25,6 +25,6 @@ struct Target;
 namespace cinn::adt {
 
 ir::Expr MapExprToIr(const MapExprCtx& map_expr_ctx,
-                     const common::Target& target);
+                     const cinn::common::Target& target);
 
 }

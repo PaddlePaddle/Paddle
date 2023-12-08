@@ -74,18 +74,20 @@ Tensor _Tensor_::Make(const std::string &name,
 Tensor _Tensor_::Make(const std::string &name,
                       Type dtype,
                       const std::vector<Dim> &sym_shape,
-                      const std::vector<Expr> &domain,
+                      const std::vector<Dim> &sym_domain,
                       FunctionRef fn,
                       const std::vector<Var> &reduce_axis) {
   CHECK(!name.empty()) << "Tensor name is set empty";
   auto n = make_shared<_Tensor_>();
   n->name = name;
   n->sym_shape = sym_shape;
-  n->shape.reserve(sym_shape.size());
   for (int i = 0; i < sym_shape.size(); i++) {
-    n->shape[i] = sym_shape[i]->dim_expr;
+    n->shape.emplace_back(sym_shape[i]->dim_expr);
   }
-  n->domain = domain;
+  n->sym_domain = sym_domain;
+  for (int i = 0; i < sym_domain.size(); i++) {
+    n->domain.emplace_back(sym_domain[i]->dim_expr);
+  }
   n->reduce_axis = reduce_axis;
   n->set_type(dtype);
   n->operation = fn;
@@ -96,17 +98,19 @@ Tensor _Tensor_::Make(const std::string &name,
 Tensor _Tensor_::Make(const std::string &name,
                       Type dtype,
                       const std::vector<Dim> &sym_shape,
-                      const std::vector<Expr> &domain,
+                      const std::vector<Dim> &sym_domain,
                       const std::vector<Var> &reduce_axis) {
   CHECK(!name.empty()) << "Cannot set empty Tensor name in Tensor::Make";
   auto n = make_shared<_Tensor_>();
   n->name = name;
   n->sym_shape = sym_shape;
-  n->shape.reserve(sym_shape.size());
   for (int i = 0; i < sym_shape.size(); i++) {
-    n->shape[i] = sym_shape[i]->dim_expr;
+    n->shape.emplace_back(sym_shape[i]->dim_expr);
   }
-  n->domain = domain;
+  n->sym_domain = sym_domain;
+  for (int i = 0; i < sym_domain.size(); i++) {
+    n->domain.emplace_back(sym_domain[i]->dim_expr);
+  }
   n->reduce_axis = reduce_axis;
   n->operation = PlaceholderOp::Make(n->name, n->shape, Float(32));
   n->set_type(dtype);
@@ -204,7 +208,7 @@ PlaceholderOp *_Tensor_::get_placeholder_op() const {
 
 void _Tensor_::InitAxis() const {
   // CHECK(!domain_without_reduce_axis().empty());
-  axis_ = common::GenDefaultAxis(domain_without_reduce_axis().size());
+  axis_ = cinn::common::GenDefaultAxis(domain_without_reduce_axis().size());
 }
 
 bool _Tensor_::has_expression() const {
@@ -228,7 +232,7 @@ isl::set _Tensor_::GenerateIslDomain() const {
       } else {
         dims.emplace_back(_axis_with_reduce[i]->name,
                           Expr(0),
-                          Sub::Make(dim, common::make_const(1)));
+                          Sub::Make(dim, cinn::common::make_const(1)));
       }
     }
   }
@@ -406,7 +410,7 @@ Expr _Tensor_::tensor_store_expanded_body() {
   Expr final_body = body();
   if (shape.empty()) return final_body;
 
-  std::vector<Expr> g_axis = common::GenDefaultAxisAsExpr(shape.size());
+  std::vector<Expr> g_axis = cinn::common::GenDefaultAxisAsExpr(shape.size());
   if (!new_indices.empty()) {
     g_axis = new_indices;
   }
@@ -468,7 +472,7 @@ void _Tensor_::Bind(const Buffer &buffer) {
 void _Tensor_::WithBuffer(const Type &type) {
   Type buf_type = type.is_void() ? type_ : type;
   lang::Buffer buf(buf_type);
-  buf->target = common::DefaultHostTarget();
+  buf->target = cinn::common::DefaultHostTarget();
   Bind(buf);
 }
 
@@ -490,7 +494,7 @@ void _Tensor_::WithBuffer(const std::string &memory_type,
     }
   } else {
     lang::Buffer buf(buf_type, buffer_name);
-    buf->target = common::DefaultHostTarget();
+    buf->target = cinn::common::DefaultHostTarget();
     Bind(buf);
 
     if (memory_type == "shared") {
@@ -509,8 +513,8 @@ bool _Tensor_::HasSameShapeWith(const Tensor &other) const {
   if (shape.size() != other->shape.size()) return false;
 
   for (int i = 0; i < shape.size(); i++) {
-    Expr dim0 = common::AutoSimplify(shape[i]);
-    Expr dim1 = common::AutoSimplify(other->shape[i]);
+    Expr dim0 = cinn::common::AutoSimplify(shape[i]);
+    Expr dim1 = cinn::common::AutoSimplify(other->shape[i]);
 
     if (dim0 != dim1) return false;
   }
@@ -553,6 +557,16 @@ Tensor::Tensor(const std::string &name,
                const std::vector<Var> &reduce_axis)
     : IrNodeRef(
           _Tensor_::Make(name, dtype, shape, domain, fn, reduce_axis).self()) {}
+
+Tensor::Tensor(const std::string &name,
+               Type dtype,
+               const std::vector<Dim> &sym_shape,
+               const std::vector<Dim> &sym_domain,
+               FunctionRef fn,
+               const std::vector<Var> &reduce_axis)
+    : IrNodeRef(
+          _Tensor_::Make(name, dtype, sym_shape, sym_domain, fn, reduce_axis)
+              .self()) {}
 
 bool _Tensor_::is_tuple_get() const {
   return is_call_node() && operation.defined() &&

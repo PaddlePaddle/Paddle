@@ -881,7 +881,7 @@ class MapExprToIrTranslator {
 }  // namespace
 
 ir::Expr MapExprToIr(const MapExprCtx& map_expr_ctx,
-                     const common::Target& target) {
+                     const cinn::common::Target& target) {
   const auto& expr =
       MapExprToIrTranslator(map_expr_ctx.map_expr(),
                             map_expr_ctx.node2lowered_funcs(),

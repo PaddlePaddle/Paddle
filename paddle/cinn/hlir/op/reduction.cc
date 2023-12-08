@@ -38,9 +38,9 @@ PD_DECLARE_bool(cinn_new_group_scheduler);
 namespace cinn {
 namespace hlir {
 namespace op {
-using common::_CINNValuePack_;
-using common::CINNValue;
-using common::CINNValuePack;
+using cinn::common::_CINNValuePack_;
+using cinn::common::CINNValue;
+using cinn::common::CINNValuePack;
 using framework::OpStrategy;
 using framework::shape_t;
 using framework::StrategyFunction;
@@ -142,7 +142,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
           *ret = CINNValuePack{cinn_values};
         };
         if (!FLAGS_cinn_enable_map_expr && !FLAGS_cinn_new_group_scheduler &&
-            target == common::DefaultNVGPUTarget()) {
+            target == cinn::common::DefaultNVGPUTarget()) {
           if (!WithoutLastDimInReduce(inputs[0]->shape, reduce_axes)) {
             VLOG(3) << "Do Two Step Block Reduce Compute!";
             auto res = gpu_reduce_with_last_axis_func(
@@ -246,7 +246,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
                                           reduce_tmp_out.as_tensor_ref(),
                                           tmp_out.as_tensor_ref(),
                                           out.as_tensor_ref(),
-                                          common::DefaultNVGPUTarget());
+                                          cinn::common::DefaultNVGPUTarget());
 
           std::vector<CINNValue> res{
               CINNValue(ir_sch.GetModule().GetExprs().at(0))};
@@ -262,7 +262,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
                                         reduce_tmp_out.as_tensor_ref(),
                                         tmp_out.as_tensor_ref(),
                                         out.as_tensor_ref(),
-                                        common::DefaultNVGPUTarget());
+                                        cinn::common::DefaultNVGPUTarget());
 
           std::vector<CINNValue> res{
               CINNValue(ir_sch.GetModule().GetExprs().at(0))};

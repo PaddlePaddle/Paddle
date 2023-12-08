@@ -22,9 +22,9 @@ namespace cub = hipcub;
 
 #include "glog/logging.h"
 
+#include "paddle/common/layout.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -532,7 +532,7 @@ void BatchNormKernel(const Context &ctx,
                      DenseTensor *reserve_space) {
   double epsilon = epsilon_f;
   const bool trainable_stats = trainable_statistics;
-  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
   bool test_mode = is_test && (!trainable_stats);
 
   // Get the size for each dimension.
@@ -845,6 +845,15 @@ void BatchNormKernel(const Context &ctx,
         }
       }
     } else {
+      int64_t reserve_space_size = 0;
+      void *reserve_space_ptr = nullptr;
+      DenseTensor reserve_space_tensor;
+      if (reserve_space == nullptr) {
+        reserve_space = &reserve_space_tensor;
+      }
+      reserve_space->Resize({reserve_space_size});
+      ctx.template Alloc<T>(reserve_space);
+
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::cudnnBatchNormalizationForwardInference(
               handle,

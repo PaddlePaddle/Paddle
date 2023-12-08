@@ -29,7 +29,7 @@ MAIN_DIST_BRANCH_TEMPLATE = """
     // 2. Create Temporary Output & Prepare Dist and Dense Output{}
     // 3. Infer DistTensor's Global Shape{}\n
     // 4. Set Output Dist Attr For Default Impl{}\n
-    if (rank_is_in_current_mesh){{
+    if (rank_is_in_current_mesh) {{
       // 5. Select Kernel{}
       // 6. Reshard Input{}\n
       // 7. PrepareData (DataTransform & Prepare Dense Input){}
@@ -176,6 +176,9 @@ RESHARD_MULTI_SINGLE_OUTPUT_TEMPLATE = """
 
 RESHARD_VECTOR_OUTPUT_TEMPLATE = """
       ReshardKernelOutputToApiOutput(dev_ctx, shared_dist_out, {});"""
+
+NONEED_TO_RESHARD_OUTPUT_TEMPLATE = """
+    // API `{}` does not need to reshard output."""
 
 
 class DistBackwardAPI(DistForwardAPI, BackwardAPI):
@@ -344,6 +347,9 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
                     f"{self.api} : Output error: the output should not be empty."
                 )
         else:
+            reshard_output_code += NONEED_TO_RESHARD_OUTPUT_TEMPLATE.format(
+                self.kernel['func'][0]
+            )
             # do nothing
             pass
 

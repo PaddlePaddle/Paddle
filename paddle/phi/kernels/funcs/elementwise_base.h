@@ -38,8 +38,7 @@ namespace phi {
 /* Packing scalar type T(float, int etc.) into Array<T, NumOuts> type
    for supporting multiple-output feature in elementwise system.*/
 template <class T, int Num>
-using ConditionalT =
-    typename std::conditional_t<Num == 1, T, phi::Array<T, Num>>;
+using ConditionalT = typename std::conditional_t<Num == 1, T, Array<T, Num>>;
 
 namespace funcs {
 using DDim = phi::DDim;
@@ -624,7 +623,7 @@ struct SameDimsElementwisePrimitiveCaller {
 template <typename OutT, int VecSize, bool IsBoundary, int NumOuts>
 struct ElementwiseWriteDataCallerBc {
   __device__ __forceinline__ void operator()(
-      phi::Array<_ptr_ OutT *, NumOuts> outs,
+      Array<_ptr_ OutT *, NumOuts> outs,
       ConditionalT<OutT, NumOuts> src[VecSize],
       kps::IndexType block_offset,
       int num,
@@ -647,7 +646,7 @@ struct ElementwiseWriteDataCallerBc {
 
 template <typename OutT, int VecSize, bool IsBoundary>
 struct ElementwiseWriteDataCallerBc<OutT, VecSize, IsBoundary, 1> {
-  __device__ __forceinline__ void operator()(phi::Array<_ptr_ OutT *, 1> outs,
+  __device__ __forceinline__ void operator()(Array<_ptr_ OutT *, 1> outs,
                                              OutT src[VecSize],
                                              kps::IndexType block_offset,
                                              int num,
@@ -664,8 +663,8 @@ template <typename OutT,
           int VecSize,
           bool IsBoundary>
 __device__ void VectorizedElementwiseKernelImpl(
-    const phi::Array<const _ptr_ char *__restrict__, Arity> &in,
-    phi::Array<_ptr_ OutT *, NumOuts> outs,
+    const Array<const _ptr_ char *__restrict__, Arity> &in,
+    Array<_ptr_ OutT *, NumOuts> outs,
     kps::IndexType offset,
     int num,
     int read_lens,
@@ -690,8 +689,8 @@ __device__ void VectorizedElementwiseKernelImpl(
 
 template <typename OutT, typename Functor, int Arity, int NumOuts, int VecSize>
 __global__ void VectorizedElementwiseKernel(
-    phi::Array<const _ptr_ char *__restrict__, Arity> ins,
-    phi::Array<_ptr_ OutT *, NumOuts> outs,
+    Array<const _ptr_ char *__restrict__, Arity> ins,
+    Array<_ptr_ OutT *, NumOuts> outs,
     kps::IndexType numel,
     kps::IndexType main_offset,
     int read_lens,
@@ -731,8 +730,8 @@ void LaunchElementwiseKernel(const KPDevice &ctx,
   // For large tensor numel * sizeof(T) > 2^31, we must use int64_t as index
   // type.
   int64_t numel = (*outs)[0]->numel();
-  phi::Array<const _ptr_ char *__restrict__, Arity> ins_data;
-  phi::Array<_ptr_ OutT *, NumOuts> outs_data;
+  Array<const _ptr_ char *__restrict__, Arity> ins_data;
+  Array<_ptr_ OutT *, NumOuts> outs_data;
 
   using Traits = phi::funcs::FunctionTraits<Functor>;
   using ArgsT = typename Traits::ArgsTuple;

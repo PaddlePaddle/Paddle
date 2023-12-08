@@ -292,6 +292,9 @@ void BindDataset(py::module *m) {
       .def("get_epoch_finish",
            &framework::Dataset::GetEpochFinish,
            py::call_guard<py::gil_scoped_release>())
+      .def("clear_sample_state",
+           &framework::Dataset::ClearSampleState,
+           py::call_guard<py::gil_scoped_release>())
       .def("get_pv_data_size",
            &framework::Dataset::GetPvDataSize,
            py::call_guard<py::gil_scoped_release>())
@@ -379,6 +382,9 @@ void BindDataset(py::module *m) {
            py::call_guard<py::gil_scoped_release>())
       .def("dump_walk_path",
            &framework::Dataset::DumpWalkPath,
+           py::call_guard<py::gil_scoped_release>())
+      .def("dump_sample_neighbors",
+           &framework::Dataset::DumpSampleNeighbors,
            py::call_guard<py::gil_scoped_release>());
 
   py::class_<IterableDatasetWrapper>(*m, "IterableDatasetWrapper")
