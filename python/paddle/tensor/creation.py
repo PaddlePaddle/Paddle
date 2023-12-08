@@ -1972,7 +1972,7 @@ def diag(x, offset=0, padding_value=0, name=None):
 
     Examples:
         .. code-block:: python
-            :name: code-example-1
+            :name: diag-example-1
 
             >>> import paddle
 
@@ -2001,7 +2001,7 @@ def diag(x, offset=0, padding_value=0, name=None):
              [6, 6, 3]])
 
         .. code-block:: python
-            :name: code-example-2
+            :name: diag-example-2
 
             >>> import paddle
 
