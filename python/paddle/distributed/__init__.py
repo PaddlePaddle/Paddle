@@ -84,6 +84,7 @@ from .auto_parallel.api import (
     reshard,
     shard_layer,
     shard_optimizer,
+    to_static,
 )
 
 from .fleet import BoxPSDataset  # noqa: F401
@@ -163,4 +164,5 @@ __all__ = [
     "save_state_dict",
     "load_state_dict",
     "shard_optimizer",
+    "to_static",
 ]
