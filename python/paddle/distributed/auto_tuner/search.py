@@ -15,7 +15,7 @@
 
 from abc import ABC, abstractmethod
 
-from .prune import _PRUNE_FUNC
+from .prune import _PRUNE_HISTORY_FUNC
 from .utils import gbs_search_all, search_all, search_by_dp_estimation
 
 
@@ -28,7 +28,7 @@ class SearchAlgo(ABC):
         pass
 
     def prune(self, tuner_cfg, cur_cfg, history_cfgs):
-        for func in _PRUNE_FUNC:
+        for func in _PRUNE_HISTORY_FUNC:
             result = func(tuner_cfg, cur_cfg, history_cfgs)
             if result:
                 return True
@@ -59,15 +59,9 @@ class DpEstimationSearch(SearchAlgo):
         super().__init__(tuner_cfg)
         self.idx = 0
         self.all_tasks = search_by_dp_estimation(tuner_cfg)
-        assert len(self.all_tasks) > 0, "Unable to perform this search."
-        # change global_batch_size and dp_degree
-        tuner_cfg["model_cfg"]["global_batch_size"] = (
-            tuner_cfg["model_cfg"]["global_batch_size"]
-            // self.all_tasks[0]["dp_degree"]
-        )
-        for task in self.all_tasks:
-            task["estimated_dp_degree"] = task["dp_degree"]
-            task["dp_degree"] = 1
+        assert (
+            len(self.all_tasks) > 0
+        ), "Unable to perform single dp estimation search."
 
     def search_once(self, history_cfgs):
         new_cfg = None

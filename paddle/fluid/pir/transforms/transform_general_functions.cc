@@ -84,8 +84,7 @@ std::vector<std::pair<Operation*, int32_t>> GetUseOpsForOutput(Operation* op,
   auto result = op->result(index);
   std::vector<std::pair<Operation*, int32_t>> use_ops;
   for (auto it = result.use_begin(); it != result.use_end(); ++it) {
-    use_ops.push_back(
-        std::make_pair(it->owner(), it->owner()->operand_index(*it)));
+    use_ops.push_back(std::make_pair(it->owner(), it->index()));
   }
   return use_ops;
 }

@@ -513,6 +513,14 @@ decomp_ops_contain_unused_output = {
 }
 
 
+# This api is used for development for dynamic shape in prim, and will be removed in future.
+def _enable_prim_dynamic_shape():
+    if os.getenv("FLAGS_prim_skip_dynamic") == "1":
+        return True
+    else:
+        return False
+
+
 def _set_prim_forward_blacklist(*args):
     for item in args:
         if not isinstance(item, str):

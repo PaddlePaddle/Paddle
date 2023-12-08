@@ -22,7 +22,10 @@ namespace pir {
 
 class Pass;
 
+// Apply some shape-related optimization.
 IR_API std::unique_ptr<Pass> CreateInferSymbolicShapePass(
     const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis);
+
+IR_API std::unique_ptr<Pass> CreateShapeOptimizationPass();
 
 }  // namespace pir
