@@ -56,16 +56,17 @@ class TestRpropOp(OpTest):
         prevs = np.random.random((self.h, self.w)).astype("float32")
         learning_rates = np.random.random((self.h, self.w)).astype("float32")
 
+        scale = 0.01
         np.subtract(params, 0.5, out=params)
-        np.multiply(params, 100, out=params)
+        np.multiply(params, scale, out=params)
         np.subtract(grads, 0.5, out=grads)
-        np.multiply(grads, 100, out=grads)
+        np.multiply(grads, scale, out=grads)
         np.subtract(prevs, 0.5, out=prevs)
-        np.multiply(prevs, 100, out=prevs)
-        np.multiply(learning_rates, 100, out=learning_rates)
+        np.multiply(prevs, scale, out=prevs)
+        np.multiply(learning_rates, scale, out=learning_rates)
 
-        learning_rate_min = 1e-5
-        learning_rate_max = 50
+        learning_rate_min = 0.1 * scale
+        learning_rate_max = 0.9 * scale
         eta_negative = 0.5
         eta_positive = 1.2
 
@@ -102,7 +103,9 @@ class TestRpropOp(OpTest):
             "grad": grads,
             "prev": prevs,
             "learning_rate": learning_rates,
-            "learning_rate_range": np.array((1e-5, 50)).astype("float32"),
+            "learning_rate_range": np.array(
+                (learning_rate_min, learning_rate_max)
+            ).astype("float32"),
             "etas": np.array((0.5, 1.2)).astype("float32"),
         }
 
@@ -145,6 +148,18 @@ class TestRpropV2(unittest.TestCase):
     def test_raise_error(self):
         self.assertRaises(
             ValueError, paddle.optimizer.Rprop, learning_rate=None
+        )
+        self.assertRaises(
+            ValueError,
+            paddle.optimizer.Rprop,
+            learning_rate=1e-3,
+            learning_rate_range=np.array((1e-2, 1e-1)).astype("float32"),
+        )
+        self.assertRaises(
+            ValueError,
+            paddle.optimizer.Rprop,
+            learning_rate=1e-3,
+            etas=np.array((-0.1, 1.1)).astype("float32"),
         )
 
     def test_rprop_group_dygraph(self):

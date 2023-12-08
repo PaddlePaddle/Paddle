@@ -44,6 +44,17 @@ class Rprop(Optimizer):
     ):
         if learning_rate is None:
             raise ValueError("learning_rate is not set")
+        if (
+            not 0.0
+            < learning_rate_range[0]
+            < learning_rate
+            < learning_rate_range[1]
+        ):
+            raise ValueError(
+                "'0.0 < learning_rate_range[0] < learning_rate < learning_rate_range[1]' must be true"
+            )
+        if not 0.0 < etas[0] < 1.0 < etas[1]:
+            raise ValueError("'0.0 < etas[0] < 1.0 < etas[1]' must be true")
         super().__init__(
             learning_rate=learning_rate,
             parameters=parameters,
