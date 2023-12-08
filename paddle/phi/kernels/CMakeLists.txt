@@ -54,12 +54,22 @@ if(DEFINED REDUCE_INFERENCE_LIB_SIZE)
 endif()
 
 if(WITH_CUTLASS)
-  execute_process(
+  set(GENERATED_CONV2D_CU_FILES
+      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d/generate/conv2d_bias_act.cu"
+      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d/generate/conv2d_bias_residual.cu"
+      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d/generate/conv2d_depthwise_bias_act.cu"
+  )
+  add_custom_command(
+    OUTPUT ${GENERATED_CONV2D_CU_FILES}
     COMMAND ${CMAKE_COMMAND} -E make_directory
             "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d/generated"
-    COMMAND ${PYTHON_EXECUTABLE} "conv2d_bias_act.py"
-    COMMAND ${PYTHON_EXECUTABLE} "conv2d_bias_residual.py"
-    COMMAND ${PYTHON_EXECUTABLE} "conv2d_depthwise_bias_act.py"
+    COMMAND ${PYTHON_EXECUTABLE} conv2d_bias_act.py
+    COMMAND ${PYTHON_EXECUTABLE} conv2d_bias_residual.py
+    COMMAND ${PYTHON_EXECUTABLE} conv2d_depthwise_bias_act.py
+    DEPENDS
+      ${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d/conv2d_bias_act.py
+      ${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d/conv2d_bias_residual.py
+      ${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d/conv2d_depthwise_bias_act.py
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d")
 
   execute_process(
@@ -144,15 +154,35 @@ if(WITH_CUTLASS)
     ${PADDLE_SOURCE_DIR}/paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/autogen_variable_tmp
   )
 
-  execute_process(
-    COMMAND
-      ${CMAKE_COMMAND} -E remove_directory
-      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen"
+  set(generated_fpA_intB_gemm_cu_files
+      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/arch_define.h"
+      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/generic_mixed_gemm_kernelLauncher_bf16_sm80_stages2_bias.cu"
+      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/generic_mixed_gemm_kernelLauncher_bf16_sm80_stages2_noBias.cu"
+      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/generic_mixed_gemm_kernelLauncher_bf16_sm80_stages3_bias.cu"
+      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/generic_mixed_gemm_kernelLauncher_bf16_sm80_stages3_noBias.cu"
+      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/generic_mixed_gemm_kernelLauncher_bf16_sm80_stages4_bias.cu"
+      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/generic_mixed_gemm_kernelLauncher_bf16_sm80_stages4_noBias.cu"
+      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/generic_mixed_gemm_kernelLauncher_bf16_sm80_stages5_bias.cu"
+      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/generic_mixed_gemm_kernelLauncher_bf16_sm80_stages5_noBias.cu"
+      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/generic_mixed_gemm_kernelLauncher_fp16_sm80_stages2_bias.cu"
+      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/generic_mixed_gemm_kernelLauncher_fp16_sm80_stages2_noBias.cu"
+      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/generic_mixed_gemm_kernelLauncher_fp16_sm80_stages3_bias.cu"
+      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/generic_mixed_gemm_kernelLauncher_fp16_sm80_stages3_noBias.cu"
+      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/generic_mixed_gemm_kernelLauncher_fp16_sm80_stages4_bias.cu"
+      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/generic_mixed_gemm_kernelLauncher_fp16_sm80_stages4_noBias.cu"
+      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/generic_mixed_gemm_kernelLauncher_fp16_sm80_stages5_bias.cu"
+      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/generic_mixed_gemm_kernelLauncher_fp16_sm80_stages5_noBias.cu"
+  )
+
+  add_custom_command(
+    OUTPUT ${generated_fpA_intB_gemm_cu_files}
     COMMAND
       ${CMAKE_COMMAND} -E make_directory
       "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen"
     COMMAND ${PYTHON_EXECUTABLE} generic_mixed_gemm_kernelLauncher.py
             --cuda_arch "${NVCC_ARCH_BIN}"
+    DEPENDS
+      ${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/generic_mixed_gemm_kernelLauncher.py
     WORKING_DIRECTORY
       "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm"
   )
