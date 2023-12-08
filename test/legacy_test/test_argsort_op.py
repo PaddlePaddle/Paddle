@@ -241,18 +241,14 @@ class TestArgsortOpCPU(unittest.TestCase):
         ):
             x_np = np.array([[2, 3, 4], [1, 2, 3]]).astype('float32')
             x = paddle.static.data(shape=[2, 3], name='x', dtype='float32')
-            result = paddle.argsort(x)
-            for use_cuda in [False, True]:
-                if use_cuda and (not base.core.is_compiled_with_cuda()):
-                    return
-                place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
-                exe = base.Executor(place)
-                out = exe.run(
-                    paddle.static.default_main_program(),
-                    feed={'x': x_np},
-                    fetch_list=[result],
-                )
-                self.assertEqual((out.numpy() == np.argsort(x_np)).all(), True)
+            result = paddle.argsort(x, self.axis)
+            exe = paddle.static.Executor(self.place)
+            out = exe.run(
+                paddle.static.default_main_program(),
+                feed={'x': x_np},
+                fetch_list=[result],
+            )
+            self.assertEqual(out.numpy() == np.argsort(x_np, self.axis))
         paddle.disable_static()
 
 
