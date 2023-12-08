@@ -49,6 +49,14 @@ static std::vector<int64_t> get_expand_dims(const Tensor& origin,
     if (offset < 0) {
       offset += result.size() + 1;
     }
+
+    PADDLE_ENFORCE_LT(
+        offset,
+        result.size(),
+        platform::errors::OutOfRange("Your index [%lu] exceeds the number of "
+                                     "elements in origin_dims[%lu].",
+                                     offset,
+                                     result.size()));
     result.insert(result.begin() + offset, 1);
   }
   return result;
