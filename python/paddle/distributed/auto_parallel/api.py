@@ -323,21 +323,21 @@ class Strategy(auto_strategy.BaseConfig):
         .. code-block:: python
 
             >>> import paddle
-            >>> from paddle.distributed as dist
+            >>> import paddle.distributed as dist
 
             >>> strategy = dist.Strategy()
-            >>> sharding = strategy.sharding
-            >>> assert sharding.enable == False
-            >>> assert sharding.stage == 1
-            >>> assert sharding.degree == 8
 
-            >>> sharding.enable = True
-            >>> sharding.stage = 2
-            >>> sharding.degree = 2
-            >>> assert sharding.enable == True
-            >>> assert sharding.stage == 2
-            >>> assert sharding.degree == 2
+            >>> strategy.sharding.enable = True
+            >>> strategy.sharding.stage = 2
+            >>> strategy.sharding.degree = 2
 
+            >>> strategy.gradient_merge.enable = True
+            >>> strategy.gradient_merge.k_steps = 2
+            >>> strategy.gradient_merge.avg = False
+
+            >>> strategy.pipeline.enable = True
+            >>> strategy.pipeline.schedule_mode = "1F1B" # default is "1F1B"
+            >>> strategy.pipeline.micro_batch_size = 2
     """
 
     def __init__(self, config=None):
@@ -399,9 +399,9 @@ def to_static(
             any callable function. Default: None.
         optimizer(paddle.optimizer.Optimizer|None, optional): The optimizer
             for training. Default: None.
-        strategy(Strategy|None, optional): Configs for parallel strategies
-            (e.g. data parallel, hybrid parallel etc.) and optimization
-            settings (e.g. mixed-precision). Default: None.
+        strategy(paddle.distributed.Strategy|None, optional): Configs for
+            parallel strategies and optimization settings (e.g. sharding,
+            pipeline parallelism). Default: None.
 
     Returns:
         DistModel: A DistModel tha contains corresponding computational graph
