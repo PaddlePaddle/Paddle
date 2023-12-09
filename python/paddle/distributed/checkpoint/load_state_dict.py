@@ -55,6 +55,12 @@ def get_rank_to_files(path, state_dict, process_group, use_dist):
             if local_tensor_index.tensor_key in state_dict:
                 necessary_files.append(file_name)
     necessary_data_files_set = set(necessary_files)
+    if len(necessary_data_files_set) <= 0:
+        logger.warning(
+            f"No necessary data files found in the checkpoint directory:{path}. Please check the metadata_files:{metadata_files}"
+        )
+        return {}
+
     # allgather all accessible files
     local_data_files = [
         file for file in accessible_files if file.endswith(".distcp")
@@ -399,6 +405,8 @@ def load_state_dict(
         paddle.distributed.init_parallel_env()
 
     rank_to_files = get_rank_to_files(path, state_dict, process_group, use_dist)
+    if len(rank_to_files) <= 0:
+        return
     local_load_files = get_local_load_files(rank_to_files)
     # load_infos: {LocalTensorIndex: (rank, file_name)}, which local tensor located in which file, and the file is load in which rank.
     load_infos = get_load_infos(path, local_load_files, process_group, use_dist)
@@ -409,6 +417,11 @@ def load_state_dict(
     logger.debug(
         f"before load, state_dict:{state_dict},\n load_infos:{load_infos},\n read_items:{read_items}"
     )
+    state_dict_in_cpu = []
+    for k, v in state_dict.items():
+        if v.place.is_cpu_place():
+            state_dict_in_cpu.append(k)
+            state_dict[k] = v.cuda()
     for item in read_items:
         assert (
             item.local_tensor_index in load_infos
@@ -451,6 +464,7 @@ def load_state_dict(
             cur_local_tensor = (
                 state_dict[item.local_tensor_index.tensor_key]._local_value()
                 if use_dist
+                and state_dict[item.local_tensor_index.tensor_key].is_dist()
                 else state_dict[item.local_tensor_index.tensor_key]
             )
             cur_offsets = item.cur_offset
@@ -486,11 +500,6 @@ def load_state_dict(
                     cur_chunk_tensor, src=src_rank, group=process_group
                 )
 
-    local_state_dict = (
-        {k: v._local_value() for k, v in state_dict.items()}
-        if use_dist
-        else state_dict
-    )
-    logger.debug(
-        f"after load, local_state_dict:{local_state_dict} \n state_dict:{state_dict}"
-    )
+    for k, v in state_dict.items():
+        if k in state_dict_in_cpu:
+            state_dict[k] = v.cpu()
