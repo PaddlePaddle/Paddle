@@ -107,16 +107,26 @@ class TestCopySignAPI(unittest.TestCase):
             x = paddle.static.data(
                 name='x', shape=self.x.shape, dtype=self.x.dtype
             )
-            y = paddle.static.data(
-                name='y', shape=self.y.shape, dtype=self.x.dtype
-            )
+            if isinstance(self.y, (float, int)):
+                y = self.y
+            else:
+                y = paddle.static.data(
+                    name='y', shape=self.y.shape, dtype=self.x.dtype
+                )
             out = paddle.copysign(x, y)
             exe = paddle.static.Executor(self.place)
-            res = exe.run(
-                paddle.static.default_main_program(),
-                feed={"x": self.x, "y": self.y},
-                fetch_list=[out],
-            )
+            if isinstance(self.y, (float, int)):
+                res = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={"x": self.x},
+                    fetch_list=[out],
+                )
+            else:
+                res = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={"x": self.x, "y": self.y},
+                    fetch_list=[out],
+                )
 
             out_ref = ref_copysign(self.x, self.y)
             np.testing.assert_allclose(out_ref, res[0])
@@ -173,6 +183,13 @@ class TestCopySignFloat16(TestCopySignAPI):
         dtype = np.float16
         self.x = (np.random.randn(10, 20) * 10).astype(dtype)
         self.y = (np.random.randn(10, 20) * 10).astype(dtype)
+
+
+class TestCopySignNumberY(TestCopySignAPI):
+    def input_init(self):
+        dtype = np.float32
+        self.x = (np.random.randn(10, 20) * 10).astype(dtype)
+        self.y = -2.0
 
 
 class TestCopySignZeroCase1(TestCopySignAPI):

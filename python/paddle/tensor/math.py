@@ -7071,6 +7071,8 @@ def copysign(x, y, name=None):
                    [-1.,  2.,  3.])
 
     """
+    if isinstance(y, (float, int)):
+        y = paddle.to_tensor([y], dtype=x.dtype)
     out_shape = broadcast_shape(x.shape, y.shape)
     if in_dynamic_mode():
         return _C_ops.copysign(x, y)
@@ -7089,6 +7091,8 @@ def copysign_(x, y):
     Inplace version of ``copysign`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_copysign`.
     """
+    if isinstance(y, (float, int)):
+        y = paddle.to_tensor([y], dtype=x.dtype)
     out_shape = broadcast_shape(x.shape, y.shape)
     return _C_ops.copysign_(x, y)
 
