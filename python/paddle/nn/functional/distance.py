@@ -123,6 +123,7 @@ def pdist(x, p=2.0, name=None):
     Examples:
         .. code-block:: python
 
+        >>> import paddle
         >>> paddle.seed(2023)
         >>> a = paddle.randn([4, 5])
         >>> print(a)
