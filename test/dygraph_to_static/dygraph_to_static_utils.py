@@ -459,7 +459,6 @@ def enable_to_static_guard(flag: bool):
     original_flag_value = program_translator.enable_to_static
     program_translator.enable(flag)
     try:
-        program_translator.enable(flag)
         yield
     finally:
         program_translator.enable(original_flag_value)
