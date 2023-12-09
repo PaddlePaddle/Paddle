@@ -442,7 +442,8 @@ def median(x, axis=None, keepdim=False, name=None):
     tensor_topk, idx = paddle.topk(x, kth + 1, axis=axis, largest=False)
     dtype = (
         'float64'
-        if x.dtype in [core.VarDesc.VarType.FP64, DataType.FLOAT64]
+        if x.dtype
+        in [core.VarDesc.VarType.FP64, paddle.base.core.DataType.FLOAT64]
         else 'float32'
     )
     if sz & 1 == 0:
@@ -498,7 +499,7 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
         In order to obtain higher precision, data type of results will be float64.
     """
     # Validate x
-    if not isinstance(x, (Variable, paddle.pir.OpResult)):
+    if not isinstance(x, (Variable, paddle.pir.Value)):
         raise TypeError("input x should be a Tensor.")
 
     # Validate q
