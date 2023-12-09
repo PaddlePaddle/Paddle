@@ -503,5 +503,52 @@ std::vector<int64_t> GetDimsMappingForAxes(
   return dims_mapping;
 }
 
+void DebugInfoForInferSpmd(const std::string& rule_name,
+                           const SpmdInfo& infer_result) {
+  VLOG(4) << "The infer spmd result of " << rule_name << " is as below:";
+  auto dist_attr_for_inputs = infer_result.first;
+  VLOG(4) << "======= The dist attr of inputs after inferspmd =======";
+  for (size_t i = 0; i < dist_attr_for_inputs.size(); ++i) {
+    if (paddle::holds_alternative<TensorDistAttr>(dist_attr_for_inputs[i])) {
+      VLOG(4) << "The dist attr of the " << i << "th input need to be "
+              << PADDLE_GET(TensorDistAttr, dist_attr_for_inputs[i]);
+    } else if (paddle::holds_alternative<std::vector<TensorDistAttr>>(
+                   dist_attr_for_inputs[i])) {
+      auto& dist_attr_vec =
+          PADDLE_GET(std::vector<TensorDistAttr>, dist_attr_for_inputs[i]);
+      for (size_t j = 0; j < dist_attr_vec.size(); j++) {
+        VLOG(4) << "The dist attr of the " << i << "th input[" << j
+                << "] need to be " << dist_attr_vec[j];
+      }
+    } else {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "The dist attr of the %d th input should be TensorDistAttr "
+          "or std::vector<TensorDistAttr>.",
+          i));
+    }
+  }
+  VLOG(4) << "======= The dist attr of outputs after inferspmd =======";
+  auto dist_attr_for_outputs = infer_result.second;
+  for (size_t i = 0; i < dist_attr_for_outputs.size(); ++i) {
+    if (paddle::holds_alternative<TensorDistAttr>(dist_attr_for_outputs[i])) {
+      VLOG(4) << "The dist attr of the " << i << "th output need to be "
+              << PADDLE_GET(TensorDistAttr, dist_attr_for_outputs[i]);
+    } else if (paddle::holds_alternative<std::vector<TensorDistAttr>>(
+                   dist_attr_for_outputs[i])) {
+      auto& dist_attr_vec =
+          PADDLE_GET(std::vector<TensorDistAttr>, dist_attr_for_outputs[i]);
+      for (size_t j = 0; j < dist_attr_vec.size(); j++) {
+        VLOG(4) << "The dist attr of the " << i << "th output[" << j
+                << "] need to be " << dist_attr_vec[j];
+      }
+    } else {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "The dist attr of the %d th output should be TensorDistAttr "
+          "or std::vector<TensorDistAttr>.",
+          i));
+    }
+  }
+}
+
 }  // namespace distributed
 }  // namespace phi

@@ -43,12 +43,13 @@ Module LowerToModule(const std::string test_name,
                      std::vector<std::string> input_names,
                      const std::string &output_name,
                      std::vector<ir::Tensor> &inputs,  // NOLINT
-                     std::vector<common::CINNValue> cinn_inputs,
+                     std::vector<cinn::common::CINNValue> cinn_inputs,
                      const Target &target) {
   Module::Builder builder("module", target);
 
   cinn_inputs.emplace_back(output_name);
-  common::CINNValuePack cinn_input = common::CINNValuePack{cinn_inputs};
+  cinn::common::CINNValuePack cinn_input =
+      cinn::common::CINNValuePack{cinn_inputs};
   input_names.push_back(output_name);
 
   auto funcs = framework::GetFuncFromImpl(
@@ -80,7 +81,7 @@ TEST(Operator, Operator_Pool2d_Test0) {
   attrs.attr_store["pool_type"] = pool_type;
   std::vector<ir::Tensor> inputs{A.tensor()};
   std::vector<Type> type{Float(32)};
-  common::Target target = common::DefaultHostTarget();
+  cinn::common::Target target = cinn::common::DefaultHostTarget();
   auto impl = OpStrategy::SelectImpl(strategy[pool2d](
       attrs, inputs, type, {{1, 3, 10, 10}, {1, 3, 5, 5}}, target));
 
@@ -91,7 +92,7 @@ TEST(Operator, Operator_Pool2d_Test0) {
                               {"A"},
                               "B",
                               inputs,
-                              {common::CINNValue(A)},
+                              {cinn::common::CINNValue(A)},
                               target);
 
   auto jit = backends::ExecutionEngine::Create({});
@@ -102,11 +103,12 @@ TEST(Operator, Operator_Pool2d_Test0) {
   auto fn_ = reinterpret_cast<void (*)(void *, int32_t)>(fn);
 
   cinn_buffer_t *A_buf =
-      common::BufferBuilder(Float(32), {1, 3, 8, 8}).set_random().Build();
-  cinn_buffer_t *B_buf =
-      common::BufferBuilder(Float(32), {1, 3, 10, 10}).set_random().Build();
+      cinn::common::BufferBuilder(Float(32), {1, 3, 8, 8}).set_random().Build();
+  cinn_buffer_t *B_buf = cinn::common::BufferBuilder(Float(32), {1, 3, 10, 10})
+                             .set_random()
+                             .Build();
   cinn_buffer_t *C_buf =
-      common::BufferBuilder(Float(32), {1, 3, 5, 5}).set_random().Build();
+      cinn::common::BufferBuilder(Float(32), {1, 3, 5, 5}).set_random().Build();
   cinn_pod_value_t a_arg(A_buf), b_arg(B_buf), c_arg(C_buf);
   cinn_pod_value_t args[] = {a_arg, b_arg, c_arg};
   fn_(args, 3);
@@ -138,7 +140,7 @@ TEST(Operator, Operator_Pool2d_Test1) {
   attrs.attr_store["exclusive"] = false;
   std::vector<ir::Tensor> inputs{A.tensor()};
   std::vector<Type> type{Float(32)};
-  common::Target target = common::DefaultHostTarget();
+  cinn::common::Target target = cinn::common::DefaultHostTarget();
   auto impl = OpStrategy::SelectImpl(strategy[pool2d](
       attrs, inputs, type, {{1, 3, 11, 11}, {1, 3, 5, 5}}, target));
 
@@ -150,7 +152,7 @@ TEST(Operator, Operator_Pool2d_Test1) {
                               {"A"},
                               "B",
                               inputs,
-                              {common::CINNValue(A)},
+                              {cinn::common::CINNValue(A)},
                               target);
 
   auto jit = backends::ExecutionEngine::Create({});
@@ -161,11 +163,12 @@ TEST(Operator, Operator_Pool2d_Test1) {
   auto fn_ = reinterpret_cast<void (*)(void *, int32_t)>(fn);
 
   cinn_buffer_t *A_buf =
-      common::BufferBuilder(Float(32), {1, 3, 8, 8}).set_random().Build();
-  cinn_buffer_t *B_buf =
-      common::BufferBuilder(Float(32), {1, 3, 11, 11}).set_random().Build();
+      cinn::common::BufferBuilder(Float(32), {1, 3, 8, 8}).set_random().Build();
+  cinn_buffer_t *B_buf = cinn::common::BufferBuilder(Float(32), {1, 3, 11, 11})
+                             .set_random()
+                             .Build();
   cinn_buffer_t *C_buf =
-      common::BufferBuilder(Float(32), {1, 3, 5, 5}).set_random().Build();
+      cinn::common::BufferBuilder(Float(32), {1, 3, 5, 5}).set_random().Build();
   cinn_pod_value_t a_arg(A_buf), b_arg(B_buf), c_arg(C_buf);
   cinn_pod_value_t args[] = {a_arg, b_arg, c_arg};
   fn_(args, 3);
@@ -199,7 +202,7 @@ TEST(Operator, Operator_Pool2d_Test2) {
   attrs.attr_store["data_format"] = data_format;
   std::vector<ir::Tensor> inputs{A.tensor()};
   std::vector<Type> type{Float(32)};
-  common::Target target = common::DefaultHostTarget();
+  cinn::common::Target target = cinn::common::DefaultHostTarget();
   auto impl = OpStrategy::SelectImpl(strategy[pool2d](
       attrs, inputs, type, {{1, 11, 11, 3}, {1, 5, 5, 3}}, target));
 
@@ -211,7 +214,7 @@ TEST(Operator, Operator_Pool2d_Test2) {
                               {"A"},
                               "B",
                               inputs,
-                              {common::CINNValue(A)},
+                              {cinn::common::CINNValue(A)},
                               target);
 
   auto jit = backends::ExecutionEngine::Create({});
@@ -222,11 +225,12 @@ TEST(Operator, Operator_Pool2d_Test2) {
   auto fn_ = reinterpret_cast<void (*)(void *, int32_t)>(fn);
 
   cinn_buffer_t *A_buf =
-      common::BufferBuilder(Float(32), {1, 8, 8, 3}).set_random().Build();
-  cinn_buffer_t *B_buf =
-      common::BufferBuilder(Float(32), {1, 11, 11, 3}).set_random().Build();
+      cinn::common::BufferBuilder(Float(32), {1, 8, 8, 3}).set_random().Build();
+  cinn_buffer_t *B_buf = cinn::common::BufferBuilder(Float(32), {1, 11, 11, 3})
+                             .set_random()
+                             .Build();
   cinn_buffer_t *C_buf =
-      common::BufferBuilder(Float(32), {1, 5, 5, 3}).set_random().Build();
+      cinn::common::BufferBuilder(Float(32), {1, 5, 5, 3}).set_random().Build();
   cinn_pod_value_t a_arg(A_buf), b_arg(B_buf), c_arg(C_buf);
   cinn_pod_value_t args[] = {a_arg, b_arg, c_arg};
   fn_(args, 3);
@@ -260,7 +264,7 @@ TEST(Operator, Operator_Pool3d_Test0) {
   attrs.attr_store["data_format"] = data_format;
   std::vector<ir::Tensor> inputs{A.tensor()};
   std::vector<Type> type{Float(32)};
-  common::Target target = common::DefaultHostTarget();
+  cinn::common::Target target = cinn::common::DefaultHostTarget();
   auto impl = OpStrategy::SelectImpl(strategy[pool3d](
       attrs, inputs, type, {{1, 11, 11, 11, 3}, {1, 5, 5, 5, 3}}, target));
 
@@ -271,7 +275,7 @@ TEST(Operator, Operator_Pool3d_Test0) {
                               {"A"},
                               "B",
                               inputs,
-                              {common::CINNValue(A)},
+                              {cinn::common::CINNValue(A)},
                               target);
 
   auto jit = backends::ExecutionEngine::Create({});
@@ -281,12 +285,16 @@ TEST(Operator, Operator_Pool3d_Test0) {
   CHECK(fn);
   auto fn_ = reinterpret_cast<void (*)(void *, int32_t)>(fn);
 
-  cinn_buffer_t *A_buf =
-      common::BufferBuilder(Float(32), {1, 8, 8, 8, 3}).set_random().Build();
+  cinn_buffer_t *A_buf = cinn::common::BufferBuilder(Float(32), {1, 8, 8, 8, 3})
+                             .set_random()
+                             .Build();
   cinn_buffer_t *B_buf =
-      common::BufferBuilder(Float(32), {1, 11, 11, 11, 3}).set_random().Build();
-  cinn_buffer_t *C_buf =
-      common::BufferBuilder(Float(32), {1, 5, 5, 5, 3}).set_random().Build();
+      cinn::common::BufferBuilder(Float(32), {1, 11, 11, 11, 3})
+          .set_random()
+          .Build();
+  cinn_buffer_t *C_buf = cinn::common::BufferBuilder(Float(32), {1, 5, 5, 5, 3})
+                             .set_random()
+                             .Build();
   cinn_pod_value_t a_arg(A_buf), b_arg(B_buf), c_arg(C_buf);
   cinn_pod_value_t args[] = {a_arg, b_arg, c_arg};
   fn_(args, 3);
@@ -320,7 +328,7 @@ TEST(Operator, Operator_Pool1d_Test0) {
   attrs.attr_store["data_format"] = data_format;
   std::vector<ir::Tensor> inputs{A.tensor()};
   std::vector<Type> type{Float(32)};
-  common::Target target = common::DefaultHostTarget();
+  cinn::common::Target target = cinn::common::DefaultHostTarget();
   auto impl = OpStrategy::SelectImpl(
       strategy[pool1d](attrs, inputs, type, {{1, 11, 3}, {1, 5, 3}}, target));
 
@@ -331,7 +339,7 @@ TEST(Operator, Operator_Pool1d_Test0) {
                               {"A"},
                               "B",
                               inputs,
-                              {common::CINNValue(A)},
+                              {cinn::common::CINNValue(A)},
                               target);
 
   auto jit = backends::ExecutionEngine::Create({});
@@ -342,11 +350,11 @@ TEST(Operator, Operator_Pool1d_Test0) {
   auto fn_ = reinterpret_cast<void (*)(void *, int32_t)>(fn);
 
   cinn_buffer_t *A_buf =
-      common::BufferBuilder(Float(32), {1, 8, 3}).set_random().Build();
+      cinn::common::BufferBuilder(Float(32), {1, 8, 3}).set_random().Build();
   cinn_buffer_t *B_buf =
-      common::BufferBuilder(Float(32), {1, 11, 3}).set_random().Build();
+      cinn::common::BufferBuilder(Float(32), {1, 11, 3}).set_random().Build();
   cinn_buffer_t *C_buf =
-      common::BufferBuilder(Float(32), {1, 5, 3}).set_random().Build();
+      cinn::common::BufferBuilder(Float(32), {1, 5, 3}).set_random().Build();
   cinn_pod_value_t a_arg(A_buf), b_arg(B_buf), c_arg(C_buf);
   cinn_pod_value_t args[] = {a_arg, b_arg, c_arg};
   fn_(args, 3);
@@ -372,7 +380,7 @@ TEST(Operator, Operator_Select_Test0) {
   std::vector<ir::Tensor> inputs{
       condition.tensor(), true_value.tensor(), false_value.tensor()};
   std::vector<Type> type{Float(32)};
-  const common::Target target = common::DefaultHostTarget();
+  const cinn::common::Target target = cinn::common::DefaultHostTarget();
 
   const std::vector<framework::shape_t> input_shapes = {
       {16, 64, 64}, {16, 64, 64}, {16, 64, 64}};
@@ -387,9 +395,10 @@ TEST(Operator, Operator_Select_Test0) {
   std::string func_name = "select";
   std::vector<std::string> input_names = {
       "condition", "true_value", "false_value"};
-  std::vector<common::CINNValue> cinn_inputs = {common::CINNValue(condition),
-                                                common::CINNValue(true_value),
-                                                common::CINNValue(false_value)};
+  std::vector<cinn::common::CINNValue> cinn_inputs = {
+      cinn::common::CINNValue(condition),
+      cinn::common::CINNValue(true_value),
+      cinn::common::CINNValue(false_value)};
 
   auto module = LowerToModule("Operator_Select_Test0",
                               func_name,
@@ -408,13 +417,13 @@ TEST(Operator, Operator_Select_Test0) {
   auto fn_ = reinterpret_cast<void (*)(void *, int32_t)>(fn);
 
   cinn_buffer_t *A_buf =
-      common::BufferBuilder(Bool(), {16, 64, 64}).set_random().Build();
+      cinn::common::BufferBuilder(Bool(), {16, 64, 64}).set_random().Build();
   cinn_buffer_t *B_buf =
-      common::BufferBuilder(Float(32), {16, 64, 64}).set_random().Build();
+      cinn::common::BufferBuilder(Float(32), {16, 64, 64}).set_random().Build();
   cinn_buffer_t *C_buf =
-      common::BufferBuilder(Float(32), {16, 64, 64}).set_random().Build();
+      cinn::common::BufferBuilder(Float(32), {16, 64, 64}).set_random().Build();
   cinn_buffer_t *D_buf =
-      common::BufferBuilder(Float(32), {16, 64, 64}).set_random().Build();
+      cinn::common::BufferBuilder(Float(32), {16, 64, 64}).set_random().Build();
 
   cinn_pod_value_t a_arg(A_buf), b_arg(B_buf), c_arg(C_buf), d_arg(D_buf);
   cinn_pod_value_t args[] = {a_arg, b_arg, c_arg, d_arg};
@@ -452,7 +461,7 @@ TEST(Operator, Operator_Reverse_Test0) {
   attrs.attr_store["axis"] = axis;
   std::vector<ir::Tensor> inputs{A.tensor()};
   std::vector<Type> type{Float(32)};
-  common::Target target = common::DefaultHostTarget();
+  cinn::common::Target target = cinn::common::DefaultHostTarget();
 
   auto impl = OpStrategy::SelectImpl(
       strategy[reverse](attrs, inputs, type, {{c, h, w}}, target));
@@ -464,7 +473,7 @@ TEST(Operator, Operator_Reverse_Test0) {
                               {"A"},
                               "B",
                               inputs,
-                              {common::CINNValue(A)},
+                              {cinn::common::CINNValue(A)},
                               target);
 
   auto jit = backends::ExecutionEngine::Create({});
@@ -475,9 +484,9 @@ TEST(Operator, Operator_Reverse_Test0) {
   auto fn_ = reinterpret_cast<void (*)(void *, int32_t)>(fn);
 
   cinn_buffer_t *A_buf =
-      common::BufferBuilder(Float(32), {c, h, w}).set_random().Build();
+      cinn::common::BufferBuilder(Float(32), {c, h, w}).set_random().Build();
   cinn_buffer_t *B_buf =
-      common::BufferBuilder(Float(32), {c, h, w}).set_random().Build();
+      cinn::common::BufferBuilder(Float(32), {c, h, w}).set_random().Build();
   cinn_pod_value_t a_arg(A_buf), b_arg(B_buf);
   cinn_pod_value_t args[] = {a_arg, b_arg};
   fn_(args, 2);
@@ -516,7 +525,7 @@ TEST(Operator, Operator_Transpose_Test0) {
   attrs.attr_store["axis"] = axis;
   std::vector<ir::Tensor> inputs{A.tensor()};
   std::vector<Type> type{Float(32)};
-  common::Target target = common::DefaultHostTarget();
+  cinn::common::Target target = cinn::common::DefaultHostTarget();
 
   auto infer_shape = infer_shape_func({{n, c, h, w}}, attrs.attr_store);
   ASSERT_EQ(infer_shape[0][0], n);
@@ -551,7 +560,7 @@ TEST(Operator, Operator_Transpose_Test0) {
                               {"A"},
                               "B",
                               inputs,
-                              {common::CINNValue(A)},
+                              {cinn::common::CINNValue(A)},
                               target);
 
   auto jit = backends::ExecutionEngine::Create({});
@@ -562,9 +571,9 @@ TEST(Operator, Operator_Transpose_Test0) {
   auto fn_ = reinterpret_cast<void (*)(void *, int32_t)>(fn);
 
   cinn_buffer_t *A_buf =
-      common::BufferBuilder(Float(32), input_shape).set_random().Build();
+      cinn::common::BufferBuilder(Float(32), input_shape).set_random().Build();
   cinn_buffer_t *B_buf =
-      common::BufferBuilder(Float(32), output_shape).set_random().Build();
+      cinn::common::BufferBuilder(Float(32), output_shape).set_random().Build();
   cinn_pod_value_t a_arg(A_buf), b_arg(B_buf);
   cinn_pod_value_t args[] = {a_arg, b_arg};
   fn_(args, 2);

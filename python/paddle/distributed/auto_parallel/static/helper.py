@@ -328,21 +328,27 @@ class ProgramHelper:
             # create var in scope and share parameters to scope
             if param.name not in main_program.global_block().vars:
                 continue
-            # get param_var's dist_attr
-            var = main_program.global_block().vars[param.name]
-            var_dist_attr = dist_context.get_tensor_dist_attr_for_program(var)
-            dist_attr = {
-                "dims_mapping": var_dist_attr.dims_mapping,
-                "process_shape": var_dist_attr.process_mesh.shape,
-                "process_group": var_dist_attr.process_mesh.process_ids,
-            }
-            # slice param_value with dist_attr
-            # share sliced_param_value with param_tensor in global_scope
-            param_tensor = global_scope().var(param.name).get_tensor()
-            sliced_param = Converter.slice_with_dist_attr(
-                param.numpy(), dist_attr
-            )
-            param_tensor.set(sliced_param, place)
+            if param.is_dense():
+                # get param_var's dist_attr
+                var = main_program.global_block().vars[param.name]
+                var_dist_attr = dist_context.get_tensor_dist_attr_for_program(
+                    var
+                )
+                dist_attr = {
+                    "dims_mapping": var_dist_attr.dims_mapping,
+                    "process_shape": var_dist_attr.process_mesh.shape,
+                    "process_group": var_dist_attr.process_mesh.process_ids,
+                }
+                # slice param_value with dist_attr
+                # share sliced_param_value with param_tensor in global_scope
+                param_tensor = global_scope().var(param.name).get_tensor()
+                sliced_param = Converter.slice_with_dist_attr(
+                    param.numpy(), dist_attr
+                )
+                param_tensor.set(sliced_param, place)
+            elif param.is_dist():
+                dense_tensor = global_scope().var(param.name).get_tensor()
+                dense_tensor._share_data_with(param.get_tensor().get_tensor())
 
     @property
     def concrete_program(self):

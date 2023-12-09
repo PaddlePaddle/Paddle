@@ -275,19 +275,20 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
             static_cast<float>(quantized_weight_data[i]) * weight_scale[0];
       }
     } else if (quant_axis == 0) {  // per_channel quant_dequant: conv2d,
-                                   // depthwise_conv2d, conv2d_fusion
+                                   // depthwise_conv2d, fused_conv2d_add_act
       PADDLE_ENFORCE_EQ(
           weight_scale_nums,
           w_dims[quant_axis],
           platform::errors::InvalidArgument(
               "When quant_axis == 0 means use per_channel quant_dequant, "
               "weight_scale'numbers should be equal channels."));
-      PADDLE_ENFORCE_EQ(w_dims.size(),
-                        4,
-                        platform::errors::InvalidArgument(
-                            "When quant_axis == 0 means use per_channel "
-                            "quant_dequant, (conv2d, depthwise_conv2d, "
-                            "conv2d_fusion)'s weight dims should be 4."));
+      PADDLE_ENFORCE_EQ(
+          w_dims.size(),
+          4,
+          platform::errors::InvalidArgument(
+              "When quant_axis == 0 means use per_channel "
+              "quant_dequant, (conv2d, depthwise_conv2d, "
+              "fused_conv2d_add_act)'s weight dims should be 4."));
 
       for (int i = 0; i < weight_tensor->numel(); i++) {
         int inner_size = static_cast<int>(w_dims[1] * w_dims[2] * w_dims[3]);
@@ -334,7 +335,7 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
           "OP'attribute "));
     }
     weight_tensor->clear();  // clear int weight
-    weight_tensor->Resize(phi::make_ddim(phi::vectorize(w_dims)));
+    weight_tensor->Resize(common::make_ddim(common::vectorize(w_dims)));
     float* new_quantized_weight_data = dev_ctx->HostAlloc<float>(
         weight_tensor, weight_tensor->numel() * sizeof(float));
     memcpy(new_quantized_weight_data,
