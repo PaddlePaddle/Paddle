@@ -14,6 +14,8 @@
 
 from .context import Context
 
+ctx = None
+
 
 def launch():
     """
@@ -284,6 +286,7 @@ def launch():
     """
 
     # initialize the context to run
+    global ctx
     ctx = Context()
 
     if ctx.is_legacy_mode():
@@ -435,6 +438,7 @@ def launch():
         recorder = HistoryRecorder()
 
         job_id = 0
+        error_task_nums = 0
         ctx.args.max_restart = -1
         raw_ctx = copy.deepcopy(ctx)
 
@@ -703,6 +707,42 @@ def launch():
                         add_overlap_performance(
                             cur_cfg, tuner_cfg, recorder.history
                         )
+                    has_error = cur_cfg["has_error"]
+                    if has_error:
+                        error_task_nums += 1
+                    error_info = cur_cfg["error_info"]
+                    task_nums = len(auto_tuner.algo.all_tasks)
+                    cur_task_id = auto_tuner.algo.idx
+                    ctx.logger.info(
+                        "Auto Tuner Schedule: [{}/{}], Pruned nums {}, Error nums {}, Error info {}, Remaining time {} min".format(
+                            cur_task_id,
+                            task_nums,
+                            cur_task_id - job_id,
+                            error_task_nums,
+                            error_info,
+                            round(
+                                (task_nums - cur_task_id)
+                                * max_time_per_task
+                                / 60,
+                                2,
+                            ),
+                        )
+                    )
+                    logger.info(
+                        "Auto Tuner Schedule: [{}/{}], Pruned nums {}, Error nums {}, Error info {}, Remaining time {} min".format(
+                            cur_task_id,
+                            task_nums,
+                            cur_task_id - job_id,
+                            error_task_nums,
+                            error_info,
+                            round(
+                                (task_nums - cur_task_id)
+                                * max_time_per_task
+                                / 60,
+                                2,
+                            ),
+                        )
+                    )
                     recorder.store_history(history_file_path)
                     # generate a new config
                     new_cfg = auto_tuner.search_once()
@@ -861,6 +901,40 @@ def launch():
                     cur_cfg[
                         f"bw_{bw}_{tuner_cfg['metric_cfg']['name']}"
                     ] = multi_dp_performace
+
+            cur_cfg["has_error"] = has_error
+            if has_error:
+                error_task_nums += 1
+            error_info = None
+            cur_cfg["error_info"] = error_info
+            task_nums = len(auto_tuner.algo.all_tasks)
+            cur_task_id = auto_tuner.algo.idx
+            ctx.logger.info(
+                "Auto Tuner Schedule: [{}/{}], Pruned nums {}, Error nums {}, Error info {}, Remaining time {} min".format(
+                    cur_task_id,
+                    task_nums,
+                    cur_task_id - job_id,
+                    error_task_nums,
+                    error_info,
+                    round(
+                        (task_nums - cur_task_id) * max_time_per_task / 60,
+                        2,
+                    ),
+                )
+            )
+            logger.info(
+                "Auto Tuner Schedule: [{}/{}], Pruned nums {}, Error nums {}, Error info {}, Remaining time {} min".format(
+                    cur_task_id,
+                    task_nums,
+                    cur_task_id - job_id,
+                    error_task_nums,
+                    error_info,
+                    round(
+                        (task_nums - cur_task_id) * max_time_per_task / 60,
+                        2,
+                    ),
+                )
+            )
 
             # sync for single dp
             if sorted_ips:

@@ -1135,6 +1135,8 @@ def save_vars(
         # which leads to diff on save_program and its desc. Call _sync_with_cpp
         # to keep consistency.
         save_program._sync_with_cpp()
+        # flush to root_scope
+        executor.flush()
         executor.run(save_program)
         if save_to_memory:
             return global_scope().find_var(params_var_name).get_bytes()

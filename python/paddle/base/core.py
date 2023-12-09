@@ -342,6 +342,9 @@ try:
         _set_prim_target_grad_name,
     )
 
+    # type promotion
+    from .libpaddle import need_type_promotion, get_promote_dtype  # noqa: F401
+
     # isort: on
     if sys.platform != 'win32':
         from .libpaddle import (  # noqa: F401

@@ -68,6 +68,9 @@ class MemorySparseTable : public Table {
   int32_t Load(const std::string& path, const std::string& param) override;
 
   int32_t Save(const std::string& path, const std::string& param) override;
+#ifdef PADDLE_WITH_GPU_GRAPH
+  int32_t Save_v2(const std::string& path, const std::string& param) override;
+#endif
 
   int32_t SaveCache(
       const std::string& path,

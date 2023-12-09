@@ -61,9 +61,9 @@ class TestPybind(unittest.TestCase):
     def test_operation(self):
         pir_program = get_ir_program()
         ops = pir_program.global_block().ops
-        matmul_op = pir_program.global_block().ops[1]
-        add_op = pir_program.global_block().ops[2]
-        tanh_op = pir_program.global_block().ops[3]
+        matmul_op = ops[1]
+        add_op = ops[2]
+        tanh_op = ops[3]
         parent_block = tanh_op.get_parent_block()
         parent_ops_num = len(parent_block.ops)
         self.assertEqual(parent_ops_num, 6)
@@ -71,6 +71,12 @@ class TestPybind(unittest.TestCase):
         self.assertEqual(len(matmul_op.get_input_names()), 2)
         self.assertEqual(len(matmul_op.get_attr_names()), 2)
         self.assertEqual(len(matmul_op.get_output_names()), 1)
+        # test oprand.index
+        self.assertEqual(matmul_op.operand(0).index(), 0)
+        self.assertEqual(matmul_op.operand(1).index(), 1)
+        self.assertEqual(add_op.operand(0).index(), 0)
+        self.assertEqual(add_op.operand(1).index(), 1)
+        self.assertEqual(tanh_op.operand(0).index(), 0)
 
     def test_value(self):
         pir_program = get_ir_program()

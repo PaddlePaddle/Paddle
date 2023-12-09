@@ -129,7 +129,7 @@ import collective.test_communication_api_base as test_base
 #             self.run_test_case(
 #                 "semi_auto_llama.py",
 #                 user_defined_envs=envs,
-#             )
+#             )d
 
 
 class TestSemiAutoParallelLlama3D(test_base.CommunicationTestDistBase):

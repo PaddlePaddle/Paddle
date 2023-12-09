@@ -258,6 +258,12 @@ class LlamaAttentionAuto(nn.Layer):
                 attn_output, get_mesh(self.ipp), [dist.Shard(1), dist.Shard(0)]
             )
 
+        if self.config.sequence_parallel:
+            attn_output = paddle.transpose(attn_output, [1, 0, 2])
+            attn_output = dist.reshard(
+                attn_output, get_mesh(self.ipp), [dist.Shard(1), dist.Shard(0)]
+            )
+
         if not output_attentions:
             attn_weights = None
 
@@ -773,7 +779,6 @@ class LlamaForCausalLMAuto(nn.Layer):
 
         hidden_states = outputs[0]  # [bs, seq_len, dim]
 
-        # if labels is None，means we need full output, instead of tensor_parallel_output
         if self.config.sequence_parallel:
             hidden_states = dist.reshard(
                 hidden_states, get_mesh(-1), [dist.Shard(1), dist.Replicate()]
@@ -783,16 +788,6 @@ class LlamaForCausalLMAuto(nn.Layer):
 
         logits = self.lm_head(hidden_states)
 
-        # loss = None
-        # if labels is not None:
-        #     labels.stop_gradient = True
-        #     labels = dist.shard_tensor(
-        #         labels, get_mesh(-1), [dist.Shard(0), dist.Replicate()]
-        #     )
-        #     loss = self.criterion(logits, labels)
-
-        # output = (logits,) + outputs[1:]
-        # return (loss,) + output if loss is not None else output
         return logits
 
 
