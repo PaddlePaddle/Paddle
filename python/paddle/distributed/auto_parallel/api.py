@@ -281,12 +281,19 @@ class DistModel:
         if strategy is None:
             return None
         inner_strategy = auto_strategy.Strategy()
-        for attr_name in dir(strategy):
-            if attr_name.startswith("__"):
-                continue
-            if hasattr(inner_strategy, attr_name):
-                value = copy.deepcopy(getattr(strategy, attr_name))
-                setattr(inner_strategy, attr_name, value)
+        inner_strategy.fused_passes.enable = strategy.fused_passes.enable
+        if strategy.fused_passes.gemm_epilogue is True:
+            inner_strategy.fused_passes.fused_passes_list.append(
+                "fused_gemm_epilogue_pass"
+            )
+        if strategy.fused_passes.dropout_add is True:
+            inner_strategy.fused_passes.fused_passes_list.append(
+                "fused_dropout_add_pass"
+            )
+
+        inner_strategy.sharding = copy.deepcopy(strategy.sharding)
+        inner_strategy.gradient_merge = copy.deepcopy(strategy.gradient_merge)
+        inner_strategy.pipeline = copy.deepcopy(strategy.pipeline)
         return inner_strategy
 
     def __call__(self, *args):
@@ -316,6 +323,23 @@ class DistModel:
 
 
 # Part2: DistTensor construction related APIs
+
+
+class FusePasses:
+    """
+    A helper class for users to configure the fuse passes.
+    """
+
+    def __init__(self, config_dict=None):
+        self.enable = False
+        self.gemm_epilogue = False
+        self.dropout_add = False
+        if config_dict is not None:
+            for key, value in config_dict.items():
+                if hasattr(self, key):
+                    setattr(self, key, value)
+                else:
+                    raise ValueError(f"Unknown fuse pass {key}")
 
 
 class Strategy(auto_strategy.BaseConfig):
@@ -380,22 +404,126 @@ class Strategy(auto_strategy.BaseConfig):
         config_dict = self._config_dict.get(
             auto_strategy.constants.SHARDING, None
         )
-        self.sharding = auto_strategy.ShardingConfig(config_dict)
+        self._sharding = auto_strategy.ShardingConfig(config_dict)
 
         config_dict = self._config_dict.get(
             auto_strategy.constants.GRADIENT_MERGE, None
         )
-        self.gradient_merge = auto_strategy.GradientMergeConfig(config_dict)
+        self._gradient_merge = auto_strategy.GradientMergeConfig(config_dict)
 
         config_dict = self._config_dict.get(
             auto_strategy.constants.PIPELINE, None
         )
-        self.pipeline = auto_strategy.PipelineConfig(config_dict)
+        self._pipeline = auto_strategy.PipelineConfig(config_dict)
 
         config_dict = self._config_dict.get(
             auto_strategy.constants.FUSED_PASSES, None
         )
-        self.fused_passes = auto_strategy.FusedPassesConfig(config_dict)
+        self._fused_passes = FusePasses(config_dict)
+
+    @property
+    def sharding(self):
+        """
+        ``sharding`` is used to cnofigure the sharding states of the optimizer,
+        containing following configs:
+
+            ``enable`` (bool): whether to enable sharding. Default: False.
+
+            ``stage`` (int): can be set to 1, 2 or 3. 1 indicates the optimizer states segmentation,
+            2 indicates optimizer states and gradient segmentation, 3 indicates the segmentation
+            of optimizer states, gradient and parameters. Default: 1.
+
+            ``degree`` (int): the number of segmentation pieces. Default: 8.
+
+        Examples:
+            .. code-block:: python
+                >>> import paddle
+                >>> import paddle.distributed as dist
+
+                >>> strategy = dist.Strategy()
+
+                >>> strategy.sharding.enable = True
+                >>> strategy.sharding.stage = 2
+                >>> strategy.sharding.degree = 2
+        """
+        return self._sharding
+
+    @property
+    def gradient_merge(self):
+        """
+        ``gradient_merge`` is used to configure the gradient merge strategy in
+        training, containing following configs:
+
+            ``enable`` (bool): whether to enable gradient merge. Default: False.
+
+            ``k_steps`` (int): the number of steps for merging gradients. Default: 1.
+
+            ``avg`` (bool): whether to average the gradients of each step. Default: True.
+
+        Examples:
+            .. code-block:: python
+                >>> import paddle
+                >>> import paddle.distributed as dist
+
+                >>> strategy = dist.Strategy()
+
+                >>> strategy.gradient_merge.enable = True
+                >>> strategy.gradient_merge.k_steps = 2
+                >>> strategy.gradient_merge.avg = True
+        """
+        return self._gradient_merge
+
+    @property
+    def fused_passes(self):
+        """
+        ``fused_passes`` is used to configure the fusion of the computation in
+        the model, containing following configs:
+
+            ``enable`` (bool): whether to enable fused passes. Default: False.
+
+            ``gemm_epilogue`` (bool): whether to fuse ``matmul`` and ``add`` computation
+            in the ``Linear`` layer. Default: False
+
+            "dropout_add" (bool): whether to fuse ``dropout`` and ``add`` computation. Default: False.
+
+        Examples:
+            .. code-block:: python
+                >>> import paddle
+                >>> import paddle.distributed as dist
+
+                >>> strategy = dist.Strategy()
+
+                >>> strategy.fused_passes.enable = True
+                >>> strategy.fused_passes.gemm_spilogue = True
+                >>> strategy.fused_passes.dropout_add = True
+        """
+        return self._fused_passes
+
+    @property
+    def pipeline(self):
+        """
+        ``pipeline`` is used to configure the pipeline parallelism in training,
+        containing following configs:
+
+            ``enable`` (bool): whether to enable pipeline parallelism. Default: False.
+
+            ``schedule_mode`` (str): the scheduling mode of pipeline parallelism. Default: "1F1B".
+
+            ``micro_batch_size`` (int): the size of each micro-batch inside a mini-batch. Default: 1.
+
+            ``accumulate_steps`` (int): number of steps for accumulating. Default: 1.
+
+        Examples:
+            .. code-block:: python
+                >>> import paddle
+                >>> import paddle.distributed as dist
+
+                >>> strategy = dist.Strategy()
+
+                >>> strategy.pipeline.enable = True
+                >>> strategy.pipeline.micro_batch_size = 2
+        """
+        return self._pipeline
 
 
 def to_static(

@@ -35,7 +35,8 @@ class TestStrategy(unittest.TestCase):
         self.assertEqual(strategy.pipeline.accumulate_steps, 1)
 
         self.assertEqual(strategy.fused_passes.enable, False)
-        self.assertEqual(strategy.fused_passes.fused_passes_list, [])
+        self.assertEqual(strategy.fused_passes.gemm_epilogue, False)
+        self.assertEqual(strategy.fused_passes.dropout_add, False)
 
     def test_modify_config(self):
         strategy = dist.Strategy()
@@ -62,14 +63,16 @@ class TestStrategy(unittest.TestCase):
         self.assertEqual(strategy.pipeline.micro_batch_size, 2)
 
         strategy.fused_passes.enable = True
-        strategy.fused_passes.fused_passes_list = ["linear"]
+        strategy.fused_passes.gemm_epilogue = True
         self.assertEqual(strategy.fused_passes.enable, True)
-        self.assertEqual(strategy.fused_passes.fused_passes_list, ["linear"])
+        self.assertEqual(strategy.fused_passes.gemm_epilogue, True)
 
     def test_init_from_dict(self):
         config = {
             "sharding": {"enable": True, "stage": 2},
             "gradient_merge": {"enable": True, "k_steps": 2},
+            "fused_passes": {"enable": True, "gemm_epilogue": True},
+            "pipeline": {"enable": True, "schedule_mode": "FThenB"},
         }
         strategy = dist.Strategy(config)
         self.assertEqual(strategy.sharding.enable, True)
@@ -78,6 +81,9 @@ class TestStrategy(unittest.TestCase):
         self.assertEqual(strategy.gradient_merge.enable, True)
         self.assertEqual(strategy.gradient_merge.k_steps, 2)
         self.assertEqual(strategy.gradient_merge.avg, True)  # default
+        self.assertEqual(strategy.fused_passes.enable, True)
+        self.assertEqual(strategy.fused_passes.gemm_epilogue, True)
+        self.assertEqual(strategy.fused_passes.dropout_add, False)  # default
 
 
 if __name__ == '__main__':
