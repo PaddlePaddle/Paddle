@@ -2442,19 +2442,11 @@ def assign(x, output=None):
         elif dtype in [core.VarDesc.VarType.INT64, core.DataType.INT64]:
             value_name = "int64_values"
             values = [int(v) for v in input.flat]
-        elif dtype in [core.VarDesc.VarType.COMPLEX64, core.DataType.COMPLEX64]:
-            value_name = "complex64_values"
-            values = [int(v) for v in input.flat]
-        elif dtype in [
-            core.VarDesc.VarType.COMPLEX128,
-            core.DataType.COMPLEX128,
-        ]:
-            value_name = "complex128_values"
-            values = [int(v) for v in input.flat]
+
         else:
             raise TypeError(
                 "When the type of 'input' in assign is numpy.ndarray, "
-                "the data type of 'input' must be bool, float16, float32, int32, int64, complex64 or complex128 but "
+                "the data type of 'input' must be bool, float32, int32 or int64, but "
                 "received %s." % convert_dtype(dtype)
             )
         if input.size > 1024 * 1024:
