@@ -94,6 +94,17 @@ fi
 # Get the list of pending cases
 get_diff_TO_case
 # Remove duplicates and store the results back to the original list
+
+####################
+if [[ "${case_list[*]}" == *"gpt-3_auto"* ]] && [[ "${case_list[*]}" == *"gpt-3_auto_pir"* ]]; then
+    echo "同时命中gpt-3_auto 和 gpt-3_auto_pir，只执行新ir，不执行旧ir"  
+    case_list=("${case_list[@]/*gpt-3_auto_pir*/}")
+    case_list=("${case_list[@]/*gpt-3_auto*/}")
+    case_list[${#case_list[*]}]=gpt-3_auto_pir
+    echo ${case_list[*]}
+fi
+####################
+
 case_list=($(awk -v RS=' ' '!a[$1]++' <<< ${case_list[*]}))
 if [[ ${#case_list[*]} -ne 0 ]];then
     echo -e "\033[31m =======CI Check case========= \033"

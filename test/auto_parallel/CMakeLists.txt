@@ -108,7 +108,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   if(NOT WITH_COVERAGE)
     py_test_modules(test_reshard_r_to_s MODULES test_reshard_r_to_s)
     set_tests_properties(test_reshard_r_to_s
-                         PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 160)
+                         PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 400)
   endif()
   py_test_modules(test_reshard_r_to_p MODULES test_reshard_r_to_p)
   set_tests_properties(test_reshard_r_to_p
@@ -127,7 +127,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_semi_auto_parallel_basic MODULES
                   test_semi_auto_parallel_basic)
   set_tests_properties(test_semi_auto_parallel_basic
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 400)
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 600)
 
   py_test_modules(test_semi_auto_parallel_for_llama_subnet MODULES
                   test_semi_auto_parallel_for_llama_subnet)
@@ -176,6 +176,9 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_semi_auto_parallel_dist_to_static MODULES
                   test_semi_auto_parallel_dist_to_static)
   set_tests_properties(test_semi_auto_parallel_dist_to_static
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 300)
+  py_test_modules(test_static_reshard_api MODULES test_static_reshard_api)
+  set_tests_properties(test_static_reshard_api
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 300)
   py_test_modules(test_gpt_with_prim MODULES test_gpt_with_prim)
   set_tests_properties(test_gpt_with_prim

@@ -246,3 +246,11 @@ def remove_load_store_pass(instrs, code_options):
                 modified = True
             else:
                 idx += 1
+
+
+def remove_duplicate_resume(instrs, code_options):
+    resumes = list(filter(lambda instr: instr.opname == "RESUME", instrs))
+    if not resumes:
+        return
+    for resume in resumes[1:]:
+        instrs.remove(resume)

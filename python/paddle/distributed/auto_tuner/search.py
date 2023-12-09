@@ -13,10 +13,16 @@
 # limitations under the License.
 
 
+import os
 from abc import ABC, abstractmethod
 
 from .prune import _PRUNE_HISTORY_FUNC
-from .utils import gbs_search_all, search_all, search_by_dp_estimation
+from .utils import (
+    gbs_search_all,
+    load_configs_from_csv,
+    search_all,
+    search_by_dp_estimation,
+)
 
 
 class SearchAlgo(ABC):
@@ -94,4 +100,20 @@ class GBSSearch(SearchAlgo):
                 stop = not self.prune(self.tuner_cfg, new_cfg, history_cfgs)
             else:
                 return None
+        return new_cfg
+
+
+class CustomizeSearch(SearchAlgo):
+    def __init__(self, tuner_cfg):
+        super().__init__(tuner_cfg)
+        self.idx = 0
+        self.configs_csv = tuner_cfg.get("configs_csv", None)
+        assert os.path.exists(
+            self.configs_csv
+        ), "configs_csv file is neccessary in CustomizeSearch mode."
+        self.all_tasks = load_configs_from_csv(self.configs_csv)
+
+    def search_once(self, history_cfgs):
+        new_cfg = self.all_tasks[self.idx]
+        self.idx += 1
         return new_cfg
