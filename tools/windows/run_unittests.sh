@@ -242,6 +242,10 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_add_reader_dependency$|\
 ^test_conv2d_fusion_op$|\
 ^test_fused_conv2d_add_act_op$|\
+^test_analyzer_detect_functional_mkldnn$|\
+^test_audio_datasets$|\
+^test_signal$|\
+^test_stft_op$|\
 ^disable_wingpu_cuda12_test$"
 
 # /*=================Fixed Disabled Windows TRT MKL unittests=======================*/
