@@ -493,7 +493,7 @@ def shard_tensor(
                 tensor,
                 process_mesh=mesh,
                 placements=placements,
-                **tensor.__dict__
+                **tensor.__dict__,
             )
         else:
             return paddle.Tensor(
@@ -876,6 +876,83 @@ class _ShardOptimizer:
                 self._inner_opt._apply_optimize(
                     loss=None, startup_program=None, params_grads=params_grads
                 )
+
+    def state_dict(self):
+        """
+        Create and shard the optimizer states e.g., acumulators and master_weights before load_state_dict.
+        If training has already started or the optimizer states are already created and sharded, do nothing.
+        """
+        state_dict = self._inner_opt.state_dict()
+        # training has already started.
+        param_list = []
+        if isinstance(self._inner_opt._parameter_list[0], dict):
+            for param_group in self._inner_opt._parameter_list:
+                param_list += param_group["params"]
+        else:
+            param_list = self._inner_opt._parameter_list
+        for param in param_list:
+            if param.stop_gradient:
+                continue
+            if hasattr(param, "main_grad"):
+                if param.main_grad is not None:
+                    return state_dict
+            else:
+                if param.grad is not None:
+                    return state_dict
+
+        # TODO(pangengzheng): deal with master_weights and LR_Scheduler later
+        # the optimizer states are already created and sharded
+        if any(
+            v.is_dist()
+            for k, v in state_dict.items()
+            if k not in ["master_weights", "LR_Scheduler"]
+        ):
+            return state_dict
+
+        # create and shard the optimizer states
+        # fake the parameter gradient and invoke step to implicitly create the optimizer states.
+        if not isinstance(self._inner_opt._parameter_list[0], dict):
+            for param in self._inner_opt._parameter_list:
+                if param.stop_gradient:
+                    continue
+                if hasattr(param, "main_grad"):
+                    if param.main_grad is not None:
+                        raise ValueError(
+                            f"gradient should be None, but is {param.main_grad}"
+                        )
+                    param.main_grad = paddle.zeros_like(
+                        param, dtype=paddle.float32
+                    )
+                else:
+                    if param.grad is not None:
+                        raise ValueError(
+                            f"gradient should be None, but is {param.grad}"
+                        )
+                    param.grad = paddle.zeros_like(param, dtype=param.dtype)
+        else:
+            for param_group in self._inner_opt._param_groups:
+                for param in param_group['params']:
+                    if param.stop_gradient:
+                        continue
+                    if hasattr(param, "main_grad"):
+                        if param.main_grad is not None:
+                            raise ValueError(
+                                f"gradient should be None, but is {param.main_grad}"
+                            )
+                        param.main_grad = paddle.zeros_like(
+                            param, dtype=paddle.float32
+                        )
+                    else:
+                        if param.grad is not None:
+                            raise ValueError(
+                                f"gradient should be None, but is {param.grad}"
+                            )
+                        param.grad = paddle.zeros_like(param, dtype=param.dtype)
+        self.step()
+        # clear the parameter gradient
+        self._inner_opt.clear_grad(set_to_zero=False)
+
+        return self._inner_opt.state_dict()
 
     def __getattr__(self, item):
         return getattr(self._inner_opt, item)
