@@ -18,10 +18,25 @@ from typing import Callable
 import paddle
 import paddle.distributed as dist
 from paddle import nn
-from paddle.base.framework import EagerParamBase
+from paddle.base import unique_name
+from paddle.base.framework import (
+    EagerParamBase,
+    Variable,
+    default_main_program,
+)
 from paddle.distributed.auto_parallel import Engine, strategy as auto_strategy
 from paddle.distributed.auto_parallel.interface import (
     shard_tensor as shard_tensor_static,
+)
+from paddle.distributed.auto_parallel.static.completion import (
+    mark_as_sharding_propagation_skip_op,
+)
+from paddle.distributed.auto_parallel.static.dist_context import (
+    get_default_distributed_context,
+)
+from paddle.distributed.auto_parallel.static.dist_op import DistributedOperator
+from paddle.distributed.auto_parallel.static.utils import (
+    convert_to_dims_mapping,
 )
 from paddle.framework import core
 
@@ -135,6 +150,7 @@ class DistModel:
         )
         self._mode = None
         self._feed_name_list = {}
+
         # convert dygraph model to static model
         batch_size = loader.batch_sampler.batch_size
         inputs_spec, labels_spec = self._engine._prepare_data_spec(
@@ -286,10 +302,17 @@ class DistModel:
                 raise ValueError("Please set loss function before evaluation.")
         feeds = self._make_feeds(list(args))
         outs = self._engine.run(feeds)
+
         if self._mode == "predict":
-            return outs["outputs"]
+            if "outputs" in outs:
+                return outs["outputs"]
+            else:
+                return None
         else:
-            return outs["loss"]
+            if "loss" in outs:
+                return outs["loss"]
+            else:
+                return None
 
 
 # Part2: DistTensor construction related APIs
@@ -665,10 +688,55 @@ def reshard(dist_tensor, mesh, placements):
 
         return paddle.base.core.reshard(dist_tensor, dist_attr)
     else:
-        # TODO(GhostScreaming): Support static DistTensor later.
-        raise RuntimeError(
-            "paddle.dist.reshard only support dynamic graph now. It will be supported for static graph later."
+        assert isinstance(
+            dist_tensor, Variable
+        ), "in dy2static mode, reshard's input should be Variable, but got [{}]".format(
+            dist_tensor
         )
+        sharding_specs = get_shard_spec(mesh, placements, dist_tensor.ndim)
+        main_program = default_main_program()
+        default_dist_ctx = get_default_distributed_context()
+
+        # output variable
+        out_var = main_program.current_block().create_var(
+            name=unique_name.generate_with_ignorable_key(
+                ".".join(['reshard_api', 'tmp'])
+            ),
+            dtype=dist_tensor.dtype,
+            shape=dist_tensor.shape,
+            type=dist_tensor.type,
+            persistable=dist_tensor.persistable,
+            stop_gradient=dist_tensor.stop_gradient,
+        )
+
+        # transition op
+        # optimization in future to remove redundant D2D memory copy
+        target_dims_mapping = convert_to_dims_mapping(sharding_specs, mesh)
+        trans_op = main_program.current_block().append_op(
+            type='assign',
+            inputs={'X': [dist_tensor]},
+            outputs={'Out': [out_var]},
+        )
+        dist_op = DistributedOperator(trans_op)
+        dist_op.dist_attr.process_mesh = mesh
+        dist_op.dist_attr.mark_annotated("process_mesh")
+        dist_op.dist_attr.chunk_id = 0
+
+        input_dist_attr = dist_op.dist_attr.get_input_dist_attr(
+            dist_tensor.name
+        )
+        input_dist_attr.dims_mapping = target_dims_mapping
+        input_dist_attr.mark_annotated("dims_mapping")
+        output_dist_attr = dist_op.dist_attr.get_output_dist_attr(out_var.name)
+        output_dist_attr.dims_mapping = target_dims_mapping
+        output_dist_attr.mark_annotated("dims_mapping")
+
+        default_dist_ctx.add_dist_op_for_program(dist_op)
+        mark_as_sharding_propagation_skip_op(trans_op)
+        # trans_op = shard_op_static(paddle.assign, mesh, [sharding_specs])
+        # out_var = trans_op(dist_tensor)
+
+        return out_var
 
 
 def shard_layer(
@@ -909,6 +977,83 @@ class _ShardOptimizer:
                 self._inner_opt._apply_optimize(
                     loss=None, startup_program=None, params_grads=params_grads
                 )
+
+    def state_dict(self):
+        """
+        Create and shard the optimizer states e.g., acumulators and master_weights before load_state_dict.
+        If training has already started or the optimizer states are already created and sharded, do nothing.
+        """
+        state_dict = self._inner_opt.state_dict()
+        # training has already started.
+        param_list = []
+        if isinstance(self._inner_opt._parameter_list[0], dict):
+            for param_group in self._inner_opt._parameter_list:
+                param_list += param_group["params"]
+        else:
+            param_list = self._inner_opt._parameter_list
+        for param in param_list:
+            if param.stop_gradient:
+                continue
+            if hasattr(param, "main_grad"):
+                if param.main_grad is not None:
+                    return state_dict
+            else:
+                if param.grad is not None:
+                    return state_dict
+
+        # TODO(pangengzheng): deal with master_weights and LR_Scheduler later
+        # the optimizer states are already created and sharded
+        if any(
+            v.is_dist()
+            for k, v in state_dict.items()
+            if k not in ["master_weights", "LR_Scheduler"]
+        ):
+            return state_dict
+
+        # create and shard the optimizer states
+        # fake the parameter gradient and invoke step to implicitly create the optimizer states.
+        if not isinstance(self._inner_opt._parameter_list[0], dict):
+            for param in self._inner_opt._parameter_list:
+                if param.stop_gradient:
+                    continue
+                if hasattr(param, "main_grad"):
+                    if param.main_grad is not None:
+                        raise ValueError(
+                            f"gradient should be None, but is {param.main_grad}"
+                        )
+                    param.main_grad = paddle.zeros_like(
+                        param, dtype=paddle.float32
+                    )
+                else:
+                    if param.grad is not None:
+                        raise ValueError(
+                            f"gradient should be None, but is {param.grad}"
+                        )
+                    param.grad = paddle.zeros_like(param, dtype=param.dtype)
+        else:
+            for param_group in self._inner_opt._param_groups:
+                for param in param_group['params']:
+                    if param.stop_gradient:
+                        continue
+                    if hasattr(param, "main_grad"):
+                        if param.main_grad is not None:
+                            raise ValueError(
+                                f"gradient should be None, but is {param.main_grad}"
+                            )
+                        param.main_grad = paddle.zeros_like(
+                            param, dtype=paddle.float32
+                        )
+                    else:
+                        if param.grad is not None:
+                            raise ValueError(
+                                f"gradient should be None, but is {param.grad}"
+                            )
+                        param.grad = paddle.zeros_like(param, dtype=param.dtype)
+        self.step()
+        # clear the parameter gradient
+        self._inner_opt.clear_grad(set_to_zero=False)
+
+        return self._inner_opt.state_dict()
 
     def __getattr__(self, item):
         return getattr(self._inner_opt, item)

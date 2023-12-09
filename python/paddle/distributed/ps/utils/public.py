@@ -1575,6 +1575,8 @@ def get_param_grads(origin_program):
                 ):
                     op._set_attr("op_role", role_id)
                     continue
+                if not op.has_attr(OP_ROLE_VAR_ATTR_NAME):
+                    continue
                 if op.attr(OP_ROLE_VAR_ATTR_NAME):
                     param_name = op.attr(OP_ROLE_VAR_ATTR_NAME)[0]
                     grad_name = op.attr(OP_ROLE_VAR_ATTR_NAME)[1]

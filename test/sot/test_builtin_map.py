@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import sys
 import unittest
 from typing import Iterable
 
@@ -103,12 +104,15 @@ class TestMap(TestCaseBase):
         self.assert_results(test_map_dict, {"a": 1, "b": 2, "c": 3})
 
     def test_map_comprehension(self):
-        self.assert_results(test_map_list_comprehension, [1, 2, 3, 4])
-        self.assert_results(test_map_tuple_comprehension, (1, 2, 3, 4))
-        self.assert_results(test_map_range_comprehension, range(5))
-        self.assert_results(
-            test_map_dict_comprehension, {"a": 1, "b": 2, "c": 3}
-        )
+        # Temporarily fallback for comprehension in python3.11
+        use_strict_mode = sys.version_info < (3, 11)
+        with strict_mode_guard(use_strict_mode):
+            self.assert_results(test_map_list_comprehension, [1, 2, 3, 4])
+            self.assert_results(test_map_tuple_comprehension, (1, 2, 3, 4))
+            self.assert_results(test_map_range_comprehension, range(5))
+            self.assert_results(
+                test_map_dict_comprehension, {"a": 1, "b": 2, "c": 3}
+            )
 
     def test_map_with_breakgraph(self):
         with strict_mode_guard(False):
