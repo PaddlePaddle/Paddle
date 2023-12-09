@@ -15,8 +15,6 @@
 from functools import reduce
 
 import paddle
-import paddle.base.param_attr as attr
-from paddle.nn import Layer
 
 
 class EmbeddingLayer:
@@ -44,7 +42,7 @@ class EmbeddingLayer:
             self.emb_dim,
             sparse=True,
             padding_idx=self.padding_idx,
-            weight_attr=attr.ParamAttr(
+            weight_attr=paddle.ParamAttr(
                 name=self.name,
                 initializer=paddle.nn.initializer.XavierUniform(),
             ),
@@ -72,8 +70,8 @@ class FCLayer:
         """
         fc = FC(
             size=self.fc_dim,
-            param_attr=attr.ParamAttr(name="%s.w" % self.name),
-            bias_attr=attr.ParamAttr(name="%s.b" % self.name),
+            param_attr=paddle.ParamAttr(name="%s.w" % self.name),
+            bias_attr=paddle.ParamAttr(name="%s.b" % self.name),
             act=self.act,
         )
         return fc
@@ -234,7 +232,7 @@ class SoftsignLayer:
         return softsign
 
 
-class FC(Layer):
+class FC(paddle.nn.Layer):
     r"""
     This interface is used to construct a callable object of the ``FC`` class.
     For more details, refer to code examples.
@@ -461,7 +459,7 @@ class HingeLoss:
         return loss
 
 
-class BOW(Layer):
+class BOW(paddle.nn.Layer):
     """
     BOW
     """
