@@ -1042,8 +1042,8 @@ struct LinearWithCublasLt : public CublasLtBase<T> {
                   const bool trans_x,
                   const bool trans_y,
                   const MatmulFusedType fused_type) {
-    auto planner = phi::funcs::MatmulPlanner(vectorize(x->dims()),
-                                             vectorize(y->dims()),
+    auto planner = phi::funcs::MatmulPlanner(common::vectorize(x->dims()),
+                                             common::vectorize(y->dims()),
                                              trans_x,
                                              trans_y,
                                              phi::CppTypeToDataType<T>::Type(),
@@ -1080,8 +1080,8 @@ struct LinearGradWithCublasLt : public CublasLtBase<T> {
       const bool use_addto,
       const bool no_exchange,  // exchange x_desc and y_desc for grad.
       bool grad_for_dx = true) {
-    auto planner = phi::funcs::MatmulPlanner(vectorize(x->dims()),
-                                             vectorize(y->dims()),
+    auto planner = phi::funcs::MatmulPlanner(common::vectorize(x->dims()),
+                                             common::vectorize(y->dims()),
                                              trans_x,
                                              trans_y,
                                              phi::CppTypeToDataType<T>::Type(),

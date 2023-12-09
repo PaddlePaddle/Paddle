@@ -14,6 +14,7 @@
 
 import datetime
 import hashlib
+import os
 
 import paddle
 
@@ -241,6 +242,12 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
         # TODO: The method below is a new method for group management, will replace the previous
         # three in the future.
         _add_new_group(group)
+
+        if int(os.getenv("FLAGS_eager_communication_connection", 0)) == 1:
+            paddle.distributed.all_reduce(
+                paddle.zeros([1], dtype=paddle.uint8), group=group, sync_op=True
+            )
+
         return group
 
     if not backend:
@@ -344,4 +351,16 @@ def _init_parallel_env(backend):
         paddle.device.set_device(f"{dev_type}:{dev_id}")
         core.CommContextManager.create_xccl_comm_context(
             store, "0", rank, world_size, dev_type
+        )
+    elif backend == "bkcl":
+        endpoints_str = ""
+        for endpoint in global_env.trainer_endpoints:
+            endpoints_str += endpoint
+        endpoints_str += "ring_id:{}".format("0")
+        endpoints_str_hash = hashlib.md5(
+            endpoints_str.encode(encoding='UTF-8')
+        ).hexdigest()
+        core.CommContextManager.set_device_id(dev_id)
+        core.CommContextManager.create_bkcl_comm_context(
+            store, "0", rank, world_size, endpoints_str_hash
         )

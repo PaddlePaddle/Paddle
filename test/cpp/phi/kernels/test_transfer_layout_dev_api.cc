@@ -41,7 +41,7 @@ TEST(DEV_API, transfer_layout) {
   MetaTensor meta_x(&x);
   meta_x.set_dtype(DataType::FLOAT32);
   meta_x.set_layout(DataLayout::ONEDNN);
-  meta_x.set_dims(make_ddim({n, c, h, w}));
+  meta_x.set_dims(common::make_ddim({n, c, h, w}));
 
   DenseTensor out;
 
@@ -63,7 +63,7 @@ TEST(DEV_API, transfer_layout) {
 
   // 3. check result
   std::vector<int64_t> expect_shape = {12, 3};
-  ASSERT_EQ(out.dims(), make_ddim({n, h, w, c}));
+  ASSERT_EQ(out.dims(), common::make_ddim({n, h, w, c}));
   ASSERT_EQ(out.dims().size(), 4);
   ASSERT_EQ(out.meta().dtype, DataType::FLOAT32);
   ASSERT_EQ(out.meta().layout, DataLayout::NHWC);

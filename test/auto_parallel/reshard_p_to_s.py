@@ -29,8 +29,9 @@ class TestReshardPToS:
         self._shard = eval(os.getenv("shard"))
         self._backend = os.getenv("backend")
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+        self._out_mesh = dist.ProcessMesh([1, 0], dim_names=["x"])
 
-    def run_test_case(self):
+    def reshard_same_mesh(self):
         if self._backend == "gpu":
             place = paddle.CUDAPlace(dist.get_rank())
         dev_ctx = core.DeviceContext.create(place)
@@ -57,6 +58,18 @@ class TestReshardPToS:
 
         assert np.equal(out.shape, input_tensor.shape).all()
         assert np.equal(out._local_shape, out_shape).all()
+
+    def reshard_cross_mesh(self):
+        if self._backend != "gpu":
+            return
+
+        a = paddle.ones([10, 10])
+        input_tensor = dist.shard_tensor(a, self._mesh, [dist.Partial()])
+        dist.reshard(input_tensor, self._out_mesh, [dist.Shard(self._shard)])
+
+    def run_test_case(self):
+        self.reshard_same_mesh()
+        self.reshard_cross_mesh()
 
 
 if __name__ == '__main__':

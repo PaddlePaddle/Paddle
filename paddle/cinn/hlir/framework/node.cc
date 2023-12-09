@@ -22,22 +22,26 @@ namespace cinn {
 namespace hlir {
 namespace framework {
 
-std::tuple<common::GraphEdge*, common::GraphEdge*> Node::LinkTo(
+std::tuple<cinn::common::GraphEdge*, cinn::common::GraphEdge*> Node::LinkTo(
     NodeData* other) {
-  return this->common::GraphNode::LinkTo(other->as<common::GraphNode>());
+  return this->cinn::common::GraphNode::LinkTo(
+      other->as<cinn::common::GraphNode>());
 }
 
-std::tuple<common::GraphEdge*, common::GraphEdge*> NodeData::LinkTo(
+std::tuple<cinn::common::GraphEdge*, cinn::common::GraphEdge*> NodeData::LinkTo(
     Node* other) {
-  return this->common::GraphNode::LinkTo(other->as<common::GraphNode>());
+  return this->cinn::common::GraphNode::LinkTo(
+      other->as<cinn::common::GraphNode>());
 }
 
 void Node::Controls(NodeData* other) {
-  return this->common::GraphNode::Controls(other->as<common::GraphNode>());
+  return this->cinn::common::GraphNode::Controls(
+      other->as<cinn::common::GraphNode>());
 }
 
 void NodeData::Controls(Node* other) {
-  return this->common::GraphNode::Controls(other->as<common::GraphNode>());
+  return this->cinn::common::GraphNode::Controls(
+      other->as<cinn::common::GraphNode>());
 }
 
 namespace {
@@ -82,15 +86,17 @@ std::ostream& operator<<(std::ostream& os, const NodeAttr& node_attr) {
 }
 
 //! Using index to sort the input/output tensors
-bool edge_index_compare(const common::Shared<common::GraphEdge>& a,
-                        const common::Shared<common::GraphEdge>& b) {
+bool edge_index_compare(
+    const cinn::common::Shared<cinn::common::GraphEdge>& a,
+    const cinn::common::Shared<cinn::common::GraphEdge>& b) {
   CHECK_NOTNULL(a.get());
   CHECK_NOTNULL(b.get());
   return a->index() < b->index();
 }
 
-std::vector<common::Shared<common::GraphEdge>> Node::inlinks_in_order() const {
-  std::vector<common::Shared<common::GraphEdge>> ordered_links;
+std::vector<cinn::common::Shared<cinn::common::GraphEdge>>
+Node::inlinks_in_order() const {
+  std::vector<cinn::common::Shared<cinn::common::GraphEdge>> ordered_links;
   for (auto& in_edge : this->inlinks()) {
     ordered_links.push_back(in_edge);
     CHECK_GE(in_edge->index(), 0)
@@ -101,8 +107,9 @@ std::vector<common::Shared<common::GraphEdge>> Node::inlinks_in_order() const {
   return ordered_links;
 }
 
-std::vector<common::Shared<common::GraphEdge>> Node::outlinks_in_order() const {
-  std::vector<common::Shared<common::GraphEdge>> ordered_links;
+std::vector<cinn::common::Shared<cinn::common::GraphEdge>>
+Node::outlinks_in_order() const {
+  std::vector<cinn::common::Shared<cinn::common::GraphEdge>> ordered_links;
   for (auto& out_edge : this->outlinks()) {
     ordered_links.push_back(out_edge);
     CHECK_GE(out_edge->index(), 0)
@@ -113,7 +120,7 @@ std::vector<common::Shared<common::GraphEdge>> Node::outlinks_in_order() const {
   return ordered_links;
 }
 
-NodeData* InsertGraphOpNodeAfter(common::Graph* graph,
+NodeData* InsertGraphOpNodeAfter(cinn::common::Graph* graph,
                                  Node* insert_node,
                                  NodeData* input_nodedata,
                                  Node* out_node,
@@ -122,11 +129,11 @@ NodeData* InsertGraphOpNodeAfter(common::Graph* graph,
   CHECK(insert_node);
   CHECK(input_nodedata);
   input_nodedata->Controls(insert_node);
-  common::Shared<Node> node_ptr(insert_node);
+  cinn::common::Shared<Node> node_ptr(insert_node);
   auto* out_nodedata = new NodeData(
-      node_ptr, 0, 0, common::UniqName(insert_node->id() + "_out"));
+      node_ptr, 0, 0, cinn::common::UniqName(insert_node->id() + "_out"));
   insert_node->Controls(out_nodedata);
-  std::vector<common::GraphNode*> old_sources;
+  std::vector<cinn::common::GraphNode*> old_sources;
   auto input_links = out_node->inlinks_in_order();
 
   if (out_node) {
@@ -151,7 +158,7 @@ NodeData* InsertGraphOpNodeAfter(common::Graph* graph,
   return out_nodedata;
 }
 
-NodeData* InsertGraphOpNodeBefore(common::Graph* graph,
+NodeData* InsertGraphOpNodeBefore(cinn::common::Graph* graph,
                                   Node* insert_node,
                                   Node* input_node,
                                   NodeData* dst_data,
@@ -161,9 +168,9 @@ NodeData* InsertGraphOpNodeBefore(common::Graph* graph,
   CHECK(input_node);
   CHECK(dst_data);
   auto node_ptr = dst_data->source_node;
-  auto* input_node_out =
-      new NodeData(node_ptr, 0, 0, common::UniqName(input_node->id() + "_out"));
-  std::vector<common::GraphNode*> old_sinks;
+  auto* input_node_out = new NodeData(
+      node_ptr, 0, 0, cinn::common::UniqName(input_node->id() + "_out"));
+  std::vector<cinn::common::GraphNode*> old_sinks;
   const auto& old_outlinks = input_node->outlinks_in_order();
   for (auto& link : old_outlinks) {
     auto sink = link->sink();
@@ -173,7 +180,7 @@ NodeData* InsertGraphOpNodeBefore(common::Graph* graph,
   }
   input_node_out->Controls(insert_node);
   insert_node->Controls(dst_data);
-  dst_data->source_node = common::Shared<Node>(insert_node);
+  dst_data->source_node = cinn::common::Shared<Node>(insert_node);
 
   for (int i = 0; i < old_sinks.size(); i++) {
     if (i == pos) {
