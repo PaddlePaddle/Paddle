@@ -2361,8 +2361,6 @@ def assign(x, output=None):
                     'uint8',
                     'int8',
                     'bool',
-                    'complex64',
-                    'complex128',
                 ],
                 'assign',
                 '(When the type of input in assign is Variable.)',
@@ -2442,7 +2440,6 @@ def assign(x, output=None):
         elif dtype in [core.VarDesc.VarType.INT64, core.DataType.INT64]:
             value_name = "int64_values"
             values = [int(v) for v in input.flat]
-
         else:
             raise TypeError(
                 "When the type of 'input' in assign is numpy.ndarray, "
