@@ -70,6 +70,54 @@ class TestSemiAutoParallelHybridStrategy(test_base.CommunicationTestDistBase):
             ckpt_path.cleanup()
 
 
+class TestSemiAutoParallelHybridStrategyWithSP(
+    test_base.CommunicationTestDistBase
+):
+    def setUp(self):
+        super().setUp(
+            num_of_devices=4,
+            timeout=120,
+            nnode=1,
+        )
+        self._default_envs = {
+            "dtype": "float32",
+            "seed": "2023",
+        }
+        self._changeable_envs = {"backend": ["gpu"], "is_dp": ["false"]}
+
+    def test_simple_net_mp_pp_sp(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            ckpt_path = tempfile.TemporaryDirectory()
+            envs["ckpt_path"] = ckpt_path.name
+            self.run_test_case(
+                "semi_auto_parallel_simple_net_sp.py",
+                user_defined_envs=envs,
+            )
+            ckpt_path.cleanup()
+
+    def test_simple_net_dp_mp_pp_sp(self):
+        super().setUp(
+            num_of_devices=8,
+            timeout=120,
+            nnode=1,
+        )
+        self._changeable_envs = {"backend": ["gpu"], "is_dp": ["true"]}
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            ckpt_path = tempfile.TemporaryDirectory()
+            envs["ckpt_path"] = ckpt_path.name
+            self.run_test_case(
+                "semi_auto_parallel_simple_net_sp.py",
+                user_defined_envs=envs,
+            )
+            ckpt_path.cleanup()
+
+
 class TestSemiAutoParallelCrossMeshReshard(test_base.CommunicationTestDistBase):
     def setUp(self):
         super().setUp(
