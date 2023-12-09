@@ -2603,6 +2603,8 @@ __global__ void FractionalKernelMaxPool2dWithIdx(const int nthreads,
                                                  bool adaptive,
                                                  bool fractional,
                                                  float random_u,
+                                                 uint64_t seed,
+                                                 uint64_t offset,
                                                  T1* output_data,
                                                  T2* mask_data,
                                                  FastDivModForPooling divmods) {
@@ -2714,6 +2716,8 @@ __global__ void FractionalKernelMaxPool2DWithIdxGrad(
     bool adaptive,
     bool fractional,
     float random_u,
+    uint64_t seed,
+    uint64_t offset,
     T1* input_grad,
     FastDivModForPooling divmods) {
   float alpha_height = 0, alpha_width = 0, alpha_depth = 0;
@@ -3042,6 +3046,8 @@ __global__ void FractionalKernelMaxPool3DWithIdx(
     bool adaptive,
     bool fractional,
     float random_u,
+    uint64_t seed,
+    uint64_t offset,
     T1* output_data,
     T2* mask_data,
     FastDivModForPooling3D divmods_output) {
