@@ -83,7 +83,7 @@ class TypeId {
 };
 
 namespace detail {
-class alignas(8) TEST_API UniqueingId {
+class alignas(8) UniqueingId {
  public:
   UniqueingId() = default;
   UniqueingId(const UniqueingId &) = delete;
