@@ -89,14 +89,13 @@ PHI_DEFINE_EXPORTED_bool(
  * Since Version: 2.6.0
  * Value Range: bool, default=false
  * Example:
- * Note: Use advanced function like additional mask or faster compute
+ * Note: Use advanced function like additional mask and deterministic
  */
 PHI_DEFINE_EXPORTED_bool(
     flash_attention_with_advanced,
     false,
     "Checking whether use advanced flash_attention function support,"
-    "like additional mask or faster compute when seqlen_q is equal to "
-    "seqlen_k.");
+    "like additional mask and deterministic.");
 
 /**
  * Operator related FLAG
