@@ -5885,15 +5885,13 @@ def _index_fill_impl(x, index, axis, value, inplace):
     perm = list(range(len(x.shape)))
     perm[0] = axis
     perm[axis] = 0
-
+    out = paddle.transpose(x, perm)
+    out = paddle.index_put(out, (index,), value)
+    out = paddle.transpose(out, perm)
     if inplace:
-        paddle.transpose(x, perm)
-        paddle.index_put_(x, (index,), value)
+        x[:] = out
         return x
     else:
-        out = paddle.transpose(x, perm)
-        out = paddle.index_put(out, (index,), value)
-        out = paddle.transpose(out, perm)
         return out
 
 

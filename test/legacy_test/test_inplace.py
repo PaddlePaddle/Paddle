@@ -1621,7 +1621,7 @@ class TestDygraphInplaceIndexFill(TestDygraphInplace):
     def init_data(self):
         self.input_var_numpy = np.random.random((20, 40))
         self.dtype = "float32"
-        self.axis = 0
+        self.axis = 1
         self.index = paddle.to_tensor([0, 2])
         self.value = -1
 
