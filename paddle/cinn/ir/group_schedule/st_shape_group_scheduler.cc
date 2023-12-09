@@ -259,12 +259,16 @@ void StaticShapeGroupScheduler::DoLoopAlignment() {
       CHECK_NOTNULL(index.as_var());
       int idx = 0;
       bool is_reduce_var = false;
-      for (const ir::Var& iter_var : master_iter_vars) {
+      for (int iter_idx = 0; iter_idx < master_iter_vars.size(); ++iter_idx) {
+        auto& iter_var = master_iter_vars[iter_idx];
         if (iter_var->name == index.as_var_ref()->name) {
           is_reduce_var = iter_var->is_reduce_axis;
           break;
         }
-        ++idx;
+        auto& iter_value = master_iter_values[iter_idx];
+        if (!iter_value.is_constant() || iter_value.get_constant() != 0) {
+          ++idx;
+        }
       }
       std::vector<ir::Var> loop_vars_in_order;
       ir::ir_utils::CollectIRNodesInOrder(
