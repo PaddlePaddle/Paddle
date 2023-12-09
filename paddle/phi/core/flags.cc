@@ -95,7 +95,8 @@ PHI_DEFINE_EXPORTED_bool(
     flash_attention_with_advanced,
     false,
     "Checking whether use advanced flash_attention function support,"
-    "like additional mask or faster compute when seqlen_q is equal to seqlen_k.");
+    "like additional mask or faster compute when seqlen_q is equal to "
+    "seqlen_k.");
 
 /**
  * Operator related FLAG
