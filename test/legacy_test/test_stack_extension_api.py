@@ -181,7 +181,6 @@ class BaseTest(unittest.TestCase):
                 self.assertEqual(grads[0].shape, y.shape)
 
     def _test_all(self, args, dtype=''):
-        print('Test under dtype:', dtype)
         self._test_dygraph_api(self.func_paddle, self.func_numpy, *args)
         self._test_static_api(self.func_paddle, self.func_numpy, *args)
 
