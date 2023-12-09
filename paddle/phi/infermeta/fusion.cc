@@ -116,6 +116,58 @@ void AddLayernormXPUInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
+                                      const MetaTensor& key_cache,
+                                      const MetaTensor& value_cache,
+                                      const MetaTensor& seq_lens_encoder,
+                                      const MetaTensor& seq_lens_decoder,
+                                      const MetaTensor& seq_lens_this_time,
+                                      const MetaTensor& padding_offsets,
+                                      const MetaTensor& cum_offsets,
+                                      const MetaTensor& cu_seqlens_q,
+                                      const MetaTensor& cu_seqlens_k,
+                                      const MetaTensor& block_tables,
+                                      const MetaTensor& pre_key_cache,
+                                      const MetaTensor& pre_value_cache,
+                                      const MetaTensor& rope_emb,
+                                      const MetaTensor& mask,
+                                      const MetaTensor& tgt_mask,
+                                      int max_seq_len,
+                                      int block_size,
+                                      bool use_neox_style,
+                                      MetaTensor* fmha_out,
+                                      MetaTensor* qkv_out,
+                                      MetaTensor* key_cache_out,
+                                      MetaTensor* value_cache_out) {
+  auto input_dims = qkv.dims();
+  auto key_cache_dims = key_cache.dims();
+  const int num_head = key_cache_dims[1];
+  const int dim_head = key_cache_dims[3];
+
+  PADDLE_ENFORCE_EQ(
+      input_dims.size(),
+      2UL,
+      errors::InvalidArgument("The input(qkv) must be a 2D Tensor."));
+  PADDLE_ENFORCE_EQ(
+      key_cache_dims.size(),
+      4UL,
+      errors::InvalidArgument("The input(key_cache) must be a 4D Tensor."));
+  PADDLE_ENFORCE_EQ(
+      3 * num_head * dim_head,
+      input_dims[1],
+      errors::InvalidArgument(
+          "The input_dims[1] must be equal to 3 * num_head * dim_head"));
+
+  fmha_out->set_dims({input_dims[0], num_head * dim_head});
+  fmha_out->set_dtype(qkv.dtype());
+  qkv_out->set_dims(qkv.dims());
+  qkv_out->set_dtype(qkv.dtype());
+  key_cache_out->set_dims(key_cache_dims);
+  key_cache_out->set_dtype(key_cache.dtype());
+  value_cache_out->set_dims(key_cache_dims);
+  value_cache_out->set_dtype(value_cache.dtype());
+}
+
 void Conv1dXPUInferMeta(const MetaTensor& x,
                         const MetaTensor& x_max,
                         const MetaTensor& filter,
@@ -2116,7 +2168,7 @@ void FusedScaleBiasAddReluInferMeta(const MetaTensor& x1,
                                     const MetaTensor& bias2,
                                     bool fuse_dual,
                                     bool exhaustive_search,
-                                    MetaTensor* y) {
+                                    MetaTensor* out) {
   // check optional inputs
   if (fuse_dual) {
     bool has_scale2 = !!scale2;
@@ -2131,7 +2183,146 @@ void FusedScaleBiasAddReluInferMeta(const MetaTensor& x1,
                        fuse_dual));
   }
   // set output dims
-  y->set_dims(x1.dims());
+  out->set_dims(x1.dims());
+  out->set_dtype(x1.dtype());
+  out->set_layout(x1.layout());
+}
+
+void FusedDconvDreluDbnInferMeta(const MetaTensor& grad_output,
+                                 const MetaTensor& weight,
+                                 const MetaTensor& grad_output_add,
+                                 const MetaTensor& residual_input,
+                                 const MetaTensor& bn1_eqscale,
+                                 const MetaTensor& bn1_eqbias,
+                                 const MetaTensor& conv_input,
+                                 const MetaTensor& bn1_mean,
+                                 const MetaTensor& bn1_inv_std,
+                                 const MetaTensor& bn1_gamma,
+                                 const MetaTensor& bn1_beta,
+                                 const MetaTensor& bn1_input,
+                                 const MetaTensor& bn2_mean,
+                                 const MetaTensor& bn2_inv_std,
+                                 const MetaTensor& bn2_gamma,
+                                 const MetaTensor& bn2_beta,
+                                 const MetaTensor& bn2_input,
+                                 const std::vector<int>& paddings,
+                                 const std::vector<int>& dilations,
+                                 const std::vector<int>& strides,
+                                 const std::string& padding_algorithm,
+                                 int groups,
+                                 const std::string& data_format,
+                                 bool fuse_shortcut,
+                                 bool fuse_dual,
+                                 bool fuse_add,
+                                 bool exhaustive_search,
+                                 MetaTensor* grad_weight,
+                                 MetaTensor* grad_bn1_input,
+                                 MetaTensor* grad_bn1_gamma,
+                                 MetaTensor* grad_bn1_beta,
+                                 MetaTensor* grad_bn2_input,
+                                 MetaTensor* grad_bn2_gamma,
+                                 MetaTensor* grad_bn2_beta) {
+  // Check if data format is NHWC
+  PADDLE_ENFORCE_EQ(
+      data_format,
+      "NHWC",
+      phi::errors::InvalidArgument(
+          "Operator(FusedScaleBiasReluConvBnstats) only supports data format "
+          "of "
+          "channel last (NHWC) now. But recieved: data_format = '%s'.",
+          data_format));
+
+  PADDLE_ENFORCE_EQ(
+      groups,
+      1,
+      phi::errors::InvalidArgument("Expect group to be 1, got %d.", groups));
+
+  PADDLE_ENFORCE_EQ(
+      fuse_shortcut && fuse_dual,
+      0,
+      phi::errors::InvalidArgument(
+          "fuse_shortcut and fuse_dual should not be set at the same time."
+          "Got fuse_shortcut=%d, fuse_dual=%d.",
+          fuse_shortcut,
+          fuse_dual));
+
+  if (fuse_add) {
+    PADDLE_ENFORCE_EQ(
+        !!grad_output_add,
+        true,
+        phi::errors::InvalidArgument(
+            "grad_output_add must be provided when fuse_add = true."
+            "Got fuse_add=%d, grad_output_add=%d.",
+            fuse_add,
+            !!grad_output_add));
+  }
+  if (fuse_shortcut) {
+    PADDLE_ENFORCE_EQ(
+        !!residual_input,
+        true,
+        phi::errors::InvalidArgument(
+            "residual_input must be provided when fuse_shortcut = true."
+            "Got fuse_shortcut =%d, residual_input=%d.",
+            fuse_shortcut,
+            !!residual_input));
+  }
+  if (fuse_shortcut || fuse_dual) {
+    PADDLE_ENFORCE_EQ(
+        !!conv_input,
+        true,
+        phi::errors::InvalidArgument(
+            "conv_input must be provided when either fuse_shortcut "
+            "or fuse_dual is set to true. Got conv_input=%d, fuse_shortcut=%d, "
+            "fuse_dual=%d.",
+            !!conv_input,
+            fuse_shortcut,
+            fuse_dual));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        bn1_eqscale && bn1_eqbias,
+        true,
+        phi::errors::InvalidArgument(
+            "bn1_eqscale and bn1_eqbias must be provided when neither "
+            "fuse_shortcut "
+            "or fuse_dual is set. Got bn1_eqscale=%d, bn1_eqbias=%d.",
+            !!bn1_eqscale,
+            !!bn1_eqbias));
+  }
+  if (fuse_dual) {
+    PADDLE_ENFORCE_EQ(
+        bn2_mean && bn2_inv_std && bn2_gamma && bn2_beta && bn2_input,
+        true,
+        phi::errors::InvalidArgument("bn2_mean, bn2_inv_std, bn2_gamma, "
+                                     "bn2_beta, bn2_input must be provided "
+                                     "when fuse_dual is set. Got bn2_mean=%d, "
+                                     "bn2_inv_std=%d, bn2_gamma=%d, "
+                                     "bn2_beta=%d, bn2_input=%d.",
+                                     !!bn2_mean,
+                                     !!bn2_inv_std,
+                                     !!bn2_gamma,
+                                     !!bn2_beta,
+                                     !!bn2_input));
+  }
+
+  auto set_unchanged_meta = [](MetaTensor* out, const MetaTensor& input) {
+    out->set_dims(input.dims());
+    out->set_dtype(input.dtype());
+    out->set_layout(input.layout());
+  };
+
+  set_unchanged_meta(grad_weight, weight);
+  set_unchanged_meta(grad_bn1_input, bn1_input);
+  set_unchanged_meta(grad_bn1_gamma, bn1_gamma);
+  set_unchanged_meta(grad_bn1_beta, bn1_beta);
+  if (grad_bn2_input) {
+    set_unchanged_meta(grad_bn2_input, bn1_input);
+  }
+  if (grad_bn2_gamma) {
+    set_unchanged_meta(grad_bn2_gamma, bn1_gamma);
+  }
+  if (grad_bn2_beta) {
+    set_unchanged_meta(grad_bn2_beta, bn1_beta);
+  }
 }
 
 void SqueezeExcitationInferMeta(const MetaTensor& x,
@@ -2488,21 +2679,21 @@ void FusedFCElementwiseLayerNormInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
-void Conv2dFusionInferMeta(const MetaTensor& input,
-                           const MetaTensor& filter,
-                           const MetaTensor& bias,
-                           const MetaTensor& residual_data,
-                           const std::vector<int>& strides,
-                           const std::vector<int>& paddings,
-                           const std::string& padding_algorithm,
-                           const std::vector<int>& dilations,
-                           int groups,
-                           const std::string& data_format,
-                           const std::string& activation,
-                           const std::vector<int>& split_channels,
-                           MetaTensor* output,
-                           std::vector<MetaTensor*> outputs,
-                           MetaConfig config) {
+void FusedConv2dAddActInferMeta(const MetaTensor& input,
+                                const MetaTensor& filter,
+                                const MetaTensor& bias,
+                                const MetaTensor& residual_data,
+                                const std::vector<int>& strides,
+                                const std::vector<int>& paddings,
+                                const std::string& padding_algorithm,
+                                const std::vector<int>& dilations,
+                                int groups,
+                                const std::string& data_format,
+                                const std::string& activation,
+                                const std::vector<int>& split_channels,
+                                MetaTensor* output,
+                                std::vector<MetaTensor*> outputs,
+                                MetaConfig config) {
   // TODO(liuyuanle): mkldnn seems only support nchw.
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
   std::vector<int64_t> out_shape = ComputeOutputShape(input,
@@ -2531,7 +2722,8 @@ void Conv2dFusionInferMeta(const MetaTensor& input,
         outputs.size(),
         split_channels.size(),
         phi::errors::InvalidArgument(
-            "The number of Output(Outputs) of operator 'conv2d_fusion' is "
+            "The number of Output(Outputs) of operator 'fused_conv2d_add_act' "
+            "is "
             "expected to be equal to the length of Attr(split_channels). But "
             "reiceved: the number of Output(Outputs) = %u; the length of "
             "Attr(split_channels) = %u, the content = [%s].",
@@ -3247,6 +3439,90 @@ void SkipLayerNormInferMeta(const MetaTensor& x,
   out->set_dims(dim_input);
   out->share_lod(x);
   out->set_dtype(x.dtype());
+}
+
+void VariableLengthMemoryEfficientAttentionInferMeta(
+    const MetaTensor& query,
+    const MetaTensor& key,
+    const MetaTensor& value,
+    const MetaTensor& seq_lens,
+    const MetaTensor& kv_seq_lens,
+    const MetaTensor& mask,
+    float scale,
+    bool causal,
+    int pre_cache_length,
+    MetaTensor* out) {
+  PADDLE_ENFORCE_EQ(
+      query.dims().size(),
+      4,
+      phi::errors::InvalidArgument("Query should be a 4-D tensor"
+                                   "But received Query dimension(%s)",
+                                   query.dims().size()));
+  PADDLE_ENFORCE_EQ(
+      key.dims().size(),
+      4,
+      phi::errors::InvalidArgument("Key should be a 4-D tensor"
+                                   "But received Key dimension(%s)",
+                                   key.dims().size()));
+  PADDLE_ENFORCE_EQ(
+      value.dims().size(),
+      4,
+      phi::errors::InvalidArgument("Value should be a 4-D tensor"
+                                   "But received Value dimension(%s)",
+                                   value.dims().size()));
+
+  const int64_t query_batch_size = query.dims()[0];
+  const int64_t query_num_head = query.dims()[1];
+  const int64_t query_seq_length = query.dims()[2];
+  const int64_t query_head_size = query.dims()[3];
+
+  const int64_t key_batch_size = key.dims()[0];
+  const int64_t key_num_head = key.dims()[1];
+  const int64_t key_seq_length = key.dims()[2];
+  const int64_t key_head_size = key.dims()[3];
+
+  const int64_t value_batch_size = value.dims()[0];
+  const int64_t value_num_head = value.dims()[1];
+  const int64_t value_seq_length = value.dims()[2];
+  const int64_t value_head_size = value.dims()[3];
+
+  PADDLE_ENFORCE_EQ(
+      ((query_batch_size == key_batch_size) &&
+       (key_batch_size == value_batch_size)),
+      true,
+      phi::errors::InvalidArgument(
+          "The batch size of Query, Key, Value should be equal."));
+
+  PADDLE_ENFORCE_EQ((key_num_head == value_num_head),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The head number of Key, Value should be equal."));
+
+  PADDLE_ENFORCE_EQ(
+      query_num_head % key_num_head,
+      0,
+      errors::InvalidArgument(
+          "The num_head of query must be divisible by the num_head of key, but "
+          "recived num_head of query is %d, and the num_head of key is %d",
+          query_num_head,
+          key_num_head));
+
+  PADDLE_ENFORCE_EQ(query_head_size == key_head_size,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The head size of Query, Key should be equal."));
+
+  PADDLE_ENFORCE_EQ(key_seq_length == value_seq_length,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The seq length of Key, Value should be equal."));
+
+  std::vector<int64_t> out_dims(
+      {query_batch_size, query_num_head, query_seq_length, value_head_size});
+
+  out->set_dims(phi::make_ddim(out_dims));
+  out->set_dtype(query.dtype());
+  out->set_layout(query.layout());
 }
 
 }  // namespace phi

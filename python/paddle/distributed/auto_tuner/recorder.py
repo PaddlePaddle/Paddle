@@ -88,6 +88,8 @@ class HistoryRecorder:
         # check if 'time' exists
         if 'time' in df.columns:
             df = df.drop(columns=['time'])
+        if 'has_error' in df.columns:
+            df = df.drop(columns=['has_error'])
         # write to csv
         df.to_csv(self.store_path, index=False)
 

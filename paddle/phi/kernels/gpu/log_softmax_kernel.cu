@@ -31,7 +31,7 @@ void LogSoftmaxKernel(const Context &dev_ctx,
   dev_ctx.template Alloc<T>(out);
   // For 0D Tensor
   if (rank == 0) {
-    phi::funcs::set_constant(dev_ctx, out, 0.0);
+    phi::funcs::set_constant(dev_ctx, out, static_cast<T>(0.0));
     return;
   }
   phi::SoftmaxForwardCUDAKernelDriver<T, true>(dev_ctx, x, axis, out);

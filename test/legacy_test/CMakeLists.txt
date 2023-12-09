@@ -186,7 +186,7 @@ if(NOT WITH_GLOO)
 endif()
 
 if((NOT WITH_GPU) AND (NOT WITH_ROCM))
-  list(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
+  list(REMOVE_ITEM TEST_OPS test_fused_conv2d_add_act_op)
   list(REMOVE_ITEM TEST_OPS test_rank_attention_op)
   # TODO(shenliang03): rank_attention_op support CPU device in future
   list(REMOVE_ITEM TEST_OPS test_batch_fc_op)
@@ -209,7 +209,7 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
 
 elseif(WITH_GPU)
   if(${CUDNN_VERSION} VERSION_LESS 7100)
-    list(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
+    list(REMOVE_ITEM TEST_OPS test_fused_conv2d_add_act_op)
   endif()
 endif()
 
@@ -507,6 +507,7 @@ endif()
 if(NOT WITH_CUDNN_FRONTEND)
   list(REMOVE_ITEM TEST_OPS test_fused_scale_bias_relu_conv_bn_op)
   list(REMOVE_ITEM TEST_OPS test_fused_scale_bias_add_relu_op)
+  list(REMOVE_ITEM TEST_OPS test_fused_dconv_drelu_dbn_op)
 endif()
 
 # Some ops need to check results when gc is enabled

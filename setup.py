@@ -1381,6 +1381,7 @@ def get_setup_parameters():
         'paddle.dataset',
         'paddle.reader',
         'paddle.distributed',
+        'paddle.distributed.checkpoint',
         'paddle.distributed.communication',
         'paddle.distributed.communication.stream',
         'paddle.distributed.metric',

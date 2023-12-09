@@ -60,7 +60,7 @@ option(WITH_IPU "Compile PaddlePaddle with Graphcore IPU" OFF)
 option(WITH_ONNXRUNTIME "Compile PaddlePaddle with ONNXRUNTIME" OFF)
 option(WITH_CUSPARSELT "Compile PaddlePaddle with CUSPARSELT" OFF)
 option(WITH_SETUP_INSTALL "Compile PaddlePaddle with setup.py" OFF)
-option(WITH_SHARED_PHI "Compile PaddlePaddle with SHARED LIB of PHI" OFF)
+option(WITH_SHARED_PHI "Compile PaddlePaddle with SHARED LIB of PHI" ON)
 option(CINN_ONLY "Compile CINN only in Paddle" OFF)
 option(CINN_WITH_CUDNN "Compile CINN with CUDNN support" ON)
 
@@ -124,6 +124,9 @@ if(WIN32)
   message("Build static library of PHI")
   set(CMAKE_SUPPRESS_REGENERATION ON)
   set(CMAKE_STATIC_LIBRARY_PREFIX lib)
+  set(WITH_SHARED_PHI
+      OFF
+      CACHE BOOL "Disable WITH_SHARED_PHI when compiling PADDLE ON WIN32" FORCE)
 
   set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /bigobj")
   set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /bigobj")
@@ -588,13 +591,6 @@ include(flags) # set paddle compile flags
 
 if(WITH_CINN)
   message(STATUS "Compile Paddle with CINN.")
-  message(
-    WARNING
-      "Enable WITH_SHARED_PHI when compiling with CINN. Force WITH_SHARED_PHI=ON."
-  )
-  set(WITH_SHARED_PHI
-      ON
-      CACHE BOOL "Enable WITH_SHARED_PHI when compiling with CINN" FORCE)
   # TODO(6clc): Use CINN_WITH_CUDNN to completely replace WITH_CUDNN in CINN.
   #             Use WITH_GPU to completely replace WITH_CUDA in CINN.
   set(WITH_MKL_CBLAS ${WITH_MKL})
