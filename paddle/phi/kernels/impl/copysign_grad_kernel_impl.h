@@ -40,8 +40,8 @@ struct CopySignGradFunctor {
       dx_[idx] = static_cast<double>(0);
     else
       dx_[idx] = static_cast<double>(dout_[idx]) *
-                 (std::copysign(static_cast<double>(x_data_[idx]),
-                                static_cast<double>(y_data_[idx])) /
+                 (phi::copysign_func(static_cast<double>(x_data_[idx]),
+                                     static_cast<double>(y_data_[idx])) /
                   static_cast<double>(x_data_[idx]));
     dy_[idx] = static_cast<double>(0);
   }

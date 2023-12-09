@@ -15,8 +15,26 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/hostdevice.h"
 
 namespace phi {
+
+using float16 = phi::dtype::float16;
+using bfloat16 = phi::dtype::bfloat16;
+
+template <typename T, typename U>
+inline HOSTDEVICE auto copysign_func(const T& a, const U& b) {
+  return std::copysign(static_cast<double>(a), static_cast<double>(b));
+}
+
+inline HOSTDEVICE float16 copysign_func(const float16& x, const float16& y) {
+  return float16((x.x & 0x7fff) | (y.x & 8000));
+}
+
+inline HOSTDEVICE bfloat16 copysign_func(const bfloat16& x, const bfloat16& y) {
+  return bfloat16((x.x & 0x7fff) | (y.x & 8000));
+}
+
 template <typename T, typename Context>
 void CopySignGradKernel(const Context& dev_ctx,
                         const DenseTensor& x,
