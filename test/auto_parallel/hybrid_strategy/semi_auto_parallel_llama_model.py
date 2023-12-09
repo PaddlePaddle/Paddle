@@ -251,7 +251,7 @@ class LlamaAttentionAuto(nn.Layer):
             attn_output = outputs
 
         attn_output = self.o_proj(attn_output)
-
+        # TODO add should be in SP region
         if self.config.sequence_parallel:
             attn_output = paddle.transpose(attn_output, [1, 0, 2])
             attn_output = dist.reshard(
@@ -501,7 +501,7 @@ class LlamaModelAuto(nn.Layer):
                     combined_attention_mask = dist.shard_tensor(
                         combined_attention_mask,
                         get_mesh(),
-                        [dist.Shard(0), dist.Replicate()],
+                        [dist.Replicate(), dist.Replicate()],
                     )
                     expanded_attn_mask = (
                         expanded_attn_mask & combined_attention_mask
@@ -582,7 +582,7 @@ class LlamaModelAuto(nn.Layer):
                 (batch_size, seq_length)
             )
             position_ids = dist.shard_tensor(
-                position_ids, get_mesh(), [dist.Shard(0), dist.Replicate()]
+                position_ids, get_mesh(), [dist.Replicate(), dist.Replicate()]
             )
 
         if self.config.sequence_parallel:
@@ -607,7 +607,7 @@ class LlamaModelAuto(nn.Layer):
         all_self_attns = () if output_attentions else None
         next_decoder_cache = () if use_cache else None
 
-        pre_ipp = 0
+        pre_ipp = None
         for idx, (decoder_layer) in enumerate(self.layers):
             if output_hidden_states:
                 all_hidden_states += (hidden_states,)
@@ -708,6 +708,9 @@ class LlamaPretrainingCriterionAuto(paddle.nn.Layer):
         )
 
     def forward(self, prediction_scores, masked_lm_labels):
+        masked_lm_labels = dist.shard_tensor(
+            masked_lm_labels, get_mesh(-1), [dist.Shard(0), dist.Replicate()]
+        )
         masked_lm_loss = self.loss_func(
             prediction_scores.astype("float32"), masked_lm_labels.unsqueeze(2)
         )
@@ -732,7 +735,7 @@ class LlamaForCausalLMAuto(nn.Layer):
 
         self.llama = LlamaModelAuto(config)
         self.lm_head = LlamaLMHeadAuto(config)
-        self.criterion = LlamaPretrainingCriterionAuto(config)
+        # self.criterion = LlamaPretrainingCriterionAuto(config)
 
     def forward(
         self,
@@ -770,25 +773,27 @@ class LlamaForCausalLMAuto(nn.Layer):
 
         hidden_states = outputs[0]  # [bs, seq_len, dim]
 
+        # if labels is None，means we need full output, instead of tensor_parallel_output
         if self.config.sequence_parallel:
             hidden_states = dist.reshard(
                 hidden_states, get_mesh(-1), [dist.Shard(1), dist.Replicate()]
             )
             # [S, B, H] -> [B, S, H]
             hidden_states = paddle.transpose(hidden_states, [1, 0, 2])
-        # if labels is None，means we need full output, instead of tensor_parallel_output
+
         logits = self.lm_head(hidden_states)
 
-        loss = None
-        if labels is not None:
-            labels.stop_gradient = True
-            labels = dist.shard_tensor(
-                labels, get_mesh(-1), [dist.Shard(0), dist.Replicate()]
-            )
-            loss = self.criterion(logits, labels)
+        # loss = None
+        # if labels is not None:
+        #     labels.stop_gradient = True
+        #     labels = dist.shard_tensor(
+        #         labels, get_mesh(-1), [dist.Shard(0), dist.Replicate()]
+        #     )
+        #     loss = self.criterion(logits, labels)
 
-        output = (logits,) + outputs[1:]
-        return (loss,) + output if loss is not None else output
+        # output = (logits,) + outputs[1:]
+        # return (loss,) + output if loss is not None else output
+        return logits
 
 
 def _expand_2d_mask(mask, dtype, tgt_length):
