@@ -21,6 +21,8 @@ from typing import Tuple
 
 from .prune import _PRUNE_FUNC
 
+__SUPPORTED_RECOMPUTE_GRANULARITY__ = ["full", "full_attn", "core_attn"]
+
 
 def divisor(num, reverse=False):
     """Return the divisor of the given number."""
@@ -38,18 +40,33 @@ def divisor(num, reverse=False):
     return sorted(results, reverse=reverse)
 
 
+def dist_degree_with_customized_range(
+    mode, num_gpus, num_nodes, customized_range, tuner_cfg=None
+):
+    """Return the degree of different parallel modes by gpus and nodes num with customized range."""
+    dist_degree_all = dist_degree(mode, num_gpus, num_nodes, tuner_cfg)
+    return [degree for degree in dist_degree_all if degree in customized_range]
+
+
 def dist_degree(mode, num_gpus, num_nodes, tuner_cfg=None):
     """Return the degree of different parallel modes by gpus and nodes num."""
-    assert mode in ["dp", "mp", "pp", "sharding", "mbs", "vpp"]
+    assert mode in [
+        "dp_degree",
+        "mp_degree",
+        "pp_degree",
+        "sharding_degree",
+        "micro_batch_size",
+        "vpp_degree",
+    ]
     results = []
     prune_results = []
-    if mode == "dp":
+    if mode == "dp_degree":
         if tuner_cfg.get("schedule_mode", "memory") != "performance":
             results = divisor(num_gpus, reverse=False)
         else:
             results = divisor(num_gpus, reverse=True)
 
-    elif mode == "pp":
+    elif mode == "pp_degree":
         if num_nodes > 1 and tuner_cfg.get("enable_pp_prune", True):
             results = list(range(num_nodes + 1, 0, -1))
         else:
@@ -66,7 +83,7 @@ def dist_degree(mode, num_gpus, num_nodes, tuner_cfg=None):
                 prune_results.append(pp_degree)
         results = prune_results
 
-    elif mode == "mp":
+    elif mode == "mp_degree":
         if tuner_cfg.get("enable_mp_prune", True):
             gpus_per_node = num_gpus // num_nodes
             if tuner_cfg.get("schedule_mode", "memory") != "performance":
@@ -109,10 +126,10 @@ def dist_degree(mode, num_gpus, num_nodes, tuner_cfg=None):
                 prune_results.append(mp_degree)
         results = prune_results
 
-    elif mode == "sharding":
+    elif mode == "sharding_degree":
         results = divisor(num_gpus, reverse=True)
 
-    elif mode == "mbs":
+    elif mode == "micro_batch_size":
         if tuner_cfg.get("schedule_mode", "memory") != "performance":
             results = divisor(
                 tuner_cfg["model_cfg"]["global_batch_size"], reverse=False
@@ -122,7 +139,7 @@ def dist_degree(mode, num_gpus, num_nodes, tuner_cfg=None):
                 tuner_cfg["model_cfg"]["global_batch_size"], reverse=True
             )
 
-    elif mode == "vpp":
+    elif mode == "vpp_degree":
         if tuner_cfg.get("schedule_mode", "memory") != "performance":
             results = divisor(
                 tuner_cfg["model_cfg"]["num_layers"], reverse=False
@@ -156,99 +173,91 @@ def default_candidates(tuner_cfg):
     )
     assert num_gpus > 0
 
-    if tuner_cfg.get("dp_degree", None) == "auto":
-        candidates["dp_degree"] = dist_degree(
-            "dp", num_gpus, num_nodes, tuner_cfg
+    for strategy in ["dp_degree", "mp_degree", "pp_degree", "sharding_degree"]:
+        strategy_customized_range = _param2range(
+            tuner_cfg.get(strategy, None), num_gpus, strategy
         )
-    elif tuner_cfg.get("dp_degree", None):
-        candidates["dp_degree"] = tuner_cfg.get("dp_degree")
-    else:
-        candidates["dp_degree"] = [1]
-
-    if tuner_cfg.get("mp_degree", None) == "auto":
-        candidates["mp_degree"] = dist_degree(
-            "mp", num_gpus, num_nodes, tuner_cfg
+        candidates[strategy] = dist_degree_with_customized_range(
+            strategy, num_gpus, num_nodes, strategy_customized_range, tuner_cfg
         )
-    elif tuner_cfg.get("mp_degree", None):
-        candidates["mp_degree"] = tuner_cfg.get("mp_degree")
-    else:
-        candidates["mp_degree"] = [1]
 
-    if tuner_cfg.get("pp_degree", None) == "auto":
-        candidates["pp_degree"] = dist_degree(
-            "pp", num_gpus, num_nodes, tuner_cfg
+    vpp_degree_customized_range = _param2range(
+        tuner_cfg.get("vpp_degree", None),
+        tuner_cfg["model_cfg"]["num_layers"],
+        "vpp_degree",
+    )
+    candidates["vpp_degree"] = dist_degree_with_customized_range(
+        "vpp_degree",
+        num_gpus,
+        num_nodes,
+        vpp_degree_customized_range,
+        tuner_cfg,
+    )
+
+    mbs_customized_range = _param2range(
+        tuner_cfg.get("micro_batch_size", None),
+        tuner_cfg["model_cfg"]["global_batch_size"],
+        "micro_batch_size",
+    )
+    candidates["micro_batch_size"] = dist_degree_with_customized_range(
+        "micro_batch_size", num_gpus, num_nodes, mbs_customized_range, tuner_cfg
+    )
+
+    schedule_mode = tuner_cfg.get("schedule_mode", "memory")
+    sharding_stage_customized_range = _param2range(
+        tuner_cfg.get("sharding_stage", None), 3, "sharding_stage"
+    )
+    candidates["sharding_stage"] = [
+        stage for stage in [3, 2, 1] if stage in sharding_stage_customized_range
+    ]
+    if schedule_mode != "performance":
+        candidates["sharding_stage"] = sorted(
+            candidates["sharding_stage"], reverse=True
         )
-    elif tuner_cfg.get("pp_degree", None):
-        candidates["pp_degree"] = tuner_cfg.get("pp_degree")
     else:
-        candidates["pp_degree"] = [1]
-
-    if tuner_cfg.get("vpp_degree", None) == "auto":
-        candidates["vpp_degree"] = dist_degree(
-            "vpp", num_gpus, num_nodes, tuner_cfg
+        candidates["sharding_stage"] = sorted(
+            candidates["sharding_stage"], reverse=False
         )
-    elif tuner_cfg.get("vpp_degree", None):
-        candidates["vpp_degree"] = tuner_cfg.get("vpp_degree")
-    else:
-        candidates["vpp_degree"] = [1]
 
-    if tuner_cfg.get("sharding_degree", None) == "auto":
-        candidates["sharding_degree"] = dist_degree(
-            "sharding", num_gpus, num_nodes, tuner_cfg
+    use_recompute = tuner_cfg.get("use_recompute", None)
+    if isinstance(use_recompute, str) and use_recompute.lower() == "auto":
+        candidates["use_recompute"] = (
+            [True, False] if schedule_mode != "performance" else [False, True]
         )
-    elif tuner_cfg.get("sharding_degree", None):
-        candidates["sharding_degree"] = tuner_cfg.get("sharding_degree")
-    else:
-        candidates["sharding_degree"] = [1]
-
-    if tuner_cfg.get("sharding_stage", None) == "auto":
-        if tuner_cfg.get("schedule_mode", "memory") != "performance":
-            candidates["sharding_stage"] = [3, 2, 1]
-        else:
-            candidates["sharding_stage"] = [1, 2, 3]
-    elif tuner_cfg.get("sharding_stage", None):
-        candidates["sharding_stage"] = tuner_cfg.get("sharding_stage")
-    else:
-        candidates["sharding_stage"] = [None]
-
-    if tuner_cfg.get("use_recompute", None) == "auto":
-        if tuner_cfg.get("schedule_mode", "memory") != "performance":
-            candidates["use_recompute"] = [True, False]
-        else:
-            candidates["use_recompute"] = [False, True]
-    elif tuner_cfg.get("use_recompute", None):
-        candidates["use_recompute"] = tuner_cfg.get("use_recompute")
-    else:
+        tuner_cfg["recompute_granularity"] = "auto"
+    elif isinstance(use_recompute, bool):
+        candidates["use_recompute"] = [use_recompute]
+    # TODO: should remove this case in the future
+    elif use_recompute is None:
         candidates["use_recompute"] = [None]
+    else:
+        raise ValueError("use_recompute supports auto/True/False")
 
-    if tuner_cfg.get("recompute_granularity", None) == "auto":
-        if tuner_cfg.get("schedule_mode", "memory") != "performance":
+    recompute_granularity = tuner_cfg.get("recompute_granularity", None)
+    if isinstance(recompute_granularity, str):
+        if recompute_granularity.lower() == "auto":
+            candidates["recompute_granularity"] = (
+                __SUPPORTED_RECOMPUTE_GRANULARITY__
+                if schedule_mode != "performance"
+                else list(reversed(__SUPPORTED_RECOMPUTE_GRANULARITY__))
+            )
+        elif (
+            recompute_granularity.lower() in __SUPPORTED_RECOMPUTE_GRANULARITY__
+        ):
             candidates["recompute_granularity"] = [
-                "full",
-                "full_attn",
-                "core_attn",
+                recompute_granularity.lower()
             ]
+        # TODO: should remove this case in the future
+        elif recompute_granularity is None:
+            candidates["recompute_granularity"] = [None]
         else:
-            candidates["recompute_granularity"] = [
-                "core_attn",
-                "full_attn",
-                "full",
-            ]
-    elif tuner_cfg.get("recompute_granularity", None):
-        candidates["recompute_granularity"] = tuner_cfg.get(
-            "recompute_granularity"
-        )
+            raise ValueError(
+                f"recompute_granularity only supports auto/{'/'.join(__SUPPORTED_RECOMPUTE_GRANULARITY__)}, but got {recompute_granularity}"
+            )
     else:
-        candidates["recompute_granularity"] = [None]
-
-    if tuner_cfg.get("micro_batch_size", None) == "auto":
-        candidates["micro_batch_size"] = dist_degree(
-            "mbs", num_gpus, num_nodes, tuner_cfg
+        raise ValueError(
+            f"recompute_granularity only supports auto/{'/'.join(__SUPPORTED_RECOMPUTE_GRANULARITY__)}, but got {recompute_granularity}"
         )
-    elif tuner_cfg.get("micro_batch_size", None):
-        candidates["micro_batch_size"] = tuner_cfg.get("micro_batch_size")
-    else:
-        candidates["micro_batch_size"] = [None]
 
     return candidates
 
@@ -366,6 +375,39 @@ def search_all(tuner_cfg):
         if not pruned:
             pruned_all_cfgs.append(cur_cfg)
     return pruned_all_cfgs
+
+
+def _param2range(param_from_json_file, max_value, param_key):
+    """Convert a param from json file to candidates range."""
+    selected_range = None
+    if isinstance(param_from_json_file, str):
+        if "auto" in param_from_json_file.lower():
+            selected_range = list(range(1, max_value + 1))
+        else:
+            raise ValueError(
+                f"Illegal param found: {param_key}, only support auto in str type."
+            )
+    elif isinstance(param_from_json_file, dict):
+        customized_min_value = param_from_json_file.get("min", None)
+        customized_max_value = param_from_json_file.get("max", None)
+        if not (customized_min_value and customized_max_value):
+            raise ValueError(
+                f"Illegal param found: {param_key}, min and max should be specified in dict type."
+            )
+        selected_range = list(
+            range(customized_min_value, customized_max_value + 1)
+        )
+    elif isinstance(param_from_json_file, list):
+        selected_range = param_from_json_file
+    elif isinstance(param_from_json_file, int):
+        selected_range = [param_from_json_file]
+    elif param_from_json_file is None:
+        selected_range = [1]
+    else:
+        raise ValueError(
+            f"Illegal param found: {param_key}, only support str, dict, list and int type."
+        )
+    return selected_range
 
 
 def search_by_dp_estimation(tuner_cfg):
@@ -1254,3 +1296,52 @@ def gbs_search_all(tuner_cfg):
         )
         new_all_cfgs.append(new_cfg)
     return new_all_cfgs
+
+
+def load_configs_from_csv(configs_csv):
+    """Load the configs from csv file."""
+    all_configs = []
+    extract_keys_integer = [
+        "dp_degree",
+        "mp_degree",
+        "pp_degree",
+        "vpp_degree",
+        "micro_batch_size",
+        "sharding_degree",
+        "sharding_stage",
+    ]
+    extract_keys_string = ["use_recompute", "recompute_granularity"]
+    with open(configs_csv, "r") as f:
+        reader = csv.DictReader(f)
+        raw_configs = list(reader)
+    for raw_config in raw_configs:
+        config = {}
+        for extract_key in extract_keys_integer:
+            val = raw_config.get(extract_key, "")
+            try:
+                config[extract_key] = int(val)
+            except ValueError:
+                raise ValueError(
+                    f"{extract_key} must be integer, but got {val}"
+                )
+
+        use_recompute = raw_config.get("use_recompute", "")
+        assert use_recompute.lower() in [
+            "true",
+            "false",
+        ], f"{use_recompute} must be true or false, but got {use_recompute}"
+        config["use_recompute"] = use_recompute.lower() == "true"
+
+        recompute_granularity = raw_config.get("recompute_granularity", "")
+        assert (
+            recompute_granularity == ""
+            or recompute_granularity.lower()
+            in __SUPPORTED_RECOMPUTE_GRANULARITY__
+        ), f"{recompute_granularity} must be one of {__SUPPORTED_RECOMPUTE_GRANULARITY__}, but got {recompute_granularity}."
+        config["recompute_granularity"] = (
+            recompute_granularity if recompute_granularity != "" else None
+        )
+
+        all_configs.append(config)
+
+    return all_configs
