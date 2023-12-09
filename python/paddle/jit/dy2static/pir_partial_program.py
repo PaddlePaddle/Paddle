@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import itertools
+from functools import cached_property
 
 import numpy as np
 
@@ -31,20 +32,6 @@ from paddle.pir import OpResult, fake_op_result, is_fake_op_result
 from .utils import RETURN_NO_VALUE_MAGIC_NUM, backend_guard
 
 __all__ = []
-
-
-class cached_property:
-    """
-    Descriptor to implement lazy initialization of property.
-    """
-
-    def __init__(self, function):
-        self.function = function
-
-    def __get__(self, instance, cls):
-        val = self.function(instance)
-        setattr(instance, self.function.__name__, val)
-        return val
 
 
 class NestSequence:
