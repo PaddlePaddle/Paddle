@@ -77,7 +77,7 @@ class IR_API Pass {
                 const std::vector<std::string>& dependents = {})
       : pass_info_(name, opt_level, dependents) {}
 
-  virtual ~Pass();
+  TEST_API virtual ~Pass();
 
   const std::string& name() const { return pass_info().name; }
 

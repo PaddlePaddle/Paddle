@@ -36,7 +36,7 @@ class PassAdaptor;
 
 class IR_API PassManager {
  public:
-  explicit PassManager(IrContext *context, uint8_t opt_level = 2);
+  TEST_API explicit PassManager(IrContext *context, uint8_t opt_level = 2);
 
   ~PassManager() = default;
 
@@ -46,7 +46,7 @@ class IR_API PassManager {
 
   IrContext *context() const { return context_; }
 
-  bool Run(Program *program);
+  TEST_API bool Run(Program *program);
 
   void AddPass(std::unique_ptr<Pass> pass) {
     passes_.emplace_back(std::move(pass));
@@ -110,10 +110,10 @@ class IR_API PassManager {
     // TODO(liuyuanle): Add flags to control printing behavior.
   };
 
-  void EnableIRPrinting(std::unique_ptr<IRPrinterOption> option =
-                            std::make_unique<IRPrinterOption>());
+  TEST_API void EnableIRPrinting(std::unique_ptr<IRPrinterOption> option =
+                                     std::make_unique<IRPrinterOption>());
 
-  void EnablePassTiming(bool print_module = true);
+  TEST_API void EnablePassTiming(bool print_module = true);
 
   void AddInstrumentation(std::unique_ptr<PassInstrumentation> pi);
 

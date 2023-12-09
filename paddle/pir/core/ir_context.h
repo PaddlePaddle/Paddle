@@ -120,7 +120,7 @@ class IR_API IrContext {
   ///
   /// \brief Get registered operaiton infomation.
   ///
-  OpInfo GetRegisteredOpInfo(const std::string &name);
+  TEST_API OpInfo GetRegisteredOpInfo(const std::string &name);
 
   ///
   /// \brief Get registered operaiton infomation map.

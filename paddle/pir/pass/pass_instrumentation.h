@@ -75,7 +75,9 @@ class IR_API PassInstrumentor {
 
   void RunAfterPass(Pass* pass, Operation* op);
 
-  void RunBeforeAnalysis(const std::string& name, TypeId id, Operation* op);
+  TEST_API void RunBeforeAnalysis(const std::string& name,
+                                  TypeId id,
+                                  Operation* op);
 
   TEST_API void RunAfterAnalysis(const std::string& name,
                                  TypeId id,

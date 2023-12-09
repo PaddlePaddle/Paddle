@@ -17,6 +17,7 @@
 #include <unordered_map>
 
 #include "paddle/pir/core/type_id.h"
+#include "paddle/utils/test_macros.h"
 
 namespace pir {
 class OpInfoImpl;
@@ -51,7 +52,7 @@ class IR_API OpInfo {
 
   const char *name() const;
 
-  TypeId id() const;
+  TEST_API TypeId id() const;
 
   void Verify(Operation *) const;
 

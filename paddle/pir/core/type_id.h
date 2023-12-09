@@ -18,7 +18,7 @@
 #include <functional>
 
 #include "paddle/pir/core/dll_decl.h"
-
+#include "paddle/utils/test_macros.h"
 namespace pir {
 
 ///
@@ -129,11 +129,11 @@ TypeId TypeId::get() {
   }                                                    \
   }  // namespace pir
 
-#define IR_DEFINE_EXPLICIT_TYPE_ID(TYPE_CLASS)      \
-  namespace pir {                                   \
-  namespace detail {                                \
-  UniqueingId TypeIdResolver<TYPE_CLASS>::id_ = {}; \
-  }                                                 \
+#define IR_DEFINE_EXPLICIT_TYPE_ID(TYPE_CLASS)               \
+  namespace pir {                                            \
+  namespace detail {                                         \
+  TEST_API UniqueingId TypeIdResolver<TYPE_CLASS>::id_ = {}; \
+  }                                                          \
   }  // namespace pir
 
 }  // namespace pir

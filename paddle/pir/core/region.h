@@ -20,7 +20,7 @@
 
 #include "paddle/pir/core/dll_decl.h"
 #include "paddle/pir/core/iterator.h"
-
+#include "paddle/utils/test_macros.h"
 namespace pir {
 
 class Block;
@@ -39,7 +39,7 @@ class IR_API Region {
   explicit Region(Operation *op = nullptr) : parent_(op) {}
   Region(const Region &) = delete;
   Region &operator=(const Region &) = delete;
-  ~Region();
+  TEST_API ~Region();
   bool empty() const { return blocks_.empty(); }
   size_t size() const { return blocks_.size(); }
 
