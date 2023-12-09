@@ -77,11 +77,6 @@ class TestDy2staticException(Dy2StTestBase):
 
 
 class TestDygraphIfElse(Dy2StTestBase):
-    """
-    TestCase for the transformation from control flow `if/else`
-    dependent on tensor in Dygraph into Static `base.layers.cond`.
-    """
-
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = dyfunc_with_if_else
@@ -522,7 +517,7 @@ class IfElseNet(paddle.nn.Layer):
         a = paddle.matmul(a, self.param)
         a = paddle.reshape(a, (2, 4))
         cond = paddle.to_tensor([10])
-        if cond == 10:
+        if paddle.equal(cond, 10):
             a_argmax = a.argmax(axis=-1)
             b = b + self.param
         else:

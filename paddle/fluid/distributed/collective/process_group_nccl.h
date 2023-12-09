@@ -43,7 +43,8 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
              int rank,
              CommType comm_type,
              bool sync_op,
-             bool use_calc_stream);
+             bool use_calc_stream,
+             int gid);
     virtual ~NCCLTask();
 
     bool IsCompleted() override;
@@ -60,10 +61,13 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
              CommType CommType,
              const std::vector<phi::DenseTensor>& inputs);
 
+    void RemoveHolderStreamInGroup();
+
    private:
     bool block_cpu_in_wait_{false};
     platform::DeviceEvent comm_event_;  // event on comm stream
     Place task_place_;
+    int gid_;
   };
 
  public:
@@ -178,7 +182,8 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
                                                          int rank,
                                                          CommType op_type,
                                                          bool sync_op,
-                                                         bool use_calc_stream);
+                                                         bool use_calc_stream,
+                                                         int gid);
 
   void GetStoreKey(const std::string& place_key,
                    CommType comm_type,
@@ -211,6 +216,19 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
   phi::distributed::NCCLCommContext* GetCommContext(
       const std::string* key = nullptr);
 
+  void EraseTensorHolders() {
+    for (const auto& allocation_stream : allocation_stream_pairs) {
+      auto holder_ptr = allocation_stream.first.lock();
+      if (holder_ptr) {
+        memory::EraseStream(holder_ptr, allocation_stream.second);
+      }
+    }
+    VLOG(5) << "After task wait/synchronize, totoal "
+            << allocation_stream_pairs.size()
+            << " tensor(s) allocation stream have been removed.";
+    allocation_stream_pairs.clear();
+  }
+
  private:
   std::shared_ptr<phi::distributed::Store> store_;
 
@@ -229,6 +247,10 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
   static uint64_t s_group_call_counter;
   // default 30 minutes
   int64_t pg_timeout_;
+
+  // optimize memory for process_group
+  std::vector<std::pair<std::weak_ptr<phi::Allocation>, gpuStream_t>>
+      allocation_stream_pairs;
 };
 
 }  //  namespace distributed

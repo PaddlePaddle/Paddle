@@ -249,6 +249,7 @@ class GPT2LMHeadModel(paddle.nn.Layer):
 
 
 class TestPruneUnusedParamInProgram(Dy2StTestBase):
+    @test_legacy_and_pt_and_pir
     def test_prune(self):
         input_ids = np.array([[15, 11, 6, 3, 18, 13]]).astype("float32")
 

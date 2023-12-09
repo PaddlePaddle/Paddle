@@ -1223,6 +1223,7 @@ class Executor:
         # NOTE(Ruibiao): The manually call of clear is required. Because in Python, executor_cache
         # may not immediately destructed after Executor instance deleted (so does not the _StandaloneExecutor),
         # that brings errors to mkl-dnn unit tests (see ClearMKLDNNCache in interpretercore.cc for why).
+        self.close()
         self._executor_cache.clear()
 
     def _get_scope_cache(self, program_cache_key):
@@ -1561,6 +1562,17 @@ class Executor:
                 self._default_executor.release_trainer(trainer_instance)
                 del trainer_instance
             self._default_executor.close()
+
+    def flush(self):
+        """
+        flush all trainer param to root_scope
+        """
+        if self._closed:
+            return
+        for _, trainer_instance in self.trainer_caches.items():
+            self._default_executor.release_trainer(trainer_instance)
+            del trainer_instance
+        self.trainer_caches.clear()
 
     def run(
         self,
@@ -1909,7 +1921,6 @@ class Executor:
             )
 
             self._feed_data(program, feed, feed_var_name, scope)
-
             if hasattr(program, 'lr_scheduler'):
                 from paddle.optimizer.lr import LRScheduler
 
@@ -2463,7 +2474,12 @@ class Executor:
 
         dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
 
-        if program._heter_pipeline_opt is None:
+        reused_trainer = program._heter_pipeline_opt is not None or (
+            program._fleet_opt is not None
+            and program._fleet_opt.get("use_ps_gpu", True)
+        )
+
+        if reused_trainer is False:
             trainer_instance = (
                 self._default_executor.init_for_dataset(  # -->InitForDataset
                     program.desc, trainer._desc(), scope, dataset.dataset
@@ -2490,11 +2506,11 @@ class Executor:
             fetch_monitor.start()
             self._default_executor.run_from_dataset(trainer_instance)
             fetch_monitor.stop()
-            if program._heter_pipeline_opt is None:
+            if reused_trainer is False:
                 self._default_executor.release_trainer(trainer_instance)
         else:
             self._default_executor.run_from_dataset(trainer_instance)
-            if program._heter_pipeline_opt is None:
+            if reused_trainer is False:
                 self._default_executor.release_trainer(trainer_instance)
 
         dataset._dynamic_adjust_after_train()
@@ -2835,6 +2851,7 @@ class Executor:
             tensor.set(data, self.place)
 
         self._fleet_executor.run(cache_key)
+
         if "fetch_var" in fleet_opt:
             # If we speed up the generation in evaluation, we need to generate
             # multiple queries at the same time. Each query will in separate scope in order
