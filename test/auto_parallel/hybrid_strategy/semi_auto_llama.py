@@ -36,6 +36,7 @@ class Config:
     rms_norm_eps = 1e-6
     use_cache = True
     use_flash_attention = False
+    sequence_parallel = False
     rope = True
 
 
@@ -80,6 +81,8 @@ class TestLlamaAuto:
         self.dp = int(os.getenv("dp"))
         self.mp = int(os.getenv("mp"))
         self.pp = int(os.getenv("pp"))
+        if os.getenv("use_sp") == "true":
+            self.config.sequence_parallel = True
         self.gradient_accumulation_steps = int(os.getenv("acc_step"))
 
         self.init_dist_env()

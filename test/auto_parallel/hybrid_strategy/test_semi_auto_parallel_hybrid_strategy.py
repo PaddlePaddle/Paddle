@@ -144,8 +144,11 @@ class TestSemiAutoParallelLlamaDPMPStrategy(
 class TestSemiAutoParallelLlama2D(test_base.CommunicationTestDistBase):
     def setUp(self):
         super().setUp(num_of_devices=4, timeout=200, nnode=1)
-        self._default_envs = {"dp": "2", "mp": "2", "pp": "1", "acc_step": "1"}
-        self._changeable_envs = {"backend": ["gpu"]}
+        self._default_envs = {"dp": "2", "mp": "2", "pp": "1", "acc_step": "2"}
+        self._changeable_envs = {
+            "backend": ["gpu"],
+            "use_sp": ["true", "false"],
+        }
 
     def test_simple_net_hybrid_strategy(self):
         envs_list = test_base.gen_product_envs_list(
@@ -162,7 +165,10 @@ class TestSemiAutoParallelLlama3D(test_base.CommunicationTestDistBase):
     def setUp(self):
         super().setUp(num_of_devices=8, timeout=200, nnode=1)
         self._default_envs = {"dp": "2", "mp": "2", "pp": "2", "acc_step": "2"}
-        self._changeable_envs = {"backend": ["gpu"]}
+        self._changeable_envs = {
+            "backend": ["gpu"],
+            "use_sp": ["true", "false"],
+        }
 
     def test_simple_net_hybrid_strategy(self):
         envs_list = test_base.gen_product_envs_list(

@@ -182,6 +182,13 @@ class LlamaAttentionAuto(nn.Layer):
             self.head_dim,
         ]
 
+        if self.config.sequence_parallel:
+            hidden_states = dist.reshard(
+                hidden_states,
+                get_mesh(self.ipp),
+                [dist.Shard(1), dist.Replicate()],
+            )
+
         query_states = self.q_proj(hidden_states).reshape(
             shape=target_query_shape
         )
@@ -191,6 +198,11 @@ class LlamaAttentionAuto(nn.Layer):
         value_states = self.v_proj(hidden_states).reshape(
             shape=target_key_value_shape
         )
+
+        if self.config.sequence_parallel:
+            query_states = paddle.transpose(query_states, [1, 0, 2, 3])
+            key_states = paddle.transpose(key_states, [1, 0, 2, 3])
+            value_states = paddle.transpose(value_states, [1, 0, 2, 3])
 
         kv_seq_len = key_states.shape[-3]
 
@@ -239,6 +251,12 @@ class LlamaAttentionAuto(nn.Layer):
             attn_output = outputs
 
         attn_output = self.o_proj(attn_output)
+
+        if self.config.sequence_parallel:
+            attn_output = paddle.transpose(attn_output, [1, 0, 2])
+            attn_output = dist.reshard(
+                attn_output, get_mesh(self.ipp), [dist.Shard(1), dist.Shard(0)]
+            )
 
         if not output_attentions:
             attn_weights = None
@@ -386,7 +404,22 @@ class LlamaDecoderLayerAuto(nn.Layer):
         # Fully Connected
         residual = hidden_states
         hidden_states = self.post_attention_layernorm(hidden_states)
+
+        if self.config.sequence_parallel:
+            hidden_states = dist.reshard(
+                hidden_states,
+                get_mesh(self.ipp),
+                [dist.Shard(1), dist.Replicate()],
+            )
         hidden_states = self.mlp(hidden_states)
+
+        if self.config.sequence_parallel:
+            hidden_states = dist.reshard(
+                hidden_states,
+                get_mesh(self.ipp),
+                [dist.Shard(1), dist.Shard(0)],
+            )
+
         hidden_states = residual + hidden_states
 
         outputs = (hidden_states,)
@@ -442,6 +475,12 @@ class LlamaModelAuto(nn.Layer):
         self.norm = LlamaRMSNormAuto(config)
 
         self.gradient_checkpointing = False
+
+        self.placements = (
+            [dist.Shard(1), dist.Shard(0)]
+            if self.config.sequence_parallel
+            else [dist.Shard(0), dist.Replicate()]
+        )
 
     @staticmethod
     def _prepare_decoder_attention_mask(
@@ -546,6 +585,10 @@ class LlamaModelAuto(nn.Layer):
                 position_ids, get_mesh(), [dist.Shard(0), dist.Replicate()]
             )
 
+        if self.config.sequence_parallel:
+            # [B, S, H] -> [S, B, H]
+            inputs_embeds = paddle.transpose(inputs_embeds, [1, 0, 2])
+
         attention_mask = self._prepare_decoder_attention_mask(
             attention_mask,
             (batch_size, seq_length),
@@ -557,9 +600,7 @@ class LlamaModelAuto(nn.Layer):
             if is_casual:
                 attention_mask = None
         hidden_states = inputs_embeds
-        hidden_states = dist.reshard(
-            hidden_states, get_mesh(), [dist.Shard(0), dist.Replicate()]
-        )
+        hidden_states = dist.reshard(hidden_states, get_mesh(), self.placements)
 
         # decoder layers
         all_hidden_states = () if output_hidden_states else None
@@ -580,7 +621,7 @@ class LlamaModelAuto(nn.Layer):
                 hidden_states = dist.reshard(
                     hidden_states,
                     get_mesh(decoder_layer.ipp),
-                    [dist.Shard(0), dist.Replicate()],
+                    self.placements,
                 )
                 position_ids = dist.reshard(
                     position_ids,
@@ -729,8 +770,15 @@ class LlamaForCausalLMAuto(nn.Layer):
 
         hidden_states = outputs[0]  # [bs, seq_len, dim]
 
+        if self.config.sequence_parallel:
+            hidden_states = dist.reshard(
+                hidden_states, get_mesh(-1), [dist.Shard(1), dist.Replicate()]
+            )
+            # [S, B, H] -> [B, S, H]
+            hidden_states = paddle.transpose(hidden_states, [1, 0, 2])
         # if labels is None，means we need full output, instead of tensor_parallel_output
         logits = self.lm_head(hidden_states)
+
         loss = None
         if labels is not None:
             labels.stop_gradient = True
