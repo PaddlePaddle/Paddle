@@ -16,7 +16,11 @@ import os
 from functools import reduce
 
 import numpy as np
-from semi_auto_parallel_llama_model import LlamaForCausalLMAuto, set_global_mesh
+from semi_auto_parallel_llama_model import (
+    LlamaForCausalLMAuto,
+    LlamaPretrainingCriterionAuto,
+    set_global_mesh,
+)
 
 import paddle
 import paddle.distributed as dist
@@ -106,6 +110,7 @@ class TestLlamaAuto:
 
     def run_dynamic(self):
         model = LlamaForCausalLMAuto(self.config)
+        criterion = LlamaPretrainingCriterionAuto(self.config)
 
         lr_scheduler = paddle.optimizer.lr.LinearWarmup(
             learning_rate=0.0001, warmup_steps=2, start_lr=0, end_lr=0.0001
@@ -133,7 +138,8 @@ class TestLlamaAuto:
         for epoch_idx in range(1):
             for step, inputs in enumerate(train_dataloader):
                 input_ids, labels = inputs
-                tr_loss_step, _ = model(input_ids, labels=labels)
+                logits = model(input_ids)
+                tr_loss_step = criterion(logits, labels)
 
                 if self.gradient_accumulation_steps > 1:
                     tr_loss_step /= self.gradient_accumulation_steps
@@ -156,6 +162,7 @@ class TestLlamaAuto:
 
     def run_dy2static(self):
         model = LlamaForCausalLMAuto(self.config)
+        criterion = LlamaPretrainingCriterionAuto(self.config)
 
         lr_scheduler = paddle.optimizer.lr.LinearWarmup(
             learning_rate=0.0001, warmup_steps=2, start_lr=0, end_lr=0.0001
@@ -182,26 +189,20 @@ class TestLlamaAuto:
             opt = optimizer
 
         dist_model, dist_loader = dist.to_static(
-            model, train_dataloader, model.criterion, opt
+            model, train_dataloader, criterion, opt
         )
 
+        dist_model.train()
         for step, inputs in enumerate(dist_loader()):
             input_ids, labels = inputs
             loss = dist_model(input_ids, labels)
+            print(step, loss)
 
-        dist_ctx = dist_model._engine._dist_contexts["train"]
-        from paddle.distributed.auto_parallel.static.dist_context import (
-            set_default_distributed_context,
-        )
-
-        set_default_distributed_context(dist_ctx)
-        with open(f"./11program.txt.{dist.get_rank()}", "w+") as fr:
-            fr.write(
-                str(dist_ctx.dist_main_programs[dist_model._engine._cur_rank])
-            )
+            if step >= 10:
+                break
 
     def run_test_cases(self):
-        # self.run_dynamic()
+        self.run_dynamic()
         self.run_dy2static()
 
 
