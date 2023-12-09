@@ -51,18 +51,11 @@ const phi::DDim& GetShapeFromValue(pir::Value value) {
 
 pir::Type GetDataTypeFromValue(pir::Value value) {
   // TODO(dev): Support other types like DenseTensor.
-  if (value.type().isa<paddle::dialect::DenseTensorType>()) {
-    return value.type().dyn_cast<paddle::dialect::DenseTensorType>().dtype();
-  } else if (value.type().isa<paddle::dialect::SelectedRowsType>()) {
-    return value.type().dyn_cast<paddle::dialect::SelectedRowsType>().dtype();
-  } else if (value.type().isa<paddle::dialect::DenseTensorArrayType>()) {
-    return value.type()
-        .dyn_cast<paddle::dialect::DenseTensorArrayType>()
-        .dtype();
-  } else {
-    PADDLE_THROW(phi::errors::Unimplemented("Unsupported pir data type: %s.",
-                                            value.type()));
-  }
+  PADDLE_ENFORCE_EQ(
+      value.type().isa<paddle::dialect::DenseTensorType>(),
+      true,
+      phi::errors::InvalidArgument("Value's type must be a DenseTensorType."));
+  return value.type().dyn_cast<paddle::dialect::DenseTensorType>().dtype();
 }
 
 Operation* GetDefiningOpForInput(Operation* op, uint32_t index) {
