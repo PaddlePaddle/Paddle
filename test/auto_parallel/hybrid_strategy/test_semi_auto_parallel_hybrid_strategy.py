@@ -94,6 +94,28 @@ class TestSemiAutoParallelCrossMeshReshard(test_base.CommunicationTestDistBase):
             )
 
 
+class TestSemiAutoParallelNdCrossMeshReshard(
+    test_base.CommunicationTestDistBase
+):
+    def setUp(self):
+        super().setUp(num_of_devices=8, timeout=200, nnode=1)
+        self._default_envs = {
+            "dtype": "float32",
+            "seed": "2023",
+        }
+        self._changeable_envs = {"backend": ["gpu"]}
+
+    def test_simple_net_bybrid_strategy(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_parallel_nd_cross_mesh_reshard.py",
+                user_defined_envs=envs,
+            )
+
+
 class TestSemiAutoParallelLlamaDPMPStrategy(
     test_base.CommunicationTestDistBase
 ):
@@ -117,6 +139,46 @@ class TestSemiAutoParallelLlamaDPMPStrategy(
                     "semi_auto_parallel_for_llama_decoder_dp_mp.py",
                     user_defined_envs=envs,
                 )
+
+
+class TestSemiAutoParallelLlama2D(test_base.CommunicationTestDistBase):
+    def setUp(self):
+        super().setUp(num_of_devices=4, timeout=200, nnode=1)
+        self._default_envs = {"dp": "2", "mp": "2", "pp": "1", "acc_step": "2"}
+        self._changeable_envs = {
+            "backend": ["gpu"],
+            "use_sp": ["true", "false"],
+        }
+
+    def test_simple_net_hybrid_strategy(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_llama.py",
+                user_defined_envs=envs,
+            )
+
+
+class TestSemiAutoParallelLlama3D(test_base.CommunicationTestDistBase):
+    def setUp(self):
+        super().setUp(num_of_devices=8, timeout=200, nnode=1)
+        self._default_envs = {"dp": "2", "mp": "2", "pp": "2", "acc_step": "2"}
+        self._changeable_envs = {
+            "backend": ["gpu"],
+            "use_sp": ["true", "false"],
+        }
+
+    def test_simple_net_hybrid_strategy(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_llama.py",
+                user_defined_envs=envs,
+            )
 
 
 if __name__ == "__main__":

@@ -132,6 +132,7 @@ void PToSReshardFunctionCrossMesh::Eval(DeviceContext* dev_ctx,
     p_to_s_func.Eval(dev_ctx, in, in_dist_attr_shard, &tmp_result);
   } else {
     SetDistProps(&tmp_result, in.dims(), in_dist_attr_shard);
+    SetValue(&tmp_result, in.value());
   }
 
   SameStatusReshardFunction same_status_func;

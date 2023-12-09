@@ -2738,6 +2738,8 @@ bool SlotRecordInMemoryDataFeed::Start() {
 #endif
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   gpu_graph_data_generator_.SetFeedVec(feed_vec_);
+  // adapt for dense feature
+  gpu_graph_data_generator_.SetFeedInfo(&used_slots_info_);
 #endif
   return true;
 }
@@ -2811,6 +2813,15 @@ void SlotRecordInMemoryDataFeed::DumpWalkPath(std::string dump_path,
   std::string path =
       string::format_string("%s/part-%03d", dump_path.c_str(), thread_id_);
   gpu_graph_data_generator_.DumpWalkPath(path, dump_rate);
+#endif
+}
+
+void SlotRecordInMemoryDataFeed::DumpSampleNeighbors(std::string dump_path) {
+  VLOG(1) << "INTO SlotRecordInMemoryDataFeed::DumpSampleNeighbors";
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+  std::string path =
+      string::format_string("%s/part-%03d", dump_path.c_str(), thread_id_);
+  gpu_graph_data_generator_.DumpSampleNeighbors(path);
 #endif
 }
 
