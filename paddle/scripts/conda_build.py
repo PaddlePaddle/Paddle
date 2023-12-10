@@ -16,9 +16,9 @@
 
 import argparse
 import os
-
-#
 import platform
+
+package_path = os.getenv('PACKAGEPATH', default='/package')
 
 
 def parse_args():
@@ -51,24 +51,23 @@ requirements:
 
         self.requirement_run = r"""
   run:
-    - requests>=2.20.0
+    - httpx
     - numpy>=1.13
-    - protobuf>=3.1.0
-    - gast==0.3.3
+    - protobuf>=3.20.2, <4.22.5
     - Pillow
     - decorator
     - astor
+    - opt_einsum==3.3.0
 """
 
         self.requirement_run_windows = r"""
   run:
-    - requests>=2.20.0
+    - httpx
     - numpy>=1.13
-    - protobuf>=3.1.0
-    - gast==0.3.3
     - Pillow
     - decorator
     - astor
+    - opt_einsum==3.3.0
 """
         self.test = r"""
 test:
@@ -85,64 +84,88 @@ about:
 """
 
         self.build_const = r"""
-"""
+pip install paddle_bfloat==0.1.7 -f {}
+""".format(
+            package_path
+        )
 
         self.blt_const = r"""
+pip install paddle_bfloat==0.1.7 -f C:\package
+pip install protobuf===3.20.2 -f C:\package
 """
 
         self.python37 = r"    - python>=3.7, <3.8"
         self.python38 = r"    - python>=3.8, <3.9"
         self.python39 = r"    - python>=3.9, <3.10"
-        self.python310 = r"   - python>=3.10, <3.11"
+        self.python310 = r"    - python>=3.10, <3.11"
+        self.python311 = r"    - python>=3.11, <3.12"
 
         self.python_version = [
             self.python37,
             self.python38,
             self.python39,
             self.python310,
+            self.python311,
         ]
 
-        self.cuda101 = r"""
-    - cudatoolkit>=10.1, <10.2
-    - cudnn>=7.6, <7.7
-    """
         self.cuda102 = r"""
     - cudatoolkit>=10.2, <10.3
     - cudnn>=7.6, <7.7
     """
         self.cuda112 = r"""
     - cudatoolkit>=11.2, <11.3
-    - cudnn>=8.1, <8.2
+    - cudnn>=8.2, <8.3
+    """
+        self.cuda116 = r"""
+    - cudatoolkit>=11.6, <11.7
+    - cudnn>=8.4, <8.5
     """
 
+        self.cuda117 = r"""
+    - cudatoolkit>=11.7, <11.8
+    - cudnn>=8.4, <8.5
+    """
         self.cuda_info = [
-            (self.cuda101, "cuda10.1", ".post101"),
-            (self.cuda102, "cuda10.2", ""),
+            (self.cuda102, "cuda10.2", ".post102"),
             (self.cuda112, "cuda11.2", ".post112"),
+            (self.cuda116, "cuda11.6", ".post116"),
+            (self.cuda117, "cuda11.7", ".post117"),
         ]
-        self.py_str = ["py37", "py38", "py39", "py310"]
+        self.py_str = ["py37", "py38", "py39", "py310", "py311"]
         self.pip_end = ".whl --no-deps"
-        self.pip_prefix_linux = "pip install /package/paddlepaddle"
+        self.pip_prefix_linux = "pip install {}/paddlepaddle".format(
+            package_path
+        )
         self.pip_prefix_windows = r"pip install C:\package\paddlepaddle"
         self.pip_gpu = "_gpu-"
         self.pip_cpu = "-"
         self.mac_pip = [
-            "-cp37-cp37m-macosx_10_6_intel",
-            "-cp38-cp38-macosx_10_14_x86_64",
-            "-cp39-cp39-macosx_10_14_x86_64",
-            "-cp310-cp310-macosx_10_14_x86_64",
+            "-cp37-cp37m-macosx_10_9_x86_64",
+            "-cp38-cp38-macosx_10_9_x86_64",
+            "-cp39-cp39-macosx_10_9_x86_64",
+            "-cp310-cp310-macosx_10_9_x86_64",
+            "-cp311-cp311-macosx_10_9_x86_64",
+        ]
+        self.mac_pip_arm = [
+            "",
+            "-cp38-cp38-macosx_11_0_arm64",
+            "-cp39-cp39-macosx_11_0_arm64",
+            "-cp310-cp310-macosx_11_0_arm64",
+            "-cp311-cp311-macosx_11_0_arm64",
         ]
         self.linux_pip = [
             "-cp37-cp37m-linux_x86_64",
             "-cp38-cp38-linux_x86_64",
             "-cp39-cp39-linux_x86_64",
             "-cp310-cp310-linux_x86_64",
+            "-cp311-cp311-linux_x86_64",
         ]
         self.windows_pip = [
             "-cp37-cp37m-win_amd64",
             "-cp38-cp38-win_amd64",
             "-cp39-cp39-win_amd64",
             "-cp310-cp310-win_amd64",
+            "-cp311-cp311-win_amd64",
         ]
 
 
@@ -335,20 +358,37 @@ def conda_build(paddle_version, var):
         os.system("cd ..")
 
     elif sysstr == "Darwin":
-        os.system("mkdir paddle")
-        os.chdir(r"./paddle")
-        for i in range(len(var.python_version)):
-            build_var = (
-                var.pip_prefix_linux
-                + var.pip_cpu
-                + paddle_version
-                + var.mac_pip[i]
-                + var.pip_end
-            )
-            name = var.py_str[i] + "_mac"
-            python_str = var.python_version[i]
-            meta_build_mac(var, python_str, paddle_version, build_var, name)
-            os.system("conda build .")
+        if platform.machine() == "x86_64":
+            os.system("mkdir paddle")
+            os.chdir(r"./paddle")
+            for i in range(len(var.python_version)):
+                build_var = (
+                    var.pip_prefix_linux
+                    + var.pip_cpu
+                    + paddle_version
+                    + var.mac_pip[i]
+                    + var.pip_end
+                )
+                name = var.py_str[i] + "_mac"
+                python_str = var.python_version[i]
+                meta_build_mac(var, python_str, paddle_version, build_var, name)
+                os.system("conda build .")
+        else:
+            os.system("mkdir paddle")
+            os.chdir(r"./paddle")
+            for i in range(1, len(var.python_version)):
+                # The mac-arm version does not support python3.7
+                build_var = (
+                    var.pip_prefix_linux
+                    + var.pip_cpu
+                    + paddle_version
+                    + var.mac_pip_arm[i]
+                    + var.pip_end
+                )
+                name = var.py_str[i] + "_mac"
+                python_str = var.python_version[i]
+                meta_build_mac(var, python_str, paddle_version, build_var, name)
+                os.system("conda build .")
 
         os.system("cd ..")
 
