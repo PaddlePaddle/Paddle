@@ -34,6 +34,7 @@ from paddle.framework import (
 )
 from paddle.metric import Metric
 from paddle.static import InputSpec, Operator, Variable, global_scope
+from paddle.static.amp.fp16_utils import _convert_float_to_bfloat16
 
 from ...utils.log_utils import get_logger
 from ..interface import CollectionNames, fetch, get_collection
@@ -253,6 +254,8 @@ class Engine:
 
         paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 1})
         paddle.framework.set_flags({'FLAGS_new_executor_static_build': 1})
+
+        self.enable_job_schedule_profiler = False
 
     def _prepare_data_spec(self, data, split, batch_size):
         inputs_spec = []
@@ -565,9 +568,8 @@ class Engine:
         self._parallel(mode)
         # Init comm
         self._init_comm()
-        if init_parameters:
-            # startup program
-            self._initialize(mode)
+        # startup program
+        self._initialize(mode, init_parameters)
         self._has_prepared[mode] = True
 
     def _build(self, mode):
@@ -807,7 +809,7 @@ class Engine:
                 for process_group in all_process_groups:
                     process_group.instantiate()
 
-    def _initialize(self, mode):
+    def _initialize(self, mode, init_parameters=True):
         self._place = _get_device()
         if isinstance(self._place, paddle.framework.CUDAPlace):
             self._place = paddle.framework.CUDAPlace(
@@ -820,8 +822,8 @@ class Engine:
             random.seed(self._strategy.seed + self._dp_ranks[0])
 
         dist_context = self._dist_contexts[mode]
+        dist_main_program = dist_context.dist_main_programs[self._cur_rank]
         if self._dygraph_mode:
-            dist_main_program = dist_context.dist_main_programs[self._cur_rank]
             self.program_helper.init(
                 dist_main_program, self._place, dist_context
             )
@@ -829,11 +831,30 @@ class Engine:
             # have been initialized when initialize model in dynamic mode.
             if self._model and len(self._model.buffers()) > 0:
                 for buffer in self._model.buffers():
-                    scope_var = global_scope().find_var(buffer.name)
-                    buffer_tensor = global_scope().var(buffer.name).get_tensor()
-                    if scope_var and buffer_tensor._is_initialized():
-                        continue
-                    buffer_tensor.set(buffer.numpy(), self._place)
+                    if dist_main_program.global_block().has_var(buffer.name):
+                        dest_type = (
+                            dist_main_program.global_block()
+                            .var(buffer.name)
+                            .dtype
+                        )
+                        scope_var = global_scope().find_var(buffer.name)
+                        buffer_tensor = (
+                            global_scope().var(buffer.name).get_tensor()
+                        )
+                        if scope_var and buffer_tensor._is_initialized():
+                            continue
+                        # for amp
+                        if dest_type == core.VarDesc.VarType.BF16:
+                            buffer_tensor.set(
+                                _convert_float_to_bfloat16(buffer.numpy()),
+                                self._place,
+                            )
+                        elif dest_type == core.VarDesc.VarType.FP16:
+                            buffer_tensor.set(
+                                np.float16(buffer.numpy()), self._place
+                            )
+                        else:
+                            buffer_tensor.set(buffer.numpy(), self._place)
 
         if self._executor is None:
             self._executor = paddle.static.Executor(self._place)
@@ -1492,6 +1513,11 @@ class Engine:
             and not self._has_prepared_reader[self._mode]
         ):
             self._prepare_reader()
+
+        self._executor.enable_job_schedule_profiler = (
+            self.enable_job_schedule_profiler
+        )
+
         outs = self._executor.run(
             self.main_program,
             feed=feed_dict,
@@ -1503,6 +1529,29 @@ class Engine:
             outs, None, None, None, fetch_names, fetch_indices, self._mode
         )
         return logs
+
+    def get_feed_list(self):
+        dist_context = self._dist_contexts[self._mode]
+        dist_main_prog = dist_context.dist_main_programs[self._cur_rank]
+        dist_startup_prog = dist_context.dist_startup_programs[self._cur_rank]
+        dist_main_block = dist_main_prog.global_block()
+
+        # NOTE: Get feed_list, then insert dataloader op with sharded var shape.
+        # Cause predict_program does not contain labels var,
+        # then we will add labels var from serial_program to dist_program,
+        # that maintains the length of feed_list equal to the length of dataset's values.
+        inputs_var = dist_context.serial_feed_vars["inputs"]
+        labels_var = dist_context.serial_feed_vars["labels"]
+        feed_list = []
+        for var in inputs_var + labels_var:
+            if var.name in dist_main_block.vars:
+                feed_list.append(dist_main_block.vars[var.name])
+            else:
+                copy_var = dist_main_block._clone_variable(var, var.persistable)
+                copy_var.desc.set_original_id(var.desc.original_id())
+                feed_list.append(copy_var)
+
+        return feed_list
 
     def _prepare_dataloader(
         self,
@@ -1959,6 +2008,18 @@ class Engine:
         global_cost, max_memory = get_cost_from_engine(self, mode)
 
         return global_cost.time, max_memory
+
+    def get_dist_main_program(self, mode):
+        return self._dist_contexts[mode].dist_main_programs[self._cur_rank]
+
+    def get_dist_startup_program(self, mode):
+        return self._dist_contexts[mode].dist_startup_programs[self._cur_rank]
+
+    def get_serial_main_program(self, mode):
+        return self._dist_contexts[mode].serial_main_program
+
+    def get_serial_startup_program(self, mode):
+        return self._dist_contexts[mode].serial_startup_program
 
     @property
     def main_program(self):

@@ -29,6 +29,7 @@ class TestSimpleNetWithAmpForSemiAutoParallel(TestSimpleNetForSemiAutoParallel):
         self._dtype = os.getenv("dtype")
         self._backend = os.getenv("backend")
         self._seed = eval(os.getenv("seed"))
+        self._use_adam = eval(os.getenv("use_adam"))
         self._use_master_grad = bool(eval(os.getenv("use_master_grad")))
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
 
@@ -41,9 +42,14 @@ class TestSimpleNetWithAmpForSemiAutoParallel(TestSimpleNetForSemiAutoParallel):
     def run_dynamic_amp(self, layer, level='O1', shard_input=False):
         # create loss
         loss_fn = nn.MSELoss()
-        opt = paddle.optimizer.AdamW(
-            learning_rate=0.1, parameters=layer.parameters()
-        )
+        if self._use_adam:
+            opt = paddle.optimizer.Adam(
+                learning_rate=0.1, parameters=layer.parameters()
+            )
+        else:
+            opt = paddle.optimizer.AdamW(
+                learning_rate=0.1, parameters=layer.parameters()
+            )
 
         if level == 'O2':
             layer, opt = paddle.amp.decorate(
@@ -59,12 +65,7 @@ class TestSimpleNetWithAmpForSemiAutoParallel(TestSimpleNetForSemiAutoParallel):
         for _ in range(5):
             image, label = self.init_input_data()
             if shard_input:
-                image = dist.shard_tensor(
-                    image,
-                    dist_attr=dist.DistAttr(
-                        mesh=self._mesh, sharding_specs=['x', None]
-                    ),
-                )
+                image = dist.shard_tensor(image, self._mesh, [dist.Shard(0)])
 
             with paddle.amp.auto_cast(level=level):
                 out = layer(image)
@@ -150,6 +151,8 @@ class TestSimpleNetWithAmpForSemiAutoParallel(TestSimpleNetForSemiAutoParallel):
             self.check_tensor_eq(param.grad, param_base.grad)
 
     def run_test_case(self):
+        if self._dtype == "bfloat16" and not paddle.amp.is_bfloat16_supported():
+            return
         self.test_dp_demo_net()
         self.test_mp_demo_net()
 

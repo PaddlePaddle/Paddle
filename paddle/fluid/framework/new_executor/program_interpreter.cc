@@ -54,7 +54,8 @@ ProgramInterpreter::ProgramInterpreter(const platform::Place& place,
       block_(block),
       stream_analyzer_(place),
       execution_config_(execution_config),
-      var_scope_(scope) {
+      var_scope_(scope),
+      enable_job_schedule_profiler_(false) {
   VLOG(4) << "ProgramInterpreter(): " << this << " on " << place_;
 
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
@@ -90,6 +91,10 @@ ProgramInterpreter::ProgramInterpreter(const platform::Place& place,
   };
 
   PrepareForCUDAGraphCapture();
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  calculate_stream_timer_ = std::make_unique<phi::CalculateStreamTimer>(place);
+#endif
 }
 
 ProgramInterpreter::~ProgramInterpreter() {
@@ -113,7 +118,7 @@ void ProgramInterpreter::RunImpl() {
 
   interpreter::ResetAtomicGuard guard(&deps_, &refs_);
 
-  if (execution_config_.used_for_inference ||
+  if (is_in_op_profiling_mode_ || execution_config_.used_for_inference ||
       ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
        (sync_op_num_ == 0))) {
     VLOG(4) << "Tracing Instruction List";
@@ -126,6 +131,7 @@ void ProgramInterpreter::RunImpl() {
     async_work_queue_ = GetWorkQueue();
     ExecuteInstructionList(vec_instruction_);
   }
+
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (platform::is_custom_place(place_)) {
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
@@ -134,7 +140,12 @@ void ProgramInterpreter::RunImpl() {
 }
 
 FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
-                                  bool need_fetch) {
+                                  bool need_fetch,
+                                  bool enable_job_schedule_profiler,
+                                  bool enable_op_profiling) {
+  enable_job_schedule_profiler_ = enable_job_schedule_profiler;
+  is_in_op_profiling_mode_ = enable_op_profiling;
+
   std::vector<paddle::framework::OpFuncNode> op_func_nodes;
   Build(feed_names, &op_func_nodes);
 
@@ -157,6 +168,13 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
     ClearLoDTensorArrayInLocalScope();
   }
 
+  // NOTE (liuchenghao): we need to reset "is_in_op_profiling_mode_" to false.
+  // This is because ProgramInterpreter::Run(...) has two implementations, only
+  // this implementation correctly updates its state, if user switches to
+  // another implementation of Run(...) half way, its state can cause potential
+  // problems.
+  is_in_op_profiling_mode_ = false;
+
   if (need_fetch) {
     // return Fetch Tensors
     Scope* inner_scope =
@@ -176,6 +194,7 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
       return fetch_list;
     }
   }
+
   return {};
 }
 
@@ -201,6 +220,8 @@ void ProgramInterpreter::Build(
         op_func_nodes,
         &var_scope_,
         execution_config_,
+        input_hookfuncs_,
+        output_hookfuncs_,
         HasLocalScope(),
         static_build_);
   }
@@ -209,7 +230,10 @@ void ProgramInterpreter::Build(
 FetchList ProgramInterpreter::Run(
     const std::vector<std::string>& feed_names,
     const std::vector<phi::DenseTensor>& feed_tensors,
-    bool need_fetch) {
+    bool need_fetch,
+    bool enable_job_schedule_profiler) {
+  enable_job_schedule_profiler_ = enable_job_schedule_profiler;
+
   SetDeviceId(place_);
   CheckCUDAGraphBeforeRun(feed_names);
 
@@ -633,6 +657,15 @@ void ProgramInterpreter::ClearLoDTensorArrayInLocalScope() {
   }
 }
 
+std::tuple<double, double> ProgramInterpreter::InterpreterRunTime() {
+  double start_time = 0, end_time = 0;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  start_time = calculate_stream_timer_->StartTime();
+  end_time = calculate_stream_timer_->EndTime();
+#endif
+  return std::make_tuple(start_time, end_time);
+}
+
 void ProgramInterpreter::Convert(
     std::vector<paddle::framework::OpFuncNode>* op_func_nodes) {
   auto& vec_meta_info = var_scope_.MutableVecMetaInfo();
@@ -875,8 +908,15 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
                                        : var_scope_.GetMutableScope();
   VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope);
 
-  if (op->Type() == "while") {
-    op->SetOutputHooks(hookfuncs_);
+  if (execution_config_.used_for_inference) {
+    for (auto& hook : input_hookfuncs_) {
+      hook(op, local_scope);
+    }
+
+    if (op->Type() == "while") {
+      op->SetInputHooks(input_hookfuncs_);
+      op->SetOutputHooks(output_hookfuncs_);
+    }
   }
 
   auto op_with_kernel = dynamic_cast<const framework::OperatorWithKernel*>(op);
@@ -921,12 +961,24 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
     }
   }
 
-  {
+  if (is_in_op_profiling_mode_ && interpreter::IsCommunicationOp(op)) {
+    // skip communication op if enabled runtime profiling feature since their
+    // run time are mainly determined by other ops and they require other
+    // sub-graphs also run on the same machine concurrently, which cannot be
+    // guaranteed in most of the time.
+  } else {
     platform::RecordEvent compute_event(
         "compute",
         platform::TracerEventType::OperatorInner,
         1,
         platform::EventRole::kInnerOp);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    if (is_in_op_profiling_mode_) {
+      platform::GpuDeviceSync();
+    }
+#endif
+
     if (op_with_kernel == nullptr) {  // operator base
       instr_node.OpBase()->Run(*local_scope, place_);
     } else {
@@ -951,6 +1003,17 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
       } else {  // fluid kernel
         instr_node.KernelFunc()(*instr_node.InnerExecutionContext().get());
       }
+    }
+
+    if (is_in_op_profiling_mode_ && op->Id() != UINT64_MAX) {
+      OperatorDistAttr* op_dist_attr = block_.Op(op->Id())->MutableDistAttr();
+      platform::Timer op_timer;
+      op_timer.Start();
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      platform::GpuDeviceSync();
+#endif
+      op_timer.Pause();
+      if (op_dist_attr) op_dist_attr->set_run_time_us(op_timer.ElapsedUS());
     }
   }
 
@@ -984,8 +1047,10 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
 #endif
   }
 
-  for (auto& hook : hookfuncs_) {
-    hook(op, local_scope);
+  if (execution_config_.used_for_inference) {
+    for (auto& hook : output_hookfuncs_) {
+      hook(op, local_scope);
+    }
   }
 
   // for debug nan/inf
@@ -1040,6 +1105,15 @@ void ProgramInterpreter::RunInstruction(const Instruction& instr_node) {
 
   try {
     instr_node.WaitEvent(place_);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    if (enable_job_schedule_profiler_) {
+      if (!calculate_stream_timer_->IsStarted() && op->Type() != "feed" &&
+          !interpreter::IsCommunicationOp(instr_node)) {
+        VLOG(3) << "Start calculated stream timer from op: " << op->Type();
+        calculate_stream_timer_->Start();
+      }
+    }
+#endif
 
     if (!instr_node.IsArtificial()) {
       RunOperator(instr_node);
@@ -1050,6 +1124,15 @@ void ProgramInterpreter::RunInstruction(const Instruction& instr_node) {
     }
 
     instr_node.RecordEvent(place_);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    if (enable_job_schedule_profiler_) {
+      if (instr_node.Id() == last_calculate_instr_id_ &&
+          calculate_stream_timer_->IsStarted()) {
+        VLOG(3) << "Stop calculated stream timer from op: " << op->Type();
+        calculate_stream_timer_->Stop();
+      }
+    }
+#endif
   } catch (platform::EnforceNotMet& ex) {
     framework::InsertCallStackInfo(op->Type(), op->Attrs(), &ex);
     exception_holder_.Catch(std::make_exception_ptr(ex));
@@ -1093,6 +1176,17 @@ void ProgramInterpreter::ExecuteInstructionList(
   }
 
   exception_holder_.Clear();
+
+  if (enable_job_schedule_profiler_) {
+    for (int i = vec_instr.size() - 1; i >= 0; --i) {
+      auto& instr_node = vec_instr[i];
+      if (!interpreter::IsCommunicationOp(instr_node)) {
+        VLOG(3) << "Last calculated op type: " << instr_node.OpBase()->Type();
+        last_calculate_instr_id_ = instr_node.Id();
+        break;
+      }
+    }
+  }
 
   for (size_t i = 0; i < dependecy_count_->size(); ++i) {
     if ((*dependecy_count_)[i] == 0) {
@@ -1391,6 +1485,8 @@ void ProgramInterpreter::Prepare(
         &op_func_nodes,
         &var_scope_,
         execution_config_,
+        input_hookfuncs_,
+        output_hookfuncs_,
         HasLocalScope(),
         static_build_);
     SetFeedVarsInplaceSkip(feed_names);
@@ -1411,6 +1507,10 @@ void ProgramInterpreter::Prepare(
   if (prepare_feed) {
     FeedInput();
   }
+}
+
+std::shared_ptr<ProgramDesc> ProgramInterpreter::GetMutableCopyProgram() {
+  return copy_program_;
 }
 
 void ProgramInterpreter::SetFeedVarsInplaceSkip(
@@ -1572,5 +1672,9 @@ void ProgramInterpreter::AnalyseExecuteOrderForTrace() {
   }
 }
 
+Variable* ProgramInterpreter::DebugVar(const std::string& name) const {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "DebugVar is not implemented in ProgramInterpreter."));
+}
 }  // namespace framework
 }  // namespace paddle

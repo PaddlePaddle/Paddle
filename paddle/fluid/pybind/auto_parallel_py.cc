@@ -47,6 +47,7 @@
 #include "paddle/phi/core/distributed/auto_parallel/reshard/p_to_s_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/r_to_p_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/r_to_s_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/s_to_p_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/s_to_r_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/s_to_s_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/same_status_reshard_function.h"
@@ -90,7 +91,6 @@ using phi::distributed::auto_parallel::Machine;
 
 PyTypeObject *g_tensor_dist_attr_pytype = nullptr;
 PyTypeObject *g_dist_tensor_spec_pytype = nullptr;
-PyTypeObject *g_placement_base_pytype = nullptr;
 PyTypeObject *g_process_mesh_pytype = nullptr;
 PyTypeObject *g_placement_shard_pytype = nullptr;
 PyTypeObject *g_placement_replicated_pytype = nullptr;
@@ -150,6 +150,7 @@ static inline void reset_operator_dist_attr(OperatorDistAttr *dist_attr) {
   }
   dist_attr->set_impl_type(kDefault);
   dist_attr->set_impl_idx(0);
+  dist_attr->set_chunk_id(0);
   dist_attr->clear_annotated();
 }
 
@@ -208,12 +209,24 @@ void BindAutoParallel(py::module *m) {
       *m, "RToPReshardFunction", ReshardFunction)
       .def(py::init<>());
 
+  py::class_<phi::distributed::RToPReshardFunctionCrossMesh>(
+      *m, "RToPReshardFunctionCrossMesh", ReshardFunction)
+      .def(py::init<>());
+
   py::class_<phi::distributed::PToRReshardFunction>(
       *m, "PToRReshardFunction", ReshardFunction)
       .def(py::init<>());
 
+  py::class_<phi::distributed::PToRReshardFunctionCrossMesh>(
+      *m, "PToRReshardFunctionCrossMesh", ReshardFunction)
+      .def(py::init<>());
+
   py::class_<phi::distributed::SToSReshardFunction>(
       *m, "SToSReshardFunction", ReshardFunction)
+      .def(py::init<>());
+
+  py::class_<phi::distributed::SToPReshardFunction>(
+      *m, "SToPReshardFunction", ReshardFunction)
       .def(py::init<>());
 
   py::class_<phi::distributed::PToSReshardFunction>(
@@ -359,7 +372,30 @@ void BindAutoParallel(py::module *m) {
           py::arg("memo"))
       .def("__str__", &DeviceMesh::to_string);
 
-  py::enum_<phi::ReduceType>(*m, "ReduceType")
+  py::enum_<phi::ReduceType>(*m, "ReduceType", R"DOC(
+    Specify the type of operation used for paddle.distributed.Partial().
+    It should be one of the following values:
+
+        - ReduceType.kRedSum
+        - ReduceType.kRedMax
+        - ReduceType.kRedMin
+        - ReduceType.kRedProd
+        - ReduceType.kRedAvg
+        - ReduceType.kRedAny
+        - ReduceType.kRedAll
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.distributed as dist
+            >>> mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+            >>> a = paddle.ones([10, 20])
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> # distributed tensor
+            >>> d_tensor = dist.shard_tensor(a, mesh, [dist.Partial(dist.ReduceType.kRedSum)])
+
+      )DOC")
       .value("kRedSum", phi::ReduceType::kRedSum)
       .value("kRedMax", phi::ReduceType::kRedMax)
       .value("kRedMin", phi::ReduceType::kRedMin)
@@ -370,7 +406,25 @@ void BindAutoParallel(py::module *m) {
 
   auto Placement =
       py::class_<phi::distributed::Placement,
-                 std::shared_ptr<phi::distributed::Placement>>(*m, "Placement")
+                 std::shared_ptr<phi::distributed::Placement>>(
+          *m, "Placement", R"DOC(
+        The `Placement` is base class that describes how to place the tensor on ProcessMesh. it has three subclass: `Replicate`, `Shard` and `Partial`.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle.distributed as dist
+                >>> placements = [dist.Replicate(), dist.Shard(0), dist.Partial()]
+                >>> for p in placements:
+                >>>     if isinstance(p, dist.Placement):
+                >>>         if p.is_replicated():
+                >>>             print("replicate.")
+                >>>         elif p.is_shard():
+                >>>             print("shard.")
+                >>>         elif p.is_partial():
+                >>>             print("partial.")
+
+      )DOC")
           .def(py::init<>())
           .def("is_shard",
                &phi::distributed::Placement::is_shard,
@@ -384,7 +438,24 @@ void BindAutoParallel(py::module *m) {
 
   auto Shard = py::class_<phi::distributed::Shard,
                           std::shared_ptr<phi::distributed::Shard>>(
-                   *m, "Shard", Placement)
+                   *m, "Shard", Placement, R"DOC(
+               The `Shard` describes how `Tensor` splitted across multiple devices according to specified dimensions.
+
+               Parameters:
+                   dim (int): specify the slicing dimension of the tensor.
+
+               Examples:
+                   .. code-block:: python
+
+                       >>> import paddle
+                       >>> import paddle.distributed as dist
+                       >>> mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=['x', 'y'])
+                       >>> a = paddle.to_tensor([[1,2,3],[5,6,7]])
+                       >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                       >>> # distributed tensor
+                       >>> d_tensor = dist.shard_tensor(a, mesh, [dist.Shard(0), dist.Shard(1)])
+
+               )DOC")
                    .def(py::init([](int64_t dim) {
                      return std::make_shared<phi::distributed::Shard>(dim);
                    }))
@@ -396,7 +467,21 @@ void BindAutoParallel(py::module *m) {
 
   auto Replicate = py::class_<phi::distributed::Replicate,
                               std::shared_ptr<phi::distributed::Replicate>>(
-                       *m, "Replicate", Placement)
+                       *m, "Replicate", Placement, R"DOC(
+                   The `Replicate` describes the tensor placed repeatedly on ProcessMesh.
+
+                   Examples:
+                       .. code-block:: python
+
+                           >>> import paddle
+                           >>> import paddle.distributed as dist
+                           >>> mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+                           >>> a = paddle.ones([10, 20])
+                           >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                           >>> # distributed tensor
+                           >>> d_tensor = dist.shard_tensor(a, mesh, [dist.Replicate()])
+
+                   )DOC")
                        .def(py::init<>())
                        .def("__hash__", &phi::distributed::Replicate::hash)
                        .def("__str__", &phi::distributed::Replicate::to_string)
@@ -405,7 +490,24 @@ void BindAutoParallel(py::module *m) {
 
   auto Partial = py::class_<phi::distributed::Partial,
                             std::shared_ptr<phi::distributed::Partial>>(
-                     *m, "Partial", Placement)
+                     *m, "Partial", Placement, R"DOC(
+                 The `Partial` describes `Tensor` across multiple devices, this type of tensor has the same shape but only a fraction of the value, which can be further reduce (e.g. sum/min/max) to obtain dist_tensor, often used as an intermediate representation.
+
+                 Parameters:
+                   reduce_type (paddle.distributed.ReduceType): the reduce type of the Partial state, default `paddle.distributed.ReduceType.kRedSum`.
+
+                 Examples:
+                     .. code-block:: python
+
+                         >>> import paddle
+                         >>> import paddle.distributed as dist
+                         >>> mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+                         >>> a = paddle.ones([10, 20])
+                         >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                         >>> # distributed tensor
+                         >>> d_tensor = dist.shard_tensor(a, mesh, [dist.Partial()])
+
+                 )DOC")
                      .def(py::init<phi::ReduceType>(),
                           py::arg("reduce_type") = phi::ReduceType::kRedSum)
                      .def("__hash__", &phi::distributed::Partial::hash)
@@ -413,7 +515,6 @@ void BindAutoParallel(py::module *m) {
                      .def(py::self == py::self)
                      .def(py::self != py::self);
 
-  g_placement_base_pytype = reinterpret_cast<PyTypeObject *>(Placement.ptr());
   g_placement_shard_pytype = reinterpret_cast<PyTypeObject *>(Shard.ptr());
   g_placement_replicated_pytype =
       reinterpret_cast<PyTypeObject *>(Replicate.ptr());
@@ -437,6 +538,8 @@ void BindAutoParallel(py::module *m) {
       .def_property("batch_dim",
                     &TensorDistAttr::batch_dim,
                     &TensorDistAttr::set_batch_dim)
+      .def_property(
+          "chunk_id", &TensorDistAttr::chunk_id, &TensorDistAttr::set_chunk_id)
       .def_property("dynamic_dims",
                     &TensorDistAttr::dynamic_dims,
                     &TensorDistAttr::set_dynamic_dims)
@@ -533,6 +636,9 @@ void BindAutoParallel(py::module *m) {
       .def_property("impl_idx",
                     &OperatorDistAttr::impl_idx,
                     &OperatorDistAttr::set_impl_idx)
+      .def_property("chunk_id",
+                    &OperatorDistAttr::chunk_id,
+                    &OperatorDistAttr::set_chunk_id)
       .def_property("is_recompute",
                     &OperatorDistAttr::is_recompute,
                     &OperatorDistAttr::set_is_recompute)
@@ -689,7 +795,7 @@ static void parse_tensors(PyObject *obj,
     DistTensorSpec in = py::cast<DistTensorSpec>(PyList_GetItem(obj, i));
     VLOG(6) << "Vector emplace_back DistTensorSpec: " << in.to_string();
     ins.emplace_back(phi::distributed::DistMetaTensor(
-        phi::make_ddim(in.shape()), in.dist_attr()));
+        common::make_ddim(in.shape()), in.dist_attr()));
   }
   ctx->EmplaceBackInputs(ins);
 }
@@ -701,7 +807,7 @@ static void parse_tensor(PyObject *obj,
   DistTensorSpec in = py::cast<DistTensorSpec>(obj);
   VLOG(6) << "DistTensorSpec: " << in.to_string();
   ctx->EmplaceBackInput(phi::distributed::DistMetaTensor(
-      phi::make_ddim(in.shape()), in.dist_attr()));
+      common::make_ddim(in.shape()), in.dist_attr()));
 }
 
 // TODO(ljz) support other types

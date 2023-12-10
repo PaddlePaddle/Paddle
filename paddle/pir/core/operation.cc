@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstdint>
 #include <ostream>
 
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/block.h"
 #include "paddle/pir/core/block_operand_impl.h"
 #include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/op_info.h"
 #include "paddle/pir/core/op_result_impl.h"
 #include "paddle/pir/core/operation.h"
@@ -75,6 +76,11 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
                      region_mem_size + block_operand_size;
   // 2. Malloc memory.
   char *base_ptr = reinterpret_cast<char *>(aligned_malloc(base_size, 8));
+
+  auto name = op_info ? op_info.name() : "";
+  VLOG(6) << "Create Operation [" << name
+          << "]: {ptr = " << static_cast<void *>(base_ptr)
+          << ", size = " << base_size << "} done.";
   // 3.1. Construct OpResults.
   for (size_t idx = num_results; idx > 0; idx--) {
     if (idx > max_inline_result_num) {
@@ -202,7 +208,8 @@ Operation::Operation(const AttributeMap &attributes,
       num_results_(num_results),
       num_operands_(num_operands),
       num_regions_(num_regions),
-      num_successors_(num_successors) {}
+      num_successors_(num_successors),
+      id_(GenerateId()) {}
 
 ///
 /// \brief op ouput related public interfaces implementation
@@ -354,17 +361,12 @@ int32_t Operation::ComputeOpOperandOffset(uint32_t index) const {
                               sizeof(Operation));
 }
 
-#define COMPONENT_IMPL(component_lower, componnent_upper)                     \
-  componnent_upper##Impl *Operation::component_lower##_impl(uint32_t index) { \
-    int32_t offset = Compute##componnent_upper##Offset(index);                \
-    return reinterpret_cast<componnent_upper##Impl *>(                        \
-        reinterpret_cast<char *>(this) + offset);                             \
-  }                                                                           \
-  const componnent_upper##Impl *Operation::component_lower##_impl(            \
-      uint32_t index) const {                                                 \
-    int32_t offset = Compute##componnent_upper##Offset(index);                \
-    return reinterpret_cast<const componnent_upper##Impl *>(                  \
-        reinterpret_cast<const char *>(this) + offset);                       \
+#define COMPONENT_IMPL(component_lower, componnent_upper)                   \
+  componnent_upper##Impl *Operation::component_lower##_impl(uint32_t index) \
+      const {                                                               \
+    int32_t offset = Compute##componnent_upper##Offset(index);              \
+    return reinterpret_cast<componnent_upper##Impl *>(                      \
+        reinterpret_cast<char *>(const_cast<Operation *>(this)) + offset);  \
   }
 
 COMPONENT_IMPL(op_result, OpResult)

@@ -14,12 +14,13 @@
 
 import logging
 import typing
+import warnings
 
 from paddle import pir
 from paddle.autograd import ir_backward
 from paddle.base.core import (
     call_decomp,
-    decomp_ops_list_contain_unused_output,
+    decomp_ops_contain_unused_output,
     has_decomp,
 )
 from paddle.base.libpaddle.pir import Block, Operation, Program
@@ -37,22 +38,20 @@ def _build_tensor_tuple(xs):
 
 
 def _analyse_decomp_results(orig_outs, decomp_outs, op):
-    intermediate_status = op.get_output_intermediate_status()
-    assert len(orig_outs) == len(decomp_outs) == len(intermediate_status)
+    assert len(orig_outs) == len(decomp_outs)
     res = []
-    for org_item, new_item, value in zip(
-        orig_outs, decomp_outs, intermediate_status
-    ):
-        if isinstance(org_item, pir.OpResult):
-            if value and op.name() in decomp_ops_list_contain_unused_output:
-                assert new_item[0] is None
+    for idx, value in enumerate(decomp_outs):
+        if isinstance(orig_outs[idx], pir.OpResult):
+            if (
+                op.name() in decomp_ops_contain_unused_output.keys()
+                and idx in decomp_ops_contain_unused_output[op.name()]
+            ):
+                assert value[0] is None
             else:
-                assert len(new_item) == 1 and isinstance(
-                    new_item[0], pir.OpResult
-                )
-            res.append(new_item[0])
+                assert len(value) == 1 and isinstance(value[0], pir.OpResult)
+            res.append(value[0])
         else:
-            res.append(new_item)
+            res.append(value)
     return res
 
 
@@ -87,6 +86,33 @@ def _prepare_python_api_arguments(op):
 
     api_arguments = inputs + [op.attrs()[x] for x in op.get_attr_names()]
     return tuple(api_arguments)
+
+
+def _check_prim_dynamic(op):
+    combine_op_name = "builtin.combine"
+    inputs = []
+    for x in op.operands():
+        input = x.source()
+        if input and input.initialized():
+            prev_op = input.get_defining_op()
+            if (
+                isinstance(prev_op, Operation)
+                and prev_op.name() == combine_op_name
+            ):
+                for item in prev_op.operands():
+                    shape = item.source().shape
+                    if -1 in shape:
+                        warnings.warn(
+                            f"Decomp op does not support dynamic shape -1, but got shape {item.source().shape} in inputs of op {op.name()} "
+                        )
+                        return True
+            else:
+                shape = input.shape
+                if -1 in shape:
+                    warnings.warn(
+                        f"Decomp op does not support dynamic shape -1, but got shape {input.shape} in op {op.name()} "
+                    )
+                    return True
 
 
 def _check_op_results(
@@ -252,6 +278,13 @@ def _decompose_subgraph(block, orig_vars, dst_vars, op_filter):
             has_sink_decomp_rule = has_decomp(op)
             lower = (decom_rule or has_sink_decomp_rule) and op_filter(op)
 
+            if (
+                lower
+                and core._enable_prim_dynamic_shape()
+                and _check_prim_dynamic(op)
+            ):
+                lower = False
+
             if op.name() == "builtin.combine":
                 temp_op = op
 
@@ -278,10 +311,18 @@ def _decompose_subgraph(block, orig_vars, dst_vars, op_filter):
                 _check_op_results(
                     op_name, orig_outs, new_outs, orig_vars, dst_vars
                 )
-                if op.name() in decomp_ops_list_contain_unused_output:
-                    orig_outs[0].replace_all_uses_with(new_outs[0])
+                if op.name() in decomp_ops_contain_unused_output.keys():
+                    for idx in range(len(orig_outs)):
+                        if (
+                            idx
+                            not in decomp_ops_contain_unused_output[op.name()]
+                        ):
+                            orig_outs[idx].replace_all_uses_with(new_outs[idx])
                 else:
-                    op.replace_all_uses_with(new_outs)
+                    if op.name() in decomp_ops_contain_unused_output.keys():
+                        orig_outs[0].replace_all_uses_with(new_outs[0])
+                    else:
+                        op.replace_all_uses_with(new_outs)
                 block.remove_op(op)
 
                 if temp_op is not None:

@@ -18,6 +18,7 @@ from .dataloader import (
     BatchSampler,
     ChainDataset,
     ComposeDataset,
+    ConcatDataset,
     Dataset,
     DistributedBatchSampler,
     IterableDataset,
@@ -50,4 +51,5 @@ __all__ = [
     'random_split',
     'Subset',
     'SubsetRandomSampler',
+    'ConcatDataset',
 ]

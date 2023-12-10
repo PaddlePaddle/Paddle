@@ -20,33 +20,30 @@ namespace ir {
 void DynamicShapeGroupScheduler::Schedule() {
   // Fake schedule for test
   int max_spacial_numel = 1;
-  ScheduleBlockNode* node = schedule_block_graph_->EndPoints()[0];
-  ir::Expr block_realize = node->Block();
-  std::vector<ir::Expr> loops = ir_sch_->GetLoops(block_realize);
-  ir::Expr extent = loops[0].As<ir::For>()->extent;
+  ScheduleBlockNode* node0 = schedule_block_graph_->StartPoints()[0];
+  ScheduleBlockNode* node1 = schedule_block_graph_->EndPoints()[0];
 
-  ir::Expr condition1 = ir::LE::Make(extent, Expr(1024));
+  ir::Expr block_realize0 = node0->Block();
+  ir::Expr block_realize1 = node1->Block();
+
+  auto block0 = ir_sch_->GetBlock("var");
+  ir_sch_->ComputeInline(block0);
+  auto reorder1 = ir_sch_->Reorder("var_1", {1, 0});
+
+  auto loops1 = ir_sch_->GetLoops("var_1");
+  auto splited_loops1 = ir_sch_->DySplit(loops1[1], {-1, 1, 32});
+  ir_sch_->Bind(splited_loops1[1], "blockIdx.x");
+  ir_sch_->Bind(splited_loops1[2], "threadIdx.x");
+
+  ir::Expr predicate1 = ir::LE::Make(Expr(1023), Expr(1024));
   std::unique_ptr<ir::IRSchedule> new_ir_sch1 =
       std::make_unique<ir::IRSchedule>(*ir_sch_);
-  ScheduleBlockGraph sbg1(*new_ir_sch1);
-  sbg1.NodesWalk([&](ir::ScheduleBlockNode* node) {
-    new_ir_sch1->Bind(ir_sch_->GetLoops(node->Block())[0], "threadIdx.x");
-  });
-  ir_schs_.emplace_back(condition1, std::move(new_ir_sch1));
-
-  ir::Expr condition2 = ir::GT::Make(extent, Expr(1024));
-  std::unique_ptr<ir::IRSchedule> new_ir_sch2 =
-      std::make_unique<ir::IRSchedule>(*ir_sch_);
-  ScheduleBlockGraph sbg2(*new_ir_sch2);
-  sbg2.NodesWalk([&](ir::ScheduleBlockNode* node) {
-    new_ir_sch2->Bind(ir_sch_->GetLoops(node->Block())[0], "threadIdx.x");
-  });
-  ir_schs_.emplace_back(condition2, std::move(new_ir_sch2));
+  ir_schs_.emplace_back(predicate1, std::move(new_ir_sch1));
 }
 
-std::vector<std::pair<SymbolicCondition, ir::Expr>>
+std::vector<std::pair<SymbolicPredicate, ir::Expr>>
 DynamicShapeGroupScheduler::GetIRs() {
-  std::vector<std::pair<SymbolicCondition, ir::Expr>> irs;
+  std::vector<std::pair<SymbolicPredicate, ir::Expr>> irs;
   for (auto& sch_pair : ir_schs_) {
     irs.emplace_back(sch_pair.first,
                      sch_pair.second->GetModule().GetExprs()[0]);

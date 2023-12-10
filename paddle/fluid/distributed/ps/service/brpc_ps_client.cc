@@ -1505,7 +1505,7 @@ int32_t BrpcPsClient::RecvAndSaveTable(const uint64_t table_id,
   phi::DenseTensor *var_tensor = var->GetMutable<phi::DenseTensor>();
 
   std::vector<int64_t> vec_dim = {var_num, var_shape};
-  var_tensor->Resize(phi::make_ddim(vec_dim));
+  var_tensor->Resize(common::make_ddim(vec_dim));
 
   // copy and save
   float *tensor_data = var_tensor->mutable_data<float>(place);

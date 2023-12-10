@@ -17,26 +17,33 @@
 #include <memory>
 #include <vector>
 
-#include "paddle/cinn/adt/m_expr.h"
+#include "paddle/cinn/adt/map_expr.h"
+
+namespace cinn::hlir::framework::pir {
+
+struct Group;
+
+}  // namespace cinn::hlir::framework::pir
+
+namespace cinn::hlir::framework::pir {
+
+struct Group;
+
+}  // namespace cinn::hlir::framework::pir
 
 namespace cinn::adt {
 
 class IGroup;
 using cinn::adt::LoopDescriptors;
 
-/**
- * Kernel = KGroup = List<IGroup>.
- * KGroup is a list of IGroups, KGroup uses shardable dimension to concatenate
- * all ops. This dimension is shared by all IGroups and bound to BlockIdx.
- */
 class KGroup final {
  public:
   explicit KGroup(
-      const std::shared_ptr<hlir::framework::Graph::Group>& cinn_group,
+      const std::shared_ptr<hlir::framework::pir::Group>& cinn_group,
       const std::vector<std::shared_ptr<IGroup>>& igroups)
       : cinn_group_(cinn_group), igroups_(igroups) {}
 
-  std::shared_ptr<hlir::framework::Graph::Group> cinn_group() const {
+  std::shared_ptr<hlir::framework::pir::Group> cinn_group() const {
     return CHECK_NOTNULL(cinn_group_.lock());
   }
 
@@ -51,7 +58,7 @@ class KGroup final {
       const std::shared_ptr<IGroup>& igroup) const;
 
  private:
-  std::weak_ptr<hlir::framework::Graph::Group> cinn_group_;
+  std::weak_ptr<hlir::framework::pir::Group> cinn_group_;
   // NOTE: Use single igroup temporarily. Actually KGroup contains
   // multiple IGroups
   std::vector<std::shared_ptr<IGroup>> igroups_;

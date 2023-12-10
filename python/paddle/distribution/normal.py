@@ -135,7 +135,6 @@ class Normal(distribution.Distribution):
                 'float64',
             ]:
                 self.dtype = scale.dtype
-            # pylint: disable=unbalanced-tuple-unpacking
             self.loc, self.scale = self._to_tensor(loc, scale)
             if self.dtype != convert_dtype(self.loc.dtype):
                 self.loc = paddle.cast(self.loc, dtype=self.dtype)

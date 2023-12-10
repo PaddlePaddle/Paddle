@@ -26,7 +26,11 @@ from paddle import base
 # Use GPU:0 to elimate the influence of other tasks.
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
-from dygraph_to_static_utils_new import Dy2StTestBase, test_legacy_and_pir
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    enable_to_static_guard,
+    test_legacy_and_pt_and_pir,
+)
 
 import paddle
 from paddle.base.dygraph import to_variable
@@ -534,12 +538,11 @@ def optimizer_setting(parameters):
     return optimizer
 
 
-def train(args, to_static):
+def train(args):
     place = (
         base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
     )
 
-    paddle.jit.enable_to_static(to_static)
     with base.dygraph.guard(place):
         max_images_num = args.max_images_num
         data_shape = [-1] + args.image_shape
@@ -617,9 +620,12 @@ def train(args, to_static):
                 fake_pool_A = to_variable(fake_pool_A)
 
                 # optimize the d_A network
-                rec_B, fake_pool_rec_B = paddle.jit.to_static(
+                discriminatorA_to_static = paddle.jit.to_static(
                     cycle_gan.discriminatorA
-                )(data_B, fake_pool_B)
+                )
+                rec_B, fake_pool_rec_B = discriminatorA_to_static(
+                    data_B, fake_pool_B
+                )
                 d_loss_A = (
                     paddle.square(fake_pool_rec_B) + paddle.square(rec_B - 1)
                 ) / 2.0
@@ -630,9 +636,12 @@ def train(args, to_static):
                 cycle_gan.clear_gradients()
 
                 # optimize the d_B network
-                rec_A, fake_pool_rec_A = paddle.jit.to_static(
+                discriminatorB_to_static = paddle.jit.to_static(
                     cycle_gan.discriminatorB
-                )(data_A, fake_pool_A)
+                )
+                rec_A, fake_pool_rec_A = discriminatorB_to_static(
+                    data_A, fake_pool_A
+                )
                 d_loss_B = (
                     paddle.square(fake_pool_rec_A) + paddle.square(rec_A - 1)
                 ) / 2.0
@@ -678,10 +687,11 @@ class TestCycleGANModel(Dy2StTestBase):
         self.args = Args()
 
     def train(self, to_static):
-        out = train(self.args, to_static)
+        with enable_to_static_guard(to_static):
+            out = train(self.args)
         return out
 
-    @test_legacy_and_pir
+    @test_legacy_and_pt_and_pir
     def test_train(self):
         st_out = self.train(to_static=True)
         dy_out = self.train(to_static=False)

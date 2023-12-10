@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
-#include "paddle/pir/core/enforce.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/ir_context.h"
 
 namespace paddle {
@@ -51,6 +51,19 @@ void ApiBuilder::SetParameter(const std::string& name,
                               std::unique_ptr<pir::Parameter>&& parameter) {
   pir::Program* program = builder_->block()->GetParentOp()->GetParentProgram();
   program->SetParameter(name, std::move(parameter));
+}
+
+void ApiBuilder::PushInsertionPoint(
+    const pir::InsertionPoint& insertion_point) {
+  insertion_point_stack_.push(this->insertion_point());
+  set_insertion_point(insertion_point);
+}
+
+void ApiBuilder::PopInsertionPoint() {
+  IR_ENFORCE(!insertion_point_stack_.empty(),
+             "insertion_point_stack_ is empty.");
+  set_insertion_point(insertion_point_stack_.top());
+  insertion_point_stack_.pop();
 }
 
 }  // namespace dialect
