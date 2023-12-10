@@ -59,8 +59,8 @@ static bool check_dynamic_shape(const pir::OpOperand& item,
   if (find_value(shape, -1)) {
     LOG(WARNING)
         << "[Prim] Decomp op does not support dynamic shape -1, but got "
-           "shape "
-        << dims << "in inputs of op " << op.name();
+           "shape ["
+        << dims << "] in inputs of op " << op.name();
     return true;
   } else {
     return false;

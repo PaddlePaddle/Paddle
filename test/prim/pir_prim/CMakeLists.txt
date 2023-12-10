@@ -25,3 +25,6 @@ foreach(target ${TEST_PRIM_TRANS_PIR_CASES})
   py_test_modules(${target} MODULES ${target} ENVS GLOG_v=1
                   FLAGS_enable_pir_in_executor=true)
 endforeach()
+
+py_test_modules(test_prim_dynamic MODULES test_prim_dynamic ENVS GLOG_v=1
+                FLAGS_prim_skip_dynamic=1)
