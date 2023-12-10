@@ -44,6 +44,17 @@ class TestHybridParallel(TestMultipleGpus):
     def test_hybrid_parallel_mp_broadcast_obj(self):
         self.run_mnist_2gpu('hybrid_parallel_mp_broadcast_obj.py')
 
+    def test_hybrid_parallel_mp_sharding(self):
+        self.run_mnist_ngpu(
+            'hybrid_parallel_mp_model_with_group_sharded_parallel.py', ngpu=4
+        )
+
+    def test_hybrid_parallel_sp_sharding(self):
+        self.run_mnist_ngpu(
+            'hybrid_parallel_mp_model_with_group_sharded_and_sequence_parallel.py',
+            ngpu=4,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
