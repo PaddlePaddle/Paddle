@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <ostream>
 
-#include "paddle/phi/api/ext/exception.h"
+#include "paddle/common/exception.h"
 #include "paddle/phi/common/data_type.h"
 namespace paddle {
 namespace experimental {
@@ -73,6 +73,7 @@ inline DataType PromoteTypes(const DataTypeSet& dtype_set) {
     promote_type = DataType::COMPLEX128;
   } else if ((dtype_set.bitset() & c4) == c4) {
     if ((dtype_set.bitset() & f8) == f8) {
+      // COMPLEX128 has real and imaginary parts whose dtype are both FLOAT64
       promote_type = DataType::COMPLEX128;
     } else {
       promote_type = DataType::COMPLEX64;

@@ -18,8 +18,9 @@
 #include <string>
 #include <vector>
 
-#include "paddle/pir/core/enforce.h"
+#include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/pass/analysis_manager.h"
+#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace pir {
 
@@ -57,6 +58,7 @@ struct PassInfo {
   // opt_level=1: constant fold, cse, memory optimize, etc.
   // opt_level=2: the fusion logical pass.
   // opt_level=3: layout, etc.
+  // opt_level=4: the radical optimization, maybe affect precision, etc.
   uint8_t opt_level;
 
   // The list which pass depends on.
@@ -83,16 +85,19 @@ class IR_API Pass {
  protected:
   virtual void Run(Operation* op) = 0;
 
-  virtual inline bool CanApplyOn(Operation* op) const;
+  virtual bool CanApplyOn(Operation* op) const;
 
   virtual bool Initialize(IrContext* context) { return true; }
 
+  void PrintStatistics(int64_t match_count) const;
+
+  void PrintStatistics(int64_t match_count, int64_t all_count) const;
+
+  void PrintStatistics(const std::string& custom_log) const;
+
   AnalysisManager analysis_manager() { return pass_state().am; }
 
-  detail::PassExecutionState& pass_state() {
-    IR_ENFORCE(pass_state_.has_value() == true, "pass state has no value");
-    return *pass_state_;
-  }
+  detail::PassExecutionState& pass_state();
 
   void SignalPassFailure() { pass_state().pass_failed = true; }
 
@@ -103,6 +108,24 @@ class IR_API Pass {
 
   friend class PassManager;
   friend class detail::PassAdaptor;
+};
+
+class PatternRewritePass : public Pass {
+ public:
+  PatternRewritePass(const std::string& name,
+                     uint8_t opt_level,
+                     const std::vector<std::string>& dependents = {})
+      : Pass(name, opt_level, dependents) {}
+
+ protected:
+  virtual RewritePatternSet InitializePatterns(IrContext* context) = 0;
+
+  bool Initialize(IrContext* context) final;
+
+  void Run(Operation* op) override;
+
+ private:
+  FrozenRewritePatternSet patterns_;
 };
 
 }  // namespace pir

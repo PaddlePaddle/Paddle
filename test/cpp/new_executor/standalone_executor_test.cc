@@ -147,25 +147,28 @@ ProgramDesc GetLmMainProgram() {
 
 TEST(StandaloneExecutor, run) {
   auto place = platform::CUDAPlace(0);
-  ProgramDesc startup_prog = load_from_file("lm_startup_program");
-  ProgramDesc main_prog = GetLmMainProgram();
+  std::shared_ptr<ProgramDesc> p_startup_prog =
+      std::make_shared<ProgramDesc>(load_from_file("lm_startup_program"));
+  std::shared_ptr<ProgramDesc> p_main_prog =
+      std::make_shared<ProgramDesc>(GetLmMainProgram());
 
   Scope scope;
   std::shared_ptr<Job> startup_job = std::make_shared<Job>(Job("startup"));
   StandaloneExecutor startup_exec(
       place,
       Plan(std::vector<std::shared_ptr<Job>>({startup_job}),
-           std::unordered_map<std::string, ProgramDesc*>(
-               {{startup_job->Type(), &startup_prog}})),
+           std::unordered_map<std::string, std::shared_ptr<ProgramDesc>>(
+               {{startup_job->Type(), p_startup_prog}})),
       &scope);
   startup_exec.Run({});
 
   std::shared_ptr<Job> main_job = std::make_shared<Job>(Job("main"));
-  StandaloneExecutor exec(place,
-                          Plan(std::vector<std::shared_ptr<Job>>({main_job}),
-                               std::unordered_map<std::string, ProgramDesc*>(
-                                   {{main_job->Type(), &main_prog}})),
-                          &scope);
+  StandaloneExecutor exec(
+      place,
+      Plan(std::vector<std::shared_ptr<Job>>({main_job}),
+           std::unordered_map<std::string, std::shared_ptr<ProgramDesc>>(
+               {{main_job->Type(), p_main_prog}})),
+      &scope);
   exec.Run({});
   auto start = std::chrono::steady_clock::now();
 
@@ -286,7 +289,7 @@ TEST(InterpreterCore, workqueue_multiplexing) {
   float data_a[] = {0, 1, 2, 3};
   float data_b[] = {0.0, 0.1, 0.2, 0.3};
 
-  phi::DDim dims = phi::make_ddim({2, 2});
+  phi::DDim dims = common::make_ddim({2, 2});
   const platform::CPUPlace place = platform::CPUPlace();
 
   phi::DenseTensor tensor_a = phi::DenseTensor();

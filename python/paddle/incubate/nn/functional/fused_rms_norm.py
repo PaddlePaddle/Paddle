@@ -106,7 +106,7 @@ def fused_rms_norm(
     outputs_dict['residual_out'] = residual_out
 
     inputs = {'x': x, 'norm_weight': norm_weight}
-    if norm_bias:
+    if norm_bias is not None:
         inputs['norm_bias'] = norm_bias
     if residual is not None:
         inputs['residual'] = residual

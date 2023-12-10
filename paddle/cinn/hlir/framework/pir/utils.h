@@ -20,6 +20,7 @@
 #include "paddle/cinn/common/type.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/utils/type_defs.h"
+#include "paddle/common/ddim.h"
 #include "paddle/pir/core/operation.h"
 
 namespace cinn {
@@ -28,15 +29,30 @@ namespace framework {
 
 namespace pir {
 
-struct CUDAJITInfo {
+struct CINNKernelInfo {
   void* fn_ptr;
-  std::vector<int> block_dims;
-  std::vector<int> grid_dims;
-  void* compiler;
+
+  struct ArgDimIdx {
+    int arg_idx;
+    int dim_idx;
+  };
+  // int_args_map records the int_args_map.key argument (dtype is Int) in the
+  // kernel parameter taken from the dim_idx dimension of the shape of the
+  // ArgDimIdx.arg_idx argument.
+  // Examples:
+  //   a func like: foo(tensor A, tensor B, int S1, int S2)
+  //   S1 = A.shape[3]
+  //   S2 = B.shape[2]
+  //   int_args_map will be like
+  //   {
+  //     2: {0, 3},
+  //     3: {1, 2}
+  //   }
+  std::map<int, ArgDimIdx> int_args_map;
 };
 
 struct CompatibleInfo {
-  static constexpr char* kNamePrefix = "var_";
+  static constexpr char* kNamePrefix = "var";
   // TODO(Aurelius): Need add name mapping logic in REGISTER_CINN_OP
   // macros or attempt to unify Op name with Paddle and CINN.
   static const std::unordered_map<std::string, std::string> OP_NAMES;
@@ -50,16 +66,11 @@ struct CompatibleInfo {
 
   static std::string OpName(const ::pir::Operation& op);
 
-  static std::string ValueName(const ::pir::Value& value);
-
   static std::string OpFuncName(const ::pir::Operation& op);
 
   static std::string GroupOpsName(const std::vector<::pir::Operation*>& ops);
 
-  static std::vector<std::string> InputNames(const ::pir::Operation& op,
-                                             bool allow_duplicate = false);
-
-  static std::vector<std::string> OutputNames(::pir::Operation& op);  // NOLINT
+  static std::string ValueName(const ::pir::Value& value);
 
   static std::vector<::pir::Value> RealOperandSources(
       const ::pir::Operation& op);
@@ -68,13 +79,37 @@ struct CompatibleInfo {
 
   static utils::AttributeMap ConvertAttributes(const ::pir::Operation& op);
 
-  static common::Type ConvertIRType(::pir::Type type);
+  static cinn::common::Type ConvertIRType(::pir::Type type);
 
   static std::vector<int> ValueShape(const ::pir::Value& value);
 
   static int ShapeProduct(const std::vector<int>& shape);
 
   static OpPatternKind OpKind(const ::pir::Operation& op);
+};
+
+std::vector<int64_t> GetBroadcastAxis(const ::common::DDim& in_shape,
+                                      const std::vector<int64_t>& out_shape);
+
+class PrettyNamer {
+ public:
+  const std::string& GetOrNew(::pir::Value hash_key,
+                              const std::string& name_hint) {
+    if (pretty_names_.find(hash_key) == pretty_names_.end()) {
+      pretty_names_[hash_key] = name_generator_.New(name_hint);
+    }
+    return pretty_names_.at(hash_key);
+  }
+
+  ::cinn::common::NameGenerator& GetNameGenerator() { return name_generator_; }
+
+  const std::unordered_map<::pir::Value, std::string>& GetNameMap() {
+    return pretty_names_;
+  }
+
+ private:
+  std::unordered_map<::pir::Value, std::string> pretty_names_;
+  ::cinn::common::NameGenerator name_generator_;
 };
 
 }  // namespace pir

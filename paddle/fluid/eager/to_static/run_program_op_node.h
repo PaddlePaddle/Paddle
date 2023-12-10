@@ -17,6 +17,7 @@
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/tensor_wrapper.h"
+#include "paddle/fluid/framework/executor_cache.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
@@ -31,6 +32,7 @@
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/value.h"
 
+PHI_DECLARE_bool(enable_pir_with_pt_in_dy2st);
 PHI_DECLARE_bool(enable_pir_in_executor);
 PHI_DECLARE_bool(print_ir);
 
@@ -129,6 +131,7 @@ static void CheckOutputVarStatus(const paddle::framework::Variable &src_var,
 static void ShareTensorsIntoScope(const std::vector<Tensor> &tensors,
                                   paddle::framework::Scope *scope) {
   for (size_t i = 0; i < tensors.size(); ++i) {
+    VLOG(4) << "Share Tensor Into Scope: " << i;
     auto name = tensors[i].name();
     if (name == paddle::framework::kFakeVarName ||
         name == paddle::framework::kEmptyVarName) {
@@ -180,30 +183,35 @@ static auto GetNameFromValue(const ::pir::Block *block,
                              bool is_input) {
   // we use name here, later value is used directly.
   std::unordered_map<::pir::Value, std::string> value2name;
-  for (auto *op : *block) {
+  for (auto &op : *block) {
     std::string name;
-    if (is_input && op->name() == "pd_op.data") {
+    if (is_input && op.name() == "pd_op.data") {
       name =
-          op->attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
-      value2name[op->results()[0].Value::impl()] = name;
-    } else if (!is_input && op->name() == "builtin.set_parameter") {
-      name = op->attributes()
+          op.attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
+      value2name[op.results()[0].Value::impl()] = name;
+    } else if (!is_input && op.name() == "builtin.set_parameter") {
+      name = op.attributes()
                  .at("parameter_name")
                  .dyn_cast<pir::StrAttribute>()
                  .AsString();
-      value2name[op->operand(0).source()] = name;
-    } else if (!is_input && op->name() == "builtin.shadow_output") {
-      name = op->attributes()
+      value2name[op.operand(0).source()] = name;
+    } else if (!is_input && op.name() == "builtin.shadow_output") {
+      name = op.attributes()
                  .at("output_name")
                  .dyn_cast<pir::StrAttribute>()
                  .AsString();
-      value2name[op->operand(0).source()] = name;
-    } else if (is_input && op->name() == "builtin.get_parameter") {
-      name = op->attributes()
+      value2name[op.operand(0).source()] = name;
+    } else if (is_input && op.name() == "builtin.parameter") {
+      name = op.attributes()
                  .at("parameter_name")
                  .dyn_cast<pir::StrAttribute>()
                  .AsString();
-      value2name[op->result(0).Value::impl()] = name;
+      value2name[op.result(0).Value::impl()] = name;
+    } else if (is_input && op.name() == "builtin.constant") {
+      if (op.isa<pir::ConstantTensorOp>()) {
+        name = op.dyn_cast<pir::ConstantTensorOp>().tensor_name();
+        value2name[op.result(0).Value::impl()] = name;
+      }
     }
   }
   std::vector<std::string> names;
@@ -282,6 +290,7 @@ static void ShareTensorsFromScopeByValue(
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto &name = names[i];
     auto &value = values[i];
+    VLOG(2) << "share " << name << " from scope";
     if (value.impl() == nullptr) {
       // skip stop_gradient.
       continue;
@@ -299,7 +308,7 @@ static void ShareTensorsFromScopeByValue(
       auto &src_tensor = var->Get<phi::DenseTensor>();
       auto *dst_tensor = const_cast<phi::DenseTensor *>(
           dynamic_cast<const phi::DenseTensor *>(tensors[i]->impl().get()));
-      VLOG(2) << "share " << name << " from scope";
+      VLOG(2) << "actually do sharing " << name << " from scope";
       *dst_tensor = src_tensor;
     } else if (var->IsType<phi::SelectedRows>()) {
       auto &src_tensor = var->Get<phi::SelectedRows>();
@@ -493,10 +502,16 @@ inline void PirRunProgramAPI(
     details::ShareTensorsIntoScopeByValue(
         forward_global_block, params, param_values, global_inner_scope);
     // Step 2. create new interpretercore
-    auto kernel_forward_program =
-        paddle::dialect::PdOpLowerToKernelPass(forward_program, place);
+    auto passed_kernel_program =
+        paddle::framework::ApplyIrPass(forward_program, place);
+    if (FLAGS_print_ir) {
+      std::ostringstream print_stream;
+      print_stream << "LoweredProgram( AfterPass ) is :\n";
+      passed_kernel_program->Print(print_stream);
+      std::cout << print_stream.str() << std::endl;
+    }
     interpreter_core = paddle::framework::CreatePirInterpreterCoreInfoToCache(
-        std::move(kernel_forward_program),
+        std::move(passed_kernel_program),
         place,
         /*is_grad=*/false,
         program_id,
@@ -511,18 +526,17 @@ inline void PirRunProgramAPI(
         details::GetNameFromValue(forward_global_block, middle_values, false);
     auto skip_names_set =
         std::set<std::string>(skip_names.begin(), skip_names.end());
-    skip_names =
-        details::GetNameFromValue(forward_global_block, output_values, false);
-    skip_names_set.insert(skip_names.begin(), skip_names.end());
     auto no_need_buffer_values = PADDLE_GET_CONST(std::vector<::pir::Value>,
                                                   attrs.at("no_need_buffers"));
     auto no_need_buffer_names = details::GetNameFromValue(
         forward_global_block, no_need_buffer_values, false);
-    VLOG(4) << "start skip no need buffer vars with name:";
     for (auto &name : no_need_buffer_names) {
-      VLOG(4) << "Skip no need buffer vars with name:" << name;
+      VLOG(4) << "Find no need buffer vars with name:" << name;
       skip_names_set.erase(name);
     }
+    skip_names =
+        details::GetNameFromValue(forward_global_block, output_values, false);
+    skip_names_set.insert(skip_names.begin(), skip_names.end());
     details::print_collection(skip_names_set);
     interpreter_core->SetSkipGcVars(skip_names_set);
 
@@ -685,7 +699,12 @@ inline void RunProgramAPI(
     details::ShareTensorsIntoScope(params, global_inner_scope);
     // Step 2. create new interpretercore
 
-    if (FLAGS_enable_pir_in_executor) {
+    bool in_pir_pt_mode = FLAGS_enable_pir_with_pt_in_dy2st;
+    if (attrs.count("in_pir_pt_mode")) {
+      in_pir_pt_mode = PADDLE_GET_CONST(bool, attrs.at("in_pir_pt_mode"));
+    }
+
+    if (FLAGS_enable_pir_in_executor || in_pir_pt_mode) {
       // build new ir program
       auto ir_program =
           paddle::framework::ConstructFowardIrProgram(forward_global_block,
@@ -839,7 +858,12 @@ inline void RunProgramGradAPI(
     VLOG(2) << "No interpretercore cahce, so create a new interpretercore";
     details::ShareTensorsIntoScope(out_grad, global_inner_scope);
 
-    if (FLAGS_enable_pir_in_executor) {
+    bool in_pir_pt_mode = FLAGS_enable_pir_with_pt_in_dy2st;
+    if (attrs.count("in_pir_pt_mode")) {
+      in_pir_pt_mode = PADDLE_GET_CONST(bool, attrs.at("in_pir_pt_mode"));
+    }
+
+    if (FLAGS_enable_pir_in_executor || in_pir_pt_mode) {
       auto res =
           paddle::framework::ConstructBackwardIrProgram(backward_global_block,
                                                         out_grad,
@@ -1021,10 +1045,16 @@ inline void PirRunProgramGradAPI(
         1);
     VLOG(2) << "No interpretercore cahce, so create a new interpretercore";
     // Step 1. share input_vars & parameters into scope
-    auto kernel_backward_program =
-        paddle::dialect::PdOpLowerToKernelPass(backward_program, place);
+    auto passed_kernel_program =
+        paddle::framework::ApplyIrPass(backward_program, place);
+    if (FLAGS_print_ir) {
+      std::ostringstream print_stream;
+      print_stream << "LoweredProgram( AfterPass | Backward ) is :\n";
+      passed_kernel_program->Print(print_stream);
+      std::cout << print_stream.str() << std::endl;
+    }
     interpreter_core = paddle::framework::CreatePirInterpreterCoreInfoToCache(
-        std::move(kernel_backward_program),
+        std::move(passed_kernel_program),
         place,
         /*is_grad=*/true,
         program_id,
@@ -1217,7 +1247,7 @@ class GradNodeRunProgram : public egr::GradNodeBase {
             x.size(),
             x_grad_names.size()));
 
-    // TODO(dev): Need an elegant way to determine inforamtion of grad_tensor,
+    // TODO(dev): Need an elegant way to determine information of grad_tensor,
     // such as: name, tensor type(DenseTensor or SelectedRows).
     for (size_t i = 0; i < x.size(); i++) {
       if (x[i].is_dense_tensor()) {
@@ -1330,9 +1360,7 @@ class PirGradNodeRunProgram : public egr::GradNodeBase {
         x_grad_ptr.emplace_back(&i);
       }
       for (auto &i : params_grad) {
-        if (i.defined()) {
-          params_grad_ptr.emplace_back(&i);
-        }
+        params_grad_ptr.emplace_back(&i);
       }
     }
 

@@ -16,7 +16,7 @@ import struct
 
 import numpy as np
 
-from ..pir import OpResult
+from ..pir import Value
 from ..pir.core import ParameterMeta
 from . import core
 from .framework import (
@@ -43,6 +43,21 @@ _PADDLE_DTYPE_2_NUMPY_DTYPE = {
     core.VarDesc.VarType.UINT8: 'uint8',
     core.VarDesc.VarType.COMPLEX64: 'complex64',
     core.VarDesc.VarType.COMPLEX128: 'complex128',
+}
+
+_NUMPY_DTYPE_2_PADDLE_DTYPE = {
+    'bool': core.VarDesc.VarType.BOOL,
+    'float16': core.VarDesc.VarType.FP16,
+    'uint16': core.VarDesc.VarType.BF16,
+    'float32': core.VarDesc.VarType.FP32,
+    'float64': core.VarDesc.VarType.FP64,
+    'int8': core.VarDesc.VarType.INT8,
+    'int16': core.VarDesc.VarType.INT16,
+    'int32': core.VarDesc.VarType.INT32,
+    'int64': core.VarDesc.VarType.INT64,
+    'uint8': core.VarDesc.VarType.UINT8,
+    'complex64': core.VarDesc.VarType.COMPLEX64,
+    'complex128': core.VarDesc.VarType.COMPLEX128,
 }
 
 _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE = {
@@ -149,7 +164,7 @@ def check_variable_and_dtype(
 ):
     if in_pir_mode():
         check_type(
-            input, input_name, (OpResult, ParameterMeta), op_name, extra_message
+            input, input_name, (Value, ParameterMeta), op_name, extra_message
         )
     else:
         check_type(input, input_name, Variable, op_name, extra_message)
@@ -346,7 +361,7 @@ class DataFeeder:
     Parameters:
         feed_list (list): Variables or names of Variables that need
             to feed.
-        place (:ref:`api_base_CPUPlace` | :ref:`api_base_CUDAPlace` ):
+        place (:ref:`api_paddle_CPUPlace` | :ref:`api_paddle_CUDAPlace` ):
             place indicates the device (CPU | GPU) the data will be fed into, if
             you want to feed data into GPU, please using :code:`base.CUDAPlace(i)`
             (:code:`i` represents the GPU id), or if you want to feed data into CPU,

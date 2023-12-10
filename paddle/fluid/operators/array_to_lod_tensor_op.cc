@@ -107,11 +107,12 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
     platform::Place place = x[0].place();
     auto data_type = x[0].dtype();
     int64_t batch_size = x[0].dims()[0];
-    framework::DDim ins_dims =
-        rank > 1 ? phi::slice_ddim(x[0].dims(), 1, rank) : phi::make_ddim({0});
+    framework::DDim ins_dims = rank > 1
+                                   ? common::slice_ddim(x[0].dims(), 1, rank)
+                                   : common::make_ddim({0});
     for (size_t i = 1; i < x.size(); ++i) {
-      auto ins_i_dims = rank > 1 ? phi::slice_ddim(x[i].dims(), 1, rank)
-                                 : phi::make_ddim({0});
+      auto ins_i_dims = rank > 1 ? common::slice_ddim(x[i].dims(), 1, rank)
+                                 : common::make_ddim({0});
       PADDLE_ENFORCE_EQ(
           ins_i_dims,
           ins_dims,
@@ -144,9 +145,9 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
               data_type));
       batch_size += x[i].dims()[0];
     }
-    auto ins_dim_vec = phi::vectorize(ins_dims);
+    auto ins_dim_vec = common::vectorize(ins_dims);
     ins_dim_vec.insert(ins_dim_vec.begin(), batch_size);
-    framework::DDim out_dims = phi::make_ddim(ins_dim_vec);
+    framework::DDim out_dims = common::make_ddim(ins_dim_vec);
     out->Resize(out_dims);
     out->mutable_data(place, data_type);
 

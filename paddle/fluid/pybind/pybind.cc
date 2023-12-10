@@ -204,6 +204,7 @@ limitations under the License. */
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/api/include/tensor_operants.h"
+#include "paddle/phi/common/type_promotion.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
@@ -238,6 +239,14 @@ bool IsCompiledWithAVX() {
 
 bool IsCompiledWithCUDA() {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+  return false;
+#else
+  return true;
+#endif
+}
+
+bool IsCompiledWithDISTRIBUTE() {
+#if !defined(PADDLE_WITH_DISTRIBUTE)
   return false;
 #else
   return true;
@@ -526,18 +535,6 @@ static PyObject *GetPythonAttribute(PyObject *obj, const char *attr_name) {
   }
 }
 
-template <typename T>
-static T PyObjectCast(PyObject *obj) {
-  try {
-    return py::cast<T>(py::handle(obj));
-  } catch (py::cast_error &) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Python object is not type of %s, the real type is %s",
-        typeid(T).name(),
-        obj->ob_type->tp_name));
-  }
-}
-
 using PyNameVarBaseMap = std::unordered_map<std::string, py::handle>;
 
 static std::vector<std::shared_ptr<imperative::VarBase>> GetVarBaseList(
@@ -639,7 +636,7 @@ static void inline CreateVariableIfNotExist(
         Py_DECREF(py_var_desc);
         var = const_cast<framework::Scope *>(&scope)->Var(para_name);
         auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
-        tensor_temp->Resize(phi::make_ddim(var_desc.GetShape()));
+        tensor_temp->Resize(common::make_ddim(var_desc.GetShape()));
         tensor_temp->mutable_data(
             exe->GetPlace(),
             framework::TransToPhiDataType(var_desc.GetDataType()));
@@ -814,6 +811,7 @@ PYBIND11_MODULE(libpaddle, m) {
   BindJit(&m);
   BindEvalFrame(&m);
   BindCustomDevicePy(&m);
+  BindEagerUtils(m.ptr());
 
   // Not used, just make sure cpu_info.cc is linked.
   phi::backends::cpu::CpuTotalPhysicalMemory();
@@ -885,6 +883,22 @@ PYBIND11_MODULE(libpaddle, m) {
   m.def("_set_prim_target_grad_name",
         &paddle::prim::PrimCommonUtils::SetTargetGradName);
   m.def("set_num_threads", &platform::SetNumThreads);
+
+  m.def("need_type_promotion",
+        [](framework::proto::VarType::Type type_x,
+           framework::proto::VarType::Type type_y) {
+          return phi::NeedTypePromotion(framework::TransToPhiDataType(type_x),
+                                        framework::TransToPhiDataType(type_y));
+        });
+  m.def("get_promote_dtype",
+        [](const std::string &op_name,
+           framework::proto::VarType::Type type_x,
+           framework::proto::VarType::Type type_y) {
+          return framework::TransToProtoVarType(
+              phi::GetPromoteDtype(op_name,
+                                   framework::TransToPhiDataType(type_x),
+                                   framework::TransToPhiDataType(type_y)));
+        });
 
   m.def("disable_signal_handler", &DisableSignalHandler);
 
@@ -1019,8 +1033,8 @@ PYBIND11_MODULE(libpaddle, m) {
   m.def(
       "broadcast_shape",
       [](const std::vector<int64_t> &x_dim, const std::vector<int64_t> &y_dim) {
-        return phi::vectorize(operators::details::BroadcastTwoDims(
-            phi::make_ddim(x_dim), phi::make_ddim(y_dim), -1));
+        return common::vectorize(operators::details::BroadcastTwoDims(
+            common::make_ddim(x_dim), common::make_ddim(y_dim), -1));
       });
 
   m.def(
@@ -2012,13 +2026,24 @@ All parameter, weight, gradient are variables in Paddle.
                     const interpreter::Plan &,
                     Scope *>())
       .def("run",
-           [](StandaloneExecutor &self, std::vector<std::string> feed_names) {
+           [](StandaloneExecutor &self,
+              std::vector<std::string> feed_names,
+              bool enable_job_schedule_profiler = false) {
              paddle::framework::FetchList ret;
              {
                pybind11::gil_scoped_release release;
-               ret = self.Run(feed_names);
+               ret = self.Run(feed_names, enable_job_schedule_profiler);
              }
              return py::cast(std::move(ret));
+           })
+      .def("run_profile",
+           [](StandaloneExecutor &self, std::vector<std::string> feed_names) {
+             std::shared_ptr<framework::ProgramDesc> program_desc;
+             {
+               pybind11::gil_scoped_release release;
+               program_desc = self.RunProfile(feed_names);
+             }
+             return py::cast(std::move(program_desc));
            });
 
   py::class_<framework::interpreter::Job,
@@ -2033,7 +2058,8 @@ All parameter, weight, gradient are variables in Paddle.
       .def(
           py::init<
               const std::vector<std::shared_ptr<framework::interpreter::Job>> &,
-              const std::unordered_map<std::string, framework::ProgramDesc *>
+              const std::unordered_map<std::string,
+                                       std::shared_ptr<framework::ProgramDesc>>
                   &>(),
           py::arg("job_list"),
           py::arg("type_to_program"))
@@ -2045,7 +2071,10 @@ All parameter, weight, gradient are variables in Paddle.
           py::arg("job_list"),
           py::arg("type_to_ir_program"))
       .def("job_list", &framework::interpreter::Plan::JobList)
+      .def("job_types", &framework::interpreter::Plan::JobTypes)
       .def("micro_batch_num", &framework::interpreter::Plan::MicroBatchNum)
+      .def("set_ir_program", &framework::interpreter::Plan::SetIrProgram)
+      .def("ir_program", &framework::interpreter::Plan::IrProgram)
       .def("program", &framework::interpreter::Plan::Program);
 
   m.def("init_gflags", framework::InitGflags);
@@ -2085,6 +2114,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_mpi", IsCompiledWithMPI);
   m.def("is_compiled_with_mpi_aware", IsCompiledWithMPIAWARE);
   m.def("is_compiled_with_cinn", IsCompiledWithCINN);
+  m.def("is_compiled_with_distribute", IsCompiledWithDISTRIBUTE);
   m.def("is_run_with_cinn", IsRunWithCINN);
   m.def("_is_compiled_with_heterps", IsCompiledWithHETERPS);
   m.def("supports_bfloat16", SupportsBfloat16);
@@ -2150,7 +2180,11 @@ All parameter, weight, gradient are variables in Paddle.
       py::arg("time_out") = 0,
       py::arg("sleep_inter") = 0,
       py::arg("redirect_stderr") = false);
-
+  m.def("set_variable",
+        static_cast<void (*)(  // NOLINT
+            Scope *,
+            const phi::DenseTensor &,
+            const std::string &)>(&framework::SetVariable));
   m.def("set_feed_variable",
         static_cast<void (*)(  // NOLINT
             Scope *,
@@ -2411,6 +2445,10 @@ All parameter, weight, gradient are variables in Paddle.
 
 #ifdef PADDLE_WITH_IPU
   m.def("get_ipu_device_count", platform::GetIPUDeviceCount);
+#endif
+
+#ifdef PADDLE_WITH_XPU
+  m.def("get_xpu_device_count", platform::GetXPUDeviceCount);
 #endif
 
   py::enum_<platform::TracerOption>(m, "TracerOption", py::arithmetic())

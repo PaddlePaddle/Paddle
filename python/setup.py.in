@@ -9,6 +9,7 @@ import fnmatch
 import errno
 import platform
 import glob
+import shlex
 
 from contextlib import contextmanager
 from setuptools import Command
@@ -370,6 +371,7 @@ packages=['paddle',
           'paddle.dataset',
           'paddle.reader',
           'paddle.distributed',
+          'paddle.distributed.checkpoint',
           'paddle.distributed.communication',
           'paddle.distributed.communication.stream',
           'paddle.distributed.metric',
@@ -385,6 +387,7 @@ packages=['paddle',
           'paddle.incubate.nn',
           'paddle.incubate.asp',
           'paddle.incubate.passes',
+          'paddle.incubate.framework',
           'paddle.distribution',
           'paddle.distributed.utils',
           'paddle.distributed.sharding',
@@ -573,6 +576,10 @@ package_data['paddle.libs']+=[
     ('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_name,
     ('libwarprnnt' if os.name != 'nt' else 'warprnnt') + ext_name,
 ]
+package_data['paddle.libs']+=[
+    ('libcommon' if os.name != 'nt' else 'common') + ext_name,
+]
+shutil.copy('${COMMON_LIB}', libs_path)
 shutil.copy('${WARPCTC_LIBRARIES}', libs_path)
 shutil.copy('${WARPRNNT_LIBRARIES}', libs_path)
 
@@ -732,6 +739,7 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
         if "@APPLE@" == "1":
             commands = ["install_name_tool -id '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}" + '.so']
             commands.append("install_name_tool -add_rpath '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}" + '.so')
+            commands.append("install_name_tool -add_rpath '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/libs/${COMMON_NAME}")
             if('${WITH_SHARED_PHI}' == 'ON'):
                 # change rpath of phi.ext for loading 3rd party libb
                 commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
@@ -740,6 +748,7 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
                 commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${IR_NAME}")
         else:
             commands = ["patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}" + '.so']
+            commands.append("patchelf --set-rpath '$ORIGIN' ${PADDLE_BINARY_DIR}/python/paddle/libs/${COMMON_NAME}")
             if('${WITH_SHARED_PHI}' == 'ON'):
                 # change rpath of phi.ext for loading 3rd party lib
                 commands.append("patchelf --set-rpath '$ORIGIN' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
@@ -773,6 +782,7 @@ def find_files(pattern, root, recursive=False):
 headers = (
     # paddle level api headers (high level api, for both training and inference)
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle')) +
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/common')) +  # paddle common headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/api')) +  # phi unify api header
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/api/ext')) +  # custom op api
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/api/include')) +  # phi api
@@ -912,7 +922,11 @@ with open("@PADDLE_BINARY_DIR@/python/paddle/README.md", "r", encoding='UTF-8') 
 
 # strip *.so to reduce package size
 if '${WITH_STRIP}' == 'ON':
-    command = 'find ${PADDLE_BINARY_DIR}/python/paddle -name "*.so" | xargs -i strip {}'
+    command = (
+        'find '
+        + shlex.quote('${PADDLE_BINARY_DIR}')
+        + '/python/paddle -name "*.so" | xargs -i strip {}'
+    )
     if os.system(command) != 0:
         raise Exception("strip *.so failed, command: %s" % command)
 
@@ -1004,10 +1018,11 @@ with redirect_stdout():
             'Intended Audience :: Science/Research',
             'License :: OSI Approved :: Apache Software License',
             'Programming Language :: C++',
-            'Programming Language :: Python :: 3.7',
             'Programming Language :: Python :: 3.8',
             'Programming Language :: Python :: 3.9',
             'Programming Language :: Python :: 3.10',
+            'Programming Language :: Python :: 3.11',
+            'Programming Language :: Python :: 3.12',
         ],
     )
 

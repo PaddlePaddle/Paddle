@@ -64,23 +64,29 @@ class IR_API GreedyRewriteConfig {
 /// apply the Pattern with the highest benefit, and repeat this process until
 /// convergence or the upper limit of iterations.
 ///
-/// Returns true if the iteration converges and no patterns can be applied.
-bool IR_API
+/// Returns pair<bool,int64_t>
+// the first is true if the iteration converges and no patterns can be applied.
+// the second is the number of total match count.
+std::pair<bool, int64_t> IR_API
 ApplyPatternsGreedily(Region& region,  // NOLINT
                       const FrozenRewritePatternSet& patterns,
                       GreedyRewriteConfig config = GreedyRewriteConfig());
 
 /// Perform a match and rewrite process for all regions of a given op.
-inline IR_API bool ApplyPatternsGreedily(
+inline IR_API std::pair<bool, int64_t> ApplyPatternsGreedily(
     Operation* op,
     const FrozenRewritePatternSet& patterns,
     GreedyRewriteConfig config = GreedyRewriteConfig()) {
-  bool failed = false;
+  bool sum_converged = true;
+  int64_t sum_num_rewrites = 0;
   for (uint32_t i = 0; i < op->num_regions(); ++i) {
     Region& region = op->region(i);
-    failed |= !ApplyPatternsGreedily(region, patterns, config);
+    auto [converged, num_rewrites] =
+        ApplyPatternsGreedily(region, patterns, config);
+    sum_converged &= converged;
+    sum_num_rewrites += num_rewrites;
   }
-  return !failed;
+  return std::make_pair(sum_converged, sum_num_rewrites);
 }
 
 }  // namespace pir

@@ -1,22 +1,17 @@
-cc_test_old(
+cc_test(
   type_test
-  SRCS
-  type_test.cc
-  DEPS
-  pir
-  gtest
-  pd_op_dialect)
+  SRCS type_test.cc
+  DEPS pir op_dialect_vjp)
 cc_test_old(ir_attribute_test SRCS ir_attribute_test.cc DEPS pir gtest)
 cc_test_old(ir_value_test SRCS ir_value_test.cc DEPS pir gtest)
-paddle_test(
+cc_test_old(
   ir_op_test
   SRCS
   ir_op_test.cc
   DEPS
   pir
-  gtest
   test_dialect
-  pd_op_dialect)
+  op_dialect_vjp)
 cc_test_old(ir_region_test SRCS ir_region_test.cc DEPS pir gtest)
 cc_test_old(ir_builder_test SRCS ir_builder_test.cc DEPS pir gtest)
 cc_test_old(
@@ -24,9 +19,10 @@ cc_test_old(
   SRCS
   ir_program_test.cc
   DEPS
-  pd_op_dialect
+  op_dialect_vjp
   pir
   phi
+  common
   gtest)
 
 cc_test_old(
@@ -34,9 +30,10 @@ cc_test_old(
   SRCS
   ir_infershape_test.cc
   DEPS
-  pd_op_dialect
+  op_dialect_vjp
   pir
   phi
+  common
   gtest)
 
 cc_test_old(
@@ -44,7 +41,7 @@ cc_test_old(
   SRCS
   scalar_attribute_test.cc
   DEPS
-  pd_op_dialect
+  op_dialect_vjp
   pir
   gtest)
 
@@ -80,7 +77,7 @@ cc_test_old(
   DEPS
   program_translator
   gtest
-  pd_op_dialect
+  op_dialect_vjp
   pir)
 
 cc_test_old(
@@ -89,13 +86,13 @@ cc_test_old(
   add_dialect_parser_test.cc
   DEPS
   gtest
-  pd_op_dialect
+  op_dialect_vjp
   pir)
 
 cc_test(
   ir_parser_test
   SRCS ir_parser_test.cc
-  DEPS gtest pd_op_dialect pir)
+  DEPS gtest op_dialect_vjp pir)
 
 cc_test_old(ir_op_info_test SRCS op_info_test.cc DEPS gtest pir)
 cc_test_old(
@@ -104,8 +101,8 @@ cc_test_old(
   op_yaml_info_parser_test.cc
   DEPS
   gtest
-  pd_op_dialect
-  pd_interface
+  op_dialect
+  op_dialect_vjp
   pir)
 
 cc_test_old(
@@ -115,7 +112,7 @@ cc_test_old(
   DEPS
   gtest
   program_translator
-  pd_op_dialect
+  op_dialect_vjp
   pir)
 
 cc_test_old(
@@ -126,7 +123,7 @@ cc_test_old(
   pir
   test_dialect
   gtest
-  pd_op_dialect)
+  op_dialect_vjp)
 
 cc_test_old(
   block_operand_test

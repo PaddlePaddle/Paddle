@@ -84,14 +84,14 @@ void ArgsortKernel(const Context& dev_ctx,
   if (rank == 0) {
     phi::Copy<Context>(dev_ctx, input, dev_ctx.GetPlace(), false, output);
     dev_ctx.template Alloc<int64_t>(indices);
-    phi::funcs::set_constant(dev_ctx, indices, 0);
+    phi::funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
     return;
   }
 
   // Do full sort
   if (axis == -1 || axis + 1 == in_dims.size()) {
     const int64_t input_height =
-        phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
+        common::product(common::slice_ddim(in_dims, 0, in_dims.size() - 1));
     const int64_t input_width = in_dims[in_dims.size() - 1];
     int64_t* ids_data = dev_ctx.template Alloc<int64_t>(indices);
     FullSort<T, int64_t>(input_height,
@@ -123,8 +123,8 @@ void ArgsortKernel(const Context& dev_ctx,
     // Do transpose
     TransposeKernel<T, Context>(dev_ctx, input, trans, &trans_inp);
 
-    const int64_t input_height =
-        phi::product(phi::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
+    const int64_t input_height = common::product(
+        common::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
     const int64_t input_width = trans_dims[trans_dims.size() - 1];
 
     DenseTensor tmp_out;

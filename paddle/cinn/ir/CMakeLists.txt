@@ -18,9 +18,12 @@ gather_srcs(
   lowered_func.cc
   intrinsic_ops.cc
   layout.cc
-  schedule_block_graph.cc)
+  schedule_block_graph.cc
+  dim.cc)
 
+add_subdirectory(ir_analyzer)
 add_subdirectory(op)
 add_subdirectory(test)
 add_subdirectory(utils)
 add_subdirectory(schedule)
+add_subdirectory(group_schedule)

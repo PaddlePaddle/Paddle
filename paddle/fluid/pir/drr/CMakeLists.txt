@@ -8,17 +8,11 @@ set(op_forward_yaml_file1
     ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/ops.parsed.yaml
 )
 
-set(op_forward_yaml_file2
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/legacy_ops.parsed.yaml
-)
 set(op_forward_yaml_file3
     ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/update_ops.parsed.yaml
 )
 set(op_backward_yaml_file1
     ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/backward_ops.parsed.yaml
-)
-set(op_backward_yaml_file2
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/legacy_backward_ops.parsed.yaml
 )
 set(fused_op_forward_yaml_file
     ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_ops.parsed.yaml
@@ -41,7 +35,7 @@ set(op_yaml_file4 ${parsed_op_dir}/ops_backward.parsed.yaml)
 set(op_yaml_file5 ${parsed_op_dir}/update_ops.parsed.yaml)
 
 set(op_yaml_files
-    ${op_forward_yaml_file1},${op_forward_yaml_file2},${op_backward_yaml_file1},${op_backward_yaml_file2},${fused_op_forward_yaml_file},${fused_op_backward_yaml_file},${op_yaml_file3},${op_yaml_file4},${op_yaml_file5}
+    ${op_forward_yaml_file1},${op_backward_yaml_file1},${fused_op_forward_yaml_file},${fused_op_backward_yaml_file},${op_yaml_file3},${op_yaml_file4},${op_yaml_file5}
 )
 
 set(op_creator_file
@@ -67,13 +61,11 @@ add_custom_command(
   COMMENT "copy_if_different ${op_creator_file}"
   DEPENDS ${op_creator_gen_file}
           ${op_forward_yaml_file1}
-          ${op_forward_yaml_file2}
           ${op_backward_yaml_file1}
-          ${op_backward_yaml_file2}
           ${op_compat_yaml_file}
           ${op_yaml_file3}
           ${op_yaml_file4}
-          pd_op_dialect_op
+          op_dialect
   VERBATIM)
 
 if(WITH_CINN AND NOT CINN_ONLY)
@@ -88,7 +80,7 @@ if(WITH_CINN AND NOT CINN_ONLY)
             ${cinn_op_creator_file}
     COMMENT "copy_if_different ${cinn_op_creator_file}"
     DEPENDS ${op_creator_gen_file} ${op_compat_yaml_file}
-            ${cinn_op_yaml_source_file} pd_op_dialect_op cinn_op_dialect
+            ${cinn_op_yaml_source_file} op_dialect cinn_op_dialect
     VERBATIM)
   set(CINN_SOURCE_FILE ${cinn_op_creator_file})
 
@@ -99,4 +91,4 @@ endif()
 cc_library(
   drr
   SRCS ${DRR_SRCS} ${op_creator_file} ${CINN_SOURCE_FILE}
-  DEPS pd_op_dialect ${CINN_DEPS} pir)
+  DEPS op_dialect_vjp ${CINN_DEPS} pir)

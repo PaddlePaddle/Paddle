@@ -42,7 +42,8 @@ set(PHI_DEPS
     eigen3
     xxhash
     cblas
-    utf8proc)
+    utf8proc
+    common)
 
 set(INFERENCE_DEPS phi_profiler_proto auto_parallel_proto)
 
@@ -112,6 +113,15 @@ else()
   set(PHI_BUILD_TYPE
       STATIC
       CACHE INTERNAL "" FORCE)
+endif()
+
+if(WITH_AVX
+   AND AVX512F_FOUND
+   AND AVX512F_FLAG
+   AND WITH_MKL)
+  set_source_files_properties(
+    kernels/fusion/cpu/self_dp_attention_kernel.cc
+    PROPERTIES COMPILE_FLAGS "-Wno-maybe-uninitialized  -mfma ${AVX512F_FLAG}")
 endif()
 
 if(WITH_GPU)

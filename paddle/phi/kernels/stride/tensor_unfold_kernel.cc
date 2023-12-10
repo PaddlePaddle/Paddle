@@ -65,6 +65,7 @@ void TensorUnfoldKernel(const Context& dev_ctx,
   out->set_strides(DDim(stride.data(), static_cast<int>(stride.size())));
   out->set_offset(input.offset());
   out->ResetHolder(input.Holder());
+  out->ShareInplaceVersionCounterWith(input);
 }
 
 }  // namespace phi

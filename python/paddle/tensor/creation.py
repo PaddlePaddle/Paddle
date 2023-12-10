@@ -893,6 +893,9 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
+        if in_pir_mode() and isinstance(dtype, core.VarDesc.VarType):
+            dtype = paddle.pir.core.vartype_to_datatype[dtype]
+
         if in_dynamic_mode():
             value = float(value)
             if isinstance(shape, (list, tuple)):
@@ -1183,7 +1186,9 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
     """
 
     def _check_attr(attr, message):
-        if isinstance(attr, ((Variable, core.eager.Tensor))):
+        if isinstance(
+            attr, ((Variable, core.eager.Tensor, paddle.pir.OpResult))
+        ):
             assert len(attr.shape) == 1 and attr.shape[0] in [1, -1]
         elif not isinstance(attr, int) or attr < 0:
             raise TypeError(f"{message} should be a non-negative int.")
@@ -1199,7 +1204,7 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
     else:
         num_columns = num_rows
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.eye(
             num_rows, num_columns, dtype, _current_expected_place()
         )
@@ -1432,7 +1437,17 @@ def _tril_triu_op(helper):
     check_variable_and_dtype(
         x,
         'x',
-        ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+        [
+            'float16',
+            'uint16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'bool',
+            'complex64',
+            'complex128',
+        ],
         op_type,
     )
     if len(x.shape) < 2:
@@ -1471,7 +1486,7 @@ def tril(x, diagonal=0, name=None):
 
     Args:
         x (Tensor): The input x which is a Tensor.
-            Support data types: ``bool``, ``float64``, ``float32``, ``int32``, ``int64``.
+            Support data types: ``bool``, ``float64``, ``float32``, ``int32``, ``int64``, ``complex64``, ``complex128``.
         diagonal (int, optional): The diagonal to consider, default value is 0.
             If :attr:`diagonal` = 0, all elements on and below the main diagonal are
             retained. A positive value includes just as many diagonals above the main
@@ -1546,7 +1561,7 @@ def triu(x, diagonal=0, name=None):
 
     Args:
         x (Tensor): The input x which is a Tensor.
-            Support data types: ``float64``, ``float32``, ``int32``, ``int64``.
+            Support data types: ``float64``, ``float32``, ``int32``, ``int64``, ``complex64``, ``complex128``.
         diagonal (int, optional): The diagonal to consider, default value is 0.
             If :attr:`diagonal` = 0, all elements on and above the main diagonal are
             retained. A positive value excludes just as many diagonals above the main
@@ -1746,7 +1761,7 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
     if not isinstance(input, Variable):
         input = assign(input)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.diag_embed(input, offset, dim1, dim2)
 
     inputs = {'Input': [input]}
@@ -1882,8 +1897,9 @@ def diagflat(x, offset=0, name=None):
              [0, 2, 0, 0, 0],
              [0, 0, 3, 0, 0],
              [0, 0, 0, 4, 0]])
+
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if len(x.shape) <= 1:
             return _C_ops.diag(x, offset, 0)
         else:
@@ -2180,6 +2196,15 @@ def empty_like(x, dtype=None, name=None):
     if in_dynamic_mode():
         out = _C_ops.empty(
             x.shape,
+            convert_np_dtype_to_dtype_(dtype),
+            _current_expected_place(),
+        )
+        out.stop_gradient = True
+        return out
+    elif in_pir_mode():
+        shape = paddle.shape(x)
+        out = _C_ops.empty(
+            shape,
             convert_np_dtype_to_dtype_(dtype),
             _current_expected_place(),
         )

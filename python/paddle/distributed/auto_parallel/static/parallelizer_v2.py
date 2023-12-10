@@ -18,6 +18,7 @@ import os
 import time
 
 from paddle.distributed.passes import PassManager, new_pass
+from paddle.framework import get_flags
 from paddle.static import append_backward, program_guard
 from paddle.utils import unique_name
 
@@ -27,6 +28,12 @@ from .partitioner import Partitioner
 from .process_group import get_world_process_group
 from .reshard import Resharder
 from .utils import get_pp_stage, is_sequential_run, use_new_executor
+
+NEW_IR_PASS = [
+    'fused_gemm_epilogue_pass',
+    'fused_linear_param_grad_add_pass',
+    'fused_dropout_add_pass',
+]
 
 
 class Parallelizer:
@@ -232,6 +239,8 @@ class Parallelizer:
             )
         self._completer.complete_backward_annotation(main_program)
         self._dist_context.block_state.parse_backward_blocks(main_program)
+        # NOTE(zhaoyingli): temporary method: complete all vars' chunk_id attr of main_program
+        self._completer._complete_var_chunk_id(main_program)
         return params_grads
 
     def _generate_optimizer(
@@ -331,6 +340,45 @@ class Parallelizer:
         if self._strategy is None:
             return
 
+        # sequence parallel optimization
+        if self._strategy.sp_optimization.enable:
+            config = copy.deepcopy(self._strategy.sp_optimization.to_dict())
+            config["dist_context"] = self._dist_context
+            config["global_rank"] = rank
+            sp_pass = new_pass(
+                "auto_parallel_sequence_parallel_optimization", config
+            )
+            sp_pass.apply([main_program], [startup_program], self._pass_context)
+
+        # apply fused linear promotion pass
+        if (
+            self.is_train
+            and self._strategy.fused_linear_promotion.enable
+            and self._strategy.fused_passes.enable
+        ):
+            if (
+                len(self._strategy.fused_passes.fused_passes_list) > 0
+                and "fuse_gemm_epilogue"
+                in self._strategy.fused_passes.fused_passes_list
+            ):
+                amp_config = None
+                if self._strategy.amp.enable:
+                    amp_config = copy.deepcopy(self._strategy.amp.to_dict())
+                config = {}
+                config["dist_context"] = self._dist_context
+                config["global_rank"] = rank
+                config["enable_sp"] = self._strategy.sp_optimization.enable
+                config["params_grads"] = params_grads
+                config["amp_level"] = (
+                    amp_config['level'] if amp_config is not None else "o0"
+                )
+                fused_linear_promotion_pass = new_pass(
+                    "auto_parallel_fused_linear_promotion", config
+                )
+                fused_linear_promotion_pass.apply(
+                    [main_program], [startup_program], self._pass_context
+                )
+
         # data parallel optimization
         if self._strategy.dp_optimization.enable:
             config = copy.deepcopy(self._strategy.dp_optimization.to_dict())
@@ -423,13 +471,23 @@ class Parallelizer:
                 [main_program], [startup_program], self._pass_context
             )
 
+        enable_ir = get_flags("FLAGS_enable_pir_in_executor")[
+            'FLAGS_enable_pir_in_executor'
+        ]
+        ir_pass_list = []
         if self.is_train and self._strategy.fused_passes.enable:
             if len(self._strategy.fused_passes.fused_passes_list) > 0:
                 new_pass_list = []
-                for op in self._strategy.fused_passes.fused_passes_list:
-                    new_pass_list.append(new_pass(op))
+                for p in self._strategy.fused_passes.fused_passes_list:
+                    if p in NEW_IR_PASS and enable_ir:
+                        ir_pass_list.append(p)
+                    else:
+                        new_pass_list.append(new_pass(p))
                 pass_manager = PassManager(new_pass_list)
                 pass_manager.apply([main_program], [startup_program])
+
+        main_program._pass_opt = {}
+        main_program._pass_opt['pass_list'] = ir_pass_list
 
         if (
             self.is_train
@@ -448,7 +506,6 @@ class Parallelizer:
                     "variable CUDA_DEVICE_MAX_CONNECTIONS=1, which may leads to performance "
                     "loss. Try to export CUDA_DEVICE_MAX_CONNECTIONS=1 for better performance."
                 )
-
             main_program._pipeline_opt = {}
             main_program._pipeline_opt["standalone_opt"] = {
                 "enable_send_recv_overlap": enable_send_recv_overlap,
@@ -456,4 +513,6 @@ class Parallelizer:
                 "num_micro_batches": self._strategy.pipeline.accumulate_steps,
                 "pp_degree": len(self._dist_context.process_meshes),
                 "pp_stage": get_pp_stage(self._dist_context, rank),
+                "vpp_degree": self._dist_context._num_model_chunks,
+                "dist_context": self._dist_context,
             }
