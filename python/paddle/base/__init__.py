@@ -141,9 +141,6 @@ def __bootstrap__():
     Returns:
         None
     """
-    # NOTE(zhiqiu): When (1)numpy < 1.19; (2) python < 3.7,
-    # unittest is always imported in numpy (maybe some versions not).
-    # so is_test is True and p2p is not inited.
     in_test = 'unittest' in sys.modules
 
     try:

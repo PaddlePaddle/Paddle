@@ -527,8 +527,8 @@ packages=['paddle',
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
     setup_requires = f.read().splitlines()
 
-if sys.version_info < (3,7):
-    raise RuntimeError("Paddle only support Python version>=3.7 now")
+if sys.version_info < (3,8):
+    raise RuntimeError("Paddle only support Python version>=3.8 now")
 
 if sys.version_info >= (3,7):
     setup_requires_tmp = []
