@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import logging
 
 import paddle
 import paddle.nn.functional as F
@@ -557,7 +558,7 @@ def scaled_dot_product_attention(
                 )
                 return out
         except Exception as e:
-            print(
+            logging.error(
                 "If you want use flash_attn with additional mask or FLAGS_cudnn_deterministic is true, please pip install paddle_flash_attn-2.0.8.whl."
             )
-            print(e)
+            logging.error(e)
