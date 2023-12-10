@@ -36,6 +36,7 @@ void StandardGammaKernel(const Context& dev_ctx,
   funcs::ForRange<GPUContext> for_range(dev_ctx, out->numel());
   for_range(gamma_functor);
 }
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(standard_gamma,
