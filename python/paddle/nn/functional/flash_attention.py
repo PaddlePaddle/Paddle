@@ -558,6 +558,6 @@ def scaled_dot_product_attention(
                 return out
         except Exception as e:
             print(
-                "if you want use flash_attn with additional mask or FLAGS_cudnn_deterministic is true, please pip install paddle_flash_attn-2.0.8.whl"
+                "If you want use flash_attn with additional mask or FLAGS_cudnn_deterministic is true, please pip install paddle_flash_attn-2.0.8.whl."
             )
             print(e)
