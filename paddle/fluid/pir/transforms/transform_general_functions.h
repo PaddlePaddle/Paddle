@@ -65,13 +65,15 @@ pir::Type GetDataTypeFromValue(pir::Value value);
 Operation* GetDefiningOpForInput(Operation* op, uint32_t index);
 
 /**
- * @brief Get operations that use the specific output of the operation.
+ * @brief Get operations and the index of designative op operand (op result)
+ that use the specific output of the operation.
  *
  * @param Operation* pointer to an operation
  * @param uint32_t index of result of the operation
 
- * @return std::vector<Operation*>
+ * @return std::vector<std::pair<Operation*, int32_t>>
  */
-std::vector<Operation*> GetUseOpsForOutput(Operation* op, uint32_t index);
+std::vector<std::pair<Operation*, int32_t>> GetUseOpsForOutput(Operation* op,
+                                                               uint32_t index);
 
 }  // namespace pir

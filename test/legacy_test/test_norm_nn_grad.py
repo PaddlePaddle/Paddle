@@ -227,6 +227,35 @@ class TestBatchNormDoubleGradCheck(unittest.TestCase):
                 place=place,
             )
 
+    @test_with_pir_api
+    @prog_scope()
+    def func_pir(self, place):
+        prog = base.Program()
+        with base.program_guard(prog):
+            np.random.seed()
+            dtype = "float32"
+            eps = 0.005
+            atol = 1e-4
+            x = paddle.static.data(dtype=dtype, shape=self.shape, name='x')
+            bn = paddle.nn.BatchNorm2D(
+                self.shape[self.channel_index],
+                data_format=self.data_layout,
+                use_global_stats=self.use_global_stats,
+            )
+            z = bn(x)
+            x_arr = np.random.uniform(-1, 1, self.shape).astype(dtype)
+            gradient_checker.double_grad_check(
+                [x], z, x_init=x_arr, atol=atol, place=place, eps=eps
+            )
+            gradient_checker.double_grad_check_for_dygraph(
+                self.batch_norm_wrapper,
+                [x],
+                z,
+                x_init=x_arr,
+                atol=atol,
+                place=place,
+            )
+
     def test_grad(self):
         paddle.enable_static()
         places = [base.CPUPlace()]
@@ -234,6 +263,7 @@ class TestBatchNormDoubleGradCheck(unittest.TestCase):
             places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
+            self.func_pir(p)
 
 
 class TestBatchNormDoubleGradCheckCase1(TestBatchNormDoubleGradCheck):
@@ -275,6 +305,35 @@ class TestBatchNormDoubleGradCheckCase4(TestBatchNormDoubleGradCheck):
         )
         return batch_norm(x[0])
 
+    @test_with_pir_api
+    @prog_scope()
+    def func_pir(self, place):
+        prog = base.Program()
+        with base.program_guard(prog):
+            np.random.seed()
+            dtype = "float32"
+            eps = 0.005
+            atol = 1e-4
+            x = paddle.static.data(dtype=dtype, shape=self.shape, name='x')
+            bn = paddle.nn.BatchNorm3D(
+                self.shape[self.channel_index],
+                data_format=self.data_layout,
+                use_global_stats=self.use_global_stats,
+            )
+            z = bn(x)
+            x_arr = np.random.uniform(-1, 1, self.shape).astype(dtype)
+            gradient_checker.double_grad_check(
+                [x], z, x_init=x_arr, atol=atol, place=place, eps=eps
+            )
+            gradient_checker.double_grad_check_for_dygraph(
+                self.batch_norm_wrapper,
+                [x],
+                z,
+                x_init=x_arr,
+                atol=atol,
+                place=place,
+            )
+
 
 class TestBatchNormDoubleGradCheckCase5(TestBatchNormDoubleGradCheck):
     @prog_scope()
@@ -296,6 +355,39 @@ class TestBatchNormDoubleGradCheckCase5(TestBatchNormDoubleGradCheck):
             )
             x_arr = np.random.uniform(-1, 1, self.shape).astype(dtype)
             w, b = prog.global_block().all_parameters()[1:3]
+            w_arr = np.ones(chn).astype(dtype)
+            b_arr = np.zeros(chn).astype(dtype)
+            gradient_checker.double_grad_check(
+                [x, w, b],
+                z,
+                x_init=[x_arr, w_arr, b_arr],
+                atol=atol,
+                place=place,
+                eps=eps,
+            )
+
+    @test_with_pir_api
+    @prog_scope()
+    def func_pir(self, place):
+        prog = base.Program()
+        with base.program_guard(prog):
+            np.random.seed(37)
+            dtype = "float32"
+            eps = 0.005
+            atol = 2e-4
+            chn = (
+                self.shape[1] if self.data_layout == 'NCHW' else self.shape[-1]
+            )
+            x = paddle.static.data(dtype=dtype, shape=self.shape, name='x')
+            w = paddle.static.data(dtype=dtype, shape=[chn], name='w')
+            b = paddle.static.data(dtype=dtype, shape=[chn], name='b')
+            bn = paddle.nn.BatchNorm2D(
+                self.shape[self.channel_index],
+                data_format=self.data_layout,
+                use_global_stats=self.use_global_stats,
+            )
+            z = bn(x)
+            x_arr = np.random.uniform(-1, 1, self.shape).astype(dtype)
             w_arr = np.ones(chn).astype(dtype)
             b_arr = np.zeros(chn).astype(dtype)
             gradient_checker.double_grad_check(
