@@ -29,8 +29,8 @@ limitations under the License. */
 // (maybe not use gflags).
 #include "glog/logging.h"
 #include "paddle/phi/core/flags.h"
-PD_DECLARE_bool(flash_attention_with_advanced);
-PD_DECLARE_bool(cudnn_deterministic);
+PHI_DECLARE_bool(flash_attention_with_advanced);
+PHI_DECLARE_bool(cudnn_deterministic);
 PHI_DEFINE_string(cudnn_dir,  // NOLINT
                   "",
                   "Specify path for loading libcudnn.so. For instance, "
