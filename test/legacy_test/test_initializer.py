@@ -692,7 +692,6 @@ class TestMSRAInitializer(unittest.TestCase):
 
 
 class TestBilinearInitializer(unittest.TestCase):
-    @test_with_pir_api
     def test_bilinear_initializer(self, dtype="float32"):
         """Test the bilinear initializer with supplied arguments"""
         program = framework.Program()
@@ -710,6 +709,60 @@ class TestBilinearInitializer(unittest.TestCase):
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'assign_value')
         return block
+
+    def test_bilinear_initializer_fp64(self):
+        self.test_bilinear_initializer(dtype='float64')
+
+    def test_bilinear_initializer_fp16(self):
+        """Test the bilinear initializer with supplied arguments"""
+        block = self.test_bilinear_initializer("float16")
+        self.assertTrue(check_cast_op(block.ops[1]))
+
+    def test_bilinear_initializer_bf16(self):
+        """Test the bilinear initializer with supplied arguments"""
+        block = self.test_bilinear_initializer("uint16")
+        self.assertTrue(check_cast_op(block.ops[1]))
+
+    def test_type_error(self):
+        self.assertRaises(TypeError, self.test_bilinear_initializer, 'int32')
+
+
+class TestBilinearInitializerPir(unittest.TestCase):
+    def setUp(self):
+        self.init_uniform_op_name = 'pd_op.uniform'
+        self.init_normal_op_name = 'pd_op.gaussian'
+        self.set_parameter_op_name = 'builtin.set_parameter'
+
+    def get_init_ops_by_op_name(self, block, op_name):
+        checked_ops = []
+        for op in block.ops:
+            # get init op
+            if op_name == op.name():
+                checked_ops.append(op)
+        return checked_ops
+
+    def test_bilinear_initializer(self, dtype="float32"):
+        """Test the bilinear initializer with supplied arguments"""
+        with paddle.pir_utils.IrGuard():
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                param = paddle.pir.core.create_parameter(
+                    dtype=dtype,
+                    shape=[5, 10],
+                    name="param",
+                    initializer=paddle.nn.initializer.Bilinear(),
+                )
+
+                block = startup.global_block()
+                checked_ops = self.get_init_ops_by_op_name(
+                    block, self.init_uniform_op_name
+                )
+                num_ops = 2 if dtype in ["float16", "uint16", "float64"] else 1
+                self.assertEqual(len(checked_ops), num_ops)
+                init_op = checked_ops[0]
+                self.assertEqual(init_op.type, 'assign_value')
+                return block
 
     def test_bilinear_initializer_fp64(self):
         self.test_bilinear_initializer(dtype='float64')
@@ -780,7 +833,6 @@ class TestBilinearInitializerDygraphAPI(unittest.TestCase):
 
 
 class TestNumpyArrayInitializer(unittest.TestCase):
-    @test_with_pir_api
     def test_numpy_array_initializer(self, dtype="float32"):
         """Test the numpy array initializer with supplied arguments"""
         import numpy
@@ -802,6 +854,57 @@ class TestNumpyArrayInitializer(unittest.TestCase):
         self.assertEqual(init_op.type, 'assign_value')
         assert (init_op.attr('fp32_values') == np_array).all()
         return block
+
+    def test_numpy_array_initializer_fp16(self):
+        """Test the numpy array initializer with float16"""
+        block = self.test_numpy_array_initializer("float16")
+        self.assertTrue(block.ops[1])
+
+    def test_numpy_array_initializer_bf16(self):
+        """Test the numpy array initializer with bfloat16"""
+        block = self.test_numpy_array_initializer("uint16")
+        self.assertTrue(block.ops[1])
+
+
+class TestNumpyArrayInitializerPir(unittest.TestCase):
+    def setUp(self):
+        self.init_uniform_op_name = 'pd_op.uniform'
+        self.init_normal_op_name = 'pd_op.gaussian'
+        self.set_parameter_op_name = 'builtin.set_parameter'
+
+    def get_init_ops_by_op_name(self, block, op_name):
+        checked_ops = []
+        for op in block.ops:
+            # get init op
+            if op_name == op.name():
+                checked_ops.append(op)
+        return checked_ops
+
+    def test_numpy_array_initializer(self, dtype="float32"):
+        """Test the numpy array initializer with supplied arguments"""
+        import numpy
+
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        np_array = numpy.random.random(10000).astype(dtype)
+        with paddle.static.program_guard(main, startup):
+            param = paddle.pir.core.create_parameter(
+                dtype=dtype,
+                shape=[5, 10],
+                name="param",
+                initializer=paddle.nn.initializer.Assign(np_array),
+            )
+
+            block = startup.global_block()
+            checked_ops = self.get_init_ops_by_op_name(
+                block, self.init_uniform_op_name
+            )
+            num_ops = 2 if dtype in ["float16", "uint16"] else 1
+            self.assertEqual(len(checked_ops), num_ops)
+            init_op = checked_ops[0]
+            self.assertEqual(init_op.type, 'assign_value')
+            assert (init_op.attr('fp32_values') == np_array).all()
+            return block
 
     def test_numpy_array_initializer_fp16(self):
         """Test the numpy array initializer with float16"""
