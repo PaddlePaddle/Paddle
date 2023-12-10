@@ -1177,7 +1177,7 @@
   outputs :
     {out : Out, mask : Mask}
   attrs :
-    kernel_size : ksize
+    output_size : output_size
 
 - op : fractional_max_pool3d_with_index
   inputs :
@@ -1185,7 +1185,7 @@
   outputs :
     {out : Out, mask : Mask}
   attrs :
-    kernel_size : ksize
+    output_size : output_size
 
 - op : frame
   backward : frame_grad

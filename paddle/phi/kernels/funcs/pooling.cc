@@ -1850,19 +1850,13 @@ template class MaxPool3dWithIndexGradFunctor<CPUContext, double, int>;
 
 /*
  * All tensors are in NCHW format.
- * Ksize, strides, paddings are two elements. These two elements represent
- * height and width, respectively.
  */
 template <typename T1, typename T2>
 class FractionalMaxPool2dWithIndexFunctor<CPUContext, T1, T2> {
  public:
   void operator()(const CPUContext& context,
                   const DenseTensor& input,
-                  const std::vector<int>& ksize,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
-                  bool adaptive,
-                  bool fractional,
+                  const std::vector<int>& output_size,
                   float random_u,
                   DenseTensor* output,
                   DenseTensor* mask) {
@@ -1872,12 +1866,6 @@ class FractionalMaxPool2dWithIndexFunctor<CPUContext, T1, T2> {
     const int output_channels = static_cast<int>(output->dims()[1]);
     const int output_height = static_cast<int>(output->dims()[2]);
     const int output_width = static_cast<int>(output->dims()[3]);
-    const int ksize_height = ksize[0];
-    const int ksize_width = ksize[1];
-    const int stride_height = strides[0];
-    const int stride_width = strides[1];
-    const int padding_height = paddings[0];
-    const int padding_width = paddings[1];
     const int input_stride = input_height * input_width;
     const int output_stride = output_height * output_width;
 
@@ -1887,56 +1875,37 @@ class FractionalMaxPool2dWithIndexFunctor<CPUContext, T1, T2> {
 
     float alpha_height = 0, alpha_width = 0;
     float u_height = 0, u_width = 0;
-    if (fractional) {
-      float u = 0;
-      if (random_u == 0) {
-        std::uniform_real_distribution<float> dist(0, 1);
-        auto engine = phi::GetCPURandomEngine(0);
-        u = dist(*engine);
-      } else {
-        u = random_u;
-      }
-
-      alpha_height = static_cast<float>(input_height) / output_height;
-      alpha_width = static_cast<float>(input_width) / output_width;
-
-      u_height =
-          FractionalRationalU(u, alpha_height, input_height, output_height);
-      u_width = FractionalRationalU(u, alpha_width, input_width, output_width);
+    float u = 0;
+    if (random_u == 0) {
+      std::uniform_real_distribution<float> dist(0, 1);
+      auto engine = phi::GetCPURandomEngine(0);
+      u = dist(*engine);
+    } else {
+      u = random_u;
     }
+
+    alpha_height = static_cast<float>(input_height) / output_height;
+    alpha_width = static_cast<float>(input_width) / output_width;
+
+    u_height =
+        FractionalRationalU(u, alpha_height, input_height, output_height);
+    u_width = FractionalRationalU(u, alpha_width, input_width, output_width);
 
     int hstart = 0, hend = 0;
     int wstart = 0, wend = 0;
     for (int i = 0; i < batch_size; i++) {
       for (int c = 0; c < output_channels; ++c) {
         for (int ph = 0; ph < output_height; ++ph) {
-          if (adaptive) {
-            hstart = AdaptStartIndex(ph, input_height, output_height);
-            hend = AdaptEndIndex(ph, input_height, output_height);
-          } else if (fractional) {
-            hstart = FractionalStartIndex(ph, alpha_height, u_height);
-            hend = FractionalEndIndex(ph, alpha_height, u_height);
-            hstart = std::max(hstart, 0);
-            hend = std::min(hend, input_height);
-          } else {
-            hstart = ph * stride_height - padding_height;
-            hend = std::min(hstart + ksize_height, input_height);
-            hstart = std::max(hstart, 0);
-          }
+          hstart = FractionalStartIndex(ph, alpha_height, u_height);
+          hend = FractionalEndIndex(ph, alpha_height, u_height);
+          hstart = std::max(hstart, 0);
+          hend = std::min(hend, input_height);
+
           for (int pw = 0; pw < output_width; ++pw) {
-            if (adaptive) {
-              wstart = AdaptStartIndex(pw, input_width, output_width);
-              wend = AdaptEndIndex(pw, input_width, output_width);
-            } else if (fractional) {
-              wstart = FractionalStartIndex(pw, alpha_width, u_width);
-              wend = FractionalEndIndex(pw, alpha_width, u_width);
-              wstart = std::max(wstart, 0);
-              wend = std::min(wend, input_width);
-            } else {
-              wstart = pw * stride_width - padding_width;
-              wend = std::min(wstart + ksize_width, input_width);
-              wstart = std::max(wstart, 0);
-            }
+            wstart = FractionalStartIndex(pw, alpha_width, u_width);
+            wend = FractionalEndIndex(pw, alpha_width, u_width);
+            wstart = std::max(wstart, 0);
+            wend = std::min(wend, input_width);
 
             T1 ele = static_cast<T1>(-FLT_MAX);
             int index = -1;
@@ -1963,8 +1932,6 @@ class FractionalMaxPool2dWithIndexFunctor<CPUContext, T1, T2> {
 
 /*
  * All tensors are in NCHW format.
- * Ksize, strides, paddings are two elements. These two elements represent
- * height and width, respectively.
  */
 template <typename T1, typename T2>
 class FractionalMaxPool2dWithIndexGradFunctor<CPUContext, T1, T2> {
@@ -1972,11 +1939,7 @@ class FractionalMaxPool2dWithIndexGradFunctor<CPUContext, T1, T2> {
   void operator()(const CPUContext& context,
                   const DenseTensor& output_grad,
                   const DenseTensor& mask,
-                  const std::vector<int>& ksize UNUSED,
-                  const std::vector<int>& strides UNUSED,
-                  const std::vector<int>& paddings UNUSED,
-                  bool adaptive UNUSED,
-                  bool fractional UNUSED,
+                  const std::vector<int>& output_size UNUSED,
                   float random_u UNUSED,
                   DenseTensor* input_grad) {
     const int batch_size = static_cast<int>(input_grad->dims()[0]);
@@ -2017,19 +1980,13 @@ template class FractionalMaxPool2dWithIndexGradFunctor<CPUContext, double, int>;
 
 /*
  * All tensors are in NCDHW format.
- * Ksize, strides, paddings are three elements. These three elements represent
- * depth, height and width, respectively.
  */
 template <typename T1, typename T2>
 class FractionalMaxPool3dWithIndexFunctor<CPUContext, T1, T2> {
  public:
   void operator()(const CPUContext& context,
                   const DenseTensor& input,
-                  const std::vector<int>& ksize,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
-                  bool adaptive,
-                  bool fractional,
+                  const std::vector<int>& output_size,
                   float random_u,
                   DenseTensor* output,
                   DenseTensor* mask) {
@@ -2041,15 +1998,6 @@ class FractionalMaxPool3dWithIndexFunctor<CPUContext, T1, T2> {
     const int output_depth = static_cast<int>(output->dims()[2]);
     const int output_height = static_cast<int>(output->dims()[3]);
     const int output_width = static_cast<int>(output->dims()[4]);
-    const int ksize_depth = ksize[0];
-    const int ksize_height = ksize[1];
-    const int ksize_width = ksize[2];
-    const int stride_depth = strides[0];
-    const int stride_height = strides[1];
-    const int stride_width = strides[2];
-    const int padding_depth = paddings[0];
-    const int padding_height = paddings[1];
-    const int padding_width = paddings[2];
     const int input_stride = input_depth * input_height * input_width;
     const int output_stride = output_depth * output_height * output_width;
 
@@ -2059,25 +2007,23 @@ class FractionalMaxPool3dWithIndexFunctor<CPUContext, T1, T2> {
 
     float alpha_height = 0, alpha_width = 0, alpha_depth = 0;
     float u_height = 0, u_width = 0, u_depth = 0;
-    if (fractional) {
-      float u = 0;
-      if (random_u == 0) {
-        std::uniform_real_distribution<float> dist(0, 1);
-        auto engine = phi::GetCPURandomEngine(0);
-        u = dist(*engine);
-      } else {
-        u = random_u;
-      }
-
-      alpha_depth = static_cast<float>(input_depth) / output_depth;
-      alpha_height = static_cast<float>(input_height) / output_height;
-      alpha_width = static_cast<float>(input_width) / output_width;
-
-      u_depth = FractionalRationalU(u, alpha_depth, input_depth, output_depth);
-      u_height =
-          FractionalRationalU(u, alpha_height, input_height, output_height);
-      u_width = FractionalRationalU(u, alpha_width, input_width, output_width);
+    float u = 0;
+    if (random_u == 0) {
+      std::uniform_real_distribution<float> dist(0, 1);
+      auto engine = phi::GetCPURandomEngine(0);
+      u = dist(*engine);
+    } else {
+      u = random_u;
     }
+
+    alpha_depth = static_cast<float>(input_depth) / output_depth;
+    alpha_height = static_cast<float>(input_height) / output_height;
+    alpha_width = static_cast<float>(input_width) / output_width;
+
+    u_depth = FractionalRationalU(u, alpha_depth, input_depth, output_depth);
+    u_height =
+        FractionalRationalU(u, alpha_height, input_height, output_height);
+    u_width = FractionalRationalU(u, alpha_width, input_width, output_width);
 
     int dstart = 0, dend = 0;
     int hstart = 0, hend = 0;
@@ -2085,47 +2031,22 @@ class FractionalMaxPool3dWithIndexFunctor<CPUContext, T1, T2> {
     for (int i = 0; i < batch_size; i++) {
       for (int c = 0; c < output_channels; ++c) {
         for (int pd = 0; pd < output_depth; ++pd) {
-          if (adaptive) {
-            dstart = AdaptStartIndex(pd, input_depth, output_depth);
-            dend = AdaptEndIndex(pd, input_depth, output_depth);
-          } else if (fractional) {
-            dstart = FractionalStartIndex(pd, alpha_depth, u_depth);
-            dend = FractionalEndIndex(pd, alpha_depth, u_depth);
-            dstart = std::max(dstart, 0);
-            dend = std::min(dend, input_depth);
-          } else {
-            dstart = pd * stride_depth - padding_depth;
-            dend = std::min(dstart + ksize_depth, input_depth);
-            dstart = std::max(dstart, 0);
-          }
+          dstart = FractionalStartIndex(pd, alpha_depth, u_depth);
+          dend = FractionalEndIndex(pd, alpha_depth, u_depth);
+          dstart = std::max(dstart, 0);
+          dend = std::min(dend, input_depth);
+
           for (int ph = 0; ph < output_height; ++ph) {
-            if (adaptive) {
-              hstart = AdaptStartIndex(ph, input_height, output_height);
-              hend = AdaptEndIndex(ph, input_height, output_height);
-            } else if (fractional) {
-              hstart = FractionalStartIndex(ph, alpha_height, u_height);
-              hend = FractionalEndIndex(ph, alpha_height, u_height);
-              hstart = std::max(hstart, 0);
-              hend = std::min(hend, input_height);
-            } else {
-              hstart = ph * stride_height - padding_height;
-              hend = std::min(hstart + ksize_height, input_height);
-              hstart = std::max(hstart, 0);
-            }
+            hstart = FractionalStartIndex(ph, alpha_height, u_height);
+            hend = FractionalEndIndex(ph, alpha_height, u_height);
+            hstart = std::max(hstart, 0);
+            hend = std::min(hend, input_height);
+
             for (int pw = 0; pw < output_width; ++pw) {
-              if (adaptive) {
-                wstart = AdaptStartIndex(pw, input_width, output_width);
-                wend = AdaptEndIndex(pw, input_width, output_width);
-              } else if (fractional) {
-                wstart = FractionalStartIndex(pw, alpha_width, u_width);
-                wend = FractionalEndIndex(pw, alpha_width, u_width);
-                wstart = std::max(wstart, 0);
-                wend = std::min(wend, input_width);
-              } else {
-                wstart = pw * stride_width - padding_width;
-                wend = std::min(wstart + ksize_width, input_width);
-                wstart = std::max(wstart, 0);
-              }
+              wstart = FractionalStartIndex(pw, alpha_width, u_width);
+              wend = FractionalEndIndex(pw, alpha_width, u_width);
+              wstart = std::max(wstart, 0);
+              wend = std::min(wend, input_width);
 
               int output_idx = (pd * output_height + ph) * output_width + pw;
               T1 ele = static_cast<T1>(-FLT_MAX);
@@ -2157,8 +2078,6 @@ class FractionalMaxPool3dWithIndexFunctor<CPUContext, T1, T2> {
 
 /*
  * All tensors are in NCDHW format.
- * Ksize, strides, paddings are three elements. These three elements represent
- * depth, height and width, respectively.
  */
 template <typename T1, typename T2>
 class FractionalMaxPool3dWithIndexGradFunctor<CPUContext, T1, T2> {
@@ -2166,11 +2085,7 @@ class FractionalMaxPool3dWithIndexGradFunctor<CPUContext, T1, T2> {
   void operator()(const CPUContext& context,
                   const DenseTensor& output_grad,
                   const DenseTensor& mask,
-                  const std::vector<int>& ksize UNUSED,
-                  const std::vector<int>& strides UNUSED,
-                  const std::vector<int>& paddings UNUSED,
-                  bool adaptive UNUSED,
-                  bool fractional UNUSED,
+                  const std::vector<int>& output_size UNUSED,
                   float random_u UNUSED,
                   DenseTensor* input_grad) {
     const int batch_size = static_cast<int>(input_grad->dims()[0]);

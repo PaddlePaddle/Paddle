@@ -27,14 +27,6 @@ import paddle
 from paddle.base import core
 
 
-def adaptive_start_index(index, input_size, output_size):
-    return int(np.floor(index * input_size / output_size))
-
-
-def adaptive_end_index(index, input_size, output_size):
-    return int(np.ceil((index + 1) * input_size / output_size))
-
-
 def fractional_rational_u(u, alpha, input, output):
     base = input // output
 
@@ -55,59 +47,35 @@ def fractional_end_index(idx, alpha, u):
 
 def fractional_max_pool2D_forward_naive(
     x,
-    ksize,
-    strides,
-    paddings,
-    global_pool=False,
-    adaptive=False,
-    fractional=False,
+    output_size,
     random_u=None,
 ):
     N, C, H, W = x.shape
-    if global_pool:
-        ksize = [H, W]
-        paddings = [0, 0]
+    H_out, W_out = output_size
 
-    if adaptive or fractional:
-        H_out, W_out = ksize
-    else:
-        H_out = (H - ksize[0] + 2 * paddings[0]) // strides[0] + 1
-        W_out = (W - ksize[1] + 2 * paddings[1]) // strides[1] + 1
+    u = random_u
 
-    if fractional:
-        u = random_u
+    alpha_height = H / H_out
+    alpha_width = W / W_out
 
-        alpha_height = H / H_out
-        alpha_width = W / W_out
-
-        u_height = fractional_rational_u(u, alpha_height, H, H_out)
-        u_width = fractional_rational_u(u, alpha_width, W, W_out)
+    u_height = fractional_rational_u(u, alpha_height, H, H_out)
+    u_width = fractional_rational_u(u, alpha_width, W, W_out)
 
     out = np.zeros((N, C, H_out, W_out))
     mask = np.zeros((N, C, H_out, W_out))
     for i in range(H_out):
-        for j in range(W_out):
-            if adaptive:
-                r_start = adaptive_start_index(i, H, ksize[0])
-                r_end = adaptive_end_index(i, H, ksize[0])
-                c_start = adaptive_start_index(j, W, ksize[1])
-                c_end = adaptive_end_index(j, W, ksize[1])
-            elif fractional:
-                r_start = fractional_start_index(i, alpha_height, u_height)
-                r_end = fractional_end_index(i, alpha_height, u_height)
-                r_start = max(r_start, 0)
-                r_end = min(r_end, H)
+        h_start = fractional_start_index(i, alpha_height, u_height)
+        h_end = fractional_end_index(i, alpha_height, u_height)
+        h_start = max(h_start, 0)
+        h_end = min(h_end, H)
 
-                c_start = fractional_start_index(j, alpha_width, u_width)
-                c_end = fractional_end_index(j, alpha_width, u_width)
-                c_start = max(c_start, 0)
-                c_end = min(c_end, W)
-            else:
-                r_start = np.max((i * strides[0] - paddings[0], 0))
-                r_end = np.min((i * strides[0] + ksize[0] - paddings[0], H))
-                c_start = np.max((j * strides[1] - paddings[1], 0))
-                c_end = np.min((j * strides[1] + ksize[1] - paddings[1], W))
-            x_masked = x[:, :, r_start:r_end, c_start:c_end]
+        for j in range(W_out):
+            w_start = fractional_start_index(j, alpha_width, u_width)
+            w_end = fractional_end_index(j, alpha_width, u_width)
+            w_start = max(w_start, 0)
+            w_end = min(w_end, W)
+
+            x_masked = x[:, :, h_start:h_end, w_start:w_end]
 
             out[:, :, i, j] = np.max(x_masked, axis=(2, 3))
 
@@ -117,7 +85,7 @@ def fractional_max_pool2D_forward_naive(
                     index = np.where(arr == np.max(arr))
                     sub_row = index[0][0]
                     sub_col = index[1][0]
-                    index = (r_start + sub_row) * W + c_start + sub_col
+                    index = (h_start + sub_row) * W + w_start + sub_col
                     mask[n, c, i, j] = index
 
     return out, mask
@@ -126,31 +94,23 @@ def fractional_max_pool2D_forward_naive(
 # ----------------fractional_max_pool2d_with_index----------------
 def fractional_max_pool2d_with_index_wapper(
     x,
-    kernel_size=[],
-    strides=[],
-    paddings=[],
-    global_pooling=False,
-    adaptive=False,
-    fractional=False,
+    output_size=None,
     random_u=None,
 ):
     return paddle._C_ops.fractional_max_pool2d_with_index(
         x,
-        kernel_size,
-        strides,
-        paddings,
-        global_pooling,
-        adaptive,
-        fractional,
+        output_size,
         random_u,
     )
 
 
 class TestMaxPoolWithIndex_Op(OpTest):
     def setUp(self):
+        self.op_type = "fractional_max_pool2d_with_index"
+        self.python_api = fractional_max_pool2d_with_index_wapper
+        self.pool_forward_naive = fractional_max_pool2D_forward_naive
+
         self.init_test_case()
-        self.init_global()
-        self.init_adaptive()
         self.init_fractional()
         self.init_dtype()
 
@@ -166,12 +126,7 @@ class TestMaxPoolWithIndex_Op(OpTest):
 
         output, mask = self.pool_forward_naive(
             input,
-            self.ksize,
-            self.strides,
-            self.paddings,
-            self.global_pool,
-            self.adaptive,
-            self.fractional,
+            self.output_size,
             self.random_u,
         )
         mask = mask.astype("int32")
@@ -181,12 +136,7 @@ class TestMaxPoolWithIndex_Op(OpTest):
             output = output.astype(self.dtype)
 
         self.attrs = {
-            'strides': self.strides,
-            'paddings': self.paddings,
-            'ksize': self.ksize,
-            'global_pooling': self.global_pool,
-            'adaptive': self.adaptive,
-            'fractional': self.fractional,
+            'output_size': self.output_size,
             'random_u': self.random_u,
         }
 
@@ -212,67 +162,22 @@ class TestMaxPoolWithIndex_Op(OpTest):
         self.check_grad({'X'}, ['Out'])
 
     def init_test_case(self):
-        self.op_type = "fractional_max_pool2d_with_index"
-        self.python_api = fractional_max_pool2d_with_index_wapper
-        self.pool_forward_naive = fractional_max_pool2D_forward_naive
         self.shape = [2, 3, 7, 7]
-        self.ksize = [3, 3]
-        self.strides = [2, 2]
-        self.paddings = [1, 1]
-
-    def init_global(self):
-        self.global_pool = False
-
-    def init_adaptive(self):
-        self.adaptive = False
+        self.output_size = [3, 3]
 
     def init_fractional(self):
-        self.fractional = False
         self.random_u = 0.3
 
 
 class TestCase1(TestMaxPoolWithIndex_Op):
     def init_test_case(self):
-        self.op_type = "fractional_max_pool2d_with_index"
-        self.python_api = fractional_max_pool2d_with_index_wapper
-        self.pool_forward_naive = fractional_max_pool2D_forward_naive
-        self.shape = [2, 3, 7, 7]
-        self.ksize = [3, 3]
-        self.strides = [1, 1]
-        self.paddings = [1, 1]
-
-    def init_global(self):
-        self.global_pool = True
+        self.shape = [3, 5, 9, 9]
+        self.output_size = [5, 5]
 
 
 class TestCase2(TestCase1):
-    def init_global(self):
-        self.global_pool = False
-
-
-class TestCase3(TestMaxPoolWithIndex_Op):
-    def init_test_case(self):
-        self.op_type = "fractional_max_pool2d_with_index"
-        self.python_api = fractional_max_pool2d_with_index_wapper
-        self.pool_forward_naive = fractional_max_pool2D_forward_naive
-        self.shape = [2, 3, 7, 7]
-        self.ksize = [3, 3]
-        self.strides = [2, 2]
-        self.paddings = [0, 0]
-
-    def init_global(self):
-        self.global_pool = True
-
-
-class TestCastAdaptive2d(TestCase3):
-    def init_adaptive(self):
-        self.adaptive = True
-
-
-class TestCastFractional2d(TestCase3):
     def init_fractional(self):
-        self.fractional = True
-        self.random_u = 0.3
+        self.random_u = 0.5
 
 
 # ----------------fractional_max_pool2d_with_index_fp16----------------
@@ -303,9 +208,6 @@ def create_test_fp16_class(parent):
 create_test_fp16_class(TestMaxPoolWithIndex_Op)
 create_test_fp16_class(TestCase1)
 create_test_fp16_class(TestCase2)
-create_test_fp16_class(TestCase3)
-create_test_fp16_class(TestCastAdaptive2d)
-create_test_fp16_class(TestCastFractional2d)
 
 
 # ----------------fractional_max_pool2d_with_index_bf16----------------
@@ -350,10 +252,6 @@ def create_test_bf16_class(parent):
 create_test_bf16_class(TestMaxPoolWithIndex_Op)
 create_test_bf16_class(TestCase1)
 create_test_bf16_class(TestCase2)
-create_test_bf16_class(TestCase3)
-create_test_bf16_class(TestCastAdaptive2d)
-create_test_bf16_class(TestCastFractional2d)
-
 
 if __name__ == '__main__':
     unittest.main()

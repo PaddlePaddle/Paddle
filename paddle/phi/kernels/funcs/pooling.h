@@ -391,22 +391,17 @@ class MaxPool3dWithIndexGradFunctor {
 };
 
 /*
- * \brief Getting max pooling results and corresponding max index, and
- * calculating gradient.
- * In up-sampling-pooling, it is necessary to know max element index.
- * In pool2d, all tensors are in NCHW format. In pool3d, all tensors are in
- * NCDHW format.
+ * \brief Getting fractional max pooling results and corresponding max index,
+ * and calculating gradient. In up-sampling-pooling, it is necessary to know max
+ * element index. In pool2d, all tensors are in NCHW format. In pool3d, all
+ * tensors are in NCDHW format.
  */
 template <typename Context, typename T1, typename T2>
 class FractionalMaxPool2dWithIndexFunctor {
  public:
   void operator()(const Context& context,
                   const DenseTensor& input,
-                  const std::vector<int>& ksize,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
-                  bool adaptive,
-                  bool fractional,
+                  const std::vector<int>& output_size,
                   float random_u,
                   DenseTensor* output,
                   DenseTensor* mask);
@@ -418,11 +413,7 @@ class FractionalMaxPool2dWithIndexGradFunctor {
   void operator()(const Context& context,
                   const DenseTensor& output_grad,
                   const DenseTensor& mask,
-                  const std::vector<int>& ksize,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
-                  bool adaptive,
-                  bool fractional,
+                  const std::vector<int>& output_size,
                   float random_u,
                   DenseTensor* input_grad);
 };
@@ -432,11 +423,7 @@ class FractionalMaxPool3dWithIndexFunctor {
  public:
   void operator()(const Context& context,
                   const DenseTensor& input,
-                  const std::vector<int>& ksize,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
-                  bool adaptive,
-                  bool fractional,
+                  const std::vector<int>& output_size,
                   float random_u,
                   DenseTensor* output,
                   DenseTensor* mask);
@@ -448,11 +435,7 @@ class FractionalMaxPool3dWithIndexGradFunctor {
   void operator()(const Context& context,
                   const DenseTensor& output_grad,
                   const DenseTensor& mask,
-                  const std::vector<int>& ksize,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
-                  bool adaptive,
-                  bool fractional,
+                  const std::vector<int>& output_size,
                   float random_u,
                   DenseTensor* input_grad);
 };

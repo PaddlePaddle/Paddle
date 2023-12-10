@@ -2334,18 +2334,12 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
 }
 
 void FractionalMaxPoolWithIndexInferMeta(const MetaTensor& x,
-                                         const std::vector<int>& kernel_size,
-                                         const std::vector<int>& strides,
-                                         const std::vector<int>& paddings,
-                                         bool global_pooling,
-                                         bool adaptive,
-                                         bool fractional,
+                                         const std::vector<int>& output_size,
                                          float random_u,
                                          MetaTensor* out,
                                          MetaTensor* mask,
                                          MetaConfig config) {
-  std::vector<int> paddings_ = paddings;
-  std::vector<int> kernel_size_ = kernel_size;
+  std::vector<int> output_size_ = output_size;
 
   auto x_dims = x.dims();
 
@@ -2356,53 +2350,17 @@ void FractionalMaxPoolWithIndexInferMeta(const MetaTensor& x,
                               "5-D tensor but received %dD-Tensor",
                               x_dims.size()));
 
-  if (global_pooling) {
-    kernel_size_.resize(static_cast<size_t>(x_dims.size()) - 2);
-    for (int i = 0; i < static_cast<int>(kernel_size_.size()); ++i) {
-      paddings_[i] = 0;
-      kernel_size_[i] = static_cast<int>(x_dims[i + 2]);
-    }
-  }
-
   PADDLE_ENFORCE_EQ(
-      x_dims.size() - kernel_size_.size(),
+      x_dims.size() - output_size_.size(),
       2U,
       errors::InvalidArgument(
-          "The input size %d minus the kernel size %d should equal to 2.",
+          "The input size %d minus the output size %d should equal to 2.",
           x_dims.size(),
-          kernel_size_.size()));
-  PADDLE_ENFORCE_EQ(
-      kernel_size_.size(),
-      strides.size(),
-      errors::InvalidArgument(
-          "Strides size %d and pooling size %d should be the same.",
-          strides.size(),
-          kernel_size_.size()));
-  PADDLE_ENFORCE_EQ(
-      kernel_size_.size(),
-      paddings_.size(),
-      errors::InvalidArgument(
-          "Paddings size %d and pooling size %d should be the same.",
-          paddings_.size(),
-          kernel_size_.size()));
+          output_size_.size()));
 
   std::vector<int64_t> output_shape({x_dims[0], x_dims[1]});
-  if (adaptive || fractional) {
-    output_shape.insert(
-        output_shape.end(), kernel_size_.begin(), kernel_size_.end());
-  } else {
-    for (int i = 0; i < static_cast<int>(kernel_size_.size()); ++i) {
-      if ((!config.is_runtime) && (x_dims[i + 2] < 0)) {
-        output_shape.push_back(x_dims[i + 2]);
-      } else {
-        output_shape.push_back(
-            funcs::MaxPoolOutputSize(static_cast<int>(x_dims[i + 2]),
-                                     kernel_size_[i],
-                                     paddings_[i],
-                                     strides[i]));
-      }
-    }
-  }
+  output_shape.insert(
+      output_shape.end(), output_size_.begin(), output_size_.end());
 
   out->set_dims(common::make_ddim(output_shape));
   out->set_dtype(x.dtype());

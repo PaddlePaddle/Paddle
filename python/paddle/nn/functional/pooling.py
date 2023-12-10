@@ -2187,9 +2187,10 @@ def fractional_max_pool2d(
 
     if in_dygraph_mode():
         pool_out = _C_ops.fractional_max_pool2d_with_index(
-            x, output_size, [1, 1], [0, 0], False, False, True, float(random_u)
+            x, output_size, float(random_u)
         )
         return pool_out if return_mask else pool_out[0]
+
     else:
         l_type = 'fractional_max_pool2d_with_index'
 
@@ -2217,10 +2218,8 @@ def fractional_max_pool2d(
             inputs={"X": x},
             outputs=outputs,
             attrs={
-                "pooling_type": 'max',
-                "ksize": output_size,
-                "fractional": True,
-                "random_u": float(random_u),
+                "output_size": output_size,
+                "random_u": random_u,
             },
         )
 
@@ -2319,18 +2318,13 @@ def fractional_max_pool3d(
             output_size[2] = in_w
 
     if in_dygraph_mode():
-        # By default, strides is [1,1,1] and paddings is [0, 0, 0]
         pool_out = _C_ops.fractional_max_pool3d_with_index(
             x,
             output_size,
-            [1, 1, 1],
-            [0, 0, 0],
-            False,
-            False,
-            True,
             float(random_u),
         )
         return pool_out if return_mask else pool_out[0]
+
     else:
         l_type = 'fractional_max_pool3d_with_index'
 
@@ -2358,10 +2352,8 @@ def fractional_max_pool3d(
             inputs={"X": x},
             outputs=outputs,
             attrs={
-                "pooling_type": 'max',
-                "ksize": output_size,
-                "fractional": True,
-                "random_u": float(random_u),
+                "output_size": output_size,
+                "random_u": random_u,
             },
         )
 
