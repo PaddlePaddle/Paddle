@@ -3971,7 +3971,6 @@ def _matrix_exp_pade13(mat_a, mat_i, mat_a2, mat_a4, mat_a6, dtype):
 
 
 def _matrix_uv_where(vals, cases, l1_norm):
-    assert len(vals) == len(cases) - 1
     if len(vals) == 1:
         return paddle.where(
             paddle.less_than(l1_norm, vals[0]), cases[0], cases[1]
@@ -4150,6 +4149,7 @@ def matrix_exp(x, name=None):
     squarings = paddle.full(mat_a.shape, 0, dtype)
     _matrix_uv_func = None
 
+    # dtype already checked before, we use `if-elif` only
     if dtype == 'float32':
         maxnorm = paddle.full((), 3.925724783138660, dtype)
         squarings = paddle.floor(
@@ -4160,7 +4160,7 @@ def matrix_exp(x, name=None):
 
         _matrix_uv_func = _matrix_uv_float32
 
-    if dtype == 'float64':
+    elif dtype == 'float64':
         maxnorm = paddle.full((), 5.371920351148152, dtype)
         squarings = paddle.floor(
             paddle.log(l1_norm / maxnorm)
@@ -4180,19 +4180,21 @@ def matrix_exp(x, name=None):
         lambda: paddle.full(mat_a.shape, np.nan, dtype),
     )
 
-    max_squarings = paddle.max(squarings)
+    max_squaring = paddle.max(squarings)
     i = paddle.full((), 0, dtype)
 
     def cond(i, _):
         return paddle.static.nn.cond(
             is_finite,
-            lambda: paddle.less_than(i, max_squarings),
+            lambda: paddle.less_than(i, max_squaring),
             lambda: paddle.full((), False),
         )
 
-    def body(i, r):
+    def body(i, result):
         return i + 1, paddle.where(
-            paddle.less_than(i, squarings), paddle.matmul(r, r), r
+            paddle.less_than(i, squarings),
+            paddle.matmul(result, result),
+            result,
         )
 
     _, result = paddle.static.nn.while_loop(cond, body, [i, result])
