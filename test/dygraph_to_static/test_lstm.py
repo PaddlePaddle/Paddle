@@ -129,7 +129,7 @@ class TestLstm(Dy2StTestBase):
 class TestLstmWithProjsize(TestLstm):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
-        self.net = Net(12, 2, 4)
+        self.net = Net(12, 8, 4)
         self.inputs = paddle.zeros((2, 10, 12))
 
 
