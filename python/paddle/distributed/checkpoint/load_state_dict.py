@@ -404,6 +404,10 @@ def load_state_dict(
         # Init the default global process group
         paddle.distributed.init_parallel_env()
 
+    if use_dist:
+        # sync to avoid some ranks not write path yet
+        paddle.distributed.barrier(process_group)
+
     rank_to_files = get_rank_to_files(path, state_dict, process_group, use_dist)
     if len(rank_to_files) <= 0:
         return
