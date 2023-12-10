@@ -326,13 +326,12 @@ def check_flashattn_advanced_so():
     )
 
     if os.path.exists(flashattn_advanced_so_path):
-        print("use flash_attn in paddle_flash_attn.whl.")
+        logging.warning("use flash_attn in paddle_flash_attn.whl.")
         return True
     else:
-        print(
-            "libflashattn_advanced.so does not exist in Paddle installation directory."
+        logging.warning(
+            "libflashattn_advanced.so does not exist in Paddle installation directory. Please install paddle_flash_attn.whl."
         )
-        print("Please install paddle_flash_attn.whl.")
         return False
 
 
