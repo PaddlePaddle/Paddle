@@ -184,3 +184,5 @@ def save_state_dict(
         paddle.save(metadata, os.path.join(path, f"{unique_id}.metadata"))
     logger.debug(f"local_state_dict:{local_state_dict}")
     paddle.save(local_state_dict, os.path.join(path, file_name))
+    # barrier to make sure all the process has saved the file
+    paddle.distributed.barrier()
