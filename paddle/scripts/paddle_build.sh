@@ -4277,12 +4277,12 @@ function main() {
         cmake_gen ${PYTHON_ABI:-""}
         build_mac
         ;;
-      cicheck_py37)
+      cicheck_py38)
         export WITH_SHARED_PHI=ON
         run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
-      test_cicheck_py37)
+      test_cicheck_py38)
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       cicheck_sot)
