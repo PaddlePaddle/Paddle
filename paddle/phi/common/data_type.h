@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
+#include "paddle/utils/test_macros.h"
 
 namespace phi {
 namespace dtype {
@@ -152,7 +153,7 @@ PD_FOR_EACH_DATA_TYPE(PD_SPECIALIZE_CppTypeToDataType)
 
 #undef PD_SPECIALIZE_CppTypeToDataType
 
-inline std::ostream& operator<<(std::ostream& os, DataType dtype) {
+TEST_API std::ostream& operator<<(std::ostream& os, DataType dtype) {
   switch (dtype) {
     case DataType::UNDEFINED:
       os << "Undefined";
