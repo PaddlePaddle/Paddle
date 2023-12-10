@@ -2684,69 +2684,24 @@ __global__ void FractionalKernelMaxPool2DWithIdxGrad(
     uint64_t offset,
     T1* input_grad,
     FastDivModForPooling divmods) {
-  float alpha_height = 0, alpha_width = 0, alpha_depth = 0;
-  float u_height = 0, u_width = 0, u_depth = 0;
-  float u = 0;
-  if (random_u == 0) {
-    size_t thread_idx =
-        static_cast<size_t>(blockIdx.x * blockDim.x + threadIdx.x);
-#if defined(__NVCC__)
-    curandStatePhilox4_32_10_t state;
-    curand_init(seed, thread_idx, offset, &state);
-#else
-    hiprandStatePhilox4_32_10_t state;
-    hiprand_init(seed, thread_idx, offset, &state);
-#endif
-    phi::funcs::uniform_distribution<float> dist;
-    float4 rand = dist(&state);
-    u = (&rand.x)[0];
-  } else {
-    u = random_u;
-  }
-
-  alpha_height = static_cast<float>(input_height) / output_height;
-  alpha_width = static_cast<float>(input_width) / output_width;
-
-  u_height = FractionalRationalU(u, alpha_height, input_height, output_height);
-  u_width = FractionalRationalU(u, alpha_width, input_width, output_width);
-
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
        index += blockDim.x * gridDim.x) {
-    int phstart, phend, pwstart, pwend;
-    int w_offset, h_offset, c_offset, output_offset;
-    OffsetPreparationFor4Dimension<FastDivModForPooling>(index,
-                                                         false,
-                                                         divmods,
-                                                         0,
-                                                         0,
-                                                         output_width,
-                                                         output_height,
-                                                         &w_offset,
-                                                         &h_offset,
-                                                         &c_offset,
-                                                         &output_offset);
-    mask_data += output_offset;
-    output_grad += output_offset;
+    int w_offset, h_offset, c_offset;
 
-    phstart = FractionalStartIndex(h_offset, alpha_height, u_height);
-    phend = FractionalEndIndex(h_offset, alpha_height, u_height);
-    phstart = std::max(phstart, 0);
-    phend = std::min(phend, input_height);
+    auto input_width_divmod = divmods.width.Divmod(index);
+    auto input_height_divmod = divmods.height.Divmod(input_width_divmod.val[0]);
+    auto channel_divmod = divmods.channel.Divmod(input_height_divmod.val[0]);
+    w_offset = input_width_divmod.val[1];
+    h_offset = input_height_divmod.val[1];
+    c_offset = channel_divmod.val[1];
 
-    pwstart = FractionalStartIndex(w_offset, alpha_width, u_width);
-    pwend = FractionalEndIndex(w_offset, alpha_width, u_width);
-    pwstart = std::max(pwstart, 0);
-    pwend = std::min(pwend, input_width);
+    int output_index = c_offset * output_height * output_width +
+                       h_offset * output_width + w_offset;
 
-    T1 input_grad_data = static_cast<T1>(0);
-    int input_current_featuremap_idx = h_offset * input_width + w_offset;
-    for (int ph = phstart; ph < phend; ++ph) {
-      for (int pw = pwstart; pw < pwend; ++pw) {
-        if (mask_data[ph * output_width + pw] == input_current_featuremap_idx)
-          input_grad_data += output_grad[ph * output_width + pw];
-      }
+    int max_index = mask_data[output_index];
+    if (max_index != -1) {
+      phi::CudaAtomicAdd(&input_grad[index], output_grad[output_index]);
     }
-    input_grad[index] = input_grad_data;
   }
 }
 
