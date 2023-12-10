@@ -67,6 +67,7 @@ REGISTER_RESHARD_FUNC(SToSReshardFunction);
 REGISTER_RESHARD_FUNC(SToSReshardFunctionCrossMesh);
 REGISTER_RESHARD_FUNC(SameStatusReshardFunction);
 REGISTER_RESHARD_FUNC(SameNdMeshReshardFunction);
+REGISTER_RESHARD_FUNC(CrossNdMeshReshardFunction);
 
 }  // namespace distributed
 }  // namespace phi

@@ -16,7 +16,11 @@ import os
 from functools import reduce
 
 import numpy as np
-from semi_auto_parallel_llama_model import LlamaForCausalLMAuto, set_global_mesh
+from semi_auto_parallel_llama_model import (
+    LlamaForCausalLMAuto,
+    LlamaPretrainingCriterionAuto,
+    set_global_mesh,
+)
 
 import paddle
 import paddle.distributed as dist
@@ -36,6 +40,7 @@ class Config:
     rms_norm_eps = 1e-6
     use_cache = True
     use_flash_attention = False
+    sequence_parallel = False
     rope = True
 
 
@@ -80,6 +85,8 @@ class TestLlamaAuto:
         self.dp = int(os.getenv("dp"))
         self.mp = int(os.getenv("mp"))
         self.pp = int(os.getenv("pp"))
+        if os.getenv("use_sp") == "true":
+            self.config.sequence_parallel = True
         self.gradient_accumulation_steps = int(os.getenv("acc_step"))
 
         self.init_dist_env()
@@ -101,8 +108,9 @@ class TestLlamaAuto:
         global_mesh = dist.ProcessMesh(mesh_arr, dim_names)
         set_global_mesh(global_mesh)
 
-    def run_test_cases(self):
+    def run_dynamic(self):
         model = LlamaForCausalLMAuto(self.config)
+        criterion = LlamaPretrainingCriterionAuto(self.config)
 
         lr_scheduler = paddle.optimizer.lr.LinearWarmup(
             learning_rate=0.0001, warmup_steps=2, start_lr=0, end_lr=0.0001
@@ -130,7 +138,8 @@ class TestLlamaAuto:
         for epoch_idx in range(1):
             for step, inputs in enumerate(train_dataloader):
                 input_ids, labels = inputs
-                tr_loss_step, _ = model(input_ids, labels=labels)
+                logits = model(input_ids)
+                tr_loss_step = criterion(logits, labels)
 
                 if self.gradient_accumulation_steps > 1:
                     tr_loss_step /= self.gradient_accumulation_steps
@@ -150,6 +159,51 @@ class TestLlamaAuto:
                 global_step += 1
                 if global_step // self.gradient_accumulation_steps >= 10:
                     break
+
+    def run_dy2static(self):
+        model = LlamaForCausalLMAuto(self.config)
+        criterion = LlamaPretrainingCriterionAuto(self.config)
+
+        lr_scheduler = paddle.optimizer.lr.LinearWarmup(
+            learning_rate=0.0001, warmup_steps=2, start_lr=0, end_lr=0.0001
+        )
+        optimizer = create_optimizer(model, lr_scheduler)
+        optimizer = dist.shard_optimizer(optimizer)
+
+        train_dataset = RandomDataset(self.config.seq_length)
+        train_sampler = BatchSampler(
+            train_dataset,
+            batch_size=2,
+            shuffle=True,
+            drop_last=True,
+        )
+        train_dataloader = DataLoader(
+            train_dataset,
+            batch_sampler=train_sampler,
+            num_workers=0,
+        )
+
+        if isinstance(optimizer, dist.auto_parallel.api._ShardOptimizer):
+            opt = optimizer._inner_opt
+        else:
+            opt = optimizer
+
+        dist_model, dist_loader = dist.to_static(
+            model, train_dataloader, criterion, opt
+        )
+
+        dist_model.train()
+        for step, inputs in enumerate(dist_loader()):
+            input_ids, labels = inputs
+            loss = dist_model(input_ids, labels)
+            print(step, loss)
+
+            if step >= 10:
+                break
+
+    def run_test_cases(self):
+        self.run_dynamic()
+        self.run_dy2static()
 
 
 if __name__ == '__main__':

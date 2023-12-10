@@ -373,6 +373,7 @@ template class FCFunctor<GPUContext, float16>;
 template class FCFunctor<GPUContext, float>;
 template class FCFunctor<GPUContext, double>;
 
+#ifndef PADDLE_WITH_HIP
 template <typename DeviceContext, typename T>
 void FCInt8Functor<DeviceContext, T>::operator()(
     const DeviceContext& context,
@@ -454,5 +455,6 @@ void FCInt8Functor<DeviceContext, T>::operator()(
 template class FCInt8Functor<GPUContext, float16>;
 template class FCInt8Functor<GPUContext, float>;
 template class FCInt8Functor<GPUContext, double>;
+#endif
 }  // namespace funcs
 }  // namespace phi
