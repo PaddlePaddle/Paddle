@@ -45,31 +45,18 @@ ENV PATH=/usr/local/gcc-8.2/bin:$PATH
 
 # install cmake
 WORKDIR /home
-RUN wget -q https://cmake.org/files/v3.16/cmake-3.16.0-Linux-x86_64.tar.gz && tar -zxvf cmake-3.16.0-Linux-x86_64.tar.gz && rm cmake-3.16.0-Linux-x86_64.tar.gz
-ENV PATH=/home/cmake-3.16.0-Linux-x86_64/bin:$PATH
+RUN wget -q https://cmake.org/files/v3.18/cmake-3.18.0-Linux-x86_64.tar.gz && tar -zxvf cmake-3.18.0-Linux-x86_64.tar.gz && rm cmake-3.18.0-Linux-x86_64.tar.gz
+ENV PATH=/home/cmake-3.18.0-Linux-x86_64/bin:$PATH
 
 
 RUN apt-get update && \
-  apt-get install -y python3.7 python3.7-dev python3.7-distutils && \
-  mv /usr/bin/python /usr/bin/python.bak && ln -s /usr/bin/python3.7 /usr/bin/python && \
-  mv /usr/bin/python3 /usr/bin/python3.bak && ln -s /usr/bin/python3.7 /usr/bin/python3
+  apt-get install -y python3.8 python3.8-dev python3-pip python3.8-distutils && \
+  mv /usr/bin/python /usr/bin/python.bak && ln -s /usr/bin/python3.8 /usr/bin/python && \
+  mv /usr/bin/python3 /usr/bin/python3.bak && ln -s /usr/bin/python3.8 /usr/bin/python3
 
-
+# install pip and setuptools
 WORKDIR /home
-RUN wget https://files.pythonhosted.org/packages/a7/e0/30642b9c2df516506d40b563b0cbd080c49c6b3f11a70b4c7a670f13a78b/setuptools-50.3.2.zip && apt-get -y install unzip && unzip setuptools-50.3.2.zip
-WORKDIR /home/setuptools-50.3.2
-RUN python3.7 setup.py build && python3.7 setup.py install
-WORKDIR /home
-RUN wget https://files.pythonhosted.org/packages/28/af/2c76c8aa46ccdf7578b83d97a11a2d1858794d4be4a1610ade0d30182e8b/pip-20.0.1.tar.gz && tar -zxvf pip-20.0.1.tar.gz
-WORKDIR pip-20.0.1
-RUN python3.7 setup.py install
-
-WORKDIR /home
-RUN rm setuptools-50.3.2.zip pip-20.0.1.tar.gz && \
-    rm -r setuptools-50.3.2 pip-20.0.1
-RUN rm /usr/local/bin/pip && ln -s /usr/local/bin/pip3.7 /usr/local/bin/pip && \
-  rm /usr/local/bin/pip3 && ln -s /usr/local/bin/pip3.7 /usr/local/bin/pip3
-
+RUN python3.8 -m pip install --no-cache-dir --upgrade -y pip setuptools
 
 # remove them when apt-get support 2.27 and higher version
 RUN wget -q https://ftp.gnu.org/gnu/binutils/binutils-2.33.1.tar.gz && \ 
@@ -96,14 +83,14 @@ RUN git config --global credential.helper store
 # Fix locales to en_US.UTF-8
 RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 
-RUN pip3.7 --no-cache-dir install pre-commit==1.10.4 ipython==5.3.0 && \
-    pip3.7 --no-cache-dir install ipykernel==4.6.0 wheel
+RUN pip3.8 --no-cache-dir install pre-commit==1.10.4 ipython==5.3.0 && \
+    pip3.8 --no-cache-dir install ipykernel==4.6.0 wheel
 
 # For PaddleTest CE
-RUN pip3.7 --no-cache-dir install pytest
+RUN pip3.8 --no-cache-dir install pytest
 
 COPY ./python/requirements.txt /root/
-RUN pip3.7 --no-cache-dir install -r /root/requirements.txt
+RUN pip3.8 --no-cache-dir install -r /root/requirements.txt
 
 # Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
 #RUN mkdir /var/run/sshd && echo 'root:root' | chpasswd && sed -ri 's/^PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config && sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config

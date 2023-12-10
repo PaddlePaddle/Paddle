@@ -61,25 +61,25 @@ function ref_whl(){
   ref_web="https://paddle-wheel.bj.bcebos.com/${PADDLE_BRANCH}-${ref_gpu}-${ref_mkl}${ref_gcc}"
   
   if [[ ${PADDLE_VERSION} == "develop" && ${WITH_GPU} == "ON" ]]; then
-    ref_paddle37_whl=paddlepaddle${install_gpu}-${ref_dev}${ref_version}-cp37-cp37m-linux_x86_64.whl
     ref_paddle38_whl=paddlepaddle${install_gpu}-${ref_dev}${ref_version}-cp38-cp38-linux_x86_64.whl
+    ref_paddle39_whl=paddlepaddle${install_gpu}-${ref_dev}${ref_version}-cp39-cp39-linux_x86_64.whl
   elif [[ ${PADDLE_VERSION} == "develop" && ${WITH_GPU} != "ON" ]]; then
-    ref_paddle37_whl=paddlepaddle${install_gpu}-${ref_dev}-cp37-cp37m-linux_x86_64.whl
     ref_paddle38_whl=paddlepaddle${install_gpu}-${ref_dev}-cp38-cp38-linux_x86_64.whl
+    ref_paddle39_whl=paddlepaddle${install_gpu}-${ref_dev}-cp39-cp39-linux_x86_64.whl
   elif [[ ${PADDLE_VERSION} != "develop" && ${WITH_GPU} == "ON" ]]; then
-    ref_paddle37_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}${ref_version}-cp37-cp37m-linux_x86_64.whl
     ref_paddle38_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}${ref_version}-cp38-cp38-linux_x86_64.whl
+    ref_paddle39_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}${ref_version}-cp39-cp39-linux_x86_64.whl
   else
-    ref_paddle37_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}-cp37-cp37m-linux_x86_64.whl
     ref_paddle38_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}-cp38-cp38-linux_x86_64.whl
+    ref_paddle39_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}-cp39-cp39-linux_x86_64.whl
   fi
 }
 
 
 function install_whl(){
   dockerfile_line=`wc -l Dockerfile.tmp|awk '{print $1}'`
-  sed -i "${dockerfile_line}i RUN wget -q ${ref_web}/${ref_paddle37_whl} && pip3.7 install ${ref_paddle37_whl} && rm -f ${ref_paddle37_whl}" Dockerfile.tmp
   sed -i "${dockerfile_line}i RUN wget -q ${ref_web}/${ref_paddle38_whl} && pip3.8 install ${ref_paddle38_whl} && rm -f ${ref_paddle38_whl}" Dockerfile.tmp
+  sed -i "${dockerfile_line}i RUN wget -q ${ref_web}/${ref_paddle39_whl} && pip3.9 install ${ref_paddle39_whl} && rm -f ${ref_paddle39_whl}" Dockerfile.tmp
 }
 
 
