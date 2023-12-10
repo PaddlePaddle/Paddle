@@ -3420,6 +3420,8 @@
 - op: identity_loss
   inputs :
     x: X
+  outputs :
+    out : Out
 
 - op: lod_array_length
   inputs :
