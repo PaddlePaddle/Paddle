@@ -504,7 +504,11 @@ void* GetFlashAttnDsoHandle() {
 #elif defined(_WIN32)
   return GetDsoHandleFromSearchPath(flashattn_dir, "flashattn.dll");
 #else
+#if defined(PADDLE_WITH_CUDA)
   if (FLAGS_flash_attention_with_advanced || FLAGS_cudnn_deterministic) {
+#else
+  if (FLAGS_flash_attention_with_advanced) {
+#endif
     return GetDsoHandleFromSearchPath(flashattn_dir,
                                       "libflashattn_advanced.so");
   } else {
