@@ -85,6 +85,24 @@ class TestStrategy(unittest.TestCase):
         self.assertEqual(strategy.fused_passes.gemm_epilogue, True)
         self.assertEqual(strategy.fused_passes.dropout_add, False)  # default
 
+    def test_error_init(self):
+        with self.assertRaises(ValueError):
+            config = [{"enable": True, "stage": 2}]
+            err_strategy1 = dist.Strategy(config)
+
+        with self.assertRaises(ValueError):
+            config = {
+                "sharding": {"enable": True, "stage": 2},
+                "gradient_merge": {"enable": True, "k_steps": 2},
+                "fused_passes": {
+                    "enable": True,
+                    "gemm_epilogue": True,
+                    "dropout": True,
+                },
+                "pipeline": {"enable": True, "schedule_mode": "FThenB"},
+            }
+            err_strategy2 = dist.Strategy(config)
+
 
 if __name__ == '__main__':
     unittest.main()
