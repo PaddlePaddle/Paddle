@@ -23,8 +23,8 @@ endif()
 if(NOT WITH_GPU)
   # TODO(SigureMo): Temporarily disable train step on Windows CPU CI.
   # We should remove this after fix the performance issue.
-  list(REMOVE_ITEM TEST_OPS test_train_step_resnet18_adamx)
-  list(REMOVE_ITEM TEST_OPS test_train_step_resnet18_sgdx)
+  list(REMOVE_ITEM TEST_OPS test_train_step_resnet18_adam)
+  list(REMOVE_ITEM TEST_OPS test_train_step_resnet18_sgd)
 endif()
 
 foreach(TEST_OP ${TEST_OPS})
@@ -59,8 +59,8 @@ if(APPLE)
 endif()
 
 if(WITH_GPU)
-  set_tests_properties(test_train_step_resnet18_sgdx PROPERTIES TIMEOUT 240)
-  set_tests_properties(test_train_step_resnet18_adamx PROPERTIES TIMEOUT 240)
+  set_tests_properties(test_train_step_resnet18_sgd PROPERTIES TIMEOUT 240)
+  set_tests_properties(test_train_step_resnet18_adam PROPERTIES TIMEOUT 240)
 endif()
 
 # Legacy IR only tests for dygraph_to_static
