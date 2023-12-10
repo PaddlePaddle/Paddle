@@ -209,6 +209,7 @@ class PSGPUWrapper {
   void PreBuildTask(std::shared_ptr<HeterContext> gpu_task,
                     Dataset* dataset_for_pull);
   void BuildPull(std::shared_ptr<HeterContext> gpu_task);
+  void PartitionKey(std::shared_ptr<HeterContext> gpu_task);
   void PrepareGPUTask(std::shared_ptr<HeterContext> gpu_task);
   void LoadIntoMemory(bool is_shuffle);
   void BeginPass();
@@ -219,21 +220,31 @@ class PSGPUWrapper {
   void SparseTableToHbm();
   void HbmToSparseTable();
   void start_build_thread();
-  void pre_build_thread();
+  void AddSparseKeys();
   void build_pull_thread();
   void build_task();
   void DumpToMem();
   void MergePull(std::shared_ptr<HeterContext> gpu_task);
+  void MergeKeys(std::shared_ptr<HeterContext> gpu_task);
   void FilterPull(std::shared_ptr<HeterContext> gpu_task,
                   const int shard_id,
                   const int dim_id);
-  // set mode
+  void FilterKey(std::shared_ptr<HeterContext> gpu_task,
+                 const int shard_id,
+                 const int dim_id);
+  // set infer mode
   void SetMode(bool infer_mode) {
     infer_mode_ = infer_mode;
     if (HeterPs_ != NULL) {
       HeterPs_->set_mode(infer_mode);
     }
     VLOG(0) << "set infer mode=" << infer_mode;
+  }
+
+  // set sage mode
+  void SetSage(bool sage_mode) {
+    sage_mode_ = sage_mode;
+    VLOG(0) << "set sage mode=" << sage_mode;
   }
 
   void Finalize() {
@@ -249,12 +260,9 @@ class PSGPUWrapper {
     for (size_t i = 0; i < hbm_pools_.size(); i++) {
       delete hbm_pools_[i];
     }
-    data_ready_channel_->Close();
     buildcpu_ready_channel_->Close();
     buildpull_ready_channel_->Close();
     running_ = false;
-    VLOG(3) << "begin stop pre_build_threads_";
-    pre_build_threads_.join();
     VLOG(3) << "begin stop buildpull_threads_";
     buildpull_threads_.join();
     s_instance_ = nullptr;
@@ -337,8 +345,6 @@ class PSGPUWrapper {
       }
 #endif
       heter_devices_ = dev_ids;
-      data_ready_channel_->Open();
-      data_ready_channel_->SetCapacity(3);
       buildcpu_ready_channel_->Open();
       buildcpu_ready_channel_->SetCapacity(3);
       buildpull_ready_channel_->Open();
@@ -433,6 +439,13 @@ class PSGPUWrapper {
       config[prefix + "ada_epsilon"] = sgd_param.adam().ada_epsilon();
       config[prefix + "min_bound"] = sgd_param.adam().weight_bounds()[0];
       config[prefix + "max_bound"] = sgd_param.adam().weight_bounds()[1];
+    } else if (optimizer_name == "SparseAdaGradV2SGDRule") {
+      config[prefix + "optimizer_type"] = 5;
+      config[prefix + "learning_rate"] = sgd_param.adagrad().learning_rate();
+      config[prefix + "initial_range"] = sgd_param.adagrad().initial_range();
+      config[prefix + "initial_g2sum"] = sgd_param.adagrad().initial_g2sum();
+      config[prefix + "min_bound"] = sgd_param.adagrad().weight_bounds()[0];
+      config[prefix + "max_bound"] = sgd_param.adagrad().weight_bounds()[1];
     }
   }
 
@@ -441,6 +454,24 @@ class PSGPUWrapper {
     google::protobuf::TextFormat::ParseFromString(dist_desc, &ps_param);
     auto sparse_table =
         ps_param.server_param().downpour_server_param().downpour_table_param(0);
+    // set build thread_num and shard_num
+    thread_keys_thread_num_ = sparse_table.shard_num();
+    thread_keys_shard_num_ = sparse_table.shard_num();
+    VLOG(0) << "ps_gpu build phase thread_num:" << thread_keys_thread_num_
+            << " shard_num:" << thread_keys_shard_num_;
+
+    pull_thread_pool_.resize(thread_keys_shard_num_);
+    for (size_t i = 0; i < pull_thread_pool_.size(); i++) {
+      pull_thread_pool_[i].reset(new ::ThreadPool(1));
+    }
+    hbm_thread_pool_.resize(device_num_);
+    for (size_t i = 0; i < hbm_thread_pool_.size(); i++) {
+      hbm_thread_pool_[i].reset(new ::ThreadPool(1));
+    }
+    cpu_work_pool_.resize(device_num_);
+    for (size_t i = 0; i < cpu_work_pool_.size(); i++) {
+      cpu_work_pool_[i].reset(new ::ThreadPool(cpu_device_thread_num_));
+    }
 
     auto sparse_table_accessor = sparse_table.accessor();
     auto sparse_table_accessor_parameter =
@@ -464,7 +495,6 @@ class PSGPUWrapper {
       add_sparse_optimizer(
           config, sparse_table_accessor.embedx_sgd_param(), "mf_");
     }
-    config["sparse_shard_num"] = sparse_table.shard_num();
 
     fleet_config_ = config;
     GlobalAccessorFactory::GetInstance().Init(accessor_class_);
@@ -513,6 +543,15 @@ class PSGPUWrapper {
       if (sgd_param.adam().weight_bounds_size() == 2) {
         config[prefix + "min_bound"] = sgd_param.adam().weight_bounds()[0];
         config[prefix + "max_bound"] = sgd_param.adam().weight_bounds()[1];
+      }
+    } else if (optimizer_name == "adagrad_v2") {
+      config[prefix + "optimizer_type"] = 5;
+      config[prefix + "learning_rate"] = sgd_param.adagrad().learning_rate();
+      config[prefix + "initial_range"] = sgd_param.adagrad().initial_range();
+      config[prefix + "initial_g2sum"] = sgd_param.adagrad().initial_g2sum();
+      if (sgd_param.adagrad().weight_bounds_size() == 2) {
+        config[prefix + "min_bound"] = sgd_param.adagrad().weight_bounds()[0];
+        config[prefix + "max_bound"] = sgd_param.adagrad().weight_bounds()[1];
       }
     }
   }
@@ -645,28 +684,6 @@ class PSGPUWrapper {
 #endif
 
   void InitializeGPUServer(std::unordered_map<std::string, float> config) {
-    // set build thread_num and shard_num
-    int sparse_shard_num = (config.find("sparse_shard_num") == config.end())
-                               ? 37
-                               : config["sparse_shard_num"];
-    thread_keys_thread_num_ = sparse_shard_num;
-    thread_keys_shard_num_ = sparse_shard_num;
-    VLOG(1) << "ps_gpu build phase thread_num:" << thread_keys_thread_num_
-            << " shard_num:" << thread_keys_shard_num_;
-
-    pull_thread_pool_.resize(thread_keys_shard_num_);
-    for (size_t i = 0; i < pull_thread_pool_.size(); i++) {
-      pull_thread_pool_[i].reset(new ::ThreadPool(1));
-    }
-    hbm_thread_pool_.resize(device_num_);
-    for (size_t i = 0; i < hbm_thread_pool_.size(); i++) {
-      hbm_thread_pool_[i].reset(new ::ThreadPool(1));
-    }
-    cpu_work_pool_.resize(device_num_);
-    for (size_t i = 0; i < cpu_work_pool_.size(); i++) {
-      cpu_work_pool_[i].reset(new ::ThreadPool(cpu_device_thread_num_));
-    }
-
     float nonclk_coeff = (config.find("nonclk_coeff") == config.end())
                              ? 1.0
                              : config["nonclk_coeff"];
@@ -794,9 +811,16 @@ class PSGPUWrapper {
     slot_vector_ = slot_vector;
     VLOG(0) << "slot_vector size is " << slot_vector_.size();
   }
-  void SetPullFeatureSlotNum(int slot_num) {
-    slot_num_for_pull_feature_ = slot_num;
-    VLOG(0) << "slot_num_for_pull_feature_ is " << slot_num_for_pull_feature_;
+  void SetPullFeatureSlotNum(int sparse_slot_num, int float_slot_num) {
+    slot_num_for_pull_feature_ = sparse_slot_num;
+    float_slot_num_ = float_slot_num;
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_GPU_GRAPH)
+    auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
+    gpu_graph_ptr->set_feature_info(slot_num_for_pull_feature_,
+                                    float_slot_num_);
+#endif
+    VLOG(0) << "slot_num_for_pull_feature_ is " << slot_num_for_pull_feature_
+            << ", float_slot_num is " << float_slot_num_;
   }
   void SetSlotOffsetVector(const std::vector<int>& slot_offset_vector) {
     slot_offset_vector_ = slot_offset_vector;
@@ -898,7 +922,19 @@ class PSGPUWrapper {
 
   // for node rank
   int PartitionKeyForRank(const uint64_t& key) {
-    return ((key / device_num_) % node_size_);
+    return static_cast<int>((key / device_num_) % node_size_);
+  }
+  // is key for self rank
+  bool IsKeyForSelfRank(const uint64_t& key) {
+    return (static_cast<int>((key / device_num_) % node_size_) == rank_id_);
+  }
+  // rank id
+  int GetRankId(void) { return rank_id_; }
+  // rank size
+  int GetRankNum(void) { return node_size_; }
+  // rank id
+  int GetNCCLRankId(const int& device_id) {
+    return (rank_id_ * device_num_ + device_id);
   }
 
  private:
@@ -926,6 +962,7 @@ class PSGPUWrapper {
   int multi_mf_dim_{0};
   int max_mf_dim_{0};
   int slot_num_for_pull_feature_{0};
+  int float_slot_num_{0};
   size_t val_type_size_{0};
   size_t grad_type_size_{0};
   size_t pull_type_size_{0};
@@ -936,8 +973,8 @@ class PSGPUWrapper {
   double time_4 = 0.0;
 
   int multi_node_{0};
-  int rank_id_;
-  int node_size_;
+  int rank_id_ = 0;
+  int node_size_ = 1;
   int device_num_ = 8;
   uint64_t table_id_;
   int gpu_graph_mode_ = 0;
@@ -981,10 +1018,6 @@ class PSGPUWrapper {
                                               // hbm pools of totol dims number
 #endif
 
-  std::shared_ptr<paddle::framework::ChannelObject<
-      std::pair<std::shared_ptr<HeterContext>, Dataset*>>>
-      data_ready_channel_ = paddle::framework::MakeChannel<
-          std::pair<std::shared_ptr<HeterContext>, Dataset*>>();
   std::shared_ptr<
       paddle::framework::ChannelObject<std::shared_ptr<HeterContext>>>
       buildcpu_ready_channel_ =
@@ -996,7 +1029,6 @@ class PSGPUWrapper {
   std::vector<std::shared_ptr<paddle::framework::ChannelObject<task_info>>>
       cpu_reday_channels_;
   std::shared_ptr<HeterContext> current_task_ = nullptr;
-  std::thread pre_build_threads_;
   std::thread buildpull_threads_;
   bool running_ = false;
   std::vector<std::shared_ptr<::ThreadPool>> pull_thread_pool_;
@@ -1007,6 +1039,8 @@ class PSGPUWrapper {
   uint64_t grad_push_count_ = 0;
   // infer mode
   bool infer_mode_ = false;
+  // sage mode
+  bool sage_mode_ = false;
   size_t cpu_device_thread_num_ = 16;
 
  protected:

@@ -102,7 +102,10 @@ class HeterCommKernel {
   explicit HeterCommKernel(const int block_size) : block_size_(block_size) {}
 
   template <typename T, typename StreamType>
-  void fill_idx(T* idx, int64_t len, const StreamType& stream);
+  void fill_idx(T* idx,
+                int64_t len,
+                const StreamType& stream,
+                const int gpu_id);
 
   template <typename T, typename StreamType>
   void calc_shard_offset(T* idx,
@@ -110,7 +113,8 @@ class HeterCommKernel {
                          T* right,
                          int64_t len,
                          int total_devs,
-                         const StreamType& stream);
+                         const StreamType& stream,
+                         const int gpu_id);
 
   template <typename KeyType, typename T, typename StreamType>
   void calc_shard_index(KeyType* d_keys,
@@ -118,14 +122,16 @@ class HeterCommKernel {
                         T* shard_index,
 
                         int total_devs,
-                        const StreamType& stream);
+                        const StreamType& stream,
+                        const int gpu_id);
 
   template <typename KeyType, typename T, typename StreamType>
   void fill_shard_key(KeyType* d_shard_keys,
                       KeyType* d_keys,
                       T* idx,
                       int64_t len,
-                      const StreamType& stream);
+                      const StreamType& stream,
+                      const int gpu_id);
 
   template <typename KeyType,
             typename GradType,
@@ -154,6 +160,7 @@ class HeterCommKernel {
                   const ValueT* d_values_in,
                   ValueT* d_values_out,
                   int num_items,
+                  const int gpu_id,
                   int begin_bit = 0,
 
                   int end_bit = sizeof(KeyT) * 8,
@@ -270,7 +277,8 @@ class HeterCommKernel {
                    const KeyType* d_keys,
                    T* idx,
                    int64_t len,
-                   const StreamType& stream);
+                   const StreamType& stream,
+                   const int gpu_id);
   template <typename KeyType, typename T, typename StreamType>
   void scatter_keys(const KeyType* d_shard_keys,
                     KeyType* d_keys,
@@ -284,10 +292,10 @@ class HeterCommKernel {
                    int64_t len,
                    size_t value_bytes,
                    const StreamType& stream);
-  template <typename T, typename StreamType>
-  void scatter_vals(const float* d_shard_vals,
-                    float* d_vals,
-                    T* idx,
+  template <typename ValType, typename StreamType>
+  void scatter_vals(const ValType* d_shard_vals,
+                    ValType* d_vals,
+                    uint32_t* idx,
                     int64_t len,
                     size_t value_bytes,
                     const StreamType& stream);
