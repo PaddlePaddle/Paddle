@@ -16,6 +16,7 @@
 
 #ifdef PADDLE_WITH_CUDA
 #include <cstdint>
+#include <iostream>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -612,49 +613,46 @@ class TensorRTEngineOp : public framework::OperatorBase {
       } else {
 #if IS_TRT_VERSION_GE(6000)
         bool useEngineV3 = !engine->engine()->hasImplicitBatchDimension();
+
         if (useEngineV3) {
 #if IS_TRT_VERSION_GE(8500)
+          std::cout << "setInputShape" << std::endl;
           trt_context->setInputShape(
               x.c_str(), inference::tensorrt::Vec2TRT_Dims(t_shape, x, true));
 #endif
         } else {
+          std::cout << "trt_context->setBindingDimensions" << std::endl;
           trt_context->setBindingDimensions(
               bind_index, inference::tensorrt::Vec2TRT_Dims(t_shape, x, true));
-        }
-        // If this x is a shape tensor, we need call setInputShapeBinding
-        if (engine->engine()->isShapeBinding(bind_index) &&
-            engine->engine()->bindingIsInput(bind_index)) {
-          std::vector<int> shape_v(t.numel());
-          if (t.dtype() == phi::DataType::INT32) {
-            paddle::memory::Copy(platform::CPUPlace(),
-                                 shape_v.data(),
-                                 t.place(),
-                                 t.data<int32_t>(),
-                                 t.numel() * sizeof(int),
-                                 nullptr);
-          } else if (t.dtype() == phi::DataType::INT64) {
-            std::string x_t = x + "_cast_to_INT32";
-            if (scope.FindVar(x_t) == nullptr) {
-              const_cast<framework::Scope *>(&scope)->Var(x_t);
+          // If this x is a shape tensor, we need call setInputShapeBinding
+          if (engine->engine()->isShapeBinding(bind_index) &&
+              engine->engine()->bindingIsInput(bind_index)) {
+            std::vector<int> shape_v(t.numel());
+            if (t.dtype() == phi::DataType::INT32) {
+              paddle::memory::Copy(platform::CPUPlace(),
+                                   shape_v.data(),
+                                   t.place(),
+                                   t.data<int32_t>(),
+                                   t.numel() * sizeof(int),
+                                   nullptr);
+            } else if (t.dtype() == phi::DataType::INT64) {
+              std::string x_t = x + "_cast_to_INT32";
+              if (scope.FindVar(x_t) == nullptr) {
+                const_cast<framework::Scope *>(&scope)->Var(x_t);
+              }
+              auto int32_tensor =
+                  scope.FindVar(x_t)->GetMutable<phi::DenseTensor>();
+              *int32_tensor = phi::Cast<int64_t>(
+                  reinterpret_cast<const phi::GPUContext &>(dev_ctx),
+                  t,
+                  phi::DataType::INT32);
+              paddle::memory::Copy(platform::CPUPlace(),
+                                   shape_v.data(),
+                                   int32_tensor->place(),
+                                   int32_tensor->data<int32_t>(),
+                                   int32_tensor->numel() * sizeof(int),
+                                   nullptr);
             }
-            auto int32_tensor =
-                scope.FindVar(x_t)->GetMutable<phi::DenseTensor>();
-            *int32_tensor = phi::Cast<int64_t>(
-                reinterpret_cast<const phi::GPUContext &>(dev_ctx),
-                t,
-                phi::DataType::INT32);
-            paddle::memory::Copy(platform::CPUPlace(),
-                                 shape_v.data(),
-                                 int32_tensor->place(),
-                                 int32_tensor->data<int32_t>(),
-                                 int32_tensor->numel() * sizeof(int),
-                                 nullptr);
-          }
-          if (useEngineV3) {
-#if IS_TRT_VERSION_GE(8500)
-            trt_context->setTensorAddress(x.c_str(), shape_v.data());
-#endif
-          } else {
             trt_context->setInputShapeBinding(bind_index, shape_v.data());
           }
         }

@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/engine.h"
-
 #include <NvInfer.h>
 #include <glog/logging.h>
+#include <iostream>
 
 #include <string>
 
@@ -191,8 +191,10 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
     ret = context->enqueue(batch_size, buffers->data(), stream, nullptr);
   } else {
 #if IS_TRT_VERSION_GE(8500)
+    std::cout << "enqueueV3" << std::endl;
     ret = context->enqueueV3(stream);
 #else
+    std::cout << "enqueueV2" << std::endl;
     ret = context->enqueueV2(buffers->data(), stream, nullptr);
 #endif
   }
