@@ -61,7 +61,8 @@ void PrintLodTensorType(phi::DenseTensor* tensor,
                         int64_t end,
                         std::string& out_val,  // NOLINT
                         char separator = ',',
-                        bool need_leading_separator = true) {
+                        bool need_leading_separator = true,
+                        int num_decimals = 9) {
   auto count = tensor->numel();
   if (start < 0 || end > count) {
     VLOG(3) << "access violation";
@@ -90,8 +91,9 @@ void PrintLodTensorType<float>(phi::DenseTensor* tensor,
                                int64_t end,
                                std::string& out_val,  // NOLINT
                                char separator,
-                               bool need_leading_separator) {
-  std::array<char, MAX_FLOAT_BUFF_SIZE> buf;
+                               bool need_leading_separator,
+                               int num_decimals) {
+  char buf[MAX_FLOAT_BUFF_SIZE];
   auto count = tensor->numel();
   if (start < 0 || end > count) {
     VLOG(3) << "access violation";
@@ -105,8 +107,9 @@ void PrintLodTensorType<float>(phi::DenseTensor* tensor,
         tensor->data<float>()[i] < FLOAT_EPS) {
       out_val += "0";
     } else {
-      sprintf(buf.data(), "%.9f", tensor->data<float>()[i]);  // NOLINT
-      out_val += buf.data();
+      std::string format = "%." + std::to_string(num_decimals) + "f";
+      sprintf(buf, &format[0], tensor->data<float>()[i]);  // NOLINT
+      out_val += buf;
     }
   }
 }
@@ -138,7 +141,8 @@ void PrintLodTensorIntType(phi::DenseTensor* tensor,
                            int64_t end,
                            std::string& out_val,  // NOLINT
                            char separator = ',',
-                           bool need_leading_separator = true) {
+                           bool need_leading_separator = true,
+                           int num_decimals = 9) {
   auto count = tensor->numel();
   if (start < 0 || end > count) {
     VLOG(3) << "access violation";
@@ -189,10 +193,16 @@ void PrintLodTensor(phi::DenseTensor* tensor,
                     int64_t end,
                     std::string& out_val,  // NOLINT
                     char separator,
-                    bool need_leading_separator) {
+                    bool need_leading_separator,
+                    int num_decimals) {
   if (framework::TransToProtoVarType(tensor->dtype()) == proto::VarType::FP32) {
-    PrintLodTensorType<float>(
-        tensor, start, end, out_val, separator, need_leading_separator);
+    PrintLodTensorType<float>(tensor,
+                              start,
+                              end,
+                              out_val,
+                              separator,
+                              need_leading_separator,
+                              num_decimals);
   } else if (framework::TransToProtoVarType(tensor->dtype()) ==
              proto::VarType::INT64) {
     PrintLodTensorIntType(
@@ -235,20 +245,27 @@ bool CheckValidOutput(phi::DenseTensor* tensor, size_t batch_size) {
 
 void DeviceWorker::DumpParam(const Scope& scope, const int batch_id) {
   std::ostringstream os;
+  int device_id = static_cast<int>(place_.GetDeviceId());
   for (auto& param : *dump_param_) {
     os.str("");
     Variable* var = scope.FindVar(param);
-    if (var == nullptr) {
+    if (var == nullptr || !var->IsInitialized()) {
+      continue;
+    }
+    if (!var->IsType<phi::DenseTensor>()) {
       continue;
     }
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+    if (tensor == nullptr || !tensor->IsInitialized()) {
+      continue;
+    }
     phi::DenseTensor cpu_tensor;
     if (platform::is_gpu_place(tensor->place())) {
       TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
       tensor = &cpu_tensor;
     }
     int64_t len = tensor->numel();
-    os << "(" << batch_id << "," << param << ")"
+    os << "(" << device_id << "," << batch_id << "," << param << ")"
        << PrintLodTensor(tensor, 0, len);
     writer_ << os.str();
   }
@@ -258,6 +275,7 @@ void DeviceWorker::InitRandomDumpConfig(const TrainerDesc& desc) {
   bool is_dump_in_simple_mode = desc.is_dump_in_simple_mode();
   if (is_dump_in_simple_mode) {
     dump_mode_ = 3;
+    dump_num_decimals_ = desc.dump_num_decimals();
     return;
   }
   bool enable_random_dump = desc.enable_random_dump();
@@ -290,13 +308,13 @@ void DeviceWorker::DumpField(const Scope& scope,
     for (auto& field : *dump_fields_) {
       Variable* var = scope.FindVar(field);
       if (var == nullptr) {
-        VLOG(0) << "Note: field[" << field
+        VLOG(3) << "Note: field[" << field
                 << "] cannot be find in scope, so it was skipped.";
         continue;
       }
       phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
       if (!tensor->IsInitialized()) {
-        VLOG(0) << "Note: field[" << field
+        VLOG(3) << "Note: field[" << field
                 << "] is not initialized, so it was skipped.";
         continue;
       }
@@ -317,34 +335,40 @@ void DeviceWorker::DumpField(const Scope& scope,
     if (dump_fields_ == NULL || (*dump_fields_).empty()) {
       return;
     }
-    auto set_output_str = [&, this](size_t begin,
-                                    size_t end,
-                                    phi::DenseTensor* tensor) {
-      std::pair<int64_t, int64_t> bound;
-      auto& dims = tensor->dims();
-      for (size_t i = begin; i < end; ++i) {
-        bound = {i * dims[1], (i + 1) * dims[1]};
-        // auto bound = GetTensorBound(tensor, i);
+    auto set_output_str =
+        [&, this](size_t begin, size_t end, phi::DenseTensor* tensor) {
+          std::pair<int64_t, int64_t> bound;
+          auto& dims = tensor->dims();
+          for (size_t i = begin; i < end; ++i) {
+            bound = {i * dims[1], (i + 1) * dims[1]};
+            // auto bound = GetTensorBound(tensor, i);
 
-        if (!ars[i].empty()) ars[i] += "\t";
-        // ars[i] += '[';
-        PrintLodTensor(tensor, bound.first, bound.second, ars[i], ' ', false);
-        // ars[i] += ']';
-        // ars[i] += "<" + PrintLodTensor(tensor, bound.first, bound.second, '
-        // ', false) + ">";
-      }
-    };
+            if (!ars[i].empty()) ars[i] += "\t";
+            // ars[i] += '[';
+            PrintLodTensor(tensor,
+                           bound.first,
+                           bound.second,
+                           ars[i],
+                           ' ',
+                           false,
+                           dump_num_decimals_);
+            // ars[i] += ']';
+            // ars[i] += "<" + PrintLodTensor(tensor, bound.first, bound.second,
+            // '
+            // ', false) + ">";
+          }
+        };
     std::vector<std::thread> threads(tensor_iterator_thread_num);
     for (auto& field : *dump_fields_) {
       Variable* var = scope.FindVar(field);
       if (var == nullptr) {
-        VLOG(0) << "Note: field[" << field
+        VLOG(3) << "Note: field[" << field
                 << "] cannot be find in scope, so it was skipped.";
         continue;
       }
       phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
       if (!tensor->IsInitialized()) {
-        VLOG(0) << "Note: field[" << field
+        VLOG(3) << "Note: field[" << field
                 << "] is not initialized, so it was skipped.";
         continue;
       }
@@ -356,11 +380,11 @@ void DeviceWorker::DumpField(const Scope& scope,
       }
       auto& dims = tensor->dims();
       if (dims.size() != 2 || dims[0] <= 0) {
-        VLOG(0) << "Note: field[" << field
+        VLOG(3) << "Note: field[" << field
                 << "] cannot pass check, so it was "
                    "skipped. Maybe the dimension is "
                    "wrong ";
-        VLOG(0) << dims.size() << " " << dims[0] << " * " << dims[1];
+        VLOG(3) << dims.size() << " " << dims[0] << " * " << dims[1];
         continue;
       }
       size_t acutal_thread_num =
@@ -378,7 +402,7 @@ void DeviceWorker::DumpField(const Scope& scope,
     auto end1 = std::chrono::steady_clock::now();
     auto tt =
         std::chrono::duration_cast<std::chrono::microseconds>(end1 - start1);
-    VLOG(1) << "writing a batch takes " << tt.count() << " us";
+    VLOG(2) << "writing a batch takes " << tt.count() << " us";
 
     size_t acutal_thread_num =
         std::min(static_cast<size_t>(batch_size), tensor_iterator_thread_num);
@@ -421,13 +445,18 @@ void DeviceWorker::DumpField(const Scope& scope,
   for (auto& field : *dump_fields_) {
     Variable* var = scope.FindVar(field);
     if (var == nullptr) {
-      VLOG(0) << "Note: field[" << field
+      VLOG(3) << "Note: field[" << field
               << "] cannot be find in scope, so it was skipped.";
+      continue;
+    }
+    if (!var->IsType<phi::DenseTensor>()) {
+      VLOG(3) << "Note: field[" << field
+              << "] is not dense tensor, so it was skipped.";
       continue;
     }
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
     if (!tensor->IsInitialized()) {
-      VLOG(0) << "Note: field[" << field
+      VLOG(3) << "Note: field[" << field
               << "] is not initialized, so it was skipped.";
       continue;
     }
@@ -438,7 +467,7 @@ void DeviceWorker::DumpField(const Scope& scope,
       tensor = &cpu_tensor;
     }
     if (!CheckValidOutput(tensor, batch_size)) {
-      VLOG(0) << "Note: field[" << field
+      VLOG(3) << "Note: field[" << field
               << "] cannot pass check, so it was "
                  "skipped. Maybe the dimension is "
                  "wrong ";

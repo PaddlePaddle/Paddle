@@ -76,6 +76,7 @@ class TestCondInputOutput(unittest.TestCase):
         )
 
     @compare_legacy_with_pt
+    @test_with_pir_api
     def test_return_0d_tensor(self):
         """
         pseudocode:
@@ -109,11 +110,15 @@ class TestCondInputOutput(unittest.TestCase):
             else base.CPUPlace()
         )
         exe = base.Executor(place)
-        (ret,) = exe.run(main_program, fetch_list=[out.name])
+        if paddle.framework.in_pir_mode():
+            (ret,) = exe.run(main_program, fetch_list=[out])
+        else:
+            (ret,) = exe.run(main_program, fetch_list=[out.name])
         np.testing.assert_allclose(np.asarray(ret), np.array(2), rtol=1e-05)
         self.assertEqual(ret.shape, ())
 
     @compare_legacy_with_pt
+    @test_with_pir_api
     def test_0d_tensor_as_cond(self):
         """
         pseudocode:
@@ -147,7 +152,10 @@ class TestCondInputOutput(unittest.TestCase):
             else base.CPUPlace()
         )
         exe = base.Executor(place)
-        (ret,) = exe.run(main_program, fetch_list=[out.name])
+        if paddle.framework.in_pir_mode():
+            (ret,) = exe.run(main_program, fetch_list=[out])
+        else:
+            (ret,) = exe.run(main_program, fetch_list=[out.name])
         np.testing.assert_allclose(
             np.asarray(ret), np.full((3, 3), 2, np.int32), rtol=1e-05
         )
@@ -244,8 +252,8 @@ class TestCondInputOutput(unittest.TestCase):
 
         def false_func():
             return paddle.tensor.fill_constant(
-                shape=[3, 4], dtype='float32', value=3
-            ), paddle.tensor.fill_constant(shape=[4, 5], dtype='int64', value=2)
+                shape=[3, 4], dtype='int32', value=3
+            ), paddle.tensor.fill_constant(shape=[4, 5], dtype='bool', value=2)
 
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
@@ -299,7 +307,7 @@ class TestCondInputOutput(unittest.TestCase):
                 shape=[3, 2, 1], dtype='int32', value=7
             )
             i = paddle.static.data(name="i", shape=[1], dtype='int32')
-            pred = (i % 2) == 0
+            pred = paddle.equal((i % 2), 0)
             a = paddle.static.nn.cond(
                 pred, lambda: true_func(a, i), lambda: false_func(a, i)
             )
@@ -344,7 +352,7 @@ class TestCondInputOutput(unittest.TestCase):
         startup_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
             i = paddle.static.data(name="i", shape=[1], dtype='int32')
-            pred = (i % 2) == 0
+            pred = paddle.equal((i % 2), 0)
             out1 = paddle.static.nn.cond(pred, true_func, false_func)
             out2 = paddle.static.nn.cond(pred, None, false_func)
             out3 = paddle.static.nn.cond(pred, true_func, None)
@@ -362,6 +370,7 @@ class TestCondInputOutput(unittest.TestCase):
             self.assertIsNone(out3)
 
     @compare_legacy_with_pt
+    @test_with_pir_api
     def test_wrong_structure_exception(self):
         """
         test returning different number of tensors cannot merge into output
@@ -386,7 +395,7 @@ class TestCondInputOutput(unittest.TestCase):
         startup_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
             i = paddle.static.data(name="i", shape=[1], dtype='int32')
-            pred = (i % 2) == 0
+            pred = paddle.equal((i % 2), 0)
             with self.assertRaises(TypeError):
                 out = paddle.static.nn.cond(pred, i, func_return_one_tensor)
 
@@ -853,6 +862,8 @@ class TestCondBackward(unittest.TestCase):
 
 
 class TestCondWithError(unittest.TestCase):
+    @compare_legacy_with_pt
+    @test_with_pir_api
     def test_input_type_error(self):
         paddle.enable_static()
         main_program = framework.Program()
@@ -877,6 +888,7 @@ class TestCondWithError(unittest.TestCase):
 
 
 class TestCondWithDict(unittest.TestCase):
+    @compare_legacy_with_pt
     def test_input_with_dict(self):
         paddle.enable_static()
         main_program = framework.Program()
@@ -893,10 +905,8 @@ class TestCondWithDict(unittest.TestCase):
 
             def false_func():
                 return {
-                    '1': paddle.full(
-                        shape=[3, 4], dtype='float32', fill_value=3
-                    ),
-                    '2': paddle.full(shape=[4, 5], dtype='int64', fill_value=2),
+                    '1': paddle.full(shape=[3, 4], dtype='int32', fill_value=3),
+                    '2': paddle.full(shape=[4, 5], dtype='bool', fill_value=2),
                 }
 
             x = paddle.full(shape=[1], dtype='float32', fill_value=0.1)

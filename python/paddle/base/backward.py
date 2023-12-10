@@ -1303,11 +1303,10 @@ def _topo_order_map(block, target_vars):
 
     topo_order_map = {}  # mapping from OpDesc -> Topologic Order
     queue = [var.name for var in target_vars]
-    visited = set()
+    visited = {var.name for var in target_vars}
     topo_order_counter = 0
     while len(queue) > 0:
         cur_var_name = queue.pop(0)
-        visited.add(cur_var_name)
         if cur_var_name not in get_defined_op:
             continue
         cur_op = get_defined_op[cur_var_name]
@@ -1316,6 +1315,7 @@ def _topo_order_map(block, target_vars):
         for inp in cur_op.input_arg_names:
             if inp in get_defined_op and inp not in visited:
                 queue.append(inp)
+                visited.add(inp)
     return topo_order_map
 
 

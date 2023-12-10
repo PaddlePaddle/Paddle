@@ -86,6 +86,11 @@ class BarrierTable : public Table {
                        const std::string &param UNUSED) {
     return 0;
   }
+#ifdef PADDLE_WITH_GPU_GRAPH
+  virtual int32_t Save_v2(const std::string &path, const std::string &param) {
+    return 0;
+  }
+#endif
   virtual int32_t InitializeShard() { return 0; }
 
   int32_t Initialize() override;

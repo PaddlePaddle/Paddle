@@ -126,7 +126,6 @@ from .trainer_desc import (
     HeterXpuTrainer,
 )
 from .backward import append_backward
-from . import type_promotion
 
 Tensor = LoDTensor
 enable_imperative = enable_dygraph
