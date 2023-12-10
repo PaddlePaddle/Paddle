@@ -104,7 +104,7 @@ WarpShapes_sm70 = [
     "cutlass::gemm::GemmShape<32, 32, 64>",
     "cutlass::gemm::GemmShape<64, 64, 64>",
 ]
-StagesList = {70: [2], 75: [2, 3, 4, 5], 80: [2, 3, 4, 5]}
+StagesList = {70: [2], 75: [2], 80: [2, 3, 4, 5]}
 
 ElementTypes = {"fp16": "half", "bf16": "__nv_bfloat16"}
 Archs = {
@@ -179,7 +179,7 @@ def generate_source_cu(
     all_code = CommonHead
     ThreadblockShapes_arch = ThreadblockShapes
     WarpShapes_arch = WarpShapes
-    if arch == 70:
+    if arch < 80:
         ThreadblockShapes_arch = ThreadblockShapes_sm70
         WarpShapes_arch = WarpShapes_sm70
     for WeightType in WeightTypes:

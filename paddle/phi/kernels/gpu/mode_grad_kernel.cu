@@ -66,7 +66,7 @@ void ModeGradKernel(const Context& dev_ctx,
 
   // For 0D Tensor
   if (in_dims.size() == 0) {
-    phi::funcs::set_constant(dev_ctx, x_grad, 1.0);
+    phi::funcs::set_constant(dev_ctx, x_grad, static_cast<T>(1.0));
     return;
   }
 
