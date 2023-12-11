@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/pir/core/op_operand.h"
-#include "paddle/pir/core/enforce.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/op_operand_impl.h"
 
 #define CHECK_NULL_IMPL(class_name, func_name)                  \
@@ -51,6 +51,11 @@ void OpOperand::set_source(Value value) {
 Operation *OpOperand::owner() const {
   CHECK_OPOPEREND_NULL_IMPL(owner);
   return impl_->owner();
+}
+
+uint32_t OpOperand::index() const {
+  CHECK_OPOPEREND_NULL_IMPL(index);
+  return impl_->index();
 }
 
 void OpOperand::RemoveFromUdChain() {

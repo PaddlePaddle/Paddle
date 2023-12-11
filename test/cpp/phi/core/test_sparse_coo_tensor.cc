@@ -23,20 +23,21 @@ namespace tests {
 
 TEST(sparse_coo_tensor, construct) {
   phi::CPUPlace cpu;
-  auto dense_dims = phi::make_ddim({3, 3});
+  auto dense_dims = common::make_ddim({3, 3});
   std::vector<float> non_zero_data = {1.0, 2.0, 3.0};
   std::vector<int64_t> indices_data = {0, 1, 2, 0, 2, 1};
   auto fancy_allocator = std::unique_ptr<Allocator>(new FancyAllocator);
   auto* alloc = fancy_allocator.get();
   auto indices_dims =
-      phi::make_ddim({2, static_cast<int>(non_zero_data.size())});
+      common::make_ddim({2, static_cast<int>(non_zero_data.size())});
   DenseTensorMeta indices_meta(DataType::INT64, indices_dims, DataLayout::NCHW);
   DenseTensor indices(alloc, indices_meta);
   memcpy(indices.mutable_data<int64_t>(cpu),
          &indices_data[0],
          indices_data.size() * sizeof(int64_t));
 
-  auto elements_dims = phi::make_ddim({static_cast<int>(non_zero_data.size())});
+  auto elements_dims =
+      common::make_ddim({static_cast<int>(non_zero_data.size())});
   DenseTensorMeta elements_meta(
       DataType::FLOAT32, elements_dims, DataLayout::NCHW);
   DenseTensor elements(alloc, elements_meta);
@@ -58,13 +59,13 @@ TEST(sparse_coo_tensor, construct) {
 TEST(sparse_coo_tensor, other_function) {
   auto fancy_allocator = std::unique_ptr<Allocator>(new FancyAllocator);
   auto* alloc = fancy_allocator.get();
-  auto dense_dims = phi::make_ddim({4, 4});
+  auto dense_dims = common::make_ddim({4, 4});
   const int non_zero_num = 2;
-  auto indices_dims = phi::make_ddim({2, non_zero_num});
+  auto indices_dims = common::make_ddim({2, non_zero_num});
   DenseTensorMeta indices_meta(DataType::INT64, indices_dims, DataLayout::NCHW);
   DenseTensor indices(alloc, indices_meta);
 
-  auto elements_dims = phi::make_ddim({non_zero_num});
+  auto elements_dims = common::make_ddim({non_zero_num});
   DenseTensorMeta elements_meta(
       DataType::FLOAT32, elements_dims, DataLayout::NCHW);
   DenseTensor elements(alloc, elements_meta);
@@ -74,7 +75,7 @@ TEST(sparse_coo_tensor, other_function) {
   CHECK_EQ(coo.dims(), dense_dims);
 
   // Test Resize
-  auto dense_dims_3d = phi::make_ddim({2, 4, 4});
+  auto dense_dims_3d = common::make_ddim({2, 4, 4});
   coo.Resize(dense_dims_3d, 1, 3);
   CHECK_EQ(coo.nnz(), 3);
 

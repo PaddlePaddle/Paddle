@@ -25,6 +25,7 @@ class TestSemiAutoParallelShardOptimizerAPI:
         self._backend = os.getenv("backend")
         self._seed = eval(os.getenv("seed"))
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+        self._ckpt_path = os.getenv("ckpt_path")
 
     def check_tensor_eq(self, a, b, rtol=1e-05, atol=0, verbose=True):
         np.testing.assert_allclose(a, b, rtol=rtol, atol=atol, verbose=verbose)
@@ -78,6 +79,26 @@ class TestSemiAutoParallelShardOptimizerAPI:
         self.test_opt(opt)
         self.check_tensor_eq(self.weight, linear.weight.numpy())
         self.check_tensor_eq(self.bias, linear.bias.numpy())
+        # save load
+        ckpt_state_dict = opt.state_dict()
+        ckpt_state_dict_keys = list(ckpt_state_dict.keys())
+        dist.save_state_dict(ckpt_state_dict, self._ckpt_path)
+        linear = paddle.nn.Linear(10, 10)
+        dist.shard_layer(linear, self._mesh, self.shard_layer_fn)
+        new_opt = paddle.optimizer.AdamW(parameters=linear.parameters())
+        new_opt = dist.shard_optimizer(new_opt)
+        new_state_dict = new_opt.state_dict()
+        new_state_dict = {
+            ckpt_state_dict_keys[i]: v
+            for i, (k, v) in enumerate(new_state_dict.items())
+        }
+        dist.load_state_dict(new_state_dict, self._ckpt_path)
+        assert len(new_state_dict) > 0, "load_state_dict fail"
+        for k, v in new_state_dict.items():
+            assert k in ckpt_state_dict
+            if k in ["master_weights", "LR_Scheduler"]:
+                continue
+            self.check_tensor_eq(v, ckpt_state_dict[k])
 
     def test_shard_optimizer_from_non_shard_layer(self):
         paddle.seed(self._seed)
@@ -92,6 +113,25 @@ class TestSemiAutoParallelShardOptimizerAPI:
             opt.clear_grad()
         self.check_tensor_eq(self.weight, linear.weight.numpy())
         self.check_tensor_eq(self.bias, linear.bias.numpy())
+        # save load
+        ckpt_state_dict = opt.state_dict()
+        ckpt_state_dict_keys = list(ckpt_state_dict.keys())
+        dist.save_state_dict(ckpt_state_dict, self._ckpt_path)
+        linear = paddle.nn.Linear(10, 10)
+        new_opt = paddle.optimizer.AdamW(parameters=linear.parameters())
+        new_opt = dist.shard_optimizer(new_opt)
+        new_state_dict = new_opt.state_dict()
+        new_state_dict = {
+            ckpt_state_dict_keys[i]: v
+            for i, (k, v) in enumerate(new_state_dict.items())
+        }
+        dist.load_state_dict(new_state_dict, self._ckpt_path)
+        assert len(new_state_dict) > 0, "load_state_dict fail"
+        for k, v in new_state_dict.items():
+            assert k in ckpt_state_dict
+            if k in ["master_weights", "LR_Scheduler"]:
+                continue
+            self.check_tensor_eq(v, ckpt_state_dict[k])
 
     def shard_opt_fn(self, accumulator_name, param, accumulator):
         if param.is_dist():

@@ -45,10 +45,12 @@
 #include "paddle/fluid/framework/new_executor/instruction/cinn_jit_instruction.h"
 #endif
 
-#include "paddle/fluid/framework/new_executor/instruction/cond_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/builtin_combine_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/has_elements_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/if_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/select_input_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/tuple_pop_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/tuple_push_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/while_instruction.h"
@@ -92,7 +94,8 @@ PirInterpreter::PirInterpreter(const platform::Place& place,
       scope_(scope),
       ir_block_(ir_block),
       ir_stream_analyzer_(place),
-      fetch_var_names_(fetch_var_names) {
+      fetch_var_names_(fetch_var_names),
+      enable_job_schedule_profiler_(false) {
   VLOG(4) << "PirInterpreter(): " << this << " on " << place_;
 
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
@@ -135,6 +138,10 @@ PirInterpreter::PirInterpreter(const platform::Place& place,
   ss << this
      << std::chrono::high_resolution_clock::now().time_since_epoch().count();
   BuildScope(*ir_block_, ss.str(), value_exe_info_.get());
+
+#if defined(PADDLE_WITH_CUDA)
+  calculate_stream_timer_ = std::make_unique<phi::CalculateStreamTimer>(place);
+#endif
 }
 
 PirInterpreter::PirInterpreter(
@@ -204,6 +211,11 @@ PirInterpreter::~PirInterpreter() {
   // this is needed to have mkl-dnn unit tests working
   platform::ClearMKLDNNCache(place_, this);
 #endif
+}
+
+std::shared_ptr<ProgramDesc> PirInterpreter::GetMutableCopyProgram() {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "GetMutableCopyProgram is not implemented in PirInterpreter."));
 }
 
 void PirInterpreter::SetSkipGcVars(const std::set<std::string>& skip_gc_vars) {
@@ -277,6 +289,15 @@ void PirInterpreter::ShareBuildResultsFrom(const InterpreterBaseImpl& src) {
   is_shared_results_build_ = true;
   VLOG(8) << "Share Build Results from InterpreterCore(" << &impl
           << ") to InterpreterCore(" << this << ")";
+}
+
+std::tuple<double, double> PirInterpreter::InterpreterRunTime() {
+  double start_time = 0, end_time = 0;
+#if defined(PADDLE_WITH_CUDA)
+  start_time = calculate_stream_timer_->StartTime();
+  end_time = calculate_stream_timer_->EndTime();
+#endif
+  return std::make_tuple(start_time, end_time);
 }
 
 const interpreter::PirDependencyBuilder&
@@ -631,7 +652,11 @@ void PirInterpreter::BuildInstruction() {
   for (auto& op : *ir_block_) {
     VLOG(6) << "Build Instruction for op: " << op_idx;
     if (op.dialect()->name() == "builtin") {
-      if (interpreter::GetSpecialOpNames().count(op.name())) {
+      if (op.isa<pir::CombineOp>()) {
+        vec_instruction_base_.emplace_back(
+            std::make_unique<BuiltinCombineInstruction>(
+                op_idx++, place_, &op, value_exe_info_.get()));
+      } else if (interpreter::GetSpecialOpNames().count(op.name())) {
         VLOG(6) << "skip process builtin dialect op: " << op.name();
         continue;
       }
@@ -646,29 +671,29 @@ void PirInterpreter::BuildInstruction() {
       }
     } else if (op.dialect()->name() == "pd_op") {
       if (op.isa<paddle::dialect::IfOp>()) {
-        CREATE_INSTR(CondInstruction);
+        auto skip_gc_vars = execution_config_.skip_gc_vars;
+        vec_instruction_base_.emplace_back(std::make_unique<IfInstruction>(
+            op_idx++, place_, &op, value_exe_info_.get(), skip_gc_vars));
         sub_blocks_.insert(
             {&op.dyn_cast<paddle::dialect::IfOp>().true_block(),
-             dynamic_cast<CondInstruction*>(vec_instruction_base_.back().get())
+             dynamic_cast<IfInstruction*>(vec_instruction_base_.back().get())
                  ->TrueBranchInterpreter()});
         sub_blocks_.insert(
             {&op.dyn_cast<paddle::dialect::IfOp>().false_block(),
-             dynamic_cast<CondInstruction*>(vec_instruction_base_.back().get())
+             dynamic_cast<IfInstruction*>(vec_instruction_base_.back().get())
                  ->FalseBranchInterpreter()});
       } else if (op.isa<paddle::dialect::WhileOp>()) {
-        vec_instruction_base_.emplace_back(
-            std::make_unique<WhileInstruction>(op_idx++,
-                                               place_,
-                                               &op,
-                                               scope_,
-                                               local_scope_,
-                                               value_exe_info_.get()));
+        auto skip_gc_vars = execution_config_.skip_gc_vars;
+        vec_instruction_base_.emplace_back(std::make_unique<WhileInstruction>(
+            op_idx++, place_, &op, value_exe_info_.get(), skip_gc_vars));
         sub_blocks_.insert(
             {&op.dyn_cast<paddle::dialect::WhileOp>().body(),
              dynamic_cast<WhileInstruction*>(vec_instruction_base_.back().get())
                  ->BodyInterpreter()});
       } else if (op.isa<paddle::dialect::HasElementsOp>()) {
         CREATE_INSTR(HasElementsInstruction);
+      } else if (op.isa<paddle::dialect::SelectInputOp>()) {
+        CREATE_INSTR(SelectInputInstruction);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Now only support pd_kernel and cinn dialect."));
@@ -1144,7 +1169,10 @@ void PirInterpreter::ConstructEventForJitInput() {
 paddle::framework::FetchList PirInterpreter::Run(
     const std::vector<std::string>& feed_names,
     const std::vector<phi::DenseTensor>& feed_tensors,
-    bool need_fetch) {
+    bool need_fetch,
+    bool enable_job_schedule_profiler) {
+  enable_job_schedule_profiler_ = enable_job_schedule_profiler;
+
   auto FeedInput = [&] {
     VLOG(4) << "Feed inputs";
     for (size_t i = 0; i < feed_names.size(); ++i) {
@@ -1236,7 +1264,15 @@ paddle::framework::FetchList PirInterpreter::Run(
 
 FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
                               bool need_fetch,
-                              bool enable_job_schedule_profiler) {
+                              bool enable_job_schedule_profiler,
+                              bool enable_op_profiling) {
+  enable_job_schedule_profiler_ = enable_job_schedule_profiler;
+
+  if (enable_op_profiling) {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Currently PIR does not support op runtime profiling feature."));
+  }
+
   SetDeviceId(place_);
   CheckCUDAGraphBeforeRun(feed_names);
 
@@ -1347,6 +1383,20 @@ void PirInterpreter::TraceRunInstructionList(
 
   exception_holder_.Clear();
 
+  if (enable_job_schedule_profiler_) {
+    for (int i = trace_execute_order_.size() - 1; i >= 0; --i) {
+      auto instr_id = trace_execute_order_[i];
+      auto* instr_node = vec_instruction_base_.at(instr_id).get();
+      std::string op_name = instr_node->Name();
+      ::pir::Operation* op = instr_node->Operation();
+      if (op_name != "pd_op.feed" && !op->HasAttribute("ring_id")) {
+        VLOG(3) << "Last calculated op type: " << op_name;
+        last_calculate_instr_id_ = instr_node->Id();
+        break;
+      }
+    }
+  }
+
   for (size_t i = 0; i < dependecy_count_->size(); ++i) {
     if ((*dependecy_count_)[i] == 0) {
       // NOTE(zhiqiu): hot fix for jit input var
@@ -1390,6 +1440,19 @@ void PirInterpreter::MultiThreadRunInstructionList(
   }
 
   exception_holder_.Clear();
+
+  if (enable_job_schedule_profiler_) {
+    for (int i = vec_instr.size() - 1; i >= 0; --i) {
+      auto* instr_node = vec_instr.at(i).get();
+      std::string op_name = instr_node->Name();
+      ::pir::Operation* op = instr_node->Operation();
+      if (op_name != "pd_op.feed" && !op->HasAttribute("ring_id")) {
+        VLOG(3) << "Last calculated op type: " << op_name;
+        last_calculate_instr_id_ = vec_instr.at(i)->Id();
+        break;
+      }
+    }
+  }
 
   for (size_t i = 0; i < dependecy_count_->size(); ++i) {
     if ((*dependecy_count_)[i] == 0) {
@@ -1531,6 +1594,17 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
 
   try {
     instr_node->WaitEvent(cur_place);
+#if defined(PADDLE_WITH_CUDA)
+    if (enable_job_schedule_profiler_) {
+      std::string op_name = instr_node->Name();
+      ::pir::Operation* op = instr_node->Operation();
+      if (!calculate_stream_timer_->IsStarted() && op_name != "pd_op.feed" &&
+          !op->HasAttribute("ring_id")) {
+        VLOG(3) << "Start calculated stream timer from op: " << op_name;
+        calculate_stream_timer_->Start();
+      }
+    }
+#endif
     VLOG(4) << "begin to run op " << instr_node->Name();
     VLOG(4) << "begin: " << __func__ << " OP id:" << instr_node->Id()
             << " name:" << instr_node->Name() << " type:"
@@ -1572,6 +1646,16 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
     }
     VLOG(5) << "after run kernel";
     instr_node->RecordEvent(cur_place);
+#if defined(PADDLE_WITH_CUDA)
+    if (enable_job_schedule_profiler_) {
+      if (instr_node->Id() == last_calculate_instr_id_ &&
+          calculate_stream_timer_->IsStarted()) {
+        VLOG(3) << "Stop calculated stream timer from op: "
+                << instr_node->Name();
+        calculate_stream_timer_->Stop();
+      }
+    }
+#endif
   } catch (platform::EnforceNotMet& ex) {
     auto* op = instr_node->Operation();
     const std::vector<std::string> op_callstack_attr =
@@ -1672,11 +1756,6 @@ void PirInterpreter::Build(
     std::vector<paddle::framework::OpFuncNode>* op_func_nodes) {
   PADDLE_THROW(platform::errors::Unimplemented(
       "Build is not implemented in PirInterpreter."));
-}
-
-std::tuple<double, double> PirInterpreter::InterpreterRunTime() {
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "PirInterpreter::InterpreterRunTime is not implemented."));
 }
 
 void PirInterpreter::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {

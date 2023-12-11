@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstdint>
 #include <ostream>
 
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/block.h"
 #include "paddle/pir/core/block_operand_impl.h"
 #include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/op_info.h"
 #include "paddle/pir/core/op_result_impl.h"
 #include "paddle/pir/core/operation.h"
@@ -75,6 +76,11 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
                      region_mem_size + block_operand_size;
   // 2. Malloc memory.
   char *base_ptr = reinterpret_cast<char *>(aligned_malloc(base_size, 8));
+
+  auto name = op_info ? op_info.name() : "";
+  VLOG(6) << "Create Operation [" << name
+          << "]: {ptr = " << static_cast<void *>(base_ptr)
+          << ", size = " << base_size << "} done.";
   // 3.1. Construct OpResults.
   for (size_t idx = num_results; idx > 0; idx--) {
     if (idx > max_inline_result_num) {

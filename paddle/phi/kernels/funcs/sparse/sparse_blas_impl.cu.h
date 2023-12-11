@@ -16,11 +16,11 @@
 
 #include "glog/logging.h"
 
+#include "paddle/common/ddim.h"
 #include "paddle/phi/backends/dynload/cusparse.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/memory_utils.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
@@ -65,7 +65,7 @@ template <typename T, typename IntT>
 inline void CreateCsrDescriptor(const phi::SparseCsrTensor& x,
                                 const phi::GPUContext& dev_ctx,
                                 cusparseSpMatDescr_t* descriptor) {
-  std::vector<int64_t> xdim_vec = phi::vectorize(x.dims());
+  std::vector<int64_t> xdim_vec = common::vectorize(x.dims());
   auto x_ndims = xdim_vec.size();
   PADDLE_ENFORCE_GE(
       x_ndims,
@@ -120,7 +120,7 @@ template <typename T, typename IntT>
 inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
                                 const phi::GPUContext& dev_ctx,
                                 cusparseSpMatDescr_t* descriptor) {
-  std::vector<int64_t> xdim_vec = phi::vectorize(x.dims());
+  std::vector<int64_t> xdim_vec = common::vectorize(x.dims());
   auto x_ndims = xdim_vec.size();
   PADDLE_ENFORCE_GE(
       x_ndims,
@@ -214,7 +214,7 @@ class CuSparseDnMatDescriptor {
   explicit CuSparseDnMatDescriptor(const phi::DenseTensor& x,
                                    const phi::GPUContext& dev_ctx)
       : dev_ctx_(dev_ctx) {
-    std::vector<int64_t> xdim_vec = phi::vectorize(x.dims());
+    std::vector<int64_t> xdim_vec = common::vectorize(x.dims());
     auto x_ndims = xdim_vec.size();
     PADDLE_ENFORCE_GE(
         x_ndims,
@@ -278,7 +278,7 @@ class CuSparseDnVecDescriptor {
   explicit CuSparseDnVecDescriptor(const phi::DenseTensor& x,
                                    const phi::GPUContext& dev_ctx)
       : dev_ctx_(dev_ctx) {
-    std::vector<int64_t> xdim_vec = phi::vectorize(x.dims());
+    std::vector<int64_t> xdim_vec = common::vectorize(x.dims());
     auto x_ndims = xdim_vec.size();
     PADDLE_ENFORCE_GE(x_ndims,
                       1,
