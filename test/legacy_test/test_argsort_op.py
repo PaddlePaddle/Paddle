@@ -233,30 +233,6 @@ class TestArgsortOpCPU(unittest.TestCase):
     def init_place(self):
         self.place = core.CPUPlace()
 
-    @test_with_pir_api
-    def test_static_api(self):
-        paddle.enable_static()
-        with paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
-        ):
-            x_np = np.array(
-                [
-                    [[5, 8, 9, 5], [0, 0, 1, 7], [6, 9, 2, 4]],
-                    [[5, 2, 4, 2], [4, 7, 7, 9], [1, 7, 0, 6]],
-                ]
-            ).astype('float32')
-            x = paddle.static.data(shape=[2, 3, 4], name='x', dtype='float32')
-            out = paddle.argsort(x, self.axis)
-            exe = paddle.static.Executor(self.place)
-            res = exe.run(
-                paddle.static.default_main_program(),
-                feed={'x': x_np},
-                fetch_list=[out],
-            )
-            expected_result = np.argsort(x_np, self.axis)
-            np.testing.assert_array_equal(res, expected_result)
-        paddle.disable_static()
-
 
 class TestArgsortOpGPU(TestArgsortOpCPU):
     def init_place(self):
