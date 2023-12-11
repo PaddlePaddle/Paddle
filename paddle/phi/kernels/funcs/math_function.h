@@ -67,18 +67,11 @@ struct SetConstant {
 template <typename Place>
 void set_constant_with_place(const phi::DeviceContext& context,
                              phi::DenseTensor* tensor,
-                             const void* value);
+                             float value);
 
 void set_constant(const phi::DeviceContext& context,
                   phi::DenseTensor* tensor,
-                  const void* value);
-
-template <typename T>
-void set_constant(const phi::DeviceContext& context,
-                  phi::DenseTensor* tensor,
-                  const T value) {
-  set_constant(context, tensor, reinterpret_cast<const void*>(&value));
-}
+                  float value);
 
 template <typename DeviceContext, typename T>
 struct RowwiseAdd {

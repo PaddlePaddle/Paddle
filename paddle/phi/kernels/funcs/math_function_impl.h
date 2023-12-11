@@ -29,9 +29,8 @@ template <typename DeviceContext, typename T>
 void SetConstant<DeviceContext, T>::operator()(const DeviceContext& context,
                                                phi::DenseTensor* tensor,
                                                T num) {
-  // auto t = phi::EigenVector<T>::Flatten(*tensor);
-  // t.device(*context.eigen_device()) = t.constant(static_cast<T>(num));
-  set_constant(context, tensor, reinterpret_cast<const void*>(&num));
+  auto t = phi::EigenVector<T>::Flatten(*tensor);
+  t.device(*context.eigen_device()) = t.constant(static_cast<T>(num));
 }
 
 template <typename DeviceContext, typename T, int Rank>
