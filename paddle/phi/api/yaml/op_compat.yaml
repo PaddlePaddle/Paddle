@@ -1176,16 +1176,12 @@
     {x : X}
   outputs :
     {out : Out, mask : Mask}
-  attrs :
-    output_size : output_size
 
 - op : fractional_max_pool3d_with_index
   inputs :
     {x : X}
   outputs :
     {out : Out, mask : Mask}
-  attrs :
-    output_size : output_size
 
 - op : frame
   backward : frame_grad
