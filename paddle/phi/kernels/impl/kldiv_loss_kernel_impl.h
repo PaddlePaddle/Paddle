@@ -57,7 +57,7 @@ void KLDivLossKernel(const Context& dev_ctx,
   auto input_t = phi::EigenVector<T>::Flatten(*input);
   auto target_t = phi::EigenVector<T>::Flatten(*target);
   auto loss_t = phi::EigenVector<T>::Flatten(*loss);
-  auto output = target_t.binaryExpr(input_t, KLDivLossForward<T>());
+  auto output = target_t.binaryExpr(input_t, KLDivLossForward<T>(), log_target);
   if ("none" == reduction) {
     loss_t.device(place) = output;
   } else if ("batchmean" == reduction) {

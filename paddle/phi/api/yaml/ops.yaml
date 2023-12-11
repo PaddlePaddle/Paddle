@@ -1351,7 +1351,7 @@
            isnan_sr {selected_rows -> selected_rows}
 
 - op : kldiv_loss
-  args : (Tensor x, Tensor label, str reduction = "mean")
+  args : (Tensor x, Tensor label, str reduction = "mean", bool log_target = false)
   output : Tensor(out)
   infer_meta :
     func : KLDivInferMeta
