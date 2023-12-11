@@ -82,6 +82,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'generate_sequence_xpu',
     'layer_norm_act_xpu',
     'memcpy',
+    'batch_norm_',
     'multi_encoder_xpu',
     'multihead_matmul',
     'squeeze_excitation_block',
@@ -98,13 +99,13 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'self_dp_attention',
     'get_tensor_from_selected_rows',
     'print',
+    'sequence_mask',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
     'add_n_',
     'add_n_with_kernel',
     'assign_value',
-    'batch_norm_',
     'c_allgather',
     'c_allreduce_max',
     'c_allreduce_sum',

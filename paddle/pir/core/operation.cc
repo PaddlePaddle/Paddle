@@ -80,6 +80,11 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
                      region_mem_size + block_operand_size;
   // 2. Malloc memory.
   char *base_ptr = reinterpret_cast<char *>(aligned_malloc(base_size, 8));
+
+  auto name = op_info ? op_info.name() : "";
+  VLOG(6) << "Create Operation [" << name
+          << "]: {ptr = " << static_cast<void *>(base_ptr)
+          << ", size = " << base_size << "} done.";
   // 3.1. Construct OpResults.
   for (size_t idx = num_results; idx > 0; idx--) {
     if (idx > max_inline_result_num) {
@@ -240,17 +245,6 @@ std::vector<Value> Operation::operands_source() const {
   std::vector<Value> res;
   for (uint32_t i = 0; i < num_operands(); ++i) {
     res.push_back(operand_source(i));
-  }
-  return res;
-}
-
-int32_t Operation::operand_index(const OpOperand &op_operand) const {
-  int32_t res = -1;
-  for (uint32_t i = 0; i < num_operands(); ++i) {
-    if (op_operand == operand(i)) {
-      res = i;
-      break;
-    }
   }
   return res;
 }

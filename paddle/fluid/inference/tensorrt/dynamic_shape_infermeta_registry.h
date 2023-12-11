@@ -34,6 +34,7 @@ USE_TRT_DYNAMIC_INFER_META_FN(conv2d_transpose);
 USE_TRT_DYNAMIC_INFER_META_FN(memory_efficient_attention);
 USE_TRT_DYNAMIC_INFER_META_FN(p_norm);
 USE_TRT_DYNAMIC_INFER_META_FN(pad);
+USE_TRT_DYNAMIC_INFER_META_FN(argsort);
 USE_TRT_DYNAMIC_INFER_META_FN(scatter);
 USE_TRT_DYNAMIC_INFER_META_FN(solve);
 }  // namespace tensorrt

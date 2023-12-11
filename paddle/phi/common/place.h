@@ -55,7 +55,10 @@ class TEST_API CustomRegisteredDeviceMap {
 const char* AllocationTypeStr(AllocationType type);
 
 /// \brief The place is used to specify where the data is stored.
-class Place {
+
+
+class TEST_API Place {
+
  public:
   Place()
       : device(0), alloc_type_(AllocationType::UNDEFINED), device_type_id_(0) {}

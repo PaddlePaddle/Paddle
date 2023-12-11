@@ -28,6 +28,42 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
+void SequenceMaskScalarKernel(const Context& ctx,
+                              const DenseTensor& x,
+                              const Scalar& max_len,
+                              int out_dtype,
+                              DenseTensor* y) {
+  int maxlen = max_len.to<int>();
+  auto* x_data = x.data<T>();
+  auto x_numel = x.numel();
+
+  if (maxlen < 0) {
+    if (x_numel == 0) {
+      maxlen = 0;
+    } else {
+#if defined(__NVCC__) || defined(__HIPCC__)
+      VLOG(10)
+          << "SequenceMaskOp on GPU may be slow when maxlen is not provided.";
+      maxlen = static_cast<int>(
+          thrust::reduce(thrust::device_pointer_cast(x_data),
+                         thrust::device_pointer_cast(x_data) + x_numel,
+                         static_cast<T>(0),
+                         thrust::maximum<T>()));
+#else
+      maxlen = static_cast<int>(*std::max_element(x_data, x_data + x_numel));
+#endif
+    }
+    auto y_dim = common::vectorize<int>(x.dims());
+    y_dim.push_back(maxlen);
+    y->Resize(common::make_ddim(y_dim));
+  }
+
+  phi::VisitDataType(phi::TransToPhiDataType(out_dtype),
+                     phi::funcs::SequenceMaskFunctor<Context, T>(
+                         ctx, x_data, y, x_numel * maxlen, maxlen));
+}
+
+template <typename T, typename Context>
 void SequenceMaskKernel(const Context& ctx,
                         const DenseTensor& x,
                         const paddle::optional<DenseTensor>& max_len_tensor,
@@ -56,33 +92,6 @@ void SequenceMaskKernel(const Context& ctx,
             "received Input(MaxLenTensor) value = %d.",
             maxlen));
   }
-
-  auto* x_data = x.data<T>();
-  auto x_numel = x.numel();
-
-  if (maxlen < 0) {
-    if (x_numel == 0) {
-      maxlen = 0;
-    } else {
-#if defined(__NVCC__) || defined(__HIPCC__)
-      VLOG(10)
-          << "SequenceMaskOp on GPU may be slow when maxlen is not provided.";
-      maxlen = static_cast<int>(
-          thrust::reduce(thrust::device_pointer_cast(x_data),
-                         thrust::device_pointer_cast(x_data) + x_numel,
-                         static_cast<T>(0),
-                         thrust::maximum<T>()));
-#else
-      maxlen = static_cast<int>(*std::max_element(x_data, x_data + x_numel));
-#endif
-    }
-    auto y_dim = common::vectorize<int>(x.dims());
-    y_dim.push_back(maxlen);
-    y->Resize(common::make_ddim(y_dim));
-  }
-
-  phi::VisitDataType(phi::TransToPhiDataType(out_dtype),
-                     phi::funcs::SequenceMaskFunctor<Context, T>(
-                         ctx, x_data, y, x_numel * maxlen, maxlen));
+  SequenceMaskScalarKernel<T, Context>(ctx, x, Scalar(maxlen), out_dtype, y);
 }
 }  // namespace phi
