@@ -245,6 +245,18 @@ Tensor softmax_decomp(const Tensor& x, const int& axis) {
 }
 
 template <typename T>
+Tensor stack_decomp(const std::vector<Tensor>& x, const int& axis) {
+  std::vector<int64_t> axis_tmp = {axis};
+  auto out_shape = get_expand_dims(x[0], axis_tmp);
+
+  std::vector<Tensor> concat_x;
+  for (size_t i = 0; i < x.size(); ++i) {
+    concat_x.push_back(reshape<T>(x[i], out_shape));
+  }
+  return concat<T>(concat_x, axis);
+}
+
+template <typename T>
 Tensor silu_decomp(const Tensor& x) {
   auto org_dtype = x.dtype();
   auto x_tmp = x;
@@ -295,6 +307,15 @@ std::tuple<Tensor, Tensor> squeeze_decomp(const Tensor& x,
                                           const IntArray& axis) {
   auto axis_ = process_dims(x, axis.GetData());
   auto out_shape = get_squeeze_dims(x, axis_);
+  Tensor out = reshape<T>(x, out_shape);
+  Tensor xshape;
+  return std::make_tuple(out, xshape);
+}
+
+template <typename T>
+std::tuple<Tensor, Tensor> unsqueeze_decomp(const Tensor& x,
+                                            const IntArray& axis) {
+  auto out_shape = get_expand_dims(x, axis.GetData());
   Tensor out = reshape<T>(x, out_shape);
   Tensor xshape;
   return std::make_tuple(out, xshape);
