@@ -28,6 +28,9 @@ set(XPU_XFA_LIB_NAME "libxpu_flash_attention.so")
 if(NOT DEFINED XPU_BASE_DATE)
   set(XPU_BASE_DATE "20231128")
 endif()
+if(NOT DEFINED XPU_XHPC_BASE_DATE)
+  set(XPU_XHPC_BASE_DATE "20231208")
+endif()
 set(XPU_XCCL_BASE_VERSION "1.1.6.1")
 if(NOT DEFINED XPU_XFT_BASE_VERSION)
   set(XPU_XFT_BASE_VERSION "20230602")
@@ -117,7 +120,7 @@ set(XPU_XFT_GET_DEPENCE_URL
 
 if(WITH_XPU_XHPC)
   set(XPU_XHPC_URL
-      "https://klx-sdk-release-public.su.bcebos.com/xhpc/dev/latest/output.tar.gz"
+      "https://klx-sdk-release-public.su.bcebos.com/xhpc/dev/${XPU_XHPC_BASE_DATE}/${XPU_XHPC_DIR_NAME}.tar.gz"
       CACHE STRING "" FORCE)
 endif()
 
@@ -164,9 +167,7 @@ ExternalProject_Add(
     ${XPU_XFT_GET_DEPENCE_URL} && bash get_xft_dependence.sh ${XPU_XFT_URL}
     ${XPU_XFT_DIR_NAME} && WITH_XPTI=${WITH_XPTI} bash
     ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpti_dependence.sh ${XPU_XPTI_URL}
-    ${XPU_XPTI_DIR_NAME} && WITH_XPU_XHPC=${WITH_XPU_XHPC} bash
-    ${CMAKE_SOURCE_DIR}/tools/xpu/get_xhpc_dependences.sh ${XPU_XHPC_URL}
-    ${XPU_XHPC_DIR_NAME}
+    ${XPU_XPTI_DIR_NAME}
   DOWNLOAD_NO_PROGRESS 1
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${XPU_INSTALL_ROOT}
