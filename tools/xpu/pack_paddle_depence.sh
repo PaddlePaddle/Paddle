@@ -41,28 +41,29 @@ tar xvf xdnn.tar.gz
 wget --no-check-certificate ${XCCL_URL} -q -O xccl.tar.gz
 tar xvf xccl.tar.gz
 
-if [ -n ${XHPC_URL} ]; then
-  wget --no-check-certificate ${XHPC_URL} -q -O xhpc.tar.gz
-  tar xvf xphc.tar.gz
-  mkdir -p xpu/include/xhpc/xblas
-  mkdir -p xpu/include/xhpc/xfa
-
-  cp -r output/${XHPC_DIR_NAME}/xblas/include/* xpu/include/xhpc/xblas
-  cp -r output/${XHPC_DIR_NAME}/xblas/so/* xpu/lib/
-
-  cp -r output/${XHPC_DIR_NAME}/xdnn/include/* xpu/include/
-  cp -r output/${XHPC_DIR_NAME}/xdnn/so/* xpu/lib
-
-  cp -r output/${XHPC_DIR_NAME}/xfa/include/* xpu/include/xhpc/xfa
-  cp -r output/${XHPC_DIR_NAME}/xfa/so/* xpu/lib/
-fi
-
 mkdir -p xpu/include/xpu
 mkdir -p xpu/lib
 
+if [ -n ${XHPC_URL} ]; then
+  wget --no-check-certificate ${XHPC_URL} -q -O xhpc.tar.gz
+  tar xvf xphc.tar.gz
+
+  mkdir -p xpu/include/xhpc/xblas
+  mkdir -p xpu/include/xhpc/xfa
+
+  cp -r ${XHPC_DIR_NAME}/xblas/include/* xpu/include/xhpc/xblas
+  cp -r ${XHPC_DIR_NAME}/xblas/so/* xpu/lib/
+
+  cp -r ${XHPC_DIR_NAME}/xdnn/include/* xpu/include/
+  cp -r ${XHPC_DIR_NAME}/xdnn/so/* xpu/lib
+
+  cp -r ${XHPC_DIR_NAME}/xfa/include/* xpu/include/xhpc/xfa
+  cp -r ${XHPC_DIR_NAME}/xfa/so/* xpu/lib/
+fi
+
 if ! [ -n ${XHPC_URL} ]; then
   cp -r $XDNN_DIR_NAME/include/xpu/* xpu/include/xpu/
-  cp -r $XDNN_DIR_NAME/so/libxpuapi.so xpu/lib/
+  cp -r $XDNN_DIR_NAME/so/* xpu/lib/
 fi
 
 cp -r $XRE_DIR_NAME/include/xpu/* xpu/include/xpu/

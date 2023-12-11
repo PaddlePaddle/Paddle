@@ -238,8 +238,8 @@ if(WITH_XPTI)
 endif()
 
 if(WITH_XPU_XHPC)
-  target_link_libraries(xpulib ${XPU_API_LIB} ${XPU_RT_LIB} ${XPU_XBLAS_LIB})
-  target_link_libraries(xpulib ${XPU_API_LIB} ${XPU_RT_LIB} ${XPU_XFA_LIB})
+  target_link_libraries(xpulib ${XPU_API_LIB} ${XPU_RT_LIB} ${XPU_XBLAS_LIB}
+                        ${XPU_XFA_LIB})
 endif()
 
 add_dependencies(xpulib ${XPU_PROJECT})
