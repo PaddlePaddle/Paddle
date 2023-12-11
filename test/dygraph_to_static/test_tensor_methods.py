@@ -129,7 +129,7 @@ class TestTrueDiv(Dy2StTestBase):
         return paddle.jit.to_static(true_div)(x, y).numpy()
 
     @test_legacy_and_pt_and_pir
-    def test_ture_div(self):
+    def test_true_div(self):
         paddle.disable_static()
         with enable_to_static_guard(False):
             dygraph_res = self._run(to_static=False)
