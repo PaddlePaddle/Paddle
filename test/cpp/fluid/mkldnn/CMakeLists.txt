@@ -7,6 +7,7 @@ cc_test(
        elementwise_add_op
        activation_op
        phi
+       common
        scope
        device_context
        enforce
@@ -21,6 +22,7 @@ cc_test(
        cpu_quantize_placement_pass
        cpu_quantize_pass
        phi
+       common
        scope
        device_context)
 
@@ -32,6 +34,7 @@ cc_test(
        depthwise_conv
        tensor
        phi
+       common
        scope
        device_context
        enforce
@@ -43,6 +46,7 @@ set(TEST_MKLDNN_CACHING_DEPS
     elementwise_add_op
     activation_op
     phi
+    common
     scope
     device_context
     enforce
@@ -74,6 +78,7 @@ if(WIN32 AND WITH_TESTING)
     generated_op
     generated_static_op
     phi
+    common
     transpose_op
     fused_transpose_op
     scope
@@ -87,6 +92,22 @@ endif()
 cc_test(
   test_mkldnn_pool_adaptive_op
   SRCS test_mkldnn_pool_adaptive_op.cc
+  DEPS fleet_executor
+       conditional_block_op
+       standalone_executor
+       executor
+       op_registry
+       generated_static_op
+       generated_op
+       phi
+       common
+       scope
+       device_context
+       enforce)
+
+cc_test(
+  test_mkldnn_squeeze
+  SRCS test_mkldnn_squeeze.cc
   DEPS fleet_executor
        conditional_block_op
        standalone_executor

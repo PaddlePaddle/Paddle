@@ -45,6 +45,7 @@ std::vector<int64_t> get_tensor_shape(const VarDesc* tensor) {
 std::vector<std::string> OperatorDistAttr::fields_{"process_mesh",
                                                    "impl_type",
                                                    "impl_idx",
+                                                   "chunk_id",
                                                    "is_recompute",
                                                    "execution_stream",
                                                    "stream_priority",
@@ -66,6 +67,7 @@ OperatorDistAttr& OperatorDistAttr::operator=(
   std::swap(this->op_type_, tmp.op_type_);
   std::swap(this->impl_type_, tmp.impl_type_);
   std::swap(this->impl_idx_, tmp.impl_idx_);
+  std::swap(this->chunk_id_, tmp.chunk_id_);
   std::swap(this->is_recompute_, tmp.is_recompute_);
   std::swap(this->execution_stream_, tmp.execution_stream_);
   std::swap(this->stream_priority_, tmp.stream_priority_);
@@ -100,6 +102,7 @@ void OperatorDistAttr::initialize(const OpDesc* op) {
   op_type_ = op->Type();
   impl_type_ = kDefault;
   impl_idx_ = 0;
+  chunk_id_ = 0;
   is_recompute_ = false;
   execution_stream_ = kDefault;
   stream_priority_ = 0;
@@ -113,6 +116,7 @@ void OperatorDistAttr::copy_from(const OperatorDistAttr& dist_attr) {
   set_op_type(dist_attr.op_type());
   set_impl_type(dist_attr.impl_type());
   set_impl_idx(dist_attr.impl_idx());
+  set_chunk_id(dist_attr.chunk_id());
   set_is_recompute(dist_attr.is_recompute());
   set_execution_stream(dist_attr.execution_stream());
   set_stream_priority(dist_attr.stream_priority());
@@ -359,6 +363,7 @@ std::string OperatorDistAttr::to_string() const {
   std::string str;
   str += "{impl_type: " + impl_type_ + ", ";
   str += "impl_idx: " + std::to_string(impl_idx_) + ", ";
+  str += "chunk_id: " + std::to_string(chunk_id_) + ", ";
   str += "execution_stream: " + execution_stream_ + ", ";
   str += "stream_priority: " + std::to_string(stream_priority_) + ", ";
   str += "scheduling_priority: " + std::to_string(scheduling_priority_) + ", ";
@@ -393,6 +398,7 @@ void OperatorDistAttr::from_proto(const OperatorDistAttrProto& proto) {
   process_mesh_ = ProcessMesh::from_proto(proto.process_mesh());
   impl_type_ = proto.impl_type();
   impl_idx_ = proto.impl_idx();
+  chunk_id_ = proto.chunk_id();
 }
 
 OperatorDistAttrProto OperatorDistAttr::to_proto() const {
@@ -410,6 +416,7 @@ OperatorDistAttrProto OperatorDistAttr::to_proto() const {
   proto.mutable_process_mesh()->CopyFrom(process_mesh_.to_proto());
   proto.set_impl_type(impl_type_);
   proto.set_impl_idx(impl_idx_);
+  proto.set_chunk_id(chunk_id_);
   return proto;
 }
 
@@ -441,6 +448,9 @@ bool operator==(const OperatorDistAttr& lhs, const OperatorDistAttr& rhs) {
     return false;
   }
   if (lhs.impl_idx() != rhs.impl_idx()) {
+    return false;
+  }
+  if (lhs.chunk_id() != rhs.chunk_id()) {
     return false;
   }
   if (lhs.execution_stream() != rhs.execution_stream()) {

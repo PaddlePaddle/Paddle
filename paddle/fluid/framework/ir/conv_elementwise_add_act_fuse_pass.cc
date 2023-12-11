@@ -40,13 +40,13 @@ framework::proto::OpDesc PrepareOpDesc(
     float alpha) {
   auto proto = base_desc;
   framework::OpDesc desc(proto, nullptr);
-  desc.SetType("conv2d_fusion");
+  desc.SetType("fused_conv2d_add_act");
   desc.SetInput("Bias", {bias});
   desc.SetInput("ResidualData", {});
   desc.SetAttr("activation", activation);
   desc.SetOutput("Output", {output});
   desc.SetAttr("is_test", true);
-  desc.SetAttr("use_cudnn", false);
+  desc.SetAttr("use_cudnn", true);
   // for leaky_relu use
   desc.SetAttr("fuse_alpha", alpha);
   desc.Flush();
@@ -194,9 +194,9 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
     bool cutlass_can_fuse = CutlassTeller::Instance()->CbaCanSupport(
         conv_op->Op(), scope, act_op_type, Get<int>("gpu_device_id"));
     bool cudnn_can_fuse = cudnn_act_set.count(act_op_type);
-    // When this conv2d_fusion specified by problem size and act type is not
-    // supported by cutlass and not supported by cuDNN, we should not apply this
-    // pass.
+    // When this fused_conv2d_add_act specified by problem size and act type is
+    // not supported by cutlass and not supported by cuDNN, we should not apply
+    // this pass.
     if (!cutlass_can_fuse && !cudnn_can_fuse) {
       return;
     }
@@ -208,7 +208,8 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
         PrepareOpDesc(base_op_desc, bias_name, act_op_type, act_op_out, alpha);
     framework::OpDesc new_op_desc(new_op_proto, nullptr);
     if (cutlass_can_fuse && cutlass_enable && is_fp16_precision) {
-      new_op_desc.SetAttr("use_cutlass", true);
+      new_op_desc.SetAttr("use_cudnn", false);
+      new_op_desc.Flush();
     }
     // Create a new node for the fused op.
     auto* new_conv_op = graph->CreateOpNode(&new_op_desc);

@@ -135,6 +135,7 @@ CC_FILE_TEMPLATE = """#ifdef GET_OP_LIST
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
+#include "paddle/fluid/pir/dialect/operator/ir/ir_selected_rows.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_meta_tensor.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_type.h"
@@ -1016,27 +1017,6 @@ def get_mutable_attribute_grad_semantic(op_info, op_info_items):
     return mutable_attribute_grad_semantics
 
 
-def check_need_update_ops(op_yaml_files):
-    need_update_ops = False
-    update_yaml_file = None
-    for yaml_file in op_yaml_files:
-        if yaml_file.find("update_ops.parsed.yaml") != -1:
-            need_update_ops = True
-            update_yaml_file = yaml_file
-            break
-    return need_update_ops, update_yaml_file
-
-
-def update_ops(op_yaml_items, update_yaml_file):
-    with open(update_yaml_file, "r") as f:
-        update_ops = yaml.safe_load(f)
-    for i in range(len(op_yaml_items)):
-        for update_op in update_ops:
-            if op_yaml_items[i]['name'] == update_op['name']:
-                op_yaml_items[i] = update_op
-                break
-
-
 def OpGenerator(
     op_yaml_files,
     op_compat_yaml_file,
@@ -1054,18 +1034,12 @@ def OpGenerator(
 
     # (2) Prepare: Get all op item in all op_yaml_files
     op_compat_parser = OpCompatParser(op_compat_yaml_file)
-    need_update_ops, update_yaml_file = check_need_update_ops(op_yaml_files)
 
     op_yaml_items = []
     for yaml_file in op_yaml_files:
-        if update_yaml_file == yaml_file:
-            continue
         with open(yaml_file, "r") as f:
             ops = yaml.safe_load(f)
             op_yaml_items = op_yaml_items + ops
-    # replace old ir ops with pir ops
-    if need_update_ops:
-        update_ops(op_yaml_items, update_yaml_file)
 
     op_info_items = {}
     for op in op_yaml_items:

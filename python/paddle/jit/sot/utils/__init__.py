@@ -20,8 +20,8 @@ from .envs import (  # noqa: F401
     ENV_SOT_LOG_LEVEL,
     ENV_STRICT_MODE,
     cost_model_guard,
-    strict_mode_guard,
     min_graph_size_guard,
+    strict_mode_guard,
 )
 from .exceptions import (  # noqa: F401
     BreakGraphError,
@@ -33,6 +33,7 @@ from .magic_methods import magic_method_builtin_dispatch  # noqa: F401
 from .paddle_api_config import (  # noqa: F401
     is_break_graph_tensor_methods,
     is_inplace_api,
+    is_not_supported_paddle_layer,
     paddle_tensor_methods,
 )
 from .utils import (  # noqa: F401

@@ -16,10 +16,14 @@ import unittest
 from collections import Counter
 
 import numpy as np
-from dygraph_to_static_utils_new import (
+from dygraph_to_static_utils import (
     Dy2StTestBase,
+    IrMode,
+    ToStaticMode,
+    disable_test_case,
+    enable_to_static_guard,
     test_ast_only,
-    test_legacy_and_pir_exe_and_pir_api,
+    test_legacy_and_pt_and_pir,
 )
 from test_fetch_feed import Linear, Pool2D
 
@@ -34,7 +38,7 @@ class TestCacheProgram(Dy2StTestBase):
         self.dygraph_class = Pool2D
         self.data = np.random.random((1, 2, 4, 4)).astype('float32')
 
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pt_and_pir
     @test_ast_only
     def test_cache(self):
         prev_ops, cur_ops = Counter(), Counter()
@@ -99,14 +103,14 @@ class TestCacheProgramWithOptimizer(Dy2StTestBase):
         self.batch_num = 5
 
     def train_static(self):
-        return self.train(to_static=True)
+        with enable_to_static_guard(True):
+            return self.train()
 
     def train_dygraph(self):
-        return self.train(to_static=False)
+        with enable_to_static_guard(False):
+            return self.train()
 
-    def train(self, to_static=False):
-        paddle.jit.enable_to_static(to_static)
-
+    def train(self):
         static_net = paddle.jit.to_static(self.dygraph_class())
         adam = paddle.optimizer.Adam(
             learning_rate=0.001, parameters=static_net.parameters()
@@ -123,7 +127,7 @@ class TestCacheProgramWithOptimizer(Dy2StTestBase):
 
         return loss_data
 
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pt_and_pir
     def test_with_optimizer(self):
         dygraph_loss = self.train_dygraph()
         static_loss = self.train_static()
@@ -142,7 +146,7 @@ def simple_func(x):
 
 
 class TestConvertWithCache(Dy2StTestBase):
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pt_and_pir
     def test_cache(self):
         static_func = convert_to_static(simple_func)
         # Get transformed function from cache.
@@ -171,6 +175,7 @@ def sum_under_while(limit):
     return ret_sum
 
 
+@disable_test_case((ToStaticMode.AST, IrMode.PT))
 class TestToOutputWithCache(Dy2StTestBase):
     def test_output(self):
         ret = paddle.jit.to_static(sum_even_until_limit)(80, 10)

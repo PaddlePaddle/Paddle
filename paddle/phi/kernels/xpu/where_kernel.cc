@@ -31,8 +31,8 @@ void WhereKernel(const Context& ctx,
   const XPUType* y_data = reinterpret_cast<const XPUType*>(y.data<T>());
   XPUType* out_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(out));
 
-  auto cond_dims = phi::vectorize<int>(condition.dims());
-  auto x_dims = phi::vectorize<int>(x.dims());
+  auto cond_dims = common::vectorize<int>(condition.dims());
+  auto x_dims = common::vectorize<int>(x.dims());
 
   // use [1] to replace [], because xpu not support []
   if (cond_dims.size() == 0) {
@@ -55,6 +55,7 @@ PD_REGISTER_KERNEL(where,
                    ALL_LAYOUT,
                    phi::WhereKernel,
                    float,
+                   double,
                    int,
                    int64_t,
                    phi::dtype::float16,

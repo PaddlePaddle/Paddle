@@ -364,8 +364,14 @@ class OpcodeExecutorBase:
             str, ...
         ] | None = None  # store kwnames for Python 3.11+
         self._prepare_virtual_env()
-
         self.stop_state = None
+
+    def check_code_simulatable(self):
+        for instr in self._instructions:
+            if instr.opname == "LOAD_GLOBAL" and instr.argval == "locals":
+                raise FallbackError(
+                    "Can not support call builtin function `locals`"
+                )
 
     def print_sir(self):
         """
@@ -1529,12 +1535,15 @@ class OpcodeExecutor(OpcodeExecutorBase):
         instr_idx:
             the index for branch 1 to find the boundary and copy origin opcode
         """
-        if self._graph.sir_ctx.TOS.graph_size() < ENV_MIN_GRAPH_SIZE.get():
+        if (
+            self._graph.sir_ctx.TOS.graph_size() < ENV_MIN_GRAPH_SIZE.get()
+            and sys.version_info < (3, 11)
+        ):
             store_var_info = {}
             for name in restore_names:
                 _var = self.get_var(name)
                 if _var not in self.stack:
-                    store_var_info[_var] = name
+                    store_var_info[_var.id] = name
             return self._graph._restore_origin_opcode(
                 list(self.stack), store_var_info, instr_idx
             )
@@ -1601,9 +1610,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
             )
             insert_index = len(self._graph.pycode_gen._instructions) - 1
             for i, stack_arg in enumerate(self.stack):
-                var_loader.load(
-                    stack_arg, allow_push_null=i >= len(self.stack) - 1
-                )
+                var_loader.load(stack_arg)
             for name in if_inputs:
                 var_loader.load(self.get_var(name))
             self._graph.pycode_gen.gen_call_function(
@@ -1620,9 +1627,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
             )
             jump_to = self._graph.pycode_gen._instructions[-1]
             for i, stack_arg in enumerate(self.stack):
-                var_loader.load(
-                    stack_arg, allow_push_null=i >= len(self.stack) - 1
-                )
+                var_loader.load(stack_arg)
             for name in else_inputs:
                 var_loader.load(self.get_var(name))
             self._graph.pycode_gen.gen_call_function(
@@ -1674,9 +1679,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         pop_n = push_n - stack_effect
 
         for i, stack_arg in enumerate(self.stack):
-            var_loader.load(
-                stack_arg, allow_push_null=i >= len(self.stack) - pop_n
-            )
+            var_loader.load(stack_arg)
 
         # gen call resume fn opcode
         # NOTE(SigureMo): In Python 3.11，we need generate KW_NAMES if the call shape is not None.
@@ -2049,8 +2052,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         ), f"Stack must have one element, but get {len(self.stack)} elements."
         ret_val = self.stack.pop()
         if self._graph.sir_ctx.TOS.graph_size() < ENV_MIN_GRAPH_SIZE.get():
-            py_codegen = PyCodeGen(self._frame)
-            self.new_code = py_codegen.replace_null_variable()
+            self.new_code = None
         else:
             self._graph.start_compile(ret_val)
             self._graph.pycode_gen.gen_return()

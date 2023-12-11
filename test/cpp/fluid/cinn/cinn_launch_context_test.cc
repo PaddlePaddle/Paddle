@@ -27,6 +27,7 @@ limitations under the License. */
 #include "paddle/cinn/hlir/framework/scope.h"
 #include "paddle/cinn/hlir/framework/tensor.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/paddle2cinn/build_cinn_pass.h"
@@ -35,7 +36,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/operators/cinn/cinn_op_helper.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/value.h"
 
@@ -200,7 +200,7 @@ TEST_F(CinnLaunchContextTest, TestConstructResult) {
     auto* buffer = launch_context->GetCinnBufferOfVar(var_name);
     auto&& scope = compiled_obj->scope;
     ASSERT_EQ(framework::DDim(buffer->dims, buffer->dimensions),
-              phi::make_ddim(scope->GetTensor(arg_name)->shape().data()));
+              common::make_ddim(scope->GetTensor(arg_name)->shape().data()));
   };
   check_argument_fn("var1", "cinn_var1");
   check_argument_fn("var2", "cinn_var2");
@@ -216,11 +216,11 @@ TEST_F(CinnLaunchContextTest, TestCheckTensorEquivalent) {
   auto* tensor2 = scope.Var("var2")->GetMutable<phi::DenseTensor>();
 
   // dimension not equivalent
-  tensor1->mutable_data<float>(phi::make_ddim({3, 5}), place);
+  tensor1->mutable_data<float>(common::make_ddim({3, 5}), place);
   ASSERT_THROW(launch_context->CheckTensorEquivalent("var1", *tensor1),
                paddle::platform::EnforceNotMet);
   // data type not equivalent
-  tensor2->mutable_data<int>(phi::make_ddim({6, 7, 8}), place);
+  tensor2->mutable_data<int>(common::make_ddim({6, 7, 8}), place);
   ASSERT_THROW(launch_context->CheckTensorEquivalent("var2", *tensor2),
                paddle::platform::EnforceNotMet);
 }
@@ -243,7 +243,7 @@ TEST_F(CinnLaunchContextTest, TestBuildCompiledProgram) {
     ASSERT_NE(var, nullptr);
     auto* buffer = launch_context->GetCinnBufferOfVar(var_name);
     ASSERT_EQ(framework::DDim(buffer->dims, buffer->dimensions),
-              phi::make_ddim(var->GetShape()));
+              common::make_ddim(var->GetShape()));
   }
   ASSERT_TRUE(block.FindVar("var1")->Persistable());
   ASSERT_FALSE(block.FindVar("var5")->Persistable());
@@ -274,7 +274,7 @@ TEST_F(CinnLaunchContextTest, TestCallbackAssignment) {
 
   // assign external variables
   auto* tensor1 = scope.Var("var1")->GetMutable<phi::DenseTensor>();
-  float* data1 = tensor1->mutable_data<float>(phi::make_ddim({3, 4}), place);
+  float* data1 = tensor1->mutable_data<float>(common::make_ddim({3, 4}), place);
   data1[0] = 9.99f;
   data1[10] = 19.99f;
   // check argument is set correctly and alloc/free callbacks work well

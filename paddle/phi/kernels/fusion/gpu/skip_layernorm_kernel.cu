@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/errors.h"
+#include "paddle/common/errors.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/skip_layernorm_functor.h"
@@ -85,9 +85,6 @@ PD_REGISTER_KERNEL(skip_layernorm,
                    float,
                    phi::dtype::float16) {}
 #else
-PD_REGISTER_KERNEL(skip_layernorm,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::fusion::SkipLayerNormKernel,
-                   float){} {}
+PD_REGISTER_KERNEL(
+    skip_layernorm, GPU, ALL_LAYOUT, phi::fusion::SkipLayerNormKernel, float) {}
 #endif

@@ -29,7 +29,7 @@ MAIN_DIST_BRANCH_TEMPLATE = """
     // 2. Create Temporary Output & Prepare Dist and Dense Output{}
     // 3. Infer DistTensor's Global Shape{}\n
     // 4. Set Output Dist Attr For Default Impl{}\n
-    if (rank_is_in_current_mesh){{
+    if (rank_is_in_current_mesh) {{
       // 5. Select Kernel{}
       // 6. Reshard Input{}\n
       // 7. PrepareData (DataTransform & Prepare Dense Input){}
@@ -71,7 +71,7 @@ SINGLE_OUT_CREATION_TEMPLATE = """
             phi::DenseTensorMeta());
     }}
 """
-VECTOR_OUT_CREATION_TEMPLATE = """
+VECTOR_OUT_CREATION_TEMPLATE_WITH_NO_SPMD = """
     auto dist_out = SetKernelDistOutput({name});
     std::vector<phi::DenseTensor*> dense_out(dist_out.size());
     for (size_t i=0; i<dist_out.size(); i++) {{
@@ -83,6 +83,43 @@ VECTOR_OUT_CREATION_TEMPLATE = """
       }}
     }}
 """
+
+VECTOR_OUT_CREATION_TEMPLATE_WITH_SPMD = """
+    auto shared_dist_out = CreateKernelDistOutput({name}, !rank_is_in_current_mesh, spmd_info.second[0]);
+    std::vector<phi::distributed::DistTensor*> dist_out;
+    for(auto& e: shared_dist_out){{
+      dist_out.push_back(e.get());
+    }}
+    std::vector<phi::DenseTensor*> dense_out(dist_out.size());
+    for (size_t i=0; i<dist_out.size(); i++) {{
+      dense_out[i] = dist_out[i]->unsafe_mutable_value();
+      if (dense_out[i] && !rank_is_in_current_mesh && !dist_out[i]->defined()) {{
+        *dense_out[i] = phi::DenseTensor(
+              std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
+              phi::DenseTensorMeta());
+      }}
+    }}
+"""
+
+
+VECTOR_OUT_CREATION_TEMPLATE = """
+    auto shared_dist_out = CreateKernelDistOutput({name}, !rank_is_in_current_mesh);
+    std::vector<phi::distributed::DistTensor*> dist_out;
+    for(auto& e: shared_dist_out){{
+      dist_out.push_back(e.get());
+    }}
+    std::vector<phi::DenseTensor*> dense_out(dist_out.size());
+    for (size_t i=0; i<dist_out.size(); i++) {{
+      dense_out[i] = dist_out[i]->unsafe_mutable_value();
+      if (dense_out[i] && !rank_is_in_current_mesh && !dist_out[i]->defined()) {{
+        *dense_out[i] = phi::DenseTensor(
+              std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
+              phi::DenseTensorMeta());
+      }}
+    }}
+"""
+
+
 INPLACE_OUT_CREATION_TEMPLATE = """
     *{} = {};
 """
@@ -133,8 +170,15 @@ MULTI_VECTOR_OUT_CREATION_TEMPLATE = """
 # 9. Reshard Output
 RESHARD_SINGLE_OUTPUT_TEMPLATE = """
       ReshardKernelOutputToApiOutput(dev_ctx, shared_dist_out, {});"""
+
 RESHARD_MULTI_SINGLE_OUTPUT_TEMPLATE = """
       ReshardKernelOutputToApiOutput(dev_ctx, shared_dist_out_{}, {});"""
+
+RESHARD_VECTOR_OUTPUT_TEMPLATE = """
+      ReshardKernelOutputToApiOutput(dev_ctx, shared_dist_out, {});"""
+
+NONEED_TO_RESHARD_OUTPUT_TEMPLATE = """
+    // API `{}` does not need to reshard output."""
 
 
 class DistBackwardAPI(DistForwardAPI, BackwardAPI):
@@ -169,9 +213,22 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
                         )
                     )
             elif self.outputs['types'][0] == 'std::vector<Tensor>':
-                output_creation_code += VECTOR_OUT_CREATION_TEMPLATE.format(
-                    name=self.outputs['names'][0]
-                )
+                if self.infer_meta['spmd_rule'] is not None:
+                    output_creation_code += (
+                        VECTOR_OUT_CREATION_TEMPLATE_WITH_SPMD.format(
+                            name=self.outputs['names'][0]
+                        )
+                    )
+                elif self.generate_general_infer_spmd is True:
+                    output_creation_code += VECTOR_OUT_CREATION_TEMPLATE.format(
+                        name=self.outputs['names'][0]
+                    )
+                else:
+                    output_creation_code += (
+                        VECTOR_OUT_CREATION_TEMPLATE_WITH_NO_SPMD.format(
+                            name=self.outputs['names'][0]
+                        )
+                    )
             else:
                 self.vector_output_size_assertion_check()
         elif output_num > 1:
@@ -267,6 +324,12 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
                             self.outputs['names'][0]
                         )
                     )
+                elif self.outputs['types'][0] == 'std::vector<Tensor>':
+                    reshard_output_code += (
+                        RESHARD_VECTOR_OUTPUT_TEMPLATE.format(
+                            self.outputs['names'][0]
+                        )
+                    )
                 else:
                     self.vector_output_size_assertion_check()
             elif output_num > 1:
@@ -284,6 +347,9 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
                     f"{self.api} : Output error: the output should not be empty."
                 )
         else:
+            reshard_output_code += NONEED_TO_RESHARD_OUTPUT_TEMPLATE.format(
+                self.kernel['func'][0]
+            )
             # do nothing
             pass
 
