@@ -88,8 +88,8 @@ struct EigenMatrix : public EigenTensor<T, 2, MajorType, IndexType> {
                           "between 0 and %d, but received number is %d.",
                           rank,
                           num_col_dims));
-    return EigenMatrix::From(tensor,
-                             phi::flatten_to_2d(tensor.dims(), num_col_dims));
+    return EigenMatrix::From(
+        tensor, common::flatten_to_2d(tensor.dims(), num_col_dims));
   }
 
   static typename EigenMatrix::ConstType Reshape(const phi::DenseTensor& tensor,
@@ -102,8 +102,8 @@ struct EigenMatrix : public EigenTensor<T, 2, MajorType, IndexType> {
                           "between 0 and %d, but received number is %d.",
                           rank,
                           num_col_dims));
-    return EigenMatrix::From(tensor,
-                             phi::flatten_to_2d(tensor.dims(), num_col_dims));
+    return EigenMatrix::From(
+        tensor, common::flatten_to_2d(tensor.dims(), num_col_dims));
   }
 };
 

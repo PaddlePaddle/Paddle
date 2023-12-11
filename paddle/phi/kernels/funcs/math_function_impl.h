@@ -29,19 +29,10 @@ template <typename DeviceContext, typename T>
 void SetConstant<DeviceContext, T>::operator()(const DeviceContext& context,
                                                phi::DenseTensor* tensor,
                                                T num) {
-  auto t = phi::EigenVector<T>::Flatten(*tensor);
-  t.device(*context.eigen_device()) = t.constant(static_cast<T>(num));
+  // auto t = phi::EigenVector<T>::Flatten(*tensor);
+  // t.device(*context.eigen_device()) = t.constant(static_cast<T>(num));
+  set_constant(context, tensor, reinterpret_cast<const void*>(&num));
 }
-
-#ifdef PADDLE_WITH_XPU
-template <typename T>
-void SetConstant<phi::XPUContext, T>::operator()(const phi::XPUContext& context,
-                                                 phi::DenseTensor* tensor,
-                                                 T num) {
-  phi::VisitDataType(tensor->dtype(),
-                     TensorSetConstantXPU<T>(tensor, num, context.GetPlace()));
-}
-#endif
 
 template <typename DeviceContext, typename T, int Rank>
 void Transpose<DeviceContext, T, Rank>::operator()(

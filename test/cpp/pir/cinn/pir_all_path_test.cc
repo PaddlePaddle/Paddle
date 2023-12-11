@@ -216,8 +216,10 @@ TEST(GroupOp, TestBuildLayerNorm) {
       place, {"out@fetch"}, kernel_program->block(), &exe_scope);
 
   // TODO(phlrain): fix exec error
-  //   executor.Run({}, true);
+  executor.Run({}, true);
 
+  auto out_tensor =
+      executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
   //   auto out_tensor =
   // executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
 }

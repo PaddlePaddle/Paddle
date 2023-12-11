@@ -161,23 +161,30 @@ class GroupShardedStage3(nn.Layer):
         self._ori_parameter_list = self._optim._parameter_list
         self._ori_param_groups = self._optim._param_groups
 
+        # check main_grad
+        self._check_main_grad()
+
         # Replace optimizer's _grad_clip
         if isinstance(self._optim._grad_clip, ClipGradByGlobalNorm):
             logging.warning(
                 "While using ClipGradByGlobalNorm in GroupShardedStage3, the grad clip of original optimizer will be changed."
             )
-            self._optim._grad_clip = GroupShardedClipGrad(
-                self._optim._grad_clip, paddle.get_device(), self._group
-            )
+            if self.use_main_grad:
+                self._optim._inner_opt._grad_clip = GroupShardedClipGrad(
+                    self._optim._inner_opt._grad_clip,
+                    paddle.get_device(),
+                    self._group,
+                )
+            else:
+                self._optim._grad_clip = GroupShardedClipGrad(
+                    self._optim._grad_clip, paddle.get_device(), self._group
+                )
             if self._optim._parameter_list and isinstance(
                 self._optim._parameter_list[0], dict
             ):
                 for item in self._optim._param_groups:
                     if "grad_clip" in item.keys():
                         item["grad_clip"] = self._optim._grad_clip
-
-        # check main_grad
-        self._check_main_grad()
 
         # Synchronous all ranks models
         if pertrain_sync_models:

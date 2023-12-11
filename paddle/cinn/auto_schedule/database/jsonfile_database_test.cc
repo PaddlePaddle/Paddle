@@ -92,7 +92,7 @@ class TestJSONFileDatabase : public ::testing::Test {
   std::string record_file_path;
   JSONFileDatabase test_db;
   std::vector<ir::LoweredFunc> lowered_funcs;
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 };
 
 TEST_F(TestJSONFileDatabase, Serialize) {

@@ -90,6 +90,8 @@ void PSGPUWrapper::CopyKeys(const paddle::platform::Place& place,
                             const int64_t* gpu_len,
                             int slot_num,
                             int total_len) {
+  int device_id = place.GetDeviceId();
+  platform::CUDADeviceGuard guard(device_id);
   auto stream = dynamic_cast<phi::GPUContext*>(
                     platform::DeviceContextPool::Instance().Get(place))
                     ->stream();
@@ -128,6 +130,8 @@ void PSGPUWrapper::CopyKeys(const paddle::platform::Place& place,
                             int slot_num,
                             int total_len,
                             int* key2slot) {
+  int device_id = place.GetDeviceId();
+  platform::CUDADeviceGuard guard(device_id);
   auto stream = dynamic_cast<phi::GPUContext*>(
                     platform::DeviceContextPool::Instance().Get(place))
                     ->stream();

@@ -61,7 +61,7 @@ CUdeviceptr CreateCudaMemory(const std::vector<int>& shape, const T* data) {
 }
 
 TEST(CodeGenDebug, RunCudaSourceCode) {
-  common::Context::Global().ResetNameId();
+  cinn::common::Context::Global().ResetNameId();
 
   std::string source_code = R"ROC(
 extern "C" {
