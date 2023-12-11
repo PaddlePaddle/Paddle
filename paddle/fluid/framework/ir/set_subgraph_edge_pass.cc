@@ -108,9 +108,6 @@ void SetSubgraphEdge::ApplyImpl(Graph *graph) const {
       }
       if (subgraph_node) {
         subgraph_node->SetSubgraphInput();
-      } else {
-        PADDLE_THROW(
-            platform::errors::Fatal("Subgraph don't have block node."));
       }
     }
 
