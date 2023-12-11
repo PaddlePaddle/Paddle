@@ -7150,7 +7150,7 @@ def signbit(x, name=None):
 
     Returns:
         out (Tensor): The output Tensor. The sign bit of the corresponding element of the input tensor, True means negative, False means positive.
-    
+
     Examples:
         .. code-block:: python
             :name: example-1
