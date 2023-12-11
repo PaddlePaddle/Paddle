@@ -23,7 +23,6 @@ from dygraph_to_static_utils import (
 )
 
 import paddle
-from paddle import base
 from paddle.jit.dy2static.utils import Dygraph2StaticException
 
 SEED = 2020
@@ -65,7 +64,7 @@ def test_continue_in_for_at_end(x):
 
 
 def test_continue_in_while(x):
-    x = base.dygraph.to_variable(x)
+    x = paddle.to_tensor(x)
     i = paddle.tensor.fill_constant(shape=[1], dtype='int32', value=0)
     while i < 10:
         i += 1
@@ -97,7 +96,7 @@ def test_break_in_for_at_end(x):
 
 
 def test_break_in_while(x):
-    x = base.dygraph.to_variable(x)
+    x = paddle.to_tensor(x)
     i = paddle.tensor.fill_constant(shape=[1], dtype='int32', value=0)
     while i < 10:
         i += 1
@@ -231,8 +230,8 @@ class TestContinueInFor(TestContinueBase):
     @test_legacy_and_pt_and_pir
     def test_transformed_static_result(self):
         self.init_dygraph_func()
-        static_res = self.run_static_mode()
         dygraph_res = self.run_dygraph_mode()
+        static_res = self.run_static_mode()
         np.testing.assert_allclose(
             dygraph_res,
             static_res,
@@ -245,8 +244,8 @@ class TestContinueInFor(TestContinueBase):
 class TestContinueNotPirBase(TestContinueInFor):
     def test_transformed_static_result(self):
         self.init_dygraph_func()
-        static_res = self.run_static_mode()
         dygraph_res = self.run_dygraph_mode()
+        static_res = self.run_static_mode()
         np.testing.assert_allclose(
             dygraph_res,
             static_res,
