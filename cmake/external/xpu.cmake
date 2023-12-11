@@ -222,16 +222,8 @@ if(WITH_XPU_PLUGIN)
   include_directories(${CMAKE_SOURCE_DIR}/paddle/phi/kernels/xpu/plugin/include)
 endif()
 
-if(WITH_XPU_BKCL AND WITH_XPU_XFT)
-  target_link_libraries(xpulib ${XPU_API_LIB} ${XPU_RT_LIB} ${XPU_BKCL_LIB}
+target_link_libraries(xpulib ${XPU_API_LIB} ${XPU_RT_LIB} ${XPU_BKCL_LIB}
                         ${XPU_XFT_LIB})
-elseif(WITH_XPU_BKCL)
-  target_link_libraries(xpulib ${XPU_API_LIB} ${XPU_RT_LIB} ${XPU_BKCL_LIB})
-elseif(WITH_XPU_XFT)
-  target_link_libraries(xpulib ${XPU_API_LIB} ${XPU_RT_LIB} ${XPU_XFT_LIB})
-else()
-  target_link_libraries(xpulib ${XPU_API_LIB} ${XPU_RT_LIB})
-endif()
 
 if(WITH_XPTI)
   target_link_libraries(xpulib ${XPU_XPTI_LIB})
