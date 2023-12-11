@@ -934,14 +934,14 @@ class TestGPTPartitioner(unittest.TestCase):
             [param.name for param in startup_program.all_parameters()]
         )
         allreduce_grads = [
-            'layer_norm_5.tmp_2',
-            'layer_norm_5.tmp_2',
-            'layer_norm_5.tmp_2',
-            'layer_norm_6.tmp_2',
-            'layer_norm_7.tmp_2',
-            'layer_norm_7.tmp_2',
-            'layer_norm_7.tmp_2',
-            'layer_norm_8.tmp_2',
+            'layer_norm_0.tmp_2',
+            'layer_norm_0.tmp_2',
+            'layer_norm_0.tmp_2',
+            'layer_norm_1.tmp_2',
+            'layer_norm_2.tmp_2',
+            'layer_norm_2.tmp_2',
+            'layer_norm_2.tmp_2',
+            'layer_norm_3.tmp_2',
         ]
         process_mesh = _global_process_mesh
         mp_parallel_axis = 1
