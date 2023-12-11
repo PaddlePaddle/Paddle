@@ -1439,3 +1439,5 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
     test_fleet_executor_with_task_nodes
     PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
 endif()
+
+set_tests_properties(test_linalg_matrix_exp PROPERTIES TIMEOUT 60)
