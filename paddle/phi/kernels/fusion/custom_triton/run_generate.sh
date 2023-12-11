@@ -35,20 +35,20 @@ link_file=triton/python/triton/tools/link.py
 # python3.8  ${link_file}  ${matmul_dir}/*.h -o ${matmul_dir}/matmul_fp16
 
 
+rm -rf generated/aot/fmha
+fmha_dir=generated/aot/fmha/fp16
+mkdir -p ${fmha_dir}
 
-# fmha_dir=generated/aot/fmha/fp16
-# mkdir -p ${fmha_dir}
+python3.8  ${compile_file}     \
+fmha_triton.py     \
+-n fused_attention_kernel   \
+-o ${fmha_dir}/fmha_fp16     \
+--out-name fmha_kernel_fp16     \
+-w 4  -ns 3     \
+-s "*fp16:16, *fp32:16, *fp32:16, *fp16:16, *fp16:16, *fp16:16, fp32, i32, i32, i32, 64, 128, 32" \
+-g "(seq_len + 63) / 64, batch_size * num_heads, 1"
 
-# python3.8  ${compile_file}     \
-# fmha_triton.py     \
-# -n fused_attention_kernel   \
-# -o ${fmha_dir}/fmha_fp16     \
-# --out-name fmha_kernel_fp16     \
-# -w 4  -ns 3     \
-# -s "*fp16:16, *fp32:16, *fp32:16, *fp16:16, *fp16:16, *fp16:16, fp32, i32, i32, i32, 64, 128, 32" \
-# -g "(seq_len + 63) / 64, batch_size * num_heads, 1"
-
-# python3.8  ${link_file}  ${fmha_dir}/*.h -o ${fmha_dir}/fmha_fp16
+python3.8  ${link_file}  ${fmha_dir}/*.h -o ${fmha_dir}/fmha_fp16
 
 
 
@@ -62,13 +62,26 @@ fmha2_triton.py     \
 -o ${fmha_dir}/fmha2_fp16     \
 --out-name fmha2_kernel_fp16     \
 -w 4  -ns 3     \
--s "*fp16:16, *fp16:16, *fp16:16, fp32, *fp32:16, *fp16:16, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, 512, 128, 32, 128, 3" \
--g "4, 512, 1"
-#-g "(( stride_qh / stride_qm ) + 127) / 128, Z*H, 1"
-#-g "4, 512, 1"
-#-g "(( stride_qh / stride_qm ) + 127) / 128, Z*H, 1"
+-s "*fp16:16, *fp16:16, *fp16:16, fp32, *fp32:16, *fp16:16, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, 512, 64, 128, 32, 3" \
+-g "(( stride_qh / stride_qm ) + 127) / 128, Z*H, 1"
 
 python3.8  ${link_file}  ${fmha_dir}/*.h -o ${fmha_dir}/fmha2_fp16
+
+rm -rf generated/aot/fmha3
+fmha_dir=generated/aot/fmha3/fp16
+mkdir -p ${fmha_dir}
+
+python3.8  ${compile_file}     \
+fmha3_triton.py     \
+-n _attn_fwd   \
+-o ${fmha_dir}/fmha3_fp16     \
+--out-name fmha3_kernel_fp16     \
+-w 4  -ns 3     \
+-s "*fp16:16, *fp16:16, *fp16:16, fp32, *fp32:16, *fp16:16, i32, i32, i32, i32, 512, 64, 128, 32" \
+-g "( S + 127) / 128, Z*H, 1"
+# -g "(( stride_qh / stride_qm ) + 127) / 128, Z*H, 1"
+
+python3.8  ${link_file}  ${fmha_dir}/*.h -o ${fmha_dir}/fmha3_fp16
 
 
 

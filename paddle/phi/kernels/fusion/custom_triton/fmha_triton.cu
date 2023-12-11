@@ -4,7 +4,8 @@
 #include <cuda_fp16.h>
 
 std::vector<paddle::Tensor> TritonFMHA(const paddle::Tensor& q, 
-                                              const paddle::Tensor& k, const paddle::Tensor& v) {
+                                              const paddle::Tensor& k, const paddle::Tensor& v,
+                                              const float& scale) {
 
     int batch = q.shape()[0];
     int head = q.shape()[1];
@@ -25,7 +26,7 @@ std::vector<paddle::Tensor> TritonFMHA(const paddle::Tensor& q,
     auto status = fmha_kernel_fp16(qkv_out.stream(), 
     (CUdeviceptr)(dev_out), (CUdeviceptr)(dev_l), (CUdeviceptr)(dev_m),
     (CUdeviceptr)(dev_q), (CUdeviceptr)(dev_k), (CUdeviceptr)(dev_v),
-    0.0883883f, batch, head, seq, 0);
+    scale, batch, head, seq, 0);
 
     assert(status == CUDA_SUCCESS);
 
@@ -47,6 +48,7 @@ std::vector<paddle::DataType> TritonFMHAInferDtype(const paddle::DataType& q_dty
 PD_BUILD_OP(triton_fmha)
     .Inputs({"q", "k", "v"})
     .Outputs({"out"})
+    .Attrs({"scale: float"})
     .SetKernelFn(PD_KERNEL(TritonFMHA))
     .SetInferShapeFn(PD_INFER_SHAPE(TritonFMHAInferShape))
     .SetInferDtypeFn(PD_INFER_DTYPE(TritonFMHAInferDtype));
