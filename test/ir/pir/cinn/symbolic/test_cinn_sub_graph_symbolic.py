@@ -42,8 +42,8 @@ def reshape(x):
     z = y - x
     i = paddle.shape(x)[0]
     j = paddle.shape(y)[0]
-    a = paddle.reshape(z, shape=[64, i, j])
-    out = paddle.reshape(z, shape=[128, 4, 2])
+    out = paddle.reshape(z, shape=[64, i, j])
+    # out = paddle.reshape(z, shape=[128, 4, 2])
     return out
 
 
