@@ -36,7 +36,9 @@ class TestModelAverage(unittest.TestCase):
                 data = paddle.static.data(
                     name='X', shape=[None, 1], dtype='float32'
                 )
-                hidden = paddle.static.nn.fc(x=data, size=10)
+                hidden = paddle.nn.Linear(
+                    in_features=data.shape[1], out_features=10
+                )(data)
                 loss = paddle.mean(hidden)
                 test_program = train_program.clone()
                 optimizer = paddle.optimizer.Momentum(
@@ -64,13 +66,13 @@ class TestModelAverage(unittest.TestCase):
                 program=train_program,
                 feed={'X': x},
                 fetch_list=[
-                    'fc_0.b_0',
-                    'fc_0.b_0_sum_1_0',
-                    'fc_0.b_0_sum_2_0',
-                    'fc_0.b_0_sum_3_0',
-                    'fc_0.b_0_num_accumulates_0',
-                    'fc_0.b_0_old_num_accumulates_0',
-                    'fc_0.b_0_num_updates_0',
+                    'linear_0.b_0',
+                    'linear_0.b_0_sum_1_0',
+                    'linear_0.b_0_sum_2_0',
+                    'linear_0.b_0_sum_3_0',
+                    'linear_0.b_0_num_accumulates_0',
+                    'linear_0.b_0_old_num_accumulates_0',
+                    'linear_0.b_0_num_updates_0',
                 ],
             )
         self.assertTrue(
@@ -98,7 +100,7 @@ class TestModelAverage(unittest.TestCase):
             outs, b = exe.run(
                 program=test_program,
                 feed={'X': x},
-                fetch_list=[loss.name, 'fc_0.b_0'],
+                fetch_list=[loss.name, 'linear_0.b_0'],
             )
             self.assertAlmostEqual(np.mean(average_b), np.mean(b))
 
@@ -106,7 +108,7 @@ class TestModelAverage(unittest.TestCase):
         outs, b = exe.run(
             program=test_program,
             feed={'X': x},
-            fetch_list=[loss.name, 'fc_0.b_0'],
+            fetch_list=[loss.name, 'linear_0.b_0'],
         )
         self.assertAlmostEqual(np.mean(latest_b), np.mean(b))
 
