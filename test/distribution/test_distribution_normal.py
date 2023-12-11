@@ -24,6 +24,7 @@ from test_distribution import DistributionNumpy
 import paddle
 from paddle import base
 from paddle.distribution import Normal
+from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(2022)
 
@@ -86,7 +87,7 @@ class NormalTest(unittest.TestCase):
         self.init_dynamic_data(batch_size, dims)
 
         paddle.enable_static()
-        self.test_program = base.Program()
+        self.test_program = paddle.static.Program()
         self.executor = base.Executor(self.place)
         self.init_static_data(batch_size, dims)
 
@@ -115,7 +116,7 @@ class NormalTest(unittest.TestCase):
         self.static_scale = self.scale_np
         self.static_other_loc = self.other_loc_np
         self.static_other_scale = self.other_scale_np
-        with base.program_guard(self.test_program):
+        with paddle.static.program_guard(self.test_program):
             self.static_values = paddle.static.data(
                 name='values', shape=[-1], dtype='float32'
             )
@@ -165,9 +166,10 @@ class NormalTest(unittest.TestCase):
         fetch_list = [sample, entropy, log_prob, probs, kl]
         self.compare_with_numpy(fetch_list)
 
+    @test_with_pir_api
     def test_normal_distribution_static(self, sample_shape=7, tolerance=1e-6):
         paddle.enable_static()
-        with base.program_guard(self.test_program):
+        with paddle.static.program_guard(self.test_program):
             normal = Normal(self.static_loc, self.static_scale)
 
             sample = normal.sample([sample_shape])
@@ -235,7 +237,7 @@ class NormalTest3(NormalTest):
         self.static_scale = self.scale_np
         self.static_other_loc = self.other_loc_np
         self.static_other_scale = self.other_scale_np
-        with base.program_guard(self.test_program):
+        with paddle.static.program_guard(self.test_program):
             self.static_values = paddle.static.data(
                 name='values', shape=[-1, dims], dtype='float32'
             )
@@ -264,7 +266,7 @@ class NormalTest4(NormalTest):
         self.static_scale = self.scale_np
         self.static_other_loc = self.other_loc_np
         self.static_other_scale = self.other_scale_np
-        with base.program_guard(self.test_program):
+        with paddle.static.program_guard(self.test_program):
             self.static_values = paddle.static.data(
                 name='values', shape=[-1, dims], dtype='float32'
             )
@@ -300,7 +302,7 @@ class NormalTest5(NormalTest):
         self.static_scale = self.scale_np
         self.static_other_loc = self.other_loc_np
         self.static_other_scale = self.other_scale_np
-        with base.program_guard(self.test_program):
+        with paddle.static.program_guard(self.test_program):
             self.static_values = paddle.static.data(
                 name='values', shape=[-1, dims], dtype='float64'
             )
@@ -332,7 +334,7 @@ class NormalTest6(NormalTest):
         self.dynamic_other_scale = paddle.to_tensor(self.other_scale_np)
 
     def init_static_data(self, batch_size, dims):
-        with base.program_guard(self.test_program):
+        with paddle.static.program_guard(self.test_program):
             self.static_loc = paddle.static.data(
                 name='loc', shape=[-1, dims], dtype='float32'
             )
@@ -380,7 +382,7 @@ class NormalTest7(NormalTest):
         )
 
     def init_static_data(self, batch_size, dims):
-        with base.program_guard(self.test_program):
+        with paddle.static.program_guard(self.test_program):
             self.static_loc = paddle.static.data(
                 name='loc', shape=[-1, dims], dtype='float64'
             )
@@ -428,7 +430,7 @@ class NormalTest8(NormalTest):
         )
 
     def init_static_data(self, batch_size, dims):
-        with base.program_guard(self.test_program):
+        with paddle.static.program_guard(self.test_program):
             self.static_loc = paddle.static.data(
                 name='loc', shape=[-1, dims], dtype='float64'
             )
@@ -475,7 +477,7 @@ class NormalTest9(NormalTest):
         self.static_scale = self.scale_np
         self.static_other_loc = self.other_loc_np
         self.static_other_scale = self.other_scale_np
-        with base.program_guard(self.test_program):
+        with paddle.static.program_guard(self.test_program):
             self.static_values = paddle.static.data(
                 name='values', shape=[-1, dims], dtype='float32'
             )
@@ -510,7 +512,7 @@ class NormalTest10(NormalTest):
         self.static_scale = self.scale_np
         self.static_other_loc = self.other_loc_np
         self.static_other_scale = self.other_scale_np
-        with base.program_guard(self.test_program):
+        with paddle.static.program_guard(self.test_program):
             self.static_values = paddle.static.data(
                 name='values', shape=[-1, dims], dtype='float32'
             )
@@ -586,6 +588,7 @@ class TestNormalSampleStaic(unittest.TestCase):
             main_program, feed=self.feeds, fetch_list=fetch_list
         )
 
+    @test_with_pir_api
     def test_sample(self):
         samples_mean = self.samples.mean(axis=0)
         samples_var = self.samples.var(axis=0)
@@ -673,6 +676,7 @@ class TestNormalRSampleStaic(unittest.TestCase):
             main_program, feed=self.feeds, fetch_list=fetch_list
         )
 
+    @test_with_pir_api
     def test_rsample(self):
         rsamples_mean = self.rsamples.mean(axis=0)
         rsamples_var = self.rsamples.var(axis=0)
