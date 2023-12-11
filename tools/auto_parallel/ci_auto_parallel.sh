@@ -73,6 +73,7 @@ for file_name in `git diff --numstat upstream/${AGILE_COMPILE_BRANCH} |awk '{pri
         done
     fi
 done
+git checkout -b ${AGILE_REVISION} ${AGILE_REVISION}
 }
 
 print_info(){
@@ -114,7 +115,7 @@ if [[ ${#case_list[*]} -ne 0 ]];then
             export FLAGS_download_data="gpt ""$FLAGS_download_data"
             let case_num++
         elif [[ ${case} == "gpt-3_auto_pir" ]];then
-            bash /workspace/PaddleNLP/scripts/distribute/ci_case_auto.sh case_list_auto_pir $FLAGS_install_deps $FLAGS_download_data
+            bash /workspace/PaddleNLP/scripts/distribute/ci_case_auto.sh gpt_case_list_auto_pir $FLAGS_install_deps $FLAGS_download_data
             print_info $? `ls -lt ${log_path} | grep "pir" | head -n 1 | awk '{print $9}'` ${case}
             export FLAGS_install_deps=1
             export FLAGS_download_data="gpt ""$FLAGS_download_data"
