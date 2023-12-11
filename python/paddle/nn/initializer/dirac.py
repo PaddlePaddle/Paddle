@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _C_ops, in_dynamic_mode
+import paddle
+from paddle import _C_ops, in_dynamic_mode, pir
 from paddle.utils import unique_name
 
 from ... import base
-from ...base import framework
+from ...base import core, framework
 from ...base.core import VarDesc
 from ...base.data_feeder import check_variable_and_dtype
 from ...base.framework import _current_expected_place
@@ -106,8 +107,8 @@ class Dirac(Initializer):
             The most critical OP(scatter) in this initializer, which contains 7~8 ops in total.
         """
         block = self._check_block(block)
-        assert isinstance(var, framework.Parameter)
-        assert isinstance(block, framework.Block)
+        assert isinstance(var, (framework.Variable, pir.core.ParameterMeta))
+        assert isinstance(block, (framework.Block, pir.Block))
         check_variable_and_dtype(
             var, "Out", ['float16', 'bfloat16', 'float32', 'float64'], 'Dirac'
         )
@@ -121,24 +122,39 @@ class Dirac(Initializer):
             var.shape[0] % self._groups
         ) == 0, "Tensor 0-dimension must be divisible by groups"
 
-        if var.dtype != VarDesc.VarType.FP32:
-            out_var = block.create_var(
-                name=unique_name.generate(".".join(['dirac', var.name, 'tmp'])),
-                shape=var.shape,
-                dtype=VarDesc.VarType.FP32,
-                type=VarDesc.VarType.LOD_TENSOR,
-                persistable=False,
-            )
+        if framework.in_pir_mode():
+            if var.dtype != core.DataType.FLOAT32:
+                out_dtype = core.DataType.FLOAT32
+                out_var = var
+            else:
+                out_dtype = var.dtype
+                out_var = var
         else:
-            out_var = var
+            if var.dtype != VarDesc.VarType.FP32:
+                out_dtype = VarDesc.VarType.FP32
+                out_var = block.create_var(
+                    name=unique_name.generate(
+                        ".".join(['dirac', var.name, 'tmp'])
+                    ),
+                    shape=var.shape,
+                    dtype=out_dtype,
+                    type=VarDesc.VarType.LOD_TENSOR,
+                    persistable=False,
+                )
+            else:
+                out_dtype = var.dtype
+                out_var = var
+
         op = None
         if framework.in_dygraph_mode():
             with base.dygraph.no_grad():
                 place = _current_expected_place()
                 _C_ops.full_(
-                    out_var, out_var.shape, str(float(0)), out_var.dtype, place
+                    out_var, out_var.shape, str(float(0)), out_dtype, place
                 )
-
+        elif framework.in_pir_mode():
+            place = _current_expected_place()
+            out_var = _C_ops.full(out_var.shape, float(0), out_dtype, place)
         else:
             block.append_op(
                 type='fill_constant',
@@ -179,10 +195,12 @@ class Dirac(Initializer):
             with base.dygraph.no_grad():
                 tmp_out = _C_ops.reshape(out_var, [-1])
                 tmp_out._share_underline_tensor_to(out_var)
+        elif framework.in_pir_mode():
+            out_var = _C_ops.reshape(out_var, [-1])
         else:
             x_shape = block.create_var(
                 name=unique_name.generate(".".join([out_var.name, "XShape"])),
-                dtype=out_var.dtype,
+                dtype=out_dtype,
                 shape=out_var.shape,
                 type=VarDesc.VarType.LOD_TENSOR,
                 persistable=False,
@@ -196,11 +214,17 @@ class Dirac(Initializer):
                 stop_gradient=True,
             )
 
-        index_tensor = block.create_var(
-            name=unique_name.generate('scatter_index'),
-            persistable=False,
-            stop_gradient=True,
-        )
+        if framework.in_pir_mode():
+            index_tensor = paddle.zeros(
+                [len(idx_list)], dtype=core.DataType.INT64
+            )
+            index_tensor.stop_gradient = True
+        else:
+            index_tensor = block.create_var(
+                name=unique_name.generate('scatter_index'),
+                persistable=False,
+                stop_gradient=True,
+            )
 
         if framework.in_dygraph_mode():
             with base.dygraph.no_grad():
@@ -213,6 +237,14 @@ class Dirac(Initializer):
                     _current_expected_place(),
                 )
                 tmp_tensor._share_underline_tensor_to(index_tensor)
+        elif framework.in_pir_mode():
+            _C_ops.assign_value_(
+                index_tensor,
+                [len(idx_list)],
+                core.DataType.INT64,
+                idx_list,
+                _current_expected_place(),
+            )
         else:
             block.append_op(
                 type='assign_value',
@@ -224,12 +256,17 @@ class Dirac(Initializer):
                 },
                 stop_gradient=True,
             )
-
-        value_tensor = block.create_var(
-            name=unique_name.generate('scatter_value'),
-            persistable=False,
-            stop_gradient=True,
-        )
+        if framework.in_pir_mode():
+            value_tensor = paddle.zeros(
+                [len(value_list)], dtype=core.DataType.FLOAT32
+            )
+            value_tensor.stop_gradient = True
+        else:
+            value_tensor = block.create_var(
+                name=unique_name.generate('scatter_value'),
+                persistable=False,
+                stop_gradient=True,
+            )
 
         if framework.in_dygraph_mode():
             with base.dygraph.no_grad():
@@ -243,6 +280,14 @@ class Dirac(Initializer):
                 )
 
                 tmp_tensor._share_underline_tensor_to(value_tensor)
+        elif framework.in_pir_mode():
+            _C_ops.assign_value_(
+                value_tensor,
+                [len(value_list)],
+                core.DataType.FLOAT32,
+                value_list,
+                _current_expected_place(),
+            )
         else:
             block.append_op(
                 type='assign_value',
@@ -266,6 +311,12 @@ class Dirac(Initializer):
                 if var.dtype != VarDesc.VarType.FP32:
                     tmp_cast_out = _C_ops.cast(out_var, var.dtype)
                     tmp_cast_out._share_underline_tensor_to(var)
+        elif framework.in_pir_mode():
+            out_var = _C_ops.scatter(out_var, index_tensor, value_tensor, True)
+            out_var = _C_ops.reshape(out_var, origin_shape)
+            if var.dtype != core.DataType.FLOAT32:
+                return _C_ops.cast(out_var, var.dtype)
+            return out_var
         else:
             op = block.append_op(
                 type="scatter",
@@ -280,7 +331,7 @@ class Dirac(Initializer):
             )
             x_shape = block.create_var(
                 name=unique_name.generate(".".join([out_var.name, "XShape"])),
-                dtype=out_var.dtype,
+                dtype=out_dtype,
                 shape=out_var.shape,
                 type=VarDesc.VarType.LOD_TENSOR,
                 persistable=False,

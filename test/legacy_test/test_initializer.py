@@ -1834,6 +1834,47 @@ class TestDiracInitializer1(unittest.TestCase):
             weight_dygraph, weight_static, conv_input, conv_output
         )
 
+    def test_dirac_pir(self):
+        self.config()
+        paddle.set_default_dtype(self.dtype)
+
+        paddle.disable_static()
+        conv = self.conv_layer(
+            self.in_channels,
+            self.out_channels,
+            self.kernel_size,
+            weight_attr=self.weight_attr,
+        )
+        weight_dygraph = conv.weight.numpy()
+
+        paddle.enable_static()
+        with paddle.pir_utils.IrGuard():
+            start_prog = paddle.static.Program()
+            main_prog = paddle.static.Program()
+            with paddle.static.program_guard(main_prog, start_prog):
+                inp = paddle.rand(self.input_shape)
+                conv = self.conv_layer(
+                    self.in_channels,
+                    self.out_channels,
+                    self.kernel_size,
+                    weight_attr=self.weight_attr,
+                )
+
+                output = conv(inp)
+
+                exe = paddle.static.Executor()
+                exe.run(start_prog)
+                fetch = exe.run(
+                    main_prog, fetch_list=[inp, output, conv.weight]
+                )
+                conv_input = fetch[0]
+                conv_output = fetch[1]
+                weight_static = fetch[2]
+
+            self.check_result(
+                weight_dygraph, weight_static, conv_input, conv_output
+            )
+
 
 # initialize Conv2D weight
 class TestDiracInitializer2(TestDiracInitializer1):
