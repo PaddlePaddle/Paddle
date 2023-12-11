@@ -114,9 +114,12 @@ set(XPU_XPTI_URL
 set(XPU_XFT_GET_DEPENCE_URL
     "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/get_xft_dependence.sh"
     CACHE STRING "" FORCE)
-set(XPU_XHPC_URL
-    "https://klx-sdk-release-public.su.bcebos.com/xhpc/dev/latest/output.tar.gz"
-    CACHE STRING "" FORCE)
+
+if(WITH_XPU_XHPC)
+  set(XPU_XHPC_URL
+      "https://klx-sdk-release-public.su.bcebos.com/xhpc/dev/latest/output.tar.gz"
+      CACHE STRING "" FORCE)
+endif()
 
 set(SNAPPY_PREFIX_DIR "${THIRD_PARTY_PATH}/xpu")
 set(XPU_DOWNLOAD_DIR "${SNAPPY_PREFIX_DIR}/src/${XPU_PROJECT}")
@@ -157,9 +160,9 @@ ExternalProject_Add(
     ${XPU_XCCL_BASE_URL} && WITH_XPU_XHPC=${WITH_XPU_XHPC} bash
     ${CMAKE_SOURCE_DIR}/tools/xpu/pack_paddle_depence.sh ${XPU_XRE_URL}
     ${XPU_XRE_DIR_NAME} ${XPU_XDNN_URL} ${XPU_XDNN_DIR_NAME} ${XPU_XCCL_URL}
-    ${XPU_XCCL_DIR_NAME} && wget ${XPU_XFT_GET_DEPENCE_URL} && bash
-    get_xft_dependence.sh ${XPU_XFT_URL} ${XPU_XFT_DIR_NAME} &&
-    WITH_XPTI=${WITH_XPTI} bash
+    ${XPU_XCCL_DIR_NAME} ${XPU_XHPC_URL} ${XPU_XHPC_DIR_NAME} && wget
+    ${XPU_XFT_GET_DEPENCE_URL} && bash get_xft_dependence.sh ${XPU_XFT_URL}
+    ${XPU_XFT_DIR_NAME} && WITH_XPTI=${WITH_XPTI} bash
     ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpti_dependence.sh ${XPU_XPTI_URL}
     ${XPU_XPTI_DIR_NAME} && WITH_XPU_XHPC=${WITH_XPU_XHPC} bash
     ${CMAKE_SOURCE_DIR}/tools/xpu/get_xhpc_dependences.sh ${XPU_XHPC_URL}
