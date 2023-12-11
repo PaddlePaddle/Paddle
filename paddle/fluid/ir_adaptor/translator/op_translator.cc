@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "paddle/common/enforce.h"
+#include "paddle/fluid/distributed/auto_parallel/dist_attr.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/attribute_translator.h"
 #include "paddle/fluid/ir_adaptor/translator/op_compat_info.h"
@@ -641,6 +642,25 @@ OpTranscriber::GenerateOperationOutput(pir::IrContext* ctx,
   return {op_output_types, arg_to_idx};
 }
 
+static void TranslateOpDistAttribute(const OpDesc& op_desc,
+                                     pir::AttributeMap* attr_map) {
+  auto& attribute_translator = AttributeTranslator::instance();
+  const paddle::framework::OperatorDistAttr* dist_attr = op_desc.DistAttr();
+  if (dist_attr) {
+    if (dist_attr->execution_stream() !=
+        paddle::distributed::auto_parallel::kDefault) {
+      pir::Attribute new_attr = attribute_translator(
+          "execution_stream", dist_attr->execution_stream());
+      (*attr_map)["execution_stream"] = new_attr;
+    }
+    if (dist_attr->stream_priority() != 0) {
+      pir::Attribute new_attr =
+          attribute_translator("stream_priority", dist_attr->stream_priority());
+      (*attr_map)["stream_priority"] = new_attr;
+    }
+  }
+}
+
 pir::AttributeMap OpTranscriber::TranslateOpAttribute(
     pir::IrContext* ctx,
     const std::string& normalized_op_name,
@@ -679,6 +699,8 @@ pir::AttributeMap OpTranscriber::TranslateOpAttribute(
       this->HandleNonexistentAttribute(ctx, &attribute_map, info);
     }
   }
+
+  TranslateOpDistAttribute(op_desc, &attribute_map);
 
   return attribute_map;
 }
@@ -802,6 +824,8 @@ struct CastOpTranscriber : public OpTranscriber {
     pir::Attribute new_attr = attribute_translator(info.type_name, legacy_attr);
     attribute_map[info.name] = new_attr;
 
+    TranslateOpDistAttribute(op_desc, &attribute_map);
+
     return attribute_map;
   }
 };
@@ -837,6 +861,8 @@ struct IncrementOpTranscriber : public OpTranscriber {
     } else {
       attribute_map["value"] = pir::FloatAttribute::get(ctx, 1.0f);
     }
+
+    TranslateOpDistAttribute(op_desc, &attribute_map);
 
     return attribute_map;
   }
@@ -921,6 +947,8 @@ struct AssignValueOpTranscriber : public OpTranscriber {
     pir::Attribute attr_values = attribute_translator(
         attr_info_maps.at("values").type_name, legacy_attr);
     attribute_map["values"] = attr_values;
+
+    TranslateOpDistAttribute(op_desc, &attribute_map);
 
     VLOG(10) << "[op assign_value] attribute translation done";
 
@@ -1047,6 +1075,8 @@ struct FeedOpTranscriber : public OpTranscriber {
          pir::Int32Attribute::get(ctx, op_desc.GetAttrIfExists<int>("col"))},
     };
 
+    TranslateOpDistAttribute(op_desc, &attribute_map);
+
     return attribute_map;
   }
 
@@ -1163,6 +1193,8 @@ struct SplitOpTranscriber : public OpTranscriber {
            pir::Int32Attribute::get(ctx, op_desc.GetAttrIfExists<int>("num"))},
       };
 
+      TranslateOpDistAttribute(op_desc, &attribute_map);
+
       return attribute_map;
     }
 
@@ -1216,6 +1248,7 @@ struct FetchOpTranscriber : public OpTranscriber {
         {"col",
          pir::Int32Attribute::get(ctx, op_desc.GetAttrIfExists<int>("col"))},
     };
+    TranslateOpDistAttribute(op_desc, &attribute_map);
 
     op_output_types.push_back(op_inputs[0].type());
     pir::Operation* operation = pir::Operation::Create(
@@ -1250,6 +1283,7 @@ struct ShadowOutputOpTranscriber : public OpTranscriber {
          pir::StrAttribute::get(ctx,
                                 op_desc.GetAttrIfExists<std::string>("name"))},
     };
+    TranslateOpDistAttribute(op_desc, &attribute_map);
 
     pir::Operation* operation =
         pir::Operation::Create(op_inputs, attribute_map, {}, op_info);
@@ -1358,6 +1392,8 @@ struct MulOpTranscriber : public OpTranscriber {
 
     attribute_map["transpose_x"] = pir::BoolAttribute::get(ctx, false);
     attribute_map["transpose_y"] = pir::BoolAttribute::get(ctx, false);
+
+    TranslateOpDistAttribute(op_desc, &attribute_map);
 
     return attribute_map;
   }
@@ -1514,6 +1550,8 @@ struct MulGradOpTranscriber : public OpTranscriber {
 
     attribute_map["transpose_x"] = pir::BoolAttribute::get(ctx, false);
     attribute_map["transpose_y"] = pir::BoolAttribute::get(ctx, false);
+
+    TranslateOpDistAttribute(op_desc, &attribute_map);
 
     return attribute_map;
   }
@@ -1764,6 +1802,8 @@ struct FillConstant2FullTranscriber : public OpTranscriber {
       }
     }
 
+    TranslateOpDistAttribute(op_desc, &attribute_map);
+
     return attribute_map;
   }
 };
@@ -1838,6 +1878,7 @@ struct FillConstant2FullWithTensorTranscriber : public OpTranscriber {
              ctx,
              paddle::translator::VarTypeToDataType(
                  static_cast<paddle::framework::proto::VarType_Type>(dtype)))}};
+    TranslateOpDistAttribute(op_desc, &attribute_map);
     return attribute_map;
   }
 };
@@ -1905,6 +1946,7 @@ struct SelectInputOpTranscriber : public OpTranscriber {
     }
 
     pir::AttributeMap attribute_map;
+    TranslateOpDistAttribute(op_desc, &attribute_map);
 
     OpOutputMapping arg_to_idx;
     OpOutputTypeList op_output_types;
