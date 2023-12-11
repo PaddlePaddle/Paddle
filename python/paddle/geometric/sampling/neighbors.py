@@ -15,7 +15,7 @@
 from paddle import _C_ops, _legacy_C_ops
 from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.layer_helper import LayerHelper
-from paddle.framework import in_dynamic_or_pir_mode
+from paddle.framework import in_dynamic_mode, in_dynamic_or_pir_mode
 
 __all__ = []
 
@@ -100,7 +100,7 @@ def sample_neighbors(
 
     use_perm_buffer = True if perm_buffer is not None else False
 
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         (
             out_neighbors,
             out_count,
