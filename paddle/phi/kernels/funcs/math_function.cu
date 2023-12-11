@@ -341,18 +341,18 @@ struct TensorSetConstantGPU {
 
   template <typename T>
   void apply() const {
-    // SetConstant<phi::GPUContext, T> functor;
-    // functor(reinterpret_cast<const phi::GPUContext&>(context_),
-    //         tensor_,
-    //         static_cast<T>(value_));
-    int N = static_cast<int>(tensor_->numel());
-    if (N <= 0) {
-      return;
-    }
-    auto& ctx = reinterpret_cast<const phi::GPUContext&>(context_);
-    const T* num = reinterpret_cast<const T*>(value_);
-    FillConstantKernel<T><<<(N + 512 - 1) / 512, 512, 0, ctx.stream()>>>(
-        N, tensor_->mutable_data<T>(ctx.GetPlace()), static_cast<T>(*num));
+    SetConstant<phi::GPUContext, T> functor;
+    functor(reinterpret_cast<const phi::GPUContext&>(context_),
+            tensor_,
+            static_cast<T>(0.0));
+    // int N = static_cast<int>(tensor_->numel());
+    // if (N <= 0) {
+    //   return;
+    // }
+    // auto& ctx = reinterpret_cast<const phi::GPUContext&>(context_);
+    // const T* num = reinterpret_cast<const T*>(value_);
+    // FillConstantKernel<T><<<(N + 512 - 1) / 512, 512, 0, ctx.stream()>>>(
+    //     N, tensor_->mutable_data<T>(ctx.GetPlace()), static_cast<T>(*num));
   }
 
   const phi::DeviceContext& context_;
