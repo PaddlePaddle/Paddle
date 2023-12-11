@@ -45,6 +45,11 @@ message GraphConfig {
   optional string excluded_train_pair = 15;
   optional string infer_node_type = 16;
   optional bool get_degree = 17 [ default = false ];
+  optional bool weighted_sample = 18 [ default = false ];
+  optional bool return_weight = 19 [ default = false ];
+  optional string pair_label = 20;
+  optional bool is_thread_sharding = 21 [ default = false ];
+  optional int32 accumulate_num = 22 [ default = 1 ];
 }
 
 message DataFeedDesc {

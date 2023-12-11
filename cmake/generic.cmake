@@ -622,7 +622,7 @@ function(paddle_test_build TARGET_NAME)
     if(APPLE)
       target_link_libraries(
         ${TARGET_NAME}
-        "-Wl,-rpath,$<TARGET_FILE_DIR:${paddle_lib}> -Wl,-rpath,$<TARGET_FILE_DIR:phi> -Wl,-rpath,$<TARGET_FILE_DIR:pir>"
+        "-Wl,-rpath,$<TARGET_FILE_DIR:${paddle_lib}> -Wl,-rpath,$<TARGET_FILE_DIR:phi> -Wl,-rpath,$<TARGET_FILE_DIR:pir> -Wl,-rpath,$<TARGET_FILE_DIR:common>"
       )
     endif()
     common_link(${TARGET_NAME})

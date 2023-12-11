@@ -286,7 +286,7 @@ TEST(CodeGenC, matmul_tile) {
   // Code gen
   auto func = Lower("matmul", stages, {A, B, C});
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Module::Builder builder("module1", target);
   builder.AddFunction(func);
@@ -373,7 +373,7 @@ TEST(CodeGenC, matmul_packed) {
   // Code gen
   auto func = Lower("matmul_with_packing", stages, {A, B, packedB, C});
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Module::Builder builder("module1", target);
   builder.AddFunction(func);
@@ -445,10 +445,10 @@ TEST(CodeGenC, call_extern) {
 
   auto yexpr = Lower("yy", stages, {y});
 
-  Module::Builder builder("module0", common::DefaultHostTarget());
+  Module::Builder builder("module0", cinn::common::DefaultHostTarget());
   builder.AddFunction(yexpr);
 
-  CodeGenC codegen(common::DefaultHostTarget());
+  CodeGenC codegen(cinn::common::DefaultHostTarget());
   codegen.SetInlineBuiltinCodes(false);
   auto out = codegen.Compile(builder.Build(), CodeGenC::OutputKind::CImpl);
   std::cout << "codegen C:" << std::endl << out << std::endl;

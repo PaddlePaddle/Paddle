@@ -7,6 +7,7 @@ cc_test(
        elementwise_add_op
        activation_op
        phi
+       common
        scope
        device_context
        enforce
@@ -21,6 +22,7 @@ cc_test(
        cpu_quantize_placement_pass
        cpu_quantize_pass
        phi
+       common
        scope
        device_context)
 
@@ -32,6 +34,7 @@ cc_test(
        depthwise_conv
        tensor
        phi
+       common
        scope
        device_context
        enforce
@@ -43,6 +46,7 @@ set(TEST_MKLDNN_CACHING_DEPS
     elementwise_add_op
     activation_op
     phi
+    common
     scope
     device_context
     enforce
@@ -56,7 +60,9 @@ cc_test(
   SRCS test_mkldnn_caching.cc
   DEPS ${TEST_MKLDNN_CACHING_DEPS})
 if(WIN32 AND WITH_TESTING)
+
   paddle_test(test_mkldnn_op_nhwc SRCS test_mkldnn_op_nhwc.cc)
+
 else()
   paddle_test(test_mkldnn_op_nhwc SRCS test_mkldnn_op_nhwc.cc)
 endif()
@@ -64,6 +70,22 @@ endif()
 cc_test(
   test_mkldnn_pool_adaptive_op
   SRCS test_mkldnn_pool_adaptive_op.cc
+  DEPS fleet_executor
+       conditional_block_op
+       standalone_executor
+       executor
+       op_registry
+       generated_static_op
+       generated_op
+       phi
+       common
+       scope
+       device_context
+       enforce)
+
+cc_test(
+  test_mkldnn_squeeze
+  SRCS test_mkldnn_squeeze.cc
   DEPS fleet_executor
        conditional_block_op
        standalone_executor

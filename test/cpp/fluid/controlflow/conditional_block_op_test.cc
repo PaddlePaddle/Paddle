@@ -32,14 +32,14 @@ TEST(ConditionalBlockGrad, NoNeedRunLoDTensorArray) {
 
   Variable* cond_var = scope.Var("condition");
   phi::DenseTensor* cond_tensor = cond_var->GetMutable<phi::DenseTensor>();
-  paddle::framework::DDim cond_dims = phi::make_ddim({1});
+  paddle::framework::DDim cond_dims = common::make_ddim({1});
   bool* cond_data = cond_tensor->mutable_data<bool>(cond_dims, place);
   cond_data[0] = false;
 
   Variable* input_var = scope.Var("input_lod_tensor_array");
   LoDTensorArray* input_tensors = input_var->GetMutable<LoDTensorArray>();
   for (int i = 0; i < 5; ++i) {
-    paddle::framework::DDim in_dims = phi::make_ddim({i + 1, i + 2});
+    paddle::framework::DDim in_dims = common::make_ddim({i + 1, i + 2});
     phi::DenseTensor lod_tensor;
     float* in_data = lod_tensor.mutable_data<float>(in_dims, place);
     for (int j = 0; j < (i + 1) * (i + 2); ++j) {
@@ -66,7 +66,7 @@ TEST(ConditionalBlockGrad, NoNeedRunLoDTensorArray) {
   const LoDTensorArray& out_tensors = input_grad_var->Get<LoDTensorArray>();
   for (int i = 0; i < 5; ++i) {
     paddle::framework::DDim out_dims = out_tensors[i].dims();
-    EXPECT_EQ(phi::make_ddim({i + 1, i + 2}), out_dims);
+    EXPECT_EQ(common::make_ddim({i + 1, i + 2}), out_dims);
     const float* out_data = out_tensors[i].data<float>();
     for (int j = 0; j < (i + 1) * (i + 2); ++j) {
       EXPECT_EQ(0, out_data[j]);

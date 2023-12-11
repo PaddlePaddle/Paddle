@@ -174,14 +174,14 @@
     func : c_concat
 
 - op : c_embedding
-  args : (Tensor weight, Tensor x, int64_t start_index=0)
+  args : (Tensor weight, Tensor x, int64_t start_index=0, int64_t vocab_size=-1)
   output : Tensor(out)
   infer_meta :
     func : CEmbeddingInferMeta
     param : [weight, x, start_index]
   kernel :
     func : c_embedding
-    param : [weight, x, start_index]
+    param : [weight, x, start_index, vocab_size]
     data_type : weight
   backward : c_embedding_grad
 
@@ -362,7 +362,7 @@
   infer_meta :
     func : EmbeddingInferMeta
     param : [x, weight, padding_idx]
-    spmd_rule: EmbeddingInferSpmd
+    spmd_rule: EmbeddingInferSpmdUnspportVocabParallel
   kernel :
     func : embedding {dense, dense -> dense}
            sparse_weight_embedding {dense, selected_rows -> dense}
@@ -899,6 +899,18 @@
     data_type : dtype
     backend : place
 
+- op : read_file
+  args : (str filename = "", DataType dtype=DataType::UINT8, Place place=CPUPlace())
+  output : Tensor(out)
+  infer_meta :
+    func : ReadFileInferMeta
+    param : [filename]
+  kernel :
+    func : read_file
+    param : [filename]
+    data_type : dtype
+    backend : place
+
 - op : remainder
   args : (Tensor x, Tensor y)
   output : Tensor (out)
@@ -1004,6 +1016,7 @@
   output : Tensor(out)
   infer_meta :
     func : SoftmaxInferMeta
+    spmd_rule : SoftmaxInferSpmd
   kernel :
     func : softmax
   inplace : (x -> out)

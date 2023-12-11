@@ -20,7 +20,7 @@
 #include "paddle/cinn/common/type.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/utils/type_defs.h"
-#include "paddle/phi/core/ddim.h"
+#include "paddle/common/ddim.h"
 #include "paddle/pir/core/operation.h"
 
 namespace cinn {
@@ -66,16 +66,11 @@ struct CompatibleInfo {
 
   static std::string OpName(const ::pir::Operation& op);
 
-  static std::string ValueName(const ::pir::Value& value);
-
   static std::string OpFuncName(const ::pir::Operation& op);
 
   static std::string GroupOpsName(const std::vector<::pir::Operation*>& ops);
 
-  static std::vector<std::string> InputNames(const ::pir::Operation& op,
-                                             bool allow_duplicate = false);
-
-  static std::vector<std::string> OutputNames(::pir::Operation& op);  // NOLINT
+  static std::string ValueName(const ::pir::Value& value);
 
   static std::vector<::pir::Value> RealOperandSources(
       const ::pir::Operation& op);
@@ -84,7 +79,7 @@ struct CompatibleInfo {
 
   static utils::AttributeMap ConvertAttributes(const ::pir::Operation& op);
 
-  static common::Type ConvertIRType(::pir::Type type);
+  static cinn::common::Type ConvertIRType(::pir::Type type);
 
   static std::vector<int> ValueShape(const ::pir::Value& value);
 
@@ -93,8 +88,29 @@ struct CompatibleInfo {
   static OpPatternKind OpKind(const ::pir::Operation& op);
 };
 
-std::vector<int64_t> GetBroadcastAxis(const phi::DDim& in_shape,
+std::vector<int64_t> GetBroadcastAxis(const ::common::DDim& in_shape,
                                       const std::vector<int64_t>& out_shape);
+
+class PrettyNamer {
+ public:
+  const std::string& GetOrNew(::pir::Value hash_key,
+                              const std::string& name_hint) {
+    if (pretty_names_.find(hash_key) == pretty_names_.end()) {
+      pretty_names_[hash_key] = name_generator_.New(name_hint);
+    }
+    return pretty_names_.at(hash_key);
+  }
+
+  ::cinn::common::NameGenerator& GetNameGenerator() { return name_generator_; }
+
+  const std::unordered_map<::pir::Value, std::string>& GetNameMap() {
+    return pretty_names_;
+  }
+
+ private:
+  std::unordered_map<::pir::Value, std::string> pretty_names_;
+  ::cinn::common::NameGenerator name_generator_;
+};
 
 }  // namespace pir
 }  // namespace framework
