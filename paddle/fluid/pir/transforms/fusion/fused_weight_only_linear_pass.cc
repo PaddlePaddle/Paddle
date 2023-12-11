@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/transforms/fusion/fused_weight_only_linear_pass.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
@@ -44,14 +45,14 @@ class FusedWeightOnlyLinearPattern
     //
     pir::drr::SourcePattern src = ctx->SourcePattern();
     const auto &matmul =
-        src.Op("pd_op.matmul",
+        src.Op(paddle::dialect::MatmulOp::name(),
                {{"transpose_x", src.Attr("matmul_transpose_x")},
                 {"transpose_y", src.Attr("matmul_transpose_y")}});
     const auto &parameter = src.Op(
         pir::ParameterOp::name(), {{"parameter_name", src.Attr("param_name")}});
     src.Tensor("w") = parameter();
     src.Tensor("matmul_out") = matmul(src.Tensor("x"), src.Tensor("w"));
-    const auto &add = src.Op("pd_op.add");
+    const auto &add = src.Op(paddle::dialect::AddOp::name());
     src.Tensor("add_out") = add(src.Tensor("matmul_out"), src.Tensor("bias"));
 
     //
