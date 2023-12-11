@@ -38,8 +38,8 @@ phi::funcs::MatmulFusedType GetFwdFusedEpilogueType(
         fused_type = FusedType::kMatmulBiasRelu;
       } else {
         fused_type = FusedType::kMatmulBiasReluWithReservedData;
-        int64_t reserve_size =
-            SizeOf(phi::DataType::BOOL) * phi::product(reserve_space->dims());
+        int64_t reserve_size = SizeOf(phi::DataType::BOOL) *
+                               common::product(reserve_space->dims());
         ctx.Alloc(reserve_space, phi::DataType::BOOL, reserve_size);
       }
     } else if (activation == "gelu") {
@@ -47,7 +47,8 @@ phi::funcs::MatmulFusedType GetFwdFusedEpilogueType(
         fused_type = FusedType::kMatmulBiasGelu;
       } else {
         fused_type = FusedType::kMatmulBiasGeluWithReservedData;
-        int64_t reserve_size = sizeof(T) * phi::product(reserve_space->dims());
+        int64_t reserve_size =
+            sizeof(T) * common::product(reserve_space->dims());
         ctx.Alloc<T>(reserve_space, reserve_size);
       }
     } else {
@@ -85,7 +86,7 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
     dev_ctx.Alloc<T>(out, out->numel() * sizeof(T));
     // (M * K) * (K * N)
     auto x_mat_dims =
-        phi::flatten_to_2d(x->dims(), trans_x ? 1 : x->dims().size() - 1);
+        common::flatten_to_2d(x->dims(), trans_x ? 1 : x->dims().size() - 1);
     int64_t M = trans_x ? x_mat_dims[1] : x_mat_dims[0];
     int64_t K = trans_y ? y->dims()[1] : y->dims()[0];
     int64_t N = trans_y ? y->dims()[0] : y->dims()[1];
@@ -142,7 +143,7 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
 
     // (M * K) * (K * N)
     auto x_mat_dims =
-        phi::flatten_to_2d(x->dims(), trans_x ? 1 : x->dims().size() - 1);
+        common::flatten_to_2d(x->dims(), trans_x ? 1 : x->dims().size() - 1);
     int64_t M = trans_x ? x_mat_dims[1] : x_mat_dims[0];
     int64_t K = trans_y ? y->dims()[1] : y->dims()[0];
     int64_t N = trans_y ? y->dims()[0] : y->dims()[1];

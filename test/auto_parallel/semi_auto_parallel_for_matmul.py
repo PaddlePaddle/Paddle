@@ -101,6 +101,39 @@ class TestMatmulApiForSemiAutoParallel:
         )
         assert dist_y_grad.dist_attr._is_partial() is True
 
+    def test_batch_matmul(self):
+        # case1: amk[0,-1, -1],kn[-1,-1] -> amk[0,-1,-1],kn[-1,-1] = amn[0,-1, -1] partial[]
+        dist_out, dist_x_grad, dist_y_grad = self.test_body(
+            x_shape=[2, 64, 32],
+            y_shape=[32, 48],
+            x_placements=[dist.Shard(0)],
+            y_placements=[dist.Replicate()],
+        )
+        # verify output local shape and dist attr
+        np.testing.assert_equal(
+            dist_out._local_shape, [1, 64, 48], verbose=True
+        )
+        np.testing.assert_equal(
+            dist_out.dist_attr.dims_mapping, [0, -1, -1], verbose=True
+        )
+        assert dist_out.dist_attr._is_partial() is False
+        # verify x_grad local shape and dist attr
+        np.testing.assert_equal(
+            dist_x_grad._local_shape, [1, 64, 32], verbose=True
+        )
+        np.testing.assert_equal(
+            dist_x_grad.dist_attr.dims_mapping, [0, -1, -1], verbose=True
+        )
+        assert dist_x_grad.dist_attr._is_partial() is False
+        # verify y_grad local shape and dist attr
+        np.testing.assert_equal(
+            dist_y_grad._local_shape, [32, 48], verbose=True
+        )
+        np.testing.assert_equal(
+            dist_y_grad.dist_attr.dims_mapping, [-1, -1], verbose=True
+        )
+        assert dist_y_grad.dist_attr._is_partial() is True
+
     def test_matmul_x_column_shard(self):
         # case2: mk[-1, 0],kn[-1,-1] --> mk[-1, 0],kn[0, -1] = nm[-1, -1] partial[0]
         dist_out, dist_x_grad, dist_y_grad = self.test_body(
@@ -272,6 +305,7 @@ class TestMatmulApiForSemiAutoParallel:
         self.test_matmul_x_column_shard_trans_x()
         self.test_matmul_x_row_shard_trans_y()
         self.test_matmul_with_complex_type()
+        self.test_batch_matmul()
 
 
 if __name__ == '__main__':

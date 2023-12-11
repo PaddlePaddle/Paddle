@@ -13,7 +13,8 @@ if(WITH_DISTRIBUTE)
   cc_test(
     dist_tensor_test
     SRCS dist_tensor_test.cc
-    DEPS phi)
+    DEPS phi common)
+
   paddle_test(
     spmd_rule_test
     SRCS
@@ -21,7 +22,8 @@ if(WITH_DISTRIBUTE)
     DEPS
     spmd_rule_test_util
     spmd_rules
-    phi)
+    phi
+    common)
   paddle_test(
     softmax_grad_spmd_rule_test
     SRCS
@@ -30,6 +32,10 @@ if(WITH_DISTRIBUTE)
     spmd_rule_test_util
     spmd_rules
     phi)
+
 endif()
 
-cc_test_old(dist_mapper_test SRCS dist_mapper_test.cc DEPS phi)
+cc_test(
+  dist_mapper_test
+  SRCS dist_mapper_test.cc
+  DEPS phi)

@@ -126,7 +126,7 @@ class AssignValueKernel : public framework::OpKernel<T> {
         break;
     }
     CopyVectorToTensor<T>(value_name, out, ctx);
-    out->Resize(phi::make_ddim(shape));
+    out->Resize(common::make_ddim(shape));
   }
 };
 

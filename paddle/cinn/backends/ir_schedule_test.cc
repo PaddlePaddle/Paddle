@@ -41,7 +41,7 @@ TEST(IrSchedule, split_and_fuse1) {
   Expr N(32);
   Expr P(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N});
   auto B = Compute(
@@ -100,7 +100,7 @@ TEST(IrSchedule, split_and_fuse2) {
   Expr N(32);
   Expr P(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N});
   auto B = Compute(
@@ -163,7 +163,7 @@ void TestSplitThrow() {
   Expr N(32);
   Expr P(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N});
   auto B = Compute(
@@ -205,7 +205,7 @@ TEST(IrSchedule, reorder1) {
   Expr N(32);
   Expr P(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N, P});
   auto B = Compute(
@@ -272,7 +272,7 @@ TEST(IrSchedule, reorder2) {
   Expr N(32);
   Expr P(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N, P});
   auto B = Compute(
@@ -338,7 +338,7 @@ TEST(IrSchedule, reorder3) {
   Expr N(32);
   Expr P(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N, P});
   auto B = Compute(
@@ -408,7 +408,7 @@ TEST(IrSchedule, reorder4) {
   Expr N(32);
   Expr P(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N, P});
   auto B = Compute(
@@ -482,7 +482,7 @@ TEST(IrSchedule, parallel) {
   Expr M(32);
   Expr N(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N});
   auto B = Compute(
@@ -548,7 +548,7 @@ TEST(IrSchedule, vectorize) {
   Expr M(32);
   Expr N(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N});
   auto B = Compute(
@@ -622,7 +622,7 @@ TEST(IrSchedule, unroll) {
   Expr M(32);
   Expr N(2);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N});
   auto B = Compute(
@@ -696,7 +696,7 @@ TEST(IrSchedule, bind) {
   Expr M(32);
   Expr N(2);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N});
   auto B = Compute(
@@ -741,7 +741,7 @@ TEST(IrSchedule, simple_compute_at) {
   Expr M(128);
   Expr N(10);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N});
   auto B = Compute(
@@ -814,7 +814,7 @@ TEST(IrSchedule, compute_at0) {
   Expr M(128);
   Expr N(10);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N});
   auto B = Compute(
@@ -888,7 +888,7 @@ TEST(IrSchedule, compute_at1) {
   Expr N(32);
   Expr P(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N, P});
   auto B = Compute(
@@ -960,7 +960,7 @@ TEST(IrSchedule, compute_at2) {
   Expr M(64);
   Expr N(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, M});
   auto B = Compute(
@@ -1032,7 +1032,7 @@ TEST(IrSchedule, compute_at3) {
   Expr M(64);
   Expr N(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, M});
   auto B = Compute(
@@ -1112,7 +1112,7 @@ TEST(IrSchedule, compute_at4) {
   Expr N(32);
   Expr P(32);
 
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 
   Placeholder<float> A("A", {M, N, P});
   auto B = Compute(
@@ -1174,7 +1174,7 @@ TEST(IrSchedule, compute_at5) {
   Expr M(64);
   Expr N(32);
 
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 
   Placeholder<float> A("A", {M, M});
   auto B = Compute(
@@ -1237,7 +1237,7 @@ TEST(IrSchedule, compute_at6) {
   Expr M(64);
   Expr N(32);
 
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 
   Placeholder<float> A("A", {M, M});
   auto B = Compute(
@@ -1303,7 +1303,7 @@ TEST(IrSchedule, cache_read1) {
   Expr N(32);
   Expr P(16);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, M});
   auto B = Compute(
@@ -1388,7 +1388,7 @@ TEST(IrSchedule, cache_read2) {
   Expr M(64);
   Expr N(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N});
   auto B = Compute(
@@ -1456,7 +1456,7 @@ TEST(IrSchedule, cache_write1) {
   Expr M(64);
   Expr N(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N});
   auto B = Compute(
@@ -1542,7 +1542,7 @@ TEST(IrSchedule, cache_write2) {
   Expr M(64);
   Expr N(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N});
   auto B = Compute(
@@ -1610,7 +1610,7 @@ TEST(IrSchedule, cache_read3) {
   Expr N(32);
   Expr P(16);
 
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 
   Placeholder<float> A("A", {M, M});
   auto B = Compute(
@@ -1691,7 +1691,7 @@ TEST(IrSchedule, cache_write3) {
   Expr M(64);
   Expr N(32);
 
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 
   Placeholder<float> A("A", {M, N});
   auto B = Compute(
@@ -1773,7 +1773,7 @@ TEST(IrSchedule, sync_threads) {
   Expr M(64);
   Expr N(32);
 
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 
   Placeholder<float> A("A", {M, N});
   auto B = Compute(
@@ -1854,7 +1854,7 @@ TEST(IrSchedule, cache_write4) {
   Expr M(64);
   Expr N(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N, N});
   Var k(32, "k0");
@@ -1930,7 +1930,7 @@ TEST(IrSchedule, rfactor) {
   Expr N(2);
   Expr K(16);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N, K});
   Var j(2, "j0");
@@ -2057,7 +2057,7 @@ TEST(IrSchedule, rfactor1) {
   Expr N(2);
   Expr K(16);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N, K});
   Var j(2, "j0");
@@ -2185,7 +2185,7 @@ TEST(IrSchedule, rfactor2) {
   Expr N(2);
   Expr K(16);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, K});
   Placeholder<float> B("B", {K, N});
@@ -2318,7 +2318,7 @@ TEST(IrSchedule, factorize_reduction) {
   Expr N(4);
   Expr K(5);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N, K});
   Var j(4, "j0");
@@ -2407,7 +2407,7 @@ TEST(IrSchedule, factorize_reduction1) {
   Expr N(4);
   Expr K(5);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N, K});
   Var j(4, "j0");
@@ -2496,7 +2496,7 @@ TEST(IrSchedule, factorize_reduction2) {
   Expr N(4);
   Expr K(5);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N * K});
   Var j(4 * 5, "j0");
@@ -2582,7 +2582,7 @@ TEST(IrSchedule, compute_inline1) {
   Expr N(32);
   Expr P(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N, P});
   auto B = Compute(
@@ -2653,7 +2653,7 @@ TEST(IrSchedule, compute_inline2) {
   Expr N(32);
   Expr P(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N, P});
   auto B = Compute(
@@ -2728,7 +2728,7 @@ TEST(IrSchedule, compute_inline3) {
   Expr N(32);
   Expr P(32);
 
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 
   Placeholder<float> A("A", {M, N, P});
   auto B = Compute(
@@ -2790,7 +2790,7 @@ TEST(IrSchedule, compute_inline4) {
   Expr N(32);
   Expr P(32);
 
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 
   Placeholder<float> A("A", {M, N, P});
   auto B = Compute(
@@ -2852,7 +2852,7 @@ TEST(IrSchedule, reverse_compute_inline1) {
   Expr M(32);
   Expr N(64);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N});
   auto B = Compute(
@@ -2915,7 +2915,7 @@ TEST(IrSchedule, reverse_compute_inline2) {
   Expr N(32);
   Expr P(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N, P});
   auto B = Compute(
@@ -2984,7 +2984,7 @@ TEST(IrSchedule, copytransform1) {
   Expr N(32);
   Expr P(32);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N, P});
   auto B = Compute(
@@ -3075,7 +3075,7 @@ TEST(IrSchedule, copytransform2) {
   Expr N(64);
   Expr P(128);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Placeholder<float> A("A", {M, N, P});
   auto B = Compute(
@@ -3171,7 +3171,7 @@ TEST(IrSchedule, Annotate) {
                                     {},
                                     {},
                                     nullptr,
-                                    common::DefaultHostTarget(),
+                                    cinn::common::DefaultHostTarget(),
                                     true);
   ir::IRSchedule ir_sch(ir::ModuleExpr({funcs[0]->body}));
   auto fused = ir_sch.Fuse("B", {0, 1});
@@ -3215,7 +3215,7 @@ TEST(IrSchedule, Unannotate) {
                                     {},
                                     {},
                                     nullptr,
-                                    common::DefaultHostTarget(),
+                                    cinn::common::DefaultHostTarget(),
                                     true);
   ir::IRSchedule ir_sch(ir::ModuleExpr({funcs[0]->body}));
   auto fused = ir_sch.Fuse("B", {0, 1});
@@ -3253,7 +3253,7 @@ TEST(IrSchedule, Unannotate) {
 }
 
 TEST(IrSchedule, ComplexIndices) {
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
   ir::Expr M(32);
   ir::Expr K(64);
 
@@ -3375,7 +3375,7 @@ TEST(IrSchedule, SamplePerfectTile) {
                                     {},
                                     {},
                                     nullptr,
-                                    common::DefaultHostTarget(),
+                                    cinn::common::DefaultHostTarget(),
                                     true);
 
   ir::IRSchedule ir_sch(ir::ModuleExpr({funcs[0]->body}));
@@ -3400,7 +3400,7 @@ TEST(IrSchedule, GetChildBlocks) {
                                     {},
                                     {},
                                     nullptr,
-                                    common::DefaultHostTarget(),
+                                    cinn::common::DefaultHostTarget(),
                                     true);
   ir::IRSchedule ir_sch(ir::ModuleExpr({funcs[0]->body}));
 
@@ -3440,7 +3440,7 @@ TEST(IrSchedule, SampleCategorical) {
                                     {},
                                     {},
                                     nullptr,
-                                    common::DefaultHostTarget(),
+                                    cinn::common::DefaultHostTarget(),
                                     true);
 
   ir::IRSchedule ir_sch(ir::ModuleExpr({funcs[0]->body}));

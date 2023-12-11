@@ -55,7 +55,7 @@ void BatchNormKernel(const Context& ctx,
 
   bool global_stats = test_mode || use_global_stats;
 
-  auto data_layout = phi::StringToDataLayout(data_layout_str);
+  auto data_layout = common::StringToDataLayout(data_layout_str);
 
   const auto& x_dims = x.dims();
   PADDLE_ENFORCE_GE(
@@ -83,6 +83,10 @@ void BatchNormKernel(const Context& ctx,
   ctx.template Alloc<T>(variance_out);
   ctx.template Alloc<T>(saved_mean);
   ctx.template Alloc<T>(saved_variance);
+  if (reserve_space != nullptr) {
+    reserve_space->Resize({0});
+    ctx.template Alloc<T>(reserve_space);
+  }
 
   // input dimension is 2 and the format is NCHW. The input can be regarded
   // as NHWC format
@@ -97,6 +101,9 @@ void BatchNormKernel(const Context& ctx,
         ctx.template Alloc<T>(saved_variance), C);
     saved_mean_e.setZero();
     saved_variance_e.setZero();
+    EigenVectorArrayMap<T> reserve_space_e(ctx.template Alloc<T>(reserve_space),
+                                           0);
+    reserve_space_e.setZero();
 
     EigenVectorArrayMap<T> running_mean_arr(ctx.template Alloc<T>(mean_out), C);
     EigenVectorArrayMap<T> running_var_arr(ctx.template Alloc<T>(variance_out),

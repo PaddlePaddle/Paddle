@@ -65,6 +65,7 @@ class PirCompiler final {
   std::vector<GroupCompilationContext> group_compilation_contexts_;
 };
 
+// TODO(phlrain): pir compiler don't need Scope, need to remove this
 std::shared_ptr<Scope> BuildScope(const Target&, const ::pir::Program&);
 
 class PirCompilerManager {

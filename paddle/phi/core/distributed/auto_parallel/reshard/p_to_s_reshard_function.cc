@@ -18,6 +18,8 @@
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/same_status_reshard_function.h"
+#include "paddle/phi/core/distributed/store/store_utils.h"
 #include "paddle/phi/kernels/reduce_scatter_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
@@ -58,7 +60,7 @@ void PToSReshardFunction::Eval(DeviceContext* dev_ctx,
   DenseTensor in_reduce_scatter = in.value();
   std::vector<int> axis;
   if (out_split_axis != 0) {
-    for (size_t i = 0; i < vectorize(logical_ddim).size(); ++i) {
+    for (size_t i = 0; i < common::vectorize(logical_ddim).size(); ++i) {
       axis.emplace_back(i);
     }
     std::swap(axis[0], axis[out_split_axis]);
@@ -87,6 +89,60 @@ void PToSReshardFunction::Eval(DeviceContext* dev_ctx,
   }
 
   SetDistProps(out, in.dims(), out_dist_attr);
+}
+
+bool PToSReshardFunctionCrossMesh::IsSuitable(
+    const DistTensor& in, const TensorDistAttr& out_dist_attr) {
+  const auto& in_dist_attr = in.dist_attr();
+
+  RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.is_partial());
+  RESHARD_SHORTCUT_IF_FALSE(out_dist_attr.is_shard());
+
+  const auto& in_process_mesh = in_dist_attr.process_mesh();
+  const auto& out_process_mesh = out_dist_attr.process_mesh();
+
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh.ndim() == 1);
+  RESHARD_SHORTCUT_IF_FALSE(out_process_mesh.ndim() == 1);
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh != out_process_mesh);
+
+  return true;
+}
+
+void PToSReshardFunctionCrossMesh::Eval(DeviceContext* dev_ctx,
+                                        const DistTensor& in,
+                                        const TensorDistAttr& out_dist_attr,
+                                        DistTensor* out) {
+  VLOG(3) << "Call PToSReshardFunctionCrossMesh Eval";
+  const auto& in_dist_attr = in.dist_attr();
+
+  DistTensor tmp_result;
+  TensorDistAttr in_dist_attr_shard = in_dist_attr;
+  in_dist_attr_shard.clean_partial_status();
+  in_dist_attr_shard.set_dims_mapping(out_dist_attr.dims_mapping());
+
+  int64_t cur_global_rank = GetCurGlobalRank();
+  if (in_dist_attr.process_mesh().contains(cur_global_rank)) {
+    PToSReshardFunction p_to_s_func;
+    PADDLE_ENFORCE(
+        p_to_s_func.IsSuitable(in, in_dist_attr_shard),
+        phi::errors::InvalidArgument(
+            "Invoke the p to s reshard function is not valid from %s to %s.",
+            in_dist_attr,
+            in_dist_attr_shard));
+    p_to_s_func.Eval(dev_ctx, in, in_dist_attr_shard, &tmp_result);
+  } else {
+    SetDistProps(&tmp_result, in.dims(), in_dist_attr_shard);
+    SetValue(&tmp_result, in.value());
+  }
+
+  SameStatusReshardFunction same_status_func;
+  PADDLE_ENFORCE(
+      same_status_func.IsSuitable(tmp_result, out_dist_attr),
+      phi::errors::InvalidArgument("Invoke the same status reshard function "
+                                   "is not valid from %s to %s.",
+                                   tmp_result.dist_attr(),
+                                   out_dist_attr));
+  same_status_func.Eval(dev_ctx, tmp_result, out_dist_attr, out);
 }
 
 }  // namespace distributed
