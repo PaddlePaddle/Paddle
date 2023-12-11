@@ -921,7 +921,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
         self._virtual_pp_rank = 0
         self._reset_counter()
 
-        self._assign_vpp_info(self.model_chunks)
+        self._check_sanity()
 
     def _check_sanity(self):
         assert (
