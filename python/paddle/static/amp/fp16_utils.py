@@ -262,7 +262,7 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
                 _rename_arg(op, in_var.name, out_var.name)
 
     for attr_name in ['in_dtype', 'out_dtype', 'dtype']:
-        if op.has_attr(attr_name) and is_float_dtype(op.attr(attr_name)):
+        if op.has_attr(attr_name) and op.attr(attr_name) in FLOAT_TYPES:
             op._set_attr(attr_name, dest_dtype)
 
     return num_cast_ops
@@ -405,13 +405,17 @@ def fp16_guard():
         yield
 
 
-def is_float_dtype(dtype):
-    return (
-        dtype == core.VarDesc.VarType.FP32
-        or dtype == core.VarDesc.VarType.FP16
-        or dtype == core.VarDesc.VarType.BF16
-        or dtype == core.VarDesc.VarType.FP64
-    )
+FLOAT_TYPES = {
+    core.VarDesc.VarType.FP32,
+    core.VarDesc.VarType.FP16,
+    core.VarDesc.VarType.BF16,
+    core.VarDesc.VarType.FP64,
+}
+
+SUPPORT_FLOAT_TYPES = {
+    core.VarDesc.VarType.FP32,
+    core.VarDesc.VarType.FP16,
+}
 
 
 def set_var_dst_dtype(
@@ -433,7 +437,7 @@ def set_var_dst_dtype(
         if var is None or var.type not in _valid_types:
             continue
 
-        if is_float_dtype(var.dtype):
+        if var.dtype in FLOAT_TYPES:
             low_precison_var_names.add(var_name)
             if need_set_dtype:
                 var.desc.set_dtype(dtype)
@@ -700,6 +704,16 @@ def cast_model_to_fp16(
 
     def need_process(op):
         need_process = True
+
+        def is_support_type(name):
+            return program.global_block().var(name).dtype in SUPPORT_FLOAT_TYPES
+
+        if len(op.input_arg_names) > 0 and all(
+            not is_support_type(name) for name in op.input_arg_names
+        ):
+            return False
+
+        # if input type of op is fp64, we just skip it.
         if op.type in ["set_value"]:
             # NOTE(zoooo0820): OP set_value has attribute "dtype", but its output type is
             # determined by the input.dtype instead of attribute. So, here we still process it.
@@ -711,8 +725,7 @@ def cast_model_to_fp16(
                 # output type of some operators such as fill_constant will be determined by the attribute value.
                 #
                 if not op.has_attr('in_dtype') and (
-                    op.has_attr(attr_name)
-                    and is_float_dtype(op.attr(attr_name))
+                    op.has_attr(attr_name) and op.attr(attr_name) in FLOAT_TYPES
                 ):
                     need_process = False
 
