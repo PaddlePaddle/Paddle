@@ -96,6 +96,9 @@ void ValueExecutionInfo::Add(::pir::Value value, const std::string& var_name) {
 void ValueExecutionInfo::Rename(pir::Value value,
                                 const std::string& new_name,
                                 const std::string& orig_name) {
+  if (new_name == orig_name) {
+    return;
+  }
   value_2_var_name_[value] = new_name;
 
   for (auto kv : value_2_var_name_) {
