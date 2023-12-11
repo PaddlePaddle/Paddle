@@ -86,7 +86,7 @@ def divisor(num, reverse=False):
 def get_not_oom_cfgs(cfgs, tuner_cfg):
     """Get not OOM parallel strategies."""
     total_cards, l, h, a, V, s, gbs, per_card_memory = (
-        tuner_cfg["estimated_num_gpus"],
+        tuner_cfg["search_algo"]["estimated_num_gpus"],
         tuner_cfg["model_cfg"]["num_layers"],
         tuner_cfg["model_cfg"]["hidden_size"],
         tuner_cfg["model_cfg"]["num_attention_heads"],

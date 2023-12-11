@@ -1877,6 +1877,110 @@ struct FillConstantTranscriber : public OpTranscriber {
   }
 };
 
+static std::vector<int64_t> ParseCompatibleShapes(
+    const std::vector<int64_t>& dim1, const std::vector<int64_t>& dim2) {
+  IR_ENFORCE(dim1.size() == dim2.size(),
+             "Does not support rank inconsistency: dim1=%d, dim2=%d",
+             dim1.size(),
+             dim2.size());
+  std::vector<int64_t> result;
+  for (size_t i = 0; i < dim1.size(); ++i) {
+    if (dim1[i] != dim2[i]) {
+      result.push_back(-1);
+    } else {
+      result.push_back(dim1[i]);
+    }
+  }
+  return result;
+}
+
+struct SelectInputOpTranscriber : public OpTranscriber {
+  pir::Operation* operator()(pir::IrContext* ctx,
+                             TranslationContext* param_map,
+                             const OpDesc& op_desc,
+                             pir::Block* block) override {
+    VLOG(10) << "[op select_input] start transcribing";
+    auto op_info = this->LoopkUpOpInfo(ctx, op_desc);
+
+    std::vector<pir::Value> op_inputs = {};
+    auto Mask_name = op_desc.Input("Mask")[0];
+    auto& Input_name = op_desc.Input("X");
+    IR_ENFORCE(param_map->count(Mask_name) > 0,
+               "Expected op[%s]'s input %s has been parsed",
+               op_desc.Type(),
+               Mask_name);
+    op_inputs.push_back(param_map->at(Mask_name).value);
+    for (auto in_name : Input_name) {
+      IR_ENFORCE(param_map->count(in_name) > 0,
+                 "Expected op[%s]'s input %s has been parsed",
+                 op_desc.Type(),
+                 in_name);
+      op_inputs.push_back(param_map->at(in_name).value);
+    }
+
+    pir::AttributeMap attribute_map;
+
+    OpOutputMapping arg_to_idx;
+    OpOutputTypeList op_output_types;
+    auto Out_name = op_desc.Output("Out")[0];
+    VarDesc* var = op_desc.Block()->FindVarRecursive(Out_name);
+    arg_to_idx[var->Name()] = {0, 0};
+
+    // NOTE(zhangbo): Only support
+    auto input1 = op_inputs[1].type();
+    auto input2 = op_inputs[2].type();
+    if (input1 == input2) {
+      op_output_types.push_back(op_inputs[1].type());
+    } else if (input1.isa<paddle::dialect::DenseTensorType>() &&
+               input2.isa<paddle::dialect::DenseTensorType>()) {
+      auto tensor1 = input1.dyn_cast<paddle::dialect::DenseTensorType>();
+      auto tensor2 = input2.dyn_cast<paddle::dialect::DenseTensorType>();
+      if (tensor1.dtype() != tensor2.dtype() ||
+          tensor1.data_layout() != tensor2.data_layout() ||
+          tensor1.lod() != tensor2.lod() ||
+          tensor1.offset() != tensor2.offset()) {
+        IR_THROW(
+            "select_input only support same type or DenseTensorType with "
+            "only different dim, but get dtype:[%s, %s], layout:[%s, %s], "
+            "lod:[%s, %s], offset:[%s, %s].",
+            tensor1.dtype(),
+            tensor2.dtype(),
+            tensor1.data_layout(),
+            tensor2.data_layout(),
+            tensor1.lod(),
+            tensor2.lod(),
+            tensor1.offset(),
+            tensor2.offset());
+      }
+      auto dim1 = input1.dyn_cast<paddle::dialect::DenseTensorType>().dims();
+      auto dim2 = input2.dyn_cast<paddle::dialect::DenseTensorType>().dims();
+      std::vector<int64_t> compat_shape = ParseCompatibleShapes(
+          common::vectorize(dim1), common::vectorize(dim2));
+      op_output_types.push_back(
+          paddle::dialect::DenseTensorType::get(ctx,
+                                                tensor1.dtype(),
+                                                common::make_ddim(compat_shape),
+                                                tensor1.data_layout(),
+                                                tensor1.lod(),
+                                                tensor1.offset()));
+    } else {
+      IR_THROW(
+          "select_input only support same type or DenseTensorType with only "
+          "different dim, now is %s != %s.",
+          input1,
+          input2);
+    }
+
+    pir::Operation* operation = pir::Operation::Create(
+        op_inputs, attribute_map, op_output_types, op_info);
+    block->push_back(operation);
+    RecordOpResultMapping(ctx, param_map, op_desc, operation, arg_to_idx);
+
+    VLOG(10) << "[op assign_value] translation finished";
+    return operation;
+  }
+};
+
 pir::OpResult TranslateNumClassesForOneHot(
     pir::IrContext* ctx,
     TranslationContext* param_map,
@@ -2750,6 +2854,7 @@ OpTranslator::OpTranslator() {
   special_handlers["tril_triu"] = TrilAndTriuOpTranscriber();
   special_handlers["mul"] = MulOpTranscriber();
   special_handlers["mul_grad"] = MulGradOpTranscriber();
+  special_handlers["select_input"] = SelectInputOpTranscriber();
 
   // To adapt LodTensorArray
   special_handlers["lod_array_length"] = LodArrayLengthOpTranscriber();

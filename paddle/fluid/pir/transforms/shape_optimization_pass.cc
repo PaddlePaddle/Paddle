@@ -12,7 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/infer_type_op_interface.h"
 #include "paddle/pir/core/program.h"
@@ -23,6 +26,117 @@
 #include "paddle/pir/pass/pass_registry.h"
 #include "paddle/pir/pattern_rewrite/pattern_match.h"
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
+
+namespace {
+
+void InferUnaryElementwiseSymbolicShape(
+    const pir::Operation& op,
+    const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis) {
+  auto input = op.operand_source(0);
+  auto output = op.result(0);
+  const auto& in_sym_dims =
+      shape_analysis->GetOrCreateSymbolicDimsForRankedValue(input);
+  const auto& out_sym_dims =
+      shape_analysis->GetOrCreateSymbolicDimsForRankedValue(output);
+  pir::SymbolicDimMgr& sym_dim_mgr = shape_analysis->symbolicDimMgr();
+  for (auto i = 0; i < out_sym_dims.size(); ++i) {
+    if (in_sym_dims[i].IsDynamic() || out_sym_dims[i].IsDynamic()) {
+      sym_dim_mgr.MapSymbolicDimEqual(in_sym_dims[i], out_sym_dims[i]);
+    } else {
+      // do nothing
+    }
+  }
+}
+
+// TODO(zyfncg): support broadcast for elementwise ops.
+void InferBinaryElementwiseSymbolicShape(
+    const pir::Operation& op,
+    const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis) {
+  auto input0 = op.operand_source(0);
+  auto input1 = op.operand_source(1);
+  auto output = op.result(0);
+  const auto& in_sym_dims0 =
+      shape_analysis->GetOrCreateSymbolicDimsForRankedValue(input0);
+  const auto& in_sym_dims1 =
+      shape_analysis->GetOrCreateSymbolicDimsForRankedValue(input1);
+  const auto& out_sym_dims =
+      shape_analysis->GetOrCreateSymbolicDimsForRankedValue(output);
+  pir::SymbolicDimMgr& sym_dim_mgr = shape_analysis->symbolicDimMgr();
+  for (auto i = 0; i < out_sym_dims.size(); ++i) {
+    if (in_sym_dims0[i].IsDynamic() || in_sym_dims1[i].IsDynamic() ||
+        out_sym_dims[i].IsDynamic()) {
+      sym_dim_mgr.MapSymbolicDimEqual(in_sym_dims0[i], out_sym_dims[i]);
+      sym_dim_mgr.MapSymbolicDimEqual(in_sym_dims1[i], out_sym_dims[i]);
+    } else {
+      // do nothing
+    }
+  }
+}
+
+class InferSymbolicShapePass : public pir::Pass {
+ public:
+  InferSymbolicShapePass(
+      const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis)
+      : pir::Pass("infer_symbolic_shape_pass", /*opt_level=*/1),
+        shape_analysis_(shape_analysis) {}
+
+  void Run(pir::Operation* op) override {
+    auto module_op = op->dyn_cast<pir::ModuleOp>();
+    IR_ENFORCE(module_op, "infer_symbolic_shape_pass should run on module op.");
+
+    for (auto& op : module_op.block()) {
+      if (op.isa<cinn::dialect::GroupOp>()) {
+        for (auto* local_op : op.dyn_cast<cinn::dialect::GroupOp>().ops()) {
+          InferSymbolicShape(*local_op);
+        }
+      } else {
+        InferSymbolicShape(op);
+      }
+    }
+  }
+
+  bool CanApplyOn(pir::Operation* op) const override {
+    return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+  }
+
+ private:
+  typedef void (*InferSymShapeFunc)(
+      const pir::Operation&,
+      const std::shared_ptr<pir::ShapeConstraintIRAnalysis>&);
+  void InferSymbolicShape(const pir::Operation& op) {
+    thread_local static std::unordered_map<std::string, InferSymShapeFunc>
+        infer_sym_shape_map(GetInferSymShapeMap());
+    auto it = infer_sym_shape_map.find(op.name());
+
+    if (it != infer_sym_shape_map.end()) {
+      it->second(op, shape_analysis_);
+    } else {
+      LOG(WARNING) << "[" << op.name()
+                   << "] is not supported for infer_symbolic_shape pass.";
+    }
+  }
+
+  static std::unordered_map<std::string, InferSymShapeFunc>
+  GetInferSymShapeMap() {
+    return std::unordered_map<std::string, InferSymShapeFunc>{
+        {paddle::dialect::ExpOp::name(), &InferUnaryElementwiseSymbolicShape},
+        {paddle::dialect::SubtractOp::name(),
+         &InferBinaryElementwiseSymbolicShape}};
+  }
+
+  std::shared_ptr<pir::ShapeConstraintIRAnalysis> shape_analysis_;
+};
+
+}  // namespace
+
+namespace pir {
+
+std::unique_ptr<Pass> CreateInferSymbolicShapePass(
+    const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis) {
+  return std::make_unique<InferSymbolicShapePass>(shape_analysis);
+}
+
+}  // namespace pir
 
 namespace pir {
 namespace {
@@ -161,7 +275,7 @@ struct DimOfShapedTypeOpInterfacePattern : public OpRewritePattern<OpTy> {
 };
 
 bool MaterializeShapeComputation(pir::ModuleOp m) {
-  if (!InsertTieShapeOnRegion(&(m->region(0)))) return false;
+  // if (!InsertTieShapeOnRegion(&(m->region(0)))) return false;
   // TODO(zhangbopd): add rewitter pattern for reifyInferShape.
   RewritePatternSet patterns(m.ir_context());
 
@@ -169,7 +283,7 @@ bool MaterializeShapeComputation(pir::ModuleOp m) {
                DimOfShapedTypeOpInterfacePattern<shape::TensorDimOp>>(
       patterns.ir_context());
 
-  IR_ENFORCE(ApplyPatternsGreedily(m, std::move(patterns)),
+  IR_ENFORCE(ApplyPatternsGreedily(m, std::move(patterns)).first,
              "fail to materialize shape computation\n");
   return true;
 }
@@ -234,19 +348,19 @@ bool ShapeComputationIRAnalysis::Run() {
   // Make sure only run once.
   if (initialized_) return false;
   initialized_ = true;
-  auto build_shape_func =
-      std::bind(&ShapeComputationIRAnalysis::BuildShapeOnOperation,
-                this,
-                std::placeholders::_1);
-  if (!RunOnRegion(&(m_->region(0)), build_shape_func)) return false;
-  auto apply_op_constraint_func =
-      std::bind(&ShapeComputationIRAnalysis::ApplyOpConstraint,
-                this,
-                std::placeholders::_1);
-  // TODO(zhangbopd): Delete the following 1 line and fix UT
-  // `shape_optimization_test`
-  return true;
-  if (!RunOnRegion(&(m_->region(0)), apply_op_constraint_func)) return false;
+  // auto build_shape_func =
+  //     std::bind(&ShapeComputationIRAnalysis::BuildShapeOnOperation,
+  //               this,
+  //               std::placeholders::_1);
+  // if (!RunOnRegion(&(m_->region(0)), build_shape_func)) return false;
+  // auto apply_op_constraint_func =
+  //     std::bind(&ShapeComputationIRAnalysis::ApplyOpConstraint,
+  //               this,
+  //               std::placeholders::_1);
+  // // TODO(zhangbopd): Delete the following 1 line and fix UT
+  // // `shape_optimization_test`
+  // return true;
+  // if (!RunOnRegion(&(m_->region(0)), apply_op_constraint_func)) return false;
   return true;
 }
 
@@ -405,9 +519,9 @@ class ShapeOptimizationPass : public pir::Pass {
     PassPipelineRunner runner = [this](pir::PassManager& pm, pir::ModuleOp m) {
       return pm.Run(m.program());
     };
-    if (!OptimizeShapeComputation(module_op, runner)) {
-      return;
-    }
+    // if (!OptimizeShapeComputation(module_op, runner)) {
+    //   return;
+    // }
   }
 
   bool CanApplyOn(pir::Operation* op) const override {

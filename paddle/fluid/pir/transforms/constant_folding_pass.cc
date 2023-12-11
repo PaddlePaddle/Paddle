@@ -104,6 +104,18 @@ class ConstantFoldingPattern : public pir::RewritePattern {
         return false;
       }
     }
+
+    // 5. maybe affect performence
+    if (op->isa<paddle::dialect::FullOp>()) {
+      auto next_ops = pir::GetUseOpsForOutput(op, 0);
+      for (auto [next_op, _] : next_ops) {
+        if (next_op->isa<paddle::dialect::FullWithTensorOp>() ||
+            next_op->isa<paddle::dialect::LinspaceOp>()) {
+          return false;
+        }
+      }
+    }
+
     VLOG(4) << "constant_folding_pass applied match on [" << op->name()
             << "] op";
     return true;
@@ -175,9 +187,9 @@ class ConstantFoldingPattern : public pir::RewritePattern {
 
       rewriter.ReplaceAllUsesWith(op->result(0), constant_op->result(0));
     }
+    rewriter.EraseOp(op);
     VLOG(4) << "constant_folding_pass applied rewrite on [" << op->name()
             << "] op";
-    rewriter.EraseOp(op);
   }
 
  private:
@@ -297,12 +309,14 @@ class ConstantFoldingPass : public pir::Pass {
     pir::GreedyRewriteConfig cfg;
     cfg.use_top_down_traversal = true;
     cfg.max_iterations = 10;
-    pir::ApplyPatternsGreedily(op->region(0), patterns_, cfg);
-
+    pir::ApplyPatternsGreedily(op, patterns_, cfg);
+    PrintStatistics(counter_, op_nums);
     // delete old parameter var
     scope_->EraseVars(deleted_vars_);
-    LOG(INFO) << " ------ constant_folding_pass done: [" << counter_ << "/"
-              << op_nums << "]";
+    if (place_.GetType() != phi::AllocationType::CPU) {
+      paddle::memory::Release(place_);
+    }
+    paddle::memory::Release(phi::CPUPlace{});
   }
 
   bool CanApplyOn(pir::Operation* op) const override {

@@ -57,16 +57,8 @@ static bool CanBeDeleted(pir::Value value) {
       !value.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
     return false;
   }
-  if (auto op_result = value.dyn_cast<pir::OpResult>()) {
-    auto def_op = op_result.owner();
-    if (def_op->HasAttribute(kAttrIsPersisable)) {
-      return !(def_op->attribute<pir::ArrayAttribute>(kAttrIsPersisable)
-                   .AsVector()[op_result.index()]
-                   .dyn_cast<pir::BoolAttribute>()
-                   .data());
-    }
-  }
-  return true;
+  auto persist_attr = value.attribute<pir::BoolAttribute>(kAttrIsPersisable);
+  return !(persist_attr && persist_attr.data());
 }
 
 static bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
@@ -446,7 +438,7 @@ class InplacePass : public pir::Pass {
     auto& block = module_op.block();
 
     auto inplace_ops = details::GetInplaceOps(&block);
-
+    int64_t num_rewrites_{0};
     for (auto kv : inplace_ops) {
       VLOG(6) << "Do inplace for: "
               << kv.first->attributes()
@@ -465,9 +457,9 @@ class InplacePass : public pir::Pass {
       kv.first->set_attribute(
           "is_inplace",
           pir::BoolAttribute::get(pir::IrContext::Instance(), true));
+      num_rewrites_++;
     }
-    LOG_FIRST_N(INFO, 1)
-        << "Apply inplace pass on lowering ::pir::Program to Kernel Dialect.";
+    PrintStatistics(num_rewrites_);
   }
 
   bool CanApplyOn(pir::Operation* op) const override {

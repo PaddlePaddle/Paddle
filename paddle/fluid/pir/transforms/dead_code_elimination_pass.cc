@@ -47,15 +47,6 @@ class DeadCodeEliminationPattern : public pir::RewritePattern {
 
   void Rewrite(pir::Operation* op,
                pir::PatternRewriter& rewriter) const override {  // NOLINT
-    if (op->isa<pir::ParameterOp>()) {
-      // Delete parameter from program.
-      pir::ParameterOp parameter_op = op->dyn_cast<pir::ParameterOp>();
-      parameter_op->GetParentProgram()->parameters().erase(
-          parameter_op->attributes()
-              .at(parameter_op.attributes_name[0])
-              .dyn_cast<pir::StrAttribute>()
-              .AsString());
-    }
     rewriter.EraseOp(op);
   }
 };
@@ -75,7 +66,8 @@ class DeadCodeEliminationPass : public pir::Pass {
     pir::GreedyRewriteConfig cfg;
     cfg.use_top_down_traversal = true;
     cfg.max_iterations = 10;
-    pir::ApplyPatternsGreedily(op->region(0), patterns_, cfg);
+    auto [_, num_rewrites] = pir::ApplyPatternsGreedily(op, patterns_, cfg);
+    PrintStatistics(num_rewrites);
   }
 
  private:

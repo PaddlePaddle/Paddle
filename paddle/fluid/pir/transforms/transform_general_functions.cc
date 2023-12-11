@@ -28,22 +28,13 @@ std::string GetParameterNameFromValue(pir::Value value) {
   std::string name;
   if (owner->isa<ParameterOp>()) {
     pir::ParameterOp op = owner->dyn_cast<pir::ParameterOp>();
-    pir::Program* program = op->GetParentProgram();
-    PADDLE_ENFORCE_NOT_NULL(
-        program, phi::errors::InvalidArgument("Program should not be null."));
-    name = op->attributes()
-               .at(op.attributes_name[0])
-               .dyn_cast<pir::StrAttribute>()
-               .AsString();
+    name = op.param_name();
   } else if (owner->isa<ConstantTensorOp>()) {
     pir::ConstantTensorOp op = owner->dyn_cast<pir::ConstantTensorOp>();
-    pir::Program* program = op->GetParentProgram();
-    PADDLE_ENFORCE_NOT_NULL(
-        program, phi::errors::InvalidArgument("Program should not be null."));
     name = op.tensor_name();
   } else {
     PADDLE_THROW(
-        phi::errors::Unimplemented("Value must be a weight from a GetParameter "
+        phi::errors::Unimplemented("Value must be a weight from a Parameter "
                                    "or a ConstantTensorOp op."));
   }
   return name;
@@ -84,8 +75,7 @@ std::vector<std::pair<Operation*, int32_t>> GetUseOpsForOutput(Operation* op,
   auto result = op->result(index);
   std::vector<std::pair<Operation*, int32_t>> use_ops;
   for (auto it = result.use_begin(); it != result.use_end(); ++it) {
-    use_ops.push_back(
-        std::make_pair(it->owner(), it->owner()->operand_index(*it)));
+    use_ops.push_back(std::make_pair(it->owner(), it->index()));
   }
   return use_ops;
 }

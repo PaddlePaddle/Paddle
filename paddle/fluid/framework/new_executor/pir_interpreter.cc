@@ -46,11 +46,12 @@
 #endif
 
 #include "paddle/fluid/framework/new_executor/instruction/builtin_combine_instruction.h"
-#include "paddle/fluid/framework/new_executor/instruction/cond_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/custom_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/has_elements_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/if_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/select_input_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/tuple_pop_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/tuple_push_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/while_instruction.h"
@@ -672,15 +673,15 @@ void PirInterpreter::BuildInstruction() {
     } else if (op.dialect()->name() == "pd_op") {
       if (op.isa<paddle::dialect::IfOp>()) {
         auto skip_gc_vars = execution_config_.skip_gc_vars;
-        vec_instruction_base_.emplace_back(std::make_unique<CondInstruction>(
+        vec_instruction_base_.emplace_back(std::make_unique<IfInstruction>(
             op_idx++, place_, &op, value_exe_info_.get(), skip_gc_vars));
         sub_blocks_.insert(
             {&op.dyn_cast<paddle::dialect::IfOp>().true_block(),
-             dynamic_cast<CondInstruction*>(vec_instruction_base_.back().get())
+             dynamic_cast<IfInstruction*>(vec_instruction_base_.back().get())
                  ->TrueBranchInterpreter()});
         sub_blocks_.insert(
             {&op.dyn_cast<paddle::dialect::IfOp>().false_block(),
-             dynamic_cast<CondInstruction*>(vec_instruction_base_.back().get())
+             dynamic_cast<IfInstruction*>(vec_instruction_base_.back().get())
                  ->FalseBranchInterpreter()});
       } else if (op.isa<paddle::dialect::WhileOp>()) {
         auto skip_gc_vars = execution_config_.skip_gc_vars;
@@ -692,6 +693,8 @@ void PirInterpreter::BuildInstruction() {
                  ->BodyInterpreter()});
       } else if (op.isa<paddle::dialect::HasElementsOp>()) {
         CREATE_INSTR(HasElementsInstruction);
+      } else if (op.isa<paddle::dialect::SelectInputOp>()) {
+        CREATE_INSTR(SelectInputInstruction);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Now only support pd_kernel and cinn dialect."));
@@ -1719,21 +1722,9 @@ void PirInterpreter::SolvePersisableVarNames() {
   for (auto kv : value_exe_info_->GetValue2VarName()) {
     ::pir::Value value = kv.first;
     const std::string& var_name = kv.second;
-    ::pir::OpResult result = value.dyn_cast<::pir::OpResult>();
-    if (!result) {
-      continue;
-    }
-    auto* defining_op = result.owner();
-    if (defining_op->HasAttribute(kAttrIsPersisable)) {
-      auto is_persisables =
-          defining_op->attribute<::pir::ArrayAttribute>(kAttrIsPersisable)
-              .AsVector();
-      if (is_persisables[result.index()]
-              .dyn_cast<::pir::BoolAttribute>()
-              .data()) {
-        VLOG(6) << "parameter_var_names_ include: " << var_name;
-        parameter_var_names_.insert(var_name);
-      }
+    auto bool_attr = value.attribute<::pir::BoolAttribute>(kAttrIsPersisable);
+    if (bool_attr && bool_attr.data()) {
+      parameter_var_names_.insert(var_name);
     }
   }
 }

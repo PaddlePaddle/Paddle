@@ -49,7 +49,7 @@ def rank(input):
             >>> print(rank.numpy())
             3
     """
-    check_type(input, 'input', (Variable), 'input')
+    check_type(input, 'input', (Variable, paddle.pir.Value), 'input')
     ndims = len(input.shape)
     out = assign(np.array(ndims, 'int32'))
 
@@ -163,12 +163,16 @@ def is_complex(x):
             >>> print(paddle.is_complex(x))
             False
     """
-    if not isinstance(x, (paddle.Tensor, paddle.static.Variable)):
+    if not isinstance(
+        x, (paddle.Tensor, paddle.static.Variable, paddle.pir.Value)
+    ):
         raise TypeError(f"Expected Tensor, but received type of x: {type(x)}")
     dtype = x.dtype
     is_complex_dtype = (
         dtype == core.VarDesc.VarType.COMPLEX64
         or dtype == core.VarDesc.VarType.COMPLEX128
+        or dtype == core.DataType.COMPLEX64
+        or dtype == core.DataType.COMPLEX128
     )
     return is_complex_dtype
 

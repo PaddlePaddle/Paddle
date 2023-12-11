@@ -191,6 +191,14 @@ DEFINE_GPU_TRANS(4);
 DEFINE_GPU_TRANS(5);
 DEFINE_GPU_TRANS(6);
 
+template <typename T>
+__global__ void FillConstantKernel(const int N, T* a, const T val) {
+  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
+       i += blockDim.x * gridDim.x) {
+    a[i] = val;
+  }
+}
+
 #define REINTERPRET(T, DST_PTR, SRC_PTR) \
   T* DST_PTR = reinterpret_cast<T*>(SRC_PTR)
 
@@ -328,26 +336,34 @@ DEFINE_GPU_TRANS_NORMAL(phi::dtype::complex<double>);
 struct TensorSetConstantGPU {
   TensorSetConstantGPU(const phi::DeviceContext& context,
                        phi::DenseTensor* tensor,
-                       float value)
+                       const void* value)
       : context_(context), tensor_(tensor), value_(value) {}
 
   template <typename T>
   void apply() const {
-    SetConstant<phi::GPUContext, T> functor;
-    functor(reinterpret_cast<const phi::GPUContext&>(context_),
-            tensor_,
-            static_cast<T>(value_));
+    // SetConstant<phi::GPUContext, T> functor;
+    // functor(reinterpret_cast<const phi::GPUContext&>(context_),
+    //         tensor_,
+    //         static_cast<T>(value_));
+    int N = static_cast<int>(tensor_->numel());
+    if (N <= 0) {
+      return;
+    }
+    auto& ctx = reinterpret_cast<const phi::GPUContext&>(context_);
+    const T* num = reinterpret_cast<const T*>(value_);
+    FillConstantKernel<T><<<(N + 512 - 1) / 512, 512, 0, ctx.stream()>>>(
+        N, tensor_->mutable_data<T>(ctx.GetPlace()), static_cast<T>(*num));
   }
 
   const phi::DeviceContext& context_;
   phi::DenseTensor* tensor_;
-  float value_;
+  const void* value_;
 };
 
 template <>
 void set_constant_with_place<phi::GPUPlace>(const phi::DeviceContext& context,
                                             phi::DenseTensor* tensor,
-                                            float value) {
+                                            const void* value) {
   phi::VisitDataType(tensor->dtype(),
                      TensorSetConstantGPU(context, tensor, value));
 }
