@@ -788,8 +788,6 @@ class OperatorWithKernel : public OperatorBase {
   bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
                       proto::VarType::Type data_type) const;
 
-  bool ContainsOneDNNTensorInputs(const framework::ExecutionContext& ctx) const;
-
   virtual void InferShape(InferShapeContext* ctx) const;
 
   void SetIsRuntimeInferShape(bool x) override {

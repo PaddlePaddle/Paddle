@@ -1623,47 +1623,6 @@ bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
   return this->CanCUDNNBeUsed(ctx, phi::TransToPhiDataType(data_type));
 }
 
-bool OperatorWithKernel::ContainsOneDNNTensorInputs(
-    const framework::ExecutionContext& ctx) const {
-  return false;
-  for (auto* name : ctx.InNameList()) {
-    if (ctx.InputSize(*name) == 1UL) {
-      if (ctx.HasInput(*name)) {
-        auto var = ctx.InputVar(*name);
-        if (var->IsType<phi::DenseTensor>() &&
-            var->Get<phi::DenseTensor>().layout() ==
-                framework::DataLayout::ONEDNN) {
-          return true;
-        } else if (var->IsType<paddle::framework::LoDTensorArray>()) {
-          auto lod_tensor_arr = var->Get<paddle::framework::LoDTensorArray>();
-          for (auto& t : lod_tensor_arr) {
-            if (t.layout() == framework::DataLayout::ONEDNN) {
-              return true;
-            }
-          }
-        }
-      }
-    } else if (ctx.HasInputs(*name)) {
-      auto vars = ctx.MultiInputVar(*name);
-      for (auto* var : vars) {
-        if (var->IsType<phi::DenseTensor>() &&
-            var->Get<phi::DenseTensor>().layout() ==
-                framework::DataLayout::ONEDNN) {
-          return true;
-        } else if (var->IsType<paddle::framework::LoDTensorArray>()) {
-          auto lod_tensor_arr = var->Get<paddle::framework::LoDTensorArray>();
-          for (auto& t : lod_tensor_arr) {
-            if (t.layout() == framework::DataLayout::ONEDNN) {
-              return true;
-            }
-          }
-        }
-      }
-    }
-  }
-  return false;
-}
-
 void OperatorWithKernel::InferShape(InferShapeContext* ctx) const {
   PADDLE_THROW(platform::errors::PermissionDenied(
       "The default InferShape function of OperatorWithKernel is not allowed to "
@@ -1882,12 +1841,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                      proto::VarType::Type::VarType_Type_BF16 &&
                  !this->SupportsCPUBF16() &&
                  this->SupportsMKLDNN(phi::DataType::BFLOAT16)) {
-        kernel_type_->library_type_ = framework::LibraryType::kMKLDNN;
-        kernel_type_->data_layout_ = framework::DataLayout::ONEDNN;
-      } else if (platform::is_cpu_place(kernel_type_->place_) &&
-                 this->ContainsOneDNNTensorInputs(exe_ctx) &&
-                 this->SupportsMKLDNN(
-                     phi::TransToPhiDataType(kernel_type_->data_type_))) {
         kernel_type_->library_type_ = framework::LibraryType::kMKLDNN;
         kernel_type_->data_layout_ = framework::DataLayout::ONEDNN;
       }
@@ -2221,12 +2174,6 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
                  proto::VarType::Type::VarType_Type_BF16 &&
              !this->SupportsCPUBF16() &&
              this->SupportsMKLDNN(phi::DataType::BFLOAT16)) {
-    expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
-    expected_kernel_key.data_layout_ = framework::DataLayout::ONEDNN;
-  } else if (platform::is_cpu_place(expected_kernel_key.place_) &&
-             this->ContainsOneDNNTensorInputs(ctx) &&
-             this->SupportsMKLDNN(
-                 phi::TransToPhiDataType(expected_kernel_key.data_type_))) {
     expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
     expected_kernel_key.data_layout_ = framework::DataLayout::ONEDNN;
   }
