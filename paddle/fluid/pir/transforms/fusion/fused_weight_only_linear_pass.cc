@@ -30,8 +30,7 @@ int getSMVersion() {
       paddle::platform::GetCurrentDeviceId());
 #else
   PADDLE_THROW(paddle::platform::errors::Unavailable(
-      "platform::GetGPUComputeCapability is not "
-      "supported in CPU only version."));
+      "fused_weight_only_linear_pass needs paddle compiled with CUDA."));
 #endif
   return sm_version;
 }
@@ -88,7 +87,7 @@ class FusedWeightOnlyLinearPattern
         });
 
     const auto &weight_quantize =
-        res.Op("pd_op.weight_quantize",
+        res.Op(paddle::dialect::WeightQuantizeOp::name(),
                {{"algo", weight_only_int8_attr}, {"arch", arch_attr}});
     weight_quantize({&res.Tensor("w")},
                     {&res.Tensor("quanted_weight_tensor"),
@@ -100,7 +99,7 @@ class FusedWeightOnlyLinearPattern
         });
 
     const auto &weight_only_linear =
-        res.Op("pd_op.weight_only_linear",
+        res.Op(paddle::dialect::WeightOnlyLinearOp::name(),
                {{"weight_dtype", weight_dtype_attr}, {"arch", arch_attr}});
     weight_only_linear({&res.Tensor("x"),
                         &res.Tensor("quanted_weight_tensor"),
