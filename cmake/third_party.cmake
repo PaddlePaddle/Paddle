@@ -394,8 +394,7 @@ if(WITH_GPU)
   if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
     include(external/cub) # download cub
     list(APPEND third_party_deps extern_cub)
-  elseif(${CMAKE_CUDA_COMPILER_VERSION} EQUAL 12.0
-         OR ${CMAKE_CUDA_COMPILER_VERSION} GREATER 12.0)
+  elseif(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 12.0 AND WITH_SHARED_PHI)
     include(external/cccl)
     add_definitions(-DPADDLE_WITH_CCCL)
   endif()

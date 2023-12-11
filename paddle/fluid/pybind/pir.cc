@@ -42,9 +42,9 @@
 #include "paddle/fluid/pir/transforms/fusion/fused_dropout_add_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_linear_param_grad_add_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_weight_only_linear_pass.h"
-#include "paddle/fluid/pir/transforms/infer_symbolic_shape_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
+#include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/fluid/pybind/control_flow_api.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/attribute.h"
@@ -136,6 +136,9 @@ inline void SetProgramInt64Attr(std::shared_ptr<Program> program,
 }
 
 std::string GetValueInfo(Value v) {
+  if (v.impl() == nullptr) {
+    return "nullptr value";
+  }
   std::stringstream ss;
   if (auto op_result = v.dyn_cast<OpResult>()) {
     ss << "define_op_name=" << op_result.owner()->name();
@@ -625,11 +628,13 @@ void BindValue(py::module *m) {
           [](Value self) {
             if (auto param_op = self.defining_op<::pir::ParameterOp>()) {
               return param_op.param_name();
+            } else if (auto data_op =
+                           self.defining_op<paddle::dialect::DataOp>()) {
+              return data_op.attribute<pir::StrAttribute>("name").AsString();
             } else {
               PADDLE_THROW(phi::errors::InvalidArgument(
                   "Currently, we can only get name of Value that "
-                  "is "
-                  "persistable"));
+                  "is persistable"));
             }
           })
       .def_property(
@@ -725,7 +730,8 @@ void BindOpOperand(py::module *m) {
            [](OpOperand &self, const OpResult &result) {
              self.set_source(result);
            })
-      .def("owner", &OpOperand::owner, return_value_policy::reference);
+      .def("owner", &OpOperand::owner, return_value_policy::reference)
+      .def("index", &OpOperand::index);
 }
 
 bool GetOpResultBoolAttr(const OpResult &self, const std::string &attr_name) {
@@ -1086,12 +1092,11 @@ int AppendSetParameters(Program *forward_program,
   std::unordered_set<pir::OpResult> added_op_result;
 
   for (const auto &result : outputs_op_result) {
-    if (!added_op_result.count(result)) {
+    if (!added_op_result.count(result) || IsFakeOpResult(result)) {
       std::string parameter_name = name_prefix + std::to_string(counter);
       AppendSetParameter(
           forward_program, result, parameter_name, start_point + counter);
       counter += 1;
-
       added_op_result.insert(result);
     }
   }
@@ -1569,9 +1574,8 @@ void ApplyPirPass(Program &forward_program) {  // NOLINT
   bool has_dynamic_shape = HasDynamicShape(forward_program);
 
   auto shape_analysis =
-      has_dynamic_shape
-          ? std::make_shared<pir::MockShapeConstraintIRAnalysis>(ctx)
-          : nullptr;
+      has_dynamic_shape ? std::make_shared<pir::ShapeConstraintIRAnalysis>(ctx)
+                        : nullptr;
 
   pir::PassManager pass_manager(ctx);
   cinn::dialect::ir::PdOp2CinnOpConverter(&forward_program);
