@@ -7062,6 +7062,7 @@ def copysign(x, y, name=None):
             Tensor(shape=[3], dtype=float64, place=Place(gpu:0), stop_gradient=True,
                    [-1.,  2., -3.])
 
+        .. code-block:: python
             :name: example2
             >>> x = paddle.to_tensor([1, 2, 3], dtype='float64')
             >>> y = paddle.to_tensor([-2], dtype='float64')

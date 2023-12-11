@@ -234,6 +234,20 @@ class TestCopySignSpecialZeroCase2(TestCopySignAPI):
         self.y = np.array([1, 2, 3])
 
 
+class TestCopySignBroadcastCase1(TestCopySignAPI):
+    def input_init(self):
+        dtype = np.float16
+        self.x = (np.random.randn(3, 4, 5) * 10).astype(dtype)
+        self.y = (np.random.randn(5) * 10).astype(dtype)
+
+
+class TestCopySignBroadcastCase2(TestCopySignAPI):
+    def input_init(self):
+        dtype = np.float16
+        self.x = (np.random.randn(3, 4, 5) * 10).astype(dtype)
+        self.y = (np.random.randn(4, 5) * 10).astype(dtype)
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
