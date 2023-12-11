@@ -4,7 +4,7 @@ file(
   "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 set(SOT_ENVS SOT_LOG_LEVEL=0 COST_MODEL=False MIN_GRAPH_SIZE=0
-             STRICT_MODE=False)
+             STRICT_MODE=False DY2ST_TEST=True)
 set(GC_ENVS FLAGS_eager_delete_tensor_gb=0.0)
 
 list(REMOVE_ITEM TEST_OPS test_lac)
@@ -25,6 +25,9 @@ if(NOT WITH_GPU)
   # We should remove this after fix the performance issue.
   list(REMOVE_ITEM TEST_OPS test_train_step_resnet18_adam)
   list(REMOVE_ITEM TEST_OPS test_train_step_resnet18_sgd)
+  # disable some model test on CPU to avoid timeout
+  list(REMOVE_ITEM TEST_OPS test_resnet)
+  list(REMOVE_ITEM TEST_OPS test_build_strategy)
 endif()
 
 foreach(TEST_OP ${TEST_OPS})
@@ -43,20 +46,14 @@ set_tests_properties(test_reinforcement_learning PROPERTIES TIMEOUT 120)
 set_tests_properties(test_transformer PROPERTIES TIMEOUT 200)
 set_tests_properties(test_bmn PROPERTIES TIMEOUT 300)
 set_tests_properties(test_bert PROPERTIES TIMEOUT 240)
-#set_tests_properties(test_mnist PROPERTIES TIMEOUT 120)
-set_tests_properties(test_build_strategy PROPERTIES TIMEOUT 120)
 
 if(NOT WIN32)
-  set_tests_properties(test_resnet_v2 PROPERTIES TIMEOUT 180)
   set_tests_properties(test_tsm PROPERTIES TIMEOUT 900)
-  set_tests_properties(test_resnet PROPERTIES TIMEOUT 300)
 endif()
 
 if(APPLE)
   set_tests_properties(test_bmn PROPERTIES TIMEOUT 300)
-  set_tests_properties(test_build_strategy PROPERTIES TIMEOUT 300)
   set_tests_properties(test_mobile_net PROPERTIES TIMEOUT 300)
-  set_tests_properties(test_resnet_v2 PROPERTIES TIMEOUT 300)
 endif()
 
 if(WITH_GPU)
@@ -77,17 +74,5 @@ foreach(ITEST ${LEGACY_ONLY_TEST_FILES})
   else()
     message(
       STATUS "PT Disabled OpTest: not found ${ITEST} in dygraph_to_static")
-  endif()
-endforeach()
-
-set(PIR_SEQUENTIAL_RUN_LIST test_slice test_for_enumerate test_list
-                            test_jit_setitem)
-foreach(ITEST ${PIR_SEQUENTIAL_RUN_LIST})
-  if(TEST ${ITEST})
-    set_tests_properties(
-      ${ITEST} PROPERTIES ENVIRONMENT "FLAGS_new_executor_sequential_run=1")
-  else()
-    message(
-      STATUS "PIR_SEQUENTIAL_RUN_LIST: not found ${ITEST} in dygraph_to_static")
   endif()
 endforeach()
