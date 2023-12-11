@@ -104,22 +104,23 @@ def bernoulli(x, name=None):
 
 def binomial(count, prob, name=None):
     r"""
-    Returns a tensor filled with random number from the Binomial Distribution.
+    Returns a tensor filled with random number from the Binomial Distribution, which supports Tensor shape
+    broadcasting. The returned Tensor's data type is int64.
 
     .. math::
 
-        out_i \sim Binomial (n = count, p = prob)
+        out_i \sim Binomial (n = count_i, p = prob_i)
 
     Args:
-        count(Tensor): A tensor specifying the size of the Binomial Distribution. The input data
-            type should be int32 or int64.
-        prob(Tensor): A tensor specifying the probability of success in the binomial experiment.
+        count(Tensor): A tensor with each element specifying the size of a binomial distribution. The input
+            data type should be int32 or int64.
+        prob(Tensor): A tensor with each element specifying the probability of success in the binomial experiment.
             The input data type should be bfloat16, float16, float32, float64.
         name(str, optional): The default value is None. Normally there is no need for user to set this
             property. For more information, please refer to :ref:`api_guide_Name`.
     Returns:
-        Tensor: A Tensor filled with binomial random values with the same shape ``count``. The
-            data type is int64.
+        Tensor: A Tensor filled with binomial random values with the same shape as the broadcasted Tensors of
+        ``count`` and ``prob``. The data type is int64.
 
     Examples:
         .. code-block:: python
