@@ -1,3 +1,5 @@
+include(ExternalProject)
+
 paddle_test(naive_best_fit_allocator_test SRCS naive_best_fit_allocator_test.cc)
 paddle_test(buffered_allocator_test SRCS buffered_allocator_test.cc)
 
