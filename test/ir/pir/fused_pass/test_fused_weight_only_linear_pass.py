@@ -19,6 +19,7 @@ from pass_test import PassTest
 
 import paddle
 from paddle.base import core
+from paddle.pir.core import create_parameter
 
 np.random.seed(2013)
 
@@ -56,16 +57,22 @@ class TestFusedWeightOnlyLinearPass_Fp32(PassTest):
                 x = paddle.static.data(
                     name='x', shape=[3, 64, 64], dtype=self.dtype
                 )
-                w = paddle.static.data(
-                    name="w", shape=[64, 64], dtype=self.dtype
-                )
+                initializer = paddle.nn.initializer.Constant(0.0)
+                w = create_parameter(
+                    shape=[64, 64], 
+                    dtype=self.dtype, 
+                    initializer=initializer)
                 bias_ = paddle.static.data(
-                    name="bias", shape=[64], dtype=self.dtype
+                    name="bias", 
+                    shape=[64], 
+                    dtype=self.dtype,
                 )
                 bias = paddle.assign(bias_)
                 res1 = paddle.matmul(x=x, y=w)
                 out = paddle.add(res1, bias)
-
+        
+        op_names = [op.name() for op in pir_program.global_block().ops]
+        print("-------before pass: ", op_names)
         self.pass_list = ['fused_weight_only_linear_pass']
         self.feeds = {
             "x": np.random.random((3, 64, 64)).astype(self.dtype),
