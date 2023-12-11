@@ -255,7 +255,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "conv2d" || op_type == "conv2d_transpose" ||
-        op_type == "conv2d_fusion" || op_type == "depthwise_conv2d" ||
+        op_type == "fused_conv2d_add_act" || op_type == "depthwise_conv2d" ||
         op_type == "depthwise_conv2d_transpose") {
       if (desc.Input("Input").size() != 1) {
         VLOG(3) << "TRT Conv2d expect 1 input, but got "
@@ -270,7 +270,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
 
       if (desc.HasAttr("enable_int8")) {
-        if (op_type == "conv2d" || op_type == "conv2d_fusion") {
+        if (op_type == "conv2d" || op_type == "fused_conv2d_add_act") {
           if (!desc.HasAttr("Input_scale")) {
             VLOG(3) << "Input scale not found. TRT int8"
                        " requires conv/deconv to have "
@@ -304,7 +304,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 
 // strides > 1 and 'SAME' is only supported by trt7.0 above
 #if !IS_TRT_VERSION_GE(7000)
-      if (op_type == "conv2d" || op_type == "conv2d_fusion" ||
+      if (op_type == "conv2d" || op_type == "fused_conv2d_add_act" ||
           op_type == "depthwise_conv2d") {
         if (desc.HasAttr("padding_algorithm") && with_dynamic_shape) {
           auto padding_algorithm =
@@ -1974,8 +1974,8 @@ struct SimpleOpTypeSetTeller : public Teller {
 #elif !IS_TRT_VERSION_GE(8600)
         const auto x_shape = x_var_desc->GetShape();
         if (x_shape.empty()) {
-          VLOG(3)
-              << "BOOL type does not support 0 dim input when TensorRT < 8.6.";
+          VLOG(3) << "BOOL type does not support 0 dim input when TensorRT < "
+                     "8.6.";
           return false;
         }
 #endif
@@ -1993,8 +1993,8 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
       if (desc.HasAttr("allow_out_of_range")) {
-        VLOG(3)
-            << "allow_out_of_range one_hot/one_hot_v2 op is not supported now.";
+        VLOG(3) << "allow_out_of_range one_hot/one_hot_v2 op is not "
+                   "supported now.";
         if (PADDLE_GET_CONST(bool, desc.GetAttr("allow_out_of_range")))
           return false;
       }
@@ -2156,7 +2156,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (with_dynamic_shape) {
         return true;
       }
-      // Static shape does not support the input tensors: Shape and ShapeTensor
+      // Static shape does not support the input tensors: Shape and
+      // ShapeTensor
       auto reshape_inputs = desc.Inputs();
       if (reshape_inputs.find("Shape") != reshape_inputs.end()) {
         if (!desc.Input("Shape").empty()) {
@@ -2818,7 +2819,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "bmm",
       "range",
       "conv2d",
-      "conv2d_fusion",
+      "fused_conv2d_add_act",
       "pool2d",
       "relu",
       "elu",
@@ -2989,7 +2990,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "bmm",
       "range",
       "conv2d",
-      "conv2d_fusion",
+      "fused_conv2d_add_act",
       "pool2d",
       "relu",
       "elu",
@@ -3189,6 +3190,14 @@ struct GenericPluginTeller : public Teller {
       if (x_dtype == framework::proto::VarType::FP64 ||
           y_dtype == framework::proto::VarType::FP64) {
         VLOG(3) << op_type << " not support input of FP64.";
+        return false;
+      }
+    }
+    // TODO(lizexu123): the tensorrt version on Windows supports low-level
+    // and inconsistent supportformation
+    if (op_type == "argsort") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "Ops(" << op_type << ") do not support static shape yet.";
         return false;
       }
     }

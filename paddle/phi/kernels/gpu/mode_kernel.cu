@@ -50,7 +50,7 @@ void ModeKernel(const Context& dev_ctx,
   // For 0D Tensor
   if (in_dims.size() == 0) {
     phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
-    phi::funcs::set_constant(dev_ctx, indices, 0);
+    phi::funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
     return;
   }
 
