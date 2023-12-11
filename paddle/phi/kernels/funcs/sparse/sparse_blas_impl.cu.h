@@ -26,6 +26,7 @@
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/core/visit_type.h"
+#include "paddle/phi/kernels/empty_kernel.h"
 
 namespace phi {
 namespace funcs {
@@ -39,6 +40,15 @@ cudaDataType_t GetGpuDataType() {
     return CUDA_R_64F;
   } else if (std::is_same<T, phi::dtype::float16>::value) {
     return CUDA_R_16F;
+  }
+}
+
+template <typename T>
+cusparseIndexType_t GetCusparseIndexType() {
+  if (std::is_same<T, int32_t>::value) {
+    return CUSPARSE_INDEX_32I;
+  } else if (std::is_same<T, int64_t>::value) {
+    return CUSPARSE_INDEX_64I;
   }
 }
 
@@ -86,9 +96,9 @@ inline void CreateCsrDescriptor(const phi::SparseCsrTensor& x,
   const IntT* crows_data = x.non_zero_crows().data<IntT>();
   const IntT* cols_data = x.non_zero_cols().data<IntT>();
   const T* values_data = x.non_zero_elements().data<T>();
-
   int64_t batch_nnz = x.nnz() / batch_size;
   cudaDataType_t gpu_type = GetGpuDataType<T>();
+  cusparseIndexType_t index_type = GetCusparseIndexType<IntT>();
   dev_ctx.CusparseCall([&](cusparseHandle_t handle) {
     phi::dynload::cusparseCreateCsr(descriptor,
                                     M,
@@ -97,8 +107,8 @@ inline void CreateCsrDescriptor(const phi::SparseCsrTensor& x,
                                     const_cast<IntT*>(crows_data),
                                     const_cast<IntT*>(cols_data),
                                     const_cast<T*>(values_data),
-                                    CUSPARSE_INDEX_32I,
-                                    CUSPARSE_INDEX_32I,
+                                    index_type,
+                                    index_type,
                                     CUSPARSE_INDEX_BASE_ZERO,
                                     gpu_type);
   });
@@ -143,6 +153,7 @@ inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
 
   int64_t batch_nnz = nnz / batch_size;
   cudaDataType_t gpu_type = GetGpuDataType<T>();
+  cusparseIndexType_t index_type = GetCusparseIndexType<IntT>();
   dev_ctx.CusparseCall([&](cusparseHandle_t handle) {
     phi::dynload::cusparseCreateCoo(descriptor,
                                     M,
@@ -151,7 +162,7 @@ inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
                                     const_cast<IntT*>(rows_data),
                                     const_cast<IntT*>(cols_data),
                                     const_cast<T*>(values_data),
-                                    CUSPARSE_INDEX_32I,
+                                    index_type,
                                     CUSPARSE_INDEX_BASE_ZERO,
                                     gpu_type);
   });
@@ -493,31 +504,28 @@ void SparseBlas<phi::GPUContext>::SPGEMM(bool transa,
                                          SparseCsrTensor* mat_out) const {
   auto a_descriptor = CuSparseSpMatDescriptor<T>(mat_a, dev_ctx_);
   auto b_descriptor = CuSparseSpMatDescriptor<T>(mat_b, dev_ctx_);
-
-  cusparseSpMatDescr_t mat_out_descr;
   // auto out_descriptor = CuSparseSpMatDescriptor<T>(*mat_out, dev_ctx_);
+
+  // VLOG(0) << mat_out->dims();
+
+  cusparseSpMatDescr_t out_descr;
 
   cudaDataType_t gpu_type = GetGpuDataType<T>();
   size_t buffer_a_size = 0, buffer_b_size = 0;
   cusparseSpGEMMDescr_t spgemmDesc;
 
-  std::vector<int64_t> xdim_vec = phi::vectorize(mat_a.dims());
-  auto x_ndims = xdim_vec.size();
-  std::vector<int64_t> ydim_vec = phi::vectorize(mat_b.dims());
-  auto y_ndims = ydim_vec.size();
-  int64_t M = xdim_vec[x_ndims - 2];
-  int64_t N = ydim_vec[y_ndims - 1];
+  std::vector<int64_t> out_dim_vec = phi::vectorize(mat_out->dims());
+  auto out_ndims = out_dim_vec.size();
+  int64_t M = out_dim_vec[out_ndims - 2];
+  int64_t N = out_dim_vec[out_ndims - 1];
+  int batch_size = 1;
+  for (int i = 0; i < out_ndims - 2; i++) {
+    batch_size *= out_dim_vec[i];
+  }
 
   phi::dynload::cusparseSpGEMM_createDescr(&spgemmDesc);
 
-  // float* a;
-  // cudaMalloc((void**)&a, 10 * sizeof(float));
-  // float* b;
-  // cudaMalloc((void**)&b, 10 * sizeof(float));
-  // float* c;
-  // cudaMalloc((void**)&c, 10 * sizeof(float));
-
-  phi::dynload::cusparseCreateCsr(&mat_out_descr,
+  phi::dynload::cusparseCreateCsr(&out_descr,
                                   M,
                                   N,
                                   0,
@@ -537,7 +545,7 @@ void SparseBlas<phi::GPUContext>::SPGEMM(bool transa,
                                                 a_descriptor.descriptor(),
                                                 b_descriptor.descriptor(),
                                                 &beta,
-                                                mat_out_descr,
+                                                out_descr,
                                                 gpu_type,
                                                 CUSPARSE_SPGEMM_DEFAULT,
                                                 spgemmDesc,
@@ -559,7 +567,7 @@ void SparseBlas<phi::GPUContext>::SPGEMM(bool transa,
                                                 a_descriptor.descriptor(),
                                                 b_descriptor.descriptor(),
                                                 &beta,
-                                                mat_out_descr,
+                                                out_descr,
                                                 gpu_type,
                                                 CUSPARSE_SPGEMM_DEFAULT,
                                                 spgemmDesc,
@@ -575,7 +583,7 @@ void SparseBlas<phi::GPUContext>::SPGEMM(bool transa,
                                          a_descriptor.descriptor(),
                                          b_descriptor.descriptor(),
                                          &beta,
-                                         mat_out_descr,
+                                         out_descr,
                                          gpu_type,
                                          CUSPARSE_SPGEMM_DEFAULT,
                                          spgemmDesc,
@@ -597,7 +605,7 @@ void SparseBlas<phi::GPUContext>::SPGEMM(bool transa,
                                          a_descriptor.descriptor(),
                                          b_descriptor.descriptor(),
                                          &beta,
-                                         mat_out_descr,
+                                         out_descr,
                                          gpu_type,
                                          CUSPARSE_SPGEMM_DEFAULT,
                                          spgemmDesc,
@@ -610,9 +618,16 @@ void SparseBlas<phi::GPUContext>::SPGEMM(bool transa,
 
   dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
     phi::dynload::cusparseSpMatGetSize(
-        mat_out_descr, &C_num_rows1, &C_num_cols1, &C_nnz1);
+        out_descr, &C_num_rows1, &C_num_cols1, &C_nnz1);
   });
   VLOG(0) << C_num_rows1 << " " << C_num_cols1 << " " << C_nnz1;
+
+  DenseTensor out_crows = phi::Empty<int32_t>(dev_ctx_, {M + 1});
+  DenseTensor out_cols = phi::Empty<int32_t>(dev_ctx_, {C_nnz1});
+  DenseTensor out_values = phi::Empty<T>(dev_ctx_, {C_nnz1});
+  mat_out->SetMember(out_crows, out_cols, out_values, mat_out->dims());
+
+  auto out_descriptor = CuSparseSpMatDescriptor<T>(*mat_out, dev_ctx_);
 
   dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
     phi::dynload::cusparseSpGEMM_copy(handle,
@@ -622,7 +637,7 @@ void SparseBlas<phi::GPUContext>::SPGEMM(bool transa,
                                       a_descriptor.descriptor(),
                                       b_descriptor.descriptor(),
                                       &beta,
-                                      mat_out_descr,
+                                      out_descriptor.descriptor(),
                                       gpu_type,
                                       CUSPARSE_SPGEMM_DEFAULT,
                                       spgemmDesc);
@@ -630,10 +645,143 @@ void SparseBlas<phi::GPUContext>::SPGEMM(bool transa,
 
   dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
     phi::dynload::cusparseSpMatGetSize(
-        mat_out_descr, &C_num_rows1, &C_num_cols1, &C_nnz1);
+        out_descr, &C_num_rows1, &C_num_cols1, &C_nnz1);
   });
   VLOG(0) << C_num_rows1 << " " << C_num_cols1 << " " << C_nnz1;
 }
+
+// template <>
+// template <typename T>
+// void SparseBlas<phi::GPUContext>::SPGEMM(bool transa,
+//                                          bool transb,
+//                                          T alpha0,
+//                                          const SparseCsrTensor& mat_a,
+//                                          const SparseCsrTensor& mat_b,
+//                                          T beta0,
+//                                          SparseCsrTensor* mat_out) const {
+//     #define   A_NUM_ROWS 4   // C compatibility
+//     const int A_num_rows = 4;
+//     const int A_num_cols = 4;
+//     const int A_nnz      = 9;
+//     const int B_num_rows = 4;
+//     const int B_num_cols = 4;
+//     const int B_nnz      = 9;
+//     int   hA_csrOffsets[] = { 0, 3, 4, 7, 9 };
+//     int   hA_columns[]    = { 0, 2, 3, 1, 0, 2, 3, 1, 3 };
+//     float hA_values[]     = { 1.0f, 2.0f, 3.0f, 4.0f, 5.0f,
+//                               6.0f, 7.0f, 8.0f, 9.0f };
+//     int   hB_csrOffsets[] = { 0, 2, 4, 7, 8 };
+//     int   hB_columns[]    = { 0, 3, 1, 3, 0, 1, 2, 1 };
+//     float hB_values[]     = { 1.0f, 2.0f, 3.0f, 4.0f, 5.0f,
+//                               6.0f, 7.0f, 8.0f };
+//     int   hC_csrOffsets[] = { 0, 4, 6, 10, 12 };
+//     int   hC_columns[]    = { 0, 1, 2, 3, 1, 3, 0, 1, 2, 3, 1, 3 };
+//     float hC_values[]     = { 11.0f, 36.0f, 14.0f, 2.0f,  12.0f,
+//                               16.0f, 35.0f, 92.0f, 42.0f, 10.0f,
+//                               96.0f, 32.0f };
+//     const int C_nnz       = 12;
+//     #define   C_NUM_NNZ 12   // C compatibility
+//     float               alpha       = 1.0f;
+//     float               beta        = 0.0f;
+//     cusparseOperation_t opA         = CUSPARSE_OPERATION_NON_TRANSPOSE;
+//     cusparseOperation_t opB         = CUSPARSE_OPERATION_NON_TRANSPOSE;
+//     cudaDataType        computeType = CUDA_R_32F;
+//     //--------------------------------------------------------------------------
+//     // Device memory management: Allocate and copy A, B
+//     int   *dA_csrOffsets, *dA_columns, *dB_csrOffsets, *dB_columns,
+//           *dC_csrOffsets, *dC_columns;
+//     float *dA_values, *dB_values, *dC_values;
+//     // allocate A
+//     cudaMalloc((void**) &dA_csrOffsets,
+//                            (A_num_rows + 1) * sizeof(int));
+//     cudaMalloc((void**) &dA_columns, A_nnz * sizeof(int));
+//     cudaMalloc((void**) &dA_values,  A_nnz * sizeof(float));
+//     // allocate B
+//     cudaMalloc((void**) &dB_csrOffsets,
+//                            (B_num_rows + 1) * sizeof(int));
+//     cudaMalloc((void**) &dB_columns, B_nnz * sizeof(int));
+//     cudaMalloc((void**) &dB_values,  B_nnz * sizeof(float));
+//     // allocate C offsets
+//     cudaMalloc((void**) &dC_csrOffsets,
+//                            (A_num_rows + 1) * sizeof(int));
+
+//     // copy A
+//     cudaMemcpy(dA_csrOffsets, hA_csrOffsets,
+//                            (A_num_rows + 1) * sizeof(int),
+//                            cudaMemcpyHostToDevice);
+//     cudaMemcpy(dA_columns, hA_columns, A_nnz * sizeof(int),
+//                            cudaMemcpyHostToDevice);
+//     cudaMemcpy(dA_values, hA_values,
+//                            A_nnz * sizeof(float), cudaMemcpyHostToDevice);
+//     // copy B
+//     cudaMemcpy(dB_csrOffsets, hB_csrOffsets,
+//                            (B_num_rows + 1) * sizeof(int),
+//                            cudaMemcpyHostToDevice);
+//     cudaMemcpy(dB_columns, hB_columns, B_nnz * sizeof(int),
+//                            cudaMemcpyHostToDevice);
+//     cudaMemcpy(dB_values, hB_values,
+//                            B_nnz * sizeof(float), cudaMemcpyHostToDevice);
+//     //--------------------------------------------------------------------------
+//     // CUSPARSE APIs
+//     cusparseHandle_t     handle = nullptr;
+//     cusparseSpMatDescr_t matA, matB, matC;
+//     void*  dBuffer1    = nullptr, *dBuffer2   = nullptr;
+//     size_t bufferSize1 = 0,    bufferSize2 = 0;
+//      phi::dynload::cusparseCreate(&handle);
+//     // Create sparse matrix A in CSR format
+//      phi::dynload::cusparseCreateCsr(&matA, A_num_rows, A_num_cols, A_nnz,
+//                                       dA_csrOffsets, dA_columns, dA_values,
+//                                       CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I,
+//                                       CUSPARSE_INDEX_BASE_ZERO, CUDA_R_32F);
+//      phi::dynload::cusparseCreateCsr(&matB, B_num_rows, B_num_cols, B_nnz,
+//                                       dB_csrOffsets, dB_columns, dB_values,
+//                                       CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I,
+//                                       CUSPARSE_INDEX_BASE_ZERO, CUDA_R_32F);
+//      phi::dynload::cusparseCreateCsr(&matC, A_num_rows, B_num_cols, 0,
+//                                       nullptr, nullptr, nullptr,
+//                                       CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I,
+//                                       CUSPARSE_INDEX_BASE_ZERO, CUDA_R_32F);
+//     //--------------------------------------------------------------------------
+//     // SpGEMM Computation
+//     cusparseSpGEMMDescr_t spgemmDesc;
+//      phi::dynload::cusparseSpGEMM_createDescr(&spgemmDesc);
+
+//     // ask bufferSize1 bytes for external memory
+
+//         phi::dynload::cusparseSpGEMM_workEstimation(handle, opA, opB,
+//                                       &alpha, matA, matB, &beta, matC,
+//                                       computeType, CUSPARSE_SPGEMM_DEFAULT,
+//                                       spgemmDesc, &bufferSize1, nullptr);
+//     cudaMalloc((void**) &dBuffer1, bufferSize1);
+//     // inspect the matrices A and B to understand the memory requirement for
+//     // the next step
+
+//         phi::dynload::cusparseSpGEMM_workEstimation(handle, opA, opB,
+//                                       &alpha, matA, matB, &beta, matC,
+//                                       computeType, CUSPARSE_SPGEMM_DEFAULT,
+//                                       spgemmDesc, &bufferSize1, dBuffer1);
+
+//     // ask bufferSize2 bytes for external memory
+
+//         phi::dynload::cusparseSpGEMM_compute(handle, opA, opB,
+//                                &alpha, matA, matB, &beta, matC,
+//                                computeType, CUSPARSE_SPGEMM_DEFAULT,
+//                                spgemmDesc, &bufferSize2, nullptr);
+//     cudaMalloc((void**) &dBuffer2, bufferSize2);
+
+//     // compute the intermediate product of A * B
+//      phi::dynload::cusparseSpGEMM_compute(handle, opA, opB,
+//                                            &alpha, matA, matB, &beta, matC,
+//                                            computeType,
+//                                            CUSPARSE_SPGEMM_DEFAULT,
+//                                            spgemmDesc, &bufferSize2,
+//                                            dBuffer2);
+//     // get matrix C non-zero entries C_nnz1
+//     int64_t C_num_rows1, C_num_cols1, C_nnz1;
+//      phi::dynload::cusparseSpMatGetSize(matC, &C_num_rows1, &C_num_cols1,
+//                                          &C_nnz1);
+//      VLOG(0) << C_num_rows1 << " " << C_num_cols1 << " " << C_nnz1;
+// }
 }  // namespace sparse
 }  // namespace funcs
 }  // namespace phi

@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/sparse/matmul_kernel.h"
 
 #include <vector>
+#include "glog/logging.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/ddim.h"
@@ -140,37 +141,6 @@ void MatmulKernelImpl(const Context& dev_ctx,
       phi::errors::PreconditionNotMet(
           "The shape of Input(x) and Input(y) is not suitable for matmul "
           "opetation, x_dim[-1] must be eaqual to y_dim[-2]."));
-  // InferMeta of  'out'
-  // std::vector<int64_t> out_dim_vec(ydim_vec);
-  // out_dim_vec[y_ndims - 2] = xdim_vec[x_ndims - 2];
-  // out_dim_vec[y_ndims - 1] = ydim_vec[y_ndims - 1];
-  // MetaTensor meta_out(out);
-
-  // meta_out.set_dims(phi::make_ddim(out_dim_vec));
-  // meta_out.set_dtype(x.dtype());
-
-  // dev_ctx.template Alloc<T>(out);
-  // VLOG(0) << "tyep " << out->crows().dtype();
-  // EmptyLikeCsrKernel<T, Context>(dev_ctx, x, out);
-
-  // VLOG(0) << "tyep " << out->crows().dtype();
-  // *(out->mutable_crows()) = x.crows();
-  // *(out->mutable_cols()) = DenseTensor(phi::DataType::INT64);
-  // *(out->mutable_values()) = DenseTensor(phi::DataType::INT64);
-
-  // *(out->mutable_crows()) = x.crows();
-  // *(out->mutable_cols()) = x.cols();
-
-  // const DenseTensor& x_values = x.values();
-  // DenseTensor* out_values = out->mutable_values();
-  // out_values->Resize(x_values.dims());
-  // out->set_meta(x.meta());
-  // dev_ctx.template Alloc<T>(out_values);
-
-#ifdef PADDLE_WITH_HIP
-  phi::funcs::SetConstant<Context, T> set_zero;
-  // set_zero(dev_ctx, out, static_cast<T>(0.0f));
-#endif
 
   auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
   sparse_blas.SPGEMM(
