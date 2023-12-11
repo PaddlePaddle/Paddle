@@ -145,15 +145,11 @@ class ProgramTranslator {
 
   static const std::unordered_set<std::string> unsupported_ops;
 
-  void TranslateBlock(
-      const BlockDesc& src_block,
-      uint64_t start_id,
-      uint64_t end_id,
-      TranslationContext* translation_ctx,
-      pir::Block* dst_block,
-      bool for_cond_block = false,
-      const std::vector<std::string>& cond_sub_block_outputs = {},
-      const std::vector<::paddle::framework::OpDesc*>& cond_init_ops = {});
+  void TranslateBlock(const BlockDesc& src_block,
+                      uint64_t start_id,
+                      uint64_t end_id,
+                      TranslationContext* translation_ctx,
+                      pir::Block* dst_block);
 
   void TranslateGeneralOperation(const OpDesc* src_op,
                                  TranslationContext* translation_ctx,
@@ -169,11 +165,13 @@ class ProgramTranslator {
   const VariableDefiningInfo& CreateUndefinedVariable(
       const std::string& var_name, const BlockDesc& block);
 
-  /// Translate methods for control flow ops.
-  pir::Operation* TranslateCondIfOperation(
-      const ConditionBlockCombination& cond_ops,
-      TranslationContext* translation_ctx,
-      pir::Block* dst_block);
+  pir::Operation* InsertFullOrDataOpToBlock(pir::Block* insert_block,
+                                            pir::Type type);
+
+  void TranslateIfOperation(const OpDesc* op,
+                            TranslationContext* translation_ctx,
+                            pir::Block* dst_block);
+
   void TranslateWhileOperation(const OpDesc* op,
                                TranslationContext* translation_ctx,
                                pir::Block* dst_block);
