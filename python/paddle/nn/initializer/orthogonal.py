@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _C_ops
+from paddle import _C_ops, pir
 from paddle.utils import unique_name
 
 from ...base import framework
@@ -82,8 +82,8 @@ class Orthogonal(Initializer):
             The last initialization op, it contain 8 ops in orthogonal initializer.
         """
         block = self._check_block(block)
-        assert isinstance(var, framework.Parameter)
-        assert isinstance(block, framework.Block)
+        assert isinstance(var, (framework.Variable, pir.core.ParameterMeta))
+        assert isinstance(block, (framework.Block, pir.Block))
         self._seed = block.program.random_seed
 
         shape = var.shape
@@ -122,6 +122,27 @@ class Orthogonal(Initializer):
                 tmp._share_underline_tensor_to(var)
 
                 return None
+        elif framework.in_pir_mode():
+            place = framework._current_expected_place()
+            normal_var = _C_ops.gaussian(
+                flatten_shape, 0.0, 1.0, self._seed, var.dtype, place
+            )
+            q, r = _C_ops.qr(normal_var, 'reduced')
+
+            r_diag = _C_ops.diag(r, 0, 0)
+
+            r_sign = _C_ops.sign(r_diag)
+
+            q = _C_ops.multiply(q, r_sign)
+
+            if row < col:
+                q = _C_ops.transpose(q, [1, 0])
+
+            q = _C_ops.reshape(q, var.shape)
+
+            tmp = _C_ops.scale(q, self._gain, 0.0, True)
+
+            return tmp
 
         # 'qr' op only support float32/float64 now
         check_variable_and_dtype(

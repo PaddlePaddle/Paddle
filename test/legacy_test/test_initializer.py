@@ -23,6 +23,7 @@ import paddle
 from paddle import base
 from paddle.base import framework
 from paddle.base.core import VarDesc
+from paddle.pir_utils import test_with_pir_api
 from paddle.regularizer import L2Decay
 
 DELTA = 0.00001
@@ -1611,6 +1612,33 @@ class TestOrthogonalInitializer1(unittest.TestCase):
 
         self.check_result(res_dygraph, res_static)
 
+    def test_orthogonal_pir(self):
+        self.config()
+        paddle.set_default_dtype(self.dtype)
+
+        paddle.disable_static()
+        paddle.seed(2021)
+        linear = paddle.nn.Linear(
+            self.in_features, self.out_features, weight_attr=self.weight_attr
+        )
+        res_dygraph = linear.weight.numpy()
+
+        paddle.enable_static()
+        paddle.seed(2021)
+        start_prog = paddle.static.Program()
+        main_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, start_prog):
+            linear = paddle.nn.Linear(
+                self.in_features,
+                self.out_features,
+                weight_attr=self.weight_attr,
+            )
+
+            exe = paddle.static.Executor()
+            res_static = exe.run(start_prog, fetch_list=[linear.weight])[0]
+
+        self.check_result(res_dygraph, res_static)
+
 
 # 2-D Parameter with shape: [15, 10]
 class TestOrthogonalInitializer2(TestOrthogonalInitializer1):
@@ -1686,6 +1714,7 @@ class TestOrthogonalInitializer4(unittest.TestCase):
             np.matmul(a, a.T), 9 * np.eye(6), rtol=1e-5, atol=1e-8
         )
 
+    @test_with_pir_api
     def test_orthogonal(self):
         self.config()
         paddle.set_default_dtype(self.dtype)
@@ -1705,17 +1734,18 @@ class TestOrthogonalInitializer4(unittest.TestCase):
         start_prog = paddle.static.Program()
         main_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, start_prog):
+            inp = paddle.rand(shape=[8, self.in_features, 10, 10])
             conv2d = paddle.nn.Conv2D(
                 self.in_features,
                 self.out_features,
                 self.kernel_size,
                 weight_attr=self.weight_attr,
             )
+            output = conv2d(inp)
             exe = paddle.static.Executor()
-            res_static = exe.run(
-                paddle.static.default_startup_program(),
-                fetch_list=[conv2d.weight],
-            )[0]
+
+            exe.run(start_prog)
+            res_static = exe.run(main_prog, fetch_list=[conv2d.weight])[0]
         self.check_result(res_dygraph, res_static)
 
 
