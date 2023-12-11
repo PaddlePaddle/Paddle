@@ -1131,7 +1131,7 @@ template <typename T>
 void HogwildWorker::SetZero(phi::DenseTensor *tensor,
                             const phi::DenseTensor &root_tensor) {
   tensor->mutable_data<T>(root_tensor.dims(), place_);
-  phi::funcs::set_constant(*dev_ctx_, tensor, static_cast<T>(0.0));
+  phi::funcs::set_constant(*dev_ctx_, tensor, 0.0);
 }
 
 void HogwildWorker::BindingDataFeedMemory() {

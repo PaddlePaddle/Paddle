@@ -230,12 +230,10 @@ void set_constant_with_place<phi::CustomPlace>(
                                     const phi::Scalar&,
                                     DataType,
                                     phi::DenseTensor*);
-  const float* num_ptr = reinterpret_cast<const float*>(value);
-  float num = *num_ptr;
   auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
   (*kernel_fn)(context,
                phi::IntArray(common::vectorize(tensor->dims())),
-               phi::Scalar(num),
+               phi::Scalar(value),
                tensor->dtype(),
                tensor);
 #else

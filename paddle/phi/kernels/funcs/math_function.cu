@@ -341,7 +341,6 @@ struct TensorSetConstantGPU {
 
   template <typename T>
   void apply() const {
-    const T* num = reinterpret_cast<const T*>(value_);
     SetConstant<phi::GPUContext, T> functor;
     functor(reinterpret_cast<const phi::GPUContext&>(context_),
             tensor_,
