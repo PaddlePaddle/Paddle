@@ -32,7 +32,7 @@ from paddle.base.dygraph.base import (
 )
 from paddle.framework import in_dynamic_mode, use_pir_api
 from paddle.nn.layer import layers
-from paddle.pir import OpResult
+from paddle.pir import Value
 from paddle.utils import flatten, gast
 
 from . import error, logging_utils
@@ -1030,7 +1030,7 @@ class ASTStaticFunction(StaticFunction):
         inputs = [
             var
             for var in flatten(concrete_program.inputs)
-            if isinstance(var, (framework.Variable, OpResult))
+            if isinstance(var, (framework.Variable, Value))
         ]
         return inputs
 
@@ -1044,7 +1044,7 @@ class ASTStaticFunction(StaticFunction):
         outputs = [
             var
             for var in flatten(concrete_program.outputs)
-            if isinstance(var, (framework.Variable, OpResult))
+            if isinstance(var, (framework.Variable, Value))
         ]
 
         return outputs
