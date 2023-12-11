@@ -395,6 +395,7 @@ class GroupShardedStage2(nn.Layer):
             # For main_grad scale and fused_linear_param_grad_add, we do scale in the optimizer.
             if not self.scale_in_opt:
                 assert grad is not None
+                assert not grad.is_initialized()
                 if grad.dtype == Type.fp16:
                     grad.scale_(self._world_size_scaling)
                 else:
