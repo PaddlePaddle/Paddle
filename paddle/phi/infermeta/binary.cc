@@ -981,6 +981,49 @@ void CrossEntropyWithSoftmaxInferMeta(const MetaTensor& logits,
   loss->share_lod(logits);
 }
 
+void CSoftmaxWithCrossEntropyInferMeta(const MetaTensor& logits,
+                                       const MetaTensor& label,
+                                       int64_t ignore_index,
+                                       int ring_id,
+                                       int rank,
+                                       int nranks,
+                                       MetaTensor* softmax,
+                                       MetaTensor* loss,
+                                       MetaConfig config) {
+  auto logits_dims = logits.dims();
+  auto labels_dims = label.dims();
+
+  auto logits_rank = logits_dims.size();
+  auto axis = logits_rank - 1;
+  for (int i = 0; i < logits_rank; i++) {
+    if (i != axis) {
+      if (config.is_runtime || (logits_dims[i] > 0 && labels_dims[i] > 0)) {
+        PADDLE_ENFORCE_EQ(logits_dims[i],
+                          labels_dims[i],
+                          phi::errors::InvalidArgument(
+                              "Input(Logits) and Input(Label) should in "
+                              "same shape in dimensions except axis."));
+      }
+    }
+  }
+
+  PADDLE_ENFORCE_EQ(
+      labels_dims[logits_rank - 1],
+      1UL,
+      phi::errors::InvalidArgument(
+          "the last dimension of Input(Label) should be 1."
+          "But received: the last dimension of Input(Label) is [%d],"
+          "the last dimension is [%d]",
+          labels_dims[logits_rank - 1],
+          logits_rank - 1));
+
+  softmax->set_dims(logits_dims);
+  logits_dims[axis] = 1;
+  loss->set_dims(logits_dims);
+  softmax->share_lod(logits);
+  loss->share_lod(logits);
+}
+
 void DepthwiseConvInferMeta(const MetaTensor& input,
                             const MetaTensor& filter,
                             const std::vector<int>& strides,

@@ -154,6 +154,16 @@ void CrossEntropyWithSoftmaxInferMeta(const MetaTensor& logits,
                                       MetaTensor* loss,
                                       MetaConfig config = MetaConfig());
 
+void CSoftmaxWithCrossEntropyInferMeta(const MetaTensor& logits,
+                                       const MetaTensor& label,
+                                       int64_t ignore_index,
+                                       int ring_id,
+                                       int rank,
+                                       int nranks,
+                                       MetaTensor* softmax,
+                                       MetaTensor* loss,
+                                       MetaConfig config = MetaConfig());
+
 void DepthwiseConvInferMeta(const MetaTensor& input,
                             const MetaTensor& filter,
                             const std::vector<int>& strides,

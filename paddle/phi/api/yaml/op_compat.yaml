@@ -450,6 +450,13 @@
   outputs :
     out : Out
 
+- op : c_softmax_with_cross_entropy
+  backward : c_softmax_with_cross_entropy_grad
+  inputs :
+    {logits : Logits, label : Label}
+  outputs :
+    {softmax : Softmax, loss : Loss}
+
 - op : cast
   inputs :
     x : X
