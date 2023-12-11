@@ -107,6 +107,7 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
             use_cudnn,
         )
     elif in_pir_mode():
+        theta = theta._use_gpudnn(use_cudnn)
         if isinstance(out_shape, (list, tuple)):
             if paddle.utils._contain_var(out_shape):
                 out_shape = paddle.utils.get_int_tensor_list(out_shape)

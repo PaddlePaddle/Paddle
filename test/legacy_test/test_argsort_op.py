@@ -396,6 +396,7 @@ class TestArgsort(unittest.TestCase):
 
     @test_with_pir_api
     def test_api(self):
+        self.setUp()
         with paddle.static.program_guard(paddle.static.Program()):
             input = paddle.static.data(
                 name="input", shape=self.input_shape, dtype="float64"
