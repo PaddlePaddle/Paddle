@@ -46,7 +46,7 @@ mkdir -p xpu/lib
 
 if [ -n ${XHPC_URL} ]; then
   wget --no-check-certificate ${XHPC_URL} -q -O xhpc.tar.gz
-  tar xvf xphc.tar.gz
+  tar xvf xhpc.tar.gz
 
   mkdir -p xpu/include/xhpc/xblas
   mkdir -p xpu/include/xhpc/xfa
