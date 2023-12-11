@@ -62,9 +62,6 @@ std::shared_ptr<ValueExecutionInfo> ValueExecutionInfo::NewChild(Scope* scope) {
 }
 
 void ValueExecutionInfo::Add(::pir::Value value, const std::string& var_name) {
-  VLOG(0) << "Before:";
-  VLOG(0) << "var_list_.size(): " << var_list_.size();
-  VLOG(0) << "var_name_2_id_.size(): " << var_name_2_id_.size();
   auto* var = scope_->FindVar(var_name);
   PADDLE_ENFORCE_NOT_NULL(
       var, platform::errors::NotFound("Cannot find %s in scope.", var_name));
@@ -82,10 +79,6 @@ void ValueExecutionInfo::Add(::pir::Value value, const std::string& var_name) {
     var_list_.push_back(var);
   }
 
-  VLOG(0) << "After:";
-  VLOG(0) << "var_list_.size(): " << var_list_.size();
-  VLOG(0) << "var_name_2_id_.size(): " << var_name_2_id_.size();
-
   PADDLE_ENFORCE_EQ(
       var_list_.size(),
       var_name_2_id_.size(),
@@ -96,9 +89,6 @@ void ValueExecutionInfo::Add(::pir::Value value, const std::string& var_name) {
 void ValueExecutionInfo::Rename(pir::Value value,
                                 const std::string& new_name,
                                 const std::string& orig_name) {
-  if (new_name == orig_name) {
-    return;
-  }
   value_2_var_name_[value] = new_name;
 
   for (auto kv : value_2_var_name_) {

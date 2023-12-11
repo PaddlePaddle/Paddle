@@ -25,7 +25,6 @@ from paddle.base.dygraph.base import NON_PERSISTABLE_VAR_NAME_SUFFIX
 from paddle.base.framework import (
     default_startup_program,
     in_dygraph_mode,
-    in_dynamic_or_pir_mode,
     program_guard,
 )
 from paddle.common_ops_import import Variable
@@ -1591,7 +1590,7 @@ class RNNBase(LayerList):
         if not self.time_major:
             inputs = paddle.tensor.transpose(inputs, [1, 0, 2])
 
-        if in_dynamic_or_pir_mode():
+        if in_dygraph_mode():
             out, _, state = _C_ops.rnn(
                 inputs,
                 initial_states,
