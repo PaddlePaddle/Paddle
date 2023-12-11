@@ -44,7 +44,9 @@ tar xvf xccl.tar.gz
 mkdir -p xpu/include/xpu
 mkdir -p xpu/lib
 
-if [ -n ${XHPC_URL} ]; then
+if ! [ -z ${XHPC_URL} ]; then
+  echo "Compiling Paddle with XHPC"
+  echo "XHPC_URL: ${XHPC_URL}"
   wget --no-check-certificate ${XHPC_URL} -q -O xhpc.tar.gz
   tar xvf xhpc.tar.gz
 
@@ -61,7 +63,7 @@ if [ -n ${XHPC_URL} ]; then
   cp -r ${XHPC_DIR_NAME}/xfa/so/* xpu/lib/
 fi
 
-if ! [ -n ${XHPC_URL} ]; then
+if  [ -z ${XHPC_URL} ]; then
   cp -r $XDNN_DIR_NAME/include/xpu/* xpu/include/xpu/
   cp -r $XDNN_DIR_NAME/so/* xpu/lib/
 fi
