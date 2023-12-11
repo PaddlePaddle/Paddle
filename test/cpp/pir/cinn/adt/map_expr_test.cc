@@ -98,15 +98,15 @@ TEST(MapExpr, ElementWise_Fusion_0) {
       cinn::adt::ToTxtString(group->map_expr_ctx().map_expr(), "MapExprTest");
   std::string target_str = R"TEST(
 MapExprTest(t_var_2, t_var_1) {
-  AnchoredMapStmt(t_var_0) {
-    MapStmt([i_64]) {
+  AnchoredMapStmt() {
+    MapStmt([i_69]) {
       exp(
-          &t_var[IndexDot([BI(i_64, sym_17)], [sym_17])],
-          t_var_1[IndexDot([BI(i_64, sym_17)], [sym_17])]);
+          &t_var[IndexDot([BI(i_69, sym_17)], [sym_17])],
+          t_var_1[IndexDot([BI(i_69, sym_17)], [sym_17])]);
       subtract(
-          &t_var_0[IndexDot([i_64], [sym_17])],
-          t_var_2[IndexDot([BI(i_64, sym_17)], [sym_17])],
-          t_var[IndexDot([BI(i_64, sym_17)], [sym_17])]);
+          &t_var_0[IndexDot([i_69], [sym_17])],
+          t_var_2[IndexDot([BI(i_69, sym_17)], [sym_17])],
+          t_var[IndexDot([BI(i_69, sym_17)], [sym_17])]);
     }
   }
 }
