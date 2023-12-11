@@ -19,7 +19,6 @@ from paddle import _C_ops
 from paddle.framework import (
     in_dynamic_mode,
     in_dynamic_or_pir_mode,
-    in_pir_mode,
 )
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
@@ -578,32 +577,15 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
 
     # TODO(chenjianye): replace the for-loop to directly take elements.
     for index in indices:
-        if in_pir_mode():
-            indices_below = paddle.floor(index).astype(
-                paddle.base.core.DataType.INT32
-            )
-            indices_upper = paddle.ceil(index).astype(
-                paddle.base.core.DataType.INT32
-            )
-            tensor_upper = paddle.take_along_axis(
-                sorted_tensor, indices_upper, axis=axis
-            )
-            tensor_below = paddle.take_along_axis(
-                sorted_tensor, indices_below, axis=axis
-            )
-            weights = index - indices_below.astype(
-                paddle.base.core.DataType.FLOAT64
-            )
-        else:
-            indices_below = paddle.floor(index).astype(paddle.int32)
-            indices_upper = paddle.ceil(index).astype(paddle.int32)
-            tensor_upper = paddle.take_along_axis(
-                sorted_tensor, indices_upper, axis=axis
-            )
-            tensor_below = paddle.take_along_axis(
-                sorted_tensor, indices_below, axis=axis
-            )
-            weights = index - indices_below.astype('float64')
+        indices_below = paddle.floor(index).astype('int32')
+        indices_upper = paddle.ceil(index).astype('int32')
+        tensor_upper = paddle.take_along_axis(
+            sorted_tensor, indices_upper, axis=axis
+        )
+        tensor_below = paddle.take_along_axis(
+            sorted_tensor, indices_below, axis=axis
+        )
+        weights = index - indices_below.astype('float64')
         out = paddle.lerp(
             tensor_below.astype('float64'),
             tensor_upper.astype('float64'),
