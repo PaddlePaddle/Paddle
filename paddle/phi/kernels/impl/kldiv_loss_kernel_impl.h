@@ -32,9 +32,9 @@ struct KLDivLossForward {
     if (target <= 0) {
       return 0;
     } else if (log_target) {
-      return target * (std::log(target) - input);
+      return std::exp(target) * (target - input)
     } else {
-      return target * (std::log(target) - std::log(input));
+      return target * std::log(target) - target * input;
     }
   }
 };

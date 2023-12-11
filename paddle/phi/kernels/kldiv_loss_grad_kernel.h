@@ -23,6 +23,7 @@ void KLDivLossGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& label,
                          const DenseTensor& d_out,
+                         bool log_target,
                          const std::string& reduction,
                          DenseTensor* d_x);
 }  // namespace phi

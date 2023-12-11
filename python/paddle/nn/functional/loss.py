@@ -1634,6 +1634,10 @@ def kl_div(input, label, reduction='mean', log_target=False, name=None):
             if `reduction` is ``'sum'``, the reduced sum loss is returned;
             if `reduction` is ``'none'``, no reduction will be apllied.
             Default is ``'mean'``.
+        log_target (bool): A flag indicating whether ``target`` is passed in the log space.
+            It is recommended to pass certain distributions (like ``softmax``)
+            in the log space to avoid numerical issues caused by explicit ``log``.
+            Default: ``False``
         name(str, optional): Name for the operation (optional, default is None). For more information,
             please refer to :ref:`api_guide_Name`.
 
@@ -1688,7 +1692,7 @@ def kl_div(input, label, reduction='mean', log_target=False, name=None):
         label = paddle.cast(label, 'float64')
 
     if in_dynamic_mode():
-        out = _C_ops.kldiv_loss(input, label, 'none')
+        out = _C_ops.kldiv_loss(input, label, 'none', False)
         if reduction == 'mean':
             out = paddle.mean(out)
         elif reduction == 'sum':
@@ -1714,7 +1718,7 @@ def kl_div(input, label, reduction='mean', log_target=False, name=None):
             type='kldiv_loss',
             inputs={'X': input, 'Target': label},
             outputs={'Loss': loss},
-            attrs={'reduction': 'none'},
+            attrs={'reduction': 'none', 'log_target': 'False'},
         )
 
         if reduction == 'mean':
