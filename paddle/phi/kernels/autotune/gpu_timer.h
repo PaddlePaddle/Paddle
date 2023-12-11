@@ -32,6 +32,17 @@
 
 namespace phi {
 
+#ifdef PADDLE_WITH_HIP
+static void RecordEventTimerCallback(hipStream_t stream,
+                                     hipError_t status,
+                                     void *user_data) {
+  struct timeval time_now {};
+  gettimeofday(&time_now, nullptr);
+  double *cpu_time = static_cast<double *>(user_data);
+  *cpu_time = (time_now.tv_sec * 1000) + (time_now.tv_usec / 1000.0);
+  VLOG(3) << "RecordEventCallback: " << std::to_string(*cpu_time);
+}
+#else
 static void CUDART_CB RecordEventTimerCallback(cudaStream_t stream,
                                                cudaError_t status,
                                                void *user_data) {
@@ -41,6 +52,7 @@ static void CUDART_CB RecordEventTimerCallback(cudaStream_t stream,
   *cpu_time = (time_now.tv_sec * 1000) + (time_now.tv_usec / 1000.0);
   VLOG(3) << "RecordEventCallback: " << std::to_string(*cpu_time);
 }
+#endif
 
 class GpuTimer {
  public:

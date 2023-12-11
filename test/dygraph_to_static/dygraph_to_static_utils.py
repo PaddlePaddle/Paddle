@@ -100,11 +100,8 @@ DISABLED_TO_STATIC_TEST_FILES = {
 DISABLED_IR_TEST_FILES = {
     IrMode.LEGACY_IR: [],
     IrMode.PT: [
-        "test_gradname_parse",
-        "test_seq2seq",
         "test_save_inference_model",
         "test_tensor_hook",
-        "test_reinforcement_learning",
     ],
     IrMode.PIR: [],
 }
@@ -384,6 +381,7 @@ def test_legacy_and_pt_and_pir(fn):
     return fn
 
 
+# Some decorators for save CI time
 def test_default_mode_only(fn):
     # Some unittests has high time complexity, we only test them with default mode
     fn = set_to_static_mode(ToStaticMode.SOT)(fn)
@@ -391,16 +389,15 @@ def test_default_mode_only(fn):
     return fn
 
 
-def test_sot_with_pir_only(fn):
-    fn = set_to_static_mode(ToStaticMode.SOT)(fn)
-    fn = set_ir_mode(IrMode.PIR)(fn)
-    return fn
-
-
 def test_default_and_pir(fn):
     # Some unittests has high time complexity, we only test them with default mode
     fn = set_to_static_mode(ToStaticMode.SOT)(fn)
     fn = set_ir_mode(IrMode.PT | IrMode.PIR)(fn)
+    return fn
+
+
+def test_sot_mgs0_only(fn):
+    fn = set_to_static_mode(ToStaticMode.SOT)(fn)
     return fn
 
 
@@ -462,7 +459,6 @@ def enable_to_static_guard(flag: bool):
     original_flag_value = program_translator.enable_to_static
     program_translator.enable(flag)
     try:
-        program_translator.enable(flag)
         yield
     finally:
         program_translator.enable(original_flag_value)

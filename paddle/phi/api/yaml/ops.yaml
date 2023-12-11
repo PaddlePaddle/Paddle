@@ -2744,16 +2744,6 @@
     skip_transform : found_infinite
   inplace : (x -> out), (prev_loss_scaling -> loss_scaling), (in_good_steps -> out_good_steps), (in_bad_steps -> out_bad_steps)
 
-- op : variable_length_memory_efficient_attention
-  args : (Tensor query, Tensor key, Tensor value, Tensor seq_lens, Tensor kv_seq_lens, Tensor mask, float scale, bool causal)
-  output : Tensor
-  infer_meta :
-    func : VariableLengthMemoryEfficientAttentionInferMeta
-  kernel :
-    func : variable_length_memory_efficient_attention
-    data_type : query
-  optional : mask
-
 - op : view_dtype
   args : (Tensor input, DataType dtype)
   output : Tensor(out)
