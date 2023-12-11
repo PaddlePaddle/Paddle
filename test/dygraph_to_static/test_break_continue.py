@@ -17,6 +17,9 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    IrMode,
+    ToStaticMode,
+    disable_test_case,
     enable_to_static_guard,
     test_ast_only,
     test_legacy_and_pt_and_pir,
@@ -283,10 +286,36 @@ class TestContinueInWhile(TestContinueNotPirBase):
     def init_dygraph_func(self):
         self.dygraph_func = test_continue_in_while
 
+    # TODO(dev): Remove this after fix PT Rename issue
+    @disable_test_case((ToStaticMode.AST, IrMode.PT))
+    def test_transformed_static_result(self):
+        self.init_dygraph_func()
+        dygraph_res = self.run_dygraph_mode()
+        static_res = self.run_static_mode()
+        np.testing.assert_allclose(
+            dygraph_res,
+            static_res,
+            rtol=1e-05,
+            err_msg=f'dygraph res is {dygraph_res}\nstatic_res is {static_res}',
+        )
+
 
 class TestBreakInWhile(TestContinueInWhile):
     def init_dygraph_func(self):
         self.dygraph_func = test_break_in_while
+
+    # TODO(dev): Remove this after fix PT Rename issue
+    @disable_test_case((ToStaticMode.AST, IrMode.PT))
+    def test_transformed_static_result(self):
+        self.init_dygraph_func()
+        dygraph_res = self.run_dygraph_mode()
+        static_res = self.run_static_mode()
+        np.testing.assert_allclose(
+            dygraph_res,
+            static_res,
+            rtol=1e-05,
+            err_msg=f'dygraph res is {dygraph_res}\nstatic_res is {static_res}',
+        )
 
 
 class TestWhileLoopClassVar(TestContinueInWhile):
@@ -304,6 +333,19 @@ class TestOptimBreakInFor(TestDy2staticException):
 class TestOptimBreakInWhile(TestContinueInWhile):
     def init_dygraph_func(self):
         self.dygraph_func = test_optim_break_in_while
+
+    # TODO(dev): Remove this after fix PT Rename issue
+    @disable_test_case((ToStaticMode.AST, IrMode.PT))
+    def test_transformed_static_result(self):
+        self.init_dygraph_func()
+        dygraph_res = self.run_dygraph_mode()
+        static_res = self.run_static_mode()
+        np.testing.assert_allclose(
+            dygraph_res,
+            static_res,
+            rtol=1e-05,
+            err_msg=f'dygraph res is {dygraph_res}\nstatic_res is {static_res}',
+        )
 
 
 if __name__ == '__main__':
