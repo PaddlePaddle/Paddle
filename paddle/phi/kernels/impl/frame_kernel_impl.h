@@ -42,13 +42,15 @@ void FrameKernel(const Context& dev_ctx,
     DDim x_resized_dims;
     DDim out_resized_dims;
     if (axis == 0) {
-      preserved_dims = phi::slice_ddim(x_tmp.dims(), 1, x_rank);
-      x_resized_dims = {seq_length, phi::product(preserved_dims)};
-      out_resized_dims = {n_frames, frame_length, phi::product(preserved_dims)};
+      preserved_dims = common::slice_ddim(x_tmp.dims(), 1, x_rank);
+      x_resized_dims = {seq_length, common::product(preserved_dims)};
+      out_resized_dims = {
+          n_frames, frame_length, common::product(preserved_dims)};
     } else {
-      preserved_dims = phi::slice_ddim(x_tmp.dims(), 0, x_rank - 1);
-      x_resized_dims = {phi::product(preserved_dims), seq_length};
-      out_resized_dims = {phi::product(preserved_dims), frame_length, n_frames};
+      preserved_dims = common::slice_ddim(x_tmp.dims(), 0, x_rank - 1);
+      x_resized_dims = {common::product(preserved_dims), seq_length};
+      out_resized_dims = {
+          common::product(preserved_dims), frame_length, n_frames};
     }
     x_tmp.Resize(x_resized_dims);
     out->Resize(out_resized_dims);
@@ -63,32 +65,32 @@ void FrameKernel(const Context& dev_ctx,
       trans_x = x_tmp;
 
       std::vector<int> perm_out{1, 0};
-      auto out_dims_vec = phi::vectorize(out->dims());
+      auto out_dims_vec = common::vectorize(out->dims());
       for (int i = 0; i < out->dims().size(); ++i) {
         out_dims_vec[i] = out->dims()[perm_out[i]];
       }
-      trans_out.Resize(phi::make_ddim(out_dims_vec));
+      trans_out.Resize(common::make_ddim(out_dims_vec));
 
       dev_ctx.template Alloc<T>(&trans_out);
       phi::funcs::TransCompute<Context, T>(
           perm_out.size(), dev_ctx, *out, &trans_out, perm_out);
     } else {
       std::vector<int> perm_x{1, 0};
-      auto x_dims_vec = phi::vectorize(x_tmp.dims());
+      auto x_dims_vec = common::vectorize(x_tmp.dims());
       for (int i = 0; i < x_tmp.dims().size(); ++i) {
         x_dims_vec[i] = x_tmp.dims()[perm_x[i]];
       }
-      trans_x.Resize(phi::make_ddim(x_dims_vec));
+      trans_x.Resize(common::make_ddim(x_dims_vec));
       dev_ctx.template Alloc<T>(&trans_x);
       phi::funcs::TransCompute<Context, T>(
           perm_x.size(), dev_ctx, x_tmp, &trans_x, perm_x);
 
       std::vector<int> perm_out{2, 1, 0};
-      auto out_dims_vec = phi::vectorize(out->dims());
+      auto out_dims_vec = common::vectorize(out->dims());
       for (int i = 0; i < out->dims().size(); ++i) {
         out_dims_vec[i] = out->dims()[perm_out[i]];
       }
-      trans_out.Resize(phi::make_ddim(out_dims_vec));
+      trans_out.Resize(common::make_ddim(out_dims_vec));
       dev_ctx.template Alloc<T>(&trans_out);
       phi::funcs::TransCompute<Context, T>(
           perm_out.size(), dev_ctx, *out, &trans_out, perm_out);
@@ -137,7 +139,7 @@ void FrameKernel(const Context& dev_ctx,
       restored_out_shape.push_back(n_frames);
     }
 
-    out->Resize(phi::make_ddim(restored_out_shape));
+    out->Resize(common::make_ddim(restored_out_shape));
   }
 }
 

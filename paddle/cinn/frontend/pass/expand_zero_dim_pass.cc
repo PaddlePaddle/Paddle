@@ -32,7 +32,7 @@ class ExpandZeroDimPass : public ProgramPass {
  protected:
   void ApplyImpl(Program* program,
                  const std::unordered_set<std::string>& fetch_ids,
-                 const common::Target& target) override {
+                 const cinn::common::Target& target) override {
     NetBuilder builder("expand_zero_dim_builder");
     for (int i = 0; i < program->size(); ++i) {
       auto& instr = (*program)[i];

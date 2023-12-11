@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+from collections import defaultdict
 from typing import Callable
 
 import paddle
@@ -406,3 +406,141 @@ def shard_layer(
             "`paddle.distributed.shard_layer` only supports dynamic graph mode "
             "now. It will be supported for static graph mode later."
         )
+
+
+class _ShardOptimizer:
+    def __init__(self, optimizer, shard_fn=None):
+        assert (
+            optimizer is not None
+        ), "The argument `optimizer` cannot be empty."
+        assert isinstance(
+            optimizer, (paddle.optimizer.AdamW, paddle.optimizer.SGD)
+        ), "`paddle.distributed.ShardOptimizer` only supports AdamW and SGD optimizer for now."
+
+        self.target_block = (
+            paddle.base.framework.default_main_program().global_block()
+        )
+        optimizer.helper = paddle.base.layer_helper.LayerHelper(
+            optimizer.__class__.__name__
+        )
+        self._inner_opt = optimizer
+        self._shard_fn = shard_fn
+
+    def _shard_accumulator(self, param):
+        # create the accumulators
+        self._inner_opt._create_accumulators(self.target_block, [param])
+
+        target_name = param.name
+        if param.name in self._inner_opt._master_weights.keys():
+            target_name = self._inner_opt._master_weights[param.name].name
+
+        # shard the accumulators
+        for key in self._inner_opt._accumulators.keys():
+            accumulator = self._inner_opt._accumulators[key][target_name]
+            if accumulator.is_dist():
+                continue
+            if self._shard_fn is not None:
+                self._inner_opt._accumulators[key][
+                    target_name
+                ] = self._shard_fn(key, param, accumulator)
+            else:
+                if param.is_dist():
+                    if 'beta' not in key:
+                        # If param is a dist tensor should keep the shard info
+                        # for accumulators except beta.
+                        placements = param.placements
+                    else:
+                        # The beta should be replicated cross param's mesh
+                        placements = [
+                            dist.Replicate()
+                            for _ in range(len(param.process_mesh.shape))
+                        ]
+                    self._inner_opt._accumulators[key][
+                        target_name
+                    ] = shard_tensor(
+                        accumulator,
+                        mesh=param.process_mesh,
+                        placements=placements,
+                    )
+
+    def step(self):
+        if not isinstance(self._inner_opt._parameter_list[0], dict):
+            params_grads = []
+            for param in self._inner_opt._parameter_list:
+                if param.stop_gradient:
+                    continue
+                if param._grad_ivar() is not None:
+                    grad_var = param._grad_ivar()
+                    params_grads.append((param, grad_var))
+            for p, g in params_grads:
+                self._shard_accumulator(p)
+            self._inner_opt._apply_optimize(
+                loss=None, startup_program=None, params_grads=params_grads
+            )
+        else:
+            for param_group in self._inner_opt._param_groups:
+                params_grads = defaultdict(lambda: [])
+                for param in param_group['params']:
+                    if param.stop_gradient:
+                        continue
+                    if param._grad_ivar() is not None:
+                        grad_var = param._grad_ivar()
+                        params_grads['params'].append((param, grad_var))
+                params_grads.update(
+                    {k: v for k, v in param_group.items() if k != 'params'}
+                )
+                for p, g in params_grads['params']:
+                    self._shard_accumulator(p)
+                self._inner_opt._apply_optimize(
+                    loss=None, startup_program=None, params_grads=params_grads
+                )
+
+    def __getattr__(self, item):
+        return getattr(self._inner_opt, item)
+
+
+def shard_optimizer(optimizer, shard_fn=None):
+    """
+
+    Warp the global view optimizer to distributed view.
+
+    Note:
+        The `shard_fn` should have the following signature:
+            def shard_fn(accumulator_name, param, accumulator) -> sharded_accumulator
+
+    Args:
+        optimizer (paddle.optimizer.Optimizer): The optimizer to be sharded.
+        shard_fn (Callable, optional): The function to shard accumulators. If not specified,
+           we simply pass down the dist attr of the params.
+
+    Returns:
+        An optimizer with distributed view.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.distributed as dist
+            >>> mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+            >>> class MLP(paddle.nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...         self.fc1 = paddle.nn.Linear(8, 8)
+            ...         self.fc2 = paddle.nn.Linear(8, 8)
+            ...
+            ...     def forward(self, input):
+            ...         return self.fc2(self.fc1(input))
+            >>> layer = MLP()
+            >>> batch = paddle.rand(shape=[8, 8])
+            >>> opt = paddle.optimizer.AdamW(parameters=layer.parameters())
+            >>> opt = dist.shard_optimizer(opt)
+            >>> for _ in range(5):
+            >>>     loss = layer(batch)
+            >>>     loss.backward()
+            >>>     opt.step()
+            >>>     opt.clear_grad()
+            >>> # This case need to be executed in multi-card environment
+            >>> # python -m paddle.distributed.launch --gpus=0,1 {test_case}.py
+
+    """
+    return _ShardOptimizer(optimizer, shard_fn)

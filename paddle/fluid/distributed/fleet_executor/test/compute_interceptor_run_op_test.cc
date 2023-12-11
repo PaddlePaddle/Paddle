@@ -37,7 +37,7 @@ namespace distributed {
 std::vector<framework::OperatorBase*> GetOps() {
   framework::AttributeMap attrs;
   attrs["dtype"] = framework::proto::VarType::FP32;
-  attrs["shape"] = phi::vectorize<int>({2, 3});
+  attrs["shape"] = common::vectorize<int>({2, 3});
   attrs["value"] = 1.0f;
 
   auto zero_op = framework::OpRegistry::CreateOp(

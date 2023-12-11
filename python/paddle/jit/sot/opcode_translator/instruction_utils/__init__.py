@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .instruction_pass import apply_instr_pass  # noqa: F401
 from .instruction_utils import (  # noqa: F401
     Instruction,
     calc_offset_from_bytecode_offset,
