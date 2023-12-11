@@ -133,6 +133,9 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     bool use_parameter_op = ReplaceResultByParameterOp(op);
 
     for (uint32_t i = 0; i < op->num_results(); i++) {
+      if (!op->result(i) || !op->result(i).type()) {
+        continue;
+      }
       std::string output_var_name = output_var_names[i];
       auto* output_var = scope_->FindVar(output_var_name);
       PADDLE_ENFORCE_NOT_NULL(
@@ -263,6 +266,9 @@ class ConstantFoldingPattern : public pir::RewritePattern {
 
     std::vector<std::string> output_var_names;
     for (uint32_t i = 0; i < op->num_results(); i++) {
+      if (!temp_op->result(i) || !temp_op->result(i).type()) {
+        continue;
+      }
       std::stringstream ss;
       ss << std::chrono::high_resolution_clock::now()
                 .time_since_epoch()
