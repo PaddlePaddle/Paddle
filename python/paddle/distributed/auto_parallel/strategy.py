@@ -156,7 +156,7 @@ class SPOptimizationConfig(BaseConfig):
 
 class Strategy(BaseConfig):
     """
-    The `Strategy` object is used to configure the parallelization and optimization behaviors.
+    The `Strategy` object is used to configure the parallelization and optimization for static graph.
 
     Args:
         config (dict|string, optional): If this is None, the default configurations will used.
