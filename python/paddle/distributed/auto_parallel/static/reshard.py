@@ -899,7 +899,8 @@ class Remover:
             for var in remove_vars:
                 if var in feed_var_names:
                     continue
-                block._remove_var(var)
+                block._remove_var(var, sync=False)
+            block._sync_with_cpp()
 
     @staticmethod
     def remove_no_need_in_main(
