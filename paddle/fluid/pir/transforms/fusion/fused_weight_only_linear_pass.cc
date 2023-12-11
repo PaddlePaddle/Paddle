@@ -47,7 +47,8 @@ class FusedWeightOnlyLinearPattern
         src.Op("pd_op.matmul",
                {{"transpose_x", src.Attr("matmul_transpose_x")},
                 {"transpose_y", src.Attr("matmul_transpose_y")}});
-    const auto &parameter = src.Op(pir::ParameterOp::name(), {{"parameter_name", src.Attr("param_name")}});
+    const auto &parameter = src.Op(
+        pir::ParameterOp::name(), {{"parameter_name", src.Attr("param_name")}});
     src.Tensor("w") = parameter();
     src.Tensor("matmul_out") = matmul(src.Tensor("x"), src.Tensor("w"));
     const auto &add = src.Op("pd_op.add");
