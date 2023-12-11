@@ -23,6 +23,7 @@ from dygraph_to_static_utils import (
     IrMode,
     ToStaticMode,
     disable_test_case,
+    enable_to_static_guard,
     test_ast_only,
     test_legacy_and_pt_and_pir,
     test_legacy_only,
@@ -34,7 +35,6 @@ from ifelse_simple_func import (
 
 import paddle
 import paddle.jit.dy2static as _jst
-from paddle import base
 from paddle.jit.api import to_static
 from paddle.jit.dy2static.utils import func_to_source_code
 from paddle.utils import gast
@@ -42,21 +42,21 @@ from paddle.utils import gast
 np.random.seed(0)
 
 
-# TODO(Aurelius): Currently, `declarative` don't support decorate the function
+# TODO(Aurelius): Currently, `to_static` don't support decorate the function
 # that contains layers with initialized operation, like `fc = linear(10, 3)`.
 # Because initialized ops will be added into program and be executed many times.
 # The parameters are assumed to initialized outside of the function.
 def simple_func(x, weight_numpy):
-    x = base.dygraph.to_variable(x)
-    w = base.dygraph.to_variable(weight_numpy)
+    x = paddle.to_tensor(x)
+    w = paddle.to_tensor(weight_numpy)
     y = paddle.matmul(x, w)
     z = paddle.mean(y)
     return z
 
 
 def decorated_simple_func(x, weight_numpy):
-    x = base.dygraph.to_variable(x)
-    w = base.dygraph.to_variable(weight_numpy)
+    x = paddle.to_tensor(x)
+    w = paddle.to_tensor(weight_numpy)
     y = paddle.matmul(x, w)
     z = paddle.mean(y)
     return z
@@ -228,22 +228,15 @@ class TestEnableDeclarative(Dy2StTestBase):
     @test_ast_only
     @test_legacy_and_pt_and_pir
     def test_raise_error(self):
-        with base.dygraph.guard():
-            paddle.jit.enable_to_static(True)
-            net = to_static(full_graph=True)(NetWithError())
-            with self.assertRaises(ValueError):
-                net(base.dygraph.to_variable(self.x))
+        net = to_static(full_graph=True)(NetWithError())
+        with self.assertRaises(ValueError):
+            net(paddle.to_tensor(self.x))
 
     @test_legacy_and_pt_and_pir
-    def test_enable_disable_declarative(self):
-        paddle.jit.enable_to_static(True)
-        with base.dygraph.guard():
-            static_output = to_static(decorated_simple_func)(
-                self.x, self.weight
-            )
+    def test_enable_disable_to_static(self):
+        static_output = to_static(decorated_simple_func)(self.x, self.weight)
 
-        paddle.jit.enable_to_static(False)
-        with base.dygraph.guard():
+        with enable_to_static_guard(False):
             dygraph_output = to_static(decorated_simple_func)(
                 self.x, self.weight
             )
@@ -287,7 +280,6 @@ class TestFunctionTrainEvalMode(Dy2StTestBase):
     @test_ast_only
     @test_legacy_and_pt_and_pir
     def test_switch_mode(self):
-        paddle.disable_static()
         switch_mode_function.eval()
         switch_mode_function()
         self.assertEqual(switch_mode_function._training, False)
@@ -302,7 +294,6 @@ class TestFunctionTrainEvalMode(Dy2StTestBase):
 
     @test_legacy_and_pt_and_pir
     def test_raise_error(self):
-        paddle.disable_static()
         net = paddle.jit.to_static(SwitchModeNet())
 
         self.assertEqual(net.training, True)
