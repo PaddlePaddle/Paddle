@@ -14,6 +14,8 @@
 
 import os
 
+import numpy as np
+
 import paddle
 from paddle.base import Variable, core
 from paddle.base.data_feeder import check_type
@@ -25,7 +27,7 @@ from paddle.base.framework import (
 from paddle.base.layer_helper import LayerHelper
 from paddle.base.libpaddle import DataType
 
-from ..base.variable_index import _setitem_impl_, _setitem_static
+from ..base.variable_index import _setitem_static
 
 __all__ = []
 
@@ -206,8 +208,9 @@ class InputSpec:
         self.shape = self._verify(shape)
         # convert dtype into united represention
         if dtype is not None:
-            if not isinstance(dtype, core.VarDesc.VarType):
+            if isinstance(dtype, (np.dtype, str)):
                 dtype = convert_np_dtype_to_dtype_(dtype)
+
         self.dtype = dtype
         self.name = name
         self.stop_gradient = stop_gradient
@@ -418,12 +421,8 @@ def setitem(x, index, value):
        (3) a[1,:, 3] = v -> setitem(a, (1, slice(None,None,None),3), v)
        (4) a[1, ..., 2]=v -> setitem(a, (1, ..., 2), v)
 
-    3. You can always use TUPLE as index input， even there is only one index.
+    3. You can always use TUPLE as index input, even there is only one index.
        (1) a[Tensor([10,10])]=v -> setitem(a, (Tensor([10,10]),), v)
        (2) a[1] = v -> setitem(a, (1,), v)
     """
-    if core.is_compiled_with_xpu():
-        # (NOTE): Currently, there is no index_put_xpu kernel.
-        return _setitem_impl_(x, index, value)
-    else:
-        return _setitem_static(x, index, value)
+    return _setitem_static(x, index, value)

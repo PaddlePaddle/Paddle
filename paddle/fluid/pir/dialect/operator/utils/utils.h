@@ -18,6 +18,7 @@
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/attribute.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/value.h"
@@ -143,6 +144,15 @@ void CheckVectorOfValueDataType(const std::vector<pir::Value>& vector_value,
                                 const std::string& input_name,
                                 const std::string& op_name);
 
+void CheckDataType(const phi::DataType& dtype,
+                   const std::string& dtype_name,
+                   const std::string& op_name);
+
+void CheckDataTypeOrValue(const phi::DataType& dtype,
+                          const std::string& dtype_name,
+                          const pir::Value& value,
+                          const std::string& value_name,
+                          const std::string& op_name);
 phi::DataType GetValueDataType(const pir::Value& value);
 
 phi::DataType GetPromoteType(

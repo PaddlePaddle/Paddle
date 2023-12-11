@@ -264,12 +264,17 @@ void embedding_grad_impl(const Tensor& x,
       auto meta_dist_input_x = MakeDistMetaTensor(*x.impl());
       auto meta_dist_input_weight = MakeDistMetaTensor(*weight.impl());
       auto meta_dist_input_out_grad = MakeDistMetaTensor(*out_grad.impl());
-      auto spmd_info = phi::distributed::VariadicReplicatedInferSpmdDynamic(
-          meta_dist_input_weight, meta_dist_input_x, meta_dist_input_out_grad);
+      auto spmd_info =
+          phi::distributed::EmbeddingGradInferSpmd(meta_dist_input_x,
+                                                   meta_dist_input_weight,
+                                                   meta_dist_input_out_grad,
+                                                   padding_idx,
+                                                   sparse);
 
       // 2. Create Temporary Output & Prepare Dist and Dense Output
       std::shared_ptr<phi::distributed::DistTensor> shared_dist_out =
-          CreateKernelDistOutput(weight_grad, !rank_is_in_current_mesh);
+          CreateKernelDistOutput(
+              weight_grad, !rank_is_in_current_mesh, spmd_info.second[0]);
       phi::distributed::DistTensor* dist_out = shared_dist_out.get();
       phi::DenseTensor* dense_out = dist_out->unsafe_mutable_value();
       if (dense_out && !rank_is_in_current_mesh && !dist_out->defined()) {
@@ -284,37 +289,29 @@ void embedding_grad_impl(const Tensor& x,
       UnchangedInferMeta(MakeMetaTensor(*weight.impl()), &meta_dist_out);
 
       // 4. Set Output Dist Attr For Default Impl
-      auto current_process_mesh =
-          paddle::holds_alternative<phi::distributed::TensorDistAttr>(
-              spmd_info.first[0])
-              ? paddle::get<0>(spmd_info.first[0]).process_mesh()
-              : paddle::get<1>(spmd_info.first[0]).at(0).process_mesh();
-      SetReplicatedDistAttrForOutput(dist_out, current_process_mesh);
 
       if (rank_is_in_current_mesh) {
         // 5. Reshard Input
-        auto dist_input_weight =
-            ReshardApiInputToKernelInput(dev_ctx, weight, spmd_info.first[0]);
         auto dist_input_x =
-            ReshardApiInputToKernelInput(dev_ctx, x, spmd_info.first[1]);
+            ReshardApiInputToKernelInput(dev_ctx, x, spmd_info.first[0]);
+        auto dist_input_weight =
+            ReshardApiInputToKernelInput(dev_ctx, weight, spmd_info.first[1]);
         auto dist_input_out_grad =
             ReshardApiInputToKernelInput(dev_ctx, out_grad, spmd_info.first[2]);
 
         // 6. PrepareData (DataTransform & Prepare Dense Input)
-        dist_input_weight = PrepareDataForDistTensor(
-            dist_input_weight,
+        dist_input_x = PrepareDataForDistTensor(
+            dist_input_x,
             GetKernelInputArgDef(kernel.InputAt(0), kernel_key.backend()),
             {},
             kernel_result.is_stride_kernel);
-        auto input_weight = &dist_input_weight->value();
-
-        dist_input_x = PrepareDataForDistTensor(
-            dist_input_x,
+        auto input_x = &dist_input_x->value();
+        dist_input_weight = PrepareDataForDistTensor(
+            dist_input_weight,
             GetKernelInputArgDef(kernel.InputAt(1), kernel_key.backend()),
             {},
             kernel_result.is_stride_kernel);
-        auto input_x = &dist_input_x->value();
-
+        auto input_weight = &dist_input_weight->value();
         dist_input_out_grad = PrepareDataForDistTensor(
             dist_input_out_grad,
             GetKernelInputArgDef(kernel.InputAt(2), kernel_key.backend()),

@@ -925,7 +925,7 @@ class QuantizationTransformPass:
         tmp_program = Program()
         startup_program = Program()
         with program_guard(tmp_program, startup_program):
-            with unique_name.guard(var_node.name() + "_"):
+            with tmp_program.switch_name_generator_guard(var_node.name() + "_"):
                 in_node = data(
                     var_node.name() + '_tmp_input',
                     shape=var_node.shape(),
@@ -3511,3 +3511,111 @@ class AddQuantDequantForInferencePass:
             graph.link_to(zero_point_node, dequant_op_node)
         graph.link_to(dequant_op_node, dequant_var_node)
         return dequant_var_node
+
+
+class AddQuantDequantForResidual:
+    """
+    Quantize the residual connections. Add quant and dequant ops for the residual inputs.
+    """
+
+    def __init__(
+        self,
+        scope,
+        place,
+        quant_bits=8,
+        is_test=True,
+    ):
+        """
+        Args:
+            scope(static.Scope): The scope is used to initialize these new parameters.
+            place(paddle.CPUPlace|paddle.CUDAPlace|str): place is used to restore the weight tensors.
+                If it's string, it can be ``cpu``, and ``gpu:x``, where ``x`` is the index of the GPUs.
+            quant_bits(int, optional): quantization bit number for weight. Default is 8.
+            is_test(bool, optional): Whether quantization with training or not. Default is True.
+        """
+        self._place = _get_paddle_place(place)
+        self._scope = scope
+        self._quant_bits = quant_bits
+        self._is_test = is_test
+        assert self._scope is not None, "scope must not be None."
+        assert self._place is not None, "place must not be None."
+
+    def apply(self, graph):
+        """
+        Args:
+            graph(IrGraph): the target graph.
+        """
+        assert isinstance(
+            graph, IrGraph
+        ), 'graph must be the instance of IrGraph.'
+        weight_var_names = self._all_weight_node_names(graph)
+        var_node_names_with_order = self._var_name_order(graph)
+        for op in graph.all_op_nodes():
+            if op.name() != 'elementwise_add':
+                continue
+            first_input_name = op.inputs[0].name()
+            second_input_name = op.inputs[1].name()
+            if (
+                first_input_name in weight_var_names
+                or second_input_name in weight_var_names
+            ):
+                continue
+            skip_node = (
+                op.inputs[0]
+                if var_node_names_with_order[first_input_name]
+                < var_node_names_with_order[second_input_name]
+                else op.inputs[1]
+            )
+            self._insert_quant_dequant(graph, skip_node, op)
+
+    def _all_weight_node_names(self, graph):
+        """
+        Return a list of weight variables (including casted weight)
+        """
+        weight_var_names = [
+            node.name() for node in graph.all_persistable_nodes()
+        ]
+        for op in graph.all_op_nodes():
+            if op.name() == 'cast' and op.inputs[0].persistable():
+                weight_var_names.append(op.outputs[0].name())
+
+        return weight_var_names
+
+    def _var_name_order(self, graph):
+        """
+        Return a dictionary with variable names as key and their order as value
+        """
+        ordered_ops = graph.topology_sort()
+        var_node_names_with_order = {}
+        for idx, op_node in enumerate(ordered_ops):
+            for in_var_node in op_node.inputs:
+                in_var_name = in_var_node.name()
+                if var_node_names_with_order.get(in_var_name) is None:
+                    var_node_names_with_order[in_var_name] = idx
+
+        return var_node_names_with_order
+
+    def _insert_quant_dequant(self, graph, var_node, op):
+        """
+        Insert per tensort quantize_linear and dequantize_linear node between var_node and op
+        """
+        insert_quant_pass = InsertQuantizeLinear(
+            self._place,
+            self._scope,
+            quant_bits=self._quant_bits,
+            quant_axis=-1,
+            channel_wise=False,
+            is_test=self._is_test,
+        )
+        quant_var_name = var_node.name() + '.skip'
+        op_role = op.op().attr("op_role")
+        (
+            quant_var_node,
+            scale_var_node,
+        ) = insert_quant_pass.insert_quant_op(
+            graph, var_node, var_name=quant_var_name, op_role=op_role
+        )
+        dequant_var_node = insert_quant_pass.insert_dequant_op(
+            graph, quant_var_node, scale_var_node, op_role
+        )
+        graph.update_input_link(var_node, dequant_var_node, op)

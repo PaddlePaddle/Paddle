@@ -42,8 +42,8 @@ class MetaInfo:
     @staticmethod
     def from_tensor(tensor):
         # We always use float32 in simulation if AMP is enabled.
-        if isinstance(tensor, paddle.pir.OpResult):
-            name = "OpResult@NoName"
+        if isinstance(tensor, paddle.pir.Value):
+            name = "Value@NoName"
             persistable = tensor.persistable
             dtype = framework.paddle_type_to_proto_type[tensor.dtype]
         else:
@@ -105,7 +105,10 @@ class VariableCreator:
     """
 
     def __init__(self):
-        self.var_cache = {}
+        # TODO(cleanup-legacy-ir): Remove the program and var_cache shims after PIR become default state.
+        # self.var_cache = {}
+        # self.main_program = paddle.static.Program()
+        # self.startup_program = paddle.static.Program()
         self.var_name_generator = UniqueNameGenerator("infer_meta_variable_")
 
     def gen_name(self, meta):
@@ -113,6 +116,21 @@ class VariableCreator:
         for l in meta.shape:
             name += f"_{l}"
         return name
+
+    @property
+    def var_cache(self):
+        if paddle.framework.use_pir_api():
+            return self.pir_var_cache
+        else:
+            return self.legacy_var_cache
+
+    @cached_property
+    def legacy_var_cache(self):
+        return {}
+
+    @cached_property
+    def pir_var_cache(self):
+        return {}
 
     @cached_property
     def legacy_programs(self):
@@ -133,13 +151,13 @@ class VariableCreator:
 
     @property
     def startup_program(self):
-        if paddle.base.framework.use_pir_api():
+        if paddle.framework.use_pir_api():
             return self.pir_programs[1]
         else:
             return self.legacy_programs[1]
 
     def create_var(self, meta):
-        if paddle.base.framework.use_pir_api():
+        if paddle.framework.use_pir_api():
             with paddle.static.program_guard(
                 self.main_program, self.startup_program
             ):
@@ -212,7 +230,7 @@ def convert_variable_to_meta_info(args):
     static_variable_type = (
         paddle.static.Variable
         if not paddle.base.framework.use_pir_api()
-        else paddle.pir.OpResult
+        else paddle.pir.Value
     )
     return map_if_extend(
         args,

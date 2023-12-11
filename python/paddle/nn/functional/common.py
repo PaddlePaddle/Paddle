@@ -109,7 +109,9 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
 
     helper = LayerHelper("unfold", **locals())
 
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'unfold')
+    check_variable_and_dtype(
+        x, 'x', ['uint16', 'float16', 'float32', 'float64'], 'unfold'
+    )
 
     assert len(x.shape) == 4, "input should be the format of [N, C, H, W]"
 
@@ -155,7 +157,7 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
             "of 2 or 4 integers"
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.unfold(x, kernel_sizes, strides, paddings, dilations)
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -410,7 +412,7 @@ def interpolate(
             'The x and size should satisfy rank(x) - 2 == len(size).'
         )
 
-    if isinstance(size, (Variable, paddle.pir.OpResult)):
+    if isinstance(size, (Variable, paddle.pir.Value)):
         size = size.cast("int32")  # static mode only support int32
         if size.ndim != 1:
             raise ValueError(
@@ -432,7 +434,7 @@ def interpolate(
         )
 
     if resample == 'AREA':
-        if isinstance(size, (list, tuple, Variable, paddle.pir.OpResult)):
+        if isinstance(size, (list, tuple, Variable, paddle.pir.Value)):
             if len(size) == 0:
                 raise ValueError("output size can not be empty")
         if size is None:
@@ -492,7 +494,7 @@ def interpolate(
         raise ValueError("Only one of size or scale_factor should be defined.")
     if out_shape is not None:
         if (
-            isinstance(out_shape, (Variable, paddle.pir.OpResult))
+            isinstance(out_shape, (Variable, paddle.pir.Value))
             and not in_dynamic_mode()
         ):
             out_shape.stop_gradient = True
@@ -512,7 +514,7 @@ def interpolate(
             # Validate the shape
             contain_var = False
             for dim_idx, dim_size in enumerate(out_shape):
-                if isinstance(dim_size, (Variable, paddle.pir.OpResult)):
+                if isinstance(dim_size, (Variable, paddle.pir.Value)):
                     contain_var = True
                     continue
                 assert (
@@ -523,7 +525,7 @@ def interpolate(
                 new_size_tensor = []
                 size_list = []
                 for dim in out_shape:
-                    if isinstance(dim, (Variable, paddle.pir.OpResult)):
+                    if isinstance(dim, (Variable, paddle.pir.Value)):
                         dim.stop_gradient = True
                         new_size_tensor.append(dim)
                         size_list.append(-1)
@@ -589,7 +591,7 @@ def interpolate(
                 scale = float(scale)
             else:
                 scale = list(scale.numpy())
-        if isinstance(scale, (Variable, paddle.pir.OpResult)):
+        if isinstance(scale, (Variable, paddle.pir.Value)):
             scale.stop_gradient = True
             inputs["Scale"] = scale
         elif isinstance(scale, (float, int, numpy.ndarray)):
@@ -1109,7 +1111,7 @@ def dropout(
             [[0., 0., 6.],
              [0., 0., 0.]])
     """
-    if not isinstance(p, (float, int, Variable, pir.OpResult)):
+    if not isinstance(p, (float, int, Variable, pir.Value)):
         raise TypeError("p argument should be a number or Variable")
 
     if isinstance(p, (int, float)):
@@ -1538,7 +1540,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
     than width-1. The height and depth dimension has the same condition.
 
     Parameters:
-        x (Tensor): The input tensor with data type float32/double/int32/int64_t.
+        x (Tensor): The input tensor with data type float32/double/int32/int64_t/complex64/complex128.
         pad (Tensor|list[int]|tuple[int]): The padding size with data type int.
             If mode is ``'constant'`` and length of pad is twice as length of x dimension, then x will
             be padded from the first  dimension to the last dimension.
@@ -1671,7 +1673,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
             return out
 
         if in_pir_mode():
-            if isinstance(pad_value, paddle.pir.OpResult):
+            if isinstance(pad_value, paddle.pir.Value):
                 return _C_ops.pad(x, paddings, pad_value)
             else:
                 return _C_ops.pad(x, paddings, float(pad_value))
@@ -1726,7 +1728,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
 
     unsqueezed_dim = []
 
-    if isinstance(pad, (Variable, pir.OpResult)):
+    if isinstance(pad, (Variable, pir.Value)):
         if data_format in ["NCL", "NCHW", "NCDHW"]:
             data_format = "NCDHW"
             if x_dim == 3:

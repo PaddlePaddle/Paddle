@@ -9,12 +9,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/convert/utils.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/plugin/prompt_tuning_emb_layernorm_varseqlen_plugin.h"
-#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace inference {
@@ -55,8 +55,8 @@ class PromptTuningEmbEltwiseLayerNormOpConverter : public OpConverter {
     framework::DDim bias_dims, scale_dims;
     TensorRTEngine::Weight bias_weight, scale_weight;
 
-    int64_t bias_size = phi::product(bias_dims);
-    int64_t scale_size = phi::product(scale_dims);
+    int64_t bias_size = common::product(bias_dims);
+    int64_t scale_size = common::product(scale_dims);
     bool enable_int8 = op_desc.HasAttr("enable_int8");
 
     std::vector<std::string> id_names = op_desc.Input("Ids");
@@ -80,8 +80,8 @@ class PromptTuningEmbEltwiseLayerNormOpConverter : public OpConverter {
     }
     bias_weight = GetWeight(op_desc.Input("Bias").front(), &bias_dims);
     scale_weight = GetWeight(op_desc.Input("Scale").front(), &scale_dims);
-    bias_size = phi::product(bias_dims);
-    scale_size = phi::product(scale_dims);
+    bias_size = common::product(bias_dims);
+    scale_size = common::product(scale_dims);
     // other_id(except pos_id)
     engine_->SetITensor("word_id", input_ids[1]);
 

@@ -32,6 +32,18 @@
     func : addcmul_xpu
     data_type : x
 
+- op : block_multihead_attention_
+  args : (Tensor qkv, Tensor key_cache, Tensor value_cache, Tensor seq_lens_encoder, Tensor seq_lens_decoder, Tensor seq_lens_this_time, Tensor padding_offsets, Tensor cum_offsets, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor block_tables, Tensor pre_key_cache, Tensor pre_value_cache, Tensor rope_emb, Tensor mask,  Tensor tgt_mask, int max_seq_len, int block_size, bool use_neox_style)
+  output : Tensor(fmha_out), Tensor(qkv_out), Tensor(key_cache_out), Tensor(value_cache_out)
+  infer_meta :
+    func : BlockMultiheadAttentionInferMeta
+  kernel :
+    func : block_multihead_attention
+    data_type : qkv
+  optional : pre_key_cache, pre_value_cache, rope_emb, mask, tgt_mask
+  inplace : (qkv -> qkv_out), (key_cache -> key_cache_out), (value_cache -> value_cache_out)
+  support_dygraph_mode : true
+
 - op : bn_act_xpu
   args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, float momentum, float epsilon, str data_layout, int act_type)
   output : Tensor(out)
@@ -140,6 +152,18 @@
   optional : bias, dequant_scales, shift, smooth
   support_dygraph_mode : true
 
+- op : fused_bias_dropout_residual_layer_norm
+  args : (Tensor x, Tensor residual, Tensor bias, Tensor ln_scale, Tensor ln_bias, float dropout_rate = 0.5f, bool is_test = false, bool dropout_fix_seed = true, int dropout_seed = true, str dropout_implementation = "downgrade_in_infer", float ln_epsilon = 1e-5)
+  optional : bias, ln_scale, ln_bias
+  output : Tensor(y), Tensor(bias_dropout_residual_out), Tensor(dropout_mask_out), Tensor(ln_mean), Tensor(ln_variance)
+  infer_meta :
+    func : FusedBiasDropoutResidualLnInferMeta
+  kernel :
+    func : fused_bias_dropout_residual_layer_norm
+    data_type : x
+  backward : fused_bias_dropout_residual_layer_norm_grad
+  intermediate : bias_dropout_residual_out, dropout_mask_out, ln_mean, ln_variance
+
 - op : fused_bias_residual_layernorm
   args : (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, float epsilon, float residual_alpha, int begin_norm_axis, float quant_scale, int quant_round_type, float quant_max_bound, float quant_min_bound)
   output : Tensor(out), Tensor(residual_out), Tensor(mean), Tensor(variance)
@@ -150,6 +174,27 @@
     data_type : x
   optional : bias, residual, norm_weight, norm_bias, residual_out
   support_dygraph_mode : true
+
+- op : fused_conv2d_add_act
+  args : (Tensor input, Tensor filter, Tensor bias, Tensor residual_data, int[] strides={1, 1}, int[] paddings={0, 0}, str padding_algorithm="EXPLICIT", int[] dilations={1, 1} , int groups=1, str data_format="NCHW", str activation="relu", int[] split_channels={}, bool exhaustive_search=false, int workspace_size_MB=32, float fuse_alpha=0.0f)
+  output : Tensor(output), Tensor[](outputs){split_channels.size()}
+  infer_meta :
+    func : FusedConv2dAddActInferMeta
+    param : [input, filter, bias, residual_data, strides, paddings, padding_algorithm, dilations, groups, data_format, activation, split_channels]
+  kernel :
+    func : fused_conv2d_add_act
+    data_type : input
+  optional : bias, residual_data, outputs
+
+- op : fused_dconv_drelu_dbn
+  args : (Tensor grad_output, Tensor weight, Tensor grad_output_add, Tensor residual_input, Tensor bn1_eqscale, Tensor bn1_eqbias, Tensor conv_input, Tensor bn1_mean, Tensor bn1_inv_std, Tensor bn1_gamma, Tensor bn1_beta, Tensor bn1_input, Tensor bn2_mean, Tensor bn2_inv_std, Tensor bn2_gamma, Tensor bn2_beta, Tensor bn2_input, int[] paddings, int[] dilations, int[] strides, str padding_algorithm, int groups, str data_format, bool fuse_shortcut, bool fuse_dual, bool fuse_add, bool exhaustive_search)
+  output : Tensor(grad_weight), Tensor(grad_bn1_input), Tensor(grad_bn1_gamma), Tensor(grad_bn1_beta), Tensor(grad_bn2_input), Tensor(grad_bn2_gamma), Tensor(grad_bn2_beta)
+  optional : grad_output_add, residual_input, bn1_eqscale, bn1_eqbias, conv_input, bn2_mean, bn2_inv_std, bn2_gamma, bn2_beta, bn2_input, grad_bn2_input, grad_bn2_gamma, grad_bn2_beta
+  infer_meta :
+    func : FusedDconvDreluDbnInferMeta
+  kernel :
+    func : fused_dconv_drelu_dbn
+    data_type : grad_output
 
 - op : fused_dropout_add
   args : (Tensor x, Tensor y, Tensor seed_tensor, Scalar p, bool is_test, str mode, int seed = 0, bool fix_seed = false)
@@ -194,6 +239,16 @@
     data_type : dout
   support_dygraph_mode : true
 
+- op : fused_multi_transformer_int8_xpu
+  args : (Tensor x, Tensor[] ln_scale, Tensor[] ln_bias, Tensor[] qkv_in_max, Tensor[] qkvw, Tensor[] qkv_bias, Tensor[] qkv_scales, Tensor[] out_linear_in_max, Tensor[] out_linear_w, Tensor[] out_linear_bias, Tensor[] out_linear_scales, Tensor[] ffn_ln_scale, Tensor[] ffn_ln_bias, Tensor[] ffn1_in_max, Tensor[] ffn1_weight, Tensor[] ffn1_bias, Tensor[] ffn1_scales, Tensor[] ffn2_in_max, Tensor[] ffn2_weight, Tensor[] ffn2_bias, Tensor[] ffn2_scales, Tensor[] cache_kv, Tensor[] pre_caches, Tensor rotary_pos_emb, Tensor time_step, Tensor seq_lengths, Tensor src_mask, Tensor gather_index, Tensor max_buffer, bool pre_layer_norm, int rotary_emb_dims, float epsilon, float dropout_rate, bool is_test, str dropout_implementation, str act_method, bool trans_qkvw, int ring_id, int gather_axis)
+  output : Tensor(out), Tensor[](cache_kv_out){out_linear_w.size()}
+  infer_meta :
+    func : FusedMultiTransformerInt8XpuInferMeta
+  kernel :
+    func : fused_multi_transformer_int8_xpu
+    data_type : x
+  optional : cache_kv, pre_caches, rotary_pos_emb, time_step, seq_lengths, src_mask, gather_index
+
 - op : fused_multi_transformer_xpu
   args : (Tensor x, Tensor[] ln_scale, Tensor[] ln_bias, Tensor[] qkvw, Tensor[] qkvw_max, Tensor[] qkv_bias, Tensor[] out_linear_w, Tensor[] out_linear_wmax, Tensor[] out_linear_bias, Tensor[] ffn_ln_scale, Tensor[] ffn_ln_bias, Tensor[] ffn1_weight, Tensor[] ffn1_weight_max, Tensor[] ffn1_bias, Tensor[] ffn2_weight, Tensor[] ffn2_weight_max, Tensor[] ffn2_bias, Tensor[] cache_kv, Tensor[] pre_caches, Tensor rotary_pos_emb, Tensor time_step, Tensor seq_lengths, Tensor src_mask, Tensor gather_index, Tensor max_buffer, bool pre_layer_norm, int rotary_emb_dims, float epsilon, float dropout_rate, bool is_test, str dropout_implementation, str act_method, bool trans_qkvw, int ring_id, int gather_axis)
   output : Tensor(out), Tensor[](cache_kv_out){out_linear_w.size()}
@@ -209,6 +264,7 @@
   output : Tensor(out_q), Tensor(out_k), Tensor(out_v)
   infer_meta :
     func : FusedRopeInferMeta
+    spmd_rule : FusedRopeInferSpmd
   optional : k, v, sin, cos, position_ids, out_k, out_v
   kernel :
     func : fused_rotary_position_embedding
@@ -219,7 +275,7 @@
 - op : fused_scale_bias_add_relu
   args : (Tensor x1, Tensor scale1, Tensor bias1, Tensor x2, Tensor scale2, Tensor bias2, bool fuse_dual, bool exhaustive_search)
   optional : scale2, bias2
-  output : Tensor(y)
+  output : Tensor(out)
   infer_meta :
     func : FusedScaleBiasAddReluInferMeta
   kernel :
@@ -353,6 +409,15 @@
     func : self_dp_attention
     data_type : x
 
+- op : skip_layernorm
+  args : (Tensor x, Tensor y, Tensor scale, Tensor bias, float epsilon, int begin_norm_axis)
+  output : Tensor(out)
+  infer_meta :
+    func : SkipLayerNormInferMeta
+  kernel :
+    func : skip_layernorm
+    data_type : x
+
 - op : squeeze_excitation_block
   args : (Tensor x, Tensor filter, Tensor filter_max, Tensor bias, Tensor branch, int[] act_type, float[] act_param, int[] filter_dims)
   output : Tensor(out)
@@ -362,6 +427,17 @@
     func : squeeze_excitation_block
     data_type : x
   optional : bias, branch
+
+- op : variable_length_memory_efficient_attention
+  args : (Tensor query, Tensor key, Tensor value, Tensor seq_lens, Tensor kv_seq_lens, Tensor mask, float scale, bool causal, int pre_cache_length)
+  output : Tensor
+  infer_meta :
+    func : VariableLengthMemoryEfficientAttentionInferMeta
+  kernel :
+    func : variable_length_memory_efficient_attention
+    data_type : query
+  optional : mask
+  support_dygraph_mode : true
 
 - op : yolo_box_xpu
   args : (Tensor x, Tensor x_max, Tensor grid, Tensor stride, Tensor anchor_grid, float offset)

@@ -43,7 +43,7 @@ void TestBroadcastPE(const std::string &fn_name,
 
   auto stages = CreateStages({C});
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
   Module::Builder builder("module0", target);
   auto func = Lower("fn", stages, {A, B, C});
   builder.AddFunction(func);
@@ -60,23 +60,24 @@ void TestBroadcastPE(const std::string &fn_name,
   cinn_buffer_t *A_buf;
   cinn_buffer_t *B_buf;
   if (set_value != 0) {
-    A_buf = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+    A_buf = cinn::common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
                 .set_val(set_value)
                 .Build();
-    B_buf = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+    B_buf = cinn::common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
                 .set_val(set_value)
                 .Build();
   } else {
-    A_buf = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+    A_buf = cinn::common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
                 .set_random()
                 .Build();
-    B_buf = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+    B_buf = cinn::common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
                 .set_random()
                 .Build();
   }
-  auto *C_buf = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
-                    .set_zero()
-                    .Build();
+  auto *C_buf =
+      cinn::common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+          .set_zero()
+          .Build();
 
   cinn_pod_value_t a_arg(A_buf), b_arg(B_buf), c_arg(C_buf);
   cinn_pod_value_t args[] = {a_arg, b_arg, c_arg};
@@ -102,7 +103,7 @@ void TestBroadcastPE1(const std::string &fn_name,
   Placeholder<float> B("B", {N});
   auto C = func_op(A.tensor(), B.tensor(), "C", Expr(1));
   auto stages = CreateStages({C});
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
   Module::Builder builder("module0", target);
   auto func = Lower("fn", stages, {A, B, C});
   builder.AddFunction(func);
@@ -116,22 +117,23 @@ void TestBroadcastPE1(const std::string &fn_name,
   cinn_buffer_t *A_buf;
   cinn_buffer_t *B_buf;
   if (set_value != 0) {
-    A_buf = common::BufferBuilder(Float(32),
-                                  {M.as_int32(), N.as_int32(), K.as_int32()})
+    A_buf = cinn::common::BufferBuilder(
+                Float(32), {M.as_int32(), N.as_int32(), K.as_int32()})
                 .set_val(set_value)
                 .Build();
-    B_buf = common::BufferBuilder(Float(32), {N.as_int32()})
+    B_buf = cinn::common::BufferBuilder(Float(32), {N.as_int32()})
                 .set_val(set_value)
                 .Build();
   } else {
-    A_buf = common::BufferBuilder(Float(32),
-                                  {M.as_int32(), N.as_int32(), K.as_int32()})
+    A_buf = cinn::common::BufferBuilder(
+                Float(32), {M.as_int32(), N.as_int32(), K.as_int32()})
                 .set_random()
                 .Build();
-    B_buf =
-        common::BufferBuilder(Float(32), {N.as_int32()}).set_random().Build();
+    B_buf = cinn::common::BufferBuilder(Float(32), {N.as_int32()})
+                .set_random()
+                .Build();
   }
-  auto *C_buf = common::BufferBuilder(
+  auto *C_buf = cinn::common::BufferBuilder(
                     Float(32), {M.as_int32(), N.as_int32(), K.as_int32()})
                     .set_zero()
                     .Build();
@@ -163,7 +165,7 @@ void TestBroadcastPE2(const std::string &fn_name,
   Placeholder<float> B("B", {N, K});
   auto C = func_op(A.tensor(), B.tensor(), "C", Expr(1));
   auto stages = CreateStages({C});
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
   Module::Builder builder("module0", target);
   auto func = Lower("fn", stages, {A, B, C});
   builder.AddFunction(func);
@@ -178,25 +180,25 @@ void TestBroadcastPE2(const std::string &fn_name,
   cinn_buffer_t *B_buf;
   if (set_value != 0) {
     A_buf =
-        common::BufferBuilder(
+        cinn::common::BufferBuilder(
             Float(32), {M.as_int32(), N.as_int32(), K.as_int32(), R.as_int32()})
             .set_val(set_value)
             .Build();
-    B_buf = common::BufferBuilder(Float(32), {N.as_int32(), K.as_int32()})
+    B_buf = cinn::common::BufferBuilder(Float(32), {N.as_int32(), K.as_int32()})
                 .set_val(set_value)
                 .Build();
   } else {
     A_buf =
-        common::BufferBuilder(
+        cinn::common::BufferBuilder(
             Float(32), {M.as_int32(), N.as_int32(), K.as_int32(), R.as_int32()})
             .set_random()
             .Build();
-    B_buf = common::BufferBuilder(Float(32), {N.as_int32(), K.as_int32()})
+    B_buf = cinn::common::BufferBuilder(Float(32), {N.as_int32(), K.as_int32()})
                 .set_random()
                 .Build();
   }
   auto *C_buf =
-      common::BufferBuilder(
+      cinn::common::BufferBuilder(
           Float(32), {M.as_int32(), N.as_int32(), K.as_int32(), R.as_int32()})
           .set_zero()
           .Build();

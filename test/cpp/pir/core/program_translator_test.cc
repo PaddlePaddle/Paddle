@@ -69,7 +69,7 @@ TEST(OperatorDialectTest, MainProgram) {
   std::stringstream ss;
   program->Print(ss);
 
-  // ops.size() = op size in BlockDesc + get_parameter_op + combine op + int
+  // ops.size() = op size in BlockDesc + parameter_op + combine op + int
   // array op + full op (Note: p already has a full)
   EXPECT_EQ(program->block()->size(),
             p.Block(0).OpSize() + program->parameters_num() + 20 + 5 + 8);
@@ -85,7 +85,7 @@ TEST(OperatorDialectTest, ConditionBlock) {
   ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
   auto program = paddle::TranslateLegacyProgramToProgram(p);
 
-  EXPECT_EQ(program->block()->size(), 4u);
+  EXPECT_EQ(program->block()->size(), 9u);
   size_t id = 0;
   for (auto &op : *program->block()) {
     if (id == 0 || id == 1) {
@@ -98,10 +98,10 @@ TEST(OperatorDialectTest, ConditionBlock) {
       EXPECT_EQ(op.isa<paddle::dialect::IfOp>(), true);
       EXPECT_EQ(op.num_regions(), 2u);
       // true block
-      pir::Block *true_block =
+      pir::Block &true_block =
           op.dyn_cast<paddle::dialect::IfOp>().true_block();
       size_t true_id = 0;
-      for (auto &op1 : *true_block) {
+      for (auto &op1 : true_block) {
         if (true_id == 0 || true_id == 1) {
           EXPECT_EQ(op1.isa<paddle::dialect::FullOp>(), true);
         }
@@ -109,86 +109,44 @@ TEST(OperatorDialectTest, ConditionBlock) {
           EXPECT_EQ(op1.isa<paddle::dialect::LessThanOp>(), true);
         }
         if (true_id == 3) {
-          pir::Block *true_true_block =
+          auto &true_true_block =
               op1.dyn_cast<paddle::dialect::IfOp>().true_block();
           size_t true_true_id = 0;
-          for (auto &op2 : *true_true_block) {
+          for (auto &op2 : true_true_block) {
             if (true_true_id == 0) {
               EXPECT_EQ(op2.isa<paddle::dialect::AddOp>(), true);
             }
             if (true_true_id == 1) {
+              EXPECT_EQ(op2.isa<paddle::dialect::AssignOp>(), true);
+            }
+            if (true_true_id == 2) {
               EXPECT_EQ(op2.isa<pir::YieldOp>(), true);
             }
             true_true_id++;
           }
-          pir::Block *false_false_block =
-              op1.dyn_cast<paddle::dialect::IfOp>().false_block();
-          size_t false_false_id = 0;
-          for (auto &op2 : *false_false_block) {
-            if (false_false_id == 0) {
-              EXPECT_EQ(op2.isa<paddle::dialect::MultiplyOp>(), true);
-            }
-            if (false_false_id == 1) {
-              EXPECT_EQ(op2.isa<pir::YieldOp>(), true);
-            }
-            false_false_id++;
-          }
         }
         if (true_id == 4) {
-          EXPECT_EQ(op1.isa<paddle::dialect::MultiplyOp>(), true);
+          EXPECT_EQ(op1.isa<paddle::dialect::LogicalNotOp>(), true);
         }
         if (true_id == 5) {
+          EXPECT_EQ(op1.isa<paddle::dialect::IfOp>(), true);
+        }
+        if (true_id == 6) {
+          EXPECT_EQ(op1.isa<paddle::dialect::CastOp>(), true);
+        }
+        if (true_id == 7) {
+          EXPECT_EQ(op1.isa<paddle::dialect::SelectInputOp>(), true);
+        }
+        if (true_id == 8) {
+          EXPECT_EQ(op1.isa<paddle::dialect::MultiplyOp>(), true);
+        }
+        if (true_id == 9 || true_id == 10) {
+          EXPECT_EQ(op1.isa<paddle::dialect::AssignOp>(), true);
+        }
+        if (true_id == 11) {
           EXPECT_EQ(op1.isa<pir::YieldOp>(), true);
         }
         true_id++;
-      }
-      // false block
-      pir::Block *false_block =
-          op.dyn_cast<paddle::dialect::IfOp>().false_block();
-      size_t false_id = 0;
-      for (auto &op1 : *false_block) {
-        if (false_id == 0 || false_id == 1) {
-          EXPECT_EQ(op1.isa<paddle::dialect::FullOp>(), true);
-        }
-        if (false_id == 2) {
-          EXPECT_EQ(op1.isa<paddle::dialect::LessThanOp>(), true);
-        }
-        if (false_id == 3) {
-          EXPECT_EQ(op1.isa<paddle::dialect::IfOp>(), true);
-          // true block
-          pir::Block *false_true_block =
-              op1.dyn_cast<paddle::dialect::IfOp>().true_block();
-          size_t false_true_id = 0;
-          for (auto &op2 : *false_true_block) {
-            if (false_true_id == 0) {
-              EXPECT_EQ(op2.isa<paddle::dialect::AddOp>(), true);
-            }
-            if (false_true_id == 1) {
-              EXPECT_EQ(op2.isa<pir::YieldOp>(), true);
-            }
-            false_true_id++;
-          }
-          // false block
-          pir::Block *false_false_block =
-              op1.dyn_cast<paddle::dialect::IfOp>().true_block();
-          size_t false_false_id = 0;
-          for (auto &op2 : *false_false_block) {
-            if (false_false_id == 0) {
-              EXPECT_EQ(op2.isa<paddle::dialect::AddOp>(), true);
-            }
-            if (false_false_id == 1) {
-              EXPECT_EQ(op2.isa<pir::YieldOp>(), true);
-            }
-            false_false_id++;
-          }
-        }
-        if (false_id == 4) {
-          EXPECT_EQ(op1.isa<paddle::dialect::MultiplyOp>(), true);
-        }
-        if (false_id == 5) {
-          EXPECT_EQ(op1.isa<pir::YieldOp>(), true);
-        }
-        false_id++;
       }
     }
     id++;
@@ -205,7 +163,7 @@ TEST(OperatorDialectTest, StartupProgram) {
   auto program = paddle::TranslateLegacyProgramToProgram(p);
 
   size_t op_size = program->block()->size();
-  // ops.size() = op size in BlockDesc + get_parameter_op +
+  // ops.size() = op size in BlockDesc + parameter_op +
   // consant_op_for_uniform
   // + consant_op for guassian
   EXPECT_EQ(op_size, p.Block(0).OpSize() + program->parameters_num() + 3 + 53);
@@ -293,10 +251,9 @@ TEST(OperatorDialectTest, WhileOpProgram) {
       EXPECT_TRUE(op.isa<paddle::dialect::WhileOp>());
       EXPECT_EQ(op.num_regions(), 1u);
       // body block
-      pir::Block *body_block =
-          op.dyn_cast<paddle::dialect::WhileOp>().body_block();
+      pir::Block &body_block = op.dyn_cast<paddle::dialect::WhileOp>().body();
       size_t body_id = 0;
-      for (auto &op1 : *body_block) {
+      for (auto &op1 : body_block) {
         if (body_id == 0) {
           EXPECT_TRUE(op1.isa<paddle::dialect::FullOp>());
         }
@@ -307,10 +264,10 @@ TEST(OperatorDialectTest, WhileOpProgram) {
           EXPECT_TRUE(op1.isa<paddle::dialect::LessThanOp>());
         }
         if (body_id == 3) {
-          pir::Block *body_body_block =
-              op1.dyn_cast<paddle::dialect::WhileOp>().body_block();
+          pir::Block &body_body_block =
+              op1.dyn_cast<paddle::dialect::WhileOp>().body();
           size_t body_body_id = 0;
-          for (auto &op2 : *body_body_block) {
+          for (auto &op2 : body_body_block) {
             if (body_body_id == 0) {
               EXPECT_TRUE(op2.isa<paddle::dialect::FullOp>());
             }
