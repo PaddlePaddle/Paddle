@@ -372,9 +372,14 @@ __global__ void masked_multihead_attention_kernel(
     StoreFunc store_func) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   const int bi = blockIdx.y;
-  if (params.sequence_lengths && params.sequence_lengths[bi] == 0) {
+  // params.sequence_lengths[bi] means how many k and v we have cached in cacke_kv
+  if (params.sequence_lengths && params.sequence_lengths[bi] == 0 && 0) {
     return;
   }
+
+//printf("%d blockDim.x \n", blockDim.x);
+// printf("%d blockDim.y \n", blockDim.y);
+// printf("%d blockDim.z \n", blockDim.z);
 
   typedef PDDataTypeTraits<T> traits_;
   typedef typename traits_::DataType DataType_;
@@ -453,7 +458,7 @@ __global__ void masked_multihead_attention_kernel(
     q_bias_base = params.qkv_bias;
     k_bias_base = params.qkv_bias + params.num_head * Dh;
   }
-
+  // QK_VECS_PER_WARP 表示每个
   if (tid < QK_VECS_PER_WARP) {
     int qk_offset = qkv_base_offset + tid * QK_VEC_SIZE;
     int q_bias_offset = hi * Dh + tid * QK_VEC_SIZE;
@@ -757,15 +762,23 @@ __global__ void masked_multihead_attention_kernel(
   constexpr int V_VEC_SIZE = Dh_MAX / THREADS_PER_VALUE;
   using V_vec = typename V_vec_<T, V_VEC_SIZE>::Type;
 
+
+
   // now we have got [1, seq] ，distributed in logits_smem.
-  // next we compute [1, seq] * [seq, head_dim] = [1, head_dim]
+  // next we compute [1, seq] * [seq, head_dim] = [1, head_dim] using all threads in a thread block.
+  // threads in a thread block in rearranged as [THREADS_PER_VALUE, THREADS_PER_BLOCK / THREADS_PER_VALUE]
+  // THREADS_PER_VALUE is contiguous .
   // THREADS_PER_VALUE means num of threads per value's head_dim.
   // we split the seq dimension for more cuda threads to compute.
   // vo means the first seq index processed by this cuda thread in the value.
   // vi means the head_dim index processed by this cuda thread in the value.
   // so this cuda thread compute [1, k] * [k, vi:vi+V_VEC_SIZE] and k starts
   // from vo and increases by a step V_PER_ITER.
+
+  // 每个cuda thread计算 [1, K] * [K , vi:vi+V_VEC_SIZE]
+  // 但是K不是连续的 and trided by V_PER_ITER! and begins at vo.
   int vo = tid / THREADS_PER_VALUE;
+  // 最后就是只有 vo == 0 的那些cuda thread，才需要写入到输出中！
   int vi = (tid % THREADS_PER_VALUE) * V_VEC_SIZE;
 
   T *v_cache = &params.cache_kv[params.cache_batch_size * kv_num_head *
@@ -812,7 +825,8 @@ __global__ void masked_multihead_attention_kernel(
   V_vec v_bias;
   zero(v_bias);
   // now we process the last v.
-  if (vo == (act_time_step % V_PER_ITER) && (Dh == Dh_MAX || vi < Dh)) {
+  // 为啥不让vo等于0的那些cuda thread写入呢？？
+  if (vo == (act_time_step % V_PER_ITER * 0) && (Dh == Dh_MAX || vi < Dh)) {
     // V_vec v = *reinterpret_cast<const V_vec *>(
     //     &params.qkv[2 * params.num_head * Dh + qkv_base_offset + vi]);
     V_vec v;
@@ -827,6 +841,14 @@ __global__ void masked_multihead_attention_kernel(
       v = add(v, v_bias);
     }
 
+    // if (tid == 0 && blockIdx.x == 0 && blockIdx.y == 0) {
+    //   half* tmp = (half*)(&v);
+    //   printf("%f \n", (float)(*(tmp + 0)));
+    //   printf("%f \n", (float)(*(tmp + 1)));
+    //   printf("%f \n", (float)(*(tmp + 2)));
+    //   printf("%f \n", (float)(*(tmp + 3)));
+    // }
+
     *reinterpret_cast<V_vec *>(&v_cache[act_time_step * Dh]) = v;
 
 #if defined(MMHA_USE_FP32_ACUM_FOR_LOGITS)
@@ -838,6 +860,15 @@ __global__ void masked_multihead_attention_kernel(
 
   __syncthreads();
 
+  // if (tid == 0 && blockIdx.x == 0 && blockIdx.y == 0) {
+  //   float* tmp = (float*)(&out);
+  //   printf("%f \n", (float)(*(tmp + 0)));
+  //   printf("%f \n", (float)(*(tmp + 1)));
+  //   printf("%f \n", (float)(*(tmp + 2)));
+  // }
+  // 将每 V_PER_ITER 个cuda thread进行规约！
+
+  // 现在把每个cuda thread里面的out进行规约！
   // now we do the reduction in the seq dimension to get [1, head_dim].
   if (Dh == Dh_MAX || vi < Dh) {
 #pragma unroll
@@ -862,6 +893,7 @@ __global__ void masked_multihead_attention_kernel(
       __syncthreads();
     }
   }
+  // 最后就是只有 vo == 0 的那些cuda thread，才需要写入到输出中！
 
   // write the [1, head_dim] result back to global memory.
   if (vo == 0 && (Dh == Dh_MAX || vi < Dh)) {
@@ -989,6 +1021,10 @@ void fmha_impl(const phi::GPUContext &dev_ctx,
   switch (dim_head) {
     case 10:
       fmha_launch_kernel<T, 10, 32>(
+          params, dev_ctx.stream(), load_func, store_func);
+      break;
+    case 16:
+      fmha_launch_kernel<T, 16, 32>(
           params, dev_ctx.stream(), load_func, store_func);
       break;
     case 26:
