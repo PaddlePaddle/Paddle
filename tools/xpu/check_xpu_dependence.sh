@@ -102,7 +102,7 @@ for name in ${xdnn_tar_file_names[@]}; do
 done
 
 # XCCL
-xccl_tar_file_names=("xccl_rdma-bdcentos_x86_64" "xccl_rdma-ubuntu_x86_64" "xccl_socket-bdcentos_x86_64" "xccl_socket-deepin_sw6_64" "xccl_socket-kylin_aarch64" "xccl_socket-ubuntu_x86_64")
+xccl_tar_file_names=("xccl_rdma-bdcentos_x86_64" "xccl_rdma-ubuntu_x86_64" "xccl_socket-bdcentos_x86_64" "xccl_socket-kylin_aarch64" "xccl_socket-ubuntu_x86_64")
 xccl_inner_file_names=("include/bkcl.h" "so/libbkcl.so")
 for name in ${xccl_tar_file_names[@]}; do
     url="${xccl_base_url}/${name}.tar.gz"
