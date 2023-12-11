@@ -397,6 +397,7 @@ class GroupShardedStage2(nn.Layer):
                 not hasattr(param, "main_grad")
                 and grad is not None
                 and grad._is_initialized()
+                and grad.dtype == Type.fp16
             ):
                 grad.scale_(self._world_size_scaling)
             else:
