@@ -17,7 +17,7 @@
 set -e
 set -x
 
-if [[ $# -e 8 ]]; then
+if [[ $# -eq 8 ]]; then
   echo "Compiling Paddle with XHPC"
   XHPC_URL=$7
   XHPC_DIR_NAME=$8
