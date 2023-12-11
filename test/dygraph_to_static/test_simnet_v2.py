@@ -188,7 +188,7 @@ class TestSimnet(Dy2StTestBase):
         with enable_to_static_guard(False):
             dygraph_loss = train(conf_dict)
 
-        static_loss = train(conf_dict, to_static=True)
+        static_loss = train(conf_dict)
 
         self.assertEqual(len(dygraph_loss), len(static_loss))
         for i in range(len(dygraph_loss)):

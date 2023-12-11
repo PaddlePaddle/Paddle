@@ -376,7 +376,7 @@ class TestSeResnet(Dy2StTestBase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    def train(self, train_reader):
+    def train(self, train_reader, to_static):
         np.random.seed(SEED)
 
         with base.dygraph.guard(place):
@@ -452,7 +452,7 @@ class TestSeResnet(Dy2StTestBase):
 
                     step_idx += 1
                     if step_idx == STEP_NUM:
-                        if paddle.jit.to_static:
+                        if to_static:
                             paddle.jit.save(
                                 se_resnext,
                                 self.model_save_prefix,
@@ -574,8 +574,12 @@ class TestSeResnet(Dy2StTestBase):
     @test_pt_only
     def test_check_result(self):
         with enable_to_static_guard(False):
-            pred_1, loss_1, acc1_1, acc5_1 = self.train(self.train_reader)
-        pred_2, loss_2, acc1_2, acc5_2 = self.train(self.train_reader)
+            pred_1, loss_1, acc1_1, acc5_1 = self.train(
+                self.train_reader, to_static=False
+            )
+        pred_2, loss_2, acc1_2, acc5_2 = self.train(
+            self.train_reader, to_static=True
+        )
 
         np.testing.assert_allclose(
             pred_1,
