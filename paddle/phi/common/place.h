@@ -57,7 +57,7 @@ const char* AllocationTypeStr(AllocationType type);
 /// \brief The place is used to specify where the data is stored.
 
 
-class TEST_API Place {
+class Place {
 
  public:
   Place()
