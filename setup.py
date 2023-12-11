@@ -1151,6 +1151,12 @@ def get_package_data_and_package_dir():
         shutil.copy(env_dict.get("XPU_XPTI_LIB"), libs_path)
         package_data['paddle.libs'] += [env_dict.get("XPU_XPTI_LIB_NAME")]
 
+    if env_dict.get("WITH_XPU_XHPC") == 'ON':
+        shutil.copy(env_dict.get("XPU_XBLAS_LIB"), libs_path)
+        package_data['paddle.libs'] += [env_dict.get("XPU_XBLAS_LIB_NAME")]
+        shutil.copy(env_dict.get("XPU_XFA_LIB"), libs_path)
+        package_data['paddle.libs'] += [env_dict.get("XPU_XFA_LIB_NAME")]
+
     # remove unused paddle/libs/__init__.py
     if os.path.isfile(libs_path + '/__init__.py'):
         os.remove(libs_path + '/__init__.py')

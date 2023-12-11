@@ -38,9 +38,12 @@ tar xvf xccl.tar.gz
 mkdir -p xpu/include/xpu
 mkdir -p xpu/lib
 
+if ! [ -n "$WITH_XPU_XHPC" ]; then
+  cp -r $XDNN_DIR_NAME/include/xpu/* xpu/include/xpu/
+  cp -r $XDNN_DIR_NAME/so/libxpuapi.so xpu/lib/
+fi
+
 cp -r $XRE_DIR_NAME/include/xpu/* xpu/include/xpu/
 cp -r $XRE_DIR_NAME/so/libxpurt* xpu/lib/
-cp -r $XDNN_DIR_NAME/include/xpu/* xpu/include/xpu/
-cp -r $XDNN_DIR_NAME/so/libxpuapi.so xpu/lib/
 cp -r $XCCL_DIR_NAME/include/* xpu/include/xpu/
 cp -r $XCCL_DIR_NAME/so/* xpu/lib/
