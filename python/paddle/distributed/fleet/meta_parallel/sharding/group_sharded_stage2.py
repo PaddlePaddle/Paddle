@@ -394,9 +394,12 @@ class GroupShardedStage2(nn.Layer):
             # For grad scale, we need to do it in the backward hook due to fp16 may overflow if we first add grad and then scale
             # For main_grad scale and fused_linear_param_grad_add, we do scale in the optimizer.
             if not self.scale_in_opt:
-                assert grad is not None
-                assert not grad.is_initialized()
-                if grad.dtype == Type.fp16:
+                if (
+                    not hasattr(param, "main_grad")
+                    and grad is not None
+                    and grad._is_initialized()
+                    and grad.dtype == Type.fp16
+                ):
                     grad.scale_(self._world_size_scaling)
                 else:
                     self.scale_in_opt = True
