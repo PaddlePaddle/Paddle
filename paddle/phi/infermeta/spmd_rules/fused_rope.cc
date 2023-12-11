@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/infermeta/spmd_rules/fuse_rope.h"
+#include "paddle/phi/infermeta/spmd_rules/fused_rope.h"
 
 #include "glog/logging.h"
 
@@ -186,13 +186,13 @@ void infer_sin_cos(const DistMetaTensor& sin,
   }
 }
 
-SpmdInfo FuseRopeInferSpmd(const DistMetaTensor& q,
-                           const DistMetaTensor& k,
-                           const DistMetaTensor& v,
-                           const DistMetaTensor& sin,
-                           const DistMetaTensor& cos,
-                           const DistMetaTensor& position_ids,
-                           bool use_neox_rotary_style) {
+SpmdInfo FusedRopeInferSpmd(const DistMetaTensor& q,
+                            const DistMetaTensor& k,
+                            const DistMetaTensor& v,
+                            const DistMetaTensor& sin,
+                            const DistMetaTensor& cos,
+                            const DistMetaTensor& position_ids,
+                            bool use_neox_rotary_style) {
   check_q(q);
 
   std::vector<std::pair<std::string, std::vector<int64_t>>>
@@ -270,16 +270,16 @@ SpmdInfo FuseRopeInferSpmd(const DistMetaTensor& q,
           {q_dist_attr_dst, k_dist_attr_dst, v_dist_attr_dst}};
 }
 
-SpmdInfo FuseRopeInferSpmdReverse(const DistMetaTensor& q,
-                                  const DistMetaTensor& k,
-                                  const DistMetaTensor& v,
-                                  const DistMetaTensor& sin,
-                                  const DistMetaTensor& cos,
-                                  const DistMetaTensor& position_ids,
-                                  const DistMetaTensor& out_q,
-                                  const DistMetaTensor& out_k,
-                                  const DistMetaTensor& out_v,
-                                  bool use_neox_rotary_style) {
+SpmdInfo FusedRopeInferSpmdReverse(const DistMetaTensor& q,
+                                   const DistMetaTensor& k,
+                                   const DistMetaTensor& v,
+                                   const DistMetaTensor& sin,
+                                   const DistMetaTensor& cos,
+                                   const DistMetaTensor& position_ids,
+                                   const DistMetaTensor& out_q,
+                                   const DistMetaTensor& out_k,
+                                   const DistMetaTensor& out_v,
+                                   bool use_neox_rotary_style) {
   check_q(out_q);
   std::vector<std::pair<std::string, std::vector<int64_t>>>
       outputs_sharding_info;
@@ -366,22 +366,22 @@ SpmdInfo FuseRopeInferSpmdReverse(const DistMetaTensor& q,
           {out_q_dist_attr_dst, out_k_dist_attr_dst, out_v_dist_attr_dst}};
 }
 
-SpmdInfo FuseRopeGradInferSpmd(const DistMetaTensor& sin,
-                               const DistMetaTensor& cos,
-                               const DistMetaTensor& position_ids,
-                               const DistMetaTensor& out_q_grad,
-                               const DistMetaTensor& out_k_grad,
-                               const DistMetaTensor& out_v_grad,
-                               bool use_neox_rotary_style) {
+SpmdInfo FusedRopeGradInferSpmd(const DistMetaTensor& sin,
+                                const DistMetaTensor& cos,
+                                const DistMetaTensor& position_ids,
+                                const DistMetaTensor& out_q_grad,
+                                const DistMetaTensor& out_k_grad,
+                                const DistMetaTensor& out_v_grad,
+                                bool use_neox_rotary_style) {
   // NOTE(zhonghui): The forward and backward kernels of fuse rope are same, so
   // the spmd rules can be shared.
-  SpmdInfo spmd_info = FuseRopeInferSpmd(out_q_grad,
-                                         out_k_grad,
-                                         out_v_grad,
-                                         sin,
-                                         cos,
-                                         position_ids,
-                                         use_neox_rotary_style);
+  SpmdInfo spmd_info = FusedRopeInferSpmd(out_q_grad,
+                                          out_k_grad,
+                                          out_v_grad,
+                                          sin,
+                                          cos,
+                                          position_ids,
+                                          use_neox_rotary_style);
   std::vector<ArgDistAttr> dist_attrs;
   std::vector<int> order = {3, 4, 5, 0, 1, 2};
   for (int ind : order) {

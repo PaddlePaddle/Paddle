@@ -25,6 +25,7 @@ from dygraph_to_static_utils import (
     disable_test_case,
     test_ast_only,
     test_legacy_and_pt_and_pir,
+    test_legacy_only,
 )
 from ifelse_simple_func import (
     dyfunc_with_if_else_early_return1,
@@ -315,6 +316,8 @@ class TestFunctionTrainEvalMode(Dy2StTestBase):
 
 
 class TestIfElseEarlyReturn(Dy2StTestBase):
+    # Why add test_legacy_only? : PIR not support if true and false branch output with different rank
+    @test_legacy_only
     def test_ifelse_early_return1(self):
         answer = np.zeros([2, 2]) + 1
         static_func = paddle.jit.to_static(dyfunc_with_if_else_early_return1)
