@@ -23,12 +23,14 @@ from paddle.jit.sot.symbolic.compile_cache import CompileSIRCache
 class SimpleNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
+        self.dropout = paddle.nn.Dropout(p=0.5)
 
     def forward(self, x):
         if self.training:
             out1 = paddle.nn.functional.dropout(x, p=0.5, training=True)
         else:
             out1 = paddle.nn.functional.dropout(x, p=0.5, training=False)
+        out1 = self.dropout(out1)
         return out1
 
 

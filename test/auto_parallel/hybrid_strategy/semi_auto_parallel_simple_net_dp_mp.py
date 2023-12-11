@@ -30,6 +30,7 @@ class TestSimpleNetHybridStrategyForSemiAutoParallel(
         self._dtype = os.getenv("dtype")
         self._backend = os.getenv("backend")
         self._seed = eval(os.getenv("seed"))
+        self._ckpt_path = os.getenv("ckpt_path")
         self._mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
 
         paddle.set_device(self._backend)
@@ -54,6 +55,19 @@ class TestSimpleNetHybridStrategyForSemiAutoParallel(
         ):
             self.check_tensor_eq(param, param_base)
             self.check_tensor_eq(param.grad, param_base.grad)
+
+        # save load
+        state_dict = model.state_dict()
+        local_state_dict = {}
+        for k, v in state_dict.items():
+            local_state_dict[k] = v._local_value().clone()
+        paddle.distributed.save_state_dict(state_dict, self._ckpt_path)
+        for k, v in state_dict.items():
+            v._local_value().add_(paddle.ones_like(v._local_value()))
+        paddle.distributed.load_state_dict(state_dict, self._ckpt_path)
+        for k, v in state_dict.items():
+            assert k in local_state_dict, k
+            self.check_tensor_eq(v._local_value(), local_state_dict[k])
 
     def run_test_case(self):
         self.test_dp_mp_demo_net()

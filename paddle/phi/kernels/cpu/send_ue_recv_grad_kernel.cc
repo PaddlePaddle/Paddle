@@ -63,7 +63,8 @@ void CalculateXGrad(const Context& ctx,
       } else {
         DenseTensor x_grad_v2 =
             phi::EmptyLike<T, Context>(ctx, out_grad_tensor);
-        phi::funcs::SetConstant<Context, T>()(ctx, &x_grad_v2, T(0));
+        phi::funcs::SetConstant<Context, T>()(
+            ctx, &x_grad_v2, static_cast<T>(0));
         for (int64_t i = 0; i < index_size; i++) {
           IndexT src = s_index[i];
           IndexT dst = d_index[i];
@@ -105,7 +106,8 @@ void CalculateXGrad(const Context& ctx,
       } else {
         DenseTensor x_grad_v2 =
             phi::EmptyLike<T, Context>(ctx, out_grad_tensor);
-        phi::funcs::SetConstant<Context, T>()(ctx, &x_grad_v2, T(0));
+        phi::funcs::SetConstant<Context, T>()(
+            ctx, &x_grad_v2, static_cast<T>(0));
         T* x_grad_v2_data = x_grad_v2.data<T>();
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
@@ -153,7 +155,8 @@ void CalculateXGrad(const Context& ctx,
       } else {
         DenseTensor x_grad_v2 =
             phi::EmptyLike<T, Context>(ctx, out_grad_tensor);
-        phi::funcs::SetConstant<Context, T>()(ctx, &x_grad_v2, T(0));
+        phi::funcs::SetConstant<Context, T>()(
+            ctx, &x_grad_v2, static_cast<T>(0));
         for (int64_t i = 0; i < index_size; i++) {
           IndexT src = s_index[i];
           IndexT dst = d_index[i];
@@ -196,7 +199,8 @@ void CalculateXGrad(const Context& ctx,
       } else {
         DenseTensor x_grad_v2 =
             phi::EmptyLike<T, Context>(ctx, out_grad_tensor);
-        phi::funcs::SetConstant<Context, T>()(ctx, &x_grad_v2, T(0));
+        phi::funcs::SetConstant<Context, T>()(
+            ctx, &x_grad_v2, static_cast<T>(0));
         T* x_grad_v2_data = x_grad_v2.data<T>();
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for

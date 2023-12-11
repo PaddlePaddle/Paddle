@@ -186,6 +186,18 @@ void FusedDropoutAddKernel(const Context& dev_ctx,
     auto dst_functor =
         NoMaskFwFunctor<T, float>(1.0f - dropout_rate, upscale_in_train);
 
+#ifdef PADDLE_WITH_HIP
+    VectorizedDropoutForward<T, NoMaskFwFunctor<T, float>>
+        <<<grid_size, block_size, 0, stream>>>(0,
+                                               numel,
+                                               seed_data,  // need save
+                                               x_data,
+                                               y_data,
+                                               out_data,
+                                               increment,  // need save
+                                               main_offset,
+                                               dst_functor);
+#else
     void* functionPtr = reinterpret_cast<void*>(
         &(VectorizedDropoutForward<T, NoMaskFwFunctor<T, float>>));
     cudaFunction_t cudaFunc;
@@ -241,6 +253,7 @@ void FusedDropoutAddKernel(const Context& dev_ctx,
 
     VLOG(10) << "NON_CUDA_GRAPH seed = " << seed_data
              << ", increment = " << increment;
+#endif
   } else {
     using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     MT factor = static_cast<MT>(1.0f - dropout_rate);

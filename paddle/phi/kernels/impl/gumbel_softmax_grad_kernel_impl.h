@@ -40,7 +40,7 @@ void GumbelSoftmaxGradKernel(const Context& ctx,
 
   // For 0D Tensor
   if (rank == 0) {
-    phi::funcs::set_constant(ctx, dx, 0.0);
+    phi::funcs::set_constant(ctx, dx, static_cast<T>(0.0));
     return;
   }
 

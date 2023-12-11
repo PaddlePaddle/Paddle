@@ -34,8 +34,14 @@ if(NOT CINN_ONLY)
 
   cinn_cc_test(tree_test SRCS tree_test.cc DEPS gtest glog)
 
-  cinn_cc_test(inline_translator_test SRCS inline_translator_test.cc DEPS gtest
-               glog)
+  cinn_cc_test(
+    inline_translator_test
+    SRCS
+    inline_translator_test.cc
+    DEPS
+    gtest
+    glog
+    absl)
 
   cinn_cc_test(
     dim_expr_test
@@ -45,7 +51,5 @@ if(NOT CINN_ONLY)
     gtest
     glog
     cinncore)
-
-  message(STATUS "ADT srcs: ${cinnapi_src}")
 
 endif()

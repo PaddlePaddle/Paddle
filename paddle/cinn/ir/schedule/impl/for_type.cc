@@ -22,19 +22,74 @@ namespace ir {
 void DyScheduleImpl::MutateForType(const Expr& loop,
                                    ForType for_type,
                                    int factor) {
-  CINN_NOT_IMPLEMENTED;
+  auto* for_node = loop.As<ir::For>();
+  CHECK(for_node) << "loop param must be For node! Please check.";
+  CHECK(for_node->is_serial())
+      << "loop is not serial, current forloop type is "
+      << static_cast<int>(for_node->for_type()) << ", and it cannot become "
+      << static_cast<int>(for_type);
+  auto loop_copy = ir::ir_utils::IRCopy(loop);
+  auto* new_for_node = loop_copy.As<ir::For>();
+  CHECK(new_for_node);
+  new_for_node->set_for_type(for_type);
+  if (new_for_node->is_vectorized()) {
+    VectorizeInfo vec_info(0, factor);
+    new_for_node->set_vectorize_info(vec_info);
+  } else if (new_for_node->is_binded()) {
+    BindInfo bind_info(for_type, factor, DeviceAPI::GPU);
+    new_for_node->set_bind_info(bind_info);
+  }
+  this->Replace(loop, loop_copy);
 }
 
-void DyScheduleImpl::Parallel(const Expr& loop) { CINN_NOT_IMPLEMENTED; }
+void DyScheduleImpl::Parallel(const Expr& loop) {
+  MutateForType(loop, ForType::Parallel);
+}
 
 void DyScheduleImpl::Vectorize(const Expr& loop, int factor) {
-  CINN_NOT_IMPLEMENTED;
+  CHECK_GT(factor, 0) << "vectorize factor should be more than 0";
+  CHECK(loop.As<For>()->extent.is_constant())
+      << "The loop to be vectorized should be constant!\n";
+  MutateForType(loop, ForType::Vectorized, factor);
 }
 
-void DyScheduleImpl::Unroll(const Expr& loop) { CINN_NOT_IMPLEMENTED; }
+void DyScheduleImpl::Unroll(const Expr& loop) {
+  CHECK(loop.As<For>()->extent.is_constant())
+      << "The loop to be unrolled should be constant!\n";
+  MutateForType(loop, ForType::Unrolled);
+}
 
 void DyScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
-  CINN_NOT_IMPLEMENTED;
+#ifdef CINN_WITH_CUDA
+  CHECK(loop.As<For>()->extent.is_constant())
+      << "The extent of loop to be binded should be constant!\n";
+  static std::set<std::string> thread_axes = {"blockIdx.x",
+                                              "blockIdx.y",
+                                              "blockIdx.z",
+                                              "threadIdx.x",
+                                              "threadIdx.y",
+                                              "threadIdx.z"};
+  CHECK(thread_axes.count(thread_axis))
+      << "thread_axis " << thread_axis << " is not supported";
+  int offset = thread_axis.back() - 'x';
+  auto cur_dev_info =
+      common::DevInfoMgr<common::Target::Arch::NVGPU>::GetDevInfo(0);
+  const std::array<int, 3> kMaxBlockDims = cur_dev_info->GetMaxBlockDims();
+  const std::array<int, 3> kMaxGridDims = cur_dev_info->GetMaxGridDims();
+  auto check_offset = [&](const char& c) -> bool {
+    auto extent = loop.As<ir::For>()->extent.as_int32();
+    return extent <= (c == 'b' ? kMaxGridDims[offset] : kMaxBlockDims[offset]);
+  };
+  if (thread_axis[0] == 'b') {
+    CHECK(check_offset(thread_axis[0]))
+        << "Invalid Bind! The extent of loop is out of range on grid size!\n";
+    MutateForType(loop, ForType::GPUBlock, offset);
+  } else {
+    CHECK(check_offset(thread_axis[0]))
+        << "Invalid Bind! The extent of loop is out of range on block size!\n";
+    MutateForType(loop, ForType::GPUThread, offset);
+  }
+#endif
 }
 
 }  // namespace ir

@@ -94,7 +94,7 @@ ProgramInterpreter::ProgramInterpreter(const platform::Place& place,
 
   PrepareForCUDAGraphCapture();
 
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   calculate_stream_timer_ = std::make_unique<phi::CalculateStreamTimer>(place);
 #endif
 }
@@ -661,7 +661,7 @@ void ProgramInterpreter::ClearLoDTensorArrayInLocalScope() {
 
 std::tuple<double, double> ProgramInterpreter::InterpreterRunTime() {
   double start_time = 0, end_time = 0;
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   start_time = calculate_stream_timer_->StartTime();
   end_time = calculate_stream_timer_->EndTime();
 #endif
@@ -1146,7 +1146,7 @@ void ProgramInterpreter::RunInstruction(const Instruction& instr_node) {
 
   try {
     instr_node.WaitEvent(place_);
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (enable_job_schedule_profiler_) {
       if (!calculate_stream_timer_->IsStarted() && op->Type() != "feed" &&
           !interpreter::IsCommunicationOp(instr_node)) {
@@ -1165,7 +1165,7 @@ void ProgramInterpreter::RunInstruction(const Instruction& instr_node) {
     }
 
     instr_node.RecordEvent(place_);
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (enable_job_schedule_profiler_) {
       if (instr_node.Id() == last_calculate_instr_id_ &&
           calculate_stream_timer_->IsStarted()) {
