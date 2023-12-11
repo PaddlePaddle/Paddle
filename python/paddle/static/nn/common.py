@@ -1661,7 +1661,7 @@ def conv2d_transpose(
         )
 
     if filter_size is None:
-        if output_size is []:
+        if output_size == []:
             raise ValueError("output_size must be set when filter_size is None")
         if not in_dygraph_mode():
             if isinstance(output_size, Variable) or paddle.utils._contain_var(
