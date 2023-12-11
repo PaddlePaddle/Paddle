@@ -27,7 +27,65 @@ __all__ = []
 
 class Rprop(Optimizer):
     r"""
-    TODO
+    **Notes: This optimizer is only applicable to full-batch training.**
+    Optimizer of the Rprop algorithm.Please refer to this for details:
+    `A direct adaptive method for faster backpropagation learning : The RPROP algorithm <https://ieeexplore.ieee.org/document/298623>`_.
+
+    .. math::
+
+       \begin{aligned}
+            &\hspace{0mm} For\ all\ weights\ and\ biases\{                                                                                                  \\
+            &\hspace{5mm} \textbf{if} \: (\frac{\partial E}{\partial w_{ij}}(t-1)*\frac{\partial E}{\partial w_{ij}}(t)> 0)\ \textbf{then} \: \{            \\
+            &\hspace{10mm} learning\_rate_{ij}(t)=\mathrm{minimum}(learning\_rate_{ij}(t-1)*\eta^{+},learning\_rate_{max})                                  \\
+            &\hspace{10mm} \Delta w_{ij}(t)=-sign(\frac{\partial E}{\partial w_{ij}}(t))*learning\_rate_{ij}(t)                                             \\
+            &\hspace{10mm} w_{ij}(t+1)=w_{ij}(t)+\Delta w_{ij}(t)                                                                                           \\
+            &\hspace{5mm} \}                                                                                                                                \\
+            &\hspace{5mm} \textbf{else if} \: (\frac{\partial E}{\partial w_{ij}}(t-1)*\frac{\partial E}{\partial w_{ij}}(t)< 0)\ \textbf{then} \: \{       \\
+            &\hspace{10mm} learning\_rate_{ij}(t)=\mathrm{maximum}(learning\_rate_{ij}(t-1)*\eta^{-},learning\_rate_{min})                                  \\
+            &\hspace{10mm} w_{ij}(t+1)=w_{ij}(t)                                                                                                            \\
+            &\hspace{10mm} \frac{\partial E}{\partial w_{ij}}(t)=0                                                                                          \\
+            &\hspace{5mm} \}                                                                                                                                \\
+            &\hspace{5mm} \textbf{else if} \: (\frac{\partial E}{\partial w_{ij}}(t-1)*\frac{\partial E}{\partial w_{ij}}(t)= 0)\ \textbf{then} \: \{       \\
+            &\hspace{10mm} \Delta w_{ij}(t)=-sign(\frac{\partial E}{\partial w_{ij}}(t))*learning\_rate_{ij}(t)                                             \\
+            &\hspace{10mm} w_{ij}(t+1)=w_{ij}(t)+\Delta w_{ij}(t)                                                                                           \\
+            &\hspace{5mm} \}                                                                                                                                \\
+            &\hspace{0mm} \}                                                                                                                                \\
+       \end{aligned}
+
+    Parameters:
+        learning_rate (float|Tensor|LearningRateDecay, optional): The initial learning rate used to update ``Parameter``.
+            It can be a float value, a ``Tensor`` with a float type or a LearningRateDecay. The default value is 0.001.
+        learning_rate_range (tuple, optional): The range of learning rate. \
+            Learning rate cannot be smaller than the first element of the tuple; \
+            learning rate cannot be larger than the second element of the tuple.
+        parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``. \
+            This parameter is required in dygraph mode. \
+            The default value is None in static graph mode, at this time all parameters will be updated.
+        etas (tuple, optional): Tuple used to update learning rate. \
+            The first element of the tuple is the multiplicative decrease factor; \
+            the second element of the tuple is the multiplicative increase factor.
+        grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of
+            some derived class of ``GradientClipBase`` . There are three clipping strategies
+            ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` ,
+            :ref:`api_paddle_nn_ClipGradByValue` ). Default None, meaning there is no gradient clipping.
+        name (str, optional): The default value is None. Normally there is no need for user
+                to set this property. For more information, please refer to
+                :ref:`api_guide_Name` .
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> inp = paddle.uniform(min=-0.1, max=0.1, shape=[1, 100], dtype='float32')
+            >>> linear = paddle.nn.Linear(100, 10)
+            >>> inp = paddle.to_tensor(inp)
+            >>> out = linear(inp)
+            >>> loss = paddle.mean(out)
+            >>> rprop = paddle.optimizer.Rprop(learning_rate=0.001, learning_rate_range=(0.0001,0.1), parameters=linear.parameters(), etas=(0.5,1.2))
+            >>> out.backward()
+            >>> rprop.step()
+            >>> rprop.clear_grad()
     """
     _prevs_acc_str = "prevs"
     _learning_rates_acc_str = "learning_rates"

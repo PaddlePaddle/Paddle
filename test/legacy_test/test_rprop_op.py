@@ -15,10 +15,14 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+)
 from utils import dygraph_guard
 
 import paddle
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -350,6 +354,101 @@ class TestRpropSimple(unittest.TestCase):
         out1 = self.run_dygraph()
         out2 = self.run_static()
         np.testing.assert_allclose(out1, out2)
+
+
+@unittest.skipIf(
+    not core.supports_bfloat16(), 'place does not support BF16 evaluation'
+)
+class TestRpropOpBF16(OpTest):
+    def setUp(self):
+        self.op_type = "rprop"
+        self.dtype = np.uint16
+        self.use_mkldnn = True
+        self.conf()
+        params = np.random.random((self.h, self.w)).astype("float32")
+        grads = np.random.random((self.h, self.w)).astype("float32")
+        prevs = np.random.random((self.h, self.w)).astype("float32")
+        learning_rates = np.random.random((self.h, self.w)).astype("float32")
+
+        scale = 0.01
+        np.subtract(params, 0.5, out=params)
+        np.multiply(params, scale, out=params)
+        np.subtract(grads, 0.5, out=grads)
+        np.multiply(grads, scale, out=grads)
+        np.subtract(prevs, 0.5, out=prevs)
+        np.multiply(prevs, scale, out=prevs)
+        np.multiply(learning_rates, scale, out=learning_rates)
+
+        learning_rate_min = 0.1 * scale
+        learning_rate_max = 0.9 * scale
+        eta_negative = 0.5
+        eta_positive = 1.2
+
+        param_outs = params.copy()
+        prev_outs = prevs.copy()
+        learning_rate_outs = learning_rates.copy()
+
+        for i, param in enumerate(params):
+            grad = grads[i]
+            prev = prevs[i]
+            lr = learning_rate_outs[i]
+            param_out = param_outs[i]
+            prev_out = prev_outs[i]
+
+            sign = np.sign(np.multiply(grad, prev))
+            sign[np.greater(sign, 0)] = eta_positive
+            sign[np.less(sign, 0)] = eta_negative
+            sign[np.equal(sign, 0)] = 1
+            np.multiply(lr, sign, out=lr)
+            lr[np.less(lr, learning_rate_min)] = learning_rate_min
+            lr[np.greater(lr, learning_rate_max)] = learning_rate_max
+
+            grad = grad.copy()
+            grad[np.equal(sign, eta_negative)] = 0
+
+            learning_rate_outs[i] = lr
+            param_outs[i] = np.subtract(
+                param_out, np.multiply(np.sign(grad), lr)
+            )
+            prev_outs[i] = grad.copy()
+
+        learning_rate_range = np.array(
+            (learning_rate_min, learning_rate_max)
+        ).astype("float32")
+        etas = np.array((0.5, 1.2)).astype("float32")
+
+        params_bf16 = convert_float_to_uint16(params)
+        grads_bf16 = convert_float_to_uint16(grads)
+        prevs_bf16 = convert_float_to_uint16(prevs)
+        learning_rates_bf16 = convert_float_to_uint16(learning_rates)
+        learning_rate_range_bf16 = convert_float_to_uint16(learning_rate_range)
+        etas_bf16 = convert_float_to_uint16(etas)
+
+        param_outs_bf16 = convert_float_to_uint16(param_outs)
+        prev_outs_bf16 = convert_float_to_uint16(prev_outs)
+        learning_rate_outs_bf16 = convert_float_to_uint16(learning_rate_outs)
+
+        self.inputs = {
+            "param": params_bf16,
+            "grad": grads_bf16,
+            "prev": prevs_bf16,
+            "learning_rate": learning_rates_bf16,
+            "learning_rate_range": learning_rate_range_bf16,
+            "etas": etas_bf16,
+        }
+
+        self.outputs = {
+            "param_out": param_outs_bf16,
+            "prev_out": prev_outs_bf16,
+            "learning_rate_out": learning_rate_outs_bf16,
+        }
+
+    def conf(self):
+        self.h = 102
+        self.w = 105
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CPUPlace(), check_dygraph=False)
 
 
 if __name__ == "__main__":
