@@ -16,3 +16,8 @@ cc_test_old(
 
 paddle_test(fused_broadcast_op_test SRCS fused_broadcast_op_handle_test.cc)
 paddle_test(exception_holder_test SRCS exception_holder_test.cc)
+
+cc_test(
+  build_strategy_test
+  SRCS build_strategy_test.cc
+  DEPS build_strategy op_registry op_proto_maker graph string_helper)
