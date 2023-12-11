@@ -849,32 +849,33 @@ void BindType(py::module *m) {
         return print_stream.str();
       });
 
-  m->def("set_shape", [](Type &type, const std::vector<int> &shape) -> Type {
-    if (type.isa<DenseTensorType>()) {
-      DenseTensorType src_type = type.dyn_cast<DenseTensorType>();
-      DenseTensorType dst_type =
-          DenseTensorType::get(pir::IrContext::Instance(),
-                               src_type.dtype(),
-                               phi::make_ddim(shape),
-                               src_type.data_layout(),
-                               src_type.lod(),
-                               src_type.offset());
-      return dst_type;
-    } else if (type.isa<SelectedRowsType>()) {
-      SelectedRowsType src_type = type.dyn_cast<SelectedRowsType>();
-      SelectedRowsType dst_type =
-          SelectedRowsType::get(pir::IrContext::Instance(),
-                                src_type.dtype(),
-                                phi::make_ddim(shape),
-                                src_type.data_layout(),
-                                src_type.lod(),
-                                src_type.offset());
-      return dst_type;
-    } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "Currently, we can only set shape for dense tensor"));
-    }
-  });
+  m->def("create_shaped_type",
+         [](Type &type, const std::vector<int> &shape) -> Type {
+           if (type.isa<DenseTensorType>()) {
+             DenseTensorType src_type = type.dyn_cast<DenseTensorType>();
+             DenseTensorType dst_type =
+                 DenseTensorType::get(pir::IrContext::Instance(),
+                                      src_type.dtype(),
+                                      phi::make_ddim(shape),
+                                      src_type.data_layout(),
+                                      src_type.lod(),
+                                      src_type.offset());
+             return dst_type;
+           } else if (type.isa<SelectedRowsType>()) {
+             SelectedRowsType src_type = type.dyn_cast<SelectedRowsType>();
+             SelectedRowsType dst_type =
+                 SelectedRowsType::get(pir::IrContext::Instance(),
+                                       src_type.dtype(),
+                                       phi::make_ddim(shape),
+                                       src_type.data_layout(),
+                                       src_type.lod(),
+                                       src_type.offset());
+             return dst_type;
+           } else {
+             PADDLE_THROW(phi::errors::InvalidArgument(
+                 "Currently, we can only set shape for dense tensor"));
+           }
+         });
 }
 
 void BindAttribute(py::module *m) {

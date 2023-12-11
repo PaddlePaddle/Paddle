@@ -486,7 +486,7 @@ def monkey_patch_value():
         ), "We only support call 'set_shape' in to_static mode."
 
         if self.is_dense_tensor_type() or self.is_selected_row_type():
-            type = paddle.pir.set_shape(self.type(), shape)
+            type = paddle.pir.create_shaped_type(self.type(), shape)
             self.set_type(type)
         else:
             raise ValueError(
