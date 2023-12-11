@@ -23,9 +23,11 @@ void CopySignKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
                     DenseTensor* out) {
+  std::vector<const DenseTensor*> inputs = {&x, &y};
+  std::vector<DenseTensor*> outputs = {out};
   dev_ctx.template Alloc<T>(out);
-  funcs::ElementwiseCompute<phi::CopySignFunctor<T>, T>(
-      dev_ctx, x, y, phi::CopySignFunctor<T>(), out);
+  funcs::BroadcastKernel<T>(
+      dev_ctx, inputs, &outputs, phi::CopySignFunctor<T>());
 }
 }  // namespace phi
 
