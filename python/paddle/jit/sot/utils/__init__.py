@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .code_status import CodeStatus  # noqa: F401
 from .envs import (  # noqa: F401
     ENV_CLEAN_CODE,
     ENV_COST_MODEL,
@@ -21,6 +20,7 @@ from .envs import (  # noqa: F401
     ENV_SOT_LOG_LEVEL,
     ENV_STRICT_MODE,
     cost_model_guard,
+    min_graph_size_guard,
     strict_mode_guard,
 )
 from .exceptions import (  # noqa: F401
@@ -33,6 +33,7 @@ from .magic_methods import magic_method_builtin_dispatch  # noqa: F401
 from .paddle_api_config import (  # noqa: F401
     is_break_graph_tensor_methods,
     is_inplace_api,
+    is_not_supported_paddle_layer,
     paddle_tensor_methods,
 )
 from .utils import (  # noqa: F401
@@ -61,6 +62,7 @@ from .utils import (  # noqa: F401
     list_find_index_by_id,
     log,
     log_do,
+    log_format,
     map_if,
     map_if_extend,
     meta_str,

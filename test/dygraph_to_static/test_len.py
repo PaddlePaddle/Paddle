@@ -15,7 +15,13 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import dy2static_unittest
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_ast_only,
+    test_legacy_and_pir,
+    test_legacy_only,
+    test_pir_only,
+)
 
 import paddle
 from paddle import base
@@ -43,8 +49,7 @@ def len_with_lod_tensor_array(x):
     return arr_len
 
 
-@dy2static_unittest
-class TestLen(unittest.TestCase):
+class TestLen(Dy2StTestBase):
     def setUp(self):
         self.place = (
             base.CUDAPlace(0)
@@ -68,6 +73,8 @@ class TestLen(unittest.TestCase):
                 out = out.numpy()
             return out
 
+    @test_ast_only
+    @test_legacy_and_pir
     def test_len(self):
         dygraph_res = self._run(to_static=False)
         static_res = self._run(to_static=True)
@@ -82,7 +89,49 @@ class TestLenWithTensorArray(TestLen):
 # Note: Variable(SelectedRows) is not exposed directly in dygraph.
 # The unittest is used to test coverage by fake transformed code.
 def len_with_selected_rows(place):
-    block = base.default_main_program().global_block()
+    # create selected_rows variable
+    paddle.enable_static()
+    non_used_initializer = paddle.nn.initializer.Constant(0.0)
+    var = paddle.static.create_parameter(
+        name="X",
+        dtype="float32",
+        shape=[5, 20],
+    )
+    selected_var = (
+        paddle.base.libpaddle.pir.create_selected_rows_type_by_dense_tensor(
+            var.type()
+        )
+    )
+    var.set_type(selected_var)
+    # y is Variable(SelectedRows)
+    y = clip.merge_selected_rows(var)
+    y_len = Call(len)(y)
+
+    # z is inner tensor with shape [4, 2]
+    z = clip.get_tensor_from_selected_rows(y)
+    z_len = paddle.shape(z)[0]
+
+    # set data for selected_rows
+    x_rows = [0, 2, 2, 4, 19]
+    row_numel = 2
+    np_array = np.ones((len(x_rows), row_numel)).astype("float32")
+
+    x_var = base.global_scope().var("X").get_selected_rows()
+    x_var.set_rows(x_rows)
+    x_var.set_height(20)
+    x_tensor = x_var.get_tensor()
+    x_tensor.set(np_array, place)
+
+    exe = paddle.static.Executor(place=place)
+    result = exe.run(
+        paddle.static.default_main_program(), fetch_list=[y_len, z_len]
+    )
+    return result
+
+
+def legacy_len_with_selected_rows(place):
+    paddle.enable_static()
+    block = paddle.static.default_main_program().global_block()
     # create selected_rows variable
     var = block.create_var(
         name="X",
@@ -115,8 +164,7 @@ def len_with_selected_rows(place):
     return result
 
 
-@dy2static_unittest
-class TestLenWithSelectedRows(unittest.TestCase):
+class TestLenWithSelectedRows(Dy2StTestBase):
     def setUp(self):
         self.place = (
             base.CUDAPlace(0)
@@ -124,6 +172,17 @@ class TestLenWithSelectedRows(unittest.TestCase):
             else base.CPUPlace()
         )
 
+    @test_legacy_only
+    @test_ast_only
+    def test_len_legacy(self):
+        selected_rows_var_len, var_tensor_len = legacy_len_with_selected_rows(
+            self.place
+        )
+        self.assertEqual(selected_rows_var_len, var_tensor_len)
+
+    @test_pir_only
+    @test_ast_only
+    @test_pir_only
     def test_len(self):
         selected_rows_var_len, var_tensor_len = len_with_selected_rows(
             self.place

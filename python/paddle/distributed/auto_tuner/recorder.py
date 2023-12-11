@@ -70,9 +70,8 @@ class HistoryRecorder:
                 if first_few >= 5:
                     break
             return (best_cfg, False)
-        if (
-            isinstance(self.history[0]["max_mem_usage"], str)
-            or self.history[0]["time"] == -1
+        if isinstance(self.history[0]["max_mem_usage"], str) or (
+            "time" in self.history[0] and self.history[0]["time"] == -1
         ):
             return (self.history[0], True)
         return (self.history[0], False)
@@ -89,6 +88,8 @@ class HistoryRecorder:
         # check if 'time' exists
         if 'time' in df.columns:
             df = df.drop(columns=['time'])
+        if 'has_error' in df.columns:
+            df = df.drop(columns=['has_error'])
         # write to csv
         df.to_csv(self.store_path, index=False)
 

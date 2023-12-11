@@ -15,14 +15,19 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test, dy2static_unittest
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    enable_to_static_guard,
+    test_ast_only,
+    test_default_and_pir,
+    test_pt_only,
+)
 from test_resnet import ResNetHelper
 
 import paddle
 
 
-@dy2static_unittest
-class TestResnetWithPass(unittest.TestCase):
+class TestResnetWithPass(Dy2StTestBase):
     def setUp(self):
         self.build_strategy = paddle.static.BuildStrategy()
         self.build_strategy.fuse_elewise_add_act_ops = True
@@ -34,8 +39,8 @@ class TestResnetWithPass(unittest.TestCase):
         paddle.base.set_flags({"FLAGS_max_inplace_grad_add": 8})
 
     def train(self, to_static):
-        paddle.jit.enable_to_static(to_static)
-        return self.resnet_helper.train(to_static, self.build_strategy)
+        with enable_to_static_guard(to_static):
+            return self.resnet_helper.train(to_static, self.build_strategy)
 
     def verify_predict(self):
         image = np.random.random([1, 3, 224, 224]).astype('float32')
@@ -62,7 +67,8 @@ class TestResnetWithPass(unittest.TestCase):
             err_msg=f'predictor_pre:\n {predictor_pre}\n, st_pre: \n{st_pre}.',
         )
 
-    @ast_only_test
+    @test_ast_only
+    @test_pt_only
     def test_resnet(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)
@@ -74,7 +80,8 @@ class TestResnetWithPass(unittest.TestCase):
         )
         self.verify_predict()
 
-    @ast_only_test
+    @test_ast_only
+    @test_pt_only
     def test_in_static_mode_mkldnn(self):
         paddle.base.set_flags({'FLAGS_use_mkldnn': True})
         try:
@@ -84,8 +91,8 @@ class TestResnetWithPass(unittest.TestCase):
             paddle.base.set_flags({'FLAGS_use_mkldnn': False})
 
 
-@dy2static_unittest
-class TestError(unittest.TestCase):
+class TestError(Dy2StTestBase):
+    @test_default_and_pir
     def test_type_error(self):
         def foo(x):
             out = x + 1

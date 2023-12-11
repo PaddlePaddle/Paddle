@@ -48,9 +48,12 @@ from paddle.distributed.fleet.base.private_helper_function import (
 from paddle.distributed.fleet.launch_utils import check_backend
 
 # (TODO: GhostScreaming) It will be removed later.
-from paddle.framework import _set_expected_place
-from paddle.framework import base as imperative_base
-from paddle.framework import core, in_dynamic_mode
+from paddle.framework import (
+    _set_expected_place,
+    base as imperative_base,
+    core,
+    in_dynamic_mode,
+)
 from paddle.nn.layer import layers
 from paddle.utils import deprecated
 
@@ -857,13 +860,13 @@ class ParallelEnv:
         Its value is equal to the value of the environment variable ``PADDLE_PG_TIMEOUT`` . The default value is 30 minutes.
 
         Examples:
-          .. code-block:: python
+            .. code-block:: python
 
-            # execute this command in terminal: export PADDLE_PG_TIMEOUT=1800000
-            import paddle.distributed as dist
+                >>> # execute this command in terminal: export PADDLE_PG_TIMEOUT=1800000
+                >>> import paddle.distributed as dist
 
-            env = dist.ParallelEnv()
-            # the pg_timeout of process group 1800000
+                >>> env = dist.ParallelEnv()
+                >>> # the pg_timeout of process group 1800000
         """
         return self._pg_timeout
 
@@ -1116,6 +1119,11 @@ def init_parallel_env():
         # TODO(mine): support XPU and other backends.
         if backend in ["nccl", 'xccl', 'bkcl']:
             core.CommContextManager.set_device_id(parallel_env.device_id)
+
+        if int(os.getenv("FLAGS_eager_communication_connection", 0)) == 1:
+            paddle.distributed.all_reduce(
+                paddle.zeros([1], dtype=paddle.uint8), group=group, sync_op=True
+            )
         return group
 
     node_num = {i.split(":")[0] for i in parallel_env.trainer_endpoints}

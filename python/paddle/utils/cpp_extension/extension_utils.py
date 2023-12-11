@@ -943,9 +943,7 @@ def parse_op_info(op_name):
     """
     if op_name not in OpProtoHolder.instance().op_proto_map:
         raise ValueError(
-            "Please load {} shared library file firstly by `paddle.utils.cpp_extension.load_op_meta_info_and_register_op(...)`".format(
-                op_name
-            )
+            f"Please load {op_name} shared library file firstly by `paddle.utils.cpp_extension.load_op_meta_info_and_register_op(...)`"
         )
     op_proto = OpProtoHolder.instance().get_op_proto(op_name)
 
@@ -1077,9 +1075,15 @@ def _gen_output_content(
 {indent}else:
 {indent}    res.append(None)
 {indent}    start_idx += 1"""
-            static_content += f"""
+            if IS_WINDOWS:
+                static_content += f"""
 {indent}if {lower_in_names} is not None:
 {indent}    outs['{out_name}'] = [helper.create_variable(dtype='float32') for _ in range(len({lower_in_names}))]"""
+            else:
+                static_content += f"""
+{indent}if {lower_in_names} is not None:
+{indent}    outs['{out_name}'] = {lower_in_names}"""
+
         elif (
             in_idx != -1 and "@VECTOR" in in_names[in_idx]
         ):  # inplace vector<Tensor> output case
@@ -1087,8 +1091,12 @@ def _gen_output_content(
             dynamic_content += f"""
 {indent}res.append(outs[start_idx: start_idx + len({lower_in_names})])
 {indent}start_idx += len({lower_in_names})"""
-            static_content += f"""
+            if IS_WINDOWS:
+                static_content += f"""
 {indent}outs['{out_name}'] = [helper.create_variable(dtype='float32') for _ in range(len({lower_in_names}))]"""
+            else:
+                static_content += f"""
+{indent}outs['{out_name}'] = {lower_in_names}"""
         elif (
             in_idx != -1 and "@OPTIONAL" in in_names[in_idx]
         ):  # inplace optional Tensor output case, handle inplace None input
@@ -1099,9 +1107,23 @@ def _gen_output_content(
 {indent}else:
 {indent}    res.append(None)
 {indent}start_idx += 1"""
-            static_content += f"""
+            if IS_WINDOWS:
+                static_content += f"""
 {indent}if {lower_in_names} is not None:
 {indent}    outs['{out_name}'] = helper.create_variable(dtype='float32')"""
+            else:
+                static_content += f"""
+{indent}if {lower_in_names} is not None:
+{indent}    outs['{out_name}'] = {lower_in_names}"""
+        elif (
+            in_idx != -1 and not IS_WINDOWS
+        ):  # inplace Tensor output case, handle inplace None input
+            lower_in_names = in_names[in_idx].lower()
+            dynamic_content += f"""
+{indent}res.append(outs[start_idx])
+{indent}start_idx += 1"""
+            static_content += f"""
+{indent}outs['{out_name}'] = {lower_in_names}"""
         else:  # general/inplace Tensor output case
             dynamic_content += f"""
 {indent}res.append(outs[start_idx])

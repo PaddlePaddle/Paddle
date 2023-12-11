@@ -39,6 +39,7 @@ struct EigenScale<Eigen::DefaultDevice, T> {
   }
 };
 
+template struct EigenScale<Eigen::DefaultDevice, bool>;
 template struct EigenScale<Eigen::DefaultDevice, float>;
 template struct EigenScale<Eigen::DefaultDevice, double>;
 template struct EigenScale<Eigen::DefaultDevice, dtype::bfloat16>;

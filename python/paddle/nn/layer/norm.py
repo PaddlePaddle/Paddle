@@ -42,6 +42,7 @@ from ...framework import (
     _global_flags,
     get_default_dtype,
     in_dynamic_or_pir_mode,
+    in_pir_mode,
     no_grad,
 )
 from .. import functional as F
@@ -532,7 +533,7 @@ class GroupNorm(Layer):
             )
 
     def forward(self, input):
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             return _C_ops.group_norm(
                 input,
                 self.weight,
@@ -1056,7 +1057,7 @@ class BatchNorm(Layer):
         self._trainable_statistics = trainable_statistics
 
     def forward(self, input):
-        if in_dynamic_or_pir_mode():
+        if in_dynamic_mode():
             batch_norm_out, t1, t2, t3, t4, _ = _C_ops.batch_norm(
                 input,
                 self._mean,
@@ -1072,13 +1073,29 @@ class BatchNorm(Layer):
             )
             if self._act is None:
                 return batch_norm_out
-            if in_dynamic_mode():
-                return dygraph_utils._append_activation_in_dygraph(
-                    batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn
-                )
-            else:
-                act_op = getattr(_C_ops, self._act)
-                return act_op(input)
+
+            return dygraph_utils._append_activation_in_dygraph(
+                batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn
+            )
+        elif in_pir_mode():
+            batch_norm_out, t1, t2, t3, t4, _ = _C_ops.batch_norm_(
+                input,
+                self._mean,
+                self._variance,
+                self.weight,
+                self.bias,
+                not self.training,
+                self._momentum,
+                self._epsilon,
+                self._data_layout,
+                self._use_global_stats,
+                self._trainable_statistics,
+            )
+            if self._act is None:
+                return batch_norm_out
+
+            act_op = getattr(_C_ops, self._act)
+            return act_op(batch_norm_out)
         else:
             # create output
             # mean and mean_out share the same memory
@@ -1623,7 +1640,7 @@ class SyncBatchNorm(_BatchNormBase):
 
         # train mode: use mini-batch stats, eval mode: use global stats
         # use_global_stats only support False in sync_batch_norm
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             sync_batch_norm_out, _, _, _, _, _ = _C_ops.sync_batch_norm_(
                 x,
                 self._mean,

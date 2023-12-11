@@ -439,8 +439,7 @@ function(op_library TARGET)
     "bitwise_op"
     "nccl_op"
     "tensor_array_read_write_op"
-    "tensorrt_engine_op"
-    "conv_fusion_op")
+    "tensorrt_engine_op")
 
     if("${TARGET}" STREQUAL "${manual_pybind_op}")
       set(pybind_flag 1)
@@ -689,7 +688,7 @@ function(prune_pybind_h)
 
   # add fused_op in op_list
   list(APPEND op_list "fc")
-  list(APPEND op_list "conv2d_fusion")
+  list(APPEND op_list "fused_conv2d_add_act")
   list(APPEND op_list "fusion_seqconv_eltadd_relu")
   list(APPEND op_list "fusion_seqpool_cvm_concat")
   list(APPEND op_list "fusion_gru")

@@ -48,6 +48,7 @@ class OpInfo {
   OpAttrChecker* checker_{nullptr};
   InferVarTypeFN infer_var_type_;
   InferShapeFN infer_shape_;
+  InferMetaFN infer_meta_;
   InferInplaceOpFN infer_inplace_;
   InferNoNeedBufferVarsFN infer_no_need_buffer_vars_;
   DygraphGradOpMakerFN dygraph_grad_op_maker_;

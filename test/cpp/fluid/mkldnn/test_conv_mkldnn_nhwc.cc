@@ -108,3 +108,92 @@ TEST(test_conv2d_output, int8) {
 
   op->Run(scope, cpu_place);
 }
+TEST(test_conv2d_output, ic1) {
+  paddle::framework::Scope scope;
+  paddle::platform::CPUPlace cpu_place;
+
+  paddle::framework::OpDesc conv2d_op(nullptr);
+  conv2d_op.SetType("conv2d");
+  conv2d_op.SetInput("Input", {"conv2d-X"});
+  conv2d_op.SetInput("Filter", {"conv2d-Y"});
+  conv2d_op.SetOutput("Output", {"conv2d-Out"});
+
+  AddVarToScope<float>("conv2d-X", &scope, {1, 1, 224, 224});
+  AddVarToScope<float>("conv2d-Y", &scope, {64, 1, 7, 7});
+  AddVarToScope<float>("conv2d-Out", &scope, {1, 64, 218, 218});
+
+  const std::vector<int> strides({1, 1});
+  const std::vector<int> paddings({1, 1});
+  const std::vector<int> dilations({1, 1});
+  const int groups = 1;
+
+  conv2d_op.SetAttr("strides", strides);
+  conv2d_op.SetAttr("paddings", paddings);
+  conv2d_op.SetAttr("dilations", dilations);
+  conv2d_op.SetAttr("groups", groups);
+  conv2d_op.SetAttr("use_mkldnn", true);
+
+  auto op = paddle::framework::OpRegistry::CreateOp(conv2d_op);
+
+  op->Run(scope, cpu_place);
+}
+
+TEST(test_conv2d_output, ic2) {
+  paddle::framework::Scope scope;
+  paddle::platform::CPUPlace cpu_place;
+
+  paddle::framework::OpDesc conv2d_op(nullptr);
+  conv2d_op.SetType("conv2d");
+  conv2d_op.SetInput("Input", {"conv2d-X"});
+  conv2d_op.SetInput("Filter", {"conv2d-Y"});
+  conv2d_op.SetOutput("Output", {"conv2d-Out"});
+
+  AddVarToScope<float>("conv2d-X", &scope, {1, 2, 224, 224});
+  AddVarToScope<float>("conv2d-Y", &scope, {64, 2, 7, 7});
+  AddVarToScope<float>("conv2d-Out", &scope, {1, 64, 218, 218});
+
+  const std::vector<int> strides({1, 1});
+  const std::vector<int> paddings({1, 1});
+  const std::vector<int> dilations({1, 1});
+  const int groups = 1;
+
+  conv2d_op.SetAttr("strides", strides);
+  conv2d_op.SetAttr("paddings", paddings);
+  conv2d_op.SetAttr("dilations", dilations);
+  conv2d_op.SetAttr("groups", groups);
+  conv2d_op.SetAttr("use_mkldnn", true);
+
+  auto op = paddle::framework::OpRegistry::CreateOp(conv2d_op);
+
+  op->Run(scope, cpu_place);
+}
+
+TEST(test_conv2d_output, ic4) {
+  paddle::framework::Scope scope;
+  paddle::platform::CPUPlace cpu_place;
+
+  paddle::framework::OpDesc conv2d_op(nullptr);
+  conv2d_op.SetType("conv2d");
+  conv2d_op.SetInput("Input", {"conv2d-X"});
+  conv2d_op.SetInput("Filter", {"conv2d-Y"});
+  conv2d_op.SetOutput("Output", {"conv2d-Out"});
+
+  AddVarToScope<float>("conv2d-X", &scope, {1, 4, 224, 224});
+  AddVarToScope<float>("conv2d-Y", &scope, {64, 4, 7, 7});
+  AddVarToScope<float>("conv2d-Out", &scope, {1, 64, 218, 218});
+
+  const std::vector<int> strides({1, 1});
+  const std::vector<int> paddings({1, 1});
+  const std::vector<int> dilations({1, 1});
+  const int groups = 1;
+
+  conv2d_op.SetAttr("strides", strides);
+  conv2d_op.SetAttr("paddings", paddings);
+  conv2d_op.SetAttr("dilations", dilations);
+  conv2d_op.SetAttr("groups", groups);
+  conv2d_op.SetAttr("use_mkldnn", true);
+
+  auto op = paddle::framework::OpRegistry::CreateOp(conv2d_op);
+
+  op->Run(scope, cpu_place);
+}

@@ -291,7 +291,10 @@ class FP16State:
                         if out_var.dtype == __target_dtype__:
                             out_var.desc.set_dtype(core.VarDesc.VarType.FP32)
             elif is_backward_op(op):
-                if self._is_fp16_op(op.desc.original_id()) is True:
+                if (
+                    self._is_fp16_op(op.desc.original_id()) is True
+                    or op.type == "cast"
+                ):
                     for out_name in op.output_names:
                         if _keep_fp32_output(op, out_name):
                             continue
@@ -722,9 +725,7 @@ def cast_startup_program():
             if param_to_dtype.get(output_name, None) == __target_dtype__:
                 assert op.has_attr(
                     'dtype'
-                ), "initialization op is supported to has dtype attribute but got {}.".format(
-                    str(op)
-                )
+                ), f"initialization op is supported to has dtype attribute but got {str(op)}."
                 out_var = startup_program.global_block().var(output_name)
                 if out_var.dtype == core.VarDesc.VarType.FP32:
                     out_var.desc.set_dtype(__target_dtype__)

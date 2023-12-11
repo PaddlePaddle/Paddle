@@ -17,7 +17,7 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import dy2static_unittest
+from dygraph_to_static_utils import Dy2StTestBase, enable_to_static_guard
 
 import paddle
 
@@ -65,17 +65,15 @@ class NoGradLinearLayer(paddle.nn.Layer):
         return out
 
 
-@dy2static_unittest
-class TestGrad(unittest.TestCase):
+class TestGrad(Dy2StTestBase):
     def setUp(self):
         self.func = paddle.jit.to_static(GradLayer())
         self.x = paddle.ones(shape=[10, 2, 5], dtype='float32')
         self.x.stop_gradient = False
 
     def _run(self, func, to_static):
-        paddle.jit.enable_to_static(to_static)
-        ret = func(self.x).numpy()
-        paddle.jit.enable_to_static(True)
+        with enable_to_static_guard(to_static):
+            ret = func(self.x).numpy()
         return ret
 
     def test_forward(self):
@@ -84,7 +82,6 @@ class TestGrad(unittest.TestCase):
         np.testing.assert_allclose(static_res, dygraph_res, rtol=1e-05)
 
 
-@dy2static_unittest
 class TestGradLinear(TestGrad):
     def setUp(self):
         self.func = paddle.jit.to_static(GradLinearLayer())

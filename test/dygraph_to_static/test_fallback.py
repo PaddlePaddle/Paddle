@@ -16,7 +16,11 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test, dy2static_unittest
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_ast_only,
+    test_legacy_and_pt_and_pir,
+)
 
 import paddle
 
@@ -51,14 +55,14 @@ class UnsuppportNet(paddle.nn.Layer):
             return unsupport_func(x - 1)
 
 
-@dy2static_unittest
-class TestFallback(unittest.TestCase):
+class TestFallback(Dy2StTestBase):
     def setUp(self):
         self.x = paddle.to_tensor([2]).astype('int')
 
     def tearDown(self):
         pass
 
+    @test_legacy_and_pt_and_pir
     def test_case_support(self):
         output = paddle.jit.to_static(support_func)(self.x)
         np.testing.assert_allclose(output.numpy(), 4)
@@ -86,7 +90,7 @@ class TestFallback(unittest.TestCase):
             u_net(self.x).numpy(),
         )
 
-    @ast_only_test
+    @test_ast_only
     def test_case_net_error(self):
         s_net = SuppportNet()
         u_net = UnsuppportNet()
@@ -113,6 +117,7 @@ class TestFallback(unittest.TestCase):
         np.testing.assert_allclose(u_net(self.x).numpy(), [1, 1])
         assert u_net.training is False, "Training must be false."
 
+    @test_legacy_and_pt_and_pir
     def test_case_save_error(self):
         """
         test the save will raise error.

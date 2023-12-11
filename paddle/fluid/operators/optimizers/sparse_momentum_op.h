@@ -151,7 +151,7 @@ class SparseMomentumOp : public framework::OperatorWithKernel {
                    "VelocityOut",
                    "SparseMomentum");
 
-    auto lr_dims = phi::product(ctx->GetInputDim("LearningRate"));
+    auto lr_dims = common::product(ctx->GetInputDim("LearningRate"));
     PADDLE_ENFORCE_EQ(lr_dims != 0 && lr_dims == 1,
                       true,
                       platform::errors::InvalidArgument(
@@ -366,8 +366,7 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
     MT mu = static_cast<MT>(ctx.Attr<float>("mu"));
     MT rescale_grad = static_cast<MT>(ctx.Attr<float>("rescale_grad"));
 
-    int axis = ctx.Attr<int>("axis");
-    // get axis from tensor
+    int axis = 0;
     if (ctx.HasInput("Axis")) {
       phi::DenseTensor cpu_axis;
       const phi::DenseTensor* axis_tensor = ctx.Input<phi::DenseTensor>("Axis");
@@ -379,6 +378,8 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
       } else if (axis_type == framework::proto::VarType::INT64) {
         axis = static_cast<int>(cpu_axis.data<int64_t>()[0]);
       }
+    } else {
+      axis = ctx.Attr<int>("axis");
     }
     PADDLE_ENFORCE_EQ(
         axis == 0 || axis == 1,

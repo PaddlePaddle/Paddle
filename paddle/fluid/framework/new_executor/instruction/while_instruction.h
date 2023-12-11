@@ -38,9 +38,8 @@ class WhileInstruction : public InstructionBase {
   WhileInstruction(size_t id,
                    const platform::Place& place,
                    ::pir::Operation* op,
-                   Scope* scope,
-                   Scope* local_scope,
-                   ValueExecutionInfo* parent_exe_info);
+                   ValueExecutionInfo* parent_exe_info,
+                   const std::set<std::string>& skip_gc_vars);
 
   void Run() override;
 
@@ -48,15 +47,17 @@ class WhileInstruction : public InstructionBase {
 
   ::pir::Operation* Operation() const override { return op_; }
 
+  PirInterpreter* BodyInterpreter() const { return body_inter_.get(); }
+
  private:
   // 'output' = 'input'
-  void CopyInputsToOutputs();
+  void ShareInputsToOutputs();
 
   // Pass argument to body_block for execution.
-  void PassArgsToBodyBlock();
+  void CopyOutputsToBlockArgs();
 
   // Get return value from body_block after each execution.
-  void GetValueFromBodyBlock();
+  void ShareDatasToOutputs();
 
   std::string name_{"while_instruction"};
 
@@ -66,6 +67,7 @@ class WhileInstruction : public InstructionBase {
   std::vector<Variable*> outputs_;
 
   std::unique_ptr<PirInterpreter> body_inter_;
+  std::vector<std::string> body_outputs_;
   std::vector<std::string> body_skip_gc_names_;
 
   ::pir::Block* body_block_;

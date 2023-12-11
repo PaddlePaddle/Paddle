@@ -161,21 +161,41 @@ void ReductionFactoring::Apply(const std::string& block_name,
   // 5. Split the reduction loop into 2 part
   VLOG(6) << "before Split: " << ir_schedule->GetModule().GetExprs()[0];
   int factor = 1;
+  int max_factor = 1024;
   int extent = ir::GetLoopExtent(fused_reduce_loop);
-  for (int i = ceil(sqrt(extent)); i >= 1; --i) {
+  for (int i = max_factor; i >= 1; --i) {
     if (extent % i == 0) {
       factor = i;
       break;
     }
   }
   std::vector<cinn::ir::Expr> splited_reduction_loops =
-      ir_schedule->Split(fused_reduce_loop, {-1, factor});
+      ir_schedule->Split(fused_reduce_loop, {factor, -1});
   // 6.  Apply FactorizeReduction
   VLOG(6) << "before FactorizeReduction: "
           << ir_schedule->GetModule().GetExprs()[0];
   ir_schedule->FactorizeReduction(splited_reduction_loops[0],
                                   num_spatial_loops);
   VLOG(6) << "after FactorizeReduction: "
+          << ir_schedule->GetModule().GetExprs()[0];
+
+  // 7. Loop fusion and cross thread reduction
+  std::vector<ir::Expr> rb_loops = ir_schedule->GetLoops(block_name);
+  ir::Expr rf_block = ir_schedule->GetBlock(block_name + "_rf");
+  ir_schedule->SimpleComputeAt(rf_block, rb_loops.back());
+
+  rb_loops = ir_schedule->GetLoops(block_name);
+  ir::Expr rf_init_block =
+      ir_schedule->GetBlock(block_name + "_rf__reduce_init");
+  ir_schedule->SimpleComputeAt(rf_init_block, rb_loops.back());
+
+  if (*target_ == cinn::common::DefaultNVGPUTarget()) {
+    rb_loops = ir_schedule->GetLoops(block_name);
+    rf_block = ir_schedule->GetBlock(block_name + "_rf");
+    ir_schedule->Bind(rb_loops.back(), "threadIdx.x");
+    ir_schedule->SetBuffer(rf_block, "shared");
+  }
+  VLOG(6) << "Loop fusion and cross thread reduction: "
           << ir_schedule->GetModule().GetExprs()[0];
 }
 

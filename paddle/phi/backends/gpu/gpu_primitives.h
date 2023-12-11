@@ -45,6 +45,91 @@ constexpr int PADDLE_CUDA_NUM_THREADS = 512;
 USE_CUDA_ATOMIC(Add, float);
 USE_CUDA_ATOMIC(Add, int);
 USE_CUDA_ATOMIC(Add, unsigned int);
+
+CUDA_ATOMIC_WRAPPER(Add, bool) {
+  size_t offset = reinterpret_cast<size_t>(address) & 3;
+  uint32_t *address_as_ui =
+      reinterpret_cast<uint32_t *>(reinterpret_cast<char *>(address) - offset);
+  uint32_t old = *address_as_ui;
+  uint32_t shift = offset * 8;
+  uint32_t old_byte;
+  uint32_t newval;
+  uint32_t assumed;
+
+  do {
+    assumed = old;
+    old_byte = (old >> shift) & 0xff;
+    newval = static_cast<uint8_t>(val + static_cast<bool>(old_byte));
+    newval = (old & ~(0x000000ff << shift)) | (newval << shift);
+    old = atomicCAS(address_as_ui, assumed, newval);
+  } while (assumed != old);
+
+  return static_cast<bool>(old & 0xff);
+}
+
+CUDA_ATOMIC_WRAPPER(Add, uint8_t) {
+  size_t offset = reinterpret_cast<size_t>(address) & 3;
+  uint32_t *address_as_ui =
+      reinterpret_cast<uint32_t *>(reinterpret_cast<char *>(address) - offset);
+  uint32_t old = *address_as_ui;
+  uint32_t shift = offset * 8;
+  uint32_t old_byte;
+  uint32_t newval;
+  uint32_t assumed;
+
+  do {
+    assumed = old;
+    old_byte = (old >> shift) & 0xff;
+    newval = static_cast<uint8_t>(val + static_cast<uint8_t>(old_byte));
+    newval = (old & ~(0x000000ff << shift)) | (newval << shift);
+    old = atomicCAS(address_as_ui, assumed, newval);
+  } while (assumed != old);
+
+  return static_cast<uint8_t>(old & 0xff);
+}
+
+CUDA_ATOMIC_WRAPPER(Add, int8_t) {
+  size_t offset = reinterpret_cast<size_t>(address) & 3;
+  uint32_t *address_as_ui =
+      reinterpret_cast<uint32_t *>(reinterpret_cast<char *>(address) - offset);
+  uint32_t old = *address_as_ui;
+  uint32_t shift = offset * 8;
+  uint32_t old_byte;
+  uint32_t newval;
+  uint32_t assumed;
+
+  do {
+    assumed = old;
+    old_byte = (old >> shift) & 0xff;
+    newval = static_cast<int8_t>(val + static_cast<int8_t>(old_byte));
+    newval = (old & ~(0x000000ff << shift)) | (newval << shift);
+    old = atomicCAS(address_as_ui, assumed, newval);
+  } while (assumed != old);
+
+  return static_cast<int8_t>(old & 0xff);
+}
+
+CUDA_ATOMIC_WRAPPER(Add, int16_t) {
+  size_t offset = reinterpret_cast<size_t>(address) & 2;
+  uint32_t *address_as_ui =
+      reinterpret_cast<uint32_t *>(reinterpret_cast<char *>(address) - offset);
+  bool is_32_align = offset;
+  uint32_t old = *address_as_ui;
+  uint32_t old_bytes;
+  uint32_t newval;
+  uint32_t assumed;
+
+  do {
+    assumed = old;
+    old_bytes = is_32_align ? old >> 16 : old & 0xffff;
+    newval = static_cast<uint16_t>(val + static_cast<int16_t>(old_bytes));
+    newval = is_32_align ? (old & 0xffff) | (newval << 16)
+                         : (old & 0xffff0000) | newval;
+    old = atomicCAS(address_as_ui, assumed, newval);
+  } while (assumed != old);
+
+  return static_cast<int16_t>(old & 0xffff);
+}
 // CUDA API uses unsigned long long int, we cannot use uint64_t here.
 // It because unsigned long long int is not necessarily uint64_t
 USE_CUDA_ATOMIC(Add, unsigned long long int);  // NOLINT

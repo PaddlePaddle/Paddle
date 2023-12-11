@@ -50,4 +50,5 @@ void ProdKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(prod, XPU, ALL_LAYOUT, phi::ProdKernel, float) {}
+PD_REGISTER_KERNEL(
+    prod, XPU, ALL_LAYOUT, phi::ProdKernel, float, int, int64_t) {}

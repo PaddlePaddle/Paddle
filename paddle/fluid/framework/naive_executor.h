@@ -29,6 +29,8 @@
 #include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 
+#include "paddle/pir/core/program.h"
+
 namespace paddle {
 namespace framework {
 
@@ -49,15 +51,17 @@ class NaiveExecutor {
 
   // Create child scope.
   // Create variables.
-  // @with_feed_fetch_ops: whether to work with the feed and fetch operators.
-  void Prepare(Scope* scope,
-               const ProgramDesc& program_desc,
-               int block_id,
-               bool with_feed_fetch_ops);
+  void Prepare(Scope* scope, const ProgramDesc& program_desc, int block_id);
 
   void PrepareInterpreterCore(
       Scope* scope,
       const ProgramDesc& program_desc,
+      const framework::interpreter::ExecutionConfig& execution_config =
+          framework::interpreter::ExecutionConfig{});
+
+  void PrepareInterpreterCore(
+      Scope* scope,
+      const ::pir::Program& pir_program,
       const framework::interpreter::ExecutionConfig& execution_config =
           framework::interpreter::ExecutionConfig{});
 
@@ -91,9 +95,7 @@ class NaiveExecutor {
   void RegisterInputHook(const HookFunc& hookfunc);
 
  private:
-  void CreateOps(const ProgramDesc& desc,
-                 int block_id,
-                 bool with_feed_fetch_ops);
+  void CreateOps(const ProgramDesc& desc, int block_id);
 
  private:
   const platform::Place place_;

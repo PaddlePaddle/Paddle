@@ -20,10 +20,12 @@ import unittest
 import numpy as np
 from bert_dygraph_model import PretrainModelLayer
 from bert_utils import get_bert_config, get_feed_data_reader
-from dygraph_to_static_util import (
-    ast_only_test,
-    dy2static_unittest,
-    test_with_new_ir,
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    enable_to_static_guard,
+    test_ast_only,
+    test_pt_only,
+    test_sot_only,
 )
 from predictor_utils import PredictorTools
 
@@ -78,8 +80,7 @@ class FakeBertDataset(paddle.io.Dataset):
         return len(self.src_ids)
 
 
-@dy2static_unittest
-class TestBert(unittest.TestCase):
+class TestBert(Dy2StTestBase):
     def setUp(self):
         self.bert_config = get_bert_config()
         self.data_reader = get_feed_data_reader(self.bert_config)
@@ -169,12 +170,12 @@ class TestBert(unittest.TestCase):
             return loss, ppl
 
     def train_dygraph(self, bert_config, data_reader):
-        paddle.jit.enable_to_static(False)
-        return self.train(bert_config, data_reader, False)
+        with enable_to_static_guard(False):
+            return self.train(bert_config, data_reader, False)
 
     def train_static(self, bert_config, data_reader):
-        paddle.jit.enable_to_static(True)
-        return self.train(bert_config, data_reader, True)
+        with enable_to_static_guard(True):
+            return self.train(bert_config, data_reader, True)
 
     def predict_static(self, data):
         paddle.enable_static()
@@ -199,38 +200,40 @@ class TestBert(unittest.TestCase):
         return pred_res
 
     def predict_dygraph(self, bert_config, data):
-        paddle.jit.enable_to_static(False)
-        with base.dygraph.guard(place):
-            bert = PretrainModelLayer(
-                config=bert_config, weight_sharing=False, use_fp16=False
-            )
-            model_dict = paddle.load(self.dy_state_dict_save_path + '.pdparams')
+        with enable_to_static_guard(False):
+            with base.dygraph.guard(place):
+                bert = PretrainModelLayer(
+                    config=bert_config, weight_sharing=False, use_fp16=False
+                )
+                model_dict = paddle.load(
+                    self.dy_state_dict_save_path + '.pdparams'
+                )
 
-            bert.set_dict(model_dict)
-            bert.eval()
+                bert.set_dict(model_dict)
+                bert.eval()
 
-            input_vars = [base.dygraph.to_variable(x) for x in data]
-            (
-                src_ids,
-                pos_ids,
-                sent_ids,
-                input_mask,
-                mask_label,
-                mask_pos,
-                labels,
-            ) = input_vars
-            pred_res = bert(
-                src_ids=src_ids,
-                position_ids=pos_ids,
-                sentence_ids=sent_ids,
-                input_mask=input_mask,
-                mask_label=mask_label,
-                mask_pos=mask_pos,
-                labels=labels,
-            )
-            pred_res = [var.numpy() for var in pred_res]
+                input_vars = [base.dygraph.to_variable(x) for x in data]
+                (
+                    src_ids,
+                    pos_ids,
+                    sent_ids,
+                    input_mask,
+                    mask_label,
+                    mask_pos,
+                    labels,
+                ) = input_vars
+                pred_res = bert(
+                    src_ids=src_ids,
+                    position_ids=pos_ids,
+                    sentence_ids=sent_ids,
+                    input_mask=input_mask,
+                    mask_label=mask_label,
+                    mask_pos=mask_pos,
+                    labels=labels,
+                )
+                pred_res = [var.numpy() for var in pred_res]
 
-            return pred_res
+                return pred_res
 
     def predict_dygraph_jit(self, data):
         with base.dygraph.guard(place):
@@ -266,8 +269,8 @@ class TestBert(unittest.TestCase):
         out = output()
         return out
 
-    @test_with_new_ir
-    def test_train_new_ir(self):
+    @test_pt_only
+    def test_train_pir(self):
         static_loss, static_ppl = self.train_static(
             self.bert_config, self.data_reader
         )
@@ -277,7 +280,7 @@ class TestBert(unittest.TestCase):
         np.testing.assert_allclose(static_loss, dygraph_loss, rtol=1e-05)
         np.testing.assert_allclose(static_ppl, dygraph_ppl, rtol=1e-05)
 
-    @ast_only_test
+    @test_ast_only
     def test_train(self):
         static_loss, static_ppl = self.train_static(
             self.bert_config, self.data_reader
@@ -290,6 +293,7 @@ class TestBert(unittest.TestCase):
 
         self.verify_predict()
 
+    @test_sot_only
     def test_train_composite(self):
         core._set_prim_backward_enabled(True)
         # core._add_skip_comp_ops("layer_norm")

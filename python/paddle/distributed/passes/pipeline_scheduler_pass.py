@@ -36,7 +36,6 @@ __not_shape_var_type__ = [
     core.VarDesc.VarType.FETCH_LIST,
 ]
 
-LR = "lr"
 FORWARD = "forward"
 BACKWARD = "backward"
 OPT = "optimizer"
@@ -53,8 +52,6 @@ class PipelineFThenBPass(PipelinePassBase):
         num_micro_batches = self.get_attr("num_micro_batches")
 
         job_list = []
-        lr_job = core.Job(LR)
-        job_list.append(lr_job)
 
         for i in range(num_micro_batches):
             forward_job = core.Job(FORWARD)
@@ -74,7 +71,7 @@ class PipelineFThenBPass(PipelinePassBase):
     def _partial_programs(self, program):
         # NOTE: The flag "enable_send_recv_overlap" may increase the reserved memory of GPUs.
         enable_send_recv_overlap = self.get_attr("enable_send_recv_overlap")
-        types = [LR, FORWARD, BACKWARD, OPT]
+        types = [FORWARD, BACKWARD, OPT]
         sub_program_list = _program_for_fthenb_and_1f1b(
             program, enable_send_recv_overlap
         )
@@ -219,9 +216,6 @@ class Pipeline1F1BPass(PipelinePassBase):
         pp_degree = self.get_attr("pp_degree")
 
         job_list = []
-        lr_job = core.Job(LR)
-        job_list.append(lr_job)
-
         assert (
             pp_degree <= num_micro_batches
         ), "Num of micro batches should larger than or equal to pp degree."
@@ -353,7 +347,7 @@ class Pipeline1F1BPass(PipelinePassBase):
     def _partial_programs(self, program):
         # NOTE: The flag "enable_send_recv_overlap" may increase the reserved memory of GPUs.
         enable_send_recv_overlap = self.get_attr("enable_send_recv_overlap")
-        types = [LR, FORWARD, BACKWARD, OPT]
+        types = [FORWARD, BACKWARD, OPT]
         sub_programs = _program_for_fthenb_and_1f1b(
             program, enable_send_recv_overlap
         )
@@ -420,9 +414,6 @@ class PipelineEager1F1BPass(PipelinePassBase):
         pp_degree = self.get_attr("pp_degree")
 
         job_list = []
-        lr_job = core.Job("lr")
-        job_list.append(lr_job)
-
         assert (
             2 * (pp_degree - pp_stage) - 1 <= num_micro_batches
         ), "Num of micro batches should larger than 2 * (pp_degree - pp_stage) - 1."
@@ -431,30 +422,30 @@ class PipelineEager1F1BPass(PipelinePassBase):
         micro_batch_in_1f1b = num_micro_batches - micro_batch_in_warmup
 
         forward_micro_batch_id = 0
-        for i in range(micro_batch_in_warmup):
-            forward_job = core.Job("forward")
+        for _ in range(micro_batch_in_warmup):
+            forward_job = core.Job(FORWARD)
             forward_job.set_micro_batch_id(forward_micro_batch_id)
             job_list.append(forward_job)
             forward_micro_batch_id += 1
 
         backward_micro_batch_id = 0
-        for i in range(micro_batch_in_1f1b):
-            backward_job = core.Job("backward")
+        for _ in range(micro_batch_in_1f1b):
+            backward_job = core.Job(BACKWARD)
             backward_job.set_micro_batch_id(backward_micro_batch_id)
             job_list.append(backward_job)
             backward_micro_batch_id += 1
-            forward_job = core.Job("forward")
+            forward_job = core.Job(FORWARD)
             forward_job.set_micro_batch_id(forward_micro_batch_id)
             job_list.append(forward_job)
             forward_micro_batch_id += 1
 
-        for i in range(micro_batch_in_warmup):
-            backward_job = core.Job("backward")
+        for _ in range(micro_batch_in_warmup):
+            backward_job = core.Job(BACKWARD)
             backward_job.set_micro_batch_id(backward_micro_batch_id)
             job_list.append(backward_job)
             backward_micro_batch_id += 1
 
-        opt_job = core.Job("optimizer")
+        opt_job = core.Job(OPT)
         job_list.append(opt_job)
         return job_list
 
@@ -462,7 +453,7 @@ class PipelineEager1F1BPass(PipelinePassBase):
         # NOTE: The flag "enable_send_recv_overlap" may increase the reserved memory of GPUs.
         enable_send_recv_overlap = self.get_attr("enable_send_recv_overlap")
         # TODO: More function will be added later. Now it uses the same logic as FTthenB and 1F1B.
-        types = ["lr", "forward", "backward", "optimizer"]
+        types = [FORWARD, BACKWARD, OPT]
         sub_program_list = _program_for_fthenb_and_1f1b(
             program, enable_send_recv_overlap
         )

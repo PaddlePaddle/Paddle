@@ -17,6 +17,7 @@
 
 from __future__ import annotations
 
+import sys
 import unittest
 
 from test_case_base import TestCaseBase
@@ -186,6 +187,7 @@ class TestForLoop(TestCaseBase):
         paddle_output = for_iter(a, gener())
         self.assert_nest_match(sym_output, paddle_output)
 
+    @strict_mode_guard(False)
     def test_for_break(self):
         a = paddle.to_tensor(1)
         sym_output = symbolic_translate(for_break)(a, gener())
@@ -239,7 +241,10 @@ def run_list_comp(x):
 class TestListComp(TestCaseBase):
     def test_list_comp(self):
         x = [paddle.randn([1, 4]), paddle.randn([1, 4])]
-        self.assert_results(run_list_comp, x)
+        # Temporarily fallback for comprehension in python3.11
+        use_strict_mode = sys.version_info < (3, 11)
+        with strict_mode_guard(use_strict_mode):
+            self.assert_results(run_list_comp, x)
 
 
 def for_enumerate_cache(func_list, x):
@@ -295,5 +300,4 @@ class TestUndefinedVarInRiskyCodes(TestCaseBase):
 
 
 if __name__ == "__main__":
-    with strict_mode_guard(False):
-        unittest.main()
+    unittest.main()
