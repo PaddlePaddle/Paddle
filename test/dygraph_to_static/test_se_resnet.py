@@ -452,7 +452,7 @@ class TestSeResnet(Dy2StTestBase):
 
                     step_idx += 1
                     if step_idx == STEP_NUM:
-                        if to_static:
+                        if paddle.jit.to_static:
                             paddle.jit.save(
                                 se_resnext,
                                 self.model_save_prefix,

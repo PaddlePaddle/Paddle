@@ -186,7 +186,7 @@ class TestSimnet(Dy2StTestBase):
             paddle.base.set_flags({"FLAGS_cudnn_deterministic": True})
         conf_dict = create_conf_dict()
         with enable_to_static_guard(False):
-            dygraph_loss = train(conf_dict, to_static=False)
+            dygraph_loss = train(conf_dict)
 
         static_loss = train(conf_dict, to_static=True)
 
