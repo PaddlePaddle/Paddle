@@ -1043,7 +1043,7 @@ def entrance_exit_check(
         )
 
         for var in backward_entrance:
-            if not ("@GRAD" in var) and not (var in forward_all):
+            if "@GRAD" not in var and var not in forward_all:
                 current_block_entrance.append(var)
 
         current_block_entrance.sort()
@@ -1574,6 +1574,8 @@ def get_param_grads(origin_program):
                     and CLIP_OP_NAME_SCOPE in op.attr(OP_NAME_SCOPE)
                 ):
                     op._set_attr("op_role", role_id)
+                    continue
+                if not op.has_attr(OP_ROLE_VAR_ATTR_NAME):
                     continue
                 if op.attr(OP_ROLE_VAR_ATTR_NAME):
                     param_name = op.attr(OP_ROLE_VAR_ATTR_NAME)[0]

@@ -36,12 +36,12 @@ using StrategyFunction = std::function<std::shared_ptr<OpStrategy>(
     const std::vector<ir::Tensor>&,
     const std::vector<Type>&,
     const std::vector<std::vector<int>>&,
-    const common::Target&)>;
+    const cinn::common::Target&)>;
 using InferShapeFunction = std::function<std::vector<std::vector<int>>(
     const std::vector<std::vector<int>>&, const AttrMapType&)>;
 
 //! Operator implementation that includes compute and schedule function.
-class OpImpl : public common::Object {
+class OpImpl : public cinn::common::Object {
  public:
   //! Compute function
   CINNCompute fcompute;
@@ -72,7 +72,7 @@ class OpImpl : public common::Object {
    * @param target The build target.
    * @return The computation schedule.
    */
-  common::Shared<Schedule> GetSchedule(
+  cinn::common::Shared<Schedule> GetSchedule(
       const std::vector<ir::Tensor>& outs,
       const std::vector<ir::Tensor>& temp_tensors,
       const Target& target) {
@@ -88,7 +88,7 @@ class OpImpl : public common::Object {
 };
 
 //! Specialized implementations for operators under certain conditions.
-class OpSpec : public common::Object {
+class OpSpec : public cinn::common::Object {
  public:
   //! List of implementations.
   std::vector<std::shared_ptr<OpImpl>> implementations;
@@ -119,7 +119,7 @@ class OpSpec : public common::Object {
 };
 
 //! Operator strategy class.
-class OpStrategy : public common::Object {
+class OpStrategy : public cinn::common::Object {
  public:
   const char* type_info() const override { return __type_info__; }
   //! List of operator specializations.

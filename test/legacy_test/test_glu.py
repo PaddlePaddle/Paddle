@@ -20,6 +20,7 @@ import paddle
 import paddle.base.dygraph as dg
 from paddle import base, nn
 from paddle.nn import functional as F
+from paddle.pir_utils import test_with_pir_api
 
 
 def sigmoid(x):
@@ -58,6 +59,7 @@ class TestGlu(unittest.TestCase):
         x = paddle.static.data(name='x', shape=[1, 2, 3], dtype='float32')
         paddle.nn.functional.glu(x, axis=256)
 
+    @test_with_pir_api
     def test_errors(self):
         self.assertRaises(ValueError, self.glu_axis_size)
 
@@ -92,6 +94,7 @@ class TestnnGLUerror(unittest.TestCase):
         act = nn.GLU(256)
         act(x)
 
+    @test_with_pir_api
     def test_errors(self):
         self.assertRaises(ValueError, self.glu_axis_size)
         act = nn.GLU(256)

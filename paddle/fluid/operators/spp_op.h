@@ -34,7 +34,7 @@ class SppKernel : public framework::OpKernel<T> {
     std::string pooling_type =
         context.template Attr<std::string>("pooling_type");
     out->mutable_data<T>(context.GetPlace());
-    auto out_stride = phi::stride(out->dims());
+    auto out_stride = common::stride(out->dims());
     int input_h = in_x->dims()[2];
     int input_w = in_x->dims()[3];
     size_t output_offset = 0;
@@ -51,7 +51,7 @@ class SppKernel : public framework::OpKernel<T> {
       phi::DenseTensor out_level;
       std::vector<int64_t> output_shape_vec(
           {in_x->dims()[0], in_x->dims()[1], bins, bins});
-      framework::DDim output_shape(phi::make_ddim(output_shape_vec));
+      framework::DDim output_shape(common::make_ddim(output_shape_vec));
       out_level.mutable_data<T>(output_shape, context.GetPlace());
       // pooling
       if (pooling_type == "max") {
@@ -92,10 +92,10 @@ class SppKernel : public framework::OpKernel<T> {
       std::vector<int64_t> output_flatten_shape_vec(
           {in_x->dims()[0], output_flatten_w});
       framework::DDim output_flatten_shape(
-          phi::make_ddim(output_flatten_shape_vec));
+          common::make_ddim(output_flatten_shape_vec));
       out_level.Resize(output_flatten_shape);
       // concat
-      auto out_level_stride = phi::stride(out_level.dims());
+      auto out_level_stride = common::stride(out_level.dims());
       phi::funcs::StridedMemcpy<T>(
           context.template device_context<DeviceContext>(),
           out_level.data<T>(),
@@ -127,7 +127,7 @@ class SppGradKernel : public framework::OpKernel<T> {
         zero;
     in_x_grad->mutable_data<T>(context.GetPlace());
     zero(device_ctx, in_x_grad, static_cast<T>(0));
-    auto out_stride = phi::stride(out->dims());
+    auto out_stride = common::stride(out->dims());
     int input_h = in_x->dims()[2];
     int input_w = in_x->dims()[3];
     size_t out_offset = 0;
@@ -146,10 +146,11 @@ class SppGradKernel : public framework::OpKernel<T> {
       int out_flatten_w = in_x->dims()[1] * bins * bins;
       std::vector<int64_t> out_flatten_shape_vec(
           {in_x->dims()[0], out_flatten_w});
-      framework::DDim out_flatten_shape(phi::make_ddim(out_flatten_shape_vec));
+      framework::DDim out_flatten_shape(
+          common::make_ddim(out_flatten_shape_vec));
       out_level.mutable_data<T>(out_flatten_shape, context.GetPlace());
       outgrad_level.mutable_data<T>(out_flatten_shape, context.GetPlace());
-      auto flatten_stride = phi::stride(out_level.dims());
+      auto flatten_stride = common::stride(out_level.dims());
       // memcpy
       phi::funcs::StridedMemcpy<T>(
           context.template device_context<DeviceContext>(),
@@ -174,7 +175,7 @@ class SppGradKernel : public framework::OpKernel<T> {
           (input_h - kernel_size_h + 2 * padding_h) / kernel_size_h + 1);
       out_shape_vec.push_back(
           (input_w - kernel_size_w + 2 * padding_w) / kernel_size_w + 1);
-      framework::DDim out_shape(phi::make_ddim(out_shape_vec));
+      framework::DDim out_shape(common::make_ddim(out_shape_vec));
       out_level.ShareDataWith(out_level);
       out_level.Resize(out_shape);
       outgrad_level.ShareDataWith(outgrad_level);

@@ -25,6 +25,7 @@ void TrainerBase::ParseDumpConfig(const TrainerDesc& desc) {
   dump_fields_path_ = desc.dump_fields_path();
   need_dump_field_ = false;
   need_dump_param_ = false;
+  dump_fields_mode_ = desc.dump_fields_mode();
   if (dump_fields_path_.empty()) {
     VLOG(2) << "dump_fields_path_ is empty";
     return;
@@ -58,8 +59,15 @@ void TrainerBase::DumpWork(int tid) {
   int err_no = 0;
   // GetDumpPath is implemented in each Trainer
   std::string path = GetDumpPath(tid);
-  std::shared_ptr<FILE> fp = fs_open_write(path, &err_no, dump_converter_);
-  while (true) {
+  std::shared_ptr<FILE> fp;
+  if (dump_fields_mode_ == "a") {
+    VLOG(3) << "dump field mode append";
+    fp = fs_open_append_write(path, &err_no, dump_converter_);
+  } else {
+    VLOG(3) << "dump field mode overwrite";
+    fp = fs_open_write(path, &err_no, dump_converter_);
+  }
+  while (1) {
     std::string out_str;
     if (!queue_->Get(out_str)) {
       break;

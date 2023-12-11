@@ -216,6 +216,23 @@ void TensorRTEngine::FreezeNetwork() {
     }
   }
 
+  if (precision() == phi::DataType::BFLOAT16) {
+#if IS_TRT_VERSION_GE(9000)
+    infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kBF16);
+    LOG(INFO) << "Run Paddle-TRT BF16 mode";
+#else
+    infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kFP16);
+    bool support_fp16 = infer_builder_->platformHasFastFp16();
+    if (!support_fp16) {
+      LOG(INFO) << "Because the version of TensorRT is less than 9.0, and the "
+                   "hardware do not support FP16, run Paddle-TRT FP32 mode";
+    } else {
+      LOG(INFO) << "Because the version of TensorRT is less than 9.0, run "
+                   "Paddle-TRT FP16 mode";
+    }
+#endif
+  }
+
   bool enable_int8 = (precision() == phi::DataType::INT8);
   if (enable_int8) {
     if (!use_dla()) {

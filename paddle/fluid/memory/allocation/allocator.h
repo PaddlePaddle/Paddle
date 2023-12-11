@@ -23,9 +23,17 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/allocator.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/flags.h"
 
+#ifdef PADDLE_WITH_NCCL
+#include <nccl.h>
+#include "paddle/fluid/platform/dynload/nccl.h"
+#endif
+
 PHI_DECLARE_string(allocator_strategy);
+PHI_DECLARE_bool(sync_after_alloc);
+PHI_DECLARE_int64(alloc_fill_value);
 
 namespace paddle {
 namespace memory {
@@ -134,6 +142,31 @@ using AllocationPtr = phi::Allocator::AllocationPtr;
 using DecoratedAllocationPtr =
     std::unique_ptr<Allocation, phi::Allocator::DeleterType>;
 
+template <typename T>
+static T&& FillValue(T&& allocation) {
+#if defined(PADDLE_WITH_CUDA)
+  if (allocation != nullptr) {
+    if (FLAGS_sync_after_alloc || FLAGS_alloc_fill_value >= 0) {
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+      if (FLAGS_alloc_fill_value >= 0) {
+        VLOG(10) << "Set " << FLAGS_alloc_fill_value << " on "
+                 << allocation->ptr() << " " << allocation->place() << " "
+                 << allocation->size();
+        if (platform::is_gpu_place(allocation->place())) {
+          PADDLE_ENFORCE_GPU_SUCCESS(cudaMemset(
+              allocation->ptr(), FLAGS_alloc_fill_value, allocation->size()));
+        } else {
+          std::memset(
+              allocation->ptr(), FLAGS_alloc_fill_value, allocation->size());
+        }
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+      }
+    }
+  }
+#endif
+  return std::forward<T>(allocation);
+}
+
 // Base interface class of memory Allocator.
 class Allocator : public phi::Allocator {
  public:
@@ -150,7 +183,7 @@ class Allocator : public phi::Allocator {
   AllocationPtr Allocate(size_t size) override {
     auto ptr = AllocateImpl(size);
     static_cast<Allocation*>(ptr)->RegisterDecoratedAllocator(this);
-    return AllocationPtr(ptr, AllocationDeleter);
+    return FillValue(AllocationPtr(ptr, AllocationDeleter));
   }
 
   void Free(phi::Allocation* allocation) {
