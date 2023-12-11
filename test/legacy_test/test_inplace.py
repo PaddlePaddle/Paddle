@@ -1631,6 +1631,23 @@ class TestDygraphInplaceIndexFill(TestDygraphInplace):
     def non_inplace_api_processing(self, var):
         return paddle.index_fill(var, self.index, self.axis, self.value)
 
+    def test_forward_version(self):
+        with paddle.base.dygraph.guard():
+            var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+            self.assertEqual(var.inplace_version, 0)
+
+            inplace_var = self.inplace_api_processing(var)
+            self.assertEqual(var.inplace_version, 3)
+
+            inplace_var[0] = 2
+            self.assertEqual(var.inplace_version, 4)
+
+            inplace_var = self.inplace_api_processing(inplace_var)
+            self.assertEqual(var.inplace_version, 7)
+
+    def test_backward_error(self):
+        pass
+
 
 if __name__ == '__main__':
     unittest.main()
