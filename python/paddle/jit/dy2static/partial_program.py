@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from copy import deepcopy
 
 import numpy as np
@@ -24,10 +25,10 @@ from paddle.base.compiler import BuildStrategy
 from paddle.base.data_feeder import check_type, convert_dtype
 from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.base.framework import _apply_pass, get_flags
-from paddle.base.unique_name import switch
 from paddle.optimizer.lr import LRScheduler
 
 from . import logging_utils
+from .export_subgraph import SubGraphRole, pir_exporter
 from .utils import (
     RETURN_NO_VALUE_MAGIC_NUM,
     backend_guard,
@@ -170,19 +171,12 @@ class PartialProgramLayer:
     """
 
     def __init__(
-        self,
-        main_program,
-        inputs,
-        outputs,
-        name_generator,
-        parameters=None,
-        **kwargs
+        self, main_program, inputs, outputs, parameters=None, **kwargs
     ):
         super().__init__()
         self._inputs = NestSequence(inputs)
         self._outputs = NestSequence(outputs, need_check=True)
         self._params = parameters if parameters is not None else []
-        self._name_generator = name_generator
 
         self._build_strategy = kwargs.get('build_strategy', BuildStrategy())
         assert isinstance(self._build_strategy, BuildStrategy)
@@ -226,17 +220,19 @@ class PartialProgramLayer:
         self._out_var_descs = [
             self._outputs[var_id].desc for var_id in self._outputs.var_ids
         ]
+        self._debug_name = None
 
     def __call__(self, inputs):
         """
         Execute static graph by Interpreter and Return dynamic Tensors.
         """
-        old_generator, old_para_name_checker = switch(self._name_generator)
-
         in_vars, in_var_names = self._prepare_inputs(inputs)
         out_vars = self._prepare_outputs()
         self._cast_fp16_if_pure_fp16(in_vars)
-        attrs = self._prepare_attributes()
+        # TODO(dev): Currently AST + PT has some issues in control flow, so we only
+        # enable SOT + PT in 2.6, we will fix it later.
+        is_dy2st_test = os.environ.get("DY2ST_TEST", None) == "True"
+        attrs = self._prepare_attributes(force_not_use_pt=(not is_dy2st_test))
         attrs.extend(["x_names", in_var_names])
 
         self._sync_lr_value_with_scheduler()
@@ -255,23 +251,22 @@ class PartialProgramLayer:
         restored_nest_out = self._restore_out(out_vars)
         restored_nest_out = self._remove_no_value(restored_nest_out)
 
-        switch(old_generator, old_para_name_checker)
         return restored_nest_out
 
     def sot_call(self, inputs):
         """
         In sot, inputs and outputs of partial program only contain tensors, so we can skip some step to speed up
         """
-        old_generator, old_para_name_checker = switch(self._name_generator)
-
+        in_vars, in_var_names = self._prepare_inputs(inputs)
         out_vars = self._prepare_outputs()
-        self._cast_fp16_if_pure_fp16(inputs)
-        attrs = self._prepare_attributes()
-        attrs.extend(["x_names", self._in_var_names])
+        self._cast_fp16_if_pure_fp16(in_vars)
+        attrs = self._prepare_attributes(force_not_use_pt=False)
+        attrs.extend(["x_names", in_var_names])
+
         self._sync_lr_value_with_scheduler()
 
         _legacy_C_ops.run_program(
-            self._valid_vars(inputs),
+            self._valid_vars(in_vars),
             self._valid_vars(self._params),
             self._valid_vars(out_vars),
             self._create_scope_vec(
@@ -281,8 +276,9 @@ class PartialProgramLayer:
             *attrs
         )
 
-        switch(old_generator, old_para_name_checker)
-        return out_vars
+        restored_nest_out = self._restore_out(out_vars)
+        restored_nest_out = self._remove_no_value(restored_nest_out)
+        return restored_nest_out
 
     def _sync_lr_value_with_scheduler(self):
         """Update lr_var value with calculated by lr_scheduler."""
@@ -544,14 +540,19 @@ class PartialProgramLayer:
     @property
     def infer_program(self):
         if _in_amp_guard():
-            return self._infer_amp_program
+            infer_program = self._infer_amp_program
         elif _in_pure_fp16_guard():
-            return self._infer_pure_fp16_program
+            infer_program = self._infer_pure_fp16_program
         else:
-            return self._infer_program
+            infer_program = self._infer_program
+        # NOTE(Aurelius84): Export forward_program for SubGraphChecker,
+        # see export_subgraph for detail.
+        pir_exporter(self, infer_program, SubGraphRole.Infer)
+        return infer_program
 
     @property
     def forward_program(self):
+        forward_program, role = None, None
         if self.training:
             if _in_amp_guard():
                 progs = self._train_amp_forward_backward_program
@@ -561,7 +562,8 @@ class PartialProgramLayer:
                 progs = self._train_forward_backward_program
             return progs[0]
         else:
-            return self.infer_program
+            forward_program = self.infer_program
+        return forward_program
 
     @property
     def backward_program(self):
@@ -769,7 +771,7 @@ class PartialProgramLayer:
                     in_vars[i] = var.astype('float16')
                     in_vars[i].name = name
 
-    def _prepare_attributes(self):
+    def _prepare_attributes(self, force_not_use_pt=False):
         attrs = [
             'forward_global_block',
             self.forward_program.desc.block(0),
@@ -813,6 +815,8 @@ class PartialProgramLayer:
         in_cinn_backend = self._backend == "CINN"
         is_cinn_enabled = self._build_strategy.build_cinn_pass
         if is_prim_enabled or in_cinn_backend or is_cinn_enabled:
+            in_pir_pt_mode = False
+        if force_not_use_pt:
             in_pir_pt_mode = False
         attrs.extend(['in_pir_pt_mode', in_pir_pt_mode])
 
@@ -867,6 +871,23 @@ class PartialProgramLayer:
 
         self._apply_inplace_pass(
             forward_builded_program, backward_builded_program
+        )
+
+        # NOTE(Aurelius84): Export forward/backward program for SubGraphChecker,
+        # see export_subgraph for detail.
+        pir_exporter(
+            self,
+            forward_builded_program,
+            SubGraphRole.Forward,
+            set(),
+            set(forward_skip_vars),
+        )
+        pir_exporter(
+            self,
+            backward_builded_program,
+            SubGraphRole.Backward,
+            set(forward_skip_vars),
+            set(backward_skip_vars),
         )
         return [forward_builded_program, backward_builded_program]
 
@@ -1144,7 +1165,6 @@ def partial_program_from(concrete_program, from_method=False):
         concrete_program.main_program,
         inputs,
         concrete_program.outputs,
-        concrete_program.name_generator,
         concrete_program.parameters,
         **concrete_program.kwargs
     )

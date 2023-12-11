@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/pir/core/enforce.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/interface_value.h"
 
 namespace pir {
@@ -25,7 +25,7 @@ class ConstructInterfacesOrTraits {
   /// Construct method for interfaces.
   static void interface(InterfaceSet &interface_set) {  // NOLINT
     (void)std::initializer_list<int>{
-        0, (PlacementConstrctInterface<Args>(interface_set), 0)...};
+        0, (ConstrctInterface<Args>(interface_set), 0)...};
   }
 
   /// Construct method for traits.
@@ -38,8 +38,7 @@ class ConstructInterfacesOrTraits {
  private:
   /// Placement new interface.
   template <typename T>
-  static void PlacementConstrctInterface(
-      InterfaceSet &interface_set) {  // NOLINT
+  static void ConstrctInterface(InterfaceSet &interface_set) {  // NOLINT
     InterfaceValue val = InterfaceValue::
         Get<ConcreteT, T, typename T::template Model<ConcreteT>>();
     auto suceess = interface_set.insert(std::move(val)).second;

@@ -31,6 +31,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include "paddle/common/macros.h"
 #include "paddle/fluid/framework/archive.h"
 #include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/channel.h"
@@ -41,7 +42,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/timer.h"
 #include "paddle/fluid/string/string_helper.h"
-#include "paddle/phi/core/macros.h"
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_utils.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -881,7 +881,8 @@ struct BufState {
 
   int GetNextStep() {
     step++;
-    if (step <= right && central_word + (*window)[step] < walk_len) {
+    // Checking out-of-bound by MakeInsPair
+    if (step <= right) {
       return 1;
     }
     return 0;
@@ -905,13 +906,9 @@ struct BufState {
     VLOG(2) << "random window: " << random_window << " window[" << left
             << "] = " << (*window)[left] << " window[" << right
             << "] = " << (*window)[right];
-
-    for (step = left; step <= right; step++) {
-      if (central_word + (*window)[step] >= 0) {
-        return 1;
-      }
-    }
-    return 0;
+    // Checking out-of-bound by MakeInsPair
+    step = left;
+    return 1;
   }
 
   int GetNextBatch() {
@@ -931,6 +928,52 @@ struct BufState {
   }
 };
 
+/// Related behaviors and events during sampling
+const int EVENT_FINISH_EPOCH = 0;     // End of sampling single epoch
+const int EVENT_CONTINUE_SAMPLE = 1;  // Continue sampling
+const int EVENT_WALKBUF_FULL = 2;  // d_walk is full, end current pass sampling
+const int EVENT_NOT_SWTICH = 0;    // Continue sampling on the current metapath.
+const int EVENT_SWTICH_METAPATH =
+    1;  // Switch to the next metapath to perform sampling
+
+struct GraphDataGeneratorConfig {
+  bool need_walk_ntype;
+  bool enable_pair_label;
+  bool gpu_graph_training;
+  bool sage_mode;
+  bool get_degree;
+  bool weighted_sample;
+  bool return_weight;
+  bool is_multi_node;
+  bool is_thread_sharding;
+  int batch_size;
+  int slot_num;
+  int walk_degree;
+  int walk_len;
+  int window;
+  int gpuid;
+  int thread_id;
+  int once_sample_startid_len;
+  int node_type_num;
+  int debug_mode;
+  int excluded_train_pair_len;
+  int edge_to_id_len;
+  int tensor_pair_num;
+  uint32_t tensor_num_of_one_pair;
+  uint32_t tensor_num_of_one_subgraph;
+  size_t buf_size;
+  size_t once_max_sample_keynum;
+  int64_t reindex_table_size;
+  uint64_t train_table_cap;
+  uint64_t infer_table_cap;
+  int accumulate_num;
+  std::vector<int> window_step;
+  std::vector<int> samples;
+  std::shared_ptr<phi::Allocation> d_excluded_train_pair;
+  std::shared_ptr<phi::Allocation> d_pair_label_conf;
+  std::set<int> infer_node_type_index_set;
+};
+
 class GraphDataGenerator {
  public:
   GraphDataGenerator() {}
@@ -939,141 +982,119 @@ class GraphDataGenerator {
   void AllocResource(int thread_id, std::vector<phi::DenseTensor*> feed_vec);
   void AllocTrainResource(int thread_id);
   void SetFeedVec(std::vector<phi::DenseTensor*> feed_vec);
-  int AcquireInstance(BufState* state);
+  void SetFeedInfo(std::vector<UsedSlotInfo>* feed_info);
   int GenerateBatch();
-  int FillWalkBuf();
-  int FillWalkBufMultiPath();
-  int FillInferBuf();
   void DoWalkandSage();
   int FillSlotFeature(uint64_t* d_walk);
-  int FillFeatureBuf(uint64_t* d_walk, uint64_t* d_feature, size_t key_num);
-  int FillFeatureBuf(std::shared_ptr<phi::Allocation> d_walk,
-                     std::shared_ptr<phi::Allocation> d_feature);
-  void FillOneStep(uint64_t* start_ids,
-                   int etype_id,
-                   uint64_t* walk,
-                   uint8_t* walk_ntype,
-                   int len,
-                   NeighborSampleResult& sample_res,  // NOLINT
-                   int cur_degree,
-                   int step,
-                   int* len_per_row);
-  int FillInsBuf(cudaStream_t stream);
-  int FillIdShowClkTensor(int total_instance,
-                          bool gpu_graph_training,
-                          size_t cursor = 0);
+  int FillIdShowClkTensor(int total_instance, bool gpu_graph_training);
   int FillGraphIdShowClkTensor(int uniq_instance,
                                int total_instance,
                                int index);
+  int FillGraphIdShowClkTensorAccum(int index);
   int FillGraphSlotFeature(
       int total_instance,
       bool gpu_graph_training,
       std::shared_ptr<phi::Allocation> final_sage_nodes = nullptr);
-  int FillSlotFeature(uint64_t* d_walk, size_t key_num);
-  int MakeInsPair(cudaStream_t stream);
-  uint64_t CopyUniqueNodes();
-  int GetPathNum() { return total_row_; }
-  void ResetPathNum() { total_row_ = 0; }
+  int FillGraphSlotFeatureAccum(bool gpu_graph_training, int index);
+  int FillSlotFeature(uint64_t* d_walk,
+                      size_t key_num,
+                      int tensor_pair_idx,
+                      int accum = 0);
+  int FillFloatFeature(uint64_t* d_walk, size_t key_num, int tensor_pair_idx);
+  int GetPathNum() { return total_row_[0]; }
+  void ResetPathNum() { total_row_[0] = 0; }
+  int GetGraphBatchsize() { return conf_.batch_size; }
+  void SetNewBatchsize(int batch_num) {
+    if (!conf_.gpu_graph_training) {
+      conf_.batch_size = (total_row_[0] + batch_num - 1) / batch_num;
+    } else {
+      return;
+    }
+  }
+  bool GetSageMode() { return conf_.sage_mode; }
+  bool GetMultiNodeMode() { return conf_.is_multi_node; }
+  bool GetTrainState() { return conf_.gpu_graph_training; }
   void ResetEpochFinish() { epoch_finish_ = false; }
+  void reset_pass_end() { pass_end_ = 0; }
   void ClearSampleState();
   void DumpWalkPath(std::string dump_path, size_t dump_rate);
+  void DumpSampleNeighbors(std::string dump_path);
   void SetDeviceKeys(std::vector<uint64_t>* device_keys UNUSED,
                      int type UNUSED) {
     // type_to_index_[type] = h_device_keys_.size();
     // h_device_keys_.push_back(device_keys);
   }
-  std::vector<std::shared_ptr<phi::Allocation>> SampleNeighbors(
-      int64_t* uniq_nodes,
-      int len,
-      int sample_size,
-      std::vector<int>& edges_split_num,  // NOLINT
-      int64_t* neighbor_len);
-  std::shared_ptr<phi::Allocation> FillReindexHashTable(int64_t* input,
-                                                        int num_input,
-                                                        int64_t len_hashtable,
-                                                        int64_t* keys,
-                                                        int* values,
-                                                        int* key_index,
-                                                        int* final_nodes_len);
-  std::shared_ptr<phi::Allocation> GetReindexResult(int64_t* reindex_src_data,
-                                                    int64_t* center_nodes,
-                                                    int* final_nodes_len,
-                                                    int node_len,
-                                                    int64_t neighbor_len);
-  std::shared_ptr<phi::Allocation> GenerateSampleGraph(
-      uint64_t* node_ids,
-      int len,
-      int* uniq_len,
-      std::shared_ptr<phi::Allocation>& inverse);  // NOLINT
-  std::shared_ptr<phi::Allocation> GetNodeDegree(uint64_t* node_ids, int len);
-  int InsertTable(const uint64_t* d_keys,
-                  uint64_t len,
-                  std::shared_ptr<phi::Allocation> d_uniq_node_num);
+  int GetTrainMemoryDataSize() {
+    // use only for is_multi_node = True, sage_mode = True, gpu_graph_training =
+    // True
+    if (!global_train_flag_) {
+      return 0;
+    } else {
+      return total_row_[0];
+    }
+  }
   std::vector<uint64_t>& GetHostVec() { return host_vec_; }
+  std::vector<uint32_t>& GetHostRanks() { return host_ranks_; }
+  std::shared_ptr<HashTable<uint64_t, uint32_t>> GetKeys2RankTable() {
+    return keys2rank_table_;
+  }
+
   bool get_epoch_finish() { return epoch_finish_; }
+  int get_pass_end() { return pass_end_; }
   void clear_gpu_mem();
+  int dynamic_adjust_batch_num_for_sage();
 
  protected:
-  HashTable<uint64_t, uint64_t>* table_;
-  int walk_degree_;
-  int walk_len_;
-  int window_;
-  int once_sample_startid_len_;
-  int gpuid_;
-  size_t cursor_;
-  int thread_id_;
-  size_t jump_rows_;
-  int edge_to_id_len_;
+  bool DoWalkForInfer();
+  void DoSageForInfer();
+  bool DoWalkForTrain();
+  void DoSageForTrain();
+
+  // key: key id,
+  // value: dest machine rank id
+  // Two usage: dup keys and cache dest machine rank of keys
+  std::shared_ptr<HashTable<uint64_t, uint32_t>> keys2rank_table_;
+  GraphDataGeneratorConfig conf_;
+  std::vector<size_t> infer_cursor_;
+  std::vector<size_t> jump_rows_;
   int64_t* id_tensor_ptr_;
   int* index_tensor_ptr_;
   int64_t* show_tensor_ptr_;
   int64_t* clk_tensor_ptr_;
   int* degree_tensor_ptr_;
+  int32_t* pair_label_ptr_;
 
   cudaStream_t train_stream_;
   cudaStream_t sample_stream_;
   paddle::platform::Place place_;
   std::vector<phi::DenseTensor*> feed_vec_;
+  std::vector<UsedSlotInfo>* feed_info_;  // adapt for float feature
   std::vector<size_t> offset_;
-  std::shared_ptr<phi::Allocation> d_prefix_sum_;
-  std::vector<std::shared_ptr<phi::Allocation>> d_device_keys_;
-  std::shared_ptr<phi::Allocation> d_train_metapath_keys_;
+  std::vector<std::vector<std::shared_ptr<phi::Allocation>>> d_device_keys_;
+  std::vector<std::shared_ptr<phi::Allocation>> d_train_metapath_keys_;
 
-  std::shared_ptr<phi::Allocation> d_walk_;
-  std::shared_ptr<phi::Allocation> d_walk_ntype_;
-  std::shared_ptr<phi::Allocation> d_excluded_train_pair_;
+  std::vector<std::shared_ptr<phi::Allocation>> d_walk_;
+  std::vector<std::shared_ptr<phi::Allocation>> d_walk_ntype_;
   std::shared_ptr<phi::Allocation> d_feature_list_;
   std::shared_ptr<phi::Allocation> d_feature_;
-  std::shared_ptr<phi::Allocation> d_len_per_row_;
-  std::shared_ptr<phi::Allocation> d_random_row_;
+  std::vector<std::shared_ptr<phi::Allocation>> d_random_row_;
+  std::vector<std::shared_ptr<phi::Allocation>> d_random_row_col_shift_;
   std::shared_ptr<phi::Allocation> d_uniq_node_num_;
   std::shared_ptr<phi::Allocation> d_slot_feature_num_map_;
   std::shared_ptr<phi::Allocation> d_actual_slot_id_map_;
   std::shared_ptr<phi::Allocation> d_fea_offset_map_;
 
-  std::vector<std::shared_ptr<phi::Allocation>> d_sampleidx2rows_;
-  int cur_sampleidx2row_;
-  // record the keys to call graph_neighbor_sample
-  std::shared_ptr<phi::Allocation> d_sample_keys_;
-  int sample_keys_len_;
-
-  std::shared_ptr<phi::Allocation> d_ins_buf_;
+  std::vector<std::shared_ptr<phi::Allocation>> d_pair_label_buf_;
+  std::vector<std::shared_ptr<phi::Allocation>> d_ins_buf_;
   std::shared_ptr<phi::Allocation> d_feature_size_list_buf_;
   std::shared_ptr<phi::Allocation> d_feature_size_prefixsum_buf_;
-  std::shared_ptr<phi::Allocation> d_pair_num_;
+  std::vector<std::shared_ptr<phi::Allocation>> d_pair_num_;
   std::shared_ptr<phi::Allocation> d_slot_tensor_ptr_;
   std::shared_ptr<phi::Allocation> d_slot_lod_tensor_ptr_;
-  std::shared_ptr<phi::Allocation> d_reindex_table_key_;
-  std::shared_ptr<phi::Allocation> d_reindex_table_value_;
-  std::shared_ptr<phi::Allocation> d_reindex_table_index_;
   std::vector<std::shared_ptr<phi::Allocation>> edge_type_graph_;
-  std::shared_ptr<phi::Allocation> d_sorted_keys_;
-  std::shared_ptr<phi::Allocation> d_sorted_idx_;
-  std::shared_ptr<phi::Allocation> d_offset_;
-  std::shared_ptr<phi::Allocation> d_merged_cnts_;
-  std::shared_ptr<phi::Allocation> d_buf_;
 
   // sage mode batch data
+  std::vector<std::shared_ptr<phi::Allocation>> pair_label_vec_;
   std::vector<std::shared_ptr<phi::Allocation>> inverse_vec_;
   std::vector<std::shared_ptr<phi::Allocation>> final_sage_nodes_vec_;
   std::vector<std::shared_ptr<phi::Allocation>> node_degree_vec_;
@@ -1082,39 +1103,32 @@ class GraphDataGenerator {
   std::vector<std::vector<std::shared_ptr<phi::Allocation>>> graph_edges_vec_;
   std::vector<std::vector<std::vector<int>>> edges_split_num_vec_;
 
-  int excluded_train_pair_len_;
-  int64_t reindex_table_size_;
   int sage_batch_count_;
   int sage_batch_num_;
-  int ins_buf_pair_len_;
+  bool global_train_flag_ = 0;
+  std::vector<int> ins_buf_pair_len_;
+  int id_offset_of_feed_vec_;
 
   // size of a d_walk buf
-  size_t buf_size_;
   int repeat_time_;
-  std::vector<int> window_step_;
-  BufState buf_state_;
-  int batch_size_;
-  int slot_num_;
+  std::vector<BufState> buf_state_;
+  int float_slot_num_ = 0;  // float slot num
+  int uint_slot_num_ = 0;   // uint slot num
   std::vector<int> h_slot_feature_num_map_;
   int fea_num_per_node_;
-  int shuffle_seed_;
-  int debug_mode_;
-  bool gpu_graph_training_;
-  bool sage_mode_;
-  std::vector<int> samples_;
+  std::vector<int> shuffle_seed_;
   bool epoch_finish_;
+  int pass_end_ = 0;
   std::vector<uint64_t> host_vec_;
-  std::vector<uint64_t> h_device_keys_len_;
-  uint64_t h_train_metapath_keys_len_;
-  uint64_t train_table_cap_;
-  uint64_t infer_table_cap_;
+  std::vector<uint32_t> host_ranks_;
+  std::vector<std::vector<uint64_t>> h_device_keys_len_;
+  std::vector<uint64_t> h_train_metapath_keys_len_;
   uint64_t copy_unique_len_;
-  int total_row_;
-  size_t infer_node_start_;
-  size_t infer_node_end_;
-  std::set<int> infer_node_type_index_set_;
+  std::vector<int> total_row_;
+  std::vector<size_t> infer_node_start_;
+  std::vector<size_t> infer_node_end_;
   std::string infer_node_type_;
-  bool get_degree_;
+  phi::DenseTensor multi_node_sync_stat_;
 };
 
 class DataFeed {
@@ -1209,7 +1223,32 @@ class DataFeed {
   virtual void SetCurBatchSize(const int batch_size) {
     batch_size_ = batch_size;
   }
-  virtual int GetCurBatchSize() { return batch_size_; }
+  virtual int GetCurBatchSize() {
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+    return gpu_graph_data_generator_.GetGraphBatchsize();
+#else
+    return batch_size_;
+#endif
+  }
+  virtual void SetNewBatchsize(int batch_num) {
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+    gpu_graph_data_generator_.SetNewBatchsize(batch_num);
+#endif
+  }
+  virtual bool GetSageMode() {
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+    return gpu_graph_data_generator_.GetSageMode();
+#else
+    return 0;
+#endif
+  }
+  virtual bool GetMultiNodeMode() {
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+    return gpu_graph_data_generator_.GetMultiNodeMode();
+#else
+    return 0;
+#endif
+  }
   virtual int GetGraphPathNum() {
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
     return gpu_graph_data_generator_.GetPathNum();
@@ -1217,10 +1256,28 @@ class DataFeed {
     return 0;
 #endif
   }
+  virtual bool GetTrainState() {
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+    return gpu_graph_data_generator_.GetTrainState();
+#else
+    return 0;
+#endif
+  }
+  virtual int GetTrainMemoryDataSize() {
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+    return gpu_graph_data_generator_.GetTrainMemoryDataSize();
+#else
+    return 0;
+#endif
+  }
 
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-  virtual const std::vector<uint64_t>* GetHostVec() {
+  virtual std::vector<uint64_t>* GetHostVec() {
     return &(gpu_graph_data_generator_.GetHostVec());
+  }
+
+  virtual std::vector<uint32_t>* GetHostRanks() {
+    return &(gpu_graph_data_generator_.GetHostRanks());
   }
 
   virtual void clear_gpu_mem() { gpu_graph_data_generator_.clear_gpu_mem(); }
@@ -1228,6 +1285,12 @@ class DataFeed {
   virtual bool get_epoch_finish() {
     return gpu_graph_data_generator_.get_epoch_finish();
   }
+
+  virtual int get_pass_end() {
+    return gpu_graph_data_generator_.get_pass_end();
+  }
+
+  virtual void reset_pass_end() { gpu_graph_data_generator_.reset_pass_end(); }
 
   virtual void ResetPathNum() { gpu_graph_data_generator_.ResetPathNum(); }
 
@@ -1243,6 +1306,11 @@ class DataFeed {
     PADDLE_THROW(platform::errors::Unimplemented(
         "This function(DoWalkandSage) is not implemented."));
   }
+
+  std::shared_ptr<HashTable<uint64_t, uint32_t>> GetKeys2RankTable() {
+    return gpu_graph_data_generator_.GetKeys2RankTable();
+  }
+
 #endif
 
   virtual bool IsTrainMode() { return train_mode_; }
@@ -1271,6 +1339,10 @@ class DataFeed {
                             size_t dump_rate UNUSED) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "This function(DumpWalkPath) is not implemented."));
+  }
+  virtual void DumpSampleNeighbors(std::string dump_path) {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "This function(DumpSampleNeighbors) is not implemented"));
   }
 
  protected:
@@ -1313,7 +1385,6 @@ class DataFeed {
 
   // The data read by DataFeed will be stored here
   std::vector<phi::DenseTensor*> feed_vec_;
-
   phi::DenseTensor* rank_offset_;
 
   // the batch size defined by user
@@ -1904,6 +1975,7 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
   }
 #endif
   void DumpWalkPath(std::string dump_path, size_t dump_rate) override;
+  void DumpSampleNeighbors(std::string dump_path) override;
 
   float sample_rate_ = 1.0f;
   int use_slot_size_ = 0;

@@ -32,19 +32,19 @@ ScheduleBlockNode::ScheduleBlockNode(Expr block, const IRSchedule& ir_sch)
 
 Expr ScheduleBlockNode::Block() const { return ir_sch_.GetBlock(id_); }
 
-std::vector<Expr> ScheduleBlockNode::ControlStmts() const {
+std::vector<Expr> ScheduleBlockNode::GetLoops() const {
   return ir_sch_.GetLoops(id_);
 }
 
-bool EdgeCompare(const common::Shared<common::GraphEdge>& a,
-                 const common::Shared<common::GraphEdge>& b) {
+bool EdgeCompare(const cinn::common::Shared<cinn::common::GraphEdge>& a,
+                 const cinn::common::Shared<cinn::common::GraphEdge>& b) {
   CHECK_NOTNULL(a.get());
   CHECK_NOTNULL(b.get());
   return a->index() < b->index();
 }
-std::vector<common::Shared<common::GraphEdge>>
+std::vector<cinn::common::Shared<cinn::common::GraphEdge>>
 ScheduleBlockNode::OrderedInLinks() const {
-  std::vector<common::Shared<common::GraphEdge>> ordered_links;
+  std::vector<cinn::common::Shared<cinn::common::GraphEdge>> ordered_links;
   for (auto& in_edge : this->inlinks()) {
     ordered_links.push_back(in_edge);
     CHECK_GE(in_edge->index(), 0)
@@ -55,9 +55,9 @@ ScheduleBlockNode::OrderedInLinks() const {
   return ordered_links;
 }
 
-std::vector<common::Shared<common::GraphEdge>>
+std::vector<cinn::common::Shared<cinn::common::GraphEdge>>
 ScheduleBlockNode::OrderedOutLinks() const {
-  std::vector<common::Shared<common::GraphEdge>> ordered_links;
+  std::vector<cinn::common::Shared<cinn::common::GraphEdge>> ordered_links;
   for (auto& out_edge : this->outlinks()) {
     ordered_links.push_back(out_edge);
     CHECK_GE(out_edge->index(), 0)
@@ -132,7 +132,7 @@ void ScheduleBlockGraph::Update(const IRSchedule& ir_sch) {
 
 std::vector<ScheduleBlockNode*> ScheduleBlockGraph::StartPoints() {
   std::vector<ScheduleBlockNode*> res;
-  for (common::GraphNode* node : nodes()) {
+  for (cinn::common::GraphNode* node : nodes()) {
     if (node->inlinks().empty()) {
       res.push_back(dynamic_cast<ScheduleBlockNode*>(node));
     }
@@ -142,7 +142,7 @@ std::vector<ScheduleBlockNode*> ScheduleBlockGraph::StartPoints() {
 
 std::vector<ScheduleBlockNode*> ScheduleBlockGraph::EndPoints() {
   std::vector<ScheduleBlockNode*> res;
-  for (common::GraphNode* node : nodes()) {
+  for (cinn::common::GraphNode* node : nodes()) {
     if (node->outlinks().empty()) {
       res.push_back(dynamic_cast<ScheduleBlockNode*>(node));
     }
@@ -151,7 +151,7 @@ std::vector<ScheduleBlockNode*> ScheduleBlockGraph::EndPoints() {
 }
 
 void ScheduleBlockGraph::NodesWalk(const NodeHandlerType& NodeHandler) {
-  for (common::GraphNode* node : nodes()) {
+  for (cinn::common::GraphNode* node : nodes()) {
     ScheduleBlockNode* cur_node = dynamic_cast<ScheduleBlockNode*>(node);
     NodeHandler(cur_node);
   }
@@ -175,8 +175,8 @@ void ScheduleBlockGraph::DFSTopoWalk(const NodeHandlerType& NodeHandler,
       NextNodeHandler(next_node);
     }
   };
-  common::DfsTopoWalker<ScheduleBlockNode*> walker(VisitPreNodes,
-                                                   VisitNextNodes);
+  cinn::common::DfsTopoWalker<ScheduleBlockNode*> walker(VisitPreNodes,
+                                                         VisitNextNodes);
   std::vector<ScheduleBlockNode*> starts =
       is_reverse ? EndPoints() : StartPoints();
   walker(starts.begin(), starts.end(), NodeHandler);

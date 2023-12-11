@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import gc
+import sys
 import traceback
 import types
 from typing import List, Tuple
@@ -33,7 +34,6 @@ from ...utils import (
 from ..custom_code import CustomCode
 from .guard import Guard
 from .opcode_executor import OpcodeExecutor, OpcodeExecutorBase
-from .pycode_generator import PyCodeGen
 
 GuardedFunction = Tuple[CustomCode, Guard]
 GuardedFunctions = List[GuardedFunction]
@@ -190,8 +190,16 @@ def start_translate(frame: types.FrameType, **kwargs) -> GuardedFunction:
     Returns:
         GuardedFunction | None: The translated code object and its guard function, or None if translation fails.
     """
+    if sys.version_info >= (3, 11):
+        for const in frame.f_code.co_consts:
+            if isinstance(const, types.CodeType) and const.co_name.startswith(
+                "<"
+            ):
+                log(2, f"Found code object {const.co_name}, skip it\n")
+                return CustomCode(None, False), dummy_guard
     simulator = OpcodeExecutor(frame, **kwargs)
     try:
+        simulator.check_code_simulatable()
         new_custom_code, guard_fn = simulator.transform()
         return new_custom_code, guard_fn
     # TODO(zrr1999): InnerError maybe place before (FallbackError, BreakGraphError)
@@ -213,16 +221,12 @@ def start_translate(frame: types.FrameType, **kwargs) -> GuardedFunction:
             f"Unsupport Frame is {frame.f_code}, error message is: \n"
             + "".join(traceback.format_exception(type(e), e, e.__traceback__)),
         )
-
-        # NOTE: If resume fn need fallback, we should replace NullVariable using NULL otherwise will fail to run
-        py_codegen = PyCodeGen(frame)
-        new_code = py_codegen.replace_null_variable()
         # simulation not complete, not sure whether this code has sir, set disable_eval_frame = False
         guard_fn = (
             dummy_guard if e.disable_eval_frame is False else simulator.guard_fn
         )
         return (
-            CustomCode(new_code, e.disable_eval_frame),
+            CustomCode(None, e.disable_eval_frame),
             guard_fn,
         )
     except Exception as e:

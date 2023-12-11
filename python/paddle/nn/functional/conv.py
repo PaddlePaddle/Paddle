@@ -120,7 +120,6 @@ def _conv_nd(
     channel_dim=1,
     op_type="conv2d",
     use_cudnn=True,
-    use_mkldnn=False,
     name=None,
 ):
     # Due to the poor performance of NHWC, we transpose the input to NCHW.
@@ -203,8 +202,6 @@ def _conv_nd(
             groups,
             'use_cudnn',
             use_cudnn,
-            'use_mkldnn',
-            use_mkldnn,
             'fuse_relu_before_depthwise_conv',
             False,
             "padding_algorithm",
@@ -225,7 +222,6 @@ def _conv_nd(
             'dilations': dilation,
             'groups': groups,
             'use_cudnn': use_cudnn,
-            'use_mkldnn': use_mkldnn,
             'fuse_relu_before_depthwise_conv': False,
             "padding_algorithm": padding_algorithm,
             "data_format": data_format,
@@ -249,7 +245,7 @@ def _conv_nd(
                     type='elementwise_add',
                     inputs={'X': [pre_bias], 'Y': [bias]},
                     outputs={'Out': [out]},
-                    attrs={'axis': -1, 'use_mkldnn': use_mkldnn},
+                    attrs={'axis': -1},
                 )
             else:
                 assert len(x_shape) > len(
@@ -264,7 +260,7 @@ def _conv_nd(
                     type='elementwise_add',
                     inputs={'X': [pre_bias], 'Y': [bias]},
                     outputs={'Out': [out]},
-                    attrs={'axis': -1, 'use_mkldnn': use_mkldnn},
+                    attrs={'axis': -1},
                 )
         else:
             out = pre_bias
@@ -496,7 +492,6 @@ def conv1d(
             'dilations': dilation,
             'groups': groups,
             'use_cudnn': use_cudnn,
-            'use_mkldnn': False,
             'fuse_relu_before_depthwise_conv': False,
             "padding_algorithm": padding_algorithm,
             "data_format": conv2d_data_format,
@@ -733,8 +728,6 @@ def conv2d(
             else:
                 return pre_bias
 
-    use_mkldnn = _global_flags()["FLAGS_use_mkldnn"]
-
     if (
         is_compiled_with_cuda()
         and get_flags("FLAGS_conv2d_disable_cudnn")[
@@ -756,7 +749,6 @@ def conv2d(
         channel_dim,
         l_type,
         use_cudnn,
-        use_mkldnn,
         name,
     )
 
@@ -1233,7 +1225,7 @@ def conv2d_transpose(
                 output_size = convert_to_list(output_size, 2, 'output_size')
         elif isinstance(output_size, int):
             output_size = convert_to_list(output_size, 2, 'output_size')
-        elif isinstance(output_size, (Variable, pir.OpResult)):
+        elif isinstance(output_size, (Variable, pir.Value)):
             check_dtype(
                 output_size.dtype,
                 'output_size',
@@ -1322,7 +1314,7 @@ def conv2d_transpose(
                     type='elementwise_add',
                     inputs={'X': [pre_bias], 'Y': [bias]},
                     outputs={'Out': [out]},
-                    attrs={'axis': -1, 'use_mkldnn': False},
+                    attrs={'axis': -1},
                 )
             else:
                 assert len(x_shape) > len(
@@ -1336,7 +1328,7 @@ def conv2d_transpose(
                     type='elementwise_add',
                     inputs={'X': [pre_bias], 'Y': [bias]},
                     outputs={'Out': [out]},
-                    attrs={'axis': -1, 'use_mkldnn': False},
+                    attrs={'axis': -1},
                 )
         else:
             out = pre_bias
@@ -1517,7 +1509,6 @@ def conv3d(
         channel_dim,
         op_type,
         use_cudnn,
-        False,
         name,
     )
 

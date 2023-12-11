@@ -13,12 +13,12 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/platform/init_phi.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/pir/core/ir_printer.h"
 
 REGISTER_FILE_SYMBOLS(kernel_dialect);
@@ -46,7 +46,7 @@ void KernelDialect::PrintType(pir::Type type, std::ostream &os) const {
 
     os << phi::AllocationTypeStr(tensor_type.place().GetType()) << "_";
     os << "tensor<";
-    for (auto d : phi::vectorize(tensor_type.dims())) {
+    for (auto d : common::vectorize(tensor_type.dims())) {
       os << d;
       os << "x";
     }
@@ -58,7 +58,7 @@ void KernelDialect::PrintType(pir::Type type, std::ostream &os) const {
 
     os << phi::AllocationTypeStr(tensor_type.place().GetType()) << "_";
     os << "tensor<";
-    for (auto d : phi::vectorize(tensor_type.dims())) {
+    for (auto d : common::vectorize(tensor_type.dims())) {
       os << d;
       os << "x";
     }

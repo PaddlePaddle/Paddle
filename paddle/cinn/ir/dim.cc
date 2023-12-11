@@ -18,6 +18,8 @@
 namespace cinn {
 namespace ir {
 
+using pir::shape::SymbolicDimOp;
+
 const _Dim_* Dim::operator->() const { return As<_Dim_>(); }
 _Dim_* Dim::operator->() { return As<_Dim_>(); }
 
@@ -36,13 +38,16 @@ Dim _Dim_::Make(const std::string& name, const SymbolicDimOp& sym_dim) {
   n->name = name;
   n->sym_dim = sym_dim;
   if (sym_dim.IsDynamic()) {
-    n->dim_expr = Expr(Var(sym_dim.GetSymName(), type_of<std::string>()));
+    n->dim_expr = Expr(Var(sym_dim.GetSymName(), cinn::common::Int(32)));
   } else {
-    n->dim_expr = Expr(sym_dim.GetDimSize());
+    n->dim_expr = Expr(static_cast<int32_t>(sym_dim.GetDimSize()));
   }
 
   return Dim(n);
 }
+
+Dim::Dim(const std::string& name, const SymbolicDimOp& sym_dim)
+    : IrNodeRef(_Dim_::Make(name, sym_dim).self()) {}
 
 }  // namespace ir
 }  // namespace cinn

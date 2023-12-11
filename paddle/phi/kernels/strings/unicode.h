@@ -17,8 +17,8 @@ limitations under the License. */
 #include <cstring>
 #include <memory>
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/core/hostdevice.h"
-#include "paddle/phi/core/macros.h"
 
 namespace phi {
 namespace strings {

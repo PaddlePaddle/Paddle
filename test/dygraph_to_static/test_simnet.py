@@ -17,13 +17,10 @@ import random
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import (
-    Dy2StTestBase,
-)
+from dygraph_to_static_utils import Dy2StTestBase, test_legacy_and_pt_and_pir
 from simnet_dygraph_model import BOW, HingeLoss
 
 import paddle
-from paddle import base
 from paddle.base.framework import unique_name
 
 SEED = 102
@@ -180,9 +177,10 @@ def train(conf_dict, to_static):
 
 
 class TestSimnet(Dy2StTestBase):
+    @test_legacy_and_pt_and_pir
     def test_dygraph_static_same_loss(self):
-        if base.is_compiled_with_cuda():
-            base.set_flags({"FLAGS_cudnn_deterministic": True})
+        if paddle.is_compiled_with_cuda():
+            paddle.set_flags({"FLAGS_cudnn_deterministic": True})
         conf_dict = create_conf_dict()
         dygraph_loss = train(conf_dict, to_static=False)
         static_loss = train(conf_dict, to_static=True)

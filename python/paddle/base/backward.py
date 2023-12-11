@@ -15,15 +15,16 @@
 import collections
 import copy
 import logging
+import os
 import re
 import warnings
 from collections.abc import Sequence
 
 import paddle.base
-from paddle.base import framework, program_guard
 
-from . import core, log_helper, unique_name
+from . import core, framework, log_helper, unique_name
 from .data_feeder import check_type
+from .framework import program_guard
 from .proto import framework_pb2
 
 __all__ = []
@@ -477,7 +478,7 @@ def _accumulate_gradients_by_sum_op_(
             "sum",
             {"X": renamed_vars[var_name]},
             {"Out": [var_name]},
-            {"use_mkldnn": False, "op_device": op_device},
+            {"op_device": op_device},
         )
     )
     renamed_vars[var_name] = [var_name]
@@ -504,14 +505,18 @@ def _accumulate_gradients_by_add_ops_(
                 "grad_add",
                 {"X": [x_name], "Y": [y_name]},
                 {"Out": [out_name]},
-                {"use_mkldnn": False, "op_device": op_device},
+                {"op_device": op_device},
             )
         )
     renamed_vars[var_name] = [var_name]
 
 
 def _addup_repetitive_outputs_(
-    op_descs, block_idx, grad_var_to_var=None, grad_op_id_to_fwd_op=None
+    op_descs,
+    block_idx,
+    grad_var_to_var=None,
+    grad_op_id_to_fwd_op=None,
+    topo_order_for_backward=None,
 ):
     """
     In backward part, an variable may be the output of more than one ops.
@@ -525,12 +530,18 @@ def _addup_repetitive_outputs_(
     """
 
     _MAX_ADD_NUM_ = framework._global_flags()['FLAGS_max_inplace_grad_add']
+    topo_order_for_grad_name = {}
     # pending_sum_ops = []
     pending_sum_ops = collections.OrderedDict()
     var_rename_count = collections.defaultdict(int)
     renamed_vars = collections.defaultdict(list)
     renamed_var_start_idx = collections.defaultdict(list)
     var_device = collections.defaultdict(str)
+
+    def _change_order_by_topo_order(var_name):
+        origin_names = renamed_vars[var_name]
+        origin_names.sort(key=lambda x: topo_order_for_grad_name[x])
+
     for idx, op_desc in enumerate(op_descs):
         op_device_attr_name = (
             core.op_proto_and_checker_maker.kOpDeviceAttrName()
@@ -543,6 +554,7 @@ def _addup_repetitive_outputs_(
                 continue
             if len(renamed_vars[var_name]) > 1:
                 if len(renamed_vars[var_name]) > _MAX_ADD_NUM_:
+                    _change_order_by_topo_order(var_name)
                     _accumulate_gradients_by_sum_op_(
                         var_name,
                         renamed_vars,
@@ -551,6 +563,7 @@ def _addup_repetitive_outputs_(
                         var_device[var_name],
                     )
                 else:
+                    _change_order_by_topo_order(var_name)
                     _accumulate_gradients_by_add_ops_(
                         var_name,
                         renamed_vars,
@@ -576,6 +589,12 @@ def _addup_repetitive_outputs_(
                     # it's the first time we get the variable
                     renamed_vars[var_name] = [var_name]
                     renamed_var_start_idx[var_name] = idx
+                    topo_order_for_grad_name[var_name] = (
+                        topo_order_for_backward[op_desc]
+                        if topo_order_for_backward
+                        and op_desc in topo_order_for_backward
+                        else 1
+                    )
                 else:
                     if len(renamed_vars[var_name]) == 1:
                         new_name = (
@@ -595,6 +614,9 @@ def _addup_repetitive_outputs_(
                             else:
                                 grad_var_to_var[new_name] = var_name
                         # rename original var_name
+                        topo_order_for_grad_name[
+                            new_name
+                        ] = topo_order_for_grad_name[var_name]
                         renamed_vars[var_name][0] = new_name
                         # before change: _rename_arg_(op_descs, var_name,
                         #                             new_name, 0, idx)
@@ -646,10 +668,17 @@ def _addup_repetitive_outputs_(
                     renamed_vars[var_name].append(new_name)
                     # record the latest device
                     var_device[var_name] = op_device
+                    topo_order_for_grad_name[new_name] = (
+                        topo_order_for_backward[op_desc]
+                        if topo_order_for_backward
+                        and op_desc in topo_order_for_backward
+                        else 1
+                    )
 
     for var_name, inputs in renamed_vars.items():
         if len(renamed_vars[var_name]) > 1:
             if len(renamed_vars[var_name]) > _MAX_ADD_NUM_:
+                _change_order_by_topo_order(var_name)
                 _accumulate_gradients_by_sum_op_(
                     var_name,
                     renamed_vars,
@@ -658,6 +687,7 @@ def _addup_repetitive_outputs_(
                     var_device[var_name],
                 )
             else:
+                _change_order_by_topo_order(var_name)
                 _accumulate_gradients_by_add_ops_(
                     var_name,
                     renamed_vars,
@@ -1262,6 +1292,44 @@ def _rename_grad_name_(name, grad_order):
     return 'grad/' * grad_order + name
 
 
+def _topo_order_map(block, target_vars):
+    """Analysis forward block and build a mapping from:
+    OpDesc -> Int
+    """
+    get_defined_op = {}  # mapping from String -> OpDesc (defined op)
+    for op in block.ops:
+        for out_name in op.output_arg_names:
+            get_defined_op[out_name] = op
+
+    topo_order_map = {}  # mapping from OpDesc -> Topologic Order
+    queue = [var.name for var in target_vars]
+    visited = {var.name for var in target_vars}
+    topo_order_counter = 0
+    while len(queue) > 0:
+        cur_var_name = queue.pop(0)
+        if cur_var_name not in get_defined_op:
+            continue
+        cur_op = get_defined_op[cur_var_name]
+        topo_order_map[cur_op] = topo_order_counter
+        topo_order_counter += 1
+        for inp in cur_op.input_arg_names:
+            if inp in get_defined_op and inp not in visited:
+                queue.append(inp)
+                visited.add(inp)
+    return topo_order_map
+
+
+def _topo_bwd_order_map(topo_fwd_map, backward_op_map):
+    topo_bwd_map = {}
+    topo_fwd_map = {op.desc: order for op, order in topo_fwd_map.items()}
+    for fwd_op, bwd_ops in backward_op_map.items():
+        if fwd_op not in topo_fwd_map:
+            continue
+        for bwd_op in bwd_ops:
+            topo_bwd_map[bwd_op] = topo_fwd_map[fwd_op]
+    return topo_bwd_map
+
+
 def _append_backward_ops_(
     block,
     ops,
@@ -1325,6 +1393,7 @@ def _append_backward_ops_(
     # grad_op_descs holds created grad_op, and will be appended to target_block
     grad_op_descs = []
     program = block.program
+    get_backward_op_desc = {}  # for topo order map
 
     if rename_var_map is None:
         rename_var_map = {}
@@ -1410,6 +1479,7 @@ def _append_backward_ops_(
             )
 
         # record the mapping between fwd and bwd
+        get_backward_op_desc[op.desc] = grad_op_desc
         if grad_op_id_to_fwd_op is not None:
             for op_desc in grad_op_desc:
                 grad_op_id_to_fwd_op[op_desc.original_id()] = op
@@ -1526,11 +1596,23 @@ def _append_backward_ops_(
             program._appending_grad_times
         ]
     # sum parameter's gradients' var given multiple var gradient
+    topo_order = _topo_order_map(block, target_vars)
+    if os.environ.get("FLAGS_program_topo_reorder", "False") in [
+        'True',
+        '1',
+        'true',
+    ]:
+        topo_order_for_backward = _topo_bwd_order_map(
+            topo_order, get_backward_op_desc
+        )
+    else:
+        topo_order_for_backward = None
     grad_op_descs = _addup_repetitive_outputs_(
         grad_op_descs,
         block.idx,
         grad_var_to_var,
         grad_op_id_to_fwd_op=grad_op_id_to_fwd_op,
+        topo_order_for_backward=topo_order_for_backward,
     )
 
     # if all outputs of the grad op are in no_grad_set, then just remove and fill zero
@@ -1962,6 +2044,11 @@ def append_backward(
             >>> p_g_list6 = paddle.static.append_backward(loss=avg_loss, parameter_list=all_weights, no_grad_set=set(all_weights))
 
     """
+    if framework.in_pir_mode():
+        return paddle.autograd.ir_backward.append_backward(
+            loss, parameter_list, no_grad_set
+        )
+
     grad_op_id_to_fwd_op = (
         {}
     )  # for cuda graph usage, recording the mapping between grad op original id to fwd op

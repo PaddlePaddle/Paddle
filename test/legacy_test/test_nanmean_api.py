@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(10)
 
@@ -38,6 +39,7 @@ class TestNanmeanAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -87,6 +89,7 @@ class TestNanmeanAPI(unittest.TestCase):
         test_case(self.x, [0, 1, 2, 3])
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
