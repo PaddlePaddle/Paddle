@@ -47,7 +47,6 @@ class CustomKernelInstruction : public InstructionBase {
 
   void UpdateOutputMeta(const std::vector<std::vector<int64_t>>& output_shapes,
                         const std::vector<DataType>& output_dtypes);
-  void UpdateOutputData();
 
   paddle::CustomOpKernelContext custom_kernel_ctx_;
 

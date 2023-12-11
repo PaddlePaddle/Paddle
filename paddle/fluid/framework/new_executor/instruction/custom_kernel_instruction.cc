@@ -408,46 +408,6 @@ void CustomKernelInstruction::UpdateOutputMeta(
   }
 }
 
-void CustomKernelInstruction::UpdateOutputData() {
-  // sync output tensor data into original output
-  auto* calc_outs = custom_kernel_ctx_.AllMutableOutput();
-  PADDLE_ENFORCE_EQ(
-      cache_out_ptrs_.size(),
-      calc_outs->size(),
-      phi::errors::InvalidArgument(
-          "The number of element in custom operator outputs is wrong, "
-          "expected contains %d Tensors, but actually contains %d "
-          "Tensors.",
-          cache_out_ptrs_.size(),
-          calc_outs->size()));
-  for (size_t i = 0; i < cache_out_ptrs_.size(); ++i) {
-    auto true_out = cache_out_ptrs_.at(i);
-    // handle optional inplace outputs = None case
-    if (true_out == nullptr && !calc_outs->at(i).defined()) {
-      continue;
-    }
-    PADDLE_ENFORCE(
-        true_out != nullptr && calc_outs->at(i).defined(),
-        phi::errors::InvalidArgument(
-            "The returned Tensor is not defined in the KernelFn or custom "
-            "operator passes wrong output in static mode."));
-    auto calc_out =
-        std::dynamic_pointer_cast<phi::DenseTensor>(calc_outs->at(i).impl());
-    // assign meta info
-    auto* true_out_meta = phi::DenseTensorUtils::GetMutableMeta(true_out);
-    true_out_meta->dims = calc_out->dims();
-    true_out_meta->dtype = calc_out->dtype();
-    true_out_meta->layout = calc_out->layout();
-    true_out_meta->offset = calc_out->offset();
-    true_out_meta->strides = true_out_meta->calc_strides(true_out_meta->dims);
-    // lod no need to be reset
-    // reset holder if needed
-    if (true_out->Holder() != calc_out->Holder()) {
-      true_out->ResetHolder(calc_out->Holder());
-    }
-  }
-}
-
 void CustomKernelInstruction::Run() {
   VLOG(3) << "Custom Operator: InferShape - calc output ddim.";
   std::vector<std::vector<int64_t>> output_shapes;
@@ -534,7 +494,6 @@ void CustomKernelInstruction::Run() {
   VLOG(6) << "Run custom op " << custom_op_name_ << " kernel.";
   kernel_func_(&custom_kernel_ctx_);
   custom_kernel_ctx_.AssignInplaceOutputs();
-  // UpdateOutputData();
 }
 }  // namespace framework
 }  // namespace paddle

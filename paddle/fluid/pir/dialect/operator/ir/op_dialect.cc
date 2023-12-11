@@ -265,7 +265,7 @@ class AttributeManager {
     for (size_t i = 0; i < attr_names.size(); i++) {
       const std::string& attr_name = attr_names[i];
       char* ptr = new char[attr_name.size() + 1];
-      snprintf(ptr, attr_name.size() + 1, attr_name.c_str());
+      snprintf(ptr, attr_name.size() + 1, "%s", attr_name.c_str());
       char_pointers[i] = ptr;
     }
     pointers_size_.push_back(attr_names.size());
