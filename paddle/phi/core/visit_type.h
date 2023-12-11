@@ -150,7 +150,7 @@ namespace phi {
 
 ///////// BOOL and Floating and Integral Dispatch Marco ///////////
 
-#if NCCL_VERSION_CODE >= 21000
+#if (NCCL_VERSION_CODE >= 21000) && !defined(PADDLE_WITH_RCCL)
 #define PD_VISIT_BOOL_AND_FLOATING_AND_INTEGRAL_TYPES_GPU(TYPE, NAME, ...)    \
   [&] {                                                                       \
     const auto& __dtype__ = TYPE;                                             \

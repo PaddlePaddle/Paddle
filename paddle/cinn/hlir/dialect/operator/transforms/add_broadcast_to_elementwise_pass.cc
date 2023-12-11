@@ -60,7 +60,7 @@ std::vector<int64_t> GetOutputShape(const phi::DDim& x, const phi::DDim& y) {
 
     vec_res.resize(max_rank);
     for (size_t i = 0; i < max_rank; ++i) {
-      vec_res[i] = GetDimByIndex(x, y, short_align_axis, max_rank);
+      vec_res[i] = GetDimByIndex(x, y, short_align_axis, i);
     }
   }
 
@@ -170,12 +170,21 @@ AddBroadcastToElementwisePass::AddBroadcastToElementwisePass()
 pir::RewritePatternSet AddBroadcastToElementwisePass::InitializePatterns(
     pir::IrContext* context) {
   pir::RewritePatternSet ps(context);
+  // elementwise ops
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::AddOp>>(context);
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::SubtractOp>>(context);
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::MultiplyOp>>(context);
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::DivideOp>>(context);
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::ElementwisePowOp>>(
       context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::RemainderOp>>(
+      context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::FloorDivideOp>>(
+      context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::MaximumOp>>(context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::MinimumOp>>(context);
+
+  // compare ops
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::LessThanOp>>(context);
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::LessEqualOp>>(
       context);
@@ -184,6 +193,14 @@ pir::RewritePatternSet AddBroadcastToElementwisePass::InitializePatterns(
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::GreaterThanOp>>(
       context);
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::GreaterEqualOp>>(
+      context);
+
+  // bitwise ops
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::BitwiseOrOp>>(
+      context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::BitwiseXorOp>>(
+      context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::BitwiseNotOp>>(
       context);
 
   return ps;

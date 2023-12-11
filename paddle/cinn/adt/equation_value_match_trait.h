@@ -14,37 +14,11 @@
 
 #pragma once
 
+#include "paddle/cinn/adt/dim_expr_match_trait.h"
 #include "paddle/cinn/adt/equation_value.h"
 #include "paddle/cinn/adt/match.h"
 
 namespace cinn::adt {
-
-template <>
-struct MatchTrait<Constant, std::int64_t> final {
-  static constexpr int is_template = false;
-};
-
-template <>
-struct MatchTrait<Constant, tDim<UniqueId>> final {
-  static constexpr int is_template = false;
-};
-
-template <typename T>
-struct MatchTrait<Constant, List<T>> final {
-  using base_type = List<Constant>;
-
-  static constexpr int is_template = true;
-
-  template <template <typename> class Matcher>
-  static bool MatchChildren(const base_type& list) {
-    for (const auto& value : *list) {
-      if (!Matcher<Constant>::template Call<T>(value)) {
-        return false;
-      }
-    }
-    return true;
-  }
-};
 
 template <>
 struct MatchTrait<Value, Undefined> final {
@@ -56,16 +30,21 @@ struct MatchTrait<Value, Iterator> final {
   static constexpr int is_template = false;
 };
 
+template <>
+struct MatchTrait<Value, DimExpr> final {
+  static constexpr int is_template = false;
+};
+
 template <typename T>
 struct MatchTrait<Value, List<T>> final {
   using base_type = List<Value>;
 
   static constexpr int is_template = true;
 
-  template <template <typename> class Matcher>
+  template <template <typename, typename> class Matcher>
   static bool MatchChildren(const base_type& list) {
     for (const auto& value : *list) {
-      if (!Matcher<Value>::template Call<T>(value)) {
+      if (!Matcher<T, Value>::Call(value)) {
         return false;
       }
     }
@@ -73,38 +52,40 @@ struct MatchTrait<Value, List<T>> final {
   }
 };
 
-#define DEFINE_MATCH_TRAIT_VALUE_UNION_ARGSIZE_2(name, type0, type1)          \
-  template <typename T0, typename T1>                                         \
-  struct MatchTrait<Value, name<T0, T1>> final {                              \
-    using base_type = name<type0, type1>;                                     \
-                                                                              \
-    static constexpr int is_template = true;                                  \
-                                                                              \
-    template <template <typename> class Matcher>                              \
-    static bool MatchChildren(const base_type& value) {                       \
-      return Matcher<type0>::template Call<T0>(std::get<0>(value.tuple())) && \
-             Matcher<type1>::template Call<T1>(std::get<1>(value.tuple()));   \
-    }                                                                         \
+#define DEFINE_MATCH_TRAIT_VALUE_UNION_ARGSIZE_2(name, type0, type1) \
+  template <typename T0, typename T1>                                \
+  struct MatchTrait<Value, name<T0, T1>> final {                     \
+    using base_type = name<type0, type1>;                            \
+                                                                     \
+    static constexpr int is_template = true;                         \
+                                                                     \
+    template <template <typename, typename> class Matcher>           \
+    static bool MatchChildren(const base_type& value) {              \
+      return Matcher<T0, type0>::Call(std::get<0>(value.tuple())) && \
+             Matcher<T1, type1>::Call(std::get<1>(value.tuple()));   \
+    }                                                                \
   };
 
-DEFINE_MATCH_TRAIT_VALUE_UNION_ARGSIZE_2(ListGetItem, Value, Constant);
-DEFINE_MATCH_TRAIT_VALUE_UNION_ARGSIZE_2(BroadcastedIterator, Value, Constant);
-DEFINE_MATCH_TRAIT_VALUE_UNION_ARGSIZE_2(IndexDotValue, Value, Constant);
-DEFINE_MATCH_TRAIT_VALUE_UNION_ARGSIZE_2(IndexUnDotValue, Value, Constant);
+DEFINE_MATCH_TRAIT_VALUE_UNION_ARGSIZE_2(ListGetItem, Value, DimExpr);
+DEFINE_MATCH_TRAIT_VALUE_UNION_ARGSIZE_2(BroadcastedIterator, Value, DimExpr);
+DEFINE_MATCH_TRAIT_VALUE_UNION_ARGSIZE_2(IndexDotValue, Value, List<DimExpr>);
+DEFINE_MATCH_TRAIT_VALUE_UNION_ARGSIZE_2(IndexUnDotValue, Value, List<DimExpr>);
+#undef DEFINE_MATCH_TRAIT_VALUE_UNION_ARGSIZE_2
 
-#define DEFINE_ADT_MATCH_TRAIT_EQUATION(name)                              \
-  template <typename T>                                                    \
-  struct MatchTrait<Value, name<T>> final {                                \
-    using base_type = name<Value>;                                         \
-                                                                           \
-    static constexpr int is_template = true;                               \
-                                                                           \
-    template <template <typename> class Matcher>                           \
-    static bool MatchChildren(const base_type& value) {                    \
-      return Matcher<Value>::template Call<T>(std::get<0>(value.tuple())); \
-    }                                                                      \
+#define DEFINE_ADT_MATCH_TRAIT_EQUATION(name)                     \
+  template <typename T>                                           \
+  struct MatchTrait<Value, name<T>> final {                       \
+    using base_type = name<Value>;                                \
+                                                                  \
+    static constexpr int is_template = true;                      \
+                                                                  \
+    template <template <typename, typename> class Matcher>        \
+    static bool MatchChildren(const base_type& value) {           \
+      return Matcher<T, Value>::Call(std::get<0>(value.tuple())); \
+    }                                                             \
   };
 
 DEFINE_ADT_MATCH_TRAIT_EQUATION(PtrGetItem);
+#undef DEFINE_ADT_MATCH_TRAIT_EQUATION
 
 }  // namespace cinn::adt

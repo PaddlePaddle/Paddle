@@ -578,35 +578,49 @@ class DistForwardAPI(ForwardAPI):
     def generate_non_computation_rank_clip_code(self) -> str:
         if len(self.inputs['names']) > 0:
             mesh = ""
-            # All inputs have same mesh
-            if (
-                self.inputs['input_info'][self.inputs['names'][0]]
-                == "const Tensor&"
-            ):
+            # NOTE(zhengzhonghui): select the 'const Tensor&' input, because optional<Tensor>& type input may be an empty Tensor, and will cause a segment error when fetching process_mesh
+            not_optional_index = -1
+            for i in range(len(self.inputs['names'])):
+                if (
+                    self.inputs['input_info'][self.inputs['names'][i]]
+                    == "const Tensor&"
+                ):
+                    not_optional_index = i
+            if not_optional_index != -1:
                 mesh = GET_MESH_TEMPLATE.format(
-                    "{}.".format(self.inputs['names'][0])
+                    "{}.".format(self.inputs['names'][not_optional_index])
                 )
-            elif (
-                self.inputs['input_info'][self.inputs['names'][0]]
-                == "const paddle::optional<Tensor>&"
-            ):
-                mesh = GET_MESH_TEMPLATE.format(
-                    "{}->".format(self.inputs['names'][0])
-                )
-            elif (
-                self.inputs['input_info'][self.inputs['names'][0]]
-                == "const std::vector<Tensor>&"
-            ):
-                mesh = GET_MESH_TEMPLATE.format(
-                    "{}[0].".format(self.inputs['names'][0])
-                )
-            elif (
-                self.inputs['input_info'][self.inputs['names'][0]]
-                == "const paddle::optional<std::vector<Tensor>>&"
-            ):
-                mesh = GET_MESH_TEMPLATE.format(
-                    "{}->at(0).".format(self.inputs['names'][0])
-                )
+            else:
+                # if 'const Tensor&' input not present, the first one is used.
+                # usually there is no such case
+                if (
+                    self.inputs['input_info'][self.inputs['names'][0]]
+                    == "const Tensor&"
+                ):
+                    mesh = GET_MESH_TEMPLATE.format(
+                        "{}.".format(self.inputs['names'][0])
+                    )
+                elif (
+                    self.inputs['input_info'][self.inputs['names'][0]]
+                    == "const paddle::optional<Tensor>&"
+                ):
+                    mesh = GET_MESH_TEMPLATE.format(
+                        "{}->".format(self.inputs['names'][0])
+                    )
+                elif (
+                    self.inputs['input_info'][self.inputs['names'][0]]
+                    == "const std::vector<Tensor>&"
+                ):
+                    mesh = GET_MESH_TEMPLATE.format(
+                        "{}[0].".format(self.inputs['names'][0])
+                    )
+                elif (
+                    self.inputs['input_info'][self.inputs['names'][0]]
+                    == "const paddle::optional<std::vector<Tensor>>&"
+                ):
+                    mesh = GET_MESH_TEMPLATE.format(
+                        "{}->at(0).".format(self.inputs['names'][0])
+                    )
             return mesh
         else:
             return ""
@@ -1645,10 +1659,12 @@ class DistForwardAPI(ForwardAPI):
                 # TODO(GhostScreaming): for inplace view operators like reshape,
                 # input and output may have different shape. If they have no specified
                 # InferSPMD rules, just set replicated dist_attr for them.
-                if (
-                    self.need_to_generate_code_for_inplace_impl(i)
-                    and self.outputs['names'][i] not in self.view_map
-                ):
+                if self.need_to_generate_code_for_inplace_impl(i):
+                    if (
+                        self.generate_general_infer_spmd
+                        and self.outputs['names'][i] in self.view_map
+                    ):
+                        continue
                     need_reshard = (
                         "true" if self.generate_general_infer_spmd else "false"
                     )

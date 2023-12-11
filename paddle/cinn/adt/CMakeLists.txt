@@ -13,6 +13,7 @@ if(NOT CINN_ONLY)
     equation_value.cc
     generate_map_expr.cc
     get_sub_reshape_dim_ranges.cc
+    graph_symbolic_dim_infer_ctx.cc
     igroup.cc
     index_expr_infer_context.cc
     kgroup.cc
@@ -23,6 +24,8 @@ if(NOT CINN_ONLY)
     schedule_descriptor.cc
     schedule_dim.cc
     schedule_mesh.cc
+    dim_expr.cc
+    dim_expr_simplifier.cc
     simplify_value.cc
     write_broadcast_disabled_bidirection_equation_generator.cc)
 
@@ -31,9 +34,22 @@ if(NOT CINN_ONLY)
 
   cinn_cc_test(tree_test SRCS tree_test.cc DEPS gtest glog)
 
-  cinn_cc_test(inline_translator_test SRCS inline_translator_test.cc DEPS
-               cinncore)
+  cinn_cc_test(
+    inline_translator_test
+    SRCS
+    inline_translator_test.cc
+    DEPS
+    gtest
+    glog
+    absl)
 
-  message(STATUS "ADT srcs: ${cinnapi_src}")
+  cinn_cc_test(
+    dim_expr_test
+    SRCS
+    dim_expr_test.cc
+    DEPS
+    gtest
+    glog
+    cinncore)
 
 endif()

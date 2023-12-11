@@ -45,10 +45,12 @@
 #include "paddle/fluid/framework/new_executor/instruction/cinn_jit_instruction.h"
 #endif
 
-#include "paddle/fluid/framework/new_executor/instruction/cond_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/builtin_combine_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/has_elements_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/if_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/select_input_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/tuple_pop_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/tuple_push_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/while_instruction.h"
@@ -650,7 +652,11 @@ void PirInterpreter::BuildInstruction() {
   for (auto& op : *ir_block_) {
     VLOG(6) << "Build Instruction for op: " << op_idx;
     if (op.dialect()->name() == "builtin") {
-      if (interpreter::GetSpecialOpNames().count(op.name())) {
+      if (op.isa<pir::CombineOp>()) {
+        vec_instruction_base_.emplace_back(
+            std::make_unique<BuiltinCombineInstruction>(
+                op_idx++, place_, &op, value_exe_info_.get()));
+      } else if (interpreter::GetSpecialOpNames().count(op.name())) {
         VLOG(6) << "skip process builtin dialect op: " << op.name();
         continue;
       }
@@ -666,15 +672,15 @@ void PirInterpreter::BuildInstruction() {
     } else if (op.dialect()->name() == "pd_op") {
       if (op.isa<paddle::dialect::IfOp>()) {
         auto skip_gc_vars = execution_config_.skip_gc_vars;
-        vec_instruction_base_.emplace_back(std::make_unique<CondInstruction>(
+        vec_instruction_base_.emplace_back(std::make_unique<IfInstruction>(
             op_idx++, place_, &op, value_exe_info_.get(), skip_gc_vars));
         sub_blocks_.insert(
             {&op.dyn_cast<paddle::dialect::IfOp>().true_block(),
-             dynamic_cast<CondInstruction*>(vec_instruction_base_.back().get())
+             dynamic_cast<IfInstruction*>(vec_instruction_base_.back().get())
                  ->TrueBranchInterpreter()});
         sub_blocks_.insert(
             {&op.dyn_cast<paddle::dialect::IfOp>().false_block(),
-             dynamic_cast<CondInstruction*>(vec_instruction_base_.back().get())
+             dynamic_cast<IfInstruction*>(vec_instruction_base_.back().get())
                  ->FalseBranchInterpreter()});
       } else if (op.isa<paddle::dialect::WhileOp>()) {
         auto skip_gc_vars = execution_config_.skip_gc_vars;
@@ -686,6 +692,8 @@ void PirInterpreter::BuildInstruction() {
                  ->BodyInterpreter()});
       } else if (op.isa<paddle::dialect::HasElementsOp>()) {
         CREATE_INSTR(HasElementsInstruction);
+      } else if (op.isa<paddle::dialect::SelectInputOp>()) {
+        CREATE_INSTR(SelectInputInstruction);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Now only support pd_kernel and cinn dialect."));

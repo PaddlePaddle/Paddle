@@ -966,7 +966,8 @@ class PsDescBuilder:
                 else:
                     tables.append(globals()['SparseTable'](self.context, ctx))
             else:
-                tables.append(globals()['DenseTable'](self.context, ctx))
+                if not self.use_ps_gpu:
+                    tables.append(globals()['DenseTable'](self.context, ctx))
         self.tensor_tables = self._get_tensor_tables()
         tables.extend(self.tensor_tables)
         tables.append(globals()['BarrierTable'](self.context, len(tables)))
@@ -1616,7 +1617,8 @@ class TheOnePSRuntime(RuntimeBase):
         return feasign_num
 
     def _save_cache_table(self, table_id, pass_id, mem_cache_key_threshold):
-        if self.role_maker._is_first_worker():
+        fleet.util.barrier()
+        if self.context['use_ps_gpu'] or self.role_maker._is_first_worker():
             self._worker.save_cache_table(
                 table_id, pass_id, mem_cache_key_threshold
             )
@@ -1715,7 +1717,7 @@ class TheOnePSRuntime(RuntimeBase):
 
     def _save_persistables(self, *args, **kwargs):
         fleet.util.barrier()
-        if self.role_maker._is_first_worker():
+        if self.context['use_ps_gpu'] or self.role_maker._is_first_worker():
             self._save_distributed_persistables(*args, **kwargs)
         fleet.util.barrier()
 
@@ -1733,7 +1735,7 @@ class TheOnePSRuntime(RuntimeBase):
 
     def _load_persistables(self, path, mode):
         fleet.util.barrier()
-        if self.role_maker._is_first_worker():
+        if self.context['use_ps_gpu'] or self.role_maker._is_first_worker():
             self._worker.load_model(path, mode)
         fleet.util.barrier()
 
@@ -1752,7 +1754,7 @@ class TheOnePSRuntime(RuntimeBase):
             threshold = 0
 
         fleet.util.barrier()
-        if self.role_maker._is_first_worker():
+        if self.context['use_ps_gpu'] or self.role_maker._is_first_worker():
             sparses = get_the_one_recv_context(
                 self.context,
                 is_dense=False,

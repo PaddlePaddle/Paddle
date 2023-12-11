@@ -66,7 +66,7 @@ class TestCINN(Dy2StTestBase):
 
             res.append(out.numpy())
 
-            if use_cinn and paddle.device.is_compiled_with_cinn():
+            if use_cinn and paddle.is_compiled_with_cinn():
                 self.assertTrue(
                     paddle.framework.core.is_run_with_cinn(),
                     msg="The test was not running with CINN! Please check.",
