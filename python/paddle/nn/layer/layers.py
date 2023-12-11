@@ -1678,7 +1678,7 @@ class Layer:
             _remove_if_exist(self.__dict__, self._buffers, self._sub_layers)
             params[name] = value
         elif (
-            isinstance(value, paddle.pir.OpResult)
+            isinstance(value, paddle.pir.Value)
             and value.get_defining_op().name() == 'builtin.parameter'
         ):
             if params is None:
@@ -1733,7 +1733,7 @@ class Layer:
                     # decorated function, such as `self.buffer = new_tensor`. So we update its
                     # value via `assign`.
                     if type(value) == framework.Variable or isinstance(
-                        value, paddle.pir.OpResult
+                        value, paddle.pir.Value
                     ):
                         from paddle import assign
 
