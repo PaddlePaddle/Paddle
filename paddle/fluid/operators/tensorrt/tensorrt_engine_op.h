@@ -613,15 +613,12 @@ class TensorRTEngineOp : public framework::OperatorBase {
       } else {
 #if IS_TRT_VERSION_GE(6000)
         bool useEngineV3 = !engine->engine()->hasImplicitBatchDimension();
-
         if (useEngineV3) {
 #if IS_TRT_VERSION_GE(8500)
-          std::cout << "setInputShape" << std::endl;
           trt_context->setInputShape(
               x.c_str(), inference::tensorrt::Vec2TRT_Dims(t_shape, x, true));
 #endif
         } else {
-          std::cout << "trt_context->setBindingDimensions" << std::endl;
           trt_context->setBindingDimensions(
               bind_index, inference::tensorrt::Vec2TRT_Dims(t_shape, x, true));
           // If this x is a shape tensor, we need call setInputShapeBinding
