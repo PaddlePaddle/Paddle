@@ -87,18 +87,25 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
             False  # ROCM platform do not have MIOPEN kernel for affine_grid
         )
 
-    if in_dynamic_mode():
-        if isinstance(out_shape, (Variable, paddle.pir.Value)):
-            out_shape = paddle.utils.convert_shape_to_list(out_shape)
-            return _legacy_C_ops.affine_grid(
-                theta,
-                "output_shape",
-                out_shape,
-                "align_corners",
-                align_corners,
-                "use_cudnn",
-                use_cudnn,
-            )
+    if in_dygraph_mode():
+        _out_shape = (
+            out_shape.tolist() if isinstance(out_shape, Variable) else out_shape
+        )
+        theta = theta._use_gpudnn(use_cudnn)
+        return _C_ops.affine_grid(theta, _out_shape, align_corners)
+    elif in_dynamic_mode():
+        _out_shape = (
+            out_shape.tolist() if isinstance(out_shape, Variable) else out_shape
+        )
+        return _legacy_C_ops.affine_grid(
+            theta,
+            "output_shape",
+            _out_shape,
+            "align_corners",
+            align_corners,
+            "use_cudnn",
+            use_cudnn,
+        )
     elif in_pir_mode():
         if isinstance(out_shape, (list, tuple)):
             if paddle.utils._contain_var(out_shape):

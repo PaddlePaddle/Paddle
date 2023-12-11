@@ -400,13 +400,12 @@ class TestArgsort(unittest.TestCase):
             input = paddle.static.data(
                 name="input", shape=self.input_shape, dtype="float64"
             )
-
             output = paddle.argsort(input, axis=self.axis)
             output2 = paddle.argsort(input, axis=self.axis, descending=True)
 
             exe = paddle.static.Executor(self.place)
-            [result, result2] = exe.run(
-                paddle.static.Program(),
+            (result, result2) = exe.run(
+                paddle.static.default_startup_program(),
                 feed={'input': self.data},
                 fetch_list=[output, output2],
             )
