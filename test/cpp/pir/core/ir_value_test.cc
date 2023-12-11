@@ -14,17 +14,33 @@
 
 #include <gtest/gtest.h>
 
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/operation.h"
-
-#include "test/cpp/pir/tools/test_pir_utils.h"
+#include "paddle/pir/dialect/shape/utils/shape_utils.h"
 
 // This unittest is used to test the construction interfaces of value class and
 // operation. The constructed test scenario is: a = OP1(); b = OP2(); c = OP3(a,
 // b); d, e, f, g, h, i, j = OP4(a, c);
+namespace test {
 
+pir::AttributeMap CreateAttributeMap(
+    const std::vector<std::string> &attribute_names,
+    const std::vector<std::string> &attributes) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  pir::AttributeMap attr_map;
+  for (size_t i = 0; i < attribute_names.size(); i++) {
+    pir::Attribute attr_value = pir::StrAttribute::get(ctx, attributes[i]);
+    attr_map.insert(
+        std::pair<std::string, pir::Attribute>(attribute_names[i], attr_value));
+  }
+  return attr_map;
+}
+
+}  // namespace test
 TEST(value_test, value_test) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   // 1. Construct OP1: a = OP1()
