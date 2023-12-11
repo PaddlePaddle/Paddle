@@ -33,7 +33,7 @@ if os.path.exists(legacy_core):
     except Exception as e:
         raise e
 
-from paddle.base.layers.math_op_patch import monkey_patch_variable
+from .layers.math_op_patch import monkey_patch_variable
 
 # import all class inside framework into base module
 # import all class inside executor into base module
