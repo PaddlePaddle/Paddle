@@ -82,6 +82,7 @@ using paddle::dialect::SelectedRowsType;
 using pir::Attribute;
 using pir::Block;
 using pir::BlockArgument;
+using pir::BoolAttribute;
 using pir::IrParser;
 using pir::Operation;
 using pir::OpOperand;
@@ -600,7 +601,7 @@ void BindValue(py::module *m) {
 
   )DOC");
   g_ir_value_pytype = reinterpret_cast<PyTypeObject *>(value.ptr());
-  value
+  value.def(py::init<>())
       .def_property_readonly(
           "block",
           [](Value self) {
@@ -651,6 +652,37 @@ void BindValue(py::module *m) {
             PADDLE_THROW(phi::errors::InvalidArgument(
                 "can't set dtype when building static graph"));
           })
+      .def("initialized",
+           [](Value self) {
+             if (self.impl() == nullptr || self.type().storage() == nullptr) {
+               return false;
+             } else {
+               return true;
+             }
+           })
+      .def_property(
+          "stop_gradient",
+          [](Value self) {
+            auto stop_gradient =
+                self.attribute<BoolAttribute>(kAttrStopGradients);
+            return !stop_gradient || stop_gradient.data();
+          },
+          [](Value self, bool stop_gradient) {
+            self.set_attribute(
+                kAttrStopGradients,
+                BoolAttribute::get(pir::IrContext::Instance(), stop_gradient));
+          })
+      .def_property(
+          "persistable",
+          [](Value self) {
+            auto persistable = self.attribute<BoolAttribute>(kAttrIsPersisable);
+            return !persistable || persistable.data();
+          },
+          [](Value self, bool persistable) {
+            self.set_attribute(
+                kAttrIsPersisable,
+                BoolAttribute::get(pir::IrContext::Instance(), persistable));
+          })
       .def(
           "get_defining_op",
           [](Value self) -> pir::Operation * {
@@ -692,13 +724,27 @@ void BindValue(py::module *m) {
       .def("first_use", &Value::first_use, return_value_policy::reference)
       .def("has_one_use", &Value::HasOneUse)
       .def("use_empty", &Value::use_empty)
+      .def("__str__",
+           [](Value self) -> py::str {
+             std::ostringstream print_stream;
+             print_stream << "Value(";
+             print_stream << GetValueInfo(self);
+             auto stop_gradient =
+                 self.attribute<BoolAttribute>(kAttrStopGradients);
+             if (stop_gradient && !stop_gradient.data()) {
+               print_stream << ", stop_gradient=False";
+             } else {
+               print_stream << ", stop_gradient=True";
+             }
+             print_stream << ")";
+             return print_stream.str();
+           })
       .def("__neg__",
            [](Value self) {
              return paddle::dialect::scale(self, -1.0, 0.0, true);
            })
       .def("__eq__", &Value::operator==)
       .def("__hash__", [](Value self) { return std::hash<pir::Value>{}(self); })
-      .def("__str__", &Value2String)
       .def("__repr__", &Value2String);
   // For basaic operators
   OVERRIDE_OPERATOR_FOR_EACH(__add__, add, 1.0, other, true);
@@ -734,47 +780,9 @@ void BindOpOperand(py::module *m) {
       .def("index", &OpOperand::index);
 }
 
-bool GetOpResultBoolAttr(const OpResult &self, const std::string &attr_name) {
-  auto *defining_op = self.owner();
-  if (defining_op->HasAttribute(attr_name)) {
-    PADDLE_ENFORCE(
-        defining_op->attribute(attr_name).isa<pir::ArrayAttribute>(),
-        paddle::platform::errors::InvalidArgument(
-            "%s: Callstack attributes of %s is not ArrayAttribute type",
-            attr_name));
-    auto attrs = defining_op->attribute(attr_name)
-                     .dyn_cast<pir::ArrayAttribute>()
-                     .AsVector();
-    PADDLE_ENFORCE(attrs[self.index()].isa<pir::BoolAttribute>(),
-                   paddle::platform::errors::InvalidArgument(
-                       "The index %d in %s is not BoolAttribute type",
-                       self.index(),
-                       attr_name));
-    return attrs[self.index()].dyn_cast<pir::BoolAttribute>().data();
-  } else {
-    return true;
-  }
-}
-
-void SetOpResultBoolAttr(const OpResult &self,
-                         const std::string &attr_name,
-                         bool value,
-                         bool default_value) {
-  auto *defining_op = self.owner();
-  std::vector<pir::Attribute> attrs;
-  if (defining_op->HasAttribute(attr_name)) {
-    attrs = defining_op->attribute(attr_name)
-                .dyn_cast<pir::ArrayAttribute>()
-                .AsVector();
-  } else {
-    attrs = std::vector<pir::Attribute>(
-        defining_op->num_results(),
-        pir::BoolAttribute::get(pir::IrContext::Instance(), default_value));
-  }
-  attrs[self.index()] =
-      pir::BoolAttribute::get(pir::IrContext::Instance(), value);
-  defining_op->set_attribute(
-      attr_name, pir::ArrayAttribute::get(pir::IrContext::Instance(), attrs));
+bool GetValueBoolAttr(Value value, const std::string &attr_name) {
+  auto bool_attr = value.attribute<BoolAttribute>(attr_name);
+  return !bool_attr || bool_attr.data();
 }
 
 void BindOpResult(py::module *m) {
@@ -786,58 +794,10 @@ void BindOpResult(py::module *m) {
         when build network.
   )DOC");
   g_ir_opresult_pytype = reinterpret_cast<PyTypeObject *>(op_result.ptr());
-  op_result
-      .def(
-          "__init__",
-          [](OpResult &self) { new (&self) OpResult(); },
-          pybind11::return_value_policy::reference)
-      .def("__str__",
-           [](OpResult &self) -> py::str {
-             std::ostringstream print_stream;
-             print_stream << "OpResult(";
-             print_stream << GetValueInfo(self);
-             if (GetOpResultBoolAttr(self, kAttrStopGradients)) {
-               print_stream << ", stop_gradient=True";
-             } else {
-               print_stream << ", stop_gradient=False";
-             }
-             print_stream << ")";
-             return print_stream.str();
-           })
-      .def("initialized",
-           [](OpResult &self) {
-             if (self.impl() == nullptr || self.type().storage() == nullptr) {
-               return false;
-             } else {
-               return true;
-             }
-           })
-      .def_property(
-          "stop_gradient",
-          [](OpResult &self) {
-            return GetOpResultBoolAttr(self, kAttrStopGradients);
-          },
-          [](OpResult &self, bool stop_gradient) {
-            // NOTE(Aurelius84): For other OpResult, set theirs
-            // stop_gradient default value as true.
-            SetOpResultBoolAttr(self,
-                                kAttrStopGradients,
-                                stop_gradient,
-                                /*default_value=*/true);
-          })
-      .def_property(
-          "persistable",
-          [](OpResult &self) {
-            return GetOpResultBoolAttr(self, kAttrIsPersisable);
-          },
-          [](OpResult &self, bool persistable) {
-            // NOTE(Aurelius84): For other OpResult, set theirs
-            // persistable default value as false.
-            SetOpResultBoolAttr(self,
-                                kAttrIsPersisable,
-                                persistable,
-                                /*default_value=*/false);
-          });
+  op_result.def(
+      "__init__",
+      [](OpResult &self) { new (&self) OpResult(); },
+      pybind11::return_value_policy::reference);
 }
 
 void BindType(py::module *m) {

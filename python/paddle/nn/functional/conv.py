@@ -1233,7 +1233,7 @@ def conv2d_transpose(
                 output_size = convert_to_list(output_size, 2, 'output_size')
         elif isinstance(output_size, int):
             output_size = convert_to_list(output_size, 2, 'output_size')
-        elif isinstance(output_size, (Variable, pir.OpResult)):
+        elif isinstance(output_size, (Variable, pir.Value)):
             check_dtype(
                 output_size.dtype,
                 'output_size',
