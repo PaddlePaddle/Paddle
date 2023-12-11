@@ -264,6 +264,7 @@
   output : Tensor(out_q), Tensor(out_k), Tensor(out_v)
   infer_meta :
     func : FusedRopeInferMeta
+    spmd_rule : FusedRopeInferSpmd
   optional : k, v, sin, cos, position_ids, out_k, out_v
   kernel :
     func : fused_rotary_position_embedding

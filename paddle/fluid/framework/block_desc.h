@@ -102,7 +102,7 @@ class TEST_API BlockDesc {
 
   void RemoveOpInternal(const OpDesc *op_desc);
 
-  void RemoveVar(const std::string &name) { vars_.erase(name); }
+  void RemoveVar(const std::string &name);
 
   std::vector<OpDesc *> AllOps() const;
 
