@@ -39,19 +39,6 @@ inline HOSTDEVICE phi::dtype::bfloat16 copysign_func(phi::dtype::bfloat16 a,
   return phi::dtype::raw_uint16_to_bfloat16((a.x & 0x7fff) | (b.x & 0x8000));
 }
 
-template <typename T>
-struct CopySignFunctor {
-  inline HOSTDEVICE T operator()(const T a, const T b) const {
-    return copysign_func(a, b);
-  }
-};
-template <typename T>
-struct InverseCopySignFunctor {
-  inline HOSTDEVICE T operator()(const T a, const T b) const {
-    return copysign_func(b, a);
-  }
-};
-
 template <typename T, typename Context>
 void CopySignGradKernel(const Context& dev_ctx,
                         const DenseTensor& x,

@@ -23,6 +23,7 @@ namespace phi {
 template <typename T>
 struct CopySignGradXFunctor {
   inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
+    if (x == static_cast<T>(0)) return x;
     return dout * (phi::copysign_func(x, y) / x);
   }
 };
@@ -41,8 +42,10 @@ struct CopySignGradXYFunctor {
                                                    const InT dout) {
     phi::Array<OutT, 2> outs;
     // dx
-    outs[0] = static_cast<OutT>(dout * (phi::copysign_func(x, y)) /
-                                static_cast<OutT>(x));
+    if (x == static_cast<InT>(0))
+      outs[0] = static_cast<OutT>(0);
+    else
+      outs[0] = static_cast<OutT>(dout * (phi::copysign_func(x, y)) / x);
     // dy = 0
     outs[1] = static_cast<OutT>(0);
     return outs;
