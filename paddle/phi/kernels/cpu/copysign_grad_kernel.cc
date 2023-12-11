@@ -16,7 +16,55 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/copysign_grad_kernel_impl.h"
+#include "paddle/phi/kernels/cpu/elementwise_grad.h"
+
+namespace phi {
+
+template <typename T>
+HOSTDEVICE T compute_copysign_grad_dx(T x, T y, T out, T dout) {
+  if (x == static_cast<T>(0))
+    return x;
+  else
+    return static_cast<T>(dout * (phi::copysign_func(x, y) / x));
+}
+
+template <typename T>
+struct CopySignGradDX {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return compute_copysign_grad_dx<T>(x, y, out, dout);
+  }
+};
+
+template <typename T>
+struct CopySignGradDY {
+  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+    return static_cast<T>(0);
+  }
+};
+
+template <typename T, typename Context>
+void CopySignGradKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& y,
+                        const DenseTensor& out_grad,
+                        DenseTensor* x_grad,
+                        DenseTensor* y_grad) {
+  funcs::ElementwiseGradPreProcess(out_grad, x_grad);
+  int axis = -1;
+  phi::funcs::
+      ElemwiseGradCompute<Context, T, CopySignGradDX<T>, CopySignGradDY<T>>(
+          dev_ctx,
+          x,
+          y,
+          out_grad,
+          out_grad,
+          axis,
+          x_grad,
+          y_grad,
+          CopySignGradDX<T>(),
+          CopySignGradDY<T>());
+}
+}  // namespace phi
 
 PD_REGISTER_KERNEL(copysign_grad,
                    CPU,

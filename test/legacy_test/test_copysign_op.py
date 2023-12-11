@@ -64,12 +64,12 @@ class TestCopySignBF16(OpTest):
         self.python_api = paddle.copysign
         self.init_dtype()
         np.random.seed(1024)
-        x = np.random.uniform(0.1, 1, [11, 17]).astype(np.float32)
-        y = np.random.uniform(0.1, 1, [11, 17]).astype(np.float32)
+        x = np.random.randn(20, 6).astype(np.float32)
+        y = np.random.randn(20, 6).astype(np.float32)
         out = ref_copysign(x, y)
         self.inputs = {
-            'x': OpTest.np_dtype_to_base_dtype(convert_float_to_uint16(x)),
-            'y': OpTest.np_dtype_to_base_dtype(convert_float_to_uint16(y)),
+            'x': convert_float_to_uint16(x),
+            'y': convert_float_to_uint16(y),
         }
         self.outputs = {'out': convert_float_to_uint16(out)}
 
@@ -82,7 +82,7 @@ class TestCopySignBF16(OpTest):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['x'], ['out'])
+        self.check_grad_with_place(place, ['x', 'y'], ['out'])
 
 
 class TestCopySignAPI(unittest.TestCase):

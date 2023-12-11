@@ -16,6 +16,10 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/hostdevice.h"
+#include "paddle/phi/kernels/funcs/elementwise_base.h"
+#if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
+#endif
 
 namespace phi {
 
@@ -24,16 +28,31 @@ using bfloat16 = phi::dtype::bfloat16;
 
 template <typename T, typename U>
 inline HOSTDEVICE auto copysign_func(const T& a, const U& b) {
-  return copysign(static_cast<double>(a), static_cast<double>(b));
+  return std::copysign(a, b);
 }
 
-inline HOSTDEVICE float16 copysign_func(const float16& x, const float16& y) {
-  return float16((x.x & 0x7fff) | (y.x & 8000));
+inline HOSTDEVICE phi::dtype::float16 copysign_func(phi::dtype::float16 a,
+                                                    phi::dtype::float16 b) {
+  return phi::dtype::raw_uint16_to_float16((a.x & 0x7fff) | (b.x & 0x8000));
 }
 
-inline HOSTDEVICE bfloat16 copysign_func(const bfloat16& x, const bfloat16& y) {
-  return bfloat16((x.x & 0x7fff) | (y.x & 8000));
+inline HOSTDEVICE phi::dtype::bfloat16 copysign_func(phi::dtype::bfloat16 a,
+                                                     phi::dtype::bfloat16 b) {
+  return phi::dtype::raw_uint16_to_bfloat16((a.x & 0x7fff) | (b.x & 0x8000));
 }
+
+template <typename T>
+struct CopySignFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    return copysign_func(a, b);
+  }
+};
+template <typename T>
+struct InverseCopySignFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    return copysign_func(b, a);
+  }
+};
 
 template <typename T, typename Context>
 void CopySignKernel(const Context& dev_ctx,

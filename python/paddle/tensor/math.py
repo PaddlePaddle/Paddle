@@ -7043,7 +7043,7 @@ def copysign(x, y, name=None):
 
     Args:
         x (Tensor): The input Tensor, magnitudes, the data type is float32, float64, int32 or int64.
-        y (Tensor): contains value(s) whose signbit(s) are applied to the magnitudes in input.
+        y (Tensor, number): contains value(s) whose signbit(s) are applied to the magnitudes in input.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -7073,7 +7073,6 @@ def copysign(x, y, name=None):
     """
     if isinstance(y, (float, int)):
         y = paddle.to_tensor([y], dtype=x.dtype)
-    out_shape = broadcast_shape(x.shape, y.shape)
     if in_dynamic_mode():
         return _C_ops.copysign(x, y)
     else:
@@ -7093,7 +7092,6 @@ def copysign_(x, y):
     """
     if isinstance(y, (float, int)):
         y = paddle.to_tensor([y], dtype=x.dtype)
-    out_shape = broadcast_shape(x.shape, y.shape)
     return _C_ops.copysign_(x, y)
 
 

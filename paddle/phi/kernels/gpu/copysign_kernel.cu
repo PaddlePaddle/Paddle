@@ -16,7 +16,18 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/copysign_kernel_impl.h"
+
+namespace phi {
+template <typename T, typename Context>
+void CopySignKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    DenseTensor* out) {
+  dev_ctx.template Alloc<T>(out);
+  funcs::ElementwiseCompute<phi::CopySignFunctor<T>, T>(
+      dev_ctx, x, y, phi::CopySignFunctor<T>(), out);
+}
+}  // namespace phi
 
 PD_REGISTER_KERNEL(copysign,
                    GPU,
