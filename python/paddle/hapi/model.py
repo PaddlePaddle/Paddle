@@ -1767,6 +1767,7 @@ class Model:
         drop_last=False,
         shuffle=True,
         num_workers=0,
+        collate_fn=None,
         callbacks=None,
         accumulate_grad_batches=1,
         num_iters=None,
@@ -1809,6 +1810,9 @@ class Model:
                 subprocess used and loading data in main process.
                 When train_data and eval_data are both the instance of
                 Dataloader, this parameter will be ignored. Default: 0.
+            collate_fn(callable, optional): function to generate mini-batch data by merging
+                the sample list, None for only stack each fields of sample in axis
+                0(same as :attr::`np.stack(..., axis=0)`). Default: None.
             callbacks (Callback|None, optional): A list of `Callback` instances to apply
                 during training. If None, :ref:`api_paddle_callbacks_ProgBarLogger` and
                 :ref:`api_paddle_callbacks_ModelCheckpoint` are automatically inserted. Default: None.
@@ -1930,6 +1934,7 @@ class Model:
                 places=self._place,
                 num_workers=num_workers,
                 return_list=True,
+                collate_fn=collate_fn,
             )
         else:
             train_loader = train_data
@@ -1944,6 +1949,7 @@ class Model:
                 places=self._place,
                 num_workers=num_workers,
                 return_list=True,
+                collate_fn=collate_fn,
             )
         elif eval_data is not None:
             eval_loader = eval_data
@@ -2009,6 +2015,7 @@ class Model:
         log_freq=10,
         verbose=2,
         num_workers=0,
+        collate_fn=None,
         callbacks=None,
         num_iters=None,
     ):
@@ -2030,6 +2037,9 @@ class Model:
                 0 for no subprocess used and loading data in main process. When
                 train_data and eval_data are both the instance of Dataloader,
                 this parameter will be ignored. Default: 0.
+            collate_fn(callable, optional): function to generate mini-batch data by merging
+                the sample list, None for only stack each fields of sample in axis
+                0(same as :attr::`np.stack(..., axis=0)`). Default: None.
             callbacks (Callback|None, optional): A list of `Callback` instances to apply
                 during training. If None, `ProgBarLogger` and `ModelCheckpoint`
                 are automatically inserted. Default: None.
@@ -2073,6 +2083,7 @@ class Model:
                 places=self._place,
                 num_workers=num_workers,
                 return_list=True,
+                collate_fn=collate_fn,
             )
         else:
             eval_loader = eval_data
@@ -2118,6 +2129,7 @@ class Model:
         test_data,
         batch_size=1,
         num_workers=0,
+        collate_fn=None,
         stack_outputs=False,
         verbose=1,
         callbacks=None,
@@ -2134,6 +2146,9 @@ class Model:
             num_workers (int, optional): The number of subprocess to load data, 0 for no subprocess
                 used and loading data in main process. When test_data is the instance of Dataloader,
                 this argument will be ignored. Default: 0.
+            collate_fn(callable, optional): function to generate mini-batch data by merging
+                the sample list, None for only stack each fields of sample in axis
+                0(same as :attr::`np.stack(..., axis=0)`). Default: None.
             stack_outputs (bool, optional): Whether stack output field like a batch, as for an output
                 field of a sample is in shape [X, Y], test_data contains N samples, predict
                 output field will be in shape [N, X, Y] if stack_output is True, and will
@@ -2199,6 +2214,7 @@ class Model:
                 places=self._place,
                 num_workers=num_workers,
                 return_list=True,
+                collate_fn=collate_fn,
             )
         else:
             test_loader = test_data
