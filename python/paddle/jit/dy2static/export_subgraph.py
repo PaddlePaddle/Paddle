@@ -58,6 +58,7 @@ class BaseExporter:
         content = str(pir_program)
         with open(path, 'w') as f:
             f.write(content)
+        print(f"SubGraph Exporter: Successfully save into {path}")
 
     def parse_inout(self):
         """
@@ -78,7 +79,9 @@ class BaseExporter:
 
     def generate_saving_path(self):
         layer_name = self.pp_layer._debug_name
-        assert layer_name is not None
+        if not layer_name:
+            layer_name = "wrapper"
+            print("Found layer_name is None, specify as wrapper")
         ops_name = [
             op.type for op in self.program.block(0).ops[:MAX_FILE_PATH_LEN]
         ]
@@ -233,5 +236,5 @@ def pir_exporter(pp_layer, program, role, shared_inputs=None, inter_outs=None):
             )
     except Exception as e:
         print(
-            f"Export subgraph failed: {e}\n. Received original program: {str(program)}"
+            f"Export subgraph failed: {str(e)}\n. Received original program: {str(program)}"
         )
