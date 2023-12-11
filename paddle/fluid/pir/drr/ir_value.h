@@ -44,6 +44,8 @@ class IrDtype {
 
   bool operator==(IrDtype other) const { return dtype_ == other.dtype_; }
 
+  pir::Type get() const { return dtype_; }
+
  private:
   const pir::Type dtype_;
 };
