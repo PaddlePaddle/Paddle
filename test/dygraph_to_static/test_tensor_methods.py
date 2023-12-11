@@ -132,8 +132,7 @@ class TestTrueDiv(Dy2StTestBase):
     def test_true_div(self):
         paddle.disable_static()
         with enable_to_static_guard(False):
-            dygraph_res = self._run(to_static=False)
-
+            dygraph_res = self._run()
         static_res = self._run(to_static=True)
         np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-5)
 
