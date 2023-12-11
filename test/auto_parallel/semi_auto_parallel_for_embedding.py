@@ -111,15 +111,16 @@ class TestEmbeddingApiForSemiAutoParallel:
             assert 'sharded by same mesh dimension ' in str(e)
 
     def test_x_col_w_row_shard(self):
-        try:
-            self.test_body(
-                x_shape=[12, 16],
-                w_shape=[10, 4],
-                x_placements=[Shard(1)],
-                w_placements=[Shard(0)],
-            )
-        except RuntimeError as e:
-            assert 'sharded by same mesh dimension ' in str(e)
+        # Unimplemented cpu kernel for CReduceScatterOp
+        if self._backend == "cpu":
+            return
+
+        self.test_body(
+            x_shape=[12, 16],
+            w_shape=[10, 4],
+            x_placements=[Shard(1)],
+            w_placements=[Shard(0)],
+        )
 
     def test_both_col_shard(self):
         try:

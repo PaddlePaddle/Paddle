@@ -250,7 +250,16 @@ SpmdInfo EmbeddingGradInferSpmd(const DistMetaTensor& x,
   // TODO(cxxly): Simplifies the code logic of sharding propagation using
   // primitive operators.
   DistMetaTensor x_dst(x.dims(), x.dist_attr());
+  // `embedding_grad` kernel is not supported weight's row-wise parallel,
+  // reshard it to replicated.
   DistMetaTensor w_dst(weight.dims(), weight.dist_attr());
+  if (weight.dist_attr().dims_mapping()[0] >= 0) {
+    auto w_dst_dims_mapping = weight.dist_attr().dims_mapping();
+    w_dst_dims_mapping[0] = -1;
+    TensorDistAttr w_dst_dist(weight.dist_attr());
+    w_dst_dist.set_dims_mapping(w_dst_dims_mapping);
+    w_dst = DistMetaTensor(w_dst.dims(), w_dst_dist);
+  }
   DistMetaTensor out_grad_dst(out_grad.dims(), out_grad.dist_attr());
   DistMetaTensor w_grad(weight.dims(), weight.dist_attr());
 

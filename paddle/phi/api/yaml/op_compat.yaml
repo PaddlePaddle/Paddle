@@ -2717,6 +2717,18 @@
 - op : send_uv (graph_send_uv)
   backward : send_uv_grad (graph_send_uv_grad)
 
+- op : sequence_mask
+  inputs:
+    x : X
+  attrs:
+    max_len: maxlen
+  outputs:
+    y : Y
+  scalar :
+    max_len :
+      data_type : int
+      tensor_name : MaxLenTensor
+
 - op : sequence_softmax
   backward : sequence_softmax_grad
   extra :

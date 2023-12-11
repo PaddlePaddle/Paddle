@@ -26,7 +26,7 @@ from paddle.base.compiler import BuildStrategy
 from paddle.base.data_feeder import check_type, convert_dtype
 from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.optimizer.lr import LRScheduler
-from paddle.pir import OpResult, fake_op_result, is_fake_op_result
+from paddle.pir import Value, fake_op_result, is_fake_op_result
 
 from .utils import RETURN_NO_VALUE_MAGIC_NUM, backend_guard
 
@@ -71,10 +71,10 @@ class NestSequence:
         """
         Flattens the nested sequences into single list and remove duplicate variables + non-variable elements.
         """
-        variable_map = {}  # opresult -> list idx
+        variable_map = {}  # Value -> list idx
         variable_list = []
         for value in paddle.utils.flatten(self._raw_input):
-            if not isinstance(value, OpResult):
+            if not isinstance(value, Value):
                 continue
             if value in variable_map:
                 # remove duplicate opresults.
@@ -90,7 +90,7 @@ class NestSequence:
         assert len(self._var_list) == len(value_list)
 
         def to_value(x):
-            if isinstance(x, OpResult):
+            if isinstance(x, Value):
                 return value_list[self._var_map[x]]
             return x
 
@@ -107,9 +107,9 @@ class RunableProgram:
     """a pir program ready for run_program_op to run. constructed by 3 parts:
     - pir program (pir::Program)
     - in_out_values
-        - input_x values ([string | pir::OpResult])
-        - input_param values ([string | pir::OpResult])
-        - output values ([string | pir::OpResult])
+        - input_x values ([string | pir::Value])
+        - input_param values ([string | pir::Value])
+        - output values ([string | pir::Value])
     - forward_backward_ranges
         - forward_range (tuple(Int, Int)) | None
         - backward_range (tuple(Int, Int)) | None
@@ -725,7 +725,7 @@ class PartialProgramLayer:
             check_type(
                 targets,
                 'targets',
-                (OpResult, list, tuple),
+                (Value, list, tuple),
                 'paddle.static.gradients',
             )
             with ir_static.program_guard(program, None):
@@ -787,7 +787,7 @@ class PartialProgramLayer:
             # )
 
         mapping_op_result = (
-            lambda x: x if isinstance(x, OpResult) else fake_op_result()
+            lambda x: x if isinstance(x, Value) else fake_op_result()
         )
         inputs_size = len(inputs)
         x_grad_value = list(
@@ -932,7 +932,7 @@ class PartialProgramLayer:
     def _update_stop_gradient(self, out_vars):
         # Update stop_gradient for all outputs
         def set_stop_gradient(var, eager_tensor):
-            assert isinstance(var, OpResult)
+            assert isinstance(var, Value)
             eager_tensor.stop_gradient = var.stop_gradient
 
         for idx, var in zip(self._outputs.var_list, out_vars):
