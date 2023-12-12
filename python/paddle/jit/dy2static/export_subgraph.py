@@ -12,12 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import os
 
 from paddle import pir
 from paddle.base import core
 from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.base.framework import get_flags
+from paddle.static.log_helper import get_logger
+
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
+)
 
 __all__ = []
 
@@ -58,6 +64,7 @@ class BaseExporter:
         content = str(pir_program)
         with open(path, 'w') as f:
             f.write(content)
+        _logger.info(f"Successfully save subgraph into {path}")
 
     def parse_inout(self):
         """
@@ -232,6 +239,6 @@ def pir_exporter(pp_layer, program, role, shared_inputs=None, inter_outs=None):
                 f"role only support Infer/Forward/Backward, but got: {role}"
             )
     except Exception as e:
-        print(
+        _logger.error(
             f"Export subgraph failed: {e}\n. Received original program: {str(program)}"
         )

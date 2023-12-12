@@ -168,7 +168,11 @@ class RecomputeState(ProgramStats):
             ref_dims_mapping = [-1]
             ref_process_mesh = cur_op_dist_attr.process_mesh
             seed_var_dist_attr = set_var_dist_attr(
-                dist_context, seed_var, ref_dims_mapping, ref_process_mesh
+                dist_context,
+                seed_var,
+                ref_dims_mapping,
+                ref_process_mesh,
+                chunk_id=cur_op_dist_attr.chunk_id,
             )
 
             seed = (
@@ -187,7 +191,11 @@ class RecomputeState(ProgramStats):
             seed_op._set_attr('op_namescope', cur_op.attr('op_namescope'))
             # set new seed op's dist_attr
             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-                seed_op, ref_process_mesh, ref_dims_mapping, dist_context
+                seed_op,
+                ref_process_mesh,
+                ref_dims_mapping,
+                dist_context,
+                chunk_id=cur_op_dist_attr.chunk_id,
             )
 
             # modify dropout op's desc
@@ -494,6 +502,7 @@ class RecomputePass(PassBase):
                             rc_var,
                             ref_dims_mapping,
                             ref_process_mesh,
+                            chunk_id=cur_op_dist_attr.chunk_id,
                         )
             # get recomputed segment's descs
             segment_descs = _add_needed_descs_to_block(
@@ -611,6 +620,7 @@ class RecomputePass(PassBase):
         new_dist_attr.impl_idx = old_dist_attr.impl_idx
         new_dist_attr.impl_type = old_dist_attr.impl_type
         new_dist_attr.process_mesh = old_dist_attr.process_mesh
+        new_dist_attr.chunk_id = old_dist_attr.chunk_id
         for input in old_dist_attr.inputs_dist_attrs.keys():
             if input in var_name_dict.keys():
                 in_dist_attr = old_dist_attr.inputs_dist_attrs[input]

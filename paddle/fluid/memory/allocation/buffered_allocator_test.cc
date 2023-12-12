@@ -52,6 +52,7 @@ class StubAllocator : public Allocator {
     ++destruct_count_;
     delete allocation;
   }
+
   phi::Allocation *AllocateImpl(size_t size) override {
     ++construct_count_;
     if (size == 0) {
