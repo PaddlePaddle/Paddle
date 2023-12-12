@@ -1646,7 +1646,22 @@ class TestDygraphInplaceIndexFill(TestDygraphInplace):
             self.assertEqual(var.inplace_version, 7)
 
     def test_backward_error(self):
-        pass
+        with paddle.base.dygraph.guard():
+            var_a = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+            var_a.stop_gradient = False
+
+            var_b = var_a**2
+
+            var_c = var_b**2
+            self.inplace_api_processing(var_b)
+            var_c = paddle.cast(var_c, "float32")
+
+            loss = paddle.nn.functional.relu(var_c)
+            with self.assertRaisesRegex(
+                RuntimeError,
+                f"received tensor_version:{3} != wrapper_version_snapshot:{0}",
+            ):
+                loss.backward()
 
 
 if __name__ == '__main__':
