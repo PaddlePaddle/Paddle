@@ -22,6 +22,7 @@ decomp_interface_declare_gen_op_list = [
     "add_n",
     "batch_norm",
     "dropout",
+    "full_like",
     "gelu",
     "layer_norm",
     "mean",
@@ -32,6 +33,8 @@ decomp_interface_declare_gen_op_list = [
     "softmax",
     "sqrt",
     "squeeze",
+    "stack",
+    "unsqueeze",
 ]
 
 # come into effect in generated file op_decomp.cc
@@ -39,6 +42,7 @@ decomp_interface_declare_gen_op_list = [
 decomp_interface_implementation_gen_op_list = [
     "add_n",
     "dropout",
+    "full_like",
     "gelu",
     "layer_norm",
     "mean",
@@ -49,6 +53,8 @@ decomp_interface_implementation_gen_op_list = [
     "softmax",
     "sqrt",
     "squeeze",
+    "stack",
+    "unsqueeze",
 ]
 
 

@@ -217,5 +217,49 @@ SpmdInfo AdamwInferSpmdDynamic(const DistMetaTensor& param,
                               use_global_beta_pow);
 }
 
+SpmdInfo SgdInferSpmd(const DistMetaTensor& param,
+                      const DistMetaTensor& learning_rate,
+                      const DistMetaTensor& grad,
+                      const DistMetaTensor& master_param,
+                      bool multi_precision) {
+  SpmdInfo param_grad_spmd = ElementwiseBinaryInferSpmd(param, grad);
+  TensorDistAttr param_dist_attr_spmd =
+      PADDLE_GET(TensorDistAttr, param_grad_spmd.first[0]);
+  TensorDistAttr grad_dist_attr_spmd =
+      PADDLE_GET(TensorDistAttr, param_grad_spmd.first[1]);
+
+  VLOG(3) << "The source dims mapping for param is: "
+          << auto_parallel::str_join(param.dist_attr().dims_mapping());
+  VLOG(3) << "The source dims mapping for grad is: "
+          << auto_parallel::str_join(grad.dist_attr().dims_mapping());
+  VLOG(3) << "The inter dims mapping for param (master param if available) "
+          << "after elementwise spmd is: "
+          << auto_parallel::str_join(param.dist_attr().dims_mapping());
+  VLOG(3) << "The inter dims mapping for grad after elementwise spmd is: "
+          << auto_parallel::str_join(grad.dist_attr().dims_mapping());
+
+  TensorDistAttr param_dist_attr =
+      CopyTensorDistAttrForOutput(param_dist_attr_spmd);
+  TensorDistAttr grad_dist_attr =
+      CopyTensorDistAttrForOutput(grad_dist_attr_spmd);
+  TensorDistAttr lr_dist_attr =
+      CopyTensorDistAttrForOutput(learning_rate.dist_attr());
+  TensorDistAttr master_param_dist_attr =
+      master_param.initialized()
+          ? CopyTensorDistAttrForOutput(master_param.dist_attr())
+          : TensorDistAttr();
+  param_dist_attr.set_dims_mapping(param_dist_attr_spmd.dims_mapping());
+  grad_dist_attr.set_dims_mapping(grad_dist_attr_spmd.dims_mapping());
+  if (master_param.initialized()) {
+    master_param_dist_attr.set_dims_mapping(
+        param_dist_attr_spmd.dims_mapping());
+  }
+  lr_dist_attr.set_dims_mapping(learning_rate.dist_attr().dims_mapping());
+
+  return {
+      {param_dist_attr, lr_dist_attr, grad_dist_attr, master_param_dist_attr},
+      {param_dist_attr, master_param_dist_attr}};
+}
+
 }  // namespace distributed
 }  // namespace phi

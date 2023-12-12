@@ -49,12 +49,12 @@ using cinn::hlir::op::ExternalApiRegistry;
 
 // *** forward declarations of auxiliary functions to be used in this file only
 // *** update a scheduled function with several post-processors
-ir::LoweredFunc FuncWithUpdatedBody(const common::Target& target,
+ir::LoweredFunc FuncWithUpdatedBody(const cinn::common::Target& target,
                                     const ir::LoweredFunc& old_func,
                                     ir::Expr& body);  // NOLINT
 // check whether a scheduled lowered function is valid
 bool PruneInvalid(const ir::LoweredFunc& lowered_func,
-                  const common::Target& target);
+                  const cinn::common::Target& target);
 // exclude some special tasks
 bool IsForbiddenToTune(const TuneTask* task);
 // tell whether the task has been wrapped by custom_call in
@@ -441,11 +441,11 @@ bool IsGPUMemoryUsageExceedLimit(const ir::LoweredFunc& lowered_func,
 }
 
 bool PruneInvalid(const ir::LoweredFunc& lowered_func,
-                  const common::Target& target) {
+                  const cinn::common::Target& target) {
   static const size_t kGPUSharedMemoryLimitBytes = GetGPUSharedMemoryLimit();
   static const size_t kGPULocalStackLimitBytes = GetGPULocalStackLimit();
 
-  if (target == common::DefaultNVGPUTarget()) {
+  if (target == cinn::common::DefaultNVGPUTarget()) {
     if (IsGPUMemoryUsageExceedLimit(lowered_func,
                                     ir::MemoryType::GPUShared,
                                     kGPUSharedMemoryLimitBytes)) {

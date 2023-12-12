@@ -18,12 +18,13 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
+#include "paddle/fluid/platform/place.h"
 
+#include "paddle/common/errors.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 
-#include "paddle/phi/core/errors.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/pass/pass.h"
@@ -36,7 +37,13 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
                              paddle::framework::Scope* scope)
       : pir::Pass("params_sync_among_devices_pass", 0),
         place_(place),
-        scope_(scope) {}
+        scope_(scope) {
+    PADDLE_ENFORCE(
+        paddle::platform::is_gpu_place(place_) ||
+            paddle::platform::is_cpu_place(place_),
+        phi::errors::PreconditionNotMet(
+            "params_sync_among_devices_pass should run on cpu or gpu."));
+  }
 
   void Run(pir::Operation* op) override {
     VLOG(6) << "apply ParamsSyncAmongDevicesPass";
@@ -46,6 +53,7 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
         phi::errors::PreconditionNotMet(
             "params_sync_among_devices_pass should run on module op."));
     auto& block = module_op.block();
+    int64_t num_rewrites_{0};
     for (auto& inner_op : block) {
       if (inner_op.isa<pir::ParameterOp>()) {
         std::string param_name = inner_op.attributes()
@@ -53,6 +61,10 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
                                      .dyn_cast<pir::StrAttribute>()
                                      .AsString();
         auto* param_var = scope_->FindVar(param_name);
+        PADDLE_ENFORCE_NOT_NULL(
+            param_var,
+            phi::errors::InvalidArgument("Parameter var [%s] not in scope.",
+                                         param_name));
         if (param_var->IsType<phi::DenseTensor>()) {
           auto* param_tensor = param_var->GetMutable<phi::DenseTensor>();
           paddle::platform::CPUPlace cpu_place;
@@ -62,9 +74,11 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
               *param_tensor, cpu_place, &temp_tensor);
           param_tensor->clear();
           paddle::framework::TensorCopySync(temp_tensor, place_, param_tensor);
+          num_rewrites_++;
         }
       }
     }
+    PrintStatistics(num_rewrites_);
   }
 
   bool CanApplyOn(pir::Operation* op) const override {

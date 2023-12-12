@@ -72,7 +72,7 @@ void LaunchIndexPutKernel(const Context& dev_ctx,
 
   auto x_dims = x.dims();
   const int64_t numel = indices[0]->numel();
-  auto x_stride = phi::stride(x_dims);
+  auto x_stride = common::stride(x_dims);
 
   int64_t is_single_val_tensor = (value.numel() == 1) ? 0 : INT64_MAX;
 
@@ -127,7 +127,7 @@ void IndexPutKernel(const Context& dev_ctx,
 
   auto bd_dim = funcs::BroadCastTensorsDims(int_indices_v);
 
-  std::vector<int64_t> res_dim_v(phi::vectorize(bd_dim));
+  std::vector<int64_t> res_dim_v(common::vectorize(bd_dim));
   std::vector<const phi::DenseTensor*> res_indices_v(x.dims().size(), nullptr);
   std::vector<DenseTensor> tmp_res_indices_v;
   std::vector<DenseTensor> tmp_value_v;
@@ -150,7 +150,7 @@ void IndexPutKernel(const Context& dev_ctx,
                                      &res_dim_v);
   if (value.numel() != 1) {
     tmp_value_v.emplace_back(
-        DenseTensor(value.dtype()).Resize(phi::make_ddim(res_dim_v)));
+        DenseTensor(value.dtype()).Resize(common::make_ddim(res_dim_v)));
     ExpandKernel<T, Context>(
         dev_ctx, value, IntArray(res_dim_v), &tmp_value_v[0]);
     ptr_value = &tmp_value_v[0];

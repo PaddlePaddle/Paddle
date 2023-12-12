@@ -278,7 +278,7 @@ TEST(program_test, builder) {
   EXPECT_EQ(
       full_op_output.dyn_cast<paddle::dialect::DenseTensorType>().offset() == 0,
       true);
-  for (auto dim : phi::vectorize(
+  for (auto dim : common::vectorize(
            full_op_output.dyn_cast<paddle::dialect::DenseTensorType>()
                .dims())) {
     EXPECT_EQ(dim == 2, true);

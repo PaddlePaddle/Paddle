@@ -11,8 +11,20 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#ifdef GET_OP_LIST
+#undef GET_OP_LIST
+paddle::dialect::AddNOp, paddle::dialect::AddN_Op,
+    paddle::dialect::AddNWithKernelOp, paddle::dialect::FusedGemmEpilogueOp,
+    paddle::dialect::FusedGemmEpilogueGradOp, paddle::dialect::SplitGradOp,
+    paddle::dialect::ExpandOp, paddle::dialect::CreateArrayOp,
+    paddle::dialect::ArrayLengthOp, paddle::dialect::ArrayReadOp,
+    paddle::dialect::ArrayWrite_Op, paddle::dialect::SliceArrayOp,
+    paddle::dialect::SliceArrayDenseOp, paddle::dialect::AssignArray_Op,
+    paddle::dialect::ArrayToTensorOp, paddle::dialect::SelectInputOp
+#else
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_meta_tensor.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_selected_rows.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
@@ -1681,6 +1693,245 @@ void ArrayToTensorOp::InferMeta(phi::InferMetaContext *infer_meta) {
   fn(infer_meta);
 }
 
+const char *SliceArrayOp::attributes_name[2] = {"starts", "ends"};
+
+OpInfoTuple SliceArrayOp::GetOpInfo() {
+  std::vector<paddle::dialect::OpInputInfo> inputs = {
+      paddle::dialect::OpInputInfo("input",
+                                   "paddle::dialect::DenseTensorArrayType",
+                                   false,
+                                   false,
+                                   false,
+                                   false)};
+  std::vector<paddle::dialect::OpAttributeInfo> attributes = {
+      paddle::dialect::OpAttributeInfo("starts",
+                                       "paddle::dialect::IntArrayAttribute",
+                                       "std::vector<int64_t>"),
+      paddle::dialect::OpAttributeInfo("ends",
+                                       "paddle::dialect::IntArrayAttribute",
+                                       "std::vector<int64_t>")};
+  std::vector<paddle::dialect::OpOutputInfo> outputs = {
+      paddle::dialect::OpOutputInfo(
+          "out", "paddle::dialect::DenseTensorArrayType", false, false)};
+  paddle::dialect::OpRunTimeInfo run_time_info =
+      paddle::dialect::OpRunTimeInfo("SliceArrayInferMeta",
+                                     {"input", "starts", "ends"},
+                                     "slice_array",
+                                     {"input", "starts", "ends"},
+                                     {},
+                                     {},
+                                     {},
+                                     {});
+  return std::make_tuple(
+      inputs, attributes, outputs, run_time_info, "slice_array");
+}
+
+void SliceArrayOp::VerifySig() {
+  VLOG(4)
+      << "Start Verifying inputs, outputs and attributes for: SliceArrayOp.";
+  VLOG(4) << "Verifying inputs:";
+  {
+    auto input_size = num_operands();
+    IR_ENFORCE(input_size == 1u,
+               "The size %d of inputs must be equal to 1.",
+               input_size);
+    IR_ENFORCE((*this)
+                   ->operand_source(0)
+                   .type()
+                   .isa<paddle::dialect::DenseTensorArrayType>(),
+               "Type validation failed for the 0th input, got %s.",
+               (*this)->operand_source(0).type());
+  }
+  VLOG(4) << "Verifying attributes:";
+  {
+    auto &attributes = this->attributes();
+    IR_ENFORCE(attributes.count("starts") > 0, "starts does not exist.");
+    IR_ENFORCE(
+        attributes.at("starts").isa<paddle::dialect::IntArrayAttribute>(),
+        "Type of attribute: starts is not paddle::dialect::IntArrayAttribute.");
+
+    IR_ENFORCE(attributes.count("ends") > 0, "ends does not exist.");
+    IR_ENFORCE(
+        attributes.at("ends").isa<paddle::dialect::IntArrayAttribute>(),
+        "Type of attribute: ends is not paddle::dialect::IntArrayAttribute.");
+  }
+  VLOG(4) << "Verifying outputs:";
+  {
+    auto output_size = num_results();
+    IR_ENFORCE(output_size == 1u,
+               "The size %d of outputs must be equal to 1.",
+               output_size);
+    IR_ENFORCE(
+        (*this)->result(0).type().isa<paddle::dialect::DenseTensorArrayType>(),
+        "Type validation failed for the 0th output.");
+  }
+  VLOG(4) << "End Verifying for: SliceArrayOp.";
+}
+
+void SliceArrayOp::InferMeta(phi::InferMetaContext *infer_meta) {
+  auto fn = PD_INFER_META(phi::SliceArrayInferMeta);
+  fn(infer_meta);
+}
+
+phi::DataType SliceArrayOp::GetKernelTypeForVar(
+    const std::string &var_name,
+    const phi::DataType &tensor_dtype,
+    const phi::DataType &expected_kernel_dtype) {
+  VLOG(4) << "Get KernelType for Var of op: SliceArrayOp";
+
+  return expected_kernel_dtype;
+}
+
+const char *SliceArrayDenseOp::attributes_name[1] = {"starts"};
+
+OpInfoTuple SliceArrayDenseOp::GetOpInfo() {
+  std::vector<paddle::dialect::OpInputInfo> inputs = {
+      paddle::dialect::OpInputInfo("input",
+                                   "paddle::dialect::DenseTensorArrayType",
+                                   false,
+                                   false,
+                                   false,
+                                   false)};
+  std::vector<paddle::dialect::OpAttributeInfo> attributes = {
+      paddle::dialect::OpAttributeInfo("starts",
+                                       "paddle::dialect::IntArrayAttribute",
+                                       "std::vector<int64_t>")};
+  std::vector<paddle::dialect::OpOutputInfo> outputs = {
+      paddle::dialect::OpOutputInfo(
+          "out", "paddle::dialect::DenseTensorType", false, false)};
+  paddle::dialect::OpRunTimeInfo run_time_info =
+      paddle::dialect::OpRunTimeInfo("SliceArrayInferMeta",
+                                     {"input", "starts"},
+                                     "slice_array_dense",
+                                     {"input", "starts"},
+                                     {},
+                                     {},
+                                     {},
+                                     {});
+  return std::make_tuple(
+      inputs, attributes, outputs, run_time_info, "slice_array_dense");
+}
+
+void SliceArrayDenseOp::VerifySig() {
+  VLOG(4)
+      << "Start Verifying inputs, outputs and attributes for: SliceArrayOp.";
+  VLOG(4) << "Verifying inputs:";
+  {
+    auto input_size = num_operands();
+    IR_ENFORCE(input_size == 1u,
+               "The size %d of inputs must be equal to 1.",
+               input_size);
+    IR_ENFORCE((*this)
+                   ->operand_source(0)
+                   .type()
+                   .isa<paddle::dialect::DenseTensorArrayType>(),
+               "Type validation failed for the 0th input, got %s.",
+               (*this)->operand_source(0).type());
+  }
+  VLOG(4) << "Verifying attributes:";
+  {
+    auto &attributes = this->attributes();
+    IR_ENFORCE(attributes.count("starts") > 0, "starts does not exist.");
+    IR_ENFORCE(
+        attributes.at("starts").isa<paddle::dialect::IntArrayAttribute>(),
+        "Type of attribute: starts is not paddle::dialect::IntArrayAttribute.");
+  }
+  VLOG(4) << "Verifying outputs:";
+  {
+    auto output_size = num_results();
+    IR_ENFORCE(output_size == 1u,
+               "The size %d of outputs must be equal to 1.",
+               output_size);
+    IR_ENFORCE(
+        (*this)->result(0).type().isa<paddle::dialect::DenseTensorType>(),
+        "Type validation failed for the 0th output.");
+  }
+  VLOG(4) << "End Verifying for: SliceArrayOp.";
+}
+
+void SliceArrayDenseOp::InferMeta(phi::InferMetaContext *infer_meta) {
+  auto fn = PD_INFER_META(phi::SliceArrayDenseInferMeta);
+  fn(infer_meta);
+}
+
+phi::DataType SliceArrayDenseOp::GetKernelTypeForVar(
+    const std::string &var_name,
+    const phi::DataType &tensor_dtype,
+    const phi::DataType &expected_kernel_dtype) {
+  VLOG(4) << "Get KernelType for Var of op: SliceArrayOp";
+
+  return expected_kernel_dtype;
+}
+
+OpInfoTuple AssignArray_Op::GetOpInfo() {
+  std::vector<paddle::dialect::OpInputInfo> inputs = {
+      paddle::dialect::OpInputInfo("x",
+                                   "paddle::dialect::DenseTensorArrayType",
+                                   false,
+                                   false,
+                                   false,
+                                   false)};
+  std::vector<paddle::dialect::OpAttributeInfo> attributes = {};
+  std::vector<paddle::dialect::OpOutputInfo> outputs = {
+      paddle::dialect::OpOutputInfo(
+          "out", "paddle::dialect::DenseTensorArrayType", false, false)};
+  paddle::dialect::OpRunTimeInfo run_time_info =
+      paddle::dialect::OpRunTimeInfo("UnchangedArrayInferMeta",
+                                     {"x"},
+                                     "assign_array",
+                                     {"x"},
+                                     {},
+                                     {},
+                                     {{"out", "x"}},
+                                     {});
+  return std::make_tuple(
+      inputs, attributes, outputs, run_time_info, "assign_array");
+}
+
+void AssignArray_Op::VerifySig() {
+  VLOG(4)
+      << "Start Verifying inputs, outputs and attributes for: AssignArray_Op.";
+  VLOG(4) << "Verifying inputs:";
+  {
+    auto input_size = num_operands();
+    IR_ENFORCE(input_size == 1u,
+               "The size %d of inputs must be equal to 1.",
+               input_size);
+    IR_ENFORCE((*this)
+                   ->operand_source(0)
+                   .type()
+                   .isa<paddle::dialect::DenseTensorArrayType>(),
+               "Type validation failed for the 0th input, but got %s.",
+               (*this)->operand_source(0).type());
+  }
+  VLOG(4) << "Verifying attributes:";
+  VLOG(4) << "Verifying outputs:";
+  {
+    auto output_size = num_results();
+    IR_ENFORCE(output_size == 1u,
+               "The size %d of outputs must be equal to 1.",
+               output_size);
+    IR_ENFORCE(
+        (*this)->result(0).type().isa<paddle::dialect::DenseTensorArrayType>(),
+        "Type validation failed for the 0th output.");
+  }
+  VLOG(4) << "End Verifying for: AssignArray_Op.";
+}
+
+void AssignArray_Op::InferMeta(phi::InferMetaContext *infer_meta) {
+  auto fn = PD_INFER_META(phi::UnchangedArrayInferMeta);
+  fn(infer_meta);
+}
+
+phi::DataType AssignArray_Op::GetKernelTypeForVar(
+    const std::string &var_name,
+    const phi::DataType &tensor_dtype,
+    const phi::DataType &expected_kernel_dtype) {
+  VLOG(4) << "Get KernelType for Var of op: AssignArray_Op";
+
+  return expected_kernel_dtype;
+}
+
 OpInfoTuple ExpandOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
       paddle::dialect::OpInputInfo(
@@ -1847,7 +2098,7 @@ void ExpandOp::Build(pir::Builder &builder,
     shape = std::move(phi::IntArray(std::vector<int64_t>(shape_size, -2)));
     shape.SetFromTensor(true);
   } else if (shape_.type().isa<paddle::dialect::DenseTensorType>()) {
-    size_t shape_size = phi::product(
+    size_t shape_size = common::product(
         shape_.type().dyn_cast<paddle::dialect::DenseTensorType>().dims());
     // In ExpandInferMeta use -2 to represent the element in expand_shape is a
     // var.
@@ -1942,6 +2193,83 @@ phi::DataType ExpandOp::GetKernelTypeForVar(
   return expected_kernel_dtype;
 }
 
+void SelectInputOp::VerifySig() {
+  VLOG(4) << "Verifying inputs, outputs and attributes for: SelectInputOp.";
+  VLOG(4) << "Verifying inputs:";
+  {
+    auto in_size = num_operands();
+    IR_ENFORCE(in_size == 3u, "Size %d of inputs must be >= 3.", in_size);
+    auto input1 = (*this)->operand_source(1).type();
+    auto input2 = (*this)->operand_source(2).type();
+    if (input1.isa<paddle::dialect::DenseTensorType>() &&
+        input2.isa<paddle::dialect::DenseTensorType>()) {
+      auto tensor1 = input1.dyn_cast<paddle::dialect::DenseTensorType>();
+      auto tensor2 = input1.dyn_cast<paddle::dialect::DenseTensorType>();
+      IR_ENFORCE(
+          tensor1.dtype() == tensor2.dtype(),
+          "The 1st input dtype %s should be equal to 2ed input dtype %s.",
+          tensor1.dtype(),
+          tensor2.dtype());
+      IR_ENFORCE(tensor1.data_layout() == tensor2.data_layout(),
+                 "The 1st input data_layout %s should be equal to 2ed input "
+                 "data_layout %s.",
+                 tensor1.data_layout(),
+                 tensor2.data_layout());
+      IR_ENFORCE(tensor1.lod() == tensor2.lod(),
+                 "The 1st input lod %s should be equal to 2ed input lod %s.",
+                 tensor1.lod(),
+                 tensor2.lod());
+      IR_ENFORCE(
+          tensor1.offset() == tensor2.offset(),
+          "The 1st input offset %s should be equal to 2ed input offset %s.",
+          tensor1.offset(),
+          tensor2.offset());
+    } else if (input1.isa<paddle::dialect::AllocatedDenseTensorType>() &&
+               input2.isa<paddle::dialect::AllocatedDenseTensorType>()) {
+      auto tensor1 =
+          input1.dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
+      auto tensor2 =
+          input1.dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
+      IR_ENFORCE(
+          tensor1.dtype() == tensor2.dtype(),
+          "The 1st input dtype %s should be equal to 2ed input dtype %s.",
+          tensor1.dtype(),
+          tensor2.dtype());
+      IR_ENFORCE(tensor1.data_layout() == tensor2.data_layout(),
+                 "The 1st input data_layout %s should be equal to 2ed input "
+                 "data_layout %s.",
+                 tensor1.data_layout(),
+                 tensor2.data_layout());
+      IR_ENFORCE(tensor1.lod() == tensor2.lod(),
+                 "The 1st input lod %s should be equal to 2ed input lod %s.",
+                 tensor1.lod(),
+                 tensor2.lod());
+      IR_ENFORCE(
+          tensor1.offset() == tensor2.offset(),
+          "The 1st input offset %s should be equal to 2ed input offset %s.",
+          tensor1.offset(),
+          tensor2.offset());
+      IR_ENFORCE(
+          tensor1.place() == tensor2.place(),
+          "The 1st input place %s should be equal to 2ed input place %s.",
+          tensor1.place(),
+          tensor2.place());
+    } else {
+      IR_ENFORCE(input1 == input2,
+                 "The 1st input type %s should be equal to 2ed input type %s.",
+                 input1,
+                 input2);
+    }
+  }
+  VLOG(4) << "Verifying outputs:";
+  {
+    auto out_size = num_results();
+    IR_ENFORCE(
+        out_size == 1u, "Size %d of outputs must be equal to 1.", out_size);
+  }
+  VLOG(4) << "End Verifying for: AssignArray_Op.";
+}
+
 }  // namespace dialect
 }  // namespace paddle
 
@@ -1955,5 +2283,10 @@ IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::CreateArrayOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayLengthOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayReadOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayWrite_Op)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SliceArrayOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SliceArrayDenseOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AssignArray_Op)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayToTensorOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ExpandOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SelectInputOp)
+#endif

@@ -34,18 +34,97 @@ inline void check_defined(const DistTensor& dist_tensor,
           method_hint));
 }
 
+TensorDistAttr ToTensorDistAttr(const ProcessMesh& process_mesh,
+                                const Placements& placements,
+                                const DDim& dims) {
+  TensorDistAttr dist_attr(vectorize(dims));
+  // Step1: set process_mesh
+  dist_attr.set_process_mesh(process_mesh);
+
+  // Step2: set dim_mapping
+  int64_t ndim = dims.size();
+  std::vector<int64_t> dim_map(ndim, -1);
+  for (size_t i = 0; i < placements.size(); i++) {
+    auto& placement = placements[i];
+    if (placement->is_shard()) {
+      auto shard_dim = dynamic_cast<const Shard&>(*placement).get_dim();
+      PADDLE_ENFORCE_EQ(
+          dim_map[shard_dim],
+          -1,
+          phi::errors::InvalidArgument(
+              "Tensor dim %lld is already sharded on mesh dim %lld,"
+              " DistTensor operator implementation does not support things "
+              "like hybrid"
+              " sharding strategies yet (i.e. [Shard(0), Shard(0)])",
+              shard_dim,
+              dim_map[shard_dim]));
+      dim_map[shard_dim] = i;
+    }
+  }
+  dist_attr.set_dims_mapping(dim_map);
+
+  // Step3: set partial_status
+  paddle::flat_hash_map<int64_t, ReduceType> partial_status;
+  for (size_t i = 0; i < placements.size(); ++i) {
+    auto& p = placements[i];
+    if (p->is_partial()) {
+      partial_status.insert({i, dynamic_cast<Partial&>(*p).get_reduce_type()});
+    }
+  }
+  dist_attr.set_partial_status(partial_status);
+
+  // Step4: mark annotated
+  dist_attr.mark_annotated("process_mesh");
+  dist_attr.mark_annotated("dims_mapping");
+  return dist_attr;
+}
+
+Placements ToPlacements(const TensorDistAttr& dist_attr) {
+  auto& process_mesh = dist_attr.process_mesh();
+  Placements placements;
+  placements.resize(process_mesh.ndim(), std::make_shared<Replicate>());
+
+  auto& partial_status = dist_attr.partial_status();
+  for (const auto& pair : partial_status) {
+    placements[pair.first] = std::make_shared<Partial>(pair.second);
+  }
+
+  auto& dim_mapping = dist_attr.dims_mapping();
+  for (size_t i = 0; i < dim_mapping.size(); ++i) {
+    auto& mesh_id = dim_mapping[i];
+    if (mesh_id >= 0) {
+      auto& p = placements[mesh_id];
+
+      if (p->is_shard()) {
+        PADDLE_THROW(phi::errors::PreconditionNotMet(
+            "ProcessMesh dimension cann't be mapped to two  dimension of the "
+            "same tensor: {%d} and {%d}",
+            i,
+            dynamic_cast<Shard&>(*p).get_dim()));
+      } else if (p->is_partial()) {
+        PADDLE_THROW(phi::errors::PreconditionNotMet(
+            "ProcessMesh dimension {%d} cannot be both shard and partial!",
+            mesh_id));
+      }
+      placements[mesh_id] = std::make_shared<Shard>(i);
+    }
+  }
+  return placements;
+}
+
 DistTensor::DistTensor() : value_(std::make_shared<DenseTensor>()) {}
 
 DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
                        const TensorDistAttr& dist_attr)
-    : dims_(global_value->dims()), dist_attr_(dist_attr) {
+    : global_dims_(global_value->dims()), dist_attr_(dist_attr) {
   // If the current rank doesn't in process_mesh, we should create an
   // uninitialized tensor only with tensor_meta.
   if (IsCurRankInMesh(dist_attr.process_mesh())) {
     if (!dist_attr.is_replicated()) {
       value_ = std::make_shared<DenseTensor>();
       // 1. create replicated global tensor
-      TensorDistAttr replicated_dist_attr(vectorize(global_value->dims()));
+      TensorDistAttr replicated_dist_attr(
+          common::vectorize(global_value->dims()));
       replicated_dist_attr.set_process_mesh(dist_attr.process_mesh());
       DistTensor replicated_tensor(global_value, replicated_dist_attr);
 
@@ -66,42 +145,26 @@ DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
 DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
                        const ProcessMesh& process_mesh,
                        const Placements& placements)
-    : dims_(global_value->dims()) {
-  dist_tensor_meta_ = DistTensorMeta(
-      process_mesh,
-      placements,
-      DenseTensorMeta(global_value->dtype(), global_value->dims()));
-
-  std::vector<int64_t> partial_dims;
-  size_t idx = 0;
-  for (auto p : placements) {
-    if (p->is_partial()) {
-      partial_dims.push_back(idx);
-    }
-    idx++;
-  }
-  TensorDistAttr dist_attr(vectorize(dist_tensor_meta_.dims()));
-  dist_attr.set_process_mesh(dist_tensor_meta_.process_mesh());
-  dist_attr.set_dims_mapping(dist_tensor_meta_.dim_mapping());
-  dist_attr.set_partial_status(partial_dims);
-  dist_attr.mark_annotated("process_mesh");
-  dist_attr.mark_annotated("dims_mapping");
-  dist_attr_ = dist_attr;
+    : global_dims_(global_value->dims()) {
+  process_mesh_ = process_mesh;
+  placements_ = placements;
+  dist_attr_ = ToTensorDistAttr(process_mesh_, placements_, global_dims_);
 
   // If the current rank doesn't in process_mesh, we should create an
   // uninitialized tensor only with dist_tensor_meta_.
   if (IsCurRankInMesh(process_mesh)) {
-    if (!dist_tensor_meta_.is_replicated()) {
+    if (!dist_attr_.is_replicated()) {
       value_ = std::make_shared<DenseTensor>();
       // 1. create replicated global tensor
-      TensorDistAttr replicated_dist_attr(vectorize(global_value->dims()));
+      TensorDistAttr replicated_dist_attr(
+          common::vectorize(global_value->dims()));
       replicated_dist_attr.set_process_mesh(process_mesh);
       DistTensor replicated_tensor(global_value, replicated_dist_attr);
 
       // 2. reshard from replicated to other state
-      auto* func = ChooseProperReshardFunction(replicated_tensor, dist_attr);
+      auto* func = ChooseProperReshardFunction(replicated_tensor, dist_attr_);
       auto* dev_ctx = DeviceContextPool::Instance().Get(global_value->place());
-      func->Eval(dev_ctx, replicated_tensor, dist_attr, this);
+      func->Eval(dev_ctx, replicated_tensor, dist_attr_, this);
     } else {
       value_ = global_value;
     }
@@ -113,16 +176,19 @@ DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
 }
 
 DistTensor::DistTensor(const DDim& dims, const TensorDistAttr& dist_attr)
-    : dims_(dims),
+    : global_dims_(dims),
       dist_attr_(dist_attr),
-      value_(std::make_shared<DenseTensor>()) {}
+      value_(std::make_shared<DenseTensor>()) {
+  process_mesh_ = dist_attr.process_mesh();
+  placements_ = ToPlacements(dist_attr);
+}
 
 void DistTensor::unsafe_set_dims(const DDim& dims) {
   if (this->initialized()) {
     VLOG(3) << "You try to set an initialized DistTensor's global dims. "
                "Make sure you are aware of where you change its dims.";
   }
-  dims_ = dims;
+  global_dims_ = dims;
 }
 
 void DistTensor::unsafe_set_dist_attr(const TensorDistAttr& dist_attr) {
@@ -131,12 +197,14 @@ void DistTensor::unsafe_set_dist_attr(const TensorDistAttr& dist_attr) {
                "Make sure you are aware of where you change its dist attr.";
   }
   dist_attr_ = dist_attr;
+  process_mesh_ = dist_attr.process_mesh();
+  placements_ = ToPlacements(dist_attr);
 }
 
 int64_t DistTensor::numel() const {
   // DistTensor with uninitialized local tensor can
   // also have numel.
-  return product(dims_);
+  return product(global_dims_);
 }
 
 const DDim& DistTensor::local_dims() const {
