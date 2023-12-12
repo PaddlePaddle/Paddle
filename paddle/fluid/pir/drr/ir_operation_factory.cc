@@ -94,6 +94,9 @@ static pir::Attribute CreateIrAttribute(const std::any& obj) {
   } else if (obj.type() == typeid(std::vector<int64_t>)) {
     return IrAttrbuteCreator<std::vector<int64_t>>()(
         std::any_cast<std::vector<int64_t>>(obj));
+  } else if (obj.type() == typeid(std::vector<float>)) {
+    return IrAttrbuteCreator<std::vector<float>>()(
+        std::any_cast<std::vector<float>>(obj));
   } else if (obj.type() == typeid(phi::IntArray)) {
     return IrAttrbuteCreator<phi::IntArray>()(
         std::any_cast<phi::IntArray>(obj));

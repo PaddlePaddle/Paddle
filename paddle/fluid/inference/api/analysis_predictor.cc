@@ -1734,6 +1734,7 @@ void AnalysisPredictor::PrepareArgument() {
       argument_->SetEnableIrOptim(true);
       pass_builder->ClearPasses();
       pass_builder->AppendPass("auto_mixed_precision_pass");
+      pass_builder->AppendPass("inplace_op_var_pass");
       LOG(INFO) << "This model run in GPU mixed precision mode with no ir "
                    "optimization.";
     } else {
