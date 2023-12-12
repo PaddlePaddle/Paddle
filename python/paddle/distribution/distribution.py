@@ -27,7 +27,7 @@ import paddle
 from paddle import _C_ops
 from paddle.base.data_feeder import check_variable_and_dtype, convert_dtype
 from paddle.base.framework import Variable
-from paddle.framework import in_dynamic_mode
+from paddle.framework import in_dynamic_mode, in_pir_mode
 
 
 class Distribution:
@@ -176,12 +176,26 @@ class Distribution:
         tmp = 0.0
 
         for arg in args:
-            if not isinstance(arg, (float, list, tuple, np.ndarray, Variable)):
+            if not isinstance(
+                arg,
+                (
+                    float,
+                    list,
+                    tuple,
+                    np.ndarray,
+                    Variable,
+                    paddle.base.libpaddle.pir.Value,
+                ),
+            ):
                 raise TypeError(
                     "Type of input args must be float, list, tuple, numpy.ndarray or Tensor, but received type {}".format(
                         type(arg)
                     )
                 )
+            if isinstance(arg, paddle.base.libpaddle.pir.Value):
+                # pir.Value does not need to be converted to numpy.ndarray, so we skip here
+                numpy_args.append(arg)
+                continue
 
             arg_np = np.array(arg)
             arg_dtype = arg_np.dtype
@@ -197,10 +211,17 @@ class Distribution:
             tmp = tmp + arg_np
             numpy_args.append(arg_np)
 
-        dtype = tmp.dtype
         for arg in numpy_args:
+            if isinstance(arg, paddle.base.libpaddle.pir.Value):
+                # pir.Value does not need to be converted to numpy.ndarray, so we skip here
+                variable_args.append(arg)
+                continue
+
             arg_broadcasted, _ = np.broadcast_arrays(arg, tmp)
-            arg_variable = paddle.tensor.create_tensor(dtype=dtype)
+            if in_pir_mode():
+                arg_variable = paddle.zeros(arg_broadcasted.shape)
+            else:
+                arg_variable = paddle.tensor.create_tensor(dtype=tmp.dtype)
             paddle.assign(arg_broadcasted, arg_variable)
             variable_args.append(arg_variable)
 

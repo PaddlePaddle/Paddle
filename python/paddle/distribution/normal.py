@@ -21,7 +21,7 @@ import paddle
 from paddle.base.data_feeder import check_type, convert_dtype
 from paddle.base.framework import Variable
 from paddle.distribution import distribution
-from paddle.framework import in_dynamic_mode
+from paddle.framework import in_dynamic_or_pir_mode
 from paddle.tensor import random
 
 
@@ -95,7 +95,7 @@ class Normal(distribution.Distribution):
     """
 
     def __init__(self, loc, scale, name=None):
-        if not in_dynamic_mode():
+        if not in_dynamic_or_pir_mode():
             check_type(
                 loc,
                 'loc',
@@ -173,7 +173,7 @@ class Normal(distribution.Distribution):
         if not isinstance(shape, Iterable):
             raise TypeError('sample shape must be Iterable object.')
 
-        if not in_dynamic_mode():
+        if not in_dynamic_or_pir_mode():
             check_type(seed, 'seed', (int), 'sample')
 
         shape = list(shape)
@@ -329,7 +329,7 @@ class Normal(distribution.Distribution):
             Tensor, kl-divergence between two normal distributions.The data type is float32.
 
         """
-        if not in_dynamic_mode():
+        if not in_dynamic_or_pir_mode():
             check_type(other, 'other', Normal, 'kl_divergence')
 
         name = self.name + '_kl_divergence'
