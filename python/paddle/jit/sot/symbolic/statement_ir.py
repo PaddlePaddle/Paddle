@@ -160,9 +160,13 @@ class LayerStatement(Statement):
         outputs: list[Symbol],
         stacks: list[str],
     ):
+        if isinstance(layer, Reference):
+            name = layer().__class__.__name__
+        else:
+            name = layer.__class__.__name__
         super().__init__(
             "layer",
-            layer.__class__.__name__,
+            name,
             inputs,
             outputs,
             stacks,
@@ -223,6 +227,11 @@ class StatementIR:
         new_sir.statements = list(self.statements)
         new_sir.symbol_meta_map = dict(self.symbol_meta_map.items())
         return new_sir
+
+    def set_symbol_meta_map(self, meta_map):
+        # if the meta of a input symbol inplace changed, we should get the origin meta as input of SIR
+        meta_map.update(self.symbol_meta_map)
+        self.symbol_meta_map = meta_map
 
     def add_input(self, input):
         self.inputs.append(input)

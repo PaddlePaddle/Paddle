@@ -397,6 +397,9 @@ def not_to_static(func=None):
             Tensor(shape=[1, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[2., 2.]])
     """
+    if func is None:
+        return not_to_static
+
     options = ConversionOptions(not_convert=True)
     options.attach(func)
     return func

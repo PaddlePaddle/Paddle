@@ -531,7 +531,7 @@ class FunctionGraph:
                 self.symbolic_call, message_handler
             )(ast_infer_meta, compute_fn, static_function, *args, **kwargs)
         except Exception as e:
-            log(3, f"[AST] {e}")
+            log(3, f"[call AST] {e}")
             return None
 
     def symbolic_call(self, infer_meta_fn, compute_fn, func, *args, **kwargs):
@@ -554,8 +554,8 @@ class FunctionGraph:
             convert_to_symbol(kwargs),
         )
 
-        self.sir_ctx.TOS.symbol_meta_map.update(get_symbol_meta_map(args))
-        self.sir_ctx.TOS.symbol_meta_map.update(get_symbol_meta_map(kwargs))
+        self.sir_ctx.TOS.set_symbol_meta_map(get_symbol_meta_map(args))
+        self.sir_ctx.TOS.set_symbol_meta_map(get_symbol_meta_map(kwargs))
 
         log(3, f"         inputs : {inputs_symbols}", "\n")
 
