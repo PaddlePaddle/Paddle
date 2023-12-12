@@ -61,9 +61,7 @@ if ! [ -z ${XHPC_URL} ]; then
 
   cp -r ${XHPC_DIR_NAME}/xfa/include/* xpu/include/xhpc/xfa
   cp -r ${XHPC_DIR_NAME}/xfa/so/* xpu/lib/
-fi
-
-if  [ -z ${XHPC_URL} ]; then
+else
   cp -r $XDNN_DIR_NAME/include/xpu/* xpu/include/xpu/
   cp -r $XDNN_DIR_NAME/so/* xpu/lib/
 fi

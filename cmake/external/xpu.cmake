@@ -207,7 +207,6 @@ if(WITH_XPU_XHPC)
 
   set(XPU_XFA_INC_DIR "${XPU_INC_DIR}/xhpc/xfa")
   include_directories(${XPU_XFA_INC_DIR})
-
 endif()
 
 if(WITH_XPTI)
