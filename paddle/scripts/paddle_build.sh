@@ -3453,27 +3453,19 @@ function clang-tidy_check() {
     set -e
 
     clang-tidy --version
-
-    num_diff_files=$(git diff --numstat ${BRANCH} | wc -l)
+    num_diff_files=$(git diff --numstat ${BRANCH} | grep -E '\.(c|cc|cxx|cpp|h|hpp|hxx)' | wc -l)
     commit_files=on
     startTime_s=`date +%s`
-    for file_name in `git diff --numstat ${BRANCH} |awk '{print $NF}'`;do
-        if ! pre-commit run clang-tidy --files $file_name ; then
-            commit_files=off
-        fi
-    done
+    if ! pre-commit run clang-tidy ; then
+        commit_files=off
+    fi
     endTime_s=`date +%s`
     [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
+    echo "File Count: $[ $num_diff_files ]"
+    echo "Check Time: $[ $endTime_s - $startTime_s ]s"
     if [ $commit_files == 'off' ];then
         echo "Your PR code style clang-tidy check failed."
-        echo "File Count: $[ $num_diff_files ]"
-        echo "Check Time: $[ $endTime_s - $startTime_s ]s"
-        git diff 2>&1
-        exit 4
-    else
-        echo "File Count: $[ $num_diff_files ]"
-        echo "Check Time: $[ $endTime_s - $startTime_s ]s"
-        echo "Your PR code style clang-tidy check passed."
+        exit 1
     fi
 
     trap : 0
