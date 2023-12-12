@@ -60,11 +60,34 @@ cc_test(
   SRCS test_mkldnn_caching.cc
   DEPS ${TEST_MKLDNN_CACHING_DEPS})
 if(WIN32 AND WITH_TESTING)
-
-  paddle_test(test_mkldnn_op_nhwc SRCS test_mkldnn_op_nhwc.cc)
+  cc_test(
+    test_mkldnn_op_nhwc
+    SRCS
+    test_mkldnn_op_nhwc.cc
+    DEPS
+    fleet_executor
+    conditional_block_op
+    standalone_executor
+    executor
+    recurrent_op_helper
+    recurrent_op
+    op_registry
+    generated_static_op
+    crop_op
+    activation_op
+    generated_op
+    generated_static_op
+    phi
+    common
+    transpose_op
+    fused_transpose_op
+    scope
+    device_context
+    enforce)
 
 else()
-  paddle_test(test_mkldnn_op_nhwc SRCS test_mkldnn_op_nhwc.cc)
+  cc_test(test_mkldnn_op_nhwc SRCS test_mkldnn_op_nhwc.cc DEPS
+              ${paddle_lib} python)
 endif()
 
 cc_test(
