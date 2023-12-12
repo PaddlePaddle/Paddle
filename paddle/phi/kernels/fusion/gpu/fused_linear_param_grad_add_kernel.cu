@@ -136,10 +136,10 @@ void FusedLinearParamGradAdd(const Context &ctx,
   if (dweight_out) {
     if (dweight_out->dtype() == phi::DataType::FLOAT16) {
       LOG_FIRST_N(WARNING, 1)
-          << "There may be problems when master_grad is not enabled and use "
-             "fp16-O2 in stage2, users should pay attention to the correctness "
-             "of "
-             "the result of the grad accumulation in stage2.";
+          << "fused_linear_param_grad_add op may have problems when "
+             "master_grad is not enabled and use fp16-O2 in stage2, users "
+             "should pay attention to the correctness of the result of the "
+             "grad accumulation in stage2.";
     }
     if (dweight) {
       use_addto = true;
