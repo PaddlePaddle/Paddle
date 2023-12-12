@@ -378,14 +378,17 @@ std::vector<DenseTensor> DenseTensor::Chunk(int64_t chunks,
 
 #ifdef PADDLE_WITH_DNNL
 const dnnl::memory::desc& DenseTensor::mem_desc() const {
+  if (storage_properties_ == nullptr) {
+    storage_properties_.reset(new OneDNNStorageProperties());
+  }
+
   return this->storage_properties<OneDNNStorageProperties>().mem_desc;
 }
 
 void DenseTensor::set_mem_desc(const dnnl::memory::desc& mem_desc) {
-  PADDLE_ENFORCE_NOT_NULL(
-      storage_properties_,
-      phi::errors::PreconditionNotMet(
-          "The storage_properties of current DenseTensor is nullptr."));
+  if (storage_properties_ == nullptr) {
+    storage_properties_.reset(new OneDNNStorageProperties());
+  }
   if (OneDNNStorageProperties::classof(storage_properties_.get())) {
     dynamic_cast<OneDNNStorageProperties*>(storage_properties_.get())
         ->mem_desc = mem_desc;
