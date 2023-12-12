@@ -325,32 +325,6 @@ cc_library(
   SRCS async_ssa_graph_executor.cc
   DEPS ${ASYNC_SSA_GRAPH_EXECUTOR_DEPS})
 
-cc_test(
-  broadcast_op_test
-  SRCS broadcast_op_handle_test.cc
-  DEPS var_handle
-       op_handle_base
-       scope
-       phi
-       common
-       memory
-       device_context
-       broadcast_op_handle)
-
-cc_test_old(
-  gather_op_test
-  SRCS
-  gather_op_handle_test.cc
-  DEPS
-  var_handle
-  op_handle_base
-  scope
-  phi
-  common
-  memory
-  device_context
-  gather_op_handle)
-
 cc_library(
   scope_buffered_monitor
   SRCS scope_buffered_monitor.cc
@@ -376,12 +350,6 @@ cc_library(
   SRCS fast_threaded_ssa_graph_executor.cc
   DEPS fetch_async_op_handle ssa_graph_executor scope simple_threadpool
        device_context)
-cc_test(
-  fused_broadcast_op_test
-  SRCS fused_broadcast_op_handle_test.cc
-  DEPS fused_broadcast_op_handle)
-
-cc_test(exception_holder_test SRCS exception_holder_test.cc)
 
 set(IR_PASS_DEPS
     graph_viz_pass
@@ -414,6 +382,10 @@ set(IR_PASS_DEPS
     fused_feedforward_pass
     delete_dropout_op_pass)
 
+if(WITH_CUDNN_FRONTEND)
+  set(IR_PASS_DEPS ${IR_PASS_DEPS} fuse_dot_product_attention_pass)
+endif()
+
 if(WITH_CINN)
   set(IR_PASS_DEPS ${IR_PASS_DEPS} paddle2cinn)
 endif()
@@ -427,10 +399,6 @@ cc_library(
   build_strategy
   SRCS build_strategy.cc
   DEPS pass_builder ${IR_PASS_DEPS})
-cc_test(
-  build_strategy_test
-  SRCS build_strategy_test.cc
-  DEPS build_strategy op_registry op_proto_maker graph string_helper)
 
 if(WITH_MKLDNN)
   target_link_libraries(build_strategy mkldnn_placement_pass)

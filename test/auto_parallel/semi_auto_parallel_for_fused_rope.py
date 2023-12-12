@@ -26,7 +26,7 @@ except ImportError:
     fused_rotary_position_embedding = None
 
 
-class TestFuseRopeApiForSemiAutoParallel(SemiAutoParallelTestBase):
+class TestFusedRopeApiForSemiAutoParallel(SemiAutoParallelTestBase):
     def __init__(self):
         self._dtype = os.getenv("dtype")
         self._backend = os.getenv("backend")
@@ -146,4 +146,4 @@ class TestFuseRopeApiForSemiAutoParallel(SemiAutoParallelTestBase):
 
 
 if __name__ == '__main__':
-    TestFuseRopeApiForSemiAutoParallel().run_test_case()
+    TestFusedRopeApiForSemiAutoParallel().run_test_case()
