@@ -7194,7 +7194,8 @@ def signbit(x, name=None):
             [False , True, False, False, True])
 
         .. code-block:: python
-            :name: example-2
+            :name: signbit-example-2
+            
             >>> x = paddle.to_tensor([-5, -2, 3], dtype='int32')
             >>> res = paddle.signbit(x, y)
             >>> print(res)
