@@ -3380,7 +3380,7 @@
 
 - op: dpsgd
   inputs:
-    {param: Param,grad: grad,learning_rate: LearningRate}
+    {param: Param,grad: Grad,learning_rate: LearningRate}
   outputs:
     param_out : ParamOut
 
