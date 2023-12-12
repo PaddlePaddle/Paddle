@@ -247,6 +247,13 @@ void DispatchWithDtype(
     DenseTensor* key_cache_out,
     DenseTensor* value_cache_out) {
 
+  
+  if (!dynamic_cachekv_quant && cache_k_quant_scales){
+    VLOG(2) << "static quant";
+    PrintTensor<float>(cache_k_quant_scales.get(), 10);
+    PrintTensor<float>(cache_k_dequant_scales.get(), 10);
+  }
+
   phi::DenseTensor qkv_buf;
   phi::DenseTensor fmha_buf;
 
@@ -364,9 +371,9 @@ void DispatchWithDtype(
     constexpr int64_t thread_per_block = 512;
     constexpr int DequantKernelVecSize = 4;
     int64_t block_per_grid = (numel / DequantKernelVecSize + thread_per_block - 1) / thread_per_block;
-    PrintTensor<int32_t>(qkv, 10);
+    // PrintTensor<int32_t>(qkv, 10);
     DequantKernel<T, DequantKernelVecSize><<<block_per_grid, thread_per_block, 0, dev_ctx.stream()>>>(qkv_buf.data<T>(), qkv.data<int32_t>(), input_dims[0], input_dims[1], qkv_out_scale.get_ptr()->data<float>());
-    PrintTensor<T>(qkv_buf, 10);
+    // PrintTensor<T>(qkv_buf, 10);
   } else {
     VLOG(1) << "qkv_out_scale is none";
     qkv_buf = qkv;
@@ -374,7 +381,7 @@ void DispatchWithDtype(
 
   if (qkv_bias) {
     VLOG(1) << "has bias";
-    PrintTensor<T>(qkv_bias.get(), 10);
+    // PrintTensor<T>(qkv_bias.get(), 10);
     std::vector<const phi::DenseTensor*> ins = {&qkv_buf, qkv_bias.get_ptr()};
     std::vector<phi::DenseTensor*> outs = {&qkv_buf};
     phi::funcs::BroadcastKernel<T>(
@@ -398,7 +405,7 @@ void DispatchWithDtype(
                           use_neox_style);
       
       VLOG(1) << "rope end";
-      PrintTensor<T>(qkv_buf, 10);                   
+      // PrintTensor<T>(qkv_buf, 10);                   
     }
     
     VLOG(1) << "causual: " << causual;
@@ -416,7 +423,7 @@ void DispatchWithDtype(
                              max_seq_len,
                              dim_head);
       VLOG(1) << "qkv split end";
-      PrintTensor<T>(unpadding_q, 10); 
+      // PrintTensor<T>(unpadding_q, 10); 
       phi::FlashAttnUnpaddedKernel<T>(dev_ctx,
                                       unpadding_q,
                                       unpadding_k,
@@ -499,6 +506,10 @@ void DispatchWithDtype(
                                  pre_cache_length,
                                  key_cache_out,
                                  value_cache_out);
+
+        VLOG(2) << "dynamic quant";
+        PrintTensor<float>(cache_k_quant_scales.get(), 10);
+        PrintTensor<float>(cache_k_dequant_scales.get(), 10);
     } else {
       CacheKernel<T>(dev_ctx,
                      qkv_buf,
@@ -516,7 +527,10 @@ void DispatchWithDtype(
                      max_seq_len,
                      pre_cache_length,
                      key_cache_out,
-                     value_cache_out);
+                     value_cache_out,
+                     quant_round_type,
+                     quant_max_bound,
+                     quant_min_bound);
     }
     VLOG(1) << "cache end";
   }
@@ -574,7 +588,7 @@ void DispatchWithDtype(
     int n = fmha_out->dims()[1];
     dim3 grid((n >> 2 + 31) / 32, (m + 31) / 32);
     dim3 block(32, 32);
-    PrintTensor<T>(fmha_buf, 10);
+    // PrintTensor<T>(fmha_buf, 10);
     if (out_shift && out_smooth) {
       QuantKernel<T><<<grid, block, 0, dev_ctx.stream()>>>(fmha_buf.data<T>(), 
                                                            out_shift.get_ptr()->data<T>(), 
@@ -598,7 +612,7 @@ void DispatchWithDtype(
                                                            quant_min_bound
                                                            );
     }
-    PrintTensor<int8_t>(*fmha_out, 10);
+    // PrintTensor<int8_t>(*fmha_out, 10);
   }
   VLOG(1) << "decoder done";
 }

@@ -1237,8 +1237,8 @@ void CacheKernel(
     phi::DenseTensor *key_cache_out,
     phi::DenseTensor *value_cache_out,
     const int round_type = 0,
-    const float max_bound = 0.0,
-    const float min_bound = 0.0) {
+    const float max_bound = 127.0,
+    const float min_bound = -127.0) {
   typedef PDDataTypeTraits<T> traits_;
   typedef typename traits_::DataType DataType_;
 
@@ -1460,7 +1460,7 @@ void DynamicQuantCacheKernel(
     const phi::DenseTensor &block_tables,
     const phi::DenseTensor &padding_offsets,
     const phi::DenseTensor &seq_lens,
-    const phi::DenseTensor &k_quant_scales,
+    const phi::DenseTensor &k_quant_scales, // TODO: [bsz, num_heads]
     const phi::DenseTensor &v_quant_scales,
     const phi::DenseTensor &k_dequant_scales,
     const phi::DenseTensor &v_dequant_scales,
