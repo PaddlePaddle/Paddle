@@ -34,9 +34,9 @@ def builtin_fn_with_breakgraph():
     str.split("1,2,3,4,5", ",")
 
 
-class TestListComp(TestCaseBase):
+class TestSpecialization(TestCaseBase):
     @min_graph_size_guard(10)
-    def test_listcomp(self):
+    def test_specialization(self):
         for _ in range(RUN_N_TIMES):
             paddle.jit.to_static(builtin_fn_with_breakgraph)()
 
