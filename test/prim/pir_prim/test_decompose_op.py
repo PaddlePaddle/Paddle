@@ -26,7 +26,7 @@ paddle.enable_static()
 
 
 def get_pir_program_and_param_map():
-    shape = [2, 3]
+    shape = [3, 3]
     mp = paddle.static.Program()
     with paddle.static.program_guard(mp):
         # construct graph
@@ -38,21 +38,24 @@ def get_pir_program_and_param_map():
         z.stop_gradient = False
         tmp1 = paddle.add(x, y)
         tmp2 = paddle.multiply(tmp1, z)
-        tmp3 = paddle.mean(tmp2, axis=-1, keepdim=True)
-        tmp4 = paddle.rsqrt(tmp3)
+        tmp3 = paddle.matmul(tmp2, z)
+        tmp4 = paddle.mean(tmp3, axis=-1, keepdim=True)
+        tmp5 = paddle.rsqrt(tmp4)
         scale = paddle.tensor.fill_constant(
-            shape=tmp4.shape[1:],
-            dtype=tmp4.dtype,
+            shape=tmp5.shape[1:],
+            dtype=tmp5.dtype,
             value=1.0,
         )
         scale.stop_gradient = True
-        tmp5 = paddle.nn.functional.layer_norm(
-            tmp4, tmp4.shape[1:], scale, None, 1e-5
+        tmp6 = paddle.nn.functional.layer_norm(
+            tmp5, tmp5.shape[1:], scale, None, 1e-5
         )
-        tmp6 = paddle.nn.functional.dropout(tmp5, p=0.5)
-        tmp7 = paddle.add(x, tmp6)
-        tmp8 = paddle.concat(tmp7)
-        out = paddle.mean(tmp8)
+        tmp7 = paddle.nn.functional.dropout(tmp6, p=0.5)
+        tmp8 = paddle.add(x, tmp7)
+        tmp9 = paddle.concat(tmp8)
+        test = paddle.rand([5, 1, 10])
+        tmp_test_1 = paddle.squeeze(test, axis=1)
+        out = paddle.mean(tmp9)
         # construct backward graph
         gradients = paddle.static.gradients(out, [x, y, z])
 
@@ -63,11 +66,11 @@ def get_pir_program_and_param_map():
 class TestDecomposeOp(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
-        self.shape_x = [2, 3]
+        self.shape_x = [3, 3]
         self.x = np.random.random(self.shape_x).astype("float32")
-        self.shape_y = [2, 3]
+        self.shape_y = [3, 3]
         self.y = np.random.random(self.shape_y).astype("float32")
-        self.shape_z = [2, 3]
+        self.shape_z = [3, 3]
         self.z = np.random.random(self.shape_z).astype("float32")
 
     def net(self, flag=None):
@@ -77,7 +80,7 @@ class TestDecomposeOp(unittest.TestCase):
         ) = get_pir_program_and_param_map()
 
         pir_ops = pir_program.global_block().ops
-        fetch_list = [pir_ops[10].result(0)]
+        fetch_list = [pir_ops[11].result(0)]
 
         if flag == "decompose":
             core._set_prim_forward_enabled(True)
@@ -91,6 +94,7 @@ class TestDecomposeOp(unittest.TestCase):
                 'elementwise_add_1@GRAD': 'elementwise_add_1',
                 'elementwise_mul_0@GRAD': 'elementwise_mul_0',
                 'layer_norm_0.tmp_2@GRAD': 'layer_norm_0.tmp_2',
+                'matmul_v2_0.tmp_0@GRAD': 'matmul_v2_0.tmp_0',
                 'mean_0.tmp_0@GRAD': 'mean_0.tmp_0',
                 'mean_1.tmp_0@GRAD': 'mean_1.tmp_0',
                 'rsqrt_0.tmp_0@GRAD': 'rsqrt_0.tmp_0',
@@ -99,6 +103,8 @@ class TestDecomposeOp(unittest.TestCase):
                 'x@GRAD@RENAME@block0@1': 'x',
                 'y@GRAD': 'y',
                 'z@GRAD': 'z',
+                'z@GRAD@RENAME@block0@0': 'z',
+                'z@GRAD@RENAME@block0@1': 'z',
             }
             decomp.decompose_pir_program(
                 pir_program, param_mapping, grad_var_to_var
