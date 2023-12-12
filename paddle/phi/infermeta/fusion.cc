@@ -926,6 +926,160 @@ void FusedAttentionGradInferMeta(const MetaTensor& out_grad,
   }
 }
 
+void FusedBiasDropoutResidualLnInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& residual,
+    const MetaTensor& bias,
+    const MetaTensor& ln_scale,
+    const MetaTensor& ln_bias,
+    const float dropout_rate,
+    const bool is_test,
+    const bool dropout_fix_seed,
+    const int dropout_seed,
+    const std::string& dropout_implementation,
+    const float ln_epsilon,
+    MetaTensor* y,
+    MetaTensor* bias_dropout_residual_out,
+    MetaTensor* dropout_mask_out,
+    MetaTensor* ln_mean,
+    MetaTensor* ln_variance) {
+  PADDLE_ENFORCE_EQ(dropout_rate >= 0.0f && dropout_rate <= 1.0f,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "'dropout_rate' must be between 0.0 and 1.0."));
+  PADDLE_ENFORCE_EQ(
+      dropout_implementation == "downgrade_in_infer" ||
+          dropout_implementation == "upscale_in_train",
+      true,
+      phi::errors::InvalidArgument(
+          "dropout_implementation can only be downgrade_in_infer or "
+          "upscale_in_train"));
+  PADDLE_ENFORCE_EQ(ln_epsilon >= 0.0f && ln_epsilon <= 0.001f,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "'epsilon' of the LayerNorm should be between "
+                        "0.0 and 0.001, But received [%s].",
+                        ln_epsilon));
+  auto x_dim = x.dims();
+  int left = 1;
+  for (int i = 0; i < x_dim.size() - 1; i++) {
+    left *= x_dim[i];
+  }
+  bias_dropout_residual_out->set_dims(x.dims());
+  if (is_test == false) {
+    dropout_mask_out->set_dims(x.dims());
+  }
+  ln_mean->set_dims({left});
+  ln_variance->set_dims({left});
+  y->set_dims(x.dims());
+}
+
+void FusedBiasDropoutResidualLnGradInferMeta(
+    const MetaTensor& y_grad,
+    const MetaTensor& x,
+    const MetaTensor& residual,
+    const MetaTensor& bias,
+    const MetaTensor& ln_scale,
+    const MetaTensor& ln_bias,
+    const MetaTensor& ln_mean,
+    const MetaTensor& ln_variance,
+    const MetaTensor& bias_dropout_residual_out,
+    const MetaTensor& dropout_mask_out,
+    const float dropout_rate,
+    const bool is_test,
+    const bool dropout_fix_seed,
+    const int dropout_seed,
+    const std::string& dropout_implementation,
+    const float ln_epsilon,
+    MetaTensor* x_grad,
+    MetaTensor* residual_grad,
+    MetaTensor* bias_grad,
+    MetaTensor* ln_scale_grad,
+    MetaTensor* ln_bias_grad) {
+  PADDLE_ENFORCE_EQ(is_test,
+                    false,
+                    phi::errors::InvalidArgument(
+                        "GradOp is only callable when is_test is false"));
+  if (ln_scale_grad) {
+    ln_scale_grad->set_dims(ln_scale.dims());
+    ln_scale_grad->set_dtype(y_grad.dtype());
+  }
+  if (ln_bias_grad) {
+    ln_bias_grad->set_dims(ln_bias.dims());
+    ln_bias_grad->set_dtype(y_grad.dtype());
+  }
+  if (residual_grad) {
+    residual_grad->set_dims(residual.dims());
+    residual_grad->set_dtype(y_grad.dtype());
+  }
+  if (bias_grad) {
+    bias_grad->set_dims(bias.dims());
+    bias_grad->set_dtype(y_grad.dtype());
+  }
+  if (x_grad) {
+    x_grad->set_dims(x.dims());
+    x_grad->set_dtype(y_grad.dtype());
+  }
+}
+
+void FusedDotProductAttentionInferMeta(const MetaTensor& q,
+                                       const MetaTensor& k,
+                                       const MetaTensor& v,
+                                       MetaTensor* out,
+                                       MetaTensor* softmax_out,
+                                       MetaTensor* rng_state) {
+  // q input shape: [batch_size, q_seq_len, num_heads, head_size]
+  // k, v input shape: [batch_size, kv_seq_len, num_heads, head_size]
+  auto q_dim = q.dims();
+  auto k_dim = k.dims();
+  auto v_dim = v.dims();
+
+  // check shape
+  PADDLE_ENFORCE(q_dim.size() == 4 && k_dim.size() == 4 && v_dim.size() == 4,
+                 phi::errors::InvalidArgument(
+                     "The dimensions of q, k, v must be 4"
+                     "(batch_size, seq_len, num_heads, head_size),"
+                     "but received dimensions of"
+                     "Input is [%d], [%d], [%d]",
+                     q_dim.size(),
+                     k_dim.size(),
+                     v_dim.size()));
+
+  PADDLE_ENFORCE(q_dim[0] == k_dim[0] && k_dim[0] == v_dim[0],
+                 phi::errors::InvalidArgument(
+                     "The first dimension of q, k, v must be equal"
+                     "but received dimensions of"
+                     "Input is [%d], [%d], [%d]",
+                     q_dim[0],
+                     k_dim[0],
+                     v_dim[0]));
+
+  // [batch_size, num_heads, q_seqlen, 1]
+  std::vector<int64_t> softmax_out_shape({q_dim[0], q_dim[2], q_dim[1], 1});
+
+  out->set_dims(q_dim);
+  softmax_out->set_dims(
+      DDim(softmax_out_shape.data(), softmax_out_shape.size()));
+
+  // rng_state: {seed, offset}
+  std::vector<int64_t> rng_state_shape({2});
+  rng_state->set_dims(DDim(rng_state_shape.data(), rng_state_shape.size()));
+}
+
+void FusedDotProductAttentionGradInferMeta(const MetaTensor& q,
+                                           const MetaTensor& k,
+                                           const MetaTensor& v,
+                                           MetaTensor* q_grad,
+                                           MetaTensor* k_grad,
+                                           MetaTensor* v_grad) {
+  auto q_dim = q.dims();
+  auto k_dim = k.dims();
+  auto v_dim = v.dims();
+  q_grad->set_dims(q_dim);
+  k_grad->set_dims(k_dim);
+  v_grad->set_dims(v_dim);
+}
+
 void FusedFeedForwardInferMeta(const MetaTensor& x,
                                const MetaTensor& dropout1_seed,
                                const MetaTensor& dropout2_seed,
@@ -3405,102 +3559,6 @@ void SelfDPAttenInferMeta(const MetaTensor& x,
   out->set_dims(out_dims);
   out->share_lod(x);
   out->set_dtype(x.dtype());
-}
-
-void FusedBiasDropoutResidualLnInferMeta(
-    const MetaTensor& x,
-    const MetaTensor& residual,
-    const MetaTensor& bias,
-    const MetaTensor& ln_scale,
-    const MetaTensor& ln_bias,
-    const float dropout_rate,
-    const bool is_test,
-    const bool dropout_fix_seed,
-    const int dropout_seed,
-    const std::string& dropout_implementation,
-    const float ln_epsilon,
-    MetaTensor* y,
-    MetaTensor* bias_dropout_residual_out,
-    MetaTensor* dropout_mask_out,
-    MetaTensor* ln_mean,
-    MetaTensor* ln_variance) {
-  PADDLE_ENFORCE_EQ(dropout_rate >= 0.0f && dropout_rate <= 1.0f,
-                    true,
-                    phi::errors::InvalidArgument(
-                        "'dropout_rate' must be between 0.0 and 1.0."));
-  PADDLE_ENFORCE_EQ(
-      dropout_implementation == "downgrade_in_infer" ||
-          dropout_implementation == "upscale_in_train",
-      true,
-      phi::errors::InvalidArgument(
-          "dropout_implementation can only be downgrade_in_infer or "
-          "upscale_in_train"));
-  PADDLE_ENFORCE_EQ(ln_epsilon >= 0.0f && ln_epsilon <= 0.001f,
-                    true,
-                    phi::errors::InvalidArgument(
-                        "'epsilon' of the LayerNorm should be between "
-                        "0.0 and 0.001, But received [%s].",
-                        ln_epsilon));
-  auto x_dim = x.dims();
-  int left = 1;
-  for (int i = 0; i < x_dim.size() - 1; i++) {
-    left *= x_dim[i];
-  }
-  bias_dropout_residual_out->set_dims(x.dims());
-  if (is_test == false) {
-    dropout_mask_out->set_dims(x.dims());
-  }
-  ln_mean->set_dims({left});
-  ln_variance->set_dims({left});
-  y->set_dims(x.dims());
-}
-
-void FusedBiasDropoutResidualLnGradInferMeta(
-    const MetaTensor& y_grad,
-    const MetaTensor& x,
-    const MetaTensor& residual,
-    const MetaTensor& bias,
-    const MetaTensor& ln_scale,
-    const MetaTensor& ln_bias,
-    const MetaTensor& ln_mean,
-    const MetaTensor& ln_variance,
-    const MetaTensor& bias_dropout_residual_out,
-    const MetaTensor& dropout_mask_out,
-    const float dropout_rate,
-    const bool is_test,
-    const bool dropout_fix_seed,
-    const int dropout_seed,
-    const std::string& dropout_implementation,
-    const float ln_epsilon,
-    MetaTensor* x_grad,
-    MetaTensor* residual_grad,
-    MetaTensor* bias_grad,
-    MetaTensor* ln_scale_grad,
-    MetaTensor* ln_bias_grad) {
-  PADDLE_ENFORCE_EQ(is_test,
-                    false,
-                    phi::errors::InvalidArgument(
-                        "GradOp is only callable when is_test is false"));
-  if (ln_scale_grad) {
-    ln_scale_grad->set_dims(ln_scale.dims());
-    ln_scale_grad->set_dtype(y_grad.dtype());
-  }
-  if (ln_bias_grad) {
-    ln_bias_grad->set_dims(ln_bias.dims());
-    ln_bias_grad->set_dtype(y_grad.dtype());
-  }
-  if (residual_grad) {
-    residual_grad->set_dims(residual.dims());
-    residual_grad->set_dtype(y_grad.dtype());
-  }
-  if (bias_grad) {
-    bias_grad->set_dims(bias.dims());
-    bias_grad->set_dtype(y_grad.dtype());
-  }
-  if (x_grad) {
-    x_grad->set_dims(x.dims());
-    x_grad->set_dtype(y_grad.dtype());
-  }
 }
 
 void SkipLayerNormInferMeta(const MetaTensor& x,
