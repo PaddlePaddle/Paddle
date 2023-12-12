@@ -223,7 +223,7 @@ if(WITH_XPU_PLUGIN)
 endif()
 
 target_link_libraries(xpulib ${XPU_API_LIB} ${XPU_RT_LIB} ${XPU_BKCL_LIB}
-                        ${XPU_XFT_LIB})
+                      ${XPU_XFT_LIB})
 
 if(WITH_XPTI)
   target_link_libraries(xpulib ${XPU_XPTI_LIB})
