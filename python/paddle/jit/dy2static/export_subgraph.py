@@ -64,7 +64,7 @@ class BaseExporter:
         content = str(pir_program)
         with open(path, 'w') as f:
             f.write(content)
-        _logger.info(f"Succesfully save subgraph into {path}")
+        _logger.info(f"Successfully save subgraph into {path}")
 
     def parse_inout(self):
         """
