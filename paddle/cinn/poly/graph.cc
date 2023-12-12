@@ -85,12 +85,12 @@ std::string DataFlowGraphNode::id() const {
 bool DataFlowGraphNode::IsLinkedTo(const DataFlowGraphNode* node) const {
   bool found = std::find_if(inlinks_.begin(),
                             inlinks_.end(),
-                            [=](const Shared<common::GraphEdge>& x) {
+                            [=](const Shared<cinn::common::GraphEdge>& x) {
                               return x->source() == node;
                             }) != std::end(inlinks_);
   return found || std::find_if(outlinks_.begin(),
                                outlinks_.end(),
-                               [=](const Shared<common::GraphEdge>& x) {
+                               [=](const Shared<cinn::common::GraphEdge>& x) {
                                  return x->sink() == node;
                                }) != std::end(outlinks_);
 }

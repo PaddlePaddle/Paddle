@@ -16,15 +16,10 @@
 
 #include "glog/logging.h"  // For VLOG()
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
-#include "paddle/phi/kernels/arange_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
-#include "paddle/phi/kernels/reshape_kernel.h"
-
-PD_DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 
@@ -55,7 +50,7 @@ void FlashAttnUnpaddedKernel(
 
   cudaStream_t stream = ctx.stream();
 
-  // q,k,v [total_*, num_heads, head_dim]
+  // q, k, v [total_q/k/v, num_heads, head_dim]
   auto dims = q.dims();
   PADDLE_ENFORCE_EQ(
       dims.size(),
@@ -63,13 +58,10 @@ void FlashAttnUnpaddedKernel(
       phi::errors::InvalidArgument("flash_attn_raw receive input with dim "
                                    "[total_seq_len, num_heads, head_dim]"));
 
-  const int64_t total_q = dims[0];
+  const int64_t batch_size = cu_seqlens_q.numel() - 1;
   const int64_t num_heads = dims[1];
   const int64_t head_size = dims[2];
-
-  const int64_t total_k = k.dims()[0];
   const int64_t num_heads_k = k.dims()[1];
-  const int64_t batch_size = cu_seqlens_q.numel() - 1;
 
   // TODO(umiswing): add shape check
 
@@ -116,8 +108,8 @@ void FlashAttnUnpaddedKernel(
       params.head_size,
       params.head_size_rounded,
       params.dropout,
-      params.scale,
-      1.0f / params.scale,
+      params.softmax_scale,
+      1.0f / params.softmax_scale,
       params.causal,
       params.return_softmax,
       params.is_bf16,
@@ -125,7 +117,7 @@ void FlashAttnUnpaddedKernel(
       params.seed,
       params.offset,
       params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
-      params.mask_dims.data());
+      params.attn_mask_tensor ? params.mask_dims.data() : nullptr);
   CheckFlashAttnStatus(succ);
 #else
   RaiseNotSupportedError();
@@ -149,7 +141,7 @@ void FlashAttnKernel(const Context& ctx,
                      DenseTensor* softmax_lse,
                      DenseTensor* seed_offset) {
 #ifdef PADDLE_WITH_FLASHATTN
-  // q,k,v [batch_size, seq_len, num_heads, head_dim]
+  // q, k, v [batch_size, seq_len, num_heads, head_dim]
   const auto& dims = q.dims();
   PADDLE_ENFORCE_EQ(dims.size(),
                     4,
@@ -164,12 +156,10 @@ void FlashAttnKernel(const Context& ctx,
   const int64_t seqlen_k = k.dims()[1];
   const int64_t num_heads_k = k.dims()[2];
 
-  const int64_t total_q = batch_size * seqlen_q;
-  const int64_t total_k = batch_size * seqlen_k;
-
   // TODO(umiswing): Add check shape
 
-  const float scale = 1.0f / std::sqrt(head_size);
+  const float softmax_scale = 1.0f / std::sqrt(head_size);
+  const float softmax_unscale = std::sqrt(head_size);
 
   FlashAttnFwdParamsV2<T> params = FlashAttnFwdParamsV2<T>(ctx,
                                                            batch_size,
@@ -179,7 +169,7 @@ void FlashAttnKernel(const Context& ctx,
                                                            num_heads_k,
                                                            head_size,
                                                            dropout,
-                                                           scale,
+                                                           softmax_scale,
                                                            causal,
                                                            return_softmax,
                                                            q.dtype(),
@@ -191,10 +181,16 @@ void FlashAttnKernel(const Context& ctx,
                                                            softmax_lse,
                                                            seed_offset);
 
-  VLOG(10) << "FlashAttn fwd dims: q[" << q.dims() << "], k[" << k.dims()
-           << "], v[" << v.dims() << "]";
-  VLOG(10) << "FlashAttn fwd seed: " << params.seed
-           << ", offset: " << params.offset;
+  VLOG(10) << "[FlashAttn Forward] q.shape=[" << q.dims() << "], k.shape=["
+           << k.dims() << "], v.shape=[" << v.dims() << "]";
+  VLOG(10) << "[FlashAttn Forward] dropout=" << dropout
+           << ", seed=" << params.seed << ", offset=" << params.offset;
+  VLOG(10) << "[FlashAttn Forward] softmax_scale=" << softmax_scale
+           << ", softmax_unscale=" << softmax_unscale;
+  if (attn_mask.get_ptr()) {
+    VLOG(10) << "[FlashAttn Forward] attn_mask.shape=["
+             << (attn_mask.get_ptr())->dims() << "]";
+  }
 
   ctx.template Alloc<T>(out);
 
@@ -218,8 +214,8 @@ void FlashAttnKernel(const Context& ctx,
       params.head_size,
       params.head_size_rounded,
       params.dropout,
-      params.scale,
-      std::sqrt(head_size),  // for unscale
+      params.softmax_scale,
+      softmax_unscale,
       params.causal,
       params.return_softmax,
       params.is_bf16,

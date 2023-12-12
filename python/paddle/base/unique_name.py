@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+from copy import deepcopy
 
 from .wrapped_decorator import signature_safe_contextmanager
 
@@ -35,6 +36,9 @@ class UniqueNameGenerator:
         self.prefix = prefix
 
     def __call__(self, key):
+        return self.generate(key)
+
+    def generate(self, key):
         """
         Generate unique names with prefix
 
@@ -46,6 +50,19 @@ class UniqueNameGenerator:
         tmp = self.ids[key]
         self.ids[key] += 1
         return self.prefix + "_".join([key, str(tmp)])
+
+    def generate_with_ignorable_key(self, key):
+        from .framework import _dygraph_tracer, in_dygraph_mode
+
+        if in_dygraph_mode():
+            return _dygraph_tracer()._generate_unique_name()
+
+        return self.generate(key)
+
+    def clone(self):
+        ret = UniqueNameGenerator(self.prefix)
+        ret.ids = deepcopy(self.ids)
+        return ret
 
 
 class DygraphParameterNameChecker:

@@ -355,7 +355,8 @@ class concurrent_unordered_map : public managed {
  public:
   concurrent_unordered_map(const concurrent_unordered_map&) = delete;
   concurrent_unordered_map& operator=(const concurrent_unordered_map&) = delete;
-  explicit concurrent_unordered_map(size_type n,
+  explicit concurrent_unordered_map(cudaStream_t stream,
+                                    size_type n,
                                     const mapped_type unused_element,
                                     const Hasher& hf = hasher(),
                                     const Equality& eql = key_equal(),
@@ -389,13 +390,13 @@ class concurrent_unordered_map : public managed {
         int dev_id = 0;
         CUDA_RT_CALL(cudaGetDevice(&dev_id));
         CUDA_RT_CALL(cudaMemPrefetchAsync(
-            m_hashtbl_values, m_hashtbl_size * sizeof(value_type), dev_id, 0));
+            m_hashtbl_values, m_hashtbl_size * sizeof(value_type), dev_id, stream));
       }
     }
     // Initialize kernel, set all entry to unused <K,V>
-    init_hashtbl<<<((m_hashtbl_size - 1) / block_size) + 1, block_size>>>(
+    init_hashtbl<<<((m_hashtbl_size - 1) / block_size) + 1, block_size, 0, stream>>>(
         m_hashtbl_values, m_hashtbl_size, unused_key, m_unused_element);
-    CUDA_RT_CALL(cudaStreamSynchronize(0));
+    CUDA_RT_CALL(cudaStreamSynchronize(stream));
     CUDA_RT_CALL(cudaGetLastError());
     m_enable_collision_stat = FLAGS_gpugraph_enable_hbm_table_collision_stat;
   }

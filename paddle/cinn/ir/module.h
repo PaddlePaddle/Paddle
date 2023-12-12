@@ -36,7 +36,7 @@ class Module : public ir::IrNodeRef {
  public:
   struct Builder {
     Builder(const std::string& name, const Target& target)
-        : module_(common::make_shared<ir::_Module_>()) {
+        : module_(cinn::common::make_shared<ir::_Module_>()) {
       module_->name = name;
       module_->target = target;
     }

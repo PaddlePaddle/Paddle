@@ -26,6 +26,7 @@
 #include "paddle/pir/pass/pass_manager.h"
 
 PHI_DECLARE_bool(pir_apply_inplace_pass);
+PHI_DECLARE_bool(print_ir);
 
 namespace paddle {
 namespace framework {
@@ -304,10 +305,10 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
     framework::Scope *scope) {
   auto &interpretercore_info_cache =
       framework::InterpreterCoreInfoCache::Instance();
-  if (interpretercore_info_cache.Size() > 256u /* max_cached_size*/) {
-    VLOG(2) << "The cached info size has exceeded max_cached_size: 4, clear "
-               "all cache!";
-    interpretercore_info_cache.Finalize();
+  if (interpretercore_info_cache.Size() > 256000u /* max_cached_size*/) {
+    PADDLE_THROW(platform::errors::Fatal(
+        "The cached info size has exceeded max_cached_size: 256000, "
+        "which will cause error. "));
   }
   interpreter::ExecutionConfig execution_config;
   execution_config.create_local_scope = false;
@@ -332,10 +333,10 @@ std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
     framework::Scope *scope) {
   auto &interpretercore_info_cache =
       framework::InterpreterCoreInfoCache::Instance();
-  if (interpretercore_info_cache.Size() > 256u /* max_cached_size*/) {
-    VLOG(2) << "The cached info size has exceeded max_cached_size: 4, clear "
-               "all cache!";
-    interpretercore_info_cache.Finalize();
+  if (interpretercore_info_cache.Size() > 256000u /* max_cached_size*/) {
+    PADDLE_THROW(platform::errors::Fatal(
+        "The cached info size has exceeded max_cached_size: 256000, "
+        "which will cause error. "));
   }
   interpreter::ExecutionConfig execution_config;
   execution_config.create_local_scope = false;
@@ -355,6 +356,24 @@ std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
 
 bool TensorSortHelper(const paddle::Tensor &t1, const paddle::Tensor &t2) {
   return t1.name() < t2.name();
+}
+
+std::unique_ptr<::pir::Program> ApplyIrPass(::pir::Program *program,
+                                            phi::Place place) {
+  auto ir_res = paddle::dialect::PdOpLowerToKernelPass(program, place);
+
+  if (FLAGS_pir_apply_inplace_pass) {
+    ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
+    pm.AddPass(::pir::CreateInplacePass());
+    pm.Run(ir_res.get());
+
+    if (FLAGS_print_ir) {
+      std::cout << "IR After inplace -------------------" << std::endl;
+      std::cout << *ir_res << std::endl;
+    }
+  }
+
+  return ir_res;
 }
 
 std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
@@ -455,16 +474,7 @@ std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
                                                            program.get());
 
   program_translator.Translate();
-
-  auto ir_res = paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
-
-  if (FLAGS_pir_apply_inplace_pass) {
-    ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
-    pm.AddPass(::pir::CreateInplacePass());
-    pm.Run(ir_res.get());
-  }
-
-  return ir_res;
+  return ApplyIrPass(program.get(), place);
 }
 
 std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
@@ -547,6 +557,10 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
       pm.EnableIRPrinting();
     }
     pm.Run(res.get());
+    if (FLAGS_print_ir) {
+      std::cout << "IR After inplace -------------------" << std::endl;
+      std::cout << *res << std::endl;
+    }
   }
 
   return res;

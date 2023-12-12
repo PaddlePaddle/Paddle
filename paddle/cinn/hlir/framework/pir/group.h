@@ -16,6 +16,7 @@
 #include <string>
 #include <vector>
 
+#include "paddle/cinn/adt/graph_symbolic_dim_infer_ctx.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/pir/core/operation.h"
@@ -81,6 +82,7 @@ struct Group {
   std::vector<std::string> output_names;
   std::vector<::pir::Value> output_values;
   std::string fn_name{""};
+  std::map<int, CINNKernelInfo::ArgDimIdx> int_args_map;
 
   struct SharedGroupHasher {
     size_t operator()(const std::shared_ptr<Group>& group) const noexcept {
@@ -143,15 +145,6 @@ struct Group {
           group_inputs.insert(value);
           continue;
         }
-
-        if (std::find(this->input_names.begin(),
-                      this->input_names.end(),
-                      CompatibleInfo::ValueName(value)) !=
-            this->input_names.end()) {
-          // if the input data in group's input_names
-          group_inputs.insert(value);
-          continue;
-        }
       }
     }
 
@@ -186,6 +179,22 @@ struct Group {
 
   void set_map_expr_ctx(const std::shared_ptr<adt::MapExprCtx>& map_expr_ctx) {
     map_expr_ctx_ = map_expr_ctx;
+  }
+
+  void set_graph_symbolic_dim_infer_ctx(
+      std::unique_ptr<adt::config::GraphSymbolicDimInferCtx>&&
+          graph_symbolic_dim_infer_ctx) {
+    CHECK_EQ(this, graph_symbolic_dim_infer_ctx->group());
+    graph_symbolic_dim_infer_ctx_ = std::move(graph_symbolic_dim_infer_ctx);
+  }
+
+  const adt::config::GraphSymbolicDimInferCtx* graph_symbolic_dim_infer_ctx()
+      const {
+    return graph_symbolic_dim_infer_ctx_.get();
+  }
+
+  adt::config::GraphSymbolicDimInferCtx* mut_graph_symbolic_dim_infer_ctx() {
+    return graph_symbolic_dim_infer_ctx_.get();
   }
 
  public:
@@ -239,6 +248,8 @@ struct Group {
                      SharedGroupComparator>
       consumer_groups_;
   std::shared_ptr<adt::MapExprCtx> map_expr_ctx_;
+  std::unique_ptr<adt::config::GraphSymbolicDimInferCtx>
+      graph_symbolic_dim_infer_ctx_;
 };
 
 }  // namespace pir

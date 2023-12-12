@@ -16,13 +16,12 @@
 
 #include <unordered_map>
 
+#include "paddle/cinn/adt/dim_expr.h"
 #include "paddle/cinn/adt/equation.h"
 #include "paddle/cinn/adt/equation_value.h"
-#include "paddle/cinn/adt/m_expr.h"
+#include "paddle/cinn/adt/map_expr.h"
 
 namespace cinn::adt {
-
-class EquationFunctionConstantsProvider;
 
 class IndexExprInferContext final {
  public:
@@ -30,11 +29,8 @@ class IndexExprInferContext final {
   IndexExprInferContext(IndexExprInferContext&&) = delete;
 
   explicit IndexExprInferContext(
-      const std::unordered_map<Variable, const Value>& init_variable2value,
-      const std::shared_ptr<const EquationFunctionConstantsProvider>&
-          constants_provider)
-      : variable2value_(init_variable2value),
-        constants_provider_(constants_provider) {}
+      const std::unordered_map<Variable, const Value>& init_variable2value)
+      : variable2value_(init_variable2value) {}
 
   const Value& GetValue(const Variable& variable) const {
     return variable2value_.at(variable);
@@ -48,11 +44,14 @@ class IndexExprInferContext final {
     return variable2value_.count(variable) > 0;
   }
 
-  Constant GetDimSize(const Dim& dim) const;
+  bool DimsEqual(const List<DimExpr>& lhs, const List<DimExpr>& rhs) const;
+
+  bool ProductEqual(const List<DimExpr>& lhs, const DimExpr& rhs) const {
+    ADT_TODO();
+  }
 
  private:
   std::unordered_map<Variable, const Value> variable2value_;
-  std::shared_ptr<const EquationFunctionConstantsProvider> constants_provider_;
 };
 
 }  // namespace cinn::adt
