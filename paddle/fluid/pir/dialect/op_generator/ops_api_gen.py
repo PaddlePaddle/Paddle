@@ -77,6 +77,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'fused_scale_bias_relu_conv_bn',
     'fused_scale_bias_add_relu',
     'fused_dconv_drelu_dbn',
+    'fused_dot_product_attention',
     'fusion_transpose_flatten_concat',
     'skip_layernorm',
     'generate_sequence_xpu',
@@ -99,6 +100,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'self_dp_attention',
     'get_tensor_from_selected_rows',
     'print',
+    'sequence_mask',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
@@ -121,6 +123,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'fused_scale_bias_relu_conv_bn',
     'fused_scale_bias_add_relu',
     'fused_dconv_drelu_dbn',
+    'fused_dot_product_attention',
     'recv_v2',
     'rnn_',
     'seed',

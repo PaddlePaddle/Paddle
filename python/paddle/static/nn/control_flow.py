@@ -1223,6 +1223,8 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
     true_output = None
     false_output = None
     if in_pir_mode():
+        check_variable_and_dtype(pred, "pred", ['bool'], "base.layers.cond")
+        check_type(name, "name", (str, type(None)), "base.layers.cond")
         if_op = build_if_op(pred)
         if true_fn is not None:
             if not callable(true_fn):
