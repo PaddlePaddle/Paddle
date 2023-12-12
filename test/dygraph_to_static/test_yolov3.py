@@ -19,14 +19,18 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_default_mode_only,
+    test_default_and_pir,
 )
 from yolov3 import YOLOv3, cfg
 
 import paddle
 
+if paddle.is_compiled_with_cuda():
+    paddle.base.set_flags({'FLAGS_cudnn_deterministic': True})
+
 random.seed(0)
 np.random.seed(0)
+paddle.seed(0)
 
 
 class SmoothedValue:
@@ -166,7 +170,7 @@ def train(to_static):
 
 
 class TestYolov3(Dy2StTestBase):
-    @test_default_mode_only
+    @test_default_and_pir
     def test_dygraph_static_same_loss(self):
         dygraph_loss = train(to_static=False)
         static_loss = train(to_static=True)
