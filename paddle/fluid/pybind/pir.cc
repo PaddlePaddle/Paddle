@@ -316,13 +316,14 @@ void BindBlock(py::module *m) {
       .def(
           "__enter__",
           [](Block &self) -> Block & {
-            ApiBuilder::Instance().PushInsertionPoint({&self, self.end()});
+            ApiBuilder::Instance().PushInsertionPoint();
+            ApiBuilder::Instance().SetInsertionPointToBlockEnd(&self);
             return self;
           },
           return_value_policy::reference)
       .def("__exit__",
            [](Block &self, py::object, py::object, py::object) {
-             ApiBuilder::Instance().PopInsertionPoint();
+             ApiBuilder::Instance().LoadInsertionPoint();
            })
       .def("__len__", [](Block &self) { return self.size(); })
       .def("args", &Block::args, return_value_policy::reference)
@@ -849,6 +850,14 @@ void BindAttribute(py::module *m) {
   });
 }
 
+struct PyInsertionPoint {
+  pir::InsertionPoint value;
+};
+void BindInsertionPoint(pybind11::module *m) {
+  py::class_<PyInsertionPoint> ir_insertion_point(*m, "InsertionPoint", R"DOC(
+    InsertionPoint class represents the insertion point in the Builder.)DOC");
+}
+
 Operation *BuildOpFrom(
     Operation *to_copy_op,
     std::unordered_map<pir::Value, pir::Value> &value_map) {  // NOLINT
@@ -1345,17 +1354,17 @@ void BindUtils(pybind11::module *m) {
   m->def("append_set_parameters", AppendSetParameters);
   m->def("fake_op_result", FakeOpResult);
   m->def("is_fake_op_result", IsFakeOpResult);
-  m->def("set_global_program",
-         [](Program *program) { ApiBuilder::Instance().SetProgram(program); });
-  m->def(
-      "cur_insertion_point",
-      []() { return ApiBuilder::Instance().insertion_point(); },
-      return_value_policy::reference);
-  m->def("set_insertion_point", [](const pir::InsertionPoint &insertion_point) {
-    ApiBuilder::Instance().set_insertion_point(insertion_point);
+  m->def("get_current_insertion_point", []() -> PyInsertionPoint {
+    return {ApiBuilder::Instance().GetCurrentInsertionPoint()};
+  });
+  m->def("set_insertion_point", [](const PyInsertionPoint &insertion_point) {
+    ApiBuilder::Instance().SetInsertionPoint(insertion_point.value);
   });
   m->def("set_insertion_point",
-         [](Operation *op) { ApiBuilder::Instance().set_insertion_point(op); });
+         [](Operation *op) { ApiBuilder::Instance().SetInsertionPoint(op); });
+  m->def("set_insertion_point_to_block_end", [](Block *block) {
+    ApiBuilder::Instance().SetInsertionPointToBlockEnd(block);
+  });
   m->def("reset_insertion_point_to_start",
          []() { ApiBuilder::Instance().ResetInsertionPointToStart(); });
   m->def("reset_insertion_point_to_end",
@@ -1363,7 +1372,6 @@ void BindUtils(pybind11::module *m) {
   m->def("register_paddle_dialect", []() {
     pir::IrContext::Instance()
         ->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-    pir::IrContext::Instance()->GetOrRegisterDialect<pir::ControlFlowDialect>();
   });
   m->def("create_selected_rows_type_by_dense_tensor",
          CreateSelectedRowsTypeByDenseTensor);
@@ -1620,6 +1628,7 @@ void BindPir(pybind11::module *module) {
   BindOpResult(&ir_module);
   BindType(&ir_module);
   BindAttribute(&ir_module);
+  BindInsertionPoint(&ir_module);
   BindUtils(&ir_module);
   BindIrPass(&ir_module);
   BindPassManager(&ir_module);
