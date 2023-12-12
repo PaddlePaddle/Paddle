@@ -253,7 +253,9 @@ class TestCondInputOutput(unittest.TestCase):
         def false_func():
             return paddle.tensor.fill_constant(
                 shape=[3, 4], dtype='int32', value=3
-            ), paddle.tensor.fill_constant(shape=[4, 5], dtype='bool', value=2)
+            ), paddle.tensor.fill_constant(
+                shape=[4, 5], dtype='bool', value=False
+            )
 
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()

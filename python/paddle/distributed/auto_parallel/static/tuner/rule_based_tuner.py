@@ -28,7 +28,7 @@ import numpy as np
 import paddle
 from paddle.base import program_guard
 from paddle.base.backward import append_backward
-from paddle.base.framework import Parameter, unique_name
+from paddle.base.framework import Parameter
 from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
 from paddle.distributed.auto_parallel.static.cluster_v2 import DeviceMesh
 from paddle.distributed.auto_parallel.static.completion import Completer
@@ -1162,7 +1162,7 @@ class RuleBasedTuner:
             with program_guard(
                 self.full_main_program, self.full_startup_program
             ):
-                with unique_name.guard("opt_"):
+                with self.full_main_program.switch_name_generator_guard("opt_"):
                     optimizer_ops = optimizer.apply_gradients(params_grads)
 
             # op original id to grad op id
