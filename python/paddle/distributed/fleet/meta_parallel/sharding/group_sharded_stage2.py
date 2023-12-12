@@ -399,7 +399,7 @@ class GroupShardedStage2(nn.Layer):
                         raise ValueError(
                             "fused_linear_param_grad_add cannot be used with fp16-O2 and gradient accumulation step is more than 1 in stage2."
                         )
-                    assert grad._is_initialized()
+                    assert grad._is_initialized(), "grad must be initialized"
                     grad.scale_(self._world_size_scaling)
                 else:
                     self.scale_in_opt = True
