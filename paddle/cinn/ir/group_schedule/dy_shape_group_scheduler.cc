@@ -31,7 +31,7 @@ void DynamicShapeGroupScheduler::Schedule() {
   auto reorder1 = ir_sch_->Reorder("var_1", {1, 0});
 
   auto loops1 = ir_sch_->GetLoops("var_1");
-  auto splited_loops1 = ir_sch_->DySplit(loops1[1], {-1, 1, 32});
+  auto splited_loops1 = ir_sch_->Split(loops1[1], {-1, 1, 32});
   ir_sch_->Bind(splited_loops1[1], "blockIdx.x");
   ir_sch_->Bind(splited_loops1[2], "threadIdx.x");
 

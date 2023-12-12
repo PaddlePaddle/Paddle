@@ -16,6 +16,22 @@
 #include "paddle/cinn/ir/schedule/factorize_reduction.h"
 #include "paddle/cinn/ir/schedule/impl/ir_schedule.h"
 
+/** \brief A macro that guards the beginning of each implementation of schedule
+ */
+#define CINN_IR_SCHEDULE_BEGIN() try {
+/**
+ * \brief A macro that pairs with `CINN_IR_SCHEDULE_BEGIN`, handling potential
+ * errors and error message printing.
+ * @param primitive A string representing the kind of schedule primitive.
+ * @param err_msg_level A ScheduleErrorMessageLevel enum, level of error message
+ * printing
+ */
+#define CINN_IR_SCHEDULE_END(err_msg_level)                    \
+  }                                                            \
+  catch (const utils::ErrorHandler& err_hanlder) {             \
+    CINN_THROW(err_hanlder.FormatErrorMessage(err_msg_level)); \
+  }
+
 namespace cinn {
 namespace ir {
 

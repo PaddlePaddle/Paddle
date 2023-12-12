@@ -15,11 +15,83 @@
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/ir/schedule/impl/ir_schedule.h"
 
+/** \brief A macro that guards the beginning of each implementation of schedule
+ */
+#define CINN_IR_SCHEDULE_BEGIN() try {
+/**
+ * \brief A macro that pairs with `CINN_IR_SCHEDULE_BEGIN`, handling potential
+ * errors and error message printing.
+ * @param primitive A string representing the kind of schedule primitive.
+ * @param err_msg_level A ScheduleErrorMessageLevel enum, level of error message
+ * printing
+ */
+#define CINN_IR_SCHEDULE_END(err_msg_level)                    \
+  }                                                            \
+  catch (const utils::ErrorHandler& err_hanlder) {             \
+    CINN_THROW(err_hanlder.FormatErrorMessage(err_msg_level)); \
+  }
+
 namespace cinn {
 namespace ir {
 
 std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
                                         const std::vector<int>& factors) {
+  if (loop.As<For>()->extent.is_constant()) {
+    CHECK(loop.As<ir::For>())
+        << "Expr param of Split must be For node! Please check.";
+    auto* for_node = loop.As<ir::For>();
+    CHECK(cinn::common::is_zero(for_node->min))
+        << "The For node must start with 0! Please check.";
+    CHECK(for_node->extent.is_constant())
+        << "The For node's extent must be constant! Please check.";
+    int tot_extent = for_node->extent.get_constant();
+
+    VLOG(3) << "Try Split loop from (" << for_node->loop_var->name << ", 0, "
+            << tot_extent << ") to (" << cinn::utils::Join(factors, ", ")
+            << ") at loop:\n"
+            << loop;
+
+    std::vector<int> processed_factors;
+    CINN_IR_SCHEDULE_BEGIN();
+    processed_factors =
+        ValidateFactors(factors, tot_extent, this->module_expr_);
+    CINN_IR_SCHEDULE_END(this->err_msg_level_);
+    int prod_size = std::accumulate(processed_factors.begin(),
+                                    processed_factors.end(),
+                                    1,
+                                    std::multiplies<int>());
+    std::vector<Var> new_loop_vars;
+    Expr substitute_value(0);
+    for (int i = 0; i < processed_factors.size(); ++i) {
+      Var temp_var(cinn::common::UniqName(for_node->loop_var->name));
+      substitute_value =
+          Expr(temp_var) + substitute_value * Expr(processed_factors[i]);
+      new_loop_vars.push_back(temp_var);
+    }
+    substitute_value = cinn::common::AutoSimplify(substitute_value);
+    Expr new_node = ir::ir_utils::IRCopy(for_node->body);
+    ReplaceExpr(&new_node, {for_node->loop_var}, {substitute_value});
+    std::vector<Expr> splited_loops;
+    splited_loops.resize(processed_factors.size());
+    if (tot_extent < prod_size) {
+      new_node = IfThenElse::Make(LT::Make(substitute_value, for_node->extent),
+                                  new_node);
+    }
+    for (int i = processed_factors.size() - 1; i >= 0; i--) {
+      if (!new_node.As<ir::Block>()) new_node = Block::Make({new_node});
+      new_node = For::Make(new_loop_vars[i],
+                           Expr(0),
+                           Expr(processed_factors[i]),
+                           for_node->for_type(),
+                           for_node->device_api,
+                           new_node);
+      splited_loops[i] = new_node;
+    }
+
+    this->Replace(loop, new_node);
+    VLOG(3) << "After Split, ir is:\n" << splited_loops.at(0);
+    return splited_loops;
+  }
   CHECK(loop.As<ir::For>())
       << "Expr param of Split must be For node! Please check.";
   auto* for_node = loop.As<ir::For>();
@@ -239,22 +311,6 @@ void DyScheduleImpl::FlattenLoops(const std::vector<Expr>& loops,
 
 namespace cinn {
 namespace ir {
-
-/** \brief A macro that guards the beginning of each implementation of schedule
- */
-#define CINN_IR_SCHEDULE_BEGIN() try {
-/**
- * \brief A macro that pairs with `CINN_IR_SCHEDULE_BEGIN`, handling potential
- * errors and error message printing.
- * @param primitive A string representing the kind of schedule primitive.
- * @param err_msg_level A ScheduleErrorMessageLevel enum, level of error message
- * printing
- */
-#define CINN_IR_SCHEDULE_END(err_msg_level)                    \
-  }                                                            \
-  catch (const utils::ErrorHandler& err_hanlder) {             \
-    CINN_THROW(err_hanlder.FormatErrorMessage(err_msg_level)); \
-  }
 
 std::vector<Expr> StScheduleImpl::Split(const Expr& loop,
                                         const std::vector<int>& factors) {
