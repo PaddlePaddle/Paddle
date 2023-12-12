@@ -35,7 +35,7 @@ class TestSymbolicExprAnalyzer : public ::testing::Test {
   ir::Var i;
   ir::Var j;
   cas_intervals_t var_intervals;
-  SymbolicExprAnalyzer analyzer = SymbolicExprAnalyzer(&var_intervals);
+  SymbolicExprAnalyzer analyzer{var_intervals};
 };
 
 TEST_F(TestSymbolicExprAnalyzer, bound) {
@@ -77,47 +77,63 @@ TEST_F(TestSymbolicExprAnalyzer, compare) {
   ir::Expr e1 = 4 * i + 2 * j;
   ir::Expr e2 = 2 * i + j;
 
-  EXPECT_TRUE(analyzer.CanProveEQ(e1, e1) &&
-              analyzer.CanProve(ir::EQ::Make(e1, e1)));
-  EXPECT_FALSE(analyzer.CanProveEQ(e1, e2) &&
-               analyzer.CanProve(ir::EQ::Make(e1, e2)));
-  EXPECT_FALSE(analyzer.CanProveNE(e1, e1) &&
-               analyzer.CanProve(ir::NE::Make(e1, e1)));
-  EXPECT_FALSE(analyzer.CanProveNE(e1, e2) &&
-               analyzer.CanProve(ir::NE::Make(e1, e2)));
+  EXPECT_TRUE(analyzer.ProveEQ(e1, e1).value() &&
+              analyzer.Prove(ir::EQ::Make(e1, e1)).value());
+  EXPECT_FALSE(analyzer.ProveEQ(e1, e2).has_value() ||
+               analyzer.Prove(ir::EQ::Make(e1, e2)).has_value());
+  EXPECT_FALSE(analyzer.ProveNE(e1, e1).value() &&
+               analyzer.Prove(ir::NE::Make(e1, e1)).value());
+  EXPECT_FALSE(analyzer.ProveNE(e1, e2).has_value() ||
+               analyzer.Prove(ir::NE::Make(e1, e2)).has_value());
 
-  EXPECT_TRUE(analyzer.CanProveGE(e1, e2) && analyzer.CanProve(e1 >= e2));
-  EXPECT_FALSE(analyzer.CanProveGE(e2, e1) && analyzer.CanProve(e2 >= e1));
-  EXPECT_TRUE(analyzer.CanProveLE(e2, e1) && analyzer.CanProve(e2 <= e1));
-  EXPECT_FALSE(analyzer.CanProveLE(e1, e2) && analyzer.CanProve(e1 <= e2));
+  EXPECT_TRUE(analyzer.ProveGE(e1, e2).value() &&
+              analyzer.Prove(e1 >= e2).value());
+  EXPECT_FALSE(analyzer.ProveGE(e2, e1).has_value() ||
+               analyzer.Prove(e2 >= e1).has_value());
+  EXPECT_TRUE(analyzer.ProveLE(e2, e1).value() &&
+              analyzer.Prove(e2 <= e1).value());
+  EXPECT_FALSE(analyzer.ProveLE(e1, e2).has_value() ||
+               analyzer.Prove(e1 <= e2).has_value());
 
-  EXPECT_FALSE(analyzer.CanProveGT(e1, e2) && analyzer.CanProve(e1 > e2));
-  EXPECT_FALSE(analyzer.CanProveGT(e2, e1) && analyzer.CanProve(e2 > e1));
-  EXPECT_FALSE(analyzer.CanProveLT(e2, e1) && analyzer.CanProve(e2 < e1));
-  EXPECT_FALSE(analyzer.CanProveLT(e1, e2) && analyzer.CanProve(e1 < e2));
+  EXPECT_FALSE(analyzer.ProveGT(e1, e2).has_value() ||
+               analyzer.Prove(e1 > e2).has_value());
+  EXPECT_FALSE(analyzer.ProveGT(e2, e1).value() &&
+               analyzer.Prove(e2 > e1).value());
+  EXPECT_FALSE(analyzer.ProveLT(e2, e1).has_value() ||
+               analyzer.Prove(e2 < e1).has_value());
+  EXPECT_FALSE(analyzer.ProveLT(e1, e2).value() &&
+               analyzer.Prove(e1 < e2).value());
 
   // case 2
   ir::Expr e3 = i + j + 1;
   ir::Expr e4 = i + j;
 
-  EXPECT_TRUE(analyzer.CanProveEQ(e3, e3) &&
-              analyzer.CanProve(ir::EQ::Make(e3, e3)));
-  EXPECT_FALSE(analyzer.CanProveEQ(e3, e4) &&
-               analyzer.CanProve(ir::EQ::Make(e3, e4)));
-  EXPECT_TRUE(analyzer.CanProveNE(e3, e4) &&
-              analyzer.CanProve(ir::NE::Make(e3, e4)));
-  EXPECT_FALSE(analyzer.CanProveNE(e4, e4) &&
-               analyzer.CanProve(ir::NE::Make(e4, e4)));
+  EXPECT_TRUE(analyzer.ProveEQ(e3, e3).value() &&
+              analyzer.Prove(ir::EQ::Make(e3, e3)).value());
+  EXPECT_FALSE(analyzer.ProveEQ(e3, e4).value() &&
+               analyzer.Prove(ir::EQ::Make(e3, e4)).value());
+  EXPECT_TRUE(analyzer.ProveNE(e3, e4).value() &&
+              analyzer.Prove(ir::NE::Make(e3, e4)).value());
+  EXPECT_FALSE(analyzer.ProveNE(e4, e4).value() &&
+               analyzer.Prove(ir::NE::Make(e4, e4)).value());
 
-  EXPECT_TRUE(analyzer.CanProveGE(e3, e4) && analyzer.CanProve(e3 >= e4));
-  EXPECT_FALSE(analyzer.CanProveGE(e4, e3) && analyzer.CanProve(e4 >= e3));
-  EXPECT_TRUE(analyzer.CanProveLE(e4, e3) && analyzer.CanProve(e4 <= e3));
-  EXPECT_FALSE(analyzer.CanProveLE(e3, e4) && analyzer.CanProve(e3 <= e4));
+  EXPECT_TRUE(analyzer.ProveGE(e3, e4).value() &&
+              analyzer.Prove(e3 >= e4).value());
+  EXPECT_FALSE(analyzer.ProveGE(e4, e3).value() &&
+               analyzer.Prove(e4 >= e3).value());
+  EXPECT_TRUE(analyzer.ProveLE(e4, e3).value() &&
+              analyzer.Prove(e4 <= e3).value());
+  EXPECT_FALSE(analyzer.ProveLE(e3, e4).value() &&
+               analyzer.Prove(e3 <= e4).value());
 
-  EXPECT_TRUE(analyzer.CanProveGT(e3, e4) && analyzer.CanProve(e3 > e4));
-  EXPECT_FALSE(analyzer.CanProveGT(e4, e3) && analyzer.CanProve(e4 > e3));
-  EXPECT_TRUE(analyzer.CanProveLT(e4, e3) && analyzer.CanProve(e4 < e3));
-  EXPECT_FALSE(analyzer.CanProveLT(e3, e4) && analyzer.CanProve(e3 < e4));
+  EXPECT_TRUE(analyzer.ProveGT(e3, e4).value() &&
+              analyzer.Prove(e3 > e4).value());
+  EXPECT_FALSE(analyzer.ProveGT(e4, e3).value() &&
+               analyzer.Prove(e4 > e3).value());
+  EXPECT_TRUE(analyzer.ProveLT(e4, e3).value() &&
+              analyzer.Prove(e4 < e3).value());
+  EXPECT_FALSE(analyzer.ProveLT(e3, e4).value() &&
+               analyzer.Prove(e3 < e4).value());
 }
 
 TEST(SingleIntervalIntSet, constant) {
@@ -130,61 +146,64 @@ TEST(SingleIntervalIntSet, constant) {
   SingleIntervalIntSet interval_2_6_set(ir::Expr(2), ir::Expr(6));
   SingleIntervalIntSet interval_8_9_set(ir::Expr(8), ir::Expr(9));
 
-  EXPECT_TRUE(empty_set.IsEmpty());
-  EXPECT_FALSE(empty_set.IsAll());
-  EXPECT_FALSE(all_set.IsEmpty());
-  EXPECT_TRUE(all_set.IsAll());
-  EXPECT_TRUE(single_point.IsPoint());
-  EXPECT_FALSE(interval_0_2_set.IsPoint());
-  EXPECT_TRUE(interval_0_2_set.IsSubSet(interval_0_4_set));
-  EXPECT_FALSE(interval_0_4_set.IsSubSet(interval_0_2_set));
-  EXPECT_FALSE(interval_0_2_set.IsSuperSet(interval_0_4_set));
-  EXPECT_TRUE(interval_0_4_set.IsSuperSet(interval_0_2_set));
+  EXPECT_TRUE(empty_set.ProveEmpty().value());
+  EXPECT_FALSE(empty_set.ProveAll().value());
+  EXPECT_FALSE(all_set.ProveEmpty().value());
+  EXPECT_TRUE(all_set.ProveAll().value());
+  EXPECT_TRUE(single_point.ProvePoint().value());
+  EXPECT_FALSE(interval_0_2_set.ProvePoint().value());
+  EXPECT_TRUE(interval_0_2_set.ProveSubSet(interval_0_4_set).value());
+  EXPECT_FALSE(interval_0_4_set.ProveSubSet(interval_0_2_set).value());
+  EXPECT_FALSE(interval_0_2_set.ProveSuperSet(interval_0_4_set).value());
+  EXPECT_TRUE(interval_0_4_set.ProveSuperSet(interval_0_2_set).value());
 
-  EXPECT_TRUE(interval_0_2_set == interval_0_2_set);
-  EXPECT_FALSE(interval_0_2_set == interval_0_4_set);
+  EXPECT_TRUE(ProveEQ(interval_0_2_set, interval_0_2_set).value());
+  EXPECT_FALSE(ProveEQ(interval_0_2_set, interval_0_4_set).value());
 
   SingleIntervalIntSet union_0_6_set =
-      Union(interval_0_2_set, interval_2_6_set);
+      ProvedUnion(interval_0_2_set, interval_2_6_set).value();
   EXPECT_EQ(union_0_6_set.Min(), ir::Expr(0));
   EXPECT_EQ(union_0_6_set.Max(), ir::Expr(6));
-  union_0_6_set = Union(interval_2_6_set, interval_0_2_set);
+  union_0_6_set = ProvedUnion(interval_2_6_set, interval_0_2_set).value();
   EXPECT_EQ(union_0_6_set.Min(), ir::Expr(0));
   EXPECT_EQ(union_0_6_set.Max(), ir::Expr(6));
   SingleIntervalIntSet union_0_4_set =
-      Union(interval_0_2_set, interval_0_4_set);
+      ProvedUnion(interval_0_2_set, interval_0_4_set).value();
   EXPECT_EQ(union_0_4_set.Min(), ir::Expr(0));
   EXPECT_EQ(union_0_4_set.Max(), ir::Expr(4));
-  union_0_4_set = Union(interval_0_4_set, interval_0_2_set);
+  union_0_4_set = ProvedUnion(interval_0_4_set, interval_0_2_set).value();
   EXPECT_EQ(union_0_4_set.Min(), ir::Expr(0));
   EXPECT_EQ(union_0_4_set.Max(), ir::Expr(4));
   SingleIntervalIntSet union_0_9_set =
-      Union(interval_0_4_set, interval_8_9_set);
+      ProvedUnion(interval_0_4_set, interval_8_9_set).value();
   EXPECT_EQ(union_0_9_set.Min(), ir::Expr(0));
   EXPECT_EQ(union_0_9_set.Max(), ir::Expr(9));
-  union_0_9_set = Union(interval_8_9_set, interval_0_4_set);
+  union_0_9_set = ProvedUnion(interval_8_9_set, interval_0_4_set).value();
   EXPECT_EQ(union_0_9_set.Min(), ir::Expr(0));
   EXPECT_EQ(union_0_9_set.Max(), ir::Expr(9));
 
   SingleIntervalIntSet intersect_0_2_set =
-      Intersect(interval_0_2_set, interval_0_4_set);
+      ProvedIntersect(interval_0_2_set, interval_0_4_set).value();
   EXPECT_EQ(intersect_0_2_set.Min(), ir::Expr(0));
   EXPECT_EQ(intersect_0_2_set.Max(), ir::Expr(2));
-  intersect_0_2_set = Intersect(interval_0_4_set, interval_0_2_set);
+  intersect_0_2_set =
+      ProvedIntersect(interval_0_4_set, interval_0_2_set).value();
   EXPECT_EQ(intersect_0_2_set.Min(), ir::Expr(0));
   EXPECT_EQ(intersect_0_2_set.Max(), ir::Expr(2));
   SingleIntervalIntSet intersect_2_2_set =
-      Intersect(interval_0_2_set, interval_2_6_set);
+      ProvedIntersect(interval_0_2_set, interval_2_6_set).value();
   EXPECT_EQ(intersect_2_2_set.Min(), ir::Expr(2));
   EXPECT_EQ(intersect_2_2_set.Max(), ir::Expr(2));
-  intersect_2_2_set = Intersect(interval_2_6_set, interval_0_2_set);
+  intersect_2_2_set =
+      ProvedIntersect(interval_2_6_set, interval_0_2_set).value();
   EXPECT_EQ(intersect_2_2_set.Min(), ir::Expr(2));
   EXPECT_EQ(intersect_2_2_set.Max(), ir::Expr(2));
   SingleIntervalIntSet intersect_empty_set =
-      Intersect(interval_0_4_set, interval_8_9_set);
-  EXPECT_TRUE(intersect_empty_set.IsEmpty());
-  intersect_empty_set = Intersect(interval_8_9_set, interval_0_4_set);
-  EXPECT_TRUE(intersect_empty_set.IsEmpty());
+      ProvedIntersect(interval_0_4_set, interval_8_9_set).value();
+  EXPECT_TRUE(intersect_empty_set.ProveEmpty().value());
+  intersect_empty_set =
+      ProvedIntersect(interval_8_9_set, interval_0_4_set).value();
+  EXPECT_TRUE(intersect_empty_set.ProveEmpty().value());
 }
 
 TEST(SingleIntervalIntSet, case_0) {
@@ -197,26 +216,29 @@ TEST(SingleIntervalIntSet, case_0) {
   SingleIntervalIntSet set_0(e1, e2);
   SingleIntervalIntSet set_1(e1, e3);
 
-  EXPECT_TRUE(empty_set.IsEmpty());
-  EXPECT_FALSE(empty_set.IsAll());
-  EXPECT_TRUE(single_point.IsPoint());
-  EXPECT_FALSE(set_0.IsPoint());
-  EXPECT_TRUE(set_0 == set_0);
-  EXPECT_FALSE(set_0 == set_1);
+  EXPECT_TRUE(empty_set.ProveEmpty().value());
+  EXPECT_FALSE(empty_set.ProveAll().value());
+  EXPECT_TRUE(single_point.ProvePoint().value());
+  EXPECT_FALSE(set_0.ProvePoint().value());
+  EXPECT_TRUE(ProveEQ(set_0, set_0).value());
+  EXPECT_FALSE(ProveEQ(set_0, set_1).value());
 
-  EXPECT_TRUE(set_0.IsSubSet(set_1));
-  EXPECT_FALSE(set_1.IsSubSet(set_0));
-  EXPECT_FALSE(set_0.IsSuperSet(set_1));
-  EXPECT_TRUE(set_1.IsSuperSet(set_0));
+  EXPECT_TRUE(set_0.ProveSubSet(set_1).value());
+  EXPECT_FALSE(set_1.ProveSubSet(set_0).value());
+  EXPECT_FALSE(set_0.ProveSuperSet(set_1).value());
+  EXPECT_TRUE(set_1.ProveSuperSet(set_0).value());
 
-  EXPECT_EQ(Union(set_0, set_1), set_1);
-  EXPECT_EQ(Intersect(set_0, set_1), set_0);
-  EXPECT_EQ(Union(set_1, single_point), set_1);
-  EXPECT_EQ(Intersect(set_1, single_point), single_point);
-  EXPECT_EQ(Union(set_0, empty_set), set_0);
-  EXPECT_EQ(Intersect(set_0, empty_set), empty_set);
-  EXPECT_EQ(Union(set_0, single_point), set_1);
-  EXPECT_TRUE(Intersect(set_0, single_point).IsEmpty());
+  EXPECT_TRUE(ProveEQ(ProvedUnion(set_0, set_1).value(), set_1).value());
+  EXPECT_TRUE(ProveEQ(ProvedIntersect(set_0, set_1).value(), set_0).value());
+  EXPECT_TRUE(ProveEQ(ProvedUnion(set_1, single_point).value(), set_1).value());
+  EXPECT_TRUE(
+      ProveEQ(ProvedIntersect(set_1, single_point).value(), single_point)
+          .value());
+  EXPECT_TRUE(ProveEQ(ProvedUnion(set_0, empty_set).value(), set_0).value());
+  EXPECT_TRUE(
+      ProveEQ(ProvedIntersect(set_0, empty_set).value(), empty_set).value());
+  EXPECT_TRUE(ProveEQ(ProvedUnion(set_0, single_point).value(), set_1).value());
+  EXPECT_TRUE(ProvedIntersect(set_0, single_point).value().ProveEmpty());
 }
 
 TEST(SingleIntervalIntSet, case_1) {
@@ -230,26 +252,30 @@ TEST(SingleIntervalIntSet, case_1) {
   SingleIntervalIntSet set_0(e1, e2);
   SingleIntervalIntSet set_1(e1, e3);
 
-  EXPECT_TRUE(empty_set.IsEmpty());
-  EXPECT_FALSE(empty_set.IsAll());
-  EXPECT_TRUE(single_point.IsPoint());
-  EXPECT_FALSE(set_0.IsPoint());
-  EXPECT_TRUE(set_0 == set_0);
-  EXPECT_FALSE(set_0 == set_1);
+  EXPECT_TRUE(empty_set.ProveEmpty().value());
+  EXPECT_FALSE(empty_set.ProveAll().value());
+  EXPECT_TRUE(single_point.ProvePoint().value());
+  EXPECT_FALSE(set_0.ProvePoint().has_value());
+  EXPECT_TRUE(ProveEQ(set_0, set_0).value());
+  EXPECT_FALSE(ProveEQ(set_0, set_1).value());
 
-  EXPECT_TRUE(set_0.IsSubSet(set_1));
-  EXPECT_FALSE(set_1.IsSubSet(set_0));
-  EXPECT_FALSE(set_0.IsSuperSet(set_1));
-  EXPECT_TRUE(set_1.IsSuperSet(set_0));
+  EXPECT_TRUE(set_0.ProveSubSet(set_1).value());
+  EXPECT_FALSE(set_1.ProveSubSet(set_0).value());
+  EXPECT_FALSE(set_0.ProveSuperSet(set_1).value());
+  EXPECT_TRUE(set_1.ProveSuperSet(set_0).value());
 
-  EXPECT_EQ(Union(set_0, set_1), set_1);
-  EXPECT_EQ(Intersect(set_0, set_1), set_0);
-  EXPECT_EQ(Union(set_1, single_point), set_1);
-  EXPECT_EQ(Intersect(set_1, single_point), single_point);
-  EXPECT_EQ(Union(set_0, empty_set), set_0);
-  EXPECT_EQ(Intersect(set_0, empty_set), empty_set);
-  EXPECT_EQ(Union(set_0, single_point), set_1);
-  EXPECT_TRUE(Intersect(set_0, single_point).IsEmpty());
+  EXPECT_TRUE(ProveEQ(ProvedUnion(set_0, set_1).value(), set_1).value());
+  EXPECT_TRUE(ProveEQ(ProvedIntersect(set_0, set_1).value(), set_0).value());
+  EXPECT_TRUE(ProveEQ(ProvedUnion(set_1, single_point).value(), set_1).value());
+  EXPECT_TRUE(
+      ProveEQ(ProvedIntersect(set_1, single_point).value(), single_point)
+          .value());
+  EXPECT_TRUE(ProveEQ(ProvedUnion(set_0, empty_set).value(), set_0).value());
+  EXPECT_TRUE(
+      ProveEQ(ProvedIntersect(set_0, empty_set).value(), empty_set).value());
+  EXPECT_TRUE(ProveEQ(ProvedUnion(set_0, single_point).value(), set_1).value());
+  auto a = ProvedIntersect(set_0, single_point).value();
+  EXPECT_TRUE(a.ProveEmpty().value());
 }
 
 }  // namespace common

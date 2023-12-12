@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <optional>
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/ir/ir.h"
 
@@ -22,22 +23,26 @@ namespace common {
 // A naive implementation of Symbolic Expression Analyzer
 class SymbolicExprAnalyzer {
  public:
-  explicit SymbolicExprAnalyzer(cas_intervals_t* var_intervals)
+  explicit SymbolicExprAnalyzer(const cas_intervals_t& var_intervals)
       : var_intervals_(var_intervals) {}
+  SymbolicExprAnalyzer(const SymbolicExprAnalyzer&) = default;
+  SymbolicExprAnalyzer(SymbolicExprAnalyzer&&) = default;
+  SymbolicExprAnalyzer& operator=(const SymbolicExprAnalyzer&) = delete;
+  SymbolicExprAnalyzer& operator=(SymbolicExprAnalyzer&&) = delete;
 
-  bool CanProve(const ir::Expr& condition) const;
-  bool CanProveEQ(const ir::Expr& lhs, const ir::Expr& rhs) const;
-  bool CanProveNE(const ir::Expr& lhs, const ir::Expr& rhs) const;
-  bool CanProveGE(const ir::Expr& lhs, const ir::Expr& rhs) const;
-  bool CanProveLE(const ir::Expr& lhs, const ir::Expr& rhs) const;
-  bool CanProveGT(const ir::Expr& lhs, const ir::Expr& rhs) const;
-  bool CanProveLT(const ir::Expr& lhs, const ir::Expr& rhs) const;
+  std::optional<bool> Prove(const ir::Expr& condition) const;
+  std::optional<bool> ProveEQ(const ir::Expr& lhs, const ir::Expr& rhs) const;
+  std::optional<bool> ProveNE(const ir::Expr& lhs, const ir::Expr& rhs) const;
+  std::optional<bool> ProveGE(const ir::Expr& lhs, const ir::Expr& rhs) const;
+  std::optional<bool> ProveLE(const ir::Expr& lhs, const ir::Expr& rhs) const;
+  std::optional<bool> ProveGT(const ir::Expr& lhs, const ir::Expr& rhs) const;
+  std::optional<bool> ProveLT(const ir::Expr& lhs, const ir::Expr& rhs) const;
 
   ir::Expr LowerBound(const ir::Expr& expr) const;
   ir::Expr UpperBound(const ir::Expr& expr) const;
 
  private:
-  cas_intervals_t* var_intervals_;
+  const cas_intervals_t& var_intervals_;
 };
 
 // A helper struct to represent the positive infinity and negative infinity
@@ -52,19 +57,23 @@ class SingleIntervalIntSet {
   explicit SingleIntervalIntSet(const ir::Expr& min,
                                 const ir::Expr& max,
                                 cas_intervals_t var_intervals = {});
+  SingleIntervalIntSet(const SingleIntervalIntSet& set) = default;
+  SingleIntervalIntSet(SingleIntervalIntSet&& set) = default;
+  SingleIntervalIntSet& operator=(const SingleIntervalIntSet& set) = default;
+  SingleIntervalIntSet& operator=(SingleIntervalIntSet&& set) = default;
 
-  bool IsEmpty() const;
-  bool IsAll() const;
-  bool IsPoint() const;
-  bool IsSubSet(const SingleIntervalIntSet& other) const;
-  bool IsSuperSet(const SingleIntervalIntSet& other) const;
+  std::optional<bool> ProveEmpty() const;
+  std::optional<bool> ProveAll() const;
+  std::optional<bool> ProvePoint() const;
+  std::optional<bool> ProveSubSet(const SingleIntervalIntSet& other) const;
+  std::optional<bool> ProveSuperSet(const SingleIntervalIntSet& other) const;
 
-  friend bool operator==(const SingleIntervalIntSet& lhs,
-                         const SingleIntervalIntSet& rhs);
-  friend SingleIntervalIntSet Union(const SingleIntervalIntSet& a,
-                                    const SingleIntervalIntSet& b);
-  friend SingleIntervalIntSet Intersect(const SingleIntervalIntSet& a,
-                                        const SingleIntervalIntSet& b);
+  friend std::optional<bool> ProveEQ(const SingleIntervalIntSet& lhs,
+                                     const SingleIntervalIntSet& rhs);
+  friend std::optional<SingleIntervalIntSet> ProvedUnion(
+      const SingleIntervalIntSet& a, const SingleIntervalIntSet& b);
+  friend std::optional<SingleIntervalIntSet> ProvedIntersect(
+      const SingleIntervalIntSet& a, const SingleIntervalIntSet& b);
   friend cas_intervals_t MergeVarIntervals(const SingleIntervalIntSet& a,
                                            const SingleIntervalIntSet& b);
 
@@ -74,8 +83,8 @@ class SingleIntervalIntSet {
  private:
   ir::Expr min_ = SymbolicExprLimit::positive_inf;
   ir::Expr max_ = SymbolicExprLimit::negative_inf;
-  cas_intervals_t var_intervals_ = {};
-  SymbolicExprAnalyzer analyzer_ = SymbolicExprAnalyzer(&var_intervals_);
+  cas_intervals_t var_intervals_;
+  // SymbolicExprAnalyzer analyzer_;
 };
 
 }  // namespace common

@@ -26,86 +26,152 @@ ir::Expr SymbolicExprLimit::positive_inf =
 ir::Expr SymbolicExprLimit::negative_inf =
     ir::Expr(ir::Var("negative_infinity"));
 
-bool SymbolicExprAnalyzer::CanProve(const ir::Expr& condition) const {
+std::optional<bool> SymbolicExprAnalyzer::Prove(
+    const ir::Expr& condition) const {
   if (condition.As<ir::EQ>()) {
-    return CanProveEQ(condition.As<ir::EQ>()->a(), condition.As<ir::EQ>()->b());
+    return ProveEQ(condition.As<ir::EQ>()->a(), condition.As<ir::EQ>()->b());
   }
   if (condition.As<ir::NE>()) {
-    return CanProveNE(condition.As<ir::NE>()->a(), condition.As<ir::NE>()->b());
+    return ProveNE(condition.As<ir::NE>()->a(), condition.As<ir::NE>()->b());
   }
   if (condition.As<ir::GE>()) {
-    return CanProveGE(condition.As<ir::GE>()->a(), condition.As<ir::GE>()->b());
+    return ProveGE(condition.As<ir::GE>()->a(), condition.As<ir::GE>()->b());
   }
   if (condition.As<ir::LE>()) {
-    return CanProveLE(condition.As<ir::LE>()->a(), condition.As<ir::LE>()->b());
+    return ProveLE(condition.As<ir::LE>()->a(), condition.As<ir::LE>()->b());
   }
   if (condition.As<ir::GT>()) {
-    return CanProveGT(condition.As<ir::GT>()->a(), condition.As<ir::GT>()->b());
+    return ProveGT(condition.As<ir::GT>()->a(), condition.As<ir::GT>()->b());
   }
   if (condition.As<ir::LT>()) {
-    return CanProveLT(condition.As<ir::LT>()->a(), condition.As<ir::LT>()->b());
+    return ProveLT(condition.As<ir::LT>()->a(), condition.As<ir::LT>()->b());
   }
   CINN_NOT_IMPLEMENTED;
   return false;
 }
 
-bool SymbolicExprAnalyzer::CanProveEQ(const ir::Expr& lhs,
-                                      const ir::Expr& rhs) const {
+std::optional<bool> SymbolicExprAnalyzer::ProveEQ(const ir::Expr& lhs,
+                                                  const ir::Expr& rhs) const {
   if (lhs == rhs) {
     return true;
   }
-  ir::Expr diff = AutoSimplify(ir::Sub::Make(lhs, rhs), *var_intervals_);
-  return (diff.is_constant() && diff.get_constant() == 0);
+  ir::Expr diff = AutoSimplify(ir::Sub::Make(lhs, rhs), var_intervals_);
+  if (diff.is_constant() && diff.get_constant() == 0) {
+    return true;
+  }
+  std::optional<bool> prove_gt = ProveGT(lhs, rhs);
+  if (prove_gt.has_value() && prove_gt.value()) {
+    return false;
+  }
+  std::optional<bool> prove_lt = ProveLT(lhs, rhs);
+  if (prove_lt.has_value() && prove_lt.value()) {
+    return false;
+  }
+  return std::nullopt;
 }
 
-bool SymbolicExprAnalyzer::CanProveNE(const ir::Expr& lhs,
-                                      const ir::Expr& rhs) const {
-  return CanProveGT(lhs, rhs) || CanProveLT(lhs, rhs);
+std::optional<bool> SymbolicExprAnalyzer::ProveNE(const ir::Expr& lhs,
+                                                  const ir::Expr& rhs) const {
+  if (lhs == rhs) {
+    return false;
+  }
+  ir::Expr diff = AutoSimplify(ir::Sub::Make(lhs, rhs), var_intervals_);
+  if (diff.is_constant() && diff.get_constant() == 0) {
+    return false;
+  }
+  std::optional<bool> prove_gt = ProveGT(lhs, rhs);
+  if (prove_gt.has_value() && prove_gt.value()) {
+    return true;
+  }
+  std::optional<bool> prove_lt = ProveLT(lhs, rhs);
+  if (prove_lt.has_value() && prove_lt.value()) {
+    return true;
+  }
+  return std::nullopt;
 }
 
-bool SymbolicExprAnalyzer::CanProveGE(const ir::Expr& lhs,
-                                      const ir::Expr& rhs) const {
-  ir::Expr diff = AutoSimplify(ir::Sub::Make(lhs, rhs), *var_intervals_);
+std::optional<bool> SymbolicExprAnalyzer::ProveGE(const ir::Expr& lhs,
+                                                  const ir::Expr& rhs) const {
+  if (lhs == rhs) {
+    return true;
+  }
+  if (lhs == SymbolicExprLimit::positive_inf ||
+      rhs == SymbolicExprLimit::negative_inf) {
+    return true;
+  }
+  if (rhs == SymbolicExprLimit::positive_inf ||
+      lhs == SymbolicExprLimit::negative_inf) {
+    return false;
+  }
+  ir::Expr diff = AutoSimplify(ir::Sub::Make(lhs, rhs), var_intervals_);
   VLOG(6) << "diff of " << ir::Sub::Make(lhs, rhs) << " = " << diff;
   if (diff.is_constant() && diff.get_constant() >= 0) {
     return true;
+  }
+  if (diff.is_constant() && diff.get_constant() < 0) {
+    return false;
   }
   ir::Expr diff_lower_bound = LowerBound(diff);
   VLOG(6) << "lower bound of " << diff << " = " << diff_lower_bound;
   if (diff_lower_bound.is_constant() && diff_lower_bound.get_constant() >= 0) {
     return true;
   }
-  return false;
+  ir::Expr diff_upper_bound = UpperBound(diff);
+  VLOG(6) << "upper bound of " << diff << " = " << diff_upper_bound;
+  if (diff_upper_bound.is_constant() && diff_upper_bound.get_constant() < 0) {
+    return false;
+  }
+  return std::nullopt;
 }
 
-bool SymbolicExprAnalyzer::CanProveLE(const ir::Expr& lhs,
-                                      const ir::Expr& rhs) const {
-  return CanProveGE(rhs, lhs);
+std::optional<bool> SymbolicExprAnalyzer::ProveLE(const ir::Expr& lhs,
+                                                  const ir::Expr& rhs) const {
+  return ProveGE(rhs, lhs);
 }
 
-bool SymbolicExprAnalyzer::CanProveGT(const ir::Expr& lhs,
-                                      const ir::Expr& rhs) const {
-  ir::Expr diff = AutoSimplify(ir::Sub::Make(lhs, rhs), *var_intervals_);
+std::optional<bool> SymbolicExprAnalyzer::ProveGT(const ir::Expr& lhs,
+                                                  const ir::Expr& rhs) const {
+  if (lhs == rhs) {
+    return false;
+  }
+  if (lhs == SymbolicExprLimit::positive_inf ||
+      rhs == SymbolicExprLimit::negative_inf) {
+    return true;
+  }
+  if (rhs == SymbolicExprLimit::positive_inf ||
+      lhs == SymbolicExprLimit::negative_inf) {
+    return false;
+  }
+  ir::Expr diff = AutoSimplify(ir::Sub::Make(lhs, rhs), var_intervals_);
   VLOG(6) << "diff of " << ir::Sub::Make(lhs, rhs) << " = " << diff;
   if (diff.is_constant() && diff.get_constant() > 0) {
     return true;
+  }
+  if (diff.is_constant() && diff.get_constant() <= 0) {
+    return false;
   }
   ir::Expr diff_lower_bound = LowerBound(diff);
   VLOG(6) << "lower bound of " << diff << " = " << diff_lower_bound;
   if (diff_lower_bound.is_constant() && diff_lower_bound.get_constant() > 0) {
     return true;
   }
-  return false;
+  ir::Expr diff_upper_bound = UpperBound(diff);
+  VLOG(6) << "upper bound of " << diff << " = " << diff_upper_bound;
+  if (diff_upper_bound.is_constant() && diff_upper_bound.get_constant() <= 0) {
+    return false;
+  }
+  return std::nullopt;
 }
 
-bool SymbolicExprAnalyzer::CanProveLT(const ir::Expr& lhs,
-                                      const ir::Expr& rhs) const {
-  return CanProveGT(rhs, lhs);
+std::optional<bool> SymbolicExprAnalyzer::ProveLT(const ir::Expr& lhs,
+                                                  const ir::Expr& rhs) const {
+  return ProveGT(rhs, lhs);
 }
 
 class BoundReplacer : public ir::IRMutator<> {
  public:
-  explicit BoundReplacer(cas_intervals_t* var_intervals, bool is_lower_bound)
+  explicit BoundReplacer(const cas_intervals_t& var_intervals,
+                         bool is_lower_bound)
       : var_intervals_(var_intervals), sign_(is_lower_bound) {}
 
   void operator()(ir::Expr* expr) { IRMutator::Visit(expr, expr); }
@@ -114,8 +180,8 @@ class BoundReplacer : public ir::IRMutator<> {
   void Visit(const ir::_Var_* var, ir::Expr* op) override {
     ir::Expr lower_bound = SymbolicExprLimit::negative_inf;
     ir::Expr upper_bound = SymbolicExprLimit::positive_inf;
-    if (var_intervals_->count(var->name) != 0) {
-      const CasInterval& interval = var_intervals_->at(var->name);
+    if (var_intervals_.count(var->name) != 0) {
+      const CasInterval& interval = var_intervals_.at(var->name);
       lower_bound =
           interval.e_l.defined() ? interval.e_l : ir::Expr(interval.l);
       upper_bound =
@@ -185,7 +251,7 @@ class BoundReplacer : public ir::IRMutator<> {
   }
 
  private:
-  cas_intervals_t* var_intervals_;
+  const cas_intervals_t& var_intervals_;
   // Determine replacing with upper or lower bound,
   // True means lower bound and False means upper bound.
   bool sign_;
@@ -205,84 +271,109 @@ ir::Expr SymbolicExprAnalyzer::UpperBound(const ir::Expr& expr) const {
   return AutoSimplify(bound);
 }
 
-bool operator==(const SingleIntervalIntSet& lhs,
-                const SingleIntervalIntSet& rhs) {
+std::optional<bool> ProveEQ(const SingleIntervalIntSet& lhs,
+                            const SingleIntervalIntSet& rhs) {
   cas_intervals_t merged_var_intervals = MergeVarIntervals(lhs, rhs);
-  SymbolicExprAnalyzer analyzer(&merged_var_intervals);
-  return analyzer.CanProveEQ(lhs.min_, rhs.min_) &&
-         analyzer.CanProveEQ(lhs.max_, rhs.max_);
+  SymbolicExprAnalyzer analyzer(merged_var_intervals);
+  std::optional<bool> prove_min_eq = analyzer.ProveEQ(lhs.min_, rhs.min_);
+  std::optional<bool> prove_max_eq = analyzer.ProveEQ(lhs.max_, rhs.max_);
+  if (!prove_min_eq.has_value() || !prove_max_eq.has_value()) {
+    return std::nullopt;
+  } else if (prove_min_eq.value() == true && prove_max_eq.value() == true) {
+    return true;
+  } else if (prove_min_eq.value() == false || prove_max_eq.value() == false) {
+    return false;
+  }
+  return std::nullopt;
 }
 
-SingleIntervalIntSet Union(const SingleIntervalIntSet& a,
-                           const SingleIntervalIntSet& b) {
-  if (a.IsEmpty() || b.IsAll()) {
+std::optional<SingleIntervalIntSet> ProvedUnion(const SingleIntervalIntSet& a,
+                                                const SingleIntervalIntSet& b) {
+  bool is_a_empty = a.ProveEmpty().value_or(false);
+  bool is_a_all = a.ProveAll().value_or(false);
+  bool is_b_empty = b.ProveEmpty().value_or(false);
+  bool is_b_all = b.ProveAll().value_or(false);
+  if (is_a_empty || is_b_all) {
     return b;
   }
-  if (b.IsEmpty() || a.IsAll()) {
+  if (is_b_empty || is_a_all) {
     return a;
   }
 
   // May be relaxed when (a.max < b.min - 1) or (b.max < a.min - 1)
   cas_intervals_t merged_var_intervals = MergeVarIntervals(a, b);
-  SymbolicExprAnalyzer analyzer(&merged_var_intervals);
+  SymbolicExprAnalyzer analyzer(merged_var_intervals);
   ir::Expr min = SymbolicExprLimit::positive_inf;
   ir::Expr max = SymbolicExprLimit::negative_inf;
 
-  if (analyzer.CanProveLE(a.Min(), b.Min())) {
+  std::optional<bool> prove_a_min_le_b_min = analyzer.ProveLE(a.Min(), b.Min());
+  if (!prove_a_min_le_b_min.has_value()) {
+    return std::nullopt;
+  } else if (prove_a_min_le_b_min.value() == true) {
     min = a.Min();
-  } else if (analyzer.CanProveGE(a.Min(), b.Min())) {
+  } else if (prove_a_min_le_b_min.value() == false) {
     min = b.Min();
-  } else {
-    min = ir::Min::Make(a.Min(), b.Min());
   }
 
-  if (analyzer.CanProveGE(a.Max(), b.Max())) {
+  std::optional<bool> prove_a_max_ge_b_max = analyzer.ProveGE(a.Max(), b.Max());
+  if (!prove_a_max_ge_b_max.has_value()) {
+    return std::nullopt;
+  } else if (prove_a_max_ge_b_max.value() == true) {
     max = a.Max();
-  } else if (analyzer.CanProveLE(a.Max(), b.Max())) {
+  } else if (prove_a_max_ge_b_max.value() == false) {
     max = b.Max();
-  } else {
-    max = ir::Max::Make(a.Max(), b.Max());
   }
 
   return SingleIntervalIntSet(min, max, std::move(merged_var_intervals));
 }
 
-SingleIntervalIntSet Intersect(const SingleIntervalIntSet& a,
-                               const SingleIntervalIntSet& b) {
-  if (a.IsAll() || b.IsEmpty()) {
+std::optional<SingleIntervalIntSet> ProvedIntersect(
+    const SingleIntervalIntSet& a, const SingleIntervalIntSet& b) {
+  bool is_a_empty = a.ProveEmpty().value_or(false);
+  bool is_a_all = a.ProveAll().value_or(false);
+  bool is_b_empty = b.ProveEmpty().value_or(false);
+  bool is_b_all = b.ProveAll().value_or(false);
+  if (is_a_all || is_b_empty) {
     return b;
   }
-  if (b.IsAll() || a.IsEmpty()) {
+  if (is_b_all || is_a_empty) {
     return a;
   }
-
   cas_intervals_t merged_var_intervals = MergeVarIntervals(a, b);
-  SymbolicExprAnalyzer analyzer(&merged_var_intervals);
+  SymbolicExprAnalyzer analyzer(merged_var_intervals);
   ir::Expr min = SymbolicExprLimit::positive_inf;
   ir::Expr max = SymbolicExprLimit::negative_inf;
 
-  if (analyzer.CanProveLT(a.Max(), b.Min() - ir::Expr(1)) ||
-      analyzer.CanProveLT(b.Max(), a.Min() - ir::Expr(1))) {
-    return SingleIntervalIntSet(min, max);
+  std::optional<bool> prove_a_max_lt_b_min_sub1 =
+      analyzer.ProveLT(a.Max(), b.Min() - ir::Expr(1));
+  std::optional<bool> prove_b_max_lt_a_min_sub1 =
+      analyzer.ProveLT(b.Max(), a.Min() - ir::Expr(1));
+  if (prove_a_max_lt_b_min_sub1.has_value() &&
+          prove_a_max_lt_b_min_sub1.value() ||
+      prove_b_max_lt_a_min_sub1.has_value() &&
+          prove_b_max_lt_a_min_sub1.value()) {
+    return SingleIntervalIntSet(min, max, std::move(merged_var_intervals));
   }
 
-  if (analyzer.CanProveGE(a.Min(), b.Min())) {
+  std::optional<bool> prove_a_min_ge_b_min = analyzer.ProveGE(a.Min(), b.Min());
+  if (!prove_a_min_ge_b_min.has_value()) {
+    return std::nullopt;
+  } else if (prove_a_min_ge_b_min.value() == true) {
     min = a.Min();
-  } else if (analyzer.CanProveLE(a.Min(), b.Min())) {
+  } else if (prove_a_min_ge_b_min.value() == false) {
     min = b.Min();
-  } else {
-    min = ir::Max::Make(a.Min(), b.Min());
   }
 
-  if (analyzer.CanProveLE(a.Max(), b.Max())) {
+  std::optional<bool> prove_a_max_le_b_max = analyzer.ProveLE(a.Max(), b.Max());
+  if (!prove_a_max_le_b_max.has_value()) {
+    return std::nullopt;
+  } else if (prove_a_max_le_b_max.value() == true) {
     max = a.Max();
-  } else if (analyzer.CanProveGE(a.Max(), b.Max())) {
+  } else if (prove_a_max_le_b_max.value() == false) {
     max = b.Max();
-  } else {
-    max = ir::Min::Make(a.Max(), b.Max());
   }
 
-  return SingleIntervalIntSet(min, max, merged_var_intervals);
+  return SingleIntervalIntSet(min, max, std::move(merged_var_intervals));
 }
 
 cas_intervals_t MergeVarIntervals(const SingleIntervalIntSet& a,
@@ -315,33 +406,55 @@ SingleIntervalIntSet::SingleIntervalIntSet(const ir::Expr& min,
   }
 }
 
-bool SingleIntervalIntSet::IsEmpty() const {
-  return min_ == SymbolicExprLimit::positive_inf ||
-         max_ == SymbolicExprLimit::negative_inf ||
-         analyzer_.CanProveGT(min_, max_);
+std::optional<bool> SingleIntervalIntSet::ProveEmpty() const {
+  if (min_ == SymbolicExprLimit::positive_inf ||
+      max_ == SymbolicExprLimit::negative_inf) {
+    return true;
+  }
+  SymbolicExprAnalyzer analyzer(var_intervals_);
+  return analyzer.ProveGT(min_, max_);
 }
 
-bool SingleIntervalIntSet::IsAll() const {
+std::optional<bool> SingleIntervalIntSet::ProveAll() const {
   return min_ == SymbolicExprLimit::negative_inf &&
          max_ == SymbolicExprLimit::positive_inf;
 }
 
-bool SingleIntervalIntSet::IsPoint() const {
-  return analyzer_.CanProveEQ(min_, max_);
+std::optional<bool> SingleIntervalIntSet::ProvePoint() const {
+  SymbolicExprAnalyzer analyzer(var_intervals_);
+  return analyzer.ProveEQ(min_, max_);
 }
 
-bool SingleIntervalIntSet::IsSubSet(const SingleIntervalIntSet& other) const {
+std::optional<bool> SingleIntervalIntSet::ProveSubSet(
+    const SingleIntervalIntSet& other) const {
   cas_intervals_t merged_var_intervals = MergeVarIntervals(*this, other);
-  SymbolicExprAnalyzer analyzer(&merged_var_intervals);
-  return analyzer.CanProveGE(min_, other.Min()) &&
-         analyzer.CanProveLE(max_, other.Max());
+  SymbolicExprAnalyzer analyzer(merged_var_intervals);
+  std::optional<bool> prove_min_ge = analyzer.ProveGE(min_, other.Min());
+  std::optional<bool> prove_max_le = analyzer.ProveLE(max_, other.Max());
+  if (!prove_min_ge.has_value() || !prove_max_le.has_value()) {
+    return std::nullopt;
+  } else if (prove_min_ge.value() && prove_max_le.value()) {
+    return true;
+  } else {
+    return false;
+  }
+  return std::nullopt;
 }
 
-bool SingleIntervalIntSet::IsSuperSet(const SingleIntervalIntSet& other) const {
+std::optional<bool> SingleIntervalIntSet::ProveSuperSet(
+    const SingleIntervalIntSet& other) const {
   cas_intervals_t merged_var_intervals = MergeVarIntervals(*this, other);
-  SymbolicExprAnalyzer analyzer(&merged_var_intervals);
-  return analyzer.CanProveLE(min_, other.Min()) &&
-         analyzer.CanProveGE(max_, other.Max());
+  SymbolicExprAnalyzer analyzer(merged_var_intervals);
+  std::optional<bool> prove_min_le = analyzer.ProveLE(min_, other.Min());
+  std::optional<bool> prove_max_ge = analyzer.ProveGE(max_, other.Max());
+  if (!prove_min_le.has_value() || !prove_max_ge.has_value()) {
+    return std::nullopt;
+  } else if (prove_min_le.value() && prove_max_ge.value()) {
+    return true;
+  } else {
+    return false;
+  }
+  return std::nullopt;
 }
 
 }  // namespace common
