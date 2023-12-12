@@ -30,6 +30,10 @@ class SymbolicExprAnalyzer {
   SymbolicExprAnalyzer& operator=(const SymbolicExprAnalyzer&) = delete;
   SymbolicExprAnalyzer& operator=(SymbolicExprAnalyzer&&) = delete;
 
+  // Try to prove the relationship of 2 symbolic expressions,
+  // with the return value being optional.
+  // If proven, return true. If falsified, return false.
+  // If unable to prove or falsify, return nullopt.
   std::optional<bool> Prove(const ir::Expr& condition) const;
   std::optional<bool> ProveEQ(const ir::Expr& lhs, const ir::Expr& rhs) const;
   std::optional<bool> ProveNE(const ir::Expr& lhs, const ir::Expr& rhs) const;
@@ -62,6 +66,8 @@ class SingleIntervalIntSet {
   SingleIntervalIntSet& operator=(const SingleIntervalIntSet& set) = default;
   SingleIntervalIntSet& operator=(SingleIntervalIntSet&& set) = default;
 
+  // Try to prove or construct the relationship between two symbolic integer
+  // sets, if unable to determine or construct, return nullopt.
   std::optional<bool> ProveEmpty() const;
   std::optional<bool> ProveAll() const;
   std::optional<bool> ProvePoint() const;
@@ -84,7 +90,6 @@ class SingleIntervalIntSet {
   ir::Expr min_ = SymbolicExprLimit::positive_inf;
   ir::Expr max_ = SymbolicExprLimit::negative_inf;
   cas_intervals_t var_intervals_;
-  // SymbolicExprAnalyzer analyzer_;
 };
 
 }  // namespace common

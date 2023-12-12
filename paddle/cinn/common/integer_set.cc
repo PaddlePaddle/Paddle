@@ -46,8 +46,7 @@ std::optional<bool> SymbolicExprAnalyzer::Prove(
   if (condition.As<ir::LT>()) {
     return ProveLT(condition.As<ir::LT>()->a(), condition.As<ir::LT>()->b());
   }
-  CINN_NOT_IMPLEMENTED;
-  return false;
+  return std::nullopt;
 }
 
 std::optional<bool> SymbolicExprAnalyzer::ProveEQ(const ir::Expr& lhs,

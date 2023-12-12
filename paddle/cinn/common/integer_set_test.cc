@@ -274,8 +274,8 @@ TEST(SingleIntervalIntSet, case_1) {
   EXPECT_TRUE(
       ProveEQ(ProvedIntersect(set_0, empty_set).value(), empty_set).value());
   EXPECT_TRUE(ProveEQ(ProvedUnion(set_0, single_point).value(), set_1).value());
-  auto a = ProvedIntersect(set_0, single_point).value();
-  EXPECT_TRUE(a.ProveEmpty().value());
+  EXPECT_TRUE(
+      ProvedIntersect(set_0, single_point).value().ProveEmpty().value());
 }
 
 }  // namespace common
