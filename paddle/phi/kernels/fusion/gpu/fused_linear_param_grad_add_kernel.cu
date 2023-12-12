@@ -130,7 +130,7 @@ void FusedLinearParamGradAdd(const Context &ctx,
                              bool has_bias,
                              DenseTensor *dweight_out,
                              DenseTensor *dbias_out) {
-  if (dweight_out->dtype() == phi::DataType::FP16) {
+  if (dweight_out->dtype() == phi::DataType::FLOAT16) {
     LOG_FIRST_N(WARNING, 1)
         << "There may be problems when master_grad is not enabled and use "
            "fp16-O2 in stage2, users should pay attention to the correctness "
