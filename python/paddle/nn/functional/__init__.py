@@ -163,7 +163,6 @@ __all__ = [
     'conv3d',
     'conv3d_transpose',
     'pairwise_distance',
-    'pdist',
     'elu',
     'elu_',
     'gelu',
