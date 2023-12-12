@@ -50,21 +50,21 @@ inline OneDNNMemoryFormat ToOneDNNFormat(const DataLayout& layout) {
 
 inline DataLayout GetPaddleLayoutFromOneDNNMemDesc(
     const dnnl::memory::desc& desc) {
-  if (desc == memory::desc(desc.get_dims(),
-                           desc.get_data_type(),
-                           dnnl::memory::format_tag::nhwc)) {
+  if (desc == dnnl::memory::desc(desc.get_dims(),
+                                 desc.get_data_type(),
+                                 dnnl::memory::format_tag::nhwc)) {
     return DataLayout::NHWC;
-  } else if (desc == memory::desc(desc.get_dims(),
-                                  desc.get_data_type(),
-                                  dnnl::memory::format_tag::nchw)) {
+  } else if (desc == dnnl::memory::desc(desc.get_dims(),
+                                        desc.get_data_type(),
+                                        dnnl::memory::format_tag::nchw)) {
     return DataLayout::NCHW;
-  } else if (desc == memory::desc(desc.get_dims(),
-                                  desc.get_data_type(),
-                                  dnnl::memory::format_tag::ncdhw)) {
+  } else if (desc == dnnl::memory::desc(desc.get_dims(),
+                                        desc.get_data_type(),
+                                        dnnl::memory::format_tag::ncdhw)) {
     return DataLayout::NCDHW;
-  } else if (desc == memory::desc(desc.get_dims(),
-                                  desc.get_data_type(),
-                                  dnnl::memory::format_tag::ndhwc)) {
+  } else if (desc == dnnl::memory::desc(desc.get_dims(),
+                                        desc.get_data_type(),
+                                        dnnl::memory::format_tag::ndhwc)) {
     return DataLayout::NDHWC;
   } else {
     return DataLayout::NCHW;
