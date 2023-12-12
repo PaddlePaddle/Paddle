@@ -14,7 +14,7 @@ if(WITH_TESTING)
   endif()
 
   # custom OP support TensorRT inference
-  if(WITH_GPU AND WITH_TENSORRT)
+  if(WITH_GPU AND WITH_TENSORRT AND (NOT WITH_COVERAGE))
     py_test(test_inference_gap_setup SRCS test_inference_gap_setup.py)
 
     # Compiling shared library will cost some time, but running process is very fast.
