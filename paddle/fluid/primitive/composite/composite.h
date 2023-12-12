@@ -397,10 +397,12 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
   mean_ = reshape<T>(mean_, std::vector<int64_t>({-1}));
   variance = reshape<T>(variance, std::vector<int64_t>({-1}));
 
-  out = cast<T>(out, org_dtype);
-  phi::DataType param_type = need_cast ? phi::DataType::FLOAT32 : org_dtype;
-  mean_ = cast<T>(mean_, param_type);
-  variance = cast<T>(variance, param_type);
+  // same as LayerNormInferMeta
+  // x: float32 --> out: float32, mean: float32, variance: float32
+  // x: float16 --> out: float16, mean: float32, variance: float32
+  if (need_cast) {
+    out = cast<T>(out, org_dtype);
+  }
 
   return std::make_tuple(out, mean_, variance);
 }
