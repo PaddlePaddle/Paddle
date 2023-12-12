@@ -39,7 +39,7 @@ TEST(block_operand_test, type_block) {
   region.push_back(block_2);
   region.push_back(block_3);
 
-  builder.SetInsertionPointToEnd(block_1);
+  builder.SetInsertionPointToBlockEnd(block_1);
   auto op1 =
       builder.Build<test::BranchOp>(std::vector<pir::OpResult>{}, block_2);
   EXPECT_TRUE(block_2->HasOneUse());
@@ -54,7 +54,7 @@ TEST(block_operand_test, type_block) {
   EXPECT_EQ(block_2->first_use(), block_operand);
   EXPECT_EQ(iter_curr->owner(), op1);
 
-  builder.SetInsertionPointToEnd(block_3);
+  builder.SetInsertionPointToBlockEnd(block_3);
   auto op3 =
       builder.Build<test::BranchOp>(std::vector<pir::OpResult>{}, block_1);
   block_operand = op3->block_operand(0);

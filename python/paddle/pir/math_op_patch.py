@@ -480,6 +480,19 @@ def monkey_patch_value():
 
         array_write(x=var, i=array_length(self), array=self)
 
+    def set_shape(self, shape):
+        assert (
+            paddle.base.dygraph.base.in_to_static_mode()
+        ), "We only support call 'set_shape' in to_static mode."
+
+        if self.is_dense_tensor_type() or self.is_selected_row_type():
+            type = paddle.pir.create_shaped_type(self.type(), shape)
+            self.set_type(type)
+        else:
+            raise ValueError(
+                "Currently, we can only set shape for dense and selected_row tensor"
+            )
+
     import paddle
 
     value_methods = [
@@ -495,6 +508,7 @@ def monkey_patch_value():
         ('clone', clone),
         ('clear_gradient', clear_gradient),
         ('append', append),
+        ('set_shape', set_shape),
         (
             '__add__',
             _binary_creator_('__add__', paddle.tensor.add, False, _scalar_add_),
