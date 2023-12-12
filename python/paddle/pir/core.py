@@ -305,7 +305,7 @@ def create_parameter(
     return param
 
 
-def _convert_into_opresult(tensor):
+def _convert_into_value(tensor):
     """
     Convert Tensor into OpResult.
     """

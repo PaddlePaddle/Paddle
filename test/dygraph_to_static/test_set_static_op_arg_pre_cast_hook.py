@@ -22,7 +22,7 @@ from dygraph_to_static_utils import (
 )
 
 import paddle
-from paddle.pir.core import _convert_into_opresult, static_op_arg_cast_guard
+from paddle.pir.core import _convert_into_value, static_op_arg_cast_guard
 
 
 class TestSetStaticOpArgPreCastHook(Dy2StTestBase):
@@ -38,7 +38,7 @@ class TestSetStaticOpArgPreCastHook(Dy2StTestBase):
             ):
                 paddle.abs(eager_tensor)
 
-            with static_op_arg_cast_guard(_convert_into_opresult):
+            with static_op_arg_cast_guard(_convert_into_value):
                 paddle.abs(eager_tensor)
 
 
