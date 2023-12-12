@@ -94,7 +94,7 @@ TEST(if_op_test, build_by_block) {
       std::vector<int64_t>{2}, true, phi::DataType::BOOL);
   builder.Build<pir::YieldOp>(std::vector<pir::Value>{full_op_2.out()});
 
-  builder.SetInsertionPointToEnd(block);
+  builder.SetInsertionPointToBlockEnd(block);
 
   auto if_op = builder.Build<paddle::dialect::IfOp>(
       full_op.out(), std::move(true_block), std::move(false_block));
@@ -149,7 +149,7 @@ TEST(if_op_test, network_with_backward) {
                                   std::initializer_list<pir::Value>{local2_z});
   builder.Build<pir::YieldOp>(std::vector<pir::Value>{local2_w});
 
-  builder.SetInsertionPointToEnd(block);
+  builder.SetInsertionPointToBlockEnd(block);
 
   // build backward network
   auto out_grad = builder.Build<FullOp>(std::vector<int64_t>{2, 2}, 1.0f).out();
@@ -170,6 +170,16 @@ TEST(if_op_test, network_with_backward) {
        local1_y_grad_1 = local1_add_grad_op_1.y_grad();
   auto local1_y_grad =
       builder.Build<AddOp>(local1_y_grad_0, local1_y_grad_1).out();
+
+  std::string x_grad = "x_grad";
+  builder.Build<pir::ShadowOutputOp>(local1_x_grad, x_grad);
+
+  std::string y_grad = "y_grad";
+  builder.Build<pir::ShadowOutputOp>(local1_y_grad, y_grad);
+
+  std::string z_grad = "z_grad";
+  builder.Build<pir::ShadowOutputOp>(pop_local1_z_grad, z_grad);
+
   builder.Build<pir::YieldOp>(
       std::vector<pir::Value>{local1_x_grad, local1_y_grad});
 
@@ -191,13 +201,7 @@ TEST(if_op_test, network_with_backward) {
   builder.Build<pir::YieldOp>(
       std::vector<pir::Value>{local2_x_grad, local2_y_grad});
 
-  builder.SetInsertionPointToEnd(block);
-
-  std::string x_grad = "x_grad";
-  builder.Build<pir::ShadowOutputOp>(if_grad.result(0), x_grad);
-
-  std::string y_grad = "y_grad";
-  builder.Build<pir::ShadowOutputOp>(if_grad.result(1), y_grad);
+  builder.SetInsertionPointToBlockEnd(block);
 
   LOG(INFO) << program;
 
@@ -212,18 +216,15 @@ TEST(if_op_test, network_with_backward) {
   paddle::framework::InterpreterCore test_core(
       place, {}, kernel_program->block(), &scope);
 
-  test_core.SetSkipGcVars({x_grad, y_grad});
+  test_core.SetSkipGcVars({x_grad, y_grad, z_grad});
 
   test_core.Run({});
 
-  auto x_grad_tensor =
-      test_core.local_scope() == nullptr
-          ? scope.FindVar(x_grad)->Get<phi::DenseTensor>()
-          : test_core.local_scope()->FindVar(x_grad)->Get<phi::DenseTensor>();
-  auto y_grad_tensor =
-      test_core.local_scope() == nullptr
-          ? scope.FindVar(y_grad)->Get<phi::DenseTensor>()
-          : test_core.local_scope()->FindVar(y_grad)->Get<phi::DenseTensor>();
+  auto x_grad_tensor = test_core.DebugVar(x_grad)->Get<phi::DenseTensor>();
+  auto y_grad_tensor = test_core.DebugVar(y_grad)->Get<phi::DenseTensor>();
+  auto z_grad_tensor = test_core.DebugVar(z_grad)->Get<phi::DenseTensor>();
+
   EXPECT_EQ(x_grad_tensor.data<float>()[0], 1.0);
   EXPECT_EQ(y_grad_tensor.data<float>()[0], 2.0);
+  EXPECT_EQ(z_grad_tensor.data<float>()[0], 1.0);
 }

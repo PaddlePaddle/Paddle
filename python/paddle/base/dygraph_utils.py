@@ -18,15 +18,12 @@ from .framework import dygraph_only
 
 
 @dygraph_only
-def _append_activation_in_dygraph(
-    input, act=None, use_cudnn=None, use_mkldnn=None
-):
+def _append_activation_in_dygraph(input, act=None, use_cudnn=None):
     """Append activation in dygraph mode.
 
         Args:
             input: the input variable.
             act: activation type
-            use_mkldnn: if use mkldnn
             use_cudnn: if use cudnn
 
     Return the Variable after append activation
@@ -37,8 +34,6 @@ def _append_activation_in_dygraph(
     attrs = ()
     if use_cudnn:
         attrs = ('use_cudnn', use_cudnn)
-    if use_mkldnn:
-        attrs += ('use_mkldnn', use_mkldnn)
 
     act_op = getattr(_legacy_C_ops, act)
     return act_op(input, *attrs)

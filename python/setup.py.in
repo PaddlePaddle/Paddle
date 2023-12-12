@@ -371,6 +371,7 @@ packages=['paddle',
           'paddle.dataset',
           'paddle.reader',
           'paddle.distributed',
+          'paddle.distributed.checkpoint',
           'paddle.distributed.communication',
           'paddle.distributed.communication.stream',
           'paddle.distributed.metric',
@@ -386,6 +387,7 @@ packages=['paddle',
           'paddle.incubate.nn',
           'paddle.incubate.asp',
           'paddle.incubate.passes',
+          'paddle.incubate.framework',
           'paddle.distribution',
           'paddle.distributed.utils',
           'paddle.distributed.sharding',
@@ -525,10 +527,10 @@ packages=['paddle',
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
     setup_requires = f.read().splitlines()
 
-if sys.version_info < (3,7):
-    raise RuntimeError("Paddle only support Python version>=3.7 now")
+if sys.version_info < (3,8):
+    raise RuntimeError("Paddle only support Python version>=3.8 now")
 
-if sys.version_info >= (3,7):
+if sys.version_info >= (3,8):
     setup_requires_tmp = []
     for setup_requires_i in setup_requires:
         if "<\"3.6\"" in setup_requires_i or "<=\"3.6\"" in setup_requires_i or "<\"3.5\"" in setup_requires_i or "<=\"3.5\"" in setup_requires_i or "<\"3.7\"" in setup_requires_i:
@@ -1016,10 +1018,11 @@ with redirect_stdout():
             'Intended Audience :: Science/Research',
             'License :: OSI Approved :: Apache Software License',
             'Programming Language :: C++',
-            'Programming Language :: Python :: 3.7',
             'Programming Language :: Python :: 3.8',
             'Programming Language :: Python :: 3.9',
             'Programming Language :: Python :: 3.10',
+            'Programming Language :: Python :: 3.11',
+            'Programming Language :: Python :: 3.12',
         ],
     )
 

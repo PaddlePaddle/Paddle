@@ -13,18 +13,8 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
-#include <map>
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
-#include "paddle/pir/core/block.h"
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/builtin_type_interfaces.h"
-#include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/program.h"
 #include "paddle/pir/dialect/shape/ir/shape_dialect.h"
-#include "paddle/pir/dialect/shape/ir/shape_op.h"
-#include "paddle/pir/dialect/shape/utils/symbol_table.h"
-
 #include "test/cpp/pir/tools/test_pir_utils.h"
 
 TEST(shape_struct_test, symbolic_dim_product) {
@@ -187,7 +177,7 @@ TEST(shape_struct_test, symbolic_dim_mgr_complex) {
   pir::OpResult res = op->result(0);
   pir::OpResult res_ = op_->result(0);
 
-  builder.SetInsertionPointToEnd(program.block());
+  builder.SetInsertionPointToBlockEnd(program.block());
   pir::shape::TieShapeOp tie_shape_op1 =
       builder.Build<pir::shape::TieShapeOp>(res);
   pir::shape::TieShapeOp tie_shape_op2 =
@@ -368,7 +358,7 @@ TEST(shape_struct_test, shape_analysis) {
   pir::shape::TieShapeOp tie_shape_op5 =
       builder.Build<pir::shape::TieShapeOp>(value5);
 
-  builder.SetInsertionPointToEnd(func_op.block());
+  builder.SetInsertionPointToBlockEnd(func_op.block());
   builder.Build<pir::shape::SymbolicDimOp>("C2", 2, true, false, true, true);
   pir::shape::SymbolicDimOp sym_dim_s0 =
       builder.Build<pir::shape::SymbolicDimOp>(
@@ -468,7 +458,7 @@ TEST(shape_struct_test, shape_analysis_manager) {
   pir::shape::TieShapeOp tie_shape_op5 =
       builder.Build<pir::shape::TieShapeOp>(value5);
 
-  builder.SetInsertionPointToEnd(func_op.block());
+  builder.SetInsertionPointToBlockEnd(func_op.block());
   builder.Build<pir::shape::SymbolicDimOp>("C2", 2, true, false, true, true);
   pir::shape::SymbolicDimOp sym_dim_s0 =
       builder.Build<pir::shape::SymbolicDimOp>(

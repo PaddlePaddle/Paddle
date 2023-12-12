@@ -15,6 +15,7 @@
 import argparse
 import os
 import re
+import subprocess
 
 import yaml
 from op_gen import (
@@ -73,19 +74,49 @@ API_DECLARE_TEMPLATE = """
 
 API_IMPL_TEMPLATE = """
 {ret_type} {api_name}({args}){{
+    {inner_code}
+}}
+
+"""
+
+API_INNER_CODE_TEMPLATE = """
     {check_data_type}
     {handle_optional_inputs}
     {in_combine}
     {compute_op}
     {handle_optional_outputs}
     {out_split}
-    {return_result}
-}}
+    {return_result}"""
 
-"""
+
+OP_DISPATCH_TEMPLATE = """
+    if ({cond}) {{
+        {inner_code}
+    }}"""
+
+OP_DISPATCH_ERROR_TEMPLATE = """
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "The kernel of ({op_name}) for input Value is unimplemented, please check the type of input Value."));"""
+
 
 CHECK_DATA_TYPE_TEMPLATE = """
-    {function}({input}, "{input}", "{op_name}");"""
+    {function}({inputs}, "{op_name}");"""
+
+IF_TEMPLATE = """
+    if ({condition}) {{
+    {check_statement}
+    }}"""
+
+ELSE_IF_TEMPLATE = """
+    else if ({condition}) {{
+    {check_statement}
+    }}"""
+
+ELSE_TEMPLATE = """
+    else {{
+    {check_statement}
+    }}"""
+
 
 OPTIONAL_VECTOR_VALUE_INPUT_TEMPLATE = """
     paddle::optional<pir::Value> optional_{name};
@@ -127,6 +158,8 @@ COMPUTE_OP_TEMPLATE = """
     paddle::dialect::{op_class_name} {op_inst_name} = ApiBuilder::Instance().GetBuilder()->Build<paddle::dialect::{op_class_name}>({args});"""
 
 OP_INPUT = 'pir::Value'
+DENSE_TENSOR_TYPE = "paddle::dialect::DenseTensorType"
+DATA_TYPE = "paddle::dialect::DataTypeAttribute"
 VECTOR_TYPE = 'pir::VectorType'
 INTARRAY_ATTRIBUTE = "paddle::dialect::IntArrayAttribute"
 
@@ -213,9 +246,11 @@ class CodeGen:
             return True
         return False
 
-    def _is_optional_output(self, op_info, op_name, output_name):
-        if op_name.endswith(('_grad', '_grad_')):
-            return False
+    def _is_optional_output(self, op_info, output_name):
+        op_names = op_info.op_phi_name
+        for name in op_names:
+            if name.endswith(('_grad', '_grad_')):
+                return False
         inplace_map = op_info.inplace_map
         input_optional_list = op_info.input_optional_list
         input_name_list = op_info.input_name_list
@@ -289,7 +324,7 @@ class CodeGen:
         )
         return (inputs + ', ' + attrs).strip(', ')
 
-    def _gen_ret_type(self, op_info, op_name):
+    def _gen_ret_type(self, op_info):
         name_list = op_info.output_name_list
         type_list = op_info.output_type_list
         intermediate_list = op_info.output_intermediate_list
@@ -303,7 +338,7 @@ class CodeGen:
             ):
                 if intermediate == 'true':
                     continue
-                if self._is_optional_output(op_info, op_name, name):
+                if self._is_optional_output(op_info, name):
                     ret.append(OPTIONAL_OUTPUT_TYPE_MAP[type])
                 else:
                     ret.append(OUTPUT_TYPE_MAP[type])
@@ -311,7 +346,7 @@ class CodeGen:
         elif output_num == 1:
             index = intermediate_list.index('false')
             name = name_list[index]
-            if self._is_optional_output(op_info, op_name, name):
+            if self._is_optional_output(op_info, name):
                 return OPTIONAL_OUTPUT_TYPE_MAP[type_list[index]]
             else:
                 return OUTPUT_TYPE_MAP[type_list[index]]
@@ -322,7 +357,7 @@ class CodeGen:
         self, op_info, op_name, is_mutable_attr, is_vector_mutable_attr
     ):
         return API_DECLARE_TEMPLATE.format(
-            ret_type=self._gen_ret_type(op_info, op_name),
+            ret_type=self._gen_ret_type(op_info),
             api_name=op_name,
             args=self._gen_api_args(
                 op_info, True, is_mutable_attr, is_vector_mutable_attr
@@ -330,7 +365,7 @@ class CodeGen:
         )
 
     def _gen_h_file(self, op_info_items, namespaces, h_file_path):
-        declare_str = ''
+        declare_str = ""
         for op_info in op_info_items:
             for op_name in op_info.op_phi_name:
                 # NOTE:When infer_meta_func is None, the Build() function generated in pd_op
@@ -364,7 +399,7 @@ class CodeGen:
         optional_list = op_info.input_optional_list
         type_list = op_info.input_type_list
         assert len(name_list) == len(optional_list) == len(type_list)
-        ret = ''
+        ret = ""
         for name, optional, type in zip(name_list, optional_list, type_list):
             if optional == 'true':
                 if VECTOR_TYPE in type:
@@ -379,13 +414,13 @@ class CodeGen:
         name_list = op_info.output_name_list
         type_list = op_info.output_type_list
         intermediate_list = op_info.output_intermediate_list
-        ret = ''
+        ret = ""
         for i, (name, type, intermediate) in enumerate(
             zip(name_list, type_list, intermediate_list)
         ):
             if intermediate == 'true':
                 continue
-            if self._is_optional_output(op_info, op_name, name):
+            if self._is_optional_output(op_info, name):
                 if VECTOR_TYPE in type:
                     ret += OPTIONAL_VECTOR_OPRESULT_OUTPUT_TEMPLATE.format(
                         name=name,
@@ -405,7 +440,7 @@ class CodeGen:
         type_list = op_info.input_type_list
         optional_list = op_info.input_optional_list
         assert len(name_list) == len(type_list) == len(optional_list)
-        combine_op = ''
+        combine_op = ""
         combine_op_list = []
         for name, type, optional in zip(name_list, type_list, optional_list):
             if optional == 'false' and VECTOR_TYPE in type:
@@ -479,7 +514,7 @@ class CodeGen:
             op_inst_name,
         )
 
-    def _gen_out_split_and_ret_list(self, op_info, op_name, op_inst_name):
+    def _gen_out_split_and_ret_list(self, op_info, op_inst_name):
         name_list = op_info.output_name_list
         type_list = op_info.output_type_list
         intermediate_list = op_info.output_intermediate_list
@@ -491,14 +526,14 @@ class CodeGen:
             == len(optional_list)
         )
 
-        split_op_str = ''
+        split_op_str = ""
         ret_list = []
         for i, (name, type, intermediate) in enumerate(
             zip(name_list, type_list, intermediate_list)
         ):
             if intermediate == 'true':
                 continue
-            if self._is_optional_output(op_info, op_name, name):
+            if self._is_optional_output(op_info, name):
                 ret_list.append(f'optional_{name}')
             elif VECTOR_TYPE in type:
                 split_op_name = f'{name}_split_op'
@@ -519,73 +554,246 @@ class CodeGen:
             return 'return;'
 
     def _gen_check_data_type(self, op_info, op_name):
-        name_list = op_info.input_name_list
-        type_list = op_info.input_type_list
+        mapping_input_name_to_type = dict(
+            zip(op_info.input_name_list, op_info.input_type_list)
+        )
+        mapping_attr_name_to_type = dict(
+            zip(op_info.attribute_name_list, op_info.attribute_type_list)
+        )
+
+        mapping_name_to_type = {
+            **mapping_input_name_to_type,
+            **mapping_attr_name_to_type,
+        }
+
+        mapping_input_name_to_optional = dict(
+            zip(op_info.input_name_list, op_info.input_optional_list)
+        )
+
         if (
             op_name.endswith(('_grad', '_grad_', '_grad_dense', '_grad_sparse'))
-            or len(name_list) == 0
+            or op_name in ["print", "hardshrink", "det", "assign_out_"]
+            or len(mapping_name_to_type) == 0
         ):
-            return ''
+            return ""
         try:
             data_type_candidates = op_info.kernel_map['data_type']['candidates']
-        except Exception:
+        except (KeyError, TypeError):
             data_type_candidates = None
-        ret = ''
-        if data_type_candidates is not None:
-            for name in data_type_candidates:
-                if name not in name_list:
-                    continue
-                index = name_list.index(name)
-                type = type_list[index]
-                if VECTOR_TYPE in type:
-                    function_name = 'CheckVectorOfValueDataType'
 
+        mapping_type_to_function_name = {
+            f"{VECTOR_TYPE}<{DENSE_TENSOR_TYPE}>": 'CheckVectorOfValueDataType',
+            DENSE_TENSOR_TYPE: 'CheckValueDataType',
+            DATA_TYPE: 'CheckDataType',
+        }
+
+        if data_type_candidates is None or len(data_type_candidates) == 0:
+            if len(op_info.input_name_list) == 0:
+                return ""
+            ret = ""
+            for name in op_info.input_name_list[::-1]:
+                type = mapping_input_name_to_type[name]
+                optional = mapping_input_name_to_optional[name]
+                if (
+                    function_name := mapping_type_to_function_name.get(
+                        type, None
+                    )
+                ) is None:
+                    continue
+
+                if optional == 'false':
+                    if ret == "":
+                        return CHECK_DATA_TYPE_TEMPLATE.format(
+                            function=function_name,
+                            inputs=f"{name}, \"{name}\"",
+                            op_name=op_name,
+                        )
+                    else:
+                        ret += ELSE_TEMPLATE.format(
+                            check_statement=CHECK_DATA_TYPE_TEMPLATE.format(
+                                function=function_name,
+                                inputs=f"{name}, \"{name}\"",
+                                op_name=op_name,
+                            ).strip("\n")
+                        )
+                        return ret
                 else:
-                    function_name = 'CheckValueDataType'
-                ret += CHECK_DATA_TYPE_TEMPLATE.format(
-                    function=function_name, input=name, op_name=op_name
-                )
-        return ret
+                    if ret == "":
+                        template = IF_TEMPLATE
+                    else:
+                        template = ELSE_IF_TEMPLATE
+
+                    ret += template.format(
+                        condition=name,
+                        check_statement=CHECK_DATA_TYPE_TEMPLATE.format(
+                            function=function_name,
+                            inputs=f"{name}.get(), \"{name}\"",
+                            op_name=op_name,
+                        ).strip("\n"),
+                    )
+            return ret
+
+        elif len(data_type_candidates) == 1:
+            name = data_type_candidates[0]
+            if name not in mapping_name_to_type:
+                return ""
+            type = mapping_name_to_type[name]
+            if (
+                function_name := mapping_type_to_function_name.get(type, None)
+            ) is None:
+                return ""
+            return CHECK_DATA_TYPE_TEMPLATE.format(
+                function=function_name,
+                inputs=f"{name}, \"{name}\"",
+                op_name=op_name,
+            )
+        elif len(data_type_candidates) == 2:
+            dtype_name = data_type_candidates[0]
+            value_name = data_type_candidates[1]
+            dtype_type = mapping_name_to_type.get(dtype_name, None)
+            value_type = mapping_name_to_type.get(value_name, None)
+            if DENSE_TENSOR_TYPE != value_type or DATA_TYPE != dtype_type:
+                return ""
+            function_name = 'CheckDataTypeOrValue'
+            return CHECK_DATA_TYPE_TEMPLATE.format(
+                function=function_name,
+                inputs=f"{dtype_name}, \"{dtype_name}\", {value_name}, \"{value_name}\"",
+                op_name=op_name,
+            )
+        return ""
 
     def _gen_one_impl(
         self, op_info, op_name, is_mutable_attr, is_vector_mutable_attr
     ):
-        ret_type = self._gen_ret_type(op_info, op_name)
-        in_combine, in_combine_op_list = self._gen_in_combine(
-            op_info, is_mutable_attr, is_vector_mutable_attr
-        )
-        compute_op, op_inst_name = self._gen_compute_op(
-            op_info, op_name, in_combine_op_list, is_mutable_attr
-        )
-        if ret_type == 'void':
-            compute_op += f' (void){op_inst_name};'
+        ret = ''
+        dispatch_kernel = None
+        if op_info.kernel_map and 'dispatch' in op_info.kernel_map:
+            dispatch_kernel = op_info.kernel_map['dispatch']
 
-        out_split, ret_list = self._gen_out_split_and_ret_list(
-            op_info, op_name, op_inst_name
-        )
+        if dispatch_kernel and len(dispatch_kernel.keys()) > 1:
+            api_inner_code = ''
+            for kernel_name in dispatch_kernel.keys():
+                dispatch_input_type = dispatch_kernel[kernel_name][0]
+                input_name = op_info.input_name_list
+                input_optional = op_info.input_optional_list
+                cond_list = []
+                for i, type in enumerate(dispatch_input_type):
+                    name = input_name[i]
+                    optional = input_optional[i]
+                    if type == 'dense':
+                        if optional == 'true':
+                            cond_list.append(
+                                f'(!{name} || {name}->type().isa<paddle::dialect::DenseTensorType>())'
+                            )
+                        else:
+                            cond_list.append(
+                                f'{name}.type().isa<paddle::dialect::DenseTensorType>()'
+                            )
+                    elif type == 'selected_rows':
+                        if optional == 'true':
+                            cond_list.append(
+                                f'(!{name} || {name}->type().isa<paddle::dialect::SelectedRowsType>())'
+                            )
+                        else:
+                            cond_list.append(
+                                f'{name}.type().isa<paddle::dialect::SelectedRowsType>()'
+                            )
 
-        ret = API_IMPL_TEMPLATE.format(
-            check_data_type=self._gen_check_data_type(op_info, op_name),
-            ret_type=ret_type,
-            api_name=op_name,
-            args=self._gen_api_args(
-                op_info, False, is_mutable_attr, is_vector_mutable_attr
-            ),
-            handle_optional_inputs=self._gen_handle_optional_inputs(op_info),
-            in_combine=in_combine,
-            compute_op=compute_op,
-            handle_optional_outputs=self._gen_handle_optional_outputs(
-                op_info, op_name
-            ),
-            out_split=out_split,
-            return_result=self._gen_return_result(ret_list),
-        )
+                ret_type = self._gen_ret_type(op_info)
+                in_combine, in_combine_op_list = self._gen_in_combine(
+                    op_info, is_mutable_attr, is_vector_mutable_attr
+                )
 
-        ret = re.sub(r' +\n', '', ret)
+                if op_name.endswith('_') and not kernel_name.endswith('_'):
+                    kernel_name = kernel_name + '_'
+                compute_op, op_inst_name = self._gen_compute_op(
+                    op_info, kernel_name, in_combine_op_list, is_mutable_attr
+                )
+                if ret_type == 'void':
+                    compute_op += f' (void){op_inst_name};'
+
+                out_split, ret_list = self._gen_out_split_and_ret_list(
+                    op_info, op_inst_name
+                )
+
+                if_inner_code = API_INNER_CODE_TEMPLATE.format(
+                    check_data_type=self._gen_check_data_type(
+                        op_info, kernel_name
+                    ),
+                    handle_optional_inputs=self._gen_handle_optional_inputs(
+                        op_info
+                    ),
+                    in_combine=in_combine,
+                    compute_op=compute_op,
+                    handle_optional_outputs=self._gen_handle_optional_outputs(
+                        op_info, kernel_name
+                    ),
+                    out_split=out_split,
+                    return_result=self._gen_return_result(ret_list),
+                )
+
+                if_inner_code = if_inner_code.split('\n')
+                if_inner_code = '\n'.join(
+                    ['    ' + code for code in if_inner_code]
+                )
+
+                api_inner_code += OP_DISPATCH_TEMPLATE.format(
+                    cond=' && '.join(cond_list), inner_code=if_inner_code
+                )
+
+            api_inner_code += OP_DISPATCH_ERROR_TEMPLATE.format(op_name=op_name)
+            ret = API_IMPL_TEMPLATE.format(
+                ret_type=ret_type,
+                api_name=op_name,
+                args=self._gen_api_args(
+                    op_info, False, is_mutable_attr, is_vector_mutable_attr
+                ),
+                inner_code=api_inner_code,
+            )
+
+        else:
+            ret_type = self._gen_ret_type(op_info)
+            in_combine, in_combine_op_list = self._gen_in_combine(
+                op_info, is_mutable_attr, is_vector_mutable_attr
+            )
+            compute_op, op_inst_name = self._gen_compute_op(
+                op_info, op_name, in_combine_op_list, is_mutable_attr
+            )
+            if ret_type == 'void':
+                compute_op += f' (void){op_inst_name};'
+
+            out_split, ret_list = self._gen_out_split_and_ret_list(
+                op_info, op_inst_name
+            )
+
+            api_inner_code = API_INNER_CODE_TEMPLATE.format(
+                check_data_type=self._gen_check_data_type(op_info, op_name),
+                handle_optional_inputs=self._gen_handle_optional_inputs(
+                    op_info
+                ),
+                in_combine=in_combine,
+                compute_op=compute_op,
+                handle_optional_outputs=self._gen_handle_optional_outputs(
+                    op_info, op_name
+                ),
+                out_split=out_split,
+                return_result=self._gen_return_result(ret_list),
+            )
+
+            ret = API_IMPL_TEMPLATE.format(
+                ret_type=ret_type,
+                api_name=op_name,
+                args=self._gen_api_args(
+                    op_info, False, is_mutable_attr, is_vector_mutable_attr
+                ),
+                inner_code=api_inner_code,
+            )
+
+        ret = re.sub(r' +\n', "", ret)
         return ret
 
     def _gen_cpp_file(self, op_info_items, namespaces, cpp_file_path):
-        impl_str = ''
+        impl_str = ""
         for op_info in op_info_items:
             for op_name in op_info.op_phi_name:
                 # NOTE:When infer_meta_func is None, the Build() function generated in pd_op
@@ -621,11 +829,15 @@ class CodeGen:
             os.remove(h_file_path)
         if os.path.exists(cpp_file_path):
             os.remove(cpp_file_path)
-
         op_info_items = self._parse_yaml(op_yaml_files, op_compat_yaml_file)
 
         self._gen_h_file(op_info_items, namespaces, h_file_path)
         self._gen_cpp_file(op_info_items, namespaces, cpp_file_path)
+        try:
+            subprocess.run(['clang-format', '-i', h_file_path])
+            subprocess.run(['clang-format', '-i', cpp_file_path])
+        except Exception as e:
+            pass
 
 
 def ParseArguments():
@@ -647,14 +859,14 @@ if __name__ == '__main__':
     op_compat_yaml_file = args.op_compat_yaml_file
     if args.namespaces is not None:
         namespaces = args.namespaces.split(",")
-    api_def_h_file = args.api_def_h_file
-    api_def_cc_file = args.api_def_cc_file
+        api_def_h_file = args.api_def_h_file
+        api_def_cc_file = args.api_def_cc_file
 
-    code_gen = CodeGen()
-    code_gen.gen_h_and_cpp_file(
-        op_yaml_files,
-        op_compat_yaml_file,
-        namespaces,
-        api_def_h_file,
-        api_def_cc_file,
-    )
+        code_gen = CodeGen()
+        code_gen.gen_h_and_cpp_file(
+            op_yaml_files,
+            op_compat_yaml_file,
+            namespaces,
+            api_def_h_file,
+            api_def_cc_file,
+        )

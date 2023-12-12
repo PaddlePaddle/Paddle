@@ -875,6 +875,24 @@ class Fleet:
         """
         self._role_maker._barrier("worker")
 
+    def all_reduce(self, input, mode="sum"):
+        """
+        all reduce input between all workers, mode can be sum, mean or max, default is sum
+
+        Returns:
+            list/int: all reduce result
+
+        Examples:
+
+            .. code-block:: python
+
+                >>> import paddle.distributed.fleet as fleet
+                >>> fleet.init()
+                >>> res = fleet.all_reduce(5)
+
+        """
+        return self._role_maker._all_reduce(input, mode, "worker")
+
     @is_non_distributed_check
     @inited_runtime_handler
     def init_worker(self, scopes=None):
@@ -1628,12 +1646,54 @@ class Fleet:
             )
 
             can_not_apply_optimizer_list = []
+
+            valid_optimizer_list = []
+            valid_graph_optimizer_list = []
+            skip_names = []
+            if (
+                self._is_collective
+                and len(self._user_defined_strategy.sparse_table_configs) > 0
+            ):
+                skip_names.append("ShardingOptimizer")
+            # compile time
+            distributed_optimizer_list = (
+                MetaOptimizerFactory()._get_valid_meta_optimizers(
+                    self.user_defined_optimizer, skip_names
+                )
+            )
+            # trigger the auto-parallel in very strict condition
+            # strategy = DistributedStrategy()
+            # strategy.auto = True
+            # optimizer = paddle.optimizer.SGD(learning_rate=0.1)
+            # optimizer = fleet.distributed_optimizer(optimizer, strategy)
+            if copy_user_defined_strategy._is_strict_auto():
+                # turn on all the strategy for each optimizer
+                for opt in distributed_optimizer_list:
+                    opt._enable_strategy(copy_user_defined_strategy, context)
+
+            valid_optimizer_list = []
+            valid_graph_optimizer_list = []
+            # recall meta optimizers for ranking
+            for opt in distributed_optimizer_list:
+                opt._set_basic_info(
+                    loss,
+                    self._role_maker,
+                    self.user_defined_optimizer,
+                    copy_user_defined_strategy,
+                )
+                if opt._can_apply() and not opt._is_graph_out():
+                    valid_optimizer_list.append(opt)
+                elif opt._can_apply() and opt._is_graph_out():
+                    valid_graph_optimizer_list.append(opt)
+                else:
+                    can_not_apply_optimizer_list.append(opt)
             # fix set collective and fleet ps gpu error
             if (
                 self._is_collective
                 and len(self._user_defined_strategy.sparse_table_configs) > 0
             ):
                 context["use_fleet_ps"] = True
+
                 from .meta_optimizers import ParameterServerOptimizer
 
                 meta_optimizer = ParameterServerOptimizer(
@@ -1645,58 +1705,32 @@ class Fleet:
                     self.user_defined_optimizer,
                     copy_user_defined_strategy,
                 )
+                valid_optimizer_list.clear()
+                valid_optimizer_list.append(meta_optimizer)
                 can_not_apply_optimizer_list.append(meta_optimizer)
 
                 # meaningless, just for compatibility with other code
                 graph_optimizer = None
 
-            else:
-                # compile time
-                distributed_optimizer_list = (
-                    MetaOptimizerFactory()._get_valid_meta_optimizers(
-                        self.user_defined_optimizer
-                    )
-                )
-                # trigger the auto-parallel in very strict condition
-                # strategy = DistributedStrategy()
-                # strategy.auto = True
-                # optimizer = paddle.optimizer.SGD(learning_rate=0.1)
-                # optimizer = fleet.distributed_optimizer(optimizer, strategy)
-                if copy_user_defined_strategy._is_strict_auto():
-                    # turn on all the strategy for each optimizer
-                    for opt in distributed_optimizer_list:
-                        opt._enable_strategy(
-                            copy_user_defined_strategy, context
-                        )
+                # valid_graph_optimizer_list.clear()
+                # valid_graph_optimizer_list.append(graph_optimizer)
+                # can_not_apply_optimizer_list.append(graph_optimizer)
 
-                valid_optimizer_list = []
-                valid_graph_optimizer_list = []
-                # recall meta optimizers for ranking
-                for opt in distributed_optimizer_list:
-                    opt._set_basic_info(
-                        loss,
-                        self._role_maker,
-                        self.user_defined_optimizer,
-                        copy_user_defined_strategy,
-                    )
-                    if opt._can_apply() and not opt._is_graph_out():
-                        valid_optimizer_list.append(opt)
-                    elif opt._can_apply() and opt._is_graph_out():
-                        valid_graph_optimizer_list.append(opt)
-                    else:
-                        can_not_apply_optimizer_list.append(opt)
-                # combine recalled meta optimizers to be a valid meta optimizer
-                (
-                    meta_optimizer,
-                    graph_optimizer,
-                ) = self.strategy_compiler.generate_optimizer(
-                    loss,
-                    self._role_maker,
-                    self.user_defined_optimizer,
-                    copy_user_defined_strategy,
-                    valid_optimizer_list,
-                    valid_graph_optimizer_list,
-                )
+            print("valid_optimizer_list=", valid_optimizer_list)
+            # combine recalled meta optimizers to be a valid meta optimizer
+            (
+                meta_optimizer,
+                graph_optimizer,
+            ) = self.strategy_compiler.generate_optimizer(
+                loss,
+                self._role_maker,
+                self.user_defined_optimizer,
+                copy_user_defined_strategy,
+                valid_optimizer_list,
+                valid_graph_optimizer_list,
+            )
+            print("meta_optimizer=", meta_optimizer)
+            print("graph_optimizer=", graph_optimizer)
 
             valid_strategy = self.strategy_compiler._get_valid_strategy(
                 copy_user_defined_strategy, can_not_apply_optimizer_list
@@ -1905,7 +1939,7 @@ class Fleet:
                 if v or k not in opt_info:
                     opt_info[k] = v
             program._fleet_opt = opt_info
-            logger.debug(
+            logger.info(
                 "fleet base opt info: "
                 + str(id(program))
                 + str(program._fleet_opt)

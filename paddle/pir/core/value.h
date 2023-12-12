@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/iterator.h"
 #include "paddle/pir/core/op_operand.h"
 #include "paddle/pir/core/type.h"
@@ -99,6 +100,19 @@ class IR_API Value {
       const std::function<bool(OpOperand)> &should_replace) const;
   void ReplaceAllUsesWith(Value new_value) const;
   detail::ValueImpl *impl() const { return impl_; }
+
+  ///
+  /// \brief attribute related public interfaces
+  ///
+  // return nullptr if value is null or attribute not found.
+  Attribute attribute(const std::string &key) const;
+
+  template <typename T>
+  T attribute(const std::string &name) const {
+    return attribute(name).dyn_cast<T>();
+  }
+
+  void set_attribute(const std::string &key, Attribute value);
 
  protected:
   detail::ValueImpl *impl_{nullptr};

@@ -11,7 +11,10 @@ paddle_test(
   op_dialect_vjp)
 paddle_test(ir_region_test SRCS ir_region_test.cc DEPS pir)
 paddle_test(ir_builder_test SRCS ir_builder_test.cc DEPS pir)
+
+
 paddle_test(ir_program_test SRCS ir_program_test.cc)
+
 
 paddle_test(ir_infershape_test SRCS ir_infershape_test.cc)
 

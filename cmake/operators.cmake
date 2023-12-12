@@ -688,7 +688,7 @@ function(prune_pybind_h)
 
   # add fused_op in op_list
   list(APPEND op_list "fc")
-  list(APPEND op_list "conv2d_fusion")
+  list(APPEND op_list "fused_conv2d_add_act")
   list(APPEND op_list "fusion_seqconv_eltadd_relu")
   list(APPEND op_list "fusion_seqpool_cvm_concat")
   list(APPEND op_list "fusion_gru")
@@ -733,4 +733,54 @@ function(prune_pybind_h)
       file(APPEND ${pybind_file} "${op_name}\n")
     endif()
   endforeach()
+endfunction()
+
+function(append_op_util_declare TARGET)
+  file(READ ${TARGET} target_content)
+  string(REGEX MATCH "(PD_REGISTER_ARG_MAPPING_FN)\\([ \t\r\n]*[a-z0-9_]*"
+               util_registrar "${target_content}")
+  if(NOT ${util_registrar} EQUAL "")
+    string(REPLACE "PD_REGISTER_ARG_MAPPING_FN" "PD_DECLARE_ARG_MAPPING_FN"
+                   util_declare "${util_registrar}")
+    string(APPEND util_declare ");\n")
+    file(APPEND ${op_utils_header} "${util_declare}")
+  endif()
+endfunction()
+
+function(append_op_kernel_map_declare TARGET)
+  file(READ ${TARGET} target_content)
+  string(
+    REGEX
+      MATCH
+      "(PD_REGISTER_BASE_KERNEL_NAME)\\([ \t\r\n]*[a-z0-9_]*,[ \\\t\r\n]*[a-z0-9_]*"
+      kernel_mapping_registrar
+      "${target_content}")
+  if(NOT ${kernel_mapping_registrar} EQUAL "")
+    string(REPLACE "PD_REGISTER_BASE_KERNEL_NAME" "PD_DECLARE_BASE_KERNEL_NAME"
+                   kernel_mapping_declare "${kernel_mapping_registrar}")
+    string(APPEND kernel_mapping_declare ");\n")
+    file(APPEND ${op_utils_header} "${kernel_mapping_declare}")
+  endif()
+endfunction()
+
+function(register_op_utils TARGET_NAME)
+  set(utils_srcs)
+  set(options "")
+  set(oneValueArgs "")
+  set(multiValueArgs EXCLUDES DEPS)
+  cmake_parse_arguments(register_op_utils "${options}" "${oneValueArgs}"
+                        "${multiValueArgs}" ${ARGN})
+
+  file(GLOB SIGNATURES
+       "${PADDLE_SOURCE_DIR}/paddle/fluid/operators/ops_signature/*_sig.cc")
+  foreach(target ${SIGNATURES})
+    append_op_util_declare(${target})
+    append_op_kernel_map_declare(${target})
+    list(APPEND utils_srcs ${target})
+  endforeach()
+
+  cc_library(
+    ${TARGET_NAME}
+    SRCS ${utils_srcs}
+    DEPS ${register_op_utils_DEPS})
 endfunction()
