@@ -18,6 +18,7 @@ set(PYBIND_DEPS
     profiler
     layer
     tracer
+    allocator
     engine
     common
     scope_pool
