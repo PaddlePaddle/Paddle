@@ -54,6 +54,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
       size_t* counter,
       const phi::Place& place,
       paddle::framework::Scope* scope,
+      bool is_train_mode,
       paddle::framework::interpreter::ExecutionConfig* exe_config,
       std::vector<std::string>* deleted_vars)
       : RewritePattern(MatchAnyOpTypeTag(),
@@ -63,6 +64,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
         counter_(counter),
         place_(place),
         scope_(scope),
+        is_train_mode_(is_train_mode),
         exe_config_(exe_config),
         deleted_vars_(deleted_vars) {
     exe_config_->create_local_scope = false;
@@ -83,8 +85,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
         continue;
       }
       // 2. inputs must come from parameter op or constant op
-      if (!(pir::GetDefiningOpForInput(op, i)->isa<pir::ParameterOp>() ||
-            pir::GetDefiningOpForInput(op, i)->isa<pir::ConstantTensorOp>())) {
+      if (!CheckDefiningOp(pir::GetDefiningOpForInput(op, i))) {
         return false;
       }
       // 3. inputs must be a dense tensor type
@@ -155,7 +156,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
           phi::errors::InvalidArgument("Parameter var [%s] not in scope.",
                                        output_var_name));
 
-      if (use_parameter_op) {
+      if (use_parameter_op && !is_train_mode_) {
         if (output_var->IsType<phi::DenseTensor>()) {
           auto* output_tensor = output_var->GetMutable<phi::DenseTensor>();
           if (output_tensor->IsInitialized() &&
@@ -204,6 +205,20 @@ class ConstantFoldingPattern : public pir::RewritePattern {
   }
 
  private:
+  bool CheckDefiningOp(pir::Operation* defining_op) const {
+    if (is_train_mode_) {
+      if (!defining_op->isa<pir::ConstantTensorOp>()) {
+        return false;
+      }
+    } else {
+      if (!(defining_op->isa<pir::ParameterOp>() ||
+            defining_op->isa<pir::ConstantTensorOp>())) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   bool CheckUseOps(
       const std::vector<std::pair<pir::Operation*, int32_t>>& use_ops) const {
     for (auto [use_op, idx] : use_ops) {
@@ -299,6 +314,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
   size_t* counter_;
   phi::Place place_;
   paddle::framework::Scope* scope_;
+  bool is_train_mode_;
   paddle::framework::interpreter::ExecutionConfig* exe_config_;
   std::vector<std::string>* deleted_vars_;
 };
@@ -306,8 +322,9 @@ class ConstantFoldingPattern : public pir::RewritePattern {
 class ConstantFoldingPass : public pir::Pass {
  public:
   explicit ConstantFoldingPass(const phi::Place& place,
-                               paddle::framework::Scope* scope)
-      : pir::Pass("constant_folding_pass", 1), place_(place), scope_(scope) {
+                               paddle::framework::Scope* scope,
+                               bool is_train_mode)
+      : pir::Pass("constant_folding_pass", 1), place_(place), scope_(scope), is_train_mode_(is_train_mode) {
     PADDLE_ENFORCE_NOT_NULL(
         scope_, phi::errors::InvalidArgument("scope can not be nullptr"));
   }
@@ -316,7 +333,7 @@ class ConstantFoldingPass : public pir::Pass {
   bool Initialize(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
     ps.Add<ConstantFoldingPattern>(
-        context, &counter_, place_, scope_, &exe_config_, &deleted_vars_);
+        context, &counter_, place_, scope_, is_train_mode_, &exe_config_, &deleted_vars_);
     patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
     return true;
   }
@@ -345,6 +362,7 @@ class ConstantFoldingPass : public pir::Pass {
   size_t counter_{0};
   phi::Place place_;
   paddle::framework::Scope* scope_{nullptr};
+  bool is_train_mode_;
   paddle::framework::interpreter::ExecutionConfig exe_config_{};
   std::vector<std::string> deleted_vars_;
 
@@ -356,8 +374,8 @@ class ConstantFoldingPass : public pir::Pass {
 namespace pir {
 
 std::unique_ptr<Pass> CreateConstantFoldingPass(
-    const phi::Place& place, paddle::framework::Scope* scope) {
-  return std::make_unique<ConstantFoldingPass>(place, scope);
+    const phi::Place& place, paddle::framework::Scope* scope, bool is_train_mode) {
+  return std::make_unique<ConstantFoldingPass>(place, scope, is_train_mode);
 }
 
 }  // namespace pir

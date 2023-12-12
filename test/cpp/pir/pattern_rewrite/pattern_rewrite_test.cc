@@ -438,8 +438,10 @@ void BuildConstantFoldingProgram(pir::Program *program,
       paddle::platform::DeviceContextPool::Instance().Get(
           paddle::platform::CPUPlace());
 
-  auto op1 = builder.Build<pir::ParameterOp>("a", dense_tensor_dtype);
-  auto op2 = builder.Build<pir::ParameterOp>("b", dense_tensor_dtype);
+  auto op1 = builder.Build<pir::ConstantTensorOp>(
+      pir::TensorNameAttribute::get(ctx, "a"), dense_tensor_dtype);
+  auto op2 = builder.Build<pir::ConstantTensorOp>(
+      pir::TensorNameAttribute::get(ctx, "b"), dense_tensor_dtype);
 
   auto op3 =
       builder.Build<paddle::dialect::AddOp>(op1->result(0), op2->result(0));
@@ -479,6 +481,24 @@ TEST(constant_folding, ConstantFolding) {
 
   CHECK_EQ(pm.Run(&program), true);
   EXPECT_EQ(program.block()->size(), 2u);
+}
+
+TEST(constant_folding, ConstantFoldingForTraining) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
+
+  pir::Program program(ctx);
+  paddle::framework::Scope scope;
+  BuildConstantFoldingProgram(&program, ctx, &scope);
+
+  pir::PassManager pm(ctx);
+  pm.AddPass(pir::CreateConstantFoldingPass(phi::CPUPlace{}, &scope, true));
+  pm.AddPass(pir::CreateDeadCodeEliminationPass());
+  pm.EnableIRPrinting();
+
+  CHECK_EQ(pm.Run(&program), true);
+  EXPECT_EQ(program.block()->size(), 4u);
 }
 
 void BuildConcatProgram(pir::Program *program, pir::IrContext *ctx) {
