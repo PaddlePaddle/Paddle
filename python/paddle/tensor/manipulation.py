@@ -5310,11 +5310,12 @@ def put_along_axis(
     Args:
         arr (Tensor) : The Destination Tensor. Supported data types are float32 and float64.
         indices (Tensor) : Indices to put along each 1d slice of arr. This must match the dimension of arr,
-            and need to broadcast against arr. Supported data type are int and int64.
+            and need to broadcast against arr if broadcast is 'True'. Supported data type are int and int64.
+        values (Tensor) : The value element(s) to put. The data types should be same as arr.
         axis (int) : The axis to put 1d slices along.
-        reduce (str, optional): The reduce operation, default is 'assign', support 'add', 'assign', 'mul' and 'multiply'.
-        include_self (bool, optional): whether to reduce with the elements of arr. (Only support True now)
-        broadcast (bool, optional): whether to broadcast indices.
+        reduce (str, optional): The reduce operation, default is 'assign', support 'add', 'assign', 'mul', 'multiply', "mean", "amin" and "amax".
+        include_self (bool, optional): whether to reduce with the elements of arr, default is 'True'.
+        broadcast (bool, optional): whether to broadcast indices, default is 'True'.
 
     Returns:
         Tensor, The indexed element, same dtype with arr
@@ -5332,6 +5333,44 @@ def put_along_axis(
             >>> print(result)
             Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[99, 99, 99],
+             [60, 40, 50]])
+
+            >>> index = paddle.zeros((2,2)).astype("int32")
+            >>> value=paddle.to_tensor([[1,2],[3,4]]).astype(x.dtype)
+            >>> result = paddle.put_along_axis(x, index, value, 0, "add", True, False)
+            >>> print(result)
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[14, 36, 20],
+             [60, 40, 50]])
+
+            >>> result = paddle.put_along_axis(x, index, value, 0, "mul", True, False)
+            >>> print(result)
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[30 , 240, 20 ],
+             [60 , 40 , 50 ]])
+
+            >>> result = paddle.put_along_axis(x, index, value, 0, "mean", True, False)
+            >>> print(result)
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[4 , 12, 20],
+             [60, 40, 50]])
+
+            >>> result = paddle.put_along_axis(x, index, value, 0, "amin", True, False)
+            >>> print(result)
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1 , 2 , 20],
+             [60, 40, 50]])
+
+            >>> result = paddle.put_along_axis(x, index, value, 0, "amax", True, False)
+            >>> print(result)
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[10, 30, 20],
+             [60, 40, 50]])
+
+            >>> result = paddle.put_along_axis(x, index, value, 0, "add", False, False)
+            >>> print(result)
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[4 , 6 , 20],
              [60, 40, 50]])
 
     """
