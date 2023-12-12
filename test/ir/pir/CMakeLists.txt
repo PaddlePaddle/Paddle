@@ -36,5 +36,6 @@ foreach(target ${TEST_IR_SYSTEM_CASES})
 endforeach()
 
 set_tests_properties(test_pd_inplace_pass PROPERTIES TIMEOUT 60)
+set_tests_properties(test_subgraph_checker PROPERTIES LABELS "RUN_TYPE=CINN")
 
 add_subdirectory(fused_pass)
