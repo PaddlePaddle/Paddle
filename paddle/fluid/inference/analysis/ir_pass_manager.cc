@@ -223,7 +223,8 @@ void IRPassManager::CreatePasses(Argument *argument,
       }
       pass->Set("use_static_engine", new bool(use_static_engine));
       pass->Set("model_from_memory", new bool(argument->model_from_memory()));
-      pass->Set("use_inspector", new bool(argument->tensorrt_use_inspector()));
+      pass->Set("use_inspector",
+                new bool(argument->tensorrt_use_inspector() || 1));
       pass->Set("inspector_serialize",
                 new bool(argument->tensorrt_inspector_serialize()));
       pass->Set("trt_ops_run_float",

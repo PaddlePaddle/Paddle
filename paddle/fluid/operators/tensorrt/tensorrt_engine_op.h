@@ -16,6 +16,7 @@
 
 #ifdef PADDLE_WITH_CUDA
 #include <cstdint>
+#include <iostream>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -611,6 +612,18 @@ class TensorRTEngineOp : public framework::OperatorBase {
         }
       } else {
 #if IS_TRT_VERSION_GE(6000)
+#if IS_TRT_VERSION_GE(8500)
+        // LOG(INFO)<<"输入的名字"<<x.c_str();
+        nvinfer1::Dims trt_dims =
+            inference::tensorrt::Vec2TRT_Dims(t_shape, x, true);
+        // LOG(INFO) << "Number of dimensions " << trt_dims.nbDims;
+        // for (int i = 0; i < trt_dims.nbDims; ++i) {
+        //   LOG(INFO) << "Dimension " << i << ": " << trt_dims.d[i];
+        // }
+        trt_context->setInputShape(
+            x.c_str(), inference::tensorrt::Vec2TRT_Dims(t_shape, x, true));
+#endif
+
         trt_context->setBindingDimensions(
             bind_index, inference::tensorrt::Vec2TRT_Dims(t_shape, x, true));
         // If this x is a shape tensor, we need call setInputShapeBinding
@@ -644,6 +657,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
           }
           trt_context->setInputShapeBinding(bind_index, shape_v.data());
         }
+
 #endif
       }
       runtime_batch = t_shape[0];
@@ -718,7 +732,18 @@ class TensorRTEngineOp : public framework::OperatorBase {
           ddim.push_back(dims.d[i]);
         }
       } else {
-#if IS_TRT_VERSION_GE(6000)
+#if IS_TRT_VERSION_GE(8500)
+        auto x_name = engine->engine()->getBindingName(bind_index);
+        auto dims = trt_context->getTensorShape(x_name);
+        int nb_dims = dims.nbDims;
+        for (; nb_dims > 0; nb_dims--) {
+          // some 'x 1' of shape is normal, no need to remove it
+          if (dims.d[nb_dims - 1] != 1 ||
+              nb_dims == origin_output_rank[output_index])
+            break;
+        }
+        for (int i = 0; i < nb_dims; i++) ddim.push_back(dims.d[i]);
+#else
         auto dims = trt_context->getBindingDimensions(bind_index);
         int nb_dims = dims.nbDims;
         for (; nb_dims > 0; nb_dims--) {

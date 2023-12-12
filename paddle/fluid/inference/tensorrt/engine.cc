@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/engine.h"
-
 #include <NvInfer.h>
 #include <glog/logging.h>
+#include <iostream>
 
 #include <string>
 
@@ -96,6 +96,14 @@ nvinfer1::IExecutionContext *TensorRTEngine::context() {
     } else {
       infer_context = infer_engine_->createExecutionContext();
     }
+#if IS_TRT_VERSION_GE(8500)
+    int32_t const endBindingIndex = infer_engine_->getNbIOTensors();
+    for (int i = 0; i < endBindingIndex; ++i) {
+      const auto tensorName = infer_engine_->getIOTensorName(i);
+      m_IOTensorNames.emplace_back(tensorName);
+      LOG(INFO) << "IOTensorName: " << m_IOTensorNames[i];
+    }
+#endif
     PADDLE_ENFORCE_NOT_NULL(
         infer_context,
         platform::errors::InvalidArgument(
@@ -174,11 +182,24 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
     return cuda_graph_.Launch(stream);
   }
 
+#if IS_TRT_VERSION_GE(8500)
+  for (size_t j = 0; j < buffers->size(); ++j) {
+    auto name = context->getEngine().getBindingName(j);
+    // LOG(INFO) << "setTensorAddress的名字" << name;
+    context->setTensorAddress(name, (*buffers)[j]);
+  }
+#endif
+
   bool ret;
   if (!with_dynamic_shape()) {
     ret = context->enqueue(batch_size, buffers->data(), stream, nullptr);
   } else {
+#if IS_TRT_VERSION_GE(8500)
+    LOG(INFO) << "enqueueV3";
+    ret = context->enqueueV3(stream);
+#else
     ret = context->enqueueV2(buffers->data(), stream, nullptr);
+#endif
   }
   return ret;
 }
@@ -469,12 +490,12 @@ void TensorRTEngine::DeclareOutput(const nvinfer1::ILayer *layer,
                         "of the network at the same time.",
                         name));
   network()->markOutput(*output);
-  PADDLE_ENFORCE_EQ(
-      output->isNetworkOutput(),
-      true,
-      platform::errors::InvalidArgument(
-          "The output %s of TRT engine should be the output of the network.",
-          name));
+  PADDLE_ENFORCE_EQ(output->isNetworkOutput(),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "The output %s of TRT engine should be the output "
+                        "of the network.",
+                        name));
 }
 
 void TensorRTEngine::DeclareOutput(const std::string &name) {
@@ -567,8 +588,8 @@ nvinfer1::ITensor *TensorRTEngine::ConvertWeight2ITensor(
     trt_in_shape.nbDims = 1;
     trt_in_shape.d[0] = 1;
   }
-  // In fact , this is not always right, because we can't determine if the 0th
-  // dimension is batch. Just for run chenqu's model
+  // In fact , this is not always right, because we can't determine if the
+  // 0th dimension is batch. Just for run chenqu's model
   if (!with_dynamic_shape()) {
     trt_in_shape.nbDims--;
     for (int i = 0; i < trt_in_shape.nbDims; i++) {
@@ -626,8 +647,10 @@ void TensorRTEngine::Deserialize(const std::string &engine_serialized_data) {
       infer_engine_,
       platform::errors::Fatal(
           "Building TRT cuda engine failed when deserializing engine info. "
-          "Please check:\n1. Your TRT serialization is generated and loaded "
-          "on the same GPU architecture;\n2. The Paddle Inference version of "
+          "Please check:\n1. Your TRT serialization is generated and "
+          "loaded "
+          "on the same GPU architecture;\n2. The Paddle Inference version "
+          "of "
           "generating serialization file and doing inference are "
           "consistent."));
 
