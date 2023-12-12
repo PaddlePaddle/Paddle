@@ -2619,7 +2619,6 @@ inline static void static_op_arg_pre_cast_hook_set(PyObject* obj) {
 static PyObject* set_static_op_arg_pre_cast_hook(PyObject* new_callback,
                                                  PyThreadState* tstate) {
   PyObject* old_callback = static_op_arg_pre_cast_hook_get();
-  Py_DECREF(old_callback);
   Py_INCREF(new_callback);
   static_op_arg_pre_cast_hook_set(new_callback);
 
