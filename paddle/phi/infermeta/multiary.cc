@@ -4194,7 +4194,6 @@ void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
                                       MetaTensor* value_cache_out) {
   auto input_dims = qkv.dims();
   auto key_cache_dims = key_cache.dims();
-  VLOG(1) << "key_cache.dims()   " << key_cache.dims();
   fmha_out->set_dims(
       {input_dims[0], key_cache_dims[1] * 4 * key_cache_dims[3]});
   fmha_out->set_dtype(qkv.dtype());

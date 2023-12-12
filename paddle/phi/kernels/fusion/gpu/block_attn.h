@@ -111,9 +111,6 @@ template <typename T,
 __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
     Block_AttN_params<T> params, LoadFunc load_func, StoreFunc store_func) {
   const int bi = blockIdx.y;
-  // printf("bi %d\n", bi);
-  // printf("params.max_num_blocks_per_seq %d\n",
-  // params.max_num_blocks_per_seq);
 
   int act_time_step = params.sequence_lengths[bi];
   if (act_time_step == 0) {
@@ -168,7 +165,6 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
   const int bhi = bi * params.num_head + hi;  //
   const int gqa_group_size = params.gqa_group_size;
   const int num_head_per_group = params.num_head / gqa_group_size;
-  const int kv_bhi = bi * gqa_group_size + hi / num_head_per_group;
 
   const int ti =
       params.cum_offsets ? bi * params.seq_len - params.cum_offsets[bi] : -1;
@@ -179,25 +175,12 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
   }
   __syncthreads();
 
-  // printf("num_head_per_group %d\n", num_head_per_group);
-  // printf("gqa_group_size %d\n", gqa_group_size);
-  // printf("kv_bhi %d\n", kv_bhi);
-
-  // printf("bhi %d\n", bhi);
-  // printf("ti %d\n", ti);
-  // printf("thi %d\n", thi);
-  // printf("act_time_step %d\n", act_time_step);
-  // printf("BLOCK_SIZE %d\n", BLOCK_SIZE);
-
   float qk_max = -FLT_MAX;
   float qk = 0;
 
   const int block_idx = act_time_step / BLOCK_SIZE;
   const int block_offset = act_time_step % BLOCK_SIZE;
   const int physical_block_number = block_table_smem[block_idx];
-
-  // printf("physical_block_number %d\n", physical_block_number);
-  // printf("block_offset %d\n", block_offset);
 
   const int base_cache_offset =
       physical_block_number * params.gqa_group_size * BLOCK_SIZE * Dh +
@@ -206,11 +189,6 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
   // qkv [B, S=1, 3, num_head, head_dim]
   int qkv_base_offset =
       bi * (params.num_head + 2 * gqa_group_size) * Dh + hi * Dh;
-
-  // printf("Dh: %d\n", Dh);
-  // printf("physical_block_number %d\n", physical_block_number);
-  // printf("base_cache_offset %d\n", base_cache_offset);
-  // printf("qkv_base_offset %d\n", qkv_base_offset);
 
   constexpr int QK_VEC_SIZE = sizeof(Qk_vec) / sizeof(T);
   static_assert(Dh_MAX % QK_VEC_SIZE == 0, "");
@@ -367,10 +345,6 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
   if (tid == 0) {
     qk *= params.inv_sqrt_dh;
     qk_max = qk;
-    if (hi == 0) {
-      // printf("QK max is: %f \n", qk_max);
-      // printf("QK is: %f \n", qk);
-    }
     qk_smem[act_time_step] = qk;
   }
   __syncthreads();
@@ -434,11 +408,6 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
     if (ti < act_time_step && tid % THREADS_PER_KEY == 0) {
       qk_max = fmaxf(qk_max, qk);
       qk_smem[ti] = qk;
-      if (hi == 0) {
-        // printf("Tid is: %d, Query matmul KCache QK max is: %f \n", ti,
-        // qk_max); printf("Tid is: %d, Query matmul KCache QK is: %f \n", ti,
-        // qk);
-      }
     }
   }
 
@@ -1658,15 +1627,15 @@ __global__ void NeoxVariableLengthRotaryKernel(
                step = gridDim.x * blockDim.x * VecSize;
        linear_index < elem_cnt;
        linear_index += step) {
-    const int token_idx = linear_index / offset;  // 0 ~ 65
+    const int token_idx = linear_index / offset;
     const int ori_token_idx = token_idx + padding_offsets[token_idx];
     const int ori_bi = ori_token_idx / seq_len;
     if (seq_lens && seq_lens[ori_bi] == 0) continue;
-    const int bias = linear_index % offset;      // 0 ~ 2048
-    const int qkv_id = bias / hidden_size;       // 0 ~ 1
-    const int qkv_bias = bias % hidden_size;     // 0 ~ 1024
-    const int hi = qkv_bias / half_lastdim;      // 0 ~ 16   0 ~ 4
-    const int h_bias = qkv_bias % half_lastdim;  // 0 ~ 64
+    const int bias = linear_index % offset;
+    const int qkv_id = bias / hidden_size;
+    const int qkv_bias = bias % hidden_size;
+    const int hi = qkv_bias / half_lastdim;
+    const int h_bias = qkv_bias % half_lastdim;
 
     const int ori_seq_id = ori_token_idx % seq_len;
 
@@ -1677,7 +1646,8 @@ __global__ void NeoxVariableLengthRotaryKernel(
                       qkv_id * full_hidden_size + hi * last_dim + h_bias;
     } else {
       base_idx_left = token_idx * (full_hidden_size + 2 * gqa_hidden_size) +
-                      qkv_id * full_hidden_size + (hi / 4) * last_dim + h_bias;
+                      qkv_id * full_hidden_size +
+                      (hi / gqa_group_size) * last_dim + h_bias;
       // printf("base_idx_left = %d\n", base_idx_left);
     }
 
@@ -2497,22 +2467,20 @@ __global__ void gqa_fusedQKV_transpose_split_kernel(T *q_buf,
     int32_t bias_idx = linear_index % fused_hidden_size;
     const int32_t token_idx = linear_index / fused_hidden_size;
     const int32_t ori_token_idx =
-        token_idx + (padding_offset == nullptr ? 0 : padding_offset[token_idx]);
+        token_idx + (padding_offset == nullptr
+                         ? 0
+                         : padding_offset[token_idx]);  // 0  1 2448 2449
     const int32_t target_batch_id = ori_token_idx / seq_len;
     if (seq_lens[target_batch_id] == 0) continue;
 
-    const int32_t seq_id = ori_token_idx % seq_len;
     const int32_t size_id = linear_index % size_per_head;
     int32_t head_id = bias_idx / size_per_head;
 
     int q_store_index =
-        ((target_batch_id * seq_len + seq_id) * head_num + head_id) *
-            size_per_head +
+        (token_idx * head_num + head_id) * size_per_head + size_id;
+    int k_store_index =
+        (token_idx * gqa_group_size + head_id - head_num) * size_per_head +
         size_id;
-    int k_store_index = ((target_batch_id * seq_len + seq_id) * gqa_group_size +
-                         head_id - head_num) *
-                            size_per_head +
-                        size_id;
     if (head_id < head_num) {
       // // printf("q: %d   %d    %d    %d\n", blockIdx.x, threadIdx.x, head_id,
       // q_store_index);

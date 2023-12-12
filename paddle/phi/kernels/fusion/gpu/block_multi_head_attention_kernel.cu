@@ -68,13 +68,13 @@ void BlockMultiheadAttentionKernel(
       dev_ctx, fmha_out->data<T>(), fmha_out->numel(), static_cast<T>(0.));
   const auto& input_dims = qkv.dims();
   const auto& key_cache_dims = key_cache.dims();
-  const int token_num = input_dims[0];    // 65
-  const int output_size = input_dims[1];  // 6144
+  const int token_num = input_dims[0];
+  const int output_size = input_dims[1];
 
-  const int gqa_group_size = key_cache_dims[1];  // 16
+  const int gqa_group_size = key_cache_dims[1];
   const int dim_head = key_cache_dims[3];
 
-  int num_head = output_size / dim_head - 2 * gqa_group_size;  // 48
+  int num_head = output_size / dim_head - 2 * gqa_group_size;
 
   bool use_gqa_attention = false;
   if (gqa_group_size != num_head) {
@@ -124,7 +124,6 @@ void BlockMultiheadAttentionKernel(
   std::ifstream infile("max_len.txt", std::ios::in);
   infile >> max_enc_len_this_time >> max_dec_len_this_time;
   infile.close();
-  PrintMatrix<T>(qkv.data<T>(), 15000, "qkv_input");
 
   phi::DenseTensor qkv_out_decoder;
   if (max_dec_len_this_time > 0) {
@@ -177,6 +176,7 @@ void BlockMultiheadAttentionKernel(
   if (max_enc_len_this_time > 0) {
     const int* sequence_lengths_data = seq_lens_encoder.data<int>();
     if (rope_emb) {
+      // PrintMatrix<T>(qkv.data<T>(), 24576, "qkv_input");
       rotary_qk_variable(dev_ctx,
                          qkv_out->data<T>(),
                          qkv.data<T>(),
@@ -191,11 +191,10 @@ void BlockMultiheadAttentionKernel(
                          use_neox_style,
                          gqa_group_size);
     }
-    PrintMatrix<T>(qkv.data<T>(), 15000, "qkv_rotary_qk_variable");
     VLOG(1) << "rope end";
     VLOG(1) << "causual: " << causual;
     VLOG(1) << "qkv_out->data<T>(): ";
-    PrintMatrix<T>(qkv_out->data<T>(), 3072, "rotary_qk_variable");
+    // PrintMatrix<T>(qkv_out->data<T>(), 24576, "qkv_rotary_qk_variable");
 
     if (!use_pre_cache) {
       qkv_transpose_split<T>(dev_ctx,
@@ -212,15 +211,14 @@ void BlockMultiheadAttentionKernel(
                              dim_head,
                              gqa_group_size);
       VLOG(1) << "qkv split end";
-      PrintMatrix<T>(unpadding_q.data<T>(), 4096, "unpadding_q");
-      PrintMatrix<T>(unpadding_k.data<T>(), 4096, "unpadding_k");
-      PrintMatrix<T>(unpadding_v.data<T>(), 4096, "unpadding_v");
+
+      // PrintMatrix<T>(unpadding_q.data<T>(), 8192, "unpadding_q");
+      // PrintMatrix<T>(unpadding_k.data<T>(), 2048, "unpadding_k");
+      // PrintMatrix<T>(unpadding_v.data<T>(), 2048, "unpadding_v");
 
       VLOG(1) << "unpadding_q: " << unpadding_q.dims();
       VLOG(1) << "unpadding_k: " << unpadding_k.dims();
       VLOG(1) << "unpadding_v: " << unpadding_v.dims();
-
-      PrintMatrix<T>(qkv.data<T>(), 15000, "qkv_qkv_transpose_split");
 
       phi::FlashAttnUnpaddedKernel<T>(dev_ctx,
                                       unpadding_q,
@@ -242,9 +240,7 @@ void BlockMultiheadAttentionKernel(
                                       &softmax_out,
                                       &softmax_lse,
                                       &seed_offset);
-      PrintMatrix<T>(fmha_out->data<T>(), 4096, "fmha_out");
-
-      PrintMatrix<T>(qkv.data<T>(), 15000, "qkv_FlashAttnUnpaddedKernel");
+      // PrintMatrix<T>(qkv.data<T>(), 15000, "qkv_FlashAttnUnpaddedKernel");
     } else {
       qkv_transpose_split<T>(
           dev_ctx,
@@ -309,7 +305,7 @@ void BlockMultiheadAttentionKernel(
                                  value_cache_out);
     } else {
       VLOG(1) << "qkv dims " << qkv.dims();
-      PrintMatrix<T>(qkv.data<T>(), 15000, "qkv_CacheKernel");
+      // PrintMatrix<T>(qkv.data<T>(), 24576, "qkv_CacheKernel");
       CacheKernel<T>(dev_ctx,
                      qkv,
                      block_tables,
@@ -328,14 +324,11 @@ void BlockMultiheadAttentionKernel(
                      key_cache_out,
                      value_cache_out,
                      gqa_group_size);
-      PrintMatrix<T>(key_cache_out->data<T>(), 40960, "key_cache_out");
-      PrintMatrix<T>(value_cache_out->data<T>(), 40960, "value_cache_out");
     }
     VLOG(1) << "cache end";
   }
   VLOG(1) << "encoder done";
   VLOG(1) << "max_dec_len_this_time: " << max_dec_len_this_time;
-  PrintMatrix<T>(qkv.data<T>(), 15000, "qkv_GetDecoderTensor");
   if (max_dec_len_this_time > 0) {
     GetDecoderTensor<T>(dev_ctx,
                         qkv,
@@ -350,7 +343,6 @@ void BlockMultiheadAttentionKernel(
                         dim_head,
                         gqa_group_size);
     VLOG(1) << "qkv_out_decoder: " << qkv_out_decoder.dims();
-    PrintMatrix<T>(qkv_out_decoder.data<T>(), 15000, "qkv_out_decoder");
     blha<T>(dev_ctx,
             qkv_out_decoder,
             nullptr,  // qkv_bias
