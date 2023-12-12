@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
 
+#include <chrono>
 #include <unordered_map>
 
 #include "glog/logging.h"
@@ -59,6 +60,12 @@ const std::unordered_set<std::string> ProgramTranslator::unsupported_ops = {
     "conditional_block_grad",
     "while_grad",
 };
+
+std::string nano_timestamp() {
+  auto ts =
+      std::chrono::high_resolution_clock::now().time_since_epoch().count();
+  return std::to_string(ts);
+}
 
 static std::vector<uint64_t> GetCondOpIds(const BlockDesc& src_block,
                                           uint64_t first_id) {
@@ -430,9 +437,9 @@ pir::Operation* ProgramTranslator::InsertFullOrDataOpToBlock(
   if (type.isa<paddle::dialect::DenseTensorType>()) {
     auto tensor_type = type.dyn_cast<paddle::dialect::DenseTensorType>();
     std::vector<int64_t> shape = common::vectorize(tensor_type.dims());
-    paddle::dialect::FullOp full_op = builder.Build<paddle::dialect::FullOp>(
+    auto full_op = builder.Build<paddle::dialect::DataOp>(
+        "full" + nano_timestamp(),
         shape,
-        0,
         paddle::dialect::TransToPhiDataType(tensor_type.dtype()),
         phi::CPUPlace());
     full_op.out().set_type(type);
