@@ -52,7 +52,7 @@ class ValueWrapper:
 class ValueDict:
     def __init__(
         self,
-        iter,
+        iter=None,
         *,
         default_factory=None,
     ):
