@@ -648,9 +648,9 @@ def _program_for_fthenb_and_1f1b(program, enable_send_recv_overlap=False):
     bwd_prog._sync_with_cpp()
     opt_prog._sync_with_cpp()
 
-    fwd_prog._rollback()
-    bwd_prog._rollback()
-    opt_prog._rollback()
+    fwd_prog._roll_to_global_block()
+    bwd_prog._roll_to_global_block()
+    opt_prog._roll_to_global_block()
 
     # It MUST return in this order
     return [fwd_prog, bwd_prog, opt_prog]
@@ -751,7 +751,7 @@ def _program_for_vpp(program, num_model_chunks, dist_context):
 
     for prog in type_to_program.values():
         prog._sync_with_cpp()
-        prog._rollback()
+        prog._roll_to_global_block()
 
     return list(type_to_program.keys()), list(type_to_program.values())
 
