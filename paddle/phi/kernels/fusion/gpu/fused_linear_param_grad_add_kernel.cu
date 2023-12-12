@@ -130,10 +130,13 @@ void FusedLinearParamGradAdd(const Context &ctx,
                              bool has_bias,
                              DenseTensor *dweight_out,
                              DenseTensor *dbias_out) {
-  LOG_FIRST_N(WARNING, 1)
-      << "There may be problems when master_grad is not enabled and use "
-         "fp16-O2 in stage2, users should pay attention to the correctness of "
-         "the result of the grad accumulation in stage2.";
+  if (dweight_out->dtype() == phi::DataType::FP16) {
+    LOG_FIRST_N(WARNING, 1)
+        << "There may be problems when master_grad is not enabled and use "
+           "fp16-O2 in stage2, users should pay attention to the correctness "
+           "of "
+           "the result of the grad accumulation in stage2.";
+  }
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   bool use_addto = false;
