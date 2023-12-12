@@ -24,6 +24,7 @@
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/phi/backends/onednn/onednn_context.h"
+#include "paddle/phi/kernels/funcs/data_layout_transform.h"
 #endif
 
 namespace paddle {
