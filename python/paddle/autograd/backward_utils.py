@@ -25,29 +25,38 @@ from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
 class ValueWrapper:
     def __init__(self, value) -> None:
-        self.value = value.value if isinstance(value, ValueWrapper) else value
+        if isinstance(value, ValueWrapper):
+            assert isinstance(value._value, (type(None), pir.Value))
+        else:
+            assert isinstance(value, (type(None), pir.Value))
+        self._value = value._value if isinstance(value, ValueWrapper) else value
 
     def __hash__(self) -> int:
-        if isinstance(self.value, pir.Value):
-            return self.value.hash()
+        if isinstance(self._value, pir.Value):
+            return self._value.hash()
         else:
-            return hash(self.value)
+            return hash(self._value)
 
     def __eq__(self, other) -> bool:
-        tmp_other = other.value if isinstance(other, ValueWrapper) else other
-        if self.value is None:
-            return tmp_other is None
-        return self.value.is_same(tmp_other)
+        if not isinstance(ValueWrapper):
+            warnings.warn(
+                f'In ValueWrapper.__eq__ expected type of `other` is ValueWrapper but received {other.__class__}.'
+            )
+            return False
+
+        if self._value is None or other._value is None:
+            return self._value is None and other._value is None
+        return self._value.is_same(other._value)
 
 
 class ValueDict:
     def __init__(
         self,
-        iter: dict[ValueWrapper, Any] | None = None,
+        iter,
         *,
         default_factory=None,
     ):
-        self._items: dict[ValueWrapper, Any] = {}
+        self._items: dict[ValueWrapper] = {}
         self._default_factory = default_factory
         if iter is not None:
             for key, val in iter.items():
@@ -55,31 +64,29 @@ class ValueDict:
 
     def update(self, other_dict):
         for key, val in other_dict:
-            self[ValueWrapper(key)] = val
+            self[key] = val
 
     def keys(self):
         for key in self._items.keys():
-            yield key.value
+            yield key._value
 
     def values(self):
         return self._items.values()
 
     def items(self):
         for key, val in self._items.items():
-            yield key.value, val
+            yield key._value, val
 
     def __setitem__(self, key, val: Any):
-        tmp_key = key if isinstance(key, ValueWrapper) else ValueWrapper(key)
-        self._items[tmp_key] = val
+        self._items[ValueWrapper(key)] = val
 
     def __getitem__(self, key):
-        tmp_key = key if isinstance(key, ValueWrapper) else ValueWrapper(key)
-        if not self.__contains__(tmp_key):
+        if not self.__contains__(key):
             if self._default_factory is not None:
-                self[tmp_key] = self._default_factory()
+                self[key] = self._default_factory()
             else:
-                raise KeyError(f'{key} not in ValueDict')
-        return self._items[tmp_key]
+                raise KeyError(f'{key} is not in ValueDict')
+        return self._items[ValueWrapper(key)]
 
     def __bool__(self):
         return bool(self._items)
@@ -91,8 +98,6 @@ class ValueDict:
         return self.keys()
 
     def __contains__(self, key):
-        if isinstance(key, ValueWrapper):
-            return key in self._items
         return ValueWrapper(key) in self._items
 
 
@@ -100,44 +105,37 @@ class ValueSet:
     def __init__(
         self, iter: Sequence[ValueWrapper] | set[ValueWrapper] | None = None
     ):
-        self._values: set[ValueWrapper] = set()
+        self._set: set[ValueWrapper] = set()
         if iter is not None:
             for val in iter:
                 self.add(val)
 
     def add(self, val):
-        tmp_val = ValueWrapper(val)
-        if not self.__contains__(tmp_val):
-            self._values.add(tmp_val)
+        if not self.__contains__(val):
+            self._set.add(ValueWrapper(val))
 
-    def update(self, other_set: set):
-        for val in other_set:
-            self.add(ValueWrapper(val))
+    def update(self, other: set):
+        for val in other:
+            self.add(val)
 
-    def __and__(self, other_set: ValueSet):
-        ret = ValueSet()
-        for val in self._values:
-            if val in other_set:
-                ret.add(val)
-        return ret
+    def __and__(self, other: ValueSet):
+        return ValueSet(self._set & other._set)
 
-    def __or__(self, other_set: ValueSet):
-        return ValueSet(self._values | other_set._values)
+    def __or__(self, other: ValueSet):
+        return ValueSet(self._set | other._set)
 
     def __bool__(self):
-        return bool(self._values)
+        return bool(self._set)
 
     def __len__(self):
-        return len(self._values)
+        return len(self._set)
 
     def __iter__(self):
-        for val in self._values:
-            yield val.value
+        for val in self._set:
+            yield val._value
 
     def __contains__(self, val):
-        if isinstance(val, ValueWrapper):
-            return val in self._values
-        return ValueWrapper(val) in self._values
+        return ValueWrapper(val) in self._set
 
 
 class State:
