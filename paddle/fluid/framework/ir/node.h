@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/utils/any.h"
+#include "paddle/utils/test_macros.h"
 namespace paddle {
 namespace framework {
 class OpDesc;
@@ -278,10 +279,6 @@ class Node {
   void SetDescOrder(int desc_order) { desc_order_ = desc_order; }
 
   friend class Graph;
-  friend std::unique_ptr<Node> CreateNodeForTest(const std::string& name,
-                                                 Node::Type type);
-  friend std::unique_ptr<Node> CreateNodeForTest(VarDesc* var_desc);
-  friend std::unique_ptr<Node> CreateNodeForTest(OpDesc* op_desc);
 
   explicit Node(const std::string& name, Type type, int block_id = 0)
       : name_(name),
@@ -315,12 +312,15 @@ class Node {
   std::type_index wrapper_type_ = std::type_index(typeid(void));
 
   DISABLE_COPY_AND_ASSIGN(Node);
-};
 
+  TEST_API friend std::unique_ptr<Node> CreateNodeForTest(
+      const std::string& name, Node::Type type);
+  TEST_API friend std::unique_ptr<Node> CreateNodeForTest(VarDesc* var_desc);
+  TEST_API friend std::unique_ptr<Node> CreateNodeForTest(OpDesc* op_desc);
+};
 std::unique_ptr<Node> CreateNodeForTest(const std::string& name,
                                         Node::Type type);
 std::unique_ptr<Node> CreateNodeForTest(VarDesc* var_desc);
-
 std::unique_ptr<Node> CreateNodeForTest(OpDesc* op_desc);
 }  // namespace ir
 }  // namespace framework

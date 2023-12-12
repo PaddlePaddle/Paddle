@@ -188,7 +188,7 @@ class CustomPlace : public Place {
   }
 };
 
-std::ostream& operator<<(std::ostream&, const Place&);
+TEST_API std::ostream& operator<<(std::ostream&, const Place&);
 
 Place GetPinnedPlace(const Place& place);
 
