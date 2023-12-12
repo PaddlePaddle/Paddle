@@ -658,6 +658,11 @@ static void TranslateOpDistAttribute(const OpDesc& op_desc,
           attribute_translator("stream_priority", dist_attr->stream_priority());
       (*attr_map)["stream_priority"] = new_attr;
     }
+    if (dist_attr->scheduling_priority() != 0) {
+      pir::Attribute new_attr = attribute_translator(
+          "scheduling_priority", dist_attr->scheduling_priority());
+      (*attr_map)["scheduling_priority"] = new_attr;
+    }
   }
 }
 

@@ -33,6 +33,7 @@
 #include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
@@ -149,6 +150,27 @@ bool IsCommunicationOp(const Instruction& instr) {
     return false;
   }
   return IsCommunicationOp(instr.OpBase());
+}
+
+bool IsCommunicationOp(const ::pir::Operation* op) {
+  std::string op_name = op->name();
+  if (op->attributes().count("op_name")) {
+    op_name =
+        op->attributes().at("op_name").dyn_cast<pir::StrAttribute>().AsString();
+  }
+  const std::set<std::string> special_comm_op_set = {
+      paddle::dialect::SendV2Op::name(),
+      paddle::dialect::RecvV2Op::name(),
+  };
+  const std::string communication_op_prefix = "c_";
+  if (op_name.find(communication_op_prefix) != std::string::npos ||
+      special_comm_op_set.count(op_name)) {
+    return true;
+  }
+  if (op->attributes().count("ring_id") != 0) {
+    return true;
+  }
+  return false;
 }
 
 bool IsCpuOp(const Instruction& instr) {

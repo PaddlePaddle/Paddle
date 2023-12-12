@@ -47,33 +47,29 @@ LegacyKernelInstruction::LegacyKernelInstruction(
   legacy_op_name_ = op_name;
   VLOG(6) << "construct phi kernel instruction for: " << legacy_op_name_;
 
-  // Todo: support paddle::dialect::DistAttribute
-  //   if (op_attributes.count("dist_attr") != 0) {
-  //     if (op_attributes.count("execution_stream") != 0) {
-  //         SetExecutionStream(op_attributes.at("execution_stream")
-  //                             .dyn_cast<pir::StrAttribute>()
-  //                             .data());
-  //     }
-  //     if (op_attributes.count("stream_priority") != 0) {
-  //         SetStreamPriority(op_attributes.at("stream_priority")
-  //                             .dyn_cast<pir::Int32Attribute>()
-  //                             .data());
-  //     }
-  //     if (op_attributes.count("scheduling_priority") != 0) {
-  //         SetSchedulingPriority(op_attributes.at("scheduling_priority")
-  //                                 .dyn_cast<pir::Int64Attribute>()
-  //                                 .data());
-  //     }
-  //   } else {
-  //     if (interpreter::IsCommunicationOp(op)) {
-  //       // NOTE(Ruibiao): Dispatching computation before communication
-  //       improves
-  //       // multi-stream overlap when the time cost of communication less than
-  //       // that of the calculation (e.g., ResNet50_bs128_pure_fp16 N4C32
-  //       // training).
-  //       op_func_node.scheduling_priority_ = 1;
-  //     }
-  //   }
+  if (op_attributes.count("execution_stream") != 0) {
+    SetExecutionStream(op_attributes.at("execution_stream")
+                           .dyn_cast<pir::StrAttribute>()
+                           .AsString());
+  }
+  if (op_attributes.count("stream_priority") != 0) {
+    SetStreamPriority(op_attributes.at("stream_priority")
+                          .dyn_cast<pir::Int32Attribute>()
+                          .data());
+  }
+  if (op_attributes.count("scheduling_priority") != 0) {
+    SetSchedulingPriority(op_attributes.at("scheduling_priority")
+                              .dyn_cast<pir::Int64Attribute>()
+                              .data());
+  } else {
+    if (interpreter::IsCommunicationOp(op_)) {
+      // NOTE(Ruibiao): Dispatching computation before communication improves
+      // multi-stream overlap when the time cost of communication less than
+      // that of the calculation (e.g., ResNet50_bs128_pure_fp16 N4C32
+      // training).
+      SetSchedulingPriority(1);
+    }
+  }
   VLOG(6) << "finish process dist attributes";
 
   SetKernelType(AnalyseOpFuncType(op, place));
