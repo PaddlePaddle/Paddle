@@ -37,7 +37,7 @@ namespace cutlass_internal {
 using gemm_kernel_utils::getMaximumSharedMemoryPerBlockKb;
 
 template <typename T, typename Context>
-void MemoryEfficientAttentionBackwardKernel(
+void MemoryEfficientAttentionGradKernel(
     const Context& ctx,
     const DenseTensor& query,
     const DenseTensor& key,
@@ -566,7 +566,7 @@ PD_REGISTER_KERNEL(
     memory_efficient_attention_grad,
     GPU,
     ALL_LAYOUT,
-    phi::fusion::cutlass_internal::MemoryEfficientAttentionBackwardKernel,
+    phi::fusion::cutlass_internal::MemoryEfficientAttentionGradKernel,
     float,
     phi::dtype::bfloat16,
     phi::dtype::float16) {

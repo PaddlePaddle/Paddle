@@ -135,5 +135,45 @@ inline void debug_gpu_memory_info(const char* desc) {
   }
 }
 
+inline void show_gpu_mem(const char* desc) {
+  CudaDeviceRestorer r;
+
+  int device_num = 0;
+  auto err = cudaGetDeviceCount(&device_num);
+  PADDLE_ENFORCE_EQ(
+      err,
+      cudaSuccess,
+      platform::errors::InvalidArgument("cudaGetDeviceCount failed!"));
+
+  size_t avail{0};
+  size_t total{0};
+  for (int i = 0; i < device_num; ++i) {
+    cudaSetDevice(i);
+    auto err = cudaMemGetInfo(&avail, &total);
+    PADDLE_ENFORCE_EQ(
+        err,
+        cudaSuccess,
+        platform::errors::InvalidArgument("cudaMemGetInfo failed!"));
+    VLOG(0) << "[" << desc << "] hbm on device " << i << ", "
+            << "avail=" << avail / 1024.0 / 1024.0 / 1024.0 << "g, "
+            << "total=" << total / 1024.0 / 1024.0 / 1024.0 << "g";
+  }
+}
+
+inline void show_cpu_mem(const char* desc) {
+  // MB
+  int64_t virtual_mem = 0, resident_mem = 0;
+
+  FILE* fp = fopen("/proc/self/statm", "r");
+  if (NULL != fp) {
+    fscanf(fp, "%ld %ld", &virtual_mem, &resident_mem);
+    resident_mem = resident_mem * 4096 / 1000000;
+    virtual_mem = virtual_mem * 4096 / 1000000;
+    fclose(fp);
+  }
+
+  VLOG(0) << "[" << desc << "] mem used " << resident_mem << "MB";
+}
+
 };  // namespace framework
 };  // namespace paddle

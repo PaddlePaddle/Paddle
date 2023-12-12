@@ -879,7 +879,7 @@ void EagerReducer::MarkVarReady(const size_t var_index,
         auto *dev_ctx =
             platform::DeviceContextPool::Instance().Get(inner_place_);
         group_tensor.Resize({static_cast<int64_t>(length)});
-        phi::funcs::set_constant(*dev_ctx, &group_tensor, 0.0);
+        phi::funcs::set_constant(*dev_ctx, &group_tensor, 0.0f);
       }
     }
   } else {

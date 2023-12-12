@@ -39,7 +39,7 @@ def replace_ellipsis(var, item):
     item_remove_var = [
         ele
         for ele in item
-        if not isinstance(ele, (Variable, paddle.pir.OpResult, np.ndarray))
+        if not isinstance(ele, (Variable, paddle.pir.Value, np.ndarray))
         and ele is not None
     ]
     ell_count = item_remove_var.count(Ellipsis)
@@ -91,7 +91,7 @@ def is_integer_or_scalar_tensor(ele):
     elif isinstance(ele, Variable):
         if len(ele.shape) == 0 and ele.dtype != paddle.bool:
             return True
-    elif isinstance(ele, paddle.pir.OpResult):
+    elif isinstance(ele, paddle.pir.Value):
         if len(ele.shape) == 0 and ele.dtype != paddle.base.libpaddle.BOOL:
             return True
     return False
@@ -105,7 +105,7 @@ def deal_attrs(attrs, attr, attr_name, tensor_attr_name, inputs, infer_flags):
             attr, dtype="int64"
         )
         for i, dim in enumerate(attr):
-            if isinstance(dim, (Variable, paddle.pir.OpResult)):
+            if isinstance(dim, (Variable, paddle.pir.Value)):
                 attrs[attr_name].append(-1)
                 infer_flags[i] = -1
             else:
@@ -332,7 +332,7 @@ def parse_index(x, indices):
             has_advanced_index = True
             estimated_dim += 1
             dim += 1
-        elif isinstance(slice_item, paddle.pir.OpResult):
+        elif isinstance(slice_item, paddle.pir.Value):
             # In this case, the Variable is not 0-dim Tensor and will be treated as advanced-indexing.
             if slice_item.dtype == paddle.pir.core.DataType.BOOL:
                 if slice_item.ndim == 0:
@@ -363,9 +363,7 @@ def parse_index(x, indices):
             use_strided_slice = (
                 True
                 if (
-                    isinstance(
-                        step, (paddle.base.Variable, paddle.pir.OpResult)
-                    )
+                    isinstance(step, (paddle.base.Variable, paddle.pir.Value))
                     or step != 1
                 )
                 else use_strided_slice

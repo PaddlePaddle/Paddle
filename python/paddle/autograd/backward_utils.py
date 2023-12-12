@@ -22,7 +22,8 @@ from paddle.base.wrapped_decorator import signature_safe_contextmanager
 class State:
     """
     record relationship of forward op/value and backward op/value
-    one state must be bining with a program
+    one state must be bining with a block, if block has parent block,
+    state will include parent block info.
 
     """
 
@@ -39,6 +40,10 @@ class State:
         self.sumvaluegrad_to_value = collections.defaultdict(list)
         # operation -> list(operation)
         self.opgrad_to_op = collections.defaultdict(list)
+        # only for controlflow
+        # inside_value is sub block value, which will yield to parent block,
+        # parant block value is outside_value
+        self.inside_value_to_outside_value_map = {}
 
     def turn_map(self) -> None:
         self.valuegrad_to_value = collections.defaultdict(list)
@@ -70,6 +75,11 @@ class State:
         state.sumvaluegrad_to_value = self.sumvaluegrad_to_value.copy()
         # operation -> list(operation)
         state.opgrad_to_op = self.opgrad_to_op.copy()
+
+        # only for controlflow
+        state.inside_value_to_outside_value_map = (
+            self.inside_value_to_outside_value_map.copy()
+        )
 
         return state
 
