@@ -415,6 +415,7 @@ FLOAT_TYPES = {
 SUPPORT_FLOAT_TYPES = {
     core.VarDesc.VarType.FP32,
     core.VarDesc.VarType.FP16,
+    core.VarDesc.VarType.BF16,
 }
 
 
