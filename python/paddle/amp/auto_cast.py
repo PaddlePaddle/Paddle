@@ -868,37 +868,42 @@ def decorate(
     from paddle._pir_ops import parameter, set_parameter
 
     if paddle.framework.in_pir_mode() and level == 'O2':
-        main = paddle.static.default_main_program()
-        startup = paddle.static.default_startup_program()
-        linear = models
-        with paddle.static.program_guard(startup):
-            block = startup.global_block()
-            for op in block.ops:
-                if op.name() != 'builtin.set_parameter':
-                    continue
+        if level == 'O1':
+            return models, optimizers
+        elif level == 'O2':
+            main = paddle.static.default_main_program()
+            startup = paddle.static.default_startup_program()
+            linear = models
+            with paddle.static.program_guard(startup):
+                block = startup.global_block()
+                for op in block.ops:
+                    if op.name() != 'builtin.set_parameter':
+                        continue
 
-                name = op.attrs()['parameter_name']
-                param = op.operand(0).source()
-                cast_param = paddle.cast(param, dtype)
-                cast_param.persistable = True
-                set_parameter(cast_param, name)
-                # breakpoint()
-                block.remove_op(op)
+                    name = op.attrs()['parameter_name']
+                    param = op.operand(0).source()
+                    cast_param = paddle.cast(param, dtype)
+                    cast_param.persistable = True
+                    set_parameter(cast_param, name)
+                    # breakpoint()
+                    block.remove_op(op)
 
-        main.move_parameters_from(startup)
-        with paddle.static.program_guard(main):
-            block = main.global_block()
-            for _, param in linear._parameters.items():
-                cast_param = parameter(param.name, param.dtype, param.shape)
-                cast_param.stop_gradient = param.stop_gradient
-                cast_param.persistable = param.persistable
-                op = param.get_defining_op()
-                block.remove_op(op)
+            main.move_parameters_from(startup)
+            with paddle.static.program_guard(main):
+                block = main.global_block()
+                for _, param in linear._parameters.items():
+                    cast_param = parameter(param.name, param.dtype, param.shape)
+                    cast_param.stop_gradient = param.stop_gradient
+                    cast_param.persistable = param.persistable
+                    op = param.get_defining_op()
+                    block.remove_op(op)
 
-                # param.replace_all_uses_with(cast_param)
-                param.share_impl_with(cast_param)
+                    # param.replace_all_uses_with(cast_param)
+                    param.share_impl_with(cast_param)
 
-        return models, optimizers
+            return models, optimizers
+        else:
+            raise ValueError(f'level should be O1 or O2, but level={level}')
 
     return amp_decorate(
         models,
