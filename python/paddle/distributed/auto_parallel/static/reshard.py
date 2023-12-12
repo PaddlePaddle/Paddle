@@ -14,6 +14,7 @@
 
 
 import copy
+import warnings
 from collections import OrderedDict
 from functools import reduce
 
@@ -34,11 +35,15 @@ from .cost import (
 from .dist_attribute import TensorDistAttr
 from .dist_context import DistributedContext
 from .process_group import new_process_group
-from .utils import _g_gradient_clip_ops, is_gradient_clip_op, is_optimize_op
+from .utils import (
+    _g_gradient_clip_ops,
+    is_gradient_clip_op,
+    is_optimize_op,
+)
 
 # NOTE: If op in _g_special_ops or _g_gradient_clip_ops, it will not be resharded.
 _g_special_ops = ['check_finite_and_unscale', 'update_loss_scaling']
-_g_subblock_ops = ["while", "conditional_block"]
+_g_sub_block_ops = ["while", "conditional_block", "conditional_block_grad"]
 
 
 def get_var_with_recursion(var_name, block, program):
@@ -779,7 +784,7 @@ class Remover:
 
         # NOTE: The nested sub block is not be supported now.
         remove_block_order = []
-        for block_idx in Resharder.while_block_info:
+        for block_idx in Resharder.sub_block_info:
             remove_block_order.append(block_idx)
 
         for block_idx, block in enumerate(auto_parallel_main_prog.blocks):
@@ -791,7 +796,6 @@ class Remover:
             remove_op_idx = []
             block = auto_parallel_main_prog.blocks[block_idx]
             ops = block.ops
-            vars = block.vars
             for idx, op in enumerate(ops):
                 if op.type == "read":
                     dim_list = []
@@ -909,7 +913,7 @@ class Remover:
         Remover.remove_no_need_ops(
             auto_parallel_main_prog, dist_context, rank_id
         )
-        Resharder.change_while_op_input_and_output(
+        Resharder.change_subblock_op_input_and_output(
             auto_parallel_main_prog, dist_context
         )
         # 'feed_var_names' cannot be removed from auto_parallel_main_prog
@@ -1010,7 +1014,7 @@ class Resharder:
         batch_size (int): The batch size. Default: None.
     """
 
-    while_block_info = {}
+    sub_block_info = {}
 
     def __init__(
         self,
@@ -1215,15 +1219,12 @@ class Resharder:
                 partition_index_list.append(partition_index)
 
     @staticmethod
-    def change_while_op_input_and_output(auto_parallel_main_prog, dist_context):
-        """Change while op input and output after the corresponding sub block ops removed"""
-        for sub_block_idx in Resharder.while_block_info:
+    def change_subblock_op_input_and_output(
+        auto_parallel_main_prog, dist_context
+    ):
+        """Change subblock op input and output after the corresponding sub block ops removed"""
+        for sub_block_idx in Resharder.sub_block_info:
             sub_block = auto_parallel_main_prog.blocks[sub_block_idx]
-            parent_while_op_id = Resharder.while_block_info[sub_block_idx][
-                "op_id"
-            ]
-            parent_block = auto_parallel_main_prog.blocks[sub_block.parent_idx]
-
             sub_block_op_inputs = set()
             sub_block_op_outputs = []
             for op in sub_block.ops:
@@ -1241,28 +1242,49 @@ class Resharder:
                     for var_name in op.input_arg_names:
                         sub_block_op_inputs.add(var_name)
 
-            # find the while op
-            while_op = None
+            # find the sub_block_op
+            parent_subblock_op_id = Resharder.sub_block_info[sub_block_idx][
+                "op_id"
+            ]
+            parent_block = auto_parallel_main_prog.blocks[sub_block.parent_idx]
+            sub_block_op = None
             for op in parent_block.ops:
-                if op.desc.id() == parent_while_op_id and op.type == "while":
-                    while_op = op
+                if (
+                    op.desc.id() == parent_subblock_op_id
+                    and op.type in _g_sub_block_ops
+                ):
+                    sub_block_op = op
                     break
 
-            if while_op is None:
+            if sub_block_op is None:
                 continue
 
             # find the actual input and output of while op
-            proto = OpProtoHolder.instance().get_op_proto(while_op.type)
+            if sub_block_op.type == "while":
+                in_slot_name = "X"
+                out_slot_name = "Out"
+                input_var_names = sub_block_op.input(in_slot_name)
+                output_var_names = sub_block_op.output(out_slot_name)
+            elif sub_block_op.type == "conditional_block":
+                in_slot_name = "Input"
+                out_slot_name = "Out"
+                input_var_names = sub_block_op.input(in_slot_name)
+                output_var_names = sub_block_op.output(out_slot_name)
+            elif sub_block_op.type == "conditional_block_grad":
+                in_slot_name = "Input"
+                out_slot_name = "Input@GRAD"
+                input_var_names = sub_block_op.input(in_slot_name)
+                output_var_names = sub_block_op.output(out_slot_name)
+
             new_X = []
-            for var_name in while_op.input("X"):
+            for var_name in input_var_names:
                 if var_name in sub_block_op_inputs:
                     new_X.append(var_name)
-            assert new_X
             new_X.sort()
-            while_op.desc.set_input(proto.inputs[0].name, new_X)
+            sub_block_op.desc.set_input(in_slot_name, new_X)
 
             new_Out = []
-            for var_name in while_op.output("Out"):
+            for var_name in output_var_names:
                 for output_name in sub_block_op_outputs[::-1]:
                     if output_name.find(var_name) != -1 and (
                         len(var_name) == len(output_name)
@@ -1270,8 +1292,7 @@ class Resharder:
                     ):
                         if output_name not in new_Out:
                             new_Out.append(output_name)
-            assert new_Out
-            while_op.desc.set_output(proto.outputs[0].name, new_Out)
+            sub_block_op.desc.set_output(out_slot_name, new_Out)
 
     def is_overlapped(self, shape_x, shape_y):
         """Judge whether two partitions intersect on the specified dimension."""
@@ -1303,7 +1324,7 @@ class Resharder:
 
         if op.type == "while":
             input_cond = op.input("Condition")
-        elif op.type == "conditional_block":
+        elif op.type in ["conditional_block", "conditional_block_grad"]:
             input_cond = op.input("Cond")
 
         # the dims mapping of condition tensor should be replicative
@@ -2099,23 +2120,23 @@ class Resharder:
                     # var_reshard_mapping means the while op input need be changed to
                     if (
                         "var_reshard_mapping"
-                        not in Resharder.while_block_info[
+                        not in Resharder.sub_block_info[
                             op.attr("sub_block").id
                         ].keys()
                     ):
-                        Resharder.while_block_info[op.attr("sub_block").id][
+                        Resharder.sub_block_info[op.attr("sub_block").id][
                             "var_reshard_mapping"
                         ] = {}
                     if (
                         var_name
-                        not in Resharder.while_block_info[
+                        not in Resharder.sub_block_info[
                             op.attr("sub_block").id
                         ]["var_reshard_mapping"].keys()
                     ):
-                        Resharder.while_block_info[op.attr("sub_block").id][
+                        Resharder.sub_block_info[op.attr("sub_block").id][
                             "var_reshard_mapping"
                         ][var_name] = []
-                    Resharder.while_block_info[op.attr("sub_block").id][
+                    Resharder.sub_block_info[op.attr("sub_block").id][
                         "var_reshard_mapping"
                     ][var_name].append([dist_attr, target_tensor.name])
 
@@ -2211,7 +2232,7 @@ class Resharder:
 
     def _get_subblock_input_attrs(self, op, var_name):
         # NOTE: Multi while loop is not supported
-        assert op.type in _g_subblock_ops
+        assert op.type in _g_sub_block_ops
         sub_block = self.auto_parallel_main_prog.blocks[op.attr("sub_block").id]
         ops = sub_block.ops
         input_attrs = []
@@ -2247,7 +2268,7 @@ class Resharder:
 
     def _get_subblock_output_attrs(self, op, var_name):
         # NOTE: Multi while loop is not supported
-        assert op.type in _g_subblock_ops
+        assert op.type in _g_sub_block_ops
         sub_block = self.auto_parallel_main_prog.blocks[op.attr("sub_block").id]
         ops = sub_block.ops
         output_attrs = []
@@ -2266,8 +2287,8 @@ class Resharder:
                     has_exist = False
                     for output_attr in output_attrs:
                         if (
-                            process_mesh == output_attrs[0]
-                            and output_dims_mapping == output_attrs[1]
+                            process_mesh == output_attr[0]
+                            and output_dims_mapping == output_attr[1]
                         ):
                             has_exist = True
                             break
@@ -2310,7 +2331,7 @@ class Resharder:
     def get_op_input_attrs(self, op, var_name):
         op_input_attrs = []
 
-        if op.type in _g_subblock_ops:
+        if op.type in _g_sub_block_ops:
             op_input_attrs = self._get_subblock_input_attrs(op, var_name)
             if not op_input_attrs:
                 # NOTE: [hack method]
@@ -2320,11 +2341,10 @@ class Resharder:
         else:
             op_input_attrs = self._get_common_op_input_attrs(op, var_name)
 
-        assert (
-            op_input_attrs
-        ), "The input '{}' of op '{}' has no distributed attributes in subblock".format(
-            op.name, var_name
-        )
+        if not op_input_attrs:
+            warnings.warn(
+                f"The input '{var_name}' of op '{op.type}' has no distributed attributes in subblock"
+            )
 
         return op_input_attrs
 
@@ -2351,8 +2371,8 @@ class Resharder:
                     self.dist_context.process_meshes.pop(idx)
 
     def _change_subblock_op_input_and_output(self, block_idx, block):
-        if "var_reshard_mapping" in Resharder.while_block_info[block_idx]:
-            var_reshard_mapping = Resharder.while_block_info[block_idx][
+        if "var_reshard_mapping" in Resharder.sub_block_info[block_idx]:
+            var_reshard_mapping = Resharder.sub_block_info[block_idx][
                 "var_reshard_mapping"
             ]
             for op in block.ops:
@@ -2423,30 +2443,25 @@ class Resharder:
 
             dist_op = self.dist_context.get_dist_op_for_program(op)
             if dist_op is not None:
-                op_input_dist_attrs = (
-                    []
-                )  # [(op_process_mesh, op_input_dims_mapping), (op_process_mesh, op_input_dims_mapping)]
-                if op.type in _g_subblock_ops:
+                if op.type in _g_sub_block_ops:
                     if not self.is_condition_replicative(op):
                         raise ValueError(
                             "Please check the condition due to the dims mapping is not replicative."
                         )
-                    if (
-                        op.attr("sub_block").id
-                        not in Resharder.while_block_info
-                    ):
-                        Resharder.while_block_info[op.attr("sub_block").id] = {}
-                    Resharder.while_block_info[op.attr("sub_block").id][
+                    if op.attr("sub_block").id not in Resharder.sub_block_info:
+                        Resharder.sub_block_info[op.attr("sub_block").id] = {}
+                    Resharder.sub_block_info[op.attr("sub_block").id][
                         "op_id"
                     ] = op.desc.id()
 
                 if op.type == "while":
                     # condition var process mesh is the same with op and dims_mapping is replicative, so it do not need reshard
                     input_var_names = op.input("X")
-                elif op.type == "conditional_block":
+                elif op.type in ["conditional_block", "conditional_block_grad"]:
                     input_var_names = op.input("Input")
                 else:
                     input_var_names = op.input_arg_names
+
                 # to avoid while op X order different
                 input_var_names.sort()
 
@@ -2476,8 +2491,6 @@ class Resharder:
 
                     op_input_attrs = self.get_op_input_attrs(op, var_name)
                     for input_attr in op_input_attrs:
-                        input_process_mesh = None
-
                         # deal with union tensor
                         if is_union_process_mesh_tensor:
                             # if op process mesh is subset of union tensor process mesh, need no reshard
@@ -2654,7 +2667,7 @@ class Resharder:
         ]
         global _g_special_ops
         skip_ops += _g_special_ops
-        skip_ops += _g_subblock_ops
+        skip_ops += _g_sub_block_ops
         while idx < len(block.ops):
             pre_op_count = len(block.ops)
             op = block.ops[idx]
@@ -2796,7 +2809,7 @@ class Resharder:
         self._remove_global_process_mesh()
         for block_idx, block in enumerate(self.auto_parallel_main_prog.blocks):
             # change the var_name before resharding sub block
-            if block_idx in Resharder.while_block_info:
+            if block_idx in Resharder.sub_block_info:
                 self._change_subblock_op_input_and_output(block_idx, block)
 
             # reshard input
@@ -2820,7 +2833,7 @@ class Resharder:
         )
 
         # reset some variable when remove operation ended
-        Resharder.while_block_info = {}
+        Resharder.sub_block_info = {}
 
     def get_cost(self, op, tensor, cluster):
         # NOTE: The program should be the serial_program which is not been parted
