@@ -59,7 +59,7 @@ paddle_test(ir_op_yaml_info_parser_test SRCS op_yaml_info_parser_test.cc)
 
 paddle_test(ir_type_converter_test SRCS ir_type_converter_test.cc)
 
-paddle_test(type_interface_test SRCS type_interface_test.cc)
+paddle_test(type_interface_test SRCS type_interface_test.cc DEPS test_dialect)
 
 paddle_test(block_operand_test SRCS block_operand_test.cc DEPS test_dialect)
 
