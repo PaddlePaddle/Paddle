@@ -1535,7 +1535,10 @@ class OpcodeExecutor(OpcodeExecutorBase):
         instr_idx:
             the index for branch 1 to find the boundary and copy origin opcode
         """
-        if self._graph.sir_ctx.TOS.graph_size() < ENV_MIN_GRAPH_SIZE.get():
+        if (
+            self._graph.sir_ctx.TOS.graph_size() < ENV_MIN_GRAPH_SIZE.get()
+            and sys.version_info < (3, 11)
+        ):
             store_var_info = {}
             for name in restore_names:
                 _var = self.get_var(name)
