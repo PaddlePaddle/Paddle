@@ -60,7 +60,6 @@ class CastOpGradMaker : public framework::SingleGradOpMaker<T> {
     grad->SetOutput("Out", this->InputGrad("X"));
     grad->SetAttr("out_dtype", this->GetAttr("in_dtype"));
     grad->SetAttr("in_dtype", this->GetAttr("out_dtype"));
-    grad->SetAttr("use_mkldnn", this->GetAttr("use_mkldnn"));
   }
 };
 
