@@ -418,6 +418,8 @@ class eager_gil_scoped_release {
   PyThreadState* tstate{nullptr};
 };
 
+/* ------------------ for SetStaticOpArgPreCastHook ----------------------- */
+
 inline static PyObject* static_op_arg_pre_cast_hook_get();
 
 inline static void static_op_arg_pre_cast_hook_set(PyObject* obj);

@@ -2599,6 +2599,51 @@ void* UnPackHook::operator()(void* packed_value, void* other) {
   return reinterpret_cast<void*>(ret);
 }
 
+/* ------------------ for SetStaticOpArgPreCastHook ----------------------- */
+
+static Py_tss_t static_op_arg_pre_cast_hook_key = {0, 0};
+
+inline static PyObject* static_op_arg_pre_cast_hook_get() {
+  void* result = PyThread_tss_get(&static_op_arg_pre_cast_hook_key);
+  if (result == NULL) {
+    return Py_None;
+  } else {
+    return reinterpret_cast<PyObject*>(result);
+  }
+}
+
+inline static void static_op_arg_pre_cast_hook_set(PyObject* obj) {
+  PyThread_tss_set(&static_op_arg_pre_cast_hook_key, obj);
+}
+
+static PyObject* set_static_op_arg_pre_cast_hook(PyObject* new_callback,
+                                                 PyThreadState* tstate) {
+  PyObject* old_callback = static_op_arg_pre_cast_hook_get();
+  Py_DECREF(old_callback);
+  Py_INCREF(new_callback);
+  static_op_arg_pre_cast_hook_set(new_callback);
+
+  return old_callback;
+}
+
+PyObject* SetStaticOpArgPreCastHook(PyObject* dummy, PyObject* callback) {
+  if (callback != Py_None && !PyCallable_Check(callback)) {
+    VLOG(7) << "callback is not a callable or none, invalid arguments.";
+    Py_INCREF(Py_None);
+    return Py_None;
+  }
+  return set_static_op_arg_pre_cast_hook(callback, PyThreadState_GET());
+}
+
+PyMODINIT_FUNC PyInit__static_op_arg_pre_cast_hook() {
+  auto result = PyThread_tss_create(&static_op_arg_pre_cast_hook_key);
+  VLOG(7) << "Set PyThread_tss_create return: " << result;
+
+  Py_INCREF(Py_None);
+  static_op_arg_pre_cast_hook_set(Py_None);
+  return NULL;
+}
+
 /* ------------------ for auto parallel ----------------------- */
 
 void DistTensorTypeParser::operator()(const Tensor& x) {
@@ -2685,49 +2730,6 @@ void DistTensorConverter::operator()(paddle::optional<std::vector<Tensor>>* x) {
       }
     }
   }
-}
-
-static Py_tss_t static_op_arg_pre_cast_hook_key = {0, 0};
-
-inline static PyObject* static_op_arg_pre_cast_hook_get() {
-  void* result = PyThread_tss_get(&static_op_arg_pre_cast_hook_key);
-  if (result == NULL) {
-    return Py_None;
-  } else {
-    return reinterpret_cast<PyObject*>(result);
-  }
-}
-
-inline static void static_op_arg_pre_cast_hook_set(PyObject* obj) {
-  PyThread_tss_set(&static_op_arg_pre_cast_hook_key, obj);
-}
-
-static PyObject* set_static_op_arg_pre_cast_hook(PyObject* new_callback,
-                                                 PyThreadState* tstate) {
-  PyObject* old_callback = static_op_arg_pre_cast_hook_get();
-  Py_DECREF(old_callback);
-  Py_INCREF(new_callback);
-  static_op_arg_pre_cast_hook_set(new_callback);
-
-  return old_callback;
-}
-
-PyObject* SetStaticOpArgPreCastHook(PyObject* dummy, PyObject* callback) {
-  if (callback != Py_None && !PyCallable_Check(callback)) {
-    VLOG(7) << "callback is not a callable or none, invalid arguments.";
-    Py_INCREF(Py_None);
-    return Py_None;
-  }
-  return set_static_op_arg_pre_cast_hook(callback, PyThreadState_GET());
-}
-
-PyMODINIT_FUNC PyInit__static_op_arg_pre_cast_hook() {
-  auto result = PyThread_tss_create(&static_op_arg_pre_cast_hook_key);
-  VLOG(7) << "Set PyThread_tss_create return: " << result;
-
-  Py_INCREF(Py_None);
-  static_op_arg_pre_cast_hook_set(Py_None);
-  return NULL;
 }
 
 static PyMethodDef EagerUtilMethods[] = {
