@@ -284,8 +284,8 @@ from .tensor.manipulation import (  # noqa: F401
     index_put_,
     masked_fill,
     masked_fill_,
-    asked_scatter_,
-    masked_scatte
+    masked_scatter_,
+    masked_scatter,
     moveaxis,
     put_along_axis,
     select_scatter,
@@ -319,7 +319,7 @@ from .tensor.manipulation import (  # noqa: F401
     unstack,
     view,
     view_as,
-    vsplit
+    vsplit,
 )
 from .tensor.math import (  # noqa: F401
     abs,
