@@ -16,6 +16,18 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#include "paddle/fluid/platform/flags.h"
+#include "paddle/utils/string/split.h"
+
+// export FLAGS_specified_names_enter_into_trt=
+PADDLE_DEFINE_EXPORTED_string(specified_names_enter_into_trt,
+                              "",
+                              "var names seperated by comma");
+
+PADDLE_DEFINE_EXPORTED_string(specified_names_not_into_trt,
+                              "",
+                              "var names seperated by comma");
+
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -415,21 +427,45 @@ void DetachDeletedNodes(framework::ir::Graph *graph) {
   }
 }
 
+
+
 void SubGraphFuser::ReplaceNodesWithSubGraphs() {
   auto subgraphs = SubgraphDetector(graph_, node_inside_subgraph_teller_)();
   for (auto &subgraph : subgraphs) {
     if (subgraph.size() <= static_cast<size_t>(min_subgraph_size_)) continue;
 
+  
+    auto var_names_into_trt = paddle::string::Split(FLAGS_specified_names_enter_into_trt, ',');
+
     bool continue_run = false;
+
+    if (var_names_into_trt.size() == 0) {
+      continue_run = true;
+    }
+
     for (auto *node : subgraph) {
-      for(auto para : node->inputs) {
-        if(para->Name() == "conv2d_104.w_0") {
-          continue_run = true;
+      for(auto tmp_name : node->outputs) {
+        for (auto name : var_names_into_trt) {
+          if (tmp_name->Name() == name) continue_run = true;
         }
       }
     }
 
-    if(continue_run == false && 0) continue;
+    if(continue_run == false) continue;
+
+    auto var_names_not_trt = paddle::string::Split(FLAGS_specified_names_not_into_trt, ',');
+
+    continue_run = true;
+
+    for (auto *node : subgraph) {
+      for(auto tmp_name : node->outputs) {
+        for (auto name : var_names_not_trt) {
+          if (tmp_name->Name() == name) continue_run = false;
+        }
+      }
+    }
+
+    if(continue_run == false) continue;
 
     std::unordered_set<Node *> subgraph_uniq(subgraph.begin(), subgraph.end());
     // replace this sub-graph with the first node. Two steps: 1. Create a Block

@@ -172,7 +172,7 @@ if (FLAGS_naive_executor_sync_op)
         std::cout << std::endl;
         // 是否打印值
         if (FLAGS_naive_executor_print_value_after_op) {
-          int want_num = std::min(1000, (int)(tensor->numel()));
+          int want_num = std::min(100000, (int)(tensor->numel()));
           if (tensor->dtype() == paddle::DataType::FLOAT32) {
             float *cpu_data = new float[tensor->numel()];
             float *tensor_data = tensor->data<float>();
@@ -182,10 +182,24 @@ if (FLAGS_naive_executor_sync_op)
               cudaMemcpy(cpu_data, tensor_data, sizeof(float) * want_num,
                         cudaMemcpyDeviceToHost);
             }
-            
+            float max_value = -10000;
+            float min_value = 10000;
+
             for(int i = 0; i < want_num; i++) {
-              if(cpu_data[i] > 10000 || cpu_data[i] < -10000)
-              std::cout << "float32 异常数字" << cpu_data[i] << std::endl;
+              if(cpu_data[i] > 10000 || cpu_data[i] < -10000) {
+                if (cpu_data[i] > max_value) {
+                  max_value = cpu_data[i];
+                }
+                if (cpu_data[i] < min_value) {
+                  min_value = cpu_data[i];
+                }
+              }
+            }
+            if (max_value > 10000) {
+              std::cout << "输出最大值：" << max_value << std::endl;
+            }
+            if (min_value < -10000) {
+              std::cout << "输出最小值：" << min_value << std::endl;
             }
             delete[] cpu_data;
           }
