@@ -20,6 +20,8 @@
 #include "paddle/fluid/sub_graph/sub_graph_checker.h"
 #include "paddle/pir/core/ir_context.h"
 
+using namespace paddle::test;  // NOLINT
+
 std::shared_ptr<::pir::Program> BuildBasicProgram() {
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -30,10 +32,10 @@ std::shared_ptr<::pir::Program> BuildBasicProgram() {
   // full -> softmax(max -> subtract -> exp -> sum -> divide)
   const float value_one = 1.0;
   const std::vector<int64_t> shape = {128, 12, 128, 128};
-
+  std::string input_name = std::string(kInputPrefix) + "0";
   auto x = builder
                .Build<paddle::dialect::DataOp>(
-                   "input_0", shape, phi::DataType::FLOAT32, phi::GPUPlace())
+                   input_name, shape, phi::DataType::FLOAT32, phi::GPUPlace())
                .result(0);
   auto out = builder.Build<paddle::dialect::SoftmaxOp>(x, -1).result(0);
 
@@ -46,13 +48,14 @@ std::shared_ptr<::pir::Program> BuildPrimProgram() {
 
   auto program = std::make_shared<::pir::Program>(ctx);
   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
+  std::string input_name = std::string(kInputPrefix) + "0";
 
   const float value_one = 1.0;
   const std::vector<int64_t> shape = {128, 12, 128, 128};
 
   auto x = builder
                .Build<paddle::dialect::DataOp>(
-                   "input_0", shape, phi::DataType::FLOAT32, phi::GPUPlace())
+                   input_name, shape, phi::DataType::FLOAT32, phi::GPUPlace())
                .result(0);
   //   auto out = builder.Build<paddle::dialect::SinOp>(x).result(0);
   auto max =
@@ -75,10 +78,11 @@ std::shared_ptr<::pir::Program> BuildDropOutPrimProgram() {
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   auto program = std::make_shared<::pir::Program>(ctx);
   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
+  std::string input_name = std::string(kInputPrefix) + "0";
 
   auto x =
       builder
-          .Build<paddle::dialect::DataOp>("input_0",
+          .Build<paddle::dialect::DataOp>(input_name,
                                           std::vector<int64_t>({128, 128, 768}),
                                           phi::DataType::FLOAT32,
                                           phi::GPUPlace())
@@ -124,10 +128,11 @@ std::shared_ptr<::pir::Program> BuildDropOutPhiProgram() {
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   auto program = std::make_shared<::pir::Program>(ctx);
   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
+  std::string input_name = std::string(kInputPrefix) + "0";
 
   auto x =
       builder
-          .Build<paddle::dialect::DataOp>("input_0",
+          .Build<paddle::dialect::DataOp>(input_name,
                                           std::vector<int64_t>({128, 128, 768}),
                                           phi::DataType::FLOAT32,
                                           phi::GPUPlace())
@@ -146,8 +151,9 @@ TEST(sub_grah_checker, test_softmax) {
 
   paddle::test::SubGraphChecker sub_graph_checker(basic_program, prim_program);
 
-  sub_graph_checker.CheckResult();
-  sub_graph_checker.CheckSpeed();
+  ASSERT_TRUE(sub_graph_checker.CheckResult());
+  std::vector<double> speed_data = sub_graph_checker.CheckSpeed();
+  ASSERT_EQ(speed_data.size(), 2u);
 }
 
 TEST(sub_grah_checker, test_dropout) {
@@ -156,6 +162,7 @@ TEST(sub_grah_checker, test_dropout) {
 
   paddle::test::SubGraphChecker sub_graph_checker(basic_program, prim_program);
 
-  sub_graph_checker.CheckResult();
-  sub_graph_checker.CheckSpeed();
+  ASSERT_TRUE(sub_graph_checker.CheckResult());
+  std::vector<double> speed_data = sub_graph_checker.CheckSpeed();
+  ASSERT_EQ(speed_data.size(), 2u);
 }
