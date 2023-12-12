@@ -111,6 +111,8 @@
     {inputs : X}
   outputs:
     {out : Out}
+  extra :
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
 - op : addmm
   backward : addmm_grad
@@ -455,6 +457,8 @@
     x : X
   outputs :
     out : Out
+  extra :
+    attrs : [bool use_mkldnn = false]
 
 - op : ceil
   backward : ceil_grad
@@ -1095,6 +1099,7 @@
     {start_axis : start_axis, stop_axis : stop_axis}
   extra :
     outputs : [xshape]
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
   manual_signature : [flatten, flatten_grad]
 
 - op : flip
@@ -1281,7 +1286,7 @@
 - op : fused_conv2d
   extra :
     attrs : [bool use_cudnn = false, float fuse_alpha = 0.0f, float fuse_beta = 0.0f, float Scale_in = 1.0f,
-             float Scale_out = 1.0f, float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}']
+             float Scale_out = 1.0f, float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}', bool use_mkldnn = true, str mkldnn_data_type = "float32"]
 
 - op : fused_conv2d_add_act
   inputs :
@@ -1300,6 +1305,10 @@
              float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}', bool force_fp32_output = false]
   get_expected_kernel_type :
     fused_conv2d_add_act : GetConvExpectedKernelType
+
+- op : fused_conv3d
+  extra :
+    attrs : [bool use_mkldnn = true, str mkldnn_data_type = "float32"]
 
 - op : fused_embedding_eltwise_layernorm
   inputs :
@@ -1388,6 +1397,10 @@
     scale_data : Scale_data
     shift_data : Shift_data
     scale_weights : Scale_weights
+
+- op : fusion_lstm
+  extra :
+    attrs : [bool use_mkldnn = true, str mkldnn_data_type = "float32"]
 
 - op : fusion_repeated_fc_relu
   inputs :
@@ -2913,6 +2926,8 @@
       axis :
         data_type : int
         support_tensor : true
+  extra :
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
 - op : split_with_num
   scalar :

@@ -123,16 +123,6 @@ class Flatten2OpMaker : public framework::OpProtoAndCheckerMaker {
                  "tensor is (1, (d_0 X d_1 ... d_n), where the shape of the"
                  "input tensor is (d_0, d_1, ... d_n).")
         .SetDefault(1);
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::string>(
-        "mkldnn_data_type",
-        "(string, default \"float32\"). Data type of mkldnn kernel")
-        .SetDefault("float32")
-        .InEnum({"float32", "bfloat16"})
-        .AsExtra();
     AddComment(R"DOC(
 Flatten Operator
 

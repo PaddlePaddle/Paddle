@@ -303,10 +303,6 @@ class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
         "It has the lowest priority compare with Input(Shape) and "
         " Input(ShapeTensor).")
         .SetDefault({});
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
     AddComment(R"DOC(
 Reshape Operator.
 

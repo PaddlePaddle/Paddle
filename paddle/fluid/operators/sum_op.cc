@@ -135,14 +135,6 @@ class SumOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out",
               "the sum of input :code:`x`. its shape and data types are "
               "consistent with :code:`x`.");
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
-    AddAttr<std::string>(
-        "mkldnn_data_type",
-        "(string, default \"float32\"). Data type of mkldnn kernel")
-        .SetDefault("float32")
-        .InEnum({"float32", "bfloat16"});
     AddComment(
         R"DOC(This OP is used to sum one or more Tensor or phi::DenseTensor
                     of the input. If the input is phi::DenseTensor, the output only

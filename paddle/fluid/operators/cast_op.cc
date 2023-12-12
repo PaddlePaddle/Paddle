@@ -37,9 +37,6 @@ class CastOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "The output tensor of cast op");
     AddAttr<int>("out_dtype", "output data type");
     AddAttr<int>("in_dtype", "input data type");
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
     AddComment(R"DOC(
 Cast Operator.
 
