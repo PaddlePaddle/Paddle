@@ -197,7 +197,6 @@ SpmdInfo TransposeGradInferSpmd(const DistMetaTensor& out_grad,
     x_dims_mapping[origin_index] = out_grad_dims_mapping[i];
   }
   TensorDistAttr x_grad_dist_attr = out_grad.dist_attr();
-  x_grad_dist_attr.clean_partial_status();
   x_grad_dist_attr.set_dims_mapping(x_dims_mapping);
   return {{out_grad.dist_attr()}, {x_grad_dist_attr}};
 }
