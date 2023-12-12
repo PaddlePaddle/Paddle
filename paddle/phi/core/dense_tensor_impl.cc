@@ -378,12 +378,23 @@ std::vector<DenseTensor> DenseTensor::Chunk(int64_t chunks,
 
 #ifdef PADDLE_WITH_DNNL
 const dnnl::memory::desc& DenseTensor::mem_desc() const {
-  return this->storage_properties().mem_desc;
+  return this->storage_properties<OneDNNStorageProperties>().mem_desc;
 }
 
 inline void DenseTensor::set_mem_desc(const dnnl::memory::desc& mem_desc) {
-  this->storage_properties().mem_desc = mem_desc;
-  meta_.layout = DataLayout::ONEDNN;
+  PADDLE_ENFORCE_NOT_NULL(
+      storage_properties_,
+      phi::errors::PreconditionNotMet(
+          "The storage_properties of current DenseTensor is nullptr."));
+  if (OneDNNStorageProperties::classof(storage_properties_.get())) {
+    dynamic_cast<OneDNNStorageProperties*>(storage_properties_.get())
+        ->mem_desc = mem_desc;
+    meta_.layout = DataLayout::ONEDNN;
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The actual type of storage_properties is inconsistent with the type "
+        "of the template parameter passed in."));
+  }
 }
 #endif
 
