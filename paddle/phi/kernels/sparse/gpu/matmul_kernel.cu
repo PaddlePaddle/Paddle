@@ -29,6 +29,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/math_function_impl.h"
 #include "paddle/phi/kernels/funcs/sparse/sparse_blas.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
+#include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
 
 namespace phi {
 namespace sparse {
@@ -108,7 +109,7 @@ void MatmulKernelImpl(const Context& dev_ctx,
                       const SparseCsrTensor& x,
                       const SparseCsrTensor& y,
                       SparseCsrTensor* out) {
-#if CUDA_VERSION >= 11000 || HIP_VERSION >= 402
+#if CUDA_VERSION >= 11000
   std::vector<int64_t> xdim_vec = phi::vectorize(x.dims());
   std::vector<int64_t> ydim_vec = phi::vectorize(y.dims());
   auto x_ndims = xdim_vec.size();
@@ -147,13 +148,12 @@ void MatmulKernelImpl(const Context& dev_ctx,
       false, false, static_cast<T>(1), x, y, static_cast<T>(0), out);
 #else
 #ifdef PADDLE_WITH_CUDA
-  PADDLE_THROW(
-      phi::errors::Unimplemented("forward of 'sparse.matmul' use cusparseSpMM, "
-                                 "which is supported from CUDA 11.0"));
-#elif defined(PADDLE_WITH_HIP)
   PADDLE_THROW(phi::errors::Unimplemented(
-      "forward of 'sparse.matmul' use rocsparse_spmm, "
-      "which is supported from ROCM 4.2.0"));
+      "forward of 'sparse.matmul' use cusparseSpGEMM, "
+      "which is supported from CUDA 11.0"));
+#elif defined(PADDLE_WITH_HIP)
+  PADDLE_THROW(
+      phi::errors::Unimplemented("'sparse.matmul' for HIP is not implemented"));
 #endif
 #endif
 }
@@ -175,19 +175,25 @@ void MatmulCsrDenseKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void MatmulCooCooKernel(const Context& dev_ctx,
-                        const SparseCooTensor& x,
-                        const SparseCooTensor& y,
-                        SparseCooTensor* out) {
-  // MatmulKernelImpl<T>(dev_ctx, x, y, out);
-}
-
-template <typename T, typename Context>
 void MatmulCsrCsrKernel(const Context& dev_ctx,
                         const SparseCsrTensor& x,
                         const SparseCsrTensor& y,
                         SparseCsrTensor* out) {
   MatmulKernelImpl<T>(dev_ctx, x, y, out);
+}
+
+template <typename T, typename Context>
+void MatmulCooCooKernel(const Context& dev_ctx,
+                        const SparseCooTensor& x,
+                        const SparseCooTensor& y,
+                        SparseCooTensor* out) {
+  // 'cusparseSPGEMM' only support CSR now, so use COO->CSR->COO,
+  SparseCsrTensor x_csr = CooToCsr<T, Context>(dev_ctx, x);
+  SparseCsrTensor y_csr = CooToCsr<T, Context>(dev_ctx, y);
+  SparseCsrTensor out_csr;
+  out_csr.set_dims(out->dims());
+  MatmulKernelImpl<T>(dev_ctx, x_csr, y_csr, &out_csr);
+  CsrToCooKernel<T>(dev_ctx, out_csr, out);
 }
 
 template <typename T, typename Context>
