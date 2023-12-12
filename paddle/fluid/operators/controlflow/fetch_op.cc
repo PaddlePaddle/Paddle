@@ -38,7 +38,7 @@ static void DataCopy(const phi::DenseTensor &src_item,
           src_item.layout(),
           fetch_var_name == framework::GradVarName("Filter")
               ? phi::DataLayout::kNCHW
-              : phi::func::GetPaddleLayoutFromOneDNNMemDesc(
+              : phi::funcs::GetPaddleLayoutFromOneDNNMemDesc(
                     src_item.mem_desc()),
           src_item,
           &out,

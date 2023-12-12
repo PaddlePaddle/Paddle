@@ -404,7 +404,7 @@ void Tensor::CopyToCpuImpl(T *data,
       out.ResetHolder(mem_allocation);
       phi::funcs::TransDataLayoutFromOneDNN(
           tensor->layout(),
-          phi::func::GetPaddleLayoutFromOneDNNMemDesc(tensor->mem_desc()),
+          phi::funcs::GetPaddleLayoutFromOneDNNMemDesc(tensor->mem_desc()),
           *tensor,
           &out,
           paddle::platform::CPUPlace(),
@@ -723,7 +723,7 @@ std::vector<int> Tensor::shape() const {
 #ifdef PADDLE_WITH_DNNL
   if (tensor->layout() == phi::DataLayout::ONEDNN) {
     phi::DataLayout out_layout =
-        phi::func::GetPaddleLayoutFromOneDNNMemDesc(tensor->mem_desc());
+        phi::funcs::GetPaddleLayoutFromOneDNNMemDesc(tensor->mem_desc());
     // Set default as NCHW in case not specified
     out_layout = out_layout == phi::DataLayout::kAnyLayout
                      ? phi::DataLayout::kNCHW
@@ -915,7 +915,7 @@ void InternalUtils::CopyToCpuWithIoStream(paddle_infer::Tensor *t,
       out.ResetHolder(mem_allocation);
       phi::funcs::TransDataLayoutFromOneDNN(
           tensor->layout(),
-          phi::func::GetPaddleLayoutFromOneDNNMemDesc(tensor->mem_desc());
+          phi::funcs::GetPaddleLayoutFromOneDNNMemDesc(tensor->mem_desc());
           , *tensor, &out, paddle::platform::CPUPlace(), true);
     } else {
       std::memcpy(static_cast<void *>(data), t_data, ele_num * sizeof(T));

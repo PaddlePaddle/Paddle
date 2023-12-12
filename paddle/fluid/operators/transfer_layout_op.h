@@ -101,7 +101,7 @@ class TransferLayoutFunctor {
         out_tensor.set_mem_desc(out_mem_desc);
       } else {
         auto target_layout =
-            phi::func::GetPaddleLayoutFromOneDNNMemDesc(in_tensor.mem_desc());
+            phi::funcs::GetPaddleLayoutFromOneDNNMemDesc(in_tensor.mem_desc());
         // NOTE(zhiqiu): hot fix, follow the same logic in DataCopy() in
         // fetch_op.cc
         if (out_layout == DataLayout::kNCHW &&

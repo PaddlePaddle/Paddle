@@ -2533,7 +2533,7 @@ Scope* OperatorWithKernel::PrepareData(
         if ((tensor_in->layout() == DataLayout::ONEDNN) &&
             (var->IsType<phi::DenseTensor>() == true) &&
             (expected_kernel_key.layout() != DataLayout::ONEDNN) &&
-            (phi::func::GetPaddleLayoutFromOneDNNMemDesc(
+            (phi::funcs::GetPaddleLayoutFromOneDNNMemDesc(
                  tensor_in->mem_desc()) == DataLayout::kNHWC) &&
             (tensor_in->dims().size() >= 3)) {
           // Mixed execution : oneDNN and GPU is not supported!
@@ -3011,7 +3011,7 @@ phi::KernelKey OperatorWithKernel::GetKernelTypeForVar(
   // then we also need to rotate shape NHWC -> NCWH
   if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
       (tensor.layout() != phi::DataLayout::ONEDNN) &&
-      (phi::func::GetPaddleLayoutFromOneDNNMemDesc(tensor.mem_desc()) ==
+      (phi::funcs::GetPaddleLayoutFromOneDNNMemDesc(tensor.mem_desc()) ==
        phi::DataLayout::kNHWC)) {
     return phi::KernelKey(
         tensor.place(), phi::DataLayout::kNHWC, expected_kernel_type.dtype());
