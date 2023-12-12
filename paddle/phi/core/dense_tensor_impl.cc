@@ -377,7 +377,14 @@ std::vector<DenseTensor> DenseTensor::Chunk(int64_t chunks,
 }
 
 #ifdef PADDLE_WITH_DNNL
-const dnnl::memory::desc& DenseTensor::mem_desc() const { return mem_desc_; }
+const dnnl::memory::desc& DenseTensor::mem_desc() const {
+  return this->storage_properties().mem_desc;
+}
+
+inline void DenseTensor::set_mem_desc(const dnnl::memory::desc& mem_desc) {
+  this->storage_properties().mem_desc = mem_desc;
+  meta_.layout = DataLayout::ONEDNN;
+}
 #endif
 
 // NOTE: For historical reasons, this interface has a special behavior,
@@ -394,9 +401,6 @@ DenseTensor& DenseTensor::ShareDataWith(const DenseTensor& src) {
   meta_.strides = src.meta_.strides;
   storage_properties_ =
       std::move(CopyStorageProperties(src.storage_properties_));
-#ifdef PADDLE_WITH_DNNL
-  mem_desc_ = src.mem_desc_;
-#endif
   return *this;
 }
 

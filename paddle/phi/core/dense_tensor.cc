@@ -59,10 +59,6 @@ DenseTensor::DenseTensor(const DenseTensor& other) {
   storage_properties_ =
       std::move(CopyStorageProperties(other.storage_properties_));
   inplace_version_counter_ = other.inplace_version_counter_;
-
-#ifdef PADDLE_WITH_DNNL
-  mem_desc_ = other.mem_desc_;
-#endif
 }
 
 DenseTensor& DenseTensor::operator=(const DenseTensor& other) {
@@ -74,9 +70,6 @@ DenseTensor& DenseTensor::operator=(const DenseTensor& other) {
   storage_properties_ =
       std::move(CopyStorageProperties(other.storage_properties_));
   inplace_version_counter_ = other.inplace_version_counter_;
-#ifdef PADDLE_WITH_DNNL
-  mem_desc_ = other.mem_desc_;
-#endif
   return *this;
 }
 
@@ -85,9 +78,6 @@ DenseTensor& DenseTensor::operator=(DenseTensor&& other) noexcept {
   std::swap(holder_, other.holder_);
   storage_properties_ = std::move(other.storage_properties_);
   std::swap(inplace_version_counter_, other.inplace_version_counter_);
-#ifdef PADDLE_WITH_DNNL
-  mem_desc_ = other.mem_desc_;
-#endif
   return *this;
 }
 
