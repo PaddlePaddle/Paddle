@@ -59,7 +59,38 @@ void DyScheduleImpl::SyncThreads(const Expr& ir_node, bool after_node) {
 void DyScheduleImpl::SetBuffer(Expr& block,  // NOLINT
                                const std::string& memory_type,
                                bool fixed) {
-  CINN_NOT_IMPLEMENTED;
+  CHECK(block.As<ir::ScheduleBlockRealize>());
+  auto find_tensor = ir::ir_utils::CollectIRNodesWithoutTensor(
+      block, [&](const Expr* x) { return x->As<ir::Store>(); }, true);
+  CHECK_EQ(find_tensor.size(), 1U)
+      << "One block should only have one Store node!(except for root block)";
+  auto& tensor = (*find_tensor.begin()).As<ir::Store>()->tensor;
+  tensor.as_tensor_ref()->WithBuffer(
+      memory_type, "_" + tensor.as_tensor_ref()->name + "_temp_buffer");
+
+  auto exprs = this->GetModule().GetExprs();
+  for (auto& it_expr : exprs) {
+    auto find_tensor =
+        ir::ir_utils::CollectIRNodesWithoutTensor(it_expr, [&](const Expr* x) {
+          return x->as_tensor() &&
+                 (x->as_tensor()->name == tensor.as_tensor_ref()->name ||
+                  x->as_tensor()->name ==
+                      tensor.as_tensor_ref()->name + "__reduce_init");
+        });
+    for (auto& t : find_tensor) {
+      CHECK(t.as_tensor());
+      t.as_tensor_ref()->Bind(tensor.as_tensor_ref()->buffer);
+    }
+  }
+
+  // if buffer type == "local"
+  if (memory_type == "local" && fixed) {
+    FixLocalBufferSize mutator(block.As<ir::ScheduleBlockRealize>()
+                                   ->schedule_block.As<ir::ScheduleBlock>()
+                                   ->name);
+    auto root = GetRootBlock(block);
+    mutator(&root);
+  }
 }
 }  // namespace ir
 }  // namespace cinn
