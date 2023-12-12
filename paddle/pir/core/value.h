@@ -72,6 +72,8 @@ class IR_API Value {
 
   void set_type(Type type);
 
+  void set_impl(detail::ValueImpl *impl);
+
   std::string PrintUdChain();
 
   ///

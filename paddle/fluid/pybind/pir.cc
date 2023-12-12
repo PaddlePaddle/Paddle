@@ -720,6 +720,8 @@ void BindValue(py::module *m) {
            })
       .def("replace_all_uses_with",
            [](Value self, Value value) { self.ReplaceAllUsesWith(value); })
+      .def("share_impl_with",
+           [](Value &self, Value value) { self.set_impl(value.impl()); })
       .def("set_type", [](Value self, Type type) { self.set_type(type); })
       .def("first_use", &Value::first_use, return_value_policy::reference)
       .def("has_one_use", &Value::HasOneUse)

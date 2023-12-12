@@ -81,12 +81,12 @@ set(api_source_file ${PD_DIALECT_SOURCE_DIR}/pd_api.cc)
 set(api_header_file_tmp ${api_header_file}.tmp)
 set(api_source_file_tmp ${api_source_file}.tmp)
 
-execute_process(
-  COMMAND
-    ${PYTHON_EXECUTABLE} ${api_gen_file} --op_yaml_files ${op_yaml_files}
-    --op_compat_yaml_file ${op_compat_yaml_file} --namespaces ${op_namespace}
-    --api_def_h_file ${api_header_file_tmp} --api_def_cc_file
-    ${api_source_file_tmp})
+# execute_process(
+#   COMMAND
+#     ${PYTHON_EXECUTABLE} ${api_gen_file} --op_yaml_files ${op_yaml_files}
+#     --op_compat_yaml_file ${op_compat_yaml_file} --namespaces ${op_namespace}
+#     --api_def_h_file ${api_header_file_tmp} --api_def_cc_file
+#     ${api_source_file_tmp})
 
 set(generated_files_pd_api "${api_header_file}" "${api_source_file}")
 
@@ -149,7 +149,14 @@ list(
 
 set(op_dialect_srcs ${op_dialect_srcs} ${op_source_file} ${api_source_file})
 
-set(op_dialect_deps phi common pir type_info string_helper amp global_utils)
+set(op_dialect_deps
+    phi
+    common
+    pir
+    type_info
+    string_helper
+    amp
+    global_utils)
 
 cc_library(
   op_dialect
