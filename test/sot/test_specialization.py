@@ -17,39 +17,28 @@ import unittest
 from test_case_base import TestCaseBase
 
 import paddle
-from paddle.jit.sot.utils.envs import min_graph_size_guard, strict_mode_guard
+from paddle.jit.sot.opcode_translator.executor.dispatcher import Dispatcher
+from paddle.jit.sot.utils.envs import min_graph_size_guard
 
 # 8 will trigger the warmup in RESUME instruction and cause a segmentation fault
 # RUN_N_TIMES should be larger than 8
 RUN_N_TIMES = 20
 
+builtin_fn = str.split
+# Remove builtin_fn from Dispatcher to ensure that trigger a BreakGraph Error
+if builtin_fn in Dispatcher.handlers:
+    del Dispatcher.handlers[builtin_fn]
 
-def listcomp_fn():
-    print(1)
-    x = [i for i in range(10)]  # noqa: C416
-    return x
 
-
-def genexpr_fn():
-    print(1)
-    x = (i for i in range(10))
-    return x
+def builtin_fn_with_breakgraph():
+    str.split("1,2,3,4,5", ",")
 
 
 class TestListComp(TestCaseBase):
-    @strict_mode_guard(False)
     @min_graph_size_guard(10)
     def test_listcomp(self):
         for _ in range(RUN_N_TIMES):
-            paddle.jit.to_static(listcomp_fn)()
-
-
-class TestGenExpr(TestCaseBase):
-    @strict_mode_guard(False)
-    @min_graph_size_guard(10)
-    def test_genexpr(self):
-        for _ in range(RUN_N_TIMES):
-            paddle.jit.to_static(genexpr_fn)()
+            paddle.jit.to_static(builtin_fn_with_breakgraph)()
 
 
 if __name__ == "__main__":
