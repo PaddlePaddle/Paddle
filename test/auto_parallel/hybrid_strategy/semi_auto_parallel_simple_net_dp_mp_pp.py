@@ -112,6 +112,7 @@ class TestSimpleNetHybridStrategyForSemiAutoParallel(
                 v._local_value().clone() if v._is_initialized() else None
             )
         paddle.distributed.save_state_dict(state_dict, self._ckpt_path)
+        paddle.distributed.barrier()
         for k, v in state_dict.items():
             v._local_value().add_(paddle.ones_like(v._local_value()))
         paddle.distributed.load_state_dict(state_dict, self._ckpt_path)

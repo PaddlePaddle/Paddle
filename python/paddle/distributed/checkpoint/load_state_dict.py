@@ -22,7 +22,11 @@ from paddle.distributed.communication.group import is_initialized
 from paddle.distributed.fleet.utils.log_util import logger
 
 from .metadata import LocalTensorIndex, LocalTensorMetadata
-from .utils import compute_local_shape_and_global_offset, flatten_state_dict
+from .utils import (
+    compute_local_shape_and_global_offset,
+    flatten_state_dict,
+    run_in_dynamic_mode,
+)
 
 
 @dataclass(frozen=True)
@@ -299,16 +303,20 @@ def get_read_items(path, state_dict, process_group, use_dist):
                 (
                     local_shape,
                     global_offset,
-                ) = compute_local_shape_and_global_offset(
-                    val.shape,
-                    val.dist_attr.process_mesh,
-                    val.dist_attr.dims_mapping,
+                ) = (
+                    compute_local_shape_and_global_offset(
+                        val.shape,
+                        val.dist_attr.process_mesh,
+                        val.dist_attr.dims_mapping,
+                    )
+                    if val.shape
+                    else ((), ())
                 )
+                if local_shape is None or global_offset is None:
+                    continue
             else:
-                local_shape = val.shape
-                global_offset = [0] * len(val.shape)
-            if not local_shape or not global_offset:
-                continue
+                local_shape = tuple(val.shape)
+                global_offset = tuple([0] * len(val.shape)) if val.shape else ()
             cur_chunk_metadata = LocalTensorMetadata(global_offset, local_shape)
             assert (
                 tensor_key in storage_state_dict_metadata
@@ -352,6 +360,7 @@ def get_read_items(path, state_dict, process_group, use_dist):
     return global_read_items
 
 
+@run_in_dynamic_mode()
 def load_state_dict(
     state_dict,
     path,
@@ -450,12 +459,15 @@ def load_state_dict(
                 )
             ]
             # The storage_chunk_tensor and storage_local_tensor share the same memory.
-            storage_chunk_tensor = paddle.slice(
-                storage_local_tensor,
-                list(range(len(storage_lengths))),
-                storage_offsets,
-                storage_ends,
-            )
+            if len(storage_lengths) > 0:
+                storage_chunk_tensor = paddle.slice(
+                    storage_local_tensor,
+                    list(range(len(storage_lengths))),
+                    storage_offsets,
+                    storage_ends,
+                )
+            else:
+                storage_chunk_tensor = storage_local_tensor
         # The read item rank need to be assigned
         if item.rank == paddle.distributed.get_rank():
             assert (
@@ -474,12 +486,15 @@ def load_state_dict(
                 for cur_offset, cur_length in zip(cur_offsets, cur_lengths)
             ]
             # The cur_chunk_tensor and cur_local_tensor share the same memory.
-            cur_chunk_tensor = paddle.slice(
-                cur_local_tensor,
-                list(range(len(cur_lengths))),
-                cur_offsets,
-                cur_ends,
-            )
+            if len(cur_lengths) > 0:
+                cur_chunk_tensor = paddle.slice(
+                    cur_local_tensor,
+                    list(range(len(cur_lengths))),
+                    cur_offsets,
+                    cur_ends,
+                )
+            else:
+                cur_chunk_tensor = cur_local_tensor
         else:
             cur_chunk_tensor = paddle.zeros(
                 item.lengths,

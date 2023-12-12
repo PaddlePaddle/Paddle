@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import tempfile
 import unittest
 
 import collective.test_communication_api_base as test_base
@@ -40,10 +41,13 @@ class TestSemiAutoParallelStaticDecorate(test_base.CommunicationTestDistBase):
             {"dtype": "float32", "seed": "2023"}, {"backend": ["gpu"]}
         )
         for envs in envs_list:
+            ckpt_path_tmp = tempfile.TemporaryDirectory()
+            envs["ckpt_path"] = ckpt_path_tmp.name
             self.run_test_case(
                 "semi_auto_parallel_dist_to_static_mlp.py",
                 user_defined_envs=envs,
             )
+            ckpt_path_tmp.cleanup()
 
 
 if __name__ == "__main__":

@@ -15,6 +15,8 @@ import copy
 from collections import defaultdict
 from typing import Callable
 
+import numpy as np
+
 import paddle
 import paddle.distributed as dist
 from paddle import nn
@@ -38,6 +40,7 @@ from paddle.distributed.auto_parallel.static.dist_op import DistributedOperator
 from paddle.distributed.auto_parallel.static.utils import (
     convert_to_dims_mapping,
 )
+from paddle.distributed.checkpoint.utils import run_in_dynamic_mode
 from paddle.framework import core
 
 from .placement_type import get_shard_spec
@@ -320,6 +323,90 @@ class DistModel:
                 return outs["loss"]
             else:
                 return None
+
+    def state_dict(self, mode="all"):
+        """
+        Args:
+            mode(str, optional): Source of the obtained parameters and buffers.
+                'opt' :  The return value only contains the variable in the optimizer.
+                'param' : The return value only contains the variable in the network, not the variable in the optimizer.
+                'all' : The return value contains the variable in the network and optimizer.
+                Default: 'all'
+        """
+        assert mode in [
+            "opt",
+            "param",
+            "all",
+        ], f"mode {mode} is not supported. Please choose one of ['opt', 'param', 'all']"
+        dist_main_program = self.dist_main_program(mode=self._engine._mode)
+        # Dict[var.name, libpaddle.Tensor], DenseTensor, pp情况下key不存在？check
+        local_state_dict = dist_main_program.state_dict(mode=mode)
+        from paddle.distributed.auto_parallel.static.utils import get_dist_attr
+
+        dist_context = self._engine._dist_contexts[self._mode]
+        # Dict[var.name, Dict["process_shape": process_mesh.shape, "process_group": process_mesh.process_ids, "dims_mapping": dims_mapping]]
+        dist_attrs = get_dist_attr(dist_main_program, dist_context)
+
+        def build_distributed_tensor(local_tensor, dist_attr):
+            assert isinstance(
+                local_tensor, (paddle.Tensor, np.ndarray, paddle.base.Tensor)
+            )
+            if not isinstance(local_tensor, paddle.Tensor):
+                local_tensor = paddle.Tensor(local_tensor)
+            assert isinstance(
+                local_tensor, paddle.Tensor
+            ), f"local tensor:{local_tensor} type {type(local_tensor)} is not paddle.Tensor."
+            assert len(local_tensor.shape) == len(
+                dist_attr["dims_mapping"]
+            ), f"local tensor shape {local_tensor.shape} not equal to dims_mapping shape {dist_attr['dims_mapping']}."
+            global_shape = local_tensor.shape
+            placements = [
+                dist.Replicate() for _ in range(len(dist_attr["process_shape"]))
+            ]
+            for i, dim in enumerate(dist_attr["dims_mapping"]):
+                assert dim >= -1 and dim < len(
+                    local_tensor.shape
+                ), f"dim {dim} out of range."
+                if dim == -1:
+                    continue
+                elif dim >= 0:
+                    assert (
+                        placements[dim] == dist.Replicate()
+                    ), f"dim {dim} is not Replicate."
+                    placements[dim] = dist.Shard(i)
+                    global_shape[i] = (
+                        dist_attr["process_shape"][dim] * local_tensor.shape[i]
+                    )
+                else:
+                    raise ValueError(f"dim {dim} is not supported.")
+            # TODO(pangengzheng): construct dist_tensor with _dtensor_from_local api when it is ready.
+            global_tensor = paddle.zeros(global_shape, dtype=local_tensor.dtype)
+            mesh = dist.ProcessMesh(
+                np.array(dist_attr["process_group"]).reshape(
+                    dist_attr["process_shape"]
+                )
+            )
+            dist_tensor = dist.shard_tensor(global_tensor, mesh, placements)
+            assert (
+                dist_tensor._local_value().shape == local_tensor.shape
+            ), f"local tensor shape {dist_tensor._local_value().shape} not equal to local_tensor.shape:{local_tensor.shape}"
+            paddle.assign(local_tensor, dist_tensor._local_value())
+            return dist_tensor
+
+        global_state_dict = {}
+        with run_in_dynamic_mode():
+            for var_name, tensor in local_state_dict.items():
+                assert (
+                    var_name in dist_attrs
+                ), f"var {var_name} not in dist attrs:{dist_attrs}."
+                global_state_dict[var_name] = build_distributed_tensor(
+                    tensor, dist_attrs[var_name]
+                )
+        return global_state_dict
+
+    def set_state_dict(self, state_dict):
+        dist_main_program = self.dist_main_program(mode=self._engine._mode)
+        dist_main_program.set_state_dict(state_dict)
 
 
 # Part2: DistTensor construction related APIs

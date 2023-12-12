@@ -20,7 +20,11 @@ from paddle.distributed.communication.group import is_initialized
 from paddle.distributed.fleet.utils.log_util import logger
 
 from .metadata import LocalTensorIndex, LocalTensorMetadata, Metadata
-from .utils import compute_local_shape_and_global_offset, flatten_state_dict
+from .utils import (
+    compute_local_shape_and_global_offset,
+    flatten_state_dict,
+    run_in_dynamic_mode,
+)
 
 
 def check_state_dict(state_dict, process_group):
@@ -45,12 +49,12 @@ def check_file_name(file_name, process_group):
         ), f"id:{id} !=  all_unique_id[0]:{file_name}"
 
 
-def merge_state_dict_metadata(global_state_dict):
+def merge_state_dict_metadata(global_state_dict_metadata):
     assert isinstance(
-        global_state_dict, List
+        global_state_dict_metadata, List
     ), "The global_state_dict should be a list."
     out = {}
-    for state_dict in global_state_dict:
+    for state_dict in global_state_dict_metadata:
         for key, val in state_dict.items():
             if key in out:
                 if val in out[key]:
@@ -61,16 +65,17 @@ def merge_state_dict_metadata(global_state_dict):
     return out
 
 
-def dedup_storage_metadata(global_state_dict):
+def dedup_storage_metadata(global_storage_metadata):
     out = {}
-    for state_dict in global_state_dict:
-        for key, val in state_dict.items():
+    for storage_metadata in global_storage_metadata:
+        for key, val in storage_metadata.items():
             if key in out:
                 continue
             out[key] = val
     return out
 
 
+@run_in_dynamic_mode()
 def save_state_dict(
     state_dict,
     path,
@@ -143,17 +148,21 @@ def save_state_dict(
                 (
                     local_shape,
                     global_offset,
-                ) = compute_local_shape_and_global_offset(
-                    val.shape,
-                    val.dist_attr.process_mesh,
-                    val.dist_attr.dims_mapping,
+                ) = (
+                    compute_local_shape_and_global_offset(
+                        val.shape,
+                        val.dist_attr.process_mesh,
+                        val.dist_attr.dims_mapping,
+                    )
+                    if val.shape
+                    else ((), ())
                 )
-                if not local_shape or not global_offset:
+                if local_shape is None or global_offset is None:
                     continue
                 local_tensor = val._local_value()
             else:
-                global_offset = [0] * len(val.shape)
-                local_shape = val.shape
+                local_shape = tuple(val.shape)
+                global_offset = tuple([0] * len(val.shape)) if val.shape else ()
                 local_tensor = val
             local_state_dict[key] = local_tensor
             local_state_dict_metadata[key] = LocalTensorMetadata(
@@ -183,4 +192,5 @@ def save_state_dict(
         logger.debug(f"metadata:{metadata}")
         paddle.save(metadata, os.path.join(path, f"{unique_id}.metadata"))
     logger.debug(f"local_state_dict:{local_state_dict}")
+    # TODO(pangengzheng): del the replicated tensor in local_state_dict, now different might save the replicated tensor
     paddle.save(local_state_dict, os.path.join(path, file_name))
