@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/utils/flags.h"
 
 PD_DECLARE_bool(convert_all_blocks);
+PD_DECLARE_bool(all_blocks_convert_trt);
 
 namespace paddle {
 namespace framework {

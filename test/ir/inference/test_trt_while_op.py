@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
+
+os.environ['FLAGS_all_blocks_convert_trt'] = '1'
 
 import paddle
 import paddle.inference as paddle_infer

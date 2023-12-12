@@ -22,6 +22,10 @@ PADDLE_DEFINE_EXPORTED_bool(convert_all_blocks,
                             true,
                             "Convert all blocks in program into SSAgraphs");
 
+PADDLE_DEFINE_EXPORTED_bool(all_blocks_convert_trt,
+                            false,
+                            "Convert all blocks'Ops into TensorRT Ops");
+
 namespace paddle {
 namespace framework {
 namespace ir {
