@@ -746,6 +746,84 @@ inline cudaError_t GetNumBlocks(Func func,
 }
 
 template <typename T, int VecSize = 1>
+__global__ void cache_int8_kernel(
+    const T *__restrict__ qkv,          // [num_tokens, 3, num_heads, head_size]
+    uint8_t *__restrict__ key_cache,    // [num_blocks, num_heads, block_size,
+                                        // head_size]
+    uint8_t *__restrict__ value_cache,  // [num_blocks, num_heads, block_size,
+                                        // head_size]
+    const int *__restrict__ block_tables,     // [bsz, max_blocks_per_seq]
+    const int *__restrict__ padding_offsets,  // [num_tokens]
+    const int *__restrict__ seq_lens,         // [bsz]
+    const float *cache_k_scales,
+    const float *cache_v_scales,
+    const int max_seq_len,
+    const int max_blocks_per_seq,
+    const int num_heads,
+    const int head_size,
+    const int block_size,
+    const int pre_cache_length,
+    const int elem_cnt,
+    const int round_type,
+    const float max_bound,
+    const float min_bound) {
+  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadKVT = phi::AlignedVector<uint8_t, VecSize>;
+  LoadT src_vec;
+  LoadKVT cache_vec;
+
+  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  const int64_t hidden_size = num_heads * head_size;
+  const int64_t offset = 2 * hidden_size;
+  for (int32_t linear_index = global_thread_idx * VecSize,
+               step = gridDim.x * blockDim.x * VecSize;
+       linear_index < elem_cnt;
+       linear_index += step) {
+    const int token_idx = linear_index / offset;
+    const int bias = linear_index % offset;
+    const int qkv_id = bias / hidden_size + 1;  // skip q
+    const int qkv_bias = bias % hidden_size;
+    const int hi = qkv_bias / head_size;
+    const int h_bias = qkv_bias % head_size;
+    const int ori_token_idx = token_idx + padding_offsets[token_idx];
+    const int ori_bi = ori_token_idx / max_seq_len;
+    if (seq_lens[ori_bi] == 0) continue;
+    const int ori_seq_id = ori_token_idx % max_seq_len + pre_cache_length;
+
+    const int *block_table_now = block_tables + ori_bi * max_blocks_per_seq;
+    const int block_idx = block_table_now[ori_seq_id / block_size];
+    const int block_offset = ori_seq_id % block_size;
+
+    const int tgt_idx = block_idx * num_heads * block_size * head_size +
+                        hi * block_size * head_size + block_offset * head_size +
+                        h_bias;
+    const int ori_idx = token_idx * 3 * hidden_size + qkv_id * hidden_size +
+                        hi * head_size + h_bias;
+    phi::Load<T, VecSize>(&qkv[ori_idx], &src_vec);
+
+    const float scale = qkv_id == 1 ? cache_k_scales[hi] : cache_v_scales[hi];
+#pragma unroll
+    for (int i = 0; i < VecSize; i++) {
+      float quant_value = scale * static_cast<float>(src_vec[i]);
+      if (round_type == 0) {
+        quant_value = static_cast<float>(roundWithTiesToEven(quant_value));
+      } else {
+        quant_value = static_cast<float>(round(quant_value));
+      }
+      quant_value = quant_value > max_bound ? max_bound : quant_value;
+      quant_value = quant_value < min_bound ? min_bound : quant_value;
+      cache_vec[i] = static_cast<uint8_t>(quant_value + 128.0f);
+    }
+
+    if (qkv_id == 1) {
+      phi::Store<uint8_t, VecSize>(cache_vec, &key_cache[tgt_idx]);
+    } else {
+      phi::Store<uint8_t, VecSize>(cache_vec, &value_cache[tgt_idx]);
+    }
+  }
+}
+
+template <typename T, int VecSize = 1>
 __global__ void cache_kernel(
     const T *__restrict__ qkv,    // [num_tokens, 3, num_heads, head_size]
     T *__restrict__ key_cache,    // [num_blocks, num_heads, block_size,
@@ -797,6 +875,91 @@ __global__ void cache_kernel(
       phi::Store<T, VecSize>(src_vec, &key_cache[tgt_idx]);
     } else {
       phi::Store<T, VecSize>(src_vec, &value_cache[tgt_idx]);
+    }
+  }
+}
+
+template <typename T, int VecSize = 1>
+__global__ void write_pre_cache_int8_to_cache(
+    uint8_t *__restrict__ key_cache,  // [num_blocks, num_heads, block_size,
+                                      // head_size]
+    uint8_t *__restrict__ value_cache,
+    const T *__restrict__ pre_key_cache,  // [bsz, pre_cache_len, num_head,
+                                          // head_dim]
+    const T *__restrict__ pre_value_cache,
+    const int *__restrict__ block_tables,  // [bsz, max_blocks_per_seq]
+    const int *__restrict__ seq_lens,
+    const float *cache_k_scales,
+    const float *cache_v_scales,
+    const int max_seq_len,
+    const int max_blocks_per_seq,
+    const int num_heads,
+    const int head_size,
+    const int block_size,
+    const int pre_cache_length,
+    const int elem_cnt,
+    const int round_type,
+    const float max_bound,
+    const float min_bound) {
+  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadKVT = phi::AlignedVector<uint8_t, VecSize>;
+  LoadT src_vec;
+  LoadKVT cache_vec;
+
+  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  const int hidden_size = pre_cache_length * head_size;
+  const int cache_hidden_size = num_heads * hidden_size;
+  const int offset = 2 * cache_hidden_size;
+
+  for (int32_t linear_index = global_thread_idx * VecSize,
+               step = gridDim.x * blockDim.x * VecSize;
+       linear_index < elem_cnt;
+       linear_index += step) {
+    const int batch_id = linear_index / offset;
+    if (seq_lens[batch_id] == 0) continue;
+    const int *block_table_now = block_tables + batch_id * max_blocks_per_seq;
+
+    const int32_t cache_seq_id = (linear_index % hidden_size) / head_size;
+    const int32_t head_id = (linear_index % cache_hidden_size) / hidden_size;
+    const int32_t size_id = linear_index % head_size;
+
+    const int32_t kv_id = (linear_index % offset) / cache_hidden_size;
+    const int32_t read_id = batch_id * cache_hidden_size +
+                            head_id * hidden_size + cache_seq_id * head_size +
+                            size_id;
+    if (kv_id == 0) {
+      phi::Load<T, VecSize>(&pre_key_cache[read_id], &src_vec);
+    } else {
+      phi::Load<T, VecSize>(&pre_value_cache[read_id], &src_vec);
+    }
+
+    const int block_idx = block_table_now[cache_seq_id / block_size];
+    const int block_offset = cache_seq_id % block_size;
+
+    const int tgt_idx = block_idx * num_heads * block_size * head_size +
+                        head_id * block_size * head_size +
+                        block_offset * head_size + size_id;
+
+    const float scale =
+        kv_id == 0 ? cache_k_scales[head_id] : cache_v_scales[head_id];
+
+#pragma unroll
+    for (int i = 0; i < VecSize; i++) {
+      float quant_value = scale * static_cast<float>(src_vec[i]);
+      if (round_type == 0) {
+        quant_value = static_cast<float>(roundWithTiesToEven(quant_value));
+      } else {
+        quant_value = static_cast<float>(round(quant_value));
+      }
+      quant_value = quant_value > max_bound ? max_bound : quant_value;
+      quant_value = quant_value < min_bound ? min_bound : quant_value;
+      cache_vec[i] = static_cast<uint8_t>(quant_value + 128.0f);
+    }
+
+    if (kv_id == 0) {
+      phi::Store<uint8_t, VecSize>(cache_vec, &key_cache[tgt_idx]);
+    } else {
+      phi::Store<uint8_t, VecSize>(cache_vec, &value_cache[tgt_idx]);
     }
   }
 }
@@ -872,6 +1035,8 @@ void CacheKernel(
     const phi::DenseTensor &seq_lens,
     const paddle::optional<DenseTensor> &pre_key_cache,
     const paddle::optional<DenseTensor> &pre_value_cache,
+    const paddle::optional<DenseTensor> &cache_k_scales,
+    const paddle::optional<DenseTensor> &cache_v_scales,
     const int batch_size,
     const int num_tokens,
     const int num_heads,
@@ -881,8 +1046,8 @@ void CacheKernel(
     phi::DenseTensor *key_cache_out,
     phi::DenseTensor *value_cache_out,
     const int round_type = 0,
-    const float max_bound = 0.0,
-    const float min_bound = 0.0) {
+    const float max_bound = 127.0,
+    const float min_bound = -127.0) {
   typedef PDDataTypeTraits<T> traits_;
   typedef typename traits_::DataType DataType_;
 
@@ -897,36 +1062,37 @@ void CacheKernel(
   int grid_size = 1;
   GetNumBlocks(pack_num, &grid_size);
 
-  VLOG(3) << "cache kv not quant";
-  cache_kernel<DataType_, PackSize>
-      <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(
-          reinterpret_cast<DataType_ *>(const_cast<T *>(qkv.data<T>())),
-          reinterpret_cast<DataType_ *>(key_cache_out->data<T>()),
-          reinterpret_cast<DataType_ *>(value_cache_out->data<T>()),
-          block_tables.data<int>(),
-          padding_offsets.data<int>(),
-          seq_lens.data<int>(),
-          max_seq_len,
-          max_blocks_per_seq,
-          num_heads,
-          head_size,
-          block_size,
-          pre_cache_length,
-          elem_nums);
-
-  if (pre_key_cache) {
-    // stage 2: write pre_cache to cache [:pre_cache_length]
-    elem_nums = batch_size * num_heads * pre_cache_length * head_size * 2;
-    pack_num = elem_nums / PackSize;
-    GetNumBlocks(pack_num, &grid_size);
-    write_pre_cache_to_cache<DataType_, PackSize>
+  if (cache_k_scales) {
+    VLOG(1) << "cache kv quant";
+    cache_int8_kernel<DataType_, PackSize>
         <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(
+            reinterpret_cast<DataType_ *>(const_cast<T *>(qkv.data<T>())),
+            key_cache_out->data<uint8_t>(),
+            value_cache_out->data<uint8_t>(),
+            block_tables.data<int>(),
+            padding_offsets.data<int>(),
+            seq_lens.data<int>(),
+            cache_k_scales.get().data<float>(),
+            cache_v_scales.get().data<float>(),
+            max_seq_len,
+            max_blocks_per_seq,
+            num_heads,
+            head_size,
+            block_size,
+            pre_cache_length,
+            elem_nums,
+            round_type,
+            max_bound,
+            min_bound);
+  } else {
+    VLOG(1) << "cache kv not quant";
+    cache_kernel<DataType_, PackSize>
+        <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(
+            reinterpret_cast<DataType_ *>(const_cast<T *>(qkv.data<T>())),
             reinterpret_cast<DataType_ *>(key_cache_out->data<T>()),
             reinterpret_cast<DataType_ *>(value_cache_out->data<T>()),
-            reinterpret_cast<const DataType_ *>(pre_key_cache.get().data<T>()),
-            reinterpret_cast<const DataType_ *>(
-                pre_value_cache.get().data<T>()),
             block_tables.data<int>(),
+            padding_offsets.data<int>(),
             seq_lens.data<int>(),
             max_seq_len,
             max_blocks_per_seq,
@@ -935,6 +1101,268 @@ void CacheKernel(
             block_size,
             pre_cache_length,
             elem_nums);
+  }
+
+  if (pre_key_cache) {
+    // stage 2: write pre_cache to cache [:pre_cache_length]
+    elem_nums = batch_size * num_heads * pre_cache_length * head_size * 2;
+    pack_num = elem_nums / PackSize;
+    GetNumBlocks(pack_num, &grid_size);
+    if (cache_k_scales) {
+      write_pre_cache_int8_to_cache<DataType_, PackSize>
+          <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(
+              key_cache_out->data<uint8_t>(),
+              value_cache_out->data<uint8_t>(),
+              reinterpret_cast<const DataType_ *>(
+                  pre_key_cache.get().data<T>()),
+              reinterpret_cast<const DataType_ *>(
+                  pre_value_cache.get().data<T>()),
+              block_tables.data<int>(),
+              seq_lens.data<int>(),
+              cache_k_scales->data<float>(),
+              cache_v_scales->data<float>(),
+              max_seq_len,
+              max_blocks_per_seq,
+              num_heads,
+              head_size,
+              block_size,
+              pre_cache_length,
+              elem_nums,
+              round_type,
+              max_bound,
+              min_bound);
+    } else {
+      write_pre_cache_to_cache<DataType_, PackSize>
+          <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(
+              reinterpret_cast<DataType_ *>(key_cache_out->data<T>()),
+              reinterpret_cast<DataType_ *>(value_cache_out->data<T>()),
+              reinterpret_cast<const DataType_ *>(
+                  pre_key_cache.get().data<T>()),
+              reinterpret_cast<const DataType_ *>(
+                  pre_value_cache.get().data<T>()),
+              block_tables.data<int>(),
+              seq_lens.data<int>(),
+              max_seq_len,
+              max_blocks_per_seq,
+              num_heads,
+              head_size,
+              block_size,
+              pre_cache_length,
+              elem_nums);
+    }
+  }
+}
+
+template <typename T, int VecSize>
+__global__ void quant_write_cache_int8_kernel(
+    const T *__restrict__ qkv,          // [num_tokens, 3, num_heads, head_size]
+    uint8_t *__restrict__ key_cache,    // [num_blocks, num_heads, block_size,
+                                        // head_size]
+    uint8_t *__restrict__ value_cache,  // [num_blocks, num_heads, block_size,
+                                        // head_size]
+    const int *__restrict__ block_tables,     // [bsz, max_blocks_per_seq]
+    const int *__restrict__ padding_offsets,  // [num_tokens]
+    const int *__restrict__ seq_lens,         // [bsz]
+    const int max_seq_len,
+    const int pre_cache_length,
+    const int max_blocks_per_seq,
+    const int num_tokens,
+    const int num_heads,
+    const int head_size,
+    const int block_size,
+    float *k_quant_scales,
+    float *v_quant_scales,
+    float *k_dequant_scales,
+    float *v_dequant_scales) {
+  const int hi = blockIdx.x;
+  const int qkv_id = blockIdx.y;
+
+  using InVec = phi::AlignedVector<T, VecSize>;
+  using OutVec = phi::AlignedVector<uint8_t, VecSize>;
+
+  InVec in_vec;
+  OutVec out_vec;
+  InVec abs_max_vec;
+#pragma unroll
+  for (int i = 0; i < VecSize; ++i) {
+    abs_max_vec[i] = 0.0f;
+  }
+
+  uint8_t *dst_ptr;
+  float *quant_scales;
+  float *dequant_scales;
+  if (qkv_id == 0) {
+    dst_ptr = key_cache;
+    quant_scales = k_quant_scales;
+    dequant_scales = k_dequant_scales;
+  } else {
+    dst_ptr = value_cache;
+    quant_scales = v_quant_scales;
+    dequant_scales = v_dequant_scales;
+  }
+
+  T local_abs_max;
+
+  for (int idx = threadIdx.x * VecSize; idx < num_tokens * head_size;
+       idx += blockDim.x * VecSize) {
+    int token_idx = idx / head_size;
+    int h_offset = idx % head_size;
+    int linear_idx = token_idx * 3 * num_heads * head_size +
+                     (qkv_id + 1) * num_heads * head_size + hi * head_size +
+                     h_offset;
+
+    Load<T, VecSize>(qkv + linear_idx, &in_vec);
+#pragma unroll
+    for (int i = 0; i < VecSize; ++i) {
+      abs_max_vec[i] = MaxFunc<T>()(abs_max_vec[i], AbsFunc<T>()(in_vec[i]));
+    }
+  }
+
+  local_abs_max = LocalReduceMax<T, InVec, VecSize>(abs_max_vec);
+  T abs_max_val = BlockReduceAbsMax<T>(local_abs_max, 0xffffffff);
+
+  __shared__ float quant_scale;
+  if (threadIdx.x == 0) {
+    quant_scale = 127.0f / static_cast<float>(abs_max_val);
+  }
+
+  __syncthreads();
+  for (int idx = threadIdx.x * VecSize; idx < num_tokens * head_size;
+       idx += blockDim.x * VecSize) {
+    int token_idx = idx / head_size;
+    int h_offset = idx % head_size;
+    int linear_idx = token_idx * 3 * num_heads * head_size +
+                     (qkv_id + 1) * num_heads * head_size + hi * head_size +
+                     h_offset;
+
+    Load<T, VecSize>(qkv + linear_idx, &in_vec);
+#pragma unroll
+    for (int i = 0; i < VecSize; ++i) {
+      out_vec[i] = QuantFunc<T>()(in_vec[i], quant_scale);
+    }
+
+    const int ori_token_idx = token_idx + padding_offsets[token_idx];
+    const int ori_bi = ori_token_idx / max_seq_len;
+    if (seq_lens[ori_bi] == 0) continue;
+    const int ori_seq_id = ori_token_idx % max_seq_len + pre_cache_length;
+
+    const int *block_table_now = block_tables + ori_bi * max_blocks_per_seq;
+    const int block_idx = block_table_now[ori_seq_id / block_size];
+    const int block_offset = ori_seq_id % block_size;
+    // [max_block_num, num_head, block_size, head_dim/x, x]
+    Store<uint8_t>(out_vec,
+                   dst_ptr + block_idx * num_heads * block_size * head_size +
+                       hi * block_size * head_size + block_offset * head_size +
+                       h_offset);
+  }
+
+  if (threadIdx.x == 0) {
+    quant_scales[hi] = quant_scale;
+    dequant_scales[hi] = 1.0f / quant_scale;
+  }
+}
+
+template <typename T>
+void DynamicQuantCacheKernel(
+    const phi::GPUContext &dev_ctx,
+    const phi::DenseTensor &qkv,  // [token_num, 3, num_head, head_dim]
+    const phi::DenseTensor &block_tables,
+    const phi::DenseTensor &padding_offsets,
+    const phi::DenseTensor &seq_lens,
+    const phi::DenseTensor &k_quant_scales,
+    const phi::DenseTensor &v_quant_scales,
+    const phi::DenseTensor &k_dequant_scales,
+    const phi::DenseTensor &v_dequant_scales,
+    const paddle::optional<DenseTensor> &pre_key_cache,
+    const paddle::optional<DenseTensor> &pre_value_cache,
+    const int batch_size,
+    const int num_heads,
+    const int head_size,
+    const int max_seq_len,
+    const int pre_cache_length,
+    phi::DenseTensor *key_cache_out,
+    phi::DenseTensor *value_cache_out) {
+  typedef PDDataTypeTraits<T> traits_;
+  typedef typename traits_::DataType DataType_;
+
+  const int num_tokens = padding_offsets.dims()[0];
+  const int max_blocks_per_seq = block_tables.dims()[1];
+  const int32_t block_size = key_cache_out->dims()[2];
+  constexpr int PackSize = 16 / sizeof(T);
+
+  assert(head_size % PackSize == 0);
+
+  const DataType_ *qkv_ptr = reinterpret_cast<const DataType_ *>(qkv.data<T>());
+
+  //  [max_block_num, num_head, block_size, head_dim]
+
+  uint8_t *cache_k_ptr = key_cache_out->data<uint8_t>();
+  uint8_t *cache_v_ptr = value_cache_out->data<uint8_t>();
+
+  float *k_quant_scales_data =
+      const_cast<float *>(k_quant_scales.data<float>());
+  float *k_dequant_scales_data =
+      const_cast<float *>(k_dequant_scales.data<float>());
+
+  float *v_quant_scales_data =
+      const_cast<float *>(v_quant_scales.data<float>());
+  float *v_dequant_scales_data =
+      const_cast<float *>(v_dequant_scales.data<float>());
+
+  constexpr int block_sz = 1024;
+
+  dim3 grid(num_heads, 2);
+
+  // [token_num, 3, num_head, head_dim/x, x]->[max_block_num, num_head,
+  // block_size, head_dim/x, x] Quant and Write kv
+  quant_write_cache_int8_kernel<DataType_, PackSize>
+      <<<grid, block_sz, 0, dev_ctx.stream()>>>(qkv_ptr,
+                                                cache_k_ptr,
+                                                cache_v_ptr,
+                                                block_tables.data<int>(),
+                                                padding_offsets.data<int>(),
+                                                seq_lens.data<int>(),
+                                                max_seq_len,
+                                                pre_cache_length,
+                                                max_blocks_per_seq,
+                                                num_tokens,
+                                                num_heads,
+                                                head_size,
+                                                block_size,
+                                                k_quant_scales_data,
+                                                v_quant_scales_data,
+                                                k_dequant_scales_data,
+                                                v_dequant_scales_data);
+
+  if (pre_key_cache) {
+    // stage 2: write pre_cache to cache [:pre_cache_length]
+    const int elem_nums =
+        batch_size * num_heads * pre_cache_length * head_size * 2;
+    const int pack_num = elem_nums / PackSize;
+    const int blocksize = 128;
+    int grid_size = 1;
+    GetNumBlocks(pack_num, &grid_size);
+    write_pre_cache_int8_to_cache<DataType_, PackSize>
+        <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(
+            key_cache_out->data<uint8_t>(),
+            value_cache_out->data<uint8_t>(),
+            reinterpret_cast<const DataType_ *>(pre_key_cache.get().data<T>()),
+            reinterpret_cast<const DataType_ *>(
+                pre_value_cache.get().data<T>()),
+            block_tables.data<int>(),
+            seq_lens.data<int>(),
+            k_quant_scales.data<float>(),
+            v_quant_scales.data<float>(),
+            max_seq_len,
+            max_blocks_per_seq,
+            num_heads,
+            head_size,
+            block_size,
+            pre_cache_length,
+            elem_nums,
+            1,
+            127.0f,
+            -127.0f);
   }
 }
 

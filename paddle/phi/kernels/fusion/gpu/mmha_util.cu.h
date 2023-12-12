@@ -2178,6 +2178,118 @@ struct Qk_dot<float16, 4> {
   }
 };
 
+constexpr int32_t WARP_SIZE = 32;
+constexpr int32_t HALF_WARP = 16;
+constexpr float QUANT_MAX_BOUND = 127.0;
+constexpr float QUANT_MIN_BOUND = -127.0;
+
+template <typename T>
+struct QuantFunc {
+  __host__ __device__ uint8_t operator()(T x, float quant_scale) {
+    float tmp = static_cast<float>(x) * quant_scale;
+    tmp = round(tmp);
+    if (tmp > QUANT_MAX_BOUND)
+      tmp = QUANT_MAX_BOUND;
+    else if (tmp < QUANT_MIN_BOUND)
+      tmp = QUANT_MIN_BOUND;
+    return static_cast<uint8_t>(tmp + 128.0f);
+  }
+};
+
+template <typename T>
+struct MaxFunc {
+  __device__ T operator()(T a, T b) { return max(a, b); }
+};
+
+template <>
+struct MaxFunc<half> {
+  __device__ half operator()(half a, half b) {
+#if __CUDA_ARCH__ >= 800
+    return __hmax(a, b);
+#else
+    return max(static_cast<float>(a), static_cast<float>(b));
+#endif
+  }
+};
+
+template <>
+struct MaxFunc<__nv_bfloat16> {
+  __device__ __nv_bfloat16 operator()(__nv_bfloat16 a, __nv_bfloat16 b) {
+#if __CUDA_ARCH__ >= 800
+    return __hmax(a, b);
+#else
+    return max(static_cast<float>(a), static_cast<float>(b));
+#endif
+  }
+};
+
+template <typename T>
+struct AbsFunc {
+  __device__ T operator()(T x) { return abs(x); }
+};
+
+template <>
+struct AbsFunc<half> {
+  __device__ half operator()(half x) {
+#if __CUDA_ARCH__ >= 800
+    return __habs(x);
+#else
+    return abs(static_cast<float>(x));
+#endif
+  }
+};
+
+template <>
+struct AbsFunc<__nv_bfloat16> {
+  __device__ __nv_bfloat16 operator()(__nv_bfloat16 x) {
+#if __CUDA_ARCH__ >= 800
+    return __habs(x);
+#else
+    return abs(static_cast<float>(x));
+#endif
+  }
+};
+
+template <typename T, typename Vec, int VecSize>
+__inline__ __device__ T LocalReduceMax(Vec& vec) {  // NOLINT
+  T local_max = static_cast<T>(0.0);
+#pragma unroll
+  for (int i = 0; i < VecSize; ++i) {
+    local_max = vec[i] > local_max ? vec[i] : local_max;
+  }
+  return local_max;
+}
+
+template <typename T>
+__inline__ __device__ T WarpReduceAbsMax(T val, unsigned lane_mask) {
+#pragma unroll
+  for (int mask = HALF_WARP; mask > 0; mask >>= 1) {
+    val = MaxFunc<T>()(val, __shfl_xor_sync(lane_mask, val, mask, WARP_SIZE));
+  }
+  return val;
+}
+
+template <typename T>
+__inline__ __device__ T BlockReduceAbsMax(T val, unsigned mask) {
+  static __shared__ T smem[WARP_SIZE];
+  int32_t lane_id = threadIdx.x % WARP_SIZE;
+  int32_t warp_id = threadIdx.x / WARP_SIZE;
+
+  val = WarpReduceAbsMax(val, mask);
+
+  if (lane_id == 0) {
+    smem[warp_id] = val;
+  }
+
+  __syncthreads();
+
+  T abs_max_val = (threadIdx.x < (blockDim.x / WARP_SIZE))
+                      ? smem[threadIdx.x]
+                      : static_cast<T>(0.0f);
+  abs_max_val = WarpReduceAbsMax(abs_max_val, mask);
+  return abs_max_val;
+}
+
 }  // namespace fusion
 }  // namespace phi
 
