@@ -25,6 +25,7 @@ def unzip(input, lod, len):
 
     Args:
         input (Variable): The zipped input
+        len(int): The second dim length of unzipped output.
         lod (Variable): The original lod of unzipped input, 1-D LodTensor with shape[K].
 
     Returns:
