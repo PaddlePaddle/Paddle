@@ -91,6 +91,8 @@ list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_grad_op)
 list(REMOVE_ITEM TEST_OPS test_fuse_gemm_epilogue_pass)
+list(REMOVE_ITEM TEST_OPS test_fused_dot_product_attention_op)
+list(REMOVE_ITEM TEST_OPS test_fuse_dot_product_attention_pass)
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_c_comm_init_all_op)
@@ -186,7 +188,7 @@ if(NOT WITH_GLOO)
 endif()
 
 if((NOT WITH_GPU) AND (NOT WITH_ROCM))
-  list(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
+  list(REMOVE_ITEM TEST_OPS test_fused_conv2d_add_act_op)
   list(REMOVE_ITEM TEST_OPS test_rank_attention_op)
   # TODO(shenliang03): rank_attention_op support CPU device in future
   list(REMOVE_ITEM TEST_OPS test_batch_fc_op)
@@ -209,7 +211,7 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
 
 elseif(WITH_GPU)
   if(${CUDNN_VERSION} VERSION_LESS 7100)
-    list(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
+    list(REMOVE_ITEM TEST_OPS test_fused_conv2d_add_act_op)
   endif()
 endif()
 
@@ -617,6 +619,13 @@ if((WITH_GPU) AND (CUDA_VERSION GREATER_EQUAL 11.6))
     FLAGS_cublaslt_exhaustive_search_times=30)
   py_test_modules(test_fuse_gemm_epilogue_pass MODULES
                   test_fuse_gemm_epilogue_pass)
+endif()
+
+if((WITH_GPU) AND (WITH_CUDNN_FRONTEND))
+  py_test_modules(test_fuse_dot_product_attention_pass MODULES
+                  test_fuse_dot_product_attention_pass)
+  py_test_modules(test_fused_dot_product_attention_op MODULES
+                  test_fused_dot_product_attention_op)
 endif()
 
 set_tests_properties(test_conv2d_op PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")

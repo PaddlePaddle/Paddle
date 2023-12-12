@@ -91,28 +91,6 @@ struct CompatibleInfo {
 std::vector<int64_t> GetBroadcastAxis(const ::common::DDim& in_shape,
                                       const std::vector<int64_t>& out_shape);
 
-struct NameGenerator {
-  std::string New(const std::string& name_hint) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto it = name_hint_idx_.find(name_hint);
-    if (it == name_hint_idx_.end()) {
-      name_hint_idx_.emplace(name_hint, -1);
-      return name_hint;
-    }
-    return name_hint + "_" + std::to_string(++it->second);
-  }
-
-  // Reset id to initial.
-  void ResetID() {
-    std::lock_guard<std::mutex> lock(mutex_);
-    name_hint_idx_.clear();
-  }
-
- private:
-  absl::flat_hash_map<std::string, uint32_t> name_hint_idx_;
-  mutable std::mutex mutex_;
-};
-
 class PrettyNamer {
  public:
   const std::string& GetOrNew(::pir::Value hash_key,
@@ -123,7 +101,7 @@ class PrettyNamer {
     return pretty_names_.at(hash_key);
   }
 
-  NameGenerator& GetNameGenerator() { return name_generator_; }
+  ::cinn::common::NameGenerator& GetNameGenerator() { return name_generator_; }
 
   const std::unordered_map<::pir::Value, std::string>& GetNameMap() {
     return pretty_names_;
@@ -131,7 +109,7 @@ class PrettyNamer {
 
  private:
   std::unordered_map<::pir::Value, std::string> pretty_names_;
-  NameGenerator name_generator_;
+  ::cinn::common::NameGenerator name_generator_;
 };
 
 }  // namespace pir

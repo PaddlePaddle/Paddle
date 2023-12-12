@@ -2060,6 +2060,301 @@ def stack(x, axis=0, name=None):
         return out
 
 
+def hstack(x, name=None):
+    """
+    Stacks all the input tensors ``x`` along horizontal axis.
+    All tensors must be of the same dtype.
+
+    Args:
+        x (list[Tensor]|tuple[Tensor]): Input ``x`` can be a ``list`` or ``tuple`` of tensors, the Tensors in ``x`` must be of the same
+            shape and dtype. Supported data types: ``float16``, ``float32``, ``float64``, ``int8``, ``int32``, ``int64`` or ``bfloat16``.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, The stacked tensor with same data type as input.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> # hstack with 0-D tensors
+            >>> x1 = paddle.to_tensor(1.0)
+            >>> x2 = paddle.to_tensor(2.0)
+            >>> out = paddle.hstack((x1, x2))
+            >>> print(out)
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [1., 2.])
+
+            >>> # hstack with 1-D tensors
+            >>> x1 = paddle.to_tensor([1.0, 2.0])
+            >>> x2 = paddle.to_tensor([3.0, 4.0, 5.0])
+            >>> out = paddle.hstack((x1, x2))
+            >>> print(out)
+            Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [1., 2., 3., 4., 5.])
+
+            >>> # hstack mix with 0-D & 1-D tensors
+            >>> x1 = paddle.to_tensor(1.0)
+            >>> x2 = paddle.to_tensor([3.0, 4.0, 5.0])
+            >>> out = paddle.hstack((x1, x2))
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [1., 3., 4., 5.])
+
+            >>> # hstack with 2-D tensors
+            >>> x1 = paddle.to_tensor([[1.0, 2.0]])
+            >>> x2 = paddle.to_tensor([[3.0, 4.0, 5.0]])
+            >>> out = paddle.hstack((x1, x2))
+            >>> print(out)
+            Tensor(shape=[1, 5], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1., 2., 3., 4., 5.]])
+
+    """
+    arrays = paddle.atleast_1d(*x)
+    if not isinstance(arrays, list):
+        arrays = [arrays]
+
+    if arrays and arrays[0].ndim == 1:
+        return paddle.concat(arrays, axis=0, name=name)
+    else:
+        return paddle.concat(arrays, axis=1, name=name)
+
+
+def vstack(x, name=None):
+    """
+    Stacks all the input tensors ``x`` along vertical axis.
+    All tensors must be of the same dtype.
+
+    Args:
+        x (list[Tensor]|tuple[Tensor]): Input ``x`` can be a ``list`` or ``tuple`` of tensors, the Tensors in ``x`` must be of the same
+            shape and dtype. Supported data types: ``float16``, ``float32``, ``float64``, ``int8``, ``int32``, ``int64`` or ``bfloat16``.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, The stacked tensor with same data type as input.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> # vstack with 0-D tensors
+            >>> x1 = paddle.to_tensor(1.0)
+            >>> x2 = paddle.to_tensor(2.0)
+            >>> out = paddle.vstack((x1, x2))
+            >>> print(out)
+            Tensor(shape=[2, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1.],
+             [2.]])
+
+            >>> # vstack with 1-D tensors
+            >>> x1 = paddle.to_tensor([1.0, 2.0, 3.0])
+            >>> x2 = paddle.to_tensor([3.0, 4.0, 5.0])
+            >>> out = paddle.vstack((x1, x2))
+            >>> print(out)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1., 2., 3.],
+             [3., 4., 5.]])
+
+            >>> # vstack mix with 1-D & 2-D tensors
+            >>> x1 = paddle.to_tensor([1.0, 2.0, 3.0])
+            >>> x2 = paddle.to_tensor([[3.0, 4.0, 5.0]])
+            >>> out = paddle.vstack((x1, x2))
+            >>> print(out)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1., 2., 3.],
+             [3., 4., 5.]])
+
+            >>> # vstack with 2-D tensors
+            >>> x1 = paddle.to_tensor([[1.0, 2.0, 3.0]])
+            >>> x2 = paddle.to_tensor([[3.0, 4.0, 5.0]])
+            >>> out = paddle.vstack((x1, x2))
+            >>> print(out)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1., 2., 3.],
+             [3., 4., 5.]])
+
+    """
+    arrays = paddle.atleast_2d(*x)
+    if not isinstance(arrays, list):
+        arrays = [arrays]
+
+    return paddle.concat(arrays, axis=0, name=name)
+
+
+def dstack(x, name=None):
+    """
+    Stacks all the input tensors ``x`` along depth axis.
+    All tensors must be of the same dtype.
+
+    Args:
+        x (list[Tensor]|tuple[Tensor]): Input ``x`` can be a ``list`` or ``tuple`` of tensors, the Tensors in ``x`` must be of the same
+            shape and dtype. Supported data types: ``float16``, ``float32``, ``float64``, ``int8``, ``int32``, ``int64`` or ``bfloat16``.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, The stacked tensor with same data type as input.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> # dstack with 0-D tensors
+            >>> x1 = paddle.to_tensor(1.0)
+            >>> x2 = paddle.to_tensor(2.0)
+            >>> out = paddle.dstack((x1, x2))
+            >>> print(out)
+            Tensor(shape=[1, 1, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[1., 2.]]])
+
+            >>> # dstack with 1-D tensors
+            >>> x1 = paddle.to_tensor([1.0, 2.0, 3.0])
+            >>> x2 = paddle.to_tensor([3.0, 4.0, 5.0])
+            >>> out = paddle.dstack((x1, x2))
+            >>> print(out)
+            Tensor(shape=[1, 3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[1., 3.],
+              [2., 4.],
+              [3., 5.]]])
+
+            >>> # dstack with 3-D tensors
+            >>> x1 = paddle.to_tensor([[[1.0, 2.0], [3.0, 4.0]]])
+            >>> x2 = paddle.to_tensor([[[3.0, 4.0], [5.0, 6.0]]])
+            >>> out = paddle.dstack((x1, x2))
+            >>> print(out)
+            Tensor(shape=[1, 2, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[1., 2., 3., 4.],
+              [3., 4., 5., 6.]]])
+
+    """
+    arrays = paddle.atleast_3d(*x)
+    if not isinstance(arrays, list):
+        arrays = [arrays]
+
+    return paddle.concat(arrays, axis=2, name=name)
+
+
+def column_stack(x, name=None):
+    """
+    Stacks all the input tensors ``x`` along horizontal axis. Each tensor in ``x`` will be first reshaped into ``(tensor.numel(), 1)``
+    if ``tensor.ndim < 2`` before being stacked.
+    All tensors must be of the same dtype.
+
+    Args:
+        x (list[Tensor]|tuple[Tensor]): Input ``x`` can be a ``list`` or ``tuple`` of tensors, the Tensors in ``x`` must be of the same
+            shape and dtype. Supported data types: ``float16``, ``float32``, ``float64``, ``int32``, ``int64`` or ``bfloat16``.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, The stacked tensor with same data type as input.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> # column_stack with 0-D tensors
+            >>> x1 = paddle.to_tensor(1.0)
+            >>> x2 = paddle.to_tensor(2.0)
+            >>> out = paddle.column_stack((x1, x2))
+            >>> print(out)
+            Tensor(shape=[1, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1., 2.]])
+
+            >>> # column_stack mix with 1-D & 2-D tensors
+            >>> x1 = paddle.to_tensor([[1.0], [2.0], [3.0]])
+            >>> x2 = paddle.to_tensor([3.0, 4.0, 5.0])
+            >>> out = paddle.column_stack((x1, x2))
+            >>> print(out)
+            Tensor(shape=[3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1., 3.],
+             [2., 4.],
+             [3., 5.]])
+
+            >>> # column_stack with 3-D tensors
+            >>> x1 = paddle.to_tensor([[[1.0, 2.0], [3.0, 4.0]]])
+            >>> x2 = paddle.to_tensor([[[3.0, 4.0], [5.0, 6.0]]])
+            >>> out = paddle.column_stack((x1, x2))
+            >>> print(out)
+            Tensor(shape=[1, 4, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[1., 2.],
+              [3., 4.],
+              [3., 4.],
+              [5., 6.]]])
+
+    """
+    arrays = []
+
+    for tensor in x:
+        if tensor.ndim < 2:
+            arrays.append(tensor.reshape((tensor.numel(), 1)))
+        else:
+            arrays.append(tensor)
+
+    return paddle.concat(arrays, axis=1, name=name)
+
+
+def row_stack(x, name=None):
+    """
+    Alias of `paddle.vstack()`.
+    Stacks all the input tensors ``x`` along vertical axis.
+    All tensors must be of the same dtype.
+
+    Args:
+        x (list[Tensor]|tuple[Tensor]): Input ``x`` can be a ``list`` or ``tuple`` of tensors, the Tensors in ``x`` must be of the same
+            shape and dtype. Supported data types: ``float16``, ``float32``, ``float64``, ``int8``, ``int32``, ``int64`` or ``bfloat16``.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, The stacked tensor with same data type as input.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> # row_stack with 0-D tensors
+            >>> x1 = paddle.to_tensor(1.0)
+            >>> x2 = paddle.to_tensor(2.0)
+            >>> out = paddle.row_stack((x1, x2))
+            >>> print(out)
+            Tensor(shape=[2, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1.],
+             [2.]])
+
+            >>> # row_stack with 1-D tensors
+            >>> x1 = paddle.to_tensor([1.0, 2.0, 3.0])
+            >>> x2 = paddle.to_tensor([3.0, 4.0, 5.0])
+            >>> out = paddle.row_stack((x1, x2))
+            >>> print(out)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1., 2., 3.],
+             [3., 4., 5.]])
+
+            >>> # row_stack mix with 1-D & 2-D tensors
+            >>> x1 = paddle.to_tensor([1.0, 2.0, 3.0])
+            >>> x2 = paddle.to_tensor([[3.0, 4.0, 5.0]])
+            >>> out = paddle.row_stack((x1, x2))
+            >>> print(out)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1., 2., 3.],
+             [3., 4., 5.]])
+
+            >>> # row_stack with 2-D tensors
+            >>> x1 = paddle.to_tensor([[1.0, 2.0, 3.0]])
+            >>> x2 = paddle.to_tensor([[3.0, 4.0, 5.0]])
+            >>> out = paddle.row_stack((x1, x2))
+            >>> print(out)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1., 2., 3.],
+             [3., 4., 5.]])
+
+    """
+    return paddle.vstack(x, name=name)
+
+
 def split(x, num_or_sections, axis=0, name=None):
     """
     Split the input tensor into multiple sub-Tensors.
@@ -3122,6 +3417,7 @@ def scatter(x, index, updates, overwrite=True, name=None):
     Output is obtained by updating the input on selected indices based on updates.
 
     .. code-block:: python
+        :name: scatter-example-1
 
         >>> import paddle
         >>> #input:
@@ -4958,14 +5254,13 @@ def repeat_interleave(x, repeats, axis=None, name=None):
             Tensor(shape=[12], dtype=int64, place=Place(cpu), stop_gradient=True,
             [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6])
     """
-
-    if isinstance(repeats, Variable) and not repeats.shape:
+    if isinstance(repeats, (Variable, paddle.pir.Value)) and not repeats.shape:
         repeats = paddle.reshape(repeats, [1])
     if axis is None:
         x = paddle.flatten(x)
         axis = 0
-    if in_dynamic_mode():
-        if isinstance(repeats, Variable):
+    if in_dynamic_or_pir_mode():
+        if isinstance(repeats, (Variable, paddle.pir.Value)):
             return _C_ops.repeat_interleave_with_tensor_index(x, repeats, axis)
         return _C_ops.repeat_interleave(x, repeats, axis)
 
@@ -6006,3 +6301,109 @@ def diagonal_scatter(x, y, offset=0, axis1=0, axis2=1, name=None):
 
     """
     return fill_diagonal_tensor(x, y, offset, axis1, axis2, name)
+
+
+def select_scatter(x, values, axis, index, name=None):
+    """
+    Embeds the values of the values tensor into x at the given index of axis.
+
+    Args:
+        x (Tensor) : The Destination Tensor. Supported data types are `bool`, `float16`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `bfloat16`, `complex64`, `complex128`.
+        values (Tensor) : The tensor to embed into x. Supported data types are `bool`, `float16`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `bfloat16`, `complex64`, `complex128`.
+        axis (int) : the dimension to insert the slice into.
+        index (int) : the index to select with.
+        name (str, optional): Name for the operation (optional, default is None).
+
+    Returns:
+        Tensor, same dtype and shape with x
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.zeros((2,3,4)).astype("float32")
+            >>> values = paddle.ones((2,4)).astype("float32")
+            >>> res = paddle.select_scatter(x,values,1,1)
+            >>> print(res)
+            Tensor(shape=[2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[[0., 0., 0., 0.],
+                     [1., 1., 1., 1.],
+                     [0., 0., 0., 0.]],
+                    [[0., 0., 0., 0.],
+                     [1., 1., 1., 1.],
+                     [0., 0., 0., 0.]]])
+
+    """
+    x_shape = x.shape
+    value_shape = values.shape
+    if not isinstance(x_shape, list):
+        x_shape = list(x_shape)
+    if index < 0:
+        index += x_shape[axis]
+    if axis < 0:
+        axis += len(x_shape)
+    del x_shape[axis]
+    if len(x_shape) != len(value_shape):
+        raise RuntimeError(
+            "expected values to have a size equal to the slice of x. value size = "
+            + str(value_shape)
+            + " slice size = "
+            + str(x_shape)
+        )
+    for i in range(len(x_shape)):
+        if x_shape[i] != value_shape[i]:
+            raise RuntimeError(
+                "expected values to have a size equal to the slice of x. value size = "
+                + str(value_shape)
+                + " slice size = "
+                + str(x_shape)
+            )
+    from ..base.framework import default_main_program
+
+    starts = [index]
+    ends = [index + 1]
+    steps = [1]
+    axes = [axis]
+    none_axes = []
+    decrease_axes = [axis]
+    inputs = {'Input': x}
+    attrs = {
+        'axes': axes,
+        'starts': starts,
+        'ends': ends,
+        'steps': steps,
+        'decrease_axes': decrease_axes,
+        'none_axes': none_axes,
+    }
+
+    dtype = x.dtype
+    attrs['dtype'] = dtype
+
+    values = values.astype(dtype)
+    inputs["ValueTensor"] = values
+
+    if in_dynamic_or_pir_mode():
+        return _C_ops.set_value_with_tensor(
+            x,
+            values,
+            starts,
+            ends,
+            steps,
+            axes,
+            decrease_axes,
+            none_axes,
+        )
+    else:
+        helper = LayerHelper('select_scatter', **locals())
+        output = helper.create_variable_for_type_inference(dtype=x.dtype)
+        cur_block = default_main_program().current_block()
+        cur_block.append_op(
+            type="set_value",
+            inputs=inputs,
+            outputs={'Out': output},
+            attrs=attrs,
+            inplace_map={"Input": "Out"},
+        )
+
+        return output

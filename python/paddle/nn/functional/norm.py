@@ -17,7 +17,11 @@ import numbers
 # TODO: define normalization api
 import paddle
 from paddle import _C_ops, base, in_dynamic_mode
-from paddle.base.framework import in_dygraph_mode, in_dynamic_or_pir_mode
+from paddle.base.framework import (
+    in_dygraph_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
+)
 
 from ...base.data_feeder import check_type, check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
@@ -192,8 +196,24 @@ def batch_norm(
     else:
         trainable_statistics = not use_global_stats
 
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
+            x,
+            running_mean,
+            running_var,
+            weight,
+            bias,
+            not training,
+            momentum,
+            epsilon,
+            data_format,
+            use_global_stats,
+            trainable_statistics,
+        )
+        return batch_norm_out
+
+    elif in_pir_mode():
+        batch_norm_out, t1, t2, t3, t4, _ = _C_ops.batch_norm_(
             x,
             running_mean,
             running_var,
@@ -219,7 +239,6 @@ def batch_norm(
             "epsilon": epsilon,
             "is_test": not training,
             "data_layout": data_format,
-            "use_mkldnn": False,
             "fuse_with_relu": False,
             "use_global_stats": use_global_stats,
             "trainable_statistics": trainable_statistics,

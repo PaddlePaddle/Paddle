@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
 
 import numpy as np
+from utils import compare_legacy_with_pt
 
 import paddle
 import paddle.nn.functional as F
@@ -23,9 +23,6 @@ from paddle import base
 from paddle.base import core
 from paddle.base.backward import append_backward
 from paddle.base.framework import Program, program_guard
-
-sys.path.append("../dygraph_to_static")
-from dygraph_to_static_utils import compare_legacy_with_pt
 
 paddle.enable_static()
 
