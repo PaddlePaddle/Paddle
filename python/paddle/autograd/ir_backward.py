@@ -55,11 +55,11 @@ def check_all_puts(block, inputs, outputs):
             )
 
 
-def append_full_like(float_value, value, state, backward_ops):
+def append_full_like(float_value, copy_value, value, state, backward_ops):
     value_grad = paddle.full_like(
-        value,
+        copy_value,
         float_value,
-        dtype=value.dtype,
+        dtype=copy_value.dtype,
     )
     full_like_op = value_grad.get_defining_op()
     full_op = full_like_op.operand_source(1).get_defining_op()
@@ -118,7 +118,7 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
         # fwd : op1 -> op2 -> op3 -> output
         # bwd : op1G <- op2G <- op3G <- outputG <- full_likeop/feedop
         if grad is None:
-            append_full_like(1.0, output, state, backward_ops)
+            append_full_like(1.0, output, output, state, backward_ops)
         else:
             if output.shape != grad.shape:
                 raise ValueError(
@@ -156,7 +156,7 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
                     ]
                 else:
                     grad_value = append_full_like(
-                        0.0, opresult, state, backward_ops
+                        0.0, opresult, opresult, state, backward_ops
                     )
                     visited_output.add(opresult)
 
@@ -444,7 +444,9 @@ def append_backward_ops(
                     # last bwd_op return None because input in no_grad_set,
                     # but this bwd_op need a input.
 
-                    append_full_like(0.0, value, state, backward_ops)
+                    append_full_like(
+                        0.0, new_value[0], value, state, backward_ops
+                    )
                     zero_flag[i] = True
 
             outputs.append(new_value)
@@ -565,7 +567,7 @@ def append_backward_ops(
                     inputs_grad.append(state.value_to_valuegrad[value][0][0])
                 else:
                     value_grad = append_full_like(
-                        0.0, value, state, backward_ops
+                        0.0, value, value, state, backward_ops
                     )
                     inputs_grad.append(value_grad)
             paddle.base.libpaddle.pir.cf_yield(inputs_grad)

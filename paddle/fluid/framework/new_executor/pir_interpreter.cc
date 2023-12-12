@@ -1045,6 +1045,8 @@ void PirInterpreter::CalculateLastLiveOps() {
       ins_and_outs.insert(outs.begin(), outs.end());
     }
 
+    VLOG(4) << "get gc check vars for: " << instr->Name();
+
     for (auto& item : ins_and_outs) {
       for (auto var_id : item.second) {
         // skip no_need_buffer input vars
@@ -1054,7 +1056,6 @@ void PirInterpreter::CalculateLastLiveOps() {
         gc_check_vars.insert(var_id);
       }
     }
-    VLOG(4) << "get gc check vars for: " << instr->Name();
 
     for (auto var_id : gc_check_vars) {
       Scope* inner_scope = InnerScope();

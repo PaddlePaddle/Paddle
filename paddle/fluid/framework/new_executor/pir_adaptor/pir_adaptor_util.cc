@@ -408,7 +408,7 @@ void HandleForSpecialOp(pir::Operation* op,
     value_exe_info->Add(value, fetch_var_name);
   } else if (op_name == paddle::dialect::FeedOp::name() ||
              op_name == paddle::dialect::DataOp::name()) {
-    VLOG(6) << "Handle for" << op_name;
+    VLOG(6) << "Handle for " << op_name;
     auto value = op->result(0);
     VLOG(6) << "link feed output to feed in variable"
             << value_exe_info->GetScope();
@@ -418,6 +418,7 @@ void HandleForSpecialOp(pir::Operation* op,
     Variable* var = value_exe_info->GetScope()->FindVar(name);
     if (var == nullptr) {
       var = value_exe_info->GetScope()->Var(name);
+      var->GetMutable<phi::DenseTensor>();
     }
     PADDLE_ENFORCE(var,
                    paddle::platform::errors::InvalidArgument(

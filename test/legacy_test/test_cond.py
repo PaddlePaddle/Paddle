@@ -466,7 +466,7 @@ class TestCondInputOutput(unittest.TestCase):
 
 
 class TestCondNestedControlFlow(unittest.TestCase):
-    # @test_with_pir_api
+    @test_with_pir_api
     def test_cond_inside_cond(self):
         """
         pseudocode:
@@ -534,7 +534,7 @@ class TestCondNestedControlFlow(unittest.TestCase):
                         da = g
                 ret = exe.run(
                     main_program,
-                    feed={'i': np.full((1), feed_i)},
+                    feed={'i': np.full((1), feed_i, np.float32)},
                     fetch_list=[out, da],
                 )
             else:
@@ -546,7 +546,7 @@ class TestCondNestedControlFlow(unittest.TestCase):
             self.assertEqual(ret[0][0], expected_ret)
             self.assertEqual(ret[1][0], expected_a_grad)
 
-    # @test_with_pir_api
+    @test_with_pir_api
     def test_cond_inside_cond_0d_tensor(self):
         """
         pseudocode:
@@ -621,7 +621,7 @@ class TestCondNestedControlFlow(unittest.TestCase):
         )
         self.assertEqual(ret[1].shape, ())
 
-    # @test_with_pir_api
+    @test_with_pir_api
     def test_cond_op_in_condition(self):
         paddle.enable_static()
         main_program = paddle.static.Program()

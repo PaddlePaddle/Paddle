@@ -1112,7 +1112,17 @@ class _ExecutorCache:
         plan = core.Plan([default_job], type_to_program)
 
         new_exe = _StandaloneExecutor(place, plan, scope)
-        return program, new_exe
+
+        data_op_infos = []
+        global_block = program.global_block()
+        for op in global_block.ops:
+            if op.name() == 'pd_op.data':
+                feed_target_name = op.attrs()["name"]
+                var_type = paddle_type_to_proto_type[op.attrs()["dtype"]]
+                var_shape = op.attrs()["shape"]
+                tup = (feed_target_name, var_type, var_shape)
+                data_op_infos.append(tup)
+        return program, new_exe, data_op_infos
 
 
 class Executor:
@@ -1328,26 +1338,23 @@ class Executor:
             else:
                 break
 
-    def _pir_feed_data(self, program, feed, scope):
+    def _pir_feed_data(self, program, feed, scope, data_op_infos):
         # feed var to framework
         feed_target_names = set()
-        global_block = program.global_block()
-        for op in global_block.ops:
-            if op.name() == 'pd_op.data':
-                feed_target_name = op.attrs()["name"]
-                feed_target_names.add(feed_target_name)
-                var_type = paddle_type_to_proto_type[op.attrs()["dtype"]]
-                var_shape = op.attrs()["shape"]
-                cur_feed = feed[feed_target_name]
-                if not isinstance(cur_feed, core.LoDTensor):
-                    cur_feed = _as_lodtensor(cur_feed, self.place, var_type)
-                pir_check_feed_shape_type(
-                    cur_feed, feed_target_name, var_shape, var_type
-                )
-                # the last arg of set_feed_variable has no effect in pir, we pass 0 by default.
-                core.set_feed_variable(scope, cur_feed, feed_target_name, 0)
-            else:
-                break
+        for data_op_info in data_op_infos:
+            feed_target_name = data_op_info[0]
+            feed_target_names.add(feed_target_name)
+            var_type = data_op_info[1]
+            var_shape = data_op_info[2]
+
+            cur_feed = feed[feed_target_name]
+            if not isinstance(cur_feed, core.LoDTensor):
+                cur_feed = _as_lodtensor(cur_feed, self.place, var_type)
+            pir_check_feed_shape_type(
+                cur_feed, feed_target_name, var_shape, var_type
+            )
+            # the last arg of set_feed_variable has no effect in pir, we pass 0 by default.
+            core.set_feed_variable(scope, cur_feed, feed_target_name, 0)
 
         # pop variable which is not found in program
         for feed_name in list(feed.keys()):
@@ -2024,7 +2031,11 @@ class Executor:
                 % (type(feed))
             )
 
-        program, new_exe = self._executor_cache.get_pir_program_and_executor(
+        (
+            program,
+            new_exe,
+            data_op_infos,
+        ) = self._executor_cache.get_pir_program_and_executor(
             program,
             feed,
             fetch_list,
@@ -2034,7 +2045,7 @@ class Executor:
             scope,
         )
 
-        self._pir_feed_data(program, feed, scope)
+        self._pir_feed_data(program, feed, scope, data_op_infos)
 
         if hasattr(program, 'lr_scheduler'):
             from paddle.optimizer.lr import LRScheduler
