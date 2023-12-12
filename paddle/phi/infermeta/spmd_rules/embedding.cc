@@ -28,13 +28,28 @@ namespace distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
+SpmdInfo EmbeddingInferSpmdUnspportVocabParallel(const DistMetaTensor& x,
+                                                 const DistMetaTensor& weight,
+                                                 int padding_idx,
+                                                 bool sparse) {
+  DistMetaTensor w(weight.dims(), weight.dist_attr());
+  if (weight.dist_attr().dims_mapping()[0] >= 0) {
+    auto w_dims_mapping = weight.dist_attr().dims_mapping();
+    w_dims_mapping[0] = -1;
+    TensorDistAttr w_dist(weight.dist_attr());
+    w_dist.set_dims_mapping(w_dims_mapping);
+    w = DistMetaTensor(w.dims(), w_dist);
+  }
+  return EmbeddingInferSpmd(x, w, padding_idx, sparse);
+}
+
 SpmdInfo EmbeddingInferSpmd(const DistMetaTensor& x,
                             const DistMetaTensor& weight,
                             int padding_idx,
                             bool sparse) {
   // Step0: Verify input args based on embedding logic
-  auto x_shape = phi::vectorize(x.dims());
-  auto weight_shape = phi::vectorize(weight.dims());
+  auto x_shape = common::vectorize(x.dims());
+  auto weight_shape = common::vectorize(weight.dims());
   int x_ndim = static_cast<int>(x_shape.size());
   int weight_ndim = static_cast<int>(weight_shape.size());
   auto x_dist_attr_src = x.dist_attr();
@@ -159,9 +174,9 @@ SpmdInfo EmbeddingInferSpmdReverse(const DistMetaTensor& x,
                                    bool sparse) {
   // Step0: Verify input args based on embedding logic
   // InferBackward is called after InferForward, so we skip some checks.
-  auto x_shape = phi::vectorize(x.dims());
+  auto x_shape = common::vectorize(x.dims());
   int x_ndim = static_cast<int>(x_shape.size());
-  auto out_shape = phi::vectorize(out.dims());
+  auto out_shape = common::vectorize(out.dims());
   int out_ndim = static_cast<int>(out_shape.size());
 
   PADDLE_ENFORCE_EQ(x_ndim,
@@ -235,7 +250,16 @@ SpmdInfo EmbeddingGradInferSpmd(const DistMetaTensor& x,
   // TODO(cxxly): Simplifies the code logic of sharding propagation using
   // primitive operators.
   DistMetaTensor x_dst(x.dims(), x.dist_attr());
+  // `embedding_grad` kernel is not supported weight's row-wise parallel,
+  // reshard it to replicated.
   DistMetaTensor w_dst(weight.dims(), weight.dist_attr());
+  if (weight.dist_attr().dims_mapping()[0] >= 0) {
+    auto w_dst_dims_mapping = weight.dist_attr().dims_mapping();
+    w_dst_dims_mapping[0] = -1;
+    TensorDistAttr w_dst_dist(weight.dist_attr());
+    w_dst_dist.set_dims_mapping(w_dst_dims_mapping);
+    w_dst = DistMetaTensor(w_dst.dims(), w_dst_dist);
+  }
   DistMetaTensor out_grad_dst(out_grad.dims(), out_grad.dist_attr());
   DistMetaTensor w_grad(weight.dims(), weight.dist_attr());
 

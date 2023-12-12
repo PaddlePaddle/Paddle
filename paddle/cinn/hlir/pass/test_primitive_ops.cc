@@ -52,7 +52,7 @@ TEST(batch_norm_meta, batch_norm_meta) {
   auto b =
       program.fused_batchnorm_inference(A, Scale, Bias, Mean, Variance, attrs);
 
-  Target target = common::DefaultTarget();
+  Target target = cinn::common::DefaultTarget();
   program.SetInputs({A});
   program.Validate();
   LOG(INFO) << "Program:\n" << program;
@@ -91,7 +91,7 @@ TEST(reduction, reduce) {
   auto c = program.reduce_prod(A, axis, keep_dim);
   auto d = program.reduce_sum(A, {0, 1, 2, 3}, keep_dim);
 
-  Target target = common::DefaultTarget();
+  Target target = cinn::common::DefaultTarget();
   program.SetInputs({A});
   program.Validate();
   LOG(INFO) << "Program:\n" << program;
@@ -124,7 +124,7 @@ TEST(Compare, Compare) {
   Program program;
   auto a = program.primitive_equal(A, B);
 
-  Target target = common::DefaultTarget();
+  Target target = cinn::common::DefaultTarget();
   program.SetInputs({A, B});
   program.Validate();
   LOG(INFO) << "Program:\n" << program;

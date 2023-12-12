@@ -48,7 +48,7 @@ void TransposeGradKernel(const Context& dev_ctx,
     reversed_axis[formated_axis[i]] = i;
   }
 
-  std::vector<int> out_grad_dim_vec = phi::vectorize<int>(out_grad.dims());
+  std::vector<int> out_grad_dim_vec = common::vectorize<int>(out_grad.dims());
   int r = xpu::transpose<XPUType>(
       dev_ctx.x_context(),
       reinterpret_cast<const XPUType*>(out_grad.data<T>()),

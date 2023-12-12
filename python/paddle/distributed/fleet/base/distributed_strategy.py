@@ -681,6 +681,7 @@ class DistributedStrategy:
             'feature_learning_rate',
             'nodeid_slot',
             'sparse_load_filter_slots',
+            'sparse_save_filter_slots',
         ]
         support_sparse_table_class = [
             'DownpourSparseTable',
@@ -721,6 +722,23 @@ class DistributedStrategy:
                 sgd.naive.weight_bounds.extend(bounds)
             elif optimizer_name == "adagrad":
                 sgd.name = 'SparseAdaGradSGDRule'
+                sgd.adagrad.learning_rate = strategy.get(
+                    prefix + 'sparse_learning_rate', 0.05
+                )
+                sgd.adagrad.initial_range = strategy.get(
+                    prefix + 'sparse_initial_range', 1e-4
+                )
+                if prefix == "embed_":
+                    sgd.adagrad.initial_range = 0
+                sgd.adagrad.initial_g2sum = strategy.get(
+                    prefix + 'sparse_initial_g2sum', 3
+                )
+                bounds = strategy.get(
+                    prefix + 'sparse_weight_bounds', [-10, 10]
+                )
+                sgd.adagrad.weight_bounds.extend(bounds)
+            elif optimizer_name == "adagrad_v2":
+                sgd.name = 'SparseAdaGradV2SGDRule'
                 sgd.adagrad.learning_rate = strategy.get(
                     prefix + 'sparse_learning_rate', 0.05
                 )
@@ -828,7 +846,7 @@ class DistributedStrategy:
             )
             if accessor_class not in support_sparse_accessor_class:
                 raise ValueError(
-                    "support sparse_accessor_class: ['DownpourSparseValueAccessor', 'DownpourCtrAccessor', 'DownpourCtrDoubleAccessor', 'DownpourUnitAccessor', 'DownpourDoubleUnitAccessor'], but actual %s"
+                    "support sparse_accessor_class: ['DownpourSparseValueAccessor', 'DownpourCtrAccessor', 'DownpourCtrDoubleAccessor', 'DownpourUnitAccessor', 'DownpourDoubleUnitAccessor', 'DownpourCtrDymfAccessor'], but actual %s"
                     % (accessor_class)
                 )
 
@@ -883,6 +901,10 @@ class DistributedStrategy:
             load_filter_slots = config.get('sparse_load_filter_slots', [])
             table_data.accessor.ctr_accessor_param.load_filter_slots.extend(
                 load_filter_slots
+            )
+            save_filter_slots = config.get('sparse_save_filter_slots', [])
+            table_data.accessor.ctr_accessor_param.save_filter_slots.extend(
+                save_filter_slots
             )
             converter = config.get('sparse_converter', "")
             deconverter = config.get('sparse_deconverter', "")
@@ -987,11 +1009,11 @@ class DistributedStrategy:
             use_pure_bf16(bool): Whether to use the pure bf16 training. Default False.
 
             use_fp16_guard(bool): Whether to use `fp16_guard` when constructing the program.
-                   Default True. Only takes effect when `use_pure_fp16` is turned on.
+            Default True. Only takes effect when `use_pure_fp16` is turned on.
 
         Examples:
             .. code-block:: python
-                :name:example_1
+                :name: example_1
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()
@@ -1002,7 +1024,7 @@ class DistributedStrategy:
                 ... }
 
             .. code-block:: python
-                :name:example_2
+                :name: example_2
 
                 >>> import paddle.distributed.fleet as fleet
                 >>> strategy = fleet.DistributedStrategy()

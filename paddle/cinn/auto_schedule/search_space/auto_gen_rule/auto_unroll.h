@@ -31,7 +31,8 @@ namespace auto_schedule {
 // based on actual situation.
 class AutoUnroll : public AutoGenRule {
  public:
-  explicit AutoUnroll(const common::Target& target) : AutoGenRule(target) {}
+  explicit AutoUnroll(const cinn::common::Target& target)
+      : AutoGenRule(target) {}
   ~AutoUnroll() = default;
 
   RuleApplyType Init(ir::IRSchedule* init_schedule) override;

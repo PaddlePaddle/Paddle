@@ -51,7 +51,7 @@ TEST(CINNValue, Expr) {
 
   {
     CINNValue copied = CINNValue(a);
-    ASSERT_TRUE(copied == common::make_const(1));
+    ASSERT_TRUE(copied == cinn::common::make_const(1));
   }
 }
 

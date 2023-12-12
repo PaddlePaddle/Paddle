@@ -17,7 +17,7 @@
 #include <algorithm>
 #include <cstdint>
 
-#include "paddle/pir/core/enforce.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/operation.h"
 
 namespace pir {
@@ -148,11 +148,11 @@ void RewriterBase::ReplaceUseIf(Value from,
                                 std::function<bool(OpOperand&)> functor) {
   // Use post-increment operator for iterator since set_source() will change
   // `it`.
-  // TODO(zhangbopd): Uncomment
-  // for (auto it = from.use_begin(); it != from.use_end();) {
-  //   if (functor(*it))
-  //     UpdateRootInplace(it.owner(), [&]() { (it++)->set_source(to); });
-  // }
+  // TODO(zhangbopd): Add unit test for this.
+  for (auto it = from.use_begin(); it != from.use_end();) {
+    if (functor(*it))
+      UpdateRootInplace(it.owner(), [&]() { (it++)->set_source(to); });
+  }
 }
 
 // Replace theuses of op with uses of new_op.
@@ -161,18 +161,18 @@ void RewriterBase::ReplaceOpWithResultsOfAnotherOp(Operation* op,
                                                    Operation* new_op) {
   IR_ENFORCE(op->num_results() == new_op->num_results(),
              "replacement op doesn't match results of original op");
-  // TODO(zhangbopd): Uncomment
-  // if (op->num_results() == 1) {
-  //   std::vector<Value> new_values;
-  //   new_values.push_back(new_op->result(0));
-  //   return ReplaceOp(op, new_values);
-  // }
+  // TODO(zhangbopd): Add unit test for this.
+  if (op->num_results() == 1) {
+    std::vector<Value> new_values;
+    new_values.push_back(new_op->result(0));
+    return ReplaceOp(op, new_values);
+  }
 
-  // std::vector<Value> new_values;
-  // for (auto res : new_op->results()) {
-  //   new_values.push_back(res);
-  // }
-  // return ReplaceOp(op, new_values);
+  std::vector<Value> new_values;
+  for (auto res : new_op->results()) {
+    new_values.push_back(res);
+  }
+  return ReplaceOp(op, new_values);
 }
 
 }  // namespace pir

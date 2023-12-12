@@ -53,7 +53,12 @@ class ConditionBlockCombination {
 
   const std::string& CondVarName() const;
 
-  std::vector<std::vector<::paddle::framework::VarDesc*>> OutputVars() const;
+  std::set<std::string> GetInputNamesForIfOp() const;
+
+  std::tuple<std::vector<::paddle::framework::VarDesc*>,
+             std::vector<std::string>,
+             std::vector<std::string>>
+  CondOutputVars() const;
 
   size_t MainOutputSize() const;
 
@@ -140,15 +145,12 @@ class ProgramTranslator {
 
   static const std::unordered_set<std::string> unsupported_ops;
 
-  void TranslateBlock(
-      const BlockDesc& src_block,
-      uint64_t start_id,
-      uint64_t end_id,
-      TranslationContext* translation_ctx,
-      pir::Block* dst_block,
-      bool for_cond_block = false,
-      const std::vector<std::string>& cond_sub_block_outputs = {},
-      const std::vector<::paddle::framework::OpDesc*>& cond_init_ops = {});
+  void TranslateBlock(const BlockDesc& src_block,
+                      uint64_t start_id,
+                      uint64_t end_id,
+                      TranslationContext* translation_ctx,
+                      pir::Block* dst_block);
+
   void TranslateGeneralOperation(const OpDesc* src_op,
                                  TranslationContext* translation_ctx,
                                  pir::Block* dst_block);
@@ -161,13 +163,15 @@ class ProgramTranslator {
       const std::string& var_name, TranslationContext* translation_ctx);
 
   const VariableDefiningInfo& CreateUndefinedVariable(
-      const std::string& var_name);
+      const std::string& var_name, const BlockDesc& block);
 
-  /// Translate methods for control flow ops.
-  pir::Operation* TranslateCondIfOperation(
-      const ConditionBlockCombination& cond_ops,
-      TranslationContext* translation_ctx,
-      pir::Block* dst_block);
+  pir::Operation* InsertFullOrDataOpToBlock(pir::Block* insert_block,
+                                            pir::Type type);
+
+  void TranslateIfOperation(const OpDesc* op,
+                            TranslationContext* translation_ctx,
+                            pir::Block* dst_block);
+
   void TranslateWhileOperation(const OpDesc* op,
                                TranslationContext* translation_ctx,
                                pir::Block* dst_block);

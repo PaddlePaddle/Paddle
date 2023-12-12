@@ -20,12 +20,12 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/common/errors.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/distributed/types.h"
 #include "paddle/phi/core/distributed/utils.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 
 constexpr auto kWaitTimeout = std::chrono::milliseconds(0);
 
@@ -510,7 +510,13 @@ class ProcessGroupMapFromGid {
 
   void insert(int gid, ProcessGroup* pg) { map_[gid] = pg; }
 
-  ProcessGroup* get(int gid) { return map_.find(gid)->second; }
+  ProcessGroup* get(int gid) {
+    auto it = map_.find(gid);
+    if (it == map_.end()) {
+      return nullptr;
+    }
+    return it->second;
+  }
 
   static std::shared_ptr<ProcessGroupMapFromGid> getInstance() {
     static auto s_instance = std::make_shared<ProcessGroupMapFromGid>();

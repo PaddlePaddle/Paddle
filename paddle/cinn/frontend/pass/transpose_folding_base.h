@@ -52,7 +52,7 @@ class TransposeFoldingBase : public ProgramPass {
 
   void ApplyImpl(Program* program,
                  const std::unordered_set<std::string>& fetch_ids,
-                 const common::Target& target) override {
+                 const cinn::common::Target& target) override {
     set_target_instrs();
     set_fold_instrs();
     set_skip_instrs();

@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include "paddle/cinn/adt/map_expr.h"
+
 namespace cinn::adt {
 
 class Kernel;
@@ -22,5 +24,9 @@ using MapExpr = Kernel;
 std::string ToTxtString(const OpStmt& op_stmt);
 
 std::string ToTxtString(const MapExpr& map_expr, const std::string& group_id);
+
+std::string ToTxtString(const Stmt& stmt);
+
+std::string ToTxtString(const Tensor& tensor);
 
 }  // namespace cinn::adt

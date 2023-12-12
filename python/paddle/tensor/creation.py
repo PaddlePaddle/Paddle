@@ -1897,6 +1897,7 @@ def diagflat(x, offset=0, name=None):
              [0, 2, 0, 0, 0],
              [0, 0, 3, 0, 0],
              [0, 0, 0, 4, 0]])
+
     """
     if in_dynamic_or_pir_mode():
         if len(x.shape) <= 1:
