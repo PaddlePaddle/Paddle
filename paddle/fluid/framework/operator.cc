@@ -56,6 +56,7 @@ class DenseTensor;
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/mkldnn_op_list.h"
+#include "paddle/phi/kernels/funcs/data_layout_transform.h"
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
