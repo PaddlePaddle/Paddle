@@ -500,14 +500,22 @@ Dispatcher.register(
     ),
 )
 
+
 # zip
-Dispatcher.register(
-    zip,
-    ("VariableBase",),
-    lambda *var: ZipVariable.from_iterator(
-        var, graph=var.graph, tracker=DummyTracker(list(var))
-    ),
-)
+@Dispatcher.register_decorator(zip)
+def create_zip(*var: VariableBase):
+    return ZipVariable.from_iterator(
+        var, graph=Dispatcher.graph, tracker=DummyTracker(list(var))
+    )
+
+
+# Dispatcher.register(
+#     zip,
+#     ("VariableBase",),
+#     lambda *var: ZipVariable.from_iterator(
+#         var, graph=var.graph, tracker=DummyTracker(list(var))
+#     ),
+# )
 
 # map
 Dispatcher.register(

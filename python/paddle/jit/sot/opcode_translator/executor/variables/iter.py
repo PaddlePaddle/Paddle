@@ -114,6 +114,7 @@ class EnumerateVariable(SequenceIterVariable):
     def next(self):
         val = self.hold.next()
         idx_var = ConstantVariable(self.idx, self.graph, ConstTracker(self.idx))
+        self.idx += 1
         return TupleVariable(
             (idx_var, val), self.graph, DummyTracker([idx_var, val])
         )
@@ -155,25 +156,23 @@ class ZipVariable(SequenceIterVariable):
         super().__init__(iters, graph, tracker)
 
     def next(self):
-        values = tuple(iter_var.next() for iter_var in self.holds)
+        # can not use <listcomp> here, because it will raise a RuntimeError("StopIteration")
+        # but we want a StopIteration Exception
+        values = []
+        for iter_var in self.hold:
+            next_var = iter_var.next()
+            values.append(next_var)
+
         return VariableFactory.from_value(
-            values, self.graph, DummyTracker(list(values))
+            tuple(values), self.graph, DummyTracker(values)
         )
 
     def to_list(self):
         lists = [iter_vars.to_list() for iter_vars in self.hold]
+        min_len = min(len(l) for l in lists)
         result = []
-        idx = 0
-        while True:
-            item = []
-            for l in lists:
-                if idx < len(l):
-                    item.append(l[idx])
-                else:
-                    break
-            if len(item) != len(lists):
-                break
-            result.append(tuple(item))
+        for i in range(min_len):
+            result.append(tuple(l[i] for l in lists))
         return result
 
     def has_side_effect(self) -> bool:
@@ -192,7 +191,7 @@ class ZipVariable(SequenceIterVariable):
     def from_iterator(
         value: list[VariableBase], graph: FunctionGraph | None, tracker: Tracker
     ):
-        assert isinstance(value, list)
+        assert isinstance(value, (list, tuple))
         zip_targets = []
 
         for variable in value:
@@ -201,7 +200,7 @@ class ZipVariable(SequenceIterVariable):
                 return UserDefinedIterVariable(value, graph, tracker)
             zip_targets.append(iter_variable)
 
-        return ZipVariable(value, graph, tracker)
+        return ZipVariable(zip_targets, graph, tracker)
 
 
 class MapVariable(SequenceIterVariable):

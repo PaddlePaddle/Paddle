@@ -41,17 +41,7 @@ def test_zip_4(x: paddle.Tensor):
     return sum
 
 
-# TODO(zmh): support range for tensor
 def test_zip_5(x: paddle.Tensor):
-    sum = 0
-
-    for idx, val in zip(range(len(x)), x):
-        for i in range(val):
-            sum += val
-    return sum
-
-
-def test_zip_6(x: paddle.Tensor):
     sum = 0
 
     for idx, val in zip(range(len(x)), x):
@@ -60,7 +50,7 @@ def test_zip_6(x: paddle.Tensor):
     return sum
 
 
-def test_zip_7(x: paddle.Tensor):
+def test_zip_6(x: paddle.Tensor):
     sum = 0
     x = x.flatten()
     for idx, val in zip(range(len(x)), x):
@@ -68,16 +58,7 @@ def test_zip_7(x: paddle.Tensor):
     return sum
 
 
-# TODO(zmh): support -1
-def test_zip_8(x: paddle.Tensor):
-    sum = 0
-    x = paddle.nonzero(x, as_tuple=False)
-    for idx, val in zip(range(len(x)), x):
-        sum += val
-    return sum
-
-
-def test_zip_10(layer_list, x):
+def test_zip_7(layer_list, x):
     sum = 0
     for idx, layer in zip(range(len(layer_list)), layer_list):
         sum += layer(x)
@@ -92,24 +73,13 @@ class TestExecutor(TestCaseBase):
         layer_list = paddle.nn.LayerList(
             [paddle.nn.Linear(10, 10) for _ in range(3)]
         )
-
         self.assert_results(test_zip_1, x, y)
-        # self.assert_results(test_zip_2, [2, 4, 6, 8, 10])
-        # self.assert_results(test_zip_3, [2, 4, 6, 8, 10])
-
-        # self.assert_results(test_zip_4, ty)
-        # # TODO(zmh): support range for tensor
-
-        # with strict_mode_guard(False):
-        #     self.assert_results(test_zip_5, paddle.to_tensor([1, 2, 3]))
-        # self.assert_results(test_zip_6, paddle.to_tensor([1, 2, 3]))
-        # self.assert_results(test_zip_7, ty)
-        # # TODO(zmh): support -1
-
-        # with strict_mode_guard(False):
-        #     self.assert_results(test_zip_8, ty)
-
-        # self.assert_results(test_zip_10, layer_list, paddle.randn((10,)))
+        self.assert_results(test_zip_2, [2, 4, 6, 8, 10])
+        self.assert_results(test_zip_3, [2, 4, 6, 8, 10])
+        self.assert_results(test_zip_4, ty)
+        self.assert_results(test_zip_5, paddle.to_tensor([1, 2, 3]))
+        self.assert_results(test_zip_6, ty)
+        self.assert_results(test_zip_7, layer_list, paddle.randn((10,)))
 
 
 if __name__ == "__main__":
