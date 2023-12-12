@@ -56,11 +56,7 @@ std::optional<bool> SymbolicExprAnalyzer::ProveEQ(const ir::Expr& lhs,
   }
   ir::Expr diff = AutoSimplify(ir::Sub::Make(lhs, rhs), var_intervals_);
   if (diff.is_constant()) {
-    if (diff.get_constant() == 0) {
-      return true;
-    } else {
-      return false;
-    }
+    return diff.get_constant() == 0;
   }
   std::optional<bool> prove_gt = ProveGT(lhs, rhs);
   if (prove_gt.has_value() && prove_gt.value()) {
@@ -80,11 +76,7 @@ std::optional<bool> SymbolicExprAnalyzer::ProveNE(const ir::Expr& lhs,
   }
   ir::Expr diff = AutoSimplify(ir::Sub::Make(lhs, rhs), var_intervals_);
   if (diff.is_constant()) {
-    if (diff.get_constant() == 0) {
-      return false;
-    } else {
-      return true;
-    }
+    return diff.get_constant() != 0;
   }
   std::optional<bool> prove_gt = ProveGT(lhs, rhs);
   if (prove_gt.has_value() && prove_gt.value()) {
