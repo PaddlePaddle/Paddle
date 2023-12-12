@@ -747,6 +747,7 @@ void BindValue(py::module *m) {
              return paddle::dialect::scale(self, -1.0, 0.0, true);
            })
       .def("is_same", &Value::operator==)
+      .def("hash", [](Value self) { return std::hash<pir::Value>{}(self); })
       .def("__repr__", &Value2String);
   // For basaic operators
   OVERRIDE_OPERATOR_FOR_EACH(__add__, add, 1.0, other, true);
