@@ -882,6 +882,8 @@ def get_setup_requires():
                 or "<\"3.5\"" in setup_requires_i
                 or "<=\"3.5\"" in setup_requires_i
                 or "<\"3.7\"" in setup_requires_i
+                or "<=\"3.7\"" in setup_requires_i
+                or "<\"3.8\"" in setup_requires_i
             ):
                 continue
             setup_requires_tmp += [setup_requires_i]
