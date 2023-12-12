@@ -1967,7 +1967,7 @@ paddle::Tensor CreateTensorFromOpResult(const pir::OpResult& op_result) {
   auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
   autograd_meta->SetPersistable(false);
   autograd_meta->SetStopGradient(
-      GetOpResultBoolAttr(op_result, kAttrStopGradients));
+      GetValueBoolAttr(op_result, kAttrStopGradients));
 
   if (op_result.type().isa<paddle::dialect::DenseTensorType>()) {
     // TODO(jiabin): Maybe support LOD later
