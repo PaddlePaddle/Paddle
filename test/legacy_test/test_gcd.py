@@ -17,10 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import base
 from paddle.base import core
-
-paddle.enable_static()
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestGcdAPI(unittest.TestCase):
@@ -30,10 +28,15 @@ class TestGcdAPI(unittest.TestCase):
         self.x_shape = [1]
         self.y_shape = [1]
 
+    @test_with_pir_api
     def test_static_graph(self):
-        startup_program = base.Program()
-        train_program = base.Program()
-        with base.program_guard(startup_program, train_program):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             x = paddle.static.data(
                 name='input1', dtype='int32', shape=self.x_shape
             )
@@ -41,21 +44,15 @@ class TestGcdAPI(unittest.TestCase):
                 name='input2', dtype='int32', shape=self.y_shape
             )
             out = paddle.gcd(x, y)
+            out_ref = np.gcd(self.x_np, self.y_np)
 
-            place = (
-                base.CUDAPlace(0)
-                if core.is_compiled_with_cuda()
-                else base.CPUPlace()
-            )
-            exe = base.Executor(place)
+            exe = paddle.static.Executor(place)
             res = exe.run(
-                base.default_main_program(),
+                paddle.static.default_main_program(),
                 feed={'input1': self.x_np, 'input2': self.y_np},
                 fetch_list=[out],
             )
-            self.assertTrue(
-                (np.array(res[0]) == np.gcd(self.x_np, self.y_np)).all()
-            )
+            self.assertTrue((res[0] == out_ref).all())
 
     def test_dygraph(self):
         paddle.disable_static()
@@ -99,3 +96,8 @@ class TestGcdAPI5(TestGcdAPI):
         self.y_np = -20
         self.x_shape = []
         self.y_shape = []
+
+
+if __name__ == "__main__":
+    paddle.enable_static()
+    unittest.main()

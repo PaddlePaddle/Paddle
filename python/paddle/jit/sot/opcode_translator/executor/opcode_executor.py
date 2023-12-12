@@ -365,8 +365,14 @@ class OpcodeExecutorBase:
             str, ...
         ] | None = None  # store kwnames for Python 3.11+
         self._prepare_virtual_env()
-
         self.stop_state = None
+
+    def check_code_simulatable(self):
+        for instr in self._instructions:
+            if instr.opname == "LOAD_GLOBAL" and instr.argval == "locals":
+                raise FallbackError(
+                    "Can not support call builtin function `locals`"
+                )
 
     def print_sir(self):
         """
@@ -1544,7 +1550,10 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         compile_fn = self._graph.get_compiled_fn(*store_vars)
 
-        if compile_fn.graph_size() < ENV_MIN_GRAPH_SIZE.get():
+        if (
+            compile_fn.graph_size() < ENV_MIN_GRAPH_SIZE.get()
+            and sys.version_info < (3, 11)
+        ):
             return self._graph._restore_origin_opcode(
                 list(self.stack), store_var_info, instr_idx
             )

@@ -521,106 +521,6 @@ class LocalAxisVisitor : public ir::IRMutator<> {
                                              "threadIdx.z"};
 };
 
-class ResizeBufferSizeVisitor : public ir::IRMutator<> {
- public:
-  void operator()(ir::Expr *expr) { ir::IRMutator<>::Visit(expr, expr); }
-
- private:
-  void Visit(const ir::Store *op, Expr *expr) override {
-    auto store = expr->As<ir::Store>();
-    auto store_tensor = store->tensor.as_tensor_ref();
-
-    if (!store_tensor->buffer.defined()) {
-      return;
-    }
-    if (store_tensor->buffer->memory_type == ir::MemoryType::Heap) {
-      ir::IRMutator<>::Visit(op, expr);
-      return;
-    }
-
-    auto &indices = store->indices;
-    auto &shape = store_tensor->shape;
-    auto &buffer = store_tensor->buffer->shape;
-
-    shape.clear();
-    buffer.clear();
-    for (int idx = 0; idx < indices.size(); ++idx) {
-      shape.push_back(ir::Expr(BufferSize(indices[idx])));
-      buffer.push_back(shape.back());
-    }
-    ir::IRMutator<>::Visit(op, expr);
-  }
-
-  void Visit(const ir::Load *op, Expr *expr) override {
-    auto load = expr->As<ir::Load>();
-    if (!load->tensor.as_tensor_ref()->buffer.defined()) {
-      return;
-    }
-
-    if (load->tensor.as_tensor_ref()->buffer->memory_type ==
-        ir::MemoryType::Heap) {
-      ir::IRMutator<>::Visit(op, expr);
-      return;
-    }
-
-    load->tensor.as_tensor_ref()->shape =
-        load->tensor.as_tensor_ref()->buffer->shape;
-
-    // For the moment, align the load tensor indices with the tensor shape using
-    // the trick method. A better way would be to modify the FlattenLoop
-    // Schedule.
-    int cnt = load->indices.size() - load->tensor.as_tensor_ref()->shape.size();
-    for (int i = 0; i < cnt; i++) {
-      load->indices.erase(load->indices.begin());
-    }
-    ir::IRMutator<>::Visit(op, expr);
-  }
-
-  void Visit(const ir::For *op, Expr *expr) override {
-    CHECK(expr->As<ir::For>());
-    auto for_ir = expr->As<ir::For>();
-    auto var_name = for_ir->loop_var->name;
-    auto extent_i = for_ir->extent;
-
-    if (extent_i.is_constant()) loop_2_extent_[var_name] = extent_i.as_int32();
-    ir::IRMutator<>::Visit(op, expr);
-  }
-
-  int BufferSize(ir::Expr indice) {
-    auto copy = ir::ir_utils::IRCopy(indice);
-    auto vars = ir::ir_utils::CollectIRNodesInOrder(
-        copy, [](const ir::Expr *expr) { return expr->As<ir::_Var_>(); });
-
-    int max_range = 1;
-    // using recursion funcitons index range.
-    std::function<void(int, ir::Expr)> compute_range = [&](const int deep,
-                                                           ir::Expr index) {
-      auto var = vars[deep].as_var_ref();
-      CHECK(loop_2_extent_.count(var->name)) << var->name;
-      auto extent = loop_2_extent_.find(var->name)->second;
-
-      for (int idx = 0; idx < extent; ++idx) {
-        auto tmp = ir::ir_utils::IRCopy(index);
-        ReplaceVarWithExpr(&tmp, var, Expr(idx));
-
-        if (deep == vars.size() - 1) {
-          auto simplify = cinn::common::AutoSimplify(tmp);
-          auto range = cinn::common::AutoSimplify(simplify);
-          CHECK(range.is_constant());
-          max_range = std::max(max_range, range.as_int32() + 1);
-        } else {
-          compute_range(deep + 1, tmp);
-        }
-      }
-    };
-
-    if (vars.size()) compute_range(0, copy);
-    return max_range;
-  }
-
-  std::unordered_map<std::string, int> loop_2_extent_;
-};
-
 class ReplaceVarToZero : public ir::IRMutator<> {
  public:
   void operator()(ir::Expr *expr) { ir::IRMutator<>::Visit(expr, expr); }
@@ -685,8 +585,8 @@ void OptimizeExprGPU(Expr *expr) {
   replace_index_to_bind_expr(expr);
 
   // resize buffer axis
-  // UpdateBufferAxisPass(expr);
-  UpdateBufferAxisPassOld(expr);
+  UpdateBufferAxisPass(expr);
+  // UpdateBufferAxisPassOld(expr);
 
   // replace var name with block/thread
   ReplaceLoopVarToGpu replace_loop_var_to_gpu;
@@ -701,8 +601,6 @@ void OptimizeExprGPU(Expr *expr) {
   local_axis_visitor(expr);
 
   ResizeBufferToMaxVarRange(expr);
-  // ResizeBufferSizeVisitor resize_buffer_size_visitor;
-  // resize_buffer_size_visitor(expr);
 
   ReplaceVarToZero replace_var_to_zero;
   replace_var_to_zero(expr);

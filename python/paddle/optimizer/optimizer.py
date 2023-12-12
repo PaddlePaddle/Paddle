@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+import os
 from collections import defaultdict
 
 import numpy as np
@@ -31,6 +32,7 @@ from paddle.base.framework import (
     in_dynamic_or_pir_mode,
     in_pir_mode,
     name_scope,
+    use_pir_api,
 )
 from paddle.regularizer import L2Decay
 
@@ -41,6 +43,10 @@ from ..base.layer_helper import LayerHelper
 from .lr import LRScheduler
 
 __all__ = []
+
+g_shard_bypass_dygraph_optimizer = int(
+    os.environ.get("FLAGS_shard_bypass_dygraph_optimizer", 0)
+)
 
 
 @framework.static_only
@@ -789,12 +795,19 @@ class Optimizer:
                 if param_lr == 1.0:
                     return self._global_learning_rate()
                 else:
-                    with paddle.static.default_main_program()._lr_schedule_guard(
-                        is_with_opt=True
-                    ), framework.name_scope(
-                        'scale_with_param_lr'
-                    ):
-                        return self._global_learning_rate() * param_lr
+                    if not use_pir_api():
+                        with paddle.static.default_main_program()._lr_schedule_guard(
+                            is_with_opt=True
+                        ), framework.name_scope(
+                            'scale_with_param_lr'
+                        ):
+                            return self._global_learning_rate() * param_lr
+                    else:
+                        # TODO(dev): Currently there has not equivalent of op_role in PIR
+                        # mode, so we simply remove _lr_schedule_guard here, this should
+                        # be fixed in the future.
+                        with framework.name_scope('scale_with_param_lr'):
+                            return self._global_learning_rate() * param_lr
         else:
             return self._global_learning_rate()
 
@@ -1474,6 +1487,10 @@ class Optimizer:
         Returns:
             list: A list of operators appended to the current program.
         """
+
+        if framework.in_dygraph_mode() and g_shard_bypass_dygraph_optimizer:
+            return
+
         if in_dynamic_or_pir_mode():
             with paddle.static.program_guard(
                 paddle.static.default_main_program(),

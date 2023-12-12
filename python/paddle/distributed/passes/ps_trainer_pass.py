@@ -773,6 +773,9 @@ class PsGpuPass(PassBase):
         optimize_op_role_vars = []
         optimize_need_delete_vars = []
         for op in get_optimize_ops(program):
+            # print("op=%s, input_names=%s" % (op, op.input_names))
+            if "Param" not in op.input_names:
+                continue
             for name in op.input("Param"):
                 if name in embedding_w:
                     optimize_op_role_vars.extend(op.attr("op_role_var"))

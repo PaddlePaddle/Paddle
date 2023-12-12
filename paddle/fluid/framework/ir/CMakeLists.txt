@@ -112,7 +112,7 @@ pass_library(conv2d_trans_filter_dilations_nxn_to_1x1_pass inference)
 pass_library(preln_residual_bias_fuse_pass inference)
 pass_library(constant_folding_pass inference)
 pass_library(auto_mixed_precision_pass inference)
-pass_library(conv2d_fusion_layout_transfer_pass inference)
+pass_library(fused_conv2d_add_act_layout_transfer_pass inference)
 pass_library(transfer_layout_elim_pass inference)
 pass_library(relu6_fuse_pass inference)
 pass_library(silu_fuse_pass inference)
@@ -350,6 +350,13 @@ cc_library(
   fused_feedforward_pass
   SRCS fused_feedforward_pass.cc
   DEPS pass graph_pattern_detector)
+
+if(WITH_CUDNN_FRONTEND)
+  cc_library(
+    fuse_dot_product_attention_pass
+    SRCS fuse_dot_product_attention_pass.cc
+    DEPS pass graph_pattern_detector)
+endif()
 
 set(GLOB_PASS_LIB
     ${INFER_IR_PASSES}

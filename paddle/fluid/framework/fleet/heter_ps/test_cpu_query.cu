@@ -174,9 +174,9 @@ TEST(TEST_FLEET, test_cpu_cache) {
       cur += node_query_res.get_len();
       NeighborSampleQuery query;
       query.initialize(
-          i, 0, node_query_res.get_val(), 1, node_query_res.get_len());
+          i, 0, node_query_res.get_val(), 1, node_query_res.get_len(), 50, 1);
       query.display();
-      auto c = g.graph_neighbor_sample_v3(query, false, true);
+      auto c = g.graph_neighbor_sample_v3(query, false, true, false);
       c.display();
     }
   }

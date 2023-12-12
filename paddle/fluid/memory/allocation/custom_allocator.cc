@@ -29,8 +29,10 @@ void CustomAllocator::FreeImpl(phi::Allocation* allocation) {
       platform::errors::PermissionDenied("CustomDevice memory is "
                                          "freed in incorrect device. "
                                          "This may be a bug"));
-  phi::DeviceManager::GetDeviceWithPlace(place_)->MemoryDeallocate(
-      allocation->ptr(), allocation->size());
+  if (phi::DeviceManager::HasDeviceType(place_.GetDeviceType())) {
+    phi::DeviceManager::GetDeviceWithPlace(place_)->MemoryDeallocate(
+        allocation->ptr(), allocation->size());
+  }
   delete allocation;
 }
 
