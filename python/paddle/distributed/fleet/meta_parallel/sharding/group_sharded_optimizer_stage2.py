@@ -196,7 +196,7 @@ class GroupShardedOptimizerStage2(Optimizer):
             ):
                 if self.use_main_grad:
                     self._optim._inner_opt._grad_clip = HybridParallelClipGrad(
-                        self._optim._inner_opt._grad_clip, hcg, main_grad=True
+                        self._optim._inner_opt._grad_clip, hcg
                     )
                 else:
                     self._optim._grad_clip = HybridParallelClipGrad(
