@@ -39,6 +39,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/fused_dot_product_attention_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_dropout_add_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_linear_param_grad_add_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_weight_only_linear_pass.h"
@@ -105,6 +106,7 @@ USE_PIR_PASS(replace_fetch_with_shadow_output_pass);
 USE_PIR_PASS(conv2d_bn_fuse_pass);
 USE_PIR_PASS(conv2d_add_fuse_pass);
 USE_PIR_PASS(conv2d_add_act_fuse_pass);
+USE_PIR_PASS(fused_dot_product_attention_pass);
 
 PHI_DECLARE_bool(print_ir);
 
@@ -808,6 +810,34 @@ void BindType(py::module *m) {
         print_stream << self;
         return print_stream.str();
       });
+
+  m->def("create_shaped_type",
+         [](Type &type, const std::vector<int> &shape) -> Type {
+           if (type.isa<DenseTensorType>()) {
+             DenseTensorType src_type = type.dyn_cast<DenseTensorType>();
+             DenseTensorType dst_type =
+                 DenseTensorType::get(pir::IrContext::Instance(),
+                                      src_type.dtype(),
+                                      phi::make_ddim(shape),
+                                      src_type.data_layout(),
+                                      src_type.lod(),
+                                      src_type.offset());
+             return dst_type;
+           } else if (type.isa<SelectedRowsType>()) {
+             SelectedRowsType src_type = type.dyn_cast<SelectedRowsType>();
+             SelectedRowsType dst_type =
+                 SelectedRowsType::get(pir::IrContext::Instance(),
+                                       src_type.dtype(),
+                                       phi::make_ddim(shape),
+                                       src_type.data_layout(),
+                                       src_type.lod(),
+                                       src_type.offset());
+             return dst_type;
+           } else {
+             PADDLE_THROW(phi::errors::InvalidArgument(
+                 "Currently, we can only set shape for dense tensor"));
+           }
+         });
 }
 
 void BindAttribute(py::module *m) {

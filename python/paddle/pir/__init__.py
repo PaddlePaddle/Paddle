@@ -32,6 +32,7 @@ from paddle.base.libpaddle.pir import (  # noqa: F401
     set_insertion_point,
     translate_to_pir,
     translate_to_pir_with_param_map,
+    create_shaped_type,
 )
 
 from . import core  # noqa: F401

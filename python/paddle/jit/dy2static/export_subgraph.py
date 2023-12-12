@@ -21,7 +21,7 @@ from paddle.base.framework import get_flags
 
 __all__ = []
 
-MAX_FILE_PATH_LEN = 50
+MAX_FILE_PATH_LEN = 100
 
 
 class SubGraphRole:
@@ -164,9 +164,7 @@ class TrainFwdExporter(BaseExporter):
         raw_outputs = self.pp_layer._outputs.tolist()
 
         inter_outs = {
-            name
-            for name in self.raw_inter_outs
-            if self.program.block(0).has_var(name)
+            name for name in self.raw_inter_outs if global_block.has_var(name)
         }
         for var in raw_inputs:
             inputs.append(var.name)
@@ -219,14 +217,21 @@ def pir_exporter(pp_layer, program, role, shared_inputs=None, inter_outs=None):
     root_saving_dir = get_saving_dir()
     if not root_saving_dir:
         return
-    copy_program = program.clone()
-    if role == SubGraphRole.Infer:
-        InferExporter(pp_layer, copy_program, role).save()
-    elif role == SubGraphRole.Forward:
-        TrainFwdExporter(pp_layer, copy_program, role, inter_outs).save()
-    elif role == SubGraphRole.Backward:
-        TrainBwdExporter(
-            pp_layer, copy_program, role, shared_inputs, inter_outs
-        ).save()
-    else:
-        raise RuntimeError("role only support Infer/Forward/Backward")
+    try:
+        copy_program = program.clone()
+        if role == SubGraphRole.Infer:
+            InferExporter(pp_layer, copy_program, role).save()
+        elif role == SubGraphRole.Forward:
+            TrainFwdExporter(pp_layer, copy_program, role, inter_outs).save()
+        elif role == SubGraphRole.Backward:
+            TrainBwdExporter(
+                pp_layer, copy_program, role, shared_inputs, inter_outs
+            ).save()
+        else:
+            raise RuntimeError(
+                f"role only support Infer/Forward/Backward, but got: {role}"
+            )
+    except Exception as e:
+        print(
+            f"Export subgraph failed: {e}\n. Received original program: {str(program)}"
+        )
