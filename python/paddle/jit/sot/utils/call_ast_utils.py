@@ -16,12 +16,28 @@ import inspect
 import types
 
 import paddle
-from paddle.jit.api import _not_to_static_code as not_to_staic_code
-from paddle.jit.sot.utils import (
-    ENV_SOT_WITH_CONTROL_FLOW,
-    InnerError,
-    Singleton,
-)
+
+from .envs import ENV_SOT_WITH_CONTROL_FLOW
+from .exceptions import InnerError
+from .utils import Singleton
+
+try_ast_codes = set()
+
+
+def try_ast_func(func):
+    def _is_wrapped(f):
+        return hasattr(f, '__wrapped__')
+
+    unwrapped_f = func
+    if hasattr(unwrapped_f, "__code__"):
+        try_ast_codes.add(func.__code__)
+
+    while _is_wrapped(unwrapped_f):
+        unwrapped_f = unwrapped_f.__wrapped__
+        if hasattr(unwrapped_f, "__code__"):
+            try_ast_codes.add(func.__code__)
+
+    return func
 
 
 @Singleton
@@ -31,7 +47,7 @@ class StaticFunctionManager:
 
     def ast_transform_with_frame(self, frame):
         code = frame.f_code
-        if code in not_to_staic_code:
+        if code not in try_ast_codes:
             return None
         if code not in self.code_map:
             if code.co_name.startswith("#") or code.co_name.startswith("$"):
@@ -52,18 +68,11 @@ class StaticFunctionManager:
         return self.code_map[code]
 
     def ast_transform_with_callable(self, fn):
-        if (
-            not inspect.isfunction(fn)
-            or not hasattr(fn, "__code__")
-            or (
-                hasattr(fn, "__module__")
-                and fn.__module__.startswith("paddle.")
-            )
-        ):
+        if not inspect.isfunction(fn) or not hasattr(fn, "__code__"):
             return None
 
         code = fn.__code__
-        if code in not_to_staic_code:
+        if code not in try_ast_codes:
             return None
         if code not in self.code_map:
             if code.co_name.startswith("#") or code.co_name.startswith("$"):

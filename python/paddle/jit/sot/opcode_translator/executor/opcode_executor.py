@@ -36,6 +36,7 @@ from ...utils import (
     InnerError,
     OrderedSet,
     SotUndefinedVar,
+    get_static_function,
     log,
     log_do,
 )
@@ -49,7 +50,6 @@ from ..instruction_utils import (
     get_instructions,
 )
 from ..instruction_utils.opcode_info import JumpDirection, PopJumpCond
-from .ast_utils import get_static_function
 from .dispatch_functions import (
     operator_BAD,
     operator_exception_match,

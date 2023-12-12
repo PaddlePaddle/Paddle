@@ -25,6 +25,7 @@ import paddle
 from .... import psdb
 from ....profiler import EventGuard
 from ....utils import (
+    get_static_function,
     is_break_graph_api,
     is_break_graph_tensor_methods,
     is_builtin_fn,
@@ -32,7 +33,6 @@ from ....utils import (
     magic_method_builtin_dispatch,
 )
 from ....utils.exceptions import BreakGraphError, FallbackError, SotErrorBase
-from ..ast_utils import get_static_function
 from ..dispatcher import Dispatcher
 from ..guard import (
     StringifyExpression,

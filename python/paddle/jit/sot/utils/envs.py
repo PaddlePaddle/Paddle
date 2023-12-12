@@ -30,7 +30,7 @@ ENV_STRICT_MODE = BooleanEnvironmentVariable("STRICT_MODE", False)
 ENV_SHOW_TRACKERS = StringEnvironmentVariable("SHOW_TRACKERS", "")
 ENV_CLEAN_CODE = BooleanEnvironmentVariable("CLEAN_CODE", False)
 ENV_SOT_WITH_CONTROL_FLOW = BooleanEnvironmentVariable(
-    "SOT_WITH_CONTROL_FLOW", False
+    "SOT_WITH_CONTROL_FLOW", True
 )
 
 

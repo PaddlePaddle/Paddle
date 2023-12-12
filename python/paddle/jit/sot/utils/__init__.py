@@ -71,3 +71,4 @@ from .utils import (  # noqa: F401
     no_eval_frame,
     tmp_name_guard,
 )
+from .call_ast_utils import get_static_function, try_ast_func
