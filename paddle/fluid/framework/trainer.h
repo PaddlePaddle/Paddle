@@ -90,6 +90,7 @@ class TrainerBase {
   std::string dump_converter_;
   std::vector<std::string> dump_param_;
   std::vector<std::string> dump_fields_;
+  std::string dump_fields_mode_;
   int dump_thread_num_;
   std::vector<std::thread> dump_thread_;
   std::shared_ptr<paddle::framework::ChannelObject<std::string>> queue_;
@@ -111,7 +112,9 @@ class MultiTrainer : public TrainerBase {
   virtual void InitDumpEnv();
   virtual Scope* GetWorkerScope(int thread_id);
   virtual std::string GetDumpPath(int tid);
-
+#ifdef PADDLE_WITH_HETERPS
+  virtual void ResetDataset(Dataset* dataset_ptr);
+#endif
   template <typename T>
   void MergeToRootScope(phi::DenseTensor* root_tensor,
                         phi::DenseTensor* thread_tensor);
@@ -121,6 +124,7 @@ class MultiTrainer : public TrainerBase {
 #endif
 
  protected:
+  void MergeWorkerVars(void);
   int thread_num_;
   std::vector<DataFeed*> readers_;
   std::vector<std::shared_ptr<DeviceWorker>> workers_;
@@ -153,7 +157,6 @@ class DistMultiTrainer : public MultiTrainer {
 
  protected:
   std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
-  std::vector<std::thread> threads_;
 };
 
 #if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_HIP || \

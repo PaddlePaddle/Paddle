@@ -117,10 +117,11 @@ void CalculateGrad(const Context& ctx,
                 x_grad_out.numel() * sizeof(T),
                 hipMemcpyDeviceToDevice);
 #else
-      cudaMemcpy(x_grad,
-                 x_grad_out.data<T>(),
-                 x_grad_out.numel() * sizeof(T),
-                 cudaMemcpyDeviceToDevice);
+      cudaMemcpyAsync(x_grad,
+                      x_grad_out.data<T>(),
+                      x_grad_out.numel() * sizeof(T),
+                      cudaMemcpyDeviceToDevice,
+                      ctx.stream());
 #endif
     }
   } else if (message_op == "MUL") {
@@ -199,10 +200,11 @@ void CalculateGrad(const Context& ctx,
                 x_grad_out.numel() * sizeof(T),
                 hipMemcpyDeviceToDevice);
 #else
-      cudaMemcpy(x_grad,
-                 x_grad_out.data<T>(),
-                 x_grad_out.numel() * sizeof(T),
-                 cudaMemcpyDeviceToDevice);
+      cudaMemcpyAsync(x_grad,
+                      x_grad_out.data<T>(),
+                      x_grad_out.numel() * sizeof(T),
+                      cudaMemcpyDeviceToDevice,
+                      ctx.stream());
 #endif
     }
   }
@@ -248,8 +250,8 @@ void GraphSendUVGradOpCUDAKernelLaunchHelper(const Context& ctx,
   hipMemset(x_grad_data, 0, memset_bytes_x);
   hipMemset(y_grad_data, 0, memset_bytes_y);
 #else
-  cudaMemset(x_grad_data, 0, memset_bytes_x);
-  cudaMemset(y_grad_data, 0, memset_bytes_y);
+  cudaMemsetAsync(x_grad_data, 0, memset_bytes_x, ctx.stream());
+  cudaMemsetAsync(y_grad_data, 0, memset_bytes_y, ctx.stream());
 #endif
 
   const T* out_grad_data = out_grad.data<T>();
