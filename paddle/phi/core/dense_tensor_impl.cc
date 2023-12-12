@@ -377,11 +377,7 @@ std::vector<DenseTensor> DenseTensor::Chunk(int64_t chunks,
 }
 
 #ifdef PADDLE_WITH_DNNL
-const dnnl::memory::desc& DenseTensor::mem_desc() {
-  if (storage_properties_ == nullptr) {
-    storage_properties_ = std::make_unique<OneDNNStorageProperties>();
-  }
-
+const dnnl::memory::desc& DenseTensor::mem_desc() const {
   return this->storage_properties<OneDNNStorageProperties>().mem_desc;
 }
 

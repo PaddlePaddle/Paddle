@@ -107,7 +107,7 @@ following codes there.
 #ifdef PADDLE_WITH_DNNL
 
 public:
-const dnnl::memory::desc& mem_desc();
+const dnnl::memory::desc& mem_desc() const;
 
 void set_mem_desc(const dnnl::memory::desc& mem_desc);
 
