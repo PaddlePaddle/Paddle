@@ -238,20 +238,26 @@ class HybridCommunicateGroup:
         # NOTE when sharding conjugates with other parallel, sharding should act like a optimizer and
         # adding its parallel logic within that parallelism
         # when use sharding alone, it should have its own parallelism for its parallel logic
-        # TODO modify 3 others parallel to support sharding
         if (
-            self._mp_degree == 1
-            and self._pp_degree == 1
-            and self._dp_degree == 1
+            self._pp_degree == 1
+            and self._mp_degree == 1
+            and self._sharding_degree == 1
+            and self._dp_degree > 1
+        ):
+            return ParallelMode.DATA_PARALLEL
+        elif (
+            self._pp_degree == 1
+            and self._mp_degree == 1
             and self._sharding_degree > 1
         ):
+            # sharding may coexist with dp
             return ParallelMode.SHARDING_PARALLEL
-        elif self._mp_degree == 1 and self._pp_degree == 1:
-            return ParallelMode.DATA_PARALLEL
-        elif self._mp_degree > 1 and self._pp_degree == 1:
+        elif self._pp_degree == 1 and self._mp_degree > 1:
+            # tp may coexist with sep、dp and sharding
             # initialize the seed
             return ParallelMode.TENSOR_PARALLEL
         elif self._pp_degree > 1:
+            # pp may coexist with mp、sep、dp and sharding
             return ParallelMode.PIPELINE_PARALLEL
 
     def _check_vaild_topo(self):
