@@ -21,6 +21,7 @@ from paddle.base.libpaddle.pir import Program, set_global_program
 
 from .._pir_ops import parameter, set_parameter
 from ..base import unique_name
+from ..base.core import set_static_op_arg_pre_cast_hook
 from ..base.wrapped_decorator import signature_safe_contextmanager
 
 vartype_to_datatype = {
@@ -310,3 +311,16 @@ def _convert_into_opresult(tensor):
         )
     else:
         return tensor
+
+
+@signature_safe_contextmanager
+def static_op_arg_cast_guard(hook):
+    """
+    Set a hook function to cast the arguments of static op.
+    """
+
+    original_callback = set_static_op_arg_pre_cast_hook(hook)
+    try:
+        yield
+    finally:
+        set_static_op_arg_pre_cast_hook(original_callback)

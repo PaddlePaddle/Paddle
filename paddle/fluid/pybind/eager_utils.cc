@@ -2097,30 +2097,25 @@ paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
   }
 }
 
-// PyObject* CastPyArg2ValuePreHook(PyObject* obj) {
-//   PyObject *hook = static_op_arg_pre_cast_hook_get();
-//   VLOG(0) << "1111111";
-//   if (hook == nullptr || hook == Py_None) {
-//     VLOG(0) << "2222222";
-//     return obj;
-//   }
-//   VLOG(0) << "3333333";
-//   Py_INCREF(obj);
-//   PyObject *result = PyObject_CallFunction(hook, "O", obj);
-//   if (result == nullptr) {
-//     VLOG(0) << "6666666";
-//     Py_DECREF(obj);
-//     return nullptr;
-//   }
-//   VLOG(0) << "4444444";
-//   Py_DECREF(obj);
-//   return result;
-// }
+PyObject* CastPyArg2ValuePreHook(PyObject* obj) {
+  PyObject* hook = static_op_arg_pre_cast_hook_get();
+  if (hook == Py_None) {
+    return obj;
+  }
+  Py_INCREF(obj);
+  PyObject* result = PyObject_CallFunction(hook, "O", obj);
+  if (result == nullptr) {
+    Py_DECREF(obj);
+    return nullptr;
+  }
+  Py_DECREF(obj);
+  return result;
+}
 
 pir::Value CastPyArg2Value(PyObject* obj,
                            const std::string& op_type,
                            size_t arg_pos) {
-  // obj = CastPyArg2ValuePreHook(obj);
+  obj = CastPyArg2ValuePreHook(obj);
   if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
     return ::pybind11::handle(obj).cast<pir::OpResult>();
   } else if (PyObject_TypeCheck(obj, g_ir_value_pytype)) {
@@ -2154,7 +2149,7 @@ std::vector<pir::Value> CastPyArg2VectorOfValue(PyObject* obj,
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyList_GetItem(obj, i);
-      // item = CastPyArg2ValuePreHook(item);
+      item = CastPyArg2ValuePreHook(item);
       if (PyObject_TypeCheck(item, g_ir_opresult_pytype)) {
         value_list.emplace_back(::pybind11::handle(item).cast<pir::OpResult>());
       } else if (item == Py_None) {
@@ -2174,7 +2169,7 @@ std::vector<pir::Value> CastPyArg2VectorOfValue(PyObject* obj,
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyTuple_GetItem(obj, i);
-      // item = CastPyArg2ValuePreHook(item);
+      item = CastPyArg2ValuePreHook(item);
       if (PyObject_TypeCheck(item, g_ir_opresult_pytype)) {
         value_list.emplace_back(::pybind11::handle(item).cast<pir::OpResult>());
       } else if (item == Py_None) {
@@ -2692,46 +2687,48 @@ void DistTensorConverter::operator()(paddle::optional<std::vector<Tensor>>* x) {
   }
 }
 
-// static Py_tss_t static_op_arg_pre_cast_hook_key = {0, 0};
+static Py_tss_t static_op_arg_pre_cast_hook_key = {0, 0};
 
-// inline static PyObject *static_op_arg_pre_cast_hook_get() {
-//   void *result = PyThread_tss_get(&static_op_arg_pre_cast_hook_key);
-//   if (result == NULL) {
-//     VLOG(0) << "is NULL";
-//     return Py_None;
-//   } else {
-//     VLOG(0) << "is not NULL";
-//     // return (PyObject *)result;
-//     VLOG(0) << "result is " << result;
-//     return reinterpret_cast<PyObject *>(result);
-//   }
-// }
+inline static PyObject* static_op_arg_pre_cast_hook_get() {
+  void* result = PyThread_tss_get(&static_op_arg_pre_cast_hook_key);
+  if (result == NULL) {
+    return Py_None;
+  } else {
+    return reinterpret_cast<PyObject*>(result);
+  }
+}
 
-// inline static void static_op_arg_pre_cast_hook_set(PyObject *obj) {
-//   PyThread_tss_set(&static_op_arg_pre_cast_hook_key, obj);
-// }
+inline static void static_op_arg_pre_cast_hook_set(PyObject* obj) {
+  PyThread_tss_set(&static_op_arg_pre_cast_hook_key, obj);
+}
 
-// static PyObject *set_static_op_arg_pre_cast_hook(PyObject *new_callback,
-// PyThreadState *tstate) {
+static PyObject* set_static_op_arg_pre_cast_hook(PyObject* new_callback,
+                                                 PyThreadState* tstate) {
+  PyObject* old_callback = static_op_arg_pre_cast_hook_get();
+  Py_DECREF(old_callback);
+  Py_INCREF(new_callback);
+  static_op_arg_pre_cast_hook_set(new_callback);
 
-//   PyObject *old_callback = static_op_arg_pre_cast_hook_get();
-//   if (old_callback != Py_None) {
-//     Py_DECREF(old_callback);
-//   }
-//   Py_INCREF(new_callback);
-//   static_op_arg_pre_cast_hook_set(new_callback);
+  return old_callback;
+}
 
-//   return old_callback;
-// }
+PyObject* SetStaticOpArgPreCastHook(PyObject* dummy, PyObject* callback) {
+  if (callback != Py_None && !PyCallable_Check(callback)) {
+    VLOG(7) << "callback is not a callable or none, invalid arguments.";
+    Py_INCREF(Py_None);
+    return Py_None;
+  }
+  return set_static_op_arg_pre_cast_hook(callback, PyThreadState_GET());
+}
 
-// PyObject *SetStaticOpArgPreCastHook(PyObject *callback) {
-//   if (callback != Py_None && !PyCallable_Check(callback)) {
-//     VLOG(7) << "callback is not a callable or none, invalid arguments.";
-//     Py_INCREF(Py_None);
-//     return Py_None;
-//   }
-//   return set_static_op_arg_pre_cast_hook(callback, PyThreadState_GET());
-// }
+PyMODINIT_FUNC PyInit__static_op_arg_pre_cast_hook() {
+  auto result = PyThread_tss_create(&static_op_arg_pre_cast_hook_key);
+  VLOG(7) << "Set PyThread_tss_create return: " << result;
+
+  Py_INCREF(Py_None);
+  static_op_arg_pre_cast_hook_set(Py_None);
+  return NULL;
+}
 
 static PyMethodDef EagerUtilMethods[] = {
     {"create_empty_tensors_with_var_descs",
@@ -2742,13 +2739,14 @@ static PyMethodDef EagerUtilMethods[] = {
      (PyCFunction)(void (*)(void))GetEmpytyTensorsWithOpResult,
      METH_VARARGS,
      "GetEmpytyTensorsWithOpResult."},
-    // {"set_static_op_arg_pre_cast_hook",
-    //  (PyCFunction)(void (*)(void))SetStaticOpArgPreCastHook,
-    //  METH_O,
-    //  "Set hook for static op arg pre cast."},
+    {"set_static_op_arg_pre_cast_hook",
+     (PyCFunction)SetStaticOpArgPreCastHook,
+     METH_O,
+     "Set hook for pre cast a static OP argument."},
     {nullptr, nullptr, 0, nullptr}};
 
 void BindEagerUtils(PyObject* module) {
+  PyInit__static_op_arg_pre_cast_hook();
   if (PyModule_AddFunctions(module, EagerUtilMethods) < 0) {
     PADDLE_THROW(platform::errors::Fatal(
         "Init Paddle error in BindEagerUtils(PyModule_AddFunctions)."));
