@@ -2549,7 +2549,7 @@
 - op : reshape (reshape2)
   backward : reshape_grad (reshape2_grad)
   inputs:
-    x : X
+    x : z
   outputs:
     out : Out
     xshape: XShape
@@ -3380,7 +3380,7 @@
 
 - op: dpsgd
   inputs:
-    {param: Param,grad: Grad,learning_rate: LearningRate}
+    {param: param,grad: grad,learning_rate: LearningRate}
   outputs:
     param_out : ParamOut
 
