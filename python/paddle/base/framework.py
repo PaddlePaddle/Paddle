@@ -1795,6 +1795,16 @@ class Variable(metaclass=VariableMetaClass):
             skip_vars_in_backward_input=[self],
         )
 
+    def apply(self, func):
+        if not self.stop_gradient:
+            raise RuntimeError(
+                "Cannot apply function on a tensor that required gradient."
+            )
+        try:
+            return func(self)
+        except:
+            raise ValueError(f"The PyFunc {func.__name__} could not be applied")
+
     def __str__(self):
         return self._to_readable_code()
 

@@ -384,7 +384,8 @@ def monkey_patch_tensor():
                 >>> x = paddle.to_tensor(5.)
                 >>> f = lambda x: 3*x+2
                 >>> x.apply_(f)
-                >>> print(x) # 17
+                >>> print(x)
+                17
 
         """
         if not self.stop_gradient:
@@ -393,7 +394,6 @@ def monkey_patch_tensor():
             )
         return self._apply_(func)
 
-    @framework.dygraph_only
     def apply(self, func):
         """
         Apply the python function to the tensor.
@@ -409,8 +409,10 @@ def monkey_patch_tensor():
                 >>> x = paddle.to_tensor(5.)
                 >>> f = lambda x: 3*x+2
                 >>> y = x.apply(f)
-                >>> print(y) # 17
-                >>> print(x) # 5
+                >>> print(y)
+                17
+                >>> print(x)
+                5
 
         """
         if not self.stop_gradient:
