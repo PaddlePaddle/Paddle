@@ -30,7 +30,7 @@ from . import register
 
 
 def _build_tensor_tuple(xs):
-    if isinstance(xs, pir.OpResult):
+    if isinstance(xs, pir.Value):
         return (xs,)
     elif isinstance(xs, typing.Sequence):
         return tuple(xs)
@@ -41,14 +41,14 @@ def _analyse_decomp_results(orig_outs, decomp_outs, op):
     assert len(orig_outs) == len(decomp_outs)
     res = []
     for idx, value in enumerate(decomp_outs):
-        if isinstance(orig_outs[idx], pir.OpResult):
+        if isinstance(orig_outs[idx], pir.Value):
             if (
                 op.name() in decomp_ops_contain_unused_output.keys()
                 and idx in decomp_ops_contain_unused_output[op.name()]
             ):
                 assert value[0] is None
             else:
-                assert len(value) == 1 and isinstance(value[0], pir.OpResult)
+                assert len(value) == 1 and isinstance(value[0], pir.Value)
             res.append(value[0])
         else:
             res.append(value)
@@ -76,7 +76,7 @@ def _prepare_python_api_arguments(op):
             inputs.append(input)
         else:
             # for optional input, such as scale for layer_norm op,
-            # if it is not set, there will be an empty OpResult which is not initialized in ops.operands
+            # if it is not set, there will be an empty Value which is not initialized in ops.operands
             # therefore append None for it.
             inputs.append(None)
 
@@ -191,7 +191,7 @@ def decompose(
 
     Args:
         program (Program): The program to be processed.
-        src_vars (list[OpResult]): In program, once some operator is decomposed, its vars will be replaced by new ones. This argument means some vars will be used later and corresponding vars will be returned for later usage.
+        src_vars (list[Value]): In program, once some operator is decomposed, its vars will be replaced by new ones. This argument means some vars will be used later and corresponding vars will be returned for later usage.
         blacklist (frozenset): The Operators that will be exclude when decomposed into primitives.
         whitelist (frozenset): Only the operators in whitelist will be decomposed into primitives.
 
@@ -230,7 +230,7 @@ def decompose(
     dst_vars = [None] * len(src_vars)
     dst_vars_dct = {}
     for idx, item in enumerate(src_vars):
-        if not isinstance(item, pir.OpResult):
+        if not isinstance(item, pir.Value):
             raise TypeError(
                 f"Each var in dst_vars should map corresponding var in src_vars, but got type {type(item)} in {src_vars}."
             )
@@ -243,7 +243,7 @@ def decompose(
             op_filter,
         )
     for idx, item in enumerate(dst_vars):
-        if not isinstance(item, pir.OpResult):
+        if not isinstance(item, pir.Value):
             if item is None:
                 dst_vars[idx] = src_vars[idx]
             else:

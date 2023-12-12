@@ -21,6 +21,8 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    enable_to_static_guard,
+    static_guard,
     test_default_and_pir,
 )
 from predictor_utils import PredictorTools
@@ -247,32 +249,31 @@ class TransedFlowerDataSet(paddle.io.Dataset):
         return len(self.img)
 
 
-class TestResnet(Dy2StTestBase):
-    def setUp(self):
+class ResNetHelper:
+    def __init__(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
         self.model_save_dir = os.path.join(self.temp_dir.name, "./inference")
         self.model_save_prefix = os.path.join(
-            self.temp_dir.name, "./inference/resnet_v2"
+            self.temp_dir.name, "./inference/resnet"
         )
         self.model_filename = (
-            "resnet_v2" + paddle.jit.translated_layer.INFER_MODEL_SUFFIX
+            "resnet" + paddle.jit.translated_layer.INFER_MODEL_SUFFIX
         )
         self.params_filename = (
-            "resnet_v2" + paddle.jit.translated_layer.INFER_PARAMS_SUFFIX
+            "resnet" + paddle.jit.translated_layer.INFER_PARAMS_SUFFIX
         )
         self.dy_state_dict_save_path = os.path.join(
-            self.temp_dir.name, "./resnet_v2.dygraph"
+            self.temp_dir.name, "./resnet.dygraph"
         )
 
-    def tearDown(self):
+    def __del__(self):
         self.temp_dir.cleanup()
 
-    def do_train(self, to_static):
+    def train(self, to_static, build_strategy=None):
         """
         Tests model decorated by `dygraph_to_static_output` in static graph mode. For users, the model is defined in dygraph mode and trained in static graph mode.
         """
-        paddle.disable_static(place)
         np.random.seed(SEED)
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
@@ -284,7 +285,7 @@ class TestResnet(Dy2StTestBase):
             dataset, batch_size=batch_size, drop_last=True
         )
 
-        resnet = paddle.jit.to_static(ResNet())
+        resnet = paddle.jit.to_static(ResNet(), build_strategy=build_strategy)
         optimizer = optimizer_setting(parameter_list=resnet.parameters())
 
         for epoch in range(epoch_num):
@@ -350,59 +351,55 @@ class TestResnet(Dy2StTestBase):
                             self.dy_state_dict_save_path + '.pdparams',
                         )
                     break
-        paddle.enable_static()
 
         return total_loss.numpy()
 
     def predict_dygraph(self, data):
-        paddle.jit.enable_to_static(False)
-        paddle.disable_static(place)
-        resnet = paddle.jit.to_static(ResNet())
+        with enable_to_static_guard(False):
+            resnet = paddle.jit.to_static(ResNet())
 
-        model_dict = paddle.load(self.dy_state_dict_save_path + '.pdparams')
-        resnet.set_dict(model_dict)
-        resnet.eval()
+            model_dict = paddle.load(self.dy_state_dict_save_path + '.pdparams')
+            resnet.set_dict(model_dict)
+            resnet.eval()
 
-        pred_res = resnet(
-            paddle.to_tensor(
-                data=data, dtype=None, place=None, stop_gradient=True
+            pred_res = resnet(
+                paddle.to_tensor(
+                    data=data, dtype=None, place=None, stop_gradient=True
+                )
             )
-        )
 
         ret = pred_res.numpy()
-        paddle.enable_static()
         return ret
 
     def predict_static(self, data):
-        exe = paddle.static.Executor(place)
-        [
-            inference_program,
-            feed_target_names,
-            fetch_targets,
-        ] = paddle.static.load_inference_model(
-            self.model_save_dir,
-            executor=exe,
-            model_filename=self.model_filename,
-            params_filename=self.params_filename,
-        )
+        with static_guard():
+            exe = paddle.static.Executor(place)
+            [
+                inference_program,
+                feed_target_names,
+                fetch_targets,
+            ] = paddle.static.load_inference_model(
+                self.model_save_dir,
+                executor=exe,
+                model_filename=self.model_filename,
+                params_filename=self.params_filename,
+            )
 
-        pred_res = exe.run(
-            inference_program,
-            feed={feed_target_names[0]: data},
-            fetch_list=fetch_targets,
-        )
+            pred_res = exe.run(
+                inference_program,
+                feed={feed_target_names[0]: data},
+                fetch_list=fetch_targets,
+            )
 
-        return pred_res[0]
+            return pred_res[0]
 
     def predict_dygraph_jit(self, data):
-        paddle.disable_static(place)
         resnet = paddle.jit.load(self.model_save_prefix)
         resnet.eval()
 
         pred_res = resnet(data)
 
         ret = pred_res.numpy()
-        paddle.enable_static()
         return ret
 
     def predict_analysis_inference(self, data):
@@ -415,16 +412,21 @@ class TestResnet(Dy2StTestBase):
         (out,) = output()
         return out
 
+
+class TestResnet(Dy2StTestBase):
+    def setUp(self):
+        self.resnet_helper = ResNetHelper()
+
     def train(self, to_static):
-        paddle.jit.enable_to_static(to_static)
-        return self.do_train(to_static)
+        with enable_to_static_guard(to_static):
+            return self.resnet_helper.train(to_static)
 
     def verify_predict(self):
         image = np.random.random([1, 3, 224, 224]).astype('float32')
-        dy_pre = self.predict_dygraph(image)
-        st_pre = self.predict_static(image)
-        dy_jit_pre = self.predict_dygraph_jit(image)
-        predictor_pre = self.predict_analysis_inference(image)
+        dy_pre = self.resnet_helper.predict_dygraph(image)
+        st_pre = self.resnet_helper.predict_static(image)
+        dy_jit_pre = self.resnet_helper.predict_dygraph_jit(image)
+        predictor_pre = self.resnet_helper.predict_analysis_inference(image)
         np.testing.assert_allclose(
             dy_pre,
             st_pre,
@@ -455,7 +457,7 @@ class TestResnet(Dy2StTestBase):
             err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
         )
         # TODO(@xiongkun): open after save / load supported in pir.
-        if not paddle.base.framework.use_pir_api():
+        if not paddle.framework.use_pir_api():
             self.verify_predict()
 
     @test_default_and_pir
@@ -474,12 +476,12 @@ class TestResnet(Dy2StTestBase):
 
     @test_default_and_pir
     def test_in_static_mode_mkldnn(self):
-        paddle.base.set_flags({'FLAGS_use_mkldnn': True})
+        paddle.set_flags({'FLAGS_use_mkldnn': True})
         try:
             if paddle.base.core.is_compiled_with_mkldnn():
                 self.train(to_static=True)
         finally:
-            paddle.base.set_flags({'FLAGS_use_mkldnn': False})
+            paddle.set_flags({'FLAGS_use_mkldnn': False})
 
 
 if __name__ == '__main__':
