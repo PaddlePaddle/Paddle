@@ -311,7 +311,7 @@ for WITH_STATIC_LIB in ON OFF; do
     fi
 
     # --------custom op demo on linux/mac------
-    if [ $TEST_GPU_CPU == ON -a $WITH_STATIC_LIB == OFF]; then
+    if [ $TEST_GPU_CPU == ON -a $WITH_STATIC_LIB == OFF ]; then
       rm -rf *
       CUSTOM_OPERATOR_FILES="custom_relu_op.cc;custom_relu_op.cu"
       cmake .. -DPADDLE_LIB=${inference_install_dir} \

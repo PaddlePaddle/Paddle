@@ -253,7 +253,7 @@ if(WITH_GPU)
   endif()
 endif()
 
-if(NOT "${CUSTOM_OPERATOR_FILES}" STREQUAL "")
+if(CUSTOM_OPERATOR_FILES)
   if(WITH_GPU AND NOT APPLE)
     add_definitions("-DPADDLE_WITH_CUDA")
     enable_language(CUDA)
