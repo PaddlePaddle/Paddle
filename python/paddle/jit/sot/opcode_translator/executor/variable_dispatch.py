@@ -509,14 +509,6 @@ def create_zip(*var: VariableBase):
     )
 
 
-# Dispatcher.register(
-#     zip,
-#     ("VariableBase",),
-#     lambda *var: ZipVariable.from_iterator(
-#         var, graph=var.graph, tracker=DummyTracker(list(var))
-#     ),
-# )
-
 # map
 Dispatcher.register(
     map,
@@ -791,14 +783,14 @@ def is_not_func(var: VariableBase, other: VariableBase):
 Dispatcher.register(
     operator_is_none,
     ("TensorVariable",),
-    lambda var: False,
+    lambda var: ConstantVariable.wrap_literal(False, var.graph),
 )
 
 # is not None
 Dispatcher.register(
     operator_is_not_none,
     ("TensorVariable",),
-    lambda var: True,
+    lambda var: ConstantVariable.wrap_literal(True, var.graph),
 )
 
 # is None
