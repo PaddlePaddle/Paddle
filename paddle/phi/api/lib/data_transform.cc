@@ -45,7 +45,8 @@ inline bool NeedTransformDataType(const DataType& input,
   return input != target &&
          (transform_flag.need_trans_data_type() ||
           ((target == DataType::COMPLEX64 || target == DataType::COMPLEX128) &&
-           (input != DataType::INT32 && input != DataType::INT64)));
+           (input != DataType::INT32 && input != DataType::INT64 &&
+            input != DataType::BOOL)));
 }
 
 inline bool NeedTransformLayout(const DataLayout& input,
@@ -662,7 +663,8 @@ std::shared_ptr<phi::distributed::DistTensor> ReshardApiInputToKernelInput(
         static_cast<phi::distributed::DistTensor*>(tensor_in.get());
     if (ReshardIsNeededWithPartial(dist_tensor->dist_attr(),
                                    tensor_dist_attr)) {
-      VLOG(6) << "ApiIn to Replicated KernelIn - "
+      VLOG(4) << "ApiIn to Replicated KernelIn - \n"
+              << "Input tensor: " << tensor.name()
               << ReshardDebugInfo(*dist_tensor, tensor_dist_attr);
       auto* func = phi::distributed::ChooseProperReshardFunction(
           *dist_tensor, tensor_dist_attr);
@@ -699,7 +701,8 @@ ReshardApiInputToKernelInput(phi::DeviceContext* dev_ctx,
       phi::distributed::DistTensor* dist_tensor =
           static_cast<phi::distributed::DistTensor*>(tensor_in.get());
       if (ReshardIsNeededWithPartial(dist_tensor->dist_attr(), dist_attr)) {
-        VLOG(6) << "Vector ApiIn to Replicated KernelIn - "
+        VLOG(4) << "Vector ApiIn to Replicated KernelIn - \n"
+                << "Input tensor: " << tensors[i].name()
                 << ReshardDebugInfo(*dist_tensor, dist_attr);
         auto* func = phi::distributed::ChooseProperReshardFunction(*dist_tensor,
                                                                    dist_attr);
@@ -843,25 +846,6 @@ void SetInplaceOutputCorrectDistAttr(
       dev_ctx, tensors, paddle::get<1>(dist_attr), use_general_spmd_rule);
 }
 
-void ReshardOutputPartialAxisToReplicated(
-    phi::DeviceContext* dev_ctx, phi::distributed::DistTensor* out_tensor) {
-  if (out_tensor->dist_attr().is_partial()) {
-    auto dist_attr = out_tensor->dist_attr();
-    dist_attr.clean_partial_status();
-    if (!IsCurRankInMesh(out_tensor->dist_attr().process_mesh())) {
-      VLOG(6) << "DistTensor is not in mesh, just clear its partial status and "
-                 "skip reshard it to replicated.";
-      out_tensor->unsafe_set_dist_attr(dist_attr);
-      return;
-    }
-    VLOG(6) << "FwdAPI Output P2R - "
-            << ReshardDebugInfo(*out_tensor, dist_attr);
-    auto* func =
-        phi::distributed::ChooseProperReshardFunction(*out_tensor, dist_attr);
-    func->Eval(dev_ctx, *out_tensor, dist_attr, out_tensor);
-  }
-}
-
 void ReshardKernelOutputToApiOutput(
     phi::DeviceContext* dev_ctx,
     const std::shared_ptr<phi::distributed::DistTensor>& src_tensor,
@@ -876,7 +860,8 @@ void ReshardKernelOutputToApiOutput(
         static_cast<phi::distributed::DistTensor*>(tensor_out.get());
     dist_tensor->unsafe_set_dims(src_tensor->dims());
     if (ReshardIsNeeded(src_tensor->dist_attr(), dist_tensor->dist_attr())) {
-      VLOG(6) << "BwdAPI KernelOut to ApiOut - "
+      VLOG(4) << "BwdAPI KernelOut to ApiOut - \n"
+              << "Input tensor: " << dst_tensor->name()
               << ReshardDebugInfo(*src_tensor, dist_tensor->dist_attr());
       auto* func = phi::distributed::ChooseProperReshardFunction(
           *src_tensor, dist_tensor->dist_attr());

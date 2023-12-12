@@ -371,6 +371,7 @@ void BindGraphGpuWrapper(py::module* m) {
                &GraphGpuWrapper::graph_neighbor_sample))
       .def("set_device", &GraphGpuWrapper::set_device)
       .def("set_feature_separator", &GraphGpuWrapper::set_feature_separator)
+      .def("set_infer_mode", &GraphGpuWrapper::set_infer_mode)
       .def("set_slot_feature_separator",
            &GraphGpuWrapper::set_slot_feature_separator)
       .def("init_service", &GraphGpuWrapper::init_service)
@@ -385,14 +386,17 @@ void BindGraphGpuWrapper(py::module* m) {
                              std::string,
                              int,
                              bool,
-                             const std::vector<bool>&>(
-               &GraphGpuWrapper::load_edge_file))
+                             const std::vector<bool>&,
+                             bool>(&GraphGpuWrapper::load_edge_file))
       .def("load_node_and_edge", &GraphGpuWrapper::load_node_and_edge)
+      .def("calc_edge_type_limit", &GraphGpuWrapper::calc_edge_type_limit)
+      .def("show_mem", &GraphGpuWrapper::show_mem)
       .def("upload_batch",
            py::overload_cast<int, int, const std::string&>(
                &GraphGpuWrapper::upload_batch))
-      .def("upload_batch",
-           py::overload_cast<int, int, int>(&GraphGpuWrapper::upload_batch))
+      .def(
+          "upload_batch",
+          py::overload_cast<int, int, int, int>(&GraphGpuWrapper::upload_batch))
       .def(
           "get_all_id",
           py::overload_cast<int, int, int, std::vector<std::vector<uint64_t>>*>(
@@ -423,7 +427,13 @@ void BindGraphGpuWrapper(py::module* m) {
       .def("release_graph", &GraphGpuWrapper::release_graph)
       .def("release_graph_edge", &GraphGpuWrapper::release_graph_edge)
       .def("release_graph_node", &GraphGpuWrapper::release_graph_node)
-      .def("finalize", &GraphGpuWrapper::finalize);
+      .def("finalize", &GraphGpuWrapper::finalize)
+      .def("set_node_iter_from_file",
+           py::overload_cast<std::string, std::string, int, bool, bool>(
+               &GraphGpuWrapper::set_node_iter_from_file))
+      .def("set_node_iter_from_graph",
+           py::overload_cast<bool, bool>(
+               &GraphGpuWrapper::set_node_iter_from_graph));
 }
 #endif
 

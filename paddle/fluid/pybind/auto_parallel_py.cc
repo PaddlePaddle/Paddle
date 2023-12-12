@@ -209,8 +209,16 @@ void BindAutoParallel(py::module *m) {
       *m, "RToPReshardFunction", ReshardFunction)
       .def(py::init<>());
 
+  py::class_<phi::distributed::RToPReshardFunctionCrossMesh>(
+      *m, "RToPReshardFunctionCrossMesh", ReshardFunction)
+      .def(py::init<>());
+
   py::class_<phi::distributed::PToRReshardFunction>(
       *m, "PToRReshardFunction", ReshardFunction)
+      .def(py::init<>());
+
+  py::class_<phi::distributed::PToRReshardFunctionCrossMesh>(
+      *m, "PToRReshardFunctionCrossMesh", ReshardFunction)
       .def(py::init<>());
 
   py::class_<phi::distributed::SToSReshardFunction>(
@@ -364,7 +372,30 @@ void BindAutoParallel(py::module *m) {
           py::arg("memo"))
       .def("__str__", &DeviceMesh::to_string);
 
-  py::enum_<phi::ReduceType>(*m, "ReduceType")
+  py::enum_<phi::ReduceType>(*m, "ReduceType", R"DOC(
+    Specify the type of operation used for paddle.distributed.Partial().
+    It should be one of the following values:
+
+        - ReduceType.kRedSum
+        - ReduceType.kRedMax
+        - ReduceType.kRedMin
+        - ReduceType.kRedProd
+        - ReduceType.kRedAvg
+        - ReduceType.kRedAny
+        - ReduceType.kRedAll
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.distributed as dist
+            >>> mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+            >>> a = paddle.ones([10, 20])
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> # distributed tensor
+            >>> d_tensor = dist.shard_tensor(a, mesh, [dist.Partial(dist.ReduceType.kRedSum)])
+
+      )DOC")
       .value("kRedSum", phi::ReduceType::kRedSum)
       .value("kRedMax", phi::ReduceType::kRedMax)
       .value("kRedMin", phi::ReduceType::kRedMin)
@@ -375,7 +406,25 @@ void BindAutoParallel(py::module *m) {
 
   auto Placement =
       py::class_<phi::distributed::Placement,
-                 std::shared_ptr<phi::distributed::Placement>>(*m, "Placement")
+                 std::shared_ptr<phi::distributed::Placement>>(
+          *m, "Placement", R"DOC(
+        The `Placement` is base class that describes how to place the tensor on ProcessMesh. it has three subclass: `Replicate`, `Shard` and `Partial`.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle.distributed as dist
+                >>> placements = [dist.Replicate(), dist.Shard(0), dist.Partial()]
+                >>> for p in placements:
+                >>>     if isinstance(p, dist.Placement):
+                >>>         if p.is_replicated():
+                >>>             print("replicate.")
+                >>>         elif p.is_shard():
+                >>>             print("shard.")
+                >>>         elif p.is_partial():
+                >>>             print("partial.")
+
+      )DOC")
           .def(py::init<>())
           .def("is_shard",
                &phi::distributed::Placement::is_shard,
@@ -389,7 +438,24 @@ void BindAutoParallel(py::module *m) {
 
   auto Shard = py::class_<phi::distributed::Shard,
                           std::shared_ptr<phi::distributed::Shard>>(
-                   *m, "Shard", Placement)
+                   *m, "Shard", Placement, R"DOC(
+               The `Shard` describes how `Tensor` splitted across multiple devices according to specified dimensions.
+
+               Parameters:
+                   dim (int): specify the slicing dimension of the tensor.
+
+               Examples:
+                   .. code-block:: python
+
+                       >>> import paddle
+                       >>> import paddle.distributed as dist
+                       >>> mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=['x', 'y'])
+                       >>> a = paddle.to_tensor([[1,2,3],[5,6,7]])
+                       >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                       >>> # distributed tensor
+                       >>> d_tensor = dist.shard_tensor(a, mesh, [dist.Shard(0), dist.Shard(1)])
+
+               )DOC")
                    .def(py::init([](int64_t dim) {
                      return std::make_shared<phi::distributed::Shard>(dim);
                    }))
@@ -401,7 +467,21 @@ void BindAutoParallel(py::module *m) {
 
   auto Replicate = py::class_<phi::distributed::Replicate,
                               std::shared_ptr<phi::distributed::Replicate>>(
-                       *m, "Replicate", Placement)
+                       *m, "Replicate", Placement, R"DOC(
+                   The `Replicate` describes the tensor placed repeatedly on ProcessMesh.
+
+                   Examples:
+                       .. code-block:: python
+
+                           >>> import paddle
+                           >>> import paddle.distributed as dist
+                           >>> mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+                           >>> a = paddle.ones([10, 20])
+                           >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                           >>> # distributed tensor
+                           >>> d_tensor = dist.shard_tensor(a, mesh, [dist.Replicate()])
+
+                   )DOC")
                        .def(py::init<>())
                        .def("__hash__", &phi::distributed::Replicate::hash)
                        .def("__str__", &phi::distributed::Replicate::to_string)
@@ -410,7 +490,24 @@ void BindAutoParallel(py::module *m) {
 
   auto Partial = py::class_<phi::distributed::Partial,
                             std::shared_ptr<phi::distributed::Partial>>(
-                     *m, "Partial", Placement)
+                     *m, "Partial", Placement, R"DOC(
+                 The `Partial` describes `Tensor` across multiple devices, this type of tensor has the same shape but only a fraction of the value, which can be further reduce (e.g. sum/min/max) to obtain dist_tensor, often used as an intermediate representation.
+
+                 Parameters:
+                   reduce_type (paddle.distributed.ReduceType): the reduce type of the Partial state, default `paddle.distributed.ReduceType.kRedSum`.
+
+                 Examples:
+                     .. code-block:: python
+
+                         >>> import paddle
+                         >>> import paddle.distributed as dist
+                         >>> mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+                         >>> a = paddle.ones([10, 20])
+                         >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+                         >>> # distributed tensor
+                         >>> d_tensor = dist.shard_tensor(a, mesh, [dist.Partial()])
+
+                 )DOC")
                      .def(py::init<phi::ReduceType>(),
                           py::arg("reduce_type") = phi::ReduceType::kRedSum)
                      .def("__hash__", &phi::distributed::Partial::hash)
@@ -698,7 +795,7 @@ static void parse_tensors(PyObject *obj,
     DistTensorSpec in = py::cast<DistTensorSpec>(PyList_GetItem(obj, i));
     VLOG(6) << "Vector emplace_back DistTensorSpec: " << in.to_string();
     ins.emplace_back(phi::distributed::DistMetaTensor(
-        phi::make_ddim(in.shape()), in.dist_attr()));
+        common::make_ddim(in.shape()), in.dist_attr()));
   }
   ctx->EmplaceBackInputs(ins);
 }
@@ -710,7 +807,7 @@ static void parse_tensor(PyObject *obj,
   DistTensorSpec in = py::cast<DistTensorSpec>(obj);
   VLOG(6) << "DistTensorSpec: " << in.to_string();
   ctx->EmplaceBackInput(phi::distributed::DistMetaTensor(
-      phi::make_ddim(in.shape()), in.dist_attr()));
+      common::make_ddim(in.shape()), in.dist_attr()));
 }
 
 // TODO(ljz) support other types

@@ -19,7 +19,6 @@
 #include "paddle/cinn/adt/equation_solver.h"
 #include "paddle/cinn/adt/index_expr_infer_context.h"
 #include "paddle/cinn/adt/m_ir.h"
-#include "paddle/cinn/adt/naive_equation_function_constants_provider.h"
 #include "paddle/cinn/adt/naive_op_equation_context.h"
 #include "paddle/cinn/adt/partition_op_stmts.h"
 #include "paddle/cinn/adt/print.h"
@@ -52,7 +51,7 @@ void CollectTensorIndexIteratorsImpl(const Iterator& iterator,
   ret->emplace(iterator);
 }
 
-void CollectTensorIndexIteratorsImpl(const Constant& constant,
+void CollectTensorIndexIteratorsImpl(const DimExpr& constant,
                                      std::unordered_set<Iterator>* ret) {
   // Do nothing
 }
@@ -65,25 +64,25 @@ void CollectTensorIndexIteratorsImpl(const List<Value>& tensor_index_expr,
 }
 
 void CollectTensorIndexIteratorsImpl(
-    const IndexDotValue<Value, Constant>& tensor_index_expr,
+    const IndexDotValue<Value, List<DimExpr>>& tensor_index_expr,
     std::unordered_set<Iterator>* ret) {
   CollectTensorIndexIterators(tensor_index_expr.GetIteratorsValue(), ret);
 }
 
 void CollectTensorIndexIteratorsImpl(
-    const IndexUnDotValue<Value, Constant>& tensor_index_expr,
+    const IndexUnDotValue<Value, List<DimExpr>>& tensor_index_expr,
     std::unordered_set<Iterator>* ret) {
   CollectTensorIndexIterators(tensor_index_expr.GetIndexValue(), ret);
 }
 
 void CollectTensorIndexIteratorsImpl(
-    const ListGetItem<Value, Constant>& tensor_index_expr,
+    const ListGetItem<Value, DimExpr>& tensor_index_expr,
     std::unordered_set<Iterator>* ret) {
   CollectTensorIndexIterators(tensor_index_expr.GetList(), ret);
 }
 
 void CollectTensorIndexIteratorsImpl(
-    const BroadcastedIterator<Value, Constant>& broadcasted_iterator,
+    const BroadcastedIterator<Value, DimExpr>& broadcasted_iterator,
     std::unordered_set<Iterator>* ret) {
   CollectTensorIndexIterators(broadcasted_iterator.GetArg0(), ret);
 }

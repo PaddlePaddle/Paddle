@@ -281,6 +281,80 @@ class ArrayToTensorOp
   static void InferMeta(phi::InferMetaContext *infer_meta);
 };
 
+class SliceArrayOp
+    : public pir::Op<SliceArrayOp,
+                     paddle::dialect::OpYamlInfoInterface,
+                     paddle::dialect::InferMetaInterface,
+                     paddle::dialect::GetKernelTypeForVarInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.slice_array"; }
+  static const char *attributes_name[2];
+  static constexpr uint32_t attributes_num = 2;
+  static OpInfoTuple GetOpInfo();
+
+  void VerifySig();
+
+  static phi::DataType GetKernelTypeForVar(
+      const std::string &var_name,
+      const phi::DataType &tensor_dtype,
+      const phi::DataType &expected_kernel_dtype);
+
+  pir::Value input() { return operand_source(0); }
+  pir::OpResult out() { return result(0); }
+
+  static void InferMeta(phi::InferMetaContext *infer_meta);
+};
+
+class SliceArrayDenseOp
+    : public pir::Op<SliceArrayDenseOp,
+                     paddle::dialect::OpYamlInfoInterface,
+                     paddle::dialect::InferMetaInterface,
+                     paddle::dialect::GetKernelTypeForVarInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.slice_array_dense"; }
+  static const char *attributes_name[1];
+  static constexpr uint32_t attributes_num = 1;
+  static OpInfoTuple GetOpInfo();
+  void VerifySig();
+
+  static phi::DataType GetKernelTypeForVar(
+      const std::string &var_name,
+      const phi::DataType &tensor_dtype,
+      const phi::DataType &expected_kernel_dtype);
+
+  pir::Value input() { return operand_source(0); }
+  pir::OpResult out() { return result(0); }
+
+  static void InferMeta(phi::InferMetaContext *infer_meta);
+};
+
+class AssignArray_Op
+    : public pir::Op<AssignArray_Op,
+                     paddle::dialect::OpYamlInfoInterface,
+                     paddle::dialect::InferMetaInterface,
+                     paddle::dialect::GetKernelTypeForVarInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.assign_array_"; }
+  static constexpr const char **attributes_name = nullptr;
+  static constexpr uint32_t attributes_num = 0;
+  static OpInfoTuple GetOpInfo();
+
+  void VerifySig();
+
+  static phi::DataType GetKernelTypeForVar(
+      const std::string &var_name,
+      const phi::DataType &tensor_dtype,
+      const phi::DataType &expected_kernel_dtype);
+
+  pir::Value x() { return operand_source(0); }
+  pir::OpResult out() { return result(0); }
+
+  static void InferMeta(phi::InferMetaContext *infer_meta);
+};
+
 class ExpandOp : public pir::Op<ExpandOp,
                                 paddle::dialect::OpYamlInfoInterface,
                                 paddle::dialect::InferMetaInterface,
@@ -327,6 +401,17 @@ class ExpandOp : public pir::Op<ExpandOp,
       const std::vector<std::vector<bool>> &stop_gradients);
 };
 
+class SelectInputOp : public pir::Op<SelectInputOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.select_input"; }
+  static constexpr const char **attributes_name = nullptr;
+  static constexpr uint32_t attributes_num = 0;
+  void VerifySig();
+  pir::Value mask() { return operand_source(0); }
+  pir::OpResult out() { return result(0); }
+};
+
 }  // namespace dialect
 }  // namespace paddle
 
@@ -340,5 +425,9 @@ IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::CreateArrayOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayLengthOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayReadOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayWrite_Op)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SliceArrayOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SliceArrayDenseOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AssignArray_Op)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayToTensorOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ExpandOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::SelectInputOp)

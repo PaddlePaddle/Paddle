@@ -24,6 +24,8 @@
 #include "paddle/phi/core/distributed/auto_parallel/reshard/r_to_s_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/s_to_r_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/same_status_reshard_function.h"
+#include "paddle/phi/core/distributed/store/store_utils.h"
 
 namespace phi {
 namespace distributed {
@@ -120,13 +122,13 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
       ProcessMesh sub_mesh = GetSubProcessMesh(process_mesh, kv.first);
 
       // 1.3 Calculate the input one dim dist attr
-      TensorDistAttr in_one_dim_dist_attr(vectorize(in.dims()));
+      TensorDistAttr in_one_dim_dist_attr(common::vectorize(in.dims()));
       in_one_dim_dist_attr.set_process_mesh(sub_mesh);
       in_one_dim_dist_attr.set_partial_status(std::vector<int64_t>{0},
                                               kv.second);
 
       // 1.4 Calculate the output one dim dist attr
-      TensorDistAttr out_one_dim_dist_attr(vectorize(in.dims()));
+      TensorDistAttr out_one_dim_dist_attr(common::vectorize(in.dims()));
       out_one_dim_dist_attr.set_process_mesh(sub_mesh);
 
       // 1.5 Change from partial to replicated
@@ -158,7 +160,7 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
       ProcessMesh sub_mesh = GetSubProcessMesh(process_mesh, in_mesh_axis);
 
       // 2.3 Calculate the input one dim dist attr
-      TensorDistAttr in_one_dim_dist_attr(vectorize(in.dims()));
+      TensorDistAttr in_one_dim_dist_attr(common::vectorize(in.dims()));
       in_one_dim_dist_attr.set_process_mesh(sub_mesh);
       std::vector<int64_t> in_one_dims_mapping =
           in_one_dim_dist_attr.dims_mapping();
@@ -166,7 +168,7 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
       in_one_dim_dist_attr.set_dims_mapping(in_one_dims_mapping);
 
       // 2.4 Calculate the output one dim dist attr
-      TensorDistAttr out_one_dim_dist_attr(vectorize(in.dims()));
+      TensorDistAttr out_one_dim_dist_attr(common::vectorize(in.dims()));
       out_one_dim_dist_attr.set_process_mesh(sub_mesh);
 
       // 2.5 Change from shard to replicated
@@ -198,11 +200,11 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
       ProcessMesh sub_mesh = GetSubProcessMesh(process_mesh, kv.first);
 
       // 3.3 Calculate the input one dim dist attr
-      TensorDistAttr in_one_dim_dist_attr(vectorize(in.dims()));
+      TensorDistAttr in_one_dim_dist_attr(common::vectorize(in.dims()));
       in_one_dim_dist_attr.set_process_mesh(sub_mesh);
 
       // 3.4 Calculate the output one dim dist attr
-      TensorDistAttr out_one_dim_dist_attr(vectorize(in.dims()));
+      TensorDistAttr out_one_dim_dist_attr(common::vectorize(in.dims()));
       out_one_dim_dist_attr.set_process_mesh(sub_mesh);
       out_one_dim_dist_attr.set_partial_status(std::vector<int64_t>{0});
 
@@ -233,16 +235,19 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
           real_out_dist_attr.dims_mapping();
       real_dims_mapping[i] = out_mesh_axis;
       real_out_dist_attr.set_dims_mapping(real_dims_mapping);
+      if (real_out_dist_attr.is_partial(out_mesh_axis)) {
+        real_out_dist_attr.clean_partial_dims({out_mesh_axis});
+      }
 
       // 4.2 Calculate the process_mesh on specific axis
       ProcessMesh sub_mesh = GetSubProcessMesh(process_mesh, out_mesh_axis);
 
       // 4.3 Calculate the input one dim dist attr
-      TensorDistAttr in_one_dim_dist_attr(vectorize(in.dims()));
+      TensorDistAttr in_one_dim_dist_attr(common::vectorize(in.dims()));
       in_one_dim_dist_attr.set_process_mesh(sub_mesh);
 
       // 4.4 Calculate the output one dim dist attr
-      TensorDistAttr out_one_dim_dist_attr(vectorize(in.dims()));
+      TensorDistAttr out_one_dim_dist_attr(common::vectorize(in.dims()));
       out_one_dim_dist_attr.set_process_mesh(sub_mesh);
       std::vector<int64_t> out_one_dims_mapping =
           out_one_dim_dist_attr.dims_mapping();
@@ -264,6 +269,54 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
       SetDistProps(out, real_out_dist_attr);
     }
   }
+}
+
+bool CrossNdMeshReshardFunction::IsSuitable(
+    const DistTensor& in, const TensorDistAttr& out_dist_attr) {
+  RESHARD_SHORTCUT_IF_FALSE(in.dist_attr().process_mesh() !=
+                            out_dist_attr.process_mesh());
+  RESHARD_SHORTCUT_IF_FALSE(out_dist_attr.process_mesh().ndim() > 1);
+
+  // check the input and output dims_mapping is not equal
+  RESHARD_SHORTCUT_IF_FALSE(in.dist_attr() != out_dist_attr);
+
+  return true;
+}
+
+void CrossNdMeshReshardFunction::Eval(DeviceContext* dev_ctx,
+                                      const DistTensor& in,
+                                      const TensorDistAttr& out_dist_attr,
+                                      DistTensor* out) {
+  VLOG(3) << "Call CrossNdMeshReshardFunction Eval";
+  const auto& in_dist_attr = in.dist_attr();
+
+  DistTensor tmp_result;
+  TensorDistAttr in_dist_attr_shard = in_dist_attr;
+  in_dist_attr_shard.set_partial_status(out_dist_attr.partial_status());
+  in_dist_attr_shard.set_dims_mapping(out_dist_attr.dims_mapping());
+
+  int64_t cur_global_rank = GetCurGlobalRank();
+  if (in_dist_attr.process_mesh().contains(cur_global_rank)) {
+    SameNdMeshReshardFunction same_nd_reshard_func;
+    PADDLE_ENFORCE(
+        same_nd_reshard_func.IsSuitable(in, in_dist_attr_shard),
+        phi::errors::InvalidArgument(
+            "Invoke the same nd reshard function is not valid from %s to %s.",
+            in_dist_attr,
+            in_dist_attr_shard));
+    same_nd_reshard_func.Eval(dev_ctx, in, in_dist_attr_shard, &tmp_result);
+  } else {
+    SetDistProps(&tmp_result, in.dims(), in_dist_attr_shard);
+  }
+
+  SameStatusReshardFunction same_status_func;
+  PADDLE_ENFORCE(
+      same_status_func.IsSuitable(tmp_result, out_dist_attr),
+      phi::errors::InvalidArgument("Invoke the same status reshard function "
+                                   "is not valid from %s to %s.",
+                                   tmp_result.dist_attr(),
+                                   out_dist_attr));
+  same_status_func.Eval(dev_ctx, tmp_result, out_dist_attr, out);
 }
 
 }  // namespace distributed
