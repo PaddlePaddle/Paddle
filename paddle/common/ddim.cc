@@ -18,6 +18,57 @@
 
 namespace common {
 
+DDim::DDim() : rank_(-1) { dim_[0] = 0; }
+
+DDim::DDim(const DDim& ddim) : dim_() { CopyFrom(ddim); }
+
+DDim::DDim(const int* d, int n) : rank_(n) {
+  dynamic_dim_assign(d, dim_.GetMutable(), n);
+}
+
+DDim::DDim(const int64_t* d, int n) : rank_(n) {
+  dynamic_dim_assign(d, dim_.GetMutable(), n);
+}
+
+DDim::DDim(std::initializer_list<int64_t> init_list)
+    : DDim(init_list.begin(), init_list.size()) {}
+
+int64_t& DDim::at(int idx) {
+  COMMON_ENFORCE_GE(idx,
+                    0,
+                    common::errors::InvalidArgument(
+                        "Invalid DDim index to be accessed. The valid index "
+                        "is between 0 and %d, but received index is %d.",
+                        rank_,
+                        idx));
+  COMMON_ENFORCE_LT(idx,
+                    rank_,
+                    common::errors::InvalidArgument(
+                        "Invalid DDim index to be accessed. The valid index "
+                        "is between 0 and %d, but received index is %d.",
+                        rank_,
+                        idx));
+  return dim_[idx];
+}
+
+int64_t DDim::at(int idx) const {
+  COMMON_ENFORCE_GE(idx,
+                    0,
+                    common::errors::InvalidArgument(
+                        "Invalid DDim index to be accessed. The valid index "
+                        "is between 0 and %d, but received index is %d.",
+                        rank_,
+                        idx));
+  COMMON_ENFORCE_LT(idx,
+                    rank_,
+                    common::errors::InvalidArgument(
+                        "Invalid DDim index to be accessed. The valid index "
+                        "is between 0 and %d, but received index is %d.",
+                        rank_,
+                        idx));
+  return dim_[idx];
+}
+
 DDim make_ddim(std::initializer_list<int64_t> dims) {
   return DDim(dims.begin(), static_cast<int>(dims.size()));
 }

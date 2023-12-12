@@ -280,7 +280,7 @@ void DropoutFwGPUKernelDriver(
 
   if (!is_test && mask) {
     auto* mask_data = mask->data<uint8_t>();
-    size_t size = phi::product(mask->dims());
+    size_t size = common::product(mask->dims());
 
     if (dropout_prob == 1.0f) {
 #ifdef PADDLE_WITH_HIP
@@ -349,22 +349,51 @@ void DropoutFwGPUKernelDriver(
     } else {
       bool copy_in_kernel = GetSeedDataAndIncrement(
           dev_ctx, seed, is_fix_seed, seed_val, offset, &seed_data, &increment);
+#ifdef PADDLE_WITH_HIP
+      VectorizedRandomGenerator<T>
+          <<<grid_size, block_size, 0, stream>>>(0,
+                                                 size,
+                                                 seed_data,
+                                                 dropout_prob,
+                                                 x_data,
+                                                 mask_data,
+                                                 y_data,
+                                                 upscale_in_train,
+                                                 increment,
+                                                 main_offset);
+#else
       void* functionPtr =
           reinterpret_cast<void*>(&(VectorizedRandomGenerator<T>));
       cudaFunction_t cudaFunc;
       PADDLE_ENFORCE_GPU_SUCCESS(cudaGetFuncBySymbol(&cudaFunc, functionPtr));
+
       const phi::GPUContext* dev_ctx_p = &dev_ctx;
+      auto gen_cuda = dev_ctx.GetGenerator();
+      auto state_index = gen_cuda->GetStateIndex();
+
       phi::backends::gpu::CUDAGraphNodeLauncher::parameterSetter_t
-          parameterSetter = [offset, dev_ctx_p](
+          parameterSetter = [offset, dev_ctx_p, state_index, is_fix_seed](
                                 phi::backends::gpu::CUDAKernelParams& params) {
-            uint64_t seed_data, increment;
-            phi::funcs::GetSeedDataAndIncrement(
-                *dev_ctx_p, nullptr, false, 0, offset, &seed_data, &increment);
-            params.As<uint64_t>(2) = seed_data;
-            params.As<uint64_t>(8) = increment;
-            VLOG(10) << "CUDA_GRAPH seed_data = " << seed_data
-                     << ", increment = " << increment;
+            if (!is_fix_seed) {
+              // we assume seed is null pointer
+              // seed copy to cpu is meaningless here
+              assert(seed_tensor_ptr == nullptr);
+
+              auto gen_cuda = dev_ctx_p->GetGenerator();
+              // ensure the generator use correct state index
+              gen_cuda->SetStateIndex(state_index);
+
+              uint64_t seed, increment;
+              std::tie(seed, increment) = gen_cuda->IncrementOffset(offset);
+
+              params.As<uint64_t>(2) = seed;
+              params.As<uint64_t>(8) = increment;
+
+              VLOG(10) << "CUDA_GRAPH seed = " << seed
+                       << ", increment = " << increment;
+            }
           };
+
       phi::backends::gpu::CUDAGraphNodeLauncher::cudaKernelCallback_t
           cudaKernelCallback = [=](unsigned int id) {
             VectorizedRandomGenerator<T>
@@ -382,8 +411,9 @@ void DropoutFwGPUKernelDriver(
       phi::backends::gpu::CUDAGraphNodeLauncher::Instance().KernelNodeLaunch(
           cudaFunc, parameterSetter, cudaKernelCallback);
 
-      VLOG(10) << "NON_CUDA_GRAPH seed_data = " << seed_data
+      VLOG(10) << "NON_CUDA_GRAPH seed = " << seed_data
                << ", increment = " << increment;
+#endif
     }
   } else {
     if (upscale_in_train) {

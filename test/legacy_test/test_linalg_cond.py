@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 from paddle import static
+from paddle.pir_utils import test_with_pir_api
 
 p_list_n_n = ("fro", "nuc", 1, -1, np.inf, -np.inf)
 p_list_m_n = (None, 2, -2)
@@ -82,6 +83,7 @@ def gen_empty_input():
 
 
 class API_TestStaticCond(unittest.TestCase):
+    @test_with_pir_api
     def test_out(self):
         paddle.enable_static()
         # test calling results of 'cond' in static graph mode
@@ -115,6 +117,7 @@ class TestCondAPIError(unittest.TestCase):
                 x_tensor = paddle.to_tensor(x)
                 self.assertRaises(ValueError, paddle.linalg.cond, x_tensor, p)
 
+    @test_with_pir_api
     def test_static_api_error(self):
         paddle.enable_static()
         # test raising errors when 'cond' is called in static graph mode

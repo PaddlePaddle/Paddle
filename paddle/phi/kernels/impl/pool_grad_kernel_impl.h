@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/core/ddim.h"
+#include "paddle/common/ddim.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/pool_grad_kernel.h"
@@ -163,7 +163,7 @@ void MaxPoolWithIndexGradRawKernel(const Context& ctx,
 
   if (dx) {
     ctx.template Alloc<T1>(dx);
-    funcs::set_constant(ctx, dx, 0);
+    funcs::set_constant(ctx, dx, static_cast<T1>(0));
 
     switch (kernel_size_.size()) {
       case 2: {

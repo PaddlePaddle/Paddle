@@ -218,7 +218,7 @@ DDim CompatMetaTensor::dims() const {
     } else if (var->IsType<framework::LoDTensorArray>()) {
       // use tensor array size as dims
       auto& tensor_array = var->Get<framework::LoDTensorArray>();
-      return phi::make_ddim({static_cast<int64_t>(tensor_array.size())});
+      return common::make_ddim({static_cast<int64_t>(tensor_array.size())});
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Currently, only can get dims from DenseTensor or SelectedRows or "
@@ -227,9 +227,9 @@ DDim CompatMetaTensor::dims() const {
   } else {
     auto* var = PADDLE_GET_CONST(VarDesc*, var_);
 
-    return phi::make_ddim(var->GetShape());
-    // return var->GetShape().empty() ? phi::make_ddim({0UL}) :
-    // phi::make_ddim(var->GetShape());
+    return common::make_ddim(var->GetShape());
+    // return var->GetShape().empty() ? common::make_ddim({0UL}) :
+    // common::make_ddim(var->GetShape());
   }
 }
 
@@ -316,7 +316,7 @@ void CompatMetaTensor::set_dims(const DDim& dims) {
   } else {
     auto* var = PADDLE_GET(VarDesc*, var_);
     if (var) {
-      var->SetShape(vectorize(dims));
+      var->SetShape(common::vectorize(dims));
     }
   }
 }

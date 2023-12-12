@@ -122,6 +122,72 @@ class PirDependencyBuilder : public DependencyBuilder {
   std::vector<paddle::framework::InstructionBase*> instructions_;  // not_owned
 };
 
+class DependencyBuilderSimplify {
+ public:
+  DependencyBuilderSimplify()
+      : is_build_(false),
+        is_sharding_mode_(false),
+        start_index_(0),
+        _ops_ptr(nullptr) {}
+
+  // build op dependencies and return the mapping from op to its downstream-op
+  // set
+  const std::map<size_t, std::set<size_t>>& Build(
+      const std::vector<std::unique_ptr<OperatorBase>>& ops,
+      size_t start_index = 0,
+      bool is_sharding_mode = false);
+
+  const std::map<size_t, std::set<size_t>>& OpDownstreamMap() const;
+
+  bool OpHappensBefore(size_t prior_op_idx, size_t posterior_op_idx) const {
+    PADDLE_ENFORCE_GE(
+        op_happens_before_.size(),
+        0,
+        phi::errors::Unavailable("op_happen_before is not yet built"));
+    return op_happens_before_.at(prior_op_idx).at(posterior_op_idx);
+  }
+  std::vector<size_t> get_new_exexutor_order();
+
+ private:
+  void AddDependencyForCoalesceTensorOp();
+  void AddDependencyForCommunicationOp();
+  void AddDependencyForRandomOp();
+  void AddDependencyForReadOp();
+  void AddDependencyForBroadcastOp();
+  void AddDownstreamOp(size_t prior_op_idx, size_t posterior_op_idx);
+  void BuildDownstreamMap();
+  void ShrinkDownstreamMap();
+  void GetOpBehindNum();
+  void GetAllbehind();
+  void SetSameStream();
+
+  bool is_build_;
+  bool is_sharding_mode_;
+  size_t start_index_;
+  const std::vector<std::unique_ptr<OperatorBase>>* _ops_ptr;  // not_own
+  size_t op_num_;
+
+  // ops_behind_ is the adjacency list about op to its posterior-ops, that is to
+  // say, op_behind_[i] == {a, b, c} means op[a], op[b] and op[c] depend on
+  // op[i] directly or indirectly. ops_before_ is the revered adjacency list of
+  // ops_behind_.
+  std::vector<std::vector<size_t>> ops_before_;
+  std::vector<std::vector<size_t>> ops_behind_;
+  std::vector<size_t> ops_list;
+
+  // op_downstream_map_ is the mapping from op to its downstream-op set, that is
+  // to say, op_downstream_map_[i] == {a, b, c} means op[a], op[b] and op[c]
+  // depend on op[i] directly.
+  std::map<size_t, std::set<size_t>> op_downstream_map_;
+
+  // op_happens_before_ is a matrix form of ops_before_ and ops_behind_, it is
+  // used to speed up the query.
+  std::vector<std::vector<bool>> op_happens_before_;
+  std::vector<size_t> op_behind_num;
+  std::vector<size_t> op_before_num;
+  std::set<size_t> del_c_sync_comm_list;
+};
+
 }  // namespace interpreter
 }  // namespace framework
 }  // namespace paddle

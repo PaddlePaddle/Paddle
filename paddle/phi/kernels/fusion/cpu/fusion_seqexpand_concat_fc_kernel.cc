@@ -14,10 +14,10 @@
 
 #include <string>
 
+#include "paddle/common/errors.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
@@ -124,7 +124,7 @@ void FusionSeqExpandConcatFCKernel(const Context& dev_ctx,
      ref_in_data,
      w_data,
      out_data,
-     fc_bias ? fc_bias->data<T>() : NULL);
+     fc_bias ? fc_bias->data<T>() : nullptr);
   w_data = w_data + M0 * D;
   // first write on
   blas.MatMul(N, D, M1, in1_data, w_data, fc_out_data);

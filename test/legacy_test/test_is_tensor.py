@@ -15,6 +15,7 @@
 import unittest
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 DELTA = 0.00001
 
@@ -49,10 +50,12 @@ class TestIsTensorStatic(unittest.TestCase):
     def tearDown(self):
         paddle.disable_static()
 
+    @test_with_pir_api
     def test_is_tensor(self):
         x = paddle.rand([3, 2, 4], dtype='float32')
         self.assertTrue(paddle.is_tensor(x))
 
+    @test_with_pir_api
     def test_is_tensor_array(self):
         x = paddle.tensor.create_array('float32')
         self.assertTrue(paddle.is_tensor(x))

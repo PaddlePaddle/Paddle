@@ -26,7 +26,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using phi::vectorize;
+using common::vectorize;
 using phi::funcs::OneDNNGetDataType;
 using phi::funcs::OneDNNMemDesc;
 using Direction = dnnl::rnn_direction;
