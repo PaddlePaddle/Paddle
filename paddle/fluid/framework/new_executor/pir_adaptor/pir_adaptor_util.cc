@@ -415,16 +415,18 @@ void HandleForSpecialOp(pir::Operation* op,
     Variable* var = value_exe_info->GetScope()->FindVar(name);
     if (var == nullptr) {
       var = value_exe_info->GetScope()->Var(name);
-      auto* t = var->GetMutable<phi::DenseTensor>();
-      auto data_op = op->dyn_cast<paddle::dialect::DataOp>();
-      PADDLE_ENFORCE(data_op,
-                     paddle::platform::errors::InvalidArgument(
-                         "The op %s shoud be data op", data_op));
-      auto shape = data_op.attribute<dialect::IntArrayAttribute>("shape");
-      auto dtype = data_op.attribute<dialect::DataTypeAttribute>("dtype");
-      phi::DenseTensorMeta meta(dtype.data(),
-                                phi::make_ddim(shape.data().GetData()));
-      t->set_meta(meta);
+      if (op->isa<paddle::dialect::DataOp>()) {
+        auto* t = var->GetMutable<phi::DenseTensor>();
+        auto data_op = op->dyn_cast<paddle::dialect::DataOp>();
+        PADDLE_ENFORCE(data_op,
+                       paddle::platform::errors::InvalidArgument(
+                           "The op %s shoud be data op", data_op));
+        auto shape = data_op.attribute<dialect::IntArrayAttribute>("shape");
+        auto dtype = data_op.attribute<dialect::DataTypeAttribute>("dtype");
+        phi::DenseTensorMeta meta(dtype.data(),
+                                  phi::make_ddim(shape.data().GetData()));
+        t->set_meta(meta);
+      }
     }
     PADDLE_ENFORCE(var,
                    paddle::platform::errors::InvalidArgument(
