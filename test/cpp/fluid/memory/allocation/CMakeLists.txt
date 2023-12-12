@@ -1,7 +1,7 @@
 include(ExternalProject)
 
-paddle_test(naive_best_fit_allocator_test SRCS naive_best_fit_allocator_test.cc)
-paddle_test(buffered_allocator_test SRCS buffered_allocator_test.cc)
+cc_test(naive_best_fit_allocator_test SRCS naive_best_fit_allocator_test.cc DEPS allocator)
+cc_test(buffered_allocator_test SRCS buffered_allocator_test.cc DEPS allocator)
 
 if(WITH_GPU)
   nv_test(
@@ -27,7 +27,7 @@ elseif(WITH_ROCM)
     SRCS best_fit_allocator_test.cc best_fit_allocator_test.cu
     DEPS allocator memcpy)
 else()
-  paddle_test(best_fit_allocator_test SRCS best_fit_allocator_test.cc)
+  cc_test(best_fit_allocator_test SRCS best_fit_allocator_test.cc DEPS allocator)
 endif()
 
 cc_test(
@@ -35,7 +35,7 @@ cc_test(
   SRCS test_aligned_allocator.cc
   DEPS allocator)
 
-paddle_test(retry_allocator_test SRCS retry_allocator_test.cc)
+cc_test(retry_allocator_test SRCS retry_allocator_test.cc DEPS allocator)
 if(TEST retry_allocator_test)
   set_tests_properties(retry_allocator_test PROPERTIES LABELS
                                                        "RUN_TYPE=EXCLUSIVE")
