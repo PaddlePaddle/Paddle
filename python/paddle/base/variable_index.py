@@ -89,33 +89,11 @@ def is_integer_or_scalar_tensor(ele):
     if type(ele) is int:
         return True
     elif isinstance(ele, Variable):
-        # NOTE(zoooo0820): For compatibility, if FLAGS_set_to_1d is set to True,
-        # 1-D tensor is still treated as a scalar, which means basic indexing.
-        # This will be removed in future.
-        if paddle.get_flags('FLAGS_set_to_1d')['FLAGS_set_to_1d']:
-            if len(ele.shape) == 1 and ele.shape[0] == 1:
-                warnings.warn(
-                    "1-D Tensor will be treat as advanced indexing in future version. Currently, 1-D Tensor means a scalar, not vector, and please modify it to 0-D Tensor. If advanced indexing is needed, please use `export FLAGS_set_to_1d=False` to set the flag."
-                )
-                return True
         if len(ele.shape) == 0 and ele.dtype != paddle.bool:
             return True
     elif isinstance(ele, paddle.pir.OpResult):
         if len(ele.shape) == 0 and ele.dtype != paddle.base.libpaddle.BOOL:
             return True
-    return False
-
-
-def is_bool_tensor(ele):
-    from .framework import Variable
-
-    if isinstance(ele, Variable) and ele.dtype == paddle.bool:
-        return True
-    elif (
-        isinstance(ele, paddle.pir.OpResult)
-        and ele.dtype == paddle.base.libpaddle.BOOL
-    ):
-        return True
     return False
 
 
@@ -416,7 +394,7 @@ def _setitem_static(x, indices, values):
         values(Tensor|Number|Ndarray): values to be assigned to the x.
     """
     from . import in_dynamic_or_pir_mode
-    from .framework import Variable, default_main_program
+    from .framework import Variable, default_main_program, in_pir_mode
 
     if x.type == paddle.base.core.VarDesc.VarType.LOD_TENSOR_ARRAY:
         return _setitem_for_tensor_array(x, indices, values)
@@ -493,6 +471,17 @@ def _setitem_static(x, indices, values):
 
         # step3.1: Only basic indexing, use OP set_value to set value.
         if in_dynamic_or_pir_mode():
+            if in_pir_mode():
+                if isinstance(starts, (list, tuple)):
+                    if paddle.utils._contain_var(starts):
+                        starts = paddle.utils.get_int_tensor_list(starts)
+                if isinstance(ends, (list, tuple)):
+                    if paddle.utils._contain_var(ends):
+                        ends = paddle.utils.get_int_tensor_list(ends)
+                if isinstance(steps, (list, tuple)):
+                    if paddle.utils._contain_var(steps):
+                        ends = paddle.utils.get_int_tensor_list(steps)
+
             if value_tensor is None:
                 return paddle._C_ops.set_value_(
                     x,
@@ -587,8 +576,27 @@ def _setitem_static(x, indices, values):
         inputs["ValueTensor"] = transback_sub_tensor
 
         if in_dynamic_or_pir_mode():
-            x._bump_inplace_version()
-            output = x
+            if in_pir_mode():
+                if isinstance(starts, (list, tuple)):
+                    if paddle.utils._contain_var(starts):
+                        starts = paddle.utils.get_int_tensor_list(starts)
+                if isinstance(ends, (list, tuple)):
+                    if paddle.utils._contain_var(ends):
+                        ends = paddle.utils.get_int_tensor_list(ends)
+                if isinstance(steps, (list, tuple)):
+                    if paddle.utils._contain_var(steps):
+                        ends = paddle.utils.get_int_tensor_list(steps)
+            output = paddle._C_ops.set_value_with_tensor_(
+                x,
+                transback_sub_tensor,
+                starts,
+                ends,
+                steps,
+                axes,
+                decrease_axes,
+                none_axes,
+            )
+
         else:
             helper = paddle.base.layer_helper.LayerHelper(
                 'set_value', **locals()
@@ -602,16 +610,15 @@ def _setitem_static(x, indices, values):
                 output = helper.create_variable_for_type_inference(
                     dtype=x.dtype
                 )
-        cur_block = default_main_program().current_block()
-        cur_block.append_op(
-            type="set_value",
-            inputs=inputs,
-            outputs={'Out': output},
-            attrs=attrs,
-            inplace_map={"Input": "Out"},
-        )
+            cur_block = default_main_program().current_block()
+            cur_block.append_op(
+                type="set_value",
+                inputs=inputs,
+                outputs={'Out': output},
+                attrs=attrs,
+                inplace_map={"Input": "Out"},
+            )
 
-        if not in_dynamic_or_pir_mode():
             # map var to the new output
             paddle.jit.api.ProgramTranslator.get_instance()._inplace_map.add(
                 cur_block.program, x.desc.id(), output
@@ -810,7 +817,10 @@ def parse_bool_and_broadcast_indices(indices):
     # deal with multiple Tensors and translating bool tensor to int tensor.
     # In static mode, bool-tensor cannot be broadcasted since its corressponding int tensor's shape cannot be infered.
     for i, indice in enumerate(indices):
-        if indice.dtype == paddle.bool:
+        if (
+            indice.dtype == paddle.bool
+            or indice.dtype == paddle.base.libpaddle.BOOL
+        ):
             indices[i] = paddle.nonzero(indice)[:, 0]
     if len(indices) > 1:
         indices = paddle.broadcast_tensors(indices)
