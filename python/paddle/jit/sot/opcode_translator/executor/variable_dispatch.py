@@ -51,6 +51,7 @@ from .variables import (
     TupleVariable,
     VariableBase,
     VariableFactory,
+    ZipVariable,
 )
 
 if TYPE_CHECKING:
@@ -499,6 +500,14 @@ Dispatcher.register(
     ),
 )
 
+# zip
+Dispatcher.register(
+    zip,
+    ("VariableBase",),
+    lambda *var: ZipVariable.from_iterator(
+        var, graph=var.graph, tracker=DummyTracker(list(var))
+    ),
+)
 
 # map
 Dispatcher.register(
@@ -769,6 +778,20 @@ def is_not_func(var: VariableBase, other: VariableBase):
         )
     return handler(var, other).bool_not()
 
+
+# is None
+Dispatcher.register(
+    operator_is_none,
+    ("TensorVariable",),
+    lambda var: False,
+)
+
+# is not None
+Dispatcher.register(
+    operator_is_not_none,
+    ("TensorVariable",),
+    lambda var: True,
+)
 
 # is None
 Dispatcher.register(

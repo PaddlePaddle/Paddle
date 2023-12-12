@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING, Any
 from ....utils import BreakGraphError, FallbackError
 from ..pycode_generator import PyCodeGen
 from ..tracker import ConstTracker, DummyTracker
-from .base import VariableBase
+from .base import VariableBase, VariableFactory
 from .basic import ConstantVariable
 from .container import ContainerVariable, TupleVariable
 
@@ -48,14 +48,17 @@ class IterVariable(VariableBase):
     def get_iter(self):
         return self
 
-    def get_hold(self):
-        return self.hold
-
 
 class SequenceIterVariable(IterVariable):
     """
     The basic SequenceIterVariable wraps iterators which can be simulated by call getitem
     Currently includes: List | Tuple | Dict (keys) | Range | Tensor | nn.LayerList
+
+    these interfaces is needed:
+    - next
+    - to_list
+    - has_side_effect
+    - _reconstruct
     """
 
     mutable_attrs = ["idx"]
@@ -86,18 +89,18 @@ class SequenceIterVariable(IterVariable):
     def has_side_effect(self) -> bool:
         return self.idx != 0
 
-    @property
-    def main_info(self) -> dict[str, Any]:
-        return {
-            "idx": self.idx,
-        }
-
     def _reconstruct(self, codegen: PyCodeGen):
         if self.has_side_effect():
             super()._reconstruct(codegen)
         else:
             self.hold.reconstruct(codegen)
             codegen.gen_get_iter()
+
+    @property
+    def main_info(self) -> dict[str, Any]:
+        return {
+            "idx": self.idx,
+        }
 
 
 class EnumerateVariable(SequenceIterVariable):
@@ -111,7 +114,6 @@ class EnumerateVariable(SequenceIterVariable):
     def next(self):
         val = self.hold.next()
         idx_var = ConstantVariable(self.idx, self.graph, ConstTracker(self.idx))
-        self.idx += 1
         return TupleVariable(
             (idx_var, val), self.graph, DummyTracker([idx_var, val])
         )
@@ -125,7 +127,7 @@ class EnumerateVariable(SequenceIterVariable):
         return list(zip(idx, values))
 
     def has_side_effect(self) -> bool:
-        return self.hold.has_side_effect() or self.idx != 0
+        return self.hold.has_side_effect()
 
     def _reconstruct(self, codegen: PyCodeGen):
         if self.has_side_effect():
@@ -135,9 +137,6 @@ class EnumerateVariable(SequenceIterVariable):
             self.hold.reconstruct(codegen)
             codegen.gen_call_function(1)
 
-    def get_hold(self):
-        return self.hold.get_hold()
-
     @staticmethod
     def from_iterator(value, graph: FunctionGraph | None, tracker: Tracker):
         iter_variable = value.get_iter()
@@ -145,6 +144,64 @@ class EnumerateVariable(SequenceIterVariable):
             return EnumerateVariable(iter_variable, graph, tracker)
         else:
             return UserDefinedIterVariable(value, graph, tracker)
+
+
+class ZipVariable(SequenceIterVariable):
+    """
+    ZipVariable holds a list of SequenceIterVariable
+    """
+
+    def __init__(self, iters, graph, tracker):
+        super().__init__(iters, graph, tracker)
+
+    def next(self):
+        values = tuple(iter_var.next() for iter_var in self.holds)
+        return VariableFactory.from_value(
+            values, self.graph, DummyTracker(list(values))
+        )
+
+    def to_list(self):
+        lists = [iter_vars.to_list() for iter_vars in self.hold]
+        result = []
+        idx = 0
+        while True:
+            item = []
+            for l in lists:
+                if idx < len(l):
+                    item.append(l[idx])
+                else:
+                    break
+            if len(item) != len(lists):
+                break
+            result.append(tuple(item))
+        return result
+
+    def has_side_effect(self) -> bool:
+        return any(iter_var.has_side_effect() for iter_var in self.hold)
+
+    def _reconstruct(self, codegen: PyCodeGen):
+        if self.has_side_effect():
+            super()._reconstruct(codegen)
+        else:
+            codegen.gen_load_global("zip", push_null=True)
+            for iter_var in self.hold:
+                iter_var.reconstruct(codegen)
+            codegen.gen_call_function(len(self.hold))
+
+    @staticmethod
+    def from_iterator(
+        value: list[VariableBase], graph: FunctionGraph | None, tracker: Tracker
+    ):
+        assert isinstance(value, list)
+        zip_targets = []
+
+        for variable in value:
+            iter_variable = variable.get_iter()
+            if not isinstance(iter_variable, SequenceIterVariable):
+                return UserDefinedIterVariable(value, graph, tracker)
+            zip_targets.append(iter_variable)
+
+        return ZipVariable(value, graph, tracker)
 
 
 class MapVariable(SequenceIterVariable):
