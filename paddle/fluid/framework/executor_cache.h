@@ -191,10 +191,20 @@ class InterpreterCoreInfoCache {
  public:
   static InterpreterCoreInfoCache& Instance();
 
-  bool Has(int64_t program_id, const framework::Scope* scope, bool is_grad) {
+  int64_4 hash_with_seed(int64_t program_id, int64_t seed) {
+    return program_id + 0x9e3779b9 + (program_id << 6) + (seed >> 2);
+  }
+
+  bool Has(int64_t program_id,
+           const framework::Scope* scope,
+           const std::vector<int64_t>& seeds,
+           bool is_grad) {
     if (FLAGS_enable_pir_in_executor || FLAGS_enable_pir_with_pt_in_dy2st) {
-      int64_t scope_i = reinterpret_cast<std::uintptr_t>(scope);
-      program_id += 0x9e3779b9 + (program_id << 6) + (scope_i >> 2);
+      int64_t scope_i = reinterpret_cast<int64_t>(scope);
+      program_id = hash_with_seed(program_id, scope_i);
+      for (int64_t seed : seeds) {
+        program_id = hash_with_seed(program_id, seed);
+      }
     }
     return info_map_.find(program_id) != info_map_.end() &&
            info_map_[program_id].IsAvailable(is_grad);
