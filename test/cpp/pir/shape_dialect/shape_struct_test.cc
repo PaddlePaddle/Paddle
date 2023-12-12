@@ -177,7 +177,7 @@ TEST(shape_struct_test, symbolic_dim_mgr_complex) {
   pir::OpResult res = op->result(0);
   pir::OpResult res_ = op_->result(0);
 
-  builder.SetInsertionPointToEnd(program.block());
+  builder.SetInsertionPointToBlockEnd(program.block());
   pir::shape::TieShapeOp tie_shape_op1 =
       builder.Build<pir::shape::TieShapeOp>(res);
   pir::shape::TieShapeOp tie_shape_op2 =
@@ -358,7 +358,7 @@ TEST(shape_struct_test, shape_analysis) {
   pir::shape::TieShapeOp tie_shape_op5 =
       builder.Build<pir::shape::TieShapeOp>(value5);
 
-  builder.SetInsertionPointToEnd(func_op.block());
+  builder.SetInsertionPointToBlockEnd(func_op.block());
   builder.Build<pir::shape::SymbolicDimOp>("C2", 2, true, false, true, true);
   pir::shape::SymbolicDimOp sym_dim_s0 =
       builder.Build<pir::shape::SymbolicDimOp>(
@@ -458,7 +458,7 @@ TEST(shape_struct_test, shape_analysis_manager) {
   pir::shape::TieShapeOp tie_shape_op5 =
       builder.Build<pir::shape::TieShapeOp>(value5);
 
-  builder.SetInsertionPointToEnd(func_op.block());
+  builder.SetInsertionPointToBlockEnd(func_op.block());
   builder.Build<pir::shape::SymbolicDimOp>("C2", 2, true, false, true, true);
   pir::shape::SymbolicDimOp sym_dim_s0 =
       builder.Build<pir::shape::SymbolicDimOp>(
