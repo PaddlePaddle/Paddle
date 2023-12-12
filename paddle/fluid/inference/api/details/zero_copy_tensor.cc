@@ -915,8 +915,11 @@ void InternalUtils::CopyToCpuWithIoStream(paddle_infer::Tensor *t,
       out.ResetHolder(mem_allocation);
       phi::funcs::TransDataLayoutFromOneDNN(
           tensor->layout(),
-          phi::funcs::GetPaddleLayoutFromOneDNNMemDesc(tensor->mem_desc());
-          , *tensor, &out, paddle::platform::CPUPlace(), true);
+          phi::funcs::GetPaddleLayoutFromOneDNNMemDesc(tensor->mem_desc()),
+          *tensor,
+          &out,
+          paddle::platform::CPUPlace(),
+          true);
     } else {
       std::memcpy(static_cast<void *>(data), t_data, ele_num * sizeof(T));
     }
