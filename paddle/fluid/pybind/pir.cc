@@ -23,8 +23,6 @@
 #include <utility>
 
 #include "paddle/fluid/framework/ir/pass.h"
-#include "paddle/fluid/pybind/pybind_variant_caster.h"
-
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
@@ -46,6 +44,8 @@
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
 #include "paddle/fluid/pybind/control_flow_api.h"
+#include "paddle/fluid/pybind/eager_utils.h"
+#include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/block.h"
@@ -535,6 +535,33 @@ const phi::DDim &GetValueDims(Value value) {
   }
 }
 
+pir::OpResult apply(Value self, py::object func) {
+  py::gil_scoped_acquire gil;
+  PyObject *py_func = func.release().ptr();
+  Py_INCREF(py_func);
+  PyObject *res = nullptr;
+  try {
+    py::object obj = py::cast(self);
+    PyObject *tmp_self = obj.release().ptr();
+    Py_INCREF(tmp_self);
+    res = PyObject_CallFunctionObjArgs(py_func, tmp_self, nullptr);
+    Py_DECREF(tmp_self);
+  } catch (std::exception &e) {
+    PADDLE_THROW(phi::errors::Unavailable(
+        "Hook function of Tensor raises an exception: %s.", e.what()));
+  } catch (...) {
+    PADDLE_THROW(phi::errors::Fatal(
+        "Hook function of Tensor raises an unknown exception."));
+  }
+  if (res == Py_None) {
+    return self.dyn_cast<OpResult>();
+  }
+  auto out = CastPyArg2Value(res, "", 0);
+  Py_DECREF(py_func);
+  Py_DECREF(res);
+  return out.dyn_cast<OpResult>();
+}
+
 #define OVERRIDE_OPERATOR(operator, api, other_type)      \
   value.def(#operator, [](Value self, other_type other) { \
     return paddle::dialect::api(self, other);             \
@@ -692,7 +719,8 @@ void BindValue(py::module *m) {
       .def("__eq__", &Value::operator==)
       .def("__hash__", [](Value self) { return std::hash<pir::Value>{}(self); })
       .def("__str__", &Value2String)
-      .def("__repr__", &Value2String);
+      .def("__repr__", &Value2String)
+      .def("apply", &apply);
   // For basaic operators
   OVERRIDE_OPERATOR_FOR_EACH(__add__, add, 1.0, other, true);
   OVERRIDE_OPERATOR_FOR_EACH(__sub__, subtract, 1.0, -1.0 * other, true);
