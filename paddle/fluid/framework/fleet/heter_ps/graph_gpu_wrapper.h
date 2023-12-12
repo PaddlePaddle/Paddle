@@ -22,10 +22,12 @@
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_node.h"
 
 #ifdef PADDLE_WITH_HETERPS
+#if defined(__NVCC__) || defined(__HIPCC__)
 #include <thrust/device_ptr.h>
 #include <thrust/execution_policy.h>
 #include <thrust/random.h>
 #include <thrust/shuffle.h>
+#endif
 #include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/dynload/nccl.h"

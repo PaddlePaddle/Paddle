@@ -187,10 +187,14 @@ class NodeVarType:
 
 def set_dynamic_shape(variable, shape_list):
     if paddle.base.dygraph.base.in_to_static_mode():
-        assert isinstance(
-            variable, paddle.base.framework.Variable
-        ), "In to_static mode, variable must be a Variable."
-        variable.desc.set_shape(shape_list)
+        if isinstance(variable, paddle.base.framework.Variable):
+            variable.desc.set_shape(shape_list)
+        elif isinstance(variable, paddle.pir.Value):
+            variable.set_shape(shape_list)
+        else:
+            raise TypeError(
+                "In to_static mode, variable must be a Variable or Value"
+            )
     else:
         # in dygraph mode, dynamic shape is not needed, just do nothing.
         return
