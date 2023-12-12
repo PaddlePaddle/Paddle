@@ -42,6 +42,24 @@ class TransposeOpMaker : public framework::OpProtoAndCheckerMaker {
         "(vector<int>) A list of values, and the size of the list should be "
         "the same with the input tensor rank. This operator permutes the input "
         "tensor's axes according to the values given.");
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false)
+        .AsExtra();
+    AddAttr<std::string>(
+        "data_format",
+        "(string, default NCHW) Only used in "
+        "An optional string from: \"NHWC\", \"NCHW\". "
+        "Defaults to \"NHWC\". Specify the data format of the output data, "
+        "the input will be transformed automatically. ")
+        .SetDefault("AnyLayout")
+        .AsExtra();
+    AddAttr<std::string>(
+        "mkldnn_data_type",
+        "(string, default \"float32\"). Data type of mkldnn kernel")
+        .SetDefault("float32")
+        .InEnum({"float32", "int8", "bfloat16"})
+        .AsExtra();
     AddComment(R"DOC(
 Transpose Operator.
 
