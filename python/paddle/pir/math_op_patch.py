@@ -641,8 +641,9 @@ def monkey_patch_value():
                 setattr(Value, magic_method, impl)
 
         # Handling __getitem__
-        from ..base.variable_index import _getitem_static
+        from ..base.variable_index import _getitem_static, _setitem_static
 
         Value.__getitem__ = _getitem_static
+        Value.__setitem__ = _setitem_static
 
         _already_patch_value = True

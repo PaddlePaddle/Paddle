@@ -16,7 +16,12 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_ast_only,
+    test_pir_only,
+    test_sot_only,
+)
 
 import paddle
 import paddle.nn.functional as F
@@ -40,6 +45,8 @@ class TestSetItemBase(Dy2StTestBase):
 
         return foo
 
+    @test_ast_only
+    @test_pir_only
     def test_case(self):
         func = self.init_func()
         dy_res = self.run_dygraph(func)
@@ -161,6 +168,16 @@ class TestCase10(TestSetItemBase):
 
         return foo
 
+    # TODO : Open test in pir
+    # Now, In ast mode the grad is wrong. In sot mode will raise run_program error
+    def test_case(self):
+        func = self.init_func()
+        dy_res = self.run_dygraph(func)
+        st_res = self.run_to_static(func)
+
+        for dy_out, st_out in zip(dy_res, st_res):
+            np.testing.assert_allclose(dy_out.numpy(), st_out.numpy())
+
 
 class TestCase11(TestSetItemBase):
     # Test gradient of value tensor
@@ -180,6 +197,17 @@ class TestCase11(TestSetItemBase):
         x_grad, value_grad = paddle.grad(y, [x, value])
         return y, x_grad, value_grad
 
+    # TODO : Open test in ast since when grad in ast_mode is fixed.
+    @test_sot_only
+    @test_pir_only
+    def test_case(self):
+        func = self.init_func()
+        dy_res = self.run_dygraph(func)
+        st_res = self.run_to_static(func)
+
+        for dy_out, st_out in zip(dy_res, st_res):
+            np.testing.assert_allclose(dy_out.numpy(), st_out.numpy())
+
 
 class TestCase12(TestSetItemBase):
     # Test gradient of value tensor
@@ -197,6 +225,16 @@ class TestCase12(TestSetItemBase):
     def run_dygraph(self, func):
         y = func()
         return (y,)
+
+    # TODO: Open PIR test when while_loop dy2st fixed
+    @test_ast_only
+    def test_case(self):
+        func = self.init_func()
+        dy_res = self.run_dygraph(func)
+        st_res = self.run_to_static(func)
+
+        for dy_out, st_out in zip(dy_res, st_res):
+            np.testing.assert_allclose(dy_out.numpy(), st_out.numpy())
 
 
 class TestCase13(TestSetItemBase):
