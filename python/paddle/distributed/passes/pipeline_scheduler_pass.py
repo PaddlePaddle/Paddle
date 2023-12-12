@@ -488,11 +488,6 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
             self._forward_micro_step_counter[i] = 0
             self._backward_micro_step_counter[i] = 0
 
-        print("stage_id:", stage_id)
-        print("num_stages:", num_stages)
-        print("num_model_chunks:", num_model_chunks)
-        print("accumulate_steps:", accumulate_steps)
-
         assert accumulate_steps % num_stages == 0
 
         def _get_virtual_pp_rank(micro_step, forward):
@@ -510,9 +505,7 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
             warmup_steps += (num_model_chunks - 1) * num_stages
             warmup_steps = min(warmup_steps, total_num_steps)
 
-        print("warmup_steps:", warmup_steps)
         steady_steps = total_num_steps - warmup_steps
-        print("steady_steps:", steady_steps)
 
         job_list = []
         for micro_step in range(warmup_steps):

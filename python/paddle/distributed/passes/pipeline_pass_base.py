@@ -64,8 +64,6 @@ class PipelinePassBase(PassBase):
             )
         jobs = self._create_job_list()
 
-        print("schedules:", [job.type() for job in jobs])
-
         type_to_program = set_skip_gc_vars(
             self.get_attr("num_micro_batches"), job_types, sub_programs, jobs
         )

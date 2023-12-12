@@ -28,7 +28,6 @@ from paddle.distributed.auto_parallel.static.utils import (
     is_loss_grad_op,
     is_loss_op,
     is_optimize_op,
-    print_program_with_dist_attr,
     use_new_executor,
 )
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
@@ -653,22 +652,12 @@ def _program_for_fthenb_and_1f1b(program, enable_send_recv_overlap=False):
     bwd_prog._rollback()
     opt_prog._rollback()
 
-    print("fwd_prog:", fwd_prog)
-    print("bwd_prog:", bwd_prog)
-    print("opt_prog:", opt_prog)
-
     # It MUST return in this order
     return [fwd_prog, bwd_prog, opt_prog]
 
 
 def _program_for_vpp(program, num_model_chunks, dist_context):
-    # print("before _insert_sync_for_fthenb_1f1b")
-    # print_program_with_dist_attr(program, dist_context)
-
     _insert_sync_for_fthenb_1f1b(program, dist_context)
-
-    print("before split program:")
-    print_program_with_dist_attr(program, dist_context)
 
     oprole_type = {0: "forward", 1: "backward", 2: "optimizer"}
 
@@ -720,8 +709,7 @@ def _program_for_vpp(program, num_model_chunks, dist_context):
             ):
                 type_to_ops[type + str(dist_op.dist_attr.chunk_id)].append(op)
             else:
-                print(op)
-                raise ValueError("")
+                raise ValueError(f"There is not dist_attr for op[{op.type}].")
 
         return type_to_ops
 
@@ -764,11 +752,6 @@ def _program_for_vpp(program, num_model_chunks, dist_context):
     for prog in type_to_program.values():
         prog._sync_with_cpp()
         prog._rollback()
-
-    print("after split program:")
-    for type, prog in type_to_program.items():
-        print("type:", type)
-        print("prog:", prog)
 
     return list(type_to_program.keys()), list(type_to_program.values())
 
