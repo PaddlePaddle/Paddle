@@ -87,7 +87,7 @@ PyObject *static_api_full(PyObject *self, PyObject *args, PyObject *kwargs) {
         !PyObject_CheckIRVectorOfOpResult(shape_obj) &&
         !PyObject_CheckIROpResult(value_obj)) {
       std::vector<int64_t> shape = CastPyArg2Longs(shape_obj, "full", 0);
-      float value = CastPyArg2Float(value_obj, "full", 1);
+      auto value = CastPyArg2Scalar(value_obj, "full", 1);
       auto static_api_out = paddle::dialect::full(shape, value, dtype, place);
       return ToPyObject(static_api_out);
     } else {
@@ -108,11 +108,10 @@ PyObject *static_api_full(PyObject *self, PyObject *args, PyObject *kwargs) {
       if (PyObject_CheckIROpResult(value_obj)) {
         value = CastPyArg2Value(value_obj, "full", 1);
       } else {
-        float value_tmp = CastPyArg2Float(value_obj, "full", 1);
-        value = paddle::dialect::full(std::vector<int64_t>{1},
-                                      value_tmp,
-                                      phi::DataType::FLOAT32,
-                                      phi::CPUPlace());
+        auto value_tmp = CastPyArg2Scalar(value_obj, "full", 1);
+
+        value = paddle::dialect::full(
+            std::vector<int64_t>{1}, value_tmp, dtype, phi::CPUPlace());
       }
 
       auto static_api_out =

@@ -192,6 +192,7 @@ TYPE_TO_FUNC_MAP = {
     "std::vector<double>": "CastPyArg2Float64s",
     "std::vector<std::string>": "CastPyArg2Strings",
     "paddle::experimental::Scalar": "CastPyArg2Scalar",
+    "phi::Scalar": "CastPyArg2Scalar",
     "std::vector<phi::Scalar>": "CastPyArg2ScalarArray",
     "paddle::experimental::IntArray": "CastPyArg2IntArray",
     "paddle::Place": "CastPyArg2Place",

@@ -467,7 +467,7 @@
   backward : frobenius_norm_grad
 
 - op : full
-  args : (IntArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
+  args : (IntArray shape, Scalar(Scalar) value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
   output: Tensor(out)
   infer_meta :
     func : CreateInferMeta

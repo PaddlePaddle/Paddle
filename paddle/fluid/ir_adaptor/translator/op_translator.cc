@@ -1716,11 +1716,11 @@ struct FillConstant2FullTranscriber : public OpTranscriber {
       const OpDesc& op_desc) override {
     auto& attribute_translator = AttributeTranslator::instance();
     paddle::framework::Attribute shape_attr = op_desc.GetAttr("shape");
-    float value = PADDLE_GET_CONST(float, op_desc.GetAttr("value"));
+    auto value = PADDLE_GET_CONST(paddle::experimental::Scalar,
+                                  op_desc.GetAttr("value"));
     int dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
 
-    auto attr_value = pir::FloatAttribute::get(ctx, value);
-
+    auto attr_value = paddle::dialect::ScalarAttribute::get(ctx, value);
     pir::AttributeMap attribute_map = {
         {"shape",
          attribute_translator("paddle::dialect::IntArrayAttribute",

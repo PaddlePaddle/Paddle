@@ -21,6 +21,7 @@ namespace pb {
 const std::unordered_map<std::string, uint32_t>& GetLegacyOpVersions() {
   static std::unordered_map<std::string, uint32_t> op_versions = {
       {"not_equal", 1},
+      {"fill_any_like", 0},
       {"fake_channel_wise_dequantize_max_abs", 2},
       {"yolo_box", 1},
       {"data_norm", 1},

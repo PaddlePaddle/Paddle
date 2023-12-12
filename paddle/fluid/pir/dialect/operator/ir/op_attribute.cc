@@ -43,6 +43,10 @@ phi::Scalar ScalarAttribute::data() {
     return phi::Scalar(dyn_cast<pir::BoolAttribute>().data());
   } else if (isa<pir::StrAttribute>()) {
     return phi::Scalar(dyn_cast<pir::StrAttribute>().AsString());
+  } else if (isa<pir::Complex64Attribute>()) {
+    return phi::Scalar(dyn_cast<pir::Complex64Attribute>().data());
+  } else if (isa<pir::Complex128Attribute>()) {
+    return phi::Scalar(dyn_cast<pir::Complex128Attribute>().data());
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupported ir attribute when casting it into "
