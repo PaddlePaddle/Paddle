@@ -39,6 +39,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/fused_dot_product_attention_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_dropout_add_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_linear_param_grad_add_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_weight_only_linear_pass.h"
@@ -105,6 +106,7 @@ USE_PIR_PASS(replace_fetch_with_shadow_output_pass);
 USE_PIR_PASS(conv2d_bn_fuse_pass);
 USE_PIR_PASS(conv2d_add_fuse_pass);
 USE_PIR_PASS(conv2d_add_act_fuse_pass);
+USE_PIR_PASS(fused_dot_product_attention_pass);
 
 PHI_DECLARE_bool(print_ir);
 
@@ -314,13 +316,14 @@ void BindBlock(py::module *m) {
       .def(
           "__enter__",
           [](Block &self) -> Block & {
-            ApiBuilder::Instance().PushInsertionPoint({&self, self.end()});
+            ApiBuilder::Instance().PushInsertionPoint();
+            ApiBuilder::Instance().SetInsertionPointToBlockEnd(&self);
             return self;
           },
           return_value_policy::reference)
       .def("__exit__",
            [](Block &self, py::object, py::object, py::object) {
-             ApiBuilder::Instance().PopInsertionPoint();
+             ApiBuilder::Instance().LoadInsertionPoint();
            })
       .def("__len__", [](Block &self) { return self.size(); })
       .def("args", &Block::args, return_value_policy::reference)
@@ -744,6 +747,7 @@ void BindValue(py::module *m) {
              return paddle::dialect::scale(self, -1.0, 0.0, true);
            })
       .def("is_same", &Value::operator==)
+      .def("hash", [](Value self) { return std::hash<pir::Value>{}(self); })
       .def("__repr__", &Value2String);
   // For basaic operators
   OVERRIDE_OPERATOR_FOR_EACH(__add__, add, 1.0, other, true);
@@ -807,6 +811,34 @@ void BindType(py::module *m) {
         print_stream << self;
         return print_stream.str();
       });
+
+  m->def("create_shaped_type",
+         [](Type &type, const std::vector<int> &shape) -> Type {
+           if (type.isa<DenseTensorType>()) {
+             DenseTensorType src_type = type.dyn_cast<DenseTensorType>();
+             DenseTensorType dst_type =
+                 DenseTensorType::get(pir::IrContext::Instance(),
+                                      src_type.dtype(),
+                                      phi::make_ddim(shape),
+                                      src_type.data_layout(),
+                                      src_type.lod(),
+                                      src_type.offset());
+             return dst_type;
+           } else if (type.isa<SelectedRowsType>()) {
+             SelectedRowsType src_type = type.dyn_cast<SelectedRowsType>();
+             SelectedRowsType dst_type =
+                 SelectedRowsType::get(pir::IrContext::Instance(),
+                                       src_type.dtype(),
+                                       phi::make_ddim(shape),
+                                       src_type.data_layout(),
+                                       src_type.lod(),
+                                       src_type.offset());
+             return dst_type;
+           } else {
+             PADDLE_THROW(phi::errors::InvalidArgument(
+                 "Currently, we can only set shape for dense tensor"));
+           }
+         });
 }
 
 void BindAttribute(py::module *m) {
@@ -816,6 +848,14 @@ void BindAttribute(py::module *m) {
     print_stream << self;
     return print_stream.str();
   });
+}
+
+struct PyInsertionPoint {
+  pir::InsertionPoint value;
+};
+void BindInsertionPoint(pybind11::module *m) {
+  py::class_<PyInsertionPoint> ir_insertion_point(*m, "InsertionPoint", R"DOC(
+    InsertionPoint class represents the insertion point in the Builder.)DOC");
 }
 
 Operation *BuildOpFrom(
@@ -1317,17 +1357,17 @@ void BindUtils(pybind11::module *m) {
   m->def("append_set_parameters", AppendSetParameters);
   m->def("fake_op_result", FakeOpResult);
   m->def("is_fake_op_result", IsFakeOpResult);
-  m->def("set_global_program",
-         [](Program *program) { ApiBuilder::Instance().SetProgram(program); });
-  m->def(
-      "cur_insertion_point",
-      []() { return ApiBuilder::Instance().insertion_point(); },
-      return_value_policy::reference);
-  m->def("set_insertion_point", [](const pir::InsertionPoint &insertion_point) {
-    ApiBuilder::Instance().set_insertion_point(insertion_point);
+  m->def("get_current_insertion_point", []() -> PyInsertionPoint {
+    return {ApiBuilder::Instance().GetCurrentInsertionPoint()};
+  });
+  m->def("set_insertion_point", [](const PyInsertionPoint &insertion_point) {
+    ApiBuilder::Instance().SetInsertionPoint(insertion_point.value);
   });
   m->def("set_insertion_point",
-         [](Operation *op) { ApiBuilder::Instance().set_insertion_point(op); });
+         [](Operation *op) { ApiBuilder::Instance().SetInsertionPoint(op); });
+  m->def("set_insertion_point_to_block_end", [](Block *block) {
+    ApiBuilder::Instance().SetInsertionPointToBlockEnd(block);
+  });
   m->def("reset_insertion_point_to_start",
          []() { ApiBuilder::Instance().ResetInsertionPointToStart(); });
   m->def("reset_insertion_point_to_end",
@@ -1335,7 +1375,6 @@ void BindUtils(pybind11::module *m) {
   m->def("register_paddle_dialect", []() {
     pir::IrContext::Instance()
         ->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-    pir::IrContext::Instance()->GetOrRegisterDialect<pir::ControlFlowDialect>();
   });
   m->def("create_selected_rows_type_by_dense_tensor",
          CreateSelectedRowsTypeByDenseTensor);
@@ -1592,6 +1631,7 @@ void BindPir(pybind11::module *module) {
   BindOpResult(&ir_module);
   BindType(&ir_module);
   BindAttribute(&ir_module);
+  BindInsertionPoint(&ir_module);
   BindUtils(&ir_module);
   BindIrPass(&ir_module);
   BindPassManager(&ir_module);
