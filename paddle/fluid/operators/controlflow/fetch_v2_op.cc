@@ -45,7 +45,8 @@ static void DeepCopy(const phi::DenseTensor &src_item,
           src_item.layout(),
           fetch_var_name == framework::GradVarName("Filter")
               ? phi::DataLayout::kNCHW
-              : phi::OneDNNContext::tls().get_cur_paddle_data_layout(),
+              : phi::func::GetPaddleLayoutFromOneDNNMemDesc(
+                    src_item.mem_desc()),
           src_item,
           &out,
           platform::CPUPlace());

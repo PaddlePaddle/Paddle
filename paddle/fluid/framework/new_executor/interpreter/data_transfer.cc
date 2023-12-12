@@ -268,7 +268,8 @@ std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,
 
   if (in_layout == phi::DataLayout::ONEDNN &&
       out_layout != phi::DataLayout::ONEDNN) {
-    auto target_layout = phi::OneDNNContext::tls().get_cur_paddle_data_layout();
+    auto target_layout = phi::funcs::GetPaddleLayoutFromOneDNNMemDesc(
+        local_scope->FindVar(var_name)->Get<phi::DenseTensor>().mem_desc());
     VLOG(4) << "TransDataLayoutFromOneDNN: " << in_layout << "->"
             << target_layout;
 
@@ -537,8 +538,8 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
               if ((tensor_in->layout() == DataLayout::ONEDNN) &&
                   (var->IsType<phi::DenseTensor>() == true) &&
                   (expected_kernel_key.data_layout_ != DataLayout::ONEDNN) &&
-                  (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
-                   DataLayout::kNHWC)) {
+                  (phi::func::GetPaddleLayoutFromOneDNNMemDesc(
+                       tensor_in->mem_desc()) == DataLayout::kNHWC)) {
                 VLOG(7) << "Created reshaped dummy input based on MKL-DNN "
                            "phi::DenseTensor , "
                            "but kNHWC layout"

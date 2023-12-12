@@ -91,7 +91,8 @@ void TransformData(const phi::KernelKey &expected_kernel_type,
 
         phi::funcs::TransDataLayoutFromOneDNN(
             lin,
-            phi::OneDNNContext::tls().get_cur_paddle_data_layout(),
+            phi::func::GetPaddleLayoutFromOneDNNMemDesc(
+                input_tensor.mem_desc()),
             in,
             &out,
             place);

@@ -978,7 +978,7 @@ class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
                       src_y_tz.begin(),
                       src_y_tz.end());
       // For broadcasting for NHWC we need rotate extended shape
-      if (OneDNNContext::tls().get_cur_paddle_data_layout() ==
+      if (phi::func::GetPaddleLayoutFromOneDNNMemDesc(src1_md) ==
           DataLayout::kNHWC) {
         std::rotate(dims1_ex.begin() + 1, dims1_ex.end() - 1, dims1_ex.end());
       }
@@ -989,7 +989,7 @@ class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
                       src_x_tz.begin(),
                       src_x_tz.end());
       // For broadcasting for NHWC we need rotate extended shape
-      if (OneDNNContext::tls().get_cur_paddle_data_layout() ==
+      if (phi::func::GetPaddleLayoutFromOneDNNMemDesc(src0_md) ==
           DataLayout::kNHWC) {
         std::rotate(dims0_ex.begin() + 1, dims0_ex.end() - 1, dims0_ex.end());
       }

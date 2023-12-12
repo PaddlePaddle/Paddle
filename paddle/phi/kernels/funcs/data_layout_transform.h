@@ -48,6 +48,29 @@ inline OneDNNMemoryFormat ToOneDNNFormat(const DataLayout& layout) {
   }
 }
 
+inline DataLayout GetPaddleLayoutFromOneDNNMemDesc(
+    const dnnl::memory::desc& desc) {
+  if (desc == memory::desc(desc.get_dims(),
+                           desc.get_data_type(),
+                           dnnl::memory::format_tag::nhwc)) {
+    return DataLayout::NHWC;
+  } else if (desc == memory::desc(desc.get_dims(),
+                                  desc.get_data_type(),
+                                  dnnl::memory::format_tag::nchw)) {
+    return DataLayout::NCHW;
+  } else if (desc == memory::desc(desc.get_dims(),
+                                  desc.get_data_type(),
+                                  dnnl::memory::format_tag::ncdhw)) {
+    return DataLayout::NCDHW;
+  } else if (desc == memory::desc(desc.get_dims(),
+                                  desc.get_data_type(),
+                                  dnnl::memory::format_tag::ndhwc)) {
+    return DataLayout::NDHWC;
+  } else {
+    return DataLayout::NCHW;
+  }
+}
+
 inline OneDNNDataType ToOneDNNDataType(DataType type) {
 #if __GNUC__ > 5
   using DataTypeMapping = std::unordered_map<DataType, OneDNNDataType>;
