@@ -383,6 +383,9 @@
     func : layer_norm_act_xpu
     data_type : x
 
+# This op is implemented using CUDNN Frontend API, which serves as a supplement to
+# legacy max pooling implementation. It shows better performance with NHWC layout and
+# half precision.
 - op : max_pool2d_v2
   args : (Tensor x, int[] kernel_size, int[] strides= {1, 1}, int[] paddings = {0, 0}, str data_format = "NCHW", bool global_pooling = false, bool adaptive = false)
   output : Tensor(out), Tensor(saved_idx)
