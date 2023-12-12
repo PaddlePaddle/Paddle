@@ -14,10 +14,7 @@
 
 import unittest
 
-from dygraph_to_static_utils import (
-    Dy2StTestBase,
-    test_sot_only,
-)
+from dygraph_to_static_utils import Dy2StTestBase, test_ast_only, test_sot_only
 
 import paddle
 
@@ -120,6 +117,16 @@ class TestWriteContainer(Dy2StTestBase):
         func_static = paddle.jit.to_static(self.func)
         input = paddle.to_tensor([1, 2, 3])
         out_static = self.get_raw_value(func_static(input), self.getitem_path)
+        out_dygraph = self.get_raw_value(self.func(input), self.getitem_path)
+        self.assertEqual(out_static, out_dygraph)
+
+    @test_ast_only
+    def test_write_container(self):
+        func_static = paddle.jit.to_static(self.func)
+        input = paddle.to_tensor([1, 2, 3])
+        out_static = self.get_raw_value(
+            func_static(input), self.getitem_path
+        ).item()
         out_dygraph = self.get_raw_value(self.func(input), self.getitem_path)
         self.assertEqual(out_static, out_dygraph)
 

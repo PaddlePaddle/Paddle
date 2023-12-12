@@ -202,6 +202,18 @@ void FusedDropoutAddGradKernel(const Context& dev_ctx,
                        ? NoMaskBwFunctor<T, float>(1.0f - dropout_rate)
                        : NoMaskBwFunctor<T, float>(1.0f - dropout_rate, 1.0f);
 
+#ifdef PADDLE_WITH_HIP
+    VectorizedDropoutBackward<T, NoMaskBwFunctor<T, float>>
+        <<<grid_size, block_size, 0, stream>>>(0,
+                                               numel,
+                                               seed_data,  //  idx: 2 need save
+                                               x_grad_data,
+                                               y_grad_data,
+                                               out_grad_data,
+                                               increment,  //  idx: 6 need save
+                                               main_offset,
+                                               functor);
+#else
     // we assume seed/offset is same across iterations
     // seed_offset_data should preserved by cudaGraph pool
     const phi::GPUContext* dev_ctx_p = &dev_ctx;
@@ -239,6 +251,7 @@ void FusedDropoutAddGradKernel(const Context& dev_ctx,
 
     VLOG(10) << "NON_CUDA_GRAPH seed = " << seed_data
              << ", increment = " << increment;
+#endif
   }
 }
 
