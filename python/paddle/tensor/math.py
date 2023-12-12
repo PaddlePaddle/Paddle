@@ -7186,7 +7186,7 @@ def signbit(x, name=None):
     Examples:
         .. code-block:: python
             :name: signbit-example-1
-            
+
             >>> import paddle
             >>> x = paddle.to_tensor([1.1, -2.1, 0., 2.5, -0.0], dtype='float32')
             >>> res = paddle.signbit(x, y)
@@ -7196,7 +7196,7 @@ def signbit(x, name=None):
 
         .. code-block:: python
             :name: signbit-example-2
-            
+
             >>> x = paddle.to_tensor([-5, -2, 3], dtype='int32')
             >>> res = paddle.signbit(x, y)
             >>> print(res)
