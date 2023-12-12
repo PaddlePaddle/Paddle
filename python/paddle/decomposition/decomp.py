@@ -447,11 +447,6 @@ def _decomp_fwd_op(
         has_decomposed: whether the forward op has been successfully decomposed.
     '''
 
-    if not core._is_fwd_prim_enabled():
-        raise RuntimeError(
-            "To decompose forward op, please set `core._set_prim_forward_enabled(True)` firstly"
-        )
-
     with pir.core.program_guard(block.program):
         op_name = fwd_op.name()
         orig_outs = fwd_op.results()
@@ -462,9 +457,6 @@ def _decomp_fwd_op(
         if lower:
             # step1: check dynamic shape, currently not supported
             if _check_prim_dynamic(fwd_op):
-                logger.debug(
-                    f'{fwd_op.name()} has dynamic shape in its operands, skip decomposing'
-                )
                 return None, False
 
             # step2: check insertion point, if prev_op is builtin.combine (such as concat op), insertion point will be set to prev_op
@@ -782,10 +774,6 @@ def _decomp_bwd_op(
         has_decomposed: whether the backward op has been successfully decomposed.
     '''
 
-    if not core._is_bwd_prim_enabled():
-        raise RuntimeError(
-            "To decompose backward op, please set `core._set_prim_backward_enabled(True)` firstly"
-        )
     # get the corresponding forward op according to grad_var_to_var
     # check and ensure: bwd_inputs = out_grads + fwd_inputs[optional] + fwd_outputs[optional]
     fwd_op = _get_fwd_op(bwd_op, grad_var_to_var)
@@ -795,9 +783,6 @@ def _decomp_bwd_op(
         )
         return None, False
     if _check_prim_dynamic(fwd_op) or _check_prim_dynamic(bwd_op):
-        logger.debug(
-            f'{bwd_op.name()} has dynamic shape in its operands, skip decomposing'
-        )
         return None, False
 
     # try to decompose backward op directly
@@ -835,25 +820,6 @@ def _decomp_bwd_op(
                 new_fwd_outputs,
             )
     return new_grads, bwd_has_decomposed
-
-
-def _print_decomp_infos(decomp_infos):
-    logger.debug(
-        "Following forward ops can be decomposed successfully: %s"
-        % (', '.join(decomp_infos["decomposed"]["fwd"]))
-    )
-    logger.debug(
-        "Following forward ops can not be decomposed successfully: %s"
-        % (', '.join(decomp_infos["undecomposed"]["fwd"]))
-    )
-    logger.debug(
-        "Following backward ops can be decomposed successfully: %s"
-        % (', '.join(decomp_infos["decomposed"]["bwd"]))
-    )
-    logger.debug(
-        "Following backward ops can not be decomposed successfully: %s"
-        % (', '.join(decomp_infos["undecomposed"]["bwd"]))
-    )
 
 
 def _get_all_bwd_ops(pir_program):
@@ -942,75 +908,62 @@ def _translate_gradvartovar_to_pir(param_mapping, grad_var_to_var):
     return pir_grad_var_to_var
 
 
-def _decomp_bwd_program(pir_program, pir_grad_var_to_var, decomp_infos):
+def _decomp_bwd_program(pir_program, pir_grad_var_to_var):
     '''Traverse and decompose all backward OPs in program'''
     with paddle.pir.core.program_guard(pir_program):
         bwd_ops = _get_all_bwd_ops(pir_program)
-        decomposed_ops = decomp_infos["decomposed"]
-        undecomposed_ops = decomp_infos["undecomposed"]
-
+        undecomposed_bwd_ops = []
         ops = pir_program.global_block().ops
         for op in ops:
+            bwd_op_name = op.name()
             if op.name() in bwd_ops:
-                bwd_op_name = op.name()
-                bwd_has_decomposed = False
-                new_input_grads, bwd_has_decomposed = _decomp_bwd_op(
-                    pir_program.global_block(),
-                    op,
-                    pir_grad_var_to_var,
+                _, bwd_has_decomposed = _decomp_bwd_op(
+                    pir_program.global_block(), op, pir_grad_var_to_var
                 )
                 if (
-                    bwd_has_decomposed
-                    and bwd_op_name not in decomposed_ops["bwd"]
-                ):
-                    decomposed_ops["bwd"].append(bwd_op_name)
-                elif (
                     not bwd_has_decomposed
-                    and bwd_op_name not in undecomposed_ops["bwd"]
+                    and bwd_op_name not in undecomposed_bwd_ops
                 ):
-                    undecomposed_ops["bwd"].append(bwd_op_name)
+                    undecomposed_bwd_ops.append(bwd_op_name)
+
+    logger.debug(
+        f'Following backward ops can not be decomposed: {undecomposed_bwd_ops}'
+    )
 
 
-def _decomp_fwd_program(pir_program, pir_grad_var_to_var, decomp_infos):
+def _decomp_fwd_program(pir_program, pir_grad_var_to_var):
     '''Traverse and decompose all forward OPs in program'''
     with paddle.pir.core.program_guard(pir_program):
         ops = pir_program.global_block().ops
         bwd_ops = _get_all_bwd_ops(pir_program)
-        prev_op = None
-
         # ops including compile-time infermeta, causing mismatched input shape and output shape, which is unsupported when decompoing.
         black_fwd_ops = ["pd_op.stack", "pd_op.squeeze"]
-        decomposed_ops = decomp_infos["decomposed"]
-        undecomposed_ops = decomp_infos["undecomposed"]
-        undecomposed_ops["fwd"] += black_fwd_ops
+        undecomposed_fwd_ops = []
 
+        prev_op = None
         for op in ops:
-            if op.name() not in bwd_ops and op.name() not in black_fwd_ops:
-                fwd_op_name = op.name()
-                fwd_has_decomposed = False
-                (
-                    new_fwd_outputs,
-                    fwd_has_decomposed,
-                ) = _decomp_fwd_op(
-                    pir_program.global_block(),
-                    op,
-                    pir_grad_var_to_var,
-                    prev_op,
-                )
-                if (
-                    fwd_has_decomposed
-                    and fwd_op_name not in decomposed_ops["fwd"]
-                ):
-                    decomposed_ops["fwd"].append(fwd_op_name)
-                elif (
-                    not fwd_has_decomposed
-                    and fwd_op_name not in undecomposed_ops["fwd"]
-                ):
-                    undecomposed_ops["fwd"].append(fwd_op_name)
-            if op.name() == "builtin.combine":
-                prev_op = op
-            else:
-                prev_op = None
+            fwd_op_name = op.name()
+            if op.name() not in bwd_ops:
+                if op.name() not in black_fwd_ops:
+                    _, fwd_has_decomposed = _decomp_fwd_op(
+                        pir_program.global_block(),
+                        op,
+                        pir_grad_var_to_var,
+                        prev_op,
+                    )
+                    if (
+                        not fwd_has_decomposed
+                        and fwd_op_name not in undecomposed_fwd_ops
+                    ):
+                        undecomposed_fwd_ops.append(fwd_op_name)
+                else:
+                    if fwd_op_name not in undecomposed_fwd_ops:
+                        undecomposed_fwd_ops.append(fwd_op_name)
+            prev_op = op if op.name() == "builtin.combine" else None
+
+    logger.debug(
+        f'Following forward ops can not be decomposed: {undecomposed_fwd_ops}'
+    )
 
 
 def decompose_pir_program(pir_program, param_mapping, grad_var_to_var):
@@ -1029,12 +982,7 @@ def decompose_pir_program(pir_program, param_mapping, grad_var_to_var):
         param_mapping, grad_var_to_var
     )
     # decompose
-    decomp_infos = {
-        "decomposed": {"fwd": [], "bwd": []},
-        "undecomposed": {"fwd": [], "bwd": []},
-    }
-    _decomp_bwd_program(pir_program, pir_grad_var_to_var, decomp_infos)
-    _decomp_fwd_program(pir_program, pir_grad_var_to_var, decomp_infos)
-    _print_decomp_infos(decomp_infos)
+    _decomp_bwd_program(pir_program, pir_grad_var_to_var)
+    _decomp_fwd_program(pir_program, pir_grad_var_to_var)
     # reset prim flags and pir_api flags
     _reset_prim_state(state)
