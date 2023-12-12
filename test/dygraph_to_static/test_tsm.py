@@ -21,7 +21,7 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_default_mode_only,
+    test_default_and_pir,
 )
 from tsm_config_utils import merge_configs, parse_config, print_configs
 
@@ -375,7 +375,7 @@ def train(args, fake_data_reader, to_static):
 
 
 class TestTsm(Dy2StTestBase):
-    @test_default_mode_only
+    @test_default_and_pir
     def test_dygraph_static_same_loss(self):
         if paddle.is_compiled_with_cuda():
             paddle.set_flags({"FLAGS_cudnn_deterministic": True})
