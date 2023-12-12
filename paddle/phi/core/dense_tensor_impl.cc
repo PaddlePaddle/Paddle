@@ -381,7 +381,7 @@ const dnnl::memory::desc& DenseTensor::mem_desc() const {
   return this->storage_properties<OneDNNStorageProperties>().mem_desc;
 }
 
-inline void DenseTensor::set_mem_desc(const dnnl::memory::desc& mem_desc) {
+void DenseTensor::set_mem_desc(const dnnl::memory::desc& mem_desc) {
   PADDLE_ENFORCE_NOT_NULL(
       storage_properties_,
       phi::errors::PreconditionNotMet(

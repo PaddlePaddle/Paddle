@@ -109,7 +109,7 @@ following codes there.
 public:
 const dnnl::memory::desc& mem_desc() const;
 
-inline void set_mem_desc(const dnnl::memory::desc& mem_desc);
+void set_mem_desc(const dnnl::memory::desc& mem_desc);
 
 #endif
 
