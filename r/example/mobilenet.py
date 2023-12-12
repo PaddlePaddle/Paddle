@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.7
+#!/usr/bin/env python3.8
 
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
