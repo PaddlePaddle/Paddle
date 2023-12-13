@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/utils/pybind.h"
-
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/flags.h"
 

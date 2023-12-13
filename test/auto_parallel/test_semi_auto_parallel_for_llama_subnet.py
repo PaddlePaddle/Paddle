@@ -50,6 +50,39 @@ class TestSemiAutoParallelBasic(test_base.CommunicationTestDistBase):
                 user_defined_envs=envs,
             )
 
+    def test_rope_subnet(self):
+        envs_list = test_base.gen_product_envs_list(
+            {"dtype": "float32", "seed": "2023"}, {"backend": ["gpu"]}
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_parallel_for_llama_rope.py",
+                user_defined_envs=envs,
+            )
+
+    def test_decoder_subnet(self):
+        envs_list = test_base.gen_product_envs_list(
+            {"dtype": "float32", "seed": "2023"}, {"backend": ["gpu"]}
+        )
+        cuda_version_main = int(paddle.version.cuda().split(".")[0])
+        device_prop_main = paddle.device.cuda.get_device_capability()[0]
+        if cuda_version_main >= 11 and device_prop_main >= 8:
+            for envs in envs_list:
+                self.run_test_case(
+                    "semi_auto_parallel_for_llama_decoder.py",
+                    user_defined_envs=envs,
+                )
+
+    def test_mlp_with_cross_entropy_loss_subnet(self):
+        envs_list = test_base.gen_product_envs_list(
+            {"dtype": "float32", "seed": "2023"}, {"backend": ["gpu"]}
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_parallel_for_llama_mlp_with_cross_entropy_loss.py",
+                user_defined_envs=envs,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

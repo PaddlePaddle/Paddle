@@ -121,13 +121,13 @@ class TestDecomposeOp(unittest.TestCase):
 
                 # get the old_ir_grad_var_to_var map
                 old_ir_grad_var_to_var_map = {
-                    'dropout_1.tmp_0@GRAD': 'dropout_1.tmp_0',
-                    'elementwise_add_2@GRAD': 'elementwise_add_2',
-                    'elementwise_add_3@GRAD': 'elementwise_add_3',
-                    'elementwise_mul_1@GRAD': 'elementwise_mul_1',
-                    'layer_norm_1.tmp_2@GRAD': 'layer_norm_1.tmp_2',
-                    'rsqrt_1.tmp_0@GRAD': 'rsqrt_1.tmp_0',
-                    'mean_1.tmp_0@GRAD': 'mean_1.tmp_0',
+                    'dropout_0.tmp_0@GRAD': 'dropout_0.tmp_0',
+                    'elementwise_add_0@GRAD': 'elementwise_add_0',
+                    'elementwise_add_1@GRAD': 'elementwise_add_1',
+                    'elementwise_mul_0@GRAD': 'elementwise_mul_0',
+                    'layer_norm_0.tmp_2@GRAD': 'layer_norm_0.tmp_2',
+                    'rsqrt_0.tmp_0@GRAD': 'rsqrt_0.tmp_0',
+                    'mean_0.tmp_0@GRAD': 'mean_0.tmp_0',
                     'x@GRAD': 'x',
                     'x@GRAD@RENAME@block0@0': 'x',
                     'x@GRAD@RENAME@block0@1': 'x',

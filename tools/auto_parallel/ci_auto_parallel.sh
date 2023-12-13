@@ -29,11 +29,20 @@ install_paddle(){
 
 get_diff_TO_case(){
 cd ${paddle_dir}
-# get the location of "test/auto_parallel" in target_lists_for_hybrid_ci
-count=0  
-for element in "${target_lists_for_hybrid_ci[@]}";do
+# get the location of "test/auto_parallel" in target_lists_for_semi_auto_ci
+count=0
+for element in "${target_lists_for_semi_auto_ci[@]}";do
   if [[ "$element" == "test/auto_parallel" ]]; then  
-    test_num=$count
+    test_auto_num=$count
+    break
+  fi
+  count=$((count+1))
+done
+# get the location of "test/collective/hybrid_strategy" in target_lists_for_dygraph_ci
+count=0
+for element in "${target_lists_for_dygraph_ci[@]}";do
+  if [[ "$element" == "test/collective/hybrid_strategy" ]]; then  
+    test_dygraph_num=$count
     break
   fi
   count=$((count+1))
@@ -51,13 +60,13 @@ for file_name in `git diff --numstat upstream/${AGILE_COMPILE_BRANCH} |awk '{pri
     elif [[ ${file_name##*.} == "md" ]] || [[ ${file_name##*.} == "rst" ]] || [[ ${dir1} == "docs" ]];then
         continue
     else
-        for ((i=0; i<${#target_lists_for_hybrid_ci[@]}; i++)); do
-            if [[ $i != ${test_num} ]] && [[ ${file_item} == *${target_lists_for_hybrid_ci[i]}* ]];then
+        for ((i=0; i<${#target_lists_for_semi_auto_ci[@]}; i++)); do
+            if [[ $i != ${test_auto_num} ]] && [[ ${file_item} == *${target_lists_for_semi_auto_ci[i]}* ]];then
                 case_list[${#case_list[*]}]=gpt-3_auto
-                case_list[${#case_list[*]}]=unit_test
+                case_list[${#case_list[*]}]=auto_unit_test
                 break
-            elif [[ $i == ${test_num} ]] && [[ ${file_item} == *${target_lists_for_hybrid_ci[i]}* ]];then
-                case_list[${#case_list[*]}]=unit_test
+            elif [[ $i == ${test_auto_num} ]] && [[ ${file_item} == *${target_lists_for_semi_auto_ci[i]}* ]];then
+                case_list[${#case_list[*]}]=auto_unit_test
                 break
             else
                 continue
@@ -66,6 +75,18 @@ for file_name in `git diff --numstat upstream/${AGILE_COMPILE_BRANCH} |awk '{pri
         for ((i=0; i<${#target_lists_for_pir_ci[@]}; i++)); do
             if [[ ${file_item} == *${target_lists_for_pir_ci[i]}* ]];then
                 case_list[${#case_list[*]}]=gpt-3_auto_pir
+                break
+            else
+                continue
+            fi
+        done
+        for ((i=0; i<${#target_lists_for_dygraph_ci[@]}; i++)); do
+            if [[ $i != ${test_dygraph_num} ]] && [[ ${file_item} == *${target_lists_for_dygraph_ci[i]}* ]];then
+                case_list[${#case_list[*]}]=gpt-3_dygraph
+                case_list[${#case_list[*]}]=dygraph_unit_test
+                break
+            elif [[ $i == ${test_dygraph_num} ]] && [[ ${file_item} == *${target_lists_for_dygraph_ci[i]}* ]];then
+                case_list[${#case_list[*]}]=dygraph_unit_test
                 break
             else
                 continue
@@ -94,6 +115,17 @@ fi
 # Get the list of pending cases
 get_diff_TO_case
 # Remove duplicates and store the results back to the original list
+
+####################
+if [[ "${case_list[*]}" == *"gpt-3_auto"* ]] && [[ "${case_list[*]}" == *"gpt-3_auto_pir"* ]]; then
+    echo "同时命中gpt-3_auto 和 gpt-3_auto_pir, 只执行新ir, 不执行旧ir"  
+    case_list=("${case_list[@]/*gpt-3_auto_pir*/}")
+    case_list=("${case_list[@]/*gpt-3_auto*/}")
+    case_list[${#case_list[*]}]=gpt-3_auto_pir
+    echo ${case_list[*]}
+fi
+####################
+
 case_list=($(awk -v RS=' ' '!a[$1]++' <<< ${case_list[*]}))
 if [[ ${#case_list[*]} -ne 0 ]];then
     echo -e "\033[31m =======CI Check case========= \033"
@@ -117,8 +149,18 @@ if [[ ${#case_list[*]} -ne 0 ]];then
             print_info $? `ls -lt ${log_path} | grep "pir" | head -n 1 | awk '{print $9}'` ${case}
             export FLAGS_before_hook=1
             let case_num++
-        elif [[ ${case} == "unit_test" ]];then
-            bash /workspace/Paddle/tools/auto_parallel/ci_case_unit.sh
+        elif [[ ${case} == "auto_unit_test" ]];then
+            bash /workspace/Paddle/tools/auto_parallel/ci_case_unit.sh auto_unit_test
+            print_info $? `ls -lt ${log_path} | grep "test" | head -n 1 | awk '{print $9}'` ${case}
+            let case_num++
+        elif [[ ${case} == "gpt-3_dygraph" ]];then
+            # TODO: Support ci cases for dynamic hybrid parallel in PaddleNLP
+            # bash /workspace/PaddleNLP/scripts/distribute/ci_case_auto.sh case_list_dygraph $FLAGS_before_hook
+            print_info $? `ls -lt ${log_path} | grep "gpt" | grep -v "pir" | head -n 1 | awk '{print $9}'` ${case}
+            export FLAGS_before_hook=1
+            let case_num++
+        elif [[ ${case} == "dygraph_unit_test" ]];then
+            bash /workspace/Paddle/tools/auto_parallel/ci_case_unit.sh dygraph_unit_test
             print_info $? `ls -lt ${log_path} | grep "test" | head -n 1 | awk '{print $9}'` ${case}
             let case_num++
         else

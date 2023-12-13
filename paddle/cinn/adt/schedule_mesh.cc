@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/adt/schedule_mesh.h"
+#include "paddle/cinn/adt/print.h"
 
 namespace cinn::adt {
 
@@ -81,52 +82,49 @@ std::size_t GetOutputRank(const ScheduleMesh& sched_mesh) {
 
 namespace {
 
-List<Constant> GetOutputDimValuesImpl(const List<ScheduleDim>& sched_dims) {
-  List<Constant> ret{};
+List<DimExpr> GetOutputDimValuesImpl(const List<ScheduleDim>& sched_dims) {
+  List<DimExpr> ret{};
   for (const auto& sched_dim : *sched_dims) {
     const auto& loop_size = GetLoopSize(sched_dim);
-    CHECK(loop_size.Has<std::int64_t>());
-    ret->emplace_back(loop_size.Get<std::int64_t>());
+    ret->emplace_back(loop_size);
   }
   return ret;
 }
 
-List<Constant> GetOutputDimValuesImpl(
+List<DimExpr> GetOutputDimValuesImpl(
     const ScheduleMeshReshape<ScheduleMesh>& sched_reshape) {
   const auto& [_, shape] = sched_reshape.tuple();
-  List<Constant> ret{};
+  List<DimExpr> ret{};
   for (const auto& loop_size : *shape.value()) {
-    CHECK(loop_size.Has<std::int64_t>());
-    ret->emplace_back(loop_size.Get<std::int64_t>());
+    ret->emplace_back(loop_size);
   }
   return ret;
 }
 
-List<Constant> GetOutputDimValuesImpl(
+List<DimExpr> GetOutputDimValuesImpl(
     const ScheduleMeshTranspose<ScheduleMesh>& sched_transpose) {
   const auto& [sched_mesh, perm] = sched_transpose.tuple();
   const auto& input_dims = GetOutputDimValues(sched_mesh);
-  List<Constant> ret{};
+  List<DimExpr> ret{};
   for (const auto& idx : *perm.value()) {
     ret->emplace_back(input_dims->at(idx));
   }
   return ret;
 }
 
-List<Constant> GetOutputDimValuesImpl(
+List<DimExpr> GetOutputDimValuesImpl(
     const ScheduleMeshPadding<ScheduleMesh>& sched_padding) {
   const auto& [_, shape] = sched_padding.tuple();
-  List<Constant> ret{};
+  List<DimExpr> ret{};
   for (const auto& loop_size : *shape.value()) {
-    CHECK(loop_size.Has<std::int64_t>());
-    ret->emplace_back(loop_size.Get<std::int64_t>());
+    ret->emplace_back(loop_size);
   }
   return ret;
 }
 
 }  // namespace
 
-List<Constant> GetOutputDimValues(const ScheduleMesh& sched_mesh) {
+List<DimExpr> GetOutputDimValues(const ScheduleMesh& sched_mesh) {
   return std::visit(
       [&](const auto& impl) { return GetOutputDimValuesImpl(impl); },
       sched_mesh.variant());
@@ -181,6 +179,68 @@ class ScheduleMeshPolicy {
 
  protected:
   ScheduleMeshPolicy() = default;
+};
+
+class NaiveInjectiveScheduleMeshPolicy final : public ScheduleMeshPolicy {
+ public:
+  NaiveInjectiveScheduleMeshPolicy() = default;
+
+  bool Match(const List<ScheduleDim>& loop_sizes) const override {
+    for (const auto& sched_dim : *loop_sizes) {
+      if (!sched_dim.Has<tInjective<LoopSize>>()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  std::tuple<ScheduleMesh, List<LoopType>> Optimize(
+      const List<ScheduleDim>& loop_sizes) const override {
+    VLOG(4) << "Match NaiveInjectiveScheduleMeshPolicy";
+    ScheduleMesh sched_mesh{loop_sizes};
+    List<LoopType> loop_types{};
+    for (const auto& _ : *loop_sizes) {
+      loop_types->emplace_back(Temporal{});
+    }
+    return std::make_tuple(sched_mesh, loop_types);
+  }
+};
+
+class NaiveReduceScheduleMeshPolicy final : public ScheduleMeshPolicy {
+ public:
+  NaiveReduceScheduleMeshPolicy() = default;
+
+  bool Match(const List<ScheduleDim>& loop_sizes) const override {
+    for (const auto& sched_dim : *loop_sizes) {
+      if (!sched_dim.Has<tInjective<LoopSize>>()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  std::tuple<ScheduleMesh, List<LoopType>> Optimize(
+      const List<ScheduleDim>& loop_sizes) const override {
+    VLOG(4) << "Match NaiveReduceScheduleMeshPolicy";
+    ScheduleMesh sched_mesh{loop_sizes};
+    List<LoopType> loop_types{};
+    List<int> non_reduce_axes{};
+    List<int> reduce_axes{};
+    for (std::int64_t i = 0; i < loop_sizes->size(); ++i) {
+      loop_types->emplace_back(Temporal{});
+      const auto& loop_size = loop_sizes->at(i);
+      if (loop_size.Has<tInjective<LoopSize>>()) {
+        non_reduce_axes->emplace_back(i);
+      } else {
+        reduce_axes->emplace_back(i);
+      }
+    }
+    List<int> perm{};
+    perm->insert(perm->end(), non_reduce_axes->begin(), non_reduce_axes->end());
+    perm->insert(perm->end(), reduce_axes->begin(), reduce_axes->end());
+    sched_mesh = MeshTranspose(sched_mesh, perm);
+    return std::make_tuple(sched_mesh, loop_types);
+  }
 };
 
 class AllInjectiveScheduleMeshPolicy final : public ScheduleMeshPolicy {
@@ -294,6 +354,8 @@ class GeneralScheduleMeshPolicy final : public ScheduleMeshPolicy {
 const std::vector<std::unique_ptr<ScheduleMeshPolicy>>&
 GetAllScheduleMeshPolicies() {
   static std::vector<std::unique_ptr<ScheduleMeshPolicy>> policies{};
+  policies.emplace_back(std::make_unique<NaiveInjectiveScheduleMeshPolicy>());
+  policies.emplace_back(std::make_unique<NaiveReduceScheduleMeshPolicy>());
   policies.emplace_back(std::make_unique<AllInjectiveScheduleMeshPolicy>());
   policies.emplace_back(std::make_unique<GeneralScheduleMeshPolicy>());
   return policies;

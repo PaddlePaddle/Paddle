@@ -15,7 +15,10 @@
 import random
 import unittest
 
-from dygraph_to_static_utils import Dy2StTestBase
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_legacy_and_pt_and_pir,
+)
 
 import paddle
 from paddle.jit.api import to_static
@@ -27,17 +30,9 @@ random.seed(SEED)
 class IRSelectedRowsTestNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
-        self.embedding = paddle.nn.Embedding(4, 3, sparse=False)
+        self.embedding = paddle.nn.Embedding(128, 3, sparse=False)
 
-        w0 = paddle.to_tensor(
-            [
-                [0.0, 0.0, 0.0],
-                [1.0, 1.0, 1.0],
-                [2.0, 2.0, 2.0],
-                [3.0, 3.0, 3.0],
-            ],
-            dtype="float32",
-        )
+        w0 = paddle.rand([128, 3])
         self.embedding.weight.set_value(w0)
 
         self.linear = paddle.nn.Linear(
@@ -53,50 +48,40 @@ class IRSelectedRowsTestNet(paddle.nn.Layer):
         return x
 
 
-def train(net, adam, x):
+def forward(net, x):
     loss_data = []
-    for i in range(10):
+    for _ in range(10):
         out = net(x)
         loss = paddle.mean(out)
-        loss.backward()
-        adam.step()
-        adam.clear_grad()
         loss_data.append(loss.numpy())
     return loss_data
 
 
-def train_dygraph():
+def forward_dygraph():
     paddle.seed(100)
     net = IRSelectedRowsTestNet()
-    x = paddle.to_tensor([[0], [1], [3]], dtype="int64", stop_gradient=False)
-    clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
-    adam = paddle.optimizer.Adam(
-        parameters=net.parameters(), learning_rate=0.01, grad_clip=clip
-    )
+    x = paddle.randint(low=0, high=128, shape=[64], dtype="int64")
 
-    return train(net, adam, x)
+    return forward(net, x)
 
 
-def train_static():
+def forward_static():
     paddle.seed(100)
     net = IRSelectedRowsTestNet()
-    x = paddle.to_tensor([[0], [1], [3]], dtype="int64", stop_gradient=False)
-    clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
-    adam = paddle.optimizer.Adam(
-        parameters=net.parameters(), learning_rate=0.01, grad_clip=clip
-    )
+    x = paddle.randint(low=0, high=128, shape=[64], dtype="int64")
 
-    return to_static(train, full_graph=True)(net, adam, x)
+    return to_static(forward, full_graph=True)(net, x)
 
 
 class TestSimnet(Dy2StTestBase):
+    @test_legacy_and_pt_and_pir
     def test_dygraph_static_same_loss(self):
-        dygraph_loss = train_dygraph()
-        static_loss = train_static()
+        dygraph_value = forward_dygraph()
+        static_value = forward_static()
 
-        self.assertEqual(len(dygraph_loss), len(static_loss))
-        for i in range(len(dygraph_loss)):
-            self.assertAlmostEqual(dygraph_loss[i], static_loss[i].numpy())
+        self.assertEqual(len(dygraph_value), len(static_value))
+        for i in range(len(dygraph_value)):
+            self.assertAlmostEqual(dygraph_value[i], static_value[i].numpy())
 
 
 if __name__ == '__main__':

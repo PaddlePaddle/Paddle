@@ -20,7 +20,7 @@
 #include <type_traits>
 
 #include "paddle/cinn/adt/adt.h"
-#include "paddle/cinn/adt/equation_constant.h"
+#include "paddle/cinn/adt/dim_expr.h"
 #include "paddle/cinn/adt/equation_variable.h"
 #include "paddle/cinn/adt/tags.h"
 #include "paddle/cinn/common/equation_graph_topo_walker.h"
@@ -47,21 +47,21 @@ struct Identity<tOut<Index>, tIn<Index>>
 template <typename DimT, typename OutT, typename InT>
 struct IndexDot;
 
-// IndexDot [Dim] (tOut Index) (tIn [Iterator])
+// IndexDot [DimExpr] (tOut Index) (tIn [Iterator])
 template <>
-struct IndexDot<List<Dim>, tOut<Index>, tIn<List<Iterator>>>
-    : public Tuple<List<Dim>, tOut<Index>, tIn<List<Iterator>>> {
-  using Tuple<List<Dim>, tOut<Index>, tIn<List<Iterator>>>::Tuple;
+struct IndexDot<List<DimExpr>, tOut<Index>, tIn<List<Iterator>>>
+    : public Tuple<List<DimExpr>, tOut<Index>, tIn<List<Iterator>>> {
+  using Tuple<List<DimExpr>, tOut<Index>, tIn<List<Iterator>>>::Tuple;
 };
 
 template <typename DimT, typename OutT, typename InT>
 struct IndexUnDot;
 
-// IndexUnDot [Dim] (tOut [Iterator]) (tIn Index)
+// IndexUnDot [DimExpr] (tOut [Iterator]) (tIn Index)
 template <>
-struct IndexUnDot<List<Dim>, tOut<List<Iterator>>, tIn<Index>>
-    : public Tuple<List<Dim>, tOut<List<Iterator>>, tIn<Index>> {
-  using Tuple<List<Dim>, tOut<List<Iterator>>, tIn<Index>>::Tuple;
+struct IndexUnDot<List<DimExpr>, tOut<List<Iterator>>, tIn<Index>>
+    : public Tuple<List<DimExpr>, tOut<List<Iterator>>, tIn<Index>> {
+  using Tuple<List<DimExpr>, tOut<List<Iterator>>, tIn<Index>>::Tuple;
 };
 
 // OpArgIndexes = (tIn [Index], tOut [Index])
@@ -93,26 +93,29 @@ struct ConstantFunction;
 
 template <>
 struct ConstantFunction<tOut<Iterator>, tIn<Index>> final
-    : public Tuple<tOut<Iterator>, tIn<Index>, Constant> {
-  using Tuple<tOut<Iterator>, tIn<Index>, Constant>::Tuple;
+    : public Tuple<tOut<Iterator>, tIn<Index>, DimExpr> {
+  using Tuple<tOut<Iterator>, tIn<Index>, DimExpr>::Tuple;
 };
 
 template <typename DimT, typename OutT, typename InT>
 struct GetBroadcastedIterator;
 
 template <>
-struct GetBroadcastedIterator<Dim, tOut<Iterator>, tIn<Iterator>>
-    : public Tuple<Dim, tOut<Iterator>, tIn<Iterator>> {
-  using Tuple<Dim, tOut<Iterator>, tIn<Iterator>>::Tuple;
+struct GetBroadcastedIterator<DimExpr, tOut<Iterator>, tIn<Iterator>>
+    : public Tuple<DimExpr, tOut<Iterator>, tIn<Iterator>> {
+  using Tuple<DimExpr, tOut<Iterator>, tIn<Iterator>>::Tuple;
 };
 
 // clang-format off
 DEFINE_ADT_UNION(Equation,
                  Identity<tOut<Iterator>, tIn<Iterator>>,
                  Identity<tOut<Index>, tIn<Index>>,
-                 GetBroadcastedIterator<Dim, tOut<Iterator>, tIn<Iterator>>,
-                 IndexDot<List<Dim>, tOut<Index>, tIn<List<Iterator>>>,
-                 IndexUnDot<List<Dim>, tOut<List<Iterator>>, tIn<Index>>,
+                 GetBroadcastedIterator<DimExpr,
+                                        tOut<Iterator>, tIn<Iterator>>,
+                 IndexDot<List<DimExpr>, tOut<Index>,
+                          tIn<List<Iterator>>>,
+                 IndexUnDot<List<DimExpr>,
+                            tOut<List<Iterator>>, tIn<Index>>,
                  InMsg2OutMsg<tOut<FakeOpPlaceHolder>,
                                     tOut<OpArgIndexes<std::optional<Index>>>,
                                     tIn<OpArgIndexes<Index>>>,
@@ -124,10 +127,6 @@ using Function = Equation;
 
 using Equations = List<Equation>;
 using GraphView = EquationGraphTopoWalker<Variable, const Equation*>;
-
-std::pair<std::unordered_set<Variable> /*input*/,
-          std::unordered_set<Variable> /*output*/>
-CollectInputAndOutputVariables(const Function& function);
 
 std::string GetFunctionTypeName(const Function& function);
 

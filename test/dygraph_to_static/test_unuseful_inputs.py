@@ -15,11 +15,13 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_legacy_and_pt_and_pir,
+)
 
 import paddle
 from paddle import nn
-from paddle.jit import to_static
 
 np.random.seed(1)
 
@@ -27,7 +29,7 @@ np.random.seed(1)
 def apply_to_static(support_to_static, model, image_shape=None):
     if support_to_static:
         specs = None
-        model = to_static(model, input_spec=specs)
+        model = paddle.jit.to_static(model, input_spec=specs)
 
     return model
 
@@ -38,7 +40,7 @@ class Layer0(nn.Layer):
         self._linear1 = nn.Linear(10, 5)
         self._linear2 = nn.Linear(10, 5)
         self.layer1 = Layer1(level)
-        apply_to_static(True, self.layer1)
+        self.layer1 = apply_to_static(True, self.layer1)
 
     def forward(self, x):
         out1 = self._linear1(x)
@@ -63,11 +65,7 @@ class Layer1(nn.Layer):
 
 
 class TestDuplicateOutput(Dy2StTestBase):
-    """
-    TestCase for the transformation from control flow `if/else`
-    dependent on tensor in Dygraph into Static `base.layers.cond`.
-    """
-
+    @test_legacy_and_pt_and_pir
     def test_case(self):
         # create network
         layer = Layer0(0)

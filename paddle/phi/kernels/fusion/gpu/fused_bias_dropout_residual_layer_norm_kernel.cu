@@ -17,7 +17,9 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
+#ifndef PADDLE_WITH_HIP
 #include "paddle/phi/kernels/fusion/gpu/fused_dropout_helper.h"
+#endif
 
 namespace phi {
 namespace fusion {
@@ -40,6 +42,7 @@ void FusedBiasDropoutResidualLnKernel(
     DenseTensor* dropout_mask_out,
     DenseTensor* ln_mean,
     DenseTensor* ln_variance) {
+#ifndef PADDLE_WITH_HIP
   using U = phi::funcs::LayerNormParamType<T>;
   auto* x_data = x.data<T>();
   auto* bias_data = (bias.get_ptr() == nullptr) ? nullptr : bias->data<T>();
@@ -92,6 +95,10 @@ void FusedBiasDropoutResidualLnKernel(
       y_data,
       ln_mean_data,
       ln_var_data);
+#else
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "FusedBiasDropoutResidualLnKernel not surpport for rocm"));
+#endif
 }
 }  // namespace fusion
 }  // namespace phi

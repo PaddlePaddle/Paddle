@@ -32,7 +32,12 @@ Expr DyScheduleImpl::CacheWrite(const Expr& block,
 }
 
 void DyScheduleImpl::SyncThreads(const Expr& ir_node, bool after_node) {
-  CINN_NOT_IMPLEMENTED;
+  CHECK(ir_node.As<ScheduleBlockRealize>() || ir_node.As<ir::For>());
+  auto root = GetRootBlock(ir_node);
+  ChangeBodyToBlock::Change(&root);
+  Expr sync_threads = runtime::IntrinsicCall(Void(), "__syncthreads", {});
+  InsertExpr::Insert(ir_node, sync_threads, after_node, &root);
+  return;
 }
 
 void DyScheduleImpl::SetBuffer(Expr& block,  // NOLINT

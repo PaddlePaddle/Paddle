@@ -66,7 +66,7 @@ class TestConv2dAddFusePass(PassTest):
         }
         self.fetch_list = [out]
         self.valid_op_map = {
-            "pd_op.conv2d_fusion": 1,
+            "pd_op.fused_conv2d_add_act": 1,
             "pd_op.conv2d": 0,
             "pd_op.add": 0,
         }

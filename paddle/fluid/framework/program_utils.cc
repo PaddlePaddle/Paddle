@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/program_utils.h"
 
+#include <google/protobuf/text_format.h>
 #include "paddle/fluid/framework/block_desc.h"
 
 namespace paddle {
@@ -188,6 +189,31 @@ void ProgramProcessor::AddDepToBlockOp(const BlockDesc &block) {
 }
 
 ProgramProcessor::ProgramProcessor() = default;
+
+// write to file
+void WriteToFile(const std::string &file_path, const std::string &msg) {
+  FILE *fp = fopen(file_path.c_str(), "w");
+  if (fp == NULL) {
+    LOG(WARNING) << "open write file path=" << file_path << " failed";
+    return;
+  }
+  fwrite(msg.c_str(), 1, msg.length(), fp);
+  fclose(fp);
+}
+void DumpProgramDescFile(const std::string &name, const ProgramDesc &program) {
+  ProgramDesc *new_prog = const_cast<ProgramDesc *>(&program);
+  std::string print_str;
+  google::protobuf::TextFormat::Printer printer;
+  printer.SetUseShortRepeatedPrimitives(true);
+  printer.SetSingleLineMode(false);
+  const ::google::protobuf::Message *message =
+      reinterpret_cast<const ::google::protobuf::Message *>(new_prog->Proto());
+  printer.PrintToString(*message, &print_str);
+
+  char filename[512] = {0};
+  snprintf(filename, sizeof(filename), "./%s_%lu.proto", name.c_str(), time(0));
+  WriteToFile(filename, print_str);
+}
 
 }  // namespace framework
 }  // namespace paddle

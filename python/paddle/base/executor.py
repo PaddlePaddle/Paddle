@@ -24,12 +24,11 @@ import numpy as np
 from paddle import pir
 
 from ..pir import (
-    OpResult,
     Program as PirProgram,
     Value,
     translate_to_pir,
 )
-from . import compiler, core, framework, get_flags, set_flags, unique_name
+from . import compiler, core, framework, unique_name
 from .data_feeder import convert_dtype
 from .framework import (
     Operator,
@@ -38,8 +37,10 @@ from .framework import (
     _apply_pass,
     convert_np_dtype_to_dtype_,
     default_main_program,
+    get_flags,
     in_pir_mode,
     paddle_type_to_proto_type,
+    set_flags,
 )
 from .incubate.checkpoint import auto_checkpoint as acp
 from .trainer_factory import FetchHandlerMonitor, TrainerFactory
@@ -524,7 +525,7 @@ def _add_pir_fetch_ops(program, fetch_list, fetch_var_name):
         with paddle.static.program_guard(program):
             for i, fetch_input in enumerate(need_fetch_info):
                 assert isinstance(
-                    fetch_input, (OpResult, Value)
+                    fetch_input, Value
                 ), f"Wrong type for fetch_list[{i}]: {type(fetch_input)}"
                 out = paddle._pir_ops.fetch(
                     fetch_input, fetch_var_name + str(i), i
@@ -608,7 +609,7 @@ def _to_name_str(var):
             return str(var)
         elif isinstance(var, Operator):
             return str(id(var))
-        elif isinstance(var, OpResult):
+        elif isinstance(var, Value):
             return str(var)
         elif isinstance(var, Value):
             return str(var)
@@ -769,7 +770,7 @@ def _can_use_interpreter_core(program, place):
     return True
 
 
-@lru_cache()
+@lru_cache
 def _warning_once(msg):
     logging.warning(msg)
 
@@ -1110,7 +1111,17 @@ class _ExecutorCache:
         plan = core.Plan([default_job], type_to_program)
 
         new_exe = _StandaloneExecutor(place, plan, scope)
-        return program, new_exe
+
+        data_op_infos = []
+        global_block = program.global_block()
+        for op in global_block.ops:
+            if op.name() == 'pd_op.data':
+                feed_target_name = op.attrs()["name"]
+                var_type = paddle_type_to_proto_type[op.attrs()["dtype"]]
+                var_shape = op.attrs()["shape"]
+                tup = (feed_target_name, var_type, var_shape)
+                data_op_infos.append(tup)
+        return program, new_exe, data_op_infos
 
 
 class Executor:
@@ -1221,6 +1232,7 @@ class Executor:
         # NOTE(Ruibiao): The manually call of clear is required. Because in Python, executor_cache
         # may not immediately destructed after Executor instance deleted (so does not the _StandaloneExecutor),
         # that brings errors to mkl-dnn unit tests (see ClearMKLDNNCache in interpretercore.cc for why).
+        self.close()
         self._executor_cache.clear()
 
     def _get_scope_cache(self, program_cache_key):
@@ -1326,26 +1338,23 @@ class Executor:
             else:
                 break
 
-    def _pir_feed_data(self, program, feed, scope):
+    def _pir_feed_data(self, program, feed, scope, data_op_infos):
         # feed var to framework
         feed_target_names = set()
-        global_block = program.global_block()
-        for op in global_block.ops:
-            if op.name() == 'pd_op.data':
-                feed_target_name = op.attrs()["name"]
-                feed_target_names.add(feed_target_name)
-                var_type = paddle_type_to_proto_type[op.attrs()["dtype"]]
-                var_shape = op.attrs()["shape"]
-                cur_feed = feed[feed_target_name]
-                if not isinstance(cur_feed, core.LoDTensor):
-                    cur_feed = _as_lodtensor(cur_feed, self.place, var_type)
-                pir_check_feed_shape_type(
-                    cur_feed, feed_target_name, var_shape, var_type
-                )
-                # the last arg of set_feed_variable has no effect in pir, we pass 0 by default.
-                core.set_feed_variable(scope, cur_feed, feed_target_name, 0)
-            else:
-                break
+        for data_op_info in data_op_infos:
+            feed_target_name = data_op_info[0]
+            feed_target_names.add(feed_target_name)
+            var_type = data_op_info[1]
+            var_shape = data_op_info[2]
+
+            cur_feed = feed[feed_target_name]
+            if not isinstance(cur_feed, core.LoDTensor):
+                cur_feed = _as_lodtensor(cur_feed, self.place, var_type)
+            pir_check_feed_shape_type(
+                cur_feed, feed_target_name, var_shape, var_type
+            )
+            # the last arg of set_feed_variable has no effect in pir, we pass 0 by default.
+            core.set_feed_variable(scope, cur_feed, feed_target_name, 0)
 
         # pop variable which is not found in program
         for feed_name in list(feed.keys()):
@@ -1559,6 +1568,17 @@ class Executor:
                 self._default_executor.release_trainer(trainer_instance)
                 del trainer_instance
             self._default_executor.close()
+
+    def flush(self):
+        """
+        flush all trainer param to root_scope
+        """
+        if self._closed:
+            return
+        for _, trainer_instance in self.trainer_caches.items():
+            self._default_executor.release_trainer(trainer_instance)
+            del trainer_instance
+        self.trainer_caches.clear()
 
     def run(
         self,
@@ -1907,7 +1927,6 @@ class Executor:
             )
 
             self._feed_data(program, feed, feed_var_name, scope)
-
             if hasattr(program, 'lr_scheduler'):
                 from paddle.optimizer.lr import LRScheduler
 
@@ -2022,7 +2041,11 @@ class Executor:
                 % (type(feed))
             )
 
-        program, new_exe = self._executor_cache.get_pir_program_and_executor(
+        (
+            program,
+            new_exe,
+            data_op_infos,
+        ) = self._executor_cache.get_pir_program_and_executor(
             program,
             feed,
             fetch_list,
@@ -2032,7 +2055,7 @@ class Executor:
             scope,
         )
 
-        self._pir_feed_data(program, feed, scope)
+        self._pir_feed_data(program, feed, scope, data_op_infos)
 
         if hasattr(program, 'lr_scheduler'):
             from paddle.optimizer.lr import LRScheduler
@@ -2069,9 +2092,7 @@ class Executor:
         return exe.run(feed)
 
     def _check_fetch_list(self, fetch_list):
-        is_fetch_var = lambda var: isinstance(
-            var, (Variable, str, OpResult, Value)
-        )
+        is_fetch_var = lambda var: isinstance(var, (Variable, str, Value))
         is_tuple_list = lambda var: isinstance(var, (tuple, list))
 
         if fetch_list is None:
@@ -2097,7 +2118,7 @@ class Executor:
                     res.append(var)
             else:
                 raise TypeError(
-                    "Require fetch_list[{}] 's type shall be one of (OpResult, str), but received {}.".format(
+                    "Require fetch_list[{}] 's type shall be one of (Value, str), but received {}.".format(
                         i, type(var).__name__
                     )
                 )
@@ -2461,7 +2482,12 @@ class Executor:
 
         dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
 
-        if program._heter_pipeline_opt is None:
+        reused_trainer = program._heter_pipeline_opt is not None or (
+            program._fleet_opt is not None
+            and program._fleet_opt.get("use_ps_gpu", True)
+        )
+
+        if reused_trainer is False:
             trainer_instance = (
                 self._default_executor.init_for_dataset(  # -->InitForDataset
                     program.desc, trainer._desc(), scope, dataset.dataset
@@ -2488,11 +2514,11 @@ class Executor:
             fetch_monitor.start()
             self._default_executor.run_from_dataset(trainer_instance)
             fetch_monitor.stop()
-            if program._heter_pipeline_opt is None:
+            if reused_trainer is False:
                 self._default_executor.release_trainer(trainer_instance)
         else:
             self._default_executor.run_from_dataset(trainer_instance)
-            if program._heter_pipeline_opt is None:
+            if reused_trainer is False:
                 self._default_executor.release_trainer(trainer_instance)
 
         dataset._dynamic_adjust_after_train()
@@ -2833,6 +2859,7 @@ class Executor:
             tensor.set(data, self.place)
 
         self._fleet_executor.run(cache_key)
+
         if "fetch_var" in fleet_opt:
             # If we speed up the generation in evaluation, we need to generate
             # multiple queries at the same time. Each query will in separate scope in order
