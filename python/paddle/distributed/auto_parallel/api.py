@@ -773,7 +773,7 @@ def to_static(
 
 
 def shard_tensor(
-    data, mesh, placements, dtype=None, place=None, stop_gradient=True
+    data, mesh, placements, dtype=None, place=None, stop_gradient=None
 ):
     """
     Constructs a ``paddle.Tensor`` with distributed attributes from ``data``,
@@ -794,7 +794,10 @@ def shard_tensor(
         place(CPUPlace|CUDAPinnedPlace|CUDAPlace|str, optional): The place to allocate Tensor. Can be
             CPUPlace, CUDAPinnedPlace, CUDAPlace. Default: None, means global place. If ``place`` is
             string, It can be ``cpu``, ``gpu:x`` and ``gpu_pinned``, where ``x`` is the index of the GPUs.
-        stop_gradient(bool, optional): Whether to block the gradient propagation of Autograd. Default: True.
+        stop_gradient(bool, optional): Whether to block the gradient propagation of Autograd. If
+            ``stop_gradient`` is None, set the returned Tensor's ``stop_gradient`` identical as the
+            ``data.stop_gradient`` when ``data`` has ``stop_gradient`` attribute and True otherwise.
+            Default: None.
 
     Returns:
         Tensor: A Tensor constructed from ``data`` with distributed attributes.
@@ -824,6 +827,8 @@ def shard_tensor(
 
     # 1. create dense tensor
     # `paddle.to_tensor` supports both dynamic and static mode
+    if stop_gradient is None:
+        stop_gradient = getattr(data, "stop_gradient", True)
     tensor = paddle.to_tensor(
         data, dtype=dtype, place=place, stop_gradient=stop_gradient
     )
