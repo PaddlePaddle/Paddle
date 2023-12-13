@@ -283,7 +283,7 @@ class MultivariateNormal(distribution.Distribution):
             shape (Sequence[int], optional): Prepended shape of the generated samples.
 
         Returns:
-            Tensor, Sampled data with shape `sample_shape` + `batch_shape` + `event_shape`. The data type is the global default dtype.
+            Tensor, Sampled data with shape `sample_shape` + `batch_shape` + `event_shape`. The data type is the same as `self.loc`.
         """
         with paddle.no_grad():
             return self.rsample(shape)
@@ -295,7 +295,7 @@ class MultivariateNormal(distribution.Distribution):
             shape (Sequence[int], optional): Prepended shape of the generated samples.
 
         Returns:
-            Tensor, Sampled data with shape `sample_shape` + `batch_shape` + `event_shape`. The data type is the global default dtype.
+            Tensor, Sampled data with shape `sample_shape` + `batch_shape` + `event_shape`. The data type is the same as `self.loc`.
         """
         if not isinstance(shape, Sequence):
             raise TypeError('sample shape must be Sequence object.')
@@ -312,7 +312,7 @@ class MultivariateNormal(distribution.Distribution):
           value (Tensor): The input tensor.
 
         Returns:
-          Tensor: log probability. The data type is same with :attr:`value` .
+          Tensor: log probability. The data type is the same as `self.loc`.
         """
         value = paddle.cast(value, dtype=self.dtype)
 
@@ -335,7 +335,7 @@ class MultivariateNormal(distribution.Distribution):
             value (Tensor): The input tensor.
 
         Returns:
-            Tensor: probability. The data type is same with :attr:`value` .
+            Tensor: probability. The data type is the same as `self.loc`.
         """
         return paddle.exp(self.log_prob(value))
 
@@ -353,7 +353,7 @@ class MultivariateNormal(distribution.Distribution):
         * :math:\Omega: is the support of the distribution.
 
         Returns:
-            Tensor, Shannon entropy of Multivariate Normal distribution. The data type is the global default dtype.
+            Tensor, Shannon entropy of Multivariate Normal distribution. The data type is the same as `self.loc`.
         """
         half_log_det = (
             self._unbroadcasted_scale_tril.diagonal(axis1=-2, axis2=-1)
@@ -382,7 +382,7 @@ class MultivariateNormal(distribution.Distribution):
             other (MultivariateNormal): instance of Multivariate Normal.
 
         Returns:
-            Tensor, kl-divergence between two Multivariate Normal distributions. The data type is the global default dtype.
+            Tensor, kl-divergence between two Multivariate Normal distributions. The data type is the same as `self.loc`.
 
         """
         if (

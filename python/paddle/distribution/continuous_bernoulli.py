@@ -54,7 +54,7 @@ class ContinuousBernoulli(distribution.Distribution):
         `probability` will be convert to a 1-D Tensor the paddle global default dtype.
         eps(float): Specify the bandwith of the unstable calculation region near 0.5. The unstable calculation region
         would be [0.5 - eps, 0.5 + eps], where the calculation is approximated by talyor expansion. The
-        default value is 1e-4.
+        default value is 0.02.
 
     Examples:
         .. code-block:: python
@@ -277,7 +277,7 @@ class ContinuousBernoulli(distribution.Distribution):
           value (Tensor): The input tensor.
 
         Returns:
-          Tensor: log probability. The data type is same with :attr:`value` .
+          Tensor: log probability. The data type is the same as `self.probability`.
         """
         value = paddle.cast(value, dtype=self.dtype)
         if not self._check_constraint(value):
@@ -299,7 +299,7 @@ class ContinuousBernoulli(distribution.Distribution):
             value (Tensor): The input tensor.
 
         Returns:
-            Tensor: probability. The data type is same with :attr:`value` .
+            Tensor: probability. The data type is the same as `self.probability`.
         """
         return paddle.exp(self.log_prob(value))
 
@@ -352,7 +352,7 @@ class ContinuousBernoulli(distribution.Distribution):
             value (Tensor): The input tensor.
 
         Returns:
-            Tensor: quantile of :attr:`value`. The data type is same with :attr:`value` .
+            Tensor: quantile of :attr:`value`. The data type is the same as `self.probability`.
         """
         value = paddle.cast(value, dtype=self.dtype)
         if not self._check_constraint(value):
@@ -396,7 +396,7 @@ class ContinuousBernoulli(distribution.Distribution):
             value (Tensor): The input tensor, meaning the quantile.
 
         Returns:
-            Tensor: the value of the r.v. corresponding to the quantile. The data type is same with :attr:`value` .
+            Tensor: the value of the r.v. corresponding to the quantile. The data type is the same as `self.probability`.
         """
         value = paddle.cast(value, dtype=self.dtype)
         if not self._check_constraint(value):
