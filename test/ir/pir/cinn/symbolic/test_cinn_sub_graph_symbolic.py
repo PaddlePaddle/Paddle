@@ -98,10 +98,16 @@ class TestCinnSubGraphBase(unittest.TestCase):
 
 
 class TestCinnDyShapeBase(TestCinnSubGraphBase):
+    def prepare_data(self):
+        self.shape = [4, 256]
+        self.axis = -1
+        self.x = paddle.randn(self.shape, dtype="float32")
+        self.x.stop_gradient = False
+
     def eval_symbolic(self, use_cinn):
         paddle.seed(2022)
         net = CINNReshapeSubGraphNet()
-        input_spec = [InputSpec(shape=[None, 128], dtype='float32')]
+        input_spec = [InputSpec(shape=[None, 256], dtype='float32')]
         net = apply_to_static(net, use_cinn, input_spec)
         net.eval()
         out = net(self.x)
