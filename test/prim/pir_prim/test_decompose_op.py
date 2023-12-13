@@ -19,7 +19,6 @@ import numpy as np
 
 import paddle
 from paddle import pir
-from paddle.autograd.backward_utils import ValueDict
 from paddle.base import core
 from paddle.decomposition import decomp
 
