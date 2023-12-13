@@ -22,6 +22,7 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    enable_to_static_guard,
     test_default_and_pir,
 )
 from predictor_utils import PredictorTools
@@ -375,8 +376,6 @@ class TestSeResnet(Dy2StTestBase):
         self.temp_dir.cleanup()
 
     def train(self, train_reader, to_static):
-        paddle.jit.enable_to_static(to_static)
-
         np.random.seed(SEED)
 
         with base.dygraph.guard(place):
@@ -484,20 +483,22 @@ class TestSeResnet(Dy2StTestBase):
             )
 
     def predict_dygraph(self, data):
-        paddle.jit.enable_to_static(False)
-        with base.dygraph.guard(place):
-            se_resnext = SeResNeXt()
+        with enable_to_static_guard(False):
+            with base.dygraph.guard(place):
+                se_resnext = SeResNeXt()
 
-            model_dict = paddle.load(self.dy_state_dict_save_path + '.pdparams')
-            se_resnext.set_dict(model_dict)
-            se_resnext.eval()
+                model_dict = paddle.load(
+                    self.dy_state_dict_save_path + '.pdparams'
+                )
+                se_resnext.set_dict(model_dict)
+                se_resnext.eval()
 
-            label = np.random.random([1, 1]).astype("int64")
-            img = base.dygraph.to_variable(data)
-            label = base.dygraph.to_variable(label)
-            pred_res, _, _, _ = se_resnext(img, label)
+                label = np.random.random([1, 1]).astype("int64")
+                img = base.dygraph.to_variable(data)
+                label = base.dygraph.to_variable(label)
+                pred_res, _, _, _ = se_resnext(img, label)
 
-            return pred_res.numpy()
+                return pred_res.numpy()
 
     def predict_static(self, data):
         paddle.enable_static()
@@ -574,9 +575,10 @@ class TestSeResnet(Dy2StTestBase):
 
     @test_default_and_pir
     def test_check_result(self):
-        pred_1, loss_1, acc1_1, acc5_1 = self.train(
-            self.train_reader, to_static=False
-        )
+        with enable_to_static_guard(False):
+            pred_1, loss_1, acc1_1, acc5_1 = self.train(
+                self.train_reader, to_static=False
+            )
         pred_2, loss_2, acc1_2, acc5_2 = self.train(
             self.train_reader, to_static=True
         )

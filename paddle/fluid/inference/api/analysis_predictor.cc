@@ -1734,6 +1734,7 @@ void AnalysisPredictor::PrepareArgument() {
       argument_->SetEnableIrOptim(true);
       pass_builder->ClearPasses();
       pass_builder->AppendPass("auto_mixed_precision_pass");
+      pass_builder->AppendPass("inplace_op_var_pass");
       LOG(INFO) << "This model run in GPU mixed precision mode with no ir "
                    "optimization.";
     } else {
@@ -1917,6 +1918,9 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
         }
         if (std::getenv("FLAGS_initial_cpu_memory_in_mb") == nullptr) {
           SetGflag("initial_cpu_memory_in_mb", "0");
+        }
+        if (std::getenv("FLAGS_new_executor_sequential_run") == nullptr) {
+          SetGflag("new_executor_sequential_run", "1");
         }
       });
 
