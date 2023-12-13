@@ -62,6 +62,12 @@ class ValueDict:
             for key, val in iter.items():
                 self[key] = val
 
+    def copy(self):
+        ret = ValueDict()
+        ret._items = self._items.copy()
+        ret._default_factory = self._default_factory
+        return ret
+
     def update(self, other_dict):
         for key, val in other_dict:
             self[key] = val
@@ -76,6 +82,11 @@ class ValueDict:
     def items(self):
         for key, val in self._items.items():
             yield key._value, val
+
+    def pop(self, key):
+        if not self.__contains__(key):
+            raise KeyError(key)
+        return self._items.pop(ValueWrapper(key))
 
     def __setitem__(self, key, val: Any):
         self._items[ValueWrapper(key)] = val
@@ -109,6 +120,11 @@ class ValueSet:
         if iter is not None:
             for val in iter:
                 self.add(val)
+
+    def copy(self):
+        ret = ValueSet()
+        ret._set = self._set.copy()
+        return ret
 
     def add(self, val):
         if not self.__contains__(val):

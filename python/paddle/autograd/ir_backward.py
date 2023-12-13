@@ -19,7 +19,12 @@ import logging
 from collections.abc import Sequence
 
 import paddle.pir
-from paddle.autograd.backward_utils import State, dynamic_shape_prim_vjp_guard, ValueDict, ValueSet
+from paddle.autograd.backward_utils import (
+    State,
+    ValueDict,
+    ValueSet,
+    dynamic_shape_prim_vjp_guard,
+)
 from paddle.base.libpaddle.pir import (
     build_pipe_for_block,
     get_used_external_value,
@@ -828,7 +833,7 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
     state.turn_map()
 
     for bwd_op in inverse_sort_op(remove_ops):
-        if bwd_op.result(0) in grad_outputs:
+        if bwd_op.result(0) in ValueSet(grad_outputs):
             continue
         if bwd_op.result(0).use_empty():
             remove_op(block, bwd_op, state)

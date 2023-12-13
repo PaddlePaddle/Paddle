@@ -18,8 +18,8 @@ import warnings
 import paddle
 from paddle import pir
 from paddle.autograd import ir_backward
-from paddle.base import log_helper
 from paddle.autograd.backward_utils import ValueDict, ValueSet
+from paddle.base import log_helper
 from paddle.base.core import (
     call_decomp,
     decomp_ops_contain_unused_output,
@@ -362,8 +362,9 @@ def _check_combine_inputs(input1, input2):
     else:
         for i in range(builtin_combine_op1.num_operands()):
             if not (
-                builtin_combine_op1.operand_source(i)
-                == builtin_combine_op2.operand_source(i)
+                builtin_combine_op1.operand_source(i).is_same(
+                    builtin_combine_op2.operand_source(i)
+                )
             ):
                 return False
     return True
@@ -410,8 +411,8 @@ def _check_op(
                 return False
         else:  # for pir::VectorType<paddle::dialect::DenseTensorType>
             if not (
-                operand in fwd_inputs
-                or operand in fwd_outputs
+                operand in ValueSet(fwd_inputs)
+                or operand in ValueSet(fwd_outputs)
                 or operand.get_defining_op().name() in inserted_op_name_list
             ):
                 return False
@@ -425,7 +426,7 @@ def _get_fwd_op(bwd_op, grad_var_to_var):
     for idx, input_name in enumerate(bwd_op_input_names):
         if input_name in out_grad_name:
             out_grad = bwd_op.operand(idx).source()
-            if out_grad in grad_var_to_var.keys():
+            if out_grad in grad_var_to_var:
                 out = grad_var_to_var[out_grad]
                 fwd_op = out.get_defining_op()
                 return fwd_op
@@ -554,7 +555,7 @@ def _prepare_grad_outputs(fwd_op, bwd_op):
     ]
     grad_outputs = []
     grad_output_names = []
-    for bwd_input in bwd_inputs:
+    for i, bwd_input in enumerate(bwd_inputs):
         if (
             bwd_input.initialized()
             and bwd_input.get_defining_op().name() == "builtin.combine"
@@ -566,17 +567,14 @@ def _prepare_grad_outputs(fwd_op, bwd_op):
                     break
             if not in_fwd:
                 grad_outputs.append([bwd_input])
-                grad_output_names.append(
-                    bwd_input_names[bwd_inputs.index(bwd_input)]
-                )
+                grad_output_names.append(bwd_input_names[i])
         else:
             if not (
-                bwd_input in fwd_inputs or bwd_input in fwd_outputs
+                bwd_input in ValueSet(fwd_inputs)
+                or bwd_input in ValueSet(fwd_outputs)
             ):  # for paddle::dialect::DenseTensorType
                 grad_outputs.append([bwd_input])
-                grad_output_names.append(
-                    bwd_input_names[bwd_inputs.index(bwd_input)]
-                )
+                grad_output_names.append(bwd_input_names[i])
 
     # add fake grads for forward op's outputs which are not used in backward op
     # this is necessary for the call_vjp(), which ensures that len(out_grads) must be equal to len(outputs)
@@ -612,14 +610,15 @@ def _upgrade_grad_var_to_var(
     assert grad_var_to_var is not None, "grad_var_to_var should not be None"
     if orig_grads is not None and new_grads is not None:
         for idx, grad_input in enumerate(orig_grads):
-            if grad_input in grad_var_to_var.keys():
+            if grad_input in grad_var_to_var:
                 grad_var_to_var[new_grads[idx]] = grad_var_to_var.pop(
                     grad_input
                 )
     if orig_outs is not None and new_outs is not None:
         for grad_var, var in grad_var_to_var.items():
-            if var in orig_outs:
-                grad_var_to_var[grad_var] = new_outs[orig_outs.index(var)]
+            for i, orin_var in enumerate(orig_outs):
+                if var.is_same(orin_var):
+                    grad_var_to_var[grad_var] = new_outs[i]
 
 
 def _decomp_bwd_with_vjp(
@@ -685,7 +684,7 @@ def _decomp_bwd_without_vjp(
     block: Block,
     bwd_op: pir.Operation,
     grad_var_to_var: dict,
-    fwd_inputs: dict,
+    fwd_inputs: list,
     fwd_outputs_after_decompose: tuple,
 ) -> tuple:
     '''
@@ -706,7 +705,8 @@ def _decomp_bwd_without_vjp(
         bwd_input
         for bwd_input in bwd_inputs
         if not (
-            bwd_input in fwd_inputs or bwd_input in fwd_outputs_after_decompose
+            bwd_input in ValueSet(fwd_inputs)
+            or bwd_input in ValueSet(fwd_outputs_after_decompose)
         )
     )
     fwd_outputs_ = tuple(
@@ -865,7 +865,7 @@ def _reset_prim_state(state):
 
 def _translate_gradvartovar_to_pir(param_mapping, grad_var_to_var):
     '''translate grad_var_to_var (mapping VarDesc->VarDesc) to pir_grad_var_to_var (mapping OpResult->OpResult)'''
-    pir_grad_var_to_var = {}
+    pir_grad_var_to_var = ValueDict()
     for grad_var, var in grad_var_to_var.items():
         if grad_var in param_mapping.keys() and var in param_mapping.keys():
             if (
