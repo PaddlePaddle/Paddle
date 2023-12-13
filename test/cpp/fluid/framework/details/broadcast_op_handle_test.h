@@ -22,6 +22,7 @@
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/details/broadcast_op_handle.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace framework {

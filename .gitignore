@@ -41,6 +41,7 @@ build_doc/
 *.user
 *.tmp
 *.pyc
+*.log
 
 .vscode
 .idea
@@ -96,6 +97,7 @@ paddle/phi/api/profiler/__init__.py
 python/paddle/incubate/fleet/parameter_server/pslib/ps_pb2.py
 paddle/phi/kernels/fusion/cutlass/conv2d/generated/*
 paddle/phi/kernels/fusion/cutlass/conv2d/generated_tmp/*
+paddle/phi/ops/compat/generated_*
 python/paddle/base/incubate/fleet/parameter_server/pslib/ps_pb2.py
 paddle/fluid/ir_adaptor/translator/op_compat_info.cc
 paddle/phi/kernels/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/*
