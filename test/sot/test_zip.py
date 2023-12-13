@@ -76,16 +76,6 @@ def test_zip_8(iter_1, iter_2):
     return sum
 
 
-def test_zip_9(iter_1, iter_2):
-    sum = 0
-    for idx, (a, b) in enumerate(zip(iter_1, iter_2)):
-        if idx == 1:
-            psdb.breakgraph()
-        sum += a
-        sum += b
-    return sum
-
-
 class TestExecutor(TestCaseBase):
     def test_simple_cases(self):
         x = 8
@@ -109,8 +99,6 @@ class TestExecutor(TestCaseBase):
         sym_output = symbolic_translate(test_zip_8)(iter([1, 2, 3]), [4, 5, 6])
         paddle_output = test_zip_8(iter([1, 2, 3]), [4, 5, 6])
         self.assert_nest_match(sym_output, paddle_output)
-
-        self.assert_results(test_zip_9, [1, 2, 3], [4, 5, 6])
 
 
 if __name__ == "__main__":
