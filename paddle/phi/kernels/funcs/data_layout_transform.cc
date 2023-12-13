@@ -124,7 +124,7 @@ void TransDataLayoutFromOneDNN(DataLayout in_layout,
   // As MKL-DNN description was in NCHW and paddle is expecting NHWC
   MatchShapeToLayout(out, in_layout, out_layout);
 
-  out->set_layout(DataLayout::kNCHW);
+  out->set_layout(out_layout);
   VLOG(10) << "out->layout: " << out->layout() << " in->dims: " << in.dims()
            << " out->dims: " << out->dims();
 }
