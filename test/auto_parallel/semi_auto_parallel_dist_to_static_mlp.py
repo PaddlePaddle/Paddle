@@ -216,14 +216,22 @@ class TestSimpleNetForSemiAutoParallel:
         dist.save_state_dict(state_dict_to_save, self._ckpt_path)
         dist.barrier()
         expected_local_state_dict = {}
+        need_load_state_dict = {}
         with run_in_dynamic_mode():
             for k, v in state_dict_to_save.items():
                 local_value = v._local_value()
                 expected_local_state_dict[k] = local_value.clone()
-                paddle.assign(paddle.zeros_like(v), v)
-        dist.load_state_dict(state_dict_to_save, self._ckpt_path)
-        not_update_state_dict = dist_model.state_dict()
-        dist_model.set_state_dict(state_dict_to_save)
+                need_load_state_dict[k] = paddle.zeros_like(v)
+        dist_model.set_state_dict(need_load_state_dict)
+        program_state_dict = dist_model.state_dict()
+        for k, v in program_state_dict.items():
+            assert v.numpy().sum() == 0, f"key {k} is not zero: {v}"
+            assert k in expected_local_state_dict
+            assert (
+                need_load_state_dict[k].numpy().sum() == 0
+            ), f"key {k} is not zero: {need_load_state_dict[k]}"
+        dist.load_state_dict(need_load_state_dict, self._ckpt_path)
+        dist_model.set_state_dict(need_load_state_dict)
         program_state_dict = dist_model.state_dict()
         for k, v in program_state_dict.items():
             local_tensor = v._local_value()

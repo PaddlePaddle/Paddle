@@ -58,17 +58,31 @@ class TestSimpleNetHybridStrategyForSemiAutoParallel(
 
         # save load
         state_dict = model.state_dict()
-        local_state_dict = {}
-        for k, v in state_dict.items():
-            local_state_dict[k] = v._local_value().clone()
         paddle.distributed.save_state_dict(state_dict, self._ckpt_path)
         paddle.distributed.barrier()
+        expected_local_state_dict = {}
+        need_load_state_dict = {}
         for k, v in state_dict.items():
-            v._local_value().add_(paddle.ones_like(v._local_value()))
-        paddle.distributed.load_state_dict(state_dict, self._ckpt_path)
+            local_value = v._local_value()
+            expected_local_state_dict[k] = local_value.clone()
+            need_load_state_dict[k] = paddle.zeros_like(v)
+        model.set_state_dict(need_load_state_dict)
+        state_dict = model.state_dict()
         for k, v in state_dict.items():
-            assert k in local_state_dict, k
-            self.check_tensor_eq(v._local_value(), local_state_dict[k])
+            assert v.numpy().sum() == 0.0, f"state_dict {k} is not zero"
+            assert k in need_load_state_dict, f"state_dict {k} is not found"
+            assert (
+                need_load_state_dict[k].numpy().sum() == 0.0
+            ), f"state_dict {k} is not zero"
+
+        paddle.distributed.load_state_dict(
+            need_load_state_dict, self._ckpt_path
+        )
+        model.set_state_dict(need_load_state_dict)
+        state_dict = model.state_dict()
+        for k, v in state_dict.items():
+            assert k in expected_local_state_dict, k
+            self.check_tensor_eq(v._local_value(), expected_local_state_dict[k])
 
     def run_test_case(self):
         self.test_dp_mp_demo_net()

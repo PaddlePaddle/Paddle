@@ -145,6 +145,7 @@ def save_state_dict(
             if not val._is_initialized():
                 continue
             if val.is_dist():
+                # when val is scalar, the shape is []
                 (
                     local_shape,
                     global_offset,
@@ -154,7 +155,7 @@ def save_state_dict(
                         val.dist_attr.process_mesh,
                         val.dist_attr.dims_mapping,
                     )
-                    if val.shape
+                    if len(val.shape) > 0
                     else ((), ())
                 )
                 if local_shape is None or global_offset is None:
@@ -162,7 +163,9 @@ def save_state_dict(
                 local_tensor = val._local_value()
             else:
                 local_shape = tuple(val.shape)
-                global_offset = tuple([0] * len(val.shape)) if val.shape else ()
+                global_offset = (
+                    tuple([0] * len(val.shape)) if len(val.shape) > 0 else ()
+                )
                 local_tensor = val
             local_state_dict[key] = local_tensor
             local_state_dict_metadata[key] = LocalTensorMetadata(

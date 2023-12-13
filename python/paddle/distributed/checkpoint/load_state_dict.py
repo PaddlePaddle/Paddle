@@ -300,6 +300,7 @@ def get_read_items(path, state_dict, process_group, use_dist):
     for tensor_key, val in state_dict.items():
         if isinstance(val, paddle.Tensor):
             if val.is_dist():
+                # when val is scalar, the shape is []
                 (
                     local_shape,
                     global_offset,
@@ -309,14 +310,16 @@ def get_read_items(path, state_dict, process_group, use_dist):
                         val.dist_attr.process_mesh,
                         val.dist_attr.dims_mapping,
                     )
-                    if val.shape
+                    if len(val.shape) > 0
                     else ((), ())
                 )
                 if local_shape is None or global_offset is None:
                     continue
             else:
                 local_shape = tuple(val.shape)
-                global_offset = tuple([0] * len(val.shape)) if val.shape else ()
+                global_offset = (
+                    tuple([0] * len(val.shape)) if len(val.shape) > 0 else ()
+                )
             cur_chunk_metadata = LocalTensorMetadata(global_offset, local_shape)
             assert (
                 tensor_key in storage_state_dict_metadata
@@ -405,7 +408,7 @@ def load_state_dict(
         for val in state_dict.values():
             assert isinstance(
                 val, paddle.Tensor
-            ), "Only support dygraph Tensor now, support static DistributedTensor later"
+            ), f"Only support dygraph Tensor now, but is {val}"
 
     use_dist = True if paddle.distributed.get_world_size() > 1 else False
 

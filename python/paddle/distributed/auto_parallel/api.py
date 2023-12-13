@@ -30,6 +30,7 @@ from paddle.distributed.auto_parallel import Engine, strategy as auto_strategy
 from paddle.distributed.auto_parallel.interface import (
     shard_tensor as shard_tensor_static,
 )
+from paddle.distributed.auto_parallel.placement_type import to_placements
 from paddle.distributed.auto_parallel.static.completion import (
     mark_as_sharding_propagation_skip_op,
 )
@@ -360,9 +361,6 @@ class DistModel:
                 dist_attr["dims_mapping"]
             ), f"local tensor shape {local_tensor.shape} not equal to dims_mapping shape {dist_attr['dims_mapping']}."
             global_shape = local_tensor.shape
-            placements = [
-                dist.Replicate() for _ in range(len(dist_attr["process_shape"]))
-            ]
             for i, dim in enumerate(dist_attr["dims_mapping"]):
                 assert dim >= -1 and dim < len(
                     local_tensor.shape
@@ -370,10 +368,6 @@ class DistModel:
                 if dim == -1:
                     continue
                 elif dim >= 0:
-                    assert (
-                        placements[dim] == dist.Replicate()
-                    ), f"dim {dim} is not Replicate."
-                    placements[dim] = dist.Shard(i)
                     global_shape[i] = (
                         dist_attr["process_shape"][dim] * local_tensor.shape[i]
                     )
@@ -386,6 +380,7 @@ class DistModel:
                     dist_attr["process_shape"]
                 )
             )
+            placements = to_placements(dist_attr["dims_mapping"], mesh)
             dist_tensor = dist.shard_tensor(global_tensor, mesh, placements)
             assert (
                 dist_tensor._local_value().shape == local_tensor.shape
@@ -405,8 +400,19 @@ class DistModel:
         return global_state_dict
 
     def set_state_dict(self, state_dict):
+        local_state_dict = {}
         dist_main_program = self.dist_main_program(mode=self._engine._mode)
-        dist_main_program.set_state_dict(state_dict)
+        cur_state_dict = self.state_dict()
+        for k, v in state_dict.items():
+            assert v.is_dist(), f"key {k} value:{v} is not a dist tensor."
+            if k in cur_state_dict:
+                cur_v = cur_state_dict[k]
+                # TODO: check placements later
+                assert (
+                    v.process_mesh == cur_state_dict[k].process_mesh
+                ), f"process_mesh:{v.process_mesh} != {cur_v.process_mesh} not match"
+            local_state_dict[k] = v._local_value()
+        dist_main_program.set_state_dict(local_state_dict)
 
 
 # Part2: DistTensor construction related APIs
