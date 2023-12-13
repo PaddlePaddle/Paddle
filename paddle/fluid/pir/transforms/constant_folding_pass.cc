@@ -143,7 +143,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
 
     rewriter.SetInsertionPointToStart(rewriter.block());
 
-    bool use_parameter_op = ReplaceResultByParameterOp(op);
+    bool from_special_use_op = FromSpecialUseOp(op);
 
     for (uint32_t i = 0; i < op->num_results(); i++) {
       if (!op->result(i) || !op->result(i).type()) {
@@ -156,19 +156,11 @@ class ConstantFoldingPattern : public pir::RewritePattern {
           phi::errors::InvalidArgument("Parameter var [%s] not in scope.",
                                        output_var_name));
 
-      if (use_parameter_op && !is_train_mode_) {
+      if (!from_special_use_op && !is_train_mode_) {
         if (output_var->IsType<phi::DenseTensor>()) {
           auto* output_tensor = output_var->GetMutable<phi::DenseTensor>();
-          if (output_tensor->IsInitialized() &&
-              output_tensor->place().GetType() != place_.GetType()) {
-            phi::DenseTensor temp_tensor;
-            temp_tensor.Resize(output_tensor->dims());
-            paddle::framework::TensorCopySync(
-                *output_tensor, phi::CPUPlace{}, &temp_tensor);
-            output_tensor->clear();
-            paddle::framework::TensorCopySync(
-                temp_tensor, place_, output_tensor);
-          }
+          TensorCopySync(output_tensor, from_special_use_op);
+
           auto parameter_op = rewriter.Build<pir::ParameterOp>(
               output_var_name, op->result(i).type());
           parameter_op->set_attribute(
@@ -180,23 +172,15 @@ class ConstantFoldingPattern : public pir::RewritePattern {
       } else {
         if (output_var->IsType<phi::DenseTensor>()) {
           auto* output_tensor = output_var->GetMutable<phi::DenseTensor>();
-          if (output_tensor->place().GetType() != phi::AllocationType::CPU) {
-            phi::DenseTensor temp_tensor;
-            temp_tensor.Resize(output_tensor->dims());
-            paddle::framework::TensorCopySync(
-                *output_tensor, phi::CPUPlace{}, &temp_tensor);
-            output_tensor->clear();
-            paddle::framework::TensorCopySync(
-                temp_tensor, phi::CPUPlace{}, output_tensor);
-          }
+          TensorCopySync(output_tensor, from_special_use_op);
+
+          auto constant_op = rewriter.Build<pir::ConstantTensorOp>(
+              rewriter.tensor_name_attr(output_var_name), op->result(i).type());
+          constant_op->set_attribute(
+              kAttrIsPersisable, rewriter.array_attr({rewriter.bool_attr(true)}));
+
+          rewriter.ReplaceAllUsesWith(op->result(i), constant_op->result(0));
         }
-
-        auto constant_op = rewriter.Build<pir::ConstantTensorOp>(
-            rewriter.tensor_name_attr(output_var_name), op->result(i).type());
-        constant_op->set_attribute(
-            kAttrIsPersisable, rewriter.array_attr({rewriter.bool_attr(true)}));
-
-        rewriter.ReplaceAllUsesWith(op->result(i), constant_op->result(0));
       }
     }
     rewriter.EraseOp(op);
@@ -205,6 +189,33 @@ class ConstantFoldingPattern : public pir::RewritePattern {
   }
 
  private:
+  void TensorCopySync(phi::DenseTensor* tensor,
+                      bool to_cpu) const {
+    if (to_cpu) {
+      if (tensor->IsInitialized() &&
+          tensor->place().GetType() != phi::AllocationType::CPU) {
+        phi::DenseTensor temp_tensor;
+        temp_tensor.Resize(tensor->dims());
+        paddle::framework::TensorCopySync(
+            *tensor, phi::CPUPlace{}, &temp_tensor);
+        tensor->clear();
+        paddle::framework::TensorCopySync(
+            temp_tensor, phi::CPUPlace{}, tensor);
+      } 
+    } else {
+      if (tensor->IsInitialized() &&
+          tensor->place().GetType() != place_.GetType()) {
+              phi::DenseTensor temp_tensor;
+              temp_tensor.Resize(tensor->dims());
+              paddle::framework::TensorCopySync(
+                  *tensor, phi::CPUPlace{}, &temp_tensor);
+              tensor->clear();
+              paddle::framework::TensorCopySync(
+                  temp_tensor, place_, tensor);
+            }
+    }
+  }
+
   bool CheckDefiningOp(pir::Operation* defining_op) const {
     if (is_train_mode_) {
       if (!defining_op->isa<pir::ConstantTensorOp>()) {
@@ -219,11 +230,11 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     return true;
   }
 
-  bool CheckUseOps(
+  bool CheckSpecialUseOp(
       const std::vector<std::pair<pir::Operation*, int32_t>>& use_ops) const {
     for (auto [use_op, idx] : use_ops) {
       if (use_op->isa<pir::CombineOp>()) {
-        if (!ReplaceResultByParameterOp(use_op)) return false;
+        if (FromSpecialUseOp(use_op)) return true;
       } else if (use_op->HasInterface<paddle::dialect::OpYamlInfoInterface>()) {
         auto [input_infos, _1, _2, _3, _4] =
             use_op->dyn_cast<paddle::dialect::OpYamlInfoInterface>()
@@ -232,19 +243,19 @@ class ConstantFoldingPattern : public pir::RewritePattern {
                 std::string::npos ||
             input_infos[idx].type_name.find("ScalarAttribute") !=
                 std::string::npos) {
-          return false;
+          return true;
         }
       }
     }
-    return true;
+    return false;
   }
 
-  bool ReplaceResultByParameterOp(pir::Operation* op) const {
+  bool FromSpecialUseOp(pir::Operation* op) const {
     for (uint32_t i = 0; i < op->num_results(); i++) {
       auto use_ops = pir::GetUseOpsForOutput(op, i);
-      if (!CheckUseOps(use_ops)) return false;
+      if (CheckSpecialUseOp(use_ops)) return true;
     }
-    return true;
+    return false;
   }
 
   std::vector<std::string> BuildProgramFromOperation(
@@ -324,7 +335,10 @@ class ConstantFoldingPass : public pir::Pass {
   explicit ConstantFoldingPass(const phi::Place& place,
                                paddle::framework::Scope* scope,
                                bool is_train_mode)
-      : pir::Pass("constant_folding_pass", 1), place_(place), scope_(scope), is_train_mode_(is_train_mode) {
+      : pir::Pass("constant_folding_pass", 1),
+        place_(place),
+        scope_(scope),
+        is_train_mode_(is_train_mode) {
     PADDLE_ENFORCE_NOT_NULL(
         scope_, phi::errors::InvalidArgument("scope can not be nullptr"));
   }
@@ -332,8 +346,13 @@ class ConstantFoldingPass : public pir::Pass {
  private:
   bool Initialize(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add<ConstantFoldingPattern>(
-        context, &counter_, place_, scope_, is_train_mode_, &exe_config_, &deleted_vars_);
+    ps.Add<ConstantFoldingPattern>(context,
+                                   &counter_,
+                                   place_,
+                                   scope_,
+                                   is_train_mode_,
+                                   &exe_config_,
+                                   &deleted_vars_);
     patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
     return true;
   }
@@ -373,8 +392,9 @@ class ConstantFoldingPass : public pir::Pass {
 
 namespace pir {
 
-std::unique_ptr<Pass> CreateConstantFoldingPass(
-    const phi::Place& place, paddle::framework::Scope* scope, bool is_train_mode) {
+std::unique_ptr<Pass> CreateConstantFoldingPass(const phi::Place& place,
+                                                paddle::framework::Scope* scope,
+                                                bool is_train_mode) {
   return std::make_unique<ConstantFoldingPass>(place, scope, is_train_mode);
 }
 
