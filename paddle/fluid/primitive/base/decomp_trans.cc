@@ -115,6 +115,18 @@ void DecompProgram::check_decomp_outputs(
     const std::vector<pir::OpResult>& orig_outs,
     const std::vector<pir::OpResult>& decomp_outs) {
   for (size_t i = 0; i < orig_outs.size(); i++) {
+    auto orig_dtype = GetValueDtype(orig_outs[i]);
+    auto decomp_dtype = GetValueDtype(decomp_outs[i]);
+
+    PADDLE_ENFORCE(
+        orig_dtype == decomp_dtype,
+        paddle::platform::errors::PreconditionNotMet(
+            "[Prim] For op %s, its origin output dtype %s is not equal to "
+            "decomp output dtype %s ",
+            op_name,
+            orig_dtype,
+            decomp_dtype));
+
     auto orig_dim = GetValueDims(orig_outs[i]);
     auto decomp_dim = GetValueDims(decomp_outs[i]);
     std::vector<int64_t> shape = common::vectorize<int64_t>(orig_dim);
@@ -130,8 +142,6 @@ void DecompProgram::check_decomp_outputs(
              "shape ["
           << decomp_dim << "] in output of decomp op " << op_name;
     }
-    VLOG(0) << "org shape ======== " << orig_dim;
-    VLOG(0) << "decomp shape ===== " << decomp_dim;
 
     PADDLE_ENFORCE(
         orig_dim == decomp_dim,
@@ -263,7 +273,7 @@ std::vector<pir::OpResult> DecompProgram::decomp_program() {
     }
     if (enable_prim) {
       VLOG(4) << "[Prim] decomp op name " << op->name();
-
+      check_decomp_dynamic_shape(op);
       auto& builder = *(paddle::dialect::ApiBuilder::Instance().GetBuilder());
       builder.set_insertion_point(op);
       std::vector<std::vector<pir::OpResult>> decomp_res = call_decomp_rule(op);
