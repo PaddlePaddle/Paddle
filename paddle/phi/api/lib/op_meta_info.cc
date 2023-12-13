@@ -419,12 +419,12 @@ const std::vector<std::string>& OpMetaInfoHelper::GetTrtSupportsFormatConfig(
 #endif
 
 //////////////// Op Meta Info Map /////////////////
-#ifdef PHI_SHARED
+
 OpMetaInfoMap& OpMetaInfoMap::Instance() {
   static OpMetaInfoMap g_custom_op_meta_info_map;
   return g_custom_op_meta_info_map;
 }
-#endif
+
 std::vector<OpMetaInfo>& OpMetaInfoMap::operator[](const std::string& name) {
   return map_[name];
 }

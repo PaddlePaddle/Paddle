@@ -20,12 +20,15 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/type_storage.h"
 #include "paddle/fluid/pir/dialect/operator/transforms/param_to_variable.h"
+#include "paddle/fluid/platform/init_phi.h"
 #include "paddle/pir/core/builtin_type_interfaces.h"
 #include "paddle/pir/core/interface_value.h"
 #include "paddle/pir/core/ir_printer.h"
 #include "paddle/pir/core/utils.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+
+REGISTER_FILE_SYMBOLS(op_dialect);
 
 namespace paddle {
 namespace dialect {

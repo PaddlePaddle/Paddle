@@ -1081,14 +1081,7 @@ class OpMetaInfoHelper {
 
 class PADDLE_API OpMetaInfoMap {
  public:
-#ifdef PHI_SHARED
   static OpMetaInfoMap& Instance();
-#else
-  static OpMetaInfoMap& OpMetaInfoMap::Instance() {
-    static OpMetaInfoMap g_custom_op_meta_info_map;
-    return g_custom_op_meta_info_map;
-  }
-#endif
 
   std::vector<OpMetaInfo>& operator[](const std::string& name);
 
