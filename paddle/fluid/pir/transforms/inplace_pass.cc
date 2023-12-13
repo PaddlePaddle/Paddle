@@ -83,7 +83,8 @@ static bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
       return false;
     }
 
-    if (details::ignore_shape_check_ops.count(op_name) > 0) {
+    if (details::ignore_shape_check_ops.count(op_name) > 0 &&
+        eager_dels.count(input) != 0) {
       VLOG(9) << "     -- reshape, squeeze, unsqueeze do not need check shape, "
                  "can do inplace";
       return true;
