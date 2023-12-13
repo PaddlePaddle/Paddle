@@ -191,7 +191,7 @@ class InterpreterCoreInfoCache {
  public:
   static InterpreterCoreInfoCache& Instance();
 
-  int64_4 hash_with_seed(int64_t program_id, int64_t seed) {
+  int64_t hash_with_seed(int64_t program_id, int64_t seed) {
     return program_id + 0x9e3779b9 + (program_id << 6) + (seed >> 2);
   }
 

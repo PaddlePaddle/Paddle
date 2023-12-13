@@ -155,14 +155,15 @@ inline void run_program_ad_func(
   auto params_tmp = Trans2ContiguousTensors(params);
   // Call forward function
   // if require_any_grad is False, don't save any middle vars.
-  vector<int64_t> place_hash_keys = vector<int64_t>();
-  for (paddle::Tensor& tensor : x) {
-    place_hash_keys.emplace_back(reinterpret_cast<int64_t>(
-        std::hash<std::string>(tensor.place.GetDeviceType())));
+  std::vector<int64_t> place_hash_keys = std::vector<int64_t>();
+  std::hash<std::string> hasher;
+  for (const paddle::Tensor& tensor : x) {
+    std::string place_str = tensor.place().GetDeviceType();
+    place_hash_keys.emplace_back(static_cast<int64_t>(hasher(place_str)));
   }
-  for (paddle::Tensor& tensor : params) {
-    place_hash_keys.emplace_back(reinterpret_cast<int64_t>(
-        std::hash<std::string>(tensor.place.GetDeviceType())));
+  for (const paddle::Tensor& tensor : params) {
+    std::string place_str = tensor.place().GetDeviceType();
+    place_hash_keys.emplace_back(static_cast<int64_t>(hasher(place_str)));
   }
   RunProgramAPI(x_tmp,
                 params_tmp,
@@ -284,14 +285,15 @@ inline void pir_run_program_ad_func(
 
   // Call forward function
   // if require_any_grad is False, don't save any middle vars.
-  vector<int64_t> place_hash_keys = vector<int64_t>();
-  for (paddle::Tensor& tensor : x) {
-    place_hash_keys.emplace_back(reinterpret_cast<int64_t>(
-        std::hash<std::string>(tensor.place.GetDeviceType())));
+  std::vector<int64_t> place_hash_keys = std::vector<int64_t>();
+  std::hash<std::string> hasher;
+  for (const paddle::Tensor& tensor : x) {
+    std::string place_str = tensor.place().GetDeviceType();
+    place_hash_keys.emplace_back(static_cast<int64_t>(hasher(place_str)));
   }
-  for (paddle::Tensor& tensor : params) {
-    place_hash_keys.emplace_back(reinterpret_cast<int64_t>(
-        std::hash<std::string>(tensor.place.GetDeviceType())));
+  for (const paddle::Tensor& tensor : params) {
+    std::string place_str = tensor.place().GetDeviceType();
+    place_hash_keys.emplace_back(static_cast<int64_t>(hasher(place_str)));
   }
   PirRunProgramAPI(x,
                    params,

@@ -423,7 +423,7 @@ inline void PirRunProgramAPI(
     std::vector<paddle::framework::Scope *> &step_scope,  // NOLINT
     bool require_any_grad,
     const paddle::framework::AttributeMap &attrs,
-    const std::vector<int64> &place_hash_keys) {
+    const std::vector<int64_t> &place_hash_keys) {
   VLOG(2) << "RunProgramOpKernel Compute";
   // In the original run_program OP, the default value of the is_test
   // attribute is false, we should check if there is is_test parameter
@@ -617,7 +617,7 @@ inline void RunProgramAPI(
     std::vector<paddle::framework::Scope *> &step_scope,  // NOLINT
     bool require_any_grad,
     const paddle::framework::AttributeMap &attrs,
-    const std::vector<int64> &place_hash_keys) {
+    const std::vector<int64_t> &place_hash_keys) {
   VLOG(2) << "RunProgramOpKernel Compute";
   // In the original run_program OP, the default value of the is_test
   // attribute is false, we should check if there is is_test parameter
@@ -820,7 +820,7 @@ inline void RunProgramGradAPI(
     const paddle::framework::AttributeMap &attrs,
     std::vector<paddle::Tensor *> &x_grad,       // NOLINT
     std::vector<paddle::Tensor *> &params_grad,  // NOLINT
-    const std::vector<int64> &place_hash_keys) {
+    const std::vector<int64_t> &place_hash_keys) {
   // if all output vars are set to stop_gradient, grad op no need to executed
   if (x_grad.empty() && params_grad.empty()) return;
   auto *out_scope_vec = &step_scope;
@@ -984,7 +984,7 @@ inline void PirRunProgramGradAPI(
     const paddle::framework::AttributeMap &attrs,
     std::vector<paddle::Tensor *> &x_grad,       // NOLINT
     std::vector<paddle::Tensor *> &params_grad,  // NOLINT
-    const std::vector<int64> &place_hash_keys) {
+    const std::vector<int64_t> &place_hash_keys) {
   // if all output vars are set to stop_gradient, grad op no need to executed
   if (x_grad.empty() && params_grad.empty()) return;
   auto *out_scope_vec = &step_scope;
@@ -1394,7 +1394,8 @@ class PirGradNodeRunProgram : public egr::GradNodeBase {
                          step_scope_,
                          attrs_,
                          x_grad_ptr,
-                         params_grad_ptr place_hash_keys_);
+                         params_grad_ptr,
+                         place_hash_keys_);
     VLOG(3) << "End Eager Backward Node: PirGradNodeRunProgram";
 
     executed_ = true;
