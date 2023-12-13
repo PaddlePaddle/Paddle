@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// #include <sstream>
-// #include <string>
-
 #include "paddle/fluid/primitive/base/decomp_trans.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
@@ -206,7 +203,7 @@ std::vector<pir::OpResult> DecompProgram::decomp_program() {
     orig_vars_dict[src_vars_[i]] = static_cast<int>(i);
   }
   program_->Print(print_stream);
-  VLOG(4) << "[Prim] Origin program bofore decomp " << print_stream.str();
+  VLOG(4) << "[Prim] Origin program bofore decomp :\n" << print_stream.str();
   if (!paddle::prim::PrimCommonUtils::IsFwdPrimEnabled()) {
     return src_vars_;
   }
@@ -259,7 +256,7 @@ std::vector<pir::OpResult> DecompProgram::decomp_program() {
   builder.SetInsertionPointToEnd(block);
   std::ostringstream print_stream3;
   program_->Print(print_stream3);
-  VLOG(4) << "[Prim] New program after decomp  " << print_stream3.str();
+  VLOG(4) << "[Prim] New program after decomp :\n" << print_stream3.str();
   return tar_vars;
 }
 
