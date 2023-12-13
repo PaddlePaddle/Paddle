@@ -17,9 +17,10 @@ import unittest
 from test_case_base import TestCaseBase
 
 import paddle
-from paddle.jit.sot.utils import with_control_flow_guard
+from paddle.jit.sot.utils import try_ast_func, with_control_flow_guard
 
 
+@try_ast_func
 def calc(x, y, z):
     if x < 5:
         a = x + y
