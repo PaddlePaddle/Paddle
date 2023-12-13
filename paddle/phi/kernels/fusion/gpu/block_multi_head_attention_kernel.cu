@@ -535,6 +535,7 @@ void DispatchWithDtype(
         cachekv_quant_mode = 1;
       }
     }
+    VLOG(1) << "cachekv_quant_mode " << cachekv_quant_mode;
     blha<T>(dev_ctx,
             qkv_out_decoder,
             nullptr,  // qkv_bias

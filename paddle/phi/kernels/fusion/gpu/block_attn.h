@@ -561,7 +561,7 @@ inline size_t smem_size_in_bytes(const Block_AttN_params<T> &params,
   size_t smem_sz =                                                             \
       smem_size_in_bytes<T>(params, Dh, THDS_PER_VALUE, THDS_PER_BLOCK);       \
   if (params.cache_k_quant_scales) {                                           \
-    if (use_cachekv_int8) {                                                    \
+    if (use_cachekv_int8 == 2) {                                               \
       constexpr auto kernel_fn = block_attention_kernel<T,                     \
                                                         Dh,                    \
                                                         Dh_MAX,                \
@@ -579,7 +579,7 @@ inline size_t smem_size_in_bytes(const Block_AttN_params<T> &params,
       dim3 grid(params.num_head, params.batch_size);                           \
       kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                    \
           params, load_func, store_func);                                      \
-    } else {                                                                   \
+    } else if (use_cachekv_int8 == 1) {                                        \
       constexpr auto kernel_fn = block_attention_kernel<T,                     \
                                                         Dh,                    \
                                                         Dh_MAX,                \
