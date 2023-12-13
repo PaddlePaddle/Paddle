@@ -707,7 +707,16 @@ def cast_model_to_fp16(
         need_process = True
 
         def is_support_type(name):
-            return program.global_block().var(name).dtype in SUPPORT_FLOAT_TYPES
+            if not op.block._find_var_recursive(
+                name
+            ):  # a special case for lod_tensor_blocking_queue_0
+                return True
+            if (
+                op.block._var_recursive(name).type()
+                != core.VarDesc.VarType.LOD_TENSOR
+            ):
+                return False
+            return op.block._var_recursive(name).dtype in SUPPORT_FLOAT_TYPES
 
         if len(op.input_arg_names) > 0 and all(
             not is_support_type(name) for name in op.input_arg_names
