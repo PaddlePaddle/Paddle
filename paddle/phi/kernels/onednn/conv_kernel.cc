@@ -33,6 +33,28 @@ void ConvKernel(const Context& dev_ctx,
                 int groups,
                 const std::string& data_format,
                 DenseTensor* out) {
+  auto desc = input.mem_desc();
+  auto input_local = input;
+  if (data_format == "NHWC" && desc.get_dims().size() == 4 &&
+      desc == dnnl::memory::desc(desc.get_dims(),
+                                 desc.get_data_type(),
+                                 dnnl::memory::format_tag::nhwc)) {
+    std::vector<int64_t> dims = desc.get_dims();
+    std::rotate(dims.begin() + 1, dims.end() - 1, dims.end());
+    input_local.set_mem_desc(dnnl::memory::desc(
+        dims, desc.get_data_type(), dnnl::memory::format_tag::nhwc));
+    phi::OneDNNContext::tls().set_cur_paddle_data_layout(DataLayout::kNHWC);
+  } else if (data_format == "NDHWC" && desc.get_dims().size() == 5 &&
+             desc == dnnl::memory::desc(desc.get_dims(),
+                                        desc.get_data_type(),
+                                        dnnl::memory::format_tag::nhwc)) {
+    std::vector<int64_t> dims = desc.get_dims();
+    std::rotate(dims.begin() + 1, dims.end() - 1, dims.end());
+    input_local.set_mem_desc(dnnl::memory::desc(
+        dims, desc.get_data_type(), dnnl::memory::format_tag::nhwc));
+    phi::OneDNNContext::tls().set_cur_paddle_data_layout(DataLayout::kNDHWC);
+  }
+
   bool is_test = dev_ctx.HasDnnAttr("is_test")
                      ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("is_test"))
                      : false;
@@ -113,24 +135,8 @@ void Conv3DKernel(const Context& dev_ctx,
 }
 
 KernelKey ConvGetKernelTypeForVar(const GetKernelTypeForVarContext* ctx) {
-  const std::string& var_name = ctx->GetVarName();
   const DenseTensor& tensor = ctx->GetTensor();
   const KernelKey& expected_kernel_type = ctx->GetKernelKey();
-  const AttributeMap& attrs = ctx->GetAttrs();
-  // Only input require reshaping, weights and
-  // bias are having shape in NCHW order
-  if ((var_name == "Input") &&
-      (expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
-      (tensor.layout() != phi::DataLayout::ONEDNN)) {
-    auto it = attrs.find("data_format");
-    const std::string data_format = PADDLE_GET_CONST(std::string, it->second);
-    auto dl = common::StringToDataLayout(data_format);
-    // Some models may have intentionally set "AnyLayout" for conv
-    // op. Treat this as NCHW (default data_format value)
-    if (dl != phi::DataLayout::kAnyLayout) {
-      return phi::KernelKey(tensor.place(), dl, expected_kernel_type.dtype());
-    }
-  }
   return phi::KernelKey(
       tensor.place(), tensor.layout(), expected_kernel_type.dtype());
 }
