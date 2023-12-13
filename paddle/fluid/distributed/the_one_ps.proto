@@ -170,6 +170,7 @@ message CtrAccessorParameter {
   optional bool show_scale = 10 [ default = true ];
   optional bool zero_init = 11 [ default = true ];
   repeated float load_filter_slots = 12;
+  repeated float save_filter_slots = 13;
 }
 
 message TensorAccessorParameter {

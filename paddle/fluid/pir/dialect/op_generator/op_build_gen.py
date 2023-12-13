@@ -23,7 +23,7 @@ _INFERMETA_NEED_META_CONFIG = {
     'SliceRawInferMeta',
     'StackInferMeta',
     'Conv2dTransposeInferMeta',
-    'Conv2dFusionInferMeta',
+    'FusedConv2dAddActInferMeta',
     'InterpolateInferMeta',
 }
 

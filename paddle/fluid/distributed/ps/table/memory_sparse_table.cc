@@ -370,6 +370,14 @@ int32_t MemorySparseTable::Save(const std::string &dirname,
     int retry_num = 0;
     int err_no = 0;
     auto &shard = _local_shards[i];
+#ifdef PADDLE_WITH_GPU_GRAPH
+    // for incremental training, batch_model increase unseenday before save
+    if (save_param == 3) {
+      for (auto it = shard.begin(); it != shard.end(); ++it) {
+        _value_accesor->UpdateStatAfterSave(it.value().data(), save_param);
+      }
+    }
+#endif
     do {
       err_no = 0;
       feasign_size = 0;
@@ -416,9 +424,17 @@ int32_t MemorySparseTable::Save(const std::string &dirname,
       }
     } while (is_write_failed);
     feasign_size_all += feasign_size;
+#ifndef PADDLE_WITH_GPU_GRAPH
     for (auto it = shard.begin(); it != shard.end(); ++it) {
       _value_accesor->UpdateStatAfterSave(it.value().data(), save_param);
     }
+#else
+    if (save_param != 3) {
+      for (auto it = shard.begin(); it != shard.end(); ++it) {
+        _value_accesor->UpdateStatAfterSave(it.value().data(), save_param);
+      }
+    }
+#endif
     LOG(INFO) << "MemorySparseTable save prefix success, path: "
               << channel_config.path << " feasign_size: " << feasign_size;
   }
@@ -426,6 +442,215 @@ int32_t MemorySparseTable::Save(const std::string &dirname,
   // int32 may overflow need to change return value
   return 0;
 }
+
+#ifdef PADDLE_WITH_GPU_GRAPH
+int32_t MemorySparseTable::Save_v2(const std::string &dirname,
+                                   const std::string &param) {
+  auto *save_filtered_slots = _value_accesor->GetSaveFilteredSlots();
+  if (save_filtered_slots == nullptr || (save_filtered_slots->size()) <= 0) {
+    return Save(dirname, param);
+  }
+
+  if (_real_local_shard_num == 0) {
+    _local_show_threshold = -1;
+    return 0;
+  }
+
+  VLOG(0) << "MemorySparseTable::save dirname: " << dirname;
+  int save_param =
+      atoi(param.c_str());  // checkpoint:0  xbox delta:1  xbox base:2
+
+  // patch model
+  if (save_param == 5) {
+    _local_shards_patch_model.reset(_local_shards_new.release());
+    _local_shards_new.reset(new shard_type[_real_local_shard_num]);
+    _save_patch_model_thread = std::thread(std::bind(
+        &MemorySparseTable::SavePatch, this, std::string(dirname), save_param));
+    return 0;
+  }
+
+  // cache model
+  int64_t tk_size = LocalSize() * _config.sparse_table_cache_rate();
+  TopkCalculator tk(_real_local_shard_num, tk_size);
+
+  std::string table_path = TableDir(dirname);
+  _afs_client.remove(::paddle::string::format_string(
+      "%s/part-%03d-*", table_path.c_str(), _shard_idx));
+  // path to save non 9008 slot's feasign
+  _afs_client.remove(paddle::string::format_string(
+      "%s/slot_feature/part-%03d-*", table_path.c_str(), _shard_idx));
+  std::atomic<uint32_t> feasign_size_all{0};
+  std::atomic<uint32_t> feasign_size_all_for_slot_feature{0};
+
+  size_t file_start_idx = _avg_local_shard_num * _shard_idx;
+
+#ifdef PADDLE_WITH_HETERPS
+  int thread_num = _real_local_shard_num;
+#else
+  int thread_num = _real_local_shard_num < 20 ? _real_local_shard_num : 20;
+#endif
+  omp_set_num_threads(thread_num);
+
+#pragma omp parallel for schedule(dynamic)
+  for (int i = 0; i < _real_local_shard_num; ++i) {
+    FsChannelConfig channel_config;
+    FsChannelConfig channel_config_for_slot_feature;
+
+    if (_config.compress_in_save() && (save_param == 0 || save_param == 3)) {
+      channel_config.path =
+          paddle::string::format_string("%s/part-%03d-%05d.gz",
+                                        table_path.c_str(),
+                                        _shard_idx,
+                                        file_start_idx + i);
+      channel_config_for_slot_feature.path =
+          paddle::string::format_string("%s/slot_feature/part-%03d-%05d.gz",
+                                        table_path.c_str(),
+                                        _shard_idx,
+                                        file_start_idx + i);
+    } else {
+      channel_config.path = paddle::string::format_string("%s/part-%03d-%05d",
+                                                          table_path.c_str(),
+                                                          _shard_idx,
+                                                          file_start_idx + i);
+      channel_config_for_slot_feature.path =
+          paddle::string::format_string("%s/slot_featue/part-%03d-%05d",
+                                        table_path.c_str(),
+                                        _shard_idx,
+                                        file_start_idx + i);
+    }
+    channel_config.converter = _value_accesor->Converter(save_param).converter;
+    channel_config.deconverter =
+        _value_accesor->Converter(save_param).deconverter;
+    channel_config_for_slot_feature.converter =
+        _value_accesor->Converter(save_param).converter;
+    channel_config_for_slot_feature.deconverter =
+        _value_accesor->Converter(save_param).deconverter;
+
+    bool is_write_failed = false;
+    bool is_write_failed_for_slot_feature = false;
+    int feasign_size = 0;
+    int feasign_size_for_slot_feature = 0;
+    int retry_num = 0;
+    int retry_num_for_slot_feature = 0;
+    int err_no = 0;
+    int err_no_for_slot_feature = 0;
+    auto &shard = _local_shards[i];
+#ifdef PADDLE_WITH_GPU_GRAPH
+    // for incremental training, batch_model increase unseenday before save
+    if (save_param == 3) {
+      for (auto it = shard.begin(); it != shard.end(); ++it) {
+        _value_accesor->UpdateStatAfterSave(it.value().data(), save_param);
+      }
+    }
+#endif
+    do {
+      err_no = 0;
+      err_no_for_slot_feature = 0;
+      feasign_size = 0;
+      feasign_size_for_slot_feature = 0;
+      is_write_failed = false;
+      auto write_channel =
+          _afs_client.open_w(channel_config, 1024 * 1024 * 40, &err_no);
+      auto write_channel_for_slot_feature =
+          _afs_client.open_w(channel_config_for_slot_feature,
+                             1024 * 1024 * 40,
+                             &err_no_for_slot_feature);
+
+      for (auto it = shard.begin(); it != shard.end(); ++it) {
+        if (_config.enable_sparse_table_cache() &&
+            (save_param == 1 || save_param == 2) &&
+            _value_accesor->Save(it.value().data(), 4)) {
+          CostTimer timer10("sprase table top push");
+          tk.push(i, _value_accesor->GetField(it.value().data(), "show"));
+        }
+
+        if (_value_accesor->Save(it.value().data(), save_param)) {
+          std::string format_value = _value_accesor->ParseToString(
+              it.value().data(), it.value().size());
+          if (0 != write_channel->write_line(::paddle::string::format_string(
+                       "%lu %s", it.key(), format_value.c_str()))) {
+            ++retry_num;
+            is_write_failed = true;
+            LOG(ERROR)
+                << "MemorySparseTable save prefix failed, retry it! path:"
+                << channel_config.path << " , retry_num=" << retry_num;
+            break;
+          }
+          ++feasign_size;
+          // save non 9008 slot's feasign
+          if (_value_accesor->SaveFilterSlot(it.value().data())) {
+            if (0 != write_channel_for_slot_feature->write_line(
+                         paddle::string::format_string(
+                             "%lu %s", it.key(), format_value.c_str()))) {
+              ++retry_num_for_slot_feature;
+              is_write_failed_for_slot_feature = true;
+              LOG(ERROR) << "MemorySparseTable save slot feature failed, retry "
+                            "it! path:"
+                         << channel_config_for_slot_feature.path
+                         << " , retry_num=" << retry_num_for_slot_feature;
+              break;
+            }
+            ++feasign_size_for_slot_feature;
+          }
+        }
+      }
+      write_channel->close();
+      write_channel_for_slot_feature->close();
+      if (err_no == -1) {
+        ++retry_num;
+        is_write_failed = true;
+        LOG(ERROR)
+            << "MemorySparseTable save prefix failed after write, retry it! "
+            << "path:" << channel_config.path << " , retry_num=" << retry_num;
+      }
+      if (err_no_for_slot_feature == -1) {
+        ++retry_num_for_slot_feature;
+        is_write_failed_for_slot_feature = true;
+        LOG(ERROR)
+            << "MemorySparseTable save prefix failed after write, retry it! "
+            << "path:" << channel_config_for_slot_feature.path
+            << " , retry_num=" << retry_num_for_slot_feature;
+      }
+      if (is_write_failed) {
+        _afs_client.remove(channel_config.path);
+      }
+      if (is_write_failed_for_slot_feature) {
+        _afs_client.remove(channel_config_for_slot_feature.path);
+      }
+      if (retry_num > FLAGS_pserver_table_save_max_retry) {
+        LOG(ERROR) << "MemorySparseTable save prefix failed reach max limit!";
+        exit(-1);
+      }
+      if (retry_num_for_slot_feature > FLAGS_pserver_table_save_max_retry) {
+        LOG(ERROR) << "MemorySparseTable save prefix for slot feature failed "
+                      "reach max limit!";
+        exit(-1);
+      }
+    } while (is_write_failed && is_write_failed_for_slot_feature);
+
+    feasign_size_all += feasign_size;
+    feasign_size_all_for_slot_feature += feasign_size_for_slot_feature;
+#ifndef PADDLE_WITH_GPU_GRAPH
+    for (auto it = shard.begin(); it != shard.end(); ++it) {
+      _value_accesor->UpdateStatAfterSave(it.value().data(), save_param);
+    }
+#else
+    if (save_param != 3) {
+      for (auto it = shard.begin(); it != shard.end(); ++it) {
+        _value_accesor->UpdateStatAfterSave(it.value().data(), save_param);
+      }
+    }
+#endif
+    LOG(INFO) << "MemorySparseTable save prefix&feature success, path: "
+              << channel_config.path << " feasign_size: " << feasign_size
+              << ", feature path:" << channel_config_for_slot_feature.path
+              << ", feature feasign size:" << feasign_size_for_slot_feature;
+  }
+  _local_show_threshold = tk.top();
+  // int32 may overflow need to change return value
+  return 0;
+}
+#endif
 
 int32_t MemorySparseTable::SavePatch(const std::string &path, int save_param) {
   if (!_config.enable_revert()) {
@@ -1052,18 +1277,26 @@ int32_t MemorySparseTable::Flush() { return 0; }
 
 int32_t MemorySparseTable::Shrink(const std::string &param) {
   VLOG(0) << "MemorySparseTable::Shrink";
-  // TODO(zhaocaibei123): implement with multi-thread
+  std::atomic<uint32_t> shrink_size_all{0};
+  int thread_num = _real_local_shard_num;
+  omp_set_num_threads(thread_num);
+#pragma omp parallel for schedule(dynamic)
   for (int shard_id = 0; shard_id < _real_local_shard_num; ++shard_id) {
     // Shrink
+    int feasign_size = 0;
     auto &shard = _local_shards[shard_id];
     for (auto it = shard.begin(); it != shard.end();) {
       if (_value_accesor->Shrink(it.value().data())) {
         it = shard.erase(it);
+        ++feasign_size;
       } else {
         ++it;
       }
     }
+    shrink_size_all += feasign_size;
   }
+  VLOG(0) << "MemorySparseTable::Shrink success, shrink size:"
+          << shrink_size_all;
   return 0;
 }
 

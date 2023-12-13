@@ -46,7 +46,7 @@ void KthvalueGradKernel(const Context& dev_ctx,
   T* x_grad_data = dev_ctx.template Alloc<T>(d_x);
   // For 0D Tensor
   if (in_dims.size() == 0) {
-    phi::funcs::set_constant(dev_ctx, d_x, 1.0);
+    phi::funcs::set_constant(dev_ctx, d_x, static_cast<T>(1.0));
     return;
   }
 

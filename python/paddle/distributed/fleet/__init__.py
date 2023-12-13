@@ -83,6 +83,7 @@ server_endpoints = fleet.server_endpoints
 is_server = fleet.is_server
 util = UtilBase()
 barrier_worker = fleet.barrier_worker
+all_reduce = fleet.all_reduce
 init_worker = fleet.init_worker
 init_server = fleet.init_server
 run_server = fleet.run_server

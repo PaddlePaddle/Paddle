@@ -98,7 +98,7 @@ TEST(PatternRewrite, broadcast_elementwise) {
   it++;
   CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
   it++;
-  CHECK_EQ(it->isa<cinn::dialect::BroadcastOp>(), true);
+  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
   it++;
   CHECK_EQ(it->isa<paddle::dialect::AddOp>(), true);
 }
@@ -124,9 +124,9 @@ TEST(PatternRewrite, broadcast_elementwise_both) {
   it++;
   CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
   it++;
-  CHECK_EQ(it->isa<cinn::dialect::BroadcastOp>(), true);
+  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
   it++;
-  CHECK_EQ(it->isa<cinn::dialect::BroadcastOp>(), true);
+  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
   it++;
   CHECK_EQ(it->isa<paddle::dialect::AddOp>(), true);
 }
@@ -152,9 +152,9 @@ TEST(PatternRewrite, broadcast_elementwise_sub_both) {
   it++;
   CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
   it++;
-  CHECK_EQ(it->isa<cinn::dialect::BroadcastOp>(), true);
+  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
   it++;
-  CHECK_EQ(it->isa<cinn::dialect::BroadcastOp>(), true);
+  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
   it++;
   CHECK_EQ(it->isa<paddle::dialect::SubtractOp>(), true);
 }

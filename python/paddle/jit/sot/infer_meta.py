@@ -42,8 +42,8 @@ class MetaInfo:
     @staticmethod
     def from_tensor(tensor):
         # We always use float32 in simulation if AMP is enabled.
-        if isinstance(tensor, paddle.pir.OpResult):
-            name = "OpResult@NoName"
+        if isinstance(tensor, paddle.pir.Value):
+            name = "Value@NoName"
             persistable = tensor.persistable
             dtype = framework.paddle_type_to_proto_type[tensor.dtype]
         else:
@@ -230,7 +230,7 @@ def convert_variable_to_meta_info(args):
     static_variable_type = (
         paddle.static.Variable
         if not paddle.base.framework.use_pir_api()
-        else paddle.pir.OpResult
+        else paddle.pir.Value
     )
     return map_if_extend(
         args,

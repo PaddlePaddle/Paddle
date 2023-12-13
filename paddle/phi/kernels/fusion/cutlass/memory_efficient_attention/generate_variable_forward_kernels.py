@@ -157,6 +157,7 @@ void  {NAME}({CPP_CLASS} default_fmha, Params &params, const phi::GPUContext& ct
       problem0_device,
       problem1_device,
       params.num_batches,
+      params.pre_cache_length,
       params.num_heads,
       params.head_size,
       params.value_head_size);
@@ -491,6 +492,7 @@ struct Params {{
 
   bool causal;
   bool mask_broadcast_head;
+  int pre_cache_length;
 }};
 
 __global__ static void get_problem_sizes(const int* seq_lens,
@@ -498,6 +500,7 @@ __global__ static void get_problem_sizes(const int* seq_lens,
                                          GemmCoord* problem_sizes0,
                                          GemmCoord* problem_sizes1,
                                          const int bs,
+                                         const int pre_cache_length,
                                          const int num_head,
                                          const int head_size,
                                          const int value_head_size) {{
@@ -506,7 +509,7 @@ __global__ static void get_problem_sizes(const int* seq_lens,
   if (bi < bs && hi < num_head) {{
     int id = bi * num_head + hi;
     int m = seq_lens[bi];
-    int mkv = kv_seq_lens[bi];
+    int mkv = kv_seq_lens[bi] + (m == 0 ? 0 : pre_cache_length);
     int k0 = head_size;
     int k1 = value_head_size;
     GemmCoord problem0(m, mkv, k0);

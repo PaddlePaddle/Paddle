@@ -16,8 +16,10 @@
 
 import paddle
 from paddle import _C_ops
-from paddle.base.libpaddle import DataType
-from paddle.framework import in_dynamic_mode, in_dynamic_or_pir_mode
+from paddle.framework import (
+    in_dynamic_mode,
+    in_dynamic_or_pir_mode,
+)
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
 from ..common_ops_import import Variable
@@ -439,7 +441,8 @@ def median(x, axis=None, keepdim=False, name=None):
     tensor_topk, idx = paddle.topk(x, kth + 1, axis=axis, largest=False)
     dtype = (
         'float64'
-        if x.dtype in [core.VarDesc.VarType.FP64, DataType.FLOAT64]
+        if x.dtype
+        in [core.VarDesc.VarType.FP64, paddle.base.core.DataType.FLOAT64]
         else 'float32'
     )
     if sz & 1 == 0:
@@ -495,7 +498,7 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
         In order to obtain higher precision, data type of results will be float64.
     """
     # Validate x
-    if not isinstance(x, Variable):
+    if not isinstance(x, (Variable, paddle.pir.Value)):
         raise TypeError("input x should be a Tensor.")
 
     # Validate q
@@ -556,7 +559,7 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
     for q_num in q:
         if q_num < 0 or q_num > 1:
             raise ValueError("q should be in range [0, 1]")
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             q_num = paddle.to_tensor(q_num, dtype='float64')
         if ignore_nan:
             indices.append(q_num * (valid_counts - 1))
@@ -574,8 +577,8 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
 
     # TODO(chenjianye): replace the for-loop to directly take elements.
     for index in indices:
-        indices_below = paddle.floor(index).astype(paddle.int32)
-        indices_upper = paddle.ceil(index).astype(paddle.int32)
+        indices_below = paddle.floor(index).astype('int32')
+        indices_upper = paddle.ceil(index).astype('int32')
         tensor_upper = paddle.take_along_axis(
             sorted_tensor, indices_upper, axis=axis
         )

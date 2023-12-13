@@ -14,9 +14,9 @@
 
 #include <gtest/gtest.h>
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+#include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/pir/dialect/shape/ir/shape_dialect.h"
 #include "paddle/pir/dialect/shape/ir/shape_reify_infer_shape_op.h"
-#include "paddle/pir/dialect/shape/transforms/passes.h"
 #include "paddle/pir/pass/pass_manager.h"
 #include "test/cpp/pir/tools/test_pir_utils.h"
 
@@ -42,7 +42,7 @@ TEST(shape_optimization, shape_optimization_pass) {
   pm.Run(&program);
 
   // 5 ConstantOp + 5 TensorDim + 2 TieShape + op0 + op1 + 1 funcOp == 15 Ops.
-  EXPECT_EQ(program.block()->size(), 15u);
+  EXPECT_EQ(program.block()->size(), 2u);
 
   pir::SymbolicDimMgr mgr(program.module_op());
   EXPECT_TRUE(mgr.Load());
