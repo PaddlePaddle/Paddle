@@ -1,4 +1,4 @@
-# add_subdirectory(details)
+add_subdirectory(details)
 
 cc_test(
   data_type_test
