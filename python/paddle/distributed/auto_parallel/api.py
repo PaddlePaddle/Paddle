@@ -524,6 +524,7 @@ class Strategy(auto_strategy.BaseConfig):
 
         Examples:
             .. code-block:: python
+
                 >>> import paddle
                 >>> import paddle.distributed as dist
 
@@ -549,6 +550,7 @@ class Strategy(auto_strategy.BaseConfig):
 
         Examples:
             .. code-block:: python
+
                 >>> import paddle
                 >>> import paddle.distributed as dist
 
@@ -575,6 +577,7 @@ class Strategy(auto_strategy.BaseConfig):
 
         Examples:
             .. code-block:: python
+
                 >>> import paddle
                 >>> import paddle.distributed as dist
 
@@ -602,6 +605,7 @@ class Strategy(auto_strategy.BaseConfig):
 
         Examples:
             .. code-block:: python
+
                 >>> import paddle
                 >>> import paddle.distributed as dist
 
@@ -650,6 +654,7 @@ def to_static(
 
     Examples:
         .. code-block:: python
+
             >>> import numpy as np
             >>> import paddle
             >>> import paddle.distributed as dist
