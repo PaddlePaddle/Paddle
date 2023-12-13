@@ -24,6 +24,7 @@
 #include "paddle/pir/core/op_info.h"
 #include "paddle/pir/core/operation_utils.h"
 #include "paddle/pir/core/type.h"
+#include "paddle/pir/core/visitors.h"
 
 namespace pir {
 class OpBase;
@@ -113,7 +114,6 @@ class IR_API alignas(8) Operation final
   ///
   /// \brief region related public interfaces
   ///
-  using Element = Region;
   using Iterator = Region *;
   using ConstIterator = const Region *;
   uint32_t num_regions() const { return num_regions_; }
@@ -142,6 +142,16 @@ class IR_API alignas(8) Operation final
   void Print(std::ostream &os);
   pir::OpInfo info() const { return info_; }
   std::string name() const;
+
+  ///
+  /// \brief Operation Walkers
+  ///
+  template <WalkOrder Order = WalkOrder::PostOrder,
+            typename It = Region *,
+            typename FuncT>
+  void Walk(FuncT &&callback) {
+    return detail::Walk<Order, It>(this, std::forward<FuncT>(callback));
+  }
 
   ///
   /// \brief Remove this operation from its parent block and delete it.
