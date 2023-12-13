@@ -112,7 +112,7 @@ def train(build_strategy=None):
 
 
 class TestResnet(Dy2StTestBase):
-    def train(self, to_static):
+    def train(self, to_static: bool):
         with enable_to_static_guard(to_static):
             return train()
 
@@ -130,9 +130,9 @@ class TestResnet(Dy2StTestBase):
     @test_default_mode_only
     def test_resnet_composite(self):
         core._set_prim_backward_enabled(True)
-        static_loss = train(to_static=True)
+        static_loss = self.train(to_static=True)
         core._set_prim_backward_enabled(False)
-        dygraph_loss = train(to_static=False)
+        dygraph_loss = self.train(to_static=False)
         np.testing.assert_allclose(
             static_loss,
             dygraph_loss,

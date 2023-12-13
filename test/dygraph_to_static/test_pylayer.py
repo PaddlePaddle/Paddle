@@ -522,21 +522,20 @@ class PyLayerTrainHelper(unittest.TestCase):
         """
         Tests model decorated by `dygraph_to_static_output` in static graph mode. For users, the model is defined in dygraph mode and trained in static graph mode.
         """
-        with enable_to_static_guard(to_static):
-            paddle.set_device(self.place)
-            np.random.seed(SEED)
-            paddle.seed(SEED)
-            paddle.framework.random._manual_program_seed(SEED)
+        paddle.set_device(self.place)
+        np.random.seed(SEED)
+        paddle.seed(SEED)
+        paddle.framework.random._manual_program_seed(SEED)
 
-            # net = self.build_layer()
-            net = layer_builder()
-            if to_static:
-                net = paddle.jit.to_static(
-                    net, build_strategy=build_strategy, full_graph=True
-                )
+        # net = self.build_layer()
+        net = layer_builder()
+        if to_static:
+            net = paddle.jit.to_static(
+                net, build_strategy=build_strategy, full_graph=True
+            )
 
-            _, _, avg_loss = train(net)
-            return avg_loss.numpy()
+        _, _, avg_loss = train(net)
+        return avg_loss.numpy()
 
 
 class TestTrainingPyLayer(PyLayerTrainHelper):
