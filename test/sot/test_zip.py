@@ -17,6 +17,8 @@ import unittest
 from test_case_base import TestCaseBase
 
 import paddle
+from paddle.jit.sot import psdb, symbolic_translate
+from paddle.jit.sot.utils import min_graph_size_guard
 
 
 def test_zip_1(x: int, y: int):
@@ -65,8 +67,27 @@ def test_zip_7(layer_list, x):
     return sum
 
 
+def test_zip_8(iter_1, iter_2):
+    sum = 0
+    for a, b in zip(iter_1, iter_2):
+        psdb.breakgraph()
+        sum += a
+        sum += b
+    return sum
+
+
+def test_zip_9(iter_1, iter_2):
+    sum = 0
+    for idx, (a, b) in enumerate(zip(iter_1, iter_2)):
+        if idx == 1:
+            psdb.breakgraph()
+        sum += a
+        sum += b
+    return sum
+
+
 class TestExecutor(TestCaseBase):
-    def test_cases(self):
+    def test_simple_cases(self):
         x = 8
         y = 5
         ty = paddle.randn((10, 10))
@@ -80,6 +101,16 @@ class TestExecutor(TestCaseBase):
         self.assert_results(test_zip_5, paddle.to_tensor([1, 2, 3]))
         self.assert_results(test_zip_6, ty)
         self.assert_results(test_zip_7, layer_list, paddle.randn((10,)))
+
+    @min_graph_size_guard(0)
+    def test_reconstruct(self):
+        self.assert_results(test_zip_8, [1, 2, 3], [4, 5, 6])
+
+        sym_output = symbolic_translate(test_zip_8)(iter([1, 2, 3]), [4, 5, 6])
+        paddle_output = test_zip_8(iter([1, 2, 3]), [4, 5, 6])
+        self.assert_nest_match(sym_output, paddle_output)
+
+        self.assert_results(test_zip_9, [1, 2, 3], [4, 5, 6])
 
 
 if __name__ == "__main__":
