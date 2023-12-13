@@ -218,9 +218,11 @@ def decompose(
     blacklist = core.prim_config["forward_blacklist"] | blacklist
 
     logger.debug(
-        f'Lowering source program {program} into primitive program, the blacklist which will be ignored in lowering {blacklist}, \
-                  and the whitelist which will be processed in lowering {whitelist}. \
-                  The finally set that will be decomposed is: (ops & ops have decomposite rule & whitelist) - blacklist'
+        f'Lowering source program into primitive program. Source program is: \n \
+{program}\n \
+The finally set that will be decomposed is: (ops & ops have decomposite rule & whitelist) - blacklist.\n \
+The blacklist which will be ignored in lowering is: {blacklist},\n \
+and the whitelist which will be processed in lowering is: {whitelist}.'
     )
 
     if len(blacklist) > 0 and len(whitelist) > 0:
