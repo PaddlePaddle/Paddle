@@ -389,23 +389,21 @@ class TestArgsort(unittest.TestCase):
 
     @test_with_pir_api
     def test_api_static1(self):
+        self.init()
         if core.is_compiled_with_cuda():
             self.place = core.CUDAPlace(0)
         else:
             self.place = core.CPUPlace()
-        shape = self.input_shape
-        data = self.data
-        axis = self.axis
         with paddle.static.program_guard(paddle.static.Program()):
             input = paddle.static.data(
-                name="input", shape=shape, dtype="float64"
+                name="input", shape=self.shape, dtype="float64"
             )
             output = paddle.argsort(input, axis=self.axis)
-            np_result = np.argsort(data, axis=axis)
+            np_result = np.argsort(self.data, axis=self.axis)
             exe = paddle.static.Executor(self.place)
             result = exe.run(
                 paddle.static.default_startup_program(),
-                feed={'input': data},
+                feed={'input': self.data},
                 fetch_list=[output],
             )
 
@@ -413,23 +411,21 @@ class TestArgsort(unittest.TestCase):
 
     @test_with_pir_api
     def test_api_static2(self):
+        self.init()
         if core.is_compiled_with_cuda():
             self.place = core.CUDAPlace(0)
         else:
             self.place = core.CPUPlace()
-        shape = self.input_shape
-        data = self.data
-        axis = self.axis
         with paddle.static.program_guard(paddle.static.Program()):
             input = paddle.static.data(
-                name="input", shape=shape, dtype="float64"
+                name="input", shape=self.shape, dtype="float64"
             )
-            output2 = paddle.argsort(input, axis=axis, descending=True)
-            np_result2 = np.argsort(-data, axis=axis)
+            output2 = paddle.argsort(input, axis=self.axis, descending=True)
+            np_result2 = np.argsort(-self.data, axis=self.axis)
             exe = paddle.static.Executor(self.place)
             result2 = exe.run(
                 paddle.static.default_startup_program(),
-                feed={'input': data},
+                feed={'input': self.data},
                 fetch_list=[output2],
             )
 
