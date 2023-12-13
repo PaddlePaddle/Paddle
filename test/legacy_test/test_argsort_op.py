@@ -380,7 +380,7 @@ class TestArgsortErrorOnGPU(TestArgsortErrorOnCPU):
 
 
 class TestArgsort(unittest.TestCase):
-    def init(self):
+    def setUp(self):
         self.input_shape = [
             10000,
         ]
@@ -389,7 +389,6 @@ class TestArgsort(unittest.TestCase):
 
     @test_with_pir_api
     def test_api_static1(self):
-        self.init()
         if core.is_compiled_with_cuda():
             self.place = core.CUDAPlace(0)
         else:
@@ -402,7 +401,7 @@ class TestArgsort(unittest.TestCase):
             np_result = np.argsort(self.data, axis=self.axis)
             exe = paddle.static.Executor(self.place)
             result = exe.run(
-                paddle.static.default_startup_program(),
+                paddle.static.default_main_program(),
                 feed={'input': self.data},
                 fetch_list=[output],
             )
@@ -411,7 +410,6 @@ class TestArgsort(unittest.TestCase):
 
     @test_with_pir_api
     def test_api_static2(self):
-        self.init()
         if core.is_compiled_with_cuda():
             self.place = core.CUDAPlace(0)
         else:
@@ -424,7 +422,7 @@ class TestArgsort(unittest.TestCase):
             np_result2 = np.argsort(-self.data, axis=self.axis)
             exe = paddle.static.Executor(self.place)
             result2 = exe.run(
-                paddle.static.default_startup_program(),
+                paddle.static.default_main_program(),
                 feed={'input': self.data},
                 fetch_list=[output2],
             )
@@ -526,7 +524,9 @@ class TestArgsortOpFp16(unittest.TestCase):
         if base.core.is_compiled_with_cuda():
             paddle.enable_static()
             x_np = np.random.random((2, 8)).astype('float16')
-            with paddle.static.program_guard(paddle.static.Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 x = paddle.static.data(shape=[2, 8], name='x', dtype='float16')
                 out = paddle.argsort(x)
                 place = paddle.CUDAPlace(0)

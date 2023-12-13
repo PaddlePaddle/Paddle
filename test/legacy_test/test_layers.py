@@ -2184,6 +2184,7 @@ class TestBook(LayerTest):
             out = paddle.nn.functional.square_error_cost(input=x, label=y)
             return out
 
+    @test_with_pir_api
     def test_affine_grid(self):
         with self.static_graph():
             data = paddle.static.data(
