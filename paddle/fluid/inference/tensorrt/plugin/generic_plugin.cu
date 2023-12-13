@@ -24,6 +24,7 @@
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
+#include "paddle/phi/kernels/funcs/data_type_transform.h"
 
 namespace paddle {
 namespace inference {
@@ -403,6 +404,24 @@ bool GenericPlugin::supportsFormatCombination(
     if (pos == 2)
       return in_out[1].type == in_out[pos].type &&
              in_out[1].format == in_out[pos].format;
+  } else if (op_desc_.Type() == "argsort") {
+    // input x
+    if (pos == 0) {
+      return ((in_out[pos].type == nvinfer1::DataType::kFLOAT ||
+               (isFp16Supported() &&
+                in_out[pos].type == nvinfer1::DataType::kHALF)) &&
+              in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
+    }
+    // output out
+    if (pos == 1) {
+      return (in_out[pos].type == in_out[0].type &&
+              in_out[pos].format == in_out[0].format);
+    }
+    // output indices
+    if (pos == 2) {
+      return (in_out[pos].type == nvinfer1::DataType::kINT32 &&
+              in_out[pos].format == in_out[0].format);
+    }
   } else if (op_desc_.Type() == "scatter") {
     // input X
     if (pos == 0)
@@ -446,6 +465,11 @@ nvinfer1::DataType GenericPlugin::getOutputDataType(
     int nb_inputs) const TRT_NOEXCEPT {
   if (op_desc_.Type() == "lookup_table_v2") {
     return input_types[1];
+  }
+  if (op_desc_.Type() == "argsort") {
+    if (index == 1) {
+      return nvinfer1::DataType::kINT32;
+    }
   }
   return input_types[0];
 }
@@ -552,6 +576,7 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
                            void* workspace,
                            cudaStream_t stream) TRT_NOEXCEPT {
   platform::CUDAPlace place(platform::GetCurrentDeviceId());
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   // TODO(inference): generic plugin do not support INT8 precision now.
   auto nvType2PhiType =
       [&](nvinfer1::DataType nv_dtype) -> std::pair<phi::DataType, int> {
@@ -593,7 +618,7 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     for (int k = 0; k < input_shape.size(); k++) input_numel *= input_shape[k];
     auto data_type_and_size = nvType2PhiType(input_desc[i].type);
     phi::DenseTensorMeta input_meta(data_type_and_size.first,
-                                    phi::make_ddim(input_shape));
+                                    common::make_ddim(input_shape));
     std::shared_ptr<phi::Allocation> input_alloc(
         new phi::Allocation((void*)(inputs[i]),  // NOLINT
                             input_numel * data_type_and_size.second,
@@ -617,7 +642,7 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
 
     auto data_type_and_size = nvType2PhiType(output_desc[i].type);
     phi::DenseTensorMeta output_meta(data_type_and_size.first,
-                                     phi::make_ddim(output_shape));
+                                     common::make_ddim(output_shape));
     std::shared_ptr<phi::Allocation> output_alloc(
         new phi::Allocation(reinterpret_cast<void*>(outputs[i]),
                             output_numel * data_type_and_size.second,
@@ -633,6 +658,28 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
   CHECK_EQ(phi_kernel_contexts_[data_type]->InputsSize(), getNbInputs());
   CHECK_EQ(phi_kernel_contexts_[data_type]->OutputsSize(), getNbOutputs());
   (*phi_kernels_[data_type])(phi_kernel_contexts_[data_type].get());
+
+  if (op_desc_.Type() == "argsort") {
+    for (int i = 0; i < getNbOutputs(); i++) {
+      phi::DenseTensor& output_tensor = (*dense_tensor_outputs_)[i];
+      phi::DataType dtype = output_tensor.dtype();
+      if (dtype == phi::DataType::INT64) {
+        auto& int32_tensor = output_tensor;
+        auto ctx = pool.Get(output_tensor.place());
+        int32_tensor = phi::funcs::TransDataType(
+            reinterpret_cast<const phi::GPUContext&>(*ctx),
+            output_tensor,
+            phi::DataType::INT32);
+        paddle::memory::Copy(output_tensor.place(),
+                             outputs[i],
+                             output_tensor.place(),
+                             int32_tensor.data<int32_t>(),
+                             int32_tensor.numel() * sizeof(int),
+                             nullptr);
+      }
+    }
+  }
+
   return cudaGetLastError() != cudaSuccess;
 }
 

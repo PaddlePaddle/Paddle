@@ -32,7 +32,7 @@ cc_library(
 cc_library(
   cost_model
   SRCS cost_model.cc
-  DEPS executor graph profiler proto_desc phi)
+  DEPS executor graph profiler proto_desc phi common)
 
 set(GRAPH_PATTERN_DETECTOR_DEPS graph graph_helper graph_traits)
 if(WITH_TESTING)
@@ -112,7 +112,7 @@ pass_library(conv2d_trans_filter_dilations_nxn_to_1x1_pass inference)
 pass_library(preln_residual_bias_fuse_pass inference)
 pass_library(constant_folding_pass inference)
 pass_library(auto_mixed_precision_pass inference)
-pass_library(conv2d_fusion_layout_transfer_pass inference)
+pass_library(fused_conv2d_add_act_layout_transfer_pass inference)
 pass_library(transfer_layout_elim_pass inference)
 pass_library(relu6_fuse_pass inference)
 pass_library(silu_fuse_pass inference)
@@ -238,7 +238,7 @@ if(WITH_XPU)
   cc_library(
     xpu_quant_utils
     SRCS xpu/quant_utils.cc
-    DEPS pass phi)
+    DEPS pass phi common)
   cc_library(
     xpu_pass_utils
     SRCS xpu/pass_utils.cc
@@ -541,7 +541,8 @@ if(WITH_MKLDNN)
       concat_and_split
       naive_executor
       device_context
-      phi)
+      phi
+      common)
   if(WITH_GPU OR WITH_ROCM)
     set(TEST_CONV_BN_PASS_DEPS ${TEST_CONV_BN_PASS_DEPS} depthwise_conv)
   endif()

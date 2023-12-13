@@ -193,7 +193,7 @@ class GraphGroupFuseHelper final : public FuseHelper {
             Visit(node_producer);
           }
         };
-    common::IsReachablePredicator<OpGroupPtr> is_reachable(
+    cinn::common::IsReachablePredicator<OpGroupPtr> is_reachable(
         MinDepth4Node, MaxDepth4Node, VisitNextNodes);
     return is_reachable(consumer, producer, [](OpGroupPtr) {});
   }
@@ -468,12 +468,12 @@ struct HorizontalFuseUtil {
     }
 
     size_t size_ele =
-        phi::product(GetMasterNode(*ele_group).outputs()[0].shape());
+        ::common::product(GetMasterNode(*ele_group).outputs()[0].shape());
 
     bool can_fuse = false;
     reduce_group->WalkOpNodes([&](const cinn::dialect::ir::OpNode& op) {
       if (op.kind() == OpPatternKind::kReduction) {
-        size_t size_master = phi::product(op.outputs()[0].shape());
+        size_t size_master = ::common::product(op.outputs()[0].shape());
         if (size_ele == size_master) {
           can_fuse = true;
         }
@@ -1880,13 +1880,13 @@ class GeneralFusionMergePassHelper {
           continue;
         }
 
-        auto producer_output_shape = phi::vectorize(
+        auto producer_output_shape = ::common::vectorize(
             GetValueShape((*producer->output_ops.begin())->result(0)));
 
-        auto consumer_output_shape = phi::vectorize(
+        auto consumer_output_shape = ::common::vectorize(
             GetValueShape((*consumer->output_ops.begin())->result(0)));
 
-        auto consumer_master_input_shape = phi::vectorize(GetValueShape(
+        auto consumer_master_input_shape = ::common::vectorize(GetValueShape(
             (*(consumer->master_ops.begin()))->operand_source(0)));
 
         int producer_output_numel =
@@ -1933,9 +1933,9 @@ class GeneralFusionMergePassHelper {
           continue;
         }
 
-        auto shape0 = phi::vectorize(
+        auto shape0 = ::common::vectorize(
             GetValueShape((*producer->output_ops.begin())->result(0)));
-        auto shape1 = phi::vectorize(
+        auto shape1 = ::common::vectorize(
             GetValueShape((*consumer->output_ops.begin())->result(0)));
 
         if (std::accumulate(

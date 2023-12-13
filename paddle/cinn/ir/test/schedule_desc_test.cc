@@ -121,7 +121,7 @@ std::string SourceCodeGen(const ModuleExpr& module_expr,
 
 class TestScheduleDesc : public ::testing::Test {
  public:
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
   std::vector<ir::LoweredFunc> lowered_funcs;
   ScheduleDesc trace;
   void SetUp() override { Context::Global().ResetNameId(); }

@@ -54,6 +54,16 @@ class Union {
     return variant_ >> match;
   }
 
+  template <typename __T>
+  const __T& Get() const {
+    return std::get<__T>(variant_);
+  }
+
+  template <typename __T>
+  bool Has() const {
+    return std::holds_alternative<__T>(variant_);
+  }
+
   const std::variant<Ts...>& variant() const { return variant_; }
 
  private:
@@ -74,6 +84,7 @@ class Tuple {
             std::make_shared<std::tuple<Ts...>>(std::forward<Args>(args)...)) {}
 
   const std::tuple<Ts...>& tuple() const { return *tuple_; }
+  std::tuple<Ts...>* mut_tuple() { return &*tuple_; }
 
   template <std::size_t I>
   const auto& Get() const {
@@ -180,18 +191,18 @@ class List final {
                                bool> = true>                                   \
     class_name(Arg&& arg) : variant_(std::forward<Arg>(arg)) {}                \
                                                                                \
-    template <typename T>                                                      \
-    const T& Get() const {                                                     \
-      return std::get<T>(variant_);                                            \
+    template <typename __T>                                                    \
+    const __T& Get() const {                                                   \
+      return std::get<__T>(variant_);                                          \
     }                                                                          \
                                                                                \
-    template <typename T>                                                      \
+    template <typename __T>                                                    \
     bool Has() const {                                                         \
-      return std::holds_alternative<T>(variant_);                              \
+      return std::holds_alternative<__T>(variant_);                            \
     }                                                                          \
                                                                                \
-    template <typename T>                                                      \
-    auto Visit(const T& visitor) const {                                       \
+    template <typename __T>                                                    \
+    auto Visit(const __T& visitor) const {                                     \
       return std::visit(visitor, variant_);                                    \
     }                                                                          \
                                                                                \
@@ -235,12 +246,6 @@ bool UnionEqual(const UnionT& lhs, const UnionT& rhs) {
   struct name : public Tuple<T0, T1> { \
     using Tuple<T0, T1>::Tuple;        \
   }
-
-DEFINE_ADT_UNARY(Neg);
-DEFINE_ADT_BINARY(Add);
-DEFINE_ADT_BINARY(Mul);
-DEFINE_ADT_BINARY(Div);
-DEFINE_ADT_BINARY(Mod);
 
 #define OVERLOAD_OPERATOR_EQ_NE(type, function)              \
   inline bool operator==(const type& lhs, const type& rhs) { \

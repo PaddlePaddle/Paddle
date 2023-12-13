@@ -28,6 +28,7 @@ class TestReshardSToS:
         self._seeds = eval(os.getenv("seeds"))
         self._backend = os.getenv("backend")
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+        self._other_mesh = dist.ProcessMesh([1, 0], dim_names=["x"])
 
     def test_body(self, in_shard, out_shard):
         if self._backend == "cpu":
@@ -54,9 +55,17 @@ class TestReshardSToS:
     def test_case2(self):
         self.test_body(len(self._shape) - 1, 0)
 
+    def reshard_cross_mesh(self):
+        if self._backend != "gpu":
+            return
+        a = paddle.ones([10, 10])
+        input_tensor = dist.shard_tensor(a, self._mesh, [dist.Shard(0)])
+        dist.reshard(input_tensor, self._other_mesh, [dist.Shard(1)])
+
     def run_test_case(self):
         self.test_case1()
         self.test_case2()
+        self.reshard_cross_mesh()
 
 
 if __name__ == '__main__':

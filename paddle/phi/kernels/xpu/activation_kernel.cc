@@ -212,7 +212,7 @@ void PowKernel(const Context& dev_ctx,
                      static_cast<void*>(&pow_factor),
                      sizeof(T));
 
-  auto x_dims = vectorize<int>(x.dims());
+  auto x_dims = common::vectorize<int>(x.dims());
   // use [1] to replace [], because xpu not support []
   if (x_dims.size() == 0) {
     x_dims = std::vector<int>({1});

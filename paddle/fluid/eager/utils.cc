@@ -19,8 +19,8 @@
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/tensor_wrapper.h"
 
+#include "paddle/common/layout.h"
 #include "paddle/phi/api/all.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/tensor_meta.h"
 
@@ -538,7 +538,7 @@ void EagerUtils::FillZeroForEmptyOptionalGradInput(
             grad_in_metas[i].DistAttr()));
         if (grad_in_metas[i].GetTensorMeta().dims.size() != -1) {
           auto tensor_with_zero = paddle::experimental::full(
-              phi::vectorize(grad_in_metas[i].GetTensorMeta().dims),
+              common::vectorize(grad_in_metas[i].GetTensorMeta().dims),
               0.0,
               grad_in_metas[i].GetTensorMeta().dtype,
               grad_in_metas[i].GetPlace());
@@ -548,7 +548,7 @@ void EagerUtils::FillZeroForEmptyOptionalGradInput(
         }
       } else {
         auto tensor_with_zero = paddle::experimental::full(
-            phi::vectorize(grad_in_metas[i].GetTensorMeta().dims),
+            common::vectorize(grad_in_metas[i].GetTensorMeta().dims),
             0.0,
             grad_in_metas[i].GetTensorMeta().dtype,
             grad_in_metas[i].GetPlace());
@@ -576,7 +576,7 @@ void EagerUtils::FillZeroForEmptyOptionalGradOutput(
             grad_output_metas[i].DistAttr()));
         if (grad_output_metas[i].GetTensorMeta().dims.size() != -1) {
           auto tensor_with_zero = paddle::experimental::full(
-              phi::vectorize(grad_output_metas[i].GetTensorMeta().dims),
+              common::vectorize(grad_output_metas[i].GetTensorMeta().dims),
               0.0,
               grad_output_metas[i].GetTensorMeta().dtype,
               grad_output_metas[i].GetPlace());
@@ -587,7 +587,7 @@ void EagerUtils::FillZeroForEmptyOptionalGradOutput(
       } else {
         auto tensor_with_zero =
             paddle::experimental::full(  // only create dense tensor.
-                phi::vectorize(grad_output_metas[i].GetTensorMeta().dims),
+                common::vectorize(grad_output_metas[i].GetTensorMeta().dims),
                 0.0,
                 grad_output_metas[i].GetTensorMeta().dtype,
                 grad_output_metas[i].GetPlace());
@@ -610,7 +610,7 @@ void EagerUtils::FillZeroForEmptyGradInput(paddle::Tensor* in_grad,
           grad_in_meta.DistTensorGlobalDims(), grad_in_meta.DistAttr()));
       if (tensor_meta.dims.size() != -1) {
         auto tensor_with_zero =
-            paddle::experimental::full(phi::vectorize(tensor_meta.dims),
+            paddle::experimental::full(common::vectorize(tensor_meta.dims),
                                        0.0,
                                        tensor_meta.dtype,
                                        grad_in_meta.GetPlace());
@@ -620,7 +620,7 @@ void EagerUtils::FillZeroForEmptyGradInput(paddle::Tensor* in_grad,
       }
     } else {
       auto tensor_with_zero =
-          paddle::experimental::full(phi::vectorize(tensor_meta.dims),
+          paddle::experimental::full(common::vectorize(tensor_meta.dims),
                                      0.0,
                                      tensor_meta.dtype,
                                      grad_in_meta.GetPlace());
@@ -638,7 +638,7 @@ void EagerUtils::FillZeroForEmptyOptionalGradInput(
           grad_in_meta.DistTensorGlobalDims(), grad_in_meta.DistAttr()));
       if (tensor_meta.dims.size() != -1) {
         auto tensor_with_zero =
-            paddle::experimental::full(phi::vectorize(tensor_meta.dims),
+            paddle::experimental::full(common::vectorize(tensor_meta.dims),
                                        0.0,
                                        tensor_meta.dtype,
                                        grad_in_meta.GetPlace());
@@ -648,7 +648,7 @@ void EagerUtils::FillZeroForEmptyOptionalGradInput(
       }
     } else {
       auto tensor_with_zero =
-          paddle::experimental::full(phi::vectorize(tensor_meta.dims),
+          paddle::experimental::full(common::vectorize(tensor_meta.dims),
                                      0.0,
                                      tensor_meta.dtype,
                                      grad_in_meta.GetPlace());

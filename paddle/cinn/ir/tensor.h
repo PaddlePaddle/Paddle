@@ -306,7 +306,7 @@ class _Tensor_ : public ExprNode<_Tensor_> {
                   const Type& type = Void());
   Tensor GetInitTensor(
       poly::StageMap stages,
-      const Target& target = common::DefaultHostTarget()) const;
+      const Target& target = cinn::common::DefaultHostTarget()) const;
 
   /**
    * Create the initialization tensor.
@@ -316,7 +316,7 @@ class _Tensor_ : public ExprNode<_Tensor_> {
    */
   ir::Tensor InitReduction(
       poly::StageMap stages,
-      const Target& target = common::DefaultHostTarget()) const;
+      const Target& target = cinn::common::DefaultHostTarget()) const;
 
  private:
   //! Initialize the axis field after the shape field is assigned.

@@ -38,9 +38,8 @@ class WhileInstruction : public InstructionBase {
   WhileInstruction(size_t id,
                    const platform::Place& place,
                    ::pir::Operation* op,
-                   Scope* scope,
-                   Scope* local_scope,
-                   ValueExecutionInfo* parent_exe_info);
+                   ValueExecutionInfo* parent_exe_info,
+                   const std::set<std::string>& skip_gc_vars);
 
   void Run() override;
 
@@ -52,13 +51,13 @@ class WhileInstruction : public InstructionBase {
 
  private:
   // 'output' = 'input'
-  void CopyInputsToOutputs();
+  void ShareInputsToOutputs();
 
   // Pass argument to body_block for execution.
-  void PassArgsToBodyBlock();
+  void CopyOutputsToBlockArgs();
 
   // Get return value from body_block after each execution.
-  void GetValueFromBodyBlock();
+  void ShareDatasToOutputs();
 
   std::string name_{"while_instruction"};
 

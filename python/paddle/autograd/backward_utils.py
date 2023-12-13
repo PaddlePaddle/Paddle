@@ -13,6 +13,10 @@
 # limitations under the License.
 
 import collections
+import warnings
+
+from paddle.base import core
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
 
 class State:
@@ -68,3 +72,31 @@ class State:
         state.opgrad_to_op = self.opgrad_to_op.copy()
 
         return state
+
+
+def _check_vjp_dynamic_shape(op, inputs):
+    for items in inputs:
+        for item in items:
+            shape = item.shape
+            if -1 in shape:
+                warnings.warn(
+                    f"[Prim] Decomp op does not support dynamic shape -1, but got shape {item.shape} in inputs of op {op.name()} . Prim will skip its vjp op."
+                )
+                return True
+
+
+# Prim currently does not support dynamic shape, when dynamic shape exits in shape of op inputs, prim will be skipped its vjp op.
+@signature_safe_contextmanager
+def dynamic_shape_prim_vjp_guard(op, inputs):
+    skip_prim = (
+        core._is_bwd_prim_enabled()
+        and core._enable_prim_dynamic_shape()
+        and _check_vjp_dynamic_shape(op, inputs)
+    )
+    try:
+        if skip_prim:
+            core._set_prim_backward_enabled(False)
+        yield
+    finally:
+        if skip_prim:
+            core._set_prim_backward_enabled(True)

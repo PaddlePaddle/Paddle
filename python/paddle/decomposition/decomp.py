@@ -14,6 +14,7 @@
 
 import logging
 import typing
+import warnings
 
 from paddle import pir
 from paddle.autograd import ir_backward
@@ -85,6 +86,33 @@ def _prepare_python_api_arguments(op):
 
     api_arguments = inputs + [op.attrs()[x] for x in op.get_attr_names()]
     return tuple(api_arguments)
+
+
+def _check_prim_dynamic(op):
+    combine_op_name = "builtin.combine"
+    inputs = []
+    for x in op.operands():
+        input = x.source()
+        if input and input.initialized():
+            prev_op = input.get_defining_op()
+            if (
+                isinstance(prev_op, Operation)
+                and prev_op.name() == combine_op_name
+            ):
+                for item in prev_op.operands():
+                    shape = item.source().shape
+                    if -1 in shape:
+                        warnings.warn(
+                            f"Decomp op does not support dynamic shape -1, but got shape {item.source().shape} in inputs of op {op.name()} "
+                        )
+                        return True
+            else:
+                shape = input.shape
+                if -1 in shape:
+                    warnings.warn(
+                        f"Decomp op does not support dynamic shape -1, but got shape {input.shape} in op {op.name()} "
+                    )
+                    return True
 
 
 def _check_op_results(
@@ -249,6 +277,13 @@ def _decompose_subgraph(block, orig_vars, dst_vars, op_filter):
             decom_rule = register.get_decomp_rule(op_name)
             has_sink_decomp_rule = has_decomp(op)
             lower = (decom_rule or has_sink_decomp_rule) and op_filter(op)
+
+            if (
+                lower
+                and core._enable_prim_dynamic_shape()
+                and _check_prim_dynamic(op)
+            ):
+                lower = False
 
             if op.name() == "builtin.combine":
                 temp_op = op

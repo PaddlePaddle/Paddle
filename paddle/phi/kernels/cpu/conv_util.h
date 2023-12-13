@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/core/ddim.h"
+#include "paddle/common/ddim.h"
 #include "paddle/phi/core/meta_tensor.h"
 
 namespace phi {
@@ -27,7 +27,7 @@ inline void UpdatePaddingAndDilation(std::vector<T>* paddings,
                                      const std::vector<T>& strides,
                                      const std::vector<T>& ksize) {
   // set padding size == data_dims.size() * 2
-  auto data_shape = vectorize<T>(data_dims);
+  auto data_shape = common::vectorize<T>(data_dims);
   if (static_cast<int>(paddings->size()) == data_dims.size()) {
     for (int i = 0; i < data_dims.size(); ++i) {
       T copy_pad = *(paddings->begin() + 2 * i);
@@ -43,7 +43,7 @@ inline void UpdatePaddingAndDilation(std::vector<T>* paddings,
             "But received: padding's size is %d, padding is [%s]; input's "
             "dimension is %d, input's shape is [%s].",
             paddings->size(),
-            make_ddim(*paddings),
+            common::make_ddim(*paddings),
             data_dims.size(),
             data_dims));
   }
@@ -173,7 +173,7 @@ inline std::vector<int64_t> ComputeOutputShape(
           in_dims.size(),
           in_dims,
           strides.size(),
-          phi::make_ddim(strides),
+          common::make_ddim(strides),
           in_dims.size() - stride_size));
 
   const auto input_channels =
@@ -218,19 +218,20 @@ inline std::vector<int64_t> ComputeOutputShape(
 
   phi::DDim in_data_dims;
   if (channel_last) {
-    in_data_dims = phi::slice_ddim(in_dims, 1, in_dims.size() - 1);
+    in_data_dims = common::slice_ddim(in_dims, 1, in_dims.size() - 1);
   } else {
-    in_data_dims = phi::slice_ddim(in_dims, 2, in_dims.size());
+    in_data_dims = common::slice_ddim(in_dims, 2, in_dims.size());
   }
 
   phi::DDim filter_data_dims;
   if (channel_last) {
-    filter_data_dims = phi::slice_ddim(filter_dims, 1, filter_dims.size() - 1);
+    filter_data_dims =
+        common::slice_ddim(filter_dims, 1, filter_dims.size() - 1);
   } else {
-    filter_data_dims = phi::slice_ddim(filter_dims, 2, filter_dims.size());
+    filter_data_dims = common::slice_ddim(filter_dims, 2, filter_dims.size());
   }
 
-  std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
   std::vector<int> paddings_vec = paddings;
   std::vector<int> dilations_vec = dilations;
   phi::UpdatePaddingAndDilation(&paddings_vec,

@@ -207,7 +207,6 @@ TEST(PirCompier, CompileSoftmax) {
   executor.Run({}, true);
   auto out_tensor =
       executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
-
   bool res0 = simple_cmp(out_tensor.data<float>()[0], 1.0 / 16);
   EXPECT_EQ(res0, true);
 }

@@ -125,7 +125,7 @@ void Placeholder<T>::Init(const std::string &name,
 
   std::vector<ir::Var> axis;
   for (int i = 0; i < shape.size(); i++)
-    axis.emplace_back(common::axis_name(i));
+    axis.emplace_back(cinn::common::axis_name(i));
 
   auto op = ir::PlaceholderOp::Make(name, shape, type_of<T>());
 
@@ -145,7 +145,7 @@ void Placeholder<T>::Init(const std::string &name,
 
   std::vector<ir::Var> axis;
   for (int i = 0; i < shape.size(); i++)
-    axis.emplace_back(common::axis_name(i));
+    axis.emplace_back(cinn::common::axis_name(i));
 
   auto op = ir::PlaceholderOp::Make(name, shape, type_of<T>());
 

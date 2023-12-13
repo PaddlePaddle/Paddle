@@ -42,7 +42,8 @@ namespace framework {
 CondInstruction::CondInstruction(size_t id,
                                  const platform::Place& place,
                                  pir::Operation* op,
-                                 ValueExecutionInfo* value_exec_info)
+                                 ValueExecutionInfo* value_exec_info,
+                                 const std::set<std::string>& skip_gc_vars)
     : InstructionBase(id, place) {
   PADDLE_ENFORCE(
       op->isa<paddle::dialect::IfOp>(),
@@ -114,6 +115,10 @@ CondInstruction::CondInstruction(size_t id,
     true_skip_gc_names_.push_back(true_branch_inter_->GetNameByValue(value));
     true_skip_gc_names_set.insert(true_branch_inter_->GetNameByValue(value));
   }
+  for (auto var_name : skip_gc_vars) {
+    true_skip_gc_names_.push_back(var_name);
+    true_skip_gc_names_set.insert(var_name);
+  }
   true_branch_inter_->SetSkipGcVars(true_skip_gc_names_set);
   VLOG(6) << "finish process true branch interpreter";
 
@@ -136,6 +141,10 @@ CondInstruction::CondInstruction(size_t id,
     false_skip_gc_names_.push_back(false_branch_inter_->GetNameByValue(value));
     false_skip_gc_names_set.insert(false_branch_inter_->GetNameByValue(value));
   }
+  for (auto var_name : skip_gc_vars) {
+    false_skip_gc_names_.push_back(var_name);
+    false_skip_gc_names_set.insert(var_name);
+  }
   false_branch_inter_->SetSkipGcVars(false_skip_gc_names_set);
   VLOG(6) << "finish process false branch interpreter";
 }
@@ -154,8 +163,19 @@ void CondInstruction::CopyBranchOutput(
   for (size_t i = 0; i < var_names.size(); ++i) {
     auto* inner_var = inter->InnerScope()->GetVar(var_names[i]);
 
-    output_vars_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
-        inner_var->Get<phi::DenseTensor>());
+    if (inner_var->IsType<phi::DenseTensor>()) {
+      output_vars_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
+          inner_var->Get<phi::DenseTensor>());
+
+    } else if (inner_var->IsType<phi::TensorArray>()) {
+      const auto& inner_array = inner_var->Get<phi::TensorArray>();
+      auto* output_array = output_vars_[i]->GetMutable<phi::TensorArray>();
+      // output_array->clear();
+      *output_array = inner_array;
+    } else {
+      PADDLE_THROW(
+          phi::errors::Unimplemented("unsupported type %d", inner_var->Type()));
+    }
   }
 }
 

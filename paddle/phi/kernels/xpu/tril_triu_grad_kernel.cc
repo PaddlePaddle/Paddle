@@ -27,7 +27,7 @@ void TrilTriuGradKernel(const Context& ctx,
                         DenseTensor* x_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   ctx.template Alloc<T>(x_grad);
-  auto dy_shape = vectorize<int>(out_grad.dims());
+  auto dy_shape = common::vectorize<int>(out_grad.dims());
   int r = 0;
   if (lower) {
     r = xpu::tril(ctx.x_context(),

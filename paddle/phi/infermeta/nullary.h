@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/meta_tensor.h"
 
 namespace phi {
@@ -109,4 +110,7 @@ void TrilIndicesInferMeta(
 
 void TriuIndicesInferMeta(
     int row, int col, int offset, DataType dtype, MetaTensor* out);
+
+void ReadFileInferMeta(const std::string& filename, MetaTensor* out);
+
 }  // namespace phi

@@ -40,7 +40,7 @@ void TransposeKernel(const Context& dev_ctx,
         formated_axis[i] = axis[i] + axis_size;
       }
     }
-    auto dims = phi::vectorize<int>(x_dims);
+    auto dims = common::vectorize<int>(x_dims);
 
     std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
     x_dims = x_dims.reshape(dims);
@@ -65,7 +65,7 @@ void TransposeKernel(const Context& dev_ctx,
     return;
   }
 
-  auto x_vec_dims = vectorize(x.dims());
+  auto x_vec_dims = common::vectorize(x.dims());
   auto x_type = funcs::ToOneDNNDataType(x.dtype());
   funcs::ReorderOneDNNHandler reorder_handler(
       x_vec_dims, x.dtype(), x_type, dev_ctx.GetEngine());

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/distributed_fused_lamb_init_kernel.h"
-#include "paddle/phi/core/errors.h"
+#include "paddle/common/errors.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {

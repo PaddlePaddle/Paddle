@@ -54,9 +54,10 @@ void Conv2dXPUKernelImpl(const Context& ctx,
   // update paddings and dilations accoring to padding_algorithm
   std::vector<int> paddings_vec = paddings;
   std::vector<int> dilations_vec = dilations;
-  DDim in_data_dims = phi::slice_ddim(input_dims, 2, input_dims.size());
-  DDim filter_data_dims = phi::slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
+  DDim in_data_dims = common::slice_ddim(input_dims, 2, input_dims.size());
+  DDim filter_data_dims =
+      common::slice_ddim(filter_dims, 2, filter_dims.size());
+  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
   phi::UpdatePaddingAndDilation(&paddings_vec,
                                 &dilations_vec,
                                 padding_algorithm,

@@ -32,6 +32,15 @@ _supported_int_dtype_ = [
 
 compare_ops = ['__eq__', '__ne__', '__lt__', '__le__', '__gt__', '__ge__']
 
+SUPPORT_PROMOTION_OPS = [
+    "__add__",
+    "__radd__",
+    "__sub__",
+    "__rsub__",
+    "__mul__",
+    "__rmul__",
+]
+
 EXPRESSION_MAP = {
     "__add__": "A + B",
     "__radd__": "A += B",
@@ -519,10 +528,31 @@ def monkey_patch_variable():
                         current_block(self), value=other_var, dtype=lhs_dtype
                     )
 
-            # 3. unify right var type to left var
+            # 3. type promotion
             rhs_dtype = safe_get_dtype(other_var)
+
             if lhs_dtype != rhs_dtype:
-                other_var = astype(other_var, lhs_dtype)
+                if method_name in SUPPORT_PROMOTION_OPS:
+                    if core.need_type_promotion(lhs_dtype, rhs_dtype):
+                        common_dtype = core.get_promote_dtype(
+                            op_type, lhs_dtype, rhs_dtype
+                        )
+                        warnings.warn(
+                            f"The input dtypes of OP {op_type} are {lhs_dtype} and {rhs_dtype}, "
+                            "the output will be auto-promoted to {common_dtype}"
+                        )
+                        if rhs_dtype != common_dtype:
+                            other_var = astype(other_var, common_dtype)
+                        if lhs_dtype != common_dtype:
+                            self = astype(self, common_dtype)
+                    else:
+                        # NOTE(zoooo0820): Currently, we still keep the old illogical \
+                        # logic for compatibility reasons
+                        other_var = astype(other_var, lhs_dtype)
+
+                else:
+                    other_var = astype(other_var, lhs_dtype)
+
             if reverse:
                 tmp = self
                 self = other_var

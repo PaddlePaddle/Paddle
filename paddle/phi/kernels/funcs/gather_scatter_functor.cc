@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
-#include "paddle/phi/core/macros.h"
+#include "paddle/common/macros.h"
 
 namespace phi {
 namespace funcs {

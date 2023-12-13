@@ -59,28 +59,35 @@ PaddlePaddle用户可领取**免费Tesla V100在线算力资源**，训练模型
 
 ## 文档
 
-我们提供 [英文](https://www.paddlepaddle.org.cn/documentation/docs/en/guides/index_en.html) 和
-[中文](https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/index_cn.html) 文档
+我们提供 [英文](https://www.paddlepaddle.org.cn/documentation/docs/en/guides/index_en.html) 和 [中文](https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/index_cn.html) 文档
 
-- [使用指南](https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/index_cn.html)：或许您想从深度学习基础开始学习飞桨
+- [使用指南](https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/index_cn.html)：或许你想从深度学习基础开始学习飞桨
 
-- [应用实践](https://www.paddlepaddle.org.cn/documentation/docs/zh/tutorial/index_cn.html)：使用飞桨搭建您的模型，更高效的完成深度学习任务
+- [应用实践](https://www.paddlepaddle.org.cn/documentation/docs/zh/tutorial/index_cn.html)：使用飞桨搭建你的模型，更高效的完成深度学习任务
 
 - [API 文档](https://www.paddlepaddle.org.cn/documentation/docs/zh/api/index_cn.html)：新的 API 支持代码更少更简洁的程序
 
 
-- [贡献方式](https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/08_contribution/index_cn.html)：欢迎您的贡献!
+- [贡献方式](https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/08_contribution/index_cn.html)：参与飞桨社区开源贡献的指南
 
-## 交流与反馈
+## 开源社区
 
-- 欢迎您通过[Github Issues](https://github.com/PaddlePaddle/Paddle/issues)来提交问题、报告与建议
-- QQ群: 441226485 (PaddlePaddle)
-- [论坛](https://aistudio.baidu.com/paddle/forum): 欢迎大家在PaddlePaddle论坛分享在使用PaddlePaddle中遇到的问题和经验，营造良好的论坛氛围
+- [Github Issues](https://github.com/PaddlePaddle/Paddle/issues)：提交安装/使用问题、报告bug、建议新特性、沟通开发计划等
+- 社区活动：
+
+  - 入门：快乐开源活动（[热身打卡 + 常规赛](https://github.com/PaddlePaddle/Paddle/issues/56689)、[启航计划](https://github.com/PaddlePaddle/Paddle/issues/58497)）
+  - 进阶：飞桨黑客马拉松（[开源贡献个人挑战赛](https://github.com/PaddlePaddle/Paddle/issues/57262)、[大模型应用与创意赛](https://github.com/PaddlePaddle/Paddle/issues/57585)、[飞桨护航计划集训营](https://github.com/PaddlePaddle/Paddle/issues/57264)）
+
+- 社区组织：
+  - 技术交流组织：[飞桨核心框架贡献者俱乐部 PFCC](https://github.com/PaddlePaddle/community/tree/master/pfcc)
+  - 社区治理组织：[飞桨社区开源发展工作组 PPOSDWG](https://github.com/PaddlePaddle/community/tree/master/pposdwg)
+
+- 社区博客：https://pfcc.blog/
 
 ## 课程
 
-- [服务器部署](https://aistudio.baidu.com/aistudio/course/introduce/19084): 详细介绍高性能服务器端部署实操，包含本地端及服务化Serving部署等
-- [端侧部署](https://aistudio.baidu.com/aistudio/course/introduce/22690): 详细介绍端侧多场景部署实操，从移动端设备、IoT、网页到小程序部署
+- [服务器部署](https://aistudio.baidu.com/aistudio/course/introduce/19084)：详细介绍高性能服务器端部署实操，包含本地端及服务化Serving部署等
+- [端侧部署](https://aistudio.baidu.com/aistudio/course/introduce/22690)：详细介绍端侧多场景部署实操，从移动端设备、IoT、网页到小程序部署
 
 ## 版权和许可证
 PaddlePaddle由[Apache-2.0 license](LICENSE)提供

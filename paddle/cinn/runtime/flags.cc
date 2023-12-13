@@ -91,6 +91,14 @@ PD_DEFINE_bool(cinn_enable_map_expr_inline,
                BoolFromEnv("FLAGS_cinn_enable_map_expr_inline", false),
                "It controls whether to inline by map_expr");
 
+PD_DEFINE_bool(cinn_enable_map_expr_dynamic_shape,
+               BoolFromEnv("FLAGS_cinn_enable_map_expr_dynamic_shape", false),
+               "It controls whether map_expr uses dynamic_shape");
+
+PD_DEFINE_bool(cinn_enable_map_expr_index_detail,
+               BoolFromEnv("FLAGS_cinn_enable_map_expr_index_detail", false),
+               "It controls whether to display datail tensor index");
+
 PD_DEFINE_bool(
     cinn_use_custom_call,
     BoolFromEnv("FLAGS_cinn_use_custom_call", true),
@@ -304,10 +312,11 @@ bool IsCompiledWithCUDNN() {
 #endif
 }
 
-common::Target CurrentTarget::target_ = common::DefaultTarget();
+cinn::common::Target CurrentTarget::target_ = cinn::common::DefaultTarget();
 
-void CurrentTarget::SetCurrentTarget(const common::Target& target) {
-  if (!IsCompiledWithCUDA() && target.arch == common::Target::Arch::NVGPU) {
+void CurrentTarget::SetCurrentTarget(const cinn::common::Target& target) {
+  if (!IsCompiledWithCUDA() &&
+      target.arch == cinn::common::Target::Arch::NVGPU) {
     LOG(FATAL) << "Current CINN version does not support NVGPU, please try to "
                   "recompile with -DWITH_CUDA.";
   } else {
@@ -315,7 +324,7 @@ void CurrentTarget::SetCurrentTarget(const common::Target& target) {
   }
 }
 
-common::Target& CurrentTarget::GetCurrentTarget() { return target_; }
+cinn::common::Target& CurrentTarget::GetCurrentTarget() { return target_; }
 
 }  // namespace runtime
 }  // namespace cinn

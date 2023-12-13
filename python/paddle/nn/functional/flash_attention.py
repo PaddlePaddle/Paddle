@@ -222,10 +222,7 @@ def flash_attention(
 
     if sdp_func_name == "flash_attn":
         if in_dynamic_mode():
-            (
-                result_attention,
-                result_softmax,
-            ) = _C_ops.flash_attn(
+            (result_attention, result_softmax, _, _) = _C_ops.flash_attn(
                 query,
                 key,
                 value,
@@ -508,7 +505,7 @@ def scaled_dot_product_attention(
             fixed_seed_offset = (None,)
             return_softmax = False
             rng_name = ""
-            out, _ = _C_ops.flash_attn(
+            out, _, _, _ = _C_ops.flash_attn(
                 query,
                 key,
                 value,

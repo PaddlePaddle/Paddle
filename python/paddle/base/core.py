@@ -342,6 +342,9 @@ try:
         _set_prim_target_grad_name,
     )
 
+    # type promotion
+    from .libpaddle import need_type_promotion, get_promote_dtype  # noqa: F401
+
     # isort: on
     if sys.platform != 'win32':
         from .libpaddle import (  # noqa: F401
@@ -511,6 +514,14 @@ decomp_ops_contain_unused_output = {
     "pd_op.unsqueeze": [1],
     "pd_op.batch_norm": [5],
 }
+
+
+# This api is used for development for dynamic shape in prim, and will be removed in future.
+def _enable_prim_dynamic_shape():
+    if os.getenv("FLAGS_prim_skip_dynamic") == "1":
+        return True
+    else:
+        return False
 
 
 def _set_prim_forward_blacklist(*args):

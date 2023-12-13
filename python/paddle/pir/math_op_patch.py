@@ -84,7 +84,7 @@ def monkey_patch_value():
 
     def cpu(self):
         """
-        In dy2static, OpResult also needs cpu() and cuda() interface.
+        In dy2static, Value also needs cpu() and cuda() interface.
         But, the underneath operator has only forward op but not backward one.
 
         Returns:
@@ -107,11 +107,11 @@ def monkey_patch_value():
 
     def cuda(self, device_id=None, blocking=True):
         """
-        In dy2static, OpResult also needs cpu() and cuda() interface.
+        In dy2static, Value also needs cpu() and cuda() interface.
         But, the underneath operator has only forward op but not backward one.
 
         Args:
-            self(OpResult): The variable itself.
+            self(Value): The variable itself.
             device_id(int, optional): The destination GPU device id. Default: None, means current device.
                 We add this argument for dy2static translation, please do not use it.
             blocking(bool, optional): Whether blocking or not, Default: True.
@@ -433,9 +433,9 @@ def monkey_patch_value():
         **Notes**:
             **1. This API is ONLY available in Dygraph mode**
 
-            **2. Use it only OpResult has gradient, normally we use this for Parameters since other temporal OpResult will be deleted by Python's GC**
+            **2. Use it only Value has gradient, normally we use this for Parameters since other temporal Value will be deleted by Python's GC**
 
-        Clear  (set to ``0`` ) the Gradient of Current OpResult
+        Clear  (set to ``0`` ) the Gradient of Current Value
 
         Returns:  None
 

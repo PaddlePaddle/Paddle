@@ -54,7 +54,7 @@ class XPUTestSoftmaxOp(XPUOpTestWrapper):
     def dynamic_create_class(self):
         base_class = self.TestSoftmaxOp
         classes = []
-        shapes = [[2, 3, 4, 5], [7, 1], [63, 18], [2, 38512], [3, 4095]]
+        shapes = [[2, 3, 4, 5], [63, 18], [2, 38512], [3, 4095]]
         axis = [-1, 0, 1]
         for shape in shapes:
             for axi in axis:
@@ -67,9 +67,9 @@ class XPUTestSoftmaxOp(XPUOpTestWrapper):
         def setUp(self):
             self.op_type = "softmax"
             if not hasattr(self, 'shape'):
-                self.shape = [1, 7]
+                self.shape = [2, 3, 4, 5]
                 self.axis = -1
-            self.dtype = np.float32
+            self.dtype = self.in_type
 
             x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
             out = np.apply_along_axis(stable_softmax, self.axis, x)

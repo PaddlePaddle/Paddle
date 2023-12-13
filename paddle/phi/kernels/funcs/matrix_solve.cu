@@ -64,7 +64,7 @@ void MatrixSolveFunctor<Context, T>::operator()(const Context& context,
   // because cuBlas assumes column-major while Paddle uses row-majar.
   DenseTensor tmp_b(b.type());
   const auto& new_dims_vec = getNewDimsVec(b_dims);
-  tmp_b.Resize(phi::make_ddim(new_dims_vec));
+  tmp_b.Resize(common::make_ddim(new_dims_vec));
   context.template Alloc<T>(&tmp_b);
   phi::funcs::TransposeNormal<Context, T> trans;
   std::vector<int> new_axis = getNewAxis(b_rank);

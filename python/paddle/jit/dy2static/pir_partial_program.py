@@ -471,6 +471,7 @@ class PartialProgramLayer:
         """
         In sot, inputs and outputs of partial program only contain tensors, so we can skip some step to speed up
         """
+        return self.__call__(inputs)
         out_vars = self._prepare_outputs()
         attrs = self._prepare_attributes()
         _legacy_C_ops.pir_run_program(

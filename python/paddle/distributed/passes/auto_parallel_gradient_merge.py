@@ -276,8 +276,6 @@ def _create_cond_block_and_update_optimizer(
         cur_block_idx = main_program.current_block_idx
         cur_block = main_program.current_block()
 
-        # cur_block's forward_block & backward_block is itself
-        cur_block._set_forward_block_idx(cur_block_idx)
         if avg:
             for _, new_grad in new_params_to_grads:
                 # grad /= k_steps
@@ -364,9 +362,6 @@ def parse_program(
     optimize_ops_block = _remove_and_get_optimizer_op(
         main_program, dist_context
     )
-
-    # back to block 0
-    main_program._rollback()
 
     # 2 append gradient merge backward op to main_program
     (

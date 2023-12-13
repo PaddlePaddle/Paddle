@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/framework/new_executor/interpreter_base_impl.h"
 
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/kernels/autotune/gpu_timer.h"
 #endif
 
@@ -48,7 +48,8 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names,
       const std::vector<phi::DenseTensor>& feed_tensors,
-      bool need_fetch = true) override;
+      bool need_fetch = true,
+      bool enable_job_schedule_profiler = false) override;
 
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
                                    bool need_fetch = true,

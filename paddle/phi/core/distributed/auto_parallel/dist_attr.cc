@@ -68,6 +68,10 @@ void TensorDistAttr::set_process_mesh(const ProcessMesh& process_mesh) {
 void TensorDistAttr::set_dims_mapping(
     const std::vector<int64_t>& dims_mapping) {
   dims_mapping_ = dims_mapping;
+  // dynamic_dims_ and dims_mapping may be not consistent
+  if (dynamic_dims_.empty() || dims_mapping.empty()) {
+    set_default_dynamic_dims(dims_mapping);
+  }
 }
 
 void TensorDistAttr::set_batch_dim(int64_t batch_dim) {
@@ -138,9 +142,7 @@ void TensorDistAttr::set_default_dims_mapping(
 
 void TensorDistAttr::set_default_dynamic_dims(
     const std::vector<int64_t>& tensor_shape) {
-  if (!tensor_shape.empty()) {
-    dynamic_dims_ = std::vector<bool>(tensor_shape.size(), false);
-  }
+  dynamic_dims_ = std::vector<bool>(tensor_shape.size(), false);
 }
 
 void TensorDistAttr::mark_annotated(const std::string& name) {
@@ -258,6 +260,20 @@ bool TensorDistAttr::verify(const std::vector<int64_t>& tensor_shape) const {
     return false;
   }
   if (!verify_annotated(annotated_)) {
+    return false;
+  }
+  if (!verify_partial_status()) {
+    return false;
+  }
+  return true;
+}
+
+bool TensorDistAttr::verify_dynamic(
+    const std::vector<int64_t>& tensor_shape) const {
+  if (!verify_process_mesh(process_mesh_)) {
+    return false;
+  }
+  if (!verify_dims_mapping(dims_mapping_, tensor_shape)) {
     return false;
   }
   if (!verify_partial_status()) {
