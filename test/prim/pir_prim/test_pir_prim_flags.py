@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 import paddle.nn.functional as F
 from paddle.base import core
-from paddle.decomposition import decomp
+from paddle.decomposition import decompose
 
 
 class TestPrimBlacklistFlags(unittest.TestCase):
@@ -39,7 +39,7 @@ class TestPrimBlacklistFlags(unittest.TestCase):
             # Ensure that tanh in original block
             self.assertTrue('pd_op.gelu' in fwd_ops)
 
-            [y] = decomp.decompose(main_program, [y])
+            [y] = decompose(main_program, [y])
 
             fwd_ops_new = [op.name() for op in main_program.global_block().ops]
             # Ensure that tanh is splitted into small ops
@@ -67,7 +67,7 @@ class TestPrimBlacklistFlags(unittest.TestCase):
             # Ensure that tanh in original block
             self.assertTrue('pd_op.gelu' in fwd_ops)
 
-            _ = decomp.decompose(main_program, [y])
+            _ = decompose(main_program, [y])
 
             fwd_ops_new = [op.name() for op in main_program.global_block().ops]
             # Ensure that tanh is splitted into small ops
@@ -83,12 +83,6 @@ class TestPrimBlacklistFlags(unittest.TestCase):
         self.not_in_blacklist()
         core._set_prim_forward_blacklist("pd_op.gelu")
         self.in_blacklist()
-
-    def test_prim_forward_blacklist_sink(self):
-        with decomp.sink_decomp_guard():
-            self.not_in_blacklist()
-            core._set_prim_forward_blacklist("pd_op.gelu")
-            self.in_blacklist()
 
 
 class PrimeNet(paddle.nn.Layer):
@@ -130,13 +124,6 @@ class TestPrimBackwardBlacklistFlags(unittest.TestCase):
         core._set_prim_all_enabled(True)
         core._set_prim_backward_blacklist("tanh_grad", "exp_grad")
         self.train()
-        core._set_prim_all_enabled(False)
-
-    def test_prim_backward_blacklist_sink(self):
-        core._set_prim_all_enabled(True)
-        core._set_prim_backward_blacklist("tanh_grad", "exp_grad")
-        with decomp.sink_decomp_guard():
-            self.train()
         core._set_prim_all_enabled(False)
 
 
