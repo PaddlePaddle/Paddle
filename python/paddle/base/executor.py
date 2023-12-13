@@ -27,6 +27,7 @@ from ..pir import (
     Program as PirProgram,
     Value,
     translate_to_pir,
+    translate_to_pir_with_param_map,
 )
 from . import compiler, core, framework, unique_name
 from .data_feeder import convert_dtype
@@ -1049,9 +1050,32 @@ class _ExecutorCache:
             if get_flags("FLAGS_enable_pir_in_executor")[
                 'FLAGS_enable_pir_in_executor'
             ]:
-                type_to_program = {
-                    "default": translate_to_pir(new_program.desc)
-                }
+                # if enables distributed training with prim mechanism (prim is behind of distributed)
+                # step 1: translate program to pir program.
+                # step 2: decompose PHI ops in pir program into prim ops.
+                #         When decomposing backward ops, the grad_var_to_var in distributed context is needed to finding correpsonding forward op.
+                if (
+                    os.getenv("FLAGS_enable_prim_after_distribute")
+                    in ['True', 'true', '1']
+                    and new_program._need_decomp
+                ):
+                    (
+                        pir_program,
+                        param_mapping,
+                    ) = translate_to_pir_with_param_map(new_program.desc)
+
+                    from paddle.decomposition import decomp
+
+                    decomp.decompose_pir_program(
+                        pir_program, param_mapping, new_program._grad_var_to_var
+                    )
+
+                    type_to_program = {"default": pir_program}
+
+                else:
+                    type_to_program = {
+                        "default": translate_to_pir(new_program.desc)
+                    }
             else:
                 type_to_program = {"default": new_program.desc}
             plan = core.Plan([default_job], type_to_program)
