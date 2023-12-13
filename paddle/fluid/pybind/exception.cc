@@ -32,7 +32,7 @@ namespace pybind {
  *   - UnavailableError -> RuntimeError
  *   - FatalError -> SystemError
  *   - ExternalError -> OSError
- *   - UnmatchedTypeError -> PyExc_TypeError
+ *   - INVALID_TYPE -> PyExc_TypeError
  */
 
 void BindException(pybind11::module* m) {

@@ -87,7 +87,7 @@ enum ErrorCode {
   EXTERNAL = 12,
 
   // Client specified an unmatched type.
-  // Error type string: "UnmatchedTypeError"
+  // Error type string: "INVALID_TYPE"
   INVALID_TYPE = 13,
 };
 
@@ -144,7 +144,7 @@ REGISTER_ERROR(Unimplemented, ErrorCode::UNIMPLEMENTED)
 REGISTER_ERROR(Unavailable, ErrorCode::UNAVAILABLE)
 REGISTER_ERROR(Fatal, ErrorCode::FATAL)
 REGISTER_ERROR(External, ErrorCode::EXTERNAL)
-REGISTER_ERROR(InvalidType, ErrorCode:: INVALID_TYPE)
+REGISTER_ERROR(InvalidType, ErrorCode::INVALID_TYPE)
 
 #undef REGISTER_ERROR
 
