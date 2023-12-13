@@ -59,7 +59,7 @@ std::string error_name(ErrorCode code) {
       return "ExternalError";
       break;
     case ErrorCode::UNMATCHED_TYPE:
-      return "TypeError";
+      return "InvalidTypeError";
       break;
     default:
       throw std::invalid_argument("The error type is undefined.");
