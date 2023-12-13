@@ -355,12 +355,20 @@ class TestBlockMultiHeadAttnEncDec(unittest.TestCase):
             self.block_tables,
             None,  # pre_key_cache
             None,  # pre_value_cache
+            None,  # cache_k_quant_scales
+            None,  # cache_v_quant_scales
+            None,  # cache_k_dequant_scales
+            None,  # cache_v_dequant_scales
+            None,  # qkv_out_scale
+            None,  # qkv_bias
+            None,  # out_shift
+            None,  # out_smooth
             None,  # rotary_embs
             None,  # attn_mask
             None,  # tgt_mask
             self.seq_len,
             self.blocksize,
-            False,  # use_neox_rotary_style
+            False,  # use_neox_rotary_style,
         )[0]
 
         np.testing.assert_allclose(
@@ -451,6 +459,14 @@ class TestBlockMultiHeadAttnEncDec(unittest.TestCase):
             self.block_tables,
             None,  # pre_key_cache
             None,  # pre_value_cache
+            None,  # cache_k_quant_scales
+            None,  # cache_v_quant_scales
+            None,  # cache_k_dequant_scales
+            None,  # cache_v_dequant_scales
+            None,  # qkv_out_scale
+            None,  # qkv_bias
+            None,  # out_shift
+            None,  # out_smooth
             None,  # rotary_embs
             None,  # attn_mask
             None,  # tgt_mask
@@ -637,6 +653,14 @@ class TestBlockMultiHeadAttnRoPE(unittest.TestCase):
             self.block_tables,
             None,  # pre_key_cache
             None,  # pre_value_cache
+            None,  # cache_k_quant_scales
+            None,  # cache_v_quant_scales
+            None,  # cache_k_dequant_scales
+            None,  # cache_v_dequant_scales
+            None,  # qkv_out_scale
+            None,  # qkv_bias
+            None,  # out_shift
+            None,  # out_smooth
             self.rope_emb,  # rotary_embs
             None,  # attn_mask
             None,  # tgt_mask
@@ -739,6 +763,14 @@ class TestBlockMultiHeadAttnRoPE(unittest.TestCase):
             self.block_tables,
             None,  # pre_key_cache
             None,  # pre_value_cache
+            None,  # cache_k_quant_scales
+            None,  # cache_v_quant_scales
+            None,  # cache_k_dequant_scales
+            None,  # cache_v_dequant_scales
+            None,  # qkv_out_scale
+            None,  # qkv_bias
+            None,  # out_shift
+            None,  # out_smooth
             self.rope_emb,  # rotary_embs
             None,  # attn_mask
             None,  # tgt_mask
@@ -762,7 +794,7 @@ class TestBlockMultiHeadAttnRoPE(unittest.TestCase):
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
     "and device's compute capability must be 8.x or 90",
 )
-class TestBlockMultiHeadAttnPreCacbe(unittest.TestCase):
+class TestBlockMultiHeadAttnPreCache(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
         self.name = "TestBlockMultiHeadAttnPreCacbe"
@@ -910,6 +942,14 @@ class TestBlockMultiHeadAttnPreCacbe(unittest.TestCase):
             self.block_tables,
             self.pre_cache_k,  # pre_key_cache
             self.pre_cache_v,  # pre_value_cache
+            None,  # cache_k_quant_scales
+            None,  # cache_v_quant_scales
+            None,  # cache_k_dequant_scales
+            None,  # cache_v_dequant_scales
+            None,  # qkv_out_scale
+            None,  # qkv_bias
+            None,  # out_shift
+            None,  # out_smooth
             None,  # rotary_embs
             self.attention_mask,  # attn_mask
             None,  # tgt_mask
@@ -1006,6 +1046,14 @@ class TestBlockMultiHeadAttnPreCacbe(unittest.TestCase):
             self.block_tables,
             self.pre_cache_k,  # pre_key_cache
             self.pre_cache_v,  # pre_value_cache
+            None,  # cache_k_quant_scales
+            None,  # cache_v_quant_scales
+            None,  # cache_k_dequant_scales
+            None,  # cache_v_dequant_scales
+            None,  # qkv_out_scale
+            None,  # qkv_bias
+            None,  # out_shift
+            None,  # out_smooth
             None,  # rotary_embs
             self.attention_mask,  # attn_mask
             None,  # tgt_mask
@@ -1200,6 +1248,14 @@ class TestBlockMultiHeadAttnEncStatic(unittest.TestCase):
                 block_tables,
                 None,  # pre_key_cache
                 None,  # pre_value_cache
+                None,  # cache_k_quant_scales
+                None,  # cache_v_quant_scales
+                None,  # cache_k_dequant_scales
+                None,  # cache_v_dequant_scales
+                None,  # qkv_out_scale
+                None,  # qkv_bias
+                None,  # out_shift
+                None,  # out_smooth
                 None,  # rotary_embs
                 None,  # attn_mask
                 None,  # tgt_mask

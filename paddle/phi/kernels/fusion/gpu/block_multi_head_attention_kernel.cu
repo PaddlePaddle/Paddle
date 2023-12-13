@@ -667,6 +667,7 @@ void BlockMultiheadAttentionKernel(
                                                       key_cache_out,
                                                       value_cache_out);
     } else if (compute_dtype == "bf16") {
+#if CUDA_VERSION >= 11000 && defined(CUDA_BFLOAT16_AVALIABLE)
       DispatchWithDtype<phi::dtype::bfloat16, Context>(dev_ctx,
                                                        qkv,
                                                        key_cache,
@@ -705,6 +706,7 @@ void BlockMultiheadAttentionKernel(
                                                        qkv_out,
                                                        key_cache_out,
                                                        value_cache_out);
+#endif
     }
   } else {
     VLOG(1) << "qkv.dtype() NOT int32";
@@ -747,7 +749,8 @@ void BlockMultiheadAttentionKernel(
                                                       qkv_out,
                                                       key_cache_out,
                                                       value_cache_out);
-    } else if (std::is_same<T, phi::dtype::float16>::value) {
+    } else if (std::is_same<T, phi::dtype::bfloat16>::value) {
+#if CUDA_VERSION >= 11000 && defined(CUDA_BFLOAT16_AVALIABLE)
       DispatchWithDtype<phi::dtype::bfloat16, Context>(dev_ctx,
                                                        qkv,
                                                        key_cache,
@@ -786,6 +789,7 @@ void BlockMultiheadAttentionKernel(
                                                        qkv_out,
                                                        key_cache_out,
                                                        value_cache_out);
+#endif
     }
   }
 }
