@@ -144,7 +144,7 @@ REGISTER_ERROR(Unimplemented, ErrorCode::UNIMPLEMENTED)
 REGISTER_ERROR(Unavailable, ErrorCode::UNAVAILABLE)
 REGISTER_ERROR(Fatal, ErrorCode::FATAL)
 REGISTER_ERROR(External, ErrorCode::EXTERNAL)
-REGISTER_ERROR(UnmatchedTypeError, ErrorCode::UNMATCHED_TYPE)
+REGISTER_ERROR(InvalidType, ErrorCode:: INVALID_TYPE)
 
 #undef REGISTER_ERROR
 
