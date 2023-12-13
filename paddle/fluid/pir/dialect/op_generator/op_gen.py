@@ -1017,58 +1017,7 @@ def get_mutable_attribute_grad_semantic(op_info, op_info_items):
     return mutable_attribute_grad_semantics
 
 
-def OpGenerator(
-    op_yaml_files,
-    op_compat_yaml_file,
-    namespaces,
-    dialect_name,
-    op_def_h_file,
-    op_def_cc_file,
-    op_vjp_cc_file,
-):
-    # (1) Prepare: Delete existing old files: pd_op.h.tmp, pd_op.cc.tmp
-    if os.path.exists(op_def_h_file):
-        os.remove(op_def_h_file)
-    if os.path.exists(op_def_cc_file):
-        os.remove(op_def_cc_file)
-
-    # (2) Prepare: Get all op item in all op_yaml_files
-    op_compat_parser = OpCompatParser(op_compat_yaml_file)
-
-    op_yaml_items = []
-    for yaml_file in op_yaml_files:
-        with open(yaml_file, "r") as f:
-            ops = yaml.safe_load(f)
-            op_yaml_items = op_yaml_items + ops
-
-    op_info_items = {}
-    for op in op_yaml_items:
-        op_compat_item = None
-        if dialect_name == "pd_op":
-            op_compat_item = op_compat_parser.get_compat(op['name'])
-
-        if (
-            op_compat_item is None
-            and op['name'].endswith(('_grad', '_grad_'))
-            and 'forward' in op
-        ):
-            op_compat_item = op_compat_parser.get_compat(op['forward']['name'])
-
-        if (
-            op_compat_item is not None
-            and op_compat_item['op'] == "pow"
-            and 'scalar' in op_compat_item
-        ):
-            op_compat_item = op_compat_item.pop('scalar')
-
-        if 'support_tensor' in op.keys() and op['support_tensor']:
-            scalar_item, int_array_item = op_compat_parser.parse_support_tensor(
-                op
-            )
-            op_compat_item['scalar'] = scalar_item
-            op_compat_item['int_array'] = int_array_item
-
-        op_info_items[op['name']] = OpInfoParser(op, op_compat_item)
+def AutoCodeGen(op_info_items, namespaces, dialect_name):
     # (3) CodeGen: Traverse op_info_items and generate
     ops_name_list = []  # all op class name store in this list
     ops_declare_list = []  # all op class declare store in this list
@@ -1678,7 +1627,7 @@ def OpGenerator(
                 )
                 op_to_multi_kernels_list.append(op_to_multi_kernels_str)
 
-    # (4) Generate head file str
+    # GET_OP_LIST for cc
     op_namespaces_prev = ""
     for name in namespaces:
         op_namespaces_prev += name + "::"
@@ -1687,16 +1636,132 @@ def OpGenerator(
         ops_name_with_namespace_list.append(op_namespaces_prev + name)
     op_list_str = GET_OP_LIST_TEMPALTE.format(
         ", ".join(ops_name_with_namespace_list)
-    )  # Add GET_OP_LIST
+    )
 
+    # IR_DECLARE_EXPLICIT_TYPE_ID for h
     declare_type_id_str = ""
     for op in ops_name_with_namespace_list:
         declare_type_id_str += DECLARE_OP_TYPE_ID.format(op_name=op)
 
-    head_file_str = ""
-    head_file_str += "".join(ops_declare_list)  # Add op class
-    only_pd_op_header_files_str = ""
+    # IR_DEFINE_EXPLICIT_TYPE_ID for cc
+    define_type_id_str = ""
+    for op in ops_name_with_namespace_list:
+        define_type_id_str += DEFINE_OP_TYPE_ID.format(op_name=op)
 
+    # Op Declare for h
+    head_file_str = "".join(ops_declare_list)
+
+    # OpDefine for cc
+    source_file_str = "".join(ops_defined_list)  # Add op define
+
+    # VJP for cc
+    vjp_source_file_str = VJP_CC_FILE_TEMPLATE.format(
+        input="".join(ops_vjp_defined_list)
+    )
+
+    return (
+        op_list_str,
+        declare_type_id_str,
+        define_type_id_str,
+        head_file_str,
+        source_file_str,
+        op_to_multi_kernels_list,
+        vjp_source_file_str,
+    )
+
+
+def OpGenerator(
+    op_yaml_files,
+    op_compat_yaml_file,
+    namespaces,
+    dialect_name,
+    op_def_h_file,
+    op_def_cc_file,
+    op_vjp_cc_file,
+):
+    # (1) Prepare: Delete existing old files: pd_op.h.tmp, pd_op.cc.tmp
+    if os.path.exists(op_def_h_file):
+        os.remove(op_def_h_file)
+    for op_file in op_def_cc_file:
+        if os.path.exists(op_file):
+            os.remove(op_file)
+    for op_file in op_vjp_cc_file:
+        if os.path.exists(op_file):
+            os.remove(op_file)
+
+    # (2) parse yaml files
+    op_compat_parser = OpCompatParser(op_compat_yaml_file)
+
+    op_infos = []
+    for yaml_file in op_yaml_files:
+        op_yaml_items = []
+        with open(yaml_file, "r") as f:
+            ops = yaml.safe_load(f)
+            op_yaml_items = op_yaml_items + ops
+
+        op_info_items = {}
+        for op in op_yaml_items:
+            op_compat_item = None
+            if dialect_name == "pd_op":
+                op_compat_item = op_compat_parser.get_compat(op['name'])
+
+            if (
+                op_compat_item is None
+                and op['name'].endswith(('_grad', '_grad_'))
+                and 'forward' in op
+            ):
+                op_compat_item = op_compat_parser.get_compat(
+                    op['forward']['name']
+                )
+
+            if (
+                op_compat_item is not None
+                and op_compat_item['op'] == "pow"
+                and 'scalar' in op_compat_item
+            ):
+                op_compat_item = op_compat_item.pop('scalar')
+
+            if 'support_tensor' in op.keys() and op['support_tensor']:
+                (
+                    scalar_item,
+                    int_array_item,
+                ) = op_compat_parser.parse_support_tensor(op)
+                op_compat_item['scalar'] = scalar_item
+                op_compat_item['int_array'] = int_array_item
+
+            op_info_items[op['name']] = OpInfoParser(op, op_compat_item)
+        op_infos.append(op_info_items)
+
+    # (3) auto code gen
+    op_list_strs = []
+    declare_type_id_strs = []
+    define_type_id_strs = []
+    head_file_strs = []
+    source_file_strs = []
+    op_to_multi_kernels_lists = []
+    vjp_source_file_strs = []
+    for items in op_infos:
+        (
+            op_list_str,
+            declare_type_id_str,
+            define_type_id_str,
+            head_file_str,
+            source_file_str,
+            op_to_multi_kernels_list,
+            vjp_source_file_str,
+        ) = AutoCodeGen(items, namespaces, dialect_name)
+        op_list_strs.append(op_list_str)
+        declare_type_id_strs.append(declare_type_id_str)
+        define_type_id_strs.append(define_type_id_str)
+        head_file_strs.append(head_file_str)
+        source_file_strs.append(source_file_str)
+        op_to_multi_kernels_lists = (
+            op_to_multi_kernels_lists + op_to_multi_kernels_list
+        )
+        vjp_source_file_strs.append(vjp_source_file_str)
+
+    # (4) write to files for pd_op.h.tmp (all yaml gen to pd_op.h)
+    only_pd_op_header_files_str = ""
     if dialect_name == "pd_op":
         op_to_multi_kernels_map = OP_TO_MULTI_KERNELS_MAP_H
         for name in reversed(namespaces):
@@ -1710,6 +1775,8 @@ def OpGenerator(
     else:
         op_to_multi_kernels_map = ""
 
+    head_file_str = "\n".join(head_file_strs)
+    declare_type_id_str = "\n".join(declare_type_id_strs)
     for name in reversed(namespaces):
         head_file_str = NAMESPACE_GARD_TEMPLATE.format(
             namespace=name, input=head_file_str
@@ -1719,51 +1786,46 @@ def OpGenerator(
         input=head_file_str,
         declare_type_id=declare_type_id_str,
         only_pd_op_header_files=only_pd_op_header_files_str,
-    )  # Add head
-
-    # (5) Generate source file str
-    source_file_str = "".join(ops_defined_list)  # Add op define
-    for name in reversed(namespaces):
-        source_file_str = NAMESPACE_GARD_TEMPLATE.format(
-            namespace=name, input=source_file_str
-        )  # Add namespaces
-
-    define_type_id_str = ""
-    for op in ops_name_with_namespace_list:
-        define_type_id_str += DEFINE_OP_TYPE_ID.format(op_name=op)
-
-    if dialect_name == "pd_op":
-        op_to_multi_kernels_map_str = OP_TO_MULTI_KERNELS_MAPS.format(
-            maps=", \r".join(op_to_multi_kernels_list)
-        )
-        for name in reversed(namespaces):
-            op_to_multi_kernels_map_str = NAMESPACE_GARD_TEMPLATE.format(
-                namespace=name, input=op_to_multi_kernels_map_str
-            )  # Add namespaces
-    else:
-        op_to_multi_kernels_map_str = ""
-
-    source_file_str = CC_FILE_TEMPLATE.format(
-        op_declare=op_list_str,
-        op_to_multi_kernels_map=op_to_multi_kernels_map_str,
-        h_file=op_def_h_file[:-4],
-        input=source_file_str,
-        define_type_id=define_type_id_str,
-    )  # Add head
-
-    vjp_source_file_str = VJP_CC_FILE_TEMPLATE.format(
-        input="".join(ops_vjp_defined_list)
     )
-    # (5) Generate pd_op.h.tmp, pd_op.cc.tmp
     with open(op_def_h_file, 'w') as f:
         f.write(head_file_str)
-    with open(op_def_cc_file, 'w') as f:
-        f.write(source_file_str)
+
+    # (5) write to files for xx_op.cc.tmp
+    for id in range(op_def_cc_file):
+        source_file_str = ""
+        for name in reversed(namespaces):
+            source_file_str = NAMESPACE_GARD_TEMPLATE.format(
+                namespace=name, input=source_file_strs[id]
+            )  # Add namespaces
+        if (id == 0) and (dialect_name == "pd_op"):
+            op_to_multi_kernels_map_str = OP_TO_MULTI_KERNELS_MAPS.format(
+                maps=", \r".join(op_to_multi_kernels_lists)
+            )
+            for name in reversed(namespaces):
+                op_to_multi_kernels_map_str = NAMESPACE_GARD_TEMPLATE.format(
+                    namespace=name, input=op_to_multi_kernels_map_str
+                )  # Add namespaces
+        else:
+            op_to_multi_kernels_map_str = ""
+
+        source_file_str = CC_FILE_TEMPLATE.format(
+            op_declare=op_list_strs[id],
+            op_to_multi_kernels_map=op_to_multi_kernels_map_str,
+            h_file=op_def_h_file[:-4],
+            input=source_file_str,
+            define_type_id=define_type_id_strs[id],
+        )
+
+        with open(op_def_cc_file[id], 'w') as f:
+            f.write(source_file_str)
+
+    # (6) write to files for xx_vjp_op.cc.tmp
     # NOTE(Aurelius84): op_gen.py is called multiply times,
     # and vjp is only avaible for pd dialect.
-    if dialect_name != 'cinn' and op_vjp_cc_file:
-        with open(op_vjp_cc_file, 'w') as f:
-            f.write(vjp_source_file_str)
+    for id in range(op_vjp_cc_file):
+        if dialect_name != 'cinn' and op_vjp_cc_file[id]:
+            with open(op_vjp_cc_file[id], 'w') as f:
+                f.write(vjp_source_file_strs[id])
 
 
 # =====================================
@@ -1796,8 +1858,8 @@ if __name__ == "__main__":
         namespaces = args.namespaces.split(",")
     dialect_name = args.dialect_name
     op_def_h_file = args.op_def_h_file
-    op_def_cc_file = args.op_def_cc_file
-    op_vjp_cc_file = args.op_vjp_cc_file
+    op_def_cc_files = args.op_def_cc_file.split(",")
+    op_vjp_cc_files = args.op_vjp_cc_file.split(",")
 
     # auto code generate
     OpGenerator(
@@ -1806,6 +1868,6 @@ if __name__ == "__main__":
         namespaces,
         dialect_name,
         op_def_h_file,
-        op_def_cc_file,
-        op_vjp_cc_file,
+        op_def_cc_files,
+        op_vjp_cc_files,
     )
