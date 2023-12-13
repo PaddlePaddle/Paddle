@@ -114,7 +114,7 @@ def train(build_strategy=None):
 class TestResnet(Dy2StTestBase):
     def train(self, to_static):
         with enable_to_static_guard(to_static):
-            return train(to_static)
+            return train()
 
     @test_default_mode_only
     def test_resnet(self):
