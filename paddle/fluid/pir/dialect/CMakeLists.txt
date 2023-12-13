@@ -25,15 +25,15 @@ set(fused_op_bwd_yaml
 )
 set(pir_op_fwd_src_yaml
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/ops.yaml)
-set(pir_op_fwd_yaml ${parsed_op_dir}/ops.parsed.yaml)
 set(pir_op_bwd_src_yaml
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/ops_backward.yaml)
-set(pir_op_bwd_yaml ${parsed_op_dir}/ops_backward.parsed.yaml)
 set(pir_update_op_fwd_src_yaml
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/update_ops.yaml)
-set(pir_update_op_fwd_yaml ${parsed_op_dir}/update_ops.parsed.yaml)
 set(parsed_op_dir
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/generated)
+set(pir_op_fwd_yaml ${parsed_op_dir}/ops.parsed.yaml)
+set(pir_op_bwd_yaml ${parsed_op_dir}/ops_backward.parsed.yaml)
+set(pir_update_op_fwd_yaml ${parsed_op_dir}/update_ops.parsed.yaml)
 
 set(op_yaml_files
     ${op_fwd_yaml},${op_bwd_yaml},${fused_op_fwd_yaml},${fused_op_bwd_yaml},${pir_op_fwd_yaml},${pir_op_bwd_yaml},${pir_update_op_fwd_yaml}
