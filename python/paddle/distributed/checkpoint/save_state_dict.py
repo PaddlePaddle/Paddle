@@ -71,6 +71,17 @@ def dedup_storage_metadata(global_state_dict):
     return out
 
 
+def dedup_tensor(state_dict, local_storage_metadata, dedup_storage_metadata):
+    for tensor_index, file_name in dedup_storage_metadata.items():
+        rank = int(file_name.split(".")[0].split("_")[0])
+        if (
+            tensor_index in local_storage_metadata
+            and rank != paddle.distributed.get_rank()
+        ):
+            print(f"remove tensor:{tensor_index.tensor_key} from state_dict")
+            state_dict.remove(tensor_index.tensor_key)
+
+
 def save_state_dict(
     state_dict,
     path,
@@ -183,4 +194,7 @@ def save_state_dict(
         logger.debug(f"metadata:{metadata}")
         paddle.save(metadata, os.path.join(path, f"{unique_id}.metadata"))
     logger.debug(f"local_state_dict:{local_state_dict}")
+    print(f"before dedup_tensor: {local_state_dict}")
+    dedup_tensor(local_state_dict)
+    print(f"after dedup_tensor: {local_state_dict}")
     paddle.save(local_state_dict, os.path.join(path, file_name))
