@@ -84,6 +84,10 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_pipeline_scheduler MODULES test_pipeline_scheduler)
   set_tests_properties(test_pipeline_scheduler
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
+  py_test_modules(test_pipeline_scheduler_vpp MODULES
+                  test_pipeline_scheduler_vpp)
+  set_tests_properties(test_pipeline_scheduler_vpp
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
   py_test_modules(test_auto_tuner_compare MODULES test_auto_tuner_compare)
   set_tests_properties(test_auto_tuner_compare
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
@@ -178,6 +182,10 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_semi_auto_parallel_dist_to_static)
   set_tests_properties(test_semi_auto_parallel_dist_to_static
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 300)
+  py_test_modules(test_static_reshard_api MODULES test_static_reshard_api)
+  set_tests_properties(test_static_reshard_api
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 300)
+
   # End of unittests WITH multi cards and timeout
 
   # NOTE(zyl): unittests WITH multi cards and WITHOUT timeout
@@ -265,6 +273,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_cost_interface MODULES test_cost_interface)
   py_test_modules(test_auto_conditional_block MODULES
                   test_auto_conditional_block)
+  py_test_modules(test_strategy_api MODULES test_strategy_api)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()

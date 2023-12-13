@@ -43,7 +43,7 @@ bool DrrRewritePattern::PatternGraphMatch(
   std::vector<const OpCall*> drr_output_sequence;
   std::vector<Operation*> ir_output_sequence;
   std::unordered_map<const OpCall*, Operation*> output_op_map;
-  for (auto pair : bind_map) {
+  for (const auto& pair : bind_map) {
     drr_output_sequence.push_back(pair.first);
   }
   // using dfs to obtain the arrangement of all candidate ir ops
@@ -396,10 +396,11 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
       Value ir_val = res_match_ctx.GetIrValue(input->name()).get();
       if (ir_val) {
         Operation* ir_input_op = ir_val.dyn_cast<pir::OpResult>().owner();
-        if (max_input_op_index < op_2_temp_program_index[ir_input_op]) {
-          max_input_op_index = op_2_temp_program_index[ir_input_op];
+        if (max_input_op_index < op_2_temp_program_index.at(ir_input_op)) {
+          max_input_op_index = op_2_temp_program_index.at(ir_input_op);
           max_index_op = ir_input_op;
-        } else if (max_input_op_index == op_2_temp_program_index[ir_input_op]) {
+        } else if (max_input_op_index ==
+                   op_2_temp_program_index.at(ir_input_op)) {
           const auto& ops_vec = temp_program[max_input_op_index];
           for (auto it = ops_vec.begin(); it != ops_vec.end(); it++) {
             if (*it == max_index_op) {
@@ -430,6 +431,9 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
     Operation* new_op =
         CreateOperation(op_call, src_match_ctx, rewriter, &res_match_ctx);
     op_2_temp_program_index[new_op] = max_input_op_index + 1;
+    if (max_input_op_index + 1 >= temp_program.size()) {
+      temp_program.push_back({});
+    }
     temp_program[max_input_op_index + 1].push_back(new_op);
   });
 
@@ -471,13 +475,13 @@ void DrrRewritePattern::DeleteSourcePatternOp(
     const ResultPatternGraph& result_pattern_graph,
     const MatchContextImpl& src_match_ctx,
     pir::PatternRewriter& rewriter) const {  // NOLINT
-
   std::queue<Operation*> delete_ops_que;
   std::unordered_set<Operation*> delete_ops_set;
   GraphTopo graph_topo_visit(&source_pattern_graph);
   graph_topo_visit.WalkGraphNodesTopoOrder([&](const OpCall& op_call) {
     Operation* op = src_match_ctx.Operation(&op_call).get();
-    if (op->use_empty()) {
+    VLOG(5) << "DRR delete op: " << op->name() << " pointer: " << op;
+    if (delete_ops_set.count(op) == 0 && op->use_empty()) {
       delete_ops_que.push(op);
       delete_ops_set.insert(op);
     }

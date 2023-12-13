@@ -20,7 +20,10 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase, test_ast_only, test_pt_only
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_default_and_pir,
+)
 from predictor_utils import PredictorTools
 
 import paddle
@@ -449,7 +452,11 @@ class TestSeResnet(Dy2StTestBase):
 
                     step_idx += 1
                     if step_idx == STEP_NUM:
-                        if to_static:
+                        # TODO(@xiongkun): open after save / load supported in pir.
+                        if (
+                            to_static
+                            and not paddle.base.framework.use_pir_api()
+                        ):
                             paddle.jit.save(
                                 se_resnext,
                                 self.model_save_prefix,
@@ -565,8 +572,7 @@ class TestSeResnet(Dy2StTestBase):
                 ),
             )
 
-    @test_ast_only
-    @test_pt_only
+    @test_default_and_pir
     def test_check_result(self):
         pred_1, loss_1, acc1_1, acc5_1 = self.train(
             self.train_reader, to_static=False
@@ -600,7 +606,9 @@ class TestSeResnet(Dy2StTestBase):
             err_msg=f'static acc5: {acc5_1} \ndygraph acc5: {acc5_2}',
         )
 
-        self.verify_predict()
+        # TODO(@xiongkun): open after save / load supported in pir.
+        if not paddle.base.framework.use_pir_api():
+            self.verify_predict()
 
 
 if __name__ == '__main__':
