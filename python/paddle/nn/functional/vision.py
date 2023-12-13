@@ -107,24 +107,11 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
             use_cudnn,
         )
     elif in_pir_mode():
-        theta = theta._use_gpudnn(use_cudnn)
-        if isinstance(out_shape, (list, tuple)):
-            if paddle.utils._contain_var(out_shape):
-                out_shape = paddle.utils.get_int_tensor_list(out_shape)
-                return _C_ops.affine_grid(
-                    theta,
-                    out_shape,
-                    align_corners,
-                    use_cudnn,
-                )
-        elif isinstance(out_shape, paddle.pir.Value):
-            out_shape.stop_gradient = True
-            return _C_ops.affine_grid(
-                theta,
-                out_shape,
-                align_corners,
-                use_cudnn,
-            )
+        return _C_ops.affine_grid(
+            theta,
+            out_shape,
+            align_corners,
+        )
     else:
         helper = LayerHelper('affine_grid', **locals())
         check_variable_and_dtype(
