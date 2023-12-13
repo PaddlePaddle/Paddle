@@ -21,8 +21,6 @@
 namespace phi {
 namespace fusion {
 
-using XPUType = typename XPUTypeTrait<T>::Type;
-
 template <typename T, typename Context>
 void FusedGemmEpilogueXPUGradKernel(
     const Context& dev_ctx,
@@ -36,6 +34,7 @@ void FusedGemmEpilogueXPUGradKernel(
     DenseTensor* x_grad,
     DenseTensor* y_grad,
     DenseTensor* bias_grad) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
   std::string activation = activation_grad;
 
   auto* xpu_ctx = dev_ctx.x_context();
