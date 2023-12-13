@@ -2212,6 +2212,7 @@ struct MaxFunc<half> {
   }
 };
 
+#if CUDA_VERSION >= 11000 && defined(ENABLE_BF16)
 template <>
 struct MaxFunc<__nv_bfloat16> {
   __device__ __nv_bfloat16 operator()(__nv_bfloat16 a, __nv_bfloat16 b) {
@@ -2222,6 +2223,7 @@ struct MaxFunc<__nv_bfloat16> {
 #endif
   }
 };
+#endif
 
 template <typename T>
 struct AbsFunc {
@@ -2239,6 +2241,7 @@ struct AbsFunc<half> {
   }
 };
 
+#if CUDA_VERSION >= 11000 && defined(ENABLE_BF16)
 template <>
 struct AbsFunc<__nv_bfloat16> {
   __device__ __nv_bfloat16 operator()(__nv_bfloat16 x) {
@@ -2249,6 +2252,7 @@ struct AbsFunc<__nv_bfloat16> {
 #endif
   }
 };
+#endif
 
 template <typename T, typename Vec, int VecSize>
 __inline__ __device__ T LocalReduceMax(Vec& vec) {  // NOLINT

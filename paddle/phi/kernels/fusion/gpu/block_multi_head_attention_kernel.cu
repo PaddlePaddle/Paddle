@@ -49,11 +49,13 @@ __forceinline__ __device__ half add_mul<half>(half a, half b, half c) {
   return __hmul(__hadd(a, b), c);
 }
 
+#if CUDA_VERSION >= 11000 && defined(CUDA_BFLOAT16_AVALIABLE)
 template <>
 __forceinline__ __device__ __nv_bfloat16
 add_mul<__nv_bfloat16>(__nv_bfloat16 a, __nv_bfloat16 b, __nv_bfloat16 c) {
   return __hmul(__hadd(a, b), c);
 }
+#endif
 
 template <typename data_t>
 __forceinline__ __device__ int8_t quant_helper(const data_t input,
