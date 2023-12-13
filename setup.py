@@ -41,9 +41,9 @@ version_detail = sys.version_info
 version = str(version_detail[0]) + '.' + str(version_detail[1])
 env_version = str(os.getenv("PY_VERSION"))
 
-if version_detail < (3, 7):
+if version_detail < (3, 8):
     raise RuntimeError(
-        f"Paddle only supports Python version >= 3.7 now,"
+        f"Paddle only supports Python version >= 3.8 now,"
         f"you are using Python {python_version}"
     )
 elif env_version is None:
@@ -873,7 +873,7 @@ def get_setup_requires():
         setup_requires = (
             f.read().splitlines()
         )  # Specify the dependencies to install
-    if sys.version_info >= (3, 7):
+    if sys.version_info >= (3, 8):
         setup_requires_tmp = []
         for setup_requires_i in setup_requires:
             if (
@@ -882,6 +882,8 @@ def get_setup_requires():
                 or "<\"3.5\"" in setup_requires_i
                 or "<=\"3.5\"" in setup_requires_i
                 or "<\"3.7\"" in setup_requires_i
+                or "<=\"3.7\"" in setup_requires_i
+                or "<\"3.8\"" in setup_requires_i
             ):
                 continue
             setup_requires_tmp += [setup_requires_i]
@@ -889,7 +891,7 @@ def get_setup_requires():
         return setup_requires
     else:
         raise RuntimeError(
-            "please check your python version,Paddle only support Python version>=3.7 now"
+            "please check your python version,Paddle only support Python version>=3.8 now"
         )
 
 
@@ -1381,6 +1383,7 @@ def get_setup_parameters():
         'paddle.dataset',
         'paddle.reader',
         'paddle.distributed',
+        'paddle.distributed.checkpoint',
         'paddle.distributed.communication',
         'paddle.distributed.communication.stream',
         'paddle.distributed.metric',

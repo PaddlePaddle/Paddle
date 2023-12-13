@@ -51,7 +51,7 @@ void TopkKernel(const Context& dev_ctx,
                                x.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
 
-    phi::funcs::set_constant(dev_ctx, indices, 0);
+    phi::funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
 
     return;
   }

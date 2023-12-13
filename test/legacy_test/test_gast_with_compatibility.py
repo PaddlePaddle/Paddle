@@ -153,7 +153,7 @@ class TestPythonCompatibility(unittest.TestCase):
     #
     # More information please refer to:
     # https://github.com/serge-sans-paille/gast/issues/49
-    if sys.version_info < (3, 8):
+    if sys.version_info >= (3, 9):
 
         def test_with(self):
             """
