@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import distutils.util
 import os
 
 import paddle
@@ -46,6 +47,9 @@ class HybridParallelClipGrad:
         self._clip = clip
         self._hcg = hcg
         self.not_sharding_stage1 = True
+        self._force_align_vpp_grad_sum_order = distutils.util.strtobool(
+            os.getenv('FLAGS_force_align_vpp_grad_sum_order', '0')
+        )
 
     def _global_norm(self, global_norm_var_dist, global_norm_var_not_dist):
         # sharding first
@@ -99,6 +103,10 @@ class HybridParallelClipGrad:
 
     @no_grad()
     def _dygraph_clip(self, params_grads):
+        if self._force_align_vpp_grad_sum_order:
+            chunk_num = self._get_vpp_chunk_num(params_grads)
+            if chunk_num > 0:
+                return self._vpp_dygraph_clip(params_grads, chunk_num)
         sum_square_dist_fp16 = []
         sum_square_dist_bf16 = []
         sum_square_dist_fp32 = []
@@ -200,6 +208,13 @@ class HybridParallelClipGrad:
             + global_norm_not_dist_fp32
         )
 
+        return self._comm_and_clip(
+            params_grads, global_norm_var_dist, global_norm_var_not_dist
+        )
+
+    def _comm_and_clip(
+        self, params_grads, global_norm_var_dist, global_norm_var_not_dist
+    ):
         self._global_norm(global_norm_var_dist, global_norm_var_not_dist)
 
         global_norm_var_fp32 = paddle.sqrt(

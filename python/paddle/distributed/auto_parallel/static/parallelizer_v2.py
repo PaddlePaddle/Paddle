@@ -20,7 +20,6 @@ import time
 from paddle.distributed.passes import PassManager, new_pass
 from paddle.framework import get_flags
 from paddle.static import append_backward, program_guard
-from paddle.utils import unique_name
 
 from ...utils.log_utils import get_logger
 from ..random import init_auto_parallel_rng
@@ -257,7 +256,7 @@ class Parallelizer:
         optimizer._sorted = False
 
         with program_guard(main_program, startup_program):
-            with unique_name.guard("opt_"):
+            with main_program.switch_name_generator_guard("opt_"):
                 optimizer_ops = optimizer.apply_gradients(params_grads)
         self._completer.complete_update_annotation(main_program)
         return optimizer_ops
@@ -349,6 +348,35 @@ class Parallelizer:
                 "auto_parallel_sequence_parallel_optimization", config
             )
             sp_pass.apply([main_program], [startup_program], self._pass_context)
+
+        # apply fused linear promotion pass
+        if (
+            self.is_train
+            and self._strategy.fused_linear_promotion.enable
+            and self._strategy.fused_passes.enable
+        ):
+            if (
+                len(self._strategy.fused_passes.fused_passes_list) > 0
+                and "fuse_gemm_epilogue"
+                in self._strategy.fused_passes.fused_passes_list
+            ):
+                amp_config = None
+                if self._strategy.amp.enable:
+                    amp_config = copy.deepcopy(self._strategy.amp.to_dict())
+                config = {}
+                config["dist_context"] = self._dist_context
+                config["global_rank"] = rank
+                config["enable_sp"] = self._strategy.sp_optimization.enable
+                config["params_grads"] = params_grads
+                config["amp_level"] = (
+                    amp_config['level'] if amp_config is not None else "o0"
+                )
+                fused_linear_promotion_pass = new_pass(
+                    "auto_parallel_fused_linear_promotion", config
+                )
+                fused_linear_promotion_pass.apply(
+                    [main_program], [startup_program], self._pass_context
+                )
 
         # data parallel optimization
         if self._strategy.dp_optimization.enable:

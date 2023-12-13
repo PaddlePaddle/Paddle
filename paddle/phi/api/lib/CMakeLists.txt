@@ -162,20 +162,39 @@ else()
       ${bw_api_source_file_tmp})
 endif()
 
-# generate fused_op api
-execute_process(
-  COMMAND
-    ${PYTHON_EXECUTABLE} ${api_gen_file} --api_yaml_path ${fused_api_yaml_file}
-    --is_fused_ops_yaml --api_header_path ${fused_api_header_file_tmp}
-    --api_source_path ${fused_api_source_file_tmp})
+if(WITH_DISTRIBUTE)
+  # generate fused_op api
+  execute_process(
+    COMMAND
+      ${PYTHON_EXECUTABLE} ${dist_api_gen_file} --api_yaml_path
+      ${fused_api_yaml_file} --is_fused_ops_yaml --api_header_path
+      ${fused_api_header_file_tmp} --api_source_path
+      ${fused_api_source_file_tmp})
 
-# generate fused_op backward api
-execute_process(
-  COMMAND
-    ${PYTHON_EXECUTABLE} ${fused_bw_api_gen_file} --backward_yaml_path
-    ${fused_bw_api_yaml_file} --is_fused_backward_yaml --backward_header_path
-    ${fused_bw_api_header_file_tmp} --backward_source_path
-    ${fused_bw_api_source_file_tmp})
+  # generate fused_op backward api
+  execute_process(
+    COMMAND
+      ${PYTHON_EXECUTABLE} ${dist_bw_api_gen_file} --backward_yaml_path
+      ${fused_bw_api_yaml_file} --is_fused_backward_yaml --backward_header_path
+      ${fused_bw_api_header_file_tmp} --backward_source_path
+      ${fused_bw_api_source_file_tmp})
+else()
+  # generate fused_op api
+  execute_process(
+    COMMAND
+      ${PYTHON_EXECUTABLE} ${api_gen_file} --api_yaml_path
+      ${fused_api_yaml_file} --is_fused_ops_yaml --api_header_path
+      ${fused_api_header_file_tmp} --api_source_path
+      ${fused_api_source_file_tmp})
+
+  # generate fused_op backward api
+  execute_process(
+    COMMAND
+      ${PYTHON_EXECUTABLE} ${bw_api_gen_file} --backward_yaml_path
+      ${fused_bw_api_yaml_file} --is_fused_backward_yaml --backward_header_path
+      ${fused_bw_api_header_file_tmp} --backward_source_path
+      ${fused_bw_api_source_file_tmp})
+endif()
 
 # generate sparse api
 execute_process(

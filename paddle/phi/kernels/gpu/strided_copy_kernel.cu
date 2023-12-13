@@ -32,12 +32,21 @@ __global__ void StridedCopyCaseZeroFunc(
     phi::Array<int64_t, phi::DDim::kMaxRank + 1> output_stride) {
   int64_t input_offset = 0;
   int64_t output_offset = 0;
+#ifdef PADDLE_WITH_HIP
+  int64_t coordinate[6] = {threadIdx.x,
+                           threadIdx.y,
+                           threadIdx.z,
+                           blockIdx.x,
+                           blockIdx.y,
+                           blockIdx.z};
+#else
   float coordinate[6] = {threadIdx.x,
                          threadIdx.y,
                          threadIdx.z,
                          blockIdx.x,
                          blockIdx.y,
                          blockIdx.z};
+#endif
 
 #pragma unroll
   for (int dim = RANK - 1; dim >= 0; --dim) {
@@ -458,12 +467,21 @@ __global__ void Strided2ContiguousCaseZeroFunc(
                               blockDim.z * blockDim.y * blockDim.x +
                           threadIdx.z * blockDim.y * blockDim.x +
                           threadIdx.y * blockDim.x + threadIdx.x;
+#ifdef PADDLE_WITH_HIP
+  int64_t coordinate[6] = {threadIdx.x,
+                           threadIdx.y,
+                           threadIdx.z,
+                           blockIdx.x,
+                           blockIdx.y,
+                           blockIdx.z};
+#else
   float coordinate[6] = {threadIdx.x,
                          threadIdx.y,
                          threadIdx.z,
                          blockIdx.x,
                          blockIdx.y,
                          blockIdx.z};
+#endif
 
 #pragma unroll
   for (int dim = RANK - 1; dim >= 0; --dim) {
@@ -863,12 +881,21 @@ __global__ void Contiguous2StridedCaseZeroFunc(
                          threadIdx.z * blockDim.y * blockDim.x +
                          threadIdx.y * blockDim.x + threadIdx.x;
   int64_t output_offset = 0;
+#ifdef PADDLE_WITH_HIP
+  int64_t coordinate[6] = {threadIdx.x,
+                           threadIdx.y,
+                           threadIdx.z,
+                           blockIdx.x,
+                           blockIdx.y,
+                           blockIdx.z};
+#else
   float coordinate[6] = {threadIdx.x,
                          threadIdx.y,
                          threadIdx.z,
                          blockIdx.x,
                          blockIdx.y,
                          blockIdx.z};
+#endif
 
 #pragma unroll
   for (int dim = RANK - 1; dim >= 0; --dim) {

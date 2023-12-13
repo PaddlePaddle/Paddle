@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import sys
 import atexit
+import os
 import platform
+import sys
 
 # The legacy core need to be removed before "import core",
 # in case of users installing paddlepaddle without -U option
@@ -33,100 +33,102 @@ if os.path.exists(legacy_core):
     except Exception as e:
         raise e
 
-from . import core
+from .layers.math_op_patch import monkey_patch_variable
 
 # import all class inside framework into base module
-from . import framework
-from .framework import (
-    Program,
-    default_startup_program,
-    default_main_program,
-    program_guard,
-    name_scope,
-    ipu_shard_guard,
-    set_ipu_shard,
-    cuda_places,
-    cpu_places,
-    xpu_places,
-    cuda_pinned_places,
-    in_dygraph_mode,
-    in_pir_mode,
-    in_dynamic_or_pir_mode,
-    is_compiled_with_cinn,
-    is_compiled_with_cuda,
-    is_compiled_with_rocm,
-    is_compiled_with_xpu,
-    Variable,
-    require_version,
-    device_guard,
-    set_flags,
-    get_flags,
-)
-
 # import all class inside executor into base module
-from . import executor
-from .executor import (
+from . import (  # noqa: F401
+    backward,
+    compiler,
+    core,
+    data_feed_desc,
+    dataset,
+    dygraph,
+    executor,
+    framework,
+    incubate,
+    initializer,
+    io,
+    layers,
+    trainer_desc,
+    unique_name,
+)
+from .backward import (  # noqa: F401
+    append_backward,
+    gradients,
+)
+from .compiler import (  # noqa: F401
+    BuildStrategy,
+    CompiledProgram,
+    ExecutionStrategy,
+    IpuCompiledProgram,
+    IpuStrategy,
+)
+from .core import (  # noqa: F401
+    CPUPlace,
+    CUDAPinnedPlace,
+    CUDAPlace,
+    CustomPlace,
+    IPUPlace,
+    LoDTensor,
+    LoDTensorArray,
+    Scope,
+    XPUPlace,
+    _cuda_synchronize,
+    _Scope,
+)
+from .data_feed_desc import DataFeedDesc  # noqa: F401
+from .data_feeder import DataFeeder  # noqa: F401
+from .dataset import (  # noqa: F401
+    DatasetFactory,
+    InMemoryDataset,
+)
+from .dygraph.base import disable_dygraph, enable_dygraph
+from .dygraph.tensor_patch_methods import monkey_patch_tensor
+from .executor import (  # noqa: F401
     Executor,
     global_scope,
     scope_guard,
 )
-
-from . import data_feed_desc
-from .data_feed_desc import DataFeedDesc
-
-from . import dataset
-from .dataset import (
-    DatasetFactory,
-    InMemoryDataset,
+from .framework import (  # noqa: F401
+    Program,
+    Variable,
+    cpu_places,
+    cuda_pinned_places,
+    cuda_places,
+    default_main_program,
+    default_startup_program,
+    device_guard,
+    get_flags,
+    in_dygraph_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
+    ipu_shard_guard,
+    is_compiled_with_cinn,
+    is_compiled_with_cuda,
+    is_compiled_with_rocm,
+    is_compiled_with_xpu,
+    name_scope,
+    program_guard,
+    require_version,
+    set_flags,
+    set_ipu_shard,
+    xpu_places,
 )
-
-from . import trainer_desc
-
-from . import io
-from . import initializer
-from .initializer import set_global_initializer
-from . import layers
-from . import dygraph
-from . import backward
-from .backward import gradients
-from . import incubate
-from .param_attr import ParamAttr, WeightNormParamAttr
-from .data_feeder import DataFeeder
-
-from .core import LoDTensor, LoDTensorArray, Scope, _Scope
-from .core import (
-    CPUPlace,
-    XPUPlace,
-    CUDAPlace,
-    CUDAPinnedPlace,
-    IPUPlace,
-    CustomPlace,
+from .initializer import set_global_initializer  # noqa: F401
+from .lod_tensor import (  # noqa: F401
+    create_lod_tensor,
+    create_random_int_lodtensor,
 )
-from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
-
-from . import unique_name
-from . import compiler
-from .compiler import (
-    CompiledProgram,
-    ExecutionStrategy,
-    BuildStrategy,
-    IpuCompiledProgram,
-    IpuStrategy,
-)
-from paddle.base.layers.math_op_patch import monkey_patch_variable
-from .dygraph.base import enable_dygraph, disable_dygraph
-from .dygraph.tensor_patch_methods import monkey_patch_tensor
-from .core import _cuda_synchronize
-from .trainer_desc import (
-    TrainerDesc,
+from .param_attr import ParamAttr, WeightNormParamAttr  # noqa: F401
+from .trainer_desc import (  # noqa: F401
     DistMultiTrainer,
-    PipelineTrainer,
     HeterPipelineTrainer,
-    MultiTrainer,
     HeterXpuTrainer,
+    MultiTrainer,
+    PipelineTrainer,
+    TrainerDesc,
 )
-from .backward import append_backward
-from . import type_promotion
 
 Tensor = LoDTensor
 enable_imperative = enable_dygraph
@@ -142,9 +144,6 @@ def __bootstrap__():
     Returns:
         None
     """
-    # NOTE(zhiqiu): When (1)numpy < 1.19; (2) python < 3.7,
-    # unittest is always imported in numpy (maybe some versions not).
-    # so is_test is True and p2p is not inited.
     in_test = 'unittest' in sys.modules
 
     try:
