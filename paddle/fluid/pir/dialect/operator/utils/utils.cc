@@ -289,7 +289,7 @@ void DoValueCheck(const pir::Value& value,
       std::copy(expected_dtype.begin(),
                 expected_dtype.end(),
                 std::ostream_iterator<std::string>(joined, ","));
-      PADDLE_THROW(phi::errors::UnmatchedTypeError(
+      PADDLE_THROW(phi::errors::InvalidType(
           "Check data type error for op: %s, input: %s, %s.dtype is %s, and "
           "expected_dtype is %s",
           op_name,
