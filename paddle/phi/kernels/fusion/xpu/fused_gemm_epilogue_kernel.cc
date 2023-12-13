@@ -21,8 +21,6 @@
 namespace phi {
 namespace fusion {
 
-using XPUType = typename XPUTypeTrait<T>::Type;
-
 template <typename T, typename Context>
 void FusedGemmEpilogueKernel(const Context& dev_ctx,
                              const DenseTensor& x,
@@ -33,6 +31,7 @@ void FusedGemmEpilogueKernel(const Context& dev_ctx,
                              const std::string& activation,
                              DenseTensor* out,
                              DenseTensor* reserve_space) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
   VLOG(5) << "trans_x = " << trans_x << " , trans_y = " << trans_y
           << " , activation = " << activation;
 
