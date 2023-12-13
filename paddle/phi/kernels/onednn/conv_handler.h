@@ -154,7 +154,7 @@ class ConvOneDNNHandlerT
       auto weights_tz = common::vectorize(filter->dims());
       funcs::GetGroupConvWeightsTz(weights_tz, groups);
 
-      const auto dst_tz = common::vectorize(output->dims());
+      auto dst_tz = common::vectorize(output->dims());
 
       const dnnl::memory::dims stride_dims = strides;
       const auto onednn_paddings = funcs::ToOneDNNPadding(paddings);
