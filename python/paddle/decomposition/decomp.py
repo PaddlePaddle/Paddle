@@ -18,7 +18,6 @@ import warnings
 import paddle
 from paddle import pir
 from paddle.autograd import ir_backward
-from paddle.base import log_helper
 from paddle.base.core import (
     call_decomp,
     decomp_ops_contain_unused_output,
@@ -29,7 +28,7 @@ from paddle.framework import core
 
 from . import register
 
-logger = log_helper.get_logger(__name__, logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 
 def _build_tensor_tuple(xs):
