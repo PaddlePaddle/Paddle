@@ -323,6 +323,14 @@
     func: bincount
   optional: weights
 
+- op : binomial
+  args : (Tensor count, Tensor prob)
+  output : Tensor(out)
+  infer_meta :
+    func : BinomialInferMeta
+  kernel :
+    func : binomial
+
 - op : bitwise_and
   args : (Tensor x, Tensor y)
   output : Tensor(out)

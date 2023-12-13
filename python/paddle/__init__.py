@@ -489,6 +489,7 @@ from .tensor.math import (  # noqa: F401
     vander,
 )
 from .tensor.random import (
+    binomial,
     bernoulli,
     check_shape,
     multinomial,
@@ -743,6 +744,7 @@ __all__ = [
     'expm1',
     'expm1_',
     'bernoulli',
+    'binomial',
     'poisson',
     'sinh',
     'sinh_',
