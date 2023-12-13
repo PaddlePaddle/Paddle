@@ -2426,25 +2426,25 @@ def update_grad_var_to_var(program, strategy, grad_var_to_var):
             op.has_attr("op_namescope")
             and op.attr("op_namescope") == "/auto_parallel/reshard"
         ):
-            reshard_op_types_1 = [
+            reshard_op_types = [
                 "split",
                 "assign",
                 "cast",
                 "c_concat",
                 "concat",
                 "c_allgather",
+                "slice",
             ]
-            reshard_op_types_2 = ["slice"]
-            if op.desc.type() in reshard_op_types_1:
-                input_names = op.desc.input("X")
-            elif op.desc.type() in reshard_op_types_2:
-                input_names = op.desc.input("Input")
-            output_names = op.desc.output("Out")
-            if input_names[0] in grad_var_to_var.keys():
-                for output_name in output_names:
-                    grad_var_to_var[output_name] = grad_var_to_var[
-                        input_names[0]
-                    ]
+            if op.desc.type() in reshard_op_types:
+                if "X" in op.desc.input_names():
+                    inputs = op.desc.input("X")
+                elif "Input" in op.desc.input_names():
+                    inputs = op.desc.input("Input")
+                if "Out" in op.desc.output_names():
+                    outputs = op.desc.output("Out")
+                if inputs[0] in grad_var_to_var.keys():
+                    for output in outputs:
+                        grad_var_to_var[output] = grad_var_to_var[inputs[0]]
 
         # process amp pass in distributed training
         if (
