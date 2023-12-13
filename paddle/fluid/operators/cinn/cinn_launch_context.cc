@@ -30,6 +30,7 @@
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/details/build_strategy.h"
 #include "paddle/fluid/framework/details/execution_strategy.h"
+#include "paddle/fluid/framework/io/save_paddle2cinn_varmap.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
@@ -43,10 +44,13 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/value.h"
 #include "paddle/utils/string/string_helper.h"
 
+PHI_DECLARE_string(static_runtime_data_save_path);
+PHI_DECLARE_bool(save_static_runtime_data);
 namespace paddle {
 namespace operators::details {
 
@@ -189,6 +193,12 @@ void CinnLaunchContext::BuildVarNameMap(
           "Size of variables is not euqal, paddle[%ld] vs cinn[%ld]",
           paddle2cinn_varmap_.size(),
           cinn2paddle_varmap_.size()));
+  if (FLAGS_save_static_runtime_data) {
+    paddle::framework::save_paddle2cinn_varmap(
+        paddle2cinn_varmap_,
+        FLAGS_static_runtime_data_save_path +
+            "/paddle2cinn_varmap/paddle2cinn_varmap.txt");
+  }
 }
 
 std::unordered_set<std::string> CinnLaunchContext::GetVisibleVarNames() const {

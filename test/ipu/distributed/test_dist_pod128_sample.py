@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 '''
-python3.7 -m paddle.distributed.launch \
+python3.8 -m paddle.distributed.launch \
 --devices=128 \
 ipu \
 --hosts=host1,host2 \
@@ -31,7 +31,7 @@ poprun \
 --vipu-partition=pod128_bert \
 --vipu-server-host=lr17-1-ctrl \
 --update-partition=yes \
-python3.7 test/ipu/disabled/test_dist_pod128_ipu.py
+python3.8 test/ipu/disabled/test_dist_pod128_ipu.py
 '''
 
 import os

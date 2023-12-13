@@ -372,8 +372,9 @@ class FusedCommBuffer:
             raise ValueError(
                 "The address of the grad/main_grad of the param has been changed during training, "
                 "which is not allowed for dp/sharding overlap with pp. "
-                "This may be caused by some non-inplace operations on the grad/main_grad. "
-                "Please use the inplace version of the operations or disable the overlapping."
+                "This may be caused by some non-inplace operations on the grad/main_grad. Here are some examples: "
+                "1. The grad/main_grad of the param is changed by other operations, such as: clear_grad, "
+                "2. Using non-inplace operations on the grad/main_grad, such as: add, sub, mul, div, etc. "
             )
 
         self._params_step_dict[param.name] += 1
@@ -457,6 +458,15 @@ class FusedCommBuffer:
         if self._scale_after_comm:
             scale_factor = 1.0 / self._comm_group.nranks
             self.grad_storage.scale_(scale_factor)
+
+        self._reset_params_checked_in()
+
+    @imperative_base.no_grad
+    def scale_and_split_grads(self):
+        assert self._task is not None, "Task is not initialized. "
+        self._task.wait()
+        scale_factor = 1.0 / self._comm_group.nranks
+        self.grad_storage.scale_(scale_factor)
 
         self._reset_params_checked_in()
 

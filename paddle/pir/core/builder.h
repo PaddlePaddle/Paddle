@@ -103,7 +103,8 @@ class Builder {
   }
 
   /// Set the insertion point to the end of the specified block.
-  void SetInsertionPointToEnd(Block *block) {
+  void SetInsertionPointToBlockEnd(Block *block) {
+    IR_ENFORCE(block != nullptr, "argument of block is nullptr");
     set_insertion_point(block, block->end());
   }
 

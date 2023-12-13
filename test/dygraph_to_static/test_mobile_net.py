@@ -22,7 +22,7 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
-    test_pt_only,
+    test_legacy_and_pt_and_pir,
 )
 from predictor_utils import PredictorTools
 
@@ -509,7 +509,7 @@ class Args:
     dy_state_dict_save_path = None
 
 
-def train_mobilenet(args, to_static: bool):
+def train_mobilenet(args, to_static):
     with unique_name.guard():
         np.random.seed(SEED)
         paddle.seed(SEED)
@@ -592,7 +592,8 @@ def train_mobilenet(args, to_static: bool):
                 batch_id += 1
                 t_last = time.time()
                 if batch_id > args.train_step:
-                    if to_static:
+                    # TODO(@xiongkun): open after save / load supported in pir.
+                    if to_static and not paddle.base.framework.use_pir_api():
                         paddle.jit.save(net, args.model_save_prefix)
                     else:
                         paddle.save(
@@ -677,7 +678,7 @@ class TestMobileNet(Dy2StTestBase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    def train(self, model_name, to_static: bool):
+    def train(self, model_name, to_static):
         self.args.model = model_name
         self.args.model_save_prefix = os.path.join(
             self.temp_dir.name, "./inference/" + model_name
@@ -737,20 +738,16 @@ class TestMobileNet(Dy2StTestBase):
             err_msg=f'inference_pred_res:\n {predictor_pre}\n, st_pre: \n{st_pre}.',
         )
 
-    @test_pt_only
-    def test_mobile_net_pir(self):
-        # MobileNet-V1
-        self.assert_same_loss("MobileNetV1")
-        # MobileNet-V2
-        self.assert_same_loss("MobileNetV2")
-
+    @test_legacy_and_pt_and_pir
     def test_mobile_net(self):
         # MobileNet-V1
         self.assert_same_loss("MobileNetV1")
         # MobileNet-V2
         self.assert_same_loss("MobileNetV2")
 
-        self.verify_predict()
+        # TODO(@xiongkun): open after save / load supported in pir.
+        if not paddle.base.framework.use_pir_api():
+            self.verify_predict()
 
     def verify_predict(self):
         # MobileNet-V1
