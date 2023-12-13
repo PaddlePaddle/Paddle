@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and 
 # limitations under the License.
 
-target_lists_for_hybrid_ci=(
+target_lists_for_semi_auto_ci=(
     "python/paddle/distributed"
     "paddle/fluid/distributed"
     "paddle/fluid/framework/new_executor"
@@ -30,4 +30,13 @@ target_lists_for_pir_ci=(
     "paddle/fluid/pir/dialect"
     "paddle/fluid/pir/transforms"
     "paddle/pir"
+)
+
+target_lists_for_dygraph_ci=(
+    "python/paddle/distributed/fleet"
+    "python/paddle/distributed/communication"
+    "python/paddle/distributed/sharding"
+    "paddle/fluid/distributed/collective"
+    "paddle/phi/core/distributed"
+    "test/collective/hybrid_strategy"
 )
