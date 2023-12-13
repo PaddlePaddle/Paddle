@@ -50,19 +50,23 @@ inline OneDNNMemoryFormat ToOneDNNFormat(const DataLayout& layout) {
 
 inline DataLayout GetPaddleLayoutFromOneDNNMemDesc(
     const dnnl::memory::desc& desc) {
-  if (desc == dnnl::memory::desc(desc.get_dims(),
+  if (desc.get_dims().size() == 4 &&
+      desc == dnnl::memory::desc(desc.get_dims(),
                                  desc.get_data_type(),
                                  dnnl::memory::format_tag::nhwc)) {
     return DataLayout::NHWC;
-  } else if (desc == dnnl::memory::desc(desc.get_dims(),
+  } else if (desc.get_dims().size() == 4 &&
+             desc == dnnl::memory::desc(desc.get_dims(),
                                         desc.get_data_type(),
                                         dnnl::memory::format_tag::nchw)) {
     return DataLayout::NCHW;
-  } else if (desc == dnnl::memory::desc(desc.get_dims(),
+  } else if (desc.get_dims().size() == 5 &&
+             desc == dnnl::memory::desc(desc.get_dims(),
                                         desc.get_data_type(),
                                         dnnl::memory::format_tag::ncdhw)) {
     return DataLayout::NCDHW;
-  } else if (desc == dnnl::memory::desc(desc.get_dims(),
+  } else if (desc.get_dims().size() == 5 &&
+             desc == dnnl::memory::desc(desc.get_dims(),
                                         desc.get_data_type(),
                                         dnnl::memory::format_tag::ndhwc)) {
     return DataLayout::NDHWC;
