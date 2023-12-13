@@ -222,6 +222,7 @@ PYBIND11_MAKE_OPAQUE(paddle::framework::FetchType);
 DECLARE_FILE_SYMBOLS(init_phi);
 DECLARE_FILE_SYMBOLS(kernel_dialect);
 DECLARE_FILE_SYMBOLS(retry_allocator);
+DECLARE_FILE_SYMBOLS(best_fit_allocator);
 namespace paddle {
 namespace pybind {
 
