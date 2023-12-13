@@ -49,6 +49,20 @@ static const phi::DDim& GetValueDims(pir::Value value) {
   }
 }
 
+phi::DataType GetValueDtype(Value value) {
+  if (value.type().isa<DenseTensorType>()) {
+    return paddle::dialect::TransToPhiDataType(
+        value.type().dyn_cast<DenseTensorType>().dtype());
+  } else if (value.type().isa<SelectedRowsType>()) {
+    return paddle::dialect::TransToPhiDataType(
+        value.type().dyn_cast<SelectedRowsType>().dtype());
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we can only get phi::DataType from DenseTensorType and "
+        "SelectedRowsType."));
+  }
+}
+
 static bool check_dynamic_shape(const pir::OpOperand& item,
                                 const pir::Operation& op) {
   auto dims = GetValueDims(item.source());
@@ -99,6 +113,18 @@ void DecompProgram::check_decomp_outputs(
     const std::string& op_name,
     const std::vector<pir::OpResult>& orig_outs,
     const std::vector<pir::OpResult>& decomp_outs) {
+  for (size_t i = 0; i < orig_outs.size(); i++) {
+    auto orig_dim = GetValueDims(orig_outs[i]);
+    auto decomp_dim = GetValueDims(decomp_outs[i]);
+    PADDLE_ENFORCE(
+        orig_dim == decomp_dim,
+        paddle::platform::errors::PreconditionNotMet(
+            "[Prim] For op %s, its origin output shape is not equal to "
+            "decomp output shape %d ",
+            op_name,
+            orig_dim,
+            decomp_dim));
+  }
   return;
 }
 

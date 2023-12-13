@@ -195,16 +195,6 @@ def decompose(
     blacklist=frozenset(),
     whitelist=frozenset(),
 ):
-    blacklist = core.prim_config["forward_blacklist"] | blacklist
-    return core.decomp_sink(program, src_vars, blacklist, whitelist)
-
-
-def decompose_(
-    program,
-    src_vars,
-    blacklist=frozenset(),
-    whitelist=frozenset(),
-):
     """
     Search nonbasic ops which have be registered composite rules and replace them with primitive ops.
     The operators in blacklist will be excluded from program when decomposed into primitives, and only the
