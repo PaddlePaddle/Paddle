@@ -228,7 +228,7 @@ void BuildPhiContext(pir::Operation* op,
                                               var->Type()));
     }
   }
-
+  VLOG(8) << "EmplaceBackInput done";
   // EmplaceBackAttributes
   auto& vec_kernel_fn_attr_params = op_yaml_info.AttrParams(is_kernel);
   for (auto& t : vec_kernel_fn_attr_params) {
@@ -416,6 +416,7 @@ void BuildPhiContext(pir::Operation* op,
     }
     VLOG(6) << "ctx->EmplaceBackAttr: " << t;
   }
+  VLOG(8) << "EmplaceBackBackAttributes done";
 
   // EmplaceBackOutputs
   VLOG(8) << "ctx->EmplaceBackOutput: ";
@@ -482,6 +483,7 @@ void BuildPhiContext(pir::Operation* op,
           phi::errors::Unimplemented("only support DenseTensor and vector "));
     }
   }
+  VLOG(8) << "EmplaceBackOutputs done";
 
   VLOG(6) << "Done build phi context";
 }
