@@ -18,7 +18,6 @@ import paddle
 import paddle.nn.functional as F
 from paddle import base
 from paddle.base.dygraph import to_variable
-from paddle.jit.api import dygraph_to_static_func
 from paddle.nn import Layer, Linear
 
 
@@ -679,7 +678,6 @@ class Transformer(Layer):
         self.d_key = d_key
         self.d_value = d_value
 
-    @dygraph_to_static_func
     def forward(
         self,
         src_word,
@@ -696,7 +694,6 @@ class Transformer(Layer):
         )
         return predict
 
-    @dygraph_to_static_func
     def beam_search(
         self,
         src_word,

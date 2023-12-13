@@ -12,25 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/drr/api/tensor_interface.h"
-#include "paddle/fluid/pir/drr/ir_value.h"
+#pragma once
+
+#include <memory>
+#include "paddle/pir/core/dll_decl.h"
 
 namespace pir {
-namespace drr {
 
-bool ShapeInterface::operator==(const ShapeInterface& other) const {
-  return *shape_ == *other.shape_;
-}
+class Pass;
 
-int ShapeInterface::size() const { return shape_->size(); }
+IR_API std::unique_ptr<Pass> CreateMatmulScaleFusePass();
 
-int64_t ShapeInterface::at(int idx) const { return shape_->at(idx); }
-
-bool DtypeInterface::operator==(const DtypeInterface& other) const {
-  return *dtype_ == *other.dtype_;
-}
-
-IrDtype DtypeInterface::dtype() const { return *(this->dtype_); }
-
-}  // namespace drr
 }  // namespace pir

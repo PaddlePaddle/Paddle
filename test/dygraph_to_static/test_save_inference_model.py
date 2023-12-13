@@ -230,7 +230,6 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
 class TestPartialProgramRaiseError(Dy2StTestBase):
     @test_ast_only
     def test_param_type(self):
-        paddle.jit.enable_to_static(True)
         x_data = np.random.random((20, 20)).astype('float32')
 
         with base.dygraph.guard(base.CPUPlace()):
