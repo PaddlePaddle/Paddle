@@ -455,6 +455,7 @@ def monkey_patch_tensor():
             elif isinstance(
                 device,
                 (
+                    core.Place,
                     core.CPUPlace,
                     core.CUDAPlace,
                     core.CUDAPinnedPlace,
