@@ -251,14 +251,14 @@ class Parallelizer:
         #    but optimizer will be called repeatedly in re-launch, so optimizer need to be copied.
         # 2. lr_scheduler cannot be deepcopy, cause 'deepcopy' will lead to difference of learning_rate between executor and engine.
         learning_rate = optimizer._learning_rate
-        optimizer = copy.deepcopy(optimizer)
+        new_optimizer = copy.deepcopy(optimizer)
         self._dist_context._serial_optimizer = optimizer
         self._dist_context._serial_optimizer._learning_rate = learning_rate
-        optimizer._sorted = False
+        new_optimizer._sorted = False
 
         with program_guard(main_program, startup_program):
             with unique_name.guard("opt_"):
-                optimizer_ops = optimizer.apply_gradients(params_grads)
+                optimizer_ops = new_optimizer.apply_gradients(params_grads)
         self._completer.complete_update_annotation(main_program)
         return optimizer_ops
 
@@ -376,6 +376,22 @@ class Parallelizer:
                     "auto_parallel_fused_linear_promotion", config
                 )
                 fused_linear_promotion_pass.apply(
+                    [main_program], [startup_program], self._pass_context
+                )
+
+        # apply master grad pass
+        if self._strategy.amp.enable:
+            amp_config = copy.deepcopy(self._strategy.amp.to_dict())
+            config = {}
+            config["dist_context"] = self._dist_context
+            config["params_grads"] = params_grads
+            config["optimizer"] = self._dist_context._serial_optimizer
+            config["completer"] = self._completer
+            if amp_config['level'] == "o2" and amp_config["use_master_grad"]:
+                master_grad_pass = new_pass(
+                    "auto_parallel_master_grad_pass", config
+                )
+                master_grad_pass.apply(
                     [main_program], [startup_program], self._pass_context
                 )
 

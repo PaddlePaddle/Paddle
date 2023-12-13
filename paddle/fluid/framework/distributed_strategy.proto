@@ -116,6 +116,7 @@ message AMPConfig {
   optional bool use_optimizer_fp16 = 12
       [ default = false ]; // auto parallel effective only
   optional bool use_pure_bf16 = 13 [ default = false ];
+  optional bool use_master_grad = 14 [ default = false ];
 }
 
 message LocalSGDConfig {

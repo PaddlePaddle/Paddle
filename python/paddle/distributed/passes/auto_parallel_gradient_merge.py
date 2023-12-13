@@ -183,6 +183,7 @@ def _append_gradient_merge_backward_op(
         for out_name in op.desc.output_arg_names():
             if out_name in grad_to_params_grads:
                 param = grad_to_params_grads[out_name][0]
+                grad = grad_to_params_grads[out_name][1]
                 assert param is not None
                 ref_dist_attr = dist_context.get_tensor_dist_attr_for_program(
                     param
@@ -193,8 +194,8 @@ def _append_gradient_merge_backward_op(
                 # Add persistable gradient variables in main_program
                 gradient_merge_var = main_block.create_var(
                     name=param.name + "@GRAD@MERGE",
-                    shape=param.shape,
-                    dtype=param.dtype,
+                    shape=grad.shape,
+                    dtype=grad.dtype,
                     persistable=True,
                 )
                 ref_process_mesh = ref_dist_attr.process_mesh
@@ -209,8 +210,8 @@ def _append_gradient_merge_backward_op(
                 # Add persistable gradient variables in startup_program
                 startup_gradient_merge_var = startup_block.create_var(
                     name=param.name + "@GRAD@MERGE",
-                    shape=param.shape,
-                    dtype=param.dtype,
+                    shape=grad.shape,
+                    dtype=grad.dtype,
                     persistable=True,
                 )
                 # Initial persistable gradient variables in startup_program
@@ -218,8 +219,8 @@ def _append_gradient_merge_backward_op(
                     type="fill_constant",
                     outputs={"Out": startup_gradient_merge_var},
                     attrs={
-                        "shape": param.shape,
-                        "dtype": param.dtype,
+                        "shape": grad.shape,
+                        "dtype": grad.dtype,
                         "value": float(0),
                     },
                 )
