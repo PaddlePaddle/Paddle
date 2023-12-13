@@ -60,5 +60,21 @@ def compute_local_shape_and_global_offset(
 
 
 def flatten_state_dict(state_dict):
+    """
+    Flatten the nested dict to a flat dict.
+    """
+    flatten_state_dict = {}
+    mapping = {}
+    #
     # TODO, {"model": {"w0": xxx}} -> {model.w0: xxx}
+    return flatten_state_dict, mapping
+
+
+def unflatten_state_dict(flat_state_dict, mapping):
+    """
+    Unflatten the flat dict to a nested dict.
+    """
+    state_dict = {}
+    #
+    # TODO, {model.w0: xxx} -> {"model": {"w0": xxx}}
     return state_dict
