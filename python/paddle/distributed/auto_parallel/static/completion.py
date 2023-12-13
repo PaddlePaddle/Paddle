@@ -16,11 +16,13 @@ import copy
 import logging
 import os
 
+import paddle
 from paddle.base.core import (  # noqa: F401
     contains_spmd_rule,
     get_phi_spmd_rule,
     get_spmd_rule,
 )
+from paddle.base.framework import Operator
 from paddle.base.log_helper import get_logger
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.framework import core
@@ -52,6 +54,24 @@ __skip_dims_mapping_op__ = [
     "while",
     "read",
 ]
+
+_skip_propagation_prefix = "Auto_Parallel_Completion_Skipped"
+
+
+def mark_as_sharding_propagation_skip_op(op):
+    op._set_attr('op_namescope', '/' + _skip_propagation_prefix)
+
+
+def is_sharding_propagation_skip_op(op):
+    if isinstance(op, paddle.base.libpaddle.OpDesc):
+        op_desc = op
+    elif isinstance(op, Operator):
+        op_desc = op.desc
+    else:
+        raise RuntimeError(f"static mode operator is expected but got [{op}]")
+    return op_desc.has_attr(
+        "op_namescope"
+    ) and _skip_propagation_prefix in op_desc.attr("op_namescope")
 
 
 def compute_compatible_dim_mapping(dim_mapping_list):
@@ -218,6 +238,7 @@ class Completer:
                         or pred_op_node.op().type()
                         == "create_double_buffer_reader"
                         or pred_op_node.op().type() == "read"
+                        # or is_sharding_propagation_skip_op(pred_op_node.op()) # reshard should only fwd tensor propagation
                     ):
                         continue
                     op_dist_attr = (
@@ -255,6 +276,7 @@ class Completer:
                         or succ_op_node.op().type()
                         == "create_double_buffer_reader"
                         or succ_op_node.op().type() == "read"
+                        or is_sharding_propagation_skip_op(succ_op_node.op())
                     ):
                         continue
                     op_dist_attr = (
@@ -293,7 +315,10 @@ class Completer:
         if (not op_node.is_op()) or (op_node.op() is None):
             return False
         # Skip reader op
-        if op_desc.type() in __skip_dims_mapping_op__:
+        if (
+            op_desc.type() in __skip_dims_mapping_op__
+            or is_sharding_propagation_skip_op(op_node.op())
+        ):
             return False
 
         dist_op = self._dist_context.get_dist_op_for_graph(op_node)

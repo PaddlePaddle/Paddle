@@ -283,7 +283,7 @@ bool MaterializeShapeComputation(pir::ModuleOp m) {
                DimOfShapedTypeOpInterfacePattern<shape::TensorDimOp>>(
       patterns.ir_context());
 
-  IR_ENFORCE(ApplyPatternsGreedily(m, std::move(patterns)),
+  IR_ENFORCE(ApplyPatternsGreedily(m, std::move(patterns)).first,
              "fail to materialize shape computation\n");
   return true;
 }

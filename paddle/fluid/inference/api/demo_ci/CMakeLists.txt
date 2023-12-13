@@ -241,7 +241,7 @@ if(WITH_GPU)
                ${TENSORRT_LIB_DIR}/nvinfer${CMAKE_STATIC_LIBRARY_SUFFIX})
       set(DEPS ${DEPS}
                ${TENSORRT_LIB_DIR}/nvinfer_plugin${CMAKE_STATIC_LIBRARY_SUFFIX})
-      if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)
+      if(${TENSORRT_MAJOR_VERSION} EQUAL 7)
         set(DEPS ${DEPS}
                  ${TENSORRT_LIB_DIR}/myelin64_1${CMAKE_STATIC_LIBRARY_SUFFIX})
       endif()
@@ -272,7 +272,7 @@ if(WIN32)
         ${CMAKE_COMMAND} -E copy
         ${TENSORRT_LIB_DIR}/nvinfer_plugin${CMAKE_SHARED_LIBRARY_SUFFIX}
         ${LIB_PATH})
-    if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)
+    if(${TENSORRT_MAJOR_VERSION} EQUAL 7)
       add_custom_command(
         TARGET ${DEMO_NAME}
         POST_BUILD

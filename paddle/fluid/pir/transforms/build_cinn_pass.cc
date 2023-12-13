@@ -240,8 +240,7 @@ class BuildCinnPass : public pir::Pass {
 
     std::vector<GroupOpsVec> groups =
         ::pir::SubgraphDetector(&block, IsSupportCinn)();
-    LOG(INFO) << "--- [build_cinn_pass] detected " << groups.size()
-              << " cinn supported subgraphs";
+    PrintStatistics(groups.size());
     for (auto& group_ops : groups) {
       VLOG(4) << "current group_ops.size(): " << group_ops.size();
       ::pir::ReplaceWithGroupOp(&block, group_ops);

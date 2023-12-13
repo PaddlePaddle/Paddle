@@ -15,10 +15,9 @@
 import inspect
 import warnings
 
-from paddle.base.dygraph.base import in_to_static_mode
-
 from .. import core
-from ..framework import Variable, static_only, unique_name
+from ..dygraph.base import in_to_static_mode
+from ..framework import Variable, default_main_program, static_only
 from .layer_function_generator import OpProtoHolder
 
 _supported_int_dtype_ = [
@@ -70,7 +69,7 @@ _already_patch_variable = False
 
 def monkey_patch_variable():
     def unique_tmp_name():
-        return unique_name.generate("tmp")
+        return default_main_program()._name_generator.generate("tmp")
 
     def safe_get_dtype(var):
         try:
@@ -311,8 +310,9 @@ def monkey_patch_variable():
     @static_only
     def append(self, var):
         """
-        **Notes**:
-           **The type variable must be LoD Tensor Array.
+
+        Note:
+           The type variable must be LoD Tensor Array.
 
         """
         if not isinstance(var, Variable):

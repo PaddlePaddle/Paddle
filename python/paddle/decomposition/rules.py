@@ -17,6 +17,8 @@ from .primitives import *  # noqa: F403
 from .register import register_decomp
 
 
+# TODO(kevincheng2): python implementation of prim feature,
+# now it has been sinked to c++, waiting for further deletion.
 @register_decomp('pd_op.unsqueeze')
 def unsqueeze(x, axis):
     """define composite rule of op unsqueeze"""

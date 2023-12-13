@@ -134,10 +134,9 @@ PADDLE_API std::shared_ptr<phi::distributed::DistTensor> reshard(
       PADDLE_ENFORCE_EQ(
           dist_tensor->initialized(),
           false,
-          phi::errors::InvalidArgument("Only "
-                                       "``phi::distributed::DistTensor``. "
-                                       "However it's %s",
-                                       typeid(input.impl().get()).name()));
+          phi::errors::InvalidArgument(
+              "Only "
+              "uninitialized ``phi::distributed::DistTensor`` is allowed. "));
       VLOG(3) << "reshard tensor which is not in current mesh, just set its "
                  "dist_attr "
               << "from " << dist_tensor->dist_attr() << " to " << dist_attr;

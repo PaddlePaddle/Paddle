@@ -38,7 +38,6 @@ from paddle.base.framework import (
     Parameter,
     Program,
     _current_expected_place as _get_device,
-    _global_flags,
     convert_np_dtype_to_dtype_,
     default_main_program,
     in_dygraph_mode,
@@ -266,14 +265,9 @@ class LayerObjectHelper(LayerHelperBase):
 
         if (use_cudnn is not None) and use_cudnn:
             act['use_cudnn'] = use_cudnn
-        use_mkldnn = _global_flags()["FLAGS_use_mkldnn"]
-        if (use_mkldnn is not None) and use_mkldnn:
-            act['use_mkldnn'] = use_mkldnn
         act_type = act.pop('type')
         if in_dygraph_mode():
-            res = _append_activation_in_dygraph(
-                input_var, act_type, use_cudnn, use_mkldnn
-            )
+            res = _append_activation_in_dygraph(input_var, act_type, use_cudnn)
             return res
         else:
             tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
@@ -1678,7 +1672,7 @@ class Layer:
             _remove_if_exist(self.__dict__, self._buffers, self._sub_layers)
             params[name] = value
         elif (
-            isinstance(value, paddle.pir.OpResult)
+            isinstance(value, paddle.pir.Value)
             and value.get_defining_op().name() == 'builtin.parameter'
         ):
             if params is None:
@@ -1733,7 +1727,7 @@ class Layer:
                     # decorated function, such as `self.buffer = new_tensor`. So we update its
                     # value via `assign`.
                     if type(value) == framework.Variable or isinstance(
-                        value, paddle.pir.OpResult
+                        value, paddle.pir.Value
                     ):
                         from paddle import assign
 

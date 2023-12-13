@@ -246,14 +246,8 @@ Tensor softmax_decomp(const Tensor& x, const int& axis) {
 
 template <typename T>
 Tensor stack_decomp(const std::vector<Tensor>& x, const int& axis) {
-  auto tensor_dims = x[0].dims();
-  int tmp_axis = axis;
-  if (tmp_axis < 0) {
-    tmp_axis += tensor_dims.size() + 1;
-  }
-
-  auto out_shape = phi::vectorize(tensor_dims);
-  out_shape.insert(out_shape.begin() + tmp_axis, 1);
+  std::vector<int64_t> axis_tmp = {axis};
+  auto out_shape = get_expand_dims(x[0], axis_tmp);
 
   std::vector<Tensor> concat_x;
   for (size_t i = 0; i < x.size(); ++i) {
@@ -313,6 +307,15 @@ std::tuple<Tensor, Tensor> squeeze_decomp(const Tensor& x,
                                           const IntArray& axis) {
   auto axis_ = process_dims(x, axis.GetData());
   auto out_shape = get_squeeze_dims(x, axis_);
+  Tensor out = reshape<T>(x, out_shape);
+  Tensor xshape;
+  return std::make_tuple(out, xshape);
+}
+
+template <typename T>
+std::tuple<Tensor, Tensor> unsqueeze_decomp(const Tensor& x,
+                                            const IntArray& axis) {
+  auto out_shape = get_expand_dims(x, axis.GetData());
   Tensor out = reshape<T>(x, out_shape);
   Tensor xshape;
   return std::make_tuple(out, xshape);
@@ -394,10 +397,11 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
   mean_ = reshape<T>(mean_, std::vector<int64_t>({-1}));
   variance = reshape<T>(variance, std::vector<int64_t>({-1}));
 
+  // same as LayerNormInferMeta
+  // x: float32 --> out: float32, mean: float32, variance: float32
+  // x: float16 --> out: float16, mean: float32, variance: float32
   if (need_cast) {
     out = cast<T>(out, org_dtype);
-    mean_ = cast<T>(mean_, org_dtype);
-    variance = cast<T>(variance, org_dtype);
   }
 
   return std::make_tuple(out, mean_, variance);
