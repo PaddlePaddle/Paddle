@@ -33,6 +33,15 @@ class SparseBlas {
             bool transb,
             T alpha,
             const TensorType& mat_a,
+            const TensorType& mat_b,
+            T beta,
+            TensorType* mat_out) const;
+
+  template <typename T, typename TensorType>
+  void SPMM(bool transa,
+            bool transb,
+            T alpha,
+            const TensorType& mat_a,
             const phi::DenseTensor& mat_b,
             T beta,
             phi::DenseTensor* mat_out) const;
