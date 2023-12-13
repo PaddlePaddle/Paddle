@@ -224,6 +224,7 @@ DECLARE_FILE_SYMBOLS(init_phi);
 DECLARE_FILE_SYMBOLS(kernel_dialect);
 DECLARE_FILE_SYMBOLS(buffered_allocator);
 DECLARE_FILE_SYMBOLS(best_fit_allocator);
+DECLARE_FILE_SYMBOLS(aligned_allocator);
 namespace paddle {
 namespace pybind {
 
