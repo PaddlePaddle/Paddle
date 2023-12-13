@@ -103,12 +103,12 @@ void VitAttentionFusePass::ApplyImpl(ir::Graph* graph) const {
     auto* w_tensor =
         scope->FindVar(matmul0_in_y->Name())->GetMutable<phi::DenseTensor>();
     auto w_dims =
-        phi::make_ddim({w_tensor->dims()[0], 3, w_tensor->dims()[1] / 3});
+        common::make_ddim({w_tensor->dims()[0], 3, w_tensor->dims()[1] / 3});
     w_tensor->Resize(w_dims);
 
     auto* b_tensor = scope->FindVar(elementwise0_in_y->Name())
                          ->GetMutable<phi::DenseTensor>();
-    auto bias_dims = phi::make_ddim({3, b_tensor->dims()[0] / 3});
+    auto bias_dims = common::make_ddim({3, b_tensor->dims()[0] / 3});
     b_tensor->Resize(bias_dims);
 
     desc.SetInput("W", {matmul0_in_y->Name()});

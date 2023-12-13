@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include "paddle/fluid/pybind/eager_utils.h"
 #include <Python.h>
+#include "paddle/common/exception.h"
 #include "paddle/pir/core/value.h"
 // Avoid a problem with copysign defined in pyconfig.h on Windows.
 #ifdef copysign
@@ -136,7 +137,7 @@ void ConvertToDistTensor(Tensor* x, const phi::distributed::ProcessMesh* mesh) {
             "as it's not phi::DenseTensor.",
             x->name()));
     phi::distributed::TensorDistAttr dist_attr(
-        phi::vectorize(x->impl()->dims()));
+        common::vectorize(x->impl()->dims()));
     dist_attr.set_process_mesh(*mesh);
     auto dense_t = std::static_pointer_cast<phi::DenseTensor>(x->impl());
     // auto parallel in dygraph doesn't support strided kernel.
@@ -1878,7 +1879,7 @@ paddle::Tensor CreateTensorFromVarDesc(
 
   auto var_type = var_desc.GetType();
 
-  auto ddims = phi::make_ddim(dims);
+  auto ddims = common::make_ddim(dims);
   tensor.set_name(var_desc.Name());
   auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
   autograd_meta->SetPersistable(false);
@@ -1966,7 +1967,7 @@ paddle::Tensor CreateTensorFromOpResult(const pir::OpResult& op_result) {
   auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
   autograd_meta->SetPersistable(false);
   autograd_meta->SetStopGradient(
-      GetOpResultBoolAttr(op_result, kAttrStopGradients));
+      GetValueBoolAttr(op_result, kAttrStopGradients));
 
   if (op_result.type().isa<paddle::dialect::DenseTensorType>()) {
     // TODO(jiabin): Maybe support LOD later

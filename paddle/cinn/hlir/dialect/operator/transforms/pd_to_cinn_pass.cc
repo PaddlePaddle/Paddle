@@ -82,6 +82,56 @@ class MaxOpPattern : public pir::drr::DrrPatternBase<MaxOpPattern> {
   }
 };
 
+class MinOpPattern : public pir::drr::DrrPatternBase<MinOpPattern> {
+ public:
+  void operator()(pir::drr::DrrPatternContext *ctx) const override {
+    // Source Pattern
+    pir::drr::SourcePattern pattern = ctx->SourcePattern();
+    const auto &full_int_array =
+        pattern.Op(paddle::dialect::FullIntArrayOp::name(),
+                   {{"value", pattern.Attr("axis_info")},
+                    {"dtype", pattern.Attr("dtype_2")},
+                    {"place", pattern.Attr("place_2")}});
+
+    const auto &pd_max = pattern.Op(paddle::dialect::MinOp::name(),
+                                    {{"keepdim", pattern.Attr("keep_dim")}});
+    pattern.Tensor("ret") = pd_max(pattern.Tensor("arg0"), full_int_array());
+
+    // Result patterns
+    pir::drr::ResultPattern res = pattern.ResultPattern();
+    const auto &cinn_reduce_max =
+        res.Op(cinn::dialect::ReduceMinOp::name(),
+               {{"dim", pattern.Attr("axis_info")},
+                {"keep_dim", pattern.Attr("keep_dim")}});
+    res.Tensor("ret") = cinn_reduce_max(res.Tensor("arg0"));
+  }
+};
+
+class ProdOpPattern : public pir::drr::DrrPatternBase<ProdOpPattern> {
+ public:
+  void operator()(pir::drr::DrrPatternContext *ctx) const override {
+    // Source Pattern
+    pir::drr::SourcePattern pattern = ctx->SourcePattern();
+    const auto &full_int_array =
+        pattern.Op(paddle::dialect::FullIntArrayOp::name(),
+                   {{"value", pattern.Attr("axis_info")},
+                    {"dtype", pattern.Attr("dtype_2")},
+                    {"place", pattern.Attr("place_2")}});
+
+    const auto &pd_max = pattern.Op(paddle::dialect::ProdOp::name(),
+                                    {{"keepdim", pattern.Attr("keep_dim")}});
+    pattern.Tensor("ret") = pd_max(pattern.Tensor("arg0"), full_int_array());
+
+    // Result patterns
+    pir::drr::ResultPattern res = pattern.ResultPattern();
+    const auto &cinn_reduce_max =
+        res.Op(cinn::dialect::ReduceProdOp::name(),
+               {{"dim", pattern.Attr("axis_info")},
+                {"keep_dim", pattern.Attr("keep_dim")}});
+    res.Tensor("ret") = cinn_reduce_max(res.Tensor("arg0"));
+  }
+};
+
 class ScaleOpPattern : public pir::OpRewritePattern<paddle::dialect::ScaleOp> {
  public:
   using pir::OpRewritePattern<paddle::dialect::ScaleOp>::OpRewritePattern;

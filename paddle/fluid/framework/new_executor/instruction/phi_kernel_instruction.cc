@@ -40,7 +40,7 @@ PhiKernelInstruction::PhiKernelInstruction(
     size_t id,
     const platform::Place& place,
     pir::Operation* op,
-    const ValueExecutionInfo& value_exec_info)
+    const ValueExecutionInfo* value_exec_info)
     : InstructionBase(id, place), value_exec_info_(value_exec_info) {
   auto op_attributes = op->attributes();
   auto op_name =
@@ -104,7 +104,7 @@ PhiKernelInstruction::PhiKernelInstruction(
         phi::MetaTensor,
         paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
         paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
-        false>(op, value_exec_info_, yaml_info_parser, &infer_meta_context_);
+        false>(op, *value_exec_info_, yaml_info_parser, &infer_meta_context_);
   }
   VLOG(6) << "finish process infer meta context";
 
@@ -126,7 +126,7 @@ PhiKernelInstruction::PhiKernelInstruction(
                   paddle::small_vector<const phi::TensorBase*>,
                   paddle::small_vector<phi::TensorBase*>,
                   true>(
-      op, value_exec_info_, yaml_info_parser, &kernel_context_);
+      op, *value_exec_info_, yaml_info_parser, &kernel_context_);
 
   kernel_context_.SetDeviceContext(phi::DeviceContextPool::Instance().Get(
       phi::TransToPhiPlace(kernel_key.backend())));
@@ -141,7 +141,7 @@ PhiKernelInstruction::PhiKernelInstruction(
                          GetStreamPriority()));
   VLOG(6) << "finish process device context";
 
-  InitInputsOutputsIds(op, value_exec_info);
+  InitInputsOutputsIds(op, *value_exec_info);
   VLOG(6) << "finish process inputs outputs index";
 
   auto& no_need_buffer_ids = yaml_info_parser.NoNeedBufferIds();

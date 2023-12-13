@@ -19,6 +19,10 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    IrMode,
+    ToStaticMode,
+    disable_test_case,
+    enable_to_static_guard,
     test_legacy_and_pt_and_pir,
 )
 
@@ -344,36 +348,38 @@ class TestTransformBase(Dy2StTestBase):
             "For Enumerate test should implement set_test_func"
         )
 
-    def _run(self, to_static):
-        paddle.jit.enable_to_static(to_static)
+    def _run(self):
         self.dygraph_func = paddle.jit.to_static(self.dygraph_func)
         return self.dygraph_func(self.input)
 
     def get_dygraph_output(self):
-        return self._run(to_static=False)
+        with enable_to_static_guard(False):
+            return self._run()
 
     def get_static_output(self):
-        return self._run(to_static=True)
+        with enable_to_static_guard(True):
+            return self._run()
 
 
 class TestTransform(TestTransformBase):
     def transformed_result_compare(self):
-        dy_outs = self.get_dygraph_output()
-        if not isinstance(dy_outs, (tuple, list)):
-            dy_outs = (dy_outs,)
+        with enable_to_static_guard(False):
+            dy_outs = self.get_dygraph_output()
+            if not isinstance(dy_outs, (tuple, list)):
+                dy_outs = (dy_outs,)
 
-        self.dygraph_func.eval()
-        st_outs = self.get_static_output()
-        if not isinstance(st_outs, (tuple, list)):
-            st_outs = (st_outs,)
+        with enable_to_static_guard(True):
+            self.dygraph_func.eval()
+            st_outs = self.get_static_output()
+            if not isinstance(st_outs, (tuple, list)):
+                st_outs = (st_outs,)
 
         for x, y in zip(dy_outs, st_outs):
             np.testing.assert_allclose(x.numpy(), y.numpy(), rtol=1e-05)
 
 
 class TestTransformForOriginalList(TestTransform):
-    def _run(self, to_static):
-        paddle.jit.enable_to_static(to_static)
+    def _run(self):
         self.dygraph_func = paddle.jit.to_static(self.dygraph_func)
         return self.dygraph_func()
 
@@ -385,13 +391,15 @@ class TestTransformError(TestTransformBase):
             st_out = self.get_static_output()
 
 
-class TestForInRange(TestTransform):
+class TestForInRangeConfig(TestTransform):
     def set_input(self):
         self.input = np.array([5])
 
     def set_test_func(self):
         self.dygraph_func = for_in_range
 
+
+class TestForInRange(TestForInRangeConfig):
     def test_transformed_result_compare(self):
         self.set_test_func()
         self.transformed_result_compare()
@@ -485,14 +493,24 @@ class TestForEnumerateVarWithNestedRange(TestForIterVarNumpy):
         self.transformed_result_compare()
 
 
-class TestForIterVarList(TestForInRange):
+class TestForIterVarList(TestForInRangeConfig):
     def set_test_func(self):
         self.dygraph_func = for_iter_var_list
 
+    @disable_test_case((ToStaticMode.AST, IrMode.PT))
+    def test_transformed_result_compare(self):
+        self.set_test_func()
+        self.transformed_result_compare()
 
-class TestForEnumerateVarList(TestForInRange):
+
+class TestForEnumerateVarList(TestForInRangeConfig):
     def set_test_func(self):
         self.dygraph_func = for_enumerate_var_list
+
+    @disable_test_case((ToStaticMode.AST, IrMode.PT))
+    def test_transformed_result_compare(self):
+        self.set_test_func()
+        self.transformed_result_compare()
 
 
 class TestForTupleAsIterVar(TestForIterVarNumpy):

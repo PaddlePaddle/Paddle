@@ -38,7 +38,7 @@ struct OneHotV2OpFunctor {
     auto* p_in_data = in_->data<InT>();
     auto numel = in_->numel();
     auto* p_out_data = ctx_.template Alloc<OutT>(out_);
-    funcs::set_constant(ctx_, out_, 0.0);
+    funcs::set_constant(ctx_, out_, static_cast<OutT>(0.0));
 
     for (int i = 0; i < numel; ++i) {
       PADDLE_ENFORCE_GE(

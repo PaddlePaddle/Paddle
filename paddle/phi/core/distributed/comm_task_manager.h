@@ -23,9 +23,9 @@
 #include <thread>
 #include <unordered_map>
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/core/distributed/comm_context.h"
 #include "paddle/phi/core/distributed/comm_task.h"
-#include "paddle/phi/core/macros.h"
 
 namespace phi {
 namespace distributed {

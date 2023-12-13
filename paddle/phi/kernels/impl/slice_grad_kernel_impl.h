@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/core/macros.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
@@ -109,8 +109,8 @@ void EigenPaddingCompute(
         out_tore_shape[1] = out_dims[pad_dim];
 
         // convert array from std::vector to DDim
-        DDim reshaped_in_dims = make_ddim(in_tore_shape);
-        DDim reshaped_out_dims = make_ddim(out_tore_shape);
+        DDim reshaped_in_dims = common::make_ddim(in_tore_shape);
+        DDim reshaped_out_dims = common::make_ddim(out_tore_shape);
 
         // after reshape: the first dimension do not need padding,
         // set padding[0] zero
@@ -142,8 +142,8 @@ void EigenPaddingCompute(
         }
 
         // convert array from std::vector to DDim
-        DDim reshaped_in_dims = make_ddim(in_tore_shape);
-        DDim reshaped_out_dims = make_ddim(out_tore_shape);
+        DDim reshaped_in_dims = common::make_ddim(in_tore_shape);
+        DDim reshaped_out_dims = common::make_ddim(out_tore_shape);
 
         // after reshape:
         // the first dimension is the previous padding dimension
@@ -180,8 +180,8 @@ void EigenPaddingCompute(
         }
 
         // convert array from std::vector to DDim
-        DDim reshaped_in_dims = make_ddim(in_tore_shape);
-        DDim reshaped_out_dims = make_ddim(out_tore_shape);
+        DDim reshaped_in_dims = common::make_ddim(in_tore_shape);
+        DDim reshaped_out_dims = common::make_ddim(out_tore_shape);
 
         // after reshape:
         // the first dimension do not need padding, set padding[0] zero
@@ -228,7 +228,7 @@ void SliceGradCompute(const Context& ctx,
     if (decrease_size == static_cast<size_t>(in_dims.size())) {
       // all dims decrease
       std::vector<int> origin_out_shape(decrease_size, 1);
-      out_dims = make_ddim(std::vector<int>(decrease_size, 1));
+      out_dims = common::make_ddim(std::vector<int>(decrease_size, 1));
     } else {
       std::vector<int> origin_out_shape(out_dims.size() + decrease_size, -1);
       for (size_t i = 0; i < decrease_size; ++i) {
@@ -243,7 +243,7 @@ void SliceGradCompute(const Context& ctx,
         }
       }
 
-      out_dims = make_ddim(origin_out_shape);
+      out_dims = common::make_ddim(origin_out_shape);
     }
   }
 

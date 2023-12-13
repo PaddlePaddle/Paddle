@@ -6,4 +6,5 @@ cc_test_old(
   pir
   op_dialect_vjp
   phi
+  common
   gtest)

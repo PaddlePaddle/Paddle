@@ -26,7 +26,7 @@ void ReshapeGradStridedKernel(const Context& dev_ctx,
   ReshapeStridedKernel<Context>(
       dev_ctx,
       out_grad,
-      IntArray(phi::vectorize<int64_t>(x_grad->dims())),
+      IntArray(common::vectorize<int64_t>(x_grad->dims())),
       x_grad,
       nullptr);
 }

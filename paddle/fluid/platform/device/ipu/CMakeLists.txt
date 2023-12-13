@@ -51,5 +51,5 @@ if(WITH_IPU)
   cc_library(
     ipu_info
     SRCS ${IPU_INFO_SRC}
-    DEPS popart-only enforce)
+    DEPS popart-only enforce common)
 endif()

@@ -37,7 +37,7 @@ void SoftmaxKernel(const Context& dev_ctx,
   }
   // For 0D Tensor
   if (rank == 0) {
-    phi::funcs::set_constant(dev_ctx, out, 1.0);
+    phi::funcs::set_constant(dev_ctx, out, static_cast<T>(1.0));
     return;
   }
 
@@ -77,5 +77,10 @@ void SoftmaxKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    softmax, XPU, ALL_LAYOUT, phi::SoftmaxKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(softmax,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::SoftmaxKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

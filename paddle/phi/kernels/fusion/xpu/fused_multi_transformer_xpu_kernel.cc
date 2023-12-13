@@ -262,7 +262,7 @@ void FusedMultiTransformerXpuKernel(
               cache_kv_data,
               gather_index_t->data<int32_t>(),
               reinterpret_cast<XPUTypeT*>(cache_kv_gather_tensor.data<T>()),
-              phi::vectorize<int32_t>(cache_kv_dims),
+              common::vectorize<int32_t>(cache_kv_dims),
               gather_index_t->dims().size() == 0 ? 1
                                                  : gather_index_t->dims()[0],
               gather_axis);
@@ -272,7 +272,7 @@ void FusedMultiTransformerXpuKernel(
               cache_kv_data,
               gather_index_t->data<int64_t>(),
               reinterpret_cast<XPUTypeT*>(cache_kv_gather_tensor.data<T>()),
-              phi::vectorize<int32_t>(cache_kv_dims),
+              common::vectorize<int32_t>(cache_kv_dims),
               gather_index_t->dims().size() == 0 ? 1
                                                  : gather_index_t->dims()[0],
               gather_axis);
@@ -292,7 +292,7 @@ void FusedMultiTransformerXpuKernel(
               cache_kv_data,
               gather_index_t->data<int32_t>(),
               cache_kv_data,
-              phi::vectorize<int64_t>(cache_kv_dims),
+              common::vectorize<int64_t>(cache_kv_dims),
               gather_index_t->dims().size() == 0 ? 1
                                                  : gather_index_t->dims()[0],
               gather_axis);
@@ -302,7 +302,7 @@ void FusedMultiTransformerXpuKernel(
               cache_kv_data,
               gather_index_t->data<int64_t>(),
               cache_kv_data,
-              phi::vectorize<int64_t>(cache_kv_dims),
+              common::vectorize<int64_t>(cache_kv_dims),
               gather_index_t->dims().size() == 0 ? 1
                                                  : gather_index_t->dims()[0],
               gather_axis);

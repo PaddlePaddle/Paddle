@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/common/errors.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/dynload/port.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -21,7 +22,6 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
@@ -32,6 +32,17 @@
 
 namespace phi {
 
+#ifdef PADDLE_WITH_HIP
+static void RecordEventTimerCallback(hipStream_t stream,
+                                     hipError_t status,
+                                     void *user_data) {
+  struct timeval time_now {};
+  gettimeofday(&time_now, nullptr);
+  double *cpu_time = static_cast<double *>(user_data);
+  *cpu_time = (time_now.tv_sec * 1000) + (time_now.tv_usec / 1000.0);
+  VLOG(3) << "RecordEventCallback: " << std::to_string(*cpu_time);
+}
+#else
 static void CUDART_CB RecordEventTimerCallback(cudaStream_t stream,
                                                cudaError_t status,
                                                void *user_data) {
@@ -41,6 +52,7 @@ static void CUDART_CB RecordEventTimerCallback(cudaStream_t stream,
   *cpu_time = (time_now.tv_sec * 1000) + (time_now.tv_usec / 1000.0);
   VLOG(3) << "RecordEventCallback: " << std::to_string(*cpu_time);
 }
+#endif
 
 class GpuTimer {
  public:

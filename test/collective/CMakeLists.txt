@@ -240,7 +240,9 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   )
   set_tests_properties(test_collective_reduce_scatter PROPERTIES TIMEOUT "350")
 endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX))
+if((WITH_GPU OR WITH_ROCM)
+   AND (LINUX)
+   AND (NOT WITH_COVERAGE))
   py_test_modules(
     test_collective_reduce_scatter_api MODULES
     test_collective_reduce_scatter_api ENVS

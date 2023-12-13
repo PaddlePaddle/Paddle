@@ -42,13 +42,13 @@ class HasElementsInstruction : public InstructionBase {
 
   OpFuncType type_;
 
-  std::string name_{"has_elelments_instruction"};
-
-  const platform::DeviceContext* dev_ctx_;  // not owned
+  std::string name_{"has_elements_instruction"};
 
   ValueExecutionInfo* value_exe_info_;  // not owned
 
   VariableRefArray* stack_element_var_array_;  // not owned
+
+  bool* has_elements_;  // not owned
 };
 
 }  // namespace framework

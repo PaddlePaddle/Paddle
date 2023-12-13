@@ -46,6 +46,10 @@ class AutoTuner:
 
             tuner_cfg["candidates"] = gbs_default_candidates(tuner_cfg)
             self.algo = GBSSearch(tuner_cfg)
+        elif search_algo == "customize":
+            from .search import CustomizeSearch
+
+            self.algo = CustomizeSearch(tuner_cfg)
         else:
             raise NotImplementedError()
 

@@ -30,6 +30,21 @@ namespace framework {
 
 class Variable;
 
+void SetVariable(Scope* scope,
+                 const phi::DenseTensor& input,
+                 const std::string& var_name) {
+  Variable* target_var = scope->FindVar(var_name);
+  if (target_var && !target_var->IsType<phi::DenseTensor>()) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The variable you want to set is not a phi::DenseTensor, but here "
+        "you tried to convert its type to phi::DenseTensor."));
+  }
+  target_var = scope->Var(var_name);
+  auto tensor = target_var->GetMutable<phi::DenseTensor>();
+  tensor->ShareDataWith(input);
+  tensor->set_lod(input.lod());
+}
+
 void SetFeedVariable(Scope* scope,
                      const phi::DenseTensor& input,
                      const std::string& var_name,

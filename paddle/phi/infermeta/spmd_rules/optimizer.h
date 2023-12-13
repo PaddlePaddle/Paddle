@@ -60,5 +60,11 @@ SpmdInfo AdamwInferSpmdDynamic(const DistMetaTensor& param,
                                bool multi_precision,
                                bool use_global_beta_pow);
 
+SpmdInfo SgdInferSpmd(const DistMetaTensor& param,
+                      const DistMetaTensor& learning_rate,
+                      const DistMetaTensor& grad,
+                      const DistMetaTensor& master_param,
+                      bool multi_precision);
+
 }  // namespace distributed
 }  // namespace phi

@@ -119,6 +119,10 @@ static int GetRowSize(const Scope& scope, const std::string& name) {
 
   if (var->IsType<phi::SelectedRows>()) {
     return static_cast<int>(var->Get<phi::SelectedRows>().rows().size());
+  } else if (var->IsType<VariableRefArray>()) {
+    return var->Get<VariableRefArray>().size();
+  } else if (var->IsType<phi::TensorArray>()) {
+    return var->Get<phi::TensorArray>().size();
   }
 
   return -1;

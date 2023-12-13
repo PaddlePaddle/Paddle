@@ -39,11 +39,13 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/fused_dot_product_attention_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_dropout_add_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_linear_param_grad_add_pass.h"
-#include "paddle/fluid/pir/transforms/infer_symbolic_shape_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/fused_weight_only_linear_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
+#include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/fluid/pybind/control_flow_api.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/attribute.h"
@@ -81,6 +83,7 @@ using paddle::dialect::SelectedRowsType;
 using pir::Attribute;
 using pir::Block;
 using pir::BlockArgument;
+using pir::BoolAttribute;
 using pir::IrParser;
 using pir::Operation;
 using pir::OpOperand;
@@ -96,10 +99,16 @@ USE_PIR_PASS(dead_code_elimination_pass);
 USE_PIR_PASS(attention_fuse_pass);
 USE_PIR_PASS(fused_gemm_epilogue_pass);
 USE_PIR_PASS(fused_dropout_add_pass);
+USE_PIR_PASS(fused_weight_only_linear_pass);
 USE_PIR_PASS(fused_linear_param_grad_add_pass);
 USE_PIR_PASS(inplace_pass);
 USE_PIR_PASS(replace_fetch_with_shadow_output_pass);
-USE_PIR_PASS(conv2d_fuse_pass);
+USE_PIR_PASS(identity_op_clean_pass);
+USE_PIR_PASS(matmul_scale_fuse_pass);
+USE_PIR_PASS(conv2d_bn_fuse_pass);
+USE_PIR_PASS(conv2d_add_fuse_pass);
+USE_PIR_PASS(conv2d_add_act_fuse_pass);
+USE_PIR_PASS(fused_dot_product_attention_pass);
 
 PHI_DECLARE_bool(print_ir);
 
@@ -132,12 +141,15 @@ inline void SetProgramInt64Attr(std::shared_ptr<Program> program,
 }
 
 std::string GetValueInfo(Value v) {
+  if (v.impl() == nullptr) {
+    return "nullptr value";
+  }
   std::stringstream ss;
   if (auto op_result = v.dyn_cast<OpResult>()) {
     ss << "define_op_name=" << op_result.owner()->name();
     ss << ", index=" << op_result.index();
   } else if (auto arg = v.dyn_cast<BlockArgument>()) {
-    ss << "block_args, index = " << arg.index();
+    ss << "block_arg, index = " << arg.index();
   }
   ss << ", dtype=" << v.type();
   if (v.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
@@ -303,13 +315,17 @@ void BindBlock(py::module *m) {
                                }
                                return op_list;
                              })
-      .def("__enter__",
-           [](Block &self) {
-             ApiBuilder::Instance().PushInsertionPoint({&self, self.end()});
-           })
+      .def(
+          "__enter__",
+          [](Block &self) -> Block & {
+            ApiBuilder::Instance().PushInsertionPoint();
+            ApiBuilder::Instance().SetInsertionPointToBlockEnd(&self);
+            return self;
+          },
+          return_value_policy::reference)
       .def("__exit__",
            [](Block &self, py::object, py::object, py::object) {
-             ApiBuilder::Instance().PopInsertionPoint();
+             ApiBuilder::Instance().LoadInsertionPoint();
            })
       .def("__len__", [](Block &self) { return self.size(); })
       .def("args", &Block::args, return_value_policy::reference)
@@ -521,6 +537,8 @@ phi::DataType GetValueDtype(Value value) {
 const phi::DDim &GetValueDims(Value value) {
   if (value.type().isa<DenseTensorType>()) {
     return value.type().dyn_cast<DenseTensorType>().dims();
+  } else if (value.type().isa<SelectedRowsType>()) {
+    return value.type().dyn_cast<SelectedRowsType>().dims();
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Currently, we can only get shape for dense "
@@ -588,7 +606,7 @@ void BindValue(py::module *m) {
 
   )DOC");
   g_ir_value_pytype = reinterpret_cast<PyTypeObject *>(value.ptr());
-  value
+  value.def(py::init<>())
       .def_property_readonly(
           "block",
           [](Value self) {
@@ -616,11 +634,13 @@ void BindValue(py::module *m) {
           [](Value self) {
             if (auto param_op = self.defining_op<::pir::ParameterOp>()) {
               return param_op.param_name();
+            } else if (auto data_op =
+                           self.defining_op<paddle::dialect::DataOp>()) {
+              return data_op.attribute<pir::StrAttribute>("name").AsString();
             } else {
               PADDLE_THROW(phi::errors::InvalidArgument(
                   "Currently, we can only get name of Value that "
-                  "is "
-                  "persistable"));
+                  "is persistable"));
             }
           })
       .def_property(
@@ -636,6 +656,37 @@ void BindValue(py::module *m) {
           [](Value self, phi::DataType dtype) {
             PADDLE_THROW(phi::errors::InvalidArgument(
                 "can't set dtype when building static graph"));
+          })
+      .def("initialized",
+           [](Value self) {
+             if (self.impl() == nullptr || self.type().storage() == nullptr) {
+               return false;
+             } else {
+               return true;
+             }
+           })
+      .def_property(
+          "stop_gradient",
+          [](Value self) {
+            auto stop_gradient =
+                self.attribute<BoolAttribute>(kAttrStopGradients);
+            return !stop_gradient || stop_gradient.data();
+          },
+          [](Value self, bool stop_gradient) {
+            self.set_attribute(
+                kAttrStopGradients,
+                BoolAttribute::get(pir::IrContext::Instance(), stop_gradient));
+          })
+      .def_property(
+          "persistable",
+          [](Value self) {
+            auto persistable = self.attribute<BoolAttribute>(kAttrIsPersisable);
+            return !persistable || persistable.data();
+          },
+          [](Value self, bool persistable) {
+            self.set_attribute(
+                kAttrIsPersisable,
+                BoolAttribute::get(pir::IrContext::Instance(), persistable));
           })
       .def(
           "get_defining_op",
@@ -678,13 +729,27 @@ void BindValue(py::module *m) {
       .def("first_use", &Value::first_use, return_value_policy::reference)
       .def("has_one_use", &Value::HasOneUse)
       .def("use_empty", &Value::use_empty)
+      .def("__str__",
+           [](Value self) -> py::str {
+             std::ostringstream print_stream;
+             print_stream << "Value(";
+             print_stream << GetValueInfo(self);
+             auto stop_gradient =
+                 self.attribute<BoolAttribute>(kAttrStopGradients);
+             if (stop_gradient && !stop_gradient.data()) {
+               print_stream << ", stop_gradient=False";
+             } else {
+               print_stream << ", stop_gradient=True";
+             }
+             print_stream << ")";
+             return print_stream.str();
+           })
       .def("__neg__",
            [](Value self) {
              return paddle::dialect::scale(self, -1.0, 0.0, true);
            })
       .def("__eq__", &Value::operator==)
       .def("__hash__", [](Value self) { return std::hash<pir::Value>{}(self); })
-      .def("__str__", &Value2String)
       .def("__repr__", &Value2String);
   // For basaic operators
   OVERRIDE_OPERATOR_FOR_EACH(__add__, add, 1.0, other, true);
@@ -716,50 +781,13 @@ void BindOpOperand(py::module *m) {
            [](OpOperand &self, const OpResult &result) {
              self.set_source(result);
            })
-      .def("owner", &OpOperand::owner, return_value_policy::reference);
+      .def("owner", &OpOperand::owner, return_value_policy::reference)
+      .def("index", &OpOperand::index);
 }
 
-bool GetOpResultBoolAttr(const OpResult &self, const std::string &attr_name) {
-  auto *defining_op = self.owner();
-  if (defining_op->HasAttribute(attr_name)) {
-    PADDLE_ENFORCE(
-        defining_op->attribute(attr_name).isa<pir::ArrayAttribute>(),
-        paddle::platform::errors::InvalidArgument(
-            "%s: Callstack attributes of %s is not ArrayAttribute type",
-            attr_name));
-    auto attrs = defining_op->attribute(attr_name)
-                     .dyn_cast<pir::ArrayAttribute>()
-                     .AsVector();
-    PADDLE_ENFORCE(attrs[self.index()].isa<pir::BoolAttribute>(),
-                   paddle::platform::errors::InvalidArgument(
-                       "The index %d in %s is not BoolAttribute type",
-                       self.index(),
-                       attr_name));
-    return attrs[self.index()].dyn_cast<pir::BoolAttribute>().data();
-  } else {
-    return true;
-  }
-}
-
-void SetOpResultBoolAttr(const OpResult &self,
-                         const std::string &attr_name,
-                         bool value,
-                         bool default_value) {
-  auto *defining_op = self.owner();
-  std::vector<pir::Attribute> attrs;
-  if (defining_op->HasAttribute(attr_name)) {
-    attrs = defining_op->attribute(attr_name)
-                .dyn_cast<pir::ArrayAttribute>()
-                .AsVector();
-  } else {
-    attrs = std::vector<pir::Attribute>(
-        defining_op->num_results(),
-        pir::BoolAttribute::get(pir::IrContext::Instance(), default_value));
-  }
-  attrs[self.index()] =
-      pir::BoolAttribute::get(pir::IrContext::Instance(), value);
-  defining_op->set_attribute(
-      attr_name, pir::ArrayAttribute::get(pir::IrContext::Instance(), attrs));
+bool GetValueBoolAttr(Value value, const std::string &attr_name) {
+  auto bool_attr = value.attribute<BoolAttribute>(attr_name);
+  return !bool_attr || bool_attr.data();
 }
 
 void BindOpResult(py::module *m) {
@@ -771,58 +799,10 @@ void BindOpResult(py::module *m) {
         when build network.
   )DOC");
   g_ir_opresult_pytype = reinterpret_cast<PyTypeObject *>(op_result.ptr());
-  op_result
-      .def(
-          "__init__",
-          [](OpResult &self) { new (&self) OpResult(); },
-          pybind11::return_value_policy::reference)
-      .def("__str__",
-           [](OpResult &self) -> py::str {
-             std::ostringstream print_stream;
-             print_stream << "OpResult(";
-             print_stream << GetValueInfo(self);
-             if (GetOpResultBoolAttr(self, kAttrStopGradients)) {
-               print_stream << ", stop_gradient=True";
-             } else {
-               print_stream << ", stop_gradient=False";
-             }
-             print_stream << ")";
-             return print_stream.str();
-           })
-      .def("initialized",
-           [](OpResult &self) {
-             if (self.impl() == nullptr || self.type().storage() == nullptr) {
-               return false;
-             } else {
-               return true;
-             }
-           })
-      .def_property(
-          "stop_gradient",
-          [](OpResult &self) {
-            return GetOpResultBoolAttr(self, kAttrStopGradients);
-          },
-          [](OpResult &self, bool stop_gradient) {
-            // NOTE(Aurelius84): For other OpResult, set theirs
-            // stop_gradient default value as true.
-            SetOpResultBoolAttr(self,
-                                kAttrStopGradients,
-                                stop_gradient,
-                                /*default_value=*/true);
-          })
-      .def_property(
-          "persistable",
-          [](OpResult &self) {
-            return GetOpResultBoolAttr(self, kAttrIsPersisable);
-          },
-          [](OpResult &self, bool persistable) {
-            // NOTE(Aurelius84): For other OpResult, set theirs
-            // persistable default value as false.
-            SetOpResultBoolAttr(self,
-                                kAttrIsPersisable,
-                                persistable,
-                                /*default_value=*/false);
-          });
+  op_result.def(
+      "__init__",
+      [](OpResult &self) { new (&self) OpResult(); },
+      pybind11::return_value_policy::reference);
 }
 
 void BindType(py::module *m) {
@@ -833,6 +813,34 @@ void BindType(py::module *m) {
         print_stream << self;
         return print_stream.str();
       });
+
+  m->def("create_shaped_type",
+         [](Type &type, const std::vector<int> &shape) -> Type {
+           if (type.isa<DenseTensorType>()) {
+             DenseTensorType src_type = type.dyn_cast<DenseTensorType>();
+             DenseTensorType dst_type =
+                 DenseTensorType::get(pir::IrContext::Instance(),
+                                      src_type.dtype(),
+                                      phi::make_ddim(shape),
+                                      src_type.data_layout(),
+                                      src_type.lod(),
+                                      src_type.offset());
+             return dst_type;
+           } else if (type.isa<SelectedRowsType>()) {
+             SelectedRowsType src_type = type.dyn_cast<SelectedRowsType>();
+             SelectedRowsType dst_type =
+                 SelectedRowsType::get(pir::IrContext::Instance(),
+                                       src_type.dtype(),
+                                       phi::make_ddim(shape),
+                                       src_type.data_layout(),
+                                       src_type.lod(),
+                                       src_type.offset());
+             return dst_type;
+           } else {
+             PADDLE_THROW(phi::errors::InvalidArgument(
+                 "Currently, we can only set shape for dense tensor"));
+           }
+         });
 }
 
 void BindAttribute(py::module *m) {
@@ -842,6 +850,14 @@ void BindAttribute(py::module *m) {
     print_stream << self;
     return print_stream.str();
   });
+}
+
+struct PyInsertionPoint {
+  pir::InsertionPoint value;
+};
+void BindInsertionPoint(pybind11::module *m) {
+  py::class_<PyInsertionPoint> ir_insertion_point(*m, "InsertionPoint", R"DOC(
+    InsertionPoint class represents the insertion point in the Builder.)DOC");
 }
 
 Operation *BuildOpFrom(
@@ -1049,12 +1065,11 @@ int AppendSetParameters(Program *forward_program,
   std::unordered_set<pir::OpResult> added_op_result;
 
   for (const auto &result : outputs_op_result) {
-    if (!added_op_result.count(result)) {
+    if (!added_op_result.count(result) || IsFakeOpResult(result)) {
       std::string parameter_name = name_prefix + std::to_string(counter);
       AppendSetParameter(
           forward_program, result, parameter_name, start_point + counter);
       counter += 1;
-
       added_op_result.insert(result);
     }
   }
@@ -1147,7 +1162,7 @@ SplitedResult SplitForwardBackward(
     }
     auto value_type = v.type().dyn_cast<DenseTensorType>();
     auto dtype = paddle::dialect::TransToPhiDataType(value_type.dtype());
-    auto shape = phi::vectorize(value_type.dims());
+    auto shape = common::vectorize(value_type.dims());
     auto place = phi::Place();
 
     paddle::dialect::DataOp op =
@@ -1341,17 +1356,17 @@ void BindUtils(pybind11::module *m) {
   m->def("append_set_parameters", AppendSetParameters);
   m->def("fake_op_result", FakeOpResult);
   m->def("is_fake_op_result", IsFakeOpResult);
-  m->def("set_global_program",
-         [](Program *program) { ApiBuilder::Instance().SetProgram(program); });
-  m->def(
-      "cur_insertion_point",
-      []() { return ApiBuilder::Instance().insertion_point(); },
-      return_value_policy::reference);
-  m->def("set_insertion_point", [](const pir::InsertionPoint &insertion_point) {
-    ApiBuilder::Instance().set_insertion_point(insertion_point);
+  m->def("get_current_insertion_point", []() -> PyInsertionPoint {
+    return {ApiBuilder::Instance().GetCurrentInsertionPoint()};
+  });
+  m->def("set_insertion_point", [](const PyInsertionPoint &insertion_point) {
+    ApiBuilder::Instance().SetInsertionPoint(insertion_point.value);
   });
   m->def("set_insertion_point",
-         [](Operation *op) { ApiBuilder::Instance().set_insertion_point(op); });
+         [](Operation *op) { ApiBuilder::Instance().SetInsertionPoint(op); });
+  m->def("set_insertion_point_to_block_end", [](Block *block) {
+    ApiBuilder::Instance().SetInsertionPointToBlockEnd(block);
+  });
   m->def("reset_insertion_point_to_start",
          []() { ApiBuilder::Instance().ResetInsertionPointToStart(); });
   m->def("reset_insertion_point_to_end",
@@ -1359,7 +1374,6 @@ void BindUtils(pybind11::module *m) {
   m->def("register_paddle_dialect", []() {
     pir::IrContext::Instance()
         ->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-    pir::IrContext::Instance()->GetOrRegisterDialect<pir::ControlFlowDialect>();
   });
   m->def("create_selected_rows_type_by_dense_tensor",
          CreateSelectedRowsTypeByDenseTensor);
@@ -1532,9 +1546,8 @@ void ApplyPirPass(Program &forward_program) {  // NOLINT
   bool has_dynamic_shape = HasDynamicShape(forward_program);
 
   auto shape_analysis =
-      has_dynamic_shape
-          ? std::make_shared<pir::MockShapeConstraintIRAnalysis>(ctx)
-          : nullptr;
+      has_dynamic_shape ? std::make_shared<pir::ShapeConstraintIRAnalysis>(ctx)
+                        : nullptr;
 
   pir::PassManager pass_manager(ctx);
   cinn::dialect::ir::PdOp2CinnOpConverter(&forward_program);
@@ -1617,6 +1630,7 @@ void BindPir(pybind11::module *module) {
   BindOpResult(&ir_module);
   BindType(&ir_module);
   BindAttribute(&ir_module);
+  BindInsertionPoint(&ir_module);
   BindUtils(&ir_module);
   BindIrPass(&ir_module);
   BindPassManager(&ir_module);

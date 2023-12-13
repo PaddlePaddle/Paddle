@@ -104,7 +104,7 @@
   backward : batch_norm_double_grad
 
 - backward_op : c_embedding_grad
-  forward : c_embedding (Tensor weight, Tensor x, int64_t start_index=0) -> Tensor(out)
+  forward : c_embedding (Tensor weight, Tensor x, int64_t start_index=0, int64_t vocab_size=-1) -> Tensor(out)
   args : (Tensor weight, Tensor x, Tensor out_grad, int64_t start_index=0)
   output : Tensor(weight_grad)
   infer_meta :
@@ -661,6 +661,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [out]
+    spmd_rule : SoftmaxGradInferSpmd
   kernel :
     func : softmax_grad
   composite : softmax_grad(out, out_grad, axis, x_grad)

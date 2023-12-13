@@ -47,9 +47,10 @@ namespace detail {
 
 struct CollectHostFunctionVisitor : public ir::IRMutator<> {
   explicit CollectHostFunctionVisitor(const std::string& module_name)
-      : host_module_builder(module_name + "_host", common::DefaultHostTarget()),
+      : host_module_builder(module_name + "_host",
+                            cinn::common::DefaultHostTarget()),
         device_module_builder(module_name + "_gpu_device",
-                              common::DefaultNVGPUTarget()) {}
+                              cinn::common::DefaultNVGPUTarget()) {}
 
   std::tuple<ir::Module, ir::Module> operator()(Expr* expr) {
     ir::IRMutator<>::Visit(expr, expr);

@@ -1,7 +1,8 @@
 # skip win32 since wget is not installed by default on windows machine.
 
 if(NOT WIN32)
-  paddle_test(standalone_executor_pir_test SRCS standalone_executor_pir_test.cc)
+  paddle_test(standalone_executor_pir_test SRCS standalone_executor_pir_test.cc
+              DEPS common)
 endif()
 
 set(OPS
@@ -41,7 +42,7 @@ if(WITH_GPU
   # all operators used in the program
 
   # All deps of the operators above, part of GLOB_OPERATOR_DEPS.
-  set(OP_DEPS phi concat_and_split cross_entropy)
+  set(OP_DEPS phi common concat_and_split cross_entropy)
   cc_test(standalone_executor_test SRCS standalone_executor_test.cc)
 
   # add_dependencies(standalone_executor_test download_program)

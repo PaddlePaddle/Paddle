@@ -20,8 +20,9 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    enable_to_static_guard,
     static_guard,
-    test_pt_only,
+    test_legacy_and_pt_and_pir,
 )
 from predictor_utils import PredictorTools
 
@@ -625,16 +626,6 @@ def val_bmn(model, args):
             float(pem_cls_loss),
         ]
 
-        print(
-            f'[VALID] iter {batch_id} '
-            + '\tLoss = {}, \ttem_loss = {}, \tpem_reg_loss = {}, \tpem_cls_loss = {}'.format(
-                '%f' % float(avg_loss),
-                '%f' % float(tem_loss),
-                '%f' % float(pem_reg_loss),
-                '%f' % float(pem_cls_loss),
-            )
-        )
-
         if batch_id == args.valid_batch_num:
             break
     return loss_data
@@ -660,8 +651,6 @@ class TestTrain(Dy2StTestBase):
         self.temp_dir.cleanup()
 
     def train_bmn(self, args, to_static):
-        paddle.jit.enable_to_static(to_static)
-
         with unique_name.guard():
             loss_data = []
 
@@ -722,17 +711,6 @@ class TestTrain(Dy2StTestBase):
                         float(pem_cls_loss),
                     ]
 
-                    if args.log_interval > 0 and (
-                        batch_id % args.log_interval == 0
-                    ):
-                        print(
-                            f'[TRAIN] Epoch {epoch}, iter {batch_id} '
-                            + f'\tLoss = {float(avg_loss):f}, '
-                            + f'\ttem_loss = {float(tem_loss):f}, '
-                            + f'\tpem_reg_loss = {float(pem_reg_loss):f}, '
-                            + f'\tpem_cls_loss = {float(pem_cls_loss):f}'
-                        )
-
                     # validation
                     if batch_id % args.valid_interval == 0 and batch_id > 0:
                         bmn.eval()
@@ -741,7 +719,11 @@ class TestTrain(Dy2StTestBase):
                         loss_data += val_loss_data
 
                     if batch_id == args.train_batch_num:
-                        if to_static:
+                        # TODO(@xiongkun): open after save / load supported in pir.
+                        if (
+                            to_static
+                            and not paddle.base.framework.use_pir_api()
+                        ):
                             paddle.jit.save(bmn, self.model_save_prefix)
                         else:
                             paddle.save(
@@ -751,10 +733,12 @@ class TestTrain(Dy2StTestBase):
                         break
             return np.array(loss_data)
 
-    @test_pt_only
+    @test_legacy_and_pt_and_pir
     def test_train_pir(self):
-        static_res = self.train_bmn(self.args, to_static=True)
-        dygraph_res = self.train_bmn(self.args, to_static=False)
+        with enable_to_static_guard(True):
+            static_res = self.train_bmn(self.args, to_static=True)
+        with enable_to_static_guard(False):
+            dygraph_res = self.train_bmn(self.args, to_static=False)
         np.testing.assert_allclose(
             dygraph_res,
             static_res,
@@ -767,8 +751,10 @@ class TestTrain(Dy2StTestBase):
         )
 
     def test_train(self):
-        static_res = self.train_bmn(self.args, to_static=True)
-        dygraph_res = self.train_bmn(self.args, to_static=False)
+        with enable_to_static_guard(True):
+            static_res = self.train_bmn(self.args, to_static=True)
+        with enable_to_static_guard(False):
+            dygraph_res = self.train_bmn(self.args, to_static=False)
         np.testing.assert_allclose(
             dygraph_res,
             static_res,
@@ -833,16 +819,16 @@ class TestTrain(Dy2StTestBase):
             break
 
     def predict_dygraph(self, data):
-        paddle.jit.enable_to_static(False)
-        bmn = paddle.jit.to_static(BMN(self.args))
-        # load dygraph trained parameters
-        model_dict = paddle.load(self.dy_param_path + ".pdparams")
-        bmn.set_dict(model_dict)
-        bmn.eval()
+        with enable_to_static_guard(False):
+            bmn = paddle.jit.to_static(BMN(self.args))
+            # load dygraph trained parameters
+            model_dict = paddle.load(self.dy_param_path + ".pdparams")
+            bmn.set_dict(model_dict)
+            bmn.eval()
 
-        x = to_variable(data)
-        pred_res = bmn(x)
-        pred_res = [var.numpy() for var in pred_res]
+            x = to_variable(data)
+            pred_res = bmn(x)
+            pred_res = [var.numpy() for var in pred_res]
 
         return pred_res
 

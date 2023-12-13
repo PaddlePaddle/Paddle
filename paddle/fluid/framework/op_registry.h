@@ -26,6 +26,7 @@ limitations under the License. */
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include "glog/logging.h"               // For VLOG()
+#include "paddle/common/macros.h"
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/details/op_registry.h"
 #include "paddle/fluid/framework/grad_op_desc_maker.h"
@@ -35,7 +36,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/core/macros.h"
 #include "paddle/utils/test_macros.h"
 
 namespace paddle {
@@ -178,7 +178,7 @@ inline void RegisterKernelClass(const char* op_type,
   if (std::is_same<PlaceType, platform::CustomPlace>::value) {
     OpKernelType key(ToDataType(std::type_index(typeid(T))),
                      platform::CustomPlace(library_type),
-                     phi::StringToDataLayout(data_layout),
+                     common::StringToDataLayout(data_layout),
                      LibraryType::kPlain,
                      customized_type_value);
     OperatorWithKernel::AllOpKernels()[op_type][key] = func;
@@ -187,7 +187,7 @@ inline void RegisterKernelClass(const char* op_type,
 #endif
   OpKernelType key(ToDataType(std::type_index(typeid(T))),
                    PlaceType(),
-                   phi::StringToDataLayout(data_layout),
+                   common::StringToDataLayout(data_layout),
                    StringToLibraryType(library_type),
                    customized_type_value);
   OperatorWithKernel::AllOpKernels()[op_type][key] = func;

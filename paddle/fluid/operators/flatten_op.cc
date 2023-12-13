@@ -52,7 +52,7 @@ class Flatten2Op : public framework::OperatorWithKernel {
             "The axis should be less than or equal to input tensor's rank"));
 
     const auto &out_dims = Flatten2Op::GetOutputShape(axis, in_dims);
-    ctx->SetOutputDim("Out", phi::make_ddim(out_dims));
+    ctx->SetOutputDim("Out", common::make_ddim(out_dims));
     if (in_dims[0] == out_dims[0]) {
       // Only pass LoD when the first dimension of output and Input(X)
       // are the same.
@@ -65,7 +65,7 @@ class Flatten2Op : public framework::OperatorWithKernel {
     for (int i = 0; i < in_dims.size(); ++i) {
       xshape_dims[i + 1] = in_dims[i];
     }
-    ctx->SetOutputDim("XShape", phi::make_ddim(xshape_dims));
+    ctx->SetOutputDim("XShape", common::make_ddim(xshape_dims));
     ctx->ShareLoD("X", "XShape");
   }
 
@@ -189,7 +189,7 @@ class Flatten2GradOp : public framework::OperatorWithKernel {
                    framework::GradVarName("Out"),
                    "Flatten2Grad");
     auto xshape_dims = context->GetInputDim("XShape");
-    auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
+    auto x_dims = common::slice_ddim(xshape_dims, 1, xshape_dims.size());
     context->SetOutputDim(framework::GradVarName("X"), x_dims);
     context->ShareLoD("XShape", framework::GradVarName("X"));
   }

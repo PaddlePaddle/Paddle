@@ -46,13 +46,15 @@ void FusedScaleBiasAddReluKernel(const Context& dev_ctx,
                                  const paddle::optional<DenseTensor>& bias2,
                                  bool fuse_dual,
                                  bool exhaustive_search,
-                                 DenseTensor* y) {
+                                 DenseTensor* out) {
   PADDLE_ENFORCE_GE(dev_ctx.GetComputeCapability(),
                     80,
                     phi::errors::PreconditionNotMet(
                         "This op only supports Ampere and later devices, "
                         "but got compute capability: %d.",
                         dev_ctx.GetComputeCapability()));
+
+  DenseTensor* y = out;
   auto& plan_cache = phi::autotune::AutoTuneCache::Instance().GetConvV8(
       phi::autotune::AlgorithmType::kScaleBiasAddRelu);
 
@@ -77,8 +79,8 @@ void FusedScaleBiasAddReluKernel(const Context& dev_ctx,
   auto tensor_format_math = CUDNN_DATA_FLOAT;
   auto compute_dtype = CUDNN_DATA_FLOAT;
 
-  auto dim_x =
-      phi::backends::gpu::TransformDimOrder(phi::vectorize<int64_t>(x1.dims()));
+  auto dim_x = phi::backends::gpu::TransformDimOrder(
+      common::vectorize<int64_t>(x1.dims()));
   std::vector<int64_t> dim_c(dim_x.size(), 1);
   dim_c[1] = dim_x[1];  //  [1, C, 1, 1]
 
