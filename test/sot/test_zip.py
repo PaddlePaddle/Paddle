@@ -18,7 +18,7 @@ from test_case_base import TestCaseBase
 
 import paddle
 from paddle.jit.sot import psdb, symbolic_translate
-from paddle.jit.sot.utils import min_graph_size_guard
+from paddle.jit.sot.utils import min_graph_size_guard, strict_mode_guard
 
 
 def test_zip_1(x: int, y: int):
@@ -96,6 +96,9 @@ class TestExecutor(TestCaseBase):
     def test_reconstruct(self):
         self.assert_results(test_zip_8, [1, 2, 3], [4, 5, 6])
 
+    @strict_mode_guard(False)
+    @min_graph_size_guard(0)
+    def test_zip_user_defined_iter(self):
         sym_output = symbolic_translate(test_zip_8)(iter([1, 2, 3]), [4, 5, 6])
         paddle_output = test_zip_8(iter([1, 2, 3]), [4, 5, 6])
         self.assert_nest_match(sym_output, paddle_output)
