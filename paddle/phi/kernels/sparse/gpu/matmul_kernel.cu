@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/sparse/matmul_kernel.h"
 
 #include <vector>
-#include "glog/logging.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/ddim.h"
@@ -143,17 +142,33 @@ void MatmulKernelImpl(const Context& dev_ctx,
           "The shape of Input(x) and Input(y) is not suitable for matmul "
           "opetation, x_dim[-1] must be eaqual to y_dim[-2]."));
 
+  std::vector<int64_t> out_dim_vec = phi::vectorize(out->dims());
+  int batch_size = 1;
+  for (int i = 0; i < out_dim_vec.size() - 2; i++) {
+    batch_size *= out_dim_vec[i];
+  }
+
+  PADDLE_ENFORCE_EQ(
+      batch_size,
+      1,
+      phi::errors::InvalidArgument(
+          "Batched computation is not supported in cusparseSPGEMM."));
+
+  // cusparseSPGEMM only support 32-bit indices.
+  DenseTensor out_crows =
+      phi::Empty<int32_t>(dev_ctx, {xdim_vec[x_ndims - 2] + 1});
+  DenseTensor out_cols = phi::Empty<int32_t>(dev_ctx, {0});
+  DenseTensor out_values = phi::Empty<T>(dev_ctx, {0});
+  out->SetMember(out_crows, out_cols, out_values, out->dims());
+
   auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
   sparse_blas.SPGEMM(
       false, false, static_cast<T>(1), x, y, static_cast<T>(0), out);
 #else
 #ifdef PADDLE_WITH_CUDA
   PADDLE_THROW(phi::errors::Unimplemented(
-      "forward of 'sparse.matmul' use cusparseSpGEMM, "
+      "forward of 'sparse.matmul' use cusparseSPGEMM, "
       "which is supported from CUDA 11.0"));
-#elif defined(PADDLE_WITH_HIP)
-  PADDLE_THROW(
-      phi::errors::Unimplemented("'sparse.matmul' for HIP is not implemented"));
 #endif
 #endif
 }

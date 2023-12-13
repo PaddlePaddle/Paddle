@@ -181,6 +181,79 @@ inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
   }
 }
 
+template <typename T, typename IntT>
+SparseCsrTensor CSRTanspose(const phi::GPUContext& dev_ctx,
+                            const phi::SparseCsrTensor& x) {
+  std::vector<int64_t> xdim_vec = phi::vectorize(x.dims());
+  auto x_ndims = xdim_vec.size();
+  int64_t M = xdim_vec[x_ndims - 2];
+  int64_t N = xdim_vec[x_ndims - 1];
+  int batch_size = 1;
+  for (int i = 0; i < x_ndims - 2; i++) {
+    batch_size *= xdim_vec[i];
+  }
+  int64_t batch_nnz = x.nnz() / batch_size;
+
+  const IntT* x_crows_data = x.non_zero_crows().data<IntT>();
+  const IntT* x_cols_data = x.non_zero_cols().data<IntT>();
+  const T* x_values_data = x.non_zero_elements().data<T>();
+
+  SparseCsrTensor out;
+  DenseTensor out_crows = phi::Empty<int32_t>(dev_ctx, {N + 1});
+  DenseTensor out_cols = phi::Empty<int32_t>(dev_ctx, {x.nnz()});
+  DenseTensor out_values = phi::Empty<T>(dev_ctx, {x.nnz()});
+  out.SetMember(out_crows, out_cols, out_values, {N, M});
+  const IntT* out_crows_data = out.non_zero_crows().data<IntT>();
+  const IntT* out_cols_data = out.non_zero_cols().data<IntT>();
+  const T* out_values_data = out.non_zero_elements().data<T>();
+
+  cudaDataType_t gpu_type = GetGpuDataType<T>();
+  size_t buffer_size;
+  dev_ctx.CusparseCall([&](cusparseHandle_t handle) {
+    phi::dynload::cusparseCsr2cscEx2_bufferSize(
+        handle,
+        M,
+        N,
+        batch_nnz,
+        const_cast<T*>(x_values_data),
+        const_cast<IntT*>(x_crows_data),
+        const_cast<IntT*>(x_cols_data),
+        const_cast<T*>(out_values_data),
+        const_cast<IntT*>(out_crows_data),
+        const_cast<IntT*>(out_cols_data),
+        gpu_type,
+        CUSPARSE_ACTION_NUMERIC,
+        CUSPARSE_INDEX_BASE_ZERO,
+        CUSPARSE_CSR2CSC_ALG_DEFAULT,
+        &buffer_size);
+  });
+
+  phi::Allocator::AllocationPtr tmp_buffer = phi::memory_utils::Alloc(
+      dev_ctx.GetPlace(),
+      buffer_size,
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  void* tmp_buffer_ptr = tmp_buffer->ptr();
+
+  dev_ctx.CusparseCall([&](cusparseHandle_t handle) {
+    phi::dynload::cusparseCsr2cscEx2(handle,
+                                     M,
+                                     N,
+                                     batch_nnz,
+                                     const_cast<T*>(x_values_data),
+                                     const_cast<IntT*>(x_crows_data),
+                                     const_cast<IntT*>(x_cols_data),
+                                     const_cast<T*>(out_values_data),
+                                     const_cast<IntT*>(out_crows_data),
+                                     const_cast<IntT*>(out_cols_data),
+                                     gpu_type,
+                                     CUSPARSE_ACTION_NUMERIC,
+                                     CUSPARSE_INDEX_BASE_ZERO,
+                                     CUSPARSE_CSR2CSC_ALG_DEFAULT,
+                                     tmp_buffer_ptr);
+  });
+  return out;
+}
+
 template <typename T>
 class CuSparseSpMatDescriptor {
  public:
@@ -504,27 +577,10 @@ void SparseBlas<phi::GPUContext>::SPGEMM(bool transa,
                                          SparseCsrTensor* mat_out) const {
   auto a_descriptor = CuSparseSpMatDescriptor<T>(mat_a, dev_ctx_);
   auto b_descriptor = CuSparseSpMatDescriptor<T>(mat_b, dev_ctx_);
+  auto out_descriptor = CuSparseSpMatDescriptor<T>(*mat_out, dev_ctx_);
 
   cudaDataType_t gpu_type = GetGpuDataType<T>();
   size_t buffer_a_size = 0, buffer_b_size = 0;
-
-  std::vector<int64_t> out_dim_vec = phi::vectorize(mat_out->dims());
-  auto out_ndims = out_dim_vec.size();
-  int64_t M = out_dim_vec[out_ndims - 2];
-  int64_t N = out_dim_vec[out_ndims - 1];
-
-  cusparseSpMatDescr_t out_descr;
-  phi::dynload::cusparseCreateCsr(&out_descr,
-                                  M,
-                                  N,
-                                  0,
-                                  nullptr,
-                                  nullptr,
-                                  nullptr,
-                                  CUSPARSE_INDEX_32I,
-                                  CUSPARSE_INDEX_32I,
-                                  CUSPARSE_INDEX_BASE_ZERO,
-                                  gpu_type);
 
   cusparseSpGEMMDescr_t spgemmDesc;
   phi::dynload::cusparseSpGEMM_createDescr(&spgemmDesc);
@@ -536,7 +592,7 @@ void SparseBlas<phi::GPUContext>::SPGEMM(bool transa,
                                                 a_descriptor.descriptor(),
                                                 b_descriptor.descriptor(),
                                                 &beta,
-                                                out_descr,
+                                                out_descriptor.descriptor(),
                                                 gpu_type,
                                                 CUSPARSE_SPGEMM_DEFAULT,
                                                 spgemmDesc,
@@ -558,7 +614,7 @@ void SparseBlas<phi::GPUContext>::SPGEMM(bool transa,
                                                 a_descriptor.descriptor(),
                                                 b_descriptor.descriptor(),
                                                 &beta,
-                                                out_descr,
+                                                out_descriptor.descriptor(),
                                                 gpu_type,
                                                 CUSPARSE_SPGEMM_DEFAULT,
                                                 spgemmDesc,
@@ -574,7 +630,7 @@ void SparseBlas<phi::GPUContext>::SPGEMM(bool transa,
                                          a_descriptor.descriptor(),
                                          b_descriptor.descriptor(),
                                          &beta,
-                                         out_descr,
+                                         out_descriptor.descriptor(),
                                          gpu_type,
                                          CUSPARSE_SPGEMM_DEFAULT,
                                          spgemmDesc,
@@ -596,7 +652,7 @@ void SparseBlas<phi::GPUContext>::SPGEMM(bool transa,
                                          a_descriptor.descriptor(),
                                          b_descriptor.descriptor(),
                                          &beta,
-                                         out_descr,
+                                         out_descriptor.descriptor(),
                                          gpu_type,
                                          CUSPARSE_SPGEMM_DEFAULT,
                                          spgemmDesc,
@@ -604,17 +660,14 @@ void SparseBlas<phi::GPUContext>::SPGEMM(bool transa,
                                          tmp_buffer_b_ptr);
   });
 
-  int64_t num_rows, num_cols1, nnz;
+  int64_t num_rows, num_cols, nnz;
   dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
-    phi::dynload::cusparseSpMatGetSize(out_descr, &num_rows, &num_cols1, &nnz);
+    phi::dynload::cusparseSpMatGetSize(
+        out_descriptor.descriptor(), &num_rows, &num_cols, &nnz);
   });
-
-  DenseTensor out_crows = phi::Empty<int32_t>(dev_ctx_, {M + 1});
-  DenseTensor out_cols = phi::Empty<int32_t>(dev_ctx_, {nnz});
-  DenseTensor out_values = phi::Empty<T>(dev_ctx_, {nnz});
-  mat_out->SetMember(out_crows, out_cols, out_values, mat_out->dims());
-
-  auto out_descriptor = CuSparseSpMatDescriptor<T>(*mat_out, dev_ctx_);
+  *(mat_out->mutable_cols()) = phi::Empty<int32_t>(dev_ctx_, {nnz});
+  *(mat_out->mutable_values()) = phi::Empty<T>(dev_ctx_, {nnz});
+  auto res_descriptor = CuSparseSpMatDescriptor<T>(*mat_out, dev_ctx_);
 
   dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
     phi::dynload::cusparseSpGEMM_copy(handle,
@@ -624,7 +677,7 @@ void SparseBlas<phi::GPUContext>::SPGEMM(bool transa,
                                       a_descriptor.descriptor(),
                                       b_descriptor.descriptor(),
                                       &beta,
-                                      out_descriptor.descriptor(),
+                                      res_descriptor.descriptor(),
                                       gpu_type,
                                       CUSPARSE_SPGEMM_DEFAULT,
                                       spgemmDesc);

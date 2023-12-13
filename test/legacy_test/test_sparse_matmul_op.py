@@ -96,7 +96,8 @@ class TestMatmul(unittest.TestCase):
 class TestMatmulCSR(unittest.TestCase):
     # x: csr sparse, y: csr sparse, out: csr sparse
     def check_result(self, x_shape, y_shape):
-        origin_x = paddle.rand(x_shape)
+        mask = paddle.randint(0, 2, x_shape)
+        origin_x = paddle.rand(x_shape) * mask
         origin_y = paddle.rand(y_shape)
 
         dense_x = origin_x.detach()
@@ -129,18 +130,17 @@ class TestMatmulCSR(unittest.TestCase):
         np.testing.assert_allclose(
             sp_out.to_dense().numpy(), dense_out.numpy(), rtol=1e-05
         )
-        # if get_cuda_version() >= 11030:
-        #     dense_out.backward()
-        #     sp_out.backward()
-        #     print(sp_x.grad)
-        #     np.testing.assert_allclose(
-        #         sp_x.grad.to_dense().numpy(),
-        #         dense_x.grad.numpy(),
-        #         rtol=1e-05,
-        #     )
-        #     np.testing.assert_allclose(
-        #         sp_y.grad.numpy(), dense_y.grad.numpy(), rtol=1e-05
-        #     )
+        if get_cuda_version() >= 11030:
+            dense_out.backward()
+            sp_out.backward()
+            np.testing.assert_allclose(
+                sp_x.grad.to_dense().numpy(),
+                dense_x.grad.numpy(),
+                rtol=1e-05,
+            )
+            np.testing.assert_allclose(
+                sp_y.grad.to_dense().numpy(), dense_y.grad.numpy(), rtol=1e-05
+            )
 
     @unittest.skipIf(
         not paddle.is_compiled_with_cuda() or get_cuda_version() < 11000,
@@ -148,13 +148,13 @@ class TestMatmulCSR(unittest.TestCase):
     )
     def test_matmul_2d(self):
         self.check_result([16, 12], [12, 10])
-        self.check_result([8, 16, 12], [8, 12, 10])
 
 
 class TestMatmulCOO(unittest.TestCase):
-    # x: csr sparse, y: csr sparse, out: csr sparse
+    # x: coo sparse, y: coo sparse, out: coo sparse
     def check_result(self, x_shape, y_shape):
-        origin_x = paddle.rand(x_shape)
+        mask = paddle.randint(0, 2, x_shape)
+        origin_x = paddle.rand(x_shape) * mask
         origin_y = paddle.rand(y_shape)
 
         dense_x = origin_x.detach()
@@ -185,6 +185,18 @@ class TestMatmulCOO(unittest.TestCase):
         np.testing.assert_allclose(
             sp_out.to_dense().numpy(), dense_out.numpy(), rtol=1e-05
         )
+
+        if get_cuda_version() >= 11030:
+            dense_out.backward()
+            sp_out.backward()
+            np.testing.assert_allclose(
+                sp_x.grad.to_dense().numpy(),
+                dense_x.grad.numpy(),
+                rtol=1e-05,
+            )
+            np.testing.assert_allclose(
+                sp_y.grad.to_dense().numpy(), dense_y.grad.numpy(), rtol=1e-05
+            )
 
     @unittest.skipIf(
         not paddle.is_compiled_with_cuda() or get_cuda_version() < 11000,

@@ -67,7 +67,9 @@ extern void *cusparse_dso_handle;
   __macro(cusparseSpGEMM_compute);        \
   __macro(cusparseSpGEMM_workEstimation); \
   __macro(cusparseSpGEMM_copy);           \
-  __macro(cusparseSpGEMM_destroyDescr);
+  __macro(cusparseSpGEMM_destroyDescr);   \
+  __macro(cusparseCsr2cscEx2_bufferSize); \
+  __macro(cusparseCsr2cscEx2);
 
 CUSPARSE_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP)
 #endif
