@@ -118,7 +118,7 @@ def pdist(x, p=2.0, name=None):
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        Tensor with shape: :math:`N(N-1)/2` the dtype is same as input tensor.
+        Tensor with shape :math:`N(N-1)/2` , the dtype is same as input tensor.
 
     Examples:
         .. code-block:: python
