@@ -61,12 +61,6 @@ const std::unordered_set<std::string> ProgramTranslator::unsupported_ops = {
     "while_grad",
 };
 
-std::string nano_timestamp() {
-  auto ts =
-      std::chrono::high_resolution_clock::now().time_since_epoch().count();
-  return std::to_string(ts);
-}
-
 static std::vector<uint64_t> GetCondOpIds(const BlockDesc& src_block,
                                           uint64_t first_id) {
   uint64_t temp_id = first_id;

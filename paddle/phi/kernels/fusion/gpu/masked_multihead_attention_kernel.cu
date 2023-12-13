@@ -92,7 +92,9 @@ __global__ void masked_multihead_attention_kernel(
     StoreFunc store_func) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   const int bi = blockIdx.y;
-  if (params.sequence_lengths && params.sequence_lengths[bi] == 0) {
+  // params.sequence_lengths[bi] means how many k and v we have cached in
+  // cache_kv.
+  if (params.sequence_lengths && params.sequence_lengths[bi] < 0) {
     return;
   }
 
@@ -709,6 +711,10 @@ void fmha_impl(const phi::GPUContext &dev_ctx,
   switch (dim_head) {
     case 10:
       fmha_launch_kernel<T, 10, 32>(
+          params, dev_ctx.stream(), load_func, store_func);
+      break;
+    case 16:
+      fmha_launch_kernel<T, 16, 32>(
           params, dev_ctx.stream(), load_func, store_func);
       break;
     case 26:

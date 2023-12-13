@@ -17,7 +17,12 @@ import numpy as np
 
 from paddle.base.core import VarDesc
 from paddle.base.libpaddle import DataType
-from paddle.base.libpaddle.pir import Program, set_global_program
+from paddle.base.libpaddle.pir import (
+    Program,
+    get_current_insertion_point,
+    set_insertion_point,
+    set_insertion_point_to_block_end,
+)
 
 from .._pir_ops import parameter, set_parameter
 from ..base import unique_name
@@ -83,7 +88,7 @@ def convert_np_dtype_to_dtype_(np_dtype):
 # program is a global instance.
 _main_program_ = Program()
 # set the global program for c++ and this program will be used to build ops in c++
-set_global_program(_main_program_)
+set_insertion_point_to_block_end(_main_program_.global_block())
 
 _startup_program_ = Program()
 
@@ -153,7 +158,7 @@ def default_main_program():
     return _main_program_
 
 
-def switch_main_program(program):
+def switch_main_program(program, insertion_point=None):
     """
     Switch the main program to a new program.
 
@@ -165,9 +170,13 @@ def switch_main_program(program):
     """
     global _main_program_
     prev_program = _main_program_
+    prev_insertion_point = get_current_insertion_point()
     _main_program_ = program
-    set_global_program(_main_program_)
-    return prev_program
+    if insertion_point is None:
+        set_insertion_point_to_block_end(_main_program_.global_block())
+    else:
+        set_insertion_point(insertion_point)
+    return prev_program, prev_insertion_point
 
 
 def switch_startup_program(program):
@@ -234,7 +243,7 @@ def program_guard(main_program, startup_program=None):
     check_type(
         main_program, 'main_program', Program, 'paddle.static.program_guard'
     )
-    main_program = switch_main_program(main_program)
+    main_program, prev_insertion_point = switch_main_program(main_program)
     if startup_program is not None:
         check_type(
             startup_program,
@@ -246,7 +255,7 @@ def program_guard(main_program, startup_program=None):
     try:
         yield
     finally:
-        switch_main_program(main_program)
+        switch_main_program(main_program, prev_insertion_point)
         if startup_program is not None:
             switch_startup_program(startup_program)
 
