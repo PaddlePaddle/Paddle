@@ -248,7 +248,7 @@ def prune_ops(total_ops, inputs_set, outputs_set, no_grad_set):
 
 
 def update_no_grad_set_after_prune(
-    block, effective_forward_ops, no_grad_set, inputs, outputs
+    total_ops, effective_forward_ops, no_grad_set, inputs, outputs
 ):
     '''
     update no_grad_set after forward prune
@@ -258,7 +258,7 @@ def update_no_grad_set_after_prune(
     '''
     inputs_set = set(inputs)
     if inputs_set:
-        for op in block.ops:
+        for op in total_ops:
             if some_in_set(get_real_op_inputs(op), inputs_set):
                 for value in op.results():
                     if value not in no_grad_set:
@@ -791,8 +791,6 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
     block = outputs[0].get_defining_op().get_parent_block()
     state = State(block)
 
-    # check all inputs and outputs in the same block
-    check_all_puts(block, inputs, outputs)
     # update no_grad_set if some value stop_gradient=True
     update_no_grad_set_by_stopgradient(block, no_grad_set)
     complete_outputs, _, backward_ops = prepare_grad_outputs(
@@ -801,11 +799,16 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
 
     inputs_set = set(inputs)
     outputs_set = set(complete_outputs)
+    total_ops = []
+    if block.get_parent is not None:
+        total_ops += block.get_parent.ops
+    total_ops += block.ops
+
     effective_forward_ops, _ = prune_ops(
-        block.ops, inputs_set, outputs_set, no_grad_set
+        total_ops, inputs_set, outputs_set, no_grad_set
     )
     update_no_grad_set_after_prune(
-        block, effective_forward_ops, no_grad_set, inputs, complete_outputs
+        total_ops, effective_forward_ops, no_grad_set, inputs, complete_outputs
     )
 
     outputs_fwd_set, inputs_fwd_set = prepare_backward_prune_set(

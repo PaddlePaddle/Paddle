@@ -303,6 +303,10 @@ void BindBlock(py::module *m) {
           "program",
           [](Block &self) { return self.GetParentOp()->GetParentProgram(); },
           return_value_policy::reference)
+      .def_property_readonly(
+          "get_parent",
+          [](Block &self) { return self.GetParentOp()->GetParent(); },
+          return_value_policy::reference)
       .def_property_readonly("ops",
                              [](Block &self) -> py::list {
                                py::list op_list;
