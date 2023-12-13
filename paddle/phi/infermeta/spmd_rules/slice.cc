@@ -133,7 +133,7 @@ SpmdInfo SliceInferSpmdReverseBase(const DistMetaTensor& input,
 
   PADDLE_ENFORCE_EQ(
       input_ndim,
-      out_ndim + 1,
+      out_ndim + decrease_axis_num,
       phi::errors::InvalidArgument("The Tensor Input's rank [%d] is not equal "
                                    "to the Tensor Output's rank [%d]",
                                    input_ndim,
