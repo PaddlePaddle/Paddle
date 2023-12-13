@@ -91,6 +91,8 @@ list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_grad_op)
 list(REMOVE_ITEM TEST_OPS test_fuse_gemm_epilogue_pass)
+list(REMOVE_ITEM TEST_OPS test_fused_dot_product_attention_op)
+list(REMOVE_ITEM TEST_OPS test_fuse_dot_product_attention_pass)
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_c_comm_init_all_op)
@@ -617,6 +619,13 @@ if((WITH_GPU) AND (CUDA_VERSION GREATER_EQUAL 11.6))
     FLAGS_cublaslt_exhaustive_search_times=30)
   py_test_modules(test_fuse_gemm_epilogue_pass MODULES
                   test_fuse_gemm_epilogue_pass)
+endif()
+
+if((WITH_GPU) AND (WITH_CUDNN_FRONTEND))
+  py_test_modules(test_fuse_dot_product_attention_pass MODULES
+                  test_fuse_dot_product_attention_pass)
+  py_test_modules(test_fused_dot_product_attention_op MODULES
+                  test_fused_dot_product_attention_op)
 endif()
 
 set_tests_properties(test_conv2d_op PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
@@ -1389,41 +1398,6 @@ set_tests_properties(test_sync_batch_norm_op_static_build
                      PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(test_sync_batch_norm_op_static_build PROPERTIES TIMEOUT
                                                                      250)
-
-file(STRINGS "${CMAKE_SOURCE_DIR}/test/white_list/pir_op_test_white_list"
-     PIR_OP_TESTS)
-foreach(IR_OP_TEST ${PIR_OP_TESTS})
-  if(TEST ${IR_OP_TEST})
-    set_tests_properties(
-      ${IR_OP_TEST} PROPERTIES ENVIRONMENT "FLAGS_PIR_OPTEST_WHITE_LIST=True")
-  else()
-    message(STATUS "PIR OpTest: not found ${IR_OP_TEST} in legacy_test")
-  endif()
-endforeach()
-
-file(STRINGS "${CMAKE_SOURCE_DIR}/test/white_list/pir_op_test_no_check_list"
-     PIR_OP_NO_CHECK_TESTS)
-foreach(IR_OP_TEST ${PIR_OP_NO_CHECK_TESTS})
-  if(TEST ${IR_OP_TEST})
-    set_tests_properties(${IR_OP_TEST} PROPERTIES ENVIRONMENT
-                                                  "FLAGS_PIR_NO_CHECK=True")
-  else()
-    message(STATUS "PIR OpTest: not found ${IR_OP_TEST} in legacy_test")
-  endif()
-endforeach()
-
-file(STRINGS
-     "${CMAKE_SOURCE_DIR}/test/white_list/pir_op_test_precision_white_list"
-     PIR_OP_RELAXED_TESTS)
-foreach(IR_OP_TEST ${PIR_OP_RELAXED_TESTS})
-  if(TEST ${IR_OP_TEST})
-    set_tests_properties(
-      ${IR_OP_TEST} PROPERTIES ENVIRONMENT "FLAGS_PIR_OPTEST_RELAX_CHECK=True")
-  else()
-    message(STATUS "PIR Relaxed OpTest: not found ${IR_OP_TEST} in legacy_test")
-  endif()
-endforeach()
-
 py_test_modules(test_stride MODULES test_stride ENVS
                 FLAGS_use_stride_kernel=true)
 
@@ -1439,3 +1413,5 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
     test_fleet_executor_with_task_nodes
     PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
 endif()
+
+set_pit_tests_properties()

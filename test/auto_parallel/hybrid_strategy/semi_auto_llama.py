@@ -188,8 +188,15 @@ class TestLlamaAuto:
         else:
             opt = optimizer
 
+        strategy = None
+        if self.gradient_accumulation_steps > 1:
+            strategy = dist.Strategy()
+            strategy.pipeline.accumulate_steps = (
+                self.gradient_accumulation_steps
+            )
+
         dist_model, dist_loader = dist.to_static(
-            model, train_dataloader, criterion, opt
+            model, train_dataloader, criterion, opt, strategy=strategy
         )
 
         dist_model.train()

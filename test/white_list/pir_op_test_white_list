@@ -26,7 +26,6 @@ test_auc_single_pred_op
 test_bce_loss
 test_bernoulli_op               
 test_bicubic_interp_v2_op
-test_bilinear_interp_mkldnn_op
 test_bilinear_interp_v2_mkldnn_op
 test_bilinear_interp_v2_op
 test_bilinear_tensor_product_op
@@ -167,7 +166,6 @@ test_index_select_op
 test_instance_norm_op
 test_instance_norm_op_v2
 test_inverse_op
-test_ir_pybind
 test_is_empty_op
 test_isclose_op
 test_kldiv_loss_op

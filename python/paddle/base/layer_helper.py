@@ -20,7 +20,6 @@ from . import unique_name
 from .dygraph_utils import _append_activation_in_dygraph
 from .framework import (
     Parameter,
-    _global_flags,
     dtype_is_floating,
     in_dygraph_mode,
 )
@@ -36,7 +35,12 @@ class LayerHelper(LayerHelperBase):
         # can not use both `layer_type` and `name`. Deprecate LayerHelper
         # and write a Helper for dygraph mode.
         if name is None:
-            self.kwargs['name'] = unique_name.generate(layer_type)
+            if in_dygraph_mode():
+                self.kwargs['name'] = unique_name.generate(layer_type)
+            else:
+                self.kwargs[
+                    'name'
+                ] = self.main_program._name_generator.generate(layer_type)
 
         super().__init__(self.kwargs['name'], layer_type=layer_type)
 
@@ -151,16 +155,9 @@ class LayerHelper(LayerHelperBase):
         if 'use_cudnn' in self.kwargs and self.kwargs.get('use_cudnn'):
             use_cudnn = self.kwargs.get('use_cudnn')
             act['use_cudnn'] = use_cudnn
-        use_mkldnn = self.kwargs.get(
-            'use_mkldnn', _global_flags().get("FLAGS_use_mkldnn", False)
-        )
-        if use_mkldnn:
-            act['use_mkldnn'] = use_mkldnn
         act_type = act.pop('type')
         if in_dygraph_mode():
-            res = _append_activation_in_dygraph(
-                input_var, act_type, use_cudnn, use_mkldnn
-            )
+            res = _append_activation_in_dygraph(input_var, act_type, use_cudnn)
             return res
         else:
             tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
