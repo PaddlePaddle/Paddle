@@ -79,13 +79,13 @@ static bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
     auto output_alloc_tensor_type = output.type().dyn_cast<TensorType>();
 
     if (input_alloc_tensor_type.dtype() != output_alloc_tensor_type.dtype()) {
-      VLOG(9) << "     -- reshape, squeeze, unsqueeze do not need check shape, "
-                 "can do inplace";
+      VLOG(9) << "     -- input's dtype != output's dtype, can't do inplace";
       return false;
     }
 
     if (details::ignore_shape_check_ops.count(op_name) > 0) {
-      VLOG(9) << "     -- input's dtype != output's dtype, can't do inplace";
+      VLOG(9) << "     -- reshape, squeeze, unsqueeze do not need check shape, "
+                 "can do inplace";
       return true;
     }
 
