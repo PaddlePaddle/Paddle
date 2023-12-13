@@ -396,7 +396,7 @@ class TestArgsort(unittest.TestCase):
             self.place = core.CPUPlace()
         with paddle.static.program_guard(paddle.static.Program()):
             input = paddle.static.data(
-                name="input", shape=self.shape, dtype="float64"
+                name="input", shape=self.input_shape, dtype="float64"
             )
             output = paddle.argsort(input, axis=self.axis)
             np_result = np.argsort(self.data, axis=self.axis)
@@ -418,7 +418,7 @@ class TestArgsort(unittest.TestCase):
             self.place = core.CPUPlace()
         with paddle.static.program_guard(paddle.static.Program()):
             input = paddle.static.data(
-                name="input", shape=self.shape, dtype="float64"
+                name="input", shape=self.input_shape, dtype="float64"
             )
             output2 = paddle.argsort(input, axis=self.axis, descending=True)
             np_result2 = np.argsort(-self.data, axis=self.axis)
