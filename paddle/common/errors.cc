@@ -58,7 +58,7 @@ std::string error_name(ErrorCode code) {
     case ErrorCode::EXTERNAL:
       return "ExternalError";
       break;
-    case ErrorCode::UNMATCHED_TYPE:
+    case ErrorCode::INVALID_TYPE:
       return "InvalidTypeError";
       break;
     default:
