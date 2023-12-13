@@ -127,7 +127,7 @@
     func: CSoftmaxWithCrossEntropyGradInferMeta
   kernel:
     func: c_softmax_with_cross_entropy_grad
-    data_type: loss
+    data_type: loss_grad
 
 - backward_op : cast_grad
   forward : cast (Tensor x, DataType dtype) -> Tensor(out)
