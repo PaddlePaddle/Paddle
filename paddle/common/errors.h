@@ -88,7 +88,7 @@ enum ErrorCode {
 
   // Client specified an unmatched type.
   // Error type string: "UnmatchedTypeError"
-  UNMATCHED_TYPE = 13,
+  INVALID_TYPE = 13,
 };
 
 class ErrorSummary {
