@@ -516,7 +516,7 @@ void DispatchWithDtype(
   VLOG(3) << "max_dec_len_this_time: " << max_dec_len_this_time;
   if (max_dec_len_this_time > 0) {
     GetDecoderTensor<T>(dev_ctx,
-                        qkv,
+                        qkv_buf,
                         nullptr,
                         cum_offsets.data<int>(),
                         &qkv_out_decoder,
@@ -527,29 +527,37 @@ void DispatchWithDtype(
                         max_seq_len,
                         dim_head);
     VLOG(3) << "qkv_out_decoder: " << qkv_out_decoder.dims();
-    blha<T>(dev_ctx,
-            qkv_out_decoder,
-            nullptr,  // qkv_bias
-            &block_tables,
-            tgt_mask ? &tgt_mask.get() : nullptr,
-            &cum_offsets,
-            &seq_lens_decoder,
-            rope_emb ? &rope_emb.get() : nullptr,  // rope_emb
-            key_cache_out,
-            value_cache_out,
-            &fmha_buf,
-            bsz,
-            max_block_per_seq,
-            block_size,
-            max_seq_len,
-            pre_cache_length,
-            num_head,
-            dim_head,
-            max_dec_len_this_time,
-            rope_emb ? 1 : 0,
-            1. / sqrt(dim_head),
-            /*compute_bias*/ false,
-            use_neox_style);
+    blha<T>(
+        dev_ctx,
+        qkv_out_decoder,
+        nullptr,  // qkv_bias
+        &block_tables,
+        tgt_mask ? &tgt_mask.get() : nullptr,
+        &cum_offsets,
+        &seq_lens_decoder,
+        rope_emb ? &rope_emb.get() : nullptr,  // rope_emb
+        key_cache_out,
+        value_cache_out,
+        &fmha_buf,
+        bsz,
+        max_block_per_seq,
+        block_size,
+        max_seq_len,
+        pre_cache_length,
+        num_head,
+        dim_head,
+        max_dec_len_this_time,
+        rope_emb ? 1 : 0,
+        1. / sqrt(dim_head),
+        /*compute_bias*/ false,
+        use_neox_style,
+        quant_round_type,
+        quant_max_bound,
+        quant_min_bound,
+        cache_k_quant_scales ? cache_k_quant_scales.get_ptr() : nullptr,
+        cache_v_quant_scales ? cache_v_quant_scales.get_ptr() : nullptr,
+        cache_k_dequant_scales ? cache_k_dequant_scales.get_ptr() : nullptr,
+        cache_v_dequant_scales ? cache_v_dequant_scales.get_ptr() : nullptr);
     VLOG(3) << "blha end";
   }
   if (out_scale > 0) {
@@ -803,11 +811,13 @@ PD_REGISTER_KERNEL(block_multihead_attention,
                    ALL_LAYOUT,
                    phi::fusion::BlockMultiheadAttentionKernel,
                    phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   int32_t) {}
 #else
 PD_REGISTER_KERNEL(block_multihead_attention,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::BlockMultiheadAttentionKernel,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   int32_t) {}
 #endif
