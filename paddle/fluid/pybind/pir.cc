@@ -1271,13 +1271,6 @@ SplitedResult SplitForwardBackward(
   range_block_do(program.block(),
                  backward_range,
                  [&backward_value_map, &backward_program](Operation *op) {
-                   VLOG(0) << "op_name:" << op->name();
-                   for (auto input : op->operands_source()) {
-                     VLOG(0) << input.type();
-                   }
-                   for (auto result : op->results()) {
-                     VLOG(0) << result.type();
-                   }
                    auto *cloned_op = BuildOpFrom(op, backward_value_map);
                    backward_program->block()->push_back(cloned_op);
                  });

@@ -14,8 +14,10 @@
 
 import unittest
 
+import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    enable_to_static_guard,
     static_guard,
     test_ast_only,
     test_pir_only,
@@ -40,6 +42,35 @@ class TestSetStaticOpArgPreCastHook(Dy2StTestBase):
 
             with static_op_arg_cast_guard(_convert_into_value):
                 paddle.abs(eager_tensor)
+
+
+class NetWithEagerTensor(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.extra_inputs = []
+
+    # Disable the _jst.Ld to avoid convert the Eager Tensor to Value
+    # at transform time.
+    @paddle.jit.not_to_static
+    def forward_impl(self, x):
+        return paddle.concat([x] + self.extra_inputs, axis=0)
+
+    def forward(self, x):
+        return self.forward_impl(x)
+
+
+class TestSetStaticOpArgPreCastHookWithEagerTensor(Dy2StTestBase):
+    @test_ast_only
+    @test_pir_only
+    def test_net_with_eager_tensor(self):
+        net = NetWithEagerTensor()
+        net.extra_inputs.append(paddle.rand((10, 10), 'float32'))
+        net = paddle.jit.to_static(net, full_graph=True)
+        x = paddle.rand((10, 10), 'float32')
+        with enable_to_static_guard(False):
+            dygraph_out = net(x)
+        static_out = net(x)
+        np.testing.assert_allclose(dygraph_out.numpy(), static_out.numpy())
 
 
 if __name__ == '__main__':
