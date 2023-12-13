@@ -15,7 +15,7 @@
     data_type : x
   inplace: (x -> out)
   backward : abs_grad
-  interfaces : paddle::dialect::ReifyInferShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : accuracy
   args : (Tensor x, Tensor indices, Tensor label)

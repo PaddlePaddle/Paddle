@@ -127,7 +127,7 @@ parse_kernel_key_template = """
 """
 
 reify_infer_shape_template = """
-  static bool ReifyInferShape(pir::Builder &builder,
+  static bool InferSymbolicShape(pir::Builder &builder,
                               const std::vector<pir::OpOperand> &operands,
                               std::vector<pir::Value> &reified_return_shapes);
 """
@@ -419,8 +419,6 @@ class OpInfoParser:
         else:
             self.infer_meta_func = None
 
-        # print(self.op_yaml_item)
-        # exit(0)
         if 'infer_shaped_type_op_interface' in self.op_yaml_item:
             self.infer_shaped_type_op_interface_func = self.op_yaml_item[
                 'infer_shaped_type_op_interface'
@@ -1271,7 +1269,10 @@ def OpGenerator(
                     parse_kernel_key_str = parse_kernel_key_template
 
                 reify_infer_shape_str = ""
-                if "paddle::dialect::ReifyInferShapeInterface" in op_interfaces:
+                if (
+                    "paddle::dialect::InferSymbolicShapeInterface"
+                    in op_interfaces
+                ):
                     reify_infer_shape_str = reify_infer_shape_template
 
                 if op_infer_meta_map is not None:
@@ -1610,9 +1611,12 @@ def OpGenerator(
                         op_class_name
                     )
 
-                # generate op GetKernelKeyForVar function str
+                # generate op InferSymbolicShapeInterface function str
                 reify_infer_shape_define_str = ''
-                if "paddle::dialect::ReifyInferShapeInterface" in op_interfaces:
+                if (
+                    "paddle::dialect::InferSymbolicShapeInterface"
+                    in op_interfaces
+                ):
                     reify_infer_shape_define_str = gen_reify_infer_shape_str(
                         op_class_name
                     )

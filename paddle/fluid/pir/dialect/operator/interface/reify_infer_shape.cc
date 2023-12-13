@@ -17,7 +17,7 @@
 
 namespace paddle::dialect {
 
-bool ReifyInferShapeInterface::ReifyInferShape(
+bool InferSymbolicShapeInterface::InferSymbolicShape(
     pir::Builder &builder,
     const std::vector<pir::OpOperand> &operands,
     std::vector<pir::Value> &reified_return_shapes) {
@@ -150,4 +150,4 @@ bool ConcatOpReifyInferShape(
 }
 
 }  // namespace paddle::dialect
-IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ReifyInferShapeInterface)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::InferSymbolicShapeInterface)

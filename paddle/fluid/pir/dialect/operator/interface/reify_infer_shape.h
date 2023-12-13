@@ -17,16 +17,16 @@
 #include "paddle/pir/core/op_base.h"
 
 // Type inference is currently modelled executionally for operation creation
-// using the `InferMetaInterface`. While `ReifyInferShapeInterface` is used to
-// implement the shape and element type inference. The return type can often be
-// deduced from the deduced return shape and elemental type (queryable from
-// `ReifyInferShapeInterface`) and so type inference for tensor types can be
-// implemented with `ReifyInferShapeInterface`.
+// using the `InferMetaInterface`. While `InferSymbolicShapeInterface` is used
+// to implement the shape and element type inference. The return type can often
+// be deduced from the deduced return shape and elemental type (queryable from
+// `InferSymbolicShapeInterface`) and so type inference for tensor types can be
+// implemented with `InferSymbolicShapeInterface`.
 
 namespace paddle::dialect {
 
-class ReifyInferShapeInterface
-    : public pir::OpInterfaceBase<ReifyInferShapeInterface> {
+class InferSymbolicShapeInterface
+    : public pir::OpInterfaceBase<InferSymbolicShapeInterface> {
  public:
   /// Defined these methods with the interface.
   struct Concept {
@@ -45,23 +45,23 @@ class ReifyInferShapeInterface
 
   template <class ConcreteOp>
   struct Model : public Concept {
-    static inline bool ReifyInferShape(
+    static inline bool InferSymbolicShape(
         pir::Operation* op,
         pir::Builder& builder,  // NOLINT
         const std::vector<pir::OpOperand>& operands,
         std::vector<pir::Value>& reified_return_shapes) {  // NOLINT
-      return op->dyn_cast<ConcreteOp>().ReifyInferShape(
+      return op->dyn_cast<ConcreteOp>().InferSymbolicShape(
           builder, operands, reified_return_shapes);
     }
 
-    Model() : Concept(ReifyInferShape) {}
+    Model() : Concept(InferSymbolicShape) {}
   };
 
   /// Constructor
-  ReifyInferShapeInterface(pir::Operation* op, Concept* impl)
-      : pir::OpInterfaceBase<ReifyInferShapeInterface>(op), impl_(impl) {}
+  InferSymbolicShapeInterface(pir::Operation* op, Concept* impl)
+      : pir::OpInterfaceBase<InferSymbolicShapeInterface>(op), impl_(impl) {}
 
-  bool ReifyInferShape(
+  bool InferSymbolicShape(
       pir::Builder& builder,  // NOLINT
       const std::vector<pir::OpOperand>& operands,
       std::vector<pir::Value>& reified_return_shapes);  // NOLINT
@@ -81,4 +81,4 @@ bool Abs_OpReifyInferShape(
 
 }  // namespace paddle::dialect
 
-IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ReifyInferShapeInterface)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::InferSymbolicShapeInterface)

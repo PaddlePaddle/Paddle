@@ -13,11 +13,11 @@
 # limitations under the License.
 
 OP_GET_KERNEL_TYPE_FOR_VAR_TEMPLATE = """
-bool {op_name}::ReifyInferShape(pir::Builder &builder,
+bool {op_name}::InferSymbolicShape(pir::Builder &builder,
                                 const std::vector<pir::OpOperand> &operands,
                                 std::vector<pir::Value> &reified_return_shapes) {{
   VLOG(4) << "Reify infer shape for op: {op_name}";
-  return {op_name}ReifyInferShape(builder, operands, reified_return_shapes);
+  return {op_name}InferSymbolicShape(builder, operands, reified_return_shapes);
 }}
 """
 
