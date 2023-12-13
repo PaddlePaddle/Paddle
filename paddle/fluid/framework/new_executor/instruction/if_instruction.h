@@ -27,15 +27,15 @@ class Value;
 class PirInterpreter;
 class ValueExecutionInfo;
 
-class CondInstruction : public InstructionBase {
+class IfInstruction : public InstructionBase {
  public:
-  CondInstruction(size_t id,
-                  const platform::Place& place,
-                  ::pir::Operation* op,
-                  ValueExecutionInfo* value_exe_info,
-                  const std::set<std::string>& skip_gc_vars);
+  IfInstruction(size_t id,
+                const platform::Place& place,
+                ::pir::Operation* op,
+                ValueExecutionInfo* value_exe_info,
+                const std::set<std::string>& skip_gc_vars);
 
-  ~CondInstruction();
+  ~IfInstruction();
 
   void Run() override;
 
@@ -53,15 +53,15 @@ class CondInstruction : public InstructionBase {
 
   ::pir::Operation* op_;
 
-  std::string cond_name_{"cond_instruction"};
+  std::string cond_name_{"if_instruction"};
 
   Variable* cond_var_;
 
   std::vector<Variable*> output_vars_;
 
-  PirInterpreter* true_branch_inter_;
+  PirInterpreter* true_branch_inter_ = nullptr;
 
-  PirInterpreter* false_branch_inter_;
+  PirInterpreter* false_branch_inter_ = nullptr;
 
   std::vector<std::string> true_branch_outputs_;
 

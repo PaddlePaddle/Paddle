@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/new_executor/instruction/cond_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/if_instruction.h"
 
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
@@ -39,11 +39,11 @@
 namespace paddle {
 namespace framework {
 
-CondInstruction::CondInstruction(size_t id,
-                                 const platform::Place& place,
-                                 pir::Operation* op,
-                                 ValueExecutionInfo* value_exec_info,
-                                 const std::set<std::string>& skip_gc_vars)
+IfInstruction::IfInstruction(size_t id,
+                             const platform::Place& place,
+                             pir::Operation* op,
+                             ValueExecutionInfo* value_exec_info,
+                             const std::set<std::string>& skip_gc_vars)
     : InstructionBase(id, place) {
   PADDLE_ENFORCE(
       op->isa<paddle::dialect::IfOp>(),
@@ -66,13 +66,30 @@ CondInstruction::CondInstruction(size_t id,
   // OpOperand of IfOp, and the other is external Values used in true_block or
   // false_block.
   auto& true_branch_block = if_op.true_block();
-  auto& false_branch_block = if_op.false_block();
+
   std::unordered_map<pir::Value, std::vector<int>> inputs;
   GetInputIds(op, *value_exec_info, &inputs);
   auto true_outside_inputs =
       GetExternalInputs(&true_branch_block, *value_exec_info, &inputs);
-  auto false_outside_inputs =
+  std::vector<pir::Value> false_outside_inputs;
+  auto& false_branch_block = if_op.false_block();
+  false_outside_inputs =
       GetExternalInputs(&false_branch_block, *value_exec_info, &inputs);
+  // NOTE(chenxi67): the variable corresponding to container value if a
+  // <VariableRefArray> Type. It will recursively get the ID of internal
+  // variables when use GetValueId() method. However, the copy_var pushed into
+  // the tuple does not have a corresponding ID, and will insert a -1. Here we
+  // remove the value of -1.
+  for (auto& item : inputs) {
+    auto& var_vec = item.second;
+    for (auto it = var_vec.begin(); it != var_vec.end();) {
+      if (*it == -1) {
+        it = var_vec.erase(it);
+      } else {
+        ++it;
+      }
+    }
+  }
   SetInputs(inputs);
 
   std::unordered_map<pir::Value, std::vector<int>> outputs;
@@ -90,8 +107,19 @@ CondInstruction::CondInstruction(size_t id,
     }
   }
   InsertTuplePushContinerToOuts(&true_branch_block, *value_exec_info, &outputs);
+
   InsertTuplePushContinerToOuts(
-      &false_branch_block, *value_exec_info, &outputs);
+      &if_op.false_block(), *value_exec_info, &outputs);
+  for (auto& item : outputs) {
+    auto& var_vec = item.second;
+    for (auto it = var_vec.begin(); it != var_vec.end();) {
+      if (*it == -1) {
+        it = var_vec.erase(it);
+      } else {
+        ++it;
+      }
+    }
+  }
   SetOutputs(outputs);
   VLOG(6) << "finish process inputs outputs index";
 
@@ -126,11 +154,10 @@ CondInstruction::CondInstruction(size_t id,
   false_branch_inter_ =
       new PirInterpreter(place,
                          {},
-                         &false_branch_block,
+                         &if_op.false_block(),
                          false_scope,
                          value_exec_info->NewChild(false_scope),
                          {});
-
   std::set<std::string> false_skip_gc_names_set;
   for (auto value : GetYiedOpInputs(&false_branch_block)) {
     false_branch_outputs_.push_back(false_branch_inter_->GetNameByValue(value));
@@ -146,10 +173,11 @@ CondInstruction::CondInstruction(size_t id,
     false_skip_gc_names_set.insert(var_name);
   }
   false_branch_inter_->SetSkipGcVars(false_skip_gc_names_set);
+
   VLOG(6) << "finish process false branch interpreter";
 }
 
-CondInstruction::~CondInstruction() {
+IfInstruction::~IfInstruction() {
   if (true_branch_inter_ != nullptr) {
     delete true_branch_inter_;
   }
@@ -158,8 +186,8 @@ CondInstruction::~CondInstruction() {
   }
 }
 
-void CondInstruction::CopyBranchOutput(
-    const std::vector<std::string>& var_names, const PirInterpreter* inter) {
+void IfInstruction::CopyBranchOutput(const std::vector<std::string>& var_names,
+                                     const PirInterpreter* inter) {
   for (size_t i = 0; i < var_names.size(); ++i) {
     auto* inner_var = inter->InnerScope()->GetVar(var_names[i]);
 
@@ -179,7 +207,7 @@ void CondInstruction::CopyBranchOutput(
   }
 }
 
-void CondInstruction::Run() {
+void IfInstruction::Run() {
   DeviceContext().Wait();
   if (cond_var_->Get<phi::DenseTensor>().data<bool>()[0]) {
     true_branch_inter_->Run({}, false);
@@ -188,7 +216,6 @@ void CondInstruction::Run() {
     false_branch_inter_->Run({}, false);
     CopyBranchOutput(false_branch_outputs_, false_branch_inter_);
   }
-
   // copy ouptut
 }
 

@@ -53,8 +53,9 @@ set(PYBIND_DEPS
     auto_parallel)
 
 if(WITH_CINN)
-  set(PYBIND_DEPS ${PYBIND_DEPS} pir_transforms op_with_group_merge_pass
-                  add_broadcast_to_elementwise_pass pd_to_cinn_pass)
+  set(PYBIND_DEPS
+      ${PYBIND_DEPS} pir_transforms op_with_group_merge_pass
+      add_broadcast_to_elementwise_pass pd_to_cinn_pass sub_graph_checker)
 endif()
 
 if(WITH_PSCORE)
@@ -226,6 +227,10 @@ if(WITH_PSCORE)
   list(APPEND PYBIND_DEPS fleet index_wrapper index_sampler)
   list(APPEND PYBIND_SRCS)
   set(PYBIND_SRCS fleet_py.cc ${PYBIND_SRCS})
+endif()
+
+if(WITH_CINN)
+  set(PYBIND_SRCS ${PYBIND_SRCS} test.cc)
 endif()
 
 if(WITH_RPC)
