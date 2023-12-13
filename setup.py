@@ -399,6 +399,14 @@ def get_xpu_xccl_version():
         return 'False'
 
 
+def get_xpu_xhpc_version():
+    with_xpu_xhpc = env_dict.get("WITH_XPU_XHPC")
+    if with_xpu_xhpc == 'ON':
+        return env_dict.get("XPU_XHPC_BASE_DATE")
+    else:
+        return 'False'
+
+
 def is_taged():
     try:
         cmd = [
@@ -640,6 +648,7 @@ def cinn():
                 'cudnn': get_cudnn_version(),
                 'xpu': get_xpu_version(),
                 'xpu_xccl': get_xpu_xccl_version(),
+                'xpu_xhpc': get_xpu_xhpc_version(),
                 'commit': commit,
                 'istaged': is_taged(),
                 'with_mkl': env_dict.get("WITH_MKL"),
