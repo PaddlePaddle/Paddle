@@ -49,6 +49,7 @@ const std::unordered_set<std::string> LegacyOpList = {
     CAllreduceMax_Op::name(),
     CAllgatherOp::name(),
     CSoftmaxWithCrossEntropyOp::name(),
+    CSoftmaxWithCrossEntropyGradOp::name(),
     SeedOp::name(),
     ShareDataOp::name(),
     SparseMomentumOp::name(),
