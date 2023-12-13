@@ -18,11 +18,12 @@
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/pir/core/dialect.h"
 #include "paddle/pir/core/operation.h"
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace dialect {
 
-class OperatorDialect : public pir::Dialect {
+class TEST_API OperatorDialect : public pir::Dialect {
  public:
   explicit OperatorDialect(pir::IrContext* context);
 
@@ -46,7 +47,7 @@ inline bool IsCustomOp(pir::Operation* op) {
   return op_name.find("custom_op") != op_name.npos;
 }
 
-class CustomOpDialect : public pir::Dialect {
+class TEST_API CustomOpDialect : public pir::Dialect {
  public:
   explicit CustomOpDialect(pir::IrContext* context);
 
