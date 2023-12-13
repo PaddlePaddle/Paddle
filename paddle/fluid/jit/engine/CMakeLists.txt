@@ -1,7 +1,7 @@
 cc_library(
   jit_interpreter_engine
   SRCS interpreter_engine.cc
-  DEPS)
+  DEPS standalone_executor)
 
 cc_library(
   jit_predictor_engine

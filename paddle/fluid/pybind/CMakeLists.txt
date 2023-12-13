@@ -36,9 +36,11 @@ set(PYBIND_DEPS
     cuda_graph_with_memory_pool
     fleet_executor
     global_utils
+    plan
     phi_utils
     phi
     op_dialect_vjp
+    pir_adaptor
     program_translator
     pir_transforms
     pir
@@ -490,7 +492,7 @@ if(WITH_PYTHON)
                       DEPENDS ${eager_impl_file})
   endif()
 
-  list(APPEND PYBIND_DEPS)
+  list(APPEND PYBIND_DEPS standalone_executor staticgraph_executor_statistics)
 
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     set(PYBIND_SRCS eager.cc ${PYBIND_SRCS})
