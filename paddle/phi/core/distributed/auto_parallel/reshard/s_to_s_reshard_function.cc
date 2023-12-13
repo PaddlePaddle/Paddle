@@ -19,6 +19,8 @@
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/same_status_reshard_function.h"
+#include "paddle/phi/core/distributed/store/store_utils.h"
 #include "paddle/phi/kernels/all_to_all_kernel.h"
 #include "paddle/phi/kernels/reshape_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
@@ -62,7 +64,7 @@ void SToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   // 1. preprocess, reshape and transpose the input tensor
   if (out_split_axis != 0) {
     // 1.1 calc the shape and reshape
-    std::vector<int64_t> pre_shape_vec = vectorize(logical_ddim);
+    std::vector<int64_t> pre_shape_vec = common::vectorize(logical_ddim);
     pre_shape_vec[in_split_axis] /= nranks;
     pre_shape_vec[out_split_axis] /= nranks;
     pre_shape_vec.insert(pre_shape_vec.begin() + out_split_axis, nranks);
@@ -102,7 +104,7 @@ void SToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   // 3. postprocess, reshape and transpose the output tensor
   if (in_split_axis != 0) {
     // 3.1 calc the shape and reshape
-    std::vector<int64_t> post_shape_vec = vectorize(logical_ddim);
+    std::vector<int64_t> post_shape_vec = common::vectorize(logical_ddim);
     post_shape_vec[in_split_axis] /= nranks;
     post_shape_vec[out_split_axis] /= nranks;
     post_shape_vec.insert(post_shape_vec.begin(), nranks);
@@ -133,6 +135,53 @@ void SToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   }
 
   SetDistProps(out, in.dims(), out_dist_attr);
+}
+
+bool SToSReshardFunctionCrossMesh::IsSuitable(
+    const DistTensor& in, const TensorDistAttr& out_dist_attr) {
+  const auto& in_dist_attr = in.dist_attr();
+
+  RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.is_shard());
+  RESHARD_SHORTCUT_IF_FALSE(out_dist_attr.is_shard());
+
+  const auto& in_process_mesh = in_dist_attr.process_mesh();
+  const auto& out_process_mesh = out_dist_attr.process_mesh();
+
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh.ndim() == 1);
+  RESHARD_SHORTCUT_IF_FALSE(out_process_mesh.ndim() == 1);
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh != out_process_mesh);
+
+  return true;
+}
+
+void SToSReshardFunctionCrossMesh::Eval(DeviceContext* dev_ctx,
+                                        const DistTensor& in,
+                                        const TensorDistAttr& out_dist_attr,
+                                        DistTensor* out) {
+  VLOG(3) << "Call SToSReshardFunctionCrossMesh Eval";
+  const auto& out_process_mesh = out_dist_attr.process_mesh();
+
+  SameStatusReshardFunction same_status_func;
+  DistTensor tmp_result;
+
+  TensorDistAttr tmp_dist_attr = in.dist_attr();
+  tmp_dist_attr.set_process_mesh(out_process_mesh);
+  same_status_func.Eval(dev_ctx, in, tmp_dist_attr, &tmp_result);
+
+  int64_t cur_global_rank = GetCurGlobalRank();
+  if (out_process_mesh.contains(cur_global_rank)) {
+    SToSReshardFunction s_to_s_func;
+    PADDLE_ENFORCE(
+        s_to_s_func.IsSuitable(tmp_result, out_dist_attr),
+        phi::errors::InvalidArgument(
+            "Invoke the s to s reshard function is not valid from %s to %s.",
+            tmp_result.dist_attr(),
+            out_dist_attr));
+    s_to_s_func.Eval(dev_ctx, tmp_result, out_dist_attr, out);
+  } else {
+    SetDistProps(out, in.dims(), out_dist_attr);
+    SetValue(out, tmp_result.value());
+  }
 }
 
 }  // namespace distributed

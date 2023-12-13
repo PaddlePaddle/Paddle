@@ -52,16 +52,22 @@ std::vector<std::unique_ptr<ReshardFunction>>& GetReshardFunctionList() {
 // Reshard function with higher priority will be evoked
 // when more than one reshard function satisfy the request.
 REGISTER_RESHARD_FUNC(SToRReshardFunction);
-REGISTER_RESHARD_FUNC(SToPReshardFunction);
 REGISTER_RESHARD_FUNC(SToRReshardFunctionCrossMesh);
+REGISTER_RESHARD_FUNC(SToPReshardFunction);
+REGISTER_RESHARD_FUNC(SToPReshardFunctionCrossMesh);
 REGISTER_RESHARD_FUNC(RToSReshardFunction);
 REGISTER_RESHARD_FUNC(RToSReshardFunctionCrossMesh);
 REGISTER_RESHARD_FUNC(RToPReshardFunction);
+REGISTER_RESHARD_FUNC(RToPReshardFunctionCrossMesh);
 REGISTER_RESHARD_FUNC(PToRReshardFunction);
+REGISTER_RESHARD_FUNC(PToRReshardFunctionCrossMesh);
 REGISTER_RESHARD_FUNC(PToSReshardFunction);
+REGISTER_RESHARD_FUNC(PToSReshardFunctionCrossMesh);
 REGISTER_RESHARD_FUNC(SToSReshardFunction);
+REGISTER_RESHARD_FUNC(SToSReshardFunctionCrossMesh);
 REGISTER_RESHARD_FUNC(SameStatusReshardFunction);
 REGISTER_RESHARD_FUNC(SameNdMeshReshardFunction);
+REGISTER_RESHARD_FUNC(CrossNdMeshReshardFunction);
 
 }  // namespace distributed
 }  // namespace phi

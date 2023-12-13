@@ -371,6 +371,7 @@ packages=['paddle',
           'paddle.dataset',
           'paddle.reader',
           'paddle.distributed',
+          'paddle.distributed.checkpoint',
           'paddle.distributed.communication',
           'paddle.distributed.communication.stream',
           'paddle.distributed.metric',
@@ -386,6 +387,7 @@ packages=['paddle',
           'paddle.incubate.nn',
           'paddle.incubate.asp',
           'paddle.incubate.passes',
+          'paddle.incubate.framework',
           'paddle.distribution',
           'paddle.distributed.utils',
           'paddle.distributed.sharding',
@@ -525,13 +527,21 @@ packages=['paddle',
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
     setup_requires = f.read().splitlines()
 
-if sys.version_info < (3,7):
-    raise RuntimeError("Paddle only support Python version>=3.7 now")
+if sys.version_info < (3,8):
+    raise RuntimeError("Paddle only support Python version>=3.8 now")
 
-if sys.version_info >= (3,7):
+if sys.version_info >= (3,8):
     setup_requires_tmp = []
     for setup_requires_i in setup_requires:
-        if "<\"3.6\"" in setup_requires_i or "<=\"3.6\"" in setup_requires_i or "<\"3.5\"" in setup_requires_i or "<=\"3.5\"" in setup_requires_i or "<\"3.7\"" in setup_requires_i:
+        if (
+            "<\"3.6\"" in setup_requires_i
+            or "<=\"3.6\"" in setup_requires_i
+            or "<\"3.5\"" in setup_requires_i
+            or "<=\"3.5\"" in setup_requires_i
+            or "<\"3.7\"" in setup_requires_i
+            or "<=\"3.7\"" in setup_requires_i
+            or "<\"3.8\"" in setup_requires_i
+        ):
             continue
         setup_requires_tmp+=[setup_requires_i]
     setup_requires = setup_requires_tmp
@@ -737,7 +747,7 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
         if "@APPLE@" == "1":
             commands = ["install_name_tool -id '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}" + '.so']
             commands.append("install_name_tool -add_rpath '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}" + '.so')
-            commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${COMMON_NAME}")
+            commands.append("install_name_tool -add_rpath '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/libs/${COMMON_NAME}")
             if('${WITH_SHARED_PHI}' == 'ON'):
                 # change rpath of phi.ext for loading 3rd party libb
                 commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
@@ -780,6 +790,7 @@ def find_files(pattern, root, recursive=False):
 headers = (
     # paddle level api headers (high level api, for both training and inference)
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle')) +
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/common')) +  # paddle common headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/api')) +  # phi unify api header
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/api/ext')) +  # custom op api
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/api/include')) +  # phi api
@@ -1015,10 +1026,11 @@ with redirect_stdout():
             'Intended Audience :: Science/Research',
             'License :: OSI Approved :: Apache Software License',
             'Programming Language :: C++',
-            'Programming Language :: Python :: 3.7',
             'Programming Language :: Python :: 3.8',
             'Programming Language :: Python :: 3.9',
             'Programming Language :: Python :: 3.10',
+            'Programming Language :: Python :: 3.11',
+            'Programming Language :: Python :: 3.12',
         ],
     )
 

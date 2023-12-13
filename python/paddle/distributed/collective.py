@@ -14,6 +14,7 @@
 
 import datetime
 import hashlib
+import os
 
 import paddle
 
@@ -241,6 +242,12 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
         # TODO: The method below is a new method for group management, will replace the previous
         # three in the future.
         _add_new_group(group)
+
+        if int(os.getenv("FLAGS_eager_communication_connection", 0)) == 1:
+            paddle.distributed.all_reduce(
+                paddle.zeros([1], dtype=paddle.uint8), group=group, sync_op=True
+            )
+
         return group
 
     if not backend:

@@ -21,7 +21,7 @@ import paddle.distributed as dist
 from paddle.framework import core
 
 
-class TestReshardSToR:
+class TestReshardPToR:
     def __init__(self):
         self._shape = eval(os.getenv("shape"))
         self._dtype = os.getenv("dtype")
@@ -41,10 +41,12 @@ class TestReshardSToR:
 
         input_tensor = dist.shard_tensor(a, self._mesh, [dist.Partial()])
         out = dist.reshard(input_tensor, self._mesh, [dist.Replicate()])
+        print(input_tensor)
+        print(out)
 
         assert np.equal(out.shape, input_tensor.shape).all()
         np.testing.assert_equal(out._local_value().numpy(), a.numpy())
 
 
 if __name__ == '__main__':
-    TestReshardSToR().run_test_case()
+    TestReshardPToR().run_test_case()

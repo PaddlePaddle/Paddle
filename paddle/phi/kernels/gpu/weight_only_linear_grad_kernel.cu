@@ -36,10 +36,10 @@ void WeightOnlyLinearGradKernel(const Context& dev_ctx,
                                 DenseTensor* x_grad) {
 #if defined(PADDLE_WITH_CUTLASS)
   PADDLE_ENFORCE_EQ(
-      arch,
-      80,
+      ((arch == 80) || (arch == 86)),
+      true,
       phi::errors::InvalidArgument(
-          "Currently weightonly linear grad only support arch = 80. "));
+          "Currently weightonly linear grad only support arch = 80 or 86. "));
 
   int n = weight_scale.dims()[0];
   int k = weight.dims()[1];

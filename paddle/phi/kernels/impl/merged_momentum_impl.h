@@ -16,10 +16,10 @@
 
 #include "glog/logging.h"
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/hostdevice.h"
-#include "paddle/phi/core/macros.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/impl/momentum_kernel_impl.h"
 #include "paddle/phi/kernels/merged_momentum_kernel.h"

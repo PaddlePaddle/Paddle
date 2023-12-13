@@ -108,6 +108,8 @@ class IRSchedule {
    */
   std::vector<Expr> Split(const Expr& loop, const std::vector<int>& factors);
 
+  std::vector<Expr> DySplit(const Expr& loop, const std::vector<int>& factors);
+
   /**
    * \brief Split a for loop into multiple loops, based on the factors.
    * @param block_name Name of the block we want to modify.

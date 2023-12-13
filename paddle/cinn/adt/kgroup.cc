@@ -13,42 +13,14 @@
 // limitations under the License.
 
 #include "paddle/cinn/adt/kgroup.h"
-#include "paddle/cinn/adt/equation_solver.h"
+
 #include "paddle/cinn/adt/igroup.h"
-#include "paddle/cinn/adt/index_expr_infer_context.h"
-#include "paddle/cinn/adt/m_ir.h"
-#include "paddle/cinn/adt/schedule_descriptor.h"
-#include "paddle/cinn/adt/schedule_dim.h"
-#include "paddle/cinn/hlir/framework/graph.h"
 
 namespace cinn::adt {
 
-using AnchorTensor = Variable;
-
-namespace {
-
-std::size_t GetTensorNumel(const Tensor& tensor) {
-  CHECK(tensor.Has<adapter::Tensor>());
-  return tensor.Get<adapter::Tensor>().GetNumel();
-}
-
-std::vector<int32_t> GetTensorShape(const Tensor& tensor) {
-  CHECK(tensor.Has<adapter::Tensor>());
-  return tensor.Get<adapter::Tensor>().GetShape();
-}
-
-}  // namespace
-
 List<LoopSize> KGroup::GetDefaultScheduleSizes(
     const std::shared_ptr<IGroup>& igroup) const {
-  List<LoopSize> ret{};
-
-  const Tensor& tensor = igroup->anchor_tensor();
-  const std::vector<int32_t> tensor_shape = GetTensorShape(tensor);
-  for (int32_t dim : tensor_shape) {
-    ret->emplace_back(LoopSize{dim});
-  }
-  return ret;
+  return igroup->GetAnchorTensorLoopSize();
 }
 
 }  // namespace cinn::adt

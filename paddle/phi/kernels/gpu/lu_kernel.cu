@@ -138,16 +138,16 @@ void LUKernel(const Context& dev_ctx,
   int n = static_cast<int>(outdims[outrank - 2]);
   int lda = std::max(1, m);
   if (pivot) {
-    auto ipiv_dims = phi::slice_ddim(outdims, 0, outrank - 1);
+    auto ipiv_dims = common::slice_ddim(outdims, 0, outrank - 1);
     ipiv_dims[outrank - 2] = std::min(m, n);
     pivots->Resize(ipiv_dims);
   }
   dev_ctx.template Alloc<int>(pivots);
   auto ipiv_data = pivots->data<int>();
 
-  auto info_dims = phi::slice_ddim(outdims, 0, outrank - 2);
+  auto info_dims = common::slice_ddim(outdims, 0, outrank - 2);
   if (info_dims.size() == 0) {
-    info_dims = phi::make_ddim({1});
+    info_dims = common::make_ddim({1});
   }
   infos->Resize(info_dims);
   dev_ctx.template Alloc<int>(infos);

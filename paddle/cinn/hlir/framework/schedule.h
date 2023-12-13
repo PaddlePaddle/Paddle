@@ -30,7 +30,7 @@ namespace framework {
  *  For operations and all the operations they depend on.
  *  The schedule per Operation is named as stage.
  */
-class Schedule : public common::Object {
+class Schedule : public cinn::common::Object {
  public:
   const char* type_info() const override { return __type_info__; }
 

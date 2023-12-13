@@ -186,7 +186,7 @@ bool WithoutLastDimInReduce(const std::vector<int64_t>& inshape,
 }
 
 int GetSharedSize(::pir::Operation* op) {
-  auto inshape = phi::vectorize<int64_t>(GetValueShape(op->result(0)));
+  auto inshape = ::common::vectorize<int64_t>(GetValueShape(op->result(0)));
 
   auto axes = GetVectorAttr(op, "dim");
 
@@ -195,8 +195,9 @@ int GetSharedSize(::pir::Operation* op) {
     for (size_t idx = axes.back() + 1; idx < inshape.size(); ++idx) {
       lane = inshape[idx];
     }
-    // int max_num_threads = common::DefaultNVGPUTarget().max_num_threads();
-    // todo(phlrain): get gpu max threads
+    // int max_num_threads =
+    // cinn::common::DefaultNVGPUTarget().max_num_threads(); todo(phlrain): get
+    // gpu max threads
     int max_num_threads = 2048;
     if (lane > max_num_threads / 2) {
       return 0;

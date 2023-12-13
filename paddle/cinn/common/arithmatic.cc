@@ -125,7 +125,7 @@ GiNaC::ex ExprToGinacConverter::BuildHelper(ir::Expr expr) {
 }
 
 GiNaC::ex ExprToGinacConverter::operator()(Expr expr) {
-  // TODO(Superjomn) Replace this with common::IsPureMath(
+  // TODO(Superjomn) Replace this with cinn::common::IsPureMath(
   auto complex_nodes = ir::ir_utils::CollectIRNodes(expr, [](const Expr* n) {
     return n->As<Block>() ||    //
            n->As<PolyFor>() ||  //

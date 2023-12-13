@@ -43,6 +43,9 @@ class StandaloneExecutor {
       const std::vector<std::string>& feed_names,
       const bool enable_job_schedule_profiler = false);
 
+  std::shared_ptr<framework::ProgramDesc> RunProfile(
+      const std::vector<std::string>& feed_names);
+
  private:
   bool is_interpretercore_build_result_shared_{false};
   const platform::Place place_;

@@ -19,7 +19,6 @@
 #include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/hlir/framework/op_lowering_util.h"
 #include "paddle/cinn/hlir/op/external_api_registry.h"
-#include "paddle/cinn/hlir/pe/map_expr_to_ir.h"
 #include "paddle/cinn/ir/group_schedule/base_group_scheduler.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
@@ -32,8 +31,8 @@ namespace cinn {
 namespace hlir {
 namespace framework {
 
-using common::bfloat16;
-using common::float16;
+using cinn::common::bfloat16;
+using cinn::common::float16;
 
 using framework::Node;
 using framework::NodeData;
@@ -41,7 +40,7 @@ using framework::OpPatternKind;
 using framework::shape_t;
 using framework::StrategyFunction;
 
-using common::Type;
+using cinn::common::Type;
 
 using cinn::hlir::op::ExternalApiRegistry;
 
@@ -211,10 +210,11 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerCustomCall(
   } else {
     external_api = ExternalApiRegistry::Global()->GetExternalApi(node, target_);
   }
-  std::vector<common::CINNValue> compute_args = {
-      common::CINNValue(group->GetFuncName()), common::CINNValue(external_api)};
-  common::CINNValuePack pack =
-      impl->fcompute(common::CINNValuePack{compute_args});
+  std::vector<cinn::common::CINNValue> compute_args = {
+      cinn::common::CINNValue(group->GetFuncName()),
+      cinn::common::CINNValue(external_api)};
+  cinn::common::CINNValuePack pack =
+      impl->fcompute(cinn::common::CINNValuePack{compute_args});
   if (pack.size() != 1) {
     std::ostringstream err_msg;
     err_msg << "Lowering custom call, group func name: " << group->GetFuncName()
@@ -371,19 +371,19 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
     std::unordered_map<std::string, ir::Tensor>* tensor_map,
     std::vector<ir::Tensor>* op_func_arg_tensors) {
   VLOG(4) << "Do lower with Compute, op: " << node->op()->name;
-  std::vector<common::CINNValue> cinn_inputs;
+  std::vector<cinn::common::CINNValue> cinn_inputs;
   for (const ir::Tensor& tensor : *op_func_arg_tensors) {
-    cinn_inputs.push_back(common::CINNValue(ir::Expr(tensor)));
+    cinn_inputs.push_back(cinn::common::CINNValue(ir::Expr(tensor)));
   }
   // set tensor name = node data name
   std::vector<NodeData*> node_datas = GetAllNodeData(node);
   for (const NodeData* node_data : node_datas) {
-    cinn_inputs.push_back(common::CINNValue(node_data->id()));
+    cinn_inputs.push_back(cinn::common::CINNValue(node_data->id()));
   }
 
   // 1.Do compute
-  common::CINNValuePack pack =
-      op_impl->fcompute(common::CINNValuePack{cinn_inputs});
+  cinn::common::CINNValuePack pack =
+      op_impl->fcompute(cinn::common::CINNValuePack{cinn_inputs});
 
   poly::StageMap tmp_stages = pack.back();
   std::string post = "";
@@ -405,7 +405,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
 
     // Insert output tensors into function arg
     if (!expr.as_tensor_ref()->buffer.defined() ||
-        this->target_ != common::DefaultNVGPUTarget()) {
+        this->target_ != cinn::common::DefaultNVGPUTarget()) {
       op_func_arg_tensors->push_back(expr.as_tensor_ref());
       expr.as_tensor_ref()->WithBuffer();
     }
@@ -448,18 +448,18 @@ ir::Expr OpLowererImpl::DoOpSchedule(
     const std::vector<ir::Tensor>& op_func_arg_tensors,
     const std::vector<ir::LoweredFunc>& lowered_funcs) {
   VLOG(4) << "Do op schedule";
-  std::vector<common::CINNValue> schedule_inputs;
+  std::vector<cinn::common::CINNValue> schedule_inputs;
   // 1.Collect tensors
   for (const ir::Tensor& op_func_arg_tensor : op_func_arg_tensors) {
-    schedule_inputs.push_back(common::CINNValue(op_func_arg_tensor));
+    schedule_inputs.push_back(cinn::common::CINNValue(op_func_arg_tensor));
   }
   // 2.Collect bodies to be scheduled
   for (const ir::LoweredFunc& func : lowered_funcs) {
-    schedule_inputs.push_back(common::CINNValue(func->body));
+    schedule_inputs.push_back(cinn::common::CINNValue(func->body));
   }
   // 3.Do schedule on AST
-  common::CINNValuePack expr_pack =
-      op_impl->fschedule(common::CINNValuePack{schedule_inputs});
+  cinn::common::CINNValuePack expr_pack =
+      op_impl->fschedule(cinn::common::CINNValuePack{schedule_inputs});
   VLOG(4) << "After op schedule: " << expr_pack[0].operator ir::Expr();
 
   return expr_pack[0].operator ir::Expr();

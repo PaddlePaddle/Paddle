@@ -41,8 +41,6 @@ class TuplePopInstruction : public InstructionBase {
 
   ::pir::Operation* Operation() const override { return op_; }
 
-  std::set<int> GetTuplePopGcVarIds() { return tuple_pop_gc_var_ids_; }
-
  private:
   ::pir::Operation* op_;
 
@@ -55,8 +53,6 @@ class TuplePopInstruction : public InstructionBase {
   VariableRefArray* stack_element_var_array_;
 
   ValueExecutionInfo* value_exe_info_;
-
-  std::set<int> tuple_pop_gc_var_ids_;
 };
 
 }  // namespace framework

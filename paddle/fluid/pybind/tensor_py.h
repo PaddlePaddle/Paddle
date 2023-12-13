@@ -389,7 +389,7 @@ void SetTensorFromPyArrayT(
   for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
     dims.push_back(static_cast<int64_t>(array.shape()[i]));
   }
-  self->Resize(phi::make_ddim(dims));
+  self->Resize(common::make_ddim(dims));
 
   if (paddle::platform::is_cpu_place(place)) {
     if (zero_copy) {
@@ -556,7 +556,7 @@ void SetStringTensorFromPyArray(phi::StringTensor *self,
   for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
     dims.push_back(static_cast<int>(array.shape()[i]));
   }
-  self->Resize(phi::make_ddim(dims));
+  self->Resize(common::make_ddim(dims));
   auto itemsize = array.itemsize();
   if (paddle::platform::is_cpu_place(place)) {
     auto dst = self->mutable_data(place);
@@ -609,7 +609,7 @@ void SetUVATensorFromPyArrayImpl(
     dims.emplace_back(static_cast<int64_t>(array.shape()[i]));
     numel *= static_cast<int64_t>(array.shape()[i]);
   }
-  self_tensor->Resize(phi::make_ddim(dims));
+  self_tensor->Resize(common::make_ddim(dims));
 
   auto data_type = framework::ToDataType(std::type_index(typeid(T)));
   const auto &need_allocate_size = numel * framework::SizeOfType(data_type);
@@ -652,7 +652,7 @@ void SetUVATensorFromPyArray(const std::shared_ptr<paddle::Tensor> &self,
 #if defined(PADDLE_WITH_CUDA)
   VLOG(4) << "Running in SetUVATensorFromPyArray for Phi::Tensor.";
   phi::DenseTensorMeta meta =
-      phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 1}));
+      phi::DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim({1, 1}));
   std::shared_ptr<phi::DenseTensor> tmp_t = std::make_shared<phi::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
@@ -672,7 +672,7 @@ void _sliceCompute(const phi::DenseTensor *in,
                    const std::vector<int> &axes,
                    const std::vector<int> &starts) {
   auto &eigen_place = *ctx.eigen_device();
-  auto out_dims = phi::vectorize<int>(out->dims());
+  auto out_dims = common::vectorize<int>(out->dims());
   auto in_dims = in->dims();
 
   auto offsets = Eigen::DSizes<Eigen::DenseIndex, D>();
@@ -708,8 +708,8 @@ void _concatCompute(const std::vector<phi::DenseTensor> &ins,
   if (axis == 0 && ins.size() < 10) {
     size_t output_offset = 0;
     for (auto &in : ins) {
-      auto in_stride = phi::stride_numel(in.dims());
-      auto out_stride = phi::stride_numel(out->dims());
+      auto in_stride = common::stride_numel(in.dims());
+      auto out_stride = common::stride_numel(out->dims());
       phi::funcs::StridedNumelCopyWithAxis<T, phi::CPUContext>(
           ctx,
           axis,

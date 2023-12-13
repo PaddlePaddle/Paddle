@@ -9,7 +9,7 @@ endif()
 cc_library(
   malloc
   SRCS malloc.cc
-  DEPS place enforce allocator profiler ${MKLDNN_CTX_DEPS})
+  DEPS place enforce common allocator profiler ${MKLDNN_CTX_DEPS})
 cc_library(
   memcpy
   SRCS memcpy.cc
@@ -17,7 +17,7 @@ cc_library(
 cc_library(
   stats
   SRCS stats.cc
-  DEPS enforce)
+  DEPS enforce common)
 cc_library(memory DEPS malloc memcpy stats)
 
 cc_test(

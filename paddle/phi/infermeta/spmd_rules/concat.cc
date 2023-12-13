@@ -62,7 +62,7 @@ SpmdInfo ConcatInferSpmd(const std::vector<DistMetaTensor>& x, int axis) {
                  x.end(),
                  std::back_inserter(tensor_shapes),
                  [](const DistMetaTensor& meta) {
-                   return phi::vectorize<int64_t>(meta.dims());
+                   return common::vectorize<int64_t>(meta.dims());
                  });
   bool all_empty =
       std::all_of(tensor_shapes.begin(), tensor_shapes.end(), IsEmpty);
@@ -125,7 +125,7 @@ SpmdInfo ConcatGradInferSpmdDynamic(const std::vector<DistMetaTensor>& x,
                  x.end(),
                  std::back_inserter(tensor_shapes),
                  [](const DistMetaTensor& meta) {
-                   return phi::vectorize<int64_t>(meta.dims());
+                   return common::vectorize<int64_t>(meta.dims());
                  });
   bool all_empty =
       std::all_of(tensor_shapes.begin(), tensor_shapes.end(), IsEmpty);
@@ -148,7 +148,7 @@ SpmdInfo ConcatGradInferSpmdDynamic(const std::vector<DistMetaTensor>& x,
         return meta.dist_attr();
       });
   input_attrs.push_back(output_grad.dist_attr());
-  tensor_shapes.push_back(phi::vectorize<int64_t>(output_grad.dims()));
+  tensor_shapes.push_back(common::vectorize<int64_t>(output_grad.dims()));
   std::string all_aixs;
   std::string align_axis;
   std::tie(all_aixs, align_axis) = FillConcatNotation(ndim, dim);

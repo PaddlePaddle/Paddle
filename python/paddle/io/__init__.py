@@ -18,6 +18,7 @@ from .dataloader import (
     BatchSampler,
     ChainDataset,
     ComposeDataset,
+    ConcatDataset,
     Dataset,
     DistributedBatchSampler,
     IterableDataset,
@@ -30,7 +31,6 @@ from .dataloader import (
     WeightedRandomSampler,
     get_worker_info,
     random_split,
-    ConcatDataset,
 )
 from .reader import DataLoader
 

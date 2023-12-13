@@ -14,6 +14,7 @@
 
 #include "paddle/pir/pass/pass.h"
 
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/program.h"
@@ -22,6 +23,7 @@
 #include "paddle/pir/pass/pass_adaptor.h"
 #include "paddle/pir/pass/pass_instrumentation.h"
 #include "paddle/pir/pass/pass_manager.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace pir {
 
@@ -31,6 +33,48 @@ namespace pir {
 Pass::~Pass() = default;
 
 bool Pass::CanApplyOn(Operation* op) const { return op->num_regions() > 0; }
+
+void Pass::PrintStatistics(int64_t match_count) const {
+  LOG(INFO) << "--- detected [" << match_count << "] subgraphs!";
+}
+
+void Pass::PrintStatistics(int64_t match_count, int64_t all_count) const {
+  LOG(INFO) << "--- detected [" << match_count << "/" << all_count
+            << "] subgraphs!";
+}
+
+void Pass::PrintStatistics(const std::string& custom_log) const {
+  LOG(INFO) << custom_log;
+}
+
+detail::PassExecutionState& Pass::pass_state() {
+  IR_ENFORCE(pass_state_.has_value() == true, "pass state has no value");
+  return *pass_state_;
+}
+
+//===----------------------------------------------------------------------===//
+// PatternRewritePass
+//===----------------------------------------------------------------------===//
+bool PatternRewritePass::Initialize(IrContext* context) {
+  RewritePatternSet ps = InitializePatterns(context);
+  IR_ENFORCE(ps.Empty() == false,
+             "Pass creation failed."
+             "When using PatternRewritePass to create a Pass, the number of "
+             "customized Patterns is required to be greater than zero."
+             "Suggested fix: Check whether Pattern is added to the "
+             "InitializePatterns() function of class [%s]",
+             name());
+  patterns_ = FrozenRewritePatternSet(std::move(ps));
+  return true;
+}
+
+void PatternRewritePass::Run(Operation* op) {
+  GreedyRewriteConfig cfg;
+  cfg.use_top_down_traversal = true;
+  cfg.max_iterations = 10;
+  auto [_, num_rewrites] = ApplyPatternsGreedily(op, patterns_, cfg);
+  PrintStatistics(num_rewrites);
+}
 
 //----------------------------------------------------------------------------------------------//
 // PassAdaptor
@@ -102,6 +146,8 @@ bool detail::PassAdaptor::RunPass(Pass* pass,
     adaptor->Run(op, opt_level, verify);
   } else {
     if (instrumentor) instrumentor->RunBeforePass(pass, op);
+    paddle::string::PrettyLogH1("--- Running PIR pass [%s]",
+                                pass->pass_info().name);
     pass->Run(op);
     if (instrumentor) instrumentor->RunAfterPass(pass, op);
   }

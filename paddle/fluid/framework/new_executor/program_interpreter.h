@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/framework/new_executor/interpreter_base_impl.h"
 
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/kernels/autotune/gpu_timer.h"
 #endif
 
@@ -48,12 +48,15 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names,
       const std::vector<phi::DenseTensor>& feed_tensors,
-      bool need_fetch = true) override;
-
-  paddle::framework::FetchList Run(
-      const std::vector<std::string>& feed_names,
       bool need_fetch = true,
       bool enable_job_schedule_profiler = false) override;
+
+  paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
+                                   bool need_fetch = true,
+                                   bool enable_job_schedule_profiler = false,
+                                   bool enable_op_profiling = false) override;
+
+  std::shared_ptr<ProgramDesc> GetMutableCopyProgram() override;
 
   void Build(
       const std::vector<std::string>& feed_names,
@@ -111,6 +114,9 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   std::tuple<double, double> InterpreterRunTime() override;
 
+  // Only for debug
+  Variable* DebugVar(const std::string& name) const override;
+
  private:
   // build graph
   void Convert(std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
@@ -166,6 +172,9 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   bool static_build_{false};
   // Note(sonder): share the op dependency and event analysis procedure.
   bool is_shared_results_build_{false};
+
+  // op profiling status
+  bool is_in_op_profiling_mode_{false};
 
   const platform::Place place_;
   const BlockDesc& block_;  // not owned

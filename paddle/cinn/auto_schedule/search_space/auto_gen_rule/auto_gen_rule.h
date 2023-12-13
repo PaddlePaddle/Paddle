@@ -45,7 +45,7 @@ enum class RuleApplyType : int {
  */
 class AutoGenRule {
  public:
-  explicit AutoGenRule(const common::Target& target);
+  explicit AutoGenRule(const cinn::common::Target& target);
   ~AutoGenRule() = default;
 
   // Initialize the AutoGenRule, it must be called before further actions.
@@ -83,7 +83,7 @@ class AutoGenRule {
   // number of ScheduleBlock that can apply this auto gen rule
   int num_applicable_ = -1;
   // Target, not owned.
-  const common::Target* target_;
+  const cinn::common::Target* target_;
   // IRSchedule, not owned;
   ir::IRSchedule* ir_schedule_;
 };

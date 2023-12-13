@@ -144,22 +144,22 @@ class TestPool1D_API(unittest.TestCase):
 
     @test_with_pir_api
     def check_avg_static_results_fp16(self, place):
-        with paddle.static.program_guard(paddle.static.Program()):
-            input = paddle.static.data(
-                name="input", shape=[2, 3, 32], dtype="float16"
-            )
-            result = F.avg_pool1d(input, kernel_size=2, stride=2, padding=0)
+        if core.is_compiled_with_cuda():
+            with paddle.static.program_guard(paddle.static.Program()):
+                input = paddle.static.data(
+                    name="input", shape=[2, 3, 32], dtype="float16"
+                )
+                result = F.avg_pool1d(input, kernel_size=2, stride=2, padding=0)
 
-            input_np = np.random.random([2, 3, 32]).astype("float16")
-            result_np = avg_pool1D_forward_naive(
-                input_np,
-                ksize=[2],
-                strides=[2],
-                paddings=[0],
-                ceil_mode=False,
-            )
+                input_np = np.random.random([2, 3, 32]).astype("float16")
+                result_np = avg_pool1D_forward_naive(
+                    input_np,
+                    ksize=[2],
+                    strides=[2],
+                    paddings=[0],
+                    ceil_mode=False,
+                )
 
-            if core.is_compiled_with_cuda():
                 place = paddle.CUDAPlace(0)
                 exe = paddle.static.Executor(place)
                 fetches = exe.run(
@@ -209,6 +209,7 @@ class TestPool1D_API(unittest.TestCase):
 
     @test_with_pir_api
     def check_max_static_results(self, place):
+        paddle.enable_static()
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):

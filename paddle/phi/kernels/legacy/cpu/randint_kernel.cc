@@ -29,7 +29,7 @@ void RandintWithSeedKernel(const Context& dev_ctx,
                            DataType dtype UNUSED,
                            int seed,
                            DenseTensor* out) {
-  out->Resize(phi::make_ddim(shape.GetData()));
+  out->Resize(common::make_ddim(shape.GetData()));
   T* data = dev_ctx.template Alloc<T>(out);
   auto numel = out->numel();
   std::shared_ptr<std::mt19937_64> engine;

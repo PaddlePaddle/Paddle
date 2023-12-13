@@ -20,8 +20,8 @@
 
 #include "paddle/fluid/framework/new_executor/interpreter/job.h"
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/phi/core/macros.h"
 #include "paddle/pir/core/program.h"
 
 namespace paddle {

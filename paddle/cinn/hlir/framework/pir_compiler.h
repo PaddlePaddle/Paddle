@@ -41,7 +41,7 @@ class PirCompiler final {
 
   std::unique_ptr<Program> Build();
 
-  std::vector<pir::CUDAJITInfo> BuildCUDAJITInfo(
+  std::vector<pir::CINNKernelInfo> BuildCUDAJITInfo(
       const std::vector<pir::GroupPtr>& groups);
 
   std::unique_ptr<Program> Build(const std::vector<pir::GroupPtr>& groups);
@@ -65,6 +65,7 @@ class PirCompiler final {
   std::vector<GroupCompilationContext> group_compilation_contexts_;
 };
 
+// TODO(phlrain): pir compiler don't need Scope, need to remove this
 std::shared_ptr<Scope> BuildScope(const Target&, const ::pir::Program&);
 
 class PirCompilerManager {

@@ -130,6 +130,7 @@ class TestSimpleNetForSemiAutoParallel:
         opt = paddle.optimizer.SGD(
             learning_rate=0.1, parameters=layer.parameters()
         )
+        opt = dist.shard_optimizer(opt)
         for _ in range(5):
             image, label = self.init_input_data()
             if shard_input:

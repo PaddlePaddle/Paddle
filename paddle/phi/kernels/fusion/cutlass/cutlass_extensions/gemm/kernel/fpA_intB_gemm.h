@@ -69,10 +69,10 @@ struct GemmFpAIntB {
   using ElementA = typename Mma::IteratorA::Element;
   using LayoutA = typename Mma::IteratorA::Layout;
   using ElementB = typename Mma::IteratorB::Element;
-  using LayoutB = typename Mma::IteratorB::Element;
+  using LayoutB = typename Mma::IteratorB::Layout;
   using ElementC = typename Epilogue::OutputTileIterator::Element;
   using LayoutC = typename Mma::LayoutC;
-  using ElementScale = float;
+  using ElementScale = typename Mma::IteratorA::Element;
 
   static ComplexTransform const kTransformA = Mma::kTransformA;
   static ComplexTransform const kTransformB = Mma::kTransformA;
@@ -505,10 +505,9 @@ struct GemmFpAIntB {
     KernelRunner<compile_needed>::run_kernel(params, shared_storage);
 
 #elif defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 750) && (__CUDA_ARCH__ < 800)
-    // static constexpr bool compile_needed = platform::is_same<KernelArch,
-    // arch::Sm75>::value; KernelRunner<compile_needed>::run_kernel(params,
-    // shared_storage);
-    CUTLASS_NOT_IMPLEMENTED();
+    static constexpr bool compile_needed =
+        platform::is_same<KernelArch, arch::Sm75>::value;
+    KernelRunner<compile_needed>::run_kernel(params, shared_storage);
 #elif defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800) && (__CUDA_ARCH__ < 900)
     static constexpr bool compile_needed =
         platform::is_same<KernelArch, arch::Sm80>::value;

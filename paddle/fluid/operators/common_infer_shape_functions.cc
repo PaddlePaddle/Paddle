@@ -102,7 +102,7 @@ framework::DDim BroadcastTwoDims(const framework::DDim &x_dims,
                          out_dims_array.data(),
                          max_dim,
                          axis);
-  return phi::make_ddim(out_dims_array);
+  return common::make_ddim(out_dims_array);
 }
 
 }  // namespace details

@@ -13,27 +13,26 @@
 # limitations under the License.
 
 # TODO: define distributed api under this directory,
+from . import metrics  # noqa: F401
+from .base.distributed_strategy import DistributedStrategy
 from .base.role_maker import (
+    PaddleCloudRoleMaker,
     Role,
     UserDefinedRoleMaker,
-    PaddleCloudRoleMaker,
 )
-from .base.distributed_strategy import DistributedStrategy
+from .base.topology import CommunicateTopology, HybridCommunicateGroup
 from .base.util_factory import UtilBase
-from .dataset import (  # noqa: F401
-    DatasetBase,
-    InMemoryDataset,
-    QueueDataset,
-    FileInstantDataset,
-    BoxPSDataset,
-)
-from .data_generator.data_generator import MultiSlotDataGenerator
 from .data_generator.data_generator import (
+    MultiSlotDataGenerator,
     MultiSlotStringDataGenerator,
 )
-from . import metrics  # noqa: F401
-from .base.topology import CommunicateTopology
-from .base.topology import HybridCommunicateGroup
+from .dataset import (  # noqa: F401
+    BoxPSDataset,
+    DatasetBase,
+    FileInstantDataset,
+    InMemoryDataset,
+    QueueDataset,
+)
 from .fleet import Fleet
 from .model import distributed_model
 from .optimizer import distributed_optimizer
@@ -84,6 +83,7 @@ server_endpoints = fleet.server_endpoints
 is_server = fleet.is_server
 util = UtilBase()
 barrier_worker = fleet.barrier_worker
+all_reduce = fleet.all_reduce
 init_worker = fleet.init_worker
 init_server = fleet.init_server
 run_server = fleet.run_server

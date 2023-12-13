@@ -51,17 +51,17 @@ TEST(if_op_test, base) {
   auto if_op = builder.Build<paddle::dialect::IfOp>(
       full_op.out(), std::vector<pir::Type>{builder.bool_type()});
 
-  pir::Block* true_block = if_op.true_block();
+  auto& true_block = if_op.true_block();
 
-  builder.SetInsertionPointToStart(true_block);
+  builder.SetInsertionPointToStart(&true_block);
 
   auto full_op_1 = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{2}, true, phi::DataType::BOOL);
   builder.Build<pir::YieldOp>(std::vector<pir::Value>{full_op_1.out()});
 
-  pir::Block* false_block = if_op.false_block();
+  auto& false_block = if_op.false_block();
 
-  builder.SetInsertionPointToStart(false_block);
+  builder.SetInsertionPointToStart(&false_block);
 
   auto full_op_2 = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{3}, true, phi::DataType::BOOL);
@@ -94,7 +94,7 @@ TEST(if_op_test, build_by_block) {
       std::vector<int64_t>{2}, true, phi::DataType::BOOL);
   builder.Build<pir::YieldOp>(std::vector<pir::Value>{full_op_2.out()});
 
-  builder.SetInsertionPointToEnd(block);
+  builder.SetInsertionPointToBlockEnd(block);
 
   auto if_op = builder.Build<paddle::dialect::IfOp>(
       full_op.out(), std::move(true_block), std::move(false_block));
@@ -110,8 +110,8 @@ TEST(if_op_test, build_by_block) {
     vec.push_back(&block);
   }
   EXPECT_EQ(vec.size(), 2u);
-  EXPECT_EQ(vec[0], if_op.true_block());
-  EXPECT_EQ(vec[1], if_op.false_block());
+  EXPECT_EQ(vec[0], &if_op.true_block());
+  EXPECT_EQ(vec[1], &if_op.false_block());
 }
 
 TEST(if_op_test, network_with_backward) {
@@ -133,7 +133,7 @@ TEST(if_op_test, network_with_backward) {
 
   auto if_op = builder.Build<IfOp>(cond, std::vector<pir::Type>{x.type()});
 
-  builder.SetInsertionPointToStart(if_op.true_block());
+  builder.SetInsertionPointToStart(&if_op.true_block());
 
   auto local1_z = builder.Build<AddOp>(x, y).out();
   auto local1_w = builder.Build<AddOp>(local1_z, y).out();
@@ -142,14 +142,14 @@ TEST(if_op_test, network_with_backward) {
 
   builder.Build<pir::YieldOp>(std::vector<pir::Value>{local1_w});
 
-  builder.SetInsertionPointToStart(if_op.false_block());
+  builder.SetInsertionPointToStart(&if_op.false_block());
   auto local2_z = builder.Build<MatmulOp>(x, y).out();
   auto local2_w = builder.Build<MatmulOp>(local2_z, y).out();
   builder.Build<pir::TuplePushOp>(inlet_1,
                                   std::initializer_list<pir::Value>{local2_z});
   builder.Build<pir::YieldOp>(std::vector<pir::Value>{local2_w});
 
-  builder.SetInsertionPointToEnd(block);
+  builder.SetInsertionPointToBlockEnd(block);
 
   // build backward network
   auto out_grad = builder.Build<FullOp>(std::vector<int64_t>{2, 2}, 1.0f).out();
@@ -158,7 +158,7 @@ TEST(if_op_test, network_with_backward) {
       builder.Build<IfOp>(cond, std::vector<pir::Type>{x.type(), y.type()});
 
   // construct the true block of if_grad
-  builder.SetInsertionPointToStart(if_grad.true_block());
+  builder.SetInsertionPointToStart(&if_grad.true_block());
 
   auto pop_local1_z =
       builder.Build<pir::TuplePopOp>(outlet_0).outlet_element(0);
@@ -170,11 +170,21 @@ TEST(if_op_test, network_with_backward) {
        local1_y_grad_1 = local1_add_grad_op_1.y_grad();
   auto local1_y_grad =
       builder.Build<AddOp>(local1_y_grad_0, local1_y_grad_1).out();
+
+  std::string x_grad = "x_grad";
+  builder.Build<pir::ShadowOutputOp>(local1_x_grad, x_grad);
+
+  std::string y_grad = "y_grad";
+  builder.Build<pir::ShadowOutputOp>(local1_y_grad, y_grad);
+
+  std::string z_grad = "z_grad";
+  builder.Build<pir::ShadowOutputOp>(pop_local1_z_grad, z_grad);
+
   builder.Build<pir::YieldOp>(
       std::vector<pir::Value>{local1_x_grad, local1_y_grad});
 
   // construct the false block of if_grad
-  builder.SetInsertionPointToStart(if_grad.false_block());
+  builder.SetInsertionPointToStart(&if_grad.false_block());
   auto pop_local2_z =
       builder.Build<pir::TuplePopOp>(outlet_1).outlet_element(0);
   auto local2_matmul_grad_op =
@@ -191,15 +201,30 @@ TEST(if_op_test, network_with_backward) {
   builder.Build<pir::YieldOp>(
       std::vector<pir::Value>{local2_x_grad, local2_y_grad});
 
+  builder.SetInsertionPointToBlockEnd(block);
+
   LOG(INFO) << program;
 
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 
   auto place = paddle::platform::CPUPlace();
+#if defined(PADDLE_WITH_CUDA)
+  place = paddle::platform::CUDAPlace();
+#endif
   paddle::framework::Scope scope;
 
   paddle::framework::InterpreterCore test_core(
       place, {}, kernel_program->block(), &scope);
 
+  test_core.SetSkipGcVars({x_grad, y_grad, z_grad});
+
   test_core.Run({});
+
+  auto x_grad_tensor = test_core.DebugVar(x_grad)->Get<phi::DenseTensor>();
+  auto y_grad_tensor = test_core.DebugVar(y_grad)->Get<phi::DenseTensor>();
+  auto z_grad_tensor = test_core.DebugVar(z_grad)->Get<phi::DenseTensor>();
+
+  EXPECT_EQ(x_grad_tensor.data<float>()[0], 1.0);
+  EXPECT_EQ(y_grad_tensor.data<float>()[0], 2.0);
+  EXPECT_EQ(z_grad_tensor.data<float>()[0], 1.0);
 }

@@ -46,13 +46,13 @@ void FCKernel(const Context& dev_ctx,
   std::vector<int64_t> output_dims;
   phi::funcs::FCOutputSize(
       input.dims(), w_dims, output_dims, in_num_col_dims, padding_weights);
-  out->Resize(phi::make_ddim(output_dims));
+  out->Resize(common::make_ddim(output_dims));
   out->set_lod(input.lod());
 
   auto out_dims = out->dims();
   auto w_dims0 = padding_weights ? w_dims[0] - 4 : w_dims[0];
   auto w_dims1 = padding_weights ? w_dims[1] - 4 : w_dims[1];
-  int M = phi::product(out_dims) / w_dims1;
+  int M = common::product(out_dims) / w_dims1;
 
   const T* input_data = input.data<T>();
   const T* w_data = w.data<T>();
