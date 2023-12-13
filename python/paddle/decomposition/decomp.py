@@ -196,7 +196,7 @@ def decompose(
     whitelist=frozenset(),
 ):
     blacklist = core.prim_config["forward_blacklist"] | blacklist
-    return core.decomp_tmp(program, src_vars, blacklist, whitelist)
+    return core.decomp_sink(program, src_vars, blacklist, whitelist)
 
 
 def decompose_(
@@ -226,6 +226,9 @@ def decompose_(
     Returns:
         dst_vars (list): A list contains all vars which replace origin ones in src_vars.
     """
+    if core._enable_sink_decomp():
+        blacklist = core.prim_config["forward_blacklist"] | blacklist
+        return core.sinking_decomp(program, src_vars, blacklist, whitelist)
     if not core._is_fwd_prim_enabled():
         return src_vars
     if not isinstance(program, Program):

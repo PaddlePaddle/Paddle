@@ -47,8 +47,6 @@ class TestPrimMode(unittest.TestCase):
             y.stop_gradient = False
             divide_out = paddle.divide(x, y)
             sum_out = paddle.mean(divide_out, axis=0)
-            blacklist = set("")
-            whitelist = {"pd_op.mean"}
             [new_out] = decomp.decompose(main_program, [sum_out])
             # breakpoint()
             gradients = grad(new_out, (x, y))
@@ -98,6 +96,27 @@ class TestPrimMode(unittest.TestCase):
     def test_prim_all(self):
         res_ref = self.base_net()
         res = self.base_net("all")
+        for ref, actual in zip(res_ref, res):
+            np.testing.assert_allclose(ref, actual, rtol=1e-6)
+
+    def test_prim_forward_sink(self):
+        res_ref = self.base_net()
+        with decomp.sink_decomp_guard():
+            res = self.base_net("forward")
+        for ref, actual in zip(res_ref, res):
+            np.testing.assert_equal(ref, actual)
+
+    def test_prim_backward_sink(self):
+        res_ref = self.base_net()
+        with decomp.sink_decomp_guard():
+            res = self.base_net("backward")
+        for ref, actual in zip(res_ref, res):
+            np.testing.assert_allclose(ref, actual, rtol=1e-6)
+
+    def test_prim_all_sink(self):
+        res_ref = self.base_net()
+        with decomp.sink_decomp_guard():
+            res = self.base_net("all")
         for ref, actual in zip(res_ref, res):
             np.testing.assert_allclose(ref, actual, rtol=1e-6)
 
