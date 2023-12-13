@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #pragma once
 #include <initializer_list>
 #include <numeric>
@@ -19,6 +20,7 @@
 #include <vector>
 
 #include "paddle/common/dim.h"
+#include "paddle/common/enforce.h"
 #include "paddle/common/exception.h"
 #include "paddle/utils/test_macros.h"
 
@@ -68,25 +70,20 @@ class TEST_API DDim {
  public:
   constexpr static int kMaxRank = 9;
 
-  DDim() : rank_(-1) { dim_[0] = 0; }
+  DDim();
 
-  DDim(const DDim& ddim) : dim_() { CopyFrom(ddim); }
+  DDim(const DDim& ddim);
 
-  DDim(const int* d, int n) : rank_(n) {
-    dynamic_dim_assign(d, dim_.GetMutable(), n);
-  }
+  DDim(const int* d, int n);
 
-  DDim(const int64_t* d, int n) : rank_(n) {
-    dynamic_dim_assign(d, dim_.GetMutable(), n);
-  }
+  DDim(const int64_t* d, int n);
+
+  /*implicit*/ DDim(std::initializer_list<int64_t> init_list);
 
   template <int D>
   /*implicit*/ DDim(const Dim<D>& in) : rank_(D) {  // NOLINT
     UnsafeCast<D>() = in;
   }
-
-  /*implicit*/ DDim(std::initializer_list<int64_t> init_list)
-      : DDim(init_list.begin(), init_list.size()) {}
 
   inline DDim& operator=(const DDim& ddim) { return CopyFrom(ddim); }
 
@@ -101,41 +98,9 @@ class TEST_API DDim {
 
   inline int64_t operator[](int idx) const { return dim_[idx]; }
 
-  int64_t& at(int idx) {
-    COMMON_ENFORCE_GE(idx,
-                      0,
-                      common::errors::InvalidArgument(
-                          "Invalid DDim index to be accessed. The valid index "
-                          "is between 0 and %d, but received index is %d.",
-                          rank_,
-                          idx));
-    COMMON_ENFORCE_LT(idx,
-                      rank_,
-                      common::errors::InvalidArgument(
-                          "Invalid DDim index to be accessed. The valid index "
-                          "is between 0 and %d, but received index is %d.",
-                          rank_,
-                          idx));
-    return dim_[idx];
-  }
+  int64_t& at(int idx);
 
-  int64_t at(int idx) const {
-    COMMON_ENFORCE_GE(idx,
-                      0,
-                      common::errors::InvalidArgument(
-                          "Invalid DDim index to be accessed. The valid index "
-                          "is between 0 and %d, but received index is %d.",
-                          rank_,
-                          idx));
-    COMMON_ENFORCE_LT(idx,
-                      rank_,
-                      common::errors::InvalidArgument(
-                          "Invalid DDim index to be accessed. The valid index "
-                          "is between 0 and %d, but received index is %d.",
-                          rank_,
-                          idx));
-    return dim_[idx];
-  }
+  int64_t at(int idx) const;
 
   template <typename Visitor>
   typename std::result_of<Visitor(Dim<0>&)>::type apply_visitor(
@@ -188,8 +153,8 @@ class TEST_API DDim {
     PADDLE_VISIT_DDIM(ddim.rank_, (*this = ddim.UnsafeCast<kRank>()));
   }
 
-  friend DDim stride(const DDim& ddim);
-  friend DDim stride_numel(const DDim& ddim);
+  friend TEST_API DDim stride(const DDim& ddim);
+  friend TEST_API DDim stride_numel(const DDim& ddim);
 
  private:
   Dim<kMaxRank> dim_;
@@ -229,7 +194,7 @@ std::vector<T> vectorize(const DDim& ddim) {
 
 TEST_API int64_t product(const DDim& ddim);
 
-bool contain_unknown_dim(const DDim& ddim);
+TEST_API bool contain_unknown_dim(const DDim& ddim);
 
 /**
  * \brief Slice a ddim
@@ -238,7 +203,7 @@ bool contain_unknown_dim(const DDim& ddim);
  * e.g.  DDim d = make_ddim({1,2,3,4,5});
  *       slice_ddim(d, 1, 3); ====> {2,3}
  */
-DDim slice_ddim(const DDim& dim, int begin, int end);
+TEST_API DDim slice_ddim(const DDim& dim, int begin, int end);
 
 /**
  * \brief What is the length of this dimension?
@@ -246,7 +211,7 @@ DDim slice_ddim(const DDim& dim, int begin, int end);
  * \param Dynamic dimension to inspect
  */
 
-int arity(const DDim& ddim);
+TEST_API int arity(const DDim& ddim);
 
 TEST_API std::ostream& operator<<(std::ostream&, const DDim&);
 
@@ -255,22 +220,29 @@ TEST_API std::ostream& operator<<(std::ostream&, const DDim&);
  * e.g., DDim d = mak_ddim({1, 2, 3, 4, 5, 6})
  *       flatten_to_3d(d, 2, 4); ===> {1*2, 3*4, 5*6} ===> {2, 12, 30}
  */
-DDim flatten_to_3d(const DDim& src, int num_row_dims, int num_col_dims);
+TEST_API DDim flatten_to_3d(const DDim& src,
+                            int num_row_dims,
+                            int num_col_dims);
 
 // Reshape a tensor to a matrix. The matrix's first dimension(column length)
 // will be the product of tensor's first `num_col_dims` dimensions.
-DDim flatten_to_2d(const DDim& src, int num_col_dims);
+TEST_API DDim flatten_to_2d(const DDim& src, int num_col_dims);
 
-DDim flatten_to_1d(const DDim& src);
+TEST_API DDim flatten_to_1d(const DDim& src);
 
-DDim stride(const DDim& ddim);
+TEST_API DDim stride(const DDim& ddim);
 
-DDim stride_numel(const DDim& ddim);
+TEST_API DDim stride_numel(const DDim& ddim);
 }  // namespace common
+
+namespace pir {
+using DDim = common::DDim;
+using LoD = std::vector<std::vector<size_t>>;
+}  // namespace pir
 
 namespace std {
 template <>
-struct hash<common::DDim> {
+struct TEST_API hash<common::DDim> {
   std::size_t operator()(common::DDim const& ddim) const;
 };
 }  // namespace std

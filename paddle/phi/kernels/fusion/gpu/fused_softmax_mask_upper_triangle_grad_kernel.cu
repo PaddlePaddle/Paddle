@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/common/errors.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/kernel_registry.h"
 

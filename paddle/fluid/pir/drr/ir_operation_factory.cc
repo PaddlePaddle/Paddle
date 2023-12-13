@@ -57,6 +57,17 @@ void OperationFactory::RegisterManualOpCreator() {
                               pir::PatternRewriter& rewriter) {
                              return rewriter.Build<pir::CombineOp>(inputs);
                            });
+  RegisterOperationCreator(
+      "pd_op.scale",
+      [](const std::vector<Value>& inputs,
+         const pir::AttributeMap& attrs,
+         pir::PatternRewriter& rewriter) {
+        return rewriter.Build<paddle::dialect::ScaleOp>(
+            inputs[0].dyn_cast<pir::OpResult>(),
+            inputs[1].dyn_cast<pir::OpResult>(),
+            attrs.at("bias").dyn_cast<pir::FloatAttribute>().data(),
+            attrs.at("bias_after_scale").dyn_cast<pir::BoolAttribute>().data());
+      });
 }
 
 static pir::Attribute CreateIrAttribute(const std::any& obj) {
@@ -83,6 +94,9 @@ static pir::Attribute CreateIrAttribute(const std::any& obj) {
   } else if (obj.type() == typeid(std::vector<int64_t>)) {
     return IrAttrbuteCreator<std::vector<int64_t>>()(
         std::any_cast<std::vector<int64_t>>(obj));
+  } else if (obj.type() == typeid(std::vector<float>)) {
+    return IrAttrbuteCreator<std::vector<float>>()(
+        std::any_cast<std::vector<float>>(obj));
   } else if (obj.type() == typeid(phi::IntArray)) {
     return IrAttrbuteCreator<phi::IntArray>()(
         std::any_cast<phi::IntArray>(obj));

@@ -15,8 +15,10 @@
 import unittest
 
 import numpy as np
+from utils import static_guard
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 
 def np_sgn(x: np.ndarray):
@@ -31,7 +33,7 @@ def np_sgn(x: np.ndarray):
 
 
 class TestSgnError(unittest.TestCase):
-    def test_errors(self):
+    def test_errors_dynamic(self):
         # The input dtype of sgn must be float16, float32, float64,complex64,complex128.
         input2 = paddle.to_tensor(
             np.random.randint(-10, 10, size=[12, 20]).astype('int32')
@@ -43,33 +45,28 @@ class TestSgnError(unittest.TestCase):
         self.assertRaises(TypeError, paddle.sgn, input2)
         self.assertRaises(TypeError, paddle.sgn, input3)
 
+    @test_with_pir_api
+    def test_errors_static_and_pir(self):
+        paddle.enable_static()
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
 
-class TestSignAPI(unittest.TestCase):
-    def setUp(self) -> None:
-        self.support_dtypes = [
-            'float16',
-            'float32',
-            'float64',
-            'complex64',
-            'complex128',
-        ]
-        if paddle.device.get_device() == 'cpu':
-            self.support_dtypes = [
-                'float32',
-                'float64',
-                'complex64',
-                'complex128',
-            ]
-
-    def test_dtype(self):
-        for dtype in self.support_dtypes:
-            x = paddle.to_tensor(
-                np.random.randint(-10, 10, size=[12, 20, 2]).astype(dtype)
+        with paddle.static.program_guard(main_program, startup_program):
+            # The input dtype of sgn must be float16, float32, float64,complex64,complex128.
+            input2 = paddle.to_tensor(
+                np.random.randint(-10, 10, size=[12, 20]).astype('int32')
+            )
+            input3 = paddle.to_tensor(
+                np.random.randint(-10, 10, size=[12, 20]).astype('int64')
             )
 
-            paddle.sgn(x)
+            self.assertRaises(TypeError, paddle.sgn, input2)
+            self.assertRaises(TypeError, paddle.sgn, input3)
+        paddle.disable_static()
 
-    def test_complex(self):
+
+class TestSignAPI(unittest.TestCase):
+    def test_complex_dynamic(self):
         for dtype in ['complex64', 'complex128']:
             np_x = np.array(
                 [[3 + 4j, 7 - 24j, 0, 1 + 2j], [6 + 8j, 3, 0, -2]], dtype=dtype
@@ -80,14 +77,75 @@ class TestSignAPI(unittest.TestCase):
             z_expected = np_sgn(np_x)
             np.testing.assert_allclose(np_z, z_expected, rtol=1e-05)
 
-    def test_float(self):
-        for dtype in self.support_dtypes:
+    @test_with_pir_api
+    def test_complex_static_and_pir(self):
+        with static_guard():
+            for dtype in ['complex64', 'complex128']:
+                exe = paddle.static.Executor()
+
+                train_program = paddle.static.Program()
+                startup_program = paddle.static.Program()
+                with paddle.static.program_guard(
+                    train_program, startup_program
+                ):
+                    x = paddle.static.data(name='X', shape=[2, 4], dtype=dtype)
+                    z = paddle.sgn(x)
+
+                # Run the startup program once and only once.
+                # Not need to optimize/compile the startup program.
+                exe.run(startup_program)
+
+                # Run the main program directly without compile.
+                x = np.array(
+                    [[3 + 4j, 7 - 24j, 0, 1 + 2j], [6 + 8j, 3, 0, -2]],
+                    dtype=dtype,
+                )
+                (z,) = exe.run(train_program, feed={"X": x}, fetch_list=[z])
+                z_expected = np_sgn(x)
+                np.testing.assert_allclose(z, z_expected, rtol=1e-05)
+
+    def test_float_dynamic(self):
+        dtype_list = ['float32', 'float64']
+        if paddle.is_compiled_with_cuda():
+            dtype_list.append('float16')
+        for dtype in dtype_list:
             np_x = np.random.randint(-10, 10, size=[12, 20, 2]).astype(dtype)
             x = paddle.to_tensor(np_x)
             z = paddle.sgn(x)
             np_z = z.numpy()
             z_expected = np_sgn(np_x)
             np.testing.assert_allclose(np_z, z_expected, rtol=1e-05)
+
+    @test_with_pir_api
+    def test_float_static_and_pir(self):
+        dtype_list = ['float32', 'float64']
+        if paddle.is_compiled_with_cuda():
+            dtype_list.append('float16')
+        with static_guard():
+            for dtype in dtype_list:
+                exe = paddle.static.Executor()
+
+                train_program = paddle.static.Program()
+                startup_program = paddle.static.Program()
+                with paddle.static.program_guard(
+                    train_program, startup_program
+                ):
+                    np_x = np.random.randint(-10, 10, size=[12, 20, 2]).astype(
+                        dtype
+                    )
+                    x = paddle.static.data(
+                        name='X', shape=[12, 20, 2], dtype=dtype
+                    )
+                    z = paddle.sgn(x)
+
+                # Run the startup program once and only once.
+                # Not need to optimize/compile the startup program.
+                exe.run(startup_program)
+
+                # Run the main program directly without compile.
+                (z,) = exe.run(train_program, feed={"X": np_x}, fetch_list=[z])
+                z_expected = np_sgn(np_x)
+                np.testing.assert_allclose(z, z_expected, rtol=1e-05)
 
 
 if __name__ == "__main__":

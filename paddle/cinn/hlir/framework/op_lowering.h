@@ -30,7 +30,7 @@ namespace cinn {
 namespace hlir {
 namespace framework {
 
-using common::Target;
+using cinn::common::Target;
 using GroupPtr = std::shared_ptr<hlir::framework::Graph::Group>;
 
 template <typename T>
@@ -54,6 +54,10 @@ class OpLowerer {
       bool apply_pass = true) {
     return impl_->BucketLower(
         group, apply_op_schedule, apply_group_schedule, apply_pass);
+  }
+
+  void InsertNameGeneToScope(std::shared_ptr<Scope> scope) {
+    return impl_->InsertNameGeneToScope(scope);
   }
 
  private:

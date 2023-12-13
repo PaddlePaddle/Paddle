@@ -91,6 +91,8 @@ list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_grad_op)
 list(REMOVE_ITEM TEST_OPS test_fuse_gemm_epilogue_pass)
+list(REMOVE_ITEM TEST_OPS test_fused_dot_product_attention_op)
+list(REMOVE_ITEM TEST_OPS test_fuse_dot_product_attention_pass)
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_c_comm_init_all_op)
@@ -186,7 +188,7 @@ if(NOT WITH_GLOO)
 endif()
 
 if((NOT WITH_GPU) AND (NOT WITH_ROCM))
-  list(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
+  list(REMOVE_ITEM TEST_OPS test_fused_conv2d_add_act_op)
   list(REMOVE_ITEM TEST_OPS test_rank_attention_op)
   # TODO(shenliang03): rank_attention_op support CPU device in future
   list(REMOVE_ITEM TEST_OPS test_batch_fc_op)
@@ -209,7 +211,7 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
 
 elseif(WITH_GPU)
   if(${CUDNN_VERSION} VERSION_LESS 7100)
-    list(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
+    list(REMOVE_ITEM TEST_OPS test_fused_conv2d_add_act_op)
   endif()
 endif()
 
@@ -507,6 +509,7 @@ endif()
 if(NOT WITH_CUDNN_FRONTEND)
   list(REMOVE_ITEM TEST_OPS test_fused_scale_bias_relu_conv_bn_op)
   list(REMOVE_ITEM TEST_OPS test_fused_scale_bias_add_relu_op)
+  list(REMOVE_ITEM TEST_OPS test_fused_dconv_drelu_dbn_op)
 endif()
 
 # Some ops need to check results when gc is enabled
@@ -549,6 +552,13 @@ if((NOT WITH_GPU)
 endif()
 
 list(REMOVE_ITEM TEST_OPS "test_stride")
+if(WITH_COVERAGE)
+  list(REMOVE_ITEM TEST_OPS test_weight_decay)
+  list(REMOVE_ITEM TEST_OPS test_graph_reindex)
+  list(REMOVE_ITEM TEST_OPS test_cuda_graphed_layer)
+  list(REMOVE_ITEM TEST_OPS test_cuda_graph_partial_graph_static_run)
+  list(REMOVE_ITEM DIST_TEST_OPS test_dist_fleet_geo)
+endif()
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach()
@@ -609,6 +619,13 @@ if((WITH_GPU) AND (CUDA_VERSION GREATER_EQUAL 11.6))
     FLAGS_cublaslt_exhaustive_search_times=30)
   py_test_modules(test_fuse_gemm_epilogue_pass MODULES
                   test_fuse_gemm_epilogue_pass)
+endif()
+
+if((WITH_GPU) AND (WITH_CUDNN_FRONTEND))
+  py_test_modules(test_fuse_dot_product_attention_pass MODULES
+                  test_fuse_dot_product_attention_pass)
+  py_test_modules(test_fused_dot_product_attention_op MODULES
+                  test_fused_dot_product_attention_op)
 endif()
 
 set_tests_properties(test_conv2d_op PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
@@ -1015,7 +1032,9 @@ set_tests_properties(test_deformable_conv_v1_op PROPERTIES TIMEOUT 300)
 set_tests_properties(test_parallel_executor_transformer_auto_growth
                      PROPERTIES TIMEOUT 120)
 set_tests_properties(test_elementwise_add_op PROPERTIES TIMEOUT 200)
-set_tests_properties(test_weight_decay PROPERTIES TIMEOUT 120)
+if(NOT WITH_COVERAGE)
+  set_tests_properties(test_weight_decay PROPERTIES TIMEOUT 120)
+endif()
 set_tests_properties(test_imperative_ptb_rnn_sorted_gradient PROPERTIES TIMEOUT
                                                                         120)
 set_tests_properties(test_paddlescience PROPERTIES TIMEOUT 120)

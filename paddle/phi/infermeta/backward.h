@@ -494,4 +494,5 @@ void SetValueGradInferMeta(const MetaTensor& out_grad,
                            const MetaTensor& values,
                            MetaTensor* x_grad,
                            MetaTensor* value_grad);
+
 }  // namespace phi

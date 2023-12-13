@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/pir/core/op_result.h"
-#include "paddle/pir/core/enforce.h"
+#include "paddle/common/enforce.h"
+#include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/op_result_impl.h"
 
 #define CHECK_OPRESULT_NULL_IMPL(func_name) \
@@ -44,6 +45,14 @@ OpResult OpResult::dyn_cast_from(Value value) {
 
 bool OpResult::operator==(const OpResult &other) const {
   return impl_ == other.impl_;
+}
+
+Attribute OpResult::attribute(const std::string &key) const {
+  return impl_ ? IMPL_->attribute(key) : nullptr;
+}
+void OpResult::set_attribute(const std::string &key, Attribute value) {
+  CHECK_OPRESULT_NULL_IMPL(set_attribute);
+  return IMPL_->set_attribute(key, value);
 }
 
 OpResult::OpResult(detail::OpResultImpl *impl) : Value(impl) {}

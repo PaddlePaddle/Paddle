@@ -40,7 +40,7 @@ void ModeGradKernel(const Context& dev_ctx,
 
   // For 0D Tensor
   if (in_dims.size() == 0) {
-    phi::funcs::set_constant(dev_ctx, x_grad, 1.0);
+    phi::funcs::set_constant(dev_ctx, x_grad, static_cast<T>(1.0));
     return;
   }
 
@@ -53,14 +53,14 @@ void ModeGradKernel(const Context& dev_ctx,
     for (int i = axis + 1; i < in_dims.size(); i++) {
       tmp_out_shape.emplace_back(out_dims[i - 1]);
     }
-    out_dims = phi::make_ddim(tmp_out_shape);
+    out_dims = common::make_ddim(tmp_out_shape);
   }
 
   if (axis == in_dims.size() - 1) {
     // allocate the memory for the input_grad
     // assign the out_grad to input_grad directly
     const int64_t input_height =
-        phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
+        common::product(common::slice_ddim(in_dims, 0, in_dims.size() - 1));
     const int64_t input_width = in_dims[in_dims.size() - 1];
 
     // init the output grad with 0, because some input elements has no grad
@@ -143,8 +143,8 @@ void ModeGradKernel(const Context& dev_ctx,
       funcs::TransCompute<CPUContext, int64_t>(
           ndims, dev_ctx, indices_tmp, &trans_ind, trans_axis);
     }
-    const int64_t input_height = phi::product(
-        phi::slice_ddim(trans_in_shape, 0, trans_in_shape.size() - 1));
+    const int64_t input_height = common::product(
+        common::slice_ddim(trans_in_shape, 0, trans_in_shape.size() - 1));
     const int64_t input_width = trans_in_shape[trans_in_shape.size() - 1];
 
     // Assign the out_grad to tranpose input_grad

@@ -38,12 +38,12 @@ from setuptools.dist import Distribution
 # check python
 python_version = platform.python_version()
 version_detail = sys.version_info
-version = str(version_detail[0]) + '.' + str(version_detail[1]) 
+version = str(version_detail[0]) + '.' + str(version_detail[1])
 env_version = str(os.getenv("PY_VERSION"))
 
-if version_detail < (3, 7):
+if version_detail < (3, 8):
     raise RuntimeError(
-        f"Paddle only supports Python version >= 3.7 now,"
+        f"Paddle only supports Python version >= 3.8 now,"
         f"you are using Python {python_version}"
     )
 elif env_version is None:
@@ -57,14 +57,12 @@ elif env_version != version:
         f"we will attempt to use the python version you set to execute."
     )
     cmd = 'which python' + env_version
-    res = subprocess.run(cmd, shell = True, stdout=subprocess.PIPE)
+    res = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE)
     if res.returncode == 0:
         os.environ["PYTHON_EXECUTABLE"] = res
     else:
-        raise RuntimeError(
-            "We can't find the version you set in your machine"
-        )
-        
+        raise RuntimeError("We can't find the version you set in your machine")
+
 
 # check cmake
 CMAKE = shutil.which('cmake3') or shutil.which('cmake')
@@ -875,7 +873,7 @@ def get_setup_requires():
         setup_requires = (
             f.read().splitlines()
         )  # Specify the dependencies to install
-    if sys.version_info >= (3, 7):
+    if sys.version_info >= (3, 8):
         setup_requires_tmp = []
         for setup_requires_i in setup_requires:
             if (
@@ -884,6 +882,8 @@ def get_setup_requires():
                 or "<\"3.5\"" in setup_requires_i
                 or "<=\"3.5\"" in setup_requires_i
                 or "<\"3.7\"" in setup_requires_i
+                or "<=\"3.7\"" in setup_requires_i
+                or "<\"3.8\"" in setup_requires_i
             ):
                 continue
             setup_requires_tmp += [setup_requires_i]
@@ -891,7 +891,7 @@ def get_setup_requires():
         return setup_requires
     else:
         raise RuntimeError(
-            "please check your python version,Paddle only support Python version>=3.7 now"
+            "please check your python version,Paddle only support Python version>=3.8 now"
         )
 
 
@@ -1181,7 +1181,7 @@ def get_package_data_and_package_dir():
                     + '.so'
                 )
                 commands.append(
-                    "install_name_tool -add_rpath '@loader_path' "
+                    "install_name_tool -add_rpath '@loader_path/../libs/' "
                     + env_dict.get("PADDLE_BINARY_DIR")
                     + '/python/paddle/libs/'
                     + env_dict.get("COMMON_NAME")
@@ -1265,6 +1265,9 @@ def get_headers():
         )
         + list(  # phi api
             find_files('*.h', paddle_source_dir + '/paddle/phi/common')
+        )
+        + list(  # common api
+            find_files('*.h', paddle_source_dir + '/paddle/common')
         )
         # phi level api headers (low level api, for training only)
         + list(  # phi extension header
@@ -1380,6 +1383,7 @@ def get_setup_parameters():
         'paddle.dataset',
         'paddle.reader',
         'paddle.distributed',
+        'paddle.distributed.checkpoint',
         'paddle.distributed.communication',
         'paddle.distributed.communication.stream',
         'paddle.distributed.metric',
@@ -1395,6 +1399,7 @@ def get_setup_parameters():
         'paddle.incubate.nn',
         'paddle.incubate.asp',
         'paddle.incubate.passes',
+        'paddle.incubate.framework',
         'paddle.distribution',
         'paddle.distributed.utils',
         'paddle.distributed.sharding',
@@ -1780,10 +1785,11 @@ def main():
             'Intended Audience :: Science/Research',
             'License :: OSI Approved :: Apache Software License',
             'Programming Language :: C++',
-            'Programming Language :: Python :: 3.7',
             'Programming Language :: Python :: 3.8',
             'Programming Language :: Python :: 3.9',
             'Programming Language :: Python :: 3.10',
+            'Programming Language :: Python :: 3.11',
+            'Programming Language :: Python :: 3.12',
         ],
     )
 

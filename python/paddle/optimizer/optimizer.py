@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+import os
 from collections import defaultdict
 
 import numpy as np
@@ -41,6 +42,10 @@ from ..base.layer_helper import LayerHelper
 from .lr import LRScheduler
 
 __all__ = []
+
+g_shard_bypass_dygraph_optimizer = int(
+    os.environ.get("FLAGS_shard_bypass_dygraph_optimizer", 0)
+)
 
 
 @framework.static_only
@@ -277,6 +282,7 @@ class Optimizer:
         self._auxiliary_vars = {}
         self._already_create_accumulater = set()
 
+        self._master_weights = {}
         # create master gradients' states
         self._create_master_grad_states()
 
@@ -1473,6 +1479,10 @@ class Optimizer:
         Returns:
             list: A list of operators appended to the current program.
         """
+
+        if framework.in_dygraph_mode() and g_shard_bypass_dygraph_optimizer:
+            return
+
         if in_dynamic_or_pir_mode():
             with paddle.static.program_guard(
                 paddle.static.default_main_program(),

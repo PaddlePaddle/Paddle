@@ -16,8 +16,8 @@
 #include <memory>
 #include <stack>
 
+#include "paddle/common/macros.h"
 #include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/macros.h"
 #include "paddle/pir/core/parameter.h"
 #include "paddle/pir/core/program.h"
 
@@ -34,10 +34,6 @@ class ApiBuilder {
   }
   void SetProgram(pir::Program* program);
 
-  /// Set the insertion point to the specified operation, which will cause
-  /// subsequent insertions to go right before it.
-  void set_insertion_point(pir::Operation* op);
-
   void ResetInsertionPointToStart();
 
   void ResetInsertionPointToEnd();
@@ -49,15 +45,31 @@ class ApiBuilder {
 
   std::shared_ptr<pir::Builder> GetBuilder() { return builder_; }
 
-  const pir::InsertionPoint& insertion_point() const {
+  const pir::InsertionPoint& GetCurrentInsertionPoint() const {
     return builder_->insertion_point();
   }
 
-  void set_insertion_point(const pir::InsertionPoint& insertion_point) {
+  /// Set the insertion point to the specified insertion_point.
+  void SetInsertionPoint(const pir::InsertionPoint& insertion_point) {
     builder_->set_insertion_point(insertion_point);
   }
-  void PushInsertionPoint(const pir::InsertionPoint& insertion_point);
-  void PopInsertionPoint();
+
+  /// Set the insertion point to the specified operation, which will cause
+  /// subsequent insertions to go right before it.
+  void SetInsertionPoint(pir::Operation* op) {
+    builder_->set_insertion_point(op);
+  }
+  /// Set the insertion point to the end of specified block.
+  void SetInsertionPointToBlockEnd(pir::Block* block) {
+    builder_->SetInsertionPointToBlockEnd(block);
+  }
+
+  // push current insertion point to the stack.
+  void PushInsertionPoint() {
+    insertion_point_stack_.push(builder_->insertion_point());
+  }
+  // pop the insertion point and set it to the current insertion point.
+  void LoadInsertionPoint();
 
  private:
   ApiBuilder();
