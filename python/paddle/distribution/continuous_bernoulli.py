@@ -22,7 +22,7 @@ class ContinuousBernoulli(distribution.Distribution):
     r"""The Continuous Bernoulli distribution with parameter: `probability` characterizing the shape of the density function.
     The Continuous Bernoulli distribution is defined on [0, 1], and it can be viewed as a continuous version of the Bernoulli distribution.
 
-    [1] Loaiza-Ganem, G., & Cunningham, J. P. The continuous Bernoulli: fixing a pervasive error in variational autoencoders. 2019.
+    `The continuous Bernoulli: fixing a pervasive error in variational autoencoders. <https://arxiv.org/abs/1907.06845>`_
 
     Mathematical details
 
@@ -50,39 +50,52 @@ class ContinuousBernoulli(distribution.Distribution):
 
     Args:
         probability(int|float|Tensor): The probability of Continuous Bernoulli distribution between [0, 1],
-        which characterize the shape of the pdf. If the input data type is int or float, the data type of
-        `probability` will be convert to a 1-D Tensor the paddle global default dtype.
+            which characterize the shape of the pdf. If the input data type is int or float, the data type of
+            `probability` will be convert to a 1-D Tensor the paddle global default dtype.
         eps(float): Specify the bandwith of the unstable calculation region near 0.5. The unstable calculation region
-        would be [0.5 - eps, 0.5 + eps], where the calculation is approximated by talyor expansion. The
-        default value is 0.02.
+            would be [0.5 - eps, 0.5 + eps], where the calculation is approximated by talyor expansion. The
+            default value is 0.02.
 
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.distribution import ContinuousBernoulli
+            >>> import paddle
+            >>> from paddle.distribution import ContinuousBernoulli
+            >>> paddle.set_device("cpu")
+            >>> paddle.seed(100)
 
-            # init `probability` with `paddle.Tensor`
-            rv = ContinuousBernoulli(paddle.to_tensor([0.2, 0.5]))
+            >>> rv = ContinuousBernoulli(paddle.to_tensor([0.2, 0.5]))
 
-            print(rv.sample([2]))
-            # Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #        [[0.09428147, 0.81438422],
-            #        [0.24624705, 0.93354583]])
+            >>> print(rv.sample([2]))
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.38694882, 0.20714243],
+             [0.00631948, 0.51577556]])
 
-            print(rv.mean)
-            # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #        [0.38801414, 0.50000000])
+            >>> print(rv.mean)
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.38801414, 0.50000000])
 
-            print(rv.entropy())
-            # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #        [-0.07641461,  0.        ])
+            >>> print(rv.variance)
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.07589778, 0.08333334])
 
-            rv1 = ContinuousBernoulli(paddle.to_tensor([0.2, 0.8]))
-            rv2 = ContinuousBernoulli(paddle.to_tensor([0.7, 0.5]))
-            print(rv1.kl_divergence(rv2))
-            # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #        [0.20103613, 0.07641447])
+            >>> print(rv.entropy())
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.07641457,  0.        ])
+
+            >>> print(rv.cdf(paddle.to_tensor(0.1)))
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.17259926, 0.10000000])
+
+            >>> print(rv.icdf(paddle.to_tensor(0.1)))
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.05623737, 0.10000000])
+
+            >>> rv1 = ContinuousBernoulli(paddle.to_tensor([0.2, 0.8]))
+            >>> rv2 = ContinuousBernoulli(paddle.to_tensor([0.7, 0.5]))
+            >>> print(rv1.kl_divergence(rv2))
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.20103608, 0.07641447])
     """
 
     def __init__(self, probability, eps=0.02):
@@ -314,7 +327,7 @@ class ContinuousBernoulli(distribution.Distribution):
 
         In the above equation:
 
-        * :math:\Omega: is the support of the distribution.
+        * :math:`\Omega`: is the support of the distribution.
 
         Returns:
             Tensor, Shannon entropy of Continuous Bernoulli distribution.

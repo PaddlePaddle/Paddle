@@ -39,47 +39,50 @@ class MultivariateNormal(distribution.Distribution):
 
     Args:
         loc(int|float|Tensor): The mean of Multivariate Normal distribution. If the input data type is int or float, the data type of `loc` will be
-        convert to a 1-D Tensor the paddle global default dtype.
+            convert to a 1-D Tensor the paddle global default dtype.
         covariance_matrix(Tensor): The covariance matrix of Multivariate Normal distribution. The data type of `covariance_matrix` will be convert
-        to be the same as the type of loc.
+            to be the same as the type of loc.
         precision_matrix(Tensor): The inverse of the covariance matrix. The data type of `precision_matrix` will be convert to be the same as the
-        type of loc.
+            type of loc.
         scale_tril(Tensor): The cholesky decomposition (lower triangular matrix) of the covariance matrix. The data type of `scale_tril` will be
-        convert to be the same as the type of loc.
+            convert to be the same as the type of loc.
 
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.distribution import MultivariateNormal
+            >>> import paddle
+            >>> from paddle.distribution import MultivariateNormal
+            >>> paddle.set_device("cpu")
+            >>> paddle.seed(100)
 
-            # init `loc` and `covariance_matrix` with `paddle.Tensor`
-            rv = MultivariateNormal(loc=paddle.to_tensor([2.,5.]), covariance_matrix=paddle.to_tensor([[2.,1.],[1.,2.]]))
+            >>> rv = MultivariateNormal(loc=paddle.to_tensor([2.,5.]), covariance_matrix=paddle.to_tensor([[2.,1.],[1.,2.]]))
 
-            print(rv.sample([3, 2]))
-            # Tensor(shape=[3, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #        [[[0.68554986, 3.85142398],
-            #        [1.88336682, 5.43841648]],
-            #
-            #        [[5.32492065, 7.23725986],
-            #        [3.42192221, 4.83934879]],
-            #
-            #        [[3.36775684, 4.46108866],
-            #        [4.58927441, 4.32255936]]])
+            >>> print(rv.sample([3, 2]))
+            Tensor(shape=[3, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[2.36634731, 3.44818163],
+              [1.57115066, 4.79757214]],
+             [[0.91755736, 2.81447577],
+              [0.12842906, 4.38841820]],
+             [[1.60453653, 5.57910490],
+              [1.28331566, 2.50838280]]])
 
-            print(rv.mean)
-            # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #        [2., 5.])
+            >>> print(rv.mean)
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [2., 5.])
 
-            print(rv.entropy())
-            # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #        3.38718319)
+            >>> print(rv.variance)
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [1.99999988, 2.        ])
 
-            rv1 = MultivariateNormal(loc=paddle.to_tensor([2.,5.]), covariance_matrix=paddle.to_tensor([[2.,1.],[1.,2.]]))
-            rv2 = MultivariateNormal(loc=paddle.to_tensor([-1.,3.]), covariance_matrix=paddle.to_tensor([[3.,2.],[2.,3.]]))
-            print(rv1.kl_divergence(rv2))
-            # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #        1.55541301)
+            >>> print(rv.entropy())
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            3.38718319)
+
+            >>> rv1 = MultivariateNormal(loc=paddle.to_tensor([2.,5.]), covariance_matrix=paddle.to_tensor([[2.,1.],[1.,2.]]))
+            >>> rv2 = MultivariateNormal(loc=paddle.to_tensor([-1.,3.]), covariance_matrix=paddle.to_tensor([[3.,2.],[2.,3.]]))
+            >>> print(rv1.kl_divergence(rv2))
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            1.55541301)
     """
 
     def __init__(
