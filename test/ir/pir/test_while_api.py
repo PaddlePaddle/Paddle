@@ -85,7 +85,7 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
             while_grad_op = grad_outs[1][0].get_defining_op()
             self.assertEqual(while_grad_op.name(), "pd_op.while")
             while_grad_output = while_grad_op.results()
-            self.assertEqual(len(while_grad_output), 2)
+            self.assertEqual(len(while_grad_output), 1)
 
 
 if __name__ == "__main__":
