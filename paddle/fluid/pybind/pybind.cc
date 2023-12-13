@@ -186,6 +186,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_CINN
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
+#include "paddle/fluid/pybind/test.h"
 #endif
 
 #if defined(PADDLE_WITH_RPC)
@@ -3011,6 +3012,10 @@ All parameter, weight, gradient are variables in Paddle.
   GetWorkerInfoByRank(&m);
   GetCurrentWorkerInfo(&m);
   GetAllWorkerInfos(&m);
+#endif
+
+#if defined(PADDLE_WITH_CINN)
+  BindTest(&m);
 #endif
 
   BindPir(&m);
