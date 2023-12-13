@@ -2825,6 +2825,74 @@ struct SliceOpTranscriber : public OpTranscriber {
   }
 };
 
+struct LegacyMatmulOpTranscriber : public OpTranscriber {
+  pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
+                            const OpDesc& op_desc) override {
+    auto enforce_not_occur = [&](const std::string& attr_name,
+                                 float expected_value) -> void {
+      if (!op_desc.HasAttr(attr_name)) {
+        return;
+      }
+      float v = PADDLE_GET_CONST(float, op_desc.GetAttr(attr_name));
+      if (abs(v - expected_value) > 1e-6f) {
+        IR_THROW("Expected op[%s]'s attr %s is not %f",
+                 op_desc.Type(),
+                 attr_name,
+                 v);
+      }
+    };
+
+    enforce_not_occur("Scale_x", 1.0f);
+    enforce_not_occur("Scale_y", 1.0f);
+    enforce_not_occur("Scale_out", 1.0f);
+
+    std::string target_op_name = dialect::MatmulOp::name();
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW(
+          "Op read_from_array should have corresponding OpInfo "
+          "pd_op.read_array");
+    }
+
+    return op_info;
+  }
+
+  void RecordOpResultMapping(pir::IrContext* ctx,
+                             TranslationContext* param_map,
+                             const OpDesc& op_desc,
+                             pir::Operation* operation,
+                             const OpOutputMapping& arg_to_idx) override {
+    OpTranscriber::RecordOpResultMapping(
+        ctx, param_map, op_desc, operation, arg_to_idx);
+
+    float alpha = PADDLE_GET_CONST(float, op_desc.GetAttr("alpha"));
+    if (abs(alpha - 1.0f) < 1e-6f) {
+      return;
+    }
+
+    const auto& output_vars = op_desc.Output("Out");
+    IR_ENFORCE(output_vars.size() == 1,
+               "Expected op[%s]'s output `Out` has only 1 variable, but got %d",
+               op_desc.Type(),
+               output_vars.size());
+
+    auto idx_iter = arg_to_idx.find(output_vars[0]);
+    if (idx_iter == arg_to_idx.end()) {
+      IR_THROW("op[%s] should have got its `Out`", op_desc.Type());
+    }
+    auto [idx_in_op, idx_in_vec] = idx_iter->second;
+    VLOG(10) << "[output recording]"
+             << "[" << op_desc.Type() << "]" << output_vars[0] << " "
+             << idx_in_op << " " << idx_in_vec;
+
+    pir::Builder builder(ctx, operation->GetParent());
+    pir::OpResult value = operation->result(idx_in_op);
+    auto scale_op = builder.Build<dialect::ScaleOp>(value, alpha);
+    param_map->PushValue(output_vars[0],
+                         VariableDefiningInfo(scale_op.out(), false, -1));
+  }
+};
+
 struct CEmbeddingOpTranscriber : public OpTranscriber {
   void HandleNonexistentAttribute(pir::IrContext* ctx,
                                   pir::AttributeMap* attribute_map,
