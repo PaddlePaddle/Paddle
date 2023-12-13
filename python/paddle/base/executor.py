@@ -770,7 +770,7 @@ def _can_use_interpreter_core(program, place):
     return True
 
 
-@lru_cache()
+@lru_cache
 def _warning_once(msg):
     logging.warning(msg)
 

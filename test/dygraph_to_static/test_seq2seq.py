@@ -20,6 +20,7 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    enable_to_static_guard,
     test_legacy_only,
     test_sot_mgs0_only,
 )
@@ -207,14 +208,13 @@ class TestSeq2seq(Dy2StTestBase):
         self.temp_dir.cleanup()
 
     def run_dygraph(self, mode="train", attn_model=False):
-        paddle.jit.enable_to_static(False)
-        if mode == "train":
-            return train(self.args, attn_model)
-        else:
-            return infer(self.args, attn_model)
+        with enable_to_static_guard(False):
+            if mode == "train":
+                return train(self.args, attn_model)
+            else:
+                return infer(self.args, attn_model)
 
     def run_static(self, mode="train", attn_model=False):
-        paddle.jit.enable_to_static(True)
         if mode == "train":
             return train(self.args, attn_model)
         else:

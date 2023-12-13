@@ -79,6 +79,7 @@ class PassTest(unittest.TestCase):
             executor = paddle.static.Executor(paddle.base.CPUPlace())
         elif self.place_runtime == "gpu":
             executor = paddle.static.Executor(paddle.base.CUDAPlace(0))
+
         for program, need_translate_to_pir in self.sample_program():
             if need_translate_to_pir:
                 program = pir.translate_to_pir(program.desc)
