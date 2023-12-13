@@ -209,6 +209,11 @@ std::set<std::string> ParseSafeEagerDeletionSkipVarsSet(
 // C++11 removes the need for manual locking. Concurrent execution shall wait if
 // a static local variable is already being initialized.
 // https://stackoverflow.com/questions/11711920/how-to-implement-multithread-safe-singleton-in-c11-without-using-mutex
+
+int64_t hash_program_id_with_seed(int64_t program_id, int64_t seed) {
+  return program_id + 0x9e3779b9 + (program_id << 6) + (seed >> 2);
+}
+
 ExecutorInfoCache &ExecutorInfoCache::Instance() {
   static ExecutorInfoCache g_exe_cache_info_map;
   return g_exe_cache_info_map;
@@ -302,7 +307,8 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
     const platform::Place &place,
     bool is_grad,
     int64_t program_id,
-    framework::Scope *scope) {
+    framework::Scope *scope,
+    const std::vector<int64_t> &seeds) {
   auto &interpretercore_info_cache =
       framework::InterpreterCoreInfoCache::Instance();
   if (interpretercore_info_cache.Size() > 256000u /* max_cached_size*/) {
@@ -320,7 +326,7 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
       place, program_desc.Block(0), scope, execution_config));
 
   auto &cached_value =
-      interpretercore_info_cache.GetMutable(program_id, scope, is_grad);
+      interpretercore_info_cache.GetMutable(program_id, scope, seeds, is_grad);
   cached_value.core_ = core;
   return core;
 }
@@ -330,7 +336,8 @@ std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
     const platform::Place &place,
     bool is_grad,
     int64_t program_id,
-    framework::Scope *scope) {
+    framework::Scope *scope,
+    const std::vector<int64_t> &seeds) {
   auto &interpretercore_info_cache =
       framework::InterpreterCoreInfoCache::Instance();
   if (interpretercore_info_cache.Size() > 256000u /* max_cached_size*/) {
@@ -348,7 +355,7 @@ std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
       place, {}, ir_program->block(), scope, execution_config));
 
   auto &cached_value =
-      interpretercore_info_cache.GetMutable(program_id, scope, is_grad);
+      interpretercore_info_cache.GetMutable(program_id, scope, seeds, is_grad);
   cached_value.core_ = core;
   cached_value.ir_prog_ = std::move(ir_program);
   return core;
