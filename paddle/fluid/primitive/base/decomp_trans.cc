@@ -90,9 +90,6 @@ bool DecompProgram::check_decomp_dynamic_shape(pir::Operation* op) {
           return true;
         }
       }
-      // PADDLE_ENFORCE_NOT_NULL(
-      //     prev_op, platform::errors::PreconditionNotMet("prev_op should not
-      //     be null"));
     }
   }
   return false;
@@ -253,7 +250,7 @@ std::vector<pir::OpResult> DecompProgram::decomp_program() {
     }
   }
   auto& builder = *(paddle::dialect::ApiBuilder::Instance().GetBuilder());
-  builder.SetInsertionPointToEnd(block);
+  builder.SetInsertionPointToBlockEnd(block);
   std::ostringstream print_stream3;
   program_->Print(print_stream3);
   VLOG(4) << "[Prim] New program after decomp :\n" << print_stream3.str();
