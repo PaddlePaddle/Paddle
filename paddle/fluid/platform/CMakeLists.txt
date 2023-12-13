@@ -110,7 +110,7 @@ cc_library(
   SRCS init.cc
   DEPS device_context phi common fluid_memory)
 
-#  depends on device_context, here add deps individually for
+#fluid_memory depends on device_context, here add deps individually for
 # avoiding cycle dependencies
 
 cc_library(

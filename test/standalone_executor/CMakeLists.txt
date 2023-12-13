@@ -29,7 +29,7 @@ py_test_modules(
   test_standalone_executor_stats MODULES test_standalone_executor ENVS
   FLAGS_host_trace_level=10 FLAGS_static_executor_perfstat_filepath=./perfstat)
 
-# These UTs are to temporarily test static build for , will be removed after static build is enabled by default.
+# These UTs are to temporarily test static build for standalone_executor, will be removed after static build is enabled by default.
 set(STATIC_BUILD_TESTS
     test_standalone_controlflow test_standalone_cuda_graph_multi_stream
     test_standalone_custom_stream test_standalone_custom_event

@@ -58,7 +58,6 @@ detection_library(retinanet_detection_output_op SRCS
                   retinanet_detection_output_op.cc)
 
 if(WITH_GPU OR WITH_ROCM)
-  set(TMPDEPS)
   if(WITH_GPU)
     if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
       set(TMPDEPS cub)
@@ -80,9 +79,7 @@ endif()
 #Export local libraries to parent
 # set(DETECTION_LIBRARY ${LOCAL_DETECTION_LIBS} PARENT_SCOPE)
 
-cc_library(
-  mask_util
-  SRCS mask_util.cc
-  DEPS)
+cc_library(mask_util SRCS mask_util.cc)
+
 detection_library(generate_mask_labels_op SRCS generate_mask_labels_op.cc DEPS
                   mask_util)
