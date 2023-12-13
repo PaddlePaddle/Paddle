@@ -143,7 +143,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
 
     rewriter.SetInsertionPointToStart(rewriter.block());
 
-    bool from_special_use_op = FromSpecialUseOp(op);
+    bool has_special_use_op = HasSpecialUseOp(op);
 
     for (uint32_t i = 0; i < op->num_results(); i++) {
       if (!op->result(i) || !op->result(i).type()) {
@@ -156,10 +156,10 @@ class ConstantFoldingPattern : public pir::RewritePattern {
           phi::errors::InvalidArgument("Parameter var [%s] not in scope.",
                                        output_var_name));
 
-      if (!from_special_use_op && !is_train_mode_) {
+      if (!has_special_use_op && !is_train_mode_) {
         if (output_var->IsType<phi::DenseTensor>()) {
           auto* output_tensor = output_var->GetMutable<phi::DenseTensor>();
-          TensorCopySync(output_tensor, from_special_use_op);
+          TensorCopySync(output_tensor, has_special_use_op);
 
           auto parameter_op = rewriter.Build<pir::ParameterOp>(
               output_var_name, op->result(i).type());
@@ -172,7 +172,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
       } else {
         if (output_var->IsType<phi::DenseTensor>()) {
           auto* output_tensor = output_var->GetMutable<phi::DenseTensor>();
-          TensorCopySync(output_tensor, from_special_use_op);
+          TensorCopySync(output_tensor, has_special_use_op);
 
           auto constant_op = rewriter.Build<pir::ConstantTensorOp>(
               rewriter.tensor_name_attr(output_var_name), op->result(i).type());
@@ -234,7 +234,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
       const std::vector<std::pair<pir::Operation*, int32_t>>& use_ops) const {
     for (auto [use_op, idx] : use_ops) {
       if (use_op->isa<pir::CombineOp>()) {
-        if (FromSpecialUseOp(use_op)) return true;
+        if (HasSpecialUseOp(use_op)) return true;
       } else if (use_op->HasInterface<paddle::dialect::OpYamlInfoInterface>()) {
         auto [input_infos, _1, _2, _3, _4] =
             use_op->dyn_cast<paddle::dialect::OpYamlInfoInterface>()
@@ -250,7 +250,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     return false;
   }
 
-  bool FromSpecialUseOp(pir::Operation* op) const {
+  bool HasSpecialUseOp(pir::Operation* op) const {
     for (uint32_t i = 0; i < op->num_results(); i++) {
       auto use_ops = pir::GetUseOpsForOutput(op, i);
       if (CheckSpecialUseOp(use_ops)) return true;
