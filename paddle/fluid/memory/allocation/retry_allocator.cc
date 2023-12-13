@@ -13,9 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/retry_allocator.h"
-
 #include "glog/logging.h"
+#include "paddle/fluid/platform/init_phi.h"
 
+REGISTER_FILE_SYMBOLS(retry_allocator);
 namespace paddle {
 namespace memory {
 namespace allocation {
