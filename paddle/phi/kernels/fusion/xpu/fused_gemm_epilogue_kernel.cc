@@ -32,8 +32,6 @@ void FusedGemmEpilogueKernel(const Context& dev_ctx,
                              DenseTensor* out,
                              DenseTensor* reserve_space) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  VLOG(5) << "trans_x = " << trans_x << " , trans_y = " << trans_y
-          << " , activation = " << activation;
 
   auto x_mat_dims =
       common::flatten_to_2d(x.dims(), trans_x ? 1 : x.dims().size() - 1);
