@@ -198,6 +198,7 @@ test_matmul_v2_op
 test_matmul_v2_op_static_build
 test_matrix_nms_op
 test_matrix_power_op
+test_matrix_rank_op
 test_maxout_op
 test_mean_op
 test_memcpy_op
