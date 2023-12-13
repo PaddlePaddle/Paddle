@@ -385,51 +385,54 @@ class TestArgsort(unittest.TestCase):
             10000,
         ]
         self.axis = 0
-
-    def setUp(self):
-        self.init()
-        if core.is_compiled_with_cuda():
-            self.place = core.CUDAPlace(0)
-        else:
-            self.place = core.CPUPlace()
         self.data = np.random.rand(*self.input_shape)
 
     @test_with_pir_api
     def test_api_static1(self):
-        self.setUp()
+        if core.is_compiled_with_cuda():
+            self.place = core.CUDAPlace(0)
+        else:
+            self.place = core.CPUPlace()
+        shape = self.input_shape
+        data = self.data
+        axis = self.axis
         with paddle.static.program_guard(paddle.static.Program()):
             input = paddle.static.data(
-                name="input", shape=self.input_shape, dtype="float64"
+                name="input", shape=shape, dtype="float64"
             )
             output = paddle.argsort(input, axis=self.axis)
-
+            np_result = np.argsort(data, axis=axis)
             exe = paddle.static.Executor(self.place)
             result = exe.run(
                 paddle.static.default_startup_program(),
-                feed={'input': self.data},
+                feed={'input': data},
                 fetch_list=[output],
             )
 
-            np_result = np.argsort(self.data, axis=self.axis)
             self.assertEqual((result == np_result).all(), True)
 
     @test_with_pir_api
     def test_api_static2(self):
-        self.setUp()
+        if core.is_compiled_with_cuda():
+            self.place = core.CUDAPlace(0)
+        else:
+            self.place = core.CPUPlace()
+        shape = self.input_shape
+        data = self.data
+        axis = self.axis
         with paddle.static.program_guard(paddle.static.Program()):
             input = paddle.static.data(
-                name="input", shape=self.input_shape, dtype="float64"
+                name="input", shape=shape, dtype="float64"
             )
-            output2 = paddle.argsort(input, axis=self.axis, descending=True)
-
+            output2 = paddle.argsort(input, axis=axis, descending=True)
+            np_result2 = np.argsort(-data, axis=axis)
             exe = paddle.static.Executor(self.place)
             result2 = exe.run(
                 paddle.static.default_startup_program(),
-                feed={'input': self.data},
+                feed={'input': data},
                 fetch_list=[output2],
             )
 
-            np_result2 = np.argsort(-self.data, axis=self.axis)
             self.assertEqual((result2 == np_result2).all(), True)
 
 
