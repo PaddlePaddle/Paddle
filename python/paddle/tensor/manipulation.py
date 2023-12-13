@@ -6007,3 +6007,42 @@ def diagonal_scatter(x, y, offset=0, axis1=0, axis2=1, name=None):
 
     """
     return fill_diagonal_tensor(x, y, offset, axis1, axis2, name)
+
+
+def slice_scatter(x, src, axis=0, start=None, stop=None, step=1, name=None):
+    """TODO(megemini): docstring"""
+
+    if x.ndim != src.ndim:
+        raise ValueError(
+            f"The input and src should have save dimension, but got input of {x.ndim} and src of {src.ndim}."
+        )
+
+    input_shape = x.shape
+    src_shape = src.shape
+
+    index = list(range(start or 0, stop or input_shape[axis], step))
+
+    exp_shape = [*input_shape[:axis], len(index), *input_shape[axis + 1 :]]
+    if exp_shape != src_shape:
+        raise ValueError(
+            "The src.shape should be same of [*input_shape[:axis], len(index), *input_shape[axis+1:]],"
+            f"but got src.shape of {src.shape} and slice shape {exp_shape}."
+        )
+
+    index = paddle.to_tensor(index, dtype='int64')
+    if axis == 0:
+        return paddle.scatter(x, index, src, overwrite=True)
+
+    else:
+        index_transpose = list(range(x.ndim))
+        index_transpose[0], index_transpose[axis] = (
+            index_transpose[axis],
+            index_transpose[0],
+        )
+
+        x = paddle.transpose(x, index_transpose)
+        src = paddle.transpose(src, index_transpose)
+
+        return paddle.transpose(
+            paddle.scatter(x, index, src, overwrite=True), index_transpose
+        )
