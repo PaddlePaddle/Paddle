@@ -30,6 +30,7 @@ void PutAlongAxisKernel(const Context& dev_ctx,
                         const DenseTensor& value,
                         int axis,
                         const std::string& reduce,
+                        bool include_self,
                         DenseTensor* out) {
   PADDLE_ENFORCE_EQ(
       dev_ctx.GetPlace().GetType() == phi::AllocationType::CPU,
@@ -41,31 +42,56 @@ void PutAlongAxisKernel(const Context& dev_ctx,
   if (reduce == "add") {
     if (index_type == DataType::INT32) {
       phi::funcs::cpu_scatter_add_kernel<T, int32_t>(
-          *out, axis, index, value, dev_ctx);
+          *out, axis, index, value, include_self, dev_ctx);
     } else if (index_type == DataType::INT64) {
       phi::funcs::cpu_scatter_add_kernel<T, int64_t>(
-          *out, axis, index, value, dev_ctx);
+          *out, axis, index, value, include_self, dev_ctx);
     }
   } else if (reduce == "multiply" || reduce == "mul") {
     if (index_type == DataType::INT32) {
       phi::funcs::cpu_scatter_mul_kernel<T, int32_t>(
-          *out, axis, index, value, dev_ctx);
+          *out, axis, index, value, include_self, dev_ctx);
     } else if (index_type == DataType::INT64) {
       phi::funcs::cpu_scatter_mul_kernel<T, int64_t>(
-          *out, axis, index, value, dev_ctx);
+          *out, axis, index, value, include_self, dev_ctx);
     }
   } else if (reduce == "assign") {
     if (index_type == DataType::INT32) {
       phi::funcs::cpu_scatter_assign_kernel<T, int32_t>(
-          *out, axis, index, value, dev_ctx);
+          *out, axis, index, value, include_self, dev_ctx);
     } else if (index_type == DataType::INT64) {
       phi::funcs::cpu_scatter_assign_kernel<T, int64_t>(
-          *out, axis, index, value, dev_ctx);
+          *out, axis, index, value, include_self, dev_ctx);
+    }
+  } else if (reduce == "mean") {
+    if (index_type == DataType::INT32) {
+      phi::funcs::cpu_scatter_mean_kernel<T, int32_t>(
+          *out, axis, index, value, include_self, dev_ctx);
+    } else if (index_type == DataType::INT64) {
+      phi::funcs::cpu_scatter_mean_kernel<T, int64_t>(
+          *out, axis, index, value, include_self, dev_ctx);
+    }
+  } else if (reduce == "amax") {
+    if (index_type == DataType::INT32) {
+      phi::funcs::cpu_scatter_max_kernel<T, int32_t>(
+          *out, axis, index, value, include_self, dev_ctx);
+    } else if (index_type == DataType::INT64) {
+      phi::funcs::cpu_scatter_max_kernel<T, int64_t>(
+          *out, axis, index, value, include_self, dev_ctx);
+    }
+  } else if (reduce == "amin") {
+    if (index_type == DataType::INT32) {
+      phi::funcs::cpu_scatter_min_kernel<T, int32_t>(
+          *out, axis, index, value, include_self, dev_ctx);
+    } else if (index_type == DataType::INT64) {
+      phi::funcs::cpu_scatter_min_kernel<T, int64_t>(
+          *out, axis, index, value, include_self, dev_ctx);
     }
   } else {
     PADDLE_THROW(errors::InvalidArgument(
         "can not support reduce: '%s' for scatter kernel, only "
-        "support reduce op: 'add', 'assign', 'mul' and 'multiply', the "
+        "support reduce op: 'add', 'assign', 'mul', 'mean', 'amin', 'amax' and "
+        "'multiply', the "
         "default reduce "
         "op is 'assign' ",
         reduce));

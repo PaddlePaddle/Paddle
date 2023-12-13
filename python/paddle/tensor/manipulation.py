@@ -5308,11 +5308,12 @@ def put_along_axis(
     Args:
         arr (Tensor) : The Destination Tensor. Supported data types are float32 and float64.
         indices (Tensor) : Indices to put along each 1d slice of arr. This must match the dimension of arr,
-            and need to broadcast against arr. Supported data type are int and int64.
+            and need to broadcast against arr if broadcast is 'True'. Supported data type are int and int64.
+        values (Tensor) : The value element(s) to put. The data types should be same as arr.
         axis (int) : The axis to put 1d slices along.
-        reduce (str, optional): The reduce operation, default is 'assign', support 'add', 'assign', 'mul' and 'multiply'.
-        include_self (bool, optional): whether to reduce with the elements of arr. (Only support True now)
-        broadcast (bool, optional): whether to broadcast indices.
+        reduce (str, optional): The reduce operation, default is 'assign', support 'add', 'assign', 'mul', 'multiply', "mean", "amin" and "amax".
+        include_self (bool, optional): whether to reduce with the elements of arr, default is 'True'.
+        broadcast (bool, optional): whether to broadcast indices, default is 'True'.
 
     Returns:
         Tensor, The indexed element, same dtype with arr
@@ -5332,9 +5333,45 @@ def put_along_axis(
             [[99, 99, 99],
              [60, 40, 50]])
 
+            >>> index = paddle.zeros((2,2)).astype("int32")
+            >>> value=paddle.to_tensor([[1,2],[3,4]]).astype(x.dtype)
+            >>> result = paddle.put_along_axis(x, index, value, 0, "add", True, False)
+            >>> print(result)
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[14, 36, 20],
+             [60, 40, 50]])
+
+            >>> result = paddle.put_along_axis(x, index, value, 0, "mul", True, False)
+            >>> print(result)
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[30 , 240, 20 ],
+             [60 , 40 , 50 ]])
+
+            >>> result = paddle.put_along_axis(x, index, value, 0, "mean", True, False)
+            >>> print(result)
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[4 , 12, 20],
+             [60, 40, 50]])
+
+            >>> result = paddle.put_along_axis(x, index, value, 0, "amin", True, False)
+            >>> print(result)
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1 , 2 , 20],
+             [60, 40, 50]])
+
+            >>> result = paddle.put_along_axis(x, index, value, 0, "amax", True, False)
+            >>> print(result)
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[10, 30, 20],
+             [60, 40, 50]])
+
+            >>> result = paddle.put_along_axis(x, index, value, 0, "add", False, False)
+            >>> print(result)
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[4 , 6 , 20],
+             [60, 40, 50]])
+
     """
-    if not include_self:
-        raise ValueError("`include_self` is only support True now.")
     if len(arr.shape) != len(indices.shape):
         raise ValueError(
             "`indices` and `arr` must have the same number of dimensions!"
@@ -5381,7 +5418,15 @@ def put_along_axis(
                 )
             )
     if in_dynamic_or_pir_mode():
-        return _C_ops.put_along_axis(arr, indices, values, axis, reduce)
+        if convert_dtype(indices.dtype) not in ['int32', 'int64']:
+            raise TypeError(
+                "The data type of indices should be one of ['int32', 'int64'], but got {}".format(
+                    str(convert_dtype(indices.dtype))
+                )
+            )
+        return _C_ops.put_along_axis(
+            arr, indices, values, axis, reduce, include_self
+        )
     else:
         check_variable_and_dtype(
             arr,
@@ -5400,20 +5445,27 @@ def put_along_axis(
         check_variable_and_dtype(
             indices, 'index', ['int32', 'int64'], 'put_along_axis'
         )
+        check_type(include_self, 'include_self', bool, 'put_along_axis')
         helper = LayerHelper('put_along_axis', **locals())
         dtype = helper.input_dtype()
         result = helper.create_variable_for_type_inference(dtype)
         helper.append_op(
             type="put_along_axis",
             inputs={"Input": arr, "Index": indices, "Value": values},
-            attrs={"Axis": axis, "Reduce": reduce},
+            attrs={
+                "Axis": axis,
+                "Reduce": reduce,
+                "Include_self": include_self,
+            },
             outputs={"Result": result},
         )
         return result
 
 
 @inplace_apis_in_dygraph_only
-def put_along_axis_(arr, indices, values, axis, reduce='assign'):
+def put_along_axis_(
+    arr, indices, values, axis, reduce='assign', include_self=True
+):
     r"""
     Inplace version of ``put_along_axis`` API, the output Tensor will be inplaced with input ``arr``.
     Please refer to :ref:`api_paddle_put_along_axis`.
@@ -5432,7 +5484,9 @@ def put_along_axis_(arr, indices, values, axis, reduce='assign'):
     if broadcast_shape:
         indices = paddle.broadcast_to(indices, broadcast_shape)
     values = paddle.broadcast_to(values, indices.shape)
-    return _C_ops.put_along_axis_(arr, indices, values, axis, reduce)
+    return _C_ops.put_along_axis_(
+        arr, indices, values, axis, reduce, include_self
+    )
 
 
 def index_add(x, index, axis, value, name=None):

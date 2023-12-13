@@ -2032,7 +2032,7 @@
   backward : psroi_pool_grad
 
 - op : put_along_axis
-  args : (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign")
+  args : (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign", bool include_self = true)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
