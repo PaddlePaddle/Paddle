@@ -104,6 +104,18 @@ class ConstantFoldingPattern : public pir::RewritePattern {
         return false;
       }
     }
+
+    // 5. maybe affect performence
+    if (op->isa<paddle::dialect::FullOp>()) {
+      auto next_ops = pir::GetUseOpsForOutput(op, 0);
+      for (auto [next_op, _] : next_ops) {
+        if (next_op->isa<paddle::dialect::FullWithTensorOp>() ||
+            next_op->isa<paddle::dialect::LinspaceOp>()) {
+          return false;
+        }
+      }
+    }
+
     VLOG(4) << "constant_folding_pass applied match on [" << op->name()
             << "] op";
     return true;
@@ -114,11 +126,13 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     VLOG(4) << "constant_folding_pass applys rewrite on [" << op->name()
             << "] op";
     pir::Program new_program(rewriter.ir_context());
-    auto output_var_name =
+    auto output_var_names =
         BuildProgramFromOperation(op, &new_program, rewriter);
 
     // execute program
-    exe_config_->skip_gc_vars.insert(output_var_name);
+    for (auto output_var_name : output_var_names) {
+      exe_config_->skip_gc_vars.insert(output_var_name);
+    }
     auto kernel_program =
         paddle::dialect::PdOpLowerToKernelPass(&new_program, place_);
     paddle::framework::InterpreterCore core(
@@ -128,56 +142,65 @@ class ConstantFoldingPattern : public pir::RewritePattern {
 
     rewriter.SetInsertionPointToStart(rewriter.block());
 
-    auto* output_var = scope_->FindVar(output_var_name);
-    PADDLE_ENFORCE_NOT_NULL(
-        output_var,
-        phi::errors::InvalidArgument("Parameter var [%s] not in scope.",
-                                     output_var_name));
+    bool use_parameter_op = ReplaceResultByParameterOp(op);
 
-    // TODO(liuyuanle): support multiple output
-    if (ReplaceResultByParameterOp(op)) {
-      if (output_var->IsType<phi::DenseTensor>()) {
-        auto* output_tensor = output_var->GetMutable<phi::DenseTensor>();
-        if (output_tensor->place().GetType() != place_.GetType()) {
-          phi::DenseTensor temp_tensor;
-          temp_tensor.Resize(output_tensor->dims());
-          paddle::framework::TensorCopySync(
-              *output_tensor, phi::CPUPlace{}, &temp_tensor);
-          output_tensor->clear();
-          paddle::framework::TensorCopySync(temp_tensor, place_, output_tensor);
-        }
+    for (uint32_t i = 0; i < op->num_results(); i++) {
+      if (!op->result(i) || !op->result(i).type()) {
+        continue;
       }
+      std::string output_var_name = output_var_names[i];
+      auto* output_var = scope_->FindVar(output_var_name);
+      PADDLE_ENFORCE_NOT_NULL(
+          output_var,
+          phi::errors::InvalidArgument("Parameter var [%s] not in scope.",
+                                       output_var_name));
 
-      auto parameter_op = rewriter.Build<pir::ParameterOp>(
-          output_var_name, op->result(0).type());
-      parameter_op->set_attribute(
-          kAttrIsPersisable, rewriter.array_attr({rewriter.bool_attr(true)}));
+      if (use_parameter_op) {
+        if (output_var->IsType<phi::DenseTensor>()) {
+          auto* output_tensor = output_var->GetMutable<phi::DenseTensor>();
+          if (output_tensor->IsInitialized() &&
+              output_tensor->place().GetType() != place_.GetType()) {
+            phi::DenseTensor temp_tensor;
+            temp_tensor.Resize(output_tensor->dims());
+            paddle::framework::TensorCopySync(
+                *output_tensor, phi::CPUPlace{}, &temp_tensor);
+            output_tensor->clear();
+            paddle::framework::TensorCopySync(
+                temp_tensor, place_, output_tensor);
+          }
+          auto parameter_op = rewriter.Build<pir::ParameterOp>(
+              output_var_name, op->result(i).type());
+          parameter_op->set_attribute(
+              kAttrIsPersisable,
+              rewriter.array_attr({rewriter.bool_attr(true)}));
 
-      rewriter.ReplaceAllUsesWith(op->result(0), parameter_op->result(0));
-    } else {
-      if (output_var->IsType<phi::DenseTensor>()) {
-        auto* output_tensor = output_var->GetMutable<phi::DenseTensor>();
-        if (output_tensor->place().GetType() != phi::AllocationType::CPU) {
-          phi::DenseTensor temp_tensor;
-          temp_tensor.Resize(output_tensor->dims());
-          paddle::framework::TensorCopySync(
-              *output_tensor, phi::CPUPlace{}, &temp_tensor);
-          output_tensor->clear();
-          paddle::framework::TensorCopySync(
-              temp_tensor, phi::CPUPlace{}, output_tensor);
+          rewriter.ReplaceAllUsesWith(op->result(i), parameter_op->result(0));
         }
+      } else {
+        if (output_var->IsType<phi::DenseTensor>()) {
+          auto* output_tensor = output_var->GetMutable<phi::DenseTensor>();
+          if (output_tensor->place().GetType() != phi::AllocationType::CPU) {
+            phi::DenseTensor temp_tensor;
+            temp_tensor.Resize(output_tensor->dims());
+            paddle::framework::TensorCopySync(
+                *output_tensor, phi::CPUPlace{}, &temp_tensor);
+            output_tensor->clear();
+            paddle::framework::TensorCopySync(
+                temp_tensor, phi::CPUPlace{}, output_tensor);
+          }
+        }
+
+        auto constant_op = rewriter.Build<pir::ConstantTensorOp>(
+            rewriter.tensor_name_attr(output_var_name), op->result(i).type());
+        constant_op->set_attribute(
+            kAttrIsPersisable, rewriter.array_attr({rewriter.bool_attr(true)}));
+
+        rewriter.ReplaceAllUsesWith(op->result(i), constant_op->result(0));
       }
-
-      auto constant_op = rewriter.Build<pir::ConstantTensorOp>(
-          rewriter.tensor_name_attr(output_var_name), op->result(0).type());
-      constant_op->set_attribute(
-          kAttrIsPersisable, rewriter.array_attr({rewriter.bool_attr(true)}));
-
-      rewriter.ReplaceAllUsesWith(op->result(0), constant_op->result(0));
     }
+    rewriter.EraseOp(op);
     VLOG(4) << "constant_folding_pass applied rewrite on [" << op->name()
             << "] op";
-    rewriter.EraseOp(op);
   }
 
  private:
@@ -209,7 +232,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     return true;
   }
 
-  std::string BuildProgramFromOperation(
+  std::vector<std::string> BuildProgramFromOperation(
       pir::Operation* op,
       pir::Program* new_program,
       pir::PatternRewriter& rewriter) const {  // NOLINT
@@ -253,17 +276,23 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     auto* temp_op =
         builder.Build(op_inputs, op->attributes(), output_types, op->info());
 
-    // TODO(liuyuanle): support multiple output
-    // for (uint32_t i = 0; i < op->num_results(); i++) {
-    std::stringstream ss;
-    ss << std::chrono::high_resolution_clock::now().time_since_epoch().count();
-    std::string output_var_name =
-        "constant_folding@_" + ss.str() + std::to_string((*counter_)++);
+    std::vector<std::string> output_var_names;
+    for (uint32_t i = 0; i < op->num_results(); i++) {
+      if (!temp_op->result(i) || !temp_op->result(i).type()) {
+        continue;
+      }
+      std::stringstream ss;
+      ss << std::chrono::high_resolution_clock::now()
+                .time_since_epoch()
+                .count();
+      std::string output_var_name =
+          "constant_folding@_" + ss.str() + std::to_string((*counter_)++);
 
-    builder.Build<pir::ShadowOutputOp>(temp_op->result(0), output_var_name);
-    // }
+      builder.Build<pir::ShadowOutputOp>(temp_op->result(i), output_var_name);
+      output_var_names.push_back(output_var_name);
+    }
 
-    return output_var_name;
+    return output_var_names;
   }
 
  private:
@@ -297,12 +326,14 @@ class ConstantFoldingPass : public pir::Pass {
     pir::GreedyRewriteConfig cfg;
     cfg.use_top_down_traversal = true;
     cfg.max_iterations = 10;
-    pir::ApplyPatternsGreedily(op->region(0), patterns_, cfg);
-
+    pir::ApplyPatternsGreedily(op, patterns_, cfg);
+    PrintStatistics(counter_, op_nums);
     // delete old parameter var
     scope_->EraseVars(deleted_vars_);
-    LOG(INFO) << " ------ constant_folding_pass done: [" << counter_ << "/"
-              << op_nums << "]";
+    if (place_.GetType() != phi::AllocationType::CPU) {
+      paddle::memory::Release(place_);
+    }
+    paddle::memory::Release(phi::CPUPlace{});
   }
 
   bool CanApplyOn(pir::Operation* op) const override {

@@ -17,6 +17,7 @@ import unittest
 import numpy
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    enable_to_static_guard,
 )
 
 import paddle
@@ -34,14 +35,14 @@ def dyfunc_assert_non_variable(x=True):
 
 class TestAssertVariable(Dy2StTestBase):
     def _run(self, func, x, with_exception, to_static):
-        paddle.jit.enable_to_static(to_static)
-        if with_exception:
-            with self.assertRaises(BaseException):  # noqa: B017
+        with enable_to_static_guard(to_static):
+            if with_exception:
+                with self.assertRaises(BaseException):  # noqa: B017
+                    with base.dygraph.guard():
+                        func(x)
+            else:
                 with base.dygraph.guard():
                     func(x)
-        else:
-            with base.dygraph.guard():
-                func(x)
 
     def _run_dy_static(self, func, x, with_exception):
         self._run(func, x, with_exception, True)
