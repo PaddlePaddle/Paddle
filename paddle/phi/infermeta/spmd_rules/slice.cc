@@ -113,7 +113,7 @@ SpmdInfo SliceInferSpmd(const DistMetaTensor& input,
                         const std::vector<int64_t>& decrease_axis) {
   // starts, ends, infer_flags and decrease_axis have no impact on the
   // derivation, only to align with the definition in phi api
-  return SliceInferSpmdBase(input, axes, decrease_axis);
+  return SliceInferSpmdBase(input, axes, {});
 }
 
 SpmdInfo SliceInferSpmdReverseBase(const DistMetaTensor& input,
@@ -216,7 +216,7 @@ SpmdInfo SliceInferSpmdReverse(const DistMetaTensor& input,
                                const std::vector<int64_t>& decrease_axis) {
   // starts, ends, infer_flags and decrease_axis have no impact on the
   // derivation, only to align with the definition in phi api
-  return SliceInferSpmdReverseBase(input, output, axes, decrease_axis);
+  return SliceInferSpmdReverseBase(input, output, axes, {});
 }
 
 SpmdInfo SliceInferSpmdDynamic(const DistMetaTensor& input,
