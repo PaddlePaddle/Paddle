@@ -393,7 +393,6 @@ class GroupShardedStage2(nn.Layer):
             # do gradient scale separately
             # For grad scale, we need to do it in the backward hook due to fp16 may overflow if we first add grad and then scale
             # For main_grad scale and fused_linear_param_grad_add, we do scale in the optimizer.
-            # print("self.scale_in_opt, ", self.scale_in_opt)
             if not self.scale_in_opt:
                 if (
                     not hasattr(param, "main_grad")
