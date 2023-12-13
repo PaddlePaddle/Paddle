@@ -36,6 +36,7 @@ PD_DECLARE_bool(cinn_use_cuda_vectorize);
 PD_DECLARE_bool(cinn_enable_map_expr);
 PD_DECLARE_bool(cinn_enable_map_expr_schedule);
 PD_DECLARE_bool(cinn_bucket_compile);
+PD_DECLARE_bool(cinn_new_group_scheduler);
 
 namespace cinn {
 namespace hlir {
@@ -659,6 +660,20 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
     const GroupPtr& group,
     const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
     const std::unordered_map<std::string, ir::Tensor>& tmp_tensor_info) {
+  if (FLAGS_cinn_new_group_scheduler) {
+    VLOG(3) << "using StaticShapeGroupScheduler to schedule group.";
+    std::unordered_set<std::string> output_tensor_names;
+    std::transform(
+        group->output_ops.begin(),
+        group->output_ops.end(),
+        std::inserter(output_tensor_names, output_tensor_names.begin()),
+        [&](::pir::Operation* op) { return ValueName(op->result(0)); });
+    std::unique_ptr<ir::GroupScheduler> group_scheduler =
+        ir::GroupScheduler::Make(
+            &ir_sch, output_tensor_names, target_, /* is_dy_shape = */ false);
+    group_scheduler->Schedule();
+    return ir_sch.GetModule().GetExprs().at(0);
+  }
   // topological order.
   auto ops_set = group->OpSet();
   auto v_consumers = BuildVirtualConsumer(group);

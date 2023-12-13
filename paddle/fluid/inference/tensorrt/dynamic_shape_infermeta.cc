@@ -845,6 +845,21 @@ nvinfer1::DimsExprs ScatterInferMeta(
   return ref_dims;
 }
 
+nvinfer1::DimsExprs ArgsortInferMeta(
+    int output_index,
+    const nvinfer1::DimsExprs* inputs,
+    int nb_inputs,
+    nvinfer1::IExprBuilder& expr_builder,  // NOLINT
+    const framework::OpDesc& op_desc) {
+  const nvinfer1::DimsExprs input_dims = inputs[0];
+  nvinfer1::DimsExprs output;
+  output.nbDims = input_dims.nbDims;
+  for (int i = 0; i < input_dims.nbDims; ++i) {
+    output.d[i] = input_dims.d[i];
+  }
+  return output;
+}
+
 nvinfer1::DimsExprs SolveInferMeta(
     int output_index,
     const nvinfer1::DimsExprs* inputs,
@@ -878,6 +893,7 @@ PD_REGISTER_DYNAMIC_INFER_META_FN(p_norm, PNormInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(memory_efficient_attention,
                                   MemoryEfficientAttentionInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(pad, PadInferMeta);
+PD_REGISTER_DYNAMIC_INFER_META_FN(argsort, ArgsortInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(scatter, ScatterInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(solve, SolveInferMeta);
 }  // namespace tensorrt

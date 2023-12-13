@@ -2210,10 +2210,9 @@ def insert_dependencies_for_vars(
     for post_var in post_vars:
         assert block.has_var(post_var.name)
 
+    post_dist_attr = dist_context.get_tensor_dist_attr_for_program(post_vars[0])
     if process_mesh is None:
-        process_mesh = dist_context.get_tensor_dist_attr_for_program(
-            post_vars[0]
-        ).process_mesh
+        process_mesh = post_dist_attr.process_mesh
     assert process_mesh is not None
 
     use_nop = True
@@ -2245,6 +2244,7 @@ def insert_dependencies_for_vars(
         depend_op_dist_attr.impl_type = "default"
         depend_op_dist_attr.process_mesh = process_mesh
         depend_op_dist_attr.is_recompute = is_recompute
+        depend_op_dist_attr.chunk_id = post_dist_attr.chunk_id
         for input_varname in depend_op.desc.input_arg_names():
             var = block.var(input_varname)
             mapping = dist_context.get_tensor_dist_attr_for_program(

@@ -42,6 +42,7 @@ class ShapeInterface final {
 class DtypeInterface final {
  public:
   bool operator==(const DtypeInterface& other) const;
+  IrDtype dtype() const;
 
  private:
   explicit DtypeInterface(const IrDtype* dtype) : dtype_(dtype) {}

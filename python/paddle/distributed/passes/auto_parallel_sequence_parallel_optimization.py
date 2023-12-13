@@ -145,7 +145,10 @@ class SequenceParallelOptimizationPass(PassBase):
             )
             ref_process_mesh = allreduce_input_dist_attr.process_mesh
             naive_set_dist_op_attr_for_program_by_mesh(
-                new_op, ref_process_mesh, self.dist_context
+                new_op,
+                ref_process_mesh,
+                self.dist_context,
+                chunk_id=allreduce_input_dist_attr.chunk_id,
             )
 
         # remove vars
