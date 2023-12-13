@@ -36,7 +36,7 @@ void ConvKernel(const Context& dev_ctx,
   auto desc = input.mem_desc();
   auto input_local = input;
   if (data_format == "NHWC" && desc.get_dims().size() == 4 &&
-      desc == dnnl::memory::desc(desc.get_dims(),
+      desc != dnnl::memory::desc(desc.get_dims(),
                                  desc.get_data_type(),
                                  dnnl::memory::format_tag::nhwc)) {
     std::vector<int64_t> dims = desc.get_dims();
@@ -45,7 +45,7 @@ void ConvKernel(const Context& dev_ctx,
         dims, desc.get_data_type(), dnnl::memory::format_tag::nhwc));
     phi::OneDNNContext::tls().set_cur_paddle_data_layout(DataLayout::kNHWC);
   } else if (data_format == "NDHWC" && desc.get_dims().size() == 5 &&
-             desc == dnnl::memory::desc(desc.get_dims(),
+             desc != dnnl::memory::desc(desc.get_dims(),
                                         desc.get_data_type(),
                                         dnnl::memory::format_tag::nhwc)) {
     std::vector<int64_t> dims = desc.get_dims();
