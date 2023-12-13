@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 from paddle import base
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestGraphKhopSampler(unittest.TestCase):
@@ -147,7 +146,6 @@ class TestGraphKhopSampler(unittest.TestCase):
                 in_neighbors = np.isin(edge_src_n.numpy(), self.dst_src_dict[n])
                 self.assertTrue(np.sum(in_neighbors) == in_neighbors.shape[0])
 
-    @test_with_pir_api
     def test_sample_result_static_with_eids(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -209,7 +207,6 @@ class TestGraphKhopSampler(unittest.TestCase):
                 in_neighbors = np.isin(edge_src_n, self.dst_src_dict[n])
                 self.assertTrue(np.sum(in_neighbors) == in_neighbors.shape[0])
 
-    @test_with_pir_api
     def test_sample_result_static_without_eids(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
