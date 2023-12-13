@@ -38,7 +38,7 @@ class ValueWrapper:
             return hash(self._value)
 
     def __eq__(self, other) -> bool:
-        if not isinstance(ValueWrapper):
+        if not isinstance(other, ValueWrapper):
             warnings.warn(
                 f'In ValueWrapper.__eq__ expected type of `other` is ValueWrapper but received {other.__class__}.'
             )
