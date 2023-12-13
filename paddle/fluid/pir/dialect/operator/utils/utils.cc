@@ -273,8 +273,8 @@ std::string GetValueDataType(const pir::Value& value) {
         value.type().dyn_cast<paddle::dialect::SelectedRowsType>().dtype()));
   } else {
     PADDLE_THROW(
-        phi::errors::InvalidArgument("Currently, we can only get dtype for "
-                                     "DenseTensorType and SelectedRowsType."));
+        phi::errors::InvalidType("Currently, we can only get dtype for "
+                                 "DenseTensorType and SelectedRowsType."));
   }
 }
 
@@ -330,7 +330,7 @@ void CheckDataType(const phi::DataType& dtype,
     std::copy(expected_dtype.begin(),
               expected_dtype.end(),
               std::ostream_iterator<std::string>(joined, ", "));
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidType(
         "Check data type error for op: %s, dtype: %s, and "
         "expected_dtype: %s",
         op_name,
