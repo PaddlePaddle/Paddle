@@ -162,7 +162,7 @@ class State:
         # only for controlflow
         # inside_value is sub block value, which will yield to parent block,
         # parant block value is outside_value
-        self.inside_value_to_outside_value_map = {}
+        self.inside_value_to_outside_value_map = ValueDict()
 
     def turn_map(self) -> None:
         self.valuegrad_to_value = ValueDict(default_factory=list)
