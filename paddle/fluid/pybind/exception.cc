@@ -73,7 +73,7 @@ void BindException(pybind11::module* m) {
         case paddle::platform::error::EXTERNAL:
           PyErr_SetString(PyExc_OSError, e.what());
           break;
-        case paddle::platform::error::UNMATCHED_TYPE:
+        case paddle::platform::error::INVALID_TYPE:
           PyErr_SetString(PyExc_TypeError, e.what());
           break;
         default:
@@ -128,7 +128,7 @@ void ThrowExceptionToPython(std::exception_ptr p) {
       case paddle::platform::error::EXTERNAL:
         PyErr_SetString(PyExc_OSError, e.what());
         break;
-      case paddle::platform::error::UNMATCHED_TYPE:
+      case paddle::platform::error::INVALID_TYPE:
         PyErr_SetString(PyExc_TypeError, e.what());
         break;
       default:
