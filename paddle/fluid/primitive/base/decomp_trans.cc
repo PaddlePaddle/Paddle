@@ -16,6 +16,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/prim/utils/utils.h"
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/core/program.h"
@@ -49,7 +50,7 @@ static const phi::DDim& GetValueDims(pir::Value value) {
   }
 }
 
-phi::DataType GetValueDtype(Value value) {
+static phi::DataType GetValueDtype(pir::Value value) {
   if (value.type().isa<DenseTensorType>()) {
     return paddle::dialect::TransToPhiDataType(
         value.type().dyn_cast<DenseTensorType>().dtype());
@@ -116,11 +117,27 @@ void DecompProgram::check_decomp_outputs(
   for (size_t i = 0; i < orig_outs.size(); i++) {
     auto orig_dim = GetValueDims(orig_outs[i]);
     auto decomp_dim = GetValueDims(decomp_outs[i]);
+    std::vector<int64_t> shape = common::vectorize<int64_t>(orig_dim);
+    if (find_value(common::vectorize<int64_t>(orig_dim), -1)) {
+      LOG(WARNING)
+          << "[Prim] Decomp op does not support dynamic shape -1, but got "
+             "shape ["
+          << orig_dim << "] in output of origin op " << op_name;
+    }
+    if (find_value(common::vectorize<int64_t>(decomp_dim), -1)) {
+      LOG(WARNING)
+          << "[Prim] Decomp op does not support dynamic shape -1, but got "
+             "shape ["
+          << decomp_dim << "] in output of decomp op " << op_name;
+    }
+    VLOG(0) << "org shape ======== " << orig_dim;
+    VLOG(0) << "decomp shape ===== " << decomp_dim;
+
     PADDLE_ENFORCE(
         orig_dim == decomp_dim,
         paddle::platform::errors::PreconditionNotMet(
-            "[Prim] For op %s, its origin output shape is not equal to "
-            "decomp output shape %d ",
+            "[Prim] For op %s, its origin output shape [%s] is not equal to "
+            "decomp output shape [%s] ",
             op_name,
             orig_dim,
             decomp_dim));
@@ -253,6 +270,7 @@ std::vector<pir::OpResult> DecompProgram::decomp_program() {
       std::vector<pir::OpResult> orig_outs = op->results();
       std::vector<pir::OpResult> standard_decomp_res =
           format_decomp_res(op->name(), orig_outs, decomp_res);
+      check_decomp_outputs(op->name(), orig_outs, standard_decomp_res);
       tar_vars = construct_dst_vars(
           op->name(), orig_outs, standard_decomp_res, orig_vars_dict);
 
