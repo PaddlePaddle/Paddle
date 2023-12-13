@@ -84,11 +84,11 @@ Graph::Graph(const ProgramDesc &program,
   }
 }
 
-Graph::Graph(BlockDesc &block, const Graph *main_graph)
+Graph::Graph(const BlockDesc &block, const Graph *main_graph)
     : Graph(block, main_graph, 0, static_cast<int64_t>(block.AllOps().size())) {
 }
 
-Graph::Graph(BlockDesc &block,
+Graph::Graph(const BlockDesc &block,
              const Graph *main_graph,
              const int64_t start_op_index,
              const int64_t end_op_index)
@@ -107,7 +107,7 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
 }
 
 std::map<std::string, std::vector<ir::Node *>> Graph::InitFromBlock(
-    BlockDesc &block,
+    const BlockDesc &block,
     const int64_t start_op_index,
     const int64_t end_op_index) {
   std::unordered_map<std::string, std::pair<VarDesc *, int>>

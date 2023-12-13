@@ -95,10 +95,10 @@ class Graph {
         const int64_t end_op_index);
 
   // Construct a sub_graph
-  Graph(BlockDesc &block, const Graph *main_graph);  // NOLINT
+  Graph(const BlockDesc &block, const Graph *main_graph);  // NOLINT
 
   // Construct a sub_graph with ops[start_op_index, end_op_index)
-  Graph(BlockDesc &block,  // NOLINT
+  Graph(const BlockDesc &block,  // NOLINT
         const Graph *main_graph,
         const int64_t start_op_index,
         const int64_t end_op_index);
@@ -438,7 +438,7 @@ class Graph {
       const int64_t end_op_index);
 
   std::map<std::string, std::vector<ir::Node *>> InitFromBlock(
-      BlockDesc &block,  // NOLINT
+      const BlockDesc &block,  // NOLINT
       const int64_t start_op_index,
       const int64_t end_op_index);
 

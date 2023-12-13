@@ -86,8 +86,6 @@ class TEST_API BlockDesc {
 
   void SetForwardBlockID(int32_t forward_block_id);
 
-  void AppendAllocatedVar(VarDesc *var_desc);
-
   OpDesc *AppendOp();
 
   void AppendAllocatedOp(std::unique_ptr<OpDesc> &&op_desc);
