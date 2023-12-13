@@ -30,19 +30,21 @@ namespace inference {
 
 constexpr uint32_t kCurPDTensorVersion = 0;
 
-void SerializePDTensorToStream(std::ostream* os, const PaddleTensor& tensor);
-void DeserializePDTensorToStream(std::istream& is, PaddleTensor* tensor);
+TEST_API void SerializePDTensorToStream(std::ostream* os,
+                                        const PaddleTensor& tensor);
+TEST_API void DeserializePDTensorToStream(std::istream& is,
+                                          PaddleTensor* tensor);
 
-void SerializePDTensorsToStream(std::ostream* os,
-                                const std::vector<PaddleTensor>& tensors);
-void DeserializePDTensorsToStream(std::istream& is,
-                                  std::vector<PaddleTensor>* tensors);
+TEST_API void SerializePDTensorsToStream(
+    std::ostream* os, const std::vector<PaddleTensor>& tensors);
+TEST_API void DeserializePDTensorsToStream(std::istream& is,
+                                           std::vector<PaddleTensor>* tensors);
 
-void SerializePDTensorsToFile(const std::string& path,
-                              const std::vector<PaddleTensor>& tensors);
-void DeserializePDTensorsToFile(const std::string& path,
-                                std::vector<PaddleTensor>* tensors);
-void SerializeShapeRangeInfo(
+TEST_API void SerializePDTensorsToFile(
+    const std::string& path, const std::vector<PaddleTensor>& tensors);
+TEST_API void DeserializePDTensorsToFile(const std::string& path,
+                                         std::vector<PaddleTensor>* tensors);
+TEST_API void SerializeShapeRangeInfo(
     const std::string& path,
     const std::map<std::string, std::vector<int32_t>>& min_shape,
     const std::map<std::string, std::vector<int32_t>>& max_shape,
@@ -50,7 +52,7 @@ void SerializeShapeRangeInfo(
     const std::map<std::string, std::vector<int32_t>>& min_value,
     const std::map<std::string, std::vector<int32_t>>& max_value,
     const std::map<std::string, std::vector<int32_t>>& opt_value);
-void DeserializeShapeRangeInfo(
+TEST_API void DeserializeShapeRangeInfo(
     const std::string& path,
     std::map<std::string, std::vector<int32_t>>* min_shape,
     std::map<std::string, std::vector<int32_t>>* max_shape,
@@ -58,7 +60,7 @@ void DeserializeShapeRangeInfo(
     std::map<std::string, std::vector<int32_t>>* min_value,
     std::map<std::string, std::vector<int32_t>>* max_value,
     std::map<std::string, std::vector<int32_t>>* opt_value);
-void UpdateShapeRangeInfo(
+TEST_API void UpdateShapeRangeInfo(
     const std::string& path,
     const std::map<std::string, std::vector<int32_t>>& min_shape,
     const std::map<std::string, std::vector<int32_t>>& max_shape,

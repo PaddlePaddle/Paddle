@@ -305,10 +305,10 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
     framework::Scope *scope) {
   auto &interpretercore_info_cache =
       framework::InterpreterCoreInfoCache::Instance();
-  if (interpretercore_info_cache.Size() > 256u /* max_cached_size*/) {
-    VLOG(2) << "The cached info size has exceeded max_cached_size: 4, clear "
-               "all cache!";
-    interpretercore_info_cache.Finalize();
+  if (interpretercore_info_cache.Size() > 256000u /* max_cached_size*/) {
+    PADDLE_THROW(platform::errors::Fatal(
+        "The cached info size has exceeded max_cached_size: 256000, "
+        "which will cause error. "));
   }
   interpreter::ExecutionConfig execution_config;
   execution_config.create_local_scope = false;
@@ -333,10 +333,10 @@ std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
     framework::Scope *scope) {
   auto &interpretercore_info_cache =
       framework::InterpreterCoreInfoCache::Instance();
-  if (interpretercore_info_cache.Size() > 256u /* max_cached_size*/) {
-    VLOG(2) << "The cached info size has exceeded max_cached_size: 4, clear "
-               "all cache!";
-    interpretercore_info_cache.Finalize();
+  if (interpretercore_info_cache.Size() > 256000u /* max_cached_size*/) {
+    PADDLE_THROW(platform::errors::Fatal(
+        "The cached info size has exceeded max_cached_size: 256000, "
+        "which will cause error. "));
   }
   interpreter::ExecutionConfig execution_config;
   execution_config.create_local_scope = false;

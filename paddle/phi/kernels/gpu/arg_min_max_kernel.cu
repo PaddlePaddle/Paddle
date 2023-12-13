@@ -181,7 +181,7 @@ struct VisitDataCudaArgMinMaxFunctor {
     // For 0D Tensor
     if (x.dims().size() == 0) {
       dev_ctx.template Alloc<IndType>(out);
-      phi::funcs::set_constant(dev_ctx, out, 0);
+      phi::funcs::set_constant(dev_ctx, out, static_cast<IndType>(0));
       return;
     }
 

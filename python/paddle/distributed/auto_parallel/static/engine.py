@@ -570,6 +570,8 @@ class Engine:
         self._init_comm()
         # startup program
         self._initialize(mode, init_parameters)
+        # mark main program for futher decompose
+        self._mark_prim(mode)
         self._has_prepared[mode] = True
 
     def _build(self, mode):
@@ -809,18 +811,6 @@ class Engine:
                 for process_group in all_process_groups:
                     process_group.instantiate()
 
-    def _share_parameters(self):
-        # mapping from {variable -> parameter}
-        named_params = self.program_helper.named_parameters()
-        for name, param in named_params.items():
-            var = global_scope().var(name)
-            if param.is_dense():
-                dense_tensor = var.get_tensor()
-                dense_tensor._share_data_with(param.get_tensor())
-            elif param.is_dist():
-                dense_tensor = var.get_tensor()
-                dense_tensor._share_data_with(param.get_tensor().get_tensor())
-
     def _initialize(self, mode, init_parameters=True):
         self._place = _get_device()
         if isinstance(self._place, paddle.framework.CUDAPlace):
@@ -836,12 +826,9 @@ class Engine:
         dist_context = self._dist_contexts[mode]
         dist_main_program = dist_context.dist_main_programs[self._cur_rank]
         if self._dygraph_mode:
-            if not init_parameters:
-                self._share_parameters()
-            else:
-                self.program_helper.init(
-                    dist_main_program, self._place, dist_context
-                )
+            self.program_helper.init(
+                dist_main_program, self._place, dist_context
+            )
             # The model's instance variables (not paramters), used in forward function,
             # have been initialized when initialize model in dynamic mode.
             if self._model and len(self._model.buffers()) > 0:
@@ -897,6 +884,27 @@ class Engine:
                 self._cur_rank
             ]
             self._executor.run(dist_startup_prog)
+
+    # distributed training combined with prim mechanism (prim is behind of distributed)
+    # for local main subprogram after distributed partition,
+    # mark _need_decomp=True to tag this program needs to be decomposed
+    # get _grad_var_to_var from distributed context and set it to main program for futher decomposing in static executor
+    def _mark_prim(self, mode):
+        if os.getenv("FLAGS_enable_prim_after_distribute") in [
+            'True',
+            'true',
+            '1',
+        ]:
+            dist_context = self._dist_contexts[mode]
+            dist_main_program = dist_context.dist_main_programs[self._cur_rank]
+            dist_main_program._need_decomp = True
+            grad_var_to_var = auto_utils.get_grad_var_to_var(
+                dist_context,
+            )
+            auto_utils.update_grad_var_to_var(
+                dist_main_program, self._strategy, grad_var_to_var
+            )
+            dist_main_program._grad_var_to_var = grad_var_to_var
 
     def fit(
         self,
@@ -1545,6 +1553,29 @@ class Engine:
         )
         return logs
 
+    def get_feed_list(self):
+        dist_context = self._dist_contexts[self._mode]
+        dist_main_prog = dist_context.dist_main_programs[self._cur_rank]
+        dist_startup_prog = dist_context.dist_startup_programs[self._cur_rank]
+        dist_main_block = dist_main_prog.global_block()
+
+        # NOTE: Get feed_list, then insert dataloader op with sharded var shape.
+        # Cause predict_program does not contain labels var,
+        # then we will add labels var from serial_program to dist_program,
+        # that maintains the length of feed_list equal to the length of dataset's values.
+        inputs_var = dist_context.serial_feed_vars["inputs"]
+        labels_var = dist_context.serial_feed_vars["labels"]
+        feed_list = []
+        for var in inputs_var + labels_var:
+            if var.name in dist_main_block.vars:
+                feed_list.append(dist_main_block.vars[var.name])
+            else:
+                copy_var = dist_main_block._clone_variable(var, var.persistable)
+                copy_var.desc.set_original_id(var.desc.original_id())
+                feed_list.append(copy_var)
+
+        return feed_list
+
     def _prepare_dataloader(
         self,
         dataset,
@@ -2000,6 +2031,18 @@ class Engine:
         global_cost, max_memory = get_cost_from_engine(self, mode)
 
         return global_cost.time, max_memory
+
+    def get_dist_main_program(self, mode):
+        return self._dist_contexts[mode].dist_main_programs[self._cur_rank]
+
+    def get_dist_startup_program(self, mode):
+        return self._dist_contexts[mode].dist_startup_programs[self._cur_rank]
+
+    def get_serial_main_program(self, mode):
+        return self._dist_contexts[mode].serial_main_program
+
+    def get_serial_startup_program(self, mode):
+        return self._dist_contexts[mode].serial_startup_program
 
     @property
     def main_program(self):

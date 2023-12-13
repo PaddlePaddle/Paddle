@@ -30,7 +30,6 @@ from paddle.distributed.fleet.meta_optimizers.common import (
 )
 from paddle.framework import core
 from paddle.static import program_guard
-from paddle.utils import unique_name
 
 from ..utils.log_utils import get_logger
 from .auto_parallel_sharding import _supported_optimizer_type
@@ -220,7 +219,7 @@ class MasterGradPass(PassBase):
         )
         serial_optimizer._sorted = False
         with program_guard(main_program, startup_program):
-            with unique_name.guard("opt_"):
+            with main_ops_len.switch_name_generator_guard("opt_"):
                 _ = serial_optimizer.apply_gradients(params_grads)
         self._completer.complete_update_annotation(main_program)
 
