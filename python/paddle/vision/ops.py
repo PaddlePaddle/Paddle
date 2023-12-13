@@ -21,7 +21,12 @@ from paddle.utils import convert_to_list
 
 from ..base import core
 from ..base.data_feeder import check_type, check_variable_and_dtype
-from ..base.framework import Variable, in_dygraph_mode, in_dynamic_or_pir_mode
+from ..base.framework import (
+    Variable,
+    in_dygraph_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
+)
 from ..base.layer_helper import LayerHelper
 from ..framework import _current_expected_place
 from ..nn import BatchNorm2D, Conv2D, Layer, ReLU, Sequential
@@ -2122,7 +2127,7 @@ def generate_proposals(
             [1, 1])
     """
 
-    if in_dynamic_or_pir_mode():
+    if in_dygraph_mode():
         assert (
             return_rois_num
         ), "return_rois_num should be True in dygraph mode."
@@ -2138,6 +2143,25 @@ def generate_proposals(
             scores, bbox_deltas, img_size, anchors, variances, *attrs
         )
 
+        return rpn_rois, rpn_roi_probs, rpn_rois_num
+    elif in_pir_mode():
+        assert (
+            return_rois_num
+        ), "return_rois_num should be True in PaddlePaddle inner op mode."
+        attrs = {
+            'pre_nms_topN': pre_nms_top_n,
+            'post_nms_topN': post_nms_top_n,
+            'nms_thresh': nms_thresh,
+            'min_size': min_size,
+            'eta': eta,
+            'pixel_offset': pixel_offset,
+        }
+        rpn_rois, rpn_roi_probs, rpn_rois_num = _C_ops.generate_proposals(
+            scores, bbox_deltas, img_size, anchors, variances, **attrs
+        )
+        rpn_rois.stop_gradient = True
+        rpn_roi_probs.stop_gradient = True
+        rpn_rois_num.stop_gradient = True
         return rpn_rois, rpn_roi_probs, rpn_rois_num
     else:
         helper = LayerHelper('generate_proposals_v2', **locals())
