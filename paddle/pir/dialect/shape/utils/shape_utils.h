@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/pir/dialect/shape/utils/dim_expr.h"
 #include "paddle/pir/dialect/shape/utils/shape_optimization_utils.h"
 #include "paddle/pir/dialect/shape/utils/symbol_table.h"
 
@@ -80,6 +81,7 @@ class IR_API ShapeConstraintIRAnalysis : public ShapeAnalysis {
   // dimension size of the memref value.
   std::unordered_map<Value, std::vector<shape::SymbolicDimOp>>
       value_to_sym_dims_;
+  std::vector<symbol::DimExprConstraint> constraints_;
 
  public:
   explicit ShapeConstraintIRAnalysis(std::shared_ptr<pir::Program>&& program)
