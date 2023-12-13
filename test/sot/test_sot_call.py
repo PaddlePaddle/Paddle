@@ -30,16 +30,19 @@ def simple_case(x, y):
 class TestSotCall(TestCaseBase):
     @min_graph_size_guard(0)
     def test_input_with_different_places(self):
-        a = paddle.to_tensor([2, 3], dtype='int32')
-        b = paddle.ones([3, 2], dtype='int32')
-        _, pp = paddle.jit.to_static(
-            simple_case, full_graph=True
-        ).get_concrete_program(a, b)
-        c = paddle.to_tensor([2, 3], dtype='int32', place=paddle.CPUPlace())
+        if paddle.device.is_compiled_with_cuda():
+            a = paddle.to_tensor(
+                [2, 3], dtype='int32', place=paddle.CUDAPlace(0)
+            )
+            b = paddle.ones([3, 2], dtype='int32')
+            _, pp = paddle.jit.to_static(
+                simple_case, full_graph=True
+            ).get_concrete_program(a, b)
+            c = paddle.to_tensor([2, 3], dtype='int32', place=paddle.CPUPlace())
 
-        result1 = pp.sot_call([a, b])
-        result2 = pp.sot_call([c, b])
-        self.assert_nest_match(result1, result2)
+            result1 = pp.sot_call([a, b])
+            result2 = pp.sot_call([c, b])
+            self.assert_nest_match(result1, result2)
 
 
 if __name__ == "__main__":
