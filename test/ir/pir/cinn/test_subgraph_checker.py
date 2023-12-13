@@ -24,16 +24,15 @@ class TestChecker(unittest.TestCase):
         paddle.enable_static()
 
     def create_program(self, enable_prim=False):
+        out_name = 'pt_output_0'
         if enable_prim:
             core._set_prim_forward_enabled(True)
-            out_name = 'cinn_out_0'
         else:
             core._set_prim_all_enabled(False)
-            out_name = 'phi_out_0'
 
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):
-            x = paddle.static.data(shape=[4, 4], name='input_0')
+            x = paddle.static.data(shape=[4, 4], name='pt_input_0')
             out = paddle.nn.functional.softmax(x)
             fetch_out = paddle._pir_ops.fetch(out, out_name, 0)
             fetch_out.persistable = True
