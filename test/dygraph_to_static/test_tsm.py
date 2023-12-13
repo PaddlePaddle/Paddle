@@ -21,7 +21,8 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_default_mode_only,
+    enable_to_static_guard,
+    test_default_and_pir,
 )
 from tsm_config_utils import merge_configs, parse_config, print_configs
 
@@ -292,9 +293,7 @@ def create_optimizer(cfg, params):
     return optimizer
 
 
-def train(args, fake_data_reader, to_static):
-    paddle.jit.enable_to_static(to_static)
-
+def train(args, fake_data_reader):
     config = parse_config(args.config)
     train_config = merge_configs(config, 'train', vars(args))
     valid_config = merge_configs(config, 'valid', vars(args))
@@ -375,14 +374,16 @@ def train(args, fake_data_reader, to_static):
 
 
 class TestTsm(Dy2StTestBase):
-    @test_default_mode_only
+    @test_default_and_pir
     def test_dygraph_static_same_loss(self):
         if paddle.is_compiled_with_cuda():
             paddle.set_flags({"FLAGS_cudnn_deterministic": True})
         args = parse_args()
         fake_data_reader = FakeDataReader("train", parse_config(args.config))
-        dygraph_loss = train(args, fake_data_reader, to_static=False)
-        static_loss = train(args, fake_data_reader, to_static=True)
+        with enable_to_static_guard(False):
+            dygraph_loss = train(args, fake_data_reader)
+
+        static_loss = train(args, fake_data_reader)
         np.testing.assert_allclose(dygraph_loss, static_loss, rtol=1e-05)
 
 

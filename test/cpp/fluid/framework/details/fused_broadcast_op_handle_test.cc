@@ -15,10 +15,10 @@
 #include "paddle/fluid/framework/details/fused_broadcast_op_handle.h"
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/details/broadcast_op_handle_test.h"
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "test/cpp/fluid/framework/details/broadcast_op_handle_test.h"
 
 namespace paddle {
 namespace framework {

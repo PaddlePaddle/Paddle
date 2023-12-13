@@ -19,6 +19,7 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    enable_to_static_guard,
     test_ast_only,
     test_legacy_and_pt_and_pir,
 )
@@ -190,12 +191,17 @@ class TestSetValueWithLayerAndSave(Dy2StTestBase):
 
     @test_ast_only
     def test_set_value_with_save(self):
-        paddle.jit.enable_to_static(True)
-        model = paddle.jit.to_static(LayerWithSetValue(input_dim=10, hidden=1))
-        x = paddle.full(shape=[5, 10], fill_value=5.0, dtype="float32")
-        paddle.jit.save(
-            layer=model, path=self.model_path, input_spec=[x], output_spec=None
-        )
+        with enable_to_static_guard(True):
+            model = paddle.jit.to_static(
+                LayerWithSetValue(input_dim=10, hidden=1)
+            )
+            x = paddle.full(shape=[5, 10], fill_value=5.0, dtype="float32")
+            paddle.jit.save(
+                layer=model,
+                path=self.model_path,
+                input_spec=[x],
+                output_spec=None,
+            )
 
 
 class TestSliceSupplementSpecialCase(Dy2StTestBase):

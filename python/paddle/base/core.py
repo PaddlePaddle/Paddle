@@ -41,8 +41,7 @@ try:
         # Note: from python3.8, PATH will not take effect
         # https://github.com/python/cpython/pull/12302
         # Use add_dll_directory to specify dll resolution path
-        if sys.version_info[:2] >= (3, 8):
-            os.add_dll_directory(third_lib_path)
+        os.add_dll_directory(third_lib_path)
 
 except ImportError as e:
     if os.name == 'nt':

@@ -478,7 +478,7 @@ def _accumulate_gradients_by_sum_op_(
             "sum",
             {"X": renamed_vars[var_name]},
             {"Out": [var_name]},
-            {"use_mkldnn": False, "op_device": op_device},
+            {"op_device": op_device},
         )
     )
     renamed_vars[var_name] = [var_name]
@@ -505,7 +505,7 @@ def _accumulate_gradients_by_add_ops_(
                 "grad_add",
                 {"X": [x_name], "Y": [y_name]},
                 {"Out": [out_name]},
-                {"use_mkldnn": False, "op_device": op_device},
+                {"op_device": op_device},
             )
         )
     renamed_vars[var_name] = [var_name]
