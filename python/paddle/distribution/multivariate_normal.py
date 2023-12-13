@@ -353,7 +353,7 @@ class MultivariateNormal(distribution.Distribution):
 
         In the above equation:
 
-        * :math:\Omega: is the support of the distribution.
+        * :math:`\Omega`: is the support of the distribution.
 
         Returns:
             Tensor, Shannon entropy of Multivariate Normal distribution. The data type is the same as `self.loc`.
