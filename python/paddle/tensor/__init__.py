@@ -169,6 +169,8 @@ from .manipulation import (  # noqa: F401
     index_put_,
     masked_fill,
     masked_fill_,
+    masked_scatter,
+    masked_scatter_,
     moveaxis,
     put_along_axis,
     put_along_axis_,
@@ -778,6 +780,8 @@ tensor_method_func = [
     'atleast_2d',
     'atleast_3d',
     'diagonal_scatter',
+    'masked_scatter',
+    'masked_scatter_',
     "combinations",
 ]
 

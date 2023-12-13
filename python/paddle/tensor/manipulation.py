@@ -4534,6 +4534,89 @@ def reshape(x, shape, name=None):
         return out
 
 
+def masked_scatter(x, mask, value, name=None):
+    """
+    Copies elements from `value` into `x` tensor at positions where the `mask` is True.
+
+    Elements from source are copied into `x` starting at position 0 of `value` and continuing in order one-by-one for
+    each occurrence of `mask` being True. The shape of `mask` must be broadcastable with the shape of the underlying tensor.
+    The `value` should have at least as many elements as the number of ones in `mask`.
+
+    Args:
+        x (Tensor): An N-D Tensor. The data type is ``float16``, ``float32``, ``float64``, ``int32``,
+            ``int64`` or ``bfloat16``.
+        mask (Tensor): The boolean tensor indicate the position to be filled.
+            The data type of mask must be bool.
+        value (Tensor): The value used to fill the target tensor.
+            Supported data types are same as x.
+        name (str, optional): Name for the operation (optional, default is None). For more information,
+            please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, A reshaped Tensor with the same data type as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.seed(2048)
+            >>> x = paddle.randn([2, 2])
+            >>> print(x)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [[-1.24725831,  0.03843464],
+                [-0.31660911,  0.04793844]])
+
+            >>> mask = paddle.to_tensor([[True, True], [False, False]])
+            >>> value = paddle.to_tensor([1, 2, 3, 4, 5,], dtype="float32")
+
+            >>> out = paddle.masked_scatter(x, mask, value)
+            >>> print(out)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [[1,  2],
+                [-0.31660911,  0.04793844]])
+
+    """
+    # make sure the dtype of x and value is the same
+    assert (
+        x.dtype == value.dtype
+    ), f'x and value must have the same dtype, but got x dtype is {x.dtype}, value dtype is {value.dtype}'
+    assert mask.dtype == paddle.bool
+
+    zeros_like_x = paddle.zeros_like(x, dtype=int)
+    mask = paddle.add(paddle.cast(mask, dtype="int"), zeros_like_x)
+    mask_prefix = paddle.clip(mask.cumsum() - 1, min=0)
+    assert (
+        mask_prefix[-1] <= value.numel()
+    ), f'mask true nums must be <= value size, but got mask true nums is {mask.sum().item()}, value size is {value.numel().item()}'
+
+    value = value.flatten()[mask_prefix].reshape(mask.shape)
+    mask = paddle.logical_not(mask)
+    return paddle.where(mask, x, value)
+
+
+@inplace_apis_in_dygraph_only
+def masked_scatter_(x, mask, value, name=None):
+    """
+    Inplace version of ``masked_scatter`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_masked_scatter`.
+    """
+    assert (
+        x.dtype == value.dtype
+    ), f'x and value must have the same dtype, but got x dtype is {x.dtype}, value dtype is {value.dtype}'
+    assert mask.dtype == paddle.bool
+    zeros_like_x = paddle.zeros_like(x, dtype=int)
+    mask = paddle.add(paddle.cast(mask, dtype="int"), zeros_like_x)
+    mask_prefix = paddle.clip(mask.cumsum() - 1, min=0)
+    assert (
+        mask_prefix[-1] <= value.numel()
+    ), f'mask true nums must be <= value size, but got mask true nums is {mask_prefix[-1].item()}, value size is {value.numel().item()}'
+
+    value = value.flatten()[mask_prefix].reshape(mask.shape)
+    mask = paddle.logical_not(mask)
+    out = paddle.where_(mask, x, value)
+    return out
+
+
 @inplace_apis_in_dygraph_only
 def reshape_(x, shape, name=None):
     """
