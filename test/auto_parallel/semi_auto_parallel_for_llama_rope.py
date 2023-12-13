@@ -82,7 +82,6 @@ def rotate_half(x):
 
 def apply_rotary_pos_emb(q, k, cos, sin, position_ids):
     if position_ids is None:
-        # Note: Only for LlamaForCausalLMPipe model pretraining
         cos = cos[:, : q.shape[1], :, :]  # [bs, seq_len, 1, dim]
         sin = sin[:, : q.shape[1], :, :]  # [bs, seq_len, 1, dim]
     else:
@@ -126,6 +125,7 @@ class RotaryPositionEmbedding(nn.Layer):
         position_ids = paddle.arange(self.seq_len, dtype="int64").expand(
             (BATCH_SIZE, self.seq_len)
         )
+
         if self.is_use_fused_rope:
             query_states, key_states, _ = fused_rotary_position_embedding(
                 query_states,
@@ -149,7 +149,6 @@ class TestLlamaRopeSemiAutoParallel:
         self._backend = os.getenv("backend")
         self._seed = eval(os.getenv("seed"))
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
-        self.is_use_fuse_rope = False
         paddle.set_device(self._backend)
         self.init_single_card_net_result()
 
@@ -158,9 +157,6 @@ class TestLlamaRopeSemiAutoParallel:
             layer.weight = dist.shard_tensor(
                 layer.weight, process_mesh, [Shard(1)]
             )
-
-    def set_use_fuse_rope_flag(self, is_use_fuse_rope):
-        self.is_use_fuse_rope = is_use_fuse_rope
 
     def set_random_seed(self, seed):
         random.seed(seed)
@@ -180,7 +176,6 @@ class TestLlamaRopeSemiAutoParallel:
             seq_len=SEQ_LEN,
             num_heads=NUM_HEADS,
             head_dim=HEAD_DIM,
-            is_use_fused_rope=self.is_use_fuse_rope,
         )
         self.base_out, self.base_parameters = self.train_loop(rotary_emb)
 
@@ -212,14 +207,13 @@ class TestLlamaRopeSemiAutoParallel:
             np1, np2, rtol=rtol, atol=atol, verbose=verbose
         )
 
-    def test_dp(self, is_use_fuse_rope=False):
+    def test_dp(self, is_use_fused_rope=False):
         self.set_random_seed(self._seed)
-
         dp_layer = RotaryPositionEmbedding(
             seq_len=SEQ_LEN,
             num_heads=NUM_HEADS,
             head_dim=HEAD_DIM,
-            is_use_fused_rope=self.is_use_fuse_rope,
+            is_use_fused_rope=is_use_fused_rope,
         )
 
         dp_out, dp_parameters = self.train_loop(
@@ -231,14 +225,13 @@ class TestLlamaRopeSemiAutoParallel:
             self.check_tensor_eq(param, param_base)
             self.check_tensor_eq(param.grad, param_base.grad)
 
-    def test_mp(self, is_use_fuse_rope=False):
+    def test_mp(self, is_use_fused_rope=False):
         self.set_random_seed(self._seed)
-
         mp_layer = RotaryPositionEmbedding(
             seq_len=SEQ_LEN,
             num_heads=NUM_HEADS,
             head_dim=HEAD_DIM,
-            is_use_fused_rope=self.is_use_fuse_rope,
+            is_use_fused_rope=is_use_fused_rope,
         )
         mp_layer = dist.shard_layer(mp_layer, self._mesh, self.mp_shard_fn)
         mp_out, mp_parameters = self.train_loop(mp_layer)
@@ -248,10 +241,10 @@ class TestLlamaRopeSemiAutoParallel:
             self.check_tensor_eq(param.grad, param_base.grad)
 
     def run_test_case(self):
-        self.test_dp(is_use_fuse_rope=False)
-        self.test_mp(is_use_fuse_rope=False)
-        self.test_dp(is_use_fuse_rope=True)
-        self.test_mp(is_use_fuse_rope=True)
+        self.test_dp(is_use_fused_rope=False)
+        self.test_mp(is_use_fused_rope=False)
+        self.test_dp(is_use_fused_rope=True)
+        self.test_mp(is_use_fused_rope=True)
 
 
 if __name__ == '__main__':

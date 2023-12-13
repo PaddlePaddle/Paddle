@@ -38,10 +38,10 @@ for element in "${target_lists_for_semi_auto_ci[@]}";do
   fi
   count=$((count+1))
 done
-# get the location of "test/collective/fleet" in target_lists_for_dygraph_ci
+# get the location of "test/collective/hybrid_strategy" in target_lists_for_dygraph_ci
 count=0
 for element in "${target_lists_for_dygraph_ci[@]}";do
-  if [[ "$element" == "test/collective/fleet" ]]; then  
+  if [[ "$element" == "test/collective/hybrid_strategy" ]]; then  
     test_dygraph_num=$count
     break
   fi

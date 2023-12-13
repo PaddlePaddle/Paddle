@@ -316,6 +316,22 @@ class TestDygraphInplaceMaskedFill2(TestDygraphInplaceMaskedFill):
         self.mask = paddle.to_tensor(self.mask, dtype='bool')
 
 
+class TestDygraphInplaceMaskedScatter(TestDygraphInplace):
+    def non_inplace_api_processing(self, var):
+        return paddle.masked_scatter(var, self.mask, self.value)
+
+    def inplace_api_processing(self, var):
+        return paddle.masked_scatter_(var, self.mask, self.value)
+
+    def init_data(self):
+        self.dtype = "float32"
+        self.input_var_numpy = np.random.uniform(-5, 5, [30, 3])
+        self.value = np.random.uniform(size=(30, 30))
+        self.value = paddle.to_tensor(self.value, dtype=self.dtype)
+        self.mask = np.random.randint(0, 2, [30, 1]).astype('bool')
+        self.mask = paddle.to_tensor(self.mask, dtype='bool')
+
+
 class TestDygraphInplaceWithContinuous(TestDygraphInplace):
     def init_data(self):
         self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
