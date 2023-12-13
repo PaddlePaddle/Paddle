@@ -108,16 +108,16 @@ endif()
 cc_library(
   init
   SRCS init.cc
-  DEPS device_context phi common memcpy)
+  DEPS device_context phi common fluid_memory)
 
-# memcpy depends on device_context, here add deps individually for
+#  depends on device_context, here add deps individually for
 # avoiding cycle dependencies
 
 cc_library(
   device_context
   SRCS device_context.cc
   DEPS simple_threadpool
-       malloc
+       allocator
        xxhash
        ${STREAM_CALLBACK_DEPS}
        place
@@ -270,7 +270,6 @@ if(WITH_GPU)
          enforce
          dynload_cuda
          new_profiler
-         stats
          op_proto_maker
          shape_inference)
 elseif(WITH_ROCM)
@@ -282,7 +281,6 @@ elseif(WITH_ROCM)
          gpu_info
          enforce
          new_profiler
-         stats
          op_proto_maker
          shape_inference)
 elseif(WITH_XPU)
@@ -294,20 +292,13 @@ elseif(WITH_XPU)
          enforce
          dynload_xpti
          new_profiler
-         stats
          op_proto_maker
          shape_inference)
 else()
   cc_library(
     profiler
     SRCS profiler.cc
-    DEPS phi
-         common
-         enforce
-         new_profiler
-         stats
-         op_proto_maker
-         shape_inference)
+    DEPS phi common enforce new_profiler op_proto_maker shape_inference)
 endif()
 
 cc_test(

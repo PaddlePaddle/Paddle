@@ -58,10 +58,10 @@ detection_library(retinanet_detection_output_op SRCS
                   retinanet_detection_output_op.cc)
 
 if(WITH_GPU OR WITH_ROCM)
-  set(TMPDEPS memory)
+  set(TMPDEPS)
   if(WITH_GPU)
     if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
-      set(TMPDEPS memory cub)
+      set(TMPDEPS cub)
     endif()
   endif()
   detection_library(generate_proposals_op SRCS generate_proposals_op.cc
@@ -83,6 +83,6 @@ endif()
 cc_library(
   mask_util
   SRCS mask_util.cc
-  DEPS memory)
+  DEPS)
 detection_library(generate_mask_labels_op SRCS generate_mask_labels_op.cc DEPS
                   mask_util)

@@ -4,7 +4,7 @@ set(PYBIND_DEPS
     pybind
     python
     proto_desc
-    memory
+    staticgraph_executor_statistics
     executor
     fleet_wrapper
     box_wrapper
@@ -35,11 +35,9 @@ set(PYBIND_DEPS
     cost_model
     cuda_graph_with_memory_pool
     fleet_executor
-    plan
     global_utils
     phi_utils
     phi
-    pir_adaptor
     op_dialect_vjp
     program_translator
     pir_transforms
@@ -487,7 +485,7 @@ if(WITH_PYTHON)
                       DEPENDS ${eager_impl_file})
   endif()
 
-  list(APPEND PYBIND_DEPS standalone_executor staticgraph_executor_statistics)
+  list(APPEND PYBIND_DEPS)
 
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     set(PYBIND_SRCS eager.cc ${PYBIND_SRCS})

@@ -10,15 +10,15 @@ cc_library(
 cc_library(
   scale_loss_grad_op_handle
   SRCS scale_loss_grad_op_handle.cc
-  DEPS op_handle_base scope lod_tensor phi common memory)
+  DEPS op_handle_base scope lod_tensor phi common)
 cc_library(
   fetch_op_handle
   SRCS fetch_op_handle.cc
-  DEPS op_handle_base scope lod_tensor phi common memory)
+  DEPS op_handle_base scope lod_tensor phi common)
 cc_library(
   fetch_async_op_handle
   SRCS fetch_async_op_handle.cc
-  DEPS op_handle_base scope lod_tensor phi common memory)
+  DEPS op_handle_base scope lod_tensor phi common)
 
 cc_library(
   share_tensor_buffer_functor
@@ -81,7 +81,7 @@ if(WITH_GPU)
          lod_tensor
          phi
          common
-         memory
+         fluid_memory
          dynload_cuda)
   nv_library(
     fused_all_reduce_op_handle
@@ -93,7 +93,6 @@ if(WITH_GPU)
          lod_tensor
          phi
          common
-         memory
          dynload_cuda
          place)
   nv_library(
@@ -105,7 +104,6 @@ if(WITH_GPU)
          lod_tensor
          phi
          common
-         memory
          dynload_cuda
          variable_visitor
          place
@@ -120,7 +118,6 @@ if(WITH_GPU)
            lod_tensor
            phi
            common
-           memory
            dynload_cuda
            variable_visitor
            dgc
@@ -141,13 +138,7 @@ if(WITH_GPU)
   nv_library(
     broadcast_op_handle
     SRCS broadcast_op_handle.cc
-    DEPS op_handle_base
-         scope
-         phi
-         common
-         memory
-         variable_visitor
-         dynload_cuda)
+    DEPS op_handle_base scope phi common variable_visitor dynload_cuda)
   nv_library(
     fused_broadcast_op_handle
     SRCS fused_broadcast_op_handle.cc
@@ -165,7 +156,6 @@ elseif(WITH_ROCM)
          lod_tensor
          phi
          common
-         memory
          dynload_cuda
          variable_visitor)
   hip_library(
@@ -178,7 +168,6 @@ elseif(WITH_ROCM)
          lod_tensor
          phi
          common
-         memory
          dynload_cuda
          place)
   hip_library(
@@ -190,7 +179,6 @@ elseif(WITH_ROCM)
          lod_tensor
          phi
          common
-         memory
          dynload_cuda
          variable_visitor
          place
@@ -210,13 +198,7 @@ elseif(WITH_ROCM)
   hip_library(
     broadcast_op_handle
     SRCS broadcast_op_handle.cc
-    DEPS op_handle_base
-         scope
-         phi
-         common
-         memory
-         variable_visitor
-         dynload_cuda)
+    DEPS op_handle_base scope phi common variable_visitor dynload_cuda)
   hip_library(
     fused_broadcast_op_handle
     SRCS fused_broadcast_op_handle.cc
@@ -229,13 +211,7 @@ else()
   cc_library(
     all_reduce_op_handle
     SRCS all_reduce_op_handle.cc
-    DEPS op_handle_base
-         scope
-         lod_tensor
-         phi
-         common
-         memory
-         variable_visitor)
+    DEPS op_handle_base scope lod_tensor phi common variable_visitor)
   cc_library(
     fused_all_reduce_op_handle
     SRCS fused_all_reduce_op_handle.cc
@@ -245,7 +221,6 @@ else()
          lod_tensor
          phi
          common
-         memory
          variable_visitor
          place)
   cc_library(
@@ -257,7 +232,6 @@ else()
          lod_tensor
          phi
          common
-         memory
          variable_visitor
          place
          all_reduce_op_handle)
@@ -275,7 +249,7 @@ else()
   cc_library(
     broadcast_op_handle
     SRCS broadcast_op_handle.cc
-    DEPS op_handle_base scope phi common memory variable_visitor)
+    DEPS op_handle_base scope phi common variable_visitor)
   cc_library(
     fused_broadcast_op_handle
     SRCS fused_broadcast_op_handle.cc
@@ -285,7 +259,7 @@ endif()
 cc_library(
   gather_op_handle
   SRCS gather_op_handle.cc
-  DEPS op_handle_base scope phi common memory variable_visitor)
+  DEPS op_handle_base scope phi common variable_visitor)
 
 cc_library(
   eager_deletion_op_handle
@@ -333,7 +307,6 @@ cc_test(
        scope
        phi
        common
-       memory
        device_context
        broadcast_op_handle)
 
@@ -347,7 +320,6 @@ cc_test_old(
   scope
   phi
   common
-  memory
   device_context
   gather_op_handle)
 
@@ -359,7 +331,7 @@ cc_library(
   scope_buffered_ssa_graph_executor
   SRCS scope_buffered_ssa_graph_executor.cc
   DEPS ssa_graph_executor scope_buffered_monitor)
-#cc_test(reduce_op_handle_test SRCS reduce_op_handle_test.cc DEPS var_handle op_handle_base scope phi common memory
+#cc_test(reduce_op_handle_test SRCS reduce_op_handle_test.cc DEPS var_handle op_handle_base scope phi common
 #        device_context reduce_op_handle )
 cc_library(
   bind_threaded_ssa_graph_executor
