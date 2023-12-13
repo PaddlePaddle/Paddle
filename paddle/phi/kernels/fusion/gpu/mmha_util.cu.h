@@ -775,8 +775,8 @@ inline __device__ void mul_pointer_v2(__nv_bfloat162* c, float a, uint16_t* b) {
   bf16_result_ptr[0] = __byte_perm(
       fp32_intermediates_casted[0], fp32_intermediates_casted[1], 0x7632);
   __nv_bfloat16 scale = static_cast<__nv_bfloat16>(a);
-  c->x *= scale;
-  c->y *= scale;
+  c->x = c->x * scale;
+  c->y = c->y * scale;
 }
 
 template <>
@@ -786,7 +786,7 @@ inline __device__ void mul_pointer_v2(bf16_4_t* c, float a, uint32_t* b) {
   convert_(c_prime, *b);
 #pragma unroll
   for (int i = 0; i < 4; ++i) {
-    c_prime[i] *= a_prime;
+    c_prime[i] = c_prime[i] * a_prime;
   }
 }
 

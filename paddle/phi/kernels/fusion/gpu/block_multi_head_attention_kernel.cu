@@ -527,37 +527,49 @@ void DispatchWithDtype(
                         max_seq_len,
                         dim_head);
     VLOG(3) << "qkv_out_decoder: " << qkv_out_decoder.dims();
-    blha<T>(
-        dev_ctx,
-        qkv_out_decoder,
-        nullptr,  // qkv_bias
-        &block_tables,
-        tgt_mask ? &tgt_mask.get() : nullptr,
-        &cum_offsets,
-        &seq_lens_decoder,
-        rope_emb ? &rope_emb.get() : nullptr,  // rope_emb
-        key_cache_out,
-        value_cache_out,
-        &fmha_buf,
-        bsz,
-        max_block_per_seq,
-        block_size,
-        max_seq_len,
-        pre_cache_length,
-        num_head,
-        dim_head,
-        max_dec_len_this_time,
-        rope_emb ? 1 : 0,
-        1. / sqrt(dim_head),
-        /*compute_bias*/ false,
-        use_neox_style,
-        quant_round_type,
-        quant_max_bound,
-        quant_min_bound,
-        cache_k_quant_scales ? cache_k_quant_scales.get_ptr() : nullptr,
-        cache_v_quant_scales ? cache_v_quant_scales.get_ptr() : nullptr,
-        cache_k_dequant_scales ? cache_k_dequant_scales.get_ptr() : nullptr,
-        cache_v_dequant_scales ? cache_v_dequant_scales.get_ptr() : nullptr);
+    int cachekv_quant_mode = 0;
+    if (cache_k_quant_scales) {
+      if (dynamic_cachekv_quant) {
+        cachekv_quant_mode = 2;
+      } else {
+        cachekv_quant_mode = 1;
+      }
+    }
+    blha<T>(dev_ctx,
+            qkv_out_decoder,
+            nullptr,  // qkv_bias
+            &block_tables,
+            tgt_mask ? &tgt_mask.get() : nullptr,
+            &cum_offsets,
+            &seq_lens_decoder,
+            rope_emb ? &rope_emb.get() : nullptr,  // rope_emb
+            key_cache_out,
+            value_cache_out,
+            &fmha_buf,
+            bsz,
+            max_block_per_seq,
+            block_size,
+            max_seq_len,
+            pre_cache_length,
+            num_head,
+            dim_head,
+            max_dec_len_this_time,
+            rope_emb ? 1 : 0,
+            1. / sqrt(dim_head),
+            /*compute_bias*/ false,
+            use_neox_style,
+            quant_round_type,
+            quant_max_bound,
+            quant_min_bound,
+            cache_k_quant_scales ? cache_k_quant_scales.get_ptr() : nullptr,
+            cache_v_quant_scales ? cache_v_quant_scales.get_ptr() : nullptr,
+            cache_k_dequant_scales ? cache_k_dequant_scales.get_ptr() : nullptr,
+            cache_v_dequant_scales ? cache_v_dequant_scales.get_ptr() : nullptr,
+            nullptr,  // dequant_qkv_scales
+            nullptr,  // shift
+            nullptr,  // smooth
+            -1,       // quant_fmha_out_scale
+            cachekv_quant_mode);
     VLOG(3) << "blha end";
   }
   if (out_scale > 0) {

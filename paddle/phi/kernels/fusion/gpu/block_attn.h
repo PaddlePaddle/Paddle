@@ -83,7 +83,7 @@ template <typename T,
           int THREADS_PER_VALUE,
           int THREADS_PER_BLOCK,
           int BLOCK_SIZE,
-          bool USE_CACHE_INT8,
+          int USE_CACHE_INT8,
           typename LoadFunc,
           typename StoreFunc>
 __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
@@ -135,11 +135,16 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
   float k_dequant_scale;
   float v_dequant_scale;
 
-  if (USE_CACHE_INT8) {
+  if (USE_CACHE_INT8 == 1) {  // static
     k_quant_scale = params.cache_k_quant_scales[hi];
     v_quant_scale = params.cache_v_quant_scales[hi];
     k_dequant_scale = params.cache_k_dequant_scales[hi];
     v_dequant_scale = params.cache_v_dequant_scales[hi];
+  } else if (USE_CACHE_INT8 == 2) {  // dynamic
+    k_quant_scale = params.cache_k_quant_scales[bi * params.num_head + hi];
+    v_quant_scale = params.cache_v_quant_scales[bi * params.num_head + hi];
+    k_dequant_scale = params.cache_k_dequant_scales[bi * params.num_head + hi];
+    v_dequant_scale = params.cache_v_dequant_scales[bi * params.num_head + hi];
   }
 
   const int bhi = bi * params.num_head + hi;
@@ -542,61 +547,83 @@ inline size_t smem_size_in_bytes(const Block_AttN_params<T> &params,
   return max(logits_table_sz, red_sz);
 }
 
-#define BLHA_LAUNCH_KERNEL(T,                                                \
-                           Dh,                                               \
-                           Dh_MAX,                                           \
-                           THDS_PER_KEY,                                     \
-                           THDS_PER_VALUE,                                   \
-                           THDS_PER_BLOCK,                                   \
-                           BLOCK_SIZE,                                       \
-                           stream,                                           \
-                           load_func,                                        \
-                           store_func)                                       \
-  size_t smem_sz =                                                           \
-      smem_size_in_bytes<T>(params, Dh, THDS_PER_VALUE, THDS_PER_BLOCK);     \
-  if (params.cache_k_quant_scales) {                                         \
-    constexpr auto kernel_fn = block_attention_kernel<T,                     \
-                                                      Dh,                    \
-                                                      Dh_MAX,                \
-                                                      THDS_PER_KEY,          \
-                                                      THDS_PER_VALUE,        \
-                                                      THDS_PER_BLOCK,        \
-                                                      BLOCK_SIZE,            \
-                                                      true,                  \
-                                                      decltype(load_func),   \
-                                                      decltype(store_func)>; \
-    if (smem_sz > 0xc000) {                                                  \
-      cudaFuncSetAttribute(                                                  \
-          kernel_fn, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_sz);  \
-    }                                                                        \
-    dim3 grid(params.num_head, params.batch_size);                           \
-    kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                    \
-        params, load_func, store_func);                                      \
-  } else {                                                                   \
-    constexpr auto kernel_fn = block_attention_kernel<T,                     \
-                                                      Dh,                    \
-                                                      Dh_MAX,                \
-                                                      THDS_PER_KEY,          \
-                                                      THDS_PER_VALUE,        \
-                                                      THDS_PER_BLOCK,        \
-                                                      BLOCK_SIZE,            \
-                                                      false,                 \
-                                                      decltype(load_func),   \
-                                                      decltype(store_func)>; \
-    if (smem_sz > 0xc000) {                                                  \
-      cudaFuncSetAttribute(                                                  \
-          kernel_fn, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_sz);  \
-    }                                                                        \
-    dim3 grid(params.num_head, params.batch_size);                           \
-    kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                    \
-        params, load_func, store_func);                                      \
+#define BLHA_LAUNCH_KERNEL(T,                                                  \
+                           Dh,                                                 \
+                           Dh_MAX,                                             \
+                           THDS_PER_KEY,                                       \
+                           THDS_PER_VALUE,                                     \
+                           THDS_PER_BLOCK,                                     \
+                           BLOCK_SIZE,                                         \
+                           stream,                                             \
+                           load_func,                                          \
+                           store_func,                                         \
+                           use_cachekv_int8)                                   \
+  size_t smem_sz =                                                             \
+      smem_size_in_bytes<T>(params, Dh, THDS_PER_VALUE, THDS_PER_BLOCK);       \
+  if (params.cache_k_quant_scales) {                                           \
+    if (use_cachekv_int8) {                                                    \
+      constexpr auto kernel_fn = block_attention_kernel<T,                     \
+                                                        Dh,                    \
+                                                        Dh_MAX,                \
+                                                        THDS_PER_KEY,          \
+                                                        THDS_PER_VALUE,        \
+                                                        THDS_PER_BLOCK,        \
+                                                        BLOCK_SIZE,            \
+                                                        2,                     \
+                                                        decltype(load_func),   \
+                                                        decltype(store_func)>; \
+      if (smem_sz > 0xc000) {                                                  \
+        cudaFuncSetAttribute(                                                  \
+            kernel_fn, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_sz);  \
+      }                                                                        \
+      dim3 grid(params.num_head, params.batch_size);                           \
+      kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                    \
+          params, load_func, store_func);                                      \
+    } else {                                                                   \
+      constexpr auto kernel_fn = block_attention_kernel<T,                     \
+                                                        Dh,                    \
+                                                        Dh_MAX,                \
+                                                        THDS_PER_KEY,          \
+                                                        THDS_PER_VALUE,        \
+                                                        THDS_PER_BLOCK,        \
+                                                        BLOCK_SIZE,            \
+                                                        1,                     \
+                                                        decltype(load_func),   \
+                                                        decltype(store_func)>; \
+      if (smem_sz > 0xc000) {                                                  \
+        cudaFuncSetAttribute(                                                  \
+            kernel_fn, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_sz);  \
+      }                                                                        \
+      dim3 grid(params.num_head, params.batch_size);                           \
+      kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                    \
+          params, load_func, store_func);                                      \
+    }                                                                          \
+  } else {                                                                     \
+    constexpr auto kernel_fn = block_attention_kernel<T,                       \
+                                                      Dh,                      \
+                                                      Dh_MAX,                  \
+                                                      THDS_PER_KEY,            \
+                                                      THDS_PER_VALUE,          \
+                                                      THDS_PER_BLOCK,          \
+                                                      BLOCK_SIZE,              \
+                                                      false,                   \
+                                                      decltype(load_func),     \
+                                                      decltype(store_func)>;   \
+    if (smem_sz > 0xc000) {                                                    \
+      cudaFuncSetAttribute(                                                    \
+          kernel_fn, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_sz);    \
+    }                                                                          \
+    dim3 grid(params.num_head, params.batch_size);                             \
+    kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                      \
+        params, load_func, store_func);                                        \
   }
 
 template <typename T, int Dh, int Dh_MAX, typename LoadFunc, typename StoreFunc>
 void dispatch_blha_impl_blocksize(const Block_AttN_params<T> &params,
                                   const cudaStream_t &stream,
                                   LoadFunc load_func,
-                                  StoreFunc store_func) {
+                                  StoreFunc store_func,
+                                  const int use_cachekv_int8) {
   constexpr int THREADS_PER_VALUE = Dh_MAX * sizeof(T) / 16;
   constexpr int BLOCKSIZE = 512;
   if (params.block_size == 16) {
@@ -609,7 +636,8 @@ void dispatch_blha_impl_blocksize(const Block_AttN_params<T> &params,
                        16,
                        stream,
                        load_func,
-                       store_func)
+                       store_func,
+                       use_cachekv_int8)
   } else if (params.block_size == 32) {
     BLHA_LAUNCH_KERNEL(T,
                        Dh,
@@ -620,7 +648,8 @@ void dispatch_blha_impl_blocksize(const Block_AttN_params<T> &params,
                        32,
                        stream,
                        load_func,
-                       store_func)
+                       store_func,
+                       use_cachekv_int8)
   } else if (params.block_size == 64) {
     BLHA_LAUNCH_KERNEL(T,
                        Dh,
@@ -631,7 +660,8 @@ void dispatch_blha_impl_blocksize(const Block_AttN_params<T> &params,
                        64,
                        stream,
                        load_func,
-                       store_func)
+                       store_func,
+                       use_cachekv_int8)
   } else if (params.block_size == 128) {
     BLHA_LAUNCH_KERNEL(T,
                        Dh,
@@ -642,7 +672,8 @@ void dispatch_blha_impl_blocksize(const Block_AttN_params<T> &params,
                        128,
                        stream,
                        load_func,
-                       store_func)
+                       store_func,
+                       use_cachekv_int8)
   } else if (params.block_size == 256) {
     BLHA_LAUNCH_KERNEL(T,
                        Dh,
@@ -653,7 +684,8 @@ void dispatch_blha_impl_blocksize(const Block_AttN_params<T> &params,
                        256,
                        stream,
                        load_func,
-                       store_func)
+                       store_func,
+                       use_cachekv_int8)
   } else {
     PADDLE_THROW(phi::errors::Unimplemented("block_size = %d is unsupport!",
                                             params.block_size));
@@ -665,19 +697,20 @@ void dispatch_blha_impl_headsize(const phi::GPUContext &dev_ctx,
                                  const Block_AttN_params<T> &params,
                                  int dim_head,
                                  LoadFunc load_func,
-                                 StoreFunc store_func) {
+                                 StoreFunc store_func,
+                                 const int use_cachekv_int8) {
   switch (dim_head) {
     case 32:
       dispatch_blha_impl_blocksize<T, 32, 32>(
-          params, dev_ctx.stream(), load_func, store_func);
+          params, dev_ctx.stream(), load_func, store_func, use_cachekv_int8);
       break;
     case 64:
       dispatch_blha_impl_blocksize<T, 64, 64>(
-          params, dev_ctx.stream(), load_func, store_func);
+          params, dev_ctx.stream(), load_func, store_func, use_cachekv_int8);
       break;
     case 128:
       dispatch_blha_impl_blocksize<T, 128, 128>(
-          params, dev_ctx.stream(), load_func, store_func);
+          params, dev_ctx.stream(), load_func, store_func, use_cachekv_int8);
       break;
     default:
       PADDLE_THROW(
@@ -689,12 +722,14 @@ template <typename T>
 void DispatchBLHA(const phi::GPUContext &dev_ctx,
                   const phi::DenseTensor &qkv_tensor,
                   const Block_AttN_params<T> &params,
+                  int use_cachekv_int8,
                   int num_head,
                   int dim_head,
                   phi::DenseTensor *out_tensor) {
   MMHALoad<T> load_func(qkv_tensor.data<T>());
   MMHAStore<T> store_func(out_tensor->data<T>());
-  dispatch_blha_impl_headsize(dev_ctx, params, dim_head, load_func, store_func);
+  dispatch_blha_impl_headsize(
+      dev_ctx, params, dim_head, load_func, store_func, use_cachekv_int8);
 }
 
 template <typename T>
@@ -731,7 +766,8 @@ void blha(const phi::GPUContext &dev_ctx,
           const phi::DenseTensor *dequant_qkv_scales = nullptr,
           const phi::DenseTensor *shift = nullptr,
           const phi::DenseTensor *smooth = nullptr,
-          const float quant_fmha_out_scale = -1) {
+          const float quant_fmha_out_scale = -1,
+          int use_cachekv_int8 = 0) {
   Block_AttN_params<T> params;
 
   if (cache_k_quant_scales) {
@@ -791,7 +827,13 @@ void blha(const phi::GPUContext &dev_ctx,
           << " block_size: " << block_size << " timestep: " << timestep
           << " rope_stride: " << params.rope_stride;
 
-  DispatchBLHA<T>(dev_ctx, qkv_tensor, params, num_head, dim_head, out_tensor);
+  DispatchBLHA<T>(dev_ctx,
+                  qkv_tensor,
+                  params,
+                  use_cachekv_int8,
+                  num_head,
+                  dim_head,
+                  out_tensor);
 }
 
 inline cudaError_t GetNumBlocks(int64_t n, int *num_blocks) {
@@ -1273,7 +1315,9 @@ __global__ void quant_write_cache_int8_kernel(
     float *k_dequant_scales,
     float *v_dequant_scales) {
   const int hi = blockIdx.x;
-  const int qkv_id = blockIdx.y;
+  const int b_id = blockIdx.y;
+  if (seq_lens[b_id] <= 0) return;
+  const int qkv_id = blockIdx.z;
 
   using InVec = phi::AlignedVector<T, VecSize>;
   using OutVec = phi::AlignedVector<uint8_t, VecSize>;
@@ -1341,7 +1385,7 @@ __global__ void quant_write_cache_int8_kernel(
 
     const int ori_token_idx = token_idx + padding_offsets[token_idx];
     const int ori_bi = ori_token_idx / max_seq_len;
-    if (seq_lens[ori_bi] == 0) continue;
+    if (ori_bi != b_id) continue;
     const int ori_seq_id = ori_token_idx % max_seq_len + pre_cache_length;
 
     const int *block_table_now = block_tables + ori_bi * max_blocks_per_seq;
@@ -1355,8 +1399,8 @@ __global__ void quant_write_cache_int8_kernel(
   }
 
   if (threadIdx.x == 0) {
-    quant_scales[hi] = quant_scale;
-    dequant_scales[hi] = 1.0f / quant_scale;
+    quant_scales[b_id * num_heads + hi] = quant_scale;
+    dequant_scales[b_id * num_heads + hi] = 1.0f / quant_scale;
   }
 }
 
@@ -1409,7 +1453,9 @@ void DynamicQuantCacheKernel(
 
   constexpr int block_sz = 1024;
 
-  dim3 grid(num_heads, 2);
+  const int bsz = seq_lens.dims()[0];
+
+  dim3 grid(num_heads, bsz, 2);
 
   // [token_num, 3, num_head, head_dim/x, x]->[max_block_num, num_head,
   // block_size, head_dim/x, x] Quant and Write kv
