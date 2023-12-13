@@ -50,6 +50,28 @@
 
 namespace {
 
+// This pattern is used to rewrite the CastOp that has a CastOp as its operand
+class FoldMultiCastOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::CastOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::CastOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(
+      paddle::dialect::CastOp cast_op,
+      pir::PatternRewriter& rewriter) const override {  // NOLINT
+    auto input_op = pir::GetDefiningOpForInput(cast_op, 0)
+                        ->dyn_cast<paddle::dialect::CastOp>();
+    if (!input_op) return false;
+    auto op_type = pir::GetDataTypeFromValue(cast_op.out());
+    auto new_cast_op = rewriter.Build<paddle::dialect::CastOp>(
+        input_op.x().dyn_cast<pir::OpResult>(),
+        paddle::dialect::TransToPhiDataType(op_type));
+    rewriter.ReplaceOp(cast_op, std::vector<pir::Value>{new_cast_op.out()});
+    rewriter.EraseOp(cast_op);
+    return true;
+  }
+};
+
 class AutoMixedPrecisionPattern : public pir::RewritePattern {
  public:
   AutoMixedPrecisionPattern(
@@ -91,18 +113,12 @@ class AutoMixedPrecisionPattern : public pir::RewritePattern {
     // if enable_low_precision_io_ is true, all the op will be transformed into,
     // input and output included
     if (op->isa<pir::ParameterOp>() || op->isa<pir::SetParameterOp>() ||
+        op->isa<paddle::dialect::CastOp>() ||
         op->isa<paddle::dialect::FullIntArrayOp>())
       return false;
 
     if (!enable_low_precision_io_) {
       if (op->isa<paddle::dialect::FeedOp>()) return false;
-    }
-
-    // is op is a cast op, its input type should be not be float
-    if (op->isa<paddle::dialect::CastOp>()) {
-      auto cast_operand = op->operand(0);
-      auto cast_operand_dtype = OperandDataType(cast_operand);
-      return !IsDataTypeFloat(cast_operand_dtype);
     }
 
     // if op is a full op, its user cannot be a scale op
@@ -344,6 +360,27 @@ class AutoMixedPrecisionPattern : public pir::RewritePattern {
     if (op->isa<pir::CombineOp>()) {
       // auto vec_type = op->result(0).type().dyn_cast<pir::VectorType>();
       auto input_num = op->num_operands();
+      bool in_low_precision = false;
+      bool should_insert_cast = false;
+      for (size_t i = 0; i < input_num; ++i) {
+        auto operand = op->operand(i);
+        auto operand_dtype = OperandDataType(operand);
+        if (operand_dtype == precision_mode_) {
+          in_low_precision = true;
+        } else if (IsDataTypeFloat(operand_dtype)) {
+          should_insert_cast = true;
+        }
+      }
+      if (in_low_precision && should_insert_cast) {
+        LOG(INFO) << "Insert CastOp for CombineOp" << std::endl;
+        for (size_t i = 0; i < input_num; ++i) {
+          auto operand = op->operand(i);
+          auto operand_dtype = OperandDataType(operand);
+          if (operand_dtype != precision_mode_) {
+            InsertCastOp(op, operand, precision_mode_, rewriter);
+          }
+        }
+      }
       std::vector<pir::Type> inputs_type(input_num);
       for (size_t idx = 0; idx < input_num; ++idx) {
         inputs_type[idx] = op->operand(idx).type();
@@ -415,11 +452,10 @@ class AutoMixedPrecisionPattern : public pir::RewritePattern {
       LOG(INFO) << "Change result's dtype to low precision " << op->name()
                 << std::endl;
 
-      if (op->HasAttribute("dtype")) {
-        if (!IsDataTypeFloat(
-                op->attribute<paddle::dialect::DataTypeAttribute>("dtype")
-                    .data()))
-          return;
+      if (op->HasAttribute("dtype") &&
+          IsDataTypeFloat(
+              op->attribute<paddle::dialect::DataTypeAttribute>("dtype")
+                  .data())) {
         pir::Attribute attr_dtype = paddle::dialect::DataTypeAttribute::get(
             rewriter.ir_context(), precision_mode_);
         op->set_attribute("dtype", attr_dtype);
@@ -499,6 +535,7 @@ class AutoMixedPrecisionPass : public pir::Pass {
   bool Initialize(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
     ps.Add<AutoMixedPrecisionPattern>(context, place_, precision_mode_);
+    // ps.Add<FoldMultiCastOpPattern>(context);
     patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
     return true;
   }
@@ -506,7 +543,7 @@ class AutoMixedPrecisionPass : public pir::Pass {
   void Run(pir::Operation* op) override {
     pir::GreedyRewriteConfig cfg;
     cfg.use_top_down_traversal = true;
-    cfg.max_iterations = 1;
+    cfg.max_iterations = 2;
     pir::ApplyPatternsGreedily(op->region(0), patterns_, cfg);
   }
 
