@@ -46,7 +46,6 @@ class GridSampleTestCase(unittest.TestCase):
         self.x = np.random.randn(*(self.x_shape)).astype(self.dtype)
         self.grid = np.random.uniform(-1, 1, self.grid_shape).astype(self.dtype)
 
-    @test_with_pir_api
     def static_functional(self, place):
         main = base.Program()
         start = base.Program()
@@ -82,6 +81,7 @@ class GridSampleTestCase(unittest.TestCase):
         y_np = y_t.numpy()
         return y_np
 
+    @test_with_pir_api
     def _test_equivalence(self, place):
         result1 = self.static_functional(place)
         with dg.guard(place):
