@@ -183,6 +183,7 @@ class ConvOneDNNHandlerT
       }
       if (input->dims().size() == 4 && input->dims()[1] <= 4) {
         chosen_memory_format = funcs::OneDNNMemoryFormat::nhwc;
+        std::rotate(dst_tz.begin() + 1, dst_tz.begin() + 2, dst_tz.end());
       }
       const auto dst_md = funcs::OneDNNMemDesc(
           dst_tz, funcs::OneDNNGetDataType<T_out>(), chosen_memory_format);
