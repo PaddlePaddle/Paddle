@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,23 +14,24 @@
 
 #pragma once
 
-#include <string>
-
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/device_context.h"
 
 namespace phi {
 
+/**
+ * @brief This kernel generate random value that follow binomial distribution.
+ * @param  ctx          device context
+ * @param  count  A Tensor with each element inidicating the number of
+ * bernoulli experiments
+ * @param  prob         A Tensor with each element inidicating probability of
+ * success for one bernoulli experiment
+ * @param  out          A Tensor filled with returned random value
+ */
 template <typename T, typename Context>
-void PutAlongAxisGradKernel(const Context& dev_ctx,
-                            const DenseTensor& x,
-                            const DenseTensor& index,
-                            const DenseTensor& value,
-                            const DenseTensor& out,
-                            const DenseTensor& out_grad,
-                            int axis,
-                            const std::string& reduce,
-                            bool include_self,
-                            DenseTensor* x_grad,
-                            DenseTensor* value_grad);
+void BinomialiKernel(const Context& ctx,
+                     const DenseTensor& count,
+                     const DenseTensor& prob,
+                     DenseTensor* out);
 
 }  // namespace phi

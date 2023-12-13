@@ -1622,6 +1622,13 @@ def OpGenerator(
                     )
 
                 # generate op GetKernelKeyForVar function str
+                reify_infer_shape_define_str = ''
+                if "paddle::dialect::ReifyInferShapeInterface" in op_interfaces:
+                    reify_infer_shape_define_str = gen_reify_infer_shape_str(
+                        op_class_name
+                    )
+
+                # generate op GetKernelKeyForVar function str
                 op_get_kernel_type_for_var_str = ''
                 if dialect_name == "pd_op":
                     op_get_kernel_type_for_var_str = (

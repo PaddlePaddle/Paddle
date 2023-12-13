@@ -114,6 +114,7 @@ class IR_API alignas(8) Operation final
   ///
   /// \brief region related public interfaces
   ///
+  using Element = Region;
   using Iterator = Region *;
   using ConstIterator = const Region *;
   uint32_t num_regions() const { return num_regions_; }

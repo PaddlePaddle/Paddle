@@ -324,6 +324,14 @@
     func: bincount
   optional: weights
 
+- op : binomial
+  args : (Tensor count, Tensor prob)
+  output : Tensor(out)
+  infer_meta :
+    func : BinomialInferMeta
+  kernel :
+    func : binomial
+
 - op : bitwise_and
   args : (Tensor x, Tensor y)
   output : Tensor(out)
@@ -2033,7 +2041,7 @@
   backward : psroi_pool_grad
 
 - op : put_along_axis
-  args : (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign")
+  args : (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign", bool include_self = true)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
