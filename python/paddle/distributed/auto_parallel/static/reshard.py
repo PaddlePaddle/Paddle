@@ -968,7 +968,8 @@ class Remover:
             if var_name not in actual_need_vars:
                 remove_vars.add(var_name)
         for var in remove_vars:
-            startup_block._remove_var(var)
+            startup_block._remove_var(var, sync=False)
+        startup_block._sync_with_cpp()
 
         remove_op_idx = []
         vars = startup_block.vars
