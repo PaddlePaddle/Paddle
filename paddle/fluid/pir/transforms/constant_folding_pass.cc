@@ -177,7 +177,8 @@ class ConstantFoldingPattern : public pir::RewritePattern {
           auto constant_op = rewriter.Build<pir::ConstantTensorOp>(
               rewriter.tensor_name_attr(output_var_name), op->result(i).type());
           constant_op->set_attribute(
-              kAttrIsPersisable, rewriter.array_attr({rewriter.bool_attr(true)}));
+              kAttrIsPersisable,
+              rewriter.array_attr({rewriter.bool_attr(true)}));
 
           rewriter.ReplaceAllUsesWith(op->result(i), constant_op->result(0));
         }
@@ -189,8 +190,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
   }
 
  private:
-  void TensorCopySync(phi::DenseTensor* tensor,
-                      bool to_cpu) const {
+  void TensorCopySync(phi::DenseTensor* tensor, bool to_cpu) const {
     if (to_cpu) {
       if (tensor->IsInitialized() &&
           tensor->place().GetType() != phi::AllocationType::CPU) {
@@ -199,20 +199,18 @@ class ConstantFoldingPattern : public pir::RewritePattern {
         paddle::framework::TensorCopySync(
             *tensor, phi::CPUPlace{}, &temp_tensor);
         tensor->clear();
-        paddle::framework::TensorCopySync(
-            temp_tensor, phi::CPUPlace{}, tensor);
-      } 
+        paddle::framework::TensorCopySync(temp_tensor, phi::CPUPlace{}, tensor);
+      }
     } else {
       if (tensor->IsInitialized() &&
           tensor->place().GetType() != place_.GetType()) {
-              phi::DenseTensor temp_tensor;
-              temp_tensor.Resize(tensor->dims());
-              paddle::framework::TensorCopySync(
-                  *tensor, phi::CPUPlace{}, &temp_tensor);
-              tensor->clear();
-              paddle::framework::TensorCopySync(
-                  temp_tensor, place_, tensor);
-            }
+        phi::DenseTensor temp_tensor;
+        temp_tensor.Resize(tensor->dims());
+        paddle::framework::TensorCopySync(
+            *tensor, phi::CPUPlace{}, &temp_tensor);
+        tensor->clear();
+        paddle::framework::TensorCopySync(temp_tensor, place_, tensor);
+      }
     }
   }
 
