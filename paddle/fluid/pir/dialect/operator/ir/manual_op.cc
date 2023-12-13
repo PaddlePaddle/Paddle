@@ -11,8 +11,20 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#ifdef GET_OP_LIST
+#undef GET_OP_LIST
+paddle::dialect::AddNOp, paddle::dialect::AddN_Op,
+    paddle::dialect::AddNWithKernelOp, paddle::dialect::FusedGemmEpilogueOp,
+    paddle::dialect::FusedGemmEpilogueGradOp, paddle::dialect::SplitGradOp,
+    paddle::dialect::ExpandOp, paddle::dialect::CreateArrayOp,
+    paddle::dialect::ArrayLengthOp, paddle::dialect::ArrayReadOp,
+    paddle::dialect::ArrayWrite_Op, paddle::dialect::SliceArrayOp,
+    paddle::dialect::SliceArrayDenseOp, paddle::dialect::AssignArray_Op,
+    paddle::dialect::ArrayToTensorOp, paddle::dialect::SelectInputOp
+#else
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_meta_tensor.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_selected_rows.h"
 #include "paddle/fluid/pir/dialect/operator/ir/ir_tensor.h"
@@ -2181,6 +2193,83 @@ phi::DataType ExpandOp::GetKernelTypeForVar(
   return expected_kernel_dtype;
 }
 
+void SelectInputOp::VerifySig() {
+  VLOG(4) << "Verifying inputs, outputs and attributes for: SelectInputOp.";
+  VLOG(4) << "Verifying inputs:";
+  {
+    auto in_size = num_operands();
+    IR_ENFORCE(in_size == 3u, "Size %d of inputs must be >= 3.", in_size);
+    auto input1 = (*this)->operand_source(1).type();
+    auto input2 = (*this)->operand_source(2).type();
+    if (input1.isa<paddle::dialect::DenseTensorType>() &&
+        input2.isa<paddle::dialect::DenseTensorType>()) {
+      auto tensor1 = input1.dyn_cast<paddle::dialect::DenseTensorType>();
+      auto tensor2 = input1.dyn_cast<paddle::dialect::DenseTensorType>();
+      IR_ENFORCE(
+          tensor1.dtype() == tensor2.dtype(),
+          "The 1st input dtype %s should be equal to 2ed input dtype %s.",
+          tensor1.dtype(),
+          tensor2.dtype());
+      IR_ENFORCE(tensor1.data_layout() == tensor2.data_layout(),
+                 "The 1st input data_layout %s should be equal to 2ed input "
+                 "data_layout %s.",
+                 tensor1.data_layout(),
+                 tensor2.data_layout());
+      IR_ENFORCE(tensor1.lod() == tensor2.lod(),
+                 "The 1st input lod %s should be equal to 2ed input lod %s.",
+                 tensor1.lod(),
+                 tensor2.lod());
+      IR_ENFORCE(
+          tensor1.offset() == tensor2.offset(),
+          "The 1st input offset %s should be equal to 2ed input offset %s.",
+          tensor1.offset(),
+          tensor2.offset());
+    } else if (input1.isa<paddle::dialect::AllocatedDenseTensorType>() &&
+               input2.isa<paddle::dialect::AllocatedDenseTensorType>()) {
+      auto tensor1 =
+          input1.dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
+      auto tensor2 =
+          input1.dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
+      IR_ENFORCE(
+          tensor1.dtype() == tensor2.dtype(),
+          "The 1st input dtype %s should be equal to 2ed input dtype %s.",
+          tensor1.dtype(),
+          tensor2.dtype());
+      IR_ENFORCE(tensor1.data_layout() == tensor2.data_layout(),
+                 "The 1st input data_layout %s should be equal to 2ed input "
+                 "data_layout %s.",
+                 tensor1.data_layout(),
+                 tensor2.data_layout());
+      IR_ENFORCE(tensor1.lod() == tensor2.lod(),
+                 "The 1st input lod %s should be equal to 2ed input lod %s.",
+                 tensor1.lod(),
+                 tensor2.lod());
+      IR_ENFORCE(
+          tensor1.offset() == tensor2.offset(),
+          "The 1st input offset %s should be equal to 2ed input offset %s.",
+          tensor1.offset(),
+          tensor2.offset());
+      IR_ENFORCE(
+          tensor1.place() == tensor2.place(),
+          "The 1st input place %s should be equal to 2ed input place %s.",
+          tensor1.place(),
+          tensor2.place());
+    } else {
+      IR_ENFORCE(input1 == input2,
+                 "The 1st input type %s should be equal to 2ed input type %s.",
+                 input1,
+                 input2);
+    }
+  }
+  VLOG(4) << "Verifying outputs:";
+  {
+    auto out_size = num_results();
+    IR_ENFORCE(
+        out_size == 1u, "Size %d of outputs must be equal to 1.", out_size);
+  }
+  VLOG(4) << "End Verifying for: AssignArray_Op.";
+}
+
 }  // namespace dialect
 }  // namespace paddle
 
@@ -2199,3 +2288,5 @@ IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SliceArrayDenseOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AssignArray_Op)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayToTensorOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ExpandOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SelectInputOp)
+#endif

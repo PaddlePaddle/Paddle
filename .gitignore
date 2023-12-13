@@ -41,6 +41,7 @@ build_doc/
 *.user
 *.tmp
 *.pyc
+*.log
 
 .vscode
 .idea
@@ -82,7 +83,7 @@ paddle/fluid/operators/generated_op*.cc
 paddle/fluid/operators/generated_sparse_op.cc
 paddle/fluid/operators/generated_static_op.cc
 paddle/fluid/operators/generated_fused_op.cc
-paddle/phi/ops/compat/generated_*.cc
+paddle/fluid/operators/ops_signature/generated_*.cc
 paddle/phi/api/yaml/parsed_apis/
 paddle/fluid/operators/generator/parsed_ops/
 paddle/fluid/pybind/tmp_eager_op_function_impl.h
@@ -95,9 +96,12 @@ paddle/fluid/framework/__init__.py
 paddle/phi/api/profiler/__init__.py
 python/paddle/incubate/fleet/parameter_server/pslib/ps_pb2.py
 paddle/phi/kernels/fusion/cutlass/conv2d/generated/*
+paddle/phi/kernels/fusion/cutlass/conv2d/generated_tmp/*
+paddle/phi/ops/compat/generated_*
 python/paddle/base/incubate/fleet/parameter_server/pslib/ps_pb2.py
 paddle/fluid/ir_adaptor/translator/op_compat_info.cc
 paddle/phi/kernels/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/*
+paddle/phi/kernels/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen_tmp/*
 paddle/fluid/pybind/static_op_function.*
 paddle/fluid/pybind/ops_api.cc
 paddle/fluid/pir/dialect/operator/ir/pd_api.*
