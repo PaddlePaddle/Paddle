@@ -247,13 +247,14 @@ DecompProgram::DecompProgram(pir::Program* program,
       whitelist_(whitelist) {}
 
 std::vector<pir::OpResult> DecompProgram::decomp_program() {
-  std::ostringstream print_stream;
+  std::ostringstream orig_prog_stream;
   std::unordered_map<pir::OpResult, int> orig_vars_dict;
   for (size_t i = 0; i < src_vars_.size(); i++) {
     orig_vars_dict[src_vars_[i]] = static_cast<int>(i);
   }
-  program_->Print(print_stream);
-  VLOG(4) << "[Prim] Origin program bofore decomp :\n" << print_stream.str();
+  program_->Print(orig_prog_stream);
+  VLOG(4) << "[Prim] Origin program bofore decomp :\n"
+          << orig_prog_stream.str();
   if (!paddle::prim::PrimCommonUtils::IsFwdPrimEnabled()) {
     return src_vars_;
   }
@@ -305,9 +306,9 @@ std::vector<pir::OpResult> DecompProgram::decomp_program() {
   }
   auto& builder = *(paddle::dialect::ApiBuilder::Instance().GetBuilder());
   builder.SetInsertionPointToBlockEnd(block);
-  std::ostringstream print_stream3;
-  program_->Print(print_stream3);
-  VLOG(4) << "[Prim] New program after decomp :\n" << print_stream3.str();
+  std::ostringstream decomp_prog_stream;
+  program_->Print(decomp_prog_stream);
+  VLOG(4) << "[Prim] New program after decomp :\n" << decomp_prog_stream.str();
   return tar_vars;
 }
 
