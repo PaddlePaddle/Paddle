@@ -955,6 +955,14 @@ void tile_grad(const Tensor& x,
   }
 }
 
+template <typename T>
+void abs_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    auto sign_tmp = sign<T>(x);
+    set_output<T>(out_grad * sign_tmp, x_grad);
+  }
+}
+
 }  // namespace details
 }  // namespace primitive
 }  // namespace paddle

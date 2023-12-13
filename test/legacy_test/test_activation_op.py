@@ -1802,7 +1802,7 @@ class TestAbs(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True)
 
 
 class TestAbs_ZeroDim(TestAbs):
