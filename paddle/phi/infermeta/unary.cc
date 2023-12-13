@@ -593,7 +593,10 @@ void CumWithIndicesInferMeta(const MetaTensor& x,
   if (dtype == DataType::INT32) {
     int _axis = 0;
     if (axis < 0) {
-      _axis = axis + x_dims.size();
+      _axis = axis % x_dims.size();
+      if (_axis < 0) {
+        _axis += x_dims.size();
+      }
     } else {
       _axis = axis;
     }
