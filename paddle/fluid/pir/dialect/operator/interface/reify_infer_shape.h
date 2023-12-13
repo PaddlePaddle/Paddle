@@ -70,11 +70,11 @@ class InferSymbolicShapeInterface
   Concept* impl_;
 };
 
-bool AbsOpReifyInferShape(
+bool AbsOpInferSymbolicShape(
     pir::Builder& builder,  // NOLINT
     const std::vector<pir::OpOperand>& operands,
     std::vector<pir::Value>& reified_return_shapes);  // NOLINT
-bool Abs_OpReifyInferShape(
+bool Abs_OpInferSymbolicShape(
     pir::Builder& builder,  // NOLINT
     const std::vector<pir::OpOperand>& operands,
     std::vector<pir::Value>& reified_return_shapes);  // NOLINT

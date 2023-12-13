@@ -56,7 +56,7 @@ pir::Value MaybeCastTo(pir::Builder &builder,  // NOLINT
 }
 }  // namespace
 
-bool AbsOpReifyInferShape(
+bool AbsOpInferSymbolicShape(
     pir::Builder &builder,  // NOLINT
     const std::vector<pir::OpOperand> &operands,
     std::vector<pir::Value> &reified_return_shapes) {  // NOLINT
@@ -64,7 +64,7 @@ bool AbsOpReifyInferShape(
       &builder, operands.front().source(), &reified_return_shapes);
 }
 
-bool Abs_OpReifyInferShape(
+bool Abs_OpInferSymbolicShape(
     pir::Builder &builder,  // NOLINT
     const std::vector<pir::OpOperand> &operands,
     std::vector<pir::Value> &reified_return_shapes) {  // NOLINT
@@ -72,7 +72,7 @@ bool Abs_OpReifyInferShape(
       &builder, operands.front().source(), &reified_return_shapes);
 }
 
-bool TransposeOpReifyInferShape(
+bool TransposeOpInferSymbolicShape(
     pir::Builder &builder,  // NOLINT
     const std::vector<pir::OpOperand> &operands,
     std::vector<pir::Value> &reified_return_shapes) {  // NOLINT
@@ -104,7 +104,7 @@ bool TransposeOpReifyInferShape(
   return true;
 }
 
-bool ConcatOpReifyInferShape(
+bool ConcatOpInferSymbolicShape(
     pir::Builder &builder,  // NOLINT
     const std::vector<pir::OpOperand> &operands,
     std::vector<pir::Value> &reified_return_shapes) {  // NOLINT

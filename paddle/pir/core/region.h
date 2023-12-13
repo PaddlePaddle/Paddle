@@ -67,12 +67,12 @@ class IR_API Region {
 
   /// Operation Walkers, walk the operations in this region. The callback method
   /// is called for each nested region, block or operation,
-  template <WalkOrder Order = WalkOrder::PostOrder,
-            typename Iterator = Iterator,
-            typename FuncT>
-  void walk(FuncT &&callback) {
-    for (auto &block : *this) block.Walk<Order, Iterator>(callback);
-  }
+  // template <WalkOrder Order = WalkOrder::PostOrder,
+  //           typename Iterator = Iterator,
+  //           typename FuncT>
+  // void walk(FuncT &&callback) {
+  //   for (auto &block : *this) block.Walk<Order, Iterator>(callback);
+  // }
 
   // take the last block of region.
   // if region is empty, return nullptr;

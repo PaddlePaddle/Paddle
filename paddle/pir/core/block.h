@@ -123,14 +123,14 @@ class IR_API Block {
 
   /// Walk the operations in the specified [begin, end) range of this block.
   /// post-order by default.
-  template <WalkOrder Order = WalkOrder::PostOrder,
-            typename It = Iterator,
-            typename FuncT>
-  void Walk(Block::Iterator begin, Block::Iterator end, FuncT &&callback) {
-    for (auto &op = begin, begin != end, ++begin) {
-      detail::Walk<Order, Iterator>(&op, callback);
-    }
-  }
+  // template <WalkOrder Order = WalkOrder::PostOrder,
+  //           typename It = Iterator,
+  //           typename FuncT>
+  // void Walk(Block::Iterator begin, Block::Iterator end, FuncT &&callback) {
+  //   for (auto &op = begin, begin != end, ++begin) {
+  //     detail::Walk<Order, Iterator>(&op, callback);
+  //   }
+  // }
 
  private:
   Block(Block &) = delete;

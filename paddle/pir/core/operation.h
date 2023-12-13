@@ -146,12 +146,12 @@ class IR_API alignas(8) Operation final
   ///
   /// \brief Operation Walkers
   ///
-  template <WalkOrder Order = WalkOrder::PostOrder,
-            typename It = Region *,
-            typename FuncT>
-  void Walk(FuncT &&callback) {
-    return detail::Walk<Order, It>(this, std::forward<FuncT>(callback));
-  }
+  // template <WalkOrder Order = WalkOrder::PostOrder,
+  //           typename It = Region *,
+  //           typename FuncT>
+  // void Walk(FuncT &&callback) {
+  //   return detail::Walk<Order, It>(this, std::forward<FuncT>(callback));
+  // }
 
   ///
   /// \brief Remove this operation from its parent block and delete it.
