@@ -47,7 +47,7 @@ static const phi::DDim& GetValueDims(pir::Value value) {
     return value.type().dyn_cast<SelectedRowsType>().dims();
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
-        "Currently, we can only get shape for dense "
+        "[Prim] Currently, we can only get shape for dense "
         "tensor."));
   }
 }
@@ -112,25 +112,27 @@ std::vector<pir::OpResult> DecompProgram::format_decomp_res(
     const std::string& op_name,
     const std::vector<pir::OpResult>& orig_outs,
     const std::vector<std::vector<pir::OpResult>>& decomp_outs) {
-  PADDLE_ENFORCE_EQ(orig_outs.size(),
-                    decomp_outs.size(),
-                    paddle::platform::errors::PreconditionNotMet(
-                        "For op %s, its origin output num %d is not equal to "
-                        "decomp output num %d ",
-                        op_name,
-                        orig_outs.size(),
-                        decomp_outs.size()));
+  PADDLE_ENFORCE_EQ(
+      orig_outs.size(),
+      decomp_outs.size(),
+      paddle::platform::errors::PreconditionNotMet(
+          "[Prim] For op %s, its origin output num %d is not equal to "
+          "decomp output num %d ",
+          op_name,
+          orig_outs.size(),
+          decomp_outs.size()));
   std::vector<pir::OpResult> new_decomp_outs(orig_outs.size());
   for (size_t i = 0; i < orig_outs.size(); i++) {
     if (orig_outs[i]) {
-      PADDLE_ENFORCE_EQ(decomp_outs[i].size(),
-                        1,
-                        paddle::platform::errors::PreconditionNotMet(
-                            "For op %s, each element of decomp output num must "
-                            "be 1, but num of index %d is %d ",
-                            op_name,
-                            i,
-                            decomp_outs[i].size()));
+      PADDLE_ENFORCE_EQ(
+          decomp_outs[i].size(),
+          1,
+          paddle::platform::errors::PreconditionNotMet(
+              "[Prim] For op %s, each element of decomp output num must "
+              "be 1, but num of index %d is %d ",
+              op_name,
+              i,
+              decomp_outs[i].size()));
       new_decomp_outs[i] = decomp_outs[i][0];
     }
   }
@@ -143,18 +145,17 @@ std::vector<pir::OpResult> DecompProgram::construct_dst_vars(
     const std::vector<pir::OpResult>& decomp_outs,
     std::unordered_map<pir::OpResult, int> orig_vars_dict) {
   std::vector<pir::OpResult> tar_vars(src_vars_.size());
-  PADDLE_ENFORCE_EQ(orig_outs.size(),
-                    decomp_outs.size(),
-                    paddle::platform::errors::PreconditionNotMet(
-                        "For op %s, its origin output num %d is not equal to "
-                        "decomp output num %d ",
-                        op_name,
-                        orig_outs.size(),
-                        decomp_outs.size()));
+  PADDLE_ENFORCE_EQ(
+      orig_outs.size(),
+      decomp_outs.size(),
+      paddle::platform::errors::PreconditionNotMet(
+          "[Prim] For op %s, its origin output num %d is not equal to "
+          "decomp output num %d ",
+          op_name,
+          orig_outs.size(),
+          decomp_outs.size()));
   for (size_t i = 0; i < orig_outs.size(); i++) {
-    VLOG(4) << "decomp construct idx -------- " << i;
     if (orig_vars_dict.find(orig_outs[i]) != orig_vars_dict.end()) {
-      VLOG(4) << "decomp construct in idx -------- " << i;
       tar_vars[orig_vars_dict[orig_outs[i]]] = decomp_outs[i];
     }
   }
@@ -180,10 +181,10 @@ bool DecompProgram::enable_decomp_by_filter(const std::string& op_name) {
 std::vector<std::vector<pir::OpResult>> call_decomp_rule(pir::Operation* op) {
   paddle::dialect::DecompInterface decomp_interface =
       op->dyn_cast<paddle::dialect::DecompInterface>();
-  PADDLE_ENFORCE(
-      decomp_interface,
-      phi::errors::InvalidArgument(
-          "The decomp function is not registered in %s op ", op->name()));
+  PADDLE_ENFORCE(decomp_interface,
+                 phi::errors::InvalidArgument(
+                     "[Prim] The decomp function is not registered in %s op ",
+                     op->name()));
   std::vector<std::vector<pir::OpResult>> decomp_res =
       decomp_interface.Decomp(op);
   return decomp_res;
@@ -205,7 +206,7 @@ std::vector<pir::OpResult> DecompProgram::decomp_program() {
     orig_vars_dict[src_vars_[i]] = static_cast<int>(i);
   }
   program_->Print(print_stream);
-  VLOG(4) << "program in sink decomp ------" << print_stream.str();
+  VLOG(4) << "[Prim] Origin program bofore decomp " << print_stream.str();
   if (!paddle::prim::PrimCommonUtils::IsFwdPrimEnabled()) {
     return src_vars_;
   }
@@ -223,9 +224,8 @@ std::vector<pir::OpResult> DecompProgram::decomp_program() {
         check_decomp_dynamic_shape(op)) {
       enable_prim = false;
     }
-    VLOG(4) << "enable_prim flag ======= " << enable_prim;
     if (enable_prim) {
-      VLOG(4) << "decomp op name ======= " << op->name();
+      VLOG(4) << "[Prim] decomp op name " << op->name();
 
       auto& builder = *(paddle::dialect::ApiBuilder::Instance().GetBuilder());
       builder.set_insertion_point(op);
@@ -236,12 +236,7 @@ std::vector<pir::OpResult> DecompProgram::decomp_program() {
       tar_vars = construct_dst_vars(
           op->name(), orig_outs, standard_decomp_res, orig_vars_dict);
 
-      VLOG(4) << "decomp out size ======= " << decomp_res.size();
       op->ReplaceAllUsesWith(standard_decomp_res);
-      std::ostringstream print_stream2;
-      program_->Print(print_stream2);
-      VLOG(4) << "program out sink decomp ------ index " << i << ". "
-              << print_stream2.str();
       bool remove_op = true;
       for (auto& item : op->results()) {
         if (item.HasOneUse()) {
@@ -249,8 +244,6 @@ std::vector<pir::OpResult> DecompProgram::decomp_program() {
           break;
         }
       }
-      VLOG(4) << "program remove op ----------- " << remove_op << ". "
-              << op->name();
       if (remove_op) {
         auto op_iter = std::find(block->begin(), block->end(), *op);
         block->erase(op_iter);
@@ -259,7 +252,6 @@ std::vector<pir::OpResult> DecompProgram::decomp_program() {
   }
   for (size_t i = 0; i < tar_vars.size(); i++) {
     if (!tar_vars[i]) {
-      VLOG(4) << "assign tar_vars ===========  " << i;
       tar_vars[i] = src_vars_[i];
     }
   }
@@ -267,7 +259,7 @@ std::vector<pir::OpResult> DecompProgram::decomp_program() {
   builder.SetInsertionPointToEnd(block);
   std::ostringstream print_stream3;
   program_->Print(print_stream3);
-  VLOG(4) << "program out final ************ " << print_stream3.str();
+  VLOG(4) << "[Prim] New program after decomp  " << print_stream3.str();
   return tar_vars;
 }
 

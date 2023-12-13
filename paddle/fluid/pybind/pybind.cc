@@ -775,13 +775,7 @@ void BindDecomp(pybind11::module *m) {
             std::vector<pir::OpResult> &src_vars,
             std::set<std::string> &blacklist,
             std::set<std::string> &whitelist) {
-           VLOG(0) << "BindDecomp decomp_tmp begin ++++++++++++++++++";
-           for (auto &item : blacklist) {
-             VLOG(0) << "blacklist ===== " << item;
-           }
-           for (auto &item : whitelist) {
-             VLOG(0) << "whitelist ===== " << item;
-           }
+           VLOG(4) << "[Prim] Bind Decomp sinking_decomp begin.";
            py::list res;
            DecompProgram decomp_object(program, src_vars, blacklist, whitelist);
            auto tar_vars = decomp_object.decomp_program();
@@ -792,7 +786,7 @@ void BindDecomp(pybind11::module *m) {
                res.append(tar_vars[i]);
              }
            }
-           VLOG(0) << "BindDecomp decomp_tmp end ++++++++++++++++++";
+           VLOG(4) << "[Prim] Bind Decomp sinking_decomp end.";
            return res;
          });
 
