@@ -1264,6 +1264,7 @@ const paddle::framework::Variable* GetVariableByName(
       return kv.first;
     }
   }
+  VLOG(8) << "cannot find var: " << var_name;
   return nullptr;
 }
 

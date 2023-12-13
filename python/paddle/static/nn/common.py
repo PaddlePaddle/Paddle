@@ -206,7 +206,6 @@ def fc(
             param_shape = [
                 reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
             ] + [size]
-
             w = helper.create_parameter(
                 attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False
             )
