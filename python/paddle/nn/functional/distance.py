@@ -113,15 +113,16 @@ def pdist(x, p=2.0, name=None):
     Computes the p-norm distance between every pair of row vectors in the input.
 
     Args:
-        x (Tensor): A tensor with shape :math:`N \times M`.
+        x (Tensor): The input tensor with shape :math:`N \times M`.
         p (float, optional): The value for the p-norm distance to calculate between each vector pair. Default: :math:`2.0`.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        Tensor with shape: math:`N(N-1)/2` the dtype is same as input tensor.
+        Tensor with shape: :math:`N(N-1)/2` the dtype is same as input tensor.
 
     Examples:
         .. code-block:: python
+            :name: example
 
         >>> import paddle
         >>> paddle.seed(2023)
