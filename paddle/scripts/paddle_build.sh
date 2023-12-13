@@ -3453,12 +3453,16 @@ function clang-tidy_check() {
     set -e
 
     clang-tidy --version
+    current_branch=`git branch | grep \* | cut -d ' ' -f2`
+    echo $current_branch
     num_diff_files=$(git diff --numstat ${BRANCH} | grep -E '\.(c|cc|cxx|cpp|h|hpp|hxx)' | wc -l)
     commit_files=on
     startTime_s=`date +%s`
-    if ! pre-commit run clang-tidy ; then
-        commit_files=off
-    fi
+    for file_name in `git diff --numstat ${BRANCH} | grep -E '\.(c|cc|cxx|cpp|h|hpp|hxx)' |awk '{print $NF}'`;do
+        if ! pre-commit run clang-tidy --files ${PADDLE_ROOT}/$file_name ; then
+            commit_files=off
+        fi
+    done
     endTime_s=`date +%s`
     [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
     echo "File Count: $[ $num_diff_files ]"
@@ -3474,6 +3478,7 @@ function clang-tidy_check() {
 
 function build_pr_and_develop() {
     run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
+    clang-tidy_check
     if [ ! -d "${PADDLE_ROOT}/build/python/dist/" ]; then
         mkdir ${PADDLE_ROOT}/build/python/dist/
     fi
@@ -3509,9 +3514,7 @@ function build_pr_and_develop() {
         mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/dev_whl
     fi
 
-    generate_api_spec "$1" "DEV"
-    
-    clang-tidy_check
+    generate_api_spec "$1" "DEV" 
 }
 
 function build_develop() {
