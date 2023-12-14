@@ -23,6 +23,7 @@ import numpy as np
 
 import paddle
 from paddle import nn, profiler
+from paddle.autograd.backward_utils import ValueSet
 from paddle.base import core, framework, unique_name
 from paddle.base.core import VarDesc
 from paddle.base.dygraph import no_grad
@@ -1136,7 +1137,7 @@ class Layer:
                  [-0.62100595,  0.22293305,  0.28229684, -0.03687060, -0.59323978,
                  0.08411229,  0.53275704,  0.40431368,  0.03171402, -0.17922515]])
         """
-        params_set = set()
+        params_set = ValueSet()
         named_sublayers = (
             self.named_sublayers(prefix=prefix, include_self=True)
             if include_sublayers
