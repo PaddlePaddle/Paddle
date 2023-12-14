@@ -48,7 +48,7 @@ void SplitKernel(const Context& dev_ctx,
 
   auto outs_number = out.size();
   const auto x_dims = x.dims();
-  auto x_vec_dims = vectorize(x_dims);
+  auto x_vec_dims = common::vectorize(x_dims);
 
   dnnl::memory::data_type x_type = funcs::ToOneDNNDataType(x.dtype());
 
@@ -61,7 +61,7 @@ void SplitKernel(const Context& dev_ctx,
       x.mem_desc(), funcs::to_void_cast(x.data<T>()));
 
   for (size_t i = 0; i < outs_number; ++i) {
-    auto out_vec_dims = vectorize(out[i]->dims());
+    auto out_vec_dims = common::vectorize(out[i]->dims());
     auto slice_mem_p = reorder_handler.AcquireSubmemory(
         out_vec_dims, offset, reorder_src_memory_p);
 

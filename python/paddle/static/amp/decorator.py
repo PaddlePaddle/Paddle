@@ -301,7 +301,12 @@ class OptimizerWithMixedPrecision:
         self._to_fp16_var_names = None
 
     def amp_init(
-        self, place, scope=None, test_program=None, use_fp16_test=False
+        self,
+        place,
+        scope=None,
+        test_program=None,
+        use_fp16_test=False,
+        rewrite_master_weight=False,
     ):
         """
         Init the amp training, such as cast fp32 parameters to fp16 type.
@@ -369,6 +374,8 @@ class OptimizerWithMixedPrecision:
                 scope,
                 self._to_fp16_var_names,
                 self._amp_vartype,
+                rewrite_master_weight,
+                self._optimizer._master_weights,
             )
         if test_program is not None:
             if self._use_pure_fp16:
@@ -909,7 +916,7 @@ def decorate(  # noqa: F811
     """
     # check amp_level: O0-O2
     level = level.upper()
-    if not (level in ['O0', 'OD', 'O1', 'O2']):
+    if level not in ['O0', 'OD', 'O1', 'O2']:
         raise ValueError("level should be O0, OD, O1 or O2.")
 
     amp_dtype = check_amp_dtype(dtype)
@@ -928,7 +935,7 @@ def decorate(  # noqa: F811
 
     if optimizer is not None:
         # support master_weight
-        multi_precision = not (master_weight is False)
+        multi_precision = master_weight is not False
         _set_multi_precision(optimizer, multi_precision)
 
     mp_optimizer = OptimizerWithMixedPrecision(

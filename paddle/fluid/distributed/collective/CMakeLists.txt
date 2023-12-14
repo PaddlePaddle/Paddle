@@ -1,18 +1,18 @@
 cc_library(
   process_group
   SRCS process_group.cc
-  DEPS phi xxhash)
+  DEPS phi common xxhash)
 
 cc_library(
   eager_reducer
   SRCS reducer.cc
-  DEPS eager_api process_group phi string_helper)
+  DEPS eager_api process_group phi common string_helper)
 
 if(WITH_DISTRIBUTE)
   cc_library(
     process_group_gloo
     SRCS process_group_gloo.cc gloo_send_recv.cc
-    DEPS phi eager_api gloo_wrapper)
+    DEPS phi common eager_api gloo_wrapper)
 endif()
 
 if(WITH_NCCL OR WITH_RCCL)
@@ -21,6 +21,7 @@ if(WITH_NCCL OR WITH_RCCL)
     SRCS process_group_nccl.cc common.cc
     DEPS process_group
          phi
+         common
          place
          enforce
          collective_helper
@@ -32,7 +33,13 @@ if(WITH_XPU_BKCL)
   cc_library(
     process_group_bkcl
     SRCS process_group_bkcl.cc bkcl_tools.cc common.cc
-    DEPS process_group phi place enforce collective_helper device_context)
+    DEPS process_group
+         phi
+         common
+         place
+         enforce
+         collective_helper
+         device_context)
 endif()
 
 if(WITH_MPI)
@@ -46,7 +53,13 @@ if(WITH_CUSTOM_DEVICE)
   cc_library(
     process_group_custom
     SRCS process_group_custom.cc custom_ccl_tools.cc common.cc
-    DEPS process_group phi place enforce collective_helper device_context)
+    DEPS process_group
+         phi
+         common
+         place
+         enforce
+         collective_helper
+         device_context)
 endif()
 
 set(COMM_UTILS_DEPS process_group)

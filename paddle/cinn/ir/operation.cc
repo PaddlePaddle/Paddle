@@ -31,6 +31,19 @@ Operation PlaceholderOp::Make(const std::string &name,
   return Operation(n);
 }
 
+Operation PlaceholderOp::Make(const std::string &name,
+                              const std::vector<Dim> &sym_shape,
+                              Type dtype) {
+  auto n = make_shared<PlaceholderOp>();
+  n->name = name;
+  n->sym_shape = sym_shape;
+  for (int i = 0; i < sym_shape.size(); i++) {
+    n->shape.emplace_back(sym_shape[i]->dim_expr);
+  }
+  n->set_type(dtype);
+  return Operation(n);
+}
+
 const char *PlaceholderOp::func_type() const { return "placeholder_op"; }
 
 const char *ComputeOp::func_type() const { return "compute_op"; }
@@ -49,7 +62,7 @@ Operation ComputeOp::Make(const std::string &name,
   n->reduce_axis = reduce_axis;
   n->tag = tag;
   n->attrs = attrs;
-  n->axis = common::GenDefaultAxis(domain.size());
+  n->axis = cinn::common::GenDefaultAxis(domain.size());
   std::vector<Expr> tmp_axis;
   for (auto &x : n->axis) {
     tmp_axis.push_back(x);

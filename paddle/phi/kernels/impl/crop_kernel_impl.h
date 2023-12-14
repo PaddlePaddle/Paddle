@@ -63,7 +63,7 @@ static phi::DDim ValidateShape(const std::vector<int64_t>& shape,
     }
   }
 
-  return phi::make_ddim(output_shape);
+  return common::make_ddim(output_shape);
 }
 
 template <typename Context, typename T, size_t D>

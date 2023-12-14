@@ -55,7 +55,6 @@ def generate_data(ndim, count=1, max_size=4, mix=False, dtype='int32'):
         a list of data like:
             [[data, dtype, shape, name], [data, dtype, shape, name] ... ]
     """
-
     rtn = []
     for d in range(ndim):
         data = [
@@ -172,7 +171,11 @@ class BaseTest(unittest.TestCase):
                         shape = shapes[i]
                         dtype = dtypes[i]
                         name = names[i]
-                        x.append(paddle.static.data(name, shape, dtype))
+
+                        _x = paddle.static.data(name, shape, dtype)
+                        _x.stop_gradient = False
+                        x.append(_x)
+
                         # the data feeded should NOT be a Tensor
                         feed[name] = (
                             input.numpy()
@@ -181,12 +184,39 @@ class BaseTest(unittest.TestCase):
                         )
 
                     out = func(*x)
-                    exe = paddle.static.Executor(place)
-                    res = exe.run(feed=feed, fetch_list=[out])
 
-                    # unwrap inputs when lenght 1
                     if len(inputs) == 1:
-                        res = res[0]
+                        out.stop_gradient = False
+                        y = x[0]
+                        _out = out
+                    else:
+                        for o in out:
+                            o.stop_gradient = False
+                        y = x[0]
+                        _out = out[0]
+
+                    z = _out * 123
+
+                    fetch_list = [out]
+                    if paddle.framework.in_pir_mode():
+                        grads = paddle.autograd.ir_backward.grad(z, y)
+                        out_grad = grads[0]
+                        fetch_list.append(out_grad)
+                    else:
+                        paddle.static.append_backward(z)
+                        out_grad = y.grad_name
+                        fetch_list.append(out_grad)
+
+                    exe = paddle.static.Executor(place)
+                    *res, res_grad = exe.run(feed=feed, fetch_list=fetch_list)
+
+                    # not check old ir
+                    if paddle.framework.in_pir_mode():
+                        # convert grad value to bool if dtype is bool
+                        grad_value = 123.0 if dtypes[0] != 'bool' else True
+                        np.testing.assert_allclose(
+                            res_grad, np.ones_like(y) * grad_value
+                        )
 
                 out_ref = func_ref(
                     func_type,
@@ -197,6 +227,9 @@ class BaseTest(unittest.TestCase):
                         for input in inputs
                     ]
                 )
+
+                if len(inputs) == 1:
+                    out_ref = [out_ref]
 
                 for n, p in zip(out_ref, res):
                     np.testing.assert_allclose(n, p, rtol=RTOL, atol=ATOL)

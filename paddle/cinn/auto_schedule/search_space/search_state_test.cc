@@ -25,7 +25,7 @@ namespace cinn {
 namespace auto_schedule {
 
 TEST(TestSearchState, SearchStateHash_Equal) {
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   ir::Expr M(32);
   ir::Expr N(32);

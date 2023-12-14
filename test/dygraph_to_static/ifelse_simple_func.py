@@ -249,7 +249,6 @@ class NetWithControlFlowIf(paddle.nn.Layer):
         self.alpha = 10.0
         self.constant_vars = {}
 
-    @paddle.jit.to_static
     def forward(self, input):
         hidden_dim = input.shape[-1]
         if hidden_dim != self.hidden_dim:

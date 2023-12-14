@@ -41,7 +41,7 @@ class PaddleModelConvertor {
  public:
   PaddleModelConvertor();
 
-  PaddleModelConvertor(const common::Target& target,
+  PaddleModelConvertor(const cinn::common::Target& target,
                        std::shared_ptr<NetBuilder> builder = nullptr,
                        std::shared_ptr<hlir::framework::Scope> scope = nullptr);
 
@@ -103,7 +103,7 @@ class PaddleModelConvertor {
 
   std::unique_ptr<OpMapperContext> ctx_;
   std::shared_ptr<NetBuilder> builder_;
-  const common::Target& target_;
+  const cinn::common::Target& target_;
   std::shared_ptr<hlir::framework::Scope> scope_;
 };
 

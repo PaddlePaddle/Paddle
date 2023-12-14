@@ -372,8 +372,9 @@ class FusedCommBuffer:
             raise ValueError(
                 "The address of the grad/main_grad of the param has been changed during training, "
                 "which is not allowed for dp/sharding overlap with pp. "
-                "This may be caused by some non-inplace operations on the grad/main_grad. "
-                "Please use the inplace version of the operations or disable the overlapping."
+                "This may be caused by some non-inplace operations on the grad/main_grad. Here are some examples: "
+                "1. The grad/main_grad of the param is changed by other operations, such as: clear_grad, "
+                "2. Using non-inplace operations on the grad/main_grad, such as: add, sub, mul, div, etc. "
             )
 
         self._params_step_dict[param.name] += 1
@@ -457,6 +458,15 @@ class FusedCommBuffer:
         if self._scale_after_comm:
             scale_factor = 1.0 / self._comm_group.nranks
             self.grad_storage.scale_(scale_factor)
+
+        self._reset_params_checked_in()
+
+    @imperative_base.no_grad
+    def scale_and_split_grads(self):
+        assert self._task is not None, "Task is not initialized. "
+        self._task.wait()
+        scale_factor = 1.0 / self._comm_group.nranks
+        self.grad_storage.scale_(scale_factor)
 
         self._reset_params_checked_in()
 
@@ -550,6 +560,7 @@ def _fused_parameters_impl(
     dst=-1,
     acc_step=1,
     scale_after_comm=False,
+    apply_decay_param_fun=None,
 ):
     param_groups = []
     attrs = []
@@ -579,7 +590,9 @@ def _fused_parameters_impl(
         other_params = []
 
         for param in params:
-            if not any(nd in param.name for nd in ["bias", "norm", "b_0"]):
+            if apply_decay_param_fun is not None and apply_decay_param_fun(
+                param.name
+            ):
                 decay_params.append(param)
             else:
                 other_params.append(param)
@@ -632,6 +645,7 @@ def fused_parameters(
     acc_step=1,
     scale_after_comm=False,
     group_params=False,
+    apply_decay_param_fun=None,
 ):
     """
     Fuse gradients. Fuse parameters if be enabled. Prepare for comm overlap if be enabled.
@@ -645,6 +659,7 @@ def fused_parameters(
     :param fuse_param: fuse param or not
     :param scale_after_comm: if enable comm overlap, specify the location of grad scale
     :param group_params: the format of the input parameters is param group
+    :param apply_decay_param_fun: the funtion to filter decay param
     :return: param storage if fused, comm buffers if comm overlap, param groups if use group params
     """
     if act is None:
@@ -690,6 +705,7 @@ def fused_parameters(
                 dst=dst,
                 acc_step=acc_step,
                 scale_after_comm=scale_after_comm,
+                apply_decay_param_fun=apply_decay_param_fun,
             )
             if comm_overlap:
                 comm_buffers.extend(group_all_buffers)
@@ -709,6 +725,7 @@ def fused_parameters(
             dst=dst,
             acc_step=acc_step,
             scale_after_comm=scale_after_comm,
+            apply_decay_param_fun=apply_decay_param_fun,
         )
 
         return decay_fused, all_fused, all_buffers

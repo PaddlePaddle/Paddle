@@ -54,19 +54,5 @@ class ReshardFunction {
   DenseTensor* GetMutableTensor(DistTensor* tensor);
 };
 
-std::vector<std::unique_ptr<ReshardFunction>>& GetReshardFunctionList();
-
-#define REGISTER_RESHARD_FUNC(func_type)                                    \
-  class __RegisterReshard_##func_type {                                     \
-   public:                                                                  \
-    __RegisterReshard_##func_type() {                                       \
-      GetReshardFunctionList().emplace_back(std::make_unique<func_type>()); \
-    }                                                                       \
-  };                                                                        \
-  static __RegisterReshard_##func_type local_reshard_func_##func_type
-
-ReshardFunction* ChooseProperReshardFunction(
-    const DistTensor& in, const TensorDistAttr& out_dist_attr);
-
 }  // namespace distributed
 }  // namespace phi

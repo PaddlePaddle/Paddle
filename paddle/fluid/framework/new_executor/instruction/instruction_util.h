@@ -49,10 +49,15 @@ void GetInputIds(pir::Operation* op,
                  const ValueExecutionInfo& value_exec_info,
                  std::unordered_map<pir::Value, std::vector<int>>* input_ids);
 
-std::vector<pir::Value> GetOutsideOpInputs(
+std::vector<pir::Value> GetExternalInputs(
     pir::Block* block,
     const ValueExecutionInfo& value_exec_info,
     std::unordered_map<pir::Value, std::vector<int>>* input_ids);
+
+void InsertTuplePushContinerToOuts(
+    pir::Block* block,
+    const ValueExecutionInfo& value_exec_info,
+    std::unordered_map<pir::Value, std::vector<int>>* outputs);
 
 bool GetCondData(const phi::DenseTensor& cond);
 }  // namespace framework

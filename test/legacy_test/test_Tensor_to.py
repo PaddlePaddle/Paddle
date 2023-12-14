@@ -55,6 +55,13 @@ class TensorToTest(unittest.TestCase):
             else:
                 self.assertTrue(placex_str, "Place(" + place + ")")
 
+    def test_Tensor_to_device2(self):
+        x = paddle.to_tensor([1, 2, 3])
+        y = paddle.to_tensor([1, 2, 3], place="cpu")
+
+        y.to(x.place)
+        self.assertTrue(x.place, y.place)
+
     def test_Tensor_to_device_dtype(self):
         tensorx = paddle.to_tensor([1, 2, 3])
         places = ["cpu"]

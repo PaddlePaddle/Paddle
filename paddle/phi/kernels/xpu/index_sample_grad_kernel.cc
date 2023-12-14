@@ -41,9 +41,9 @@ void IndexSampleGradKernel(const Context& ctx,
 
   XPUType* in_grad_data = ctx.template Alloc<XPUType>(in_grad);
   const XPUType* out_grad_data = out_grad.data<XPUType>();
-  auto in_grad_shape = phi::vectorize<int64_t>(in_grad->dims());
-  auto out_grad_shape = phi::vectorize<int64_t>(out_grad.dims());
-  auto index_shape = phi::vectorize<int64_t>(index.dims());
+  auto in_grad_shape = common::vectorize<int64_t>(in_grad->dims());
+  auto out_grad_shape = common::vectorize<int64_t>(out_grad.dims());
+  auto index_shape = common::vectorize<int64_t>(index.dims());
 
   int r = xpu::constant(
       ctx.x_context(), in_grad_data, in_grad->numel(), static_cast<XPUType>(0));

@@ -85,9 +85,9 @@ class TestDistTensorSRP(unittest.TestCase):
         self.assertTrue(srp_tensor.dist_attr.is_annotated("process_mesh"))
         self.assertTrue(srp_tensor.dist_attr.is_annotated("dims_mapping"))
 
-        dist_attr = dist.DistAttr(mesh=self._mesh, sharding_specs=["x", None])
-
-        dist_attr_tensor = paddle.Tensor(tensor, dist_attr=dist_attr)
+        dist_attr_tensor = paddle.Tensor(
+            tensor, process_mesh=self._mesh, placements=[dist.Shard(0)]
+        )
 
         self.assertEqual(
             dist_attr_tensor.dist_attr.dims_mapping,

@@ -30,7 +30,7 @@ class OpNode {
       : node_(node), input_tensors_(node), output_tensors_(node) {}
 
   OpPatternKind kind() const {
-    auto kind = GetOpKind(node_->name());
+    auto kind = hlir::framework::pir::CompatibleInfo::OpKind(*node_);
     if (kind == OpPatternKind::kBroadcast) {
       // As binary op was defined as broadcast, actually it should be
       // element-wise.

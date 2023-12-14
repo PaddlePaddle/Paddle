@@ -72,7 +72,7 @@ Tensor GetReadTensor(const Expr& block, int index) {
 
 int GetLoopExtent(const Expr& loop) {
   CHECK(loop.As<ir::For>());
-  CHECK(common::is_zero(loop.As<ir::For>()->min));
+  CHECK(cinn::common::is_zero(loop.As<ir::For>()->min));
   CHECK(loop.As<ir::For>()->extent.is_constant());
   return static_cast<int>(loop.As<ir::For>()->extent.get_constant());
 }
@@ -92,7 +92,7 @@ void SetCudaAxisInfo(Expr* lowered_func) {
           auto bind_info = x->As<ir::For>()->bind_info();
           info.set_valid(true);
           if (bind_info.for_type == ForType::GPUThread) {
-            CHECK(common::is_zero(x->As<ir::For>()->min));
+            CHECK(cinn::common::is_zero(x->As<ir::For>()->min));
             CHECK(x->As<ir::For>()->extent.is_constant());
             int range = x->As<ir::For>()->extent.get_constant();
             range = range > info.block_dim(bind_info.offset)
@@ -102,7 +102,7 @@ void SetCudaAxisInfo(Expr* lowered_func) {
                     << range;
             info.set_block_dim(bind_info.offset, range);
           } else if (bind_info.for_type == ForType::GPUBlock) {
-            CHECK(common::is_zero(x->As<ir::For>()->min));
+            CHECK(cinn::common::is_zero(x->As<ir::For>()->min));
             CHECK(x->As<ir::For>()->extent.is_constant());
             int range = x->As<ir::For>()->extent.get_constant();
             range = range > info.grid_dim(bind_info.offset)
@@ -362,8 +362,8 @@ IterRange GetAccessedRange(const Expr& index,
   ReplaceExpr(&indice_min, iter_vars, var_mins);
   ReplaceExpr(&indice_max, iter_vars, var_maxs);
   // simplify expression
-  indice_min = common::AutoSimplify(indice_min);
-  indice_max = common::AutoSimplify(indice_max);
+  indice_min = cinn::common::AutoSimplify(indice_min);
+  indice_max = cinn::common::AutoSimplify(indice_max);
 
   Expr indice_extent;
   Expr mod_extent(0);
@@ -371,7 +371,7 @@ IterRange GetAccessedRange(const Expr& index,
     Expr mod_right_min = indice_min.As<Mod>()->a();
     Expr mod_right_max = indice_max.As<Mod>()->a();
     Expr mod_right_extent =
-        common::AutoSimplify(mod_right_max - mod_right_min + 1);
+        cinn::common::AutoSimplify(mod_right_max - mod_right_min + 1);
     mod_extent = indice_min.As<Mod>()->b();
     if (mod_right_extent.get_constant() < mod_extent.get_constant()) {
       mod_extent = mod_right_extent;
@@ -379,15 +379,16 @@ IterRange GetAccessedRange(const Expr& index,
   }
 
   if (indice_min == indice_max) {
-    if (common::is_zero(mod_extent)) {
+    if (cinn::common::is_zero(mod_extent)) {
       // If a index keeps constant, its extent should be 1.
       indice_extent = Expr(1);
     } else {
       indice_extent = mod_extent;
     }
   } else {
-    indice_extent = common::AutoSimplify(common::AutoSimplify(indice_max) -
-                                         common::AutoSimplify(indice_min) + 1);
+    indice_extent =
+        cinn::common::AutoSimplify(cinn::common::AutoSimplify(indice_max) -
+                                   cinn::common::AutoSimplify(indice_min) + 1);
   }
 
   if (indice_extent.is_constant() && indice_extent.get_constant() < 0) {
@@ -500,10 +501,10 @@ Expr MakeCacheBlock(const std::vector<IterRange>& buffer_ranges,
   // Create loop vars and block vars' binding_value
   for (const auto& range : buffer_ranges) {
     Var loop_var(
-        common::UniqName("cache_ax" + std::to_string(loop_vars.size())));
+        cinn::common::UniqName("cache_ax" + std::to_string(loop_vars.size())));
     // Var loop_var("ax" + std::to_string(loop_vars.size()));
     loop_vars.push_back(loop_var);
-    iter_values.push_back(common::AutoSimplify(range.min + loop_var));
+    iter_values.push_back(cinn::common::AutoSimplify(range.min + loop_var));
   }
   // block variables
   std::vector<Var> block_vars;
@@ -516,7 +517,7 @@ Expr MakeCacheBlock(const std::vector<IterRange>& buffer_ranges,
   }
   auto body = new_tensor->tensor_store_expanded_body();
   std::vector<Var> axis_vars =
-      common::GenDefaultAxis(new_tensor->domain.size());
+      cinn::common::GenDefaultAxis(new_tensor->domain.size());
   axis_vars.insert(axis_vars.end(),
                    new_tensor->reduce_axis.begin(),
                    new_tensor->reduce_axis.end());
@@ -531,7 +532,7 @@ Expr MakeCacheBlock(const std::vector<IterRange>& buffer_ranges,
   for (int i = static_cast<int>(loop_vars.size()) - 1; i >= 0; i--) {
     new_body = For::Make(loop_vars[i],
                          Expr(0),
-                         common::AutoSimplify(buffer_ranges[i].extent),
+                         cinn::common::AutoSimplify(buffer_ranges[i].extent),
                          ir::ForType::Serial,
                          device_api,
                          ir::Block::Make({new_body}));
@@ -1031,9 +1032,9 @@ void InsertBlock(Expr& for_loop, const Expr& insertion, int index) {  // NOLINT
 }
 
 IterRange RangeUnion(const IterRange& range1, const IterRange& range2) {
-  Expr new_min = common::AutoSimplify(Min::Make(range1.min, range2.min));
-  Expr new_extent = common::AutoSimplify(
-      common::AutoSimplify(
+  Expr new_min = cinn::common::AutoSimplify(Min::Make(range1.min, range2.min));
+  Expr new_extent = cinn::common::AutoSimplify(
+      cinn::common::AutoSimplify(
           Max::Make(range1.min + range1.extent, range2.min + range2.extent)) -
       new_min);
   return IterRange(new_min, new_extent);

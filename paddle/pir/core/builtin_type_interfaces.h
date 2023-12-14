@@ -17,16 +17,16 @@
 #include <algorithm>
 #include <vector>
 
-#include "paddle/phi/core/tensor_base.h"
+#include "paddle/common/ddim.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/cast_utils.h"
-#include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/type.h"
 
 namespace pir {
 
 class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
  public:
-  using DDim = phi::DDim;
+  using DDim = pir::DDim;
   using DataType = Type;
   struct Concept {
     /// Defined these methods with the interface.

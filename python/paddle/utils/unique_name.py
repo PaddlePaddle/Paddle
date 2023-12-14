@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..base.unique_name import (  # noqa: F401
+from ..base.unique_name import (
     generate,
-    generate_with_ignorable_key,
+    generate_with_ignorable_key,  # noqa: F401
     guard,
     switch,
 )

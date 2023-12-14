@@ -29,7 +29,7 @@
 namespace cinn {
 namespace hlir {
 namespace framework {
-using common::Target;
+using cinn::common::Target;
 
 struct Shape {
   using dim_t = int;
@@ -68,7 +68,7 @@ class _Tensor_ : public Object {
 
   inline void* mutable_data(const Target& target, const Type& type) {
     set_type(type);
-    if (target == common::DefaultHostTarget()) {
+    if (target == cinn::common::DefaultHostTarget()) {
       buffer_->ResizeLazy(1024, shape_.numel() * type.bytes(), target);
     } else {
       buffer_->ResizeLazy(shape_.numel() * type.bytes(), target);
@@ -79,7 +79,7 @@ class _Tensor_ : public Object {
   template <typename T>
   inline T* mutable_data(const Target& target) {
     set_type(type_of<T>());
-    if (target == common::DefaultHostTarget()) {
+    if (target == cinn::common::DefaultHostTarget()) {
       buffer_->ResizeLazy(1024, shape_.numel() * sizeof(T), target);
     } else {
       buffer_->ResizeLazy(shape_.numel() * sizeof(T), target);
@@ -104,7 +104,7 @@ class _Tensor_ : public Object {
   const char* type_info() const override { return __type_info__; }
 
  private:
-  common::Type type_;
+  cinn::common::Type type_;
   // A shared ptr to make it easier to share buffer between tensors.
   std::shared_ptr<Buffer> buffer_;
   Shape shape_;

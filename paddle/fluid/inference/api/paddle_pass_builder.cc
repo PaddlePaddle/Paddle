@@ -88,7 +88,8 @@ void PaddlePassBuilder::AppendAnalysisPass(const std::string &pass) {
 void PaddlePassBuilder::ClearPasses() { passes_.clear(); }
 
 const std::vector<std::string> kTRTSubgraphPasses({
-  "trt_support_nhwc_pass",
+  "trt_remove_amp_strategy_op_pass",                              //
+      "trt_support_nhwc_pass",                                    //
       "adaptive_pool2d_convert_global_pass",                      //
       "trt_map_ops_to_matrix_multiply_pass",                      //
       "shuffle_channel_detect_pass",                              //
@@ -192,7 +193,7 @@ const std::vector<std::string> kGpuLowerPrecisionPasses{
     "conv_elementwise_add_act_fuse_pass",
     "conv_elementwise_add2_act_fuse_pass",
     "conv_elementwise_add_fuse_pass",
-    "conv2d_fusion_layout_transfer_pass",
+    "fused_conv2d_add_act_layout_transfer_pass",
     "multihead_matmul_fuse_pass_v2",
     "fused_multi_transformer_encoder_pass",
     "fused_multi_transformer_decoder_pass",
@@ -211,6 +212,9 @@ const std::vector<std::string> kGpuLowerPrecisionPasses{
     "inplace_op_var_pass"};
 
 const std::vector<std::string> kTrtLowerPrecisionPasses{
+    "trt_remove_amp_strategy_op_pass",
+    "trt_support_nhwc_pass",
+    "trt_map_ops_to_matrix_multiply_pass",
     "simplify_with_basic_ops_pass",
     // "conv_bn_fuse_pass",
     // "conv_eltwiseadd_bn_fuse_pass",
@@ -299,10 +303,10 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "conv_elementwise_add_act_fuse_pass",   //
         "conv_elementwise_add2_act_fuse_pass",  //
 #endif
-        "conv_elementwise_add_fuse_pass",      //
-#endif                                         //
-        "transpose_flatten_concat_fuse_pass",  //
-        "conv2d_fusion_layout_transfer_pass",  //
+        "conv_elementwise_add_fuse_pass",             //
+#endif                                                //
+        "transpose_flatten_concat_fuse_pass",         //
+        "fused_conv2d_add_act_layout_transfer_pass",  //
         "transfer_layout_elim_pass",
         "auto_mixed_precision_pass",  //
         "identity_op_clean_pass",  // should be after auto_mixed_precision_pass.
@@ -536,6 +540,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "multi_encoder_xpu_adaptive_seqlen_fuse_pass",
       "multi_encoder_xpu_slice_fuse_pass",
       "fused_multi_transformer_cachekv_layout_trans_pass",
+      "fused_multi_transformer_int8_cachekv_layout_trans_pass",
       "one_beam_size_fuse_pass",
       "fold_interp_outsize_fuse_pass",
       "fold_two_squeeze2_fuse_pass",
@@ -549,6 +554,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "conv2d_trans_filter_dilations_nxn_to_1x1_pass",
       "stack_fuse_pass",
       "fused_multi_transformer_xpu_pass",
+      "fused_multi_transformer_int8_xpu_quant_pass",
       "relu6_fuse_pass",
       "sigmoid_elementmul_fuse_pass",
       "layer_norm_fuse_pass",
