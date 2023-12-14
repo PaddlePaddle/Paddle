@@ -43,13 +43,14 @@ __global__ void CEmbedding(T* out,
     size_t col = i % columns;
     auto id = static_cast<int64_t>(ids[row]);
 
-    // PADDLE_ENFORCE(
-    //     id >= 0 && (vocab_size < 0 || id < vocab_size),
-    //     "The index is out of bounds, "
-    //     "please check whether the dimensions of index and "
-    //     "input meet the requirements. It should "
-    //     "be less than [%d] and greater than or equal to 0, but received
-    //     [%d]", vocab_size, id);
+    PADDLE_ENFORCE(
+        id >= 0 && (vocab_size < 0 || id < vocab_size),
+        "The index is out of bounds, "
+        "please check whether the dimensions of index and "
+        "input meet the requirements. It should "
+        "be less than [%d] and greater than or equal to 0, but received [%d]",
+        vocab_size,
+        id);
     if (id >= start_idx && id < end_idx) {
       auto real_idx = id - start_idx;
       out[i] = table[real_idx * columns + col];
