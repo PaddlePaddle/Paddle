@@ -210,8 +210,8 @@ std::set<std::string> ParseSafeEagerDeletionSkipVarsSet(
 // a static local variable is already being initialized.
 // https://stackoverflow.com/questions/11711920/how-to-implement-multithread-safe-singleton-in-c11-without-using-mutex
 
-int64_t hash_program_id_with_seed(int64_t program_id, int64_t seed) {
-  return program_id + 0x9e3779b9 + (program_id << 6) + (seed >> 2);
+int64_t hash_with_seed(int64_t value, int64_t seed) {
+  return value + 0x9e3779b9 + (value << 6) + (seed >> 2);
 }
 
 ExecutorInfoCache &ExecutorInfoCache::Instance() {

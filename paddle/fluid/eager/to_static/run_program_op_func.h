@@ -129,6 +129,10 @@ static std::vector<paddle::Tensor> Trans2ContiguousTensors(
   return res;
 }
 
+inline int64_t hash_int_value(int64_t value) {
+  return value + 0x9e3779b9 + (value << 6) + (value >> 2);
+}
+
 inline void run_program_ad_func(
     const std::vector<paddle::Tensor>& x,
     const std::vector<paddle::Tensor>& params,
@@ -156,14 +160,13 @@ inline void run_program_ad_func(
   // Call forward function
   // if require_any_grad is False, don't save any middle vars.
   std::vector<int64_t> place_hash_keys = std::vector<int64_t>();
-  std::hash<std::string> hasher;
   for (const paddle::Tensor& tensor : x) {
-    std::string place_str = tensor.place().GetDeviceType();
-    place_hash_keys.emplace_back(static_cast<int64_t>(hasher(place_str)));
+    int64_t device_type = static_cast<int64_t>(tensor.place().GetType());
+    place_hash_keys.emplace_back(hash_int_value(device_type));
   }
   for (const paddle::Tensor& tensor : params) {
-    std::string place_str = tensor.place().GetDeviceType();
-    place_hash_keys.emplace_back(static_cast<int64_t>(hasher(place_str)));
+    int64_t device_type = static_cast<int64_t>(tensor.place().GetType());
+    place_hash_keys.emplace_back(hash_int_value(device_type));
   }
   RunProgramAPI(x_tmp,
                 params_tmp,
@@ -286,14 +289,13 @@ inline void pir_run_program_ad_func(
   // Call forward function
   // if require_any_grad is False, don't save any middle vars.
   std::vector<int64_t> place_hash_keys = std::vector<int64_t>();
-  std::hash<std::string> hasher;
   for (const paddle::Tensor& tensor : x) {
-    std::string place_str = tensor.place().GetDeviceType();
-    place_hash_keys.emplace_back(static_cast<int64_t>(hasher(place_str)));
+    int64_t device_type = static_cast<int64_t>(tensor.place().GetType());
+    place_hash_keys.emplace_back(hash_int_value(device_type));
   }
   for (const paddle::Tensor& tensor : params) {
-    std::string place_str = tensor.place().GetDeviceType();
-    place_hash_keys.emplace_back(static_cast<int64_t>(hasher(place_str)));
+    int64_t device_type = static_cast<int64_t>(tensor.place().GetType());
+    place_hash_keys.emplace_back(hash_int_value(device_type));
   }
   PirRunProgramAPI(x,
                    params,

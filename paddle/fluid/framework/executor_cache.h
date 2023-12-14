@@ -165,7 +165,7 @@ PEAndGraphPair CreateFixOrderExecutorInfo(const ProgramDesc& program_desc,
                                           int64_t end_op_index,
                                           framework::Scope* scope);
 
-int64_t hash_program_id_with_seed(int64_t program_id, int64_t seed);
+int64_t hash_with_seed(int64_t value, int64_t seed);
 
 class InterpreterCoreInfo {
  public:
@@ -199,9 +199,9 @@ class InterpreterCoreInfoCache {
            bool is_grad) {
     if (FLAGS_enable_pir_in_executor || FLAGS_enable_pir_with_pt_in_dy2st) {
       int64_t scope_i = reinterpret_cast<int64_t>(scope);
-      program_id = hash_program_id_with_seed(program_id, scope_i);
+      program_id = hash_with_seed(program_id, scope_i);
       for (int64_t seed : seeds) {
-        program_id = hash_program_id_with_seed(program_id, seed);
+        program_id = hash_with_seed(program_id, seed);
       }
     }
     return info_map_.find(program_id) != info_map_.end() &&
@@ -214,9 +214,9 @@ class InterpreterCoreInfoCache {
                                               bool is_grad) {
     if (FLAGS_enable_pir_in_executor || FLAGS_enable_pir_with_pt_in_dy2st) {
       int64_t scope_i = reinterpret_cast<int64_t>(scope);
-      program_id = hash_program_id_with_seed(program_id, scope_i);
+      program_id = hash_with_seed(program_id, scope_i);
       for (int64_t seed : seeds) {
-        program_id = hash_program_id_with_seed(program_id, seed);
+        program_id = hash_with_seed(program_id, seed);
       }
     }
     return info_map_[program_id].GetMutable(is_grad);
