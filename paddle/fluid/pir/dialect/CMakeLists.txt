@@ -139,8 +139,14 @@ endforeach()
 add_custom_target(ops_api_gen ALL DEPENDS ${ops_api_source_file})
 
 #Note(risemeup1):compile some *.cc files which do not depend on primitive_vjp_experimental into op_dialect.a/lib
-file(GLOB_RECURSE op_dialect_srcs "*.cc")
-list(REMOVE_ITEM op_dialect_srcs ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/*)
+file(
+  GLOB_RECURSE
+  op_dialect_srcs
+  "${CMAKE_CURRENT_SOURCE_DIR}/kernel/*.cc"
+  "${CMAKE_CURRENT_SOURCE_DIR}/operator/interface/*.cc"
+  "${CMAKE_CURRENT_SOURCE_DIR}/operator/trait/*.cc"
+  "${CMAKE_CURRENT_SOURCE_DIR}/operator/transforms/*.cc"
+  "${CMAKE_CURRENT_SOURCE_DIR}/operator/utils/*.cc")
 
 set(op_dialect_srcs
     ${op_dialect_srcs}
