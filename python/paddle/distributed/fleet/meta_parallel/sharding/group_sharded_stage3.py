@@ -17,6 +17,7 @@ from collections import OrderedDict
 from types import MethodType
 
 import numpy as np
+from ordered_set import OrderedSet
 
 import paddle
 import paddle.distributed as dist
@@ -148,7 +149,7 @@ class GroupShardedStage3(nn.Layer):
             {}
         )  # {param.name: [(start0, end0),(start1, end1), ...]}
         self._trainable_params = {}  # {id(layer): [trainable_params]}
-        self._unslice_params = set()  # param's numel <= segment_size
+        self._unslice_params = OrderedSet()  # param's numel <= segment_size
         self._unslice_params2align = {}  # {param.name: param's align}
         self._grad_storages = {}  # {param.dtype: GradStorage}
 
