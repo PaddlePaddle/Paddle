@@ -423,9 +423,14 @@ void HandleForSpecialOp(pir::Operation* op,
                            "The op %s shoud be data op", data_op));
         auto shape = data_op.attribute<dialect::IntArrayAttribute>("shape");
         auto dtype = data_op.attribute<dialect::DataTypeAttribute>("dtype");
+        auto place = data_op.attribute<dialect::PlaceAttribute>("place");
         phi::DenseTensorMeta meta(dtype.data(),
                                   phi::make_ddim(shape.data().GetData()));
         t->set_meta(meta);
+        auto* dev_ctx =
+            platform::DeviceContextPool::Instance().Get(place.data());
+        dev_ctx->Alloc(t, dtype.data());
+        // t->mutable_data(place.data());
       }
     }
     PADDLE_ENFORCE(var,
