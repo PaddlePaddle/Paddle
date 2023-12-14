@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "paddle/phi/common/layout.h"
-#include "paddle/phi/core/ddim.h"
+#include "paddle/common/ddim.h"
+#include "paddle/common/layout.h"
 #include "paddle/phi/kernels/conv_transpose_kernel.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
@@ -37,7 +37,7 @@ void ConvTransposeRawKernel(const Context& ctx,
                             const std::vector<int>& dilations,
                             const std::string& data_format,
                             DenseTensor* out) {
-  const DataLayout data_layout = phi::StringToDataLayout(data_format);
+  const DataLayout data_layout = common::StringToDataLayout(data_format);
   // The filter will be reshaped, so it should not be constant
   DenseTensor filter_ = filter;
   std::vector<int> paddings_ = paddings;
@@ -55,15 +55,15 @@ void ConvTransposeRawKernel(const Context& ctx,
     in_data_dims = slice_ddim(x_dims, 1, x_dims.size() - 1);
   }
   DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings_, &dilations_, padding_algorithm, in_data_dims, strides, ksize);
 
   // x_shape_vec: {n, c, h, w} or {n, c, d, h, w} for channel_first
   // x_shape_vec: {n, h, w, c} or {n, d, h, w, c} for channel_last
-  std::vector<int64_t> x_shape_vec = vectorize(x.dims());
+  std::vector<int64_t> x_shape_vec = common::vectorize(x.dims());
   // filter_shape_vec: {k_o, k_i, k_h, k_w} or {k_o, k_i, k_d, k_h, k_w}
-  std::vector<int64_t> filter_shape_vec = vectorize(filter_.dims());
+  std::vector<int64_t> filter_shape_vec = common::vectorize(filter_.dims());
 
   // use col_shape in the im2col and col2im (or vol2col and col2vol)
   // calculation
@@ -83,7 +83,7 @@ void ConvTransposeRawKernel(const Context& ctx,
       col_shape_vec[j + 1 + data_dim] = x_shape_vec[j + 1];
     }
   }
-  DDim col_shape(make_ddim(col_shape_vec));
+  DDim col_shape(common::make_ddim(col_shape_vec));
 
   // use col_matrix_shape in the gemm calculation
   // size: (o_c/g * k_h * k_w, h * w) or (o_c/g * k_d * k_h * k_w, d * h * w)

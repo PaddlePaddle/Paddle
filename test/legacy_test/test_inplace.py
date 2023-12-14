@@ -316,6 +316,22 @@ class TestDygraphInplaceMaskedFill2(TestDygraphInplaceMaskedFill):
         self.mask = paddle.to_tensor(self.mask, dtype='bool')
 
 
+class TestDygraphInplaceMaskedScatter(TestDygraphInplace):
+    def non_inplace_api_processing(self, var):
+        return paddle.masked_scatter(var, self.mask, self.value)
+
+    def inplace_api_processing(self, var):
+        return paddle.masked_scatter_(var, self.mask, self.value)
+
+    def init_data(self):
+        self.dtype = "float32"
+        self.input_var_numpy = np.random.uniform(-5, 5, [30, 3])
+        self.value = np.random.uniform(size=(30, 30))
+        self.value = paddle.to_tensor(self.value, dtype=self.dtype)
+        self.mask = np.random.randint(0, 2, [30, 1]).astype('bool')
+        self.mask = paddle.to_tensor(self.mask, dtype='bool')
+
+
 class TestDygraphInplaceWithContinuous(TestDygraphInplace):
     def init_data(self):
         self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
@@ -835,6 +851,22 @@ class TestDygraphInplaceDigamma(TestDygraphInplaceWithContinuous):
 
     def non_inplace_api_processing(self, var):
         return paddle.digamma(var)
+
+
+class TestDygraphInplaceMutilgammaln(TestDygraphInplaceWithContinuous):
+    def init_data(self):
+        self.input_var_numpy = np.random.rand(10, 20).astype('float32') + 1.0
+        self.dtype = "float32"
+        self.p = 2
+
+    def inplace_api_processing(self, var):
+        return paddle.multigammaln_(var, self.p)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.multigammaln(var, self.p)
+
+    def test_leaf_inplace_var_error(self):
+        pass
 
 
 class TestDygraphInplaceNeg(TestDygraphInplaceWithContinuous):

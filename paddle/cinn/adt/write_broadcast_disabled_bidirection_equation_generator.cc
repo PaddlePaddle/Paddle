@@ -16,7 +16,6 @@
 
 #include "paddle/cinn/adt/equation_graph.h"
 #include "paddle/cinn/adt/equation_solver.h"
-#include "paddle/cinn/adt/naive_equation_function_constants_provider.h"
 
 namespace cinn::adt {
 
@@ -47,14 +46,11 @@ std::unordered_map<Variable, const Value> MakeAnchorIndex2Ok(
   return {{anchor_index, Ok{}}};
 }
 
-bool LocalEquationsSolvable(
-    const GraphView& graph_view,
-    const Index& anchor_index,
-    const FakeOpPlaceHolder& fake_op_placeholder,
-    const std::shared_ptr<const EquationFunctionConstantsProvider>&
-        constants_provider) {
+bool LocalEquationsSolvable(const GraphView& graph_view,
+                            const Index& anchor_index,
+                            const FakeOpPlaceHolder& fake_op_placeholder) {
   const auto& init_var2value = MakeAnchorIndex2Ok(anchor_index);
-  IndexExprInferContext ctx{init_var2value, constants_provider};
+  IndexExprInferContext ctx{init_var2value};
   bool has_no_conflict_value =
       TrySolveEquations(graph_view, anchor_index, &ctx).value();
   return has_no_conflict_value && ctx.HasValue(fake_op_placeholder);
@@ -104,18 +100,15 @@ Equation EraseIndexes(
 
 std::vector<Index> GenerateWriteBroadcastTensorIndexs(
     const std::shared_ptr<config::NaiveOpEquationContext>& ctx,
-    const Equations& in_msg2out_msg_equations,
-    const std::shared_ptr<const EquationFunctionConstantsProvider>&
-        constants_provider) {
+    const Equations& in_msg2out_msg_equations) {
   const auto& eqaution_graph_view =
-      Graph::New(ctx->equations())->GetGraphView();
+      Graph<Variable, Equation>::New(ctx->equations())->GetGraphView();
   GraphView graph_view = eqaution_graph_view.Merge(
-      Graph::New(in_msg2out_msg_equations)->GetGraphView());
+      Graph<Variable, Equation>::New(in_msg2out_msg_equations)->GetGraphView());
   std::vector<Index> ret{};
   const auto& fake_op_placeholder = ctx->fake_op_placeholder();
   ctx->VisitEachOutputTensorIndex([&](const auto& out_index) {
-    if (!LocalEquationsSolvable(
-            graph_view, out_index, fake_op_placeholder, constants_provider)) {
+    if (!LocalEquationsSolvable(graph_view, out_index, fake_op_placeholder)) {
       ret.emplace_back(out_index);
     }
   });
@@ -127,10 +120,6 @@ std::vector<Index> GenerateWriteBroadcastTensorIndexs(
 Equations
 WriteBroadcastDisabledBidirectionEquationGenerator::GetDirectionEquations()
     const {
-  std::shared_ptr<const EquationFunctionConstantsProvider> constants_provider{
-      new NaiveEquationFunctionConstantsProvider{
-          naive_bidirection_equation_generator_.op_stmts(),
-          naive_bidirection_equation_generator_.EquationCtx4OpStmt()}};
   Equations ret{};
   VisitEachOpStmtAndEquationCtx(
       naive_bidirection_equation_generator_.op_stmts(),
@@ -141,8 +130,7 @@ WriteBroadcastDisabledBidirectionEquationGenerator::GetDirectionEquations()
         const auto& in_msg2out_msg_equations =
             naive_bidirection_equation_generator_.equations();
         const auto& truncated_output_tensor_idxes =
-            GenerateWriteBroadcastTensorIndexs(
-                ctx, in_msg2out_msg_equations, constants_provider);
+            GenerateWriteBroadcastTensorIndexs(ctx, in_msg2out_msg_equations);
         ret->emplace_back(EraseIndexes(in_msg2out_msg_equations->at(idx),
                                        truncated_output_tensor_idxes));
       });

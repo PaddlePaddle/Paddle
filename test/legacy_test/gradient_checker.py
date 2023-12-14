@@ -498,14 +498,26 @@ def double_grad_check(
     x_init = _as_list(x_init)
 
     if in_pir_mode():
-        (
-            grad_res,
-            x,
-            target_grads,
-            fetch_list,
-            feeds,
-            ir_program,
-        ) = get_pir_static_double_grad(x, y, x_init, y_grads, place)
+        program, op_map = paddle.base.libpaddle.pir.clone_program(
+            paddle.static.default_main_program()
+        )
+        clone_x = []
+        for xi in x:
+            clone_x.append(op_map[xi])
+        clone_y = []
+        for yi in y:
+            clone_y.append(op_map[yi])
+        with paddle.static.program_guard(program):
+            (
+                grad_res,
+                x,
+                target_grads,
+                fetch_list,
+                feeds,
+                ir_program,
+            ) = get_pir_static_double_grad(
+                clone_x, clone_y, x_init, y_grads, place
+            )
         grad_check(
             x,
             target_grads,
@@ -577,14 +589,26 @@ def triple_grad_check(
 
     # x <=> [x, dout, ddx]
     if in_pir_mode():
-        (
-            grad_res,
-            x,
-            target_grads,
-            fetch_list,
-            feeds,
-            ir_program,
-        ) = get_pir_static_triple_grad(x, y, x_init, y_grads, place)
+        program, op_map = paddle.base.libpaddle.pir.clone_program(
+            paddle.static.default_main_program()
+        )
+        clone_x = []
+        for xi in x:
+            clone_x.append(op_map[xi])
+        clone_y = []
+        for yi in y:
+            clone_y.append(op_map[yi])
+        with paddle.static.program_guard(program):
+            (
+                grad_res,
+                x,
+                target_grads,
+                fetch_list,
+                feeds,
+                ir_program,
+            ) = get_pir_static_triple_grad(
+                clone_x, clone_y, x_init, y_grads, place, program
+            )
         grad_check(
             x,
             target_grads,
@@ -739,6 +763,8 @@ def get_pir_static_double_grad(
     """
     if program is None:
         program = paddle.static.default_main_program()
+    exe = paddle.static.Executor(place)
+    exe.run(paddle.static.default_startup_program())
     if dy_init is None:
         y_grads = []
         y_grads_init = []
@@ -828,7 +854,7 @@ def get_pir_static_double_grad(
 
     # append second order backward
     ddx = base.gradients(y, x, dys)
-    exe = paddle.static.Executor()
+
     # filter None in dx for DX/DY may be None in kernel
     # only fetch not None dx in exe.run
     filted = [(i, dxi) for i, dxi in enumerate(ddx) if dxi is not None]
@@ -1138,7 +1164,12 @@ def get_pir_static_triple_grad(
         x_grads_grads_init.append(value)
 
     return get_pir_static_double_grad(
-        x, y, x_init, dy_init=x_grads_grads_init, place=place, program=program
+        x,
+        y,
+        x_init,
+        dy_init=x_grads_grads_init,
+        place=place,
+        program=program,
     )
 
 

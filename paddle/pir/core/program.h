@@ -54,8 +54,8 @@ class IR_API Program {
 
   static std::unique_ptr<Program> Parse(std::istream& is, IrContext* ctx);
 
-  Block* block() { return module_.block(); }
-  const Block* block() const { return module_op().block(); }
+  Block* block() { return &module_.block(); }
+  const Block* block() const { return &module_op().block(); }
 
   Parameter* GetParameter(const std::string& name) const;
   void SetParameter(const std::string& name,

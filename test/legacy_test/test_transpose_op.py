@@ -746,6 +746,7 @@ class TestTransposeDoubleGradCheck(unittest.TestCase):
     def transpose_wrapper(self, x):
         return paddle.transpose(x[0], [1, 0, 2])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -777,6 +778,7 @@ class TestTransposeTripleGradCheck(unittest.TestCase):
     def transpose_wrapper(self, x):
         return paddle.transpose(x[0], [1, 0, 2])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.

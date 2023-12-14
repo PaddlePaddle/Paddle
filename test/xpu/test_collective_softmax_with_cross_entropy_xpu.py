@@ -95,7 +95,7 @@ class XPUTestCSoftmaxWithCEOP(XPUOpTestWrapper):
             self,
             model_file,
             col_type,
-            data_type,
+            dtype,
             check_error_log=False,
             need_envs={},
         ):
@@ -106,13 +106,13 @@ class XPUTestCSoftmaxWithCEOP(XPUOpTestWrapper):
                 "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
                 "LD_PRELOAD": os.getenv("LD_PRELOAD", ""),
                 "GLOG_v": "0",
-                "DATA_TYPE": data_type,
+                "DTYPE": dtype,
             }
             required_envs.update(need_envs)
             if check_error_log:
                 required_envs["GLOG_v"] = "3"
                 required_envs["GLOG_logtostderr"] = "1"
-            np_data_type = DataTypeCast(data_type)
+            np_dtype = DataTypeCast(dtype)
 
             tr0_out, tr1_out, pid0, pid1 = self._run_cluster(
                 model_file, required_envs
@@ -125,20 +125,20 @@ class XPUTestCSoftmaxWithCEOP(XPUOpTestWrapper):
             )
             loss_grad = np.random.uniform(
                 low=-10.0, high=10.0, size=(self.batch_size, 1)
-            ).astype(np_data_type)
+            ).astype(np_dtype)
 
             local_elements = int(self.num_class / 2)
             # get input data for rank 0
             np.random.seed(pid0)
             input0 = np.random.uniform(
                 low=-40.0, high=40.0, size=(self.batch_size, local_elements)
-            ).astype(np_data_type)
+            ).astype(np_dtype)
 
             # get input data for rank 1
             np.random.seed(pid1)
             input1 = np.random.uniform(
                 low=-40.0, high=40.0, size=(self.batch_size, local_elements)
-            ).astype(np_data_type)
+            ).astype(np_dtype)
 
             # get combined input data
             inputs = np.concatenate((input0, input1), axis=1)

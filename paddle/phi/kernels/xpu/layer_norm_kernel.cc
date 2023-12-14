@@ -31,7 +31,7 @@ void LayerNormKernel(const Context& ctx,
                      DenseTensor* variance) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   const auto& x_dims = x.dims();
-  auto matrix_dim = phi::flatten_to_2d(x_dims, begin_norm_axis);
+  auto matrix_dim = common::flatten_to_2d(x_dims, begin_norm_axis);
   int left = static_cast<int>(matrix_dim[0]);
   int right = static_cast<int>(matrix_dim[1]);
   const auto* x_data = x.data<T>();

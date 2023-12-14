@@ -203,6 +203,12 @@ class TestMemEffAPIVariableDtypeFP16(TestMemEffAttentionVariableAPI):
         self.scale = 1.0 / np.sqrt(self.shape[-1])
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11020
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "MemEffAPIVariableDtypeBF16 requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
 class TestMemEffAPIVariableDtypeBF16(TestMemEffAttentionVariableAPI):
     def setUp(self):
         self.name = "MemEffAPIVariable_bf16"

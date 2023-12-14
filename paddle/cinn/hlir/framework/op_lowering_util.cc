@@ -53,11 +53,11 @@ ir::Tensor GetTensor(
     return lang::Placeholder<double>(node_data->id(),
                                      shape_dict.at(node_data->id()));
   } else if (dtype.is_bfloat16()) {
-    return lang::Placeholder<common::bfloat16>(node_data->id(),
-                                               shape_dict.at(node_data->id()));
+    return lang::Placeholder<cinn::common::bfloat16>(
+        node_data->id(), shape_dict.at(node_data->id()));
   } else if (dtype.is_float16()) {
-    return lang::Placeholder<common::float16>(node_data->id(),
-                                              shape_dict.at(node_data->id()));
+    return lang::Placeholder<cinn::common::float16>(
+        node_data->id(), shape_dict.at(node_data->id()));
   } else if (dtype.is_bool()) {
     return lang::Placeholder<bool>(node_data->id(),
                                    shape_dict.at(node_data->id()));
@@ -546,7 +546,7 @@ bool WithoutLastDimInReduce(const std::vector<int>& shape,
 void LoopOrderAssignReduce(ir::IRSchedule& ir_sch,  // NOLINT
                            const std::string& block_name,
                            const std::vector<int>& axes,
-                           const common::Target& target,
+                           const cinn::common::Target& target,
                            const bool just_reorder = false) {
   // reorder none-last reduce axis to last.
   // like: shape = [16,16,16,16,16],axes = [1,3] -> new order = [0, 2, 4, 1, 3].
@@ -597,7 +597,7 @@ void LoopAssignReduceWithoutLast(ir::IRSchedule& ir_sch,  // NOLINT
                                  const std::string& block_name,
                                  const std::vector<int>& inshape,
                                  const std::vector<int>& axes,
-                                 const common::Target& target) {
+                                 const cinn::common::Target& target) {
   int tail = 0;
   bool bound = true;
   auto shape = pe::GetFirstStepReduceShape(inshape, axes, bound, tail);
@@ -711,11 +711,11 @@ void LoopAssignReduceWithLast(ir::IRSchedule& ir_sch,  // NOLINT
                               const std::string& block_name,
                               const std::vector<int>& inshape,
                               const std::vector<int>& axes,
-                              const common::Target& target) {
+                              const cinn::common::Target& target) {
   // If the number of current device SM is smaller than the number of SM
   // required by Warp Reduce, the performance of Warp Reduce is better.
   // Otherwise, use Block Reduce.
-  auto max_num_threads = common::DefaultNVGPUTarget().max_num_threads();
+  auto max_num_threads = cinn::common::DefaultNVGPUTarget().max_num_threads();
   int need_reduce_last_count = 1;
   for (int i = 0; i < inshape.size(); i++) {
     if (find(axes.begin(), axes.end(), i) == axes.end()) {

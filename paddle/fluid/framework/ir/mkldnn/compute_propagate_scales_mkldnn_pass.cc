@@ -121,7 +121,7 @@ void ComputePropagateScalesMkldnnPass::ComputeVarScales(
 
       phi::DenseTensor tmp_tensor;
       std::vector<int64_t> reshape_dims = {dims[0], volume};
-      tmp_tensor.Resize(phi::make_ddim(reshape_dims));
+      tmp_tensor.Resize(common::make_ddim(reshape_dims));
       auto* weight_data = weight_tensor->data<float>();
       auto* tmp_data = tmp_tensor.mutable_data<float>(phi::CPUPlace());
       for (int i = 0; i < weight_tensor->numel(); i++) {

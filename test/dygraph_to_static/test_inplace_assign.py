@@ -15,10 +15,9 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import (
+from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
-    test_legacy_and_pir,
 )
 
 import paddle
@@ -51,9 +50,9 @@ class TestInplaceAssign(Dy2StTestBase):
         y.mean().backward()
         np.testing.assert_array_equal(x.grad.numpy(), np.array([2.0]))
 
-    @test_legacy_and_pir
     def test_case2(self):
         def func(a, x):
+            x = 2 * x
             x[:] = a * 2.0
             return x
 

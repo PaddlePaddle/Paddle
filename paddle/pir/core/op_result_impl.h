@@ -33,6 +33,8 @@ class OpResultImpl : public ValueImpl {
   /// \brief Get the parent operation of this result.(op_ptr = value_ptr +
   /// index)
   ///
+  const Operation *owner() const;
+
   Operation *owner();
 
   ///
@@ -41,6 +43,15 @@ class OpResultImpl : public ValueImpl {
   uint32_t index() const;
 
   ~OpResultImpl();
+
+  ///
+  /// \brief attribute related public interfaces
+  ///
+  Attribute attribute(const std::string &key) const;
+  void set_attribute(const std::string &key, Attribute value);
+
+ private:
+  int32_t ComputeOperationOffset() const;
 };
 
 ///

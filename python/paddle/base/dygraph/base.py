@@ -78,8 +78,10 @@ def _to_static_mode_guard_(is_to_static=True):
     global global_var
     original_val = global_var._in_to_static_mode_
     global_var._in_to_static_mode_ = is_to_static
-    yield
-    global_var._in_to_static_mode_ = original_val
+    try:
+        yield
+    finally:
+        global_var._in_to_static_mode_ = original_val
 
 
 @signature_safe_contextmanager

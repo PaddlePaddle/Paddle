@@ -26,7 +26,7 @@
 namespace cinn {
 namespace common {
 
-using common::make_const;
+using cinn::common::make_const;
 using utils::GetStreamCnt;
 using utils::Join;
 using utils::Trim;
@@ -75,8 +75,10 @@ TEST(CAS, SimplifySum) {
   // z + 1 + y + 3 + x + 0 + zx
   auto u4 = CasSimplify(
       Sum::Make({z, Expr(1), y, Expr(3), x, Expr(0), Product::Make({z, x})}));
+  // (-1 * x) + x
+  auto u5 = CasSimplify(Sum::Make({Product::Make({Expr(-1), x}), x}));
   // x2 + 3zy + -3*yz + -2x + 1
-  auto u5 = CasSimplify(Sum::Make({Product::Make({x, Expr(2)}),
+  auto u6 = CasSimplify(Sum::Make({Product::Make({x, Expr(2)}),
                                    Product::Make({z, y, Expr(3)}),
                                    Product::Make({Expr(-3), y, z}),
                                    Product::Make({Expr(-2), x}),
@@ -86,7 +88,8 @@ TEST(CAS, SimplifySum) {
   EXPECT_EQ(GetStreamCnt(CasSimplify(u2)), "(x + y + z)");
   EXPECT_EQ(GetStreamCnt(u3), "(1 + x + y + z + (x * z))");
   EXPECT_EQ(GetStreamCnt(u4), "(4 + x + y + z + (x * z))");
-  EXPECT_EQ(GetStreamCnt(u5), "1");
+  EXPECT_EQ(GetStreamCnt(u5), "0");
+  EXPECT_EQ(GetStreamCnt(u6), "1");
 }
 
 TEST(CAS, SimplifyProduct) {
@@ -181,8 +184,8 @@ TEST(CAS, FracOp) {
   auto u4 = AutoSimplify(Expr(32768) * (((Expr(32) * x) + y) / 32));
   EXPECT_EQ(GetStreamCnt(u4), "((32768 * (y / 32)) + (32768 * x))");
 
-  common::cas_intervals_t var_intervals;
-  var_intervals.emplace("y", common::CasInterval(0, 31));
+  cinn::common::cas_intervals_t var_intervals;
+  var_intervals.emplace("y", cinn::common::CasInterval(0, 31));
   auto u = AutoSimplify((Expr(x) * 32 + y) / 32, var_intervals);
   EXPECT_EQ(GetStreamCnt(u), "x");
 

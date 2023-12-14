@@ -147,6 +147,30 @@ int xpu2_wrapper<float16>(Context* ctx,
   return SUCCESS;
 }
 
+template <>
+int xpu2_wrapper<bfloat16>(Context* ctx,
+                           const bfloat16* x,
+                           bfloat16* y,
+                           const std::vector<int>& xshape,
+                           int op_type) {
+  int t = xshape[xshape.size() - 1];
+  int xlen = vector_prod(xshape);
+  int m = xlen / t;
+  switch (op_type) {
+    case 0:
+      xpu2::plugin::fast_reduce_sum_tiny<bfloat16>
+          <<<ctx->ncluster(), 64, ctx->xpu_stream>>>(x, y, m, t);
+      break;
+    case 1:
+      xpu2::plugin::fast_reduce_mean_tiny<bfloat16>
+          <<<ctx->ncluster(), 64, ctx->xpu_stream>>>(x, y, m, t);
+      break;
+    default:
+      return NOT_IMPLEMENT;
+  }
+  return SUCCESS;
+}
+
 template <typename T>
 int fast_reduce_tiny(Context* ctx,
                      const T* x,
@@ -240,6 +264,11 @@ template int fast_reduce_sum(Context*,
                              const std::vector<int>&,
                              const std::vector<int>&);
 template int fast_reduce_sum(Context*,
+                             const bfloat16*,
+                             bfloat16*,
+                             const std::vector<int>&,
+                             const std::vector<int>&);
+template int fast_reduce_sum(Context*,
                              const int*,
                              int*,
                              const std::vector<int>&,
@@ -262,6 +291,11 @@ template int fast_reduce_mean(Context*,
 template int fast_reduce_mean(Context*,
                               const float16*,
                               float16*,
+                              const std::vector<int>&,
+                              const std::vector<int>&);
+template int fast_reduce_mean(Context*,
+                              const bfloat16*,
+                              bfloat16*,
                               const std::vector<int>&,
                               const std::vector<int>&);
 template int fast_reduce_min(Context*,

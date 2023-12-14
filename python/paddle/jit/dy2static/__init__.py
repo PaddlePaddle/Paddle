@@ -15,10 +15,6 @@
 from .assert_transformer import AssertTransformer  # noqa: F401
 from .ast_transformer import DygraphToStaticAst  # noqa: F401
 from .convert_call_func import convert_call as Call  # noqa: F401
-
-# isort: off
-# NOTE(gouzil): isort will delete the import
-# TODO(gouzil): Remove `isort: off` after adding the `combine-as-imports` configuration
 from .convert_operators import (  # noqa: F401
     convert_assert as Assert,
     convert_attr as Attr,
@@ -29,15 +25,13 @@ from .convert_operators import (  # noqa: F401
     convert_logical_not as Not,
     convert_logical_or as Or,
     convert_pop as Pop,
-    convert_shape_compare,
     convert_shape as Shape,
+    convert_shape_compare,
     convert_var_dtype as AsDtype,
     convert_while_loop as While,
     indexable as Indexable,
     unpack_by_structure as Unpack,
 )
-
-# isort: on
 from .program_translator import convert_to_static  # noqa: F401
 from .static_analysis import NodeVarType, StaticAnalysisVisitor  # noqa: F401
 from .utils import UndefinedVar, ast_to_source_code, saw  # noqa: F401

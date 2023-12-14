@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <stdint.h>
 
-#include "paddle/phi/core/ddim.h"
+#include "paddle/common/ddim.h"
 
 namespace phi {
 namespace funcs {

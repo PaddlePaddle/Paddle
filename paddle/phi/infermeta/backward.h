@@ -266,7 +266,9 @@ void InverseGradInferMeta(const MetaTensor& out,
                           const MetaTensor& dout,
                           MetaTensor* dx);
 
-void KernelWithXShapeInferMeta(const MetaTensor& xshape, MetaTensor* dx);
+void KernelWithXShapeInferMeta(const MetaTensor& xshape,
+                               const MetaTensor& out,
+                               MetaTensor* dx);
 
 void LUGradInferMeta(const MetaTensor& x,
                      const MetaTensor& out,
@@ -398,6 +400,11 @@ void RnnGradInferMeta(const MetaTensor& x,
                       std::vector<MetaTensor*> pre_state_grad,
                       std::vector<MetaTensor*> weight_grad_list);
 
+void RowConvGradInferMeta(const MetaTensor& out_grad,
+                          const MetaTensor& filter,
+                          MetaTensor* x_grad,
+                          MetaTensor* filter_grad);
+
 void ScatterGradInferMeta(const MetaTensor& index,
                           const MetaTensor& updates,
                           const MetaTensor& out_grad,
@@ -451,6 +458,7 @@ void WeightOnlyLinearGradInferMeta(const MetaTensor& x,
                                    const MetaTensor& weight_scale,
                                    const MetaTensor& out_grad,
                                    const std::string& weight_dtype,
+                                   const int32_t arch,
                                    MetaTensor* x_grad);
 
 void YoloLossGradInferMeta(const MetaTensor& x,
@@ -491,4 +499,5 @@ void SetValueGradInferMeta(const MetaTensor& out_grad,
                            const MetaTensor& values,
                            MetaTensor* x_grad,
                            MetaTensor* value_grad);
+
 }  // namespace phi

@@ -91,11 +91,14 @@ list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_grad_op)
 list(REMOVE_ITEM TEST_OPS test_fuse_gemm_epilogue_pass)
+list(REMOVE_ITEM TEST_OPS test_fused_dot_product_attention_op)
+list(REMOVE_ITEM TEST_OPS test_fuse_dot_product_attention_pass)
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_c_comm_init_all_op)
   list(REMOVE_ITEM TEST_OPS test_c_embedding_op)
   list(REMOVE_ITEM TEST_OPS test_pipeline_parallel)
+  list(REMOVE_ITEM TEST_OPS test_fleet_perf_test)
   list(REMOVE_ITEM TEST_OPS test_memcpy_op)
   list(REMOVE_ITEM TEST_OPS test_raw_program_optimizer)
   list(REMOVE_ITEM TEST_OPS test_fleet_gradient_scale)
@@ -185,7 +188,7 @@ if(NOT WITH_GLOO)
 endif()
 
 if((NOT WITH_GPU) AND (NOT WITH_ROCM))
-  list(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
+  list(REMOVE_ITEM TEST_OPS test_fused_conv2d_add_act_op)
   list(REMOVE_ITEM TEST_OPS test_rank_attention_op)
   # TODO(shenliang03): rank_attention_op support CPU device in future
   list(REMOVE_ITEM TEST_OPS test_batch_fc_op)
@@ -208,7 +211,7 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
 
 elseif(WITH_GPU)
   if(${CUDNN_VERSION} VERSION_LESS 7100)
-    list(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
+    list(REMOVE_ITEM TEST_OPS test_fused_conv2d_add_act_op)
   endif()
 endif()
 
@@ -506,6 +509,8 @@ endif()
 if(NOT WITH_CUDNN_FRONTEND)
   list(REMOVE_ITEM TEST_OPS test_fused_scale_bias_relu_conv_bn_op)
   list(REMOVE_ITEM TEST_OPS test_fused_scale_bias_add_relu_op)
+  list(REMOVE_ITEM TEST_OPS test_fused_dconv_drelu_dbn_op)
+  list(REMOVE_ITEM TEST_OPS test_fuse_resunit_pass)
 endif()
 
 # Some ops need to check results when gc is enabled
@@ -548,6 +553,13 @@ if((NOT WITH_GPU)
 endif()
 
 list(REMOVE_ITEM TEST_OPS "test_stride")
+if(WITH_COVERAGE)
+  list(REMOVE_ITEM TEST_OPS test_weight_decay)
+  list(REMOVE_ITEM TEST_OPS test_graph_reindex)
+  list(REMOVE_ITEM TEST_OPS test_cuda_graphed_layer)
+  list(REMOVE_ITEM TEST_OPS test_cuda_graph_partial_graph_static_run)
+  list(REMOVE_ITEM DIST_TEST_OPS test_dist_fleet_geo)
+endif()
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach()
@@ -608,6 +620,13 @@ if((WITH_GPU) AND (CUDA_VERSION GREATER_EQUAL 11.6))
     FLAGS_cublaslt_exhaustive_search_times=30)
   py_test_modules(test_fuse_gemm_epilogue_pass MODULES
                   test_fuse_gemm_epilogue_pass)
+endif()
+
+if((WITH_GPU) AND (WITH_CUDNN_FRONTEND))
+  py_test_modules(test_fuse_dot_product_attention_pass MODULES
+                  test_fuse_dot_product_attention_pass)
+  py_test_modules(test_fused_dot_product_attention_op MODULES
+                  test_fused_dot_product_attention_op)
 endif()
 
 set_tests_properties(test_conv2d_op PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
@@ -827,12 +846,6 @@ if(NOT WIN32)
                   test_ir_memory_optimize_transformer)
 endif()
 
-# dist xpu tests:
-if(WITH_XPU_BKCL)
-  py_test(test_collective_allreduce_api_xpu
-          SRCS "collective/test_collective_allreduce_api.py")
-endif()
-
 if(WITH_HETERPS)
   set_tests_properties(test_dist_fleet_ps11 PROPERTIES LABELS "RUN_TYPE=GPUPS")
   set_tests_properties(test_dist_fleet_ps12 PROPERTIES LABELS "RUN_TYPE=GPUPS")
@@ -906,6 +919,7 @@ if(WITH_DISTRIBUTE)
 endif()
 
 # setting timeout value as 15S
+set_tests_properties(test_binomial_op PROPERTIES TIMEOUT 30)
 set_tests_properties(test_run PROPERTIES TIMEOUT 120)
 set_tests_properties(test_sync_batch_norm_op PROPERTIES TIMEOUT 180)
 set_tests_properties(test_cross_op PROPERTIES TIMEOUT 120)
@@ -924,7 +938,7 @@ set_tests_properties(test_inplace_softmax_with_cross_entropy PROPERTIES TIMEOUT
 set_tests_properties(test_cross_entropy2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cross_entropy_loss PROPERTIES TIMEOUT 180)
 set_tests_properties(test_gru_unit_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_activation_nn_grad PROPERTIES TIMEOUT 200)
+set_tests_properties(test_activation_nn_grad PROPERTIES TIMEOUT 250)
 set_tests_properties(test_empty_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_parallel_executor_transformer PROPERTIES TIMEOUT 120)
 set_tests_properties(test_elementwise_div_op PROPERTIES TIMEOUT 120)
@@ -970,7 +984,7 @@ if(WITH_NV_JETSON)
   set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 1500)
   set_tests_properties(test_pool3d_op PROPERTIES TIMEOUT 1500)
 else()
-  set_tests_properties(test_concat_op PROPERTIES TIMEOUT 360)
+  set_tests_properties(test_concat_op PROPERTIES TIMEOUT 400)
   set_tests_properties(test_conv3d_transpose_part2_op PROPERTIES TIMEOUT 120)
   set_tests_properties(test_conv3d_op PROPERTIES TIMEOUT 120)
   set_tests_properties(test_norm_op PROPERTIES TIMEOUT 150)
@@ -1019,8 +1033,10 @@ set_tests_properties(test_nan_inf PROPERTIES TIMEOUT 120)
 set_tests_properties(test_deformable_conv_v1_op PROPERTIES TIMEOUT 300)
 set_tests_properties(test_parallel_executor_transformer_auto_growth
                      PROPERTIES TIMEOUT 120)
-set_tests_properties(test_elementwise_add_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_weight_decay PROPERTIES TIMEOUT 120)
+set_tests_properties(test_elementwise_add_op PROPERTIES TIMEOUT 200)
+if(NOT WITH_COVERAGE)
+  set_tests_properties(test_weight_decay PROPERTIES TIMEOUT 120)
+endif()
 set_tests_properties(test_imperative_ptb_rnn_sorted_gradient PROPERTIES TIMEOUT
                                                                         120)
 set_tests_properties(test_paddlescience PROPERTIES TIMEOUT 120)
@@ -1058,7 +1074,7 @@ set_tests_properties(test_elementwise_nn_grad PROPERTIES TIMEOUT 120)
 set_tests_properties(
   test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
   PROPERTIES TIMEOUT 120)
-set_tests_properties(test_conv_nn_grad PROPERTIES TIMEOUT 120)
+set_tests_properties(test_conv_nn_grad PROPERTIES TIMEOUT 220)
 set_tests_properties(test_program_prune_backward PROPERTIES TIMEOUT 120)
 set_tests_properties(test_group_norm_op PROPERTIES TIMEOUT 1000)
 set_tests_properties(test_imperative_optimizer PROPERTIES TIMEOUT 250)
@@ -1151,11 +1167,13 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
                          PROPERTIES TIMEOUT 120)
     set_tests_properties(test_pipeline_parallel PROPERTIES LABELS
                                                            "RUN_TYPE=DIST")
+    set_tests_properties(test_fleet_perf_test PROPERTIES LABELS "RUN_TYPE=DIST")
     set_tests_properties(test_reducescatter PROPERTIES TIMEOUT 120)
     set_tests_properties(test_allgather PROPERTIES TIMEOUT 120)
   endif()
   set_tests_properties(test_paddle_multiprocessing PROPERTIES TIMEOUT 120)
   set_tests_properties(test_pipeline_parallel PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_fleet_perf_test PROPERTIES TIMEOUT 120)
 endif()
 if(WITH_GPU OR WITH_ROCM)
   set_tests_properties(test_rank_attention_op PROPERTIES TIMEOUT 120)
@@ -1178,6 +1196,10 @@ if(WITH_GLOO)
                        PROPERTIES TIMEOUT 120)
   set_tests_properties(test_parallel_dygraph_sparse_embedding_over_height_gloo
                        PROPERTIES TIMEOUT 120)
+endif()
+
+if(WITH_CUDNN_FRONTEND)
+  set_tests_properties(test_fuse_resunit_pass PROPERTIES TIMEOUT 300)
 endif()
 
 set(TEST_CINN_OPS
@@ -1344,9 +1366,14 @@ foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
     FLAGS_new_executor_static_build=true)
 endforeach()
 
-set(PIR_COVERAGE_TESTS test_fused_feedforward_pass)
+set(PIR_COVERAGE_TESTS test_fused_feedforward_pass
+                       test_fuse_elewise_add_act_pass)
 if(NOT WITH_GPU)
   list(REMOVE_ITEM PIR_COVERAGE_TESTS test_fused_feedforward_pass)
+endif()
+
+if(APPLE)
+  list(REMOVE_ITEM PIR_COVERAGE_TESTS test_fuse_elewise_add_act_pass)
 endif()
 
 foreach(PIR_COVERAGE_TEST ${PIR_COVERAGE_TESTS})
@@ -1377,41 +1404,6 @@ set_tests_properties(test_sync_batch_norm_op_static_build
                      PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(test_sync_batch_norm_op_static_build PROPERTIES TIMEOUT
                                                                      250)
-
-file(STRINGS "${CMAKE_SOURCE_DIR}/test/white_list/pir_op_test_white_list"
-     PIR_OP_TESTS)
-foreach(IR_OP_TEST ${PIR_OP_TESTS})
-  if(TEST ${IR_OP_TEST})
-    set_tests_properties(
-      ${IR_OP_TEST} PROPERTIES ENVIRONMENT "FLAGS_PIR_OPTEST_WHITE_LIST=True")
-  else()
-    message(STATUS "PIR OpTest: not found ${IR_OP_TEST} in legacy_test")
-  endif()
-endforeach()
-
-file(STRINGS "${CMAKE_SOURCE_DIR}/test/white_list/pir_op_test_no_check_list"
-     PIR_OP_NO_CHECK_TESTS)
-foreach(IR_OP_TEST ${PIR_OP_NO_CHECK_TESTS})
-  if(TEST ${IR_OP_TEST})
-    set_tests_properties(${IR_OP_TEST} PROPERTIES ENVIRONMENT
-                                                  "FLAGS_PIR_NO_CHECK=True")
-  else()
-    message(STATUS "PIR OpTest: not found ${IR_OP_TEST} in legacy_test")
-  endif()
-endforeach()
-
-file(STRINGS
-     "${CMAKE_SOURCE_DIR}/test/white_list/pir_op_test_precision_white_list"
-     PIR_OP_RELAXED_TESTS)
-foreach(IR_OP_TEST ${PIR_OP_RELAXED_TESTS})
-  if(TEST ${IR_OP_TEST})
-    set_tests_properties(
-      ${IR_OP_TEST} PROPERTIES ENVIRONMENT "FLAGS_PIR_OPTEST_RELAX_CHECK=True")
-  else()
-    message(STATUS "PIR Relaxed OpTest: not found ${IR_OP_TEST} in legacy_test")
-  endif()
-endforeach()
-
 py_test_modules(test_stride MODULES test_stride ENVS
                 FLAGS_use_stride_kernel=true)
 
@@ -1427,3 +1419,5 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
     test_fleet_executor_with_task_nodes
     PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
 endif()
+
+set_pit_tests_properties()

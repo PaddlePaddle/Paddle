@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/pir/core/op_trait.h"
-#include "paddle/pir/core/enforce.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/type_util.h"
 
 namespace {

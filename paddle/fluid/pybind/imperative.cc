@@ -72,16 +72,6 @@ std::atomic<int> VarBaseUniqueNameID{0};
 
 namespace py = ::pybind11;
 
-template <typename T>
-static T PyObjectCast(PyObject *obj) {
-  try {
-    return py::cast<T>(py::handle(obj));
-  } catch (py::cast_error &) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Python object is not type of %s", typeid(T).name()));
-  }
-}
-
 class PyVariableWrapperHook : public imperative::VariableWrapperHook {
  public:
   explicit PyVariableWrapperHook(PyObject *func) : py_func_(func) {
