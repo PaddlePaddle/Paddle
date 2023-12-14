@@ -45,8 +45,7 @@ set(PYBIND_DEPS
     pir_transforms
     pir
     new_profiler
-    jit_layer
-    jit_property
+    fluid_jit
     prim_utils
     static_tensor_operants
     type_info
