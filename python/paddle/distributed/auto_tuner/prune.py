@@ -569,7 +569,11 @@ def prune_by_memory_estimation(tuner_cfg, cur_cfg, history_cfgs=[]):
     if result.returncode == 0:
         cur_memory_usage = round(float(result.stdout), 2)
         cur_cfg["estimated_memory_usage"] = cur_memory_usage
-        logger.info(f"estimated memory usage: {cur_memory_usage} GB")
+        msg = f"estimated memory usage: {cur_memory_usage} GB"
+        memory_exceeded = cur_memory_usage > max_memory_usage
+        if memory_exceeded:
+            msg += ", WILL BE PRUNED!"
+        logger.info(msg)
         return cur_memory_usage > max_memory_usage
     else:
         raise ValueError(
