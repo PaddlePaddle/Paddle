@@ -41,7 +41,7 @@ __global__ void CEmbedding(T* out,
   CUDA_KERNEL_LOOP(i, limit) {
     size_t row = i / columns;
     size_t col = i % columns;
-    auto id = static_cast<int64_t>(ids[row]);
+    auto id = ids[row];
 
     PADDLE_ENFORCE(
         id >= 0 && (vocab_size < 0 || id < vocab_size),
