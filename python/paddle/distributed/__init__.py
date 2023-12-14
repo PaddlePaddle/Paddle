@@ -167,4 +167,5 @@ __all__ = [
     "shard_optimizer",
     "to_static",
     "Strategy",
+    "DistModel",
 ]
