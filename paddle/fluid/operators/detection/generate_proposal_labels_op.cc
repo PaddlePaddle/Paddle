@@ -321,7 +321,7 @@ void GatherBoxesLabels(const phi::CPUContext& context,
   fg_labels.mutable_data<int>({fg_num}, context.GetPlace());
   phi::funcs::CPUGather<int>(context, gt_classes, gt_label_inds_t, &fg_labels);
   bg_labels.mutable_data<int>({bg_num}, context.GetPlace());
-  phi::funcs::set_constant(context, &bg_labels, 0);
+  phi::funcs::set_constant(context, &bg_labels, static_cast<int>(0));
   Concat<int>(context, fg_labels, bg_labels, sampled_labels);
 
   phi::DenseTensor fg_max_overlap, bg_max_overlap;
@@ -468,9 +468,9 @@ std::vector<phi::DenseTensor> SampleRoisForOneImage(
   bbox_targets.mutable_data<T>(bbox_expand_dim, context.GetPlace());
   bbox_inside_weights.mutable_data<T>(bbox_expand_dim, context.GetPlace());
   bbox_outside_weights.mutable_data<T>(bbox_expand_dim, context.GetPlace());
-  phi::funcs::set_constant(context, &bbox_targets, 0.0);
-  phi::funcs::set_constant(context, &bbox_inside_weights, 0.0);
-  phi::funcs::set_constant(context, &bbox_outside_weights, 0.0);
+  phi::funcs::set_constant(context, &bbox_targets, static_cast<T>(0.0));
+  phi::funcs::set_constant(context, &bbox_inside_weights, static_cast<T>(0.0));
+  phi::funcs::set_constant(context, &bbox_outside_weights, static_cast<T>(0.0));
 
   auto* bbox_targets_single_data = bbox_targets_single.data<T>();
   auto* sampled_labels_data = sampled_labels.data<int>();

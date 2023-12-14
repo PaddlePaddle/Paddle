@@ -85,9 +85,6 @@ PD_REGISTER_KERNEL(skip_layernorm,
                    float,
                    phi::dtype::float16) {}
 #else
-PD_REGISTER_KERNEL(skip_layernorm,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::fusion::SkipLayerNormKernel,
-                   float){} {}
+PD_REGISTER_KERNEL(
+    skip_layernorm, GPU, ALL_LAYOUT, phi::fusion::SkipLayerNormKernel, float) {}
 #endif

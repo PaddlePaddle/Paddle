@@ -120,14 +120,14 @@ class LayerHelperBase:
         ):
             if out is None:
                 out = block.create_var(
-                    name=unique_name.generate_with_ignorable_key(
+                    name=self.main_program._name_generator.generate_with_ignorable_key(
                         ".".join([self.name, 'weight_norm_norm'])
                     ),
                     dtype=dtype,
                     persistable=False,
                 )
             abs_out = block.create_var(
-                name=unique_name.generate_with_ignorable_key(
+                name=self.main_program._name_generator.generate_with_ignorable_key(
                     ".".join([self.name, 'weight_norm_abs'])
                 ),
                 dtype=dtype,
@@ -137,7 +137,7 @@ class LayerHelperBase:
                 type='abs', inputs={'X': x}, outputs={'Out': abs_out}
             )
             pow_out = block.create_var(
-                name=unique_name.generate_with_ignorable_key(
+                name=self.main_program._name_generator.generate_with_ignorable_key(
                     ".".join([self.name, 'weight_norm_pow'])
                 ),
                 dtype=dtype,
@@ -150,7 +150,7 @@ class LayerHelperBase:
                 attrs={'factor': float(p)},
             )
             sum_out = block.create_var(
-                name=unique_name.generate_with_ignorable_key(
+                name=self.main_program._name_generator.generate_with_ignorable_key(
                     ".".join([self.name, 'weight_norm_sum'])
                 ),
                 dtype=dtype,
@@ -179,7 +179,7 @@ class LayerHelperBase:
         ):
             if out is None:
                 out = block.create_var(
-                    name=unique_name.generate_with_ignorable_key(
+                    name=self.main_program._name_generator.generate_with_ignorable_key(
                         ".".join([self.name, 'weight_norm_reshape'])
                     ),
                     dtype=dtype,
@@ -199,7 +199,7 @@ class LayerHelperBase:
         ):
             if out is None:
                 out = block.create_var(
-                    name=unique_name.generate_with_ignorable_key(
+                    name=self.main_program._name_generator.generate_with_ignorable_key(
                         ".".join([self.name, 'weight_norm_transpose'])
                     ),
                     dtype=dtype,
@@ -219,7 +219,7 @@ class LayerHelperBase:
             """Computes the norm over all dimensions except dim"""
             if out is None:
                 out = block.create_var(
-                    name=unique_name.generate_with_ignorable_key(
+                    name=self.main_program._name_generator.generate_with_ignorable_key(
                         ".".join([self.name, 'weight_norm_norm'])
                     ),
                     dtype=dtype,
@@ -376,7 +376,12 @@ class LayerHelperBase:
                 else default_initializer
             )
         if attr.name is None:
-            attr.name = unique_name.generate(".".join([self.name, suffix]))
+            if in_dygraph_mode():
+                attr.name = unique_name.generate(".".join([self.name, suffix]))
+            else:
+                attr.name = self.main_program._name_generator.generate(
+                    ".".join([self.name, suffix])
+                )
 
         if default_initializer is None and attr.initializer is None:
             if isinstance(dtype, core.VarDesc.VarType):
@@ -466,7 +471,7 @@ class LayerHelperBase:
         if not dtype:
             dtype = self.__dtype
         return self.main_program.current_block().create_var(
-            name=unique_name.generate_with_ignorable_key(
+            name=self.main_program._name_generator.generate_with_ignorable_key(
                 ".".join([self.name, 'tmp'])
             ),
             dtype=dtype,
@@ -491,7 +496,7 @@ class LayerHelperBase:
         if not dtype:
             dtype = self.__dtype
         output = self.main_program.global_block().create_var(
-            name=unique_name.generate_with_ignorable_key(
+            name=self.main_program._name_generator.generate_with_ignorable_key(
                 ".".join([self.name, 'tmp'])
             ),
             dtype=dtype,
@@ -524,7 +529,7 @@ class LayerHelperBase:
         if not dtype:
             dtype = self.__dtype
         return self.main_program.current_block().create_var(
-            name=unique_name.generate_with_ignorable_key(
+            name=self.main_program._name_generator.generate_with_ignorable_key(
                 ".".join([self.name, 'tmp'])
             ),
             dtype=dtype,

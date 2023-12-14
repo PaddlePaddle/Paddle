@@ -33,6 +33,7 @@ from .magic_methods import magic_method_builtin_dispatch  # noqa: F401
 from .paddle_api_config import (  # noqa: F401
     is_break_graph_tensor_methods,
     is_inplace_api,
+    is_not_supported_paddle_layer,
     paddle_tensor_methods,
 )
 from .utils import (  # noqa: F401

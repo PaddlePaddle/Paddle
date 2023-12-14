@@ -35,6 +35,7 @@ if(WITH_DISTRIBUTE)
 
 endif()
 
-
-cc_test(dist_mapper_test SRCS dist_mapper_test.cc DEPS phi)
-
+cc_test(
+  dist_mapper_test
+  SRCS dist_mapper_test.cc
+  DEPS phi)

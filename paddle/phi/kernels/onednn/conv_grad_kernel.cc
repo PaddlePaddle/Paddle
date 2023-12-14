@@ -57,8 +57,6 @@ void ConvGradKernel(const Context& dev_ctx,
                         "Operator oneDNN ConvGrad must use CPUPlace"));
   const auto& onednn_engine = dev_ctx.GetEngine();
 
-  const auto* bias =
-      dev_ctx.HasDnnInput("Bias") ? dev_ctx.GetDnnInput("Bias") : nullptr;
   bool is_test = dev_ctx.HasDnnAttr("is_test")
                      ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("is_test"))
                      : false;
@@ -75,7 +73,7 @@ void ConvGradKernel(const Context& dev_ctx,
                                                          dev_ctx.GetPlace(),
                                                          &input,
                                                          &filter,
-                                                         bias,
+                                                         nullptr,
                                                          &out_grad,
                                                          strides,
                                                          paddings,

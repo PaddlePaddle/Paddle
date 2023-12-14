@@ -15,3 +15,12 @@
     data_type : dtype
     backend : place
   support_tensor : [start, end, step]
+
+- op : sequence_mask
+  args: (Tensor x, Scalar(int) max_len, int out_dtype)
+  output: Tensor(y)
+  infer_meta:
+    func: SequenceMaskScalarInferMeta
+  kernel:
+    func: sequence_mask_scalar
+    data_type : x
