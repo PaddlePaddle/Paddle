@@ -224,7 +224,7 @@ SparseCsrTensor CSRTanspose(const phi::GPUContext& dev_ctx,
         gpu_type,
         CUSPARSE_ACTION_NUMERIC,
         CUSPARSE_INDEX_BASE_ZERO,
-        CUSPARSE_CSR2CSC_ALG_DEFAULT,
+        CUSPARSE_CSR2CSC_ALG1,
         &buffer_size);
   });
 
@@ -248,7 +248,7 @@ SparseCsrTensor CSRTanspose(const phi::GPUContext& dev_ctx,
                                      gpu_type,
                                      CUSPARSE_ACTION_NUMERIC,
                                      CUSPARSE_INDEX_BASE_ZERO,
-                                     CUSPARSE_CSR2CSC_ALG_DEFAULT,
+                                     CUSPARSE_CSR2CSC_ALG1,
                                      tmp_buffer_ptr);
   });
   return out;
