@@ -48,7 +48,6 @@ class TestPrimMode(unittest.TestCase):
             divide_out = paddle.divide(x, y)
             sum_out = paddle.mean(divide_out, axis=0)
             [new_out] = decomp.decompose(main_program, [sum_out])
-            # breakpoint()
             gradients = grad(new_out, (x, y))
 
             exe = paddle.static.Executor()
