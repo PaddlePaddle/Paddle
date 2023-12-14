@@ -954,7 +954,7 @@ class PrimGradChecker(PrimForwardChecker):
     def gen_no_grad_set(self, var_dict):
         if self.no_grad_set is None:
             return None
-        no_grad_set = ValueSet()
+        no_grad_set = ValueSet() if in_pir_mode() else set()
         for name in self.no_grad_set:
             if name in var_dict:
                 no_grad_set.add(var_dict[name])

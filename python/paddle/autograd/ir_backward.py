@@ -969,7 +969,14 @@ def grad(
     check_type(
         no_grad_vars,
         'no_grad_vars',
-        ((paddle.pir.Value, paddle.pir.OpResult), list, tuple, set, type(None)),
+        (
+            (paddle.pir.Value, paddle.pir.OpResult),
+            list,
+            tuple,
+            set,
+            ValueSet,
+            type(None),
+        ),
         'paddle.autograd.ir_backward.grad',
     )
     outputs = _as_list(outputs)
