@@ -26,7 +26,7 @@ import paddle
 from paddle import base, to_tensor
 from paddle.base import dygraph
 from paddle.base.dygraph import to_variable
-from paddle.jit.api import dygraph_to_static_func
+from paddle.jit.api import to_static
 from paddle.jit.dy2static.utils import is_dygraph_api
 from paddle.utils import gast
 
@@ -96,12 +96,12 @@ class TestDygraphBasicApi_ToVariable(Dy2StTestBase):
             return res
 
     def get_static_output(self):
-        main_program = base.Program()
+        main_program = paddle.static.Program()
         main_program.random_seed = SEED
-        with base.program_guard(main_program):
-            static_out = dygraph_to_static_func(self.dygraph_func)(self.input)
+        with paddle.static.program_guard(main_program):
+            static_out = to_static(self.dygraph_func)(self.input)
 
-        exe = base.Executor(self.place)
+        exe = paddle.static.Executor(self.place)
         static_res = exe.run(main_program, fetch_list=static_out)
 
         return static_res[0]
@@ -252,15 +252,15 @@ class TestDygraphBasicApi(Dy2StTestBase):
             return res
 
     def get_static_output(self):
-        startup_program = base.Program()
+        startup_program = paddle.static.Program()
         startup_program.random_seed = SEED
-        main_program = base.Program()
+        main_program = paddle.static.Program()
         main_program.random_seed = SEED
-        with base.program_guard(main_program, startup_program):
+        with paddle.static.program_guard(main_program, startup_program):
             data = paddle.assign(self.input)
-            static_out = dygraph_to_static_func(self.dygraph_func)(data)
+            static_out = to_static(self.dygraph_func)(data)
 
-        exe = base.Executor(base.CPUPlace())
+        exe = paddle.static.Executor(base.CPUPlace())
         exe.run(startup_program)
         static_res = exe.run(main_program, fetch_list=static_out)
         return static_res[0]
@@ -287,16 +287,14 @@ class TestDygraphBasicApi_BilinearTensorProduct(TestDygraphBasicApi):
             return res
 
     def get_static_output(self):
-        startup_program = base.Program()
+        startup_program = paddle.static.Program()
         startup_program.random_seed = SEED
-        main_program = base.Program()
+        main_program = paddle.static.Program()
         main_program.random_seed = SEED
-        with base.program_guard(main_program, startup_program):
-            static_out = dygraph_to_static_func(self.dygraph_func)(
-                self.input1, self.input2
-            )
+        with paddle.static.program_guard(main_program, startup_program):
+            static_out = to_static(self.dygraph_func)(self.input1, self.input2)
 
-        exe = base.Executor(base.CPUPlace())
+        exe = paddle.static.Executor(base.CPUPlace())
         exe.run(startup_program)
         static_res = exe.run(main_program, fetch_list=static_out)
         return static_res[0]
@@ -412,14 +410,14 @@ class TestDygraphBasicApi_CosineDecay(Dy2StTestBase):
             return res
 
     def get_static_output(self):
-        startup_program = base.Program()
+        startup_program = paddle.static.Program()
         startup_program.random_seed = SEED
-        main_program = base.Program()
+        main_program = paddle.static.Program()
         main_program.random_seed = SEED
-        with base.program_guard(main_program, startup_program):
-            static_out = dygraph_to_static_func(self.dygraph_func)()
+        with paddle.static.program_guard(main_program, startup_program):
+            static_out = to_static(self.dygraph_func)()
 
-        exe = base.Executor(base.CPUPlace())
+        exe = paddle.static.Executor(base.CPUPlace())
         exe.run(startup_program)
         static_res = exe.run(main_program, fetch_list=static_out)
         return static_res[0]
@@ -444,15 +442,15 @@ class TestDygraphBasicApi_ExponentialDecay(TestDygraphBasicApi_CosineDecay):
             return res
 
     def get_static_output(self):
-        startup_program = base.Program()
+        startup_program = paddle.static.Program()
         startup_program.random_seed = SEED
-        main_program = base.Program()
+        main_program = paddle.static.Program()
         main_program.random_seed = SEED
-        with base.program_guard(main_program, startup_program):
-            static_out = dygraph_to_static_func(self.dygraph_func)()
+        with paddle.static.program_guard(main_program, startup_program):
+            static_out = to_static(self.dygraph_func)()
             static_out = paddle.to_tensor(static_out)
 
-        exe = base.Executor(base.CPUPlace())
+        exe = paddle.static.Executor(base.CPUPlace())
         exe.run(startup_program)
         static_res = exe.run(main_program, fetch_list=static_out)
         return static_res[0]
@@ -470,15 +468,15 @@ class TestDygraphBasicApi_InverseTimeDecay(TestDygraphBasicApi_CosineDecay):
             return res
 
     def get_static_output(self):
-        startup_program = base.Program()
+        startup_program = paddle.static.Program()
         startup_program.random_seed = SEED
-        main_program = base.Program()
+        main_program = paddle.static.Program()
         main_program.random_seed = SEED
-        with base.program_guard(main_program, startup_program):
-            static_out = dygraph_to_static_func(self.dygraph_func)()
+        with paddle.static.program_guard(main_program, startup_program):
+            static_out = to_static(self.dygraph_func)()
             static_out = paddle.to_tensor(static_out)
 
-        exe = base.Executor(base.CPUPlace())
+        exe = paddle.static.Executor(base.CPUPlace())
         exe.run(startup_program)
         static_res = exe.run(main_program, fetch_list=static_out)
         return static_res[0]
@@ -496,15 +494,15 @@ class TestDygraphBasicApi_NaturalExpDecay(TestDygraphBasicApi_CosineDecay):
             return res
 
     def get_static_output(self):
-        startup_program = base.Program()
+        startup_program = paddle.static.Program()
         startup_program.random_seed = SEED
-        main_program = base.Program()
+        main_program = paddle.static.Program()
         main_program.random_seed = SEED
-        with base.program_guard(main_program, startup_program):
-            static_out = dygraph_to_static_func(self.dygraph_func)()
+        with paddle.static.program_guard(main_program, startup_program):
+            static_out = to_static(self.dygraph_func)()
             static_out = paddle.to_tensor(static_out)
 
-        exe = base.Executor(base.CPUPlace())
+        exe = paddle.static.Executor(base.CPUPlace())
         exe.run(startup_program)
         static_res = exe.run(main_program, fetch_list=static_out)
         return static_res[0]
