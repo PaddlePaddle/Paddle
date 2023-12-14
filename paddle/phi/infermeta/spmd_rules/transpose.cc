@@ -90,8 +90,7 @@ SpmdInfo TransposeInferSpmd(const DistMetaTensor& x,
   // input dist_attr.
   TensorDistAttr out_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
   out_dist_attr.set_dims_mapping(out_dims_mapping);
-
-  // Step3  Handle Partial (TODO)
+  out_dist_attr.set_partial_status(x_dist_attr_src.partial_status());
 
   VLOG(4) << "TransposeInferSpmd:";
   VLOG(4) << "Input: shape: [" << str_join(x_shape) << "] "
@@ -198,7 +197,6 @@ SpmdInfo TransposeGradInferSpmd(const DistMetaTensor& out_grad,
     x_dims_mapping[origin_index] = out_grad_dims_mapping[i];
   }
   TensorDistAttr x_grad_dist_attr = out_grad.dist_attr();
-  x_grad_dist_attr.clean_partial_status();
   x_grad_dist_attr.set_dims_mapping(x_dims_mapping);
   return {{out_grad.dist_attr()}, {x_grad_dist_attr}};
 }

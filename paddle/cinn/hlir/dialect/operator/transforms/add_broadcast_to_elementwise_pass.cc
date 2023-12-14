@@ -60,7 +60,7 @@ std::vector<int64_t> GetOutputShape(const phi::DDim& x, const phi::DDim& y) {
 
     vec_res.resize(max_rank);
     for (size_t i = 0; i < max_rank; ++i) {
-      vec_res[i] = GetDimByIndex(x, y, short_align_axis, max_rank);
+      vec_res[i] = GetDimByIndex(x, y, short_align_axis, i);
     }
   }
 

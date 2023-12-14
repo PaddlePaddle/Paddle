@@ -168,7 +168,7 @@ struct SelectedRowsAddTensor<phi::CPUContext, T> {
             output->numel() / in1_height));
 
     phi::funcs::SetConstant<phi::CPUContext, T> functor;
-    functor(context, output, 0.0);
+    functor(context, output, static_cast<T>(0.0));
 
     auto* in1_data = in1_value.data<T>();
     auto* out_data = output->data<T>();
@@ -888,7 +888,7 @@ struct MergeAverage<phi::CPUContext, T> {
     out.set_rows(merge_rows);
 
     phi::funcs::SetConstant<phi::CPUContext, T> constant_functor;
-    constant_functor(context, out.mutable_value(), 0.0);
+    constant_functor(context, out.mutable_value(), static_cast<T>(0.0));
 
     std::unordered_map<int64_t, size_t> rows_to_id;
     for (size_t i = 0; i < merge_rows.size(); ++i) {

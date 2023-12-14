@@ -44,6 +44,11 @@ class IrDtype {
 
   bool operator==(IrDtype other) const { return dtype_ == other.dtype_; }
 
+  template <typename T>
+  bool isa() const {
+    return dtype_.isa<T>();
+  }
+
  private:
   const pir::Type dtype_;
 };

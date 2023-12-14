@@ -664,6 +664,16 @@ void CropInferMeta(const MetaTensor& x,
                         shape_dims.size(),
                         x_dim.size()));
 
+  PADDLE_ENFORCE_EQ(
+      offsets_vec.size(),
+      x_dim.size(),
+      errors::InvalidArgument(
+          "The number of elements (%d) of attribute 'offsets' for "
+          "CropTensor must be equal to the number of "
+          "dimensions (%d) of the input.",
+          offsets_vec.size(),
+          x_dim.size()));
+
   if (config.is_runtime) {
     out->share_lod(x);
   }
@@ -3464,6 +3474,7 @@ void ReshapeWithXShapeInferMeta(const MetaTensor& x,
   xshape->set_dims(common::make_ddim(xshape_dims));
   xshape->share_lod(x);
   xshape->set_strides(x.strides());
+  xshape->set_dtype(DataType::INT64);
   ReshapeInferMeta(x, shape, out, config);
 }
 
@@ -3995,6 +4006,18 @@ void SplitWithNumInferMeta(const MetaTensor& x,
     // setp2: fill out dims
     FillSplitOutDims(x, axis_value, sections_vec, &out);
   }
+}
+
+void SequenceMaskScalarInferMeta(const MetaTensor& x,
+                                 const Scalar& max_len,
+                                 int out_dtype,
+                                 MetaTensor* y) {
+  auto dim = phi::vectorize<int>(x.dims());
+  int maxlen = max_len.to<int>();
+  dim.push_back(maxlen > 0 ? maxlen : -1);
+  y->set_dims(phi::make_ddim(dim));
+  auto out_phi_dtype = phi::TransToPhiDataType(out_dtype);
+  y->set_dtype(out_phi_dtype);
 }
 
 void SquaredL2NormInferMeta(const MetaTensor& x, MetaTensor* out) {

@@ -182,6 +182,11 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
         "mkldnn_placement_pass");
 
     // 2. trainning pass
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+    AppendPassWithCheck(strategy_.fuse_dot_product_attention_,
+                        "fuse_dot_product_attention_pass");
+    AppendPassWithCheck(strategy_.fuse_resunit_, "fuse_resunit_pass");
+#endif
     AppendPassWithCheck(strategy_.fuse_relu_depthwise_conv_,
                         "fuse_relu_depthwise_conv_pass");
     AppendPassWithCheck(strategy_.fuse_bn_act_ops_, "fuse_bn_act_pass");
@@ -551,4 +556,8 @@ USE_PASS(fusion_group_pass);
 #endif
 #if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060)
 USE_PASS(fuse_gemm_epilogue_pass);
+#endif
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+USE_PASS(fuse_dot_product_attention_pass);
+USE_PASS(fuse_resunit_pass);
 #endif
