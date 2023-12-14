@@ -921,8 +921,6 @@ class PipelineParallelWithInterleave(PipelineParallel):
         self._virtual_pp_rank = 0
         self._reset_counter()
 
-        self._check_sanity()
-
     def _check_sanity(self):
         assert (
             framework.in_dynamic_mode()

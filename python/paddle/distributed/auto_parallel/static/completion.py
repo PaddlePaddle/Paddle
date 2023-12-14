@@ -1733,7 +1733,7 @@ class Completer:
 
             # grad ops that have not a corresponding mapping in grad_op_id_to_op_id
             else:
-                if grad_op.type == 'sum':
+                if grad_op.type in ['sum', 'grad_add']:
                     assert all(map(_is_grad_var_name, grad_op.input_arg_names))
                     output_name = grad_op.output_arg_names[0]
                     assert (

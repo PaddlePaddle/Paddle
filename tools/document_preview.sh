@@ -58,11 +58,11 @@ UPLOAD_DOC=${UPLOAD_DOC:=false}
 
 CURPWD=${PWD}
 
-if [ -f /usr/local/python3.7.0/bin/sphinx-build ] ; then
+if [ -f /usr/local/python3.8.0/bin/sphinx-build ] ; then
     if [ -f /usr/local/bin/sphinx-build ] ; then
         rm /usr/local/bin/sphinx-build
     fi
-    ln -s /usr/local/python3.7.0/bin/sphinx-build /usr/local/bin/sphinx-build
+    ln -s /usr/local/python3.8.0/bin/sphinx-build /usr/local/bin/sphinx-build
 fi
 
 if [ "${BUILD_DOC}" = "true" ] &&  [ -x /usr/local/bin/sphinx-build ] ; then
