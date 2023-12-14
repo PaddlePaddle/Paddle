@@ -1104,9 +1104,11 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
             op_traits += ["paddle::dialect::CustomVjpTrait"]
 
         # check op inputs and mutable_attributes grad semantics
-        input_grad_semantics = get_input_grad_semantic(op_info, op_info_items)
+        input_grad_semantics = get_input_grad_semantic(
+            op_info, all_op_info_items
+        )
         mutable_attribute_grad_semantics = get_mutable_attribute_grad_semantic(
-            op_info, op_info_items
+            op_info, all_op_info_items
         )
         op_interfaces_tmp = op_interfaces
         exclusive_interface_str_tmp = exclusive_interface_str

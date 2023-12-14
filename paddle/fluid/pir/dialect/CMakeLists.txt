@@ -48,10 +48,11 @@ set(op_header_file_tmp ${op_header_file}.tmp)
 set(op_info_file ${PD_DIALECT_SOURCE_DIR}/pd_op_info.cc)
 set(op_info_file_tmp ${op_info_file}.tmp)
 
-set(op_source_file ${PD_DIALECT_SOURCE_DIR}/pd_op.cc)
-set(op_source_file_tmp ${op_source_file}.tmp)
 set(op_vjp_source_file ${PD_DIALECT_SOURCE_DIR}/pd_op_vjp.cc)
 set(op_vjp_source_file_tmp ${op_vjp_source_file}.tmp)
+
+set(op_source_file ${PD_DIALECT_SOURCE_DIR}/pd_op.cc)
+set(op_source_file_tmp ${op_source_file}.tmp)
 
 set(bwd_op_source_file ${PD_DIALECT_SOURCE_DIR}/pd_bwd_op.cc)
 set(bwd_op_source_file_tmp ${bwd_op_source_file}.tmp)
@@ -71,11 +72,11 @@ set(pir_bwd_op_source_file_tmp ${pir_bwd_op_source_file}.tmp)
 set(pir_update_op_source_file ${PD_DIALECT_SOURCE_DIR}/pir_update_op.cc)
 set(pir_update_op_source_file_tmp ${pir_update_op_source_file}.tmp)
 
-set(op_src_files
+set(op_src_files_tmp
     ${op_source_file_tmp},${bwd_op_source_file_tmp},${fused_op_source_file_tmp},${bwd_fused_op_source_file_tmp},${pir_op_source_file_tmp},${pir_bwd_op_source_file_tmp},${pir_update_op_source_file_tmp}
 )
 
-set(op_vjp_src_file ${op_vjp_source_file_tmp})
+set(op_vjp_src_file_tmp ${op_vjp_source_file_tmp})
 
 # Auto code gen
 execute_process(
@@ -92,8 +93,8 @@ execute_process(
     ${PYTHON_EXECUTABLE} ${op_gen_file} --op_yaml_files ${op_yaml_files}
     --op_compat_yaml_file ${op_compat_yaml_file} --namespaces ${op_namespace}
     --dialect_name ${dialect_name} --op_def_h_file ${op_header_file_tmp}
-    --op_info_file ${op_info_file_tmp} --op_def_cc_file ${op_src_files}
-    --op_vjp_cc_file ${op_vjp_src_file})
+    --op_info_file ${op_info_file_tmp} --op_def_cc_file ${op_src_files_tmp}
+    --op_vjp_cc_file ${op_vjp_src_file_tmp})
 
 set(generated_files_pd_op
     "${op_header_file}"
