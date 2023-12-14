@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import tempfile
 import unittest
 
+import collective.test_communication_api_base as test_base
 import numpy as np
 
 import paddle
@@ -23,7 +25,26 @@ from paddle.distributed.checkpoint.utils import (
 )
 
 
-class TestDistCheckpointUtils(unittest.TestCase):
+class TestDistCheckpointUtils(test_base.CommunicationTestDistBase):
+    def setUp(self):
+        super().setUp(num_of_devices=2, timeout=120, nnode=1)
+        self._default_envs = {}
+        self._changeable_envs = {"backend": ["gpu"]}
+
+    def test_mapping(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            ckpt_path_tmp = tempfile.TemporaryDirectory()
+            ckpt_path = ckpt_path_tmp.name
+            envs["ckpt_path"] = ckpt_path
+            self.run_test_case(
+                "auto_semi_auto_parallel_save_load.py",
+                user_defined_envs=envs,
+            )
+            ckpt_path_tmp.cleanup()
+
     def test_flatten_state_dict(self):
         state_dict = {
             "model": {

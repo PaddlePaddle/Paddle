@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-from typing import List
 
 import paddle
 from paddle.distributed.communication.group import is_initialized
@@ -47,7 +46,7 @@ def check_file_name(file_name, process_group):
 
 def merge_state_dict_metadata(global_state_dict):
     assert isinstance(
-        global_state_dict, List
+        global_state_dict, list
     ), "The global_state_dict should be a list."
     out = {}
     for state_dict in global_state_dict:
@@ -61,7 +60,7 @@ def merge_state_dict_metadata(global_state_dict):
     return out
 
 
-def dedup_storage_metadata(global_state_dict):
+def dedup_key_in_dict(global_state_dict):
     out = {}
     for state_dict in global_state_dict:
         for key, val in state_dict.items():
@@ -79,7 +78,7 @@ def dedup_tensor(state_dict, local_storage_metadata, dedup_storage_metadata):
             and rank != paddle.distributed.get_rank()
         ):
             print(f"remove tensor:{tensor_index.tensor_key} from state_dict")
-            state_dict.remove(tensor_index.tensor_key)
+            state_dict.pop(tensor_index.tensor_key)
 
 
 def save_state_dict(
@@ -114,7 +113,7 @@ def save_state_dict(
     assert isinstance(
         state_dict, dict
     ), "The state_dict should be a dictionary."
-    state_dict = flatten_state_dict(state_dict)
+    state_dict, mapping = flatten_state_dict(state_dict)
     if len(state_dict) > 0:
         for val in state_dict.values():
             assert isinstance(
@@ -176,6 +175,7 @@ def save_state_dict(
             ] = file_name
     global_state_dict_metadata = []
     global_storage_metadata = []
+    global_flatten_mapping = []
     if use_dist:
         paddle.distributed.all_gather_object(
             global_state_dict_metadata, local_state_dict_metadata, process_group
@@ -183,19 +183,24 @@ def save_state_dict(
         paddle.distributed.all_gather_object(
             global_storage_metadata, local_storage_metadata, process_group
         )
+        paddle.distributed.all_gather_object(
+            global_flatten_mapping, mapping, process_group
+        )
     else:
         global_state_dict_metadata.append(local_state_dict_metadata)
         global_storage_metadata.append(local_storage_metadata)
+        global_flatten_mapping.append(mapping)
 
     metadata.state_dict_metadata = merge_state_dict_metadata(
         global_state_dict_metadata
     )
-    metadata.storage_metadata = dedup_storage_metadata(global_storage_metadata)
+    metadata.storage_metadata = dedup_key_in_dict(global_storage_metadata)
+    metadata.flatten_mapping = dedup_key_in_dict(global_flatten_mapping)
     if coordinator_rank == paddle.distributed.get_rank():
         logger.debug(f"metadata:{metadata}")
         paddle.save(metadata, os.path.join(path, f"{unique_id}.metadata"))
     logger.debug(f"local_state_dict:{local_state_dict}")
-    print(f"before dedup_tensor: {local_state_dict}")
-    dedup_tensor(local_state_dict)
-    print(f"after dedup_tensor: {local_state_dict}")
+    dedup_tensor(
+        local_state_dict, local_storage_metadata, metadata.storage_metadata
+    )
     paddle.save(local_state_dict, os.path.join(path, file_name))

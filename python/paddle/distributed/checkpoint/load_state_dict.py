@@ -394,7 +394,7 @@ def load_state_dict(
     assert isinstance(
         state_dict, dict
     ), "The state_dict should be a dictionary."
-    state_dict = flatten_state_dict(state_dict)
+    state_dict, mapping = flatten_state_dict(state_dict)
     if len(state_dict) > 0:
         for val in state_dict.values():
             assert isinstance(
