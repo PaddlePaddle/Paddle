@@ -19,7 +19,7 @@ paddle_test(
 paddle_test(
   symbol_dim_expr_test
   SRCS
-  dim_expr_test.cc
+  symbol_dim_expr_test.cc
   DEPS
   op_dialect_vjp
   pir
