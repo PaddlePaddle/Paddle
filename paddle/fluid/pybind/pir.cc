@@ -79,6 +79,7 @@ using paddle::dialect::DenseTensorArrayType;
 using paddle::dialect::DenseTensorType;
 using paddle::dialect::IfOp;
 using paddle::dialect::SelectedRowsType;
+using paddle::dialect::WhileOp;
 
 using pir::Attribute;
 using pir::Block;
@@ -502,7 +503,15 @@ void BindOperation(py::module *m) {
              self.ReplaceAllUsesWith(op_results);
            })
       .def("as_if_op",
-           [](Operation &self) { return PyIfOp(self.dyn_cast<IfOp>()); });
+           [](Operation &self) { return PyIfOp(self.dyn_cast<IfOp>()); })
+      .def("as_while_op", [](Operation &self) -> WhileOp {
+        auto while_op = self.dyn_cast<WhileOp>();
+        if (!while_op) {
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "Can't cast non-while type Operation to WhileOp."));
+        }
+        return while_op;
+      });
   py::class_<Operation::BlockContainer> block_container(
       *m, "Operation_BlockContainer", R"DOC(
     The Operation_BlockContainer only use to walk all blocks in the operation.

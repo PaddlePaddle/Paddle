@@ -109,7 +109,10 @@ following codes there.
 public:
 const dnnl::memory::desc& mem_desc() const;
 
-void set_mem_desc(const dnnl::memory::desc& mem_desc);
+inline void set_mem_desc(const dnnl::memory::desc& mem_desc) {
+  mem_desc_ = mem_desc;
+  meta_.layout = DataLayout::ONEDNN;
+}
 
 #endif
 
