@@ -48,31 +48,28 @@ class AffineGridTestCase(unittest.TestCase):
 
     def base_layer(self, place):
         paddle.enable_static()
+        main = base.Program()
+        start = base.Program()
         with base.unique_name.guard():
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
+            with base.program_guard(main, start):
                 theta_var = paddle.static.data(
                     "input", self.theta_shape, dtype=self.dtype
                 )
                 y_var = paddle.nn.functional.affine_grid(
                     theta_var, self.output_shape
                 )
-            feed_dict = {"input": self.theta}
-            exe = paddle.static.Executor(place)
-            (y_np,) = exe.run(
-                paddle.static.default_main_program(),
-                feed=feed_dict,
-                fetch_list=[y_var],
-            )
-            return y_np
+        feed_dict = {"input": self.theta}
+        exe = base.Executor(place)
+        exe.run(start)
+        (y_np,) = exe.run(main, feed=feed_dict, fetch_list=[y_var])
+        return y_np
 
     def functional(self, place):
         paddle.enable_static()
+        main = base.Program()
+        start = base.Program()
         with base.unique_name.guard():
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
+            with base.program_guard(main, start):
                 theta_var = paddle.static.data(
                     "input", self.theta_shape, dtype=self.dtype
                 )
@@ -81,43 +78,39 @@ class AffineGridTestCase(unittest.TestCase):
                     self.output_shape,
                     align_corners=self.align_corners,
                 )
-            feed_dict = {"input": self.theta}
-            exe = paddle.static.Executor(place)
-            (y_np,) = exe.run(
-                paddle.static.default_main_program(),
-                feed=feed_dict,
-                fetch_list=[y_var],
-            )
-            return y_np
+        feed_dict = {"input": self.theta}
+        exe = base.Executor(place)
+        exe.run(start)
+        (y_np,) = exe.run(main, feed=feed_dict, fetch_list=[y_var])
+        return y_np
 
     @test_with_pir_api
     def test_static_api(self):
         place = base.CPUPlace()
         paddle.enable_static()
-        with base.unique_name.guard():
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
-                align_corners = True
-                theta_var = paddle.static.data(
-                    "input", self.theta_shape, dtype=self.dtype
-                )
-                y_var = paddle.nn.functional.affine_grid(
-                    theta_var, self.output_shape
-                )
-                y_var2 = F.affine_grid(
-                    theta_var,
-                    self.output_shape,
-                    align_corners=align_corners,
-                )
-                feed_dict = {"input": self.theta}
-                exe = paddle.static.Executor(place)
-                (y_np, y_np2) = exe.run(
-                    paddle.static.default_main_program(),
-                    feed=feed_dict,
-                    fetch_list=[y_var, y_var2],
-                )
-                np.testing.assert_array_almost_equal(y_np, y_np2)
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            align_corners = True
+            theta_var = paddle.static.data(
+                "input", self.theta_shape, dtype=self.dtype
+            )
+            y_var = paddle.nn.functional.affine_grid(
+                theta_var, self.output_shape
+            )
+            y_var2 = F.affine_grid(
+                theta_var,
+                self.output_shape,
+                align_corners=align_corners,
+            )
+            feed_dict = {"input": self.theta}
+            exe = paddle.static.Executor(place)
+            (y_np, y_np2) = exe.run(
+                paddle.static.default_main_program(),
+                feed=feed_dict,
+                fetch_list=[y_var, y_var2],
+            )
+            np.testing.assert_array_almost_equal(y_np, y_np2)
 
     def paddle_dygraph_layer(self):
         paddle.disable_static()
