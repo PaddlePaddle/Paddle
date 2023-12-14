@@ -251,10 +251,19 @@ void WhileOp::Build(pir::Builder &builder,             // NOLINT
   argument.AddInput(cond);
   argument.AddInputs(inputs);
   auto &body = argument.AddRegion().emplace_back();
+  std::vector<pir::Attribute> outs_stop_gradient;
   for (auto val : inputs) {
     argument.AddOutput(val.type());
     body.AddArgument(val.type());
+    auto bool_attr = val.attribute<pir::BoolAttribute>(kStopGradientAttrName);
+    outs_stop_gradient.push_back(bool_attr ? bool_attr
+                                           : builder.bool_attr(false));
   }
+  argument.AddAttribute(
+      kStopGradientAttrName,
+      pir::ArrayAttribute::get(builder.ir_context(), outs_stop_gradient));
+
+  cond.set_attribute(kStopGradientAttrName, builder.bool_attr(true));
 }
 pir::Block &WhileOp::body() {
   pir::Region &body_region = (*this)->region(0);

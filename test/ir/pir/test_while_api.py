@@ -15,6 +15,7 @@
 import unittest
 
 import paddle
+from paddle.autograd.ir_backward import grad
 
 paddle.enable_static()
 
@@ -31,7 +32,7 @@ def body(i, ten):
     return [i, ten]
 
 
-class TestBuildModuleWithIfOp(unittest.TestCase):
+class TestBuildModuleWithWhileOp(unittest.TestCase):
     def construct_program_with_while(self):
         main_program = paddle.static.Program()
         with paddle.pir.core.program_guard(main_program):
@@ -41,6 +42,7 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
             ten = paddle.full(
                 shape=[1], fill_value=10, dtype='int64'
             )  # loop length
+            i.stop_gradient = False
             i, ten = paddle.static.nn.while_loop(cond, body, [i, ten])
             return main_program
 
@@ -48,8 +50,20 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
         main_program = self.construct_program_with_while()
         last_op = main_program.global_block().ops[-1]
         out = last_op.results()
+        self.assertEqual(out.stop_gradient, False)
         self.assertEqual(last_op.name(), "pd_op.while")
         self.assertEqual(len(out), 2)
+
+    def test_while_base_backward(self):
+        main_program = self.construct_program_with_while()
+        full_op1 = main_program.global_block().ops[0]
+        while_op = main_program.global_block().ops[-1]
+        with paddle.pir.core.program_guard(main_program):
+            out = while_op.result(0) + 1
+            grad_outs = grad(
+                out,
+                [full_op1.result(0)],
+            )
 
 
 if __name__ == "__main__":
