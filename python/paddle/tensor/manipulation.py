@@ -6009,40 +6009,68 @@ def diagonal_scatter(x, y, offset=0, axis1=0, axis2=1, name=None):
     return fill_diagonal_tensor(x, y, offset, axis1, axis2, name)
 
 
-def slice_scatter(x, src, axis=0, start=None, stop=None, step=1, name=None):
-    """TODO(megemini): docstring"""
 
-    if x.ndim != src.ndim:
+def slice_scatter(x, values, axis=0, start=None, stop=None, step=1, name=None):
+    """TODO(megemini): docstring"""    
+    if x.ndim != values.ndim:
         raise ValueError(
-            f"The input and src should have save dimension, but got input of {x.ndim} and src of {src.ndim}."
+            f"The input x and values should have save dimension, but got input of {x.ndim} and values of {values.ndim}."
         )
 
-    input_shape = x.shape
-    src_shape = src.shape
+    x_shape = x.shape
+    values_shape = values.shape
 
-    index = list(range(start or 0, stop or input_shape[axis], step))
-
-    exp_shape = [*input_shape[:axis], len(index), *input_shape[axis + 1 :]]
-    if exp_shape != src_shape:
+    index = list(range(start or 0, stop or x_shape[axis], step))
+    exp_shape = [*x_shape[:axis], len(index), *x_shape[axis+1:]]
+    if exp_shape != values_shape:
         raise ValueError(
-            "The src.shape should be same of [*input_shape[:axis], len(index), *input_shape[axis+1:]],"
-            f"but got src.shape of {src.shape} and slice shape {exp_shape}."
+            "The values.shape should be same of [*x_shape[:axis], len(index), *x_shape[axis+1:]],"
+            f"but got values.shape of {values.shape} and slice shape {exp_shape}."
         )
 
-    index = paddle.to_tensor(index, dtype='int64')
-    if axis == 0:
-        return paddle.scatter(x, index, src, overwrite=True)
+    starts = [start]
+    ends = [stop]
+    steps = [step]
+    axes = [axis]
+    none_axes = []
+    decrease_axes = []
+    inputs = {'Input': x}
+    attrs = {
+        'axes': axes,
+        'starts': starts,
+        'ends': ends,
+        'steps': steps,
+        'decrease_axes': decrease_axes,
+        'none_axes': none_axes,
+    }
 
+    dtype = x.dtype
+    attrs['dtype'] = dtype
+
+    values = values.astype(dtype)
+    inputs["ValueTensor"] = values
+
+    if in_dynamic_or_pir_mode():
+        return _C_ops.set_value_with_tensor(
+            x,
+            values,
+            starts,
+            ends,
+            steps,
+            axes,
+            decrease_axes,
+            none_axes,
+        )
     else:
-        index_transpose = list(range(x.ndim))
-        index_transpose[0], index_transpose[axis] = (
-            index_transpose[axis],
-            index_transpose[0],
+        helper = LayerHelper('slice_scatter', **locals())
+        output = helper.create_variable_for_type_inference(dtype=x.dtype)
+        cur_block = default_main_program().current_block()
+        cur_block.append_op(
+            type="set_value",
+            inputs=inputs,
+            outputs={'Out': output},
+            attrs=attrs,
+            inplace_map={"Input": "Out"},
         )
 
-        x = paddle.transpose(x, index_transpose)
-        src = paddle.transpose(src, index_transpose)
-
-        return paddle.transpose(
-            paddle.scatter(x, index, src, overwrite=True), index_transpose
-        )
+        return output
