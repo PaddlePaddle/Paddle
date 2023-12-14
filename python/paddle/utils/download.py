@@ -198,6 +198,9 @@ def _get_download(url, fullname):
 
 def _wget_download(url, fullname):
     # using wget to download url
+    if not is_url(url):
+        raise RuntimeError(f"{url} is not a valid download url")
+
     tmp_fullname = fullname + "_tmp"
     # –user-agent
     command = f'wget -O {tmp_fullname} -t {DOWNLOAD_RETRY_LIMIT} {url}'
