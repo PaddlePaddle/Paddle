@@ -257,7 +257,7 @@ class TestBackward_4(unittest.TestCase):
 
     def test_basic_network(self):
         if not paddle.framework.in_pir_mode():
-            pass
+            return
         program = paddle.static.default_main_program()
         with paddle.static.program_guard(program):
             x = paddle.randn((2, 2))
