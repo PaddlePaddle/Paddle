@@ -229,7 +229,14 @@ std::unordered_set<pir::Value> GetInternalOutputs(pir::Block* block) {
     inner_outputs.insert(block->arg(arg_id));
   }
   for (auto& op : *block) {
-    VLOG(8) << "GetInternalOutputs of " << op.name();
+    std::string op_name = op.name();
+    if (op.attributes().count("op_name")) {
+      op_name = op.attributes()
+                    .at("op_name")
+                    .dyn_cast<pir::StrAttribute>()
+                    .AsString();
+    }
+    VLOG(8) << "GetInternalOutputs of " << op_name;
     if (op.num_regions()) {
       for (size_t i = 0; i < op.num_regions(); ++i) {
         for (auto& sub_block : op.region(i)) {
@@ -239,8 +246,10 @@ std::unordered_set<pir::Value> GetInternalOutputs(pir::Block* block) {
         }
       }
     }
+
     for (size_t i = 0; i < op.num_results(); ++i) {
       inner_outputs.insert(op.result(i));
+      VLOG(10) << op_name << "'s inner_output: " << op.result(i).impl();
     }
   }
   return inner_outputs;
@@ -249,7 +258,14 @@ std::unordered_set<pir::Value> GetInternalOutputs(pir::Block* block) {
 std::unordered_set<pir::Value> GetInternalInputs(pir::Block* block) {
   std::unordered_set<pir::Value> inner_inputs;
   for (auto& op : *block) {
-    VLOG(8) << "GetInternalInputs of " << op.name();
+    std::string op_name = op.name();
+    if (op.attributes().count("op_name")) {
+      op_name = op.attributes()
+                    .at("op_name")
+                    .dyn_cast<pir::StrAttribute>()
+                    .AsString();
+    }
+    VLOG(8) << "GetInternalInputs of " << op_name;
     if (op.num_regions()) {
       for (size_t i = 0; i < op.num_regions(); ++i) {
         for (auto& sub_block : op.region(i)) {
@@ -265,8 +281,7 @@ std::unordered_set<pir::Value> GetInternalInputs(pir::Block* block) {
     }
     for (size_t i = 0; i < op.num_operands(); ++i) {
       inner_inputs.insert(op.operand_source(i));
-      VLOG(10) << op.name()
-               << "'s inner_input: " << op.operand_source(i).impl();
+      VLOG(10) << op_name << "'s inner_input: " << op.operand_source(i).impl();
     }
   }
   return inner_inputs;

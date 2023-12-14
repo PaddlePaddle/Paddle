@@ -94,7 +94,7 @@ TEST(if_op_test, build_by_block) {
       std::vector<int64_t>{2}, true, phi::DataType::BOOL);
   builder.Build<pir::YieldOp>(std::vector<pir::Value>{full_op_2.out()});
 
-  builder.SetInsertionPointToEnd(block);
+  builder.SetInsertionPointToBlockEnd(block);
 
   auto if_op = builder.Build<paddle::dialect::IfOp>(
       full_op.out(), std::move(true_block), std::move(false_block));
@@ -149,7 +149,7 @@ TEST(if_op_test, network_with_backward) {
                                   std::initializer_list<pir::Value>{local2_z});
   builder.Build<pir::YieldOp>(std::vector<pir::Value>{local2_w});
 
-  builder.SetInsertionPointToEnd(block);
+  builder.SetInsertionPointToBlockEnd(block);
 
   // build backward network
   auto out_grad = builder.Build<FullOp>(std::vector<int64_t>{2, 2}, 1.0f).out();
@@ -201,7 +201,7 @@ TEST(if_op_test, network_with_backward) {
   builder.Build<pir::YieldOp>(
       std::vector<pir::Value>{local2_x_grad, local2_y_grad});
 
-  builder.SetInsertionPointToEnd(block);
+  builder.SetInsertionPointToBlockEnd(block);
 
   LOG(INFO) << program;
 
