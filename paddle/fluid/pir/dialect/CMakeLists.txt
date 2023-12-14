@@ -140,14 +140,21 @@ add_custom_target(ops_api_gen ALL DEPENDS ${ops_api_source_file})
 
 #Note(risemeup1):compile some *.cc files which do not depend on primitive_vjp_experimental into op_dialect.a/lib
 file(GLOB_RECURSE op_dialect_srcs "*.cc")
-list(
-  REMOVE_ITEM
-  op_dialect_srcs
-  ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_op_decomp.cc
-  ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_op_vjp.cc
-  ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/op_dialect.cc)
+list(REMOVE_ITEM op_dialect_srcs ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/*)
 
-set(op_dialect_srcs ${op_dialect_srcs} ${op_source_file} ${api_source_file})
+set(op_dialect_srcs
+    ${op_dialect_srcs}
+    ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/api_builder.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/control_flow_op.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/ir_meta_tensor.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/ir_selected_rows.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/ir_tensor.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_api.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_op.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/op_attribute.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/op_type.cc
+    ${op_source_file}
+    ${api_source_file})
 
 set(op_dialect_deps phi common pir type_info string_helper)
 
