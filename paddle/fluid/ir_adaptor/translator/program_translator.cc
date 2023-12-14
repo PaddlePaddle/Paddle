@@ -197,7 +197,7 @@ pir::Operation* ProgramTranslator::InsertDataOpOrCreateArrayToBlock(
         paddle::dialect::TransToPhiDataType(tensor_type.dtype()),
         phi::CPUPlace());
     data_op.out().set_type(type);
-    return full_op.operation();
+    return data_op.operation();
   } else if (type.isa<paddle::dialect::DenseTensorArrayType>()) {
     auto array_type = type.dyn_cast<paddle::dialect::DenseTensorArrayType>();
     paddle::dialect::CreateArrayOp array_op =
