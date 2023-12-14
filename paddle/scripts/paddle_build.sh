@@ -3454,11 +3454,11 @@ function clang-tidy_check() {
 
     clang-tidy --version
     current_branch=`git branch | grep \* | cut -d ' ' -f2`
-    echo $current_branch
-    num_diff_files=$(git diff --numstat ${BRANCH} | grep -E '\.(c|cc|cxx|cpp|h|hpp|hxx)' | wc -l)
+    echo "current_branch : $current_branch"
+    num_diff_files=$(git diff --numstat ${BRANCH} | grep -E '\.(c|cc|cxx|cpp|h|hpp|hxx)$' | wc -l)
     commit_files=on
     startTime_s=`date +%s`
-    for file_name in `git diff --numstat ${BRANCH} | grep -E '\.(c|cc|cxx|cpp|h|hpp|hxx)' |awk '{print $NF}'`;do
+    for file_name in `git diff --numstat ${BRANCH} | grep -E '\.(c|cc|cxx|cpp|h|hpp|hxx)$' |awk '{print $NF}'`;do
         if ! pre-commit run clang-tidy --files ${PADDLE_ROOT}/$file_name ; then
             commit_files=off
         fi
