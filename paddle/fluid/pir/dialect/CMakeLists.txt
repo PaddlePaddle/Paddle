@@ -54,22 +54,22 @@ set(op_vjp_source_file_tmp ${op_vjp_source_file}.tmp)
 set(op_source_file ${PD_DIALECT_SOURCE_DIR}/pd_op.cc)
 set(op_source_file_tmp ${op_source_file}.tmp)
 
-set(bwd_op_source_file ${PD_DIALECT_SOURCE_DIR}/pd_bwd_op.cc)
+set(bwd_op_source_file ${PD_DIALECT_SOURCE_DIR}/pd_op_bwd.cc)
 set(bwd_op_source_file_tmp ${bwd_op_source_file}.tmp)
 
-set(fused_op_source_file ${PD_DIALECT_SOURCE_DIR}/pd_fused_op.cc)
+set(fused_op_source_file ${PD_DIALECT_SOURCE_DIR}/pd_op_fused.cc)
 set(fused_op_source_file_tmp ${fused_op_source_file}.tmp)
 
-set(bwd_fused_op_source_file ${PD_DIALECT_SOURCE_DIR}/pd_bwd_fused_op.cc)
+set(bwd_fused_op_source_file ${PD_DIALECT_SOURCE_DIR}/pd_op_fused_bwd.cc)
 set(bwd_fused_op_source_file_tmp ${bwd_fused_op_source_file}.tmp)
 
-set(pir_op_source_file ${PD_DIALECT_SOURCE_DIR}/pir_op.cc)
+set(pir_op_source_file ${PD_DIALECT_SOURCE_DIR}/pd_pir_op.cc)
 set(pir_op_source_file_tmp ${pir_op_source_file}.tmp)
 
-set(pir_bwd_op_source_file ${PD_DIALECT_SOURCE_DIR}/pir_bwd_op.cc)
+set(pir_bwd_op_source_file ${PD_DIALECT_SOURCE_DIR}/pd_pir_op_bwd.cc)
 set(pir_bwd_op_source_file_tmp ${pir_bwd_op_source_file}.tmp)
 
-set(pir_update_op_source_file ${PD_DIALECT_SOURCE_DIR}/pir_update_op.cc)
+set(pir_update_op_source_file ${PD_DIALECT_SOURCE_DIR}/pd_pir_op_update.cc)
 set(pir_update_op_source_file_tmp ${pir_update_op_source_file}.tmp)
 
 set(op_src_files_tmp
