@@ -64,7 +64,7 @@ class Binomial(distribution.Distribution):
 
             >>> print(rv.entropy())
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [2.94057941, 3.00785327, 2.51125669])
+            [2.94053698, 3.00781751, 2.51124287])
     """
 
     def __init__(self, total_count, probability):

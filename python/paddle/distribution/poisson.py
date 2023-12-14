@@ -46,6 +46,8 @@ class Poisson(distribution.Distribution):
 
             >>> import paddle
             >>> from paddle.distribution import Poisson
+            >>> paddle.set_device('cpu')
+            >>> paddle.seed(100)
             >>> rv = Poisson(paddle.to_tensor(30.0))
 
             >>> print(rv.sample([3]))
@@ -62,12 +64,12 @@ class Poisson(distribution.Distribution):
             Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
             [3.11671066])
 
-            >>> rv1 = Poisson(paddle.to_tensor([[30,40],[8,5]]))
-            >>> rv2 = Poisson(paddle.to_tensor([[1000,40],[7,10]]))
+            >>> rv1 = Poisson(paddle.to_tensor([[30.,40.],[8.,5.]]))
+            >>> rv2 = Poisson(paddle.to_tensor([[1000.,40.],[7.,10.]]))
             >>> print(rv1.kl_divergence(rv2))
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[864.80285645, 0.          ],
-             [0.06825072  , 1.53426421  ]])
+             [0.06825157  , 1.53426421  ]])
     """
 
     def __init__(self, rate):
