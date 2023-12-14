@@ -225,6 +225,7 @@ DECLARE_FILE_SYMBOLS(kernel_dialect);
 DECLARE_FILE_SYMBOLS(buffered_allocator);
 DECLARE_FILE_SYMBOLS(best_fit_allocator);
 DECLARE_FILE_SYMBOLS(aligned_allocator);
+DECLARE_FILE_SYMBOLS(pass_timing);
 namespace paddle {
 namespace pybind {
 
