@@ -229,18 +229,18 @@ def monkey_patch_tensor():
             # if self is Tensor, method value() return self that defined in this file, get_tensor() defined in eager_method.cc
             # this Interface behavior will be unifed in the future.
             if self.is_dist():
-                if not value.is_dist():
+                # TODO: check placements and support reshard later
+                if isinstance(value, paddle.Tensor) and value.is_dist():
+                    assert (
+                        value.process_mesh == self.value().process_mesh
+                    ), f"process_mesh:{value.process_mesh} != {self.value().process_mesh} not match"
+                else:
                     # calling set method bound for DistTensor
                     value = paddle.distributed.shard_tensor(
                         value,
                         self.value().process_mesh,
                         self.value().placements,
                     )
-                else:
-                    # TODO: check placements and support reshard later
-                    assert (
-                        value.process_mesh == self.value().process_mesh
-                    ), f"process_mesh:{value.process_mesh} != {self.value().process_mesh} not match"
                 self.value().get_tensor().set(value.get_tensor())
                 return
             self.value().get_tensor().set(

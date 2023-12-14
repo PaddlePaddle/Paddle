@@ -2068,7 +2068,7 @@ class Layer:
 
         matched_param_state = []
         for key, param in self._state_dict_impl(use_hook=False).items():
-            if not param._is_initialized():
+            if isinstance(param, paddle.Tensor) and not param._is_initialized():
                 continue
             key_name = key if use_structured_name else param.name
             try:
