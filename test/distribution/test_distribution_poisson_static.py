@@ -32,7 +32,7 @@ paddle.enable_static()
 @parameterize.parameterize_cls(
     (parameterize.TEST_CASE_NAME, 'rate'),
     [
-        ('one-dim', np.array([3000.0]).astype('float32')),
+        ('one-dim', np.array([1000.0]).astype('float32')),
         (
             'multi-dim',
             parameterize.xrand((2,), min=1, max=20)

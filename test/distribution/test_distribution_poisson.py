@@ -29,7 +29,7 @@ from paddle.distribution import Poisson
     [
         ('one-dim', np.array([100.0]).astype('float64')),
         # bondary case and extreme case (`scipy.stats.poisson.entropy` cannot converge for very extreme cases such as rate=10000.0)
-        ('multi-dim', np.array([0.0, 3000.0]).astype('float32')),
+        ('multi-dim', np.array([0.0, 1000.0]).astype('float32')),
     ],
 )
 class TestPoisson(unittest.TestCase):

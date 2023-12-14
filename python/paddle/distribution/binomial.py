@@ -49,15 +49,15 @@ class Binomial(distribution.Distribution):
 
             >>> import paddle
             >>> from paddle.distribution import Binomial
+            >>> paddle.set_device('cpu')
+            >>> paddle.seed(100)
             >>> rv = Binomial(100, paddle.to_tensor([0.3, 0.6, 0.9]))
 
-            >>> # doctest: +SKIP
             >>> print(rv.sample([2]))
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[33., 56., 93.],
-            [32., 53., 91.]])
+            [[31., 62., 93.],
+             [29., 54., 91.]])
 
-            >>> # doctest: -SKIP
             >>> print(rv.mean)
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [30.00000191, 60.00000381, 90.        ])
@@ -141,7 +141,7 @@ class Binomial(distribution.Distribution):
             shape (Sequence[int], optional): Prepended shape of the generated samples.
 
         Returns:
-            Tensor: Sampled data with shape `sample_shape` + `batch_shape`. The returned data type is int64.
+            Tensor: Sampled data with shape `sample_shape` + `batch_shape`. The returned data type is the same as `probability`.
         """
         if not isinstance(shape, Sequence):
             raise TypeError('sample shape must be Sequence object.')
@@ -156,7 +156,10 @@ class Binomial(distribution.Distribution):
             output_prob = paddle.broadcast_to(
                 self.probability, shape=output_shape
             )
-            return paddle.binomial(output_size, output_prob)
+            sample = paddle.binomial(
+                paddle.cast(output_size, dtype="int32"), output_prob
+            )
+            return paddle.cast(sample, self.dtype)
 
     def entropy(self):
         r"""Shannon entropy in nats.
