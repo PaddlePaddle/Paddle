@@ -21,30 +21,25 @@ namespace pir {
 
 class Operation;
 
-/// Traversal order.
+// Traversal order.
 enum class WalkOrder { PreOrder, PostOrder };
 
 namespace detail {
-// template <typename Iterator>
-// /// Defines utilities for walking and visiting operations.
-// IR_API void Walk(Operation *op,
-//                  std::function<void(Region *)> callback,
-//                  WalkOrder order);
+// Defines utilities for walking and visiting operations.
+IR_API void Walk(Operation *op,
+                 std::function<void(Region *)> callback,
+                 WalkOrder order);
 
-// template <typename Iterator>
-// IR_API void Walk(Operation *op,
-//                  std::function<void(Block *)> callback,
-//                  WalkOrder order);
+IR_API void Walk(Operation *op,
+                 std::function<void(Block *)> callback,
+                 WalkOrder order);
 
-// template <typename Iterator>
-// IR_API void Walk(Operation *op,
-//                  std::function<void(Operation *)> callback,
-//                  WalkOrder order);
+IR_API void Walk(Operation *op,
+                 std::function<void(Operation *)> callback,
+                 WalkOrder order);
 
-// template <WalkOrder Order = WalkOrder::PostOrder,
-//           typename Iterator,  // = ForwardIterator,
-//           typename FuncTy>
-// IR_API void Walk(Operation *op, FuncTy &&callback);
+template <WalkOrder Order = WalkOrder::PostOrder, typename FuncTy>
+IR_API void Walk(Operation *op, FuncTy &&callback);
 
 }  // namespace detail
 }  // namespace pir

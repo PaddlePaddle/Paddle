@@ -121,16 +121,14 @@ class IR_API Block {
     AddArguments(std::begin(type_list), std::end(type_list));
   }
 
-  /// Walk the operations in the specified [begin, end) range of this block.
-  /// post-order by default.
-  // template <WalkOrder Order = WalkOrder::PostOrder,
-  //           typename It = Iterator,
-  //           typename FuncT>
-  // void Walk(Block::Iterator begin, Block::Iterator end, FuncT &&callback) {
-  //   for (auto &op = begin, begin != end, ++begin) {
-  //     detail::Walk<Order, Iterator>(&op, callback);
-  //   }
-  // }
+  // Walk the operations in the specified [begin, end) range of this block.
+  // PostOrder by default.
+  template <WalkOrder Order = WalkOrder::PostOrder, typename FuncT>
+  void Walk(Block::Iterator begin, Block::Iterator end, FuncT &&callback) {
+    for (auto &op = begin, begin != end, ++begin) {
+      detail::Walk<Order>(&op, callback);
+    }
+  }
 
  private:
   Block(Block &) = delete;
