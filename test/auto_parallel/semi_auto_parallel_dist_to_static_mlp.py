@@ -238,10 +238,9 @@ class TestSimpleNetForSemiAutoParallel:
             assert (
                 k in expected_local_state_dict
             ), f"key {k} not in expected_local_state_dict:{expected_local_state_dict}"
-            np.testing.assert_allclose(
+            np.testing.assert_equal(
                 local_tensor.numpy(),
                 expected_local_state_dict[k].numpy(),
-                rtol=1e-6,
             )
 
     def run_test_case(self):

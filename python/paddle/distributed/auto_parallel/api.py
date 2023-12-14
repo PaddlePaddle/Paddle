@@ -425,7 +425,6 @@ class DistModel:
             assert v.is_dist(), f"key {k} value:{v} is not a dist tensor."
             if k in cur_state_dict:
                 cur_v = cur_state_dict[k]
-                # TODO: check placements later
                 assert v.process_mesh == cur_state_dict[
                     k
                 ].process_mesh or check_placements_equal(
