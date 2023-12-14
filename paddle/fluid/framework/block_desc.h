@@ -78,8 +78,6 @@ class TEST_API BlockDesc {
 
   std::vector<VarDesc *> AllVars() const;
 
-  std::vector<std::string> AllVarsName() const;
-
   BlockDesc *ParentBlock() const;
 
   BlockDesc *ForwardBlock() const;

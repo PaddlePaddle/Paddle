@@ -119,14 +119,6 @@ std::vector<VarDesc *> BlockDesc::AllVars() const {
   return res;
 }
 
-std::vector<std::string> BlockDesc::AllVarsName() const {
-  std::vector<std::string> res;
-  for (const auto &p : vars_) {
-    res.push_back(p.first);
-  }
-  return res;
-}
-
 OpDesc *BlockDesc::AppendOp() {
   need_update_ = true;
   ops_.emplace_back(new OpDesc(this));
