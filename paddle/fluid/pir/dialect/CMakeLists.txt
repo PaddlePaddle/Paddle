@@ -55,41 +55,27 @@ set(op_vjp_source_file_tmp ${op_vjp_source_file}.tmp)
 
 set(bwd_op_source_file ${PD_DIALECT_SOURCE_DIR}/pd_bwd_op.cc)
 set(bwd_op_source_file_tmp ${bwd_op_source_file}.tmp)
-set(bwd_op_vjp_source_file ${PD_DIALECT_SOURCE_DIR}/pd_bwd_op_vjp.cc)
-set(bwd_op_vjp_source_file_tmp ${bwd_op_vjp_source_file}.tmp)
 
 set(fused_op_source_file ${PD_DIALECT_SOURCE_DIR}/pd_fused_op.cc)
 set(fused_op_source_file_tmp ${fused_op_source_file}.tmp)
-set(fused_op_vjp_source_file ${PD_DIALECT_SOURCE_DIR}/pd_fused_op_vjp.cc)
-set(fused_op_vjp_source_file_tmp ${fused_op_vjp_source_file}.tmp)
 
 set(bwd_fused_op_source_file ${PD_DIALECT_SOURCE_DIR}/pd_bwd_fused_op.cc)
 set(bwd_fused_op_source_file_tmp ${bwd_fused_op_source_file}.tmp)
-set(bwd_fused_op_vjp_source_file
-    ${PD_DIALECT_SOURCE_DIR}/pd_bwd_fused_op_vjp.cc)
-set(bwd_fused_op_vjp_source_file_tmp ${bwd_fused_op_vjp_source_file}.tmp)
 
 set(pir_op_source_file ${PD_DIALECT_SOURCE_DIR}/pir_op.cc)
 set(pir_op_source_file_tmp ${pir_op_source_file}.tmp)
-set(pir_op_vjp_source_file ${PD_DIALECT_SOURCE_DIR}/pir_op_vjp.cc)
-set(pir_op_vjp_source_file_tmp ${pir_op_vjp_source_file}.tmp)
 
 set(pir_bwd_op_source_file ${PD_DIALECT_SOURCE_DIR}/pir_bwd_op.cc)
 set(pir_bwd_op_source_file_tmp ${pir_bwd_op_source_file}.tmp)
-set(pir_bwd_op_vjp_source_file ${PD_DIALECT_SOURCE_DIR}/pir_bwd_op_vjp.cc)
-set(pir_bwd_op_vjp_source_file_tmp ${pir_bwd_op_vjp_source_file}.tmp)
 
 set(pir_update_op_source_file ${PD_DIALECT_SOURCE_DIR}/pir_update_op.cc)
 set(pir_update_op_source_file_tmp ${pir_update_op_source_file}.tmp)
-set(pir_update_op_vjp_source_file ${PD_DIALECT_SOURCE_DIR}/pir_update_op_vjp.cc)
-set(pir_update_op_vjp_source_file_tmp ${pir_update_op_vjp_source_file}.tmp)
 
 set(op_src_files
     ${op_source_file_tmp},${bwd_op_source_file_tmp},${fused_op_source_file_tmp},${bwd_fused_op_source_file_tmp},${pir_op_source_file_tmp},${pir_bwd_op_source_file_tmp},${pir_update_op_source_file_tmp}
 )
-set(op_vjp_src_files
-    ${op_vjp_source_file_tmp},${bwd_op_vjp_source_file_tmp},${fused_op_vjp_source_file_tmp},${bwd_fused_op_vjp_source_file_tmp},${pir_op_vjp_source_file_tmp},${pir_bwd_op_vjp_source_file_tmp},${pir_update_op_vjp_source_file_tmp}
-)
+
+set(op_vjp_src_file ${op_vjp_source_file_tmp})
 
 # Auto code gen
 execute_process(
@@ -107,7 +93,7 @@ execute_process(
     --op_compat_yaml_file ${op_compat_yaml_file} --namespaces ${op_namespace}
     --dialect_name ${dialect_name} --op_def_h_file ${op_header_file_tmp}
     --op_info_file ${op_info_file_tmp} --op_def_cc_file ${op_src_files}
-    --op_vjp_cc_file ${op_vjp_src_files})
+    --op_vjp_cc_file ${op_vjp_src_file})
 
 set(generated_files_pd_op
     "${op_header_file}"
@@ -115,17 +101,11 @@ set(generated_files_pd_op
     "${op_source_file}"
     "${op_vjp_source_file}"
     "${bwd_op_source_file}"
-    "${bwd_op_vjp_source_file}"
     "${fused_op_source_file}"
-    "${fused_op_vjp_source_file}"
     "${bwd_fused_op_source_file}"
-    "${bwd_fused_op_vjp_source_file}"
     "${pir_op_source_file}"
-    "${pir_op_vjp_source_file}"
     "${pir_bwd_op_source_file}"
-    "${pir_bwd_op_vjp_source_file}"
-    "${pir_update_op_source_file}"
-    "${pir_update_op_vjp_source_file}")
+    "${pir_update_op_source_file}")
 
 set(api_gen_yaml_files
     ${op_fwd_yaml},${op_bwd_yaml},${pir_op_fwd_yaml},${pir_op_bwd_yaml},${pir_update_op_fwd_yaml}
@@ -229,13 +209,7 @@ set(op_dialect_vjp_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_op_vjp.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/op_dialect.cc
     ${op_decomp_source_file}
-    ${op_vjp_source_file}
-    ${bwd_op_vjp_source_file}
-    ${fused_op_vjp_source_file}
-    ${bwd_fused_op_vjp_source_file}
-    ${pir_op_vjp_source_file}
-    ${pir_bwd_op_vjp_source_file}
-    ${pir_update_op_vjp_source_file})
+    ${op_vjp_source_file})
 
 set(op_dialect_vjp_deps primitive_vjp_experimental op_dialect)
 

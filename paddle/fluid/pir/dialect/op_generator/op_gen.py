@@ -1660,9 +1660,7 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
     source_file_str = "".join(ops_defined_list)  # Add op define
 
     # VJP for cc
-    vjp_source_file_str = VJP_CC_FILE_TEMPLATE.format(
-        input="".join(ops_vjp_defined_list)
-    )
+    vjp_source_file_str = "".join(ops_vjp_defined_list)
 
     return (
         op_list_str,
@@ -1691,9 +1689,8 @@ def OpGenerator(
     for op_file in op_def_cc_file:
         if os.path.exists(op_file):
             os.remove(op_file)
-    for op_file in op_vjp_cc_file:
-        if os.path.exists(op_file):
-            os.remove(op_file)
+    if (op_vjp_cc_file is not None) and (os.path.exists(op_vjp_cc_file)):
+        os.remove(op_vjp_cc_file)
 
     # (2) parse yaml files
     op_compat_parser = OpCompatParser(op_compat_yaml_file)
@@ -1838,10 +1835,11 @@ def OpGenerator(
     # (6) write to files for xx_vjp_op.cc.tmp
     # NOTE(Aurelius84): op_gen.py is called multiply times,
     # and vjp is only avaible for pd dialect.
-    for id in range(len(op_vjp_cc_file)):
-        if dialect_name != 'cinn' and op_vjp_cc_file[id]:
-            with open(op_vjp_cc_file[id], 'w') as f:
-                f.write(vjp_source_file_strs[id])
+    vjp_source_file_str = "\n".join(vjp_source_file_strs)
+    vjp_source_file_str = VJP_CC_FILE_TEMPLATE.format(input=vjp_source_file_str)
+    if dialect_name != 'cinn' and op_vjp_cc_file:
+        with open(op_vjp_cc_file, 'w') as f:
+            f.write(vjp_source_file_str)
 
 
 # =====================================
@@ -1877,7 +1875,7 @@ if __name__ == "__main__":
     op_def_h_file = args.op_def_h_file
     op_info_file = args.op_info_file
     op_def_cc_files = args.op_def_cc_file.split(",")
-    op_vjp_cc_files = args.op_vjp_cc_file.split(",")
+    op_vjp_cc_file = args.op_vjp_cc_file
 
     # auto code generate
     OpGenerator(
@@ -1888,5 +1886,5 @@ if __name__ == "__main__":
         op_def_h_file,
         op_info_file,
         op_def_cc_files,
-        op_vjp_cc_files,
+        op_vjp_cc_file,
     )
