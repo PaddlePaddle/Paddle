@@ -219,7 +219,7 @@ class MasterGradPass(PassBase):
         )
         serial_optimizer._sorted = False
         with program_guard(main_program, startup_program):
-            with main_ops_len.switch_name_generator_guard("opt_"):
+            with main_program.switch_name_generator_guard("opt_"):
                 _ = serial_optimizer.apply_gradients(params_grads)
         self._completer.complete_update_annotation(main_program)
 

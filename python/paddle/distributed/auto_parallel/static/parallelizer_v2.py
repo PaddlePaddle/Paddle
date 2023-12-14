@@ -251,9 +251,10 @@ class Parallelizer:
         # 2. lr_scheduler cannot be deepcopy, cause 'deepcopy' will lead to difference of learning_rate between executor and engine.
         learning_rate = optimizer._learning_rate
         new_optimizer = copy.deepcopy(optimizer)
+        new_optimizer._learning_rate = learning_rate
+        new_optimizer._sorted = False
         self._dist_context._serial_optimizer = optimizer
         self._dist_context._serial_optimizer._learning_rate = learning_rate
-        new_optimizer._sorted = False
 
         with program_guard(main_program, startup_program):
             with main_program.switch_name_generator_guard("opt_"):
@@ -384,7 +385,6 @@ class Parallelizer:
             config = {}
             config["dist_context"] = self._dist_context
             config["params_grads"] = params_grads
-            config["optimizer"] = self._dist_context._serial_optimizer
             config["completer"] = self._completer
             if amp_config['level'] == "o2" and amp_config["use_master_grad"]:
                 master_grad_pass = new_pass(
