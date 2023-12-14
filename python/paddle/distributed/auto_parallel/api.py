@@ -325,33 +325,20 @@ class DistModel:
             else:
                 return None
 
-    def state_dict(self):
+    def state_dict(self, mode="all"):
         """
         Get the state dict of model and optimizer.
-        """
-        local_state_dict = self.dist_main_program(
-            mode=self._engine._mode
-        ).state_dict("all")
-        dist_state_dict = self._build_distributed_state_dict(local_state_dict)
-        return dist_state_dict
 
-    def model_state_dict(self):
-        """
-        Get the state dict of model.
-        """
-        local_state_dict = self.dist_main_program(
-            mode=self._engine._mode
-        ).state_dict("param")
-        dist_state_dict = self._build_distributed_state_dict(local_state_dict)
-        return dist_state_dict
-
-    def optimizer_state_dict(self):
-        """
-        Get the state dict of optimizer.
+        Args:
+            mode (str): Can be ['opt', 'param', 'all'],
+                'opt' :  The return value only contains the variable in the optimizer.
+                'param' : The return value only contains the variable in the network, not the variable in the optimizer.
+                'all' : The return value contains the variable in the network and optimizer.
+                Default: 'all'
         """
         local_state_dict = self.dist_main_program(
             mode=self._engine._mode
-        ).state_dict("opt")
+        ).state_dict(mode)
         dist_state_dict = self._build_distributed_state_dict(local_state_dict)
         return dist_state_dict
 
