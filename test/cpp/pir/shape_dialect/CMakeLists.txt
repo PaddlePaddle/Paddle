@@ -20,7 +20,7 @@ paddle_test(
 paddle_test(symbol_dim_expr_test SRCS symbol_dim_expr_test.cc DEPS pir gtest)
 =======
 paddle_test(
-  dim_expr_test
+  dim_expr_test1
   SRCS
   dim_expr_test.cc
   DEPS
