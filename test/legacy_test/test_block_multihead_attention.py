@@ -88,6 +88,7 @@ def naive_attention_impl(
     scale=1.0,
     cache_k_dequant_scales=None,
     cache_v_dequant_scales=None,
+    use_cachekv_int8="None",
 ):
     batch = query.shape[0]
     heads = query.shape[1]
@@ -98,13 +99,18 @@ def naive_attention_impl(
     key = key.reshape([batch, kv_head, 1, seq_len, head_dim])
     key = paddle.tile(key, [1, 1, heads // kv_head, 1, 1])
     key = key.reshape([batch, heads, seq_len, head_dim])
+
+    if use_cachekv_int8 == "dynamic":
+        unsqueeze_shape = [2, 3]
+    elif use_cachekv_int8 == "static":
+        unsqueeze_shape = [0, 2, 3]
     if pre_cache_k is not None:
         key = paddle.concat([pre_cache_k, key], axis=2)
     if cache_k is not None:
         if cache_k_dequant_scales is not None:
             dequant_cache_k = (
                 (cache_k.astype('float32') - 128.0)
-                * cache_k_dequant_scales.unsqueeze([0, 2, 3])
+                * cache_k_dequant_scales.unsqueeze(unsqueeze_shape)
             ).astype(key.dtype)
             key = paddle.concat([dequant_cache_k, key], axis=2)
         else:
@@ -119,7 +125,7 @@ def naive_attention_impl(
         if cache_v_dequant_scales is not None:
             dequant_cache_v = (
                 (cache_v.astype('float32') - 128.0)
-                * cache_v_dequant_scales.unsqueeze([0, 2, 3])
+                * cache_v_dequant_scales.unsqueeze(unsqueeze_shape)
             ).astype(value.dtype)
             value = paddle.concat([dequant_cache_v, value], axis=2)
         else:
@@ -1306,6 +1312,13 @@ class TestBlockMultiHeadAttnEncStatic(unittest.TestCase):
         )
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11040
+    or not is_sm_supported,
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
+    "and device's compute capability must be 8.x or 90",
+)
 class TestBlockMultiHeadAttnEncDecPTQDequant(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
@@ -1641,6 +1654,13 @@ class TestBlockMultiHeadAttnEncDecPTQDequant(unittest.TestCase):
         )
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11040
+    or not is_sm_supported,
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
+    "and device's compute capability must be 8.x or 90",
+)
 class TestBlockMultiHeadAttnEncDecPTQDequantQuantShiftSmooth(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
@@ -2013,6 +2033,13 @@ class TestBlockMultiHeadAttnEncDecPTQDequantQuantShiftSmooth(unittest.TestCase):
         )
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11040
+    or not is_sm_supported,
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
+    "and device's compute capability must be 8.x or 90",
+)
 class TestBlockMultiHeadAttnEncDecQuant(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
@@ -2282,6 +2309,13 @@ class TestBlockMultiHeadAttnEncDecQuant(unittest.TestCase):
         )
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11040
+    or not is_sm_supported,
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
+    "and device's compute capability must be 8.x or 90",
+)
 class TestBlockMultiHeadAttnEncDecCacheKVDynamicQuant(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
@@ -2339,16 +2373,16 @@ class TestBlockMultiHeadAttnEncDecCacheKVDynamicQuant(unittest.TestCase):
         self.cache_k = paddle.zeros(shape=self.cache_shape, dtype='uint8')
         self.cache_v = paddle.zeros(shape=self.cache_shape, dtype='uint8')
         self.cache_k_quant_scales = paddle.zeros(
-            shape=[self.num_head], dtype='float32'
+            shape=[self.batch_size, self.num_head], dtype='float32'
         )
         self.cache_v_quant_scales = paddle.zeros(
-            shape=[self.num_head], dtype='float32'
+            shape=[self.batch_size, self.num_head], dtype='float32'
         )
         self.cache_k_dequant_scales = paddle.zeros(
-            shape=[self.num_head], dtype='float32'
+            shape=[self.batch_size, self.num_head], dtype='float32'
         )
         self.cache_v_dequant_scales = paddle.zeros(
-            shape=[self.num_head], dtype='float32'
+            shape=[self.batch_size, self.num_head], dtype='float32'
         )
 
         self.block_tables = paddle.zeros(
@@ -2510,6 +2544,7 @@ class TestBlockMultiHeadAttnEncDecCacheKVDynamicQuant(unittest.TestCase):
                 self.scale,
                 cache_k_dequant_scales=self.cache_k_dequant_scales,
                 cache_v_dequant_scales=self.cache_v_dequant_scales,
+                use_cachekv_int8="dynamic",
             )
             .transpose([0, 2, 1, 3])
             .reshape([self.batch_size, -1])
@@ -2555,6 +2590,13 @@ class TestBlockMultiHeadAttnEncDecCacheKVDynamicQuant(unittest.TestCase):
         )
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11040
+    or not is_sm_supported,
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
+    "and device's compute capability must be 8.x or 90",
+)
 class TestBlockMultiHeadAttnEncDecCacheKVStaticQuant(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
@@ -2795,6 +2837,7 @@ class TestBlockMultiHeadAttnEncDecCacheKVStaticQuant(unittest.TestCase):
                 self.scale,
                 cache_k_dequant_scales=self.cache_k_dequant_scales,
                 cache_v_dequant_scales=self.cache_v_dequant_scales,
+                use_cachekv_int8="static",
             )
             .transpose([0, 2, 1, 3])
             .reshape([self.batch_size, -1])

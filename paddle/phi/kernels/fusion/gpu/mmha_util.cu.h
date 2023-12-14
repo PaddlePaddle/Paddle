@@ -1633,6 +1633,7 @@ inline __device__ uint8_t round_tmp(float16 val) {
   return static_cast<uint8_t>(quant_value + 128.0);
 }
 
+#ifdef ENABLE_BF16
 template <>
 inline __device__ uint8_t round_tmp(__nv_bfloat16 val) {
   float quant_value =
@@ -1641,6 +1642,7 @@ inline __device__ uint8_t round_tmp(__nv_bfloat16 val) {
   quant_value = quant_value < -127.0f ? -127.0f : quant_value;
   return static_cast<uint8_t>(quant_value + 128.0);
 }
+#endif
 
 template <>
 inline __device__ uint16_t round_tmp(float2 val) {
@@ -1726,6 +1728,7 @@ inline __device__ uint64_t round_tmp(uint4 val) {
   return ret;
 }
 
+#ifdef ENABLE_BF16
 template <>
 inline __device__ uint16_t round_tmp(__nv_bfloat162 val) {
   union {
@@ -1760,6 +1763,7 @@ inline __device__ uint64_t round_tmp(bf16_8_t val) {
   int16[3] = round_tmp<uint16_t, __nv_bfloat162>(val.w);
   return int64;
 }
+#endif
 
 inline __device__ float2 rotary_embedding_coefficient(const int zid,
                                                       const int rot_embed_dim,
