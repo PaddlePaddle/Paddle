@@ -275,6 +275,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_auto_conditional_block MODULES
                   test_auto_conditional_block)
   py_test_modules(test_strategy_api MODULES test_strategy_api)
+  py_test_modules(test_dist_checkpoint_utils MODULES test_dist_checkpoint_utils)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()
