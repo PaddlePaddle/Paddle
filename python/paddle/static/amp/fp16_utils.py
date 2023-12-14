@@ -712,7 +712,7 @@ def cast_model_to_fp16(
             ):  # a special case for lod_tensor_blocking_queue_0
                 return True
             if (
-                op.block._var_recursive(name).type()
+                op.block._var_recursive(name).type
                 != core.VarDesc.VarType.LOD_TENSOR
             ):
                 return False
