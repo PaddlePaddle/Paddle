@@ -845,6 +845,15 @@ void BatchNormKernel(const Context &ctx,
         }
       }
     } else {
+      int64_t reserve_space_size = 0;
+      void *reserve_space_ptr = nullptr;
+      DenseTensor reserve_space_tensor;
+      if (reserve_space == nullptr) {
+        reserve_space = &reserve_space_tensor;
+      }
+      reserve_space->Resize({reserve_space_size});
+      ctx.template Alloc<T>(reserve_space);
+
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::cudnnBatchNormalizationForwardInference(
               handle,

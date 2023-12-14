@@ -767,6 +767,18 @@ PHI_DEFINE_EXPORTED_string(tracer_mkldnn_ops_on,
 
 /**
  * Debug related FLAG
+ * Name: static_runtime_data_save_path
+ * Since Version: 2.6.0
+ * Value Range: string, default=./
+ * Example:
+ * Note: set the static runtime tensor save path.
+ */
+PHI_DEFINE_EXPORTED_string(static_runtime_data_save_path,
+                           "./",
+                           "set the static runtime tensor save path");
+
+/**
+ * Debug related FLAG
  * Name: tracer_mkldnn_ops_off
  * Since Version: 2.0.0
  * Value Range: string, default=empty
@@ -840,6 +852,19 @@ PHI_DEFINE_EXPORTED_bool(
     "It controls whether to apply IR pass to program when using Fleet APIs");
 
 /**
+ * Debug related FLAG
+ * Name: FLAGS_save_static_runtime_data
+ * Since Version: 2.6.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: It controls whether to save runtime tensor in static mode.
+ */
+PHI_DEFINE_EXPORTED_bool(
+    save_static_runtime_data,
+    false,
+    "It controls whether to save runtime tensor in static mode");
+
+/**
  * Distributed related FLAG
  * Name: FLAGS_graph_load_in_parallel
  * Since Version: 2.2.0
@@ -852,6 +877,31 @@ PHI_DEFINE_EXPORTED_bool(graph_load_in_parallel,
                          false,
                          "It controls whether load graph node and edge with "
                          "mutli threads parallely.");
+
+/**
+ * Distributed related FLAG
+ * Name: FLAGS_enable_neighbor_list_use_uva
+ * Since Version: 2.5.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Control whether store neighbor_list with UVA in gpu graph mode
+ */
+PHI_DEFINE_EXPORTED_bool(enable_neighbor_list_use_uva,
+                         false,
+                         "It controls whether store neighbor_list with UVA");
+
+/**
+ * Distributed related FLAG
+ * Name: FLAGS_graph_neighbor_size_percent
+ * Since Version: 2.5.0
+ * Value Range: double, default=1.0
+ * Example:
+ * Note: Control whether load graph node and edge with multi threads parallely
+ *       If it is not set, load graph data with one thread
+ */
+PHI_DEFINE_EXPORTED_double(graph_neighbor_size_percent,
+                           1.0,
+                           "It controls whether precent of neighbor_size.");
 
 /**
  * Distributed related FLAG
@@ -894,6 +944,20 @@ PHI_DEFINE_EXPORTED_bool(
     enable_exit_when_partial_worker,
     false,
     "It controls whether exit trainer when an worker has no ins.");
+
+/**
+ * Distributed related FLAG
+ * Name: enable_adjust_op_order
+ * Since Version: 2.5.0
+ * Value Range: int32, default=0
+ * Example:
+ * Note: Control  whether adjust op order in worker to reduce hbm cost in gpu
+ * graph mode.
+ */
+PHI_DEFINE_EXPORTED_int32(
+    enable_adjust_op_order,
+    0,
+    "It controls whether adjust op order in worker to reduce hbm cost");
 
 /**
  * Distributed related FLAG
@@ -1126,6 +1190,22 @@ PHI_DEFINE_EXPORTED_bool(enable_sparse_inner_gather,
 PHI_DEFINE_EXPORTED_bool(gpugraph_debug_gpu_memory,
                          false,
                          "enable debug gpu memory, default false");
+PHI_DEFINE_EXPORTED_bool(
+    graph_embedding_split_infer_mode,
+    true,
+    "graph embedding split infer mode not need nccl barrier in gpu graph mode");
+PHI_DEFINE_EXPORTED_bool(enable_graph_multi_node_sampling,
+                         false,
+                         "control multi-node sample in gpu graph mode");
+PHI_DEFINE_EXPORTED_bool(
+    query_dest_rank_by_multi_node,
+    false,
+    "Control whether to query dest rank by multi machine in gpu graph mode");
+PHI_DEFINE_EXPORTED_bool(multi_node_sample_use_gpu_table,
+                         true,
+                         "Control whether to use gpu table in sample multi "
+                         "machine in gpu graph mode");
+
 /**
  * ProcessGroupNCCL related FLAG
  * Name: nccl_blocking_wait
@@ -1404,3 +1484,17 @@ PHI_DEFINE_EXPORTED_bool(enable_async_trace,
                          "enable collective async trace");
 
 PHI_DEFINE_EXPORTED_int32(async_trace_count, 5, "collective async trace count");
+
+PHI_DEFINE_EXPORTED_bool(
+    use_auto_growth_pinned_allocator,
+    false,
+    "Whether to use the auto_growth CUDA pinned allocator.");
+
+PHI_DEFINE_EXPORTED_bool(
+    sync_after_alloc,
+    false,
+    "Whether to perform device synchronization after allocation.");
+PHI_DEFINE_EXPORTED_int64(alloc_fill_value,
+                          -1,
+                          "Whether to fill fixed value after allocation. "
+                          "This is usefull for debugging.");

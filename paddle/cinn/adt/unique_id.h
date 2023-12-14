@@ -42,12 +42,17 @@ class UniqueId final {
     return this->unique_id_ < other.unique_id_;
   }
 
+  // For unit test only
+  static void ResetSeqNumber(std::size_t init) { *MutSeqNumber() = init; }
+
   std::size_t unique_id() const { return unique_id_; }
 
  private:
-  static std::size_t NewSeqNumber() {
+  static std::size_t NewSeqNumber() { return ++*MutSeqNumber(); }
+
+  static std::atomic<std::size_t>* MutSeqNumber() {
     static std::atomic<std::size_t> seq_number{0};
-    return ++seq_number;
+    return &seq_number;
   }
 
   explicit UniqueId(std::size_t unique_id) : unique_id_(unique_id) {}

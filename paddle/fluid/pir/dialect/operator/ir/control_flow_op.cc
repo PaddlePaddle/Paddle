@@ -165,23 +165,14 @@ void IfOp::VerifySig() {
 
 void IfOp::VerifyRegion() {
   VLOG(4) << "Start Verifying sub regions for: IfOp.";
+  VLOG(4) << "Start Verifying true branch.";
   PADDLE_ENFORCE_EQ(
       (*this)->region(0).size(),
       1u,
       phi::errors::PreconditionNotMet("The size %d of true_region must be 1.",
                                       (*this)->region(0).size()));
-
-  if ((*this)->num_results() != 0) {
-    PADDLE_ENFORCE_EQ(
-        (*this)->region(0).size(),
-        (*this)->region(1).size(),
-        phi::errors::PreconditionNotMet("The size %d of true_region must be "
-                                        "equal to the size %d of false_region.",
-                                        (*this)->region(0).size(),
-                                        (*this)->region(1).size()));
-
+  if ((*this)->region(0).front().size() > 0) {
     auto &true_last_op = (*this)->region(0).front().back();
-    auto &false_last_op = (*this)->region(1).front().back();
     PADDLE_ENFORCE_EQ(true,
                       true_last_op.isa<pir::YieldOp>(),
                       phi::errors::PreconditionNotMet(
@@ -191,6 +182,15 @@ void IfOp::VerifyRegion() {
                       phi::errors::PreconditionNotMet(
                           "The size of last of true block op's input must be "
                           "equal to IfOp's outputs num."));
+  }
+  VLOG(4) << "Start Verifying false branch.";
+  PADDLE_ENFORCE_EQ(
+      (*this)->region(1).size(),
+      1u,
+      phi::errors::PreconditionNotMet("The size %d of false_region must be 1.",
+                                      (*this)->region(0).size()));
+  if ((*this)->region(1).front().size() > 0) {
+    auto &false_last_op = (*this)->region(1).front().back();
     PADDLE_ENFORCE_EQ(true,
                       false_last_op.isa<pir::YieldOp>(),
                       phi::errors::PreconditionNotMet(
