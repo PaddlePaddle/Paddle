@@ -16,6 +16,15 @@ paddle_test(
   pir
   gtest)
 
+paddle_test(
+  dim_expr_test
+  SRCS
+  dim_expr_test.cc
+  DEPS
+  op_dialect_vjp
+  pir
+  gtest)
+
 if(WITH_CINN)
   paddle_test(
     shape_optimization_test
