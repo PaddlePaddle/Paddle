@@ -221,6 +221,8 @@ void Conv2dXPUKernel(const Context& ctx,
             DataTypeToString(filter.dtype()),
             DataTypeToString(out_dtype)));
       }
+    } else if (filter.dtype() == DataType::FLOAT32) {
+      CONV2D_XPU_KERNEL_IMPL(float, float, float, int32_t);
     } else {
       PADDLE_THROW(phi::errors::Unimplemented(
           "Not support x_dtype is %s, filter_dtype is %s and out_dtype is %s.",
