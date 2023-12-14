@@ -27,7 +27,7 @@ from ..base.data_feeder import (
     check_variable_and_dtype,
     convert_dtype,
 )
-from ..base.framework import Variable
+from ..base.framework import Variable, default_main_program
 from ..framework import (
     LayerHelper,
     _current_expected_place,
@@ -6738,6 +6738,72 @@ def select_scatter(x, values, axis, index, name=None):
         )
     else:
         helper = LayerHelper('select_scatter', **locals())
+        output = helper.create_variable_for_type_inference(dtype=x.dtype)
+        cur_block = default_main_program().current_block()
+        cur_block.append_op(
+            type="set_value",
+            inputs=inputs,
+            outputs={'Out': output},
+            attrs=attrs,
+            inplace_map={"Input": "Out"},
+        )
+
+        return output
+
+
+def slice_scatter(x, value, axis=0, start=None, stop=None, step=1, name=None):
+    """TODO(megemini):"""
+    if x.ndim != value.ndim:
+        raise ValueError(
+            f"The input x and value should have save dimension, but got input of {x.ndim} and value of {value.ndim}."
+        )
+
+    x_shape = x.shape
+    value_shape = value.shape
+
+    index = list(range(start or 0, stop or x_shape[axis], step))
+    exp_shape = [*x_shape[:axis], len(index), *x_shape[axis + 1 :]]
+    if exp_shape != value_shape:
+        raise ValueError(
+            "The value.shape should be same of [*x_shape[:axis], len(index), *x_shape[axis+1:]],"
+            f"but got value.shape of {value.shape} and slice shape {exp_shape}."
+        )
+
+    starts = [start]
+    ends = [stop]
+    steps = [step]
+    axes = [axis]
+    none_axes = []
+    decrease_axes = []
+    inputs = {'Input': x}
+    attrs = {
+        'axes': axes,
+        'starts': starts,
+        'ends': ends,
+        'steps': steps,
+        'decrease_axes': decrease_axes,
+        'none_axes': none_axes,
+    }
+
+    dtype = x.dtype
+    attrs['dtype'] = dtype
+
+    value = value.astype(dtype)
+    inputs["ValueTensor"] = value
+
+    if in_dynamic_or_pir_mode():
+        return _C_ops.set_value_with_tensor(
+            x,
+            value,
+            starts,
+            ends,
+            steps,
+            axes,
+            decrease_axes,
+            none_axes,
+        )
+    else:
+        helper = LayerHelper('slice_scatter', **locals())
         output = helper.create_variable_for_type_inference(dtype=x.dtype)
         cur_block = default_main_program().current_block()
         cur_block.append_op(
