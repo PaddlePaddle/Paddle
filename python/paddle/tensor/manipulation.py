@@ -6010,22 +6010,22 @@ def diagonal_scatter(x, y, offset=0, axis1=0, axis2=1, name=None):
 
 
 
-def slice_scatter(x, values, axis=0, start=None, stop=None, step=1, name=None):
-    """TODO(megemini): docstring"""    
-    if x.ndim != values.ndim:
+def slice_scatter(x, value, axis=0, start=None, stop=None, step=1, name=None):
+    
+    if x.ndim != value.ndim:
         raise ValueError(
-            f"The input x and values should have save dimension, but got input of {x.ndim} and values of {values.ndim}."
+            f"The input x and value should have save dimension, but got input of {x.ndim} and value of {value.ndim}."
         )
 
     x_shape = x.shape
-    values_shape = values.shape
+    value_shape = value.shape
 
     index = list(range(start or 0, stop or x_shape[axis], step))
     exp_shape = [*x_shape[:axis], len(index), *x_shape[axis+1:]]
-    if exp_shape != values_shape:
+    if exp_shape != value_shape:
         raise ValueError(
-            "The values.shape should be same of [*x_shape[:axis], len(index), *x_shape[axis+1:]],"
-            f"but got values.shape of {values.shape} and slice shape {exp_shape}."
+            "The value.shape should be same of [*x_shape[:axis], len(index), *x_shape[axis+1:]],"
+            f"but got value.shape of {value.shape} and slice shape {exp_shape}."
         )
 
     starts = [start]
@@ -6047,13 +6047,13 @@ def slice_scatter(x, values, axis=0, start=None, stop=None, step=1, name=None):
     dtype = x.dtype
     attrs['dtype'] = dtype
 
-    values = values.astype(dtype)
-    inputs["ValueTensor"] = values
+    value = value.astype(dtype)
+    inputs["ValueTensor"] = value
 
     if in_dynamic_or_pir_mode():
         return _C_ops.set_value_with_tensor(
             x,
-            values,
+            value,
             starts,
             ends,
             steps,
