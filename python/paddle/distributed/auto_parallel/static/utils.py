@@ -2436,10 +2436,13 @@ def update_grad_var_to_var(program, strategy, grad_var_to_var):
                 "slice",
             ]
             if op.desc.type() in reshard_op_types:
-                if "X" in op.desc.input_names():
-                    inputs = op.desc.input("X")
-                elif "Input" in op.desc.input_names():
-                    inputs = op.desc.input("Input")
+                input_names = op.desc.input_names()
+                if "X" in input_names or "Input" in input_names:
+                    inputs = (
+                        op.desc.input("X")
+                        if "X" in input_names
+                        else op.desc.input("Input")
+                    )
                 if "Out" in op.desc.output_names():
                     outputs = op.desc.output("Out")
                 if inputs[0] in grad_var_to_var.keys():
