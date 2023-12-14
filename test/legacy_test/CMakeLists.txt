@@ -1341,8 +1341,8 @@ if(NOT WITH_GPU)
 endif()
 
 if(WITH_COVERAGE)
-  list(REMOVE_ITEM STATIC_BUILD_TESTS test_unique)
-  list(REMOVE_ITEM DIST_TEST_OPS test_dist_fleet_ctr2)
+  list(REMOVE_ITEM TEST_OPS test_unique)
+  list(REMOVE_ITEM TEST_OPS test_dist_fleet_ctr2)
 endif()
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
