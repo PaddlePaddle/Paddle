@@ -541,6 +541,10 @@ def _set_prim_forward_blacklist(*args):
             prim_config["forward_blacklist"].add(item)
 
 
+def _reset_prim_forward_blacklist():
+    prim_config["forward_blacklist"] = set()
+
+
 def _set_prim_backward_blacklist(*args):
     ops = set(args)
     for item in ops:
