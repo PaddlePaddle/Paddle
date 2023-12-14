@@ -126,11 +126,12 @@ class ConstantFoldingPattern : public pir::RewritePattern {
                pir::PatternRewriter& rewriter) const override {  // NOLINT
     VLOG(4) << "constant_folding_pass applys rewrite on [" << op->name()
             << "] op";
+    // 1. build temp program using op
     pir::Program new_program(rewriter.ir_context());
     auto output_var_names =
         BuildProgramFromOperation(op, &new_program, rewriter);
 
-    // execute program
+    // 2. execute program
     for (auto output_var_name : output_var_names) {
       exe_config_->skip_gc_vars.insert(output_var_name);
     }
@@ -141,14 +142,19 @@ class ConstantFoldingPattern : public pir::RewritePattern {
 
     core.Run({});
 
+    // 3. redirecte constant tensor op at the beginning of the block
     rewriter.SetInsertionPointToStart(rewriter.block());
 
-    bool has_special_use_op = HasSpecialUseOp(op);
+    // 4. check users of the op, if op's output is used as `IntArray` or `Scalar`,
+    // make sure it is placed on cpu
+    bool force_cpu = CheckUseOp(op);
 
     for (uint32_t i = 0; i < op->num_results(); i++) {
       if (!op->result(i) || !op->result(i).type()) {
         continue;
       }
+
+      // 5. get the output vars form the scope
       std::string output_var_name = output_var_names[i];
       auto* output_var = scope_->FindVar(output_var_name);
       PADDLE_ENFORCE_NOT_NULL(
@@ -156,61 +162,43 @@ class ConstantFoldingPattern : public pir::RewritePattern {
           phi::errors::InvalidArgument("Parameter var [%s] not in scope.",
                                        output_var_name));
 
-      if (!has_special_use_op && !is_train_mode_) {
-        if (output_var->IsType<phi::DenseTensor>()) {
-          auto* output_tensor = output_var->GetMutable<phi::DenseTensor>();
-          TensorCopySync(output_tensor, has_special_use_op);
+      if (output_var->IsType<phi::DenseTensor>()) {
+        auto* output_tensor = output_var->GetMutable<phi::DenseTensor>();
 
-          auto parameter_op = rewriter.Build<pir::ParameterOp>(
-              output_var_name, op->result(i).type());
-          parameter_op->set_attribute(
-              kAttrIsPersisable,
-              rewriter.array_attr({rewriter.bool_attr(true)}));
+        // 6. If the placement of the tensor is not as expected,
+        // synchronously copy the tensor
+        TensorCopySync(output_tensor, force_cpu);
 
-          rewriter.ReplaceAllUsesWith(op->result(i), parameter_op->result(0));
-        }
-      } else {
-        if (output_var->IsType<phi::DenseTensor>()) {
-          auto* output_tensor = output_var->GetMutable<phi::DenseTensor>();
-          TensorCopySync(output_tensor, has_special_use_op);
+        // 7. build ConstantTensorOp
+        auto constant_op = rewriter.Build<pir::ConstantTensorOp>(
+            rewriter.tensor_name_attr(output_var_name), op->result(i).type());
+        constant_op->set_attribute(
+            kAttrIsPersisable,
+            rewriter.array_attr({rewriter.bool_attr(true)}));
 
-          auto constant_op = rewriter.Build<pir::ConstantTensorOp>(
-              rewriter.tensor_name_attr(output_var_name), op->result(i).type());
-          constant_op->set_attribute(
-              kAttrIsPersisable,
-              rewriter.array_attr({rewriter.bool_attr(true)}));
-
-          rewriter.ReplaceAllUsesWith(op->result(i), constant_op->result(0));
-        }
+        rewriter.ReplaceAllUsesWith(op->result(i), constant_op->result(0));
       }
     }
+
+    // 8. rease op
     rewriter.EraseOp(op);
     VLOG(4) << "constant_folding_pass applied rewrite on [" << op->name()
             << "] op";
   }
 
  private:
-  void TensorCopySync(phi::DenseTensor* tensor, bool to_cpu) const {
-    if (to_cpu) {
-      if (tensor->IsInitialized() &&
-          tensor->place().GetType() != phi::AllocationType::CPU) {
-        phi::DenseTensor temp_tensor;
-        temp_tensor.Resize(tensor->dims());
-        paddle::framework::TensorCopySync(
-            *tensor, phi::CPUPlace{}, &temp_tensor);
-        tensor->clear();
-        paddle::framework::TensorCopySync(temp_tensor, phi::CPUPlace{}, tensor);
-      }
-    } else {
-      if (tensor->IsInitialized() &&
-          tensor->place().GetType() != place_.GetType()) {
-        phi::DenseTensor temp_tensor;
-        temp_tensor.Resize(tensor->dims());
-        paddle::framework::TensorCopySync(
-            *tensor, phi::CPUPlace{}, &temp_tensor);
-        tensor->clear();
-        paddle::framework::TensorCopySync(temp_tensor, place_, tensor);
-      }
+  void TensorCopySync(phi::DenseTensor* tensor, bool force_cpu) const {
+    if (!tensor->IsInitialized()) {
+      return;
+    }
+    auto expected_place = force_cpu ? phi::CPUPlace{} : place_;
+
+    if (tensor->place().GetType() != expected_place.GetType()) {
+      phi::DenseTensor temp_tensor;
+      temp_tensor.Resize(tensor->dims());
+      paddle::framework::TensorCopySync(*tensor, phi::CPUPlace{}, &temp_tensor);
+      tensor->clear();
+      paddle::framework::TensorCopySync(temp_tensor, expected_place, tensor);
     }
   }
 
@@ -228,11 +216,11 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     return true;
   }
 
-  bool CheckSpecialUseOp(
+  bool CheckAttributes(
       const std::vector<std::pair<pir::Operation*, int32_t>>& use_ops) const {
     for (auto [use_op, idx] : use_ops) {
       if (use_op->isa<pir::CombineOp>()) {
-        if (HasSpecialUseOp(use_op)) return true;
+        if (CheckUseOp(use_op)) return true;
       } else if (use_op->HasInterface<paddle::dialect::OpYamlInfoInterface>()) {
         auto [input_infos, _1, _2, _3, _4] =
             use_op->dyn_cast<paddle::dialect::OpYamlInfoInterface>()
@@ -248,10 +236,10 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     return false;
   }
 
-  bool HasSpecialUseOp(pir::Operation* op) const {
+  bool CheckUseOp(pir::Operation* op) const {
     for (uint32_t i = 0; i < op->num_results(); i++) {
       auto use_ops = pir::GetUseOpsForOutput(op, i);
-      if (CheckSpecialUseOp(use_ops)) return true;
+      if (CheckAttributes(use_ops)) return true;
     }
     return false;
   }
