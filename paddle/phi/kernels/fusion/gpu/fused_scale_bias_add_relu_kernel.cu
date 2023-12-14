@@ -46,13 +46,15 @@ void FusedScaleBiasAddReluKernel(const Context& dev_ctx,
                                  const paddle::optional<DenseTensor>& bias2,
                                  bool fuse_dual,
                                  bool exhaustive_search,
-                                 DenseTensor* y) {
+                                 DenseTensor* out) {
   PADDLE_ENFORCE_GE(dev_ctx.GetComputeCapability(),
                     80,
                     phi::errors::PreconditionNotMet(
                         "This op only supports Ampere and later devices, "
                         "but got compute capability: %d.",
                         dev_ctx.GetComputeCapability()));
+
+  DenseTensor* y = out;
   auto& plan_cache = phi::autotune::AutoTuneCache::Instance().GetConvV8(
       phi::autotune::AlgorithmType::kScaleBiasAddRelu);
 

@@ -133,6 +133,7 @@ class Partial : public Placement {
  public:
   explicit Partial(ReduceType reduce_type) : reduce_type_(reduce_type) {}
   bool is_partial() const override { return true; }
+  ReduceType get_reduce_type() const { return reduce_type_; }
 
   bool operator==(const Placement& other) const override {
     const Partial* other_partial = dynamic_cast<const Partial*>(&other);

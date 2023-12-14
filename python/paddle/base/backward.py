@@ -21,10 +21,10 @@ import warnings
 from collections.abc import Sequence
 
 import paddle.base
-from paddle.base import framework, program_guard
 
-from . import core, log_helper, unique_name
+from . import core, framework, log_helper, unique_name
 from .data_feeder import check_type
+from .framework import program_guard
 from .proto import framework_pb2
 
 __all__ = []
@@ -478,14 +478,19 @@ def _accumulate_gradients_by_sum_op_(
             "sum",
             {"X": renamed_vars[var_name]},
             {"Out": [var_name]},
-            {"use_mkldnn": False, "op_device": op_device},
+            {"op_device": op_device},
         )
     )
     renamed_vars[var_name] = [var_name]
 
 
 def _accumulate_gradients_by_add_ops_(
-    var_name, renamed_vars, pending_sum_ops, op_idx, op_device=""
+    var_name,
+    renamed_vars,
+    pending_sum_ops,
+    op_idx,
+    op_device="",
+    grad_var_to_var=None,
 ):
     """
     Use several inplace add op to accumulate_gradients, the gradients are stored in renamed_vars.
@@ -505,9 +510,15 @@ def _accumulate_gradients_by_add_ops_(
                 "grad_add",
                 {"X": [x_name], "Y": [y_name]},
                 {"Out": [out_name]},
-                {"use_mkldnn": False, "op_device": op_device},
+                {"op_device": op_device},
             )
         )
+        # record mapping between out grad var name and fwd var name (only for auto parallel)
+        if grad_var_to_var is not None:
+            if var_name in grad_var_to_var:
+                grad_var_to_var[out_name] = grad_var_to_var[var_name]
+            else:
+                grad_var_to_var[out_name] = var_name
     renamed_vars[var_name] = [var_name]
 
 
@@ -570,6 +581,7 @@ def _addup_repetitive_outputs_(
                         pending_sum_ops,
                         idx,
                         var_device[var_name],
+                        grad_var_to_var,
                     )
 
         for param_idx, param_name in enumerate(op_desc.output_names()):
@@ -1303,11 +1315,10 @@ def _topo_order_map(block, target_vars):
 
     topo_order_map = {}  # mapping from OpDesc -> Topologic Order
     queue = [var.name for var in target_vars]
-    visited = set()
+    visited = {var.name for var in target_vars}
     topo_order_counter = 0
     while len(queue) > 0:
         cur_var_name = queue.pop(0)
-        visited.add(cur_var_name)
         if cur_var_name not in get_defined_op:
             continue
         cur_op = get_defined_op[cur_var_name]
@@ -1316,6 +1327,7 @@ def _topo_order_map(block, target_vars):
         for inp in cur_op.input_arg_names:
             if inp in get_defined_op and inp not in visited:
                 queue.append(inp)
+                visited.add(inp)
     return topo_order_map
 
 
@@ -2044,6 +2056,11 @@ def append_backward(
             >>> p_g_list6 = paddle.static.append_backward(loss=avg_loss, parameter_list=all_weights, no_grad_set=set(all_weights))
 
     """
+    if framework.in_pir_mode():
+        return paddle.autograd.ir_backward.append_backward(
+            loss, parameter_list, no_grad_set
+        )
+
     grad_op_id_to_fwd_op = (
         {}
     )  # for cuda graph usage, recording the mapping between grad op original id to fwd op

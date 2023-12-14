@@ -33,6 +33,9 @@ class IR_API BlockArgument : public Value {
   Block *owner() const;
   uint32_t index() const;
 
+  Attribute attribute(const std::string &key) const;
+  void set_attribute(const std::string &key, Attribute value);
+
  private:
   /// constructor
   BlockArgument(detail::BlockArgumentImpl *impl);  // NOLINT

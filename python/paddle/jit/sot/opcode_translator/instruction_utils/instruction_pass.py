@@ -14,6 +14,7 @@
 
 from paddle.jit.sot.utils import log, log_do
 
+from ...utils import InnerError
 from .instruction_utils import instrs_info
 from .stack_analyse import StackAnalyser
 
@@ -21,7 +22,11 @@ from .stack_analyse import StackAnalyser
 def apply_instr_pass(instrs, code_options):
     log(3, f"[Opcode Pass]: Original New Code {code_options['co_name']}:\n")
     log_do(3, lambda: print(instrs_info(instrs)))
-    supported_passes = (remove_load_store_pass,)
+    supported_passes = (
+        remove_load_store_pass,
+        remove_duplicate_resume,
+        check_precall_followed_by_call,
+    )
 
     for instr_pass in supported_passes:
         instr_pass(instrs, code_options)
@@ -246,3 +251,22 @@ def remove_load_store_pass(instrs, code_options):
                 modified = True
             else:
                 idx += 1
+
+
+def remove_duplicate_resume(instrs, code_options):
+    resumes = list(filter(lambda instr: instr.opname == "RESUME", instrs))
+    if not resumes:
+        return
+    for resume in resumes[1:]:
+        instrs.remove(resume)
+
+
+def check_precall_followed_by_call(instrs, code_options):
+    """
+    PRECALL should be followed by CALL, otherwise it will cause a segmentation fault
+    """
+    for instr, next_instr in zip(instrs[:-1], instrs[1:]):
+        if instr.opname == "PRECALL" and next_instr.opname != "CALL":
+            raise InnerError(
+                f"PRECALL is not followed by CALL in {code_options['co_name']}"
+            )

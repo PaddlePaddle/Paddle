@@ -34,6 +34,9 @@ class IR_API OpResult : public Value {
   uint32_t index() const;
   bool operator==(const OpResult &other) const;
 
+  Attribute attribute(const std::string &key) const;
+  void set_attribute(const std::string &key, Attribute value);
+
  private:
   friend Operation;
   OpResult(detail::OpResultImpl *impl);  // NOLINT

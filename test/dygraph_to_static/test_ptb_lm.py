@@ -17,12 +17,14 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    enable_to_static_guard,
+    test_legacy_and_pt_and_pir,
+)
 
 import paddle
-from paddle import base
-from paddle.base.dygraph.base import to_variable
-from paddle.jit.api import to_static
+from paddle.base.framework import unique_name
 from paddle.optimizer import SGD
 
 PRINT_STEP = 20
@@ -49,7 +51,7 @@ class SimpleLSTMRNN(paddle.nn.Layer):
 
         for i in range(self._num_layers):
             weight_1 = self.create_parameter(
-                attr=base.ParamAttr(
+                attr=paddle.ParamAttr(
                     initializer=paddle.nn.initializer.Uniform(
                         low=-self._init_scale, high=self._init_scale
                     )
@@ -62,7 +64,7 @@ class SimpleLSTMRNN(paddle.nn.Layer):
             )
             self.weight_1_arr.append(self.add_parameter('w_%d' % i, weight_1))
             bias_1 = self.create_parameter(
-                attr=base.ParamAttr(
+                attr=paddle.ParamAttr(
                     initializer=paddle.nn.initializer.Uniform(
                         low=-self._init_scale, high=self._init_scale
                     )
@@ -157,7 +159,7 @@ class PtbModel(paddle.nn.Layer):
             vocab_size,
             hidden_size,
             sparse=False,
-            weight_attr=base.ParamAttr(
+            weight_attr=paddle.ParamAttr(
                 name='embedding_para',
                 initializer=paddle.nn.initializer.Uniform(
                     low=-init_scale, high=init_scale
@@ -165,7 +167,7 @@ class PtbModel(paddle.nn.Layer):
             ),
         )
         self.softmax_weight = self.create_parameter(
-            attr=base.ParamAttr(),
+            attr=paddle.ParamAttr(),
             shape=[self.hidden_size, self.vocab_size],
             dtype="float32",
             default_initializer=paddle.nn.initializer.Uniform(
@@ -173,7 +175,7 @@ class PtbModel(paddle.nn.Layer):
             ),
         )
         self.softmax_bias = self.create_parameter(
-            attr=base.ParamAttr(),
+            attr=paddle.ParamAttr(),
             shape=[self.vocab_size],
             dtype="float32",
             default_initializer=paddle.nn.initializer.Uniform(
@@ -184,7 +186,6 @@ class PtbModel(paddle.nn.Layer):
     def build_once(self, input, label, init_hidden, init_cell):
         pass
 
-    @to_static
     def forward(self, input, label, init_hidden, init_cell):
         init_h = paddle.reshape(
             init_hidden, shape=[self.num_layers, -1, self.hidden_size]
@@ -225,7 +226,7 @@ class PtbModel(paddle.nn.Layer):
         np.save("emb_grad", self.x_emb.gradient())
 
 
-def train(place):
+def train():
     num_layers = 1
     batch_size = 4
     hidden_size = 10
@@ -236,16 +237,18 @@ def train(place):
     vocab_size = 1000
     batch_num = 200
 
-    with base.dygraph.guard(place):
+    with unique_name.guard():
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
-        ptb_model = PtbModel(
-            hidden_size=hidden_size,
-            vocab_size=vocab_size,
-            num_layers=num_layers,
-            num_steps=num_steps,
-            init_scale=init_scale,
-            dropout=dropout,
+        ptb_model = paddle.jit.to_static(
+            PtbModel(
+                hidden_size=hidden_size,
+                vocab_size=vocab_size,
+                num_layers=num_layers,
+                num_steps=num_steps,
+                init_scale=init_scale,
+                dropout=dropout,
+            )
         )
 
         sgd = SGD(learning_rate=1e-3, parameters=ptb_model.parameters())
@@ -262,8 +265,8 @@ def train(place):
                 (num_layers, batch_size, hidden_size), dtype='float32'
             )
 
-            init_hidden = to_variable(init_hidden_data)
-            init_cell = to_variable(init_cell_data)
+            init_hidden = paddle.to_tensor(init_hidden_data)
+            init_cell = paddle.to_tensor(init_cell_data)
             for step_id in range(batch_num):
                 x_data = np.arange(12).reshape(4, 3).astype('int64')
                 y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
@@ -272,8 +275,8 @@ def train(place):
                 x_data = x_data.reshape((-1, num_steps, 1))
                 y_data = y_data.reshape((-1, num_steps, 1))
 
-                x = to_variable(x_data)
-                y = to_variable(y_data)
+                x = paddle.to_tensor(x_data)
+                y = paddle.to_tensor(y_data)
 
                 dy_loss, last_hidden, last_cell = ptb_model(
                     x, y, init_hidden, init_cell
@@ -310,27 +313,20 @@ def train(place):
         return out_loss, last_hidden.numpy(), last_cell.numpy()
 
 
-def train_dygraph(place):
-    paddle.jit.enable_to_static(False)
-    return train(place)
+def train_dygraph():
+    with enable_to_static_guard(False):
+        return train()
 
 
-def train_static(place):
-    paddle.jit.enable_to_static(True)
-    return train(place)
+def train_static():
+    return train()
 
 
 class TestPtb(Dy2StTestBase):
-    def setUp(self):
-        self.place = (
-            base.CUDAPlace(0)
-            if base.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
-
+    @test_legacy_and_pt_and_pir
     def test_check_result(self):
-        loss_1, hidden_1, cell_1 = train_static(self.place)
-        loss_2, hidden_2, cell_2 = train_dygraph(self.place)
+        loss_1, hidden_1, cell_1 = train_dygraph()
+        loss_2, hidden_2, cell_2 = train_static()
 
         np.testing.assert_allclose(loss_1, loss_2, rtol=1e-05)
         np.testing.assert_allclose(hidden_1, hidden_2, rtol=1e-05)
