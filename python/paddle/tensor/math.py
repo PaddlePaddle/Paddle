@@ -7192,19 +7192,19 @@ def signbit(x, name=None):
             >>> x = paddle.to_tensor([1.1, -2.1, 0., 2.5, -0.0], dtype='float32')
             >>> res = paddle.signbit(x)
             >>> print(res)
-            Tensor(shape=[4], dtype=bool, place=Place(cpu), stop_gradient=True,
+            Tensor(shape=[5], dtype=bool, place=Place(cpu), stop_gradient=True,
             [False , True, False, False, True])
 
         .. code-block:: python
             :name: signbit-example-2
-            
+
             >>> import paddle
             >>> paddle.set_device('cpu')
             >>> x = paddle.to_tensor([-5, -2, 3], dtype='int32')
             >>> res = paddle.signbit(x)
             >>> print(res)
             Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
-            [True. , True , False])
+            [True , True , False])
     """
     if not isinstance(x, (paddle.Tensor, Variable)):
         raise TypeError(f"x must be tensor type, but got {type(x)}")
