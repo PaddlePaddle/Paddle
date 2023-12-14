@@ -42,7 +42,6 @@ from paddle.distributed.auto_parallel.static.utils import (
     convert_to_dims_mapping,
     get_dist_attr,
 )
-from paddle.distributed.checkpoint.utils import run_in_dynamic_mode
 from paddle.framework import core
 
 from .placement_type import check_placements_equal, get_shard_spec
@@ -407,7 +406,7 @@ class DistModel:
             return dist_tensor
 
         global_state_dict = {}
-        with run_in_dynamic_mode():
+        with paddle.base.dygraph.guard():
             for var_name, tensor in local_state_dict.items():
                 assert (
                     var_name in dist_attrs

@@ -14,7 +14,6 @@
 
 
 import copy
-import functools
 from typing import List, Tuple, Union
 
 import numpy as np
@@ -64,34 +63,3 @@ def compute_local_shape_and_global_offset(
 def flatten_state_dict(state_dict):
     # TODO, {"model": {"w0": xxx}} -> {model.w0: xxx}
     return state_dict
-
-
-class InDynamicMode:
-    def __init__(self) -> None:
-        self._static_to_dynamic_mode = False
-
-    def __call__(self, func, *args, **kwds):
-        functools.wraps(func)
-
-        def inner_func(*args, **kw):
-            if not paddle.in_dynamic_mode():
-                paddle.disable_static()
-                func(*args, **kw)
-                paddle.enable_static()
-            else:
-                func(*args, **kw)
-
-        return inner_func
-
-    def __enter__(self):
-        if not paddle.in_dynamic_mode():
-            self._static_to_dynamic_mode = True
-            paddle.disable_static()
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        if paddle.in_dynamic_mode() and self._static_to_dynamic_mode:
-            paddle.enable_static()
-            self._static_to_dynamic_mode = False
-
-
-run_in_dynamic_mode = InDynamicMode

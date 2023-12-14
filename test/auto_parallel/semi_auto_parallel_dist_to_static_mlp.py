@@ -21,7 +21,6 @@ import paddle
 import paddle.distributed as dist
 from paddle import nn
 from paddle.distributed import Shard
-from paddle.distributed.checkpoint.utils import run_in_dynamic_mode
 from paddle.distributed.fleet.utils import recompute
 from paddle.io import DataLoader
 
@@ -217,7 +216,7 @@ class TestSimpleNetForSemiAutoParallel:
         dist.barrier()
         expected_local_state_dict = {}
         need_load_state_dict = {}
-        with run_in_dynamic_mode():
+        with paddle.base.dygraph.guard():
             for k, v in state_dict_to_save.items():
                 local_value = v._local_value()
                 expected_local_state_dict[k] = local_value.clone()
