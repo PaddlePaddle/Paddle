@@ -16,11 +16,11 @@ OP_GET_KERNEL_TYPE_FOR_VAR_TEMPLATE = """
 bool {op_name}::InferSymbolicShape(pir::Builder &builder,
                                 const std::vector<pir::OpOperand> &operands,
                                 std::vector<pir::Value> &reified_return_shapes) {{
-  VLOG(4) << "Reify infer shape for op: {op_name}";
+  VLOG(4) << "Infer symbolic shape for op: {op_name}";
   return {op_name}InferSymbolicShape(builder, operands, reified_return_shapes);
 }}
 """
 
 
-def gen_reify_infer_shape_str(op_class_name):
+def gen_infer_symbolic_shape_str(op_class_name):
     return OP_GET_KERNEL_TYPE_FOR_VAR_TEMPLATE.format(op_name=op_class_name)

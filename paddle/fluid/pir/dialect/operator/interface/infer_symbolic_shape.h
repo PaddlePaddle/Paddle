@@ -30,13 +30,13 @@ class InferSymbolicShapeInterface
  public:
   /// Defined these methods with the interface.
   struct Concept {
-    explicit Concept(bool (*reify_return_type_shapes)(
+    explicit Concept(bool (*infer_symbolic_shapes)(
         pir::Operation* op,
         pir::Builder& builder,  // NOLINT
         const std::vector<pir::OpOperand>& operands,
         std::vector<pir::Value>& reified_return_shapes))  // NOLINT
-        : reify_return_type_shapes(reify_return_type_shapes) {}
-    bool (*reify_return_type_shapes)(
+        : infer_symbolic_shapes(infer_symbolic_shapes) {}
+    bool (*infer_symbolic_shapes)(
         pir::Operation* op,
         pir::Builder& builder,
         const std::vector<pir::OpOperand>& operands,

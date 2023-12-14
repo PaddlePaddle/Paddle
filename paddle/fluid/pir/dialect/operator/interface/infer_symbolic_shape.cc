@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/dialect/operator/interface/reify_infer_shape.h"
+#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape.h"
 #include "paddle/pir/dialect/shape/ir/shape_op.h"
 
 namespace paddle::dialect {
@@ -21,7 +21,7 @@ bool InferSymbolicShapeInterface::InferSymbolicShape(
     pir::Builder &builder,
     const std::vector<pir::OpOperand> &operands,
     std::vector<pir::Value> &reified_return_shapes) {
-  return impl_->reify_return_type_shapes(
+  return impl_->infer_symbolic_shapes(
       operation(), builder, operands, reified_return_shapes);
 }
 }  // namespace paddle::dialect
