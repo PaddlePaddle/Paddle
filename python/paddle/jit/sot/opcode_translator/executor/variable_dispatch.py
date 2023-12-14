@@ -783,14 +783,14 @@ def is_not_func(var: VariableBase, other: VariableBase):
 Dispatcher.register(
     operator_is_none,
     ("TensorVariable",),
-    lambda var: ConstantVariable.wrap_literal(False, var.graph),
+    lambda var: ConstantVariable(False, var.graph, DummyTracker([var])),
 )
 
 # is not None
 Dispatcher.register(
     operator_is_not_none,
     ("TensorVariable",),
-    lambda var: ConstantVariable.wrap_literal(True, var.graph),
+    lambda var: ConstantVariable(True, var.graph, DummyTracker([var])),
 )
 
 # is None
