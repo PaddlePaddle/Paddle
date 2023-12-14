@@ -370,14 +370,17 @@ def load_state_dict(
 ) -> None:
     """
     Load the state_dict inplace from a checkpoint path.
+
     Args:
         state_dict(Dict[str, paddle.Tensor]): The state_dict to load. It will be modified inplace after loading.
         path(str): The directory to load checkpoint files.
         process_group(paddle.distributed.collective.Group): ProcessGroup to be used for cross-rank synchronization. Use the default process group which contains all cards.
         coordinator_rank(int): The rank used to coordinate the checkpoint. Rank0 is used by default.
+
     Example:
         .. code-block:: python
-            >>> # doctest: +SKIP('Load state dict.')
+
+            >>> # doctest: +SKIP('run in distributed mode.')
             >>> import paddle
             >>> import paddle.distributed as dist
             >>> ckpt_path = "./checkpoint"
@@ -414,6 +417,10 @@ def load_state_dict(
         if use_dist and process_group is None and not is_initialized():
             # Init the default global process group
             paddle.distributed.init_parallel_env()
+
+        if use_dist:
+            # sync to avoid some ranks not write path yet
+            paddle.distributed.barrier(process_group)
 
         rank_to_files = get_rank_to_files(
             path, state_dict, process_group, use_dist
