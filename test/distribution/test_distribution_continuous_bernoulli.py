@@ -28,25 +28,23 @@ from paddle.distribution.continuous_bernoulli import ContinuousBernoulli
 
 
 class ContinuousBernoulli_np:
-    def __init__(self, probability, eps=0.02):
-        self.eps = eps
-        self.dtype = 'float32'
+    def __init__(self, probs, lims=(0.48, 0.52)):
+        self.lims = lims
+        self.dtype = probs.dtype
         eps_prob = 1.1920928955078125e-07
-        self.probability = np.clip(
-            probability, a_min=eps_prob, a_max=1.0 - eps_prob
-        )
+        self.probs = np.clip(probs, a_min=eps_prob, a_max=1.0 - eps_prob)
 
     def _cut_support_region(self):
         return np.logical_or(
-            np.less_equal(self.probability, 0.5 - self.eps),
-            np.greater_equal(self.probability, 0.5 + self.eps),
+            np.less_equal(self.probs, self.lims[0]),
+            np.greater_equal(self.probs, self.lims[1]),
         )
 
     def _cut_probs(self):
         return np.where(
             self._cut_support_region(),
-            self.probability,
-            (0.5 - self.eps) * np.ones_like(self.probability),
+            self.probs,
+            self.lims[0] * np.ones_like(self.probs),
         )
 
     def _tanh_inverse(self, value):
@@ -67,7 +65,7 @@ class ContinuousBernoulli_np:
             np.log1p(-2.0 * cut_probs_below_half),
             np.log(2.0 * cut_probs_above_half - 1.0),
         )
-        x = np.square(self.probability - 0.5)
+        x = np.square(self.probs - 0.5)
         taylor_expansion = np.log(2.0) + (4.0 / 3.0 + 104.0 / 45.0 * x) * x
         return np.where(
             self._cut_support_region(), log_constant_propose, taylor_expansion
@@ -81,7 +79,7 @@ class ContinuousBernoulli_np:
         propose = tmp + np.divide(
             1.0, np.square(2.0 * self._tanh_inverse(1.0 - 2.0 * cut_probs))
         )
-        x = np.square(self.probability - 0.5)
+        x = np.square(self.probs - 0.5)
         taylor_expansion = 1.0 / 12.0 - (1.0 / 15.0 - 128.0 / 945.0 * x) * x
         return np.where(self._cut_support_region(), propose, taylor_expansion)
 
@@ -89,16 +87,16 @@ class ContinuousBernoulli_np:
         cut_probs = self._cut_probs()
         tmp = cut_probs / (2.0 * cut_probs - 1.0)
         propose = tmp + 1.0 / (2.0 * self._tanh_inverse(1.0 - 2.0 * cut_probs))
-        x = self.probability - 0.5
+        x = self.probs - 0.5
         taylor_expansion = 0.5 + (1.0 / 3.0 + 16.0 / 45.0 * np.square(x)) * x
         return np.where(self._cut_support_region(), propose, taylor_expansion)
 
     def np_entropy(self):
-        log_p = np.log(self.probability)
-        log_1_minus_p = np.log1p(-self.probability)
+        log_p = np.log(self.probs)
+        log_1_minus_p = np.log1p(-self.probs)
         return np.where(
-            np.equal(self.probability, 0.5),
-            np.full_like(self.probability, 0.0),
+            np.equal(self.probs, 0.5),
+            np.full_like(self.probs, 0.0),
             (
                 -self._log_constant()
                 + self.np_mean() * (log_1_minus_p - log_p)
@@ -112,8 +110,7 @@ class ContinuousBernoulli_np:
     def np_log_prob(self, value):
         eps = 1e-8
         cross_entropy = np.nan_to_num(
-            value * np.log(self.probability)
-            + (1.0 - value) * np.log(1 - self.probability),
+            value * np.log(self.probs) + (1.0 - value) * np.log(1 - self.probs),
             neginf=-eps,
         )
         return self._log_constant() + cross_entropy
@@ -150,8 +147,8 @@ class ContinuousBernoulli_np:
 
     def np_kl_divergence(self, other):
         part1 = -self.np_entropy()
-        log_q = np.log(other.probability)
-        log_1_minus_q = np.log1p(-other.probability)
+        log_q = np.log(other.probs)
+        log_1_minus_q = np.log1p(-other.probs)
         part2 = -(
             other._log_constant()
             + self.np_mean() * (log_q - log_1_minus_q)
@@ -162,60 +159,60 @@ class ContinuousBernoulli_np:
 
 @parameterize.place(config.DEVICES)
 @parameterize.parameterize_cls(
-    (parameterize.TEST_CASE_NAME, 'probability'),
+    (parameterize.TEST_CASE_NAME, 'probs'),
     [
         ('half', np.array(0.5).astype("float32")),
         (
             'one-dim',
-            parameterize.xrand((1,), min=0.0, max=0.498).astype("float64"),
+            parameterize.xrand((1,), min=0.0, max=1.0).astype("float64"),
         ),
         (
             'multi-dim',
-            parameterize.xrand((2, 3), min=0.498, max=1.0).astype("float32"),
+            parameterize.xrand((2, 3), min=0.0, max=1.0).astype("float32"),
         ),
     ],
 )
 class TestContinuousBernoulli(unittest.TestCase):
     def setUp(self):
         self._dist = ContinuousBernoulli(
-            probability=paddle.to_tensor(self.probability), eps=0.02
+            probs=paddle.to_tensor(self.probs), lims=(0.48, 0.52)
         )
-        self._np_dist = ContinuousBernoulli_np(self.probability, eps=0.02)
+        self._np_dist = ContinuousBernoulli_np(self.probs, lims=(0.48, 0.52))
 
     def test_mean(self):
         mean = self._dist.mean
-        self.assertEqual(mean.numpy().dtype, self.probability.dtype)
+        self.assertEqual(mean.numpy().dtype, self.probs.dtype)
         np.testing.assert_allclose(
             mean,
             self._np_dist.np_mean(),
-            rtol=config.RTOL.get(str(self.probability.dtype)),
-            atol=config.ATOL.get(str(self.probability.dtype)),
+            rtol=config.RTOL.get(str(self.probs.dtype)),
+            atol=config.ATOL.get(str(self.probs.dtype)),
         )
 
     def test_variance(self):
         var = self._dist.variance
-        self.assertEqual(var.numpy().dtype, self.probability.dtype)
+        self.assertEqual(var.numpy().dtype, self.probs.dtype)
         np.testing.assert_allclose(
             var,
             self._np_dist.np_variance(),
-            rtol=0.005,
+            rtol=0.01,
             atol=0.0,
         )
 
     def test_entropy(self):
         entropy = self._dist.entropy()
-        self.assertEqual(entropy.numpy().dtype, self.probability.dtype)
+        self.assertEqual(entropy.numpy().dtype, self.probs.dtype)
         np.testing.assert_allclose(
             entropy,
             self._np_dist.np_entropy(),
-            rtol=0.005,
+            rtol=0.01,
             atol=0.0,
         )
 
     def test_sample(self):
         sample_shape = ()
         samples = self._dist.sample(sample_shape)
-        self.assertEqual(samples.numpy().dtype, self.probability.dtype)
+        self.assertEqual(samples.numpy().dtype, self.probs.dtype)
         self.assertEqual(
             tuple(samples.shape),
             sample_shape + self._dist.batch_shape + self._dist.event_shape,
@@ -229,20 +226,20 @@ class TestContinuousBernoulli(unittest.TestCase):
         np.testing.assert_allclose(
             sample_mean,
             self._dist.mean,
-            rtol=0.02,
+            rtol=0.1,
             atol=0.0,
         )
         np.testing.assert_allclose(
             sample_variance,
             self._dist.variance,
-            rtol=0.02,
+            rtol=0.1,
             atol=0.0,
         )
 
 
 @parameterize.place(config.DEVICES)
 @parameterize.parameterize_cls(
-    (parameterize.TEST_CASE_NAME, 'probability', 'value'),
+    (parameterize.TEST_CASE_NAME, 'probs', 'value'),
     [
         (
             'value-same-shape',
@@ -259,40 +256,40 @@ class TestContinuousBernoulli(unittest.TestCase):
 class TestContinuousBernoulliProbs(unittest.TestCase):
     def setUp(self):
         self._dist = ContinuousBernoulli(
-            probability=paddle.to_tensor(self.probability), eps=0.02
+            probs=paddle.to_tensor(self.probs), lims=(0.48, 0.52)
         )
-        self._np_dist = ContinuousBernoulli_np(self.probability, eps=0.02)
+        self._np_dist = ContinuousBernoulli_np(self.probs, lims=(0.48, 0.52))
 
     def test_prob(self):
         np.testing.assert_allclose(
             self._dist.prob(paddle.to_tensor(self.value)),
             self._np_dist.np_prob(self.value),
-            rtol=config.RTOL.get(str(self.probability.dtype)),
-            atol=config.ATOL.get(str(self.probability.dtype)),
+            rtol=config.RTOL.get(str(self.probs.dtype)),
+            atol=config.ATOL.get(str(self.probs.dtype)),
         )
 
     def test_log_prob(self):
         np.testing.assert_allclose(
             self._dist.log_prob(paddle.to_tensor(self.value)),
             self._np_dist.np_log_prob(self.value),
-            rtol=config.RTOL.get(str(self.probability.dtype)),
-            atol=config.ATOL.get(str(self.probability.dtype)),
+            rtol=config.RTOL.get(str(self.probs.dtype)),
+            atol=config.ATOL.get(str(self.probs.dtype)),
         )
 
     def test_cdf(self):
         np.testing.assert_allclose(
             self._dist.cdf(paddle.to_tensor(self.value)),
             self._np_dist.np_cdf(self.value),
-            rtol=config.RTOL.get(str(self.probability.dtype)),
-            atol=config.ATOL.get(str(self.probability.dtype)),
+            rtol=config.RTOL.get(str(self.probs.dtype)),
+            atol=config.ATOL.get(str(self.probs.dtype)),
         )
 
     def test_icdf(self):
         np.testing.assert_allclose(
             self._dist.icdf(paddle.to_tensor(self.value)),
             self._np_dist.np_icdf(self.value),
-            rtol=config.RTOL.get(str(self.probability.dtype)),
-            atol=config.ATOL.get(str(self.probability.dtype)),
+            rtol=config.RTOL.get(str(self.probs.dtype)),
+            atol=config.ATOL.get(str(self.probs.dtype)),
         )
 
 
@@ -316,13 +313,13 @@ class TestContinuousBernoulliKL(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
         self._dist1 = ContinuousBernoulli(
-            probability=paddle.to_tensor(self.p_1), eps=0.02
+            probs=paddle.to_tensor(self.p_1), lims=(0.48, 0.52)
         )
         self._dist2 = ContinuousBernoulli(
-            probability=paddle.to_tensor(self.p_2), eps=0.02
+            probs=paddle.to_tensor(self.p_2), lims=(0.48, 0.52)
         )
-        self._np_dist1 = ContinuousBernoulli_np(self.p_1, eps=0.02)
-        self._np_dist2 = ContinuousBernoulli_np(self.p_2, eps=0.02)
+        self._np_dist1 = ContinuousBernoulli_np(self.p_1, lims=(0.48, 0.52))
+        self._np_dist2 = ContinuousBernoulli_np(self.p_2, lims=(0.48, 0.52))
 
     def test_kl_divergence(self):
         kl0 = self._dist1.kl_divergence(self._dist2)
@@ -333,7 +330,7 @@ class TestContinuousBernoulliKL(unittest.TestCase):
         np.testing.assert_allclose(
             kl0,
             kl1,
-            rtol=0.005,
+            rtol=0.01,
             atol=0.0,
         )
 

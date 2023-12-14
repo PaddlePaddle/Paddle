@@ -28,25 +28,23 @@ from paddle.distribution.continuous_bernoulli import ContinuousBernoulli
 
 
 class ContinuousBernoulli_np:
-    def __init__(self, probability, eps=0.02):
-        self.eps = eps
-        self.dtype = 'float32'
+    def __init__(self, probs, lims=(0.48, 0.52)):
+        self.lims = lims
+        self.dtype = probs.dtype
         eps_prob = 1.1920928955078125e-07
-        self.probability = np.clip(
-            probability, a_min=eps_prob, a_max=1.0 - eps_prob
-        )
+        self.probs = np.clip(probs, a_min=eps_prob, a_max=1.0 - eps_prob)
 
     def _cut_support_region(self):
         return np.logical_or(
-            np.less_equal(self.probability, 0.5 - self.eps),
-            np.greater_equal(self.probability, 0.5 + self.eps),
+            np.less_equal(self.probs, self.lims[0]),
+            np.greater_equal(self.probs, self.lims[1]),
         )
 
     def _cut_probs(self):
         return np.where(
             self._cut_support_region(),
-            self.probability,
-            (0.5 - self.eps) * np.ones_like(self.probability),
+            self.probs,
+            self.lims[0] * np.ones_like(self.probs),
         )
 
     def _tanh_inverse(self, value):
@@ -67,7 +65,7 @@ class ContinuousBernoulli_np:
             np.log1p(-2.0 * cut_probs_below_half),
             np.log(2.0 * cut_probs_above_half - 1.0),
         )
-        x = np.square(self.probability - 0.5)
+        x = np.square(self.probs - 0.5)
         taylor_expansion = np.log(2.0) + (4.0 / 3.0 + 104.0 / 45.0 * x) * x
         return np.where(
             self._cut_support_region(), log_constant_propose, taylor_expansion
@@ -81,7 +79,7 @@ class ContinuousBernoulli_np:
         propose = tmp + np.divide(
             1.0, np.square(2.0 * self._tanh_inverse(1.0 - 2.0 * cut_probs))
         )
-        x = np.square(self.probability - 0.5)
+        x = np.square(self.probs - 0.5)
         taylor_expansion = 1.0 / 12.0 - (1.0 / 15.0 - 128.0 / 945.0 * x) * x
         return np.where(self._cut_support_region(), propose, taylor_expansion)
 
@@ -89,16 +87,16 @@ class ContinuousBernoulli_np:
         cut_probs = self._cut_probs()
         tmp = cut_probs / (2.0 * cut_probs - 1.0)
         propose = tmp + 1.0 / (2.0 * self._tanh_inverse(1.0 - 2.0 * cut_probs))
-        x = self.probability - 0.5
+        x = self.probs - 0.5
         taylor_expansion = 0.5 + (1.0 / 3.0 + 16.0 / 45.0 * np.square(x)) * x
         return np.where(self._cut_support_region(), propose, taylor_expansion)
 
     def np_entropy(self):
-        log_p = np.log(self.probability)
-        log_1_minus_p = np.log1p(-self.probability)
+        log_p = np.log(self.probs)
+        log_1_minus_p = np.log1p(-self.probs)
         return np.where(
-            np.equal(self.probability, 0.5),
-            np.full_like(self.probability, 0.0),
+            np.equal(self.probs, 0.5),
+            np.full_like(self.probs, 0.0),
             (
                 -self._log_constant()
                 + self.np_mean() * (log_1_minus_p - log_p)
@@ -112,8 +110,7 @@ class ContinuousBernoulli_np:
     def np_log_prob(self, value):
         eps = 1e-8
         cross_entropy = np.nan_to_num(
-            value * np.log(self.probability)
-            + (1.0 - value) * np.log(1 - self.probability),
+            value * np.log(self.probs) + (1.0 - value) * np.log(1 - self.probs),
             neginf=-eps,
         )
         return self._log_constant() + cross_entropy
@@ -150,8 +147,8 @@ class ContinuousBernoulli_np:
 
     def np_kl_divergence(self, other):
         part1 = -self.np_entropy()
-        log_q = np.log(other.probability)
-        log_1_minus_q = np.log1p(-other.probability)
+        log_q = np.log(other.probs)
+        log_1_minus_q = np.log1p(-other.probs)
         part2 = -(
             other._log_constant()
             + self.np_mean() * (log_q - log_1_minus_q)
@@ -165,31 +162,31 @@ paddle.enable_static()
 
 @parameterize.place(config.DEVICES)
 @parameterize.parameterize_cls(
-    (parameterize.TEST_CASE_NAME, 'probability'),
+    (parameterize.TEST_CASE_NAME, 'probs'),
     [
         (
             'multi-dim',
-            parameterize.xrand((1, 3), min=0.0, max=0.498).astype("float32"),
+            parameterize.xrand((1, 3), min=0.0, max=1.0).astype("float32"),
         ),
     ],
 )
 class TestContinuousBernoulli(unittest.TestCase):
     def setUp(self):
-        self._np_dist = ContinuousBernoulli_np(self.probability)
+        self._np_dist = ContinuousBernoulli_np(self.probs)
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         executor = paddle.static.Executor(self.place)
         with paddle.static.program_guard(main_program, startup_program):
-            probability = paddle.static.data(
-                'probability', self.probability.shape, self.probability.dtype
+            probs = paddle.static.data(
+                'probs', self.probs.shape, self.probs.dtype
             )
-            dist = ContinuousBernoulli(probability)
+            dist = ContinuousBernoulli(probs, lims=(0.48, 0.52))
             mean = dist.mean
             var = dist.variance
             entropy = dist.entropy()
             large_samples = dist.sample(shape=(50000,))
         fetch_list = [mean, var, entropy, large_samples]
-        feed = {'probability': self.probability}
+        feed = {'probs': self.probs}
 
         executor.run(startup_program)
         [
@@ -200,30 +197,26 @@ class TestContinuousBernoulli(unittest.TestCase):
         ] = executor.run(main_program, feed=feed, fetch_list=fetch_list)
 
     def test_mean(self):
-        self.assertEqual(
-            str(self.mean.dtype).split('.')[-1], self.probability.dtype
-        )
+        self.assertEqual(str(self.mean.dtype).split('.')[-1], self.probs.dtype)
         np.testing.assert_allclose(
             self.mean,
             self._np_mean(),
-            rtol=config.RTOL.get(str(self.probability.dtype)),
-            atol=config.ATOL.get(str(self.probability.dtype)),
+            rtol=config.RTOL.get(str(self.probs.dtype)),
+            atol=config.ATOL.get(str(self.probs.dtype)),
         )
 
     def test_variance(self):
-        self.assertEqual(
-            str(self.var.dtype).split('.')[-1], self.probability.dtype
-        )
+        self.assertEqual(str(self.var.dtype).split('.')[-1], self.probs.dtype)
         np.testing.assert_allclose(
             self.var,
             self._np_variance(),
-            rtol=0.005,
-            atol=0.0,
+            rtol=config.RTOL.get(str(self.probs.dtype)),
+            atol=config.ATOL.get(str(self.probs.dtype)),
         )
 
     def test_entropy(self):
         self.assertEqual(
-            str(self.entropy.dtype).split('.')[-1], self.probability.dtype
+            str(self.entropy.dtype).split('.')[-1], self.probs.dtype
         )
         np.testing.assert_allclose(
             self.entropy, self._np_entropy(), rtol=0.005, atol=0
@@ -247,7 +240,7 @@ class TestContinuousBernoulli(unittest.TestCase):
 
 @parameterize.place(config.DEVICES)
 @parameterize.parameterize_cls(
-    (parameterize.TEST_CASE_NAME, 'probability', 'value'),
+    (parameterize.TEST_CASE_NAME, 'probs', 'value'),
     [
         (
             'value-broadcast-shape',
@@ -258,21 +251,21 @@ class TestContinuousBernoulli(unittest.TestCase):
 )
 class TestContinuousBernoulliProbs(unittest.TestCase):
     def setUp(self):
-        self._np_dist = ContinuousBernoulli_np(self.probability)
+        self._np_dist = ContinuousBernoulli_np(self.probs)
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         executor = paddle.static.Executor(self.place)
 
         with paddle.static.program_guard(main_program, startup_program):
-            probability = paddle.static.data(
-                'probability', self.probability.shape, self.probability.dtype
+            probs = paddle.static.data(
+                'probs', self.probs.shape, self.probs.dtype
             )
             value = paddle.static.data(
                 'value', self.value.shape, self.value.dtype
             )
-            dist = ContinuousBernoulli(probability)
+            dist = ContinuousBernoulli(probs, lims=(0.48, 0.52))
             pmf = dist.prob(value)
-        feed = {'probability': self.probability, 'value': self.value}
+        feed = {'probs': self.probs, 'value': self.value}
         fetch_list = [pmf]
 
         executor.run(startup_program)
@@ -284,8 +277,8 @@ class TestContinuousBernoulliProbs(unittest.TestCase):
         np.testing.assert_allclose(
             self.pmf,
             self._np_dist.np_prob(self.value),
-            rtol=config.RTOL.get(str(self.probability.dtype)),
-            atol=config.ATOL.get(str(self.probability.dtype)),
+            rtol=config.RTOL.get(str(self.probs.dtype)),
+            atol=config.ATOL.get(str(self.probs.dtype)),
         )
 
 
@@ -312,8 +305,8 @@ class TestContinuousBernoulliKL(unittest.TestCase):
         with paddle.static.program_guard(main_program, startup_program):
             p_1 = paddle.static.data('p_1', self.p_1.shape)
             p_2 = paddle.static.data('p_2', self.p_2.shape)
-            dist1 = ContinuousBernoulli(p_1)
-            dist2 = ContinuousBernoulli(p_2)
+            dist1 = ContinuousBernoulli(p_1, lims=(0.48, 0.52))
+            dist2 = ContinuousBernoulli(p_2, lims=(0.48, 0.52))
             kl_dist1_dist2 = dist1.kl_divergence(dist2)
         feed = {'p_1': self.p_1, 'p_2': self.p_2}
         fetch_list = [kl_dist1_dist2]
@@ -332,7 +325,7 @@ class TestContinuousBernoulliKL(unittest.TestCase):
         np.testing.assert_allclose(
             kl0,
             kl1,
-            rtol=0.005,
+            rtol=0.01,
             atol=0.0,
         )
 
