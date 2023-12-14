@@ -70,7 +70,9 @@ class IR_API Region {
   /// is called for each nested region, block or operation,
   template <WalkOrder Order = WalkOrder::PostOrder, typename FuncT>
   void Walk(FuncT &&callback) {
-    for (auto &block : *this) block.Walk<Order>(callback);
+    for (auto &block : *this) {
+      block.Walk<Order>(callback);
+    }
   }
 
   // take the last block of region.

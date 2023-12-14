@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/pir/core/visitors.h"
+#include "paddle/pir/core/operation.h"
 
 namespace pir::detail {
 

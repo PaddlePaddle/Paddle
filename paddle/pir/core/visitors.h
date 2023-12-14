@@ -15,11 +15,12 @@
 
 #include <functional>
 #include "paddle/pir/core/dll_decl.h"
-#include "paddle/pir/core/region.h"
 
 namespace pir {
 
 class Operation;
+class Region;
+class Block;
 
 // Traversal order.
 enum class WalkOrder { PreOrder, PostOrder };

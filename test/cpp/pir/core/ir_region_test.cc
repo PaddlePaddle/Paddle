@@ -22,6 +22,7 @@
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/utils.h"
+#include "test/cpp/pir/tools/test_pir_utils.h"
 
 TEST(region, erase_op_test) {
   // (1) Init environment.
@@ -54,4 +55,39 @@ TEST(region, erase_op_test) {
   EXPECT_EQ(region.size(), 2u);
   region.erase(region.begin());
   EXPECT_EQ(region.size(), 1u);
+}
+
+TEST(region, walk_test) {
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  pir::Program program(ctx);
+  pir::Builder builder = pir::Builder(ctx, program.block());
+
+  pir::FloatAttribute fp_attr = builder.float_attr(2.0f);
+  pir::Float32Type fp32_type = builder.float32_type();
+  pir::OpResult a =
+      builder.Build<pir::ConstantOp>(fp_attr, fp32_type)->result(0);
+  pir::OpResult b =
+      builder.Build<pir::ConstantOp>(fp_attr, fp32_type)->result(0);
+
+  builder.Build<pir::CombineOp>(std::vector<pir::Value>{a, b});
+
+  // Test pir::Op::Walk
+  size_t op_size = 0;
+  pir::Operation* op =
+      test::CreateDenseTensorOp(ctx, {1, 1}, {"op_attr"}, {"op_name"});
+  op->Walk([&](pir::Operation* op) { op_size++; });
+  EXPECT_EQ(op_size, 1u);
+
+  // Test pir::Block::Walk
+  size_t block_size = 0;
+  pir::Block* block = program.block();
+  block->Walk([&](pir::Block* block) { block_size++; });
+  EXPECT_EQ(block_size, 3u);
+
+  // Test pir::Region::Walk
+  size_t region_size = 0;
+  pir::Region& region = program.module_op()->region(0);
+  region.push_back(new pir::Block());
+  region.Walk([&](pir::Region* region) { region_size++; });
+  EXPECT_EQ(region.size(), 2u);
 }

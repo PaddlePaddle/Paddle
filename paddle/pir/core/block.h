@@ -125,9 +125,16 @@ class IR_API Block {
   // PostOrder by default.
   template <WalkOrder Order = WalkOrder::PostOrder, typename FuncT>
   void Walk(Block::Iterator begin, Block::Iterator end, FuncT &&callback) {
-    for (auto &op = begin, begin != end, ++begin) {
-      detail::Walk<Order>(&op, callback);
+    for (auto &op = begin; begin != end; ++begin) {
+      detail::Walk<Order>(&op->operator*(), callback);
     }
+  }
+
+  // Walk the operations in the whole of this block.
+  // PostOrder by default.
+  template <WalkOrder Order = WalkOrder::PostOrder, typename FuncT>
+  void Walk(FuncT &&callback) {
+    return Walk<Order>(begin(), end(), std::forward<FuncT>(callback));
   }
 
  private:
