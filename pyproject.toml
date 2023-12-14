@@ -15,7 +15,7 @@ exclude = [
     "./python/paddle/utils/gast/**",
 ]
 line-length = 80
-target-version = "py37"
+target-version = "py38"
 
 [tool.ruff.lint]
 select = [
