@@ -97,13 +97,13 @@ class DimExpr;
 
 // DimExpr = std::int64_t
 //         | std::string
-//         | Add DimExpr DimExpr
-//         | Any DimExpr DimExpr
-//         | Mul DimExpr DimExpr
-//         | Div DimExpr DimExpr
-//         | Max DimExpr DimExpr
-//         | Min DimExpr DimExpr
-//         | Broadcast DimExpr DimExpr
+//         | Negative DimExpr
+//         | Reciprocal DimExpr
+//         | Add DimExpr
+//         | Mul DimExpr
+//         | Max DimExpr
+//         | Min DimExpr
+//         | Broadcast DimExpr
 using DimExprBase = std::variant<std::int64_t,
                                  std::string,
                                  Negative<DimExpr>,
@@ -134,11 +134,11 @@ class DimExpr : public DimExprBase {
   DimExpr operator/(const DimExpr& other) const;
 };
 
-// DimExprConstraint = Equal DimExpr DimExpr
-//                   | Broadcastable DimExpr DimExpr
+// DimExprConstraint = Equal DimExpr
+//                   | Broadcastable DimExpr
 using DimExprConstraint = std::variant<Equal<DimExpr>, Broadcastable<DimExpr>>;
 
-// ValueShapeDimExprs = tShape DimExpr | tValue DimExpr
+// ValueShapeDimExprs = tShape [DimExpr] | tValue [DimExpr]
 template <typename T>
 class ValueShape {
  public:
