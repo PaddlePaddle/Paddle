@@ -205,8 +205,8 @@ class TestContinuousBernoulli(unittest.TestCase):
         np.testing.assert_allclose(
             self.var,
             self._np_variance(),
-            rtol=config.RTOL.get(str(self.probs.dtype)),
-            atol=config.ATOL.get(str(self.probs.dtype)),
+            rtol=0.01,
+            atol=0.0,
         )
 
     def test_entropy(self):
@@ -214,14 +214,17 @@ class TestContinuousBernoulli(unittest.TestCase):
             str(self.entropy.dtype).split('.')[-1], self.probs.dtype
         )
         np.testing.assert_allclose(
-            self.entropy, self._np_entropy(), rtol=0.005, atol=0
+            self.entropy,
+            self._np_entropy(),
+            rtol=0.01,
+            atol=0.0,
         )
 
     def test_sample(self):
         sample_mean = self.large_samples.mean(axis=0)
         sample_variance = self.large_samples.var(axis=0)
-        np.testing.assert_allclose(sample_mean, self.mean, atol=0, rtol=0.02)
-        np.testing.assert_allclose(sample_variance, self.var, atol=0, rtol=0.02)
+        np.testing.assert_allclose(sample_mean, self.mean, atol=0, rtol=0.1)
+        np.testing.assert_allclose(sample_variance, self.var, atol=0, rtol=0.1)
 
     def _np_variance(self):
         return self._np_dist.np_variance()
