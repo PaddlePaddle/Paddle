@@ -49,7 +49,7 @@ DimExpr DimExprBuilder::Min(const DimExpr& lhs, const DimExpr& rhs) {
 }
 
 DimExpr DimExprBuilder::Broadcast(const DimExpr& lhs, const DimExpr& rhs) {
-  return std::make_shared<BroadcastDimExpr>(std::vector{lhs, rhs});
+  return BroadcastDimExpr(std::vector{lhs, rhs});
 }
 
 std::vector<DimExpr> DimExprBuilder::ConstShape(
@@ -67,7 +67,7 @@ void DimExprBuilder::CstrBroadcastable(const std::vector<DimExpr>& lhs,
 }
 
 void DimExprBuilder::CstrEq(const DimExpr& lhs, const DimExpr& rhs) {
-  constraints_->emplace_back(std::make_shared<Equal<DimExpr>>(lhs, rhs));
+  constraints_->emplace_back(Equal<DimExpr>(lhs, rhs));
 }
 
 void DimExprBuilder::CstrEq(const std::vector<DimExpr>& lhs,
