@@ -47,6 +47,7 @@ set(PYBIND_DEPS
     new_profiler
     fluid_jit
     prim_utils
+    gather_op_handle
     static_tensor_operants
     type_info
     auto_parallel)
