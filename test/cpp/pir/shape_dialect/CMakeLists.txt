@@ -17,7 +17,7 @@ paddle_test(
   gtest)
 
 paddle_test(
-  dim_expr_test
+  dim_expr_test1
   SRCS
   dim_expr_test.cc
   DEPS

@@ -30,8 +30,8 @@ struct BinaryDimExpr {
 
 #define DEFINE_DIM_EXPR_SUBCLASS(class_name, base) \
   template <typename T>                            \
-  struct class_name : public base {                \
-    using base::base;                              \
+  struct class_name : public base<T> {             \
+    using base<T>::base;                           \
   };
 
 DEFINE_DIM_EXPR_SUBCLASS(Add, BinaryDimExpr);

@@ -73,6 +73,15 @@ if(WITH_TESTING AND WITH_CINN)
     cinn_op_dialect
     pir_transforms)
 
+  paddle_test(
+    dynamic_reshape_test
+    SRCS
+    dynamic_reshape_test.cc
+    DEPS
+    pd_to_cinn_pass
+    cinn_op_dialect
+    pir_transforms)
+
   paddle_test(test_pir_build_cinn_pass SRCS build_cinn_pass_test.cc DEPS
               pir_transforms pir)
 
