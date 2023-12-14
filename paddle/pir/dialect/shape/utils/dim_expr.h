@@ -145,8 +145,8 @@ class ValueShape {
   explicit ValueShape(const std::vector<T>& shape)
       : shape_(shape), value_(std::nullopt) {}
 
-  static ValueShape MakeConsistentValue(const std::vector<T>& data) {
-    return ValueShape(std::vector<T>{T(data.size())}, data);
+  static ValueShape MakeConsistentValue(const std::vector<T>& value) {
+    return ValueShape(std::vector<T>{T(value.size())}, value);
   }
 
   const std::optional<std::vector<T>>& shape() const { return shape_; }
