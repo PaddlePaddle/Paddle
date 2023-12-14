@@ -37,8 +37,8 @@ TEST(DimExpr, dim_expr_builder) {
   DimExpr sym0 = DimExpr("S0");
   DimExpr sym1 = DimExpr("S1");
   DimExpr constant1 = DimExpr(1);
-  DimExpr any = builder.Any(sym0, sym1);
-  DimExpr out = builder.Broadcast(any, constant1);
+  DimExpr add = builder.Add(sym0, sym1);
+  DimExpr out = builder.Broadcast(add, constant1);
 }
 
 // Add constraints by DimExprBuilder
