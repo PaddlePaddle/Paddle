@@ -2104,10 +2104,9 @@ PyObject* CastPyArg2ValuePreHook(PyObject* obj) {
   }
   Py_INCREF(obj);
   PyObject* result = PyObject_CallFunction(hook, "O", obj);
-  if (result == nullptr) {
-    Py_DECREF(obj);
-    return nullptr;
-  }
+  PADDLE_ENFORCE(result,
+                 paddle::platform::errors::Fatal(
+                     "Call static_op_arg_pre_cast_hook failed."));
   Py_DECREF(obj);
   return result;
 }
