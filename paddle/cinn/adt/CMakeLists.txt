@@ -44,7 +44,7 @@ if(NOT CINN_ONLY)
     absl)
 
   cinn_cc_test(
-    adt_dim_expr_test
+    dim_expr_test
     SRCS
     dim_expr_test.cc
     DEPS
