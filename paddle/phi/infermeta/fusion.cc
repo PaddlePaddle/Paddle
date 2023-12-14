@@ -3519,6 +3519,7 @@ void FCInferMeta(const MetaTensor& input,
 void SelfDPAttenInferMeta(const MetaTensor& x,
                           const float alpha,
                           const int head_number,
+                          const bool causal,
                           MetaTensor* out) {
   auto dim_input = x.dims();
   PADDLE_ENFORCE_EQ(
