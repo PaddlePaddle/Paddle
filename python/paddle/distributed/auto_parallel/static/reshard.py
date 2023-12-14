@@ -330,7 +330,7 @@ class Inserter:
     """Insert op required in the reshard process."""
 
     @staticmethod
-    def insert_cast_op(block, idx, tensor, op_role, tensor_type):
+    def insert_cast_op(block, idx, tensor, op_role, tensor_type, sync=True):
         # to avoid name conflict with framework
         new_var_name = paddle.utils.unique_name.generate_with_ignorable_key(
             ".".join(["cast@RESHARD", 'tmp'])
@@ -341,7 +341,9 @@ class Inserter:
             type=tensor.type,
             lod_level=tensor.lod_level,
         )
-        cast_op = block._insert_op(
+
+        insert_op = block._insert_op if sync else block._insert_op_without_sync
+        cast_op = insert_op(
             idx,
             type='cast',
             inputs={'X': [tensor]},
@@ -356,12 +358,13 @@ class Inserter:
         return out
 
     @staticmethod
-    def insert_send_op(block, idx, tensor, src, dst, op_role):
+    def insert_send_op(block, idx, tensor, src, dst, op_role, sync=True):
         """Insert send op into block at the given index."""
         op_type = 'send_v2'
+        insert_op = block._insert_op if sync else block._insert_op_without_sync
         # use pair comm group
         process_group = new_process_group([src, dst], group_type='p2p')
-        send_op = block._insert_op(
+        send_op = insert_op(
             idx,
             type=op_type,
             inputs={'X': [tensor]},
@@ -376,12 +379,13 @@ class Inserter:
         send_op._set_attr('op_namescope', "/auto_parallel/reshard")
 
     @staticmethod
-    def insert_recv_op(block, idx, tensor, src, dst, op_role):
+    def insert_recv_op(block, idx, tensor, src, dst, op_role, sync=True):
         """Insert recv op into block at the given index."""
         op_type = 'recv_v2'
+        insert_op = block._insert_op if sync else block._insert_op_without_sync
         # use pair group
         process_group = new_process_group([src, dst], group_type='p2p')
-        recv_op = block._insert_op(
+        recv_op = insert_op(
             idx,
             type=op_type,
             inputs={'X': [tensor]},
@@ -399,12 +403,14 @@ class Inserter:
         recv_op._set_attr('op_namescope', "/auto_parallel/reshard")
 
     @staticmethod
-    def insert_reset_lod_op(block, idx, X, Y, op_role):
+    def insert_reset_lod_op(block, idx, X, Y, op_role, sync=True):
         """Insert reset_lod op into block at the given index."""
 
         new_var_name = paddle.utils.unique_name.generate_with_ignorable_key(
             ".".join(["reset_lod@RESHARD", 'tmp'])
         )
+        insert_op = block._insert_op if sync else block._insert_op_without_sync
+
         reset_lod_out = block.create_var(
             name=new_var_name,
             shape=X.shape,
@@ -413,7 +419,7 @@ class Inserter:
             lod_level=X.lod_level,
         )
 
-        reset_op = block._insert_op(
+        reset_op = insert_op(
             idx,
             type="lod_reset",
             inputs={'X': X, 'Y': Y},
@@ -424,12 +430,14 @@ class Inserter:
         return reset_lod_out
 
     @staticmethod
-    def insert_concat_op(block, idx, tensors, axis, op_role):
+    def insert_concat_op(block, idx, tensors, axis, op_role, sync=True):
         """Insert concat op into block at the given block."""
         inputs = {'X': tensors}
         attrs = {}
         attrs['axis'] = axis
         attrs['op_role'] = op_role
+
+        insert_op = block._insert_op if sync else block._insert_op_without_sync
         # to avoid name conflict with framework
         helper = LayerHelper('concat@RESHARD', **locals())
         with paddle.static.program_guard(block.program):
@@ -444,7 +452,7 @@ class Inserter:
                 persistable=False,
                 stop_gradient=False,
             )
-        concat_op = block._insert_op(
+        concat_op = insert_op(
             idx,
             type='concat',
             inputs=inputs,
@@ -456,7 +464,7 @@ class Inserter:
 
     @staticmethod
     def insert_slice_op(
-        block, idx, tensor, starts, ends, axes, new_var_name, op_role
+        block, idx, tensor, starts, ends, axes, new_var_name, op_role, sync=True
     ):
         """Insert slice op into block at the given block."""
         # This is a hack to insert split op to get slice tensor
@@ -469,6 +477,7 @@ class Inserter:
         for index, item in enumerate(slice_shape):
             if item != global_shape[index]:
                 diff_dims.append(index)
+        insert_op = block._insert_op if sync else block._insert_op_without_sync
 
         # use assign
         if len(diff_dims) == 0:
@@ -482,7 +491,7 @@ class Inserter:
             inputs = {'X': [tensor]}
             outputs = {"Out": [out]}
             attrs = {"in_place": False, "op_role": op_role}
-            assign_op = block._insert_op(
+            assign_op = insert_op(
                 idx, type="assign", inputs=inputs, outputs=outputs, attrs=attrs
             )
             assign_op._set_attr('op_namescope', "/auto_parallel/reshard")
@@ -519,7 +528,7 @@ class Inserter:
                     for i in range(num_or_sections)
                 ]
                 out = outs[cur_idx]
-            split_op = block._insert_op(
+            split_op = insert_op(
                 idx,
                 type="split",
                 inputs=inputs,
@@ -546,7 +555,7 @@ class Inserter:
                 type=tensor.type,
                 lod_level=tensor.lod_level,
             )
-            slice_op = block._insert_op(
+            slice_op = insert_op(
                 idx,
                 type="slice",
                 inputs=inputs,
@@ -557,12 +566,16 @@ class Inserter:
             return out
 
     @staticmethod
-    def insert_split_op(block, idx, tensor, num_or_sections, op_role, axis=0):
+    def insert_split_op(
+        block, idx, tensor, num_or_sections, op_role, axis=0, sync=True
+    ):
         """Insert split op into block at the given index."""
         helper = LayerHelper('split@RESHARD', **locals())
         input_shape = tensor.shape
         inputs = {'X': tensor}
         attrs = {'num': num_or_sections, 'axis': axis, 'op_role': op_role}
+        insert_op = block._insert_op if sync else block._insert_op_without_sync
+
         new_shape = []
         for index, item in enumerate(tensor.shape):
             if index != axis:
@@ -584,14 +597,14 @@ class Inserter:
                 )
                 for i in range(num_or_sections)
             ]
-        split_op = block._insert_op(
+        split_op = insert_op(
             idx, type="split", inputs=inputs, outputs={'Out': outs}, attrs=attrs
         )
         split_op._set_attr('op_namescope', "/auto_parallel/reshard")
         return outs
 
     @staticmethod
-    def insert_fill_constant_op(block, idx, op_role, shape):
+    def insert_fill_constant_op(block, idx, op_role, shape, sync=True):
         """Insert fill constant op into block at the given index."""
         # to avoid name conflict with framework
         helper = LayerHelper('fill_constant@RESHARD', **locals())
@@ -616,7 +629,9 @@ class Inserter:
         paddle.utils.get_shape_tensor_inputs(
             inputs=inputs, attrs=attrs, shape=shape, op_type='fill_constant'
         )
-        fillconstant_op = block._insert_op(
+
+        insert_op = block._insert_op if sync else block._insert_op_without_sync
+        fillconstant_op = insert_op(
             idx,
             type='fill_constant',
             inputs=inputs,
@@ -628,7 +643,9 @@ class Inserter:
         return out
 
     @staticmethod
-    def insert_allgather_op(block, idx, tensor, ranks, op_role, need_split):
+    def insert_allgather_op(
+        block, idx, tensor, ranks, op_role, need_split, sync=True
+    ):
         """Insert allgather op into block at the given index."""
         tensor_list = []
         group = new_process_group(ranks)
@@ -638,6 +655,8 @@ class Inserter:
         op_type = 'c_allgather'
         # to avoid name conflict with framework
         helper = LayerHelper(op_type + "@RESHARD", **locals())
+        insert_op = block._insert_op if sync else block._insert_op_without_sync
+
         with paddle.static.program_guard(block.program):
             allgather_out = block.create_var(
                 name=paddle.utils.unique_name.generate_with_ignorable_key(
@@ -650,7 +669,7 @@ class Inserter:
                 persistable=False,
                 stop_gradient=False,
             )
-        allgather_op = block._insert_op(
+        allgather_op = insert_op(
             idx + idx_offset,
             type=op_type,
             inputs={'X': [tensor]},
@@ -668,7 +687,12 @@ class Inserter:
         # insert split op
         if need_split:
             split_out = Inserter.insert_split_op(
-                block, idx + idx_offset, allgather_out, group.nranks, op_role
+                block,
+                idx + idx_offset,
+                allgather_out,
+                group.nranks,
+                op_role,
+                sync=sync,
             )
             idx_offset += 1
             tensor_list.extend(split_out)
@@ -677,10 +701,11 @@ class Inserter:
         return tensor_list, idx_offset
 
     @staticmethod
-    def insert_c_concat_op(block, idx, tensor, ranks, op_role):
+    def insert_c_concat_op(block, idx, tensor, ranks, op_role, sync=True):
         """Insert c_concat op into block at the given index."""
         group = new_process_group(ranks)
         idx_offset = 0
+        insert_op = block._insert_op if sync else block._insert_op_without_sync
 
         # insert c_concat op
         op_type = 'c_concat'
@@ -699,7 +724,7 @@ class Inserter:
                 stop_gradient=False,
             )
         cur_rank = paddle.distributed.get_rank()
-        c_concat_op = block._insert_op(
+        c_concat_op = insert_op(
             idx + idx_offset,
             type=op_type,
             inputs={'X': [tensor]},
@@ -718,7 +743,13 @@ class Inserter:
 
     @staticmethod
     def concat_partitions_with_op(
-        partition_tensor_list, tensor, partition_index, block, idx, op_role
+        partition_tensor_list,
+        tensor,
+        partition_index,
+        block,
+        idx,
+        op_role,
+        sync=True,
     ):
         """Concat the tensors and insert concat op."""
         if not partition_tensor_list:
@@ -743,6 +774,7 @@ class Inserter:
                             [partition_tensor_list[i][0], tensor],
                             concat_axis,
                             op_role,
+                            sync=sync,
                         )
                         if first_order == 0
                         else Inserter.insert_concat_op(
@@ -751,6 +783,7 @@ class Inserter:
                             [tensor, partition_tensor_list[i][0]],
                             concat_axis,
                             op_role,
+                            sync=sync,
                         )
                     )
                     partition_tensor_list.pop(i)
@@ -762,6 +795,7 @@ class Inserter:
                         block,
                         idx,
                         op_role,
+                        sync=sync,
                     )
                     break
                 i += 1
@@ -1804,6 +1838,7 @@ class Resharder:
         reshard_op,
         src_tensor_attr,
         dst_input_attr,
+        sync=True,
     ):
         """
         Parse op desc sequence and insert op in the block
@@ -1876,6 +1911,7 @@ class Resharder:
                             src_tensor,
                             op_role,
                             paddle.int64,
+                            sync=sync,
                         )
                         tensor_list, idx_offset = Inserter.insert_allgather_op(
                             block,
@@ -1884,6 +1920,7 @@ class Resharder:
                             op_desc.group,
                             op_role,
                             need_split=op_desc.need_split,
+                            sync=sync,
                         )
                         idx += idx_offset
                         tensor_name_list = []
@@ -1894,6 +1931,7 @@ class Resharder:
                                 var,
                                 op_role,
                                 paddle.bool,
+                                sync=sync,
                             )
                             tensor_name_list.append(out_cast.name)
                             idx += 1
@@ -1908,6 +1946,7 @@ class Resharder:
                             op_desc.group,
                             op_role,
                             need_split=op_desc.need_split,
+                            sync=sync,
                         )
                         # NOTE(zhaoyingli): ONLY `process_mesh` and `chunk_id` are meaningful.
                         for offset in range(idx_offset):
@@ -1962,6 +2001,7 @@ class Resharder:
                             src_tensor,
                             op_role,
                             paddle.int64,
+                            sync=sync,
                         )
                         Inserter.insert_send_op(
                             block,
@@ -1970,6 +2010,7 @@ class Resharder:
                             op_desc.src,
                             op_desc.dst,
                             op_role,
+                            sync=sync,
                         )
                         idx += 2
                     else:
@@ -1980,6 +2021,7 @@ class Resharder:
                             op_desc.src,
                             op_desc.dst,
                             op_role,
+                            sync=sync,
                         )
                         naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
                             block.ops[idx],
@@ -2015,6 +2057,7 @@ class Resharder:
                             op_desc.src,
                             op_desc.dst,
                             op_role,
+                            sync=sync,
                         )
                         out_cast = Inserter.insert_cast_op(
                             block,
@@ -2022,6 +2065,7 @@ class Resharder:
                             recv_tensor,
                             op_role,
                             paddle.bool,
+                            sync=sync,
                         )
                         tensor_list.append(out_cast)
                         idx += 2
@@ -2041,6 +2085,7 @@ class Resharder:
                             op_desc.src,
                             op_desc.dst,
                             op_role,
+                            sync=sync,
                         )
                         set_var_dist_attr(
                             self.dist_context,
@@ -2078,6 +2123,7 @@ class Resharder:
                                                 recv_tensor,
                                                 tmp_var,
                                                 op_role,
+                                                sync=sync,
                                             )
                                         )
                                         tensor_list.append(reset_lod_out)
@@ -2109,6 +2155,7 @@ class Resharder:
                         block,
                         idx_list,
                         op_role,
+                        sync=sync,
                     )
                 idx = idx_list[0]
                 cur_idx = idx
@@ -2155,6 +2202,7 @@ class Resharder:
                         axes=op_desc.axes,
                         new_var_name=new_name,
                         op_role=op_role,
+                        sync=sync,
                     )
                 elif isinstance(op_desc, AllGatherConcatOpDesc):
                     target_tensor = Inserter.insert_c_concat_op(
@@ -2163,6 +2211,7 @@ class Resharder:
                         src_tensor,
                         op_desc.group,
                         op_role,
+                        sync=sync,
                     )
                 else:
                     assert isinstance(op_desc, EndOpDesc)
@@ -2564,6 +2613,7 @@ class Resharder:
                 idx = idx + idx_offset + 1
             else:
                 idx += 1
+        block._sync_with_cpp()
 
     def _handle_recv(
         self,
