@@ -38,7 +38,8 @@ class Poisson(distribution.Distribution):
 
     Args:
         rate(int|float|Tensor): The mean occurrence rate of Poisson distribution which should be greater than 0, meaning the expected occurrence
-                                times of an event in a fixed time interval. The data type of `rate` will be convert to the global default dtype.
+            times of an event in a fixed time interval. If the input data type is int or float, the data type of `rate` will be converted to a
+            1-D Tensor with paddle global default dtype.
 
     Examples:
         .. code-block:: python
@@ -86,15 +87,16 @@ class Poisson(distribution.Distribution):
         super().__init__(batch_shape)
 
     def _to_tensor(self, rate):
-        """Convert the input parameters into tensors with global default dtype.
+        """Convert the input parameters into tensors.
 
         Returns:
             Tensor: converted rate.
         """
         # convert type
         if isinstance(rate, (float, int)):
-            rate = [rate]
-        rate = paddle.to_tensor(rate, dtype=self.dtype)
+            rate = paddle.to_tensor([rate], dtype=self.dtype)
+        else:
+            self.dtype = rate.dtype
         return rate
 
     def _check_constraint(self, value):
@@ -157,10 +159,10 @@ class Poisson(distribution.Distribution):
 
         In the above equation:
 
-        * :math:\Omega: is the support of the distribution.
+        * :math:`\Omega`: is the support of the distribution.
 
         Returns:
-            Tensor: Shannon entropy of poisson distribution. The data type is the global default dtype.
+            Tensor: Shannon entropy of poisson distribution. The data type is the same as `rate`.
         """
         values = self._enumerate_bounded_support(self.rate).reshape(
             (-1,) + (1,) * len(self.batch_shape)
@@ -168,8 +170,10 @@ class Poisson(distribution.Distribution):
         log_prob = self.log_prob(values)
         proposed = -(paddle.exp(log_prob) * log_prob).sum(0)
         mask = paddle.cast(
-            paddle.not_equal(self.rate, paddle.to_tensor(0.0)),
-            dtype=paddle.get_default_dtype(),
+            paddle.not_equal(
+                self.rate, paddle.to_tensor(0.0, dtype=self.dtype)
+            ),
+            dtype=self.dtype,
         )
         return paddle.multiply(proposed, mask)
 
@@ -186,11 +190,13 @@ class Poisson(distribution.Distribution):
         """
         s_max = (
             paddle.sqrt(paddle.max(rate))
-            if paddle.greater_equal(paddle.max(rate), paddle.to_tensor(1.0))
+            if paddle.greater_equal(
+                paddle.max(rate), paddle.to_tensor(1.0, dtype=self.dtype)
+            )
             else paddle.ones_like(rate, dtype=self.dtype)
         )
         upper = paddle.max(paddle.cast(rate + 30 * s_max, dtype="int32"))
-        values = paddle.arange(0, upper, dtype=paddle.get_default_dtype())
+        values = paddle.arange(0, upper, dtype=self.dtype)
         return values
 
     def log_prob(self, value):
@@ -200,7 +206,7 @@ class Poisson(distribution.Distribution):
           value (Tensor): The input tensor.
 
         Returns:
-          Tensor: log probability. The data type is same with :attr:`value` .
+          Tensor: log probability. The data type is the same as `rate`.
         """
         value = paddle.cast(value, dtype=self.dtype)
         if not self._check_constraint(value):
@@ -224,7 +230,7 @@ class Poisson(distribution.Distribution):
             value (Tensor): The input tensor.
 
         Returns:
-            Tensor: probability. The data type is same with :attr:`value` .
+            Tensor: probability. The data type is the same as `rate`.
         """
         return paddle.exp(self.log_prob(value))
 
@@ -249,7 +255,7 @@ class Poisson(distribution.Distribution):
             other (Poisson): instance of ``Poisson``.
 
         Returns:
-            Tensor, kl-divergence between two poisson distributions. The data type is the global default dtype.
+            Tensor, kl-divergence between two poisson distributions. The data type is the same as `rate`.
 
         """
 
@@ -260,9 +266,9 @@ class Poisson(distribution.Distribution):
         rate_max = paddle.max(paddle.maximum(self.rate, other.rate))
         support_max = self._enumerate_bounded_support(rate_max)
         a_max = paddle.max(support_max)
-        common_support = paddle.arange(
-            paddle.to_tensor(0.0), a_max, dtype=self.dtype
-        ).reshape((-1,) + (1,) * len(self.batch_shape))
+        common_support = paddle.arange(0, a_max, dtype=self.dtype).reshape(
+            (-1,) + (1,) * len(self.batch_shape)
+        )
 
         log_prob_1 = self.log_prob(common_support)
         log_prob_2 = other.log_prob(common_support)

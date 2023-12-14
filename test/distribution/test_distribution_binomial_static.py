@@ -25,19 +25,22 @@ from paddle.distribution.binomial import Binomial
 paddle.enable_static()
 
 
+paddle.enable_static()
+
+
 @parameterize.place(config.DEVICES)
 @parameterize.parameterize_cls(
     (parameterize.TEST_CASE_NAME, 'total_count', 'probability'),
     [
         (
             'one-dim',
-            np.array([20]),
+            np.array([1000]),
             parameterize.xrand((1,), dtype='float32', min=0, max=1),
         ),
         (
             'multi-dim',
-            np.array([20]),
-            parameterize.xrand((1, 3), dtype='float32', min=0, max=1),
+            np.array([100]),
+            parameterize.xrand((1, 3), dtype='float64', min=0, max=1),
         ),
     ],
 )
@@ -115,10 +118,10 @@ class TestBinomial(unittest.TestCase):
         np.testing.assert_allclose(sample_variance, self.var, atol=0, rtol=0.20)
 
     def _np_variance(self):
-        return self.total_count * self.probability * (1 - self.probability)
+        return scipy.stats.binom.var(self.total_count, self.probability)
 
     def _np_mean(self):
-        return self.total_count * self.probability
+        return scipy.stats.binom.mean(self.total_count, self.probability)
 
     def _np_entropy(self):
         return scipy.stats.binom.entropy(self.total_count, self.probability)
@@ -130,9 +133,9 @@ class TestBinomial(unittest.TestCase):
     [
         (
             'value-same-shape',
-            np.array([10]),
-            np.array([0.2, 0.3, 0.5]),
-            np.array([2.0, 3.0, 5.0]),
+            np.array([10]).astype('int64'),
+            np.array([0.2, 0.3, 0.5]).astype('float64'),
+            np.array([2.0, 3.0, 5.0]).astype('float64'),
         ),
         (
             'value-broadcast-shape',
@@ -190,9 +193,9 @@ class TestBinomialProbs(unittest.TestCase):
         (
             'multi-dim-probability',
             np.array([32]),
-            parameterize.xrand((1, 2), dtype='float32', min=0, max=1),
+            parameterize.xrand((1, 2), dtype='float64', min=0, max=1),
             np.array([32]),
-            parameterize.xrand((1, 2), dtype='float32', min=0, max=1),
+            parameterize.xrand((1, 2), dtype='float64', min=0, max=1),
         ),
     ],
 )
@@ -237,7 +240,7 @@ class TestBinomialKL(unittest.TestCase):
         )
 
     def kl_divergence_scipy(self):
-        support = np.arange(1 + self.n_1.max(), dtype="float32")
+        support = np.arange(1 + self.n_1.max(), dtype=self.p_1.dtype)
         support = support.reshape((-1,) + (1,) * len(self.p_1.shape))
         log_prob_1 = scipy.stats.binom.logpmf(support, self.n_1, self.p_1)
         log_prob_2 = scipy.stats.binom.logpmf(support, self.n_2, self.p_2)

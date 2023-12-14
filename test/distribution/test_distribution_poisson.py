@@ -27,9 +27,9 @@ from paddle.distribution import Poisson
 @parameterize.parameterize_cls(
     (parameterize.TEST_CASE_NAME, 'rate'),
     [
-        ('one-dim', np.array([100.0]).astype('float32')),
+        ('one-dim', np.array([100.0]).astype('float64')),
         # bondary case and extreme case (`scipy.stats.poisson.entropy` cannot converge for very extreme cases such as rate=10000.0)
-        ('multi-dim', np.array([0.0, 1000.0]).astype('float32')),
+        ('multi-dim', np.array([0.0, 3000.0]).astype('float32')),
     ],
 )
 class TestPoisson(unittest.TestCase):
@@ -94,13 +94,13 @@ class TestPoisson(unittest.TestCase):
     [
         (
             'value-same-shape',
-            np.array(10).astype('float32'),
-            np.array(11).astype('float32'),
+            np.array(1000).astype('float32'),
+            np.array(1100).astype('float32'),
         ),
         (
             'value-broadcast-shape',
-            np.array(10).astype('float32'),
-            np.array([2.0, 3.0, 5.0, 10.0, 20.0]).astype('float32'),
+            np.array(10).astype('float64'),
+            np.array([2.0, 3.0, 5.0, 10.0, 20.0]).astype('float64'),
         ),
     ],
 )
@@ -133,10 +133,10 @@ class TestPoissonProbs(unittest.TestCase):
             'one-dim',
             parameterize.xrand((1,), min=1, max=20)
             .astype('int32')
-            .astype('float32'),
+            .astype('float64'),
             parameterize.xrand((1,), min=1, max=20)
             .astype('int32')
-            .astype('float32'),
+            .astype('float64'),
         ),
         (
             'multi-dim',
@@ -174,9 +174,9 @@ class TestPoissonKL(unittest.TestCase):
         support_min = self.enumerate_bounded_support(rate_min)
         a_min = np.min(support_min)
         a_max = np.max(support_max)
-        common_support = np.arange(a_min, a_max, dtype="float32").reshape(
-            (-1,) + (1,) * len(self.rate_1.shape)
-        )
+        common_support = np.arange(
+            a_min, a_max, dtype=self.rate_1.dtype
+        ).reshape((-1,) + (1,) * len(self.rate_1.shape))
         log_prob_1 = scipy.stats.poisson.logpmf(common_support, self.rate_1)
         log_prob_2 = scipy.stats.poisson.logpmf(common_support, self.rate_2)
         return (np.exp(log_prob_1) * (log_prob_1 - log_prob_2)).sum(0)
@@ -185,7 +185,7 @@ class TestPoissonKL(unittest.TestCase):
         s = np.sqrt(rate)
         upper = int(rate + 30 * s)
         lower = int(np.clip(rate - 30 * s, a_min=0, a_max=rate))
-        values = np.arange(lower, upper, dtype="float32")
+        values = np.arange(lower, upper, dtype=self.rate_1.dtype)
         return values
 
 
