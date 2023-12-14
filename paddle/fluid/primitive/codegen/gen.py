@@ -57,7 +57,10 @@ BACKENDS_BLACK_LIST = [
 UNARY_PRIM_VJP_OPS = [
     'erf_grad',
     'exp_grad',
+    'floor_grad',
     'log_grad',
+    'sin_grad',
+    'cos_grad',
     'tanh_grad',
 ]
 
@@ -72,6 +75,8 @@ BINARY_PRIM_VJP_OPS = [
 ]
 
 OTHER_PRIM_VJP_OPS = [
+    'assign_grad',
+    'cumsum_grad',
     'sum_grad',
     'cast_grad',
     'reshape_grad',
@@ -84,6 +89,7 @@ OTHER_PRIM_VJP_OPS = [
     'max_grad',
     'slice_grad',
     'tile_grad',
+    'topk_grad',
 ]
 
 # whole vjp list of primitive op vjp
