@@ -416,6 +416,7 @@ set(IR_PASS_DEPS
 
 if(WITH_CUDNN_FRONTEND)
   set(IR_PASS_DEPS ${IR_PASS_DEPS} fuse_dot_product_attention_pass)
+  set(IR_PASS_DEPS ${IR_PASS_DEPS} fuse_resunit_pass)
 endif()
 
 if(WITH_CINN)
