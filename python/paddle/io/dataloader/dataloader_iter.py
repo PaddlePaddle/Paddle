@@ -622,7 +622,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                                 if isinstance(
                                     slot, (paddle.Tensor, core.eager.Tensor)
                                 ):
-                                    slot = slot.value().get_tensor()
+                                    slot = slot.get_tensor()
                                 elif not isinstance(slot, core.LoDTensor):
                                     tmp = core.LoDTensor()
                                     tmp.set(slot, core.CPUPlace())
