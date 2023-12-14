@@ -48,7 +48,7 @@ TEST(DimExpr, constraint) {
   DimExpr sym0 = DimExpr("S0");
   DimExpr sym1 = DimExpr("S1");
   builder.CstrEq(sym0, sym1);
-  ASSERT_EQ(constraints.size(), 1);
+  ASSERT_EQ(static_cast<int>(constraints.size()), 1);
 }
 
 /*
