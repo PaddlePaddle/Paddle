@@ -53,7 +53,7 @@ class TEST_API ProgramDesc {
     }
   }
 
-  BlockDesc &Block(size_t idx) const { return *blocks_[idx]; }
+  const BlockDesc &Block(size_t idx) const { return *blocks_[idx]; }
 
   size_t Size() const { return blocks_.size(); }
 
