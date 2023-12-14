@@ -471,8 +471,8 @@ def search_by_dp_estimation(tuner_cfg):
             new_all_cfgs.append(task)
 
     # expanding sharding degree to run overlap and nonoverlap to calculate overlap benefits
+    sharding_all_cfgs = []
     if tuner_cfg["search_algo"].get("sharding_overlap", None):
-        sharding_all_cfgs = []
         for task in new_all_cfgs:
             new_task = copy.deepcopy(task)
             given_num_gpus = tuner_cfg["nodes"] * tuner_cfg["gpus_per_node"]
