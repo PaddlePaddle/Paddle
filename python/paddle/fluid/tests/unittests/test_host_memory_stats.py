@@ -29,7 +29,11 @@ class TestHostMemoryStats(unittest.TestCase):
             memory_allocated_size = core.host_memory_stat_current_value(
                 "Allocated", 0
             )
-            self.assertEqual(memory_allocated_size, alloc_size * 2)
+            pinned_memory_allocated_size = (
+                core.pinned_memory_stat_current_value("Allocated", 0)
+            )
+            self.assertEqual(memory_allocated_size, alloc_size)
+            self.assertEqual(pinned_memory_allocated_size, alloc_size)
 
             def foo():
                 tensor = paddle.zeros(shape=[256])
@@ -37,23 +41,42 @@ class TestHostMemoryStats(unittest.TestCase):
                 memory_allocated_size = core.host_memory_stat_current_value(
                     "Allocated", 0
                 )
-                self.assertEqual(memory_allocated_size, alloc_size * 4)
+                self.assertEqual(memory_allocated_size, alloc_size * 2)
                 max_allocated_size = core.host_memory_stat_peak_value(
                     "Allocated", 0
                 )
-                self.assertEqual(memory_allocated_size, alloc_size * 4)
+                self.assertEqual(max_allocated_size, alloc_size * 2)
+
+                pinned_memory_allocated_size = (
+                    core.pinned_memory_stat_current_value("Allocated", 0)
+                )
+                self.assertEqual(pinned_memory_allocated_size, alloc_size * 2)
+                pinned_max_allocated_size = core.pinned_memory_stat_peak_value(
+                    "Allocated", 0
+                )
+                self.assertEqual(pinned_max_allocated_size, alloc_size * 2)
 
             foo()
 
             memory_allocated_size = core.host_memory_stat_current_value(
                 "Allocated", 0
             )
-            self.assertEqual(memory_allocated_size, alloc_size * 2)
+            self.assertEqual(memory_allocated_size, alloc_size)
 
             max_allocated_size = core.host_memory_stat_peak_value(
                 "Allocated", 0
             )
-            self.assertEqual(max_allocated_size, alloc_size * 4)
+            self.assertEqual(max_allocated_size, alloc_size * 2)
+
+            pinned_memory_allocated_size = (
+                core.pinned_memory_stat_current_value("Allocated", 0)
+            )
+            self.assertEqual(pinned_memory_allocated_size, alloc_size)
+
+            pinned_max_allocated_size = core.pinned_memory_stat_peak_value(
+                "Allocated", 0
+            )
+            self.assertEqual(pinned_max_allocated_size, alloc_size * 2)
 
 
 if __name__ == "__main__":
