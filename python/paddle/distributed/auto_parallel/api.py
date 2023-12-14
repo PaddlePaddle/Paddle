@@ -40,11 +40,12 @@ from paddle.distributed.auto_parallel.static.dist_context import (
 from paddle.distributed.auto_parallel.static.dist_op import DistributedOperator
 from paddle.distributed.auto_parallel.static.utils import (
     convert_to_dims_mapping,
+    get_dist_attr,
 )
 from paddle.distributed.checkpoint.utils import run_in_dynamic_mode
 from paddle.framework import core
 
-from .placement_type import get_shard_spec
+from .placement_type import check_placements_equal, get_shard_spec
 
 # There are the auto parallel API of the unified version of dynamic and static mode.
 # Some APIs have the same name with the previous APIs implementation, which are
@@ -325,25 +326,42 @@ class DistModel:
             else:
                 return None
 
-    def state_dict(self, mode="all"):
+    def state_dict(self):
+        """
+        Get the state dict of model and optimizer.
+        """
+        local_state_dict = self.dist_main_program(
+            mode=self._engine._mode
+        ).state_dict("all")
+        dist_state_dict = self._build_distributed_state_dict(local_state_dict)
+        return dist_state_dict
+
+    def model_state_dict(self):
+        """
+        Get the state dict of model.
+        """
+        local_state_dict = self.dist_main_program(
+            mode=self._engine._mode
+        ).state_dict("param")
+        dist_state_dict = self._build_distributed_state_dict(local_state_dict)
+        return dist_state_dict
+
+    def optimizer_state_dict(self):
+        """
+        Get the state dict of optimizer.
+        """
+        local_state_dict = self.dist_main_program(
+            mode=self._engine._mode
+        ).state_dict("opt")
+        dist_state_dict = self._build_distributed_state_dict(local_state_dict)
+        return dist_state_dict
+
+    def _build_distributed_state_dict(self, local_state_dict):
         """
         Args:
-            mode(str, optional): Source of the obtained parameters and buffers.
-                'opt' :  The return value only contains the variable in the optimizer.
-                'param' : The return value only contains the variable in the network, not the variable in the optimizer.
-                'all' : The return value contains the variable in the network and optimizer.
-                Default: 'all'
+            local_state_dict(Dict[str, libpaddle.Tensor]): The state dict from program.
         """
-        assert mode in [
-            "opt",
-            "param",
-            "all",
-        ], f"mode {mode} is not supported. Please choose one of ['opt', 'param', 'all']"
         dist_main_program = self.dist_main_program(mode=self._engine._mode)
-        # Dict[var.name, libpaddle.Tensor], DenseTensor, pp情况下key不存在？check
-        local_state_dict = dist_main_program.state_dict(mode=mode)
-        from paddle.distributed.auto_parallel.static.utils import get_dist_attr
-
         dist_context = self._engine._dist_contexts[self._mode]
         # Dict[var.name, Dict["process_shape": process_mesh.shape, "process_group": process_mesh.process_ids, "dims_mapping": dims_mapping]]
         dist_attrs = get_dist_attr(dist_main_program, dist_context)
@@ -408,9 +426,11 @@ class DistModel:
             if k in cur_state_dict:
                 cur_v = cur_state_dict[k]
                 # TODO: check placements later
-                assert (
-                    v.process_mesh == cur_state_dict[k].process_mesh
-                ), f"process_mesh:{v.process_mesh} != {cur_v.process_mesh} not match"
+                assert v.process_mesh == cur_state_dict[
+                    k
+                ].process_mesh or check_placements_equal(
+                    v.placements, cur_v.placements
+                ), f"process_mesh:{v.process_mesh} != {cur_v.process_mesh} or placements:{v.placements} != {cur_v.placements} not match"
             local_state_dict[k] = v._local_value()
         dist_main_program.set_state_dict(local_state_dict)
 

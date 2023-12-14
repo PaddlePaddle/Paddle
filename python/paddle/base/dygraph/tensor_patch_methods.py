@@ -231,9 +231,13 @@ def monkey_patch_tensor():
             if self.is_dist():
                 # TODO: check placements and support reshard later
                 if isinstance(value, paddle.Tensor) and value.is_dist():
-                    assert (
-                        value.process_mesh == self.value().process_mesh
-                    ), f"process_mesh:{value.process_mesh} != {self.value().process_mesh} not match"
+                    from paddle.distributed.auto_parallel.placement_type import (
+                        check_placements_equal,
+                    )
+
+                    assert value.process_mesh == self.value().process_mesh or check_placements_equal(
+                        value.placements, self.value().placements
+                    ), f"process_mesh:{value.process_mesh} != {self.value().process_mesh} or placements:{value.placements} != {self.value().placements} not match"
                 else:
                     # calling set method bound for DistTensor
                     value = paddle.distributed.shard_tensor(
