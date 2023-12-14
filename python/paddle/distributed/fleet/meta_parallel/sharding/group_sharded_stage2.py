@@ -404,6 +404,7 @@ class GroupShardedStage2(nn.Layer):
                     ), "grad should be initialized in stage2"
                     grad.scale_(self._world_size_scaling)
                 else:
+                    assert grad is not None, "grad should not be none"
                     self.scale_in_opt = True
 
         return scale
