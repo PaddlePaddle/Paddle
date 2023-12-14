@@ -318,8 +318,7 @@ def _convert_into_value(tensor):
         return _global_parameter_recorder.get(
             paddle.pir.core.default_main_program(), tensor
         )
-    else:
-        return tensor
+    return tensor
 
 
 @signature_safe_contextmanager
