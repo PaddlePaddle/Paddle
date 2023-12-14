@@ -276,7 +276,7 @@ class ScalarBase {
 
   std::string ToString() const {
     std::stringstream ss;
-    ss << "Scalar(" << dtype_ << '(' << ToRawString() << "))";
+    ss << ToRawString();
     return ss.str();
   }
 
