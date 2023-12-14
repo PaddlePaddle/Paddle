@@ -29,23 +29,52 @@ namespace symbol {
 
 template <typename T>
 struct UnaryDimExpr {
-  explicit UnaryDimExpr(const T& d) : data(d) {}
-  T data;
+  explicit UnaryDimExpr(const T& d) : data(std::make_shared<Data>(d)) {}
+  struct Data {
+    explicit Data(const T& d) : data(d) {}
+    T data;
+  };
+
+  const Data& operator*() const { return *data; }
+  Data& operator*() { return *data; }
+  const Data* operator->() const { return data.get(); }
+  Data* operator->() { return data.get(); }
+
+  std::shared_ptr<Data> data;
 };
 
 template <typename T>
 struct BinaryDimExpr {
-  explicit BinaryDimExpr(const T& l, const T& r) : lhs(l), rhs(r) {}
+  explicit BinaryDimExpr(const T& l, const T& r)
+      : data(std::make_shared<Data>(l, r)) {}
 
-  T lhs;
-  T rhs;
+  struct Data {
+    explicit Data(const T& l, const T& r) : lhs(l), rhs(r) {}
+    T lhs;
+    T rhs;
+  };
+
+  const Data& operator*() const { return *data; }
+  Data& operator*() { return *data; }
+  const Data* operator->() const { return data.get(); }
+  Data* operator->() { return data.get(); }
+
+  std::shared_ptr<Data> data;
 };
 
 template <typename T>
 struct VariadicDimExpr {
-  explicit VariadicDimExpr(const std::vector<T>& vec) : data(vec) {}
+  explicit VariadicDimExpr(const std::vector<T>& vec)
+      : data(std::make_shared<Data>(vec)) {}
 
-  std::vector<T> data;
+  using Data = std::vector<T>;
+
+  const Data& operator*() const { return *data; }
+  Data& operator*() { return *data; }
+  const Data* operator->() const { return data.get(); }
+  Data* operator->() { return data.get(); }
+
+  std::shared_ptr<Data> data;
 };
 
 #define DEFINE_DIM_EXPR_SUBCLASS(class_name, base) \
@@ -77,13 +106,13 @@ class DimExpr;
 //         | Broadcast DimExpr DimExpr
 using DimExprBase = std::variant<std::int64_t,
                                  std::string,
-                                 std::shared_ptr<Negative<DimExpr>>,
-                                 std::shared_ptr<Reciprocal<DimExpr>>,
-                                 std::shared_ptr<Add<DimExpr>>,
-                                 std::shared_ptr<Mul<DimExpr>>,
-                                 std::shared_ptr<Max<DimExpr>>,
-                                 std::shared_ptr<Min<DimExpr>>,
-                                 std::shared_ptr<Broadcast<DimExpr>>>;
+                                 Negative<DimExpr>,
+                                 Reciprocal<DimExpr>,
+                                 Add<DimExpr>,
+                                 Mul<DimExpr>,
+                                 Max<DimExpr>,
+                                 Min<DimExpr>,
+                                 Broadcast<DimExpr>>;
 
 class DimExpr : public DimExprBase {
  public:
@@ -107,29 +136,25 @@ class DimExpr : public DimExprBase {
 
 // DimExprConstraint = Equal DimExpr DimExpr
 //                   | Broadcastable DimExpr DimExpr
-using DimExprConstraint = std::variant<std::shared_ptr<Equal<DimExpr>>,
-                                       std::shared_ptr<Broadcastable<DimExpr>>>;
+using DimExprConstraint = std::variant<Equal<DimExpr>, Broadcastable<DimExpr>>;
 
 // ValueShapeDimExprs = tShape DimExpr | tValue DimExpr
 template <typename T>
 class ValueShape {
  public:
-  ValueShape(const std::vector<T>& shape,
-             const std::function<std::optional<T>(int i)>& ValueGetter)
-      : shape_(shape), value_(CalcValue(ValueGetter, shape)) {}
-
   explicit ValueShape(const std::vector<T>& shape)
-      : ValueShape(shape, [](int i) { return std::nullopt; }) {}
+      : shape_(shape), value_(std::nullopt) {}
+
+  static ValueShape MakeConsistentValue(const std::vector<T>& data) {
+    return ValueShape(std::vector<T>{T(data.size())}, data);
+  }
 
   const std::optional<std::vector<T>>& shape() const { return shape_; }
   const std::optional<std::vector<T>>& value() const { return value_; }
 
  private:
-  static std::optional<std::vector<T>> CalcValue(
-      const std::function<std::optional<T>(int i)>& ValueGetter,
-      const std::vector<T>& shape) {
-    SYMBOL_NOT_IMPLEMENTED;
-  }
+  explicit ValueShape(const std::vector<T>& shape, const std::vector<T>& value)
+      : shape_(shape), value_(value) {}
 
   std::optional<std::vector<T>> shape_;
   std::optional<std::vector<T>> value_;
