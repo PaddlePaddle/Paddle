@@ -59,12 +59,12 @@ class MultivariateNormal(distribution.Distribution):
 
             >>> print(rv.sample([3, 2]))
             Tensor(shape=[3, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[[2.36634731, 3.44818163],
-              [1.57115066, 4.79757214]],
-             [[0.91755736, 2.81447577],
-              [0.12842906, 4.38841820]],
-             [[1.60453653, 5.57910490],
-              [1.28331566, 2.50838280]]])
+            [[[-0.00339603,  4.31556797],
+              [ 2.01385283,  4.63553190]],
+             [[ 0.10132277,  3.11323833],
+              [ 2.37435842,  3.56635118]],
+             [[ 2.89701366,  5.10602522],
+              [-0.46329355,  3.14768648]]])
 
             >>> print(rv.mean)
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
