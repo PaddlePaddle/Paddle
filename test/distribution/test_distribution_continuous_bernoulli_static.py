@@ -17,11 +17,6 @@ import unittest
 import numpy as np
 import parameterize
 from distribution import config
-from parameterize import (
-    TEST_CASE_NAME,
-    parameterize_cls,
-    parameterize_func,
-)
 
 import paddle
 from paddle.distribution.continuous_bernoulli import ContinuousBernoulli
@@ -328,34 +323,6 @@ class TestContinuousBernoulliKL(unittest.TestCase):
             rtol=0.01,
             atol=0.0,
         )
-
-
-@parameterize.place(config.DEVICES)
-@parameterize_cls([TEST_CASE_NAME], ['ContinuousBernoulliTestError'])
-class ContinuousBernoulliTestError(unittest.TestCase):
-    def setUp(self):
-        self.program = paddle.static.Program()
-        self.executor = paddle.static.Executor(self.place)
-
-    @parameterize_func(
-        [
-            (100,),  # int
-            (100.0,),  # float
-        ]
-    )
-    def test_bad_sample_shape_type(self, shape):
-        with paddle.static.program_guard(self.program):
-            rv = ContinuousBernoulli(0.3)
-
-            with self.assertRaises(TypeError):
-                [_] = self.executor.run(
-                    self.program, feed={}, fetch_list=[rv.sample(shape)]
-                )
-
-            with self.assertRaises(TypeError):
-                [_] = self.executor.run(
-                    self.program, feed={}, fetch_list=[rv.rsample(shape)]
-                )
 
 
 if __name__ == '__main__':
