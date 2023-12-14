@@ -65,6 +65,10 @@
 namespace phi {
 namespace fusion {
 
+#define MMHA_USE_FP32_ACUM_FOR_LOGITS
+#define MMHA_USE_FP32_ACUM_FOR_OUT
+#define MMHA_USE_FP32_ACUM_FOR_FMA
+
 struct Float8_ {
   float2 x;
   float2 y;
@@ -1710,6 +1714,469 @@ inline __device__ void apply_rotary_embedding(bf16_8_t& q,  // NOLINT
   k.w = rotary_embedding_transform(k.w, coef3);
 }
 #endif  // ENABLE_BF16
+
+#ifdef MMHA_USE_FP32_ACUM_FOR_FMA
+template <typename T>
+struct K_vec_acum_fp32_ {};
+
+template <>
+struct K_vec_acum_fp32_<uint32_t> {
+  using Type = float2;
+};
+#endif
+
+#ifdef MMHA_USE_FP32_ACUM_FOR_OUT
+template <typename T>
+struct V_vec_acum_fp32_ {};
+// template <> struct V_vec_acum_fp32_<float>  { using Type = float;  };
+// template <> struct V_vec_acum_fp32_<float2> { using Type = float2; };
+template <>
+struct V_vec_acum_fp32_<float4> {
+  using Type = float4;
+};
+// template <> struct V_vec_acum_fp32_<uint32_t> { using Type = float2;   };
+// template <> struct V_vec_acum_fp32_<uint2   > { using Type = Float4_;  };
+template <>
+struct V_vec_acum_fp32_<uint4> {
+  using Type = Float8_;
+};
+
+#ifdef ENABLE_BF16
+template <>
+struct V_vec_acum_fp32_<__nv_bfloat162> {
+  using Type = float2;
+};
+template <>
+struct V_vec_acum_fp32_<bf16_4_t> {
+  using Type = Float4_;
+};
+template <>
+struct V_vec_acum_fp32_<bf16_8_t> {
+  using Type = Float8_;
+};
+#endif  // ENABLE_BF16
+
+#endif
+
+// clang-format on
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+inline __device__ void convert_from_float(float& dst, float src) {  // NOLINT
+  dst = src;
+}
+
+inline __device__ void convert_from_float(float4& dst, float4 src) {  // NOLINT
+  dst = src;
+}
+
+inline __device__ void convert_from_float(phi::float16& dst,  // NOLINT
+                                          float src) {
+  dst = static_cast<phi::float16>(src);
+}
+
+inline __device__ void convert_from_float(uint4& dst, Float8_ src) {  // NOLINT
+  dst.x = float2_to_half2(src.x);
+  dst.y = float2_to_half2(src.y);
+  dst.z = float2_to_half2(src.z);
+  dst.w = float2_to_half2(src.w);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+#ifdef ENABLE_BF16
+inline __device__ void convert_from_float(__nv_bfloat16& dst,  // NOLINT
+                                          float src) {         // NOLINT
+  dst = __float2bfloat16(src);
+}
+
+inline __device__ void convert_from_float(__nv_bfloat162& dst,  // NOLINT
+                                          float2 src) {         // NOLINT
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
+  dst = __float22bfloat162_rn(src);
+#else
+  dst = __floats2bfloat162_rn(src.x, src.y);
+#endif
+}
+
+inline __device__ void convert_from_float(bf16_4_t& dst,  // NOLINT
+                                          Float4_ src) {  // NOLINT
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
+  dst.x = __float22bfloat162_rn(src.x);
+  dst.y = __float22bfloat162_rn(src.y);
+#else
+  dst.x = __floats2bfloat162_rn(src.x.x, src.x.y);
+  dst.y = __floats2bfloat162_rn(src.y.x, src.y.y);
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+inline __device__ void convert_from_float(bf16_4_t& dst,  // NOLINT
+                                          float4 src) {   // NOLINT
+  convert_from_float(
+      dst, Float4_{make_float2(src.x, src.y), make_float2(src.z, src.w)});
+}
+
+inline __device__ void convert_from_float(bf16_8_t& dst,  // NOLINT
+                                          Float8_ src) {  // NOLINT
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
+  dst.x = __float22bfloat162_rn(src.x);
+  dst.y = __float22bfloat162_rn(src.y);
+  dst.z = __float22bfloat162_rn(src.z);
+  dst.w = __float22bfloat162_rn(src.w);
+#else
+  dst.x = __floats2bfloat162_rn(src.x.x, src.x.y);
+  dst.y = __floats2bfloat162_rn(src.y.x, src.y.y);
+  dst.z = __floats2bfloat162_rn(src.z.x, src.z.y);
+  dst.w = __floats2bfloat162_rn(src.w.x, src.w.y);
+#endif
+}
+#endif  // ENABLE_BF16
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+inline __device__ void zero(uint16_t& dst) { dst = uint16_t(0); }  // NOLINT
+
+template <typename T>
+inline __device__ void zero(T& dst) {  // NOLINT
+  constexpr int WORDS = sizeof(T) / 4;
+  union {
+    T raw;
+    uint32_t words[WORDS];
+  } tmp;
+#pragma unroll
+  for (int ii = 0; ii < WORDS; ++ii) {
+    tmp.words[ii] = 0u;
+  }
+  dst = tmp.raw;
+}
+
+template <int WARPS_PER_BLOCK, int WARP_SIZE = 32>
+inline __device__ float block_sum(float* red_smem, float sum) {
+  int warp = threadIdx.x / WARP_SIZE;
+  int lane = threadIdx.x % WARP_SIZE;
+
+#pragma unroll
+  for (int mask = WARP_SIZE / 2; mask >= 1; mask /= 2) {
+    sum += __shfl_xor_sync(uint32_t(-1), sum, mask);
+  }
+
+  if (lane == 0) {
+    red_smem[warp] = sum;
+  }
+  __syncthreads();
+
+  if (lane < WARPS_PER_BLOCK) {
+    sum = red_smem[lane];
+  }
+
+#pragma unroll
+  for (int mask = WARPS_PER_BLOCK / 2; mask >= 1; mask /= 2) {
+    sum += __shfl_xor_sync(uint32_t(-1), sum, mask);
+  }
+
+  return __shfl_sync(uint32_t(-1), sum, 0);
+}
+
+template <typename T>
+__device__ __inline__ T ClipFunc(const T v, const T min, const T max) {
+  if (v > max) return max;
+  if (v < min) return min;
+  return v;
+}
+
+template <typename InType, typename OutType>
+__forceinline__ __device__ OutType QuantHelperFunc(const InType input,
+                                                   const float scale,
+                                                   const int round_type,
+                                                   const float max_bound,
+                                                   const float min_bound) {
+  float quant_value = max_bound * scale * input;
+
+  if (round_type == 0) {
+    quant_value = static_cast<float>(rint(quant_value));
+  } else {
+    quant_value = static_cast<float>(round(quant_value));
+  }
+  return static_cast<OutType>(
+      ClipFunc<float>(quant_value, min_bound, max_bound));
+}
+
+template <typename T, typename LoadT = T>
+struct MMHALoad {
+  explicit MMHALoad(const LoadT* src) : src_(src) {}
+
+  template <typename Vec>
+  __device__ void load(Vec& dst, int idx) {
+    dst = *reinterpret_cast<const Vec*>(src_ + idx);
+  }
+
+  const LoadT* src_;
+};
+
+template <typename T, typename StoreT = T, bool Smooth = false>
+struct MMHAStore {
+  explicit MMHAStore(StoreT* dst) : dst_(dst) {}
+
+  template <typename Vec>
+  __device__ void store(Vec& src, int idx) {
+    *reinterpret_cast<Vec*>(dst_ + idx) = src;
+  }
+
+  StoreT* dst_;
+};
+
+template <typename T>
+struct MMHAStore<T, T, true> {
+  MMHAStore(T* dst, const T* shift, const T* smooth, const int cols)
+      : dst_(dst), shift_(shift), smooth_(smooth), cols_(cols) {}
+
+  template <typename Vec>
+  __device__ void store(Vec& src, int idx) {
+    constexpr int VecSize = sizeof(Vec) / sizeof(T);
+    using TVec = phi::AlignedVector<T, VecSize>;
+    TVec src_vec;
+    TVec shift_vec;
+    TVec smooth_vec;
+
+    *reinterpret_cast<Vec*>(&src_vec) = src;
+    phi::Load<T, VecSize>(shift_ + idx % cols_, &shift_vec);
+    phi::Load<T, VecSize>(smooth_ + idx % cols_, &smooth_vec);
+
+#pragma unroll
+    for (int i = 0; i < VecSize; i++) {
+      src_vec[i] = (src_vec[i] + shift_vec[i]) * smooth_vec[i];
+    }
+
+    phi::Store<T, VecSize>(src_vec, dst_ + idx);
+  }
+
+  T* dst_;
+  const T* shift_;
+  const T* smooth_;
+  const int cols_;
+};
+
+template <typename T>
+struct MMHALoad<T, int32_t> {
+  MMHALoad(const int32_t* src, const float* dequant_scales, const int cols)
+      : src_(src), dequant_scales_(dequant_scales), cols_(cols) {}
+
+  template <typename Vec>
+  __device__ void load(Vec& dst, int idx) {
+    constexpr int VecSize = sizeof(Vec) / sizeof(T);
+    using SrcVec = phi::AlignedVector<int32_t, VecSize>;
+    using DstVec = phi::AlignedVector<T, VecSize>;
+    using ScaleVec = phi::AlignedVector<float, VecSize>;
+
+    SrcVec src_vec;
+    DstVec dst_vec;
+    ScaleVec scale_vec;
+
+    phi::Load<int32_t, VecSize>(src_ + idx, &src_vec);
+    phi::Load<float, VecSize>(dequant_scales_ + idx % cols_, &scale_vec);
+#pragma unroll
+    for (int i = 0; i < VecSize; i++) {
+      dst_vec[i] =
+          static_cast<T>(static_cast<float>(src_vec[i]) * scale_vec[i]);
+    }
+    dst = *reinterpret_cast<Vec*>(&dst_vec);
+  }
+
+  const int32_t* src_;
+  const float* dequant_scales_;
+  const int cols_;
+};
+
+template <typename T>
+struct MMHAStore<T, int8_t> {
+  MMHAStore(int8_t* dst,
+            const int quant_round_type,
+            const float quant_scale,
+            const float quant_max_bound,
+            const float quant_min_bound)
+      : dst_(dst),
+        quant_round_type_(quant_round_type),
+        quant_scale_(quant_scale),
+        quant_max_bound_(quant_max_bound),
+        quant_min_bound_(quant_min_bound) {}
+
+  template <typename Vec>
+  __device__ void store(Vec& src, int idx) {  // NOLINT
+    constexpr int VecSize = sizeof(Vec) / sizeof(T);
+    using SrcVec = phi::AlignedVector<T, VecSize>;
+    using DstVec = phi::AlignedVector<int8_t, VecSize>;
+
+    SrcVec src_vec;
+    *reinterpret_cast<Vec*>(&src_vec) = src;
+
+    DstVec dst_vec;
+#pragma unroll
+    for (int i = 0; i < VecSize; i++) {
+      dst_vec[i] =
+          QuantHelperFunc<float, int8_t>(static_cast<float>(src_vec[i]),
+                                         quant_scale_,
+                                         quant_round_type_,
+                                         quant_max_bound_,
+                                         quant_min_bound_);
+    }
+
+    phi::Store<int8_t, VecSize>(dst_vec, dst_ + idx);
+  }
+
+  int8_t* dst_;
+  const int quant_round_type_;
+  const float quant_scale_;
+  const float quant_max_bound_;
+  const float quant_min_bound_;
+};
+
+template <typename T>
+struct MMHAStore<T, int8_t, true> {
+  MMHAStore(int8_t* dst,
+            const T* shift,
+            const T* smooth,
+            const int cols,
+            const int quant_round_type,
+            const float quant_scale,
+            const float quant_max_bound,
+            const float quant_min_bound)
+      : dst_(dst),
+        quant_round_type_(quant_round_type),
+        quant_scale_(quant_scale),
+        quant_max_bound_(quant_max_bound),
+        quant_min_bound_(quant_min_bound),
+        shift_(shift),
+        smooth_(smooth),
+        cols_(cols) {}
+
+  template <typename Vec>
+  __device__ void store(Vec& src, int idx) {  // NOLINT
+    constexpr int VecSize = sizeof(Vec) / sizeof(T);
+    using SrcVec = phi::AlignedVector<T, VecSize>;
+    using DstVec = phi::AlignedVector<int8_t, VecSize>;
+
+    SrcVec src_vec;
+    DstVec dst_vec;
+    SrcVec shift_vec;
+    SrcVec smooth_vec;
+
+    *reinterpret_cast<Vec*>(&src_vec) = src;
+    phi::Load<T, VecSize>(shift_ + idx % cols_, &shift_vec);
+    phi::Load<T, VecSize>(smooth_ + idx % cols_, &smooth_vec);
+
+#pragma unroll
+    for (int i = 0; i < VecSize; i++) {
+      src_vec[i] = (src_vec[i] + shift_vec[i]) * smooth_vec[i];
+      dst_vec[i] =
+          QuantHelperFunc<float, int8_t>(static_cast<float>(src_vec[i]),
+                                         quant_scale_,
+                                         quant_round_type_,
+                                         quant_max_bound_,
+                                         quant_min_bound_);
+    }
+
+    phi::Store<int8_t, VecSize>(dst_vec, dst_ + idx);
+  }
+
+  int8_t* dst_;
+  const T* shift_;
+  const T* smooth_;
+  const int cols_;
+  const int quant_round_type_;
+  const float quant_scale_;
+  const float quant_max_bound_;
+  const float quant_min_bound_;
+};
+
+inline __device__ float4 hmma_fp32_tensorcore(const uint2& a, uint32_t b) {
+  float4 c;
+  float zero = 0.f;
+  asm volatile(
+      "mma.sync.aligned.m16n8k8.row.col.f32.f16.f16.f32 \n"
+      "    {%0, %1, %2, %3}, \n"
+      "    {%4, %5}, \n"
+      "    {%6}, \n"
+      "    {%7, %7, %7, %7}; \n"
+
+      : "=f"(c.x), "=f"(c.y), "=f"(c.z), "=f"(c.w)
+      : "r"(a.x) "r"(a.y), "r"(b), "f"(zero));
+  return c;
+}
+
+template <int N>
+inline __device__ float qk_hmma_dot_(const uint32_t (&q)[N],
+                                     const uint32_t (&k)[N],
+                                     float inv_sqrt_dh) {
+#if defined(MMHA_USE_HMMA_FOR_REDUCTION) && defined(__CUDA_ARCH__) && \
+    __CUDA_ARCH__ >= 750
+#ifdef MMHA_USE_FP32_ACUM_FOR_FMA
+  using K_vec_acum = typename K_vec_acum_fp32_<uint32_t>::Type;
+#else
+  using K_vec_acum = uint32_t;
+#endif
+  K_vec_acum inv_q = mul<K_vec_acum, uint32_t, float>(q[0], inv_sqrt_dh);
+  K_vec_acum qk_vec = mul<K_vec_acum, K_vec_acum, uint32_t>(inv_q, k[0]);
+#pragma unroll
+  for (int ii = 1; ii < N; ++ii) {
+    inv_q = mul<K_vec_acum, uint32_t, float>(q[ii], inv_sqrt_dh);
+    qk_vec = fma(inv_q, k[ii], qk_vec);
+  }
+#ifdef MMHA_USE_FP32_ACUM_FOR_FMA
+  uint32_t qk_vec_ = float2_to_half2(qk_vec);
+  return hmma_fp32_tensorcore(make_uint2(qk_vec_, 0u), 0x3c003c00u).x;
+#else
+  return hmma_fp32_tensorcore(make_uint2(qk_vec, 0u), 0x3c003c00u).x;
+#endif
+#else
+  return 0.f;
+#endif
+}
+
+template <int THREADS_PER_KEY, typename K_vec, int N>
+inline __device__ float qk_dot_(const K_vec (&q)[N],
+                                const K_vec (&k)[N],
+                                float inv_sqrt_dh) {
+  K_vec inv_q = mul<K_vec, K_vec, float>(q[0], inv_sqrt_dh);
+  K_vec qk_vec = mul<K_vec, K_vec, K_vec>(inv_q, k[0]);
+#pragma unroll
+  for (int ii = 1; ii < N; ++ii) {
+    inv_q = mul<K_vec, K_vec, float>(q[ii], inv_sqrt_dh);
+    qk_vec = fma(inv_q, k[ii], qk_vec);
+  }
+
+  float qk = sum(qk_vec);
+#pragma unroll
+  for (int mask = THREADS_PER_KEY / 2; mask >= 1; mask /= 2) {
+    qk += __shfl_xor_sync(uint32_t(-1), qk, mask);
+  }
+  return qk;
+}
+
+template <typename T, int THREADS_PER_KEY>
+struct Qk_dot {
+  template <typename K_vec, int N>
+  static inline __device__ float dot(const K_vec (&q)[N],
+                                     const K_vec (&k)[N],
+                                     float inv_sqrt_dh) {
+    return qk_dot_<THREADS_PER_KEY>(q, k, inv_sqrt_dh);
+  }
+};
+
+template <>
+struct Qk_dot<float16, 4> {
+  template <int N>
+  static inline __device__ float dot(const uint32_t (&q)[N],
+                                     const uint32_t (&k)[N],
+                                     float inv_sqrt_dh) {
+#if defined(MMHA_USE_HMMA_FOR_REDUCTION) && defined(__CUDA_ARCH__) && \
+    __CUDA_ARCH__ >= 750
+    return qk_hmma_dot_(q, k, inv_sqrt_dh);
+#else
+    return qk_dot_<4>(q, k, inv_sqrt_dh);
+#endif
+  }
+};
 
 }  // namespace fusion
 }  // namespace phi

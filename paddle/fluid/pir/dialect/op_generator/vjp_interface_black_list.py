@@ -28,4 +28,5 @@ vjp_interface_black_list = [
     'fused_dropout_add',
     'fused_rotary_position_embedding',
     'fused_bias_dropout_residual_layer_norm',
+    'fused_dot_product_attention',
 ]

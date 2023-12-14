@@ -307,7 +307,7 @@ std::vector<ir::LoweredFunc> LowerToAstVec(
       target);
   std::vector<ir::LoweredFunc> result = lower_instance();
   for (auto& res : result) {
-    if (target == common::DefaultNVGPUTarget()) {
+    if (target == cinn::common::DefaultNVGPUTarget()) {
       res->device_api = ir::DeviceAPI::GPU;
     }
   }
@@ -352,7 +352,7 @@ ir::LoweredFunc Lower(const std::string& name,
           break;
         }
       }
-      if (target == common::DefaultNVGPUTarget()) {
+      if (target == cinn::common::DefaultNVGPUTarget()) {
         res->device_api = ir::DeviceAPI::GPU;
       }
     }
@@ -406,7 +406,7 @@ std::vector<ir::LoweredFunc> LowerVec(const std::string& name,
         }
       }
 
-      if (target == common::DefaultNVGPUTarget()) {
+      if (target == cinn::common::DefaultNVGPUTarget()) {
         res->device_api = ir::DeviceAPI::GPU;
       }
     }

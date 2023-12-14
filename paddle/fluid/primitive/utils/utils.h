@@ -15,10 +15,10 @@
 #pragma once
 #include <vector>
 
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 #include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace primitive {
@@ -37,6 +37,29 @@ static bool is_half_dtype(const DataType& dtype) {
   } else {
     return false;
   }
+}
+
+// This function expands the dimension of origin Tensor based on the value of
+// axis
+static std::vector<int64_t> get_expand_dims(const Tensor& origin,
+                                            const std::vector<int64_t>& axis) {
+  std::vector<int64_t> result(origin.shape());
+  for (size_t i = 0; i < axis.size(); ++i) {
+    int64_t offset = axis[i];
+    if (offset < 0) {
+      offset += result.size() + 1;
+    }
+
+    PADDLE_ENFORCE_LE(
+        offset,
+        result.size(),
+        platform::errors::OutOfRange("Your index [%lu] exceeds the number of "
+                                     "elements in origin_dims[%lu].",
+                                     offset,
+                                     result.size()));
+    result.insert(result.begin() + offset, 1);
+  }
+  return result;
 }
 
 // This fucction compute unsqueeze dims for reshape to replace unsqueeze.
@@ -133,7 +156,7 @@ static phi::DDim get_reduce_dims_from_out(const phi::DDim& dout_dims,
               i));
     }
   }
-  return phi::make_ddim(result);
+  return common::make_ddim(result);
 }
 
 static phi::DDim get_reduce_dims(const phi::DDim& x_dims,

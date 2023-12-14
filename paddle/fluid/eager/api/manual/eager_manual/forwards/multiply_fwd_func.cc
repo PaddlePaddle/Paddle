@@ -19,9 +19,11 @@
 #include "paddle/fluid/eager/eager_amp_auto_cast.h"
 #include "paddle/fluid/eager/eager_layout_auto_tune.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
+#include "paddle/fluid/eager/type_promotion_utils.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/api/include/sparse_api.h"
+#include "paddle/phi/common/type_promotion.h"
 #include "paddle/phi/core/flags.h"
 
 PHI_DECLARE_bool(check_nan_inf);
@@ -54,6 +56,20 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
           paddle::imperative::AmpLevel::O0);
       return multiply_ad_func(new_x, new_y);
     }
+  }
+
+  // Type promotion Logic
+  if (phi::NeedTypePromotion(x.dtype(), y.dtype())) {
+    VLOG(5) << "got different data type, run type protmotion automatically.";
+    LOG(WARNING) << "got different data type, run type protmotion "
+                    "automatically, this may cause data type been changed.";
+    auto op_name = phi::TransToFluidOpName("multiply");
+    auto promotion_type = phi::GetPromoteDtype(op_name, x.dtype(), y.dtype());
+
+    auto new_x = egr::PromoteCast("x", x, promotion_type);
+    auto new_y = egr::PromoteCast("y", y, promotion_type);
+
+    return multiply_ad_func(new_x, new_y);
   }
 
   // Layout autotune
@@ -386,6 +402,20 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
           paddle::imperative::AmpLevel::O0);
       return multiply_ad_func(new_x, new_y);
     }
+  }
+
+  // Type promotion Logic
+  if (phi::NeedTypePromotion(x.dtype(), y.dtype())) {
+    VLOG(5) << "got different data type, run type protmotion automatically.";
+    LOG(WARNING) << "got different data type, run type protmotion "
+                    "automatically, this may cause data type been changed.";
+    auto op_name = phi::TransToFluidOpName("multiply");
+    auto promotion_type = phi::GetPromoteDtype(op_name, x.dtype(), y.dtype());
+
+    auto new_x = egr::PromoteCast("x", x, promotion_type);
+    auto new_y = egr::PromoteCast("y", y, promotion_type);
+
+    return multiply_ad_func(new_x, new_y);
   }
 
   // Layout autotune

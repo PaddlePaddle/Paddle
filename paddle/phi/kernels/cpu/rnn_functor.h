@@ -140,7 +140,7 @@ void DropoutCpuFunctionInplace(const CPUContext& dev_ctx,
   if (is_test) {
     return;
   }
-  size_t size = phi::product(x->dims());
+  size_t size = common::product(x->dims());
   auto* mask_data = mask->data<uint8_t>();
   if (!(*is_has_reset)) {
     // Special case when dropout_prob is 1.0

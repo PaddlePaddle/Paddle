@@ -1,4 +1,4 @@
-# add_subdirectory(details)
+add_subdirectory(details)
 
 cc_test(
   data_type_test
@@ -39,7 +39,7 @@ cc_test(
 cc_test(
   lod_tensor_test
   SRCS lod_tensor_test.cc
-  DEPS phi lod_tensor memory)
+  DEPS phi common lod_tensor memory)
 
 if(WITH_GPU)
   nv_test(
@@ -61,7 +61,7 @@ cc_test(
 cc_test(
   threadpool_test
   SRCS threadpool_test.cc
-  DEPS phi)
+  DEPS phi common)
 
 cc_test(
   var_type_traits_test
@@ -87,12 +87,12 @@ if(WITH_GPU)
   nv_test(
     data_device_transform_test
     SRCS data_device_transform_test.cu
-    DEPS operator op_registry device_context phi scope)
+    DEPS operator op_registry device_context phi common scope)
 elseif(WITH_ROCM)
   hip_test(
     data_device_transform_test
     SRCS data_device_transform_test.cu
-    DEPS operator op_registry device_context phi scope)
+    DEPS operator op_registry device_context phi common scope)
 endif()
 
 if(WITH_GPU)
@@ -206,6 +206,7 @@ if(WITH_PSCORE)
            heter_server
            gloo_wrapper
            phi
+           common
            ${RPC_DEPS}
            graph_gpu_wrapper)
   else()
@@ -223,6 +224,7 @@ if(WITH_PSCORE)
            heter_server
            gloo_wrapper
            phi
+           common
            ${RPC_DEPS})
   endif()
 else()
@@ -261,20 +263,15 @@ cc_test(
   SRCS dlpack_tensor_test.cc
   DEPS dlpack_tensor glog)
 
-cc_test_old(
+cc_test(
   op_compatible_info_test
-  SRCS
-  op_compatible_info_test.cc
-  DEPS
-  op_compatible_info
-  proto_desc
-  string_helper
-  glog)
+  SRCS op_compatible_info_test.cc
+  DEPS op_compatible_info proto_desc string_helper glog)
 
 cc_test(
   infershape_utils_test
   SRCS infershape_utils_test.cc
-  DEPS infershape_utils phi)
+  DEPS infershape_utils phi common)
 
 if(WITH_TESTING AND TEST selected_rows_utils_test)
   set_tests_properties(selected_rows_utils_test PROPERTIES TIMEOUT 120)
@@ -310,7 +307,7 @@ cc_test(
   DEPS fleet_wrapper gloo_wrapper framework_io string_helper)
 
 if(WITH_CINN)
-  cc_test_old(
+  paddle_test(
     cinn_cache_key_test
     SRCS
     paddle2cinn/cinn_cache_key_test.cc
@@ -320,21 +317,22 @@ if(WITH_CINN)
     python)
   set_tests_properties(cinn_cache_key_test PROPERTIES LABELS "RUN_TYPE=CINN")
 
-  paddle_test(build_cinn_pass_test SRCS paddle2cinn/build_cinn_pass_test.cc)
+  paddle_test(build_cinn_pass_test SRCS paddle2cinn/build_cinn_pass_test.cc
+              DEPS common)
   set_tests_properties(build_cinn_pass_test PROPERTIES LABELS "RUN_TYPE=CINN")
   # target_link_libraries(build_cinn_pass_test ${PYTHON_LIBRARIES})
 
-  cc_test_old(cinn_zero_tensor_trick_pass_test SRCS
+  paddle_test(cinn_zero_tensor_trick_pass_test SRCS
               paddle2cinn/cinn_zero_tensor_trick_pass_test.cc DEPS paddle2cinn)
   set_tests_properties(cinn_zero_tensor_trick_pass_test
                        PROPERTIES LABELS "RUN_TYPE=CINN")
   target_link_libraries(cinn_zero_tensor_trick_pass_test ${PYTHON_LIBRARIES})
 
-  cc_test_old(transform_desc_test SRCS paddle2cinn/transform_desc_test.cc DEPS
+  paddle_test(transform_desc_test SRCS paddle2cinn/transform_desc_test.cc DEPS
               paddle2cinn)
   set_tests_properties(transform_desc_test PROPERTIES LABELS "RUN_TYPE=CINN")
 
-  cc_test_old(
+  paddle_test(
     transform_type_test
     SRCS
     paddle2cinn/transform_type_test.cc

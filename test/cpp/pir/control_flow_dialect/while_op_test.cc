@@ -14,14 +14,24 @@
 #include <gtest/gtest.h>
 #include <iostream>
 
+#include "paddle/fluid/framework/new_executor/interpretercore.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+
+PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(less_than, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add_grad, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add_n, CPU, ALL_LAYOUT);
 
 using namespace paddle::dialect;  // NOLINT
 
@@ -76,6 +86,7 @@ TEST(while_op_test, network_with_backward) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<OperatorDialect>();
   ctx->GetOrRegisterDialect<pir::ControlFlowDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::KernelDialect>();
 
   pir::Program program(ctx);
   pir::Block* block = program.block();
@@ -138,7 +149,7 @@ TEST(while_op_test, network_with_backward) {
   // the output of while_grad op is {x_grad, y_grad}
   // the value {i , one, ten} is stop gradient.
 
-  auto bwd_cond = builder.Build<pir::HasElementsOp>(stack).out();
+  auto bwd_cond = builder.Build<HasElementsOp>(stack).out();
   auto while_grad = builder.Build<WhileOp>(
       bwd_cond, std::vector<pir::Value>{x_out_grad, zero});
   pir::Block& bwd_body_block = while_grad.body();
@@ -161,7 +172,7 @@ TEST(while_op_test, network_with_backward) {
                        .out();
   auto local_next_y_grad = builder.Build<AddNOp>(combine_y).out();
 
-  auto next_bwd_cond = builder.Build<pir::HasElementsOp>(stack).out();
+  auto next_bwd_cond = builder.Build<HasElementsOp>(stack).out();
   builder.Build<pir::YieldOp>(std::vector<pir::Value>{
       next_bwd_cond, bwd_body_x_argument_grad, local_next_y_grad});
 
@@ -172,4 +183,14 @@ TEST(while_op_test, network_with_backward) {
   EXPECT_EQ(y_grad.type(), y.type());
 
   LOG(INFO) << program;
+
+  auto place = paddle::platform::CPUPlace();
+#ifdef PADDLE_WITH_CUDA
+  place = paddle::platform::CUDAPlace(0);
+#endif
+  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program, place);
+  paddle::framework::Scope scope;
+  paddle::framework::InterpreterCore test_core(
+      place, {}, kernel_program->block(), &scope);
+  test_core.Run({});
 }

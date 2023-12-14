@@ -111,7 +111,7 @@ void SoftmaxCooCPUKernel(const Context& dev_ctx,
     return;
   }
 
-  const std::vector<IntT> sizes = phi::vectorize<IntT>(x_dims);
+  const std::vector<IntT> sizes = common::vectorize<IntT>(x_dims);
   std::map<IntT, std::vector<IntT>> pools;
   IntT nvalues = std::accumulate(sizes.begin() + sparse_dim,
                                  sizes.end(),

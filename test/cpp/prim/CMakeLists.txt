@@ -1,5 +1,6 @@
 set(prim_eager_deps
     phi
+    common
     hook_utils
     utils
     global_utils
@@ -15,7 +16,7 @@ set(prim_eager_deps
 set(prim_generated_deps final_dygraph_function final_dygraph_node
                         dygraph_function dygraph_node)
 
-paddle_test(test_comp_static SRCS test_static_prim.cc)
+paddle_test(test_comp_static SRCS test_static_prim.cc DEPS common)
 
 if(NOT (NOT WITH_PYTHON AND ON_INFER))
   if(WITH_CINN)
@@ -24,7 +25,8 @@ if(NOT (NOT WITH_PYTHON AND ON_INFER))
   cc_library(init_env_utils SRCS init_env_utils.cc)
   target_compile_definitions(init_env_utils PUBLIC PADDLE_DLL_EXPORT)
 
-  paddle_test(test_comp_eager SRCS test_eager_prim.cc DEPS init_env_utils)
+  paddle_test(test_comp_eager SRCS test_eager_prim.cc DEPS init_env_utils
+              common)
 endif()
 
 # skip win32 since wget is not installed by default on windows machine.

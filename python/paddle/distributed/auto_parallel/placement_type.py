@@ -13,9 +13,7 @@
 # limitations under the License.
 from typing import cast
 
-from paddle.base.core import Partial, Placement, ReduceType, Replicate, Shard
-
-__all__ = ["ReduceType", "Placement", "Replicate", "Shard", "Partial"]
+from paddle.base.core import Partial, Replicate, Shard
 
 
 def to_placements(dim_map, mesh, partial_idx=[]):

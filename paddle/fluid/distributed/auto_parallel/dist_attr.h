@@ -131,6 +131,10 @@ class OperatorDistAttr {
 
   void set_impl_idx(const int64_t& impl_idx) { impl_idx_ = impl_idx; }
 
+  int64_t chunk_id() const { return chunk_id_; }
+
+  void set_chunk_id(const int64_t& chunk_id) { chunk_id_ = chunk_id; }
+
   bool is_recompute() const { return is_recompute_; }
 
   void set_is_recompute(bool is_recompute) { is_recompute_ = is_recompute; }
@@ -240,6 +244,7 @@ class OperatorDistAttr {
   std::string op_type_;
   std::string impl_type_ = kDefault;
   int64_t impl_idx_ = 0;
+  int64_t chunk_id_ = 0;
   bool is_recompute_ = false;
   std::string execution_stream_ = kDefault;
   bool force_record_event_ = false;

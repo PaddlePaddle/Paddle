@@ -17,8 +17,8 @@
 #include "paddle/phi/kernels/unique_consecutive_kernel.h"
 #include "paddle/phi/kernels/gpu/unique_consecutive_functor.h"
 
+#include "paddle/common/errors.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {

@@ -23,6 +23,8 @@
 namespace phi {
 namespace distributed {
 
+using phi::distributed::auto_parallel::str_join;
+
 std::shared_ptr<DistTensor> ReshardFunction::Eval(
     DeviceContext* dev_ctx,
     const DistTensor& in,
@@ -41,21 +43,25 @@ void ReshardFunction::SetValue(DistTensor* tensor, const DenseTensor& value) {
 void ReshardFunction::SetDistProps(DistTensor* tensor,
                                    const DDim& dims,
                                    const TensorDistAttr& dist_attr) {
-  PADDLE_ENFORCE_EQ(dist_attr.verify(vectorize(dims)),
+  PADDLE_ENFORCE_EQ(dist_attr.verify_dynamic(common::vectorize(dims)),
                     true,
                     phi::errors::InvalidArgument(
-                        "The input dist_attr and dims are improper."));
+                        "The input dist_attr [%s] and dims [%s] are improper.",
+                        dist_attr.to_string(),
+                        str_join(vectorize(dims))));
 
-  tensor->dims_ = dims;
+  tensor->global_dims_ = dims;
   tensor->dist_attr_ = dist_attr;
 }
 
 void ReshardFunction::SetDistProps(DistTensor* tensor,
                                    const TensorDistAttr& dist_attr) {
-  PADDLE_ENFORCE_EQ(dist_attr.verify(vectorize(tensor->dims())),
+  PADDLE_ENFORCE_EQ(dist_attr.verify_dynamic(common::vectorize(tensor->dims())),
                     true,
                     phi::errors::InvalidArgument(
-                        "The input dist_attr and dims are improper."));
+                        "The input dist_attr [%s] and dims [%s] are improper.",
+                        dist_attr.to_string(),
+                        str_join(vectorize(tensor->dims()))));
 
   tensor->dist_attr_ = dist_attr;
 }

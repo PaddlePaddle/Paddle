@@ -13,8 +13,8 @@
 // limitations under the License.
 #pragma once
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/core/distributed/comm_context.h"
-#include "paddle/phi/core/macros.h"
 
 #include "paddle/phi/backends/device_manager.h"
 

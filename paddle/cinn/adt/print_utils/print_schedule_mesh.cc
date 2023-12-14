@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/adt/print_utils/print_schedule_mesh.h"
-#include "paddle/cinn/adt/print_utils/print_loop_size.h"
+#include "paddle/cinn/adt/print_utils/print_dim_expr.h"
 #include "paddle/cinn/adt/print_utils/print_schedule_dim.h"
 #include "paddle/cinn/adt/schedule_mesh.h"
 

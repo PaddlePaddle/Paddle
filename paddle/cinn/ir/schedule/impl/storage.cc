@@ -16,6 +16,22 @@
 #include "paddle/cinn/ir/schedule/impl/ir_schedule.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 
+/** \brief A macro that guards the beginning of each implementation of schedule
+ */
+#define CINN_IR_SCHEDULE_BEGIN() try {
+/**
+ * \brief A macro that pairs with `CINN_IR_SCHEDULE_BEGIN`, handling potential
+ * errors and error message printing.
+ * @param primitive A string representing the kind of schedule primitive.
+ * @param err_msg_level A ScheduleErrorMessageLevel enum, level of error message
+ * printing
+ */
+#define CINN_IR_SCHEDULE_END(err_msg_level)                    \
+  }                                                            \
+  catch (const utils::ErrorHandler& err_hanlder) {             \
+    CINN_THROW(err_hanlder.FormatErrorMessage(err_msg_level)); \
+  }
+
 namespace cinn {
 namespace ir {
 
@@ -32,13 +48,49 @@ Expr DyScheduleImpl::CacheWrite(const Expr& block,
 }
 
 void DyScheduleImpl::SyncThreads(const Expr& ir_node, bool after_node) {
-  CINN_NOT_IMPLEMENTED;
+  CHECK(ir_node.As<ScheduleBlockRealize>() || ir_node.As<ir::For>());
+  auto root = GetRootBlock(ir_node);
+  ChangeBodyToBlock::Change(&root);
+  Expr sync_threads = runtime::IntrinsicCall(Void(), "__syncthreads", {});
+  InsertExpr::Insert(ir_node, sync_threads, after_node, &root);
+  return;
 }
 
 void DyScheduleImpl::SetBuffer(Expr& block,  // NOLINT
                                const std::string& memory_type,
                                bool fixed) {
-  CINN_NOT_IMPLEMENTED;
+  CHECK(block.As<ir::ScheduleBlockRealize>());
+  auto find_tensor = ir::ir_utils::CollectIRNodesWithoutTensor(
+      block, [&](const Expr* x) { return x->As<ir::Store>(); }, true);
+  CHECK_EQ(find_tensor.size(), 1U)
+      << "One block should only have one Store node!(except for root block)";
+  auto& tensor = (*find_tensor.begin()).As<ir::Store>()->tensor;
+  tensor.as_tensor_ref()->WithBuffer(
+      memory_type, "_" + tensor.as_tensor_ref()->name + "_temp_buffer");
+
+  auto exprs = this->GetModule().GetExprs();
+  for (auto& it_expr : exprs) {
+    auto find_tensor =
+        ir::ir_utils::CollectIRNodesWithoutTensor(it_expr, [&](const Expr* x) {
+          return x->as_tensor() &&
+                 (x->as_tensor()->name == tensor.as_tensor_ref()->name ||
+                  x->as_tensor()->name ==
+                      tensor.as_tensor_ref()->name + "__reduce_init");
+        });
+    for (auto& t : find_tensor) {
+      CHECK(t.as_tensor());
+      t.as_tensor_ref()->Bind(tensor.as_tensor_ref()->buffer);
+    }
+  }
+
+  // if buffer type == "local"
+  if (memory_type == "local" && fixed) {
+    FixLocalBufferSize mutator(block.As<ir::ScheduleBlockRealize>()
+                                   ->schedule_block.As<ir::ScheduleBlock>()
+                                   ->name);
+    auto root = GetRootBlock(block);
+    mutator(&root);
+  }
 }
 }  // namespace ir
 }  // namespace cinn

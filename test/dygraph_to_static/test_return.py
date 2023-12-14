@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase, test_ast_only
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    enable_to_static_guard,
+    test_ast_only,
+    test_legacy_only,
+)
 from ifelse_simple_func import dyfunc_with_if_else
 
 import paddle
@@ -277,8 +282,7 @@ class TestReturnBase(Dy2StTestBase):
     def init_dygraph_func(self):
         self.dygraph_func = test_return_base
 
-    def _run(self, to_static=False):
-        paddle.jit.enable_to_static(to_static)
+    def _run(self):
         with base.dygraph.guard():
             res = self.dygraph_func(self.input)
             if isinstance(res, (tuple, list)):
@@ -288,8 +292,9 @@ class TestReturnBase(Dy2StTestBase):
             return res
 
     def _test_value_impl(self):
-        dygraph_res = self._run(to_static=False)
-        static_res = self._run(to_static=True)
+        with enable_to_static_guard(False):
+            dygraph_res = self._run()
+        static_res = self._run()
         if isinstance(dygraph_res, tuple):
             self.assertTrue(isinstance(static_res, tuple))
             self.assertEqual(len(dygraph_res), len(static_res))
@@ -316,9 +321,53 @@ class TestInsideFuncBase(TestReturnBase):
         self.dygraph_func = test_inside_func_base
 
 
-class TestReturnIf(TestReturnBase):
+class TestReturnIf(Dy2StTestBase):
+    def setUp(self):
+        self.input = np.ones(1).astype('int32')
+        self.place = (
+            base.CUDAPlace(0)
+            if base.is_compiled_with_cuda()
+            else base.CPUPlace()
+        )
+        self.init_dygraph_func()
+
     def init_dygraph_func(self):
         self.dygraph_func = test_return_if
+
+    def _run(self, to_static=False):
+        paddle.jit.enable_to_static(to_static)
+        with base.dygraph.guard():
+            res = self.dygraph_func(self.input)
+            if isinstance(res, (tuple, list)):
+                return tuple(r.numpy() for r in res)
+            elif isinstance(res, core.eager.Tensor):
+                return res.numpy()
+            return res
+
+    def _test_value_impl(self):
+        dygraph_res = self._run(to_static=False)
+        static_res = self._run(to_static=True)
+        if isinstance(dygraph_res, tuple):
+            self.assertTrue(isinstance(static_res, tuple))
+            self.assertEqual(len(dygraph_res), len(static_res))
+            for i in range(len(dygraph_res)):
+                np.testing.assert_allclose(
+                    dygraph_res[i], static_res[i], rtol=1e-05
+                )
+        elif isinstance(dygraph_res, np.ndarray):
+            np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
+        else:
+            self.assertEqual(dygraph_res, static_res)
+
+    # Why add test_legacy_only? : PIR not support if true and false branch output with different dtype
+    @test_legacy_only
+    @test_ast_only
+    def test_transformed_static_result(self):
+        if hasattr(self, "error"):
+            with self.assertRaisesRegex(Dygraph2StaticException, self.error):
+                self._test_value_impl()
+        else:
+            self._test_value_impl()
 
 
 class TestReturnOnlyIf(TestReturnBase):
@@ -331,9 +380,53 @@ class TestReturnInFor(TestReturnBase):
         self.dygraph_func = test_return_in_for
 
 
-class TestReturnInWhile(TestReturnBase):
+class TestReturnInWhile(Dy2StTestBase):
+    def setUp(self):
+        self.input = np.ones(1).astype('int32')
+        self.place = (
+            base.CUDAPlace(0)
+            if base.is_compiled_with_cuda()
+            else base.CPUPlace()
+        )
+        self.init_dygraph_func()
+
     def init_dygraph_func(self):
         self.dygraph_func = test_return_in_while
+
+    def _run(self, to_static=False):
+        paddle.jit.enable_to_static(to_static)
+        with base.dygraph.guard():
+            res = self.dygraph_func(self.input)
+            if isinstance(res, (tuple, list)):
+                return tuple(r.numpy() for r in res)
+            elif isinstance(res, core.eager.Tensor):
+                return res.numpy()
+            return res
+
+    def _test_value_impl(self):
+        dygraph_res = self._run(to_static=False)
+        static_res = self._run(to_static=True)
+        if isinstance(dygraph_res, tuple):
+            self.assertTrue(isinstance(static_res, tuple))
+            self.assertEqual(len(dygraph_res), len(static_res))
+            for i in range(len(dygraph_res)):
+                np.testing.assert_allclose(
+                    dygraph_res[i], static_res[i], rtol=1e-05
+                )
+        elif isinstance(dygraph_res, np.ndarray):
+            np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
+        else:
+            self.assertEqual(dygraph_res, static_res)
+
+    # Why add test_legacy_only? : PIR not support if true and false branch output with different dtype
+    @test_legacy_only
+    @test_ast_only
+    def test_transformed_static_result(self):
+        if hasattr(self, "error"):
+            with self.assertRaisesRegex(Dygraph2StaticException, self.error):
+                self._test_value_impl()
+        else:
+            self._test_value_impl()
 
 
 class TestReturnIfDiff(TestReturnBase):
@@ -341,9 +434,53 @@ class TestReturnIfDiff(TestReturnBase):
         self.dygraph_func = test_diff_return
 
 
-class TestReturnIfElse(TestReturnBase):
+class TestReturnIfElse(Dy2StTestBase):
+    def setUp(self):
+        self.input = np.ones(1).astype('int32')
+        self.place = (
+            base.CUDAPlace(0)
+            if base.is_compiled_with_cuda()
+            else base.CPUPlace()
+        )
+        self.init_dygraph_func()
+
     def init_dygraph_func(self):
         self.dygraph_func = test_return_if_else
+
+    def _run(self, to_static=False):
+        paddle.jit.enable_to_static(to_static)
+        with base.dygraph.guard():
+            res = self.dygraph_func(self.input)
+            if isinstance(res, (tuple, list)):
+                return tuple(r.numpy() for r in res)
+            elif isinstance(res, core.eager.Tensor):
+                return res.numpy()
+            return res
+
+    def _test_value_impl(self):
+        dygraph_res = self._run(to_static=False)
+        static_res = self._run(to_static=True)
+        if isinstance(dygraph_res, tuple):
+            self.assertTrue(isinstance(static_res, tuple))
+            self.assertEqual(len(dygraph_res), len(static_res))
+            for i in range(len(dygraph_res)):
+                np.testing.assert_allclose(
+                    dygraph_res[i], static_res[i], rtol=1e-05
+                )
+        elif isinstance(dygraph_res, np.ndarray):
+            np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
+        else:
+            self.assertEqual(dygraph_res, static_res)
+
+    # Why add test_legacy_only? : PIR not support if true and false branch output with different dtype
+    @test_legacy_only
+    @test_ast_only
+    def test_transformed_static_result(self):
+        if hasattr(self, "error"):
+            with self.assertRaisesRegex(Dygraph2StaticException, self.error):
+                self._test_value_impl()
+        else:
+            self._test_value_impl()
 
 
 class TestReturnInWhile2(TestReturnBase):

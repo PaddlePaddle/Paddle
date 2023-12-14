@@ -119,6 +119,10 @@ class UniformInitializer(Initializer):
                 out_var._share_underline_tensor_to(var)
             return None
         elif in_pir_mode():
+            if var.dtype == core.DataType.FLOAT16:
+                out_dtype = core.DataType.FLOAT32
+            else:
+                out_dtype = var.dtype
             out_var = _C_ops.uniform(
                 var.shape,
                 out_dtype,

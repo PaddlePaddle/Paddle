@@ -12,10 +12,10 @@
  See the License for the specific language governing permissions and
  limitations under the License. */
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/core/macros.h"
 
 namespace phi {
 
@@ -24,7 +24,7 @@ void EmptyKernel(const Context& dev_ctx,
                  const IntArray& shape,
                  DataType dtype UNUSED,
                  DenseTensor* out) {
-  out->Resize(phi::make_ddim(shape.GetData()));
+  out->Resize(common::make_ddim(shape.GetData()));
   dev_ctx.template Alloc<T>(out);
 }
 

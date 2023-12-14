@@ -11,17 +11,19 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
+#ifndef PADDLE_WITH_HIP
 #include <cuda_fp16.h>
-
 #include <cub/cub.cuh>
+#endif
 
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
+#ifndef PADDLE_WITH_HIP
 #include "paddle/phi/kernels/fusion/gpu/fused_dropout_helper.h"
+#endif
 
 namespace phi {
 namespace fusion {
@@ -49,6 +51,7 @@ void FusedBiasDropoutResidualLnGradKernel(
     DenseTensor* bias_grad,
     DenseTensor* ln_scale_grad,
     DenseTensor* ln_bias_grad) {
+#ifndef PADDLE_WITH_HIP
   using U = LayerNormParamType<T>;
   auto* d_y_data = y_grad.data<T>();
   auto* ln_scale_data =
@@ -111,6 +114,10 @@ void FusedBiasDropoutResidualLnGradKernel(
       d_x_data,
       d_bias_data,
       d_residual_data);
+#else
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "FusedBiasDropoutResidualLnGradKernel not surpport for rocm"));
+#endif
 }
 
 }  // namespace fusion

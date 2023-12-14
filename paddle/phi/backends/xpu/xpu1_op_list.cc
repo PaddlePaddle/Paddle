@@ -25,6 +25,7 @@ XPUOpMap& get_kl1_ops() {
        XPUKernelSet({phi::DataType::FLOAT32,
                      phi::DataType::INT32,
                      phi::DataType::INT64})},
+      {"add_layernorm_xpu", XPUKernelSet({phi::DataType::FLOAT32})},
       {"accuracy", XPUKernelSet({phi::DataType::FLOAT32})},
       {"adam", XPUKernelSet({phi::DataType::FLOAT32})},
       {"adamw", XPUKernelSet({phi::DataType::FLOAT32})},
@@ -363,6 +364,10 @@ XPUOpMap& get_kl1_ops() {
        XPUKernelSet({phi::DataType::INT32,
                      phi::DataType::INT64,
                      phi::DataType::FLOAT32})},
+      {"fast_where_xpu",
+       XPUKernelSet({phi::DataType::FLOAT32,
+                     phi::DataType::INT32,
+                     phi::DataType::INT64})},
       // AddMore
   };
 

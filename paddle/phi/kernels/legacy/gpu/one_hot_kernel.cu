@@ -59,7 +59,7 @@ struct OneHotV2OpCUDAFunctor {
     auto numel = in_->numel();
     auto* p_out_data = ctx_.template Alloc<OutT>(out_);
     auto stream = ctx_.stream();
-    funcs::set_constant(ctx_, out_, 0.0);
+    funcs::set_constant(ctx_, out_, static_cast<OutT>(0.0));
 
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx_, numel);
 

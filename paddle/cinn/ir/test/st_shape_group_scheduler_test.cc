@@ -30,7 +30,7 @@ using frontend::RunDecomposer;
 
 void Compile(NetBuilder* net_builder) {
   auto program = net_builder->Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
   RunDecomposer(&program, target);
 
   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
@@ -68,7 +68,7 @@ void CheckAccuracy(NetBuilder* net_builder,
                    const std::vector<std::string>& input_names) {
   FLAGS_cinn_new_group_scheduler = true;
   auto program = net_builder->Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
 
   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
   hlir::framework::ApplyPasses(graph.get(),

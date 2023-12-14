@@ -70,7 +70,7 @@ DenseTensor Diagonal(const DeviceContext& context,
                      int64_t dim2) {
   auto* input_data = input->data<T>();
   auto input_dims = input->dims();
-  auto input_stride = phi::stride(input_dims);
+  auto input_stride = common::stride(input_dims);
   auto dim1_ = dim1 < 0 ? input_dims.size() + dim1 : dim1;
   auto dim2_ = dim2 < 0 ? input_dims.size() + dim2 : dim2;
   auto len1 = input_dims[std::min(dim1_, dim2_)];
@@ -89,8 +89,8 @@ DenseTensor Diagonal(const DeviceContext& context,
   int diag_size = len2 < len1 ? len2 : len1;
 
   if (diag_size > 0) {
-    auto ret_strides = vectorize(input_stride);
-    auto ret_dims = vectorize(input_dims);
+    auto ret_strides = common::vectorize(input_stride);
+    auto ret_dims = common::vectorize(input_dims);
     ret_strides.erase(ret_strides.begin() + std::max(dim1_, dim2_));
     ret_strides.erase(ret_strides.begin() + std::min(dim1_, dim2_));
     ret_dims.erase(ret_dims.begin() + std::max(dim1_, dim2_));
@@ -102,15 +102,15 @@ DenseTensor Diagonal(const DeviceContext& context,
     ret_strides.push_back(stride1 + stride2);
     ret_dims.push_back(diag_size);
     DenseTensor diag;
-    DDim diag_dims = phi::make_ddim(ret_dims);
-    auto dig_stride = phi::stride(diag_dims);
+    DDim diag_dims = common::make_ddim(ret_dims);
+    auto dig_stride = common::stride(diag_dims);
     diag.Resize(diag_dims);
     auto diag_data = context.template Alloc<T>(&diag);
 
     int64_t pos = std::abs(offset) * offset_stride;
     int64_t dim_size = ret_strides.size();
 #if defined(__NVCC__) || defined(__HIPCC__)
-    thrust::device_vector<int64_t> diag_vec(vectorize(dig_stride));
+    thrust::device_vector<int64_t> diag_vec(common::vectorize(dig_stride));
     const int64_t* diag_arr = thrust::raw_pointer_cast(diag_vec.data());
     thrust::device_vector<int64_t> ret_vec(ret_strides);
     const int64_t* ret_arr = thrust::raw_pointer_cast(ret_vec.data());

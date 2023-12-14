@@ -54,9 +54,10 @@ void Conv2dXPUKernelImpl(const Context& ctx,
   // update paddings and dilations accoring to padding_algorithm
   std::vector<int> paddings_vec = paddings;
   std::vector<int> dilations_vec = dilations;
-  DDim in_data_dims = phi::slice_ddim(input_dims, 2, input_dims.size());
-  DDim filter_data_dims = phi::slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
+  DDim in_data_dims = common::slice_ddim(input_dims, 2, input_dims.size());
+  DDim filter_data_dims =
+      common::slice_ddim(filter_dims, 2, filter_dims.size());
+  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
   phi::UpdatePaddingAndDilation(&paddings_vec,
                                 &dilations_vec,
                                 padding_algorithm,
@@ -220,6 +221,8 @@ void Conv2dXPUKernel(const Context& ctx,
             DataTypeToString(filter.dtype()),
             DataTypeToString(out_dtype)));
       }
+    } else if (filter.dtype() == DataType::FLOAT32) {
+      CONV2D_XPU_KERNEL_IMPL(float, float, float, int32_t);
     } else {
       PADDLE_THROW(phi::errors::Unimplemented(
           "Not support x_dtype is %s, filter_dtype is %s and out_dtype is %s.",

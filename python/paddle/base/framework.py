@@ -4061,8 +4061,7 @@ class Block:
         ), "skip_op_callstack parameter's type is error, expect bool, received {}".format(
             type(skip_op_callstack)
         )
-        block_str = "{ // block "
-        block_str += f"{self.idx}\n"
+        block_str = f"{{ // block_idx:{self.idx}  parent_idx:{self.parent_idx}  forward_idx:{self.forward_block_idx}  backward_idx:{self.backward_block_idx}\n"
         for var in list(self.vars.values()):
             block_str += f"    {var._to_readable_code()}\n"
         block_str += "\n"
@@ -5761,6 +5760,13 @@ class Program:
         # to tag whether is startup_program
         self._is_start_up_program_ = False
 
+        # distributed training combined with prim mechanism (prim is behind of distributed)
+        # after distributed partition, for subprogram or subgraph on a single card, decompose PHI grad ops into primitive ops
+        # _need_decomp, to tag whether this program needs to be decomposed
+        self._need_decomp = False
+        # _grad_var_to_var, a dict which recording the mapping of backward grad variable to forward variable
+        self._grad_var_to_var = None
+
     def _find_var_class_kwargs(self, new_desc):
         # NOTE: not all variables support shape/dtype/lod_level methods.
         # For example: RAW, STEP_SCOPES, etc.
@@ -6383,6 +6389,10 @@ class Program:
                 p._pipeline_opt = self._pipeline_opt
             if hasattr(self, '_pass_opt'):
                 p._pass_opt = self._pass_opt
+            if hasattr(self, '_need_decomp'):
+                p._need_decomp = self._need_decomp
+            if hasattr(self, '_grad_var_to_var'):
+                p._grad_var_to_var = self._grad_var_to_var
             # NOTE(zhiqiu): we sync the cloned program, to update its program by
             # its desc.
             p._sync_with_cpp()
@@ -6391,7 +6401,24 @@ class Program:
         p._copy_data_info_from(self, pruned_origin_block_id_map)
         p._copy_dist_param_info_from(self)
         p._copy_operator_info_from(self)
+        p._name_generator = self._name_generator.clone()
         return p
+
+    @signature_safe_contextmanager
+    def switch_name_generator_guard(self, new_generator):
+        if isinstance(new_generator, str):
+            new_generator = unique_name.UniqueNameGenerator(new_generator)
+        elif isinstance(new_generator, bytes):
+            new_generator = unique_name.UniqueNameGenerator(
+                new_generator.decode()
+            )
+
+        old_generator = self._name_generator
+        self._name_generator = new_generator
+        try:
+            yield
+        finally:
+            self._name_generator = old_generator
 
     def _prune(self, targets):
         """
@@ -6921,6 +6948,9 @@ class Program:
         self.current_block_idx = new_block_idx
         self.blocks.append(Block(self, self.current_block_idx))
         return self.current_block()
+
+    def _roll_to_global_block(self):
+        self.current_block_idx = 0
 
     def _rollback(self):
         """

@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/pir/core/region.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/block.h"
-#include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/operation.h"
 
 namespace pir {
