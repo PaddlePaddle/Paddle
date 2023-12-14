@@ -14,9 +14,9 @@
 
 #include <gtest/gtest.h>
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/pir/dialect/shape/ir/shape_dialect.h"
-#include "paddle/pir/dialect/shape/ir/shape_reify_infer_shape_op.h"
 #include "paddle/pir/pass/pass_manager.h"
 #include "test/cpp/pir/tools/test_pir_utils.h"
 
@@ -92,7 +92,7 @@ TEST(shape_optimization, dim_of_shaped_type_op_interface_pattern) {
   std::vector<int> perm = {1, 0};
 
   pir::Operation *op1 =
-      builder.Build<pir::shape::TransposeOp>(op0->result(0), perm);
+      builder.Build<paddle::dialect::TransposeOp>(op0->result(0), perm);
 
   builder.Build<pir::shape::ShapeOfOp>(op1->result(0));
 
