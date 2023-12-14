@@ -774,6 +774,8 @@ class OperatorWithKernel : public OperatorBase {
   bool SupportsKernelType(const OpKernelType& kernel_type,
                           const ExecutionContext& exe_ctx) const;
 
+  bool SupportsCPUBF16() const;
+
   bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                        phi::DataType data_type) const;
 

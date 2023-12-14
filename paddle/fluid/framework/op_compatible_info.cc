@@ -15,8 +15,10 @@
 #include "paddle/fluid/framework/op_compatible_info.h"
 
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/init_phi.h"
 #include "paddle/fluid/string/string_helper.h"
 
+REGISTER_FILE_SYMBOLS(op_compatible_info);
 namespace paddle {
 namespace framework {
 
