@@ -396,15 +396,12 @@ class GroupShardedStage2(nn.Layer):
             if not self.scale_in_opt:
                 if (
                     not hasattr(param, "main_grad")
+                    and grad is not None
                     and grad.dtype == Type.fp16.value
                 ):
-                    if grad is None:
-                        raise ValueError(
-                            "fused_linear_param_grad_add cannot be used with fp16-O2 and gradient accumulation step is more than 1 in stage2."
-                        )
                     assert (
-                        grad is not None and grad._is_initialized()
-                    ), "grad should not be None and initialized in stage2"
+                        grad._is_initialized()
+                    ), "grad should be initialized in stage2"
                     grad.scale_(self._world_size_scaling)
                 else:
                     self.scale_in_opt = True
