@@ -31,7 +31,7 @@ class TestDistCheckpointUtils(test_base.CommunicationTestDistBase):
         self._default_envs = {}
         self._changeable_envs = {"backend": ["gpu"]}
 
-    def test_mapping(self):
+    def test_flatten_mapping(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
         )
@@ -40,7 +40,21 @@ class TestDistCheckpointUtils(test_base.CommunicationTestDistBase):
             ckpt_path = ckpt_path_tmp.name
             envs["ckpt_path"] = ckpt_path
             self.run_test_case(
-                "auto_semi_auto_parallel_save_load.py",
+                "semi_auto_parallel_checkpoint_flatten_mapping.py",
+                user_defined_envs=envs,
+            )
+            ckpt_path_tmp.cleanup()
+
+    def test_dedup_tensor(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            ckpt_path_tmp = tempfile.TemporaryDirectory()
+            ckpt_path = ckpt_path_tmp.name
+            envs["ckpt_path"] = ckpt_path
+            self.run_test_case(
+                "semi_auto_parallel_checkpoint_dedup_tensor.py",
                 user_defined_envs=envs,
             )
             ckpt_path_tmp.cleanup()
