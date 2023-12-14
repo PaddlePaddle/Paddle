@@ -481,7 +481,7 @@ def _setitem_static(x, indices, values):
                         ends = paddle.utils.get_int_tensor_list(steps)
 
             if value_tensor is None:
-                return paddle._C_ops.set_value_(
+                output = paddle._C_ops.set_value_(
                     x,
                     starts,
                     ends,
@@ -493,7 +493,7 @@ def _setitem_static(x, indices, values):
                     values,
                 )
             else:
-                return paddle._C_ops.set_value_with_tensor_(
+                output = paddle._C_ops.set_value_with_tensor_(
                     x,
                     value_tensor,
                     starts,
@@ -503,6 +503,13 @@ def _setitem_static(x, indices, values):
                     decrease_axes,
                     none_axes,
                 )
+            # map var to the new output, for dy2static
+            from paddle.jit.pir_dy2static.parameter_recorder import (
+                _global_inplace_map,
+            )
+
+            _global_inplace_map.add(default_main_program(), x, output)
+            return output
         else:
             helper = paddle.base.layer_helper.LayerHelper(
                 'set_value', **locals()
@@ -594,7 +601,11 @@ def _setitem_static(x, indices, values):
                 decrease_axes,
                 none_axes,
             )
+            from paddle.jit.pir_dy2static.parameter_recorder import (
+                _global_inplace_map,
+            )
 
+            _global_inplace_map.add(default_main_program(), x, output)
         else:
             helper = paddle.base.layer_helper.LayerHelper(
                 'set_value', **locals()

@@ -19,8 +19,8 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
+    test_legacy_and_pt_and_pir,
     test_pir_only,
-    test_sot_only,
 )
 
 import paddle
@@ -45,8 +45,7 @@ class TestSetItemBase(Dy2StTestBase):
 
         return foo
 
-    @test_ast_only
-    @test_pir_only
+    @test_legacy_and_pt_and_pir
     def test_case(self):
         func = self.init_func()
         dy_res = self.run_dygraph(func)
@@ -168,8 +167,7 @@ class TestCase10(TestSetItemBase):
 
         return foo
 
-    # TODO : Open test in pir
-    # Now, In ast mode the grad is wrong. In sot mode will raise run_program error
+    @test_legacy_and_pt_and_pir
     def test_case(self):
         func = self.init_func()
         dy_res = self.run_dygraph(func)
@@ -197,9 +195,7 @@ class TestCase11(TestSetItemBase):
         x_grad, value_grad = paddle.grad(y, [x, value])
         return y, x_grad, value_grad
 
-    # TODO : Open test in ast since when grad in ast_mode is fixed.
-    @test_sot_only
-    @test_pir_only
+    @test_legacy_and_pt_and_pir
     def test_case(self):
         func = self.init_func()
         dy_res = self.run_dygraph(func)
@@ -282,6 +278,7 @@ class TestCase15(TestSetItemBase):
             pad_list[1] = W // 2
 
             x = F.pad(x, pad_list, data_format="NHWC")
+            breakpoint()
             return x
 
         return foo
@@ -292,6 +289,16 @@ class TestCase15(TestSetItemBase):
         W = paddle.full([1], 6, dtype='int32')
         y = func(x, H, W)
         return (y,)
+
+    @test_ast_only
+    @test_pir_only
+    def test_case(self):
+        func = self.init_func()
+        dy_res = self.run_dygraph(func)
+        st_res = self.run_to_static(func)
+
+        for dy_out, st_out in zip(dy_res, st_res):
+            np.testing.assert_allclose(dy_out.numpy(), st_out.numpy())
 
 
 if __name__ == '__main__':

@@ -69,7 +69,7 @@ def convert_load(x):
                 _global_inplace_map,
             )
 
-            new_var = _global_inplace_map.get(cur_block.program, id(x))
+            new_var = _global_inplace_map.get(cur_block.program, x)
             if new_var is not None:
                 return new_var
 
