@@ -531,6 +531,10 @@ from .tensor.stat import (
     std,
     var,
 )
+
+from .nn.functional.distance import (  # noqa: F401
+    pdist,
+)
 from .tensor.to_string import set_printoptions
 
 # CINN has to set a flag to include a lib
@@ -709,6 +713,7 @@ __all__ = [
     'sin_',
     'dist',
     'cdist',
+    'pdist',
     'unbind',
     'meshgrid',
     'arange',

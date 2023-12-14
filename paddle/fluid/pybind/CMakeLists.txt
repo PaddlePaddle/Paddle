@@ -45,9 +45,9 @@ set(PYBIND_DEPS
     pir_transforms
     pir
     new_profiler
-    jit_layer
-    jit_property
+    fluid_jit
     prim_utils
+    gather_op_handle
     static_tensor_operants
     type_info
     auto_parallel)
