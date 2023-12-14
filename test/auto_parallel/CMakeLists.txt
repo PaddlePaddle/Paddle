@@ -81,6 +81,10 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_auto_tuner MODULES test_auto_tuner)
   set_tests_properties(test_auto_tuner PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
                                                   TIMEOUT 100)
+  py_test_modules(test_pipeline_scheduler_vpp MODULES
+                  test_pipeline_scheduler_vpp)
+  set_tests_properties(test_pipeline_scheduler_vpp
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
   py_test_modules(test_auto_tuner_compare MODULES test_auto_tuner_compare)
   set_tests_properties(test_auto_tuner_compare
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
@@ -92,7 +96,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                                                    TIMEOUT 150)
   py_test_modules(test_reshard_s_to_r MODULES test_reshard_s_to_r)
   set_tests_properties(test_reshard_s_to_r
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 300)
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
   py_test_modules(test_reshard_s_to_p MODULES test_reshard_s_to_p)
   set_tests_properties(test_reshard_s_to_p
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
@@ -154,7 +158,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_semi_auto_parallel_single_strategy MODULES
                   test_semi_auto_parallel_single_strategy)
   set_tests_properties(test_semi_auto_parallel_single_strategy
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 500)
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 300)
   py_test_modules(test_semi_auto_parallel_in_framework MODULES
                   test_semi_auto_parallel_in_framework)
   set_tests_properties(test_semi_auto_parallel_in_framework
