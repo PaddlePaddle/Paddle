@@ -351,6 +351,17 @@ cc_library(
   SRCS fused_feedforward_pass.cc
   DEPS pass graph_pattern_detector)
 
+if(WITH_CUDNN_FRONTEND)
+  cc_library(
+    fuse_dot_product_attention_pass
+    SRCS fuse_dot_product_attention_pass.cc
+    DEPS pass graph_pattern_detector)
+  cc_library(
+    fuse_resunit_pass
+    SRCS fuse_resunit_pass.cc
+    DEPS pass graph_pattern_detector)
+endif()
+
 set(GLOB_PASS_LIB
     ${INFER_IR_PASSES}
     CACHE INTERNAL "Global PASS library")
