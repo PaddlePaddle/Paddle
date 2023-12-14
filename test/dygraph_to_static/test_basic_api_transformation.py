@@ -19,7 +19,7 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     dygraph_guard,
-    test_default_mode_only,
+    test_default_and_pir,
 )
 
 import paddle
@@ -99,7 +99,7 @@ class TestDygraphBasicApi_ToVariable(Dy2StTestBase):
 
         return static_res
 
-    @test_default_mode_only
+    @test_default_and_pir
     def test_transformed_static_result(self):
         with dygraph_guard():
             for func in self.test_funcs:
@@ -177,7 +177,7 @@ class TestDygraphBasicApi(Dy2StTestBase):
 
         return static_res
 
-    @test_default_mode_only
+    @test_default_and_pir
     def test_transformed_static_result(self):
         with dygraph_guard():
             dygraph_res = self.get_dygraph_output()
@@ -393,7 +393,7 @@ class TestDygraphBasicApi_CosineDecay(Dy2StTestBase):
         static_res = to_static(self.dygraph_func)()
         return static_res
 
-    @test_default_mode_only
+    @test_default_and_pir
     def test_transformed_static_result(self):
         with dygraph_guard():
             dygraph_res = self.get_dygraph_output()
@@ -490,7 +490,7 @@ class TestDygraphApiRecognition(Dy2StTestBase):
     def _get_static_ast_node(self):
         return self.root.body[0].body[2].body[1].value
 
-    @test_default_mode_only
+    @test_default_and_pir
     def test_dygraph_api(self):
         with dygraph_guard():
             self.assertTrue(
