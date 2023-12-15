@@ -77,59 +77,22 @@ cc_test_old(
   op_dialect_vjp
   pir)
 
-cc_test_old(
-  add_dialect_parser_test
-  SRCS
-  add_dialect_parser_test.cc
-  DEPS
-  gtest
-  op_dialect_vjp
-  pir)
+paddle_test(add_dialect_parser_test SRCS add_dialect_parser_test.cc)
 
 cc_test(
   ir_parser_test
   SRCS ir_parser_test.cc
   DEPS gtest op_dialect_vjp pir)
 
-cc_test_old(ir_op_info_test SRCS op_info_test.cc DEPS gtest pir)
-cc_test_old(
-  ir_op_yaml_info_parser_test
-  SRCS
-  op_yaml_info_parser_test.cc
-  DEPS
-  gtest
-  op_dialect
-  op_dialect_vjp
-  pir)
+paddle_test(ir_op_info_test SRCS op_info_test.cc)
+paddle_test(ir_op_yaml_info_parser_test SRCS op_yaml_info_parser_test.cc)
 
-cc_test_old(
-  ir_type_converter_test
-  SRCS
-  ir_type_converter_test.cc
-  DEPS
-  gtest
-  program_translator
-  op_dialect_vjp
-  pir)
+paddle_test(ir_type_converter_test SRCS ir_type_converter_test.cc)
 
-cc_test_old(
-  type_interface_test
-  SRCS
-  type_interface_test.cc
-  DEPS
-  pir
-  test_dialect
-  gtest
-  op_dialect_vjp)
+paddle_test(type_interface_test SRCS type_interface_test.cc DEPS pir
+            test_dialect)
 
-cc_test_old(
-  block_operand_test
-  SRCS
-  block_operand_test.cc
-  DEPS
-  test_dialect
-  gtest
-  pir)
+paddle_test(block_operand_test SRCS block_operand_test.cc DEPS test_dialect)
 
 paddle_test(block_argument_test SRCS block_argument_test.cc DEPS test_dialect
             pir)
