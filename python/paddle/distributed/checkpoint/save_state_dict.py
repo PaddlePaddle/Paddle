@@ -88,7 +88,8 @@ def save_state_dict(
 
     Examples:
         .. code-block:: python
-            >>> # doctest: +SKIP('Save state dict.')
+
+            >>> # doctest: +SKIP('run in distributed mode')
             >>> import paddle
             >>> import paddle.distributed as dist
             >>> w1 = paddle.arange(32).reshape([4, 8])
