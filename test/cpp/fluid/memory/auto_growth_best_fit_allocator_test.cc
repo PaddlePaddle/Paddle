@@ -99,7 +99,7 @@ class LimitedResourceAllocator : public Allocator {
   const size_t capacity_;
 };
 
-static void TestFreeWhenNoCacheHit(bool free_when_no_cache_hit) {
+void TestFreeWhenNoCacheHit(bool free_when_no_cache_hit) {
   FLAGS_free_idle_chunk = false;
   FLAGS_free_when_no_cache_hit = free_when_no_cache_hit;
   size_t alignment = 256;

@@ -5307,7 +5307,9 @@ def tensordot(x, y, axes=2, name=None):
 
     check_variable_and_dtype(x, 'x', input_dtype, op_type)
     check_variable_and_dtype(y, 'y', input_dtype, op_type)
-    check_type(axes, 'axes', (int, tuple, list, Variable), op_type)
+    check_type(
+        axes, 'axes', (int, tuple, list, Variable, paddle.pir.Value), op_type
+    )
 
     def _var_to_list(var):
         if in_dynamic_mode():

@@ -550,6 +550,8 @@ def _addup_repetitive_outputs_(
     var_device = collections.defaultdict(str)
 
     def _change_order_by_topo_order(var_name):
+        if topo_order_for_backward is None:
+            return
         origin_names = renamed_vars[var_name]
         origin_names.sort(key=lambda x: topo_order_for_grad_name[x])
 
@@ -1608,12 +1610,12 @@ def _append_backward_ops_(
             program._appending_grad_times
         ]
     # sum parameter's gradients' var given multiple var gradient
-    topo_order = _topo_order_map(block, target_vars)
     if os.environ.get("FLAGS_program_topo_reorder", "False") in [
         'True',
         '1',
         'true',
     ]:
+        topo_order = _topo_order_map(block, target_vars)
         topo_order_for_backward = _topo_bwd_order_map(
             topo_order, get_backward_op_desc
         )
