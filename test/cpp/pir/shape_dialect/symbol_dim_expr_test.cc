@@ -51,4 +51,22 @@ TEST(DimExpr, constraint) {
   ASSERT_EQ(static_cast<int>(constraints.size()), 1);
 }
 
+TEST(DimExpr, equal) {
+  DimExpr sym0 = DimExpr("S0");
+  DimExpr sym1 = DimExpr("S1");
+  DimExpr constant1 = DimExpr(1);
+  ASSERT_EQ(sym0 + sym1, sym0 + sym1);
+  ASSERT_NE(sym0 + sym1, sym1 + sym0);
+  ASSERT_EQ(sym0 + constant1, DimExpr("S0") + constant1);
+  ASSERT_EQ(sym0 - sym1, sym0 - sym1);
+  ASSERT_NE(sym0 - sym1, sym1 - sym0);
+  ASSERT_EQ(sym0 - constant1, DimExpr("S0") - constant1);
+  ASSERT_EQ(sym0 * sym1, sym0 * sym2);
+  ASSERT_NE(sym0 * sym1, sym1 * sym0);
+  ASSERT_EQ(sym0 * constant1, DimExpr("S0") * constant1);
+  ASSERT_EQ(sym0 / sym1, sym0 / sym1);
+  ASSERT_NE(sym0 / sym1, sym1 / sym0);
+  ASSERT_EQ(sym0 / constant1, DimExpr("S0") / constant1);
+}
+
 }  // namespace symbol::test

@@ -20,7 +20,6 @@
 #include <string>
 #include <variant>
 #include <vector>
-#include "paddle/cinn/adt/adt.h"
 
 #include "glog/logging.h"
 
@@ -109,50 +108,49 @@ class List final {
   std::shared_ptr<std::vector<T>> vector_;
 };
 
-
 template <typename T>
 struct Negative final : public UnaryDimExpr<T> {
- using UnaryDimExpr<T>::UnaryDimExpr;
+  using UnaryDimExpr<T>::UnaryDimExpr;
 };
 
 template <typename T>
 struct Reciprocal final : public UnaryDimExpr<T> {
- using UnaryDimExpr<T>::UnaryDimExpr;
+  using UnaryDimExpr<T>::UnaryDimExpr;
 };
 
 template <typename T>
 struct Add final {
- List<T> operands;
+  List<T> operands;
 };
 
 template <typename T>
 struct Mul final {
- List<T> operands;
+  List<T> operands;
 };
 
 template <typename T>
 struct Max final {
- List<T> operands;
+  List<T> operands;
 };
 
 template <typename T>
 struct Min final {
- List<T> operands;
+  List<T> operands;
 };
 
 template <typename T>
 struct Broadcast final {
- List<T> operands;
+  List<T> operands;
 };
 
 template <typename T>
 struct Equal final : public BinaryDimExpr<T> {
- using BinaryDimExpr<T>::BinaryDimExpr;
+  using BinaryDimExpr<T>::BinaryDimExpr;
 };
 
 template <typename T>
 struct Broadcastable final : public BinaryDimExpr<T> {
- using BinaryDimExpr<T>::BinaryDimExpr;
+  using BinaryDimExpr<T>::BinaryDimExpr;
 };
 
 class DimExpr;
@@ -200,10 +198,16 @@ class DimExpr : public DimExprBase {
     return std::get<T>(*this);
   }
 
+  const DimExprBase& variant() const {
+    return static_cast<const DimExprBase&>(*this);
+  }
+
   DimExpr operator+(const DimExpr& other) const;
   DimExpr operator-(const DimExpr& other) const;
   DimExpr operator*(const DimExpr& other) const;
   DimExpr operator/(const DimExpr& other) const;
+  bool operator==(const DimExpr& other) const;
+  bool operator!=(const DimExpr& other) const;
 };
 
 // DimExprConstraint = Equal DimExpr
