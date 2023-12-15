@@ -1,3 +1,4 @@
+add_subdirectory(memory)
 add_subdirectory(benchmark)
 add_subdirectory(framework)
 

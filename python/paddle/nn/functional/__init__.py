@@ -78,7 +78,8 @@ from .conv import (
     conv3d,
     conv3d_transpose,
 )
-from .distance import pairwise_distance
+
+from .distance import pairwise_distance, pdist
 from .extension import (
     diag_embed,  # noqa: F401
     gather_tree,

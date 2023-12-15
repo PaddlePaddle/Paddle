@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+import os
 import typing
 import warnings
 
@@ -25,11 +26,25 @@ from paddle.base.core import (
     has_decomp,
 )
 from paddle.base.libpaddle.pir import Block, Operation, Program
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.framework import core
 
 from . import register
 
 logger = log_helper.get_logger(__name__, logging.DEBUG)
+
+
+# For sinking decomp in c++. In future, sinking decomp will be implemented in c++ by default and then this api will be removed.
+@signature_safe_contextmanager
+def sink_decomp_guard():
+    sink_decomp = core._enable_sink_decomp()
+    try:
+        if not sink_decomp:
+            os.environ['FLAGS_sink_decomp'] = 'true'
+        yield
+    finally:
+        if not sink_decomp:
+            os.environ['FLAGS_sink_decomp'] = 'false'
 
 
 def _build_tensor_tuple(xs):
@@ -201,6 +216,9 @@ def decompose(
     Returns:
         dst_vars (list): A list contains all vars which replace origin ones in src_vars.
     """
+    if core._enable_sink_decomp():
+        blacklist = core.prim_config["forward_blacklist"] | blacklist
+        return core.sinking_decomp(program, src_vars, blacklist, whitelist)
     if not core._is_fwd_prim_enabled():
         return src_vars
     if not isinstance(program, Program):
