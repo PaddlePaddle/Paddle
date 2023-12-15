@@ -390,7 +390,7 @@ if [ "${DEPRECATED_FLAKE8}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     check_approval 1 SigureMo gouzil
 fi
 
-TEST_FILE_ADDED_LINES=$(git diff -U0 upstream/$BRANCH test |grep "^+")
+TEST_FILE_ADDED_LINES=$(git diff -U0 upstream/$BRANCH -- test |grep "^+")
 echo $TEST_FILE_ADDED_LINES
 ENABLE_TO_STATIC_CHECK=`echo "$TEST_FILE_ADDED_LINES" | grep "enable_to_static(" || true`
 echo $ENABLE_TO_STATIC_CHECK
