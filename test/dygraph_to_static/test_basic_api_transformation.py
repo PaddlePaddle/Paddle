@@ -18,7 +18,6 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    dygraph_guard,
     test_default_and_pir,
 )
 
@@ -101,12 +100,11 @@ class TestDygraphBasicApi_ToVariable(Dy2StTestBase):
 
     @test_default_and_pir
     def test_transformed_static_result(self):
-        with dygraph_guard():
-            for func in self.test_funcs:
-                self.dygraph_func = func
-                dygraph_res = self.get_dygraph_output()
-                static_res = self.get_static_output()
-                np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
+        for func in self.test_funcs:
+            self.dygraph_func = func
+            dygraph_res = self.get_dygraph_output()
+            static_res = self.get_static_output()
+            np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
 
 
 # 1. test Apis that inherit from layers.Layer
@@ -179,10 +177,9 @@ class TestDygraphBasicApi(Dy2StTestBase):
 
     @test_default_and_pir
     def test_transformed_static_result(self):
-        with dygraph_guard():
-            dygraph_res = self.get_dygraph_output()
-            static_res = self.get_static_output()
-            np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
+        dygraph_res = self.get_dygraph_output()
+        static_res = self.get_static_output()
+        np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
 
 
 class TestDygraphBasicApi_BilinearTensorProduct(TestDygraphBasicApi):
@@ -399,10 +396,9 @@ class TestDygraphBasicApi_CosineDecay(Dy2StTestBase):
 
     @test_default_and_pir
     def test_transformed_static_result(self):
-        with dygraph_guard():
-            dygraph_res = self.get_dygraph_output()
-            static_res = self.get_static_output()
-            np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
+        dygraph_res = self.get_dygraph_output()
+        static_res = self.get_static_output()
+        np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
 
 
 class TestDygraphBasicApi_ExponentialDecay(TestDygraphBasicApi_CosineDecay):
@@ -496,13 +492,8 @@ class TestDygraphApiRecognition(Dy2StTestBase):
 
     @test_default_and_pir
     def test_dygraph_api(self):
-        with dygraph_guard():
-            self.assertTrue(
-                is_dygraph_api(self._get_dygraph_ast_node()) is True
-            )
-            self.assertTrue(
-                is_dygraph_api(self._get_static_ast_node()) is False
-            )
+        self.assertTrue(is_dygraph_api(self._get_dygraph_ast_node()) is True)
+        self.assertTrue(is_dygraph_api(self._get_static_ast_node()) is False)
 
 
 if __name__ == '__main__':
