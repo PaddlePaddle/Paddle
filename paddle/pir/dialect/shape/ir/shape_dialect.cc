@@ -14,7 +14,6 @@
 
 #include "paddle/pir/dialect/shape/ir/shape_dialect.h"
 #include "paddle/pir/dialect/shape/ir/shape_op.h"
-#include "paddle/pir/dialect/shape/ir/shape_reify_infer_shape_op.h"
 
 namespace pir::shape {
 ShapeDialect::ShapeDialect(IrContext *context)
@@ -33,10 +32,7 @@ void ShapeDialect::initialize() {
               FromElementsOp,
               ExtractOp,
               ConstantOp,
-              IndexCastOp,
-              AbsOp,
-              TransposeOp,
-              ConcatOp>();
+              IndexCastOp>();
 }
 
 void ShapeDialect::PrintOperation(Operation *op, IrPrinter &printer) const {

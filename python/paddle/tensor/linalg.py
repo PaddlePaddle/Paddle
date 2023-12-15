@@ -1048,7 +1048,7 @@ def cond(x, p=None, name=None):
                     type='elementwise_div',
                     inputs={'X': max_out, 'Y': min_out},
                     outputs={'Out': out},
-                    attrs={'aixs': axis, 'use_mkldnn': False},
+                    attrs={'aixs': axis},
                 )
                 return out
             if porder == -2:
@@ -1056,7 +1056,7 @@ def cond(x, p=None, name=None):
                     type='elementwise_div',
                     inputs={'X': min_out, 'Y': max_out},
                     outputs={'Out': out},
-                    attrs={'aixs': axis, 'use_mkldnn': False},
+                    attrs={'aixs': axis},
                 )
                 return out
 
@@ -3024,7 +3024,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
                 type='elementwise_mul',
                 inputs={'X': v, 'Y': st},
                 outputs={'Out': out_1},
-                attrs={'axis': -1, 'use_mkldnn': False},
+                attrs={'axis': -1},
             )
             out_1 = helper.append_activation(out_1)
 
@@ -3094,7 +3094,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
                 type='elementwise_mul',
                 inputs={'X': u, 'Y': st},
                 outputs={'Out': out_1},
-                attrs={'axis': -1, 'use_mkldnn': False},
+                attrs={'axis': -1},
             )
             out_1 = helper.append_activation(out_1)
 
