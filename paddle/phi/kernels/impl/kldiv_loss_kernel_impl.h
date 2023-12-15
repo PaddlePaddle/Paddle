@@ -28,7 +28,7 @@ struct KLDivLossForward {
 
   HOSTDEVICE T operator()(const T& target,
                           const T& input,
-                          const bool log_target) const {
+                          bool log_target) const {
     if (target <= 0) {
       return 0;
     } else if (log_target) {
