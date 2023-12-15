@@ -161,6 +161,8 @@ def save_state_dict(
                     if local_shape is None or global_offset is None:
                         continue
                     local_tensor = val._local_value()
+                    # Note: The local_tensor must keep the same name with the original tensor. Otherwise, the StructuredToParameterName@@ mapping will be wrong.
+                    local_tensor.name = val.name
                 else:
                     local_shape = tuple(val.shape)
                     global_offset = (
