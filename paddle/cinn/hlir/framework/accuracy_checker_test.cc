@@ -128,7 +128,7 @@ void InitName2PodArgs(Target target,
                       std::vector<cinn_buffer_t>* args_buffer,
                       std::map<std::string, cinn_pod_value_t>* name2podargs) {
   auto* default_memory_mng =
-      MemoryManager::Global().RetrieveSafely(target.arch);
+      MemoryManager::Global().RetrieveSafely(target.language);
 
   int count = 0;
   const auto& shape = Shape({16, 16});

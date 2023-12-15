@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/framework/program.h"
+#ifdef CINN_WITH_SYCL
+#include "paddle/cinn/runtime/sycl/sycl_runtime.h"
+#endif
 
 namespace cinn {
 namespace hlir {
@@ -176,9 +179,14 @@ void Program::Execute(
   for (auto& ins : instrs_) {
     ins->Run(name2podargs, false, stream, use_cache);
   }
+#ifdef CINN_WITH_SYCL
+  if (instrs_[0]->target_.language == Target::Language::sycl && stream == nullptr) {
+    SYCLWorkspace::Global()->queueSync();
+  }
+#endif
 #ifdef CINN_WITH_CUDA
   VLOG(4) << "-- The value of the used stream: " << stream;
-  if (instrs_[0]->target_.arch == Target::Arch::NVGPU && stream == nullptr) {
+  if (instrs_[0]->target_ == common::DefaultNVGPUTarget() && stream == nullptr) {
     CUDA_CALL(cudaDeviceSynchronize());
   }
 #endif

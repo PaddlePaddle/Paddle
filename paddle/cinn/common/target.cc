@@ -16,6 +16,9 @@
 #include <cuda_runtime_api.h>
 #include <driver_types.h>
 #endif
+#ifdef CINN_WITH_SYCL
+#include "paddle/cinn/runtime/sycl/sycl_runtime.h"
+#endif
 
 #include <glog/logging.h>
 
@@ -30,15 +33,24 @@ namespace common {
 
 Target::Target(OS o,
                Arch a,
+               Language l,
                Bit b,
                const std::vector<Feature> &features,
                const std::vector<Lib> &libs)
-    : os(o), arch(a), bits(b), features(features), libs(libs) {}
+    : os(o), arch(a), language(l), bits(b), features(features), libs(libs) {}
 
 bool Target::operator==(const Target &other) const {
-  return os == other.os &&      //
-         arch == other.arch &&  //
-         bits == other.bits &&  //
+  // set SYCLTarget to NVGPUTarget temporary
+  if(language == Target::Language::cuda || language == Target::Language::sycl){
+    if(other.language==Target::Language::cuda || other.language==Target::Language::sycl){
+      return true;
+    }
+  }
+
+  return os == other.os &&            //
+         arch == other.arch &&        //
+         language == other.language && //
+         bits == other.bits &&        //
          features == other.features;
 }
 
@@ -117,6 +129,13 @@ std::string Target::arch_str() const {
   return oss.str();
 }
 
+void Target::SetActiveDevices(std::vector<int> deviceIds) {
+  if(language != Target::Language::sycl){
+    LOG(ERROR) << "set device only supported for sycl backend!";
+  }
+  SYCLWorkspace::Global()->SetActiveDevices(deviceIds);
+}
+
 std::ostream &operator<<(std::ostream &os, const Target &target) {
   os << "Target<";
   switch (target.os) {
@@ -132,21 +151,13 @@ std::ostream &operator<<(std::ostream &os, const Target &target) {
   }
 
   os << ",";
-
-  switch (target.arch) {
-    case Target::Arch::X86:
-      os << "x86";
-      break;
-    case Target::Arch::ARM:
-      os << "arm";
-      break;
-    case Target::Arch::NVGPU:
-      os << "nvgpu";
-      break;
-    case Target::Arch::Unk:
-      os << "unk";
-      break;
-  }
+  os << target.arch;
+  os << ",";
+  //if(target.language==Target::Language::sycl){
+  //  os <<"cuda";
+ // }else{
+    os << target.language;
+  //}
   os << ",";
 
   switch (target.bits) {
@@ -179,24 +190,64 @@ std::ostream &operator<<(std::ostream &os, Target::Arch arch) {
     case Target::Arch::NVGPU:
       os << "NVGPU";
       break;
+    case Target::Arch::AMDGPU:
+      os << "AMDGPU";
+      break;
+    case Target::Arch::IntelGPU:
+      os << "IntelGPU";
+      break;
+    case Target::Arch::HygonDCU:
+      os << "HygonDCU";
+      break;
+    case Target::Arch::CambrianMLU:
+      os << "CambrianMLU";
+      break;
+  }
+  return os;
+}
+
+std::ostream& operator<<(std::ostream& os, Target::Language language) {
+  switch(language){
+    case Target::Language::Unk:
+      os << "Unk";
+      break;
+    case Target::Language::llvm:
+      os << "llvm";
+      break;
+    case Target::Language::cuda:
+      os << "cuda";
+      break;
+    case Target::Language::hip:
+      os << "hip";
+      break;
+    case Target::Language::sycl:
+      os << "sycl";
+      break;
   }
   return os;
 }
 
 const Target &UnkTarget() {
   static Target target(
-      Target::OS::Unk, Target::Arch::Unk, Target::Bit::Unk, {}, {});
+      Target::OS::Unk, Target::Arch::Unk, Target::Language::Unk, Target::Bit::Unk, {}, {});
   return target;
 }
 const Target &DefaultHostTarget() {
   static Target target(
-      Target::OS::Linux, Target::Arch::X86, Target::Bit::k64, {}, {});
+      Target::OS::Linux, Target::Arch::X86, Target::Language::llvm, Target::Bit::k64, {}, {});
   return target;
 }
 
 const Target &DefaultNVGPUTarget() {
   static Target target(
-      Target::OS::Linux, Target::Arch::NVGPU, Target::Bit::k64, {}, {});
+      Target::OS::Linux, Target::Arch::NVGPU, Target::Language::cuda, Target::Bit::k64, {}, {});
+  return target;
+}
+
+const Target &SYCLTarget(Target::Arch arch) {
+  static Target target(
+      Target::OS::Linux, arch, Target::Language::sycl, Target::Bit::k64, {}, {});
+  SYCLWorkspace::Global()->Init(arch);
   return target;
 }
 

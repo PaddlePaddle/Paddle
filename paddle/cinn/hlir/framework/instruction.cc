@@ -322,7 +322,7 @@ void Instruction::Run(
       CHECK(fn_ptrs_[idx]) << "The LoweredFunc address should be set first by "
                               "calling SetLoweredFunc method";
       if (!dryrun) {
-        if (target_ == common::DefaultNVGPUTarget()) {
+        if (target_ == common::DefaultNVGPUTarget() || target_.language == Target::Language::sycl) {
           ((lower_func_ptr_g)fn_ptrs_[idx])(
               static_cast<void*>(pod_args.data()), pod_args.size(), stream);
         } else {

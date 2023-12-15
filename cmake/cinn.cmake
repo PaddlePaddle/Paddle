@@ -63,6 +63,13 @@ if(WITH_MKLDNN)
   add_definitions(-DCINN_WITH_DNNL)
 endif()
 
+if (CINN_WITH_SYCL)
+  message(STATUS "Compile with SYCL support")
+  set(DPCPP_DIR ${PROJECT_SOURCE_DIR}/cmake/cinn)
+  find_package(DPCPP REQUIRED CONFIG)
+  add_definitions(-DCINN_WITH_SYCL)
+endif()
+
 if(WITH_GPU)
   message(STATUS "Enable CINN CUDA")
   add_definitions(-DCINN_WITH_CUDA)

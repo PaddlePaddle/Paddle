@@ -28,6 +28,9 @@
 #include "paddle/cinn/hlir/op/use_ops.h"
 #include "paddle/cinn/pybind/bind.h"
 #include "paddle/cinn/runtime/flags.h"
+#ifdef CINN_WITH_SYCL
+#include "paddle/cinn/runtime/sycl/sycl_runtime.h"
+#endif
 
 namespace cinn::pybind {
 
@@ -119,7 +122,12 @@ void BindFramework(pybind11::module *m) {
                                              t->shape().data().end());
              py::array array(std::move(dt), std::move(shape));
              auto *mutable_data = array.mutable_data();
-             if (target.arch == Target::Arch::X86) {
+             if (target.language == Target::Language::sycl) {
+               SYCLWorkspace::Global()->memcpy(
+                   mutable_data,
+                   t->data<void>(),
+                   t->shape().numel() * t->type().bytes());
+             } else if (target.arch == Target::Arch::X86) {
                std::memcpy(mutable_data,
                            t->data<void>(),
                            t->shape().numel() * t->type().bytes());
@@ -161,7 +169,12 @@ void BindFramework(pybind11::module *m) {
                                             self->shape().data().end());
             py::array array(std::move(dt), std::move(shape));
             void *array_data = array.mutable_data();
-            if (target.arch == Target::Arch::X86) {
+            if (target.language == Target::Language::sycl) {
+              SYCLWorkspace::Global()->memcpy(
+                  array_data,
+                  self->data<void>(),
+                  self->shape().numel() * self->type().bytes());
+            } else if (target.arch == Target::Arch::X86) {
               std::memcpy(array_data,
                           self->data<void>(),
                           self->shape().numel() * self->type().bytes());
@@ -195,7 +208,12 @@ void BindFramework(pybind11::module *m) {
                                 [](int32_t a, int32_t b) { return a * b; }),
                 self->shape().numel());
             auto *data = self->mutable_data(target, self->type());
-            if (target.arch == Target::Arch::X86) {
+            if (target.language == Target::Language::sycl) {
+              SYCLWorkspace::Global()->memcpy(
+                  data,
+                  array.data(),
+                  self->shape().numel() * self->type().bytes());
+            } else if (target.arch == Target::Arch::X86) {
               std::memcpy(data,
                           array.data(),
                           self->shape().numel() * self->type().bytes());

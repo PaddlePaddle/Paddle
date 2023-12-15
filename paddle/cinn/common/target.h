@@ -40,7 +40,19 @@ struct Target {
     Unk = -1,
     X86,
     ARM,
-    NVGPU,
+    NVGPU,    
+    AMDGPU,
+    IntelGPU,
+    HygonDCU,
+    CambrianMLU,
+  };
+
+  enum class Language : int {
+    Unk = -1,
+    llvm,
+    cuda,
+    hip,
+    sycl,
   };
 
   enum class Bit : int {
@@ -51,6 +63,7 @@ struct Target {
 
   OS os{OS::Unk};
   Arch arch{Arch::Unk};
+  Language language{Language::Unk};
   Bit bits{Bit::Unk};
 
   enum class Feature : int {
@@ -70,6 +83,7 @@ struct Target {
 
   explicit Target(OS o = OS::Linux,
                   Arch a = Arch::Unk,
+                  Language l = Language::Unk,
                   Bit b = Bit::Unk,
                   const std::vector<Feature>& features = {},
                   const std::vector<Lib>& libs = {});
@@ -95,7 +109,8 @@ struct Target {
   std::vector<Lib> get_target_libs() const;
 
   std::string arch_str() const;
-
+  // only support for sycl backend
+  void SetActiveDevices(std::vector<int> deviceIds);
   bool operator==(const Target& other) const;
   bool operator!=(const Target& other) const { return !(*this == other); }
   friend std::ostream& operator<<(std::ostream& os, const Target& target);
@@ -107,6 +122,8 @@ const Target& DefaultHostTarget();
 
 const Target& DefaultNVGPUTarget();
 
+const Target& SYCLTarget(Target::Arch arch);
+
 const Target& DefaultTarget();
 
 int GetMaxThreads();
@@ -114,6 +131,7 @@ int GetMaxThreads();
 int GetMaxBlocks();
 
 std::ostream& operator<<(std::ostream& os, Target::Arch arch);
+std::ostream& operator<<(std::ostream& os, Target::Language language);
 
 }  // namespace common
 }  // namespace cinn

@@ -77,7 +77,7 @@ std::shared_ptr<ComputationContext> CompileProgram(
   for (auto &out : outputs) {
     fetch_var_ids.insert(out->id);
   }
-
+  ctx->compile_options.target = ctx->target;
   ctx->compile_options.graph = ctx->graph;
   ctx->compile_options.scope = ctx->scope;
   ctx->compile_options.fetch_var_ids = fetch_var_ids;

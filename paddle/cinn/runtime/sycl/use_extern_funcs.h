@@ -13,11 +13,8 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/cinn/backends/extern_func_jit_register.h"
 
-#include "paddle/cinn/runtime/cpu/use_extern_funcs.h"
-#ifdef CINN_WITH_CUDA
-#include "paddle/cinn/runtime/cuda/use_extern_funcs.h"
-#endif
 #ifdef CINN_WITH_SYCL
-#include "paddle/cinn/runtime/sycl/use_extern_funcs.h"
+CINN_USE_REGISTER(cinn_sycl_host_api)
 #endif

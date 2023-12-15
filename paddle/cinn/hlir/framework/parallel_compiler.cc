@@ -33,6 +33,13 @@
 #include "paddle/cinn/ir/module.h"
 #include "paddle/cinn/runtime/flags.h"
 
+#ifdef CINN_WITH_SYCL
+#include "paddle/cinn/backends/sycl/codegen_sycl_dev.h"
+#include "paddle/cinn/backends/sycl/codegen_sycl_util.h"
+#include "paddle/cinn/backends/sycl/compiler_sycl.h"
+#include "paddle/cinn/runtime/sycl/sycl_module.h"
+#endif
+
 PD_DECLARE_int32(cinn_parallel_compile_thread);
 
 namespace cinn {
@@ -196,7 +203,9 @@ void ParallelCompiler::Task::Lowering() {
             << "Group " << group_id << " {\n"
             << context->graph->DebugGroupedGraph(group->CollectNodes())
             << "}\n";
+    //LOG(INFO) << group->CollectNodes()[0]->op()->name;
     auto lowered_funcs = op_lowerer.Lower(group);
+    //LOG(INFO) << lowered_funcs[0]->body;
     if (lowered_funcs.size() != 1) {
       std::ostringstream err_msg;
       err_msg << "Lowering Group: " << group_id
@@ -235,7 +244,7 @@ void ParallelCompiler::Task::CodegenAndJit() {
   }
 
   auto ir_module = builder.Build();
-  if (context->target == common::DefaultNVGPUTarget()) {
+  if (context->target == common::DefaultNVGPUTarget() && context->target.language == Target::Language::cuda) {
 #ifdef CINN_WITH_CUDA
     auto splited_module = backends::SplitCudaAndHostModule(ir_module);
     auto hmodule = std::get<0>(splited_module);
@@ -258,7 +267,7 @@ void ParallelCompiler::Task::CodegenAndJit() {
     pcompiler->result_.SetSourceCode(group_id, cuda_c);
 
     cinn::backends::SourceCodePrint::GetInstance()->write(cuda_c);
-
+    VLOG(4) << "[CUDA]:\n" << cuda_c;
     using runtime::cuda::CUDAModule;
     backends::nvrtc::Compiler compiler;
     auto ptx = compiler(cuda_c);
@@ -282,6 +291,31 @@ void ParallelCompiler::Task::CodegenAndJit() {
     engine = backends::ExecutionEngine::Create(backends::ExecutionOptions(),
                                                std::move(symbols));
     engine->Link<backends::CodeGenCUDA_Host>(hmodule);
+#endif
+  } else if (context->target.language == Target::Language::sycl){
+#ifdef CINN_WITH_SYCL
+    auto splited_module = backends::SplitSyclAndHostModule(ir_module);
+    auto host_module        = std::get<0>(splited_module);
+    auto device_module      = std::get<1>(splited_module);
+    backends::CodeGenSYCL_Dev codegen(context->target);
+    std::string source_code = codegen.Compile(device_module);
+    CHECK(!source_code.empty()) << "Compile SYCL code failed from device module:\n" << device_module;
+    VLOG(4) << "[SYCL]:\n" << source_code;
+    cinn::backends::SourceCodePrint::GetInstance()->write(source_code);
+    using runtime::Sycl::SYCLModule;
+    backends::syclrtc::Compiler compiler;
+    std::string share_library = compiler(source_code, context->target.arch);
+    CHECK(!share_library.empty()) << "Compile SYCL code failed from source code" << source_code;
+    SYCLModule* sycl_module = new SYCLModule(source_code, share_library, SYCLModule::Kind::so);
+    // register kernel
+    backends::RuntimeSymbols symbols;
+    for (auto& fn : device_module.functions()) {
+      auto cufunc = sycl_module->GetFunction(fn->name);
+      CHECK(cufunc);
+      symbols.RegisterVar(fn->name + "_ptr_", reinterpret_cast<void*>(cufunc));
+    }
+    engine = backends::ExecutionEngine::Create(backends::ExecutionOptions(), std::move(symbols));
+    engine->Link<backends::CodeGenCUDA_Host>(host_module);
 #endif
   } else {
     engine = backends::ExecutionEngine::Create(backends::ExecutionOptions());

@@ -19,6 +19,7 @@ from .core_api.common import (  # noqa: F401
     CINNValuePack,
     DefaultHostTarget,
     DefaultNVGPUTarget,
+    SYCLTarget,
     DefaultTarget,
     Float,
     Float16,

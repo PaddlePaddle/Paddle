@@ -63,6 +63,7 @@ option(WITH_SETUP_INSTALL "Compile PaddlePaddle with setup.py" OFF)
 option(WITH_SHARED_PHI "Compile PaddlePaddle with SHARED LIB of PHI" OFF)
 option(CINN_ONLY "Compile CINN only in Paddle" OFF)
 option(CINN_WITH_CUDNN "Compile CINN with CUDNN support" ON)
+option(CINN_WITH_SYCL  "Compile CINN with SYCL support"  OFF)
 
 find_package(Git REQUIRED)
 
