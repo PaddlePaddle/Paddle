@@ -27,23 +27,14 @@ paddle.enable_static()
     "core is not complied with CUDA",
 )
 class TestFcFusePassPattern(PassTest):
-    r"""
-    Matmul     Y
-       \     /
-         Add
-          |
-         Relu
-    """
-
     def is_program_valid(self, program=None):
         return True
 
     def sample_program(self):
         for x_shape in [[3, 2]]:
             for w_shape in [[2, 3]]:
-                for y_shape in [[3], [1, 3]]:
-                    for with_relu in [True, False]:
-                        pir_program = None
+                for y_shape in [[1, 3]]:
+                    for with_relu in [False]:
                         with paddle.pir_utils.IrGuard():
                             pir_program = paddle.static.Program()
                             with paddle.pir.core.program_guard(pir_program):
@@ -58,27 +49,42 @@ class TestFcFusePassPattern(PassTest):
                                 )
                                 if with_relu:
                                     relu_op = paddle.nn.ReLU()
-                                    out = relu_op(
+                                    fc_out = relu_op(
                                         paddle.add(paddle.matmul(x, w), y)
                                     )
                                 else:
-                                    out = paddle.add(paddle.matmul(x, w), y)
+                                    fc_out = paddle.add(paddle.matmul(x, w), y)
 
-                        self.pass_list = ['fc_fuse_pass']
-                        self.feeds = {
-                            "x": np.random.random(x_shape).astype("float32"),
-                            "w": np.random.random(w_shape).astype("float32"),
-                            "y": np.random.random(y_shape).astype("float32"),
-                        }
-                        self.fetch_list = [out]
-                        self.valid_op_map = {
-                            "pd_op.add": 0,
-                            "pd_op.relu": 0,
-                            "pd_op.matmul": 0,
-                            "pd_op.fc": 1,
-                        }
+                                bias1 = paddle.static.data(
+                                    name='bias1', shape=[3, 3], dtype='float32'
+                                )
 
-                        yield pir_program, False
+                                add_out = paddle.add(fc_out, bias1)
+                                layer_norm = paddle.nn.LayerNorm(
+                                    add_out.shape[-1:]
+                                )
+                                out = layer_norm(add_out)
+                                out = paddle.assign(out)
+                                self.pass_list.append('fc_fuse_pass')
+                                self.pass_list.append(
+                                    'fc_elementwise_layernorm_fuse_pass'
+                                )
+                                self.feeds = {
+                                    "x": np.random.random([1, 2, 2]).astype(
+                                        "float32"
+                                    ),
+                                    "w": np.random.random([3, 3]).astype(
+                                        "float32"
+                                    ),
+                                }
+                                self.fetch_list = [out]
+                                self.valid_op_map = {
+                                    "pd_op.add": 0,
+                                    "pd_op.relu": 0,
+                                    "pd_op.fused_fc_elementwise_layernorm": 1,
+                                }
+
+                                yield pir_program, False
 
     def setUp(self):
         self.place_runtime = "gpu"

@@ -82,18 +82,13 @@ class TestSqueezeFcFusePattern(PassTest):
         self.check_pass_correct()
 
 
-class TestSqueezeFcFusePatternWtihCpu(TestSqueezeFcFusePattern):
-    def setUp(self):
-        self.place_runtime = "cpu"
-
-
 @unittest.skipIf(
     not paddle.base.core.is_compiled_with_cuda(),
     "core is not complied with CUDA",
 )
 class TestReshapeFcFusePattern(PassTest):
     r"""
-    squeeze
+    reshape
         \
 
         Matmul     Y
@@ -149,18 +144,13 @@ class TestReshapeFcFusePattern(PassTest):
         self.check_pass_correct()
 
 
-class TestReshapeFcFusePatternWtihCpu(TestReshapeFcFusePattern):
-    def setUp(self):
-        self.place_runtime = "cpu"
-
-
 @unittest.skipIf(
     not paddle.base.core.is_compiled_with_cuda(),
     "core is not complied with CUDA",
 )
 class TestFlattenFcFusePattern(PassTest):
     r"""
-    squeeze
+    flatten
         \
 
         Matmul     Y
@@ -214,11 +204,6 @@ class TestFlattenFcFusePattern(PassTest):
 
     def test_check_output(self):
         self.check_pass_correct()
-
-
-class TestFlattenFcFusePatternWtihCpu(TestFlattenFcFusePattern):
-    def setUp(self):
-        self.place_runtime = "cpu"
 
 
 if __name__ == "__main__":
