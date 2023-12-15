@@ -27,12 +27,11 @@ class TrtConvertSetValue(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         def generate_input1():
-            b = np.random.random([1,3,3]).astype(np.float32)
-            print(b)
+            b = np.random.random([2,3,3]).astype(np.float32)
             return b
 
         def generate_input2():
-            a = np.random.random([1,1,3]).astype(np.float32)
+            a = np.random.random([2,2,3]).astype(np.float32)
             return a
 
         ops_config = [
@@ -47,7 +46,7 @@ class TrtConvertSetValue(TrtLayerAutoScanTest):
                 "op_attrs": {
                     "axes": [1],
                     "starts": [0],
-                    "ends": [1],
+                    "ends": [2],
                     "steps": [1],
                     "decrease_axes":[]
                 },
@@ -79,16 +78,16 @@ class TrtConvertSetValue(TrtLayerAutoScanTest):
     def sample_predictor_configs(self, program_config):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
-                "input_data": [1,3,3],
-                "update_data": [1,1,3],
+                "input_data": [2,3,3],
+                "update_data": [2,2,3],
             }
             self.dynamic_shape.max_input_shape = {
-                "input_data": [1,3,3],
-                "update_data": [1,1,3],
+                "input_data": [3,3,4],
+                "update_data": [3,2,4],
             }
             self.dynamic_shape.opt_input_shape = {
-                "input_data": [1,3,3],
-                "update_data":[1,1,3],
+                "input_data": [3,3,3],
+                "update_data":[3,2,3],
             }
 
         def clear_dynamic_shape():

@@ -52,18 +52,29 @@ class SetValueConverter : public OpConverter {
     } else {
       PADDLE_ENFORCE_EQ(PADDLE_GET_CONST(int, op_desc.GetAttr("dtype")), 5);
       float value = PADDLE_GET_CONST(std::vector<paddle::experimental::Scalar>, op_desc.GetAttr("values"))[0].to<int>();
-      //std::cout << "属性values的值：" << value << std::endl;
+      VLOG(3) << "the attribute value is: " << value;
       nvinfer1::Dims tmp_dim;
       tmp_dim.nbDims = inputs->getDimensions().nbDims;
       for (int i = 0; i < tmp_dim.nbDims; i++)
       tmp_dim.d[i] = 1;
       updates = AddConstantLayer(&value, tmp_dim);
     }
-
-    nvinfer1::Dims tmp_dims = inputs->getDimensions();
-    for (int i = 0; i < tmp_dims.nbDims; i++) {
-      PADDLE_ENFORCE_GT(tmp_dims.d[i], 0);
-      std::cout << "输入dims值：" << tmp_dims.d[i] << std::endl;
+    
+    // for debug 
+    {
+      nvinfer1::Dims tmp_dims = inputs->getDimensions();
+      std::vector<int> tmp_vec;
+      for (int i = 0; i < tmp_dims.nbDims; i++)
+        tmp_vec.push_back(tmp_dims.d[i]);
+      VLOG(3) << "Input(Name:"<< op_desc.Input("Input")[0] << ")" << "'s dimension is :["
+                << string::join_strings(tmp_vec, ',') << "]";
+      
+      tmp_vec.clear();
+      tmp_dims = updates->getDimensions();
+      for (int i = 0; i < tmp_dims.nbDims; i++)
+        tmp_vec.push_back(tmp_dims.d[i]);
+      VLOG(3) << "updates tensor" << "'s dimension is :["
+                << string::join_strings(tmp_vec, ',') << "]";
     }
 
     const auto decrease_axes = PADDLE_GET_CONST(
@@ -71,14 +82,8 @@ class SetValueConverter : public OpConverter {
     std::vector<int32_t> decr_axes{decrease_axes.begin(), decrease_axes.end()};
     auto value_rank = updates->getDimensions().nbDims;
     auto input_rank = inputs->getDimensions().nbDims;
-
-    std::cout << "输入名字：" << op_desc.Input("Input")[0] << std::endl;
-    std::cout << "value_rank: "  << value_rank << std::endl;
-    std::cout << "input_rank: " << input_rank  << std::endl;
-
-    for (auto i : decrease_axes) {
-      std::cout << "decrease_axes :" <<  i << std::endl;
-    }
+    // GLOG_vmodule=op_teller=6
+    VLOG(3) << "decrease_axes is: [" << string::join_strings(decrease_axes, ',') << "]";
 
     if (decrease_axes.size() > 0 && value_rank != input_rank) {
       updates = Unsqueeze(updates, decr_axes);
@@ -98,14 +103,20 @@ class SetValueConverter : public OpConverter {
     //   std::iota(axis.begin(), axis.end(), 0);
     //   updates = Unsqueeze(updates, axis);
     // }
-
     
-
-    tmp_dims = updates->getDimensions();
-    for (int i = 0; i < tmp_dims.nbDims; i++) {
-      PADDLE_ENFORCE_GT(tmp_dims.d[i], 0);
-      std::cout << "更新后的updates dims值：" << tmp_dims.d[i] << std::endl;
+    // for debug 
+    {
+      auto tmp_dims = updates->getDimensions();
+      std::vector<int> tmp_vec;  
+      tmp_vec.clear();
+      tmp_dims = updates->getDimensions();
+      for (int i = 0; i < tmp_dims.nbDims; i++)
+        tmp_vec.push_back(tmp_dims.d[i]);
+      VLOG(3) << "updates tensor" << "'s dimension is :["
+                << string::join_strings(tmp_vec, ',') << "]";
     }
+
+
 
     int64_t axes = 0;
     int64_t starts = 0;
@@ -116,15 +127,26 @@ class SetValueConverter : public OpConverter {
     GET_ATTR_FROM_VECTOR(starts);
     GET_ATTR_FROM_VECTOR(steps);
     GET_ATTR_FROM_VECTOR(ends);
-
-    std::cout << "axes" <<  axes  << std::endl;
-    std::cout << "starts" <<  starts  << std::endl;
-    std::cout << "steps" <<  steps<< std::endl;
-    std::cout << "ends" << ends  << std::endl;
+    
+    VLOG(3) << "axes is: " << axes;
+    VLOG(3) << "starts is: " << starts;
+    VLOG(3) << "steps is: " << steps;
+    VLOG(3) << "ends is: " << ends;
 
     // calculate dims
     auto input_dims = inputs->getDimensions();
     auto update_dims = updates->getDimensions();
+
+
+    PADDLE_ENFORCE_GT(input_dims.d[axes], 0,
+    platform::errors::InvalidArgument(
+        "the input_dims.d[%d] must be greater than 0, but received %d",
+        axes, input_dims.d[axes]));
+
+    PADDLE_ENFORCE_GT(update_dims.d[axes], 0,
+    platform::errors::InvalidArgument(
+        "the update_dims.d[%d] must be greater than 0, but received %d",
+        axes, update_dims.d[axes]));
 
     // check params and refill
     if (axes < 0) {
@@ -138,21 +160,24 @@ class SetValueConverter : public OpConverter {
       ends = input_dims.d[axes];
     }
 
-    if (axes >= input_dims.nbDims) {
-      platform::errors::InvalidArgument(
-          "The axes %d is larger than total axes %d", axes, input_dims.nbDims);
-    }
-    if (starts >= input_dims.d[axes]) {
-      platform::errors::InvalidArgument(
-          "The start %d of dim %d is larger than origin shape %d",
-          starts,
-          axes,
-          input_dims.d[axes]);
-    }
-    if (update_dims.d[axes] != (input_dims.d[axes] - starts) / steps) {
-      platform::errors::InvalidArgument("The update dim error, should be %d",
-                                        (input_dims.d[axes] - starts) / steps);
-    }
+    PADDLE_ENFORCE_LE(axes, input_dims.nbDims,
+    platform::errors::InvalidArgument(
+        "The axes %d is larger than total axes %d", 
+        axes, input_dims.nbDims));
+
+    PADDLE_ENFORCE_LE(starts, input_dims.d[axes],
+    platform::errors::InvalidArgument(
+        "The start %d of dim %d is larger than origin shape %d",
+        starts, 
+        axes,
+        input_dims.d[axes]));
+
+    PADDLE_ENFORCE_EQ(update_dims.d[axes], (ends - starts) / steps,
+    platform::errors::InvalidArgument(
+        "the %dth axis of update dim error, should be %d, but we got %d",
+        axes,
+        (ends - starts) / steps, 
+        update_dims.d[axes]));
 
     for(int i = 0; i < input_dims.nbDims; i++) {
       if (i != axes) {
@@ -161,41 +186,42 @@ class SetValueConverter : public OpConverter {
     }
 
     if (engine_->with_dynamic_shape()) {
-      // generate indice
-      int post_size = 1;
-      for (int j = axes + 1; j < update_dims.nbDims; ++j) {
-        post_size = post_size * update_dims.d[j];
+
+      nvinfer1::Dims shape_0;
+      shape_0.nbDims = update_dims.nbDims;
+      for (int i = 0; i < shape_0.nbDims; ++i) {
+        shape_0.d[i] = 1;
       }
-
-      int pre_size = 1;
-      for (int i = 0; i < axes; ++i) {
-        pre_size *= update_dims.d[i];
+      std::vector<float> tmp_0(1,0);
+      auto zero_tensor = AddConstantLayer(tmp_0.data(), shape_0);
+      auto indice_tensor = Prod(zero_tensor, updates);
+      auto cast_layer = TRT_ENGINE_ADD_LAYER(engine_, Identity, *indice_tensor);
+      cast_layer->setOutputType(0, nvinfer1::DataType::kINT32);
+      indice_tensor = cast_layer->getOutput(0);
+   
+      nvinfer1::Dims shape_1;
+      shape_1.nbDims = update_dims.nbDims;
+      for (int i = 0; i < update_dims.nbDims; ++i) {
+        shape_1.d[i] = 1;
       }
-
-      std::vector<int> indices;
-      for (int i = 0; i < pre_size; i++) {
-        for (int j = starts; j < ends; j += steps) {
-          for (int k = 0; k < post_size; k++) {
-            indices.push_back(j);
-          }
-        }
+      shape_1.d[axes] = update_dims.d[axes];
+      std::vector<int> tmp_1;
+      for (int i = starts; i < ends; i += steps) {
+        tmp_1.push_back(i);
       }
-
-
-      const auto const_layer = AddConstantLayer(
-          indices.data(), update_dims, "set_value_index_" + output_name);
+      auto one_tensor = AddConstantLayer(tmp_1.data(), shape_1);
+      indice_tensor = Sum(indice_tensor, one_tensor);
 
       auto* layer = TRT_ENGINE_ADD_LAYER(engine_,
-                                         Scatter,
-                                         *inputs,
-                                         *const_layer,
-                                         *updates,
-                                         nvinfer1::ScatterMode::kELEMENT);
+                                              Scatter,
+                                              *inputs,
+                                              *indice_tensor,
+                                              *updates,
+                                              nvinfer1::ScatterMode::kELEMENT);
 
       layer->setAxis(axes);
 
       RreplenishLayerAndOutput(layer, "set_value", {output_name}, test_mode);
-     // std::cout << output_name << std::endl;
     } else {
       PADDLE_THROW(platform::errors::Fatal(
           "static shape mode not supported in set value yet"));
