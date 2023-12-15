@@ -2445,7 +2445,7 @@
   outputs :
     out : Result
   attrs :
-    {axis : Axis, reduce : Reduce}
+    {axis : Axis, reduce : Reduce, include_self: Include_self}
 
 - op : pylayer
   backward : pylayer_grad
@@ -2632,6 +2632,13 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : row_conv
+  backward : row_conv_grad
+  inputs :
+    {x : X, filter : Filter}
+  outputs :
+    {out : Out}
 
 - op : rsqrt
   backward : rsqrt_grad, rsqrt_double_grad (rsqrt_grad_grad)

@@ -11,11 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from .save_state_dict import save_state_dict
-from .load_state_dict import load_state_dict
-
-__all__ = [
-    "save_state_dict",
-    "load_state_dict",
-]
