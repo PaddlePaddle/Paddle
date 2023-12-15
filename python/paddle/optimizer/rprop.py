@@ -55,22 +55,27 @@ class Rprop(Optimizer):
     Parameters:
         learning_rate (float|Tensor|LearningRateDecay, optional): The initial learning rate used to update ``Parameter``.
             It can be a float value, a ``Tensor`` with a float type or a LearningRateDecay. The default value is 0.001.
-        learning_rate_range (tuple, optional): The range of learning rate. \
-            Learning rate cannot be smaller than the first element of the tuple; \
+        learning_rate_range (tuple, optional): The range of learning rate.
+            Learning rate cannot be smaller than the first element of the tuple;
             learning rate cannot be larger than the second element of the tuple.
-        parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``. \
-            This parameter is required in dygraph mode. \
+        parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``.
+            This parameter is required in dygraph mode.
             The default value is None in static graph mode, at this time all parameters will be updated.
-        etas (tuple, optional): Tuple used to update learning rate. \
-            The first element of the tuple is the multiplicative decrease factor; \
+        etas (tuple, optional): Tuple used to update learning rate.
+            The first element of the tuple is the multiplicative decrease factor;
             the second element of the tuple is the multiplicative increase factor.
-        grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of
-            some derived class of ``GradientClipBase`` . There are three clipping strategies
-            ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` ,
-            :ref:`api_paddle_nn_ClipGradByValue` ). Default None, meaning there is no gradient clipping.
-        name (str, optional): The default value is None. Normally there is no need for user
-                to set this property. For more information, please refer to
-                :ref:`api_guide_Name` .
+        grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of some derived class of ``GradientClipBase`` .
+            There are three clipping strategies ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` , :ref:`api_paddle_nn_ClipGradByValue` ).
+            Default None, meaning there is no gradient clipping.
+        multi_precision (bool, optional): In mixed precision training scenarios based on GPU,
+            this parameter is mainly used to ensure the numerical stability of gradient updates.
+            When it is set to True, the optimizer will save a backup of FP32 type parameters with an equal value for FP16 type parameters.
+            When updating gradients, first increase the gradient type to FP32, and then assign it to the FP32 type parameter backup.
+            Finally, the updated FP32 type value will be converted to FP16 type first,
+            and then assigned to the actual FP16 type parameters participating in the calculation.
+            The default value is False.
+        name (str, optional): The default value is None. Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
 
     Examples:
         .. code-block:: python
