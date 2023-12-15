@@ -129,7 +129,7 @@ class DimExpr : public DimExprBase {
   }
 
   const DimExprBase& variant() const {
-    return static_cast<const typename DimExpr::variant&>(*this);
+    return static_cast<const DimExprBase&>(*this);
   }
 
   DimExpr operator+(const DimExpr& other) const;
