@@ -113,17 +113,17 @@ class DistAttr(core.TensorDistAttr):
 
 class DistModel:
     """
-    DistModel is the model converted from a ``paddle.nn.layer`` with distributed
+    `DistModel` is the model converted from a ``paddle.nn.layer`` with distributed
     tensors as its parameters. It contains the static graph converted from a
     ``paddle.nn.layer`` whose parameters are distributed tensors (constructed
     from ``paddle.distributed.shard_tensor``), and provides the APIs for training,
     evaluation and prediction with the static graph.
 
-    It is suggested to generated DistModel by ``paddle.distributed.to_static``,
+    It is suggested to generate DistModel by ``paddle.distributed.to_static``,
     not directly by ``paddle.distributed.DistModel``.
 
     Please first set the DistModel to "train", "eval" or "predict" mode with
-    ``train()/eval()/predict()`` method and then use the __call__ method for
+    ``train()/eval()/predict()`` method and then use the ``__call__`` method for
     training, evaluation and prediction respectively.
 
     For more details of the usage, please refer to the sample code in
@@ -252,13 +252,13 @@ class DistModel:
 
     def dist_main_program(self, mode=None):
         """
-        Get the distributed main program of the spcified ``mode``. Each
+        Get the distributed main program of the specified ``mode``. Each
         'mode' has its own distributed main program, ``dist_main_program``
         returns the corresponding distributed main program of ``mode``.
 
         Args:
             mode (str|None, optional): The mode of DistModel. It can be
-            "train", "eval" or "predict", if it is not set, the current
+            'train', 'eval' or 'predict', if it is not set, the current
             mode will be used.
 
         Returns:
@@ -274,7 +274,7 @@ class DistModel:
 
         Args:
             mode (str|None, optional): The mode of DistModel. It can be
-            "train", "eval" or "predict", if it is not set, the current
+            'train', 'eval' or 'predict', if it is not set, the current
             mode will be used.
 
         Returns:
@@ -290,7 +290,7 @@ class DistModel:
 
         Args:
             mode (str|None, optional): The mode of DistModel. It can be
-            "train", "eval" or "predict", if it is not set, the current
+            'train', 'eval' or 'predict', if it is not set, the current
             mode will be used.
 
         Returns:
@@ -305,7 +305,7 @@ class DistModel:
 
         Args:
             mode (str|None, optional): The mode of DistModel. It can be
-            "train", "eval" or "predict", if it is not set, the current
+            'train', 'eval' or 'predict', if it is not set, the current
             mode will be used.
 
         Returns:
@@ -494,11 +494,11 @@ class FusePasses:
 class Strategy(auto_strategy.BaseConfig):
     """
     The `Strategy` object is used to configure the parallelization
-    and optimization strategies for static graph. Currently contains
+    and optimization strategies for static graph. Currently supports
     configuring ``sharding``, ``fused_passes``, ``gradient_merge``
-    and ``pipline``. More strategies will be supported in the future.
+    and ``pipeline``. More strategies will be supported in the future.
 
-    ``sharding`` is used to cnofigure the sharding states of the optimizer,
+    ``sharding`` is used to configure the sharding states of the optimizer,
     for saving the GPU memory.
 
     ``fused_passes`` is used to configure the fusion of the computation in
@@ -510,10 +510,9 @@ class Strategy(auto_strategy.BaseConfig):
     ``pipeline`` is used to configure the pipeline parallelism strategy.
 
     Args:
-        config (dict|None, optional): If ``config`` is None, the default
-        configurations will be set. If it is a dict, the itmes inside
-        the dict will be used to set the configurations, the others remain
-        the default values.
+        config(dict|None, optional): If ``config`` is None, use default configurations.
+        If it is a dict, the items inside the dict will be used to set the configurations,
+        and the others remain the default values.
 
     Examples:
         .. code-block:: python
@@ -578,7 +577,7 @@ class Strategy(auto_strategy.BaseConfig):
     @property
     def sharding(self):
         """
-        ``sharding`` is used to cnofigure the sharding states of the optimizer,
+        ``sharding`` is used to configure the sharding states of the optimizer,
         containing following configs:
 
             ``enable`` (bool): whether to enable sharding. Default: False.
@@ -659,7 +658,7 @@ class Strategy(auto_strategy.BaseConfig):
     @property
     def pipeline(self):
         """
-        ``pipeline`` is used to configure the pipeline parallelism in training,
+        ``pipeline`` is used to configure the pipeline parallelism,
         containing following configs:
 
             ``enable`` (bool): whether to enable pipeline parallelism. Default: False.
@@ -697,7 +696,7 @@ def to_static(
 ):
     """
     Converts the ``layer`` with distributed tensor (constructed from
-    ``paddle.distributed.shard_tensor``) to a static graph. to_static
+    ``paddle.distributed.shard_tensor``) to a static graph. ``to_static``
     returns a DistModel instance containing the static graph for
     distributed training, evaluation and prediction, and an object of
     DistributedDataLoader to generate data.
@@ -717,10 +716,11 @@ def to_static(
             pipeline parallelism). Default: None.
 
     Returns:
-        DistModel: A DistModel tha contains corresponding computational graph
+        - DistModel: A DistModel that contains corresponding computational graph
             for the input ``layer`` and provides APIs for training, evaluation
             and prediction.
-        DistributedDataLoader: An optimized data loader that can be used
+
+        - DistributedDataLoader: An optimized data loader that can be used
             to generate data.
 
     Examples:
@@ -812,7 +812,7 @@ def to_static(
             ...     # where the value of "out0" is the first output.
             ...     outs = dist_model(image)
 
-            >>> # This case need to be excuted in multi-card environment
+            >>> # This case need to be executed in multi-card environment
             >>> # export CUDA_VISIBLE_DEVICES=0,1
             >>> # python -m paddle.distributed.launch {test_case}.py
     """
