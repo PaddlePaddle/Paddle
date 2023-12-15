@@ -3617,6 +3617,7 @@ void SetValueInferMeta(const MetaTensor& x, MetaTensor* out) {
           "The rank of input should be less than 7, but received %d.",
           in_dims.size()));
   out->set_dims(in_dims);
+  out->set_dtype(x.dtype());
 }
 
 void ShapeInferMeta(const MetaTensor& input, MetaTensor* out) {

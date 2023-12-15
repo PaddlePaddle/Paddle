@@ -20,7 +20,6 @@ from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
     test_legacy_and_pt_and_pir,
-    test_pir_only,
 )
 
 import paddle
@@ -167,15 +166,6 @@ class TestCase10(TestSetItemBase):
 
         return foo
 
-    @test_legacy_and_pt_and_pir
-    def test_case(self):
-        func = self.init_func()
-        dy_res = self.run_dygraph(func)
-        st_res = self.run_to_static(func)
-
-        for dy_out, st_out in zip(dy_res, st_res):
-            np.testing.assert_allclose(dy_out.numpy(), st_out.numpy())
-
 
 class TestCase11(TestSetItemBase):
     # Test gradient of value tensor
@@ -194,15 +184,6 @@ class TestCase11(TestSetItemBase):
         y = func(x, value)
         x_grad, value_grad = paddle.grad(y, [x, value])
         return y, x_grad, value_grad
-
-    @test_legacy_and_pt_and_pir
-    def test_case(self):
-        func = self.init_func()
-        dy_res = self.run_dygraph(func)
-        st_res = self.run_to_static(func)
-
-        for dy_out, st_out in zip(dy_res, st_res):
-            np.testing.assert_allclose(dy_out.numpy(), st_out.numpy())
 
 
 class TestCase12(TestSetItemBase):
@@ -276,9 +257,7 @@ class TestCase15(TestSetItemBase):
             pad_list = paddle.zeros([4], dtype="int32")
             pad_list[3] = H // 2
             pad_list[1] = W // 2
-
             x = F.pad(x, pad_list, data_format="NHWC")
-            breakpoint()
             return x
 
         return foo
@@ -289,16 +268,6 @@ class TestCase15(TestSetItemBase):
         W = paddle.full([1], 6, dtype='int32')
         y = func(x, H, W)
         return (y,)
-
-    @test_ast_only
-    @test_pir_only
-    def test_case(self):
-        func = self.init_func()
-        dy_res = self.run_dygraph(func)
-        st_res = self.run_to_static(func)
-
-        for dy_out, st_out in zip(dy_res, st_res):
-            np.testing.assert_allclose(dy_out.numpy(), st_out.numpy())
 
 
 if __name__ == '__main__':
