@@ -222,7 +222,7 @@ class TestPowerError(unittest.TestCase):
                     x = paddle.static.data('x', [2, 2], dtype='int8')
                     out = paddle.pow(x, 2)
 
-            self.assertRaises(ValueError, x_dtype_error)
+            self.assertRaises(TypeError, x_dtype_error)
 
 
 if __name__ == '__main__':

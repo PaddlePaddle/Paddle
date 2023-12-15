@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
@@ -66,11 +65,17 @@ class TestPrimMode(unittest.TestCase):
         return outs
 
     def test_prim_all_dynamic(self):
-        os.environ["FLAGS_prim_skip_dynamic"] = "1"
         res_ref = self.base_net()
         res = self.base_net("all")
         for ref, actual in zip(res_ref, res):
             np.testing.assert_allclose(ref, actual, rtol=1e-6)
+
+    def test_prim_all_dynamic_sink(self):
+        with decomp.sink_decomp_guard():
+            res_ref = self.base_net()
+            res = self.base_net("all")
+            for ref, actual in zip(res_ref, res):
+                np.testing.assert_allclose(ref, actual, rtol=1e-6)
 
 
 if __name__ == "__main__":
