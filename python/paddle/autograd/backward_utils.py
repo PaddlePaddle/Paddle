@@ -13,12 +13,17 @@
 # limitations under the License.
 
 import collections
+import warnings
+
+from paddle.base import core
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
 
 class State:
     """
     record relationship of forward op/value and backward op/value
-    one state must be bining with a program
+    one state must be bining with a block, if block has parent block,
+    state will include parent block info.
 
     """
 
@@ -35,6 +40,10 @@ class State:
         self.sumvaluegrad_to_value = collections.defaultdict(list)
         # operation -> list(operation)
         self.opgrad_to_op = collections.defaultdict(list)
+        # only for controlflow
+        # inside_value is sub block value, which will yield to parent block,
+        # parant block value is outside_value
+        self.inside_value_to_outside_value_map = {}
 
     def turn_map(self) -> None:
         self.valuegrad_to_value = collections.defaultdict(list)
@@ -67,4 +76,37 @@ class State:
         # operation -> list(operation)
         state.opgrad_to_op = self.opgrad_to_op.copy()
 
+        # only for controlflow
+        state.inside_value_to_outside_value_map = (
+            self.inside_value_to_outside_value_map.copy()
+        )
+
         return state
+
+
+def _check_vjp_dynamic_shape(op, inputs):
+    for items in inputs:
+        for item in items:
+            shape = item.shape
+            if -1 in shape:
+                warnings.warn(
+                    f"[Prim] Decomp op does not support dynamic shape -1, but got shape {item.shape} in inputs of op {op.name()} . Prim will skip its vjp op."
+                )
+                return True
+
+
+# Prim currently does not support dynamic shape, when dynamic shape exits in shape of op inputs, prim will be skipped its vjp op.
+@signature_safe_contextmanager
+def dynamic_shape_prim_vjp_guard(op, inputs):
+    skip_prim = (
+        core._is_bwd_prim_enabled()
+        and core._enable_prim_dynamic_shape()
+        and _check_vjp_dynamic_shape(op, inputs)
+    )
+    try:
+        if skip_prim:
+            core._set_prim_backward_enabled(False)
+        yield
+    finally:
+        if skip_prim:
+            core._set_prim_backward_enabled(True)

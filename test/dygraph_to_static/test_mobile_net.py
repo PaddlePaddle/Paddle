@@ -19,7 +19,11 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase, test_pt_only
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    enable_to_static_guard,
+    test_legacy_and_pt_and_pir,
+)
 from predictor_utils import PredictorTools
 
 import paddle
@@ -506,8 +510,6 @@ class Args:
 
 
 def train_mobilenet(args, to_static):
-    paddle.jit.enable_to_static(to_static)
-
     with unique_name.guard():
         np.random.seed(SEED)
         paddle.seed(SEED)
@@ -590,7 +592,8 @@ def train_mobilenet(args, to_static):
                 batch_id += 1
                 t_last = time.time()
                 if batch_id > args.train_step:
-                    if to_static:
+                    # TODO(@xiongkun): open after save / load supported in pir.
+                    if to_static and not paddle.base.framework.use_pir_api():
                         paddle.jit.save(net, args.model_save_prefix)
                     else:
                         paddle.save(
@@ -628,23 +631,23 @@ def predict_static(args, data):
 
 
 def predict_dygraph(args, data):
-    paddle.jit.enable_to_static(False)
-    if args.model == "MobileNetV1":
-        model = paddle.jit.to_static(
-            MobileNetV1(class_dim=args.class_dim, scale=1.0)
-        )
-    elif args.model == "MobileNetV2":
-        model = paddle.jit.to_static(
-            MobileNetV2(class_dim=args.class_dim, scale=1.0)
-        )
-    # load dygraph trained parameters
-    model_dict = paddle.load(args.dy_state_dict_save_path + '.pdparams')
-    model.set_dict(model_dict)
-    model.eval()
+    with enable_to_static_guard(False):
+        if args.model == "MobileNetV1":
+            model = paddle.jit.to_static(
+                MobileNetV1(class_dim=args.class_dim, scale=1.0)
+            )
+        elif args.model == "MobileNetV2":
+            model = paddle.jit.to_static(
+                MobileNetV2(class_dim=args.class_dim, scale=1.0)
+            )
+        # load dygraph trained parameters
+        model_dict = paddle.load(args.dy_state_dict_save_path + '.pdparams')
+        model.set_dict(model_dict)
+        model.eval()
 
-    pred_res = model(base.dygraph.to_variable(data))
+        pred_res = model(base.dygraph.to_variable(data))
 
-    return pred_res.numpy()
+        return pred_res.numpy()
 
 
 def predict_dygraph_jit(args, data):
@@ -685,7 +688,8 @@ class TestMobileNet(Dy2StTestBase):
         self.args.dy_state_dict_save_path = os.path.join(
             self.temp_dir.name, model_name + ".dygraph"
         )
-        out = train_mobilenet(self.args, to_static)
+        with enable_to_static_guard(to_static):
+            out = train_mobilenet(self.args, to_static)
         return out
 
     def assert_same_loss(self, model_name):
@@ -734,20 +738,16 @@ class TestMobileNet(Dy2StTestBase):
             err_msg=f'inference_pred_res:\n {predictor_pre}\n, st_pre: \n{st_pre}.',
         )
 
-    @test_pt_only
-    def test_mobile_net_pir(self):
-        # MobileNet-V1
-        self.assert_same_loss("MobileNetV1")
-        # MobileNet-V2
-        self.assert_same_loss("MobileNetV2")
-
+    @test_legacy_and_pt_and_pir
     def test_mobile_net(self):
         # MobileNet-V1
         self.assert_same_loss("MobileNetV1")
         # MobileNet-V2
         self.assert_same_loss("MobileNetV2")
 
-        self.verify_predict()
+        # TODO(@xiongkun): open after save / load supported in pir.
+        if not paddle.base.framework.use_pir_api():
+            self.verify_predict()
 
     def verify_predict(self):
         # MobileNet-V1

@@ -20,6 +20,8 @@ paddle::dialect::IfOp, paddle::dialect::WhileOp, paddle::dialect::HasElementsOp
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/builtin_attribute.h"
@@ -164,45 +166,43 @@ void IfOp::VerifySig() {
 }
 
 void IfOp::VerifyRegion() {
-  // VLOG(4) << "Start Verifying sub regions for: IfOp.";
-  // PADDLE_ENFORCE_EQ(
-  //     (*this)->region(0).size(),
-  //     1u,
-  //     phi::errors::PreconditionNotMet("The size %d of true_region must
-  //     be 1.",
-  //                                     (*this)->region(0).size()));
-
-  // if ((*this)->num_results() != 0) {
-  //   PADDLE_ENFORCE_EQ(
-  //       (*this)->region(0).size(),
-  //       (*this)->region(1).size(),
-  //       phi::errors::PreconditionNotMet("The size %d of true_region must be "
-  //                                       "equal to the size %d of
-  //                                       false_region.",
-  //                                       (*this)->region(0).size(),
-  //                                       (*this)->region(1).size()));
-
-  //   auto &true_last_op = (*this)->region(0).front().back();
-  //   auto &false_last_op = (*this)->region(1).front().back();
-  //   PADDLE_ENFORCE_EQ(true,
-  //                     true_last_op.isa<pir::YieldOp>(),
-  //                     phi::errors::PreconditionNotMet(
-  //                         "The last of true block must be YieldOp"));
-  //   PADDLE_ENFORCE_EQ(true_last_op.num_operands(),
-  //                     (*this)->num_results(),
-  //                     phi::errors::PreconditionNotMet(
-  //                         "The size of last of true block op's input must be
-  //                         " "equal to IfOp's outputs num."));
-  //   PADDLE_ENFORCE_EQ(true,
-  //                     false_last_op.isa<pir::YieldOp>(),
-  //                     phi::errors::PreconditionNotMet(
-  //                         "The last of false block must be YieldOp"));
-  //   PADDLE_ENFORCE_EQ(false_last_op.num_operands(),
-  //                     (*this)->num_results(),
-  //                     phi::errors::PreconditionNotMet(
-  //                         "The size of last of false block op's input must be
-  //                         " "equal to IfOp's outputs num."));
-  // }
+  VLOG(4) << "Start Verifying sub regions for: IfOp.";
+  VLOG(4) << "Start Verifying true branch.";
+  PADDLE_ENFORCE_EQ(
+      (*this)->region(0).size(),
+      1u,
+      phi::errors::PreconditionNotMet("The size %d of true_region must be 1.",
+                                      (*this)->region(0).size()));
+  if ((*this)->region(0).front().size() > 0) {
+    auto &true_last_op = (*this)->region(0).front().back();
+    PADDLE_ENFORCE_EQ(true,
+                      true_last_op.isa<pir::YieldOp>(),
+                      phi::errors::PreconditionNotMet(
+                          "The last of true block must be YieldOp"));
+    PADDLE_ENFORCE_EQ(true_last_op.num_operands(),
+                      (*this)->num_results(),
+                      phi::errors::PreconditionNotMet(
+                          "The size of last of true block op's input must be "
+                          "equal to IfOp's outputs num."));
+  }
+  VLOG(4) << "Start Verifying false branch.";
+  PADDLE_ENFORCE_EQ(
+      (*this)->region(1).size(),
+      1u,
+      phi::errors::PreconditionNotMet("The size %d of false_region must be 1.",
+                                      (*this)->region(0).size()));
+  if ((*this)->region(1).front().size() > 0) {
+    auto &false_last_op = (*this)->region(1).front().back();
+    PADDLE_ENFORCE_EQ(true,
+                      false_last_op.isa<pir::YieldOp>(),
+                      phi::errors::PreconditionNotMet(
+                          "The last of false block must be YieldOp"));
+    PADDLE_ENFORCE_EQ(false_last_op.num_operands(),
+                      (*this)->num_results(),
+                      phi::errors::PreconditionNotMet(
+                          "The size of last of false block op's input must be "
+                          "equal to IfOp's outputs num."));
+  }
 }
 
 std::vector<std::vector<pir::OpResult>> IfOp::Vjp(
@@ -291,6 +291,84 @@ void WhileOp::Print(pir::IrPrinter &printer) {
   os << "\n }";
 }
 
+std::vector<std::vector<pir::OpResult>> WhileOp::Vjp(
+    pir::Operation *op,
+    const std::vector<std::vector<pir::Value>> &inputs,
+    const std::vector<std::vector<pir::OpResult>> &outputs,
+    const std::vector<std::vector<pir::Value>> &out_grads,
+    const std::vector<std::vector<bool>> &stop_gradients) {
+  auto fwd_op = WhileOp::dyn_cast(op);
+  PADDLE_ENFORCE_NE(
+      fwd_op,
+      nullptr,
+      phi::errors::InvalidArgument("The input op used to called WhileOp::vjp "
+                                   "must be non-nullptr while_op"));
+  TuplePushOp push_op;
+  for (auto iter = fwd_op.body().rbegin(); iter != fwd_op.body().rend();
+       ++iter) {
+    if (iter->isa<TuplePushOp>()) {
+      push_op = iter->dyn_cast<TuplePushOp>();
+      PADDLE_ENFORCE_EQ(push_op.container().use_empty(),
+                        true,
+                        phi::errors::InvalidArgument(
+                            "The last container in foward while op must used "
+                            "empty while construct while_grad op"));
+      break;
+    }
+  }
+  PADDLE_ENFORCE_NE(push_op,
+                    nullptr,
+                    phi::errors::InvalidArgument(
+                        "The forward WhileOp must include TuplePushOp, denying "
+                        "that we can't construct a reverse loop condition."));
+
+  PADDLE_ENFORCE_GT(inputs.size(),
+                    outputs.size(),
+                    phi::errors::InvalidArgument(
+                        "while op's inputs' size should greater than "
+                        "outputs' size, Now the inputs's size is %d ."
+                        "the outputs size is %d.",
+                        inputs.size(),
+                        outputs.size()));
+  PADDLE_ENFORCE_EQ(stop_gradients[0][0],
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The stop_gradient of condition input must be true."));
+
+  auto &builder = *ApiBuilder::Instance().GetBuilder();
+  auto cond_val = builder.Build<HasElementsOp>(push_op.container()).out();
+
+  std::vector<pir::Type> output_types;
+  std::vector<pir::Value> loop_vars;
+  size_t index = 0;
+
+  for (; index < outputs.size(); ++index) {
+    if (!stop_gradients[index + 1][0]) {
+      loop_vars.push_back(out_grads[index][0]);
+    }
+  }
+  for (++index; index < inputs.size(); ++index) {
+    if (!stop_gradients[index][0]) {
+      auto fwd_type = inputs[index][0].type().dyn_cast<DenseTensorType>();
+      PADDLE_ENFORCE_NE(
+          fwd_type,
+          pir::Type(),
+          phi::errors::InvalidArgument(
+              "The forward value type must be dense tensor type."));
+      auto shape = vectorize(fwd_type.dims());
+      auto dtype = TransToPhiDataType(fwd_type.dtype());
+      auto full_op = builder.Build<FullOp>(shape, 0.0, dtype, phi::CPUPlace());
+      loop_vars.push_back(full_op.out());
+    }
+  }
+  auto while_grad = builder.Build<WhileOp>(cond_val, loop_vars);
+
+  std::vector<std::vector<pir::OpResult>> res(inputs.size());
+  for (size_t i = 0, j = 0; i < inputs.size(); ++i) {
+    res[i].push_back(stop_gradients[i][0] ? nullptr : while_grad.result(j++));
+  }
+  return res;
+}
 std::vector<std::vector<pir::OpResult>> TuplePushOpVjpInterfaceModel::Vjp(
     pir::Operation *op,
     const std::vector<std::vector<pir::Value>> &inputs,
@@ -320,8 +398,8 @@ std::vector<std::vector<pir::OpResult>> TuplePushOpVjpInterfaceModel::Vjp(
 
 void HasElementsOp::Build(pir::Builder &builder,             // NOLINT
                           pir::OperationArgument &argument,  // NOLINT
-                          pir::Value stack) {
-  argument.AddInput(stack);
+                          pir::Value container) {
+  argument.AddInput(container);
   argument.AddOutput(
       DenseTensorType::get(builder.ir_context(), builder.bool_type(), {1}));
 }
@@ -329,8 +407,8 @@ void HasElementsOp::VerifySig() {
   VLOG(4) << "Verifying inputs, outputs ,attributes for: HasElementsOp.";
   // Verify inputs:
   IR_ENFORCE(num_operands() == 1u, "The size of inputs must equal to 1.");
-  IR_ENFORCE(operand_source(0).type().isa<pir::StackType>(),
-             "The first input of cf.has_elements must be stack_type.");
+  IR_ENFORCE(operand_type(0).isa<pir::ContainerType>(),
+             "The first input of cf.has_elements must be container type.");
 
   // No attributes should be verify.
 

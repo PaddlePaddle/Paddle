@@ -729,7 +729,7 @@ __global__ void weight_only_batched_gemv_multi_warp(const int8_t* qweight,
               *reinterpret_cast<HALF_2_TYPE*>(in_v + y),
               v);
         }
-        accumulator[b] += v.x + v.y;
+        accumulator[b] = accumulator[b] + static_cast<T>(v.x + v.y);
       } else {
 #pragma unroll
         for (int x = 0; x < NPerBlock / 2; ++x) {

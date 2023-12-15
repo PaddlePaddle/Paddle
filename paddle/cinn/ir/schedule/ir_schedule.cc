@@ -153,7 +153,13 @@ bool ComputeInliner::BodyPatternAllowInline() {
   auto find_vars = ir::ir_utils::CollectIRNodesWithoutTensor(
       inlined_store_, [&](const Expr* x) { return x->as_var(); });
   std::set<Var, CompVar> vars_set;
-  for (auto& i : find_vars) vars_set.insert(i.as_var_ref());
+  for (auto& i : find_vars) {
+    if (i.as_var_ref()->name[0] == 'S') continue;
+    // if (i.as_var_ref()->name == "S0" || i.as_var_ref()->name == "S1")
+    // continue;
+    vars_set.insert(i.as_var_ref());
+  }
+
   int n_vars = vars_set.size();
   if (!UpdateAndCheckIndexVars(inlined_store_.As<Store>()->indices, n_vars)) {
     return false;
@@ -376,6 +382,7 @@ Expr IRSchedule::GetBlock(const std::string& block_name) const {
 
 std::vector<Expr> IRSchedule::Split(const Expr& loop,
                                     const std::vector<int>& factors) {
+  if (IsDynamicShape()) return impl_->Split(loop, factors);
   std::vector<Expr> decision = SamplePerfectTile(
       loop, factors.size(), loop.As<ir::For>()->extent.as_int32(), factors);
   auto results = Split(loop, decision);

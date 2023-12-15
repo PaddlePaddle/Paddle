@@ -16,6 +16,7 @@
 
 #include <ostream>
 #include <vector>
+
 #include "paddle/common/enforce.h"
 #include "paddle/common/macros.h"
 #include "paddle/pir/core/block.h"
@@ -99,6 +100,7 @@ class IR_API alignas(8) Operation final
   std::vector<OpOperand> operands();
   Value operand_source(uint32_t index) const;
   std::vector<Value> operands_source() const;
+  Type operand_type(uint32_t index) const { return operand(index).type(); }
 
   ///
   /// \brief op successor related public interfaces

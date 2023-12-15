@@ -65,7 +65,7 @@ void CalculateGrad(const Context& ctx,
                                        out_grad_dims_1.end());
       out_grad_dims_2.emplace(out_grad_dims_2.begin(), x_grad_dims[0]);
       DenseTensor x_grad_v2 = phi::Empty<T, Context>(ctx, out_grad_dims_2);
-      phi::funcs::SetConstant<Context, T>()(ctx, &x_grad_v2, T(0));
+      phi::funcs::SetConstant<Context, T>()(ctx, &x_grad_v2, static_cast<T>(0));
       T* x_grad_v2_data = x_grad_v2.data<T>();
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
@@ -122,7 +122,7 @@ void CalculateGrad(const Context& ctx,
                                        out_grad_dims_1.end());
       out_grad_dims_2.emplace(out_grad_dims_2.begin(), x_grad_dims[0]);
       DenseTensor x_grad_v2 = phi::Empty<T, Context>(ctx, out_grad_dims_2);
-      phi::funcs::SetConstant<Context, T>()(ctx, &x_grad_v2, T(0));
+      phi::funcs::SetConstant<Context, T>()(ctx, &x_grad_v2, static_cast<T>(0));
       T* x_grad_v2_data = x_grad_v2.data<T>();
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for

@@ -595,8 +595,8 @@ function(paddle_test_build TARGET_NAME)
     add_executable(${TARGET_NAME} ${paddle_test_SRCS})
     get_property(paddle_lib GLOBAL PROPERTY PADDLE_LIB_NAME)
     target_link_libraries(${TARGET_NAME} $<TARGET_LINKER_FILE:${paddle_lib}>
-                          ${paddle_test_DEPS} paddle_gtest_main_new)
-    add_dependencies(${TARGET_NAME} ${paddle_lib} ${paddle_test_DEPS}
+                          ${paddle_test_DEPS} common paddle_gtest_main_new)
+    add_dependencies(${TARGET_NAME} ${paddle_lib} ${paddle_test_DEPS} common
                      paddle_gtest_main_new)
     if(WITH_SHARED_PHI)
       target_link_libraries(${TARGET_NAME} $<TARGET_LINKER_FILE:phi>)
@@ -833,7 +833,6 @@ function(hip_test TARGET_NAME)
       ${hip_test_DEPS}
       paddle_gtest_main
       lod_tensor
-      memory
       gtest
       glog
       phi
@@ -843,7 +842,6 @@ function(hip_test TARGET_NAME)
       ${hip_test_DEPS}
       paddle_gtest_main
       lod_tensor
-      memory
       gtest
       phi
       glog)
@@ -940,7 +938,6 @@ function(xpu_test TARGET_NAME)
       ${xpu_test_DEPS}
       paddle_gtest_main
       lod_tensor
-      memory
       gtest
       phi
       glog
@@ -950,7 +947,6 @@ function(xpu_test TARGET_NAME)
       ${xpu_test_DEPS}
       paddle_gtest_main
       lod_tensor
-      memory
       gtest
       phi
       glog)
