@@ -3438,6 +3438,12 @@
   outputs :
     out : Out
 
+- op: number_count
+  inputs :
+    {numbers: Numbers, upper_range: UpperRange}
+  outputs :
+    out : Out
+
 - op: read_from_array
   inputs:
     array : X

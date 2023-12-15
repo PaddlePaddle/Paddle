@@ -5291,6 +5291,12 @@ void StridedUnChangedInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_strides(x.strides());
 }
 
+void NumberCountInferMeta(const MetaTensor& x,
+                          int upper_range,
+                          MetaTensor* out) {
+  out->share_meta(x);
+}
+
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(flatten, phi::FlattenInferMeta);
