@@ -325,7 +325,7 @@ class OneDNNHandlerT {
       LOG(WARNING) << Type() << " raises an exception "
                    << platform::demangle(typeid(ex).name()) << ", "
                    << ex.what();
-      PADDLE_THROW(platform::errors::Unavailable("wanghuan7"));
+      PADDLE_THROW(phi::errors::Unavailable("wanghuan7"));
       std::rethrow_exception(std::current_exception());
     }
   }
@@ -341,7 +341,7 @@ class OneDNNHandlerT {
       LOG(WARNING) << Type() << " raises an exception "
                    << platform::demangle(typeid(ex).name()) << ", "
                    << ex.what();
-      PADDLE_THROW(platform::errors::Unavailable("wanghuan8"));
+      PADDLE_THROW(phi::errors::Unavailable("wanghuan8"));
       std::rethrow_exception(std::current_exception());
     }
   }
@@ -365,7 +365,7 @@ class OneDNNHandlerT {
         LOG(WARNING) << Type() << " raises an exception "
                      << platform::demangle(typeid(ex).name()) << ", "
                      << ex.what();
-        PADDLE_THROW(platform::errors::Unavailable("wanghuan1"));
+        PADDLE_THROW(phi::errors::Unavailable("wanghuan1"));
         std::rethrow_exception(std::current_exception());
       }
       dev_ctx_.SetBlob(key_pd, bwd_pd_);
@@ -392,7 +392,7 @@ class OneDNNHandlerT {
         LOG(WARNING) << Type() << " raises an exception "
                      << platform::demangle(typeid(ex).name()) << ", "
                      << ex.what();
-        PADDLE_THROW(platform::errors::Unavailable("wanghuan2"));
+        PADDLE_THROW(phi::errors::Unavailable("wanghuan2"));
         std::rethrow_exception(std::current_exception());
       }
       dev_ctx_.SetBlob(key_pd, bwd_w_pd_);
@@ -660,7 +660,7 @@ class OneDNNHandlerNoCachingT {
       LOG(WARNING) << Type() << " raises an exception "
                    << platform::demangle(typeid(ex).name()) << ", "
                    << ex.what();
-      PADDLE_THROW(platform::errors::Unavailable("wanghuan3"));
+      PADDLE_THROW(phi::errors::Unavailable("wanghuan3"));
       std::rethrow_exception(std::current_exception());
     }
   }
@@ -676,7 +676,7 @@ class OneDNNHandlerNoCachingT {
       LOG(WARNING) << Type() << " raises an exception "
                    << platform::demangle(typeid(ex).name()) << ", "
                    << ex.what();
-      PADDLE_THROW(platform::errors::Unavailable("wanghuan4"));
+      PADDLE_THROW(phi::errors::Unavailable("wanghuan4"));
       std::rethrow_exception(std::current_exception());
     }
   }
@@ -695,7 +695,7 @@ class OneDNNHandlerNoCachingT {
       LOG(WARNING) << Type() << " raises an exception "
                    << platform::demangle(typeid(ex).name()) << ", "
                    << ex.what();
-      PADDLE_THROW(platform::errors::Unavailable("wanghuan5"));
+      PADDLE_THROW(phi::errors::Unavailable("wanghuan5"));
       std::rethrow_exception(std::current_exception());
     }
   }
@@ -716,7 +716,7 @@ class OneDNNHandlerNoCachingT {
       LOG(WARNING) << Type() << " raises an exception "
                    << platform::demangle(typeid(ex).name()) << ", "
                    << ex.what();
-      PADDLE_THROW(platform::errors::Unavailable("wanghuan6"));
+      PADDLE_THROW(phi::errors::Unavailable("wanghuan6"));
       std::rethrow_exception(std::current_exception());
     }
   }
