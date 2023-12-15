@@ -26,7 +26,12 @@ from paddle.base.framework import (
     in_pir_mode,
     static_only,
 )
-from paddle.base.libpaddle.pir import build_if_op, build_while_op, cf_yield
+from paddle.base.libpaddle.pir import (
+    build_assert_op,
+    build_if_op,
+    build_while_op,
+    cf_yield,
+)
 from paddle.common_ops_import import (
     LayerHelper,
     check_type,
@@ -103,6 +108,11 @@ def Assert(cond, data=None, summarize=20, name=None):
     )
     check_type(summarize, "summarize", int, "static.nn.control_flow.Assert")
     check_type(name, "name", (str, type(None)), "static.nn.control_flow.Assert")
+
+    if in_pir_mode():
+        input_data = [] if data is None else list(data)
+        assert_op = build_assert_op(cond, input_data, summarize)
+        return
 
     layer_name = name if name else ('assert_' + cond.name)
     helper = LayerHelper(layer_name, **locals())
