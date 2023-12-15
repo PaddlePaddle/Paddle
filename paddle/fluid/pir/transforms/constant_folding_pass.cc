@@ -145,8 +145,8 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     // 3. redirecte constant tensor op at the beginning of the block
     rewriter.SetInsertionPointToStart(rewriter.block());
 
-    // 4. check users of the op, if op's output is used as `IntArray` or `Scalar`,
-    // make sure it is placed on cpu
+    // 4. check users of the op, if op's output is used as `IntArray` or
+    // `Scalar`, make sure it is placed on cpu
     bool force_cpu = CheckUseOp(op);
 
     for (uint32_t i = 0; i < op->num_results(); i++) {
@@ -173,8 +173,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
         auto constant_op = rewriter.Build<pir::ConstantTensorOp>(
             rewriter.tensor_name_attr(output_var_name), op->result(i).type());
         constant_op->set_attribute(
-            kAttrIsPersisable,
-            rewriter.array_attr({rewriter.bool_attr(true)}));
+            kAttrIsPersisable, rewriter.array_attr({rewriter.bool_attr(true)}));
 
         rewriter.ReplaceAllUsesWith(op->result(i), constant_op->result(0));
       }
