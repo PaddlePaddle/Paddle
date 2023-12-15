@@ -14,6 +14,8 @@
 
 import unittest
 
+import numpy as np
+
 import paddle
 from paddle import pir
 from paddle.autograd.ir_backward import grad
@@ -247,6 +249,49 @@ class TestBackward_3(unittest.TestCase):
             )
             res = paddle.divide(sum_x, norm)
             input_grad = grad(res, x)
+
+
+class TestBackward_4(unittest.TestCase):
+    def tearDown(self) -> None:
+        paddle.framework.set_flags({"FLAGS_enable_pir_api": False})
+
+    def test_basic_network(self):
+        if not paddle.framework.in_pir_mode():
+            return
+        program = paddle.static.default_main_program()
+        with paddle.static.program_guard(program):
+            x = paddle.randn((2, 2))
+            x.stop_gradient = False
+            b = paddle.to_tensor([12])
+            grad_x = 0
+            double_x = x * 2
+            pred = b > 0
+
+            def true_func():
+                y = double_x * 3
+                out = grad(y, x)
+                filted_dx = [dxi for dxi in out if dxi is not None]
+                grad_x = filted_dx
+                return grad_x
+
+            def false_func():
+                y = double_x * 4
+                out = grad(y, x)
+                filted_dx = [dxi for dxi in out if dxi is not None]
+                grad_x = filted_dx
+                return grad_x
+
+            out = paddle.static.nn.cond(pred, true_func, false_func)
+
+            place = (
+                paddle.base.CUDAPlace(0)
+                if paddle.base.core.is_compiled_with_cuda()
+                else paddle.base.CPUPlace()
+            )
+            exe = paddle.static.Executor(place)
+            (grad_x,) = exe.run(program, fetch_list=[out])
+            res = np.full([2, 2], 6.0, dtype='float32')
+            self.assertEqual((grad_x == res).all(), True)
 
 
 if __name__ == "__main__":

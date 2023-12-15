@@ -125,7 +125,7 @@ cc_library(
 cc_library(
   tensor
   SRCS tensor_util.cc
-  DEPS place memory data_type device_context phi common)
+  DEPS place fluid_memory data_type device_context phi common)
 
 cc_library(
   lod_tensor
@@ -135,7 +135,7 @@ cc_library(
 cc_library(
   garbage_collector
   SRCS garbage_collector.cc
-  DEPS device_context memory phi common glog)
+  DEPS device_context allocator phi common glog)
 
 cc_library(
   reader
@@ -888,7 +888,7 @@ cc_library(
 cc_library(
   executor_cache
   SRCS executor_cache.cc
-  DEPS parallel_executor standalone_executor pir_adaptor pir_transforms pir)
+  DEPS parallel_executor standalone_executor pir_transforms pir)
 cc_library(
   prune
   SRCS prune.cc
@@ -965,7 +965,6 @@ endif()
 
 set(FLUID_FRAMEWORK_MODULES
     proto_desc
-    memory
     lod_tensor
     executor
     data_feed_proto

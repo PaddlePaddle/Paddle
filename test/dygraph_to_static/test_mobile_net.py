@@ -21,6 +21,7 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    enable_to_static_guard,
     test_legacy_and_pt_and_pir,
 )
 from predictor_utils import PredictorTools
@@ -509,8 +510,6 @@ class Args:
 
 
 def train_mobilenet(args, to_static):
-    paddle.jit.enable_to_static(to_static)
-
     with unique_name.guard():
         np.random.seed(SEED)
         paddle.seed(SEED)
@@ -632,23 +631,23 @@ def predict_static(args, data):
 
 
 def predict_dygraph(args, data):
-    paddle.jit.enable_to_static(False)
-    if args.model == "MobileNetV1":
-        model = paddle.jit.to_static(
-            MobileNetV1(class_dim=args.class_dim, scale=1.0)
-        )
-    elif args.model == "MobileNetV2":
-        model = paddle.jit.to_static(
-            MobileNetV2(class_dim=args.class_dim, scale=1.0)
-        )
-    # load dygraph trained parameters
-    model_dict = paddle.load(args.dy_state_dict_save_path + '.pdparams')
-    model.set_dict(model_dict)
-    model.eval()
+    with enable_to_static_guard(False):
+        if args.model == "MobileNetV1":
+            model = paddle.jit.to_static(
+                MobileNetV1(class_dim=args.class_dim, scale=1.0)
+            )
+        elif args.model == "MobileNetV2":
+            model = paddle.jit.to_static(
+                MobileNetV2(class_dim=args.class_dim, scale=1.0)
+            )
+        # load dygraph trained parameters
+        model_dict = paddle.load(args.dy_state_dict_save_path + '.pdparams')
+        model.set_dict(model_dict)
+        model.eval()
 
-    pred_res = model(base.dygraph.to_variable(data))
+        pred_res = model(base.dygraph.to_variable(data))
 
-    return pred_res.numpy()
+        return pred_res.numpy()
 
 
 def predict_dygraph_jit(args, data):
@@ -689,7 +688,8 @@ class TestMobileNet(Dy2StTestBase):
         self.args.dy_state_dict_save_path = os.path.join(
             self.temp_dir.name, model_name + ".dygraph"
         )
-        out = train_mobilenet(self.args, to_static)
+        with enable_to_static_guard(to_static):
+            out = train_mobilenet(self.args, to_static)
         return out
 
     def assert_same_loss(self, model_name):
