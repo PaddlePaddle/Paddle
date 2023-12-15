@@ -216,6 +216,37 @@ def decompose(
     Returns:
         dst_vars (list): A list contains all vars which replace origin ones in src_vars.
     """
+    blacklist = core.prim_config["forward_blacklist"] | blacklist
+    return core.sinking_decomp(program, src_vars, blacklist, whitelist)
+
+
+def decompose_(
+    program,
+    src_vars,
+    blacklist=frozenset(),
+    whitelist=frozenset(),
+):
+    """
+    Search nonbasic ops which have be registered composite rules and replace them with primitive ops.
+    The operators in blacklist will be excluded from program when decomposed into primitives, and only the
+    operators in whitelist will be decomposed. The priority of blacklist is higher than whitelist, it means
+    an operator both in blacklist and whitelist will not be decomposed.
+
+    The finally set that will be decomposed is:
+        (block.ops & ops have decomposite rule & whitelist) - blacklist
+
+    Note:
+        All variables must be contained inside the given program.
+
+    Args:
+        program (Program): The program to be processed.
+        src_vars (list[Value]): In program, once some operator is decomposed, its vars will be replaced by new ones. This argument means some vars will be used later and corresponding vars will be returned for later usage.
+        blacklist (frozenset): The Operators that will be exclude when decomposed into primitives.
+        whitelist (frozenset): Only the operators in whitelist will be decomposed into primitives.
+
+    Returns:
+        dst_vars (list): A list contains all vars which replace origin ones in src_vars.
+    """
     if core._enable_sink_decomp():
         blacklist = core.prim_config["forward_blacklist"] | blacklist
         return core.sinking_decomp(program, src_vars, blacklist, whitelist)
