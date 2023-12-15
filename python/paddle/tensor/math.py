@@ -6223,8 +6223,7 @@ def sgn(x, name=None):
               (-1+0j)                                 ]])
 
     """
-    paddle.jit.enable_to_static(True)
-    paddle.jit.enable_to_static(False)
+
     if x.dtype not in [
         paddle.float16,
         paddle.float32,
