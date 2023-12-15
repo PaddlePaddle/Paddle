@@ -399,6 +399,14 @@ def get_xpu_xccl_version():
         return 'False'
 
 
+def get_xpu_xhpc_version():
+    with_xpu_xhpc = env_dict.get("WITH_XPU_XHPC")
+    if with_xpu_xhpc == 'ON':
+        return env_dict.get("XPU_XHPC_BASE_DATE")
+    else:
+        return 'False'
+
+
 def is_taged():
     try:
         cmd = [
@@ -445,12 +453,13 @@ cuda_version     = '%(cuda)s'
 cudnn_version    = '%(cudnn)s'
 xpu_version      = '%(xpu)s'
 xpu_xccl_version = '%(xpu_xccl)s'
+xpu_xhpc_version = '%(xpu_xhpc)s'
 istaged          = %(istaged)s
 commit           = '%(commit)s'
 with_mkl         = '%(with_mkl)s'
 cinn_version      = '%(cinn)s'
 
-__all__ = ['cuda', 'cudnn', 'show', 'xpu', 'xpu_xccl']
+__all__ = ['cuda', 'cudnn', 'show', 'xpu', 'xpu_xccl', 'xpu_xhpc']
 
 def show():
     """Get the version of paddle if `paddle` package if tagged. Otherwise, output the corresponding commit id.
@@ -477,6 +486,8 @@ def show():
 
         xpu_xccl: the xpu xccl version of package. It will return `False` if non-XPU version paddle package is installed
 
+        xpu_xhpc: the xpu xhpc version of package. It will return `False` if non-XPU version paddle package is installed
+
         cinn: the cinn version of package. It will return `False` if paddle package is not compiled with CINN
 
     Examples:
@@ -496,6 +507,7 @@ def show():
             cudnn: '7.6.5'
             xpu: '20230114'
             xpu_xccl: '1.0.7'
+            xpu_xhpc: '20231208'
             cinn: False
             >>> # doctest: -SKIP
 
@@ -507,6 +519,7 @@ def show():
             cudnn: '7.6.5'
             xpu: '20230114'
             xpu_xccl: '1.0.7'
+            xpu_xhpc: '20231208'
             cinn: False
             >>> # doctest: -SKIP
     """
@@ -522,6 +535,7 @@ def show():
     print('cudnn:', cudnn_version)
     print('xpu:', xpu_version)
     print('xpu_xccl:', xpu_xccl_version)
+    print('xpu_xhpc:', xpu_xhpc_version)
     print('cinn:', cinn_version)
 
 def mkl():
@@ -599,6 +613,24 @@ def xpu_xccl():
     """
     return xpu_xccl_version
 
+def xpu_xhpc():
+    """Get xpu xhpc version of paddle package.
+
+    Returns:
+        string: Return the version information of xpu xhpc. If paddle package is non-XPU version, it will return False.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> paddle.version.xpu_xhpc()
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            '20231208'
+
+    """
+    return xpu_xhpc_version
+
 def cinn():
     """Get CINN version of paddle package.
 
@@ -640,6 +672,7 @@ def cinn():
                 'cudnn': get_cudnn_version(),
                 'xpu': get_xpu_version(),
                 'xpu_xccl': get_xpu_xccl_version(),
+                'xpu_xhpc': get_xpu_xhpc_version(),
                 'commit': commit,
                 'istaged': is_taged(),
                 'with_mkl': env_dict.get("WITH_MKL"),
@@ -1152,6 +1185,12 @@ def get_package_data_and_package_dir():
     if env_dict.get("WITH_XPTI") == 'ON':
         shutil.copy(env_dict.get("XPU_XPTI_LIB"), libs_path)
         package_data['paddle.libs'] += [env_dict.get("XPU_XPTI_LIB_NAME")]
+
+    if env_dict.get("WITH_XPU_XHPC") == 'ON':
+        shutil.copy(env_dict.get("XPU_XBLAS_LIB"), libs_path)
+        package_data['paddle.libs'] += [env_dict.get("XPU_XBLAS_LIB_NAME")]
+        shutil.copy(env_dict.get("XPU_XFA_LIB"), libs_path)
+        package_data['paddle.libs'] += [env_dict.get("XPU_XFA_LIB_NAME")]
 
     # remove unused paddle/libs/__init__.py
     if os.path.isfile(libs_path + '/__init__.py'):

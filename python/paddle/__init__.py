@@ -269,6 +269,7 @@ from .tensor.manipulation import (  # noqa: F401
     concat,
     crop,
     diagonal_scatter,
+    dsplit,
     expand,
     expand_as,
     flatten,
@@ -276,6 +277,7 @@ from .tensor.manipulation import (  # noqa: F401
     flip as reverse,
     gather,
     gather_nd,
+    hsplit,
     index_add,
     index_add_,
     index_fill,
@@ -284,6 +286,8 @@ from .tensor.manipulation import (  # noqa: F401
     index_put_,
     masked_fill,
     masked_fill_,
+    masked_scatter_,
+    masked_scatter,
     moveaxis,
     put_along_axis,
     select_scatter,
@@ -309,6 +313,7 @@ from .tensor.manipulation import (  # noqa: F401
     row_stack,
     strided_slice,
     take_along_axis,
+    tensor_split,
     tensordot,
     tile,
     tolist,
@@ -484,6 +489,7 @@ from .tensor.math import (  # noqa: F401
     vander,
 )
 from .tensor.random import (
+    binomial,
     bernoulli,
     check_shape,
     multinomial,
@@ -524,6 +530,10 @@ from .tensor.stat import (
     quantile,
     std,
     var,
+)
+
+from .nn.functional.distance import (  # noqa: F401
+    pdist,
 )
 from .tensor.to_string import set_printoptions
 
@@ -631,6 +641,9 @@ __all__ = [
     'searchsorted',
     'bucketize',
     'split',
+    'tensor_split',
+    'hsplit',
+    'dsplit',
     'vsplit',
     'logical_and',
     'logical_and_',
@@ -700,6 +713,7 @@ __all__ = [
     'sin_',
     'dist',
     'cdist',
+    'pdist',
     'unbind',
     'meshgrid',
     'arange',
@@ -735,6 +749,7 @@ __all__ = [
     'expm1',
     'expm1_',
     'bernoulli',
+    'binomial',
     'poisson',
     'sinh',
     'sinh_',
@@ -923,6 +938,8 @@ __all__ = [
     'polygamma_',
     'masked_fill',
     'masked_fill_',
+    'masked_scatter',
+    'masked_scatter_',
     'hypot',
     'hypot_',
     'index_fill',

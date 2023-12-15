@@ -12,17 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/core/infer_type_op_interface.h"
+#pragma once
 
-namespace pir {
+#include <pybind11/pybind11.h>
 
-bool InferShapedTypeOpInterface::ReifyReturnTypeShapes(
-    Builder& builder,
-    const std::vector<OpOperand>& operands,
-    std::vector<Value>& reified_return_shapes) {
-  return impl_->reify_return_type_shapes(
-      operation(), builder, operands, reified_return_shapes);
-}
-}  // namespace pir
+namespace paddle::pybind {
 
-IR_DEFINE_EXPLICIT_TYPE_ID(pir::InferShapedTypeOpInterface)
+void BindTest(pybind11::module *module);
+
+}  // namespace paddle::pybind
