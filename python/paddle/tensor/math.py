@@ -7169,3 +7169,50 @@ def combinations(x, r=2, with_replacement=False, name=None):
         grids[i] = grids[i].masked_select(mask)
 
     return paddle.stack(grids, 1)
+
+def igamma(input: Tensor, other: Tensor, name: str | None = None):
+    r"""
+    Calculates the regularized upper incomplete gamma function of the given input tensors, element-wise.
+
+    This operator performs elementwise igamma for input $a$ and $x$.
+    :math:`out = \int_x^{\infty} t^{a-1} e^{-t} dt `
+
+
+    Args:
+        input (Tensor): The tensor of $a$ in the formula. Must be one of the following types: float16, bfloat16, float32, float64.
+        other (Tensor): The tensor of $x$ in the formula. Must be one of the following types: float16, bfloat16, float32, float64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, the igamma of the input tensors, the shape and data type is the same with other.
+
+            >>> a1 = paddle.to_tensor([4.0])
+            >>> a2 = paddle.to_tensor([3.0, 4.0, 5.0])
+            >>> out = paddle.igamma(a1, a2)
+            >>> out
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.6472, 0.4335, 0.2650])
+    """
+    if in_dynamic_or_pir_mode():
+        return _C_ops.igamma(input, other)
+    else:
+        check_variable_and_dtype(
+            input, 'input', ['float16', 'bfloat16', 'float32', 'float64'], 'igamma'
+        )
+        check_variable_and_dtype(
+            other, 'other', ['float16', 'bfloat16', 'float32', 'float64'], 'igamma'
+        )
+        helper = LayerHelper('igamma', **locals())
+        out = helper.create_variable_for_type_inference(ipnut.dtype)
+        helper.append_op(type='igamma', inputs={'input': input, 'other': other}, outputs={'out': out})
+        return out
+
+
+@inplace_apis_in_dygraph_only
+def igamma_(input: Tensor, other: Tensor, name: str | None = None):
+    r"""
+    Inplace version of ``igamma`` API, the output Tensor will be inplaced with input ``other``.
+    Please refer to :ref:`api_paddle_igamma`.
+    """
+    if in_dynamic_mode():
+        return _C_ops.igamma_(input, other)
