@@ -6223,7 +6223,6 @@ def sgn(x, name=None):
               (-1+0j)                                 ]])
 
     """
-
     if x.dtype not in [
         paddle.float16,
         paddle.float32,
