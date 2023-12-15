@@ -137,6 +137,7 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({phi::DataType::FLOAT16,
                      phi::DataType::FLOAT32,
                      phi::DataType::FLOAT64,
+                     phi::DataType::BFLOAT16,
                      phi::DataType::INT32,
                      phi::DataType::INT64})},
       {"gather_part",
