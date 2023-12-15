@@ -391,7 +391,8 @@ if [ "${DEPRECATED_FLAKE8}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
 fi
 
 
-ENABLE_TO_STATIC_CHECK=`git diff --name-only upstream/$BRANCH | grep "enable_to_static(" || true`
+TEST_FILE_ADDED_LINES=$(git diff test -U0 upstream/$BRANCH |grep "^+" || true)
+ENABLE_TO_STATIC_CHECK=`echo "$TEST_FILE_ADDED_LINES" | grep "enable_to_static(" || true`
 if [ "${ENABLE_TO_STATIC_CHECK}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must have one SigureMo or gouzil approval for using `paddle.jit.enable_to_static`, we recommend using `enable_to_static_guard` in the related test files.\n"
     check_approval 1 SigureMo Aurelius84 2742195759
