@@ -401,6 +401,7 @@ class TestSigmoid(TestActivation):
             max_relative_error=0.01,
             check_prim=True,
             check_pir=True,
+            check_prim_pir=True,
         )
 
 
@@ -473,7 +474,7 @@ class TestSigmoidBF16(OpTest):
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X'], 'Out', check_prim=True, check_pir=True
+            place, ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
         )
 
 
@@ -2539,7 +2540,9 @@ class TestLeakyRelu(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(
+            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
+        )
 
 
 class TestLeakyReluAlpha1(TestLeakyRelu):
@@ -3015,6 +3018,7 @@ class TestHardSwish(TestActivation):
             else False,
             only_check_prim=self.if_only_check_prim(),
             check_pir=True,
+            check_prim_pir=True,
         )
 
     def test_check_output(self):
@@ -4806,7 +4810,7 @@ create_test_act_fp16_class(
 )
 create_test_act_fp16_class(TestExpm1)
 create_test_act_fp16_class(
-    TestSigmoid, check_prim=True, enable_cinn=True, check_pir=True
+    TestSigmoid, check_prim=True, enable_cinn=True, check_pir=True, check_prim_pir=True
 )
 create_test_act_fp16_class(
     TestSilu, check_prim=True, enable_cinn=True, check_prim_pir=True
@@ -4895,10 +4899,10 @@ create_test_act_fp16_class(TestSoftsign, check_pir=True)
 create_test_act_fp16_class(TestThresholdedRelu)
 create_test_act_fp16_class(TestHardSigmoid, check_pir=True)
 create_test_act_fp16_class(TestSwish)
-create_test_act_fp16_class(TestHardSwish, check_prim=True, check_pir=True)
+create_test_act_fp16_class(TestHardSwish, check_prim=True, check_pir=True, check_prim_pir=True)
 create_test_act_fp16_class(TestMish)
 create_test_act_fp16_class(
-    TestLeakyRelu, check_prim=True, enable_cinn=True, check_pir=True
+    TestLeakyRelu, check_prim=True, enable_cinn=True, check_pir=True, check_prim_pir=True
 )
 create_test_act_fp16_class(
     TestLeakyReluAlpha1, check_prim=True, enable_cinn=True
@@ -4986,7 +4990,7 @@ create_test_act_bf16_class(
     TestExpFp32_Prim, check_prim=True, check_prim_pir=True
 )
 create_test_act_bf16_class(TestExpm1)
-create_test_act_bf16_class(TestSigmoid, check_prim=True, check_pir=True)
+create_test_act_bf16_class(TestSigmoid, check_prim=True, check_pir=True, check_prim_pir=True)
 create_test_act_bf16_class(TestSilu, check_prim=True, check_prim_pir=True)
 create_test_act_bf16_class(TestLogSigmoid)
 create_test_act_bf16_class(TestTanh, check_prim=True, check_prim_pir=True)
@@ -5050,9 +5054,9 @@ create_test_act_bf16_class(TestSoftsign, check_pir=True)
 create_test_act_bf16_class(TestThresholdedRelu)
 create_test_act_bf16_class(TestHardSigmoid, check_pir=True)
 create_test_act_bf16_class(TestSwish)
-create_test_act_bf16_class(TestHardSwish, check_prim=True, check_pir=True)
+create_test_act_bf16_class(TestHardSwish, check_prim=True, check_pir=True, check_prim_pir=True)
 create_test_act_bf16_class(TestMish)
-create_test_act_bf16_class(TestLeakyRelu, check_prim=True, check_pir=True)
+create_test_act_bf16_class(TestLeakyRelu, check_prim=True, check_pir=True, check_prim_pir=True)
 create_test_act_bf16_class(TestLeakyReluAlpha1, check_prim=True)
 create_test_act_bf16_class(TestLeakyReluAlpha2, check_prim=True)
 create_test_act_bf16_class(TestLeakyReluAlpha3, check_prim=True)

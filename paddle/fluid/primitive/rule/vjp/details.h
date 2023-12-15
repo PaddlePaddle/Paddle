@@ -956,6 +956,40 @@ void tile_grad(const Tensor& x,
 }
 
 template <typename T>
+void hardswish_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    auto offset = full<T>(common::vectorize(x.dims()), 3.0, x.dtype());
+    auto condition = less_equal<T>(x, offset);
+    auto tmp1 = where<T>(condition, out_grad * ((x / 3.0) + 0.5), out_grad);
+    auto res = where<T>(
+        less_than<T>(x, full<T>(common::vectorize(x.dims()), -3.0, x.dtype())),
+        full<T>(common::vectorize(x.dims()), 0.0, x.dtype()),
+        tmp1);
+    set_output<T>(res, x_grad);
+  }
+}
+
+template <typename T>
+void leaky_relu_grad(const Tensor& out,
+                     const Tensor& out_grad,
+                     float negative_slope,
+                     Tensor* x_grad) {
+  if (x_grad) {
+    auto condition = greater_than<T>(
+        out, full<T>(common::vectorize(out.dims()), 0.0, out.dtype()));
+    auto res = where<T>(condition, out_grad, out_grad * negative_slope);
+    set_output<T>(res, x_grad);
+  }
+}
+
+template <typename T>
+void sigmoid_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    set_output<T>(out_grad * (out * (1 - out)), x_grad);
+  }
+}
+
+template <typename T>
 void abs_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
     auto sign_tmp = sign<T>(x);
