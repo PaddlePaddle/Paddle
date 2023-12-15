@@ -570,6 +570,8 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
       context);  // NOTE, scale op pattern should before AddBroadcastTo
   ps.Add(SumOpPattern().Build(context));
   ps.Add(MaxOpPattern().Build(context));
+  ps.Add(MinOpPattern().Build(context));
+  ps.Add(ProdOpPattern().Build(context));
   ps.Add<ReshapeOpPattern>(context);
   ps.Add<ConcatOpPattern>(context);
   ps.Add<SliceOpPattern>(context);
