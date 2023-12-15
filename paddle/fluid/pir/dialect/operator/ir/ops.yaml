@@ -85,14 +85,6 @@
   kernel :
     func : any
 
-- op : assert
-  args : (Tensor cond, Tensor[] data, int64_t summarize = -1)
-  output :
-  kernel :
-    func : assert
-    param : [cond, data, summarize]
-    data_type : cond
-
 - op : assign
   args : (Tensor x)
   output : Tensor
