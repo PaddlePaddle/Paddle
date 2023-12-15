@@ -54,7 +54,6 @@ class TestSemiautoSaveLoad:
         dist.save_state_dict(state_dict, self._ckpt_path)
         metadata_path = os.path.join(self._ckpt_path, "0.metadata")
         metadata = paddle.load(metadata_path)
-        print(f"load metadata:{metadata}")
         assert len(metadata.flatten_mapping) == len(
             expected_mapping
         ), f"expect {len(expected_mapping)}, but got {len(metadata.flatten_mapping)}"

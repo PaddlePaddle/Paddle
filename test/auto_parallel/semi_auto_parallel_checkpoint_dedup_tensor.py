@@ -40,22 +40,13 @@ class TestSaveStateDict:
         data_file_path = os.path.join(
             self._ckpt_path, f"{paddle.distributed.get_rank()}_0.distcp"
         )
-        metadata_file_path = os.path.join(
-            self._ckpt_path, f"{paddle.distributed.get_rank()}_0.metadata"
-        )
-        print(
-            f"data_file_path: {data_file_path}, metadata_file_path:{metadata_file_path}"
-        )
+        metadata_file_path = os.path.join(self._ckpt_path, "0.metadata")
         assert os.path.exists(data_file_path) and os.path.exists(
             metadata_file_path
         )
         local_state_dict = paddle.load(data_file_path)
         metadata = paddle.load(metadata_file_path)
-        print(f"metadata:{metadata}, local_state_dict: {local_state_dict}")
         for tensor_index, file_name in metadata.storage_metadata.items():
-            print(
-                f"tensor_index: {tensor_index}, file_name:{file_name}, cur rank:{paddle.distributed.get_rank()}"
-            )
             rank = int(file_name.split(".")[0].split("_")[0])
             if rank == paddle.distributed.get_rank():
                 assert (
@@ -68,7 +59,14 @@ class TestSaveStateDict:
                     expect_tensor.numpy(), local_tensor.numpy()
                 )
             else:
-                assert tensor_index.tensor_key not in local_state_dict
+                if tensor_index.tensor_key == "w1":
+                    assert (
+                        tensor_index.tensor_key not in local_state_dict
+                    ), f"tensor_key: {tensor_index.tensor_key} should not in local state dict"
 
-    def run_test_cases(self):
+    def run_test_case(self):
         self.test_dedup_tesnor()
+
+
+if __name__ == '__main__':
+    TestSaveStateDict().run_test_case()

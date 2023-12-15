@@ -77,7 +77,6 @@ def dedup_tensor(state_dict, local_storage_metadata, dedup_storage_metadata):
             tensor_index in local_storage_metadata
             and rank != paddle.distributed.get_rank()
         ):
-            print(f"remove tensor:{tensor_index.tensor_key} from state_dict")
             state_dict.pop(tensor_index.tensor_key)
 
 
