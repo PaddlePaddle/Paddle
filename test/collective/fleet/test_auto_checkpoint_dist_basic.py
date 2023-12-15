@@ -19,8 +19,8 @@ from auto_checkpoint_utils import get_logger
 from test_auto_checkpoint import AutoCheckPointACLBase
 
 import paddle
-import paddle.fluid.incubate.checkpoint.auto_checkpoint as acp
-from paddle import fluid
+import paddle.base.incubate.checkpoint.auto_checkpoint as acp
+from paddle import base
 from paddle.distributed.fleet.utils.fs import HDFSClient, LocalFS
 from paddle.incubate.distributed.fleet import role_maker
 from paddle.incubate.distributed.fleet.collective import fleet
@@ -76,7 +76,7 @@ class AutoCheckpointTestDist(AutoCheckPointACLBase):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
 
-        with fluid.program_guard(main_prog, startup_prog):
+        with base.program_guard(main_prog, startup_prog):
             dist_optimizer = fleet.distributed_optimizer(optimizer)
             dist_optimizer.minimize(loss)
 

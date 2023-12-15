@@ -14,7 +14,7 @@
 
 #include "test/cpp/inference/api/tester_helper.h"
 
-DEFINE_bool(with_precision_check, true, "turn on test");
+PD_DEFINE_bool(with_precision_check, true, "turn on test");
 
 namespace paddle {
 namespace inference {
@@ -212,9 +212,6 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->DisableGpu();
   cfg->SwitchSpecifyInputNames();
   cfg->SwitchIrOptim();
-  if (FLAGS_zero_copy) {
-    cfg->SwitchUseFeedFetchOps(false);
-  }
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {

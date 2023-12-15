@@ -31,7 +31,6 @@ class TestFleetBase(unittest.TestCase):
         ] = "127.0.0.1:36001,127.0.0.2:36001"
 
     def test_fleet_init(self):
-
         os.environ["TRAINING_ROLE"] = "PSERVER"
         os.environ["POD_IP"] = "127.0.0.1"
         os.environ["PADDLE_PORT"] = "36001"

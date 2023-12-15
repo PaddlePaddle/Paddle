@@ -67,7 +67,7 @@ class BeamSearchFunctor<phi::CPUContext, T> {
         0,
         [](size_t a, std::vector<Item> &b) { return a + b.size(); });
     // the output tensor shape should be [num_instances, 1]
-    auto dims = phi::make_ddim(
+    auto dims = common::make_ddim(
         std::vector<int64_t>({static_cast<int>(num_instances), 1}));
     auto *selected_ids_data =
         selected_ids->mutable_data<int64_t>(dims, platform::CPUPlace());
@@ -113,7 +113,7 @@ class BeamSearchFunctor<phi::CPUContext, T> {
    * The basic items help to sort.
    */
   struct Item {
-    Item() {}
+    Item() = default;
     Item(size_t offset, size_t id, float score)
         : offset(offset), id(id), score(score) {}
     // offset in the higher lod level.
@@ -130,10 +130,14 @@ class BeamSearchFunctor<phi::CPUContext, T> {
              ((score == in.score) && (offset < in.offset));
     }
 
-    inline void operator=(const Item &in) {
-      offset = in.offset;
-      id = in.id;
-      score = in.score;
+    inline Item &operator=(const Item &in) {
+      if (this != &in) {
+        this->offset = in.offset;
+        this->id = in.id;
+        this->score = in.score;
+        return *this;
+      }
+      return *this;
     }
 
     std::string ToString() {

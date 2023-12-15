@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
+import inspect
 import unittest
 
-from paddle.jit.api import to_static
+import paddle
 from paddle.jit.dy2static import DygraphToStaticAst
 from paddle.jit.dy2static.origin_info import (
     ORIGI_INFO,
@@ -23,11 +23,10 @@ from paddle.jit.dy2static.origin_info import (
     OriginInfo,
     attach_origin_info,
     create_and_update_origin_info_map,
-    gast,
-    inspect,
     unwrap,
 )
 from paddle.jit.dy2static.utils import ast_to_func
+from paddle.utils import gast
 
 
 def simple_func(x):
@@ -43,13 +42,13 @@ def nested_func(x):
     return result
 
 
-@to_static
+@paddle.jit.to_static
 def decorated_func(x):
     return x
 
 
-@to_static
-@to_static
+@paddle.jit.to_static
+@paddle.jit.to_static
 def decorated_func2(x):
     return x
 
@@ -66,7 +65,6 @@ class TestOriginInfo(unittest.TestCase):
             line for line in lines if line != ""
         ]  # Delete empty lines
 
-        self.set_static_lineno()
         self.set_dygraph_info()
 
     def set_test_func(self):
@@ -116,8 +114,8 @@ class TestOriginInfo(unittest.TestCase):
 
         for i in range(self.line_num):
             static_lineno = self.static_abs_lineno_list[i]
-            staic_loc = Location(static_filepath, static_lineno)
-            self.assertIn(staic_loc.line_location, origin_info_map)
+            static_loc = Location(static_filepath, static_lineno)
+            self.assertIn(static_loc.line_location, origin_info_map)
 
             dy_lineno = dygraph_abs_lineno_list[i]
             dy_col_offset = self.dy_abs_col_offset[i]
@@ -129,7 +127,7 @@ class TestOriginInfo(unittest.TestCase):
                 code,
             )
             self.assertEqual(
-                str(origin_info_map[staic_loc.line_location]), str(origin_info)
+                str(origin_info_map[static_loc.line_location]), str(origin_info)
             )
 
     def test_attach_origin_info(self):
@@ -194,20 +192,8 @@ class TestOriginInfoWithDecoratedFunc(TestOriginInfo):
 
     def set_dygraph_info(self):
         self.line_num = 2
-
-        # NOTE(liym27):
-        #   There are differences in ast_node.lineno between PY3.8+ and PY3.8-.
-        #   If the first gast.FunctionDef has decorator, the lineno of gast.FunctionDef is differs.
-        #       1. < PY3.8
-        #           its lineno equals to the lineno of the first decorator node, which is not right.
-        #       2. >= PY3.8
-        #           its lineno is the actual lineno, which is right.
-        if sys.version_info >= (3, 8):
-            self.line_index_list = [1, 2]
-            self.dy_rel_lineno_list = [1, 2]
-        else:
-            self.line_index_list = [0, 2]
-            self.dy_rel_lineno_list = [0, 2]
+        self.line_index_list = [1, 2]
+        self.dy_rel_lineno_list = [1, 2]
         self.dy_abs_col_offset = [0, 4]
         self.dy_func_name = [self.dygraph_func.__name__] * self.line_num
 
@@ -228,13 +214,8 @@ class TestOriginInfoWithDecoratedFunc2(TestOriginInfo):
 
     def set_dygraph_info(self):
         self.line_num = 2
-
-        if sys.version_info >= (3, 8):
-            self.line_index_list = [2, 3]
-            self.dy_rel_lineno_list = [2, 3]
-        else:
-            self.line_index_list = [0, 3]
-            self.dy_rel_lineno_list = [0, 3]
+        self.line_index_list = [2, 3]
+        self.dy_rel_lineno_list = [2, 3]
         self.dy_abs_col_offset = [0, 4]
         self.dy_func_name = [self.dygraph_func.__name__] * self.line_num
 

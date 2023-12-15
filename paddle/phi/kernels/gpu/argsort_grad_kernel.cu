@@ -38,6 +38,10 @@ namespace detail {
 template <>
 struct radix_key_codec_base<phi::dtype::float16>
     : radix_key_codec_integral<phi::dtype::float16, uint16_t> {};
+
+template <>
+struct radix_key_codec_base<phi::dtype::bfloat16>
+    : radix_key_codec_integral<phi::dtype::bfloat16, uint16_t> {};
 }  // namespace detail
 }  // namespace rocprim
 #else
@@ -46,6 +50,11 @@ namespace cub {
 template <>
 struct NumericTraits<phi::dtype::float16>
     : BaseTraits<FLOATING_POINT, true, false, uint16_t, phi::dtype::float16> {};
+
+template <>
+struct NumericTraits<phi::dtype::bfloat16>
+    : BaseTraits<FLOATING_POINT, true, false, uint16_t, phi::dtype::bfloat16> {
+};
 }  // namespace cub
 #endif
 
@@ -142,7 +151,7 @@ void ArgsortGradKernel(const Context& dev_ctx,
                        bool descending,
                        DenseTensor* in_grad) {
   dev_ctx.template Alloc<T>(in_grad);
-  phi::funcs::set_constant(dev_ctx, in_grad, 0.0);
+  phi::funcs::set_constant(dev_ctx, in_grad, static_cast<T>(0.0));
   if (out_grad.numel() == 0) return;
   auto in_dims = in_grad->dims();
   auto rank = in_dims.size();
@@ -166,7 +175,7 @@ void ArgsortGradKernel(const Context& dev_ctx,
   // Special case for full sort, speedup ~190x.
   if (axis == -1 || axis + 1 == in_dims.size()) {
     const int64_t input_height =
-        phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
+        common::product(common::slice_ddim(in_dims, 0, in_dims.size() - 1));
     const int64_t input_width = in_dims[in_dims.size() - 1];
     ArgFullAssign<T, int64_t>(
         dev_ctx, &out_grad, &indices, in_grad, input_height, input_width);
@@ -195,8 +204,8 @@ void ArgsortGradKernel(const Context& dev_ctx,
     TransposeKernel<T, Context>(dev_ctx, out_grad, trans, &trans_dO);
     TransposeKernel<int64_t, Context>(dev_ctx, indices, trans, &trans_ind);
 
-    const int64_t input_height =
-        phi::product(phi::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
+    const int64_t input_height = common::product(
+        common::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
     const int64_t input_width = trans_dims[trans_dims.size() - 1];
 
     DenseTensor tmp_out;
@@ -222,4 +231,5 @@ PD_REGISTER_KERNEL(argsort_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

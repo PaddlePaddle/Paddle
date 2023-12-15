@@ -14,10 +14,11 @@
 
 from functools import reduce
 
+import nets
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distributed import fleet
 from paddle.distributed.fleet.base import role_maker
 
@@ -27,30 +28,30 @@ DTYPE = "float32"
 paddle.dataset.mnist.fetch()
 
 # Fix seed for test
-fluid.default_startup_program().random_seed = 1
-fluid.default_main_program().random_seed = 1
+base.default_startup_program().random_seed = 1
+base.default_main_program().random_seed = 1
 
 
 def cnn_model(data):
-    conv_pool_1 = fluid.nets.simple_img_conv_pool(
+    conv_pool_1 = nets.simple_img_conv_pool(
         input=data,
         filter_size=5,
         num_filters=20,
         pool_size=2,
         pool_stride=2,
         act="relu",
-        param_attr=fluid.ParamAttr(
+        param_attr=base.ParamAttr(
             initializer=paddle.nn.initializer.Constant(value=0.01)
         ),
     )
-    conv_pool_2 = fluid.nets.simple_img_conv_pool(
+    conv_pool_2 = nets.simple_img_conv_pool(
         input=conv_pool_1,
         filter_size=5,
         num_filters=50,
         pool_size=2,
         pool_stride=2,
         act="relu",
-        param_attr=fluid.ParamAttr(
+        param_attr=base.ParamAttr(
             initializer=paddle.nn.initializer.Constant(value=0.01)
         ),
     )
@@ -64,7 +65,7 @@ def cnn_model(data):
         x=conv_pool_2,
         size=SIZE,
         activation="softmax",
-        weight_attr=fluid.param_attr.ParamAttr(
+        weight_attr=base.param_attr.ParamAttr(
             initializer=paddle.nn.initializer.Constant(value=0.01)
         ),
     )
@@ -92,7 +93,7 @@ class TestFleetMetaOptimizerFuseAllReducePrecision(TestDistRunnerBase):
             input=predict, label=label, total=batch_size_tensor
         )
 
-        test_program = fluid.default_main_program().clone(for_test=True)
+        test_program = base.default_main_program().clone(for_test=True)
 
         # Reader
         train_reader = paddle.batch(
@@ -102,7 +103,7 @@ class TestFleetMetaOptimizerFuseAllReducePrecision(TestDistRunnerBase):
             paddle.dataset.mnist.test(), batch_size=batch_size
         )
 
-        optimizer = paddle.fluid.optimizer.Adam(0.01)
+        optimizer = paddle.optimizer.Adam(0.01)
         if single_device:
             optimizer.minimize(avg_cost)
         else:

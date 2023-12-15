@@ -46,8 +46,8 @@ class Pod(PodSepc):
         super().__init__()
 
     def __str__(self):
-        return "Pod: {}, replicas {}, status {}".format(
-            self.name, self.replicas, self.status
+        return (
+            f"Pod: {self.name}, replicas {self.replicas}, status {self.status}"
         )
 
     def failed_container(self):

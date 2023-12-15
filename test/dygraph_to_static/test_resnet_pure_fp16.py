@@ -16,22 +16,27 @@ import time
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    enable_to_static_guard,
+    test_default_mode_only,
+)
 from test_resnet import SEED, ResNet, optimizer_setting
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 # NOTE: Reduce batch_size from 8 to 2 to avoid unittest timeout.
 batch_size = 2
 epoch_num = 1
 
 
-if fluid.is_compiled_with_cuda():
-    fluid.set_flags({'FLAGS_cudnn_deterministic': True})
+if paddle.is_compiled_with_cuda():
+    paddle.set_flags({'FLAGS_cudnn_deterministic': True})
 
 
-def train(to_static, build_strategy=None):
+def train(build_strategy=None):
     """
     Tests model decorated by `dygraph_to_static_output` in static graph mode. For users, the model is defined in dygraph mode and trained in static graph mode.
     """
@@ -39,9 +44,7 @@ def train(to_static, build_strategy=None):
     paddle.seed(SEED)
     paddle.framework.random._manual_program_seed(SEED)
 
-    resnet = ResNet()
-    if to_static:
-        resnet = paddle.jit.to_static(resnet, build_strategy=build_strategy)
+    resnet = paddle.jit.to_static(ResNet(), build_strategy=build_strategy)
     optimizer = optimizer_setting(parameter_list=resnet.parameters())
     scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
 
@@ -111,17 +114,18 @@ def train(to_static, build_strategy=None):
     return loss_data
 
 
-class TestResnet(unittest.TestCase):
-    def train(self, to_static):
-        paddle.jit.enable_to_static(to_static)
-        build_strategy = paddle.static.BuildStrategy()
-        # Why set `build_strategy.enable_inplace = False` here?
-        # Because we find that this PASS strategy of PE makes dy2st training loss unstable.
-        build_strategy.enable_inplace = False
-        return train(to_static, build_strategy)
+class TestResnet(Dy2StTestBase):
+    def train(self, to_static: bool):
+        with enable_to_static_guard(to_static):
+            build_strategy = paddle.static.BuildStrategy()
+            # Why set `build_strategy.enable_inplace = False` here?
+            # Because we find that this PASS strategy of PE makes dy2st training loss unstable.
+            build_strategy.enable_inplace = False
+            return train(build_strategy)
 
+    @test_default_mode_only
     def test_resnet(self):
-        if fluid.is_compiled_with_cuda():
+        if base.is_compiled_with_cuda():
             static_loss = self.train(to_static=True)
             dygraph_loss = self.train(to_static=False)
             # NOTE: In pure fp16 training, loss is not stable, so we enlarge atol here.
@@ -130,13 +134,12 @@ class TestResnet(unittest.TestCase):
                 dygraph_loss,
                 rtol=1e-05,
                 atol=0.001,
-                err_msg='static_loss: {} \n dygraph_loss: {}'.format(
-                    static_loss, dygraph_loss
-                ),
+                err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
             )
 
+    @test_default_mode_only
     def test_resnet_composite(self):
-        if fluid.is_compiled_with_cuda():
+        if base.is_compiled_with_cuda():
             core._set_prim_backward_enabled(True)
             static_loss = self.train(to_static=True)
             core._set_prim_backward_enabled(False)
@@ -147,9 +150,7 @@ class TestResnet(unittest.TestCase):
                 dygraph_loss,
                 rtol=1e-05,
                 atol=0.001,
-                err_msg='static_loss: {} \n dygraph_loss: {}'.format(
-                    static_loss, dygraph_loss
-                ),
+                err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
             )
 
 

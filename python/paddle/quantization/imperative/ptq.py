@@ -92,7 +92,6 @@ class ImperativePTQ:
                 and utils.is_leaf_layer(layer)
                 and not self._is_skip_layer(layer)
             ):
-
                 # Add quant config
                 quant_config = copy.deepcopy(self._quant_config)
                 if PTQRegistry.is_simulated_quant_layer(layer):
@@ -310,7 +309,6 @@ class ImperativePTQ:
             if self._is_quant_layer(
                 sub_layer
             ) and PTQRegistry.is_simulated_quant_layer(sub_layer):
-
                 quant_config = sub_layer._quant_config
                 assert quant_config.enable_in_act_quantizer is True
                 wt_quantizer = quant_config.wt_quantizer

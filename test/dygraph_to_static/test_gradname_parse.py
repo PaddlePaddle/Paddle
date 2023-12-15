@@ -16,9 +16,12 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_legacy_and_pt_and_pir,
+)
 
 import paddle
-from paddle import ParamAttr
 from paddle.nn import BatchNorm, Linear
 
 
@@ -28,13 +31,9 @@ class SimpleNet(paddle.nn.Layer):
         self.linear0 = Linear(100, 50)
         self.linear1 = Linear(50, 10)
 
-        param_attr0 = ParamAttr(name="aaaprefix_bn_scale")
-        bias_attr0 = ParamAttr(name="aaaprefix_bn_offset")
-        self.bn0 = BatchNorm(50, param_attr=param_attr0, bias_attr=bias_attr0)
+        self.bn0 = BatchNorm(50)
 
-        param_attr1 = ParamAttr(name="bn_scale")
-        bias_attr1 = ParamAttr(name="bn_offset")
-        self.bn1 = BatchNorm(10, param_attr=param_attr1, bias_attr=bias_attr1)
+        self.bn1 = BatchNorm(10)
 
     def forward(self, x):
         x1 = self.linear0(x)
@@ -45,7 +44,7 @@ class SimpleNet(paddle.nn.Layer):
         return dx[0]
 
 
-class TestGradNameParse(unittest.TestCase):
+class TestGradNameParse(Dy2StTestBase):
     def test_grad_name_parse(self):
         net = SimpleNet()
         opt = paddle.optimizer.Adam(
@@ -72,7 +71,7 @@ def tanh_high_order_grad(x):
     return paddle.grad(y, x, create_graph=True)[0]
 
 
-class TestTanhHighOrderGrad(unittest.TestCase):
+class TestTanhHighOrderGrad(Dy2StTestBase):
     def setUp(self):
         self.func = tanh_high_order_grad
 
@@ -86,18 +85,22 @@ class TestTanhHighOrderGrad(unittest.TestCase):
         self.dy2st_input = (x2,)
         self.dy2st_grad_input = (x2,)
 
+    @test_legacy_and_pt_and_pir
     def test_run(self):
         try:
             dy_out = self.func(*self.dy_input)
-            dy_grad = paddle.grad(dy_out, self.dy_grad_input)
+            dy_grad = paddle.grad(dy_out, self.dy_grad_input, allow_unused=True)
         except:
             dy_grad = [None for i in self.dy_grad_input]
         dy_grad = [
             t.numpy() if isinstance(t, paddle.Tensor) else t for t in dy_grad
         ]
 
-        dy2st_out = paddle.jit.to_static(self.func)(*self.dy2st_input)
-        dy2st_grad = paddle.grad(dy2st_out, self.dy2st_grad_input)
+        tmp_func = paddle.jit.to_static(self.func, full_graph=True)
+        dy2st_out = tmp_func(*self.dy2st_input)
+        dy2st_grad = paddle.grad(
+            dy2st_out, self.dy2st_grad_input, allow_unused=True
+        )
         dy2st_grad = [
             t.numpy() if isinstance(t, paddle.Tensor) else t for t in dy_grad
         ]
@@ -116,8 +119,8 @@ class TestTanhHighOrderGrad(unittest.TestCase):
 
 def matmul_high_order_grad(x, y):
     z = paddle.matmul(x, y)
-    g = paddle.grad(z, [x, y], create_graph=False)
-    return g[0]
+    g = paddle.grad(z, [x], create_graph=True, allow_unused=True)
+    return g
 
 
 class TestMatMulHighOrderGrad1(TestTanhHighOrderGrad):

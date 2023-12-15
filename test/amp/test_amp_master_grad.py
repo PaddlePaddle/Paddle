@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 class SimpleNet(paddle.nn.Layer):
@@ -35,6 +35,11 @@ class SimpleNet(paddle.nn.Layer):
     or not core.is_float16_supported(core.CUDAPlace(0)),
     "core is not complied with CUDA and not support the float16",
 )
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or paddle.device.cuda.get_device_capability()[0] < 7.0,
+    "run test when gpu's compute capability is at least 7.0.",
+)
 class TestMasterGrad(unittest.TestCase):
     def check_results(
         self, fp32_grads, op_list, total_steps, accumulate_batchs_num
@@ -47,9 +52,11 @@ class TestMasterGrad(unittest.TestCase):
             int(op_list['adam_'].split(',')[0]),
             2 * (total_steps / accumulate_batchs_num),
         )
+        # Since two additional casts are called when constructing master grad,
+        # the number of operators of this type +2
         self.assertEqual(
             int(op_list['transfer_dtype'].split(',')[0]),
-            total_steps + total_steps * 2,
+            total_steps + total_steps * 2 + 2,
         )
 
     def run_dygraph(self, total_steps, accumulate_batchs_num, model, optimizer):
@@ -75,7 +82,7 @@ class TestMasterGrad(unittest.TestCase):
                 scaler.update()
                 opt.clear_grad()
         paddle.amp.debugging.disable_operator_stats_collection()
-        op_list = paddle.fluid.core.get_low_precision_op_list()
+        op_list = paddle.base.core.get_low_precision_op_list()
         return fp32_grads, op_list
 
     def test_adam_master_grad(self):

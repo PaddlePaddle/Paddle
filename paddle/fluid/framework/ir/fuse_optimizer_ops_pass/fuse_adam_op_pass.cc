@@ -30,9 +30,9 @@ class Node;
 
 class FuseAdamOpPass : public FuseOptimizerOpPass {
  private:
-  const std::string GetOpType() const { return "adam"; }
+  const std::string GetOpType() const override { return "adam"; }
 
-  const std::vector<std::string> GetAuxiliaryVarNames() const {
+  const std::vector<std::string> GetAuxiliaryVarNames() const override {
     return {"Moment1", "Moment2", "Beta1Pow", "Beta2Pow"};
   }
 
@@ -41,7 +41,7 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
           &aux_var_set,
       const std::unordered_map<std::string, std::string> &fused_vars_name,
       const std::vector<ir::Node *> &adam_ops,
-      ir::Graph *graph) const {
+      ir::Graph *graph) const override {
     auto fused_adam_node =
         FuseAdamOps(aux_var_set, fused_vars_name, adam_ops, graph);
     return fused_adam_node;

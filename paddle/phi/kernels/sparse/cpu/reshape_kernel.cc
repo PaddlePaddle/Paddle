@@ -14,7 +14,7 @@
 
 #include "paddle/phi/kernels/sparse/unary_kernel.h"
 
-#include "paddle/phi/core/ddim.h"
+#include "paddle/common/ddim.h"
 #include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
@@ -59,16 +59,16 @@ void ReshapeCooCPUKernel(const Context& dev_ctx,
   auto* out_indices_data = out_indices.data<IntT>();
 
   const phi::DDim& x_sparse_part_strides =
-      phi::stride(phi::make_ddim(x_sparse_part_dims));
+      common::stride(common::make_ddim(x_sparse_part_dims));
   const phi::DDim& out_sparse_part_strides =
-      phi::stride(phi::make_ddim(out_sparse_part_dims));
+      common::stride(common::make_ddim(out_sparse_part_dims));
   int64_t location = 0;
   for (int64_t j = 0; j < x_nnz; ++j) {
     location = 0;
     for (int i = 0; i < x.sparse_dim(); ++i) {
       location += x_indices_data[i * x_nnz + j] * x_sparse_part_strides[i];
     }
-    for (size_t i = 0; i < out_sparse_part_dims.size(); ++i) {
+    for (int i = 0; i < static_cast<int>(out_sparse_part_dims.size()); ++i) {
       out_indices_data[i * x_nnz + j] = location / out_sparse_part_strides[i];
       location %= out_sparse_part_strides[i];
     }

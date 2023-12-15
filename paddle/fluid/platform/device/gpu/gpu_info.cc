@@ -20,7 +20,6 @@ limitations under the License. */
 #include <set>
 #include <vector>
 
-#include "gflags/gflags.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -32,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/mem_tracing.h"
 #include "paddle/fluid/string/split.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/utils/flags.h"
 
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/platform/dynload/miopen.h"
@@ -52,16 +52,15 @@ PHI_DECLARE_uint64(reallocate_gpu_memory_in_mb);
 PHI_DECLARE_bool(enable_cublas_tensor_op_math);
 PHI_DECLARE_uint64(gpu_memory_limit_mb);
 
-PADDLE_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log,
-                            false,
-                            "Whether to print the message of gpu memory usage "
-                            "at exit, mainly used for UT and CI.");
+PHI_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log,
+                         false,
+                         "Whether to print the message of gpu memory usage "
+                         "at exit, mainly used for UT and CI.");
 PADDLE_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log_mb,
                             true,
                             "Whether to print the message of gpu memory usage "
                             "MB as a unit of measurement.");
 
-USE_GPU_MEM_STAT;
 namespace paddle {
 namespace platform {
 
@@ -135,7 +134,7 @@ class RecordedGpuMallocHelper {
   explicit RecordedGpuMallocHelper(int dev_id, uint64_t limit_size = 0)
       : dev_id_(dev_id), limit_size_(limit_size) {
     if (NeedRecord()) {
-      mtx_.reset(new std::mutex());
+      mtx_ = std::make_unique<std::mutex>();
     }
 
     if (FLAGS_enable_gpu_memory_usage_log) {
@@ -203,7 +202,7 @@ class RecordedGpuMallocHelper {
   gpuError_t Malloc(void **ptr,
                     size_t size,
                     bool malloc_managed_memory = false) {
-    LockGuardPtr<std::mutex> lock(mtx_);
+    // LockGuardPtr<std::mutex> lock(mtx_);
     if (UNLIKELY(NeedRecord() && cur_size_.load() + size > limit_size_)) {
       return gpuErrorOutOfMemory;
     }
@@ -228,7 +227,6 @@ class RecordedGpuMallocHelper {
 #endif
     if (result == gpuSuccess) {
       cur_size_.fetch_add(size);
-      STAT_INT_ADD("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
       DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, size);
       platform::RecordMemEvent(ptr,
                                GPUPlace(dev_id_),
@@ -270,7 +268,6 @@ class RecordedGpuMallocHelper {
 #endif
       PADDLE_ENFORCE_GPU_SUCCESS(err);
       cur_size_.fetch_sub(size);
-      STAT_INT_SUB("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
       DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, -size);
       platform::RecordMemEvent(ptr,
                                GPUPlace(dev_id_),
@@ -427,7 +424,7 @@ bool IsGpuMallocRecorded(int dev_id) {
   return RecordedGpuMallocHelper::Instance(dev_id)->NeedRecord();
 }
 
-void EmptyCache(void) {
+void EmptyCache() {
   std::vector<int> devices = GetSelectedDevices();
   for (auto device : devices) {
     memory::Release(CUDAPlace(device));

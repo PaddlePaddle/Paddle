@@ -19,6 +19,7 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -86,6 +87,40 @@ struct IscloseFunctor<phi::CPUContext, T> {
   }
 };
 
+template <typename T>
+struct IscloseFunctor<phi::CPUContext, phi::dtype::complex<T>> {
+  void operator()(const phi::CPUContext& ctx,
+                  const DenseTensor& in,
+                  const DenseTensor& other,
+                  const double rtol,
+                  const double atol,
+                  bool equal_nan,
+                  DenseTensor* output) {
+    auto* in_a = in.data<phi::dtype::complex<T>>();
+    auto* in_b = other.data<phi::dtype::complex<T>>();
+    auto* out_data = ctx.template Alloc<bool>(output);
+    auto num = in.numel();
+    // *out_data = true;
+    for (int i = 0; i < num; i++) {
+      out_data[i] = true;
+    }
+    for (int i = 0; i < num; i++) {
+      const phi::dtype::complex<T> a = in_a[i], b = in_b[i];
+      bool val;
+      if (std::isnan(a) || std::isnan(b)) {
+        val = equal_nan && std::isnan(a) == std::isnan(b);
+      } else {
+        T left = abs(a - b);
+        T right = atol + rtol * abs(b);
+        T diff = abs(left - right);
+        val = a == b || left <= right || diff <= 1e-15;
+        // *out_data &= val;
+        out_data[i] = val;
+      }
+    }
+  }
+};
+
 #if defined(__NVCC__) || defined(__HIPCC__)
 template <typename T>
 __global__ void IscloseCUDAKernel(const T* in_data,
@@ -113,7 +148,59 @@ __global__ void IscloseCUDAKernel(const T* in_data,
     // if (!val) *out_data = false;
   }
 }
+template <>
+__global__ void IscloseCUDAKernel<phi::dtype::complex<float>>(
+    const phi::dtype::complex<float>* in_data,
+    const phi::dtype::complex<float>* other_data,
+    const double rtol,
+    const double atol,
+    bool equal_nan,
+    int num,
+    bool* out_data) {
+  unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  bool val;
+  for (int i = idx; i < num; i += blockDim.x * gridDim.x) {
+    const phi::dtype::complex<float> a = in_data[i];
+    const phi::dtype::complex<float> b = other_data[i];
+    if (isnan(a) || isnan(b)) {
+      val = equal_nan && isnan(a) == isnan(b);
+    } else {
+      float left = abs(a - b);
+      float right = atol + rtol * abs(b);
+      float diff = abs(left - right);
+      val = a == b || left <= right || diff <= 1e-15;
+    }
+    out_data[i] = val;
+    // if (!val) *out_data = false;
+  }
+}
 
+template <>
+__global__ void IscloseCUDAKernel<phi::dtype::complex<double>>(
+    const phi::dtype::complex<double>* in_data,
+    const phi::dtype::complex<double>* other_data,
+    const double rtol,
+    const double atol,
+    bool equal_nan,
+    int num,
+    bool* out_data) {
+  unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  bool val;
+  for (int i = idx; i < num; i += blockDim.x * gridDim.x) {
+    const phi::dtype::complex<double> a = in_data[i];
+    const phi::dtype::complex<double> b = other_data[i];
+    if (isnan(a) || isnan(b)) {
+      val = equal_nan && isnan(a) == isnan(b);
+    } else {
+      double left = abs(a - b);
+      double right = atol + rtol * abs(b);
+      double diff = abs(left - right);
+      val = a == b || left <= right || diff <= 1e-15;
+    }
+    out_data[i] = val;
+    // if (!val) *out_data = false;
+  }
+}
 template <typename T>
 struct GetTensorValue<phi::GPUContext, T> {
   T operator()(const phi::GPUContext& dev_ctx,

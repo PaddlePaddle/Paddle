@@ -47,7 +47,7 @@ void PrepareSamples(const framework::ExecutionContext &context,
   auto label = context.Input<phi::DenseTensor>("Label");
   const int64_t *label_data = label->data<int64_t>();
   auto label_dims = label->dims();
-  // for unitest
+  // for unittest
   std::vector<int> custom_neg_classes =
       context.Attr<std::vector<int>>("custom_neg_classes");
 
@@ -165,10 +165,10 @@ class NCEKernel : public framework::OpKernel<T> {
           (num_true_classes == -1) ? -1 : (num_neg_samples + num_true_classes));
 
       sample_labels = &sample_labels_tmp;
-      sample_labels->Resize(phi::make_ddim(sample_out_dims));
+      sample_labels->Resize(common::make_ddim(sample_out_dims));
 
       sample_out = &sample_out_tmp;
-      sample_out->Resize(phi::make_ddim(sample_out_dims));
+      sample_out->Resize(common::make_ddim(sample_out_dims));
     } else {
       sample_labels = context.Output<phi::DenseTensor>("SampleLabels");
       sample_out = context.Output<phi::DenseTensor>("SampleLogits");

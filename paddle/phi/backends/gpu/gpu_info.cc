@@ -17,12 +17,12 @@ limitations under the License. */
 #include <sstream>
 #include <vector>
 
-#include "gflags/gflags.h"
 #include "glog/logging.h"
+#include "paddle/utils/flags.h"
 
 #include "paddle/phi/common/memory_utils.h"
 
-DECLARE_string(selected_gpus);
+PD_DECLARE_string(selected_gpus);
 
 namespace phi {
 namespace backends {
@@ -47,7 +47,7 @@ std::vector<int> GetSelectedDevices() {
   std::vector<int> devices;
   if (!FLAGS_selected_gpus.empty()) {
     auto devices_str = Split(FLAGS_selected_gpus, ',');
-    for (auto id : devices_str) {
+    for (auto const& id : devices_str) {
       devices.push_back(atoi(id.c_str()));
     }
   } else {

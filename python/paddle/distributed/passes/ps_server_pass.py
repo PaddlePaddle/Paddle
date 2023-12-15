@@ -15,18 +15,15 @@
 import logging
 
 import paddle
-from paddle.fluid.layers.learning_rate_scheduler import (
-    exponential_decay,
-    inverse_time_decay,
-    natural_exp_decay,
-    noam_decay,
-)
 from paddle.optimizer.lr import (
     ExponentialDecay,
     InverseTimeDecay,
     LRScheduler,
     NaturalExpDecay,
     NoamDecay,
+    exponential_decay,
+    inverse_time_decay,
+    noam_decay,
 )
 
 from ..ps.utils.public import (
@@ -112,9 +109,9 @@ class AddLrDecayTablePass(PassBase):
             with paddle.static.program_guard(
                 decay_main_program, decay_startup_program
             ):
-                lr = natural_exp_decay(
-                    1.0, lr_decay_steps, lr_scheduler.gamma, True
-                )
+                lr = paddle.optimizer.lr.NaturalExpDecay(
+                    1.0, lr_scheduler.gamma
+                ).get_lr()
                 lr_name = lr.name
                 logging.warn(
                     "NaturalExpDecay is set, staircase = True, global learning rate decay step is [ %d ], Change decay steps as follow: \n"

@@ -21,8 +21,8 @@ from feed_data_reader import FeedDataReader
 from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
 
 import paddle
+from paddle.base import core
 from paddle.dataset import wmt16
-from paddle.fluid import core
 
 os.environ['CPU_NUM'] = str(4)
 

@@ -99,7 +99,7 @@ class TestOneDNNConvConcatActivationFusePass(PassAutoScanTest):
                 activation_type,
                 inputs={'X': ['concat_output']},
                 outputs={'Out': ['activation_output']},
-                threshold=draw(st.floats(min_value=1.0, max_value=10.0)),
+                threshold=6.0,
             )
         elif activation_type == 'leaky_relu':
             activation_op = OpConfig(
@@ -113,7 +113,7 @@ class TestOneDNNConvConcatActivationFusePass(PassAutoScanTest):
                 activation_type,
                 inputs={'X': ['concat_output']},
                 outputs={'Out': ['activation_output']},
-                beta=draw(st.floats(min_value=0.1, max_value=1.0)),
+                beta=1.0,
             )
         elif activation_type == 'clip':
             activation_op = OpConfig(

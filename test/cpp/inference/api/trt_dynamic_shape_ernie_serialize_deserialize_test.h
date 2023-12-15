@@ -25,7 +25,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "gflags/gflags.h"
+#include "paddle/utils/flags.h"
 #include "test/cpp/inference/api/trt_test_helper.h"
 
 namespace paddle {
@@ -103,8 +103,6 @@ static void trt_ernie(bool with_fp16, std::vector<float> result) {
   config.SetOptimCacheDir(opt_cache_dir);
 
   SetConfig(&config, model_dir, true /* use_gpu */);
-
-  config.SwitchUseFeedFetchOps(false);
 
   int batch = 1;
   int min_seq_len = 1;

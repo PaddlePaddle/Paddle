@@ -55,7 +55,7 @@ paddle_custom_kernel_include += [
 
 # libs path
 paddle_custom_kernel_library_dir = [
-    os.path.join(site_packages_path, 'paddle', 'fluid'),
+    os.path.join(site_packages_path, 'paddle', 'base'),
 ]
 
 # libs

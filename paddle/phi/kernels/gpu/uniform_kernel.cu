@@ -16,10 +16,10 @@
 
 #include <thrust/random.h>
 
-#include "gflags/gflags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
+#include "paddle/utils/flags.h"
 
 namespace phi {
 
@@ -61,11 +61,11 @@ void UniformKernel(const Context& dev_ctx,
                    const Scalar& max,
                    int seed,
                    DenseTensor* out) {
-  out->Resize(phi::make_ddim(shape.GetData()));
+  out->Resize(common::make_ddim(shape.GetData()));
   dev_ctx.template Alloc<T>(out);
   if (seed == 0) {
     // Use global Generator seed
-    using MT = typename kps::details::MPTypeTrait<T>::Type;
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     funcs::uniform_distribution<MT> dist;
     funcs::uniform_real_transform<MT> trans(min.to<float>(), max.to<float>());
     funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);

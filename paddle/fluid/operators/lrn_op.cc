@@ -20,7 +20,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
@@ -54,9 +54,9 @@ struct LRNFunctor<phi::CPUContext, T> {
       auto in_dims = input.dims();
       std::vector<int64_t> shape(
           {in_dims[0], in_dims[3], in_dims[1], in_dims[2]});
-      in_transpose.mutable_data<T>(phi::make_ddim(shape), place);
-      mid_transpose.mutable_data<T>(phi::make_ddim(shape), place);
-      out_transpose.mutable_data<T>(phi::make_ddim(shape), place);
+      in_transpose.mutable_data<T>(common::make_ddim(shape), place);
+      mid_transpose.mutable_data<T>(common::make_ddim(shape), place);
+      out_transpose.mutable_data<T>(common::make_ddim(shape), place);
       std::vector<int> axis = {0, 3, 1, 2};
       transpose(dev_ctx, input, &in_transpose, axis);
     } else {
@@ -232,13 +232,13 @@ class LRNOp : public framework::OperatorWithKernel {
       const std::string& var_name,
       const phi::DenseTensor& tensor,
       const phi::KernelKey& expected_kernel_type) const override {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
         (tensor.layout() != phi::DataLayout::ONEDNN)) {
       auto attrs = Attrs();
       auto ar = paddle::framework::AttrReader(attrs);
       const std::string data_format = ar.Get<std::string>("data_format");
-      auto dl = phi::StringToDataLayout(data_format);
+      auto dl = common::StringToDataLayout(data_format);
       // Some models may have intentionally set "AnyLayout" for lrn
       // op. Treat this as NCHW (default data_format value)
       if (dl != phi::DataLayout::kAnyLayout) {
@@ -355,13 +355,13 @@ class LRNOpGrad : public framework::OperatorWithKernel {
       const std::string& var_name,
       const phi::DenseTensor& tensor,
       const phi::KernelKey& expected_kernel_type) const override {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
         (tensor.layout() != phi::DataLayout::ONEDNN)) {
       auto attrs = Attrs();
       auto ar = paddle::framework::AttrReader(attrs);
       const std::string data_format = ar.Get<std::string>("data_format");
-      auto dl = phi::StringToDataLayout(data_format);
+      auto dl = common::StringToDataLayout(data_format);
       // Some models may have intentionally set "AnyLayout" for lrn
       // op. Treat this as NCHW (default data_format value)
       if (dl != phi::DataLayout::kAnyLayout) {

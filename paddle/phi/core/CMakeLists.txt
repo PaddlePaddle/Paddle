@@ -10,11 +10,10 @@ collect_srcs(
   core_srcs
   SRCS
   flags.cc
-  errors.cc
   enforce.cc
+  storage_properties.cc
   os_info.cc
   kernel_context.cc
-  ddim.cc
   tensor_base.cc
   allocator.cc
   tensor_meta.cc
@@ -36,5 +35,6 @@ collect_srcs(
   mixed_vector.cc
   generator.cc
   kernel_factory.cc
+  kernel_registry.cc
   tensor_utils.cc
   utils/type_info.cc)

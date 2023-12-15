@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/pybind/exception.h"
 
+#include "paddle/common/exception.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
-#include "paddle/phi/api/ext/exception.h"
 namespace paddle {
 namespace pybind {
 
@@ -87,9 +87,9 @@ void BindException(pybind11::module* m) {
 
 void ThrowExceptionToPython(std::exception_ptr p) {
   static PyObject* EOFExceptionException =
-      PyErr_NewException("paddle.EOFException", PyExc_Exception, NULL);
+      PyErr_NewException("paddle.EOFException", PyExc_Exception, nullptr);
   static PyObject* EnforceNotMetException =
-      PyErr_NewException("paddle.EnforceNotMet", PyExc_Exception, NULL);
+      PyErr_NewException("paddle.EnforceNotMet", PyExc_Exception, nullptr);
   try {
     if (p) std::rethrow_exception(p);
   } catch (const platform::EOFException& e) {
@@ -128,7 +128,7 @@ void ThrowExceptionToPython(std::exception_ptr p) {
         PyErr_SetString(EnforceNotMetException, e.what());
         break;
     }
-  } catch (const paddle::PD_Exception& e) {
+  } catch (const common::PD_Exception& e) {
     PyErr_SetString(PyExc_OSError, e.what());
   }
 }

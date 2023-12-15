@@ -80,7 +80,6 @@ class Reader(fleet.MultiSlotDataGenerator):
 
 
 if __name__ == "__main__":
-
     r = Reader()
     r.init()
     r.run_from_stdin()

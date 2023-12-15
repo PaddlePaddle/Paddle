@@ -96,7 +96,6 @@ class GEN(nn.Layer):
         model_kwargs['output'] = output
 
         while cur_step < total_step:
-
             out = self.mlp(model_kwargs['input'])
             paddle.increment(cur_step)
             out_assign = auto.shard_op(paddle.assign, _g_mesh)(out)
@@ -106,7 +105,6 @@ class GEN(nn.Layer):
 
 
 def get_model():
-
     with paddle.LazyGuard():
         mlp = MLPLayer()
         gen = GEN(mlp)
@@ -115,7 +113,6 @@ def get_model():
 
 class TestGenerationPipeline(unittest.TestCase):
     def test_pp2(self):
-
         model = get_model()
 
         strategy = auto.Strategy()
@@ -162,7 +159,7 @@ class TestGenerationPipeline(unittest.TestCase):
             engine._executor.run(
                 engine.main_program, use_program_cache=False, return_numpy=False
             )
-        except paddle.fluid.core.EOFException:
+        except paddle.base.core.EOFException:
             print("test done")
             train_dataloader._inner_dataloader.reset()
 

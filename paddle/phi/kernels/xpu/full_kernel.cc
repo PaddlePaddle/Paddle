@@ -23,6 +23,7 @@
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
+#include "paddle/phi/kernels/impl/full_whit_tensor_kernel_impl.h"
 
 namespace phi {
 
@@ -33,7 +34,7 @@ void FullKernel(const Context& dev_ctx,
                 DataType dtype,
                 DenseTensor* out) {
   using XPUInTDType = typename XPUTypeTrait<T>::Type;
-  out->Resize(phi::make_ddim(shape.GetData()));
+  out->Resize(common::make_ddim(shape.GetData()));
   int numel = out->numel();
   dev_ctx.template Alloc<T>(out);
   auto out_data = reinterpret_cast<XPUInTDType*>(out->data<T>());
@@ -62,13 +63,20 @@ void FullLikeKernel(const Context& dev_ctx,
                                 T>::type>::type;
 
   auto common_type_value = static_cast<CommonType>(value);
+  bool is_out_range = true;
+  if (std::isinf(value) || std::isnan(value)) {
+    is_out_range = false;
+  }
+  if ((common_type_value >=
+       static_cast<CommonType>(std::numeric_limits<T>::lowest())) &&
+      (common_type_value <=
+       static_cast<CommonType>(std::numeric_limits<T>::max()))) {
+    is_out_range = false;
+  }
 
   PADDLE_ENFORCE_EQ(
-      (common_type_value >=
-       static_cast<CommonType>(std::numeric_limits<T>::lowest())) &&
-          (common_type_value <=
-           static_cast<CommonType>(std::numeric_limits<T>::max())),
-      true,
+      is_out_range,
+      false,
       phi::errors::InvalidArgument(
           "The filled value is out of range for target type, "
           "current kernel type is %s, the range should between %f "
@@ -77,13 +85,6 @@ void FullLikeKernel(const Context& dev_ctx,
           static_cast<CommonType>(std::numeric_limits<T>::lowest()),
           static_cast<CommonType>(std::numeric_limits<T>::max()),
           static_cast<float>(value)));
-
-  PADDLE_ENFORCE_EQ(std::isnan(value),
-                    false,
-                    phi::errors::InvalidArgument("The filled value is NaN."));
-  PADDLE_ENFORCE_EQ(std::isinf(value),
-                    false,
-                    phi::errors::InvalidArgument("The filled value is Inf."));
 
   auto out_data = reinterpret_cast<XPUInTDType*>(out->data<T>());
   if (out->numel() > 0) {
@@ -108,7 +109,7 @@ void FullBatchSizeLikeKernel(const Context& dev_ctx,
     // set the correct batch size for the LoDTensor.
     auto odims = out->dims();
     odims[out_batch_size_dim] = static_cast<int>(x.lod().back().size()) - 1;
-    FullKernel<T, Context>(dev_ctx, phi::vectorize(odims), val, dtype, out);
+    FullKernel<T, Context>(dev_ctx, common::vectorize(odims), val, dtype, out);
   }
   FullLikeKernel<T, Context>(dev_ctx, x, val, dtype, out);
 }
@@ -119,25 +120,29 @@ PD_REGISTER_KERNEL(full,
                    ALL_LAYOUT,
                    phi::FullKernel,
                    float,
+                   double,
                    int8_t,
                    uint8_t,
                    int16_t,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(full_like,
                    XPU,
                    ALL_LAYOUT,
                    phi::FullLikeKernel,
                    float,
+                   double,
                    uint8_t,
                    int16_t,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16) {
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
 
@@ -151,4 +156,20 @@ PD_REGISTER_KERNEL(full_batch_size_like,
                    bool,
                    phi::dtype::float16) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
+
+PD_REGISTER_KERNEL(full_with_tensor,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::FullWithTensorKernel,
+                   float,
+                   int8_t,
+                   uint8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   bool,
+                   phi::dtype::float16) {
+  kernel->InputAt(0).SetBackend(phi::Backend::CPU);
+  kernel->InputAt(1).SetBackend(phi::Backend::CPU);
 }

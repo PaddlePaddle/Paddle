@@ -46,14 +46,14 @@ class PixelShuffle(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn as nn
+            >>> import paddle
+            >>> import paddle.nn as nn
 
-            x = paddle.randn(shape=[2,9,4,4])
-            pixel_shuffle = nn.PixelShuffle(3)
-            out = pixel_shuffle(x)
-            print(out.shape)
-            # [2, 1, 12, 12]
+            >>> x = paddle.randn(shape=[2, 9, 4, 4])
+            >>> pixel_shuffle = nn.PixelShuffle(3)
+            >>> out = pixel_shuffle(x)
+            >>> print(out.shape)
+            [2, 1, 12, 12]
 
     """
 
@@ -66,7 +66,7 @@ class PixelShuffle(Layer):
         if data_format not in ["NCHW", "NHWC"]:
             raise ValueError(
                 "Data format should be 'NCHW' or 'NHWC'."
-                "But recevie data format: {}".format(data_format)
+                f"But recevie data format: {data_format}"
             )
 
         self._upscale_factor = upscale_factor
@@ -109,14 +109,14 @@ class PixelUnshuffle(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn as nn
+            >>> import paddle
+            >>> import paddle.nn as nn
 
-            x = paddle.randn([2, 1, 12, 12])
-            pixel_unshuffle = nn.PixelUnshuffle(3)
-            out = pixel_unshuffle(x)
-            print(out.shape)
-            # [2, 9, 4, 4]
+            >>> x = paddle.randn([2, 1, 12, 12])
+            >>> pixel_unshuffle = nn.PixelUnshuffle(3)
+            >>> out = pixel_unshuffle(x)
+            >>> print(out.shape)
+            [2, 9, 4, 4]
 
     """
 
@@ -132,7 +132,7 @@ class PixelUnshuffle(Layer):
         if data_format not in ["NCHW", "NHWC"]:
             raise ValueError(
                 "Data format should be 'NCHW' or 'NHWC'."
-                "But recevie data format: {}".format(data_format)
+                f"But recevie data format: {data_format}"
             )
 
         self._downscale_factor = downscale_factor
@@ -175,24 +175,28 @@ class ChannelShuffle(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn as nn
-            x = paddle.arange(0, 0.6, 0.1, 'float32')
-            x = paddle.reshape(x, [1, 6, 1, 1])
-            # [[[[0.        ]],
-            #   [[0.10000000]],
-            #   [[0.20000000]],
-            #   [[0.30000001]],
-            #   [[0.40000001]],
-            #   [[0.50000000]]]]
-            channel_shuffle = nn.ChannelShuffle(3)
-            y = channel_shuffle(x)
-            # [[[[0.        ]],
-            #   [[0.20000000]],
-            #   [[0.40000001]],
-            #   [[0.10000000]],
-            #   [[0.30000001]],
-            #   [[0.50000000]]]]
+            >>> import paddle
+            >>> import paddle.nn as nn
+            >>> x = paddle.arange(0, 0.6, 0.1, 'float32')
+            >>> x = paddle.reshape(x, [1, 6, 1, 1])
+            >>> print(x)
+            Tensor(shape=[1, 6, 1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[0.        ]],
+              [[0.10000000]],
+              [[0.20000000]],
+              [[0.30000001]],
+              [[0.40000001]],
+              [[0.50000000]]]])
+            >>> channel_shuffle = nn.ChannelShuffle(3)
+            >>> y = channel_shuffle(x)
+            >>> print(y)
+            Tensor(shape=[1, 6, 1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[0.        ]],
+              [[0.20000000]],
+              [[0.40000001]],
+              [[0.10000000]],
+              [[0.30000001]],
+              [[0.50000000]]]])
     """
 
     def __init__(self, groups, data_format="NCHW", name=None):
@@ -207,7 +211,7 @@ class ChannelShuffle(Layer):
         if data_format not in ["NCHW", "NHWC"]:
             raise ValueError(
                 "Data format should be 'NCHW' or 'NHWC'."
-                "But recevie data format: {}".format(data_format)
+                f"But recevie data format: {data_format}"
             )
 
         self._groups = groups

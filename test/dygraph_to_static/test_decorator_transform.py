@@ -19,6 +19,12 @@ from functools import wraps
 
 import decos
 import numpy as np
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_ast_only,
+    test_legacy_and_pt_and_pir,
+    test_pt_only,
+)
 
 import paddle
 
@@ -147,7 +153,6 @@ def fun8(x, y=0):
     return a
 
 
-@paddle.jit.to_static
 def forward():
     funcs = [fun1, fun2, fun3, fun4, fun5, fun6, fun7, fun8]
     out = []
@@ -166,7 +171,6 @@ def fun9():
     print('in fun9 want contextmanager warning')
 
 
-@paddle.jit.to_static
 def warn1():
     fun9()
 
@@ -177,14 +181,14 @@ def fun10():
     return True
 
 
-@paddle.jit.to_static
 def deco_with_paddle_api():
     return fun10()
 
 
-class TestDecoratorTransform(unittest.TestCase):
+class TestDecoratorTransform(Dy2StTestBase):
+    @test_legacy_and_pt_and_pir
     def test_deco_transform(self):
-        outs = forward()
+        outs = paddle.jit.to_static(forward)()
         np.testing.assert_allclose(outs[0], np.array(3), rtol=1e-05)
         np.testing.assert_allclose(outs[1], np.array(5), rtol=1e-05)
         np.testing.assert_allclose(outs[2], np.array(6), rtol=1e-05)
@@ -194,11 +198,13 @@ class TestDecoratorTransform(unittest.TestCase):
         np.testing.assert_allclose(outs[6], np.array(9), rtol=1e-05)
         np.testing.assert_allclose(outs[7], np.array(10), rtol=1e-05)
 
+    @test_ast_only
+    @test_pt_only
     def test_contextmanager_warning(self):
         paddle.disable_static()
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            warn1()
+            paddle.jit.to_static(warn1)()
             flag = False
             for warn in w:
                 if (
@@ -210,8 +216,9 @@ class TestDecoratorTransform(unittest.TestCase):
                     break
             self.assertTrue(flag)
 
+    @test_legacy_and_pt_and_pir
     def test_deco_with_paddle_api(self):
-        self.assertTrue(deco_with_paddle_api())
+        self.assertTrue(paddle.jit.to_static(deco_with_paddle_api)())
 
 
 if __name__ == '__main__':

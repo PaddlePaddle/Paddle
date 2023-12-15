@@ -39,7 +39,7 @@ class RepeatInterleaveOp : public framework::OperatorWithKernel {
 
     auto input_dim = ctx->GetInputDim("X");
     auto dim = ctx->Attrs().Get<int>("dim");
-    auto output_dim = phi::vectorize(input_dim);
+    auto output_dim = common::vectorize(input_dim);
     PADDLE_ENFORCE_EQ(
         dim < input_dim.size() && dim >= (0 - input_dim.size()),
         true,
@@ -78,7 +78,7 @@ class RepeatInterleaveOp : public framework::OperatorWithKernel {
       output_dim[dim] = input_dim[dim] * repeats;
     }
     VLOG(3) << "infershap out " << output_dim[dim];
-    ctx->SetOutputDim("Out", phi::make_ddim(output_dim));
+    ctx->SetOutputDim("Out", common::make_ddim(output_dim));
     auto type = ctx->GetInputsVarType("X")[0];
     if (type == framework::proto::VarType::LOD_TENSOR) {
       ctx->ShareLoD("X", /*->*/ "Out");

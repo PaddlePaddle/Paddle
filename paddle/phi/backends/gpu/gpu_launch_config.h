@@ -34,13 +34,8 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/enforce.h"
 
-#ifdef __HIPCC__
-// HIP results in error or nan if > 256
-#define PREDEFINED_BLOCK_SIZE 256
-#else
 // CUDA performs better when thread_per_block is between [64, 512]
 #define PREDEFINED_BLOCK_SIZE 512
-#endif
 
 namespace phi {
 namespace backends {
@@ -69,11 +64,7 @@ inline int64_t RoundToNextHighPowOfTwo(int64_t n, int64_t min_val = 1) {
 inline int64_t RoundToPowerOfTwo(int64_t n) {
   constexpr int64_t min_val = 32;
   int64_t num = RoundToNextHighPowOfTwo(n, min_val);
-#ifdef __HIPCC__
-  int64_t max_val = 256;
-#else
   int64_t max_val = 1024;
-#endif
   return std::min(max_val, num);
 }
 

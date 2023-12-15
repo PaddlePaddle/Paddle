@@ -24,13 +24,13 @@ KernelKey Pad3dGetKernelTypeForVar(const GetKernelTypeForVarContext* ctx) {
   const DenseTensor& tensor = ctx->GetTensor();
   const KernelKey& expected_kernel_type = ctx->GetKernelKey();
   const AttributeMap& attrs = ctx->GetAttrs();
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
       (tensor.layout() != phi::DataLayout::ONEDNN)) {
     auto it = attrs.find("data_format");
     const std::string data_format = PADDLE_GET_CONST(std::string, it->second);
     return phi::KernelKey(tensor.place(),
-                          phi::StringToDataLayout(data_format),
+                          common::StringToDataLayout(data_format),
                           expected_kernel_type.dtype());
   }
 #endif

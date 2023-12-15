@@ -52,6 +52,7 @@ BuddyAllocator::BuddyAllocator(
       return phi::DeviceManager::GetReallocSize(
           platform::PlaceHelper::CreatePlace(dev_type));
     };
+    use_custom_device_ = true;
   } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     init_allocate_size_func_ = &platform::GpuInitAllocSize;
@@ -89,6 +90,11 @@ void* BuddyAllocator::Alloc(size_t unaligned_size) {
   size_t size =
       align(unaligned_size + sizeof(MemoryBlock::Desc) + extra_padding_size_,
             min_chunk_size_);
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (use_custom_device_) {
+    size = align(unaligned_size + extra_padding_size_, min_chunk_size_);
+  }
+#endif
   VLOG(10) << "alloc: " << unaligned_size
            << ", padding for desc: " << sizeof(MemoryBlock::Desc)
            << ", extra padding: " << extra_padding_size_
@@ -116,14 +122,30 @@ void* BuddyAllocator::Alloc(size_t unaligned_size) {
       return nullptr;
     }
   } else {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    if (use_custom_device_) {
+      VLOG(10) << "Allocation from existing memory block " << std::get<2>(*it)
+               << " at address " << std::get<2>(*it);
+    } else {
+      VLOG(10) << "Allocation from existing memory block " << std::get<2>(*it)
+               << " at address "
+               << reinterpret_cast<MemoryBlock*>(std::get<2>(*it))->Data();
+    }
+#else
     VLOG(10) << "Allocation from existing memory block " << std::get<2>(*it)
              << " at address "
              << reinterpret_cast<MemoryBlock*>(std::get<2>(*it))->Data();
+#endif
   }
 
   total_used_ += size;
   total_free_ -= size;
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (use_custom_device_) {
+    return SplitToAlloc(it, size);
+  }
+#endif
   // split the allocation and return data for use
   return reinterpret_cast<MemoryBlock*>(SplitToAlloc(it, size))->Data();
 }
@@ -131,7 +153,11 @@ void* BuddyAllocator::Alloc(size_t unaligned_size) {
 void BuddyAllocator::Free(void* p) {
   // Point back to metadata
   auto block = static_cast<MemoryBlock*>(p)->Metadata();
-
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (use_custom_device_) {
+    block = static_cast<MemoryBlock*>(p);
+  }
+#endif
   // Acquire the allocator lock
   std::lock_guard<std::mutex> lock(mutex_);
 
@@ -236,13 +262,17 @@ void* BuddyAllocator::SystemAlloc(size_t size) {
 
   static_cast<MemoryBlock*>(p)->Init(
       &cache_, MemoryBlock::HUGE_CHUNK, index, size, nullptr, nullptr);
-
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (use_custom_device_) {
+    return p;
+  }
+#endif
   return static_cast<MemoryBlock*>(p)->Data();
 }
 
 BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool(
     size_t request_bytes) {
-  size_t allocate_bytes = max_chunk_size_;
+  size_t allocate_bytes = max_chunk_size_;  // NOLINT
   size_t index = 0;
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -282,7 +312,7 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool(
 BuddyAllocator::PoolSet::iterator BuddyAllocator::FindExistChunk(size_t size) {
   size_t index = 0;
 
-  while (1) {
+  while (true) {
     auto it = pool_.lower_bound(IndexSizeAddress(index, size, nullptr));
 
     // no match chunk memory

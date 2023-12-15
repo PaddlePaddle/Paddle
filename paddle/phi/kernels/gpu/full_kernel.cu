@@ -17,6 +17,8 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
+#include "paddle/phi/kernels/impl/full_whit_tensor_kernel_impl.h"
+
 namespace phi {
 
 template <typename InT, typename OutT = InT>
@@ -39,9 +41,10 @@ void FullKernel(const Context& dev_ctx,
                 const Scalar& val,
                 DataType dtype,
                 DenseTensor* out) {
-  out->Resize(phi::make_ddim(shape.GetData()));
+  out->Resize(common::make_ddim(shape.GetData()));
   int numel = out->numel();
   dev_ctx.template Alloc<T>(out);
+
   if (numel > 0) {
     // in transformer model the numel of outpout will be zero.
     std::vector<const DenseTensor*> inputs = {};
@@ -60,41 +63,6 @@ void FullLikeKernel(const Context& dev_ctx,
                     const Scalar& val,
                     DataType dtype,
                     DenseTensor* out) {
-  auto value = val.to<double>();
-  using CommonType = typename std::common_type<
-      float,
-      typename std::conditional<
-          std::is_same<T, phi::dtype::float16>::value ||
-              std::is_same<T, phi::dtype::bfloat16>::value,
-          float,
-          T>::type>::type;
-
-  auto common_type_value = static_cast<CommonType>(value);
-
-  // Check whether the filled value is valid
-  bool is_out_range = true;
-  if (std::isinf(value) || std::isnan(value)) {
-    is_out_range = false;
-  }
-
-  if ((common_type_value >=
-       static_cast<CommonType>(std::numeric_limits<T>::lowest())) &&
-      (common_type_value <=
-       static_cast<CommonType>(std::numeric_limits<T>::max()))) {
-    is_out_range = false;
-  }
-
-  PADDLE_ENFORCE_EQ(
-      is_out_range,
-      false,
-      phi::errors::InvalidArgument(
-          "The filled value is out of range for target type, "
-          "current kernel type is %s, the range should between %f "
-          "and %f, but now value is %f.",
-          typeid(T).name(),
-          static_cast<CommonType>(std::numeric_limits<T>::lowest()),
-          static_cast<CommonType>(std::numeric_limits<T>::max()),
-          static_cast<float>(value)));
   std::vector<const DenseTensor*> inputs = {};
   std::vector<DenseTensor*> outputs = {out};
   dev_ctx.template Alloc<T>(out);
@@ -102,9 +70,53 @@ void FullLikeKernel(const Context& dev_ctx,
   // data will not be loaded in the kernel because the number of parameters in
   // the operator is 0
   int numel = out->numel();
-  if (numel > 0) {
-    phi::funcs::ElementwiseKernel<T>(
-        dev_ctx, inputs, &outputs, FullFunctor<T>(value));
+
+  if (!std::is_same<T, phi::dtype::complex<float>>::value &&
+      !std::is_same<T, phi::dtype::complex<double>>::value) {
+    auto value = val.to<double>();
+    using CommonType = typename std::common_type<
+        float,
+        typename std::conditional<
+            std::is_same<T, phi::dtype::float16>::value ||
+                std::is_same<T, phi::dtype::bfloat16>::value,
+            float,
+            T>::type>::type;
+    auto common_type_value = static_cast<CommonType>(value);
+
+    // Check whether the filled value is valid
+    bool is_out_range = true;
+    if (std::isinf(value) || std::isnan(value)) {
+      is_out_range = false;
+    }
+
+    if ((common_type_value >=
+         static_cast<CommonType>(std::numeric_limits<T>::lowest())) &&
+        (common_type_value <=
+         static_cast<CommonType>(std::numeric_limits<T>::max()))) {
+      is_out_range = false;
+    }
+
+    PADDLE_ENFORCE_EQ(
+        is_out_range,
+        false,
+        phi::errors::InvalidArgument(
+            "The filled value is out of range for target type, "
+            "current kernel type is %s, the range should between %f "
+            "and %f, but now value is %f.",
+            typeid(T).name(),
+            static_cast<CommonType>(std::numeric_limits<T>::lowest()),
+            static_cast<CommonType>(std::numeric_limits<T>::max()),
+            static_cast<float>(value)));
+
+    if (numel > 0) {
+      phi::funcs::ElementwiseKernel<T>(
+          dev_ctx, inputs, &outputs, FullFunctor<T>(value));
+    }
+  } else {
+    if (numel > 0) {
+      phi::funcs::ElementwiseKernel<T>(
+          dev_ctx, inputs, &outputs, FullFunctor<T>(val.to<T>()));
+    }
   }
 }
 
@@ -143,4 +155,24 @@ PD_REGISTER_KERNEL(full_like,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
+
+PD_REGISTER_KERNEL(full_with_tensor,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::FullWithTensorKernel,
+                   float,
+                   double,
+                   int8_t,
+                   uint8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   bool,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
+  kernel->InputAt(0).SetBackend(phi::Backend::CPU);
+  kernel->InputAt(1).SetBackend(phi::Backend::CPU);
 }

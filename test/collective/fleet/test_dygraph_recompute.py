@@ -100,7 +100,6 @@ class Naive_fc_net(paddle.nn.Layer):
             ]
 
     def forward(self, inputs):
-
         if self.use_fleet_sq and not self.use_raw_recompute:
             return recompute_sequential(
                 {"segments": self.segments}, self.runfuncs, inputs
@@ -156,7 +155,6 @@ def run_model(
     param_ = []
     grad_ = []
     for step in range(10):
-
         x_data = np.random.randn(batch_size, input_size).astype(np.float32)
         x = paddle.to_tensor(x_data)
         # x.stop_gradient = False

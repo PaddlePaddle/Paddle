@@ -41,14 +41,15 @@ paddle::Tensor hook_function(const paddle::Tensor& t) {
   auto ret_meta = phi::DenseTensorMeta(
       t_dense->dtype(), t_dense->dims(), t_dense->layout());
   auto place = t_dense->place();
-  size_t bytes_size = phi::product(t_dense->dims()) * SizeOf(t_dense->dtype());
+  size_t bytes_size =
+      common::product(t_dense->dims()) * SizeOf(t_dense->dtype());
   auto ret_dense = std::make_shared<phi::DenseTensor>(
       paddle::memory::Alloc(place, bytes_size), std::move(ret_meta));
 
   float* t_ptr = t_dense->mutable_data<float>(place);
   float* ret_ptr = ret_dense->mutable_data<float>(place);
   for (int i = 0; i < ret_dense->numel(); i++) {
-    ret_ptr[i] = t_ptr[i] + 3.0;
+    ret_ptr[i] = t_ptr[i] + 3.0f;
   }
 
   auto ret_impl = std::dynamic_pointer_cast<phi::TensorBase>(ret_dense);
@@ -64,19 +65,19 @@ void test_sigmoid(bool is_remove_gradient_hook) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   VLOG(6) << "Make Dim";
-  paddle::framework::DDim ddim = phi::make_ddim({2, 4, 4, 4});
+  paddle::framework::DDim ddim = common::make_ddim({2, 4, 4, 4});
 
   VLOG(6) << "Make paddle::Tensor";
   paddle::Tensor tensor =
-      egr_utils_api::CreateTensorWithValue(ddim,
-                                           paddle::platform::CPUPlace(),
-                                           phi::DataType::FLOAT32,
-                                           phi::DataLayout::NCHW,
-                                           0.0,
-                                           true);
+      eager_test::CreateTensorWithValue(ddim,
+                                        paddle::platform::CPUPlace(),
+                                        phi::DataType::FLOAT32,
+                                        phi::DataLayout::NCHW,
+                                        0.0,
+                                        true);
 
   VLOG(6) << "Make ReduceHook function";
-  auto reduce_hook = [&](void) -> void {
+  auto reduce_hook = [&]() -> void {
     auto* t_ptr = std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl())
                       ->data<float>();
     for (int i = 0; i < tensor.numel(); i++) {
@@ -131,24 +132,24 @@ void test_elementwiseAdd(bool is_remove_gradient_hook) {
   paddle::imperative::SetCurrentTracer(tracer);
 
   // 1. Prepare Input
-  paddle::framework::DDim ddimX = phi::make_ddim({4, 16});
+  paddle::framework::DDim ddimX = common::make_ddim({4, 16});
   paddle::Tensor X =
-      egr_utils_api::CreateTensorWithValue(ddimX,
-                                           paddle::platform::CPUPlace(),
-                                           phi::DataType::FLOAT32,
-                                           phi::DataLayout::NCHW,
-                                           3.0,
-                                           true);
+      eager_test::CreateTensorWithValue(ddimX,
+                                        paddle::platform::CPUPlace(),
+                                        phi::DataType::FLOAT32,
+                                        phi::DataLayout::NCHW,
+                                        3.0,
+                                        true);
   egr_utils_api::RetainGradForTensor(X);
 
-  paddle::framework::DDim ddimY = phi::make_ddim({4, 16});
+  paddle::framework::DDim ddimY = common::make_ddim({4, 16});
   paddle::Tensor Y =
-      egr_utils_api::CreateTensorWithValue(ddimY,
-                                           paddle::platform::CPUPlace(),
-                                           phi::DataType::FLOAT32,
-                                           phi::DataLayout::NCHW,
-                                           2.0,
-                                           true);
+      eager_test::CreateTensorWithValue(ddimY,
+                                        paddle::platform::CPUPlace(),
+                                        phi::DataType::FLOAT32,
+                                        phi::DataLayout::NCHW,
+                                        2.0,
+                                        true);
 
   auto reduce_hook = [&]() -> void {
     auto* t_ptr =
@@ -195,26 +196,26 @@ void test_matmul(bool is_remove_gradient_hook) {
   paddle::imperative::SetCurrentTracer(tracer);
 
   // 1. Prepare Input
-  paddle::framework::DDim ddimX = phi::make_ddim({4, 16});
+  paddle::framework::DDim ddimX = common::make_ddim({4, 16});
   paddle::Tensor X =
-      egr_utils_api::CreateTensorWithValue(ddimX,
-                                           paddle::platform::CPUPlace(),
-                                           phi::DataType::FLOAT32,
-                                           phi::DataLayout::NCHW,
-                                           3.0,
-                                           true);
+      eager_test::CreateTensorWithValue(ddimX,
+                                        paddle::platform::CPUPlace(),
+                                        phi::DataType::FLOAT32,
+                                        phi::DataLayout::NCHW,
+                                        3.0,
+                                        true);
   egr_utils_api::RetainGradForTensor(X);
 
-  paddle::framework::DDim ddimY = phi::make_ddim({16, 20});
+  paddle::framework::DDim ddimY = common::make_ddim({16, 20});
   paddle::Tensor Y =
-      egr_utils_api::CreateTensorWithValue(ddimY,
-                                           paddle::platform::CPUPlace(),
-                                           phi::DataType::FLOAT32,
-                                           phi::DataLayout::NCHW,
-                                           2.0,
-                                           true);
+      eager_test::CreateTensorWithValue(ddimY,
+                                        paddle::platform::CPUPlace(),
+                                        phi::DataType::FLOAT32,
+                                        phi::DataLayout::NCHW,
+                                        2.0,
+                                        true);
 
-  auto reduce_hook = [&](void) -> void {
+  auto reduce_hook = [&]() -> void {
     auto* t_ptr =
         std::dynamic_pointer_cast<phi::DenseTensor>(Y.impl())->data<float>();
     for (int i = 0; i < Y.numel(); i++) {
@@ -258,27 +259,27 @@ void test_backward_final_hooks() {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   VLOG(6) << "Make paddle::Tensor";
-  paddle::framework::DDim ddimX = phi::make_ddim({4, 16});
+  paddle::framework::DDim ddimX = common::make_ddim({4, 16});
   paddle::Tensor X =
-      egr_utils_api::CreateTensorWithValue(ddimX,
-                                           paddle::platform::CPUPlace(),
-                                           phi::DataType::FLOAT32,
-                                           phi::DataLayout::NCHW,
-                                           3.0,
-                                           true);
-  paddle::framework::DDim ddimY = phi::make_ddim({16, 20});
+      eager_test::CreateTensorWithValue(ddimX,
+                                        paddle::platform::CPUPlace(),
+                                        phi::DataType::FLOAT32,
+                                        phi::DataLayout::NCHW,
+                                        3.0,
+                                        true);
+  paddle::framework::DDim ddimY = common::make_ddim({16, 20});
   egr_utils_api::RetainGradForTensor(X);
 
   paddle::Tensor Y =
-      egr_utils_api::CreateTensorWithValue(ddimY,
-                                           paddle::platform::CPUPlace(),
-                                           phi::DataType::FLOAT32,
-                                           phi::DataLayout::NCHW,
-                                           2.0,
-                                           true);
+      eager_test::CreateTensorWithValue(ddimY,
+                                        paddle::platform::CPUPlace(),
+                                        phi::DataType::FLOAT32,
+                                        phi::DataLayout::NCHW,
+                                        2.0,
+                                        true);
 
   VLOG(6) << "Make ReduceHook function";
-  auto backward_final_hook = [&](void) -> void {
+  auto backward_final_hook = [&]() -> void {
     auto* t_ptr =
         std::dynamic_pointer_cast<phi::DenseTensor>(X.impl())->data<float>();
     VLOG(6) << "Run Target Backward Hook";

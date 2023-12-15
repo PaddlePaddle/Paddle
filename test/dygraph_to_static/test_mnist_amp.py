@@ -19,10 +19,10 @@ import numpy as np
 from test_mnist import MNIST, SEED, TestMNIST
 
 import paddle
-from paddle.fluid.optimizer import AdamOptimizer
+from paddle.optimizer import Adam
 
-if paddle.fluid.is_compiled_with_cuda():
-    paddle.fluid.set_flags({'FLAGS_cudnn_deterministic': True})
+if paddle.base.is_compiled_with_cuda():
+    paddle.base.set_flags({'FLAGS_cudnn_deterministic': True})
 
 
 class TestAMP(TestMNIST):
@@ -43,9 +43,7 @@ class TestAMP(TestMNIST):
             static_loss,
             rtol=1e-05,
             atol=0.001,
-            err_msg='dygraph is {}\n static_res is \n{}'.format(
-                dygraph_loss, static_loss
-            ),
+            err_msg=f'dygraph is {dygraph_loss}\n static_res is \n{static_loss}',
         )
 
     def train(self, to_static=False):
@@ -56,9 +54,7 @@ class TestAMP(TestMNIST):
             print("Successfully to apply @to_static.")
             mnist = paddle.jit.to_static(mnist)
 
-        adam = AdamOptimizer(
-            learning_rate=0.001, parameter_list=mnist.parameters()
-        )
+        adam = Adam(learning_rate=0.001, parameters=mnist.parameters())
 
         scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
 

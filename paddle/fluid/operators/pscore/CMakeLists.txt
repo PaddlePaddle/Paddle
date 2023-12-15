@@ -21,6 +21,7 @@ if(WITH_ARM_BRPC)
     sendrecv_rpc
     arm_brpc
     phi
+    common
     glog
     snappy
     device_context)
@@ -37,15 +38,10 @@ else()
     ps_framework_proto
     framework_proto
     sendrecv_rpc
-    brpc
-    leveldb
-    ssl
-    crypto
-    protobuf
+    ${EXTERNAL_BRPC_DEPS}
     phi
-    glog
+    common
     zlib
-    snappy
     device_context)
 endif()
 

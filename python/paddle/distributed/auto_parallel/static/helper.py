@@ -235,14 +235,16 @@ class ProgramHelper:
 
         self._logger.info("start to build program for mode = %s." % mode)
         input_spec = [self.inputs_spec, self.labels_spec]
-        static_func = to_static(self.static_func(), input_spec=input_spec)
+        static_func = to_static(
+            self.static_func(), input_spec=input_spec, full_graph=True
+        )
 
         func_name = '_' + mode
         setattr(self.proxy_layer, func_name, static_func)
 
         # NOTE(dev): Because @to_static is a Lazy mechanism, so we explicitly call this to trigger
         # generating Program IR immediately.
-        getattr(self.proxy_layer, func_name).concrete_program
+        getattr(self.proxy_layer, func_name).concrete_program  # noqa: B018
 
         self._build_startup_program()
 
@@ -326,21 +328,27 @@ class ProgramHelper:
             # create var in scope and share parameters to scope
             if param.name not in main_program.global_block().vars:
                 continue
-            # get param_var's dist_attr
-            var = main_program.global_block().vars[param.name]
-            var_dist_attr = dist_context.get_tensor_dist_attr_for_program(var)
-            dist_attr = {
-                "dims_mapping": var_dist_attr.dims_mapping,
-                "process_shape": var_dist_attr.process_mesh.shape,
-                "process_group": var_dist_attr.process_mesh.process_ids,
-            }
-            # slice param_value with dist_attr
-            # share sliced_param_value with param_tensor in global_scope
-            param_tensor = global_scope().var(param.name).get_tensor()
-            sliced_param = Converter.slice_with_dist_attr(
-                param.numpy(), dist_attr
-            )
-            param_tensor.set(sliced_param, place)
+            if param.is_dense():
+                # get param_var's dist_attr
+                var = main_program.global_block().vars[param.name]
+                var_dist_attr = dist_context.get_tensor_dist_attr_for_program(
+                    var
+                )
+                dist_attr = {
+                    "dims_mapping": var_dist_attr.dims_mapping,
+                    "process_shape": var_dist_attr.process_mesh.shape,
+                    "process_group": var_dist_attr.process_mesh.process_ids,
+                }
+                # slice param_value with dist_attr
+                # share sliced_param_value with param_tensor in global_scope
+                param_tensor = global_scope().var(param.name).get_tensor()
+                sliced_param = Converter.slice_with_dist_attr(
+                    param.numpy(), dist_attr
+                )
+                param_tensor.set(sliced_param, place)
+            elif param.is_dist():
+                dense_tensor = global_scope().var(param.name).get_tensor()
+                dense_tensor._share_data_with(param.get_tensor().get_tensor())
 
     @property
     def concrete_program(self):
@@ -379,3 +387,11 @@ class ProgramHelper:
     @property
     def metric_vars(self):
         return to_list(self.proxy_layer.metric_vars)
+
+    def named_parameters(self):
+        static_func = self.static_func()
+        partial_program = static_func.get_concrete_program(
+            self.inputs_spec, self.labels_spec
+        )[-1]
+        # TODO(xiongkun): support pir in the feature.
+        return {param.name: param for param in partial_program._params}

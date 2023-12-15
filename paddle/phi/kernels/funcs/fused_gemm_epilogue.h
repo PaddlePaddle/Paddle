@@ -26,7 +26,6 @@ limitations under the License. */
 
 #if CUDA_VERSION >= 11060
 
-#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/backends/dynload/cublasLt.h"
@@ -38,9 +37,10 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/scope_guard.h"
 #include "paddle/phi/kernels/funcs/blas/blaslt_impl.cu.h"
+#include "paddle/utils/flags.h"
 #include "paddle/utils/optional.h"
 
-DECLARE_int64(cublaslt_exhaustive_search_times);
+PD_DECLARE_int64(cublaslt_exhaustive_search_times);
 
 namespace phi {
 namespace funcs {
@@ -394,11 +394,11 @@ void ComputeFusedGemmEpilogueForward(const phi::GPUContext& dev_ctx,
     if (activation == "relu") {
       phi::DataType rs_type = phi::DataType::BOOL;
       size_t reserve_space_size =
-          phi::product(reserve_space->dims()) * SizeOf(rs_type);
+          common::product(reserve_space->dims()) * SizeOf(rs_type);
       dev_ctx.Alloc(reserve_space, rs_type, reserve_space_size);
     } else {
       size_t reserve_space_size =
-          phi::product(reserve_space->dims()) * sizeof(T);
+          common::product(reserve_space->dims()) * sizeof(T);
       dev_ctx.Alloc<T>(reserve_space, reserve_space_size);
     }
 

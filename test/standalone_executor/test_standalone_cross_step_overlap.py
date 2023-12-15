@@ -31,7 +31,7 @@ class TestCrossStepOverlap(unittest.TestCase):
         self.step_num = 3
 
     def test_cross_step_overlap(self):
-        if not paddle.fluid.core.is_compiled_with_cuda():
+        if not paddle.base.core.is_compiled_with_cuda():
             return
 
         # In this test case, z=x+y is calculated in the default stream,

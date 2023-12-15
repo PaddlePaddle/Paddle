@@ -123,7 +123,6 @@ class TestCase8(TestBase):
 
 
 class TestCase9(TestBase):
-
     # When bias_attr is not False, a Add Op will be added after conv2d_transpose Op.
     # When bias_attr = None, the bias value is 0.
     def set_op_attrs(self):
@@ -132,7 +131,6 @@ class TestCase9(TestBase):
 
 
 class TestCase10(TestBase):
-
     # When output_size is not None, the filter_size will be re-computed by output_size
     def set_op_attrs(self):
         super().set_op_attrs()

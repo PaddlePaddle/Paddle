@@ -25,7 +25,6 @@ def build_fake_sentence(seed):
 
 
 def get_data_iter(batch_size, mode='train', cache_num=20):
-
     self_random = np.random.RandomState(SEED)
 
     def to_pad_np(data, source=False):

@@ -564,9 +564,7 @@ class PretrainedTokenizer:
         """
         assert not os.path.isfile(
             save_directory
-        ), "Saving directory ({}) should be a directory, not a file".format(
-            save_directory
-        )
+        ), f"Saving directory ({save_directory}) should be a directory, not a file"
         os.makedirs(save_directory, exist_ok=True)
 
         tokenizer_config_file = os.path.join(
@@ -632,9 +630,7 @@ class PretrainedTokenizer:
         elif name.endswith('_token_id'):
             return self.vocab[self.special_tokens_map[name[:-3]]]
         raise AttributeError(
-            "'{}' object has no attribute '{}'".format(
-                type(self).__name__, name
-            )
+            f"'{type(self).__name__}' object has no attribute '{name}'"
         )
 
     def truncate_sequences(
@@ -924,7 +920,6 @@ class PretrainedTokenizer:
             len_ids + len_pair_ids + (self.num_special_tokens_to_add(pair=pair))
         )
         if max_seq_len and total_len > max_seq_len:
-
             ids, pair_ids, overflowing_tokens = self.truncate_sequences(
                 ids,
                 pair_ids=pair_ids,
@@ -1157,7 +1152,6 @@ class PretrainedTokenizer:
             )
 
             if stride > 0 and second_ids is not None:
-
                 max_len_for_pair = (
                     max_seq_len
                     - len(first_ids)

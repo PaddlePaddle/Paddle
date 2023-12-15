@@ -195,7 +195,7 @@ class TestFusedAttentionNormalizeBefore(TestFusedAttention):
 class TestFusedAttentionAPIError(unittest.TestCase):
     def test_invalid_x_rank(self):
         def test_x_rank_1():
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 layer = FusedMultiHeadAttention(embed_dim=1, num_heads=1)
                 array = np.array([1.9], dtype=np.float32)
                 x = paddle.to_tensor(np.reshape(array, [1]), dtype='float32')

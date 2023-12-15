@@ -18,7 +18,6 @@
 #include "gtest/gtest.h"
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/scale_node.h"
-#include "paddle/fluid/eager/api/utils/tensor_utils.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -36,16 +35,16 @@ TEST(Forward, SingleNode) {
 
   // Prepare Inputs
   std::vector<paddle::Tensor> target_tensors;
-  paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
   paddle::Tensor t =
-      egr_utils_api::CreateTensorWithValue(ddim,
-                                           paddle::platform::CPUPlace(),
-                                           phi::DataType::FLOAT32,
-                                           phi::DataLayout::NCHW,
-                                           5.0 /*value*/,
-                                           false /*is_leaf*/);
+      eager_test::CreateTensorWithValue(ddim,
+                                        paddle::platform::CPUPlace(),
+                                        phi::DataType::FLOAT32,
+                                        phi::DataLayout::NCHW,
+                                        5.0 /*value*/,
+                                        false /*is_leaf*/);
   target_tensors.emplace_back(std::move(t));
   paddle::Tensor& tensor = target_tensors[0];
   EagerUtils::autograd_meta(&tensor)->SetStopGradient(false);
@@ -86,16 +85,16 @@ TEST(Forward, LinearNodes) {
 
   // Prepare Inputs
   std::vector<paddle::Tensor> target_tensors;
-  paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
   paddle::Tensor t =
-      egr_utils_api::CreateTensorWithValue(ddim,
-                                           paddle::platform::CPUPlace(),
-                                           phi::DataType::FLOAT32,
-                                           phi::DataLayout::NCHW,
-                                           5.0 /*value*/,
-                                           false /*is_leaf*/);
+      eager_test::CreateTensorWithValue(ddim,
+                                        paddle::platform::CPUPlace(),
+                                        phi::DataType::FLOAT32,
+                                        phi::DataLayout::NCHW,
+                                        5.0 /*value*/,
+                                        false /*is_leaf*/);
   target_tensors.emplace_back(std::move(t));
   paddle::Tensor& tensor = target_tensors[0];
   EagerUtils::autograd_meta(&tensor)->SetStopGradient(false);
@@ -172,16 +171,16 @@ TEST(Forward, BranchedNodes) {
 
   // Prepare Inputs
   std::vector<paddle::Tensor> target_tensors;
-  paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
   paddle::Tensor t =
-      egr_utils_api::CreateTensorWithValue(ddim,
-                                           paddle::platform::CPUPlace(),
-                                           phi::DataType::FLOAT32,
-                                           phi::DataLayout::NCHW,
-                                           5.0 /*value*/,
-                                           false /*is_leaf*/);
+      eager_test::CreateTensorWithValue(ddim,
+                                        paddle::platform::CPUPlace(),
+                                        phi::DataType::FLOAT32,
+                                        phi::DataLayout::NCHW,
+                                        5.0 /*value*/,
+                                        false /*is_leaf*/);
   target_tensors.emplace_back(std::move(t));
   paddle::Tensor& tensor = target_tensors[0];
   EagerUtils::autograd_meta(&tensor)->SetStopGradient(false);

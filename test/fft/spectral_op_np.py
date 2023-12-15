@@ -35,9 +35,7 @@ def _get_norm_mode(norm, forward):
 
 
 def _get_inv_norm(n, norm_mode):
-    assert isinstance(norm_mode, NormMode), "invalid norm_type {}".format(
-        norm_mode
-    )
+    assert isinstance(norm_mode, NormMode), f"invalid norm_type {norm_mode}"
     if norm_mode == NormMode.none:
         return 1.0
     if norm_mode == NormMode.by_sqrt_n:

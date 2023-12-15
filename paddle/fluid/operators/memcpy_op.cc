@@ -127,7 +127,6 @@ raise error if the type is not listed above.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 DECLARE_INFER_SHAPE_FUNCTOR(memcpy,
                             MemcpyInferShapeFunctor,

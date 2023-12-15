@@ -14,11 +14,11 @@
 
 #include "paddle/phi/kernels/interpolate_grad_kernel.h"
 
+#include "paddle/common/layout.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/interpolate_function.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
@@ -761,7 +761,7 @@ static void Interpolate1DCUDABwd(
     bool align_corners,
     int align_mode,
     DenseTensor* input_grad) {
-  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -875,7 +875,7 @@ static void Interpolate2DCUDABwd(
     bool align_corners,
     int align_mode,
     DenseTensor* input_grad) {
-  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -1096,11 +1096,7 @@ static void Interpolate2DCUDABwd(
                                                   interp_divmods);
     }
   } else if ("bicubic" == interp_method) {
-#ifdef __HIPCC__
-    constexpr int thread_per_block = 256;
-#else
     constexpr int thread_per_block = 512;
-#endif
     KeBicubicInterpBw<T>
         <<<config.block_per_grid, thread_per_block, 0, dev_ctx.stream()>>>(
             input_grad_data,
@@ -1138,7 +1134,7 @@ static void Interpolate3DCUDABwd(
     bool align_corners,
     int align_mode,
     DenseTensor* input_grad) {
-  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -1576,6 +1572,7 @@ PD_REGISTER_KERNEL(bilinear_interp_grad,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {
+  kernel->InputAt(1).SetBackend(phi::Backend::CPU);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
@@ -1587,6 +1584,7 @@ PD_REGISTER_KERNEL(nearest_interp_grad,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {
+  kernel->InputAt(1).SetBackend(phi::Backend::CPU);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
@@ -1598,6 +1596,7 @@ PD_REGISTER_KERNEL(trilinear_interp_grad,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {
+  kernel->InputAt(1).SetBackend(phi::Backend::CPU);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
@@ -1609,6 +1608,7 @@ PD_REGISTER_KERNEL(linear_interp_grad,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {
+  kernel->InputAt(1).SetBackend(phi::Backend::CPU);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
@@ -1620,6 +1620,7 @@ PD_REGISTER_KERNEL(bicubic_interp_grad,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {
+  kernel->InputAt(1).SetBackend(phi::Backend::CPU);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }

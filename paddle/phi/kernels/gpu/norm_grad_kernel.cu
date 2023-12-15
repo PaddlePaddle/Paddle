@@ -96,11 +96,7 @@ void NormGradKernel(const Context& ctx,
   int pre, n, post;
   funcs::GetPrePostNumel(xdim, axis, &pre, &n, &post);
 
-#ifdef __HIPCC__
-  const int block = 256;
-#else
   const int block = 512;
-#endif
   int max_threads = ctx.GetMaxPhysicalThreadCount();
   const int max_blocks = std::max(max_threads / block, 1);
   int grid = std::min(max_blocks, pre * post);

@@ -474,7 +474,6 @@ def append_send_ops_pass(program, config):
     trainer_id = config.get_role_id()
 
     def _append_send_op(union_vars, queue, is_sparse, table_id):
-
         if queue == STEP_COUNTER:
             send_input_vars = []
         else:
@@ -641,7 +640,6 @@ def ps_gpu_pass(program):
             program.global_block()._remove_var(name)
 
     def _remove_optimizer_var(program):
-
         embedding_w = {}
         for idx, op in list(enumerate(program.global_block().ops)):
             if op.type == "lookup_table_grad":
@@ -715,9 +713,7 @@ def delete_extra_optimizes_pass(program, config):
 def find_heter_ops(program, default_device="cpu"):
     if default_device not in DEVICE_LIST:
         raise ValueError(
-            "Given device {} is not in device list {}".format(
-                default_device, DEVICE_LIST
-            )
+            f"Given device {default_device} is not in device list {DEVICE_LIST}"
         )
 
     def _is_heter_op(op, current_heter_device, default_device="cpu"):
@@ -1029,7 +1025,6 @@ def create_heter_program(
     first_op_index_fp = len(heter_block.ops)
 
     if stage_id < len(program_block_ops_list):
-
         heter_block_bp = heter_program._create_block(pre_block_idx)
         optimizer_block.append(heter_block_bp)
 
@@ -1246,7 +1241,6 @@ def insert_communicate_op(
     device,
     is_forward=True,
 ):
-
     if is_forward:
         next_heter_worker_endpoints = config.get_next_stage_trainers()
         previous_heter_worker_endpoints = config.get_previous_stage_trainers()
@@ -1363,7 +1357,6 @@ def replace_ops_by_communicate_op(
 def remove_trainer_send_op(
     program, config, heter_block_index, block_var_detail
 ):
-
     # if trainer do FF->BP->SEND, it has follow vars: var, var@GRAD
     # if trainer only do SEND, it has one var: var@GRAD
     # Delete Send op ,if trainer doesn't has pair var (var<->var@GRAD)
@@ -1466,12 +1459,12 @@ def get_communicate_var_info(
     input_var_reshape_name = []
 
     if type == "forward":
-        block_input_var_name = "forward_joint_{}_{}@Heter".format(
-            block_index - 1, block_index
+        block_input_var_name = (
+            f"forward_joint_{block_index - 1}_{block_index}@Heter"
         )
     else:
-        block_input_var_name = "backward_joint_{}_{}@Heter".format(
-            block_index + 1, block_index
+        block_input_var_name = (
+            f"backward_joint_{block_index + 1}_{block_index}@Heter"
         )
 
     entrance_var_list.sort()
@@ -1665,7 +1658,7 @@ def entrance_exit_check(
         )
 
         for var in backward_entrance:
-            if not ("@GRAD" in var) and not (var in forward_all):
+            if "@GRAD" not in var and var not in forward_all:
                 current_block_entrance.append(var)
 
         current_block_entrance.sort()
@@ -1974,7 +1967,6 @@ def delete_trainer_useless_var(config, program, static_var):
 
 
 def block_append_op(program, origin_program, block, op):
-
     merge_ordereddict = origin_program.global_block().vars.copy()
     merge_ordereddict.update(block.vars)
     inputs = _get_input_map_from_op(merge_ordereddict, op)

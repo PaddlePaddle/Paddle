@@ -73,7 +73,7 @@ class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
                           y_dims));
 
     auto x_mat_dims =
-        phi::flatten_to_2d(x_dims, trans_x ? 1 : x_dims.size() - 1);
+        common::flatten_to_2d(x_dims, trans_x ? 1 : x_dims.size() - 1);
 
     int K_from_x = trans_x ? x_mat_dims[0] : x_mat_dims[1];
     int K_from_y = trans_y ? y_dims[1] : y_dims[0];
@@ -100,11 +100,11 @@ class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
     } else {
       out_dims.push_back(y_dims[1]);
     }
-    ctx->SetOutputDim("Out", phi::make_ddim(out_dims));
+    ctx->SetOutputDim("Out", common::make_ddim(out_dims));
 
     auto activation = ctx->Attrs().Get<std::string>("activation");
     if (ctx->HasOutput("ReserveSpace")) {
-      ctx->SetOutputDim("ReserveSpace", phi::make_ddim(out_dims));
+      ctx->SetOutputDim("ReserveSpace", common::make_ddim(out_dims));
 
       if (activation == "none") {
         PADDLE_THROW(platform::errors::InvalidArgument(
@@ -127,7 +127,7 @@ class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
   }
 
   phi::KernelKey GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const {
+      const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     return phi::KernelKey(data_type, ctx.GetPlace());
   }
@@ -235,8 +235,8 @@ class FusedGemmEpilogueGradOp : public framework::OperatorWithKernel {
             dout_dims.size(),
             x_dims.size()));
 
-    auto dout_mat_dims = phi::flatten_to_2d(dout_dims, dout_dims.size() - 1);
-    auto x_mat_dims = phi::flatten_to_2d(x_dims, x_dims.size() - 1);
+    auto dout_mat_dims = common::flatten_to_2d(dout_dims, dout_dims.size() - 1);
+    auto x_mat_dims = common::flatten_to_2d(x_dims, x_dims.size() - 1);
 
     PADDLE_ENFORCE_EQ(
         dout_mat_dims[1],
@@ -272,12 +272,12 @@ class FusedGemmEpilogueGradOp : public framework::OperatorWithKernel {
 
     if (ctx->HasOutput("DBias")) {
       int64_t dbias_dim = trans_y ? y_dims[0] : y_dims[1];
-      ctx->SetOutputDim("DBias", phi::make_ddim({dbias_dim}));
+      ctx->SetOutputDim("DBias", common::make_ddim({dbias_dim}));
     }
   }
 
   phi::KernelKey GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const {
+      const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "DOut");
     return phi::KernelKey(data_type, ctx.GetPlace());
   }

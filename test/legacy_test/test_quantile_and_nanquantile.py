@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 API_list = [
     (paddle.quantile, np.quantile),
@@ -37,7 +38,7 @@ class TestQuantileAndNanquantile(unittest.TestCase):
     # Test correctness when q and axis are set.
     def test_single_q(self):
         inp = self.input_data
-        for (func, res_func) in API_list:
+        for func, res_func in API_list:
             x = paddle.to_tensor(inp)
             paddle_res = func(x, q=0.5, axis=2)
             np_res = res_func(inp, q=0.5, axis=2)
@@ -47,7 +48,7 @@ class TestQuantileAndNanquantile(unittest.TestCase):
     # Test correctness for default axis.
     def test_with_no_axis(self):
         inp = self.input_data
-        for (func, res_func) in API_list:
+        for func, res_func in API_list:
             x = paddle.to_tensor(inp)
             paddle_res = func(x, q=0.35)
             np_res = res_func(inp, q=0.35)
@@ -58,7 +59,7 @@ class TestQuantileAndNanquantile(unittest.TestCase):
     # Test correctness for multiple axis.
     def test_with_multi_axis(self):
         inp = self.input_data
-        for (func, res_func) in API_list:
+        for func, res_func in API_list:
             x = paddle.to_tensor(inp)
             paddle_res = func(x, q=0.75, axis=[0, 2])
             np_res = res_func(inp, q=0.75, axis=[0, 2])
@@ -69,7 +70,7 @@ class TestQuantileAndNanquantile(unittest.TestCase):
     # Test correctness when keepdim is set.
     def test_with_keepdim(self):
         inp = self.input_data
-        for (func, res_func) in API_list:
+        for func, res_func in API_list:
             x = paddle.to_tensor(inp)
             paddle_res = func(x, q=0.35, axis=2, keepdim=True)
             np_res = res_func(inp, q=0.35, axis=2, keepdims=True)
@@ -79,7 +80,7 @@ class TestQuantileAndNanquantile(unittest.TestCase):
     # Test correctness when all parameters are set.
     def test_with_keepdim_and_multiple_axis(self):
         inp = self.input_data
-        for (func, res_func) in API_list:
+        for func, res_func in API_list:
             x = paddle.to_tensor(inp)
             paddle_res = func(x, q=0.1, axis=[1, 2], keepdim=True)
             np_res = res_func(inp, q=0.1, axis=[1, 2], keepdims=True)
@@ -89,7 +90,7 @@ class TestQuantileAndNanquantile(unittest.TestCase):
     # Test correctness when q = 0.
     def test_with_boundary_q(self):
         inp = self.input_data
-        for (func, res_func) in API_list:
+        for func, res_func in API_list:
             x = paddle.to_tensor(inp)
             paddle_res = func(x, q=0, axis=1)
             np_res = res_func(inp, q=0, axis=1)
@@ -225,7 +226,7 @@ class TestQuantileRuntime(unittest.TestCase):
 
     def test_dygraph(self):
         paddle.disable_static()
-        for (func, res_func) in API_list:
+        for func, res_func in API_list:
             for device in self.devices:
                 # Check different devices
                 paddle.set_device(device)
@@ -239,17 +240,18 @@ class TestQuantileRuntime(unittest.TestCase):
                         paddle_res.numpy(), np_res, rtol=1e-05
                     )
 
+    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
-        for (func, res_func) in API_list:
+        for func, res_func in API_list:
             for device in self.devices:
                 x = paddle.static.data(
-                    name="x", shape=self.input_data.shape, dtype=paddle.float32
+                    name="x", shape=self.input_data.shape, dtype="float32"
                 )
                 x_fp64 = paddle.static.data(
                     name="x_fp64",
                     shape=self.input_data.shape,
-                    dtype=paddle.float64,
+                    dtype="float64",
                 )
 
                 results = func(x, q=0.5, axis=1)

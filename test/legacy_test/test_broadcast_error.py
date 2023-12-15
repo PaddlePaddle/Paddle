@@ -15,15 +15,20 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
-from paddle.fluid import core
+from paddle.base import core
 
 
 class TestBroadcastOpCpu(OpTest):
     def setUp(self):
         self.op_type = "broadcast"
-        input = np.random.random((100, 2)).astype("float32")
+        self.init_dtype()
+        input = np.random.random((100, 2)).astype(self.dtype)
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
+            input = (
+                np.random.random((100, 2)) + 1j * np.random.random((100, 2))
+            ).astype(self.dtype)
         np_out = input[:]
         self.inputs = {"X": input}
         self.attrs = {"sync_mode": False, "root": 0}
@@ -34,6 +39,19 @@ class TestBroadcastOpCpu(OpTest):
             self.check_output_with_place(place=core.CPUPlace())
         except:
             print("do not support cpu test, skip")
+
+    def init_dtype(self):
+        self.dtype = 'float32'
+
+
+class TestBroadcastOpCpu_complex64(TestBroadcastOpCpu):
+    def init_dtype(self):
+        self.dtype = 'complex64'
+
+
+class TestBroadcastOpCpu_complex128(TestBroadcastOpCpu):
+    def init_dtype(self):
+        self.dtype = 'complex128'
 
 
 if __name__ == "__main__":

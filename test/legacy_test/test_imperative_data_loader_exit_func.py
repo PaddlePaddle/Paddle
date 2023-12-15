@@ -18,7 +18,7 @@ import signal
 import time
 import unittest
 
-from paddle.fluid.reader import (
+from paddle.base.reader import (
     CleanupFuncRegistrar,
     _cleanup,
     multiprocess_queue_set,

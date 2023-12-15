@@ -50,7 +50,7 @@ void ReduceScatterKernel(const Context& dev_ctx,
 
   out->Resize(out_dims);
   dev_ctx.template Alloc<T>(out);
-  comm_context->ReduceScatter(out, x, stream);
+  comm_context->ReduceScatter(out, x, ncclSum, stream);
 #else
   PADDLE_THROW(
       errors::PreconditionNotMet("PaddlePaddle should compile with GPU."));
@@ -70,6 +70,7 @@ PD_REGISTER_KERNEL(reduce_scatter,
                    bool,
                    int8_t,
                    uint8_t,
+                   int16_t,
                    int64_t,
                    phi::dtype::bfloat16,
                    phi::dtype::float16) {}
@@ -84,6 +85,7 @@ PD_REGISTER_KERNEL(reduce_scatter,
                    bool,
                    int8_t,
                    uint8_t,
+                   int16_t,
                    int64_t,
                    phi::dtype::float16) {}
 #endif

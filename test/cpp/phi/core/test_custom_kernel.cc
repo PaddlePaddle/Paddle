@@ -75,8 +75,8 @@ void FakeDot(const Context& dev_ctx,
   assert(fake_attr_double == 3);
   assert(fake_attr_int64 == 4);
   assert(fake_attr_dtype == phi::DataType::UINT32);
-  assert(fake_attr_int64_vec.size() == 0);
-  assert(fake_attr_int_vec.size() == 0);
+  assert(fake_attr_int64_vec.empty());
+  assert(fake_attr_int_vec.empty());
   assert(fake_out_vec.size() == 2);
 
   auto const *x_ptr = x.data<T>(), *x_ptr_ = &x_ptr[0];
@@ -200,15 +200,17 @@ TEST(CustomKernel, custom_kernel_dot) {
       std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace());
   auto dense_x = std::make_shared<phi::DenseTensor>(
       alloc.get(),
-      phi::DenseTensorMeta(
-          phi::DataType::UINT8, phi::make_ddim({2, 3}), phi::DataLayout::NCHW));
+      phi::DenseTensorMeta(phi::DataType::UINT8,
+                           common::make_ddim({2, 3}),
+                           phi::DataLayout::NCHW));
   auto* dev_ctx = phi::DeviceContextPool::Instance().Get(phi::CPUPlace());
   auto* dense_x_data = dev_ctx->template Alloc<uint8_t>(dense_x.get());
 
   auto dense_y = std::make_shared<phi::DenseTensor>(
       alloc.get(),
-      phi::DenseTensorMeta(
-          phi::DataType::UINT8, phi::make_ddim({2, 3}), phi::DataLayout::NCHW));
+      phi::DenseTensorMeta(phi::DataType::UINT8,
+                           common::make_ddim({2, 3}),
+                           phi::DataLayout::NCHW));
   auto* dense_y_data = dev_ctx->template Alloc<uint8_t>(dense_y.get());
 
   // dot x,y and result

@@ -18,8 +18,8 @@
 #include "dnnl.hpp"  // NOLINT
 #include "glog/logging.h"
 
+#include "paddle/common/layout.h"
 #include "paddle/phi/backends/onednn/onednn_context.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 
@@ -156,6 +156,12 @@ inline void AppendKey(std::string* key, const T& num) {
 
 template <>
 inline void AppendKey(std::string* key,
+                      const dnnl::memory::format_kind& format) {
+  key->append(std::to_string(static_cast<int>(format)));
+}
+
+template <>
+inline void AppendKey(std::string* key,
                       const dnnl::memory::format_tag& format) {
   key->append(std::to_string(static_cast<int>(format)));
 }
@@ -169,6 +175,25 @@ inline void AppendKey(std::string* key,
 template <>
 inline void AppendKey(std::string* key, const dnnl::algorithm& algorithm) {
   key->append(std::to_string(static_cast<int>(algorithm)));
+}
+
+template <>
+inline void AppendKey(std::string* key, const dnnl::memory::dims& dims) {
+  for (size_t i = 0; i < dims.size(); i++) {
+    AppendKey(key, static_cast<int64_t>(dims[i]));
+  }
+}
+
+template <>
+inline void AppendKey(std::string* key, const dnnl::memory::desc& md) {
+  AppendKey(key, md.get_dims());
+  AppendKey(key, md.get_data_type());
+  AppendKey(key, md.get_format_kind());
+  AppendKey(key, md.get_inner_blks());
+  AppendKey(key, md.get_inner_idxs());
+  AppendKey(key, md.get_inner_nblks());
+  AppendKey(key, md.get_padded_dims());
+  AppendKey(key, md.get_strides());
 }
 
 template <>
@@ -238,16 +263,16 @@ inline void MatchShapeToLayout(DenseTensor* tensor_in,
   // be done. Similarly for dim==1 when you have just one possible combination.
   if (tensor_in->dims().size() < 3) {
     VLOG(3) << "Keeping ONEDNN/NHWC/NDHWC output_shape"
-            << print_dims(phi::vectorize<int>(tensor_in->dims()));
+            << print_dims(common::vectorize<int>(tensor_in->dims()));
     return;
   }
 
   switch (from) {
     case DataLayout::ONEDNN:
       if ((to == DataLayout::NHWC) || (to == DataLayout::NDHWC)) {
-        auto dims = phi::vectorize<int>(tensor_in->dims());
+        auto dims = common::vectorize<int>(tensor_in->dims());
         std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
-        tensor_in->Resize(phi::make_ddim(dims));
+        tensor_in->Resize(common::make_ddim(dims));
         VLOG(3) << "Rotating Shape from: ONEDNN to: NHWC/NDHWC output_shape"
                 << print_dims(dims);
       }
@@ -255,9 +280,9 @@ inline void MatchShapeToLayout(DenseTensor* tensor_in,
     case DataLayout::NHWC:
     case DataLayout::NDHWC:
       if (to == DataLayout::ONEDNN) {
-        auto dims = phi::vectorize<int>(tensor_in->dims());
+        auto dims = common::vectorize<int>(tensor_in->dims());
         std::rotate(dims.begin() + 1, dims.end() - 1, dims.end());
-        tensor_in->Resize(phi::make_ddim(dims));
+        tensor_in->Resize(common::make_ddim(dims));
         VLOG(3) << "Rotating Shape from: NHWC/NDHWC to: ONEDNN output_shape"
                 << print_dims(dims);
       }

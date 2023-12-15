@@ -16,14 +16,14 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops, in_dynamic_mode
-from paddle.fluid.data_feeder import convert_dtype
-from paddle.fluid.framework import (
+from paddle.base.data_feeder import convert_dtype
+from paddle.base.framework import (
     _current_expected_place,
     _get_paddle_place,
     core,
     dygraph_only,
 )
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base.layer_helper import LayerHelper
 from paddle.tensor import max, to_tensor
 
 __all__ = [
@@ -98,19 +98,19 @@ def sparse_coo_tensor(
 
     Examples:
 
-    .. code-block:: python
+        .. code-block:: python
 
-        import paddle
+            >>> import paddle
 
-        indices = [[0, 1, 2], [1, 2, 0]]
-        values = [1.0, 2.0, 3.0]
-        dense_shape = [3, 3]
-        coo = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
-        # print(coo)
-        # Tensor(shape=[2, 3], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
-        #       indices=[[0, 1, 2],
-        #                [1, 2, 0]],
-        #       values=[1., 2., 3.])
+            >>> indices = [[0, 1, 2], [1, 2, 0]]
+            >>> values = [1.0, 2.0, 3.0]
+            >>> dense_shape = [3, 3]
+            >>> coo = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
+            >>> print(coo)
+            Tensor(shape=[3, 3], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
+                   indices=[[0, 1, 2],
+                            [1, 2, 0]],
+                   values=[1., 2., 3.])
     """
 
     if in_dynamic_mode():
@@ -155,9 +155,7 @@ def sparse_coo_tensor(
             shape = list(shape)
             if shape < min_shape:
                 raise ValueError(
-                    "the minimun shape required is {}, but get {}".format(
-                        min_shape, shape
-                    )
+                    f"the minimun shape required is {min_shape}, but get {shape}"
                 )
             if len(shape) != sparse_dim + dense_dim:
                 raise ValueError(
@@ -217,20 +215,20 @@ def sparse_csr_tensor(
 
     Examples:
 
-    .. code-block:: python
+        .. code-block:: python
 
-        import paddle
+            >>> import paddle
 
-        crows = [0, 2, 3, 5]
-        cols = [1, 3, 2, 0, 1]
-        values = [1, 2, 3, 4, 5]
-        dense_shape = [3, 4]
-        csr = paddle.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
-        # print(csr)
-        # Tensor(shape=[3, 4], dtype=paddle.int64, place=Place(gpu:0), stop_gradient=True,
-        #       crows=[0, 2, 3, 5],
-        #       cols=[1, 3, 2, 0, 1],
-        #       values=[1, 2, 3, 4, 5])
+            >>> crows = [0, 2, 3, 5]
+            >>> cols = [1, 3, 2, 0, 1]
+            >>> values = [1, 2, 3, 4, 5]
+            >>> dense_shape = [3, 4]
+            >>> csr = paddle.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
+            >>> print(csr)
+            Tensor(shape=[3, 4], dtype=paddle.int64, place=Place(cpu), stop_gradient=True,
+                   crows=[0, 2, 3, 5],
+                   cols=[1, 3, 2, 0, 1],
+                   values=[1, 2, 3, 4, 5])
     """
 
     place = _get_place(place)
@@ -247,9 +245,7 @@ def sparse_csr_tensor(
 
     if len(shape) != 2 and len(shape) != 3:
         raise ValueError(
-            "SparseCsrTensor only support 2-D or 3-D matrix. but get shape {}".format(
-                shape
-            )
+            f"SparseCsrTensor only support 2-D or 3-D matrix. but get shape {shape}"
         )
     rows = shape[len(shape) - 2]
 

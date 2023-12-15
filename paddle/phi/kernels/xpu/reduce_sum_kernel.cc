@@ -43,6 +43,9 @@ PD_REGISTER_KERNEL(sum_raw,
                    phi::SumRawKernel,
                    float,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int8_t,
                    int,
-                   int64_t) {}
+                   int64_t) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}

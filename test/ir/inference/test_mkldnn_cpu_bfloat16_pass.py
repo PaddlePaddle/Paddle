@@ -18,14 +18,14 @@ import numpy as np
 from inference_pass_test import InferencePassTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid.core import PassVersionChecker
+from paddle import base
+from paddle.base.core import PassVersionChecker
 
 
 class TestMKLDNNCpuBfloat16Pass(InferencePassTest):
     def setUp(self):
         self.init_data()
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             x = paddle.static.data(
                 name='x', shape=[-1] + self.shape_x, dtype=self.d_type
             )

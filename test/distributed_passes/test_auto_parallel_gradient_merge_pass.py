@@ -174,7 +174,7 @@ class TestGradientMergePass(AutoPallelPassTestBase):
             )
             input.stop_gradient = False
             data_holder = [input, label]
-            data_loader = paddle.fluid.io.DataLoader.from_generator(
+            data_loader = paddle.base.io.DataLoader.from_generator(
                 feed_list=data_holder, capacity=70, iterable=False
             )
             data_loader.set_batch_generator(
@@ -183,7 +183,7 @@ class TestGradientMergePass(AutoPallelPassTestBase):
 
             loss = mlp_forward(input, label, hidden_size)
 
-        optimizer = paddle.fluid.optimizer.AdamOptimizer(learning_rate=0.01)
+        optimizer = paddle.optimizer.Adam(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer)
         (
             _,

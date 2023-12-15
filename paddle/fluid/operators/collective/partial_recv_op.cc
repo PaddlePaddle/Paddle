@@ -68,15 +68,15 @@ class PartialRecvOp : public framework::OperatorWithKernel {
                             i,
                             out_shape[i]));
     }
-    auto out_dims = phi::make_ddim(out_shape);
-    int64_t numel = phi::product(out_dims);
+    auto out_dims = common::make_ddim(out_shape);
+    int64_t numel = common::product(out_dims);
     PADDLE_ENFORCE_EQ(
         (numel % num),
         0,
         platform::errors::InvalidArgument(
             "The output numel (%d) must be divisible by num(%d)", numel, num));
 
-    ctx->SetOutputDim("Out", phi::make_ddim(out_shape));
+    ctx->SetOutputDim("Out", common::make_ddim(out_shape));
   }
 
  protected:
@@ -91,7 +91,7 @@ class PartialRecvOp : public framework::OperatorWithKernel {
 
 class PartialRecvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddOutput("Out", "(Tensor) tensor to receive.");
     AddAttr<int>("ring_id", "(int default 0) nccl communication ring id.")
         .SetDefault(0);

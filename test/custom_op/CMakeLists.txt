@@ -13,6 +13,14 @@ if(WITH_TESTING)
     set_tests_properties(test_context_pool PROPERTIES TIMEOUT 180)
   endif()
 
+  # custom OP support TensorRT inference
+  if(WITH_GPU AND WITH_TENSORRT)
+    py_test(test_inference_gap_setup SRCS test_inference_gap_setup.py)
+
+    # Compiling shared library will cost some time, but running process is very fast.
+    set_tests_properties(test_inference_gap_setup PROPERTIES TIMEOUT 180)
+  endif()
+
   if(WITH_GPU AND WITH_DISTRIBUTE)
     py_test(test_custom_op_relu_model_static_multidevice
             SRCS test_custom_op_relu_model_static_multidevice.py)
@@ -39,6 +47,8 @@ if(WITH_TESTING)
   py_test(test_dispatch_jit SRCS test_dispatch_jit.py)
   py_test(test_multi_out_jit SRCS test_multi_out_jit.py)
   py_test(test_custom_attrs_jit SRCS test_custom_attrs_jit.py)
+  py_test(test_custom_cast_op_jit SRCS test_custom_cast_op_jit.py)
+  set_tests_properties(test_custom_cast_op_jit PROPERTIES TIMEOUT 180)
   py_test(test_custom_concat SRCS test_custom_concat.py)
   set_tests_properties(
     test_custom_concat PROPERTIES ENVIRONMENT

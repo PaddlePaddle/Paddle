@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/optimizers/dgc_momentum_op.h"
-
 #include <string>
+
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {
@@ -24,92 +26,6 @@ class DGCMomentumOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("current_step"),
-                   "Input",
-                   "current_step",
-                   "DGCMomentumOp");
-    OP_INOUT_CHECK(ctx->HasInput("nranks"), "Input", "nranks", "DGCMomentumOp");
-    OP_INOUT_CHECK(
-        ctx->HasOutput("Grad_out"), "Output", "Grad_out", "DGCMomentumOp");
-
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Param"),
-                      true,
-                      platform::errors::NotFound(
-                          "Input(param) of Momentum should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Grad"),
-                      true,
-                      platform::errors::NotFound(
-                          "Input(grad) of Momentum should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Velocity"),
-                      true,
-                      platform::errors::NotFound(
-                          "Input(velocity) of Momentum should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("LearningRate"),
-        true,
-        platform::errors::NotFound(
-            "Input(LearningRate) of Momentum should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->GetInputsVarType("Param").front(),
-                      framework::proto::VarType::LOD_TENSOR,
-                      platform::errors::InvalidArgument(
-                          "The input var's type should be phi::DenseTensor, "
-                          "but the received is %s",
-                          ctx->GetInputsVarType("Param").front()));
-
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("ParamOut"),
-                      true,
-                      platform::errors::NotFound(
-                          "Output(ParamOut) of Momentum should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("VelocityOut"),
-        true,
-        platform::errors::NotFound(
-            "Output(VelocityOut) of Momentum should not be null."));
-
-    auto lr_dims = ctx->GetInputDim("LearningRate");
-    PADDLE_ENFORCE_NE(phi::product(lr_dims),
-                      0,
-                      platform::errors::InvalidArgument(
-                          "Maybe the Input variable LearningRate has not "
-                          "been initialized. You may need to confirm "
-                          "if you put exe.run(startup_program) "
-                          "after optimizer.minimize function."));
-    PADDLE_ENFORCE_EQ(phi::product(lr_dims),
-                      1,
-                      platform::errors::InvalidArgument(
-                          "Learning_rate should be a scalar. But Received "
-                          "LearningRate's dim [%s]",
-                          phi::product(lr_dims)));
-
-    auto param_dim = ctx->GetInputDim("Param");
-    if (ctx->GetInputsVarType("Grad")[0] ==
-        framework::proto::VarType::LOD_TENSOR) {
-      PADDLE_ENFORCE_EQ(
-          param_dim,
-          ctx->GetInputDim("Grad"),
-          platform::errors::InvalidArgument(
-              "Param and Grad input of MomentumOp should have the same "
-              "dimension. But received Param's dim [%s] and Grad's dim [%s].",
-              param_dim,
-              ctx->GetInputDim("Grad")));
-      PADDLE_ENFORCE_EQ(
-          param_dim,
-          ctx->GetInputDim("Velocity"),
-          platform::errors::InvalidArgument(
-              "Param and Velocity of MomentumOp should have the same "
-              "dimension. But received Param's dim [%s] and Velocity [%s].",
-              param_dim,
-              ctx->GetInputDim("Velocity")));
-    }
-
-    ctx->SetOutputDim("ParamOut", param_dim);
-    ctx->SetOutputDim("VelocityOut", param_dim);
-    if (ctx->HasOutput("MasterParamOut")) {
-      ctx->SetOutputDim("MasterParamOut", param_dim);
-    }
-  }
-
   phi::KernelKey GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
@@ -199,10 +115,12 @@ DGC Momentum Operator.
 }  // namespace operators
 }  // namespace paddle
 
+DECLARE_INFER_SHAPE_FUNCTOR(dgc_momentum,
+                            DGCMomentumInferShapeFunctor,
+                            PD_INFER_META(phi::DGCMomentumInferMeta));
+
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(dgc_momentum,
                              ops::DGCMomentumOp,
-                             ops::DGCMomentumOpMaker);
-
-PD_REGISTER_STRUCT_KERNEL(
-    dgc_momentum, CPU, ALL_LAYOUT, ops::DGCMomentumKernel, float) {}
+                             ops::DGCMomentumOpMaker,
+                             DGCMomentumInferShapeFunctor);

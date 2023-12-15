@@ -71,7 +71,7 @@ struct TestReduceOpHandle {
         gpu_list_.push_back(p);
         ctxs_.emplace_back(new phi::GPUContext(p));
       }
-      nccl_ctxs_.reset(new platform::NCCLContextMap(gpu_list_));
+      nccl_ctxs_ = std::make_unique<platform::NCCLContextMap>(gpu_list_);
 #else
       PADDLE_THROW(
           platform::errors::PreconditionNotMet("Not compiled with NCLL."));
@@ -162,7 +162,7 @@ struct TestReduceOpHandle {
     int height = kDims[0] * 2;
     std::vector<int64_t> rows{0, 1, 2, 3, 3, 0, 14, 7, 3, 1,
                               2, 4, 6, 3, 1, 1, 1,  1, 3, 7};
-    std::vector<float> send_vector(phi::product(kDims));
+    std::vector<float> send_vector(common::product(kDims));
     for (size_t k = 0; k < send_vector.size(); ++k) {
       send_vector[k] = k;
     }
@@ -232,13 +232,13 @@ struct TestReduceOpHandle {
     f::TensorCopySync(rt, cpu_place, &result_tensor);
     float *ct = result_tensor.data<float>();
 
-    for (int64_t j = 0; j < phi::product(result_tensor.dims()); ++j) {
+    for (int64_t j = 0; j < common::product(result_tensor.dims()); ++j) {
       ASSERT_NEAR(ct[j], send_vector[j % send_vector.size()], 1e-5);
     }
   }  // namespace details
 
   void TestReduceLodTensors(size_t output_scope_idx) {
-    std::vector<float> send_vector(static_cast<size_t>(phi::product(kDims)));
+    std::vector<float> send_vector(static_cast<size_t>(common::product(kDims)));
     for (size_t k = 0; k < send_vector.size(); ++k) {
       send_vector[k] = k;
     }
@@ -283,7 +283,7 @@ struct TestReduceOpHandle {
     f::TensorCopySync(rt, cpu_place, &result_tensor);
     float *ct = result_tensor.data<float>();
 
-    for (int64_t j = 0; j < phi::product(result_tensor.dims()); ++j) {
+    for (int64_t j = 0; j < common::product(result_tensor.dims()); ++j) {
       ASSERT_NEAR(ct[j], send_vector[j] * gpu_list_.size(), 1e-5);
     }
   }

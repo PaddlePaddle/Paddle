@@ -24,7 +24,7 @@ else:
 import unittest
 
 import paddle
-from paddle import fluid, nn
+from paddle import base, nn
 from paddle.distributed import fleet
 
 
@@ -90,17 +90,17 @@ class TestFleetBaseSingleRunCollective(unittest.TestCase):
         avg_cost = paddle.mean(x=cost)
 
         fleet.init(is_collective=True)
-        optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+        optimizer = paddle.optimizer.SGD(learning_rate=0.001)
         optimizer = fleet.distributed_optimizer(optimizer)
         optimizer.minimize(avg_cost)
 
         place = (
-            fluid.CUDAPlace(0)
-            if paddle.fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if paddle.base.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
 
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         exe.run(paddle.static.default_startup_program())
 
         for i in range(10):
@@ -132,20 +132,20 @@ class TestFleetBaseSingleRunPS(unittest.TestCase):
 
         fleet.init()
         strategy = paddle.distributed.fleet.DistributedStrategy()
-        optimizer = fluid.optimizer.SGD(learning_rate=0.01)
+        optimizer = paddle.optimizer.SGD(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
         if fleet.is_server():
             fleet.init_server()
             fleet.run_server()
         elif fleet.is_worker():
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
+            place = base.CPUPlace()
+            exe = base.Executor(place)
             exe.run(paddle.static.default_startup_program())
             step = 10
             for i in range(step):
                 cost_val = exe.run(
-                    program=fluid.default_main_program(),
+                    program=base.default_main_program(),
                     feed=self.gen_data(),
                     fetch_list=[avg_cost.name],
                 )

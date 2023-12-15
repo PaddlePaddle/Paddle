@@ -35,11 +35,20 @@ void MeanRawKernel(const Context& dev_ctx,
               T* y,
               const std::vector<int>& xdims,
               const std::vector<int>& reduce_dims) {
+#ifndef PADDLE_WITH_XPU_PLUGIN
     return xpu::reduce_mean<XPUType>(ctx,
                                      reinterpret_cast<const XPUType*>(x),
                                      reinterpret_cast<XPUType*>(y),
                                      xdims,
                                      reduce_dims);
+#else
+    return xpu::plugin::fast_reduce_mean<XPUType>(
+        ctx,
+        reinterpret_cast<const XPUType*>(x),
+        reinterpret_cast<XPUType*>(y),
+        xdims,
+        reduce_dims);
+#endif
   };
 
   int r = XPUReduce<Context, T>(
@@ -50,6 +59,10 @@ void MeanRawKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    mean_raw, XPU, ALL_LAYOUT, phi::MeanRawKernel, float, phi::dtype::float16) {
-}
+PD_REGISTER_KERNEL(mean_raw,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::MeanRawKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

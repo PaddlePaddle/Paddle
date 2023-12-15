@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils import Dy2StTestBase, test_ast_only
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import core
+from paddle.base import core
 
 TOLERANCE = {
     "float16": {"rtol": 1e-3, "atol": 1e-3},
@@ -52,7 +53,7 @@ class PrimeNet(paddle.nn.Layer):
         return out
 
 
-class TestPrimForwardAndBackward(unittest.TestCase):
+class TestPrimForwardAndBackward(Dy2StTestBase):
     """
     Test PrimeNet with @to_static + prim forward + prim backward + cinn v.s Dygraph
     """
@@ -104,6 +105,7 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         # Ensure that gelu is splitted into small ops
         self.assertTrue('gelu' not in fwd_ops)
 
+    @test_ast_only
     def test_cinn_prim(self):
         for shape in self.shapes:
             for dtype in self.dtypes:

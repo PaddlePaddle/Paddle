@@ -11,7 +11,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/profiler/event_node.h"
 
-#include <limits.h>
+#include <climits>
 
 #include <algorithm>
 #include <deque>
@@ -25,29 +25,25 @@ namespace platform {
 
 HostTraceEventNode::~HostTraceEventNode() {
   // delete all runtime nodes and recursive delete children
-  for (auto it = runtime_node_ptrs_.begin(); it != runtime_node_ptrs_.end();
-       ++it) {
-    delete *it;
+  for (auto& runtime_node_ptr : runtime_node_ptrs_) {
+    delete runtime_node_ptr;
   }
-  for (auto it = children_.begin(); it != children_.end(); ++it) {
-    delete *it;
+  for (auto& child : children_) {
+    delete child;
   }
 }
 
 CudaRuntimeTraceEventNode::~CudaRuntimeTraceEventNode() {
   // delete all device nodes
-  for (auto it = device_node_ptrs_.begin(); it != device_node_ptrs_.end();
-       ++it) {
-    delete *it;
+  for (auto& device_node_ptr : device_node_ptrs_) {
+    delete device_node_ptr;
   }
 }
 
 NodeTrees::~NodeTrees() {
   // delete all root nodes
-  for (auto it = thread_event_trees_map_.begin();
-       it != thread_event_trees_map_.end();
-       ++it) {
-    delete it->second;
+  for (auto& item : thread_event_trees_map_) {
+    delete item.second;
   }
 }
 
@@ -77,46 +73,46 @@ void NodeTrees::BuildTrees(
       correlation_id2runtime_event_node;  // used to store the relation between
                                           // correlation id and runtime node
   // construct thread2host_event_nodes
-  for (auto it = host_event_nodes.begin(); it != host_event_nodes.end(); ++it) {
-    thread2host_event_nodes[(*it)->ThreadId()].push_back(*it);
+  for (auto host_event_node : host_event_nodes) {
+    thread2host_event_nodes[host_event_node->ThreadId()].push_back(
+        host_event_node);
   }
   // construct thread2runtime_event_nodes and
   // correlation_id2runtime_event_node
-  for (auto it = runtime_event_nodes.begin(); it != runtime_event_nodes.end();
-       ++it) {
-    thread2runtime_event_nodes[(*it)->ThreadId()].push_back(*it);
-    correlation_id2runtime_event_node[(*it)->CorrelationId()] = *it;
+  for (auto runtime_event_node : runtime_event_nodes) {
+    thread2runtime_event_nodes[runtime_event_node->ThreadId()].push_back(
+        runtime_event_node);
+    correlation_id2runtime_event_node[runtime_event_node->CorrelationId()] =
+        runtime_event_node;
   }
   // associate CudaRuntimeTraceEventNode and DeviceTraceEventNode
   // construct correlation_id2device_event_nodes
-  for (auto it = device_event_nodes.begin(); it != device_event_nodes.end();
-       ++it) {
-    auto dst_iter =
-        correlation_id2runtime_event_node.find((*it)->CorrelationId());
+  for (auto device_event_node : device_event_nodes) {
+    auto dst_iter = correlation_id2runtime_event_node.find(
+        device_event_node->CorrelationId());
     if (dst_iter == correlation_id2runtime_event_node.end()) {
       continue;
     }
-    dst_iter->second->AddDeviceTraceEventNode(*it);
+    dst_iter->second->AddDeviceTraceEventNode(device_event_node);
   }
   // construct thread2mem_event_nodes
-  for (auto it = mem_event_nodes.begin(); it != mem_event_nodes.end(); ++it) {
-    thread2mem_event_nodes[(*it)->ThreadId()].push_back(*it);
+  for (auto mem_event_node : mem_event_nodes) {
+    thread2mem_event_nodes[mem_event_node->ThreadId()].push_back(
+        mem_event_node);
   }
   // construct thread2op_supplement_event_nodes
-  for (auto it = op_supplement_events.begin(); it != op_supplement_events.end();
-       ++it) {
-    thread2op_supplement_event_nodes[(*it)->ThreadId()].push_back(*it);
+  for (auto op_supplement_event : op_supplement_events) {
+    thread2op_supplement_event_nodes[op_supplement_event->ThreadId()].push_back(
+        op_supplement_event);
   }
   // sort host event nodes and runtime event nodes according to start_ns and
   // end_ns
   // the smaller start_ns is, the further ahead position is.
   // when start_ns of two nodes are equal, the one with bigger end_ns should be
   // ahead.
-  for (auto it = thread2host_event_nodes.begin();
-       it != thread2host_event_nodes.end();
-       ++it) {
-    std::sort(it->second.begin(),
-              it->second.end(),
+  for (auto& event_node : thread2host_event_nodes) {
+    std::sort(event_node.second.begin(),
+              event_node.second.end(),
               [](HostTraceEventNode* node1, HostTraceEventNode* node2) {
                 if (node1->StartNs() < node2->StartNs()) {
                   return true;
@@ -128,12 +124,10 @@ void NodeTrees::BuildTrees(
                 return false;
               });
   }
-  for (auto it = thread2runtime_event_nodes.begin();
-       it != thread2runtime_event_nodes.end();
-       ++it) {
+  for (auto& event_node : thread2runtime_event_nodes) {
     std::sort(
-        it->second.begin(),
-        it->second.end(),
+        event_node.second.begin(),
+        event_node.second.end(),
         [](CudaRuntimeTraceEventNode* node1, CudaRuntimeTraceEventNode* node2) {
           if (node1->StartNs() < node2->StartNs()) {
             return true;
@@ -146,11 +140,9 @@ void NodeTrees::BuildTrees(
         });
   }
   // sort mem event nodes and operator supplement event nodes
-  for (auto it = thread2mem_event_nodes.begin();
-       it != thread2mem_event_nodes.end();
-       ++it) {
-    std::sort(it->second.begin(),
-              it->second.end(),
+  for (auto& event_node : thread2mem_event_nodes) {
+    std::sort(event_node.second.begin(),
+              event_node.second.end(),
               [](MemTraceEventNode* node1, MemTraceEventNode* node2) {
                 if (node1->TimeStampNs() <= node2->TimeStampNs()) {
                   return true;
@@ -159,11 +151,9 @@ void NodeTrees::BuildTrees(
               });
   }
 
-  for (auto it = thread2op_supplement_event_nodes.begin();
-       it != thread2op_supplement_event_nodes.end();
-       ++it) {
-    std::sort(it->second.begin(),
-              it->second.end(),
+  for (auto& event_node : thread2op_supplement_event_nodes) {
+    std::sort(event_node.second.begin(),
+              event_node.second.end(),
               [](OperatorSupplementEventNode* node1,
                  OperatorSupplementEventNode* node2) {
                 if (node1->TimeStampNs() <= node2->TimeStampNs()) {
@@ -175,34 +165,25 @@ void NodeTrees::BuildTrees(
 
   // construct trees
   std::set<uint64_t> thread_set;
-  for (auto it = thread2host_event_nodes.begin();
-       it != thread2host_event_nodes.end();
-       ++it) {
-    thread_set.insert(it->first);
+  for (auto& event_node : thread2host_event_nodes) {
+    thread_set.insert(event_node.first);
+  }
+  for (auto& event_node : thread2runtime_event_nodes) {
+    thread_set.insert(event_node.first);
+  }
+  for (auto& event_node : thread2mem_event_nodes) {
+    thread_set.insert(event_node.first);
+  }
+  for (auto& event_node : thread2op_supplement_event_nodes) {
+    thread_set.insert(event_node.first);
   }
 
-  for (auto it = thread2runtime_event_nodes.begin();
-       it != thread2runtime_event_nodes.end();
-       ++it) {
-    thread_set.insert(it->first);
-  }
-  for (auto it = thread2mem_event_nodes.begin();
-       it != thread2mem_event_nodes.end();
-       ++it) {
-    thread_set.insert(it->first);
-  }
-  for (auto it = thread2op_supplement_event_nodes.begin();
-       it != thread2op_supplement_event_nodes.end();
-       ++it) {
-    thread_set.insert(it->first);
-  }
-
-  for (auto it = thread_set.begin(); it != thread_set.end(); ++it) {
-    thread_event_trees_map_[*it] =
-        BuildTreeRelationship(thread2host_event_nodes[*it],
-                              thread2runtime_event_nodes[*it],
-                              thread2mem_event_nodes[*it],
-                              thread2op_supplement_event_nodes[*it]);
+  for (auto item : thread_set) {
+    thread_event_trees_map_[item] =
+        BuildTreeRelationship(thread2host_event_nodes[item],
+                              thread2runtime_event_nodes[item],
+                              thread2mem_event_nodes[item],
+                              thread2op_supplement_event_nodes[item]);
   }
 }
 
@@ -224,18 +205,18 @@ HostTraceEventNode* NodeTrees::BuildTreeRelationship(
   // push root node into node_stack
   node_stack.push_back(root_node);
   // handle host_event_nodes
-  for (auto it = host_event_nodes.begin(); it != host_event_nodes.end(); ++it) {
+  for (auto& host_event_node : host_event_nodes) {
     while (true) {
       auto stack_top_node = node_stack.back();
-      if ((*it)->StartNs() < stack_top_node->EndNs()) {
+      if (host_event_node->StartNs() < stack_top_node->EndNs()) {
         // current node is the child of stack_top_node
         PADDLE_ENFORCE_LE(
-            (*it)->EndNs(),
+            host_event_node->EndNs(),
             stack_top_node->EndNs(),
             platform::errors::Fatal(
                 "should not have time range intersection within one thread"));
-        stack_top_node->AddChild(*it);
-        node_stack.push_back(*it);
+        stack_top_node->AddChild(host_event_node);
+        node_stack.push_back(host_event_node);
         break;
       } else {
         node_stack.pop_back();
@@ -396,32 +377,26 @@ std::map<uint64_t, std::vector<HostTraceEventNode*>> NodeTrees::Traverse(
   // dfs(depth first search)
   std::map<uint64_t, std::vector<HostTraceEventNode*>> thread2host_event_nodes;
   if (bfs == true) {
-    for (auto it = thread_event_trees_map_.begin();
-         it != thread_event_trees_map_.end();
-         ++it) {
+    for (auto item : thread_event_trees_map_) {
       auto deque = std::deque<HostTraceEventNode*>();
-      uint64_t thread_id = it->first;
-      auto root_node = it->second;
+      uint64_t thread_id = item.first;
+      auto root_node = item.second;
       deque.push_back(root_node);
       while (!deque.empty()) {
         auto current_node = deque.front();
         deque.pop_front();
         thread2host_event_nodes[thread_id].push_back(current_node);
-        for (auto child = current_node->GetChildren().begin();
-             child != current_node->GetChildren().end();
-             ++child) {
-          deque.push_back(*child);
+        for (auto child : current_node->GetChildren()) {
+          deque.push_back(child);
         }
       }
     }
 
   } else {
-    for (auto it = thread_event_trees_map_.begin();
-         it != thread_event_trees_map_.end();
-         ++it) {
+    for (auto item : thread_event_trees_map_) {
       auto stack = std::stack<HostTraceEventNode*>();
-      uint64_t thread_id = it->first;
-      auto root_node = it->second;
+      uint64_t thread_id = item.first;
+      auto root_node = item.second;
       stack.push(root_node);
       while (!stack.empty()) {
         auto current_node = stack.top();
@@ -450,29 +425,23 @@ void NodeTrees::HandleTrees(
   // using different user-defined function to handle different nodes
   const std::map<uint64_t, std::vector<HostTraceEventNode*>>
       thread2host_event_nodes = Traverse(true);
-  for (auto it = thread2host_event_nodes.begin();
-       it != thread2host_event_nodes.end();
-       ++it) {
-    for (auto hostnode = it->second.begin(); hostnode != it->second.end();
+  for (const auto& event_node : thread2host_event_nodes) {
+    for (auto hostnode = event_node.second.begin();
+         hostnode != event_node.second.end();
          ++hostnode) {
-      if (hostnode != it->second.begin()) {  // skip root node
+      if (hostnode != event_node.second.begin()) {  // skip root node
         host_event_node_handle(*hostnode);
       }
-      for (auto runtimenode = (*hostnode)->GetRuntimeTraceEventNodes().begin();
-           runtimenode != (*hostnode)->GetRuntimeTraceEventNodes().end();
-           ++runtimenode) {
-        runtime_event_node_handle(*runtimenode);
-        for (auto devicenode =
-                 (*runtimenode)->GetDeviceTraceEventNodes().begin();
-             devicenode != (*runtimenode)->GetDeviceTraceEventNodes().end();
+      for (auto event_node : (*hostnode)->GetRuntimeTraceEventNodes()) {
+        runtime_event_node_handle(event_node);
+        for (auto devicenode = event_node->GetDeviceTraceEventNodes().begin();
+             devicenode != event_node->GetDeviceTraceEventNodes().end();
              ++devicenode) {
           device_event_node_handle(*devicenode);
         }
       }
-      for (auto memeventnode = (*hostnode)->GetMemTraceEventNodes().begin();
-           memeventnode != (*hostnode)->GetMemTraceEventNodes().end();
-           ++memeventnode) {
-        mem_event_node_handle(*memeventnode);
+      for (auto event_node : (*hostnode)->GetMemTraceEventNodes()) {
+        mem_event_node_handle(event_node);
       }
       if ((*hostnode)->GetOperatorSupplementEventNode()) {
         op_supplement_node_handle(

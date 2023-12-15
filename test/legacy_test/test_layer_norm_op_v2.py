@@ -17,26 +17,26 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 
 
 class TestDygraphLayerNormv2(unittest.TestCase):
     def test_dygraph(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu("layer_norm"):
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             shape = [4, 10, 4, 4]
 
             def compute_v1(x):
-                with fluid.dygraph.guard(p):
+                with base.dygraph.guard(p):
                     ln = paddle.nn.LayerNorm(shape[1:])
                     y = ln(paddle.to_tensor(x))
                 return y.numpy()
 
             def compute_v2(x):
-                with fluid.dygraph.guard(p):
+                with base.dygraph.guard(p):
                     ln = paddle.nn.LayerNorm(shape[1:])
                     y = ln(paddle.to_tensor(x))
                 return y.numpy()
@@ -47,14 +47,14 @@ class TestDygraphLayerNormv2(unittest.TestCase):
             np.testing.assert_allclose(y1, y2, rtol=1e-05)
 
     def test_eager(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu("layer_norm"):
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             shape = [4, 10, 4, 4]
 
             def compute_v1(x):
-                with fluid.dygraph.guard(p):
+                with base.dygraph.guard(p):
                     ln = paddle.nn.LayerNorm(shape[1:])
                     x1 = paddle.to_tensor(x)
                     x1.stop_gradient = False
@@ -63,7 +63,7 @@ class TestDygraphLayerNormv2(unittest.TestCase):
                     return y.numpy(), x1.gradient()
 
             def compute_v2(x):
-                with fluid.dygraph.guard(p):
+                with base.dygraph.guard(p):
                     ln = paddle.nn.LayerNorm(shape[1:])
                     x1 = paddle.to_tensor(x)
                     x1.stop_gradient = False
@@ -79,11 +79,11 @@ class TestDygraphLayerNormv2(unittest.TestCase):
 
     def test_static(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu("layer_norm"):
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
-            exe = fluid.Executor(p)
+            exe = base.Executor(p)
             shape = [4, 10, 16, 16]
 
             def compute_v1(x_np):
@@ -93,7 +93,7 @@ class TestDygraphLayerNormv2(unittest.TestCase):
                         name='x', shape=x_np.shape, dtype=x_np.dtype
                     )
                     y = ln(x)
-                    exe.run(fluid.default_startup_program())
+                    exe.run(base.default_startup_program())
                     r = exe.run(feed={'x': x_np}, fetch_list=[y])[0]
                 return r
 
@@ -104,7 +104,7 @@ class TestDygraphLayerNormv2(unittest.TestCase):
                         name='x', shape=x_np.shape, dtype=x_np.dtype
                     )
                     y = ln(x)
-                    exe.run(fluid.default_startup_program())
+                    exe.run(base.default_startup_program())
                     r = exe.run(feed={'x': x_np}, fetch_list=[y])[0]
                 return r
 
@@ -116,38 +116,38 @@ class TestDygraphLayerNormv2(unittest.TestCase):
 
 class TestLayerNormFunction(unittest.TestCase):
     def test_dygraph(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu("layer_norm"):
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             shape = [4, 10, 4, 4]
 
             def compute_v0(x):
-                with fluid.dygraph.guard(p):
+                with base.dygraph.guard(p):
                     ln = paddle.nn.LayerNorm(shape[1:])
                     y = ln(paddle.to_tensor(x))
                 return y.numpy()
 
             def compute_v1(x):
-                with fluid.dygraph.guard(p):
+                with base.dygraph.guard(p):
                     x = paddle.to_tensor(x)
                     y = paddle.nn.functional.layer_norm(x, shape[1:])
                 return y.numpy()
 
             def compute_v2(x):
-                with fluid.dygraph.guard(p):
+                with base.dygraph.guard(p):
                     x = paddle.to_tensor(x)
                     y = paddle.nn.functional.layer_norm(x, tuple(shape[1:]))
                 return y.numpy()
 
             def compute_v3(x):
-                with fluid.dygraph.guard(p):
+                with base.dygraph.guard(p):
                     ln = paddle.nn.LayerNorm(shape[-1])
                     y = ln(paddle.to_tensor(x))
                 return y.numpy()
 
             def compute_v4(x):
-                with fluid.dygraph.guard(p):
+                with base.dygraph.guard(p):
                     x = paddle.to_tensor(x)
                     y = paddle.nn.functional.layer_norm(x, shape[-1])
                 return y.numpy()

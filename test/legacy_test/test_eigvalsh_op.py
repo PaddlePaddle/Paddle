@@ -15,9 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 
 def compare_result(actual, expected):
@@ -32,7 +33,6 @@ def compare_result(actual, expected):
 
 
 def valid_eigenvalues(actual, expected):
-
     FP32_MAX_RELATIVE_ERR = 5e-5
     FP64_MAX_RELATIVE_ERR = 1e-14
 
@@ -73,10 +73,10 @@ class TestEigvalshOp(OpTest):
 
     def test_check_output(self):
         # Vectors in posetive or negative is equivalent
-        self.check_output(no_check_set=['Eigenvectors'])
+        self.check_output(no_check_set=['Eigenvectors'], check_pir=True)
 
     def test_grad(self):
-        self.check_grad(["X"], ["Eigenvalues"])
+        self.check_grad(["X"], ["Eigenvalues"], check_pir=True)
 
 
 class TestEigvalshUPLOCase(TestEigvalshOp):
@@ -167,6 +167,7 @@ class TestEigvalshAPI(unittest.TestCase):
             expected_w = np.linalg.eigvalsh(self.complex_symm)
             compare_result(actual_w[0], expected_w)
 
+    @test_with_pir_api
     def test_in_static_mode(self):
         paddle.enable_static()
         self.check_static_float_result()

@@ -32,8 +32,8 @@ phi::DenseTensor* CreateTensor(framework::Scope* scope,
                                const std::vector<int64_t>& shape) {
   auto* var = scope->Var(name);
   auto* tensor = var->GetMutable<phi::DenseTensor>();
-  if (shape.size() > 0) {
-    tensor->mutable_data<T>(phi::make_ddim(shape), place);
+  if (!shape.empty()) {
+    tensor->mutable_data<T>(common::make_ddim(shape), place);
   }
   return tensor;
 }
@@ -45,7 +45,8 @@ void SetupRandomCPUTensor(phi::DenseTensor* tensor,
   std::mt19937 rng(seed++);
   std::uniform_real_distribution<double> uniform_dist(0, 1);
 
-  T* ptr = tensor->mutable_data<T>(phi::make_ddim(shape), platform::CPUPlace());
+  T* ptr =
+      tensor->mutable_data<T>(common::make_ddim(shape), platform::CPUPlace());
   for (int64_t i = 0; i < tensor->numel(); ++i) {
     ptr[i] = static_cast<T>(uniform_dist(rng)) - static_cast<T>(0.5);
   }
@@ -71,8 +72,8 @@ framework::OpDesc* CreateFusionGroupOp(
     var->SetDataType(framework::proto::VarType::FP32);
     var->SetShape(input_shapes[i]);
   }
-  for (size_t j = 0; j < output_names.size(); ++j) {
-    auto* var = program->MutableBlock(0)->Var(output_names[j]);
+  for (const auto& output_name : output_names) {
+    auto* var = program->MutableBlock(0)->Var(output_name);
     var->SetType(framework::proto::VarType::LOD_TENSOR);
     var->SetDataType(framework::proto::VarType::FP32);
   }
@@ -120,8 +121,8 @@ void CheckOutputs(framework::Scope* scope,
 
   size_t n = cpu_tensors->at(0).numel();
   std::vector<void*> args;
-  for (size_t i = 0; i < cpu_tensors->size(); ++i) {
-    args.push_back(cpu_tensors->at(i).data<float>());
+  for (auto& cpu_tensor : *cpu_tensors) {
+    args.push_back(cpu_tensor.data<float>());
   }
   cpu_kernel_func(n, args);
 
@@ -167,8 +168,8 @@ void TestMain(const std::vector<std::string>& input_names,
   }
   // Create output tensors.
   std::vector<int64_t> empty_shape;
-  for (size_t j = 0; j < output_names.size(); ++j) {
-    CreateTensor<float>(&scope, place, output_names[j], empty_shape);
+  for (const auto& output_name : output_names) {
+    CreateTensor<float>(&scope, place, output_name, empty_shape);
   }
 
   fusion_group_op->Run(scope, place);

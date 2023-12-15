@@ -21,6 +21,7 @@ import tempfile
 import numpy as np
 
 import paddle
+from paddle.base import core
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_optimizer_stage2 import (
     GroupShardedOptimizerStage2,
 )
@@ -33,7 +34,6 @@ from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage3 import
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_utils import (
     GroupShardedScaler,
 )
-from paddle.fluid import core
 from paddle.nn import Linear
 
 epoch = 10
@@ -366,7 +366,10 @@ def test_stage2_stage3():
     # bfp16
     nccl_version = core.nccl_version()
 
-    if nccl_version >= 21000:
+    if (
+        nccl_version >= 21000
+        and paddle.device.cuda.get_device_properties().major >= 8
+    ):
         stage2_params = train_mlp(
             mlp11,
             sharding_stage=2,

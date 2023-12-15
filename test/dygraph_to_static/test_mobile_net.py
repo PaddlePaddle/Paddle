@@ -19,20 +19,25 @@ import time
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    enable_to_static_guard,
+    test_legacy_and_pt_and_pir,
+)
 from predictor_utils import PredictorTools
 
 import paddle
-from paddle import fluid
-from paddle.fluid.param_attr import ParamAttr
-from paddle.jit.api import to_static
+from paddle import base
+from paddle.base.framework import unique_name
+from paddle.base.param_attr import ParamAttr
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import BatchNorm, Linear
 
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,
 #        some algorithm results are non-deterministic, like convolution algorithms.
-if fluid.is_compiled_with_cuda():
-    fluid.set_flags({'FLAGS_cudnn_deterministic': True})
+if base.is_compiled_with_cuda():
+    base.set_flags({'FLAGS_cudnn_deterministic': True})
 
 SEED = 2020
 
@@ -266,7 +271,6 @@ class MobileNetV1(paddle.nn.Layer):
             bias_attr=ParamAttr(name="fc7_offset"),
         )
 
-    @to_static
     def forward(self, inputs):
         y = self.conv1(inputs)
         for dws in self.dwsl:
@@ -432,7 +436,6 @@ class MobileNetV2(paddle.nn.Layer):
             bias_attr=ParamAttr(name="fc10_offset"),
         )
 
-    @to_static
     def forward(self, inputs):
         y = self._conv1(inputs, if_act=True)
         for inv in self._invl:
@@ -445,30 +448,43 @@ class MobileNetV2(paddle.nn.Layer):
 
 
 def create_optimizer(args, parameter_list):
-    optimizer = fluid.optimizer.Momentum(
+    optimizer = paddle.optimizer.Momentum(
         learning_rate=args.lr,
         momentum=args.momentum_rate,
-        regularization=paddle.regularizer.L2Decay(args.l2_decay),
-        parameter_list=parameter_list,
+        weight_decay=paddle.regularizer.L2Decay(args.l2_decay),
+        parameters=parameter_list,
     )
 
     return optimizer
 
 
-def fake_data_reader(batch_size, label_size):
-    local_random = np.random.RandomState(SEED)
+class FakeDataSet(paddle.io.Dataset):
+    def __init__(self, batch_size, label_size, train_steps):
+        self.local_random = np.random.RandomState(SEED)
+        self.label_size = label_size
 
-    def reader():
-        batch_data = []
-        while True:
-            img = local_random.random_sample([3, 224, 224]).astype('float32')
-            label = local_random.randint(0, label_size, [1]).astype('int64')
-            batch_data.append([img, label])
-            if len(batch_data) == batch_size:
-                yield batch_data
-                batch_data = []
+        self.imgs = []
+        self.labels = []
 
-    return reader
+        self._generate_fake_data(batch_size * (train_steps + 1))
+
+    def _generate_fake_data(self, length):
+        for i in range(length):
+            img = self.local_random.random_sample([3, 224, 224]).astype(
+                'float32'
+            )
+            label = self.local_random.randint(0, self.label_size, [1]).astype(
+                'int64'
+            )
+
+            self.imgs.append(img)
+            self.labels.append(label)
+
+    def __getitem__(self, idx):
+        return [self.imgs[idx], self.labels[idx]]
+
+    def __len__(self):
+        return len(self.imgs)
 
 
 class Args:
@@ -482,9 +498,9 @@ class Args:
     print_step = 1
     train_step = 10
     place = (
-        fluid.CUDAPlace(0)
-        if fluid.is_compiled_with_cuda()
-        else fluid.CPUPlace()
+        paddle.CUDAPlace(0)
+        if paddle.is_compiled_with_cuda()
+        else paddle.CPUPlace()
     )
     model_save_dir = None
     model_save_prefix = None
@@ -494,17 +510,19 @@ class Args:
 
 
 def train_mobilenet(args, to_static):
-    paddle.jit.enable_to_static(to_static)
-    with fluid.dygraph.guard(args.place):
-
+    with unique_name.guard():
         np.random.seed(SEED)
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 
         if args.model == "MobileNetV1":
-            net = MobileNetV1(class_dim=args.class_dim, scale=1.0)
+            net = paddle.jit.to_static(
+                MobileNetV1(class_dim=args.class_dim, scale=1.0)
+            )
         elif args.model == "MobileNetV2":
-            net = MobileNetV2(class_dim=args.class_dim, scale=1.0)
+            net = paddle.jit.to_static(
+                MobileNetV2(class_dim=args.class_dim, scale=1.0)
+            )
         else:
             print(
                 "wrong model name, please try model = MobileNetV1 or MobileNetV2"
@@ -514,9 +532,15 @@ def train_mobilenet(args, to_static):
         optimizer = create_optimizer(args=args, parameter_list=net.parameters())
 
         # 3. reader
-        train_reader = fake_data_reader(args.batch_size, args.class_dim)
-        train_data_loader = fluid.io.DataLoader.from_generator(capacity=16)
-        train_data_loader.set_sample_list_generator(train_reader)
+        train_dataset = FakeDataSet(
+            args.batch_size, args.class_dim, args.train_step
+        )
+        BatchSampler = paddle.io.BatchSampler(
+            train_dataset, batch_size=args.batch_size
+        )
+        train_data_loader = paddle.io.DataLoader(
+            train_dataset, batch_sampler=BatchSampler
+        )
 
         # 4. train loop
         loss_data = []
@@ -568,7 +592,8 @@ def train_mobilenet(args, to_static):
                 batch_id += 1
                 t_last = time.time()
                 if batch_id > args.train_step:
-                    if to_static:
+                    # TODO(@xiongkun): open after save / load supported in pir.
+                    if to_static and not paddle.base.framework.use_pir_api():
                         paddle.jit.save(net, args.model_save_prefix)
                     else:
                         paddle.save(
@@ -582,14 +607,14 @@ def train_mobilenet(args, to_static):
 
 def predict_static(args, data):
     paddle.enable_static()
-    exe = fluid.Executor(args.place)
+    exe = base.Executor(args.place)
     # load inference model
 
     [
         inference_program,
         feed_target_names,
         fetch_targets,
-    ] = fluid.io.load_inference_model(
+    ] = paddle.static.io.load_inference_model(
         args.model_save_dir,
         executor=exe,
         model_filename=args.model_filename,
@@ -601,34 +626,37 @@ def predict_static(args, data):
         feed={feed_target_names[0]: data},
         fetch_list=fetch_targets,
     )
+    paddle.disable_static()
     return pred_res[0]
 
 
 def predict_dygraph(args, data):
-    paddle.jit.enable_to_static(False)
-    with fluid.dygraph.guard(args.place):
+    with enable_to_static_guard(False):
         if args.model == "MobileNetV1":
-            model = MobileNetV1(class_dim=args.class_dim, scale=1.0)
+            model = paddle.jit.to_static(
+                MobileNetV1(class_dim=args.class_dim, scale=1.0)
+            )
         elif args.model == "MobileNetV2":
-            model = MobileNetV2(class_dim=args.class_dim, scale=1.0)
+            model = paddle.jit.to_static(
+                MobileNetV2(class_dim=args.class_dim, scale=1.0)
+            )
         # load dygraph trained parameters
         model_dict = paddle.load(args.dy_state_dict_save_path + '.pdparams')
         model.set_dict(model_dict)
         model.eval()
 
-        pred_res = model(fluid.dygraph.to_variable(data))
+        pred_res = model(base.dygraph.to_variable(data))
 
         return pred_res.numpy()
 
 
 def predict_dygraph_jit(args, data):
-    with fluid.dygraph.guard(args.place):
-        model = paddle.jit.load(args.model_save_prefix)
-        model.eval()
+    model = paddle.jit.load(args.model_save_prefix)
+    model.eval()
 
-        pred_res = model(data)
+    pred_res = model(data)
 
-        return pred_res.numpy()
+    return pred_res.numpy()
 
 
 def predict_analysis_inference(args, data):
@@ -639,7 +667,7 @@ def predict_analysis_inference(args, data):
     return out
 
 
-class TestMobileNet(unittest.TestCase):
+class TestMobileNet(Dy2StTestBase):
     def setUp(self):
         self.args = Args()
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -660,7 +688,8 @@ class TestMobileNet(unittest.TestCase):
         self.args.dy_state_dict_save_path = os.path.join(
             self.temp_dir.name, model_name + ".dygraph"
         )
-        out = train_mobilenet(self.args, to_static)
+        with enable_to_static_guard(to_static):
+            out = train_mobilenet(self.args, to_static)
         return out
 
     def assert_same_loss(self, model_name):
@@ -699,27 +728,26 @@ class TestMobileNet(unittest.TestCase):
             dy_jit_pre,
             st_pre,
             rtol=1e-05,
-            err_msg='dy_jit_pre:\n {}\n, st_pre: \n{}.'.format(
-                dy_jit_pre, st_pre
-            ),
+            err_msg=f'dy_jit_pre:\n {dy_jit_pre}\n, st_pre: \n{st_pre}.',
         )
         np.testing.assert_allclose(
             predictor_pre,
             st_pre,
             rtol=1e-05,
             atol=1e-05,
-            err_msg='inference_pred_res:\n {}\n, st_pre: \n{}.'.format(
-                predictor_pre, st_pre
-            ),
+            err_msg=f'inference_pred_res:\n {predictor_pre}\n, st_pre: \n{st_pre}.',
         )
 
+    @test_legacy_and_pt_and_pir
     def test_mobile_net(self):
         # MobileNet-V1
         self.assert_same_loss("MobileNetV1")
         # MobileNet-V2
         self.assert_same_loss("MobileNetV2")
 
-        self.verify_predict()
+        # TODO(@xiongkun): open after save / load supported in pir.
+        if not paddle.base.framework.use_pir_api():
+            self.verify_predict()
 
     def verify_predict(self):
         # MobileNet-V1

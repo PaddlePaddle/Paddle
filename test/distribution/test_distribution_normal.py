@@ -22,7 +22,7 @@ from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
 from test_distribution import DistributionNumpy
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distribution import Normal
 
 np.random.seed(2022)
@@ -74,10 +74,10 @@ class NormalTest(unittest.TestCase):
     def setUp(self, use_gpu=False, batch_size=2, dims=3):
         self.use_gpu = use_gpu
         if not use_gpu:
-            self.place = fluid.CPUPlace()
+            self.place = base.CPUPlace()
             self.gpu_id = -1
         else:
-            self.place = fluid.CUDAPlace(0)
+            self.place = base.CUDAPlace(0)
             self.gpu_id = 0
 
         self.init_numpy_data(batch_size, dims)
@@ -86,8 +86,8 @@ class NormalTest(unittest.TestCase):
         self.init_dynamic_data(batch_size, dims)
 
         paddle.enable_static()
-        self.test_program = fluid.Program()
-        self.executor = fluid.Executor(self.place)
+        self.test_program = base.Program()
+        self.executor = base.Executor(self.place)
         self.init_static_data(batch_size, dims)
 
     def init_numpy_data(self, batch_size, dims):
@@ -115,7 +115,7 @@ class NormalTest(unittest.TestCase):
         self.static_scale = self.scale_np
         self.static_other_loc = self.other_loc_np
         self.static_other_scale = self.other_scale_np
-        with fluid.program_guard(self.test_program):
+        with base.program_guard(self.test_program):
             self.static_values = paddle.static.data(
                 name='values', shape=[-1], dtype='float32'
             )
@@ -167,7 +167,7 @@ class NormalTest(unittest.TestCase):
 
     def test_normal_distribution_static(self, sample_shape=7, tolerance=1e-6):
         paddle.enable_static()
-        with fluid.program_guard(self.test_program):
+        with base.program_guard(self.test_program):
             normal = Normal(self.static_loc, self.static_scale)
 
             sample = normal.sample([sample_shape])
@@ -189,7 +189,7 @@ class NormalTest(unittest.TestCase):
             'other_scale': self.other_scale_np,
         }
 
-        self.executor.run(fluid.default_startup_program())
+        self.executor.run(base.default_startup_program())
         fetch_list = self.executor.run(
             program=self.test_program, feed=feed_vars, fetch_list=fetch_list
         )
@@ -235,7 +235,7 @@ class NormalTest3(NormalTest):
         self.static_scale = self.scale_np
         self.static_other_loc = self.other_loc_np
         self.static_other_scale = self.other_scale_np
-        with fluid.program_guard(self.test_program):
+        with base.program_guard(self.test_program):
             self.static_values = paddle.static.data(
                 name='values', shape=[-1, dims], dtype='float32'
             )
@@ -264,7 +264,7 @@ class NormalTest4(NormalTest):
         self.static_scale = self.scale_np
         self.static_other_loc = self.other_loc_np
         self.static_other_scale = self.other_scale_np
-        with fluid.program_guard(self.test_program):
+        with base.program_guard(self.test_program):
             self.static_values = paddle.static.data(
                 name='values', shape=[-1, dims], dtype='float32'
             )
@@ -300,7 +300,7 @@ class NormalTest5(NormalTest):
         self.static_scale = self.scale_np
         self.static_other_loc = self.other_loc_np
         self.static_other_scale = self.other_scale_np
-        with fluid.program_guard(self.test_program):
+        with base.program_guard(self.test_program):
             self.static_values = paddle.static.data(
                 name='values', shape=[-1, dims], dtype='float64'
             )
@@ -332,7 +332,7 @@ class NormalTest6(NormalTest):
         self.dynamic_other_scale = paddle.to_tensor(self.other_scale_np)
 
     def init_static_data(self, batch_size, dims):
-        with fluid.program_guard(self.test_program):
+        with base.program_guard(self.test_program):
             self.static_loc = paddle.static.data(
                 name='loc', shape=[-1, dims], dtype='float32'
             )
@@ -380,7 +380,7 @@ class NormalTest7(NormalTest):
         )
 
     def init_static_data(self, batch_size, dims):
-        with fluid.program_guard(self.test_program):
+        with base.program_guard(self.test_program):
             self.static_loc = paddle.static.data(
                 name='loc', shape=[-1, dims], dtype='float64'
             )
@@ -428,7 +428,7 @@ class NormalTest8(NormalTest):
         )
 
     def init_static_data(self, batch_size, dims):
-        with fluid.program_guard(self.test_program):
+        with base.program_guard(self.test_program):
             self.static_loc = paddle.static.data(
                 name='loc', shape=[-1, dims], dtype='float64'
             )
@@ -475,7 +475,7 @@ class NormalTest9(NormalTest):
         self.static_scale = self.scale_np
         self.static_other_loc = self.other_loc_np
         self.static_other_scale = self.other_scale_np
-        with fluid.program_guard(self.test_program):
+        with base.program_guard(self.test_program):
             self.static_values = paddle.static.data(
                 name='values', shape=[-1, dims], dtype='float32'
             )
@@ -510,7 +510,7 @@ class NormalTest10(NormalTest):
         self.static_scale = self.scale_np
         self.static_other_loc = self.other_loc_np
         self.static_other_scale = self.other_scale_np
-        with fluid.program_guard(self.test_program):
+        with base.program_guard(self.test_program):
             self.static_values = paddle.static.data(
                 name='values', shape=[-1, dims], dtype='float32'
             )

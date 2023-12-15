@@ -18,11 +18,21 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/operators/matmul_v2_op.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
+
+/**
+ * Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
+ * original x_dim is returned.
+ */
+static framework::DDim RowMatrixFromVector(const framework::DDim &x_dim) {
+  if (x_dim.size() > 1) {
+    return x_dim;
+  }
+  return common::make_ddim({1, x_dim[0]});
+}
 
 class FusedFeedForwardOp : public framework::OperatorWithKernel {
  public:
@@ -87,7 +97,7 @@ class FusedFeedForwardOp : public framework::OperatorWithKernel {
       context->SetOutputDim("Dropout2Mask", dim_x);
     }
     framework::DDim mean_dim =
-        phi::make_ddim({mat_dim_x.batch_size_ * mat_dim_x.height_});
+        common::make_ddim({mat_dim_x.batch_size_ * mat_dim_x.height_});
     bool pre_layer_norm = context->Attrs().Get<bool>("pre_layer_norm");
     if (pre_layer_norm) {
       OP_INOUT_CHECK(context->HasOutput("Ln1Mean"),

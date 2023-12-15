@@ -40,6 +40,7 @@ void FusedLinearParamGradAddImpl(const Context &ctx,
                                  int64_t K,
                                  int64_t N,
                                  bool use_addto,
+                                 bool has_bias,
                                  DenseTensor *dweight_out,
                                  DenseTensor *dbias_out) {
   constexpr bool kIsMultiPrecision = !std::is_same<T, MT>::value;
@@ -65,7 +66,7 @@ void FusedLinearParamGradAddImpl(const Context &ctx,
         use_addto);
   }
 
-  if (dbias_out == nullptr) return;
+  if (!has_bias) return;
 
   if (!fuse_bias_grad) {
     auto dout_copy = dout;
@@ -126,12 +127,20 @@ void FusedLinearParamGradAdd(const Context &ctx,
                              const paddle::optional<DenseTensor> &dweight,
                              const paddle::optional<DenseTensor> &dbias,
                              bool multi_precision,
+                             bool has_bias,
                              DenseTensor *dweight_out,
                              DenseTensor *dbias_out) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   bool use_addto = false;
   if (dweight_out) {
+    if (dweight_out->dtype() == phi::DataType::FLOAT16) {
+      LOG_FIRST_N(WARNING, 1)
+          << "fused_linear_param_grad_add op may have problems when "
+             "master_grad is not enabled and use fp16-O2 in stage2, users "
+             "should pay attention to the correctness of the result of the "
+             "grad accumulation in stage2.";
+    }
     if (dweight) {
       use_addto = true;
       *dweight_out = dweight.get();
@@ -159,7 +168,7 @@ void FusedLinearParamGradAdd(const Context &ctx,
     multi_precision = false;
   }
 
-  if (dbias_out) {
+  if (has_bias && dbias_out) {
     ctx.template Alloc<T>(dbias_out);
   }
 
@@ -176,6 +185,7 @@ void FusedLinearParamGradAdd(const Context &ctx,
     PrintMeta<kLogLevel>(dweight_out, "dweight_out");
     PrintMeta<kLogLevel>(dbias_out, "dbias_out");
     VLOG(kLogLevel) << "multi_precision = " << multi_precision;
+    VLOG(kLogLevel) << "has_bias = " << has_bias;
     VLOG(kLogLevel) << "use_addto = " << use_addto;
     VLOG(kLogLevel) << "M = " << M;
     VLOG(kLogLevel) << "N = " << N;
@@ -183,11 +193,29 @@ void FusedLinearParamGradAdd(const Context &ctx,
   }
 
   if (multi_precision) {
-    FusedLinearParamGradAddImpl<T, MT, Context>(
-        ctx, x, dout, dbias, M, K, N, use_addto, dweight_out, dbias_out);
+    FusedLinearParamGradAddImpl<T, MT, Context>(ctx,
+                                                x,
+                                                dout,
+                                                dbias,
+                                                M,
+                                                K,
+                                                N,
+                                                use_addto,
+                                                has_bias,
+                                                dweight_out,
+                                                dbias_out);
   } else {
-    FusedLinearParamGradAddImpl<T, T, Context>(
-        ctx, x, dout, dbias, M, K, N, use_addto, dweight_out, dbias_out);
+    FusedLinearParamGradAddImpl<T, T, Context>(ctx,
+                                               x,
+                                               dout,
+                                               dbias,
+                                               M,
+                                               K,
+                                               N,
+                                               use_addto,
+                                               has_bias,
+                                               dweight_out,
+                                               dbias_out);
   }
 }
 
@@ -199,6 +227,7 @@ void FusedLinearParamGradAdd(const Context &ctx,
                              const paddle::optional<DenseTensor> &dweight,
                              const paddle::optional<DenseTensor> &dbias,
                              bool multi_precision,
+                             bool has_bias,
                              DenseTensor *dweight_out,
                              DenseTensor *dbias_out) {
   PADDLE_THROW(phi::errors::Unimplemented(

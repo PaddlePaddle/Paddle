@@ -44,9 +44,6 @@ PyTypeObject *g_blockdesc_pytype = nullptr;
 namespace pd = paddle::framework;
 namespace jit = paddle::jit;
 
-using paddle::distributed::auto_parallel::OperatorDistAttr;
-using paddle::distributed::auto_parallel::TensorDistAttr;
-
 template <typename T>
 static pybind11::bytes SerializeMessage(
     T &self) {  // NOLINT due to pybind11 convention.
@@ -97,7 +94,8 @@ static void DeserializeMessage(T *self, const std::string &str) {
 
 // Bind Methods
 void BindProgramDesc(pybind11::module *m) {
-  pybind11::class_<pd::ProgramDesc>(*m, "ProgramDesc", "")
+  pybind11::class_<pd::ProgramDesc, std::shared_ptr<pd::ProgramDesc>>(
+      *m, "ProgramDesc", "")
       .def(pybind11::init<>())
       .def("__init__",
            [](pd::ProgramDesc &self, const pd::ProgramDesc &other) {
@@ -194,6 +192,7 @@ void BindBlockDesc(pybind11::module *m) {
              std::string name = byte_name;
              return self.HasVarRecursive(name);
            })
+      .def("set_parent_idx", &pd::BlockDesc::SetParent)
       .def(
           "find_var",
           [](pd::BlockDesc &self, pybind11::bytes byte_name) {

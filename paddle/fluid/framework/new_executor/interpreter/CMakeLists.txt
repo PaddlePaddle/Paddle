@@ -14,8 +14,8 @@ set(INTERPRETER_DEPS
     trainer_desc_proto
     glog
     lod_rank_table
-    fs
-    shell
+    framework_io
+    string_helper
     fleet_wrapper
     heter_wrapper
     ps_gpu_wrapper
@@ -31,8 +31,13 @@ set(INTERPRETER_DEPS
     scope
     glog
     phi
+    common
     ${DEVICE_EVENT_LIBS}
     glog)
+
+if(WITH_CINN AND NOT CINN_ONLY)
+  set(INTERPRETER_DEPS ${INTERPRETER_DEPS} cinn_jit_instruction)
+endif()
 
 cc_library(
   interpreter
@@ -42,4 +47,4 @@ cc_library(
 cc_library(
   plan
   SRCS plan.cc
-  DEPS framework_proto)
+  DEPS proto_desc framework_proto)

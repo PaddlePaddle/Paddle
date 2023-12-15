@@ -128,7 +128,7 @@ inline FetchResultType ThreadedSSAGraphExecutor::RunImpl(
       run_all_ops(ready_ops);
 
       // 2. Find ready variable
-      bool timeout;
+      bool timeout = false;
       auto cur_ready_vars = ready_vars->PopAll(1, &timeout);
       if (timeout) {
         for (auto &run_op_future : run_op_futures_) {
@@ -282,7 +282,7 @@ void ThreadedSSAGraphExecutor::InsertPendingVar(
 }
 
 void ThreadedSSAGraphExecutor::PrepareOpDeps() {
-  op_deps_.reset(new OpDependentData());
+  op_deps_ = std::make_unique<OpDependentData>();
   std::unordered_map<OpHandleBase *, size_t> &pending_ops =
       op_deps_->pending_ops_;
   std::unordered_set<VarHandleBase *> &pending_vars = op_deps_->pending_vars_;

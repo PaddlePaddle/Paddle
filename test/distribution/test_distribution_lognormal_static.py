@@ -134,7 +134,7 @@ class TestLogNormalSample(unittest.TestCase):
             scale = paddle.static.data(
                 'scale', self.scale.shape, self.scale.dtype
             )
-            n = 100000
+            n = 1000000
             self.sample_shape = (n,)
             self.rsample_shape = (n,)
             self.paddle_lognormal = LogNormal(loc=loc, scale=scale)

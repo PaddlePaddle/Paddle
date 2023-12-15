@@ -15,6 +15,11 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_ast_only,
+    test_legacy_and_pt_and_pir,
+)
 
 import paddle
 
@@ -23,6 +28,11 @@ class CallNotExist(paddle.nn.Layer):
     def __call__(self):
         # call a non-exist API to trigger exception
         return paddle.nn.not_exist_api
+
+
+class CallableList(list):
+    def __call__(self, x):
+        return x
 
 
 class ForwardNotExist(paddle.nn.Layer):
@@ -34,25 +44,35 @@ net = ForwardNotExist()
 net.forward = "A string so that convert forward will fail"
 
 
-class TestConvertCall(unittest.TestCase):
+class TestConvertCall(Dy2StTestBase):
+    # fallback mode will raise a InnerError, it's ok.
+    @test_ast_only
+    @test_legacy_and_pt_and_pir
     def test_class_exception(self):
-        @paddle.jit.to_static
         def call_not_exist():
             net = CallNotExist()
             return net()
 
         with self.assertRaises(AttributeError):
-            call_not_exist()
+            paddle.jit.to_static(call_not_exist())
 
-        @paddle.jit.to_static
         def forward_not_exist():
             return net()
 
         with self.assertRaises(AttributeError):
-            forward_not_exist()
+            paddle.jit.to_static(forward_not_exist)()
+
+    @test_legacy_and_pt_and_pir
+    def test_callable_list(self):
+        def callable_list(x, y):
+            callable_list = CallableList()
+            return callable_list(x) + y
+
+        self.assertEqual(paddle.jit.to_static(callable_list)(1, 2), 3)
 
 
-class TestConvertShapeCompare(unittest.TestCase):
+class TestConvertShapeCompare(Dy2StTestBase):
+    @test_legacy_and_pt_and_pir
     def test_non_variable(self):
         self.assertEqual(
             paddle.jit.dy2static.convert_shape_compare(1, "<", 2), True
@@ -116,9 +136,9 @@ class TestConvertShapeCompare(unittest.TestCase):
 
     def test_variable(self):
         paddle.enable_static()
-        with paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
-        ):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             x = paddle.static.data(name='x', shape=[3, 2], dtype='float32')
             y = paddle.static.data(name='y', shape=[3, 2], dtype='float32')
             self.assertEqual(
@@ -177,7 +197,6 @@ class ShapeLayer(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
-    @paddle.jit.to_static(input_spec=[paddle.static.InputSpec(shape=[None, 1])])
     def forward(self, x):
         x = paddle.reshape(x, [-1, x.shape[1]])
         bs = x.shape[0]  # -1
@@ -187,20 +206,24 @@ class ShapeLayer(paddle.nn.Layer):
         return out
 
 
-class TestChooseShapeAttrOrApiWithLayer(unittest.TestCase):
+class TestChooseShapeAttrOrApiWithLayer(Dy2StTestBase):
+    @test_legacy_and_pt_and_pir
     def test_tensor_shape(self):
         x = paddle.zeros(shape=[4, 1], dtype='float32')
-        net = ShapeLayer()
+        net = paddle.jit.to_static(
+            function=ShapeLayer(),
+            input_spec=[paddle.static.InputSpec(shape=[None, 1])],
+        )
         out = net(x)
 
         np.testing.assert_array_equal(out.numpy(), x.numpy())
 
 
-class TestIfElseNoValue(unittest.TestCase):
+class TestIfElseNoValue(Dy2StTestBase):
+    @test_legacy_and_pt_and_pir
     def test_else_ret_none(self):
         input_x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
 
-        @paddle.jit.to_static
         def with_common_value(x, use_cache=False):
             if use_cache:
                 y = x + 1
@@ -211,7 +234,6 @@ class TestIfElseNoValue(unittest.TestCase):
                 z = x - 1
                 return None
 
-        @paddle.jit.to_static
         def without_common_value(x, use_cache=False):
             if use_cache:
                 y = x + 1
@@ -221,15 +243,15 @@ class TestIfElseNoValue(unittest.TestCase):
                 c = x + 1
                 return None
 
-        out = with_common_value(input_x, False)
+        out = paddle.jit.to_static(with_common_value)(input_x, False)
         self.assertIsNone(out)
-        out = without_common_value(input_x, False)
+        out = paddle.jit.to_static(without_common_value)(input_x, False)
         self.assertIsNone(out)
 
+    @test_legacy_and_pt_and_pir
     def test_else_ret_c(self):
         input_x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
 
-        @paddle.jit.to_static
         def with_common_value(x, use_cache=False):
             if use_cache:
                 y = x + 1
@@ -240,7 +262,6 @@ class TestIfElseNoValue(unittest.TestCase):
                 z = x - 1
                 return c
 
-        @paddle.jit.to_static
         def without_common_value(x, use_cache=False):
             if use_cache:
                 y = x + 1
@@ -250,18 +271,18 @@ class TestIfElseNoValue(unittest.TestCase):
                 c = x + 1
                 return c
 
-        out = with_common_value(input_x, False)
+        out = paddle.jit.to_static(with_common_value)(input_x, False)
         self.assertListEqual(paddle.tolist(out), paddle.tolist(input_x + 1))
-        out = without_common_value(input_x, False)
+        out = paddle.jit.to_static(without_common_value)(input_x, False)
         self.assertListEqual(paddle.tolist(out), paddle.tolist(input_x + 1))
-        y, z = with_common_value(input_x, True)
+        y, z = paddle.jit.to_static(with_common_value)(input_x, True)
         self.assertListEqual(paddle.tolist(y), paddle.tolist(input_x + 1))
         self.assertListEqual(paddle.tolist(z), paddle.tolist(input_x + 2))
 
+    @test_legacy_and_pt_and_pir
     def test_else_ret_cz(self):
         input_x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
 
-        @paddle.jit.to_static
         def with_common_value(x, use_cache=False):
             if use_cache:
                 y = x + 1
@@ -272,7 +293,6 @@ class TestIfElseNoValue(unittest.TestCase):
                 z = x - 1
                 return c, z
 
-        @paddle.jit.to_static
         def without_common_value(x, use_cache=False):
             if use_cache:
                 y = x + 1
@@ -283,10 +303,10 @@ class TestIfElseNoValue(unittest.TestCase):
                 d = x - 1
                 return c, d
 
-        c, z = with_common_value(input_x, False)
+        c, z = paddle.jit.to_static(with_common_value)(input_x, False)
         self.assertListEqual(paddle.tolist(c), paddle.tolist(input_x + 1))
         self.assertListEqual(paddle.tolist(z), paddle.tolist(input_x - 1))
-        c, d = without_common_value(input_x, False)
+        c, d = paddle.jit.to_static(without_common_value)(input_x, False)
         self.assertListEqual(paddle.tolist(c), paddle.tolist(input_x + 1))
         self.assertListEqual(paddle.tolist(d), paddle.tolist(input_x - 1))
 

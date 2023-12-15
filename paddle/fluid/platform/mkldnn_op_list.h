@@ -14,21 +14,21 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 
 #include <unordered_set>
 
 namespace paddle {
 namespace platform {
 
-// NOTE(jiahongyu): Below ops have specific PADDLE_WITH_MKLDNN hard codes within
+// NOTE(jiahongyu): Below ops have specific PADDLE_WITH_DNNL hard codes within
 // the function GetExpectedKernelType, so we need to handle them through
 // mkldnn_white_list and solve them one-by-one in the future.
 // TODO(jiahongyu): Delete mkldnn_white_list and fully support
-// PADDLE_WITH_MKLDNN of GetExpectedKernelType.
+// PADDLE_WITH_DNNL of GetExpectedKernelType.
 static const std::unordered_set<std::string> mkldnn_white_list = {
     // NOTE(jiahongyu): Below ops use mem_desc function, which is encoded by
-    // PADDLE_WITH_MKLDNN in DenseTensor. The hardcodes within
+    // PADDLE_WITH_DNNL in DenseTensor. The hardcodes within
     // GetExpectedKernelType of these ops cannot be deleted now.
     "pad2d",
     "pad3d",

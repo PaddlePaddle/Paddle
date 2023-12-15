@@ -33,7 +33,7 @@ class TestFleetMetaOptimizer(unittest.TestCase):
 
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
-        with paddle.fluid.device_guard("gpu:0"):
+        with paddle.base.device_guard("gpu:0"):
             input_x = paddle.static.data(
                 name="x", shape=[-1, 32], dtype='float32'
             )
@@ -45,7 +45,7 @@ class TestFleetMetaOptimizer(unittest.TestCase):
             fc_5 = paddle.static.nn.fc(x=fc_4, size=64, activation='tanh')
             fc_6 = paddle.static.nn.fc(x=fc_5, size=64, activation='tanh')
 
-        with paddle.fluid.device_guard("gpu:1"):
+        with paddle.base.device_guard("gpu:1"):
             fc_7 = paddle.static.nn.fc(x=fc_6, size=64, activation='tanh')
             prediction = paddle.static.nn.fc(
                 x=[fc_7], size=2, activation='softmax'
@@ -74,7 +74,7 @@ class TestFleetMetaOptimizer(unittest.TestCase):
             "checkpoint_shape": [],
         }
 
-        optimizer = paddle.fluid.optimizer.Adam(0.01)
+        optimizer = paddle.optimizer.Adam(0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 

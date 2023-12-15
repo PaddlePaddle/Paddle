@@ -73,10 +73,10 @@ class SumOp : public framework::OperatorWithKernel {
 
       auto data_type = static_cast<framework::proto::VarType::Type>(dtype);
 
-      // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+      // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_DNNL
       if (!((data_type == framework::proto::VarType::FP32 ||
              data_type == framework::proto::VarType::BF16) &&
-            ctx.OutputVar("Out")->IsType<phi::DenseTensor>())) {
+            ctx.OutputVar("Out")->IsType<phi::DenseTensor>())) {  // NOLINT
         this->SetDnnFallback(true);
       } else if (!std::all_of(x_vars.begin(),
                               x_vars.end(),
@@ -85,7 +85,7 @@ class SumOp : public framework::OperatorWithKernel {
                               })) {
         this->SetDnnFallback(true);
       }
-      // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
+      // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_DNNL
 
       return phi::KernelKey(data_type, ctx.GetPlace());
     } else if (x_vars[0]->IsType<phi::SelectedRows>()) {
@@ -135,14 +135,6 @@ class SumOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out",
               "the sum of input :code:`x`. its shape and data types are "
               "consistent with :code:`x`.");
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
-    AddAttr<std::string>(
-        "mkldnn_data_type",
-        "(string, default \"float32\"). Data type of mkldnn kernel")
-        .SetDefault("float32")
-        .InEnum({"float32", "bfloat16"});
     AddComment(
         R"DOC(This OP is used to sum one or more Tensor or phi::DenseTensor
                     of the input. If the input is phi::DenseTensor, the output only
@@ -157,8 +149,8 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
       auto var_type = framework::proto::VarType::SELECTED_ROWS;
       if (VLOG_IS_ON(10)) {
         for (size_t ind = 0; ind < ctx->InputSize("X"); ++ind) {
-          VLOG(10) << ctx->InputVarName("X", ind) << " "
-                   << ctx->GetInputType("X", ind);
+          VLOG(10) << ctx->InputVarName("X", static_cast<int>(ind)) << " "
+                   << ctx->GetInputType("X", static_cast<int>(ind));
         }
       }
 
@@ -168,8 +160,9 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
                                  framework::proto::VarType::LOD_TENSOR_ARRAY)) {
           std::ostringstream os;
           for (size_t ind = 0; ind < ctx->InputSize("X"); ++ind) {
-            os << "    " << ctx->InputVarName("X", ind) << " type is "
-               << ctx->GetInputType("X", ind) << "\n";
+            os << "    " << ctx->InputVarName("X", static_cast<int>(ind))
+               << " type is " << ctx->GetInputType("X", static_cast<int>(ind))
+               << "\n";
           }
           PADDLE_THROW(platform::errors::InvalidArgument(
               "Not all inputs are tensor array:\n%s", os.str()));
@@ -242,8 +235,6 @@ DECLARE_INPLACE_OP_INFERER(SumInplaceInferer, {"X", "Out"});
 
 }  // namespace operators
 }  // namespace paddle
-
-namespace ops = paddle::operators;
 
 namespace ops = paddle::operators;
 DECLARE_INFER_SHAPE_FUNCTOR(sum,

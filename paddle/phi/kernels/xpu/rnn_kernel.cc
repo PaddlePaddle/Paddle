@@ -44,7 +44,7 @@ void RnnKernel(const Context& dev_ctx,
   }
 
   dropout_state->Resize(out->dims());
-  dev_ctx.template Alloc<T>(dropout_state);
+  dev_ctx.template Alloc<uint8_t>(dropout_state);
 
   phi::funcs::SetConstant<phi::XPUContext, uint8_t> ones;
   ones(dev_ctx, dropout_state, static_cast<uint8_t>(1));
@@ -97,7 +97,7 @@ void RnnKernel(const Context& dev_ctx,
 
   int gate_num = 4;
   int hidden_data_idx = (num_layers - 1);
-  hidden_data_idx += (gate_num + 1) * num_layers;
+  hidden_data_idx += (gate_num + 2) * num_layers;
   const int& block_size = direction_num * seq_len * batch_size * hidden_size;
   reserve->Resize({hidden_data_idx, block_size});
   dev_ctx.template Alloc<T>(reserve);

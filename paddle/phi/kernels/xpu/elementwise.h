@@ -29,19 +29,18 @@ namespace phi {
 
 template <typename T, typename XPUType>
 void XPUElementwise(const XPUContext& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
+                    const T* x_data,
+                    const DDim& x_dims,
+                    const T* y_data,
+                    const DDim& y_dims,
                     int axis,
-                    DenseTensor* z,
+                    T* z_data,
                     std::function<int(xpu::Context*,
                                       const XPUType*,
                                       const XPUType*,
                                       XPUType*,
                                       const std::vector<int>&,
                                       const std::vector<int>&)> func) {
-  dev_ctx.template Alloc<T>(z);
-  auto x_dims = x.dims();
-  auto y_dims = y.dims();
   int max_dim = std::max(x_dims.size(), y_dims.size());
   axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
 
@@ -78,9 +77,6 @@ void XPUElementwise(const XPUContext& dev_ctx,
       y_dims_vec[i + axis] = y_dims[i];
     }
   }
-  const T* x_data = x.data<T>();
-  const T* y_data = y.data<T>();
-  T* z_data = z->data<T>();
 
   int ret = xpu::SUCCESS;
 
@@ -102,6 +98,30 @@ void XPUElementwise(const XPUContext& dev_ctx,
              x_dims_vec,
              y_dims_vec);
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "elementwise");
+}
+
+template <typename T, typename XPUType>
+void XPUElementwise(const XPUContext& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    int axis,
+                    DenseTensor* z,
+                    std::function<int(xpu::Context*,
+                                      const XPUType*,
+                                      const XPUType*,
+                                      XPUType*,
+                                      const std::vector<int>&,
+                                      const std::vector<int>&)> func) {
+  dev_ctx.template Alloc<T>(z);
+  const DDim& x_dims = x.dims();
+  const DDim& y_dims = y.dims();
+
+  const T* x_data = x.data<T>();
+  const T* y_data = y.data<T>();
+  T* z_data = z->data<T>();
+
+  XPUElementwise<T, XPUType>(
+      dev_ctx, x_data, x_dims, y_data, y_dims, axis, z_data, func);
 }
 
 template <typename T, typename XPUType>

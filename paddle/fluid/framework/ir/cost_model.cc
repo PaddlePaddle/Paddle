@@ -30,7 +30,7 @@ using platform::MemEvent;
 
 const double CostData::NOT_MEASURED = -1;
 
-CostData::~CostData() {
+CostData::~CostData() {  // NOLINT
   // TODO(zhhsplendid): when we save a copy of program/graph, we should delete
   // here.
 }
@@ -87,7 +87,7 @@ bool CostData::SetCostData(const ProgramDesc& program,
   bool event_to_cost_success = true;
   size_t event_index = 0;
   for (size_t i = 0; i < op_size; ++i) {
-    const OpDesc* op_desc = global_block.Op(i);
+    const OpDesc* op_desc = global_block.Op(static_cast<int>(i));
     std::string op_type = op_desc->Type();
 
     while (event_index < main_thread_events.size()) {
@@ -133,7 +133,7 @@ bool CostData::SetCostData(const ProgramDesc& program,
         main_thread_events[op_pop_index]);
 #endif
     double time_ms = gpu_time_ms + cpu_time_ms;
-    op_time_ms_[i] = time_ms;
+    op_time_ms_[static_cast<int>(i)] = time_ms;
   }
 
   event_index = 0;
@@ -141,9 +141,9 @@ bool CostData::SetCostData(const ProgramDesc& program,
   int stop_profiler_idx = -1;
   while (event_index < main_thread_events.size()) {
     if (main_thread_events[event_index].name() == "_start_profiler_") {
-      start_profiler_idx = event_index;
+      start_profiler_idx = static_cast<int>(event_index);
     } else if (main_thread_events[event_index].name() == "_stop_profiler_") {
-      stop_profiler_idx = event_index;
+      stop_profiler_idx = static_cast<int>(event_index);
       break;
     }
     ++event_index;

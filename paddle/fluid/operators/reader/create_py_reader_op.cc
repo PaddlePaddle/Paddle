@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/operators/reader/py_reader.h"
 #include "paddle/fluid/operators/reader/reader_op_registry.h"
-#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace operators {
@@ -64,27 +64,27 @@ class CreatePyReaderOp : public framework::OperatorBase {
     auto& ranks = Attr<std::vector<int>>("ranks");
     int shape_start_index = 0;
     std::vector<framework::DDim> dims;
-    for (size_t i = 0; i < ranks.size(); ++i) {
-      int shape_end_index = shape_start_index + ranks[i];
+    for (auto rank : ranks) {
+      int shape_end_index = shape_start_index + rank;
       auto shape = std::vector<int>(shape_concat.begin() + shape_start_index,
                                     shape_concat.begin() + shape_end_index);
-      dims.push_back(phi::make_ddim(shape));
+      dims.push_back(common::make_ddim(shape));
       shape_start_index = shape_end_index;
     }
 
     // Converts VarType from int to enum
     auto& dtype_int = Attr<std::vector<int>>("dtypes");
     std::vector<framework::proto::VarType::Type> var_types;
-    for (size_t i = 0; i < dtype_int.size(); ++i) {
+    for (auto type_int : dtype_int) {
       var_types.push_back(
-          static_cast<framework::proto::VarType::Type>(dtype_int[i]));
+          static_cast<framework::proto::VarType::Type>(type_int));
     }
 
     // Converts need_check_feed from int to bool
     auto& need_check_feed_int = Attr<std::vector<int>>("need_check_feed");
     std::vector<bool> need_check_feed;
-    for (size_t i = 0; i < need_check_feed_int.size(); ++i) {
-      need_check_feed.push_back(static_cast<bool>(need_check_feed_int[i]));
+    for (auto feed_int : need_check_feed_int) {
+      need_check_feed.push_back(static_cast<bool>(feed_int));
     }
     auto py_reader =
         std::make_shared<PyReader>(queue, dims, var_types, need_check_feed);

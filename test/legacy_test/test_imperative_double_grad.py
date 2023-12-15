@@ -19,17 +19,17 @@ import numpy as np
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid.wrapped_decorator import wrap_decorator
+from paddle import base
+from paddle.base.wrapped_decorator import wrap_decorator
 from paddle.vision.models import resnet50, resnet101
 
 
 def _dygraph_guard_(func):
     def __impl__(*args, **kwargs):
-        if fluid.in_dygraph_mode():
+        if base.in_dygraph_mode():
             return func(*args, **kwargs)
         else:
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 return func(*args, **kwargs)
 
     return __impl__
@@ -40,7 +40,7 @@ dygraph_guard = wrap_decorator(_dygraph_guard_)
 
 def random_var(size, low=-1, high=1, dtype='float32'):
     x_np = np.random.uniform(low=low, high=high, size=size).astype(dtype)
-    return fluid.dygraph.to_variable(x_np)
+    return base.dygraph.to_variable(x_np)
 
 
 class TestEagerGrad(TestCase):
@@ -52,7 +52,7 @@ class TestEagerGrad(TestCase):
         x = paddle.to_tensor(np_x, dtype="float64", stop_gradient=False)
         y = paddle.to_tensor(np_y, dtype="float64", stop_gradient=False)
         out = paddle.matmul(x, y)
-        dx = fluid.dygraph.grad(out, x)
+        dx = base.dygraph.grad(out, x)
 
         dout = np.ones_like(np_y)
         expected_dx = np.matmul(dout, np.transpose(np_y))
@@ -73,7 +73,7 @@ class TestEagerGrad(TestCase):
         out_z = paddle.nn.functional.sigmoid(z)
         out = paddle.matmul(x, y)
 
-        dx = fluid.dygraph.grad(out, [x, z], allow_unused=True)
+        dx = base.dygraph.grad(out, [x, z], allow_unused=True)
         dout = np.ones_like(np_y)
         expected_dx = np.matmul(dout, np.transpose(np_y))
         np.testing.assert_allclose(dx[0].numpy(), expected_dx, rtol=1e-05)
@@ -96,7 +96,7 @@ class TestEagerGrad(TestCase):
 
         try:
             # allow_unused is false in default
-            dx = fluid.dygraph.grad(out, [x, z])
+            dx = base.dygraph.grad(out, [x, z])
         except ValueError as e:
             error_msg = str(e)
             assert error_msg.find("allow_unused") > 0
@@ -115,7 +115,7 @@ class TestEagerGrad(TestCase):
 
         try:
             # duplicate input will arise RuntimeError errors
-            dx = fluid.dygraph.grad(out, [x, x])
+            dx = base.dygraph.grad(out, [x, x])
         except RuntimeError as e:
             error_msg = str(e)
             assert error_msg.find("duplicate") > 0
@@ -134,7 +134,7 @@ class TestEagerGrad(TestCase):
 
         try:
             # duplicate output will arise RuntimeError errors
-            dx = fluid.dygraph.grad([out, out], [x])
+            dx = base.dygraph.grad([out, out], [x])
         except RuntimeError as e:
             error_msg = str(e)
             assert error_msg.find("duplicate") > 0
@@ -194,8 +194,8 @@ class TestDygraphDoubleGrad(TestCase):
         create_graph=False,
         allow_unused=False,
     ):
-        fluid.set_flags({'FLAGS_sort_sum_gradient': self.sort_sum_gradient})
-        return fluid.dygraph.grad(
+        base.set_flags({'FLAGS_sort_sum_gradient': self.sort_sum_gradient})
+        return base.dygraph.grad(
             outputs=outputs,
             inputs=inputs,
             grad_outputs=grad_outputs,
@@ -322,7 +322,7 @@ class TestDygraphDoubleGrad(TestCase):
         )
         np.random.shuffle(x_np)
 
-        x = fluid.dygraph.to_variable(x_np)
+        x = base.dygraph.to_variable(x_np)
         x.stop_gradient = False
 
         alpha = 0.2
@@ -533,17 +533,17 @@ class TestDygraphDoubleGradVisitedUniq(TestCase):
                     out = out + linear(input)
             return out
 
-        fluid.set_flags({'FLAGS_sort_sum_gradient': True})
+        base.set_flags({'FLAGS_sort_sum_gradient': True})
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             paddle.seed(123)
             paddle.framework.random._manual_program_seed(123)
-            a = fluid.dygraph.to_variable(value)
+            a = base.dygraph.to_variable(value)
             a.stop_gradient = False
 
             out = model_f(a)
 
-            dx = fluid.dygraph.grad(
+            dx = base.dygraph.grad(
                 outputs=[out],
                 inputs=[a],
                 create_graph=False,
@@ -553,10 +553,10 @@ class TestDygraphDoubleGradVisitedUniq(TestCase):
 
             grad_1 = dx[0].numpy()
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             paddle.seed(123)
             paddle.framework.random._manual_program_seed(123)
-            a = fluid.dygraph.to_variable(value)
+            a = base.dygraph.to_variable(value)
             a.stop_gradient = False
 
             out = model_f(a)
@@ -569,12 +569,12 @@ class TestDygraphDoubleGradVisitedUniq(TestCase):
 
 class TestRaiseNoDoubleGradOp(TestCase):
     def test_no_grad_op(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             x = paddle.ones(shape=[2, 3, 2, 2], dtype='float32')
             x.stop_gradient = False
             y = paddle.static.nn.group_norm(x, groups=1)
 
-            dx = fluid.dygraph.grad(
+            dx = base.dygraph.grad(
                 outputs=[y], inputs=[x], create_graph=True, retain_graph=True
             )[0]
 

@@ -16,12 +16,13 @@ limitations under the License. */
 
 #include <vector>
 
-#include "paddle/phi/api/ext/exception.h"
+#include "paddle/common/exception.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/tensor_ref.h"
 
-namespace phi {
+namespace common {
 class DDim;
-}  // namespace phi
+}  // namespace common
 
 namespace paddle {
 class Tensor;
@@ -54,13 +55,15 @@ class IntArrayBase {
 
   void SetFromTensor(bool val) { is_from_tensor_ = val; }
 
-  explicit IntArrayBase(const phi::DDim& dims);
+  explicit IntArrayBase(const common::DDim& dims);
 
   // The Tensor must have one dim
   IntArrayBase(const T& tensor);  // NOLINT
 
   // The Tensor in vec must have only one element
   IntArrayBase(const std::vector<T>& tensor_list);  // NOLINT
+
+  explicit IntArrayBase(const std::vector<phi::TensorRef>& tensor_ref_list);
 
   template <typename OtherT>
   IntArrayBase(const IntArrayBase<OtherT>& other) : array_(other.GetData()) {}
@@ -87,6 +90,7 @@ class IntArrayBase {
 
   void AssignDataFromTensor(const T& tensor) {
     size_t n = tensor.numel();
+
     array_.reserve(n);
     switch (tensor.dtype()) {
       case DataType::INT32:

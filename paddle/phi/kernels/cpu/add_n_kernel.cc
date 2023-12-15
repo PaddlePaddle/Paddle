@@ -26,7 +26,7 @@ void AddNKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
 
   bool in_place = false;
-  if (x.size() > 0 && x[0]->initialized() && DenseTensor::classof(x[0])) {
+  if (!x.empty() && x[0]->initialized() && DenseTensor::classof(x[0])) {
     if ((static_cast<const DenseTensor*>(x[0]))->Holder() == out->Holder()) {
       in_place = true;
     }
@@ -90,7 +90,9 @@ PD_REGISTER_KERNEL(add_n,
                    int,
                    phi::dtype::bfloat16,
                    phi::dtype::float16,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(add_n_array,
                    CPU,
@@ -101,4 +103,6 @@ PD_REGISTER_KERNEL(add_n_array,
                    int,
                    phi::dtype::bfloat16,
                    phi::dtype::float16,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

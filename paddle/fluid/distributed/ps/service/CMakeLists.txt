@@ -3,34 +3,11 @@ set_source_files_properties(${BRPC_SRCS})
 
 if(WITH_HETERPS)
 
-  set(BRPC_DEPS
-      brpc
-      ssl
-      crypto
-      protobuf
-      phi
-      glog
-      zlib
-      leveldb
-      snappy
-      glog
-      device_context
-      rocksdb)
+  set(BRPC_DEPS ${EXTERNAL_BRPC_DEPS} phi common zlib device_context rocksdb)
 
 else()
 
-  set(BRPC_DEPS
-      brpc
-      ssl
-      crypto
-      protobuf
-      phi
-      glog
-      zlib
-      leveldb
-      snappy
-      glog
-      device_context)
+  set(BRPC_DEPS ${EXTERNAL_BRPC_DEPS} phi common zlib device_context)
 
 endif()
 
@@ -122,6 +99,7 @@ cc_library(
        simple_rpc
        scope
        phi
+       common
        ps_gpu_wrapper
        fleet
        ${RPC_DEPS})
@@ -149,7 +127,7 @@ cc_library(
 #cc_library(
 #  communicator
 #  SRCS communicator/communicator.cc
-#  DEPS scope client table phi ${RPC_DEPS})
+#  DEPS scope client table phi common ${RPC_DEPS})
 #cc_library(
 #  ps_service
 #  SRCS ps_service/service.cc

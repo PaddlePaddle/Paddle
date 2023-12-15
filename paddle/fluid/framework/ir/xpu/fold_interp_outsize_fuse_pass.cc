@@ -22,23 +22,14 @@
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace phi {
-class DenseTensor;
-}  // namespace phi
-
-namespace paddle {
-namespace framework {
-class Scope;
-}  // namespace framework
-}  // namespace paddle
-
 namespace paddle {
 namespace framework {
 namespace ir {
 
 namespace patterns {
-struct DetectorFusePattern : public PatternBase {
-  DetectorFusePattern(PDPattern* pattern, const std::string& name_scope);
+
+struct InterpOutsizeFusePattern : public PatternBase {
+  InterpOutsizeFusePattern(PDPattern* pattern, const std::string& name_scope);
 
   // declare operator node's name
   PATTERN_DECL_NODE(shape);
@@ -60,8 +51,8 @@ struct DetectorFusePattern : public PatternBase {
   PATTERN_DECL_NODE(cast2_out);
 };
 
-DetectorFusePattern::DetectorFusePattern(PDPattern* pattern,
-                                         const std::string& name_scope)
+InterpOutsizeFusePattern::InterpOutsizeFusePattern(
+    PDPattern* pattern, const std::string& name_scope)
     : PatternBase(pattern, name_scope, name_scope) {
   auto* x = pattern->NewNode(x_repr())
                 ->assert_is_op_input("shape", "Input")
@@ -144,9 +135,10 @@ DetectorFusePattern::DetectorFusePattern(PDPattern* pattern,
 
 }  // namespace patterns
 
-void FoldInterpOutsizeFusePass::DetectorFuse(ir::Graph* graph) const {
+void FoldInterpOutsizeFusePass::FoldInterpOutsize(ir::Graph* graph) const {
   GraphPatternDetector gpd;
-  patterns::DetectorFusePattern pattern(gpd.mutable_pattern(), name_scope_);
+  patterns::InterpOutsizeFusePattern pattern(gpd.mutable_pattern(),
+                                             name_scope_);
   int found_subgraph_count = 0;
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -213,7 +205,7 @@ void FoldInterpOutsizeFusePass::ApplyImpl(ir::Graph* graph) const {
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
 
-  DetectorFuse(graph);
+  FoldInterpOutsize(graph);
 }
 
 }  // namespace ir

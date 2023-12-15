@@ -92,7 +92,9 @@ class TrtConvertDeformableConvTest(TrtLayerAutoScanTest):
             kernel_sizes: List[int],
             attrs: List[Dict[str, Any]],
         ):
-            return np.random.random([6, 3] + kernel_sizes).astype(np.float32)
+            filter = np.random.random([6, 3] + kernel_sizes)
+            filter[0][0][0][0] = 8.8978638e-08
+            return filter.astype(np.float32)
 
         for batch in [
             1,
@@ -219,14 +221,28 @@ class TrtConvertDeformableConvTest(TrtLayerAutoScanTest):
         # for static_shape
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
         ), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        program_config.set_input_type(np.float16)
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, False
+        ), 1e-2
+
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), (1e-5, 1e-5)
+
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        program_config.set_input_type(np.float16)
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True
+        ), (1e-2, 1e-2)
 
     def test(self):
         self.trt_param.workspace_size = 1 << 28

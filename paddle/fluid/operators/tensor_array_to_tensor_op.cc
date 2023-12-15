@@ -88,8 +88,6 @@ class LoDTensorArray2TensorOp : public framework::OperatorBase {
 
     auto &inx = scope.FindVar(Input("X"))->Get<framework::LoDTensorArray>();
     auto &out = *scope.FindVar(Output("Out"))->GetMutable<phi::DenseTensor>();
-    auto &out_inx =
-        *scope.FindVar(Output("OutIndex"))->GetMutable<phi::DenseTensor>();
 
     const size_t n = inx.size();
     PADDLE_ENFORCE_GT(
@@ -102,23 +100,18 @@ class LoDTensorArray2TensorOp : public framework::OperatorBase {
     std::string base_name = Inputs("X")[0];
     std::vector<std::string> names;
 
-    // get the input tensorarray items' dim in out_inx
-    auto out_inx_dim = out_inx.dims();
-    out_inx_dim[0] = inx.size();
-    out_inx.Resize(out_inx_dim);
-    int *tmp_index_data = out_inx.mutable_data<int>(platform::CPUPlace());
-
     auto out_dims = inx[0].dims();
-    size_t out_dim_sum = 0;
-    for (size_t index = 0; index < inx.size(); index++) {
-      auto inx_dims = inx[index].dims();
-      out_dim_sum += inx_dims[axis];
-      tmp_index_data[index] = inx_dims[axis];
+    size_t in_zero_dims_size = out_dims.size();
+    for (size_t i = 1; i < n; i++) {
+      for (size_t j = 0; j < in_zero_dims_size; j++) {
+        if (j == static_cast<size_t>(axis)) {
+          out_dims[axis] += inx[i].dims()[static_cast<int>(j)];
+        }
+      }
     }
-
-    // get input array items' dims
-    out_dims[axis] = out_dim_sum;
-    out.Resize(out_dims);
+    auto vec = common::vectorize<int>(out_dims);
+    vec.insert(vec.begin() + axis, inx.size());  // NOLINT
+    out.Resize(common::make_ddim(vec));
 
     LodTensorArray2LodTensorVector(scope, base_name, Input("X"), &names);
 
@@ -185,16 +178,16 @@ class LoDTensorArray2TensorOpInferShape : public framework::InferShapeBase {
     if (ctx->IsRuntime()) return;
     auto dims = ctx->GetInputDim("X");
     // if the shape is empty
-    if (dims == phi::make_ddim({0UL})) return;
+    if (dims == common::make_ddim({0UL})) return;
     // otherwise, suppose the shape of array is the shape of tensor in the
     // array, which is consistent with what tensor_array_read_write dose
     auto axis = ctx->Attrs().Get<int>("axis");
     auto use_stack = ctx->Attrs().Get<bool>("use_stack");
     if (use_stack) {
-      auto dim_vec = phi::vectorize<int>(dims);
+      auto dim_vec = common::vectorize<int>(dims);
       // use -1 for the stack dim size
       dim_vec.insert(dim_vec.begin() + axis, -1);
-      dims = phi::make_ddim(dim_vec);
+      dims = common::make_ddim(dim_vec);
     } else {
       // use -1 for the concat dim size
       dims[axis] = -1;

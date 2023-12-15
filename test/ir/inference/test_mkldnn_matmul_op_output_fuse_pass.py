@@ -19,7 +19,7 @@ from inference_pass_test import InferencePassTest
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
+from paddle import base
 
 
 class TestMKLDNNMatmulFuseOp(InferencePassTest):
@@ -31,7 +31,7 @@ class TestMKLDNNMatmulFuseOp(InferencePassTest):
         self.enable_mkldnn = True
 
     def make_network(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             x = paddle.static.data(
                 name='x', shape=[-1] + self.shape_x, dtype=self.d_type
             )
@@ -73,7 +73,7 @@ class TestMKLDNNMatmulOtherDimsFuseOp(TestMKLDNNMatmulFuseOp):
 
 class TestMKLDNNMatmulOpNotFusedWrongTransposeAxis(TestMKLDNNMatmulFuseOp):
     def make_network(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             x = paddle.static.data(
                 name='x', shape=[-1] + self.shape_x, dtype=self.d_type
             )
@@ -96,7 +96,7 @@ class TestMKLDNNMatmulOpNotFusedBreakPattern(TestMKLDNNMatmulFuseOp):
         self.enable_mkldnn = True
 
     def make_network(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             x = paddle.static.data(
                 name='x', shape=[-1] + self.shape_x, dtype=self.d_type
             )

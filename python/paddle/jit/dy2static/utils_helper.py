@@ -18,11 +18,10 @@ import inspect
 import astor
 import numpy as np  # noqa: F401
 
-import paddle  # noqa: F401
-from paddle import fluid  # noqa: F401
-from paddle.fluid import dygraph  # noqa: F401
-from paddle.fluid import layers  # noqa: F401
-from paddle.fluid.dygraph import to_variable  # noqa: F401
+import paddle
+from paddle import base  # noqa: F401
+from paddle.base import dygraph, layers  # noqa: F401
+from paddle.base.dygraph import to_variable  # noqa: F401
 from paddle.utils import gast
 
 from .ast_utils import ast_to_source_code
@@ -41,11 +40,10 @@ def index_in_list(array_list, item):
 # module such as paddlenlp.
 PADDLE_MODULE_PREFIX = 'paddle.'
 DYGRAPH_TO_STATIC_MODULE_PREFIX = 'paddle.jit.dy2static'
-DYGRAPH_MODULE_PREFIX = 'paddle.fluid.dygraph'
+DYGRAPH_MODULE_PREFIX = 'paddle.base.dygraph'
 
 
 def is_dygraph_api(node):
-
     # Note: A api in module dygraph_to_static is not a real dygraph api.
     if is_api_in_module(node, DYGRAPH_TO_STATIC_MODULE_PREFIX):
         return False
@@ -185,3 +183,18 @@ class NodeVarType:
         # raise warning if not found
         warn("Currently we don't support annotation: %s" % annotation_str)
         return NodeVarType.UNKNOWN
+
+
+def set_dynamic_shape(variable, shape_list):
+    if paddle.base.dygraph.base.in_to_static_mode():
+        if isinstance(variable, paddle.base.framework.Variable):
+            variable.desc.set_shape(shape_list)
+        elif isinstance(variable, paddle.pir.Value):
+            variable.set_shape(shape_list)
+        else:
+            raise TypeError(
+                "In to_static mode, variable must be a Variable or Value"
+            )
+    else:
+        # in dygraph mode, dynamic shape is not needed, just do nothing.
+        return

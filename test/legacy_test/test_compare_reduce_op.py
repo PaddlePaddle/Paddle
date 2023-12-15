@@ -14,14 +14,14 @@
 
 import unittest
 
-import eager_op_test
 import numpy as np
+import op_test
 
 import paddle
 
 
 def create_test_not_equal_class(op_type, typename, callback):
-    class Cls(eager_op_test.OpTest):
+    class Cls(op_test.OpTest):
         def setUp(self):
             x = np.random.random(size=(10, 7)).astype(typename)
             y = np.random.random(size=(10, 7)).astype(typename)
@@ -32,7 +32,7 @@ def create_test_not_equal_class(op_type, typename, callback):
             self.op_type = op_type
 
         def test_output(self):
-            self.check_output()
+            self.check_output(check_pir=True)
 
     cls_name = "{}_{}_{}".format(op_type, typename, 'not_equal_all')
     Cls.__name__ = cls_name
@@ -40,7 +40,7 @@ def create_test_not_equal_class(op_type, typename, callback):
 
 
 def create_test_not_shape_equal_class(op_type, typename, callback):
-    class Cls(eager_op_test.OpTest):
+    class Cls(op_test.OpTest):
         def setUp(self):
             x = np.random.random(size=(10, 7)).astype(typename)
             y = np.random.random(size=(10)).astype(typename)
@@ -51,7 +51,7 @@ def create_test_not_shape_equal_class(op_type, typename, callback):
             self.op_type = op_type
 
         def test_output(self):
-            self.check_output()
+            self.check_output(check_pir=True)
 
     cls_name = "{}_{}_{}".format(op_type, typename, 'not_shape_equal_all')
     Cls.__name__ = cls_name
@@ -59,7 +59,7 @@ def create_test_not_shape_equal_class(op_type, typename, callback):
 
 
 def create_test_equal_class(op_type, typename, callback):
-    class Cls(eager_op_test.OpTest):
+    class Cls(op_test.OpTest):
         def setUp(self):
             x = y = np.random.random(size=(10, 7)).astype(typename)
             z = callback(x, y)
@@ -69,7 +69,7 @@ def create_test_equal_class(op_type, typename, callback):
             self.op_type = op_type
 
         def test_output(self):
-            self.check_output()
+            self.check_output(check_pir=True)
 
     cls_name = "{}_{}_{}".format(op_type, typename, 'equal_all')
     Cls.__name__ = cls_name
@@ -77,7 +77,7 @@ def create_test_equal_class(op_type, typename, callback):
 
 
 def create_test_dim1_class(op_type, typename, callback):
-    class Cls(eager_op_test.OpTest):
+    class Cls(op_test.OpTest):
         def setUp(self):
             x = y = np.random.random(size=(1)).astype(typename)
             x = np.array([True, False, True]).astype(typename)
@@ -89,7 +89,7 @@ def create_test_dim1_class(op_type, typename, callback):
             self.op_type = op_type
 
         def test_output(self):
-            self.check_output()
+            self.check_output(check_pir=True)
 
     cls_name = "{}_{}_{}".format(op_type, typename, 'equal_all')
     Cls.__name__ = cls_name

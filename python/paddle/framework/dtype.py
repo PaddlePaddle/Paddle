@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..fluid.core import VarDesc
-from ..fluid.core import finfo as core_finfo
-from ..fluid.core import iinfo as core_iinfo
+from ..base.core import (
+    VarDesc,
+    finfo as core_finfo,
+    iinfo as core_iinfo,
+)
+from ..base.data_feeder import _NUMPY_DTYPE_2_PADDLE_DTYPE
 
 dtype = VarDesc.VarType
 dtype.__qualname__ = "dtype"
@@ -45,7 +48,7 @@ def iinfo(dtype):
     This is similar to `numpy.iinfo <https://numpy.org/doc/stable/reference/generated/numpy.iinfo.html#numpy-iinfo>`_.
 
     Args:
-        dtype(paddle.dtype):  One of paddle.uint8, paddle.int8, paddle.int16, paddle.int32, and paddle.int64.
+        dtype(paddle.dtype|string):  One of paddle.uint8, paddle.int8, paddle.int16, paddle.int32, and paddle.int64.
 
     Returns:
         An iinfo object, which has the following 4 attributes:
@@ -58,17 +61,23 @@ def iinfo(dtype):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            iinfo_uint8 = paddle.iinfo(paddle.uint8)
-            print(iinfo_uint8)
-            # paddle.iinfo(min=0, max=255, bits=8, dtype=uint8)
-            print(iinfo_uint8.min) # 0
-            print(iinfo_uint8.max) # 255
-            print(iinfo_uint8.bits) # 8
-            print(iinfo_uint8.dtype) # uint8
+            >>> iinfo_uint8 = paddle.iinfo(paddle.uint8)
+            >>> print(iinfo_uint8)
+            paddle.iinfo(min=0, max=255, bits=8, dtype=uint8)
+            >>> print(iinfo_uint8.min)
+            0
+            >>> print(iinfo_uint8.max)
+            255
+            >>> print(iinfo_uint8.bits)
+            8
+            >>> print(iinfo_uint8.dtype)
+            uint8
 
     """
+    if dtype in _NUMPY_DTYPE_2_PADDLE_DTYPE:
+        dtype = _NUMPY_DTYPE_2_PADDLE_DTYPE[dtype]
     return core_iinfo(dtype)
 
 
@@ -80,7 +89,7 @@ def finfo(dtype):
     This is similar to `numpy.finfo <https://numpy.org/doc/stable/reference/generated/numpy.finfo.html#numpy-finfo>`_.
 
     Args:
-        dtype(paddle.dtype):  One of ``paddle.float16``, ``paddle.float32``, ``paddle.float64``, ``paddle.bfloat16``,
+        dtype(paddle.dtype|string):  One of ``paddle.float16``, ``paddle.float32``, ``paddle.float64``, ``paddle.bfloat16``,
             ``paddle.complex64``, and ``paddle.complex128``.
 
     Returns:
@@ -98,17 +107,33 @@ def finfo(dtype):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            finfo_float32 = paddle.finfo(paddle.float32)
-            print(finfo_float32.min) # -3.40282e+38
-            print(finfo_float32.max) # 3.40282e+38
-            print(finfo_float32.eps) # 1.19209e-07
-            print(finfo_float32.resolution) # 1e-06
-            print(finfo_float32.smallest_normal) # 1.17549e-38
-            print(finfo_float32.tiny) # 1.17549e-38
-            print(finfo_float32.bits) # 32
-            print(finfo_float32.dtype) # float32
+            >>> finfo_float32 = paddle.finfo(paddle.float32)
+            >>> print(finfo_float32.min)
+            -3.4028234663852886e+38
+            >>> print(finfo_float32.max)
+            3.4028234663852886e+38
+            >>> print(finfo_float32.eps)
+            1.1920928955078125e-07
+            >>> print(finfo_float32.resolution)
+            1e-06
+            >>> print(finfo_float32.smallest_normal)
+            1.1754943508222875e-38
+            >>> print(finfo_float32.tiny)
+            1.1754943508222875e-38
+            >>> print(finfo_float32.bits)
+            32
+            >>> print(finfo_float32.dtype)
+            float32
 
     """
+    import paddle
+
+    if paddle.base.framework.in_pir_mode() and isinstance(
+        dtype, paddle.pir.core.DataType
+    ):
+        dtype = paddle.base.framework.paddle_type_to_proto_type[dtype]
+    elif dtype in _NUMPY_DTYPE_2_PADDLE_DTYPE:
+        dtype = _NUMPY_DTYPE_2_PADDLE_DTYPE[dtype]
     return core_finfo(dtype)

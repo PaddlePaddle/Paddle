@@ -17,7 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
+from paddle.pir_utils import test_with_pir_api
 
 
 def np_pairwise_distance(x, y, p=2.0, epsilon=1e-6, keepdim=False):
@@ -48,9 +49,9 @@ def test_static(
     prog = paddle.static.Program()
     startup_prog = paddle.static.Program()
     place = (
-        fluid.CUDAPlace(0)
-        if paddle.fluid.core.is_compiled_with_cuda()
-        else fluid.CPUPlace()
+        base.CUDAPlace(0)
+        if paddle.base.core.is_compiled_with_cuda()
+        else base.CPUPlace()
     )
     paddle.enable_static()
     with paddle.static.program_guard(prog, startup_prog):
@@ -77,6 +78,7 @@ def test_static(
 def test_dygraph(
     place, x_np, y_np, p=2.0, epsilon=1e-6, keepdim=False, functional=False
 ):
+    paddle.disable_static()
     x = paddle.to_tensor(x_np)
     y = paddle.to_tensor(y_np)
     if functional:
@@ -88,6 +90,7 @@ def test_dygraph(
             x=x, y=y, p=p, epsilon=epsilon, keepdim=keepdim
         )
     dygraph_ret = dy_distance.numpy()
+    paddle.enable_static()
     return dygraph_ret
 
 
@@ -109,14 +112,6 @@ class TestPairwiseDistance(unittest.TestCase):
                             x_np = np.random.random(shape).astype(dtype)
                             y_np = np.random.random(shape).astype(dtype)
 
-                            static_ret = test_static(
-                                place,
-                                x_np,
-                                y_np,
-                                p,
-                                epsilon=epsilon,
-                                keepdim=keepdim,
-                            )
                             dygraph_ret = test_dygraph(
                                 place,
                                 x_np,
@@ -130,26 +125,13 @@ class TestPairwiseDistance(unittest.TestCase):
                             )
 
                             self.assertEqual(
-                                static_ret.shape, excepted_value.shape
-                            )
-                            self.assertEqual(
                                 dygraph_ret.shape, excepted_value.shape
                             )
 
                             np.testing.assert_allclose(
-                                static_ret, excepted_value, rtol=1e-05
-                            )
-                            np.testing.assert_allclose(
                                 dygraph_ret, excepted_value, rtol=1e-05
                             )
-                            static_functional_ret = test_static(
-                                place,
-                                x_np,
-                                y_np,
-                                p,
-                                epsilon=epsilon,
-                                keepdim=keepdim,
-                            )
+
                             dygraph_functional_ret = test_dygraph(
                                 place,
                                 x_np,
@@ -160,24 +142,56 @@ class TestPairwiseDistance(unittest.TestCase):
                             )
 
                             self.assertEqual(
-                                static_functional_ret.shape,
-                                excepted_value.shape,
-                            )
-                            self.assertEqual(
                                 dygraph_functional_ret.shape,
                                 excepted_value.shape,
                             )
 
                             np.testing.assert_allclose(
-                                static_functional_ret,
-                                excepted_value,
-                                rtol=1e-05,
-                            )
-                            np.testing.assert_allclose(
                                 dygraph_functional_ret,
                                 excepted_value,
                                 rtol=1e-05,
                             )
+
+                            @test_with_pir_api
+                            def dynamic_and_pir_mode_test():
+                                static_ret = test_static(
+                                    place,
+                                    x_np,
+                                    y_np,
+                                    p,
+                                    epsilon=epsilon,
+                                    keepdim=keepdim,
+                                )
+
+                                self.assertEqual(
+                                    static_ret.shape, excepted_value.shape
+                                )
+
+                                np.testing.assert_allclose(
+                                    static_ret, excepted_value, rtol=1e-05
+                                )
+
+                                static_functional_ret = test_static(
+                                    place,
+                                    x_np,
+                                    y_np,
+                                    p,
+                                    epsilon=epsilon,
+                                    keepdim=keepdim,
+                                )
+
+                                self.assertEqual(
+                                    static_functional_ret.shape,
+                                    excepted_value.shape,
+                                )
+
+                                np.testing.assert_allclose(
+                                    static_functional_ret,
+                                    excepted_value,
+                                    rtol=1e-05,
+                                )
+
+                            dynamic_and_pir_mode_test()
 
     def test_pairwise_distance_broadcast_1(self):
         shape_x = [100, 100]
@@ -187,9 +201,7 @@ class TestPairwiseDistance(unittest.TestCase):
         place = paddle.CPUPlace()
         x_np = np.random.random(shape_x).astype('float32')
         y_np = np.random.random(shape_y).astype('float32')
-        static_ret = test_static(
-            place=place, x_np=x_np, y_np=y_np, epsilon=epsilon, keepdim=keepdim
-        )
+
         dygraph_ret = test_dygraph(
             place=place, x_np=x_np, y_np=y_np, epsilon=epsilon, keepdim=keepdim
         )
@@ -197,20 +209,10 @@ class TestPairwiseDistance(unittest.TestCase):
             x_np, y_np, epsilon=epsilon, keepdim=keepdim
         )
 
-        self.assertEqual(static_ret.shape, excepted_value.shape)
         self.assertEqual(dygraph_ret.shape, excepted_value.shape)
 
-        np.testing.assert_allclose(static_ret, excepted_value, rtol=1e-05)
         np.testing.assert_allclose(dygraph_ret, excepted_value, rtol=1e-05)
 
-        static_functional_ret = test_static(
-            place=place,
-            x_np=x_np,
-            y_np=y_np,
-            epsilon=epsilon,
-            keepdim=keepdim,
-            functional=True,
-        )
         dygraph_functional_ret = test_dygraph(
             place=place,
             x_np=x_np,
@@ -220,15 +222,40 @@ class TestPairwiseDistance(unittest.TestCase):
             functional=True,
         )
 
-        self.assertEqual(static_functional_ret.shape, excepted_value.shape)
         self.assertEqual(dygraph_functional_ret.shape, excepted_value.shape)
 
         np.testing.assert_allclose(
-            static_functional_ret, excepted_value, rtol=1e-05
-        )
-        np.testing.assert_allclose(
             dygraph_functional_ret, excepted_value, rtol=1e-05
         )
+
+        @test_with_pir_api
+        def dynamic_and_pir_mode_test():
+            static_ret = test_static(
+                place=place,
+                x_np=x_np,
+                y_np=y_np,
+                epsilon=epsilon,
+                keepdim=keepdim,
+            )
+
+            self.assertEqual(static_ret.shape, excepted_value.shape)
+
+            np.testing.assert_allclose(static_ret, excepted_value, rtol=1e-05)
+            static_functional_ret = test_static(
+                place=place,
+                x_np=x_np,
+                y_np=y_np,
+                epsilon=epsilon,
+                keepdim=keepdim,
+                functional=True,
+            )
+
+            self.assertEqual(static_functional_ret.shape, excepted_value.shape)
+            np.testing.assert_allclose(
+                static_functional_ret, excepted_value, rtol=1e-05
+            )
+
+        dynamic_and_pir_mode_test()
 
     def test_pairwise_distance_broadcast_2(self):
         shape_x = [100, 100]
@@ -238,9 +265,7 @@ class TestPairwiseDistance(unittest.TestCase):
         place = paddle.CPUPlace()
         x_np = np.random.random(shape_x).astype('float32')
         y_np = np.random.random(shape_y).astype('float32')
-        static_ret = test_static(
-            place=place, x_np=x_np, y_np=y_np, epsilon=epsilon, keepdim=keepdim
-        )
+
         dygraph_ret = test_dygraph(
             place=place, x_np=x_np, y_np=y_np, epsilon=epsilon, keepdim=keepdim
         )
@@ -249,20 +274,10 @@ class TestPairwiseDistance(unittest.TestCase):
             x_np, y_np, epsilon=epsilon, keepdim=keepdim
         )
 
-        self.assertEqual(static_ret.shape, excepted_value.shape)
         self.assertEqual(dygraph_ret.shape, excepted_value.shape)
 
-        np.testing.assert_allclose(static_ret, excepted_value, rtol=1e-05)
         np.testing.assert_allclose(dygraph_ret, excepted_value, rtol=1e-05)
 
-        static_functional_ret = test_static(
-            place=place,
-            x_np=x_np,
-            y_np=y_np,
-            epsilon=epsilon,
-            keepdim=keepdim,
-            functional=True,
-        )
         dygraph_functional_ret = test_dygraph(
             place=place,
             x_np=x_np,
@@ -272,16 +287,44 @@ class TestPairwiseDistance(unittest.TestCase):
             functional=True,
         )
 
-        self.assertEqual(static_functional_ret.shape, excepted_value.shape)
         self.assertEqual(dygraph_functional_ret.shape, excepted_value.shape)
 
-        np.testing.assert_allclose(
-            static_functional_ret, excepted_value, rtol=1e-05
-        )
         np.testing.assert_allclose(
             dygraph_functional_ret, excepted_value, rtol=1e-05
         )
 
+        @test_with_pir_api
+        def dynamic_and_pir_mode_test():
+            static_ret = test_static(
+                place=place,
+                x_np=x_np,
+                y_np=y_np,
+                epsilon=epsilon,
+                keepdim=keepdim,
+            )
+
+            self.assertEqual(static_ret.shape, excepted_value.shape)
+
+            np.testing.assert_allclose(static_ret, excepted_value, rtol=1e-05)
+
+            static_functional_ret = test_static(
+                place=place,
+                x_np=x_np,
+                y_np=y_np,
+                epsilon=epsilon,
+                keepdim=keepdim,
+                functional=True,
+            )
+
+            self.assertEqual(static_functional_ret.shape, excepted_value.shape)
+
+            np.testing.assert_allclose(
+                static_functional_ret, excepted_value, rtol=1e-05
+            )
+
+        dynamic_and_pir_mode_test()
+
+    @test_with_pir_api
     def test_pairwise_distance_fp16(self):
         shape = [100, 100]
         if not paddle.device.is_compiled_with_cuda():

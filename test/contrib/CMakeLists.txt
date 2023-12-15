@@ -20,5 +20,4 @@ py_test_modules(
   FLAGS_conv_workspace_size_limit=1000)
 
 set_tests_properties(test_image_classification_fp16 PROPERTIES TIMEOUT 120)
-set_tests_properties(test_weight_decay_extend PROPERTIES TIMEOUT 120)
 set_tests_properties(test_multi_precision_fp16_train PROPERTIES TIMEOUT 120)

@@ -20,10 +20,10 @@ from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.optimizer import AdamOptimizer
+from paddle import base
+from paddle.base import core
+from paddle.base.dygraph.base import to_variable
+from paddle.optimizer import Adam
 
 
 def gen_data():
@@ -66,10 +66,10 @@ class TestDygraphGNN(unittest.TestCase):
     def test_gnn_float32(self):
         paddle.seed(90)
         paddle.framework.random._manual_program_seed(90)
-        startup = fluid.Program()
-        main = fluid.Program()
+        startup = base.Program()
+        main = base.Program()
 
-        scope = fluid.core.Scope()
+        scope = base.core.Scope()
         with new_program_scope(main=main, startup=startup, scope=scope):
             features = paddle.static.data(
                 name='features', shape=[1, 100, 50], dtype='float32'
@@ -92,12 +92,12 @@ class TestDygraphGNN(unittest.TestCase):
             )
             loss = paddle.sum(loss)
 
-            adam = AdamOptimizer(learning_rate=1e-3)
+            adam = Adam(learning_rate=1e-3)
             adam.minimize(loss)
-            exe = fluid.Executor(
-                fluid.CPUPlace()
+            exe = base.Executor(
+                base.CPUPlace()
                 if not core.is_compiled_with_cuda()
-                else fluid.CUDAPlace(0)
+                else base.CUDAPlace(0)
             )
             exe.run(startup)
             static_loss = exe.run(
@@ -113,7 +113,7 @@ class TestDygraphGNN(unittest.TestCase):
                 scope.find_var(model.gc.weight.name).get_tensor()
             )
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             paddle.seed(90)
             paddle.framework.random._manual_program_seed(90)
 
@@ -132,16 +132,14 @@ class TestDygraphGNN(unittest.TestCase):
             )
             loss = paddle.sum(loss)
             loss.backward()
-            adam = AdamOptimizer(
-                learning_rate=1e-3, parameter_list=model.parameters()
-            )
+            adam = Adam(learning_rate=1e-3, parameters=model.parameters())
 
             adam.minimize(loss)
             model.clear_gradients()
             loss_value = loss.numpy()
             model_gc_weight_value = model.gc.weight.numpy()
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             paddle.seed(90)
             paddle.framework.random._manual_program_seed(90)
 
@@ -160,9 +158,7 @@ class TestDygraphGNN(unittest.TestCase):
             )
             loss2 = paddle.sum(loss2)
             loss2.backward()
-            adam2 = AdamOptimizer(
-                learning_rate=1e-3, parameter_list=model2.parameters()
-            )
+            adam2 = Adam(learning_rate=1e-3, parameters=model2.parameters())
             adam2.minimize(loss2)
             model2.clear_gradients()
             loss2_value = loss2.numpy()

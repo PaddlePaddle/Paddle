@@ -14,6 +14,8 @@
 
 import unittest
 
+from dygraph_to_static_utils import Dy2StTestBase, test_legacy_and_pt_and_pir
+
 import paddle
 import paddle.distributed as dist
 from paddle import nn
@@ -38,8 +40,7 @@ class Net(nn.Layer):
 
 def train():
     paddle.distributed.init_parallel_env()
-    net = Net()
-    net = paddle.jit.to_static(net)
+    net = paddle.jit.to_static(Net())
 
     sgd = paddle.optimizer.SGD(learning_rate=0.1, parameters=net.parameters())
     dp_net = paddle.DataParallel(net)
@@ -52,7 +53,8 @@ def train():
         print(loss)
 
 
-class TestParamsNoGrad(unittest.TestCase):
+class TestParamsNoGrad(Dy2StTestBase):
+    @test_legacy_and_pt_and_pir
     def test_two_card(self):
         if (
             paddle.is_compiled_with_cuda()

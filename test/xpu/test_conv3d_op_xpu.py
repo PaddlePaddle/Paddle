@@ -29,7 +29,6 @@ def conv3d_forward_naive(
     padding_algorithm='EXPLICIT',
     data_format="NCDHW",
 ):
-
     if padding_algorithm not in ["SAME", "VALID", "EXPLICIT"]:
         raise ValueError(
             "Unknown Attr(padding_algorithm): '%s'. "
@@ -236,8 +235,8 @@ class XPUTestConv3DOp(XPUOpTestWrapper):
             ).astype(self.dtype)
 
             self.inputs = {
-                'Input': XPUOpTest.np_dtype_to_fluid_dtype(input),
-                'Filter': XPUOpTest.np_dtype_to_fluid_dtype(filter),
+                'Input': XPUOpTest.np_dtype_to_base_dtype(input),
+                'Filter': XPUOpTest.np_dtype_to_base_dtype(filter),
             }
             self.attrs = {
                 'strides': self.stride,
@@ -410,8 +409,8 @@ class XPUTestConv3DOp_v2(XPUOpTestWrapper):
             ).astype(self.dtype)
 
             self.inputs = {
-                'Input': XPUOpTest.np_dtype_to_fluid_dtype(input),
-                'Filter': XPUOpTest.np_dtype_to_fluid_dtype(filter),
+                'Input': XPUOpTest.np_dtype_to_base_dtype(input),
+                'Filter': XPUOpTest.np_dtype_to_base_dtype(filter),
             }
             self.attrs = {
                 'strides': self.stride,
@@ -562,7 +561,6 @@ class XPUTestConv3DOp_v2(XPUOpTestWrapper):
 # --------- test python API ---------------
 class TestConv3DAPI(unittest.TestCase):
     def test_api(self):
-
         input_NDHWC = paddle.static.data(
             name="input_NDHWC",
             shape=[2, 5, 5, 5, 3],

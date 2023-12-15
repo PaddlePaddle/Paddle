@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/core/sparse_coo_tensor.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace phi {
 
@@ -21,7 +22,7 @@ SparseCooTensor::SparseCooTensor() {
   this->SetMember(non_zero_indices, non_zero_elements, {1}, true);
 }
 
-SparseCooTensor::SparseCooTensor(SparseCooTensor&& other) {
+SparseCooTensor::SparseCooTensor(SparseCooTensor&& other) noexcept {
   this->non_zero_elements_ = other.non_zero_elements_;
   this->non_zero_indices_ = other.non_zero_indices_;
   this->coalesced_ = other.coalesced_;
@@ -50,18 +51,22 @@ SparseCooTensor::SparseCooTensor(DenseTensor&& non_zero_indices,
   meta_.dtype = non_zero_elements.dtype();
 }
 
-SparseCooTensor::SparseCooTensor(const SparseCooTensor& other)
-    : non_zero_indices_(other.non_zero_indices_),
-      non_zero_elements_(other.non_zero_elements_) {
+SparseCooTensor::SparseCooTensor(const SparseCooTensor& other) {
+  this->non_zero_indices_ = other.non_zero_indices_;
+  this->non_zero_elements_ = other.non_zero_elements_;
   this->coalesced_ = other.coalesced_;
   set_meta(other.meta());
 }
 
-SparseCooTensor SparseCooTensor::operator=(const SparseCooTensor& other) {
-  this->non_zero_elements_ = other.non_zero_elements_;
-  this->non_zero_indices_ = other.non_zero_indices_;
-  this->coalesced_ = other.coalesced_;
-  set_meta(other.meta());
+SparseCooTensor& SparseCooTensor::operator=(const SparseCooTensor& other) {
+  if (this != &other) {
+    this->non_zero_elements_ = other.non_zero_elements_;
+    this->non_zero_indices_ = other.non_zero_indices_;
+    this->coalesced_ = other.coalesced_;
+    set_meta(other.meta());
+    return *this;
+  }
+
   return *this;
 }
 
@@ -108,7 +113,7 @@ void SparseCooTensor::Resize(const DDim& dense_dims,
       phi::errors::InvalidArgument(
           "the sparse_dim must be less than or equal dense_dims."));
 
-  DDim indices_dims = phi::make_ddim({sparse_dim, non_zero_num});
+  DDim indices_dims = common::make_ddim({sparse_dim, non_zero_num});
   auto dense_dim = dense_dims.size() - sparse_dim;
   DDim values_dims;
   if (dense_dim) {
@@ -117,9 +122,9 @@ void SparseCooTensor::Resize(const DDim& dense_dims,
     memcpy(&dense_dim_vec[1],
            dense_dims.Get() + sparse_dim,
            dense_dim * sizeof(dense_dims[0]));
-    values_dims = phi::make_ddim(dense_dim_vec);
+    values_dims = common::make_ddim(dense_dim_vec);
   } else {
-    values_dims = phi::make_ddim({non_zero_num});
+    values_dims = common::make_ddim({non_zero_num});
   }
 
   this->non_zero_indices_.Resize(indices_dims);
@@ -147,7 +152,7 @@ void SparseCooTensor::SetMember(const DenseTensor& non_zero_indices,
 }
 
 int32_t SparseCooTensor::sparse_dim() const {
-  return non_zero_indices_.dims()[0];
+  return static_cast<int32_t>(non_zero_indices_.dims()[0]);
 }
 
 int32_t SparseCooTensor::dense_dim() const {

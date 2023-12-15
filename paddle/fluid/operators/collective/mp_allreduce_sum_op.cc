@@ -37,7 +37,7 @@ class MpAllReduceSumOp : public framework::OperatorWithKernel {
 
 class MpAllReduceSumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "(Tensor), tensor to be allreduced in model parallel.");
     AddOutput("Out", "(Tensor) the allreduced result in model parallel.");
     AddAttr<int>("ring_id", "(int default 0) communication ring id.")

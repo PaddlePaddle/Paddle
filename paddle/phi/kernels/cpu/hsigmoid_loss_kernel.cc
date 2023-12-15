@@ -45,12 +45,13 @@ void HSigmoidLossKernel(const Context& ctx,
   if (path.get_ptr()) {
     is_custom = true;
   }
-  int64_t code_length = path.get_ptr()
-                            ? path.get_ptr()->dims()[1]
-                            : phi::funcs::FindLastSet(num_classes_st - 1);
+  int64_t code_length =
+      path.get_ptr()
+          ? static_cast<int64_t>(path.get_ptr()->dims()[1])
+          : static_cast<int64_t>(phi::funcs::FindLastSet(num_classes_st - 1));
   int64_t batch_size = x.dims()[0];
   DenseTensor sum;
-  pre_out->Resize(phi::make_ddim({batch_size, code_length}));
+  pre_out->Resize(common::make_ddim({batch_size, code_length}));
   ctx.template Alloc<T>(pre_out);
   auto* pre_out_data = pre_out->data<T>();
   auto pre_out_mat = EigenMatrix<T>::From(*pre_out);
@@ -71,7 +72,7 @@ void HSigmoidLossKernel(const Context& ctx,
   }
 
   std::vector<int64_t> sum_dims({batch_size, 1UL});
-  sum.Resize(phi::make_ddim(sum_dims));
+  sum.Resize(common::make_ddim(sum_dims));
   ctx.template Alloc<T>(&sum);
   auto sum_mat = EigenMatrix<T>::From(sum);
   ctx.template Alloc<T>(out);

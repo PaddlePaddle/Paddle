@@ -14,13 +14,13 @@
 
 import unittest
 
-from hybrid_parallel_mp_model import TestDistMPTraning
+from hybrid_parallel_mp_model import TestDistMPTraining
 
 import paddle
 from paddle.distributed import fleet
 
 
-class TestMPClipGrad(TestDistMPTraning):
+class TestMPClipGrad(TestDistMPTraining):
     def build_optimizer(self, model):
         grad_clip = paddle.nn.ClipGradByGlobalNorm(2.0)
         scheduler = paddle.optimizer.lr.ExponentialDecay(

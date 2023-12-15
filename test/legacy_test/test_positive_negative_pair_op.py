@@ -16,7 +16,7 @@ import itertools
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 
 def py_pnpair_op(score, label, query, column=-1, weight=None):

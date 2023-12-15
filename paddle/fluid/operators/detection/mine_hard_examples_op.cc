@@ -71,8 +71,8 @@ class MineHardExamplesKernel : public framework::OpKernel<T> {
     framework::TensorCopy(
         *in_matched_indices, ctx.GetPlace(), out_match_indices);
 
-    int batch_size = in_matched_indices->dims()[0];
-    int prior_num = in_matched_indices->dims()[1];
+    int batch_size = static_cast<int>(in_matched_indices->dims()[0]);
+    int prior_num = static_cast<int>(in_matched_indices->dims()[1]);
 
     auto match_indices = framework::EigenMatrix<int>::From(*in_matched_indices);
 
@@ -111,7 +111,8 @@ class MineHardExamplesKernel : public framework::OpKernel<T> {
         for (int m = 0; m < prior_num; ++m) {
           if (match_indices(n, m) != -1) ++num_pos;
         }
-        neg_sel = std::min(static_cast<int>(num_pos * neg_pos_ratio), neg_sel);
+        neg_sel = std::min(static_cast<int>(num_pos * neg_pos_ratio),  // NOLINT
+                           neg_sel);
       } else if (mining_type == MiningType::kHardExample) {
         neg_sel = std::min(sample_size, neg_sel);
       }
@@ -151,12 +152,12 @@ class MineHardExamplesKernel : public framework::OpKernel<T> {
     out_neg_indices_lod.emplace_back(batch_starts);
     int neg_offset = 0;
     auto neg_data = out_neg_indices->mutable_data<int>(
-        phi::make_ddim({static_cast<int>(batch_starts.back()), 1}),
+        common::make_ddim({static_cast<int>(batch_starts.back()), 1}),
         ctx.GetPlace());
 
     for (auto neg_indices : all_neg_indices) {
       std::copy(neg_indices.begin(), neg_indices.end(), neg_data + neg_offset);
-      neg_offset += neg_indices.size();
+      neg_offset += static_cast<int>(neg_indices.size());
     }
     out_neg_indices->set_lod(out_neg_indices_lod);
     return;

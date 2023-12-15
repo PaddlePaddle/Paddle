@@ -48,12 +48,12 @@ class WorkQueueImpl : public WorkQueue {
           options.events_waiter->RegisterEvent(kQueueDestructEvent);
     }
     queue_ = new NonblockingThreadPool(options_.name,
-                                       options_.num_threads,
+                                       static_cast<int>(options_.num_threads),
                                        options_.allow_spinning,
                                        options_.always_spinning);
   }
 
-  virtual ~WorkQueueImpl() {
+  ~WorkQueueImpl() override {
     delete queue_;
     if (tracker_ != nullptr) {
       tracker_->~TaskTracker();
@@ -94,7 +94,7 @@ class WorkQueueGroupImpl : public WorkQueueGroup {
   explicit WorkQueueGroupImpl(
       const std::vector<WorkQueueOptions>& queue_options);
 
-  ~WorkQueueGroupImpl();
+  ~WorkQueueGroupImpl() override;
 
   void AddTask(size_t queue_idx, std::function<void()> fn) override;
 
@@ -119,7 +119,7 @@ WorkQueueGroupImpl::WorkQueueGroupImpl(
       tracker_(nullptr) {
   size_t num_queues = queues_options_.size();
   queues_.resize(num_queues);
-  void* buffer = malloc(sizeof(NonblockingThreadPool) * num_queues);
+  void* buffer = malloc(sizeof(NonblockingThreadPool) * num_queues);  // NOLINT
   queues_storage_ = reinterpret_cast<NonblockingThreadPool*>(buffer);
 
   for (size_t idx = 0; idx < num_queues; ++idx) {
@@ -141,7 +141,7 @@ WorkQueueGroupImpl::WorkQueueGroupImpl(
     }
     queues_[idx] = new (&queues_storage_[idx])
         NonblockingThreadPool(options.name,
-                              options.num_threads,
+                              static_cast<int>(options.num_threads),
                               options.allow_spinning,
                               options.always_spinning);
   }
@@ -157,7 +157,7 @@ WorkQueueGroupImpl::~WorkQueueGroupImpl() {
     tracker_->~TaskTracker();
     AlignedFree(tracker_);
   }
-  free(queues_storage_);
+  free(queues_storage_);  // NOLINT
   if (destruct_notifier_) {
     destruct_notifier_->NotifyEvent();
   }

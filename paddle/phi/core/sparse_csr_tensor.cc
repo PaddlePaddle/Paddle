@@ -66,10 +66,10 @@ SparseCsrTensor::SparseCsrTensor(const DenseTensor& non_zero_crows,
   meta_.dtype = non_zero_elements.dtype();
 }
 
-SparseCsrTensor::SparseCsrTensor(const SparseCsrTensor& other)
-    : non_zero_crows_(other.non_zero_crows_),
-      non_zero_cols_(other.non_zero_cols_),
-      non_zero_elements_(other.non_zero_elements_) {
+SparseCsrTensor::SparseCsrTensor(const SparseCsrTensor& other) {
+  this->non_zero_crows_ = other.non_zero_crows_;
+  this->non_zero_cols_ = other.non_zero_cols_;
+  this->non_zero_elements_ = other.non_zero_elements_;
   set_meta(other.meta());
 }
 
@@ -111,10 +111,10 @@ void SparseCsrTensor::Resize(const DDim& dense_dims,
     crows_size = dense_dims[0] * (dense_dims[1] + 1);
   }
 
-  DDim crows_dims = phi::make_ddim({crows_size});
+  DDim crows_dims = common::make_ddim({crows_size});
   this->non_zero_crows_.Resize(crows_dims);
 
-  DDim col_dims = phi::make_ddim({non_zero_num});
+  DDim col_dims = common::make_ddim({non_zero_num});
   this->non_zero_cols_.Resize(col_dims);
   this->non_zero_elements_.Resize(col_dims);
 }

@@ -19,6 +19,7 @@
 #include "paddle/fluid/framework/ir/xpu/quant_utils.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/kernels/concat_kernel.h"
 
 namespace paddle {
@@ -547,17 +548,22 @@ void MultiEncoderXPUFusePass::PrepareQKVWeight(Graph* graph,
 
   phi::DenseTensor qkv_w_int16_t;
   phi::DenseTensor qkv_w_max_t;
+  phi::DenseTensor qkv_scale_max_t;
   qkv_w_int16_t.Resize(
       DDim({q_w_fp32_t.dims()[0] + k_w_fp32_t.dims()[0] + v_w_fp32_t.dims()[0],
             q_w_fp32_t.dims()[1]}));
   qkv_w_int16_t.set_type(q_w_fp32_t.type());
   auto* cpu_ctx = static_cast<phi::CPUContext*>(
       platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+  paddle::experimental::CheckAndTrans2Contiguous(&q_w_fp32_t);
+  paddle::experimental::CheckAndTrans2Contiguous(&k_w_fp32_t);
+  paddle::experimental::CheckAndTrans2Contiguous(&v_w_fp32_t);
   std::vector<const phi::DenseTensor*> in_tensors{
       &q_w_fp32_t, &k_w_fp32_t, &v_w_fp32_t};
   phi::ConcatKernel<float>(*cpu_ctx, in_tensors, 0, &qkv_w_int16_t);
 
-  PrepareWeight<int16_t>(&qkv_w_int16_t, &qkv_w_max_t, false);
+  ConvertWithQuant<float, int16_t>(
+      &qkv_w_int16_t, &qkv_w_max_t, &qkv_scale_max_t, false);
   size_t qkv_w_int16_hash = HashTensor<int16_t>(qkv_w_int16_t);
   size_t qkv_w_max_hash = HashTensor<float>(qkv_w_max_t);
   std::string qkv_w_int16_name = std::to_string(qkv_w_int16_hash);
@@ -568,7 +574,7 @@ void MultiEncoderXPUFusePass::PrepareQKVWeight(Graph* graph,
     // Update qkv_w_int16 var_desc in block
     VarDesc qkv_w_int16_desc(qkv_w_int16_name);
     qkv_w_int16_desc.SetPersistable(true);
-    qkv_w_int16_desc.SetShape(vectorize(qkv_w_int16_t.dims()));
+    qkv_w_int16_desc.SetShape(common::vectorize(qkv_w_int16_t.dims()));
     qkv_w_int16_desc.SetDataType(
         framework::TransToProtoVarType(qkv_w_int16_t.dtype()));
     *qkv_w_int16 = graph->CreateVarNode(&qkv_w_int16_desc);
@@ -580,7 +586,7 @@ void MultiEncoderXPUFusePass::PrepareQKVWeight(Graph* graph,
     // Update qkv_w_max var_desc in block
     VarDesc qkv_w_max_desc(qkv_w_max_name);
     qkv_w_max_desc.SetPersistable(true);
-    qkv_w_max_desc.SetShape(vectorize(qkv_w_max_t.dims()));
+    qkv_w_max_desc.SetShape(common::vectorize(qkv_w_max_t.dims()));
     qkv_w_max_desc.SetDataType(proto::VarType::Type::VarType_Type_FP32);
     *qkv_w_max = graph->CreateVarNode(&qkv_w_max_desc);
     auto* block_qkv_w_max_desc = block->Var(qkv_w_max_name);
@@ -665,7 +671,7 @@ void MultiEncoderXPUFusePass::PrepareQKVBias(Graph* graph,
     // Update qkv_bias var_desc in block
     VarDesc qkv_bias_desc(qkv_bias_name);
     qkv_bias_desc.SetPersistable(true);
-    qkv_bias_desc.SetShape(vectorize(qkv_bias_tensor.dims()));
+    qkv_bias_desc.SetShape(common::vectorize(qkv_bias_tensor.dims()));
     qkv_bias_desc.SetDataType(
         framework::TransToProtoVarType(qkv_bias_tensor.dtype()));
     *qkv_bias = graph->CreateVarNode(&qkv_bias_desc);
@@ -809,16 +815,19 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
                      &qkv_w_int16,
                      &qkv_w_max);
 
-#define PREPARE_QKV_MATMUL_W(idx_)                     \
-  Node* qkv_matmul_##idx_##_w_int16 = nullptr;         \
-  Node* qkv_matmul_##idx_##_w_max = nullptr;           \
-  PrepareWeight<int16_t>(graph,                        \
-                         scope,                        \
-                         block,                        \
-                         qkv_matmul_##idx_##_w,        \
-                         &qkv_matmul_##idx_##_w_int16, \
-                         &qkv_matmul_##idx_##_w_max,   \
-                         true);
+#define PREPARE_QKV_MATMUL_W(idx_)                              \
+  Node* qkv_matmul_##idx_##_w_int16 = nullptr;                  \
+  Node* qkv_matmul_##idx_##_w_max = nullptr;                    \
+  Node* qkv_matmul_##idx_##_scale_max = nullptr;                \
+  PrepareWeight<float, int16_t>(graph,                          \
+                                scope,                          \
+                                block,                          \
+                                qkv_matmul_##idx_##_w,          \
+                                &qkv_matmul_##idx_##_w_int16,   \
+                                &qkv_matmul_##idx_##_w_max,     \
+                                &qkv_matmul_##idx_##_scale_max, \
+                                true,                           \
+                                std::vector<float>({}));
     PREPARE_QKV_MATMUL_W(1);
     PREPARE_QKV_MATMUL_W(2);
     PREPARE_QKV_MATMUL_W(3);

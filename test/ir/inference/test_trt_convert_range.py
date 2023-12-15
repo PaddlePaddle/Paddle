@@ -156,7 +156,7 @@ class TrtConvertRangeStaticTest(TrtLayerAutoScanTest):
         def generate_input2():
             return np.array([1]).astype(np.int32)
 
-        for in_dtype in [2, 5]:
+        for in_dtype in [2]:
             self.in_dtype = in_dtype
             dics = [{}]
             ops_config = [

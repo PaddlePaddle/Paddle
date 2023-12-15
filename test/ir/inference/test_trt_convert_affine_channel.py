@@ -46,7 +46,6 @@ class TrtConvertAffineChannelTest(TrtLayerAutoScanTest):
         for dims in [2, 4]:
             for batch in [1, 2, 4]:
                 for data_layout in ["NCHW", "NHWC"]:
-
                     self.dims = dims
                     dics = [{"data_layout": data_layout}]
 

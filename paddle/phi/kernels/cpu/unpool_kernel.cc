@@ -38,12 +38,12 @@ void UnpoolKernel(const Context& dev_ctx,
     phi::funcs::SetConstant<Context, T> set_zero;
     set_zero(dev_ctx, out, static_cast<T>(0));
   }
-  const int batch_size = x.dims()[0];
-  const int input_height = x.dims()[2];
-  const int input_width = x.dims()[3];
-  const int output_channels = out->dims()[1];
-  const int output_height = out->dims()[2];
-  const int output_width = out->dims()[3];
+  const int batch_size = static_cast<int>(x.dims()[0]);
+  const int input_height = static_cast<int>(x.dims()[2]);
+  const int input_width = static_cast<int>(x.dims()[3]);
+  const int output_channels = static_cast<int>(out->dims()[1]);
+  const int output_height = static_cast<int>(out->dims()[2]);
+  const int output_width = static_cast<int>(out->dims()[3]);
   int input_feasize = input_height * input_width;
   int output_feasize = output_height * output_width;
   const T* input_data = x.data<T>();
@@ -87,14 +87,14 @@ void Unpool3dKernel(const Context& dev_ctx,
     phi::funcs::SetConstant<Context, T> set_zero;
     set_zero(dev_ctx, out, static_cast<T>(0));
   }
-  const int batch_size = x.dims()[0];
-  const int input_depth = x.dims()[2];
-  const int input_height = x.dims()[3];
-  const int input_width = x.dims()[4];
-  const int output_channels = out->dims()[1];
-  const int output_depth = out->dims()[2];
-  const int output_height = out->dims()[3];
-  const int output_width = out->dims()[4];
+  const int batch_size = static_cast<int>(x.dims()[0]);
+  const int input_depth = static_cast<int>(x.dims()[2]);
+  const int input_height = static_cast<int>(x.dims()[3]);
+  const int input_width = static_cast<int>(x.dims()[4]);
+  const int output_channels = static_cast<int>(out->dims()[1]);
+  const int output_depth = static_cast<int>(out->dims()[2]);
+  const int output_height = static_cast<int>(out->dims()[3]);
+  const int output_width = static_cast<int>(out->dims()[4]);
   int input_feasize = input_depth * input_height * input_width;
   int output_feasize = output_depth * output_height * output_width;
   const T* input_data = x.data<T>();

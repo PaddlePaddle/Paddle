@@ -224,7 +224,7 @@ std::string GenerateOpFunctionsBody(
         output.duplicable() ? OUT_VAR_LIST_TYPE : OUT_VAR_TYPE;
 
     if (FindPassingOutsMap(op_type, out_name)) {
-      if (input_args != "") {
+      if (!input_args.empty()) {
         input_args += ",";
       }
       input_args += out_type;
@@ -262,7 +262,7 @@ std::string GenerateOpFunctionsBody(
       // split op. We need to specify the number of variables for the
       // duplicable output, as the argument OutNum;
       if (output.duplicable()) {
-        if (input_args != "") {
+        if (!input_args.empty()) {
           input_args += ",";
         }
         auto out_num_str =
@@ -335,7 +335,7 @@ std::string GenerateOpFunctionsBody(
   }
 
   std::string function_args = "";
-  if (input_args == "") {
+  if (!input_args.empty()) {
     function_args = FUNCTION_ARGS_NO_INPUT;
   } else {
     function_args = paddle::string::Sprintf(FUNCTION_ARGS, input_args);
@@ -477,7 +477,7 @@ GenerateOpFunctions() {
   return std::make_tuple(op_function_list, bind_function_list);
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[]) {  // NOLINT
   if (argc != 2) {
     std::cerr << "argc must be 2" << std::endl;
     return -1;
@@ -488,11 +488,11 @@ int main(int argc, char* argv[]) {
   paddle::operators::RegisterCustomDeviceCommonKernel("fake_device");
 #endif
 
+  const std::string str = "\"paddle/fluid/eager/api/generated/fluid_generated/";
   std::vector<std::string> headers{
       "<Python.h>",
       "\"paddle/fluid/platform/enforce.h\"",
-      "\"paddle/fluid/eager/api/generated/fluid_generated/"
-      "dygraph_forward_api.h\"",
+      str + "dygraph_forward_api.h\"",
       "\"paddle/fluid/pybind/eager_utils.h\"",
       "\"paddle/fluid/platform/profiler/event_tracing.h\"",
       "\"paddle/fluid/pybind/exception.h\"",

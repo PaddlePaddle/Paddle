@@ -24,7 +24,7 @@
 #include "paddle/phi/kernels/funcs/adam_functors.h"
 #include "paddle/phi/kernels/funcs/jit/kernels.h"
 
-DECLARE_int32(inner_op_parallelism);
+PD_DECLARE_int32(inner_op_parallelism);
 
 namespace phi {
 

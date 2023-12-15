@@ -34,7 +34,7 @@ void CrossEntropy(const CPUContext& dev_ctx,
                   DenseTensor* out) {
   const int rank = x.dims().size();
   const int axis_v = phi::funcs::CanonicalAxis(axis, rank);
-  int axis_dim = x.dims()[axis_v];
+  int axis_dim = static_cast<int>(x.dims()[axis_v]);
 
   PADDLE_ENFORCE_GT(
       axis_dim,

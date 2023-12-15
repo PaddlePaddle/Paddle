@@ -115,11 +115,11 @@ TEST(MultiHeadMatmulFusePass, basic) {
 
   auto pass = PassRegistry::Instance().Get("multihead_matmul_fuse_pass_v2");
   if (pass.get() == nullptr) LOG(INFO) << "asdfasdf";
-  int num_nodes_before = graph->Nodes().size();
+  int num_nodes_before = static_cast<int>(graph->Nodes().size());
   VLOG(3) << DebugString(graph);
 
   graph.reset(pass->Apply(graph.release()));
-  int num_nodes_after = graph->Nodes().size();
+  int num_nodes_after = static_cast<int>(graph->Nodes().size());
   int num_fused_nodes_after = GetNumOpNodes(graph, "multihead_matmul");
   VLOG(3) << DebugString(graph);
 

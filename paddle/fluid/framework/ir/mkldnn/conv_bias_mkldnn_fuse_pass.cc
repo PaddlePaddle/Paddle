@@ -338,7 +338,7 @@ void ConvBiasFusePass::FuseConvBias(ir::Graph* graph,
     bool has_bias = std::find(input_names.begin(), input_names.end(), "Bias") !=
                     input_names.end();
 
-    if (has_bias && conv->Op()->Input("Bias").size() > 0) {
+    if (has_bias && !conv->Op()->Input("Bias").empty()) {
       auto conv_bias_names = conv->Op()->Input("Bias");
       // add eltwise bias to existing conv bias
       PADDLE_ENFORCE_EQ(conv_bias_names.size(),
@@ -354,8 +354,9 @@ void ConvBiasFusePass::FuseConvBias(ir::Graph* graph,
               "must have same shape, but they are different: %s, %s.",
               conv_bias_tensor->dims(),
               eltwise_bias_tensor->dims()));
-      *conv_bias_tensor = tensor_apply_eltwise(
-          *conv_bias_tensor, *eltwise_bias_tensor, std::plus<float>());
+      *conv_bias_tensor = tensor_apply_eltwise(*conv_bias_tensor,
+                                               *eltwise_bias_tensor,
+                                               std::plus<float>());  // NOLINT
 
       conv->Op()->SetOutput("Output",
                             std::vector<std::string>({eltwise_out->Name()}));

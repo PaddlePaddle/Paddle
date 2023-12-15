@@ -12,17 +12,7 @@ set_source_files_properties(
 set_source_files_properties(rpc_agent.cc PROPERTIES COMPILE_FLAGS
                                                     ${DISTRIBUTE_COMPILE_FLAGS})
 
-set(PADDLE_RPC_DEPS
-    brpc
-    ssl
-    crypto
-    protobuf
-    zlib
-    leveldb
-    snappy
-    phi
-    glog
-    pybind)
+set(PADDLE_RPC_DEPS ${EXTERNAL_BRPC_DEPS} zlib phi common pybind)
 proto_library(paddle_rpc_proto SRCS rpc.proto)
 cc_library(
   paddle_rpc

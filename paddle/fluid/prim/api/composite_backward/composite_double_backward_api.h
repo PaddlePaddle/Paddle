@@ -20,11 +20,11 @@
 
 #include <math.h>
 
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/prim/api/all.h"
 #include "paddle/fluid/prim/api/generated_prim/prim_generated_api.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/int_array.h"
-#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace prim {
@@ -54,6 +54,76 @@ void tanh_double_grad(const Tensor& out,
 }
 
 template <typename T>
+void tanh_triple_grad(const Tensor& out,
+                      const Tensor& grad_out_forward,
+                      const Tensor& grad_x_grad_forward,
+                      const paddle::optional<Tensor>& grad_out_new_grad,
+                      const paddle::optional<Tensor>& grad_out_grad_grad,
+                      Tensor* out_grad,
+                      Tensor* grad_out_forward_grad,
+                      Tensor* grad_x_grad_forward_grad) {
+  if (out_grad) {
+    if (grad_out_grad_grad) {
+      if (grad_out_new_grad) {
+        auto out_grad_tmp =
+            (-2 * out * grad_x_grad_forward * grad_out_grad_grad.get()) -
+            (2 * grad_out_forward * grad_x_grad_forward *
+             grad_out_new_grad.get());
+        set_output<T>(out_grad_tmp, out_grad);
+      } else {
+        auto out_grad_tmp =
+            -2 * out * grad_x_grad_forward * grad_out_grad_grad.get();
+        set_output<T>(out_grad_tmp, out_grad);
+      }
+    } else {
+      if (grad_out_new_grad) {
+        auto out_grad_tmp = -(2 * grad_out_forward * grad_x_grad_forward *
+                              grad_out_new_grad.get());
+        set_output<T>(out_grad_tmp, out_grad);
+      } else {
+        auto out_grad_tmp = 0 * out;
+        set_output<T>(out_grad_tmp, out_grad);
+      }
+    }
+  }
+
+  if (grad_out_forward_grad) {
+    if (grad_out_new_grad) {
+      auto grad_out_forward_grad_tmp =
+          -2 * out * grad_x_grad_forward * grad_out_new_grad.get();
+      set_output<T>(grad_out_forward_grad_tmp, grad_out_forward_grad);
+    } else {
+      auto grad_out_forward_grad_tmp = 0 * out;
+      set_output<T>(grad_out_forward_grad_tmp, grad_out_forward_grad);
+    }
+  }
+
+  if (grad_x_grad_forward_grad) {
+    if (grad_out_grad_grad) {
+      if (grad_out_new_grad) {
+        auto grad_x_grad_forward_grad_tmp =
+            (1 - (out * out)) * grad_out_grad_grad.get() -
+            2 * out * grad_out_forward * grad_out_new_grad.get();
+        set_output<T>(grad_x_grad_forward_grad_tmp, grad_x_grad_forward_grad);
+      } else {
+        auto grad_x_grad_forward_grad_tmp =
+            (1 - (out * out)) * grad_out_grad_grad.get();
+        set_output<T>(grad_x_grad_forward_grad_tmp, grad_x_grad_forward_grad);
+      }
+    } else {
+      if (grad_out_new_grad) {
+        auto grad_x_grad_forward_grad_tmp =
+            -(2 * out * grad_out_forward * grad_out_new_grad.get());
+        set_output<T>(grad_x_grad_forward_grad_tmp, grad_x_grad_forward_grad);
+      } else {
+        auto grad_x_grad_forward_grad_tmp = 0 * grad_x_grad_forward;
+        set_output<T>(grad_x_grad_forward_grad_tmp, grad_x_grad_forward_grad);
+      }
+    }
+  }
+}
+
+template <typename T>
 void matmul_double_grad(const Tensor& x,
                         const Tensor& y,
                         const Tensor& grad_out,
@@ -65,9 +135,9 @@ void matmul_double_grad(const Tensor& x,
                         Tensor* y_grad,
                         Tensor* grad_out_grad) {
   // Get dims from the input x, y, output_grad
-  std::vector<std::int64_t> x_dims = vectorize(x.dims());
-  std::vector<std::int64_t> y_dims = vectorize(y.dims());
-  std::vector<std::int64_t> grad_out_dims = vectorize(grad_out.dims());
+  std::vector<std::int64_t> x_dims = common::vectorize(x.dims());
+  std::vector<std::int64_t> y_dims = common::vectorize(y.dims());
+  std::vector<std::int64_t> grad_out_dims = common::vectorize(grad_out.dims());
 
   int x_ndim = x_dims.size();
   int y_ndim = y_dims.size();
@@ -314,12 +384,13 @@ void matmul_double_grad(const Tensor& x,
   }
 
   // recover the original dim of output (delete 1)
-  std::vector<int64_t> dx_dims =
-      dx.initialized() ? vectorize(dx.dims()) : std::vector<int64_t>({});
-  std::vector<int64_t> dy_dims =
-      dy.initialized() ? vectorize(dy.dims()) : std::vector<int64_t>({});
-  std::vector<int64_t> ddout_dims =
-      ddout.initialized() ? vectorize(ddout.dims()) : std::vector<int64_t>({});
+  std::vector<int64_t> dx_dims = dx.initialized() ? common::vectorize(dx.dims())
+                                                  : std::vector<int64_t>({});
+  std::vector<int64_t> dy_dims = dy.initialized() ? common::vectorize(dy.dims())
+                                                  : std::vector<int64_t>({});
+  std::vector<int64_t> ddout_dims = ddout.initialized()
+                                        ? common::vectorize(ddout.dims())
+                                        : std::vector<int64_t>({});
   if (x_ndim == 1 && y_ndim == 1) {
     if (dx.initialized() && dx_dims[0] == 1) {
       dx = reshape<T>(dx, IntArray(x_dims));
@@ -369,7 +440,7 @@ void silu_double_grad(const Tensor& x,
                       const Tensor& grad_x_grad,
                       Tensor* grad_x,
                       Tensor* grad_out_grad) {
-  auto sigmoid = out / x;
+  auto sigmoid = 1 / (1 + exp<T>(-x));
   auto tmp1 = 1 - sigmoid;
   auto tmp2 = 1 + tmp1 * x;
   if (grad_out_grad) {
@@ -377,8 +448,7 @@ void silu_double_grad(const Tensor& x,
     set_output<T>(ddout, grad_out_grad);
   }
   if (grad_x) {
-    auto dx =
-        sigmoid * grad_x_grad * out_grad * (1 + (tmp2 - x * sigmoid)) * tmp1;
+    auto dx = sigmoid * grad_x_grad * out_grad * (1 + (tmp2 - out)) * tmp1;
     set_output<T>(dx, grad_x);
   }
 }
@@ -401,7 +471,7 @@ void multiply_double_grad(const Tensor& x,
         if (!axes.size()) {
           set_output<T>(dx, x_grad);
         } else {
-          auto dx_reduce = dx.sum(phi::vectorize(axes), dx.dtype(), false);
+          auto dx_reduce = dx.sum(common::vectorize(axes), dx.dtype(), false);
           if (dx_reduce.dims().size() != x.dims().size()) {
             dx_reduce = reshape<T>(dx_reduce, x.shape());
           }
@@ -412,7 +482,8 @@ void multiply_double_grad(const Tensor& x,
       }
 
     } else {
-      x_grad = nullptr;
+      auto dx = full<T>(common::vectorize(x.dims()), 0.0, x.dtype());
+      set_output<T>(dx, x_grad);
     }
   }
   if (y_grad) {
@@ -423,7 +494,7 @@ void multiply_double_grad(const Tensor& x,
         if (!axes.size()) {
           set_output<T>(dy, y_grad);
         } else {
-          auto dy_reduce = dy.sum(phi::vectorize(axes), dy.dtype(), false);
+          auto dy_reduce = dy.sum(common::vectorize(axes), dy.dtype(), false);
           if (dy_reduce.dims().size() != y.dims().size()) {
             dy_reduce = reshape<T>(dy_reduce, y.shape());
           }
@@ -433,22 +504,23 @@ void multiply_double_grad(const Tensor& x,
         set_output<T>(dy, y_grad);
       }
     } else {
-      y_grad = nullptr;
+      auto dy = full<T>(common::vectorize(y.dims()), 0.0, y.dtype());
+      set_output<T>(dy, y_grad);
     }
   }
   if (grad_out_grad) {
+    Tensor ddout;
     if (grad_x_grad && grad_y_grad) {
-      auto ddout = grad_x_grad.get() * y + grad_y_grad.get() * x;
-      set_output<T>(ddout, grad_out_grad);
+      ddout = grad_x_grad.get() * y + grad_y_grad.get() * x;
     } else if (grad_x_grad) {
-      auto ddout = grad_x_grad.get() * y;
-      set_output<T>(ddout, grad_out_grad);
+      ddout = grad_x_grad.get() * y;
     } else if (grad_y_grad) {
-      auto ddout = grad_y_grad.get() * x;
-      set_output<T>(ddout, grad_out_grad);
+      ddout = grad_y_grad.get() * x;
     } else {
-      grad_out_grad = nullptr;
+      ddout =
+          full<T>(common::vectorize(grad_out.dims()), 0.0, grad_out.dtype());
     }
+    set_output<T>(ddout, grad_out_grad);
   }
 }
 
@@ -461,10 +533,10 @@ void add_double_grad(const Tensor& y,
                      Tensor* grad_out_grad) {
   if (grad_out_grad) {
     // ddout = ddx + ddy
+    Tensor ddout = full<T>(common::vectorize(grad_out.dims()), 0.0, y.dtype());
     if (!grad_x_grad && !grad_y_grad) {
-      grad_out_grad = nullptr;
+      set_output<T>(ddout, grad_out_grad);
     } else {
-      Tensor ddout = full<T>(phi::vectorize(grad_out.dims()), 0.0, y.dtype());
       if (grad_x_grad) {
         ddout = ddout + grad_x_grad.get();
       }
@@ -493,9 +565,9 @@ void add_triple_grad(const paddle::optional<Tensor>& grad_grad_x,
           by_pass<T>(grad_grad_out_grad, grad_grad_y_grad);
         } else {
           auto dddy_reduce_res = grad_grad_out_grad.sum(
-              phi::vectorize(reduce_dim), grad_grad_y.get().dtype(), false);
-          auto dddy_tmp = reshape<T>(dddy_reduce_res,
-                                     phi::vectorize(grad_grad_y.get().dims()));
+              common::vectorize(reduce_dim), grad_grad_y.get().dtype(), false);
+          auto dddy_tmp = reshape<T>(
+              dddy_reduce_res, common::vectorize(grad_grad_y.get().dims()));
           set_output<T>(dddy_tmp, grad_grad_y_grad);
         }
       } else {
@@ -515,9 +587,9 @@ void add_triple_grad(const paddle::optional<Tensor>& grad_grad_x,
           by_pass<T>(grad_grad_out_grad, grad_grad_x_grad);
         } else {
           auto dddx_reduce_res = grad_grad_out_grad.sum(
-              phi::vectorize(reduce_dim), grad_grad_x.get().dtype(), false);
-          auto dddx_tmp = reshape<T>(dddx_reduce_res,
-                                     phi::vectorize(grad_grad_x.get().dims()));
+              common::vectorize(reduce_dim), grad_grad_x.get().dtype(), false);
+          auto dddx_tmp = reshape<T>(
+              dddx_reduce_res, common::vectorize(grad_grad_x.get().dims()));
           set_output<T>(dddx_tmp, grad_grad_x_grad);
         }
       } else {
@@ -541,7 +613,8 @@ void subtract_double_grad(const Tensor& y,
     if (!grad_x_grad && !grad_y_grad) {
       grad_out_grad = nullptr;
     } else {
-      Tensor ddout = full<T>(phi::vectorize(grad_out.dims()), 0.0, y.dtype());
+      Tensor ddout =
+          full<T>(common::vectorize(grad_out.dims()), 0.0, y.dtype());
       if (grad_x_grad) {
         ddout = ddout + grad_x_grad.get();
       }

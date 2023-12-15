@@ -37,11 +37,11 @@ class GRUUnitOp : public framework::OperatorWithKernel {
     auto input_dims = ctx->GetInputDim("Input");
     auto hidden_prev_dims = ctx->GetInputDim("HiddenPrev");
     auto weight_dims = ctx->GetInputDim("Weight");
-    int batch_size = input_dims[0];
-    int input_size = input_dims[1];
-    int frame_size = hidden_prev_dims[1];
-    int weight_height = weight_dims[0];
-    int weight_width = weight_dims[1];
+    int batch_size = static_cast<int>(input_dims[0]);
+    int input_size = static_cast<int>(input_dims[1]);
+    int frame_size = static_cast<int>(hidden_prev_dims[1]);
+    int weight_height = static_cast<int>(weight_dims[0]);
+    int weight_width = static_cast<int>(weight_dims[1]);
     if (ctx->IsRuntime() || input_size >= 0) {
       PADDLE_ENFORCE_EQ(input_size,
                         frame_size * 3,
@@ -77,8 +77,8 @@ class GRUUnitOp : public framework::OperatorWithKernel {
 
     if (ctx->HasInput("Bias")) {
       auto bias_dims = ctx->GetInputDim("Bias");
-      int bias_height = bias_dims[0];
-      int bias_width = bias_dims[1];
+      int bias_height = static_cast<int>(bias_dims[0]);
+      int bias_width = static_cast<int>(bias_dims[1]);
       PADDLE_ENFORCE_EQ(
           bias_height,
           1,
@@ -195,10 +195,10 @@ class GRUUnitGradOp : public framework::OperatorWithKernel {
     auto hidden_prev_dims = ctx->GetInputDim("HiddenPrev");
     auto weight_dims = ctx->GetInputDim("Weight");
     // int batch_size = input_dims[0];
-    int input_size = input_dims[1];
-    int frame_size = hidden_prev_dims[1];
-    int weight_height = weight_dims[0];
-    int weight_width = weight_dims[1];
+    int input_size = static_cast<int>(input_dims[1]);
+    int frame_size = static_cast<int>(hidden_prev_dims[1]);
+    int weight_height = static_cast<int>(weight_dims[0]);
+    int weight_width = static_cast<int>(weight_dims[1]);
     if (ctx->IsRuntime() || input_size >= 0) {
       PADDLE_ENFORCE_EQ(
           input_size,
@@ -234,8 +234,8 @@ class GRUUnitGradOp : public framework::OperatorWithKernel {
             frame_size * 3));
     if (ctx->HasInput("Bias")) {
       auto bias_dims = ctx->GetInputDim("Bias");
-      int bias_height = bias_dims[0];
-      int bias_width = bias_dims[1];
+      int bias_height = static_cast<int>(bias_dims[0]);
+      int bias_width = static_cast<int>(bias_dims[1]);
 
       PADDLE_ENFORCE_EQ(
           bias_height,

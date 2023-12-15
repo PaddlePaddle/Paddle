@@ -138,7 +138,7 @@ TEST(test_prepare_op, test_prepare_data) {
 
   // prepare an cpu only input
   auto* vin_tensor = vin->MutableVar()->GetMutable<phi::DenseTensor>();
-  vin_tensor->Resize(phi::make_ddim(dims));
+  vin_tensor->Resize(common::make_ddim(dims));
   auto* vin_mutable_tensor = vin_tensor->mutable_data<float>(cpu_place);
   paddle::memory::Copy(cpu_place,
                        vin_mutable_tensor,
@@ -196,7 +196,7 @@ void TestPrepareDataSamePlace(framework::AttributeMap attr_map) {
 
   // prepare an cpu only input
   auto* vin_tensor = vin->MutableVar()->GetMutable<phi::DenseTensor>();
-  vin_tensor->Resize(phi::make_ddim(dims));
+  vin_tensor->Resize(common::make_ddim(dims));
   auto* vin_mutable_tensor = vin_tensor->mutable_data<float>(cpu_place);
   paddle::memory::Copy(cpu_place,
                        vin_mutable_tensor,
@@ -249,7 +249,7 @@ TEST(test_prepare_op, test_complex_eager) {
   TestHandleComplexGradToRealGradEager(outs);
 }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 TEST(test_prepare_op, test_prepare_data_cpu_mkldnn) {
   TestPrepareDataSamePlace({{"use_mkldnn", true}});
 }
@@ -259,6 +259,6 @@ TEST(test_prepare_op, test_prepare_data_cpu_mkldnn) {
 
 USE_OP_ITSELF(split);
 USE_OP_ITSELF(relu);
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 PD_DECLARE_KERNEL(relu, OneDNN, ONEDNN);
 #endif

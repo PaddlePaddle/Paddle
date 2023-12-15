@@ -73,8 +73,8 @@ TEST(Place, convert_place) {
   maps[phi::GPUPlace(2)] = 4;
   maps[phi::GPUPlace(3)] = 5;
   maps[phi::GPUPinnedPlace()] = 6;
-  for (auto iter = maps.begin(); iter != maps.end(); ++iter) {
-    std::cout << iter->first << ":" << iter->second << std::endl;
+  for (auto& map_item : maps) {
+    std::cout << map_item.first << ":" << map_item.second << std::endl;
   }
 }
 

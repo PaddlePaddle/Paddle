@@ -15,8 +15,11 @@
 
 import numpy as np
 
+import paddle
+from paddle.base.data_feeder import convert_dtype
+
 # TODO: define framework api
-from paddle.fluid.layer_helper_base import LayerHelperBase
+from paddle.base.layer_helper_base import LayerHelperBase
 
 __all__ = []
 
@@ -26,7 +29,7 @@ def set_default_dtype(d):
     Set default dtype. The default dtype is initially float32.
 
     Args:
-        d(string|np.dtype): the dtype to make the default. It only
+        d(string|paddle.dtype|np.dtype): the dtype to make the default. It only
                             supports float16, bfloat16, float32 and float64.
 
     Returns:
@@ -35,8 +38,8 @@ def set_default_dtype(d):
     Examples:
         .. code-block:: python
 
-            import paddle
-            paddle.set_default_dtype("float32")
+            >>> import paddle
+            >>> paddle.set_default_dtype("float32")
 
     """
     if isinstance(d, type):
@@ -49,6 +52,12 @@ def set_default_dtype(d):
                 ", but received %s" % d.__name__
             )
     else:
+        if isinstance(d, paddle.dtype):
+            d = convert_dtype(d)
+            # NOTE(Xuxinyi04) The underlying implementation type of
+            # paddle.bfloat16 is 'uint16'. In order to make the implementation
+            # transparent to users, it is artificially converted to 'bfloat16'.
+            d = 'bfloat16' if d == 'uint16' else d
         # This branch is for str
         if d in ['float16', 'float32', 'float64', 'bfloat16']:
             # NOTE(SigureMo): Since the np.dtype object is not an instance of
@@ -76,7 +85,7 @@ def get_default_dtype():
     Examples:
         .. code-block:: python
 
-            import paddle
-            paddle.get_default_dtype()
+            >>> import paddle
+            >>> paddle.get_default_dtype()
     """
     return LayerHelperBase.get_default_dtype()

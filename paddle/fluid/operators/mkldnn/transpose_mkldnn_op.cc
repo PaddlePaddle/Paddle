@@ -44,7 +44,7 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       return;
     }
 
-    auto x_vec_dims = phi::vectorize(x->dims());
+    auto x_vec_dims = common::vectorize(x->dims());
 
     auto x_type = phi::funcs::ToOneDNNDataType(x->dtype());
     phi::funcs::ReorderOneDNNHandler reorder_handler(
@@ -55,13 +55,13 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     auto dst_md =
         dnnl::memory::desc(x_vec_dims,
-                           x->mem_desc().data_type(),
+                           x->mem_desc().get_data_type(),
                            phi::funcs::GetPlainOneDNNFormat(x_vec_dims.size()));
     auto dst_strides =
-        phi::funcs::FakeTransposeStrides(dst_md.dims(), transpose_axis);
+        phi::funcs::FakeTransposeStrides(dst_md.get_dims(), transpose_axis);
 
-    dst_md =
-        dnnl::memory::desc(x_vec_dims, x->mem_desc().data_type(), dst_strides);
+    dst_md = dnnl::memory::desc(
+        x_vec_dims, x->mem_desc().get_data_type(), dst_strides);
     auto dst_data =
         out->mutable_data(ctx.GetPlace(), x->type(), dst_md.get_size());
 
@@ -105,7 +105,7 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
       return;
     }
 
-    auto dout_vec_dims = phi::vectorize(dout->dims());
+    auto dout_vec_dims = common::vectorize(dout->dims());
     auto dout_type = phi::funcs::ToOneDNNDataType(dout->dtype());
 
     phi::funcs::ReorderOneDNNHandler reorder_handler(

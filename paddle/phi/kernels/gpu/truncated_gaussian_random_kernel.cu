@@ -124,4 +124,5 @@ PD_REGISTER_KERNEL(truncated_gaussian_random,
                    GPU,
                    ALL_LAYOUT,
                    phi::TruncatedGaussianRandomKernel,
-                   float) {}
+                   float,
+                   double) {}

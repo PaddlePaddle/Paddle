@@ -14,10 +14,10 @@
 
 #include "paddle/phi/kernels/pow2_decay_with_linear_warmup_kernel.h"
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/core/macros.h"
 
 namespace phi {
 
@@ -41,7 +41,7 @@ void Pow2DecayWithLinearWarmupKernel(const Context& dev_ctx,
                     phi::errors::InvalidArgument(
                         "Input(Step) and Output(StepOut) must be the same."));
   PADDLE_ENFORCE_EQ(
-      step.IsInitialized(),
+      step.initialized(),
       true,
       phi::errors::InvalidArgument("Input(Step) must be initialized."));
 
@@ -68,4 +68,7 @@ PD_REGISTER_KERNEL(pow2_decay_with_linear_warmup,
                    XPU,
                    ALL_LAYOUT,
                    phi::Pow2DecayWithLinearWarmupKernel,
-                   float) {}
+                   float) {
+  kernel->InputAt(1).SetDataType(phi::DataType::INT64);
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
+}

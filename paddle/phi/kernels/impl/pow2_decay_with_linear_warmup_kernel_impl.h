@@ -14,8 +14,8 @@
 
 #pragma once
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/macros.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 
 namespace phi {
@@ -85,7 +85,7 @@ void Pow2DecayWithLinearWarmupKernel(const Context& dev_ctx,
                     phi::errors::InvalidArgument(
                         "Input(Step) and Output(StepOut) must be the same."));
   PADDLE_ENFORCE_EQ(
-      step.IsInitialized(),
+      step.initialized(),
       true,
       phi::errors::InvalidArgument("Input(Step) must be initialized."));
 

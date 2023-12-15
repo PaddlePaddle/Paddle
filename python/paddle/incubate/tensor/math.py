@@ -13,9 +13,9 @@
 # limitations under the License.
 
 from paddle import _C_ops
-from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.framework import in_dynamic_mode
+from paddle.base.data_feeder import check_variable_and_dtype
+from paddle.base.layer_helper import LayerHelper
+from paddle.framework import in_dynamic_or_pir_mode
 from paddle.utils import deprecated
 
 __all__ = []
@@ -56,14 +56,17 @@ def segment_sum(data, segment_ids, name=None):
 
         .. code-block:: python
 
-            import paddle
-            data = paddle.to_tensor([[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float32')
-            segment_ids = paddle.to_tensor([0, 0, 1], dtype='int32')
-            out = paddle.incubate.segment_sum(data, segment_ids)
-            #Outputs: [[4., 4., 4.], [4., 5., 6.]]
+            >>> import paddle
+            >>> data = paddle.to_tensor([[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float32')
+            >>> segment_ids = paddle.to_tensor([0, 0, 1], dtype='int32')
+            >>> out = paddle.incubate.segment_sum(data, segment_ids)
+            >>> print(out)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[4., 4., 4.],
+             [4., 5., 6.]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.segment_pool(data, segment_ids, "SUM")
     else:
         check_variable_and_dtype(
@@ -121,15 +124,18 @@ def segment_mean(data, segment_ids, name=None):
 
         .. code-block:: python
 
-            import paddle
-            data = paddle.to_tensor([[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float32')
-            segment_ids = paddle.to_tensor([0, 0, 1], dtype='int32')
-            out = paddle.incubate.segment_mean(data, segment_ids)
-            #Outputs: [[2., 2., 2.], [4., 5., 6.]]
+            >>> import paddle
+            >>> data = paddle.to_tensor([[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float32')
+            >>> segment_ids = paddle.to_tensor([0, 0, 1], dtype='int32')
+            >>> out = paddle.incubate.segment_mean(data, segment_ids)
+            >>> print(out)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[2., 2., 2.],
+             [4., 5., 6.]])
 
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.segment_pool(data, segment_ids, "MEAN")
 
     check_variable_and_dtype(
@@ -186,15 +192,18 @@ def segment_min(data, segment_ids, name=None):
 
         .. code-block:: python
 
-            import paddle
-            data = paddle.to_tensor([[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float32')
-            segment_ids = paddle.to_tensor([0, 0, 1], dtype='int32')
-            out = paddle.incubate.segment_min(data, segment_ids)
-            #Outputs:  [[1., 2., 1.], [4., 5., 6.]]
+            >>> import paddle
+            >>> data = paddle.to_tensor([[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float32')
+            >>> segment_ids = paddle.to_tensor([0, 0, 1], dtype='int32')
+            >>> out = paddle.incubate.segment_min(data, segment_ids)
+            >>> print(out)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1., 2., 1.],
+             [4., 5., 6.]])
 
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.segment_pool(data, segment_ids, "MIN")
 
     check_variable_and_dtype(
@@ -251,15 +260,18 @@ def segment_max(data, segment_ids, name=None):
 
         .. code-block:: python
 
-            import paddle
-            data = paddle.to_tensor([[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float32')
-            segment_ids = paddle.to_tensor([0, 0, 1], dtype='int32')
-            out = paddle.incubate.segment_max(data, segment_ids)
-            #Outputs: [[3., 2., 3.], [4., 5., 6.]]
+            >>> import paddle
+            >>> data = paddle.to_tensor([[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float32')
+            >>> segment_ids = paddle.to_tensor([0, 0, 1], dtype='int32')
+            >>> out = paddle.incubate.segment_max(data, segment_ids)
+            >>> print(out)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[3., 2., 3.],
+             [4., 5., 6.]])
 
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.segment_pool(data, segment_ids, "MAX")
         return out
 

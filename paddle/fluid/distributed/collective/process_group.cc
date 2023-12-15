@@ -28,6 +28,12 @@ ProcessGroup::ProcessGroup(int rank, int size, int gid)
     auto map = ProcessGroupMapFromGid::getInstance();
     map->insert(gid_, this);
   }
+  const char* global_rank = std::getenv("PADDLE_TRAINER_ID");
+  PADDLE_ENFORCE_NOT_NULL(
+      global_rank,
+      phi::errors::NotFound(
+          "The environment variable 'PADDLE_TRAINER_ID' cannot be found."));
+  global_rank_ = std::atoi(global_rank);
 }
 
 // TODO(sunyilun): methods below will be removed later
@@ -38,10 +44,10 @@ ProcessGroupIdMap& ProcessGroupIdMap::GetInstance() {
 
 void ProcessGroupIdMap::DestroyProcessGroup() {
   auto& id_map = ProcessGroupIdMap::GetInstance();
-  for (auto iter = id_map.begin(); iter != id_map.end(); ++iter) {
-    auto use_count = iter->second.use_count();
+  for (auto& item : id_map) {
+    auto use_count = item.second.use_count();
     for (int i = 0; i < use_count; ++i) {
-      iter->second.reset();
+      item.second.reset();
     }
   }
   id_map.clear();

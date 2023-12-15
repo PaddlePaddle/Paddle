@@ -17,7 +17,7 @@ import unittest
 import paddle
 import paddle.nn.functional as F
 from paddle import nn
-from paddle.fluid import core
+from paddle.base import core
 
 
 class MyModel(paddle.nn.Layer):

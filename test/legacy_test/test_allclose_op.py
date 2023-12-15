@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestAllcloseOp(OpTest):
@@ -53,7 +54,7 @@ class TestAllcloseOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestAllcloseOpException(TestAllcloseOp):
@@ -61,28 +62,28 @@ class TestAllcloseOpException(TestAllcloseOp):
         def test_rtol_num():
             self.inputs['Rtol'] = np.array([1e-05, 1e-05]).astype("float64")
             self.inputs['Atol'] = np.array([1e-08]).astype("float64")
-            self.check_output()
+            self.check_output(check_pir=True)
 
         self.assertRaises(ValueError, test_rtol_num)
 
         def test_rtol_type():
             self.inputs['Rtol'] = np.array([5]).astype("int32")
             self.inputs['Atol'] = np.array([1e-08]).astype("float64")
-            self.check_output()
+            self.check_output(check_pir=True)
 
         self.assertRaises(ValueError, test_rtol_type)
 
         def test_atol_num():
             self.inputs['Rtol'] = np.array([1e-05]).astype("float64")
             self.inputs['Atol'] = np.array([1e-08, 1e-08]).astype("float64")
-            self.check_output()
+            self.check_output(check_pir=True)
 
         self.assertRaises(ValueError, test_atol_num)
 
         def test_atol_type():
             self.inputs['Rtol'] = np.array([1e-05]).astype("float64")
             self.inputs['Atol'] = np.array([8]).astype("int32")
-            self.check_output()
+            self.check_output(check_pir=True)
 
         self.assertRaises(ValueError, test_atol_type)
 
@@ -174,14 +175,19 @@ class TestAllcloseError(unittest.TestCase):
 
 
 class TestAllcloseOpFp16(unittest.TestCase):
+    @test_with_pir_api
     def test_fp16(self):
-        x_data = np.random.rand(10, 10).astype('float16')
-        y_data = np.random.rand(10, 10).astype('float16')
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data(shape=[10, 10], name='x', dtype='float16')
-            y = paddle.static.data(shape=[10, 10], name='x', dtype='float16')
-            out = paddle.allclose(x, y, rtol=1e-05, atol=1e-08)
-            if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda():
+            x_data = np.random.rand(10, 10).astype('float16')
+            y_data = np.random.rand(10, 10).astype('float16')
+            with paddle.static.program_guard(paddle.static.Program()):
+                x = paddle.static.data(
+                    shape=[10, 10], name='x', dtype='float16'
+                )
+                y = paddle.static.data(
+                    shape=[10, 10], name='y', dtype='float16'
+                )
+                out = paddle.allclose(x, y, rtol=1e-05, atol=1e-08)
                 place = paddle.CUDAPlace(0)
                 exe = paddle.static.Executor(place)
                 exe.run(paddle.static.default_startup_program())
@@ -200,7 +206,7 @@ class TestAllcloseOpFloat16(TestAllcloseOp):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(place)
+                self.check_output_with_place(place, check_pir=True)
 
 
 class TestAllcloseOpFloat32(TestAllcloseOp):

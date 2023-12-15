@@ -119,7 +119,7 @@ function load_CHANGE_OP_FILES {
     LOG "[INFO] Uninstall PaddlePaddle ..."
     pip uninstall -y paddlepaddle paddlepaddle_gpu
     LOG "[INFO] Install PaddlePaddle ..."
-    pip install build/pr_whl/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl
+    pip install build/pr_whl/*.whl
     collect_kernel_registry_info
     LOG "[INFO] No op to test, skip this ci." && exit 0
   fi
@@ -211,7 +211,7 @@ function run_op_benchmark_test {
     LOG "[INFO] Uninstall PaddlePaddle ..."
     pip uninstall -y paddlepaddle paddlepaddle_gpu
     LOG "[INFO] Install PaddlePaddle ..."
-    pip install build/${branch_name}/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl
+    pip install build/${branch_name}/*.whl
     logs_dir="$(pwd)/logs-${branch_name}"
     [ -d $logs_dir ] && rm -rf $logs_dir/* || mkdir -p $logs_dir
     pushd benchmark/api > /dev/null

@@ -134,7 +134,7 @@ def get_distributed_program():
     loss, train_program, startup_program = mlp_forward(
         train_program, startup_program
     )
-    optimizer = paddle.fluid.optimizer.SGDOptimizer(learning_rate=0.01)
+    optimizer = paddle.optimizer.SGD(learning_rate=0.01)
     optimizer = fleet.distributed_optimizer(optimizer)
     _, _, dist_startup_prog, dist_main_prog = optimizer.minimize(
         loss, startup_program
@@ -151,14 +151,10 @@ class TestMLPAutoConvert(unittest.TestCase):
 
     def tearDown(self):
         os.remove(
-            "./model_state_rank{}.pdmodel".format(
-                str(paddle.distributed.get_rank())
-            )
+            f"./model_state_rank{str(paddle.distributed.get_rank())}.pdmodel"
         )
         os.remove(
-            "./dist_attr_rank{}.pdattr".format(
-                str(paddle.distributed.get_rank())
-            )
+            f"./dist_attr_rank{str(paddle.distributed.get_rank())}.pdattr"
         )
 
     def test_mlp_mp2pp(self):
@@ -250,14 +246,10 @@ class TestMLPAutoConvert2(unittest.TestCase):
 
     def tearDown(self):
         os.remove(
-            "./model_state_rank{}.pdmodel".format(
-                str(paddle.distributed.get_rank())
-            )
+            f"./model_state_rank{str(paddle.distributed.get_rank())}.pdmodel"
         )
         os.remove(
-            "./dist_attr_rank{}.pdattr".format(
-                str(paddle.distributed.get_rank())
-            )
+            f"./dist_attr_rank{str(paddle.distributed.get_rank())}.pdattr"
         )
 
     def test_mlp_pp2mp(self):

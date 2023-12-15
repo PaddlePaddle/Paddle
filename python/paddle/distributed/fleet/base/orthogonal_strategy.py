@@ -36,22 +36,27 @@ class OrthogonalStrategy:
     Examples:
         .. code-block:: python
 
-        # required: distributed
-        import paddle
-        import paddle.distributed as dist
-        from paddle.distributed.fleet.base.strategy_group import DPGroup, MPGroup, PPGroup
-        from paddle.distributed.fleet.base.orthogonal_strategy import OrthogonalStrategy
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle
+            >>> import paddle.distributed as dist
+            >>> from paddle.distributed.fleet.base.strategy_group import DPGroup, MPGroup, PPGroup
+            >>> from paddle.distributed.fleet.base.orthogonal_strategy import OrthogonalStrategy
 
-        dist.init_parallel_env()
-        strategy = OrthogonalStrategy([("dp", 2, DPGroup), ("mp", 2, MPGroup), ("pp", 2, PPGroup)], fused_strategy_dict={"check": ["mp", "pp"]})
+            >>> dist.init_parallel_env()
+            >>> strategy = OrthogonalStrategy([("dp", 2, DPGroup), ("mp", 2, MPGroup), ("pp", 2, PPGroup)], fused_strategy_dict={"check": ["mp", "pp"]})
 
     """
 
-    def __init__(self, list_of_strategy, fused_strategy_dict={}):
+    def __init__(
+        self, list_of_strategy, fused_strategy_dict={}, strategy_rank_list=None
+    ):
         self._list_of_strategy = list_of_strategy
         self._fused_strategy_dict = fused_strategy_dict
-        self._rank = dist.get_rank()
-        self._rank_list_dict = {}
+        self._strategy_rank_list = (
+            strategy_rank_list
+            if strategy_rank_list is not None
+            else list(range(dist.get_world_size()))
+        )
         self._name_to_group_dict = {}
         self._name_to_degree_dict = {}
         self._list_of_strategy_name = [
@@ -67,16 +72,17 @@ class OrthogonalStrategy:
         list_of_coord = [
             self._coordinate(*coord) for coord in itertools.product(*ranges)
         ]
+
         self._coord_to_rank_dict = dict(
-            zip(list_of_coord, range(len(list_of_coord)))
+            zip(list_of_coord, self._strategy_rank_list)
         )
 
         for idx, strategy in enumerate(list_of_strategy):
             strategy_name = strategy[0]
             self._name_to_degree_dict[strategy_name] = strategy[1]
-            self._rank_list_dict[strategy_name] = self._calc_rank_list(idx)
+            rank_list = self._calc_rank_list(idx)
             self._name_to_group_dict[strategy_name] = strategy[2](
-                self._rank_list_dict[strategy_name]
+                rank_list,
             )
 
         self._name_to_fused_group_dict = {}
@@ -130,24 +136,22 @@ class OrthogonalStrategy:
     def _check_valid_strategy(self):
         assert len(self._list_of_strategy_name) == len(
             set(self._list_of_strategy_name)
-        ), "Defined duplicated strategies: {}".format(
-            self._list_of_strategy_name
-        )
+        ), f"Defined duplicated strategies: {self._list_of_strategy_name}"
         num_of_ranks = functools.reduce(
             lambda x, y: x * y, self._list_of_degree
         )
-        assert (
-            num_of_ranks == dist.get_world_size()
+
+        assert num_of_ranks == len(
+            self._strategy_rank_list
         ), "There are total {} ranks, but need {} ranks in this strategy.".format(
-            dist.get_world_size(), num_of_ranks
+            len(self._strategy_rank_list), num_of_ranks
         )
+
         for fused_strategy in self._fused_strategy_dict.values():
             for strategy in fused_strategy:
                 assert (
                     strategy in self._list_of_strategy_name
-                ), "Can not fuse strategy {} without defined previous.".format(
-                    strategy
-                )
+                ), f"Can not fuse strategy {strategy} without defined previous."
 
     def _create_fused_group(self):
         for name in self._fused_strategy_dict:

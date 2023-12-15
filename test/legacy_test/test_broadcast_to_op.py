@@ -17,8 +17,9 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, program_guard
+from paddle import base
+from paddle.pir_utils import test_with_pir_api
+from paddle.static import Program, program_guard
 
 paddle.enable_static()
 
@@ -26,8 +27,8 @@ paddle.enable_static()
 class TestBroadcastToError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
-            x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace()
+            x1 = base.create_lod_tensor(
+                np.array([[-1]]), [[1]], base.CPUPlace()
             )
             shape = [2, 2]
             self.assertRaises(TypeError, paddle.tensor.broadcast_to, x1, shape)
@@ -40,38 +41,44 @@ class TestBroadcastToError(unittest.TestCase):
 
 # Test python API
 class TestBroadcastToAPI(unittest.TestCase):
+    # TODO: add test_with_pir_api
+    # base.backward.calc_gradient maybe not support pir
+    # AttributeError: 'paddle.base.libpaddle.pir.Program' object has no attribute '_appending_grad_times'
     def test_api(self):
-        input = np.random.random([12, 14]).astype("float32")
-        x = paddle.static.data(name='x', shape=[12, 14], dtype="float32")
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            input = np.random.random([12, 14]).astype("float32")
+            x = paddle.static.data(name='x', shape=[12, 14], dtype="float32")
 
-        positive_2 = paddle.tensor.fill_constant([1], "int32", 12)
-        expand_shape = paddle.static.data(
-            name="expand_shape",
-            shape=[2],
-            dtype="int32",
-        )
+            positive_2 = paddle.tensor.fill_constant([1], "int32", 12)
+            expand_shape = paddle.static.data(
+                name="expand_shape",
+                shape=[2],
+                dtype="int32",
+            )
 
-        out_1 = paddle.broadcast_to(x, shape=[12, 14])
-        out_2 = paddle.broadcast_to(x, shape=[positive_2, 14])
-        out_3 = paddle.broadcast_to(x, shape=expand_shape)
+            out_1 = paddle.broadcast_to(x, shape=[12, 14])
+            out_2 = paddle.broadcast_to(x, shape=[positive_2, 14])
+            out_3 = paddle.broadcast_to(x, shape=expand_shape)
 
-        g0 = fluid.backward.calc_gradient(out_2, x)
+            g0 = base.backward.calc_gradient(out_2, x)
 
-        exe = fluid.Executor(place=fluid.CPUPlace())
-        res_1, res_2, res_3 = exe.run(
-            fluid.default_main_program(),
-            feed={
-                "x": input,
-                "expand_shape": np.array([12, 14]).astype("int32"),
-            },
-            fetch_list=[out_1, out_2, out_3],
-        )
-        assert np.array_equal(res_1, np.tile(input, (1, 1)))
-        assert np.array_equal(res_2, np.tile(input, (1, 1)))
-        assert np.array_equal(res_3, np.tile(input, (1, 1)))
+            exe = base.Executor(place=base.CPUPlace())
+            res_1, res_2, res_3 = exe.run(
+                feed={
+                    "x": input,
+                    "expand_shape": np.array([12, 14]).astype("int32"),
+                },
+                fetch_list=[out_1, out_2, out_3],
+            )
+            np.testing.assert_array_equal(res_1, np.tile(input, (1, 1)))
+            np.testing.assert_array_equal(res_2, np.tile(input, (1, 1)))
+            np.testing.assert_array_equal(res_3, np.tile(input, (1, 1)))
 
+    @test_with_pir_api
     def test_api_fp16_gpu(self):
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
@@ -101,9 +108,9 @@ class TestBroadcastToAPI(unittest.TestCase):
                     },
                     fetch_list=[out_1, out_2, out_3],
                 )
-                assert np.array_equal(res_1, np.tile(input, (1, 1)))
-                assert np.array_equal(res_2, np.tile(input, (1, 1)))
-                assert np.array_equal(res_3, np.tile(input, (1, 1)))
+                np.testing.assert_array_equal(res_1, np.tile(input, (1, 1)))
+                np.testing.assert_array_equal(res_2, np.tile(input, (1, 1)))
+                np.testing.assert_array_equal(res_3, np.tile(input, (1, 1)))
 
 
 if __name__ == "__main__":

@@ -59,7 +59,7 @@ void KthvalueGradKernel(const Context& dev_ctx,
 
   // For 0D Tensor
   if (in_dims.size() == 0) {
-    phi::funcs::set_constant(dev_ctx, d_x, 1.0);
+    phi::funcs::set_constant(dev_ctx, d_x, static_cast<T>(1.0));
     return;
   }
 
@@ -73,12 +73,12 @@ void KthvalueGradKernel(const Context& dev_ctx,
     for (int i = axis + 1; i < in_dims.size(); i++) {
       tmp_out_shape.emplace_back(out_dims[i - 1]);
     }
-    out_dims = phi::make_ddim(tmp_out_shape);
+    out_dims = common::make_ddim(tmp_out_shape);
   }
 
   if (axis == in_dims.size() - 1) {
     const int64_t input_height =
-        phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
+        common::product(common::slice_ddim(in_dims, 0, in_dims.size() - 1));
     const int64_t input_width = in_dims[in_dims.size() - 1];
     memset(x_grad_data, 0, d_x->numel() * sizeof(T));
     if (keepdim) {
@@ -117,7 +117,7 @@ void KthvalueGradKernel(const Context& dev_ctx,
     trans.emplace_back(axis);
     DDim trans_dims(out_dims);
     DDim trans_in_dims(in_dims);
-    for (size_t i = 0; i < trans.size(); i++) {
+    for (int i = 0; i < static_cast<int>(trans.size()); i++) {
       trans_dims[i] = out_dims[trans[i]];
       trans_in_dims[i] = in_dims[trans[i]];
     }
@@ -126,7 +126,7 @@ void KthvalueGradKernel(const Context& dev_ctx,
     trans_ind.Resize(trans_dims);
     dev_ctx.template Alloc<T>(&trans_dO);
     dev_ctx.template Alloc<int64_t>(&trans_ind);
-    int ndims = trans.size();
+    int ndims = static_cast<int>(trans.size());
     if (keepdim) {
       funcs::TransCompute<phi::CPUContext, T>(
           ndims, dev_ctx, d_out, &trans_dO, trans);
@@ -147,8 +147,8 @@ void KthvalueGradKernel(const Context& dev_ctx,
       funcs::TransCompute<phi::CPUContext, int64_t>(
           ndims, dev_ctx, indices_tmp, &trans_ind, trans);
     }
-    const int64_t input_height = phi::product(
-        phi::slice_ddim(trans_in_dims, 0, trans_in_dims.size() - 1));
+    const int64_t input_height = common::product(
+        common::slice_ddim(trans_in_dims, 0, trans_in_dims.size() - 1));
     const int64_t input_width = trans_in_dims[trans_in_dims.size() - 1];
     DenseTensor tmp_out;
     tmp_out.Resize(trans_in_dims);

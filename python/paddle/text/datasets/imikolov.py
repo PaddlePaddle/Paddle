@@ -47,27 +47,37 @@ class Imikolov(Dataset):
 
         .. code-block:: python
 
-            import paddle
-            from paddle.text.datasets import Imikolov
+            >>> import paddle
+            >>> from paddle.text.datasets import Imikolov
 
-            class SimpleNet(paddle.nn.Layer):
-                def __init__(self):
-                    super().__init__()
+            >>> class SimpleNet(paddle.nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...
+            ...     def forward(self, src, trg):
+            ...         return paddle.sum(src), paddle.sum(trg)
 
-                def forward(self, src, trg):
-                    return paddle.sum(src), paddle.sum(trg)
 
+            >>> imikolov = Imikolov(mode='train', data_type='SEQ', window_size=2)
 
-            imikolov = Imikolov(mode='train', data_type='SEQ', window_size=2)
-
-            for i in range(10):
-                src, trg = imikolov[i]
-                src = paddle.to_tensor(src)
-                trg = paddle.to_tensor(trg)
-
-                model = SimpleNet()
-                src, trg = model(src, trg)
-                print(src.shape, trg.shape)
+            >>> for i in range(10):
+            ...     src, trg = imikolov[i]
+            ...     src = paddle.to_tensor(src)
+            ...     trg = paddle.to_tensor(trg)
+            ...
+            ...     model = SimpleNet()
+            ...     src, trg = model(src, trg)
+            ...     print(src.item(), trg.item())
+            2076 2075
+            2076 2075
+            675 674
+            4 3
+            464 463
+            2076 2075
+            865 864
+            2076 2075
+            2076 2075
+            1793 1792
 
     """
 

@@ -27,7 +27,6 @@ class TestEmbeddingWithEltwiseAddXPUFusePass(PassAutoScanTest):
         yield config, ["embedding_with_eltwise_add_xpu"], (1e-3, 1e-3)
 
     def sample_program_config(self, draw):
-
         # lookup_table_v2
         lookup_table_num = draw(st.sampled_from([2, 3, 4]))
         print("lookup_table_num: ", lookup_table_num)

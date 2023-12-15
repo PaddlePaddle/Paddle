@@ -28,11 +28,11 @@ from contextlib import closing
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
+from paddle.base import compiler
 from paddle.distributed.fleet.meta_optimizers import (
     RawProgramOptimizer as RawProgram,
 )
-from paddle.fluid import compiler
 from paddle.incubate.distributed.fleet import role_maker
 from paddle.incubate.distributed.fleet.collective import (
     DistributedStrategy,
@@ -44,8 +44,45 @@ DEFAULT_BATCH_SIZE = 2
 DIST_UT_PORT = 0
 
 
-def print_to_out(out_losses):
-    sys.stdout.buffer.write(pickle.dumps(out_losses))
+def remove_glog_envs(envs):
+    if not envs:
+        return envs
+
+    glog_envs = ['GLOG_v', 'GLOG_logtostderr', 'GLOG_vmodule']
+    envs = dict(envs)
+    for env in glog_envs:
+        if env in envs:
+            del envs[env]
+    return envs
+
+
+def get_dump_file(rank):
+    return f"./out_dump_{os.getpid()}_{rank}.pickled"
+
+
+def modify_envs(envs, rank=0):
+    if not envs:
+        envs = {}
+    envs = remove_glog_envs(envs)
+    dump_file = get_dump_file(rank)
+    envs['DUMP_FILE'] = dump_file
+    if os.path.exists(dump_file):
+        os.remove(dump_file)
+    return envs
+
+
+def dump_output(x):
+    path = os.environ['DUMP_FILE']
+    with open(path, 'wb') as f:
+        pickle.dump(x, f)
+
+
+def load_and_remove_dump_file(rank=0):
+    path = get_dump_file(rank)
+    with open(path, 'rb') as f:
+        out = pickle.load(f)
+    os.remove(path)
+    return out
 
 
 def print_to_err(class_name, log_str):
@@ -112,7 +149,7 @@ class TestDistRunnerBase:
         nccl_comm_num=1,
         hogwild_mode=False,
     ):
-        # NOTE: import fluid until runtime, or else forking processes will cause error.
+        # NOTE: import base until runtime, or else forking processes will cause error.
         config = paddle.distributed.transpiler.DistributeTranspilerConfig()
         config.enable_dc_asgd = dc_asgd
         config.sync_mode = sync_mode
@@ -149,7 +186,7 @@ class TestDistRunnerBase:
 
         t = self.get_transpiler(
             trainer_id=args.trainer_id,
-            main_program=fluid.default_main_program(),
+            main_program=base.default_main_program(),
             pserver_endpoints=args.endpoints,
             trainers=args.trainers,
             sync_mode=args.sync_mode,
@@ -161,8 +198,8 @@ class TestDistRunnerBase:
             args.current_endpoint, pserver_prog
         )
 
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
+        place = base.CPUPlace()
+        exe = base.Executor(place)
         exe.run(startup_prog)
         print_to_err(type(self).__name__, "run pserver startup program done.")
         exe.run(pserver_prog)
@@ -186,10 +223,10 @@ class TestDistRunnerBase:
 
         device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
         eprint(type(self).__name__, "device_id: %d." % device_id)
-        place = fluid.CUDAPlace(device_id)
+        place = base.CUDAPlace(device_id)
 
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(place)
+        exe.run(base.default_startup_program())
         eprint(type(self).__name__, "run worker startup program done.")
 
         data_loader.set_sample_list_generator(train_reader, place)
@@ -197,7 +234,7 @@ class TestDistRunnerBase:
         print_to_err(type(self).__name__, "begin to train on trainer")
         out_losses = []
 
-        main_program = fluid.default_main_program()
+        main_program = base.default_main_program()
         lr_scheduler = self.get_lr_scheduler(main_program)
         for i in range(RUN_STEP):
             loss = exe.run(main_program, fetch_list=[avg_cost])
@@ -210,7 +247,7 @@ class TestDistRunnerBase:
         data_loader.reset()
         print_to_err(type(self).__name__, "trainer run finished")
 
-        sys.stdout.buffer.write(pickle.dumps(out_losses))
+        dump_output(out_losses)
 
     def run_use_fleet_api_20_trainer(self, args):
         """
@@ -232,24 +269,24 @@ class TestDistRunnerBase:
             predict,
         ) = self.get_model(batch_size=args.batch_size)
 
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-            place = fluid.CUDAPlace(device_id)
-        elif fluid.core.is_compiled_with_xpu():
+            place = base.CUDAPlace(device_id)
+        elif base.core.is_compiled_with_xpu():
             device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
-            place = fluid.XPUPlace(device_id)
+            place = base.XPUPlace(device_id)
         else:
             raise ValueError(
                 "fleet dygraph api must in paddlepaddle-xpu or paddlepaddle-gpu."
             )
 
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(place)
+        exe.run(base.default_startup_program())
         eprint(type(self).__name__, "run worker startup program done.")
 
         feed_var_list = [
             var
-            for var in fluid.default_main_program().global_block().vars.values()
+            for var in base.default_main_program().global_block().vars.values()
             if var.is_data
         ]
 
@@ -258,7 +295,7 @@ class TestDistRunnerBase:
         if feed_var_list[0].name == 'label':
             feed_var_list = feed_var_list[::-1]
 
-        feeder = fluid.DataFeeder(feed_var_list, place)
+        feeder = base.DataFeeder(feed_var_list, place)
         reader_generator = train_reader()
 
         def get_data():
@@ -282,7 +319,7 @@ class TestDistRunnerBase:
         out_losses = []
         for i in range(RUN_STEP):
             (loss,) = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 fetch_list=[avg_cost.name],
                 feed=feeder.feed(get_data()),
             )
@@ -291,14 +328,14 @@ class TestDistRunnerBase:
         print_to_err(type(self).__name__, "trainer run finished")
         print_to_err(type(self).__name__, f"dist losses: {out_losses}")
 
-        sys.stdout.buffer.write(pickle.dumps(out_losses))
+        dump_output(out_losses)
 
     def run_use_fleet_api_trainer(self, args):
         assert args.update_method == "nccl2" or "bkcl"
 
         self.lr = args.lr
 
-        exec_strategy = fluid.ExecutionStrategy()
+        exec_strategy = base.ExecutionStrategy()
         exec_strategy.num_threads = 1
 
         dist_strategy = DistributedStrategy()
@@ -332,19 +369,19 @@ class TestDistRunnerBase:
         trainer_prog = fleet._origin_program
         dist_prog = fleet.main_program
 
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-            place = fluid.CUDAPlace(device_id)
-        elif fluid.core.is_compiled_with_xpu():
+            place = base.CUDAPlace(device_id)
+        elif base.core.is_compiled_with_xpu():
             device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
-            place = fluid.XPUPlace(device_id)
+            place = base.XPUPlace(device_id)
         else:
             raise ValueError(
                 "fleet dygraph api must in paddlepaddle-xpu or paddlepaddle-gpu."
             )
 
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(place)
+        exe.run(base.default_startup_program())
         eprint(type(self).__name__, "run worker startup program done.")
 
         feed_var_list = [
@@ -360,7 +397,7 @@ class TestDistRunnerBase:
         if feed_var_list[0].name == 'label':
             feed_var_list = feed_var_list[::-1]
 
-        feeder = fluid.DataFeeder(feed_var_list, place)
+        feeder = base.DataFeeder(feed_var_list, place)
         reader_generator = train_reader()
 
         def get_data():
@@ -386,50 +423,49 @@ class TestDistRunnerBase:
             print_to_err(type(self).__name__, "run step %d finished" % i)
         print_to_err(type(self).__name__, "trainer run finished")
 
-        sys.stdout.buffer.write(pickle.dumps(out_losses))
+        dump_output(out_losses)
 
         if args.save_model:
             model_save_dir = "/tmp"
             if fleet.worker_index() == 0:
-                model_save_dir_fluid = os.path.join(
-                    model_save_dir, "fluid_persistables"
+                model_save_dir_base = os.path.join(
+                    model_save_dir, "base_persistables"
                 )
                 model_save_dir_fleet = os.path.join(
                     model_save_dir, "fleet_persistables"
                 )
-                infer_save_dir_fluid = os.path.join(
-                    model_save_dir, "fluid_infer"
+                infer_save_dir_base = os.path.join(
+                    model_save_dir, "base_infer/infer"
                 )
                 infer_save_dir_fleet = os.path.join(
-                    model_save_dir, "fleet_infer"
+                    model_save_dir, "fleet_infer/infer"
                 )
             else:
-                model_save_dir_fluid = os.path.join(
-                    model_save_dir, "fluid_persistables_2"
+                model_save_dir_base = os.path.join(
+                    model_save_dir, "base_persistables_2"
                 )
                 model_save_dir_fleet = os.path.join(
                     model_save_dir, "fleet_persistables_2"
                 )
-                infer_save_dir_fluid = os.path.join(
-                    model_save_dir, "fluid_infer_2"
+                infer_save_dir_base = os.path.join(
+                    model_save_dir, "base_infer_2/infer_2"
                 )
                 infer_save_dir_fleet = os.path.join(
-                    model_save_dir, "fleet_infer_2"
+                    model_save_dir, "fleet_infer_2/infer_2"
                 )
             paddle.distributed.io.save_persistables(
-                exe, model_save_dir_fluid, fleet._origin_program
+                exe, model_save_dir_base, fleet._origin_program
             )
             fleet.save_persistables(executor=exe, dirname=model_save_dir_fleet)
-            feeded_var_names = [var.name for var in feed_var_list]
-            fluid.io.save_inference_model(
-                infer_save_dir_fluid,
-                feeded_var_names,
-                [avg_cost],
-                exe,
-                fleet._origin_program,
+            paddle.static.io.save_inference_model(
+                path_prefix=infer_save_dir_base,
+                feed_vars=feed_var_list,
+                fetch_vars=[avg_cost],
+                executor=exe,
+                program=fleet._origin_program,
             )
             fleet.save_inference_model(
-                exe, infer_save_dir_fleet, feeded_var_names, [avg_cost]
+                exe, infer_save_dir_fleet, feed_var_list, [avg_cost]
             )
 
     def run_trainer(self, args):
@@ -438,7 +474,7 @@ class TestDistRunnerBase:
         old_stdout = sys.stdout
         sys.stdout = StringIO()
 
-        build_stra = fluid.BuildStrategy()
+        build_stra = base.BuildStrategy()
         # FIXME force disable enable_inplace and memory_optimize
         build_stra.enable_inplace = False
         build_stra.memory_optimize = False
@@ -455,11 +491,11 @@ class TestDistRunnerBase:
 
         if args.use_reduce:
             build_stra.reduce_strategy = (
-                fluid.BuildStrategy.ReduceStrategy.Reduce
+                base.BuildStrategy.ReduceStrategy.Reduce
             )
         else:
             build_stra.reduce_strategy = (
-                fluid.BuildStrategy.ReduceStrategy.AllReduce
+                base.BuildStrategy.ReduceStrategy.AllReduce
             )
         pass_builder = None
         if args.batch_merge_repeat > 1:
@@ -518,7 +554,7 @@ class TestDistRunnerBase:
             )
             t = self.get_transpiler(
                 trainer_id=args.trainer_id,
-                main_program=fluid.default_main_program(),
+                main_program=base.default_main_program(),
                 pserver_endpoints=args.endpoints,
                 trainers=args.trainers,
                 sync_mode=args.sync_mode,
@@ -553,21 +589,21 @@ class TestDistRunnerBase:
             )
             nccl2_t.transpile(
                 args.trainer_id,
-                program=fluid.default_main_program(),
-                startup_program=fluid.default_startup_program(),
+                program=base.default_main_program(),
+                startup_program=base.default_startup_program(),
                 trainers=args.endpoints,
                 current_endpoint=args.current_endpoint,
             )
             print_to_err(
                 type(self).__name__, "get trainer program done. with nccl2 mode"
             )
-            trainer_prog = fluid.default_main_program()
+            trainer_prog = base.default_main_program()
         else:
             print_to_err(
                 type(self).__name__,
                 "do nothing about main program, just use it",
             )
-            trainer_prog = fluid.default_main_program()
+            trainer_prog = base.default_main_program()
             print_to_err(type(self).__name__, "use main program done.")
 
         # FIXME(gongwb):wait pserver initialization.
@@ -575,15 +611,15 @@ class TestDistRunnerBase:
 
         if args.use_cuda:
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-            place = fluid.CUDAPlace(device_id)
+            place = base.CUDAPlace(device_id)
         else:
-            place = fluid.CPUPlace()
+            place = base.CPUPlace()
 
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(place)
+        exe.run(base.default_startup_program())
         print_to_err(type(self).__name__, "run worker startup program done.")
 
-        exec_strategy = fluid.ExecutionStrategy()
+        exec_strategy = base.ExecutionStrategy()
         exec_strategy.num_threads = 1
 
         print_to_err(type(self).__name__, "begin to compile with data parallel")
@@ -598,7 +634,7 @@ class TestDistRunnerBase:
             if var.is_data
         ]
 
-        feeder = fluid.DataFeeder(feed_var_list, place)
+        feeder = base.DataFeeder(feed_var_list, place)
         reader_generator = train_reader()
 
         def get_data():
@@ -628,7 +664,7 @@ class TestDistRunnerBase:
         # print_to_err(type(self).__name__, "out_losses")
 
         sys.stdout = old_stdout
-        print_to_out(out_losses)
+        dump_output(out_losses)
 
 
 class TestParallelDyGraphRunnerBase:
@@ -679,19 +715,19 @@ class TestParallelDyGraphRunnerBase:
     def run_trainer(self, args):
         seed = 90
         if args.update_method == 'gloo':
-            place = fluid.CPUPlace()
-        elif fluid.core.is_compiled_with_cuda():
+            place = base.CPUPlace()
+        elif base.core.is_compiled_with_cuda():
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-            place = fluid.CUDAPlace(device_id)
-        elif fluid.core.is_compiled_with_xpu():
+            place = base.CUDAPlace(device_id)
+        elif base.core.is_compiled_with_xpu():
             device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
-            place = fluid.XPUPlace(device_id)
+            place = base.XPUPlace(device_id)
         else:
             assert "Only support CUDAPlace or XPUPlace or CPU(Gloo) for now."
 
-        with fluid.dygraph.guard(place):
-            fluid.default_startup_program().random_seed = seed
-            fluid.default_main_program().random_seed = seed
+        with base.dygraph.guard(place):
+            base.default_startup_program().random_seed = seed
+            base.default_main_program().random_seed = seed
             np.random.seed(seed)
             import random
 
@@ -751,7 +787,7 @@ class TestParallelDyGraphRunnerBase:
                 opt.minimize(loss)
                 if not args.accumulate_gradient:
                     model.clear_gradients()
-        print_to_out(out_losses)
+        dump_output(out_losses)
 
     def run_trainer_with_spawn(self, args):
         # 1. enable dygraph
@@ -836,7 +872,7 @@ class TestParallelDyGraphRunnerBase:
             opt.step()
             if not args.accumulate_gradient:
                 opt.clear_grad()
-        print_to_out(out_losses)
+        dump_output(out_losses)
 
 
 def runtime_main(test_class):
@@ -940,7 +976,7 @@ class TestDistBase(unittest.TestCase):
             self.__use_xpu = True
             self._use_dgc = False
         else:
-            if fluid.core.is_compiled_with_cuda():
+            if base.core.is_compiled_with_cuda():
                 self.__use_cuda = True
             else:
                 self.__use_cuda = False
@@ -1059,26 +1095,22 @@ class TestDistBase(unittest.TestCase):
             ps0_cmd += " --sync_mode"
             ps1_cmd += " --sync_mode"
 
-        print(ps0_cmd)
-        print(ps1_cmd)
         path0 = os.path.join(self.temp_dir.name, log_name + "_ps0_err.log")
         path1 = os.path.join(self.temp_dir.name, log_name + "_ps1_err.log")
         ps0_pipe = open(path0, "wb")
         ps1_pipe = open(path1, "wb")
 
-        print_to_err(type(self).__name__, "going to start pserver process 0")
         ps0_proc = subprocess.Popen(
             ps0_cmd.strip().split(" "),
             stdout=subprocess.PIPE,
             stderr=ps0_pipe,
-            env=required_envs,
+            env=modify_envs(required_envs),
         )
-        print_to_err(type(self).__name__, "going to start pserver process 1")
         ps1_proc = subprocess.Popen(
             ps1_cmd.strip().split(" "),
             stdout=subprocess.PIPE,
             stderr=ps1_pipe,
-            env=required_envs,
+            env=modify_envs(required_envs),
         )
 
         return ps0_proc, ps1_proc, ps0_pipe, ps1_pipe
@@ -1093,16 +1125,14 @@ class TestDistBase(unittest.TestCase):
         log_name="",
         devices="1",
     ):
-
         cmd = self._python_interp
 
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
             envs['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
             cmd += " -m coverage run --branch -p"
 
-        cmd += " {} --role trainer --update_method local --lr {:f}".format(
-            model,
-            self._lr,
+        cmd += (
+            f" {model} --role trainer --update_method local --lr {self._lr:f}"
         )
 
         if batch_size != DEFAULT_BATCH_SIZE:
@@ -1140,7 +1170,7 @@ class TestDistBase(unittest.TestCase):
             cmd += " --find_unused_parameters"
 
         env_local.update(envs)
-        print(f"local_cmd: {cmd}, env: {env_local}")
+        # print(f"local_cmd: {cmd}, env: {env_local}")
 
         if check_error_log:
             path = os.path.join(self.temp_dir.name, log_name + "_local.log")
@@ -1149,14 +1179,14 @@ class TestDistBase(unittest.TestCase):
                 cmd.split(" "),
                 stdout=subprocess.PIPE,
                 stderr=err_log,
-                env=env_local,
+                env=modify_envs(env_local),
             )
         else:
             local_proc = subprocess.Popen(
                 cmd.split(" "),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                env=env_local,
+                env=modify_envs(env_local),
             )
 
         local_out, local_err = local_proc.communicate()
@@ -1164,10 +1194,9 @@ class TestDistBase(unittest.TestCase):
         if check_error_log:
             err_log.close()
 
-        sys.stderr.write('local_stderr: %s\n' % local_err)
-        sys.stderr.write('local_stdout: %s\n' % pickle.loads(local_out))
+        # sys.stderr.write('local_stderr: %s\n' % local_err)
 
-        return pickle.loads(local_out)
+        return load_and_remove_dump_file()
 
     def _run_local_gloo(
         self,
@@ -1181,9 +1210,7 @@ class TestDistBase(unittest.TestCase):
     ):
         saved_endpoints = self._ps_endpoints
         self._ps_endpoints = self._ps_endpoints.split(',')[0]
-        result = self._run_cluster_gloo(
-            model, envs, 'gloo', check_error_log, log_name
-        )
+        result = self._run_cluster_gloo(model, envs, 'gloo', False, log_name)
         self._ps_endpoints = saved_endpoints
         return result
 
@@ -1246,8 +1273,8 @@ class TestDistBase(unittest.TestCase):
         env0.update(envs)
         env1.update(envs)
 
-        print(f"tr0_cmd: {tr0_cmd}, env: {env0}")
-        print(f"tr1_cmd: {tr1_cmd}, env: {env1}")
+        # print(f"tr0_cmd: {tr0_cmd}, env: {env0}")
+        # print(f"tr1_cmd: {tr1_cmd}, env: {env1}")
 
         path0 = os.path.join(self.temp_dir.name, log_name + "_tr0_err.log")
         path1 = os.path.join(self.temp_dir.name, log_name + "_tr1_err.log")
@@ -1259,14 +1286,14 @@ class TestDistBase(unittest.TestCase):
             tr0_cmd.strip().split(" "),
             stdout=subprocess.PIPE,
             stderr=tr0_pipe,
-            env=env0,
+            env=modify_envs(env0, 0),
         )
         print_to_err(type(self).__name__, "going to start trainer process 1")
         tr1_proc = subprocess.Popen(
             tr1_cmd.strip().split(" "),
             stdout=subprocess.PIPE,
             stderr=tr1_pipe,
-            env=env1,
+            env=modify_envs(env1, 1),
         )
 
         # Wait until trainer process terminate
@@ -1293,7 +1320,7 @@ class TestDistBase(unittest.TestCase):
         ps0.terminate()
         ps1.terminate()
 
-        return pickle.loads(tr0_out), pickle.loads(tr1_out)
+        return load_and_remove_dump_file(0), load_and_remove_dump_file(1)
 
     def _get_gloo_trainer_cmd(
         self, model, ep, update_method, trainer_id, trainer_num
@@ -1336,7 +1363,6 @@ class TestDistBase(unittest.TestCase):
                 "PADDLE_TRAINERS_NUM": f"{trainer_num}",
                 "PADDLE_TRAINER_ID": f"{trainer_id}",
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
-                "PADDLE_CURRENT_ENDPOINT": ep,
                 "PADDLE_CURRENT_ENDPOINT": ep,
                 "PADDLE_DISTRI_BACKEND": "gloo",
                 "GLOG_v": "2",
@@ -1488,11 +1514,9 @@ class TestDistBase(unittest.TestCase):
             tr_env.update(envs)
             tr_env["GLOG_vmodule"] = 'gloo_context=4'
             tr_env["GLOG_v"] = '3'
-            print(
-                "use_hallreduce:{} tr_cmd:{}, env: {}".format(
-                    self._use_hallreduce, tr_cmd, tr_env
-                )
-            )
+            # print(
+            # f"use_hallreduce:{self._use_hallreduce} tr_cmd:{tr_cmd}, env: {tr_env}"
+            # )
 
             path = os.path.join(
                 self.temp_dir.name, log_name + f"_tr{i}_err.log"
@@ -1507,7 +1531,7 @@ class TestDistBase(unittest.TestCase):
                 tr_cmd.strip().split(" "),
                 stdout=subprocess.PIPE,
                 stderr=tr_pipe,
-                env=tr_env,
+                env=modify_envs(tr_env, i),
             )
 
             procs.append(tr_proc)
@@ -1523,13 +1547,13 @@ class TestDistBase(unittest.TestCase):
         if trainer_num == 1:
             if check_error_log:
                 print("outs[0]:", outs[0])
-            return pickle.loads(outs[0])
+            return load_and_remove_dump_file(0)
 
         else:
             if check_error_log:
                 print("outs[0]:", outs[0])
                 print("outs[1]:", outs[1])
-            return pickle.loads(outs[0]), pickle.loads(outs[1])
+            return load_and_remove_dump_file(0), load_and_remove_dump_file(1)
 
     def _run_cluster_nccl2(
         self, model, envs, update_method, check_error_log, log_name
@@ -1563,9 +1587,7 @@ class TestDistBase(unittest.TestCase):
             )
             tr_env.update(envs)
             print(
-                "use_hallreduce:{} tr_cmd:{}, env: {}".format(
-                    self._use_hallreduce, tr_cmd, tr_env
-                )
+                f"use_hallreduce:{self._use_hallreduce} tr_cmd:{tr_cmd}, env: {tr_env}"
             )
 
             path = os.path.join(
@@ -1581,7 +1603,7 @@ class TestDistBase(unittest.TestCase):
                 tr_cmd.strip().split(" "),
                 stdout=subprocess.PIPE,
                 stderr=tr_pipe,
-                env=tr_env,
+                env=modify_envs(tr_env, i),
             )
 
             procs.append(tr_proc)
@@ -1598,7 +1620,7 @@ class TestDistBase(unittest.TestCase):
             print("outs[0]:", outs[0])
             print("outs[1]:", outs[1])
 
-        return pickle.loads(outs[0]), pickle.loads(outs[1])
+        return load_and_remove_dump_file(0), load_and_remove_dump_file(1)
 
     def _run_pipeline(self, model, envs, check_error_log, log_name):
         # NOTE: we reuse ps_endpoints as nccl2 worker endpoints
@@ -1631,7 +1653,7 @@ class TestDistBase(unittest.TestCase):
                 tr_cmd.strip().split(" "),
                 stdout=subprocess.PIPE,
                 stderr=tr_pipe,
-                env=tr_env,
+                env=modify_envs(tr_env, i),
             )
 
             procs.append(tr_proc)
@@ -1647,7 +1669,7 @@ class TestDistBase(unittest.TestCase):
         if check_error_log:
             print("outs[0]:", outs[0])
             print("outs[1]:", outs[1])
-        return pickle.loads(outs[0]), pickle.loads(outs[1])
+        return load_and_remove_dump_file(0), load_and_remove_dump_file(1)
 
     def _get_required_envs(self, check_error_log=False, need_envs={}):
         # TODO(typhoonzero): should auto adapt GPU count on the machine.
@@ -1664,6 +1686,7 @@ class TestDistBase(unittest.TestCase):
             "NCCL_P2P_DISABLE": "1",
             "NCCL_SHM_DISABLE": "1",
             "FLAGS_new_executor_static_build": "1",
+            "FLAGS_dynamic_static_unified_comm": "0",
         }
 
         if check_error_log:
@@ -1789,7 +1812,6 @@ class TestDistBase(unittest.TestCase):
         need_envs={},
         log_name="",
     ):
-
         # need open p2p or shm otherwise multi cards mode will hang
         need_envs.update({"NCCL_P2P_DISABLE": "0", "NCCL_SHM_DISABLE": "0"})
 

@@ -13,8 +13,6 @@
 # limitations under the License.
 
 import atexit
-
-# NOTE: queue has a different name in python2 and python3
 import queue
 import signal
 import sys

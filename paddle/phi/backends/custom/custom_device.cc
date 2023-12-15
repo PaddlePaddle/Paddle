@@ -90,18 +90,10 @@ class CustomDevice : public DeviceInterface {
       C_Device_st device;
       device.id = dev_id;
       devices_pool[dev_id] = device;
-      InitDevice(dev_id);
     }
   }
 
   void Finalize() override {
-    auto devices = GetDeviceList();
-    for (auto dev_id : devices) {
-      // SetDevice(dev_id);
-      // SynchronizeDevice(dev_id);
-      DeInitDevice(dev_id);
-    }
-
     bool ok = true;
     if (pimpl_->finalize && pimpl_->finalize() != C_SUCCESS) {
       LOG(ERROR) << "Finalize " << Type() << " Failed\n";
@@ -358,7 +350,7 @@ class CustomDevice : public DeviceInterface {
       }
     } else {
       if (!pimpl_->memory_copy_p2p) {
-        std::unique_ptr<uint8_t[]> tmp(new uint8_t[size]);
+        std::unique_ptr<uint8_t[]> tmp(new uint8_t[size]);  // NOLINT
         MemoryCopyD2H(src_dev_id, tmp.get(), src, size);
         MemoryCopyH2D(dst_dev_id, dst, tmp.get(), size);
       } else {
@@ -449,7 +441,7 @@ class CustomDevice : public DeviceInterface {
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
           pimpl_->device_memory_set(device, ptr, value, size));
     } else {
-      std::unique_ptr<uint8_t[]> tmp(new uint8_t[size]);
+      std::unique_ptr<uint8_t[]> tmp(new uint8_t[size]);  // NOLINT
       memset(tmp.get(), value, size);
       MemoryCopyH2D(dev_id, ptr, tmp.get(), size);
     }
@@ -589,6 +581,7 @@ class CustomDevice : public DeviceInterface {
       return_result(CCL_DATA_TYPE_INT32, INT32);
       return_result(CCL_DATA_TYPE_INT16, INT16);
       return_result(CCL_DATA_TYPE_INT8, INT8);
+      return_result(CCL_DATA_TYPE_UINT8, UINT8);
       default: {
         PADDLE_THROW(phi::errors::Unavailable(
             "DataType is not supported on %s.", Type()));
@@ -761,13 +754,15 @@ class CustomDevice : public DeviceInterface {
   }
 
   void CCLGroupStart() override {
-    CHECK_PTR(pimpl_->xccl_group_start);
-    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_group_start());
+    if (pimpl_->xccl_group_start) {
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_group_start());
+    }
   }
 
   void CCLGroupEnd() override {
-    CHECK_PTR(pimpl_->xccl_group_end);
-    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_group_end());
+    if (pimpl_->xccl_group_end) {
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_group_end());
+    }
   }
 
   void CCLSend(void* send_buf,
@@ -800,6 +795,77 @@ class CustomDevice : public DeviceInterface {
                           src_rank,
                           reinterpret_cast<C_CCLComm>(comm),
                           reinterpret_cast<C_Stream>(stream.raw_stream())));
+  }
+
+  void CCLAllToAll(const void** send_buf,
+                   const size_t* send_count,
+                   const ccl::CCLDataType* send_dtype,
+                   void** recv_buf,
+                   const size_t* recv_count,
+                   const ccl::CCLDataType* recv_dtype,
+                   size_t rank,
+                   size_t nranks,
+                   const ccl::CCLComm& comm,
+                   const stream::Stream& stream) override {
+    if (pimpl_->xccl_all_to_all) {
+      std::vector<C_DataType> c_send_dtype, c_recv_dtype;
+      for (size_t i = 0; i < nranks; ++i) {
+        c_send_dtype.push_back(ToXCCLDataType(send_dtype[i]));
+        c_recv_dtype.push_back(ToXCCLDataType(recv_dtype[i]));
+      }
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_all_to_all(
+          send_buf,
+          send_count,
+          c_send_dtype.data(),
+          recv_buf,
+          recv_count,
+          c_recv_dtype.data(),
+          rank,
+          nranks,
+          reinterpret_cast<C_CCLComm>(comm),
+          reinterpret_cast<C_Stream>(stream.raw_stream())));
+    } else if (pimpl_->xccl_send && pimpl_->xccl_recv) {
+      // NOTE(wangran16): fallback to send and recv, while avoiding some devices
+      // not supporting asynchronous send and recv.
+      for (size_t i = 0; i < rank; ++i) {
+        PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
+            pimpl_->xccl_recv(recv_buf[i],
+                              recv_count[i],
+                              ToXCCLDataType(recv_dtype[i]),
+                              i,
+                              reinterpret_cast<C_CCLComm>(comm),
+                              reinterpret_cast<C_Stream>(stream.raw_stream())));
+      }
+      for (size_t i = 0; i < nranks; ++i) {
+        if (i != rank) {
+          PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_send(
+              const_cast<void*>(send_buf[i]),
+              send_count[i],
+              ToXCCLDataType(send_dtype[i]),
+              i,
+              reinterpret_cast<C_CCLComm>(comm),
+              reinterpret_cast<C_Stream>(stream.raw_stream())));
+        }
+      }
+      MemoryCopyD2D(rank,
+                    recv_buf[rank],
+                    send_buf[rank],
+                    send_count[rank] *
+                        phi::SizeOf(phi::ccl::ToPhiDataType(send_dtype[rank])),
+                    &stream);
+      for (size_t i = rank + 1; i < nranks; ++i) {
+        PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
+            pimpl_->xccl_recv(recv_buf[i],
+                              recv_count[i],
+                              ToXCCLDataType(recv_dtype[i]),
+                              i,
+                              reinterpret_cast<C_CCLComm>(comm),
+                              reinterpret_cast<C_Stream>(stream.raw_stream())));
+      }
+    } else {
+      PADDLE_THROW(phi::errors::Unavailable(
+          "CCLAllToAll is not supported on %s.", Type()));
+    }
   }
 
   void BlasAXPBY(size_t dev_id,
@@ -869,7 +935,7 @@ class CustomDevice : public DeviceInterface {
 
  private:
   inline int PlaceToIdNoCheck(const Place& place) {
-    int dev_id = place.GetDeviceId();
+    int dev_id = place.GetDeviceId();  // NOLINT
     return dev_id;
   }
 

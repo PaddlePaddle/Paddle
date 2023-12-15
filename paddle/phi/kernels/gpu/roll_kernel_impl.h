@@ -14,23 +14,26 @@
 
 #pragma once
 
+#include "paddle/common/array.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
-#include "paddle/phi/core/utils/array.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 namespace phi {
 
 using phi::PADDLE_CUDA_NUM_THREADS;
 
-template <typename T, size_t Rank>
+template <typename T>
 __global__ void RollCudaKernel(const T* input,
                                T* output,
-                               int64_t N,
-                               phi::Array<int64_t, Rank> shifts,
-                               phi::Array<int64_t, Rank> strides,
-                               phi::Array<int64_t, Rank> sizes) {
-  int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx >= N) {
+                               const int rank,
+                               const int64_t numel,
+                               phi::Array<int64_t, DDim::kMaxRank> shifts,
+                               phi::Array<int64_t, DDim::kMaxRank> strides,
+                               phi::Array<int64_t, DDim::kMaxRank> sizes) {
+  int64_t idx =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
+  if (idx >= numel) {
     return;
   }
 
@@ -38,7 +41,10 @@ __global__ void RollCudaKernel(const T* input,
   int64_t new_dim_idx = 0;
 
 #pragma unroll
-  for (size_t i = 0; i < Rank; i++) {
+  for (size_t i = 0; i < DDim::kMaxRank; i++) {
+    if (i >= rank) {
+      break;
+    }
     new_dim_idx = (output_idx / strides[i]) % sizes[i] + shifts[i];
     if (new_dim_idx >= sizes[i]) {
       output_idx += (shifts[i] - sizes[i]) * strides[i];
@@ -49,22 +55,33 @@ __global__ void RollCudaKernel(const T* input,
   output[output_idx] = input[idx];
 }
 
-#define CALL_ROLL_CUDA_KERNEL(N)                                            \
-  case N: {                                                                 \
-    phi::Array<int64_t, N> _strides;                                        \
-    phi::Array<int64_t, N> _shifts;                                         \
-    phi::Array<int64_t, N> _sizes;                                          \
-    for (size_t idx = 0; idx < N; ++idx) {                                  \
-      _strides[idx] = strides[idx];                                         \
-      _shifts[idx] = shifts_data[idx];                                      \
-      _sizes[idx] = sizes[idx];                                             \
-    }                                                                       \
-    RollCudaKernel<T, N>                                                    \
-        <<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS, \
-           PADDLE_CUDA_NUM_THREADS,                                         \
-           0,                                                               \
-           stream>>>(in_data, out_data, numel, _shifts, _strides, _sizes);  \
-    break;                                                                  \
+template <typename T, typename Context>
+void LaunchRollKernel(const Context& dev_ctx,
+                      const T* input,
+                      T* output,
+                      const int rank,
+                      const int64_t numel,
+                      const std::vector<int64_t> shifts,
+                      const std::vector<int64_t> strides,
+                      const std::vector<int64_t> sizes) {
+  using phi::PADDLE_CUDA_NUM_THREADS;
+
+  phi::Array<int64_t, DDim::kMaxRank> strides_array;
+  phi::Array<int64_t, DDim::kMaxRank> shifts_array;
+  phi::Array<int64_t, DDim::kMaxRank> sizes_array;
+  for (int i = 0; i < rank; ++i) {
+    strides_array[i] = strides[i];
+    shifts_array[i] = shifts[i];
+    sizes_array[i] = sizes[i];
   }
+
+  auto stream = dev_ctx.stream();
+  RollCudaKernel<T>
+      <<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
+         PADDLE_CUDA_NUM_THREADS,
+         0,
+         stream>>>(
+          input, output, rank, numel, shifts_array, strides_array, sizes_array);
+}
 
 }  // namespace phi

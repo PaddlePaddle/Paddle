@@ -41,7 +41,6 @@ class _IterableDatasetFetcher(_DatasetFetcher):
         self.dataset_iter = iter(dataset)
 
     def fetch(self, batch_indices, done_event=None):
-
         if self.auto_collate_batch:
             data = []
             for _ in batch_indices:

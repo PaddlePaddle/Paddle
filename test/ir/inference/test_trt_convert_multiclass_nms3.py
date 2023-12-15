@@ -223,9 +223,7 @@ class TrtConvertMulticlassNMS3Test(TrtLayerAutoScanTest):
                 arr,
                 rtol=rtol,
                 atol=atol,
-                err_msg='Output has diff, Maximum absolute error: {}'.format(
-                    np.amax(diff)
-                ),
+                err_msg=f'Output has diff, Maximum absolute error: {np.amax(diff)}',
             )
 
     def assert_op_size(self, trt_engine_num, paddle_op_num):

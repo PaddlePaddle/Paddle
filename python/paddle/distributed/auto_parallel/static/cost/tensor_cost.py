@@ -54,9 +54,7 @@ class TensorCost:
 
             if not isinstance(tensor, Variable):
                 raise TypeError(
-                    "Please check tensor type is Variable, but got {}".format(
-                        type(tensor)
-                    )
+                    f"Please check tensor type is Variable, but got {type(tensor)}"
                 )
 
         elif dist_tensor is not None:
@@ -72,9 +70,7 @@ class TensorCost:
             assert tensor is None and dist_tensor is None and dtype is not None
             if not isinstance(shape, (list, set)):
                 raise TypeError(
-                    "Please check shape type is list or set, but got {}".format(
-                        type(shape)
-                    )
+                    f"Please check shape type is list or set, but got {type(shape)}"
                 )
 
         elif dtype is not None:

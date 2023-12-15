@@ -61,6 +61,8 @@ struct EigenSlice<Eigen::GpuDevice, T, Rank> {
 INSTANTIATION(EigenSlice, bool);
 INSTANTIATION(EigenSlice, uint8_t);
 INSTANTIATION(EigenSlice, int);
+INSTANTIATION(EigenSlice, int8_t);
+INSTANTIATION(EigenSlice, int16_t);
 INSTANTIATION(EigenSlice, int64_t);
 INSTANTIATION(EigenSlice, float);
 INSTANTIATION(EigenSlice, double);

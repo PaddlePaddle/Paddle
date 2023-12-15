@@ -29,6 +29,12 @@ def to_named_dict(items: List[Dict], is_op=False) -> Dict[str, Dict]:
             item["name"] = (
                 item["name"] if item["name"][-1] != '_' else item["name"][:-1]
             )
+            if "forward" in item:
+                item["forward"]["name"] = (
+                    item["forward"]["name"]
+                    if item["forward"]["name"][-1] != '_'
+                    else item["forward"]["name"][:-1]
+                )
             name = item["name"]
             named_dict[name] = item
     else:
@@ -144,6 +150,8 @@ def parse_output(op_name: str, s: str) -> Dict[str, str]:
 
 
 def parse_outputs(op_name: str, outputs: str) -> List[Dict]:
+    if outputs is None:
+        return []
     outputs = parse_plain_list(outputs, sep=",")
     output_items = []
     for output in outputs:
@@ -163,6 +171,7 @@ def parse_candidates(s: str) -> Dict[str, Any]:
     delimiter = ">" if ">" in s else ","
     ordered = delimiter == ">"
     candidates = parse_plain_list(s, delimiter)
+    candidates = list(filter(None, candidates))
     return {"ordered": ordered, "candidates": candidates}
 
 
@@ -259,12 +268,22 @@ def parse_kernel(op_name: str, kernel_config: Dict[str, Any]) -> Dict[str, Any]:
     return kernel
 
 
+def delete_bracket(name: str):
+    if name[0] == "(":
+        name = name.lstrip("(")
+    if name[-1] == ")":
+        name = name.rstrip(")")
+    return name
+
+
 def parse_inplace(op_name: str, inplace_cfg: str) -> Dict[str, str]:
     inplace_map = {}
     inplace_cfg = inplace_cfg.lstrip("(").rstrip(")")
     pairs = parse_plain_list(inplace_cfg)
     for pair in pairs:
         in_name, out_name = parse_plain_list(pair, sep="->")
+        in_name = delete_bracket(in_name)
+        out_name = delete_bracket(out_name)
         inplace_map[out_name] = in_name
     return inplace_map
 
@@ -273,7 +292,7 @@ def parse_invoke(op_name: str, invoke_config: str) -> Dict[str, Any]:
     invoke_config = invoke_config.strip()
     func, rest = invoke_config.split("(", 1)
     func = func.strip()
-    args = rest.rstrip(")").strip()
+    args = rest[:-1].strip()  # deal the last ')'
     invocation = {"func": func, "args": args}
     return invocation
 
@@ -346,8 +365,11 @@ def check_op_config(op_entry, op_name):
         'data_transform',
         'composite',
         'support_dygraph_mode',
+        'support_tensor',
+        'traits',
+        'interfaces',
     )
-    infer_meta_key_set = ('func', 'param')
+    infer_meta_key_set = ('func', 'param', 'spmd_rule')
     kernel_key_set = (
         'func',
         'param',
@@ -489,6 +511,21 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
     else:
         data_trans = None
 
+    if "support_tensor" in op_entry.keys():
+        support_tensor = op_entry["support_tensor"]
+    else:
+        support_tensor = []
+
+    if "traits" in op_entry.keys():
+        trait_list = parse_plain_list(op_entry["traits"])
+    else:
+        trait_list = []
+
+    if "interfaces" in op_entry.keys():
+        interface_list = parse_plain_list(op_entry["interfaces"])
+    else:
+        interface_list = []
+
     op = {
         "name": op_name,
         "inputs": inputs,
@@ -496,6 +533,9 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
         "outputs": outputs,
         "no_need_buffer": no_buffer_args,
         "data_transform": data_trans,
+        "support_tensor": support_tensor,
+        "traits": trait_list,
+        "interfaces": interface_list,
     }
 
     # op should be is_base_op or is_invoke_op or is_only_composite_op
@@ -507,25 +547,35 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
 
     if is_base_op:
         # kernel
-        kernel = parse_kernel(op_name, op_entry["kernel"])
-        if kernel["param"] is None:
-            kernel["param"] = input_names + attr_names
+        if "kernel" in op_entry:
+            kernel = parse_kernel(op_name, op_entry["kernel"])
+            if kernel["param"] is None:
+                kernel["param"] = input_names + attr_names
+            op.update({"kernel": kernel})
 
         # infer meta
-        infer_meta = parse_infer_meta(op_entry["infer_meta"])
-        if infer_meta["param"] is None:
-            infer_meta["param"] = copy(kernel["param"])
+        if "infer_meta" in op_entry:
+            infer_meta = parse_infer_meta(op_entry["infer_meta"])
+            if infer_meta["param"] is None:
+                infer_meta["param"] = copy(kernel["param"])
+            op.update({"infer_meta": infer_meta})
+        # else:
+        #     assert(outputs == []), f"No infer_meta is given in {op_name}."
 
         # inplace
         if "inplace" in op_entry:
             inplace_pairs = parse_inplace(op_name, op_entry["inplace"])
         else:
             inplace_pairs = None
+        # view
+        if "view" in op_entry:
+            view_pairs = parse_inplace(op_name, op_entry["view"])
+        else:
+            view_pairs = None
         op.update(
             {
-                "infer_meta": infer_meta,
-                "kernel": kernel,
                 "inplace": inplace_pairs,
+                "view": view_pairs,
             }
         )
 
@@ -615,7 +665,7 @@ def cross_validate(ops):
                 assert len(fw_call["inputs"]) <= len(
                     fw_op["inputs"]
                 ), f"{name}: forward call has more inputs than the op "
-                for (input, input_) in zip(fw_call["inputs"], fw_op["inputs"]):
+                for input, input_ in zip(fw_call["inputs"], fw_op["inputs"]):
                     assert (
                         input["typename"] == input_["typename"]
                     ), f"type mismatch in {name} and {fw_name}"
@@ -623,7 +673,7 @@ def cross_validate(ops):
                 assert len(fw_call["attrs"]) <= len(
                     fw_op["attrs"]
                 ), f"{name}: forward call has more attrs than the op "
-                for (attr, attr_) in zip(fw_call["attrs"], fw_op["attrs"]):
+                for attr, attr_ in zip(fw_call["attrs"], fw_op["attrs"]):
                     if attr["typename"] == "Scalar":
                         # special case for Scalar, fw_call can omit the type
                         assert re.match(
@@ -637,7 +687,7 @@ def cross_validate(ops):
                 assert len(fw_call["outputs"]) == len(
                     fw_op["outputs"]
                 ), f"{name}: forward call has more outputs than the op "
-                for (output, output_) in zip(
+                for output, output_ in zip(
                     fw_call["outputs"], fw_op["outputs"]
                 ):
                     assert (

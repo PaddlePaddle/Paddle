@@ -70,13 +70,18 @@ void TopkKernel(const Context& dev_ctx,
   if (in_dims.size() == 0) {
     phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     dev_ctx.template Alloc<int64_t>(indices);
-    phi::funcs::set_constant(dev_ctx, indices, 0.0);
+    phi::funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
     return;
   }
   // calcluate the real axis
   if (axis < 0) axis += in_dims.size();
 
   int k = k_scalar.to<int>();
+  PADDLE_ENFORCE_GE(
+      x.numel(),
+      k,
+      errors::InvalidArgument(
+          "x has only %d element, can not find %d top values.", x.numel(), k));
   if (k_scalar.FromTensor()) {
     phi::DDim out_dims = out->dims();
     out_dims[axis] = k;
@@ -93,7 +98,7 @@ void TopkKernel(const Context& dev_ctx,
   if (axis == in_dims.size() - 1) {
     // if get the topK from the last axis
     const int64_t& input_height =
-        phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
+        common::product(common::slice_ddim(in_dims, 0, in_dims.size() - 1));
     const int64_t& input_width = in_dims[in_dims.size() - 1];
 
     if (k > input_width) {
@@ -259,8 +264,8 @@ void TopkKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<int64_t>(&trans_ind);
     dev_ctx.template Alloc<T>(&trans_out);
 
-    const int64_t input_height =
-        phi::product(phi::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
+    const int64_t input_height = common::product(
+        common::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
     const int64_t input_width = trans_dims[trans_dims.size() - 1];
 
     if (k > input_width) k = input_width;

@@ -20,7 +20,7 @@ import paddle
 from paddle.distributed import fleet
 
 
-class TestDistTraning(unittest.TestCase):
+class TestDistTraining(unittest.TestCase):
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 2

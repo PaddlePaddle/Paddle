@@ -90,16 +90,16 @@ if(WITH_UNITY_BUILD)
     include(unity_build_rule.cmake)
 endif()
 
-set(OP_HEADER_DEPS ${OP_HEADER_DEPS} phi phi_utils static_prim_api get_expected_kernel_func)
+set(OP_HEADER_DEPS ${OP_HEADER_DEPS} phi common phi_utils static_prim_api get_expected_kernel_func)
 
 register_operators(EXCLUDES py_func_op dgc_op generated_op1 generated_op2 generated_op3 generated_op4 load_combine_op lstm_op run_program_op quantize_linear_op
-        recurrent_op save_combine_op sparse_attention_op sync_batch_norm_op activation_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
+        recurrent_op save_combine_op sparse_attention_op sync_batch_norm_op activation_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS} processgroup_comm_utils)
 
 op_library(generated_op UNITY SRCS generated_op1.cc generated_op2.cc generated_op3.cc generated_op4.cc DEPS ${OP_HEADER_DEPS})
 op_library(run_program_op DEPS executor_cache ${OP_HEADER_DEPS})
 target_link_libraries(run_program_op cuda_graph_with_memory_pool)
-op_library(quantize_linear_op DEPS phi)
-op_library(save_combine_op DEPS string_array phi)
+op_library(quantize_linear_op DEPS phi common)
+op_library(save_combine_op DEPS string_array phi common)
 op_library(load_combine_op DEPS string_array)
 
 if (WITH_GPU OR WITH_ROCM)
@@ -119,9 +119,9 @@ else()
 endif()
 
 if (WITH_GPU OR WITH_ROCM)
-    op_library(sync_batch_norm_op)
+    op_library(sync_batch_norm_op DEPS processgroup_comm_utils)
     if ((NOT WIN32) AND (NOT WITH_ROCM) AND (NOT PADDLE_WITH_ARM) AND (NOT ${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 11.3) )
-        op_library(sparse_attention_op)
+        op_library(sparse_attention_op DEPS processgroup_comm_utils)
     endif()
 endif()
 
@@ -141,13 +141,13 @@ if (WITH_DGC)
 endif()
 
 cc_library(common_infer_shape_functions SRCS common_infer_shape_functions.cc DEPS operator)
-cc_library(ops_extra_info SRCS ops_extra_info.cc DEPS attribute phi)
+cc_library(ops_extra_info SRCS ops_extra_info.cc DEPS attribute phi common)
 
-set(COMMON_OP_DEPS ${COMMON_OP_DEPS} phi)
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} phi common)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} selected_rows_utils
 lod_tensor unpooling lod_rank_table context_project executor static_prim_api)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} dynload_warpctc static_prim_api static_utils static_global_utils prim_utils)
-set(COMMON_OP_DEPS ${COMMON_OP_DEPS} cos_sim_functor memory concat_and_split sampler sample_prob tree2col)
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} cos_sim_functor    concat_and_split sampler sample_prob tree2col)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} beam_search)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} box_wrapper ps_gpu_wrapper)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} common_infer_shape_functions)
@@ -162,7 +162,6 @@ if(WITH_XPU)
   set(COMMON_OP_DEPS ${COMMON_OP_DEPS} xpulib)
 endif()
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} layer)
-set(COMMON_OP_DEPS ${COMMON_OP_DEPS} tensor_formatter)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} op_version_registry)
 
 
@@ -176,7 +175,6 @@ set(COMMON_OP_DEPS ${COMMON_OP_DEPS} op_version_registry)
 set(OPERATOR_DEPS ${OPERATOR_DEPS} ${COMMON_OP_DEPS})
 set(GLOB_OPERATOR_DEPS ${OPERATOR_DEPS} CACHE INTERNAL "Global Op dependencies")
 
-cc_library(tensor_formatter SRCS tensor_formatter.cc DEPS ${OP_HEADER_DEPS})
 if (WITH_PYTHON)
   cc_library(py_func_op SRCS py_func_op.cc DEPS op_registry python pybind)
 endif()
@@ -193,7 +191,7 @@ endif()
 copy_if_different(${pybind_file} ${pybind_file_final})
 
 if (WITH_CUSTOM_DEVICE)
-cc_library(custom_device_common_op_registry SRCS custom_device_common_op_registry.cc DEPS operator phi type_info)
+cc_library(custom_device_common_op_registry SRCS custom_device_common_op_registry.cc DEPS operator phi common type_info)
 endif()
 
 if(NOT "${OP_LIST}" STREQUAL "")

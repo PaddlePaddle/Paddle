@@ -445,7 +445,7 @@ def add_optimizer_pass(program, config):
                 type="sum",
                 inputs={"X": vars2merge},
                 outputs={"Out": merged_var},
-                attrs={"use_mkldnn": False},
+                attrs={},
             )
             optimize_block.append_op(
                 type="scale",
@@ -710,7 +710,6 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
         is_entry,
         opt_idx,
     ):
-
         op = block.ops[opt_idx]
 
         if op.type == "sgd":

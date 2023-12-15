@@ -277,8 +277,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
     def _check_params_grads(self, params, grads):
         if len(params) != len(grads):
             raise ValueError(
-                "params size != grads size, %s vs %s"
-                % (len(params), len(grads))
+                f"params size != grads size, {len(params)} vs {len(grads)}"
             )
 
         pname2grad = {}
@@ -353,8 +352,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
                         d_size[table_name] = emb_size
                     elif d_size[table_name] != emb_size:
                         raise ValueError(
-                            "embedding size error: %s vs %s"
-                            % (emb_size, d_size[table_name])
+                            f"embedding size error: {emb_size} vs {d_size[table_name]}"
                         )
 
         return d_size
@@ -384,9 +382,10 @@ class DistributedAdam(DistributedOptimizerImplBase):
                 and st["sparse_embedx_dim"] != emb_to_size[table_name] - 3
             ):
                 raise ValueError(
-                    "fleet config sparse_embedx_dim=%s not"
-                    " equal to embedding dim - 3 = %s"
-                    % (st["sparse_embedx_dim"], emb_to_size[table_name] - 3)
+                    "fleet config sparse_embedx_dim={} not"
+                    " equal to embedding dim - 3 = {}".format(
+                        st["sparse_embedx_dim"], emb_to_size[table_name] - 3
+                    )
                 )
             if (
                 st.get("sparse_embedx_dim") is not None
@@ -394,9 +393,10 @@ class DistributedAdam(DistributedOptimizerImplBase):
                 and st["sparse_embedx_dim"] != emb_to_size[table_name] - 1
             ):
                 raise ValueError(
-                    "fleet config sparse_embedx_dim=%s not"
-                    " equal to embedding dim - 1 = %s"
-                    % (st["sparse_embedx_dim"], emb_to_size[table_name] - 1)
+                    "fleet config sparse_embedx_dim={} not"
+                    " equal to embedding dim - 1 = {}".format(
+                        st["sparse_embedx_dim"], emb_to_size[table_name] - 1
+                    )
                 )
             if (
                 st.get("sparse_embedx_dim") is None
@@ -432,9 +432,10 @@ class DistributedAdam(DistributedOptimizerImplBase):
                 and st["sparse_embedx_dim"] != emb_to_size[table_name]
             ):
                 raise ValueError(
-                    "fleet config sparse_embedx_dim=%s not"
-                    " equal to embedding dim = %s"
-                    % (st["sparse_embedx_dim"], emb_to_size[table_name])
+                    "fleet config sparse_embedx_dim={} not"
+                    " equal to embedding dim = {}".format(
+                        st["sparse_embedx_dim"], emb_to_size[table_name]
+                    )
                 )
             if st.get("sparse_embedx_dim") is None:
                 logger.warning(
@@ -603,8 +604,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
             else:
                 if len(ps_param.trainer_param) != len(prog_id_to_worker):
                     raise ValueError(
-                        "trainer param size != program size, %s vs %s"
-                        % (len(ps_param.trainer_param), len(prog_id_to_worker))
+                        f"trainer param size != program size, {len(ps_param.trainer_param)} vs {len(prog_id_to_worker)}"
                     )
                 idx = 0
                 # prog_id_to_worker is OrderedDict
@@ -682,9 +682,10 @@ class DistributedAdam(DistributedOptimizerImplBase):
                         and st["sparse_embedx_dim"] != emb_to_size[key] - 3
                     ):
                         raise ValueError(
-                            "fleet config sparse_embedx_dim=%s not"
-                            " equal to embedding size - 3 = %s"
-                            % (st["sparse_embedx_dim"], emb_to_size[key] - 3)
+                            "fleet config sparse_embedx_dim={} not"
+                            " equal to embedding size - 3 = {}".format(
+                                st["sparse_embedx_dim"], emb_to_size[key] - 3
+                            )
                         )
                     st["sparse_embedx_dim"] = emb_to_size[key] - 3
                 elif accessor == "DownpourSparseValueAccessor":
@@ -693,9 +694,10 @@ class DistributedAdam(DistributedOptimizerImplBase):
                         and st["sparse_embedx_dim"] != emb_to_size[key]
                     ):
                         raise ValueError(
-                            "fleet config sparse_embedx_dim=%s not"
-                            " equal to embedding size = %s"
-                            % (st["sparse_embedx_dim"], emb_to_size[key])
+                            "fleet config sparse_embedx_dim={} not"
+                            " equal to embedding size = {}".format(
+                                st["sparse_embedx_dim"], emb_to_size[key]
+                            )
                         )
                     st["sparse_embedx_dim"] = emb_to_size[key]
 
@@ -839,7 +841,6 @@ class DistributedAdam(DistributedOptimizerImplBase):
                         )
 
                     if flag_multi_task:
-
                         if len(root_params_list) > 0:
                             worker.add_dense_table(
                                 dense_table_index,

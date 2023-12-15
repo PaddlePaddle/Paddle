@@ -54,7 +54,7 @@ class TestDistStrategyTrainerDescConfig(unittest.TestCase):
         }
         strategy.trainer_desc_configs = config
 
-        optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
+        optimizer = paddle.optimizer.SGD(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 
@@ -67,7 +67,7 @@ class TestDistStrategyTrainerDescConfig(unittest.TestCase):
             int(os.environ["PADDLE_TRAINERS_NUM"]),
         )
 
-        optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
+        optimizer = paddle.optimizer.SGD(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize([avg_cost])
 

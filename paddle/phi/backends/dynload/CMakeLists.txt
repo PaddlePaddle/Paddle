@@ -73,6 +73,13 @@ if(WITH_MKLML)
   endif()
 endif()
 
+if(WITH_XPU)
+  cc_library(
+    phi_dynload_xpti
+    SRCS xpti.cc
+    DEPS phi common)
+endif()
+
 if(WITH_FLASHATTN)
   list(APPEND DYNLOAD_COMMON_SRCS flashattn.cc)
 endif()
@@ -94,5 +101,5 @@ if(WITH_CUDNN_FRONTEND)
   nv_test(
     cudnn_frontend_test
     SRCS cudnn_frontend_test.cc
-    DEPS phi cudnn-frontend)
+    DEPS phi common cudnn-frontend)
 endif()

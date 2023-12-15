@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/group_norm_grad_kernel.h"
 
+#include "paddle/common/layout.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/gpu/group_norm_utils.h"
@@ -107,7 +107,7 @@ __global__ void GroupNormBackward(const T* x,
                                   int group_size,
                                   float epsilon,
                                   T* d_x) {
-  // using AccT = typename kps::details::MPTypeTrait<T>::Type;
+  // using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   int gid = blockIdx.y;
   int cid = blockIdx.x;
@@ -279,8 +279,8 @@ void GroupNormGradKernel(const Context& dev_ctx,
                          DenseTensor* d_x,
                          DenseTensor* d_scale,
                          DenseTensor* d_bias) {
-  using AccT = typename kps::details::MPTypeTrait<T>::Type;
-  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
   const auto scale_ptr = scale.get_ptr();
   const auto bias_ptr = bias.get_ptr();
 
@@ -291,7 +291,9 @@ void GroupNormGradKernel(const Context& dev_ctx,
   const int W = (data_layout == DataLayout::kNCHW ? x_dims[x_dims.size() - 1]
                                                   : x_dims[x_dims.size() - 2]);
 
-  dev_ctx.template Alloc<T>(d_x);
+  if (d_x) {
+    dev_ctx.template Alloc<T>(d_x);
+  }
   phi::funcs::SetConstant<GPUContext, T> set_zero;
   phi::funcs::SetConstant<GPUContext, AccT> set_zero_AccT;
   DenseTensor ds, db;
@@ -334,13 +336,8 @@ void GroupNormGradKernel(const Context& dev_ctx,
     }
   }
 
-#ifdef __HIPCC__
-  int block_size = std::max(std::min(256, imsize), 64);
-  const int block_dims = 256;
-#else
   int block_size = std::min(1024, imsize);
   const int block_dims = 1024;
-#endif
   dim3 grid(group_size, groups, x_dims[0]);
   dim3 threads(block_size, 1, 1);
   int flags =

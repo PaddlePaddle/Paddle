@@ -12,12 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _legacy_C_ops
-from paddle.fluid import core
-from paddle.fluid.data_feeder import check_dtype, check_variable_and_dtype
-from paddle.fluid.framework import default_main_program
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.framework import in_dynamic_mode
+import paddle
+from paddle import _C_ops, _legacy_C_ops
+from paddle.base import core
+from paddle.base.data_feeder import check_dtype, check_variable_and_dtype
+from paddle.base.framework import default_main_program
+from paddle.base.layer_helper import LayerHelper
+from paddle.framework import (
+    in_dynamic_mode,
+    in_dynamic_or_pir_mode,
+)
 
 __all__ = []
 
@@ -56,20 +60,20 @@ def fused_feedforward(
     This operator only supports running on GPU. The function of the operator is consistent with
     the following pseudo code:
 
-    .. code-block:: python
+    .. code-block:: text
 
-        residual = x
-        if pre_layer_norm:
-            out = layer_norm1(x)
-        else:
-            out = x
-        out = linear2(dropout1(activation(linear1(src))))
-        if add_residual:
-            out = residual + dropout2(out)
-        else:
-            out = dropout2(out)
-        if not pre_layer_norm:
-            out = layer_norm2(out)
+        >>> residual = x
+        >>> if pre_layer_norm:
+        ...     out = layer_norm1(x)
+        ...  else:
+        ...     out = x
+        >>> out = linear2(dropout1(activation(linear1(src))))
+        >>> if add_residual:
+        ...     out = residual + dropout2(out)
+        ... else:
+        ...     out = dropout2(out)
+        >>> if not pre_layer_norm:
+        ...     out = layer_norm2(out)
 
 
     Args:
@@ -110,16 +114,17 @@ def fused_feedforward(
     Examples:
         .. code-block:: python
 
-            # required: gpu
-            import paddle
-            import paddle.incubate.nn.functional as F
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
+            >>> import paddle.incubate.nn.functional as F
 
-            x = paddle.randn(shape=(1, 8, 8), dtype="float32")
-            linear1_weight = paddle.randn(shape=(8, 8), dtype="float32")
-            linear2_weight = paddle.randn(shape=(8, 8), dtype="float32")
-            out = F.fused_feedforward(x, linear1_weight, linear2_weight)
-            print(out.shape)
-            # (1, 8, 8)
+            >>> x = paddle.randn(shape=(1, 8, 8), dtype="float32")
+            >>> linear1_weight = paddle.randn(shape=(8, 8), dtype="float32")
+            >>> linear2_weight = paddle.randn(shape=(8, 8), dtype="float32")
+            >>> out = F.fused_feedforward(x, linear1_weight, linear2_weight)
+            >>> print(out.shape)
+            [1, 8, 8]
     """
     _verify_dropout_rate(dropout1_rate)
     _verify_dropout_rate(dropout2_rate)
@@ -133,52 +138,95 @@ def fused_feedforward(
         'downgrade_in_infer' if mode == 'downscale_in_infer' else mode
     )  # semantic transfer
 
-    if in_dynamic_mode():
-        if default_main_program().random_seed != 0:
-            seed = default_main_program().random_seed
-        out, _, _, _, _, _, _, _, _, _, _ = _legacy_C_ops.fused_feedforward(
-            x,
-            None,
-            None,
-            linear1_weight,
-            linear1_bias,
-            linear2_weight,
-            linear2_bias,
-            ln1_scale,
-            ln1_bias,
-            ln2_scale,
-            ln2_bias,
-            'pre_layer_norm',
-            pre_layer_norm,
-            'ln1_epsilon',
-            ln1_epsilon,
-            'ln2_epsilon',
-            ln2_epsilon,
-            'act_method',
-            activation,
-            'dropout1_rate',
-            dropout1_rate,
-            'dropout2_rate',
-            dropout2_rate,
-            "is_test",
-            not training,
-            "dropout1_fix_seed",
-            seed is not None,
-            "dropout2_fix_seed",
-            seed is not None,
-            "dropout1_seed",
-            seed if seed is not None else 0,
-            "dropout2_seed",
-            seed if seed is not None else 0,
-            'dropout1_implementation',
-            mode,
-            'dropout2_implementation',
-            mode,
-            'add_residual',
-            add_residual,
-            'ring_id',
-            ring_id,
-        )
+    if in_dynamic_or_pir_mode():
+        if paddle.static.default_main_program().random_seed != 0:
+            seed = paddle.static.default_main_program().random_seed
+
+        if in_dynamic_mode():
+            out, _, _, _, _, _, _, _, _, _, _ = _legacy_C_ops.fused_feedforward(
+                x,
+                None,
+                None,
+                linear1_weight,
+                linear1_bias,
+                linear2_weight,
+                linear2_bias,
+                ln1_scale,
+                ln1_bias,
+                ln2_scale,
+                ln2_bias,
+                'pre_layer_norm',
+                pre_layer_norm,
+                'ln1_epsilon',
+                ln1_epsilon,
+                'ln2_epsilon',
+                ln2_epsilon,
+                'act_method',
+                activation,
+                'dropout1_rate',
+                dropout1_rate,
+                'dropout2_rate',
+                dropout2_rate,
+                "is_test",
+                not training,
+                "dropout1_fix_seed",
+                seed is not None,
+                "dropout2_fix_seed",
+                seed is not None,
+                "dropout1_seed",
+                seed if seed is not None else 0,
+                "dropout2_seed",
+                seed if seed is not None else 0,
+                'dropout1_implementation',
+                mode,
+                'dropout2_implementation',
+                mode,
+                'add_residual',
+                add_residual,
+                'ring_id',
+                ring_id,
+            )
+        else:
+            dtype = x.dtype
+            check_variable_and_dtype(
+                x, 'x', ['float16', 'float32', 'float64'], 'fused_feedforward'
+            )
+            check_dtype(
+                dtype,
+                'dtype',
+                ['float16', 'float32', 'float64'],
+                'fused_feedforward',
+            )
+
+            out, _, _, _, _, _, _, _, _, _, _ = _C_ops.fused_feedforward(
+                x,
+                None,
+                None,
+                linear1_weight,
+                linear1_bias,
+                linear2_weight,
+                linear2_bias,
+                ln1_scale,
+                ln1_bias,
+                ln2_scale,
+                ln2_bias,
+                pre_layer_norm,
+                ln1_epsilon,
+                ln2_epsilon,
+                activation,
+                dropout1_rate,
+                dropout2_rate,
+                mode,
+                mode,
+                not training,
+                seed is not None,
+                seed is not None,
+                seed if seed is not None else 0,
+                seed if seed is not None else 0,
+                add_residual,
+                ring_id,
+            )
+
         return out
 
     helper = LayerHelper("fused_feedforward")
@@ -288,9 +336,9 @@ def fused_bias_dropout_residual_layer_norm(
 
     The fused_bias_dropout_residual_layer_norm operator. The pseudo code is as follows:
 
-    .. code-block:: python
+    .. code-block:: text
 
-        y = layer_norm(residual + dropout(bias + x))
+        >>> y = layer_norm(residual + dropout(bias + x))
 
     Parameters:
         x (Tensor): The input tensor. The shape is `[*, embed\_dim]`.
@@ -323,21 +371,22 @@ def fused_bias_dropout_residual_layer_norm(
     Examples:
         .. code-block:: python
 
-            # required: gpu
-            import paddle
-            import paddle.incubate.nn.functional as F
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
+            >>> import paddle.incubate.nn.functional as F
 
-            # input: [batch_size, seq_len, embed_dim]
-            x = paddle.rand(shape=(2, 4, 128), dtype="float32")
-            # residual: [batch_size, seq_len, embed_dim]
-            residual = paddle.rand(shape=(2, 4, 128), dtype="float32")
-            # linear bias: [embed_dim]
-            bias = paddle.rand(shape=[128], dtype="float32")
-            # output: [batch_size, seq_len, embed_dim]
-            output = F.fused_bias_dropout_residual_layer_norm(
-                x, residual, bias)
-            # [2, 4, 128]
-            print(output.shape)
+            >>> # input: [batch_size, seq_len, embed_dim]
+            >>> x = paddle.rand(shape=(2, 4, 128), dtype="float32")
+            >>> # residual: [batch_size, seq_len, embed_dim]
+            >>> residual = paddle.rand(shape=(2, 4, 128), dtype="float32")
+            >>> # linear bias: [embed_dim]
+            >>> bias = paddle.rand(shape=[128], dtype="float32")
+            >>> # output: [batch_size, seq_len, embed_dim]
+            >>> output = F.fused_bias_dropout_residual_layer_norm(
+            ...     x, residual, bias)
+            >>> print(output.shape)
+            [2, 4, 128]
 
     """
     seed = None
@@ -493,35 +542,35 @@ def fused_multi_head_attention(
     to information from different representation subspaces. This API only
     support self_attention. The pseudo code is as follows:
 
-    .. code-block:: python
+    .. code-block:: text
 
-        residual = x
-        if pre_layer_norm:
-            out = layer_norm(x)
-        else:
-            out = x
-        # compute q, k, v
-        out = matmul(out, qkv_weight) + qkv_bias
-        out = transpose(out, perm=[2, 0, 3, 1, 4])
-        # extract q, k and v from out
-        q = out[0:1,::] * (head_dim ** -0.5)
-        k = out[1:2,::]
-        v = out[2:3,::]
-        out = matmul(q, k, transpose_y=True)
-        out = out + attn_mask
-        out = softmax(out)
-        out = dropout(out)
-        out = matmul(out, v)
-        # combine heads
-        out = transpose(out, perm=[0, 2, 1, 3])
-        # project to output
-        out = linear(out)
-        if add_residual:
-            out = residual + dropout(out)
-        else:
-            out = dropout(out)
-        if not pre_layer_norm:
-            out = layer_norm(out)
+        >>> residual = x
+        >>> if pre_layer_norm:
+        ...     out = layer_norm(x)
+        ... else:
+        ...     out = x
+        >>> # compute q, k, v
+        >>> out = matmul(out, qkv_weight) + qkv_bias
+        >>> out = transpose(out, perm=[2, 0, 3, 1, 4])
+        >>> # extract q, k and v from out
+        >>> q = out[0:1,::] * (head_dim ** -0.5)
+        >>> k = out[1:2,::]
+        >>> v = out[2:3,::]
+        >>> out = matmul(q, k, transpose_y=True)
+        >>> out = out + attn_mask
+        >>> out = softmax(out)
+        >>> out = dropout(out)
+        >>> out = matmul(out, v)
+        >>> # combine heads
+        >>> out = transpose(out, perm=[0, 2, 1, 3])
+        >>> # project to output
+        >>> out = linear(out)
+        >>> if add_residual:
+        ...     out = residual + dropout(out)
+        ... else:
+        ...     out = dropout(out)
+        >>> if not pre_layer_norm:
+        ...     out = layer_norm(out)
 
 
     Parameters:
@@ -581,30 +630,31 @@ def fused_multi_head_attention(
 
         .. code-block:: python
 
-            # required: gpu
-            import paddle
-            import paddle.incubate.nn.functional as F
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
+            >>> import paddle.incubate.nn.functional as F
 
-            # input: [batch_size, seq_len, embed_dim]
-            x = paddle.rand(shape=(2, 4, 128), dtype="float32")
-            # qkv_weight: [3, num_head, head_dim, embed_dim]
-            qkv_weight = paddle.rand(shape=(3, 4, 32, 128), dtype="float32")
-            # qkv_bias: [3, num_head, head_dim]
-            qkv_bias = paddle.rand(shape=(3, 4, 32), dtype="float32")
-            # linear_weight: [embed_dim, embed_dim]
-            linear_weight = paddle.rand(shape=(128, 128), dtype="float32")
-            # linear_bias: [embed_dim]
-            linear_bias = paddle.rand(shape=[128], dtype="float32")
-            # self attention mask: [batch_size, num_heads, seq_len, seq_len]
-            attn_mask = paddle.rand(shape=(2, 4, 4, 4), dtype="float32")
+            >>> # input: [batch_size, seq_len, embed_dim]
+            >>> x = paddle.rand(shape=(2, 4, 128), dtype="float32")
+            >>> # qkv_weight: [3, num_head, head_dim, embed_dim]
+            >>> qkv_weight = paddle.rand(shape=(3, 4, 32, 128), dtype="float32")
+            >>> # qkv_bias: [3, num_head, head_dim]
+            >>> qkv_bias = paddle.rand(shape=(3, 4, 32), dtype="float32")
+            >>> # linear_weight: [embed_dim, embed_dim]
+            >>> linear_weight = paddle.rand(shape=(128, 128), dtype="float32")
+            >>> # linear_bias: [embed_dim]
+            >>> linear_bias = paddle.rand(shape=[128], dtype="float32")
+            >>> # self attention mask: [batch_size, num_heads, seq_len, seq_len]
+            >>> attn_mask = paddle.rand(shape=(2, 4, 4, 4), dtype="float32")
 
-            # output: [batch_size, seq_len, embed_dim]
-            output = F.fused_multi_head_attention(
-                x, qkv_weight, linear_weight, False,
-                None, None, None, None, 1e-5, qkv_bias,
-                linear_bias, None, attn_mask)
-            # [2, 4, 128]
-            print(output.shape)
+            >>> # output: [batch_size, seq_len, embed_dim]
+            >>> output = F.fused_multi_head_attention(
+            ...     x, qkv_weight, linear_weight, False,
+            ...     None, None, None, None, 1e-5, qkv_bias,
+            ...     linear_bias, None, attn_mask)
+            >>> print(output.shape)
+            [2, 4, 128]
     """
 
     seed = None
@@ -621,9 +671,9 @@ def fused_multi_head_attention(
             f"The rank of the x should be 3, but received {x.ndim}."
         )
 
-    if in_dynamic_mode():
-        if default_main_program().random_seed != 0:
-            seed = default_main_program().random_seed
+    if in_dynamic_or_pir_mode():
+        if paddle.static.default_main_program().random_seed != 0:
+            seed = paddle.static.default_main_program().random_seed
         # pre_ln_mean, pre_ln_variance, pre_ln_out, qkv_out, qkv_bias_out, transpose_out, qk_out,
         # qktv_out, softmax_out, attn_dropout_mask_out, attn_dropout_out, attn_mask_out, fmha_out,
         # linear_out, dropout_mask_out, ln_mean_out, ln_var_out, bias_dropout_residual_out, final_out
@@ -669,72 +719,125 @@ def fused_multi_head_attention(
                     "When enable transpose_qkv_wb, the 1st dim of qkv_bias and 2nd dim of "
                     "qkv_weight should be the same, i.e., embed_dim."
                 )
-        (
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            cache_kv_out,
-            final_out,
-        ) = _legacy_C_ops.fused_attention(
-            x,
-            pre_ln_scale,
-            pre_ln_bias,
-            qkv_weight,
-            qkv_bias,
-            cache_kv,
-            attn_mask,
-            linear_weight,
-            linear_bias,
-            ln_scale,
-            ln_bias,
-            'num_heads',
-            num_heads,
-            'transpose_qkv_wb',
-            transpose_qkv_wb,
-            'pre_layer_norm',
-            pre_layer_norm,
-            'epsilon',
-            pre_ln_epsilon,
-            'dropout_rate',
-            dropout_rate,
-            'attn_dropout_rate',
-            attn_dropout_rate,
-            'ln_epsilon',
-            ln_epsilon,
-            'is_test',
-            not training,
-            'attn_dropout_fix_seed',
-            seed is not None,
-            'dropout_fix_seed',
-            seed is not None,
-            'attn_dropout_seed',
-            seed if seed is not None else 0,
-            'dropout_seed',
-            seed if seed is not None else 0,
-            'attn_dropout_implementation',
-            mode,
-            'dropout_implementation',
-            mode,
-            'add_residual',
-            add_residual,
-            'ring_id',
-            ring_id,
-        )
+        if in_dynamic_mode():
+            (
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                cache_kv_out,
+                final_out,
+            ) = _legacy_C_ops.fused_attention(
+                x,
+                pre_ln_scale,
+                pre_ln_bias,
+                qkv_weight,
+                qkv_bias,
+                cache_kv,
+                attn_mask,
+                linear_weight,
+                linear_bias,
+                ln_scale,
+                ln_bias,
+                'num_heads',
+                num_heads,
+                'transpose_qkv_wb',
+                transpose_qkv_wb,
+                'pre_layer_norm',
+                pre_layer_norm,
+                'epsilon',
+                pre_ln_epsilon,
+                'dropout_rate',
+                dropout_rate,
+                'attn_dropout_rate',
+                attn_dropout_rate,
+                'ln_epsilon',
+                ln_epsilon,
+                'is_test',
+                not training,
+                'attn_dropout_fix_seed',
+                seed is not None,
+                'dropout_fix_seed',
+                seed is not None,
+                'attn_dropout_seed',
+                seed if seed is not None else 0,
+                'dropout_seed',
+                seed if seed is not None else 0,
+                'attn_dropout_implementation',
+                mode,
+                'dropout_implementation',
+                mode,
+                'add_residual',
+                add_residual,
+                'ring_id',
+                ring_id,
+            )
+        else:
+            (
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                cache_kv_out,
+                final_out,
+            ) = _C_ops.fused_attention(
+                x,
+                pre_ln_scale,
+                pre_ln_bias,
+                qkv_weight,
+                qkv_bias,
+                cache_kv,
+                attn_mask,
+                linear_weight,
+                linear_bias,
+                ln_scale,
+                ln_bias,
+                num_heads,
+                transpose_qkv_wb,
+                pre_layer_norm,
+                pre_ln_epsilon,
+                attn_dropout_rate,
+                not training,
+                seed is not None,
+                seed if seed is not None else 0,
+                mode,
+                dropout_rate,
+                seed is not None,
+                seed if seed is not None else 0,
+                mode,
+                ln_epsilon,
+                add_residual,
+                ring_id,
+            )
+
         if cache_kv is not None:
             return final_out, cache_kv_out
         return final_out
@@ -906,39 +1009,39 @@ def fused_multi_transformer(
     This operator only supports running on GPU. The function of the transformer layer is consistent
     with the following pseudo code:
 
-    .. code-block:: python
+    .. code-block:: text
 
-        if pre_layer_norm:
-            out = layer_norm(x)
-            out = qkv_linear(out) + qkv_bias
-        else:
-            out = qkv_linear(x) + qkv_bias
-        out = transpose(out, perm=[2, 0, 3, 1, 4])
-        # extract q, k and v from out.
-        q = out[0:1, ::]
-        k = out[1:2, ::]
-        v = out[2:3, ::]
-        out = q * k^t
-        out = attn_mask + out
-        out = softmax(out)
-        out = dropout(out)
-        out = out * v
-        out = transpose(out, perm=[0, 2, 1, 3])
-        out = linear(out)
-        if pre_layer_norm:
-            out = x + dropout(out + bias)
-        else:
-            out = layer_norm(x + dropout(out + bias))
+        >>> if pre_layer_norm:
+        ...     out = layer_norm(x)
+        ...     out = qkv_linear(out) + qkv_bias
+        ... else:
+        ...     out = qkv_linear(x) + qkv_bias
+        >>> out = transpose(out, perm=[2, 0, 3, 1, 4])
+        >>> # extract q, k and v from out.
+        >>> q = out[0:1, ::]
+        >>> k = out[1:2, ::]
+        >>> v = out[2:3, ::]
+        >>> out = q * k^t
+        >>> out = attn_mask + out
+        >>> out = softmax(out)
+        >>> out = dropout(out)
+        >>> out = out * v
+        >>> out = transpose(out, perm=[0, 2, 1, 3])
+        >>> out = linear(out)
+        >>> if pre_layer_norm:
+        ...     out = x + dropout(out + bias)
+        ... else:
+        ...     out = layer_norm(x + dropout(out + bias))
 
-        residual = out;
-        if pre_layer_norm:
-            out = ffn_layer_norm(out)
-        out = ffn1_linear(out)
-        out = dropout(activation(out + ffn1_bias))
-        out = ffn2_linear(out)
-        out = residual + dropout(out + ffn2_bias)
-        if not pre_layer_norm:
-            out = ffn_layer_norm(out)
+        >>> residual = out;
+        >>> if pre_layer_norm:
+        ...     out = ffn_layer_norm(out)
+        >>> out = ffn1_linear(out)
+        >>> out = dropout(activation(out + ffn1_bias))
+        >>> out = ffn2_linear(out)
+        >>> out = residual + dropout(out + ffn2_bias)
+        >>> if not pre_layer_norm:
+        ...     out = ffn_layer_norm(out)
 
     Args:
         x (Tensor): the input tensor could be 3-D tensor, the input data type could be float16 or float32, the shape is `[batch\_size, sequence\_length, d\_model]`.
@@ -996,48 +1099,49 @@ def fused_multi_transformer(
     Examples:
         .. code-block:: python
 
-            # required: gpu
-            import paddle
-            import paddle.incubate.nn.functional as F
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
+            >>> import paddle.incubate.nn.functional as F
 
-            # input: [batch_size, seq_len, embed_dim]
-            x = paddle.rand(shape=(2, 4, 128), dtype="float32")
+            >>> # input: [batch_size, seq_len, embed_dim]
+            >>> x = paddle.rand(shape=(2, 4, 128), dtype="float32")
 
-            # ln_scale: [embed_dim], ln_bias: [embed_dim]
-            ln_scale = paddle.rand(shape=(128,), dtype="float32")
-            ln_bias = paddle.rand(shape=(128,), dtype="float32")
+            >>> # ln_scale: [embed_dim], ln_bias: [embed_dim]
+            >>> ln_scale = paddle.rand(shape=(128,), dtype="float32")
+            >>> ln_bias = paddle.rand(shape=(128,), dtype="float32")
 
-            # qkv_weight: [3, num_head, head_dim, embed_dim], qkv_bias: [3, num_head, head_dim]
-            qkv_weight = paddle.rand(shape=(3, 4, 32, 128), dtype="float32")
-            qkv_bias = paddle.rand(shape=(3, 4, 32), dtype="float32")
+            >>> # qkv_weight: [3, num_head, head_dim, embed_dim], qkv_bias: [3, num_head, head_dim]
+            >>> qkv_weight = paddle.rand(shape=(3, 4, 32, 128), dtype="float32")
+            >>> qkv_bias = paddle.rand(shape=(3, 4, 32), dtype="float32")
 
-            # linear_weight: [embed_dim, embed_dim], linear_bias: [embed_dim]
-            linear_weight = paddle.rand(shape=(128, 128), dtype="float32")
-            linear_bias = paddle.rand(shape=(128,), dtype="float32")
+            >>> # linear_weight: [embed_dim, embed_dim], linear_bias: [embed_dim]
+            >>> linear_weight = paddle.rand(shape=(128, 128), dtype="float32")
+            >>> linear_bias = paddle.rand(shape=(128,), dtype="float32")
 
-            # ffn_ln_scale: [embed_dim], ffn_ln_bias: [embed_dim]
-            ffn_ln_scale = paddle.rand(shape=(128,), dtype="float32")
-            ffn_ln_bias = paddle.rand(shape=(128,), dtype="float32")
+            >>> # ffn_ln_scale: [embed_dim], ffn_ln_bias: [embed_dim]
+            >>> ffn_ln_scale = paddle.rand(shape=(128,), dtype="float32")
+            >>> ffn_ln_bias = paddle.rand(shape=(128,), dtype="float32")
 
-            # ffn1_weight: [embed_dim, 4*embed_dim], ffn1_bias: [4*embed_dim]
-            ffn1_weight = paddle.rand(shape=(128, 4*128), dtype="float32")
-            ffn1_bias = paddle.rand(shape=(4*128,), dtype="float32")
+            >>> # ffn1_weight: [embed_dim, 4*embed_dim], ffn1_bias: [4*embed_dim]
+            >>> ffn1_weight = paddle.rand(shape=(128, 4*128), dtype="float32")
+            >>> ffn1_bias = paddle.rand(shape=(4*128,), dtype="float32")
 
-            # ffn2_weight: [4*embed_dim, embed_dim], ffn2_bias: [embed_dim]
-            ffn2_weight = paddle.rand(shape=(4*128, 128), dtype="float32")
-            ffn2_bias = paddle.rand(shape=(128,), dtype="float32")
+            >>> # ffn2_weight: [4*embed_dim, embed_dim], ffn2_bias: [embed_dim]
+            >>> ffn2_weight = paddle.rand(shape=(4*128, 128), dtype="float32")
+            >>> ffn2_bias = paddle.rand(shape=(128,), dtype="float32")
 
-            # self attention mask: [batch_size, 1, seq_len, seq_len]
-            attn_mask = paddle.rand(shape=(2, 1, 4, 4), dtype="float32")
+            >>> # self attention mask: [batch_size, 1, seq_len, seq_len]
+            >>> attn_mask = paddle.rand(shape=(2, 1, 4, 4), dtype="float32")
 
-            # output: [batch_size, seq_len, embed_dim]
-            output = F.fused_multi_transformer(
-                x, [ln_scale], [ln_bias], [qkv_weight], [qkv_bias],
-                [linear_weight], [linear_bias], [ffn_ln_scale], [ffn_ln_bias],
-                [ffn1_weight], [ffn1_bias], [ffn2_weight], [ffn2_bias],
-                attn_mask=attn_mask)
-            # [2, 4, 128]
-            print(output.shape)
+            >>> # output: [batch_size, seq_len, embed_dim]
+            >>> output = F.fused_multi_transformer(
+            ...     x, [ln_scale], [ln_bias], [qkv_weight], [qkv_bias],
+            ...     [linear_weight], [linear_bias], [ffn_ln_scale], [ffn_ln_bias],
+            ...     [ffn1_weight], [ffn1_bias], [ffn2_weight], [ffn2_bias],
+            ...     attn_mask=attn_mask)
+            >>> print(output.shape)
+            [2, 4, 128]
     """
     if mode not in ('downscale_in_infer', 'upscale_in_train'):
         raise ValueError(

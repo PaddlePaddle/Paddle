@@ -35,7 +35,7 @@ class Pad3dOpConverter : public OpConverter {
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
 
     nvinfer1::ITensor* paddings;
-    if (op_desc.HasInput("Paddings") && op_desc.Input("Paddings").size() > 0) {
+    if (op_desc.HasInput("Paddings") && !op_desc.Input("Paddings").empty()) {
       paddings = engine_->GetITensor(op_desc.Input("Paddings")[0]);
     } else {
       std::vector<int> paddings_v =

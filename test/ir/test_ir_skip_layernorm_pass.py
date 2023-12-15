@@ -17,14 +17,14 @@ import unittest
 from pass_test import PassTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class SkipLayerNormFusePassTest(PassTest):
     def setUp(self):
         paddle.enable_static()
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             x = paddle.static.data(
                 name="x", shape=[128, 768], dtype="float32", lod_level=0
             )
@@ -48,7 +48,7 @@ class SkipLayerNormFusePassTest(PassTest):
         if core.is_compiled_with_cuda():
             use_gpu_set.append(True)
         for use_gpu in use_gpu_set:
-            place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
+            place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
             opt_program = self._apply_ir_passes()
             self.check_program(opt_program)
 

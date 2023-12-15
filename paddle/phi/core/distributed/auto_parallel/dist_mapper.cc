@@ -72,17 +72,17 @@ void DistributedMapper::set_process_id_to_device_ids(
 DistributedMapper DistributedMapper::from_proto(
     const DistributedMapperProto& proto) {
   DistributedMapper dist_mapper;
-  for (int64_t i = 0; i < proto.device_meshes_size(); ++i) {
+  for (int i = 0; i < proto.device_meshes_size(); ++i) {
     dist_mapper.device_meshes_[proto.device_meshes(i).name()] =
         DeviceMesh::from_proto(proto.device_meshes(i));
   }
-  for (int64_t i = 0; i < proto.process_id_to_device_ids_size(); ++i) {
+  for (int i = 0; i < proto.process_id_to_device_ids_size(); ++i) {
     int64_t process_id = proto.process_id_to_device_ids(i).process_id();
     std::string device_mesh_name =
         proto.process_id_to_device_ids(i).device_mesh_name();
     std::vector<int64_t> device_ids;
-    int64_t num_devices = proto.process_id_to_device_ids(i).device_ids_size();
-    for (int64_t j = 0; j < num_devices; ++j) {
+    int num_devices = proto.process_id_to_device_ids(i).device_ids_size();
+    for (int j = 0; j < num_devices; ++j) {
       device_ids.push_back(proto.process_id_to_device_ids(i).device_ids(j));
     }
     dist_mapper.process_id_to_device_ids_[process_id].first = device_mesh_name;

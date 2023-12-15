@@ -18,12 +18,12 @@ import re
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 def get_cuda_version():
@@ -132,7 +132,11 @@ def ref_batch_sparse_attention(
     result_softmax = np.zeros((batch_size, num_heads, nnz))
     for i in range(batch_size):
         for j in range(num_heads):
-            cur_q, cur_k, cur_v, = (
+            (
+                cur_q,
+                cur_k,
+                cur_v,
+            ) = (
                 q[i][j],
                 k[i][j],
                 v[i][j],
@@ -368,7 +372,7 @@ class TestSparseAttentionAPI(unittest.TestCase):
             key_padding_mask_np = key_padding_mask_np.astype(self.dtype)
             attn_mask_np = attn_mask_np.astype(self.dtype)
 
-            exe = fluid.Executor(self.place)
+            exe = base.Executor(self.place)
             if self.use_mask:
                 fetches_result = exe.run(
                     feed={

@@ -14,9 +14,9 @@
 
 #include "paddle/fluid/jit/layer.h"
 
+#include "paddle/common/errors.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 
 #include "paddle/fluid/jit/compilation_unit.h"
 #include "paddle/fluid/jit/engine/base_engine.h"
@@ -71,8 +71,8 @@ const std::shared_ptr<jit::FunctionInfo>& Layer::FunctionInfo(
 
 std::vector<std::string> Layer::FunctionNames() const {
   std::vector<std::string> names;
-  for (auto it = info_map_.begin(); it != info_map_.end(); ++it) {
-    names.emplace_back(it->first);
+  for (const auto& info : info_map_) {
+    names.emplace_back(info.first);
   }
   return names;
 }

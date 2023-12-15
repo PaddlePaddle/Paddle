@@ -15,7 +15,7 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include "gflags/gflags.h"
+#include "paddle/utils/flags.h"
 #include "test/cpp/inference/api/trt_test_helper.h"
 
 namespace paddle {
@@ -27,7 +27,6 @@ TEST(TensorRT, cascade_rcnn) {
   int batch_size = 1;
   config.EnableUseGpu(100, 0);
   config.SetModel(model_dir + "/model", model_dir + "/params");
-  config.SwitchUseFeedFetchOps(false);
   config.EnableTensorRtEngine(
       1 << 30, batch_size, 40, AnalysisConfig::Precision::kFloat32, false);
 

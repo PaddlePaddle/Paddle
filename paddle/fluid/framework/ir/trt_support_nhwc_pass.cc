@@ -18,13 +18,13 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/common/errors.h"
+#include "paddle/common/layout.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/common/layout.h"
-#include "paddle/phi/core/errors.h"
 
 namespace paddle {
 namespace framework {
@@ -126,6 +126,26 @@ bool ModelLayoutIsNHWC(const std::vector<ir::Node *> &op_nodes) {
   return false;
 }
 
+// Do additional check if OP's weight is not persistable
+typedef std::string OP_NAME;
+typedef std::string WEIGHT_NAME;
+typedef std::unordered_map<OP_NAME, WEIGHT_NAME> OP_WEIGHT_NAME;
+bool IsWeight(ir::Node *op_node,
+              ir::Node *var_node,
+              const OP_WEIGHT_NAME &op_weight_pair) {
+  if (var_node->Var()->Persistable()) return true;
+  auto *op_desc = op_node->Op();
+  std::string op_type = op_desc->Type();
+  std::string var_name = var_node->Var()->Name();
+  if (op_weight_pair.count(op_type)) {
+    if (var_name ==
+        op_desc->Input(op_weight_pair.find(op_type)->second).front()) {
+      return true;
+    }
+  }
+  return false;
+}
+
 }  // namespace
 
 void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
@@ -155,13 +175,16 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
                                                     "bilinear_interp_v2",
                                                     "nearest_interp",
                                                     "nearest_interp_v2"};
+  // Op's weight could be temporary variable, so we save the name of OP's weight
+  // input
+  OP_WEIGHT_NAME op_weight_pair{{"conv2d", "Filter"}};
   // Ops must run under the original layout even though it has
   // data_format/data_layout attribute, otherwise it will be very troublesome!
   std::unordered_set<std::string> must_original_layout_ops{
       "affine_channel", "softmax", "temporal_shift"};
   // OPs unrelated to layout are consistent according to the layout of input
   // var！
-  std::unordered_set<std::string> any_layout_ops{"relu"};
+  std::unordered_set<std::string> any_layout_ops{"relu", "elementwise_add"};
   //
   //
   // TODO(liuyuanle): Add other op if needed!
@@ -193,7 +216,7 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
     auto op_inputs = op_node->inputs;
     for (auto *in_var_node : op_inputs) {
       CHECK_EQ(in_var_node->IsVar(), true);
-      if (in_var_node->Var()->Persistable()) continue;
+      if (IsWeight(op_node, in_var_node, op_weight_pair)) continue;
 
       auto input_shape = in_var_node->Var()->GetShape();
       input_shape_4 &= (input_shape.size() == 4);
@@ -326,7 +349,7 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
         for (auto *in_var_node : op_inputs) {
           CHECK_EQ(in_var_node->IsVar(), true);
 
-          if (in_var_node->Var()->Persistable()) continue;
+          if (IsWeight(op_node, in_var_node, op_weight_pair)) continue;
           if (vars_to_nchw.count(in_var_node)) continue;
 
           DoInsertTransposeOp(graph,

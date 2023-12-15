@@ -14,15 +14,15 @@
 
 import numpy as np
 
-from paddle.fluid.framework import static_only
+from paddle.base.framework import static_only
 
 # TODO: define loss functions of neural network
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.layers.layer_function_generator import templatedoc
-from paddle.fluid.param_attr import ParamAttr
+from paddle.base.layer_helper import LayerHelper
+from paddle.base.layers.layer_function_generator import templatedoc
+from paddle.base.param_attr import ParamAttr
 from paddle.nn.initializer import Assign
 
-from ...fluid.data_feeder import check_variable_and_dtype
+from ...base.data_feeder import check_variable_and_dtype
 
 __all__ = []
 
@@ -62,10 +62,10 @@ def nce(
             sample is 1.0.
         param_attr (ParamAttr|None): To specify the weight parameter attribute.
             Default: None, which means the default weight parameter property is
-            used. See usage for details in :ref:`api_fluid_ParamAttr` .
+            used. See usage for details in :ref:`api_paddle_ParamAttr` .
         bias_attr (ParamAttr|None): To specify the bias parameter attribute.
             Default: None, which means the default bias parameter property is
-            used. See usage for details in :ref:`api_fluid_ParamAttr` .
+            used. See usage for details in :ref:`api_paddle_ParamAttr` .
         num_neg_samples (int): ${num_neg_samples_comment}.
         name(str|None): For detailed information, please refer to
             :ref:`api_guide_Name` . Usually name is no need to set and None by default.
@@ -86,44 +86,43 @@ def nce(
     Examples:
         .. code-block:: python
 
+            >>> import paddle
+            >>> import numpy as np
 
-            import paddle
-            import numpy as np
+            >>> paddle.enable_static()
 
-            paddle.enable_static()
+            >>> window_size = 5
+            >>> words = []
+            >>> for i in range(window_size):
+            ...     words.append(paddle.static.data(
+            ...         name='word_{0}'.format(i), shape=[-1, 1], dtype='int64'))
 
-            window_size = 5
-            words = []
-            for i in range(window_size):
-                words.append(paddle.static.data(
-                    name='word_{0}'.format(i), shape=[-1, 1], dtype='int64'))
+            >>> dict_size = 10000
+            >>> label_word = int(window_size / 2) + 1
 
-            dict_size = 10000
-            label_word = int(window_size / 2) + 1
+            >>> embs = []
+            >>> for i in range(window_size):
+            ...     if i == label_word:
+            ...         continue
+            ...
+            ...     emb = paddle.static.nn.embedding(input=words[i], size=[dict_size, 32],
+            ...                         param_attr='embed', is_sparse=True)
+            ...     embs.append(emb)
 
-            embs = []
-            for i in range(window_size):
-                if i == label_word:
-                    continue
+            >>> embs = paddle.concat(x=embs, axis=1)                # concat from 4 * [(-1, 1, 32)] to (-1, 4, 32)
+            >>> embs = paddle.reshape(x=embs, shape=(-1, 4 * 32))   # reshape to (batch_size = -1, dim = 4*32)
+            >>> loss = paddle.static.nn.nce(input=embs, label=words[label_word],
+            ...             num_total_classes=dict_size, param_attr='nce.w_0',
+            ...             bias_attr='nce.b_0')
 
-                emb = paddle.static.nn.embedding(input=words[i], size=[dict_size, 32],
-                                    param_attr='embed', is_sparse=True)
-                embs.append(emb)
-
-            embs = paddle.concat(x=embs, axis=1)                # concat from 4 * [(-1, 1, 32)] to (-1, 4, 32)
-            embs = paddle.reshape(x=embs, shape=(-1, 4 * 32))   # reshape to (batch_size = -1, dim = 4*32)
-            loss = paddle.static.nn.nce(input=embs, label=words[label_word],
-                        num_total_classes=dict_size, param_attr='nce.w_0',
-                        bias_attr='nce.b_0')
-
-            #or use custom distribution
-            dist = np.array([0.05,0.5,0.1,0.3,0.05])
-            loss = paddle.static.nn.nce(input=embs, label=words[label_word],
-                    num_total_classes=5, param_attr='nce.w_1',
-                    bias_attr='nce.b_1',
-                    num_neg_samples=3,
-                    sampler="custom_dist",
-                    custom_dist=dist)
+            # or use custom distribution
+            >>> dist = np.array([0.05,0.5,0.1,0.3,0.05])
+            >>> loss = paddle.static.nn.nce(input=embs, label=words[label_word],
+            ...         num_total_classes=5, param_attr='nce.w_1',
+            ...         bias_attr='nce.b_1',
+            ...         num_neg_samples=3,
+            ...         sampler="custom_dist",
+            ...         custom_dist=dist)
     """
     helper = LayerHelper('nce', **locals())
     check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'nce')

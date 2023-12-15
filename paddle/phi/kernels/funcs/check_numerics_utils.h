@@ -61,6 +61,27 @@ HOSTDEVICE bool NeedPrint(MT max_value UNUSED,
   return false;
 }
 
+template <typename T>
+HOSTDEVICE static void SaveStatsAndValues(int64_t num_nan,
+                                          int64_t num_inf,
+                                          int64_t num_zero,
+                                          T max_value,
+                                          T min_value,
+                                          T mean_value,
+                                          int64_t* stats_ptr,
+                                          float* values_ptr) {
+  if (stats_ptr) {
+    stats_ptr[0] = num_nan;
+    stats_ptr[1] = num_inf;
+    stats_ptr[2] = num_zero;
+  }
+  if (values_ptr) {
+    values_ptr[0] = static_cast<float>(max_value);
+    values_ptr[1] = static_cast<float>(min_value);
+    values_ptr[2] = static_cast<float>(mean_value);
+  }
+}
+
 HOSTDEVICE static void PrintAndThrowError(const char* debug_info,
                                           int64_t num_nan,
                                           int64_t num_inf,
@@ -197,11 +218,13 @@ static void CheckNumericsCpuImpl(const T* value_ptr,
                                  const int64_t numel,
                                  const std::string& cpu_hint_str,
                                  const int check_nan_inf_level,
-                                 const std::string log_name = "cpu",
-                                 const std::string output_dir = "") {
+                                 const std::string log_name,
+                                 const std::string output_dir,
+                                 int64_t* stats_ptr,
+                                 float* values_ptr) {
   using MT = typename phi::dtype::template MPTypeTrait<T>::Type;
 
-#ifdef _OPENMP
+#ifdef PADDLE_WITH_MKLML
   // Use maximum 4 threads to collect the nan and inf information.
   int num_threads = std::max(omp_get_num_threads(), 1);
   num_threads = std::min(num_threads, 4);
@@ -216,11 +239,11 @@ static void CheckNumericsCpuImpl(const T* value_ptr,
   std::vector<MT> thread_max_value(num_threads, static_cast<MT>(value_ptr[0]));
   std::vector<MT> thread_mean_value(num_threads, static_cast<MT>(0));
 
-#ifdef _OPENMP
+#ifdef PADDLE_WITH_MKLML
 #pragma omp parallel num_threads(num_threads)
 #endif
   {
-#ifdef _OPENMP
+#ifdef PADDLE_WITH_MKLML
     int64_t tid = omp_get_thread_num();
     int64_t chunk_size = (numel + num_threads - 1) / num_threads;
     int64_t begin = tid * chunk_size;
@@ -242,7 +265,7 @@ static void CheckNumericsCpuImpl(const T* value_ptr,
       } else if (std::isinf(value)) {
         thread_num_inf[tid] += 1;
       }
-      if (value == 0) {
+      if (value == static_cast<MT>(0)) {
         thread_num_zero[tid] += 1;
       }
     }
@@ -262,6 +285,15 @@ static void CheckNumericsCpuImpl(const T* value_ptr,
     max_value = std::max(thread_max_value[i], max_value);
     mean_value += thread_mean_value[i];
   }
+
+  SaveStatsAndValues<MT>(num_nan,
+                         num_inf,
+                         num_zero,
+                         max_value,
+                         min_value,
+                         mean_value,
+                         stats_ptr,
+                         values_ptr);
 
   // Write log to file
   if (output_dir.size() > 0) {
@@ -298,13 +330,15 @@ void CheckNumericsCpuImpl(const T* value_ptr,
                           const int64_t numel,
                           const std::string& cpu_hint_str,
                           const int check_nan_inf_level,
-                          const std::string log_name = "cpu",
-                          const std::string output_dir = "") {
+                          const std::string log_name,
+                          const std::string output_dir,
+                          int64_t* stats_ptr,
+                          float* values_ptr) {
   using RealType = typename T::value_type;
 
   RealType real_sum = 0.0f, imag_sum = 0.0f;
 
-#ifdef _OPENMP
+#ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for reduction(+ : real_sum) reduction(+ : imag_sum)
 #endif
   for (int64_t i = 0; i < numel; ++i) {

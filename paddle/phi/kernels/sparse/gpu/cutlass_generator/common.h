@@ -14,7 +14,7 @@
 
 #pragma once
 
-#ifdef PADDLE_WITH_CUTLASS
+#if defined(PADDLE_WITH_CUTLASS) && SPCONV_WITH_CUTLASS
 #include "cutlass/arch/mma.h"
 #include "cutlass/device_kernel.h"
 #include "cutlass/epilogue/thread/linear_combination.h"

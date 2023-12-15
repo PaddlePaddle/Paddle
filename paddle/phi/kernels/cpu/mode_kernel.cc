@@ -44,7 +44,7 @@ void ModeKernel(const Context& dev_ctx,
 
   if (in_dims.size() == 0) {
     phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
-    phi::funcs::set_constant(dev_ctx, indices, 0);
+    phi::funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
     return;
   }
 
@@ -52,7 +52,7 @@ void ModeKernel(const Context& dev_ctx,
   // calculation, then tranpose it back to original axis.
   if (axis == in_dims.size() - 1) {
     const int64_t& input_height =
-        phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
+        common::product(common::slice_ddim(in_dims, 0, in_dims.size() - 1));
     const int64_t& input_width = in_dims[in_dims.size() - 1];
     funcs::GetMode<T, int64_t>(input_height,
                                input_width,
@@ -80,7 +80,7 @@ void ModeKernel(const Context& dev_ctx,
       for (int i = axis + 1; i < in_dims.size(); i++) {
         tmp_out_shape.emplace_back(in_dims[i]);
       }
-      DDim tmp_out_dim = phi::make_ddim(tmp_out_shape);
+      DDim tmp_out_dim = common::make_ddim(tmp_out_shape);
       out->Resize(tmp_out_dim);
       indices->Resize(tmp_out_dim);
     }
@@ -89,7 +89,7 @@ void ModeKernel(const Context& dev_ctx,
     DDim trans_shape(in_dims);
     DDim trans_out_shape(in_dims);
 
-    for (size_t i = 0; i < trans_axis.size(); i++) {
+    for (int i = 0; i < static_cast<int>(trans_axis.size()); i++) {
       trans_shape[i] = in_dims[trans_axis[i]];
       trans_out_shape[i] = in_dims[trans_axis[i]];
     }
@@ -98,14 +98,14 @@ void ModeKernel(const Context& dev_ctx,
     DenseTensor trans_input;
     trans_input.Resize(trans_shape);
     dev_ctx.template Alloc<T>(&trans_input);
-    int ndims = trans_axis.size();
+    int ndims = static_cast<int>(trans_axis.size());
 
     // transpose the input value
     funcs::TransCompute<CPUContext, T>(
         ndims, dev_ctx, x, &trans_input, trans_axis);
 
-    const int64_t input_height =
-        phi::product(phi::slice_ddim(trans_shape, 0, trans_shape.size() - 1));
+    const int64_t input_height = common::product(
+        common::slice_ddim(trans_shape, 0, trans_shape.size() - 1));
     const int64_t input_width = trans_shape[trans_shape.size() - 1];
     DenseTensor tmp_out;
     tmp_out.Resize(trans_out_shape);

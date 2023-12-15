@@ -1,0 +1,239 @@
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+/*
+ * copyright (C) 2022 KUNLUNXIN, Inc
+ */
+
+#include "xpu/kernel/cluster.h"
+#include "xpu/kernel/cluster_partition.h"
+#include "xpu/kernel/cluster_primitive.h"
+#include "xpu/kernel/xtdk_io.h"
+
+namespace xpu2 {
+namespace plugin {
+
+static inline __device__ int nchw_best_read_len(int hw,
+                                                int nhw_iter,
+                                                int nhw_end,
+                                                int bufsize) {
+  int _n = nhw_iter / hw;
+  int _hw_offset = nhw_iter % hw;
+  int remain_pixels = nhw_end - nhw_iter;
+  if (remain_pixels <= bufsize) {  // read-all
+    return remain_pixels;
+  } else if (bufsize < 2 * hw) {  // hw is large, only read-curr_row
+    int read_len = min(hw - _hw_offset, remain_pixels);
+    return min(read_len, bufsize);
+  } else {  // hw is small, read many rows;
+    int first_len = hw - _hw_offset;
+    int other_len = (bufsize - first_len) / hw * hw;
+    return first_len + other_len;
+  }
+}
+
+template <typename T>
+static inline __device__ void nchw_load(_global_ptr_ const T* x_gm,
+                                        int total_c,
+                                        int hw,
+                                        int c_iter,
+                                        int nhw_iter,
+                                        T* buf,
+                                        int read_len) {
+  int _n = nhw_iter / hw;
+  int _hw_offset = nhw_iter % hw;
+  _global_ptr_ const T* xptr =
+      x_gm + _n * total_c * hw + c_iter * hw + _hw_offset;
+  int first_len = min(hw - _hw_offset, read_len);
+  GM2LM_ASYNC(xptr, buf, first_len * sizeof(T));
+  xptr = x_gm + (_n + 1) * total_c * hw + c_iter * hw;
+  buf += first_len;
+  read_len -= first_len;
+  while (read_len > 0) {
+    int loop_len = min(hw, read_len);
+    GM2LM_ASYNC(xptr, buf, loop_len * sizeof(T));
+    xptr += total_c * hw;
+    buf += loop_len;
+    read_len -= loop_len;
+  }
+  mfence_lm();
+}
+
+template <typename T>
+static inline __device__ void nchw_store(_global_ptr_ T* x_gm,
+                                         int total_c,
+                                         int hw,
+                                         int c_iter,
+                                         int nhw_iter,
+                                         T* buf,
+                                         int read_len) {
+  int _n = nhw_iter / hw;
+  int _hw_offset = nhw_iter % hw;
+  _global_ptr_ T* xptr = x_gm + _n * total_c * hw + c_iter * hw + _hw_offset;
+  int first_len = min(hw - _hw_offset, read_len);
+  LM2GM_ASYNC(buf, xptr, first_len * sizeof(T));
+  xptr = x_gm + (_n + 1) * total_c * hw + c_iter * hw;
+  buf += first_len;
+  read_len -= first_len;
+  while (read_len > 0) {
+    int loop_len = min(hw, read_len);
+    LM2GM_ASYNC(buf, xptr, loop_len * sizeof(T));
+    xptr += total_c * hw;
+    buf += loop_len;
+    read_len -= loop_len;
+  }
+  mfence();
+}
+
+template <typename T>
+__global__ void bn_act_fusion_infer_kernel(float epsilon,
+                                           int64_t img_n,
+                                           int64_t c_start,
+                                           int64_t c_end,
+                                           int64_t img_c,
+                                           int64_t img_h,
+                                           int64_t img_w,
+                                           const T* x_gm,
+                                           T* y_gm,
+                                           const float* scale_gm,
+                                           const float* bias_gm,
+                                           const float* mean_gm,
+                                           const float* var_gm,
+                                           int act_type) {
+  int64_t img_hw = img_h * img_w;
+  int cid = core_id();
+  int ncores = core_num();
+  int64_t partition_start;
+  int64_t partition_end;
+  partition(cluster_id(),
+            cluster_num(),
+            c_end - c_start,
+            1,
+            &partition_start,
+            &partition_end);
+  if (partition_start >= partition_end) {
+    return;
+  }
+  int64_t cluster_c = partition_end - partition_start;
+  partition_start += c_start;
+  partition_end += c_start;
+  const int SHARED_PARAM_SIZE = 2048;
+  if (cluster_c > SHARED_PARAM_SIZE) {
+    return;
+  }
+  __shared__ float scale_sm[SHARED_PARAM_SIZE];
+  __shared__ float bias_sm[SHARED_PARAM_SIZE];
+  __shared__ float mean_sm[SHARED_PARAM_SIZE];
+  __shared__ float var_sm[SHARED_PARAM_SIZE];
+  const int TOTAL_BUFFER_SIZE = 800 * 4 / sizeof(T);
+  __simd__ T buffer[TOTAL_BUFFER_SIZE];
+  if (cid == 0) {
+    GM2SM_ASYNC(
+        scale_gm + partition_start, scale_sm, cluster_c * sizeof(float));
+    GM2SM_ASYNC(bias_gm + partition_start, bias_sm, cluster_c * sizeof(float));
+    if (mean_gm != nullptr) {
+      GM2SM_ASYNC(
+          mean_gm + partition_start, mean_sm, cluster_c * sizeof(float));
+    }
+    if (var_gm != nullptr) {
+      GM2SM_ASYNC(var_gm + partition_start, var_sm, cluster_c * sizeof(float));
+    }
+    mfence();
+  }
+  sync_all();
+  int groupsize = 1;
+  while (groupsize * 2 * cluster_c <= 64) {
+    groupsize *= 2;
+  }
+  int ngroups = ncores / groupsize;
+  int gid = cid % ngroups;
+  int id_inside_group = cid / ngroups;
+  int64_t pixel_start;
+  int64_t pixel_end;
+  partition(
+      id_inside_group, groupsize, img_n * img_hw, 1, &pixel_start, &pixel_end);
+  for (int64_t c_iter = partition_start + gid; c_iter < partition_end;
+       c_iter += ngroups) {
+    int64_t c_sm_iter = c_iter - partition_start;
+    float scale = scale_sm[c_sm_iter];
+    float bias = bias_sm[c_sm_iter];
+    float var = 0.0f;
+    float mean = 0.0f;
+    // mean_gm and var_gm is set to null in affine_channel op.
+    if (var_gm != nullptr) {
+      var = var_sm[c_sm_iter];
+      var += epsilon;
+      scale = scale / sqrt(var);
+    }
+    if (mean_gm != nullptr) {
+      mean = mean_sm[c_sm_iter];
+      bias = bias - mean * scale;
+    }
+    int64_t pixel_iter = pixel_start;
+    while (pixel_iter < pixel_end) {
+      int read_len =
+          nchw_best_read_len(img_hw, pixel_iter, pixel_end, TOTAL_BUFFER_SIZE);
+      nchw_load(x_gm, img_c, img_hw, c_iter, pixel_iter, buffer, read_len);
+      float32x16_t vl;
+      float32x16_t vh;
+      switch (act_type) {
+        case 1:  // Activation_t::RELU
+          for (int i = 0; i < read_len; i += 32) {
+            vload2_lm(buffer + i, vl, vh);
+            vl = svmul_float32x16(scale, vl);
+            vh = svmul_float32x16(scale, vh);
+            vl = svadd_float32x16(bias, vl);
+            vh = svadd_float32x16(bias, vh);
+            vl = svmax_float32x16(0.0f, vl);
+            vh = svmax_float32x16(0.0f, vh);
+            vstore2_lm(buffer + i, vl, vh);
+          }
+          break;
+        default:
+          for (int i = 0; i < read_len; i += 32) {
+            vload2_lm(buffer + i, vl, vh);
+            vl = svmul_float32x16(scale, vl);
+            vh = svmul_float32x16(scale, vh);
+            vl = svadd_float32x16(bias, vl);
+            vh = svadd_float32x16(bias, vh);
+            vstore2_lm(buffer + i, vl, vh);
+          }
+      }
+      mfence_lm();
+      nchw_store(y_gm, img_c, img_hw, c_iter, pixel_iter, buffer, read_len);
+      pixel_iter += read_len;
+    }
+  }
+  return;
+}
+
+#define _XPU_DEF__BN_ACT_FUSION_INFER_KERNEL_(DATA_TYPE)                     \
+  template __global__ void bn_act_fusion_infer_kernel(float epsilon,         \
+                                                      int64_t img_n,         \
+                                                      int64_t c_start,       \
+                                                      int64_t c_end,         \
+                                                      int64_t img_c,         \
+                                                      int64_t img_h,         \
+                                                      int64_t img_w,         \
+                                                      const DATA_TYPE* x_gm, \
+                                                      DATA_TYPE* y_gm,       \
+                                                      const float* scale_gm, \
+                                                      const float* bias_gm,  \
+                                                      const float* mean_gm,  \
+                                                      const float* var_gm,   \
+                                                      int act_type);
+_XPU_DEF__BN_ACT_FUSION_INFER_KERNEL_(float);
+_XPU_DEF__BN_ACT_FUSION_INFER_KERNEL_(float16);
+
+}  // namespace plugin
+}  // namespace xpu2

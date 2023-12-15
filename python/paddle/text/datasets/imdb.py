@@ -47,27 +47,38 @@ class Imdb(Dataset):
 
         .. code-block:: python
 
-            import paddle
-            from paddle.text.datasets import Imdb
+            >>> # doctest: +TIMEOUT(75)
+            >>> import paddle
+            >>> from paddle.text.datasets import Imdb
 
-            class SimpleNet(paddle.nn.Layer):
-                def __init__(self):
-                    super().__init__()
+            >>> class SimpleNet(paddle.nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...
+            ...     def forward(self, doc, label):
+            ...         return paddle.sum(doc), label
 
-                def forward(self, doc, label):
-                    return paddle.sum(doc), label
 
+            >>> imdb = Imdb(mode='train')
 
-            imdb = Imdb(mode='train')
-
-            for i in range(10):
-                doc, label = imdb[i]
-                doc = paddle.to_tensor(doc)
-                label = paddle.to_tensor(label)
-
-                model = SimpleNet()
-                image, label = model(doc, label)
-                print(doc.shape, label.shape)
+            >>> for i in range(10):
+            ...     doc, label = imdb[i]
+            ...     doc = paddle.to_tensor(doc)
+            ...     label = paddle.to_tensor(label)
+            ...
+            ...     model = SimpleNet()
+            ...     image, label = model(doc, label)
+            ...     print(doc.shape, label.shape)
+            [121] [1]
+            [115] [1]
+            [386] [1]
+            [471] [1]
+            [585] [1]
+            [206] [1]
+            [221] [1]
+            [324] [1]
+            [166] [1]
+            [598] [1]
 
     """
 

@@ -66,7 +66,7 @@ class TestDygraphViewReuseAllocation(unittest.TestCase):
     def test_backward_error(self):
         # It raises an error because the inplace operator will result
         # in incorrect gradient computation.
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             var_a = paddle.ones(shape=self.input_shape, dtype="float32")
             var_a.stop_gradient = False
 
@@ -80,9 +80,7 @@ class TestDygraphViewReuseAllocation(unittest.TestCase):
             loss = paddle.nn.functional.relu(var_c)
             with self.assertRaisesRegex(
                 RuntimeError,
-                "received tensor_version:{} != wrapper_version_snapshot:{}".format(
-                    1, 0
-                ),
+                f"received tensor_version:{1} != wrapper_version_snapshot:{0}",
             ):
                 loss.backward()
 

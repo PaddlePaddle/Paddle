@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestIscloseOp(OpTest):
@@ -52,7 +53,7 @@ class TestIscloseOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestIscloseOpException(TestIscloseOp):
@@ -114,17 +115,18 @@ class TestIscloseOpNanTrue(TestIscloseOp):
 
 
 class TestIscloseStatic(unittest.TestCase):
+    @test_with_pir_api
     def test_api_case(self):
         paddle.enable_static()
         x_data = np.random.rand(10, 10)
         y_data = np.random.rand(10, 10)
-        places = [paddle.fluid.CPUPlace()]
-        if paddle.fluid.core.is_compiled_with_cuda():
-            places.append(paddle.fluid.CUDAPlace(0))
+        places = [paddle.base.CPUPlace()]
+        if paddle.base.core.is_compiled_with_cuda():
+            places.append(paddle.base.CUDAPlace(0))
         for place in places:
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
                 x = paddle.static.data(
                     name='x', shape=[10, 10], dtype='float64'
                 )
@@ -132,9 +134,9 @@ class TestIscloseStatic(unittest.TestCase):
                     name='y', shape=[10, 10], dtype='float64'
                 )
                 result = paddle.isclose(x, y)
-                exe = paddle.fluid.Executor(place)
+                exe = paddle.base.Executor(place)
                 fetches = exe.run(
-                    paddle.fluid.default_main_program(),
+                    main,
                     feed={"x": x_data, "y": y_data},
                     fetch_list=[result],
                 )
@@ -145,7 +147,7 @@ class TestIscloseStatic(unittest.TestCase):
 class TestIscloseDygraph(unittest.TestCase):
     def test_api_case(self):
         places = [paddle.CPUPlace()]
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         for place in places:
             paddle.disable_static()
@@ -209,17 +211,25 @@ class TestIscloseError(unittest.TestCase):
 
 
 class TestIscloseOpFp16(unittest.TestCase):
+    @test_with_pir_api
     def test_fp16(self):
-        x_data = np.random.rand(10, 10).astype('float16')
-        y_data = np.random.rand(10, 10).astype('float16')
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data(shape=[10, 10], name='x', dtype='float16')
-            y = paddle.static.data(shape=[10, 10], name='x', dtype='float16')
-            out = paddle.isclose(x, y, rtol=1e-05, atol=1e-08)
-            if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda():
+            x_data = np.random.rand(10, 10).astype('float16')
+            y_data = np.random.rand(10, 10).astype('float16')
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                x = paddle.static.data(
+                    shape=[10, 10], name='x', dtype='float16'
+                )
+                y = paddle.static.data(
+                    shape=[10, 10], name='y', dtype='float16'
+                )
+                out = paddle.isclose(x, y, rtol=1e-05, atol=1e-08)
+
                 place = paddle.CUDAPlace(0)
                 exe = paddle.static.Executor(place)
-                exe.run(paddle.static.default_startup_program())
+                exe.run(startup)
                 out = exe.run(feed={'x': x_data, 'y': y_data}, fetch_list=[out])
 
 
@@ -235,7 +245,7 @@ class TestIscloseOpFloat16(TestIscloseOp):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(place)
+                self.check_output_with_place(place, check_pir=True)
 
 
 class TestIscloseOpFloat32(TestIscloseOp):
@@ -256,7 +266,76 @@ class TestIscloseOpFloat64(TestIscloseOp):
         self.equal_nan = False
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
+
+
+class TestIscloseOpCp64(unittest.TestCase):
+    @test_with_pir_api
+    def test_cp64(self):
+        x_data = (
+            np.random.rand(10, 10) + 1.0j * np.random.rand(10, 10)
+        ).astype(np.complex64)
+        y_data = (
+            np.random.rand(10, 10) + 1.0j * np.random.rand(10, 10)
+        ).astype(np.complex64)
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(shape=[10, 10], name='x', dtype=np.complex64)
+            y = paddle.static.data(shape=[10, 10], name='y', dtype=np.complex64)
+            out = paddle.isclose(x, y, rtol=1e-05, atol=1e-08)
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                exe.run(startup)
+                out = exe.run(feed={'x': x_data, 'y': y_data}, fetch_list=[out])
+
+
+class TestIscloseOpCp128(unittest.TestCase):
+    @test_with_pir_api
+    def test_cp128(self):
+        x_data = (
+            np.random.rand(10, 10) + 1.0j * np.random.rand(10, 10)
+        ).astype(np.complex128)
+        y_data = (
+            np.random.rand(10, 10) + 1.0j * np.random.rand(10, 10)
+        ).astype(np.complex128)
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                shape=[10, 10], name='x', dtype=np.complex128
+            )
+            y = paddle.static.data(
+                shape=[10, 10], name='y', dtype=np.complex128
+            )
+            out = paddle.isclose(x, y, rtol=1e-05, atol=1e-08)
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                exe.run(startup)
+                out = exe.run(feed={'x': x_data, 'y': y_data}, fetch_list=[out])
+
+
+class TestIscloseOpComplex64(TestIscloseOp):
+    def set_args(self):
+        self.input = np.array([10.1 + 0.1j]).astype(np.complex64)
+        self.other = np.array([10 + 0j]).astype(np.complex64)
+        self.rtol = np.array([0.01]).astype("float64")
+        self.atol = np.array([0]).astype("float64")
+        self.equal_nan = False
+
+
+class TestIscloseOpComplex128(TestIscloseOp):
+    def set_args(self):
+        self.input = np.array([10.1 + 0.1j]).astype(np.complex128)
+        self.other = np.array([10 + 0j]).astype(np.complex128)
+        self.rtol = np.array([0.01]).astype("float64")
+        self.atol = np.array([0]).astype("float64")
+        self.equal_nan = False
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
 
 
 class TestIscloseOpLargeDimInput(TestIscloseOp):
@@ -266,6 +345,15 @@ class TestIscloseOpLargeDimInput(TestIscloseOp):
         self.input[-1][-1] = 100
         self.rtol = np.array([1e-05]).astype("float64")
         self.atol = np.array([1e-08]).astype("float64")
+        self.equal_nan = False
+
+
+class TestIscloseOpDoubleTol(TestIscloseOp):
+    def set_args(self):
+        self.input = np.array([1.0, 1e-9]).astype("float64")
+        self.other = np.array([1.0, 1e-10]).astype("float64")
+        self.rtol = np.array([1e-13]).astype("float64")
+        self.atol = np.array([1e-14]).astype("float64")
         self.equal_nan = False
 
 

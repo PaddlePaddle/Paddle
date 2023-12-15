@@ -63,7 +63,11 @@ class TestExportPrunedGraph(unittest.TestCase):
         paddle.jit.to_static(model)
         out = model(self.x, self.y, z=True)
         paddle.onnx.export(
-            model, 'pruned', input_spec=[self.x], output_spec=[out]
+            model,
+            'pruned',
+            input_spec=[self.x, self.y, True],
+            output_spec=[out],
+            input_names_after_prune=[self.x.name],
         )
 
 

@@ -146,7 +146,7 @@ void VirtualMemoryAutoGrowthBestFitAllocator::ExtendAndMerge(size_t size) {
   allocations_.push_back(std::move(allocateptr));  // hold allocation
 
   if (all_blocks_.empty()) {
-    all_blocks_.push_back(Block(ptr, size, true));
+    all_blocks_.emplace_back(ptr, size, true);
     free_blocks_.emplace(std::make_pair(size, ptr), all_blocks_.begin());
     return;
   }
@@ -165,7 +165,7 @@ void VirtualMemoryAutoGrowthBestFitAllocator::ExtendAndMerge(size_t size) {
                                block_it);
         } else {
           // do not merge
-          all_blocks_.push_front(Block(ptr, size, true));
+          all_blocks_.emplace_back(ptr, size, true);
           free_blocks_.emplace(std::make_pair(size, ptr), all_blocks_.begin());
         }
       } else {
@@ -222,7 +222,7 @@ void VirtualMemoryAutoGrowthBestFitAllocator::ExtendAndMerge(size_t size) {
                          block_it);
   } else {
     // do not merge
-    all_blocks_.push_back(Block(ptr, size, true));
+    all_blocks_.emplace_back(ptr, size, true);
     auto block_it = all_blocks_.end();
     block_it--;
     free_blocks_.emplace(std::make_pair(size, ptr), block_it);

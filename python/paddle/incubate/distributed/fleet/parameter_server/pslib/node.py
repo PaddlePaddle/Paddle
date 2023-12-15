@@ -76,8 +76,7 @@ class DownpourServer(Server):
                     return
                 else:
                     raise ValueError(
-                        "expect table %s type=%s, but actual type=%s"
-                        % (table_id, pslib.PS_SPARSE_TABLE, table.type)
+                        f"expect table {table_id} type={pslib.PS_SPARSE_TABLE}, but actual type={table.type}"
                     )
         if strategy is None:
             strategy = {}
@@ -388,8 +387,7 @@ class DownpourServer(Server):
                     return
                 else:
                     raise ValueError(
-                        "expect table %s type=%s, but actual type=%s"
-                        % (table_id, pslib.PS_DENSE_TABLE, table.type)
+                        f"expect table {table_id} type={pslib.PS_DENSE_TABLE}, but actual type={table.type}"
                     )
 
         if strategy is None:
@@ -480,8 +478,7 @@ class DownpourServer(Server):
                     return
                 else:
                     raise ValueError(
-                        "expect table %s type=%s, but actual type=%s"
-                        % (table_id, pslib.PS_DENSE_TABLE, table.type)
+                        f"expect table {table_id} type={pslib.PS_DENSE_TABLE}, but actual type={table.type}"
                     )
         if strategy is None:
             strategy = {}

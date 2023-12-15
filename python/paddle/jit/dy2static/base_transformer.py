@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid import unique_name
+from paddle.base import unique_name
 from paddle.jit.dy2static.utils import (
     FOR_ITER_INDEX_PREFIX,
     FOR_ITER_ITERATOR_PREFIX,
@@ -390,8 +390,8 @@ class ForNodeVisitor:
             index_init_value_str = '0'
             index_init_var_name = self.iter_idx_name
 
-        index_init_node_source_str = "{target} = {value}".format(
-            target=index_init_var_name, value=index_init_value_str
+        index_init_node_source_str = (
+            f"{index_init_var_name} = {index_init_value_str}"
         )
 
         index_init_node = gast.parse(index_init_node_source_str).body[0]
@@ -456,9 +456,7 @@ class ForNodeVisitor:
         else:
             init_value_str = '0'
 
-        enum_init_node_source_str = "{} = {}".format(
-            self.enum_idx_name, init_value_str
-        )
+        enum_init_node_source_str = f"{self.enum_idx_name} = {init_value_str}"
         enum_init_node = gast.parse(enum_init_node_source_str).body[0]
         return enum_init_node
 

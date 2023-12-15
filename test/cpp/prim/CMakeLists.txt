@@ -1,7 +1,7 @@
 set(prim_eager_deps
     phi
+    common
     hook_utils
-    tensor_utils
     utils
     global_utils
     backward
@@ -16,40 +16,29 @@ set(prim_eager_deps
 set(prim_generated_deps final_dygraph_function final_dygraph_node
                         dygraph_function dygraph_node)
 
-cc_test_old(
-  test_comp_static
-  SRCS
-  test_static_prim.cc
-  DEPS
-  static_utils
-  static_prim_api
-  generated_op
-  prim_utils
-  operator
-  elementwise_mul_op
-  elementwise_sub_op
-  elementwise_pow_op
-  fill_constant_op
-  activation_op
-  phi
-  static_global_utils
-  static_tensor_operants
-  generated_static_op)
+paddle_test(test_comp_static SRCS test_static_prim.cc DEPS common)
 
 if(NOT (NOT WITH_PYTHON AND ON_INFER))
-  cc_library(
-    init_env_utils
-    SRCS init_env_utils.cc
-    DEPS phi eager_tensor_operants static_tensor_operants)
+  if(WITH_CINN)
+    set(prim_eager_deps ${prim_eager_deps})
+  endif()
+  cc_library(init_env_utils SRCS init_env_utils.cc)
+  target_compile_definitions(init_env_utils PUBLIC PADDLE_DLL_EXPORT)
 
-  cc_test_old(
-    test_comp_eager
-    SRCS
-    test_eager_prim.cc
-    DEPS
-    ${prim_eager_deps}
-    ${prim_generated_deps}
-    prim_utils
-    static_global_utils
-    init_env_utils)
+  paddle_test(test_comp_eager SRCS test_eager_prim.cc DEPS init_env_utils
+              common)
+endif()
+
+# skip win32 since wget is not installed by default on windows machine.
+
+if(NOT WIN32)
+  cc_test(
+    test_vjp_pir
+    SRCS test_vjp.cc
+    DEPS op_dialect_vjp pir)
+endif()
+if(WITH_ONNXRUNTIME AND WIN32)
+  # Copy onnxruntime for some c++ test in Windows, since the test will
+  # be build only in CI, so suppose the generator in Windows is Ninja.
+  copy_onnx(test_comp_static)
 endif()

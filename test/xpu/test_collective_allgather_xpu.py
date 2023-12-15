@@ -14,42 +14,44 @@
 
 import unittest
 
-from get_test_cover_info import (
-    XPUOpTestWrapper,
-    create_test_class,
-    get_xpu_op_support_types,
-)
-from test_collective_base_xpu import TestDistBase
+from get_test_cover_info import get_xpu_op_support_types
+from xpu.test_collective_api_base import TestDistBase
 
 import paddle
-from paddle.fluid import core
+from paddle import core
 
 paddle.enable_static()
 
 
-class XPUTestCAllgatherOP(XPUOpTestWrapper):
-    def __init__(self):
-        self.op_name = 'c_allgather'
-        self.use_dynamic_create_class = False
+class TestCollectiveAllgatherAPI(TestDistBase):
+    def _setup_config(self):
+        pass
 
-    class TestCAllgatherOp(TestDistBase):
-        def _setup_config(self):
-            pass
-
-        def test_allgather(self):
+    @unittest.skipIf(
+        not core.is_compiled_with_xpu() or paddle.device.xpu.device_count() < 2,
+        "run test when having at leaset 2 XPUs.",
+    )
+    def test_allgather(self):
+        support_types = get_xpu_op_support_types('c_allgather')
+        for dtype in support_types:
             self.check_with_place(
-                "collective_allgather_op_xpu.py", "allgather", self.in_type_str
+                "collective_allgather_api.py", "allgather", dtype=dtype
             )
 
-
-support_types = get_xpu_op_support_types('c_allgather')
-for stype in support_types:
-    create_test_class(
-        globals(),
-        XPUTestCAllgatherOP,
-        stype,
-        ignore_device_version=[core.XPUVersion.XPU1],
+    @unittest.skipIf(
+        not core.is_compiled_with_xpu() or paddle.device.xpu.device_count() < 2,
+        "run test when having at leaset 2 XPUs.",
     )
+    def test_allgather_dygraph(self):
+        support_types = get_xpu_op_support_types('c_allgather')
+        for dtype in support_types:
+            self.check_with_place(
+                "collective_allgather_api_dygraph.py",
+                "allgather",
+                static_mode="0",
+                dtype=dtype,
+            )
+
 
 if __name__ == '__main__':
     unittest.main()

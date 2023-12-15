@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/core/extended_tensor.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace phi {
 
@@ -38,7 +39,7 @@ DataType ExtendedTensor::dtype() const {
 
 DataLayout ExtendedTensor::layout() const {
   PADDLE_THROW(phi::errors::Unavailable(
-      "ExtendedTensor does not support `dtype` method."));
+      "ExtendedTensor does not support `layout` method."));
 }
 
 bool ExtendedTensor::valid() const {

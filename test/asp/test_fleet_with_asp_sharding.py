@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distributed import fleet
 from paddle.incubate import asp as sparsity
 from paddle.incubate.asp import ASPHelper
@@ -48,7 +48,7 @@ class TestFleetWithASPSharding(unittest.TestCase):
         os.environ['FLAGS_check_nan_inf'] = "0"
 
     def net(self, main_prog, startup_prog):
-        with fluid.program_guard(main_prog, startup_prog):
+        with base.program_guard(main_prog, startup_prog):
             input_x = paddle.static.data(
                 name="x", shape=[-1, 32], dtype='float32'
             )
@@ -86,27 +86,27 @@ class TestFleetWithASPSharding(unittest.TestCase):
 
     def test_with_asp_sharding(self):
         fleet.init(is_collective=True)
-        train_prog, startup_prog = fluid.Program(), fluid.Program()
+        train_prog, startup_prog = base.Program(), base.Program()
         avg_cost, strategy, input_x, input_y = self.net(
             train_prog, startup_prog
         )
 
-        with fluid.program_guard(train_prog, startup_prog):
-            optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
+        with base.program_guard(train_prog, startup_prog):
+            optimizer = paddle.optimizer.SGD(learning_rate=0.01)
             optimizer = fleet.distributed_optimizer(
                 optimizer, strategy=strategy
             )
             optimizer.minimize(avg_cost)
 
-        if paddle.fluid.is_compiled_with_cuda():
-            place = fluid.CUDAPlace(
+        if paddle.base.is_compiled_with_cuda():
+            place = base.CUDAPlace(
                 int(os.environ.get('FLAGS_selected_gpus', 0))
             )
         else:
-            place = fluid.CPUPlace()
+            place = base.CPUPlace()
 
-        exe = fluid.Executor(place)
-        feeder = fluid.DataFeeder(feed_list=[input_x, input_y], place=place)
+        exe = base.Executor(place)
+        feeder = base.DataFeeder(feed_list=[input_x, input_y], place=place)
         exe.run(startup_prog)
 
         sparsity.prune_model(train_prog)
@@ -117,7 +117,7 @@ class TestFleetWithASPSharding(unittest.TestCase):
         for param in train_prog.global_block().all_parameters():
             if ASPHelper._is_supported_layer(train_prog, param.name):
                 mat = np.array(
-                    fluid.global_scope().find_var(param.name).get_tensor()
+                    base.global_scope().find_var(param.name).get_tensor()
                 )
                 if (len(param.shape) == 4 and param.shape[1] < 4) or (
                     len(param.shape) == 2 and param.shape[0] < 4

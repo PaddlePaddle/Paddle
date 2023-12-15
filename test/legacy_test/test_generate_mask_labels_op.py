@@ -42,7 +42,7 @@ def poly2mask(xy, k, h, w):
     y = y + [y[0]]
     m = sum(
         [
-            int(max(abs(x[j] - x[j + 1]), abs(y[j] - y[j + 1]))) + int(1)
+            int(max(abs(x[j] - x[j + 1]), abs(y[j] - y[j + 1]))) + 1
             for j in range(k)
         ]
     )

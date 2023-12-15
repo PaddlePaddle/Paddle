@@ -267,7 +267,7 @@ def step_check(output_dir):
     m1 = np.load(p1).reshape(-1)
     m2 = np.load(p2).reshape(-1)
     try:
-        assert np.allclose(m1, m2, rtol=1e-5, atol=1e-6)
+        np.testing.assert_allclose(m1, m2, rtol=1e-5, atol=1e-6)
     except:
         diff = m1 - m2
         logger.error(f"max diff{diff.max()}, min diff: {diff.min()}")
@@ -326,7 +326,6 @@ def wrap_sharding_2_3(model, optimizer, scaler, sharding_offload, stage):
 
 
 def test_save_load(args):
-
     np.random.seed(args.seed)
     paddle.seed(args.seed)
 
@@ -405,7 +404,6 @@ def test_save_load(args):
 
 
 def run_case(args):
-
     saving_strategy = args.test_case.split(":")[0]
     loading_strategy = args.test_case.split(":")[1]
 
@@ -424,7 +422,6 @@ def run_case(args):
 
 
 if __name__ == '__main__':
-
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--cmd", default="main", choices=["main", "save", "load"]

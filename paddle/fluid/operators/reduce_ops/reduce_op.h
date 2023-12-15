@@ -544,11 +544,11 @@ class ReduceBaseOp : public framework::OperatorWithKernel {
     if (reduce_all) {
       if (keep_dim)
         ctx->SetOutputDim("Out",
-                          phi::make_ddim(std::vector<int64_t>(x_rank, 1)));
+                          common::make_ddim(std::vector<int64_t>(x_rank, 1)));
       else
         ctx->SetOutputDim("Out", {1});
     } else {
-      auto dims_vector = vectorize(x_dims);
+      auto dims_vector = common::vectorize(x_dims);
       if (keep_dim) {
         for (size_t i = 0; i < dims.size(); ++i) {
           dims_vector[dims[i]] = 1;
@@ -565,7 +565,7 @@ class ReduceBaseOp : public framework::OperatorWithKernel {
       if (!keep_dim && dims_vector.size() == 0) {
         dims_vector.push_back(1);
       }
-      auto out_dims = phi::make_ddim(dims_vector);
+      auto out_dims = common::make_ddim(dims_vector);
       ctx->SetOutputDim("Out", out_dims);
       if (dims.size() > 0 && dims[0] != 0) {
         // Only pass LoD when not reducing on the first dim.
@@ -614,12 +614,12 @@ class ReduceBaseOp : public framework::OperatorWithKernel {
     // choose cudnn kernel if the runtime supported.
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
-    // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+    // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_DNNL
     if (ctx.Input<phi::DenseTensor>("X")->dims().size() > 5 ||
         !HasOptimizedOneDNNKernel(ctx)) {
       this->SetDnnFallback(true);
     }
-    // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
+    // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_DNNL
 
     if (input_data_type == framework::proto::VarType::FP16) {
       PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()) ||
@@ -696,12 +696,12 @@ class ReduceGradOp : public framework::OperatorWithKernel {
             : OperatorWithKernel::IndicateVarDataType(
                   ctx, framework::GradVarName("Out"));
 
-    // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+    // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_DNNL
     // max 5D tensor is supported
     if (ctx.Input<phi::DenseTensor>("X")->dims().size() > 5) {
       dnn_fallback_ = true;
     }
-    // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
+    // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_DNNL
 
     return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
@@ -810,7 +810,7 @@ class ReduceCudaGradKernel : public framework::OpKernel<T> {
     // get reduce_dim and reduce_num for reduce_mean_grad
     int dim_size = in_x->dims().size();
     std::vector<int> reduce_dims = GetReduceDim(dims, dim_size, reduce_all);
-    auto update_dims = vectorize(d_x->dims());
+    auto update_dims = common::vectorize(d_x->dims());
     int reduce_num = 1;
     for (auto i : reduce_dims) {
       reduce_num *= (in_x->dims())[i];
@@ -819,7 +819,7 @@ class ReduceCudaGradKernel : public framework::OpKernel<T> {
     // make new tensor
     phi::DenseTensor new_d_out(d_out->type());
     new_d_out.ShareDataWith(*d_out);
-    new_d_out.Resize(phi::make_ddim(update_dims));
+    new_d_out.Resize(common::make_ddim(update_dims));
     auto& dev_ctx = context.cuda_device_context();
     if (out_dtype > 0) {
       d_x->mutable_data(dev_ctx.GetPlace(), pt_out_dtype);
@@ -832,7 +832,7 @@ class ReduceCudaGradKernel : public framework::OpKernel<T> {
       pt_out_dtype = d_out->dtype();
     }
 
-    using MPType = typename kps::details::MPTypeTrait<T>::Type;
+    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
     phi::ReduceGrad<TransformOp<T, MPType>>(dev_ctx,
                                             pt_d_out.get(),
                                             pt_d_x.get(),

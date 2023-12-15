@@ -15,7 +15,6 @@
 #include "paddle/phi/kernels/embedding_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/embedding_grad.h"
 
-#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
@@ -26,8 +25,9 @@
 #include "paddle/phi/core/mixed_vector.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/embedding_util.h"
+#include "paddle/utils/flags.h"
 
-DECLARE_int64(embedding_deterministic);
+PD_DECLARE_int64(embedding_deterministic);
 
 namespace phi {
 
@@ -209,7 +209,7 @@ struct EmbeddingSparseGradCUDAFunctor {
     auto* d_output_data = d_output->template data<T>();
     auto d_output_dims = d_output->dims();
     auto d_output_dims_2d =
-        phi::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
+        common::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
     PADDLE_ENFORCE_EQ(d_table_value->dims(),
                       d_output_dims_2d,
                       phi::errors::InvalidArgument(

@@ -22,8 +22,6 @@
 
 namespace phi {
 
-using phi::PADDLE_CUDA_NUM_THREADS;
-
 template <typename T, typename Context>
 void RollGradKernel(const Context& dev_ctx,
                     const DenseTensor& x,
@@ -31,23 +29,23 @@ void RollGradKernel(const Context& dev_ctx,
                     const IntArray& shifts,
                     const std::vector<int64_t>& axis,
                     DenseTensor* x_grad) {
-  auto* in_data = out_grad.data<T>();
-  T* out_data = dev_ctx.template Alloc<T>(x_grad);
-  int64_t numel = out_grad.numel();
-  auto stream = dev_ctx.stream();
+  auto* out_grad_data = out_grad.data<T>();
+  T* x_grad_data = dev_ctx.template Alloc<T>(x_grad);
 
   auto shifts_data = shifts.GetData();
-  size_t nums = shifts_data.size();
-  auto input_dim = out_grad.dims();
-  auto stride_dim = phi::stride(input_dim);
+  int rank = shifts_data.size();
 
-  std::vector<int64_t> strides(nums), sizes(nums);
+  int64_t numel = out_grad.numel();
+  auto input_dim = out_grad.dims();
+  auto stride_dim = common::stride(input_dim);
+
+  std::vector<int64_t> strides(rank), sizes(rank);
   if (axis.size() == 0) {
     strides[0] = 1;
     sizes[0] = numel;
     shifts_data[0] = ((-shifts_data[0]) % numel + numel) % numel;
   } else {
-    for (size_t i = 0; i < nums; i++) {
+    for (int i = 0; i < rank; i++) {
       int dim = axis[i] >= 0 ? axis[i] : axis[i] + input_dim.size();
       int64_t size = input_dim[dim];
       if (size != 0) {
@@ -58,22 +56,14 @@ void RollGradKernel(const Context& dev_ctx,
     }
   }
 
-  switch (nums) {
-    CALL_ROLL_CUDA_KERNEL(1);
-    CALL_ROLL_CUDA_KERNEL(2);
-    CALL_ROLL_CUDA_KERNEL(3);
-    CALL_ROLL_CUDA_KERNEL(4);
-    CALL_ROLL_CUDA_KERNEL(5);
-    CALL_ROLL_CUDA_KERNEL(6);
-    CALL_ROLL_CUDA_KERNEL(7);
-    CALL_ROLL_CUDA_KERNEL(8);
-    CALL_ROLL_CUDA_KERNEL(9);
-    default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "shifts.size() should be less than 10, But received shifts.size() "
-          "= %d",
-          shifts_data.size()));
-  }
+  LaunchRollKernel<T, Context>(dev_ctx,
+                               out_grad_data,
+                               x_grad_data,
+                               rank,
+                               numel,
+                               shifts_data,
+                               strides,
+                               sizes);
 }
 
 }  // namespace phi

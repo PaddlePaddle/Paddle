@@ -113,11 +113,7 @@ void CalculateXGrad(const Context& ctx,
                     const DenseTensor& out_grad_tensor,
                     const DenseTensor* dst_count = nullptr,
                     const DenseTensor* out = nullptr) {
-#ifdef PADDLE_WITH_HIP
-  int block = 256;
-#else
   int block = 1024;
-#endif
   int64_t n = slice_size * index_size;
   int max_grid_dimx = ctx.GetCUDAMaxGridDimSize()[0];
   int64_t grid_tmp = (n + block - 1) / block;
@@ -167,10 +163,11 @@ void CalculateXGrad(const Context& ctx,
                   x_grad_out.numel() * sizeof(T),
                   hipMemcpyDeviceToDevice);
 #else
-        cudaMemcpy(x_grad,
-                   x_grad_out.data<T>(),
-                   x_grad_out.numel() * sizeof(T),
-                   cudaMemcpyDeviceToDevice);
+        cudaMemcpyAsync(x_grad,
+                        x_grad_out.data<T>(),
+                        x_grad_out.numel() * sizeof(T),
+                        cudaMemcpyDeviceToDevice,
+                        ctx.stream());
 #endif
       }
     } else if (message_op == "MUL") {
@@ -244,10 +241,11 @@ void CalculateXGrad(const Context& ctx,
                   x_grad_out.numel() * sizeof(T),
                   hipMemcpyDeviceToDevice);
 #else
-        cudaMemcpy(x_grad,
-                   x_grad_out.data<T>(),
-                   x_grad_out.numel() * sizeof(T),
-                   cudaMemcpyDeviceToDevice);
+        cudaMemcpyAsync(x_grad,
+                        x_grad_out.data<T>(),
+                        x_grad_out.numel() * sizeof(T),
+                        cudaMemcpyDeviceToDevice,
+                        ctx.stream());
 #endif
       }
     }
@@ -290,10 +288,11 @@ void CalculateXGrad(const Context& ctx,
                   x_grad_out.numel() * sizeof(T),
                   hipMemcpyDeviceToDevice);
 #else
-        cudaMemcpy(x_grad,
-                   x_grad_out.data<T>(),
-                   x_grad_out.numel() * sizeof(T),
-                   cudaMemcpyDeviceToDevice);
+        cudaMemcpyAsync(x_grad,
+                        x_grad_out.data<T>(),
+                        x_grad_out.numel() * sizeof(T),
+                        cudaMemcpyDeviceToDevice,
+                        ctx.stream());
 #endif
       }
     } else if (message_op == "MUL") {
@@ -359,10 +358,11 @@ void CalculateXGrad(const Context& ctx,
                   x_grad_out.numel() * sizeof(T),
                   hipMemcpyDeviceToDevice);
 #else
-        cudaMemcpy(x_grad,
-                   x_grad_out.data<T>(),
-                   x_grad_out.numel() * sizeof(T),
-                   cudaMemcpyDeviceToDevice);
+        cudaMemcpyAsync(x_grad,
+                        x_grad_out.data<T>(),
+                        x_grad_out.numel() * sizeof(T),
+                        cudaMemcpyDeviceToDevice,
+                        ctx.stream());
 #endif
       }
     }
@@ -494,8 +494,8 @@ void GraphSendUERecvGradOpCUDAKernelLaunchHelper(
   hipMemset(x_grad_data, 0, memset_bytes_x);
   hipMemset(e_grad_data, 0, memset_bytes_e);
 #else
-  cudaMemset(x_grad_data, 0, memset_bytes_x);
-  cudaMemset(e_grad_data, 0, memset_bytes_e);
+  cudaMemsetAsync(x_grad_data, 0, memset_bytes_x, ctx.stream());
+  cudaMemsetAsync(e_grad_data, 0, memset_bytes_e, ctx.stream());
 #endif
 
   if (index_size == 0) return;

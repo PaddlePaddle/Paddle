@@ -15,10 +15,15 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_ast_only,
+    test_legacy_and_pt_and_pir,
+)
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import core
+from paddle.base import core
 
 
 def apply_to_static(net, use_cinn):
@@ -38,7 +43,7 @@ class PrimeNet(paddle.nn.Layer):
         return out
 
 
-class TestPrimForward(unittest.TestCase):
+class TestPrimForward(Dy2StTestBase):
     """
     This case only tests prim_forward + to_static + cinn. Thus we need to
     set this flag as False to avoid prim_backward.
@@ -88,9 +93,13 @@ class TestPrimForward(unittest.TestCase):
         # Ensure that softmax is splitted into small ops
         self.assertTrue('softmax' not in fwd_ops)
 
+    @test_ast_only
     def test_cinn_prim_forward(self):
         dy_res = self.train(use_prim=False)
-        cinn_res = self.train(use_prim=True)
+        use_cinn = False
+        if paddle.is_compiled_with_cinn():
+            use_cinn = True
+        cinn_res = self.train(use_prim=use_cinn)
 
         for i in range(len(dy_res)):
             np.testing.assert_allclose(
@@ -98,7 +107,7 @@ class TestPrimForward(unittest.TestCase):
             )
 
 
-class TestPrimForwardAndBackward(unittest.TestCase):
+class TestPrimForwardAndBackward(Dy2StTestBase):
     """
     Test PrimeNet with @to_static + prim forward + prim backward + cinn v.s Dygraph
     """
@@ -153,9 +162,13 @@ class TestPrimForwardAndBackward(unittest.TestCase):
             if op != "matmul_v2_grad":
                 self.assertTrue("_grad" not in op)
 
+    @test_ast_only
     def test_cinn_prim(self):
         dy_res = self.train(use_prim=False)
-        cinn_res = self.train(use_prim=True)
+        use_cinn = False
+        if paddle.is_compiled_with_cinn():
+            use_cinn = True
+        cinn_res = self.train(use_prim=use_cinn)
 
         for i in range(len(dy_res)):
             np.testing.assert_allclose(
@@ -163,10 +176,14 @@ class TestPrimForwardAndBackward(unittest.TestCase):
             )
 
 
-class TestBackend(unittest.TestCase):
+class TestBackend(Dy2StTestBase):
+    @test_legacy_and_pt_and_pir
     def test_backend(self):
         x = paddle.randn([2, 4])
-        out1 = self.forward(x, 'CINN')
+        if paddle.is_compiled_with_cinn():
+            out1 = self.forward(x, 'CINN')
+        else:
+            out1 = self.forward(x, None)
         out2 = self.forward(x, None)
         np.testing.assert_allclose(out1, out2, rtol=1e-6)
 

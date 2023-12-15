@@ -63,7 +63,7 @@ class RecvOpV2 : public framework::OperatorWithKernel {
                                 i,
                                 out_shape[i]));
         }
-        ctx->SetOutputDim("Out", phi::make_ddim(out_shape));
+        ctx->SetOutputDim("Out", common::make_ddim(out_shape));
       }
     }
   }
@@ -80,7 +80,7 @@ class RecvOpV2 : public framework::OperatorWithKernel {
 
 class RecvOpV2Maker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddOutput("Out", "(Tensor) tensor to receive.");
     AddAttr<int>("ring_id", "(int default 0) nccl communication ring id.")
         .SetDefault(0);

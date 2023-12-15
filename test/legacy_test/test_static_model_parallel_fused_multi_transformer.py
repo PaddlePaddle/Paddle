@@ -32,9 +32,12 @@ class TestStaticModelParallel(TestDistBase):
         self._pipeline_mode = True
 
     def test_dist_static_model_parallel_fused_multi_transformer(self):
-        from paddle import fluid
+        from paddle import base
 
-        if fluid.core.is_compiled_with_cuda():
+        if (
+            base.core.is_compiled_with_cuda()
+            and not paddle.is_compiled_with_rocm()
+        ):
             self.check_with_place(
                 "static_model_parallel_fused_multi_transformer.py",
                 delta=1e-5,

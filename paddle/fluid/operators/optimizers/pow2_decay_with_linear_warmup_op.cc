@@ -24,7 +24,7 @@ class Pow2DecayWithLinearWarmupOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
-    auto dim = phi::make_ddim({1});
+    auto dim = common::make_ddim({1});
     ctx->SetOutputDim("LearningRateOut", dim);
     ctx->SetOutputDim("StepOut", dim);
   }
@@ -40,7 +40,7 @@ class Pow2DecayWithLinearWarmupOp : public framework::OperatorWithKernel {
 class Pow2DecayWithLinearWarmupOpMaker
     : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("LearningRate", "(Tensor) The input learning rate Tensor.");
     AddInput("Step", "(Tensor) The input global step Tensor.");
     AddOutput("LearningRateOut",

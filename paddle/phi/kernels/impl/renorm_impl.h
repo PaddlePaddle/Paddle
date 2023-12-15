@@ -20,6 +20,7 @@
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 #ifdef __NVCC__
 #include "cub/cub.cuh"
 #else
@@ -279,8 +280,8 @@ void RenormFunc(const phi::GPUContext& ctx,
   int64_t dim_divisor = 1, pre_mul = 1;
   for (int i = dim + 1; i < dim_size; i++) dim_divisor *= input_dims[i];
   for (int i = 0; i < dim; i++) pre_mul *= input_dims[i];
-  pow_value.Resize(phi::make_ddim({pre_mul, dimension_each, dim_divisor}));
-  dim_value.Resize(phi::make_ddim({dimension_each}));
+  pow_value.Resize(common::make_ddim({pre_mul, dimension_each, dim_divisor}));
+  dim_value.Resize(common::make_ddim({dimension_each}));
   T* pow_value_data = ctx.template Alloc<T>(&pow_value);
   T* dim_value_data = ctx.template Alloc<T>(&dim_value);
   auto stream = ctx.stream();
@@ -291,8 +292,9 @@ void RenormFunc(const phi::GPUContext& ctx,
   int block2 = std::min(dimension_each, static_cast<int64_t>(256));
   int grid2 = (dimension_each + block2 - 1) / block2;
   std::vector<int> reduce_axis = {0, 2};
-  phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-      ctx, pow_value, &dim_value, kps::IdentityFunctor<T>(), reduce_axis);
+  phi::SumKernel<T>(
+      ctx, pow_value, reduce_axis, pow_value.dtype(), false, &dim_value);
+
   RenormKernelFunc3<T>
       <<<grid2, block2, 0, stream>>>(numel, dim_value_data, p, max_norm);
   RenormKernelFunc4<T><<<grid, block, 0, stream>>>(
@@ -315,11 +317,11 @@ void RenormGradFunc(const phi::GPUContext& ctx,
   for (int i = dim + 1; i < dim_size; i++) dim_divisor *= input_dims[i];
   for (int i = 0; i < dim; i++) pre_mul *= input_dims[i];
   DenseTensor pow_value, mul_value, dim_value, dim_power_sum, weight_derivative;
-  pow_value.Resize(phi::make_ddim({pre_mul, dimension_each, dim_divisor}));
-  mul_value.Resize(phi::make_ddim({pre_mul, dimension_each, dim_divisor}));
-  dim_value.Resize(phi::make_ddim({dimension_each}));
-  dim_power_sum.Resize(phi::make_ddim({dimension_each}));
-  weight_derivative.Resize(phi::make_ddim({dimension_each}));
+  pow_value.Resize(common::make_ddim({pre_mul, dimension_each, dim_divisor}));
+  mul_value.Resize(common::make_ddim({pre_mul, dimension_each, dim_divisor}));
+  dim_value.Resize(common::make_ddim({dimension_each}));
+  dim_power_sum.Resize(common::make_ddim({dimension_each}));
+  weight_derivative.Resize(common::make_ddim({dimension_each}));
   auto stream = ctx.stream();
   int block = std::min(numel, static_cast<int64_t>(256));
   int grid = (numel + block - 1) / block;
@@ -337,14 +339,16 @@ void RenormGradFunc(const phi::GPUContext& ctx,
                                                        p,
                                                        dim_divisor);
   std::vector<int> reduce_axis = {0, 2};
-  phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-      ctx, pow_value, &dim_value, kps::IdentityFunctor<T>(), reduce_axis);
-  phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-      ctx,
-      mul_value,
-      &weight_derivative,
-      kps::IdentityFunctor<T>(),
-      reduce_axis);
+
+  phi::SumKernel<T>(
+      ctx, pow_value, reduce_axis, pow_value.dtype(), false, &dim_value);
+  phi::SumKernel<T>(ctx,
+                    mul_value,
+                    reduce_axis,
+                    mul_value.dtype(),
+                    false,
+                    &weight_derivative);
+
   RenormGradKernelFunc2<T><<<grid, block, 0, stream>>>(x_data,
                                                        dout_data,
                                                        dx_data,

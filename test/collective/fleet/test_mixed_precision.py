@@ -32,7 +32,6 @@ class SimpleNet(nn.Layer):
         self.linear3 = nn.Linear(input_size, output_size)
 
     def forward(self, x):
-
         x = self.linear1(x)
         # currently, paddle's relu may hide nan/inf, relu(nan) = 0, relu(inf)= inf
         # so, do not use it here.
@@ -59,8 +58,8 @@ class AMPTest(unittest.TestCase):
         out = model(x)
         loss = mse(out, label)
 
-        opt = paddle.fluid.optimizer.Adam(
-            learning_rate=0.0001, parameter_list=model.parameters()
+        opt = paddle.optimizer.Adam(
+            learning_rate=0.0001, parameters=model.parameters()
         )  # 定义优化器
         opt = paddle.static.amp.decorate(
             opt, init_loss_scaling=128.0, use_dynamic_loss_scaling=True

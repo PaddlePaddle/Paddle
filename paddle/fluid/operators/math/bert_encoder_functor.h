@@ -49,64 +49,6 @@ struct CUDATypeTraits<float> {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 // This functor involves a fusion calculation in Ernie or Bert.
-//  The fusion mode is as follows:
-//
-//      in_var  emb       in_var   emb
-//        |      |          |       |
-//      lookup_table      lookup_table
-//            |                 |
-//         lkt_var           lkt_var
-//             \                /
-//              elementwise_add
-//                     |
-//                elt_out_var
-//
-template <typename T>
-class EmbEltwiseLayerNormFunctor {
- public:
-  void operator()(int batch,
-                  int seq_len,
-                  int hidden,
-                  const int64_t *ids,
-                  const T *scale,
-                  const T *bias,
-                  const int64_t *embs,
-                  T *output,
-                  float eps,
-                  int input_num,
-                  gpuStream_t stream);
-};
-
-// This functor involves a fusion calculation in Ernie or Bert.
-// The fusion mode is as follows:
-//
-//         |    |
-//         matmul
-//           |
-//       eltwise_add
-//           |
-//        softmax    /
-//           \      /
-//             matmul
-//               |
-
-template <typename T>
-class MultiHeadGPUComputeFunctor {
- public:
-  void operator()(const phi::GPUContext &dev_ctx,
-                  int batch,
-                  int seq_len,
-                  int head_num,
-                  int head_size,
-                  T *qkptr,
-                  const T *bias_qk_ptr,
-                  bool bias_is_mask,
-                  T *tptr,
-                  T alpha,
-                  T beta);
-};
-
-// This functor involves a fusion calculation in Ernie or Bert.
 // The fusion mode is as follows:
 //
 // |           |

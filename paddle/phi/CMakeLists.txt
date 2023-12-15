@@ -14,7 +14,6 @@ set(infermeta_srcs CACHE INTERNAL "" FORCE)
 
 # paddle experimental common components
 add_subdirectory(common)
-
 # phi (low level) api headers: include
 # phi (high level) api
 add_subdirectory(api)
@@ -36,14 +35,15 @@ endif()
 set(PHI_DEPS
     phi_profiler_proto
     auto_parallel_proto
-    gflags
+    ${flags_dep}
     glog
     warpctc
     warprnnt
     eigen3
     xxhash
     cblas
-    utf8proc)
+    utf8proc
+    common)
 
 set(INFERENCE_DEPS phi_profiler_proto auto_parallel_proto)
 
@@ -86,6 +86,14 @@ endif()
 
 if(WITH_XPU)
   list(APPEND PHI_DEPS xpulib)
+  if(WITH_XPU_PLUGIN)
+    add_subdirectory(kernels/xpu/plugin)
+    list(APPEND PHI_DEPS xpuplugin)
+  endif()
+endif()
+
+if(WITH_DGC)
+  list(APPEND PHI_DEPS dgc)
 endif()
 
 set(PHI_SRCS
@@ -97,7 +105,7 @@ set(PHI_SRCS
     ${infermeta_srcs}
     ${capi_srcs})
 
-if(WITH_PHI_SHARED)
+if(WITH_SHARED_PHI)
   set(PHI_BUILD_TYPE
       SHARED
       CACHE INTERNAL "" FORCE)
@@ -105,6 +113,15 @@ else()
   set(PHI_BUILD_TYPE
       STATIC
       CACHE INTERNAL "" FORCE)
+endif()
+
+if(WITH_AVX
+   AND AVX512F_FOUND
+   AND AVX512F_FLAG
+   AND WITH_MKL)
+  set_source_files_properties(
+    kernels/fusion/cpu/self_dp_attention_kernel.cc
+    PROPERTIES COMPILE_FLAGS "-Wno-maybe-uninitialized  -mfma ${AVX512F_FLAG}")
 endif()
 
 if(WITH_GPU)
@@ -136,7 +153,7 @@ if(WIN32)
 endif()
 
 if(WIN32)
-  if(WITH_PHI_SHARED)
+  if(WITH_SHARED_PHI)
     set_property(TARGET phi PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
     set(PHI_NAME
         phi.dll
@@ -147,7 +164,7 @@ if(WIN32)
         CACHE INTERNAL "" FORCE)
   endif()
 elseif(APPLE)
-  if(WITH_PHI_SHARED)
+  if(WITH_SHARED_PHI)
     set(PHI_NAME
         libphi.dylib
         CACHE INTERNAL "" FORCE)
@@ -157,7 +174,7 @@ elseif(APPLE)
         CACHE INTERNAL "" FORCE)
   endif()
 else()
-  if(WITH_PHI_SHARED)
+  if(WITH_SHARED_PHI)
     set(PHI_NAME
         libphi.so
         CACHE INTERNAL "" FORCE)
@@ -187,7 +204,7 @@ if(WITH_FLASHATTN)
 endif()
 
 # for inference static library
-if(NOT WITH_PHI_SHARED)
+if(NOT WITH_SHARED_PHI)
   get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
   set(phi_modules ${phi_modules} ${INFERENCE_DEPS} phi)
   set_property(GLOBAL PROPERTY PHI_MODULES "${phi_modules}")

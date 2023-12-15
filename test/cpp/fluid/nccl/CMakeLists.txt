@@ -1,3 +1,7 @@
+if(NOT (WITH_NCCL OR WITH_RCCL))
+  return()
+endif()
+
 if(WITH_GPU AND NOT WIN32)
   nv_test(
     nccl_op_test

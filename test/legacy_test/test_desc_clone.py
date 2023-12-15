@@ -16,9 +16,11 @@ import collections
 import functools
 import unittest
 
+import nets
+
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 SEED = 1
 DTYPE = "float32"
@@ -27,9 +29,9 @@ paddle.enable_static()
 
 
 # random seed must set before configuring the network.
-# fluid.default_startup_program().random_seed = SEED
+# base.default_startup_program().random_seed = SEED
 def cnn_model(data):
-    conv_pool_1 = fluid.nets.simple_img_conv_pool(
+    conv_pool_1 = nets.simple_img_conv_pool(
         input=data,
         filter_size=5,
         num_filters=20,
@@ -37,7 +39,7 @@ def cnn_model(data):
         pool_stride=2,
         act="relu",
     )
-    conv_pool_2 = fluid.nets.simple_img_conv_pool(
+    conv_pool_2 = nets.simple_img_conv_pool(
         input=conv_pool_1,
         filter_size=5,
         num_filters=50,
@@ -58,7 +60,7 @@ def cnn_model(data):
         x=conv_pool_2,
         size=SIZE,
         activation="softmax",
-        weight_attr=fluid.param_attr.ParamAttr(
+        weight_attr=base.param_attr.ParamAttr(
             initializer=paddle.nn.initializer.Normal(loc=0.0, scale=scale)
         ),
     )
@@ -85,11 +87,9 @@ def get_model(batch_size):
         input=predict, label=label, total=batch_size_tensor
     )
 
-    inference_program = fluid.default_main_program().clone()
+    inference_program = base.default_main_program().clone()
     # Optimization
-    opt = fluid.optimizer.AdamOptimizer(
-        learning_rate=0.001, beta1=0.9, beta2=0.999
-    )
+    opt = paddle.optimizer.Adam(learning_rate=0.001, beta1=0.9, beta2=0.999)
 
     # Reader
     train_reader = paddle.batch(
@@ -114,7 +114,7 @@ def operator_equal(a, b):
         raise ValueError("In operator_equal not equal\n")
 
     for k, v in a.__dict__.items():
-        if isinstance(v, (fluid.framework.Program, fluid.framework.Block)):
+        if isinstance(v, (base.framework.Program, base.framework.Block)):
             continue
 
         elif isinstance(v, core.OpDesc):
@@ -136,7 +136,7 @@ def operator_equal(a, b):
 def block_equal(a, b):
     for k, v in a.__dict__.items():
         if isinstance(
-            v, (core.ProgramDesc, fluid.framework.Program, core.BlockDesc)
+            v, (core.ProgramDesc, base.framework.Program, core.BlockDesc)
         ):
             continue
         elif k == "ops":
@@ -177,9 +177,9 @@ def program_equal(a, b):
 
 class TestCloneWithStopGradient(unittest.TestCase):
     def test_clone_with_stop_gradient(self):
-        train_program = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(train_program, startup_program):
+        train_program = base.Program()
+        startup_program = base.Program()
+        with base.program_guard(train_program, startup_program):
             img = paddle.static.data(name='image', shape=[-1, 784])
             hidden1 = paddle.static.nn.fc(x=img, size=200, activation='relu')
             hidden1.stop_gradient = True
@@ -207,9 +207,9 @@ class TestCloneWithStopGradient(unittest.TestCase):
 
 class TestCloneWithStopGradientInSubBlock(unittest.TestCase):
     def test_clone_with_stop_gradient(self):
-        train_program = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(train_program, startup_program):
+        train_program = base.Program()
+        startup_program = base.Program()
+        with base.program_guard(train_program, startup_program):
             img = paddle.static.data(name='image', shape=[-1, 784])
             true = paddle.ones(shape=[1], dtype="float32")
             hidden1 = paddle.static.nn.fc(x=img, size=200, activation='relu')
@@ -254,9 +254,9 @@ class TestCloneWithStopGradientInSubBlock(unittest.TestCase):
 
 class TestCloneWithRaise(unittest.TestCase):
     def test_clone_with_stop_gradient(self):
-        train_program = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(train_program, startup_program):
+        train_program = base.Program()
+        startup_program = base.Program()
+        with base.program_guard(train_program, startup_program):
             img = paddle.static.data(name='image', shape=[-1, 784])
             true = paddle.ones(shape=[1], dtype="float32")
             hidden1 = paddle.static.nn.fc(x=img, size=200, activation='relu')

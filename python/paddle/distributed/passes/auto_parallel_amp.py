@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import paddle
+from paddle.base.data_feeder import check_type, check_variable_and_dtype
 from paddle.distributed.auto_parallel.static.dist_attribute import (
     OperatorDistAttr,
 )
@@ -24,7 +25,6 @@ from paddle.distributed.auto_parallel.static.utils import (
     set_var_dist_attr,
 )
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
-from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
 from paddle.framework import core
 from paddle.static.amp.bf16.amp_utils import (
     AutoMixedPrecisionListsBF16,
@@ -215,9 +215,7 @@ class AMPState:
                         fwd_op_id = self.grad_op_to_op_map[
                             op.desc.original_id()
                         ]
-                        assert fwd_op_id in self._op_fp16_dict, "{}".format(
-                            str(op)
-                        )
+                        assert fwd_op_id in self._op_fp16_dict, str(op)
                         self._op_fp16_dict[
                             op.desc.original_id()
                         ] = self._is_fp16_op(fwd_op_id)
@@ -231,7 +229,6 @@ class AMPState:
         return is_train
 
     def _mark_black_white_ops(self, op, ops, block):
-
         # ernie inference trick
         if op.type == "assign" and "array_" in op.input_arg_names[0]:
             self._op_fp16_dict[op.desc.original_id()] = False
@@ -320,10 +317,7 @@ class AMPState:
                     )
                 elif self._is_fp16_op(op.desc.original_id()) is True:
                     if self.amp_dtype == "bfloat16":
-                        if op.has_attr('use_mkldnn'):
-                            op._set_attr('use_mkldnn', True)
-                            op._set_attr('mkldnn_data_type', 'bfloat16')
-                        elif (
+                        if (
                             op.has_attr('dtype')
                             and op.attr('dtype') == core.VarDesc.VarType.FP32
                         ):
@@ -364,10 +358,7 @@ class AMPState:
                         self._is_fp16_op(op.desc.original_id()) is True
                     ):  # fp16/bf16
                         if self.amp_dtype == "bfloat16":
-                            if op.has_attr('use_mkldnn'):
-                                op._set_attr('use_mkldnn', True)
-                                op._set_attr('mkldnn_data_type', 'bfloat16')
-                            elif (
+                            if (
                                 op.has_attr('dtype')
                                 and op.attr('dtype')
                                 == core.VarDesc.VarType.FP32
@@ -391,17 +382,13 @@ class AMPState:
                     for in_var_name in op.input_arg_names:
                         assert (
                             in_var.dtype == block.var(in_var_name).dtype
-                        ), "{}, {}, {}".format(
-                            in_var, block.var(in_var_name), str(op)
-                        )
+                        ), f"{in_var}, {block.var(in_var_name)}, {str(op)}"
                     out_var.desc.set_dtype(in_var.dtype)
                 elif int(op.attr('op_role')) == 257:
                     pass
                 else:
                     raise ValueError(
-                        "'{}' op is not supported in the complete amp pass.".format(
-                            op.type
-                        )
+                        f"'{op.type}' op is not supported in the complete amp pass."
                     )
             idx += num_cast_ops + 1
         block._sync_with_cpp()
@@ -729,7 +716,7 @@ class AMPPass(PassBase):
 
             if is_train:
                 self._update_backward_cast_ops()
-                self._cast_loss()
+                self._cast_loss(self.amp_dtype)
 
             if is_train and self.amp_dtype == "float16":
                 self._init_amp_var()
@@ -814,7 +801,6 @@ class AMPPass(PassBase):
         main_block._sync_with_cpp()
 
     def _check_and_update_gradient(self):
-
         main_block = paddle.static.default_main_program().global_block()
         main_block._sync_with_cpp()
 
@@ -915,8 +901,7 @@ class AMPPass(PassBase):
                 world_process_group.ranks,
             )
 
-    def _cast_loss(self):
-
+    def _cast_loss(self, target_dtype):
         main_block = paddle.static.default_main_program().global_block()
         main_block._sync_with_cpp()
 
@@ -928,7 +913,6 @@ class AMPPass(PassBase):
         )
 
         if loss.dtype != core.VarDesc.VarType.FP32:
-
             tmp_name = unique_name.generate(loss.name + ".cast_fp32")
             cast_loss = main_block.create_var(
                 name=tmp_name, dtype=core.VarDesc.VarType.FP32
@@ -961,11 +945,18 @@ class AMPPass(PassBase):
             )
 
             # backward
-            first_backward_op = main_block.ops[loss_op_idx + 2]
-            assert (
-                first_backward_op.type == "fill_constant"
-                and int(first_backward_op.all_attrs()[OP_ROLE_KEY]) == 257
-            )
+            first_backward_op = None
+            insert_op_offset = 3
+            for idx, op in enumerate(main_block.ops[loss_op_idx:]):
+                if op.type == "fill_constant" and is_loss_grad_op(op):
+                    first_backward_op = op
+                    insert_op_offset = idx + 1
+                    break
+                if is_backward_op(op):
+                    break
+
+            assert first_backward_op is not None, "There is not loss_grad op."
+
             cast_loss_grad = main_block.create_var(
                 name=unique_name.generate(tmp_name + "@GRAD"),
                 shape=loss.shape,
@@ -988,13 +979,13 @@ class AMPPass(PassBase):
                 self.dist_context,
             )
             cast_grad_op = main_block._insert_op(
-                loss_op_idx + 3,
+                loss_op_idx + insert_op_offset,
                 type='cast',
                 inputs={'X': [cast_loss_grad]},
                 outputs={'Out': [pre_grad_name]},
                 attrs={
                     "in_dtype": core.VarDesc.VarType.FP32,
-                    "out_dtype": _str_to_dtype(self.amp_dtype),
+                    "out_dtype": _str_to_dtype(target_dtype),
                     "op_role": OpRole.Backward,
                 },
             )
@@ -1006,11 +997,11 @@ class AMPPass(PassBase):
             )
             loss_op = cast_op
             loss = cast_loss
+            self.set_attr("loss", loss)
         self._loss = loss
         main_block._sync_with_cpp()
 
     def _scale_loss(self):
-
         main_block = paddle.static.default_main_program().global_block()
         loss = self.get_attr("loss")
         assert loss is not None
@@ -1023,7 +1014,6 @@ class AMPPass(PassBase):
             self.get_attr("use_dynamic_loss_scaling")
             or self.get_attr("init_loss_scaling") != 1.0
         ):
-
             loss_op_idx = find_op_index(main_block.desc, loss_op.desc)
 
             # forward
@@ -1059,11 +1049,16 @@ class AMPPass(PassBase):
             )
 
             # backward
-            first_backward_op = main_block.ops[loss_op_idx + 2]
-            assert (
-                first_backward_op.type == "fill_constant"
-                and int(first_backward_op.all_attrs()[OP_ROLE_KEY]) == 257
-            )
+            first_backward_op = None
+            for op in main_block.ops[loss_op_idx:]:
+                if op.type == "fill_constant" and is_loss_grad_op(op):
+                    first_backward_op = op
+                    break
+                if is_backward_op(op):
+                    break
+
+            assert first_backward_op is not None, "There is not loss_grad op."
+
             scaled_loss_grad = main_block.create_var(
                 name=unique_name.generate("scaled_loss") + "@GRAD",
                 shape=loss.shape,
@@ -1123,7 +1118,6 @@ class AMPPass(PassBase):
         main_block._sync_with_cpp()
 
     def _update_loss_scaling(self, grads, found_inf):
-
         main_block = paddle.static.default_main_program().global_block()
         main_block._sync_with_cpp()
 

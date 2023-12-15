@@ -23,7 +23,7 @@ from get_test_cover_info import (
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 paddle.enable_static()
 np.random.seed(10)
@@ -205,7 +205,7 @@ for stype in support_types:
 # Test python API
 class TestTileAPI(unittest.TestCase):
     def test_api(self):
-        with fluid.dygraph.guard(paddle.XPUPlace(0)):
+        with base.dygraph.guard(paddle.XPUPlace(0)):
             np_x = np.random.random([12, 14]).astype("float32")
             x = paddle.to_tensor(np_x)
 
@@ -219,9 +219,9 @@ class TestTileAPI(unittest.TestCase):
             out_2 = paddle.tile(x, repeat_times=[positive_2, 3])
             out_3 = paddle.tile(x, repeat_times=repeat_times)
 
-            assert np.array_equal(out_1.numpy(), np.tile(np_x, (2, 3)))
-            assert np.array_equal(out_2.numpy(), np.tile(np_x, (2, 3)))
-            assert np.array_equal(out_3.numpy(), np.tile(np_x, (2, 3)))
+            np.testing.assert_array_equal(out_1.numpy(), np.tile(np_x, (2, 3)))
+            np.testing.assert_array_equal(out_2.numpy(), np.tile(np_x, (2, 3)))
+            np.testing.assert_array_equal(out_3.numpy(), np.tile(np_x, (2, 3)))
 
 
 class TestTileAPI_ZeroDim(unittest.TestCase):

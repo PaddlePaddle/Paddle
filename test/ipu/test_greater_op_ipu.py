@@ -28,7 +28,7 @@ class TestGreaterThan(IPUOpTest):
         self.set_test_op()
 
     def set_test_op(self):
-        self.op = paddle.fluid.layers.greater_than
+        self.op = paddle.base.layers.greater_than
 
     def set_op_attrs(self):
         self.attrs = {}
@@ -115,22 +115,22 @@ class TestGreaterThan(IPUOpTest):
 
 class TestLessThan(TestGreaterThan):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.less_than
+        self.op = paddle.base.layers.less_than
 
 
 class TestEqual(TestGreaterThan):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.equal
+        self.op = paddle.base.layers.equal
 
 
 class TestGreaterEqual(TestGreaterThan):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.greater_equal
+        self.op = paddle.base.layers.greater_equal
 
 
 class TestLessEqual(TestGreaterThan):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.less_equal
+        self.op = paddle.base.layers.less_equal
 
 
 if __name__ == "__main__":

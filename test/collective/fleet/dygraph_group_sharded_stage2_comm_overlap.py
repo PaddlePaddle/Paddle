@@ -245,7 +245,6 @@ def test_dp_stage2():
 
     # check optimizer.minimize() error
     train_mlp(mlp7, sharding_stage=2, test_minimize=True)
-    return
 
 
 if __name__ == '__main__':

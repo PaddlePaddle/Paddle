@@ -18,7 +18,7 @@ import numpy as np
 import parameterized as param
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 from paddle.incubate.autograd import primapi
 
 np.random.seed(2023)

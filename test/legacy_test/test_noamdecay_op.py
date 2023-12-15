@@ -19,7 +19,7 @@ import paddle
 
 class TestSparseEmbeddingAPIError(unittest.TestCase):
     def test_errors(self):
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             # The size of input in sparse_embedding should not be 0.
             def test_0_d_model():
                 schedular = paddle.optimizer.lr.NoamDecay(

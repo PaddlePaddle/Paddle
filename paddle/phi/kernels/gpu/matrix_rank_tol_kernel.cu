@@ -340,6 +340,18 @@ void MatrixRankTolKernel(const Context& dev_ctx,
   auto dim_out = out->dims();
   int rows = dim_x[dim_x.size() - 2];
   int cols = dim_x[dim_x.size() - 1];
+  PADDLE_ENFORCE_NE(
+      rows,
+      0,
+      phi::errors::InvalidArgument("The input Tensor x's shape[-2] should not "
+                                   "be 0, but shape is %s now.",
+                                   dim_x));
+  PADDLE_ENFORCE_NE(
+      cols,
+      0,
+      phi::errors::InvalidArgument("The input Tensor x's shape[-1] should not "
+                                   "be 0, but shape is %s now.",
+                                   dim_x));
   int k = std::min(rows, cols);
   auto numel = x.numel();
   int batches = numel / (rows * cols);

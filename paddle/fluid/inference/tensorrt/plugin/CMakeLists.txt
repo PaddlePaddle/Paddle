@@ -39,8 +39,11 @@ list(
   preln_groupnorm_act_op_plugin.cu
   elementwiseadd_transpose_op_plugin.cu
   generic_plugin.cu
+  custom_generic_plugin.cu
   many_emb_layernorm_plugin.cu
-  many_emb_layernorm_kernel.cu)
+  many_emb_layernorm_kernel.cu
+  prompt_tuning_emb_layernorm_varseqlen_kernel_hface.cu
+  prompt_tuning_emb_layernorm_varseqlen_plugin.cu)
 
 if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)
   list(APPEND TRT_FILES many_emb_layernorm_varseqlen_plugin.cu
@@ -55,7 +58,11 @@ endif()
 nv_library(
   tensorrt_plugin
   SRCS ${TRT_FILES}
-  DEPS enforce tensorrt_engine tensor bert_encoder_functor
+  DEPS enforce
+       tensorrt_engine
+       tensor
+       bert_encoder_functor
+       common
        tensorrt_dynamic_shape_infermeta_factory
        tensorrt_plugin_arg_mapping_context)
 

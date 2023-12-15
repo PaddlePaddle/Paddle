@@ -1,0 +1,237 @@
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+/*
+ * copyright (C) 2022 KUNLUNXIN, Inc
+ */
+
+#include "xpu/kernel/cluster.h"
+#include "xpu/kernel/cluster_partition.h"
+#include "xpu/kernel/cluster_primitive.h"
+
+namespace xpu2 {
+namespace plugin {
+
+static inline __device__ float sum16(const float* ptr) {
+  float s0 = ptr[0] + ptr[8];
+  float s1 = ptr[1] + ptr[9];
+  float s2 = ptr[2] + ptr[10];
+  float s3 = ptr[3] + ptr[11];
+  float s4 = ptr[4] + ptr[12];
+  float s5 = ptr[5] + ptr[13];
+  float s6 = ptr[6] + ptr[14];
+  float s7 = ptr[7] + ptr[15];
+  s0 = s0 + s1;
+  s2 = s2 + s3;
+  s4 = s4 + s5;
+  s6 = s6 + s7;
+  s0 = s0 + s2;
+  s4 = s4 + s6;
+  return s0 + s4;
+}
+
+template <typename T>
+static __device__ void update_sum_and_squaresum(T* a,
+                                                int size,
+                                                float* sum,
+                                                float* squaresum) {
+  __simd__ float sum_buf[16];
+  __simd__ float squaresum_buf[16];
+  float32x16_t al;
+  float32x16_t ah;
+  int rounddown_size = rounddown32(size - 1);
+  unsigned int mask = -1;
+  if ((size % 32) != 0) {
+    mask = ~(-1 << (size % 32));
+  }
+  vload2_lm_mz(a + rounddown_size, al, ah, mask);
+  float32x16_t vsum = vvadd_float32x16(al, ah);
+  al = vvmul_float32x16(al, al);
+  ah = vvmul_float32x16(ah, ah);
+  float32x16_t vsquaresum = vvadd_float32x16(al, ah);
+  for (int i = 0; i < rounddown_size; i += 32) {
+    vload2_lm(a + i, al, ah);
+    vsum = vvadd_float32x16(vsum, al);
+    vsum = vvadd_float32x16(vsum, ah);
+    al = vvmul_float32x16(al, al);
+    ah = vvmul_float32x16(ah, ah);
+    vsquaresum = vvadd_float32x16(vsquaresum, al);
+    vsquaresum = vvadd_float32x16(vsquaresum, ah);
+  }
+  vstore_lm_float32x16(sum_buf, vsum);
+  vstore_lm_float32x16(squaresum_buf, vsquaresum);
+  mfence_lm();
+  *sum = sum16(sum_buf);
+  *squaresum = sum16(squaresum_buf);
+}
+
+template <typename T>
+static __device__ void vector_scale_and_bias_align32(
+    T* a,
+    int size,
+    float mean,
+    float var,
+    _shared_ptr_ const float* scale_sm,
+    _shared_ptr_ const float* bias_sm,
+    bool do_scale_bias) {
+  float32x16_t al;
+  float32x16_t ah;
+  float32x16_t bl;
+  float32x16_t bh;
+  mean = 0.0f - mean;
+  if (do_scale_bias) {
+    // ((a + b) - mean) * var * scale + bias
+    for (int i = 0; i < size; i += 32) {
+      vload2_lm(a + i, al, ah);
+      vload2_sm(scale_sm + i, bl, bh);
+      al = svadd_float32x16(mean, al);
+      ah = svadd_float32x16(mean, ah);
+      al = svmul_float32x16(var, al);
+      ah = svmul_float32x16(var, ah);
+      al = vvmul_float32x16(bl, al);
+      ah = vvmul_float32x16(bh, ah);
+      vload2_sm(bias_sm + i, bl, bh);
+      al = vvadd_float32x16(bl, al);
+      ah = vvadd_float32x16(bh, ah);
+      vstore2_lm(a + i, al, ah);
+    }
+  } else {
+    // ((a + b) - mean) * var
+    for (int i = 0; i < size; i += 32) {
+      vload2_lm(a + i, al, ah);
+      al = svadd_float32x16(mean, al);
+      ah = svadd_float32x16(mean, ah);
+      al = svmul_float32x16(var, al);
+      ah = svmul_float32x16(var, ah);
+      vstore2_lm(a + i, al, ah);
+    }
+  }
+  mfence_lm();
+}
+
+template <typename T>
+__global__ void fast_layer_norm_tiny_align32(float epsilon,
+                                             int64_t m,
+                                             int64_t n,
+                                             const T* x,
+                                             T* y,
+                                             const float* scale,
+                                             const float* bias) {
+  int cid = core_id();
+  int ncores = core_num();
+  int tid = cid * cluster_num() + cluster_id();
+  int nthreads = ncores * cluster_num();
+  int64_t mstart = 0;
+  int64_t mend = 0;
+  partition(tid, nthreads, m, 1, &mstart, &mend);
+  if (mstart >= mend) {
+    return;
+  }
+
+  float one_div_n = 1.0f / n;
+  constexpr int lm_buffer_size = 1664 * sizeof(float) / sizeof(T);
+  constexpr int sm_buffer_size = 1664 * 16;
+  __simd__ T xlm[lm_buffer_size];
+  __simd__ __shared__ float scale_sm[sm_buffer_size];
+  __simd__ __shared__ float bias_sm[sm_buffer_size];
+  int block_cnt = lm_buffer_size / n;
+  float sum = 0.0f;
+  float squaresum = 0.0f;
+  bool do_scale_bias = false;
+  if (scale != nullptr && bias != nullptr) {
+    do_scale_bias = true;
+  }
+  if (cid == 0 && do_scale_bias) {
+    GM2SM_ASYNC(scale, scale_sm, n * sizeof(float));
+    GM2SM(bias, bias_sm, n * sizeof(float));
+  }
+  sync_all();
+  for (int64_t i = mstart; i < mend; i += block_cnt) {
+    int readlen = min((mend - i) * n, block_cnt * n);
+    GM2LM(x + i * n, xlm, readlen * sizeof(T));
+    for (int64_t j = 0; j < readlen; j += n) {
+      update_sum_and_squaresum<T>(xlm + j, n, &sum, &squaresum);
+      float sample_mean = sum * one_div_n;
+      float sample_var = squaresum * one_div_n - sample_mean * sample_mean;
+      float rstd = 1.0f / sqrt(sample_var + epsilon);
+      vector_scale_and_bias_align32<T>(
+          xlm + j, n, sample_mean, rstd, scale_sm, bias_sm, do_scale_bias);
+    }
+    LM2GM(xlm, y + i * n, readlen * sizeof(T));
+  }
+}
+
+template <typename T>
+__global__ void fast_layer_norm_tiny_common(float epsilon,
+                                            int64_t m,
+                                            int64_t n,
+                                            const T* x,
+                                            T* y,
+                                            const float* scale,
+                                            const float* bias) {
+  int cid = core_id();
+  int ncores = core_num();
+  int tid = cid * cluster_num() + cluster_id();
+  int nthreads = ncores * cluster_num();
+
+  float one_div_n = 1.0f / n;
+  constexpr int lm_buffer_size = 1664 * sizeof(float) / sizeof(T);
+  constexpr int sm_buffer_size = 1664 * 16;
+  __simd__ T xlm[lm_buffer_size];
+  __simd__ __shared__ float scale_sm[sm_buffer_size];
+  __simd__ __shared__ float bias_sm[sm_buffer_size];
+  float sum = 0.0f;
+  float squaresum = 0.0f;
+  bool do_scale_bias = false;
+  if (scale != nullptr && bias != nullptr) {
+    do_scale_bias = true;
+  }
+  if (cid == 0 && do_scale_bias) {
+    GM2SM_ASYNC(scale, scale_sm, n * sizeof(float));
+    GM2SM(bias, bias_sm, n * sizeof(float));
+  }
+  sync_all();
+  for (int64_t i = tid; i < m; i += nthreads) {
+    GM2LM(x + i * n, xlm, n * sizeof(T));
+    update_sum_and_squaresum<T>(xlm, n, &sum, &squaresum);
+    float sample_mean = sum * one_div_n;
+    float sample_var = squaresum * one_div_n - sample_mean * sample_mean;
+    float rstd = 1.0f / sqrt(sample_var + epsilon);
+    vector_scale_and_bias_align32<T>(
+        xlm, n, sample_mean, rstd, scale_sm, bias_sm, do_scale_bias);
+    LM2GM(xlm, y + i * n, n * sizeof(T));
+  }
+}
+
+#define _XPU_DEF__FAST_LAYER_NORM_TINY_(DTYPE)                  \
+  template __global__ void fast_layer_norm_tiny_common<DTYPE>(  \
+      float epsilon,                                            \
+      int64_t m,                                                \
+      int64_t n,                                                \
+      const DTYPE* x,                                           \
+      DTYPE* y,                                                 \
+      const float* scale,                                       \
+      const float* bias);                                       \
+  template __global__ void fast_layer_norm_tiny_align32<DTYPE>( \
+      float epsilon,                                            \
+      int64_t m,                                                \
+      int64_t n,                                                \
+      const DTYPE* x,                                           \
+      DTYPE* y,                                                 \
+      const float* scale,                                       \
+      const float* bias);
+_XPU_DEF__FAST_LAYER_NORM_TINY_(float16);
+_XPU_DEF__FAST_LAYER_NORM_TINY_(float);
+
+}  // namespace plugin
+}  // namespace xpu2

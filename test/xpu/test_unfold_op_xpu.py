@@ -23,7 +23,7 @@ from get_test_cover_info import (
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 paddle.enable_static()
 
@@ -158,8 +158,8 @@ class XPUTestUnfoldOp(XPUOpTestWrapper):
 
         def test_dygraph(self):
             for place in self.places:
-                with fluid.dygraph.guard(place):
-                    input = fluid.dygraph.to_variable(self.inputs['X'])
+                with base.dygraph.guard(place):
+                    input = base.dygraph.to_variable(self.inputs['X'])
                     m = paddle.nn.Unfold(**self.attrs)
                     m.eval()
                     result = m(input)

@@ -242,14 +242,14 @@ For case 2 (assume that the shape of $Y$ is a continuous subsequence of $X$ ):
 
 For example:
 
-  .. code-block:: python
+    .. code-block:: text
 
-    shape(X) = (2, 3, 4, 5), shape(Y) = (,)
-    shape(X) = (2, 3, 4, 5), shape(Y) = (5,)
-    shape(X) = (2, 3, 4, 5), shape(Y) = (4, 5), with axis=-1(default) or axis=2
-    shape(X) = (2, 3, 4, 5), shape(Y) = (3, 4), with axis=1
-    shape(X) = (2, 3, 4, 5), shape(Y) = (2), with axis=0
-    shape(X) = (2, 3, 4, 5), shape(Y) = (2, 1), with axis=0
+        shape(X) = (2, 3, 4, 5), shape(Y) = (,)
+        shape(X) = (2, 3, 4, 5), shape(Y) = (5,)
+        shape(X) = (2, 3, 4, 5), shape(Y) = (4, 5), with axis=-1(default) or axis=2
+        shape(X) = (2, 3, 4, 5), shape(Y) = (3, 4), with axis=1
+        shape(X) = (2, 3, 4, 5), shape(Y) = (2), with axis=0
+        shape(X) = (2, 3, 4, 5), shape(Y) = (2, 1), with axis=0
 
 
 The inputs $X$ and $Y$ can carry the different LoD information.
@@ -405,7 +405,7 @@ class FusedElemwiseAddActivationOp : public FusedElemwiseActivationOp {
     std::vector<std::string> functor_names =
         ctx->Attrs().Get<std::vector<std::string>>("functor_list");
     bool elemntwise_add_detected = false;
-    for (auto names : functor_names) {
+    for (auto const &names : functor_names) {
       if (names == "elementwise_add") {
         elemntwise_add_detected = true;
         break;
@@ -430,7 +430,7 @@ class FusedElemwiseAddActivationOpGrad : public FusedElemwiseActivationOpGrad {
     std::vector<std::string> functor_names =
         ctx->Attrs().Get<std::vector<std::string>>("functor_list");
     bool elemntwise_add_grad_detected = false;
-    for (auto names : functor_names) {
+    for (auto const &names : functor_names) {
       if (names == "elementwise_add_grad") {
         elemntwise_add_grad_detected = true;
         break;

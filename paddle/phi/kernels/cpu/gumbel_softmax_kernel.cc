@@ -34,7 +34,7 @@ struct GumbleNoiseGenerator<CPUContext, T> {
     std::uniform_real_distribution<T> dist(0.00001, 1);
     auto engine = ctx.GetGenerator()->GetCPUEngine();
     DenseTensor random_tensor;
-    random_tensor.Resize(make_ddim({size}));
+    random_tensor.Resize(common::make_ddim({size}));
     auto* random_data = ctx.template Alloc<T>(&random_tensor);
     for (int64_t i = 0; i < size; ++i) {
       random_data[i] = dist(*engine);
@@ -66,7 +66,7 @@ struct OneHotGenerator<CPUContext, T> {
     const int size_out_axis = funcs::SizeOutAxis(axis, x.dims());
 
     for (int i = 0; i < x.dims().size(); i++) {
-      if (i != axis) index_dim.push_back(x.dims().Get()[i]);
+      if (i != axis) index_dim.push_back(static_cast<int>(x.dims().Get()[i]));
     }
     DDim index_ddim(index_dim.data(), rank - 1);
     index.Resize(index_ddim);
@@ -105,7 +105,7 @@ struct OneHotGenerator<CPUContext, T> {
 #undef CALL_ARG_MINMAX_FUNCTOR
     }
 
-    funcs::set_constant(ctx, out, 0.0);
+    funcs::set_constant(ctx, out, static_cast<T>(0.0));
     for (int i = 0; i < size_to_axis; i++) {
       for (int j = 0; j < size_out_axis; j++) {
         *(out->data<T>() + i * size_from_axis + j +

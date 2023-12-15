@@ -64,7 +64,12 @@ static int GetGPUDeviceCountImpl() {
     }
   }
   int count;
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaGetDeviceCount(&count));
+  status = cudaGetDeviceCount(&count);
+  if (status != cudaSuccess) {
+    VLOG(2) << "You have gpu driver and cuda installed, but the machine not "
+               "has any gpu card.";
+    count = 0;
+  }
   return count;
 }
 

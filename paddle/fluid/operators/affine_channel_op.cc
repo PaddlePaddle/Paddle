@@ -70,8 +70,8 @@ class AffineChannelOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     auto scale_dims = ctx->GetInputDim("Scale");
     auto b_dims = ctx->GetInputDim("Bias");
-    const phi::DataLayout data_layout =
-        phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
+    const phi::DataLayout data_layout = common::StringToDataLayout(
+        ctx->Attrs().Get<std::string>("data_layout"));
 
     const int64_t C =
         (data_layout == phi::DataLayout::kNCHW ? x_dims[1]
@@ -196,12 +196,13 @@ class AffineChannelKernel : public framework::OpKernel<T> {
     y->mutable_data<T>(ctx.GetPlace());
 
     const phi::DataLayout layout =
-        phi::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
+        common::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
 
     auto dims = x->dims();
-    int N = dims[0];
-    int C = layout == phi::DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
-    int HxW = x->numel() / N / C;
+    int N = static_cast<int>(dims[0]);
+    int C = static_cast<int>(
+        layout == phi::DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1]);
+    int HxW = static_cast<int>(x->numel() / N / C);
 
     auto* scale_d = scale->data<T>();
     auto* bias_d = bias->data<T>();
@@ -242,12 +243,13 @@ class AffineChannelGradKernel : public framework::OpKernel<T> {
     auto* dbias = ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
 
     const phi::DataLayout layout =
-        phi::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
+        common::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
 
     auto dims = x->dims();
-    int N = dims[0];
-    int C = layout == phi::DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
-    int HxW = x->numel() / N / C;
+    int N = static_cast<int>(dims[0]);
+    int C = static_cast<int>(
+        layout == phi::DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1]);
+    int HxW = static_cast<int>(x->numel() / N / C);
 
     auto* dy_d = dy->data<T>();
     auto* scale_d = scale->data<T>();

@@ -45,7 +45,7 @@ from .process_group import (
     get_world_process_group,
 )
 from .reshard import Resharder
-from .utils import SerialProgramInfo, make_data_unshard, set_grad_var_shape
+from .utils import SerialProgramInfo, make_data_unshard
 
 _logger = get_logger(logging.INFO)
 
@@ -143,7 +143,6 @@ class AutoParallelizer:
         no_grad_set,
         callbacks,
     ):
-
         with program_guard(main_program, startup_program):
             params_grads = append_backward(
                 loss,
@@ -158,7 +157,6 @@ class AutoParallelizer:
         return params_grads
 
     def _apply_optimize(self, main_program, startup_program, params_grads):
-
         optimizer = copy.deepcopy(self._optimizer)
         with program_guard(main_program, startup_program):
             optimize_ops = optimizer.apply_gradients(params_grads)
@@ -173,7 +171,6 @@ class AutoParallelizer:
     def _apply_post_optimization_passes(
         self, main_program, startup_program, rank, params_grads
     ):
-
         if self._dist_strategy.sharding:
             config = copy.deepcopy(self._dist_strategy.sharding_configs)
             config["dist_context"] = self._dist_context
@@ -262,8 +259,6 @@ class AutoParallelizer:
         dist_optimize_ops = self._apply_optimize(
             dist_main_prog, dist_startup_prog, dist_params_grads
         )
-
-        set_grad_var_shape(dist_main_prog, self._dist_context)
 
         make_data_unshard(dist_main_prog, dist_startup_prog, self._dist_context)
 

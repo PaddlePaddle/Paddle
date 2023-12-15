@@ -38,45 +38,43 @@ void YoloBoxXPUKernel(const Context& ctx,
   const float* stride_data;
   const float* anchor_grid_data;
   // fix precision of fp16 model
+  xpu::ctx_guard RAII_GUARD(ctx.x_context());
   if (std::is_same<T, phi::dtype::float16>::value) {
-    DenseTensor grid_data_fp32_t;
-    DenseTensor stride_data_fp32_t;
-    DenseTensor anchor_grid_data_fp32_t;
-    ctx.template Alloc<float>(&grid_data_fp32_t, grid.numel() * sizeof(float));
-    int r1 = xpu::cast<XPUType, float>(
+    float* grid_data_temp = RAII_GUARD.alloc_l3_or_gm<float>(grid.numel());
+    int r = xpu::cast<XPUType, float>(
         ctx.x_context(),
         reinterpret_cast<const XPUType*>(grid.data<T>()),
-        grid_data_fp32_t.data<float>(),
+        grid_data_temp,
         grid.numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r1, "cast");
-    ctx.template Alloc<float>(&stride_data_fp32_t,
-                              stride.numel() * sizeof(float));
-    int r2 = xpu::cast<XPUType, float>(
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    float* stride_data_temp = RAII_GUARD.alloc_l3_or_gm<float>(stride.numel());
+    r = xpu::cast<XPUType, float>(
         ctx.x_context(),
         reinterpret_cast<const XPUType*>(stride.data<T>()),
-        stride_data_fp32_t.data<float>(),
+        stride_data_temp,
         stride.numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r2, "cast");
-    ctx.template Alloc<float>(&anchor_grid_data_fp32_t,
-                              anchor_grid.numel() * sizeof(float));
-    int r3 = xpu::cast<XPUType, float>(
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    float* anchor_grid_data_temp =
+        RAII_GUARD.alloc_l3_or_gm<float>(anchor_grid.numel());
+    r = xpu::cast<XPUType, float>(
         ctx.x_context(),
         reinterpret_cast<const XPUType*>(anchor_grid.data<T>()),
-        anchor_grid_data_fp32_t.data<float>(),
+        anchor_grid_data_temp,
         anchor_grid.numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r3, "cast");
-    grid_data = grid_data_fp32_t.data<float>();
-    stride_data = stride_data_fp32_t.data<float>();
-    anchor_grid_data = anchor_grid_data_fp32_t.data<float>();
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    grid_data = grid_data_temp;
+    stride_data = stride_data_temp;
+    anchor_grid_data = anchor_grid_data_temp;
   } else {
     grid_data = grid.data<float>();
     stride_data = stride.data<float>();
     anchor_grid_data = anchor_grid.data<float>();
   }
-  std::vector<int64_t> x_shape = phi::vectorize(x.dims());
-  std::vector<int64_t> grid_shape = phi::vectorize(grid.dims());
-  std::vector<int64_t> stride_shape = phi::vectorize(stride.dims());
-  std::vector<int64_t> anchor_grid_shape = phi::vectorize(anchor_grid.dims());
+  std::vector<int64_t> x_shape = common::vectorize(x.dims());
+  std::vector<int64_t> grid_shape = common::vectorize(grid.dims());
+  std::vector<int64_t> stride_shape = common::vectorize(stride.dims());
+  std::vector<int64_t> anchor_grid_shape =
+      common::vectorize(anchor_grid.dims());
   // yolo_box_coord only support fp32&&fp16 precision
   int r = xpu::yolo_box_coord<XPUType>(
       /* baidu::xpu::api::Context* ctx */ ctx.x_context(),

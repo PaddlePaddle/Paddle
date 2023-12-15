@@ -13,6 +13,7 @@
  * limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/jit/gen/act.h"
+#include <array>
 
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/kernels/funcs/jit/registry.h"
@@ -21,7 +22,7 @@ namespace phi {
 namespace jit {
 namespace gen {
 
-const float ALIGN32_BEG exp_float_consts[] ALIGN32_END = {
+const float ALIGN32_BEG exp_float_consts[] ALIGN32_END = {  // NOLINT
     REPEAT_8TIMES(1.f),
     REPEAT_8TIMES(2.f),
     REPEAT_8TIMES(0.5f),
@@ -40,8 +41,9 @@ const float ALIGN32_BEG exp_float_consts[] ALIGN32_END = {
     REPEAT_8TIMES(SIGMOID_THRESHOLD_MAX),
     REPEAT_8TIMES(SIGMOID_THRESHOLD_MIN)};
 
-const int ALIGN32_BEG exp_int_0x7f[] ALIGN32_END = {REPEAT_8TIMES(0x7f)};
-int ALIGN32_BEG g_tmp_mem[16] ALIGN32_END = {0};
+const int ALIGN32_BEG exp_int_0x7f[] ALIGN32_END = {  // NOLINT
+    REPEAT_8TIMES(0x7f)};                             // NOLINT
+int ALIGN32_BEG g_tmp_mem[16] ALIGN32_END = {0};      // NOLINT
 
 void VActJitCode::genCode() {
   int offset = 0;

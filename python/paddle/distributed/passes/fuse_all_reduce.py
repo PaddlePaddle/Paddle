@@ -177,7 +177,7 @@ def find_all_fuse_all_reduce_groups(block):
         if in_var.type != core.VarDesc.VarType.LOD_TENSOR:
             return False
         shape = in_var.shape
-        if any([s <= 0 for s in shape]):
+        if any(s <= 0 for s in shape):
             return False
         return True
 

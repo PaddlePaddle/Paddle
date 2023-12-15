@@ -16,7 +16,7 @@ from nets import mlp
 from utils import gen_data
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.incubate.distributed.fleet import role_maker
 from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler import (
     fleet,
@@ -26,11 +26,11 @@ input_x = paddle.static.data(name="x", shape=[-1, 32], dtype='float32')
 input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 input_y = paddle.cast(input_y, dtype="float32")
 
-with fluid.device_guard("gpu"):
+with base.device_guard("gpu"):
     input_y = paddle.cast(input_y, dtype="int64")
     cost = mlp(input_x, input_y)
 
-optimizer = fluid.optimizer.Adagrad(learning_rate=0.01)
+optimizer = paddle.optimizer.Adagrad(learning_rate=0.01)
 
 role = role_maker.PaddleCloudRoleMaker()
 fleet.init(role)
@@ -42,8 +42,8 @@ if fleet.is_server():
     fleet.init_server()
     fleet.run_server()
 elif fleet.is_worker():
-    place = fluid.CPUPlace()
-    exe = fluid.Executor(place)
+    place = base.CPUPlace()
+    exe = base.Executor(place)
     exe.run(fleet.startup_program)
     step = 1001
     for i in range(step):

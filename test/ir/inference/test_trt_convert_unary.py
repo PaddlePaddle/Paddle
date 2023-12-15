@@ -36,18 +36,23 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
 
         def generate_input1(dims, batch, attrs: List[Dict[str, Any]]):
             if dims == 0:
-                return np.random.random([]).astype(np.float32)
-            if dims == 2:
-                return np.random.random([3, 32]).astype(np.float32)
+                out = np.random.random([]).astype(np.float32)
+            elif dims == 2:
+                out = np.random.random([3, 32]).astype(np.float32)
             elif dims == 3:
-                return np.random.random([3, 32, 32]).astype(np.float32)
+                out = np.random.random([3, 32, 32]).astype(np.float32)
             else:
-                return np.random.random([batch, 3, 32, 32]).astype(np.float32)
+                out = np.random.random([batch, 3, 32, 32]).astype(np.float32)
+            # NOTE(tizheng): Currently round(0.5) gives 1.0 in baseline and 0 in
+            # TRT, causing inconsistency. We mask out 0.5 as a workaround.
+            mask = out.astype('float16') == 0.5
+            out[mask] = 0
+            return out
 
         def generate_int_input(dims, batch, attrs: List[Dict[str, Any]]):
             if dims == 0:
                 return np.random.random([]).astype(np.int32)
-            if dims == 2:
+            elif dims == 2:
                 return np.random.random([3, 32]).astype(np.int32)
             elif dims == 3:
                 return np.random.random([3, 32, 32]).astype(np.int32)
@@ -138,6 +143,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                             )
                         },
                         outputs=["output_data"],
+                        no_cast_list=["input_data"],
                     )
 
                     yield program_config
@@ -146,7 +152,11 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
-            if self.dims == 1:
+            if self.dims == 0:
+                self.dynamic_shape.min_input_shape = {"input_data": []}
+                self.dynamic_shape.max_input_shape = {"input_data": []}
+                self.dynamic_shape.opt_input_shape = {"input_data": []}
+            elif self.dims == 1:
                 self.dynamic_shape.min_input_shape = {"input_data": [1]}
                 self.dynamic_shape.max_input_shape = {"input_data": [64]}
                 self.dynamic_shape.opt_input_shape = {"input_data": [32]}
@@ -193,6 +203,8 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                 and self.dims == 0
             ):
                 return 0, 3
+            if not dynamic_shape and (self == 1 or self.dims == 0):
+                return 0, 3
             return 1, 2
 
         attrs = [
@@ -202,24 +214,28 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
         # for static_shape
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
         ), 1e-4
         self.trt_param.precision = paddle_infer.PrecisionType.Half
+        program_config.set_input_type(np.float16)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
-        ), 1e-3
+        ), (1e-3, 1e-3)
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-4
         self.trt_param.precision = paddle_infer.PrecisionType.Half
+        program_config.set_input_type(np.float16)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
-        ), 1e-3
+        ), (1e-3, 1e-3)
 
     def test(self):
         self.run_test()
@@ -336,10 +352,12 @@ class TrtConvertLogicalNotTest(TrtLayerAutoScanTest):
         # for static_shape
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
+        program_config.set_input_type(np.float16)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
         ), (1e-3, 1e-3)
@@ -347,10 +365,12 @@ class TrtConvertLogicalNotTest(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
+        program_config.set_input_type(np.float16)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), (1e-3, 1e-3)

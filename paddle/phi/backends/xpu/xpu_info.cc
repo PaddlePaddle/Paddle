@@ -187,15 +187,42 @@ void MemcpySyncD2D(void* dst,
 
 XPUVersion get_xpu_version(int dev_id) {
   uint64_t v = 0;
+  if (dev_id == -1) {
+    dev_id = GetXPUCurrentDeviceId();
+  }
   PADDLE_ENFORCE_XPU_SUCCESS(xpu_device_get_attr(&v, XPUATTR_MODEL, dev_id));
 
   if (v == K100 || v == K200) {
     VLOG(1) << "KUNLUN device " << dev_id << " is XPU1\n";
     return XPU1;
-  } else {
+  } else if (v < KL3_BEGIN) {
     VLOG(1) << "KUNLUN device " << dev_id << " is XPU2\n";
     return XPU2;
+  } else {
+    VLOG(1) << "KUNLUN device " << dev_id << " is XPU3\n";
+    return XPU3;
   }
+}
+
+int get_xpu_max_ptr_size(int dev_id) {
+  auto xpu_version = get_xpu_version(dev_id);
+  int max_ptr_size = 0;
+  switch (xpu_version) {
+    case XPUVersion::XPU1:
+      max_ptr_size = 4;
+      break;
+    case XPUVersion::XPU2:
+      max_ptr_size = 6;
+      break;
+    case XPUVersion::XPU3:
+      max_ptr_size = 12;
+      break;
+    default:
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Only support get max ptr size of XPU1, XPU2 or XPU3."));
+      break;
+  }
+  return max_ptr_size;
 }
 
 }  // namespace xpu

@@ -21,8 +21,10 @@ import traceback
 import numpy as np  # noqa: F401
 
 from .origin_info import Location, OriginInfo, global_origin_info_map
-from .utils import _is_api_in_module_helper  # noqa: F401
-from .utils import RE_PYMODULE
+from .utils import (
+    RE_PYMODULE,
+    _is_api_in_module_helper,  # noqa: F401
+)
 
 __all__ = []
 
@@ -156,7 +158,9 @@ class SuggestionDict:
         self.suggestion_dict = {
             ('is not initialized.', 'Hint:', 'IsInitialized'): (
                 "Please ensure all your sublayers are inheritted from nn.Layer.",
-                "Please ensure there is no tensor created explicitly depended on external data, we suggest to register it as buffer tensor. See https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/04_dygraph_to_static/export_model/principle_cn.html#parameters-buffers for details",
+                "Please ensure there is no tensor created explicitly depended on external data, "
+                + "we suggest to register it as buffer tensor. "
+                + "See https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/jit/principle_cn.html#buffers for details",
             )
         }
 
@@ -203,9 +207,7 @@ class ErrorData:
         func_str = None
         for frame in tb:
             searched_name = re.search(
-                r'({module})*{name}'.format(
-                    module=RE_PYMODULE, name=frame.name
-                ),
+                fr'({RE_PYMODULE})*{frame.name}',
                 error_line,
             )
             if searched_name:
@@ -339,9 +341,7 @@ class ErrorData:
                 for suggestion in self.suggestion_dict[keywords]:
                     suggestion_msg = (
                         ' ' * BLANK_COUNT_BEFORE_FILE_STR * 2
-                        + '{}. {}'.format(
-                            str(len(revise_suggestions) - 1), suggestion
-                        )
+                        + f'{str(len(revise_suggestions) - 1)}. {suggestion}'
                     )
                     revise_suggestions.append(suggestion_msg)
         return revise_suggestions if len(revise_suggestions) > 2 else []

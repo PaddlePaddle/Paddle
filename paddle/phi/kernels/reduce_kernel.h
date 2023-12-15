@@ -14,8 +14,8 @@
 
 #pragma once
 
+#include "paddle/phi/common/reduce_type.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/distributed/reduce_helper.h"
 
 namespace phi {
 

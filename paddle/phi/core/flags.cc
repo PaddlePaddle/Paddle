@@ -20,11 +20,11 @@
 
 namespace phi {
 
-const ExportedFlagInfoMap &GetExportedFlagInfoMap() {
+TEST_API const ExportedFlagInfoMap &GetExportedFlagInfoMap() {
   return *GetMutableExportedFlagInfoMap();
 }
 
-ExportedFlagInfoMap *GetMutableExportedFlagInfoMap() {
+TEST_API ExportedFlagInfoMap *GetMutableExportedFlagInfoMap() {
   static ExportedFlagInfoMap g_exported_flag_info_map;
   return &g_exported_flag_info_map;
 }
@@ -470,7 +470,7 @@ PHI_DEFINE_EXPORTED_double(
  * Example:
  * Note: For selecting allocator policy of PaddlePaddle.
  */
-static constexpr char kDefaultAllocatorStrategy[] = "auto_growth";
+static constexpr char kDefaultAllocatorStrategy[] = "auto_growth";  // NOLINT
 PHI_DEFINE_EXPORTED_string(
     allocator_strategy,
     kDefaultAllocatorStrategy,
@@ -542,7 +542,7 @@ PHI_DEFINE_EXPORTED_double(
 // NOTE(zhiqiu): better to share the flags, otherwise we will have too many
 // flags.
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_CUSTOM_DEVICE)
+    defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_XPU)
 
 /**
  * Memory related FLAG
@@ -749,9 +749,9 @@ PHI_DEFINE_EXPORTED_int32(
  * [false]: not set 0D Tensor to 1D Numpy, close the hack
  *
  * Now, just set true by default in 2.5 transition time
- * which will be removed in future (2.6 or 2.7) .
+ * which will be removed in future (2.6) .
  */
-PHI_DEFINE_EXPORTED_bool(set_to_1d, true, "set 0D Tensor to 1D numpy");
+PHI_DEFINE_EXPORTED_bool(set_to_1d, false, "set 0D Tensor to 1D numpy");
 
 /**
  * Debug related FLAG
@@ -764,6 +764,18 @@ PHI_DEFINE_EXPORTED_bool(set_to_1d, true, "set 0D Tensor to 1D numpy");
 PHI_DEFINE_EXPORTED_string(tracer_mkldnn_ops_on,
                            "",
                            "List of OneDNN operation types to be turned on");
+
+/**
+ * Debug related FLAG
+ * Name: static_runtime_data_save_path
+ * Since Version: 2.6.0
+ * Value Range: string, default=./
+ * Example:
+ * Note: set the static runtime tensor save path.
+ */
+PHI_DEFINE_EXPORTED_string(static_runtime_data_save_path,
+                           "./",
+                           "set the static runtime tensor save path");
 
 /**
  * Debug related FLAG
@@ -840,6 +852,19 @@ PHI_DEFINE_EXPORTED_bool(
     "It controls whether to apply IR pass to program when using Fleet APIs");
 
 /**
+ * Debug related FLAG
+ * Name: FLAGS_save_static_runtime_data
+ * Since Version: 2.6.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: It controls whether to save runtime tensor in static mode.
+ */
+PHI_DEFINE_EXPORTED_bool(
+    save_static_runtime_data,
+    false,
+    "It controls whether to save runtime tensor in static mode");
+
+/**
  * Distributed related FLAG
  * Name: FLAGS_graph_load_in_parallel
  * Since Version: 2.2.0
@@ -852,6 +877,31 @@ PHI_DEFINE_EXPORTED_bool(graph_load_in_parallel,
                          false,
                          "It controls whether load graph node and edge with "
                          "mutli threads parallely.");
+
+/**
+ * Distributed related FLAG
+ * Name: FLAGS_enable_neighbor_list_use_uva
+ * Since Version: 2.5.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Control whether store neighbor_list with UVA in gpu graph mode
+ */
+PHI_DEFINE_EXPORTED_bool(enable_neighbor_list_use_uva,
+                         false,
+                         "It controls whether store neighbor_list with UVA");
+
+/**
+ * Distributed related FLAG
+ * Name: FLAGS_graph_neighbor_size_percent
+ * Since Version: 2.5.0
+ * Value Range: double, default=1.0
+ * Example:
+ * Note: Control whether load graph node and edge with multi threads parallely
+ *       If it is not set, load graph data with one thread
+ */
+PHI_DEFINE_EXPORTED_double(graph_neighbor_size_percent,
+                           1.0,
+                           "It controls whether precent of neighbor_size.");
 
 /**
  * Distributed related FLAG
@@ -894,6 +944,20 @@ PHI_DEFINE_EXPORTED_bool(
     enable_exit_when_partial_worker,
     false,
     "It controls whether exit trainer when an worker has no ins.");
+
+/**
+ * Distributed related FLAG
+ * Name: enable_adjust_op_order
+ * Since Version: 2.5.0
+ * Value Range: int32, default=0
+ * Example:
+ * Note: Control  whether adjust op order in worker to reduce hbm cost in gpu
+ * graph mode.
+ */
+PHI_DEFINE_EXPORTED_int32(
+    enable_adjust_op_order,
+    0,
+    "It controls whether adjust op order in worker to reduce hbm cost");
 
 /**
  * Distributed related FLAG
@@ -1056,23 +1120,30 @@ PHI_DEFINE_EXPORTED_uint64(executor_log_deps_every_microseconds,
                            0,
                            "Enable new executor log deps every n microseconds");
 
-DEFINE_int32(record_pool_max_size,
-             2000000,
-             "SlotRecordDataset slot record pool max size");
-DEFINE_int32(slotpool_thread_num, 1, "SlotRecordDataset slot pool thread num");
-DEFINE_bool(enable_slotpool_wait_release,
-            false,
-            "enable slotrecord object wait release, default false");
-DEFINE_bool(enable_slotrecord_reset_shrink,
-            false,
-            "enable slotrecord object reset shrink memory, default false");
-DEFINE_bool(enable_ins_parser_file,
-            false,
-            "enable parser ins file, default false");
+PD_DEFINE_int32(record_pool_max_size,
+                2000000,
+                "SlotRecordDataset slot record pool max size");
+PD_DEFINE_int32(slotpool_thread_num,
+                1,
+                "SlotRecordDataset slot pool thread num");
+PD_DEFINE_bool(enable_slotpool_wait_release,  // NOLINT
+               false,
+               "enable slotrecord object wait release, default false");
+PD_DEFINE_bool(enable_slotrecord_reset_shrink,  // NOLINT
+               false,
+               "enable slotrecord object reset shrink memory, default false");
+PD_DEFINE_bool(enable_ins_parser_file,  // NOLINT
+               false,
+               "enable parser ins file, default false");
 PHI_DEFINE_EXPORTED_bool(
     gpugraph_enable_hbm_table_collision_stat,
     false,
     "enable hash collisions stat for hbm table, default false");
+PHI_DEFINE_EXPORTED_bool(
+    cache_inference_while_scope,
+    false,
+    "Cache the scope of the while op to avoid repeated creation of the scope "
+    "for each iteration and improve inference performance.");
 PHI_DEFINE_EXPORTED_double(gpugraph_hbm_table_load_factor,
                            0.75,
                            "the load factor of hbm table, default 0.75");
@@ -1119,6 +1190,22 @@ PHI_DEFINE_EXPORTED_bool(enable_sparse_inner_gather,
 PHI_DEFINE_EXPORTED_bool(gpugraph_debug_gpu_memory,
                          false,
                          "enable debug gpu memory, default false");
+PHI_DEFINE_EXPORTED_bool(
+    graph_embedding_split_infer_mode,
+    true,
+    "graph embedding split infer mode not need nccl barrier in gpu graph mode");
+PHI_DEFINE_EXPORTED_bool(enable_graph_multi_node_sampling,
+                         false,
+                         "control multi-node sample in gpu graph mode");
+PHI_DEFINE_EXPORTED_bool(
+    query_dest_rank_by_multi_node,
+    false,
+    "Control whether to query dest rank by multi machine in gpu graph mode");
+PHI_DEFINE_EXPORTED_bool(multi_node_sample_use_gpu_table,
+                         true,
+                         "Control whether to use gpu table in sample multi "
+                         "machine in gpu graph mode");
+
 /**
  * ProcessGroupNCCL related FLAG
  * Name: nccl_blocking_wait
@@ -1127,8 +1214,15 @@ PHI_DEFINE_EXPORTED_bool(gpugraph_debug_gpu_memory,
  * Example:
  * Note: nccl blocking wait.
  */
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PHI_DEFINE_EXPORTED_bool(nccl_blocking_wait, false, "nccl blocking wait");
+#endif
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PHI_DEFINE_EXPORTED_bool(benchmark_nccl,
+                         false,
+                         "enable nccl debug mode to synchronize nccl comm");
 #endif
 
 /**
@@ -1256,3 +1350,154 @@ PHI_DEFINE_EXPORTED_bool(use_shm_cache,
 PHI_DEFINE_EXPORTED_string(tensor_operants_mode,
                            "eager",
                            "Tensor operants mode");
+
+/**
+ * Using PIR in executor  FLAG
+ * Name: enable_pir_in_executor
+ * Since Version: 2.6.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If Ture, executor will use new IR
+ */
+PHI_DEFINE_EXPORTED_bool(enable_pir_in_executor,
+                         false,
+                         "Enable new IR in executor");
+
+/**
+ * Using PIR by translating legacy program to pir program
+ * for dy2st mode  FLAG
+ * Name: enable_pir_in_executor
+ * Since Version: 2.6.0
+ * Value Range: bool, default=true
+ * Example:
+ * Note: If Ture, program will be translated to pir program
+ * and then run in executor for dy2st mode.
+ */
+PHI_DEFINE_EXPORTED_bool(enable_pir_with_pt_in_dy2st,
+                         true,
+                         "Enable new IR in executor");
+
+/**
+ * Using PIR API in Python
+ * Name: enable_pir_api
+ * Since Version: 2.6.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If Ture, New IR API will be used in Python
+ */
+PHI_DEFINE_EXPORTED_bool(enable_pir_api, false, "Enable new IR API in Python");
+
+/**
+ * Using PIR in executor FLAG
+ * Name: enable_pir_in_executor_trace_run
+ * Since Version: 2.6.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If Ture, executor will use new IR and run in beta version by for trace
+ * version.
+ */
+PHI_DEFINE_EXPORTED_bool(enable_pir_in_executor_trace_run,
+                         false,
+                         "Enable new IR in executor");
+
+/**
+ * Apply inplace pass to new IR FLAG
+ * Name: pir_apply_inplace_pass
+ * Since Version: 2.6.0
+ * Value Range: bool, default=true
+ * Example:
+ * Note: If Ture, will apply inplace pass to new IR.
+ */
+PHI_DEFINE_EXPORTED_bool(pir_apply_inplace_pass,
+                         true,
+                         "Whether to apply inplace pass on lowering "
+                         "::pir::Program to Kernel Dialect");
+
+PHI_DEFINE_EXPORTED_string(
+    ir_inplace_kernel_blacklist,
+    "",
+    "It controls the ir inplace kernel subset do not use.");
+/**
+ * Specify the directory of saving PIR sugraph from @to_static
+ * Name: pir_subgraph_saving_dir
+ * Since Version: 2.6.0
+ * Value Range: str, default=""
+ * Example:
+ * Note: "/workspace/my_path", it will save into my_path dir;
+ */
+PHI_DEFINE_EXPORTED_string(
+    pir_subgraph_saving_dir,
+    "",
+    "Specify the directory of saving PIR sugraph from @to_static.");
+
+PHI_DEFINE_EXPORTED_bool(enable_record_memory, false, "Enable memory recorder");
+
+PHI_DEFINE_EXPORTED_bool(
+    eager_delete_scope,
+    true,
+    "Delete local scope eagerly. It will reduce GPU memory usage but "
+    "slow down the destruction of variables.(around 1% performance harm)");
+
+// Used to filter events, works like glog VLOG(level).
+// RecordEvent will works if host_trace_level >= level.
+PHI_DEFINE_EXPORTED_int64(host_trace_level,
+                          1,
+                          "RecordEvent will works "
+                          "if host_trace_level >= level.");
+
+PHI_DEFINE_EXPORTED_int32(
+    multiple_of_cupti_buffer_size,
+    1,
+    "Multiple of the CUPTI device buffer size. If the timestamps have "
+    "been dropped when you are profiling, try increasing this value.");
+
+PHI_DEFINE_EXPORTED_bool(print_ir, false, "Whether print ir debug str.");
+PHI_DEFINE_EXPORTED_bool(prim_skip_dynamic,
+                         false,
+                         "Whether to skip decomping op with dynamic shape.");
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_XPU_BKCL)
+/**
+ * Communication library related FLAG
+ * Name: FLAGS_dynamic_static_unified_comm
+ * Since Version: 2.5
+ * Value Range: bool, default=true
+ * Example:
+ * Note: Whether to use new communication library in auto parallel and static
+ * mode. If true, it will use unified CommContextManager for communication.
+ */
+PHI_DEFINE_EXPORTED_bool(dynamic_static_unified_comm,
+                         true,
+                         "Whether to use new communication library in auto "
+                         "parallel and static mode.");
+#endif  // FLAGS_dynamic_static_unified_comm
+
+/**
+ * ProcessGroupNCCL related FLAG
+ * Name: enable_async_trace
+ * Since Version:
+ * Value Range: bool, default=false
+ * Example:
+ * Note: enable nccl async trace.
+ */
+
+PHI_DEFINE_EXPORTED_bool(enable_async_trace,
+                         false,
+                         "enable collective async trace");
+
+PHI_DEFINE_EXPORTED_int32(async_trace_count, 5, "collective async trace count");
+
+PHI_DEFINE_EXPORTED_bool(
+    use_auto_growth_pinned_allocator,
+    false,
+    "Whether to use the auto_growth CUDA pinned allocator.");
+
+PHI_DEFINE_EXPORTED_bool(
+    sync_after_alloc,
+    false,
+    "Whether to perform device synchronization after allocation.");
+PHI_DEFINE_EXPORTED_int64(alloc_fill_value,
+                          -1,
+                          "Whether to fill fixed value after allocation. "
+                          "This is usefull for debugging.");

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import errno
 import os
 import random
 import tempfile
@@ -20,9 +21,9 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.core import AnalysisConfig, create_paddle_predictor
+from paddle import base
+from paddle.base import core
+from paddle.base.core import AnalysisConfig, create_paddle_predictor
 
 
 class InferencePassTest(unittest.TestCase):
@@ -30,8 +31,8 @@ class InferencePassTest(unittest.TestCase):
         paddle.enable_static()
         super().__init__(methodName)
         paddle.enable_static()
-        self.main_program = fluid.Program()
-        self.startup_program = fluid.Program()
+        self.main_program = base.Program()
+        self.startup_program = base.Program()
         self.feeds = None
         self.fetch_list = None
 
@@ -56,19 +57,42 @@ class InferencePassTest(unittest.TestCase):
     def _save_models(
         self, dirname, feeded_var_names, target_vars, executor, program, scope
     ):
-        with fluid.scope_guard(scope):
-            # save models as combined to ensure that
-            # there won't be too many useless files
-            # after finishing a couple of tests.
-            fluid.io.save_inference_model(
-                dirname, feeded_var_names, target_vars, executor, program
+        with base.scope_guard(scope):
+            # save models as combined but sometimes params is null
+            # To adapt to this situation, the path needs to be adjusted to the old version format.
+            feeded_vars = []
+            for var in program.list_vars():
+                if var.name in feeded_var_names:
+                    feeded_vars.append(var)
+
+            paddle.static.io.save_inference_model(
+                dirname,
+                feeded_vars,
+                target_vars,
+                executor,
+                program=program,
             )
+
+            # if the param save is null
+            # replace model_path to old version
+            param_file = dirname + ".pdiparams"
+            if not os.path.exists(param_file):
+                model_path = dirname + ".pdmodel"
+                try:
+                    save_dirname = os.path.normpath(dirname)
+                    os.makedirs(save_dirname)
+                except OSError as e:
+                    if e.errno != errno.EEXIST:
+                        raise
+                model_path_old = os.path.join(save_dirname, "__model__")
+                if not os.path.exists(model_path_old):
+                    os.rename(model_path, model_path_old)
 
     def _get_paddle_outs(self, executor, program, scope):
         '''
         Return PaddlePaddle outputs.
         '''
-        with fluid.scope_guard(scope):
+        with base.scope_guard(scope):
             outs = executor.run(
                 program=program,
                 feed=self.feeds,
@@ -90,7 +114,7 @@ class InferencePassTest(unittest.TestCase):
             tensor = predictor.get_input_tensor(name)
             feed_data = list(self.feeds.values())[i]
             tensor.copy_from_cpu(np.array(feed_data))
-            if type(feed_data) == fluid.LoDTensor:
+            if type(feed_data) == base.LoDTensor:
                 tensor.set_lod(feed_data.lod())
 
         predictor.zero_copy_run()
@@ -109,8 +133,16 @@ class InferencePassTest(unittest.TestCase):
         '''
         Return a new object of AnalysisConfig.
         '''
-        config = AnalysisConfig(self.path)
+        # To adapt to save_inference_model
+        param_file = self.path + ".pdiparams"
+        if not os.path.exists(param_file):
+            config = AnalysisConfig(self.path)
+        else:
+            config = AnalysisConfig(
+                self.path + ".pdmodel", self.path + ".pdiparams"
+            )
         config.disable_gpu()
+        config.disable_mkldnn()
         config.switch_specify_input_names(True)
         config.switch_ir_optim(True)
         config.switch_use_feed_fetch_ops(False)
@@ -126,7 +158,9 @@ class InferencePassTest(unittest.TestCase):
                     self.trt_parameters.use_calib_mode,
                 )
                 if self.trt_parameters.use_inspector:
-                    config.enable_tensorrt_inspector()
+                    config.enable_tensorrt_inspector(
+                        self.trt_parameters.inspector_serialize
+                    )
                     self.assertTrue(
                         config.tensorrt_inspector_enabled(),
                         "The inspector option is not set correctly.",
@@ -170,11 +204,11 @@ class InferencePassTest(unittest.TestCase):
         or disable TensorRT, enable MKLDNN or disable MKLDNN
         are all the same.
         '''
-        place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
-        executor = fluid.Executor(place)
-        scope = fluid.Scope()
+        place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
+        executor = base.Executor(place)
+        scope = base.Scope()
         device = "GPU" if use_gpu else "CPU"
-        with fluid.scope_guard(scope):
+        with base.scope_guard(scope):
             executor.run(self.startup_program)
         self._save_models(
             self.path,
@@ -192,9 +226,7 @@ class InferencePassTest(unittest.TestCase):
         # Check whether the results calculated on CPU and on GPU are the same.
         self.assertTrue(
             len(paddle_outs) == len(inference_outs),
-            "The number of outputs is different between inference and training forward at {}".format(
-                device
-            ),
+            f"The number of outputs is different between inference and training forward at {device}",
         )
 
         for out, inference_out in zip(paddle_outs, inference_outs):
@@ -208,9 +240,7 @@ class InferencePassTest(unittest.TestCase):
                 inference_out,
                 rtol=1e-05,
                 atol=atol,
-                err_msg='Output has diff between inference and training forward at {} '.format(
-                    device
-                ),
+                err_msg=f'Output has diff between inference and training forward at {device} ',
             )
 
         # Check whether the trt results and the GPU results are the same.
@@ -288,6 +318,7 @@ class InferencePassTest(unittest.TestCase):
             use_static,
             use_calib_mode,
             use_inspector=False,
+            inspector_serialize=False,
         ):
             self.workspace_size = workspace_size
             self.max_batch_size = max_batch_size
@@ -296,6 +327,7 @@ class InferencePassTest(unittest.TestCase):
             self.use_static = use_static
             self.use_calib_mode = use_calib_mode
             self.use_inspector = use_inspector
+            self.inspector_serialize = inspector_serialize
 
     class DynamicShapeParam:
         '''

@@ -79,6 +79,7 @@ class TrtConvertYoloBoxHeadTest(TrtLayerAutoScanTest):
     ) -> (paddle_infer.Config, List[int], float):
         # for static_shape
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), [1, 2], 1e-5
 
     def test(self):

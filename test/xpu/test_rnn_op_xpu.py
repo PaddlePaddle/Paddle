@@ -11,9 +11,13 @@
 # limitations under the License.
 
 import random
+import sys
 import unittest
 
 import numpy as np
+
+sys.path.append('../rnn')
+
 from convert import get_params_for_net
 from get_test_cover_info import (
     XPUOpTestWrapper,
@@ -24,7 +28,7 @@ from op_test_xpu import XPUOpTest
 from rnn_numpy import LSTM
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 random.seed(2)
 np.set_printoptions(threshold=np.inf)

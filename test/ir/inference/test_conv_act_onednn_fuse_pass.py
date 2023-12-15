@@ -21,8 +21,7 @@ from program_config import OpConfig, ProgramConfig, TensorConfig
 
 class TestConvActOneDNNFusePass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
-        config = self.create_inference_config(use_gpu=False)
-        config.enable_mkldnn()
+        config = self.create_inference_config(use_gpu=False, use_mkldnn=True)
         yield config, ['fused_conv2d'], (1e-4, 1e-5)
 
     def is_program_valid(self, prog_config):
@@ -166,7 +165,7 @@ class TestConvActOneDNNFusePass(PassAutoScanTest):
                 'relu6',
                 inputs={'X': ['conv2d_out']},
                 outputs={'Out': ['relu_out']},
-                threshold=draw(st.floats(min_value=1.0, max_value=10.0)),
+                threshold=6.0,
             )
         elif act_type == 'leaky_relu':
             act_op = OpConfig(
@@ -180,7 +179,7 @@ class TestConvActOneDNNFusePass(PassAutoScanTest):
                 'swish',
                 inputs={'X': ['conv2d_out']},
                 outputs={'Out': ['swish_out']},
-                beta=draw(st.floats(min_value=0.1, max_value=1.0)),
+                beta=1.0,
             )
         elif act_type == 'clip':
             act_op = OpConfig(

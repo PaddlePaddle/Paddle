@@ -61,7 +61,7 @@ PD_REGISTER_KERNEL(
 PD_REGISTER_KERNEL(min, KPS, ALL_LAYOUT, phi::MinKernel, float) {}
 #endif
 
-#if defined(PADDLE_WITH_MKLDNN)
+#if defined(PADDLE_WITH_DNNL)
 PD_REGISTER_KERNEL(
     min, OneDNN, ONEDNN, phi::MinKernel, float, phi::dtype::bfloat16) {}
 #endif

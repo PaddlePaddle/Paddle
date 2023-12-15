@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/box_coder_kernel.h"
+#include <array>
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -77,7 +78,7 @@ void EncodeCenterSize(const DenseTensor *target_box,
       for (int64_t j = 0; j < col; ++j) {
         for (int k = 0; k < 4; ++k) {
           size_t offset = i * col * len + j * len;
-          int prior_var_offset = j * len;
+          int prior_var_offset = static_cast<int>(j * len);
           output[offset + k] /= prior_box_var_data[prior_var_offset + k];
         }
       }
@@ -116,8 +117,8 @@ void DecodeCenterSize(const DenseTensor *target_box,
       auto *target_box_data = target_box->data<T>();
       auto *prior_box_data = prior_box->data<T>();
 
-      T var_data[4] = {1., 1., 1., 1.};
-      T *var_ptr = var_data;
+      std::array<T, 4> var_data{1., 1., 1., 1.};
+      T *var_ptr = var_data.data();
       size_t offset = i * col * len + j * len;
       int prior_box_offset = axis == 0 ? j * len : i * len;
 
@@ -178,7 +179,7 @@ void BoxCoderKernel(const Context &dev_ctx,
                     int axis,
                     const std::vector<float> &variance,
                     DenseTensor *output_box) {
-  if (target_box.lod().size()) {
+  if (!target_box.lod().empty()) {
     PADDLE_ENFORCE_EQ(target_box.lod().size(),
                       1UL,
                       phi::errors::InvalidArgument(

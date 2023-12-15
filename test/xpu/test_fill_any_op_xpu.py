@@ -39,10 +39,7 @@ class XPUTestFillAnyOp(XPUOpTestWrapper):
             self.value = 0.0
             self.init()
             self.inputs = {'X': np.random.random((20, 30)).astype(self.dtype)}
-            self.attrs = {
-                'value_float': float(self.value),
-                'value_int': int(self.value),
-            }
+            self.attrs = {'value': float(self.value)}
             self.outputs = {
                 'Out': self.value
                 * np.ones_like(self.inputs["X"]).astype(self.dtype)
@@ -78,7 +75,7 @@ class XPUTestFillAnyOp(XPUOpTestWrapper):
 
     class TestFillAnyInplace(unittest.TestCase):
         def test_fill_any_version(self):
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 var = paddle.to_tensor(np.ones((4, 2, 3)).astype(np.float32))
                 self.assertEqual(var.inplace_version, 0)
 
@@ -92,7 +89,7 @@ class XPUTestFillAnyOp(XPUOpTestWrapper):
                 self.assertEqual(var.inplace_version, 3)
 
         def test_fill_any_eqaul(self):
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 tensor = paddle.to_tensor(
                     np.random.random((20, 30)).astype(np.float32)
                 )
@@ -103,7 +100,7 @@ class XPUTestFillAnyOp(XPUOpTestWrapper):
                 self.assertEqual((tensor.numpy() == target).all().item(), True)
 
         def test_backward(self):
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 x = paddle.full([10, 10], -1.0, dtype='float32')
                 x.stop_gradient = False
                 y = 2 * x
@@ -112,6 +109,23 @@ class XPUTestFillAnyOp(XPUOpTestWrapper):
                 np.testing.assert_array_equal(
                     x.grad.numpy(), np.zeros([10, 10])
                 )
+
+
+class TestFillAnyLikeOpSpecialValue(unittest.TestCase):
+    def setUp(self):
+        self.special_values = [float("nan"), float("+inf"), float("-inf")]
+        self.dtypes = ["float32", "float16"]
+
+    def test_dygraph_api(self):
+        paddle.disable_static()
+        paddle.set_device("xpu")
+        for dtype in self.dtypes:
+            for value in self.special_values:
+                ref = paddle.empty([4, 4], dtype=dtype)
+                val_pd = paddle.full_like(ref, value, dtype=dtype)
+                val_np = np.full([4, 4], value, dtype=dtype)
+                np.testing.assert_equal(val_pd.numpy(), val_np)
+        paddle.enable_static()
 
 
 support_types = get_xpu_op_support_types('fill_any')

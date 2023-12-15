@@ -39,14 +39,15 @@ void GenBase::dumpCode(const unsigned char* code) const {
     counter++;
     std::ofstream fout(filename.str(), std::ios::out);
     if (fout.is_open()) {
-      fout.write(reinterpret_cast<const char*>(code), this->getSize());
+      fout.write(reinterpret_cast<const char*>(code),
+                 static_cast<int>(this->getSize()));
       fout.close();
     }
   }
 }
 
 void* GenBase::operator new(size_t size) {
-  void* ptr;
+  void* ptr = nullptr;
   constexpr size_t alignment = 32ul;
 #ifdef _WIN32
   ptr = _aligned_malloc(size, alignment);
@@ -65,11 +66,13 @@ void* GenBase::operator new(size_t size) {
   return ptr;
 }
 
-void GenBase::operator delete(void* ptr) { posix_memalign_free(ptr); }
+void GenBase::operator delete(void* ptr) {
+  posix_memalign_free(ptr);  // NOLINT
+}
 
 std::vector<int> packed_groups(int n, int k, int* block_out, int* rest_out) {
-  int block;
-  int max_num_regs;
+  int block = 0;
+  int max_num_regs = 0;
   if (phi::backends::cpu::MayIUse(phi::backends::cpu::avx512f)) {
     block = ZMM_FLOAT_BLOCK;
     max_num_regs = 32;

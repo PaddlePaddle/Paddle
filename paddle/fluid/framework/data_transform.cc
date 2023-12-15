@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_device_transform.h"
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/data_type_transform.h"
+#include "paddle/phi/api/lib/data_transform.h"
 
 namespace paddle {
 namespace framework {
@@ -24,7 +25,7 @@ class Variable;
 }  // namespace framework
 }  // namespace paddle
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
@@ -47,9 +48,16 @@ void TransformData(const phi::KernelKey &expected_kernel_type,
   phi::DenseTensor out;
   const DataLayout lin = kernel_type_for_var.layout();
   const DataLayout lout = expected_kernel_type.layout();
+
+  if (NeedTransform2Contiguous(in.meta().is_contiguous())) {
+    out = paddle::experimental::Trans2Contiguous(in);
+    transformed = true;
+    PassTensorData(&out, &in);
+  }
+
   // do layout transform
   if (NeedTransformLayout(lout, lin)) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if (lin == DataLayout::ONEDNN || lout == DataLayout::ONEDNN) {
       PADDLE_ENFORCE_EQ(
           !(lin == DataLayout::ONEDNN && lout == DataLayout::ONEDNN),
@@ -133,7 +141,7 @@ void SetTensorToVariable(const Variable &in_var,
     auto *tran_lod_tensor = out_var->GetMutable<phi::DenseTensor>();
     tran_lod_tensor->set_lod(in_lod_tensor.lod());
     tran_lod_tensor->set_layout(in_lod_tensor.layout());
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     tran_lod_tensor->set_mem_desc(in_lod_tensor.mem_desc());
 #endif
     tran_lod_tensor->ShareDataWith(tensor);

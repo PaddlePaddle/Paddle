@@ -50,9 +50,9 @@ class TestDistMnistNCCL2DGC(TestDistBase):
         self._use_dgc = True
 
     def test_dist_train(self):
-        from paddle import fluid
+        from paddle import base
 
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             self.check_with_place(
                 os.path.abspath("../../legacy_test/dist_mnist_dgc.py"),
                 delta=1e-5,
@@ -61,9 +61,9 @@ class TestDistMnistNCCL2DGC(TestDistBase):
             )
 
     def tearDown(self):
-        from paddle import fluid
+        from paddle import base
 
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             log_file = os.path.join(
                 self.temp_dir.name, 'test_dist_mnist_dgc_nccl_tr0_err.log'
             )

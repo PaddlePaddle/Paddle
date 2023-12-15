@@ -17,9 +17,10 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid.dygraph as dg
+import paddle.base.dygraph as dg
 import paddle.nn.functional as F
-from paddle import fluid
+from paddle import base
+from paddle.pir_utils import test_with_pir_api
 
 
 class LabelSmoothTestCase(unittest.TestCase):
@@ -41,12 +42,12 @@ class LabelSmoothTestCase(unittest.TestCase):
     def setUp(self):
         self.label = np.random.randn(*(self.label_shape)).astype(self.dtype)
 
-    def fluid_layer(self, place):
+    def base_layer(self, place):
         paddle.enable_static()
-        main = fluid.Program()
-        start = fluid.Program()
-        with fluid.unique_name.guard():
-            with fluid.program_guard(main, start):
+        main = base.Program()
+        start = base.Program()
+        with base.unique_name.guard():
+            with base.program_guard(main, start):
                 label_var = paddle.static.data(
                     "input", self.label_shape, dtype=self.dtype
                 )
@@ -56,17 +57,17 @@ class LabelSmoothTestCase(unittest.TestCase):
                     epsilon=self.epsilon,
                 )
         feed_dict = {"input": self.label}
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         exe.run(start)
         (y_np,) = exe.run(main, feed=feed_dict, fetch_list=[y_var])
         return y_np
 
     def functional(self, place):
         paddle.enable_static()
-        main = fluid.Program()
-        start = fluid.Program()
-        with fluid.unique_name.guard():
-            with fluid.program_guard(main, start):
+        main = base.Program()
+        start = base.Program()
+        with base.unique_name.guard():
+            with base.program_guard(main, start):
                 label_var = paddle.static.data(
                     "input", self.label_shape, dtype=self.dtype
                 )
@@ -74,7 +75,7 @@ class LabelSmoothTestCase(unittest.TestCase):
                     label_var, prior_dist=self.prior_dist, epsilon=self.epsilon
                 )
         feed_dict = {"input": self.label}
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         exe.run(start)
         (y_np,) = exe.run(main, feed=feed_dict, fetch_list=[y_var])
         return y_np
@@ -88,25 +89,26 @@ class LabelSmoothTestCase(unittest.TestCase):
         y_np = y_var.numpy()
         return y_np
 
+    @test_with_pir_api
     def _test_equivalence(self, place):
-        place = fluid.CPUPlace()
-        result1 = self.fluid_layer(place)
+        place = base.CPUPlace()
+        result1 = self.base_layer(place)
         result2 = self.functional(place)
         result3 = self.paddle_dygraph_layer()
         np.testing.assert_array_almost_equal(result1, result2)
         np.testing.assert_array_almost_equal(result2, result3)
 
     def runTest(self):
-        place = fluid.CPUPlace()
+        place = base.CPUPlace()
         self._test_equivalence(place)
-        if fluid.core.is_compiled_with_cuda():
-            place = fluid.CUDAPlace(0)
+        if base.core.is_compiled_with_cuda():
+            place = base.CUDAPlace(0)
             self._test_equivalence(place)
 
 
 class LabelSmoothErrorTestCase(LabelSmoothTestCase):
     def runTest(self):
-        place = fluid.CPUPlace()
+        place = base.CPUPlace()
         with dg.guard(place):
             with self.assertRaises(ValueError):
                 self.paddle_dygraph_layer()

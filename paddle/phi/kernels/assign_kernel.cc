@@ -46,6 +46,9 @@ template <typename Context>
 void AssignArrayKernel(const Context& dev_ctx,
                        const TensorArray& x,
                        TensorArray* out) {
+  while (out->size() < x.size()) {
+    out->emplace_back();
+  }
   for (size_t i = 0; i < x.size(); ++i) {
     AssignKernel<Context>(dev_ctx, x[i], &out->at(i));
   }
@@ -103,7 +106,7 @@ void AssignValueKernel(const Context& dev_ctx,
                                    dtype,
                                    template_dtype));
   CopyVectorToTensor<T>(dev_ctx, values, out);
-  out->Resize(phi::make_ddim(shape));
+  out->Resize(common::make_ddim(shape));
 }
 
 }  // namespace phi
@@ -132,6 +135,8 @@ PD_REGISTER_KERNEL(assign_value,
                    bool,
                    int,
                    float,
+                   double,
+                   int8_t,
                    int64_t) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -158,6 +163,8 @@ PD_REGISTER_KERNEL(assign_value,
                    bool,
                    int,
                    float,
+                   double,
+                   int8_t,
                    int64_t) {}
 #endif
 

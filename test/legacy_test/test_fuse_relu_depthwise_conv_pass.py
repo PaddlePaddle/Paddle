@@ -19,8 +19,7 @@ from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid import core
+from paddle.base import core
 
 
 def norm(*args, **kargs):
@@ -85,9 +84,9 @@ class TestMNIST(TestParallelExecutorBase):
         img, label = self._init_data(random_data)
 
         def _optimizer(learning_rate=1e-6):
-            optimizer = fluid.optimizer.SGD(
+            optimizer = paddle.optimizer.SGD(
                 learning_rate=learning_rate,
-                regularization=paddle.regularizer.L2Decay(1e-6),
+                weight_decay=paddle.regularizer.L2Decay(1e-6),
             )
             return optimizer
 

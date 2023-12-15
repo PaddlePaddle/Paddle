@@ -26,7 +26,7 @@ from test_softmax_op import stable_softmax
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import Program, program_guard
+from paddle.base import Program, program_guard
 
 paddle.enable_static()
 
@@ -401,7 +401,6 @@ class XPUTestWarpCTCOp(XPUOpTestWrapper):
 
         def test_dygraph_errors(self):
             def test_dygraph_with_lod():
-
                 self.dtype = self.in_type
                 self.place = paddle.XPUPlace(0)
 

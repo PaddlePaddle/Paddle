@@ -11,11 +11,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -99,7 +100,7 @@ class TestViterbiOp(OpTest):
         self.outputs = {'Scores': scores, 'Path': path}
 
     def test_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestViterbiAPI(unittest.TestCase):
@@ -107,9 +108,9 @@ class TestViterbiAPI(unittest.TestCase):
         self.use_tag = True
         self.bz, self.len, self.ntags = 4, 8, 10
         self.places = (
-            [fluid.CPUPlace(), fluid.CUDAPlace(0)]
+            [base.CPUPlace(), base.CUDAPlace(0)]
             if core.is_compiled_with_cuda()
-            else [fluid.CPUPlace()]
+            else [base.CPUPlace()]
         )
 
     def setUp(self):
@@ -121,9 +122,10 @@ class TestViterbiAPI(unittest.TestCase):
         decoder = Decoder(self.transitions, self.use_tag)
         self.scores, self.path = decoder(self.input, self.length)
 
+    @test_with_pir_api
     def check_static_result(self, place):
         bz, length, ntags = self.bz, self.len, self.ntags
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             Input = paddle.static.data(
                 name="Input", shape=[bz, length, ntags], dtype="float32"
             )
@@ -135,7 +137,7 @@ class TestViterbiAPI(unittest.TestCase):
             )
             decoder = paddle.text.ViterbiDecoder(Transition, self.use_tag)
             score, path = decoder(Input, Length)
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             feed_list = {
                 "Input": self.input,
                 "Transition": self.transitions,

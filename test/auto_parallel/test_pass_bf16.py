@@ -19,8 +19,8 @@ import numpy as np
 
 import paddle
 from paddle import nn
+from paddle.base import core
 from paddle.distributed.fleet import auto
-from paddle.fluid import core
 from paddle.static import InputSpec
 from paddle.static.amp.bf16.amp_utils import _valid_types
 from paddle.static.amp.fp16_utils import find_true_prev_op
@@ -57,8 +57,8 @@ class MnistDataset(MNIST):
 
 
 def reset_prog():
-    paddle.fluid.framework.switch_main_program(paddle.static.Program())
-    paddle.fluid.framework.switch_startup_program(paddle.static.Program())
+    paddle.base.framework.switch_main_program(paddle.static.Program())
+    paddle.base.framework.switch_startup_program(paddle.static.Program())
 
 
 class Model(nn.Layer):
@@ -90,7 +90,7 @@ class TestBF16Pass(unittest.TestCase):
         paddle.seed(2021)
         np.random.seed(2021)
         random.seed(2021)
-        place = paddle.fluid.CUDAPlace(paddle.distributed.ParallelEnv().dev_id)
+        place = paddle.base.CUDAPlace(paddle.distributed.ParallelEnv().dev_id)
         engine._executor = paddle.static.Executor(place)
 
     def get_engine(self, use_bf16=False):

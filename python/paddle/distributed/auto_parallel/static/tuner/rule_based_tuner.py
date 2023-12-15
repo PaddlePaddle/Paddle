@@ -26,6 +26,9 @@ from functools import reduce
 import numpy as np
 
 import paddle
+from paddle.base import program_guard
+from paddle.base.backward import append_backward
+from paddle.base.framework import Parameter
 from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
 from paddle.distributed.auto_parallel.static.cluster_v2 import DeviceMesh
 from paddle.distributed.auto_parallel.static.completion import Completer
@@ -48,12 +51,10 @@ from paddle.distributed.auto_parallel.static.utils import (
     print_program_with_dist_attr,
 )
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
-from paddle.fluid import program_guard
-from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import Parameter, unique_name
 
 from ....utils.log_utils import get_logger
 from ..graph import Graph
+from ..utils import _g_gradient_clip_ops
 
 _PATTERNS = {}
 
@@ -1161,7 +1162,7 @@ class RuleBasedTuner:
             with program_guard(
                 self.full_main_program, self.full_startup_program
             ):
-                with unique_name.guard("opt_"):
+                with self.full_main_program.switch_name_generator_guard("opt_"):
                     optimizer_ops = optimizer.apply_gradients(params_grads)
 
             # op original id to grad op id
@@ -1577,9 +1578,7 @@ class RuleBasedTuner:
                     output_name = grad_op_next_op.output_arg_names[0]
                     assert (
                         output_name in grad_var_to_var
-                    ), "sum op's output '{}' has no corresponding var".format(
-                        output_name
-                    )
+                    ), f"sum op's output '{output_name}' has no corresponding var"
                     ref_fwd_var_name = grad_var_to_var[output_name]
                     ref_fwd_var = vars[ref_fwd_var_name]
                     ref_fwd_dist_attr = sub_program_dist_context.get_tensor_dist_attr_for_program(
@@ -1646,13 +1645,7 @@ class RuleBasedTuner:
             op = ops[idx]
             if int(op.attr('op_role')) == int(OpRole.Optimize):
                 if is_gradient_clip_op(op):
-                    if op.type in [
-                        "sum",
-                        "sqrt",
-                        "fill_constant",
-                        "elementwise_max",
-                        "elementwise_div",
-                    ]:
+                    if op.type in _g_gradient_clip_ops:
                         op_dist_attr = OperatorDistAttr()
                         op_dist_attr.process_mesh = world_ranks
                         for in_name in op.input_arg_names:
@@ -1822,7 +1815,6 @@ class RuleBasedTuner:
                             )
 
                         for input_name in op.desc.input_names():
-
                             if input_name in [
                                 'Param',
                                 'Grad',
@@ -2099,9 +2091,7 @@ class RuleBasedTuner:
         self.layers = self.cluster_operators()
         end = time.time()
         self._logger.info(
-            "Cluster operators to {} layers in {:.2f}s.".format(
-                len(self.layers), end - begin
-            )
+            f"Cluster operators to {len(self.layers)} layers in {end - begin:.2f}s."
         )
 
         # step2: generate sub program of each layer
@@ -2176,9 +2166,7 @@ class RuleBasedTuner:
             self.complete_sub_bwd_programs()
             end = time.time()
             self._logger.info(
-                "Complete all sub backward programs in {:.2f}s.".format(
-                    end - begin
-                )
+                f"Complete all sub backward programs in {end - begin:.2f}s."
             )
 
             # step8: complete update sub programs
@@ -2398,7 +2386,7 @@ class RuleBasedTuner:
             self._logger.info(
                 "The process will be quitted when just tune not run."
             )
-            quit()
+            sys.exit()
 
     def tune(self):
         begin = time.time()

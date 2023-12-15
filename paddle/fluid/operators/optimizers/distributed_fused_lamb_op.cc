@@ -165,7 +165,6 @@ class DistributedFusedLambOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace operators
 }  // namespace paddle
 
-namespace plat = paddle::platform;
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(distributed_fused_lamb,
                              ops::DistributedFusedLambOp,

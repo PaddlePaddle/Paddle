@@ -128,16 +128,16 @@ void DownpourLiteWorker::Initialize(const TrainerDesc& desc) {
 }
 
 void DownpourLiteWorker::CopySparseTable() {
-  for (size_t i = 0; i < copy_sparse_tables_.size(); ++i) {
-    int64_t src_table = copy_sparse_tables_[i].first;
-    int64_t dest_table = copy_sparse_tables_[i].second;
+  for (auto& copy_sparse_table : copy_sparse_tables_) {
+    int64_t src_table = copy_sparse_table.first;
+    int64_t dest_table = copy_sparse_table.second;
     int32_t feanum = 0;
     if (src_table == dest_table) {
       continue;
     } else if (!copy_table_config_.sparse_copy_by_feasign()) {
       if (feasign_set_.find(src_table) == feasign_set_.end()) {
         continue;
-      } else if (feasign_set_[src_table].size() == 0) {
+      } else if (feasign_set_[src_table].empty()) {
         continue;
       }
       feanum = fleet_ptr_->CopyTable(src_table, dest_table);
@@ -161,9 +161,9 @@ void DownpourLiteWorker::CopyDenseTable() {
     return;
   }
   thread_local std::vector<std::future<int32_t>> pull_dense_status;
-  for (size_t i = 0; i < copy_dense_tables_.size(); ++i) {
-    uint64_t src_table = copy_dense_tables_[i].first;
-    uint64_t dest_table = copy_dense_tables_[i].second;
+  for (auto& copy_dense_table : copy_dense_tables_) {
+    uint64_t src_table = copy_dense_table.first;
+    uint64_t dest_table = copy_dense_table.second;
     if (src_table == dest_table) {
       continue;
     }
@@ -233,8 +233,8 @@ void DownpourLiteWorker::TrainFilesWithProfiler() {
   std::vector<std::string> op_name;
   for (auto& op : ops_) {
     bool need_skip = false;
-    for (auto t = 0u; t < skip_ops_.size(); ++t) {
-      if (op->Type().find(skip_ops_[t]) != std::string::npos) {
+    for (auto& skip_op : skip_ops_) {
+      if (op->Type().find(skip_op) != std::string::npos) {
         need_skip = true;
         break;
       }
@@ -246,8 +246,8 @@ void DownpourLiteWorker::TrainFilesWithProfiler() {
 
   VLOG(3) << "op name size: " << op_name.size();
   op_total_time.resize(op_name.size());
-  for (size_t i = 0; i < op_total_time.size(); ++i) {
-    op_total_time[i] = 0.0;
+  for (double& op_time : op_total_time) {
+    op_time = 0.0;
   }
   platform::Timer timeline;
   double total_time = 0.0;
@@ -284,8 +284,8 @@ void DownpourLiteWorker::TrainFilesWithProfiler() {
     int run_op_idx = 0;
     for (auto& op : ops_) {
       bool need_skip = false;
-      for (auto t = 0u; t < skip_ops_.size(); ++t) {
-        if (op->Type().find(skip_ops_[t]) != std::string::npos) {
+      for (auto& skip_op : skip_ops_) {
+        if (op->Type().find(skip_op) != std::string::npos) {
           need_skip = true;
           break;
         }
@@ -324,8 +324,8 @@ void DownpourLiteWorker::TrainFilesWithProfiler() {
 #if defined(PADDLE_WITH_PSLIB) || defined(PADDLE_WITH_PSCORE)
     if (copy_table_config_.need_copy()) {
       if (copy_table_config_.sparse_copy_by_feasign()) {
-        for (size_t i = 0; i < copy_sparse_tables_.size(); ++i) {
-          uint64_t tid = copy_sparse_tables_[i].first;
+        for (auto& copy_sparse_table : copy_sparse_tables_) {
+          uint64_t tid = copy_sparse_table.first;
           feasign_set_[tid].insert(sparse_push_keys_[tid].begin(),
                                    sparse_push_keys_[tid].end());
         }
@@ -429,8 +429,8 @@ void DownpourLiteWorker::TrainFilesWithProfiler() {
 inline void AddAucMonitor(const Scope* scope, const platform::Place& place) {
   auto metric_ptr = Metric::GetInstance();
   auto& metric_list = metric_ptr->GetMetricList();
-  for (auto iter = metric_list.begin(); iter != metric_list.end(); iter++) {
-    auto* metric_msg = iter->second;
+  for (auto& metric_item : metric_list) {
+    auto* metric_msg = metric_item.second;
     if (metric_ptr->Phase() != metric_msg->MetricPhase()) {
       continue;
     }
@@ -458,8 +458,8 @@ void DownpourLiteWorker::TrainFiles() {
     // do computation here
     for (auto& op : ops_) {
       bool need_skip = false;
-      for (auto t = 0u; t < skip_ops_.size(); ++t) {
-        if (op->Type().find(skip_ops_[t]) != std::string::npos) {
+      for (auto& skip_op : skip_ops_) {
+        if (op->Type().find(skip_op) != std::string::npos) {
           need_skip = true;
           break;
         }
@@ -474,7 +474,7 @@ void DownpourLiteWorker::TrainFiles() {
           size_t batch_size = device_reader_->GetCurBatchSize();
           std::string s = "";
           for (auto& ins_id : ins_id_vec) {
-            if (s != "") s += ",";
+            if (!s.empty()) s += ",";
             s += ins_id;
           }
           fprintf(stderr,
@@ -544,8 +544,8 @@ void DownpourLiteWorker::TrainFiles() {
 #if defined(PADDLE_WITH_PSLIB) || defined(PADDLE_WITH_PSCORE)
     if (copy_table_config_.need_copy()) {
       if (copy_table_config_.sparse_copy_by_feasign()) {
-        for (size_t i = 0; i < copy_sparse_tables_.size(); ++i) {
-          uint64_t tid = copy_sparse_tables_[i].first;
+        for (auto& copy_sparse_table : copy_sparse_tables_) {
+          uint64_t tid = copy_sparse_table.first;
           feasign_set_[tid].insert(sparse_push_keys_[tid].begin(),
                                    sparse_push_keys_[tid].end());
         }

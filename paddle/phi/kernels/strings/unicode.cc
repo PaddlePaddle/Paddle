@@ -22,8 +22,8 @@ limitations under the License. */
 namespace phi {
 namespace strings {
 
-static const void* utils_map[4] = {nullptr};
-static uint16_t CHARCASES_MAP[65536] = {0};
+static const void* utils_map[4] = {nullptr};  // NOLINT
+static uint16_t CHARCASES_MAP[65536] = {0};   // NOLINT
 
 const uint8_t* GetUniFlagMap() {
   if (utils_map[1] == nullptr) {
@@ -35,10 +35,10 @@ const uint8_t* GetUniFlagMap() {
 const uint16_t* GetCharcasesMap() {
   if (utils_map[0] == nullptr) {
     for (uint32_t i = 0; i < 65536; ++i) {
-      if (utf8proc_islower(i)) {
-        CHARCASES_MAP[i] = utf8proc_toupper(i);
-      } else if (utf8proc_isupper(i)) {
-        CHARCASES_MAP[i] = utf8proc_tolower(i);
+      if (utf8proc_islower(static_cast<int32_t>(i))) {
+        CHARCASES_MAP[i] = utf8proc_toupper(static_cast<int32_t>(i));
+      } else if (utf8proc_isupper(static_cast<int32_t>(i))) {
+        CHARCASES_MAP[i] = utf8proc_tolower(static_cast<int32_t>(i));
       }
     }
     utils_map[0] = CHARCASES_MAP;

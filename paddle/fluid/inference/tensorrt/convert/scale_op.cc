@@ -46,7 +46,7 @@ class ScaleOpConverter : public OpConverter {
           is_int ? Add1DConstantLayer(
                        static_cast<int>(bias > 0 ? bias + 0.5 : bias - 0.5))
                  : Add1DConstantLayer(bias);
-      bool is_bias_0 = (bias < 1e-06 && bias > -1e-06);
+      bool is_bias_0 = bias == 0;
 
       std::vector<int32_t> bias_shapes(input->getDimensions().nbDims, 1);
       auto* bias_shapes_tensor = Add1DConstantLayer(bias_shapes);
@@ -60,7 +60,7 @@ class ScaleOpConverter : public OpConverter {
 
       auto scale_inputs = op_desc.Inputs();
       if (scale_inputs.find("ScaleTensor") != scale_inputs.end() &&
-          op_desc.Input("ScaleTensor").size()) {  // has EndsTensor input
+          !op_desc.Input("ScaleTensor").empty()) {  // has EndsTensor input
         has_scale_tensor = true;
         scale_tensor = engine_->GetITensor(op_desc.Input("ScaleTensor")[0]);
         is_scale_1 = false;
@@ -69,7 +69,7 @@ class ScaleOpConverter : public OpConverter {
         scale_tensor = is_int ? Add1DConstantLayer(static_cast<int>(
                                     scale > 0 ? scale + 0.5 : scale - 0.5))
                               : Add1DConstantLayer(scale);
-        is_scale_1 = ((scale - 1.0) < 1e-06 && (scale - 1.0) > -1e-06);
+        is_scale_1 = scale == 1;
       }
 
       std::vector<int32_t> scale_shapes(input->getDimensions().nbDims, 1);

@@ -16,17 +16,19 @@ import unittest
 
 import numpy as np
 import parameterized as param
-from eager_op_test import (
+from op_test import (
     OpTest,
     convert_float_to_uint16,
+    convert_uint16_to_float,
     paddle_static_guard,
     skip_check_grad_ci,
 )
 from testsuite import create_op
+from utils import static_guard
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 def group_norm_naive(x, scale, bias, epsilon, groups, data_layout):
@@ -49,7 +51,7 @@ def group_norm_naive(x, scale, bias, epsilon, groups, data_layout):
 class TestGroupNormOpError(unittest.TestCase):
     def test_errors(self):
         with paddle_static_guard():
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
+            with base.program_guard(base.Program(), base.Program()):
 
                 def test_x_type():
                     input = np.random.random(2, 100, 3, 5).astype('float32')
@@ -105,9 +107,9 @@ class TestGroupNormOp(OpTest):
         )
 
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(input),
-            'Scale': OpTest.np_dtype_to_fluid_dtype(scale),
-            'Bias': OpTest.np_dtype_to_fluid_dtype(bias),
+            'X': OpTest.np_dtype_to_base_dtype(input),
+            'Scale': OpTest.np_dtype_to_base_dtype(scale),
+            'Bias': OpTest.np_dtype_to_base_dtype(bias),
         }
         self.outputs = {'Y': output, 'Mean': mean, 'Variance': var}
         self.attrs['data_layout'] = self.data_format
@@ -117,7 +119,7 @@ class TestGroupNormOp(OpTest):
         inplace_atol = 0
         place = core.CPUPlace()
 
-        self.check_output_with_place(place, atol=atol)
+        self.check_output_with_place(place, atol=atol, check_pir=True)
 
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
@@ -130,7 +132,7 @@ class TestGroupNormOp(OpTest):
             # relative error is 1e-05 in numpy.allclose by default.
             # Reference: https://docs.scipy.org/doc/numpy/reference/generated/numpy.allclose.html
             self.check_output_with_place(
-                place, atol=atol, inplace_atol=inplace_atol
+                place, atol=atol, inplace_atol=inplace_atol, check_pir=True
             )
 
     def do_compare_between_place(self):
@@ -167,13 +169,13 @@ class TestGroupNormOp(OpTest):
             return
 
         place = core.CPUPlace()
-        self.check_grad_with_place(place, {'X', 'Scale', 'Bias'}, 'Y')
+        self.check_grad_with_place(
+            place, {'X', 'Scale', 'Bias'}, 'Y', check_pir=True
+        )
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place,
-                {'X', 'Scale', 'Bias'},
-                'Y',
+                place, {'X', 'Scale', 'Bias'}, 'Y', check_pir=True
             )
 
     def init_test_case(self):
@@ -199,14 +201,16 @@ class TestGroupNormFP16OP(TestGroupNormOp):
         # Set to inplace_atol to 0, which means the absolute error is 0, and the
         # relative error is 1e-05 in numpy.allclose by default.
         # Reference: https://docs.scipy.org/doc/numpy/reference/generated/numpy.allclose.html
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
         if self.compare_between_place:
             return
 
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, {'X', 'Scale', 'Bias'}, 'Y')
+        self.check_grad_with_place(
+            place, {'X', 'Scale', 'Bias'}, 'Y', check_pir=True
+        )
 
     def init_test_case(self):
         self.dtype = np.float16
@@ -264,14 +268,16 @@ class TestGroupNormBF16Op(OpTest):
         # Set to inplace_atol to 0, which means the absolute error is 0, and the
         # relative error is 1e-05 in numpy.allclose by default.
         # Reference: https://docs.scipy.org/doc/numpy/reference/generated/numpy.allclose.html
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
         if self.compare_between_place:
             return
 
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, {'X', 'Scale', 'Bias'}, 'Y')
+        self.check_grad_with_place(
+            place, {'X', 'Scale', 'Bias'}, 'Y', check_pir=True
+        )
 
     def init_test_case(self):
         pass
@@ -349,6 +355,80 @@ class TestGroupNormOp2_With_NHWC(TestGroupNormOp):
         self.data_format = "NHWC"
 
 
+class TestGroupNormFP16Op_With_NHWC(TestGroupNormFP16OP):
+    def init_test_case(self):
+        self.no_need_check_inplace = True
+        self.attrs['groups'] = 1
+        self.data_format = "NHWC"
+        self.attrs['epsilon'] = 0.5
+        self.shape = (1, 100, 4, 4)
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        rtol = 2e-3
+        atol = 2e-3
+        inplace_atol = 2e-3
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(
+            place,
+            rtol=rtol,
+            atol=atol,
+            inplace_atol=inplace_atol,
+            check_pir=True,
+        )
+
+
+class TestGroupNormBF16Op_With_NHWC(TestGroupNormBF16Op):
+    def setUp(self):
+        self.op_type = "group_norm"
+        self.python_api = group_norm_wrapper
+        self.python_out_sig = ["Y"]
+        self.data_format = "NHWC"
+        self.dtype = np.uint16
+        self.shape = (1, 3, 5, 100)
+        self.attrs = {
+            'epsilon': 5e-2,
+            'groups': 2,
+            'data_layout': self.data_format,
+        }
+        self.compare_between_place = False
+        self.init_test_case()
+        input = (
+            np.sin(
+                np.arange(
+                    self.shape[0]
+                    * self.shape[1]
+                    * self.shape[2]
+                    * self.shape[3]
+                )
+            )
+            .reshape(self.shape)
+            .astype(np.float32)
+        )
+        scale = np.sin(np.arange(self.shape[3])).astype(np.float32)
+        bias = np.sin(np.arange(self.shape[3])).astype(np.float32)
+        output, mean, var = group_norm_naive(
+            input,
+            scale,
+            bias,
+            self.attrs['epsilon'],
+            self.attrs['groups'],
+            self.data_format,
+        )
+
+        self.inputs = {
+            'X': convert_float_to_uint16(input),
+            'Scale': convert_float_to_uint16(scale),
+            'Bias': convert_float_to_uint16(bias),
+        }
+        self.outputs = {'Y': output, 'Mean': mean, 'Variance': var}
+
+    def test_check_output(self):
+        rtol = 2e-2
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, rtol=rtol, check_pir=True)
+
+
 class TestGroupNormOpBigEps1_With_NHWC(TestGroupNormOp):
     def init_test_case(self):
         self.attrs['groups'] = 1
@@ -403,9 +483,9 @@ class TestGroupNormAPI_With_NHWC(unittest.TestCase):
             bias = np.array([0]).astype("float64")
 
             place = core.CPUPlace()
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             results = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"data1": data1_np, "data2": data2_np},
                 fetch_list=[out1, out2],
                 return_numpy=True,
@@ -448,7 +528,6 @@ class TestGroupNormException(unittest.TestCase):
 
 class TestGroupNormEager(unittest.TestCase):
     def test_dygraph_api(self):
-
         # not supported float64
         # only support float32
         self.dtype = np.float32
@@ -456,13 +535,13 @@ class TestGroupNormEager(unittest.TestCase):
         self.shape = (8, 32, 32)
         input = np.random.random(self.shape).astype(self.dtype)
 
-        with fluid.dygraph.guard():
-            tensor_1 = fluid.dygraph.to_variable(input)
+        with base.dygraph.guard():
+            tensor_1 = base.dygraph.to_variable(input)
             tensor_1.stop_gradient = False
             groupNorm = paddle.nn.GroupNorm(num_channels=32, num_groups=4)
             ret1 = groupNorm(tensor_1)
             ret1.backward()
-            tensor_eager_1 = fluid.dygraph.to_variable(input)
+            tensor_eager_1 = base.dygraph.to_variable(input)
             tensor_eager_1.stop_gradient = False
             groupNorm_eager = paddle.nn.GroupNorm(num_channels=32, num_groups=4)
             ret2 = groupNorm_eager(tensor_eager_1)
@@ -476,13 +555,13 @@ class TestGroupNormEager(unittest.TestCase):
         self.shape = (8, 32, 32)
         input = np.random.random(self.shape).astype(self.dtype)
 
-        with fluid.dygraph.guard():
-            tensor_1 = fluid.dygraph.to_variable(input)
+        with base.dygraph.guard():
+            tensor_1 = base.dygraph.to_variable(input)
             tensor_1.stop_gradient = False
             groupNorm = paddle.nn.GroupNorm(num_channels=32, num_groups=4)
             ret1 = groupNorm(tensor_1)
             ret1.backward()
-            tensor_eager_1 = fluid.dygraph.to_variable(input)
+            tensor_eager_1 = base.dygraph.to_variable(input)
             tensor_eager_1.stop_gradient = False
             groupNorm_eager = paddle.nn.GroupNorm(num_channels=32, num_groups=4)
             ret2 = groupNorm_eager(tensor_eager_1)
@@ -495,7 +574,6 @@ class TestGroupNormEager(unittest.TestCase):
 
 class TestGroupNormEager_fp16(unittest.TestCase):
     def test_dygraph_api(self):
-
         # not supported float16
         # only support float32
         self.dtype = np.float32
@@ -503,13 +581,13 @@ class TestGroupNormEager_fp16(unittest.TestCase):
         self.shape = (8, 32, 32)
         input = np.random.random(self.shape).astype(self.dtype)
 
-        with fluid.dygraph.guard():
-            tensor_1 = fluid.dygraph.to_variable(input)
+        with base.dygraph.guard():
+            tensor_1 = base.dygraph.to_variable(input)
             tensor_1.stop_gradient = False
             groupNorm = paddle.nn.GroupNorm(num_channels=32, num_groups=4)
             ret1 = groupNorm(tensor_1)
             ret1.backward()
-            tensor_eager_1 = fluid.dygraph.to_variable(input)
+            tensor_eager_1 = base.dygraph.to_variable(input)
             tensor_eager_1.stop_gradient = False
             groupNorm_eager = paddle.nn.GroupNorm(num_channels=32, num_groups=4)
             ret2 = groupNorm_eager(tensor_eager_1)
@@ -812,6 +890,96 @@ def apply_to_static(net, use_cinn):
             [[1e-3, 1e-3, 1e-3]],  # gpu thresholds for static, jit, jit_cinn
             None,
         ),
+        (
+            'test0_bfp16',
+            (2, 100, 3, 5),
+            1e-5,
+            2,
+            'NCHW',
+            places,
+            'bfloat16',
+            [
+                [
+                    1e-2,
+                    1e-2,
+                    1e-2,
+                ],  # cpu thresholds for static, jit, jit_cinn
+                [1e-2, 1e-2, 1e-2],
+            ],  # gpu thresholds for static, jit, jit_cinn
+            None,
+        ),
+        (
+            'test1_bfp16',
+            (2, 100, 3, 5),
+            1e-5,
+            1,
+            'NCHW',
+            places,
+            'bfloat16',
+            [
+                [
+                    1e-2,
+                    1e-2,
+                    1e-2,
+                ],  # cpu thresholds for static, jit, jit_cinn
+                [1e-2, 1e-2, 1e-2],
+            ],  # gpu thresholds for static, jit, jit_cinn
+            None,
+        ),
+        (
+            'test2_bfp16',
+            (2, 100, 3, 5),
+            1e-5,
+            4,
+            'NCHW',
+            places,
+            'bfloat16',
+            [
+                [
+                    1e-2,
+                    1e-2,
+                    1e-2,
+                ],  # cpu thresholds for static, jit, jit_cinn
+                [1e-2, 1e-2, 1e-2],
+            ],  # gpu thresholds for static, jit, jit_cinn
+            None,
+        ),
+        (
+            'bigeps3_bfp16',
+            (2, 100, 3, 5),
+            0.5,
+            2,
+            'NCHW',
+            places,
+            'bfloat16',
+            [
+                [
+                    1e-2,
+                    1e-2,
+                    1e-2,
+                ],  # cpu thresholds for static, jit, jit_cinn
+                [1e-2, 1e-2, 1e-2],
+            ],  # gpu thresholds for static, jit, jit_cinn
+            None,
+        ),
+        (
+            'largedata_bfp16',
+            (2, 32, 64, 64),
+            1e-5,
+            4,
+            'NCHW',
+            places,
+            'bfloat16',
+            [
+                [
+                    1e-2,
+                    1e-2,
+                    1e-2,
+                ],  # cpu thresholds for static, jit, jit_cinn
+                [1e-2, 1e-2, 1e-2],
+            ],  # gpu thresholds for static, jit, jit_cinn
+            None,
+        ),
     ),
 )
 class TestCompositeGroupNorm(unittest.TestCase):
@@ -827,12 +995,23 @@ class TestCompositeGroupNorm(unittest.TestCase):
         np.random.seed(1234)
         self.fwd_desire = []
         self.rev_desire = []
-        self.x = np.random.random(self.shape).astype(self.dtype)
-        self.scale = np.random.random([self.shape[1]]).astype(self.dtype)
-        self.bias = np.random.random([self.shape[1]]).astype(self.dtype)
+        if self.dtype != "bfloat16":
+            self.x = np.random.random(self.shape).astype(self.dtype)
+            self.scale = np.random.random([self.shape[1]]).astype(self.dtype)
+            self.bias = np.random.random([self.shape[1]]).astype(self.dtype)
+        else:
+            self.x = convert_float_to_uint16(
+                np.random.random(self.shape).astype("float32")
+            )
+            self.scale = convert_float_to_uint16(
+                np.random.random([self.shape[1]]).astype("float32")
+            )
+            self.bias = convert_float_to_uint16(
+                np.random.random([self.shape[1]]).astype("float32")
+            )
         self.num_channels = self.shape[1]
 
-        if self.dtype == 'float16':
+        if self.dtype in ['float16', 'bfloat16']:
             self.places = []
             if paddle.is_compiled_with_cuda():
                 self.places.append(paddle.CUDAPlace(0))
@@ -854,9 +1033,9 @@ class TestCompositeGroupNorm(unittest.TestCase):
             self.static_rev_desire[-1].append(rev[2])
 
     def get_eager_desire(self, place):
-        if isinstance(place, fluid.CPUPlace):
+        if isinstance(place, base.CPUPlace):
             paddle.set_device("cpu")
-        if isinstance(place, fluid.CUDAPlace):
+        if isinstance(place, base.CUDAPlace):
             paddle.set_device("gpu")
         core.set_prim_eager_enabled(False)
         paddle.disable_static()
@@ -881,15 +1060,19 @@ class TestCompositeGroupNorm(unittest.TestCase):
         paddle.assign(bias_, group_norm.bias)
         output = group_norm(input_)
         grad = paddle.grad(output, input_)
-
+        if self.dtype == "bfloat16":
+            output = paddle.cast(output, "float32")
+            grad = paddle.utils.map_structure(
+                lambda x: paddle.cast(x, "float32"), grad
+            )
         return output, grad[0]
 
     def get_static_desire(self, place):
         core._set_prim_all_enabled(False)
         paddle.enable_static()
-        if isinstance(place, fluid.CPUPlace):
+        if isinstance(place, base.CPUPlace):
             paddle.set_device("cpu")
-        if isinstance(place, fluid.CUDAPlace):
+        if isinstance(place, base.CUDAPlace):
             paddle.set_device("gpu")
 
         mp, sp = paddle.static.Program(), paddle.static.Program()
@@ -925,7 +1108,6 @@ class TestCompositeGroupNorm(unittest.TestCase):
             output = group_norm(input_)
 
             blocks = mp.blocks
-
             names = dict(
                 zip(
                     blocks[0].ops[2].output_names,
@@ -966,7 +1148,11 @@ class TestCompositeGroupNorm(unittest.TestCase):
         )
         paddle.disable_static()
         core._set_prim_all_enabled(True)
-
+        if self.dtype == "bfloat16":
+            out_list[0] = convert_uint16_to_float(out_list[0])
+            i = 3
+            for i in range(3, len(out_list)):
+                out_list[i] = convert_uint16_to_float(out_list[i])
         return out_list[:3], out_list[3:]
 
     def test_static_comp(self):
@@ -977,7 +1163,7 @@ class TestCompositeGroupNorm(unittest.TestCase):
         if len(self.places) < 1:
             return
 
-        with paddle.fluid.framework._static_guard():
+        with static_guard():
             for place in self.places:
                 fwd_actual.append([])
                 rev_actual.append([])
@@ -1053,6 +1239,11 @@ class TestCompositeGroupNorm(unittest.TestCase):
                     },
                     fetch_list=vars_list + [grads],
                 )
+                if self.dtype == "bfloat16":
+                    out_list[0] = convert_uint16_to_float(out_list[0])
+                    i = 3
+                    for i in range(3, len(out_list)):
+                        out_list[i] = convert_uint16_to_float(out_list[i])
                 fwd_actual[-1].append(out_list[0])
                 fwd_actual[-1].append(out_list[1])
                 fwd_actual[-1].append(out_list[2])
@@ -1077,12 +1268,14 @@ class TestCompositeGroupNorm(unittest.TestCase):
             atol = self.threshold_list[i][0]
             rtol = self.threshold_list[i][0]
             for j in range(len(self.static_fwd_desire[i])):
-                # in float16 type, Y is float16, mean and var are float16
+                # in float16 type, Y is float16, mean and var are float32
                 # so check mean and var with float32 gpu threshold
-                if self.dtype == 'float16' and j > 0:
+                if self.dtype == "float16" and j > 0:
                     atol = 1e-5
                     rtol = 1e-5
-
+                elif self.dtype == "bfloat16" and j > 0:
+                    atol = 5e-3
+                    rtol = 5e-3
                 np.testing.assert_allclose(
                     self.static_fwd_desire[i][j],
                     fwd_actual[i][j],
@@ -1092,13 +1285,6 @@ class TestCompositeGroupNorm(unittest.TestCase):
                 )
                 max_abs_diff = np.max(
                     np.abs(self.static_fwd_desire[i][j] - fwd_actual[i][j])
-                )
-                print(
-                    self.shape,
-                    self.dtype,
-                    self.places[i],
-                    vars_name[j],
-                    max_abs_diff,
                 )
             # compare with eager_desire
             np.testing.assert_allclose(
@@ -1121,14 +1307,6 @@ class TestCompositeGroupNorm(unittest.TestCase):
 
                 max_abs_diff = np.max(
                     np.abs(self.static_rev_desire[i][j] - rev_actual[i][j])
-                )
-
-                print(
-                    self.shape,
-                    self.dtype,
-                    self.places[i],
-                    vars_name[j + 3],
-                    max_abs_diff,
                 )
 
                 np.testing.assert_allclose(
@@ -1185,8 +1363,16 @@ class TestCompositeGroupNorm(unittest.TestCase):
             net = apply_to_static(net, False)
             output = net(input_)
             grad = paddle.grad(output, input_)
-            fwd_actual.append(output.numpy())
-            rev_actual.append(grad[0].numpy())
+            fwd_actual.append(
+                convert_uint16_to_float(output.numpy())
+                if self.dtype == "bfloat16"
+                else output.numpy()
+            )
+            rev_actual.append(
+                convert_uint16_to_float(grad[0].numpy())
+                if self.dtype == "bfloat16"
+                else grad[0].numpy()
+            )
 
         for i in range(len(self.places)):
             atol = self.threshold_list[i][1]
@@ -1217,7 +1403,7 @@ class TestCompositeGroupNorm(unittest.TestCase):
         fwd_actual = []
         rev_actual = []
         for place in self.places:
-            if not isinstance(place, fluid.CUDAPlace):
+            if not isinstance(place, base.CUDAPlace):
                 continue
             input_ = paddle.to_tensor(
                 data=self.x, dtype=self.dtype, place=place, stop_gradient=False
@@ -1246,12 +1432,20 @@ class TestCompositeGroupNorm(unittest.TestCase):
             net = apply_to_static(net, True)
             output = net(input_)
             grad = paddle.grad(output, input_)
-            fwd_actual.append(output.numpy())
-            rev_actual.append(grad[0].numpy())
+            fwd_actual.append(
+                convert_uint16_to_float(output.numpy())
+                if self.dtype == "bfloat16"
+                else output.numpy()
+            )
+            rev_actual.append(
+                convert_uint16_to_float(grad[0].numpy())
+                if self.dtype == "bfloat16"
+                else grad[0].numpy()
+            )
 
         i = 0
         for place in self.places:
-            if not isinstance(place, fluid.CUDAPlace):
+            if not isinstance(place, base.CUDAPlace):
                 continue
             atol = self.threshold_list[i][2]
             rtol = self.threshold_list[i][2]

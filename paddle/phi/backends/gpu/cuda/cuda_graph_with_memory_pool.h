@@ -27,61 +27,6 @@ namespace phi {
 namespace backends {
 namespace gpu {
 
-#ifdef PADDLE_WITH_CUDA
-#define PD_RECORD_CUDA_GRAPH_RANDOM_KERNEL(__cond,                           \
-                                           __kernel_func,                    \
-                                           __grid,                           \
-                                           __block,                          \
-                                           __sm_size,                        \
-                                           __stream,                         \
-                                           __seed_inc,                       \
-                                           __seed_expr,                      \
-                                           __offset_expr,                    \
-                                           ...)                              \
-  do {                                                                       \
-    if (::phi::backends::gpu::CUDAGraph::IsThisThreadCapturing() &&          \
-        (__cond)) {                                                          \
-      using __Helper =                                                       \
-          ::phi::backends::gpu::IsSameKernelHelper<decltype(&__kernel_func), \
-                                                   &__kernel_func>;          \
-      auto *dev_ctx = ::phi::DeviceContextPool::Instance().GetByPlace(       \
-          ::phi::backends::gpu::CUDAGraph::CapturingPlace());                \
-      auto __set_seed_func =                                                 \
-          [=](::phi::backends::gpu::CUDAKernelParams *__params,              \
-              bool __check_only) -> bool {                                   \
-        if (__check_only) {                                                  \
-          return __params->func() == &__kernel_func &&                       \
-                 __Helper::Compare(*__params, __VA_ARGS__);                  \
-        }                                                                    \
-        auto &KERNEL_PARAMS = *__params;                                     \
-        uint64_t __seed, __offset;                                           \
-        ::phi::funcs::GetSeedDataAndIncrement(                               \
-            *dev_ctx, nullptr, false, 0, __seed_inc, &__seed, &__offset);    \
-        __seed_expr = static_cast<decltype(__seed_expr)>(__seed);            \
-        __offset_expr = static_cast<decltype(__offset_expr)>(__offset);      \
-        return true;                                                         \
-      };                                                                     \
-      ::phi::backends::gpu::CUDAGraph::RecordRandomKernelInfo(               \
-          __set_seed_func);                                                  \
-    }                                                                        \
-    __kernel_func<<<__grid, __block, __sm_size, __stream>>>(__VA_ARGS__);    \
-  } while (0)
-#else
-#define PD_RECORD_CUDA_GRAPH_RANDOM_KERNEL(__cond,                        \
-                                           __kernel_func,                 \
-                                           __grid,                        \
-                                           __block,                       \
-                                           __sm_size,                     \
-                                           __stream,                      \
-                                           __seed_inc,                    \
-                                           __seed_expr,                   \
-                                           __offset_expr,                 \
-                                           ...)                           \
-  do {                                                                    \
-    __kernel_func<<<__grid, __block, __sm_size, __stream>>>(__VA_ARGS__); \
-  } while (0)
-#endif
-
 inline bool IsCUDAGraphCapturing() {
 #ifdef PADDLE_WITH_CUDA
   return CUDAGraph::IsCapturing();

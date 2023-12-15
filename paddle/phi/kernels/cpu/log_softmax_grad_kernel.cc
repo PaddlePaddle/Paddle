@@ -46,7 +46,7 @@ struct LogSoftmaxGradFunctor {
     auto dy = EigenMatrixTemplate<T>::From(*dY, dim_2d);
     auto dx = EigenMatrixTemplate<T>::From(*dX, dim_2d);
 
-    const int axis_dim = Y->dims()[axis];
+    const int axis_dim = static_cast<int>(Y->dims()[axis]);
     const int batch_size = y.dimension(kBatchDim);
     const int num_classes = y.dimension(kClassDim);
     const int num_remain = num_classes / axis_dim;
@@ -74,7 +74,7 @@ void LogSoftmaxGradKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(x_grad);
   // For 0D Tensor
   if (rank == 0) {
-    phi::funcs::set_constant(dev_ctx, x_grad, 0.0);
+    phi::funcs::set_constant(dev_ctx, x_grad, static_cast<T>(0.0));
     return;
   }
   if (out.numel() != 0) {

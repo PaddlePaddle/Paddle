@@ -137,8 +137,8 @@ paddle::Tensor conv2d_ad_func(const paddle::Tensor& input,
     egr::EagerUtils::PassStopGradient(false, out_autograd_meta);
 
     // Node Construction
-    auto grad_node =
-        std::shared_ptr<Conv2dGradNodeFinal>(new Conv2dGradNodeFinal(1, 2));
+    auto grad_node = std::shared_ptr<Conv2dGradNodeFinal>(  // NOLINT
+        new Conv2dGradNodeFinal(1, 2));
 
     // Set forward's stack
     if (FLAGS_check_nan_inf) {

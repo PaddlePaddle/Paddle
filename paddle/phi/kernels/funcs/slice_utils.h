@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <glog/logging.h>
-#include <paddle/phi/core/ddim.h>
+#include <paddle/common/ddim.h>
 #include <string>
 #include <vector>
 #include "paddle/phi/core/flags.h"
@@ -210,9 +210,66 @@ inline DDim GetDecreasedDims(const DDim slice_dims,
       // slice. This will remove in release 2.6.
       new_shape.push_back(1);
     }
-    decreased_dims = phi::make_ddim(new_shape);
+    decreased_dims = common::make_ddim(new_shape);
   }
   return decreased_dims;
+}
+
+template <typename T = int64_t>
+inline void CheckAndUpdateSparseSliceAttrs(const DDim in_dims,
+                                           std::vector<T>* axes,
+                                           std::vector<T>* starts,
+                                           std::vector<T>* ends) {
+  int64_t rank = int64_t(in_dims.size());
+  for (auto& axis : *axes) {
+    if (axis < 0) {
+      axis = std::max(int64_t(0), axis + rank);
+    }
+  }
+
+  PADDLE_ENFORCE_EQ(
+      axes->size(),
+      starts->size(),
+      phi::errors::InvalidArgument(
+          "The length of axes (%d) and length of starts (%d) should be same.",
+          axes->size(),
+          starts->size()));
+  PADDLE_ENFORCE_EQ(
+      axes->size(),
+      ends->size(),
+      phi::errors::InvalidArgument(
+          "The length of axes (%d) and length of ends (%d) should be same.",
+          axes->size(),
+          ends->size()));
+
+  CheckAndUpdateSliceAttrs<T>(in_dims, *axes, starts, ends);
+}
+
+inline void ConstructNewSliceAttrs(const phi::DDim& x_dims,
+                                   const std::vector<int64_t>& axes,
+                                   const std::vector<int64_t>& starts,
+                                   const std::vector<int64_t>& ends,
+                                   std::vector<int64_t>* new_axes,
+                                   std::vector<int64_t>* new_starts,
+                                   std::vector<int64_t>* new_ends) {
+  for (int64_t i = 0; i < x_dims.size(); ++i) {
+    int pos = -1;
+    for (int j = 0; j < static_cast<int>(axes.size()); ++j) {
+      if (axes[j] == i) {
+        pos = j;
+        break;
+      }
+    }
+    if (pos == -1) {
+      (*new_axes)[i] = i;
+      (*new_starts)[i] = 0;
+      (*new_ends)[i] = x_dims[i];
+    } else {
+      (*new_axes)[i] = axes[pos];
+      (*new_starts)[i] = starts[pos];
+      (*new_ends)[i] = ends[pos];
+    }
+  }
 }
 
 }  // namespace funcs

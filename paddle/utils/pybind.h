@@ -15,6 +15,9 @@
 #pragma once
 
 #include "paddle/phi/api/include/tensor.h"
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#endif
 #include "paddle/utils/optional.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
@@ -37,8 +40,11 @@ typedef struct {
 // Internal use only, to expose the Tensor type to Python.
 bool PyCheckTensor(PyObject* obj);
 
+// Share Tensor for inplace.
+void ShareTensor(PyObject* src, PyObject* dst);
+
 // Internal use only, to expose the Tensor type to Python.
-paddle::Tensor CastPyArg2Tensor(PyObject* obj, Py_ssize_t arg_pos);
+paddle::Tensor& CastPyArg2Tensor(PyObject* obj, Py_ssize_t arg_pos);
 
 // Internal use only, to expose the Tensor type to Python.
 PyObject* ToPyObject(const paddle::Tensor& value,
@@ -71,8 +77,16 @@ struct type_caster<paddle::Tensor> {
   static handle cast(const paddle::Tensor& src,
                      return_value_policy /* policy */,
                      handle /* parent */) {
+    // TODO(GhostScreaming): pipeline parallel may return a uninitialized
+    // DistTensor, it should not return None.
+#ifdef PADDLE_WITH_DISTRIBUTE
+    bool return_none =
+        phi::distributed::DistTensor::classof(src.impl().get()) ? false : true;
+#else
+    bool return_none = true;
+#endif
     return handle(paddle::pybind::ToPyObject(
-        src, true /* return_py_none_if_not_initialize */));
+        src, return_none /* return_py_none_if_not_initialize */));
   }
 };
 

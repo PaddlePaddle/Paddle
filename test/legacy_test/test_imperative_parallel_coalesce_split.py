@@ -19,9 +19,9 @@ import numpy as np
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.dygraph.base import to_variable
+from paddle import base
+from paddle.base import core
+from paddle.base.dygraph.base import to_variable
 
 
 class MyLayer(paddle.nn.Layer):
@@ -42,7 +42,7 @@ class TestImperativeParallelCoalesceSplit(unittest.TestCase):
             _split_tensors,
         )
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             test_layer = MyLayer("test_layer")
             strategy = core.ParallelStrategy()
             test_layer = paddle.DataParallel(test_layer, strategy)
@@ -73,7 +73,7 @@ class TestImperativeParallelCoalesceSplit(unittest.TestCase):
     def test_reshape_inplace(self):
         from paddle.distributed.parallel import _reshape_inplace
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             test_layer = MyLayer("test_layer")
             strategy = core.ParallelStrategy()
             test_layer = paddle.DataParallel(test_layer, strategy)

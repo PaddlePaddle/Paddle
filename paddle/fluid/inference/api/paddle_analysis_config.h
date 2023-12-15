@@ -33,13 +33,12 @@
 #include <vector>
 
 #include "paddle_infer_declare.h"  // NOLINT
-
 /*! \file */
 // Here we include some header files with relative paths, for that in deploy,
 // the abstract path of this header file will be changed.
 #include "paddle_api.h"           // NOLINT
 #include "paddle_pass_builder.h"  // NOLINT
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle_mkldnn_quantizer_config.h"  // NOLINT
 #endif
 
@@ -74,6 +73,82 @@ struct LiteNNAdapterConfig {
 
   LiteNNAdapterConfig& Enable();
   LiteNNAdapterConfig& Disable();
+};
+
+struct PD_INFER_DECL XpuConfig {
+  // Select which xpu device to run model.
+  int device_id{0};
+
+  // Available l3 size (Byte)
+  // For kunlun1, max l3_size is 16773120 Byte
+  // For kunlun2, max l3_size is 67104768 Byte
+  size_t l3_size{0};
+  // If l3_ptr is not nullptr, it is used as l3 buffer.
+  // If l3_ptr is nullptr, new l3 buffer will be created.
+  void* l3_ptr{nullptr};
+  // Available l3 size for autotune.
+  // If l3_autotune_size is 0, autotune is closed.
+  // Note: The remaining l3 size (l3_size - l3_autotune_size) is for
+  // kernels (both paddle/xdnn kernels)
+  size_t l3_autotune_size{0};
+
+  // Reserved xpu global memory size for xpu_context;
+  // If not set(-1), default memory size for xpu_context is 128MB in XPU2 or
+  // 64MB in XPU1. If set 1*1024*1024, memory size for xpu_conext will be 1MB;
+  int context_gm_size{-1};
+  // xpu_context(from baidu::xpu::api::create_context) for execution.
+  // If context is nullptr, new context will be created by default.
+  void* context{nullptr};
+  // Stream for execution.
+  // If stream is nullptr, default stream will be used.
+  void* stream{nullptr};
+
+  // Conv autotune level. Default 0 means no autotune.
+  int conv_autotune_level{0};
+  // Base conv autotune info is read from conv_autotune_file.
+  std::string conv_autotune_file;
+  // Whether write new conv autotune info to conv_autotune_file.
+  bool conv_autotune_file_writeback{false};
+
+  // Fc autotune level. The Optional values are 0-9. Default 0 means no
+  int fc_autotune_level{0};
+  // Base fc autotune info is read from fc_autotune_file.
+  std::string fc_autotune_file;
+  // Whether write new fc autotune info to fc_autotune_file.
+  bool fc_autotune_file_writeback{false};
+
+  // Gemm compute precision. Optional values are 0(int8),1(int16),2(int31).
+  // Note: "gemm_compute_precision" has no effect on quanted ops of quant model
+  // Note: Paddle-Lite only.
+  int gemm_compute_precision{1};
+  // Which method to optimize softmax in transformer structure. Optional values
+  // are 0,1,2. Note: Paddle-Lite only.
+  int transformer_softmax_optimize_level{0};
+  // Whether enable adaptive_seqlen optimize on transformer encoder.
+  // Note: Paddle-Lite only.
+  bool transformer_encoder_adaptive_seqlen{true};
+
+  // Gelu out max threshold is limited to quant_post_static_gelu_out_threshold
+  // if use static post-quantization.
+  // Note: Paddle-Lite only.
+  float quant_post_static_gelu_out_threshold{10.f};
+  // Activation method if use dynamic post-quantization.
+  // For kunlun1, optional values are 0(per_tensor),1(per_batch),2(per_head).
+  // For kunlun2, optional values are 0(per_tensor) or non-zero(every_16).
+  // Note: Paddle-Lite only.
+  int quant_post_dynamic_activation_method{0};
+  // Preprocess weight to quant_post_dynamic_weight_precision if use dynamic
+  // post-quantization. Optional values is 0,1,2.
+  // * If 0, preprocess weight to int8.
+  // * If 1, preprocess weight to int16.
+  // * If 2, preprocess weight to float.
+  // Note: PaddleInference only.
+  int quant_post_dynamic_weight_precision{1};
+  std::vector<std::string> quant_post_dynamic_op_types;
+  // fc, conv2d
+  // 0: int8 per tensor, 1: int8 per-channel, 2: int16 per-tensor(default), 3:
+  // int16 per-channel, 4: int31 per-tensor. Note: PaddleInference only.
+  std::map<std::string, int> quant_post_dynamic_weight_methods;
 };
 
 struct DistConfig {
@@ -271,42 +346,46 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \brief Turn on XPU.
   ///
   /// \param l3_workspace_size The size of the video memory allocated by the l3
-  ///         cache, the maximum is 16M.
-  /// \param locked Whether the allocated L3 cache can be locked. If false,
+  ///       cache, the maximum is 16M.
+  /// \param l3_locked Whether the allocated L3 cache can be locked. If false,
   ///       it means that the L3 cache is not locked, and the allocated L3
   ///       cache can be shared by multiple models, and multiple models
   ///       sharing the L3 cache will be executed sequentially on the card.
-  /// \param autotune Whether to autotune the conv operator in the model. If
-  ///       true, when the conv operator of a certain dimension is executed
+  /// \param conv_autotune Whether to autotune the conv operator in the model.
+  ///       If true, when the conv operator of a certain dimension is executed
   ///       for the first time, it will automatically search for a better
   ///       algorithm to improve the performance of subsequent conv operators
   ///       of the same dimension.
-  /// \param autotune_file Specify the path of the autotune file. If
+  /// \param conv_autotune_file Specify the path of the autotune file. If
   ///       autotune_file is specified, the algorithm specified in the
   ///       file will be used and autotune will not be performed again.
-  /// \param precision Calculation accuracy of multi_encoder
-  /// \param adaptive_seqlen Is the input of multi_encoder variable length
-  /// \param enable_multi_stream Whether to enable the multi stream of xpu.
+  /// \param transformer_encoder_precision Calculation accuracy of multi_encoder
+  /// \param transformer_encoder_adaptive_seqlen Is the input of multi_encoder
+  ///       variable length
+  /// \param enable_multi_stream Whether to enable the multi
+  ///       stream of xpu.
   ///
-  void EnableXpu(int l3_workspace_size = 0xfffc00,
-                 bool locked = false,
-                 bool autotune = true,
-                 const std::string& autotune_file = "",
-                 const std::string& precision = "int16",
-                 bool adaptive_seqlen = false,
+  void EnableXpu(int l3_size = 0xfffc00,
+                 bool l3_locked = false,
+                 bool conv_autotune = true,
+                 const std::string& conv_autotune_file = "",
+                 const std::string& transformer_encoder_precision = "int16",
+                 bool transformer_encoder_adaptive_seqlen = false,
                  bool enable_multi_stream = false);
 
   ///
   /// \brief configs of XPU
   ///
-  /// \param quant_post_dynamic_weight_bits Weight bits used in dynamic post
-  /// quantization. Optional value: -1, 8, 16. Default value is -1, means using
-  /// the recommended way. \param quant_post_dynamic_op_types Ops used in
-  /// dynamic post quantization.
+  /// \param config Configs for xpu. See XpuConfig for more details.
   ///
-  void SetXpuConfig(
-      int quant_post_dynamic_weight_bits = -1,
-      const std::vector<std::string>& quant_post_dynamic_op_types = {});
+  void SetXpuConfig(const XpuConfig& config);
+
+  ///
+  /// \brief Get configs of xpu
+  ///
+  /// \return XpuConfig The configs of xpu.
+  ///
+  XpuConfig xpu_config() { return xpu_config_; }
 
   ///
   /// \brief configs of IPU
@@ -462,7 +541,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \return int The XPU device id.
   ///
-  int xpu_device_id() const { return xpu_device_id_; }
+  int xpu_device_id() const { return xpu_config_.device_id; }
   /// \brief Get the number of IPU device .
   ///
   /// \return int The number of IPU device.
@@ -535,14 +614,14 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \param x Whether to use the feed and fetch operators.
   ///
-  void SwitchUseFeedFetchOps(int x = true) { use_feed_fetch_ops_ = x; }
+  void SwitchUseFeedFetchOps(int x = true) {}
   ///
   /// \brief A boolean state telling whether to use the feed and fetch
   /// operators.
   ///
   /// \return bool Whether to use the feed and fetch operators.
   ///
-  bool use_feed_fetch_ops_enabled() const { return use_feed_fetch_ops_; }
+  bool use_feed_fetch_ops_enabled() const { return false; }
 
   ///
   /// \brief Turn on the feed and fetch data with low precision.
@@ -607,6 +686,13 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return bool Whether the TensorRT engine is used.
   ///
   bool tensorrt_engine_enabled() const { return use_tensorrt_; }
+  ///
+  /// \brief Whether to get the intermediate output of TensorRT Engine.
+  ///
+  /// \param output_tensor_names The name of the Tensor that needs to be marked
+  ///
+  void MarkTrtEngineOutputs(
+      const std::vector<std::string>& output_tensor_names = {});
   ///
   /// \brief Turn on the TensorRT memory optimization.
   ///
@@ -754,9 +840,46 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool tensorrt_dla_enabled() { return trt_use_dla_; }
 
-  void EnableTensorRtInspector();
-
+  ///
+  /// \brief A boolean state telling whether to show TensorRT inspector
+  /// information.
+  ///
+  /// \return bool Whether to show TensorRT inspector information.
+  ///
+  void EnableTensorRtInspector(bool inspector_serialize = false);
   bool tensorrt_inspector_enabled() { return trt_use_inspector_; }
+
+  ///
+  /// \brief A boolean state telling whether to use TensorRT explicit
+  /// quantization.
+  ///
+  /// \return bool Whether to use TensorRT explicit quantization.
+  ///
+  void EnableTensorRtExplicitQuantization();
+  bool tensorrt_explicit_quantization_enabled() {
+    return trt_use_explicit_quantization_;
+  }
+
+  ///
+  /// \brief Set the optimization level of TensorRT
+  /// \param level The optimization level
+  /// The API accepts level in range [0, 5].
+  /// Higher optimization level allows the optimizer to spend more time
+  /// searching for optimization opportunities. The API supports TRT version
+  /// >= 8.6, and takes no effect instead.
+  ///
+  void SetTensorRtOptimizationLevel(int level);
+
+  ///
+  /// \brief An integer telling the TRT optimization level.
+  ///
+  /// \return integer The TRT optimization level.
+  ///
+  int tensorrt_optimization_level() { return trt_optimization_level_; }
+
+  void EnableNewExecutor(bool x = true) { use_new_executor_ = x; }
+
+  bool new_executor_enabled() const { return use_new_executor_; }
 
   void EnableDlnne(
       int min_subgraph_size = 3,
@@ -809,6 +932,13 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   ///
   void EnableMKLDNN();
+
+  ///
+  /// \brief Turn down MKLDNN.
+  ///
+  ///
+  void DisableMKLDNN();
+
   ///
   /// \brief Set the cache capacity of different input shapes for MKLDNN.
   /// Default value 0 means not caching any shape.
@@ -1042,6 +1172,14 @@ struct PD_INFER_DECL AnalysisConfig {
   void Exp_DisableMixedPrecisionOps(
       const std::unordered_set<std::string>& black_list);
 
+  ///
+  /// \brief Set a list of operators that do support mixed precision. This
+  /// interface is in the experimental stage and may change in the future. Note
+  /// that the whitelist must be the same as the model conversion whitelist.
+  ///
+  void Exp_EnableMixedPrecisionOps(
+      const std::unordered_set<std::string>& white_list);
+
   void SetApplyOptim(bool value) { apply_optim_ = value; }
 
   void SetSkipLoadParams(bool value) { skip_load_params_ = value; }
@@ -1074,6 +1212,7 @@ struct PD_INFER_DECL AnalysisConfig {
   // Mixed precision related.
   Precision mixed_precision_mode_{Precision::kFloat32};
   std::unordered_set<std::string> mixed_black_list_;
+  std::unordered_set<std::string> mixed_white_list_;
   bool enable_low_precision_io_{false};
 
   // GPU related.
@@ -1122,6 +1261,8 @@ struct PD_INFER_DECL AnalysisConfig {
   bool trt_use_cuda_graph_{false};
   bool trt_use_varseqlen_{false};
   bool trt_with_interleaved_{false};
+  bool trt_mark_output_{false};
+  std::vector<std::string> trt_output_tensor_names_{};
   std::string tensorrt_transformer_posid_{""};
   std::string tensorrt_transformer_maskid_{""};
   bool trt_use_dla_{false};
@@ -1135,6 +1276,9 @@ struct PD_INFER_DECL AnalysisConfig {
   // tune to get dynamic_shape info.
   bool trt_tuned_dynamic_shape_{false};
   bool trt_use_inspector_{false};
+  bool trt_inspector_serialize_{false};
+  bool trt_use_explicit_quantization_{false};
+  int trt_optimization_level_{3};
 
   // In CollectShapeInfo mode, we will collect the shape information of
   // all intermediate tensors in the compute graph and calculate the
@@ -1155,17 +1299,24 @@ struct PD_INFER_DECL AnalysisConfig {
 
   // memory reuse related.
   bool enable_memory_optim_{false};
-  bool trt_engine_memory_sharing_{false};
+  bool trt_engine_memory_sharing_{true};
   int trt_engine_memory_sharing_identifier_{0};
 
+  std::unordered_set<std::string> trt_ops_run_float_;
+
+#ifdef PADDLE_WITH_DNNL
+  bool use_mkldnn_{true};
+#else
   bool use_mkldnn_{false};
+#endif
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
 
   bool model_from_memory_{false};
 
   bool enable_ir_optim_{true};
-  bool use_feed_fetch_ops_{true};
   bool ir_debug_{false};
+
+  bool use_new_executor_{false};
 
   bool specify_input_name_{false};
 
@@ -1191,16 +1342,9 @@ struct PD_INFER_DECL AnalysisConfig {
 
   // XPU related.
   bool use_xpu_{false};
-  int xpu_device_id_{0};
-  int xpu_l3_workspace_size_{0};
-  bool xpu_locked_;
-  bool xpu_autotune_;
-  std::string xpu_autotune_file_;
-  std::string xpu_precision_;
-  bool xpu_adaptive_seqlen_;
-  bool xpu_enable_multi_stream_;
-  int xpu_quant_post_dynamic_weight_bits_{-1};
-  std::vector<std::string> xpu_quant_post_dynamic_op_types_;
+  XpuConfig xpu_config_;
+  bool xpu_lite_l3_locked_{false};
+  bool xpu_lite_enable_multi_stream_{false};
 
   // LITE OPENCL SETTINGS
   bool use_opencl_{false};

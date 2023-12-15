@@ -47,7 +47,7 @@ class TestFleetMetaOptimizer(unittest.TestCase):
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.without_graph_optimization = True
 
-        optimizer = paddle.fluid.optimizer.Adam(0.01)
+        optimizer = paddle.optimizer.Adam(0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 

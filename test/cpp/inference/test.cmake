@@ -11,7 +11,6 @@ set(CPU_NUM_THREADS_ON_CI
 set(WARMUP_BATCH_SIZE
     100
     CACHE STRING "Default warmup_batch_size.")
-
 function(inference_download INSTALL_DIR URL FILENAME)
   message(STATUS "Download inference test stuff from ${URL}/${FILENAME}")
   string(REGEX REPLACE "[-%.]" "_" FILENAME_EX ${FILENAME})
@@ -109,7 +108,58 @@ function(inference_base_test_build TARGET)
   set(multiValueArgs SRCS DEPS)
   cmake_parse_arguments(base_test "${options}" "${oneValueArgs}"
                         "${multiValueArgs}" ${ARGN})
-  cc_test_build(${TARGET} SRCS ${base_test_SRCS} DEPS ${base_test_DEPS})
+  add_executable(${TARGET} ${base_test_SRCS})
+  if("${base_test_DEPS};" MATCHES "paddle_inference_shared;")
+    list(REMOVE_ITEM base_test_DEPS paddle_inference_shared)
+    target_link_libraries(
+      ${TARGET} $<TARGET_LINKER_FILE:paddle_inference_shared>
+      $<TARGET_LINKER_FILE:benchmark>)
+    add_dependencies(${TARGET} paddle_inference_shared benchmark)
+  elseif("${base_test_DEPS};" MATCHES "paddle_inference_c_shared;")
+    list(REMOVE_ITEM base_test_DEPS paddle_inference_c_shared)
+    target_link_libraries(${TARGET}
+                          $<TARGET_LINKER_FILE:paddle_inference_c_shared>)
+    add_dependencies(${TARGET} paddle_inference_c_shared)
+  else()
+    message(
+      FATAL_ERROR
+        "inference_base_test_build must link either paddle_inference_shared or paddle_inference_c_shared"
+    )
+  endif()
+  if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
+    target_link_libraries(${TARGET} ${PYTHON_LIBRARIES})
+  endif()
+  if(WITH_SHARED_PHI)
+    target_link_libraries(${TARGET} $<TARGET_LINKER_FILE:phi>)
+    add_dependencies(${TARGET} phi)
+  endif()
+  if(WITH_CINN AND NOT CINN_ONLY)
+    target_link_libraries(${TARGET} $<TARGET_LINKER_FILE:cinnapi>)
+    add_dependencies(${TARGET} cinnapi)
+  endif()
+  if(WITH_GPU)
+    target_link_libraries(${TARGET} ${CUDA_CUDART_LIBRARY})
+  endif()
+  if(WITH_XPU)
+    target_link_libraries(${TARGET} xpulib)
+  endif()
+  if(WITH_ROCM)
+    target_link_libraries(${TARGET} ${ROCM_HIPRTC_LIB})
+  endif()
+  if(WITH_ONNXRUNTIME)
+    target_link_libraries(${TARGET} onnxruntime)
+  endif()
+  if(APPLE)
+    target_link_libraries(
+      ${TARGET}
+      "-Wl,-rpath,$<TARGET_FILE_DIR:${paddle_lib}> -Wl,-rpath,$<TARGET_FILE_DIR:phi> -Wl,-rpath,$<TARGET_FILE_DIR:pir>"
+    )
+  endif()
+  target_link_libraries(${TARGET} ${base_test_DEPS} paddle_gtest_main_new gtest
+                        glog)
+  add_dependencies(${TARGET} ${base_test_DEPS} paddle_gtest_main_new)
+  common_link(${TARGET})
+  check_coverage_opt(${TARGET} ${base_test_SRCS})
 endfunction()
 
 function(inference_base_test_run TARGET)

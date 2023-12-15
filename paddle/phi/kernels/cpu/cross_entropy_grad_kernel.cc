@@ -43,7 +43,7 @@ void CrossEntropyWithSoftmaxGradCPUKernel(const CPUContext& dev_ctx,
 
   const int rank = logit_grad->dims().size();
   const int axis_v = phi::funcs::CanonicalAxis(axis, rank);
-  int axis_dim = logit_grad->dims()[axis_v];
+  int axis_dim = static_cast<int>(logit_grad->dims()[axis_v]);
   PADDLE_ENFORCE_GT(
       axis_dim,
       0,
@@ -92,7 +92,7 @@ void CrossEntropyWithSoftmaxGradCPUKernel(const CPUContext& dev_ctx,
         for (int j = 0; j < remain; j++) {  // for each sample_other_dims
           int idx = i * remain + j;  // this sample's label_idx. for 1d case,
                                      // remain=1 and j=0, so, idx = i
-          auto lbl = static_cast<int64_t>(label_data[idx]);
+          auto lbl = static_cast<int64_t>(label_data[idx]);  // NOLINT
           if (lbl == ignore_index) {
             for (int k = 0; k < axis_dim; ++k) {  // for each class id's label
               logit_grad_data[i * d + k * remain + j] = 0;
@@ -144,7 +144,7 @@ void CrossEntropyWithSoftmaxGradCPUKernel(const CPUContext& dev_ctx,
       for (int j = 0; j < remain; j++) {  // for each sample_other_dims
         int idx = i * remain + j;  // this sample's label_idx. for 1d case,
                                    // remain=1 and j=0, so, idx = i
-        auto lbl = static_cast<int64_t>(label_data[idx]);
+        auto lbl = static_cast<int64_t>(label_data[idx]);  // NOLINT
         if (lbl == ignore_index) {
           for (int k = 0; k < axis_dim; ++k) {  // for each class id's label
             logit_grad_data[i * d + k * remain + j] = 0;

@@ -24,7 +24,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-AdaptivePool2dConvertGlobalPass::AdaptivePool2dConvertGlobalPass() {
+AdaptivePool2dConvertGlobalPass::AdaptivePool2dConvertGlobalPass() {  // NOLINT
   AddOpCompat(OpCompat("pool2d"))
       .AddInput("X")
       .IsTensor()

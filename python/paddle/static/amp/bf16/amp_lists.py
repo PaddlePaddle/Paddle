@@ -14,11 +14,14 @@
 
 import copy
 
-from paddle.fluid import core
+from paddle.amp.amp_lists import BF16_WHITE_LIST
+from paddle.base import core
 
-from ..fp16_lists import black_list as black_list_fp16
-from ..fp16_lists import gray_list as gray_list_fp16
-from ..fp16_lists import white_list as white_list_fp16
+from ..fp16_lists import (
+    black_list as black_list_fp16,
+    gray_list as gray_list_fp16,
+    white_list as white_list_fp16,
+)
 
 
 class AutoMixedPrecisionListsBF16:
@@ -34,10 +37,11 @@ class AutoMixedPrecisionListsBF16:
 
     Examples:
         .. code-block:: python
-        import paddle
-        paddle.enable_static()
-        with paddle.static.amp.bf16_guard():
-            paddle.static.amp.bf16.AutoMixedPrecisionListsBF16(custom_fp32_list={'lstm'})
+
+            >>> import paddle
+            >>> paddle.enable_static()
+            >>> with paddle.static.amp.bf16.bf16_guard():
+            ...     paddle.static.amp.bf16.AutoMixedPrecisionListsBF16(custom_fp32_list={'lstm'})
     """
 
     def __init__(
@@ -86,33 +90,10 @@ class AutoMixedPrecisionListsBF16:
 bf16_initializer_list = {'fill_constant', 'uniform_random'}
 
 # always bf16
-bf16_list = {
-    'conv2d',
-    'matmul',
-    'matmul_v2',
-    'mul',
-}
+bf16_list = BF16_WHITE_LIST
 
 # depends on the prev_op type
-gray_list = {
-    'elementwise_add',
-    'elementwise_sub',
-    'elementwise_mul',
-    'elementwise_div',
-    'relu',
-    'layer_norm',
-    'slice',
-    'concat',
-    'uniform_random',
-    'reshape2',
-    'transpose2',
-    'pool2d',
-    'sigmoid',
-    'cast',
-    'scale',
-    'fill_constant',
-    'split',
-}
+gray_list = gray_list_fp16
 
 _, _, _sys_unsupported_bf16_list = core.op_supported_infos(
     'CPU', core.VarDesc.VarType.BF16

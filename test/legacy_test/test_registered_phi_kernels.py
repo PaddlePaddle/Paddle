@@ -18,7 +18,7 @@ import unittest
 
 import yaml
 
-from paddle.fluid import core
+from paddle.base import core
 
 
 def parse_kernels_name(op_item):

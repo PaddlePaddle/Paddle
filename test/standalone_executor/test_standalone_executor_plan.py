@@ -15,15 +15,15 @@
 import unittest
 
 from paddle import static
-from paddle.fluid import core
+from paddle.base import core
 
 
 class TestStandaloneExecutorPlan(unittest.TestCase):
     def test_standalone_executor_plan(self):
         micro_batch_id = 0
-        forward_job = core.job("forward")
-        backward_job = core.job("backward")
-        optimizer_job = core.job("optimizer")
+        forward_job = core.Job("forward")
+        backward_job = core.Job("backward")
+        optimizer_job = core.Job("optimizer")
         forward_job.set_micro_batch_id(micro_batch_id)
         backward_job.set_micro_batch_id(micro_batch_id)
         optimizer_job.set_micro_batch_id(micro_batch_id)
@@ -39,9 +39,10 @@ class TestStandaloneExecutorPlan(unittest.TestCase):
             "backward": backward_program.desc,
             "optimizer": optimizer_program.desc,
         }
-        plan = core.plan(job_list, type_to_program)
+        plan = core.Plan(job_list, type_to_program)
         self.assertEqual(plan.job_list(), job_list)
-        self.assertEqual(plan.type_to_program(), type_to_program)
+        for type in type_to_program.keys():
+            self.assertEqual(plan.program(type), type_to_program[type])
 
 
 if __name__ == '__main__':

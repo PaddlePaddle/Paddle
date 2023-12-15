@@ -15,7 +15,7 @@
 import unittest
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.incubate.distributed.fleet import role_maker
 from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler import (
     fleet,
@@ -47,11 +47,11 @@ class TestPyramidHashOpApi(unittest.TestCase):
             black_list_len=2800,
             seed=3,
             lr=0.002,
-            param_attr=fluid.ParamAttr(
+            param_attr=base.ParamAttr(
                 name="PyramidHash_emb_0",
                 learning_rate=0,
             ),
-            param_attr_wl=fluid.ParamAttr(
+            param_attr_wl=base.ParamAttr(
                 name="Filter",
                 learning_rate=0,
             ),
@@ -72,7 +72,7 @@ class TestPyramidHashOpApi(unittest.TestCase):
         fleet.init(role)
 
         strategy = StrategyFactory.create_geo_strategy(5)
-        optimizer = fluid.optimizer.SGD(0.1)
+        optimizer = paddle.optimizer.SGD(0.1)
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(cost)
 

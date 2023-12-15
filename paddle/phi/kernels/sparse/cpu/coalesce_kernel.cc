@@ -52,7 +52,7 @@ void CoalesceCooCPUKernel(const CPUContext& dev_ctx,
     IntT index = x_indexs[i];
     if (indices_to_index.find(index) == indices_to_index.end()) {
       std::vector<int64_t> indexs;
-      indexs.push_back(i);
+      indexs.push_back(static_cast<int>(i));
       indices_to_index[index] = indexs;
     } else {
       indices_to_index[index].push_back(i);
@@ -63,9 +63,9 @@ void CoalesceCooCPUKernel(const CPUContext& dev_ctx,
 
   out_indices.Resize({x_indices.dims()[0], out_nnz});
   if (out_values.dims().size() == 1) {
-    out_values.Resize(phi::make_ddim({out_nnz}));
+    out_values.Resize(common::make_ddim({out_nnz}));
   } else {
-    out_values.Resize(phi::make_ddim({out_nnz, x_values.dims()[1]}));
+    out_values.Resize(common::make_ddim({out_nnz, x_values.dims()[1]}));
   }
 
   IntT* out_indices_ptr = out_indices.data<IntT>();

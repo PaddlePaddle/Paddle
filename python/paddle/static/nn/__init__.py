@@ -12,61 +12,57 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .common import fc  # noqa: F401
-from .common import batch_norm  # noqa: F401
-from .common import instance_norm  # noqa: F401
-from .common import data_norm  # noqa: F401
-from .common import continuous_value_model  # noqa: F401
-from .common import group_norm  # noqa: F401
-from .common import deform_conv2d  # noqa: F401
-from .common import conv2d  # noqa: F401
-from .common import conv3d  # noqa: F401
-from .common import conv2d_transpose  # noqa: F401
-from .common import conv3d_transpose  # noqa: F401
-from .control_flow import (
-    case,
-    while_loop,
-    switch_case,
-)
-from .common import bilinear_tensor_product  # noqa: F401
-from .common import py_func  # noqa: F401
-from .common import row_conv  # noqa: F401
-from .common import spectral_norm  # noqa: F401
 from ...tensor.creation import create_parameter  # noqa: F401
-from .loss import nce  # noqa: F401
-from .common import prelu  # noqa: F401
-from .common import layer_norm  # noqa: F401
+from .common import (
+    batch_norm,
+    bilinear_tensor_product,
+    continuous_value_model,  # noqa: F401
+    conv2d,
+    conv2d_transpose,
+    conv3d,
+    conv3d_transpose,
+    data_norm,
+    deform_conv2d,
+    embedding,
+    fc,
+    group_norm,
+    instance_norm,
+    layer_norm,
+    prelu,
+    py_func,
+    row_conv,
+    sparse_embedding,
+    spectral_norm,
+)
+from .control_flow import case, cond, switch_case, while_loop
+from .loss import nce
+from .sequence_lod import (
+    sequence_concat,
+    sequence_conv,
+    sequence_enumerate,
+    sequence_expand,
+    sequence_expand_as,
+    sequence_first_step,
+    sequence_last_step,
+    sequence_pad,
+    sequence_pool,
+    sequence_reshape,
+    sequence_reverse,
+    sequence_scatter,
+    sequence_slice,
+    sequence_softmax,
+    sequence_unpad,
+)
+from .static_pylayer import static_pylayer
 
-
-from .common import embedding  # noqa: F401
-from .common import sparse_embedding  # noqa: F401
-from ...fluid.layers import StaticRNN  # noqa: F401
-
-from .sequence_lod import sequence_conv  # noqa: F401
-from .sequence_lod import sequence_softmax  # noqa: F401
-from .sequence_lod import sequence_pool  # noqa: F401
-from .sequence_lod import sequence_concat  # noqa: F401
-from .sequence_lod import sequence_first_step  # noqa: F401
-from .sequence_lod import sequence_last_step  # noqa: F401
-from .sequence_lod import sequence_slice  # noqa: F401
-from .sequence_lod import sequence_expand  # noqa: F401
-from .sequence_lod import sequence_expand_as  # noqa: F401
-from .sequence_lod import sequence_pad  # noqa: F401
-from .sequence_lod import sequence_unpad  # noqa: F401
-from .sequence_lod import sequence_reshape  # noqa: F401
-from .sequence_lod import sequence_scatter  # noqa: F401
-from .sequence_lod import sequence_enumerate  # noqa: F401
-from .sequence_lod import sequence_reverse  # noqa: F401
-
-from .control_flow import cond
-
-__all__ = [  # noqa
+__all__ = [
     'fc',
     'batch_norm',
     'bilinear_tensor_product',
     'embedding',
     'case',
     'cond',
+    'static_pylayer',
     'conv2d',
     'conv2d_transpose',
     'conv3d',
@@ -99,6 +95,5 @@ __all__ = [  # noqa
     'sequence_scatter',
     'sequence_enumerate',
     'sequence_reverse',
-    'StaticRNN',
     'prelu',
 ]

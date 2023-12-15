@@ -45,6 +45,11 @@ int GetXPUCurrentDeviceId();
 std::vector<int> GetXPUSelectedDevices();
 
 /***** Memory Management *****/
+//! Get the minimum chunk size for XPU buddy allocator.
+inline size_t XPUMinChunkSize() {
+  // Allow to allocate the minimum chunk size is 64 bytes.
+  return 1 << 6;
+}
 
 //! Copy memory from address src to dst synchronously.
 void MemcpySyncH2D(void *dst,
@@ -66,17 +71,22 @@ void MemcpySyncD2D(void *dst,
 
 class XPUDeviceGuard {
  public:
-  explicit inline XPUDeviceGuard(int dev_id) {
-    int prev_id = GetXPUCurrentDeviceId();
-    if (prev_id != dev_id) {
-      prev_id_ = prev_id;
-      SetXPUDeviceId(dev_id);
-    }
-  }
+  explicit XPUDeviceGuard(int dev_id) { SetDeviceIndex(dev_id); }
+
+  explicit XPUDeviceGuard(const XPUPlace &place)
+      : XPUDeviceGuard(place.device) {}
 
   inline ~XPUDeviceGuard() {
     if (prev_id_ != -1) {
       SetXPUDeviceId(prev_id_);
+    }
+  }
+
+  inline void SetDeviceIndex(const int dev_id) {
+    int prev_id = GetXPUCurrentDeviceId();
+    if (prev_id != dev_id) {
+      prev_id_ = prev_id;
+      SetXPUDeviceId(dev_id);
     }
   }
 
@@ -87,8 +97,10 @@ class XPUDeviceGuard {
   int prev_id_{-1};
 };
 
-enum XPUVersion { XPU1, XPU2 };
+enum XPUVersion { XPU1, XPU2, XPU3 };
 XPUVersion get_xpu_version(int dev_id);
+
+int get_xpu_max_ptr_size(int dev_id);
 
 }  // namespace xpu
 }  // namespace backends

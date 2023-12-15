@@ -30,16 +30,18 @@ void DiagonalGradKernel(const Context& dev_ctx,
                         DenseTensor* in_grad) {
   const auto* dout = &out_grad;
   const T* dout_data = dout->data<T>();
-  auto dout_dim = vectorize(dout->dims());
+  auto dout_dim = common::vectorize(dout->dims());
 
   auto* dx = in_grad;
   T* dx_data = dev_ctx.template Alloc<T>(dx);
-  auto dx_dim = vectorize(dx->dims());
+  auto dx_dim = common::vectorize(dx->dims());
   auto dx_dim_size = dx_dim.size();
 
   const int64_t offset_ = offset;
-  int64_t axis1_ = axis1 < 0 ? dx_dim_size + axis1 : axis1;
-  int64_t axis2_ = axis2 < 0 ? dx_dim_size + axis2 : axis2;
+  int64_t axis1_ =
+      static_cast<int64_t>(axis1 < 0 ? dx_dim_size + axis1 : axis1);
+  int64_t axis2_ =
+      static_cast<int64_t>(axis2 < 0 ? dx_dim_size + axis2 : axis2);
 
   std::vector<int64_t> dout_stride = funcs::ComputeDimStride(dout_dim);
   std::vector<int64_t> dx_stride = funcs::ComputeDimStride(dx_dim);
@@ -61,10 +63,8 @@ void DiagonalGradKernel(const Context& dev_ctx,
     idx_dim.erase(idx_dim.begin() + std::min(axis1_, axis2_));
 
     bool flag = false;
-    if (offset_ == 0 && axis1_dim == axis2_dim) {
-      idx_dim.push_back(axis1_dim);
-      flag = true;
-    } else if (offset_ > 0 && (axis1_dim + offset_) == axis2_dim) {
+    if ((offset_ == 0 && axis1_dim == axis2_dim) ||
+        (offset_ > 0 && (axis1_dim + offset_) == axis2_dim)) {
       idx_dim.push_back(axis1_dim);
       flag = true;
     } else if (offset_ < 0 && (axis1_dim + offset_) == axis2_dim) {

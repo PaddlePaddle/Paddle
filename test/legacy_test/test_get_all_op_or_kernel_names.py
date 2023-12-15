@@ -14,18 +14,18 @@
 
 import unittest
 
-from paddle.fluid import core
+from paddle.base import core
 
 
 class TestGetAllRegisteredOpKernels(unittest.TestCase):
-    # reshape kernel is in fluid while not in phi
+    # reshape kernel is in base while not in phi
     def test_phi_kernels(self):
         self.assertTrue(core._get_all_register_op_kernels('phi')['sign'])
         with self.assertRaises(KeyError):
             core._get_all_register_op_kernels('phi')['reshape']
 
-    # sign kernel is removed from fluid and added into phi
-    def test_fluid_kernels(self):
+    # sign kernel is removed from base and added into phi
+    def test_base_kernels(self):
         self.assertTrue(core._get_all_register_op_kernels('fluid')['reshape'])
         with self.assertRaises(KeyError):
             core._get_all_register_op_kernels('fluid')['sign']
@@ -48,7 +48,6 @@ class TestGetAllOpNames(unittest.TestCase):
             len(all_op_names)
             > len(set(all_op_with_phi_kernels) | set(all_op_with_fluid_kernels))
         )
-        self.assertTrue("scale" in all_op_with_phi_kernels)
         self.assertTrue("scale" in all_op_with_phi_kernels)
 
 

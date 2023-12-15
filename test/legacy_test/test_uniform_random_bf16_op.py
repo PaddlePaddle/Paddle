@@ -15,13 +15,14 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_uint16_to_float
 from op import Operator
+from op_test import OpTest, convert_uint16_to_float
 from test_uniform_random_op import output_hist, output_hist_diag
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 from paddle.tensor import random
 
 
@@ -160,20 +161,21 @@ class TestUniformRandomOpBF16SelectedRowsWithDiagInit(
 
 
 class TestUniformRandomOpAPISeed(unittest.TestCase):
+    @test_with_pir_api
     def test_attr_tensor_API(self):
         _seed = 10
         gen = paddle.seed(_seed)
-        startup_program = fluid.Program()
-        train_program = fluid.Program()
-        with fluid.program_guard(train_program, startup_program):
+        startup_program = base.Program()
+        train_program = base.Program()
+        with base.program_guard(train_program, startup_program):
             _min = 5
             _max = 10
 
             ret = paddle.uniform([2, 3, 2], min=_min, max=_max, seed=_seed)
             ret_2 = paddle.uniform([2, 3, 2], min=_min, max=_max, seed=_seed)
             res = paddle.equal(ret, ret_2)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
+            place = base.CPUPlace()
+            exe = base.Executor(place)
 
             exe.run(startup_program)
             ret_value, cmp_value = exe.run(train_program, fetch_list=[ret, res])
@@ -237,9 +239,9 @@ class TestUniformRandomOpBF16SelectedRowsShapeTensorList(
 
 class TestUniformRandomBatchSizeLikeOpBF16API(unittest.TestCase):
     def test_attr_tensorlist_int32_API(self):
-        startup_program = fluid.Program()
-        train_program = fluid.Program()
-        with fluid.program_guard(train_program, startup_program):
+        startup_program = base.Program()
+        train_program = base.Program()
+        with base.program_guard(train_program, startup_program):
             input = paddle.static.data(
                 name="input", shape=[1, 3], dtype='uint16'
             )
@@ -247,11 +249,15 @@ class TestUniformRandomBatchSizeLikeOpBF16API(unittest.TestCase):
                 input, [2, 4], dtype=np.uint16
             )  # out_1.shape=[1, 4]
 
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
+            place = base.CPUPlace()
+            exe = base.Executor(place)
 
             exe.run(startup_program)
-            outs = exe.run(train_program, fetch_list=[out_1])
+            outs = exe.run(
+                train_program,
+                feed={"input": np.zeros((1, 3)).astype('uint16')},
+                fetch_list=[out_1],
+            )
 
 
 if __name__ == "__main__":

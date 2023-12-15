@@ -791,8 +791,8 @@ int TrtMultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     auto* bv_data = bv_tensor->mutable_data<float>(platform::CPUPlace());
 
     auto combined_w_dims =
-        phi::make_ddim({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
-    auto combined_bias_dims = phi::make_ddim({3, bq_tensor->dims()[0]});
+        common::make_ddim({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
+    auto combined_bias_dims = common::make_ddim({3, bq_tensor->dims()[0]});
 
     // reuse the mul0_w and eltadd_0_b nodes for the combined nodes.
     auto* combined_w_desc = mul0_w->Var();
@@ -1095,7 +1095,7 @@ void TrtMultiHeadMatmulV2FusePass::ApplyImpl(Graph* graph) const {
     std::string pos_id = Get<std::string>("tensorrt_transformer_posid");
     std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");
 
-    if (use_varseqlen && pos_id != "" && mask_id != "") {
+    if (use_varseqlen && !pos_id.empty() && !mask_id.empty()) {
       if (graph->Has(framework::ir::kEmbEltwiseLayernormPass) ||
           graph->Has(framework::ir::kPrelnEmbEltwiseLayernormPass)) {
         if (with_interleaved) {
@@ -1111,7 +1111,7 @@ void TrtMultiHeadMatmulV2FusePass::ApplyImpl(Graph* graph) const {
                                     "preln_embedding_eltwise_layernorm_fuse_"
                                     "pass. please use no_varseqlen"));
       }
-    } else if (!use_varseqlen && pos_id == "") {
+    } else if (!use_varseqlen && pos_id.empty()) {
       VLOG(3) << "start no_varseqlen_trt_multihead_matmul_fuse_pass";
     } else {
       PADDLE_THROW(
@@ -1257,8 +1257,8 @@ int TrtMultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
     auto* bv_data = bv_tensor->mutable_data<float>(platform::CPUPlace());
 
     auto combined_w_dims =
-        phi::make_ddim({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
-    auto combined_bias_dims = phi::make_ddim({3, bq_tensor->dims()[0]});
+        common::make_ddim({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
+    auto combined_bias_dims = common::make_ddim({3, bq_tensor->dims()[0]});
 
     // reuse the mul0_w and eltadd_0_b nodes for the combined nodes.
     auto* combined_w_desc = mul0_w->Var();
@@ -1510,7 +1510,7 @@ void TrtMultiHeadMatmulV3FusePass::ApplyImpl(Graph* graph) const {
     std::string pos_id = Get<std::string>("tensorrt_transformer_posid");
     std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");
 
-    if (use_varseqlen && pos_id != "" && mask_id != "") {
+    if (use_varseqlen && !pos_id.empty() && !mask_id.empty()) {
       if (graph->Has(framework::ir::kEmbEltwiseLayernormPass) ||
           graph->Has(framework::ir::kPrelnEmbEltwiseLayernormPass)) {
         if (with_interleaved) {
@@ -1526,7 +1526,7 @@ void TrtMultiHeadMatmulV3FusePass::ApplyImpl(Graph* graph) const {
                                     "preln_embedding_eltwise_layernorm_fuse_"
                                     "pass. please use no_varseqlen"));
       }
-    } else if (!use_varseqlen && pos_id == "") {
+    } else if (!use_varseqlen && pos_id.empty()) {
       VLOG(3) << "start no_varseqlen_trt_multihead_matmul_fuse_pass";
     } else {
       PADDLE_THROW(

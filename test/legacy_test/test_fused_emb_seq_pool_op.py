@@ -16,7 +16,7 @@ import platform
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, paddle_static_guard, skip_check_grad_ci
+from op_test import OpTest, paddle_static_guard, skip_check_grad_ci
 
 import paddle
 import paddle.version as ver
@@ -108,7 +108,7 @@ class TestFusedEmbeddingSeqPoolApi(unittest.TestCase):
     def test_api(self):
         with paddle_static_guard():
             if ver.mkl() == "ON" and 'Linux' in platform.platform():
-                from paddle import fluid
+                from paddle import base
 
                 dict_size = 20
                 data_t = paddle.static.data(
@@ -123,11 +123,11 @@ class TestFusedEmbeddingSeqPoolApi(unittest.TestCase):
                     is_sparse=False,
                 )
 
-                place = fluid.CPUPlace()
-                exe = fluid.Executor(place)
-                exe.run(fluid.default_startup_program())
+                place = base.CPUPlace()
+                exe = base.Executor(place)
+                exe.run(base.default_startup_program())
                 # prepare input words' idx
-                x_tensor = fluid.core.LoDTensor()
+                x_tensor = base.core.LoDTensor()
                 idxs = np.random.randint(1, 10, (8)).astype("int64")
 
                 x_tensor.set(idxs, place)

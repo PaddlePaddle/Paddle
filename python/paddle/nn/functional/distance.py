@@ -14,10 +14,10 @@
 
 import paddle
 from paddle import _C_ops
-from paddle.framework import in_dynamic_mode
+from paddle.framework import in_dynamic_or_pir_mode
 
-from ...fluid.data_feeder import check_type, check_variable_and_dtype
-from ...fluid.layer_helper import LayerHelper
+from ...base.data_feeder import check_type, check_variable_and_dtype
+from ...base.layer_helper import LayerHelper
 
 __all__ = []
 
@@ -59,22 +59,19 @@ def pairwise_distance(x, y, p=2.0, epsilon=1e-6, keepdim=False, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            x = paddle.to_tensor([[1., 3.], [3., 5.]], dtype=paddle.float64)
-            y = paddle.to_tensor([[5., 6.], [7., 8.]], dtype=paddle.float64)
-            distance = paddle.nn.functional.pairwise_distance(x, y)
-            print(distance)
-    #       Tensor(shape=[2], dtype=float64, place=Place(gpu:0), stop_gradient=True,
-    #              [4.99999860, 4.99999860])
-
+            >>> import paddle
+            >>> x = paddle.to_tensor([[1., 3.], [3., 5.]], dtype=paddle.float64)
+            >>> y = paddle.to_tensor([[5., 6.], [7., 8.]], dtype=paddle.float64)
+            >>> distance = paddle.nn.functional.pairwise_distance(x, y)
+            >>> print(distance)
+            Tensor(shape=[2], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [4.99999860, 4.99999860])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         sub = _C_ops.subtract(x, y)
         # p_norm op has not used epsilon, so change it to the following.
         if epsilon != 0.0:
-            epsilon = paddle.fluid.dygraph.base.to_variable(
-                [epsilon], dtype=sub.dtype
-            )
+            epsilon = paddle.to_tensor([epsilon], dtype=sub.dtype)
             sub = _C_ops.add(sub, epsilon)
         return _C_ops.p_norm(sub, p, -1, 0.0, keepdim, False)
 
@@ -109,3 +106,40 @@ def pairwise_distance(x, y, p=2.0, epsilon=1e-6, keepdim=False, name=None):
         )
 
         return out
+
+
+def pdist(x, p=2.0, name=None):
+    r'''
+    Computes the p-norm distance between every pair of row vectors in the input.
+
+    Args:
+        x (Tensor): The input tensor with shape :math:`N \times M`.
+        p (float, optional): The value for the p-norm distance to calculate between each vector pair. Default: :math:`2.0`.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor with shape :math:`N(N-1)/2` , the dtype is same as input tensor.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.seed(2023)
+            >>> a = paddle.randn([4, 5])
+            >>> print(a)
+            Tensor(shape=[4, 5], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[ 0.06132207,  1.11349595,  0.41906244, -0.24858207, -1.85169315],
+                    [-1.50370061,  1.73954511,  0.13331604,  1.66359663, -0.55764782],
+                    [-0.59911072, -0.57773495, -1.03176904, -0.33741450, -0.29695082],
+                    [-1.50258386,  0.67233968, -1.07747352,  0.80170447, -0.06695852]])
+            >>> pdist_out=paddle.pdist(a)
+            >>> print(pdist_out)
+            Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [2.87295413, 2.79758120, 3.02793980, 3.40844536, 1.89435327, 1.93171620])
+    '''
+
+    x_shape = list(x.shape)
+    assert len(x_shape) == 2, "The x must be 2-dimensional"
+    d = paddle.linalg.norm(x[..., None, :] - x[..., None, :, :], p=p, axis=-1)
+    mask = ~paddle.tril(paddle.ones(d.shape, dtype='bool'))
+    return paddle.masked_select(d, mask)

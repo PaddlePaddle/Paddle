@@ -52,7 +52,7 @@ class InferGPUContext : public phi::GPUContext {
 #ifdef PADDLE_WITH_XPU
 class InferXPUContext : public phi::XPUContext {
  public:
-  explicit InferXPUContext(const phi::Place& place);
+  explicit InferXPUContext(const phi::Place& place, int context_gm_size = -1);
 
   void* Alloc(phi::TensorBase* tensor,
               phi::DataType dtype,
@@ -60,12 +60,24 @@ class InferXPUContext : public phi::XPUContext {
               bool pinned = false,
               bool fake_alloc = false) const override;
 
+  void SetXContext(xpu::Context* x_context);
+
   void SetL3Info(size_t l3_size,
                  void* l3_ptr,
                  size_t l3_autotune_size,
                  const phi::Place& place);
 
   void L3CacheAutotune();
+
+  void SetConvAutotuneInfo(std::string conv_autotune_file,
+                           int conv_autotune_level,
+                           bool conv_autotune_file_writeback,
+                           const phi::Place& place);
+
+  void SetFcAutotuneInfo(std::string fc_autotune_file,
+                         int fc_autotune_level,
+                         bool fc_autotune_file_writeback,
+                         const phi::Place& place);
 
  private:
   size_t l3_size_{0};

@@ -63,11 +63,11 @@ TEST(DeleteWeightDequantLinearOpPass, basic) {
   graph->Set("__param_scope__", CreateParamScope<float>());
   auto pass =
       PassRegistry::Instance().Get("delete_weight_dequant_linear_op_pass");
-  int num_nodes_before = graph->Nodes().size();
+  int num_nodes_before = static_cast<int>(graph->Nodes().size());
   VLOG(3) << DebugString(graph);
 
   graph.reset(pass->Apply(graph.release()));
-  int num_nodes_after = graph->Nodes().size();
+  int num_nodes_after = static_cast<int>(graph->Nodes().size());
   int num_dequant_nodes_after = GetNumOpNodes(graph, "dequantize_linear");
   VLOG(3) << DebugString(graph);
 
@@ -110,11 +110,11 @@ TEST(DeleteWeightDequantLinearOpPass, basic_fp16) {
   graph->Set("__param_scope__", CreateParamScope<phi::dtype::float16>());
   auto pass =
       PassRegistry::Instance().Get("delete_weight_dequant_linear_op_pass");
-  int num_nodes_before = graph->Nodes().size();
+  int num_nodes_before = static_cast<int>(graph->Nodes().size());
   VLOG(3) << DebugString(graph);
 
   graph.reset(pass->Apply(graph.release()));
-  int num_nodes_after = graph->Nodes().size();
+  int num_nodes_after = static_cast<int>(graph->Nodes().size());
   int num_dequant_nodes_after = GetNumOpNodes(graph, "dequantize_linear");
   VLOG(3) << DebugString(graph);
 

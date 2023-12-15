@@ -108,9 +108,9 @@ static int BuildFusion(Graph* graph,
 
     auto alpha = 1.0f;
     auto beta = 1.0f;
-    int m = embedding_tensor.dims()[0];
-    int n = weightx_tensor.dims()[1];
-    int k = embedding_tensor.dims()[1];
+    int m = static_cast<int>(embedding_tensor.dims()[0]);
+    int n = static_cast<int>(weightx_tensor.dims()[1]);
+    int k = static_cast<int>(embedding_tensor.dims()[1]);
 
     // Copy only gate biases values (only actual bias data, not peephole
     // weights)
@@ -121,7 +121,7 @@ static int BuildFusion(Graph* graph,
 
     if (with_fc_bias) {
       // Add FC-bias with LSTM-bias (into GEMM result to be)
-      auto* fc_bias_var = scope->FindVar(fc_bias->Name());
+      auto* fc_bias_var = scope->FindVar(fc_bias->Name());  // NOLINT
       const auto& fc_bias_tensor = fc_bias_var->Get<phi::DenseTensor>();
       for (int i = 0; i < fc_bias_tensor.numel(); i++) {
         combined_biases[i] += fc_bias_tensor.data<float>()[i];

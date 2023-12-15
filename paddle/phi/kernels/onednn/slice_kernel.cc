@@ -30,7 +30,7 @@ void SliceKernel(const Context& dev_ctx,
                  DenseTensor* out) {
   const auto& onednn_engine = dev_ctx.GetEngine();
 
-  auto x_vec_dims = vectorize(x.dims());
+  auto x_vec_dims = common::vectorize(x.dims());
 
   auto starts_vec = starts.GetData();
   auto ends_vec = ends.GetData();
@@ -48,7 +48,7 @@ void SliceKernel(const Context& dev_ctx,
         std::max(static_cast<int64_t>(0), ends_vec[i] - starts_vec[i]);
   }
 
-  out->Resize(make_ddim(slice_dims));
+  out->Resize(common::make_ddim(slice_dims));
 
   // Note(0x45f): To support slice Tensors with shapes like [0, 0, 0].
   if (!x.initialized()) {
@@ -79,7 +79,7 @@ void SliceKernel(const Context& dev_ctx,
 
   std::vector<int64_t> new_out_dims(slice_dims.size() - decrease_axis.size());
 
-  if (new_out_dims.size() == 0) {
+  if (new_out_dims.empty()) {
     new_out_dims.emplace_back(1);
   } else {
     for (const auto& axis : decrease_axis) {
@@ -93,7 +93,7 @@ void SliceKernel(const Context& dev_ctx,
   }
 
   astream.wait();
-  out->Resize(make_ddim(new_out_dims));
+  out->Resize(common::make_ddim(new_out_dims));
   out->set_mem_desc(reorder_dst_memory_p->get_desc().reshape(new_out_dims));
 }
 

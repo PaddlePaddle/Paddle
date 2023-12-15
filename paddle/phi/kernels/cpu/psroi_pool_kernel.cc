@@ -31,11 +31,11 @@ void PsroiPoolKernel(const Context& ctx,
                      float spatial_scale,
                      DenseTensor* out) {
   auto in_dims = x.dims();
-  int batch_size = in_dims[0];
-  int input_channels = in_dims[1];
-  int height = in_dims[2];
-  int width = in_dims[3];
-  int rois_num_t = rois.dims()[0];
+  int batch_size = static_cast<int>(in_dims[0]);
+  int input_channels = static_cast<int>(in_dims[1]);
+  int height = static_cast<int>(in_dims[2]);
+  int width = static_cast<int>(in_dims[3]);
+  int rois_num_t = static_cast<int>(rois.dims()[0]);
 
   PADDLE_ENFORCE_EQ(input_channels,
                     output_channels * pooled_height * pooled_width,
@@ -53,9 +53,9 @@ void PsroiPoolKernel(const Context& ctx,
   rois_batch_id_list.Resize({rois_num_t});
   int* rois_batch_id_data = ctx.template Alloc<int>(&rois_batch_id_list);
 
-  int rois_batch_size;
+  int rois_batch_size = 0;
   if (rois_num.get_ptr()) {
-    rois_batch_size = rois_num->numel();
+    rois_batch_size = static_cast<int>(rois_num->numel());
     auto* rois_num_data = rois_num->data<int>();
     PADDLE_ENFORCE_EQ(
         rois_batch_size,
@@ -84,13 +84,13 @@ void PsroiPoolKernel(const Context& ctx,
     }
   } else {
     auto rois_lod = rois.lod().back();
-    rois_batch_size = rois_lod.size() - 1;
+    rois_batch_size = static_cast<int>(rois_lod.size()) - 1;
     PADDLE_ENFORCE_EQ(
         rois_batch_size,
         batch_size,
         errors::InvalidArgument("the rois_batch_size and input(X) "
                                 "batch_size should be the same."));
-    int rois_num_with_lod = rois_lod[rois_batch_size];
+    int rois_num_with_lod = static_cast<int>(rois_lod[rois_batch_size]);
     PADDLE_ENFORCE_EQ(rois_num_with_lod,
                       rois_num_t,
                       errors::InvalidArgument(
@@ -127,12 +127,14 @@ void PsroiPoolKernel(const Context& ctx,
     T bin_size_w = roi_width / static_cast<T>(pooled_width);
 
     // calculate each pixel of the output feature map.
-    int out_roi_offset = n * out_stride[0];
+    int out_roi_offset = static_cast<int>(n * out_stride[0]);
     for (int c = 0; c < output_channels; ++c) {
       // per category
-      int out_plane_offset = out_roi_offset + c * out_stride[1];
+      int out_plane_offset =
+          static_cast<int>(out_roi_offset + c * out_stride[1]);
       for (int ph = 0; ph < pooled_height; ++ph) {
-        int out_row_offset = out_plane_offset + ph * out_stride[2];
+        int out_row_offset =
+            static_cast<int>(out_plane_offset + ph * out_stride[2]);
         for (int pw = 0; pw < pooled_width; ++pw) {
           // calculate w and h at input feature map
           int hstart = floor(static_cast<T>(ph) * bin_size_h + roi_start_h);
@@ -147,14 +149,14 @@ void PsroiPoolKernel(const Context& ctx,
 
           int output_index = out_row_offset + pw;
           int input_channel = (c * pooled_height + ph) * pooled_width + pw;
-          int input_plane_offset =
-              roi_batch_id * in_stride[0] + input_channel * in_stride[1];
+          int input_plane_offset = static_cast<int>(
+              roi_batch_id * in_stride[0] + input_channel * in_stride[1]);
           const T* offset_input_data = input_data + input_plane_offset;
           T out_sum = 0.;
           bool is_empty = (hend <= hstart) || (wend <= wstart);
           for (int ih = hstart; ih < hend; ++ih) {
             for (int iw = wstart; iw < wend; ++iw) {
-              int input_index = ih * in_stride[2] + iw;
+              int input_index = static_cast<int>(ih * in_stride[2] + iw);
               out_sum += offset_input_data[input_index];
             }
           }

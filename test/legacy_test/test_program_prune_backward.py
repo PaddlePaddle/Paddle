@@ -25,8 +25,8 @@ from test_parallel_executor_transformer import (
 )
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 def simple_fc_net_with_accuracy(use_feed):
@@ -39,7 +39,7 @@ def simple_fc_net_with_accuracy(use_feed):
             hidden,
             size=200,
             activation='relu',
-            bias_attr=fluid.ParamAttr(
+            bias_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=1.0)
             ),
         )
@@ -81,6 +81,27 @@ def cond_net(use_feed=None):
     return avg_loss
 
 
+def pylayer_net(use_feed=None):
+    x = paddle.static.data(name="x", shape=[-1, 4], dtype='float32')
+    label = paddle.static.data('label', shape=[-1, 1], dtype='int64')
+
+    def forward_fn(x):
+        y = 3 * x
+        return y
+
+    def backward_fn(dy):
+        grad = paddle.exp(dy)
+        return grad
+
+    y = paddle.static.nn.static_pylayer(forward_fn, [x], backward_fn)
+    hidden = paddle.static.nn.fc(x=[y], size=4, activation="softmax")
+    loss = paddle.nn.functional.cross_entropy(
+        input=hidden, label=label, reduction='none', use_softmax=False
+    )
+    loss = paddle.mean(loss, name='mean_softmax_loss')
+    return loss
+
+
 def optimization_in_cond_net(with_optimize=False):
     x = paddle.static.data(name="x", shape=[-1, 4], dtype='float32')
     label = paddle.static.data('label', shape=[-1, 1], dtype='int64')
@@ -105,7 +126,7 @@ def optimization_in_cond_net(with_optimize=False):
             opt.minimize(avg_loss)
         return avg_loss
 
-    sgd = fluid.optimizer.SGD(learning_rate=0.1)
+    sgd = paddle.optimizer.SGD(learning_rate=0.1)
     two = paddle.tensor.fill_constant([1], 'int32', 2)
     pred = two == 0
     avg_loss = paddle.static.nn.case(
@@ -115,14 +136,39 @@ def optimization_in_cond_net(with_optimize=False):
     return avg_loss
 
 
+def optimization_in_pylayer_net(with_optimize=False):
+    x = paddle.static.data(name="x", shape=[-1, 4], dtype='float32')
+    label = paddle.static.data('label', shape=[-1, 1], dtype='int64')
+
+    def forward_fn(x):
+        y = 3 * x
+        return y
+
+    def backward_fn(dy):
+        grad = paddle.exp(dy)
+        return grad
+
+    y = paddle.static.nn.static_pylayer(forward_fn, [x], backward_fn)
+    hidden = 3 * y
+    loss = paddle.nn.functional.softmax_with_cross_entropy(
+        logits=hidden, label=label
+    )
+    loss = paddle.mean(loss, name='mean_softmax_loss')
+    sgd = paddle.optimizer.SGD(learning_rate=0.1)
+    if with_optimize:
+        sgd.minimize(loss)
+
+    return loss
+
+
 class TestProgramPruneBackward(unittest.TestCase):
     def program_compare(self, program_a, program_b):
         assert isinstance(
-            program_a, fluid.framework.Program
-        ), "The first argument should be fluid.framework.Program."
+            program_a, base.framework.Program
+        ), "The first argument should be base.framework.Program."
         assert isinstance(
-            program_b, fluid.framework.Program
-        ), "The second argument should be fluid.framework Program."
+            program_b, base.framework.Program
+        ), "The second argument should be base.framework Program."
 
         self.assertEqual(len(program_a.blocks), len(program_b.blocks))
         for idx in range(len(program_a.blocks)):
@@ -140,7 +186,7 @@ class TestProgramPruneBackward(unittest.TestCase):
     def check_prune_correctness(self, method, feed_dict, optimizer):
         loss = method(use_feed=False)
 
-        main_program = fluid.default_main_program()
+        main_program = base.default_main_program()
         test_prog_orig = main_program.clone(for_test=True)
         optimizer().minimize(loss)
         test_prog_prune = main_program.clone(for_test=True)
@@ -152,8 +198,8 @@ class TestProgramPruneBackward(unittest.TestCase):
             places.append(core.CUDAPlace(0))
 
         for place in places:
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
+            exe = base.Executor(place)
+            exe.run(base.default_startup_program())
 
             (loss_data_prune,) = exe.run(
                 test_prog_prune, feed=feed_dict, fetch_list=[loss.name]
@@ -165,9 +211,9 @@ class TestProgramPruneBackward(unittest.TestCase):
 
     def test_simple_fc_net(self):
         def optimizer():
-            optimizer = fluid.optimizer.SGD(
+            optimizer = paddle.optimizer.SGD(
                 learning_rate=0.001,
-                regularization=paddle.regularizer.L2Decay(1e-4),
+                weight_decay=paddle.regularizer.L2Decay(1e-4),
             )
             return optimizer
 
@@ -181,9 +227,9 @@ class TestProgramPruneBackward(unittest.TestCase):
 
     def test_simple_fc_net_with_accuracy(self):
         def optimizer():
-            optimizer = fluid.optimizer.SGD(
+            optimizer = paddle.optimizer.SGD(
                 learning_rate=0.001,
-                regularization=paddle.regularizer.L2Decay(1e-4),
+                weight_decay=paddle.regularizer.L2Decay(1e-4),
             )
             return optimizer
 
@@ -197,9 +243,9 @@ class TestProgramPruneBackward(unittest.TestCase):
 
     def test_batchnorm_fc(self):
         def optimizer():
-            optimizer = fluid.optimizer.SGD(
+            optimizer = paddle.optimizer.SGD(
                 learning_rate=0.001,
-                regularization=paddle.regularizer.L2Decay(1e-4),
+                weight_decay=paddle.regularizer.L2Decay(1e-4),
             )
             return optimizer
 
@@ -221,16 +267,16 @@ class TestProgramPruneBackward(unittest.TestCase):
 
     def test_transformer(self):
         def optimizer():
-            optimizer = fluid.optimizer.Adam(
+            optimizer = paddle.optimizer.Adam(
                 learning_rate=0.001,
-                regularization=paddle.regularizer.L2Decay(1e-4),
+                weight_decay=paddle.regularizer.L2Decay(1e-4),
             )
             return optimizer
 
         with self.program_scope_guard():
             # the program argument is used to distinguish Program and CompiledProgram
             feed_dict = get_feed_data_reader().get_next(
-                fluid.Executor(core.CPUPlace()), fluid.default_main_program()
+                base.Executor(core.CPUPlace()), base.default_main_program()
             )
             self.check_prune_correctness(
                 method=transformer, feed_dict=feed_dict, optimizer=optimizer
@@ -238,7 +284,7 @@ class TestProgramPruneBackward(unittest.TestCase):
 
     def test_cond(self):
         def optimizer():
-            optimizer = fluid.optimizer.SGD(learning_rate=0.01)
+            optimizer = paddle.optimizer.SGD(learning_rate=0.01)
             return optimizer
 
         with self.program_scope_guard():
@@ -249,29 +295,72 @@ class TestProgramPruneBackward(unittest.TestCase):
                 method=cond_net, feed_dict=feed_dict, optimizer=optimizer
             )
 
+    def test_pylayer(self):
+        def optimizer():
+            optimizer = paddle.optimizer.SGD(learning_rate=0.01)
+            return optimizer
+
+        with self.program_scope_guard():
+            x_in = np.random.random(size=(10, 4)).astype('float32')
+            label_in = np.random.randint(1, size=(10, 1)).astype('int64')
+            feed_dict = {'x': x_in, 'label': label_in}
+            self.check_prune_correctness(
+                method=pylayer_net, feed_dict=feed_dict, optimizer=optimizer
+            )
+
     def test_optimization_in_cond(self):
         x_in = np.random.random(size=(10, 4)).astype('float32')
         label_in = np.random.randint(1, size=(10, 1)).astype('int64')
         feed_dict = {'x': x_in, 'label': label_in}
         with self.program_scope_guard():
             loss = optimization_in_cond_net(False)
-            main_program = fluid.default_main_program()
+            main_program = base.default_main_program()
             test_prog_orig = main_program.clone(for_test=True)
             place = core.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
+            exe = base.Executor(place)
+            exe.run(base.default_startup_program())
             (loss_data_orig,) = exe.run(
                 test_prog_orig, feed=feed_dict, fetch_list=[loss.name]
             )
 
         with self.program_scope_guard():
             loss = optimization_in_cond_net(True)
-            main_program = fluid.default_main_program()
+            main_program = base.default_main_program()
             test_prog_prune = main_program.clone(for_test=True)
 
             place = core.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
+            exe = base.Executor(place)
+            exe.run(base.default_startup_program())
+            (loss_data_prune,) = exe.run(
+                test_prog_prune, feed=feed_dict, fetch_list=[loss.name]
+            )
+
+        self.program_compare(test_prog_orig, test_prog_prune)
+        self.assertEqual(loss_data_orig, loss_data_prune)
+
+    def test_optimization_in_pylayer(self):
+        x_in = np.random.random(size=(10, 4)).astype('float32')
+        label_in = np.random.randint(1, size=(10, 1)).astype('int64')
+        feed_dict = {'x': x_in, 'label': label_in}
+        with self.program_scope_guard():
+            loss = optimization_in_pylayer_net(False)
+            main_program = base.default_main_program()
+            test_prog_orig = main_program.clone(for_test=True)
+            place = core.CPUPlace()
+            exe = base.Executor(place)
+            exe.run(base.default_startup_program())
+            (loss_data_orig,) = exe.run(
+                test_prog_orig, feed=feed_dict, fetch_list=[loss.name]
+            )
+
+        with self.program_scope_guard():
+            loss = optimization_in_pylayer_net(True)
+            main_program = base.default_main_program()
+            test_prog_prune = main_program.clone(for_test=True)
+
+            place = core.CPUPlace()
+            exe = base.Executor(place)
+            exe.run(base.default_startup_program())
             (loss_data_prune,) = exe.run(
                 test_prog_prune, feed=feed_dict, fetch_list=[loss.name]
             )
@@ -281,12 +370,12 @@ class TestProgramPruneBackward(unittest.TestCase):
 
     @contextlib.contextmanager
     def program_scope_guard(self):
-        prog = fluid.Program()
-        startup_prog = fluid.Program()
-        scope = fluid.core.Scope()
-        with fluid.scope_guard(scope):
-            with fluid.program_guard(prog, startup_prog):
-                with fluid.unique_name.guard():
+        prog = base.Program()
+        startup_prog = base.Program()
+        scope = base.core.Scope()
+        with base.scope_guard(scope):
+            with base.program_guard(prog, startup_prog):
+                with base.unique_name.guard():
                     yield
 
 

@@ -146,7 +146,6 @@ class DistributedFusedFeedForwardImpl(DistributedOperatorImpl):
 
     @staticmethod
     def forward(ctx, *args, **kwargs):
-
         dist_op_context = ctx.dist_op_context
         main_block = dist_op_context.work_block
         startup_block = dist_op_context.startup_block
@@ -188,7 +187,6 @@ class DistributedFusedFeedForwardImpl(DistributedOperatorImpl):
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
-
         dist_op_context = ctx.dist_op_context
         main_block = dist_op_context.work_block
         startup_block = dist_op_context.startup_block

@@ -14,9 +14,9 @@
 
 #include "paddle/phi/kernels/cumprod_grad_kernel.h"
 
+#include "paddle/common/ddim.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/allocator.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/cumprod.h"
@@ -51,15 +51,15 @@ void CumprodGradKernel(const Context& dev_ctx,
   size_t numel = outer_dim * mid_dim * inner_dim;
 
   // deal with complex
-  const T* x_data_deal;
-  const T* out_data_deal;
+  const T* x_data_deal = nullptr;
+  const T* out_data_deal = nullptr;
   Allocator::AllocationPtr x_conj;
   Allocator::AllocationPtr out_conj;
   if (phi::IsComplexType(x.dtype())) {
-    x_conj = const_cast<Allocator&>(dev_ctx.GetAllocator())
+    x_conj = const_cast<Allocator&>(dev_ctx.GetAllocator())  // NOLINT
                  .Allocate(numel * sizeof(T));
     auto* x_data_conj = reinterpret_cast<T*>(x_conj->ptr());
-    out_conj = const_cast<Allocator&>(dev_ctx.GetAllocator())
+    out_conj = const_cast<Allocator&>(dev_ctx.GetAllocator())  // NOLINT
                    .Allocate(numel * sizeof(T));
     auto* out_data_conj = reinterpret_cast<T*>(out_conj->ptr());
 

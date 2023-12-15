@@ -15,34 +15,51 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid, tensor
-from paddle.fluid import Program, program_guard
+from paddle import base, static, tensor
+from paddle.base import Program, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestUnbind(unittest.TestCase):
+    def setUp(self):
+        self.init_dtype()
+        self.input_1 = np.random.random([2, 3]).astype(self.dtype)
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
+            self.input_1 = (
+                np.random.random([2, 3]) + 1j * np.random.random([2, 3])
+            ).astype(self.dtype)
+
+    def init_dtype(self):
+        self.dtype = 'float32'
+
+    @test_with_pir_api
     def test_unbind(self):
         paddle.enable_static()
+        self.init_dtype()
+        main_program = static.Program()
+        startup_program = static.Program()
+        with static.program_guard(
+            main_program=main_program, startup_program=startup_program
+        ):
+            x_1 = paddle.static.data(shape=[2, 3], dtype=self.dtype, name='x_1')
+            [out_0, out_1] = tensor.unbind(input=x_1, axis=0)
+            axis = paddle.static.data(shape=[], dtype='int32', name='axis')
+            exe = base.Executor(place=base.CPUPlace())
 
-        x_1 = paddle.static.data(shape=[2, 3], dtype='float32', name='x_1')
-        [out_0, out_1] = tensor.unbind(input=x_1, axis=0)
-        input_1 = np.random.random([2, 3]).astype("float32")
-        axis = paddle.static.data(shape=[], dtype='int32', name='axis')
-        exe = fluid.Executor(place=fluid.CPUPlace())
+            [res_1, res_2] = exe.run(
+                feed={"x_1": self.input_1, "axis": 0},
+                fetch_list=[out_0, out_1],
+            )
 
-        [res_1, res_2] = exe.run(
-            fluid.default_main_program(),
-            feed={"x_1": input_1, "axis": 0},
-            fetch_list=[out_0, out_1],
-        )
+            np.testing.assert_array_equal(res_1, self.input_1[0, 0:100])
+            np.testing.assert_array_equal(res_2, self.input_1[1, 0:100])
 
-        assert np.array_equal(res_1, input_1[0, 0:100])
-        assert np.array_equal(res_2, input_1[1, 0:100])
-
+    @test_with_pir_api
     def test_unbind_static_fp16_gpu(self):
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
@@ -61,43 +78,79 @@ class TestUnbind(unittest.TestCase):
                     fetch_list=[y],
                 )
 
-                assert np.array_equal(res[0], input[0, :])
-                assert np.array_equal(res[1], input[1, :])
+                np.testing.assert_array_equal(res[0], input[0, :])
+                np.testing.assert_array_equal(res[1], input[1, :])
 
     def test_unbind_dygraph(self):
-        with fluid.dygraph.guard():
-            np_x = np.random.random([2, 3]).astype("float32")
-            x = paddle.to_tensor(np_x)
+        with base.dygraph.guard():
+            x = paddle.to_tensor(self.input_1)
             x.stop_gradient = False
             [res_1, res_2] = paddle.unbind(x, 0)
-            np.testing.assert_array_equal(res_1, np_x[0, 0:100])
-            np.testing.assert_array_equal(res_2, np_x[1, 0:100])
+            np.testing.assert_array_equal(res_1, self.input_1[0, 0:100])
+            np.testing.assert_array_equal(res_2, self.input_1[1, 0:100])
 
             out = paddle.add_n([res_1, res_2])
 
-            np_grad = np.ones(x.shape, np.float32)
+            np_grad = np.ones(x.shape, self.dtype)
             out.backward()
             np.testing.assert_array_equal(x.grad.numpy(False), np_grad)
 
 
+class TestUnbind_complex64(TestUnbind):
+    def init_dtype(self):
+        self.dtype = 'complex64'
+
+    def test_unbind_static_fp16_gpu(self):
+        pass
+
+
+class TestUnbind_complex128(TestUnbind):
+    def init_dtype(self):
+        self.dtype = 'complex128'
+
+    def test_unbind_static_fp16_gpu(self):
+        pass
+
+
 class TestLayersUnbind(unittest.TestCase):
+    def setUp(self):
+        self.init_dtype()
+        self.input_1 = np.random.random([2, 3]).astype(self.dtype)
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
+            self.input_1 = (
+                np.random.random([2, 3]) + 1j * np.random.random([2, 3])
+            ).astype(self.dtype)
+
+    def init_dtype(self):
+        self.dtype = 'float32'
+
+    @test_with_pir_api
     def test_layers_unbind(self):
         paddle.enable_static()
+        prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(prog, startup_prog):
+            x_1 = paddle.static.data(shape=[2, 3], dtype=self.dtype, name='x_1')
+            [out_0, out_1] = paddle.unbind(input=x_1, axis=0)
+            axis = paddle.static.data(shape=[], dtype='int32', name='axis')
+            exe = base.Executor(place=base.CPUPlace())
+            [res_1, res_2] = exe.run(
+                feed={"x_1": self.input_1, "axis": 0},
+                fetch_list=[out_0, out_1],
+            )
 
-        x_1 = paddle.static.data(shape=[2, 3], dtype='float32', name='x_1')
-        [out_0, out_1] = paddle.unbind(input=x_1, axis=0)
-        input_1 = np.random.random([2, 3]).astype("float32")
-        axis = paddle.static.data(shape=[], dtype='int32', name='axis')
-        exe = fluid.Executor(place=fluid.CPUPlace())
+            np.testing.assert_array_equal(res_1, self.input_1[0, 0:100])
+            np.testing.assert_array_equal(res_2, self.input_1[1, 0:100])
 
-        [res_1, res_2] = exe.run(
-            fluid.default_main_program(),
-            feed={"x_1": input_1, "axis": 0},
-            fetch_list=[out_0, out_1],
-        )
 
-        assert np.array_equal(res_1, input_1[0, 0:100])
-        assert np.array_equal(res_2, input_1[1, 0:100])
+class TestLayersUnbind_complex64(TestLayersUnbind):
+    def init_dtype(self):
+        self.dtype = 'complex64'
+
+
+class TestLayersUnbind_complex128(TestLayersUnbind):
+    def init_dtype(self):
+        self.dtype = 'complex128'
 
 
 class TestUnbindOp(OpTest):
@@ -119,6 +172,11 @@ class TestUnbindOp(OpTest):
         self.num = 3
         self.initParameters()
         x = np.arange(12).reshape(3, 2, 2).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.arange(12).reshape(3, 2, 2)
+                + 1j * np.arange(12).reshape(3, 2, 2)
+            ).astype(self.dtype)
         self.out = np.split(x, self.num, self.axis)
         self.outReshape()
         self.inputs = {'X': x}
@@ -137,10 +195,10 @@ class TestUnbindOp(OpTest):
         self.op_type = "unbind"
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1', 'out2'])
+        self.check_grad(['X'], ['out0', 'out1', 'out2'], check_pir=True)
 
 
 class TestUnbindOp1(TestUnbindOp):
@@ -149,7 +207,7 @@ class TestUnbindOp1(TestUnbindOp):
         self.num = 2
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1'])
+        self.check_grad(['X'], ['out0', 'out1'], check_pir=True)
 
     def outReshape(self):
         self.out[0] = self.out[0].reshape((3, 2))
@@ -162,7 +220,7 @@ class TestUnbindOp2(TestUnbindOp):
         self.num = 2
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1'])
+        self.check_grad(['X'], ['out0', 'out1'], check_pir=True)
 
     def outReshape(self):
         self.out[0] = self.out[0].reshape((3, 2))
@@ -178,7 +236,7 @@ class TestUnbindOp3(TestUnbindOp):
         self.attrs = {'axis': -1}
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1'])
+        self.check_grad(['X'], ['out0', 'out1'], check_pir=True)
 
     def outReshape(self):
         self.out[0] = self.out[0].reshape((3, 2))
@@ -194,11 +252,51 @@ class TestUnbindOp4(TestUnbindOp):
         self.attrs = {'axis': -2}
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1'])
+        self.check_grad(['X'], ['out0', 'out1'], check_pir=True)
 
     def outReshape(self):
         self.out[0] = self.out[0].reshape((3, 2))
         self.out[1] = self.out[1].reshape((3, 2))
+
+
+class TestUnbindOp1_Complex64(TestUnbindOp1):
+    def get_dtype(self):
+        return np.complex64
+
+
+class TestUnbindOp2_Complex64(TestUnbindOp2):
+    def get_dtype(self):
+        return np.complex64
+
+
+class TestUnbindOp3_Complex64(TestUnbindOp3):
+    def get_dtype(self):
+        return np.complex64
+
+
+class TestUnbindOp4_Complex64(TestUnbindOp4):
+    def get_dtype(self):
+        return np.complex64
+
+
+class TestUnbindOp1_Complex128(TestUnbindOp1):
+    def get_dtype(self):
+        return np.complex128
+
+
+class TestUnbindOp2_Complex128(TestUnbindOp2):
+    def get_dtype(self):
+        return np.complex128
+
+
+class TestUnbindOp3_Complex128(TestUnbindOp3):
+    def get_dtype(self):
+        return np.complex128
+
+
+class TestUnbindOp4_Complex128(TestUnbindOp4):
+    def get_dtype(self):
+        return np.complex128
 
 
 class TestUnbindFP16Op(OpTest):
@@ -228,7 +326,7 @@ class TestUnbindFP16Op(OpTest):
         return np.float16
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestUnbindBF16Op(OpTest):
@@ -264,16 +362,22 @@ class TestUnbindBF16Op(OpTest):
         self.op_type = "unbind"
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         pass
 
 
 class TestUnbindAxisError(unittest.TestCase):
+    def setUp(self):
+        self.dtype = 'float32'
+
+    @test_with_pir_api
     def test_errors(self):
+        paddle.enable_static()
+
         with program_guard(Program(), Program()):
-            x = paddle.static.data(shape=[2, 3], dtype='float32', name='x')
+            x = paddle.static.data(shape=[2, 3], dtype=self.dtype, name='x')
 
             def test_table_Variable():
                 tensor.unbind(input=x, axis=2.0)
@@ -284,6 +388,16 @@ class TestUnbindAxisError(unittest.TestCase):
                 tensor.unbind(input=x, axis=2)
 
             self.assertRaises(ValueError, test_invalid_axis)
+
+
+class TestUnbindAxisError_complex64(TestUnbindAxisError):
+    def setUp(self):
+        self.dtype = 'complex64'
+
+
+class TestUnbindAxisError_complex128(TestUnbindAxisError):
+    def setUp(self):
+        self.dtype = 'complex128'
 
 
 class TestUnbindBool(unittest.TestCase):

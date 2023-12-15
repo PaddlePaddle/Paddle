@@ -24,7 +24,7 @@
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #include "xpu/bkcl.h"
 
-DECLARE_bool(sync_bkcl_allreduce);
+PD_DECLARE_bool(sync_bkcl_allreduce);
 
 namespace paddle {
 namespace framework {

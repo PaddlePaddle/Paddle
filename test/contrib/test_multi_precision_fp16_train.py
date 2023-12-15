@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.io import Dataset
 from paddle.static.amp.fp16_utils import cast_model_to_fp16
 
@@ -99,11 +99,11 @@ def train(use_pure_fp16=True, use_nesterov=False, optimizer=""):
     data_shape = [3, 32, 32]
     PASS_NUM = 1
 
-    train_program = fluid.Program()
-    startup_prog = fluid.Program()
+    train_program = base.Program()
+    startup_prog = base.Program()
     train_program.random_seed = 123
     startup_prog.random_seed = 456
-    with fluid.program_guard(train_program, startup_prog):
+    with base.program_guard(train_program, startup_prog):
         images = paddle.static.data(
             name='pixel', shape=[-1] + data_shape, dtype='float32'
         )
@@ -126,7 +126,7 @@ def train(use_pure_fp16=True, use_nesterov=False, optimizer=""):
                 multi_precision=True,
             )
         elif optimizer == "Lars":
-            optimizer = paddle.fluid.optimizer.LarsMomentumOptimizer(
+            optimizer = paddle.incubate.optimizer.LarsMomentumOptimizer(
                 learning_rate=0.001, momentum=0.9, multi_precision=use_pure_fp16
             )
         else:
@@ -160,9 +160,9 @@ def train(use_pure_fp16=True, use_nesterov=False, optimizer=""):
         drop_last=True,
     )
 
-    place = fluid.CUDAPlace(0)
-    exe = fluid.Executor(place)
-    feeder = fluid.DataFeeder(place=place, feed_list=[images, label])
+    place = base.CUDAPlace(0)
+    exe = base.Executor(place)
+    feeder = base.DataFeeder(place=place, feed_list=[images, label])
 
     def train_loop():
         exe.run(startup_prog)
@@ -206,7 +206,7 @@ def train(use_pure_fp16=True, use_nesterov=False, optimizer=""):
 
 class TestImageMultiPrecision(unittest.TestCase):
     def test_resnet_pure_fp16(self):
-        if not fluid.core.is_compiled_with_cuda():
+        if not base.core.is_compiled_with_cuda():
             return
 
         def do_test(use_nesterov=False, optimizer=""):
@@ -217,22 +217,14 @@ class TestImageMultiPrecision(unittest.TestCase):
             else:
                 suffix = "with Nesterov" if use_nesterov else "without Nesterov"
             with self.scope_prog_guard():
-                print(
-                    "-----------------FP16 Train {}-----------------".format(
-                        suffix
-                    )
-                )
+                print(f"-----------------FP16 Train {suffix}-----------------")
                 train_loss_fp16, test_loss_fp16 = train(
                     use_pure_fp16=True,
                     use_nesterov=use_nesterov,
                     optimizer=optimizer,
                 )
             with self.scope_prog_guard():
-                print(
-                    "-----------------FP32 Train {}-----------------".format(
-                        suffix
-                    )
-                )
+                print(f"-----------------FP32 Train {suffix}-----------------")
                 train_loss_fp32, test_loss_fp32 = train(
                     use_pure_fp16=False,
                     use_nesterov=use_nesterov,
@@ -263,11 +255,11 @@ class TestImageMultiPrecision(unittest.TestCase):
 
     @contextlib.contextmanager
     def scope_prog_guard(self):
-        prog = fluid.Program()
-        startup_prog = fluid.Program()
-        scope = fluid.core.Scope()
-        with fluid.scope_guard(scope):
-            with fluid.program_guard(prog, startup_prog):
+        prog = base.Program()
+        startup_prog = base.Program()
+        scope = base.core.Scope()
+        with base.scope_guard(scope):
+            with base.program_guard(prog, startup_prog):
                 yield
 
 
@@ -276,18 +268,12 @@ class TestAmpWithNonIterableDataLoader(unittest.TestCase):
         main_prog = paddle.static.Program()
         start_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, start_prog):
-            with paddle.fluid.unique_name.guard():
+            with paddle.base.unique_name.guard():
                 image = paddle.static.data(
                     name='image', shape=[-1, 3, 224, 224], dtype='float32'
                 )
                 label = paddle.static.data(
                     name='label', shape=[-1, 1], dtype='int64'
-                )
-                py_reader = fluid.io.DataLoader.from_generator(
-                    feed_list=[image, label],
-                    capacity=4,
-                    iterable=False,
-                    use_double_buffer=False,
                 )
                 zero_var = paddle.tensor.fill_constant(
                     shape=[1], dtype='int64', value=0
@@ -307,14 +293,14 @@ class TestAmpWithNonIterableDataLoader(unittest.TestCase):
         block = main_prog.global_block()
         for op in block.ops:
             if op.type == "mul":
-                op._set_attr('in_dtype', fluid.core.VarDesc.VarType.FP32)
-                op._set_attr('out_dtype', fluid.core.VarDesc.VarType.FP32)
-                op._set_attr('dtype', fluid.core.VarDesc.VarType.FP32)
+                op._set_attr('in_dtype', base.core.VarDesc.VarType.FP32)
+                op._set_attr('out_dtype', base.core.VarDesc.VarType.FP32)
+                op._set_attr('dtype', base.core.VarDesc.VarType.FP32)
 
         cast_model_to_fp16(main_prog, use_fp16_guard=False)
 
     def test_non_iterable_dataloader(self):
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             self.decorate_with_data_loader()
 
 

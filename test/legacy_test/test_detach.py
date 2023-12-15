@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid.dygraph.base import to_variable
+from paddle import base
+from paddle.base.dygraph.base import to_variable
 from paddle.nn import Linear
 
 
@@ -31,7 +31,7 @@ class Test_Detach(unittest.TestCase):
 
     def no_detach_multi(self):
         data = self.generate_Data()
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             linear_w_param_attrs = paddle.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(5.0)
             )
@@ -79,7 +79,7 @@ class Test_Detach(unittest.TestCase):
 
     def no_detach_single(self):
         data = self.generate_Data()
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             linear_w_param_attrs = paddle.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(5.0)
             )
@@ -115,11 +115,11 @@ class Test_Detach(unittest.TestCase):
 
     def detach_multi(self):
         data = self.generate_Data()
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             linear_w_param_attrs = paddle.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(5.0)
             )
-            linear_b_param_attrs = fluid.ParamAttr(
+            linear_b_param_attrs = base.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(6.0)
             )
             linear = Linear(
@@ -131,7 +131,7 @@ class Test_Detach(unittest.TestCase):
             linear1_w_param_attrs = paddle.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(7.0)
             )
-            linear1_b_param_attrs = fluid.ParamAttr(
+            linear1_b_param_attrs = base.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(8.0)
             )
             linear1 = Linear(
@@ -172,12 +172,14 @@ class Test_Detach(unittest.TestCase):
     def test_NoDetachSingle_DetachMulti(self):
         array_no_detach_single = self.no_detach_single()
         array_detach_multi = self.detach_multi()
-        assert np.array_equal(array_no_detach_single, array_detach_multi)
+        np.testing.assert_array_equal(
+            array_no_detach_single, array_detach_multi
+        )
 
 
 class TestInplace(unittest.TestCase):
     def test_forward_version(self):
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             var = paddle.to_tensor(np.ones((4, 2, 3)).astype(np.float32))
             self.assertEqual(var.inplace_version, 0)
             detach_var_1 = var.detach()
@@ -196,7 +198,7 @@ class TestInplace(unittest.TestCase):
     def test_backward_error(self):
         # It raises an error because the inplace operator will result
         # in incorrect gradient computation.
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             var_a = paddle.ones(shape=[4, 2, 3], dtype="float32")
             var_a.stop_gradient = False
 
@@ -212,9 +214,7 @@ class TestInplace(unittest.TestCase):
             loss = paddle.nn.functional.relu(var_c + var_d)
             with self.assertRaisesRegex(
                 RuntimeError,
-                "received tensor_version:{} != wrapper_version_snapshot:{}".format(
-                    1, 0
-                ),
+                f"received tensor_version:{1} != wrapper_version_snapshot:{0}",
             ):
                 loss.backward()
 

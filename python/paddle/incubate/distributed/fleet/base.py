@@ -14,11 +14,10 @@
 
 import abc
 
-from paddle import fluid
+from paddle import base
+from paddle.base.executor import Executor
 from paddle.distributed.fleet.base.role_maker import RoleMakerBase
-from paddle.fluid.executor import Executor
-from paddle.fluid.optimizer import SGD
-from paddle.optimizer import SGD as SGD_v2
+from paddle.optimizer import SGD
 from paddle.static.amp.decorator import OptimizerWithMixedPrecision
 
 __all__ = []
@@ -201,7 +200,7 @@ class Fleet(metaclass=abc.ABCMeta):
         Returns:
             None
         """
-        self._executor = Executor(fluid.CPUPlace())
+        self._executor = Executor(base.CPUPlace())
 
         if role_maker and not isinstance(role_maker, RoleMakerBase):
             from paddle.incubate.distributed.fleet.role_maker import (
@@ -273,8 +272,8 @@ class Fleet(metaclass=abc.ABCMeta):
 
 class DistributedOptimizer(metaclass=abc.ABCMeta):
     """
-    DistributedOptimizer is a wrapper for paddle.fluid.optimizer
-    A user should pass a paddle.fluid.optimizer to DistributedOptimizer
+    DistributedOptimizer is a wrapper for paddle.base.optimizer
+    A user should pass a paddle.base.optimizer to DistributedOptimizer
     minimize() function is implemented.
     DistributedOptimizer is the starting point for a user who wants to
     run distributed training. The optimized information will be stored in
@@ -291,10 +290,8 @@ class DistributedOptimizer(metaclass=abc.ABCMeta):
     """
 
     def __init__(self, optimizer, strategy=None):
-        if (
-            not isinstance(optimizer, SGD.__bases__)
-            and not isinstance(optimizer, OptimizerWithMixedPrecision)
-            and not isinstance(optimizer, SGD_v2.__base__)
+        if not isinstance(optimizer, SGD.__bases__) and not isinstance(
+            optimizer, OptimizerWithMixedPrecision
         ):
             raise TypeError("optimizer must be an instance of Optimizer")
 
@@ -346,12 +343,13 @@ class DistributedOptimizer(metaclass=abc.ABCMeta):
         Examples:
             .. code-block:: python
 
-                loss = network()
-                optimizer = fluid.optimizer.SGD(learning_rate=0.1)
-                params_grads = optimizer.backward(loss)
-                # you may append operations for params_grads here
-                # ...
-                optimizer.apply_gradients(params_grads)
+                >>> # doctest: +SKIP('The network is not defined.')
+                >>> loss = network()
+                >>> optimizer = base.optimizer.SGD(learning_rate=0.1)
+                >>> params_grads = optimizer.backward(loss)
+                >>> # you may append operations for params_grads here
+                >>> # ...
+                >>> optimizer.apply_gradients(params_grads)
         """
         pass
 

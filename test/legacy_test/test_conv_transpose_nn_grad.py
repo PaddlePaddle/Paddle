@@ -19,8 +19,10 @@ import numpy as np
 from decorator_helper import prog_scope
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+import paddle.nn.functional as F
+from paddle import base
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestConvTransposeDoubleGradCheck(unittest.TestCase):
@@ -40,7 +42,7 @@ class TestConvTransposeDoubleGradCheck(unittest.TestCase):
         )
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
-        w = fluid.default_main_program().global_block().all_parameters()
+        w = base.default_main_program().global_block().all_parameters()
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
@@ -66,13 +68,51 @@ class TestConvTransposeDoubleGradCheck(unittest.TestCase):
             place=place,
         )
 
+    @test_with_pir_api
+    @prog_scope()
+    def func_pir(self, place):
+        x_shape = [2, 4, 3, 3]
+        w_shape = [4, 2, 1, 1]
+        eps = 0.005
+        dtype = np.float64
+        if core.is_compiled_with_rocm():
+            dtype = np.float32
+        x = paddle.static.data('x', x_shape, dtype)
+        w = paddle.static.data('w', w_shape, dtype)
+        y = F.conv2d_transpose(x, w, groups=1)
+        x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
+        w_arr = np.random.uniform(-1, 1, w_shape).astype(dtype)
+
+        if core.is_compiled_with_rocm():
+            # HIP will sometimes fail if no atol
+            gradient_checker.double_grad_check(
+                [x, w],
+                y,
+                x_init=[x_arr, w_arr],
+                place=place,
+                eps=eps,
+                atol=1e-4,
+            )
+        else:
+            gradient_checker.double_grad_check(
+                [x, w], y, x_init=[x_arr, w_arr], place=place, eps=eps
+            )
+        gradient_checker.double_grad_check_for_dygraph(
+            self.conv_transpose_wrapper,
+            [x, w],
+            y,
+            x_init=[x_arr, w_arr],
+            place=place,
+        )
+
     def test_grad(self):
         places = []
 
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
+            self.func_pir(p)
 
 
 class TestConvTranspose2DoubleGradCheck_AsyPadding(
@@ -101,7 +141,7 @@ class TestConvTranspose2DoubleGradCheck_AsyPadding(
         )
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
-        w = fluid.default_main_program().global_block().all_parameters()
+        w = base.default_main_program().global_block().all_parameters()
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
@@ -124,6 +164,43 @@ class TestConvTranspose2DoubleGradCheck_AsyPadding(
             [x] + w,
             y,
             x_init=[x_arr] + w_arr,
+            place=place,
+        )
+
+    @test_with_pir_api
+    @prog_scope()
+    def func_pir(self, place):
+        x_shape = [2, 2, 3, 3]
+        w_shape = [2, 2, 1, 1]
+        eps = 0.005
+        dtype = np.float64
+        if core.is_compiled_with_rocm():
+            dtype = np.float32
+        x = paddle.static.data('x', x_shape, dtype)
+        w = paddle.static.data('w', w_shape, dtype)
+        y = F.conv2d_transpose(x, w, padding=[1, 0, 0, 1])
+        x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
+        w_arr = np.random.uniform(-1, 1, w_shape).astype(dtype)
+
+        if core.is_compiled_with_rocm():
+            # HIP will sometimes fail if no atol
+            gradient_checker.double_grad_check(
+                [x, w],
+                y,
+                x_init=[x_arr, w_arr],
+                place=place,
+                eps=eps,
+                atol=1e-4,
+            )
+        else:
+            gradient_checker.double_grad_check(
+                [x, w], y, x_init=[x_arr, w_arr], place=place, eps=eps
+            )
+        gradient_checker.double_grad_check_for_dygraph(
+            self.conv_transpose_wrapper,
+            [x, w],
+            y,
+            x_init=[x_arr, w_arr],
             place=place,
         )
 
@@ -154,7 +231,7 @@ class TestConvTranspose2DoubleGradCheck_PaddingSAME(
         )
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
-        w = fluid.default_main_program().global_block().all_parameters()
+        w = base.default_main_program().global_block().all_parameters()
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
@@ -177,6 +254,43 @@ class TestConvTranspose2DoubleGradCheck_PaddingSAME(
             [x] + w,
             y,
             x_init=[x_arr] + w_arr,
+            place=place,
+        )
+
+    @test_with_pir_api
+    @prog_scope()
+    def func_pir(self, place):
+        x_shape = [2, 2, 3, 3]
+        w_shape = [2, 2, 1, 1]
+        eps = 0.005
+        dtype = np.float64
+        if core.is_compiled_with_rocm():
+            dtype = np.float32
+        x = paddle.static.data('x', x_shape, dtype)
+        w = paddle.static.data('w', w_shape, dtype)
+        y = F.conv2d_transpose(x, w, padding="SAME")
+        x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
+        w_arr = np.random.uniform(-1, 1, w_shape).astype(dtype)
+
+        if core.is_compiled_with_rocm():
+            # HIP will sometimes fail if no atol
+            gradient_checker.double_grad_check(
+                [x, w],
+                y,
+                x_init=[x_arr, w_arr],
+                place=place,
+                eps=eps,
+                atol=1e-4,
+            )
+        else:
+            gradient_checker.double_grad_check(
+                [x, w], y, x_init=[x_arr, w_arr], place=place, eps=eps
+            )
+        gradient_checker.double_grad_check_for_dygraph(
+            self.conv_transpose_wrapper,
+            [x, w],
+            y,
+            x_init=[x_arr, w_arr],
             place=place,
         )
 
@@ -207,7 +321,7 @@ class TestConvTranspose2DoubleGradCheck_PaddingVALID(
         )
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
-        w = fluid.default_main_program().global_block().all_parameters()
+        w = base.default_main_program().global_block().all_parameters()
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
@@ -230,6 +344,43 @@ class TestConvTranspose2DoubleGradCheck_PaddingVALID(
             [x] + w,
             y,
             x_init=[x_arr] + w_arr,
+            place=place,
+        )
+
+    @test_with_pir_api
+    @prog_scope()
+    def func_pir(self, place):
+        x_shape = [2, 2, 3, 3]
+        w_shape = [2, 2, 1, 1]
+        eps = 0.005
+        dtype = np.float64
+        if core.is_compiled_with_rocm():
+            dtype = np.float32
+        x = paddle.static.data('x', x_shape, dtype)
+        w = paddle.static.data('w', w_shape, dtype)
+        y = F.conv2d_transpose(x, w, padding="VALID")
+        x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
+        w_arr = np.random.uniform(-1, 1, w_shape).astype(dtype)
+
+        if core.is_compiled_with_rocm():
+            # HIP will sometimes fail if no atol
+            gradient_checker.double_grad_check(
+                [x, w],
+                y,
+                x_init=[x_arr, w_arr],
+                place=place,
+                eps=eps,
+                atol=1e-4,
+            )
+        else:
+            gradient_checker.double_grad_check(
+                [x, w], y, x_init=[x_arr, w_arr], place=place, eps=eps
+            )
+        gradient_checker.double_grad_check_for_dygraph(
+            self.conv_transpose_wrapper,
+            [x, w],
+            y,
+            x_init=[x_arr, w_arr],
             place=place,
         )
 
@@ -262,7 +413,7 @@ class TestConvTranspose2DoubleGradCheck_ChannelLast(
         )
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
-        w = fluid.default_main_program().global_block().all_parameters()
+        w = base.default_main_program().global_block().all_parameters()
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
@@ -288,6 +439,44 @@ class TestConvTranspose2DoubleGradCheck_ChannelLast(
             place=place,
         )
 
+    @test_with_pir_api
+    @prog_scope()
+    def func_pir(self, place):
+        x_shape = [2, 3, 3, 2]
+        w_shape = [2, 2, 1, 1]
+        eps = 0.005
+        dtype = np.float64
+        if core.is_compiled_with_rocm():
+            dtype = np.float32
+        x = paddle.static.data('x', x_shape, dtype)
+        w = paddle.static.data('w', w_shape, dtype)
+        y = F.conv2d_transpose(x, w, padding=[1, 1], data_format="NHWC")
+        x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
+        w_arr = np.random.uniform(-1, 1, w_shape).astype(dtype)
+
+        if core.is_compiled_with_rocm():
+            # HIP will sometimes fail if no atol
+            gradient_checker.double_grad_check(
+                [x, w],
+                y,
+                x_init=[x_arr, w_arr],
+                place=place,
+                eps=eps,
+                atol=1e-4,
+            )
+        else:
+            gradient_checker.double_grad_check(
+                [x, w], y, x_init=[x_arr, w_arr], place=place, eps=eps
+            )
+        gradient_checker.double_grad_check_for_dygraph(
+            self.conv_transpose_wrapper,
+            [x, w],
+            y,
+            x_init=[x_arr, w_arr],
+            place=place,
+        )
+
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

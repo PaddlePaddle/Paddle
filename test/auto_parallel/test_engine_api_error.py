@@ -158,9 +158,7 @@ class TestEngineErrorRaise(unittest.TestCase):
             auto.Engine(strategy="strategy")
 
     def test_fit(self):
-
         with self.assertRaises(TypeError):
-
             engine = auto.Engine(
                 model=MLPLayer(),
                 loss=paddle.nn.CrossEntropyLoss(),
@@ -169,7 +167,6 @@ class TestEngineErrorRaise(unittest.TestCase):
             engine.fit(train_data=self.no_support_data_1)
 
         with self.assertRaises(TypeError):
-
             engine = auto.Engine(
                 model=MLPLayer(),
                 loss=paddle.nn.CrossEntropyLoss(),
@@ -179,7 +176,6 @@ class TestEngineErrorRaise(unittest.TestCase):
 
     def test_evaluate(self):
         with self.assertRaises(TypeError):
-
             engine = auto.Engine(
                 model=MLPLayer(),
                 loss=paddle.nn.CrossEntropyLoss(),
@@ -188,7 +184,6 @@ class TestEngineErrorRaise(unittest.TestCase):
             engine.evaluate(valid_data=self.no_support_data_3)
 
         with self.assertRaises(TypeError):
-
             engine = auto.Engine(
                 model=MLPLayer(),
                 loss=paddle.nn.CrossEntropyLoss(),
@@ -200,14 +195,12 @@ class TestEngineErrorRaise(unittest.TestCase):
 
     def test_predict(self):
         with self.assertRaises(TypeError):
-
             engine = auto.Engine(model=MLPLayer())
             engine.predict(
                 test_data=self.no_support_data_3, test_sample_split=1
             )
 
         with self.assertRaises(TypeError):
-
             engine = auto.Engine(model=MLPLayer())
             engine.predict(
                 test_data=self.no_support_data_4, test_sample_split=1

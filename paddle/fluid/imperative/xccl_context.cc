@@ -99,7 +99,7 @@ void XCCLParallelContext::Init() {
   }
   BcastXCCLId(xccl_ids, 0, server_fd);
 
-  int dev_id = place_.device;
+  int dev_id = place_.device;  // NOLINT
   for (int ring_id = 0; ring_id < strategy_.nrings_; ring_id++) {
     VLOG(0) << "init nccl context nranks: " << strategy_.nranks_
             << " local rank: " << strategy_.local_rank_ << " dev id: " << dev_id
@@ -136,7 +136,7 @@ void XCCLParallelContext::InitWithRingID(int ring_id) {
   }
   BcastXCCLId(xccl_ids, 0, server_fd);
 
-  int dev_id = place_.device;
+  int dev_id = place_.device;  // NOLINT
   VLOG(0) << "init xccl context nranks: " << strategy_.nranks_
           << " local rank: " << strategy_.local_rank_ << " dev id: " << dev_id
           << " ring id: " << ring_id;

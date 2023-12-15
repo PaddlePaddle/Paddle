@@ -27,7 +27,7 @@
 #include "pybind11/pytypes.h"
 
 namespace egr {
-GradNodePyLayer::~GradNodePyLayer() {
+GradNodePyLayer::~GradNodePyLayer() {  // NOLINT
   pybind11::gil_scoped_acquire gil;
   Py_XDECREF(ctx_);
 }
@@ -50,47 +50,92 @@ GradNodePyLayer::operator()(
   PADDLE_ENFORCE_EQ(ctx->forward_output_tensor_is_duplicable.size(),
                     grads.size(),
                     paddle::platform::errors::InvalidArgument(
-                        "%s's grad input size(%s) mast be equal with it's "
+                        "%s's grad input size(%s) must be equal with it's "
                         "forward's output size(%s).",
                         name(),
                         grads.size(),
                         ctx->forward_output_tensor_is_duplicable.size()));
 
-  auto backward_args = PyTuple_New(grads.size());
+  auto backward_args = PyTuple_New(static_cast<Py_ssize_t>(grads.size()));
   for (size_t i = 0; i < grads.size(); i++) {
     if (ctx->forward_output_tensor_is_duplicable[i]) {
       PyObject* pylist = PyList_New((Py_ssize_t)grads[i].size());
       for (size_t j = 0; j < grads[i].size(); j++) {
         if (ctx->materialize_grads && !grads[i][j].initialized()) {
-          paddle::Tensor tensor_tmp;
-          auto dense_tensor = std::make_shared<phi::DenseTensor>();
-          dense_tensor->set_meta(forward_outputs_meta_[i][j]);
-          tensor_tmp.set_impl(dense_tensor);
-          PyList_SET_ITEM(
-              pylist,
-              static_cast<Py_ssize_t>(i),
-              paddle::pybind::ToPyObject(paddle::experimental::zeros_like(
-                  tensor_tmp,
-                  tensor_tmp.dtype(),
-                  forward_outputs_place_[i][j])));
+          if (forward_outputs_is_dist_meta_[i][j]) {
+            paddle::Tensor dist_tensor;
+            dist_tensor.set_impl(std::make_shared<phi::distributed::DistTensor>(
+                forward_outputs_global_dims_[i][j],
+                forward_outputs_dist_attr_[i][j]));
+            if (forward_outputs_meta_[i][j].dims.size() != -1) {
+              paddle::Tensor tensor_tmp;
+              auto dense_tensor = std::make_shared<phi::DenseTensor>();
+              dense_tensor->set_meta(forward_outputs_meta_[i][j]);
+              tensor_tmp.set_impl(dense_tensor);
+              auto zero_tensor = paddle::experimental::zeros_like(
+                  tensor_tmp, tensor_tmp.dtype(), forward_outputs_place_[i][j]);
+              *(static_cast<phi::distributed::DistTensor*>(
+                    dist_tensor.impl().get())
+                    ->unsafe_mutable_value()) =
+                  *(static_cast<phi::DenseTensor*>(zero_tensor.impl().get()));
+            }
+            PyTuple_SET_ITEM(pylist,
+                             static_cast<Py_ssize_t>(j),
+                             paddle::pybind::ToPyObject(dist_tensor));
+          } else {
+            paddle::Tensor tensor_tmp;
+            auto dense_tensor = std::make_shared<phi::DenseTensor>();
+            dense_tensor->set_meta(forward_outputs_meta_[i][j]);
+            tensor_tmp.set_impl(dense_tensor);
+            PyTuple_SET_ITEM(
+                pylist,
+                static_cast<Py_ssize_t>(j),
+                paddle::pybind::ToPyObject(paddle::experimental::zeros_like(
+                    tensor_tmp,
+                    tensor_tmp.dtype(),
+                    forward_outputs_place_[i][j])));
+          }
         } else {
           PyList_SET_ITEM(pylist,
-                          static_cast<Py_ssize_t>(i),
+                          static_cast<Py_ssize_t>(0),
                           paddle::pybind::ToPyObject(grads[i][0], true));
         }
       }
       PyTuple_SET_ITEM(backward_args, i, pylist);
     } else {
       if (ctx->materialize_grads && !grads[i][0].initialized()) {
-        paddle::Tensor tensor_tmp;
-        auto dense_tensor = std::make_shared<phi::DenseTensor>();
-        dense_tensor->set_meta(forward_outputs_meta_[i][0]);
-        tensor_tmp.set_impl(dense_tensor);
-        PyTuple_SET_ITEM(
-            backward_args,
-            i,
-            paddle::pybind::ToPyObject(paddle::experimental::zeros_like(
-                tensor_tmp, tensor_tmp.dtype(), forward_outputs_place_[i][0])));
+        if (forward_outputs_is_dist_meta_[i][0]) {
+          paddle::Tensor dist_tensor;
+          dist_tensor.set_impl(std::make_shared<phi::distributed::DistTensor>(
+              forward_outputs_global_dims_[i][0],
+              forward_outputs_dist_attr_[i][0]));
+          if (forward_outputs_meta_[i][0].dims.size() != -1) {
+            paddle::Tensor tensor_tmp;
+            auto dense_tensor = std::make_shared<phi::DenseTensor>();
+            dense_tensor->set_meta(forward_outputs_meta_[i][0]);
+            tensor_tmp.set_impl(dense_tensor);
+            auto zero_tensor = paddle::experimental::zeros_like(
+                tensor_tmp, tensor_tmp.dtype(), forward_outputs_place_[i][0]);
+            *(static_cast<phi::distributed::DistTensor*>(
+                  dist_tensor.impl().get())
+                  ->unsafe_mutable_value()) =
+                *(static_cast<phi::DenseTensor*>(zero_tensor.impl().get()));
+          }
+          PyTuple_SET_ITEM(
+              backward_args, i, paddle::pybind::ToPyObject(dist_tensor));
+        } else {
+          paddle::Tensor tensor_tmp;
+          auto dense_tensor = std::make_shared<phi::DenseTensor>();
+          dense_tensor->set_meta(forward_outputs_meta_[i][0]);
+          tensor_tmp.set_impl(dense_tensor);
+          PyTuple_SET_ITEM(
+              backward_args,
+              i,
+              paddle::pybind::ToPyObject(paddle::experimental::zeros_like(
+                  tensor_tmp,
+                  tensor_tmp.dtype(),
+                  forward_outputs_place_[i][0])));
+        }
       } else {
         PyTuple_SET_ITEM(
             backward_args, i, paddle::pybind::ToPyObject(grads[i][0], true));

@@ -18,20 +18,23 @@ import unittest
 from time import time
 
 import numpy as np
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_default_and_pir,
+)
 from predictor_utils import PredictorTools
 
 import paddle
-from paddle import fluid
-from paddle.fluid.dygraph import to_variable
-from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.optimizer import AdamOptimizer
+from paddle import base
+from paddle.base.dygraph import to_variable
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import Linear
+from paddle.optimizer import Adam
 
 SEED = 2020
 
-if paddle.fluid.is_compiled_with_cuda():
-    paddle.fluid.set_flags({'FLAGS_cudnn_deterministic': True})
+if paddle.is_compiled_with_cuda():
+    paddle.set_flags({'FLAGS_cudnn_deterministic': True})
 
 
 class SimpleImgConvPool(paddle.nn.Layer):
@@ -125,14 +128,14 @@ class MNIST(paddle.nn.Layer):
         return x
 
 
-class TestMNIST(unittest.TestCase):
+class TestMNIST(Dy2StTestBase):
     def setUp(self):
         self.epoch_num = 1
         self.batch_size = 64
         self.place = (
-            fluid.CUDAPlace(0)
-            if fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
         )
         self.train_reader = paddle.batch(
             paddle.dataset.mnist.train(),
@@ -158,6 +161,7 @@ class TestMNISTWithToStatic(TestMNIST):
     def train_dygraph(self):
         return self.train(to_static=False)
 
+    @test_default_and_pir
     def test_mnist_to_static(self):
         dygraph_loss = self.train_dygraph()
         static_loss = self.train_static()
@@ -165,18 +169,17 @@ class TestMNISTWithToStatic(TestMNIST):
             dygraph_loss,
             static_loss,
             rtol=1e-05,
-            err_msg='dygraph is {}\n static_res is \n{}'.format(
-                dygraph_loss, static_loss
-            ),
+            err_msg=f'dygraph is {dygraph_loss}\n static_res is \n{static_loss}',
         )
 
+    @test_default_and_pir
     def test_mnist_declarative_cpu_vs_mkldnn(self):
         dygraph_loss_cpu = self.train_dygraph()
-        fluid.set_flags({'FLAGS_use_mkldnn': True})
+        paddle.set_flags({'FLAGS_use_mkldnn': True})
         try:
             dygraph_loss_mkldnn = self.train_dygraph()
         finally:
-            fluid.set_flags({'FLAGS_use_mkldnn': False})
+            paddle.set_flags({'FLAGS_use_mkldnn': False})
         np.testing.assert_allclose(
             dygraph_loss_cpu,
             dygraph_loss_mkldnn,
@@ -187,64 +190,75 @@ class TestMNISTWithToStatic(TestMNIST):
         )
 
     def train(self, to_static=False):
-
         loss_data = []
-        with fluid.dygraph.guard(self.place):
-            fluid.default_main_program().random_seed = SEED
-            fluid.default_startup_program().random_seed = SEED
-            mnist = MNIST()
-            if to_static:
-                mnist = paddle.jit.to_static(mnist)
-            adam = AdamOptimizer(
-                learning_rate=0.001, parameter_list=mnist.parameters()
-            )
+        base.default_main_program().random_seed = SEED
+        base.default_startup_program().random_seed = SEED
+        mnist = MNIST()
+        if to_static:
+            mnist = paddle.jit.to_static(mnist, full_graph=True)
+        adam = Adam(learning_rate=0.001, parameters=mnist.parameters())
 
-            for epoch in range(self.epoch_num):
-                start = time()
-                for batch_id, data in enumerate(self.train_reader()):
-                    dy_x_data = np.array(
-                        [x[0].reshape(1, 28, 28) for x in data]
-                    ).astype('float32')
-                    y_data = (
-                        np.array([x[1] for x in data])
-                        .astype('int64')
-                        .reshape(-1, 1)
+        for epoch in range(self.epoch_num):
+            start = time()
+            for batch_id, data in enumerate(self.train_reader()):
+                dy_x_data = np.array(
+                    [x[0].reshape(1, 28, 28) for x in data]
+                ).astype('float32')
+                y_data = (
+                    np.array([x[1] for x in data])
+                    .astype('int64')
+                    .reshape(-1, 1)
+                )
+
+                img = to_variable(dy_x_data)
+                label = to_variable(y_data)
+
+                label.stop_gradient = True
+                prediction, acc, avg_loss = mnist(img, label=label)
+                avg_loss.backward()
+
+                adam.minimize(avg_loss)
+                loss_data.append(float(avg_loss))
+                # save checkpoint
+                mnist.clear_gradients()
+                if batch_id % 10 == 0:
+                    print(
+                        "Loss at epoch {} step {}: loss: {:}, acc: {}, cost: {}".format(
+                            epoch,
+                            batch_id,
+                            avg_loss.numpy(),
+                            acc.numpy(),
+                            time() - start,
+                        )
                     )
-
-                    img = to_variable(dy_x_data)
-                    label = to_variable(y_data)
-
-                    label.stop_gradient = True
-                    prediction, acc, avg_loss = mnist(img, label=label)
-                    avg_loss.backward()
-
-                    adam.minimize(avg_loss)
+                    start = time()
+                if batch_id == 50:
+                    mnist.eval()
+                    prediction, acc, avg_loss = mnist(img, label)
                     loss_data.append(float(avg_loss))
-                    # save checkpoint
-                    mnist.clear_gradients()
-                    if batch_id % 10 == 0:
-                        print(
-                            "Loss at epoch {} step {}: loss: {:}, acc: {}, cost: {}".format(
-                                epoch,
-                                batch_id,
-                                avg_loss.numpy(),
-                                acc.numpy(),
-                                time() - start,
-                            )
-                        )
-                        start = time()
-                    if batch_id == 50:
-                        mnist.eval()
-                        prediction, acc, avg_loss = mnist(img, label)
-                        loss_data.append(float(avg_loss))
-                        # new save load check
+                    # new save load check
+                    # TODO(@xiongkun): enable this after new save load is supported in pir.
+                    if not paddle.framework.use_pir_api():
                         self.check_jit_save_load(
-                            mnist, [dy_x_data], [img], to_static, prediction
+                            mnist,
+                            [dy_x_data],
+                            [img, label],
+                            to_static,
+                            prediction,
+                            [img.name],
                         )
-                        break
+                    break
         return loss_data
 
-    def check_jit_save_load(self, model, inputs, input_spec, to_static, gt_out):
+    def check_jit_save_load(
+        self,
+        model,
+        inputs,
+        input_spec,
+        to_static,
+        gt_out,
+        input_names_after_prune,
+    ):
         if to_static:
             infer_model_path = os.path.join(
                 self.temp_dir.name, 'test_mnist_inference_model_by_jit_save'
@@ -258,6 +272,7 @@ class TestMNISTWithToStatic(TestMNIST):
                 path=model_save_prefix,
                 input_spec=input_spec,
                 output_spec=[gt_out],
+                input_names_after_prune=input_names_after_prune,
             )
             # load in static graph mode
             static_infer_out = self.jit_load_and_run_inference_static(
@@ -283,18 +298,17 @@ class TestMNISTWithToStatic(TestMNIST):
                 gt_out.numpy(), predictor_infer_out, rtol=1e-05
             )
 
-    @switch_to_static_graph
     def jit_load_and_run_inference_static(
         self, model_path, model_filename, params_filename, inputs
     ):
         paddle.enable_static()
-        exe = fluid.Executor(self.place)
+        exe = base.Executor(self.place)
         [
             inference_program,
             feed_target_names,
             fetch_targets,
-        ] = fluid.io.load_inference_model(
-            dirname=model_path,
+        ] = paddle.static.io.load_inference_model(
+            path_prefix=model_path,
             executor=exe,
             model_filename=model_filename,
             params_filename=params_filename,
@@ -305,6 +319,7 @@ class TestMNISTWithToStatic(TestMNIST):
             feed=dict(zip(feed_target_names, inputs)),
             fetch_list=fetch_targets,
         )
+        paddle.disable_static()
 
         return np.array(results[0])
 

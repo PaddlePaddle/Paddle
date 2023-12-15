@@ -130,7 +130,6 @@ class OptimizationTunerTrial(Trial):
         return self._name
 
     def summary(self):
-
         spacing = 2
         max_k = 38
         max_v = 38

@@ -208,7 +208,7 @@ def step_check(path1, path2):
     m1 = paddle.load(path1)
     m2 = paddle.load(path2)
     for v1, v2 in zip(m1, m2):
-        assert np.allclose(v1.numpy(), v2.numpy())
+        np.testing.assert_allclose(v1.numpy(), v2.numpy())
         print(f"value same: {v1.name}")
 
 
@@ -244,7 +244,6 @@ def step_load(
 
 
 def test_save_load(args):
-
     np.random.seed(args.seed)
     paddle.seed(args.seed)
 
@@ -354,7 +353,6 @@ def test_save_load(args):
 
 
 def run_case(args):
-
     saving_strategy = args.test_case.split(":")[0]
     loading_strategy = args.test_case.split(":")[1]
 
@@ -388,7 +386,6 @@ def run_case(args):
 
 
 if __name__ == '__main__':
-
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--cmd", default="main", choices=["main", "save", "load"]

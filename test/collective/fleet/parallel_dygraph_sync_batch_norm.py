@@ -19,8 +19,7 @@ from legacy_test.test_dist_base import (
 )
 
 import paddle
-from paddle import fluid
-from paddle.fluid.dygraph.base import to_variable
+from paddle.base.dygraph.base import to_variable
 from paddle.nn import Conv2D, SyncBatchNorm
 
 
@@ -79,8 +78,8 @@ class TestSyncBatchNorm(TestParallelDyGraphRunnerBase):
             batch_size=32,
             drop_last=True,
         )
-        opt = fluid.optimizer.Adam(
-            learning_rate=1e-3, parameter_list=model.parameters()
+        opt = paddle.optimizer.Adam(
+            learning_rate=1e-3, parameters=model.parameters()
         )
         return model, train_reader, opt
 

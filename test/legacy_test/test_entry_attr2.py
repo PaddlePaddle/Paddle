@@ -18,25 +18,25 @@ paddle.enable_static()
 
 import unittest
 
-from paddle import fluid
+from paddle import base
 
 
 class EntryAttrChecks(unittest.TestCase):
     def embedding_layer(self):
-        prog = fluid.Program()
-        scope = fluid.core.Scope()
+        prog = base.Program()
+        scope = base.core.Scope()
 
-        with fluid.scope_guard(scope):
-            with fluid.program_guard(prog):
+        with base.scope_guard(scope):
+            with base.program_guard(prog):
                 input = paddle.static.data(
                     name="dnn_data", shape=[-1, 1], dtype="int64", lod_level=1
                 )
-                emb = fluid.layers.embedding(
+                emb = paddle.static.nn.embedding(
                     input=input,
                     size=[100, 10],
                     is_sparse=True,
                     is_distributed=True,
-                    param_attr=fluid.ParamAttr(name="deep_embedding"),
+                    param_attr=base.ParamAttr(name="deep_embedding"),
                 )
 
                 pool = paddle.static.nn.sequence_lod.sequence_pool(

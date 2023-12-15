@@ -22,10 +22,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/multi_devices_graph_pass/multi_devices_graph_pass.h"
 #include "paddle/phi/core/flags.h"
 
-DECLARE_bool(convert_all_blocks);
+PD_DECLARE_bool(convert_all_blocks);
 PHI_DECLARE_bool(use_mkldnn);
 #ifdef PADDLE_WITH_CINN
-DECLARE_bool(use_cinn);
+PD_DECLARE_bool(use_cinn);
 #endif
 
 namespace paddle {
@@ -182,6 +182,11 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
         "mkldnn_placement_pass");
 
     // 2. trainning pass
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+    AppendPassWithCheck(strategy_.fuse_dot_product_attention_,
+                        "fuse_dot_product_attention_pass");
+    AppendPassWithCheck(strategy_.fuse_resunit_, "fuse_resunit_pass");
+#endif
     AppendPassWithCheck(strategy_.fuse_relu_depthwise_conv_,
                         "fuse_relu_depthwise_conv_pass");
     AppendPassWithCheck(strategy_.fuse_bn_act_ops_, "fuse_bn_act_pass");
@@ -232,7 +237,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
             "but received strategy_.trainer_id_ = %d.",
             strategy_.trainer_id_));
 
-    if (strategy_.trainer_id_ > 0 && strategy_.trainers_endpoints_.size() > 0) {
+    if (strategy_.trainer_id_ > 0 && !strategy_.trainers_endpoints_.empty()) {
       PADDLE_ENFORCE_LT(
           static_cast<size_t>(strategy_.trainer_id_),
           strategy_.trainers_endpoints_.size(),
@@ -303,7 +308,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
   }
 
   void AppendPassToSetMkldnnAttr(const std::string &pass_name) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if (FLAGS_use_mkldnn) {
       AppendPass(pass_name);
     } else if (!strategy_.mkldnn_enabled_op_types_.empty()) {
@@ -542,7 +547,7 @@ USE_PASS(build_cinn_pass);
 #ifdef PADDLE_WITH_CUDA
 USE_PASS(fused_feedforward_pass);
 #endif
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 USE_PASS(mkldnn_placement_pass);
 #endif
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
@@ -551,4 +556,8 @@ USE_PASS(fusion_group_pass);
 #endif
 #if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060)
 USE_PASS(fuse_gemm_epilogue_pass);
+#endif
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+USE_PASS(fuse_dot_product_attention_pass);
+USE_PASS(fuse_resunit_pass);
 #endif

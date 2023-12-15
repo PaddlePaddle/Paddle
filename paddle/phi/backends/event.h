@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/common/macros.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/core/macros.h"
 
 namespace phi {
 
@@ -49,12 +49,15 @@ class Event {
   void Synchronize() const;
   const Place& GetPlace() const;
 
+  static void ReleaseAll();
+
  private:
   DISABLE_COPY_AND_ASSIGN(Event);
   Place place_;
   Device* device_;
   event_t event_;
   bool own_data_ = true;
+  mutable bool is_recorded_ = false;
 };
 }  // namespace event
 

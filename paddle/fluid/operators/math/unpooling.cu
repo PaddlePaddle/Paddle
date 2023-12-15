@@ -126,11 +126,7 @@ class Unpool2dMaxFunctor<phi::GPUContext, T> {
     const T* input_data = input.data<T>();
     const int* indices_data = indices.data<int>();
     T* output_data = output->mutable_data<T>(context.GetPlace());
-#ifdef __HIPCC__
-    int threads = 256;
-#else
     int threads = 1024;
-#endif
     int grid = (input.numel() + threads - 1) / threads;
     KernelUnpool2dMax<T>
         <<<grid, threads, 0, context.stream()>>>(input.numel(),
@@ -167,11 +163,7 @@ class Unpool2dMaxGradFunctor<phi::GPUContext, T> {
     const T* output_data = output.data<T>();
     const T* output_grad_data = output_grad.data<T>();
     T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
-#ifdef __HIPCC__
-    int threads = 256;
-#else
     int threads = 1024;
-#endif
     int grid = (input.numel() + threads - 1) / threads;
     KernelUnpool2dMaxGrad<T>
         <<<grid, threads, 0, context.stream()>>>(input.numel(),
@@ -206,11 +198,7 @@ class Unpool3dMaxFunctor<phi::GPUContext, T> {
     const T* input_data = input.data<T>();
     const int* indices_data = indices.data<int>();
     T* output_data = output->mutable_data<T>(context.GetPlace());
-#ifdef __HIPCC__
-    int threads = 256;
-#else
     int threads = 1024;
-#endif
     int grid = (input.numel() + threads - 1) / threads;
     KernelUnpool3dMax<T>
         <<<grid, threads, 0, context.stream()>>>(input.numel(),
@@ -251,11 +239,7 @@ class Unpool3dMaxGradFunctor<phi::GPUContext, T> {
     const T* output_data = output.data<T>();
     const T* output_grad_data = output_grad.data<T>();
     T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
-#ifdef __HIPCC__
-    int threads = 256;
-#else
     int threads = 1024;
-#endif
     int grid = (input.numel() + threads - 1) / threads;
     KernelUnpool3dMaxGrad<T>
         <<<grid, threads, 0, context.stream()>>>(input.numel(),

@@ -17,8 +17,9 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestTakeAPI(unittest.TestCase):
@@ -44,16 +45,17 @@ class TestTakeAPI(unittest.TestCase):
         self.set_dtype()
         self.set_input()
         self.place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_graph(self):
         paddle.enable_static()
-        startup_program = Program()
-        train_program = Program()
-        with program_guard(startup_program, train_program):
+        startup_program = paddle.static.Program()
+        train_program = paddle.static.Program()
+        with paddle.static.program_guard(startup_program, train_program):
             x = paddle.static.data(
                 name='input', dtype=self.input_dtype, shape=self.input_shape
             )
@@ -62,9 +64,9 @@ class TestTakeAPI(unittest.TestCase):
             )
             out = paddle.take(x, index, mode=self.mode)
 
-            exe = fluid.Executor(self.place)
+            exe = paddle.static.Executor(self.place)
             st_result = exe.run(
-                fluid.default_main_program(),
+                paddle.static.default_main_program(),
                 feed={'input': self.input_np, 'index': self.index_np},
                 fetch_list=out,
             )
@@ -111,10 +113,11 @@ class TestTakeFloat32(TestTakeAPI):
 class TestTakeTypeError(TestTakeAPI):
     """Test take Type Error"""
 
+    @test_with_pir_api
     def test_static_type_error(self):
         """Argument 'index' must be Tensor"""
         paddle.enable_static()
-        with program_guard(Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data(
                 name='input', dtype=self.input_dtype, shape=self.input_shape
             )
@@ -127,10 +130,11 @@ class TestTakeTypeError(TestTakeAPI):
         x = paddle.to_tensor(self.input_np)
         self.assertRaises(TypeError, paddle.take, x, self.index_np, self.mode)
 
+    @test_with_pir_api
     def test_static_dtype_error(self):
         """Data type of argument 'index' must be in [paddle.int32, paddle.int64]"""
         paddle.enable_static()
-        with program_guard(Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data(
                 name='input', dtype='float64', shape=self.input_shape
             )
@@ -173,16 +177,17 @@ class TestTakeModeRaisePos(unittest.TestCase):
         self.set_dtype()
         self.set_input()
         self.place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_index_error(self):
         """When the index is out of range,
         an error is reported directly through `paddle.index_select`"""
         paddle.enable_static()
-        with program_guard(Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data(
                 name='input', dtype=self.input_dtype, shape=self.input_shape
             )
@@ -225,9 +230,9 @@ class TestTakeModeRaiseNeg(TestTakeModeRaisePos):
         self.set_dtype()
         self.set_input()
         self.place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
 
 

@@ -1,4 +1,4 @@
-# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -32,12 +32,15 @@ if((NOT DEFINED ARM_BRPC_NAME) OR (NOT DEFINED ARM_BRPC_URL))
   set(ARM_BRPC_NAME
       "arm_brpc"
       CACHE STRING "" FORCE)
+  set(ARM_BRPC_URL
+      "https://paddlerec.bj.bcebos.com/online_infer/arm_brpc_ubuntu18/output.tar.gz"
+      CACHE STRING "" FORCE)
 endif()
 
 message(STATUS "ARM_BRPC_NAME: ${ARM_BRPC_NAME}, ARM_BRPC_URL: ${ARM_BRPC_URL}")
 set(ARM_BRPC_PREFIX_DIR "${THIRD_PARTY_PATH}/arm_brpc")
 set(ARM_BRPC_PROJECT "extern_arm_brpc")
-set(ARM_BRPC_DOWNLOAD_DIR "${ARM_BRPC_PREFIX_DIR}/src/${ARM_BRPC_PROJECT}")
+set(ARM_BRPC_DOWNLOAD_DIR "${PADDLE_SOURCE_DIR}/third_party/arm_brpc")
 set(ARM_BRPC_DST_DIR "output")
 set(ARM_BRPC_INSTALL_ROOT "${THIRD_PARTY_PATH}/install")
 set(ARM_BRPC_INSTALL_DIR ${ARM_BRPC_INSTALL_ROOT}/arm_brpc/output)
@@ -50,31 +53,31 @@ set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${ARM_BRPC_ROOT}/lib")
 include_directories(${ARM_BRPC_INSTALL_ROOT}/${ARM_BRPC_NAME}/output/include)
 
 file(
+  DOWNLOAD ${ARM_BRPC_URL} ${ARM_BRPC_DOWNLOAD_DIR}
+  TLS_VERIFY OFF
+  STATUS ERR)
+
+file(
   WRITE ${ARM_BRPC_DOWNLOAD_DIR}/CMakeLists.txt
   "PROJECT(ARM_BRPC)\n" "cmake_minimum_required(VERSION 3.0)\n"
   "install(DIRECTORY ${ARM_BRPC_DST_DIR} ${ARM_BRPC_DST_DIR} \n"
   "        DESTINATION ${ARM_BRPC_NAME})\n")
 
-set(ARM_BRPC_URL
-    "https://paddlerec.bj.bcebos.com/online_infer/arm_brpc_ubuntu18/output.tar.gz"
-    CACHE STRING "" FORCE)
 ExternalProject_Add(
   ${ARM_BRPC_PROJECT}
   ${EXTERNAL_PROJECT_LOG_ARGS}
   PREFIX ${ARM_BRPC_PREFIX_DIR}
   DOWNLOAD_DIR ${ARM_BRPC_DOWNLOAD_DIR}
-  DOWNLOAD_COMMAND rm -rf output.tar.gz && wget --no-check-certificate
-                   ${ARM_BRPC_URL} && tar zxvf output.tar.gz
-  #DOWNLOAD_COMMAND      cp /home/wangbin44/Paddle/build/output.tar.gz .
-  #                      && tar zxvf output.tar.gz
-  DOWNLOAD_NO_PROGRESS 1
+  SOURCE_DIR ${ARM_BRPC_INSTALL_DIR}
   UPDATE_COMMAND ""
+  COMMAND ${CMAKE_COMMAND} -E copy ${ARM_BRPC_DOWNLOAD_DIR}/CMakeLists.txt
+          ${ARM_BRPC_INSTALL_DIR}
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${ARM_BRPC_INSTALL_ROOT}
              -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
   CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${ARM_BRPC_INSTALL_ROOT}
                    -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
   BUILD_BYPRODUCTS ${ARM_BRPC_LIB})
 
-add_library(arm_brpc STATIC IMPORTED GLOBAL) # 直接导入已经生成的库
+add_library(arm_brpc STATIC IMPORTED GLOBAL)
 set_property(TARGET arm_brpc PROPERTY IMPORTED_LOCATION ${ARM_BRPC_LIB})
 add_dependencies(arm_brpc ${ARM_BRPC_PROJECT})

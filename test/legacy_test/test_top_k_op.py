@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 
@@ -26,6 +26,7 @@ class TestTopkOp(OpTest):
         self.set_args()
         self.op_type = "top_k"
         self.dtype = np.float64
+        self.check_cinn = True
         self.init_dtype()
 
         k = self.top_k
@@ -54,10 +55,10 @@ class TestTopkOp(OpTest):
         self.top_k = 1
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_cinn=self.check_cinn)
 
     def test_check_grad(self):
-        self.check_grad({'X'}, 'Out')
+        self.check_grad({'X'}, 'Out', check_cinn=self.check_cinn)
 
 
 if __name__ == "__main__":

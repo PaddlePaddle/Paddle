@@ -15,19 +15,19 @@
 import unittest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core, framework
+from paddle import base
+from paddle.base import core, framework
 
 
 class TestInferNoNeedBufferSlots(unittest.TestCase):
     def net(self):
         x1 = (
-            fluid.default_main_program()
+            base.default_main_program()
             .global_block()
             .create_var(dtype="float32", shape=[1], lod_level=0, name="x1")
         )
         x2 = (
-            fluid.default_main_program()
+            base.default_main_program()
             .global_block()
             .create_var(dtype="float32", shape=[1], lod_level=0, name="x2")
         )
@@ -37,9 +37,9 @@ class TestInferNoNeedBufferSlots(unittest.TestCase):
     def test_infer_no_need_buffer_slots(self):
         program = framework.Program()
         startup_program = framework.Program()
-        with fluid.program_guard(program, startup_program):
+        with base.program_guard(program, startup_program):
             loss = self.net()
-            sgd = fluid.optimizer.SGD(learning_rate=0.01)
+            sgd = paddle.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)
 
         block = program.global_block()

@@ -129,6 +129,7 @@ class TrtConvertRoiAlignTest(TrtLayerAutoScanTest):
                                         weights={},
                                         inputs=program_input[num_input],
                                         outputs=["roi_align_out"],
+                                        no_cast_list=["RoisNum"],
                                     )
 
                                     yield program_config

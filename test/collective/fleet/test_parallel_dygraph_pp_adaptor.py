@@ -64,21 +64,17 @@ class TestPPAdaptor(TestMultipleGpus):
             # expected model, which does not hinder model recovering
             for i in range(p_config1.pp):
                 sub_converted_model_dir = (
-                    "{}/mp_00_sharding_00_pp_{:0>2d}".format(
-                        converted_model_dir, i
-                    )
+                    f"{converted_model_dir}/mp_00_sharding_00_pp_{i:0>2d}"
                 )
                 sub_expected_model_dir = (
-                    "{}/mp_00_sharding_00_pp_{:0>2d}".format(
-                        expected_model_dir, i
-                    )
+                    f"{expected_model_dir}/mp_00_sharding_00_pp_{i:0>2d}"
                 )
                 print(
                     f"converted_model_dir: {sub_converted_model_dir}; expected_model_dir: {sub_expected_model_dir}"
                 )
 
                 def check_names(dict_1, dict_2):
-                    for (k, v) in dict_2.items():
+                    for k, v in dict_2.items():
                         self.assertTrue(k in dict_1)
                         self.assertEqual(
                             getattr(v, "name", ""),

@@ -52,10 +52,10 @@ class TrtConvertOneHotTest(TrtLayerAutoScanTest):
                 dics = [{"dtype": 5, "depth": 10}, {}]
                 ops_config = [
                     {
-                        "op_type": "one_hot",
+                        "op_type": "one_hot_v2",
                         "op_inputs": {
-                            "X": ["input_x_data"],
-                            "depth_tensor": ["input_depth_data"],
+                            "X": ["indices_tensor"],
+                            "depth_tensor": ["depth_tensor_data"],
                         },
                         "op_outputs": {"Out": ["output_data"]},
                         "op_attrs": dics[0],
@@ -67,7 +67,7 @@ class TrtConvertOneHotTest(TrtLayerAutoScanTest):
                 program_config = ProgramConfig(
                     ops=ops,
                     weights={
-                        "depth_tensor": TensorConfig(
+                        "depth_tensor_data": TensorConfig(
                             data_gen=partial(generate_depth, dims, batch)
                         ),
                     },
@@ -87,43 +87,43 @@ class TrtConvertOneHotTest(TrtLayerAutoScanTest):
         def generate_dynamic_shape(attrs):
             if self.dims == 1:
                 self.dynamic_shape.min_input_shape = {
-                    "input_x_data": [1],
+                    "indices_tensor": [1],
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "input_x_data": [2],
+                    "indices_tensor": [2],
                 }
                 self.dynamic_shape.opt_input_shape = {
-                    "input_x_data": [1],
+                    "indices_tensor": [1],
                 }
             elif self.dims == 2:
                 self.dynamic_shape.min_input_shape = {
-                    "input_x_data": [1, 4],
+                    "indices_tensor": [1, 4],
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "input_x_data": [2, 4],
+                    "indices_tensor": [2, 4],
                 }
                 self.dynamic_shape.opt_input_shape = {
-                    "input_x_data": [1, 4],
+                    "indices_tensor": [1, 4],
                 }
             elif self.dims == 3:
                 self.dynamic_shape.min_input_shape = {
-                    "input_x_data": [1, 4, 6],
+                    "indices_tensor": [1, 4, 6],
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "input_x_data": [2, 4, 6],
+                    "indices_tensor": [2, 4, 6],
                 }
                 self.dynamic_shape.opt_input_shape = {
-                    "input_x_data": [1, 4, 6],
+                    "indices_tensor": [1, 4, 6],
                 }
             elif self.dims == 4:
                 self.dynamic_shape.min_input_shape = {
-                    "input_x_data": [1, 4, 6, 8],
+                    "indices_tensor": [1, 4, 6, 8],
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "input_x_data": [2, 4, 6, 8],
+                    "indices_tensor": [2, 4, 6, 8],
                 }
                 self.dynamic_shape.opt_input_shape = {
-                    "input_x_data": [1, 4, 6, 8],
+                    "indices_tensor": [1, 4, 6, 8],
                 }
 
         def clear_dynamic_shape():

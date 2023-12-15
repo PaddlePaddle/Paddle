@@ -308,26 +308,26 @@ class Conv1D(_ConvNd):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.nn import Conv1D
+            >>> import paddle
+            >>> from paddle.nn import Conv1D
 
-            x = paddle.to_tensor([[[4, 8, 1, 9],
-                                    [7, 2, 0, 9],
-                                    [6, 9, 2, 6]]], dtype="float32")
-            w = paddle.to_tensor([[[9, 3, 4],
-                                    [0, 0, 7],
-                                    [2, 5, 6]],
-                                    [[0, 3, 4],
-                                    [2, 9, 7],
-                                    [5, 6, 8]]], dtype="float32")
+            >>> x = paddle.to_tensor([[[4, 8, 1, 9],
+            ... [7, 2, 0, 9],
+            ... [6, 9, 2, 6]]], dtype="float32")
+            >>> w = paddle.to_tensor([[[9, 3, 4],
+            ... [0, 0, 7],
+            ... [2, 5, 6]],
+            ... [[0, 3, 4],
+            ... [2, 9, 7],
+            ... [5, 6, 8]]], dtype="float32")
 
-            conv = Conv1D(3, 2, 3)
-            conv.weight.set_value(w)
-            y = conv(x)
-            print(y)
-            # Tensor(shape=[1, 2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-            #        [[[133., 238.],
-            #          [160., 211.]]])
+            >>> conv = Conv1D(3, 2, 3)
+            >>> conv.weight.set_value(w)
+            >>> y = conv(x)
+            >>> print(y)
+            Tensor(shape=[1, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[[133., 238.],
+            [160., 211.]]])
     """
 
     def __init__(
@@ -494,22 +494,27 @@ class Conv1DTranspose(_ConvNd):
     Examples:
        .. code-block:: python
 
-            import paddle
-            from paddle.nn import Conv1DTranspose
+            >>> import paddle
+            >>> from paddle.nn import Conv1DTranspose
 
-            # shape: (1, 2, 4)
-            x = paddle.to_tensor([[[4, 0, 9, 7],
-                                [8, 0, 9, 2]]], dtype="float32")
-            # shape: (2, 1, 2)
-            w = paddle.to_tensor([[[7, 0]],
-                                [[4, 2]]], dtype="float32")
+            >>> # shape: (1, 2, 4)
+            >>> x = paddle.to_tensor([[[4, 0, 9, 7],
+            ... [8, 0, 9, 2]]], dtype="float32")
+            >>> print(x.shape)
+            [1, 2, 4]
 
-            conv = Conv1DTranspose(2, 1, 2)
-            conv.weight.set_value(w)
-            y = conv(x)
-            print(y)
-            # Tensor(shape=[1, 1, 5], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-            #        [[[60., 16., 99., 75., 4. ]]])
+            >>> # shape: (2, 1, 2)
+            >>> w = paddle.to_tensor([[[7, 0]],
+            ... [[4, 2]]], dtype="float32")
+            >>> print(w.shape)
+            [2, 1, 2]
+
+            >>> conv = Conv1DTranspose(2, 1, 2)
+            >>> conv.weight.set_value(w)
+            >>> y = conv(x)
+            >>> print(y)
+            Tensor(shape=[1, 1, 5], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[[60., 16., 99., 75., 4. ]]])
     """
 
     def __init__(
@@ -596,7 +601,7 @@ class Conv2D(_ConvNd):
         out_channels(int): The number of output channels produced by the convolution.
         kernel_size(int|list|tuple): The size of the convolving kernel.
         stride(int|list|tuple, optional): The stride size. If stride is a list/tuple, it must
-            contain three integers, (stride_H, stride_W). Otherwise, the
+            contain two integers, (stride_H, stride_W). Otherwise, the
             stride_H = stride_W = stride. The default value is 1.
         padding(int|str|tuple|list, optional): The padding size. Padding coule be in one of the following forms.
             1. a string in ['valid', 'same'].
@@ -606,9 +611,9 @@ class Conv2D(_ConvNd):
             5. a list or tuple of pairs of ints. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension are also included. Each pair of integers correspond to the amount of padding for a dimension of the input. Padding in batch dimension and channel dimension should be [0, 0] or (0, 0).
             The default value is 0.
         dilation(int|list|tuple, optional): The dilation size. If dilation is a list/tuple, it must
-            contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
-            dilation_D = dilation_H = dilation_W = dilation. The default value is 1.
-        groups(int, optional): The groups number of the Conv3D Layer. According to grouped
+            contain two integers, (dilation_H, dilation_W). Otherwise, the
+            dilation_H = dilation_W = dilation. The default value is 1.
+        groups(int, optional): The groups number of the Conv2D Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
@@ -655,17 +660,17 @@ class Conv2D(_ConvNd):
 
         .. code-block:: python
 
-          import paddle
-          import paddle.nn as nn
+            >>> import paddle
+            >>> import paddle.nn as nn
 
-          paddle.disable_static()
+            >>> paddle.disable_static()
 
-          x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
+            >>> x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
 
-          conv = nn.Conv2D(4, 6, (3, 3))
-          y_var = conv(x_var)
-          print(y_var.shape)
-          # [2, 6, 6, 6]
+            >>> conv = nn.Conv2D(4, 6, (3, 3))
+            >>> y_var = conv(x_var)
+            >>> print(y_var.shape)
+            [2, 6, 6, 6]
     """
 
     def __init__(
@@ -754,7 +759,10 @@ class Conv2DTranspose(_ConvNd):
     * :math:`\ast`: Convolution operation.
     * :math:`b`: Bias value, a 1-D ``Tensor`` with shape [M].
     * :math:`\sigma`: Activation function.
-    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
+    * :math:`Out`: Output value, a 4-D ``Tensor`` with NCHW or NHWC format, the shape of :math:`Out` and :math:`X` may be different.
+
+    Note:
+     If output_size is None, :math:`H_{out}` = :math:`H^\prime_{out}` , :math:`W_{out}` = :math:`W^\prime_{out}`. Otherwise, the specified output_size_height (the height of the output feature layer) :math:`H_{out}` should be between :math:`H^\prime_{out}` and :math:`H^\prime_{out} + strides[0]` (excluding :math:`H^\prime_{out} + strides[0]` ).
 
     Parameters:
         in_channels(int): The number of channels in the input image.
@@ -827,17 +835,17 @@ class Conv2DTranspose(_ConvNd):
 
        .. code-block:: python
 
-          import paddle
-          import paddle.nn as nn
+            >>> import paddle
+            >>> import paddle.nn as nn
 
-          paddle.disable_static()
+            >>> paddle.disable_static()
 
-          x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
+            >>> x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
 
-          conv = nn.Conv2DTranspose(4, 6, (3, 3))
-          y_var = conv(x_var)
-          print(y_var.shape)
-          # [2, 6, 10, 10]
+            >>> conv = nn.Conv2DTranspose(4, 6, (3, 3))
+            >>> y_var = conv(x_var)
+            >>> print(y_var.shape)
+            [2, 6, 10, 10]
     """
 
     def __init__(
@@ -984,17 +992,17 @@ class Conv3D(_ConvNd):
 
         .. code-block:: python
 
-          import paddle
-          import paddle.nn as nn
+            >>> import paddle
+            >>> import paddle.nn as nn
 
-          paddle.disable_static()
+            >>> paddle.disable_static()
 
-          x_var = paddle.uniform((2, 4, 8, 8, 8), dtype='float32', min=-1., max=1.)
+            >>> x_var = paddle.uniform((2, 4, 8, 8, 8), dtype='float32', min=-1., max=1.)
 
-          conv = nn.Conv3D(4, 6, (3, 3, 3))
-          y_var = conv(x_var)
-          print(y_var.shape)
-          # [2, 6, 6, 6, 6]
+            >>> conv = nn.Conv3D(4, 6, (3, 3, 3))
+            >>> y_var = conv(x_var)
+            >>> print(y_var.shape)
+            [2, 6, 6, 6, 6]
     """
 
     def __init__(
@@ -1163,17 +1171,17 @@ class Conv3DTranspose(_ConvNd):
 
        .. code-block:: python
 
-          import paddle
-          import paddle.nn as nn
+            >>> import paddle
+            >>> import paddle.nn as nn
 
-          paddle.disable_static()
+            >>> paddle.disable_static()
 
-          x_var = paddle.uniform((2, 4, 8, 8, 8), dtype='float32', min=-1., max=1.)
+            >>> x_var = paddle.uniform((2, 4, 8, 8, 8), dtype='float32', min=-1., max=1.)
 
-          conv = nn.Conv3DTranspose(4, 6, (3, 3, 3))
-          y_var = conv(x_var)
-          print(y_var.shape)
-          # [2, 6, 10, 10, 10]
+            >>> conv = nn.Conv3DTranspose(4, 6, (3, 3, 3))
+            >>> y_var = conv(x_var)
+            >>> print(y_var.shape)
+            [2, 6, 10, 10, 10]
     """
 
     def __init__(

@@ -101,10 +101,9 @@ def mlp_forward(train_program, start_program):
         label = static.data(
             name="label", shape=[batch_size, 1], dtype='float32'
         )
-
-        fill_constant_out = paddle.fluid.layers.fill_constant_batch_size_like(
-            input=input, shape=[batch_size], value=1, dtype="int32"
-        )
+        fill_shape = [batch_size]
+        fill_shape[0] = input.shape[0]
+        fill_constant_out = paddle.full(fill_shape, 1, dtype="int32")
         embedding = paddle.nn.Embedding(10, hidden_size, sparse=True)
         embedding_out = embedding(fill_constant_out)
 
@@ -132,7 +131,7 @@ def get_prog(train_program, startup_program, dist_context, rank_id):
     )
 
     fleet._user_defined_strategy = fleet.DistributedStrategy()
-    fleet.user_defined_optimizer = paddle.fluid.optimizer.AdamOptimizer()
+    fleet.user_defined_optimizer = paddle.optimizer.Adam()
     parallelizer = AutoParallelizer(fleet)
     parallelizer._dist_context = dist_context
 

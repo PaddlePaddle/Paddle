@@ -14,8 +14,8 @@
 
 #include "paddle/fluid/framework/paddle2cinn/transform_type.h"
 
-#include "cinn/common/type.h"
-#include "cinn/runtime/cinn_runtime.h"
+#include "paddle/cinn/common/type.h"
+#include "paddle/cinn/runtime/cinn_runtime.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/utils/string/string_helper.h"

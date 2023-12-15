@@ -19,7 +19,7 @@ limitations under the License. */
 #include <mutex>   // NOLINT
 #include <thread>  // NOLINT
 
-#include "gflags/gflags.h"
+#include "paddle/utils/flags.h"
 #include "test/cpp/inference/api/tester_helper.h"
 
 namespace paddle {
@@ -72,7 +72,6 @@ int test_predictor_zero_copy(const AnalysisConfig& config_in,
                              Barrier* barrier = nullptr) {
   static std::mutex mutex;
   AnalysisConfig config{config_in};
-  config.SwitchUseFeedFetchOps(false);
   std::unique_ptr<PaddlePredictor> predictor;
   {
     std::unique_lock<std::mutex> lock(mutex);

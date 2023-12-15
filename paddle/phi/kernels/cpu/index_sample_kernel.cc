@@ -37,10 +37,10 @@ void IndexSampleInner(const Context &context,
   auto input_dims = input.dims();
   auto index_dims = index.dims();
 
-  int batch_size = input_dims[0];
+  int batch_size = static_cast<int>(input_dims[0]);
   auto value_length = input_dims[1];
   auto index_length = index_dims[1];
-  int index_ids_num = index.numel();
+  int index_ids_num = static_cast<int>(index.numel());
 
   std::vector<T> input_vec;
   std::vector<IndexT> index_vec;
@@ -76,7 +76,7 @@ void IndexSampleInner(const Context &context,
     res[i] = v;
   }
 
-  auto ddim = phi::make_ddim({batch_size, index_length});
+  auto ddim = common::make_ddim({batch_size, index_length});
   context.template Alloc<T>(output);
   phi::TensorFromVector(res, context, output);
   output->Resize(ddim);
@@ -115,4 +115,6 @@ PD_REGISTER_KERNEL(index_sample,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

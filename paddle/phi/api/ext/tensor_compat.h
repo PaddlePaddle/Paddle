@@ -135,6 +135,7 @@ using experimental::selu;
 using experimental::send_u_recv;
 using experimental::send_ue_recv;
 using experimental::send_uv;
+using experimental::sigmoid;
 using experimental::sign;
 using experimental::silu;
 using experimental::sin;

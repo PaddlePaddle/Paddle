@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 np.random.seed(0)
@@ -52,10 +53,10 @@ class TestLerp(OpTest):
         self.wshape = [1]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_pir=True)
 
 
 class TestLerpWithDim2(TestLerp):
@@ -139,6 +140,7 @@ class TestLerpAPI(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
+    @test_with_pir_api
     def test_static_api(self):
         paddle.enable_static()
 
@@ -218,6 +220,67 @@ class TestLerpAPI(unittest.TestCase):
         res_ref = x + w * (y - x)
         np.testing.assert_allclose(res_ref, out.numpy(), rtol=1e-05)
         paddle.enable_static()
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestLerpBF16(TestLerp):
+    def setUp(self):
+        self.op_type = "lerp"
+        self.python_api = paddle.lerp
+        self.dtype = np.uint16
+        self.init_shape()
+        self.init_xyshape()
+        self.init_wshape()
+        x = np.arange(1.0, 101.0).astype("float32").reshape(self.xshape)
+        y = np.full(100, 10.0).astype("float32").reshape(self.yshape)
+        w = np.random.random(self.wshape).astype("float32")
+        self.init_grad(w)
+        self.inputs = {
+            'X': convert_float_to_uint16(x),
+            'Y': convert_float_to_uint16(y),
+            'Weight': convert_float_to_uint16(w),
+        }
+        self.outputs = {'Out': convert_float_to_uint16(x + w * (y - x))}
+
+    def init_shape(self):
+        self.shape = [100]
+
+    def init_xyshape(self):
+        self.xshape = self.shape
+        self.yshape = self.shape
+
+    def init_wshape(self):
+        self.wshape = [1]
+
+    def init_grad(self, w):
+        self.x_grad = (
+            np.ones(self.xshape)
+            * (1 - w)
+            / (np.prod(self.xshape) / np.prod(self.wshape))
+        )
+        self.y_grad = (
+            np.ones(self.yshape)
+            * w
+            / (np.prod(self.yshape) / np.prod(self.wshape))
+        )
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, check_pir=True)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place,
+            ['X', 'Y'],
+            'Out',
+            user_defined_grads=[self.x_grad, self.y_grad],
+            check_pir=True,
+        )
 
 
 if __name__ == "__main__":

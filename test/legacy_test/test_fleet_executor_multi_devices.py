@@ -16,7 +16,7 @@ import os
 import unittest
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distributed import fleet
 
 paddle.enable_static()
@@ -26,7 +26,7 @@ class TestFleetExecutor(unittest.TestCase):
     def run_fleet_executor(self, place, fleet_opt={}):
         exe = paddle.static.Executor(place)
         empty_program = paddle.static.Program()
-        with fluid.program_guard(empty_program, empty_program):
+        with base.program_guard(empty_program, empty_program):
             x = paddle.static.data(
                 name='x', shape=[-1, 1], dtype=paddle.float32
             )
@@ -52,7 +52,7 @@ class TestFleetExecutor(unittest.TestCase):
             "dist_strategy": strategy.sharding_configs,
             "num_micro_batches": strategy.pipeline_configs["accumulate_steps"],
         }
-        if fluid.is_compiled_with_cuda():
+        if base.is_compiled_with_cuda():
             # TODO: Distribute test case is not supported for executor can not stop
             pass
 

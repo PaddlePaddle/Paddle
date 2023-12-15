@@ -17,21 +17,23 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestSortOnCPU(unittest.TestCase):
     def setUp(self):
         self.place = core.CPUPlace()
 
+    @test_with_pir_api
     def test_api_0(self):
-        with fluid.program_guard(fluid.Program()):
+        with base.program_guard(base.Program()):
             input = paddle.static.data(
                 name="input", shape=[2, 3, 4], dtype="float32"
             )
             output = paddle.sort(x=input)
-            exe = fluid.Executor(self.place)
+            exe = base.Executor(self.place)
             data = np.array(
                 [
                     [[5, 8, 9, 5], [0, 0, 1, 7], [6, 9, 2, 4]],
@@ -43,13 +45,14 @@ class TestSortOnCPU(unittest.TestCase):
             np_result = np.sort(result)
             self.assertEqual((result == np_result).all(), True)
 
+    @test_with_pir_api
     def test_api_1(self):
-        with fluid.program_guard(fluid.Program()):
+        with base.program_guard(base.Program()):
             input = paddle.static.data(
                 name="input", shape=[2, 3, 4], dtype="float32"
             )
             output = paddle.sort(x=input, axis=1)
-            exe = fluid.Executor(self.place)
+            exe = base.Executor(self.place)
             data = np.array(
                 [
                     [[5, 8, 9, 5], [0, 0, 1, 7], [6, 9, 2, 4]],
@@ -93,3 +96,7 @@ class TestSortDygraph(unittest.TestCase):
             (np.sort(self.input_data, axis=-1) == out.numpy()).all(), True
         )
         paddle.enable_static()
+
+
+if __name__ == '__main__':
+    unittest.main()

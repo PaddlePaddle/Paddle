@@ -11,11 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import collections
 import typing
 
 import paddle
 import paddle.framework.dtype as dtypes
-from paddle.fluid import framework
+from paddle.base import framework
 
 from .phi_ops_map import op_info, op_map
 
@@ -50,17 +51,20 @@ def prim_enabled():
 
         .. code-block:: python
 
-            import paddle
-            from paddle.incubate.autograd import enable_prim, disable_prim, prim_enabled
+            >>> import paddle
+            >>> from paddle.incubate.autograd import enable_prim, disable_prim, prim_enabled
 
-            paddle.enable_static()
-            enable_prim()
+            >>> paddle.enable_static()
+            >>> enable_prim()
 
-            print(prim_enabled()) # True
+            >>> print(prim_enabled())
+            True
 
-            disable_prim()
+            >>> disable_prim()
 
-            print(prim_enabled()) # False
+            >>> print(prim_enabled())
+            False
+
     """
     return prim_option.get_status()
 
@@ -78,13 +82,15 @@ def enable_prim():
 
         .. code-block:: python
 
-            import paddle
-            from paddle.incubate.autograd import enable_prim, prim_enabled
+            >>> import paddle
+            >>> from paddle.incubate.autograd import enable_prim, prim_enabled
 
-            paddle.enable_static()
-            enable_prim()
+            >>> paddle.enable_static()
+            >>> enable_prim()
 
-            print(prim_enabled()) # True
+            >>> print(prim_enabled())
+            True
+
     """
     prim_option.set_status(True)
 
@@ -102,41 +108,46 @@ def disable_prim():
 
         .. code-block:: python
 
-            import paddle
-            from paddle.incubate.autograd import enable_prim, disable_prim, prim_enabled
+            >>> import paddle
+            >>> from paddle.incubate.autograd import enable_prim, disable_prim, prim_enabled
 
-            paddle.enable_static()
-            enable_prim()
+            >>> paddle.enable_static()
+            >>> enable_prim()
 
-            print(prim_enabled()) # True
+            >>> print(prim_enabled())
+            True
 
-            disable_prim()
+            >>> disable_prim()
 
-            print(prim_enabled()) # False
+            >>> print(prim_enabled())
+            False
+
     """
     prim_option.set_status(False)
 
 
 INT_DTYPE_2_STRING = {
-    int(0): 'bool',
-    int(1): 'int16',
-    int(2): 'int32',
-    int(3): 'int64',
-    int(4): 'float16',
-    int(5): 'float32',
-    int(6): 'float64',
-    int(20): 'uint8',
-    int(21): 'int8',
-    int(23): 'complex64',
-    int(24): 'complex128',
+    0: 'bool',
+    1: 'int16',
+    2: 'int32',
+    3: 'int64',
+    4: 'float16',
+    5: 'float32',
+    6: 'float64',
+    20: 'uint8',
+    21: 'int8',
+    23: 'complex64',
+    24: 'complex128',
 }
 
 
-def get_var_block(block, names):
+def get_var_block(block, names, is_tensor_list=None):
     assert isinstance(names, list)
     if len(names) == 0:
         return None
     elif len(names) == 1:
+        if is_tensor_list:
+            return [block.var(names[0])]
         return block.var(names[0])
     else:
         return [block.var(name) for name in names]
@@ -179,7 +190,7 @@ def _get_args_values(op, phi_name):
     "get attrs' values for api args' values"
     args = op_info[phi_name]
     args_list = args["args"].split(",")
-    inputs = []
+    inputs = collections.OrderedDict()
     attrs = []
 
     for item in args_list:
@@ -212,9 +223,9 @@ def _get_args_values(op, phi_name):
                 "inputs" in op_content.keys()
                 and arg_name in op_content["inputs"].keys()
             ):
-                inputs.append(op_content["inputs"][arg_name])
+                inputs[op_content["inputs"][arg_name]] = arg_type
             else:
-                inputs.append(arg_name)
+                inputs[arg_name] = arg_type
         else:
             attr_value = _get_attr_value(op, arg_type, arg_name)
             attrs.append(attr_value)
@@ -237,9 +248,16 @@ def prepare_python_api_arguments(op):
             phi_name = op.type
         inputs, attrs = _get_args_values(op, phi_name)
         res = []
-        for item in inputs:
+        for item, tensor_type in inputs.items():
             if item in op.input_names:
-                res.append(get_var_block(op.block, op.input(item)))
+                if tensor_type == "Tensor[]":
+                    res.append(
+                        get_var_block(
+                            op.block, op.input(item), is_tensor_list=True
+                        )
+                    )
+                else:
+                    res.append(get_var_block(op.block, op.input(item)))
             else:
                 # Note: in some cases, inputs may be optional, thus assign None. Such case must be recorded.
                 res.append(None)
@@ -291,7 +309,7 @@ def map_output_for_composite(op):
 
 
 def flatten(inp):
-    if inp is None or isinstance(inp, paddle.fluid.framework.Variable):
+    if inp is None or isinstance(inp, paddle.base.framework.Variable):
         return [inp]
     flattened = []
     for part in inp:

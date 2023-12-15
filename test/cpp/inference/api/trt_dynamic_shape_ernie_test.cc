@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include "gflags/gflags.h"
+#include "paddle/utils/flags.h"
 
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "test/cpp/inference/api/trt_test_helper.h"
@@ -98,8 +98,6 @@ void trt_ernie(bool with_fp16,
   AnalysisConfig config;
   std::string model_dir = FLAGS_infer_model;
   SetConfig(&config, model_dir, true);
-
-  config.SwitchUseFeedFetchOps(false);
 
   int batch = 32;
   int min_seq_len = 1;

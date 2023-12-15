@@ -35,7 +35,7 @@ void IndexSampleGradInner(const Context& context,
 
   auto value_length = x_grad_dims[1];
   auto index_length = index_dims[1];
-  int index_ids_num = index.numel();
+  int index_ids_num = static_cast<int>(index.numel());
 
   std::vector<T> x_grad_vec(x_grad->numel(), 0);
 
@@ -100,4 +100,6 @@ PD_REGISTER_KERNEL(index_sample_grad,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

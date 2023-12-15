@@ -21,6 +21,8 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
+from paddle.base import core
+from paddle.base.framework import Program
 from paddle.distributed.auto_parallel.static.converter import Converter
 from paddle.distributed.auto_parallel.static.dist_context import (
     get_default_distributed_context,
@@ -30,8 +32,6 @@ from paddle.distributed.auto_parallel.static.utils import (
     is_forward_op,
     is_loss_op,
 )
-from paddle.fluid import core
-from paddle.fluid.framework import Program
 from paddle.static.io import deserialize_program
 
 _valid_types = [
@@ -319,7 +319,7 @@ class AutoAlignTool:
             assert os.path.isfile(filepath)
             if "vars" in filename:
                 assert filename.endswith("pkl")
-                with (open(filepath, "rb")) as f:
+                with open(filepath, "rb") as f:
                     vars_list.append(pickle.load(f))
             elif "program" in filename:
                 assert filename.endswith("pdmodel")
@@ -328,7 +328,7 @@ class AutoAlignTool:
                 program_list.append(deserialize_program(program_string))
             elif "dist_attr" in filename:
                 assert filename.endswith("pkl")
-                with (open(filepath, "rb")) as f:
+                with open(filepath, "rb") as f:
                     dist_attr_list.append(pickle.load(f))
 
         dist_attr_map = {}

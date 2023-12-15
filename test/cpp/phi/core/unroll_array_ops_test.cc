@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/utils/unroll_array_ops.h"
+#include "paddle/common/unroll_array_ops.h"
 
 #include <gtest/gtest.h>
 
@@ -32,7 +32,7 @@ bool FillConstantTestMain() {
   std::array<int, D1> arr;
   arr.fill(0);
 
-  UnrollFillConstant<D2>::Run(arr.data(), 1);
+  common::UnrollFillConstant<D2>::Run(arr.data(), 1);
   return CheckEquality(arr.data(), D2, 1) &&
          CheckEquality(arr.data() + D2, arr.size() - D2, 0);
 }
@@ -45,9 +45,9 @@ TEST(unroll_ops, fill_constant) {
 }
 
 TEST(unroll_ops, assign) {
-  const int a[] = {1, 2, 3, 4, 5};
-  int b[] = {0, 0, 0, 0, 0};
-  UnrollAssign<3>::Run(a, b);
+  const int a[] = {1, 2, 3, 4, 5};  // NOLINT
+  int b[] = {0, 0, 0, 0, 0};        // NOLINT
+  common::UnrollAssign<3>::Run(a, b);
   EXPECT_EQ(b[0], 1);
   EXPECT_EQ(b[1], 2);
   EXPECT_EQ(b[2], 3);
@@ -56,27 +56,27 @@ TEST(unroll_ops, assign) {
 }
 
 TEST(unroll_ops, var_args_assign) {
-  int a[] = {0, 0, 0};
-  UnrollVarArgsAssign<int>::Run(a, 1, 2);
+  int a[] = {0, 0, 0};  // NOLINT
+  common::UnrollVarArgsAssign<int>::Run(a, 1, 2);
   EXPECT_EQ(a[0], 1);
   EXPECT_EQ(a[1], 2);
   EXPECT_EQ(a[2], 0);
 }
 
 TEST(unroll_ops, compare) {
-  int a[] = {1, 2, 3};
-  int b[] = {1, 2, 4};
-  EXPECT_TRUE(UnrollCompare<2>::Run(a, b));
-  EXPECT_FALSE(UnrollCompare<3>::Run(a, b));
+  int a[] = {1, 2, 3};  // NOLINT
+  int b[] = {1, 2, 4};  // NOLINT
+  EXPECT_TRUE(common::UnrollCompare<2>::Run(a, b));
+  EXPECT_FALSE(common::UnrollCompare<3>::Run(a, b));
 
   b[0] = -1;
-  EXPECT_TRUE(UnrollCompare<0>::Run(a, b));
-  EXPECT_FALSE(UnrollCompare<1>::Run(a, b));
+  EXPECT_TRUE(common::UnrollCompare<0>::Run(a, b));
+  EXPECT_FALSE(common::UnrollCompare<1>::Run(a, b));
 }
 
 TEST(unroll_ops, product) {
-  int a[] = {2, 3, 4};
-  EXPECT_EQ(UnrollProduct<3>::Run(a), a[0] * a[1] * a[2]);
+  int a[] = {2, 3, 4};  // NOLINT
+  EXPECT_EQ(common::UnrollProduct<3>::Run(a), a[0] * a[1] * a[2]);
 }
 
 }  // namespace framework

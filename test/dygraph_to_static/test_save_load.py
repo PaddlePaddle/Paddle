@@ -17,20 +17,23 @@ import tempfile
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    enable_to_static_guard,
+    test_ast_only,
+)
 from test_fetch_feed import Linear
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid, nn
-from paddle.fluid import core
-from paddle.fluid.optimizer import AdamOptimizer
+from paddle import base, nn
+from paddle.base import core
 from paddle.nn import BatchNorm
+from paddle.optimizer import Adam
 
 np.random.seed(2020)
 
-place = (
-    fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
-)
+place = base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
 
 
 class PrimeNet(paddle.nn.Layer):
@@ -56,7 +59,7 @@ def forward_post_hook_for_prim_net(layer, input, output):
     return output * 2
 
 
-class TestDyToStaticSaveLoad(unittest.TestCase):
+class TestDyToStaticSaveLoad(Dy2StTestBase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.model_path = os.path.join(
@@ -70,53 +73,59 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
         x_data = np.random.randn(30, 10, 32).astype('float32')
         batch_num = 3
 
-        with fluid.dygraph.guard(place):
+        x = base.dygraph.to_variable(x_data)
+        net = Linear(32, 64)
+        adam = Adam(learning_rate=0.1, parameters=net.parameters())
 
-            paddle.jit.enable_to_static(True)
-            x = fluid.dygraph.to_variable(x_data)
-            net = Linear(32, 64)
-            adam = AdamOptimizer(
-                learning_rate=0.1, parameter_list=net.parameters()
-            )
-
-            for i in range(batch_num):
-                static_out, static_loss = net(x)
-                # Update parameters
-                static_loss.backward()
-                adam.minimize(static_loss)
-                net.clear_gradients()
-            # Save parameters
-
-            paddle.save(net.state_dict(), self.model_path + '.pdparams')
-            # minimize() will update parameter, call net() to get output and avg_loss.
-            # Switch into eval mode.
-            net.eval()
+        for i in range(batch_num):
             static_out, static_loss = net(x)
+            # Update parameters
+            static_loss.backward()
+            adam.minimize(static_loss)
+            net.clear_gradients()
+        # Save parameters
+
+        paddle.save(net.state_dict(), self.model_path + '.pdparams')
+        # minimize() will update parameter, call net() to get output and avg_loss.
+        # Switch into eval mode.
+        net.eval()
+        static_out, static_loss = net(x)
 
         # load parameters into dygraph
-        with fluid.dygraph.guard(place):
-            dygraph_net = Linear(32, 64)
+        dygraph_net = Linear(32, 64)
 
-            # Load parameters
-            model_dict = paddle.load(self.model_path + '.pdparams')
-            dygraph_net.set_dict(model_dict)
-            # Switch into eval mode.
-            dygraph_net.eval()
+        # Load parameters
+        model_dict = paddle.load(self.model_path + '.pdparams')
+        dygraph_net.set_dict(model_dict)
+        # Switch into eval mode.
+        dygraph_net.eval()
 
-            x = fluid.dygraph.to_variable(x_data)
-            # predict output
-            paddle.jit.enable_to_static(False)
+        x = base.dygraph.to_variable(x_data)
+        # predict output
+        with enable_to_static_guard(False):
             dygraph_out, dygraph_loss = dygraph_net(x)
 
-        np.testing.assert_allclose(
-            dygraph_out.numpy(), static_out.numpy(), rtol=1e-05
-        )
-        np.testing.assert_allclose(
-            dygraph_loss.numpy(), static_loss.numpy(), rtol=1e-05
-        )
+            np.testing.assert_allclose(
+                dygraph_out.numpy(), static_out.numpy(), rtol=1e-05
+            )
+            np.testing.assert_allclose(
+                dygraph_loss.numpy(), static_loss.numpy(), rtol=1e-05
+            )
 
+    def _compute_op_num(self, composite_program):
+        if paddle.framework.use_pir_api():
+            comp_op_type_list = [
+                op.name() for op in composite_program.program.global_block().ops
+            ]
+        else:
+            comp_op_type_list = [
+                op.type for op in composite_program.block(0).ops
+            ]
+        return comp_op_type_list
+
+    @test_ast_only
     def test_save_load_prim(self):
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             self.x = paddle.randn([4, 2, 6, 6], dtype="float32")
             self.x.stop_gradient = False
             net = PrimeNet(data_layout="NCHW")
@@ -127,9 +136,7 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
             composite_program = static_net.forward.get_concrete_program(self.x)[
                 1
             ].train_program
-            comp_op_type_list = [
-                op.type for op in composite_program.block(0).ops
-            ]
+            comp_op_type_list = self._compute_op_num(composite_program)
             self.assertNotIn("batch_norm", comp_op_type_list)
             self.assertNotIn("relu", comp_op_type_list)
             self.assertNotIn("pow", comp_op_type_list)
@@ -155,8 +162,9 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
             self.assertIn("pool2d", load_op_type_list)
             np.testing.assert_allclose(res.numpy(), new_res.numpy(), rtol=1e-05)
 
+    @test_ast_only
     def test_save_load_prim_with_hook(self):
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             self.x = paddle.randn([4, 2, 6, 6], dtype="float32")
             self.x.stop_gradient = False
             net = PrimeNet(data_layout="NCHW")
@@ -168,9 +176,7 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
             composite_program = static_net.forward.get_concrete_program(self.x)[
                 1
             ].train_program
-            comp_op_type_list = [
-                op.type for op in composite_program.block(0).ops
-            ]
+            comp_op_type_list = self._compute_op_num(composite_program)
             self.assertNotIn("batch_norm", comp_op_type_list)
             self.assertNotIn("relu", comp_op_type_list)
             self.assertNotIn("pow", comp_op_type_list)

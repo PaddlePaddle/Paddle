@@ -13,6 +13,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <Python.h>
+#include "paddle/fluid/eager/grad_node_info.h"
+
 // Avoid a problem with copysign defined in pyconfig.h on Windows.
 #ifdef copysign
 #undef copysign
@@ -115,13 +117,14 @@ limitations under the License. */
 #include "paddle/fluid/pybind/global_value_getter_setter.h"
 #include "paddle/fluid/pybind/gloo_context_py.h"
 #include "paddle/fluid/pybind/gloo_wrapper_py.h"
+#include "paddle/fluid/pybind/graph.h"
 #include "paddle/fluid/pybind/heter_wrapper_py.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/io.h"
-#include "paddle/fluid/pybind/ir.h"
 #include "paddle/fluid/pybind/jit.h"
 #include "paddle/fluid/pybind/metrics_py.h"
+#include "paddle/fluid/pybind/pir.h"
 #include "paddle/fluid/pybind/ps_gpu_wrapper_py.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/fluid/pybind/xpu_streams_py.h"
@@ -161,6 +164,8 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/fluid/operators/custom_device_common_op_registry.h"
 #include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/fluid/platform/device/custom/custom_device_resource_pool.h"
+#include "paddle/fluid/platform/profiler/custom_device/custom_tracer.h"
 #include "paddle/phi/capi/capi.h"
 #endif
 
@@ -181,6 +186,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_CINN
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
+#include "paddle/fluid/pybind/test.h"
 #endif
 
 #if defined(PADDLE_WITH_RPC)
@@ -190,15 +196,21 @@ limitations under the License. */
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
+#include "paddle/fluid/pir/dialect/operator/interface/decomp.h"
+#include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
+#include "paddle/fluid/pir/dialect/operator/trait/custom_vjp.h"
 #include "paddle/fluid/prim/utils/eager/eager_tensor_operants.h"
 #include "paddle/fluid/prim/utils/static/static_tensor_operants.h"
+#include "paddle/fluid/primitive/base/decomp_trans.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/api/include/tensor_operants.h"
+#include "paddle/phi/common/type_promotion.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
+#include "paddle/pir/core/program.h"
 #include "pybind11/stl.h"
 
 PHI_DECLARE_bool(use_mkldnn);
@@ -210,12 +222,16 @@ PYBIND11_MAKE_OPAQUE(paddle::framework::FetchList);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchType);
 
 DECLARE_FILE_SYMBOLS(init_phi);
+DECLARE_FILE_SYMBOLS(kernel_dialect);
+DECLARE_FILE_SYMBOLS(op_compatible_info);
+DECLARE_FILE_SYMBOLS(gather_op_handle);
 namespace paddle {
 namespace pybind {
 
 PyTypeObject *g_framework_scope_pytype = nullptr;
 PyTypeObject *g_framework_lodtensorarray_pytype = nullptr;
 PyTypeObject *g_custom_op_kernel_ctx_pytype = nullptr;
+PyTypeObject *g_data_type_pytype = nullptr;
 
 bool IsCompiledWithAVX() {
 #ifndef PADDLE_WITH_AVX
@@ -227,6 +243,14 @@ bool IsCompiledWithAVX() {
 
 bool IsCompiledWithCUDA() {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+  return false;
+#else
+  return true;
+#endif
+}
+
+bool IsCompiledWithDISTRIBUTE() {
+#if !defined(PADDLE_WITH_DISTRIBUTE)
   return false;
 #else
   return true;
@@ -297,7 +321,7 @@ bool IsCompiledWithIPU() {
 }
 
 bool IsCompiledWithMKLDNN() {
-#ifndef PADDLE_WITH_MKLDNN
+#ifndef PADDLE_WITH_DNNL
   return false;
 #else
   return true;
@@ -312,6 +336,15 @@ bool IsCompiledWithCINN() {
 #endif
 }
 
+bool IsRunWithCINN() {
+#ifndef PADDLE_WITH_CINN
+  return false;
+#else
+  return framework::paddle2cinn::CinnCompiler::GetInstance()
+             ->real_compiled_num() > 0;
+#endif
+}
+
 bool IsCompiledWithHETERPS() {
 #ifndef PADDLE_WITH_HETERPS
   return false;
@@ -321,7 +354,7 @@ bool IsCompiledWithHETERPS() {
 }
 
 bool SupportsBfloat16() {
-#ifndef PADDLE_WITH_MKLDNN
+#ifndef PADDLE_WITH_DNNL
   return false;
 #else
   if (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512_core))
@@ -332,7 +365,7 @@ bool SupportsBfloat16() {
 }
 
 bool SupportsBfloat16FastPerformance() {
-#ifndef PADDLE_WITH_MKLDNN
+#ifndef PADDLE_WITH_DNNL
   return false;
 #else
   if (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512_bf16))
@@ -343,7 +376,7 @@ bool SupportsBfloat16FastPerformance() {
 }
 
 bool SupportsInt8() {
-#ifndef PADDLE_WITH_MKLDNN
+#ifndef PADDLE_WITH_DNNL
   return false;
 #else
   return (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx2) ||
@@ -352,7 +385,7 @@ bool SupportsInt8() {
 }
 
 bool SupportsVNNI() {
-#ifndef PADDLE_WITH_MKLDNN
+#ifndef PADDLE_WITH_DNNL
   return false;
 #else
   return phi::backends::cpu::MayIUse(
@@ -402,7 +435,7 @@ struct iinfo {
         dtype = "int64";
         break;
       case framework::proto::VarType::INT8:
-        min = std::numeric_limits<int8_t>::min();
+        min = std::numeric_limits<int8_t>::min();  // NOLINT
         max = std::numeric_limits<int8_t>::max();
         bits = 8;
         dtype = "int8";
@@ -503,18 +536,6 @@ static PyObject *GetPythonAttribute(PyObject *obj, const char *attr_name) {
     return PyObject_GetAttrString(obj, attr_name);
   } else {
     return nullptr;
-  }
-}
-
-template <typename T>
-static T PyObjectCast(PyObject *obj) {
-  try {
-    return py::cast<T>(py::handle(obj));
-  } catch (py::cast_error &) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Python object is not type of %s, the real type is %s",
-        typeid(T).name(),
-        obj->ob_type->tp_name));
   }
 }
 
@@ -619,7 +640,7 @@ static void inline CreateVariableIfNotExist(
         Py_DECREF(py_var_desc);
         var = const_cast<framework::Scope *>(&scope)->Var(para_name);
         auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
-        tensor_temp->Resize(phi::make_ddim(var_desc.GetShape()));
+        tensor_temp->Resize(common::make_ddim(var_desc.GetShape()));
         tensor_temp->mutable_data(
             exe->GetPlace(),
             framework::TransToPhiDataType(var_desc.GetDataType()));
@@ -658,7 +679,7 @@ static void AssertStaticGraphAndDygraphGradMakerNoDiff() {
                         string::join_strings(ops, ',')));
 }
 
-#ifdef PADDLE_WITH_NCCL
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 static int GetNCCLVersion() {
 #if NCCL_VERSION_CODE >= 2304
   int ver;
@@ -671,6 +692,129 @@ static int GetNCCLVersion() {
 }
 #endif
 
+void BindVjp(pybind11::module *m) {
+  m->def(
+      "call_vjp",
+      [](pir::Operation &fwd_op,
+         const std::vector<std::vector<pir::Value>> &inputs,
+         const std::vector<std::vector<pir::OpResult>> &outputs,
+         const std::vector<std::vector<pir::OpResult>> &out_grads,
+         const std::vector<std::vector<bool>> &stop_gradients) {
+        py::list res;
+        paddle::dialect::VjpInterface vjp_interface =
+            fwd_op.dyn_cast<paddle::dialect::VjpInterface>();
+        PADDLE_ENFORCE(
+            vjp_interface,
+            phi::errors::InvalidArgument(
+                "The vjp function is not registered in %s op ", fwd_op.name()));
+        std::vector<std::vector<pir::OpResult>> vjp_res = vjp_interface.Vjp(
+            &fwd_op, inputs, outputs, out_grads, stop_gradients);
+        PADDLE_ENFORCE_EQ(
+            stop_gradients.size(),
+            vjp_res.size(),
+            phi::errors::InvalidArgument(
+                "The size of stop_gradients should be the same as vjp_res "
+                "size."
+                "But the size of stop_gradients: %d, vjp_res size: %d",
+                stop_gradients.size(),
+                vjp_res.size()));
+        for (size_t i = 0; i < vjp_res.size(); ++i) {
+          PADDLE_ENFORCE_EQ(stop_gradients[i].size(),
+                            vjp_res[i].size(),
+                            phi::errors::InvalidArgument(
+                                "The size of stop_gradients[%d] should be the "
+                                "same as vjp_res[%d] "
+                                "size."
+                                "But the size of stop_gradients[%d]: %d, "
+                                "vjp_res[%d] size: %d",
+                                i,
+                                i,
+                                i,
+                                stop_gradients[i].size(),
+                                i,
+                                vjp_res[i].size()));
+          py::list sub_res;
+          for (size_t j = 0; j < vjp_res[i].size(); ++j) {
+            if (!vjp_res[i][j]) {
+              sub_res.append(nullptr);
+            } else {
+              sub_res.append(vjp_res[i][j]);
+            }
+          }
+          res.append(sub_res);
+        }
+        return res;
+      });
+
+  m->def("has_vjp", [](pir::Operation &fwd_op) {
+    pir::IrContext *ctx = pir::IrContext::Instance();
+    pir::OpInfo fwd_op_info = ctx->GetRegisteredOpInfo(fwd_op.name());
+    auto vjp_interface_impl =
+        fwd_op_info.GetInterfaceImpl<paddle::dialect::VjpInterface>();
+    if (vjp_interface_impl == nullptr) return false;
+    return true;
+  });
+
+  m->def(
+      "has_custom_vjp",
+      [](pir::Operation &op) -> py::bool_ {
+        return op.info().HasTrait<paddle::dialect::CustomVjpTrait>();
+      },
+      R"DOC(
+           Return whether an op has custom vjp rules.
+
+           Args:
+               op (pir::Operation): op to be checked
+
+           Returns:
+               out (bool): True means that the op has custom vjp rules, False means it does not.
+           )DOC");
+}
+
+void BindDecomp(pybind11::module *m) {
+  m->def("sinking_decomp",
+         [](pir::Program *program,
+            std::vector<pir::OpResult> &src_vars,
+            std::set<std::string> &blacklist,
+            std::set<std::string> &whitelist) {
+           VLOG(4) << "[Prim] Bind Decomp sinking_decomp begin.";
+           py::list res;
+           DecompProgram decomp_object(program, src_vars, blacklist, whitelist);
+           auto tar_vars = decomp_object.decomp_program();
+           for (size_t i = 0; i < tar_vars.size(); ++i) {
+             if (!tar_vars[i]) {
+               res.append(nullptr);
+             } else {
+               res.append(tar_vars[i]);
+             }
+           }
+           VLOG(4) << "[Prim] Bind Decomp sinking_decomp end.";
+           return res;
+         });
+
+  m->def("call_decomp", [](pir::Operation &fwd_op) {
+    py::list res;
+    std::vector<std::vector<pir::OpResult>> decomp_res =
+        call_decomp_rule(&fwd_op);
+    for (size_t i = 0; i < decomp_res.size(); ++i) {
+      py::list sub_res;
+      for (size_t j = 0; j < decomp_res[i].size(); ++j) {
+        if (!decomp_res[i][j]) {
+          sub_res.append(nullptr);
+        } else {
+          sub_res.append(decomp_res[i][j]);
+        }
+      }
+      res.append(sub_res);
+    }
+    return res;
+  });
+
+  m->def("has_decomp", [](pir::Operation &fwd_op) {
+    return paddle::has_decomp_rule(fwd_op);
+  });
+}
+
 PYBIND11_MODULE(libpaddle, m) {
   BindImperative(&m);
   BindEager(&m);
@@ -680,6 +824,7 @@ PYBIND11_MODULE(libpaddle, m) {
   BindJit(&m);
   BindEvalFrame(&m);
   BindCustomDevicePy(&m);
+  BindEagerUtils(m.ptr());
 
   // Not used, just make sure cpu_info.cc is linked.
   phi::backends::cpu::CpuTotalPhysicalMemory();
@@ -752,15 +897,51 @@ PYBIND11_MODULE(libpaddle, m) {
         &paddle::prim::PrimCommonUtils::SetTargetGradName);
   m.def("set_num_threads", &platform::SetNumThreads);
 
+  m.def("need_type_promotion",
+        [](framework::proto::VarType::Type type_x,
+           framework::proto::VarType::Type type_y) {
+          return phi::NeedTypePromotion(framework::TransToPhiDataType(type_x),
+                                        framework::TransToPhiDataType(type_y));
+        });
+  m.def("get_promote_dtype",
+        [](const std::string &op_name,
+           framework::proto::VarType::Type type_x,
+           framework::proto::VarType::Type type_y) {
+          return framework::TransToProtoVarType(
+              phi::GetPromoteDtype(op_name,
+                                   framework::TransToPhiDataType(type_x),
+                                   framework::TransToPhiDataType(type_y)));
+        });
+
   m.def("disable_signal_handler", &DisableSignalHandler);
 
   m.def("clear_gradients",
         [](std::vector<std::shared_ptr<imperative::VarBase>> param_list,
            bool set_to_zero) {
-          for (auto param : param_list) {
+          for (auto const &param : param_list) {
             param->ClearGradient(set_to_zero);
           }
         });
+
+  py::class_<egr::GradNodeBase, std::shared_ptr<egr::GradNodeBase>>(
+      m, "GradNodeBase")
+      .def("name",
+           [](const std::shared_ptr<egr::GradNodeBase> &self) {
+             return self->name();
+           })
+      .def_property_readonly(
+          "next_functions",
+          [](const std::shared_ptr<egr::GradNodeBase> &self) {
+            return self->NextFunctions();
+          })
+      .def("node_ptr", &egr::GradNodeBase::GetPtr)
+      .def("input_meta",
+           [](const std::shared_ptr<egr::GradNodeBase> &self) {
+             return self->InputMeta();
+           })
+      .def("output_meta", [](const std::shared_ptr<egr::GradNodeBase> &self) {
+        return self->OutputMeta();
+      });
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("cudnn_version", &platform::DnnVersion);
@@ -772,7 +953,7 @@ PYBIND11_MODULE(libpaddle, m) {
   });
 #endif
 
-#ifdef PADDLE_WITH_NCCL
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   m.def("nccl_version", &GetNCCLVersion);
 #endif
 
@@ -865,8 +1046,8 @@ PYBIND11_MODULE(libpaddle, m) {
   m.def(
       "broadcast_shape",
       [](const std::vector<int64_t> &x_dim, const std::vector<int64_t> &y_dim) {
-        return phi::vectorize(operators::details::BroadcastTwoDims(
-            phi::make_ddim(x_dim), phi::make_ddim(y_dim), -1));
+        return common::vectorize(operators::details::BroadcastTwoDims(
+            common::make_ddim(x_dim), common::make_ddim(y_dim), -1));
       });
 
   m.def(
@@ -995,12 +1176,15 @@ PYBIND11_MODULE(libpaddle, m) {
   m.def("clear_device_manager", []() {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     platform::XCCLCommContext::Release();
-    phi::DeviceManager::Clear();
+    platform::CustomTracer::Release();
+    platform::CustomDeviceEventResourcePool::Release();
+    platform::CustomDeviceStreamResourcePool::Release();
+    phi::DeviceManager::Release();
 #endif
   });
 
   // NOTE(zjl): ctest would load environment variables at the beginning even
-  // though we have not `import paddle.fluid as fluid`. So we add this API
+  // though we have not `import paddle.base as base`. So we add this API
   // to enable eager deletion mode in unittest.
   m.def("_set_eager_deletion_mode", &paddle::framework::SetEagerDeletionMode);
 
@@ -1136,17 +1320,22 @@ All parameter, weight, gradient are variables in Paddle.
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          # create tensor from a scope and set value to it.
-          param = scope.var('Param').get_tensor()
-          param_array = np.full((height, row_numel), 5.0).astype("float32")
-          param.set(param_array, place)
+            >>> import paddle
+            >>> import numpy as np
 
+            >>> scope = paddle.static.global_scope()
+            >>> place = paddle.CPUPlace()
+            >>> # create tensor from a scope and set value to it.
+            >>> param = scope.var('Param').get_tensor()
+            >>> param_array = np.full((10, 12), 5.0).astype("float32")
+            >>> param.set(param_array, place)
         )DOC");
   g_framework_scope_pytype = reinterpret_cast<PyTypeObject *>(_Scope.ptr());
   _Scope
       .def("_remove_from_pool",
            [](Scope &self) { ScopePool::Instance().Remove(&self); })
+      .def("raw_address",
+           [](Scope &self) { return reinterpret_cast<uint64_t>(&self); })
       .def(
           "var",
           [](Scope &self, const std::string &name) -> Variable * {
@@ -1315,6 +1504,8 @@ All parameter, weight, gradient are variables in Paddle.
             defalut_val.index() - 1);
       });
   m.def("_add_skip_comp_ops", &paddle::prim::PrimCommonUtils::AddSkipCompOps);
+  m.def("_set_bwd_prim_blacklist",
+        &paddle::prim::PrimCommonUtils::SetPrimBackwardBlacklist);
   m.def("_remove_skip_comp_ops",
         &paddle::prim::PrimCommonUtils::RemoveSkipCompOps);
   m.def("get_grad_op_desc",
@@ -1427,7 +1618,9 @@ All parameter, weight, gradient are variables in Paddle.
           ProgramDesc prog_with_targets(origin);
 
           for (const auto &t : targets) {
-            prog_with_targets.MutableBlock(t[0])->Op(t[1])->SetIsTarget(true);
+            prog_with_targets.MutableBlock(t[0])
+                ->Op(static_cast<int>(t[1]))
+                ->SetIsTarget(true);
           }
           proto::ProgramDesc pruned_desc;
           auto pruned_origin_block_id_map =
@@ -1842,35 +2035,60 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   py::class_<framework::StandaloneExecutor>(m, "StandaloneExecutor")
-      .def(
-          py::init<const platform::Place &, const std::vector<ProgramDesc> &>())
+      .def(py::init<const platform::Place &,
+                    const interpreter::Plan &,
+                    Scope *>())
       .def("run",
            [](StandaloneExecutor &self,
-              Scope *scope,
               std::vector<std::string> feed_names,
-              std::vector<std::string> fetch_names) {
+              bool enable_job_schedule_profiler = false) {
              paddle::framework::FetchList ret;
              {
                pybind11::gil_scoped_release release;
-               ret = self.Run(scope, feed_names, fetch_names);
+               ret = self.Run(feed_names, enable_job_schedule_profiler);
              }
              return py::cast(std::move(ret));
+           })
+      .def("run_profile",
+           [](StandaloneExecutor &self, std::vector<std::string> feed_names) {
+             std::shared_ptr<framework::ProgramDesc> program_desc;
+             {
+               pybind11::gil_scoped_release release;
+               program_desc = self.RunProfile(feed_names);
+             }
+             return py::cast(std::move(program_desc));
            });
 
-  py::class_<framework::Job>(m, "job")
+  py::class_<framework::interpreter::Job,
+             std::shared_ptr<framework::interpreter::Job>>(m, "Job")
       .def(py::init<const std::string &>(), py::arg("type"))
-      .def("type", &framework::Job::GetJobType)
-      .def("micro_batch_id", &framework::Job::GetMicroBatchId)
-      .def("set_micro_batch_id", &framework::Job::SetMicroBatchId);
+      .def("micro_batch_id", &framework::interpreter::Job::MicroBatchId)
+      .def("type", &framework::interpreter::Job::Type)
+      .def("set_micro_batch_id", &framework::interpreter::Job::SetMicroBatchId)
+      .def("set_skip_gc_vars", &framework::interpreter::Job::SetSkipGcVars);
 
-  py::class_<framework::Plan>(m, "plan")
-      .def(py::init<const std::vector<Job *> &,
-                    const std::unordered_map<std::string,
-                                             framework::ProgramDesc *> &>(),
-           py::arg("job_list"),
-           py::arg("type_to_program"))
-      .def("job_list", &framework::Plan::GetJobList)
-      .def("type_to_program", &framework::Plan::GetTypeToProgram);
+  py::class_<framework::interpreter::Plan>(m, "Plan")
+      .def(
+          py::init<
+              const std::vector<std::shared_ptr<framework::interpreter::Job>> &,
+              const std::unordered_map<std::string,
+                                       std::shared_ptr<framework::ProgramDesc>>
+                  &>(),
+          py::arg("job_list"),
+          py::arg("type_to_program"))
+      .def(
+          py::init<
+              const std::vector<std::shared_ptr<framework::interpreter::Job>> &,
+              const std::unordered_map<std::string,
+                                       std::shared_ptr<::pir::Program>> &>(),
+          py::arg("job_list"),
+          py::arg("type_to_ir_program"))
+      .def("job_list", &framework::interpreter::Plan::JobList)
+      .def("job_types", &framework::interpreter::Plan::JobTypes)
+      .def("micro_batch_num", &framework::interpreter::Plan::MicroBatchNum)
+      .def("set_ir_program", &framework::interpreter::Plan::SetIrProgram)
+      .def("ir_program", &framework::interpreter::Plan::IrProgram)
+      .def("program", &framework::interpreter::Plan::Program);
 
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
@@ -1890,12 +2108,12 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("init_default_kernel_signatures",
         []() { framework::InitDefaultKernelSignatureMap(); });
   m.def("init_tensor_operants", []() {
-    paddle::OperantsManager::Instance().eager_operants.reset(
-        new paddle::prim::EagerTensorOperants());
-    paddle::OperantsManager::Instance().static_operants.reset(
-        new paddle::prim::StaticTensorOperants());
-    paddle::OperantsManager::Instance().phi_operants.reset(
-        new paddle::operants::PhiTensorOperants());
+    paddle::OperantsManager::Instance().eager_operants =
+        std::make_unique<paddle::prim::EagerTensorOperants>();
+    paddle::OperantsManager::Instance().static_operants =
+        std::make_unique<paddle::prim::StaticTensorOperants>();
+    paddle::OperantsManager::Instance().phi_operants =
+        std::make_unique<paddle::operants::PhiTensorOperants>();
     VLOG(4) << "Initialize tensor operants successfully";
   });
   m.def("is_compiled_with_avx", IsCompiledWithAVX);
@@ -1909,6 +2127,8 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_mpi", IsCompiledWithMPI);
   m.def("is_compiled_with_mpi_aware", IsCompiledWithMPIAWARE);
   m.def("is_compiled_with_cinn", IsCompiledWithCINN);
+  m.def("is_compiled_with_distribute", IsCompiledWithDISTRIBUTE);
+  m.def("is_run_with_cinn", IsRunWithCINN);
   m.def("_is_compiled_with_heterps", IsCompiledWithHETERPS);
   m.def("supports_bfloat16", SupportsBfloat16);
   m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
@@ -1973,7 +2193,11 @@ All parameter, weight, gradient are variables in Paddle.
       py::arg("time_out") = 0,
       py::arg("sleep_inter") = 0,
       py::arg("redirect_stderr") = false);
-
+  m.def("set_variable",
+        static_cast<void (*)(  // NOLINT
+            Scope *,
+            const phi::DenseTensor &,
+            const std::string &)>(&framework::SetVariable));
   m.def("set_feed_variable",
         static_cast<void (*)(  // NOLINT
             Scope *,
@@ -2029,9 +2253,8 @@ All parameter, weight, gradient are variables in Paddle.
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-
-          arr = fluid.LoDTensorArray()
+            >>> import paddle
+            >>> arr = paddle.framework.core.LoDTensorArray()
 )DOC");
   g_framework_lodtensorarray_pytype =
       reinterpret_cast<PyTypeObject *>(pylodtensorarray.ptr());
@@ -2071,15 +2294,15 @@ All parameter, weight, gradient are variables in Paddle.
                    None.
 
              Examples:
-                 .. code-block:: python
+                    .. code-block:: python
 
-                   import paddle.fluid as fluid
-                   import numpy as np
+                        >>> import paddle
+                        >>> import numpy as np
 
-                   arr = fluid.LoDTensorArray()
-                   t = fluid.LoDTensor()
-                   t.set(np.ndarray([5, 30]), fluid.CPUPlace())
-                   arr.append(t)
+                        >>> arr = paddle.framework.core.LoDTensorArray()
+                        >>> t = paddle.framework.core.LoDTensor()
+                        >>> t.set(np.ndarray([5, 30]), paddle.CPUPlace())
+                        >>> arr.append(t)
            )DOC")
       .def(
           "_move_to_list",
@@ -2237,6 +2460,10 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_ipu_device_count", platform::GetIPUDeviceCount);
 #endif
 
+#ifdef PADDLE_WITH_XPU
+  m.def("get_xpu_device_count", platform::GetXPUDeviceCount);
+#endif
+
   py::enum_<platform::TracerOption>(m, "TracerOption", py::arithmetic())
       .value("kDefault", platform::TracerOption::kDefault)
       .value("kOpDetail", platform::TracerOption::kOpDetail)
@@ -2284,6 +2511,9 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_pass", [](const std::string &pass_type) {
     auto pass = framework::ir::PassRegistry::Instance().Get(pass_type);
     return std::shared_ptr<framework::ir::Pass>(std::move(pass));
+  });
+  m.def("register_subgraph_pass", [](const std::string &pass_type) {
+    framework::ir::Pass::AddSupportSubgraphPass(pass_type);
   });
 
   m.def("size_of_dtype", framework::SizeOfType);
@@ -2391,6 +2621,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("is_cupti_supported", &paddle::platform::Profiler::IsCuptiSupported)
       .def("is_cnpapi_supported",
            &paddle::platform::Profiler::IsCnpapiSupported)
+      .def("is_xpti_supported", &paddle::platform::Profiler::IsXPTISupported)
       .def("prepare",
            [](paddle::platform::Profiler *profiler) {
              platform::EnableHostEventRecorder();
@@ -2635,9 +2866,9 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_low_precision_op_list", [] {
     py::dict op_list;
     auto list_op = phi::KernelFactory::Instance().GetLowPrecisionKernelList();
-    for (auto iter = list_op.begin(); iter != list_op.end(); iter++) {
-      auto op_name = (iter->first).c_str();
-      auto counts = iter->second;
+    for (auto &op_item : list_op) {
+      auto op_name = (op_item.first).c_str();
+      auto counts = op_item.second;
       op_list[op_name] = std::to_string(counts.fp16_called_) + "," +
                          std::to_string(counts.bf16_called_) + "," +
                          std::to_string(counts.fp32_called_) + "," +
@@ -2698,18 +2929,31 @@ All parameter, weight, gradient are variables in Paddle.
   // Add skipped op list
   m.def("set_skipped_op_list",
         [](const std::string &op_list) { egr::SetSkipOpList(op_list); });
-
-  m.def("check_numerics",
-        [](const std::string &op_name, const paddle::Tensor &tensor) {
-          VLOG(4) << "Check tensor whether has nan or inf.";
-          egr::CheckTensorHasNanOrInf(op_name, tensor);
-        });
-
   BindFleetWrapper(&m);
   BindIO(&m);
   BindParallelExecutor(m);
   BindPlace(m);
   BindTensor(m);
+
+  py::enum_<phi::DataType> data_type(m, "DataType");
+  g_data_type_pytype = (PyTypeObject *)data_type.ptr();  // NOLINT
+  data_type.value("UNDEFINED", phi::DataType::UNDEFINED)
+      .value("BOOL", phi::DataType::BOOL)
+      .value("UINT8", phi::DataType::UINT8)
+      .value("INT8", phi::DataType::INT8)
+      .value("UINT16", phi::DataType::UINT16)
+      .value("INT16", phi::DataType::INT16)
+      .value("UINT32", phi::DataType::UINT32)
+      .value("INT32", phi::DataType::INT32)
+      .value("UINT64", phi::DataType::UINT64)
+      .value("INT64", phi::DataType::INT64)
+      .value("FLOAT32", phi::DataType::FLOAT32)
+      .value("FLOAT64", phi::DataType::FLOAT64)
+      .value("COMPLEX64", phi::DataType::COMPLEX64)
+      .value("COMPLEX128", phi::DataType::COMPLEX128)
+      .value("FLOAT16", phi::DataType::FLOAT16)
+      .value("BFLOAT16", phi::DataType::BFLOAT16)
+      .export_values();
 
 #if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)
   BindHeterWrapper(&m);
@@ -2781,6 +3025,14 @@ All parameter, weight, gradient are variables in Paddle.
   GetCurrentWorkerInfo(&m);
   GetAllWorkerInfos(&m);
 #endif
+
+#if defined(PADDLE_WITH_CINN)
+  BindTest(&m);
+#endif
+
+  BindPir(&m);
+  BindVjp(&m);
+  BindDecomp(&m);
 }
 }  // namespace pybind
 }  // namespace paddle

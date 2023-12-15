@@ -19,6 +19,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/new_executor/garbage_collector/garbage_collector.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
@@ -37,7 +39,7 @@ VariableScope::VariableScope(Scope* scope) {
           "You have passed a nullptr to construct VariableScope."));
 }
 
-VariableScope::~VariableScope() {}
+VariableScope::~VariableScope() = default;
 
 Scope* VariableScope::GetMutableScope() const { return scope_; }
 
@@ -92,7 +94,7 @@ void VariableScope::AddVar(const std::string& name,
                            framework::VarDesc* var_desc) {
   if (!HasVar(name)) {
     auto id = VarSize();
-    name2id_[name] = id;
+    name2id_[name] = static_cast<int>(id);
     vec_meta_info_.emplace_back(0, var_desc);
     if (local_scope_ != nullptr) {
       var_list_.push_back(local_scope_->FindVar(name));
@@ -152,10 +154,18 @@ void VariableScope::CheckExist(const std::string& name) const {
 Instruction::Instruction(size_t id,
                          OpFuncNode&& op_func_node,
                          const platform::DeviceContext& dev_ctx)
-    : is_artificial_(op_func_node.operator_base_->Type() == "depend"),
+    : is_artificial_(false),
       id_(id),
       op_func_node_(op_func_node),
       dev_ctx_(dev_ctx) {
+  if (op_func_node.operator_base_ != nullptr &&
+      op_func_node.operator_base_->Type() == "depend") {
+    is_artificial_ = true;
+  }
+
+  if (op_func_node_.phi_kernel_ != nullptr) {
+    pre_define_context_ = true;
+  }
   PADDLE_ENFORCE_GE(id,
                     0,
                     platform::errors::PreconditionNotMet(
@@ -218,6 +228,10 @@ OperatorBase* Instruction::OpBase() const {
   return op_base.get();
 }
 
+bool Instruction::OpBaseValid() const {
+  return op_func_node_.operator_base_ != nullptr;
+}
+
 void Instruction::AddGCCheckVar(size_t id) { gc_check_vars_.push_back(id); }
 
 const std::vector<size_t>& Instruction::GCCheckVars() const {
@@ -225,7 +239,8 @@ const std::vector<size_t>& Instruction::GCCheckVars() const {
 }
 
 void Instruction::ResetContext(const VariableValueMap& in_vars,
-                               const VariableValueMap& out_vars) {
+                               const VariableValueMap& out_vars,
+                               const std::string& op_name) {
   runtime_ctx_.reset(new RuntimeContext(in_vars, out_vars));
   infershape_ctx_.reset(
       new RuntimeInferShapeContext(*OpBase(), *runtime_ctx_.get()));
@@ -234,16 +249,37 @@ void Instruction::ResetContext(const VariableValueMap& in_vars,
   static framework::Scope scope_;
   execution_ctx_.reset(
       new ExecutionContext(*OpBase(), scope_, dev_ctx_, *runtime_ctx_.get()));
+
+  auto op_with_kernel =
+      dynamic_cast<const framework::OperatorWithKernel*>(OpBase());
+  if (op_with_kernel != nullptr && op_with_kernel->Info().infer_meta_) {
+    if (infershape_ctx_->HasRuntimeAttributes() == false) {
+      compat_infermeta_ctx_ = paddle::framework::BuildInferMetaContext(
+          infershape_ctx_.get(), op_name);
+      can_use_infermeta_ctx_ = true;
+    }
+  }
 }
 
 void Instruction::ResetContextWithScope(const VariableValueMap& in_vars,
                                         const VariableValueMap& out_vars,
-                                        const framework::Scope& scope) {
+                                        const framework::Scope& scope,
+                                        const std::string& op_name) {
   runtime_ctx_.reset(new RuntimeContext(in_vars, out_vars));
   infershape_ctx_.reset(
       new RuntimeInferShapeContext(*OpBase(), *runtime_ctx_.get()));
   execution_ctx_.reset(
       new ExecutionContext(*OpBase(), scope, dev_ctx_, *runtime_ctx_.get()));
+
+  auto op_with_kernel =
+      dynamic_cast<const framework::OperatorWithKernel*>(OpBase());
+  if (op_with_kernel != nullptr && op_with_kernel->Info().infer_meta_) {
+    if (infershape_ctx_->HasRuntimeAttributes() == false) {
+      compat_infermeta_ctx_ = paddle::framework::BuildInferMetaContext(
+          infershape_ctx_.get(), op_name);
+      can_use_infermeta_ctx_ = true;
+    }
+  }
 }
 
 std::shared_ptr<RuntimeContext> Instruction::InnerRuntimeContext() const {
@@ -253,6 +289,10 @@ std::shared_ptr<RuntimeContext> Instruction::InnerRuntimeContext() const {
 std::shared_ptr<RuntimeInferShapeContext> Instruction::InnerInferShapeContext()
     const {
   return infershape_ctx_;
+}
+
+const phi::InferMetaContext* Instruction::InnerCompatInferMetaContext() const {
+  return &compat_infermeta_ctx_;
 }
 
 std::shared_ptr<ExecutionContext> Instruction::InnerExecutionContext() const {
@@ -273,6 +313,41 @@ void Instruction::AddInplace(Variable* in, Variable* out) {
 }
 
 void Instruction::ClearInplace() { vec_inplace_in_to_out_.clear(); }
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+void Instruction::UpdataRecordStreamForGcInfo() {
+  if (!IsInterpretercoreFastGCEnabled() ||
+      KernelType() != OpFuncType::kGpuAsync) {
+    return;
+  }
+  if (DeviceContext().GetPlace().GetType() == phi::AllocationType::CUSTOM) {
+    return;
+  }
+  need_record_stream_for_gc_ = true;
+
+  stream_ = reinterpret_cast<const phi::GPUContext&>(DeviceContext()).stream();
+// TODO(lizhiyu): Only analyse the 'send_v2' for GPT pp strategy right now.
+// To support all the operators for communicating in the future.
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+  auto operator_base_ptr = OpBase();
+  if ((operator_base_ptr->Type() == "send_v2") &&
+      (operator_base_ptr->Attr<bool>("use_calc_stream") == false)) {
+    int ring_id = operator_base_ptr->Attr<int>("ring_id");
+    if (FLAGS_dynamic_static_unified_comm) {
+      const auto& comm_context_manager =
+          phi::distributed::CommContextManager::GetInstance();
+      stream_ = static_cast<phi::distributed::NCCLCommContext*>(
+                    comm_context_manager.Get(std::to_string(ring_id)))
+                    ->GetStream();
+    } else {
+      stream_ = platform::NCCLCommContext::Instance()
+                    .Get(ring_id, DeviceContext().GetPlace())
+                    ->stream();
+    }
+  }
+#endif
+}
+#endif
 
 }  // namespace framework
 }  // namespace paddle

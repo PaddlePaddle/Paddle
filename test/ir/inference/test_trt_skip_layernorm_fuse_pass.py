@@ -20,14 +20,14 @@ import numpy as np
 from inference_pass_test import InferencePassTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.core import AnalysisConfig, PassVersionChecker
+from paddle import base
+from paddle.base import core
+from paddle.base.core import AnalysisConfig, PassVersionChecker
 
 
 class SkipLayernormFusePassTest0(InferencePassTest):
     def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             data1 = paddle.static.data(
                 name="data1", shape=[-1, 3, 128, 128], dtype="float32"
             )
@@ -73,7 +73,7 @@ class SkipLayernormFusePassTest0(InferencePassTest):
 
 class SkipLayernormFusePassTest1(InferencePassTest):
     def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             data1 = paddle.static.data(
                 name="data1", shape=[-1, 256, 1536], dtype="float32"
             )
@@ -121,7 +121,7 @@ class SkipLayernormFusePassTest1(InferencePassTest):
 
 class SkipLayernormFusePassTest2(InferencePassTest):
     def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             data1 = paddle.static.data(
                 name="data1", shape=[-1, 128, 64, 768], dtype="float32"
             )
@@ -169,7 +169,7 @@ class SkipLayernormFusePassTest2(InferencePassTest):
 
 class SkipLayernormFusePassTest3(InferencePassTest):
     def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             data1 = paddle.static.data(
                 name="data1", shape=[-1, 128, 128], dtype="float32"
             )

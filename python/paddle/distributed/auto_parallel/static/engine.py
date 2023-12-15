@@ -24,13 +24,17 @@ import numpy as np
 import paddle
 import paddle.distributed.auto_parallel.static.utils as auto_utils
 from paddle import static, utils
+from paddle.base.executor import _to_name_str
 from paddle.distributed import fleet
-from paddle.fluid.executor import _to_name_str
-from paddle.framework import IrGraph
-from paddle.framework import _current_expected_place as _get_device
-from paddle.framework import core, in_dynamic_mode
+from paddle.framework import (
+    IrGraph,
+    _current_expected_place as _get_device,
+    core,
+    in_dynamic_mode,
+)
 from paddle.metric import Metric
 from paddle.static import InputSpec, Operator, Variable, global_scope
+from paddle.static.amp.fp16_utils import _convert_float_to_bfloat16
 
 from ...utils.log_utils import get_logger
 from ..interface import CollectionNames, fetch, get_collection
@@ -54,10 +58,8 @@ from .process_group import get_all_process_groups, new_process_group
 
 class Engine:
     """
-    An Engine object can provide the full power of auto parallel to users.
-    With the help of it, users can easily obtain the abilities of the
-    distributed training and inference. It also support the dynamic graph and
-    static graph at the same time.
+    An High-Level API for auto parallel, which could be used for distributed Training (engine.fit) and Inferenced (engine.predict).
+    Static graph mode is supported natively, Dynamic graph mode is also supported under `@to_static <https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/api/paddle/jit/to_static_cn.html#to-static>`_ .
 
     Args:
         model (paddle.nn.Layer, optional): The model is an instance of
@@ -79,39 +81,39 @@ class Engine:
 
         .. code-block:: python
 
-            import paddle
-            import paddle.vision.transforms as T
-            from paddle.distributed.fleet import auto
-            from paddle.vision.datasets import MNIST
+            >>> import paddle
+            >>> import paddle.vision.transforms as T
+            >>> from paddle.distributed.fleet import auto
+            >>> from paddle.vision.datasets import MNIST
 
-            transform = T.Compose([
-                T.Transpose(),
-                T.Normalize([127.5], [127.5])
-            ])
-            train_dataset = MNIST(mode='train', transform=transform)
-            valid_dataset = MNIST(mode='test', transform=transform)
+            >>> transform = T.Compose([
+            ...     T.Transpose(),
+            ...     T.Normalize([127.5], [127.5])
+            >>> ])
+            >>> train_dataset = MNIST(mode='train', transform=transform)
+            >>> valid_dataset = MNIST(mode='test', transform=transform)
 
-            model = paddle.vision.models.LeNet()
-            loss = paddle.nn.CrossEntropyLoss()
-            optimizer = paddle.optimizer.Adam(
-                learning_rate=0.001, parameters=model.parameters())
-            metrics = paddle.metric.Accuracy(topk=(1, 2))
+            >>> model = paddle.vision.models.LeNet()
+            >>> loss = paddle.nn.CrossEntropyLoss()
+            >>> optimizer = paddle.optimizer.Adam(
+            ...     learning_rate=0.001, parameters=model.parameters())
+            >>> metrics = paddle.metric.Accuracy(topk=(1, 2))
 
-            engine = auto.Engine(model, loss, optimizer, metrics)
-            # fit
-            engine.fit(train_dataset,
-                       epochs=2,
-                       batch_size=64)
-            # evaluate
-            engine.evaluate(valid_dataset,
-                            batch_size=64)
-            # predict
-            engine.predict(valid_dataset,
-                           batch_size=64)
-            # save
-            engine.save("./my_model")
-            # load
-            engine.load("./my_model")
+            >>> engine = auto.Engine(model, loss, optimizer, metrics)
+            >>> # fit
+            >>> engine.fit(train_dataset,
+            ...            epochs=2,
+            ...            batch_size=64)
+            >>> # evaluate
+            >>> engine.evaluate(valid_dataset,
+            ...                 batch_size=64)
+            >>> # predict
+            >>> engine.predict(valid_dataset,
+            ...                batch_size=64)
+            >>> # save
+            >>> engine.save("./my_model")
+            >>> # load
+            >>> engine.load("./my_model")
 
     """
 
@@ -124,7 +126,6 @@ class Engine:
         cluster=None,
         strategy=None,
     ):
-
         if (
             model
             and not isinstance(model, paddle.nn.Layer)
@@ -134,6 +135,9 @@ class Engine:
                 "'model must be sub classes of `paddle.nn.Layer` or any callable function."
             )
         self._model = model
+        self._parameter_list = (
+            None if not model else [p.name for p in model.parameters()]
+        )
 
         if (
             loss
@@ -147,11 +151,10 @@ class Engine:
 
         if optimizer and not isinstance(
             optimizer,
-            (paddle.optimizer.Optimizer, paddle.static.Optimizer),
+            (paddle.optimizer.Optimizer),
         ):
             raise TypeError(
                 "'optimizer' must be object of class `paddle.optimizer.Optimizer`"
-                " or `paddle.static.Optimizer`."
             )
         self._optimizer = auto_utils.validate_opt(optimizer)
 
@@ -159,9 +162,7 @@ class Engine:
         for metric in auto_utils.to_list(metrics):
             if metric and not isinstance(metric, Metric):
                 raise TypeError(
-                    "{} is not sub class of Metric".format(
-                        metric.__class__.__name__
-                    )
+                    f"{metric.__class__.__name__} is not sub class of Metric"
                 )
         self._metrics = auto_utils.to_list(metrics)
 
@@ -241,9 +242,20 @@ class Engine:
         elif self._strategy.pipeline.enable:
             self._acc_steps = self._strategy.pipeline.accumulate_steps
 
+        if (
+            self._strategy.pipeline.enable
+            and self._strategy.pipeline.schedule_mode == "1F1B"
+        ):
+            assert (
+                os.getenv("CUDA_MODULE_LOADING") != "LAZY"
+            ), "EXP_CUDA_MODULE_LOADING_LAZY not supported in 1F1B pipeline."
+
         self.history = None
 
         paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 1})
+        paddle.framework.set_flags({'FLAGS_new_executor_static_build': 1})
+
+        self.enable_job_schedule_profiler = False
 
     def _prepare_data_spec(self, data, split, batch_size):
         inputs_spec = []
@@ -323,9 +335,7 @@ class Engine:
         if inputs_spec:
             assert isinstance(
                 inputs_spec, list
-            ), "inputs should be list, but received {}".format(
-                type(inputs_spec)
-            )
+            ), f"inputs should be list, but received {type(inputs_spec)}"
             assert isinstance(
                 inputs, list
             ), f"inputs should be list, but received {type(inputs)}"
@@ -338,9 +348,7 @@ class Engine:
         if labels_spec:
             assert isinstance(
                 labels_spec, list
-            ), "labels should be list, but received {}".format(
-                type(labels_spec)
-            )
+            ), f"labels should be list, but received {type(labels_spec)}"
             assert isinstance(
                 labels, list
             ), f"labels should be list, but received {type(labels)}"
@@ -401,8 +409,11 @@ class Engine:
         dist_main_block._sync_with_cpp()
         self._has_prepared_reader[self._mode] = True
 
-        # Insert read op to forward TaskNode if 1F1B pass is setted
-        if self.main_program._pipeline_opt:
+        # Insert read op to forward TaskNode for fleet executor if 1F1B pass is setted
+        if (
+            self.main_program._pipeline_opt
+            and not auto_utils.use_new_executor()
+        ):
             assert "tasks" in self.main_program._pipeline_opt["fleet_opt"]
             fleet_opt = self.main_program._pipeline_opt["fleet_opt"]
             fwd_task = None
@@ -446,9 +457,7 @@ class Engine:
         if user_feeds is not None:
             assert isinstance(
                 user_feeds, dict
-            ), "user_feeds must be a dict, but receive {}".format(
-                type(user_feeds).__name__
-            )
+            ), f"user_feeds must be a dict, but receive {type(user_feeds).__name__}"
             for name, data in user_feeds.items():
                 feeds[name] = data
         return feeds
@@ -457,9 +466,7 @@ class Engine:
         if user_fetches is not None:
             assert isinstance(
                 user_fetches, list
-            ), "user_fetches must be a list, but receive {}".format(
-                type(user_fetches).__name__
-            )
+            ), f"user_fetches must be a list, but receive {type(user_fetches).__name__}"
         fetch_names = []
         fetch_indices = []
 
@@ -472,8 +479,6 @@ class Engine:
                     if var_name not in fetch_names:
                         fetch_names.append(var_name)
                     group_indices.append(fetch_names.index(var_name))
-            if not group_indices:
-                fetch_names.append([])
             fetch_indices.append(group_indices)
 
         dist_context = self._dist_contexts[mode]
@@ -563,9 +568,10 @@ class Engine:
         self._parallel(mode)
         # Init comm
         self._init_comm()
-        if init_parameters:
-            # startup program
-            self._initialize(mode)
+        # startup program
+        self._initialize(mode, init_parameters)
+        # mark main program for futher decompose
+        self._mark_prim(mode)
         self._has_prepared[mode] = True
 
     def _build(self, mode):
@@ -730,7 +736,7 @@ class Engine:
     def _plan(self, mode):
         if self._planned_mode is None:
             self._planned_mode = mode
-        else:
+        elif self._strategy.auto_mode != "semi":
             self._init_dist_context(mode)
 
         self._planners[mode] = Planner(mode, self._dist_contexts[mode])
@@ -757,7 +763,7 @@ class Engine:
 
     def _parallel(self, mode, all_ranks=False):
         # Parallelize program based on the planner's results
-        # For now, the completer has to be passed to the planner,
+        # For now, the completer has to be passed to the Parallelizer,
         # because we may use it to complete the annotation of the backward and update.
         parallelizer = Parallelizer(
             mode,
@@ -765,9 +771,9 @@ class Engine:
             self._dist_contexts[mode],
         )
         if not all_ranks:
-            parallelizer.parallel(self._cur_rank)
+            parallelizer.parallel(self._cur_rank, self._parameter_list)
         else:
-            parallelizer.parallel_all()
+            parallelizer.parallel_all(self._parameter_list)
 
     def _init_dist_context(self, mode):
         # Init dist_context['mode'] with the first planned dist_context
@@ -805,7 +811,7 @@ class Engine:
                 for process_group in all_process_groups:
                     process_group.instantiate()
 
-    def _initialize(self, mode):
+    def _initialize(self, mode, init_parameters=True):
         self._place = _get_device()
         if isinstance(self._place, paddle.framework.CUDAPlace):
             self._place = paddle.framework.CUDAPlace(
@@ -818,11 +824,39 @@ class Engine:
             random.seed(self._strategy.seed + self._dp_ranks[0])
 
         dist_context = self._dist_contexts[mode]
+        dist_main_program = dist_context.dist_main_programs[self._cur_rank]
         if self._dygraph_mode:
-            dist_main_program = dist_context.dist_main_programs[self._cur_rank]
             self.program_helper.init(
                 dist_main_program, self._place, dist_context
             )
+            # The model's instance variables (not paramters), used in forward function,
+            # have been initialized when initialize model in dynamic mode.
+            if self._model and len(self._model.buffers()) > 0:
+                for buffer in self._model.buffers():
+                    if dist_main_program.global_block().has_var(buffer.name):
+                        dest_type = (
+                            dist_main_program.global_block()
+                            .var(buffer.name)
+                            .dtype
+                        )
+                        scope_var = global_scope().find_var(buffer.name)
+                        buffer_tensor = (
+                            global_scope().var(buffer.name).get_tensor()
+                        )
+                        if scope_var and buffer_tensor._is_initialized():
+                            continue
+                        # for amp
+                        if dest_type == core.VarDesc.VarType.BF16:
+                            buffer_tensor.set(
+                                _convert_float_to_bfloat16(buffer.numpy()),
+                                self._place,
+                            )
+                        elif dest_type == core.VarDesc.VarType.FP16:
+                            buffer_tensor.set(
+                                np.float16(buffer.numpy()), self._place
+                            )
+                        else:
+                            buffer_tensor.set(buffer.numpy(), self._place)
 
         if self._executor is None:
             self._executor = paddle.static.Executor(self._place)
@@ -851,6 +885,27 @@ class Engine:
             ]
             self._executor.run(dist_startup_prog)
 
+    # distributed training combined with prim mechanism (prim is behind of distributed)
+    # for local main subprogram after distributed partition,
+    # mark _need_decomp=True to tag this program needs to be decomposed
+    # get _grad_var_to_var from distributed context and set it to main program for futher decomposing in static executor
+    def _mark_prim(self, mode):
+        if os.getenv("FLAGS_enable_prim_after_distribute") in [
+            'True',
+            'true',
+            '1',
+        ]:
+            dist_context = self._dist_contexts[mode]
+            dist_main_program = dist_context.dist_main_programs[self._cur_rank]
+            dist_main_program._need_decomp = True
+            grad_var_to_var = auto_utils.get_grad_var_to_var(
+                dist_context,
+            )
+            auto_utils.update_grad_var_to_var(
+                dist_main_program, self._strategy, grad_var_to_var
+            )
+            dist_main_program._grad_var_to_var = grad_var_to_var
+
     def fit(
         self,
         train_data,
@@ -868,6 +923,7 @@ class Engine:
         collate_fn=None,
         callbacks=None,
         verbose=2,
+        nvprof_range=[-1, -1],
     ):
         """
         Trains the model for a fixed number of epochs. If `valid_data` is set,
@@ -905,6 +961,7 @@ class Engine:
                 0. Default None.
             callbacks (Callback|None, optional): A list of `Callback` instances to apply
                 during training. Default: None. (Unused for now)
+            nvprof_range(list, optional): A list of integers indicating nvprof ranges in form of [start_step, end_step]. Note that if start_step >= end_step, the nvprof will not apply.
 
         Returns:
             None
@@ -913,90 +970,131 @@ class Engine:
 
             .. code-block:: python
 
-                import paddle
-                import paddle.vision.transforms as T
-                from paddle.distributed.fleet import auto
-                from paddle.vision.datasets import MNIST
+                >>> import paddle
+                >>> import paddle.vision.transforms as T
+                >>> from paddle.distributed.fleet import auto
+                >>> from paddle.vision.datasets import MNIST
 
-                transform = T.Compose([
-                    T.Transpose(),
-                    T.Normalize([127.5], [127.5])
-                ])
-                train_dataset = MNIST(mode='train', transform=transform)
+                >>> transform = T.Compose([
+                ...     T.Transpose(),
+                ...     T.Normalize([127.5], [127.5])
+                >>> ])
+                >>> train_dataset = MNIST(mode='train', transform=transform)
 
-                model = paddle.vision.models.LeNet()
-                loss = paddle.nn.CrossEntropyLoss()
-                optimizer = paddle.optimizer.Adam(
-                    learning_rate=0.001, parameters=model.parameters())
-                metrics = paddle.metric.Accuracy(topk=(1, 2))
+                >>> model = paddle.vision.models.LeNet()
+                >>> loss = paddle.nn.CrossEntropyLoss()
+                >>> optimizer = paddle.optimizer.Adam(
+                ...     learning_rate=0.001, parameters=model.parameters())
+                >>> metrics = paddle.metric.Accuracy(topk=(1, 2))
 
-                engine = auto.Engine(model, loss, optimizer, metrics)
-                engine.fit(train_dataset,
-                           epochs=2,
-                           batch_size=64)
+                >>> engine = auto.Engine(model, loss, optimizer, metrics)
+                >>> engine.fit(train_dataset,
+                ...             epochs=2,
+                ...             batch_size=64)
         """
         self._mode = 'train'
-        self._inputs_spec, self._labels_spec = self._prepare_data_spec(
-            train_data, train_sample_split, batch_size
-        )
-        micro_batch_size = self._validate_batch_size(batch_size)
+
         if not self._has_prepared[self._mode]:
+            self._inputs_spec, self._labels_spec = self._prepare_data_spec(
+                train_data, train_sample_split, batch_size
+            )
             self._prepare_program(self._mode)
         else:
             self._switch_mode(self._mode)
 
-        train_dataloader = self._prepare_dataloader_from_generator(
-            dataset=train_data,
-            capacity=70,
-            iterable=False,
-            batch_size=micro_batch_size,
-            epochs=epochs,
-            steps_per_epoch=steps_per_epoch,
-            collate_fn=collate_fn,
-        )
+        if auto_utils.use_new_executor():
+            local_batch_size = self._validate_batch_size(batch_size)
+            train_dataloader = self._prepare_dataloader(
+                train_data,
+                return_list=False,
+                batch_size=local_batch_size,
+                epochs=epochs,
+                collate_fn=collate_fn,
+            )
+            steps_per_epoch = (
+                len(train_dataloader)
+                if steps_per_epoch is None
+                else steps_per_epoch
+            )
+        else:
+            micro_batch_size = self._validate_batch_size(batch_size)
+            train_dataloader = self._prepare_dataloader_from_generator(
+                dataset=train_data,
+                capacity=70,
+                iterable=False,
+                batch_size=micro_batch_size,
+                epochs=epochs,
+                steps_per_epoch=steps_per_epoch,
+                collate_fn=collate_fn,
+            )
+            steps_per_epoch = train_dataloader._steps
+            local_batch_size = micro_batch_size
+            if self._strategy.pipeline.enable:
+                local_batch_size = micro_batch_size * self._acc_steps
 
         fetch_names, fetch_indices = self._prepare_fetch(None, mode=self._mode)
 
         cbks = config_callbacks(
             callbacks,
             engine=self,
-            batch_size=micro_batch_size,
+            batch_size=local_batch_size,
             epochs=epochs,
-            steps=train_dataloader._steps,
+            steps=steps_per_epoch,
             log_freq=log_freq,
             save_freq=save_freq,
             save_dir=save_dir,
             verbose=verbose,
             metrics=self._metrics_name(),
-            acc_step=self._acc_steps,
+            acc_step=1
+            if self._strategy.pipeline.enable
+            else self._acc_steps,  # lr update once every local batch
         )
 
         cbks.on_begin('train')
         for epoch in range(epochs):
             logs = {}
             cbks.on_epoch_begin(epoch)
-            for step, _ in enumerate(train_dataloader):
-                cbks.on_batch_begin('train', step, logs)
+
+            for step, batch in enumerate(train_dataloader):
+                if auto_utils.use_new_executor():
+                    batches = self._validate_batch(batch)
+                else:
+                    batches = [{}]
+
                 try:
-                    outs = self._executor.run(
-                        self.main_program,
-                        fetch_list=fetch_names,
-                        use_program_cache=self._strategy.use_cache,
-                        return_numpy=self._strategy.return_numpy,
-                    )
+                    for micro_batch in batches:
+                        with paddle.profiler.utils._nvprof_range(
+                            iter_id=step,
+                            start=nvprof_range[0],
+                            end=nvprof_range[1],
+                        ):
+                            cbks.on_batch_begin('train', step, logs)
+                            outs = self._executor.run(
+                                self.main_program,
+                                feed=micro_batch,
+                                fetch_list=fetch_names,
+                                use_program_cache=self._strategy.use_cache,
+                                return_numpy=self._strategy.return_numpy,
+                            )
+
+                            lr = auto_utils.get_lr(self.optimizer)
+                            logs = self._prepare_logger(
+                                outs,
+                                epoch,
+                                step,
+                                lr,
+                                fetch_names,
+                                fetch_indices,
+                                self._mode,
+                            )
+                            cbks.on_batch_end('train', step, logs)
                 except core.EOFException:
                     break
-                lr = auto_utils.get_lr(self.optimizer)
-                logs = self._prepare_logger(
-                    outs,
-                    epoch,
-                    step,
-                    lr,
-                    fetch_names,
-                    fetch_indices,
-                    self._mode,
-                )
-                cbks.on_batch_end('train', step, logs)
+
+                if steps_per_epoch and step >= steps_per_epoch:
+                    if not auto_utils.use_new_executor():
+                        train_dataloader._reset()
+                    break
 
             if valid_data and (epoch + 1) % valid_freq == 0:
                 val_logs = self.evaluate(
@@ -1060,70 +1158,97 @@ class Engine:
 
             .. code-block:: python
 
-                import paddle
-                import paddle.vision.transforms as T
-                from paddle.distributed.fleet import auto
-                from paddle.vision.datasets import MNIST
+                >>> import paddle
+                >>> import paddle.vision.transforms as T
+                >>> from paddle.distributed.fleet import auto
+                >>> from paddle.vision.datasets import MNIST
 
-                transform = T.Compose([
-                    T.Transpose(),
-                    T.Normalize([127.5], [127.5])
-                ])
-                valid_dataset = MNIST(mode='test', transform=transform)
+                >>> transform = T.Compose([
+                ...     T.Transpose(),
+                ...     T.Normalize([127.5], [127.5])
+                >>> ])
+                >>> valid_dataset = MNIST(mode='test', transform=transform)
 
-                model = paddle.vision.models.LeNet()
-                loss = paddle.nn.CrossEntropyLoss()
-                metrics = paddle.metric.Accuracy(topk=(1, 2))
+                >>> model = paddle.vision.models.LeNet()
+                >>> loss = paddle.nn.CrossEntropyLoss()
+                >>> metrics = paddle.metric.Accuracy(topk=(1, 2))
 
-                engine = auto.Engine(model, loss, metrics=metrics)
-                engine.evaluate(valid_dataset, batch_size=64)
+                >>> engine = auto.Engine(model, loss, metrics=metrics)
+                >>> engine.evaluate(valid_dataset, batch_size=64)
 
         """
         self._mode = 'eval'
-        self._inputs_spec, self._labels_spec = self._prepare_data_spec(
-            valid_data, valid_sample_split, batch_size
-        )
-        micro_batch_size = self._validate_batch_size(batch_size)
+
         if not self._has_prepared[self._mode]:
+            self._inputs_spec, self._labels_spec = self._prepare_data_spec(
+                valid_data, valid_sample_split, batch_size
+            )
             self._prepare_program(self._mode)
         else:
             self._switch_mode(self._mode)
 
-        valid_dataloader = self._prepare_dataloader_from_generator(
-            dataset=valid_data,
-            capacity=70,
-            iterable=False,
-            batch_size=micro_batch_size,
-            steps_per_epoch=steps,
-            collate_fn=collate_fn,
-        )
+        if auto_utils.use_new_executor():
+            local_batch_size = self._validate_batch_size(batch_size)
+            valid_dataloader = self._prepare_dataloader(
+                valid_data,
+                return_list=False,
+                batch_size=local_batch_size,
+                collate_fn=collate_fn,
+            )
+            steps_per_epoch = len(valid_dataloader) if steps is None else steps
+        else:
+            micro_batch_size = self._validate_batch_size(batch_size)
+            valid_dataloader = self._prepare_dataloader_from_generator(
+                dataset=valid_data,
+                capacity=70,
+                iterable=False,
+                batch_size=micro_batch_size,
+                steps_per_epoch=steps,
+                collate_fn=collate_fn,
+            )
+            steps_per_epoch = valid_dataloader._steps
+            local_batch_size = micro_batch_size
+            if self._strategy.pipeline.enable:
+                local_batch_size = micro_batch_size * self._acc_steps
 
         fetch_names, fetch_indices = self._prepare_fetch(None, mode=self._mode)
 
         cbks = config_callbacks(
             callbacks,
             engine=self,
-            batch_size=micro_batch_size,
+            batch_size=local_batch_size,
             log_freq=log_freq,
             verbose=verbose,
             metrics=self._metrics_name(),
         )
 
-        eval_steps = valid_dataloader._steps
+        eval_steps = steps_per_epoch
         cbks.on_begin(
             'eval', {'steps': eval_steps, 'metrics': self._metrics_name()}
         )
         logs = {}
-        for step, _ in enumerate(valid_dataloader):
-            cbks.on_batch_begin('eval', step, logs)
+        for step, batch in enumerate(valid_dataloader):
+            if auto_utils.use_new_executor():
+                batches = self._validate_batch(batch)
+            else:
+                batches = [{}]
+
             try:
-                outs = self._executor.run(
-                    self.main_program,
-                    fetch_list=fetch_names,
-                    use_program_cache=self._strategy.use_cache,
-                    return_numpy=self._strategy.return_numpy,
-                )
+                for micro_batch in batches:
+                    cbks.on_batch_begin('eval', step, logs)
+                    outs = self._executor.run(
+                        self.main_program,
+                        feed=micro_batch,
+                        fetch_list=fetch_names,
+                        use_program_cache=self._strategy.use_cache,
+                        return_numpy=self._strategy.return_numpy,
+                    )
             except core.EOFException:
+                break
+
+            if steps_per_epoch and step >= steps_per_epoch:
+                if not auto_utils.use_new_executor():
+                    valid_dataloader._reset()
                 break
             logs = self._prepare_logger(
                 outs, None, step, None, fetch_names, fetch_indices, self._mode
@@ -1170,58 +1295,82 @@ class Engine:
 
             .. code-block:: python
 
-                import paddle
-                import paddle.vision.transforms as T
-                from paddle.distributed.fleet import auto
-                from paddle.vision.datasets import MNIST
+                >>> import paddle
+                >>> import paddle.vision.transforms as T
+                >>> from paddle.distributed.fleet import auto
+                >>> from paddle.vision.datasets import MNIST
 
-                transform = T.Compose([
-                    T.Transpose(),
-                    T.Normalize([127.5], [127.5])
-                ])
-                valid_dataset = MNIST(mode='test', transform=transform)
+                >>> transform = T.Compose([
+                ...     T.Transpose(),
+                ...     T.Normalize([127.5], [127.5])
+                >>> ])
+                >>> valid_dataset = MNIST(mode='test', transform=transform)
 
-                model = paddle.vision.models.LeNet()
+                >>> model = paddle.vision.models.LeNet()
 
-                engine = auto.Engine(model)
-                engine.predict(valid_dataset, batch_size=64)
+                >>> engine = auto.Engine(model)
+                >>> engine.predict(valid_dataset, batch_size=64)
         """
         self._mode = 'predict'
-        self._inputs_spec, self._labels_spec = self._prepare_data_spec(
-            test_data, test_sample_split, batch_size
-        )
-        micro_batch_size = self._validate_batch_size(batch_size)
+
         if not self._has_prepared[self._mode]:
+            self._inputs_spec, self._labels_spec = self._prepare_data_spec(
+                test_data, test_sample_split, batch_size
+            )
             self._prepare_program(self._mode)
         else:
             self._switch_mode(self._mode)
 
-        test_dataloader = self._prepare_dataloader_from_generator(
-            dataset=test_data,
-            capacity=70,
-            iterable=False,
-            batch_size=micro_batch_size,
-            steps_per_epoch=steps,
-            collate_fn=collate_fn,
-        )
+        if auto_utils.use_new_executor():
+            local_batch_size = self._validate_batch_size(batch_size)
+            test_dataloader = self._prepare_dataloader(
+                test_data,
+                return_list=False,
+                batch_size=local_batch_size,
+                collate_fn=collate_fn,
+            )
+            steps_per_epoch = len(test_dataloader) if steps is None else steps
+        else:
+            micro_batch_size = self._validate_batch_size(batch_size)
+            test_dataloader = self._prepare_dataloader_from_generator(
+                dataset=test_data,
+                capacity=70,
+                iterable=False,
+                batch_size=micro_batch_size,
+                steps_per_epoch=steps,
+                collate_fn=collate_fn,
+            )
+            steps_per_epoch = test_dataloader._steps
 
         fetch_names, fetch_indices = self._prepare_fetch(None, mode=self._mode)
 
         outputs = []
         cbks = config_callbacks(callbacks, engine=self, verbose=verbose)
-        test_steps = test_dataloader._steps
+        test_steps = steps_per_epoch
         cbks.on_begin('predict', {'steps': test_steps})
         logs = {}
-        for step, _ in enumerate(test_dataloader):
-            cbks.on_batch_begin('predict', step, logs)
+        for step, batch in enumerate(test_dataloader):
+            if auto_utils.use_new_executor():
+                batches = self._validate_batch(batch)
+            else:
+                batches = [{}]
+
             try:
-                outs = self._executor.run(
-                    self.main_program,
-                    fetch_list=fetch_names,
-                    use_program_cache=self._strategy.use_cache,
-                    return_numpy=self._strategy.return_numpy,
-                )
+                for micro_batch in batches:
+                    cbks.on_batch_begin('predict', step, logs)
+                    outs = self._executor.run(
+                        self.main_program,
+                        feed=micro_batch,
+                        fetch_list=fetch_names,
+                        use_program_cache=self._strategy.use_cache,
+                        return_numpy=self._strategy.return_numpy,
+                    )
             except core.EOFException:
+                break
+
+            if steps_per_epoch and step >= steps_per_epoch:
+                if not auto_utils.use_new_executor():
+                    test_dataloader._reset()
                 break
             logs = self._prepare_logger(
                 outs, None, step, None, fetch_names, fetch_indices, self._mode
@@ -1236,7 +1385,7 @@ class Engine:
         dataset,
         batch_size=1,
         shuffle=False,
-        drop_last=False,
+        drop_last=True,
         collate_fn=None,
         num_workers=0,
         use_buffer_reader=True,
@@ -1247,22 +1396,24 @@ class Engine:
         steps_per_epoch=None,
         sample_split=1,
         mode=None,
+        places=None,
     ):
         if mode is not None:
             self.to_mode(mode)
-        self._inputs_spec, self._labels_spec = self._prepare_data_spec(
-            dataset, sample_split, batch_size
-        )
-        micro_batch_size = self._validate_batch_size(batch_size)
+
         if not self._has_prepared[self._mode]:
+            self._inputs_spec, self._labels_spec = self._prepare_data_spec(
+                dataset, sample_split, batch_size
+            )
             self._prepare_program(self._mode)
         else:
             self._switch_mode(self._mode)
 
+        batch_size = self._validate_batch_size(batch_size)
         dataloader = self._prepare_dataloader(
             dataset,
             return_list=False,
-            batch_size=micro_batch_size,
+            batch_size=batch_size,
             shuffle=shuffle,
             drop_last=drop_last,
             collate_fn=collate_fn,
@@ -1273,6 +1424,7 @@ class Engine:
             worker_init_fn=worker_init_fn,
             epochs=epochs,
             steps_per_epoch=steps_per_epoch,
+            places=places,
         )
         return dataloader
 
@@ -1293,15 +1445,16 @@ class Engine:
     ):
         if mode is not None:
             self.to_mode(mode)
-        self._inputs_spec, self._labels_spec = self._prepare_data_spec(
-            dataset, sample_split, batch_size
-        )
-        micro_batch_size = self._validate_batch_size(batch_size)
+
         if not self._has_prepared[self._mode]:
+            self._inputs_spec, self._labels_spec = self._prepare_data_spec(
+                dataset, sample_split, batch_size
+            )
             self._prepare_program(self._mode)
         else:
             self._switch_mode(self._mode)
 
+        micro_batch_size = self._validate_batch_size(batch_size)
         dataloader = self._prepare_dataloader_from_generator(
             dataset=dataset,
             capacity=capacity,
@@ -1383,6 +1536,11 @@ class Engine:
             and not self._has_prepared_reader[self._mode]
         ):
             self._prepare_reader()
+
+        self._executor.enable_job_schedule_profiler = (
+            self.enable_job_schedule_profiler
+        )
+
         outs = self._executor.run(
             self.main_program,
             feed=feed_dict,
@@ -1395,13 +1553,36 @@ class Engine:
         )
         return logs
 
+    def get_feed_list(self):
+        dist_context = self._dist_contexts[self._mode]
+        dist_main_prog = dist_context.dist_main_programs[self._cur_rank]
+        dist_startup_prog = dist_context.dist_startup_programs[self._cur_rank]
+        dist_main_block = dist_main_prog.global_block()
+
+        # NOTE: Get feed_list, then insert dataloader op with sharded var shape.
+        # Cause predict_program does not contain labels var,
+        # then we will add labels var from serial_program to dist_program,
+        # that maintains the length of feed_list equal to the length of dataset's values.
+        inputs_var = dist_context.serial_feed_vars["inputs"]
+        labels_var = dist_context.serial_feed_vars["labels"]
+        feed_list = []
+        for var in inputs_var + labels_var:
+            if var.name in dist_main_block.vars:
+                feed_list.append(dist_main_block.vars[var.name])
+            else:
+                copy_var = dist_main_block._clone_variable(var, var.persistable)
+                copy_var.desc.set_original_id(var.desc.original_id())
+                feed_list.append(copy_var)
+
+        return feed_list
+
     def _prepare_dataloader(
         self,
         dataset,
         return_list=True,
         batch_size=1,
         shuffle=False,
-        drop_last=False,
+        drop_last=True,
         collate_fn=None,
         num_workers=0,
         use_buffer_reader=True,
@@ -1410,8 +1591,8 @@ class Engine:
         worker_init_fn=None,
         epochs=1,
         steps_per_epoch=None,
+        places=None,
     ):
-
         dist_context = self._dist_contexts[self._mode]
         dist_main_prog = dist_context.dist_main_programs[self._cur_rank]
         dist_startup_prog = dist_context.dist_startup_programs[self._cur_rank]
@@ -1433,7 +1614,6 @@ class Engine:
                 feed_list.append(copy_var)
 
         # insert read op at the end of program
-        places = paddle.static.cuda_places()
         with static.program_guard(dist_main_prog, dist_startup_prog):
             dataloader = DistributedDataLoader(
                 dataset,
@@ -1472,7 +1652,6 @@ class Engine:
         steps_per_epoch=None,
         collate_fn=None,
     ):
-
         dist_context = self._dist_contexts[self._mode]
         dist_main_prog = dist_context.dist_main_programs[self._cur_rank]
         dist_startup_prog = dist_context.dist_startup_programs[self._cur_rank]
@@ -1529,12 +1708,48 @@ class Engine:
     def _validate_batch_size(self, batch_size):
         if batch_size is None:
             return None
-        assert (
-            batch_size % self._acc_steps == 0
-        ), "Requires batch_size:[{}] to be divisible by acc_steps:[{}].".format(
-            batch_size, self._acc_steps
-        )
-        return batch_size // self._acc_steps
+
+        if auto_utils.use_new_executor():
+            assert (
+                len(set(self._dp_world_sizes)) == 1
+            ), "DistributedBatchSampler only support one data parallel group, but got [{}] different data parallel groups".format(
+                len(set(self._dp_world_sizes))
+            )
+            assert (
+                batch_size % self._dp_world_sizes[0] == 0
+            ), "batch_size [{}] is not divisible by dp_world_size [{}]".format(
+                str(batch_size), str(self._dp_world_sizes[0])
+            )
+            return batch_size // self._dp_world_sizes[0]
+        else:
+            assert (
+                batch_size % self._acc_steps == 0
+            ), "Requires batch_size:[{}] to be divisible by acc_steps:[{}].".format(
+                batch_size, self._acc_steps
+            )
+            return batch_size // self._acc_steps
+
+    def _validate_batch(self, batch):
+        if batch is None:
+            return [None]
+
+        if self._strategy.pipeline.enable or self._acc_steps == 1:
+            # pp with schedule or navie-pp
+            return batch
+        else:
+            # split feed data with gradient_merge k_steps
+            feed_names = []
+            split_batches = []
+            for feed_name, cur_feed in batch[0].items():
+                feed_names.append(feed_name)
+                split_batches.append(
+                    np.split(np.array(cur_feed), self._acc_steps, 0)
+                )
+            baches = []
+            for i in range(self._acc_steps):
+                micro_batch = [split_batch[i] for split_batch in split_batches]
+                baches.append(dict(zip(feed_names, micro_batch)))
+            return baches
 
     def _validate_spec(self, specs):
         specs = auto_utils.to_list(specs)
@@ -1546,9 +1761,7 @@ class Engine:
                     )
                 if spec.name is None:
                     raise ValueError(
-                        "Requires Input[{}].name != None, but receive `None` with {}.".format(
-                            i, spec
-                        )
+                        f"Requires Input[{i}].name != None, but receive `None` with {spec}."
                     )
                 if self._acc_steps > 1:
                     shape = list(spec.shape)
@@ -1639,28 +1852,29 @@ class Engine:
         Examples:
 
             .. code-block:: python
-                import paddle
-                import paddle.vision.transforms as T
-                from paddle.distributed.fleet import auto
-                from paddle.vision.datasets import MNIST
 
-                transform = T.Compose([
-                    T.Transpose(),
-                    T.Normalize([127.5], [127.5])
-                ])
-                train_dataset = MNIST(mode='train', transform=transform)
+                >>> import paddle
+                >>> import paddle.vision.transforms as T
+                >>> from paddle.distributed.fleet import auto
+                >>> from paddle.vision.datasets import MNIST
 
-                model = paddle.vision.models.LeNet()
-                loss = paddle.nn.CrossEntropyLoss()
-                optimizer = paddle.optimizer.Adam(
-                    learning_rate=0.001, parameters=model.parameters())
-                metrics = paddle.metric.Accuracy(topk=(1, 2))
+                >>> transform = T.Compose([
+                ...     T.Transpose(),
+                ...     T.Normalize([127.5], [127.5])
+                >>> ])
+                >>> train_dataset = MNIST(mode='train', transform=transform)
 
-                engine = auto.Engine(model, loss, optimizer, metrics)
-                engine.fit(train_dataset,
-                           epochs=1,
-                           batch_size=64)
-                engine.save("./my_model")
+                >>> model = paddle.vision.models.LeNet()
+                >>> loss = paddle.nn.CrossEntropyLoss()
+                >>> optimizer = paddle.optimizer.Adam(
+                ...     learning_rate=0.001, parameters=model.parameters())
+                >>> metrics = paddle.metric.Accuracy(topk=(1, 2))
+
+                >>> engine = auto.Engine(model, loss, optimizer, metrics)
+                >>> engine.fit(train_dataset,
+                ...             epochs=1,
+                ...             batch_size=64)
+                >>> engine.save("./my_model")
 
         """
         if training:
@@ -1723,29 +1937,30 @@ class Engine:
         Examples:
 
             .. code-block:: python
-                import paddle
-                import paddle.vision.transforms as T
-                from paddle.distributed.fleet import auto
-                from paddle.vision.datasets import MNIST
 
-                transform = T.Compose([
-                    T.Transpose(),
-                    T.Normalize([127.5], [127.5])
-                ])
-                train_dataset = MNIST(mode='train', transform=transform)
+                >>> import paddle
+                >>> import paddle.vision.transforms as T
+                >>> from paddle.distributed.fleet import auto
+                >>> from paddle.vision.datasets import MNIST
 
-                model = paddle.vision.models.LeNet()
-                loss = paddle.nn.CrossEntropyLoss()
-                optimizer = paddle.optimizer.Adam(
-                    learning_rate=0.001, parameters=model.parameters())
-                metrics = paddle.metric.Accuracy(topk=(1, 2))
+                >>> transform = T.Compose([
+                ...     T.Transpose(),
+                ...     T.Normalize([127.5], [127.5])
+                >>> ])
+                >>> train_dataset = MNIST(mode='train', transform=transform)
 
-                engine = auto.Engine(model, loss, optimizer, metrics)
-                engine.fit(train_dataset,
-                           epochs=1,
-                           batch_size=64)
-                engine.save("./my_model")
-                engine.load("./my_model")
+                >>> model = paddle.vision.models.LeNet()
+                >>> loss = paddle.nn.CrossEntropyLoss()
+                >>> optimizer = paddle.optimizer.Adam(
+                ...     learning_rate=0.001, parameters=model.parameters())
+                >>> metrics = paddle.metric.Accuracy(topk=(1, 2))
+
+                >>> engine = auto.Engine(model, loss, optimizer, metrics)
+                >>> engine.fit(train_dataset,
+                ...             epochs=1,
+                ...             batch_size=64)
+                >>> engine.save("./my_model")
+                >>> engine.load("./my_model")
 
         """
         self._strict = strict
@@ -1816,6 +2031,18 @@ class Engine:
         global_cost, max_memory = get_cost_from_engine(self, mode)
 
         return global_cost.time, max_memory
+
+    def get_dist_main_program(self, mode):
+        return self._dist_contexts[mode].dist_main_programs[self._cur_rank]
+
+    def get_dist_startup_program(self, mode):
+        return self._dist_contexts[mode].dist_startup_programs[self._cur_rank]
+
+    def get_serial_main_program(self, mode):
+        return self._dist_contexts[mode].serial_main_program
+
+    def get_serial_startup_program(self, mode):
+        return self._dist_contexts[mode].serial_startup_program
 
     @property
     def main_program(self):

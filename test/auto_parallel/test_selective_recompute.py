@@ -74,8 +74,8 @@ def apply_pass(use_recompute=False, no_recompute_segments=[]):
 
 
 def reset_prog():
-    paddle.fluid.framework.switch_main_program(paddle.static.Program())
-    paddle.fluid.framework.switch_startup_program(paddle.static.Program())
+    paddle.base.framework.switch_main_program(paddle.static.Program())
+    paddle.base.framework.switch_startup_program(paddle.static.Program())
 
 
 class TestRecomputePassWithRecomputeAPI(unittest.TestCase):
@@ -91,7 +91,7 @@ class TestRecomputePassWithRecomputeAPI(unittest.TestCase):
         paddle.seed(2022)
         np.random.seed(2022)
         random.seed(2022)
-        place = paddle.fluid.CUDAPlace(paddle.distributed.ParallelEnv().dev_id)
+        place = paddle.base.CUDAPlace(paddle.distributed.ParallelEnv().dev_id)
         engine._executor = paddle.static.Executor(place)
 
     def get_engine(
@@ -165,7 +165,6 @@ class TestRecomputePassWithRecomputeAPI(unittest.TestCase):
         assert len(rc1_vars) < len(rc2_vars) and len(rc2_vars) < len(rc3_vars)
 
     def test_recompute_pass_error(self):
-
         with self.assertRaises(AssertionError):
             rc_engine = self.get_engine(True, True, "full", [2])
             history = rc_engine.fit(self.dataset, 3, batch_size=self.batch_size)

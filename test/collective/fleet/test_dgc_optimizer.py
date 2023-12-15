@@ -16,7 +16,7 @@ import unittest
 
 import paddle
 from paddle import regularizer
-from paddle.fluid import framework, optimizer
+from paddle.base import framework
 from paddle.nn import clip
 
 paddle.enable_static()
@@ -79,8 +79,10 @@ class TestDGCMomentumOptimizer(unittest.TestCase):
         )
 
         if use_recompute:
-            dgc_momentum_optimizer = optimizer.RecomputeOptimizer(
-                dgc_momentum_optimizer
+            dgc_momentum_optimizer = (
+                paddle.incubate.optimizer.RecomputeOptimizer(
+                    dgc_momentum_optimizer
+                )
             )
             dgc_momentum_optimizer._set_checkpoints([])
             dgc_momentum_optimizer.get_accumulators = (

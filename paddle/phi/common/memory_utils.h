@@ -17,12 +17,22 @@
 #include <future>  // NOLINT
 #include <unordered_map>
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/stream.h"
+#include "paddle/utils/test_macros.h"
+
+#ifdef PADDLE_WITH_CUDA
+#include <cuda.h>
+#include <cuda_runtime.h>
+#endif
+
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+#endif
 
 namespace phi {
 
@@ -150,6 +160,17 @@ struct MemoryInterface {
       const std::vector<phi::Place>& places,
       bool disable_setting_default_stream_for_allocator,
       int stream_priority);
+
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
+  phi::Allocator* (*get_allocator)(int device_id, phi::gpuStream_t stream);
+  phi::Allocator* (*get_host_allocator)();
+  phi::Allocator* (*get_zero_allocator)(int device_id);
+  phi::Allocator* (*get_host_zero_allocator)();
+  phi::Allocator* (*get_pinned_allocator)();
+  std::shared_ptr<std::remove_pointer<phi::gpuEvent_t>::type> (
+      *get_new_cuda_event)(int device_id);
+#endif
 };
 
 class MemoryUtils {
@@ -323,6 +344,34 @@ class MemoryUtils {
             "Fluid. You can call InitMemoryMethod() for initialization."));
   }
 
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
+  const phi::Allocator* GetAllocator(int device_id, phi::gpuStream_t stream) {
+    return memory_method_->get_allocator(device_id, stream);
+  }
+
+  const phi::Allocator* GetHostAllocator() {
+    return memory_method_->get_host_allocator();
+  }
+
+  const phi::Allocator* GetZeroAllocator(int device_id) {
+    return memory_method_->get_zero_allocator(device_id);
+  }
+
+  const phi::Allocator* GetHostZeroAllocator() {
+    return memory_method_->get_host_zero_allocator();
+  }
+
+  const phi::Allocator* GetPinnedAllocator() {
+    return memory_method_->get_pinned_allocator();
+  }
+
+  std::shared_ptr<std::remove_pointer<phi::gpuEvent_t>::type> GetCudaEvent(
+      int device_id) {
+    return memory_method_->get_new_cuda_event(device_id);
+  }
+#endif
+
  private:
   MemoryUtils() = default;
 
@@ -376,7 +425,7 @@ int64_t DeviceMemoryStatCurrentValue(const std::string& stat_type, int dev_id);
 void GpuMemoryUsage(size_t* available, size_t* total);
 #endif
 
-void InitDevices();
+TEST_API void InitDevices();
 
 void EmplaceDeviceContexts(
     std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
@@ -384,6 +433,22 @@ void EmplaceDeviceContexts(
     const std::vector<phi::Place>& places,
     bool disable_setting_default_stream_for_allocator,
     int stream_priority);
+
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
+const Allocator* GetAllocator(int device_id, phi::gpuStream_t stream);
+
+const Allocator* GetHostAllocator();
+
+const Allocator* GetZeroAllocator(int device_id);
+
+const Allocator* GetHostZeroAllocator();
+
+const Allocator* GetPinnedAllocator();
+
+std::shared_ptr<std::remove_pointer<phi::gpuEvent_t>::type> GetCudaEvent(
+    int device_id);
+#endif
 
 class Buffer {
  public:
@@ -420,6 +485,37 @@ class Buffer {
  private:
   Allocator::AllocationPtr allocation_;
   phi::Place place_;
+};
+
+template <typename StreamType>
+struct ThrustAllocator {
+  typedef char value_type;
+  ThrustAllocator(phi::Place place, StreamType stream) {
+    place_ = place;
+    stream_ = stream;
+  }
+  ~ThrustAllocator() {}
+  char* allocate(std::ptrdiff_t num_bytes) {
+    auto storage =
+        AllocShared(place_,
+                    num_bytes,
+                    phi::Stream(reinterpret_cast<phi::StreamId>(stream_)));
+    char* ptr = reinterpret_cast<char*>(storage->ptr());
+    busy_allocation_.emplace(std::make_pair(ptr, storage));
+    return ptr;
+  }
+  void deallocate(char* ptr, size_t) {
+    allocation_map_type::iterator iter = busy_allocation_.find(ptr);
+    // CHECK(iter != busy_allocation_.end());
+    busy_allocation_.erase(iter);
+  }
+
+ private:
+  typedef std::unordered_map<char*, std::shared_ptr<Allocation>>
+      allocation_map_type;
+  allocation_map_type busy_allocation_;
+  phi::Place place_;
+  StreamType stream_;
 };
 
 }  // namespace memory_utils

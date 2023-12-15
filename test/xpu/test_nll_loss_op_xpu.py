@@ -45,16 +45,16 @@ def nll_loss_1d(
         out[i] = -logs[i][cur_target] * cur_weight
     if reduction == 'sum':
         out = np.sum(out)
-        total_weight = np.array([total_weight]).astype(dtype)
+        total_weight = np.array(total_weight).astype(dtype)
         return {'Out': out, 'Total_weight': total_weight}
     elif reduction == 'mean':
         out = np.sum(out)
         if total_weight != 0:
             out /= total_weight
-        total_weight = np.array([total_weight]).astype(dtype)
+        total_weight = np.array(total_weight).astype(dtype)
         return {'Out': out, 'Total_weight': total_weight}
     elif reduction == 'none':
-        total_weight = np.array([0]).astype(dtype)
+        total_weight = np.array(0).astype(dtype)
         return {'Out': out, 'Total_weight': total_weight}
 
 
@@ -79,16 +79,16 @@ def nll_loss_2d(
                 out[i][h][w] = -logs[i][cur_target][h][w] * cur_weight
     if reduction == 'sum':
         out = np.sum(out)
-        total_weight = np.array([total_weight]).astype(dtype)
+        total_weight = np.array(total_weight).astype(dtype)
         return {'Out': out, 'Total_weight': total_weight}
     elif reduction == 'mean':
         out = np.sum(out)
         if total_weight != 0:
             out /= total_weight
-        total_weight = np.array([total_weight]).astype(dtype)
+        total_weight = np.array(total_weight).astype(dtype)
         return {'Out': out, 'Total_weight': total_weight}
     elif reduction == 'none':
-        total_weight = np.array([0]).astype(dtype)
+        total_weight = np.array(0).astype(dtype)
         return {'Out': out, 'Total_weight': total_weight}
 
 

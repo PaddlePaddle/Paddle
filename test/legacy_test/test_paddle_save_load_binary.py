@@ -22,8 +22,8 @@ import numpy as np
 from test_imperative_base import new_program_scope
 
 import paddle
-from paddle import fluid
-from paddle.fluid import framework
+from paddle import base
+from paddle.base import framework
 
 IMAGE_SIZE = 784
 
@@ -39,7 +39,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
 
     def set_zero(self, prog, place, scope=None):
         if scope is None:
-            scope = fluid.global_scope()
+            scope = base.global_scope()
         for var in prog.list_vars():
             if isinstance(var, framework.Parameter) or var.persistable:
                 ten = scope.find_var(var.name).get_tensor()
@@ -81,9 +81,9 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             z = paddle.static.nn.fc(z, 128, bias_attr=False)
             loss = paddle.mean(z)
             place = (
-                fluid.CPUPlace()
-                if not paddle.fluid.core.is_compiled_with_cuda()
-                else fluid.CUDAPlace(0)
+                base.CPUPlace()
+                if not paddle.base.core.is_compiled_with_cuda()
+                else base.CUDAPlace(0)
             )
             exe = paddle.static.Executor(place)
             exe.run(paddle.static.default_startup_program())
@@ -92,7 +92,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             for var in prog.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
                     t = np.array(
-                        fluid.global_scope().find_var(var.name).get_tensor()
+                        base.global_scope().find_var(var.name).get_tensor()
                     )
                     # make sure all the paramerter or optimizer var have been update
                     self.assertTrue(np.sum(np.abs(t)) != 0)
@@ -114,7 +114,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             for var in prog.list_vars():
                 if var.persistable:
                     new_t = np.array(
-                        fluid.global_scope().find_var(var.name).get_tensor()
+                        base.global_scope().find_var(var.name).get_tensor()
                     )
                     base_t = base_map[var.name]
 
@@ -131,7 +131,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             for var in prog.list_vars():
                 if var.persistable:
                     new_t = np.array(
-                        fluid.global_scope().find_var(var.name).get_tensor()
+                        base.global_scope().find_var(var.name).get_tensor()
                     )
                     base_t = base_map[var.name]
 
@@ -149,15 +149,15 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
                 OUTPUT_NUM,
                 name='fc_vars',
             )
-            prog = fluid.default_main_program()
+            prog = base.default_main_program()
             place = (
-                fluid.CPUPlace()
-                if not paddle.fluid.core.is_compiled_with_cuda()
-                else fluid.CUDAPlace(0)
+                base.CPUPlace()
+                if not paddle.base.core.is_compiled_with_cuda()
+                else base.CUDAPlace(0)
             )
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             prog = paddle.static.default_main_program()
-            exe.run(fluid.default_startup_program())
+            exe.run(base.default_startup_program())
 
             dirname = os.path.join(
                 self.temp_dir.name, 'test_save_load_lod_tensor1/tensor_'
@@ -178,7 +178,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             is_zeros = np.array(var.get_value())
 
             loaded_tensor = paddle.load(dirname + 'fc_vars.w_0')
-            self.assertTrue(isinstance(loaded_tensor, fluid.core.LoDTensor))
+            self.assertTrue(isinstance(loaded_tensor, base.core.LoDTensor))
             self.assertTrue(
                 list(loaded_tensor.shape()) == [IMAGE_SIZE, OUTPUT_NUM]
             )
@@ -199,11 +199,11 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
                 paddle.load(path)
 
         with self.assertRaises(ValueError):
-            temp_lod = fluid.core.LoDTensor()
+            temp_lod = base.core.LoDTensor()
             paddle.save(temp_lod, path, use_binary_format=True)
 
         with self.assertRaises(RuntimeError):
-            fluid.core.save_lod_tensor(
+            base.core.save_lod_tensor(
                 temp_lod,
                 os.path.join(
                     self.temp_dir.name,
@@ -212,7 +212,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             )
 
         with self.assertRaises(RuntimeError):
-            fluid.core.load_lod_tensor(
+            base.core.load_lod_tensor(
                 temp_lod,
                 os.path.join(
                     self.temp_dir.name,
@@ -237,14 +237,14 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
     def test_save_load_selected_rows(self):
         paddle.enable_static()
         place = (
-            fluid.CPUPlace()
-            if not paddle.fluid.core.is_compiled_with_cuda()
-            else fluid.CUDAPlace(0)
+            base.CPUPlace()
+            if not paddle.base.core.is_compiled_with_cuda()
+            else base.CUDAPlace(0)
         )
         height = 10
         rows = [0, 4, 7]
         row_numel = 12
-        selected_rows = fluid.core.SelectedRows(rows, height)
+        selected_rows = base.core.SelectedRows(rows, height)
         path = os.path.join(
             self.temp_dir.name, 'test_paddle_save_load_selected_rows/sr.pdsr'
         )
@@ -259,13 +259,13 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
         paddle.save(selected_rows, path, use_binary_format=True)
         load_sr = paddle.load(path)
 
-        self.assertTrue(isinstance(load_sr, fluid.core.SelectedRows))
+        self.assertTrue(isinstance(load_sr, base.core.SelectedRows))
         self.assertTrue(list(load_sr.rows()) == rows)
         self.assertTrue(load_sr.height() == height)
         np.testing.assert_array_equal(np.array(load_sr.get_tensor()), np_array)
 
         with self.assertRaises(RuntimeError):
-            fluid.core.save_selected_rows(
+            base.core.save_selected_rows(
                 selected_rows,
                 os.path.join(
                     self.temp_dir.name,
@@ -273,7 +273,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
                 ),
             )
         with self.assertRaises(RuntimeError):
-            fluid.core.load_selected_rows(
+            base.core.load_selected_rows(
                 selected_rows,
                 os.path.join(
                     self.temp_dir.name,
@@ -288,7 +288,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
         # load from memory
         selected_rows_mem = paddle.load(byio)
         to_array_mem = np.array(selected_rows_mem)
-        self.assertTrue(isinstance(selected_rows_mem, fluid.core.SelectedRows))
+        self.assertTrue(isinstance(selected_rows_mem, base.core.SelectedRows))
         self.assertTrue(list(selected_rows_mem.rows()) == rows)
         self.assertTrue(selected_rows_mem.height() == height)
         np.testing.assert_array_equal(

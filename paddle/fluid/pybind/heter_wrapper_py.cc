@@ -29,8 +29,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_wrapper.h"
 #include "paddle/fluid/pybind/heter_wrapper_py.h"
 
-namespace py = pybind11;
-
 namespace paddle {
 namespace pybind {
 #if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)

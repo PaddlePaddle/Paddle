@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 paddle.enable_static()
 
@@ -44,7 +44,7 @@ class TestFleetExecutor(unittest.TestCase):
     def run_fleet_executor(self, place, x_data, y_data):
         exe = paddle.static.Executor(place)
         empty_program = paddle.static.Program()
-        with fluid.program_guard(empty_program, empty_program):
+        with base.program_guard(empty_program, empty_program):
             x = paddle.static.data(
                 name='x', shape=[-1] + list(x_data.shape), dtype=x_data.dtype
             )
@@ -82,13 +82,13 @@ class TestFleetExecutor(unittest.TestCase):
         return res
 
     def test_executor_on_single_device(self):
-        if fluid.is_compiled_with_cuda():
+        if base.is_compiled_with_cuda():
             shape = (10000, 3462)
             x_data = np.random.rand(*shape)
             y_data = np.random.rand(*shape)
             z_data = x_data + y_data
             a_data = 2 * x_data + 3 * y_data
-            res = self.run_fleet_executor(fluid.CUDAPlace(0), x_data, y_data)
+            res = self.run_fleet_executor(base.CUDAPlace(0), x_data, y_data)
             np.testing.assert_allclose(res[0], z_data, rtol=1e-05)
             np.testing.assert_allclose(res[1], a_data, rtol=1e-05)
 

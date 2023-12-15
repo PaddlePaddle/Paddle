@@ -18,6 +18,8 @@
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -83,6 +85,18 @@ void GradTensorHolder::CopyValueFromTensor(size_t slot_id,
       } else if (t.is_sparse_csr_tensor() || t.is_sparse_coo_tensor()) {
         buffer_[slot_id][rank] =
             paddle::experimental::sparse::full_like(t, 1, t.dtype());
+      } else if (t.is_dist_tensor()) {
+        auto init_grad =
+            paddle::experimental::full(t.shape(), 1, t.dtype(), t.place());
+        auto global_dense_t =
+            std::static_pointer_cast<phi::DenseTensor>(init_grad.impl());
+        auto dist_t =
+            static_cast<phi::distributed::DistTensor*>(t.impl().get());
+        auto dist_attr = dist_t->dist_attr();
+        dist_attr.clean_partial_status();
+        init_grad.set_impl(std::make_shared<phi::distributed::DistTensor>(
+            global_dense_t, dist_attr));
+        buffer_[slot_id][rank] = init_grad;
       } else {
         PADDLE_THROW(paddle::platform::errors::Fatal(
             "Only Support DENSE_TENSOR, SPARSE_COO_TENSOR, SPARSE_CSR_TENSOR "
@@ -99,8 +113,19 @@ void GradTensorHolder::add(size_t slot_id,
                            const paddle::Tensor& t,
                            bool create_graph) {
   if (!t.initialized()) {
-    VLOG(3) << "No need to do accumulate for uninitialized t.";
-    return;
+    if (t.defined() && t.is_dist_tensor() &&
+        phi::distributed::NeedComputationClipForPP(t.impl())) {
+      // Pipeline parallel still needs to construct GradNode graph
+      // to make DistTensor's global shape and DistAttr information flow.
+      // Skip grad accumulation will cause GradTensor disconnect to next
+      // GradNode.
+      VLOG(3) << "Do accumulate for uninitialized Tensor " << t.name()
+              << " as it's DistTensor and it needs computation clip for "
+                 "pipeline parallel.";
+    } else {
+      VLOG(3) << "No need to do accumulate for uninitialized t.";
+      return;
+    }
   }  // TODO(jiabin): Remove this when we fix all kernel.
 
   PADDLE_ENFORCE(slot_id < buffer_.size(),
@@ -178,6 +203,8 @@ void GradTensorHolder::add(size_t slot_id,
                                                         &buffer_values);
         }
       }
+    } else if (t.is_dist_tensor()) {
+      buffer_tensor = add_ad_func(t, buffer_tensor);
     } else {
       // TODO(jiabin): Support Other TensorBase later
       // TODO(zhanlve): Replace SelectedRowsAddTensor with add_dygraph_function

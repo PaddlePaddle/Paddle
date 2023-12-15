@@ -130,18 +130,21 @@ def ReadFwdFile(filepath):
     return contents if contents is not None else []
 
 
-def ReadBwdFile(filepath):
+def ReadBwdFile(filepath, bw_ops=None):
     f = open(filepath, 'r')
-    contents = yaml.load(f, Loader=yaml.FullLoader)
-    # not all fused ops supoort dygraph
-    if filepath.endswith("fused_backward.yaml") is True:
-        new_apis = [
-            api
-            for api in contents
-            if "support_dygraph_mode" in api
-            and api["support_dygraph_mode"] is True
-        ]
-        contents = new_apis
+    if bw_ops is None:
+        contents = yaml.load(f, Loader=yaml.FullLoader)
+        # not all fused ops supoort dygraph
+        if filepath.endswith("fused_backward.yaml") is True:
+            new_apis = [
+                api
+                for api in contents
+                if "support_dygraph_mode" in api
+                and api["support_dygraph_mode"] is True
+            ]
+            contents = new_apis
+    else:
+        contents = bw_ops
 
     ret = {}
     if contents is not None:
@@ -595,15 +598,16 @@ class FunctionGeneratorBase:
 
 
 class GeneratorBase:
-    def __init__(self, api_yaml_path):
+    def __init__(self, api_yaml_path, fw_ops=None):
         self.namespace = ""
         self.api_yaml_path = api_yaml_path
 
-        self.forward_api_list = []
+        self.forward_api_list = fw_ops
 
     def ParseForwardYamlContents(self):
         api_yaml_path = self.api_yaml_path
-        self.forward_api_list = ReadFwdFile(api_yaml_path)
+        if self.forward_api_list is None:
+            self.forward_api_list = ReadFwdFile(api_yaml_path)
 
     def InferNameSpace(self):
         api_yaml_path = self.api_yaml_path

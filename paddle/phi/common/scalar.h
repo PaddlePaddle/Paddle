@@ -19,7 +19,7 @@ limitations under the License. */
 #include <sstream>
 #include <vector>
 
-#include "paddle/phi/api/ext/exception.h"
+#include "paddle/common/exception.h"
 #include "paddle/phi/common/data_type.h"
 
 namespace paddle {
@@ -110,6 +110,12 @@ class ScalarBase {
       data_.f64 = -std::numeric_limits<double>::infinity();
     } else if (str_value == "nan") {
       data_.f64 = std::numeric_limits<double>::quiet_NaN();
+    } else if (str_value == "True") {
+      dtype_ = DataType::BOOL;
+      data_.b = true;
+    } else if (str_value == "False") {
+      dtype_ = DataType::BOOL;
+      data_.b = false;
     } else {
       // NOTE(chenfeiyu): to support subnormal floating point number
       // std::stod cannot handle subnormal values

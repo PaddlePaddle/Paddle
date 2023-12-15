@@ -17,9 +17,9 @@ import unittest
 import numpy
 
 import paddle
-from paddle import fluid
-from paddle.fluid.backward import append_backward
-from paddle.fluid.executor import Executor
+from paddle import base
+from paddle.base.backward import append_backward
+from paddle.base.executor import Executor
 
 paddle.enable_static()
 
@@ -76,9 +76,9 @@ class TestWhileOp(unittest.TestCase):
         return loss, sum_result
 
     def test_simple_net(self):
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(main_program, startup_program):
+        main_program = base.Program()
+        startup_program = base.Program()
+        with base.program_guard(main_program, startup_program):
             loss, sum_result = self.simple_net()
 
             append_backward(loss)
@@ -97,11 +97,11 @@ class TestWhileOp(unittest.TestCase):
             self.assertAlmostEqual(numpy.sum(d), numpy.sum(outs[0]), delta=0.01)
 
     def test_simple_net_forward(self):
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(main_program, startup_program):
+        main_program = base.Program()
+        startup_program = base.Program()
+        with base.program_guard(main_program, startup_program):
             self.simple_net()
-            binary = fluid.compiler.CompiledProgram(main_program)
+            binary = base.compiler.CompiledProgram(main_program)
 
             xpu_place = paddle.XPUPlace(0)
             exe = Executor(xpu_place)

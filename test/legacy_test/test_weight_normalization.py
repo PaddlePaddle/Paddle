@@ -18,9 +18,9 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.param_attr import WeightNormParamAttr
+from paddle import base
+from paddle.base import core
+from paddle.base.param_attr import WeightNormParamAttr
 
 
 class TestWeightNormalization(unittest.TestCase):
@@ -49,7 +49,7 @@ class TestWeightNormalization(unittest.TestCase):
             activation=None,
         )
         loss = paddle.sum(out)
-        fluid.backward.append_backward(loss=loss)
+        base.backward.append_backward(loss=loss)
         cls.fetch_list = [
             'weight_norm_param_g',
             'weight_norm_param_v',
@@ -63,10 +63,10 @@ class TestWeightNormalization(unittest.TestCase):
             places.append(core.CUDAPlace(0))
         for place in places:
             self.set_inputs(place)
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
+            exe = base.Executor(place)
+            exe.run(base.default_startup_program())
             output = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed=self.inputs,
                 fetch_list=self.fetch_list,
                 return_numpy=False,
@@ -99,7 +99,7 @@ class TestWeightNormalization(unittest.TestCase):
     def set_inputs(self, place):
         self.inputs = {}
         for desc in self.data_desc:
-            tensor = fluid.Tensor()
+            tensor = base.Tensor()
             tensor.set(self.data[desc[0]][0], place)
             if self.data[desc[0]][1]:
                 tensor.set_recursive_sequence_lengths(self.data[desc[0]][1])

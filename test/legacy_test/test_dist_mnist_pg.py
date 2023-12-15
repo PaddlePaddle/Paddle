@@ -29,9 +29,9 @@ class TestDistMnistNCCL2(TestDistBase):
         self._nccl2_mode = True
 
     def test_dist_train(self):
-        from paddle import fluid
+        from paddle import base
 
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             self.check_with_place(
                 "dist_mnist.py",
                 delta=1,

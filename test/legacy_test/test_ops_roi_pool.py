@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 from paddle.vision.ops import RoIPool, roi_pool
 
 
@@ -30,7 +31,6 @@ class TestRoIPool(unittest.TestCase):
         self.boxes_num = np.array([3], dtype=np.int32)
 
     def roi_pool_functional(self, output_size):
-
         if isinstance(output_size, int):
             output_shape = (3, 256, output_size, output_size)
         else:
@@ -82,6 +82,7 @@ class TestRoIPool(unittest.TestCase):
         self.roi_pool_functional(3)
         self.roi_pool_functional(output_size=(3, 4))
 
+    @test_with_pir_api
     def test_roi_pool_functional_static(self):
         paddle.enable_static()
         self.roi_pool_functional(3)

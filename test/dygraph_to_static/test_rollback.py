@@ -15,6 +15,11 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_ast_only,
+    test_legacy_and_pt_and_pir,
+)
 
 import paddle
 from paddle.jit.dy2static.program_translator import StaticFunction
@@ -66,11 +71,10 @@ def foo(x, flag=False):
     return out
 
 
-class TestRollBackPlainFunction(unittest.TestCase):
-    def setUp(self):
-        paddle.set_device("cpu")
-
+class TestRollBackPlainFunction(Dy2StTestBase):
+    @test_legacy_and_pt_and_pir
     def test_plain_func(self):
+        paddle.set_device("cpu")
         st_foo = paddle.jit.to_static(foo)
         x = paddle.randn([3, 4])
         st_out = st_foo(x)
@@ -84,11 +88,11 @@ class TestRollBackPlainFunction(unittest.TestCase):
         np.testing.assert_array_equal(st_out.numpy(), dy_out.numpy())
 
 
-class TestRollBackNet(unittest.TestCase):
-    def setUp(self):
-        paddle.set_device("cpu")
-
+class TestRollBackNet(Dy2StTestBase):
+    @test_ast_only
+    @test_legacy_and_pt_and_pir
     def test_net(self):
+        paddle.set_device("cpu")
         net = paddle.jit.to_static(Net())
         x = paddle.randn([3, 4])
         st_fwd_out = net(x)
@@ -119,6 +123,29 @@ class TestRollBackNet(unittest.TestCase):
         np.testing.assert_array_equal(
             st_infer_out.numpy(), dy_infer_out.numpy()
         )
+
+
+class FuncRollback(paddle.nn.Layer):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def forward(self, x):
+        return x + 1
+
+    @paddle.jit.to_static(full_graph=True)
+    def func(self, x):
+        return x + 2
+
+
+class TestRollBackNotForward(Dy2StTestBase):
+    @test_ast_only
+    @test_legacy_and_pt_and_pir
+    def test_rollback(self):
+        x = paddle.zeros([2, 2])
+        net = FuncRollback()
+        out = net.func(x)
+        net.func.rollback()
+        self.assertTrue(not isinstance(net.func, StaticFunction))
 
 
 if __name__ == "__main__":

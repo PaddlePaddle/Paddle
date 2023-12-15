@@ -19,13 +19,15 @@ import numpy as np
 from decorator_helper import prog_scope
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
 
 class TestSliceOpDoubleGradCheck(unittest.TestCase):
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         self.config()
@@ -42,14 +44,14 @@ class TestSliceOpDoubleGradCheck(unittest.TestCase):
         self.ends = [3, 3, 6]
         self.axes = [0, 1, 2]
         self.x_arr = np.random.random([3, 4, 5, 2]).astype("float64")
-        self.inputs = paddle.create_parameter(
+        self.inputs = paddle.static.data(
             dtype="float64", shape=[3, 4, 5, 2], name='x'
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for place in places:
             self.func(place)
 
@@ -60,12 +62,13 @@ class TestSliceOpDoubleGradCheckCase3(TestSliceOpDoubleGradCheck):
         self.ends = [3, 3, 3]
         self.axes = [0, 1, 2]
         self.x_arr = np.random.random([3, 3, 3]).astype("float64")
-        self.inputs = paddle.create_parameter(
+        self.inputs = paddle.static.data(
             dtype="float64", shape=[3, 3, 3], name='x3'
         )
 
 
 class TestReduceMeanWithDimDoubleGradCheck(unittest.TestCase):
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [7, 11]
@@ -82,14 +85,15 @@ class TestReduceMeanWithDimDoubleGradCheck(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
 
 class TestReduceSumWithDimDoubleGradCheck(unittest.TestCase):
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [7, 11]
@@ -106,14 +110,15 @@ class TestReduceSumWithDimDoubleGradCheck(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
 
 class TestReshapeDoubleGradCheck(unittest.TestCase):
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         x_shape = [3, 12]
@@ -131,9 +136,9 @@ class TestReshapeDoubleGradCheck(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -142,6 +147,7 @@ class TestTileDoubleGradCheck(unittest.TestCase):
     def tile_wrapper(self, x):
         return paddle.tile(x[0], [4, 9])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         x_shape = [3, 12]
@@ -162,9 +168,9 @@ class TestTileDoubleGradCheck(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -173,6 +179,7 @@ class TestExpandV2DoubleGradCheck(unittest.TestCase):
     def expand_wrapper(self, x):
         return paddle.expand(x[0], [4, 12])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         x_shape = [1, 12]
@@ -193,9 +200,9 @@ class TestExpandV2DoubleGradCheck(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -205,6 +212,7 @@ class TestSqueezeDoubleGradCheck(unittest.TestCase):
         axes = [0, 2]
         return paddle.squeeze(x[0], axes)
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         x_shape = [1, 3, 1, 40]
@@ -225,9 +233,9 @@ class TestSqueezeDoubleGradCheck(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -237,6 +245,7 @@ class TestUnsqueezeDoubleGradCheck(unittest.TestCase):
         axes = [1, 2]
         return paddle.unsqueeze(x[0], axes)
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         x_shape = [3, 40]
@@ -257,9 +266,9 @@ class TestUnsqueezeDoubleGradCheck(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -268,6 +277,7 @@ class TestClipDoubleGradCheck(unittest.TestCase):
     def clip_wrapper(self, x):
         return paddle.clip(x[0], min=-1.0, max=1.0)
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         x_shape = [2, 4, 10]
@@ -284,14 +294,15 @@ class TestClipDoubleGradCheck(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
 
 class TestTransposeDoubleGradCheck(unittest.TestCase):
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         x_shape = [3, 40]
@@ -306,14 +317,15 @@ class TestTransposeDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check([x], out, x_init=x_arr, place=place)
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
 
 class TestTransposeDoubleGradCheckCase1(unittest.TestCase):
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         x_shape = [2, 3, 4, 5]
@@ -328,9 +340,9 @@ class TestTransposeDoubleGradCheckCase1(unittest.TestCase):
         gradient_checker.double_grad_check([x], out, x_init=x_arr, place=place)
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -340,6 +352,7 @@ class TestConstantPadDoubleGradCheck(unittest.TestCase):
         pad = [1, 1, 1, 1]
         return paddle.nn.functional.pad(x[0], pad)
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         x_shape = [2, 3, 4, 5]
@@ -361,14 +374,15 @@ class TestConstantPadDoubleGradCheck(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
 
 class TestConstantPadDoubleGradCheckCase1(TestConstantPadDoubleGradCheck):
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         x_shape = [2, 3, 4, 5]
@@ -387,6 +401,7 @@ class TestConcatDoubleGradCheck(unittest.TestCase):
     def concat_wrapper(self, x):
         return paddle.concat(x, axis=0)
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         x_shape = [2, 3, 4, 5]
@@ -396,7 +411,9 @@ class TestConcatDoubleGradCheck(unittest.TestCase):
         x1 = paddle.static.data('x', x_shape, dtype)
         x2 = paddle.static.data('x', x_shape, dtype)
         x1.persistable = True
+        x1.stop_gradient = False
         x2.persistable = True
+        x2.stop_gradient = False
         out = paddle.concat([x1, x2], axis=0)
         x2_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
         x1_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
@@ -413,14 +430,15 @@ class TestConcatDoubleGradCheck(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
 
 class TestAvgPool2DDoubleGradCheckCase1(unittest.TestCase):
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         input_NCHW = paddle.static.data(
@@ -438,9 +456,9 @@ class TestAvgPool2DDoubleGradCheckCase1(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -451,6 +469,7 @@ class TestAvgPool2DDoubleGradCheckCase2(unittest.TestCase):
             x[0], kernel_size=2, data_format="NHWC"
         )
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         input_NHWC = paddle.static.data(
@@ -474,9 +493,9 @@ class TestAvgPool2DDoubleGradCheckCase2(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -487,6 +506,7 @@ class TestAvgPool2DDoubleGradCheckCase3(unittest.TestCase):
             x[0], kernel_size=2, padding=[1, 1]
         )
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         input_NCHW = paddle.static.data(
@@ -509,9 +529,9 @@ class TestAvgPool2DDoubleGradCheckCase3(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -520,6 +540,7 @@ class TestAvgPool2DDoubleGradCheckCase4(unittest.TestCase):
     def pool2d_wrapper(self, x):
         return paddle.nn.functional.avg_pool2d(x[0], kernel_size=[4, 4])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         input_NCHW = paddle.static.data(
@@ -540,9 +561,9 @@ class TestAvgPool2DDoubleGradCheckCase4(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 

@@ -23,7 +23,7 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include "gflags/gflags.h"
+#include "paddle/utils/flags.h"
 #include "test/cpp/inference/api/trt_dynamic_shape_ernie_serialize_deserialize_test.h"
 
 namespace paddle {

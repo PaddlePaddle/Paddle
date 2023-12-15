@@ -136,7 +136,10 @@ struct BuildStrategy {
   // Fused feed forward
   bool fused_feedforward_{false};
   bool sequential_run_{false};
-
+  // Fuse dot product attention
+  bool fuse_dot_product_attention_{false};
+  // Fuse ResUnit
+  bool fuse_resunit_{false};
   // mkldnn_enabled_op_types specify the operator type list to
   // use MKLDNN acceleration. It is null in default, means
   // that all the operators supported by MKLDNN will be
@@ -160,7 +163,7 @@ struct BuildStrategy {
   // Inference pass
   bool enable_inference_pass_{false};  // switch for infernce pass
   bool delete_dropout_{true};          // delte dropout op
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   bool use_mkldnn_{true};  // use mkdnn to do inference
 #else
   bool use_mkldnn_{false};  // use mkdnn to do inference

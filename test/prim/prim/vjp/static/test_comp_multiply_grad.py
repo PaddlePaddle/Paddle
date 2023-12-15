@@ -18,7 +18,7 @@ import numpy as np
 import parameterized as param
 
 import paddle
-from paddle.fluid import core, framework
+from paddle.base import core, framework
 
 
 @param.parameterized_class(
@@ -107,7 +107,6 @@ class TestMultiplyGradComp(unittest.TestCase):
         )
 
     def test_comp(self):
-
         core._set_prim_backward_enabled(True)
         actual = self.vjp()
 

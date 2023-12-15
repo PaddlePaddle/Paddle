@@ -23,7 +23,7 @@ import numpy as np
 import utils
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 paddle.enable_static()
 
@@ -252,10 +252,10 @@ class TestJacobianFloat32(unittest.TestCase):
     @classmethod
     def setUpClass(self):
         paddle.enable_static()
-        if fluid.core.is_compiled_with_cuda():
-            self.place = fluid.CUDAPlace(0)
+        if base.core.is_compiled_with_cuda():
+            self.place = base.CUDAPlace(0)
         else:
-            self.place = fluid.CPUPlace()
+            self.place = base.CPUPlace()
         self.dtype = 'float32'
         self.np_dtype = np.float32
         prepare_data(self, all_data_shapes, self.dtype)
@@ -269,9 +269,9 @@ class TestJacobianFloat32(unittest.TestCase):
         self.atol = 1e-2
 
     def run_test_by_fullmatrix(self, pd_f, np_f, inps, batch=False):
-        main = fluid.Program()
-        startup = fluid.Program()
-        with fluid.program_guard(main, startup):
+        main = base.Program()
+        startup = base.Program()
+        with base.program_guard(main, startup):
             xs = make_tensors(inps)
             JJ = paddle.incubate.autograd.Jacobian(pd_f, xs, is_batched=batch)
             if batch:
@@ -279,7 +279,7 @@ class TestJacobianFloat32(unittest.TestCase):
             else:
                 nrow, ncol = JJ.shape
             full_jacobian = JJ[:]
-        exe = fluid.Executor(self.place)
+        exe = base.Executor(self.place)
         exe.run(startup)
         if isinstance(inps, list):
             feeds = {f'x{i}': x for i, x in enumerate(inps)}
@@ -299,9 +299,9 @@ class TestJacobianFloat32(unittest.TestCase):
         )
 
     def run_test_by_rows(self, pd_f, np_f, inps, batch=False):
-        main = fluid.Program()
-        startup = fluid.Program()
-        with fluid.program_guard(main, startup):
+        main = base.Program()
+        startup = base.Program()
+        with base.program_guard(main, startup):
             xs = make_tensors(inps)
             JJ = paddle.incubate.autograd.Jacobian(pd_f, xs, is_batched=batch)
             if batch:
@@ -311,7 +311,7 @@ class TestJacobianFloat32(unittest.TestCase):
                 nrow, ncol = JJ.shape
                 rows = [JJ[i, :] for i in range(nrow)]
 
-        exe = fluid.Executor(self.place)
+        exe = base.Executor(self.place)
         exe.run(startup)
         if isinstance(inps, list):
             feeds = {f'x{i}': x for i, x in enumerate(inps)}
@@ -325,9 +325,9 @@ class TestJacobianFloat32(unittest.TestCase):
             )
 
     def run_test_by_entries(self, pd_f, np_f, inps, batch=False):
-        main = fluid.Program()
-        startup = fluid.Program()
-        with fluid.program_guard(main, startup):
+        main = base.Program()
+        startup = base.Program()
+        with base.program_guard(main, startup):
             xs = make_tensors(inps)
             JJ = paddle.incubate.autograd.Jacobian(pd_f, xs, is_batched=batch)
             if batch:
@@ -338,7 +338,7 @@ class TestJacobianFloat32(unittest.TestCase):
             else:
                 nrow, ncol = JJ.shape
                 entries = [JJ[i, j] for i in range(nrow) for j in range(ncol)]
-        exe = fluid.Executor(self.place)
+        exe = base.Executor(self.place)
         exe.run(startup)
         if isinstance(inps, list):
             feeds = {f'x{i}': x for i, x in enumerate(inps)}
@@ -408,10 +408,10 @@ class TestJacobianFloat64(TestJacobianFloat32):
     @classmethod
     def setUpClass(self):
         paddle.enable_static()
-        if fluid.core.is_compiled_with_cuda():
-            self.place = fluid.CUDAPlace(0)
+        if base.core.is_compiled_with_cuda():
+            self.place = base.CUDAPlace(0)
         else:
-            self.place = fluid.CPUPlace()
+            self.place = base.CPUPlace()
         self.dtype = 'float64'
         prepare_data(self, all_data_shapes, self.dtype)
         self.eps = (
@@ -429,10 +429,10 @@ class TestHessianFloat32(unittest.TestCase):
     @classmethod
     def setUpClass(self):
         paddle.enable_static()
-        if fluid.core.is_compiled_with_cuda():
-            self.place = fluid.CUDAPlace(0)
+        if base.core.is_compiled_with_cuda():
+            self.place = base.CUDAPlace(0)
         else:
-            self.place = fluid.CPUPlace()
+            self.place = base.CPUPlace()
         self.dtype = 'float32'
         prepare_data(self, all_data_shapes, self.dtype)
         self.eps = (
@@ -450,14 +450,14 @@ class TestHessianFloat32(unittest.TestCase):
         )
 
     def run_test_by_fullmatrix(self, pd_f, inps, np_hess, batch=False):
-        main = fluid.Program()
-        startup = fluid.Program()
-        with fluid.program_guard(main, startup):
+        main = base.Program()
+        startup = base.Program()
+        with base.program_guard(main, startup):
             xs = make_tensors(inps)
             HH = paddle.incubate.autograd.Hessian(pd_f, xs, is_batched=batch)
             nrow, ncol = HH.shape
             full_hessian = HH[:]
-        exe = fluid.Executor(self.place)
+        exe = base.Executor(self.place)
         exe.run(startup)
         if isinstance(inps, list):
             feeds = {f'x{i}': x for i, x in enumerate(inps)}
@@ -484,10 +484,10 @@ class TestHessianFloat64(TestHessianFloat32):
     @classmethod
     def setUpClass(self):
         paddle.enable_static()
-        if fluid.core.is_compiled_with_cuda():
-            self.place = fluid.CUDAPlace(0)
+        if base.core.is_compiled_with_cuda():
+            self.place = base.CUDAPlace(0)
         else:
-            self.place = fluid.CPUPlace()
+            self.place = base.CPUPlace()
         self.dtype = 'float64'
         prepare_data(self, all_data_shapes, self.dtype)
         self.eps = (

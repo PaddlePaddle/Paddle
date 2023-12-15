@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid.framework import Program, program_guard
+from paddle.base.framework import Program, program_guard
 
 sys.path.append("../")
 

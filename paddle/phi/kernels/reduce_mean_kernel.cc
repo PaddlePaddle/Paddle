@@ -38,6 +38,8 @@ PD_REGISTER_KERNEL(mean,
                    float,
                    double,
                    bool,
+                   int,
+                   int64_t,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
@@ -61,12 +63,17 @@ PD_REGISTER_KERNEL(mean,
 PD_REGISTER_KERNEL(mean, KPS, ALL_LAYOUT, phi::MeanKernel, float) {}
 #endif
 
-#if defined(PADDLE_WITH_MKLDNN)
+#if defined(PADDLE_WITH_DNNL)
 PD_REGISTER_KERNEL(
     mean, OneDNN, ONEDNN, phi::MeanKernel, float, phi::dtype::bfloat16) {}
 #endif
 
 #if defined(PADDLE_WITH_XPU)
-PD_REGISTER_KERNEL(
-    mean, XPU, ALL_LAYOUT, phi::MeanKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(mean,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::MeanKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 #endif

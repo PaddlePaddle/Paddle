@@ -75,7 +75,6 @@ class DistributedFillConstantBatchSizeLikeImpl0(DistributedOperatorImpl):
         return res_cost
 
     def is_input_compatible(self, dist_op):
-
         return True
 
     def is_output_compatible(self, dist_op):

@@ -16,8 +16,8 @@ import unittest
 
 import numpy as np
 
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class TestElementWiseAddOp(unittest.TestCase):
@@ -45,8 +45,8 @@ class TestElementWiseAddOp(unittest.TestCase):
             var_names = ['x', 'y', 'out', 'y@GRAD', 'x@GRAD', 'out@GRAD']
             ground_truth = {name: var_dict[name] for name in var_names}
 
-            program = fluid.Program()
-            with fluid.program_guard(program):
+            program = base.Program()
+            with base.program_guard(program):
                 block = program.global_block()
                 for name in ground_truth:
                     block.create_var(
@@ -83,7 +83,7 @@ class TestElementWiseAddOp(unittest.TestCase):
                     grad_var = block.desc.find_var(arg.encode("ascii"))
                     grad_var.set_dtype(core.VarDesc.VarType.FP32)
 
-                exe = fluid.Executor(place)
+                exe = base.Executor(place)
                 out = exe.run(
                     program,
                     feed={

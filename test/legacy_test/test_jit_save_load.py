@@ -22,8 +22,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import unique_name
+from paddle import base
+from paddle.base import unique_name
 from paddle.jit.api import to_static
 from paddle.jit.translated_layer import INFER_PARAMS_INFO_SUFFIX
 from paddle.nn import Linear
@@ -300,11 +300,11 @@ class LinearNetWithMultiStaticFunc(paddle.nn.Layer):
 
 def train(layer, input_size=784, label_size=1):
     # create optimizer
-    sgd = fluid.optimizer.SGDOptimizer(
-        learning_rate=0.01, parameter_list=layer.parameters()
+    sgd = paddle.optimizer.SGD(
+        learning_rate=0.01, parameters=layer.parameters()
     )
     # create data loader
-    train_loader = fluid.io.DataLoader.from_generator(capacity=5)
+    train_loader = base.io.DataLoader.from_generator(capacity=5)
     train_loader.set_batch_generator(
         random_batch_reader(input_size, label_size)
     )
@@ -316,7 +316,7 @@ def train(layer, input_size=784, label_size=1):
         cost = layer(img)
 
         loss = paddle.nn.functional.cross_entropy(
-            cost, label, reduction='none', use_softmax=False
+            cost, label, reduction='none', use_softmax=True
         )
         avg_loss = paddle.mean(loss)
 
@@ -328,11 +328,11 @@ def train(layer, input_size=784, label_size=1):
 
 def train_with_label(layer, input_size=784, label_size=1):
     # create optimizer
-    sgd = fluid.optimizer.SGDOptimizer(
-        learning_rate=0.01, parameter_list=layer.parameters()
+    sgd = paddle.optimizer.SGD(
+        learning_rate=0.01, parameters=layer.parameters()
     )
     # create data loader
-    train_loader = fluid.io.DataLoader.from_generator(capacity=5)
+    train_loader = base.io.DataLoader.from_generator(capacity=5)
     train_loader.set_batch_generator(
         random_batch_reader(input_size, label_size)
     )
@@ -356,7 +356,7 @@ class TestJitSaveLoad(unittest.TestCase):
             self.temp_dir.name, "test_jit_save_load/model"
         )
         # enable dygraph mode
-        fluid.enable_dygraph()
+        base.enable_dygraph()
         # config seed
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
@@ -389,7 +389,7 @@ class TestJitSaveLoad(unittest.TestCase):
         train_layer.eval()
         infer_layer.eval()
         # inference & compare
-        x = fluid.dygraph.to_variable(
+        x = base.dygraph.to_variable(
             np.random.random((1, 784)).astype('float32')
         )
         np.testing.assert_array_equal(
@@ -417,7 +417,7 @@ class TestJitSaveLoad(unittest.TestCase):
         new_layer.set_state_dict(load_state_dict)
         new_layer.eval()
         # inference & compare
-        x = fluid.dygraph.to_variable(
+        x = base.dygraph.to_variable(
             np.random.random((1, 784)).astype('float32')
         )
         np.testing.assert_array_equal(
@@ -442,16 +442,14 @@ class TestJitSaveLoad(unittest.TestCase):
 class TestSaveLoadWithNestOut(unittest.TestCase):
     def setUp(self):
         # enable dygraph mode
-        fluid.enable_dygraph()
+        base.enable_dygraph()
         self.temp_dir = tempfile.TemporaryDirectory()
 
     def tearDown(self):
         self.temp_dir.cleanup()
 
     def test_nest_output(self):
-        x = fluid.dygraph.to_variable(
-            np.random.random((4, 8)).astype('float32')
-        )
+        x = base.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
 
         net = LinearNetWithNestOut(8, 8)
         dy_outs = paddle.utils.flatten(net(x))
@@ -478,8 +476,8 @@ class TestSaveLoadWithDictInput(unittest.TestCase):
         net = LinearNetWithDictInput(8, 8)
         # net.forward.concrete_program.inputs:
         # (<__main__.LinearNetWithDictInput object at 0x7f2655298a98>,
-        #  {'img': var img : fluid.VarType.LOD_TENSOR.shape(-1, 8).astype(VarType.FP32)},
-        #  {'label': var label : fluid.VarType.LOD_TENSOR.shape(-1, 1).astype(VarType.INT64)})
+        #  {'img': var img : base.VarType.LOD_TENSOR.shape(-1, 8).astype(VarType.FP32)},
+        #  {'label': var label : base.VarType.LOD_TENSOR.shape(-1, 1).astype(VarType.INT64)})
         self.assertEqual(len(net.forward.concrete_program.inputs), 3)
         temp_dir = tempfile.TemporaryDirectory()
         path = os.path.join(
@@ -539,7 +537,7 @@ class TestSaveLoadWithDictInputNoPrune(unittest.TestCase):
 class TestSaveLoadWithInputSpec(unittest.TestCase):
     def setUp(self):
         # enable dygraph mode
-        fluid.enable_dygraph()
+        base.enable_dygraph()
         self.temp_dir = tempfile.TemporaryDirectory()
 
     def tearDown(self):
@@ -567,9 +565,7 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
 
         # 2. load to infer
         infer_layer = paddle.jit.load(model_path)
-        x = fluid.dygraph.to_variable(
-            np.random.random((4, 8)).astype('float32')
-        )
+        x = base.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
         pred = infer_layer(x)
 
     def test_multi_in_out(self):
@@ -591,12 +587,8 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
 
         # 3. load to infer
         infer_layer = paddle.jit.load(model_path)
-        x = fluid.dygraph.to_variable(
-            np.random.random((4, 8)).astype('float32')
-        )
-        y = fluid.dygraph.to_variable(
-            np.random.random((4, 8)).astype('float32')
-        )
+        x = base.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
+        y = base.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
         # 4. predict
         pred_x, pred_y = infer_layer(x, y)
 
@@ -633,12 +625,8 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
 
         # 3. load to infer
         infer_layer = paddle.jit.load(model_path)
-        x = fluid.dygraph.to_variable(
-            np.random.random((4, 8)).astype('float32')
-        )
-        y = fluid.dygraph.to_variable(
-            np.random.random((4, 8)).astype('float32')
-        )
+        x = base.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
+        y = base.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
         # 4. predict
         pred_x, pred_y = infer_layer(x, y)
 
@@ -647,7 +635,13 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
             self.temp_dir.name, "multi_inout1.output_spec2/model"
         )
         output_spec = net.forward.outputs[:1]
-        paddle.jit.save(net, model_path, (input_x,), output_spec=output_spec)
+        paddle.jit.save(
+            net,
+            model_path,
+            net.forward.inputs,
+            output_spec=output_spec,
+            input_names_after_prune=[input_x.name],
+        )
         # 2. load again
         infer_layer2 = paddle.jit.load(model_path)
         # 3. predict
@@ -660,7 +654,7 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
 class TestJitSaveLoadConfig(unittest.TestCase):
     def setUp(self):
         # enable dygraph mode
-        fluid.enable_dygraph()
+        base.enable_dygraph()
         # config seed
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
@@ -671,12 +665,10 @@ class TestJitSaveLoadConfig(unittest.TestCase):
 
     def test_output_spec(self):
         train_layer = LinearNetReturnLoss(8, 8)
-        adam = fluid.optimizer.AdamOptimizer(
-            learning_rate=0.1, parameter_list=train_layer.parameters()
+        adam = paddle.optimizer.Adam(
+            learning_rate=0.1, parameters=train_layer.parameters()
         )
-        x = fluid.dygraph.to_variable(
-            np.random.random((4, 8)).astype('float32')
-        )
+        x = base.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
         for i in range(10):
             out, loss = train_layer(x)
             loss.backward()
@@ -696,9 +688,7 @@ class TestJitSaveLoadConfig(unittest.TestCase):
 
         train_layer.eval()
         infer_layer = paddle.jit.load(model_path)
-        x = fluid.dygraph.to_variable(
-            np.random.random((4, 8)).astype('float32')
-        )
+        x = base.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
         np.testing.assert_array_equal(
             train_layer(x)[0].numpy(), infer_layer(x).numpy()
         )
@@ -733,7 +723,7 @@ class TestJitMultipleLoading(unittest.TestCase):
             self.temp_dir.name, "jit_multi_load/model"
         )
         # enable dygraph mode
-        fluid.enable_dygraph()
+        base.enable_dygraph()
         # config seed
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
@@ -769,7 +759,7 @@ class TestJitPruneModelAndLoad(unittest.TestCase):
             self.temp_dir.name, "jit_prune_model_and_load/model"
         )
         # enable dygraph mode
-        fluid.enable_dygraph()
+        base.enable_dygraph()
         # config seed
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
@@ -779,12 +769,10 @@ class TestJitPruneModelAndLoad(unittest.TestCase):
 
     def train_and_save(self):
         train_layer = LinearNetReturnHidden(8, 8)
-        adam = fluid.optimizer.AdamOptimizer(
-            learning_rate=0.1, parameter_list=train_layer.parameters()
+        adam = paddle.optimizer.Adam(
+            learning_rate=0.1, parameters=train_layer.parameters()
         )
-        x = fluid.dygraph.to_variable(
-            np.random.random((4, 8)).astype('float32')
-        )
+        x = base.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
         for i in range(10):
             hidden, loss = train_layer(x)
             loss.backward()
@@ -807,9 +795,7 @@ class TestJitPruneModelAndLoad(unittest.TestCase):
 
         infer_layer = paddle.jit.load(self.model_path)
 
-        x = fluid.dygraph.to_variable(
-            np.random.random((4, 8)).astype('float32')
-        )
+        x = base.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
         np.testing.assert_array_equal(
             train_layer(x)[0].numpy(), infer_layer(x).numpy()
         )
@@ -832,7 +818,7 @@ class TestJitPruneModelAndLoad(unittest.TestCase):
 class TestJitSaveMultiCases(unittest.TestCase):
     def setUp(self):
         # enable dygraph mode
-        fluid.enable_dygraph()
+        base.enable_dygraph()
         # config seed
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
@@ -945,9 +931,11 @@ class TestJitSaveMultiCases(unittest.TestCase):
             layer,
             model_path,
             input_spec=[
-                InputSpec(shape=[None, 784], dtype='float32', name="image")
+                InputSpec(shape=[None, 784], dtype='float32', name="image"),
+                True,
             ],
             output_spec=[out],
+            input_names_after_prune=["image"],
         )
 
         self.verify_inference_correctness(
@@ -967,9 +955,11 @@ class TestJitSaveMultiCases(unittest.TestCase):
             layer,
             model_path,
             input_spec=[
-                InputSpec(shape=[None, 784], dtype='float32', name="image")
+                InputSpec(shape=[None, 784], dtype='float32', name="image"),
+                True,
             ],
             output_spec=output_spec,
+            input_names_after_prune=["image"],
         )
 
         self.verify_inference_correctness(
@@ -1082,9 +1072,11 @@ class TestJitSaveMultiCases(unittest.TestCase):
                 layer,
                 model_path,
                 input_spec=[
-                    InputSpec(shape=[None, 784], dtype='float32', name="image")
+                    InputSpec(shape=[None, 784], dtype='float32', name="image"),
+                    True,
                 ],
                 output_spec=[out],
+                input_names_after_prune=["image"],
             )
 
 

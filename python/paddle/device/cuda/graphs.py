@@ -16,15 +16,15 @@ import os
 import warnings
 
 import paddle
-from paddle.fluid import core
-from paddle.fluid.core import (
+from paddle.base import core
+from paddle.base.core import (
     CUDAPlace,
     is_compiled_with_cuda,
     is_compiled_with_rocm,
 )
 
 if is_compiled_with_cuda() and not is_compiled_with_rocm():
-    from paddle.fluid.core import CUDAGraph as CoreCUDAGraph
+    from paddle.base.core import CUDAGraph as CoreCUDAGraph
 
     def is_cuda_graph_supported():
         return True
@@ -82,7 +82,7 @@ def wrap_cuda_graph(function, mode="thread_local", memory_pool="default"):
     assert mode in ALL_MODES
     if not paddle.in_dynamic_mode():
         # static graph mode
-        from paddle.fluid.framework import _cuda_graph_guard
+        from paddle.base.framework import _cuda_graph_guard
 
         global cuda_graph_id
         graph_id = str(cuda_graph_id)

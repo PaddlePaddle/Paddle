@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 np.set_printoptions(threshold=np.inf)
 
@@ -37,6 +37,7 @@ class TestEigvalsOp(OpTest):
     def setUp(self):
         np.random.seed(0)
         paddle.enable_static()
+        self.python_api = paddle.linalg.eigvals
         self.op_type = "eigvals"
         self.set_dtype()
         self.set_input_dims()
@@ -67,7 +68,7 @@ class TestEigvalsOp(OpTest):
     def test_check_output(self):
         self.__class__.no_need_check_grad = True
         self.check_output_with_place_customized(
-            checker=self.verify_output, place=core.CPUPlace()
+            checker=self.verify_output, place=core.CPUPlace(), check_pir=True
         )
 
     def verify_output(self, outs):
@@ -326,13 +327,13 @@ class TestEigvalsAPI(unittest.TestCase):
     def test_error(self):
         paddle.disable_static()
         x = paddle.to_tensor([1])
-        with self.assertRaises(BaseException):
+        with self.assertRaises(ValueError):
             paddle.linalg.eigvals(x)
 
         self.input_dims = [1, 2, 3, 4]
         self.set_input_data()
         x = paddle.to_tensor(self.input_data)
-        with self.assertRaises(BaseException):
+        with self.assertRaises(ValueError):
             paddle.linalg.eigvals(x)
 
 

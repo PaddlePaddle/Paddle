@@ -16,14 +16,14 @@
 
 #include "glog/logging.h"
 
+#include "paddle/common/layout.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/onednn/onednn_context.h"
 #include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #endif
@@ -31,7 +31,7 @@
 namespace phi {
 namespace funcs {
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 
 void* GetDataFromTensor(const DenseTensor& tensor,
                         dnnl::memory::data_type type) {
@@ -57,7 +57,7 @@ void* GetDataFromTensor(const DenseTensor& tensor,
 // 0-D now.
 dnnl::memory::desc make_memory_desc(const phi::DenseTensor& ref_tensor,
                                     phi::DataLayout target_layout) {
-  auto ref_dims = vectorize<int64_t>(ref_tensor.dims());
+  auto ref_dims = common::vectorize<int64_t>(ref_tensor.dims());
   auto ref_type = ToOneDNNDataType(ref_tensor.dtype());
   PADDLE_ENFORCE_NE(ref_type,
                     OneDNNDataType::undef,
@@ -65,7 +65,7 @@ dnnl::memory::desc make_memory_desc(const phi::DenseTensor& ref_tensor,
                         "Ref tensor type (%s) is not supported by oneDNN.",
                         ref_tensor.dtype()));
 
-  auto md_dims = ref_dims.size() != 0 ? ref_dims : std::vector<int64_t>{1};
+  auto md_dims = !ref_dims.empty() ? ref_dims : std::vector<int64_t>{1};
   auto md_format =
       OneDNNFormatForSize(md_dims.size(), ToOneDNNFormat(target_layout));
   dnnl::memory::desc md(md_dims, ref_type, md_format);
@@ -84,6 +84,14 @@ void TransDataLayoutFromOneDNN(DataLayout in_layout,
   auto& pool = DeviceContextPool::Instance();
   auto* dev_ctx = dynamic_cast<OneDNNContext*>(pool.Get(place));
   auto& cpu_engine = dev_ctx->GetEngine();
+  auto in_dims = common::vectorize<int64_t>(in.dims());
+
+  auto md_dims = !in_dims.empty() ? in_dims : std::vector<int64_t>{1};
+  const auto src_mem_desc =
+      !in_dims.empty() ? in.mem_desc()
+                       : dnnl::memory::desc(md_dims,
+                                            ToOneDNNDataType(in.dtype()),
+                                            dnnl::memory::format_tag::x);
 
   dnnl::memory::desc out_mem_desc = make_memory_desc(in, out_layout);
 
@@ -94,14 +102,13 @@ void TransDataLayoutFromOneDNN(DataLayout in_layout,
   // Note(0x45f): Using initialized() to support slice Tensors
   // with shapes like [0, 0, 0].
   if (in.initialized() && ((in.mem_desc() != out->mem_desc()) || always_copy)) {
-    auto in_tz = vectorize<int64_t>(in.dims());
+    auto in_tz = common::vectorize<int64_t>(in.dims());
     auto in_type = ToOneDNNDataType(in.dtype());
     void* in_data = GetDataFromTensor(in, in_type);
 
     ReorderOneDNNHandler handler(in_tz, in.dtype(), in_type, cpu_engine);
 
-    auto reorder_src_memory_p =
-        handler.AcquireSrcMemory(in.mem_desc(), in_data);
+    auto reorder_src_memory_p = handler.AcquireSrcMemory(src_mem_desc, in_data);
     auto reorder_dst_memory_p =
         handler.AcquireDstMemory(out, out->mem_desc(), place);
     auto reorder_p =

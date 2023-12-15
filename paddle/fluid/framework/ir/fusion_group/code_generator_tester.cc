@@ -271,10 +271,10 @@ void TestElementwiseMain(
 
   // Prepare CPU tensors which always hold float.
   std::vector<phi::DenseTensor> cpu_tensors(ids.size());
-  auto dims =
-      phi::make_ddim({static_cast<int64_t>(256), static_cast<int64_t>(1024)});
-  for (size_t i = 0; i < cpu_tensors.size(); ++i) {
-    cpu_tensors[i].mutable_data<float>(dims, paddle::platform::CPUPlace());
+  auto dims = common::make_ddim(
+      {static_cast<int64_t>(256), static_cast<int64_t>(1024)});
+  for (auto& cpu_tensor : cpu_tensors) {
+    cpu_tensor.mutable_data<float>(dims, paddle::platform::CPUPlace());
   }
 
   int n = cpu_tensors[0].numel();

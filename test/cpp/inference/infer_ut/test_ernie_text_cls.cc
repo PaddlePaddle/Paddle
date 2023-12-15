@@ -134,6 +134,6 @@ TEST(mkldnn_tester_ernie_text_cls, multi_thread4_mkl_fp32_bz2) {
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
-  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
   return RUN_ALL_TESTS();
 }

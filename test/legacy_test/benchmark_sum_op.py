@@ -59,7 +59,7 @@ class TestSumOp(BenchmarkSuite):
 
     def test_timeit_output(self):
         """
-        perf the op, time cost will be averged in iters.
+        perf the op, time cost will be averaged in iters.
         output example
         >>> One pass of (sum_op) at CPUPlace cost 0.000461330413818
         >>> One pass of (sum_op) at CUDAPlace(0) cost 0.000556070804596
@@ -68,7 +68,7 @@ class TestSumOp(BenchmarkSuite):
 
     def test_timeit_grad(self):
         """
-        perf the op gradient, time cost will be averged in iters.
+        perf the op gradient, time cost will be averaged in iters.
         output example
         >>> One pass of (sum_grad_op) at CPUPlace cost 0.00279935121536
         >>> One pass of (sum_grad_op) at CUDAPlace(0) cost 0.00500632047653

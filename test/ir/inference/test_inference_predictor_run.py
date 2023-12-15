@@ -62,6 +62,9 @@ class TestPredictorRunWithTensor(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    def enable_pir(self, flag: bool):
+        paddle.set_flags({'FLAGS_enable_pir_in_executor': flag})
+
     def init_predictor(self):
         config = Config(
             os.path.join(
@@ -74,7 +77,9 @@ class TestPredictorRunWithTensor(unittest.TestCase):
             ),
         )
         config.enable_use_gpu(256, 0)
-        config.enable_memory_optim()
+        config.switch_ir_optim(False)
+        # config.enable_memory_optim()
+        config.enable_new_executor()
         predictor = create_predictor(config)
         return predictor
 
@@ -89,9 +94,7 @@ class TestPredictorRunWithTensor(unittest.TestCase):
 
         return [input0_tensor, input1_tensor]
 
-    def get_disorder_output(self):
-        predictor = self.init_predictor()
-
+    def get_disorder_output(self, predictor):
         [input0_tensor, input1_tensor] = self.get_inputs()
 
         input_names = predictor.get_input_names()
@@ -104,9 +107,7 @@ class TestPredictorRunWithTensor(unittest.TestCase):
 
         return outputs[0]
 
-    def get_inorder_output(self):
-        predictor = self.init_predictor()
-
+    def get_inorder_output(self, predictor):
         [input0_tensor, input1_tensor] = self.get_inputs()
 
         # inorder
@@ -116,11 +117,15 @@ class TestPredictorRunWithTensor(unittest.TestCase):
         return outputs[0]
 
     def test_output(self):
-        inorder_output = self.get_inorder_output()
-        disorder_output = self.get_disorder_output()
+        self.enable_pir(False)
+        predictor = self.init_predictor()
+        output = self.get_inorder_output(predictor)
+        self.enable_pir(True)
+        pir_predictor = self.init_predictor()
+        pir_output = self.get_disorder_output(pir_predictor)
 
-        assert np.allclose(
-            inorder_output.numpy().flatten(), disorder_output.numpy().flatten()
+        np.testing.assert_allclose(
+            output.numpy().flatten(), pir_output.numpy().flatten()
         )
 
 

@@ -152,7 +152,6 @@ class DistributedSaver:
         return state_dict, dist_attr
 
     def save_inference_model(self, path, feed_vars, fetch_vars, exe, **kwargs):
-
         dirname, filename = _process_path(path)
 
         # save distributed inference program

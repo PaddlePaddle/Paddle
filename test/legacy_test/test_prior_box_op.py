@@ -16,9 +16,10 @@ import math
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 
 def python_prior_box(
@@ -76,7 +77,7 @@ class TestPriorBoxOp(OpTest):
         self.outputs = {'Boxes': self.out_boxes, 'Variances': self.out_var}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def setUp(self):
         self.op_type = "prior_box"
@@ -231,6 +232,7 @@ class TestPriorBoxAPI(unittest.TestCase):
         self.image_np = np.random.rand(2, 10, 40, 40).astype('float32')
         self.min_sizes = [2.0, 4.0]
 
+    @test_with_pir_api
     def test_dygraph_with_static(self):
         paddle.enable_static()
         input = paddle.static.data(

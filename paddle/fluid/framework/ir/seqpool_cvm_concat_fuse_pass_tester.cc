@@ -67,9 +67,9 @@ std::unique_ptr<ir::Graph> GetNumNodesOfBeforeAfter(
     int* after,
     const std::string& pass_type = "seqpool_cvm_concat_fuse_pass") {
   auto pass = PassRegistry::Instance().Get(pass_type);
-  *before = graph->Nodes().size();
+  *before = static_cast<int>(graph->Nodes().size());
   graph.reset(pass->Apply(graph.release()));
-  *after = graph->Nodes().size();
+  *after = static_cast<int>(graph->Nodes().size());
   return graph;
 }
 
@@ -151,7 +151,7 @@ TEST(SeqPoolCVMConcatFusePass, basic) {
         std::vector<std::string>({"m"}));
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
-  int before, after;
+  int before = 0, after = 0;
   graph = GetNumNodesOfBeforeAfter(std::move(graph), &before, &after);
   // Remove 16 Nodes: op1, op2, op3, op4, op5, op6, d, e, f, g, h, i, j, k, l,
   // concat_op
@@ -219,7 +219,7 @@ TEST(SeqPoolCVMConcatFusePass, advanced) {
         std::vector<std::string>({"j"}));
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
-  int before, after;
+  int before = 0, after = 0;
   graph = GetNumNodesOfBeforeAfter(std::move(graph), &before, &after);
   // Remove 11 Nodes: op1, op2, op4, op5, c, d, e, f, h, i, concat_op
   // Add 1 Node: fusion_seqpool_cvm_concat
@@ -265,7 +265,7 @@ TEST(SeqPoolCVMConcatFusePass, more_inputs) {
   for (int num : {1, 2, 10}) {
     ProgramDesc prog = BuildProgramDesc(num);
     std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
-    int before, after;
+    int before = 0, after = 0;
     graph = GetNumNodesOfBeforeAfter(std::move(graph), &before, &after);
     // Remove Nodes: n * (seqpool_op, seqpool_out, out_unused, cvm_op, cvm_out),
     // and concat_op

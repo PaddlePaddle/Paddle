@@ -20,31 +20,28 @@ import warnings
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from eager_op_test import (
-    OpTest,
-    convert_float_to_uint16,
-    convert_uint16_to_float,
-)
 from op import Operator
+from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 
 import paddle
 import paddle.inference as paddle_infer
-from paddle import enable_static, fluid
-from paddle.fluid import core
-from paddle.fluid.layer_helper import LayerHelper
+from paddle import base, enable_static
+from paddle.base import core
+from paddle.base.layer_helper import LayerHelper
+from paddle.pir_utils import test_with_pir_api
 
 
 def sum_wrapper(X, use_mkldnn=False):
-    res = 0
+    res = paddle.full(shape=X[0].shape, fill_value=0.0, dtype=X[0].dtype)
     for x in X:
-        res += x
+        res = paddle.add(res, x)
     return res
 
 
 class TestSumOp(OpTest):
     def setUp(self):
         self.op_type = "sum"
-        self.python_api = sum_wrapper
+        self.python_api = paddle.add_n
         self.public_python_api = paddle.add_n
         self.prim_op_type = "comp"
         self.init_kernel_type()
@@ -62,10 +59,22 @@ class TestSumOp(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_cinn=True)
+        self.check_output(
+            check_prim=True,
+            check_cinn=True,
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out', check_prim=True, check_cinn=True)
+        self.check_grad(
+            ['x0'],
+            'Out',
+            check_prim=True,
+            check_cinn=True,
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
 
 class TestSelectedRowsSumOp(unittest.TestCase):
@@ -108,7 +117,6 @@ class TestSelectedRowsSumOp(unittest.TestCase):
         w2_has_data=False,
         w3_has_data=False,
     ):
-
         self.create_selected_rows(scope, place, "W1", w1_has_data)
         self.create_selected_rows(scope, place, "W2", w2_has_data)
         self.create_selected_rows(scope, place, "W3", w3_has_data)
@@ -199,7 +207,6 @@ class TestSelectedRowsSumBF16Op(TestSelectedRowsSumOp):
         w2_has_data=False,
         w3_has_data=False,
     ):
-
         self.create_selected_rows(scope, place, "W1", w1_has_data)
         self.create_selected_rows(scope, place, "W2", w2_has_data)
         self.create_selected_rows(scope, place, "W3", w3_has_data)
@@ -292,21 +299,34 @@ class TestLoDTensorAndSelectedRowsOp(TestSelectedRowsSumOp):
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
-class TestFP16SumOp(TestSumOp):
+class TestAFP16SumOp(TestSumOp):
     def init_kernel_type(self):
         self.dtype = np.float16
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_output_with_place(place, check_cinn=True)
+            self.check_output_with_place(
+                place,
+                check_cinn=True,
+                check_prim=True,
+                check_prim_pir=True,
+                check_pir=True,
+            )
 
     # FIXME: Because of the precision fp16, max_relative_error
     # should be 0.15 here.
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_grad(['x0'], 'Out', check_cinn=True)
+            self.check_grad(
+                ['x0'],
+                'Out',
+                check_cinn=True,
+                check_prim=True,
+                check_prim_pir=True,
+                check_pir=True,
+            )
 
 
 def create_test_sum_fp16_class(parent):
@@ -332,6 +352,9 @@ def create_test_sum_fp16_class(parent):
 class TestSumBF16Op(OpTest):
     def setUp(self):
         self.op_type = "sum"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.add_n
+        self.public_python_api = paddle.add_n
         self.init_kernel_type()
         x0 = np.random.random((3, 40)).astype(np.float32)
         x1 = np.random.random((3, 40)).astype(np.float32)
@@ -351,16 +374,29 @@ class TestSumBF16Op(OpTest):
 
     def test_check_output(self):
         # new dynamic graph mode does not support unit16 type
-        self.check_output(check_dygraph=False)
+        self.check_output(
+            check_dygraph=False,
+            check_prim=True,
+            check_prim_pir=True,
+            check_pir=True,
+        )
 
     def test_check_grad(self):
         # new dynamic graph mode does not support unit16 type
-        self.check_grad(['x0'], 'Out', check_dygraph=False)
+        self.check_grad(
+            ['x0'],
+            'Out',
+            check_dygraph=False,
+            check_prim=True,
+            check_prim_pir=True,
+            check_pir=True,
+        )
 
 
 class API_Test_Add_n(unittest.TestCase):
+    @test_with_pir_api
     def test_api(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             input0 = paddle.tensor.fill_constant(
                 shape=[2, 3], dtype='int64', value=5
             )
@@ -370,12 +406,12 @@ class API_Test_Add_n(unittest.TestCase):
             expected_result = np.empty((2, 3))
             expected_result.fill(8)
             sum_value = paddle.add_n([input0, input1])
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = base.Executor(base.CPUPlace())
             result = exe.run(fetch_list=[sum_value])
 
             self.assertEqual((result == expected_result).all(), True)
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             input0 = paddle.ones(shape=[2, 3], dtype='float32')
             expected_result = np.empty((2, 3))
             expected_result.fill(2)
@@ -384,7 +420,7 @@ class API_Test_Add_n(unittest.TestCase):
             self.assertEqual((sum_value.numpy() == expected_result).all(), True)
 
     def test_dygraph_api(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             input0 = paddle.ones(shape=[2, 3], dtype='float32')
             input1 = paddle.ones(shape=[2, 3], dtype='float32')
             input0.stop_gradient = False
@@ -405,7 +441,7 @@ class API_Test_Add_n(unittest.TestCase):
             )
 
     def test_add_n_and_add_and_grad(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             np_x = np.array([[1, 2, 3], [4, 5, 6]])
             np_y = [[7, 8, 9], [10, 11, 12]]
             np_z = [[1, 1, 1], [1, 1, 1]]
@@ -497,12 +533,12 @@ class TestRaiseSumsError(unittest.TestCase):
 class TestSumOpError(unittest.TestCase):
     def test_errors(self):
         def test_empty_list_input():
-            with fluid.dygraph.guard():
-                fluid._legacy_C_ops.sum([])
+            with base.dygraph.guard():
+                base._legacy_C_ops.sum([])
 
         def test_list_of_none_input():
-            with fluid.dygraph.guard():
-                fluid._legacy_C_ops.sum([None])
+            with base.dygraph.guard():
+                base._legacy_C_ops.sum([None])
 
         self.assertRaises(Exception, test_empty_list_input)
         self.assertRaises(Exception, test_list_of_none_input)
@@ -616,6 +652,7 @@ class TestAddNDoubleGradCheck(unittest.TestCase):
     def add_n_wrapper(self, x):
         return paddle.add_n(x)
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -624,12 +661,13 @@ class TestAddNDoubleGradCheck(unittest.TestCase):
 
         data1 = paddle.static.data('data1', [3, 4, 5], dtype)
         data1.persistable = True
+        data1.stop_gradient = False
         data2 = paddle.static.data('data2', [3, 4, 5], dtype)
         data2.persistable = True
+        data2.stop_gradient = False
         out = paddle.add_n([data1, data2])
         data1_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
         data2_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
-
         gradient_checker.double_grad_check(
             [data1, data2],
             out,
@@ -647,9 +685,9 @@ class TestAddNDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -658,6 +696,7 @@ class TestAddNTripleGradCheck(unittest.TestCase):
     def add_n_wrapper(self, x):
         return paddle.add_n(x)
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -666,8 +705,10 @@ class TestAddNTripleGradCheck(unittest.TestCase):
 
         data1 = paddle.static.data('data1', [3, 4, 5], dtype)
         data1.persistable = True
+        data1.stop_gradient = False
         data2 = paddle.static.data('data2', [3, 4, 5], dtype)
         data2.persistable = True
+        data2.stop_gradient = False
         out = paddle.add_n([data1, data2])
         data1_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
         data2_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
@@ -689,9 +730,9 @@ class TestAddNTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -700,6 +741,7 @@ class TestSumDoubleGradCheck(unittest.TestCase):
     def sum_wrapper(self, x):
         return paddle.sum(x[0], axis=1, keepdim=True)
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -720,9 +762,9 @@ class TestSumDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 
@@ -731,6 +773,7 @@ class TestSumTripleGradCheck(unittest.TestCase):
     def sum_wrapper(self, x):
         return paddle.sum(x[0], axis=1, keepdim=True)
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -751,9 +794,9 @@ class TestSumTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+            places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
 

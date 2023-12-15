@@ -16,21 +16,21 @@ import os
 
 import paddle
 import paddle.distributed.transpiler.distribute_transpiler as dist_transpiler
-from paddle import fluid
-from paddle.distributed.fleet.meta_optimizers import RawProgramOptimizer
-from paddle.fluid import io
-from paddle.fluid.compiler import CompiledProgram
-from paddle.fluid.executor import Executor
-from paddle.fluid.framework import Program
-from paddle.fluid.incubate.checkpoint.checkpoint_saver import (
+from paddle import base
+from paddle.base.compiler import CompiledProgram
+from paddle.base.executor import Executor
+from paddle.base.framework import Program
+from paddle.base.incubate.checkpoint.checkpoint_saver import (
     CheckpointSaver,
     PaddleModel,
 )
+from paddle.distributed.fleet.meta_optimizers import RawProgramOptimizer
 from paddle.incubate.distributed.fleet.base import (
     DistributedOptimizer,
     Fleet,
     Mode,
 )
+from paddle.static import io
 
 
 class Collective(Fleet):
@@ -77,11 +77,10 @@ class Collective(Fleet):
     def save_inference_model(
         self,
         executor,
-        dirname,
-        feeded_var_names=None,
-        target_vars=None,
-        main_program=None,
-        export_for_deployment=True,
+        path_prefix,
+        feeded_vas=None,
+        fetch_vars=None,
+        program=None,
         legacy_format=False,
     ):
         """
@@ -94,22 +93,19 @@ class Collective(Fleet):
             " Executor type."
         )
 
-        if main_program is None:
-            main_program = self._origin_program
-        assert isinstance(main_program, Program), (
+        if program is None:
+            program = self._origin_program
+        assert isinstance(program, Program), (
             "In fleet.save_inference_model() function, main_program "
             "must be as Program type."
         )
 
         io.save_inference_model(
-            dirname,
-            feeded_var_names,
-            target_vars,
+            path_prefix,
+            feeded_vas,
+            fetch_vars,
             executor,
-            main_program,
-            None,
-            None,
-            export_for_deployment,
+            program=program,
             legacy_format=legacy_format,
         )
 
@@ -207,7 +203,7 @@ class Collective(Fleet):
 fleet = Collective()
 
 
-class DistributedStrategy(fluid.BuildStrategy):
+class DistributedStrategy(base.BuildStrategy):
     """
     Init function of DistributedStrategy
     """
@@ -226,7 +222,7 @@ class DistributedStrategy(fluid.BuildStrategy):
         self.use_amp = False  # use mixed precision optimizer
         self.amp_loss_scaling = 2**15
 
-        self.exec_strategy = fluid.ExecutionStrategy()
+        self.exec_strategy = base.ExecutionStrategy()
 
         # configurations below are used for unit test
         self._ut4grad_allreduce = False
@@ -262,8 +258,8 @@ class CollectiveOpBasedOptimizer(DistributedOptimizer):
 
 class CollectiveOptimizer(DistributedOptimizer):
     """
-    DistributedOptimizer is a wrapper for paddle.fluid.optimizer
-    A user should pass a paddle.fluid.optimizer to DistributedOptimizer
+    DistributedOptimizer is a wrapper for paddle.base.optimizer
+    A user should pass a paddle.base.optimizer to DistributedOptimizer
     minimize() function is implemented.
     DistributedOptimizer is the starting point for a user who wants to
     run distributed training. The optimized information will be stored in
@@ -533,7 +529,7 @@ class CollectiveOptimizer(DistributedOptimizer):
                     "forward_recompute", self._optimizer.__class__.__name__
                 )
 
-            self._optimizer = fluid.optimizer.RecomputeOptimizer(
+            self._optimizer = paddle.incubate.optimizer.RecomputeOptimizer(
                 self._optimizer
             )
             self._optimizer._set_checkpoints(self._recompute_checkpoints)
@@ -554,7 +550,7 @@ class CollectiveOptimizer(DistributedOptimizer):
 
         main_program = loss.block.program
         if startup_program is None:
-            startup_program = fluid.default_startup_program()
+            startup_program = base.default_startup_program()
         fleet.startup_program = startup_program
 
         self._loss = loss

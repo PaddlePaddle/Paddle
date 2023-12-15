@@ -12,9 +12,10 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
+#include <array>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/operators/tensor_formatter.h"
+#include "paddle/phi/kernels/funcs/tensor_formatter.h"
 
 namespace phi {
 class DenseTensor;
@@ -33,13 +34,12 @@ class OpBase;
 
 namespace paddle {
 namespace operators {
-using framework::GradVarName;
 
 #define CLOG std::cout
 
-const char kForward[] = "FORWARD";
-const char kBackward[] = "BACKWARD";
-const char kBoth[] = "BOTH";
+std::array<const char, 8> kForward = {"FORWARD"};
+std::array<const char, 9> kBackward = {"BACKWARD"};
+std::array<const char, 5> kBoth = {"BOTH"};
 
 // TODO(ChunweiYan) there should be some other printers for TensorArray
 class PrintOp : public framework::OperatorBase {
@@ -79,15 +79,15 @@ class PrintOp : public framework::OperatorBase {
     std::string print_phase = Attr<std::string>("print_phase");
     bool is_forward = Attr<bool>("is_forward");
 
-    if ((is_forward && print_phase == kBackward) ||
-        (!is_forward && print_phase == kForward)) {
+    if ((is_forward && print_phase == kBackward.data()) ||
+        (!is_forward && print_phase == kForward.data())) {
       return;
     }
 
     int first_n = Attr<int>("first_n");
     if (first_n > 0 && ++times_ > first_n) return;
 
-    TensorFormatter formatter;
+    funcs::TensorFormatter formatter;
     const std::string &name =
         Attr<bool>("print_tensor_name") ? printed_var_name : "";
     formatter.SetPrintTensorType(Attr<bool>("print_tensor_type"));
@@ -125,10 +125,10 @@ class PrintOpProtoAndCheckMaker : public framework::OpProtoAndCheckerMaker {
                          "(string, default 'FORWARD') Which phase to display "
                          "including 'FORWARD' "
                          "'BACKWARD' and 'BOTH'.")
-        .SetDefault(std::string(kBoth))
-        .InEnum({std::string(kForward),
-                 std::string(kBackward),
-                 std::string(kBoth)});
+        .SetDefault(std::string(kBoth.data()))
+        .InEnum({std::string(kForward.data()),
+                 std::string(kBackward.data()),
+                 std::string(kBoth.data())});
     AddAttr<bool>("is_forward", "Whether is forward or not").SetDefault(true);
     AddComment(R"DOC(
 Creates a print op that will print when a tensor is accessed.

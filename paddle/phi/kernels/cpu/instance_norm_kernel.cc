@@ -18,8 +18,8 @@
 #include <string>
 #include <unordered_map>
 
+#include "paddle/common/layout.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -40,10 +40,10 @@ void InstanceNormKernel(const Context& dev_ctx,
                         DenseTensor* saved_variance) {
   const auto& x_dims = x.dims();
   T epsilon = static_cast<T>(epsilon_f);
-  const int N = x_dims[0];
-  const int C = x_dims[1];
+  const int N = static_cast<int>(x_dims[0]);
+  const int C = static_cast<int>(x_dims[1]);
   const int NxC = N * C;
-  const int sample_size = x.numel() / N / C;
+  const int sample_size = static_cast<int>(x.numel() / N / C);
   auto* place = dev_ctx.eigen_device();
 
   Eigen::DSizes<int, 2> shape(NxC, sample_size);
@@ -111,14 +111,14 @@ void InstanceNormKernel(const Context& dev_ctx,
     set_constant(dev_ctx, &bias_data, static_cast<T>(0));
   }
   auto scale_e =
-      scale_ptr
-          ? EigenVector<T>::Flatten(*scale_ptr)
-          : EigenVector<T>::Flatten(const_cast<const DenseTensor&>(scale_data));
+      scale_ptr ? EigenVector<T>::Flatten(*scale_ptr)
+                : EigenVector<T>::Flatten(
+                      const_cast<const DenseTensor&>(scale_data));  // NOLINT
   auto scale_arr = scale_e.reshape(C_shape);
-  auto bias_e =
-      bias_ptr
-          ? EigenVector<T>::Flatten(*bias_ptr)
-          : EigenVector<T>::Flatten(const_cast<const DenseTensor&>(bias_data));
+  auto bias_e = bias_ptr
+                    ? EigenVector<T>::Flatten(*bias_ptr)
+                    : EigenVector<T>::Flatten(
+                          const_cast<const DenseTensor&>(bias_data));  // NOLINT
   auto bias_arr = bias_e.reshape(C_shape);
 
   dev_ctx.template Alloc<T>(y);

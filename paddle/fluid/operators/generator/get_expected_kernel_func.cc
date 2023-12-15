@@ -47,8 +47,8 @@ static bool ReduceOpHasOptimizedOneDNNKernel(
     return true;
   }
 
-  for (size_t i = 0; i < reduce_dims.size(); ++i) {
-    if (reduce_dims[i] < 0) reduce_dims[i] = ndims + reduce_dims[i];
+  for (auto& reduce_dim : reduce_dims) {
+    if (reduce_dim < 0) reduce_dim = ndims + reduce_dim;
   }
   sort(reduce_dims.begin(), reduce_dims.end());
   for (size_t i = 0; i < reduce_dims.size(); ++i) {
@@ -61,14 +61,54 @@ static bool ReduceOpHasOptimizedOneDNNKernel(
   return true;
 }
 
+// only poolop
+bool CanMKLDNNSupportPool(const framework::ExecutionContext& ctx) {
+  if (ctx.Attr<bool>("adaptive") == false) return true;
+  // oneDNN is supporting only unchangable in size pool window
+  auto src_tz = common::vectorize(ctx.Input<phi::DenseTensor>("X")->dims());
+  if (!ctx.HasAttr("ksize")) {
+    return false;
+  }
+  std::vector<int> ksize = ctx.Attr<std::vector<int>>("ksize");
+  // Fast but not exhustive check
+  return ((src_tz[src_tz.size() - 1] % ksize[1] == 0) &&
+          (src_tz[src_tz.size() - 2] % ksize[0] == 0));
+}
+
 phi::KernelKey GetCheckFiniteAndUnscaleExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {
   auto dtype = framework::proto::VarType::FP32;
-  if (ctx.MultiInputVar("X").size() >= 1) {
+  if (!ctx.MultiInputVar("X").empty()) {
     dtype = op_ptr->IndicateVarDataType(ctx, "X");
   }
   return phi::KernelKey(dtype, ctx.GetPlace());
+}
+
+phi::KernelKey GetConcatExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  (void)op_ptr;
+  auto inputs = ctx.MultiInput<phi::DenseTensor>("X");
+  auto input_data_type = framework::proto::VarType::Type(0);
+  bool flag = false;
+  for (auto* input : inputs) {
+    if (input->IsInitialized()) {
+      input_data_type = framework::TransToProtoVarType(input->dtype());
+      flag = true;
+      break;
+    }
+  }
+  int batch_size = !inputs[0]->lod().empty() ? inputs[0]->lod()[0].size() - 1
+                                             : inputs[0]->dims()[0];
+  if (inputs.size() > 64 && batch_size < 1000) {
+    op_ptr->SetDnnFallback(true);
+  }
+  if (flag == 0) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "All Inputs of Concat OP are Empty!"));
+  }
+  return phi::KernelKey(input_data_type, ctx.GetPlace());
 }
 
 phi::KernelKey GetReduceExpectedKernelType(
@@ -126,7 +166,7 @@ phi::KernelKey GetAssignExpectedKernelType(
     auto t_arr = var->Get<framework::LoDTensorArray>();
     // NOTE(liym27): Support an empty tensor array as Input.
     // And set the kernel type is float.
-    if (t_arr.size() == 0) {
+    if (t_arr.empty()) {
       return phi::KernelKey(framework::proto::VarType::FP32,
                             ctx.device_context().GetPlace());
     }
@@ -136,12 +176,37 @@ phi::KernelKey GetAssignExpectedKernelType(
       ctx.device_context().GetPlace());
 }
 
+phi::KernelKey GetPoolExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  auto data_type = op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+  // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_DNNL
+  op_ptr->SetDnnFallback(!CanMKLDNNSupportPool(ctx));
+  // NOTE(jiahongyu) END: Above codes originally enclosed by PADDLE_WITH_DNNL
+
+  return phi::KernelKey(data_type, ctx.GetPlace());
+}
+
+phi::KernelKey GetPoolDoubleGradExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  auto data_type =
+      op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, "grad_x@GRAD");
+
+  // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_DNNL
+  op_ptr->SetDnnFallback(!CanMKLDNNSupportPool(ctx));
+  // NOTE(jiahongyu) END: Above codes originally enclosed by PADDLE_WITH_DNNL
+
+  return phi::KernelKey(data_type, ctx.GetPlace());
+}
+
 phi::KernelKey GetSgdExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {
   auto data_type = op_ptr->IndicateVarDataType(ctx, "Param");
 
-  // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+  // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_DNNL
   const auto* param_var = ctx.InputVar("Param");
   const auto* grad_var = ctx.InputVar("Grad");
 
@@ -153,7 +218,7 @@ phi::KernelKey GetSgdExpectedKernelType(
   if (!(dense_param_sparse_grad || dense_param_and_grad)) {
     op_ptr->SetDnnFallback(true);
   }
-  // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
+  // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_DNNL
 
   return phi::KernelKey(data_type, ctx.GetPlace());
 }
@@ -163,7 +228,7 @@ phi::KernelKey GetSoftmaxExpectedKernelType(
     const framework::OperatorWithKernel* op_ptr) {
   // choose cudnn kernel if the runtime supported.
   std::string data_format = ctx.Attr<std::string>("data_format");
-  phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
+  phi::DataLayout layout_ = common::StringToDataLayout(data_format);
   auto input_data_type = op_ptr->IndicateVarDataType(ctx, "X");
   if (input_data_type == framework::proto::VarType::FP16) {
     PADDLE_ENFORCE_EQ(
@@ -183,7 +248,7 @@ phi::KernelKey GetSoftmaxGradExpectedKernelType(
     const framework::OperatorWithKernel* op_ptr) {
   // choose cudnn kernel if the runtime supported.
   std::string data_format = ctx.Attr<std::string>("data_format");
-  phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
+  phi::DataLayout layout_ = common::StringToDataLayout(data_format);
   auto input_data_type =
       op_ptr->IndicateVarDataType(ctx, framework::GradVarName("Out"));
   if (input_data_type == framework::proto::VarType::FP16) {
@@ -242,7 +307,7 @@ phi::KernelKey GetUpdateLossScalingExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {
   auto dtype = framework::proto::VarType::FP32;
-  if (ctx.MultiInputVar("X").size() >= 1) {
+  if (!ctx.MultiInputVar("X").empty()) {
     dtype = op_ptr->IndicateVarDataType(ctx, "X");
   }
   return phi::KernelKey(dtype, ctx.GetPlace());
@@ -259,13 +324,11 @@ phi::KernelKey GetPad3dExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {
   auto input_data_type = op_ptr->IndicateVarDataType(ctx, "X");
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   // only constant mode and non-blocked layouts are supported for oneDNN
   if (op_ptr->CanMKLDNNBeUsed(ctx, input_data_type) &&
       ctx.Attr<std::string>("mode") == "constant" &&
-      ctx.Input<phi::DenseTensor>("X")
-              ->mem_desc()
-              .data.format_desc.blocking.inner_nblks == 0) {
+      ctx.Input<phi::DenseTensor>("X")->mem_desc().get_inner_nblks() == 0) {
     return phi::KernelKey(phi::Backend::ONEDNN,
                           phi::DataLayout::ONEDNN,
                           phi::TransToPhiDataType(input_data_type));
@@ -335,12 +398,12 @@ phi::KernelKey GetLayerNormExpectedKernelType(
   auto input_data_type =
       op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
-  // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+  // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_DNNL
   int begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
   if (begin_norm_axis != ctx.Input<phi::DenseTensor>("X")->dims().size() - 1) {
     op_ptr->SetDnnFallback(true);
   }
-  // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
+  // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_DNNL
 
   return phi::KernelKey(input_data_type, ctx.GetPlace());
 }
@@ -369,6 +432,15 @@ phi::KernelKey GetConvExpectedKernelType(
   }
 
   return phi::KernelKey(input_data_type, ctx.GetPlace());
+}
+
+phi::KernelKey GetBincountExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  auto data_type = ctx.HasInput("Weights")
+                       ? op_ptr->IndicateVarDataType(ctx, "Weights")
+                       : op_ptr->IndicateVarDataType(ctx, "X");
+  return phi::KernelKey(data_type, ctx.device_context().GetPlace());
 }
 
 }  // namespace operators

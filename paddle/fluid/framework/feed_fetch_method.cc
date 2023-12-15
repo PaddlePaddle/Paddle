@@ -18,6 +18,9 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+PHI_DECLARE_bool(enable_pir_in_executor);
+PHI_DECLARE_bool(enable_pir_api);
+
 namespace phi {
 class DenseTensor;
 }  // namespace phi
@@ -27,6 +30,21 @@ namespace framework {
 
 class Variable;
 
+void SetVariable(Scope* scope,
+                 const phi::DenseTensor& input,
+                 const std::string& var_name) {
+  Variable* target_var = scope->FindVar(var_name);
+  if (target_var && !target_var->IsType<phi::DenseTensor>()) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The variable you want to set is not a phi::DenseTensor, but here "
+        "you tried to convert its type to phi::DenseTensor."));
+  }
+  target_var = scope->Var(var_name);
+  auto tensor = target_var->GetMutable<phi::DenseTensor>();
+  tensor->ShareDataWith(input);
+  tensor->set_lod(input.lod());
+}
+
 void SetFeedVariable(Scope* scope,
                      const phi::DenseTensor& input,
                      const std::string& var_name,
@@ -34,16 +52,29 @@ void SetFeedVariable(Scope* scope,
   // If var_name Variable is not found in GlobalScope, a new variable will
   // be created.
   VLOG(3) << "SetFeedVariable name=" << var_name << " index=" << index;
-  Variable* g_feed_value = scope->Var(var_name);
-  auto& feed_inputs = *(g_feed_value->GetMutable<FeedList>());
-  if (index >= feed_inputs.size()) {
-    feed_inputs.resize(index + 1);
+  if (FLAGS_enable_pir_in_executor) {
+    // shared data with input tensor
+    auto feed_ele = scope->Var(var_name);
+    if (!feed_ele->IsType<phi::DenseTensor>()) {
+      VLOG(3) << "Reset " << var_name << " to phi::DenseTensor";
+      feed_ele->Clear();
+    }
+    auto val = feed_ele->GetMutable<phi::DenseTensor>();
+    val->ShareDataWith(input);
+    // set lod
+    val->set_lod(input.lod());
+  } else {
+    Variable* g_feed_value = scope->Var(var_name);
+    auto& feed_inputs = *(g_feed_value->GetMutable<FeedList>());
+    if (index >= feed_inputs.size()) {
+      feed_inputs.resize(index + 1);
+    }
+    // shared data with input tensor
+    auto& val = PADDLE_GET(phi::DenseTensor, feed_inputs[index]);
+    val.ShareDataWith(input);
+    // set lod
+    val.set_lod(input.lod());
   }
-  // shared data with input tensor
-  auto& val = PADDLE_GET(phi::DenseTensor, feed_inputs[index]);
-  val.ShareDataWith(input);
-  // set lod
-  val.set_lod(input.lod());
 }
 
 void SetFeedVariable(Scope* scope,

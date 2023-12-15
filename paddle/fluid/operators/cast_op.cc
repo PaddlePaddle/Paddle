@@ -37,9 +37,6 @@ class CastOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "The output tensor of cast op");
     AddAttr<int>("out_dtype", "output data type");
     AddAttr<int>("in_dtype", "input data type");
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
     AddComment(R"DOC(
 Cast Operator.
 
@@ -63,7 +60,6 @@ class CastOpGradMaker : public framework::SingleGradOpMaker<T> {
     grad->SetOutput("Out", this->InputGrad("X"));
     grad->SetAttr("out_dtype", this->GetAttr("in_dtype"));
     grad->SetAttr("in_dtype", this->GetAttr("out_dtype"));
-    grad->SetAttr("use_mkldnn", this->GetAttr("use_mkldnn"));
   }
 };
 
@@ -107,7 +103,7 @@ class CastOp : public framework::OperatorWithKernel {
                             ctx.device_context().GetPlace());
     }
 
-    // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+    // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_DNNL
     int in_dtype = ctx.Attr<int>("in_dtype");
     int out_dtype = ctx.Attr<int>("out_dtype");
 
@@ -118,7 +114,7 @@ class CastOp : public framework::OperatorWithKernel {
         (out_dtype != dtype_fp32 && out_dtype != dtype_bf16)) {
       this->SetDnnFallback(true);
     }
-    // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
+    // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_DNNL
 
     return phi::KernelKey(framework::TransToProtoVarType(tensor->dtype()),
                           tensor_place);

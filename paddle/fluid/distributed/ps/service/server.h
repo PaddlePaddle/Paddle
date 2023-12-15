@@ -23,6 +23,7 @@
 
 #include "butil/endpoint.h"
 #include "google/protobuf/service.h"
+#include "paddle/common/macros.h"
 #include "paddle/fluid/distributed/common/registerer.h"
 #include "paddle/fluid/distributed/ps/service/env.h"
 #include "paddle/fluid/distributed/ps/service/sendrecv.pb.h"
@@ -31,7 +32,6 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/phi/core/macros.h"
 
 namespace google {
 namespace protobuf {
@@ -57,8 +57,8 @@ namespace distributed {
 
 class Table;
 
-using paddle::distributed::PsRequestMessage;
-using paddle::distributed::PsResponseMessage;
+using ::paddle::distributed::PsRequestMessage;
+using ::paddle::distributed::PsResponseMessage;
 
 class PSServer {
  public:
@@ -134,7 +134,7 @@ class PSServer {
     return -1;
   }
 
-  paddle::framework::Channel<std::pair<uint64_t, std::string>> _shuffled_ins;
+  ::paddle::framework::Channel<std::pair<uint64_t, std::string>> _shuffled_ins;
 
  protected:
   virtual int32_t Initialize() = 0;

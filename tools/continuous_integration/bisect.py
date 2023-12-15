@@ -81,10 +81,7 @@ print_arguments()
 # List the commits in mainline branch.
 os.chdir(args.git_dir)
 ret = subprocess.check_output(
-    [
-        'git rev-list --first-parent %s...%s'
-        % (args.good_commit, args.bad_commit)
-    ],
+    [f'git rev-list --first-parent {args.good_commit}...{args.bad_commit}'],
     shell=True,
 )
 sys.stdout.write('commits found:\n%s\n' % ret)
@@ -121,8 +118,9 @@ while True:
     # Link error can happen without complete clean up.
     cmd = (
         'rm -rf * && '
-        'cmake -DWITH_TESTING=ON %s >> %s && make -j%s >> %s'
-        % (args.git_dir, args.log_file, args.build_parallel, args.log_file)
+        'cmake -DWITH_TESTING=ON {} >> {} && make -j{} >> {}'.format(
+            args.git_dir, args.log_file, args.build_parallel, args.log_file
+        )
     )
     sys.stdout.write('cmd: %s\n' % cmd)
     try:

@@ -18,14 +18,14 @@ import numpy as np
 from inference_pass_test import InferencePassTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid.core import AnalysisConfig, PassVersionChecker
+from paddle import base
+from paddle.base.core import AnalysisConfig, PassVersionChecker
 
 
 class TRTYoloBoxTest(InferencePassTest):
     def setUp(self):
         self.set_params()
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             image_shape = [self.bs, self.channel, self.height, self.width]
             image = paddle.static.data(
                 name='image', shape=image_shape, dtype='float32'
@@ -79,7 +79,7 @@ class TRTYoloBoxTest(InferencePassTest):
 class TRTYoloBoxFP16Test(InferencePassTest):
     def setUp(self):
         self.set_params()
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             image_shape = [self.bs, self.channel, self.height, self.width]
             image = paddle.static.data(
                 name='image', shape=image_shape, dtype='float32'
@@ -131,7 +131,7 @@ class TRTYoloBoxFP16Test(InferencePassTest):
 class TRTYoloBoxIoUAwareTest(InferencePassTest):
     def setUp(self):
         self.set_params()
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             image_shape = [self.bs, self.channel, self.height, self.width]
             image = paddle.static.data(
                 name='image', shape=image_shape, dtype='float32'

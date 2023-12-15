@@ -14,13 +14,13 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/common/layout.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/tensor_meta.h"
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "dnnl.hpp"  //NOLINT
 #endif
 
@@ -32,7 +32,7 @@ const std::string& TransToFluidOpName(const std::string& phi_kernel_name);
 Backend TransToPhiBackend(const phi::Place& place);
 phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id = true);
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 dnnl::memory::data_type TransToOneDNNDataType(const phi::DataType& dtype);
 #endif
 

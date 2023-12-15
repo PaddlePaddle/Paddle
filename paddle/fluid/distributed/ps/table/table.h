@@ -22,6 +22,7 @@
 #include <string>
 #include <utility>
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/distributed/common/afs_warpper.h"
 #include "paddle/fluid/distributed/ps/table/accessor.h"
 #include "paddle/fluid/distributed/ps/table/depends/sparse_utils.h"
@@ -32,7 +33,6 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/string_helper.h"
-#include "paddle/phi/core/macros.h"
 
 namespace paddle {
 namespace distributed {
@@ -114,11 +114,18 @@ class Table {
   // 指定保存路径
   virtual int32_t Save(const std::string &path,
                        const std::string &converter) = 0;
+
+#ifdef PADDLE_WITH_GPU_GRAPH
+  // pglbox支持将非9008 slot的feature额外保存一份，实际支持用户可配置过滤slot
+  virtual int32_t Save_v2(const std::string &path,
+                          const std::string &converter) = 0;
+#endif
+
   // for cache
   virtual int32_t SaveCache(
       const std::string &path UNUSED,
       const std::string &param UNUSED,
-      paddle::framework::Channel<std::pair<uint64_t, std::string>>
+      ::paddle::framework::Channel<std::pair<uint64_t, std::string>>
           &shuffled_channel UNUSED) {
     return 0;
   }
@@ -130,7 +137,7 @@ class Table {
       std::function<std::future<int32_t>(
           int msg_type, int to_pserver_id, std::string &msg)>  // NOLINT
           send_msg_func UNUSED,
-      paddle::framework::Channel<std::pair<uint64_t, std::string>>
+      ::paddle::framework::Channel<std::pair<uint64_t, std::string>>
           &shuffled_channel UNUSED,
       const std::vector<Table *> &table_ptrs UNUSED) {
     return 0;
@@ -161,7 +168,7 @@ class Table {
   virtual int32_t InitializeAccessor();
   virtual int32_t InitializeShard() = 0;
   virtual std::string TableDir(const std::string &model_dir) {
-    return paddle::string::format_string(
+    return ::paddle::string::format_string(
         "%s/%03d/", model_dir.c_str(), _config.table_id());
   }
 

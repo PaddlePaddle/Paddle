@@ -102,8 +102,9 @@ paddle::Tensor fused_gemm_epilogue_dygraph_function(
       VLOG(6) << " Construct Grad for fused_gemm_epilogue ";
       egr::EagerUtils::PassStopGradient(false, p_autograd_Out);
       // Create GradOpNode
-      auto grad_node = std::shared_ptr<fused_gemm_epilogueGradNodeCompat>(
-          new fused_gemm_epilogueGradNodeCompat(1, 3));
+      auto grad_node =
+          std::shared_ptr<fused_gemm_epilogueGradNodeCompat>(  // NOLINT
+              new fused_gemm_epilogueGradNodeCompat(1, 3));
 
       // Set Attributes
       grad_node->SetAttrMap(std::move(attrs));

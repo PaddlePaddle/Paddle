@@ -335,6 +335,10 @@ template struct SelectedRowsAddToTensor<phi::GPUContext, double>;
 template struct SelectedRowsAddToTensor<phi::GPUContext, int>;
 template struct SelectedRowsAddToTensor<phi::GPUContext, int64_t>;
 template struct SelectedRowsAddToTensor<phi::GPUContext, phi::dtype::float16>;
+template struct SelectedRowsAddToTensor<phi::GPUContext,
+                                        phi::dtype::complex<float>>;
+template struct SelectedRowsAddToTensor<phi::GPUContext,
+                                        phi::dtype::complex<double>>;
 
 namespace scatter {
 
@@ -395,8 +399,8 @@ struct MergeAddImpl {
     out.set_rows(merge_rows);
     out.set_height(input.height());
     DenseTensor* out_tensor = out.mutable_value();
-    out_tensor->Resize(
-        phi::make_ddim({static_cast<int64_t>(merge_rows.size()), input_width}));
+    out_tensor->Resize(common::make_ddim(
+        {static_cast<int64_t>(merge_rows.size()), input_width}));
     context.template Alloc<T>(out_tensor);
 
     phi::funcs::SetConstant<DeviceContext, T> constant_functor;
@@ -467,8 +471,8 @@ struct MergeAddImpl {
     out.set_height(input_height);
 
     DenseTensor* out_tensor = out.mutable_value();
-    out_tensor->Resize(
-        phi::make_ddim({static_cast<int64_t>(merge_rows.size()), input_width}));
+    out_tensor->Resize(common::make_ddim(
+        {static_cast<int64_t>(merge_rows.size()), input_width}));
     context.template Alloc<T>(out_tensor);
 
     phi::funcs::SetConstant<DeviceContext, T> constant_functor;

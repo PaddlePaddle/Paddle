@@ -2,6 +2,9 @@ if(NOT WITH_GPU)
   return()
 endif()
 
+#(risemeup1) note: CMake 3.18 needs to specify the value of CMAKE_CUDA_ARCHITECTURES，otherwise a large number of warnings may appear in cmake
+set(CMAKE_CUDA_ARCHITECTURES OFF)
+
 if(WITH_NV_JETSON)
   add_definitions(-DWITH_NV_JETSON)
   set(paddle_known_gpu_archs "53 62 72")
@@ -295,7 +298,7 @@ message(STATUS "NVCC_FLAGS_EXTRA: ${NVCC_FLAGS_EXTRA}")
 set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 # Release/Debug flags set by cmake. Such as -O3 -g -DNDEBUG etc.
 # So, don't set these flags here.
-set(CMAKE_CUDA_STANDARD 14)
+set(CMAKE_CUDA_STANDARD 17)
 
 # (Note) For windows, if delete /W[1-4], /W1 will be added defaultly and conflic with -w
 # So replace /W[1-4] with /W0

@@ -29,6 +29,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/store/store_utils.h"
 #include "paddle/phi/core/distributed/store/tcp_store.h"
 
 namespace py = pybind11;
@@ -37,20 +38,49 @@ namespace paddle {
 namespace pybind {
 
 void BindCommContextManager(py::module *m) {
+  auto P2POption = py::class_<phi::distributed::P2POption>(*m, "P2POption")
+                       .def(py::init<>());
+
   auto CommContextManager =
       py::class_<phi::distributed::CommContextManager,
                  std::shared_ptr<phi::distributed::CommContextManager>>(
           *m, "CommContextManager")
+          .def_static("set_device_id",
+                      &phi::distributed::CommContextManager::SetDeviceId,
+                      py::call_guard<py::gil_scoped_release>())
 #if defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)
           .def_static(
               "create_nccl_comm_context",
               &phi::distributed::CommContextManager::CreateNCCLCommContext,
+              py::arg("store"),
+              py::arg("unique_comm_key"),
+              py::arg("rank"),
+              py::arg("size"),
+              py::arg("hash_key") = "",
+              py::arg("p2p_opt") = nullptr,
+              py::call_guard<py::gil_scoped_release>())
+#endif
+#if defined(PADDLE_WITH_XPU_BKCL)
+          .def_static(
+              "create_bkcl_comm_context",
+              &phi::distributed::CommContextManager::CreateBKCLCommContext,
+              py::arg("store"),
+              py::arg("unique_comm_key"),
+              py::arg("rank"),
+              py::arg("size"),
+              py::arg("hash_key") = "",
               py::call_guard<py::gil_scoped_release>())
 #endif
 #if defined(PADDLE_WITH_GLOO)
           .def_static(
               "create_gloo_comm_context",
               &phi::distributed::CommContextManager::CreateGlooCommContext,
+              py::call_guard<py::gil_scoped_release>())
+#endif
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+          .def_static(
+              "create_xccl_comm_context",
+              &phi::distributed::CommContextManager::CreateXCCLCommContext,
               py::call_guard<py::gil_scoped_release>())
 #endif
           .def("set_store", &phi::distributed::CommContextManager::SetStore);
@@ -106,6 +136,9 @@ void BindTCPStore(py::module *m) {
            py::arg("world_size"),
            py::arg("timeout") = 900,
            py::call_guard<py::gil_scoped_release>());
+
+  m->def("create_or_get_global_tcp_store",
+         &phi::distributed::CreateOrGetGlobalTCPStore);
 }
 
 }  // namespace pybind

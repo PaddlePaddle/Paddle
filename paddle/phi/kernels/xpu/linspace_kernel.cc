@@ -67,7 +67,7 @@ void LinspaceKernel(const Context& ctx,
                                    "than 0, but received num is %d",
                                    num));
 
-  out->Resize(phi::make_ddim({num}));
+  out->Resize(common::make_ddim({num}));
   T* out_data = ctx.template Alloc<T>(out);
 
   int r = xpu::linspace(ctx.x_context(),
@@ -81,7 +81,7 @@ void LinspaceKernel(const Context& ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    linspace, XPU, ALL_LAYOUT, phi::LinspaceKernel, float, int32_t) {
+    linspace, XPU, ALL_LAYOUT, phi::LinspaceKernel, float, int32_t, int64_t) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);

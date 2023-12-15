@@ -23,7 +23,7 @@ from .dy2static.program_translator import enable_to_static
 from .dy2static.logging_utils import set_code_level, set_verbosity
 from .translated_layer import TranslatedLayer
 
-__all__ = [  # noqa
+__all__ = [
     'save',
     'load',
     'to_static',

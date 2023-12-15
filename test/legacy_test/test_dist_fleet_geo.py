@@ -21,7 +21,6 @@ from dist_fleet_simnet_bow import train_network
 from test_dist_fleet_base import TestFleetBase
 
 import paddle
-from paddle import fluid
 from paddle.distributed import fleet
 from paddle.distributed.fleet.base import role_maker
 
@@ -82,7 +81,7 @@ class TestGeoSgdTranspiler(unittest.TestCase):
 
         avg_cost, _, _, _ = train_network(batch_size, is_distribute, is_sparse)
 
-        optimizer = fluid.optimizer.SGD(0.1)
+        optimizer = paddle.optimizer.SGD(0.1)
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
 

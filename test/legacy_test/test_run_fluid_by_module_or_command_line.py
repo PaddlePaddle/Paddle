@@ -20,13 +20,13 @@ import unittest
 class TestRunFluidByModule(unittest.TestCase):
     def test_module(self):
         print(sys.executable)
-        res = os.system(sys.executable + ' -m "paddle.fluid.reader"')
+        res = os.system(sys.executable + ' -m "paddle.base.reader"')
         self.assertEqual(res, 0)  # 0 means status OK
 
 
 class TestRunFluidByCommand(unittest.TestCase):
     def test_command(self):
-        res = os.system(sys.executable + ' -c "import paddle.fluid"')
+        res = os.system(sys.executable + ' -c "import paddle.base"')
         self.assertEqual(res, 0)  # 0 means status OK
 
 

@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 def l2_norm(x, axis, epsilon):
@@ -113,7 +113,7 @@ class TestNormOp6(TestNormOp):
 
 
 @unittest.skipIf(
-    not fluid.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not base.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestNormOp7(TestNormOp):
     def init_dtype(self):
@@ -121,12 +121,12 @@ class TestNormOp7(TestNormOp):
 
     def test_check_output(self):
         self.check_output_with_place(
-            fluid.core.CUDAPlace(0), atol=5e-2, check_cinn=True
+            base.core.CUDAPlace(0), atol=5e-2, check_cinn=True
         )
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            fluid.core.CUDAPlace(0),
+            base.core.CUDAPlace(0),
             ['X'],
             'Out',
             max_relative_error=0.05,
@@ -203,7 +203,7 @@ class TestNormBF16Op(OpTest):
 
 class API_NormTest(unittest.TestCase):
     def test_errors(self):
-        with fluid.program_guard(fluid.Program()):
+        with base.program_guard(base.Program()):
 
             def test_norm_x_type():
                 data = paddle.static.data(name="x", shape=[3, 3], dtype="int64")

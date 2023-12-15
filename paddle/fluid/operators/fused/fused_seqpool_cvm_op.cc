@@ -78,10 +78,10 @@ class FusedSeqpoolCVMOp : public framework::OperatorWithKernel {
             PADDLE_GET(framework::Variable*, inputs_tensor[i]);
         const auto& x_tensor = x_var->Get<phi::DenseTensor>();
         const auto& x_lod = x_tensor.lod();
-        if (x_lod.size() > 0) {
-          cur_batch_size = x_lod[0].size() - 1;
+        if (!x_lod.empty()) {
+          cur_batch_size = static_cast<int>(x_lod[0].size() - 1);
         } else {
-          cur_batch_size = x_tensor.dims()[0];
+          cur_batch_size = static_cast<int>(x_tensor.dims()[0]);
         }
         if (batch_size == -1) {
           batch_size = cur_batch_size;
@@ -101,7 +101,7 @@ class FusedSeqpoolCVMOp : public framework::OperatorWithKernel {
         } else {
           out_dim = {batch_size, dims[rank - 1] - cvm_offset};
         }
-        outs_dims[i] = phi::make_ddim(out_dim);
+        outs_dims[i] = common::make_ddim(out_dim);
       }
     } else {
       for (size_t i = 0; i < num_inputs; ++i) {
@@ -123,7 +123,7 @@ class FusedSeqpoolCVMOp : public framework::OperatorWithKernel {
         } else {
           out_dim = {-1, dims[rank - 1] - cvm_offset};
         }
-        outs_dims[i] = phi::make_ddim(out_dim);
+        outs_dims[i] = common::make_ddim(out_dim);
       }
     }
     ctx->SetOutputsDim("Out", outs_dims);
@@ -135,11 +135,11 @@ class FusedSeqpoolCVMOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     auto inputs = ctx.MultiInput<phi::DenseTensor>("X");
     auto input_data_type = framework::proto::VarType::Type(0);
-    bool flag = 0;
+    bool flag = false;
     for (auto* input : inputs) {
       if (input->IsInitialized() && input->numel() > 0) {
         input_data_type = framework::TransToProtoVarType(input->dtype());
-        flag = 1;
+        flag = true;
         break;
       }
     }
@@ -281,7 +281,6 @@ class FusedSeqpoolCVMGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OPERATOR(fused_seqpool_cvm,
                   ops::FusedSeqpoolCVMOp,

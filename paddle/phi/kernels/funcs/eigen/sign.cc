@@ -29,6 +29,11 @@ struct EigenSign<Eigen::DefaultDevice, T> {
   }
 };
 
+template struct EigenSign<Eigen::DefaultDevice, uint8_t>;
+template struct EigenSign<Eigen::DefaultDevice, int8_t>;
+template struct EigenSign<Eigen::DefaultDevice, int16_t>;
+template struct EigenSign<Eigen::DefaultDevice, int32_t>;
+template struct EigenSign<Eigen::DefaultDevice, int64_t>;
 template struct EigenSign<Eigen::DefaultDevice, float>;
 template struct EigenSign<Eigen::DefaultDevice, double>;
 

@@ -17,6 +17,7 @@ import copyreg
 import os
 import pickle
 import sys
+import threading
 import warnings
 from collections.abc import Iterable
 
@@ -25,9 +26,9 @@ import numpy as np
 import paddle
 
 # deprecated module import
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.framework import (
+from paddle import base
+from paddle.base import core
+from paddle.base.framework import (
     EagerParamBase,
     Program,
     Variable,
@@ -48,6 +49,80 @@ from .io_utils import (
 )
 
 __all__ = []
+async_save_queue = []
+
+
+def clear_async_save_task_queue():
+    '''
+    wait until all async save task to be done.
+    '''
+    while len(async_save_queue) > 0:
+        task = async_save_queue.pop()
+        if task and task.is_alive():
+            task.join()
+
+
+def async_save(obj, path, protocol=4, sync_other_task=False, **configs):
+    '''
+    async version of paddle.save.
+    Note:
+        currently only support dygraph mode.
+    Note:
+        any argument passed through configs will be overrided by default setting.
+    Args:
+        obj(Object) : The object to be saved.
+        path(str|BytesIO) : The path/buffer of the object to be saved.
+          If saved in the current directory, the input path string will be used as the file name.
+        protocol(int, optional): The protocol version of pickle module must be greater than 1 and less than 5.
+                                 Default: 4
+        sync_other_task(bool) : Determine whether to wait other async save task to be finished before this one be put in queue.
+        **configs(dict, optional): compatible argument to paddle.save, but will be overrided by default setting.
+    Examples:
+        .. code-block:: python
+            :name: code-example-1
+
+            import paddle
+            emb = paddle.nn.Embedding(10, 10)
+            layer_state_dict = emb.state_dict()
+
+            # call paddle.async_save with the same style of paddle.save
+            paddle.async_save(layer_state_dict, "emb.pdparams")
+            for i in range(10):
+                # do some calculations here
+            # wait if any async_save task has not been done
+            paddle.clear_async_task_queue()
+    '''
+    if not in_dygraph_mode():
+        raise ValueError(
+            "async_save currently is not supported in static mode."
+        )
+    if len(configs) > 0:
+        warnings.warn(
+            "configs are not supported in async mode, will be overided by default settings."
+        )
+
+    # TODO: make this part async
+    def move_state_dict_to_cpu(sd):
+        for k, v in sd.items():
+            if isinstance(v, dict):
+                move_state_dict_to_cpu(v)
+            elif isinstance(v, core.eager.Tensor):
+                sd[k] = v.pin_memory() if core.is_compiled_with_cuda() else v
+
+    if isinstance(obj, dict):
+        move_state_dict_to_cpu(obj)
+    elif isinstance(obj, core.eager.Tensor):
+        obj = obj.pin_memory() if core.is_compiled_with_cuda() else obj
+    else:
+        # other types are currently not supported
+        raise TypeError(
+            f"currently async_save does not support this type: {type(obj)}"
+        )
+    if sync_other_task:
+        clear_async_save_task_queue()
+    t = threading.Thread(target=save, args=(obj, path, protocol))
+    t.start()
+    async_save_queue.append(t)
 
 
 def _build_saved_state_dict(state_dict):
@@ -62,7 +137,7 @@ def _build_saved_state_dict(state_dict):
                     raise ValueError(
                         "The saved tensor is not initialized. If you used group sharded, please use save_group_sharded_model."
                     )
-                save_dict[key] = np.array(value)
+                save_dict[key] = np.array(value.cpu())
             name_table[key] = value.name
         else:
             save_dict[key] = value
@@ -83,7 +158,7 @@ def _load_state_dict_from_save_inference_model(model_path, config):
     programs = _construct_program_holders(model_path, config.model_filename)
 
     # 2. load layer parameters & buffers
-    with fluid.dygraph.guard():
+    with base.dygraph.guard():
         persistable_var_dict = _construct_params_and_buffers(
             model_path, programs, config.params_filename, append_suffix=False
         )
@@ -91,7 +166,9 @@ def _load_state_dict_from_save_inference_model(model_path, config):
         # 3. construct state_dict
         load_param_dict = {}
         for var_name in persistable_var_dict:
-            load_param_dict[var_name] = np.array(persistable_var_dict[var_name])
+            load_param_dict[var_name] = np.array(
+                persistable_var_dict[var_name].cpu()
+            )
 
         # if *.info exists, we can recover structured_name
         var_info_filename = str(config.params_filename) + ".info"
@@ -131,7 +208,7 @@ def _load_state_dict_from_save_params(model_path):
             var_name_list.append(var_name)
 
     # 2. create and load Tensor
-    with fluid.dygraph.guard():
+    with base.dygraph.guard():
         for name in var_name_list:
             new_var = _create_tensor(name=name, persistable=True)
             _dygraph_tracer().trace_op(
@@ -145,7 +222,7 @@ def _load_state_dict_from_save_params(model_path):
     # 3. construct state_dict
     load_param_dict = {}
     for var in load_var_list:
-        load_param_dict[var.name] = np.array(var)
+        load_param_dict[var.name] = np.array(var.cpu())
 
     return load_param_dict
 
@@ -160,8 +237,8 @@ def _load_state_dict_from_save_params(model_path):
 #       - paddle.jit.save
 #       - paddle.static.save_inference_model
 #   - need [directory] when loading [compatible for paddle 1.x]
-#       - paddle.fluid.io.save_inference_model
-#       - paddle.fluid.io.save_params/save_persistable
+#       - paddle.base.io.save_inference_model
+#       - paddle.base.io.save_params/save_persistable
 # 2. Error cases:
 #   - no error case
 def _build_load_path_and_config(path, config):
@@ -179,15 +256,15 @@ def _build_load_path_and_config(path, config):
     directory_format_exist = os.path.isdir(path)
     if prefix_format_exist and directory_format_exist:
         raise ValueError(
-            "The {}.pdmodel and {} directory exist at the same time, "
+            f"The {path}.pdmodel and {path} directory exist at the same time, "
             "don't know which one to load, please make sure that the specified target "
-            "of ``path`` is unique.".format(path, path)
+            "of ``path`` is unique."
         )
     elif not prefix_format_exist and not directory_format_exist:
         error_msg = "The ``path`` (%s) to load model not exists."
         # if current path is a prefix, and the path.pdparams or path.pdopt
         # is exist, users may want use `paddle.load` load the result of
-        # `fluid.save_dygraph`, we raise error here for users
+        # `base.save_dygraph`, we raise error here for users
         params_file_path = path + ".pdparams"
         opti_file_path = path + ".pdopt"
         if os.path.exists(params_file_path) or os.path.exists(opti_file_path):
@@ -279,9 +356,7 @@ def _pickle_save(obj, f, protocol):
     # TODO(weixin):add support for BytesIO.
     if not isinstance(protocol, int):
         raise ValueError(
-            "The 'protocol' MUST be `int`, but received {}".format(
-                type(protocol)
-            )
+            f"The 'protocol' MUST be `int`, but received {type(protocol)}"
         )
 
     if protocol < 2 or protocol > 4:
@@ -290,13 +365,15 @@ def _pickle_save(obj, f, protocol):
         )
 
     def reduce_varbase(self):
-        data = np.array(self)
+        data = np.array(self.cpu())
         name = self.name
 
         return (tuple, ((name, data),))
 
     def reduce_LoDTensor(self):
-        data = np.array(self)
+        p = core.Place()
+        p.set_place(paddle.CPUPlace())
+        data = np.array(self._copy(p))
 
         return (eval, ('data', {'data': data}))
 
@@ -425,9 +502,7 @@ def _transformed_from_lodtensor(obj):
 def _to_LodTensor(ndarray):
     if not isinstance(ndarray, np.ndarray):
         raise TypeError(
-            'Type of `ndarray` should be numpy.ndarray, but received {}.'.format(
-                type(ndarray)
-            )
+            f'Type of `ndarray` should be numpy.ndarray, but received {type(ndarray)}.'
         )
     t = core.LoDTensor()
     place = _current_expected_place()
@@ -561,15 +636,15 @@ def _save_lod_tensor(tensor, file_name):
 
 
 def _load_lod_tensor(file_name):
-    temp_t = paddle.fluid.core.LoDTensor()
+    temp_t = paddle.base.core.LoDTensor()
     if _is_file_path(file_name):
         # '_seek' is the end position of this tensor in the file.
-        _seek = paddle.fluid.core.load_lod_tensor(temp_t, file_name)
+        _seek = paddle.base.core.load_lod_tensor(temp_t, file_name)
 
     elif _is_memory_buffer(file_name):
         with _open_file_buffer(file_name, 'rb') as f:
             tensor_bytes = f.read()
-            paddle.fluid.core.load_lod_tensor_from_memory(temp_t, tensor_bytes)
+            paddle.base.core.load_lod_tensor_from_memory(temp_t, tensor_bytes)
             _seek = f.tell()
 
     else:
@@ -612,7 +687,7 @@ def _load_selected_rows(file_name):
     elif _is_memory_buffer(file_name):
         with _open_file_buffer(file_name, 'rb') as f:
             selected_rows_bytes = f.read()
-            paddle.fluid.core.load_selected_rows_from_memory(
+            paddle.base.core.load_selected_rows_from_memory(
                 temp_sr, selected_rows_bytes
             )
         _seek = f.tell()
@@ -677,100 +752,101 @@ def save(obj, path, protocol=4, **configs):
         .. code-block:: python
             :name: code-example-1
 
-            # example 1: dynamic graph
-            import paddle
-            emb = paddle.nn.Embedding(10, 10)
-            layer_state_dict = emb.state_dict()
+            >>> # example 1: dynamic graph
+            >>> import paddle
+            >>> emb = paddle.nn.Embedding(10, 10)
+            >>> layer_state_dict = emb.state_dict()
 
-            # save state_dict of emb
-            paddle.save(layer_state_dict, "emb.pdparams")
+            >>> # save state_dict of emb
+            >>> paddle.save(layer_state_dict, "emb.pdparams")
 
-            scheduler = paddle.optimizer.lr.NoamDecay(
-                d_model=0.01, warmup_steps=100, verbose=True)
-            adam = paddle.optimizer.Adam(
-                learning_rate=scheduler,
-                parameters=emb.parameters())
-            opt_state_dict = adam.state_dict()
+            >>> scheduler = paddle.optimizer.lr.NoamDecay(
+            ...     d_model=0.01, warmup_steps=100, verbose=True)
+            >>> adam = paddle.optimizer.Adam(
+            ...     learning_rate=scheduler,
+            ...     parameters=emb.parameters())
+            >>> opt_state_dict = adam.state_dict()
 
-            # save state_dict of optimizer
-            paddle.save(opt_state_dict, "adam.pdopt")
-            # save weight of emb
-            paddle.save(emb.weight, "emb.weight.pdtensor")
+            >>> # save state_dict of optimizer
+            >>> paddle.save(opt_state_dict, "adam.pdopt")
+            >>> # save weight of emb
+            >>> paddle.save(emb.weight, "emb.weight.pdtensor")
 
         .. code-block:: python
             :name: code-example-2
 
-            # example 2: Save multiple state_dict at the same time
-            import paddle
-            from paddle import nn
-            from paddle.optimizer import Adam
+            >>> # example 2: Save multiple state_dict at the same time
+            >>> import paddle
+            >>> from paddle import nn
+            >>> from paddle.optimizer import Adam
 
-            layer = paddle.nn.Linear(3, 4)
-            adam = Adam(learning_rate=0.001, parameters=layer.parameters())
-            obj = {'model': layer.state_dict(), 'opt': adam.state_dict(), 'epoch': 100}
-            path = 'example/model.pdparams'
-            paddle.save(obj, path)
+            >>> layer = paddle.nn.Linear(3, 4)
+            >>> adam = Adam(learning_rate=0.001, parameters=layer.parameters())
+            >>> obj = {'model': layer.state_dict(), 'opt': adam.state_dict(), 'epoch': 100}
+            >>> path = 'example/model.pdparams'
+            >>> paddle.save(obj, path)
 
         .. code-block:: python
             :name: code-example-3
 
-            # example 3: static graph
-            import paddle
-            import paddle.static as static
+            >>> # example 3: static graph
+            >>> import paddle
+            >>> import paddle.static as static
 
-            paddle.enable_static()
+            >>> paddle.enable_static()
 
-            # create network
-            x = paddle.static.data(name="x", shape=[None, 224], dtype='float32')
-            z = paddle.static.nn.fc(x, 10)
+            >>> # create network
+            >>> x = paddle.static.data(name="x", shape=[None, 224], dtype='float32')
+            >>> z = paddle.static.nn.fc(x, 10)
 
-            place = paddle.CPUPlace()
-            exe = paddle.static.Executor(place)
-            exe.run(paddle.static.default_startup_program())
-            prog = paddle.static.default_main_program()
-            for var in prog.list_vars():
-                if list(var.shape) == [224, 10]:
-                    tensor = var.get_value()
-                    break
+            >>> place = paddle.CPUPlace()
+            >>> exe = paddle.static.Executor(place)
+            >>> exe.run(paddle.static.default_startup_program())
+            >>> prog = paddle.static.default_main_program()
+            >>> for var in prog.list_vars():
+            ...     if list(var.shape) == [224, 10]:
+            ...         tensor = var.get_value()
+            ...         break
 
-            # save/load tensor
-            path_tensor = 'temp/tensor.pdtensor'
-            paddle.save(tensor, path_tensor)
+            >>> # save/load tensor
+            >>> path_tensor = 'temp/tensor.pdtensor'
+            >>> paddle.save(tensor, path_tensor)
 
-            # save/load state_dict
-            path_state_dict = 'temp/model.pdparams'
-            paddle.save(prog.state_dict("param"), path_tensor)
+            >>> # save/load state_dict
+            >>> path_state_dict = 'temp/model.pdparams'
+            >>> paddle.save(prog.state_dict("param"), path_tensor)
 
         .. code-block:: python
             :name: code-example-4
 
-            # example 4: save program
-            import paddle
+            >>> # example 4: save program
+            >>> import paddle
 
-            paddle.enable_static()
+            >>> paddle.enable_static()
 
-            data = paddle.static.data(
-                name='x_static_save', shape=(None, 224), dtype='float32')
-            y_static = z = paddle.static.nn.fc(data, 10)
-            main_program = paddle.static.default_main_program()
-            path = "example/main_program.pdmodel"
-            paddle.save(main_program, path)
+            >>> data = paddle.static.data(
+            ...     name='x_static_save', shape=(None, 224), dtype='float32')
+            >>> y_static = z = paddle.static.nn.fc(data, 10)
+            >>> main_program = paddle.static.default_main_program()
+            >>> path = "example/main_program.pdmodel"
+            >>> paddle.save(main_program, path)
 
         .. code-block:: python
             :name: code-example-5
 
-            # example 5: save object to memory
-            from io import BytesIO
-            import paddle
-            from paddle.nn import Linear
-            paddle.disable_static()
+            >>> # example 5: save object to memory
+            >>> from io import BytesIO
+            >>> import paddle
+            >>> from paddle.nn import Linear
+            >>> paddle.disable_static()
 
-            linear = Linear(5, 10)
-            state_dict = linear.state_dict()
-            byio = BytesIO()
-            paddle.save(state_dict, byio)
-            tensor = paddle.randn([2, 3], dtype='float32')
-            paddle.save(tensor, byio)
+            >>> linear = Linear(5, 10)
+            >>> state_dict = linear.state_dict()
+            >>> byio = BytesIO()
+            >>> paddle.save(state_dict, byio)
+            >>> paddle.seed(2023)
+            >>> tensor = paddle.randn([2, 3], dtype='float32')
+            >>> paddle.save(tensor, byio)
 
     '''
     if _is_file_path(path):
@@ -789,9 +865,7 @@ def save(obj, path, protocol=4, **configs):
             os.makedirs(dirname, exist_ok=True)
     elif not _is_memory_buffer(path):
         raise ValueError(
-            "only supports saving objects to file and `BytesIO`, but got {}".format(
-                type(path)
-            )
+            f"only supports saving objects to file and `BytesIO`, but got {type(path)}"
         )
 
     config = _parse_save_config(configs)
@@ -841,9 +915,7 @@ def _legacy_save(obj, path, protocol=2):
 
     if not isinstance(protocol, int):
         raise ValueError(
-            "The 'protocol' MUST be `int`, but received {}".format(
-                type(protocol)
-            )
+            f"The 'protocol' MUST be `int`, but received {type(protocol)}"
         )
 
     if protocol < 2 or protocol > 4:
@@ -904,8 +976,8 @@ def load(path, **configs):
         or ``paddle.Model().save(training=False)`` , ``path`` need to be a file prefix,
         such as ``model/mnist``, and ``paddle.load`` will get information from
         ``mnist.pdmodel`` and ``mnist.pdiparams`` ;
-        3. loading from paddle 1.x APIs ``paddle.fluid.io.save_inference_model`` or
-        ``paddle.fluid.io.save_params/save_persistables`` , ``path`` need to be a
+        3. loading from paddle 1.x APIs ``paddle.base.io.save_inference_model`` or
+        ``paddle.base.io.save_params/save_persistables`` , ``path`` need to be a
         directory, such as ``model`` and model is a directory.
 
     Note:
@@ -938,115 +1010,115 @@ def load(path, **configs):
         .. code-block:: python
             :name: code-example-1
 
-            # example 1: dynamic graph
-            import paddle
-            emb = paddle.nn.Embedding(10, 10)
-            layer_state_dict = emb.state_dict()
+            >>> # example 1: dynamic graph
+            >>> import paddle
+            >>> emb = paddle.nn.Embedding(10, 10)
+            >>> layer_state_dict = emb.state_dict()
 
-            # save state_dict of emb
-            paddle.save(layer_state_dict, "emb.pdparams")
+            >>> # save state_dict of emb
+            >>> paddle.save(layer_state_dict, "emb.pdparams")
 
-            scheduler = paddle.optimizer.lr.NoamDecay(
-                d_model=0.01, warmup_steps=100, verbose=True)
-            adam = paddle.optimizer.Adam(
-                learning_rate=scheduler,
-                parameters=emb.parameters())
-            opt_state_dict = adam.state_dict()
+            >>> scheduler = paddle.optimizer.lr.NoamDecay(
+            ...     d_model=0.01, warmup_steps=100, verbose=True)
+            >>> adam = paddle.optimizer.Adam(
+            ...     learning_rate=scheduler,
+            ...     parameters=emb.parameters())
+            >>> opt_state_dict = adam.state_dict()
 
-            # save state_dict of optimizer
-            paddle.save(opt_state_dict, "adam.pdopt")
-            # save weight of emb
-            paddle.save(emb.weight, "emb.weight.pdtensor")
+            >>> # save state_dict of optimizer
+            >>> paddle.save(opt_state_dict, "adam.pdopt")
+            >>> # save weight of emb
+            >>> paddle.save(emb.weight, "emb.weight.pdtensor")
 
-            # load state_dict of emb
-            load_layer_state_dict = paddle.load("emb.pdparams")
-            # load state_dict of optimizer
-            load_opt_state_dict = paddle.load("adam.pdopt")
-            # load weight of emb
-            load_weight = paddle.load("emb.weight.pdtensor")
+            >>> # load state_dict of emb
+            >>> load_layer_state_dict = paddle.load("emb.pdparams")
+            >>> # load state_dict of optimizer
+            >>> load_opt_state_dict = paddle.load("adam.pdopt")
+            >>> # load weight of emb
+            >>> load_weight = paddle.load("emb.weight.pdtensor")
 
         .. code-block:: python
             :name: code-example-2
 
-            # example 2: Load multiple state_dict at the same time
-            import paddle
-            from paddle import nn
-            from paddle.optimizer import Adam
+            >>> # example 2: Load multiple state_dict at the same time
+            >>> import paddle
+            >>> from paddle import nn
+            >>> from paddle.optimizer import Adam
 
-            layer = paddle.nn.Linear(3, 4)
-            adam = Adam(learning_rate=0.001, parameters=layer.parameters())
-            obj = {'model': layer.state_dict(), 'opt': adam.state_dict(), 'epoch': 100}
-            path = 'example/model.pdparams'
-            paddle.save(obj, path)
-            obj_load = paddle.load(path)
+            >>> layer = paddle.nn.Linear(3, 4)
+            >>> adam = Adam(learning_rate=0.001, parameters=layer.parameters())
+            >>> obj = {'model': layer.state_dict(), 'opt': adam.state_dict(), 'epoch': 100}
+            >>> path = 'example/model.pdparams'
+            >>> paddle.save(obj, path)
+            >>> obj_load = paddle.load(path)
 
         .. code-block:: python
             :name: code-example-3
 
-            # example 3: static graph
-            import paddle
-            import paddle.static as static
+            >>> # example 3: static graph
+            >>> import paddle
+            >>> import paddle.static as static
 
-            paddle.enable_static()
+            >>> paddle.enable_static()
 
-            # create network
-            x = paddle.static.data(name="x", shape=[None, 224], dtype='float32')
-            z = paddle.static.nn.fc(x, 10)
+            >>> # create network
+            >>> x = paddle.static.data(name="x", shape=[None, 224], dtype='float32')
+            >>> z = paddle.static.nn.fc(x, 10)
 
-            place = paddle.CPUPlace()
-            exe = paddle.static.Executor(place)
-            exe.run(paddle.static.default_startup_program())
-            prog = paddle.static.default_main_program()
-            for var in prog.list_vars():
-                if list(var.shape) == [224, 10]:
-                    tensor = var.get_value()
-                    break
+            >>> place = paddle.CPUPlace()
+            >>> exe = paddle.static.Executor(place)
+            >>> exe.run(paddle.static.default_startup_program())
+            >>> prog = paddle.static.default_main_program()
+            >>> for var in prog.list_vars():
+            ...     if list(var.shape) == [224, 10]:
+            ...         tensor = var.get_value()
+            ...         break
 
-            # save/load tensor
-            path_tensor = 'temp/tensor.pdtensor'
-            paddle.save(tensor, path_tensor)
-            load_tensor = paddle.load(path_tensor)
+            >>> # save/load tensor
+            >>> path_tensor = 'temp/tensor.pdtensor'
+            >>> paddle.save(tensor, path_tensor)
+            >>> load_tensor = paddle.load(path_tensor)
 
-            # save/load state_dict
-            path_state_dict = 'temp/model.pdparams'
-            paddle.save(prog.state_dict("param"), path_tensor)
-            load_state_dict = paddle.load(path_tensor)
+            >>> # save/load state_dict
+            >>> path_state_dict = 'temp/model.pdparams'
+            >>> paddle.save(prog.state_dict("param"), path_tensor)
+            >>> load_state_dict = paddle.load(path_tensor)
 
         .. code-block:: python
             :name: code-example-4
 
-            # example 4: load program
-            import paddle
+            >>> # example 4: load program
+            >>> import paddle
 
-            paddle.enable_static()
+            >>> paddle.enable_static()
 
-            data = paddle.static.data(
-                name='x_static_save', shape=(None, 224), dtype='float32')
-            y_static = z = paddle.static.nn.fc(data, 10)
-            main_program = paddle.static.default_main_program()
-            path = "example/main_program.pdmodel"
-            paddle.save(main_program, path)
-            load_main = paddle.load(path)
-            print(load_main)
+            >>> data = paddle.static.data(
+            ...     name='x_static_save', shape=(None, 224), dtype='float32')
+            >>> y_static = z = paddle.static.nn.fc(data, 10)
+            >>> main_program = paddle.static.default_main_program()
+            >>> path = "example/main_program.pdmodel"
+            >>> paddle.save(main_program, path)
+            >>> load_main = paddle.load(path)
 
         .. code-block:: python
             :name: code-example-5
 
-            # example 5: save object to memory
-            from io import BytesIO
-            import paddle
-            from paddle.nn import Linear
-            paddle.disable_static()
+            >>> # example 5: save object to memory
+            >>> from io import BytesIO
+            >>> import paddle
+            >>> from paddle.nn import Linear
+            >>> paddle.disable_static()
 
-            linear = Linear(5, 10)
-            state_dict = linear.state_dict()
-            byio = BytesIO()
-            paddle.save(state_dict, byio)
-            tensor = paddle.randn([2, 3], dtype='float32')
-            paddle.save(tensor, byio)
-            byio.seek(0)
-            # load state_dict
-            dict_load = paddle.load(byio)
+            >>> linear = Linear(5, 10)
+            >>> state_dict = linear.state_dict()
+            >>> byio = BytesIO()
+            >>> paddle.save(state_dict, byio)
+            >>> paddle.seed(2023)
+            >>> tensor = paddle.randn([2, 3], dtype='float32')
+            >>> paddle.save(tensor, byio)
+            >>> byio.seek(0)
+            >>> # load state_dict
+            >>> dict_load = paddle.load(byio)
 
     '''
 
@@ -1070,8 +1142,7 @@ def load(path, **configs):
                     load_result = _pack_loaded_dict(load_result)
                     # paddle2.0: paddle.save/load
                     if "StructuredToParameterName@@" in load_result:
-
-                        for (key, name) in load_result[
+                        for key, name in load_result[
                             "StructuredToParameterName@@"
                         ].items():
                             if isinstance(load_result[key], np.ndarray):
@@ -1108,7 +1179,9 @@ def load(path, **configs):
                 try:
                     tensor, _ = _load_lod_tensor(path)
                     if config.return_numpy:
-                        return np.array(tensor)
+                        p = core.Place()
+                        p.set_place(paddle.CPUPlace())
+                        return np.array(tensor._copy(p))
                     else:
                         if in_dygraph_mode():
                             return _lod_tensor2varbase(tensor)
@@ -1123,9 +1196,7 @@ def load(path, **configs):
                             return program
                     except:
                         raise ValueError(
-                            "`paddle.load` can not parse the file:{}.".format(
-                                path
-                            )
+                            f"`paddle.load` can not parse the file:{path}."
                         )
 
     else:

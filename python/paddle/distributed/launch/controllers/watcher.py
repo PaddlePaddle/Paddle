@@ -23,9 +23,12 @@ class Watcher:
     def __init__(self, ctx):
         self.ctx = ctx
 
-        self.interval = 30
+        self.interval = 5
 
         self.gpu_util = []
+
+        if not self.ctx.args.enable_gpu_log:
+            return
 
         # gpu log file
         self.gpus = self.ctx.args.devices or self.ctx.node.device.labels

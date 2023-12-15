@@ -65,7 +65,6 @@ class QuantizationPass(PassBase):
         return True
 
     def _apply_single_impl(self, main_program, startup_program, context):
-
         dist_context = self.get_attr("dist_context")
         params_grads = self.get_attr("params_grads")
         mode = self.get_attr("mode")

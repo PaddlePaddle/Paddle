@@ -17,16 +17,8 @@
 
 #include "glog/logging.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
-#include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/profiler/common_event.h"
 #include "paddle/fluid/platform/profiler/host_event_recorder.h"
-
-// Used to filter events, works like glog VLOG(level).
-// RecordEvent will works if host_trace_level >= level.
-PADDLE_DEFINE_EXPORTED_int64(host_trace_level,
-                             1,
-                             "RecordEvent will works "
-                             "if host_trace_level >= level.");
 
 namespace paddle {
 namespace platform {
@@ -99,8 +91,8 @@ void ProcessOperatorSupplementEvents(
         callstacks = *callstack_ptr;
       }
       std::ostringstream result_string;
-      for (auto it = callstacks.begin(); it != callstacks.end(); it++) {
-        result_string << (*it) << std::endl;
+      for (auto& stack : callstacks) {
+        result_string << stack << std::endl;
       }
 
       OperatorSupplementEvent event;
@@ -109,21 +101,20 @@ void ProcessOperatorSupplementEvents(
       std::map<std::string, std::vector<std::vector<int64_t>>> input_shapes;
       std::map<std::string, std::vector<std::string>> dtypes;
       std::string callstack;
-      for (auto it = evt.input_shapes.begin(); it != evt.input_shapes.end();
-           it++) {
-        for (auto idx = 0lu; idx < it->second.size(); idx++) {
-          input_shapes[it->first].push_back(std::vector<int64_t>());
-          for (auto dim_idx = 0; dim_idx < it->second.at(idx).size();
+      for (const auto& input_shape : evt.input_shapes) {
+        for (auto idx = 0lu; idx < input_shape.second.size(); idx++) {
+          input_shapes[input_shape.first].push_back(std::vector<int64_t>());
+          for (auto dim_idx = 0; dim_idx < input_shape.second.at(idx).size();
                dim_idx++) {
-            input_shapes[it->first][idx].push_back(
-                it->second.at(idx).at(dim_idx));
+            input_shapes[input_shape.first][idx].push_back(
+                input_shape.second.at(idx).at(dim_idx));
           }
         }
       }
-      for (auto it = evt.dtypes.begin(); it != evt.dtypes.end(); it++) {
-        for (auto idx = 0lu; idx < it->second.size(); idx++) {
-          dtypes[it->first].push_back(
-              framework::proto::VarType::Type_Name(it->second.at(idx)));
+      for (const auto& dtype : evt.dtypes) {
+        for (auto idx = 0lu; idx < dtype.second.size(); idx++) {
+          dtypes[dtype.first].push_back(
+              framework::proto::VarType::Type_Name(dtype.second.at(idx)));
         }
       }
 

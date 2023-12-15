@@ -20,7 +20,7 @@ import threading
 import numpy as np
 
 import paddle
-from paddle.fluid.log_helper import get_logger
+from paddle.base.log_helper import get_logger
 from paddle.incubate import asp
 
 __all__ = []
@@ -31,7 +31,6 @@ _logger = get_logger(
 
 
 def _default_pruning(weight_nparray, m, n, func_name, param_name):
-
     # if the to-be-pruned dimension's size is smaller than m, we don't prune it. This strong assertion is required by the inference from cuSparseLT.
     shape = weight_nparray.shape
     weight_pruned_nparray = copy.deepcopy(weight_nparray)
@@ -106,11 +105,7 @@ def add_supported_layer(layer, pruning_func=None):
     elif issubclass(layer, paddle.nn.Layer):
         name = paddle.nn.layer.layers._convert_camel_to_snake(layer.__name__)
     else:
-        assert (
-            "The type of layer should be string of Layer, but got {}!".format(
-                type(layer)
-            )
-        )
+        assert f"The type of layer should be string of Layer, but got {type(layer)}!"
     if pruning_func is None:
         pruning_func = _default_pruning
     _supported_layers_and_prune_func_map_lock.acquire()

@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle
 from paddle import static
-from paddle.fluid import core
+from paddle.base import core
 
 
 class CostModel:
@@ -52,7 +52,6 @@ class CostModel:
         device='gpu',
         fetch_cost_list=['time'],
     ):
-
         place = paddle.set_device('gpu')
         x = np.random.random(size=(10, 1)).astype('float32')
         exe = paddle.static.Executor(place)

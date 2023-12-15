@@ -35,7 +35,7 @@ struct DataRecord {
   size_t batch_size{1};
   size_t num_samples;  // total number of samples
 
-  DataRecord() {
+  DataRecord() {  // NOLINT
     turns = new std::vector<std::vector<
         int64_t>>[FLAGS_max_turn_num];  // turns data : FLAGS_max_turn_num
     turns_mask = new std::vector<std::vector<
@@ -48,7 +48,7 @@ struct DataRecord {
     Load(path);
   }
 
-  ~DataRecord() {
+  ~DataRecord() {  // NOLINT
     delete[] turns;
     delete[] turns_mask;
   }
@@ -130,7 +130,7 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots,
   auto one_batch = data->NextBatch();
   PADDLE_ENFORCE(
       !one_batch.response.empty(),
-      paddle::platform::errors::Fatal("The response of one batch is empty."));
+      ::paddle::platform::errors::Fatal("The response of one batch is empty."));
   int size = one_batch.response[0].size();
   CHECK_EQ(size, kMaxTurnLen);
   // turn tensor assignment
@@ -159,11 +159,11 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots,
   TensorAssignData<float>(&response_mask_tensor, one_batch.response_mask);
 
   // Set inputs.
-  for (int i = 0; i < FLAGS_max_turn_num; ++i) {
-    input_slots->push_back(std::move(turns_tensor[i]));
+  for (auto &item : turns_tensor) {
+    input_slots->push_back(std::move(item));
   }
-  for (int i = 0; i < FLAGS_max_turn_num; ++i) {
-    input_slots->push_back(std::move(turns_mask_tensor[i]));
+  for (auto &item : turns_mask_tensor) {
+    input_slots->push_back(std::move(item));
   }
   input_slots->push_back(std::move(response_tensor));
   input_slots->push_back(std::move(response_mask_tensor));
@@ -228,17 +228,17 @@ void profile(bool use_mkldnn = false) {
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
     PADDLE_ENFORCE_GT(outputs.size(),
                       0,
-                      paddle::platform::errors::Fatal(
+                      ::paddle::platform::errors::Fatal(
                           "The size of outputs should be greater than 0."));
     auto output = outputs.back();
     PADDLE_ENFORCE_GT(output.size(),
                       0,
-                      paddle::platform::errors::Fatal(
+                      ::paddle::platform::errors::Fatal(
                           "The size of output should be greater than 0."));
     size_t size = GetSize(output[0]);
     PADDLE_ENFORCE_GT(size,
                       0,
-                      paddle::platform::errors::Fatal(
+                      ::paddle::platform::errors::Fatal(
                           "The size of output should be greater than 0."));
     float *result = static_cast<float *>(output[0].data.data());
     for (size_t i = 0; i < size; i++) {
@@ -248,7 +248,7 @@ void profile(bool use_mkldnn = false) {
 }
 
 TEST(Analyzer_dam, profile) { profile(); }
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 TEST(Analyzer_dam, profile_mkldnn) { profile(true /* use_mkldnn */); }
 #endif
 
@@ -303,7 +303,7 @@ TEST(Analyzer_dam, compare_with_dynamic_memory_optim) {
 
 TEST(Analyzer_dam, compare) { compare(); }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 TEST(Analyzer_dam, compare_mkldnn) { compare(true /* use_mkldnn */); }
 #endif
 

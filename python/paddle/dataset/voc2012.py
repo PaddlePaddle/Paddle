@@ -42,7 +42,6 @@ CACHE_DIR = 'voc2012'
 
 
 def reader_creator(filename, sub_name):
-
     tarobject = tarfile.open(filename)
     name2mem = {}
     for ele in tarobject.getmembers():

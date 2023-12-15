@@ -55,7 +55,8 @@ void GraphSendRecvCpuGradLoop(const int& index_size,
       const IndexT& forward_src_idx = d_index[i];
       const IndexT& forward_dst_idx = s_index[i];
       auto input_slice = input.Slice(forward_src_idx, forward_src_idx + 1);
-      auto output_slice = output->Slice(forward_dst_idx, forward_dst_idx + 1);
+      auto output_slice =
+          output->Slice(forward_dst_idx, forward_dst_idx + 1);  // NOLINT
       auto eigen_input = phi::EigenVector<T>::Flatten(input_slice);
       auto eigen_output = phi::EigenVector<T>::Flatten(output_slice);
 
@@ -79,7 +80,7 @@ void GraphSendRecvGradOpKernelLaunchHelper(
     DenseTensor* x_grad,
     const DenseTensor* dst_count = nullptr,
     const DenseTensor* out = nullptr) {
-  const int& index_size = dst_index.dims()[0];
+  const int& index_size = dst_index.dims()[0];  // NOLINT
 
   ctx.template Alloc<T>(x_grad);
   T* p_output = x_grad->data<T>();

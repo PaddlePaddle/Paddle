@@ -124,8 +124,8 @@ inline static void calcAuc(const int64_t *stat_pos,
   while (idx >= 0) {
     totPosPrev = totPos;
     totNegPrev = totNeg;
-    totPos += stat_pos[idx];
-    totNeg += stat_neg[idx];
+    totPos += static_cast<double>(stat_pos[idx]);
+    totNeg += static_cast<double>(stat_neg[idx]);
     *auc += trapezoidArea(totNeg, totNegPrev, totPos, totPosPrev);
     --idx;
   }

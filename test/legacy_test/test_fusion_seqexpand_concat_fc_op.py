@@ -15,12 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 from test_fusion_lstm_op import ACTIVATION, fc
 
 
 def fusion_seqexpand_concat_fc(xs, lod, w, b, fc_act):
-
     T = sum(lod[0])
     N = len(lod[0])
     num_inputs = len(xs)

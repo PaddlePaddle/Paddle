@@ -17,21 +17,21 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "gflags/gflags.h"
+#include "paddle/utils/flags.h"
 
+#include "paddle/common/errors.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/backends/dynload/miopen.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
-#include "paddle/phi/core/macros.h"
 
 // MIOPEN do not have epslion definition
 #define CUDNN_BN_MIN_EPSILON 1e-05
 
-DECLARE_bool(cudnn_deterministic);
+PD_DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 namespace backends {
@@ -61,8 +61,12 @@ inline const char* miopenGetErrorString(miopenStatus_t status) {
 }
 
 // no use, but will have compiling error if not defined
+#define CUDNN_VERSION_COMPUTE(major, minor, patch)     \
+  ((major) <= 8 ? (major)*1000 + (minor)*100 + (patch) \
+                : (major)*10000 + (minor)*100 + (patch))
+
 #define CUDNN_VERSION_MIN(major, minor, patch) \
-  (CUDNN_VERSION >= ((major)*1000 + (minor)*100 + (patch)))
+  (CUDNN_VERSION >= CUDNN_VERSION_COMPUTE(major, minor, patch))
 
 enum class DataLayout {  // Not use
   kNHWC,

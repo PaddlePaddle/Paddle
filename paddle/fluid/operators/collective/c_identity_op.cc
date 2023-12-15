@@ -12,7 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/collective/c_identity_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -44,7 +47,7 @@ class CIdentityOp : public framework::OperatorWithKernel {
 
 class CIdentityOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "(Tensor) identity tensor.");
     AddOutput("Out", "(Tensor) identity tensor.");
     AddAttr<int>("ring_id", "(int default 0) nccl communication ring id.")
@@ -79,20 +82,14 @@ class CIdentityOpGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
+
+DECLARE_INFER_SHAPE_FUNCTOR(c_identity,
+                            CIdentityShapeFunctor,
+                            PD_INFER_META(phi::CIdentityInferMeta));
 
 REGISTER_OPERATOR(c_identity,
                   ops::CIdentityOp,
                   ops::CIdentityOpGradMaker<paddle::framework::OpDesc>,
                   ops::CIdentityOpGradMaker<paddle::imperative::OpBase>,
-                  ops::CIdentityOpMaker);
-
-PD_REGISTER_STRUCT_KERNEL(c_identity,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::CIdentityOpCPUKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t,
-                          plat::float16) {}
+                  ops::CIdentityOpMaker,
+                  CIdentityShapeFunctor);

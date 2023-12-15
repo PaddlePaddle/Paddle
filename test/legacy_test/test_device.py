@@ -15,8 +15,8 @@
 import unittest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core, framework
+from paddle import base
+from paddle.base import core, framework
 
 
 class TestStaticDeviceManage(unittest.TestCase):
@@ -28,7 +28,7 @@ class TestStaticDeviceManage(unittest.TestCase):
         out3 = paddle.concat(x=[out1, out2], axis=0)
 
         exe = paddle.static.Executor()
-        exe.run(paddle.fluid.default_startup_program())
+        exe.run(paddle.base.default_startup_program())
         res = exe.run(fetch_list=[out3])
 
         device = paddle.get_device()
@@ -49,7 +49,7 @@ class TestStaticDeviceManage(unittest.TestCase):
 
 class TestImperativeDeviceManage(unittest.TestCase):
     def test_cpu(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             paddle.set_device('cpu')
             out1 = paddle.zeros(shape=[1, 3], dtype='float32')
             out2 = paddle.ones(shape=[1, 3], dtype='float32')
@@ -63,7 +63,7 @@ class TestImperativeDeviceManage(unittest.TestCase):
 
     def test_gpu(self):
         if core.is_compiled_with_cuda():
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 paddle.set_device('gpu:0')
                 out1 = paddle.zeros(shape=[1, 3], dtype='float32')
                 out2 = paddle.ones(shape=[1, 3], dtype='float32')
@@ -79,7 +79,7 @@ class TestImperativeDeviceManage(unittest.TestCase):
 
     def test_xpu(self):
         if core.is_compiled_with_xpu():
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 out = paddle.to_tensor([1, 2])
                 device = paddle.get_device()
                 self.assertEqual(

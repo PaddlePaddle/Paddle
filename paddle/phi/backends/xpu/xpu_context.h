@@ -47,10 +47,6 @@ class XPUContext : public DeviceContext,
 
   xpu::Context* x_context() const;
 
-  // For multi-thread dataloader,
-  // check if the current thread is Dataloader thread
-  bool IsDataloader() const;
-
   // Return bkcl context.
   xpu::BKCLContext_t bkcl_context() const;
   void SetBkclContext(xpu::BKCLContext_t context);

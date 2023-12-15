@@ -114,7 +114,7 @@ def get_dist_prog(train_program, startup_program, dist_context, rank_id):
     )
 
     fleet._user_defined_strategy = fleet.DistributedStrategy()
-    fleet.user_defined_optimizer = paddle.fluid.optimizer.AdamOptimizer()
+    fleet.user_defined_optimizer = paddle.optimizer.Adam()
     parallelizer = AutoParallelizer(fleet)
     parallelizer._dist_context = dist_context
 

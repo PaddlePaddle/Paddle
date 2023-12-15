@@ -18,7 +18,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 os.environ['FLAGS_new_einsum'] = "1"
 
@@ -181,14 +182,12 @@ class TestEinsum(unittest.TestCase):
         expected_result = np.einsum(self.sample["paradigm"], *operands)
         equation = self.sample["paradigm"]
 
-        with paddle.fluid.dygraph.guard(
-            self._get_place(force_to_use_cpu=False)
-        ):
+        with paddle.base.dygraph.guard(self._get_place(force_to_use_cpu=False)):
             pd_operands = [paddle.to_tensor(operand) for operand in operands]
             result = paddle.einsum(equation, *pd_operands)
             self.check_output_equal(result.numpy(), expected_result)
 
-        with paddle.fluid.dygraph.guard(self._get_place(force_to_use_cpu=True)):
+        with paddle.base.dygraph.guard(self._get_place(force_to_use_cpu=True)):
             pd_operands = [paddle.to_tensor(operand) for operand in operands]
             result = paddle.einsum(equation, *pd_operands)
             self.check_output_equal(result.numpy(), expected_result)
@@ -384,15 +383,13 @@ class TestNumpyTests(unittest.TestCase):
             rtol=rtol,
             atol=atol,
             err_msg=error_msg.format(
-                paddle.get_device(), expect, actual, self.__class__.__name__
+                self._get_place(False), expect, actual, self.__class__.__name__
             ),
         )
 
     def check_output(self, eqn, *ops):
         expect = np.einsum(eqn, *ops)
-        with paddle.fluid.dygraph.guard(
-            self._get_place(force_to_use_cpu=False)
-        ):
+        with paddle.base.dygraph.guard(self._get_place(force_to_use_cpu=False)):
             pd_operands = [paddle.to_tensor(op) for op in ops]
             actual = paddle.einsum(eqn, *pd_operands)
             self.check_output_equal(actual.numpy(), expect)
@@ -469,16 +466,17 @@ class TestNumpyTests(unittest.TestCase):
         self.check_output("i,ij->", y, x)
         self.check_output("ij,i->", x, y)
 
+    @test_with_pir_api
     def test_static_graph(self):
         paddle.enable_static()
-        fluid = paddle.fluid
-        if fluid.core.is_compiled_with_cuda():
-            self.place = fluid.CUDAPlace(0)
+        base = paddle.base
+        if base.core.is_compiled_with_cuda():
+            self.place = base.CUDAPlace(0)
         else:
-            self.place = fluid.CPUPlace()
-        main = fluid.Program()
-        startup = fluid.Program()
-        with fluid.program_guard(main, startup):
+            self.place = base.CPUPlace()
+        main = base.Program()
+        startup = base.Program()
+        with base.program_guard(main, startup):
             a = paddle.static.data(
                 name='a', shape=[3, None, None, None], dtype='float'
             )
@@ -501,7 +499,7 @@ class TestNumpyTests(unittest.TestCase):
             outs.append(paddle.einsum('...kj, ...ik', d, e))
             outs.append(paddle.einsum('ijk..., ikj', c, e))
             outs.append(paddle.einsum('ijk..., ikj->...ij', c, e))
-        exe = fluid.Executor(self.place)
+        exe = base.Executor(self.place)
         exe.run(startup)
         a = np.arange(72).reshape(3, 2, 3, 4).astype('float')
         b = np.arange(48).reshape(2, 2, 3, 4).astype('float')
@@ -527,11 +525,12 @@ class TestStaticGraphShape(unittest.TestCase):
     def tearDown(self):
         paddle.disable_static()
 
+    @test_with_pir_api
     def test_shape(self):
         A = paddle.static.data(name='x', shape=[-1])
         B = paddle.static.data(name='y', shape=[384])
         C = paddle.einsum('i,d->id', A, B)
-        self.assertEqual(C.shape, (-1, 384))
+        self.assertEqual(tuple(C.shape), (-1, 384))
 
 
 @unittest.skipIf(
@@ -581,7 +580,7 @@ class TestSimpleUndiagonal(unittest.TestCase):
         A = paddle.to_tensor(np.array([1.0, 2.0]))
         A_expect = paddle.to_tensor([[1.0, 0.0], [0.0, 2.0]])
         A_actual = paddle.einsum('i->ii', A)
-        assert np.array_equal(A_expect.numpy(), A_actual.numpy())
+        np.testing.assert_array_equal(A_expect.numpy(), A_actual.numpy())
 
 
 class TestSimpleUndiagonal2(unittest.TestCase):
@@ -595,12 +594,12 @@ class TestSimpleUndiagonal2(unittest.TestCase):
         B = paddle.to_tensor(np.array([1.0, 1.0]))
         A_expect = paddle.to_tensor([[2.0, 0.0], [0.0, 4.0]])
         A_actual = paddle.einsum('i,j->ii', A, B)
-        assert np.array_equal(A_expect.numpy(), A_actual.numpy())
+        np.testing.assert_array_equal(A_expect.numpy(), A_actual.numpy())
 
 
 class TestSimpleComplexGrad(unittest.TestCase):
     """
-    EinsumOp support complex grad. but eager_op_test don't support numeric grad for complex dtype.
+    EinsumOp support complex grad. but op_test don't support numeric grad for complex dtype.
     """
 
     def test_shape(self):

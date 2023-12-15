@@ -96,10 +96,10 @@ class ReshapeOp : public framework::OperatorWithKernel {
                   i,
                   in_dims.size(),
                   in_dims));
-          infer_shape[i] = in_dims[i];
+          infer_shape[i] = static_cast<int>(in_dims[static_cast<int>(i)]);
         }
       }
-      auto infer_out_dims = phi::make_ddim(infer_shape);
+      auto infer_out_dims = common::make_ddim(infer_shape);
       ctx->SetOutputDim("Out", infer_out_dims);
       return;
     }
@@ -109,10 +109,10 @@ class ReshapeOp : public framework::OperatorWithKernel {
       auto shape_dims = ctx->GetInputDim("Shape");
       int num_ele = 1;
       for (int i = 0; i < shape_dims.size(); ++i) {
-        num_ele *= shape_dims[i];
+        num_ele *= static_cast<int>(shape_dims[i]);
       }
       auto vec_dims = std::vector<int>(num_ele, -1);
-      auto out_dims = phi::make_ddim(vec_dims);
+      auto out_dims = common::make_ddim(vec_dims);
       ctx->SetOutputDim("Out", out_dims);
       ctx->ShareLoD("X", /*->*/ "Out");
       return;
@@ -137,8 +137,8 @@ class ReshapeOp : public framework::OperatorWithKernel {
 
   static framework::DDim ValidateShape(const std::vector<int> shape,
                                        const framework::DDim &in_dims) {
-    const int64_t in_size = phi::product(in_dims);
-    auto in_dims_vec = phi::vectorize(in_dims);
+    const int64_t in_size = common::product(in_dims);
+    auto in_dims_vec = common::vectorize(in_dims);
     bool all_positive = std::all_of(in_dims_vec.cbegin(),
                                     in_dims_vec.cend(),
                                     [](int64_t i) { return i > 0; });
@@ -158,9 +158,9 @@ class ReshapeOp : public framework::OperatorWithKernel {
             platform::errors::InvalidArgument(
                 "Only one dimension value of 'shape' in ReshapeOp can "
                 "be -1. But received shape = [%s], shape[%d] is also -1.",
-                phi::make_ddim(shape),
+                common::make_ddim(shape),
                 i));
-        unk_dim_idx = i;
+        unk_dim_idx = static_cast<int>(i);
       } else if (shape[i] == copy_dim_val) {
         PADDLE_ENFORCE_LT(
             static_cast<int>(i),
@@ -170,7 +170,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
                 "the input tensor X's dimensions. "
                 "But received shape = [%s], shape[%d] = 0, X's shape = [%s], "
                 "X's dimensions = %d.",
-                phi::make_ddim(shape),
+                common::make_ddim(shape),
                 i,
                 in_dims,
                 in_dims.size()));
@@ -182,16 +182,16 @@ class ReshapeOp : public framework::OperatorWithKernel {
                 "Each dimension value of 'shape' in ReshapeOp must not "
                 "be negative except one unknown dimension. "
                 "But received  shape = [%s], shape[%d] = %d.",
-                phi::make_ddim(shape),
+                common::make_ddim(shape),
                 i,
                 shape[i]));
       }
 
       // NOTE all non-zero values will be converted to True (include negative
       // value)
-      capacity *= (shape[i] ? shape[i] : in_dims[i]);
-      output_shape[i] =
-          (shape[i] ? static_cast<int64_t>(shape[i]) : in_dims[i]);
+      capacity *= (shape[i] ? shape[i] : in_dims[static_cast<int>(i)]);
+      output_shape[i] = (shape[i] ? static_cast<int64_t>(shape[i])
+                                  : in_dims[static_cast<int>(i)]);
     }
 
     if (unk_dim_idx != -1) {
@@ -212,7 +212,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
                 "'shape' is [%s], known capacity of 'shape' is %d.",
                 in_dims,
                 in_size,
-                phi::make_ddim(shape),
+                common::make_ddim(shape),
                 capacity));
       } else {
         output_shape[unk_dim_idx] = -1;
@@ -230,7 +230,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
                 "[%s], the capacity of 'shape' is %d.",
                 in_dims,
                 in_size,
-                phi::make_ddim(shape),
+                common::make_ddim(shape),
                 capacity));
       }
     }
@@ -249,11 +249,11 @@ class ReshapeOp : public framework::OperatorWithKernel {
               "capacity of 'Out' is %d.",
               in_dims,
               in_size,
-              phi::make_ddim(shape),
+              common::make_ddim(shape),
               capacity));
     }
 
-    return phi::make_ddim(output_shape);
+    return common::make_ddim(output_shape);
   }
 
  protected:
@@ -303,10 +303,6 @@ class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
         "It has the lowest priority compare with Input(Shape) and "
         " Input(ShapeTensor).")
         .SetDefault({});
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
     AddComment(R"DOC(
 Reshape Operator.
 
@@ -391,7 +387,7 @@ class ReshapeKernel {
     auto *shape_tensor =
         ctx.HasInput("Shape") ? ctx.Input<phi::DenseTensor>("Shape") : nullptr;
     phi::IntArray pt_scalar_shape;
-    if (list_new_shape_tensor.size() > 0) {
+    if (!list_new_shape_tensor.empty()) {
       // have shape tensor
       std::vector<phi::DenseTensor> pt_vec_shape;
       for (auto &tensor : list_new_shape_tensor) {
@@ -529,7 +525,7 @@ class Reshape2Op : public ReshapeOp {
       for (int i = 0; i < x_dims.size(); ++i) {
         xshape_dims[i + 1] = x_dims[i];
       }
-      ctx->SetOutputDim("XShape", phi::make_ddim(xshape_dims));
+      ctx->SetOutputDim("XShape", common::make_ddim(xshape_dims));
       ctx->ShareLoD("X", /*->*/ "XShape");
     }
     ReshapeOp::InferShape(ctx);
@@ -627,9 +623,12 @@ class Reshape2GradOp : public framework::OperatorWithKernel {
     using CompatMetaTensor = framework::CompatMetaTensor;
     CompatMetaTensor xshape(ctx->GetInputVarPtrs("XShape")[0],
                             ctx->IsRuntime());
+    CompatMetaTensor out_grad(
+        ctx->GetInputVarPtrs(framework::GradVarName("Out"))[0],
+        ctx->IsRuntime());
     CompatMetaTensor dx(ctx->GetOutputVarPtrs(framework::GradVarName("X"))[0],
                         ctx->IsRuntime());
-    phi::KernelWithXShapeInferMeta(xshape, &dx);
+    phi::KernelWithXShapeInferMeta(xshape, out_grad, &dx);
   }
 
  protected:

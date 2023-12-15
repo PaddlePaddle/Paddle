@@ -16,6 +16,7 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_array.h"
+#include "paddle/phi/infermeta/nullary.h"
 
 namespace phi {
 
@@ -25,6 +26,19 @@ void PRecvKernel(const Context& dev_ctx,
                  DataType dtype,
                  bool dynamic_shape,
                  DenseTensor* out);
+
+template <typename T, typename Context>
+void PRecv(const Context& dev_ctx,
+           int peer,
+           bool dynamic_shape,
+           DenseTensor* out) {
+  MetaTensor out_meta(*out);
+  MetaTensor* out_meta_ptr = &out_meta;
+  DataType dtype = phi::CppTypeToDataType<T>::Type();
+
+  PRecvInferMeta(peer, dtype, out_meta_ptr);
+  PRecvKernel<T, Context>(dev_ctx, peer, dtype, dynamic_shape, out);
+}
 
 template <typename T, typename Context>
 void PRecvArrayKernel(const Context& dev_ctx,

@@ -38,14 +38,15 @@ paddle::Tensor hook_function(const paddle::Tensor& t) {
   auto ret_meta = phi::DenseTensorMeta(
       t_dense->dtype(), t_dense->dims(), t_dense->layout());
   auto place = t_dense->place();
-  size_t bytes_size = phi::product(t_dense->dims()) * SizeOf(t_dense->dtype());
+  size_t bytes_size =
+      common::product(t_dense->dims()) * SizeOf(t_dense->dtype());
   auto ret_dense = std::make_shared<phi::DenseTensor>(
       paddle::memory::Alloc(place, bytes_size), std::move(ret_meta));
 
   float* t_ptr = t_dense->mutable_data<float>(place);
   float* ret_ptr = ret_dense->mutable_data<float>(place);
   for (int i = 0; i < ret_dense->numel(); i++) {
-    ret_ptr[i] = t_ptr[i] + 3.0;
+    ret_ptr[i] = t_ptr[i] + 3.0f;
   }
 
   auto ret_impl = std::dynamic_pointer_cast<phi::TensorBase>(ret_dense);
@@ -60,16 +61,16 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
 
   // Prepare Inputs
   std::vector<paddle::Tensor> target_tensors;
-  paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
   paddle::Tensor tensor =
-      egr_utils_api::CreateTensorWithValue(ddim,
-                                           paddle::platform::CPUPlace(),
-                                           phi::DataType::FLOAT32,
-                                           phi::DataLayout::NCHW,
-                                           1.0 /*value*/,
-                                           false /*is_leaf*/);
+      eager_test::CreateTensorWithValue(ddim,
+                                        paddle::platform::CPUPlace(),
+                                        phi::DataType::FLOAT32,
+                                        phi::DataLayout::NCHW,
+                                        1.0 /*value*/,
+                                        false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
   paddle::Tensor& target_tensor = target_tensors[0];
 
@@ -136,16 +137,16 @@ TEST(RetainGrad, HookAfterRetainGrad) {
 
   // Prepare Inputs
   std::vector<paddle::Tensor> target_tensors;
-  paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
   paddle::Tensor tensor =
-      egr_utils_api::CreateTensorWithValue(ddim,
-                                           paddle::platform::CPUPlace(),
-                                           phi::DataType::FLOAT32,
-                                           phi::DataLayout::NCHW,
-                                           1.0 /*value*/,
-                                           false /*is_leaf*/);
+      eager_test::CreateTensorWithValue(ddim,
+                                        paddle::platform::CPUPlace(),
+                                        phi::DataType::FLOAT32,
+                                        phi::DataLayout::NCHW,
+                                        1.0 /*value*/,
+                                        false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
   paddle::Tensor& target_tensor = target_tensors[0];
 

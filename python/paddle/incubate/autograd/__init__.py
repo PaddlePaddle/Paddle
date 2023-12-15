@@ -16,7 +16,7 @@ from .primapi import forward_grad, grad
 from .primx import prim2orig
 from .utils import disable_prim, enable_prim, prim_enabled
 
-__all__ = [  # noqa
+__all__ = [
     'vjp',
     'jvp',
     'Jacobian',

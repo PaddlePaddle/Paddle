@@ -23,7 +23,7 @@ import unittest
 import numpy
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.static import amp
 
 paddle.enable_static()
@@ -75,7 +75,7 @@ def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
         avg_cost = paddle.mean(cost)
 
     lr = 5e-3 if use_bf16 else 1e-3
-    sgd_optimizer = fluid.optimizer.SGD(learning_rate=lr)
+    sgd_optimizer = paddle.optimizer.SGD(learning_rate=lr)
 
     if use_bf16:
         sgd_optimizer = amp.bf16.decorate_bf16(
@@ -85,7 +85,7 @@ def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
             use_pure_bf16=pure_bf16,
         )
     sgd_optimizer.minimize(
-        avg_cost, startup_program=fluid.default_startup_program()
+        avg_cost, startup_program=base.default_startup_program()
     )
 
     BATCH_SIZE = 20
@@ -95,12 +95,12 @@ def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
         batch_size=BATCH_SIZE,
     )
 
-    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    exe = fluid.Executor(place)
+    place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+    exe = base.Executor(place)
 
     def train_loop(main_program):
-        feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
-        exe.run(fluid.default_startup_program())
+        feeder = base.DataFeeder(place=place, feed_list=[x, y])
+        exe.run(base.default_startup_program())
         test_prog = main_program.clone(for_test=True)
         if pure_bf16:
             sgd_optimizer.amp_init(
@@ -132,7 +132,7 @@ def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
         )
 
     if is_local:
-        train_loop(fluid.default_main_program())
+        train_loop(base.default_main_program())
     else:
         port = os.getenv("PADDLE_PSERVER_PORT", "6174")
         pserver_ips = os.getenv("PADDLE_PSERVER_IPS")  # ip,ip...
@@ -161,11 +161,11 @@ def infer(use_cuda, save_dirname=None, use_bf16=False):
     if save_dirname is None:
         return
 
-    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    exe = fluid.Executor(place)
+    place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+    exe = base.Executor(place)
 
-    inference_scope = fluid.core.Scope()
-    with fluid.scope_guard(inference_scope):
+    inference_scope = base.core.Scope()
+    with base.scope_guard(inference_scope):
         # Use paddle.static.load_inference_model to obtain the inference program desc,
         # the feed_target_names (the names of variables that will be fed
         # data using feed operators), and the fetch_targets (variables that
@@ -210,10 +210,10 @@ def infer(use_cuda, save_dirname=None, use_bf16=False):
 
 
 def main(use_cuda, is_local=True, use_bf16=False, pure_bf16=False):
-    if use_cuda and not fluid.core.is_compiled_with_cuda():
+    if use_cuda and not base.core.is_compiled_with_cuda():
         return
 
-    if use_bf16 and not fluid.core.is_compiled_with_mkldnn():
+    if use_bf16 and not base.core.is_compiled_with_mkldnn():
         return
 
     temp_dir = tempfile.TemporaryDirectory()
@@ -228,11 +228,11 @@ def main(use_cuda, is_local=True, use_bf16=False, pure_bf16=False):
 class TestFitALineBase(unittest.TestCase):
     @contextlib.contextmanager
     def program_scope_guard(self):
-        prog = fluid.Program()
-        startup_prog = fluid.Program()
-        scope = fluid.core.Scope()
-        with fluid.scope_guard(scope):
-            with fluid.program_guard(prog, startup_prog):
+        prog = base.Program()
+        startup_prog = base.Program()
+        scope = base.core.Scope()
+        with base.scope_guard(scope):
+            with base.program_guard(prog, startup_prog):
                 yield
 
 
@@ -247,7 +247,7 @@ class TestFitALine(TestFitALineBase):
 
 
 @unittest.skipIf(
-    not fluid.core.supports_bfloat16(), "place does not support BF16 evaluation"
+    not base.core.supports_bfloat16(), "place does not support BF16 evaluation"
 )
 class TestFitALineBF16(TestFitALineBase):
     def test_bf16(self):

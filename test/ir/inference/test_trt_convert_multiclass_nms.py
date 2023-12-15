@@ -70,10 +70,10 @@ class TrtConvertMulticlassNMSTest(TrtLayerAutoScanTest):
             )
 
         def generate_scores(batch, num_boxes, num_classes):
-            return np.arange(
-                batch * num_classes * num_boxes, dtype=np.float32
+            max_value = batch * num_classes * num_boxes
+            return (1 / max_value) * np.arange(
+                max_value, dtype=np.float32
             ).reshape([batch, num_classes, num_boxes])
-            # return np.random.rand(batch, num_classes, num_boxes).astype(np.float32)
 
         for batch in [1, 2]:
             self.batch = batch
@@ -214,9 +214,7 @@ class TrtConvertMulticlassNMSTest(TrtLayerAutoScanTest):
                 arr,
                 rtol=rtol,
                 atol=atol,
-                err_msg='Output has diff, Maximum absolute error: {}'.format(
-                    np.amax(diff)
-                ),
+                err_msg=f'Output has diff, Maximum absolute error: {np.amax(diff)}',
             )
 
     def assert_op_size(self, trt_engine_num, paddle_op_num):

@@ -52,26 +52,23 @@ class TestProcessGroupFp32(unittest.TestCase):
         )
         sys.stdout.write(f"rank {pg.rank()}: test new group api ok\n")
 
-        # TODO(zhangxiaoci) allreduce unittest raise error
         # test allreduce sum
         # rank 0
-        # x = np.random.random(self.shape).astype(self.dtype)
-        # tensor_x = paddle.to_tensor(x)
+        x = np.random.random(self.shape).astype(self.dtype)
+        tensor_x = paddle.to_tensor(x)
         # rank 1
-        # y = np.random.random(self.shape).astype(self.dtype)
-        # tensor_y = paddle.to_tensor(y)
+        y = np.random.random(self.shape).astype(self.dtype)
+        tensor_y = paddle.to_tensor(y)
 
-        # sum_result = tensor_x + tensor_y
-        # if pg.rank() == 0:
-        #    task = dist.all_reduce(tensor_x)
-        #    assert np.array_equal(tensor_x, sum_result)
-        # else:
-        #    task = dist.all_reduce(tensor_y)
-        #    assert np.array_equal(tensor_y, sum_result)
+        sum_result = tensor_x + tensor_y
+        if pg.rank() == 0:
+            task = dist.all_reduce(tensor_x)
+            np.testing.assert_array_equal(tensor_x, sum_result)
+        else:
+            task = dist.all_reduce(tensor_y)
+            np.testing.assert_array_equal(tensor_y, sum_result)
 
-        # sys.stdout.write(
-        #    "rank {}: test allreduce sum api ok\n".format(pg.rank())
-        # )
+        sys.stdout.write(f"rank {pg.rank()}: test allreduce sum api ok\n")
 
         # test broadcast
         # rank 0
@@ -86,11 +83,11 @@ class TestProcessGroupFp32(unittest.TestCase):
             # XPU don't support event query by now, so just use sync op here
             task = dist.broadcast(tensor_x, 0)
             paddle.device.xpu.synchronize()
-            assert np.array_equal(broadcast_result, tensor_x)
+            np.testing.assert_array_equal(broadcast_result, tensor_x)
         else:
             task = dist.broadcast(tensor_y, 0)
             paddle.device.xpu.synchronize()
-            assert np.array_equal(broadcast_result, tensor_y)
+            np.testing.assert_array_equal(broadcast_result, tensor_y)
 
         sys.stdout.write(f"rank {pg.rank()}: test broadcast api ok\n")
 
@@ -132,8 +129,8 @@ class TestProcessGroupFp32(unittest.TestCase):
         out_2 = paddle.slice(
             tensor_out, [0], [out_shape[0] // 2], [out_shape[0]]
         )
-        assert np.array_equal(tensor_x, out_1)
-        assert np.array_equal(tensor_y, out_2)
+        np.testing.assert_array_equal(tensor_x, out_1)
+        np.testing.assert_array_equal(tensor_y, out_2)
         sys.stdout.write(f"rank {pg.rank()}: test allgather api ok\n")
 
         if pg.rank() == 0:
@@ -150,8 +147,8 @@ class TestProcessGroupFp32(unittest.TestCase):
         out_2 = paddle.slice(
             tensor_out, [0], [out_shape[0] // 2], [out_shape[0]]
         )
-        assert np.array_equal(tensor_x, out_1)
-        assert np.array_equal(tensor_y, out_2)
+        np.testing.assert_array_equal(tensor_x, out_1)
+        np.testing.assert_array_equal(tensor_y, out_2)
         sys.stdout.write(f"rank {pg.rank()}: test allgather api2 ok\n")
 
         # test Reduce
@@ -171,8 +168,8 @@ class TestProcessGroupFp32(unittest.TestCase):
             task.wait()
             paddle.device.xpu.synchronize()
         if pg.rank() == 0:
-            assert np.array_equal(tensor_x, sum_result)
-        assert np.array_equal(tensor_y, old_tensor_y)
+            np.testing.assert_array_equal(tensor_x, sum_result)
+        np.testing.assert_array_equal(tensor_y, old_tensor_y)
         sys.stdout.write(f"rank {pg.rank()}: test reduce sum api ok\n")
 
         # test reduce_scatter
@@ -196,9 +193,9 @@ class TestProcessGroupFp32(unittest.TestCase):
             task.wait()
         paddle.device.xpu.synchronize()
         if pg.rank() == 0:
-            assert np.array_equal(need_result0, tensor_out)
+            np.testing.assert_array_equal(need_result0, tensor_out)
         else:
-            assert np.array_equal(need_result1, tensor_out)
+            np.testing.assert_array_equal(need_result1, tensor_out)
         sys.stdout.write(f"rank {pg.rank()}: test reduce_scatter sum api ok\n")
 
         # test send async api
@@ -215,7 +212,7 @@ class TestProcessGroupFp32(unittest.TestCase):
         else:
             task = dist.recv(tensor_y, 0, sync_op=False)
             task.wait()
-            assert np.array_equal(tensor_y, tensor_x)
+            np.testing.assert_array_equal(tensor_y, tensor_x)
 
         # test send sync api
         # rank 0
@@ -229,7 +226,7 @@ class TestProcessGroupFp32(unittest.TestCase):
             task = dist.send(tensor_x, 1, sync_op=True)
         else:
             task = dist.recv(tensor_y, 0, sync_op=True)
-            assert np.array_equal(tensor_y, tensor_x)
+            np.testing.assert_array_equal(tensor_y, tensor_x)
 
         # test send 0-d tensor
         # rank 0

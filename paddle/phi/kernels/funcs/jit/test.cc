@@ -12,18 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <array>
 #include <iostream>
 #include <random>
 
-#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/jit/kernels.h"
+#include "paddle/utils/flags.h"
 
-DEFINE_double(acc, 1e-5, "Test accuracy threshold.");
+PD_DEFINE_double(acc, 1e-5, "Test accuracy threshold.");
 
 template <typename T>
 void RandomVec(const int n,
@@ -989,18 +990,18 @@ void TestKernelSgd() {
           T* o_data = out.data();
           tgt(&lr, param_data, grad_data, rows_data, o_data, &attr);
           // only the selected rows should be equal
-          for (size_t i = 0; i < rows.size(); ++i) {
-            ExpectEQ<T>(o_data + rows[i] * attr.grad_width,
-                        oref_data + rows[i] * attr.grad_width,
+          for (auto row : rows) {
+            ExpectEQ<T>(o_data + row * attr.grad_width,
+                        oref_data + row * attr.grad_width,
                         attr.grad_width);
           }
 
           // inplace
           std::copy(param.begin(), param.end(), out.begin());
           tgt(&lr, o_data, grad_data, rows_data, o_data, &attr);
-          for (size_t i = 0; i < rows.size(); ++i) {
-            ExpectEQ<T>(o_data + rows[i] * attr.grad_width,
-                        oref_data + rows[i] * attr.grad_width,
+          for (auto row : rows) {
+            ExpectEQ<T>(o_data + row * attr.grad_width,
+                        oref_data + row * attr.grad_width,
                         attr.grad_width);
           }
         };
@@ -1171,7 +1172,9 @@ TEST(JITKernel_helper, GetAllCandidateFuncs) {
 
 TEST(JITKernel_helper, pack_weights) {
   const int N = 8 * 60, K = 2;
-  float src[K][N], yref[K][N], y[K * N];
+  std::array<std::array<float, N>, K> src;
+  std::array<std::array<float, N>, K> yref;
+  std::array<float, N * K> y;
   float* x = &(src[0][0]);
   float* ref = &(yref[0][0]);
   for (int i = 0; i < N * K; ++i) {
@@ -1191,17 +1194,17 @@ TEST(JITKernel_helper, pack_weights) {
   int acc = 0;
   for (int g : groups) {
     g = g * block;
-    for (int k = 0; k < K; ++k) {
+    for (auto& item : src) {
       for (int i = 0; i < g; ++i) {
-        *(ref + offset) = src[k][i + acc];
+        *(ref + offset) = item[i + acc];
         offset++;
       }
     }
     acc += g;
   }
 
-  jit::pack_weights<float>(x, y, N, K);
-  ExpectEQ<float>(y, ref, N * K);
+  jit::pack_weights<float>(x, y.data(), N, K);
+  ExpectEQ<float>(y.data(), ref, N * K);
 }
 
 TEST(JITKernel_helper, attr) {

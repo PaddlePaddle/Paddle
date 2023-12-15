@@ -361,10 +361,7 @@ def parsing(externalErrorDesc):
                     status, code, desc = re.split('=|//', line.strip())
                     _Messages = allMessageDesc.messages.add()
                     _Messages.code = int(code.strip(' ,'))
-                    _Messages.message = "'{}'. {}".format(
-                        status.strip(),
-                        desc.strip(),
-                    )
+                    _Messages.message = f"'{status.strip()}'. {desc.strip()}"
 
     CUFFTHTMLParser().feed(html)
 

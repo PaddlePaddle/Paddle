@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid, sparse
+from paddle import base, sparse
 from paddle.sparse import nn
 
 
@@ -48,7 +48,7 @@ class TestSparseBatchNorm(unittest.TestCase):
 
         sparse_y = sparse_batch_norm(sparse_x)
         # compare the result with dense batch_norm
-        assert np.allclose(
+        np.testing.assert_allclose(
             dense_y.flatten().numpy(),
             sparse_y.values().flatten().numpy(),
             atol=1e-5,
@@ -57,7 +57,7 @@ class TestSparseBatchNorm(unittest.TestCase):
 
         # test backward
         sparse_y.backward(sparse_y)
-        assert np.allclose(
+        np.testing.assert_allclose(
             dense_x.grad.flatten().numpy(),
             sparse_x.grad.values().flatten().numpy(),
             atol=1e-5,
@@ -85,7 +85,9 @@ class TestSparseBatchNorm(unittest.TestCase):
         dense_bn = paddle.nn.BatchNorm1D(channels)
         dense_x = dense_x.reshape((-1, dense_x.shape[-1]))
         dense_out = dense_bn(dense_x)
-        assert np.allclose(dense_out.numpy(), batch_norm_out.values().numpy())
+        np.testing.assert_allclose(
+            dense_out.numpy(), batch_norm_out.values().numpy()
+        )
         # [1, 6, 6, 6, 3]
 
     def check(self, shape):
@@ -100,19 +102,23 @@ class TestSparseBatchNorm(unittest.TestCase):
         else:
             bn = paddle.nn.BatchNorm3D(shape[-1], data_format=data_format)
         y = bn(x)
-        y.backward()
+        np.random.seed(5)
+        loss_data = np.random.uniform(-0.01, 0.01, y.shape).astype("float32")
+        loss = paddle.to_tensor(loss_data)
+        y.backward(loss)
 
         sp_x = paddle.to_tensor(data).to_sparse_coo(dim - 1)
         sp_x.stop_gradient = False
         sp_bn = paddle.sparse.nn.BatchNorm(shape[-1], data_format=data_format)
         sp_y = sp_bn(sp_x)
-        sp_y.backward()
+        sp_loss = loss.to_sparse_coo(dim - 1)
+        sp_y.backward(sp_loss)
 
         np.testing.assert_allclose(
-            y.numpy(), sp_y.to_dense().numpy(), rtol=1e-5
+            sp_y.to_dense().numpy(), y.numpy(), rtol=1e-5
         )
         np.testing.assert_allclose(
-            x.grad.numpy(), sp_x.grad.to_dense().numpy(), rtol=1e-5
+            sp_x.grad.to_dense().numpy(), x.grad.numpy(), rtol=1e-5
         )
 
     def test_nd(self):
@@ -137,7 +143,7 @@ class TestSyncBatchNorm(unittest.TestCase):
             dense_sync_bn = paddle.nn.SyncBatchNorm(2)
             x = x.reshape((-1, x.shape[-1]))
             dense_hidden = dense_sync_bn(x)
-            assert np.allclose(
+            np.testing.assert_allclose(
                 sparse_hidden.values().numpy(), dense_hidden.numpy()
             )
 
@@ -151,8 +157,8 @@ class TestSyncBatchNorm(unittest.TestCase):
             nn.BatchNorm(5),
             nn.BatchNorm(
                 5,
-                weight_attr=fluid.ParamAttr(name='bn.scale'),
-                bias_attr=fluid.ParamAttr(name='bn.bias'),
+                weight_attr=base.ParamAttr(name='bn.scale'),
+                bias_attr=base.ParamAttr(name='bn.bias'),
             ),
         )
         model = nn.SyncBatchNorm.convert_sync_batchnorm(model)

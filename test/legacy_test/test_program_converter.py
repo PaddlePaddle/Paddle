@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid.proto import framework_pb2
+from paddle.base.proto import framework_pb2
 
 
 class TestSetValue(unittest.TestCase):
@@ -81,7 +81,8 @@ class TestSetValue(unittest.TestCase):
         with paddle.static.program_guard(mp, sp):
             x = paddle.ones([3, 4], dtype=paddle.int32)
             patch = np.array([41, 42]).astype(np.int32)
-            x[:1, :2] = patch
+            index = (slice(None, 1), slice(None, 2))
+            x = paddle.static.setitem(x, index, patch)
 
         x_input = np.ones([3, 4], dtype=np.int32)
         x_output = x_input.copy()
@@ -110,10 +111,12 @@ class TestSetValue(unittest.TestCase):
             patch = np.array(
                 [np.iinfo(np.int64).max, np.iinfo(np.int64).min]
             ).astype(np.int64)
-            x[:1, :2] = patch
+            index = (slice(None, 1), slice(None, 2))
+            x = paddle.static.setitem(x, index, patch)
 
         x_input = np.ones([3, 4], dtype=np.int64)
         x_output = x_input.copy()
+
         x_output[:1, :2] = patch
 
         self.fetch_list = [x.name]
@@ -142,7 +145,8 @@ class TestSetValue(unittest.TestCase):
             patch = np.array(
                 [np.finfo(np.float32).max, np.finfo(np.float32).min]
             ).astype(np.float32)
-            x[:1, :2] = patch
+            index = (slice(None, 1), slice(None, 2))
+            x = paddle.static.setitem(x, index, patch)
 
         x_input = np.ones([3, 4], dtype=np.float32)
         x_output = x_input.copy()
@@ -171,7 +175,8 @@ class TestSetValue(unittest.TestCase):
             patch = np.array(
                 [np.finfo(np.float64).max, np.finfo(np.float64).min]
             ).astype(np.float64)
-            x[:1, :2] = patch
+            index = (slice(None, 1), slice(None, 2))
+            x = paddle.static.setitem(x, index, patch)
 
         x_input = np.ones([3, 4], dtype=np.float64)
         x_output = x_input.copy()
@@ -200,7 +205,8 @@ class TestSetValue(unittest.TestCase):
             patch = np.array(
                 [np.finfo(np.float16).max, np.finfo(np.float16).min]
             ).astype(np.float16)
-            x[:1, :2] = patch
+            index = (slice(None, 1), slice(None, 2))
+            x = paddle.static.setitem(x, index, patch)
 
         x_input = np.ones([3, 4], dtype=np.float16)
         x_output = x_input.copy()
@@ -227,7 +233,8 @@ class TestSetValue(unittest.TestCase):
         with paddle.static.program_guard(mp, sp):
             x = paddle.ones([3, 4], dtype=paddle.bool)
             patch = np.array([True, False])
-            x[:1, :2] = patch
+            index = (slice(None, 1), slice(None, 2))
+            x = paddle.static.setitem(x, index, patch)
 
         x_input = np.ones([3, 4], dtype=bool)
         x_output = x_input.copy()
@@ -257,7 +264,8 @@ class TestSetValue(unittest.TestCase):
                 paddle.ones([3, 4], dtype=paddle.float32),
             )
             patch = np.array([42.1 + 42.1j, 42.2 + 42.2j]).astype(np.complex64)
-            x[:1, :2] = patch
+            index = (slice(None, 1), slice(None, 2))
+            x = paddle.static.setitem(x, index, patch)
 
         x_input = (np.ones([3, 4]) + 1j * np.ones([3, 4])).astype(np.complex64)
         x_output = x_input.copy()
@@ -282,7 +290,8 @@ class TestSetValue(unittest.TestCase):
                     np.finfo(np.float64).min + 1j * np.finfo(np.float64).max,
                 ]
             ).astype(np.complex128)
-            x[:1, :2] = patch
+            index = (slice(None, 1), slice(None, 2))
+            x = paddle.static.setitem(x, index, patch)
 
         x_input = (np.ones([3, 4]) + 1j * np.ones([3, 4])).astype(np.complex128)
         x_output = x_input.copy()

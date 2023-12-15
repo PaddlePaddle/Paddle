@@ -116,7 +116,17 @@ class TestLayerPrint(unittest.TestCase):
             str(module), 'UpsamplingNearest2D(size=[12, 12], data_format=NCHW)'
         )
 
+        module = nn.UpsamplingNearest2D(size=12)
+        self.assertEqual(
+            str(module), 'UpsamplingNearest2D(size=[12, 12], data_format=NCHW)'
+        )
+
         module = nn.UpsamplingBilinear2D(size=[12, 12])
+        self.assertEqual(
+            str(module), 'UpsamplingBilinear2D(size=[12, 12], data_format=NCHW)'
+        )
+
+        module = nn.UpsamplingBilinear2D(size=12)
         self.assertEqual(
             str(module), 'UpsamplingBilinear2D(size=[12, 12], data_format=NCHW)'
         )

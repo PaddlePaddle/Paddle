@@ -144,7 +144,7 @@ void TopkKernel(const Context& dev_ctx,
   if (in_dims.size() == 0) {
     phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     dev_ctx.template Alloc<int64_t>(indices);
-    phi::funcs::set_constant(dev_ctx, indices, 0.0);
+    phi::funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
     return;
   }
   // axis < 0, cacluate the real axis
@@ -153,6 +153,12 @@ void TopkKernel(const Context& dev_ctx,
   }
 
   int k = k_scalar.to<int>();
+  PADDLE_ENFORCE_GE(
+      x.numel(),
+      k,
+      errors::InvalidArgument(
+          "x has only %d element, can not find %d top values.", x.numel(), k));
+
   if (k_scalar.FromTensor()) {
     auto out_dims = out->dims();
     // accroding to axis to set K value in the dim
@@ -166,7 +172,7 @@ void TopkKernel(const Context& dev_ctx,
   const auto& out_dims = out->dims();
   if (axis + 1 == in_dims.size()) {
     const int64_t& input_height =
-        phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
+        common::product(common::slice_ddim(in_dims, 0, in_dims.size() - 1));
     const int64_t& input_width = in_dims[in_dims.size() - 1];
     FullTopK<T, int64_t>(input_height,
                          input_width,
@@ -192,24 +198,24 @@ void TopkKernel(const Context& dev_ctx,
     // get the trans input_dims, out_dims
     phi::DDim trans_dims(in_dims);
     phi::DDim trans_out_dims(out->dims());
-    for (size_t i = 0; i < trans.size(); i++) {
+    for (int i = 0; i < static_cast<int>(trans.size()); i++) {
       trans_dims[i] = in_dims[trans[i]];
     }
-    for (size_t i = 0; i < trans.size(); i++) {
+    for (int i = 0; i < static_cast<int>(trans.size()); i++) {
       trans_out_dims[i] = out_dims[trans[i]];
     }
 
     DenseTensor trans_inp;
     trans_inp.Resize(trans_dims);
     dev_ctx.template Alloc<T>(&trans_inp);
-    int ndims = trans.size();
+    int ndims = static_cast<int>(trans.size());
 
     // transpose the input value
     funcs::TransCompute<phi::CPUContext, T>(
         ndims, dev_ctx, *input, &trans_inp, trans);
 
-    const int64_t input_height =
-        phi::product(phi::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
+    const int64_t input_height = common::product(
+        common::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
     const int64_t input_width = trans_dims[trans_dims.size() - 1];
 
     // Allocate the temp tensor to the save the topk indices, values

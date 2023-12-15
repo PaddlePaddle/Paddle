@@ -14,42 +14,46 @@
 
 import unittest
 
-from get_test_cover_info import (
-    XPUOpTestWrapper,
-    create_test_class,
-    get_xpu_op_support_types,
-)
-from test_collective_base_xpu import TestDistBase
+from get_test_cover_info import get_xpu_op_support_types
+from xpu.test_collective_api_base import TestDistBase
 
 import paddle
-from paddle.fluid import core
+from paddle import core
 
 paddle.enable_static()
 
 
-class XPUTestCAllreduceOP(XPUOpTestWrapper):
-    def __init__(self):
-        self.op_name = 'c_allreduce_sum'
-        self.use_dynamic_create_class = False
+class TestCollectiveAllreduceAPI(TestDistBase):
+    def _setup_config(self):
+        pass
 
-    class TestCAllreduceOp(TestDistBase):
-        def _setup_config(self):
-            pass
-
-        def test_allreduce(self):
+    @unittest.skipIf(
+        not core.is_compiled_with_xpu() or paddle.device.xpu.device_count() < 2,
+        "run test when having at leaset 2 XPUs.",
+    )
+    def test_allreduce(self):
+        support_types = get_xpu_op_support_types('c_allreduce_sum')
+        for dtype in support_types:
             self.check_with_place(
-                "collective_allreduce_op_xpu.py", "allreduce", self.in_type_str
+                "collective_allreduce_api.py",
+                "allreduce",
+                dtype=dtype,
             )
 
-
-support_types = get_xpu_op_support_types('c_allreduce_sum')
-for stype in support_types:
-    create_test_class(
-        globals(),
-        XPUTestCAllreduceOP,
-        stype,
-        ignore_device_version=[core.XPUVersion.XPU1],
+    @unittest.skipIf(
+        not core.is_compiled_with_xpu() or paddle.device.xpu.device_count() < 2,
+        "run test when having at leaset 2 XPUs.",
     )
+    def test_allreduce_dygraph(self):
+        support_types = get_xpu_op_support_types('c_allreduce_sum')
+        for dtype in support_types:
+            self.check_with_place(
+                "collective_allreduce_api_dygraph.py",
+                "allreduce",
+                static_mode="0",
+                dtype=dtype,
+            )
+
 
 if __name__ == '__main__':
     unittest.main()

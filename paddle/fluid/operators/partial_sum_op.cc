@@ -86,7 +86,7 @@ class PartialSumOp : public framework::OperatorWithKernel {
     std::vector<int64_t> out_dims(2);
     out_dims[0] = batch_size;
     out_dims[1] = (length == -1) ? input_len - start_index : length;
-    ctx->SetOutputDim("Out", phi::make_ddim(out_dims));
+    ctx->SetOutputDim("Out", common::make_ddim(out_dims));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 
@@ -95,11 +95,11 @@ class PartialSumOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto inputs = ctx.MultiInput<phi::DenseTensor>("X");
     auto input_data_type = framework::proto::VarType::Type(0);
-    bool flag = 0;
+    bool flag = false;
     for (auto *input : inputs) {
       if (input->IsInitialized()) {
         input_data_type = framework::TransToProtoVarType(input->dtype());
-        flag = 1;
+        flag = true;
         break;
       }
     }

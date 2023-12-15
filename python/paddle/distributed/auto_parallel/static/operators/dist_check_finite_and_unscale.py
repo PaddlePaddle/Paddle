@@ -77,7 +77,6 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
-
         # by now the backward function only insert the gradient allreduce for dist op itself
         dist_op_context = ctx.dist_op_context
         main_block = dist_op_context.main_block
@@ -86,9 +85,7 @@ class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
         dist_attr = ctx.get_op_dist_attr_for_program(backward_op)
         assert (
             dist_attr is not None
-        ), "backward op [{}] don't have dist attribute !".format(
-            str(backward_op)
-        )
+        ), f"backward op [{str(backward_op)}] don't have dist attribute !"
 
         assert rank_id in dist_attr.process_mesh.process_ids
 

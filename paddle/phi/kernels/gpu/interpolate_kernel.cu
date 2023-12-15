@@ -14,13 +14,13 @@
 
 #include "paddle/phi/kernels/interpolate_kernel.h"
 
+#include "paddle/common/layout.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/float16.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/interpolate_function.h"
 #include "paddle/phi/kernels/primitive/datamover_primitives.h"
@@ -90,7 +90,7 @@ __global__ void KeLinearInterpFw(const T* in,
 
     if (data_layout == DataLayout::kNCHW) {
       const T* in_pos =
-          &in[out_id_h * out_id_w + channel_id * in_img_size + in_img_idx];
+          &in[out_id_h * input_w + channel_id * in_img_size + in_img_idx];
       // linear interpolation
       out[out_id_h * output_w + out_id_w] =
           static_cast<T>(w2lambda * static_cast<MT>(in_pos[0]) +
@@ -658,7 +658,7 @@ static void Interpolate1DCUDAFwd(
     DenseTensor* output) {
   auto* input_data = input.data<T>();
 
-  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -772,7 +772,7 @@ static void Interpolate2DCUDAFwd(
     DenseTensor* output) {
   auto* input_data = input.data<T>();
 
-  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -985,11 +985,7 @@ static void Interpolate2DCUDAFwd(
               interp_divmods);
     }
   } else if ("bicubic" == interp_method) {
-#ifdef __HIPCC__
-    constexpr int thread_per_block = 256;
-#else
     constexpr int thread_per_block = 512;
-#endif
     KeBicubicInterpFw<T>
         <<<config.block_per_grid, thread_per_block, 0, dev_ctx.stream()>>>(
             input_data,
@@ -1028,7 +1024,7 @@ static void Interpolate3DCUDAFwd(
     DenseTensor* output) {
   auto* input_data = input.data<T>();
 
-  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 

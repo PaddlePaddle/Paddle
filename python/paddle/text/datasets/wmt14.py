@@ -61,27 +61,37 @@ class WMT14(Dataset):
 
         .. code-block:: python
 
-            import paddle
-            from paddle.text.datasets import WMT14
+            >>> import paddle
+            >>> from paddle.text.datasets import WMT14
 
-            class SimpleNet(paddle.nn.Layer):
-                def __init__(self):
-                    super().__init__()
+            >>> class SimpleNet(paddle.nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...
+            ...     def forward(self, src_ids, trg_ids, trg_ids_next):
+            ...         return paddle.sum(src_ids), paddle.sum(trg_ids), paddle.sum(trg_ids_next)
 
-                def forward(self, src_ids, trg_ids, trg_ids_next):
-                    return paddle.sum(src_ids), paddle.sum(trg_ids), paddle.sum(trg_ids_next)
+            >>> wmt14 = WMT14(mode='train', dict_size=50)
 
-            wmt14 = WMT14(mode='train', dict_size=50)
-
-            for i in range(10):
-                src_ids, trg_ids, trg_ids_next = wmt14[i]
-                src_ids = paddle.to_tensor(src_ids)
-                trg_ids = paddle.to_tensor(trg_ids)
-                trg_ids_next = paddle.to_tensor(trg_ids_next)
-
-                model = SimpleNet()
-                src_ids, trg_ids, trg_ids_next = model(src_ids, trg_ids, trg_ids_next)
-                print(src_ids.numpy(), trg_ids.numpy(), trg_ids_next.numpy())
+            >>> for i in range(10):
+            ...     src_ids, trg_ids, trg_ids_next = wmt14[i]
+            ...     src_ids = paddle.to_tensor(src_ids)
+            ...     trg_ids = paddle.to_tensor(trg_ids)
+            ...     trg_ids_next = paddle.to_tensor(trg_ids_next)
+            ...
+            ...     model = SimpleNet()
+            ...     src_ids, trg_ids, trg_ids_next = model(src_ids, trg_ids, trg_ids_next)
+            ...     print(src_ids.item(), trg_ids.item(), trg_ids_next.item())
+            91 38 39
+            123 81 82
+            556 229 230
+            182 26 27
+            447 242 243
+            116 110 111
+            403 288 289
+            258 221 222
+            136 34 35
+            281 136 137
 
     """
 
@@ -196,9 +206,10 @@ class WMT14(Dataset):
 
             .. code-block:: python
 
-                from paddle.text.datasets import WMT14
-                wmt14 = WMT14(mode='train', dict_size=50)
-                src_dict, trg_dict = wmt14.get_dict()
+                >>> from paddle.text.datasets import WMT14
+                >>> wmt14 = WMT14(mode='train', dict_size=50)
+                >>> src_dict, trg_dict = wmt14.get_dict()
+
         """
         src_dict, trg_dict = self.src_dict, self.trg_dict
         if reverse:

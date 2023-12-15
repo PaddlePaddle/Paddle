@@ -23,6 +23,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/framework/grad_op_desc_maker.h"
 #include "paddle/fluid/framework/inplace_op_inference.h"
 #include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
@@ -33,7 +34,6 @@ limitations under the License. */
 #include "paddle/fluid/imperative/dygraph_grad_maker.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
-#include "paddle/phi/core/macros.h"
 
 namespace paddle {
 namespace framework {
@@ -318,15 +318,38 @@ struct OpInfoFiller<T, kVarTypeInference> {
   }
 };
 
+template <typename T, typename = void>
+struct InferMetaTrait {
+  static void call(const char* op_type UNUSED, OpInfo* info) {
+    info->infer_shape_ = [](InferShapeContext* ctx) {
+      T inference;
+      inference(ctx);
+    };
+  }
+};
+
+template <typename T>
+struct InferMetaTrait<T,
+                      decltype(std::declval<T>().infer_meta_(
+                          std::declval<phi::InferMetaContext*>()))> {
+  static void call(const char* op_type UNUSED, OpInfo* info) {
+    info->infer_shape_ = [](InferShapeContext* ctx) {
+      T inference;
+      inference(ctx);
+    };
+    info->infer_meta_ = [](phi::InferMetaContext* ctx) {
+      T inference;
+      inference.infer_meta_(ctx);
+    };
+  }
+};
+
 template <typename T>
 struct OpInfoFiller<T, kShapeInference> {
   void operator()(const char* op_type UNUSED, OpInfo* info) const {
     // Note: if fill InferShapeFN by this Filler, the infershape here
     // will overwrite the op->InferShape func registered in kOperator Filler
-    info->infer_shape_ = [](InferShapeContext* ctx) {
-      T inference;
-      inference(ctx);
-    };
+    InferMetaTrait<T>::call(op_type, info);
   }
 };
 

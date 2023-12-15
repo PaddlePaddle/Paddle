@@ -59,7 +59,7 @@ from .extension_utils import (
 )
 from .extension_utils import CLANG_COMPILE_FLAGS, CLANG_LINK_FLAGS
 
-from ...fluid import core
+from ...base import core
 
 # Note(zhouwei): On windows, it will export function 'PyInit_[name]' by default,
 # The solution is: 1.User add function PyInit_[name] 2. set not to export
@@ -505,7 +505,6 @@ class BuildExtension(build_ext):
             extra_postargs=None,
             depends=None,
         ):
-
             self.cflags = copy.deepcopy(extra_postargs)
             extra_postargs = None
 
@@ -651,9 +650,7 @@ class BuildExtension(build_ext):
         if self.no_python_abi_suffix:
             assert (
                 len(name_items) > 2
-            ), "Expected len(name_items) > 2, but received {}".format(
-                len(name_items)
-            )
+            ), f"Expected len(name_items) > 2, but received {len(name_items)}"
             name_items.pop(-2)
             ext_name = split_str.join(name_items)
 
@@ -716,7 +713,7 @@ class BuildExtension(build_ext):
         for i, extension in enumerate(self.extensions):
             sources = [os.path.abspath(s) for s in extension.sources]
             if not self.contain_cuda_file:
-                self.contain_cuda_file = any([is_cuda_file(s) for s in sources])
+                self.contain_cuda_file = any(is_cuda_file(s) for s in sources)
             op_names = parse_op_name_from(sources)
 
             for op_name in op_names:
@@ -910,9 +907,7 @@ def load(
         extra_cuda_cflags = []
     assert isinstance(
         extra_cxx_cflags, list
-    ), "Required type(extra_cxx_cflags) == list[str], but received {}".format(
-        extra_cxx_cflags
-    )
+    ), f"Required type(extra_cxx_cflags) == list[str], but received {extra_cxx_cflags}"
     assert isinstance(
         extra_cuda_cflags, list
     ), "Required type(extra_cuda_cflags) == list[str], but received {}".format(

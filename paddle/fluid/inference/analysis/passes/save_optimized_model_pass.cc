@@ -24,16 +24,6 @@ namespace inference {
 namespace analysis {
 
 void SaveOptimizedModelPass::SaveOptimizedModel(Argument* argument) {
-  if (!argument->save_optimized_model()) {
-    LOG(WARNING) << "save_optim_cache_model is turned off, skip "
-                    "save_optimized_model_pass";
-    return;
-  }
-  if (!argument->enable_ir_optim()) {
-    LOG(WARNING) << "ir_optim is turned off, skip save_optimized_model_pass";
-    return;
-  }
-
   std::string model_opt_cache_dir = argument->optim_cache_dir();
   if (!model_opt_cache_dir.empty()) {
     if (!PathExists(model_opt_cache_dir)) {
@@ -55,6 +45,11 @@ void SaveOptimizedModelPass::SaveOptimizedModel(Argument* argument) {
   auto* graph = argument->main_graph_ptr();
 
   framework::ProgramDesc optimized_program_desc;
+
+  // NOTE(liuyuanle): If the following line of code is not added, an error
+  // [SegmentFault] may occur!
+  optimized_program_desc.CopyFrom(*argument->main_program().Proto());
+
   framework::ir::GraphToProgram(*graph, &optimized_program_desc);
 
   auto IsPersistable = [](const framework::VarDesc* var) {
@@ -120,7 +115,7 @@ void SaveOptimizedModelPass::SaveOptimizedModel(Argument* argument) {
     std::string save_model_path = path + "/" + "_optimized.pdmodel";
     auto str = optimized_program_desc.Proto()->SerializeAsString();
     std::ofstream file(save_model_path.c_str(), std::ios::binary);
-    file.write(str.c_str(), str.size());
+    file.write(str.c_str(), str.size());  // NOLINT
     file.close();
   };
 
@@ -130,9 +125,10 @@ void SaveOptimizedModelPass::SaveOptimizedModel(Argument* argument) {
 }
 
 void SaveOptimizedModelPass::RunImpl(Argument* argument) {
-  if (argument->use_xpu_valid()) {
-    SaveOptimizedModel(argument);
+  if (!argument->save_optimized_model() || !argument->enable_ir_optim()) {
+    return;
   }
+  SaveOptimizedModel(argument);
 }
 
 std::string SaveOptimizedModelPass::repr() const {

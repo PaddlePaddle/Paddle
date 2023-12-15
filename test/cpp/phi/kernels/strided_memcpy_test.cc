@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
+#include <array>
 
 #include "gtest/gtest.h"
 #include "paddle/phi/backends/context_pool.h"
@@ -22,7 +23,7 @@ namespace tests {
 
 TEST(StridedMemcpy, CPUCrop) {
   // clang-format off
-  int src[] = {
+  int src[] = {// NOLINT
       0, 1, 2, 0, 0,
       0, 3, 4, 0, 0,
       0, 0, 0, 0, 0,
@@ -31,13 +32,13 @@ TEST(StridedMemcpy, CPUCrop) {
 
   phi::DDim src_stride({5, 1});
 
-  int dst[4];
+  std::array<int, 4> dst;
   phi::DDim dst_dim({2, 2});
   phi::DDim dst_stride({2, 1});
 
   phi::CPUContext ctx;
   phi::funcs::StridedMemcpy<int>(
-      ctx, src + 1, src_stride, dst_dim, dst_stride, dst);
+      ctx, src + 1, src_stride, dst_dim, dst_stride, dst.data());
 
   ASSERT_EQ(1, dst[0]);
   ASSERT_EQ(2, dst[1]);
@@ -47,26 +48,25 @@ TEST(StridedMemcpy, CPUCrop) {
 
 TEST(StridedMemcpy, CPUConcat) {
   // clang-format off
-  int src[] = {
+  int src[] = { // NOLINT
       1, 2,
       3, 4
   };
   // clang-format on
 
-  int dst[8];
-
+  std::array<int, 8> dst;
   phi::DDim src_stride({2, 1});
   phi::DDim dst_dim({2, 2});
   phi::DDim dst_stride({4, 1});
   phi::CPUContext ctx;
 
   phi::funcs::StridedMemcpy<int>(
-      ctx, src, src_stride, dst_dim, dst_stride, dst);
+      ctx, src, src_stride, dst_dim, dst_stride, dst.data());
   phi::funcs::StridedMemcpy<int>(
-      ctx, src, src_stride, dst_dim, dst_stride, dst + 2);
+      ctx, src, src_stride, dst_dim, dst_stride, dst.data() + 2);
 
   // clang-format off
-  int expect_dst[] = {
+  int expect_dst[] = { // NOLINT
       1, 2, 1, 2,
       3, 4, 3, 4
   };

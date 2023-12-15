@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/im2col.h"
 
 #include <gtest/gtest.h>
+#include <array>
 
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -60,8 +61,8 @@ void testIm2col() {
       (input_width - filter_size + padding[2] + padding[3]) / stride[1] + 1;
   float* input_ptr = input_tmp.mutable_data<float>(
       {1, input_height, input_width}, paddle::platform::CPUPlace());
-  float arr[6] = {0, 1, 2, 3, 4, 5};
-  memcpy(input_ptr, arr, 6 * sizeof(float));
+  std::array<float, 6> arr = {0, 1, 2, 3, 4, 5};
+  memcpy(input_ptr, arr.data(), 6 * sizeof(float));
 
   auto* place = new Place();
   DeviceContext* context = new DeviceContext(*place);
@@ -85,10 +86,10 @@ void testIm2col() {
   im2col(*context, input, dilation, stride, padding, &output_cfo);
   im2col_ocf(*context, input, dilation, stride, padding, &output_ocf);
 
-  float out_cfo_data[] = {0, 1, 1, 2, 3, 4, 4, 5};
-  float out_ocf_data[] = {0, 1, 3, 4, 1, 2, 4, 5};
+  std::array<float, 8> out_cfo_data = {0, 1, 1, 2, 3, 4, 4, 5};
+  std::array<float, 8> out_ocf_data = {0, 1, 3, 4, 1, 2, 4, 5};
 
-  float* out_cfo_ptr;
+  float* out_cfo_ptr = nullptr;
   if (paddle::platform::is_cpu_place(*place)) {
     out_cfo_ptr = output_cfo.data<float>();
   } else {
@@ -100,7 +101,7 @@ void testIm2col() {
     EXPECT_EQ(out_cfo_ptr[i], out_cfo_data[i]);
   }
 
-  float* out_ocf_ptr;
+  float* out_ocf_ptr = nullptr;
   if (paddle::platform::is_cpu_place(*place)) {
     out_ocf_ptr = output_ocf.data<float>();
   } else {
@@ -118,7 +119,7 @@ void testIm2col() {
       col2im;
   phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, float>
       col2im_ocf;
-  float col2im_data[] = {0, 2, 2, 3, 8, 5};
+  std::array<float, 6> col2im_data = {0, 2, 2, 3, 8, 5};
 
   memset(input_ptr, 0, 6 * sizeof(float));
   if (paddle::platform::is_cpu_place(*place)) {
@@ -129,7 +130,7 @@ void testIm2col() {
 
   col2im(*context, output_cfo, dilation, stride, padding, &input);
 
-  float* in_ptr;
+  float* in_ptr = nullptr;
   if (paddle::platform::is_cpu_place(*place)) {
     in_ptr = input.data<float>();
   } else {
@@ -362,8 +363,8 @@ void benchIm2col(int ic, int ih, int iw, int fh, int fw, int ph, int pw) {
   constexpr int repeat = 100;
   auto GetCurrentMs = []() -> double {
     struct timeval time;
-    gettimeofday(&time, NULL);
-    return 1e+3 * time.tv_sec + 1e-3 * time.tv_usec;
+    gettimeofday(&time, nullptr);
+    return 1e+3 * time.tv_sec + 1e-3 * time.tv_usec;  // NOLINT
   };
   auto t1 = GetCurrentMs();
   for (int i = 0; i < repeat; ++i) {

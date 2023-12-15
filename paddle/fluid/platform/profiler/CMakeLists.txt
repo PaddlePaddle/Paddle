@@ -1,20 +1,24 @@
 cc_library(
   host_tracer
   SRCS host_tracer.cc
-  DEPS framework_proto enforce phi var_type_traits)
+  DEPS framework_proto enforce phi common var_type_traits)
 cc_library(
   cuda_tracer
   SRCS cuda_tracer.cc cupti_data_process.cc
-  DEPS workqueue_utils enforce glog)
+  DEPS enforce glog common workqueue_utils)
+cc_library(
+  xpu_tracer
+  SRCS xpu_tracer.cc
+  DEPS enforce glog common)
 add_subdirectory(custom_device)
 cc_library(
   event_node
   SRCS event_node.cc
-  DEPS enforce place)
+  DEPS enforce place common)
 cc_library(
   profiler_utils
   SRCS utils.cc
-  DEPS enforce glog)
+  DEPS enforce glog common)
 add_subdirectory(dump)
 cc_library(
   profiler_logger
@@ -28,11 +32,16 @@ cc_library(
 cc_library(
   cpu_utilization
   SRCS cpu_utilization.cc
-  DEPS phi enforce glog)
+  DEPS phi common enforce glog common)
 cc_library(
   new_profiler
   SRCS profiler.cc
-  DEPS host_tracer cuda_tracer profiler_utils cpu_utilization event_bind
+  DEPS host_tracer
+       cuda_tracer
+       xpu_tracer
+       profiler_utils
+       cpu_utilization
+       event_bind
        custom_tracer)
 cc_test(
   test_event_node

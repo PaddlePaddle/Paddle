@@ -16,7 +16,7 @@ import re
 import sys
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 from spectral_op_np import fft_c2c, fft_c2r, fft_r2c
 
 import paddle
@@ -28,7 +28,6 @@ TEST_CASE_NAME = 'test_case'
 
 
 def parameterize(attrs, input_values=None):
-
     if isinstance(attrs, str):
         attrs = [attrs]
     input_dicts = (

@@ -143,6 +143,9 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   /// still be some CPU kernels running in GPU mode.
   virtual void EnableMKLDNN() {}
 
+  /// \brief Disable the use of MKLDNN.
+  virtual void DisableMKLDNN() {}
+
   /// \brief Enable MKLDNN quantize optimization.
   virtual void EnableMkldnnQuantizer() {}
 
@@ -181,8 +184,6 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   bool use_ipu_{false};
   bool use_mkldnn_{false};
   bool use_custom_device_{false};
-
-  bool use_gpu_low_precision_{false};
   /// \endcond
 };
 
@@ -213,6 +214,9 @@ class PD_INFER_DECL CpuPassStrategy : public PassStrategy {
 
   /// \brief Enable the use of MKLDNN.
   void EnableMKLDNN() override;
+
+  /// \brief Disable the use of MKLDNN.
+  void DisableMKLDNN() override;
 
   /// \brief Enable MKLDNN quantize optimization.
   void EnableMkldnnQuantizer() override;

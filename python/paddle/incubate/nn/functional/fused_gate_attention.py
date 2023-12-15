@@ -39,7 +39,7 @@ def fused_gate_attention(
     to information from different representation subspaces. This API only
     support self_attention. The pseudo code is as follows:
 
-    .. code-block:: python
+    .. code-block:: text
 
         c = c ** (-0.5)
         q = paddle.einsum('nbqa,ahc->nbqhc', q_data, query_w) * c
@@ -64,20 +64,20 @@ def fused_gate_attention(
     Args:
         query (Tensor): The input query tensor. The shape is [batch_size, msa_len, res_len, q_dim].
         key (Tensor, optional): The input key tensor, which can be set when
-                                merge_qkv is False. The shape is [batch_size, msa_len, m_size, kv_dim].
-        query_weight (Tensor, optional): The weight of query linear, which
-                                         should be set when input key is not None. The shape is [q_dim, num_heads, head_dim].
-        key_weight (Tensor, optional): The weight of key linear, which should
-                                       be set when input key is not None. The shape is [kv_dim, num_heads, head_dim].
-        value_weight (Tensor, optional): The weight of value linear, which should
-                                         be set when input key is not None. The shape is [kv_dim, num_heads, head_dim].
-        qkv_weight (Tensor, optional): The weight of qkv linear, which should
-                                       be set when merge_qkv is True. The shape is [3, num_heads, head_dim, q_dim].
-        gate_linear_weight (Tensor, optional): The weight of gating linear,
-                                       which should be set when has_gating is True. The shape is [q_dim, num_heads, head_dim].
-        gate_linear_bias (Tensor, optional): The bias of gating linear, which
-                                             should be set when has_gating is True. The shape is [num_heads, head_dim]. Default None.
-        out_linear_weight (Tensor, optional): The weight of output linear. The shape is [num_heads, head_dim, q_dim].
+            merge_qkv is False. The shape is [batch_size, msa_len, m_size, kv_dim]. Default None.
+        query_weight (Tensor, optional): The weight of query linear, which should be set when input
+            key is not None. The shape is [q_dim, num_heads, head_dim]. Default None.
+        key_weight (Tensor, optional): The weight of key linear, which should be set when input key
+            is not None. The shape is [kv_dim, num_heads, head_dim]. Default None.
+        value_weight (Tensor, optional): The weight of value linear, which should be set when input
+            key is not None. The shape is [kv_dim, num_heads, head_dim]. Default None.
+        qkv_weight (Tensor, optional): The weight of qkv linear, which should be set when merge_qkv
+            is True. The shape is [3, num_heads, head_dim, q_dim]. Default None.
+        gate_linear_weight (Tensor, optional): The weight of gating linear, which should be set when
+            has_gating is True. The shape is [q_dim, num_heads, head_dim]. Default None.
+        gate_linear_bias (Tensor, optional): The bias of gating linear, which should be set when
+            has_gating is True. The shape is [num_heads, head_dim]. Default None.
+        out_linear_weight (Tensor, optional): The weight of output linear. The shape is [num_heads, head_dim, q_dim]. Default None.
         out_linear_bias (Tensor): The bias of output linear, the shape is [q_dim]. Default None.
         nonbatched_bias (Tensor, optional): The extra bias. The shape is [batch_size, 1, num_heads, res_len, m_size]. Default None.
         attn_mask (Tensor, optional):  The attention mask. The shape is [batch_size, msa_len, 1, 1, res_len]. Default None.
@@ -92,54 +92,54 @@ def fused_gate_attention(
 
         .. code-block:: python
 
-            # required: gpu
-            import paddle
-            import paddle.incubate.nn.functional as F
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> import paddle.incubate.nn.functional as F
 
-            # batch_size = 2
-            # msa_len = 4
-            # res_len = 2
-            # q_dim = 4
-            # num_heads = 8
-            # head_dim = 4
-            # m_size = res_len (when merge_qkv is True)
+            >>> # batch_size = 2
+            >>> # msa_len = 4
+            >>> # res_len = 2
+            >>> # q_dim = 4
+            >>> # num_heads = 8
+            >>> # head_dim = 4
+            >>> # m_size = res_len (when merge_qkv is True)
 
-            # query: [batch_size, msa_len, res_len, q_dim]
-            query = paddle.rand(shape=[2, 4, 2, 4], dtype="float32")
+            >>> # query: [batch_size, msa_len, res_len, q_dim]
+            >>> query = paddle.rand(shape=[2, 4, 2, 4], dtype="float32")
 
-            # qkv_weight:  [3, n_heads, head_dim, q_dim]
-            qkv_weight = paddle.rand(shape=[3, 8, 4, 4], dtype="float32")
+            >>> # qkv_weight:  [3, n_heads, head_dim, q_dim]
+            >>> qkv_weight = paddle.rand(shape=[3, 8, 4, 4], dtype="float32")
 
-            # nonbatched_bias: [batch_size, 1, num_heads, res_len, m_size]
-            nonbatched_bias = paddle.rand(shape=[2, 1, 8, 2, 2], dtype="float32")
+            >>> # nonbatched_bias: [batch_size, 1, num_heads, res_len, m_size]
+            >>> nonbatched_bias = paddle.rand(shape=[2, 1, 8, 2, 2], dtype="float32")
 
-            # attn_mask: [batch_size, msa_len, 1, 1, m_size]
-            attn_mask = paddle.rand(shape=[2, 4, 1, 1, 2], dtype="float32")
+            >>> # attn_mask: [batch_size, msa_len, 1, 1, m_size]
+            >>> attn_mask = paddle.rand(shape=[2, 4, 1, 1, 2], dtype="float32")
 
-            # gate_linear_weight: [q_dim, num_heads, head_dim]
-            gate_linear_weight = paddle.rand(shape=[4, 8, 4], dtype="float32")
-            # gate_bias: [num_heads, head_dim]
-            gate_linear_bias = paddle.rand(shape=[8, 4], dtype="float32")
+            >>> # gate_linear_weight: [q_dim, num_heads, head_dim]
+            >>> gate_linear_weight = paddle.rand(shape=[4, 8, 4], dtype="float32")
+            >>> # gate_bias: [num_heads, head_dim]
+            >>> gate_linear_bias = paddle.rand(shape=[8, 4], dtype="float32")
 
-            # out_linear_weight: [num_heads, head_dim, q_dim]
-            out_linear_weight = paddle.rand(shape=[8, 4, 4], dtype="float32")
-            # out_linear_bias: [q_dim]
-            out_linear_bias = paddle.rand(shape=[4], dtype="float32")
+            >>> # out_linear_weight: [num_heads, head_dim, q_dim]
+            >>> out_linear_weight = paddle.rand(shape=[8, 4, 4], dtype="float32")
+            >>> # out_linear_bias: [q_dim]
+            >>> out_linear_bias = paddle.rand(shape=[4], dtype="float32")
 
-            # output: [batch_size, msa_len, res_len, q_dim]
-            output = F.fused_gate_attention(
-                query=query,
-                qkv_weight=qkv_weight,
-                gate_linear_weight=gate_linear_weight,
-                gate_linear_bias=gate_linear_bias,
-                out_linear_weight=out_linear_weight,
-                out_linear_bias=out_linear_bias,
-                nonbatched_bias=nonbatched_bias,
-                attn_mask=attn_mask,
-                has_gating=True,
-                merge_qkv=True)
-            print(output.shape)
-            # [2, 4, 2, 4]
+            >>> # output: [batch_size, msa_len, res_len, q_dim]
+            >>> output = F.fused_gate_attention(
+            ...     query=query,
+            ...     qkv_weight=qkv_weight,
+            ...     gate_linear_weight=gate_linear_weight,
+            ...     gate_linear_bias=gate_linear_bias,
+            ...     out_linear_weight=out_linear_weight,
+            ...     out_linear_bias=out_linear_bias,
+            ...     nonbatched_bias=nonbatched_bias,
+            ...     attn_mask=attn_mask,
+            ...     has_gating=True,
+            ...     merge_qkv=True)
+            >>> print(output.shape)
+            [2, 4, 2, 4]
 
     """
     if in_dynamic_mode():

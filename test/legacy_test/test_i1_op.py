@@ -15,11 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 from scipy import special
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(42)
 paddle.seed(42)
@@ -49,6 +50,7 @@ class Testi1API(unittest.TestCase):
             self.place.append(paddle.CUDAPlace(0))
 
     def test_api_static(self):
+        @test_with_pir_api
         def run(place):
             paddle.enable_static()
             with paddle.static.program_guard(paddle.static.Program()):
@@ -120,7 +122,7 @@ class TestI1Op(OpTest):
 
     # 测试前向输出结果
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     # 测试反向梯度输出
     def test_check_grad(self):
@@ -133,6 +135,7 @@ class TestI1Op(OpTest):
                     1 / self.case.size,
                 )
             ],
+            check_pir=True,
         )
 
     def init_config(self):

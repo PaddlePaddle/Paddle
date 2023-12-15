@@ -13,29 +13,39 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/flip_kernel.h"
+#include "paddle/common/array.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/core/utils/array.h"
 
 namespace phi {
 
-template <typename T, size_t Rank>
-__global__ void flip_cuda_kernel(const int64_t N,
-                                 const T* in_data,
-                                 T* out_data,
-                                 phi::Array<int64_t, Rank> shape,
-                                 phi::Array<int64_t, Rank> stride,
-                                 phi::Array<int, Rank> flip_dims,
-                                 int flip_dims_size) {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx >= N) {
+template <typename T>
+__global__ void FlipCudaKernel(const T* in_data,
+                               T* out_data,
+                               phi::Array<int64_t, DDim::kMaxRank> shape,
+                               phi::Array<int64_t, DDim::kMaxRank> stride,
+                               phi::Array<int, DDim::kMaxRank> flip_dims,
+                               const int rank,
+                               const int64_t numel,
+                               const int flip_dims_size) {
+  int64_t idx =
+      static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
+      static_cast<int64_t>(threadIdx.x);
+  if (idx >= numel) {
     return;
   }
 
-  int cur_indices = idx, rem = 0, dst_offset = 0;
-  for (int i = 0; i < Rank; ++i) {
+  int64_t cur_indices = idx;
+  int64_t rem = 0;
+  int64_t dst_offset = 0;
+
+#pragma unroll
+  for (int i = 0; i < DDim::kMaxRank; ++i) {
+    if (i >= rank) {
+      break;
+    }
     int64_t temp = cur_indices;
     cur_indices = cur_indices / stride[i];
     rem = temp - cur_indices * stride[i];
@@ -51,91 +61,48 @@ __global__ void flip_cuda_kernel(const int64_t N,
   out_data[idx] = in_data[dst_offset];
 }
 
-template <typename T, typename Context, size_t N>
-void LaunchFlipCudaKernel(const Context& dev_ctx,
-                          const DenseTensor& x,
-                          const std::vector<int>& axis,
-                          DenseTensor* out) {
-  auto* in_data = x.data<T>();
-  auto* out_data = dev_ctx.template Alloc<T>(out);
-
-  auto x_dims = x.dims();
-  const int total_dims = x_dims.size();
-  const int64_t numel = x.numel();
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
-  auto x_stride = phi::stride(x_dims);
-
-  phi::Array<int64_t, N> stride_a;
-  phi::Array<int64_t, N> shape_a;
-  phi::Array<int, N> flip_dims_a;
-  size_t flip_dims_size = axis.size();
-
-  for (size_t idx = 0; idx < N; ++idx) {
-    stride_a[idx] = x_stride[idx];
-    shape_a[idx] = x_dims[idx];
-    flip_dims_a[idx] = idx < flip_dims_size ? axis[idx] : 0;
-  }
-
-  for (size_t i = 0; i < flip_dims_a.size(); ++i) {
-    if (flip_dims_a[i] < 0) {
-      flip_dims_a[i] += total_dims;
-    }
-  }
-  flip_cuda_kernel<T, N>
-      <<<config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
-          numel,
-          in_data,
-          out_data,
-          shape_a,
-          stride_a,
-          flip_dims_a,
-          flip_dims_size);
-}
-
 template <typename T, typename Context>
 void FlipKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 const std::vector<int>& axis,
                 DenseTensor* out) {
-  const size_t total_dims = x.dims().size();
-  switch (total_dims) {
-    case 0:
-      LaunchFlipCudaKernel<T, Context, 0>(dev_ctx, x, axis, out);
-      break;
-    case 1:
-      LaunchFlipCudaKernel<T, Context, 1>(dev_ctx, x, axis, out);
-      break;
-    case 2:
-      LaunchFlipCudaKernel<T, Context, 2>(dev_ctx, x, axis, out);
-      break;
-    case 3:
-      LaunchFlipCudaKernel<T, Context, 3>(dev_ctx, x, axis, out);
-      break;
-    case 4:
-      LaunchFlipCudaKernel<T, Context, 4>(dev_ctx, x, axis, out);
-      break;
-    case 5:
-      LaunchFlipCudaKernel<T, Context, 5>(dev_ctx, x, axis, out);
-      break;
-    case 6:
-      LaunchFlipCudaKernel<T, Context, 6>(dev_ctx, x, axis, out);
-      break;
-    case 7:
-      LaunchFlipCudaKernel<T, Context, 7>(dev_ctx, x, axis, out);
-      break;
-    case 8:
-      LaunchFlipCudaKernel<T, Context, 8>(dev_ctx, x, axis, out);
-      break;
-    case 9:
-      LaunchFlipCudaKernel<T, Context, 9>(dev_ctx, x, axis, out);
-      break;
-    default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "dims of input tensor should be less than 10, But received"
-          "%d",
-          x.dims().size()));
+  auto* in_data = x.data<T>();
+  auto* out_data = dev_ctx.template Alloc<T>(out);
+
+  auto x_dims = x.dims();
+  const int rank = x_dims.size();
+  const int64_t numel = x.numel();
+
+  size_t flip_dims_size = axis.size();
+  auto x_stride = common::stride(x_dims);
+
+  phi::Array<int64_t, DDim::kMaxRank> stride_array;
+  phi::Array<int64_t, DDim::kMaxRank> shape_array;
+  phi::Array<int, DDim::kMaxRank> flip_dims_array;
+
+  for (int i = 0; i < rank; ++i) {
+    stride_array[i] = x_stride[i];
+    shape_array[i] = x_dims[i];
+    if (i < flip_dims_size) {
+      flip_dims_array[i] = axis[i] < 0 ? axis[i] + rank : axis[i];
+    } else {
+      flip_dims_array[i] = 0;
+    }
   }
+
+  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
+  FlipCudaKernel<T>
+      <<<config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
+          in_data,
+          out_data,
+          shape_array,
+          stride_array,
+          flip_dims_array,
+          rank,
+          numel,
+          flip_dims_size);
 }
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(flip,

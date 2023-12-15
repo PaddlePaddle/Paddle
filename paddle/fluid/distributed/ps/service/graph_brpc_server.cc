@@ -548,7 +548,7 @@ int32_t GraphBrpcService::sample_neighbors_across_multi_servers(
     seq.push_back(request_idx);
   }
   size_t remote_call_num = request_call_num;
-  if (request2server.size() != 0 &&
+  if (!request2server.empty() &&
       static_cast<size_t>(request2server.back()) == rank) {
     remote_call_num--;
     local_buffers.resize(node_id_buckets.back().size());

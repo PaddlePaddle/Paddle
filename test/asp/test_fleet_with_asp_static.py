@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distributed import fleet
 from paddle.incubate import asp as sparsity
 from paddle.incubate.asp import ASPHelper
@@ -41,7 +41,7 @@ class TestFleetWithASPStatic(unittest.TestCase):
         os.environ["PADDLE_TRAINER_ID"] = "0"
 
     def net(self, main_prog, startup_prog):
-        with fluid.program_guard(main_prog, startup_prog):
+        with base.program_guard(main_prog, startup_prog):
             input_x = paddle.static.data(
                 name="x", shape=[-1, 32], dtype='float32'
             )
@@ -65,26 +65,26 @@ class TestFleetWithASPStatic(unittest.TestCase):
 
     def test_with_asp(self):
         fleet.init(is_collective=True)
-        train_prog, startup_prog = fluid.Program(), fluid.Program()
+        train_prog, startup_prog = base.Program(), base.Program()
         avg_cost, strategy, input_x, input_y = self.net(
             train_prog, startup_prog
         )
 
-        with fluid.program_guard(train_prog, startup_prog):
-            optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
+        with base.program_guard(train_prog, startup_prog):
+            optimizer = paddle.optimizer.SGD(learning_rate=0.01)
             optimizer = fleet.distributed_optimizer(
                 optimizer, strategy=strategy
             )
             optimizer.minimize(avg_cost)
 
         place = (
-            fluid.CUDAPlace(0)
-            if paddle.fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if paddle.base.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
 
-        exe = fluid.Executor(place)
-        feeder = fluid.DataFeeder(feed_list=[input_x, input_y], place=place)
+        exe = base.Executor(place)
+        feeder = base.DataFeeder(feed_list=[input_x, input_y], place=place)
         exe.run(startup_prog)
 
         sparsity.prune_model(train_prog)
@@ -95,7 +95,7 @@ class TestFleetWithASPStatic(unittest.TestCase):
         for param in train_prog.global_block().all_parameters():
             if ASPHelper._is_supported_layer(train_prog, param.name):
                 mat = np.array(
-                    fluid.global_scope().find_var(param.name).get_tensor()
+                    base.global_scope().find_var(param.name).get_tensor()
                 )
                 if (len(param.shape) == 4 and param.shape[1] < 4) or (
                     len(param.shape) == 2 and param.shape[0] < 4
@@ -117,7 +117,7 @@ class TestFleetWithASPAMPStatic(unittest.TestCase):
         os.environ["PADDLE_TRAINER_ID"] = "0"
 
     def net(self, main_prog, startup_prog):
-        with fluid.program_guard(main_prog, startup_prog):
+        with base.program_guard(main_prog, startup_prog):
             input_x = paddle.static.data(
                 name="x", shape=[-1, 32], dtype='float32'
             )
@@ -141,13 +141,13 @@ class TestFleetWithASPAMPStatic(unittest.TestCase):
 
     def test_with_asp_and_amp(self):
         fleet.init(is_collective=True)
-        train_prog, startup_prog = fluid.Program(), fluid.Program()
+        train_prog, startup_prog = base.Program(), base.Program()
         avg_cost, strategy, input_x, input_y = self.net(
             train_prog, startup_prog
         )
         strategy.amp = True
 
-        with fluid.program_guard(train_prog, startup_prog):
+        with base.program_guard(train_prog, startup_prog):
             optimizer = paddle.optimizer.SGD(learning_rate=0.01)
             optimizer = fleet.distributed_optimizer(
                 optimizer, strategy=strategy
@@ -155,13 +155,13 @@ class TestFleetWithASPAMPStatic(unittest.TestCase):
             optimizer.minimize(avg_cost)
 
         place = (
-            fluid.CUDAPlace(0)
-            if paddle.fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if paddle.base.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
 
-        exe = fluid.Executor(place)
-        feeder = fluid.DataFeeder(feed_list=[input_x, input_y], place=place)
+        exe = base.Executor(place)
+        feeder = base.DataFeeder(feed_list=[input_x, input_y], place=place)
         exe.run(startup_prog)
 
         optimizer.amp_init(place)
@@ -174,7 +174,7 @@ class TestFleetWithASPAMPStatic(unittest.TestCase):
         for param in train_prog.global_block().all_parameters():
             if ASPHelper._is_supported_layer(train_prog, param.name):
                 mat = np.array(
-                    fluid.global_scope().find_var(param.name).get_tensor()
+                    base.global_scope().find_var(param.name).get_tensor()
                 )
                 if (len(param.shape) == 4 and param.shape[1] < 4) or (
                     len(param.shape) == 2 and param.shape[0] < 4
@@ -189,7 +189,7 @@ class TestFleetWithASPAMPStatic(unittest.TestCase):
 
     def test_with_asp_and_pure_fp16(self):
         fleet.init(is_collective=True)
-        train_prog, startup_prog = fluid.Program(), fluid.Program()
+        train_prog, startup_prog = base.Program(), base.Program()
         with paddle.static.amp.fp16_guard():
             avg_cost, strategy, input_x, input_y = self.net(
                 train_prog, startup_prog
@@ -197,7 +197,7 @@ class TestFleetWithASPAMPStatic(unittest.TestCase):
         strategy.amp = True
         strategy.amp_configs = {'use_pure_fp16': True}
 
-        with fluid.program_guard(train_prog, startup_prog):
+        with base.program_guard(train_prog, startup_prog):
             with paddle.static.amp.fp16_guard():
                 optimizer = optimizer = paddle.optimizer.Momentum(
                     learning_rate=0.01, multi_precision=True
@@ -208,13 +208,13 @@ class TestFleetWithASPAMPStatic(unittest.TestCase):
                 optimizer.minimize(avg_cost)
 
         place = (
-            fluid.CUDAPlace(0)
-            if paddle.fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if paddle.base.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
 
-        exe = fluid.Executor(place)
-        feeder = fluid.DataFeeder(feed_list=[input_x, input_y], place=place)
+        exe = base.Executor(place)
+        feeder = base.DataFeeder(feed_list=[input_x, input_y], place=place)
         exe.run(startup_prog)
 
         optimizer.amp_init(place)
@@ -227,7 +227,7 @@ class TestFleetWithASPAMPStatic(unittest.TestCase):
         for param in train_prog.global_block().all_parameters():
             if ASPHelper._is_supported_layer(train_prog, param.name):
                 mat = np.array(
-                    fluid.global_scope().find_var(param.name).get_tensor()
+                    base.global_scope().find_var(param.name).get_tensor()
                 )
                 if (len(param.shape) == 4 and param.shape[1] < 4) or (
                     len(param.shape) == 2 and param.shape[0] < 4

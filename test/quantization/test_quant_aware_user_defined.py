@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import logging
 import os
 import unittest
 
@@ -20,9 +21,11 @@ from test_quant_aware import MobileNet, StaticCase
 import paddle
 from paddle.static.quantization.quanter import convert, quant_aware
 
+logging.basicConfig(level="INFO", format="%(message)s")
+
 
 def pact(x):
-    helper = paddle.fluid.layer_helper.LayerHelper("pact", **locals())
+    helper = paddle.base.layer_helper.LayerHelper("pact", **locals())
     dtype = 'float32'
     init_thres = 20
     u_param_attr = paddle.ParamAttr(
@@ -123,7 +126,7 @@ class TestQuantAwareCase1(StaticCase):
                 )
                 iter += 1
                 if iter % 100 == 0:
-                    print(
+                    logging.info(
                         'train iter={}, avg loss {}, acc_top1 {}, acc_top5 {}'.format(
                             iter, cost, top1, top5
                         )
@@ -143,7 +146,7 @@ class TestQuantAwareCase1(StaticCase):
                 )
                 iter += 1
                 if iter % 100 == 0:
-                    print(
+                    logging.info(
                         'eval iter={}, avg loss {}, acc_top1 {}, acc_top5 {}'.format(
                             iter, cost, top1, top5
                         )
@@ -153,7 +156,7 @@ class TestQuantAwareCase1(StaticCase):
                 result[2].append(top5)
                 if stop_iter is not None and iter == stop_iter:
                     break
-            print(
+            logging.info(
                 ' avg loss {}, acc_top1 {}, acc_top5 {}'.format(
                     np.mean(result[0]), np.mean(result[1]), np.mean(result[2])
                 )
@@ -184,8 +187,8 @@ class TestQuantAwareCase1(StaticCase):
         quant_eval_prog = convert(quant_eval_prog, place, config)
         top1_2, top5_2 = test(quant_eval_prog)
         # values before quantization and after quantization should be close
-        print(f"before quantization: top1: {top1_1}, top5: {top5_1}")
-        print(f"after quantization: top1: {top1_2}, top5: {top5_2}")
+        logging.info(f"before quantization: top1: {top1_1}, top5: {top5_1}")
+        logging.info(f"after quantization: top1: {top1_2}, top5: {top5_2}")
 
 
 if __name__ == '__main__':

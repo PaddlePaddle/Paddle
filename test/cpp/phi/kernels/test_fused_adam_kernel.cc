@@ -89,7 +89,7 @@ static auto ToMutableTensorPtrVector(
 static auto ToMetaTensorVector(const std::vector<DenseTensor> &tensors) {
   std::vector<MetaTensor> results;
   for (auto &t : tensors) {
-    results.push_back(t);
+    results.emplace_back(t);
   }
   return results;
 }
@@ -366,8 +366,12 @@ auto MaxDiff(const Context &ctx,
 
   diff_reduced.Resize({1});
   ctx.template Alloc<MT>(&diff_reduced);
-  MaxRawKernel<MT, Context>(
-      ctx, diff, vectorize<int64_t>(x.dims()), false, true, &diff_reduced);
+  MaxRawKernel<MT, Context>(ctx,
+                            diff,
+                            common::vectorize<int64_t>(x.dims()),
+                            false,
+                            true,
+                            &diff_reduced);
 
   diff_reduced_cpu.Resize(diff_reduced.dims());
   ctx.template HostAlloc<MT>(&diff_reduced_cpu);

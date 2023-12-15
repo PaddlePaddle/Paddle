@@ -20,7 +20,7 @@ import numpy as np
 from test_dist_sparse_load_ps0 import SparseLoadOp
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distributed.fleet import fleet
 from paddle.distributed.fleet.base import role_maker
 
@@ -53,19 +53,19 @@ class TestSparseLoadOpCase2(SparseLoadOp):
         fc_array = np.arange(0, 1, 0.1).repeat(10).reshape(10, 10)
         model_path = self.save_origin_model(emb_array, fc_array)
 
-        startup_program = fluid.framework.Program()
-        test_program = fluid.framework.Program()
+        startup_program = base.framework.Program()
+        test_program = base.framework.Program()
         role = role_maker.PaddleCloudRoleMaker()
         fleet.init(role)
         loss = self.net(emb_array, fc_array)
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True
-        optimizer = fluid.optimizer.Adam(1e-3)
+        optimizer = paddle.optimizer.Adam(1e-3)
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(loss)
         fleet.init_server(model_path)
         emb = np.array(
-            fluid.global_scope().find_var("embedding.block1").get_tensor()
+            base.global_scope().find_var("embedding.block1").get_tensor()
         )
         assert emb.all() == emb_array[1::2].all()
         shutil.rmtree(model_path)

@@ -22,9 +22,11 @@ import numpy as np
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
+from dygraph_to_static_utils import Dy2StTestBase, enable_to_static_guard
+
 import paddle
-from paddle import _legacy_C_ops, fluid
-from paddle.fluid.dygraph import to_variable
+from paddle import _legacy_C_ops, base
+from paddle.base.dygraph import to_variable
 from paddle.framework import in_dynamic_mode
 from paddle.jit.api import to_static
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
@@ -79,7 +81,7 @@ class DynamicGRU(paddle.nn.Layer):
             # input_ = inputs[:, j:j+1, :]  # original code
             input_ = paddle.slice(inputs, axes=[1], starts=[j], ends=[j + 1])
             input_ = paddle.reshape(input_, [-1, input_.shape[2]])
-            hidden, reset, gate = self.gru_unit(input_, hidden)
+            hidden, reset = self.gru_unit(input_, hidden)
             hidden_ = paddle.reshape(hidden, [-1, 1, hidden.shape[1]])
             res.append(hidden_)
 
@@ -96,7 +98,7 @@ class BiGRU(paddle.nn.Layer):
         self.pre_gru = paddle.nn.Linear(
             in_features=input_dim,
             out_features=grnn_hidden_dim * 3,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Uniform(
                     low=-init_bound, high=init_bound
                 ),
@@ -107,7 +109,7 @@ class BiGRU(paddle.nn.Layer):
         self.gru = DynamicGRU(
             size=grnn_hidden_dim,
             h_0=h_0,
-            param_attr=fluid.ParamAttr(
+            param_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Uniform(
                     low=-init_bound, high=init_bound
                 ),
@@ -118,7 +120,7 @@ class BiGRU(paddle.nn.Layer):
         self.pre_gru_r = paddle.nn.Linear(
             in_features=input_dim,
             out_features=grnn_hidden_dim * 3,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Uniform(
                     low=-init_bound, high=init_bound
                 ),
@@ -130,7 +132,7 @@ class BiGRU(paddle.nn.Layer):
             size=grnn_hidden_dim,
             is_reverse=True,
             h_0=h_0,
-            param_attr=fluid.ParamAttr(
+            param_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Uniform(
                     low=-init_bound, high=init_bound
                 ),
@@ -363,7 +365,7 @@ class LexNet(paddle.nn.Layer):
         self.word_embedding = paddle.nn.Embedding(
             self.vocab_size,
             self.word_emb_dim,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 learning_rate=self.emb_lr,
                 name="word_emb",
                 initializer=paddle.nn.initializer.Uniform(
@@ -405,7 +407,7 @@ class LexNet(paddle.nn.Layer):
         self.fc = paddle.nn.Linear(
             in_features=self.grnn_hidden_dim * 2,
             out_features=self.num_labels,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Uniform(
                     low=-self.init_bound, high=self.init_bound
                 ),
@@ -414,14 +416,14 @@ class LexNet(paddle.nn.Layer):
         )
 
         self.linear_chain_crf = LinearChainCRF(
-            param_attr=fluid.ParamAttr(
+            param_attr=base.ParamAttr(
                 name='linear_chain_crfw', learning_rate=self.crf_lr
             ),
             size=self.num_labels,
         )
 
         self.crf_decoding = CRFDecoding(
-            param_attr=fluid.ParamAttr(name='crfw', learning_rate=self.crf_lr),
+            param_attr=base.ParamAttr(name='crfw', learning_rate=self.crf_lr),
             size=self.num_labels,
         )
         # share weight
@@ -504,7 +506,7 @@ def get_random_input_data(batch_size, vocab_size, num_labels, max_seq_len=64):
 
 
 def create_dataloader(reader, place):
-    data_loader = fluid.io.DataLoader.from_generator(
+    data_loader = base.io.DataLoader.from_generator(
         capacity=16, use_double_buffer=True, iterable=True
     )
 
@@ -513,13 +515,13 @@ def create_dataloader(reader, place):
     return data_loader
 
 
-class TestLACModel(unittest.TestCase):
+class TestLACModel(Dy2StTestBase):
     def setUp(self):
         self.args = Args()
         self.place = (
-            fluid.CUDAPlace(0)
-            if fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
         self.temp_dir = tempfile.TemporaryDirectory()
         self.model_save_dir = os.path.join(self.temp_dir.name, 'inference')
@@ -529,13 +531,12 @@ class TestLACModel(unittest.TestCase):
         self.dy_param_path = os.path.join(self.temp_dir.name, 'lac_dy_param')
 
     def train(self, args, to_static):
-        paddle.jit.enable_to_static(to_static)
         place = (
-            fluid.CUDAPlace(0)
-            if fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             paddle.seed(SEED)
             paddle.framework.random._manual_program_seed(SEED)
 
@@ -545,9 +546,9 @@ class TestLACModel(unittest.TestCase):
             train_loader = create_dataloader(reader, place)
 
             model = LexNet(args)
-            optimizer = fluid.optimizer.AdamOptimizer(
+            optimizer = paddle.optimizer.Adam(
                 learning_rate=args.base_learning_rate,
-                parameter_list=model.parameters(),
+                parameters=model.parameters(),
             )
             chunk_eval = ChunkEval(
                 int(math.ceil((args.num_labels - 1) / 2.0)), "IOB"
@@ -578,7 +579,9 @@ class TestLACModel(unittest.TestCase):
                             num_label_chunks,
                             num_correct_chunks,
                         ) = chunk_eval(
-                            input=crf_decode, label=targets, seq_length=length
+                            input=crf_decode,
+                            label=targets,
+                            seq_length=length,
                         )
                         outputs = [avg_cost, precision, recall, f1_score]
                         avg_cost, precision, recall, f1_score = (
@@ -603,8 +606,12 @@ class TestLACModel(unittest.TestCase):
                 paddle.jit.save(
                     layer=model,
                     path=self.model_save_prefix,
-                    input_spec=[input_specs[0], input_specs[-1]],
+                    input_spec=input_specs,
                     output_spec=[crf_decode],
+                    input_names_after_prune=[
+                        input_specs[0].name,
+                        input_specs[-1].name,
+                    ],
                 )
             else:
                 paddle.save(
@@ -613,16 +620,18 @@ class TestLACModel(unittest.TestCase):
 
             return np.array(loss_data)
 
+    def _train(self, to_static: bool):
+        with enable_to_static_guard(to_static):
+            self.train(self.args, to_static)
+
     def test_train(self):
-        st_out = self.train(self.args, to_static=True)
-        dy_out = self.train(self.args, to_static=False)
+        st_out = self._train(to_static=True)
+        dy_out = self._train(to_static=False)
         np.testing.assert_allclose(
             dy_out,
             st_out,
             rtol=1e-05,
-            err_msg='dygraph output:\n{},\nstatic output:\n {}.'.format(
-                dy_out, st_out
-            ),
+            err_msg=f'dygraph output:\n{dy_out},\nstatic output:\n {st_out}.',
         )
         # Prediction needs trained models, so put `test_predict` at last of `test_train`
         # self.verify_predict()
@@ -641,19 +650,21 @@ class TestLACModel(unittest.TestCase):
 
     def predict_dygraph(self, batch):
         words, targets, length = batch
-        paddle.jit.enable_to_static(False)
-        with fluid.dygraph.guard(self.place):
-            model = LexNet(self.args)
-            # load dygraph trained parameters
-            model_dict = paddle.load(self.dy_param_path + ".pdparams")
-            model.set_dict(model_dict)
-            model.eval()
+        with enable_to_static_guard(False):
+            with base.dygraph.guard(self.place):
+                model = LexNet(self.args)
+                # load dygraph trained parameters
+                model_dict = paddle.load(self.dy_param_path + ".pdparams")
+                model.set_dict(model_dict)
+                model.eval()
 
-            _, pred_res = model(
-                to_variable(words), to_variable(targets), to_variable(length)
-            )
+                _, pred_res = model(
+                    to_variable(words),
+                    to_variable(targets),
+                    to_variable(length),
+                )
 
-            return pred_res.numpy()
+                return pred_res.numpy()
 
     def predict_static(self, batch):
         """
@@ -661,13 +672,13 @@ class TestLACModel(unittest.TestCase):
         Load inference model to test it's ok for prediction.
         """
         paddle.enable_static()
-        exe = fluid.Executor(self.place)
+        exe = base.Executor(self.place)
         # load inference model
         [
             inference_program,
             feed_target_names,
             fetch_targets,
-        ] = fluid.io.load_inference_model(
+        ] = paddle.static.io.load_inference_model(
             self.model_save_dir,
             executor=exe,
             model_filename=self.model_filename,
@@ -684,7 +695,7 @@ class TestLACModel(unittest.TestCase):
 
     def predict_dygraph_jit(self, batch):
         words, targets, length = batch
-        with fluid.dygraph.guard(self.place):
+        with base.dygraph.guard(self.place):
             model = paddle.jit.load(self.model_save_prefix)
             model.eval()
 

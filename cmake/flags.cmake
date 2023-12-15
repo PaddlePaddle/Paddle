@@ -35,11 +35,7 @@ endfunction()
 
 checkcompilercxx14flag()
 if(NOT WIN32)
-  if(WITH_CINN)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
-  else()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
-  endif()
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 else()
   set(CMAKE_CXX_STANDARD 17)
 endif()
@@ -145,6 +141,11 @@ if(NOT WIN32)
   set(COMMON_FLAGS
       -fPIC
       -fno-omit-frame-pointer
+      -pipe
+      -ffunction-sections
+      -fdata-sections
+      -Wl
+      -gc-sections
       -Werror
       -Wall
       -Wextra

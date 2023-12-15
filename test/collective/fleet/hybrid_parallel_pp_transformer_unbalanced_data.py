@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 from hybrid_parallel_pp_transformer import (
     ModelPipe,
-    TestDistPPTraning,
+    TestDistPPTraining,
     batch_size,
     length,
     micro_batch_size,
@@ -30,7 +30,7 @@ import paddle.distributed as dist
 from paddle.distributed import fleet
 
 
-class TestDistPPTraningUnbalancedData(TestDistPPTraning):
+class TestDistPPTrainingUnbalancedData(TestDistPPTraining):
     def test_pp_model(self):
         hcg = fleet.get_hybrid_communicate_group()
         word_size = hcg.get_model_parallel_world_size()

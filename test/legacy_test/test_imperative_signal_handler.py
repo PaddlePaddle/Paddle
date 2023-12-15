@@ -19,7 +19,7 @@ import sys
 import time
 import unittest
 
-from paddle.fluid import core
+from paddle.base import core
 
 
 def set_child_signal_handler(self, child_pid):

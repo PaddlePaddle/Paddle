@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "paddle/common/macros.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/macros.h"
 
 namespace phi {
 namespace funcs {

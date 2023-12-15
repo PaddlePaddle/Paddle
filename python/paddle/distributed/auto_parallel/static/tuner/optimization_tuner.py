@@ -38,13 +38,9 @@ from paddle.distributed.auto_parallel.static.process_group import (
     new_process_group,
 )
 from paddle.distributed.auto_parallel.static.reshard import Resharder
-from paddle.distributed.auto_parallel.static.utils import (
-    debug_program,
-    set_grad_var_shape,
-)
+from paddle.distributed.auto_parallel.static.utils import debug_program
 from paddle.distributed.passes import PassContext, new_pass
 from paddle.static import append_backward, program_guard
-from paddle.utils import unique_name
 
 from ..utils import get_logger
 from .algorithms import new_algorithm
@@ -111,7 +107,6 @@ def parse_results(results):
 # TODO only dependent on dist context
 # all env need to be start a new pass are member of dist context
 def _copy_context(ref_dist_context):
-
     # clear all process groups and recover the world process group
     clear_all_process_groups()
     ranks = []
@@ -210,7 +205,6 @@ class OptimizationTuner:
         batch_size,
         rank,
     ):
-
         self._config = TuningConfig(dist_context.strategy)
         # should not modify dist context from calling function
         self._baseline_dist_context = _copy_context(dist_context)
@@ -250,7 +244,6 @@ class OptimizationTuner:
     # TODO Generate compelet program with all parts like forward, backward, update
     # as well as parallelism transformation.
     def _build_programs_without_optimization(self):
-
         serial_main_program = self._baseline_dist_context.serial_main_program
         serial_startup_program = (
             self._baseline_dist_context.serial_startup_program
@@ -287,7 +280,6 @@ class OptimizationTuner:
             )
 
     def _select_tuning_algorithm(self):
-
         selected_passes_set = self._config.tuning_passes_name
         algorithm_name = "_".join(sorted(selected_passes_set))
         self._algorithm = new_algorithm(algorithm_name, self._config)
@@ -312,7 +304,7 @@ class OptimizationTuner:
                 self._baseline_dist_context.serial_feed_vars["inputs"]
                 + self._baseline_dist_context.serial_feed_vars["labels"]
             )
-            if config["use_pure_fp16"]:
+            if config["dtype"] == "float16" and config["level"] == "o2":
                 config["base_opt"] = dist_context.serial_optimizer
                 auto_parallel_fp16_pass = new_pass("auto_parallel_fp16", config)
                 auto_parallel_fp16_pass.apply(
@@ -351,14 +343,12 @@ class OptimizationTuner:
         # Generate optimizer
         # FIXME should be remove from apply pass after pass support optimizers
         with program_guard(dist_main_prog, dist_startup_prog):
-            with unique_name.guard("opt_"):
+            with dist_main_prog.switch_name_generator_guard("opt_"):
                 optimizer_ops = dist_context.serial_optimizer.apply_gradients(
                     dist_params_grads
                 )
         completer.complete_update_annotation(dist_main_prog)
 
-        # Do reshard process
-        set_grad_var_shape(dist_main_prog, dist_context)
         resharder = Resharder(
             dist_main_prog,
             dist_startup_prog,
@@ -415,7 +405,6 @@ class OptimizationTuner:
         return trial
 
     def _get_profile_context(self, trial, result_path):
-
         profile_ctx = {}
 
         profile_ctx['distributed_env'] = copy.deepcopy(
@@ -446,7 +435,6 @@ class OptimizationTuner:
         return input_names
 
     def _launch_profile(self, ctx_path, trial_dir):
-
         if os.environ.get("WITH_COVERAGE", "OFF") == "ON":
             coverage_args = ["-m", "coverage", "run", "--branch", "-p"]
         else:
@@ -528,7 +516,6 @@ class OptimizationTuner:
             return Error_results
 
     def _evaluate_trial(self, trial):
-
         self._logger.info(f"Trial {trial.name} evaluation start.")
         self._apply_optimization(trial)
 
@@ -545,9 +532,7 @@ class OptimizationTuner:
             )
 
         self._logger.info(
-            "Trial {} evaluation finish with {}.".format(
-                trial.name, parse_results(results)
-            )
+            f"Trial {trial.name} evaluation finish with {parse_results(results)}."
         )
         return results
 

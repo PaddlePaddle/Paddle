@@ -19,11 +19,7 @@ namespace paddle {
 namespace operators {
 
 using dnnl::memory;
-using dnnl::primitive;
-using dnnl::reorder;
 using dnnl::resampling_forward;
-using dnnl::stream;
-using phi::DataLayout;
 using OneDNNMemoryFormat = dnnl::memory::format_tag;
 
 template <typename T = float>
@@ -37,7 +33,7 @@ class InterpolateOneDNNHandler
                            phi::DenseTensor* out)
       : phi::funcs::OneDNNHandlerNoCachingT<T, dnnl::resampling_forward>(
             engine, cpu_place) {
-    const auto dst_tz = phi::vectorize(out->dims());
+    const auto dst_tz = common::vectorize(out->dims());
     const auto dst_md = memory::desc(
         dst_tz, phi::funcs::OneDNNGetDataType<T>(), OneDNNMemoryFormat::any);
     this->AcquireForwardPrimitiveDescriptor(
@@ -53,7 +49,7 @@ class InterpolateOneDNNKernel : public framework::OpKernel<T> {
     const auto& in_dims = x->dims();
 
     const framework::DDim in_dhw_dims =
-        phi::slice_ddim(in_dims, 2, in_dims.size());
+        common::slice_ddim(in_dims, 2, in_dims.size());
 
     std::vector<int> out_dims;
     out_dims.reserve(5);
@@ -70,7 +66,7 @@ class InterpolateOneDNNKernel : public framework::OpKernel<T> {
 
     auto list_new_size_tensor = ctx.MultiInput<phi::DenseTensor>("SizeTensor");
     auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
-    if (list_new_size_tensor.size() > 0) {
+    if (!list_new_size_tensor.empty()) {
       auto new_size = get_new_shape(list_new_size_tensor);
       if (new_size.size() == out_dims.size()) {
         out_dims = new_size;
@@ -97,7 +93,7 @@ class InterpolateOneDNNKernel : public framework::OpKernel<T> {
           scale.push_back(scale[0]);
         } else {  // v2
           std::vector<float> scale_attr = ctx.Attr<std::vector<float>>("scale");
-          if (scale_attr.size() > 0) {
+          if (!scale_attr.empty()) {
             scale.resize(3, scale_attr[0]);
             std::copy(scale_attr.begin(), scale_attr.end(), scale.begin());
           }
@@ -106,7 +102,7 @@ class InterpolateOneDNNKernel : public framework::OpKernel<T> {
       if (scale.size() == 3 && scale[0] > 0.0f && scale[1] > 0.0f &&
           scale[2] > 0.0f) {
         int j = 0;
-        std::vector<int64_t> in_dhw_vec = phi::vectorize(in_dhw_dims);
+        std::vector<int64_t> in_dhw_vec = common::vectorize(in_dhw_dims);
         std::transform(
             in_dhw_vec.begin(),
             in_dhw_vec.end(),
@@ -142,7 +138,7 @@ class InterpolateOneDNNKernel : public framework::OpKernel<T> {
                                      : dnnl::algorithm::resampling_linear;
 
     const auto out_dims_vec = ComputeOutputShape(ctx);
-    framework::DDim dim_out = phi::make_ddim(out_dims_vec);
+    framework::DDim dim_out = common::make_ddim(out_dims_vec);
     out->Resize(dim_out);
 
     InterpolateOneDNNHandler<T> handler(

@@ -79,11 +79,11 @@ void ScatterKernel(const Context &ctx,
   }
 
   int dim0 = static_cast<int>(x.dims()[0]);
-  int dim1 =
-      static_cast<int>(phi::product(phi::slice_ddim(x_dims, 1, x_dims.size())));
+  int dim1 = static_cast<int>(
+      common::product(common::slice_ddim(x_dims, 1, x_dims.size())));
 
   DenseTensor indices_cpu(index.type());
-  phi::Copy(ctx, index, phi::CPUPlace(), false, &indices_cpu);
+  phi::Copy(ctx, index, phi::CPUPlace(), true, &indices_cpu);
 
   int r = 0;
   if (index_type == phi::DataType::INT32) {

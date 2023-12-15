@@ -17,20 +17,22 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestBilinearAPI(unittest.TestCase):
+    @test_with_pir_api
     def test_api(self):
-        with fluid.program_guard(
-            fluid.default_startup_program(), fluid.default_main_program()
-        ):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(startup, main):
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(0)
             else:
                 place = core.CPUPlace()
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
 
             data1 = paddle.static.data(name='X1', shape=[5, 5], dtype='float32')
             data2 = paddle.static.data(name='X2', shape=[5, 4], dtype='float32')
@@ -43,9 +45,9 @@ class TestBilinearAPI(unittest.TestCase):
             )
             ret = bilinear(data1, data2)
 
-            exe.run(fluid.default_startup_program())
+            exe.run(main)
             ret_fetch = exe.run(
-                feed={'X1': layer1, 'X2': layer2}, fetch_list=[ret.name]
+                feed={'X1': layer1, 'X2': layer2}, fetch_list=[ret]
             )
             self.assertEqual(ret_fetch[0].shape, (5, 1000))
 

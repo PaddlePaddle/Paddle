@@ -247,15 +247,15 @@ class TrtConvertCrossMultiHeadMatmulTest(TrtLayerAutoScanTest):
             # The last dim of input1 and input2 should be static.
             self.dynamic_shape.min_input_shape = {
                 "input_data1": [1, 4096, 320],
-                "input_data2": [1, 77, 768],
+                "input_data2": [1, 768, 768],
             }
             self.dynamic_shape.max_input_shape = {
                 "input_data1": [8, 4096, 320],
-                "input_data2": [8, 77, 768],
+                "input_data2": [8, 768, 768],
             }
             self.dynamic_shape.opt_input_shape = {
                 "input_data1": [2, 4096, 320],
-                "input_data2": [2, 77, 768],
+                "input_data2": [2, 768, 768],
             }
 
         def clear_dynamic_shape():
@@ -281,7 +281,7 @@ class TrtConvertCrossMultiHeadMatmulTest(TrtLayerAutoScanTest):
         self.trt_param.workspace_size = 2013265920
         yield self.create_inference_config(), (1, 3), (1e-5, 1e-4)
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 3), (1e-2, 1e-3)
+        yield self.create_inference_config(), (1, 3), (1e-2, 1e-2)
 
     def add_skip_trt_case(self):
         def teller1(program_config, predictor_config):

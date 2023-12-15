@@ -111,7 +111,7 @@ def get_program_v3():
         criterion = GPTPretrainingCriterion()
         loss = criterion(preds, labels, loss_mask)
 
-        optimizer = paddle.fluid.optimizer.AdamOptimizer(
+        optimizer = paddle.optimizer.Adam(
             learning_rate=0.00001,
             beta1=0.9,
             beta2=0.999,

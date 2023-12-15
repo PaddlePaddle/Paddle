@@ -98,6 +98,7 @@ class TransformerNetPipe(TransformerNet):
     def forward(self, tensors):
         if framework.in_dynamic_mode():
             stable, x = tensors
+            stable = paddle.assign(stable)
             output = super().forward(x)
             return stable, output
         else:
@@ -138,7 +139,7 @@ class ModelPipe(PipelineLayer):
         )
 
 
-class TestDistPPTraning(unittest.TestCase):
+class TestDistPPTraining(unittest.TestCase):
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 1

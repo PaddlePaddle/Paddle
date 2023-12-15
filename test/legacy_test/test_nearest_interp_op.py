@@ -15,9 +15,9 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
-from paddle.fluid import core
+from paddle.base import core
 
 
 def nearest_neighbor_interp_np(
@@ -346,10 +346,11 @@ class TestNearestInterpOp_attr_tensor(OpTest):
     def setUp(self):
         self.out_size = None
         self.actual_shape = None
-        self.init_test_case()
-        self.op_type = "nearest_interp"
         self.shape_by_1Dtensor = False
         self.scale_by_1Dtensor = False
+        self.scale_by_2Dtensor = False
+        self.init_test_case()
+        self.op_type = "nearest_interp_v2"
         self.attrs = {
             'interp_method': self.interp_method,
             'align_corners': self.align_corners,
@@ -359,7 +360,13 @@ class TestNearestInterpOp_attr_tensor(OpTest):
         self.inputs = {'X': input_np}
 
         if self.scale_by_1Dtensor:
-            self.inputs['Scale'] = np.array([self.scale]).astype("float64")
+            self.inputs['Scale'] = np.array([self.scale]).astype("float32")
+            out_h = int(self.input_shape[2] * self.scale)
+            out_w = int(self.input_shape[3] * self.scale)
+        elif self.scale_by_2Dtensor:
+            self.inputs['Scale'] = np.array(self.scale).astype("float32")
+            out_h = int(self.input_shape[2] * self.scale[0])
+            out_w = int(self.input_shape[3] * self.scale[1])
         elif self.scale > 0:
             out_h = int(self.input_shape[2] * self.scale)
             out_w = int(self.input_shape[3] * self.scale)
@@ -442,6 +449,19 @@ class TestNearestInterp_attr_tensor_Case3(TestNearestInterpOp_attr_tensor):
         self.out_size = None
         self.align_corners = True
         self.scale_by_1Dtensor = True
+
+
+# scale is a 2-D tensor
+class TestNearestInterp_attr_tensor_Case4(TestNearestInterpOp_attr_tensor):
+    def init_test_case(self):
+        self.interp_method = 'nearest'
+        self.input_shape = [3, 2, 32, 16]
+        self.out_h = 64
+        self.out_w = 32
+        self.scale = [2.0, 2.0]
+        self.out_size = None
+        self.align_corners = True
+        self.scale_by_2Dtensor = True
 
 
 if __name__ == "__main__":

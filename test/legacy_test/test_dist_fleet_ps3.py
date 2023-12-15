@@ -18,7 +18,7 @@ import paddle
 
 paddle.enable_static()
 
-from paddle import fluid
+from paddle import base
 from paddle.distributed import fleet
 from paddle.distributed.fleet.base import role_maker
 
@@ -49,17 +49,19 @@ class TestPSPassWithBow(unittest.TestCase):
             return acc
 
         def get_loss(cos_q_pt, cos_q_nt):
+            fill_shape = [-1, 1]
+            fill_shape[0] = paddle.shape(cos_q_pt)[0].item()
             loss_op1 = paddle.subtract(
-                fluid.layers.fill_constant_batch_size_like(
-                    input=cos_q_pt, shape=[-1, 1], value=margin, dtype='float32'
+                paddle.full(
+                    shape=fill_shape, fill_value=margin, dtype='float32'
                 ),
                 cos_q_pt,
             )
             loss_op2 = paddle.add(loss_op1, cos_q_nt)
+            fill_shape = [-1, 1]
+            fill_shape[0] = paddle.shape(loss_op2)[0].item()
             loss_op3 = paddle.maximum(
-                fluid.layers.fill_constant_batch_size_like(
-                    input=loss_op2, shape=[-1, 1], value=0.0, dtype='float32'
-                ),
+                paddle.full(shape=fill_shape, fill_value=0.0, dtype='float32'),
                 loss_op2,
             )
             avg_cost = paddle.mean(loss_op3)
@@ -73,11 +75,11 @@ class TestPSPassWithBow(unittest.TestCase):
             name="query_ids", shape=[-1, 1], dtype="int64", lod_level=1
         )
         # embedding
-        q_emb = fluid.layers.embedding(
+        q_emb = paddle.static.nn.embedding(
             input=q,
             is_distributed=is_distributed,
             size=[dict_dim, emb_dim],
-            param_attr=fluid.ParamAttr(
+            param_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=0.01),
                 name="__emb__",
                 learning_rate=emb_lr,
@@ -94,7 +96,7 @@ class TestPSPassWithBow(unittest.TestCase):
         q_fc = paddle.static.nn.fc(
             x=q_ss,
             size=hid_dim,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=0.01),
                 name="__q_fc__",
                 learning_rate=base_lr,
@@ -107,11 +109,11 @@ class TestPSPassWithBow(unittest.TestCase):
             name="pos_title_ids", shape=[-1, 1], dtype="int64", lod_level=1
         )
         # embedding
-        pt_emb = fluid.layers.embedding(
+        pt_emb = paddle.static.nn.embedding(
             input=pt,
             is_distributed=is_distributed,
             size=[dict_dim, emb_dim],
-            param_attr=fluid.ParamAttr(
+            param_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=0.01),
                 name="__emb__",
                 learning_rate=emb_lr,
@@ -128,23 +130,23 @@ class TestPSPassWithBow(unittest.TestCase):
         pt_fc = paddle.static.nn.fc(
             x=pt_ss,
             size=hid_dim,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=0.01),
                 name="__fc__",
                 learning_rate=base_lr,
             ),
-            bias_attr=fluid.ParamAttr(name="__fc_b__"),
+            bias_attr=base.ParamAttr(name="__fc_b__"),
         )
         # nt
         nt = paddle.static.data(
             name="neg_title_ids", shape=[-1, 1], dtype="int64", lod_level=1
         )
         # embedding
-        nt_emb = fluid.layers.embedding(
+        nt_emb = paddle.static.nn.embedding(
             input=nt,
             is_distributed=is_distributed,
             size=[dict_dim, emb_dim],
-            param_attr=fluid.ParamAttr(
+            param_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=0.01),
                 name="__emb__",
                 learning_rate=emb_lr,
@@ -161,12 +163,12 @@ class TestPSPassWithBow(unittest.TestCase):
         nt_fc = paddle.static.nn.fc(
             x=nt_ss,
             size=hid_dim,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=0.01),
                 name="__fc__",
                 learning_rate=base_lr,
             ),
-            bias_attr=fluid.ParamAttr(name="__fc_b__"),
+            bias_attr=base.ParamAttr(name="__fc_b__"),
         )
         cos_q_pt = paddle.nn.functional.cosine_similarity(q_fc, pt_fc)
         cos_q_nt = paddle.nn.functional.cosine_similarity(q_fc, nt_fc)
@@ -193,7 +195,7 @@ class TestPSPassWithBow(unittest.TestCase):
 
         fleet.init(role)
         loss, acc, _ = self.net()
-        optimizer = fluid.optimizer.SGD(base_lr)
+        optimizer = paddle.optimizer.SGD(base_lr)
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True

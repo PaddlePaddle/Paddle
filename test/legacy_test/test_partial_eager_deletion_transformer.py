@@ -15,9 +15,9 @@
 import unittest
 
 import paddle
-from paddle import fluid
+from paddle import base
 
-fluid.core._set_eager_deletion_mode(0.0, 0.55, True)
+base.core._set_eager_deletion_mode(0.0, 0.55, True)
 
 if __name__ == '__main__':
     paddle.enable_static()

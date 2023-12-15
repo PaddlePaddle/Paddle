@@ -17,11 +17,19 @@ from collections import defaultdict
 from collections.abc import Callable
 
 import paddle
+from paddle import pir
+from paddle.base.libpaddle import DataType
+from paddle.pir import OpResult
 
 from .. import _C_ops
-from ..fluid import core, framework
-from ..fluid.dygraph import base as imperative_base
-from ..fluid.framework import Parameter, Variable
+from ..base import core, framework
+from ..base.dygraph import base as imperative_base
+from ..base.framework import (
+    Parameter,
+    Variable,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
+)
 from ..nn.clip import GradientClipBase
 from .lr import LRScheduler
 from .optimizer import Optimizer
@@ -41,7 +49,7 @@ class AdamW(Optimizer):
 
         moment\_1\_out & = {\beta}_1 * moment\_1 + (1 - {\beta}_1) * grad
 
-        moemnt\_2\_out & = {\beta}_2 * moment\_2 + (1 - {\beta}_2) * grad * grad
+        moment\_2\_out & = {\beta}_2 * moment\_2 + (1 - {\beta}_2) * grad * grad
 
         learning\_rate & = learning\_rate *
             \frac{\sqrt{1 - {\beta}_2^t}}{1 - {beta}_1^t}
@@ -55,7 +63,7 @@ class AdamW(Optimizer):
         parameters (list|tuple, optional): List/Tuple of ``Tensor`` names to update to minimize ``loss``.
             This parameter is required in dygraph mode. And you can specify different options for
             different parameter groups such as the learning rate, weight decay, etc,
-            then the parameters are list of dict. Note that the learning_rate in paramter groups
+            then the parameters are list of dict. Note that the learning_rate in parameter groups
             represents the scale of base learning_rate.
             The default value is None in static graph mode, at this time all parameters will be updated.
         beta1 (float|Tensor, optional): The exponential decay rate for the 1st moment estimates.
@@ -68,17 +76,17 @@ class AdamW(Optimizer):
             The default value is 1e-08.
         weight_decay (float|Tensor, optional): The weight decay coefficient, it can be float or Tensor. The default value is 0.01.
         lr_ratio (function|None, optional): If it is not None,
-            the learning rate will be updated with layerwise learning rate ratio.
+            the learning rate will be updated with layer-wise learning rate ratio.
             Otherwise, the learning rate is the original.
             Default: None.
         apply_decay_param_fun (function|None, optional): If it is not None,
             only tensors that makes apply_decay_param_fun(Tensor.name)==True
             will be updated with weight decay. It only works when we want to specify tensors.
             Default: None.
-        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
-            some derived class of ``GradientClipBase`` . There are three cliping strategies
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
-            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
+        grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of
+            some derived class of ``GradientClipBase`` . There are three clipping strategies
+            ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` ,
+            :ref:`api_paddle_nn_ClipGradByValue` ). Default None, meaning there is no gradient clipping.
         lazy_mode (bool, optional): The official Adam algorithm has two moving-average accumulators.
             The accumulators are updated at every step. Every element of the two moving-average
             is updated in both dense mode and sparse mode. If the size of parameter is very large,
@@ -96,48 +104,50 @@ class AdamW(Optimizer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            linear = paddle.nn.Linear(10, 10)
-            inp = paddle.rand([10,10], dtype="float32")
-            out = linear(inp)
-            loss = paddle.mean(out)
+            >>> linear = paddle.nn.Linear(10, 10)
+            >>> inp = paddle.rand([10,10], dtype="float32")
+            >>> out = linear(inp)
+            >>> loss = paddle.mean(out)
 
-            beta1 = paddle.to_tensor([0.9], dtype="float32")
-            beta2 = paddle.to_tensor([0.99], dtype="float32")
+            >>> beta1 = paddle.to_tensor([0.9], dtype="float32")
+            >>> beta2 = paddle.to_tensor([0.99], dtype="float32")
 
-            opt = paddle.optimizer.AdamW(learning_rate=0.1,
-                    parameters=linear.parameters(),
-                    beta1=beta1,
-                    beta2=beta2,
-                    weight_decay=0.01)
-            loss.backward()
-            opt.step()
-            opt.clear_grad()
+            >>> opt = paddle.optimizer.AdamW(learning_rate=0.1,
+            ...         parameters=linear.parameters(),
+            ...         beta1=beta1,
+            ...         beta2=beta2,
+            ...         weight_decay=0.01
+            ... )
+            >>> loss.backward()
+            >>> opt.step()
+            >>> opt.clear_grad()
 
 
-            #Note that the learning_rate of linear_2 is 0.01.
-            linear_1 = paddle.nn.Linear(10, 10)
-            linear_2 = paddle.nn.Linear(10, 10)
-            inp = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
-            out = linear_1(inp)
-            out = linear_2(out)
-            loss = paddle.mean(out)
-            opt = paddle.optimizer.AdamW(
-                learning_rate=0.1,
-                parameters=[{
-                    'params': linear_1.parameters()
-                }, {
-                    'params': linear_2.parameters(),
-                    'weight_decay': 0.001,
-                    'learning_rate': 0.1,
-                    'beta1': 0.8
-                }],
-                weight_decay=0.01,
-                beta1=0.9)
-            loss.backward()
-            opt.step()
-            opt.clear_grad()
+            >>> # Note that the learning_rate of linear_2 is 0.01.
+            >>> linear_1 = paddle.nn.Linear(10, 10)
+            >>> linear_2 = paddle.nn.Linear(10, 10)
+            >>> inp = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
+            >>> out = linear_1(inp)
+            >>> out = linear_2(out)
+            >>> loss = paddle.mean(out)
+            >>> opt = paddle.optimizer.AdamW(
+            ...     learning_rate=0.1,
+            ...     parameters=[{
+            ...         'params': linear_1.parameters()
+            ...     }, {
+            ...         'params': linear_2.parameters(),
+            ...         'weight_decay': 0.001,
+            ...         'learning_rate': 0.1,
+            ...         'beta1': 0.8
+            ...     }],
+            ...     weight_decay=0.01,
+            ...     beta1=0.9
+            ... )
+            >>> loss.backward()
+            >>> opt.step()
+            >>> opt.clear_grad()
 
     """
 
@@ -172,7 +182,7 @@ class AdamW(Optimizer):
         if not 0 <= epsilon:
             raise ValueError("Invaild value of epsilon, expect epsilon >= 0.")
         if not isinstance(weight_decay, float) and not isinstance(
-            weight_decay, framework.Variable
+            weight_decay, (framework.Variable, OpResult)
         ):
             raise TypeError("weight_decay should be float or Tensor.")
         if lr_ratio is not None:
@@ -180,6 +190,8 @@ class AdamW(Optimizer):
             if (
                 not core.is_compiled_with_cuda()
                 and not core.is_compiled_with_xpu()
+                and paddle.device.get_device().split(":")[0]
+                not in paddle.device.get_all_custom_device_type()
             ):
                 raise NotImplementedError("'lr_ratio' is unimplemented in CPU.")
 
@@ -303,7 +315,7 @@ class AdamW(Optimizer):
             different optimization options.
         """
         params = param_group['params']
-        if isinstance(params, Parameter):
+        if isinstance(params, (Parameter, pir.core.ParameterMeta)):
             param_group['params'] = [params]
         elif isinstance(params, set):
             raise TypeError(
@@ -336,15 +348,34 @@ class AdamW(Optimizer):
     def _add_moments_pows(self, p):
         acc_dtype = p.dtype
         if self._is_dtype_fp16_or_bf16(acc_dtype):
-            acc_dtype = core.VarDesc.VarType.FP32
-        self._add_accumulator(self._moment1_acc_str, p, dtype=acc_dtype)
-        self._add_accumulator(self._moment2_acc_str, p, dtype=acc_dtype)
+            acc_dtype = (
+                DataType.FLOAT32 if in_pir_mode() else core.VarDesc.VarType.FP32
+            )
+        if core.is_compiled_with_xpu():
+            import os
+
+            xpu_adamw_moment_dtype = os.getenv(
+                "xpu_adamw_moment_dtype", default="fp32"
+            )
+            if xpu_adamw_moment_dtype == "fp16":
+                self._add_accumulator(
+                    self._moment1_acc_str, p, dtype=core.VarDesc.VarType.FP16
+                )
+                self._add_accumulator(
+                    self._moment2_acc_str, p, dtype=core.VarDesc.VarType.FP16
+                )
+            else:
+                self._add_accumulator(self._moment1_acc_str, p, dtype=acc_dtype)
+                self._add_accumulator(self._moment2_acc_str, p, dtype=acc_dtype)
+        else:
+            self._add_accumulator(self._moment1_acc_str, p, dtype=acc_dtype)
+            self._add_accumulator(self._moment2_acc_str, p, dtype=acc_dtype)
         self._add_accumulator(
             name=self._beta1_pow_acc_str,
             param=p,
             dtype=acc_dtype,
             fill_value=0.9
-            if isinstance(self._beta1, Variable)
+            if isinstance(self._beta1, (Variable, OpResult))
             else self._beta1,
             shape=[1],
             type=core.VarDesc.VarType.LOD_TENSOR,
@@ -355,7 +386,7 @@ class AdamW(Optimizer):
             param=p,
             dtype=acc_dtype,
             fill_value=0.999
-            if isinstance(self._beta2, Variable)
+            if isinstance(self._beta2, (Variable, OpResult))
             else self._beta2,
             shape=[1],
             type=core.VarDesc.VarType.LOD_TENSOR,
@@ -363,7 +394,7 @@ class AdamW(Optimizer):
         )
 
     def _create_accumulators(self, block, parameters):
-        assert isinstance(block, framework.Block)
+        assert isinstance(block, (framework.Block, pir.Block))
         if isinstance(parameters, dict):
             parameters = self._update_param_group(parameters)
 
@@ -388,7 +419,7 @@ class AdamW(Optimizer):
             self._already_create_accumulater.add(p.name)
 
     def _append_optimize_op(self, block, param_and_grad):
-        assert isinstance(block, framework.Block)
+        assert isinstance(block, (framework.Block, pir.Block))
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)
         param, grad = param_and_grad
@@ -424,7 +455,7 @@ class AdamW(Optimizer):
         lr = self._create_param_lr(param_and_grad)
 
         # create the adamw optimize op
-        if framework.in_dygraph_mode():
+        if in_dynamic_or_pir_mode():
             lr_ratio_ = (
                 1.0
                 if self._lr_ratio is None
@@ -541,19 +572,19 @@ class AdamW(Optimizer):
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                a = paddle.rand([2,13], dtype="float32")
-                linear = paddle.nn.Linear(13, 5)
-                # This can be any optimizer supported by dygraph.
-                opt = paddle.optimizer.AdamW(learning_rate = 0.01,
-                                            parameters = linear.parameters())
-                out = linear(a)
-                out.backward()
-                opt.step()
-                opt.clear_grad()
+                >>> a = paddle.rand([2,13], dtype="float32")
+                >>> linear = paddle.nn.Linear(13, 5)
+                >>> # This can be any optimizer supported by dygraph.
+                >>> opt = paddle.optimizer.AdamW(learning_rate = 0.01,
+                ...                             parameters = linear.parameters())
+                >>> out = linear(a)
+                >>> out.backward()
+                >>> opt.step()
+                >>> opt.clear_grad()
         """
-        if paddle.fluid.dygraph.base.in_declarative_mode():
+        if paddle.base.dygraph.base.in_to_static_mode():
             self._declarative_step()
             return
 

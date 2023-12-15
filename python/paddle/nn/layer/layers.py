@@ -23,26 +23,27 @@ import numpy as np
 
 import paddle
 from paddle import nn, profiler
-from paddle.fluid import core, framework, unique_name
-from paddle.fluid.core import VarDesc
-from paddle.fluid.dygraph import no_grad
-from paddle.fluid.dygraph.base import (
+from paddle.base import core, framework, unique_name
+from paddle.base.core import VarDesc
+from paddle.base.dygraph import no_grad
+from paddle.base.dygraph.base import (
     _convert_into_variable,
-    in_declarative_mode,
+    in_declarative_mode,  # noqa: F401
+    in_to_static_mode,
     program_desc_tracing_guard,
 )
-from paddle.fluid.dygraph_utils import _append_activation_in_dygraph
-from paddle.fluid.executor import Executor, global_scope
-from paddle.fluid.framework import Parameter, Program
-from paddle.fluid.framework import _current_expected_place as _get_device
-from paddle.fluid.framework import (
-    _global_flags,
+from paddle.base.dygraph_utils import _append_activation_in_dygraph
+from paddle.base.executor import Executor, global_scope
+from paddle.base.framework import (
+    Parameter,
+    Program,
+    _current_expected_place as _get_device,
     convert_np_dtype_to_dtype_,
     default_main_program,
     in_dygraph_mode,
 )
-from paddle.fluid.layer_helper_base import LayerHelperBase
-from paddle.fluid.param_attr import ParamAttr
+from paddle.base.layer_helper_base import LayerHelperBase
+from paddle.base.param_attr import ParamAttr
 from paddle.profiler.utils import in_profiler_mode
 from paddle.utils import deprecated
 
@@ -70,15 +71,12 @@ def record_program_ops_pre_hook(layer, inputs):
                 )
             )
 
-    return None
-
 
 def set_op_customized_attrs_post_hook(layer, inputs, outputs):
     """
     A post-hook to append customized attributes into all operators generated in current layer.
     """
     if not in_dygraph_mode() and layer._op_recorder.is_valid:
-
         start = layer._op_recorder.start
         end = len(default_main_program().current_block().ops)
         assert start >= 0 and end >= start
@@ -94,8 +92,6 @@ def set_op_customized_attrs_post_hook(layer, inputs, outputs):
         # remove pre-hook and post-hook
         for hook_helper in layer._op_recorder.hooks:
             hook_helper.remove()
-
-    return None
 
 
 def _scope_dist2single(dist_scope):
@@ -269,14 +265,9 @@ class LayerObjectHelper(LayerHelperBase):
 
         if (use_cudnn is not None) and use_cudnn:
             act['use_cudnn'] = use_cudnn
-        use_mkldnn = _global_flags()["FLAGS_use_mkldnn"]
-        if (use_mkldnn is not None) and use_mkldnn:
-            act['use_mkldnn'] = use_mkldnn
         act_type = act.pop('type')
         if in_dygraph_mode():
-            res = _append_activation_in_dygraph(
-                input_var, act_type, use_cudnn, use_mkldnn
-            )
+            res = _append_activation_in_dygraph(input_var, act_type, use_cudnn)
             return res
         else:
             tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
@@ -358,22 +349,38 @@ class Layer:
     Examples:
         .. code-block:: python
 
-            import paddle
-            class MyLayer(paddle.nn.Layer):
-                def __init__(self):
-                    super().__init__()
-                    self._linear = paddle.nn.Linear(1, 1)
-                    self._dropout = paddle.nn.Dropout(p=0.5)
-                def forward(self, input):
-                    temp = self._linear(input)
-                    temp = self._dropout(temp)
-                    return temp
-            x = paddle.randn([10, 1], 'float32')
-            mylayer = MyLayer()
-            mylayer.eval()  # set mylayer._dropout to eval mode
-            out = mylayer(x)
-            mylayer.train()  # set mylayer._dropout to train mode
-            out = mylayer(x)
+            >>> import paddle
+            >>> paddle.seed(100)
+
+            >>> class MyLayer(paddle.nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...         self._linear = paddle.nn.Linear(1, 1)
+            ...         self._dropout = paddle.nn.Dropout(p=0.5)
+            ...
+            ...     def forward(self, input):
+            ...         temp = self._linear(input)
+            ...         temp = self._dropout(temp)
+            ...         return temp
+            ...
+            >>> x = paddle.randn([10, 1], 'float32')
+            >>> mylayer = MyLayer()
+            >>> mylayer.eval()  # set mylayer._dropout to eval mode
+            >>> out = mylayer(x)
+            >>> mylayer.train()  # set mylayer._dropout to train mode
+            >>> out = mylayer(x)
+            >>> print(out)
+            Tensor(shape=[10, 1], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[-3.44879317],
+             [ 0.        ],
+             [ 0.        ],
+             [-0.73825276],
+             [ 0.        ],
+             [ 0.        ],
+             [ 0.64444798],
+             [-3.22185946],
+             [ 0.        ],
+             [-0.68077987]])
     """
 
     def __init__(self, name_scope=None, dtype="float32"):
@@ -420,25 +427,38 @@ class Layer:
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
+                >>> paddle.seed(100)
 
-                class MyLayer(paddle.nn.Layer):
-                    def __init__(self):
-                        super().__init__()
-                        self._linear = paddle.nn.Linear(1, 1)
-                        self._dropout = paddle.nn.Dropout(p=0.5)
-
-                    def forward(self, input):
-                        temp = self._linear(input)
-                        temp = self._dropout(temp)
-                        return temp
-
-                x = paddle.randn([10, 1], 'float32')
-                mylayer = MyLayer()
-                mylayer.eval()  # set mylayer._dropout to eval mode
-                out = mylayer(x)
-                mylayer.train()  # set mylayer._dropout to train mode
-                out = mylayer(x)
+                >>> class MyLayer(paddle.nn.Layer):
+                ...     def __init__(self):
+                ...         super().__init__()
+                ...         self._linear = paddle.nn.Linear(1, 1)
+                ...         self._dropout = paddle.nn.Dropout(p=0.5)
+                ...
+                ...     def forward(self, input):
+                ...         temp = self._linear(input)
+                ...         temp = self._dropout(temp)
+                ...         return temp
+                ...
+                >>> x = paddle.randn([10, 1], 'float32')
+                >>> mylayer = MyLayer()
+                >>> mylayer.eval()  # set mylayer._dropout to eval mode
+                >>> out = mylayer(x)
+                >>> mylayer.train()  # set mylayer._dropout to train mode
+                >>> out = mylayer(x)
+                >>> print(out)
+                Tensor(shape=[10, 1], dtype=float32, place=Place(cpu), stop_gradient=False,
+                [[-3.44879317],
+                 [ 0.        ],
+                 [ 0.        ],
+                 [-0.73825276],
+                 [ 0.        ],
+                 [ 0.        ],
+                 [ 0.64444798],
+                 [-3.22185946],
+                 [ 0.        ],
+                 [-0.68077987]])
 
         """
         # global setting in dygraph
@@ -462,24 +482,35 @@ class Layer:
         Example::
             .. code-block:: python
 
-                import paddle
-
-                class MyLayer(paddle.nn.Layer):
-                    def __init__(self):
-                        super().__init__()
-                        self._linear = paddle.nn.Linear(1, 1)
-                        self._dropout = paddle.nn.Dropout(p=0.5)
-
-                    def forward(self, input):
-                        temp = self._linear(input)
-                        temp = self._dropout(temp)
-                        return temp
-
-                x = paddle.randn([10, 1], 'float32')
-                mylayer = MyLayer()
-                mylayer.eval()  # set mylayer._dropout to eval mode
-                out = mylayer(x)
-                print(out)
+                >>> import paddle
+                >>> paddle.seed(100)
+                >>> class MyLayer(paddle.nn.Layer):
+                ...     def __init__(self):
+                ...         super().__init__()
+                ...         self._linear = paddle.nn.Linear(1, 1)
+                ...         self._dropout = paddle.nn.Dropout(p=0.5)
+                ...
+                ...     def forward(self, input):
+                ...         temp = self._linear(input)
+                ...         temp = self._dropout(temp)
+                ...         return temp
+                ...
+                >>> x = paddle.randn([10, 1], 'float32')
+                >>> mylayer = MyLayer()
+                >>> mylayer.eval()  # set mylayer._dropout to eval mode
+                >>> out = mylayer(x)
+                >>> print(out)
+                Tensor(shape=[10, 1], dtype=float32, place=Place(cpu), stop_gradient=False,
+                [[-1.72439659],
+                 [ 0.31532824],
+                 [ 0.01192369],
+                 [-0.36912638],
+                 [-1.63426113],
+                 [-0.93169814],
+                 [ 0.32222399],
+                 [-1.61092973],
+                 [ 0.77209264],
+                 [-0.34038994]])
 
         """
         # global setting in dygraph
@@ -507,22 +538,41 @@ class Layer:
         Example::
             .. code-block:: python
 
-              import paddle
-              import paddle.nn as nn
+                >>> import paddle
+                >>> import paddle.nn as nn
+                >>> paddle.seed(2023)
 
-              net = nn.Sequential(nn.Linear(2, 2), nn.Linear(2, 2))
+                >>> net = nn.Sequential(nn.Linear(2, 2), nn.Linear(2, 2))
 
-              def init_weights(layer):
-                  if type(layer) == nn.Linear:
-                      print('before init weight:', layer.weight.numpy())
-                      new_weight = paddle.full(shape=layer.weight.shape, dtype=layer.weight.dtype, fill_value=0.9)
-                      layer.weight.set_value(new_weight)
-                      print('after init weight:', layer.weight.numpy())
+                >>> def init_weights(layer):
+                ...     if type(layer) == nn.Linear:
+                ...         print('before init weight:', layer.weight.numpy())
+                ...         new_weight = paddle.full(shape=layer.weight.shape, dtype=layer.weight.dtype, fill_value=0.9)
+                ...         layer.weight.set_value(new_weight)
+                ...         print('after init weight:', layer.weight.numpy())
+                ...
+                >>> net.apply(init_weights)
 
-              net.apply(init_weights)
-
-              print(net.state_dict())
-
+                >>> print(net.state_dict())
+                before init weight: [[ 0.89611185  0.04935038]
+                                     [-0.5888344   0.99266374]]
+                after init weight: [[0.9 0.9]
+                                    [0.9 0.9]]
+                before init weight: [[-0.18615901 -0.22924072]
+                                     [ 1.1517721   0.59859073]]
+                after init weight: [[0.9 0.9]
+                                    [0.9 0.9]]
+                OrderedDict([('0.weight', Parameter containing:
+                Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
+                [[0.89999998, 0.89999998],
+                 [0.89999998, 0.89999998]])), ('0.bias', Parameter containing:
+                Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=False,
+                [0., 0.])), ('1.weight', Parameter containing:
+                Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
+                [[0.89999998, 0.89999998],
+                 [0.89999998, 0.89999998]])), ('1.bias', Parameter containing:
+                Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=False,
+                [0., 0.]))])
         """
         for layer in self.children():
             layer.apply(fn)
@@ -542,18 +592,19 @@ class Layer:
         Example::
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                class LinearNet(paddle.nn.Layer):
-                    def __init__(self):
-                        super().__init__(name_scope = "demo_linear_net")
-                        self._linear = paddle.nn.Linear(1, 1)
-
-                    def forward(self, x):
-                        return self._linear(x)
-
-                linear_net = LinearNet()
-                print(linear_net.full_name())   # demo_linear_net_0
+                >>> class LinearNet(paddle.nn.Layer):
+                ...     def __init__(self):
+                ...         super().__init__(name_scope = "demo_linear_net")
+                ...         self._linear = paddle.nn.Linear(1, 1)
+                ...
+                ...     def forward(self, x):
+                ...         return self._linear(x)
+                ...
+                >>> linear_net = LinearNet()
+                >>> print(linear_net.full_name())
+                demo_linear_net_0
 
         """
         return self._full_name
@@ -577,33 +628,33 @@ class Layer:
         Examples:
             .. code-block:: python
 
-                import paddle
-                import numpy as np
+                >>> import paddle
+                >>> import numpy as np
 
-                # the forward_post_hook change the output of the layer: output = output * 2
-                def forward_post_hook(layer, input, output):
-                    # user can use layer, input and output for information statistis tasks
+                >>> # the forward_post_hook change the output of the layer: output = output * 2
+                >>> def forward_post_hook(layer, input, output):
+                ...     # user can use layer, input and output for information statistis tasks
+                ...
+                ...     # change the output
+                ...     return output * 2
+                ...
+                >>> linear = paddle.nn.Linear(13, 5)
 
-                    # change the output
-                    return output * 2
+                >>> # register the hook
+                >>> forward_post_hook_handle = linear.register_forward_post_hook(forward_post_hook)
 
-                linear = paddle.nn.Linear(13, 5)
+                >>> value1 = np.arange(26).reshape(2, 13).astype("float32")
+                >>> in1 = paddle.to_tensor(value1)
 
-                # register the hook
-                forward_post_hook_handle = linear.register_forward_post_hook(forward_post_hook)
+                >>> out0 = linear(in1)
 
-                value1 = np.arange(26).reshape(2, 13).astype("float32")
-                in1 = paddle.to_tensor(value1)
+                >>> # remove the hook
+                >>> forward_post_hook_handle.remove()
 
-                out0 = linear(in1)
+                >>> out1 = linear(in1)
 
-                # remove the hook
-                forward_post_hook_handle.remove()
-
-                out1 = linear(in1)
-
-                # hook change the linear's output to output * 2, so out0 is equal to out1 * 2.
-                assert (out0.numpy() == (out1.numpy()) * 2).any()
+                >>> # hook change the linear's output to output * 2, so out0 is equal to out1 * 2.
+                >>> assert (out0.numpy() == (out1.numpy()) * 2).any()
 
         """
         hook_remove_helper = HookRemoveHelper(self._forward_post_hooks)
@@ -631,35 +682,35 @@ class Layer:
         Examples:
             .. code-block:: python
 
-                import paddle
-                import numpy as np
+                >>> import paddle
+                >>> import numpy as np
 
-                # the forward_pre_hook change the input of the layer: input = input * 2
-                def forward_pre_hook(layer, input):
-                    # user can use layer and input for information statistis tasks
+                >>> # the forward_pre_hook change the input of the layer: input = input * 2
+                >>> def forward_pre_hook(layer, input):
+                ...     # user can use layer and input for information statistis tasks
+                ...
+                ...     # change the input
+                ...     input_return = (input[0] * 2)
+                ...     return input_return
+                ...
+                >>> linear = paddle.nn.Linear(13, 5)
 
-                    # change the input
-                    input_return = (input[0] * 2)
-                    return input_return
+                >>> # register the hook
+                >>> forward_pre_hook_handle = linear.register_forward_pre_hook(forward_pre_hook)
 
-                linear = paddle.nn.Linear(13, 5)
+                >>> value0 = np.arange(26).reshape(2, 13).astype("float32")
+                >>> in0 = paddle.to_tensor(value0)
+                >>> out0 = linear(in0)
 
-                # register the hook
-                forward_pre_hook_handle = linear.register_forward_pre_hook(forward_pre_hook)
+                >>> # remove the hook
+                >>> forward_pre_hook_handle.remove()
 
-                value0 = np.arange(26).reshape(2, 13).astype("float32")
-                in0 = paddle.to_tensor(value0)
-                out0 = linear(in0)
+                >>> value1 = value0 * 2
+                >>> in1 = paddle.to_tensor(value1)
+                >>> out1 = linear(in1)
 
-                # remove the hook
-                forward_pre_hook_handle.remove()
-
-                value1 = value0 * 2
-                in1 = paddle.to_tensor(value1)
-                out1 = linear(in1)
-
-                # hook change the linear's input to input * 2, so out0 is equal to out1.
-                assert (out0.numpy() == out1.numpy()).any()
+                >>> # hook change the linear's input to input * 2, so out0 is equal to out1.
+                >>> assert (out0.numpy() == out1.numpy()).any()
         """
         hook_remove_helper = HookRemoveHelper(self._forward_pre_hooks)
         self._forward_pre_hooks[hook_remove_helper._hook_id] = hook
@@ -676,7 +727,7 @@ class Layer:
         """Create parameters for this layer.
 
         Parameters:
-            shape(list): Shape of the parameter.
+            shape(list): Shape of the parameter. The data type in the list must be int.
             attr(ParamAttr, optional): Parameter attribute of weight. Please refer to :ref:`api_paddle_ParamAttr`. Default: None.
             dtype(str, optional): Data type of this parameter.
                 If set str, it can be "bool",  "float16", "float32", "float64",
@@ -692,22 +743,31 @@ class Layer:
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
+                >>> paddle.seed(2023)
 
-                class MyLayer(paddle.nn.Layer):
-                    def __init__(self):
-                        super().__init__()
-                        self._linear = paddle.nn.Linear(1, 1)
-                        w_tmp = self.create_parameter([1,1])
-                        self.add_parameter("w_tmp", w_tmp)
-
-                    def forward(self, input):
-                        return self._linear(input)
-
-                mylayer = MyLayer()
-                for name, param in mylayer.named_parameters():
-                    print(name, param)      # will print w_tmp,_linear.weight,_linear.bias
-
+                >>> class MyLayer(paddle.nn.Layer):
+                ...     def __init__(self):
+                ...         super().__init__()
+                ...         self._linear = paddle.nn.Linear(1, 1)
+                ...         w_tmp = self.create_parameter([1,1])
+                ...         self.add_parameter("w_tmp", w_tmp)
+                ...
+                ...     def forward(self, input):
+                ...         return self._linear(input)
+                ...
+                >>> mylayer = MyLayer()
+                >>> for name, param in mylayer.named_parameters():
+                ...     print(name, param)      # will print w_tmp,_linear.weight,_linear.bias
+                w_tmp Parameter containing:
+                Tensor(shape=[1, 1], dtype=float32, place=Place(cpu), stop_gradient=False,
+                [[0.06979191]])
+                _linear.weight Parameter containing:
+                Tensor(shape=[1, 1], dtype=float32, place=Place(cpu), stop_gradient=False,
+                [[1.26729357]])
+                _linear.bias Parameter containing:
+                Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=False,
+                [0.])
         """
         temp_attr = copy.deepcopy(attr)
         if isinstance(temp_attr, str) and temp_attr == "":
@@ -739,22 +799,22 @@ class Layer:
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                class MyLinear(paddle.nn.Layer):
-                    def __init__(self,
-                                in_features,
-                                out_features):
-                        super().__init__()
-                        self.linear = paddle.nn.Linear( 10, 10)
-
-                        self.back_var = self.create_variable(name = "linear_tmp_0", dtype=self._dtype)
-
-                    def forward(self, input):
-                        out = self.linear(input)
-                        paddle.assign( out, self.back_var)
-
-                        return out
+                >>> class MyLinear(paddle.nn.Layer):
+                ...     def __init__(self,
+                ...                 in_features,
+                ...                 out_features):
+                ...         super().__init__()
+                ...         self.linear = paddle.nn.Linear( 10, 10)
+                ...
+                ...         self.back_var = self.create_variable(name = "linear_tmp_0", dtype=self._dtype)
+                ...
+                ...     def forward(self, input):
+                ...         out = self.linear(input)
+                ...         paddle.assign( out, self.back_var)
+                ...
+                ...         return out
 
         """
         if name is not None:
@@ -778,12 +838,12 @@ class Layer:
         Create Tensor for this layer.
 
         Parameters:
-            name(str, optional): name of the tensor. Please refer to :ref:`api_guide_Name` . Default: None
-            persistable(bool, optional): if set this tensor persistable. Default: False
+            name(str, optional): name of the tensor. Please refer to :ref:`api_guide_Name` . Default: None.
+            persistable(bool, optional): if set this tensor persistable. Default: False.
             dtype(str, optional): data type of this parameter.
                 If set str, it can be "bool",  "float16", "float32", "float64",
                 "int8", "int16", "int32", "int64", "uint8" or "uint16".
-                If set None, it will be "float32". Default: None
+                If set None, it will be "float32". Default: None.
 
         Returns:
             Tensor, created Tensor.
@@ -791,22 +851,22 @@ class Layer:
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                class MyLinear(paddle.nn.Layer):
-                    def __init__(self,
-                                in_features,
-                                out_features):
-                        super().__init__()
-                        self.linear = paddle.nn.Linear( 10, 10)
-
-                        self.back_var = self.create_tensor(name = "linear_tmp_0", dtype=self._dtype)
-
-                    def forward(self, input):
-                        out = self.linear(input)
-                        paddle.assign( out, self.back_var)
-
-                        return out
+                >>> class MyLinear(paddle.nn.Layer):
+                ...     def __init__(self,
+                ...                  in_features,
+                ...                  out_features):
+                ...         super().__init__()
+                ...         self.linear = paddle.nn.Linear(10, 10)
+                ...
+                ...         self.back_var = self.create_tensor(name = "linear_tmp_0", dtype=self._dtype)
+                ...
+                ...     def forward(self, input):
+                ...         out = self.linear(input)
+                ...         paddle.assign(out, self.back_var)
+                ...
+                ...         return out
 
         """
         if name is not None:
@@ -828,16 +888,27 @@ class Layer:
 
         Returns a list of all Parameters from current layer and its sub-layers.
 
+        Parameters:
+            include_sublayers (bool, optional): Whether to return the parameters of the sublayer.
+                If True, the returned list contains the parameters of the sublayer.
+                Default: True.
+
         Returns:
             list of Tensor, a list of Parameters.
 
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
+                >>> paddle.seed(100)
 
-                linear = paddle.nn.Linear(1,1)
-                print(linear.parameters())  # print linear_0.w_0 and linear_0.b_0
+                >>> linear = paddle.nn.Linear(1, 1)
+                >>> print(linear.parameters())
+                [Parameter containing:
+                Tensor(shape=[1, 1], dtype=float32, place=Place(cpu), stop_gradient=False,
+                [[0.18551230]]), Parameter containing:
+                Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=False,
+                [0.])]
 
         """
         ret = [
@@ -847,6 +918,86 @@ class Layer:
             )
         ]
         return ret
+
+    def astype(self, dtype=None):
+        """
+
+        Casts all parameters and buffers to dtype and then return the Layer.
+
+        Parameters:
+            dtype(str|paddle.dtype|numpy.dtype): target data type of layer.
+                If set str, it can be "bool", "bfloat16", "float16", "float32", "float64",
+                "int8", "int16", "int32", "int64", "uint8", "complex64", "complex128".
+                Default: None
+
+        Returns:
+            Layer, self
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> import paddle.nn as nn
+                >>> weight_attr = paddle.ParamAttr(name="weight",initializer=paddle.nn.initializer.Constant(value=1.5))
+                >>> bias_attr = paddle.ParamAttr(name="bias",initializer=paddle.nn.initializer.Constant(value=2.5))
+
+                >>> linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr, bias_attr=bias_attr).to(device="cpu",dtype="float32")
+                >>> print(linear)
+                Linear(in_features=2, out_features=2, dtype=float32)
+                >>> print(linear.parameters())
+                [Parameter containing:
+                Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
+                    [[1.50000000, 1.50000000],
+                        [1.50000000, 1.50000000]]), Parameter containing:
+                Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=False,
+                    [2.50000000, 2.50000000])]
+
+                >>> linear=linear.astype("int8")
+                >>> print(linear)
+                Linear(in_features=2, out_features=2, dtype=paddle.int8)
+                >>> print(linear.parameters())
+                [Parameter containing:
+                Tensor(shape=[2, 2], dtype=int8, place=Place(cpu), stop_gradient=False,
+                    [[1, 1],
+                        [1, 1]]), Parameter containing:
+                Tensor(shape=[2], dtype=int8, place=Place(cpu), stop_gradient=False,
+                    [2, 2])]
+
+        """
+        valid_dtypes = [
+            "bfloat16",
+            "float16",
+            "float32",
+            "float64",
+            "int8",
+            "int16",
+            "int32",
+            "int64",
+            "uint8",
+            "complex64",
+            "complex128",
+            "bool",
+        ]
+        if (
+            isinstance(dtype, (paddle.dtype, np.dtype))
+            or type(dtype) is str
+            and dtype in valid_dtypes
+        ):
+            if isinstance(dtype, (str, np.dtype)):
+                dtype = framework.convert_np_dtype_to_dtype_(dtype)
+            self._dtype = dtype
+            for layer in self.sublayers():
+                layer._dtype = dtype
+            for _, param in self.named_parameters(include_sublayers=True):
+                param._to(None, dtype)
+            for _, buffer in self.named_buffers(include_sublayers=True):
+                buffer.to(None, dtype)
+            return self
+        else:
+            raise ValueError(
+                "dtype value error, must be 'bfloat16', 'float16', 'float32', 'float64', 'int8', 'int16', 'int32', 'int64', 'uint8', 'complex64', 'complex128', 'bool', or paddle.dtype, numpy.dtype, but recieve "
+                + str(dtype)
+            )
 
     def children(self):
         """
@@ -859,15 +1010,16 @@ class Layer:
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                linear1 = paddle.nn.Linear(10, 3)
-                linear2 = paddle.nn.Linear(3, 10, bias_attr=False)
-                model = paddle.nn.Sequential(linear1, linear2)
+                >>> linear1 = paddle.nn.Linear(10, 3)
+                >>> linear2 = paddle.nn.Linear(3, 10, bias_attr=False)
+                >>> model = paddle.nn.Sequential(linear1, linear2)
 
-                layer_list = list(model.children())
+                >>> layer_list = list(model.children())
 
-                print(layer_list)   # [<paddle.nn.layer.common.Linear object at 0x7f7b8113f830>, <paddle.nn.layer.common.Linear object at 0x7f7b8113f950>]
+                >>> print(layer_list)
+                [Linear(in_features=10, out_features=3, dtype=float32), Linear(in_features=3, out_features=10, dtype=float32)]
 
         """
         for _, layer in self.named_children():
@@ -883,16 +1035,15 @@ class Layer:
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                linear1 = paddle.nn.Linear(10, 3)
-                linear2 = paddle.nn.Linear(3, 10, bias_attr=False)
-                model = paddle.nn.Sequential(linear1, linear2)
-                for prefix, layer in model.named_children():
-                    print(prefix, layer)
-                    # ('0', <paddle.nn.layer.common.Linear object at 0x7fb61ed85830>)
-                    # ('1', <paddle.nn.layer.common.Linear object at 0x7fb61ed85950>)
-
+                >>> linear1 = paddle.nn.Linear(10, 3)
+                >>> linear2 = paddle.nn.Linear(3, 10, bias_attr=False)
+                >>> model = paddle.nn.Sequential(linear1, linear2)
+                >>> for prefix, layer in model.named_children():
+                ...     print(prefix, layer)
+                0 Linear(in_features=10, out_features=3, dtype=float32)
+                1 Linear(in_features=3, out_features=10, dtype=float32)
         """
         memo = set()
         for name, layer in self._sub_layers.items():
@@ -906,7 +1057,7 @@ class Layer:
         Returns a list of sub layers.
 
         Parameters:
-            include_self(bool, optional): Whether return self as sublayers. Default: False
+            include_self(bool, optional): Whether return self as sublayers. Default: False.
 
         Returns:
             list of Layer, a list of sub layers.
@@ -914,21 +1065,22 @@ class Layer:
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                class MyLayer(paddle.nn.Layer):
-                    def __init__(self):
-                        super().__init__()
-                        self._linear = paddle.nn.Linear(1, 1)
-                        self._dropout = paddle.nn.Dropout(p=0.5)
-
-                    def forward(self, input):
-                        temp = self._linear(input)
-                        temp = self._dropout(temp)
-                        return temp
-
-                mylayer = MyLayer()
-                print(mylayer.sublayers())  # [<paddle.nn.layer.common.Linear object at 0x7f44b58977d0>, <paddle.nn.layer.common.Dropout object at 0x7f44b58978f0>]
+                >>> class MyLayer(paddle.nn.Layer):
+                ...     def __init__(self):
+                ...         super().__init__()
+                ...         self._linear = paddle.nn.Linear(1, 1)
+                ...         self._dropout = paddle.nn.Dropout(p=0.5)
+                ...
+                ...     def forward(self, input):
+                ...         temp = self._linear(input)
+                ...         temp = self._dropout(temp)
+                ...         return temp
+                ...
+                >>> mylayer = MyLayer()
+                >>> print(mylayer.sublayers())
+                [Linear(in_features=1, out_features=1, dtype=float32), Dropout(p=0.5, axis=None, mode=upscale_in_train)]
 
         """
         ret = [
@@ -952,14 +1104,37 @@ class Layer:
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
+                >>> paddle.seed(100)
 
-                fc1 = paddle.nn.Linear(10, 3)
-                fc2 = paddle.nn.Linear(3, 10, bias_attr=False)
-                model = paddle.nn.Sequential(fc1, fc2)
-                for name, param in model.named_parameters():
-                    print(name, param)
-
+                >>> fc1 = paddle.nn.Linear(10, 3)
+                >>> fc2 = paddle.nn.Linear(3, 10, bias_attr=False)
+                >>> model = paddle.nn.Sequential(fc1, fc2)
+                >>> for name, param in model.named_parameters():
+                ...     print(name, param)
+                0.weight Parameter containing:
+                Tensor(shape=[10, 3], dtype=float32, place=Place(cpu), stop_gradient=False,
+                [[ 0.07276392, -0.39791510, -0.66356444],
+                 [ 0.02143478, -0.18519843, -0.32485050],
+                 [-0.42249614,  0.08450919, -0.66838276],
+                 [ 0.38208580, -0.24303678,  0.55127048],
+                 [ 0.47745085,  0.62117910, -0.08336520],
+                 [-0.28653207,  0.47237599, -0.05868882],
+                 [-0.14385653,  0.29945642,  0.12832761],
+                 [-0.21237159,  0.38539791, -0.62760031],
+                 [ 0.02637231,  0.20621127,  0.43255770],
+                 [-0.19984481, -0.26259184, -0.29696006]])
+                0.bias Parameter containing:
+                Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=False,
+                [0., 0., 0.])
+                1.weight Parameter containing:
+                Tensor(shape=[3, 10], dtype=float32, place=Place(cpu), stop_gradient=False,
+                [[ 0.01985580, -0.40268910,  0.41172385, -0.47249708, -0.09002256,
+                 -0.00533628, -0.52048630,  0.62360322,  0.20848787, -0.02033746],
+                 [ 0.58281910,  0.12841827,  0.12907702,  0.02325618, -0.07746267,
+                 0.31950659, -0.37924835, -0.59209681, -0.11732036, -0.58378261],
+                 [-0.62100595,  0.22293305,  0.28229684, -0.03687060, -0.59323978,
+                 0.08411229,  0.53275704,  0.40431368,  0.03171402, -0.17922515]])
         """
         params_set = set()
         named_sublayers = (
@@ -992,14 +1167,15 @@ class Layer:
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                fc1 = paddle.nn.Linear(10, 3)
-                fc2 = paddle.nn.Linear(3, 10, bias_attr=False)
-                model = paddle.nn.Sequential(fc1, fc2)
-                for prefix, layer in model.named_sublayers():
-                    print(prefix, layer)
-
+                >>> fc1 = paddle.nn.Linear(10, 3)
+                >>> fc2 = paddle.nn.Linear(3, 10, bias_attr=False)
+                >>> model = paddle.nn.Sequential(fc1, fc2)
+                >>> for prefix, layer in model.named_sublayers():
+                ...     print(prefix, layer)
+                0 Linear(in_features=10, out_features=3, dtype=float32)
+                1 Linear(in_features=3, out_features=10, dtype=float32)
         """
         if layers_set is None:
             layers_set = set()
@@ -1010,10 +1186,9 @@ class Layer:
             if layer is None:
                 continue
             layer_prefix = prefix + ('.' if prefix else '') + key
-            for p, l in layer.named_sublayers(
+            yield from layer.named_sublayers(
                 prefix=layer_prefix, include_self=True, layers_set=layers_set
-            ):
-                yield p, l
+            )
 
     def register_buffer(self, name, tensor, persistable=True):
         """
@@ -1040,16 +1215,18 @@ class Layer:
         Examples:
             .. code-block:: python
 
-                import numpy as np
-                import paddle
+                >>> import numpy as np
+                >>> import paddle
 
-                linear = paddle.nn.Linear(10, 3)
-                value = np.array([0]).astype("float32")
-                buffer = paddle.to_tensor(value)
-                linear.register_buffer("buf_name", buffer, persistable=True)
+                >>> linear = paddle.nn.Linear(10, 3)
+                >>> value = np.array([0]).astype("float32")
+                >>> buffer = paddle.to_tensor(value)
+                >>> linear.register_buffer("buf_name", buffer, persistable=True)
 
-                # get the buffer by attribute.
-                print(linear.buf_name)
+                >>> # get the buffer by attribute.
+                >>> print(linear.buf_name)
+                Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [0.])
 
         """
 
@@ -1090,7 +1267,7 @@ class Layer:
         Returns a list of all buffers from current layer and its sub-layers.
 
         Parameters:
-            include_sublayers(bool, optional): Whether include the buffers of sublayers. If True, also include the buffers from sublayers. Default: True
+            include_sublayers(bool, optional): Whether include the buffers of sublayers. If True, also include the buffers from sublayers. Default: True.
 
         Returns:
             list of Tensor, a list of buffers.
@@ -1098,15 +1275,17 @@ class Layer:
         Examples:
             .. code-block:: python
 
-                import numpy as np
-                import paddle
+                >>> import numpy as np
+                >>> import paddle
 
-                linear = paddle.nn.Linear(10, 3)
-                value = np.array([0]).astype("float32")
-                buffer = paddle.to_tensor(value)
-                linear.register_buffer("buf_name", buffer, persistable=True)
+                >>> linear = paddle.nn.Linear(10, 3)
+                >>> value = np.array([0]).astype("float32")
+                >>> buffer = paddle.to_tensor(value)
+                >>> linear.register_buffer("buf_name", buffer, persistable=True)
 
-                print(linear.buffers())     # == print([linear.buf_name])
+                >>> print(linear.buffers())
+                [Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [0.])]
 
         """
         ret = [
@@ -1132,26 +1311,29 @@ class Layer:
         Examples:
             .. code-block:: python
 
-                import numpy as np
-                import paddle
+                >>> import numpy as np
+                >>> import paddle
 
-                fc1 = paddle.nn.Linear(10, 3)
-                buffer1 = paddle.to_tensor(np.array([0]).astype("float32"))
-                # register a tensor as buffer by specific `persistable`
-                fc1.register_buffer("buf_name_1", buffer1, persistable=True)
+                >>> fc1 = paddle.nn.Linear(10, 3)
+                >>> buffer1 = paddle.to_tensor(np.array([0]).astype("float32"))
+                >>> # register a tensor as buffer by specific `persistable`
+                >>> fc1.register_buffer("buf_name_1", buffer1, persistable=True)
 
-                fc2 = paddle.nn.Linear(3, 10)
-                buffer2 = paddle.to_tensor(np.array([1]).astype("float32"))
-                # register a buffer by assigning an attribute with Tensor.
-                # The `persistable` can only be False by this way.
-                fc2.buf_name_2 = buffer2
+                >>> fc2 = paddle.nn.Linear(3, 10)
+                >>> buffer2 = paddle.to_tensor(np.array([1]).astype("float32"))
+                >>> # register a buffer by assigning an attribute with Tensor.
+                >>> # The `persistable` can only be False by this way.
+                >>> fc2.buf_name_2 = buffer2
 
-                model = paddle.nn.Sequential(fc1, fc2)
+                >>> model = paddle.nn.Sequential(fc1, fc2)
 
-                # get all named buffers
-                for name, buffer in model.named_buffers():
-                    print(name, buffer)
-
+                >>> # get all named buffers
+                >>> for name, buffer in model.named_buffers():
+                ...     print(name, buffer)
+                0.buf_name_1 Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [0.])
+                1.buf_name_2 Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [1.])
         """
         buffers_set = set()
         named_sublayers = (
@@ -1178,18 +1360,18 @@ class Layer:
         Examples:
             .. code-block:: python
 
-                import paddle
-                import numpy as np
+                >>> import paddle
+                >>> import numpy as np
 
-                value = np.arange(26).reshape(2, 13).astype("float32")
-                a = paddle.to_tensor(value)
-                linear = paddle.nn.Linear(13, 5)
-                adam = paddle.optimizer.Adam(learning_rate=0.01,
-                                            parameters=linear.parameters())
-                out = linear(a)
-                out.backward()
-                adam.step()
-                linear.clear_gradients()
+                >>> value = np.arange(26).reshape(2, 13).astype("float32")
+                >>> a = paddle.to_tensor(value)
+                >>> linear = paddle.nn.Linear(13, 5)
+                >>> adam = paddle.optimizer.Adam(learning_rate=0.01,
+                ...                              parameters=linear.parameters())
+                >>> out = linear(a)
+                >>> out.backward()
+                >>> adam.step()
+                >>> linear.clear_gradients()
 
         """
         for p in self.parameters():
@@ -1200,8 +1382,6 @@ class Layer:
         pass
 
     def _dygraph_call_func(self, *inputs, **kwargs):
-        from paddle.distributed import parallel_helper
-
         for forward_pre_hook in self._forward_pre_hooks.values():
             hook_result = forward_pre_hook(self, inputs)
             if hook_result is not None:
@@ -1212,17 +1392,6 @@ class Layer:
         if not self._built:
             with program_desc_tracing_guard(False):
                 self._build_once(*inputs, **kwargs)
-
-                # TODO(liuyuhui) Only xpu broadcast parameters here.
-                # The other device is to call _sync_params_buffers in DataParallel
-                # to realize the parameter synchronization among multiply cards.
-                if (
-                    parallel_helper._is_data_parallel_mode()
-                    and paddle.is_compiled_with_xpu()
-                ):
-                    parallel_helper._broadcast_parameters(
-                        self._parameters.values()
-                    )
 
             self._built = True
 
@@ -1243,7 +1412,7 @@ class Layer:
 
     def __call__(self, *inputs, **kwargs):
         if (
-            (not in_declarative_mode())
+            (not in_to_static_mode())
             and (not self._forward_pre_hooks)
             and (not self._forward_post_hooks)
             and (not self._built)
@@ -1285,29 +1454,30 @@ class Layer:
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                class MySequential(paddle.nn.Layer):
-                    def __init__(self, *layers):
-                        super().__init__()
-                        if len(layers) > 0 and isinstance(layers[0], tuple):
-                            for name, layer in layers:
-                                self.add_sublayer(name, layer)
-                        else:
-                            for idx, layer in enumerate(layers):
-                                self.add_sublayer(str(idx), layer)
-
-                    def forward(self, input):
-                        for layer in self._sub_layers.values():
-                            input = layer(input)
-                        return input
-
-                fc1 = paddle.nn.Linear(10, 3)
-                fc2 = paddle.nn.Linear(3, 10, bias_attr=False)
-                model = MySequential(fc1, fc2)
-                for prefix, layer in model.named_sublayers():
-                    print(prefix, layer)
-
+                >>> class MySequential(paddle.nn.Layer):
+                ...     def __init__(self, *layers):
+                ...         super().__init__()
+                ...         if len(layers) > 0 and isinstance(layers[0], tuple):
+                ...             for name, layer in layers:
+                ...                 self.add_sublayer(name, layer)
+                ...         else:
+                ...             for idx, layer in enumerate(layers):
+                ...                 self.add_sublayer(str(idx), layer)
+                ...
+                ...     def forward(self, input):
+                ...         for layer in self._sub_layers.values():
+                ...             input = layer(input)
+                ...         return input
+                ...
+                >>> fc1 = paddle.nn.Linear(10, 3)
+                >>> fc2 = paddle.nn.Linear(3, 10, bias_attr=False)
+                >>> model = MySequential(fc1, fc2)
+                >>> for prefix, layer in model.named_sublayers():
+                ...     print(prefix, layer)
+                0 Linear(in_features=10, out_features=3, dtype=float32)
+                1 Linear(in_features=3, out_features=10, dtype=float32)
         """
         assert isinstance(sublayer, Layer) or sublayer is None
 
@@ -1327,22 +1497,31 @@ class Layer:
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
+                >>> paddle.seed(100)
 
-                class MyLayer(paddle.nn.Layer):
-                    def __init__(self):
-                        super().__init__()
-                        self._linear = paddle.nn.Linear(1, 1)
-                        w_tmp = self.create_parameter([1,1])
-                        self.add_parameter("w_tmp", w_tmp)
-
-                    def forward(self, input):
-                        return self._linear(input)
-
-                mylayer = MyLayer()
-                for name, param in mylayer.named_parameters():
-                    print(name, param)      # will print w_tmp,_linear.weight,_linear.bias
-
+                >>> class MyLayer(paddle.nn.Layer):
+                ...     def __init__(self):
+                ...         super().__init__()
+                ...         self._linear = paddle.nn.Linear(1, 1)
+                ...         w_tmp = self.create_parameter([1,1])
+                ...         self.add_parameter("w_tmp", w_tmp)
+                ...
+                ...     def forward(self, input):
+                ...         return self._linear(input)
+                ...
+                >>> mylayer = MyLayer()
+                >>> for name, param in mylayer.named_parameters():
+                ...     print(name, param)
+                w_tmp Parameter containing:
+                Tensor(shape=[1, 1], dtype=float32, place=Place(cpu), stop_gradient=False,
+                [[-1.01448846]])
+                _linear.weight Parameter containing:
+                Tensor(shape=[1, 1], dtype=float32, place=Place(cpu), stop_gradient=False,
+                [[0.18551230]])
+                _linear.bias Parameter containing:
+                Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=False,
+                [0.])
         """
         if '_parameters' not in self.__dict__:
             raise RuntimeError("super().__init__() should be called firstly.")
@@ -1418,9 +1597,7 @@ class Layer:
 
         if not isinstance(attrs, dict):
             raise TypeError(
-                "attrs should be type(dict), but received {}".format(
-                    type(attrs).__name__
-                )
+                f"attrs should be type(dict), but received {type(attrs).__name__}"
             )
 
         # NOTE: Overwrite behavior for same key.
@@ -1458,7 +1635,7 @@ class Layer:
         if '_parameters' in self.__dict__:
             _parameters = self.__dict__['_parameters']
             if name in self._parameters:
-                if in_declarative_mode():
+                if in_to_static_mode():
                     return _convert_into_variable(self._parameters[name])
                 return self._parameters[name]
         if '_sub_layers' in self.__dict__:
@@ -1468,7 +1645,7 @@ class Layer:
         if '_buffers' in self.__dict__:
             _buffers = self.__dict__['_buffers']
             if name in _buffers:
-                if in_declarative_mode():
+                if in_to_static_mode():
                     return _convert_into_variable(_buffers[name])
                 return _buffers[name]
         return object.__getattribute__(self, name)
@@ -1488,12 +1665,18 @@ class Layer:
             if len(self._loaddict_holder) > 0:
                 assert (
                     value.name in self._loaddict_holder
-                ), "Parameter not found, Can't not find [ {} ] in state_dict".format(
-                    value.name
-                )
+                ), f"Parameter not found, Can't not find [ {value.name} ] in state_dict"
 
                 value.set_value(self._loaddict_holder[value.name])
 
+            _remove_if_exist(self.__dict__, self._buffers, self._sub_layers)
+            params[name] = value
+        elif (
+            isinstance(value, paddle.pir.Value)
+            and value.get_defining_op().name() == 'builtin.parameter'
+        ):
+            if params is None:
+                raise ValueError("super().__init__() should be called first")
             _remove_if_exist(self.__dict__, self._buffers, self._sub_layers)
             params[name] = value
         elif params is not None and name in params:
@@ -1543,19 +1726,19 @@ class Layer:
                     # Note(Aurelius84): In Dy2stat, the value of the Buffer may be modified in
                     # decorated function, such as `self.buffer = new_tensor`. So we update its
                     # value via `assign`.
-                    if type(value) == framework.Variable:
+                    if type(value) == framework.Variable or isinstance(
+                        value, paddle.pir.Value
+                    ):
                         from paddle import assign
 
                         # Note(zhhsplendid): the condition below happens in PaddleGan model,
                         # but should all non-Variable _buffers[name] be re-assign? We
                         # should consider it in the future. I current wrote this as
                         # conservative code.
-                        if in_declarative_mode() and _buffers[name] is None:
+                        if in_to_static_mode() and _buffers[name] is None:
                             raise RuntimeError(
-                                'In Dy2stat, self.{0} is a buffer and self.{0} is '
-                                'not allowed to be set to Variable when self.{0} is None.'.format(
-                                    name
-                                )
+                                f'In Dy2stat, self.{name} is a buffer and self.{name} is '
+                                f'not allowed to be set to Variable when self.{name} is None.'
                             )
                         elif (
                             _buffers[name] is None
@@ -1594,23 +1777,21 @@ class Layer:
 
         Examples:
             .. code-block:: python
-                import paddle
-                import numpy as np
+                >>> import paddle
+                >>> import numpy as np
 
-                class Mylayer(paddle.nn.Layer):
-                    def __init__(self):
-                        super().__init__()
-                        self.linear1 = paddle.nn.Linear(10, 10)
-                        self.linear2 = paddle.nn.Linear(5, 5)
-                        self.conv2d = paddle.nn.Conv2D(3, 2, 3)
-                        self.embedding = paddle.nn.Embedding(128, 16)
-                        self.h_0 = paddle.to_tensor(np.zeros([10, 10]).astype('float32'))
-
-                mylayer = Mylayer()
-                print(dir(mylayer))
-                # only parts are shown, because of list have too much content
-                # ['__call__', '__class__',  ... , 'conv2d', 'embedding', 'h_0', 'linear1', 'linear2', ... , 'sublayers', 'train']
-
+                >>> class Mylayer(paddle.nn.Layer):
+                ...     def __init__(self):
+                ...         super().__init__()
+                ...         self.linear1 = paddle.nn.Linear(10, 10)
+                ...         self.linear2 = paddle.nn.Linear(5, 5)
+                ...         self.conv2d = paddle.nn.Conv2D(3, 2, 3)
+                ...         self.embedding = paddle.nn.Embedding(128, 16)
+                ...         self.h_0 = paddle.to_tensor(np.zeros([10, 10]).astype('float32'))
+                ...
+                >>> mylayer = Mylayer()
+                >>> print(dir(mylayer))
+                ['__call__', '__class__', '__delattr__', '__dict__', ..., 'training']
         """
         method = dir(self.__class__)
         attrs = list(self.__dict__.keys())
@@ -1704,10 +1885,10 @@ class Layer:
         Get all parameters and persistable buffers of current layer and its sub-layers. And set them into a dict
 
         Parameters:
-            destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None
-            include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True
-            include_non_persistable_buffer(bool, optional): If true, include non persistable buffers of current layer and its sub-layers, it is used in pure fp16 and jit.save. Default: False
-            use_hook(bool, optional) : If true, the operations contained in _state_dict_hooks will be appended to the destination. Default: True
+            destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None.
+            include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True.
+            include_non_persistable_buffer(bool, optional): If true, include non persistable buffers of current layer and its sub-layers, it is used in pure fp16 and jit.save. Default: False.
+            use_hook(bool, optional) : If true, the operations contained in _state_dict_hooks will be appended to the destination. Default: True.
         """
 
         if destination is None:
@@ -1760,9 +1941,9 @@ class Layer:
         Get all parameters and buffers of current layer and its sub-layers. And set them into a dict
 
         Parameters:
-            destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None
-            include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True
-            use_hook(bool, optional) : If true, the operations contained in _state_dict_hooks will be appended to the destination. Default: True
+            destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None.
+            include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True.
+            use_hook(bool, optional) : If true, the operations contained in _state_dict_hooks will be appended to the destination. Default: True.
 
         Retruns:
             dict, a dict contains all the parameters and persistable buffers.
@@ -1770,12 +1951,12 @@ class Layer:
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                emb = paddle.nn.Embedding(10, 10)
+                >>> emb = paddle.nn.Embedding(10, 10)
 
-                state_dict = emb.to_static_state_dict()
-                paddle.save( state_dict, "paddle_dy.pdparams")
+                >>> state_dict = emb.to_static_state_dict()
+                >>> paddle.save( state_dict, "paddle_dy.pdparams")
 
         '''
         return self._state_dict_impl(
@@ -1797,9 +1978,9 @@ class Layer:
         Get all parameters and persistable buffers of current layer and its sub-layers. And set them into a dict
 
         Parameters:
-            destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None
-            include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True
-            use_hook(bool, optional) : If true, the operations contained in _state_dict_hooks will be appended to the destination. Default: True
+            destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None.
+            include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True.
+            use_hook(bool, optional) : If true, the operations contained in _state_dict_hooks will be appended to the destination. Default: True.
 
         Retruns:
             dict: a dict contains all the parameters and persistable buffers.
@@ -1807,12 +1988,12 @@ class Layer:
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                emb = paddle.nn.Embedding(10, 10)
+                >>> emb = paddle.nn.Embedding(10, 10)
 
-                state_dict = emb.state_dict()
-                paddle.save( state_dict, "paddle_dy.pdparams")
+                >>> state_dict = emb.state_dict()
+                >>> paddle.save( state_dict, "paddle_dy.pdparams")
 
         '''
         return self._state_dict_impl(
@@ -1831,7 +2012,7 @@ class Layer:
         Parameters:
             state_dict(dict) : Dict contains all the parameters and persistable buffers.
             use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter or buffer name as key.
-                                                  Default: True
+                                                  Default: True.
         Returns:
             missing_keys(list):A list of str containing the missing keys
             unexpected_keys(list):A list of str containing the unexpected keys
@@ -1839,14 +2020,14 @@ class Layer:
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                emb = paddle.nn.Embedding(10, 10)
+                >>> emb = paddle.nn.Embedding(10, 10)
 
-                state_dict = emb.state_dict()
-                paddle.save(state_dict, "paddle_dy.pdparams")
-                para_state_dict = paddle.load("paddle_dy.pdparams")
-                emb.set_state_dict(para_state_dict)
+                >>> state_dict = emb.state_dict()
+                >>> paddle.save(state_dict, "paddle_dy.pdparams")
+                >>> para_state_dict = paddle.load("paddle_dy.pdparams")
+                >>> emb.set_state_dict(para_state_dict)
 
         '''
         missing_keys = []
@@ -1862,10 +2043,8 @@ class Layer:
                 if len(state) != len(param):
                     missing_keys.append(key)
                     raise ValueError(
-                        "{} receieves the length of {}, "
-                        "but the expected shape is {}".format(
-                            key, len(state), len(param)
-                        )
+                        f"{key} receieves the length of {len(state)}, "
+                        f"but the expected shape is {len(param)}"
                     )
                 else:
                     match_keys.add(key)
@@ -1889,6 +2068,8 @@ class Layer:
 
         matched_param_state = []
         for key, param in self._state_dict_impl(use_hook=False).items():
+            if isinstance(param, paddle.Tensor) and not param._is_initialized():
+                continue
             key_name = key if use_structured_name else param.name
             try:
                 match_res = _check_match(key_name, param)
@@ -1914,6 +2095,13 @@ class Layer:
                     p = core.Place()
                     p.set_place(t._place())
                     place = core.XPUPlace(p.xpu_device_id())
+                elif p.is_custom_place():
+                    p = core.Place()
+                    p.set_place(t._place())
+                    place = core.CustomPlace(
+                        paddle.device.get_device().split(':')[0],
+                        p.custom_device_id(),
+                    )
                 else:
                     p = core.Place()
                     p.set_place(t._place())
@@ -1957,32 +2145,40 @@ class Layer:
         Examples:
             .. code-block:: python
 
-                # required: skip
-                import paddle
+                >>> import paddle
+                >>> paddle.seed(2023)
 
-                linear=paddle.nn.Linear(2, 2)
-                linear.weight
-                #Parameter containing:
-                #Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
-                #       [[-0.32770029,  0.38653070],
-                #        [ 0.46030545,  0.08158520]])
+                >>> linear=paddle.nn.Linear(2, 2)
+                >>> linear.weight
+                >>> print(linear.weight)
+                Parameter containing:
+                Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
+                [[ 0.89611185,  0.04935038],
+                 [-0.58883440,  0.99266374]])
 
-                linear.to(dtype='float64')
-                linear.weight
-                #Tenor(shape=[2, 2], dtype=float64, place=CUDAPlace(0), stop_gradient=False,
-                #       [[-0.32770029,  0.38653070],
-                #        [ 0.46030545,  0.08158520]])
+                >>> linear.to(dtype='float64')
+                >>> linear.weight
+                >>> print(linear.weight)
+                Parameter containing:
+                Tensor(shape=[2, 2], dtype=float64, place=Place(gpu:0), stop_gradient=False,
+                [[ 0.89611185,  0.04935038],
+                 [-0.58883440,  0.99266374]])
 
-                linear.to(device='cpu')
-                linear.weight
-                #Tensor(shape=[2, 2], dtype=float64, place=CPUPlace, stop_gradient=False,
-                #       [[-0.32770029,  0.38653070],
-                #        [ 0.46030545,  0.08158520]])
-                linear.to(device=paddle.CUDAPinnedPlace(), blocking=False)
-                linear.weight
-                #Tensor(shape=[2, 2], dtype=float64, place=CUDAPinnedPlace, stop_gradient=False,
-                #       [[-0.04989364, -0.56889004],
-                #        [ 0.33960250,  0.96878713]])
+                >>> linear.to(device='cpu')
+                >>> linear.weight
+                >>> print(linear.weight)
+                Parameter containing:
+                Tensor(shape=[2, 2], dtype=float64, place=Place(cpu), stop_gradient=False,
+                [[ 0.89611185,  0.04935038],
+                 [-0.58883440,  0.99266374]])
+
+                >>> # doctest: +REQUIRES(env:GPU)
+                >>> linear.to(device=paddle.CUDAPinnedPlace(), blocking=False)
+                >>> linear.weight
+                >>> print(linear.weight)
+                Tensor(shape=[2, 2], dtype=float64, place=Place(gpu_pinned), stop_gradient=False,
+                [[ 0.89611185,  0.04935038],
+                 [-0.58883440,  0.99266374]])
 
         '''
         return self._to_impl(
@@ -2048,9 +2244,7 @@ class Layer:
 
         # 2. cast param / Tensor to dtype
         if dtype is not None and dtype != t_used.dtype:
-            with paddle.fluid.framework._dygraph_place_guard(
-                place=t_used.place
-            ):
+            with paddle.base.framework._dygraph_place_guard(place=t_used.place):
                 t_casted = t_used.cast(dtype=dtype)
         else:
             t_casted = t_used
@@ -2160,7 +2354,7 @@ class Layer:
         Casts all floating point parameters and buffers to ``float`` data type.
 
         Parameters:
-            excluded_layers(nn.Layer|list|None, optional): Specify the layers that need to be kept original data type. if excluded_layers is None, casts all floating point parameters and buffers. Default: None.
+            excluded_layers(nn.Layer|list|tuple|None, optional): Specify the layers that need to be kept original data type. if excluded_layers is None, casts all floating point parameters and buffers. Default: None.
 
         Returns:
             Layer: self
@@ -2168,29 +2362,33 @@ class Layer:
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                class Model(paddle.nn.Layer):
-                    def __init__(self):
-                        super().__init__()
-                        self.linear = paddle.nn.Linear(1, 1)
-                        self.dropout = paddle.nn.Dropout(p=0.5)
-
-                    def forward(self, input):
-                        out = self.linear(input)
-                        out = self.dropout(out)
-                        return out
-
-                model = Model()
-                model.float()
+                >>> class Model(paddle.nn.Layer):
+                ...     def __init__(self):
+                ...         super().__init__()
+                ...         self.linear = paddle.nn.Linear(1, 1)
+                ...         self.dropout = paddle.nn.Dropout(p=0.5)
+                ...
+                ...     def forward(self, input):
+                ...         out = self.linear(input)
+                ...         out = self.dropout(out)
+                ...         return out
+                ...
+                >>> model = Model()
+                >>> model.float()
+                Model(
+                    (linear): Linear(in_features=1, out_features=1, dtype=paddle.float32)
+                    (dropout): Dropout(p=0.5, axis=None, mode=upscale_in_train)
+                )
         '''
 
         excluded_layers = [] if excluded_layers is None else excluded_layers
 
         if isinstance(excluded_layers, type):
             excluded_layers = [excluded_layers]
-        elif isinstance(excluded_layers, list):
-            pass
+        elif isinstance(excluded_layers, (list, tuple)):
+            excluded_layers = list(excluded_layers)
         else:
             raise TypeError(
                 "excluded_layers should be type nn.Layer or list, but got %s.",
@@ -2212,7 +2410,7 @@ class Layer:
 
 
         Parameters:
-           excluded_layers(nn.Layer|list|None, optional): Specify the layers that need to be kept original data type. if excluded_layers is None, casts all floating point parameters and buffers except ``nn.BatchNorm``. Default: None.
+           excluded_layers(nn.Layer|list|tuple|None, optional): Specify the layers that need to be kept original data type. if excluded_layers is None, casts all floating point parameters and buffers except ``nn.BatchNorm``. Default: None.
 
         Returns:
             Layer: self
@@ -2220,21 +2418,26 @@ class Layer:
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> # doctest: +SKIP('Paddle compiled by the user does not support float16, so keep original data type.')
+                >>> import paddle
 
-                class Model(paddle.nn.Layer):
-                    def __init__(self):
-                        super().__init__()
-                        self.linear = paddle.nn.Linear(1, 1)
-                        self.dropout = paddle.nn.Dropout(p=0.5)
-
-                    def forward(self, input):
-                        out = self.linear(input)
-                        out = self.dropout(out)
-                        return out
-
-                model = Model()
-                model.float16()
+                >>> class Model(paddle.nn.Layer):
+                ...     def __init__(self):
+                ...         super().__init__()
+                ...         self.linear = paddle.nn.Linear(1, 1)
+                ...         self.dropout = paddle.nn.Dropout(p=0.5)
+                ...
+                ...     def forward(self, input):
+                ...         out = self.linear(input)
+                ...         out = self.dropout(out)
+                ...         return out
+                ...
+                >>> model = Model()
+                >>> model.float16()
+                Model(
+                    (linear): Linear(in_features=1, out_features=1, dtype=float32)
+                    (dropout): Dropout(p=0.5, axis=None, mode=upscale_in_train)
+                )
         '''
 
         if paddle.amp.is_float16_supported() is False:
@@ -2249,8 +2452,8 @@ class Layer:
 
         if isinstance(excluded_layers, type):
             excluded_layers = [excluded_layers]
-        elif isinstance(excluded_layers, list):
-            pass
+        elif isinstance(excluded_layers, (list, tuple)):
+            excluded_layers = list(excluded_layers)
         else:
             raise TypeError(
                 "excluded_layers should be type nn.Layer or list, but got %s.",
@@ -2272,7 +2475,7 @@ class Layer:
 
 
         Parameters:
-            excluded_layers(nn.Layer|list|None, optional): Specify the layers that need to be kept original data type. if excluded_layers is None, casts all floating point parameters and buffers except ``nn.BatchNorm``. Default: None.
+            excluded_layers(nn.Layer|list|tuple|None, optional): Specify the layers that need to be kept original data type. if excluded_layers is None, casts all floating point parameters and buffers except ``nn.BatchNorm``. Default: None.
 
         Returns:
             Layer: self
@@ -2280,21 +2483,27 @@ class Layer:
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> # doctest: +SKIP('bfloat need V100 compile')
+                >>> import paddle
 
-                class Model(paddle.nn.Layer):
-                    def __init__(self):
-                        super().__init__()
-                        self.linear = paddle.nn.Linear(1, 1)
-                        self.dropout = paddle.nn.Dropout(p=0.5)
-
-                    def forward(self, input):
-                        out = self.linear(input)
-                        out = self.dropout(out)
-                        return out
-
-                model = Model()
-                model.bfloat16()
+                >>> class Model(paddle.nn.Layer):
+                ...     def __init__(self):
+                ...         super().__init__()
+                ...         self.linear = paddle.nn.Linear(1, 1)
+                ...         self.dropout = paddle.nn.Dropout(p=0.5)
+                ...
+                ...     def forward(self, input):
+                ...         out = self.linear(input)
+                ...         out = self.dropout(out)
+                ...         return out
+                ...
+                >>> model = Model()
+                >>> model.bfloat16()
+                >>> #UserWarning: Paddle compiled by the user does not support bfloat16, so keep original data type.
+                Model(
+                    (linear): Linear(in_features=1, out_features=1, dtype=float32)
+                    (dropout): Dropout(p=0.5, axis=None, mode=upscale_in_train)
+                )
         '''
 
         if paddle.amp.is_bfloat16_supported() is False:
@@ -2309,8 +2518,8 @@ class Layer:
 
         if isinstance(excluded_layers, type):
             excluded_layers = [excluded_layers]
-        elif isinstance(excluded_layers, list):
-            pass
+        elif isinstance(excluded_layers, (list, tuple)):
+            excluded_layers = list(excluded_layers)
         else:
             raise TypeError(
                 "excluded_layers should be type nn.Layer or list, but got %s.",

@@ -179,7 +179,7 @@ void TransposeCsrKernel(const Context& dev_ctx,
         int64_t x_cols_offset = 0;
         int out_cols_index = 0;
         for (int i = 0; i < x.dims()[0]; ++i) {
-          int x_crows_index = i * (x_n_rows + 1);
+          int x_crows_index = static_cast<int>(i * (x_n_rows + 1));
           int64_t start = x_crows_data[x_crows_index + k];
           int64_t end = x_crows_data[x_crows_index + 1 + k];
           out_crows_data[i + 1] = end - start;

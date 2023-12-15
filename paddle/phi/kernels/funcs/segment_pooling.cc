@@ -56,7 +56,7 @@ class SegmentPoolFunctor<phi::CPUContext, T, IndexT> {
       Tensor in_t = input.Slice(last_idx, idx);
 
       int64_t h = idx - last_idx;
-      auto in_e = EigenMatrix<T>::From(in_t, phi::make_ddim({h, w}));
+      auto in_e = EigenMatrix<T>::From(in_t, common::make_ddim({h, w}));
       auto out_e = EigenVector<T>::Flatten(out_t);
 
       auto reduce_dim = Eigen::array<int, 1>({{0}});
@@ -117,7 +117,7 @@ class SegmentPoolGradFunctor<phi::CPUContext, T, IndexT> {
       int64_t h = idx - last_idx;
       auto in_g_e = EigenMatrix<T>::From(in_g_t, {h, w});
       auto out_g_e = EigenMatrix<T>::From(out_g_t, {1, w});
-      Eigen::DSizes<int, 2> bcast(h, 1);
+      Eigen::DSizes<int, 2> bcast(static_cast<int>(h), 1);
 
       if (pooltype == "MEAN") {
         in_g_e.device(place) = (out_g_e / static_cast<T>(h)).broadcast(bcast);

@@ -14,15 +14,15 @@
 
 #include "paddle/phi/kernels/index_add_kernel.h"
 
-#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
+#include "paddle/utils/flags.h"
 
-DECLARE_bool(cudnn_deterministic);
+PD_DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 
@@ -60,7 +60,7 @@ void IndexAddKernel(const Context& ctx,
   const auto& index_type = index.dtype();
   int dim = axis;
   dim = dim >= 0 ? dim : dim + input_dim.size();
-  auto stride_dim = phi::stride(input_dim);
+  auto stride_dim = common::stride(input_dim);
   int64_t stride = stride_dim[dim];
   int64_t size = add_value_dim[dim];
   int64_t delta = input_dim[dim] - size;

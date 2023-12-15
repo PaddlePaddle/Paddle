@@ -85,9 +85,7 @@ class LogicalTransformer(BaseTransformer):
         '''
         assert (
             len(nodes) > 1
-        ), "The length of BoolOp should be at least 2, but received {}.".format(
-            len(nodes)
-        )
+        ), f"The length of BoolOp should be at least 2, but received {len(nodes)}."
         if len(nodes) > 2:
             # Creates logic_and/logic_or node recursively.
             pre_logic_node = self._create_bool_op_node(nodes[:2], api_type)
@@ -98,9 +96,7 @@ class LogicalTransformer(BaseTransformer):
             nodes = [pre_logic_node] + [post_logic_node]
 
         args = [ast_to_source_code(child) for child in nodes]
-        new_node_str = "_jst.{}(lambda:{}, lambda:{})".format(
-            api_type, args[0], args[1]
-        )
+        new_node_str = f"_jst.{api_type}(lambda:{args[0]}, lambda:{args[1]})"
         # NOTE: gast.parse return Module(body=[expr(...)])
         new_node = gast.parse(new_node_str).body[0].value
         return new_node

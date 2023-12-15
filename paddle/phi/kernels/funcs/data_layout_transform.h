@@ -14,19 +14,19 @@
 
 #pragma once
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "dnnl.hpp"  // NOLINT
 #endif
 
+#include "paddle/common/layout.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 namespace funcs {
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 
 using OneDNNDataType = dnnl::memory::data_type;
 using OneDNNMemoryFormat = dnnl::memory::format_tag;
@@ -44,7 +44,7 @@ inline OneDNNMemoryFormat ToOneDNNFormat(const DataLayout& layout) {
     default:
       PADDLE_THROW(
           errors::InvalidArgument("Fail to convert layout %s to oneDNN format.",
-                                  ::phi::DataLayoutToString(layout)));
+                                  ::common::DataLayoutToString(layout)));
   }
 }
 

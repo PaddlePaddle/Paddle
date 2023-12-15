@@ -43,8 +43,6 @@ limitations under the License. */
 namespace paddle {
 namespace pybind {
 
-namespace py = ::pybind11;
-
 PyTypeObject* p_pylayer_type;
 extern PyTypeObject* p_tensor_type;
 
@@ -163,7 +161,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
     args_size = PyTuple_GET_SIZE(args);
   }
   inputs_size = kwargs_size + args_size;
-  forward_args = PyTuple_New(args_size + 1);
+  forward_args = PyTuple_New(args_size + 1);  // NOLINT
   Py_INCREF(ctx);
   PyTuple_SET_ITEM(forward_args, 0, reinterpret_cast<PyObject*>(ctx));
 
@@ -174,14 +172,66 @@ PyObject* pylayer_method_apply(PyObject* cls,
   ctx->forward_input_tensor_is_duplicable.clear();
   ctx->forward_input_tensor_is_duplicable.reserve(inputs_size);
   std::set<phi::TensorBase*> input_tensorbases;
+
+  const phi::distributed::ProcessMesh* mesh = nullptr;
   for (size_t i = 0; i < inputs_size; i++) {
     PyObject* obj = nullptr;
     if (i >= args_size) {
-      obj = PyList_GetItem(kwargs_value_list, i - args_size);
+      obj = PyList_GetItem(kwargs_value_list, i - args_size);  // NOLINT
     } else {
       obj = PyTuple_GET_ITEM(args, i);
     }
     if (PyCheckTensor(obj)) {
+      paddle::Tensor& tensor = reinterpret_cast<TensorObject*>(obj)->tensor;
+      if (tensor.defined() && tensor.is_dist_tensor()) {
+        mesh = &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                     tensor.impl())
+                     ->dist_attr()
+                     .process_mesh());
+      }
+    } else if (PyList_Check(obj)) {
+      Py_ssize_t len = PyList_Size(obj);
+      for (Py_ssize_t j = 0; j < len; j++) {
+        PyObject* o = PyList_GetItem(obj, j);
+        if (PyCheckTensor(o)) {
+          paddle::Tensor& tensor = reinterpret_cast<TensorObject*>(o)->tensor;
+          if (tensor.defined() && tensor.is_dist_tensor()) {
+            mesh = &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                         tensor.impl())
+                         ->dist_attr()
+                         .process_mesh());
+          }
+        }
+      }
+    } else if (PyTuple_Check(obj)) {
+      Py_ssize_t len = PyTuple_Size(obj);
+      for (Py_ssize_t j = 0; j < len; j++) {
+        PyObject* o = PyTuple_GetItem(obj, j);
+        if (PyCheckTensor(o)) {
+          paddle::Tensor& tensor = reinterpret_cast<TensorObject*>(o)->tensor;
+          if (tensor.defined() && tensor.is_dist_tensor()) {
+            mesh = &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                         tensor.impl())
+                         ->dist_attr()
+                         .process_mesh());
+          }
+        }
+      }
+    }
+  }
+
+  for (size_t i = 0; i < inputs_size; i++) {
+    PyObject* obj = nullptr;
+    if (i >= args_size) {
+      obj = PyList_GetItem(kwargs_value_list, i - args_size);  // NOLINT
+    } else {
+      obj = PyTuple_GET_ITEM(args, i);
+    }
+    if (PyCheckTensor(obj)) {
+      if (mesh) {
+        ConvertToDistTensor(&(reinterpret_cast<TensorObject*>(obj)->tensor),
+                            mesh);
+      }
       input_tensorbases.insert(
           reinterpret_cast<TensorObject*>(obj)->tensor.impl().get());
       auto autograd_meta = egr::EagerUtils::nullable_autograd_meta(
@@ -201,6 +251,10 @@ PyObject* pylayer_method_apply(PyObject* cls,
       for (Py_ssize_t j = 0; j < len; j++) {
         PyObject* o = PyList_GetItem(obj, j);
         if (PyCheckTensor(o)) {
+          if (mesh) {
+            ConvertToDistTensor(&(reinterpret_cast<TensorObject*>(o)->tensor),
+                                mesh);
+          }
           input_tensorbases.insert(
               reinterpret_cast<TensorObject*>(o)->tensor.impl().get());
           tensors.push_back(&(reinterpret_cast<TensorObject*>(o)->tensor));
@@ -224,6 +278,10 @@ PyObject* pylayer_method_apply(PyObject* cls,
       for (Py_ssize_t j = 0; j < len; j++) {
         PyObject* o = PyTuple_GetItem(obj, j);
         if (PyCheckTensor(o)) {
+          if (mesh) {
+            ConvertToDistTensor(&(reinterpret_cast<TensorObject*>(o)->tensor),
+                                mesh);
+          }
           input_tensorbases.insert(
               reinterpret_cast<TensorObject*>(o)->tensor.impl().get());
           tensors.push_back(&(reinterpret_cast<TensorObject*>(o)->tensor));
@@ -374,7 +432,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
     }
   }
 
-  if (outputs_tensor.size() == 0) {
+  if (outputs_tensor.empty()) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "At least one output of `PyLayer.forward` is a `Tensor`."));
   }
@@ -393,12 +451,11 @@ PyObject* pylayer_method_apply(PyObject* cls,
       }
     }
 
-    for (auto it = inplace_tensors.begin(); it != inplace_tensors.end(); ++it) {
-      auto inplace_tensor = *it;
+    for (auto inplace_tensor : inplace_tensors) {
       auto inplace_tensor_autograd_meta =
           egr::EagerUtils::autograd_meta(inplace_tensor);
       PADDLE_ENFORCE_EQ(!inplace_tensor_autograd_meta->StopGradient() &&
-                            egr::egr_utils_api::IsLeafTensor(*inplace_tensor),
+                            egr::EagerUtils::IsLeafTensor(*inplace_tensor),
                         false,
                         paddle::platform::errors::InvalidArgument(
                             "Leaf Var (%s) that doesn't stop gradient "
@@ -452,6 +509,10 @@ PyObject* pylayer_method_apply(PyObject* cls,
       Py_INCREF(outputs);
       Py_XDECREF(outputs_tuple);
     }
+  }
+
+  if (PyList_Check(outputs)) {
+    Py_XDECREF(outputs_tuple);
   }
 
   Py_XDECREF(forward_args);
@@ -663,18 +724,17 @@ int tensor_properties_set_materialize_grads(PyLayerObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
-PyMethodDef pylayer_methods[] = {
-    {"name",
-     (PyCFunction)(void (*)(void))pylayer_method_name,
-     METH_NOARGS,
-     NULL},
-    {"apply",
-     (PyCFunction)(void (*)(void))pylayer_method_apply,
-     METH_CLASS | METH_VARARGS | METH_KEYWORDS,
-     NULL},
-    {NULL, NULL, 0, NULL}};
+PyMethodDef pylayer_methods[] = {{"name",  // NOLINT
+                                  (PyCFunction)(void (*)())pylayer_method_name,
+                                  METH_NOARGS,
+                                  nullptr},
+                                 {"apply",
+                                  (PyCFunction)(void (*)())pylayer_method_apply,
+                                  METH_CLASS | METH_VARARGS | METH_KEYWORDS,
+                                  nullptr},
+                                 {nullptr, nullptr, 0, nullptr}};
 
-struct PyGetSetDef pylayer_properties[] {
+struct PyGetSetDef pylayer_properties[] {  // NOLINT
   {"container",
    (getter)tensor_properties_get_container,
    (setter)tensor_properties_set_container,

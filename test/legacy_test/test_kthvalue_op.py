@@ -15,11 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def cal_kthvalue(x, k, axis, keepdim=False):
@@ -58,11 +59,11 @@ class TestKthvalueOp(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         paddle.enable_static()
-        self.check_grad({'X'}, 'Out')
+        self.check_grad({'X'}, 'Out', check_pir=True)
 
 
 class TestKthvalueOpFp16(TestKthvalueOp):
@@ -93,11 +94,11 @@ class TestKthvalueOpWithKeepdim(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         paddle.enable_static()
-        self.check_grad({'X'}, 'Out')
+        self.check_grad({'X'}, 'Out', check_pir=True)
 
 
 class TestKthvalueOpWithKeepdimFp16(TestKthvalueOpWithKeepdim):
@@ -141,7 +142,7 @@ class TestKthvalueOpKernels(unittest.TestCase):
                 )
 
         test_cpu_kernel()
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             test_gpu_kernel()
 
 
@@ -168,7 +169,7 @@ class TestKthvalueOpWithNaN(unittest.TestCase):
             self.assertEqual(inds[0, 2].numpy(), nan_position)
 
         test_nan_in_cpu_kernel()
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             test_nan_in_gpu_kernel()
 
 
@@ -207,6 +208,7 @@ class TestModeOpInStatic(unittest.TestCase):
         self.input_data = np.random.random((2, 20, 1, 2, 80)).astype(np.float64)
         self.k = 10
 
+    @test_with_pir_api
     def test_run_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -245,11 +247,11 @@ class TestKthvalueFP16Op(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         paddle.enable_static()
-        self.check_grad({'X'}, 'Out')
+        self.check_grad({'X'}, 'Out', check_pir=True)
 
 
 class TestKthvalueWithKeepdimFP16Op(TestKthvalueFP16Op):
@@ -285,12 +287,12 @@ class TestKthvalueBF16Op(OpTest):
     def test_check_output(self):
         paddle.enable_static()
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
         paddle.enable_static()
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, {'X'}, 'Out')
+        self.check_grad_with_place(place, {'X'}, 'Out', check_pir=True)
 
 
 if __name__ == '__main__':

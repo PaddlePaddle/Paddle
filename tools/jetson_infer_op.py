@@ -156,8 +156,8 @@ def get_op_list(op_list_file='list_op.txt'):
 
 def set_diff_value(file, atol="1e-5", inplace_atol="1e-7"):
     """
-    :param file: refer to eager_op_test.py
-    :param atol: refer to eager_op_test.py
+    :param file: refer to op_test.py
+    :param atol: refer to op_test.py
     :param inplace_atol:
     :return:
     """
@@ -269,8 +269,8 @@ def run_test_first(op_list_file):
     """
     old_list = get_op_list(op_list_file)
     new_list = filter(lambda x: x not in black_list, old_list)
-    eager_op_test = transform_list_to_str(new_list)
-    os.system("ctest -R \"(" + eager_op_test + ")\" >& test_op_log.txt")
+    op_test = transform_list_to_str(new_list)
+    os.system("ctest -R \"(" + op_test + ")\" >& test_op_log.txt")
 
 
 def run_test_second():

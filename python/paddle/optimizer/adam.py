@@ -16,11 +16,18 @@ import warnings
 from collections import defaultdict
 
 import paddle
-from paddle import _C_ops
+from paddle import _C_ops, pir
+from paddle.base.libpaddle import DataType
+from paddle.pir import Value
 
-from ..fluid import core, framework
-from ..fluid.dygraph import base as imperative_base
-from ..fluid.framework import Variable, in_dygraph_mode
+from ..base import core, framework
+from ..base.dygraph import base as imperative_base
+from ..base.framework import (
+    Variable,
+    in_dygraph_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
+)
 from .optimizer import Optimizer
 
 __all__ = []
@@ -72,15 +79,15 @@ class Adam(Optimizer):
             The default value is None in static graph mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization.
             It canbe a float value as coeff of L2 regularization or
-            :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
-            If a parameter has set regularizer using :ref:`api_fluid_ParamAttr` already,
+            :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
+            If a parameter has set regularizer using :ref:`api_paddle_ParamAttr` already,
             the regularization setting here in optimizer will be ignored for this parameter.
             Otherwise, the regularization setting here in optimizer will take effect.
             Default None, meaning there is no regularization.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three cliping strategies
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
-            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
+            ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` ,
+            :ref:`api_paddle_nn_ClipGradByValue` ). Default None, meaning there is no gradient clipping.
         lazy_mode (bool, optional): The official Adam algorithm has two moving-average accumulators.
             The accumulators are updated at every step. Every element of the two moving-average
             is updated in both dense mode and sparse mode. If the size of parameter is very large,
@@ -96,63 +103,63 @@ class Adam(Optimizer):
 
     Examples:
         .. code-block:: python
+            :name: code-example1
 
-            import paddle
+            >>> import paddle
 
-            linear = paddle.nn.Linear(10, 10)
-            inp = paddle.rand([10,10], dtype="float32")
-            out = linear(inp)
-            loss = paddle.mean(out)
-            adam = paddle.optimizer.Adam(learning_rate=0.1,
-                    parameters=linear.parameters())
-            loss.backward()
-            adam.step()
-            adam.clear_grad()
+            >>> linear = paddle.nn.Linear(10, 10)
+            >>> inp = paddle.rand([10,10], dtype="float32")
+            >>> out = linear(inp)
+            >>> loss = paddle.mean(out)
+            >>> adam = paddle.optimizer.Adam(learning_rate=0.1,
+            ...         parameters=linear.parameters())
+            >>> loss.backward()
+            >>> adam.step()
+            >>> adam.clear_grad()
 
         .. code-block:: python
+            :name: code-example2
 
-            # Adam with beta1/beta2 as Tensor and weight_decay as float
-            import paddle
+            >>> # Adam with beta1/beta2 as Tensor and weight_decay as float
+            >>> import paddle
 
-            linear = paddle.nn.Linear(10, 10)
-            inp = paddle.rand([10,10], dtype="float32")
-            out = linear(inp)
-            loss = paddle.mean(out)
+            >>> linear = paddle.nn.Linear(10, 10)
+            >>> inp = paddle.rand([10,10], dtype="float32")
+            >>> out = linear(inp)
+            >>> loss = paddle.mean(out)
+            >>> beta1 = paddle.to_tensor([0.9], dtype="float32")
+            >>> beta2 = paddle.to_tensor([0.99], dtype="float32")
+            >>> adam = paddle.optimizer.Adam(learning_rate=0.1,
+            ...         parameters=linear.parameters(),
+            ...         beta1=beta1,
+            ...         beta2=beta2,
+            ...         weight_decay=0.01)
+            >>> loss.backward()
+            >>> adam.step()
+            >>> adam.clear_grad()
 
-            beta1 = paddle.to_tensor([0.9], dtype="float32")
-            beta2 = paddle.to_tensor([0.99], dtype="float32")
-
-            adam = paddle.optimizer.Adam(learning_rate=0.1,
-                    parameters=linear.parameters(),
-                    beta1=beta1,
-                    beta2=beta2,
-                    weight_decay=0.01)
-            loss.backward()
-            adam.step()
-            adam.clear_grad()
-
-            #Note that the learning_rate of linear_2 is 0.01.
-            linear_1 = paddle.nn.Linear(10, 10)
-            linear_2 = paddle.nn.Linear(10, 10)
-            inp = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
-            out = linear_1(inp)
-            out = linear_2(out)
-            loss = paddle.mean(out)
-            adam = paddle.optimizer.Adam(
-                learning_rate=0.1,
-                parameters=[{
-                    'params': linear_1.parameters()
-                }, {
-                    'params': linear_2.parameters(),
-                    'weight_decay': 0.001,
-                    'learning_rate': 0.1,
-                    'beta1': 0.8
-                }],
-                weight_decay=0.01,
-                beta1=0.9)
-            loss.backward()
-            adam.step()
-            adam.clear_grad()
+            >>> # Note that the learning_rate of linear_2 is 0.01.
+            >>> linear_1 = paddle.nn.Linear(10, 10)
+            >>> linear_2 = paddle.nn.Linear(10, 10)
+            >>> inp = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
+            >>> out = linear_1(inp)
+            >>> out = linear_2(out)
+            >>> loss = paddle.mean(out)
+            >>> adam = paddle.optimizer.Adam(
+            ...     learning_rate=0.1,
+            ...     parameters=[{
+            ...         'params': linear_1.parameters()
+            ...     }, {
+            ...         'params': linear_2.parameters(),
+            ...         'weight_decay': 0.001,
+            ...         'learning_rate': 0.1,
+            ...         'beta1': 0.8
+            ...     }],
+            ...     weight_decay=0.01,
+            ...     beta1=0.9)
+            >>> loss.backward()
+            >>> adam.step()
+            >>> adam.clear_grad()
 
     """
     _moment1_acc_str = "moment1"
@@ -178,17 +185,17 @@ class Adam(Optimizer):
         assert beta1 is not None
         assert beta2 is not None
         assert epsilon is not None
-        if not isinstance(beta1, Variable):
+        if not isinstance(beta1, (Variable, Value)):
             if not 0 <= beta1 < 1:
                 raise ValueError(
                     "Invaild value of beta1, expect beta1 in [0,1)."
                 )
-        if not isinstance(beta2, Variable):
+        if not isinstance(beta2, (Variable, Value)):
             if not 0 <= beta2 < 1:
                 raise ValueError(
                     "Invaild value of beta2, expect beta2 in [0,1)."
                 )
-        if not isinstance(epsilon, Variable):
+        if not isinstance(epsilon, (Variable, Value)):
             if not 0 <= epsilon:
                 raise ValueError(
                     "Invaild value of epsilon, expect epsilon >= 0."
@@ -227,7 +234,10 @@ class Adam(Optimizer):
     def _add_moments_pows(self, p):
         acc_dtype = p.dtype
         if self._is_dtype_fp16_or_bf16(acc_dtype):
-            acc_dtype = core.VarDesc.VarType.FP32
+            if in_pir_mode():
+                acc_dtype = DataType.FLOAT32
+            else:
+                acc_dtype = core.VarDesc.VarType.FP32
         self._add_accumulator(self._moment1_acc_str, p, dtype=acc_dtype)
         self._add_accumulator(self._moment2_acc_str, p, dtype=acc_dtype)
         self._add_accumulator(
@@ -235,7 +245,7 @@ class Adam(Optimizer):
             param=p,
             dtype=acc_dtype,
             fill_value=0.9
-            if isinstance(self._beta1, Variable)
+            if isinstance(self._beta1, (Variable, Value))
             else self._beta1,
             shape=[1],
             type=core.VarDesc.VarType.LOD_TENSOR,
@@ -246,7 +256,7 @@ class Adam(Optimizer):
             param=p,
             dtype=acc_dtype,
             fill_value=0.999
-            if isinstance(self._beta2, Variable)
+            if isinstance(self._beta2, (Variable, Value))
             else self._beta2,
             shape=[1],
             type=core.VarDesc.VarType.LOD_TENSOR,
@@ -254,7 +264,7 @@ class Adam(Optimizer):
         )
 
     def _create_accumulators(self, block, parameters):
-        assert isinstance(block, framework.Block)
+        assert isinstance(block, (framework.Block, paddle.pir.Block))
         if isinstance(parameters, dict):
             parameters = self._update_param_group(parameters)
 
@@ -279,7 +289,7 @@ class Adam(Optimizer):
             self._already_create_accumulater.add(p.name)
 
     def _append_optimize_op(self, block, param_and_grad):
-        assert isinstance(block, framework.Block)
+        assert isinstance(block, (framework.Block, paddle.pir.Block))
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)
 
@@ -306,7 +316,7 @@ class Adam(Optimizer):
         lr = self._create_param_lr(param_and_grad)
         # create the adam optimize op
 
-        if framework.in_dygraph_mode():
+        if in_dynamic_or_pir_mode():
             _beta1 = (
                 self._beta1
                 if not isinstance(self._beta1, Variable)
@@ -348,6 +358,13 @@ class Adam(Optimizer):
                 "Beta1Pow": [beta1_pow_acc],
                 "Beta2Pow": [beta2_pow_acc],
             }
+
+            # Pass found_inf to adam, to skip update for not only param, but also momentum and beta_pow
+            found_inf = self._get_auxiliary_var('found_inf')
+
+            if found_inf:
+                inputs['SkipUpdate'] = found_inf
+
             outputs = {
                 "ParamOut": [param_and_grad[0]],
                 "Moment1Out": [moment1],
@@ -400,19 +417,19 @@ class Adam(Optimizer):
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                a = paddle.rand([2,13], dtype="float32")
-                linear = paddle.nn.Linear(13, 5)
-                # This can be any optimizer supported by dygraph.
-                adam = paddle.optimizer.Adam(learning_rate = 0.01,
-                                            parameters = linear.parameters())
-                out = linear(a)
-                out.backward()
-                adam.step()
-                adam.clear_grad()
+                >>> a = paddle.rand([2,13], dtype="float32")
+                >>> linear = paddle.nn.Linear(13, 5)
+                >>> # This can be any optimizer supported by dygraph.
+                >>> adam = paddle.optimizer.Adam(learning_rate = 0.01,
+                ...                             parameters = linear.parameters())
+                >>> out = linear(a)
+                >>> out.backward()
+                >>> adam.step()
+                >>> adam.clear_grad()
         """
-        if paddle.fluid.dygraph.base.in_declarative_mode():
+        if paddle.base.dygraph.base.in_to_static_mode():
             self._declarative_step()
             return
 
@@ -540,7 +557,7 @@ class Adam(Optimizer):
         """
         For Multi Tensor, append optimize merged_operator to block.
         """
-        assert isinstance(target_block, framework.Block)
+        assert isinstance(target_block, (framework.Block, pir.Block))
 
         grad_dict = {'FP32_LODTensor': [], 'FP16_LODTensor': []}
         lr_dict = {'FP32_LODTensor': [], 'FP16_LODTensor': []}
@@ -562,6 +579,29 @@ class Adam(Optimizer):
                         )
                         lr = self._create_param_lr(parameters_and_grads[index])
                         lr_dict['FP16_LODTensor'].append(lr)
+            elif in_pir_mode():
+                for param_and_grad in parameters_and_grads:
+                    if param_and_grad[1] is None:
+                        continue
+                    if param_and_grad[0].stop_gradient is False:
+                        if (
+                            param_and_grad[0].dtype == DataType.FLOAT32
+                            and param_and_grad[1].is_dense_tensor_type()
+                        ):
+                            grad_dict['FP32_LODTensor'].append(
+                                param_and_grad[1]
+                            )
+                            lr = self._create_param_lr(param_and_grad)
+                            lr_dict['FP32_LODTensor'].append(lr)
+                        elif (
+                            self._is_dtype_fp16_or_bf16(param_and_grad[0].dtype)
+                            and param_and_grad[1].is_dense_tensor_type()
+                        ):
+                            grad_dict['FP16_LODTensor'].append(
+                                param_and_grad[1]
+                            )
+                            lr = self._create_param_lr(param_and_grad)
+                            lr_dict['FP16_LODTensor'].append(lr)
             else:
                 for param_and_grad in parameters_and_grads:
                     if param_and_grad[1] is None:
@@ -602,22 +642,46 @@ class Adam(Optimizer):
                         }
                     )
                     param_and_grad = self._update_param_group(param_grad_dict)
-                    if (
-                        param_and_grad[0].dtype == paddle.float32
-                        and param_and_grad[1].type
-                        == core.VarDesc.VarType.LOD_TENSOR
-                    ):
-                        grad_dict['FP32_LODTensor'].append(param_and_grad[1])
-                        lr = self._create_param_lr(param_and_grad)
-                        lr_dict['FP32_LODTensor'].append(lr)
-                    elif (
-                        self._is_dtype_fp16_or_bf16(param_and_grad[0].dtype)
-                        and param_and_grad[1].type
-                        == core.VarDesc.VarType.LOD_TENSOR
-                    ):
-                        grad_dict['FP16_LODTensor'].append(param_and_grad[1])
-                        lr = self._create_param_lr(param_and_grad)
-                        lr_dict['FP16_LODTensor'].append(lr)
+                    if in_pir_mode():
+                        if (
+                            param_and_grad[0].dtype == DataType.FLOAT32
+                            and param_and_grad[1].is_dense_tensor_type()
+                        ):
+                            grad_dict['FP32_LODTensor'].append(
+                                param_and_grad[1]
+                            )
+                            lr = self._create_param_lr(param_and_grad)
+                            lr_dict['FP32_LODTensor'].append(lr)
+                        elif (
+                            self._is_dtype_fp16_or_bf16(param_and_grad[0].dtype)
+                            and param_and_grad[1].is_dense_tensor_type()
+                        ):
+                            grad_dict['FP16_LODTensor'].append(
+                                param_and_grad[1]
+                            )
+                            lr = self._create_param_lr(param_and_grad)
+                            lr_dict['FP16_LODTensor'].append(lr)
+                    else:
+                        if (
+                            param_and_grad[0].dtype == paddle.float32
+                            and param_and_grad[1].type
+                            == core.VarDesc.VarType.LOD_TENSOR
+                        ):
+                            grad_dict['FP32_LODTensor'].append(
+                                param_and_grad[1]
+                            )
+                            lr = self._create_param_lr(param_and_grad)
+                            lr_dict['FP32_LODTensor'].append(lr)
+                        elif (
+                            self._is_dtype_fp16_or_bf16(param_and_grad[0].dtype)
+                            and param_and_grad[1].type
+                            == core.VarDesc.VarType.LOD_TENSOR
+                        ):
+                            grad_dict['FP16_LODTensor'].append(
+                                param_and_grad[1]
+                            )
+                            lr = self._create_param_lr(param_and_grad)
+                            lr_dict['FP16_LODTensor'].append(lr)
 
         multi_tensor_list = ['FP32_LODTensor', 'FP16_LODTensor']
         for key in multi_tensor_list:
@@ -635,7 +699,7 @@ class Adam(Optimizer):
                     else self._beta2.item(0)
                 )
 
-                if framework.in_dygraph_mode():
+                if in_dynamic_or_pir_mode():
                     master_weight = self._master_weight_dict[key]
                     master_weight = (
                         master_weight[param_group_idx]
@@ -644,10 +708,14 @@ class Adam(Optimizer):
                     )
                     found_inf = self._get_auxiliary_var('found_inf')
                     if found_inf:
-                        if isinstance(found_inf, core.eager.Tensor):
+                        if isinstance(
+                            found_inf, (core.eager.Tensor, pir.Value)
+                        ):
                             self._set_auxiliary_var('found_inf', True)
                     else:
-                        if isinstance(found_inf, core.eager.Tensor):
+                        if isinstance(
+                            found_inf, (core.eager.Tensor, pir.Value)
+                        ):
                             self._set_auxiliary_var('found_inf', False)
                         _, _, _, _, _, _ = _C_ops.merged_adam_(
                             self._param_dict[key][param_group_idx],
@@ -709,7 +777,6 @@ class Adam(Optimizer):
                         attrs=attrs,
                         stop_gradient=True,
                     )
-        return None
 
     def _update_param_group(self, parameters):
         self._beta1 = parameters.get('beta1', self._default_dict['beta1'])

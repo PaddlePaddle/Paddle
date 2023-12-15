@@ -39,7 +39,7 @@ class TestDygrapgHybridDP(TestCollectiveAPIRunnerBase):
         paddle.distributed.collective.all_reduce(data_part)
         data_reduced = data_part
         data_sumed = np.sum(data, axis=0)
-        assert np.allclose(
+        np.testing.assert_allclose(
             data_sumed, data_reduced.numpy(), rtol=1e-8, atol=1e-8
         )
 

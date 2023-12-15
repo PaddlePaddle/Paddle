@@ -12,7 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/optimizers/decayed_adagrad_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+
+#include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {
@@ -52,14 +55,14 @@ class DecayedAdagradOp : public framework::OperatorWithKernel {
         ctx->HasOutput("MomentOut"), "Output", "MomentOut", "DecayedAdagradOp");
 
     auto lr_dims = ctx->GetInputDim("LearningRate");
-    PADDLE_ENFORCE_NE(phi::product(lr_dims),
+    PADDLE_ENFORCE_NE(common::product(lr_dims),
                       0,
                       platform::errors::InvalidArgument(
                           "Maybe the Input variable LearningRate has not "
                           "been initialized. You may need to confirm "
                           "if you put exe.run(startup_program) "
                           "after optimizer.minimize function."));
-    PADDLE_ENFORCE_EQ(phi::product(lr_dims),
+    PADDLE_ENFORCE_EQ(common::product(lr_dims),
                       1,
                       platform::errors::InvalidArgument(
                           "LearningRate should have one element"));
@@ -127,9 +130,12 @@ stability to avoid the division by zero error.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+
+DECLARE_INFER_SHAPE_FUNCTOR(decayed_adagrad,
+                            DecayedAdagradShapeFunctor,
+                            PD_INFER_META(phi::DecayedAdagradInferMeta));
+
 REGISTER_OP_WITHOUT_GRADIENT(decayed_adagrad,
                              ops::DecayedAdagradOp,
-                             ops::DecayedAdagradOpMaker);
-
-PD_REGISTER_STRUCT_KERNEL(
-    decayed_adagrad, CPU, ALL_LAYOUT, ops::DecayedAdagradOpKernel, float) {}
+                             ops::DecayedAdagradOpMaker,
+                             DecayedAdagradShapeFunctor);

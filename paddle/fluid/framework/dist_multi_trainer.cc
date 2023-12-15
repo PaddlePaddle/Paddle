@@ -16,6 +16,8 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #endif
 
+#include "paddle/fluid/framework/threadpool.h"
+
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/trainer.h"
@@ -36,7 +38,7 @@ void DistMultiTrainer::Initialize(const TrainerDesc &trainer_desc,
   const std::vector<paddle::framework::DataFeed *> readers =
       dataset->GetReaders();
   RegisterHeterCallback();
-  thread_num_ = readers.size();
+  thread_num_ = static_cast<int>(readers.size());
   workers_.resize(thread_num_);
   for (int i = 0; i < trainer_desc.downpour_param().stat_var_names_size();
        i++) {
@@ -88,22 +90,43 @@ void DistMultiTrainer::InitDumpEnv() {
     }
   }
   for (int i = 0; i < dump_thread_num_; i++) {
-    dump_thread_.push_back(
-        std::thread(std::bind(&TrainerBase::DumpWork, this, i)));
+    dump_thread_.emplace_back([this, i] { DumpWork(i); });
   }
+}
+
+inline std::vector<std::shared_ptr<paddle::framework::ThreadPool>>
+    &GetThreadPool(int thread_num) {
+  static std::vector<std::shared_ptr<paddle::framework::ThreadPool>>
+      thread_pools;
+  if (!thread_pools.empty()) {
+    return thread_pools;
+  }
+  thread_pools.resize(thread_num);
+  for (int i = 0; i < thread_num; ++i) {
+    thread_pools[i].reset(new paddle::framework::ThreadPool(1));
+  }
+  return thread_pools;
 }
 
 void DistMultiTrainer::InitTrainerEnv(const ProgramDesc &main_program,
                                       const platform::Place &place) {
+  auto pool = GetThreadPool(thread_num_);
+  std::vector<std::future<void>> wait_futures;
+  CHECK_EQ(static_cast<int>(pool.size()), thread_num_);
   for (int i = 0; i < thread_num_; ++i) {
-    workers_[i]->SetPlace(place);
-    workers_[i]->SetReaderPlace(place);
-    workers_[i]->SetRootScope(root_scope_);
-    workers_[i]->CreateDeviceResource(main_program);  // Program
-    workers_[i]->BindingDataFeedMemory();
+    wait_futures.emplace_back(pool[i]->Run([this, i, &main_program, &place]() {
+      workers_[i]->SetPlace(place);
+      workers_[i]->SetReaderPlace(place);
+      workers_[i]->SetRootScope(root_scope_);
+      workers_[i]->CreateDeviceResource(main_program);  // Program
+      workers_[i]->BindingDataFeedMemory();
 #if defined(PADDLE_WITH_PSLIB) || defined(PADDLE_WITH_PSCORE)
-    workers_[i]->CacheProgram(main_program);
+      workers_[i]->CacheProgram(main_program);
 #endif
+    }));
+  }
+  for (auto &th : wait_futures) {
+    th.get();
   }
   // Scope* -> thread id, it will be used in push_dense op
   for (int i = 0; i < thread_num_; ++i) {
@@ -130,14 +153,20 @@ void DistMultiTrainer::InitOtherEnv(const ProgramDesc &main_program) {
 }
 
 void DistMultiTrainer::Run() {
-  for (int thidx = 0; thidx < thread_num_; ++thidx) {
+  auto pool = GetThreadPool(thread_num_);
+  std::vector<std::future<void>> wait_futures;
+  CHECK_EQ(static_cast<int>(pool.size()), thread_num_);
+  for (int i = 0; i < thread_num_; ++i) {
     if (!debug_) {
-      threads_.push_back(
-          std::thread(&DeviceWorker::TrainFiles, workers_[thidx].get()));
+      wait_futures.emplace_back(
+          pool[i]->Run([this, i]() { workers_[i]->TrainFiles(); }));
     } else {
-      threads_.push_back(std::thread(&DeviceWorker::TrainFilesWithProfiler,
-                                     workers_[thidx].get()));
+      wait_futures.emplace_back(
+          pool[i]->Run([this, i]() { workers_[i]->TrainFilesWithProfiler(); }));
     }
+  }
+  for (auto &th : wait_futures) {
+    th.get();
   }
 }
 
@@ -146,9 +175,6 @@ Scope *DistMultiTrainer::GetWorkerScope(int thread_id) {
 }
 
 void DistMultiTrainer::Finalize() {
-  for (auto &th : threads_) {
-    th.join();
-  }
   for (size_t i = 0; i < need_merge_var_names_.size(); i++) {
     Variable *root_var = root_scope_->FindVar(need_merge_var_names_[i]);
     if (root_var == nullptr) {

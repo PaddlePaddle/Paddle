@@ -34,7 +34,7 @@ void LayerNormGradKernel(const Context& ctx,
                          DenseTensor* bias_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   const auto& x_dims = x.dims();
-  auto matrix_dim = phi::flatten_to_2d(x_dims, begin_norm_axis);
+  auto matrix_dim = common::flatten_to_2d(x_dims, begin_norm_axis);
   int left = static_cast<int>(matrix_dim[0]);
   int right = static_cast<int>(matrix_dim[1]);
   const auto* x_data = x.data<T>();
@@ -63,11 +63,15 @@ void LayerNormGradKernel(const Context& ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
     scale_data_fp32 = scale_data_temp;
     need_cast_scale = true;
-    scale_grad_data_fp32 = RAII_GUARD.alloc_l3_or_gm<float>(scale_ptr->numel());
+    scale_grad_data_fp32 =
+        scale_grad == nullptr
+            ? nullptr
+            : RAII_GUARD.alloc_l3_or_gm<float>(scale_ptr->numel());
   } else {
     // no need to cast
     scale_data_fp32 = scale_ptr->data<float>();
-    scale_grad_data_fp32 = ctx.template Alloc<float>(scale_grad);
+    scale_grad_data_fp32 =
+        scale_grad == nullptr ? nullptr : ctx.template Alloc<float>(scale_grad);
   }
 
   // bias
@@ -79,10 +83,14 @@ void LayerNormGradKernel(const Context& ctx,
   } else if (bias_ptr->dtype() ==
              phi::CppTypeToDataType<phi::dtype::float16>::Type()) {
     need_cast_bias = true;
-    bias_grad_data_fp32 = RAII_GUARD.alloc_l3_or_gm<float>(bias_ptr->numel());
+    bias_grad_data_fp32 =
+        bias_grad == nullptr
+            ? nullptr
+            : RAII_GUARD.alloc_l3_or_gm<float>(bias_ptr->numel());
   } else {
     // no need to cast
-    bias_grad_data_fp32 = ctx.template Alloc<float>(bias_grad);
+    bias_grad_data_fp32 =
+        bias_grad == nullptr ? nullptr : ctx.template Alloc<float>(bias_grad);
   }
 
   auto* x_grad_data =

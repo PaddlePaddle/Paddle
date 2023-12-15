@@ -85,6 +85,9 @@ list(
   rnn_op.cc
   fill_constant_batch_size_like_op.cc
   sum_op.cc
+  bitwise_and_op.cc
+  bitwise_or_op.cc
+  size_op.cc
   shape_op.cc
   fill_constant_op.cc
   fused_token_prune_op.cc
@@ -105,11 +108,18 @@ list(
   preln_groupnorm_act_op.cc
   expand_v2_op.cc
   cumsum_op.cc
-  temporal_shift_op.cc)
+  temporal_shift_op.cc
+  einsum_op.cc
+  unbind_op.cc
+  assign_op.cc
+  flip_op.cc
+  quantize_linear_op.cc
+  dequantize_linear_op.cc
+  share_data_op.cc)
 
 if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)
   list(APPEND CONVERT_FILES emb_eltwise_layernorm.cc
-       preln_emb_eltwise_layernorm.cc)
+       preln_emb_eltwise_layernorm.cc prompt_tuning_emb_eltwise_layernorm.cc)
 endif()
 
 if(CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)
@@ -137,11 +147,37 @@ nv_test(
   SRCS test_op_converter.cc
   DEPS paddle_framework ${GLOB_OPERATOR_DEPS} tensorrt_engine
        tensorrt_converter)
-
-nv_test(
-  test_custom_plugin_creater
-  SRCS test_custom_plugin_creater.cc
-  DEPS paddle_framework tensorrt_converter phi custom_operator init_phi)
+if(WIN32)
+  nv_test(
+    test_custom_plugin_creater
+    SRCS test_custom_plugin_creater.cc
+    DEPS paddle_framework tensorrt_converter phi common custom_operator
+         init_phi)
+elseif(WITH_CINN)
+  nv_test(
+    test_custom_plugin_creater
+    SRCS test_custom_plugin_creater.cc
+    DEPS paddle_framework
+         tensorrt_converter
+         phi
+         common
+         custom_operator
+         init_phi
+         fleet_executor
+         python)
+else()
+  nv_test(
+    test_custom_plugin_creater
+    SRCS test_custom_plugin_creater.cc
+    DEPS paddle_framework
+         tensorrt_converter
+         phi
+         common
+         custom_operator
+         init_phi
+         fleet_executor
+         python)
+endif()
 
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will

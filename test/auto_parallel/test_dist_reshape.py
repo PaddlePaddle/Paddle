@@ -21,8 +21,8 @@ paddle.enable_static()
 
 
 def make_program_dp2():
-    main_program = paddle.fluid.Program()
-    start_program = paddle.fluid.Program()
+    main_program = paddle.base.Program()
+    start_program = paddle.base.Program()
     with paddle.static.program_guard(main_program, start_program):
         x = paddle.static.data(name='x', shape=[4, 4, 8], dtype='float32')
         x.stop_gradient = False
@@ -60,14 +60,13 @@ def parallelizer(program_func, rank):
 
 class TestDistReshape(unittest.TestCase):
     def test_dist_reshape_mp2(self):
-
         for rank in range(2):
             dist_main_prog, dist_context = parallelizer(make_program_dp2, rank)
             ops = dist_main_prog.global_block().ops
             for idx, op in enumerate(ops):
                 op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
                 assert op_dist_attr.impl_type == "reshape2"
-                assert op_dist_attr.impl_idx == idx
+                assert op_dist_attr.impl_idx == 0
 
                 if op_dist_attr.impl_idx == 2:
                     assert op.desc.attr('shape')[0] == 2
