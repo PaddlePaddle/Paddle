@@ -390,7 +390,7 @@ if [ "${DEPRECATED_FLAKE8}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     check_approval 1 SigureMo gouzil
 fi
 
-TEST_FILE_ADDED_LINES=$(git diff test -U0 upstream/$BRANCH |grep "^+" || true)
+TEST_FILE_ADDED_LINES=$(git diff test -U0 upstream/$BRANCH |grep "^+")
 ENABLE_TO_STATIC_CHECK=`echo "$TEST_FILE_ADDED_LINES" | grep "enable_to_static(" || true`
 if [ "${ENABLE_TO_STATIC_CHECK}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must have one RD (SigureMo, Aurelius84 or 2742195759) approval for using `paddle.jit.enable_to_static`, we recommend using `enable_to_static_guard` in the related test files.\n"
