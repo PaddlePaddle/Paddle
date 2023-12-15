@@ -29,7 +29,6 @@ from op_interface_gen import (
 from op_kerneltype_gen import gen_kernel_type_for_var_str
 from op_member_func_gen import gen_op_get_inputs_outputs_str
 from op_verify_gen import gen_verify_func_str
-from ops_onednn_extra_parser import parse_extra_args, parse_layout_transform
 from parse_kernel_key_gen import gen_parse_kernel_key_str
 from reify_infer_shape_gen import gen_reify_infer_shape_str
 from vjp_interface_black_list import vjp_interface_black_list
@@ -1754,6 +1753,39 @@ def OpGenerator(
     # (2) parse yaml files
     op_compat_parser = OpCompatParser(op_compat_yaml_file)
 
+    # if dialect_name == "pd_onednn_op":
+    #     with open(ops_onednn_extra_yaml_file, "r") as f:
+    #         ops_onednn_extra = yaml.safe_load(f)
+    #         op_yaml_items_map = {}
+    #         for op in op_yaml_items:
+    #             op_yaml_items_map[op['name']] = op
+    #         op_yaml_items_onednn = []
+    #         for op in ops_onednn_extra:
+    #             op_name = op['op']
+    #             item = op_yaml_items_map[op_name]
+    #             assert (
+    #                 item is not None
+    #             ), f"OneDnn op {op_name} in {ops_onednn_extra_yaml_file} is not define in ops.yaml."
+    #             item["is_onednn_only"] = False
+    #             item["extra_args"] = parse_extra_args(op_name, op['extra_args'])
+    #             if 'layout_transform' in op:
+    #                 item["layout_transform"] = parse_layout_transform(
+    #                     op_name, op['layout_transform']
+    #                 )
+    #             else:
+    #                 item["layout_transform"] = None
+    #             item["attrs"] = item["attrs"] + parse_extra_args(
+    #                 op_name, op['extra_args']
+    #             )
+    #             op_yaml_items_onednn.append(item)
+    #         op_yaml_items = op_yaml_items_onednn
+
+    #     with open(onednn_yaml_file, "r") as f:
+    #         onednn_ops = yaml.safe_load(f)
+    #         for op in onednn_ops:
+    #             op["is_onednn_only"] = True
+    #         op_yaml_items = op_yaml_items + onednn_ops
+
     op_infos = []
     all_op_info_items = {}
     for yaml_file in op_yaml_files:
@@ -1761,39 +1793,6 @@ def OpGenerator(
         with open(yaml_file, "r") as f:
             ops = yaml.safe_load(f)
             op_yaml_items = op_yaml_items + ops
-
-    if dialect_name == "pd_onednn_op":
-        with open(ops_onednn_extra_yaml_file, "r") as f:
-            ops_onednn_extra = yaml.safe_load(f)
-            op_yaml_items_map = {}
-            for op in op_yaml_items:
-                op_yaml_items_map[op['name']] = op
-            op_yaml_items_onednn = []
-            for op in ops_onednn_extra:
-                op_name = op['op']
-                item = op_yaml_items_map[op_name]
-                assert (
-                    item is not None
-                ), f"OneDnn op {op_name} in {ops_onednn_extra_yaml_file} is not define in ops.yaml."
-                item["is_onednn_only"] = False
-                item["extra_args"] = parse_extra_args(op_name, op['extra_args'])
-                if 'layout_transform' in op:
-                    item["layout_transform"] = parse_layout_transform(
-                        op_name, op['layout_transform']
-                    )
-                else:
-                    item["layout_transform"] = None
-                item["attrs"] = item["attrs"] + parse_extra_args(
-                    op_name, op['extra_args']
-                )
-                op_yaml_items_onednn.append(item)
-            op_yaml_items = op_yaml_items_onednn
-
-        with open(onednn_yaml_file, "r") as f:
-            onednn_ops = yaml.safe_load(f)
-            for op in onednn_ops:
-                op["is_onednn_only"] = True
-            op_yaml_items = op_yaml_items + onednn_ops
 
         op_info_items = {}
         for op in op_yaml_items:
@@ -1900,14 +1899,15 @@ def OpGenerator(
     else:
         op_to_multi_kernels_map_str = ""
 
-    op_info_str = CC_OP_INFO_FILE_TEMPLATE.format(
-        op_declare=",".join(op_list_strs).replace("\n", ""),
-        op_to_multi_kernels_map=op_to_multi_kernels_map_str,
-        h_file=op_def_h_file[:-4],
-    )
+    if op_info_file is not None:
+        op_info_str = CC_OP_INFO_FILE_TEMPLATE.format(
+            op_declare=",".join(op_list_strs).replace("\n", ""),
+            op_to_multi_kernels_map=op_to_multi_kernels_map_str,
+            h_file=op_def_h_file[:-4],
+        )
 
-    with open(op_info_file, 'w') as f:
-        f.write(op_info_str)
+        with open(op_info_file, 'w') as f:
+            f.write(op_info_str)
 
     # (6) write to files for xx_op.cc.tmp
     for id in range(len(op_def_cc_file)):

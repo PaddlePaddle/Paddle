@@ -35,14 +35,6 @@ set(pd_ops_onednn_extra_yaml_file
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/ops_onednn_extra.yaml
 )
 
-set(parsed_op_dir
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/generated)
-
-set(op_yaml_file3 ${parsed_op_dir}/ops.parsed.yaml)
-set(op_yaml_file4 ${parsed_op_dir}/ops_backward.parsed.yaml)
-set(op_yaml_file5 ${parsed_op_dir}/update_ops.parsed.yaml)
-set(op_yaml_file6 ${parsed_op_dir}/onednn.parsed.yaml)
-
 set(pir_update_op_fwd_src_yaml
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/update_ops.yaml)
 set(parsed_op_dir
@@ -50,6 +42,7 @@ set(parsed_op_dir
 set(pir_op_fwd_yaml ${parsed_op_dir}/ops.parsed.yaml)
 set(pir_op_bwd_yaml ${parsed_op_dir}/ops_backward.parsed.yaml)
 set(pir_update_op_fwd_yaml ${parsed_op_dir}/update_ops.parsed.yaml)
+set(pir_op_onednn_yaml ${parsed_op_dir}/onednn.parsed.yaml)
 
 set(op_yaml_files
     ${op_fwd_yaml},${op_bwd_yaml},${fused_op_fwd_yaml},${fused_op_bwd_yaml},${pir_op_fwd_yaml},${pir_op_bwd_yaml},${pir_update_op_fwd_yaml}
@@ -109,7 +102,7 @@ execute_process(
   COMMAND ${PYTHON_EXECUTABLE} ${op_gen_parsed_yaml_file} --op_yaml_path
           ${pir_update_op_fwd_src_yaml} --output_path ${pir_update_op_fwd_yaml}
   COMMAND ${PYTHON_EXECUTABLE} ${op_gen_parsed_yaml_file} --op_yaml_path
-          ${pd_onednn_op_yaml_file} --output_path ${op_yaml_file6}
+          ${pd_onednn_op_yaml_file} --output_path ${pir_op_onednn_yaml}
   COMMAND ${PYTHON_EXECUTABLE} ${op_gen_parsed_yaml_file} --op_yaml_path
           ${pir_op_bwd_src_yaml} --output_path ${pir_op_bwd_yaml} --backward)
 
@@ -118,8 +111,8 @@ execute_process(
     ${PYTHON_EXECUTABLE} ${op_gen_file} --op_yaml_files ${op_yaml_files}
     --op_compat_yaml_file ${op_compat_yaml_file} --namespaces ${op_namespace}
     --dialect_name ${dialect_name} --op_def_h_file ${op_header_file_tmp}
-    --op_info_file ${op_info_file_tmp} --op_def_cc_file ${op_src_files_tmp}
-    --op_vjp_cc_file ${op_vjp_src_file_tmp})
+    --op_def_cc_file ${op_src_files_tmp} --op_vjp_cc_file
+    ${op_vjp_src_file_tmp})
 
 set(generated_files_pd_op
     "${op_header_file}"
@@ -133,17 +126,17 @@ set(generated_files_pd_op
     "${pir_bwd_op_source_file}"
     "${pir_update_op_source_file}")
 
-execute_process(
-  COMMAND
-    ${PYTHON_EXECUTABLE} ${op_gen_file} --op_yaml_files ${op_yaml_files}
-    --op_compat_yaml_file ${op_compat_yaml_file} --namespaces
-    ${onednn_op_namespace} --dialect_name ${onednn_dialect_name}
-    --op_def_h_file ${onednn_op_header_file_tmp} --op_def_cc_file
-    ${onednn_op_source_file_tmp} --onednn_yaml_file ${op_yaml_file6}
-    --ops_onednn_extra_yaml_file ${pd_ops_onednn_extra_yaml_file})
+# execute_process(
+#     COMMAND
+#         ${PYTHON_EXECUTABLE} ${op_gen_file} --op_yaml_files ${op_yaml_files}
+#         --op_compat_yaml_file ${op_compat_yaml_file} --namespaces ${onednn_op_namespace}
+#         --dialect_name ${onednn_dialect_name} --op_def_h_file ${onednn_op_header_file_tmp}
+#         --op_info_file ${op_info_file_tmp} --op_def_cc_file ${onednn_op_source_file_tmp}
+#         --onednn_yaml_file ${pir_op_onednn_yaml}
+#         --ops_onednn_extra_yaml_file ${pd_ops_onednn_extra_yaml_file})
 
-set(generated_files_onednn_pd_op "${onednn_op_header_file}"
-                                 "${onednn_op_source_file}")
+# set(generated_files_onednn_pd_op "${onednn_op_header_file}"
+#                                  "${onednn_op_source_file}")
 
 set(api_gen_yaml_files
     ${op_fwd_yaml},${op_bwd_yaml},${pir_op_fwd_yaml},${pir_op_bwd_yaml},${pir_update_op_fwd_yaml}
