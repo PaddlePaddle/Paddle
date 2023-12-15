@@ -136,6 +136,8 @@ PD_REGISTER_KERNEL(flash_attn_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::FlashAttnGradKernel,
-                   phi::dtype::bfloat16) {
+                   phi::dtype::bfloat16,
+                   float,
+                   phi::dtype::float16) {
   kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);  // seed_offset
 }

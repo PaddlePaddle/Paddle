@@ -127,8 +127,13 @@ void FlashAttnKernel(const Context& ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    flash_attn, XPU, ALL_LAYOUT, phi::FlashAttnKernel, phi::dtype::bfloat16) {
+PD_REGISTER_KERNEL(flash_attn,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::FlashAttnKernel,
+                   phi::dtype::bfloat16,
+                   float,
+                   phi::dtype::float16) {
   kernel->InputAt(3).SetBackend(
       phi::Backend::ALL_BACKEND);  // fixed_seed_offset
 }

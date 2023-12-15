@@ -69,13 +69,13 @@ class TestFlashAttentionAPI(unittest.TestCase):
     def setUp(self):
         self.place = paddle.XPUPlace(0)
         self.shape = (1, 128, 2, 32)
+        # TODO(houj04): add more dtypes
         self.dtype = 'bfloat16'
         self.dropout = 0.0
         self.causal = True
         self.return_softmax = False
 
     def test_all(self):
-        print(f"Test case shape {self.shape} dtype {self.dtype}")
         # test dynamic
         paddle.disable_static()
 
@@ -135,7 +135,7 @@ class TestFlashAttentionAPI(unittest.TestCase):
         float_v_grad = convert_uint16_to_float(v.grad)
         float_v_grad_ = convert_uint16_to_float(v_.grad)
 
-        # TODO(houj04) fix ut threshold
+        # TODO(houj04): fix ut threshold
         np.testing.assert_allclose(
             float_q_grad, float_q_grad_, rtol=1e-01, atol=1e-01
         )

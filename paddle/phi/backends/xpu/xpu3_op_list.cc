@@ -383,8 +383,14 @@ XPUOpMap& get_kl3_ops() {
                      phi::DataType::FLOAT16,
                      phi::DataType::BFLOAT16})},
 #ifdef PADDLE_WITH_XPU_XHPC
-      {"flash_attn_grad", XPUKernelSet({phi::DataType::BFLOAT16})},
-      {"flash_attn", XPUKernelSet({phi::DataType::BFLOAT16})},
+      {"flash_attn_grad",
+       XPUKernelSet({phi::DataType::BFLOAT16,
+                     phi::DataType::FLOAT32,
+                     phi::DataType::FLOAT16})},
+      {"flash_attn",
+       XPUKernelSet({phi::DataType::BFLOAT16,
+                     phi::DataType::FLOAT32,
+                     phi::DataType::FLOAT16})},
 #endif
       {"flatten2_grad",
        XPUKernelSet({phi::DataType::INT64,
