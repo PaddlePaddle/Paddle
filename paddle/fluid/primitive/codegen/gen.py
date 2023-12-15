@@ -86,6 +86,9 @@ CUSTOM_VJP = [
     'softmax_grad',
     'sqrt_grad',
     'relu_grad',
+    'hardswish_grad',
+    'leaky_relu_grad',
+    'sigmoid_grad',
 ]  # custom vjp list of composite op
 VJP_COMPS = PRIM_VJP + CUSTOM_VJP
 

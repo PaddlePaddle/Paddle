@@ -3173,7 +3173,7 @@ class OpTest(unittest.TestCase):
             if tensor_ndim > 0 and tensor_size < 100:
                 self.__class__.input_shape_is_large = False
 
-        if not type(output_names) is list:
+        if type(output_names) is not list:
             output_names = [output_names]
 
         if numeric_place is None:

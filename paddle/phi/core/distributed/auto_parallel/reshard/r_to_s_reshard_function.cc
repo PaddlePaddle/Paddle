@@ -129,8 +129,8 @@ void RToSReshardFunctionCrossMesh::Eval(phi::DeviceContext* dev_ctx,
     r_to_s_func.Eval(dev_ctx, in, in_dist_attr_shard, &tmp_result);
   } else {
     SetDistProps(&tmp_result, in.dims(), in_dist_attr_shard);
+    SetValue(&tmp_result, in.value());
   }
-
   SameStatusReshardFunction same_status_func;
   PADDLE_ENFORCE(
       same_status_func.IsSuitable(tmp_result, out_dist_attr),

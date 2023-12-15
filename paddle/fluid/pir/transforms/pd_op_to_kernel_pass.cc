@@ -105,6 +105,7 @@ const std::unordered_set<std::string> SpecialLowerOps = {
     pir::TuplePushOp::name(),
     pir::TuplePopOp::name(),
     HasElementsOp::name(),
+    SelectInputOp::name(),
     "cinn_runtime.jit_kernel"};
 
 static bool NeedFallBackCpu(const pir::Operation* op,
@@ -997,6 +998,20 @@ pir::Value GetNewInput(
   return new_in;
 }
 
+phi::Place ParsePhiPlace(pir::Type type) {
+  if (type.isa<AllocatedDenseTensorType>()) {
+    return type.dyn_cast<AllocatedDenseTensorType>().place();
+  } else if (type.isa<AllocatedSelectedRowsType>()) {
+    return type.dyn_cast<AllocatedSelectedRowsType>().place();
+  } else if (type.isa<AllocatedDenseTensorArrayType>()) {
+    return type.dyn_cast<AllocatedDenseTensorArrayType>().place();
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "ParsePhiPlace only support AllocatedDenseTensorType or "
+        "AllocatedSelectedRowsType or AllocatedDenseTensorArrayType"));
+  }
+}
+
 void HandleForSpecialOp(
     const phi::Place& place,
     pir::Operation* op_item,
@@ -1219,6 +1234,18 @@ void HandleForSpecialOp(
       auto new_inlet_element = map_value_pair->at(cur_inlet_element);
 
       op_output_types.push_back(new_inlet_element.type());
+    }
+  }
+
+  if (op_item->isa<SelectInputOp>()) {
+    for (size_t i = 0; i < op_item->num_operands(); ++i) {
+      auto cur_in = op_item->operand_source(i);
+      auto new_in = GetNewInput(
+          cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
+      vec_inputs.push_back(new_in);
+    }
+    for (size_t i = 0; i < op_item->num_results(); ++i) {
+      op_output_types.push_back(vec_inputs[1].type());
     }
   }
 

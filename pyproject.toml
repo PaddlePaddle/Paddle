@@ -15,10 +15,14 @@ exclude = [
     "./python/paddle/utils/gast/**",
 ]
 line-length = 80
-target-version = "py37"
+target-version = "py38"
 
 [tool.ruff.lint]
 select = [
+    # Pycodestyle
+    "E",
+    "W",
+
     # Pyflakes
     "F",
 
@@ -75,6 +79,20 @@ unfixable = [
     "NPY001"
 ]
 ignore = [
+    # Whitespace before ‘,’, ‘;’, or ‘:’, it is not compatible with black
+    "E203",
+    # Module level import not at top of file
+    "E402",
+    # Line too long (82 > 79 characters)
+    "E501",
+    # Do not compare types, use `isinstance()`
+    "E721",
+    # Do not use bare except, specify exception instead
+    "E722",
+    # Do not assign a lambda expression, use a def
+    "E731",
+    # Do not use variables named ‘l’, ‘O’, or ‘I’
+    "E741",
     # `name` may be undefined, or defined from star imports: `module`
     "F405",
     # Local variable name is assigned to but never used
@@ -92,6 +110,10 @@ known-first-party = ["paddle"]
 [tool.ruff.lint.per-file-ignores]
 # Ignore unused imports in __init__.py
 "__init__.py" = ["F401", "I001"]
+# These files need tabs for testing.
+"test/dygraph_to_static/test_legacy_error.py" = ["E101", "W191"]
+# Ignore compare with True in sot unittest
+"test/sot/test_dup_top.py" = ["E712"]
 # Ignore undefined variables in CMake config and some dygraph_to_static tests
 ".cmake-format.py" = ["F821"]
 "test/dygraph_to_static/test_closure_analysis.py" = ["F821"]

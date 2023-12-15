@@ -22,7 +22,9 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/common/ddim.h"
 #include "paddle/common/enforce.h"
+#include "paddle/fluid/distributed/auto_parallel/dist_attr.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/attribute_translator.h"
 #include "paddle/fluid/ir_adaptor/translator/op_compat_info.h"
@@ -641,6 +643,30 @@ OpTranscriber::GenerateOperationOutput(pir::IrContext* ctx,
   return {op_output_types, arg_to_idx};
 }
 
+static void TranslateOpDistAttribute(const OpDesc& op_desc,
+                                     pir::AttributeMap* attr_map) {
+  auto& attribute_translator = AttributeTranslator::instance();
+  const paddle::framework::OperatorDistAttr* dist_attr = op_desc.DistAttr();
+  if (dist_attr) {
+    if (dist_attr->execution_stream() !=
+        paddle::distributed::auto_parallel::kDefault) {
+      pir::Attribute new_attr = attribute_translator(
+          "execution_stream", dist_attr->execution_stream());
+      (*attr_map)["execution_stream"] = new_attr;
+    }
+    if (dist_attr->stream_priority() != 0) {
+      pir::Attribute new_attr =
+          attribute_translator("stream_priority", dist_attr->stream_priority());
+      (*attr_map)["stream_priority"] = new_attr;
+    }
+    if (dist_attr->scheduling_priority() != 0) {
+      pir::Attribute new_attr = attribute_translator(
+          "scheduling_priority", dist_attr->scheduling_priority());
+      (*attr_map)["scheduling_priority"] = new_attr;
+    }
+  }
+}
+
 pir::AttributeMap OpTranscriber::TranslateOpAttribute(
     pir::IrContext* ctx,
     const std::string& normalized_op_name,
@@ -740,6 +766,7 @@ pir::Operation* OpTranscriber::operator()(pir::IrContext* ctx,
 
   auto attribute_map =
       this->TranslateOpAttribute(ctx, op_info.name(), attr_infos, op_desc);
+  TranslateOpDistAttribute(op_desc, &attribute_map);
   VLOG(4) << "[general op][" << op_desc.Type() << "] preparation end.";
 
   pir::Operation* operation = pir::Operation::Create(
@@ -921,6 +948,8 @@ struct AssignValueOpTranscriber : public OpTranscriber {
     pir::Attribute attr_values = attribute_translator(
         attr_info_maps.at("values").type_name, legacy_attr);
     attribute_map["values"] = attr_values;
+
+    TranslateOpDistAttribute(op_desc, &attribute_map);
 
     VLOG(10) << "[op assign_value] attribute translation done";
 
@@ -1216,6 +1245,7 @@ struct FetchOpTranscriber : public OpTranscriber {
         {"col",
          pir::Int32Attribute::get(ctx, op_desc.GetAttrIfExists<int>("col"))},
     };
+    TranslateOpDistAttribute(op_desc, &attribute_map);
 
     op_output_types.push_back(op_inputs[0].type());
     pir::Operation* operation = pir::Operation::Create(
@@ -1250,6 +1280,7 @@ struct ShadowOutputOpTranscriber : public OpTranscriber {
          pir::StrAttribute::get(ctx,
                                 op_desc.GetAttrIfExists<std::string>("name"))},
     };
+    TranslateOpDistAttribute(op_desc, &attribute_map);
 
     pir::Operation* operation =
         pir::Operation::Create(op_inputs, attribute_map, {}, op_info);
@@ -1763,7 +1794,6 @@ struct FillConstant2FullTranscriber : public OpTranscriber {
             paddle::dialect::PlaceAttribute::get(ctx, phi::CPUPlace());
       }
     }
-
     return attribute_map;
   }
 };
@@ -1860,6 +1890,93 @@ struct FillConstantTranscriber : public OpTranscriber {
       return FillConstant2FullWithTensorTranscriber()(
           ctx, param_map, op_desc, block);
     }
+  }
+};
+
+struct SelectInputOpTranscriber : public OpTranscriber {
+  pir::Operation* operator()(pir::IrContext* ctx,
+                             TranslationContext* param_map,
+                             const OpDesc& op_desc,
+                             pir::Block* block) override {
+    VLOG(10) << "[op select_input] start transcribing";
+    auto op_info = this->LoopkUpOpInfo(ctx, op_desc);
+
+    std::vector<pir::Value> op_inputs = {};
+    auto Mask_name = op_desc.Input("Mask")[0];
+    auto& Input_name = op_desc.Input("X");
+    IR_ENFORCE(param_map->count(Mask_name) > 0,
+               "Expected op[%s]'s input %s has been parsed",
+               op_desc.Type(),
+               Mask_name);
+    op_inputs.push_back(param_map->at(Mask_name).value);
+    for (auto in_name : Input_name) {
+      IR_ENFORCE(param_map->count(in_name) > 0,
+                 "Expected op[%s]'s input %s has been parsed",
+                 op_desc.Type(),
+                 in_name);
+      op_inputs.push_back(param_map->at(in_name).value);
+    }
+
+    pir::AttributeMap attribute_map;
+    TranslateOpDistAttribute(op_desc, &attribute_map);
+
+    OpOutputMapping arg_to_idx;
+    OpOutputTypeList op_output_types;
+    auto Out_name = op_desc.Output("Out")[0];
+    VarDesc* var = op_desc.Block()->FindVarRecursive(Out_name);
+    arg_to_idx[var->Name()] = {0, 0};
+
+    // NOTE(zhangbo): Only support
+    auto input1 = op_inputs[1].type();
+    auto input2 = op_inputs[2].type();
+    if (input1 == input2) {
+      op_output_types.push_back(op_inputs[1].type());
+    } else if (input1.isa<paddle::dialect::DenseTensorType>() &&
+               input2.isa<paddle::dialect::DenseTensorType>()) {
+      auto tensor1 = input1.dyn_cast<paddle::dialect::DenseTensorType>();
+      auto tensor2 = input2.dyn_cast<paddle::dialect::DenseTensorType>();
+      if (tensor1.dtype() != tensor2.dtype() ||
+          tensor1.data_layout() != tensor2.data_layout() ||
+          tensor1.lod() != tensor2.lod() ||
+          tensor1.offset() != tensor2.offset()) {
+        IR_THROW(
+            "select_input only support same type or DenseTensorType with "
+            "only different dim, but get dtype:[%s, %s], layout:[%s, %s], "
+            "lod:[%s, %s], offset:[%s, %s].",
+            tensor1.dtype(),
+            tensor2.dtype(),
+            tensor1.data_layout(),
+            tensor2.data_layout(),
+            tensor1.lod(),
+            tensor2.lod(),
+            tensor1.offset(),
+            tensor2.offset());
+      }
+      auto dim1 = input1.dyn_cast<paddle::dialect::DenseTensorType>().dims();
+      auto dim2 = input2.dyn_cast<paddle::dialect::DenseTensorType>().dims();
+      auto dim = common::ComputeCompatibleDim(dim1, dim2);
+      op_output_types.push_back(
+          paddle::dialect::DenseTensorType::get(ctx,
+                                                tensor1.dtype(),
+                                                dim,
+                                                tensor1.data_layout(),
+                                                tensor1.lod(),
+                                                tensor1.offset()));
+    } else {
+      IR_THROW(
+          "select_input only support same type or DenseTensorType with only "
+          "different dim, now is %s != %s.",
+          input1,
+          input2);
+    }
+
+    pir::Operation* operation = pir::Operation::Create(
+        op_inputs, attribute_map, op_output_types, op_info);
+    block->push_back(operation);
+    RecordOpResultMapping(ctx, param_map, op_desc, operation, arg_to_idx);
+
+    VLOG(10) << "[op assign_value] translation finished";
+    return operation;
   }
 };
 
@@ -2736,6 +2853,7 @@ OpTranslator::OpTranslator() {
   special_handlers["tril_triu"] = TrilAndTriuOpTranscriber();
   special_handlers["mul"] = MulOpTranscriber();
   special_handlers["mul_grad"] = MulGradOpTranscriber();
+  special_handlers["select_input"] = SelectInputOpTranscriber();
 
   // To adapt LodTensorArray
   special_handlers["lod_array_length"] = LodArrayLengthOpTranscriber();

@@ -52,6 +52,4 @@ if(NOT CINN_ONLY)
     glog
     cinncore)
 
-  message(STATUS "ADT srcs: ${cinnapi_src}")
-
 endif()

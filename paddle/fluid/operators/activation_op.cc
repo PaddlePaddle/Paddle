@@ -418,11 +418,4 @@ REGISTER_OP_VERSION(softplus).AddCheckpoint(
         .NewAttr("beta", "The beta value of the new formula", 1.0f)
         .NewAttr("threshold", "The threshold value of the new formula", 20.0f));
 
-REGISTER_OP_VERSION(mish).AddCheckpoint(
-    R"ROC(add new attributes [use_mkldnn], and when computing softplus the formula is changed as the new veriosn of softplus)ROC",
-    paddle::framework::compatible::OpVersionDesc().NewAttr(
-        "use_mkldnn",
-        "(bool, default false) Only used in mkldnn kernel",
-        false));
-
 /* ========================================================================== */

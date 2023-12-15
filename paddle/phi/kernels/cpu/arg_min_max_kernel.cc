@@ -111,7 +111,7 @@ struct VisitDataArgMinMaxFunctor {
 
     switch (x_dims.size()) {
       case 0:
-        phi::funcs::set_constant(dev_ctx, out, 0);
+        phi::funcs::set_constant(dev_ctx, out, static_cast<Tout>(0));
         return;
       case 1:
         CALL_ARG_MINMAX_FUNCTOR(1);
@@ -153,6 +153,11 @@ void ArgMinMaxKernel(const Context& dev_ctx,
                      bool flatten,
                      DataType dtype,
                      DenseTensor* out) {
+  PADDLE_ENFORCE_GT(
+      x.numel(),
+      0,
+      phi::errors::InvalidArgument(
+          "argmin/argmax input numel must > 0, bug got %d", x.numel()));
   if (dtype == DataType::UNDEFINED) {
     phi::VisitDataTypeTiny(
         phi::DataType::INT64,
