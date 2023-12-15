@@ -72,8 +72,8 @@ class TestBuildModuleWithWhileOp(unittest.TestCase):
             ]
             self.assertEqual(len(while_input), 4)
             while_input_stop_graditents = [[True], [False], [True], [True]]
-            while_output = [while_op.results()]
-            while_output_grad = [[out_grad, out_grad]]
+            while_output = [[value] for value in while_op.results()]
+            while_output_grad = [[out_grad], [out_grad], [out_grad]]
             self.assertEqual(has_vjp(while_op), True)
             grad_outs = call_vjp(
                 while_op,
@@ -90,16 +90,17 @@ class TestBuildModuleWithWhileOp(unittest.TestCase):
             while_grad_output = while_grad_op.results()
             self.assertEqual(len(while_grad_output), 1)
 
-        def test_while_base_backward(self):
-            main_program = self.construct_program_with_while()
-            full_op1 = main_program.global_block().ops[0]
-            while_op = main_program.global_block().ops[-1]
-            with paddle.pir.core.program_guard(main_program):
-                out = while_op.result(0) + 1
-                grad_outs = grad(
-                    out,
-                    [full_op1.result(0)],
-                )
+    def test_while_base_backward(self):
+        main_program = self.construct_program_with_while()
+        full_op1 = main_program.global_block().ops[0]
+        while_op = main_program.global_block().ops[-1]
+        with paddle.pir.core.program_guard(main_program):
+            out = while_op.result(0) + 1
+            grad_outs = grad(
+                out,
+                [full_op1.result(0)],
+            )
+            print(main_program)
 
 
 if __name__ == "__main__":

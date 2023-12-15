@@ -449,6 +449,23 @@ def append_backward_ops(
             outputs.append(new_value)
             output_grads.append(state.value_to_valuegrad[value][0])
 
+        if op.name() == "pd_op.while":
+            for i, input in enumerate(get_real_op_inputs(op)):
+                if i <= len(op.results()):
+                    continue
+                if (
+                    input in state.value_to_valuegrad
+                    and len(state.value_to_valuegrad[input]) > 1
+                ):
+                    append_add_n(input)
+
+                if (
+                    input not in state.value_to_valuegrad
+                    or state.value_to_valuegrad[input] == []
+                ):
+                    append_full_like(0.0, input, input, state, backward_ops)
+                output_grads.append(state.value_to_valuegrad[input][0])
+
         return zero_flag, outputs, output_grads
 
     def make_input_with_input_stopgradient(op):
@@ -576,7 +593,7 @@ def append_backward_ops(
     # [op4] (op4's inputs and outputs are not vectorType)
 
     # -----------------only for control flow-----------------#
-    # tuple_push value to pop value
+    # tuple_push value to tuple_pop value
     control_flow_value_to_copyvalue_map = {}
 
     if (
