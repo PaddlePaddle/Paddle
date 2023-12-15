@@ -80,10 +80,12 @@ void TuplePushInstruction::Run() {
       int stack_size = tuple_push_op_.tuple_size();
 
       auto var_name = value_2_var_name.at(inlet_element_value);
-      std::string new_name = var_name + "copied_" +
-                             std::to_string(stack_element_var_array_->size());
+      auto num_str = std::to_string(stack_element_var_array_->size());
+      std::string new_name = var_name + "_copied_" + num_str;
       auto* copy_var = value_exe_info_->GetScope()->Var(new_name);
-      DeepCopyVariable(var, copy_var, value_exe_info_, stack_size);
+      bool is_optional = (inlet_element_value.impl() == nullptr ||
+                          !inlet_element_value.type());
+      DeepCopyVariable(var, copy_var, value_exe_info_, stack_size, is_optional);
       VLOG(10) << "done DeepCopyVariable " << new_name;
       stack_element_var_array_->emplace_back(copy_var);
       VLOG(6) << "push back var: " << new_name << "[" << copy_var << "]";
