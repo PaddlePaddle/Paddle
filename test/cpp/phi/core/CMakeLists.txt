@@ -70,15 +70,15 @@ if(WITH_GPU)
   nv_test(
     test_mixed_vector
     SRCS test_mixed_vector.cc test_mixed_vector.cu
-    DEPS place memory phi common tensor)
+    DEPS place phi common tensor)
 elseif(WITH_ROCM)
   hip_test(
     test_mixed_vector
     SRCS test_mixed_vector.cc test_mixed_vector.cu
-    DEPS place memory phi common tensor)
+    DEPS place phi common tensor)
 else()
   cc_test(
     test_mixed_vector
     SRCS test_mixed_vector.cc
-    DEPS place memory phi common tensor)
+    DEPS place phi common tensor)
 endif()

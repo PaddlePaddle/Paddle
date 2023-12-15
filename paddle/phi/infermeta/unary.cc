@@ -590,21 +590,6 @@ void CumWithIndicesInferMeta(const MetaTensor& x,
       phi::errors::InvalidArgument(
           "dtype of indices must be DataType::INT32 or DataType::INT64"));
 
-  if (dtype == DataType::INT32) {
-    int _axis = 0;
-    if (axis < 0) {
-      _axis = axis + x_dims.size();
-    } else {
-      _axis = axis;
-    }
-    PADDLE_ENFORCE_LT(
-        common::vectorize(x_dims)[_axis],
-        INT32_MAX,
-        phi::errors::OutOfRange(
-            "cummax with axis %ld may be overflow, set dtype int64 to continue",
-            axis));
-  }
-
   if (x_dims.size() > 0) {
     PADDLE_ENFORCE_GE(
         axis,
@@ -631,6 +616,21 @@ void CumWithIndicesInferMeta(const MetaTensor& x,
         errors::InvalidArgument("The axis must be -1 or 0 in 0D Tensor, "
                                 "but the value given is %d.",
                                 axis));
+  }
+
+  if (dtype == DataType::INT32) {
+    int _axis = 0;
+    if (axis < 0) {
+      _axis = axis + x_dims.size();
+    } else {
+      _axis = axis;
+    }
+    PADDLE_ENFORCE_LT(
+        common::vectorize(x_dims)[_axis],
+        INT32_MAX,
+        phi::errors::OutOfRange(
+            "cummax with axis %ld may be overflow, set dtype int64 to continue",
+            axis));
   }
 
   out->set_dims(x_dims);
@@ -663,6 +663,16 @@ void CropInferMeta(const MetaTensor& x,
                         "dimensions (%d) of the input.",
                         shape_dims.size(),
                         x_dim.size()));
+
+  PADDLE_ENFORCE_EQ(
+      offsets_vec.size(),
+      x_dim.size(),
+      errors::InvalidArgument(
+          "The number of elements (%d) of attribute 'offsets' for "
+          "CropTensor must be equal to the number of "
+          "dimensions (%d) of the input.",
+          offsets_vec.size(),
+          x_dim.size()));
 
   if (config.is_runtime) {
     out->share_lod(x);

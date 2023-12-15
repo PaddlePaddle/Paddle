@@ -570,6 +570,8 @@ class Engine:
         self._init_comm()
         # startup program
         self._initialize(mode, init_parameters)
+        # mark main program for futher decompose
+        self._mark_prim(mode)
         self._has_prepared[mode] = True
 
     def _build(self, mode):
@@ -882,6 +884,27 @@ class Engine:
                 self._cur_rank
             ]
             self._executor.run(dist_startup_prog)
+
+    # distributed training combined with prim mechanism (prim is behind of distributed)
+    # for local main subprogram after distributed partition,
+    # mark _need_decomp=True to tag this program needs to be decomposed
+    # get _grad_var_to_var from distributed context and set it to main program for futher decomposing in static executor
+    def _mark_prim(self, mode):
+        if os.getenv("FLAGS_enable_prim_after_distribute") in [
+            'True',
+            'true',
+            '1',
+        ]:
+            dist_context = self._dist_contexts[mode]
+            dist_main_program = dist_context.dist_main_programs[self._cur_rank]
+            dist_main_program._need_decomp = True
+            grad_var_to_var = auto_utils.get_grad_var_to_var(
+                dist_context,
+            )
+            auto_utils.update_grad_var_to_var(
+                dist_main_program, self._strategy, grad_var_to_var
+            )
+            dist_main_program._grad_var_to_var = grad_var_to_var
 
     def fit(
         self,
