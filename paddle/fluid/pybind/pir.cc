@@ -1181,7 +1181,9 @@ SplitedResult SplitForwardBackward(
             dtype,
             place);
     counter += 1;
-    backward_value_map[v] = op->results()[0].Value::impl();
+    pir::Value target = op->results()[0].Value::impl();
+    target.set_type(v.type());
+    backward_value_map[v] = target;
   };
 
   auto create_output_fn_forward = [&ctx,
