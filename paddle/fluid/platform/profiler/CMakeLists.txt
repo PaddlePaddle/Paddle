@@ -5,7 +5,7 @@ cc_library(
 cc_library(
   cuda_tracer
   SRCS cuda_tracer.cc cupti_data_process.cc
-  DEPS workqueue_utils enforce glog common)
+  DEPS enforce glog common workqueue_utils)
 cc_library(
   xpu_tracer
   SRCS xpu_tracer.cc
