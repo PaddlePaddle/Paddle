@@ -168,7 +168,9 @@ class TestRNNOp(OpTest):
         }
 
     def test_output(self):
-        self.check_output(no_check_set=['Reserve', 'DropoutState'])
+        self.check_output(
+            no_check_set=['Reserve', 'DropoutState'], check_pir=True
+        )
 
     def set_attrs(self):
         pass
@@ -179,7 +181,9 @@ class TestRNNOp(OpTest):
             grad_check_list = ['Input', 'init_h', 'init_c']
             grad_check_list.extend(var_name_list)
             self.check_grad(
-                set(grad_check_list), ['Out', 'last_hidden', 'last_cell']
+                set(grad_check_list),
+                ['Out', 'last_hidden', 'last_cell'],
+                check_pir=True,
             )
 
     def test_grad_only_input(self):
@@ -188,7 +192,9 @@ class TestRNNOp(OpTest):
             grad_check_list = ['Input']
             grad_check_list.extend(var_name_list)
             self.check_grad(
-                set(grad_check_list), ['Out', 'last_hidden', 'last_cell']
+                set(grad_check_list),
+                ['Out', 'last_hidden', 'last_cell'],
+                check_pir=True,
             )
 
     def test_grad_only_h(self):
@@ -197,7 +203,9 @@ class TestRNNOp(OpTest):
             grad_check_list = ['init_h']
             grad_check_list.extend(var_name_list)
             self.check_grad(
-                set(grad_check_list), ['Out', 'last_hidden', 'last_cell']
+                set(grad_check_list),
+                ['Out', 'last_hidden', 'last_cell'],
+                check_pir=True,
             )
 
     def test_grad_only_c(self):
@@ -206,7 +214,9 @@ class TestRNNOp(OpTest):
             grad_check_list = ['init_c']
             grad_check_list.extend(var_name_list)
             self.check_grad(
-                set(grad_check_list), ['Out', 'last_hidden', 'last_cell']
+                set(grad_check_list),
+                ['Out', 'last_hidden', 'last_cell'],
+                check_pir=True,
             )
 
 
