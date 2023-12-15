@@ -31,6 +31,7 @@ test_suite_list="cpu_tester*" # init test suite list, pass to --gtest_filter
 export RED='\033[0;31m' # red color
 export NC='\033[0m' # no color
 export YELLOW='\033[33m' # yellow color
+export DNNL_VERBOSE=1
 
 cd `dirname $0`
 current_dir=`pwd`
