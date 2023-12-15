@@ -68,7 +68,8 @@ void AssertInstruction::Run() {
   }
 
   funcs::TensorFormatter formatter;
-  formatter.SetSummarize(op_->attribute<int64_t>("summarize"));
+  formatter.SetSummarize(
+      op_->attribute<::pir::Int64Attribute>("summarize").data());
 
   // Choice 1 : print each tensor name
   const std::vector<pir::Value>& inputs_data_val =

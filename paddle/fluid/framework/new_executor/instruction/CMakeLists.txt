@@ -4,6 +4,7 @@ cc_library(
        phi_kernel_instruction.cc
        legacy_kernel_instruction.cc
        cond_instruction.cc
+       assert_instruction.cc
        while_instruction.cc
        has_elements_instruction.cc
        tuple_push_instruction.cc

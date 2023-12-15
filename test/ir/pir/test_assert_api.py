@@ -14,13 +14,15 @@
 
 import unittest
 
+import numpy as np
+
 import paddle
 
 paddle.enable_static()
 
 
 class TestBuildModuleWithAssertOp(unittest.TestCase):
-    def construct_program_with_if(self):
+    def construct_program_with_assert(self):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
@@ -30,10 +32,17 @@ class TestBuildModuleWithAssertOp(unittest.TestCase):
         return main_program
 
     def test_if_with_single_output(self):
-        main_program = self.construct_program_with_if()
+        main_program = self.construct_program_with_assert()
         assert_op = main_program.global_block().ops[-1]
         self.assertEqual(assert_op.name(), "pd_op.assert")
         self.assertEqual(len(assert_op.results()), 0)
+
+    def test_run(self):
+        feed_dict = {"x": np.random.randn(6, 8).astype("float32")}
+        with paddle.pir_utils.IrGuard():
+            main = self.construct_program_with_assert()
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            exe.run(main, feed=feed_dict)
 
 
 if __name__ == "__main__":
