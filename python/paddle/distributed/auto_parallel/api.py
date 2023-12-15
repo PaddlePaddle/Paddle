@@ -15,6 +15,8 @@ import copy
 from collections import defaultdict
 from typing import Callable
 
+import numpy as np
+
 import paddle
 import paddle.distributed as dist
 from paddle import nn
@@ -28,6 +30,7 @@ from paddle.distributed.auto_parallel import Engine, strategy as auto_strategy
 from paddle.distributed.auto_parallel.interface import (
     shard_tensor as shard_tensor_static,
 )
+from paddle.distributed.auto_parallel.placement_type import to_placements
 from paddle.distributed.auto_parallel.static.completion import (
     mark_as_sharding_propagation_skip_op,
 )
@@ -37,10 +40,11 @@ from paddle.distributed.auto_parallel.static.dist_context import (
 from paddle.distributed.auto_parallel.static.dist_op import DistributedOperator
 from paddle.distributed.auto_parallel.static.utils import (
     convert_to_dims_mapping,
+    get_dist_attr,
 )
 from paddle.framework import core
 
-from .placement_type import get_shard_spec
+from .placement_type import check_placements_equal, get_shard_spec
 
 # There are the auto parallel API of the unified version of dynamic and static mode.
 # Some APIs have the same name with the previous APIs implementation, which are
@@ -294,6 +298,7 @@ class DistModel:
         inner_strategy.sharding = copy.deepcopy(strategy.sharding)
         inner_strategy.gradient_merge = copy.deepcopy(strategy.gradient_merge)
         inner_strategy.pipeline = copy.deepcopy(strategy.pipeline)
+        inner_strategy.recompute = copy.deepcopy(strategy.recompute)
         return inner_strategy
 
     def __call__(self, *args):
@@ -320,6 +325,100 @@ class DistModel:
                 return outs["loss"]
             else:
                 return None
+
+    def state_dict(self, mode="all"):
+        """
+        Get the state dict of model and optimizer.
+
+        Args:
+            mode (str): Can be ['opt', 'param', 'all'],
+                'opt' :  The return value only contains the variable in the optimizer.
+                'param' : The return value only contains the variable in the network, not the variable in the optimizer.
+                'all' : The return value contains the variable in the network and optimizer.
+                Default: 'all'
+        """
+        local_state_dict = self.dist_main_program(
+            mode=self._engine._mode
+        ).state_dict(mode)
+        dist_state_dict = self._build_distributed_state_dict(local_state_dict)
+        return dist_state_dict
+
+    def _build_distributed_state_dict(self, local_state_dict):
+        """
+        Args:
+            local_state_dict(Dict[str, libpaddle.Tensor]): The state dict from program.
+        """
+        dist_main_program = self.dist_main_program(mode=self._engine._mode)
+        dist_context = self._engine._dist_contexts[self._mode]
+        # Dict[var.name, Dict["process_shape": process_mesh.shape, "process_group": process_mesh.process_ids, "dims_mapping": dims_mapping]]
+        dist_attrs = get_dist_attr(dist_main_program, dist_context)
+
+        def build_distributed_tensor(local_tensor, dist_attr):
+            assert isinstance(
+                local_tensor, (paddle.Tensor, np.ndarray, paddle.base.Tensor)
+            )
+            if not isinstance(local_tensor, paddle.Tensor):
+                local_tensor = paddle.Tensor(local_tensor)
+            assert isinstance(
+                local_tensor, paddle.Tensor
+            ), f"local tensor:{local_tensor} type {type(local_tensor)} is not paddle.Tensor."
+            assert len(local_tensor.shape) == len(
+                dist_attr["dims_mapping"]
+            ), f"local tensor shape {local_tensor.shape} not equal to dims_mapping shape {dist_attr['dims_mapping']}."
+            global_shape = local_tensor.shape
+            for i, dim in enumerate(dist_attr["dims_mapping"]):
+                assert dim >= -1 and dim < len(
+                    local_tensor.shape
+                ), f"dim {dim} out of range."
+                if dim == -1:
+                    continue
+                elif dim >= 0:
+                    global_shape[i] = (
+                        dist_attr["process_shape"][dim] * local_tensor.shape[i]
+                    )
+                else:
+                    raise ValueError(f"dim {dim} is not supported.")
+            # TODO(pangengzheng): construct dist_tensor with _dtensor_from_local api when it is ready.
+            global_tensor = paddle.zeros(global_shape, dtype=local_tensor.dtype)
+            mesh = dist.ProcessMesh(
+                np.array(dist_attr["process_group"]).reshape(
+                    dist_attr["process_shape"]
+                )
+            )
+            placements = to_placements(dist_attr["dims_mapping"], mesh)
+            dist_tensor = dist.shard_tensor(global_tensor, mesh, placements)
+            assert (
+                dist_tensor._local_value().shape == local_tensor.shape
+            ), f"local tensor shape {dist_tensor._local_value().shape} not equal to local_tensor.shape:{local_tensor.shape}"
+            paddle.assign(local_tensor, dist_tensor._local_value())
+            return dist_tensor
+
+        global_state_dict = {}
+        with paddle.base.dygraph.guard():
+            for var_name, tensor in local_state_dict.items():
+                assert (
+                    var_name in dist_attrs
+                ), f"var {var_name} not in dist attrs:{dist_attrs}."
+                global_state_dict[var_name] = build_distributed_tensor(
+                    tensor, dist_attrs[var_name]
+                )
+        return global_state_dict
+
+    def set_state_dict(self, state_dict):
+        local_state_dict = {}
+        dist_main_program = self.dist_main_program(mode=self._engine._mode)
+        cur_state_dict = self.state_dict()
+        for k, v in state_dict.items():
+            assert v.is_dist(), f"key {k} value:{v} is not a dist tensor."
+            if k in cur_state_dict:
+                cur_v = cur_state_dict[k]
+                assert v.process_mesh == cur_state_dict[
+                    k
+                ].process_mesh or check_placements_equal(
+                    v.placements, cur_v.placements
+                ), f"process_mesh:{v.process_mesh} != {cur_v.process_mesh} or placements:{v.placements} != {cur_v.placements} not match"
+            local_state_dict[k] = v._local_value()
+        dist_main_program.set_state_dict(local_state_dict)
 
 
 # Part2: DistTensor construction related APIs
@@ -421,6 +520,11 @@ class Strategy(auto_strategy.BaseConfig):
         )
         self._fused_passes = FusePasses(config_dict)
 
+        config_dict = self._config_dict.get(
+            auto_strategy.constants.RECOMPUTE, None
+        )
+        self._recompute = auto_strategy.RecomputeConfig(config_dict)
+
     @property
     def sharding(self):
         """
@@ -437,6 +541,7 @@ class Strategy(auto_strategy.BaseConfig):
 
         Examples:
             .. code-block:: python
+
                 >>> import paddle
                 >>> import paddle.distributed as dist
 
@@ -462,6 +567,7 @@ class Strategy(auto_strategy.BaseConfig):
 
         Examples:
             .. code-block:: python
+
                 >>> import paddle
                 >>> import paddle.distributed as dist
 
@@ -488,6 +594,7 @@ class Strategy(auto_strategy.BaseConfig):
 
         Examples:
             .. code-block:: python
+
                 >>> import paddle
                 >>> import paddle.distributed as dist
 
@@ -515,6 +622,7 @@ class Strategy(auto_strategy.BaseConfig):
 
         Examples:
             .. code-block:: python
+
                 >>> import paddle
                 >>> import paddle.distributed as dist
 
@@ -524,6 +632,10 @@ class Strategy(auto_strategy.BaseConfig):
                 >>> strategy.pipeline.micro_batch_size = 2
         """
         return self._pipeline
+
+    @property
+    def recompute(self):
+        return self._recompute
 
 
 def to_static(
@@ -563,6 +675,7 @@ def to_static(
 
     Examples:
         .. code-block:: python
+
             >>> import numpy as np
             >>> import paddle
             >>> import paddle.distributed as dist
