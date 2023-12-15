@@ -18,6 +18,8 @@
 #include "paddle/pir/dialect/shape/utils/shape_optimization_utils.h"
 #include "paddle/pir/dialect/shape/utils/symbol_table.h"
 
+#include "paddle/pir/dialect/shape/utils/dim_expr.h"
+
 namespace pir {
 
 // Helper class to query and manipulate shape constraint IR on buffer level.
@@ -76,6 +78,19 @@ class IR_API ShapeConstraintIRAnalysis : public ShapeAnalysis {
 
   symbol::DimExprBuilder CreateDimExprBuilder() override;
 
+  bool HasValueShapeDimExprs(Value value) const {
+    return value_to_value_shape_dim_exprs_.find(value)
+           != value_to_value_shape_dim_exprs_.end();
+  }
+
+  const symbol::ValueShapeDimExprs& GetValueShapeDimExprs(Value value) const {
+    return value_to_value_shape_dim_exprs_.at(value);
+  }
+
+  void SetValueShapeDimExprs(Value value, const symbol::ValueShapeDimExprs& value_shape_dim_exprs) {
+    value_to_value_shape_dim_exprs_[value] = value_shape_dim_exprs;
+  }
+
  private:
   // The operation this analysis runs on.
   ModuleOp m_;
@@ -85,6 +100,8 @@ class IR_API ShapeConstraintIRAnalysis : public ShapeAnalysis {
   // dimension size of the memref value.
   std::unordered_map<Value, std::vector<shape::SymbolicDimOp>>
       value_to_sym_dims_;
+  std::unordered_map<Value, symbol::ValueShapeDimExprs>
+      value_to_value_shape_dim_exprs_;
   std::vector<symbol::DimExprConstraint> constraints_;
 
  public:
