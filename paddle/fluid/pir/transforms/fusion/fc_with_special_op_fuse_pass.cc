@@ -12,13 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/transforms/fusion/multiple_fc_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/fc_with_special_op_fuse_pass.h"
+
 #include "paddle/common/ddim.h"
+
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
+
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_registry.h"
@@ -110,277 +113,6 @@ class SqueezeFcFusePattern
        {&res.Tensor("add_out")});
   }
 };
-
-// class ReshapeFcFuseWithCombinePattern
-//     : public pir::drr::DrrPatternBase<ReshapeFcFuseWithCombinePattern> {
-//  public:
-//   void operator()(pir::drr::DrrPatternContext *ctx) const override {
-//     pir::drr::SourcePattern pat = ctx->SourcePattern();
-//     const auto &combine = pat.Op(pir::CombineOp::name());
-//     const auto &reshape_op = pat.Op(paddle::dialect::ReshapeOp::name());
-//     const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
-//                                 {{"transpose_x", pat.Attr("transpose_x")},
-//                                  {"transpose_y", pat.Attr("transpose_y")}});
-//     const auto &add = pat.Op(paddle::dialect::AddOp::name());
-//     combine({&pat.Tensor("combine_vec_in")}, {&pat.Tensor("shape")});
-//     reshape_op({&pat.Tensor("x"), &pat.Tensor("shape")},
-//                {&pat.Tensor("reshape_out"), &pat.Tensor("xshape")});
-//     matmul({&pat.Tensor("reshape_out"), &pat.Tensor("w")},
-//            {&pat.Tensor("matmul_out")});
-//     pat.Tensor("add_out") = add(pat.Tensor("matmul_out"),
-//     pat.Tensor("bias"));
-//     // Constrains the activation is none
-//     pat.RequireNativeCall([&](const pir::drr::MatchContext &match_ctx) {
-//       // 1.shape的维度不能使整个数组增长
-//       // 2.shape 中不能出现0
-//       // 3.shape 中需要连续
-//       if (match_ctx.Tensor("x").Shape().size() <
-//           match_ctx.Tensor("reshape_out").Shape().size()) {
-//         return false;
-//       }
-//       auto shape_type =
-//           dynamic_cast<const pir::drr::IrValue &>(match_ctx.Tensor("shape"))
-//               .get()
-//               .type();
-//       if (shape_type.isa<pir::VectorType>()) {
-//         int target = match_ctx.Tensor("w").Shape().at(0);
-//         int shape_size = shape_type.dyn_cast<pir::VectorType>().size();
-//         if (shape_size < 2) {
-//           return false;
-//         }
-//         //1,不能存在0
-//         int mul = 1;
-//         for (int i = shape_type.dyn_cast<pir::VectorType>().size() - 1; i >
-//         0; i--) {
-//           mul = mul*shape_type.dyn_cast<pir::VectorType>()[i];
-//         }
-//         if (mul==0){
-//           return false;
-//         }
-//         mul=1;
-//         for (int i = shape_type.dyn_cast<pir::VectorType>().size() - 1; i >
-//         0; i--) {
-//           mul = mul*shape_type.dyn_cast<pir::VectorType>()[i];
-//           if(mul < 0){
-//             return false;
-//           }
-//           if (mul > target) {
-//             // shape中必须连续相乘
-//             return false;
-//           }
-//           if (mul == target) {
-//             break;
-//           }
-//         }
-//       }
-
-//       if (match_ctx.Tensor("w").Shape().size() != 2 ||
-//           match_ctx.Tensor("reshape_out").Shape().size() < 2 ||
-//           match_ctx.Attr<bool>("transpose_x") == true ||
-//           match_ctx.Attr<bool>("transpose_y") == true) {
-//         return false;
-//       }
-//       if (match_ctx.Tensor("reshape_out").Shape().size() > 0 &&
-//           match_ctx.Tensor("reshape_out")
-//                   .Shape()
-//                   .at(match_ctx.Tensor("reshape_out").Shape().size() - 1) !=
-//               match_ctx.Tensor("w").Shape().at(0)) {
-//         return false;
-//       }
-//       if (match_ctx.Tensor("bias").Shape().size() == 1) {
-//         return match_ctx.Tensor("bias").Shape().at(0) ==
-//                match_ctx.Tensor("w").Shape().at(1);
-//       }
-//       if (match_ctx.Tensor("bias").Shape().size() == 2) {
-//         return match_ctx.Tensor("bias").Shape().at(0) == 1 &&
-//                match_ctx.Tensor("bias").Shape().at(1) ==
-//                    match_ctx.Tensor("w").Shape().at(1);
-//       }
-//       return false;
-//     });
-
-//     pir::drr::ResultPattern res = pat.ResultPattern();
-
-//     const auto &in_num_col_dims_attr =
-//         res.Attr([](const pir::drr::MatchContext &match_ctx) -> int32_t {
-//           auto shape_type =
-//               dynamic_cast<const pir::drr::IrValue
-//               &>(match_ctx.Tensor("shape"))
-//                   .get()
-//                   .type();
-//           if (shape_type.isa<pir::VectorType>()) {
-//             return static_cast<int32_t>(
-//                 shape_type.dyn_cast<pir::VectorType>().size() - 1);
-//           }
-//         });
-//     const auto &false_attr = res.Attr(
-//         [](const pir::drr::MatchContext &match_ctx) -> bool { return false;
-//         });
-
-//     const auto &fc = res.Op(
-//         paddle::dialect::FcOp::name(),
-//         {{
-//             {"in_num_col_dims", in_num_col_dims_attr},
-//             {"activation_type",
-//              res.Attr([](const pir::drr::MatchContext &match_ctx)
-//                           -> std::string { return ""; })},
-//             {"use_mkldnn", false_attr},
-//             {"padding_weights", false_attr},
-//             {"use_quantizer", false_attr},
-//             {"mkldnn_data_type",
-//              res.Attr([](const pir::drr::MatchContext &match_ctx)
-//                           -> std::string { return "float32"; })},
-//             {"scale_in",
-//              res.Attr([](const pir::drr::MatchContext &match_ctx) -> float {
-//                return 1.0f;
-//              })},
-//             {"scale_weights",
-//              res.Attr([](const pir::drr::MatchContext &match_ctx)
-//                           -> std::vector<float> { return {1.0f}; })},
-//             {"scale_out",
-//              res.Attr([](const pir::drr::MatchContext &match_ctx) -> float {
-//                return 1.0f;
-//              })},
-//             {"force_fp32_output", false_attr},
-//         }});
-//     fc({&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("bias")},
-//        {&res.Tensor("add_out")});
-//   }
-// };
-
-// class ReshapeFcFuseWithArrayPattern
-//     : public pir::drr::DrrPatternBase<ReshapeFcFuseWithArrayPattern> {
-//  public:
-//   void operator()(pir::drr::DrrPatternContext *ctx) const override {
-//     pir::drr::SourcePattern pat = ctx->SourcePattern();
-//     const auto &full_int_array_op = pat.Op(pir::FullIntArrayOp::name(),
-//                                 {
-//                                   {"value",pat.Attr("value")},
-//                                   {"dtype",pat.Attr("dtype")},
-//                                   {"place",pat.Attr("place")}});
-//     const auto &reshape_op = pat.Op(paddle::dialect::ReshapeOp::name());
-//     const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
-//                                 {{"transpose_x", pat.Attr("transpose_x")},
-//                                  {"transpose_y", pat.Attr("transpose_y")}});
-//     const auto &add = pat.Op(paddle::dialect::AddOp::name());
-//     full_int_array_op({}, {&pat.Tensor("shape")});
-//     reshape_op({&pat.Tensor("x"), &pat.Tensor("shape")},
-//                {&pat.Tensor("reshape_out"), &pat.Tensor("xshape")});
-//     matmul({&pat.Tensor("reshape_out"), &pat.Tensor("w")},
-//            {&pat.Tensor("matmul_out")});
-//     pat.Tensor("add_out") = add(pat.Tensor("matmul_out"),
-//     pat.Tensor("bias"));
-//     // Constrains the activation is none
-//     pat.RequireNativeCall([&](const pir::drr::MatchContext &match_ctx) {
-//       // 1.shape的维度不能使整个数组增长
-//       // 2.shape 中不能出现0
-//       // 3.shape 中需要连续
-//       if (match_ctx.Tensor("x").Shape().size() <
-//           match_ctx.Tensor("reshape_out").Shape().size()) {
-//         return false;
-//       }
-//       auto value_vec = match_ctx.Attr<vector<int64_t>>("value");
-//       int target = match_ctx.Tensor("w").Shape().at(0);
-//       int shape_size = value_vec.size();
-//       if (shape_size < 2) {
-//         return false;
-//       }
-//       //1,不能存在0
-//       int mul = 1;
-//       for (int i = value_vec.size() - 1; i > 0; i--) {
-//         mul *= value_vec[i];
-//       }
-//       if (mul==0){
-//         return false;
-//       }
-//       mul=1;
-//       for (int i = value_vec.size() - 1; i > 0; i--) {
-//         mul *= value_vec[i];
-//         if(mul < 0){
-//           return false;
-//         }
-//         if (mul > target) {
-//           // shape中必须连续相乘
-//           return false;
-//         }
-//         if (mul == target) {
-//           break;
-//         }
-//       }
-
-//       if (match_ctx.Tensor("w").Shape().size() != 2 ||
-//           match_ctx.Tensor("reshape_out").Shape().size() < 2 ||
-//           match_ctx.Attr<bool>("transpose_x") == true ||
-//           match_ctx.Attr<bool>("transpose_y") == true) {
-//         return false;
-//       }
-//       if (match_ctx.Tensor("reshape_out").Shape().size() > 0 &&
-//           match_ctx.Tensor("reshape_out")
-//                   .Shape()
-//                   .at(match_ctx.Tensor("reshape_out").Shape().size() - 1) !=
-//               match_ctx.Tensor("w").Shape().at(0)) {
-//         return false;
-//       }
-//       if (match_ctx.Tensor("bias").Shape().size() == 1) {
-//         return match_ctx.Tensor("bias").Shape().at(0) ==
-//                match_ctx.Tensor("w").Shape().at(1);
-//       }
-//       if (match_ctx.Tensor("bias").Shape().size() == 2) {
-//         return match_ctx.Tensor("bias").Shape().at(0) == 1 &&
-//                match_ctx.Tensor("bias").Shape().at(1) ==
-//                    match_ctx.Tensor("w").Shape().at(1);
-//       }
-//       return false;
-//     });
-
-//     pir::drr::ResultPattern res = pat.ResultPattern();
-
-//     const auto &in_num_col_dims_attr =
-//         res.Attr([](const pir::drr::MatchContext &match_ctx) -> int32_t {
-//           auto shape_type =
-//               dynamic_cast<const pir::drr::IrValue
-//               &>(match_ctx.Tensor("shape"))
-//                   .get()
-//                   .type();
-//           if (shape_type.isa<pir::VectorType>()) {
-//             return static_cast<int32_t>(
-//                 shape_type.dyn_cast<pir::VectorType>().size() - 1);
-//           }
-//         });
-//     const auto &false_attr = res.Attr(
-//         [](const pir::drr::MatchContext &match_ctx) -> bool { return false;
-//         });
-
-//     const auto &fc = res.Op(
-//         paddle::dialect::FcOp::name(),
-//         {{
-//             {"in_num_col_dims", in_num_col_dims_attr},
-//             {"activation_type",
-//              res.Attr([](const pir::drr::MatchContext &match_ctx)
-//                           -> std::string { return ""; })},
-//             {"use_mkldnn", false_attr},
-//             {"padding_weights", false_attr},
-//             {"use_quantizer", false_attr},
-//             {"mkldnn_data_type",
-//              res.Attr([](const pir::drr::MatchContext &match_ctx)
-//                           -> std::string { return "float32"; })},
-//             {"scale_in",
-//              res.Attr([](const pir::drr::MatchContext &match_ctx) -> float {
-//                return 1.0f;
-//              })},
-//             {"scale_weights",
-//              res.Attr([](const pir::drr::MatchContext &match_ctx)
-//                           -> std::vector<float> { return {1.0f}; })},
-//             {"scale_out",
-//              res.Attr([](const pir::drr::MatchContext &match_ctx) -> float {
-//                return 1.0f;
-//              })},
-//             {"force_fp32_output", false_attr},
-//         }});
-//     fc({&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("bias")},
-//        {&res.Tensor("add_out")});
-//   }
-// };
 
 class ReshapeFcFusePattern
     : public pir::drr::DrrPatternBase<ReshapeFcFusePattern> {
@@ -603,15 +335,14 @@ class FlattenFcFusePattern
   }
 };
 
-class MultipleFcFusePass : public pir::PatternRewritePass {
+class FcWithSpecialOpFusePass : public pir::PatternRewritePass {
  public:
-  MultipleFcFusePass() : pir::PatternRewritePass("multiple_fc_fuse_pass", 2) {}
+  FcWithSpecialOpFusePass()
+      : pir::PatternRewritePass("fc_with_special_op_fuse_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
     ps.Add(SqueezeFcFusePattern().Build(context));
-    // ps.Add(ReshapeFcFuseWithCombinePattern().Build(context));
-    // ps.Add(ReshapeFcFuseWithArrayPattern().Build(context));
     ps.Add(ReshapeFcFusePattern().Build(context));
     ps.Add(FlattenFcFusePattern().Build(context));
     return ps;
@@ -622,10 +353,10 @@ class MultipleFcFusePass : public pir::PatternRewritePass {
 
 namespace pir {
 
-std::unique_ptr<Pass> CreateMultipleFcFusePass() {
-  return std::make_unique<MultipleFcFusePass>();
+std::unique_ptr<Pass> CreateFcWithSpecialOpFusePass() {
+  return std::make_unique<FcWithSpecialOpFusePass>();
 }
 
 }  // namespace pir
 
-REGISTER_IR_PASS(multiple_fc_fuse_pass, MultipleFcFusePass);
+REGISTER_IR_PASS(fc_with_special_op_fuse_pass, FcWithSpecialOpFusePass);

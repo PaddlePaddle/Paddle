@@ -59,7 +59,7 @@ class TestSqueezeFcFusePattern(PassTest):
 
                     out = paddle.add(paddle.matmul(paddle.squeeze(x), w), y)
 
-            self.pass_list = ['multiple_fc_fuse_pass']
+            self.pass_list = ['fc_with_special_op_fuse_pass']
             self.feeds = {
                 "x": np.random.random([3, 255, 1, 1]).astype("float32"),
                 "w": np.random.random([255, 128]).astype("float32"),
@@ -126,7 +126,7 @@ class TestReshapeFcFusePattern(PassTest):
                         paddle.matmul(paddle.reshape(x, [3, 144, -1]), w), y
                     )
 
-            self.pass_list = ['multiple_fc_fuse_pass']
+            self.pass_list = ['fc_with_special_op_fuse_pass']
             self.feeds = {
                 "x": np.random.random([3, 255, 1, 1]).astype("float32"),
                 "w": np.random.random([255, 128]).astype("float32"),
@@ -193,7 +193,7 @@ class TestFlattenFcFusePattern(PassTest):
                         paddle.matmul(paddle.flatten(x, start_axis=1), w), y
                     )
 
-            self.pass_list = ['multiple_fc_fuse_pass']
+            self.pass_list = ['fc_with_special_op_fuse_pass']
             self.feeds = {
                 "x": np.random.random([3, 255, 1, 1]).astype("float32"),
                 "w": np.random.random([255, 128]).astype("float32"),

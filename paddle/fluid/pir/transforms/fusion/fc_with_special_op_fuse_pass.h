@@ -21,6 +21,6 @@ namespace pir {
 
 class Pass;
 
-IR_API std::unique_ptr<Pass> CreateMultipleFcFusePass();
+IR_API std::unique_ptr<Pass> CreateFcWithSpecialOpFusePass();
 
 }  // namespace pir
