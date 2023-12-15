@@ -207,6 +207,7 @@ class TestCase12(TestSetItemBase):
 
     # TODO: Open PIR test when while_loop dy2st fixed
     @disable_test_case((ToStaticMode.AST, IrMode.PIR))
+    @test_legacy_and_pt_and_pir
     def test_case(self):
         func = self.init_func()
         dy_res = self.run_dygraph(func)
