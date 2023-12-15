@@ -3452,7 +3452,6 @@ function clang-tidy_check() {
     trap 'abort' 0
     set -e
 
-    clang-tidy --version
     current_branch=`git branch | grep \* | cut -d ' ' -f2`
     echo "current_branch : $current_branch"
     num_diff_files=$(git diff --numstat ${BRANCH} | grep -E '\.(c|cc|cxx|cpp|h|hpp|hxx)$' | wc -l)

@@ -210,5 +210,7 @@ RUN wget https://paddle-ci.gz.bcebos.com/ccache-3.7.9.tar.gz && \
     ln -s /usr/local/ccache-3.7.9/bin/ccache /usr/local/bin/ccache && \
     cd ../ && rm -rf ccache-3.7.9 ccache-3.7.9.tar.gz
 
+# To fix 'omp.h' file not found [clang-diagnostic-error] bug in clang-tidy_check
+RUN apt-get install -y libomp5 libomp-dev && apt-get clean -y
 
 EXPOSE 22
