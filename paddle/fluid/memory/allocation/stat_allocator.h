@@ -31,9 +31,11 @@ class StatAllocator : public Allocator {
 
  protected:
   void FreeImpl(phi::Allocation* allocation) override {
-    if (platform::is_cpu_place(allocation->place()) ||
-        platform::is_cuda_pinned_place(allocation->place())) {
+    if (platform::is_cpu_place(allocation->place())) {
       HOST_MEMORY_STAT_UPDATE(
+          Allocated, allocation->place().GetDeviceId(), -allocation->size());
+    } else if (platform::is_cuda_pinned_place(allocation->place())) {
+      PINNED_MEMORY_STAT_UPDATE(
           Allocated, allocation->place().GetDeviceId(), -allocation->size());
     } else {
       DEVICE_MEMORY_STAT_UPDATE(
@@ -51,9 +53,11 @@ class StatAllocator : public Allocator {
         underlying_allocator_->Allocate(size);
 
     const platform::Place& place = allocation->place();
-    if (platform::is_cpu_place(place) ||
-        platform::is_cuda_pinned_place(place)) {
+    if (platform::is_cpu_place(place)) {
       HOST_MEMORY_STAT_UPDATE(
+          Allocated, place.GetDeviceId(), allocation->size());
+    } else if (platform::is_cuda_pinned_place(place)) {
+      PINNED_MEMORY_STAT_UPDATE(
           Allocated, place.GetDeviceId(), allocation->size());
     } else {
       DEVICE_MEMORY_STAT_UPDATE(

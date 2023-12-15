@@ -1498,6 +1498,7 @@ def get_setup_parameters():
         'paddle.device',
         'paddle.device.cuda',
         'paddle.device.xpu',
+        'paddle.device.cpu',
         'paddle.version',
         'paddle.profiler',
         'paddle.geometric',

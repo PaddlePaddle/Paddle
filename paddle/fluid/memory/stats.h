@@ -122,6 +122,12 @@ void HostMemoryStatUpdate(const std::string& stat_type,
                           int dev_id,
                           int64_t increment);
 
+int64_t PinnedMemoryStatCurrentValue(const std::string& stat_type, int dev_id);
+int64_t PinnedMemoryStatPeakValue(const std::string& stat_type, int dev_id);
+void PinnedMemoryStatUpdate(const std::string& stat_type,
+                            int dev_id,
+                            int64_t increment);
+
 #define DEVICE_MEMORY_STAT_FUNC_SWITHCH_CASE(item, id)              \
   case id:                                                          \
     stat = paddle::memory::Stat<                                    \
@@ -185,6 +191,26 @@ void HostMemoryStatUpdate(const std::string& stat_type,
 #define HOST_MEMORY_STAT_UPDATE(item, id, increment) \
   HOST_MEMORY_STAT_FUNC(item, id, Update, increment)
 
+#define PINNED_MEMORY_STAT_FUNC(item, id, func, ...)                     \
+  [&] {                                                                  \
+    PADDLE_ENFORCE_EQ(id,                                                \
+                      0,                                                 \
+                      paddle::platform::errors::OutOfRange(              \
+                          "Only support device id 0 for pinned memory "  \
+                          "stats, not support device id: %d",            \
+                          id));                                          \
+    return paddle::memory::Stat<                                         \
+               paddle::memory::PinnedMemoryStat##item##0>::GetInstance() \
+        ->func(__VA_ARGS__);                                             \
+  }()
+
+#define PINNED_MEMORY_STAT_CURRENT_VALUE(item, id) \
+  PINNED_MEMORY_STAT_FUNC(item, id, GetCurrentValue)
+#define PINNED_MEMORY_STAT_PEAK_VALUE(item, id) \
+  PINNED_MEMORY_STAT_FUNC(item, id, GetPeakValue)
+#define PINNED_MEMORY_STAT_UPDATE(item, id, increment) \
+  PINNED_MEMORY_STAT_FUNC(item, id, Update, increment)
+
 #define DEVICE_MEMORY_STAT_DECLARE_WITH_ID(item, id) \
   struct DeviceMemoryStat##item##id : public ThreadLocalStatBase {}
 
@@ -210,12 +236,18 @@ void HostMemoryStatUpdate(const std::string& stat_type,
 #define HOST_MEMORY_STAT_DECLARE(item) \
   struct HostMemoryStat##item##0 : public ThreadLocalStatBase{};
 
+#define PINNED_MEMORY_STAT_DECLARE(item) \
+  struct PinnedMemoryStat##item##0 : public ThreadLocalStatBase{};
+
 // To add a new STAT type, declare here and register in stats.cc
 DEVICE_MEMORY_STAT_DECLARE(Allocated);
 DEVICE_MEMORY_STAT_DECLARE(Reserved);
 
 HOST_MEMORY_STAT_DECLARE(Allocated);
 HOST_MEMORY_STAT_DECLARE(Reserved);
+
+PINNED_MEMORY_STAT_DECLARE(Allocated);
+PINNED_MEMORY_STAT_DECLARE(Reserved);
 
 }  // namespace memory
 }  // namespace paddle
