@@ -20,8 +20,8 @@ from .stack_analyse import StackAnalyser
 
 
 def apply_instr_pass(instrs, code_options):
-    log(3, f"[Opcode Pass]: Original New Code {code_options['co_name']}:\n")
-    log_do(3, lambda: print(instrs_info(instrs)))
+    log(4, f"[Opcode Pass]: Original New Code {code_options['co_name']}:\n")
+    log_do(4, lambda: print(instrs_info(instrs)))
     supported_passes = (
         remove_load_store_pass,
         remove_duplicate_resume,
@@ -32,10 +32,10 @@ def apply_instr_pass(instrs, code_options):
         instr_pass(instrs, code_options)
 
     log(
-        3,
+        4,
         f"[Opcode Pass]: New Code After Opcode Pass {code_options['co_name']}:\n",
     )
-    log_do(3, lambda: print(instrs_info(instrs)))
+    log_do(4, lambda: print(instrs_info(instrs)))
 
 
 def find_stored_once_local_vars(instrs, code_options):
