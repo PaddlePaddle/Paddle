@@ -13,25 +13,40 @@
 // limitations under the License.
 
 #include "paddle/pir/dialect/shape/utils/dim_expr.h"
-
 namespace symbol {
 
 DimExpr DimExpr::operator+(const DimExpr& other) const {
-  return Add<DimExpr>(std::vector{*this, other});
+  if (this->isa<std::int64_t>() && other.isa<std::int64_t>()) {
+    return this->dyn_cast<std::int64_t>() + other.dyn_cast<std::int64_t>();
+  }
+  return Add<DimExpr>{List<DimExpr>{*this, other}};
 }
 
 DimExpr DimExpr::operator-(const DimExpr& other) const {
+  if (this->isa<std::int64_t>() && other.isa<std::int64_t>()) {
+    return this->dyn_cast<std::int64_t>() - other.dyn_cast<std::int64_t>();
+  }
   const DimExpr& neg = Negative<DimExpr>(other);
-  return Add<DimExpr>(std::vector{*this, neg});
+  return Add<DimExpr>{List<DimExpr>{*this, neg}};
 }
 
 DimExpr DimExpr::operator*(const DimExpr& other) const {
-  return Mul<DimExpr>(std::vector{*this, other});
+  if (this->isa<std::int64_t>() && other.isa<std::int64_t>()) {
+    return this->dyn_cast<std::int64_t>() * other.dyn_cast<std::int64_t>();
+  }
+  return Mul<DimExpr>{List<DimExpr>{*this, other}};
 }
 
 DimExpr DimExpr::operator/(const DimExpr& other) const {
+  if (this->isa<std::int64_t>() && other.isa<std::int64_t>()) {
+    std::int64_t num = this->dyn_cast<std::int64_t>();
+    std::int64_t dem = other.dyn_cast<std::int64_t>();
+    if (num % dem == 0) {
+      return num / dem;
+    }
+  }
   const DimExpr& reciprocal = Reciprocal<DimExpr>(other);
-  return Mul<DimExpr>(std::vector{*this, reciprocal});
+  return Mul<DimExpr>{List<DimExpr>{*this, reciprocal}};
 }
 
 }  // namespace symbol
