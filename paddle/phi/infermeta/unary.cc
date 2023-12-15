@@ -664,6 +664,16 @@ void CropInferMeta(const MetaTensor& x,
                         shape_dims.size(),
                         x_dim.size()));
 
+  PADDLE_ENFORCE_EQ(
+      offsets_vec.size(),
+      x_dim.size(),
+      errors::InvalidArgument(
+          "The number of elements (%d) of attribute 'offsets' for "
+          "CropTensor must be equal to the number of "
+          "dimensions (%d) of the input.",
+          offsets_vec.size(),
+          x_dim.size()));
+
   if (config.is_runtime) {
     out->share_lod(x);
   }
