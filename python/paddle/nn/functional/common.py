@@ -911,9 +911,9 @@ def upsample(
         if x_shape == 3:
             data_format = 'NCW'
         elif x_shape == 4:
-            data_format == 'NCHW'
+            data_format = 'NCHW'
         elif x_shape == 5:
-            data_format == 'NCDHW'
+            data_format = 'NCDHW'
 
     return interpolate(
         x, size, scale_factor, mode, align_corners, align_mode, data_format
