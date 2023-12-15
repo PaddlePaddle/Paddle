@@ -18,8 +18,8 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
-    test_legacy_and_pir,
-    test_legacy_only,
+    test_legacy_and_pt,
+    test_legacy_and_pt_and_pir,
     test_pir_only,
 )
 
@@ -34,13 +34,13 @@ paddle.enable_static()
 
 
 def len_with_tensor(x):
-    x = base.dygraph.to_variable(x)
+    x = paddle.to_tensor(x)
     x_len = len(x)
     return x_len
 
 
 def len_with_lod_tensor_array(x):
-    x = base.dygraph.to_variable(x)
+    x = paddle.to_tensor(x)
 
     i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=0)
     arr = paddle.tensor.array_write(x, i=i)
@@ -52,9 +52,9 @@ def len_with_lod_tensor_array(x):
 class TestLen(Dy2StTestBase):
     def setUp(self):
         self.place = (
-            base.CUDAPlace(0)
-            if base.is_compiled_with_cuda()
-            else base.CPUPlace()
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
         )
         self.x_data = np.random.random([10, 16]).astype('float32')
         self.init_func()
@@ -69,12 +69,12 @@ class TestLen(Dy2StTestBase):
             else:
                 out = self.func(self.x_data)
 
-            if isinstance(out, base.core.eager.Tensor):
+            if isinstance(out, paddle.Tensor):
                 out = out.numpy()
             return out
 
     @test_ast_only
-    @test_legacy_and_pir
+    @test_legacy_and_pt_and_pir
     def test_len(self):
         dygraph_res = self._run(to_static=False)
         static_res = self._run(to_static=True)
@@ -116,7 +116,7 @@ def len_with_selected_rows(place):
     row_numel = 2
     np_array = np.ones((len(x_rows), row_numel)).astype("float32")
 
-    x_var = base.global_scope().var("X").get_selected_rows()
+    x_var = paddle.static.global_scope().var("X").get_selected_rows()
     x_var.set_rows(x_rows)
     x_var.set_height(20)
     x_tensor = x_var.get_tensor()
@@ -153,34 +153,35 @@ def legacy_len_with_selected_rows(place):
     row_numel = 2
     np_array = np.ones((len(x_rows), row_numel)).astype("float32")
 
-    x_var = base.global_scope().var("X").get_selected_rows()
+    x_var = paddle.static.global_scope().var("X").get_selected_rows()
     x_var.set_rows(x_rows)
     x_var.set_height(20)
     x_tensor = x_var.get_tensor()
     x_tensor.set(np_array, place)
 
-    exe = base.Executor(place=place)
-    result = exe.run(base.default_main_program(), fetch_list=[y_len, z_len])
+    exe = paddle.static.Executor(place=place)
+    result = exe.run(
+        paddle.static.default_main_program(), fetch_list=[y_len, z_len]
+    )
     return result
 
 
 class TestLenWithSelectedRows(Dy2StTestBase):
     def setUp(self):
         self.place = (
-            base.CUDAPlace(0)
-            if base.is_compiled_with_cuda()
-            else base.CPUPlace()
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
         )
 
-    @test_legacy_only
     @test_ast_only
+    @test_legacy_and_pt
     def test_len_legacy(self):
         selected_rows_var_len, var_tensor_len = legacy_len_with_selected_rows(
             self.place
         )
         self.assertEqual(selected_rows_var_len, var_tensor_len)
 
-    @test_pir_only
     @test_ast_only
     @test_pir_only
     def test_len(self):

@@ -497,6 +497,7 @@ class ShardingPass(PassBase):
                     param_dist_attr.process_mesh,
                     param_dist_attr.dims_mapping,
                     self._dist_context,
+                    chunk_id=param_dist_attr.chunk_id,
                 )
         main_block._sync_with_cpp()
 
@@ -610,13 +611,23 @@ class ShardingPass(PassBase):
                                 input_var
                             )
                         )
-                        out_var_dist_attr = set_var_dist_attr(
+                        set_var_dist_attr(
                             self._dist_context,
                             new_var,
                             ref_dist_attr.dims_mapping,
                             ref_dist_attr.process_mesh,
+                            chunk_id=ref_dist_attr.chunk_id,
+                        )
+                        op_dist_attr = (
+                            self._dist_context.get_op_dist_attr_for_program(op)
+                        )
+                        input_dist_attr = op_dist_attr.get_input_dist_attr(
+                            input_name
                         )
                         op._rename_input(input_name, broadcast_varname)
+                        op_dist_attr.set_input_dist_attr(
+                            broadcast_varname, input_dist_attr
+                        )
 
                     _insert_init_and_broadcast_op(
                         main_block,
@@ -1408,6 +1419,7 @@ def _insert_init_and_broadcast_op(
         broadcast_var_dist_attr.process_mesh,
         broadcast_var_dist_attr.dims_mapping,
         dist_context,
+        chunk_id=broadcast_var_dist_attr.chunk_id,
     )
     if local_rank != root_rank:
         new_op = block._insert_op_without_sync(
@@ -1425,6 +1437,7 @@ def _insert_init_and_broadcast_op(
             broadcast_var_dist_attr.process_mesh,
             broadcast_var_dist_attr.dims_mapping,
             dist_context,
+            chunk_id=broadcast_var_dist_attr.chunk_id,
         )
 
 
@@ -1458,7 +1471,11 @@ def _insert_reduce_op(
         block.var(reduce_var)
     )
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-        new_op, dist_attr.process_mesh, dist_attr.dims_mapping, dist_context
+        new_op,
+        dist_attr.process_mesh,
+        dist_attr.dims_mapping,
+        dist_context,
+        chunk_id=dist_attr.chunk_id,
     )
     new_op._set_attr('op_namescope', '/' + ParallelMode.DataParallel)
     return new_op

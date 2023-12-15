@@ -1550,10 +1550,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         compile_fn = self._graph.get_compiled_fn(*store_vars)
 
-        if (
-            compile_fn.graph_size() < ENV_MIN_GRAPH_SIZE.get()
-            and sys.version_info < (3, 11)
-        ):
+        if compile_fn.graph_size() < ENV_MIN_GRAPH_SIZE.get():
             return self._graph._restore_origin_opcode(
                 list(self.stack), store_var_info, instr_idx
             )
@@ -2059,7 +2056,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
             self._inline_call_for_loop(iterator, instr)
             self._lasti = self.indexof(instr.jump_to)
         except BreakGraphError as e:
-            log(3, f"[FOR_ITER] sim for loop failed for: {e}\n")
+            log(3, f"[BreakGraph] FOR_ITER sim for loop failed for: {e}\n")
             if backup_iter_idx:
                 iterator.idx = backup_iter_idx
             self._graph.remove_global_guarded_variable(iterator)

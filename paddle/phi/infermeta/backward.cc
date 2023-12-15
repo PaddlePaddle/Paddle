@@ -979,6 +979,19 @@ void RnnGradInferMeta(const MetaTensor& x,
   }
 }
 
+void RowConvGradInferMeta(const MetaTensor& out_grad,
+                          const MetaTensor& filter,
+                          MetaTensor* x_grad,
+                          MetaTensor* filter_grad) {
+  if (x_grad != nullptr) {
+    x_grad->set_dims(out_grad.dims());
+  }
+
+  if (filter_grad != nullptr) {
+    filter_grad->set_dims(filter.dims());
+  }
+}
+
 void ScatterGradInferMeta(const MetaTensor& index,
                           const MetaTensor& updates,
                           const MetaTensor& out_grad,
