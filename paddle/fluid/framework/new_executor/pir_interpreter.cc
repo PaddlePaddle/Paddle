@@ -45,6 +45,7 @@
 #include "paddle/fluid/framework/new_executor/instruction/cinn_jit_instruction.h"
 #endif
 
+#include "paddle/fluid/framework/new_executor/instruction/assert_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/builtin_combine_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/cond_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/has_elements_instruction.h"
@@ -691,6 +692,8 @@ void PirInterpreter::BuildInstruction() {
                  ->BodyInterpreter()});
       } else if (op.isa<paddle::dialect::HasElementsOp>()) {
         CREATE_INSTR(HasElementsInstruction);
+      } else if (op.isa<paddle::dialect::AssertOp>()) {
+        CREATE_INSTR(AssertInstruction);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Now only support pd_kernel and cinn dialect."));

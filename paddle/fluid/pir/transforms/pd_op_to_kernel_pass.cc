@@ -105,6 +105,7 @@ const std::unordered_set<std::string> SpecialLowerOps = {
     pir::TuplePushOp::name(),
     pir::TuplePopOp::name(),
     HasElementsOp::name(),
+    AssertOp::name(),
     "cinn_runtime.jit_kernel"};
 
 static bool NeedFallBackCpu(const pir::Operation* op,
@@ -1196,6 +1197,15 @@ void HandleForSpecialOp(
     for (size_t i = 0; i < op_item->num_results(); ++i) {
       op_output_types.push_back(
           BuildOutputType(op_item->result(i).type(), phi::CPUPlace(), ctx));
+    }
+  }
+
+  if (op_item->isa<AssertOp>()) {
+    for (size_t i = 0; i < op_item->num_operands(); ++i) {
+      auto cur_in = op_item->operand_source(i);
+      auto new_in = GetNewInput(
+          cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
+      vec_inputs.push_back(new_in);
     }
   }
 
