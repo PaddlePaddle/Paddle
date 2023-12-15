@@ -66,7 +66,7 @@ std::vector<Tensor> PrepareInputs(const phi::Place& place) {
   DenseTensor t;
   t.Resize(common::make_ddim({2, 4}));
   t.mutable_data<float>(place);
-  phi::funcs::set_constant(dev_ctx, &t, 2.);
+  phi::funcs::set_constant(dev_ctx, &t, static_cast<float>(2.));
 
   return utils::ToTensors({t});
 }

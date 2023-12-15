@@ -177,6 +177,9 @@ RESHARD_MULTI_SINGLE_OUTPUT_TEMPLATE = """
 RESHARD_VECTOR_OUTPUT_TEMPLATE = """
       ReshardKernelOutputToApiOutput(dev_ctx, shared_dist_out, {});"""
 
+NONEED_TO_RESHARD_OUTPUT_TEMPLATE = """
+    // API `{}` does not need to reshard output."""
+
 
 class DistBackwardAPI(DistForwardAPI, BackwardAPI):
     def __init__(self, backward_item_yaml):
@@ -344,6 +347,9 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
                     f"{self.api} : Output error: the output should not be empty."
                 )
         else:
+            reshard_output_code += NONEED_TO_RESHARD_OUTPUT_TEMPLATE.format(
+                self.kernel['func'][0]
+            )
             # do nothing
             pass
 
@@ -419,6 +425,7 @@ def source_include(header_file_path, fw_header_file_path):
 #include "{fw_header_file_path}"
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/unary.h"
+#include "paddle/phi/infermeta/fusion.h"
 
 #include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/phi/api/profiler/supplement_tracing.h"

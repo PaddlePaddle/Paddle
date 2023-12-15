@@ -79,6 +79,9 @@ void BindPSGPUWrapper(py::module* m) {
       .def("finalize",
            &framework::PSGPUWrapper::Finalize,
            py::call_guard<py::gil_scoped_release>())
+      .def("set_sage",
+           &framework::PSGPUWrapper::SetSage,
+           py::call_guard<py::gil_scoped_release>())
       .def("set_mode",
            &framework::PSGPUWrapper::SetMode,
            py::call_guard<py::gil_scoped_release>());

@@ -16,8 +16,6 @@
 
 #include "paddle/utils/flags.h"
 
-PD_DEFINE_bool(color, true, "Whether to turn on pretty log");  // NOLINT
-
 namespace paddle {
 namespace string {}  // namespace string
 }  // namespace paddle
