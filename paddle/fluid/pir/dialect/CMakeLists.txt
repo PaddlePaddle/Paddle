@@ -30,12 +30,20 @@ set(pd_op_forward_yaml_file2
 set(pd_op_backward_yaml_file
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/ops_backward.yaml)
 
+set(pd_onednn_op_yaml_file
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/onednn.yaml)
+
+set(pd_ops_onednn_extra_yaml_file
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/ops_onednn_extra.yaml
+)
+
 set(parsed_op_dir
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/generated)
 
 set(op_yaml_file3 ${parsed_op_dir}/ops.parsed.yaml)
 set(op_yaml_file4 ${parsed_op_dir}/ops_backward.parsed.yaml)
 set(op_yaml_file5 ${parsed_op_dir}/update_ops.parsed.yaml)
+set(op_yaml_file6 ${parsed_op_dir}/onednn.parsed.yaml)
 
 set(op_yaml_files
     ${op_forward_yaml_file1},${op_backward_yaml_file1},${fused_op_forward_yaml_file},${fused_op_backward_yaml_file},${op_yaml_file3},${op_yaml_file4},${op_yaml_file5}
@@ -51,12 +59,21 @@ set(op_vjp_source_file ${PD_DIALECT_SOURCE_DIR}/pd_op_vjp.cc)
 set(op_decomp_source_file ${PD_DIALECT_SOURCE_DIR}/op_decomp.cc)
 set(op_vjp_source_file_tmp ${op_vjp_source_file}.tmp)
 
+set(onednn_op_namespace paddle,onednn,dialect)
+set(onednn_dialect_name pd_onednn_op)
+set(onednn_op_header_file ${PD_DIALECT_SOURCE_DIR}/pd_onednn_op.h)
+set(onednn_op_source_file ${PD_DIALECT_SOURCE_DIR}/pd_onednn_op.cc)
+set(onednn_op_header_file_tmp ${onednn_op_header_file}.tmp)
+set(onednn_op_source_file_tmp ${onednn_op_source_file}.tmp)
+
 execute_process(
   COMMAND ${CMAKE_COMMAND} -E make_directory ${parsed_op_dir}
   COMMAND ${PYTHON_EXECUTABLE} ${op_gen_parsed_yaml_file} --op_yaml_path
           ${pd_op_forward_yaml_file1} --output_path ${op_yaml_file3}
   COMMAND ${PYTHON_EXECUTABLE} ${op_gen_parsed_yaml_file} --op_yaml_path
           ${pd_op_forward_yaml_file2} --output_path ${op_yaml_file5}
+  COMMAND ${PYTHON_EXECUTABLE} ${op_gen_parsed_yaml_file} --op_yaml_path
+          ${pd_onednn_op_yaml_file} --output_path ${op_yaml_file6}
   COMMAND ${PYTHON_EXECUTABLE} ${op_gen_parsed_yaml_file} --op_yaml_path
           ${pd_op_backward_yaml_file} --output_path ${op_yaml_file4} --backward)
 
@@ -70,6 +87,18 @@ execute_process(
 
 set(generated_files_pd_op "${op_header_file}" "${op_source_file}"
                           "${op_vjp_source_file}")
+
+execute_process(
+  COMMAND
+    ${PYTHON_EXECUTABLE} ${op_gen_file} --op_yaml_files ${op_yaml_files}
+    --op_compat_yaml_file ${op_compat_yaml_file} --namespaces
+    ${onednn_op_namespace} --dialect_name ${onednn_dialect_name}
+    --op_def_h_file ${onednn_op_header_file_tmp} --op_def_cc_file
+    ${onednn_op_source_file_tmp} --onednn_yaml_file ${op_yaml_file6}
+    --ops_onednn_extra_yaml_file ${pd_ops_onednn_extra_yaml_file})
+
+set(generated_files_onednn_pd_op "${onednn_op_header_file}"
+                                 "${onednn_op_source_file}")
 
 set(api_gen_yaml_files
     ${op_forward_yaml_file1},${op_backward_yaml_file1},${op_yaml_file3},${op_yaml_file4},${op_yaml_file5}
@@ -122,8 +151,10 @@ execute_process(
 
 set(generated_files_ops_api "${ops_api_source_file}")
 
-set(generated_files_pir ${generated_files_pd_op} ${generated_files_pd_api}
-                        ${generated_files_python_c} ${generated_files_ops_api})
+set(generated_files_pir
+    ${generated_files_pd_op} ${generated_files_onednn_pd_op}
+    ${generated_files_pd_api} ${generated_files_python_c}
+    ${generated_files_ops_api})
 foreach(generated_file ${generated_files_pir})
   if(EXISTS "${generated_file}.tmp" AND EXISTS "${generated_file}")
     execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -154,6 +185,11 @@ set(op_dialect_deps phi common pir type_info string_helper)
 cc_library(
   op_dialect
   SRCS ${op_dialect_srcs}
+  DEPS ${op_dialect_deps})
+
+cc_library(
+  op_onednn_dialect
+  SRCS ${onednn_op_source_file}
   DEPS ${op_dialect_deps})
 
 #Note(risemeup1):compile some *.cc files which depend on primitive_vjp_experimental into op_dialect_vjp.a/lib

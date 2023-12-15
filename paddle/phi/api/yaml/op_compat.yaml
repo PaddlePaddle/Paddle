@@ -2459,6 +2459,15 @@
   outputs :
     {q : Q, r : R}
 
+- op : quantize
+  backward : quantize_grad
+  inputs :
+    input : Input
+  outputs :
+    output : Output
+  attrs :
+    {scale : Scale, shift : Shift, include_self: Include_self}
+
 - op : quantize_linear
   extra :
     attrs : [float moving_rate = 0.9]
