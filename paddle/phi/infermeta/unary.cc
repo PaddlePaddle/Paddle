@@ -2990,6 +2990,156 @@ void PNormInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void PMatrixNormInferMeta(const MetaTensor& x,
+                          float porder,
+                          const std::vector<int>& axis,
+                          float epsilon,
+                          bool keepdim,
+                          bool asvector,
+                          MetaTensor* out) {
+  std::cout << "infermate axis:" << axis[0] << " " << axis[1] << std::endl;
+  auto x_dim = x.dims();
+  auto x_rank = x_dim.size();
+
+  PADDLE_ENFORCE_GE(
+      static_cast<int>(axis.size()),
+      2,
+      errors::InvalidArgument(
+          "Attr(axis) value should be 2-D, R is "
+          "the rank of Input(X). But received axis's size: %d, R: %d. "
+          "Current Input(X)'s shape is=[%s].",
+          axis.size(),
+          x_rank,
+          x_dim));
+
+  PADDLE_ENFORCE_GE(axis[0],
+                    -x_rank,
+                    errors::InvalidArgument(
+                        "Attr(axis) value should be in range [-R, R-1], R is "
+                        "the rank of Input(X). But received axis: %d, R: %d. "
+                        "Current Input(X)'s shape is=[%s].",
+                        axis[0],
+                        x_rank,
+                        x_dim));
+  PADDLE_ENFORCE_LT(axis[0],
+                    x_rank,
+                    errors::InvalidArgument(
+                        "Attr(axis) value should be in range [-R, R-1], R is "
+                        "the rank of Input(X). But received axis: %d, R: %d. "
+                        "Current Input(X)'s shape is=[%s].",
+                        axis[0],
+                        x_rank,
+                        x_dim));
+  PADDLE_ENFORCE_GE(axis[1],
+                    -x_rank,
+                    errors::InvalidArgument(
+                        "Attr(axis) value should be in range [-R, R-1], R is "
+                        "the rank of Input(X). But received axis: %d, R: %d. "
+                        "Current Input(X)'s shape is=[%s].",
+                        axis[1],
+                        x_rank,
+                        x_dim));
+  PADDLE_ENFORCE_LT(axis[1],
+                    x_rank,
+                    errors::InvalidArgument(
+                        "Attr(axis) value should be in range [-R, R-1], R is "
+                        "the rank of Input(X). But received axis: %d, R: %d. "
+                        "Current Input(X)'s shape is=[%s].",
+                        axis[1],
+                        x_rank,
+                        x_dim));
+  std::vector<int> out_dim_vector;
+  int m = axis[0], n = axis[1];
+  if (m < 0) m = m + x_rank;
+  if (n < 0) n = n + x_rank;
+  if (m > n) {
+    std::swap(m, n);
+  }
+  for (int i = 0; i < x_rank; i++) {
+    if (i != m && i != n)
+      out_dim_vector.emplace_back(static_cast<int>(x_dim[i]));
+  }
+
+  // if(std::is_same<x.d, >::value)
+
+  out->set_dims(common::make_ddim(out_dim_vector));
+  out->set_dtype(x.dtype());
+}
+
+void NuclearNormInferMeta(const MetaTensor& x,
+                          const std::vector<int>& axis,
+                          bool keepdim,
+                          bool reduce_all,
+                          MetaTensor* out) {
+  std::cout << "infermate axis:" << axis[0] << " " << axis[1] << std::endl;
+  auto x_dim = x.dims();
+  auto x_rank = x_dim.size();
+
+  PADDLE_ENFORCE_GE(
+      static_cast<int>(axis.size()),
+      2,
+      errors::InvalidArgument(
+          "Attr(axis) value should be 2-D, R is "
+          "the rank of Input(X). But received axis's size: %d, R: %d. "
+          "Current Input(X)'s shape is=[%s].",
+          axis.size(),
+          x_rank,
+          x_dim));
+
+  PADDLE_ENFORCE_GE(axis[0],
+                    -x_rank,
+                    errors::InvalidArgument(
+                        "Attr(axis) value should be in range [-R, R-1], R is "
+                        "the rank of Input(X). But received axis: %d, R: %d. "
+                        "Current Input(X)'s shape is=[%s].",
+                        axis[0],
+                        x_rank,
+                        x_dim));
+  PADDLE_ENFORCE_LT(axis[0],
+                    x_rank,
+                    errors::InvalidArgument(
+                        "Attr(axis) value should be in range [-R, R-1], R is "
+                        "the rank of Input(X). But received axis: %d, R: %d. "
+                        "Current Input(X)'s shape is=[%s].",
+                        axis[0],
+                        x_rank,
+                        x_dim));
+  PADDLE_ENFORCE_GE(axis[1],
+                    -x_rank,
+                    errors::InvalidArgument(
+                        "Attr(axis) value should be in range [-R, R-1], R is "
+                        "the rank of Input(X). But received axis: %d, R: %d. "
+                        "Current Input(X)'s shape is=[%s].",
+                        axis[1],
+                        x_rank,
+                        x_dim));
+  PADDLE_ENFORCE_LT(axis[1],
+                    x_rank,
+                    errors::InvalidArgument(
+                        "Attr(axis) value should be in range [-R, R-1], R is "
+                        "the rank of Input(X). But received axis: %d, R: %d. "
+                        "Current Input(X)'s shape is=[%s].",
+                        axis[1],
+                        x_rank,
+                        x_dim));
+  std::vector<int> out_dim_vector;
+  int m = axis[0], n = axis[1];
+  if (m < 0) m = m + x_rank;
+  if (n < 0) n = n + x_rank;
+  if (m > n) {
+    std::swap(m, n);
+  }
+  for (int i = 0; i < x_rank; i++) {
+    if (i != m && i != n)
+      out_dim_vector.emplace_back(static_cast<int>(x_dim[i]));
+  }
+
+  // if(std::is_same<x.d, >::value)
+
+  out->set_dims(common::make_ddim(out_dim_vector));
+  out->set_dtype(x.dtype());
+}
+
 void Pool2DInferMeta(const MetaTensor& x,
                      const IntArray& kernel_size,
                      const std::vector<int>& strides,

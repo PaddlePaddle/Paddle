@@ -408,6 +408,12 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             )
             return out
 
+    def nuclear_norm(input, dim=None, keepdim=False, name=None):
+        print("nuclear_norm python")
+        if in_dynamic_mode():
+            return _C_ops.nuclear_norm(input, dim, keepdim, False)
+        return None
+
     def vector_norm(
         input, porder=None, axis=None, keepdim=False, asvector=False, name=None
     ):
@@ -495,16 +501,86 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
 
             return reduce_out
 
+    def inf_1_matrix_norm(
+        input, porder=None, axis=axis, keepdim=False, asvector=False, name=None
+    ):
+        '''
+        p = -1, 1, -inf, inf
+        '''
+        if in_dynamic_mode():
+            abs_out = _C_ops.abs(input)
+            sum_out = _C_ops.sum(abs_out, axis, None, False)
+
+            if porder == 1 or porder == np.inf:
+                return _C_ops.max(sum_out, [-1], False)
+            if porder == -1 or porder == -np.inf:
+                return _C_ops.min(sum_out, [-1], False)
+
+        else:
+            block = LayerHelper('norm', **locals())
+            abs_out = block.create_variable_for_type_inference(
+                dtype=block.input_dtype()
+            )
+            sum_out = block.create_variable_for_type_inference(
+                dtype=block.input_dtype()
+            )
+            out = block.create_variable_for_type_inference(
+                dtype=block.input_dtype()
+            )
+            block.append_op(
+                type='abs', inputs={'X': input}, outputs={'Out': abs_out}
+            )
+
+            reduce_all, axis = _get_reduce_axis(axis, x)
+            block.append_op(
+                type='reduce_sum',
+                inputs={'X': abs_out},
+                outputs={'Out': sum_out},
+                attrs={
+                    'dim': axis,
+                    'keep_dim': False,
+                    'reduce_all': reduce_all,
+                },
+            )
+            if porder == 1 or porder == np.inf:
+                block.append_op(
+                    type='reduce_max',
+                    inputs={'X': sum_out},
+                    outputs={'Out': out},
+                    attrs={
+                        'dim': [-1],
+                        'keep_dim': False,
+                        'reduce_all': reduce_all,
+                    },
+                )
+            if porder == -1 or porder == -np.inf:
+                block.append_op(
+                    type='reduce_min',
+                    inputs={'X': sum_out},
+                    outputs={'Out': out},
+                    attrs={
+                        'dim': [-1],
+                        'keep_dim': False,
+                        'reduce_all': reduce_all,
+                    },
+                )
+            return out
+
     def p_matrix_norm(input, porder=1.0, axis=axis, keepdim=False, name=None):
         """
         NOTE:
             This function actually treats the matrix as flattened vector to calculate vector norm instead of matrix norm.
         """
         if in_dynamic_mode():
-            abs_out = _C_ops.abs(input)
-            pow_out = _C_ops.pow(abs_out, porder)
-            sum_out = _C_ops.sum(pow_out, axis, None, keepdim)
-            out = _C_ops.pow(sum_out, float(1.0 / porder))
+            print("dynamic")
+            print(axis)
+            # abs_out = _C_ops.abs(input)
+            # pow_out = _C_ops.pow(abs_out, porder)
+            # sum_out = _C_ops.sum(pow_out, axis, None, keepdim)
+            # out = _C_ops.pow(sum_out, float(1.0 / porder))
+            out = _C_ops.p_matrix_norm(
+                input, porder, axis, 1e-12, keepdim, True
+            )
             return out
 
         block = LayerHelper('norm', **locals())
@@ -610,16 +686,27 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
     elif isinstance(axis, list) and len(axis) == 2:
         if p == "fro":
             return frobenius_norm(x, dim=axis, keepdim=keepdim, name=name)
-        elif p == np.inf or p == -np.inf:
-            return inf_norm(x, porder=p, axis=axis, keepdim=keepdim, name=name)
-        elif p == 0:
-            raise ValueError(
-                f"just support axis type int or list (length of list <=1) if p = 0, found {axis}"
-            )
-        else:
+        elif p == "nuc":
+            #     return
+            return nuclear_norm(x, dim=axis, keepdim=keepdim, name=name)
+        elif (
+            p == np.inf
+            or p == -np.inf
+            or p == 1
+            or p == -1
+            or p == 2
+            or p == -2
+        ):
+            #     return inf_1_matrix_norm(x, porder=p, axis=axis, keepdim=keepdim, name=name)
+            # elif p == 2 or p == -2:
             return p_matrix_norm(
                 x, porder=p, axis=axis, keepdim=keepdim, name=name
             )
+        else:
+            raise ValueError(
+                f"just support p value 'fro','nuc',1,-1,inf,-inf,2,-2 if axis is 2D, found {p}"
+            )
+
     else:
         raise ValueError(
             f"except axis type int or list (length of list <=2), found {axis}"

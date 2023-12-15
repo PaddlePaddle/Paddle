@@ -1911,6 +1911,15 @@
   kernel :
     func : npu_identity
 
+- op : nuclear_norm
+  args : (Tensor x, int[] axis,  bool keepdim=false, bool reduce_all=false)
+  output : Tensor(out)
+  infer_meta :
+    func : NuclearNormInferMeta
+  kernel :
+    func : nuclear_norm
+  backward : nuclear_norm_grad
+
 - op : numel
   args : (Tensor x)
   output : Tensor(size)
@@ -1933,6 +1942,15 @@
     func: overlap_add
     data_type : x
   backward: overlap_add_grad
+
+- op : p_matrix_norm
+  args : (Tensor x,  float porder,  int[] axis,  float epsilon=1.0e-12f,  bool keepdim=false,  bool asvector=false)
+  output : Tensor(out)
+  infer_meta :
+    func : PMatrixNormInferMeta
+  kernel :
+    func : p_matrix_norm
+  backward : p_matrix_norm_grad
 
 - op : p_norm
   args : (Tensor x,  float porder=2,  int axis=-1,  float epsilon=1.0e-12f,  bool keepdim=false,  bool asvector=false)
