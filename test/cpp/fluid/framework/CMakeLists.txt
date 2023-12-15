@@ -39,7 +39,7 @@ cc_test(
 cc_test(
   lod_tensor_test
   SRCS lod_tensor_test.cc
-  DEPS phi common lod_tensor memory)
+  DEPS phi common lod_tensor)
 
 if(WITH_GPU)
   nv_test(
@@ -342,3 +342,8 @@ if(WITH_CINN)
     cinn_op_dialect)
   set_tests_properties(transform_type_test PROPERTIES LABELS "RUN_TYPE=CINN")
 endif()
+
+cc_test(
+  workqueue_test
+  SRCS new_executor/workqueue_test.cc
+  DEPS standalone_executor)
