@@ -97,7 +97,7 @@ class ContinuousBernoulli(distribution.Distribution):
             [0.20103608, 0.07641447])
     """
 
-    def __init__(self, probs=None, lims=(0.499, 0.501)):
+    def __init__(self, probs, lims=(0.499, 0.501)):
         self.dtype = paddle.get_default_dtype()
         self.probs = self._to_tensor(probs)
         self.lims = paddle.to_tensor(lims, dtype=self.dtype)
