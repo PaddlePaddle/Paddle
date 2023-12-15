@@ -49,7 +49,7 @@ def rnn_wrapper(
     seed=0,
     is_test=False,
 ):
-    dropout_state_in = paddle.Tensor()
+    dropout_state_in = paddle.tensor.fill_constant([], "float32", 0.0)
     return paddle._C_ops.rnn(
         Input,
         PreState,
