@@ -367,7 +367,6 @@ std::vector<std::vector<pir::OpResult>> WhileOp::Vjp(
       loop_vars.push_back(out_grads[index][0]);
     }
   }
-
   auto while_grad = builder.Build<WhileOp>(cond_val, loop_vars);
 
   std::vector<std::vector<pir::OpResult>> res(inputs.size());
