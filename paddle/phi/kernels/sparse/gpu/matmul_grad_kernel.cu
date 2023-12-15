@@ -168,11 +168,6 @@ void MatmulCsrCsrGradKernel(const Context& dev_ctx,
     SparseCsrTensor trans_x =
         phi::funcs::sparse::CSRTanspose<T, int32_t>(dev_ctx, x);
 
-#ifdef PADDLE_WITH_HIP
-    phi::funcs::SetConstant<Context, T> set_zero;
-    set_zero(dev_ctx, dy, static_cast<T>(0.0f));
-#endif
-
     sparse_blas.SPGEMM(
         false, false, static_cast<T>(1), trans_x, dout, static_cast<T>(0), dy);
   }
