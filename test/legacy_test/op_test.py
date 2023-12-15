@@ -39,7 +39,12 @@ from op import Operator
 from prim_op_test import OpTestUtils, PrimForwardChecker, PrimGradChecker
 from testsuite import append_input_output, append_loss_ops, create_op, set_input
 
-sys.path.append("..")
+# Add test/legacy and test to sys.path
+legacy_test_dir = pathlib.Path(__file__).parent  # test/legacy_test
+test_dir = legacy_test_dir.parent  # test
+sys.path.append(str(legacy_test_dir.absolute()))
+sys.path.append(str(test_dir.absolute()))
+
 from utils import static_guard
 from white_list import (
     check_shape_white_list,
@@ -65,8 +70,6 @@ from paddle.base.framework import (
     set_flags,
 )
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
-
-sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 
 @signature_safe_contextmanager
