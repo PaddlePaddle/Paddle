@@ -73,6 +73,9 @@ class TestApiErrorWithDynamicMode(unittest.TestCase):
             self.assertRaises(AssertionError, paddle.static.data, 'a', [2, 25])
             paddle.enable_static()
 
+        paddle.jit.enable_to_static(True)
+        paddle.jit.enable_to_static(False)
+
 
 if __name__ == "__main__":
     unittest.main()
