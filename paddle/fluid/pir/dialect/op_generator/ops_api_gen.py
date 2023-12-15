@@ -126,6 +126,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'fused_dot_product_attention',
     'recv_v2',
     'rnn_',
+    'row_conv',
     'seed',
     'send_v2',
     'shadow_feed',
