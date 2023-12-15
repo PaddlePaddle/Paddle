@@ -128,6 +128,10 @@ class DimExpr : public DimExprBase {
     return std::get<T>(*this);
   }
 
+  const DimExprBase& variant() const {
+    return static_cast<const typename DimExpr::variant&>(*this);
+  }
+
   DimExpr operator+(const DimExpr& other) const;
   DimExpr operator-(const DimExpr& other) const;
   DimExpr operator*(const DimExpr& other) const;

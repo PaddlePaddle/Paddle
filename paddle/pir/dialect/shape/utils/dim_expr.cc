@@ -93,15 +93,15 @@ bool DimExpr::operator==(const DimExpr& other) const {
   }
   return std::visit(
       [](const auto& lhs, const auto& rhs) {
-        if (std::is_same_v<std::decay_t<decltype(lhs)>,
-                           std::decay_t<decltype(rhs)>>) {
+        if constexpr (std::is_same_v<std::decay_t<decltype(lhs)>,
+                                     std::decay_t<decltype(rhs)>>) {
           return DimExprEqual(lhs, rhs);
         } else {
           return false;
         }
       },
-      *this,
-      other);
+      this->variant(),
+      other.variant());
 }
 
 bool DimExpr::operator!=(const DimExpr& other) const {
