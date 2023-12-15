@@ -4297,8 +4297,8 @@ class TestSoftsignAPI(unittest.TestCase):
                 F.softsign(x_fp16)
 
 
-def ref_thresholded_relu(x, threshold=1.0):
-    out = (x > threshold) * x
+def ref_thresholded_relu(x, threshold=1.0, value=0.0):
+    out = (x > threshold) * x + (x <= threshold) * value
     return out
 
 
@@ -4310,15 +4310,16 @@ class TestThresholdedRelu(TestActivation):
         self.python_api = paddle.nn.functional.thresholded_relu
 
         threshold = 15
+        value = 5
 
         np.random.seed(1024)
         x = np.random.uniform(-20, 20, self.shape).astype(self.dtype)
         x[np.abs(x) < 0.005] = 0.02
-        out = ref_thresholded_relu(x, threshold)
+        out = ref_thresholded_relu(x, threshold, value)
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
-        self.attrs = {"threshold": threshold}
+        self.attrs = {"threshold": threshold, "value": value}
         self.convert_input_output()
 
     def init_shape(self):
@@ -4356,22 +4357,30 @@ class TestThresholdedReluAPI(unittest.TestCase):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
-                out1 = F.thresholded_relu(x, self.threshold)
-                thresholded_relu = paddle.nn.ThresholdedReLU(self.threshold)
+                out1 = F.thresholded_relu(x, self.threshold, self.value)
+                thresholded_relu = paddle.nn.ThresholdedReLU(
+                    self.threshold, self.value
+                )
                 out2 = thresholded_relu(x)
                 exe = paddle.static.Executor(self.place)
                 res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
-            out_ref = ref_thresholded_relu(self.x_np, self.threshold)
+            out_ref = ref_thresholded_relu(
+                self.x_np, self.threshold, self.value
+            )
             for r in res:
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
         with dynamic_guad():
             x = paddle.to_tensor(self.x_np)
-            out1 = F.thresholded_relu(x, self.threshold)
-            thresholded_relu = paddle.nn.ThresholdedReLU(self.threshold)
+            out1 = F.thresholded_relu(x, self.threshold, self.value)
+            thresholded_relu = paddle.nn.ThresholdedReLU(
+                self.threshold, self.value
+            )
             out2 = thresholded_relu(x)
-            out_ref = ref_thresholded_relu(self.x_np, self.threshold)
+            out_ref = ref_thresholded_relu(
+                self.x_np, self.threshold, self.value
+            )
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 

@@ -2417,7 +2417,7 @@
     func : tensor_unfold_grad
 
 - backward_op : thresholded_relu_grad
-  forward : thresholded_relu (Tensor x, float threshold) -> Tensor(out)
+  forward : thresholded_relu (Tensor x, float threshold, float value) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, float threshold)
   output : Tensor(x_grad)
   infer_meta :
