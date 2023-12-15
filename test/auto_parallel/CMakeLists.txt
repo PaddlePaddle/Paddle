@@ -187,6 +187,9 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_gpt_with_prim MODULES test_gpt_with_prim)
   set_tests_properties(test_gpt_with_prim
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 200)
+  py_test_modules(test_dist_checkpoint_utils MODULES test_dist_checkpoint_utils)
+  set_tests_properties(test_dist_checkpoint_utils
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
   # End of unittests WITH multi cards and timeout
 
   # NOTE(zyl): unittests WITH multi cards and WITHOUT timeout
@@ -275,7 +278,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_auto_conditional_block MODULES
                   test_auto_conditional_block)
   py_test_modules(test_strategy_api MODULES test_strategy_api)
-  py_test_modules(test_dist_checkpoint_utils MODULES test_dist_checkpoint_utils)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()
