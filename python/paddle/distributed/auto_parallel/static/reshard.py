@@ -342,7 +342,9 @@ class Inserter:
             lod_level=tensor.lod_level,
         )
 
-        insert_operation = block._insert_op if sync else block._insert_op_without_sync
+        insert_operation = (
+            block._insert_op if sync else block._insert_op_without_sync
+        )
         cast_op = insert_operation(
             idx,
             type='cast',
@@ -361,7 +363,9 @@ class Inserter:
     def insert_send_op(block, idx, tensor, src, dst, op_role, sync=True):
         """Insert send op into block at the given index."""
         op_type = 'send_v2'
-        insert_operation = block._insert_op if sync else block._insert_op_without_sync
+        insert_operation = (
+            block._insert_op if sync else block._insert_op_without_sync
+        )
         # use pair comm group
         process_group = new_process_group([src, dst], group_type='p2p')
         send_op = insert_operation(
@@ -382,7 +386,9 @@ class Inserter:
     def insert_recv_op(block, idx, tensor, src, dst, op_role, sync=True):
         """Insert recv op into block at the given index."""
         op_type = 'recv_v2'
-        insert_operation = block._insert_op if sync else block._insert_op_without_sync
+        insert_operation = (
+            block._insert_op if sync else block._insert_op_without_sync
+        )
         # use pair group
         process_group = new_process_group([src, dst], group_type='p2p')
         recv_op = insert_operation(
@@ -409,7 +415,9 @@ class Inserter:
         new_var_name = paddle.utils.unique_name.generate_with_ignorable_key(
             ".".join(["reset_lod@RESHARD", 'tmp'])
         )
-        insert_operation = block._insert_op if sync else block._insert_op_without_sync
+        insert_operation = (
+            block._insert_op if sync else block._insert_op_without_sync
+        )
 
         reset_lod_out = block.create_var(
             name=new_var_name,
@@ -437,7 +445,9 @@ class Inserter:
         attrs['axis'] = axis
         attrs['op_role'] = op_role
 
-        insert_operation = block._insert_op if sync else block._insert_op_without_sync
+        insert_operation = (
+            block._insert_op if sync else block._insert_op_without_sync
+        )
         # to avoid name conflict with framework
         helper = LayerHelper('concat@RESHARD', **locals())
         with paddle.static.program_guard(block.program):
@@ -477,7 +487,9 @@ class Inserter:
         for index, item in enumerate(slice_shape):
             if item != global_shape[index]:
                 diff_dims.append(index)
-        insert_operation = block._insert_op if sync else block._insert_op_without_sync
+        insert_operation = (
+            block._insert_op if sync else block._insert_op_without_sync
+        )
 
         # use assign
         if len(diff_dims) == 0:
@@ -574,7 +586,9 @@ class Inserter:
         input_shape = tensor.shape
         inputs = {'X': tensor}
         attrs = {'num': num_or_sections, 'axis': axis, 'op_role': op_role}
-        insert_operation = block._insert_op if sync else block._insert_op_without_sync
+        insert_operation = (
+            block._insert_op if sync else block._insert_op_without_sync
+        )
 
         new_shape = []
         for index, item in enumerate(tensor.shape):
@@ -630,7 +644,9 @@ class Inserter:
             inputs=inputs, attrs=attrs, shape=shape, op_type='fill_constant'
         )
 
-        insert_operation = block._insert_op if sync else block._insert_op_without_sync
+        insert_operation = (
+            block._insert_op if sync else block._insert_op_without_sync
+        )
         fillconstant_op = insert_operation(
             idx,
             type='fill_constant',
@@ -655,7 +671,9 @@ class Inserter:
         op_type = 'c_allgather'
         # to avoid name conflict with framework
         helper = LayerHelper(op_type + "@RESHARD", **locals())
-        insert_operation = block._insert_op if sync else block._insert_op_without_sync
+        insert_operation = (
+            block._insert_op if sync else block._insert_op_without_sync
+        )
 
         with paddle.static.program_guard(block.program):
             allgather_out = block.create_var(
@@ -705,7 +723,9 @@ class Inserter:
         """Insert c_concat op into block at the given index."""
         group = new_process_group(ranks)
         idx_offset = 0
-        insert_operation = block._insert_op if sync else block._insert_op_without_sync
+        insert_operation = (
+            block._insert_op if sync else block._insert_op_without_sync
+        )
 
         # insert c_concat op
         op_type = 'c_concat'
