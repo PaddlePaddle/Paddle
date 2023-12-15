@@ -61,7 +61,7 @@ TEST(DimExpr, equal) {
   ASSERT_EQ(sym0 - sym1, sym0 - sym1);
   ASSERT_NE(sym0 - sym1, sym1 - sym0);
   ASSERT_EQ(sym0 - constant1, DimExpr("S0") - constant1);
-  ASSERT_EQ(sym0 * sym1, sym0 * sym2);
+  ASSERT_EQ(sym0 * sym1, sym0 * sym1);
   ASSERT_NE(sym0 * sym1, sym1 * sym0);
   ASSERT_EQ(sym0 * constant1, DimExpr("S0") * constant1);
   ASSERT_EQ(sym0 / sym1, sym0 / sym1);
