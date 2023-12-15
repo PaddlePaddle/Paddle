@@ -2443,6 +2443,320 @@ PDNode *patterns::ConvElementwiseaddAct::operator()(
   return act_out;
 }
 
+PDNode *patterns::DotProductAttention::operator()(bool with_dropout) {
+  // Attention Computing
+  auto *attn_q = pattern->NewNode(attn_q_repr())
+                     ->AsInput()
+                     ->assert_is_op_output("reshape2", "Out")
+                     ->assert_is_op_input("transpose2", "X");
+  auto *attn_k = pattern->NewNode(attn_k_repr())
+                     ->AsInput()
+                     ->assert_is_op_output("reshape2", "Out")
+                     ->assert_is_op_input("transpose2", "X");
+  auto *attn_v = pattern->NewNode(attn_v_repr())
+                     ->AsInput()
+                     ->assert_is_op_output("reshape2", "Out")
+                     ->assert_is_op_input("transpose2", "X");
+
+  auto *attn_q_transpose =
+      pattern->NewNode(attn_q_transpose_repr())->assert_is_op("transpose2");
+  auto *attn_k_transpose =
+      pattern->NewNode(attn_k_transpose_repr())->assert_is_op("transpose2");
+  auto *attn_v_transpose =
+      pattern->NewNode(attn_v_transpose_repr())->assert_is_op("transpose2");
+
+  auto *attn_q_transpose_out_var =
+      pattern->NewNode(attn_q_transpose_out_repr())
+          ->assert_is_op_output("transpose2", "Out")
+          ->assert_is_op_input("scale", "X");
+  auto *attn_k_transpose_out_var =
+      pattern->NewNode(attn_k_transpose_out_repr())
+          ->assert_is_op_output("transpose2", "Out")
+          ->assert_is_op_input("matmul_v2", "Y");
+  auto *attn_v_transpose_out_var =
+      pattern->NewNode(attn_v_transpose_out_repr())
+          ->assert_is_op_output("transpose2", "Out")
+          ->assert_is_op_input("matmul_v2", "Y");
+  auto *attn_q_transpose_xshape_var =
+      pattern->NewNode(attn_q_transpose_xshape_repr())
+          ->assert_is_op_output("transpose2", "XShape");
+  auto *attn_k_transpose_xshape_var =
+      pattern->NewNode(attn_k_transpose_xshape_repr())
+          ->assert_is_op_output("transpose2", "XShape");
+  auto *attn_v_transpose_xshape_var =
+      pattern->NewNode(attn_v_transpose_xshape_repr())
+          ->assert_is_op_output("transpose2", "XShape");
+  attn_q_transpose->LinksFrom({attn_q}).LinksTo(
+      {attn_q_transpose_out_var, attn_q_transpose_xshape_var});
+  attn_k_transpose->LinksFrom({attn_k}).LinksTo(
+      {attn_k_transpose_out_var, attn_k_transpose_xshape_var});
+  attn_v_transpose->LinksFrom({attn_v}).LinksTo(
+      {attn_v_transpose_out_var, attn_v_transpose_xshape_var});
+
+  auto *attn_q_scale =
+      pattern->NewNode(attn_q_scale_repr())->assert_is_op("scale");
+  auto *attn_q_scale_out_var = pattern->NewNode(attn_q_scale_out_repr())
+                                   ->assert_is_op_output("scale", "Out")
+                                   ->assert_is_op_input("matmul_v2", "X");
+  attn_q_scale->LinksFrom({attn_q_transpose_out_var})
+      .LinksTo({attn_q_scale_out_var});
+
+  auto *attn_qk_matmul = pattern->NewNode(attn_qk_matmul_repr())
+                             ->assert_is_op("matmul_v2")
+                             ->assert_op_attr<bool>("trans_x", false)
+                             ->assert_op_attr<bool>("trans_y", true);
+  auto *attn_qk_matmul_out_var =
+      pattern->NewNode(attn_qk_matmul_out_repr())
+          ->assert_is_op_output("matmul_v2", "Out")
+          ->assert_is_op_input("elementwise_add", "X");
+  attn_qk_matmul->LinksFrom({attn_q_scale_out_var, attn_k_transpose_out_var})
+      .LinksTo({attn_qk_matmul_out_var});
+
+  auto *attn_mask_var =
+      pattern->NewNode(attn_mask_repr())->assert_is_op_input("cast", "X");
+  auto *attn_mask_cast1 =
+      pattern->NewNode(attn_mask_cast1_repr())->assert_is_op("cast");
+  auto *attn_mask_cast1_out_var = pattern->NewNode(attn_mask_cast1_out_repr())
+                                      ->assert_is_op_output("cast", "Out")
+                                      ->assert_is_op_input("cast", "X");
+  attn_mask_cast1->LinksFrom({attn_mask_var})
+      .LinksTo({attn_mask_cast1_out_var});
+
+  auto *attn_mask_cast2 =
+      pattern->NewNode(attn_mask_cast2_repr())->assert_is_op("cast");
+  auto *attn_mask_cast2_out_var = pattern->NewNode(attn_mask_cast2_out_repr())
+                                      ->assert_is_op_output("cast", "Out")
+                                      ->assert_is_op_input("scale", "X");
+  attn_mask_cast2->LinksFrom({attn_mask_cast1_out_var})
+      .LinksTo({attn_mask_cast2_out_var});
+
+  auto *attn_mask_scale1 =
+      pattern->NewNode(attn_mask_scale1_repr())->assert_is_op("scale");
+  auto *attn_mask_scale1_out_var = pattern->NewNode(attn_mask_scale1_out_repr())
+                                       ->assert_is_op_output("scale", "Out")
+                                       ->assert_is_op_input("scale", "X");
+  attn_mask_scale1->LinksFrom({attn_mask_cast2_out_var})
+      .LinksTo({attn_mask_scale1_out_var});
+
+  auto *attn_mask_scale2 =
+      pattern->NewNode(attn_mask_scale2_repr())->assert_is_op("scale");
+  auto *attn_mask_scale2_out_var =
+      pattern->NewNode(attn_mask_scale2_out_repr())
+          ->assert_is_op_output("scale", "Out")
+          ->assert_is_op_input("elementwise_add", "Y");
+  attn_mask_scale2->LinksFrom({attn_mask_scale1_out_var})
+      .LinksTo({attn_mask_scale2_out_var});
+
+  auto *attn_mask_eleadd = pattern->NewNode(attn_mask_eleadd_repr())
+                               ->assert_is_op("elementwise_add");
+  auto *attn_mask_eleadd_out_var =
+      pattern->NewNode(attn_mask_eleadd_out_repr())
+          ->assert_is_op_output("elementwise_add", "Out")
+          ->assert_is_op_input("softmax", "X");
+  attn_mask_eleadd
+      ->LinksFrom({attn_mask_scale2_out_var, attn_qk_matmul_out_var})
+      .LinksTo({attn_mask_eleadd_out_var});
+
+  auto *attn_softmax =
+      pattern->NewNode(attn_softmax_repr())->assert_is_op("softmax");
+  auto *attn_softmax_out_var = pattern->NewNode(attn_softmax_out_repr())
+                                   ->assert_is_op_output("softmax", "Out");
+  attn_softmax->LinksFrom({attn_mask_eleadd_out_var})
+      .LinksTo({attn_softmax_out_var});
+
+  auto *attn_context_matmul_input = attn_softmax_out_var;
+  if (with_dropout) {
+    attn_softmax_out_var->assert_is_op_input("dropout", "X");
+    auto *attn_dropout =
+        pattern->NewNode(attn_dropout_repr())->assert_is_op("dropout");
+    auto *attn_dropout_out_var = pattern->NewNode(attn_dropout_out_repr())
+                                     ->assert_is_op_output("dropout", "Out")
+                                     ->assert_is_op_input("matmul_v2", "X");
+    auto *attn_dropout_mask_var = pattern->NewNode(attn_dropout_mask_repr())
+                                      ->assert_is_op_output("dropout", "Mask");
+    attn_dropout->LinksFrom({attn_softmax_out_var})
+        .LinksTo({attn_dropout_out_var, attn_dropout_mask_var});
+    attn_context_matmul_input = attn_dropout_out_var;
+  } else {
+    attn_softmax_out_var->assert_is_op_input("matmul_v2", "X");
+  }
+
+  auto *attn_context_matmul =
+      pattern->NewNode(attn_context_matmul_repr())->assert_is_op("matmul_v2");
+  auto *attn_context_matmul_out_var =
+      pattern->NewNode(attn_context_matmul_out_repr())
+          ->assert_is_op_output("matmul_v2", "Out")
+          ->assert_is_op_input("transpose2", "X");
+  attn_context_matmul
+      ->LinksFrom({attn_context_matmul_input, attn_v_transpose_out_var})
+      .LinksTo({attn_context_matmul_out_var});
+
+  auto *attn_transpose =
+      pattern->NewNode(attn_transpose_repr())->assert_is_op("transpose2");
+  auto *attn_transpose_out_var = pattern->NewNode(attn_transpose_out_repr())
+                                     ->assert_is_op_output("transpose2", "Out")
+                                     ->assert_is_op_input("reshape2", "X");
+  attn_transpose->LinksFrom({attn_context_matmul_out_var})
+      .LinksTo({attn_transpose_out_var});
+  auto *attn_transpose_xshape_var =
+      pattern->NewNode(attn_transpose_xshape_repr())
+          ->assert_is_op_output("transpose2", "XShape");
+  attn_transpose->LinksFrom({attn_context_matmul_out_var})
+      .LinksTo({attn_transpose_out_var, attn_transpose_xshape_var});
+
+  return attn_transpose_out_var;
+}
+
+PDNode *patterns::DotProductAttentionGrad::operator()(bool with_dropout) {
+  auto *attn_dout_var =
+      pattern->NewNode(attn_dout_repr())
+          ->AsInput()
+          ->assert_is_op_input("transpose2_grad", GradVarName("Out"))
+          ->assert_is_op_output("reshape2_grad", GradVarName("X"));
+  auto *attn_transpose_grad = pattern->NewNode(attn_transpose_grad_repr())
+                                  ->assert_is_op("transpose2_grad");
+  auto *attn_transpose_grad_out_var =
+      pattern->NewNode(attn_transpose_grad_out_repr())
+          ->assert_is_op_output("transpose2_grad", GradVarName("X"));
+  attn_transpose_grad->LinksFrom({attn_dout_var})
+      .LinksTo({attn_transpose_grad_out_var});
+
+  attn_transpose_grad_out_var->assert_is_op_input("matmul_v2_grad",
+                                                  GradVarName("Out"));
+  auto *attn_context_matmul_grad_x_var =
+      pattern->NewNode(attn_context_matmul_grad_x_repr())
+          ->assert_is_op_input("matmul_v2_grad", "X");
+  auto *attn_context_matmul_grad_y_var =
+      pattern->NewNode(attn_context_matmul_grad_y_repr())
+          ->assert_is_op_input("matmul_v2_grad", "Y");
+  auto *attn_context_matmul_grad =
+      pattern->NewNode(attn_context_matmul_grad_repr())
+          ->assert_is_op("matmul_v2_grad");
+  auto *attn_context_matmul_grad_dx_var =
+      pattern->NewNode(attn_context_matmul_grad_dx_repr())
+          ->assert_is_op_output("matmul_v2_grad", GradVarName("X"));
+  auto *attn_context_matmul_grad_dy_var =
+      pattern->NewNode(attn_context_matmul_grad_dy_repr())
+          ->assert_is_op_output("matmul_v2_grad", GradVarName("Y"));
+  attn_context_matmul_grad
+      ->LinksFrom({attn_transpose_grad_out_var,
+                   attn_context_matmul_grad_x_var,
+                   attn_context_matmul_grad_y_var})
+      .LinksTo(
+          {attn_context_matmul_grad_dx_var, attn_context_matmul_grad_dy_var});
+
+  PDNode *attn_softmax_grad_input = nullptr;
+  PDNode *attn_softmax_out_var = nullptr;
+  if (with_dropout) {
+    auto *attn_dropout_grad = pattern->NewNode(attn_dropout_grad_repr())
+                                  ->assert_is_op("dropout_grad");
+    auto *attn_dropout_grad_out_var =
+        pattern->NewNode(attn_dropout_grad_out_repr())
+            ->assert_is_op_output("dropout_grad", GradVarName("X"));
+    attn_context_matmul_grad_dx_var->assert_is_op_input("dropout_grad",
+                                                        GradVarName("Out"));
+    attn_dropout_grad->LinksFrom({attn_context_matmul_grad_dx_var})
+        .LinksTo({attn_dropout_grad_out_var});
+    attn_softmax_grad_input = attn_dropout_grad_out_var;
+    attn_softmax_out_var = pattern->NewNode(attn_softmax_out_repr());
+
+  } else {
+    attn_context_matmul_grad_dx_var->assert_is_op_input("softmax_grad",
+                                                        GradVarName("Out"));
+    attn_softmax_grad_input = attn_context_matmul_grad_dx_var;
+    attn_softmax_out_var = attn_context_matmul_grad_x_var;
+  }
+  attn_softmax_out_var->assert_is_op_input("softmax_grad", "Out");
+
+  auto *attn_softmax_grad =
+      pattern->NewNode(attn_softmax_grad_repr())->assert_is_op("softmax_grad");
+  auto *attn_softmax_grad_out_var =
+      pattern->NewNode(attn_softmax_grad_out_repr())
+          ->assert_is_op_output("softmax_grad", GradVarName("X"));
+  attn_softmax_grad->LinksFrom({attn_softmax_out_var, attn_softmax_grad_input})
+      .LinksTo({attn_softmax_grad_out_var});
+
+  attn_softmax_grad_out_var->assert_is_op_input("elementwise_add_grad",
+                                                GradVarName("Out"));
+  auto *attn_mask_eleadd_grad_mask_var =
+      pattern->NewNode(attn_mask_eleadd_grad_mask_repr())
+          ->assert_is_op_input("elementwise_add_grad", "Y");
+  auto *attn_mask_eleadd_grad = pattern->NewNode(attn_mask_eleadd_grad_repr())
+                                    ->assert_is_op("elementwise_add_grad");
+  auto *attn_mask_eleadd_grad_dx_var =
+      pattern->NewNode(attn_mask_eleadd_grad_dx_repr())
+          ->assert_is_op_output("elementwise_add_grad", GradVarName("X"));
+  attn_mask_eleadd_grad
+      ->LinksFrom({attn_softmax_grad_out_var, attn_mask_eleadd_grad_mask_var})
+      .LinksTo({attn_mask_eleadd_grad_dx_var});
+
+  attn_mask_eleadd_grad_dx_var->assert_is_op_input("matmul_v2_grad",
+                                                   GradVarName("Out"));
+  auto *attn_qk_matmul_grad_x_var =
+      pattern->NewNode(attn_qk_matmul_grad_x_repr())
+          ->assert_is_op_input("matmul_v2_grad", "X");
+  auto *attn_qk_matmul_grad_y_var =
+      pattern->NewNode(attn_qk_matmul_grad_y_repr())
+          ->assert_is_op_input("matmul_v2_grad", "Y");
+  auto *attn_qk_matmul_grad = pattern->NewNode(attn_qk_matmul_grad_repr())
+                                  ->assert_is_op("matmul_v2_grad");
+  auto *attn_qk_matmul_grad_dx_var =
+      pattern->NewNode(attn_qk_matmul_grad_dx_repr())
+          ->assert_is_op_output("matmul_v2_grad", GradVarName("X"));
+  auto *attn_qk_matmul_grad_dy_var =
+      pattern->NewNode(attn_qk_matmul_grad_dy_repr())
+          ->assert_is_op_output("matmul_v2_grad", GradVarName("Y"));
+  attn_qk_matmul_grad
+      ->LinksFrom({attn_mask_eleadd_grad_dx_var,
+                   attn_qk_matmul_grad_x_var,
+                   attn_qk_matmul_grad_y_var})
+      .LinksTo({attn_qk_matmul_grad_dx_var, attn_qk_matmul_grad_dy_var});
+
+  attn_qk_matmul_grad_dx_var->assert_is_op_input("scale", "X");
+  auto *attn_scale_grad =
+      pattern->NewNode(attn_scale_grad_repr())->assert_is_op("scale");
+  auto *attn_scale_grad_out_var = pattern->NewNode(attn_scale_grad_out_repr())
+                                      ->assert_is_op_output("scale", "Out");
+  attn_scale_grad->LinksFrom({attn_qk_matmul_grad_dx_var})
+      .LinksTo({attn_scale_grad_out_var});
+
+  attn_scale_grad_out_var->assert_is_op_input("transpose2_grad",
+                                              GradVarName("Out"));
+
+  // q -> transpose2_grad -> reshape2_grad
+  auto *attn_q_transpose_grad = pattern->NewNode(attn_q_transpose_grad_repr())
+                                    ->assert_is_op("transpose2_grad");
+  auto *attn_dq = pattern->NewNode(attn_dq_repr())
+                      ->assert_is_op_output("transpose2_grad", GradVarName("X"))
+                      ->assert_is_op_input("reshape2_grad", GradVarName("Out"));
+  attn_q_transpose_grad->LinksFrom({attn_scale_grad_out_var})
+      .LinksTo({attn_dq});
+
+  // k -> transpose2_grad -> reshape2_grad
+  attn_qk_matmul_grad_dy_var->assert_is_op_input("transpose2_grad",
+                                                 GradVarName("Out"));
+  auto *attn_k_transpose_grad = pattern->NewNode(attn_k_transpose_grad_repr())
+                                    ->assert_is_op("transpose2_grad");
+  auto *attn_dk = pattern->NewNode(attn_dk_repr())
+                      ->assert_is_op_output("transpose2_grad", GradVarName("X"))
+                      ->assert_is_op_input("reshape2_grad", GradVarName("Out"));
+  attn_k_transpose_grad->LinksFrom({attn_qk_matmul_grad_dy_var})
+      .LinksTo({attn_dk});
+
+  // v -> transpose2_grad -> slice_grad
+  attn_context_matmul_grad_dy_var->assert_is_op_input("transpose2_grad",
+                                                      GradVarName("Out"));
+  auto *attn_v_transpose_grad = pattern->NewNode(attn_v_transpose_grad_repr())
+                                    ->assert_is_op("transpose2_grad");
+  auto *attn_dv = pattern->NewNode(attn_dv_repr())
+                      ->assert_is_op_output("transpose2_grad", GradVarName("X"))
+                      ->assert_is_op_input("reshape2_grad", GradVarName("Out"));
+  attn_v_transpose_grad->LinksFrom({attn_context_matmul_grad_dy_var})
+      .LinksTo({attn_dv});
+
+  return attn_dq;
+}
+
 PDNode *patterns::VitAttention::operator()(PDNode *in) {
   in->AsInput();
   std::unordered_set<std::string> matmul_ops{"matrix_multiply"};
@@ -4621,6 +4935,512 @@ void patterns::MulMatmulMatmulV2::operator()(
                      ->assert_is_ops_output(ops_type, "Out");
 
   ops->LinksTo({ops_out});
+}
+
+PDNode *patterns::ConvBNAddAct::operator()(
+    const std::unordered_set<std::string> &act_types,
+    bool shortcut,
+    bool is_training) {
+  // Conv1
+  auto *x1 = pattern->NewNode(x1_repr())
+                 ->assert_is_op_input("conv2d", "Input")
+                 ->assert_var_dtype(proto::VarType::FP16);
+  auto *conv1_w =
+      pattern->NewNode(conv1_w_repr())->assert_is_op_input("conv2d", "Filter");
+  auto *conv1_out = pattern->NewNode(conv1_out_repr())
+                        ->assert_is_op_output("conv2d", "Output")
+                        ->assert_is_op_input("batch_norm", "X");
+  auto conv1_op = pattern->NewNode(conv1_op_repr())
+                      ->assert_is_op("conv2d")
+                      ->assert_op_attr<std::string>("data_format", "NHWC");
+  // Conv2
+  PDNode *x2 = nullptr;
+  PDNode *conv2_w = nullptr;
+  PDNode *conv2_out = nullptr;
+  PDNode *conv2_op = nullptr;
+  if (shortcut) {
+    x2 = pattern->NewNode(x2_repr())
+             ->assert_is_op_input("elementwise_add", "Y")
+             ->assert_var_dtype(proto::VarType::FP16);
+  } else {
+    x2 = pattern->NewNode(x2_repr())->assert_is_op_input("conv2d", "Input");
+    conv2_w = pattern->NewNode(conv2_w_repr())
+                  ->assert_is_op_input("conv2d", "Filter");
+    conv2_out = pattern->NewNode(conv2_out_repr())
+                    ->assert_is_op_output("conv2d", "Output")
+                    ->assert_is_op_input("batch_norm", "X");
+    conv2_op = pattern->NewNode(conv2_op_repr())
+                   ->assert_is_op("conv2d")
+                   ->assert_op_attr<std::string>("data_format", "NHWC");
+  }
+  // BN1
+  auto *bn1_scale_var = pattern->NewNode(bn1_scale_repr())
+                            ->assert_is_op_input("batch_norm", "Scale");
+  auto *bn1_bias_var = pattern->NewNode(bn1_bias_repr())
+                           ->assert_is_op_input("batch_norm", "Bias");
+  auto *bn1_variance_var = pattern->NewNode(bn1_variance_repr())
+                               ->assert_is_op_input("batch_norm", "Variance");
+  auto *bn1_mean_var = pattern->NewNode(bn1_mean_repr())
+                           ->assert_is_op_input("batch_norm", "Mean");
+
+  auto *bn1_op = pattern->NewNode(bn1_op_repr())
+                     ->assert_is_op("batch_norm")
+                     ->assert_is_not_op_input("MomentumTensor")
+                     ->assert_op_attr<bool>("use_global_stats", false)
+                     ->assert_op_attr<std::string>("data_layout", "NHWC");
+
+  auto *bn1_mean_out_var = pattern->NewNode(bn1_mean_out_repr())
+                               ->assert_is_op_output("batch_norm", "MeanOut");
+  auto *bn1_variance_out_var =
+      pattern->NewNode(bn1_variance_out_repr())
+          ->assert_is_op_output("batch_norm", "VarianceOut");
+  auto *bn1_saved_variance_var =
+      pattern->NewNode(bn1_saved_variance_repr())
+          ->assert_is_op_output("batch_norm", "SavedVariance");
+  auto *bn1_saved_mean_var =
+      pattern->NewNode(bn1_saved_mean_repr())
+          ->assert_is_op_output("batch_norm", "SavedMean");
+  auto *bn1_out_var =
+      pattern->NewNode(bn1_out_repr())->assert_is_op_output("batch_norm", "Y");
+  bn1_out_var->assert_is_op_input("elementwise_add", "X");
+
+  // BN2
+  PDNode *bn2_scale_var = nullptr;
+  PDNode *bn2_bias_var = nullptr;
+  PDNode *bn2_variance_var = nullptr;
+  PDNode *bn2_mean_var = nullptr;
+  PDNode *bn2_op = nullptr;
+  PDNode *bn2_mean_out_var = nullptr;
+  PDNode *bn2_variance_out_var = nullptr;
+  PDNode *bn2_saved_variance_var = nullptr;
+  PDNode *bn2_saved_mean_var = nullptr;
+  PDNode *bn2_out_var = nullptr;
+
+  if (!shortcut) {
+    bn2_scale_var = pattern->NewNode(bn2_scale_repr())
+                        ->assert_is_op_input("batch_norm", "Scale");
+    bn2_bias_var = pattern->NewNode(bn2_bias_repr())
+                       ->assert_is_op_input("batch_norm", "Bias");
+    bn2_variance_var = pattern->NewNode(bn2_variance_repr())
+                           ->assert_is_op_input("batch_norm", "Variance");
+    bn2_mean_var = pattern->NewNode(bn2_mean_repr())
+                       ->assert_is_op_input("batch_norm", "Mean");
+
+    bn2_op = pattern->NewNode(bn2_op_repr())
+                 ->assert_is_op("batch_norm")
+                 ->assert_is_not_op_input("MomentumTensor")
+                 ->assert_op_attr<bool>("use_global_stats", false)
+                 ->assert_op_attr<std::string>("data_layout", "NHWC");
+
+    bn2_mean_out_var = pattern->NewNode(bn2_mean_out_repr())
+                           ->assert_is_op_output("batch_norm", "MeanOut");
+    bn2_variance_out_var =
+        pattern->NewNode(bn2_variance_out_repr())
+            ->assert_is_op_output("batch_norm", "VarianceOut");
+    bn2_saved_variance_var =
+        pattern->NewNode(bn2_saved_variance_repr())
+            ->assert_is_op_output("batch_norm", "SavedVariance");
+    bn2_saved_mean_var = pattern->NewNode(bn2_saved_mean_repr())
+                             ->assert_is_op_output("batch_norm", "SavedMean");
+    bn2_out_var = pattern->NewNode(bn2_out_repr())
+                      ->assert_is_op_output("batch_norm", "Y");
+    bn2_out_var->assert_is_op_input("elementwise_add", "Y");
+  }
+
+  // Add
+  auto *add_out = pattern->NewNode(add_out_repr())
+                      ->assert_is_only_output_of_op("elementwise_add");
+  auto *elewise_add_op =
+      pattern->NewNode(elewise_add_op_repr())->assert_is_op("elementwise_add");
+  // Act
+  auto *act_op = pattern->NewNode(act_op_repr())->assert_is_ops(act_types);
+  auto *act_out =
+      pattern->NewNode(act_out_repr())->assert_is_ops_output(act_types, "Out");
+
+  // Links
+  conv1_op->LinksFrom({x1, conv1_w}).LinksTo({conv1_out});
+  bn1_op
+      ->LinksFrom({conv1_out,
+                   bn1_scale_var,
+                   bn1_bias_var,
+                   bn1_mean_var,
+                   bn1_variance_var})
+      .LinksTo({bn1_out_var,
+                bn1_mean_out_var,
+                bn1_variance_out_var,
+                bn1_saved_mean_var,
+                bn1_saved_variance_var});
+  if (!shortcut) {
+    conv2_op->LinksFrom({x2, conv2_w}).LinksTo({conv2_out});
+    bn2_op
+        ->LinksFrom({conv2_out,
+                     bn2_scale_var,
+                     bn2_bias_var,
+                     bn2_mean_var,
+                     bn2_variance_var})
+        .LinksTo({bn2_out_var,
+                  bn2_mean_out_var,
+                  bn2_variance_out_var,
+                  bn2_saved_mean_var,
+                  bn2_saved_variance_var});
+  }
+  if (shortcut) {
+    elewise_add_op->LinksFrom({bn1_out_var, x2}).LinksTo({add_out});
+  } else {
+    elewise_add_op->LinksFrom({bn1_out_var, bn2_out_var}).LinksTo({add_out});
+  }
+  act_op->LinksFrom({add_out}).LinksTo({act_out});
+
+  // Note(tizheng): The backward fusion pattern is
+  // dConv + Add + dReLU + dBN. Considering that forward
+  // and backward fusion should be applied (or not applied)
+  // simultaneously, we only fuse ConvBNAddAct with a following Conv2D.
+  if (is_training) {
+    act_out->assert_is_op_input("conv2d", "Input");
+  } else {
+    // For inference, avoid selecting this pattern in training programs
+    conv1_out->AsIntermediate();
+    bn1_out_var->AsIntermediate();
+    if (!shortcut) {
+      conv2_out->AsIntermediate();
+      bn2_out_var->AsIntermediate();
+    }
+    add_out->AsIntermediate();
+  }
+  return act_out;
+}
+
+PDNode *patterns::ConvBNActConvBNStats::operator()(
+    const std::unordered_set<std::string> &act_types, bool is_training) {
+  // Conv
+  auto *conv_x_var = pattern->NewNode(conv_x_repr())
+                         ->assert_is_op_input("conv2d", "Input")
+                         ->assert_var_dtype(proto::VarType::FP16);
+  auto *conv_w_var =
+      pattern->NewNode(conv_w_repr())->assert_is_op_input("conv2d", "Filter");
+  auto *conv_out_var = pattern->NewNode(conv_out_repr())
+                           ->assert_is_op_output("conv2d", "Output")
+                           ->assert_is_op_input("batch_norm", "X");
+  if (is_training) {
+    // has link to bn_grad
+    conv_out_var->assert_has_n_outputs(2);
+  } else {
+    conv_out_var->AsIntermediate();
+  }
+  auto conv_op = pattern->NewNode(conv_op_repr())
+                     ->assert_is_op("conv2d")
+                     ->assert_op_attr<std::string>("data_format", "NHWC");
+  // BN
+  auto *bn_scale_var = pattern->NewNode(bn_scale_repr())
+                           ->assert_is_op_input("batch_norm", "Scale");
+  auto *bn_bias_var = pattern->NewNode(bn_bias_repr())
+                          ->assert_is_op_input("batch_norm", "Bias");
+  auto *bn_variance_var = pattern->NewNode(bn_variance_repr())
+                              ->assert_is_op_input("batch_norm", "Variance");
+  auto *bn_mean_var = pattern->NewNode(bn_mean_repr())
+                          ->assert_is_op_input("batch_norm", "Mean");
+
+  auto *bn_op = pattern->NewNode(bn_op_repr())
+                    ->assert_is_op("batch_norm")
+                    ->assert_is_not_op_input("MomentumTensor")
+                    ->assert_op_attr<bool>("use_global_stats", false)
+                    ->assert_op_attr<std::string>("data_layout", "NHWC");
+
+  auto *bn_mean_out_var = pattern->NewNode(bn_mean_out_repr())
+                              ->assert_is_op_output("batch_norm", "MeanOut");
+  auto *bn_variance_out_var =
+      pattern->NewNode(bn_variance_out_repr())
+          ->assert_is_op_output("batch_norm", "VarianceOut");
+  auto *bn_saved_variance_var =
+      pattern->NewNode(bn_saved_variance_repr())
+          ->assert_is_op_output("batch_norm", "SavedVariance");
+  auto *bn_saved_mean_var =
+      pattern->NewNode(bn_saved_mean_repr())
+          ->assert_is_op_output("batch_norm", "SavedMean");
+  auto *bn_out_var = pattern->NewNode(bn_out_repr())
+                         ->assert_is_op_output("batch_norm", "Y")
+                         ->AsIntermediate();
+  bn_out_var->assert_is_ops_input(act_types);
+  // Act
+  auto *act_op = pattern->NewNode(act_op_repr())->assert_is_ops(act_types);
+  auto *act_out_var =
+      pattern->NewNode(act_out_repr())->assert_is_ops_output(act_types, "Out");
+  act_out_var->assert_is_op_input("fused_scale_bias_relu_conv_bn", "x");
+  if (is_training) {
+    // has link to conv_grad, relu_grad and fused_scale_bias_relu_conv_bn
+    act_out_var->assert_has_n_outputs(3);
+  } else {
+    act_out_var->AsIntermediate();
+  }
+  // ConvBNStats
+  auto *conv_bnstats_op = pattern->NewNode(conv_bnstats_op_repr())
+                              ->assert_is_op("fused_scale_bias_relu_conv_bn")
+                              ->assert_op_attr<bool>("fuse_prologue", false);
+
+  // Links
+  conv_op->LinksFrom({conv_x_var, conv_w_var}).LinksTo({conv_out_var});
+  bn_op
+      ->LinksFrom({conv_out_var,
+                   bn_scale_var,
+                   bn_bias_var,
+                   bn_mean_var,
+                   bn_variance_var})
+      .LinksTo({bn_out_var,
+                bn_mean_out_var,
+                bn_variance_out_var,
+                bn_saved_mean_var,
+                bn_saved_variance_var});
+  act_op->LinksFrom({bn_out_var}).LinksTo({act_out_var});
+  conv_bnstats_op->LinksFrom({act_out_var});
+  return act_out_var;
+}
+
+PDNode *patterns::BNActConvGrad::operator()(
+    const std::unordered_set<std::string> &act_grad_types) {
+  auto *d_conv_out_var =
+      pattern->NewNode(d_conv_out_repr())
+          ->assert_is_op_input("conv2d_grad", GradVarName("Output"));
+  auto *conv_w_var = pattern->NewNode(conv_w_repr())
+                         ->assert_is_op_input("conv2d_grad", "Filter");
+  auto *d_conv_w_var =
+      pattern->NewNode(d_conv_w_repr())
+          ->assert_is_op_output("conv2d_grad", GradVarName("Filter"));
+  auto *d_conv_x_var =
+      pattern->NewNode(d_conv_x_repr())
+          ->assert_is_op_output("conv2d_grad", GradVarName("Input"));
+  d_conv_x_var->assert_is_ops_input(act_grad_types, GradVarName("Out"));
+  // No conv_x because it is already deleted by forward pass
+  auto *conv_grad = pattern->NewNode(conv_grad_repr())
+                        ->assert_is_op("conv2d_grad")
+                        ->assert_op_attr<std::string>("data_format", "NHWC")
+                        ->assert_has_n_inputs(2);
+  auto *act_grad =
+      pattern->NewNode(act_grad_repr())->assert_is_ops(act_grad_types);
+  auto *bn_grad = pattern->NewNode(batch_norm_grad_repr())
+                      ->assert_is_op("batch_norm_grad")
+                      ->assert_op_attr<bool>("use_global_stats", false)
+                      ->assert_op_attr<std::string>("data_layout", "NHWC");
+  auto *d_act_x_var =
+      pattern->NewNode(d_act_x_repr())
+          ->assert_is_ops_output(act_grad_types, GradVarName("X"))
+          ->assert_has_n_outputs(1)
+          ->assert_var_dtype(proto::VarType::FP16);  // d_act_x
+
+  d_act_x_var->AsIntermediate()->assert_is_op_input("batch_norm_grad",
+                                                    GradVarName("Y"));
+
+  auto *bn_x_var = pattern->NewNode(bn_x_repr())
+                       ->assert_is_op_input("batch_norm_grad", "X")
+                       ->assert_var_dtype(proto::VarType::FP16);
+  auto *bn_scale_var = pattern->NewNode(bn_scale_repr())
+                           ->assert_is_op_input("batch_norm_grad", "Scale");
+  auto *bn_bias_var = pattern->NewNode(bn_bias_repr())
+                          ->assert_is_op_input("batch_norm_grad", "Bias");
+  auto *bn_saved_mean_var =
+      pattern->NewNode(bn_saved_mean_repr())
+          ->assert_is_op_input("batch_norm_grad", "SavedMean");
+  auto *bn_saved_variance_var =
+      pattern->NewNode(bn_saved_variance_repr())
+          ->assert_is_op_input("batch_norm_grad", "SavedVariance");
+  auto *d_bn_x_var =
+      pattern->NewNode(d_bn_x_repr())
+          ->assert_is_not_ctrl_var()
+          ->assert_is_op_output("batch_norm_grad", GradVarName("X"))
+          ->assert_var_dtype(proto::VarType::FP16);
+  auto *d_bn_scale_var =
+      pattern->NewNode(d_bn_scale_repr())
+          ->assert_is_not_ctrl_var()
+          ->assert_is_op_output("batch_norm_grad", GradVarName("Scale"));
+  auto *d_bn_bias_var =
+      pattern->NewNode(d_bn_bias_repr())
+          ->assert_is_not_ctrl_var()
+          ->assert_is_op_output("batch_norm_grad", GradVarName("Bias"));
+
+  conv_grad->LinksFrom({d_conv_out_var, conv_w_var})
+      .LinksTo({d_conv_w_var, d_conv_x_var});
+
+  act_grad->LinksFrom({d_conv_x_var}).LinksTo({d_act_x_var});
+
+  bn_grad
+      ->LinksFrom({bn_x_var,
+                   d_act_x_var,
+                   bn_scale_var,
+                   bn_bias_var,
+                   bn_saved_mean_var,
+                   bn_saved_variance_var})
+      .LinksTo({d_bn_x_var, d_bn_scale_var, d_bn_bias_var});
+
+  return bn_grad;
+}
+
+PDNode *patterns::BNAddActConvGrad::operator()(
+    const std::unordered_set<std::string> &act_grad_types,
+    bool shortcut,
+    bool with_sum) {
+  // dConv
+  auto *d_conv_out_var =
+      pattern->NewNode(d_conv_out_repr())
+          ->assert_is_op_input("conv2d_grad", GradVarName("Output"));
+  auto *conv_x_var = pattern->NewNode(conv_x_repr())
+                         ->assert_is_op_input("conv2d_grad", "Input");
+  conv_x_var->assert_is_ops_input(act_grad_types, "Out");
+  auto *conv_w_var = pattern->NewNode(conv_w_repr())
+                         ->assert_is_op_input("conv2d_grad", "Filter");
+  auto *d_conv_w_var =
+      pattern->NewNode(d_conv_w_repr())
+          ->assert_is_op_output("conv2d_grad", GradVarName("Filter"));
+  auto *d_conv_x_var =
+      pattern->NewNode(d_conv_x_repr())
+          ->assert_is_op_output("conv2d_grad", GradVarName("Input"));
+  auto *conv_grad = pattern->NewNode(conv_grad_repr())
+                        ->assert_is_op("conv2d_grad")
+                        ->assert_op_attr<std::string>("data_format", "NHWC");
+  // (optional) sum
+  PDNode *sum_in_extra_var = nullptr;
+  PDNode *sum_out_var = nullptr;
+  PDNode *sum_op = nullptr;
+  if (with_sum) {
+    sum_op = pattern->NewNode(sum_repr())->assert_is_op("sum");
+    d_conv_x_var->assert_is_op_input("sum");
+    sum_in_extra_var =
+        pattern->NewNode(sum_in_extra_repr())->assert_is_op_input("sum");
+    sum_out_var =
+        pattern->NewNode(sum_out_repr())->assert_is_only_output_of_op("sum");
+    sum_out_var->assert_is_ops_input(act_grad_types, GradVarName("Out"));
+  } else {
+    d_conv_x_var->assert_is_ops_input(act_grad_types, GradVarName("Out"));
+  }
+  // dAct
+  auto *act_grad =
+      pattern->NewNode(act_grad_repr())->assert_is_ops(act_grad_types);
+  auto *d_act_x_var =
+      pattern->NewNode(d_act_x_repr())
+          ->assert_is_ops_output(act_grad_types, GradVarName("X"))
+          ->assert_has_n_outputs(1)
+          ->assert_var_dtype(proto::VarType::FP16);  // d_act_x
+
+  d_act_x_var->AsIntermediate()->assert_is_op_input("elementwise_add_grad");
+
+  // elementwise_add_grad
+  auto *elewise_add_grad = pattern->NewNode(elewise_add_grad_repr())
+                               ->assert_is_op("elementwise_add_grad");
+  auto *d_elewise_add_x_var = pattern->NewNode(d_elewise_add_x_repr())
+                                  ->assert_is_op_output("elementwise_add_grad");
+  auto *d_elewise_add_y_var = pattern->NewNode(d_elewise_add_y_repr())
+                                  ->assert_is_op_output("elementwise_add_grad");
+  d_elewise_add_x_var->assert_is_op_input("batch_norm_grad", GradVarName("Y"));
+  if (shortcut) {
+    d_elewise_add_y_var->AsOutput();
+  } else {
+    d_elewise_add_y_var->assert_is_op_input("batch_norm_grad",
+                                            GradVarName("Y"));
+  }
+  // dBN1
+  auto *bn1_grad = pattern->NewNode(batch_norm1_grad_repr())
+                       ->assert_is_op("batch_norm_grad")
+                       ->assert_op_attr<bool>("use_global_stats", false)
+                       ->assert_op_attr<std::string>("data_layout", "NHWC");
+
+  auto *bn1_x_var = pattern->NewNode(bn1_x_repr())
+                        ->assert_is_op_input("batch_norm_grad", "X")
+                        ->assert_var_dtype(proto::VarType::FP16);
+  auto *bn1_scale_var = pattern->NewNode(bn1_scale_repr())
+                            ->assert_is_op_input("batch_norm_grad", "Scale");
+  auto *bn1_bias_var = pattern->NewNode(bn1_bias_repr())
+                           ->assert_is_op_input("batch_norm_grad", "Bias");
+  auto *bn1_saved_mean_var =
+      pattern->NewNode(bn1_saved_mean_repr())
+          ->assert_is_op_input("batch_norm_grad", "SavedMean");
+  auto *bn1_saved_variance_var =
+      pattern->NewNode(bn1_saved_variance_repr())
+          ->assert_is_op_input("batch_norm_grad", "SavedVariance");
+  auto *d_bn1_x_var =
+      pattern->NewNode(d_bn1_x_repr())
+          ->assert_is_not_ctrl_var()
+          ->assert_is_op_output("batch_norm_grad", GradVarName("X"))
+          ->assert_var_dtype(proto::VarType::FP16);
+  auto *d_bn1_scale_var =
+      pattern->NewNode(d_bn1_scale_repr())
+          ->assert_is_not_ctrl_var()
+          ->assert_is_op_output("batch_norm_grad", GradVarName("Scale"));
+  auto *d_bn1_bias_var =
+      pattern->NewNode(d_bn1_bias_repr())
+          ->assert_is_not_ctrl_var()
+          ->assert_is_op_output("batch_norm_grad", GradVarName("Bias"));
+  // dBN2
+  PDNode *bn2_grad = nullptr;
+  PDNode *bn2_x_var = nullptr;
+  PDNode *bn2_scale_var = nullptr;
+  PDNode *bn2_bias_var = nullptr;
+  PDNode *bn2_saved_mean_var = nullptr;
+  PDNode *bn2_saved_variance_var = nullptr;
+  PDNode *d_bn2_x_var = nullptr;
+  PDNode *d_bn2_scale_var = nullptr;
+  PDNode *d_bn2_bias_var = nullptr;
+  if (!shortcut) {
+    bn2_grad = pattern->NewNode(batch_norm2_grad_repr())
+                   ->assert_is_op("batch_norm_grad")
+                   ->assert_op_attr<bool>("use_global_stats", false)
+                   ->assert_op_attr<std::string>("data_layout", "NHWC");
+
+    bn2_x_var = pattern->NewNode(bn2_x_repr())
+                    ->assert_is_op_input("batch_norm_grad", "X")
+                    ->assert_var_dtype(proto::VarType::FP16);
+    bn2_scale_var = pattern->NewNode(bn2_scale_repr())
+                        ->assert_is_op_input("batch_norm_grad", "Scale");
+    bn2_bias_var = pattern->NewNode(bn2_bias_repr())
+                       ->assert_is_op_input("batch_norm_grad", "Bias");
+    bn2_saved_mean_var =
+        pattern->NewNode(bn2_saved_mean_repr())
+            ->assert_is_op_input("batch_norm_grad", "SavedMean");
+    bn2_saved_variance_var =
+        pattern->NewNode(bn2_saved_variance_repr())
+            ->assert_is_op_input("batch_norm_grad", "SavedVariance");
+    d_bn2_x_var = pattern->NewNode(d_bn2_x_repr())
+                      ->assert_is_not_ctrl_var()
+                      ->assert_is_op_output("batch_norm_grad", GradVarName("X"))
+                      ->assert_var_dtype(proto::VarType::FP16);
+    d_bn2_scale_var =
+        pattern->NewNode(d_bn2_scale_repr())
+            ->assert_is_not_ctrl_var()
+            ->assert_is_op_output("batch_norm_grad", GradVarName("Scale"));
+    d_bn2_bias_var =
+        pattern->NewNode(d_bn2_bias_repr())
+            ->assert_is_not_ctrl_var()
+            ->assert_is_op_output("batch_norm_grad", GradVarName("Bias"));
+  }
+
+  conv_grad->LinksFrom({d_conv_out_var, conv_x_var, conv_w_var})
+      .LinksTo({d_conv_w_var, d_conv_x_var});
+  if (with_sum) {
+    sum_op->LinksFrom({d_conv_x_var, sum_in_extra_var}).LinksTo({sum_out_var});
+    act_grad->LinksFrom({sum_out_var, conv_x_var}).LinksTo({d_act_x_var});
+  } else {
+    act_grad->LinksFrom({d_conv_x_var, conv_x_var}).LinksTo({d_act_x_var});
+  }
+
+  elewise_add_grad->LinksFrom({d_act_x_var})
+      .LinksTo({d_elewise_add_x_var, d_elewise_add_y_var});
+
+  bn1_grad
+      ->LinksFrom({d_elewise_add_x_var,
+                   bn1_x_var,
+                   bn1_scale_var,
+                   bn1_bias_var,
+                   bn1_saved_mean_var,
+                   bn1_saved_variance_var})
+      .LinksTo({d_bn1_x_var, d_bn1_scale_var, d_bn1_bias_var});
+  if (!shortcut) {
+    bn2_grad
+        ->LinksFrom({d_elewise_add_y_var,
+                     bn2_x_var,
+                     bn2_scale_var,
+                     bn2_bias_var,
+                     bn2_saved_mean_var,
+                     bn2_saved_variance_var})
+        .LinksTo({d_bn2_x_var, d_bn2_scale_var, d_bn2_bias_var});
+  }
+  return bn1_grad;
 }
 
 }  // namespace ir

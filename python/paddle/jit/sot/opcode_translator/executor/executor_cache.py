@@ -191,6 +191,7 @@ def start_translate(frame: types.FrameType, **kwargs) -> GuardedFunction:
     """
     simulator = OpcodeExecutor(frame, **kwargs)
     try:
+        simulator.check_code_simulatable()
         new_custom_code, guard_fn = simulator.transform()
         return new_custom_code, guard_fn
     # TODO(zrr1999): InnerError maybe place before (FallbackError, BreakGraphError)

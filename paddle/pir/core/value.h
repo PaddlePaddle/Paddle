@@ -108,7 +108,7 @@ class IR_API Value {
   Attribute attribute(const std::string &key) const;
 
   template <typename T>
-  T attribute(const std::string &name) {
+  T attribute(const std::string &name) const {
     return attribute(name).dyn_cast<T>();
   }
 

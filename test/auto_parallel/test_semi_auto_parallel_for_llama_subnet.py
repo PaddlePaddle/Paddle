@@ -50,6 +50,16 @@ class TestSemiAutoParallelBasic(test_base.CommunicationTestDistBase):
                 user_defined_envs=envs,
             )
 
+    def test_rope_subnet(self):
+        envs_list = test_base.gen_product_envs_list(
+            {"dtype": "float32", "seed": "2023"}, {"backend": ["gpu"]}
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_parallel_for_llama_rope.py",
+                user_defined_envs=envs,
+            )
+
     def test_decoder_subnet(self):
         envs_list = test_base.gen_product_envs_list(
             {"dtype": "float32", "seed": "2023"}, {"backend": ["gpu"]}

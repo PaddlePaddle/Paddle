@@ -487,6 +487,37 @@ class Buffer {
   phi::Place place_;
 };
 
+template <typename StreamType>
+struct ThrustAllocator {
+  typedef char value_type;
+  ThrustAllocator(phi::Place place, StreamType stream) {
+    place_ = place;
+    stream_ = stream;
+  }
+  ~ThrustAllocator() {}
+  char* allocate(std::ptrdiff_t num_bytes) {
+    auto storage =
+        AllocShared(place_,
+                    num_bytes,
+                    phi::Stream(reinterpret_cast<phi::StreamId>(stream_)));
+    char* ptr = reinterpret_cast<char*>(storage->ptr());
+    busy_allocation_.emplace(std::make_pair(ptr, storage));
+    return ptr;
+  }
+  void deallocate(char* ptr, size_t) {
+    allocation_map_type::iterator iter = busy_allocation_.find(ptr);
+    // CHECK(iter != busy_allocation_.end());
+    busy_allocation_.erase(iter);
+  }
+
+ private:
+  typedef std::unordered_map<char*, std::shared_ptr<Allocation>>
+      allocation_map_type;
+  allocation_map_type busy_allocation_;
+  phi::Place place_;
+  StreamType stream_;
+};
+
 }  // namespace memory_utils
 
 }  // namespace phi

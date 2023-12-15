@@ -252,6 +252,9 @@ std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
     int64_t program_id,
     framework::Scope* scope);
 
+std::unique_ptr<::pir::Program> ApplyIrPass(::pir::Program* program,
+                                            phi::Place place);
+
 std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
     const paddle::framework::BlockDesc* forward_global_block,
     const paddle::framework::BlockDesc* backward_global_block,
