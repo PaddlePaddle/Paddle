@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
@@ -21,8 +22,12 @@ import paddle
 from paddle import base
 from paddle.base import core
 
-RTOL = {'float32': 1e-02, 'float64': 1e-04}
-ATOL = {'float32': 1e-02, 'float64': 1e-04}
+if sys.platform == 'win32':
+    RTOL = {'float32': 1e-02, 'float64': 1e-04}
+    ATOL = {'float32': 1e-02, 'float64': 1e-04}
+else:
+    RTOL = {'float32': 1e-03, 'float64': 1e-05}
+    ATOL = {'float32': 1e-03, 'float64': 1e-05}
 
 
 class MatrixExpTestCase(unittest.TestCase):
@@ -167,6 +172,81 @@ class MatrixExpTestCaseScalarFloat32(MatrixExpTestCaseScalar):
         self.dtype = 'float32'
 
 
+# test precision for float32 with l1_norm comparing `conds`
+class MatrixExpTestCasePrecisionFloat32L1norm0(MatrixExpTestCase):
+    def init_config(self):
+        self.dtype = 'float32'
+
+    def generate_input(self):
+        self._input_shape = (2, 2)
+        self._input_data = np.array([[0, 0.2], [-0.2, 0]]).astype(self.dtype)
+
+
+class MatrixExpTestCasePrecisionFloat32L1norm1(MatrixExpTestCase):
+    def init_config(self):
+        self.dtype = 'float32'
+
+    def generate_input(self):
+        self._input_shape = (2, 2)
+        self._input_data = np.array([[0, 0.8], [-0.8, 0]]).astype(self.dtype)
+
+
+class MatrixExpTestCasePrecisionFloat32L1norm2(MatrixExpTestCase):
+    def init_config(self):
+        self.dtype = 'float32'
+
+    def generate_input(self):
+        self._input_shape = (2, 2)
+        self._input_data = np.array([[0, 2.0], [-2.0, 0]]).astype(self.dtype)
+
+
+# test precision for float64 with l1_norm comparing `conds`
+class MatrixExpTestCasePrecisionFloat64L1norm0(MatrixExpTestCase):
+    def init_config(self):
+        self.dtype = 'float64'
+
+    def generate_input(self):
+        self._input_shape = (2, 2)
+        self._input_data = np.array([[0, 0.01], [-0.01, 0]]).astype(self.dtype)
+
+
+class MatrixExpTestCasePrecisionFloat64L1norm1(MatrixExpTestCase):
+    def init_config(self):
+        self.dtype = 'float64'
+
+    def generate_input(self):
+        self._input_shape = (2, 2)
+        self._input_data = np.array([[0, 0.1], [-0.1, 0]]).astype(self.dtype)
+
+
+class MatrixExpTestCasePrecisionFloat64L1norm2(MatrixExpTestCase):
+    def init_config(self):
+        self.dtype = 'float64'
+
+    def generate_input(self):
+        self._input_shape = (2, 2)
+        self._input_data = np.array([[0, 0.5], [-0.5, 0]]).astype(self.dtype)
+
+
+class MatrixExpTestCasePrecisionFloat64L1norm3(MatrixExpTestCase):
+    def init_config(self):
+        self.dtype = 'float64'
+
+    def generate_input(self):
+        self._input_shape = (2, 2)
+        self._input_data = np.array([[0, 1.5], [-1.5, 0]]).astype(self.dtype)
+
+
+class MatrixExpTestCasePrecisionFloat64L1norm4(MatrixExpTestCase):
+    def init_config(self):
+        self.dtype = 'float64'
+
+    def generate_input(self):
+        self._input_shape = (2, 2)
+        self._input_data = np.array([[0, 2.5], [-2.5, 0]]).astype(self.dtype)
+
+
+# test error cases
 class MatrixExpTestCaseError(unittest.TestCase):
     def test_error_dtype(self):
         with self.assertRaises(ValueError):

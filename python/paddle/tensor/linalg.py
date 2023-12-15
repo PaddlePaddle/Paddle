@@ -3878,37 +3878,65 @@ def householder_product(x, tau, name=None):
 
 
 # Reference: MatrixExponential, https://eigen.tuxfamily.org/dox/unsupported/MatrixExponential_8h_source.html
-def _matrix_exp_pade3(mat_a, mat_i, mat_a2, dtype):
+def _matrix_exp_pade3(mat_a, mat_i=None, mat_a2=None, *, dtype=None):
     """3rd-order Pade approximant."""
     b = [120.0, 60.0, 12.0]
-    b = [paddle.full((), x, dtype) for x in b]
+    if not paddle.framework.in_dynamic_mode():
+        b = [paddle.full((), x, dtype) for x in b]
+
+    if mat_a2 is None:
+        mat_a2, *_ = _matrix_mats(mat_a, 2, dtype)
+
     tmp = mat_a2 + b[1] * mat_i
     mat_u = paddle.matmul(mat_a, tmp)
-    mat_v = b[2] * mat_a + b[0] * mat_i
+    mat_v = b[2] * mat_a2 + b[0] * mat_i
     return mat_u, mat_v
 
 
-def _matrix_exp_pade5(mat_a, mat_i, mat_a2, mat_a4, dtype):
+def _matrix_exp_pade5(
+    mat_a, mat_i=None, mat_a2=None, mat_a4=None, *, dtype=None
+):
     """5th-order Pade approximant."""
     b = [30240.0, 15120.0, 3360.0, 420.0, 30.0]
-    b = [paddle.full((), x, dtype) for x in b]
+    if not paddle.framework.in_dynamic_mode():
+        b = [paddle.full((), x, dtype) for x in b]
+
+    if mat_a4 is None:
+        mat_a2, mat_a4, *_ = _matrix_mats(mat_a, 4, dtype)
+
     tmp = mat_a4 + b[3] * mat_a2 + b[1] * mat_i
     mat_u = paddle.matmul(mat_a, tmp)
     mat_v = b[4] * mat_a4 + b[2] * mat_a2 + b[0] * mat_i
     return mat_u, mat_v
 
 
-def _matrix_exp_pade7(mat_a, mat_i, mat_a2, mat_a4, mat_a6, dtype):
+def _matrix_exp_pade7(
+    mat_a, mat_i=None, mat_a2=None, mat_a4=None, mat_a6=None, *, dtype=None
+):
     """7th-order Pade approximant."""
     b = [17297280.0, 8648640.0, 1995840.0, 277200.0, 25200.0, 1512.0, 56.0]
-    b = [paddle.full((), x, dtype) for x in b]
+    if not paddle.framework.in_dynamic_mode():
+        b = [paddle.full((), x, dtype) for x in b]
+
+    if mat_a6 is None:
+        mat_a2, mat_a4, mat_a6, *_ = _matrix_mats(mat_a, 6, dtype)
+
     tmp = mat_a6 + b[5] * mat_a4 + b[3] * mat_a2 + b[1] * mat_i
     mat_u = paddle.matmul(mat_a, tmp)
     mat_v = b[6] * mat_a6 + b[4] * mat_a4 + b[2] * mat_a2 + b[0] * mat_i
     return mat_u, mat_v
 
 
-def _matrix_exp_pade9(mat_a, mat_i, mat_a2, mat_a4, mat_a6, mat_a8, dtype):
+def _matrix_exp_pade9(
+    mat_a,
+    mat_i=None,
+    mat_a2=None,
+    mat_a4=None,
+    mat_a6=None,
+    mat_a8=None,
+    *,
+    dtype=None,
+):
     """9th-order Pade approximant."""
     b = [
         17643225600.0,
@@ -3921,7 +3949,12 @@ def _matrix_exp_pade9(mat_a, mat_i, mat_a2, mat_a4, mat_a6, mat_a8, dtype):
         3960.0,
         90.0,
     ]
-    b = [paddle.full((), x, dtype) for x in b]
+    if not paddle.framework.in_dynamic_mode():
+        b = [paddle.full((), x, dtype) for x in b]
+
+    if mat_a8 is None:
+        mat_a2, mat_a4, mat_a6, mat_a8, *_ = _matrix_mats(mat_a, 8, dtype)
+
     tmp = mat_a8 + b[7] * mat_a6 + b[5] * mat_a4 + b[3] * mat_a2 + b[1] * mat_i
     mat_u = paddle.matmul(mat_a, tmp)
     mat_v = (
@@ -3934,7 +3967,9 @@ def _matrix_exp_pade9(mat_a, mat_i, mat_a2, mat_a4, mat_a6, mat_a8, dtype):
     return mat_u, mat_v
 
 
-def _matrix_exp_pade13(mat_a, mat_i, mat_a2, mat_a4, mat_a6, dtype):
+def _matrix_exp_pade13(
+    mat_a, mat_i=None, mat_a2=None, mat_a4=None, mat_a6=None, *, dtype=None
+):
     """13th-order Pade approximant."""
     b = [
         64764752532480000.0,
@@ -3951,7 +3986,12 @@ def _matrix_exp_pade13(mat_a, mat_i, mat_a2, mat_a4, mat_a6, dtype):
         16380.0,
         182.0,
     ]
-    b = [paddle.full((), x, dtype) for x in b]
+    if not paddle.framework.in_dynamic_mode():
+        b = [paddle.full((), x, dtype) for x in b]
+
+    if mat_a6 is None:
+        mat_a2, mat_a4, mat_a6, *_ = _matrix_mats(mat_a, 6, dtype)
+
     tmp_u = (
         paddle.matmul(mat_a6, mat_a6 + b[11] * mat_a4 + b[9] * mat_a2)
         + b[7] * mat_a6
@@ -3984,14 +4024,30 @@ def _matrix_uv_where(vals, cases, l1_norm):
         )
 
 
+def _matrix_mats(mat_a, total, dtype):
+    mat_a2 = paddle.matmul(mat_a, mat_a)
+    mat_a4 = None
+    mat_a6 = None
+    mat_a8 = None
+
+    if total > 2:
+        mat_a4 = paddle.matmul(mat_a2, mat_a2)
+
+    if total > 4:
+        mat_a6 = paddle.matmul(mat_a4, mat_a2)
+
+    if total > 6:
+        mat_a8 = paddle.matmul(mat_a6, mat_a2)
+
+    return mat_a2, mat_a4, mat_a6, mat_a8
+
+
 def _matrix_uv_float32(mat_a, l1_norm, squarings, dtype):
     mat_i = paddle.eye(mat_a.shape[-1], dtype=dtype)
-    mat_a2 = paddle.matmul(mat_a, mat_a)
-    mat_a4 = paddle.matmul(mat_a2, mat_a2)
-    mat_a6 = paddle.matmul(mat_a4, mat_a2)
+    mat_a2, mat_a4, *_ = _matrix_mats(mat_a, 4, dtype)
 
-    u3, v3 = _matrix_exp_pade3(mat_a, mat_i, mat_a2, dtype)
-    u5, v5 = _matrix_exp_pade5(mat_a, mat_i, mat_a2, mat_a4, dtype)
+    u3, v3 = _matrix_exp_pade3(mat_a, mat_i, mat_a2, dtype=dtype)
+    u5, v5 = _matrix_exp_pade5(mat_a, mat_i, mat_a2, mat_a4, dtype=dtype)
     u7, v7 = _matrix_exp_pade7(
         mat_a
         / paddle.cast(
@@ -3999,10 +4055,7 @@ def _matrix_uv_float32(mat_a, l1_norm, squarings, dtype):
             dtype,
         ),
         mat_i,
-        mat_a2,
-        mat_a4,
-        mat_a6,
-        dtype,
+        dtype=dtype,
     )
     conds = (
         paddle.full((), 4.258730016922831e-001, dtype),
@@ -4017,16 +4070,15 @@ def _matrix_uv_float32(mat_a, l1_norm, squarings, dtype):
 
 def _matrix_uv_float64(mat_a, l1_norm, squarings, dtype):
     mat_i = paddle.eye(mat_a.shape[-1], dtype=dtype)
-    mat_a2 = paddle.matmul(mat_a, mat_a)
-    mat_a4 = paddle.matmul(mat_a2, mat_a2)
-    mat_a6 = paddle.matmul(mat_a4, mat_a2)
-    mat_a8 = paddle.matmul(mat_a6, mat_a2)
+    mat_a2, mat_a4, mat_a6, mat_a8, *_ = _matrix_mats(mat_a, 8, dtype)
 
-    u3, v3 = _matrix_exp_pade3(mat_a, mat_i, mat_a2, dtype)
-    u5, v5 = _matrix_exp_pade5(mat_a, mat_i, mat_a2, mat_a4, dtype)
-    u7, v7 = _matrix_exp_pade7(mat_a, mat_i, mat_a2, mat_a4, mat_a6, dtype)
+    u3, v3 = _matrix_exp_pade3(mat_a, mat_i, mat_a2, dtype=dtype)
+    u5, v5 = _matrix_exp_pade5(mat_a, mat_i, mat_a2, mat_a4, dtype=dtype)
+    u7, v7 = _matrix_exp_pade7(
+        mat_a, mat_i, mat_a2, mat_a4, mat_a6, dtype=dtype
+    )
     u9, v9 = _matrix_exp_pade9(
-        mat_a, mat_i, mat_a2, mat_a4, mat_a6, mat_a8, dtype
+        mat_a, mat_i, mat_a2, mat_a4, mat_a6, mat_a8, dtype=dtype
     )
     u13, v13 = _matrix_exp_pade13(
         mat_a
@@ -4035,11 +4087,9 @@ def _matrix_uv_float64(mat_a, l1_norm, squarings, dtype):
             dtype,
         ),
         mat_i,
-        mat_a2,
-        mat_a4,
-        mat_a6,
-        dtype,
+        dtype=dtype,
     )
+
     conds = (
         paddle.full((), 1.495585217958292e-002, dtype),
         paddle.full((), 2.539398330063230e-001, dtype),
@@ -4147,6 +4197,7 @@ def matrix_exp(x, name=None):
         paddle.max(paddle.sum(paddle.abs(mat_a), axis=mat_a.ndim - 2), axis=-1),
         axis=[-1, -2],
     )
+
     squarings = paddle.full(mat_a.shape, 0, dtype)
     _matrix_uv_func = None
 
