@@ -139,4 +139,4 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
 
 }  // namespace pir
 
-IR_DECLARE_EXPLICIT_TYPE_ID(pir::ShapedTypeInterface)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::ShapedTypeInterface)

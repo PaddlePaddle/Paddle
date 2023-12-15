@@ -72,4 +72,4 @@ class InferShapedTypeOpInterface
 
 }  // namespace pir
 
-IR_DECLARE_EXPLICIT_TYPE_ID(pir::InferShapedTypeOpInterface)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::InferShapedTypeOpInterface)

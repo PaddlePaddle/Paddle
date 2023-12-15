@@ -117,11 +117,11 @@ class SideEffectTrait : public OpTraitBase<SideEffectTrait> {};
 
 }  // namespace pir
 
-IR_DECLARE_EXPLICIT_TYPE_ID(pir::SameOperandsShapeTrait)
-IR_DECLARE_EXPLICIT_TYPE_ID(pir::SameOperandsAndResultShapeTrait)
-IR_DECLARE_EXPLICIT_TYPE_ID(pir::SameOperandsElementTypeTrait)
-IR_DECLARE_EXPLICIT_TYPE_ID(pir::SameOperandsAndResultElementTypeTrait)
-IR_DECLARE_EXPLICIT_TYPE_ID(pir::SameOperandsAndResultTypeTrait)
-IR_DECLARE_EXPLICIT_TYPE_ID(pir::SameTypeOperandsTrait)
-IR_DECLARE_EXPLICIT_TYPE_ID(pir::OneResultTrait)
-IR_DECLARE_EXPLICIT_TYPE_ID(pir::SideEffectTrait)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::SameOperandsShapeTrait)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::SameOperandsAndResultShapeTrait)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::SameOperandsElementTypeTrait)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::SameOperandsAndResultElementTypeTrait)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::SameOperandsAndResultTypeTrait)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::SameTypeOperandsTrait)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::OneResultTrait)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::SideEffectTrait)

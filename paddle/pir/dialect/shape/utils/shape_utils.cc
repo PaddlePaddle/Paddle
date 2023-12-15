@@ -14,7 +14,6 @@
 
 #include "paddle/pir/dialect/shape/utils/shape_utils.h"
 #include <string>
-#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 namespace pir {
 
 bool ShapeAnalysis::IsSameNumElements(Value lhs, Value rhs) {
