@@ -1,0 +1,588 @@
+[2023-11-20 14:53:05,100] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='1', default_value='')
+=======================================================================
+I1120 14:53:05.101598 158213 tcp_utils.cc:130] Successfully connected to 10.67.227.13:50288
+I1120 14:53:05.101832 158213 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-11-20 14:53:05,102] [    INFO] topology.py:360 - Total 2 pipe comm group(s) create successfully!
+W1120 14:53:05.103585 158213 gpu_resources.cc:119] Please NOTE: device: 1, GPU Compute Capability: 8.0, Driver API Version: 12.0, Runtime API Version: 11.8
+W1120 14:53:05.137684 158213 gpu_resources.cc:164] device: 1, cuDNN Version: 8.6.
+
+
+--------------------------------------
+C++ Traceback (most recent call last):
+--------------------------------------
+0   paddle::pybind::eager_api_full(_object*, _object*, _object*)
+1   full_ad_func(paddle::experimental::IntArrayBase<paddle::Tensor>, paddle::experimental::ScalarBase<paddle::Tensor>, phi::DataType, phi::Place)
+2   paddle::experimental::full(paddle::experimental::IntArrayBase<paddle::Tensor> const&, paddle::experimental::ScalarBase<paddle::Tensor> const&, phi::DataType, phi::Place const&)
+3   paddle::experimental::GetDeviceContextByBackend(paddle::experimental::Backend)
+4   paddle::experimental::DeviceContextPool::Get(phi::Place const&)
+5   phi::DeviceContextPool::Get(phi::Place const&)
+6   std::__future_base::_Deferred_state<std::thread::_Invoker<std::tuple<std::unique_ptr<phi::DeviceContext, std::default_delete<phi::DeviceContext> > (*)(phi::Place const&, bool, int), phi::Place, bool, int> >, std::unique_ptr<phi::DeviceContext, std::default_delete<phi::DeviceContext> > >::_M_complete_async()
+7   std::__future_base::_State_baseV2::_M_do_set(std::function<std::unique_ptr<std::__future_base::_Result_base, std::__future_base::_Result_base::_Deleter> ()>*, bool*)
+8   std::_Function_handler<std::unique_ptr<std::__future_base::_Result_base, std::__future_base::_Result_base::_Deleter> (), std::__future_base::_Task_setter<std::unique_ptr<std::__future_base::_Result<std::unique_ptr<phi::DeviceContext, std::default_delete<phi::DeviceContext> > >, std::__future_base::_Result_base::_Deleter>, std::thread::_Invoker<std::tuple<std::unique_ptr<phi::DeviceContext, std::default_delete<phi::DeviceContext> > (*)(phi::Place const&, bool, int), phi::Place, bool, int> >, std::unique_ptr<phi::DeviceContext, std::default_delete<phi::DeviceContext> > > >::_M_invoke(std::_Any_data const&)
+9   std::unique_ptr<phi::DeviceContext, std::default_delete<phi::DeviceContext> > paddle::platform::CreateDeviceContext<phi::GPUContext>(phi::Place const&, bool, int)
+10  std::enable_if<std::is_same<phi::GPUContext, phi::GPUContext>::value, phi::GPUContext*>::type paddle::platform::ConstructDevCtx<phi::GPUContext>(phi::Place const&, int)
+11  phi::GPUContext::GPUContext(phi::GPUPlace const&, bool, int)
+12  phi::CUDAStream::CUDAStream(phi::Place const&, int, phi::CUDAStream::StreamFlag const&)
+13  phi::backends::gpu::GetGpuStreamPriorityRange()
+
+----------------------
+Error Message Summary:
+----------------------
+FatalError: `Termination signal` is detected by the operating system.
+  [TimeInfo: *** Aborted at 1700463188 (unix time) try "date -d @1700463188" if you are using GNU date ***]
+  [SignalInfo: *** SIGTERM (@0x269b8) received by PID 158213 (TID 0x7f69dccba740) from PID 158136 ***]
+
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='1', default_value='')
+=======================================================================
+I1123 21:49:42.880568 60366 tcp_utils.cc:107] Retry to connect to 10.67.227.13:57909 while the server is not yet listening.
+I1123 21:49:45.880852 60366 tcp_utils.cc:130] Successfully connected to 10.67.227.13:57909
+I1123 21:49:45.881343 60366 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+
+
+--------------------------------------
+C++ Traceback (most recent call last):
+--------------------------------------
+0   paddle::pybind::TensorInit(_object*, _object*, _object*)
+1   paddle::pybind::AutoInitTensorByPyArray(paddle::pybind::TensorObject*, std::unordered_map<std::string, _object*, std::hash<std::string >, std::equal_to<std::string >, std::allocator<std::pair<std::string const, _object*> > >, _object*, bool, long)
+2   phi::DenseTensor::mutable_data(phi::Place const&, phi::DataType, unsigned long)
+3   phi::memory_utils::AllocShared(phi::Place const&, unsigned long)
+4   paddle::memory::AllocShared(phi::Place const&, unsigned long)
+5   paddle::memory::allocation::AllocatorFacade::AllocShared(phi::Place const&, unsigned long)
+6   paddle::memory::allocation::AllocatorFacade::Alloc(phi::Place const&, unsigned long)
+7   paddle::memory::allocation::StatAllocator::AllocateImpl(unsigned long)
+8   paddle::memory::allocation::RetryAllocator::AllocateImpl(unsigned long)
+9   paddle::memory::allocation::StreamSafeCUDAAllocator::AllocateImpl(unsigned long)
+10  paddle::memory::allocation::AutoGrowthBestFitAllocator::AllocateImpl(unsigned long)
+11  paddle::memory::allocation::CUDAAllocator::AllocateImpl(unsigned long)
+12  paddle::platform::RecordedGpuMallocHelper::Malloc(void**, unsigned long, bool)
+
+----------------------
+Error Message Summary:
+----------------------
+FatalError: `Termination signal` is detected by the operating system.
+  [TimeInfo: *** Aborted at 1700747389 (unix time) try "date -d @1700747389" if you are using GNU date ***]
+  [SignalInfo: *** SIGTERM (@0xeb7f) received by PID 60366 (TID 0x7f8dba45b740) from PID 60287 ***]
+
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='1', default_value='')
+=======================================================================
+I1123 21:54:04.155973 67660 tcp_utils.cc:107] Retry to connect to 10.67.227.13:51481 while the server is not yet listening.
+I1123 21:54:07.156237 67660 tcp_utils.cc:130] Successfully connected to 10.67.227.13:51481
+I1123 21:54:07.156797 67660 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+
+
+--------------------------------------
+C++ Traceback (most recent call last):
+--------------------------------------
+0   paddle::pybind::TensorInit(_object*, _object*, _object*)
+1   paddle::pybind::AutoInitTensorByPyArray(paddle::pybind::TensorObject*, std::unordered_map<std::string, _object*, std::hash<std::string >, std::equal_to<std::string >, std::allocator<std::pair<std::string const, _object*> > >, _object*, bool, long)
+2   phi::DenseTensor::mutable_data(phi::Place const&, phi::DataType, unsigned long)
+3   phi::memory_utils::AllocShared(phi::Place const&, unsigned long)
+4   paddle::memory::AllocShared(phi::Place const&, unsigned long)
+5   paddle::memory::allocation::AllocatorFacade::AllocShared(phi::Place const&, unsigned long)
+6   paddle::memory::allocation::AllocatorFacade::Alloc(phi::Place const&, unsigned long)
+7   paddle::memory::allocation::StatAllocator::AllocateImpl(unsigned long)
+8   paddle::memory::allocation::RetryAllocator::AllocateImpl(unsigned long)
+9   paddle::memory::allocation::StreamSafeCUDAAllocator::AllocateImpl(unsigned long)
+10  paddle::memory::allocation::AutoGrowthBestFitAllocator::AllocateImpl(unsigned long)
+11  paddle::memory::allocation::CUDAAllocator::AllocateImpl(unsigned long)
+12  paddle::platform::RecordedGpuMallocHelper::Malloc(void**, unsigned long, bool)
+
+----------------------
+Error Message Summary:
+----------------------
+FatalError: `Termination signal` is detected by the operating system.
+  [TimeInfo: *** Aborted at 1700747651 (unix time) try "date -d @1700747651" if you are using GNU date ***]
+  [SignalInfo: *** SIGTERM (@0x10764) received by PID 67660 (TID 0x7eff50434740) from PID 67428 ***]
+
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='1', default_value='')
+=======================================================================
+I1128 11:28:21.929607 159294 tcp_utils.cc:130] Successfully connected to 10.67.227.13:63028
+I1128 11:28:21.929836 159294 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+c_softmax_with_cross_entropy
+W1128 11:28:26.561905 159294 gpu_resources.cc:119] Please NOTE: device: 1, GPU Compute Capability: 8.0, Driver API Version: 12.0, Runtime API Version: 11.8
+W1128 11:28:26.599877 159294 gpu_resources.cc:164] device: 1, cuDNN Version: 8.6.
+CSoftmaxWithCrossEntropyOpCUDAKernel
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='1', default_value='')
+=======================================================================
+I1128 11:29:23.850535 161128 tcp_utils.cc:107] Retry to connect to 10.67.227.13:59752 while the server is not yet listening.
+I1128 11:29:26.850790 161128 tcp_utils.cc:130] Successfully connected to 10.67.227.13:59752
+I1128 11:29:26.851253 161128 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+c_softmax_with_cross_entropy
+W1128 11:29:32.586274 161128 gpu_resources.cc:119] Please NOTE: device: 1, GPU Compute Capability: 8.0, Driver API Version: 12.0, Runtime API Version: 11.8
+W1128 11:29:32.644695 161128 gpu_resources.cc:164] device: 1, cuDNN Version: 8.6.
+CSoftmaxWithCrossEntropyOpCUDAKernel
+Tensor(shape=[1024, 500], dtype=float32, place=Place(gpu:1), stop_gradient=True,
+       [[0.00000000, 0.00000000, 0.00000000, ..., 0.00000000, 0.00000000,
+         0.00000000],
+        [0.00000000, 0.00000000, 0.03120394, ..., 0.00000000, 0.00150074,
+         0.00000000],
+        [0.00000000, 0.00000000, 0.00000000, ..., 0.00000000, 0.00000000,
+         0.00000000],
+        ...,
+        [0.00000000, 0.00000000, 0.00000000, ..., 0.00000000, 0.00000000,
+         0.00000000],
+        [0.00000028, 0.00000000, 0.00061969, ..., 0.00000000, 0.00000000,
+         0.00000000],
+        [0.00000000, 0.00000000, 0.00012832, ..., 0.00000000, 0.00000000,
+         0.00000000]])
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='1', default_value='')
+=======================================================================
+I1128 15:52:48.754396 76817 tcp_utils.cc:130] Successfully connected to 10.67.227.13:53183
+I1128 15:52:48.754608 76817 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+c_softmax_with_cross_entropy
+W1128 15:52:53.378134 76817 gpu_resources.cc:119] Please NOTE: device: 1, GPU Compute Capability: 8.0, Driver API Version: 12.0, Runtime API Version: 11.8
+W1128 15:52:53.429935 76817 gpu_resources.cc:164] device: 1, cuDNN Version: 8.6.
+CSoftmaxWithCrossEntropyOpCUDAKernel
+has ring_id 0
+label_type is int32
+Tensor(shape=[1024, 500], dtype=float32, place=Place(gpu:1), stop_gradient=True,
+       [[0.00000000, 0.00000000, 0.00000002, ..., 0.00000000, 0.00251417,
+         0.00007205],
+        [0.00000000, 0.00000001, 0.00000148, ..., 0.00000000, 0.00000000,
+         0.01384956],
+        [0.00000000, 0.00000000, 0.00000001, ..., 0.00000000, 0.00000000,
+         0.00000000],
+        ...,
+        [0.00000000, 0.00000000, 0.00000000, ..., 0.00002283, 0.00000000,
+         0.00000000],
+        [0.00000000, 0.00000000, 0.00000000, ..., 0.00000001, 0.00000000,
+         0.00000107],
+        [0.00233947, 0.00000001, 0.00000000, ..., 0.00000000, 0.00000009,
+         0.00000000]])
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='1', default_value='')
+=======================================================================
+I1128 15:54:03.833663 78824 tcp_utils.cc:107] Retry to connect to 10.67.227.13:62285 while the server is not yet listening.
+I1128 15:54:06.833894 78824 tcp_utils.cc:130] Successfully connected to 10.67.227.13:62285
+I1128 15:54:06.834393 78824 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+c_softmax_with_cross_entropy
+W1128 15:54:12.761127 78824 gpu_resources.cc:119] Please NOTE: device: 1, GPU Compute Capability: 8.0, Driver API Version: 12.0, Runtime API Version: 11.8
+W1128 15:54:12.796564 78824 gpu_resources.cc:164] device: 1, cuDNN Version: 8.6.
+CSoftmaxWithCrossEntropyOpCUDAKernel
+has ring_id 0
+label_type is int32
+Tensor(shape=[1024, 500], dtype=float32, place=Place(gpu:1), stop_gradient=True,
+       [[0.00000004, 0.00000000, 0.00000036, ..., 0.00000052, 0.00004397,
+         0.00000007],
+        [0.00000000, 0.00000000, 0.00000000, ..., 0.00000072, 0.00000000,
+         0.00021651],
+        [0.00000000, 0.00000000, 0.00000530, ..., 0.00000000, 0.00713912,
+         0.00000000],
+        ...,
+        [0.00000000, 0.00000000, 0.00000000, ..., 0.00000000, 0.00000001,
+         0.00000000],
+        [0.00000000, 0.00000000, 0.00000000, ..., 0.00000000, 0.00000000,
+         0.00000000],
+        [0.00000000, 0.00293340, 0.00000000, ..., 0.00042181, 0.00000000,
+         0.00000000]])
+[2023-11-29 17:04:36,068] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='1', default_value='')
+=======================================================================
+I1129 17:04:36.070232 104620 tcp_utils.cc:130] Successfully connected to 10.67.227.13:62697
+I1129 17:04:36.070464 104620 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-11-29 17:04:36,070] [    INFO] topology.py:360 - Total 2 pipe comm group(s) create successfully!
+W1129 17:04:36.072085 104620 gpu_resources.cc:119] Please NOTE: device: 1, GPU Compute Capability: 8.0, Driver API Version: 12.0, Runtime API Version: 11.8
+W1129 17:04:36.104640 104620 gpu_resources.cc:164] device: 1, cuDNN Version: 8.6.
+/usr/lib/python3.7/site-packages/paddle/distributed/communication/group.py:115: UserWarning: Current global rank 1 is not in group _default_pg11
+  f"Current global rank {global_rank} is not in group {group.name}"
+I1129 17:04:40.725168 104620 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-11-29 17:04:40,725] [    INFO] topology.py:360 - Total 1 data comm group(s) create successfully!
+[2023-11-29 17:04:40,726] [    INFO] topology.py:360 - Total 2 model comm group(s) create successfully!
+[2023-11-29 17:04:40,726] [    INFO] topology.py:360 - Total 2 sharding comm group(s) create successfully!
+I1129 17:04:40.726768 104620 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-11-29 17:04:40,726] [    INFO] topology.py:288 - HybridParallelInfo: rank_id: 1, mp_degree: 1, sharding_degree: 1, pp_degree: 1, dp_degree: 2, sep_degree: 1, mp_group: [1],  sharding_group: [1], pp_group: [1], dp_group: [0, 1], sep:group: None, check/clip group: [1]
+[2023-11-29 17:04:40,727] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+c_softmax_with_cross_entropy
+CSoftmaxWithCrossEntropyOpCUDAKernel
+has ring_id 0
+label_type is int32
+.
+----------------------------------------------------------------------
+Ran 1 test in 5.617s
+
+OK
+[2023-11-29 17:13:15,019] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='1', default_value='')
+=======================================================================
+I1129 17:13:15.021445 119953 tcp_utils.cc:130] Successfully connected to 10.67.227.13:37524
+I1129 17:13:15.021642 119953 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-11-29 17:13:15,022] [    INFO] topology.py:360 - Total 2 pipe comm group(s) create successfully!
+W1129 17:13:15.026538 119953 gpu_resources.cc:119] Please NOTE: device: 1, GPU Compute Capability: 8.0, Driver API Version: 12.0, Runtime API Version: 11.8
+W1129 17:13:15.083318 119953 gpu_resources.cc:164] device: 1, cuDNN Version: 8.6.
+/usr/lib/python3.7/site-packages/paddle/distributed/communication/group.py:115: UserWarning: Current global rank 1 is not in group _default_pg11
+  f"Current global rank {global_rank} is not in group {group.name}"
+I1129 17:13:19.476522 119953 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-11-29 17:13:19,476] [    INFO] topology.py:360 - Total 1 data comm group(s) create successfully!
+[2023-11-29 17:13:19,476] [    INFO] topology.py:360 - Total 2 model comm group(s) create successfully!
+[2023-11-29 17:13:19,477] [    INFO] topology.py:360 - Total 2 sharding comm group(s) create successfully!
+I1129 17:13:19.477097 119953 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-11-29 17:13:19,477] [    INFO] topology.py:288 - HybridParallelInfo: rank_id: 1, mp_degree: 1, sharding_degree: 1, pp_degree: 1, dp_degree: 2, sep_degree: 1, mp_group: [1],  sharding_group: [1], pp_group: [1], dp_group: [0, 1], sep:group: None, check/clip group: [1]
+[2023-11-29 17:13:19,477] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+c_softmax_with_cross_entropy
+CSoftmaxWithCrossEntropyOpCUDAKernel
+has ring_id 0
+label_type is int32
+.
+----------------------------------------------------------------------
+Ran 1 test in 5.272s
+
+OK
+[2023-11-29 17:13:43,119] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='1', default_value='')
+=======================================================================
+I1129 17:13:43.121347 120086 tcp_utils.cc:130] Successfully connected to 10.67.227.13:58051
+I1129 17:13:43.121582 120086 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-11-29 17:13:43,121] [    INFO] topology.py:360 - Total 2 pipe comm group(s) create successfully!
+W1129 17:13:43.123193 120086 gpu_resources.cc:119] Please NOTE: device: 1, GPU Compute Capability: 8.0, Driver API Version: 12.0, Runtime API Version: 11.8
+W1129 17:13:43.154924 120086 gpu_resources.cc:164] device: 1, cuDNN Version: 8.6.
+/usr/lib/python3.7/site-packages/paddle/distributed/communication/group.py:115: UserWarning: Current global rank 1 is not in group _default_pg11
+  f"Current global rank {global_rank} is not in group {group.name}"
+I1129 17:13:49.046780 120086 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-11-29 17:13:49,047] [    INFO] topology.py:360 - Total 1 data comm group(s) create successfully!
+[2023-11-29 17:13:49,047] [    INFO] topology.py:360 - Total 2 model comm group(s) create successfully!
+[2023-11-29 17:13:49,047] [    INFO] topology.py:360 - Total 2 sharding comm group(s) create successfully!
+I1129 17:13:49.047911 120086 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-11-29 17:13:49,047] [    INFO] topology.py:288 - HybridParallelInfo: rank_id: 1, mp_degree: 1, sharding_degree: 1, pp_degree: 1, dp_degree: 2, sep_degree: 1, mp_group: [1],  sharding_group: [1], pp_group: [1], dp_group: [0, 1], sep:group: None, check/clip group: [1]
+c_softmax_with_cross_entropy
+CSoftmaxWithCrossEntropyOpCUDAKernel
+has ring_id 0
+label_type is int32
+.
+----------------------------------------------------------------------
+Ran 1 test in 6.800s
+
+OK
+E
+======================================================================
+ERROR: test_model (__main__.TestCSoftmaxWithCrossEntropy)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "c_softmax_with_cross_entropy_op.py", line 78, in test_model
+    rank = fleet.worker_index()
+  File "/usr/lib/python3.7/site-packages/paddle/distributed/fleet/fleet.py", line 481, in worker_index
+    return self._role_maker._worker_index()
+AttributeError: 'NoneType' object has no attribute '_worker_index'
+
+----------------------------------------------------------------------
+Ran 1 test in 0.001s
+
+FAILED (errors=1)
+[2023-11-29 17:14:36,885] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='1', default_value='')
+=======================================================================
+I1129 17:14:36.887547 122125 tcp_utils.cc:130] Successfully connected to 10.67.227.13:36644
+I1129 17:14:36.887782 122125 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-11-29 17:14:36,888] [    INFO] topology.py:360 - Total 2 pipe comm group(s) create successfully!
+W1129 17:14:36.892313 122125 gpu_resources.cc:119] Please NOTE: device: 1, GPU Compute Capability: 8.0, Driver API Version: 12.0, Runtime API Version: 11.8
+W1129 17:14:36.926087 122125 gpu_resources.cc:164] device: 1, cuDNN Version: 8.6.
+/usr/lib/python3.7/site-packages/paddle/distributed/communication/group.py:115: UserWarning: Current global rank 1 is not in group _default_pg11
+  f"Current global rank {global_rank} is not in group {group.name}"
+I1129 17:14:41.439180 122125 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-11-29 17:14:41,439] [    INFO] topology.py:360 - Total 1 data comm group(s) create successfully!
+[2023-11-29 17:14:41,439] [    INFO] topology.py:360 - Total 2 model comm group(s) create successfully!
+[2023-11-29 17:14:41,439] [    INFO] topology.py:360 - Total 2 sharding comm group(s) create successfully!
+I1129 17:14:41.440032 122125 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-11-29 17:14:41,440] [    INFO] topology.py:288 - HybridParallelInfo: rank_id: 1, mp_degree: 1, sharding_degree: 1, pp_degree: 1, dp_degree: 2, sep_degree: 1, mp_group: [1],  sharding_group: [1], pp_group: [1], dp_group: [0, 1], sep:group: None, check/clip group: [1]
+c_softmax_with_cross_entropy
+CSoftmaxWithCrossEntropyOpCUDAKernel
+has ring_id 0
+label_type is int32
+F
+======================================================================
+FAIL: test_model (__main__.TestCSoftmaxWithCrossEntropy)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "c_softmax_with_cross_entropy_op.py", line 133, in test_model
+    np.testing.assert_allclose(loss.numpy(), need_loss, rtol=rtol)
+  File "/usr/lib/python3.7/site-packages/numpy/testing/_private/utils.py", line 1531, in assert_allclose
+    verbose=verbose, header=header, equal_nan=equal_nan)
+  File "/usr/lib/python3.7/site-packages/numpy/testing/_private/utils.py", line 844, in assert_array_compare
+    raise AssertionError(msg)
+AssertionError: 
+Not equal to tolerance rtol=1e-06, atol=0
+
+Mismatched elements: 1023 / 1024 (99.9%)
+Max absolute difference: 73.75012
+Max relative difference: 20.657541
+ x: array([[ 0.      ],
+       [11.510546],
+       [36.250423],...
+ y: array([[ 0.      ],
+       [72.05064 ],
+       [61.586403],...
+
+----------------------------------------------------------------------
+Ran 1 test in 5.402s
+
+FAILED (failures=1)
+
+
+--------------------------------------
+C++ Traceback (most recent call last):
+--------------------------------------
+0   paddle::pybind::TensorInit(_object*, _object*, _object*)
+1   paddle::pybind::AutoInitTensorByPyArray(paddle::pybind::TensorObject*, std::unordered_map<std::string, _object*, std::hash<std::string >, std::equal_to<std::string >, std::allocator<std::pair<std::string const, _object*> > >, _object*, bool, long)
+2   phi::DenseTensor::mutable_data(phi::Place const&, phi::DataType, unsigned long)
+3   phi::memory_utils::AllocShared(phi::Place const&, unsigned long)
+4   paddle::memory::AllocShared(phi::Place const&, unsigned long)
+5   paddle::memory::allocation::AllocatorFacade::AllocShared(phi::Place const&, unsigned long)
+6   paddle::memory::allocation::AllocatorFacade::Alloc(phi::Place const&, unsigned long)
+7   paddle::memory::allocation::StatAllocator::AllocateImpl(unsigned long)
+8   paddle::memory::allocation::RetryAllocator::AllocateImpl(unsigned long)
+9   paddle::memory::allocation::StreamSafeCUDAAllocator::AllocateImpl(unsigned long)
+10  paddle::memory::allocation::AutoGrowthBestFitAllocator::AllocateImpl(unsigned long)
+11  paddle::memory::allocation::CUDAAllocator::AllocateImpl(unsigned long)
+12  paddle::platform::RecordedGpuMallocHelper::Malloc(void**, unsigned long, bool)
+
+----------------------
+Error Message Summary:
+----------------------
+FatalError: `Termination signal` is detected by the operating system.
+  [TimeInfo: *** Aborted at 1701249337 (unix time) try "date -d @1701249337" if you are using GNU date ***]
+  [SignalInfo: *** SIGTERM (@0x1e309) received by PID 124039 (TID 0x7fa4342f2740) from PID 123657 ***]
+
+[2023-12-04 16:04:49,696] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='1', default_value='')
+=======================================================================
+I1204 16:04:49.699216 45335 tcp_utils.cc:107] Retry to connect to 10.67.227.13:51193 while the server is not yet listening.
+I1204 16:04:52.699496 45335 tcp_utils.cc:130] Successfully connected to 10.67.227.13:51193
+I1204 16:04:52.699995 45335 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 16:04:52,701] [    INFO] topology.py:360 - Total 2 pipe comm group(s) create successfully!
+W1204 16:04:52.702950 45335 gpu_resources.cc:119] Please NOTE: device: 1, GPU Compute Capability: 8.0, Driver API Version: 12.0, Runtime API Version: 11.8
+W1204 16:04:52.765837 45335 gpu_resources.cc:164] device: 1, cuDNN Version: 8.6.
+/usr/lib/python3.7/site-packages/paddle/distributed/communication/group.py:115: UserWarning: Current global rank 1 is not in group _default_pg11
+  f"Current global rank {global_rank} is not in group {group.name}"
+I1204 16:04:59.942201 45335 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 16:04:59,942] [    INFO] topology.py:360 - Total 1 data comm group(s) create successfully!
+[2023-12-04 16:04:59,943] [    INFO] topology.py:360 - Total 2 model comm group(s) create successfully!
+[2023-12-04 16:04:59,943] [    INFO] topology.py:360 - Total 2 sharding comm group(s) create successfully!
+I1204 16:04:59.943643 45335 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 16:04:59,943] [    INFO] topology.py:288 - HybridParallelInfo: rank_id: 1, mp_degree: 1, sharding_degree: 1, pp_degree: 1, dp_degree: 2, sep_degree: 1, mp_group: [1],  sharding_group: [1], pp_group: [1], dp_group: [0, 1], sep:group: None, check/clip group: [1]
+[2023-12-04 16:04:59,944] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+c_softmax_with_cross_entropy
+CSoftmaxWithCrossEntropyOpCUDAKernel
+has ring_id 0
+label_type is int32
+.
+----------------------------------------------------------------------
+Ran 1 test in 11.182s
+
+OK
+[2023-12-04 16:05:21,886] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='1', default_value='')
+=======================================================================
+I1204 16:05:21.888321 46911 tcp_utils.cc:130] Successfully connected to 10.67.227.13:35137
+I1204 16:05:21.888507 46911 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 16:05:21,888] [    INFO] topology.py:360 - Total 2 pipe comm group(s) create successfully!
+W1204 16:05:21.891937 46911 gpu_resources.cc:119] Please NOTE: device: 1, GPU Compute Capability: 8.0, Driver API Version: 12.0, Runtime API Version: 11.8
+W1204 16:05:21.924868 46911 gpu_resources.cc:164] device: 1, cuDNN Version: 8.6.
+/usr/lib/python3.7/site-packages/paddle/distributed/communication/group.py:115: UserWarning: Current global rank 1 is not in group _default_pg11
+  f"Current global rank {global_rank} is not in group {group.name}"
+I1204 16:05:26.441272 46911 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 16:05:26,441] [    INFO] topology.py:360 - Total 1 data comm group(s) create successfully!
+[2023-12-04 16:05:26,442] [    INFO] topology.py:360 - Total 2 model comm group(s) create successfully!
+[2023-12-04 16:05:26,442] [    INFO] topology.py:360 - Total 2 sharding comm group(s) create successfully!
+I1204 16:05:26.442473 46911 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 16:05:26,442] [    INFO] topology.py:288 - HybridParallelInfo: rank_id: 1, mp_degree: 1, sharding_degree: 1, pp_degree: 1, dp_degree: 2, sep_degree: 1, mp_group: [1],  sharding_group: [1], pp_group: [1], dp_group: [0, 1], sep:group: None, check/clip group: [1]
+[2023-12-04 16:05:26,443] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+c_softmax_with_cross_entropy
+CSoftmaxWithCrossEntropyOpCUDAKernel
+has ring_id 0
+label_type is int32
+.
+----------------------------------------------------------------------
+Ran 1 test in 5.612s
+
+OK
+[2023-12-04 17:04:18,475] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='1', default_value='')
+=======================================================================
+I1204 17:04:18.477178 138921 tcp_utils.cc:107] Retry to connect to 10.67.227.13:48373 while the server is not yet listening.
+I1204 17:04:21.477450 138921 tcp_utils.cc:130] Successfully connected to 10.67.227.13:48373
+I1204 17:04:21.477977 138921 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 17:04:21,479] [    INFO] topology.py:360 - Total 2 pipe comm group(s) create successfully!
+W1204 17:04:21.480952 138921 gpu_resources.cc:119] Please NOTE: device: 1, GPU Compute Capability: 8.0, Driver API Version: 12.0, Runtime API Version: 11.8
+W1204 17:04:21.549669 138921 gpu_resources.cc:164] device: 1, cuDNN Version: 8.6.
+/usr/lib/python3.7/site-packages/paddle/distributed/communication/group.py:115: UserWarning: Current global rank 1 is not in group _default_pg11
+  f"Current global rank {global_rank} is not in group {group.name}"
+I1204 17:04:26.184960 138921 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 17:04:26,185] [    INFO] topology.py:360 - Total 1 data comm group(s) create successfully!
+[2023-12-04 17:04:26,185] [    INFO] topology.py:360 - Total 2 model comm group(s) create successfully!
+[2023-12-04 17:04:26,185] [    INFO] topology.py:360 - Total 2 sharding comm group(s) create successfully!
+I1204 17:04:26.185992 138921 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 17:04:26,186] [    INFO] topology.py:288 - HybridParallelInfo: rank_id: 1, mp_degree: 1, sharding_degree: 1, pp_degree: 1, dp_degree: 2, sep_degree: 1, mp_group: [1],  sharding_group: [1], pp_group: [1], dp_group: [0, 1], sep:group: None, check/clip group: [1]
+[2023-12-04 17:04:26,186] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+c_softmax_with_cross_entropy
+CSoftmaxWithCrossEntropyOpCUDAKernel
+has ring_id 0
+label_type is int32
+.
+----------------------------------------------------------------------
+Ran 1 test in 8.529s
+
+OK
+[2023-12-04 17:04:45,090] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='1', default_value='')
+=======================================================================
+I1204 17:04:45.092507 139177 tcp_utils.cc:130] Successfully connected to 10.67.227.13:48841
+I1204 17:04:45.092715 139177 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 17:04:45,093] [    INFO] topology.py:360 - Total 2 pipe comm group(s) create successfully!
+W1204 17:04:45.094455 139177 gpu_resources.cc:119] Please NOTE: device: 1, GPU Compute Capability: 8.0, Driver API Version: 12.0, Runtime API Version: 11.8
+W1204 17:04:45.129685 139177 gpu_resources.cc:164] device: 1, cuDNN Version: 8.6.
+/usr/lib/python3.7/site-packages/paddle/distributed/communication/group.py:115: UserWarning: Current global rank 1 is not in group _default_pg11
+  f"Current global rank {global_rank} is not in group {group.name}"
+I1204 17:04:50.922171 139177 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 17:04:50,922] [    INFO] topology.py:360 - Total 1 data comm group(s) create successfully!
+[2023-12-04 17:04:50,923] [    INFO] topology.py:360 - Total 2 model comm group(s) create successfully!
+[2023-12-04 17:04:50,923] [    INFO] topology.py:360 - Total 2 sharding comm group(s) create successfully!
+I1204 17:04:50.923593 139177 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 17:04:50,923] [    INFO] topology.py:288 - HybridParallelInfo: rank_id: 1, mp_degree: 1, sharding_degree: 1, pp_degree: 1, dp_degree: 2, sep_degree: 1, mp_group: [1],  sharding_group: [1], pp_group: [1], dp_group: [0, 1], sep:group: None, check/clip group: [1]
+[2023-12-04 17:04:50,924] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+c_softmax_with_cross_entropy
+CSoftmaxWithCrossEntropyOpCUDAKernel
+has ring_id 0
+label_type is int32
+.
+----------------------------------------------------------------------
+Ran 1 test in 6.748s
+
+OK
+[2023-12-04 17:06:04,915] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='1', default_value='')
+=======================================================================
+I1204 17:06:04.917876 142650 tcp_utils.cc:107] Retry to connect to 10.67.227.13:41846 while the server is not yet listening.
+I1204 17:06:07.918166 142650 tcp_utils.cc:130] Successfully connected to 10.67.227.13:41846
+I1204 17:06:07.918650 142650 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 17:06:07,919] [    INFO] topology.py:360 - Total 2 pipe comm group(s) create successfully!
+W1204 17:06:07.921979 142650 gpu_resources.cc:119] Please NOTE: device: 1, GPU Compute Capability: 8.0, Driver API Version: 12.0, Runtime API Version: 11.8
+W1204 17:06:07.961701 142650 gpu_resources.cc:164] device: 1, cuDNN Version: 8.6.
+/usr/lib/python3.7/site-packages/paddle/distributed/communication/group.py:115: UserWarning: Current global rank 1 is not in group _default_pg11
+  f"Current global rank {global_rank} is not in group {group.name}"
+I1204 17:06:12.507390 142650 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 17:06:12,507] [    INFO] topology.py:360 - Total 1 data comm group(s) create successfully!
+[2023-12-04 17:06:12,507] [    INFO] topology.py:360 - Total 2 model comm group(s) create successfully!
+[2023-12-04 17:06:12,508] [    INFO] topology.py:360 - Total 2 sharding comm group(s) create successfully!
+I1204 17:06:12.508163 142650 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 17:06:12,508] [    INFO] topology.py:288 - HybridParallelInfo: rank_id: 1, mp_degree: 1, sharding_degree: 1, pp_degree: 1, dp_degree: 2, sep_degree: 1, mp_group: [1],  sharding_group: [1], pp_group: [1], dp_group: [0, 1], sep:group: None, check/clip group: [1]
+[2023-12-04 17:06:12,508] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+c_softmax_with_cross_entropy
+CSoftmaxWithCrossEntropyOpCUDAKernel
+has ring_id 0
+label_type is int32
+F
+======================================================================
+FAIL: test_model (__main__.TestCSoftmaxWithCrossEntropy)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "c_softmax_with_cross_entropy_op.py", line 133, in test_model
+    np.testing.assert_allclose(loss.numpy(), need_loss, rtol=rtol)
+  File "/usr/lib/python3.7/site-packages/numpy/testing/_private/utils.py", line 1531, in assert_allclose
+    verbose=verbose, header=header, equal_nan=equal_nan)
+  File "/usr/lib/python3.7/site-packages/numpy/testing/_private/utils.py", line 844, in assert_array_compare
+    raise AssertionError(msg)
+AssertionError: 
+Not equal to tolerance rtol=1e-06, atol=0
+
+Mismatched elements: 1021 / 1024 (99.7%)
+Max absolute difference: 0.07572937
+Max relative difference: 0.00505183
+ x: array([[ 0.   ],
+       [72.06 ],
+       [61.6  ],...
+ y: array([[ 0.      ],
+       [72.05064 ],
+       [61.586403],...
+
+----------------------------------------------------------------------
+Ran 1 test in 8.424s
+
+FAILED (failures=1)
+[2023-12-04 17:06:35,595] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='1', default_value='')
+=======================================================================
+I1204 17:06:35.597587 144682 tcp_utils.cc:107] Retry to connect to 10.67.227.13:52153 while the server is not yet listening.
+I1204 17:06:38.597862 144682 tcp_utils.cc:130] Successfully connected to 10.67.227.13:52153
+I1204 17:06:38.598264 144682 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 17:06:38,599] [    INFO] topology.py:360 - Total 2 pipe comm group(s) create successfully!
+W1204 17:06:38.600936 144682 gpu_resources.cc:119] Please NOTE: device: 1, GPU Compute Capability: 8.0, Driver API Version: 12.0, Runtime API Version: 11.8
+W1204 17:06:38.654470 144682 gpu_resources.cc:164] device: 1, cuDNN Version: 8.6.
+
+
+--------------------------------------
+C++ Traceback (most recent call last):
+--------------------------------------
+0   paddle::pybind::eager_api_full(_object*, _object*, _object*)
+1   full_ad_func(paddle::experimental::IntArrayBase<paddle::Tensor>, paddle::experimental::ScalarBase<paddle::Tensor>, phi::DataType, phi::Place)
+2   paddle::experimental::full(paddle::experimental::IntArrayBase<paddle::Tensor> const&, paddle::experimental::ScalarBase<paddle::Tensor> const&, phi::DataType, phi::Place const&)
+3   paddle::experimental::GetDeviceContextByBackend(paddle::experimental::Backend)
+4   paddle::experimental::DeviceContextPool::Get(phi::Place const&)
+5   phi::DeviceContextPool::Get(phi::Place const&)
+6   std::__future_base::_Deferred_state<std::thread::_Invoker<std::tuple<std::unique_ptr<phi::DeviceContext, std::default_delete<phi::DeviceContext> > (*)(phi::Place const&, bool, int), phi::Place, bool, int> >, std::unique_ptr<phi::DeviceContext, std::default_delete<phi::DeviceContext> > >::_M_complete_async()
+7   std::__future_base::_State_baseV2::_M_do_set(std::function<std::unique_ptr<std::__future_base::_Result_base, std::__future_base::_Result_base::_Deleter> ()>*, bool*)
+8   std::_Function_handler<std::unique_ptr<std::__future_base::_Result_base, std::__future_base::_Result_base::_Deleter> (), std::__future_base::_Task_setter<std::unique_ptr<std::__future_base::_Result<std::unique_ptr<phi::DeviceContext, std::default_delete<phi::DeviceContext> > >, std::__future_base::_Result_base::_Deleter>, std::thread::_Invoker<std::tuple<std::unique_ptr<phi::DeviceContext, std::default_delete<phi::DeviceContext> > (*)(phi::Place const&, bool, int), phi::Place, bool, int> >, std::unique_ptr<phi::DeviceContext, std::default_delete<phi::DeviceContext> > > >::_M_invoke(std::_Any_data const&)
+9   std::unique_ptr<phi::DeviceContext, std::default_delete<phi::DeviceContext> > paddle::platform::CreateDeviceContext<phi::GPUContext>(phi::Place const&, bool, int)
+10  std::enable_if<std::is_same<phi::GPUContext, phi::GPUContext>::value, phi::GPUContext*>::type paddle::platform::ConstructDevCtx<phi::GPUContext>(phi::Place const&, int)
+11  phi::GPUContext::GPUContext(phi::GPUPlace const&, bool, int)
+12  phi::CUDAStream::CUDAStream(phi::Place const&, int, phi::CUDAStream::StreamFlag const&)
+13  phi::backends::gpu::GetGpuStreamPriorityRange()
+
+----------------------
+Error Message Summary:
+----------------------
+FatalError: `Termination signal` is detected by the operating system.
+  [TimeInfo: *** Aborted at 1701680801 (unix time) try "date -d @1701680801" if you are using GNU date ***]
+  [SignalInfo: *** SIGTERM (@0x234d7) received by PID 144682 (TID 0x7f7bc216a740) from PID 144599 ***]
+
+[2023-12-04 17:07:38,713] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='1', default_value='')
+=======================================================================
+I1204 17:07:38.716183 146571 tcp_utils.cc:107] Retry to connect to 10.67.227.13:54673 while the server is not yet listening.
+I1204 17:07:41.716504 146571 tcp_utils.cc:130] Successfully connected to 10.67.227.13:54673
+I1204 17:07:41.717006 146571 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 17:07:41,718] [    INFO] topology.py:360 - Total 2 pipe comm group(s) create successfully!
+W1204 17:07:41.719961 146571 gpu_resources.cc:119] Please NOTE: device: 1, GPU Compute Capability: 8.0, Driver API Version: 12.0, Runtime API Version: 11.8
+W1204 17:07:41.769455 146571 gpu_resources.cc:164] device: 1, cuDNN Version: 8.6.
+
+
+--------------------------------------
+C++ Traceback (most recent call last):
+--------------------------------------
+0   paddle::pybind::eager_api_full(_object*, _object*, _object*)
+1   full_ad_func(paddle::experimental::IntArrayBase<paddle::Tensor>, paddle::experimental::ScalarBase<paddle::Tensor>, phi::DataType, phi::Place)
+2   paddle::experimental::full(paddle::experimental::IntArrayBase<paddle::Tensor> const&, paddle::experimental::ScalarBase<paddle::Tensor> const&, phi::DataType, phi::Place const&)
+3   paddle::experimental::GetDeviceContextByBackend(paddle::experimental::Backend)
+4   paddle::experimental::DeviceContextPool::Get(phi::Place const&)
+5   phi::DeviceContextPool::Get(phi::Place const&)
+6   std::__future_base::_Deferred_state<std::thread::_Invoker<std::tuple<std::unique_ptr<phi::DeviceContext, std::default_delete<phi::DeviceContext> > (*)(phi::Place const&, bool, int), phi::Place, bool, int> >, std::unique_ptr<phi::DeviceContext, std::default_delete<phi::DeviceContext> > >::_M_complete_async()
+7   std::__future_base::_State_baseV2::_M_do_set(std::function<std::unique_ptr<std::__future_base::_Result_base, std::__future_base::_Result_base::_Deleter> ()>*, bool*)
+8   std::_Function_handler<std::unique_ptr<std::__future_base::_Result_base, std::__future_base::_Result_base::_Deleter> (), std::__future_base::_Task_setter<std::unique_ptr<std::__future_base::_Result<std::unique_ptr<phi::DeviceContext, std::default_delete<phi::DeviceContext> > >, std::__future_base::_Result_base::_Deleter>, std::thread::_Invoker<std::tuple<std::unique_ptr<phi::DeviceContext, std::default_delete<phi::DeviceContext> > (*)(phi::Place const&, bool, int), phi::Place, bool, int> >, std::unique_ptr<phi::DeviceContext, std::default_delete<phi::DeviceContext> > > >::_M_invoke(std::_Any_data const&)
+9   std::unique_ptr<phi::DeviceContext, std::default_delete<phi::DeviceContext> > paddle::platform::CreateDeviceContext<phi::GPUContext>(phi::Place const&, bool, int)
+10  std::enable_if<std::is_same<phi::GPUContext, phi::GPUContext>::value, phi::GPUContext*>::type paddle::platform::ConstructDevCtx<phi::GPUContext>(phi::Place const&, int)
+11  phi::GPUContext::GPUContext(phi::GPUPlace const&, bool, int)
+12  phi::CUDAStream::CUDAStream(phi::Place const&, int, phi::CUDAStream::StreamFlag const&)
+13  phi::backends::gpu::GetGpuStreamPriorityRange()
+
+----------------------
+Error Message Summary:
+----------------------
+FatalError: `Termination signal` is detected by the operating system.
+  [TimeInfo: *** Aborted at 1701680864 (unix time) try "date -d @1701680864" if you are using GNU date ***]
+  [SignalInfo: *** SIGTERM (@0x23c39) received by PID 146571 (TID 0x7effce1cf740) from PID 146489 ***]

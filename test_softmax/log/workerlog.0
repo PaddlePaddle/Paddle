@@ -1,0 +1,618 @@
+[2023-11-20 14:53:04,930] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='0', default_value='')
+=======================================================================
+I1120 14:53:04.932060 158212 tcp_utils.cc:181] The server starts to listen on IP_ANY:50288
+I1120 14:53:04.932258 158212 tcp_utils.cc:130] Successfully connected to 10.67.227.13:50288
+I1120 14:53:05.107631 158212 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-11-20 14:53:05,108] [    INFO] topology.py:360 - Total 2 pipe comm group(s) create successfully!
+W1120 14:53:05.110468 158212 gpu_resources.cc:119] Please NOTE: device: 0, GPU Compute Capability: 8.0, Driver API Version: 12.0, Runtime API Version: 11.8
+W1120 14:53:05.176555 158212 gpu_resources.cc:164] device: 0, cuDNN Version: 8.6.
+/usr/local/lib/python3.7/dist-packages/paddle/distributed/communication/group.py:115: UserWarning: Current global rank 0 is not in group _default_pg10
+  f"Current global rank {global_rank} is not in group {group.name}"
+I1120 14:53:06.996080 158212 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-11-20 14:53:06,996] [    INFO] topology.py:360 - Total 1 data comm group(s) create successfully!
+[2023-11-20 14:53:06,996] [    INFO] topology.py:360 - Total 2 model comm group(s) create successfully!
+[2023-11-20 14:53:06,996] [    INFO] topology.py:360 - Total 2 sharding comm group(s) create successfully!
+I1120 14:53:06.996515 158212 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-11-20 14:53:06,996] [    INFO] topology.py:288 - HybridParallelInfo: rank_id: 0, mp_degree: 1, sharding_degree: 1, pp_degree: 1, dp_degree: 2, sep_degree: 1, mp_group: [0],  sharding_group: [0], pp_group: [0], dp_group: [0, 1], sep:group: None, check/clip group: [0]
+[2023-11-20 14:53:06,996] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+c_softmax_with_cross_entropy
+E
+======================================================================
+ERROR: test_model (__main__.TestCSoftmaxWithCrossEntropy)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "c_softmax_with_cross_entropy_op.py", line 108, in test_model
+    return_softmax=True,
+  File "/usr/local/lib/python3.7/dist-packages/paddle/distributed/fleet/layers/mpu/mp_ops.py", line 440, in _c_softmax_with_cross_entropy
+    softmax, loss = _legacy_C_ops.c_softmax_with_cross_entropy(
+AttributeError: module 'paddle.base.libpaddle.eager.ops.legacy' has no attribute 'c_softmax_with_cross_entropy'
+
+----------------------------------------------------------------------
+Ran 1 test in 2.083s
+
+FAILED (errors=1)
+I1120 14:53:07.225478 158235 tcp_store.cc:289] receive shutdown event and so quit from MasterDaemon run loop
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='0', default_value='')
+=======================================================================
+I1123 21:49:43.079916 60365 tcp_utils.cc:181] The server starts to listen on IP_ANY:57909
+I1123 21:49:43.080170 60365 tcp_utils.cc:130] Successfully connected to 10.67.227.13:57909
+I1123 21:49:45.887239 60365 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+c_softmax_with_cross_entropy
+Traceback (most recent call last):
+  File "test_c_softmax_with_cross_entropy.py", line 19, in <module>
+    return_softmax=True,
+  File "/usr/lib/python3.7/site-packages/paddle/distributed/fleet/layers/mpu/mp_ops.py", line 440, in _c_softmax_with_cross_entropy
+    softmax, loss = _legacy_C_ops.c_softmax_with_cross_entropy(
+AttributeError: module 'paddle.base.libpaddle.eager.ops.legacy' has no attribute 'c_softmax_with_cross_entropy'
+I1123 21:49:48.349699 60389 tcp_store.cc:289] receive shutdown event and so quit from MasterDaemon run loop
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='0', default_value='')
+=======================================================================
+I1123 21:54:04.400915 67659 tcp_utils.cc:181] The server starts to listen on IP_ANY:51481
+I1123 21:54:04.401129 67659 tcp_utils.cc:130] Successfully connected to 10.67.227.13:51481
+I1123 21:54:07.165341 67659 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+c_softmax_with_cross_entropy
+Traceback (most recent call last):
+  File "test_c_softmax_with_cross_entropy.py", line 19, in <module>
+    return_softmax=True,
+  File "/usr/lib/python3.7/site-packages/paddle/distributed/fleet/layers/mpu/mp_ops.py", line 440, in _c_softmax_with_cross_entropy
+    softmax, loss = _legacy_C_ops.c_softmax_with_cross_entropy(
+AttributeError: module 'paddle.base.libpaddle.eager.ops.legacy' has no attribute 'c_softmax_with_cross_entropy'
+I1123 21:54:09.988790 67682 tcp_store.cc:289] receive shutdown event and so quit from MasterDaemon run loop
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='0', default_value='')
+=======================================================================
+/usr/lib/python3.7/site-packages/paddle/distributed/parallel.py:1007: UserWarning: Currently not a parallel execution environment, `paddle.distributed.init_parallel_env` will not do anything.
+  "Currently not a parallel execution environment, `paddle.distributed.init_parallel_env` will not do anything."
+c_softmax_with_cross_entropy
+W1128 11:27:51.216135 157471 gpu_resources.cc:119] Please NOTE: device: 0, GPU Compute Capability: 8.0, Driver API Version: 12.0, Runtime API Version: 11.8
+W1128 11:27:51.255172 157471 gpu_resources.cc:164] device: 0, cuDNN Version: 8.6.
+CSoftmaxWithCrossEntropyOpCUDAKernel
+Traceback (most recent call last):
+  File "test_c_softmax_with_cross_entropy.py", line 19, in <module>
+    return_softmax=True,
+  File "/usr/lib/python3.7/site-packages/paddle/distributed/fleet/layers/mpu/mp_ops.py", line 450, in _c_softmax_with_cross_entropy
+    ignore_index,
+ValueError: (InvalidArgument) You choose to use new communication library by setting environment variable FLAGS_dynamic_static_unified_comm True. But ring_id(0) is not found in comm_context_manager.
+  [Hint: Expected comm_context_manager.Has(std::to_string(rid)) == true, but received comm_context_manager.Has(std::to_string(rid)):0 != true:1.] (at /root/paddlejob/workspace/work/tianhaodong/Paddle/paddle/fluid/operators/collective/c_softmax_with_cross_entropy_op.cu:165)
+  [operator < c_softmax_with_cross_entropy > error]
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='0', default_value='')
+=======================================================================
+I1128 11:28:21.734495 159292 tcp_utils.cc:181] The server starts to listen on IP_ANY:63028
+I1128 11:28:21.734701 159292 tcp_utils.cc:130] Successfully connected to 10.67.227.13:63028
+I1128 11:28:21.940099 159292 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+c_softmax_with_cross_entropy
+W1128 11:28:24.448383 159292 gpu_resources.cc:119] Please NOTE: device: 0, GPU Compute Capability: 8.0, Driver API Version: 12.0, Runtime API Version: 11.8
+W1128 11:28:24.479852 159292 gpu_resources.cc:164] device: 0, cuDNN Version: 8.6.
+CSoftmaxWithCrossEntropyOpCUDAKernel
+NCCL version 2.15.5+cuda11.8
+I1128 11:28:27.970549 159324 tcp_store.cc:289] receive shutdown event and so quit from MasterDaemon run loop
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='0', default_value='')
+=======================================================================
+I1128 11:29:23.853169 161115 tcp_utils.cc:181] The server starts to listen on IP_ANY:59752
+I1128 11:29:23.853343 161115 tcp_utils.cc:130] Successfully connected to 10.67.227.13:59752
+I1128 11:29:26.856003 161115 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+c_softmax_with_cross_entropy
+W1128 11:29:30.344007 161115 gpu_resources.cc:119] Please NOTE: device: 0, GPU Compute Capability: 8.0, Driver API Version: 12.0, Runtime API Version: 11.8
+W1128 11:29:30.383076 161115 gpu_resources.cc:164] device: 0, cuDNN Version: 8.6.
+CSoftmaxWithCrossEntropyOpCUDAKernel
+NCCL version 2.15.5+cuda11.8
+Tensor(shape=[1024, 500], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+       [[0.00000000, 0.00000000, 0.00000000, ..., 0.00000000, 0.00000000,
+         0.00000000],
+        [0.00000000, 0.00000047, 0.00000061, ..., 0.00000000, 0.00000000,
+         0.00000000],
+        [0.00000000, 0.00000000, 0.00000000, ..., 0.00000000, 0.00000000,
+         0.00000000],
+        ...,
+        [0.00000000, 0.00000000, 0.00000000, ..., 0.00000000, 0.00000000,
+         0.00000000],
+        [0.00000000, 0.00018797, 0.00000000, ..., 0.00000000, 0.00000000,
+         0.00000000],
+        [0.00025816, 0.00000000, 0.00000000, ..., 0.00000000, 0.00000000,
+         0.00000000]])
+I1128 11:29:39.972298 161196 tcp_store.cc:289] receive shutdown event and so quit from MasterDaemon run loop
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='0', default_value='')
+=======================================================================
+I1128 15:52:48.652777 76815 tcp_utils.cc:181] The server starts to listen on IP_ANY:53183
+I1128 15:52:48.653033 76815 tcp_utils.cc:130] Successfully connected to 10.67.227.13:53183
+I1128 15:52:48.755398 76815 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+c_softmax_with_cross_entropy
+W1128 15:52:51.044216 76815 gpu_resources.cc:119] Please NOTE: device: 0, GPU Compute Capability: 8.0, Driver API Version: 12.0, Runtime API Version: 11.8
+W1128 15:52:51.078496 76815 gpu_resources.cc:164] device: 0, cuDNN Version: 8.6.
+CSoftmaxWithCrossEntropyOpCUDAKernel
+has ring_id 0
+NCCL version 2.15.5+cuda11.8
+label_type is int32
+Tensor(shape=[1024, 500], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+       [[0.00000000, 0.00000000, 0.02842549, ..., 0.00000000, 0.00000000,
+         0.00000000],
+        [0.00000000, 0.00006575, 0.00000000, ..., 0.00000000, 0.00034627,
+         0.00000000],
+        [0.00000000, 0.00000000, 0.00000000, ..., 0.05616923, 0.00000000,
+         0.00000000],
+        ...,
+        [0.00000000, 0.00000000, 0.00000000, ..., 0.00000000, 0.00000000,
+         0.00000000],
+        [0.00000000, 0.00000000, 0.00000000, ..., 0.00016334, 0.00000000,
+         0.00000000],
+        [0.00000000, 0.00000003, 0.00000000, ..., 0.00000000, 0.00000000,
+         0.00000000]])
+I1128 15:52:54.619287 76847 tcp_store.cc:289] receive shutdown event and so quit from MasterDaemon run loop
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='0', default_value='')
+=======================================================================
+/usr/lib/python3.7/site-packages/paddle/distributed/parallel.py:1007: UserWarning: Currently not a parallel execution environment, `paddle.distributed.init_parallel_env` will not do anything.
+  "Currently not a parallel execution environment, `paddle.distributed.init_parallel_env` will not do anything."
+c_softmax_with_cross_entropy
+W1128 15:53:40.784152 78718 gpu_resources.cc:119] Please NOTE: device: 0, GPU Compute Capability: 8.0, Driver API Version: 12.0, Runtime API Version: 11.8
+W1128 15:53:40.817652 78718 gpu_resources.cc:164] device: 0, cuDNN Version: 8.6.
+CSoftmaxWithCrossEntropyOpCUDAKernel
+no ring_id
+Traceback (most recent call last):
+  File "test_c_softmax_with_cross_entropy.py", line 19, in <module>
+    return_softmax=True,
+  File "/usr/lib/python3.7/site-packages/paddle/distributed/fleet/layers/mpu/mp_ops.py", line 450, in _c_softmax_with_cross_entropy
+    ignore_index,
+ValueError: (InvalidArgument) You choose to use new communication library by setting environment variable FLAGS_dynamic_static_unified_comm True. But ring_id(0) is not found in comm_context_manager.
+  [Hint: Expected comm_context_manager.Has(std::to_string(rid)) == true, but received comm_context_manager.Has(std::to_string(rid)):0 != true:1.] (at /root/paddlejob/workspace/work/tianhaodong/Paddle/paddle/fluid/operators/collective/c_softmax_with_cross_entropy_op.cu:167)
+  [operator < c_softmax_with_cross_entropy > error]
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='0', default_value='')
+=======================================================================
+I1128 15:54:03.842348 78822 tcp_utils.cc:181] The server starts to listen on IP_ANY:62285
+I1128 15:54:03.842680 78822 tcp_utils.cc:130] Successfully connected to 10.67.227.13:62285
+I1128 15:54:06.835211 78822 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+c_softmax_with_cross_entropy
+W1128 15:54:11.215143 78822 gpu_resources.cc:119] Please NOTE: device: 0, GPU Compute Capability: 8.0, Driver API Version: 12.0, Runtime API Version: 11.8
+W1128 15:54:11.253654 78822 gpu_resources.cc:164] device: 0, cuDNN Version: 8.6.
+CSoftmaxWithCrossEntropyOpCUDAKernel
+has ring_id 0
+NCCL version 2.15.5+cuda11.8
+label_type is int32
+Tensor(shape=[1024, 500], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+       [[0.00002797, 0.00000000, 0.00000000, ..., 0.00000000, 0.00000000,
+         0.00000027],
+        [0.00000000, 0.06973242, 0.00000000, ..., 0.00000000, 0.00000000,
+         0.00000000],
+        [0.00000000, 0.00000000, 0.00000000, ..., 0.00008690, 0.00006556,
+         0.00003209],
+        ...,
+        [0.00003068, 0.00000000, 0.00395918, ..., 0.00000000, 0.00000000,
+         0.00030923],
+        [0.00858862, 0.00000000, 0.00000000, ..., 0.00000000, 0.00000000,
+         0.00000004],
+        [0.05382192, 0.00000000, 0.00000000, ..., 0.00189673, 0.02860162,
+         0.00000000]])
+I1128 15:54:13.904610 78854 tcp_store.cc:289] receive shutdown event and so quit from MasterDaemon run loop
+[2023-11-29 17:04:35,932] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='0', default_value='')
+=======================================================================
+I1129 17:04:35.934190 104618 tcp_utils.cc:181] The server starts to listen on IP_ANY:62697
+I1129 17:04:35.934396 104618 tcp_utils.cc:130] Successfully connected to 10.67.227.13:62697
+I1129 17:04:36.078485 104618 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-11-29 17:04:36,079] [    INFO] topology.py:360 - Total 2 pipe comm group(s) create successfully!
+W1129 17:04:36.081285 104618 gpu_resources.cc:119] Please NOTE: device: 0, GPU Compute Capability: 8.0, Driver API Version: 12.0, Runtime API Version: 11.8
+W1129 17:04:36.147907 104618 gpu_resources.cc:164] device: 0, cuDNN Version: 8.6.
+/usr/lib/python3.7/site-packages/paddle/distributed/communication/group.py:115: UserWarning: Current global rank 0 is not in group _default_pg10
+  f"Current global rank {global_rank} is not in group {group.name}"
+I1129 17:04:38.664253 104618 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-11-29 17:04:38,664] [    INFO] topology.py:360 - Total 1 data comm group(s) create successfully!
+[2023-11-29 17:04:38,665] [    INFO] topology.py:360 - Total 2 model comm group(s) create successfully!
+[2023-11-29 17:04:38,665] [    INFO] topology.py:360 - Total 2 sharding comm group(s) create successfully!
+I1129 17:04:38.665836 104618 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-11-29 17:04:38,665] [    INFO] topology.py:288 - HybridParallelInfo: rank_id: 0, mp_degree: 1, sharding_degree: 1, pp_degree: 1, dp_degree: 2, sep_degree: 1, mp_group: [0],  sharding_group: [0], pp_group: [0], dp_group: [0, 1], sep:group: None, check/clip group: [0]
+[2023-11-29 17:04:38,666] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+c_softmax_with_cross_entropy
+CSoftmaxWithCrossEntropyOpCUDAKernel
+has ring_id 0
+NCCL version 2.15.5+cuda11.8
+label_type is int32
+.
+----------------------------------------------------------------------
+Ran 1 test in 5.735s
+
+OK
+I1129 17:04:42.057238 104655 tcp_store.cc:289] receive shutdown event and so quit from MasterDaemon run loop
+[2023-11-29 17:13:14,986] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='0', default_value='')
+=======================================================================
+I1129 17:13:14.987972 119951 tcp_utils.cc:181] The server starts to listen on IP_ANY:37524
+I1129 17:13:14.988168 119951 tcp_utils.cc:130] Successfully connected to 10.67.227.13:37524
+I1129 17:13:15.029284 119951 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-11-29 17:13:15,030] [    INFO] topology.py:360 - Total 2 pipe comm group(s) create successfully!
+W1129 17:13:15.031914 119951 gpu_resources.cc:119] Please NOTE: device: 0, GPU Compute Capability: 8.0, Driver API Version: 12.0, Runtime API Version: 11.8
+W1129 17:13:15.093783 119951 gpu_resources.cc:164] device: 0, cuDNN Version: 8.6.
+/usr/lib/python3.7/site-packages/paddle/distributed/communication/group.py:115: UserWarning: Current global rank 0 is not in group _default_pg10
+  f"Current global rank {global_rank} is not in group {group.name}"
+I1129 17:13:17.712579 119951 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-11-29 17:13:17,713] [    INFO] topology.py:360 - Total 1 data comm group(s) create successfully!
+[2023-11-29 17:13:17,713] [    INFO] topology.py:360 - Total 2 model comm group(s) create successfully!
+[2023-11-29 17:13:17,713] [    INFO] topology.py:360 - Total 2 sharding comm group(s) create successfully!
+I1129 17:13:17.713856 119951 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-11-29 17:13:17,713] [    INFO] topology.py:288 - HybridParallelInfo: rank_id: 0, mp_degree: 1, sharding_degree: 1, pp_degree: 1, dp_degree: 2, sep_degree: 1, mp_group: [0],  sharding_group: [0], pp_group: [0], dp_group: [0, 1], sep:group: None, check/clip group: [0]
+[2023-11-29 17:13:17,714] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+c_softmax_with_cross_entropy
+CSoftmaxWithCrossEntropyOpCUDAKernel
+has ring_id 0
+NCCL version 2.15.5+cuda11.8
+label_type is int32
+.
+----------------------------------------------------------------------
+Ran 1 test in 5.330s
+
+OK
+I1129 17:13:20.705194 119984 tcp_store.cc:289] receive shutdown event and so quit from MasterDaemon run loop
+[2023-11-29 17:13:43,018] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='0', default_value='')
+=======================================================================
+I1129 17:13:43.020051 120084 tcp_utils.cc:181] The server starts to listen on IP_ANY:58051
+I1129 17:13:43.020237 120084 tcp_utils.cc:130] Successfully connected to 10.67.227.13:58051
+I1129 17:13:43.123137 120084 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-11-29 17:13:43,124] [    INFO] topology.py:360 - Total 2 pipe comm group(s) create successfully!
+W1129 17:13:43.125660 120084 gpu_resources.cc:119] Please NOTE: device: 0, GPU Compute Capability: 8.0, Driver API Version: 12.0, Runtime API Version: 11.8
+W1129 17:13:43.192328 120084 gpu_resources.cc:164] device: 0, cuDNN Version: 8.6.
+/usr/lib/python3.7/site-packages/paddle/distributed/communication/group.py:115: UserWarning: Current global rank 0 is not in group _default_pg10
+  f"Current global rank {global_rank} is not in group {group.name}"
+I1129 17:13:47.230962 120084 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-11-29 17:13:47,231] [    INFO] topology.py:360 - Total 1 data comm group(s) create successfully!
+[2023-11-29 17:13:47,231] [    INFO] topology.py:360 - Total 2 model comm group(s) create successfully!
+[2023-11-29 17:13:47,231] [    INFO] topology.py:360 - Total 2 sharding comm group(s) create successfully!
+I1129 17:13:47.231525 120084 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-11-29 17:13:47,231] [    INFO] topology.py:288 - HybridParallelInfo: rank_id: 0, mp_degree: 1, sharding_degree: 1, pp_degree: 1, dp_degree: 2, sep_degree: 1, mp_group: [0],  sharding_group: [0], pp_group: [0], dp_group: [0, 1], sep:group: None, check/clip group: [0]
+c_softmax_with_cross_entropy
+CSoftmaxWithCrossEntropyOpCUDAKernel
+has ring_id 0
+NCCL version 2.15.5+cuda11.8
+label_type is int32
+.
+----------------------------------------------------------------------
+Ran 1 test in 6.874s
+
+OK
+I1129 17:13:50.140055 120118 tcp_store.cc:289] receive shutdown event and so quit from MasterDaemon run loop
+E
+======================================================================
+ERROR: test_model (__main__.TestCSoftmaxWithCrossEntropy)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "c_softmax_with_cross_entropy_op.py", line 78, in test_model
+    rank = fleet.worker_index()
+  File "/usr/lib/python3.7/site-packages/paddle/distributed/fleet/fleet.py", line 481, in worker_index
+    return self._role_maker._worker_index()
+AttributeError: 'NoneType' object has no attribute '_worker_index'
+
+----------------------------------------------------------------------
+Ran 1 test in 0.001s
+
+FAILED (errors=1)
+[2023-11-29 17:14:36,881] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='0', default_value='')
+=======================================================================
+I1129 17:14:36.883126 122123 tcp_utils.cc:181] The server starts to listen on IP_ANY:36644
+I1129 17:14:36.883345 122123 tcp_utils.cc:130] Successfully connected to 10.67.227.13:36644
+I1129 17:14:36.894249 122123 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-11-29 17:14:36,895] [    INFO] topology.py:360 - Total 2 pipe comm group(s) create successfully!
+W1129 17:14:36.897915 122123 gpu_resources.cc:119] Please NOTE: device: 0, GPU Compute Capability: 8.0, Driver API Version: 12.0, Runtime API Version: 11.8
+W1129 17:14:36.963585 122123 gpu_resources.cc:164] device: 0, cuDNN Version: 8.6.
+/usr/lib/python3.7/site-packages/paddle/distributed/communication/group.py:115: UserWarning: Current global rank 0 is not in group _default_pg10
+  f"Current global rank {global_rank} is not in group {group.name}"
+I1129 17:14:39.555845 122123 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-11-29 17:14:39,556] [    INFO] topology.py:360 - Total 1 data comm group(s) create successfully!
+[2023-11-29 17:14:39,556] [    INFO] topology.py:360 - Total 2 model comm group(s) create successfully!
+[2023-11-29 17:14:39,556] [    INFO] topology.py:360 - Total 2 sharding comm group(s) create successfully!
+I1129 17:14:39.557118 122123 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-11-29 17:14:39,557] [    INFO] topology.py:288 - HybridParallelInfo: rank_id: 0, mp_degree: 1, sharding_degree: 1, pp_degree: 1, dp_degree: 2, sep_degree: 1, mp_group: [0],  sharding_group: [0], pp_group: [0], dp_group: [0, 1], sep:group: None, check/clip group: [0]
+c_softmax_with_cross_entropy
+CSoftmaxWithCrossEntropyOpCUDAKernel
+has ring_id 0
+NCCL version 2.15.5+cuda11.8
+label_type is int32
+F
+======================================================================
+FAIL: test_model (__main__.TestCSoftmaxWithCrossEntropy)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "c_softmax_with_cross_entropy_op.py", line 133, in test_model
+    np.testing.assert_allclose(loss.numpy(), need_loss, rtol=rtol)
+  File "/usr/lib/python3.7/site-packages/numpy/testing/_private/utils.py", line 1531, in assert_allclose
+    verbose=verbose, header=header, equal_nan=equal_nan)
+  File "/usr/lib/python3.7/site-packages/numpy/testing/_private/utils.py", line 844, in assert_array_compare
+    raise AssertionError(msg)
+AssertionError: 
+Not equal to tolerance rtol=1e-06, atol=0
+
+Mismatched elements: 1023 / 1024 (99.9%)
+Max absolute difference: 73.75012
+Max relative difference: 20.657541
+ x: array([[ 0.      ],
+       [11.510546],
+       [36.250423],...
+ y: array([[ 0.      ],
+       [72.05064 ],
+       [61.586403],...
+
+----------------------------------------------------------------------
+Ran 1 test in 5.405s
+
+FAILED (failures=1)
+I1129 17:14:42.679590 122156 tcp_store.cc:289] receive shutdown event and so quit from MasterDaemon run loop
+c_softmax_with_cross_entropy
+W1129 17:15:35.817464 124037 gpu_resources.cc:119] Please NOTE: device: 0, GPU Compute Capability: 8.0, Driver API Version: 12.0, Runtime API Version: 11.8
+W1129 17:15:35.885919 124037 gpu_resources.cc:164] device: 0, cuDNN Version: 8.6.
+CSoftmaxWithCrossEntropyOpCUDAKernel
+no ring_id
+E
+======================================================================
+ERROR: test_model (__main__.TestCSoftmaxWithCrossEntropy)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "c_softmax_with_cross_entropy_op.py", line 109, in test_model
+    return_softmax=True,
+  File "/usr/lib/python3.7/site-packages/paddle/distributed/fleet/layers/mpu/mp_ops.py", line 450, in _c_softmax_with_cross_entropy
+    ignore_index,
+ValueError: (InvalidArgument) You choose to use new communication library by setting environment variable FLAGS_dynamic_static_unified_comm True. But ring_id(0) is not found in comm_context_manager.
+  [Hint: Expected comm_context_manager.Has(std::to_string(rid)) == true, but received comm_context_manager.Has(std::to_string(rid)):0 != true:1.] (at /root/paddlejob/workspace/work/tianhaodong/Paddle/paddle/fluid/operators/collective/c_softmax_with_cross_entropy_op.cu:167)
+  [operator < c_softmax_with_cross_entropy > error]
+
+----------------------------------------------------------------------
+Ran 1 test in 2.082s
+
+FAILED (errors=1)
+[2023-12-04 16:04:49,751] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='0', default_value='')
+=======================================================================
+I1204 16:04:49.753299 45317 tcp_utils.cc:181] The server starts to listen on IP_ANY:51193
+I1204 16:04:49.753480 45317 tcp_utils.cc:130] Successfully connected to 10.67.227.13:51193
+I1204 16:04:52.704456 45317 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 16:04:52,705] [    INFO] topology.py:360 - Total 2 pipe comm group(s) create successfully!
+W1204 16:04:52.707386 45317 gpu_resources.cc:119] Please NOTE: device: 0, GPU Compute Capability: 8.0, Driver API Version: 12.0, Runtime API Version: 11.8
+W1204 16:04:52.771155 45317 gpu_resources.cc:164] device: 0, cuDNN Version: 8.6.
+/usr/lib/python3.7/site-packages/paddle/distributed/communication/group.py:115: UserWarning: Current global rank 0 is not in group _default_pg10
+  f"Current global rank {global_rank} is not in group {group.name}"
+I1204 16:04:54.952277 45317 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 16:04:54,952] [    INFO] topology.py:360 - Total 1 data comm group(s) create successfully!
+[2023-12-04 16:04:54,952] [    INFO] topology.py:360 - Total 2 model comm group(s) create successfully!
+[2023-12-04 16:04:54,953] [    INFO] topology.py:360 - Total 2 sharding comm group(s) create successfully!
+I1204 16:04:54.953245 45317 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 16:04:54,953] [    INFO] topology.py:288 - HybridParallelInfo: rank_id: 0, mp_degree: 1, sharding_degree: 1, pp_degree: 1, dp_degree: 2, sep_degree: 1, mp_group: [0],  sharding_group: [0], pp_group: [0], dp_group: [0, 1], sep:group: None, check/clip group: [0]
+[2023-12-04 16:04:54,953] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+c_softmax_with_cross_entropy
+CSoftmaxWithCrossEntropyOpCUDAKernel
+has ring_id 0
+NCCL version 2.15.5+cuda11.8
+label_type is int32
+.
+----------------------------------------------------------------------
+Ran 1 test in 11.115s
+
+OK
+I1204 16:05:01.166043 45626 tcp_store.cc:289] receive shutdown event and so quit from MasterDaemon run loop
+[2023-12-04 16:05:21,885] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='0', default_value='')
+=======================================================================
+I1204 16:05:21.886857 46909 tcp_utils.cc:181] The server starts to listen on IP_ANY:35137
+I1204 16:05:21.887045 46909 tcp_utils.cc:130] Successfully connected to 10.67.227.13:35137
+I1204 16:05:21.897545 46909 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 16:05:21,897] [    INFO] topology.py:360 - Total 2 pipe comm group(s) create successfully!
+W1204 16:05:21.899926 46909 gpu_resources.cc:119] Please NOTE: device: 0, GPU Compute Capability: 8.0, Driver API Version: 12.0, Runtime API Version: 11.8
+W1204 16:05:21.942291 46909 gpu_resources.cc:164] device: 0, cuDNN Version: 8.6.
+/usr/lib/python3.7/site-packages/paddle/distributed/communication/group.py:115: UserWarning: Current global rank 0 is not in group _default_pg10
+  f"Current global rank {global_rank} is not in group {group.name}"
+I1204 16:05:23.968400 46909 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 16:05:23,968] [    INFO] topology.py:360 - Total 1 data comm group(s) create successfully!
+[2023-12-04 16:05:23,969] [    INFO] topology.py:360 - Total 2 model comm group(s) create successfully!
+[2023-12-04 16:05:23,969] [    INFO] topology.py:360 - Total 2 sharding comm group(s) create successfully!
+I1204 16:05:23.969509 46909 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 16:05:23,969] [    INFO] topology.py:288 - HybridParallelInfo: rank_id: 0, mp_degree: 1, sharding_degree: 1, pp_degree: 1, dp_degree: 2, sep_degree: 1, mp_group: [0],  sharding_group: [0], pp_group: [0], dp_group: [0, 1], sep:group: None, check/clip group: [0]
+[2023-12-04 16:05:23,969] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+c_softmax_with_cross_entropy
+CSoftmaxWithCrossEntropyOpCUDAKernel
+has ring_id 0
+NCCL version 2.15.5+cuda11.8
+label_type is int32
+.
+----------------------------------------------------------------------
+Ran 1 test in 5.603s
+
+OK
+I1204 16:05:27.815941 46941 tcp_store.cc:289] receive shutdown event and so quit from MasterDaemon run loop
+[2023-12-04 17:04:18,497] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='0', default_value='')
+=======================================================================
+I1204 17:04:18.499977 138919 tcp_utils.cc:181] The server starts to listen on IP_ANY:48373
+I1204 17:04:18.500196 138919 tcp_utils.cc:130] Successfully connected to 10.67.227.13:48373
+I1204 17:04:21.482208 138919 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 17:04:21,483] [    INFO] topology.py:360 - Total 2 pipe comm group(s) create successfully!
+W1204 17:04:21.484915 138919 gpu_resources.cc:119] Please NOTE: device: 0, GPU Compute Capability: 8.0, Driver API Version: 12.0, Runtime API Version: 11.8
+W1204 17:04:21.561162 138919 gpu_resources.cc:164] device: 0, cuDNN Version: 8.6.
+/usr/lib/python3.7/site-packages/paddle/distributed/communication/group.py:115: UserWarning: Current global rank 0 is not in group _default_pg10
+  f"Current global rank {global_rank} is not in group {group.name}"
+I1204 17:04:23.769737 138919 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 17:04:23,769] [    INFO] topology.py:360 - Total 1 data comm group(s) create successfully!
+[2023-12-04 17:04:23,770] [    INFO] topology.py:360 - Total 2 model comm group(s) create successfully!
+[2023-12-04 17:04:23,770] [    INFO] topology.py:360 - Total 2 sharding comm group(s) create successfully!
+I1204 17:04:23.770296 138919 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 17:04:23,770] [    INFO] topology.py:288 - HybridParallelInfo: rank_id: 0, mp_degree: 1, sharding_degree: 1, pp_degree: 1, dp_degree: 2, sep_degree: 1, mp_group: [0],  sharding_group: [0], pp_group: [0], dp_group: [0, 1], sep:group: None, check/clip group: [0]
+[2023-12-04 17:04:23,770] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+c_softmax_with_cross_entropy
+CSoftmaxWithCrossEntropyOpCUDAKernel
+has ring_id 0
+NCCL version 2.15.5+cuda11.8
+label_type is int32
+.
+----------------------------------------------------------------------
+Ran 1 test in 8.495s
+
+OK
+I1204 17:04:27.319375 138951 tcp_store.cc:289] receive shutdown event and so quit from MasterDaemon run loop
+[2023-12-04 17:04:44,882] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='0', default_value='')
+=======================================================================
+I1204 17:04:44.883811 139170 tcp_utils.cc:181] The server starts to listen on IP_ANY:48841
+I1204 17:04:44.884018 139170 tcp_utils.cc:130] Successfully connected to 10.67.227.13:48841
+I1204 17:04:45.099758 139170 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 17:04:45,100] [    INFO] topology.py:360 - Total 2 pipe comm group(s) create successfully!
+W1204 17:04:45.102655 139170 gpu_resources.cc:119] Please NOTE: device: 0, GPU Compute Capability: 8.0, Driver API Version: 12.0, Runtime API Version: 11.8
+W1204 17:04:45.169013 139170 gpu_resources.cc:164] device: 0, cuDNN Version: 8.6.
+/usr/lib/python3.7/site-packages/paddle/distributed/communication/group.py:115: UserWarning: Current global rank 0 is not in group _default_pg10
+  f"Current global rank {global_rank} is not in group {group.name}"
+I1204 17:04:47.656430 139170 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 17:04:47,656] [    INFO] topology.py:360 - Total 1 data comm group(s) create successfully!
+[2023-12-04 17:04:47,657] [    INFO] topology.py:360 - Total 2 model comm group(s) create successfully!
+[2023-12-04 17:04:47,657] [    INFO] topology.py:360 - Total 2 sharding comm group(s) create successfully!
+I1204 17:04:47.657864 139170 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 17:04:47,657] [    INFO] topology.py:288 - HybridParallelInfo: rank_id: 0, mp_degree: 1, sharding_degree: 1, pp_degree: 1, dp_degree: 2, sep_degree: 1, mp_group: [0],  sharding_group: [0], pp_group: [0], dp_group: [0, 1], sep:group: None, check/clip group: [0]
+[2023-12-04 17:04:47,658] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+c_softmax_with_cross_entropy
+CSoftmaxWithCrossEntropyOpCUDAKernel
+has ring_id 0
+NCCL version 2.15.5+cuda11.8
+label_type is int32
+.
+----------------------------------------------------------------------
+Ran 1 test in 6.950s
+
+OK
+I1204 17:04:52.145258 139282 tcp_store.cc:289] receive shutdown event and so quit from MasterDaemon run loop
+[2023-12-04 17:06:04,999] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='0', default_value='')
+=======================================================================
+I1204 17:06:05.002656 142648 tcp_utils.cc:181] The server starts to listen on IP_ANY:41846
+I1204 17:06:05.002950 142648 tcp_utils.cc:130] Successfully connected to 10.67.227.13:41846
+I1204 17:06:07.924389 142648 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 17:06:07,925] [    INFO] topology.py:360 - Total 2 pipe comm group(s) create successfully!
+W1204 17:06:07.927443 142648 gpu_resources.cc:119] Please NOTE: device: 0, GPU Compute Capability: 8.0, Driver API Version: 12.0, Runtime API Version: 11.8
+W1204 17:06:07.995980 142648 gpu_resources.cc:164] device: 0, cuDNN Version: 8.6.
+/usr/lib/python3.7/site-packages/paddle/distributed/communication/group.py:115: UserWarning: Current global rank 0 is not in group _default_pg10
+  f"Current global rank {global_rank} is not in group {group.name}"
+I1204 17:06:10.492990 142648 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 17:06:10,493] [    INFO] topology.py:360 - Total 1 data comm group(s) create successfully!
+[2023-12-04 17:06:10,494] [    INFO] topology.py:360 - Total 2 model comm group(s) create successfully!
+[2023-12-04 17:06:10,494] [    INFO] topology.py:360 - Total 2 sharding comm group(s) create successfully!
+I1204 17:06:10.494414 142648 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 17:06:10,494] [    INFO] topology.py:288 - HybridParallelInfo: rank_id: 0, mp_degree: 1, sharding_degree: 1, pp_degree: 1, dp_degree: 2, sep_degree: 1, mp_group: [0],  sharding_group: [0], pp_group: [0], dp_group: [0, 1], sep:group: None, check/clip group: [0]
+[2023-12-04 17:06:10,495] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+c_softmax_with_cross_entropy
+CSoftmaxWithCrossEntropyOpCUDAKernel
+has ring_id 0
+NCCL version 2.15.5+cuda11.8
+label_type is int32
+F
+======================================================================
+FAIL: test_model (__main__.TestCSoftmaxWithCrossEntropy)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "c_softmax_with_cross_entropy_op.py", line 133, in test_model
+    np.testing.assert_allclose(loss.numpy(), need_loss, rtol=rtol)
+  File "/usr/lib/python3.7/site-packages/numpy/testing/_private/utils.py", line 1531, in assert_allclose
+    verbose=verbose, header=header, equal_nan=equal_nan)
+  File "/usr/lib/python3.7/site-packages/numpy/testing/_private/utils.py", line 844, in assert_array_compare
+    raise AssertionError(msg)
+AssertionError: 
+Not equal to tolerance rtol=1e-06, atol=0
+
+Mismatched elements: 1021 / 1024 (99.7%)
+Max absolute difference: 0.07572937
+Max relative difference: 0.00505183
+ x: array([[ 0.   ],
+       [72.06 ],
+       [61.6  ],...
+ y: array([[ 0.      ],
+       [72.05064 ],
+       [61.586403],...
+
+----------------------------------------------------------------------
+Ran 1 test in 8.330s
+
+FAILED (failures=1)
+I1204 17:06:13.611220 142991 tcp_store.cc:289] receive shutdown event and so quit from MasterDaemon run loop
+[2023-12-04 17:06:35,867] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='0', default_value='')
+=======================================================================
+I1204 17:06:35.869133 144679 tcp_utils.cc:181] The server starts to listen on IP_ANY:52153
+I1204 17:06:35.869314 144679 tcp_utils.cc:130] Successfully connected to 10.67.227.13:52153
+I1204 17:06:38.603011 144679 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 17:06:38,604] [    INFO] topology.py:360 - Total 2 pipe comm group(s) create successfully!
+W1204 17:06:38.605856 144679 gpu_resources.cc:119] Please NOTE: device: 0, GPU Compute Capability: 8.0, Driver API Version: 12.0, Runtime API Version: 11.8
+W1204 17:06:38.667676 144679 gpu_resources.cc:164] device: 0, cuDNN Version: 8.6.
+/usr/lib/python3.7/site-packages/paddle/distributed/communication/group.py:115: UserWarning: Current global rank 0 is not in group _default_pg10
+  f"Current global rank {global_rank} is not in group {group.name}"
+I1204 17:06:40.751122 144679 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 17:06:40,751] [    INFO] topology.py:360 - Total 1 data comm group(s) create successfully!
+[2023-12-04 17:06:40,752] [    INFO] topology.py:360 - Total 2 model comm group(s) create successfully!
+[2023-12-04 17:06:40,752] [    INFO] topology.py:360 - Total 2 sharding comm group(s) create successfully!
+I1204 17:06:40.752219 144679 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 17:06:40,752] [    INFO] topology.py:288 - HybridParallelInfo: rank_id: 0, mp_degree: 1, sharding_degree: 1, pp_degree: 1, dp_degree: 2, sep_degree: 1, mp_group: [0],  sharding_group: [0], pp_group: [0], dp_group: [0, 1], sep:group: None, check/clip group: [0]
+[2023-12-04 17:06:40,752] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+c_softmax_with_cross_entropy
+E
+======================================================================
+ERROR: test_model (__main__.TestCSoftmaxWithCrossEntropy)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "c_softmax_with_cross_entropy_op.py", line 108, in test_model
+    return_softmax=True,
+  File "/usr/lib/python3.7/site-packages/paddle/distributed/fleet/layers/mpu/mp_ops.py", line 450, in _c_softmax_with_cross_entropy
+    ignore_index,
+RuntimeError: (NotFound) The kernel (c_softmax_with_cross_entropy) with key (GPU, Undefined(AnyLayout), bfloat16) is not found and GPU kernel cannot fallback to CPU one. (at /root/paddlejob/workspace/work/tianhaodong/Paddle/paddle/fluid/framework/phi_utils.cc:144)
+  [operator < c_softmax_with_cross_entropy > error]
+
+----------------------------------------------------------------------
+Ran 1 test in 5.179s
+
+FAILED (errors=1)
+I1204 17:06:41.291507 144713 tcp_store.cc:289] receive shutdown event and so quit from MasterDaemon run loop
+[2023-12-04 17:07:38,782] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+======================= Modified FLAGS detected =======================
+FLAGS(name='FLAGS_selected_gpus', current_value='0', default_value='')
+=======================================================================
+I1204 17:07:38.784792 146569 tcp_utils.cc:181] The server starts to listen on IP_ANY:54673
+I1204 17:07:38.785022 146569 tcp_utils.cc:130] Successfully connected to 10.67.227.13:54673
+I1204 17:07:41.718273 146569 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 17:07:41,719] [    INFO] topology.py:360 - Total 2 pipe comm group(s) create successfully!
+W1204 17:07:41.721222 146569 gpu_resources.cc:119] Please NOTE: device: 0, GPU Compute Capability: 8.0, Driver API Version: 12.0, Runtime API Version: 11.8
+W1204 17:07:41.774180 146569 gpu_resources.cc:164] device: 0, cuDNN Version: 8.6.
+/usr/lib/python3.7/site-packages/paddle/distributed/communication/group.py:115: UserWarning: Current global rank 0 is not in group _default_pg10
+  f"Current global rank {global_rank} is not in group {group.name}"
+I1204 17:07:43.872442 146569 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 17:07:43,872] [    INFO] topology.py:360 - Total 1 data comm group(s) create successfully!
+[2023-12-04 17:07:43,873] [    INFO] topology.py:360 - Total 2 model comm group(s) create successfully!
+[2023-12-04 17:07:43,873] [    INFO] topology.py:360 - Total 2 sharding comm group(s) create successfully!
+I1204 17:07:43.873680 146569 process_group_nccl.cc:119] ProcessGroupNCCL pg_timeout_ 1800000
+[2023-12-04 17:07:43,873] [    INFO] topology.py:288 - HybridParallelInfo: rank_id: 0, mp_degree: 1, sharding_degree: 1, pp_degree: 1, dp_degree: 2, sep_degree: 1, mp_group: [0],  sharding_group: [0], pp_group: [0], dp_group: [0, 1], sep:group: None, check/clip group: [0]
+[2023-12-04 17:07:43,874] [    INFO] distributed_strategy.py:160 - distributed strategy initialized
+c_softmax_with_cross_entropy
+E
+======================================================================
+ERROR: test_model (__main__.TestCSoftmaxWithCrossEntropy)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "c_softmax_with_cross_entropy_op.py", line 108, in test_model
+    return_softmax=True,
+  File "/usr/lib/python3.7/site-packages/paddle/distributed/fleet/layers/mpu/mp_ops.py", line 450, in _c_softmax_with_cross_entropy
+    ignore_index,
+RuntimeError: (NotFound) The kernel (c_softmax_with_cross_entropy) with key (GPU, Undefined(AnyLayout), bfloat16) is not found and GPU kernel cannot fallback to CPU one. (at /root/paddlejob/workspace/work/tianhaodong/Paddle/paddle/fluid/framework/phi_utils.cc:144)
+  [operator < c_softmax_with_cross_entropy > error]
+
+----------------------------------------------------------------------
+Ran 1 test in 5.387s
+
+FAILED (errors=1)
+I1204 17:07:44.393760 146713 tcp_store.cc:289] receive shutdown event and so quit from MasterDaemon run loop
