@@ -6752,7 +6752,41 @@ def select_scatter(x, values, axis, index, name=None):
 
 
 def slice_scatter(x, value, axis=0, start=None, stop=None, step=1, name=None):
-    """TODO(megemini):"""
+    """
+    Embeds the value tensor into x at the given axis. Returns a new tensor instead of a view.
+
+    Args:
+        x (Tensor) : The input Tensor. Supported data types are `bool`, `float16`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `bfloat16`, `complex64`, `complex128`.
+        value (Tensor) : The tensor to embed into x. Supported data types are `bool`, `float16`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `bfloat16`, `complex64`, `complex128`.
+        axis (int) : the dimension to insert the value. Default is 0.
+        start (int, optional) : the start index of where to insert. Default is 0.
+        stop (int, optional) : the stop index of where to insert. Default is x.shape[axis].
+        step (int, optional) : the step for each insert. Default is 1.
+        name (str, optional): Name for the operation (optional, default is None).
+
+    Returns:
+        Tensor, same dtype and shape with x
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.zeros((8, 8))
+            >>> value = paddle.ones((8, 2))
+            >>> res = paddle.slice_scatter(x, value, axis=1, start=2, stop=6, step=2)
+            >>> print(res)
+            Tensor(shape=[8, 8], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [[0., 0., 1., 0., 1., 0., 0., 0.],
+             [0., 0., 1., 0., 1., 0., 0., 0.],
+             [0., 0., 1., 0., 1., 0., 0., 0.],
+             [0., 0., 1., 0., 1., 0., 0., 0.],
+             [0., 0., 1., 0., 1., 0., 0., 0.],
+             [0., 0., 1., 0., 1., 0., 0., 0.],
+             [0., 0., 1., 0., 1., 0., 0., 0.],
+             [0., 0., 1., 0., 1., 0., 0., 0.]])
+
+    """
     if x.ndim != value.ndim:
         raise ValueError(
             f"The input x and value should have save dimension, but got input of {x.ndim} and value of {value.ndim}."
@@ -6761,9 +6795,12 @@ def slice_scatter(x, value, axis=0, start=None, stop=None, step=1, name=None):
     x_shape = x.shape
     value_shape = value.shape
 
-    index = list(range(start or 0, stop or x_shape[axis], step))
+    start = 0 if start is None else start
+    stop = x_shape[axis] if stop is None else stop
+
+    index = list(range(start, stop, step))
     exp_shape = [*x_shape[:axis], len(index), *x_shape[axis + 1 :]]
-    if exp_shape != value_shape:
+    if tuple(exp_shape) != tuple(value_shape):
         raise ValueError(
             "The value.shape should be same of [*x_shape[:axis], len(index), *x_shape[axis+1:]],"
             f"but got value.shape of {value.shape} and slice shape {exp_shape}."
