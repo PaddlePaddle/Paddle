@@ -322,9 +322,7 @@ class OneDNNHandlerT {
       fwd_pd_ = std::make_shared<typename TForward::primitive_desc>(
           engine_, std::forward<Args>(args)..., first);
     } catch (std::exception& ex) {
-      LOG(WARNING) << Type() << " raises an exception "
-                   << platform::demangle(typeid(ex).name()) << ", "
-                   << ex.what();
+      LOG(WARNING) << ex.what();
       PADDLE_THROW(phi::errors::Unavailable("wanghuan7"));
       std::rethrow_exception(std::current_exception());
     }
@@ -338,9 +336,7 @@ class OneDNNHandlerT {
       fwd_pd_ = std::make_shared<typename TForward::primitive_desc>(
           engine_, std::forward<First>(first), std::forward<Args>(args)...);
     } catch (std::exception& ex) {
-      LOG(WARNING) << Type() << " raises an exception "
-                   << platform::demangle(typeid(ex).name()) << ", "
-                   << ex.what();
+      LOG(WARNING) << ex.what();
       PADDLE_THROW(phi::errors::Unavailable("wanghuan8"));
       std::rethrow_exception(std::current_exception());
     }
@@ -362,9 +358,7 @@ class OneDNNHandlerT {
         bwd_pd_ = std::make_shared<typename TBackward::primitive_desc>(
             engine_, std::forward<Args>(args)..., *fwd_pd_);
       } catch (std::exception& ex) {
-        LOG(WARNING) << Type() << " raises an exception "
-                     << platform::demangle(typeid(ex).name()) << ", "
-                     << ex.what();
+        LOG(WARNING) << ex.what();
         PADDLE_THROW(phi::errors::Unavailable("wanghuan1"));
         std::rethrow_exception(std::current_exception());
       }
@@ -389,9 +383,7 @@ class OneDNNHandlerT {
         bwd_w_pd_ = std::make_shared<typename TBackward_params::primitive_desc>(
             engine_, std::forward<Args>(args)..., *fwd_pd_);
       } catch (std::exception& ex) {
-        LOG(WARNING) << Type() << " raises an exception "
-                     << platform::demangle(typeid(ex).name()) << ", "
-                     << ex.what();
+        LOG(WARNING) << ex.what();
         PADDLE_THROW(phi::errors::Unavailable("wanghuan2"));
         std::rethrow_exception(std::current_exception());
       }
@@ -657,9 +649,7 @@ class OneDNNHandlerNoCachingT {
       fwd_pd_ = std::make_shared<typename TForward::primitive_desc>(
           engine_, std::forward<Args>(args)..., first);
     } catch (std::exception& ex) {
-      LOG(WARNING) << Type() << " raises an exception "
-                   << platform::demangle(typeid(ex).name()) << ", "
-                   << ex.what();
+      LOG(WARNING) << ex.what();
       PADDLE_THROW(phi::errors::Unavailable("wanghuan3"));
       std::rethrow_exception(std::current_exception());
     }
@@ -673,9 +663,7 @@ class OneDNNHandlerNoCachingT {
       fwd_pd_ = std::make_shared<typename TForward::primitive_desc>(
           engine_, std::forward<First>(first), std::forward<Args>(args)...);
     } catch (std::exception& ex) {
-      LOG(WARNING) << Type() << " raises an exception "
-                   << platform::demangle(typeid(ex).name()) << ", "
-                   << ex.what();
+      LOG(WARNING) << ex.what();
       PADDLE_THROW(phi::errors::Unavailable("wanghuan4"));
       std::rethrow_exception(std::current_exception());
     }
@@ -692,9 +680,7 @@ class OneDNNHandlerNoCachingT {
       bwd_pd_ = std::make_shared<typename TBackward::primitive_desc>(
           engine_, std::forward<Args>(args)..., *fwd_pd_);
     } catch (std::exception& ex) {
-      LOG(WARNING) << Type() << " raises an exception "
-                   << platform::demangle(typeid(ex).name()) << ", "
-                   << ex.what();
+      LOG(WARNING) << ex.what();
       PADDLE_THROW(phi::errors::Unavailable("wanghuan5"));
       std::rethrow_exception(std::current_exception());
     }
@@ -713,9 +699,7 @@ class OneDNNHandlerNoCachingT {
       bwd_w_pd_ = std::make_shared<typename TBackward_params::primitive_desc>(
           bwd_desc, engine_, *fwd_pd_);
     } catch (std::exception& ex) {
-      LOG(WARNING) << Type() << " raises an exception "
-                   << platform::demangle(typeid(ex).name()) << ", "
-                   << ex.what();
+      LOG(WARNING) << ex.what();
       PADDLE_THROW(phi::errors::Unavailable("wanghuan6"));
       std::rethrow_exception(std::current_exception());
     }
