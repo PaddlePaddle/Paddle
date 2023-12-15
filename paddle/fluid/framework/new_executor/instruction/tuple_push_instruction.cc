@@ -74,16 +74,18 @@ void TuplePushInstruction::Run() {
     auto& value_2_var_name = value_exe_info_->GetValue2VarName();
     // TODO(zhangbo): Performance optimization: static acquisition of TuplePush
     // input variables and name.
+    auto num_str = std::to_string(stack_element_var_array_->size());
     for (size_t i = 0; i < tuple_push_op_.tuple_size(); i++) {
       auto inlet_element_value = tuple_push_op_.inlet_element(i);
       Variable* var = value_exe_info_->GetVarByValue(inlet_element_value);
       int stack_size = tuple_push_op_.tuple_size();
+      bool is_optional = (inlet_element_value.impl() == nullptr ||
+                          !inlet_element_value.type());
 
       auto var_name = value_2_var_name.at(inlet_element_value);
-      std::string new_name = var_name + "copied_" +
-                             std::to_string(stack_element_var_array_->size());
+      std::string new_name = var_name + "_copied_" + num_str;
       auto* copy_var = value_exe_info_->GetScope()->Var(new_name);
-      DeepCopyVariable(var, copy_var, value_exe_info_, stack_size);
+      DeepCopyVariable(var, copy_var, value_exe_info_, stack_size, is_optional);
       VLOG(10) << "done DeepCopyVariable " << new_name;
       stack_element_var_array_->emplace_back(copy_var);
       VLOG(6) << "push back var: " << new_name << "[" << copy_var << "]";

@@ -968,6 +968,12 @@ void BatchNormGradFunctor(const Context &ctx,
         workspace_ptr =
             static_cast<void *>(ctx.template Alloc<uint8_t>(&workspace_tensor));
 
+        uint8_t *reserve_space_ptr = nullptr;
+        if (reserve_space_size != 0) {
+          reserve_space_ptr =
+              const_cast<uint8_t *>(reserve_space->template data<uint8_t>());
+        }
+
         PADDLE_ENFORCE_GPU_SUCCESS(
             phi::dynload::cudnnBatchNormalizationBackwardEx(
                 /*handle=*/ctx.cudnn_handle(),

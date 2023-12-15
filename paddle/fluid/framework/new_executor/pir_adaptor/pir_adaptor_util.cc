@@ -290,15 +290,41 @@ void CheckInputVars(pir::Operation* op,
 void DeepCopyVariable(const Variable* src_var,
                       Variable* dst_var,
                       ValueExecutionInfo* value_exe_info,
-                      uint32_t stack_size) {
+                      uint32_t stack_size,
+                      bool is_optional) {
   if (src_var->IsType<phi::DenseTensor>()) {
-    auto* tmp_dst_tensor = dst_var->GetMutable<phi::DenseTensor>();
     auto& src_tensor = src_var->Get<phi::DenseTensor>();
+    auto* tmp_dst_tensor = dst_var->GetMutable<phi::DenseTensor>();
     tmp_dst_tensor->set_lod(src_tensor.lod());
+    if (src_tensor.numel() <= 0) {
+      tmp_dst_tensor->Resize(src_tensor.dims());
+      tmp_dst_tensor->set_layout(src_tensor.layout());
+      tmp_dst_tensor->set_type(src_tensor.type());
+      return;
+    }
+    if (!src_tensor.initialized()) {
+      if (is_optional) {
+        dst_var = nullptr;
+        return;
+      } else {
+        PADDLE_THROW(platform::errors::PermissionDenied(
+            "DenseTensor shouldn't be null"));
+      }
+    }
     framework::TensorCopy(src_tensor, src_tensor.place(), tmp_dst_tensor);
   } else if (src_var->IsType<phi::SelectedRows>()) {
-    auto* tmp_dst_slr = dst_var->GetMutable<phi::SelectedRows>();
     auto& src_slr = src_var->Get<phi::SelectedRows>();
+    if (src_slr.numel() <= 0) return;
+    if (!src_slr.initialized()) {
+      if (is_optional) {
+        dst_var = nullptr;
+        return;
+      } else {
+        PADDLE_THROW(platform::errors::PermissionDenied(
+            "SelectedRows shouldn't be null"));
+      }
+    }
+    auto* tmp_dst_slr = dst_var->GetMutable<phi::SelectedRows>();
     tmp_dst_slr->set_rows(src_slr.rows());
     tmp_dst_slr->set_height(src_slr.height());
 
@@ -308,6 +334,16 @@ void DeepCopyVariable(const Variable* src_var,
   } else if (src_var->IsType<phi::TensorArray>()) {
     auto src_tensor_array = src_var->Get<phi::TensorArray>();
     auto* dst_tensor_array = dst_var->GetMutable<phi::TensorArray>();
+    if (src_tensor_array.numel() <= 0) return;
+    if (!src_tensor_array.initialized()) {
+      if (is_optional) {
+        dst_var = nullptr;
+        return;
+      } else {
+        PADDLE_THROW(platform::errors::PermissionDenied(
+            "TensorArray shouldn't be null"));
+      }
+    }
     dst_tensor_array->clear();
     for (auto src_tensor : src_tensor_array) {
       phi::DenseTensor* tmp_dst_tensor = new phi::DenseTensor();
@@ -322,7 +358,8 @@ void DeepCopyVariable(const Variable* src_var,
       std::string new_name = "copied_" + std::to_string(stack_size) + '_' +
                              value_exe_info->GetVarName(src_ref_var);
       auto tmp_dst_var = value_exe_info->GetScope()->Var(new_name);
-      DeepCopyVariable(src_ref_var, tmp_dst_var, value_exe_info, stack_size);
+      DeepCopyVariable(
+          src_ref_var, tmp_dst_var, value_exe_info, stack_size, is_optional);
       dst_ref_array->emplace_back(tmp_dst_var);
     }
 
@@ -340,13 +377,17 @@ void BuildValue(pir::Value value,
     VLOG(8) << "Value is not invalid, so skip build a variable.";
     return;
   }
-
+  bool is_optional = (value.impl() == nullptr || !value.type());
   Variable* var = nullptr;
   auto& value_2_var_name = value_exe_info->GetValue2VarName();
   if (value_2_var_name.find(value) != value_2_var_name.end()) {
     var = value_exe_info->GetVarByValue(value);
   } else {
     var = CreateVar(value, var_name_prefix, false, value_exe_info);
+  }
+  if (is_optional) {
+    VLOG(6) << "value %s is optional, so var %s is null", value.impl(), var;
+    return;
   }
   // Only support DenseTensor or Vector<DenseTensor>
   if (!value.type() ||

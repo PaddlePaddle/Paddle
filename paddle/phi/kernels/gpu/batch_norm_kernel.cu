@@ -847,9 +847,9 @@ void BatchNormKernel(const Context &ctx,
     } else {
       int64_t reserve_space_size = 0;
       void *reserve_space_ptr = nullptr;
-      DenseTensor reserve_space_tensor;
+      DenseTensor *reserve_space_tensor = new DenseTensor();
       if (reserve_space == nullptr) {
-        reserve_space = &reserve_space_tensor;
+        reserve_space = reserve_space_tensor;
       }
       reserve_space->Resize({reserve_space_size});
       ctx.template Alloc<T>(reserve_space);
@@ -1127,13 +1127,13 @@ void BatchNormKernel(const Context &ctx,
         void *reserve_space_ptr = nullptr;
         void *workspace_ptr = nullptr;
         DenseTensor workspace_tensor;
-        DenseTensor reserve_space_tensor;
+        DenseTensor *reserve_space_tensor = new DenseTensor();
         // Create reserve space and workspace for batch norm.
         // Create tensor for each batchnorm op, it will be used in the
         // backward. Thus this tensor shouldn't be temp.
         // auto *reserve_space = ctx.Output<phi::DenseTensor>("ReserveSpace");
         if (reserve_space == nullptr) {
-          reserve_space = &reserve_space_tensor;
+          reserve_space = reserve_space_tensor;
         }
         PADDLE_ENFORCE_NOT_NULL(
             reserve_space,
@@ -1162,7 +1162,7 @@ void BatchNormKernel(const Context &ctx,
                 /*activationDesc=*/nullptr,
                 /*xDesc=*/data_desc_,
                 /*sizeInBytes=*/&reserve_space_size));
-
+        std::cout << "reserve_space_size : " << reserve_space_size << std::endl;
         reserve_space->Resize({static_cast<int64_t>(reserve_space_size)});
         reserve_space_ptr =
             static_cast<void *>(ctx.template Alloc<uint8_t>(reserve_space));
