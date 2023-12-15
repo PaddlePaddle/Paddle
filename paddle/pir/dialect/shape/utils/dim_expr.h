@@ -132,6 +132,8 @@ class DimExpr : public DimExprBase {
   DimExpr operator-(const DimExpr& other) const;
   DimExpr operator*(const DimExpr& other) const;
   DimExpr operator/(const DimExpr& other) const;
+  bool operator==(const DimExpr& other) const;
+  bool operator!=(const DimExpr& other) const;
 };
 
 // DimExprConstraint = Equal DimExpr
