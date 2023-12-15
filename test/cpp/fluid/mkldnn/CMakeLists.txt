@@ -59,6 +59,7 @@ cc_test(
   test_mkldnn_caching
   SRCS test_mkldnn_caching.cc
   DEPS ${TEST_MKLDNN_CACHING_DEPS})
+
 if(WITH_TESTING)
   paddle_test(test_mkldnn_op_nhwc SRCS test_mkldnn_op_nhwc.cc)
 endif()
@@ -68,7 +69,6 @@ cc_test(
   SRCS test_mkldnn_pool_adaptive_op.cc
   DEPS fleet_executor
        conditional_block_op
-       standalone_executor
        executor
        op_registry
        generated_static_op
@@ -84,7 +84,6 @@ cc_test(
   SRCS test_mkldnn_squeeze.cc
   DEPS fleet_executor
        conditional_block_op
-       standalone_executor
        executor
        op_registry
        generated_static_op

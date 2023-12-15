@@ -837,7 +837,6 @@ function(hip_test TARGET_NAME)
       ${hip_test_DEPS}
       paddle_gtest_main
       lod_tensor
-      memory
       gtest
       glog
       phi
@@ -847,7 +846,6 @@ function(hip_test TARGET_NAME)
       ${hip_test_DEPS}
       paddle_gtest_main
       lod_tensor
-      memory
       gtest
       phi
       glog)
@@ -944,7 +942,6 @@ function(xpu_test TARGET_NAME)
       ${xpu_test_DEPS}
       paddle_gtest_main
       lod_tensor
-      memory
       gtest
       phi
       glog
@@ -954,7 +951,6 @@ function(xpu_test TARGET_NAME)
       ${xpu_test_DEPS}
       paddle_gtest_main
       lod_tensor
-      memory
       gtest
       phi
       glog)
