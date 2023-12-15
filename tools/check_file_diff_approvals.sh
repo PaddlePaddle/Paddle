@@ -390,6 +390,14 @@ if [ "${DEPRECATED_FLAKE8}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     check_approval 1 SigureMo gouzil
 fi
 
+
+ENABLE_TO_STATIC_CHECK=`git diff --name-only upstream/$BRANCH | grep "enable_to_static(" || true`
+if [ "${ENABLE_TO_STATIC_CHECK}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must have one SigureMo or gouzil approval for using `paddle.jit.enable_to_static`, we recommend using `enable_to_static_guard` in the related test files.\n"
+    check_approval 1 SigureMo gouzil
+fi
+
+
 HAS_MODIFIED_PHI_FILES=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/" || true`
 PHI_INCLUDE_FLUID_FILES=""
 for CHANGE_FILE in ${HAS_MODIFIED_PHI_FILES}; do
