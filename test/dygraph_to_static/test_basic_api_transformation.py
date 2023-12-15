@@ -85,9 +85,9 @@ class TestDygraphBasicApi_ToVariable(Dy2StTestBase):
             dyfunc_to_variable_3,
         ]
         self.place = (
-            base.CUDAPlace(0)
-            if base.is_compiled_with_cuda()
-            else base.CPUPlace()
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
         )
 
     def get_dygraph_output(self):
@@ -118,39 +118,39 @@ def dyfunc_BilinearTensorProduct(bilinearTensorProduct, layer1, layer2):
     return res
 
 
-def dyfunc_Conv2D(conv2d, input):
+def dyfunc_conv2d(conv2d, input):
     res = conv2d(input)
     return res
 
 
-def dyfunc_Conv3D(conv3d, input):
+def dyfunc_conv3d(conv3d, input):
     res = conv3d(input)
     return res
 
 
-def dyfunc_Conv2DTranspose(conv2dTranspose, input):
+def dyfunc_conv2d_transpose(conv2dTranspose, input):
     ret = conv2dTranspose(input)
     return ret
 
 
-def dyfunc_Conv3DTranspose(conv3dTranspose, input):
+def dyfunc_conv3d_transpose(conv3dTranspose, input):
     ret = conv3dTranspose(input)
     return ret
 
 
-def dyfunc_Linear(fc, m, input):
+def dyfunc_linear(fc, m, input):
     res = fc(input)
     return m(res)
 
 
-def dyfunc_Pool2D(input):
+def dyfunc_pool2d(input):
     paddle.nn.AvgPool2D(kernel_size=2, stride=1)
     pool2d = paddle.nn.AvgPool2D(kernel_size=2, stride=1)
     res = pool2d(input)
     return res
 
 
-def dyfunc_Prelu(prelu0, input):
+def dyfunc_prelu(prelu0, input):
     res = prelu0(input)
     return res
 
@@ -161,12 +161,12 @@ class TestDygraphBasicApi(Dy2StTestBase):
 
     def setUp(self):
         self.input = np.random.random((1, 4, 3, 3)).astype('float32')
-        self.dygraph_func = dyfunc_Pool2D
+        self.dygraph_func = dyfunc_pool2d
 
     def get_dygraph_output(self):
-        base.default_startup_program.random_seed = SEED
-        base.default_main_program.random_seed = SEED
-        data = base.dygraph.to_variable(self.input)
+        paddle.static.default_startup_program.random_seed = SEED
+        paddle.static.default_main_program.random_seed = SEED
+        data = paddle.to_tensor(self.input)
         res = self.dygraph_func(data).numpy()
 
         return res
@@ -194,10 +194,10 @@ class TestDygraphBasicApi_BilinearTensorProduct(TestDygraphBasicApi):
             5,
             4,
             1000,
-            weight_attr=base.ParamAttr(
+            weight_attr=paddle.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=0.99)
             ),
-            bias_attr=base.ParamAttr(
+            bias_attr=paddle.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=0.5)
             ),
         )
@@ -207,8 +207,8 @@ class TestDygraphBasicApi_BilinearTensorProduct(TestDygraphBasicApi):
         )
 
     def get_dygraph_output(self):
-        base.default_startup_program.random_seed = SEED
-        base.default_main_program.random_seed = SEED
+        paddle.static.default_startup_program.random_seed = SEED
+        paddle.static.default_main_program.random_seed = SEED
         res = self.dygraph_func(self.input1, self.input2).numpy()
         return res
 
@@ -234,7 +234,7 @@ class TestDygraphBasicApi_Conv2D(TestDygraphBasicApi):
             ),
         )
         self.input = np.random.random((1, 3, 3, 5)).astype('float32')
-        self.dygraph_func = lambda x: dyfunc_Conv2D(conv2d, x)
+        self.dygraph_func = lambda x: dyfunc_conv2d(conv2d, x)
 
 
 class TestDygraphBasicApi_Conv3D(TestDygraphBasicApi):
@@ -247,36 +247,38 @@ class TestDygraphBasicApi_Conv3D(TestDygraphBasicApi):
             weight_attr=paddle.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=0.99)
             ),
-            bias_attr=base.ParamAttr(
+            bias_attr=paddle.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=0.5)
             ),
         )
-        self.dygraph_func = lambda x: dyfunc_Conv3D(conv3d, x)
+        self.dygraph_func = lambda x: dyfunc_conv3d(conv3d, x)
 
 
 class TestDygraphBasicApi_Conv2DTranspose(TestDygraphBasicApi):
     def setUp(self):
         self.input = np.random.random((5, 3, 32, 32)).astype('float32')
-        conv2dTranspose = paddle.nn.Conv2DTranspose(
+        conv2d_transpose = paddle.nn.Conv2DTranspose(
             3,
             12,
             12,
-            weight_attr=base.ParamAttr(
+            weight_attr=paddle.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=0.99)
             ),
-            bias_attr=base.ParamAttr(
+            bias_attr=paddle.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=0.5)
             ),
         )
 
-        self.dygraph_func = lambda x: dyfunc_Conv2DTranspose(conv2dTranspose, x)
+        self.dygraph_func = lambda x: dyfunc_conv2d_transpose(
+            conv2d_transpose, x
+        )
 
 
 class TestDygraphBasicApi_Conv3DTranspose(TestDygraphBasicApi):
     def setUp(self):
         self.input = np.random.random((5, 3, 12, 32, 32)).astype('float32')
 
-        conv3dTranspose = paddle.nn.Conv3DTranspose(
+        conv3d_transpose = paddle.nn.Conv3DTranspose(
             in_channels=3,
             out_channels=12,
             kernel_size=12,
@@ -288,7 +290,9 @@ class TestDygraphBasicApi_Conv3DTranspose(TestDygraphBasicApi):
             ),
         )
 
-        self.dygraph_func = lambda x: dyfunc_Conv3DTranspose(conv3dTranspose, x)
+        self.dygraph_func = lambda x: dyfunc_conv3d_transpose(
+            conv3d_transpose, x
+        )
 
 
 class TestDygraphBasicApi_Linear(TestDygraphBasicApi):
@@ -305,27 +309,27 @@ class TestDygraphBasicApi_Linear(TestDygraphBasicApi):
             ),
         )
         m = paddle.nn.ReLU()
-        self.dygraph_func = lambda x: dyfunc_Linear(fc, m, x)
+        self.dygraph_func = lambda x: dyfunc_linear(fc, m, x)
 
 
 class TestDygraphBasicApi_Prelu(TestDygraphBasicApi):
     def setUp(self):
         self.input = np.ones([5, 20, 10, 10]).astype('float32')
         prelu0 = paddle.nn.PReLU(
-            weight_attr=base.ParamAttr(
+            weight_attr=paddle.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(1.0)
             ),
         )
-        self.dygraph_func = lambda x: dyfunc_Prelu(prelu0, x)
+        self.dygraph_func = lambda x: dyfunc_prelu(prelu0, x)
 
 
 # 2. test Apis that inherit from LearningRateDecay
-def dyfunc_CosineDecay(CosineDecay):
+def dyfunc_cosine_decay(CosineDecay):
     lr = CosineDecay()
     return paddle.to_tensor(lr)
 
 
-def dyfunc_ExponentialDecay():
+def dyfunc_exponential_decay():
     base_lr = 0.1
     exponential_decay = paddle.optimizer.lr.ExponentialDecay(
         learning_rate=base_lr, gamma=0.5
@@ -334,7 +338,7 @@ def dyfunc_ExponentialDecay():
     return lr
 
 
-def dyfunc_InverseTimeDecay():
+def dyfunc_inverse_time_decay():
     base_lr = 0.1
     inverse_time_decay = paddle.optimizer.lr.InverseTimeDecay(
         learning_rate=base_lr, gamma=0.5
@@ -343,7 +347,7 @@ def dyfunc_InverseTimeDecay():
     return lr
 
 
-def dyfunc_NaturalExpDecay():
+def dyfunc_natural_exp_decay():
     base_lr = 0.1
     natural_exp_decay = paddle.optimizer.lr.NaturalExpDecay(
         learning_rate=base_lr, gamma=0.5
@@ -352,13 +356,13 @@ def dyfunc_NaturalExpDecay():
     return lr
 
 
-def dyfunc_NoamDecay():
+def dyfunc_noam_decay():
     noam_decay = paddle.optimizer.lr.NoamDecay(100, 100)
     lr = noam_decay()
     return paddle.to_tensor(lr)
 
 
-def dyfunc_PiecewiseDecay():
+def dyfunc_piecewise_decay():
     boundaries = [10000, 20000]
     values = [1.0, 0.5, 0.1]
     pd = paddle.optimizer.lr.PiecewiseDecay(boundaries, values)
@@ -366,7 +370,7 @@ def dyfunc_PiecewiseDecay():
     return paddle.to_tensor(lr)
 
 
-def dyfunc_PolynomialDecay():
+def dyfunc_polynomial_decay():
     start_lr = 0.01
     total_step = 5000
     end_lr = 0
@@ -383,7 +387,7 @@ class TestDygraphBasicApi_CosineDecay(Dy2StTestBase):
         CosineDecay = paddle.optimizer.lr.CosineAnnealingDecay(
             learning_rate=base_lr, T_max=120
         )
-        self.dygraph_func = lambda: dyfunc_CosineDecay(CosineDecay)
+        self.dygraph_func = lambda: dyfunc_cosine_decay(CosineDecay)
 
     def get_dygraph_output(self):
         res = self.dygraph_func().numpy()
@@ -403,11 +407,11 @@ class TestDygraphBasicApi_CosineDecay(Dy2StTestBase):
 
 class TestDygraphBasicApi_ExponentialDecay(TestDygraphBasicApi_CosineDecay):
     def setUp(self):
-        self.dygraph_func = dyfunc_ExponentialDecay
+        self.dygraph_func = dyfunc_exponential_decay
 
     def get_dygraph_output(self):
-        base.default_startup_program.random_seed = SEED
-        base.default_main_program.random_seed = SEED
+        paddle.static.default_startup_program.random_seed = SEED
+        paddle.static.default_main_program.random_seed = SEED
         res = self.dygraph_func()
         return res
 
@@ -419,11 +423,11 @@ class TestDygraphBasicApi_ExponentialDecay(TestDygraphBasicApi_CosineDecay):
 
 class TestDygraphBasicApi_InverseTimeDecay(TestDygraphBasicApi_CosineDecay):
     def setUp(self):
-        self.dygraph_func = dyfunc_InverseTimeDecay
+        self.dygraph_func = dyfunc_inverse_time_decay
 
     def get_dygraph_output(self):
-        base.default_startup_program.random_seed = SEED
-        base.default_main_program.random_seed = SEED
+        paddle.static.default_startup_program.random_seed = SEED
+        paddle.static.default_main_program.random_seed = SEED
         res = self.dygraph_func()
         return res
 
@@ -435,11 +439,11 @@ class TestDygraphBasicApi_InverseTimeDecay(TestDygraphBasicApi_CosineDecay):
 
 class TestDygraphBasicApi_NaturalExpDecay(TestDygraphBasicApi_CosineDecay):
     def setUp(self):
-        self.dygraph_func = dyfunc_NaturalExpDecay
+        self.dygraph_func = dyfunc_natural_exp_decay
 
     def get_dygraph_output(self):
-        base.default_startup_program.random_seed = SEED
-        base.default_main_program.random_seed = SEED
+        paddle.static.default_startup_program.random_seed = SEED
+        paddle.static.default_main_program.random_seed = SEED
         res = self.dygraph_func()
         return res
 
@@ -451,21 +455,21 @@ class TestDygraphBasicApi_NaturalExpDecay(TestDygraphBasicApi_CosineDecay):
 
 class TestDygraphBasicApi_NoamDecay(TestDygraphBasicApi_CosineDecay):
     def setUp(self):
-        self.dygraph_func = dyfunc_NoamDecay
+        self.dygraph_func = dyfunc_noam_decay
 
 
 class TestDygraphBasicApi_PiecewiseDecay(TestDygraphBasicApi_CosineDecay):
     def setUp(self):
-        self.dygraph_func = dyfunc_PiecewiseDecay
+        self.dygraph_func = dyfunc_piecewise_decay
 
 
 class TestDygraphBasicApi_PolynomialDecay(TestDygraphBasicApi_CosineDecay):
     def setUp(self):
-        self.dygraph_func = dyfunc_PolynomialDecay
+        self.dygraph_func = dyfunc_polynomial_decay
 
     def get_dygraph_output(self):
-        base.default_startup_program.random_seed = SEED
-        base.default_main_program.random_seed = SEED
+        paddle.static.default_startup_program.random_seed = SEED
+        paddle.static.default_main_program.random_seed = SEED
         res = self.dygraph_func()
         return res
 
