@@ -32,17 +32,16 @@ float GetAbsMax(const Context& dev_ctx,
                 float* buffer_xpu,
                 int64_t numel) {
   int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
-  float buffer_cpu[12];  // 12 is enough even for XPU3
+  std::vector<float> buffer_cpu(max_ptr_size);
   // int findmax(Context* ctx, const T* x, float* maxptr, int64_t len);
   int r = xpu::findmax<float>(dev_ctx.x_context(), input, buffer_xpu, numel);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "findmax");
   memory_utils::Copy(CPUPlace(),
-                     static_cast<void*>(buffer_cpu),
+                     static_cast<void*>(buffer_cpu.data()),
                      dev_ctx.GetPlace(),
                      static_cast<void*>(buffer_xpu),
                      sizeof(float) * max_ptr_size);
-  float* max_value = std::max_element(buffer_cpu, buffer_cpu + max_ptr_size);
-  return *max_value;
+  return *std::max_element(buffer_cpu.begin(), buffer_cpu.end());
 }
 
 template <typename T, typename Context>
@@ -259,7 +258,8 @@ void AdamwDenseKernel(const Context& dev_ctx,
     using XPUType16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
 
     // findmax and calculate scale_value for moment1 and moment2
-    float* buffer_for_findmax = RAII_GUARD.alloc_l3_or_gm<float>(6);
+    int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
+    float* buffer_for_findmax = RAII_GUARD.alloc_l3_or_gm<float>(max_ptr_size);
 
     // for moment1
     float moment1_max = GetAbsMax<Context>(dev_ctx,

@@ -18,6 +18,57 @@
 
 namespace common {
 
+DDim::DDim() : rank_(-1) { dim_[0] = 0; }
+
+DDim::DDim(const DDim& ddim) : dim_() { CopyFrom(ddim); }
+
+DDim::DDim(const int* d, int n) : rank_(n) {
+  dynamic_dim_assign(d, dim_.GetMutable(), n);
+}
+
+DDim::DDim(const int64_t* d, int n) : rank_(n) {
+  dynamic_dim_assign(d, dim_.GetMutable(), n);
+}
+
+DDim::DDim(std::initializer_list<int64_t> init_list)
+    : DDim(init_list.begin(), init_list.size()) {}
+
+int64_t& DDim::at(int idx) {
+  COMMON_ENFORCE_GE(idx,
+                    0,
+                    common::errors::InvalidArgument(
+                        "Invalid DDim index to be accessed. The valid index "
+                        "is between 0 and %d, but received index is %d.",
+                        rank_,
+                        idx));
+  COMMON_ENFORCE_LT(idx,
+                    rank_,
+                    common::errors::InvalidArgument(
+                        "Invalid DDim index to be accessed. The valid index "
+                        "is between 0 and %d, but received index is %d.",
+                        rank_,
+                        idx));
+  return dim_[idx];
+}
+
+int64_t DDim::at(int idx) const {
+  COMMON_ENFORCE_GE(idx,
+                    0,
+                    common::errors::InvalidArgument(
+                        "Invalid DDim index to be accessed. The valid index "
+                        "is between 0 and %d, but received index is %d.",
+                        rank_,
+                        idx));
+  COMMON_ENFORCE_LT(idx,
+                    rank_,
+                    common::errors::InvalidArgument(
+                        "Invalid DDim index to be accessed. The valid index "
+                        "is between 0 and %d, but received index is %d.",
+                        rank_,
+                        idx));
+  return dim_[idx];
+}
+
 DDim make_ddim(std::initializer_list<int64_t> dims) {
   return DDim(dims.begin(), static_cast<int>(dims.size()));
 }
@@ -212,6 +263,22 @@ DDim DDim::transpose(const std::vector<int>& axis) const {
     out_dims[i] = in_dims[axis[i]];
   }
   return out_dims;
+}
+
+DDim ComputeCompatibleDim(const DDim& dim1, const DDim& dim2) {
+  IR_ENFORCE(dim1.size() == dim2.size(),
+             "Does not support rank inconsistency: dim1=%d, dim2=%d",
+             dim1.size(),
+             dim2.size());
+  std::vector<int64_t> result;
+  for (int i = 0; i < dim1.size(); ++i) {
+    if (dim1[i] != dim2[i]) {
+      result.push_back(-1);
+    } else {
+      result.push_back(dim1[i]);
+    }
+  }
+  return make_ddim(result);
 }
 
 }  // namespace common

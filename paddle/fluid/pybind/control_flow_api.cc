@@ -36,6 +36,7 @@
 namespace py = pybind11;
 using paddle::dialect::ApiBuilder;
 using paddle::dialect::IfOp;
+using paddle::dialect::WhileOp;
 using pir::Block;
 using pir::Builder;
 using pir::Operation;
@@ -51,19 +52,10 @@ using pybind11::return_value_policy;
 using paddle::pybind::PyIfOp;
 namespace {
 
-PyIfOp BuildPyIfOp(Value cond) {
-  return PyIfOp(ApiBuilder::Instance().GetBuilder()->Build<IfOp>(
-      cond, std::vector<Type>{}));
-}
-
 void BindIfOp(py::module* m) {
-  m->def("build_if_op", BuildPyIfOp);
-  m->def("cf_yield", [](py::list inputs) {
-    std::vector<Value> input_values;
-    for (auto input : inputs) {
-      input_values.push_back(input.cast<Value>());
-    }
-    ApiBuilder::Instance().GetBuilder()->Build<YieldOp>(input_values);
+  m->def("build_if_op", [](Value cond) {
+    return PyIfOp(ApiBuilder::Instance().GetBuilder()->Build<IfOp>(
+        cond, std::vector<Type>{}));
   });
   py::class_<PyIfOp> if_op(*m, "IfOp", R"DOC(
     The PyIfOp is a encapsulation of IfOp. Compared with ifOp, it provides an additional 'update_output' interface.
@@ -73,6 +65,7 @@ void BindIfOp(py::module* m) {
   if_op.def("true_block", &PyIfOp::true_block, return_value_policy::reference)
       .def("false_block", &PyIfOp::false_block, return_value_policy::reference)
       .def("update_output", &PyIfOp::UpdateOutput)
+      .def("as_operation", &PyIfOp::operation, return_value_policy::reference)
       .def("results", [](PyIfOp& self) -> py::list {
         py::list op_list;
         for (uint32_t i = 0; i < self->num_results(); i++) {
@@ -80,6 +73,22 @@ void BindIfOp(py::module* m) {
         }
         return op_list;
       });
+}
+
+void BindWhileOp(py::module* m) {
+  m->def("build_while_op", [](Value cond, py::list loop_vars) {
+    std::vector<Value> loop_values;
+    for (auto var : loop_vars) {
+      loop_values.push_back(var.cast<Value>());
+    }
+    return ApiBuilder::Instance().GetBuilder()->Build<WhileOp>(cond,
+                                                               loop_values);
+  });
+  py::class_<WhileOp> while_op(*m, "WhileOp", R"DOC(
+    WhileOp in python api.
+  )DOC");
+  while_op.def("body", &WhileOp::body, return_value_policy::reference)
+      .def("as_operation", &WhileOp::operation, return_value_policy::reference);
 }
 
 void GetUsedExternalValueImpl(
@@ -184,7 +193,16 @@ void PyIfOp::UpdateOutput() {
 void BindControlFlowApi(py::module* m) {
   m->def("get_used_external_value", GetUsedExternalValue);
   m->def("build_pipe_for_block", BuildPipeForBlock);
+  m->def("cf_yield", [](py::list inputs) {
+    std::vector<Value> input_values;
+    for (auto input : inputs) {
+      input_values.push_back(input.cast<Value>());
+    }
+    ApiBuilder::Instance().GetBuilder()->Build<YieldOp>(input_values);
+  });
+
   BindIfOp(m);
+  BindWhileOp(m);
 }
 }  // namespace pybind
 }  // namespace paddle

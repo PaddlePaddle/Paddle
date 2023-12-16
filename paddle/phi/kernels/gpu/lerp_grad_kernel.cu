@@ -82,10 +82,10 @@ __global__ void LerpGradScalarKernelImpl(const T* weight,
 bool XYNeedReduce(const DenseTensor& x,
                   const DenseTensor& y,
                   const DenseTensor& out) {
-  auto x_dims =
-      x.dims().size() ? x.dims() : make_ddim(std::vector<int64_t>(1, 1));
-  auto y_dims =
-      y.dims().size() ? y.dims() : make_ddim(std::vector<int64_t>(1, 1));
+  auto x_dims = x.dims().size() ? x.dims()
+                                : common::make_ddim(std::vector<int64_t>(1, 1));
+  auto y_dims = y.dims().size() ? y.dims()
+                                : common::make_ddim(std::vector<int64_t>(1, 1));
 
   auto out_dims = out.dims();
   if (out_dims.size() == 0) {
@@ -242,7 +242,7 @@ void LerpGradKernel(const Context& ctx,
                              x_grad_data,
                              y_grad_data);
 
-    auto zero_dim = make_ddim(std::vector<int64_t>(1, 1));
+    auto zero_dim = common::make_ddim(std::vector<int64_t>(1, 1));
     if (x_grad) {
       std::vector<int> reduce_axis_x =
           funcs::GetReduceDim(x_grad->dims().size() ? x_grad->dims() : zero_dim,

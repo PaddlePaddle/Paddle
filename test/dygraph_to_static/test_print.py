@@ -15,9 +15,10 @@
 import unittest
 
 import numpy
-from dygraph_to_static_utils_new import (
+from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_legacy_and_pir_exe_and_pir_api,
+    enable_to_static_guard,
+    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -80,20 +81,14 @@ def dyfunc_print_with_kwargs(x):
 class TestPrintBase(Dy2StTestBase):
     def setUp(self):
         self.input = numpy.ones(5).astype("int32")
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
         self.set_test_func()
 
     def set_test_func(self):
         raise NotImplementedError("Print test should implement set_test_func")
 
-    def _run(self, to_static):
-        paddle.jit.enable_to_static(to_static)
-
-        paddle.jit.to_static(self.dygraph_func)(self.input)
+    def _run(self, to_static: bool):
+        with enable_to_static_guard(to_static):
+            paddle.jit.to_static(self.dygraph_func)(self.input)
 
     def get_dygraph_output(self):
         self._run(to_static=False)
@@ -106,7 +101,7 @@ class TestPrintVariable(TestPrintBase):
     def set_test_func(self):
         self.dygraph_func = dyfunc_print_variable
 
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pt_and_pir
     def test_transformed_static_result(self):
         self.get_dygraph_output()
         self.get_static_output()

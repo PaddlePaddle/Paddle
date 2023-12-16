@@ -226,6 +226,9 @@ void NaiveExecutor::RegisterOutputHook(const HookFunc &hookfunc) {
 
 void NaiveExecutor::RegisterInputHook(const HookFunc &hookfunc) {
   input_hookfuncs_.push_back(hookfunc);
+  if (interpreter_core_) {
+    interpreter_core_->SetInputHooks(input_hookfuncs_);
+  }
 }
 
 void NaiveExecutor::MakeReusePlan(

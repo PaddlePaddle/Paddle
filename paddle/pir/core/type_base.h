@@ -39,8 +39,8 @@ class IR_API AbstractType {
   ///
   static AbstractType get(TypeId type_id,
                           const Dialect &dialect,
-                          std::vector<InterfaceValue> &&interface_map) {
-    return AbstractType(type_id, dialect, std::move(interface_map));
+                          std::set<InterfaceValue> &&interface_set) {
+    return AbstractType(type_id, dialect, std::move(interface_set));
   }
 
   ///
@@ -50,7 +50,7 @@ class IR_API AbstractType {
   ///
   template <typename T>
   static AbstractType get(const Dialect &dialect) {
-    return AbstractType(TypeId::get<T>(), dialect, T::interface_map());
+    return AbstractType(TypeId::get<T>(), dialect, T::interface_set());
   }
 
   ///
@@ -103,10 +103,10 @@ class IR_API AbstractType {
   ///
   explicit AbstractType(TypeId type_id,
                         const Dialect &dialect,
-                        std::vector<InterfaceValue> &&interface_map)
+                        std::set<InterfaceValue> &&interface_set)
       : type_id_(type_id),
         dialect_(dialect),
-        interface_map_(std::move(interface_map)) {}
+        interface_set_(std::move(interface_set)) {}
 
   void *GetInterfaceImpl(TypeId interface_id) const;
 
@@ -117,10 +117,7 @@ class IR_API AbstractType {
   const Dialect &dialect_;
 
   /// A collection of the interfaces registered to this type.
-  std::vector<InterfaceValue> interface_map_;
-
-  /// Interface will be recorded by std::pair<TypeId, void*> currently.
-  uint32_t num_interfaces_ = 0;
+  std::set<InterfaceValue> interface_set_;
 
   /// Trait will be recorded by TypeId.
   uint32_t num_traits_ = 0;

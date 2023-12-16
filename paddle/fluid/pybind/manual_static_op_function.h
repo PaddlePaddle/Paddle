@@ -235,6 +235,45 @@ static PyObject *static_api_array_write_(PyObject *self,
   }
 }
 
+static PyObject *static_api_array_to_tensor(PyObject *self,
+                                            PyObject *args,
+                                            PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add array_to_tensor op into program";
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+
+    // Get Value from args
+    PyObject *x_obj = PyTuple_GET_ITEM(args, 0);
+    pir::Value x;
+    if (PyObject_CheckIROpResult(x_obj)) {
+      x = CastPyArg2Value(x_obj, "array_to_tensor", 0);
+    } else if (PyObject_CheckIRVectorOfOpResult(x_obj)) {
+      std::vector<pir::Value> x_tmp =
+          CastPyArg2VectorOfValue(x_obj, "array_to_tensor", 0);
+      if (x_tmp.size() != 1) {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Input x expects only one input, but %d are given.",
+            x_tmp.size()));  // NOLINT
+      }
+      x = x_tmp[0];
+    }
+
+    PyObject *axis_obj = PyTuple_GET_ITEM(args, 1);
+    auto axis = CastPyArg2Int(axis_obj, "array_to_tensor", 1);
+
+    PyObject *use_stack_obj = PyTuple_GET_ITEM(args, 2);
+    auto use_stack = CastPyArg2Boolean(use_stack_obj, "array_to_tensor", 2);
+
+    // Call ir static api
+    auto static_api_out = paddle::dialect::array_to_tensor(x, axis, use_stack);
+
+    return ToPyObject(static_api_out);
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
 static PyMethodDef ManualOpsAPI[] = {
     {"set_parameter",
      (PyCFunction)(void (*)(void))static_api_set_parameter,
@@ -260,6 +299,10 @@ static PyMethodDef ManualOpsAPI[] = {
      (PyCFunction)(void (*)(void))static_api_array_write_,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for array_write_."},
+    {"array_to_tensor",
+     (PyCFunction)(void (*)(void))static_api_array_to_tensor,
+     METH_VARARGS | METH_KEYWORDS,
+     "C++ interface function for array_to_tensor."},
     {nullptr, nullptr, 0, nullptr}};
 
 }  // namespace pybind

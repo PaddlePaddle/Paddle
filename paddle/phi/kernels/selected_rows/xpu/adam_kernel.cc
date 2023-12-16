@@ -52,19 +52,23 @@ void AdamDenseParamSparseGradKernel(
     DenseTensor* beta2_pow_out,
     DenseTensor* master_param_outs) {
   using XPUType = typename XPUTypeTrait<T>::Type;
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   float* param_ptr = nullptr;
-  funcs::GetDataPointer<Context, float>(param, &param_ptr, dev_ctx);
+  funcs::GetDataPointer<Context, float>(
+      param, &param_ptr, dev_ctx, &RAII_GUARD);
 
   float* mom1_ptr = nullptr;
-  funcs::GetDataPointer<Context, float>(moment1, &mom1_ptr, dev_ctx);
+  funcs::GetDataPointer<Context, float>(
+      moment1, &mom1_ptr, dev_ctx, &RAII_GUARD);
 
   float* mom2_ptr = nullptr;
-  funcs::GetDataPointer<Context, float>(moment2, &mom2_ptr, dev_ctx);
+  funcs::GetDataPointer<Context, float>(
+      moment2, &mom2_ptr, dev_ctx, &RAII_GUARD);
 
   float* lr_ptr = nullptr;
-  funcs::GetDataPointer<Context, float>(learning_rate, &lr_ptr, dev_ctx);
+  funcs::GetDataPointer<Context, float>(
+      learning_rate, &lr_ptr, dev_ctx, &RAII_GUARD);
 
-  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   float* beta1_pow_ptr = nullptr;
   const float* beta1_const_pow_ptr = nullptr;
 
@@ -92,7 +96,8 @@ void AdamDenseParamSparseGradKernel(
 
   } else {
     if (beta1_pow.dtype() == DataType::FLOAT16)
-      funcs::GetDataPointer<Context, float>(beta1_pow, &beta1_pow_ptr, dev_ctx);
+      funcs::GetDataPointer<Context, float>(
+          beta1_pow, &beta1_pow_ptr, dev_ctx, &RAII_GUARD);
     else
       beta1_const_pow_ptr = beta1_pow.template data<float>();
   }
@@ -123,7 +128,8 @@ void AdamDenseParamSparseGradKernel(
     }
   } else {
     if (beta2_pow.dtype() == DataType::FLOAT16)
-      funcs::GetDataPointer<Context, float>(beta2_pow, &beta2_pow_ptr, dev_ctx);
+      funcs::GetDataPointer<Context, float>(
+          beta2_pow, &beta2_pow_ptr, dev_ctx, &RAII_GUARD);
     else
       beta2_const_pow_ptr = beta2_pow.template data<float>();
   }
@@ -225,7 +231,8 @@ void AdamDenseParamSparseGradKernel(
   auto& grad_merge = *grad_merge_ptr;
   auto& grad_tensor = grad_merge.value();
 
-  funcs::GetDataPointer<Context, float>(grad_tensor, &grad_c, dev_ctx);
+  funcs::GetDataPointer<Context, float>(
+      grad_tensor, &grad_c, dev_ctx, &RAII_GUARD);
 
   int row_count = grad_merge.rows().size();
   std::vector<int> rows(row_count);
@@ -267,11 +274,12 @@ void AdamDenseParamSparseGradKernel(
 
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "adam");
 
-  funcs::FreeData<float>(grad_tensor, grad_c);
-
-  funcs::CopyOutData<Context, float>(xpu_mom1_out, moment1_out, dev_ctx);
-  funcs::CopyOutData<Context, float>(xpu_mom2_out, moment1_out, dev_ctx);
-  funcs::CopyOutData<Context, float>(xpu_param_out, moment1_out, dev_ctx);
+  funcs::CopyOutData<Context, float>(
+      xpu_mom1_out, moment1_out, dev_ctx, &RAII_GUARD);
+  funcs::CopyOutData<Context, float>(
+      xpu_mom2_out, moment1_out, dev_ctx, &RAII_GUARD);
+  funcs::CopyOutData<Context, float>(
+      xpu_param_out, moment1_out, dev_ctx, &RAII_GUARD);
 
   if (!use_global_beta_pow) {
     // update in cpu and then copy to xpu
@@ -285,8 +293,12 @@ void AdamDenseParamSparseGradKernel(
       float* beta1_pow_out_p1 = nullptr;
 
       if (beta1_pow_out->dtype() == DataType::FLOAT16) {
-        funcs::Scale<Context, float>(
-            beta1_pow_out, beta1_pow, beta1_pow_ptr, beta1_, dev_ctx);
+        funcs::Scale<Context, float>(beta1_pow_out,
+                                     beta1_pow,
+                                     beta1_pow_ptr,
+                                     beta1_,
+                                     dev_ctx,
+                                     &RAII_GUARD);
       } else {
         const float* beta1_pow_data = beta1_pow.template data<float>();
         beta1_pow_out_p1 = dev_ctx.template Alloc<float>(beta1_pow_out);
@@ -303,8 +315,12 @@ void AdamDenseParamSparseGradKernel(
 
       float* beta2_pow_out_p1 = nullptr;
       if (beta2_pow_out->dtype() == DataType::FLOAT16) {
-        funcs::Scale<Context, float>(
-            beta2_pow_out, beta2_pow, beta2_pow_ptr, beta2_, dev_ctx);
+        funcs::Scale<Context, float>(beta2_pow_out,
+                                     beta2_pow,
+                                     beta2_pow_ptr,
+                                     beta2_,
+                                     dev_ctx,
+                                     &RAII_GUARD);
       } else {
         const float* beta2_pow_data = beta2_pow.template data<float>();
         beta2_pow_out_p1 = dev_ctx.template Alloc<float>(beta2_pow_out);
@@ -320,10 +336,6 @@ void AdamDenseParamSparseGradKernel(
       }
     }
   }
-  funcs::FreeData<float>(param, param_ptr);
-  funcs::FreeData<float>(moment1, mom1_ptr);
-  funcs::FreeData<float>(moment2, mom2_ptr);
-  funcs::FreeData<float>(learning_rate, lr_ptr);
 }
 }  // namespace sr
 }  // namespace phi

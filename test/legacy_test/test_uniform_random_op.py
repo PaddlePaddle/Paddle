@@ -307,32 +307,44 @@ class TestUniformRandomOpSelectedRowsWithDiagInit(
 
 
 class TestUniformRandomOpApi(unittest.TestCase):
+    @test_with_pir_api
     def test_api(self):
         paddle.enable_static()
         paddle.seed(10)
-        x = paddle.static.data(
-            'x', shape=[-1, 16], dtype='float32', lod_level=1
-        )
-        y = paddle.static.nn.fc(
-            x,
-            size=16,
-            weight_attr=paddle.nn.initializer.UniformInitializer(
-                low=-0.5,
-                high=0.5,
-                seed=10,
-                diag_num=16,
-                diag_step=16,
-                diag_val=1.0,
-            ),
-        )
 
-        place = base.CPUPlace()
-        x_tensor = base.create_lod_tensor(
-            np.random.rand(3, 16).astype("float32"), [[1, 2]], place
-        )
-        exe = base.Executor(place)
-        exe.run(base.default_startup_program())
-        ret = exe.run(feed={'x': x_tensor}, fetch_list=[y], return_numpy=False)
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.static.data(
+                'x', shape=[-1, 16], dtype='float32', lod_level=1
+            )
+
+            linear = paddle.nn.Linear(
+                in_features=x.shape[-1],
+                out_features=16,
+                weight_attr=paddle.nn.initializer.UniformInitializer(
+                    low=-0.5,
+                    high=0.5,
+                    seed=10,
+                    diag_num=16,
+                    diag_step=16,
+                    diag_val=1.0,
+                ),
+            )
+            y = linear(x)
+
+            place = base.CPUPlace()
+            x_tensor = base.create_lod_tensor(
+                np.random.rand(3, 16).astype("float32"), [[1, 2]], place
+            )
+            exe = base.Executor(place)
+            exe.run(paddle.static.default_startup_program())
+            ret = exe.run(
+                paddle.static.default_main_program(),
+                feed={'x': x_tensor},
+                fetch_list=[y],
+                return_numpy=False,
+            )
         paddle.disable_static()
 
 

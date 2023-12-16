@@ -22,13 +22,13 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/common/errors.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/analysis/argument.h"
 #include "paddle/fluid/string/pretty_log.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/core/errors.h"
 
 namespace paddle {
 namespace inference {
@@ -358,6 +358,20 @@ void IRPassManager::CreatePasses(Argument *argument,
           argument->xpu_quant_post_dynamic_weight_precision();
       if (quant_post_dynamic_weight_precision == 0) {
         pass->Set("quant_post_dynamic_weight_precision ", new int(0));
+      }
+    } else if (pass_name == "fc_xpu_fuse_pass") {
+      std::map<std::string, int> quant_post_type =
+          argument->xpu_quant_post_dynamic_weight_methods();
+      if (!quant_post_type.empty()) {
+        pass->Set("quant_post_dynamic_weight_methods",
+                  new std::map<std::string, int>(quant_post_type));
+      }
+    } else if (pass_name == "conv2d_xpu_fuse_pass") {
+      std::map<std::string, int> quant_post_type =
+          argument->xpu_quant_post_dynamic_weight_methods();
+      if (!quant_post_type.empty()) {
+        pass->Set("quant_post_dynamic_weight_methods",
+                  new std::map<std::string, int>(quant_post_type));
       }
     }
     pre_pass = pass_name;

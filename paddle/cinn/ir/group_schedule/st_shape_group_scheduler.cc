@@ -61,8 +61,7 @@ bool IsProhibitScheduleExternCallBlock(ir::Expr block) {
       sch_block->body, [&](const Expr* x) { return x->As<ir::Call>(); });
   for (ir::Expr call : find_call) {
     ir::Call* call_node = call.As<ir::Call>();
-    if (call.As<ir::Call>() && kProhibitScheduleExternalFuncNames.count(
-                                   call.As<ir::Call>()->name) != 0) {
+    if (kProhibitScheduleExternalFuncNames.count(call_node->name) != 0) {
       return true;
     }
   }
@@ -72,16 +71,14 @@ bool IsProhibitScheduleExternCallBlock(ir::Expr block) {
 // Find loops with same extents of 2 ScheduleBlock
 std::vector<std::tuple<ir::Expr, ir::Expr>> FindSameOuterLoops(
     ir::ScheduleBlockNode* source_node, ir::ScheduleBlockNode* target_node) {
-  std::vector<ir::Expr> src_ctrl_stmts = source_node->ControlStmts();
-  std::vector<ir::Expr> tgt_ctrl_stmts = target_node->ControlStmts();
+  std::vector<ir::Expr> src_loops = source_node->GetLoops();
+  std::vector<ir::Expr> tgt_loops = target_node->GetLoops();
   std::vector<std::tuple<ir::Expr, ir::Expr>> same_loops;
-  int min_stmt_size = std::min(src_ctrl_stmts.size(), tgt_ctrl_stmts.size());
+  int min_stmt_size = std::min(src_loops.size(), tgt_loops.size());
   for (int i = 0; i < min_stmt_size; ++i) {
-    if (src_ctrl_stmts[i].As<ir::For>() && tgt_ctrl_stmts[i].As<ir::For>() &&
-        ir::GetLoopExtent(src_ctrl_stmts[i]) ==
-            GetLoopExtent(tgt_ctrl_stmts[i])) {
-      same_loops.push_back(
-          std::make_tuple(src_ctrl_stmts[i], tgt_ctrl_stmts[i]));
+    if (src_loops[i].As<ir::For>() && tgt_loops[i].As<ir::For>() &&
+        GetLoopExtent(src_loops[i]) == GetLoopExtent(tgt_loops[i])) {
+      same_loops.push_back(std::make_tuple(src_loops[i], tgt_loops[i]));
     } else {
       break;
     }
@@ -93,8 +90,10 @@ std::vector<std::tuple<ir::Expr, ir::Expr>> FindSameOuterLoops(
 std::unordered_set<std::string> GetReduceLoopVarNames(ir::Expr block) {
   ir::ScheduleBlockRealize* schedule_block_realize =
       block.As<ir::ScheduleBlockRealize>();
+  CHECK_NOTNULL(schedule_block_realize);
   ir::ScheduleBlock* schedule_block =
       schedule_block_realize->schedule_block.As<ir::ScheduleBlock>();
+  CHECK_NOTNULL(schedule_block);
   std::vector<ir::Expr> iter_values = schedule_block_realize->iter_values;
   std::vector<ir::Var> iter_vars = schedule_block->iter_vars;
   std::unordered_set<std::string> reduce_loop_var_names;
@@ -115,9 +114,11 @@ std::unordered_set<std::string> GetReduceLoopVarNames(ir::Expr block) {
 std::unordered_set<std::string> GetReduceVarNames(ir::Expr block) {
   ir::ScheduleBlockRealize* schedule_block_realize =
       block.As<ir::ScheduleBlockRealize>();
+  CHECK_NOTNULL(schedule_block_realize);
   ir::ScheduleBlock* schedule_block =
       schedule_block_realize->schedule_block.As<ir::ScheduleBlock>();
-  std::vector<ir::Var> iter_vars = schedule_block->iter_vars;
+  CHECK_NOTNULL(schedule_block);
+  std::vector<ir::Var>& iter_vars = schedule_block->iter_vars;
   std::unordered_set<std::string> reduce_var_names;
   for (int i = 0; i < iter_vars.size(); ++i) {
     if (iter_vars[i]->is_reduce_axis) {
@@ -162,21 +163,21 @@ NodePriority StaticShapeGroupScheduler::CalculateNodePriority(
       GetReduceLoopVarNames(node->Block());
 
   int64_t reduce_score = 1;
-  double score = 1;
-  for (Expr expr : node->ControlStmts()) {
+  int64_t score = 1;
+  for (Expr expr : node->GetLoops()) {
     ir::For* for_node = expr.As<ir::For>();
-    if (for_node != nullptr) {
-      score *= ir::GetLoopExtent(expr);
-    }
+    CHECK_NOTNULL(for_node);
+    int loop_extent = ir::GetLoopExtent(expr);
+    score *= loop_extent;
     if (reduce_loop_var_names.count(for_node->loop_var->name) != 0) {
-      reduce_score *= ir::GetLoopExtent(expr);
+      reduce_score *= loop_extent;
     }
     if (for_node->is_binded()) {
       has_loop_binded = true;
     }
   }
   if (reduce_score > 1) {
-    score *= (reduce_score * std::log2(reduce_score));
+    score = std::numeric_limits<int64_t>::max();
   }
 
   VLOG(6) << "The priority score of node " << node->id() << " is " << score;
@@ -239,13 +240,12 @@ void StaticShapeGroupScheduler::DoLoopAlignment() {
         [&](const ir::Expr* x) {
           bool find_reduce_var = false;
           if (x->As<ir::Load>()) {
-            int i = 0;
             for (ir::Expr index : x->As<ir::Load>()->indices) {
               if (index.as_var() &&
                   reduce_var_names.count(index.as_var_ref()->name) > 0) {
                 find_reduce_var = true;
+                break;
               }
-              ++i;
             }
           }
           return find_reduce_var;
@@ -256,16 +256,19 @@ void StaticShapeGroupScheduler::DoLoopAlignment() {
     std::vector<ir::Expr> indices =
         reduce_loads.begin()->As<ir::Load>()->indices;
     for (ir::Expr index : indices) {
+      if (index.is_constant()) continue;
       CHECK_NOTNULL(index.as_var());
       int idx = 0;
       bool is_reduce_var = false;
-      for (const ir::Var& iter_var : master_iter_vars) {
+      for (int iter_idx = 0; iter_idx < master_iter_vars.size(); ++iter_idx) {
+        auto& iter_var = master_iter_vars[iter_idx];
         if (iter_var->name == index.as_var_ref()->name) {
           is_reduce_var = iter_var->is_reduce_axis;
           break;
         }
         ++idx;
       }
+      if (master_iter_values[idx].is_constant()) continue;
       std::vector<ir::Var> loop_vars_in_order;
       ir::ir_utils::CollectIRNodesInOrder(
           master_iter_values[idx], [&](const ir::Expr* x) {
@@ -325,7 +328,7 @@ void StaticShapeGroupScheduler::DoLoopAlignment() {
       return false;
     }
 
-    for (ir::Expr expr : node->ControlStmts()) {
+    for (ir::Expr expr : node->GetLoops()) {
       if (expr.As<ir::For>() != nullptr &&
           (expr.As<ir::For>()->for_type() == ir::ForType::GPUBlock ||
            expr.As<ir::For>()->for_type() == ir::ForType::GPUThread)) {
@@ -341,7 +344,7 @@ void StaticShapeGroupScheduler::DoLoopAlignment() {
             << " with block: " << global_master->id();
 
     // 1. Fuse source loops
-    ir::Expr source_loop = ir_sch_->Fuse(node->ControlStmts());
+    ir::Expr source_loop = ir_sch_->Fuse(node->GetLoops());
     int total_source_extent = ir::GetLoopExtent(source_loop);
 
     // 2. Split source loop to align with the target loops
@@ -475,11 +478,11 @@ void StaticShapeGroupScheduler::DoVerticalLoopFusion() {
     ir::Expr target_loop;
     bool find_target_loop = false;
     // Collect infomation of original loops
-    std::vector<ir::Expr> original_ctrl_stmts = node->ControlStmts();
+    std::vector<ir::Expr> original_loops = node->GetLoops();
     int64_t original_total_loop_extent = 1;
     std::vector<std::pair<std::string, int>> original_loop_infos;
     std::unordered_set<ir::IrNode*> original_loop_node_ptrs;
-    for (ir::Expr stmt : original_ctrl_stmts) {
+    for (ir::Expr stmt : original_loops) {
       if (stmt.As<ir::For>()) {
         int extent = ir::GetLoopExtent(stmt);
         original_total_loop_extent *= extent;
@@ -550,15 +553,15 @@ void StaticShapeGroupScheduler::DoVerticalLoopFusion() {
     if (find_target_loop) {
       ir_sch_->SimpleComputeAt(node->Block(), target_loop);
       VLOG(6) << "after compute at: " << ir_sch_->GetModule().GetExprs()[0];
-      std::vector<ir::Expr> new_stmts = node->ControlStmts();
+      std::vector<ir::Expr> new_loops = node->GetLoops();
       for (int idx = 0; idx < original_loop_infos.size(); ++idx) {
         if (original_loop_infos[idx].first.empty()) {
           continue;
         }
-        if (idx < new_stmts.size()) {
-          CHECK(new_stmts[idx].As<ir::For>());
-          if (new_stmts[idx].As<ir::For>()->is_serial()) {
-            ir_sch_->Bind(new_stmts[idx], original_loop_infos[idx].first);
+        if (idx < new_loops.size()) {
+          CHECK(new_loops[idx].As<ir::For>());
+          if (new_loops[idx].As<ir::For>()->is_serial()) {
+            ir_sch_->Bind(new_loops[idx], original_loop_infos[idx].first);
           }
         } else {
           ir::Expr unit_loop = ir_sch_->AddUnitLoop(node->Block());
@@ -672,7 +675,7 @@ void StaticShapeGroupScheduler::AllocateStorage() {
     int extent = 1;
     for (int idx = tensor->shape.size() - 1; idx >= 0; --idx) {
       strides.insert(strides.begin(), extent);
-      tensor->shape[idx] = common::AutoSimplify(tensor->shape[idx]);
+      tensor->shape[idx] = cinn::common::AutoSimplify(tensor->shape[idx]);
       CHECK(tensor->shape[idx].is_constant())
           << "Shape of tensor: " << tensor << " is not constant";
       extent *= tensor->shape[idx].get_constant();
@@ -681,12 +684,12 @@ void StaticShapeGroupScheduler::AllocateStorage() {
     for (int idx = 0; idx < indices.size(); ++idx) {
       flatten_indice = flatten_indice + ir::Expr(strides[idx]) * indices[idx];
     }
-    flatten_indice = common::AutoSimplify(flatten_indice);
+    flatten_indice = cinn::common::AutoSimplify(flatten_indice);
     for (int idx = 0; idx < iter_vars.size(); ++idx) {
       optim::ReplaceVarWithExpr(
           &flatten_indice, iter_vars[idx], iter_values[idx]);
     }
-    flatten_indice = common::AutoSimplify(flatten_indice);
+    flatten_indice = cinn::common::AutoSimplify(flatten_indice);
     VLOG(6) << "flatten_indice of " << load_or_store << " : " << flatten_indice;
     return flatten_indice;
   };
@@ -781,12 +784,12 @@ void StaticShapeGroupScheduler::AllocateStorage() {
     }
     VLOG(6) << "lower_bound before simplify of " << indice_value << " = "
             << copy_for_lower_bound;
-    copy_for_lower_bound =
-        common::AutoSimplify(common::AutoSimplify(copy_for_lower_bound));
+    copy_for_lower_bound = cinn::common::AutoSimplify(
+        cinn::common::AutoSimplify(copy_for_lower_bound));
     VLOG(6) << "upper_bound before simplify of " << indice_value << " = "
             << copy_for_upper_bound;
-    copy_for_upper_bound =
-        common::AutoSimplify(common::AutoSimplify(copy_for_upper_bound));
+    copy_for_upper_bound = cinn::common::AutoSimplify(
+        cinn::common::AutoSimplify(copy_for_upper_bound));
     VLOG(6) << "lower_bound of " << indice_value << " = "
             << copy_for_lower_bound;
     VLOG(6) << "upper_bound of " << indice_value << " = "
@@ -839,7 +842,7 @@ void StaticShapeGroupScheduler::AllocateStorage() {
               << indice_value << " = " << indice_copies[i] << ", range = ("
               << coef_and_ranges[i].second.min << ", "
               << coef_and_ranges[i].second.max << ")";
-      indice_copies[i] = common::AutoSimplify(indice_copies[i]);
+      indice_copies[i] = cinn::common::AutoSimplify(indice_copies[i]);
       VLOG(6) << "after simplify [" << i << "], the coefficient of "
               << indice_value << " = " << indice_copies << ", range = ("
               << coef_and_ranges[i].second.min << ", "

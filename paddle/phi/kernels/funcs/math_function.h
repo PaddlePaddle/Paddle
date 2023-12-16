@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/utils/data_type.h"
 #ifdef PADDLE_WITH_XPU
+#include <type_traits>
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_header.h"

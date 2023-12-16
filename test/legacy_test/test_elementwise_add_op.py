@@ -21,6 +21,7 @@ import numpy as np
 from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
+import paddle.distributed as dist
 from paddle import base
 from paddle.base import core
 from paddle.base.layer_helper import LayerHelper
@@ -934,7 +935,7 @@ class TestElementwiseAddOpAutoParallel(OpTest):
         self.init_axis()
         self.if_check_prim()
         self.if_enable_cinn()
-        self.init_input_specs()
+        self.init_placements()
         self.inputs = {
             'X': OpTest.np_dtype_to_base_dtype(self.x),
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
@@ -953,10 +954,10 @@ class TestElementwiseAddOpAutoParallel(OpTest):
             check_auto_parallel=True,
         )
 
-    def init_input_specs(self):
-        self.input_specs = {
-            "X": ["x", None],
-            "Y": [None, None],
+    def init_placements(self):
+        self.placements = {
+            "X": [dist.Shard(0)],
+            "Y": [dist.Replicate()],
         }
 
     def init_input_output(self):
@@ -980,10 +981,10 @@ class TestElementwiseAddOpAutoParallel(OpTest):
 class TestElementwiseAddOpAutoParallelXShardBoardcast(
     TestElementwiseAddOpAutoParallel
 ):
-    def init_input_specs(self):
-        self.input_specs = {
-            "X": ["x", None],
-            "Y": [None, None, None],
+    def init_placements(self):
+        self.placements = {
+            "X": [dist.Shard(0)],
+            "Y": [dist.Replicate()],
         }
 
     def init_input_output(self):
@@ -996,10 +997,10 @@ class TestElementwiseAddOpAutoParallelXShardBoardcast(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestElementwiseAddOpAutoParallelXYShard(TestElementwiseAddOpAutoParallel):
-    def init_input_specs(self):
-        self.input_specs = {
-            "X": ["x", None],
-            "Y": [None, 'x'],
+    def init_placements(self):
+        self.placements = {
+            "X": [dist.Shard(0)],
+            "Y": [dist.Shard(1)],
         }
 
     def test_check_grad(self):
@@ -1017,10 +1018,10 @@ class TestElementwiseAddOpAutoParallelXYShard(TestElementwiseAddOpAutoParallel):
 class TestElementwiseAddOpAutoParallelXYShardBroardcast(
     TestElementwiseAddOpAutoParallelXYShard
 ):
-    def init_input_specs(self):
-        self.input_specs = {
-            "X": ["x", None],
-            "Y": [None, None, None],
+    def init_placements(self):
+        self.placements = {
+            "X": [dist.Shard(0)],
+            "Y": [dist.Replicate()],
         }
 
     def test_check_grad(self):

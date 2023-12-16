@@ -16,9 +16,9 @@
 #include <string>
 #include <vector>
 
+#include "paddle/common/errors.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
@@ -33,7 +33,7 @@ namespace fusion {
   auto x_lod = x.lod();                                    \
   auto x_dims = x.dims(); /* T x M*/                       \
   auto x_mat_dims = (x_dims.size() == 3 && x_dims[1] == 1) \
-                        ? phi::flatten_to_2d(x_dims, 1)    \
+                        ? common::flatten_to_2d(x_dims, 1) \
                         : x_dims;                          \
   auto wh_dims = weight_h.dims(); /* D x 3D*/              \
   const int total_T = x_mat_dims[0];                       \

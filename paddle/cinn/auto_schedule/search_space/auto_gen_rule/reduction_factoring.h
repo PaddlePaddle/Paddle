@@ -26,7 +26,7 @@ namespace auto_schedule {
 
 class ReductionFactoring : public AutoGenRule {
  public:
-  explicit ReductionFactoring(const common::Target& target)
+  explicit ReductionFactoring(const cinn::common::Target& target)
       : AutoGenRule(target) {}
   ~ReductionFactoring() = default;
 

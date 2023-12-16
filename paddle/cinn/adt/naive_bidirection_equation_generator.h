@@ -18,7 +18,7 @@
 
 #include "paddle/cinn/adt/direction_equation_generator.h"
 #include "paddle/cinn/adt/equation_function.h"
-#include "paddle/cinn/adt/m_expr.h"
+#include "paddle/cinn/adt/map_expr.h"
 #include "paddle/cinn/adt/naive_op_equation_context.h"
 
 namespace cinn::adt {

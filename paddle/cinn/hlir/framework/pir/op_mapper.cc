@@ -44,13 +44,22 @@ void AppendAttrForReduceOp(const ::pir::Operation& op,
 
 void AppendAttrForTransposeOp(const ::pir::Operation& op,
                               utils::AttributeMap& attrs) {  // NOLINT
+  auto rank = op.operand_source(0)
+                  .type()
+                  .dyn_cast<paddle::dialect::DenseTensorType>()
+                  .dims()
+                  .size();
   auto attr = op.attributes().at("perm");
 
   auto attr_vec = attr.dyn_cast<::pir::ArrayAttribute>().AsVector();
 
   std::vector<int> dim;
   for (auto vec_element : attr_vec) {
-    dim.push_back(vec_element.dyn_cast<::pir::Int32Attribute>().data());
+    auto ele = vec_element.dyn_cast<::pir::Int32Attribute>().data();
+    if (ele < 0) {
+      ele += rank;
+    }
+    dim.push_back(ele);
   }
 
   attrs["axis"] = dim;

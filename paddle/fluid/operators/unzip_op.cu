@@ -27,17 +27,11 @@ __global__ void unzipKernel(
     const T* X, const LodType* lod, T* Y, size_t col_size, size_t n) {
   CUDA_KERNEL_LOOP(i, n) {
     int lod_idx = i / col_size;
-    if ((lod[lod_idx + 1] - lod[lod_idx]) > 0) {
-      assert((lod[lod_idx + 1] - lod[lod_idx]) == col_size);
-      int x_idx = 0;
-      for (int j = 0; j < lod_idx; ++j) {
-        if ((lod[j + 1] - lod[j]) > 0) {
-          x_idx++;
-        }
-      }
-      Y[i] = X[x_idx * col_size + (i % col_size)];
-    } else {
+    int len = lod[lod_idx + 1] - lod[lod_idx];
+    if (i >= lod_idx * col_size + len) {
       Y[i] = 0;
+    } else {
+      Y[i] = X[lod[lod_idx] + i % col_size];
     }
   }
 }
@@ -52,7 +46,7 @@ class unzipCUDAKernel : public framework::OpKernel<T> {
     const auto* lod = context.Input<phi::DenseTensor>("lod");
     const LodType* lod_data = lod->data<LodType>();
 
-    auto col_size = x->dims()[1];
+    auto col_size = context.Attr<int>("len");
     auto row_size = lod->dims()[0] - 1;
     auto y_numel = col_size * row_size;
 

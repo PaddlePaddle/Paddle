@@ -33,11 +33,13 @@ cinn_buffer_t *CreateBuffer(const std::vector<int> shape,
                             bool random = true,
                             int set_value = 0) {
   if (random) {
-    return common::BufferBuilder(Float(32), shape).set_random().Build();
+    return cinn::common::BufferBuilder(Float(32), shape).set_random().Build();
   } else if (set_value != 0) {
-    return common::BufferBuilder(Float(32), shape).set_val(set_value).Build();
+    return cinn::common::BufferBuilder(Float(32), shape)
+        .set_val(set_value)
+        .Build();
   }
-  return common::BufferBuilder(Float(32), shape).set_zero().Build();
+  return cinn::common::BufferBuilder(Float(32), shape).set_zero().Build();
 }
 
 template <typename FuncRuntime>
@@ -74,7 +76,7 @@ void TestCallElementwise(const std::string &fn_name,
 
   auto stages = CreateStages(lower_args);
 
-  auto target = common::DefaultHostTarget();
+  auto target = cinn::common::DefaultHostTarget();
   target.arch = Target::Arch::X86;
   ir::Module::Builder builder("module0", target);
   auto func = Lower("fn", stages, lower_args);
@@ -96,8 +98,9 @@ void TestCallElementwise(const std::string &fn_name,
   } else {
     A_buf = CreateBuffer({10, 10});
   }
-  auto *B_buf =
-      common::BufferBuilder(type, {10, 10}).set_align(type.bits()).Build();
+  auto *B_buf = cinn::common::BufferBuilder(type, {10, 10})
+                    .set_align(type.bits())
+                    .Build();
 
   cinn_pod_value_t a_arg(A_buf), b_arg(B_buf);
   cinn_pod_value_t args[] = {a_arg, b_arg};
@@ -183,18 +186,18 @@ TEST(cinn_cpu_mkl_gemm_fp32, test) {
       [=]() -> Expr {
         return lang::CallExtern("cinn_cpu_mkl_gemm_fp32",
                                 {
-                                    common::make_one<float>(),   // alpha
-                                    M,                           // M
-                                    N,                           // N
-                                    K,                           // K
-                                    common::make_bool(false),    // ta
-                                    common::make_bool(false),    // tb
-                                    K,                           // lda
-                                    N,                           // ldb
-                                    N,                           // ldc
-                                    common::make_zero<float>(),  // beta
-                                    A.tensor(),                  // A
-                                    B.tensor(),                  // B
+                                    cinn::common::make_one<float>(),   // alpha
+                                    M,                                 // M
+                                    N,                                 // N
+                                    K,                                 // K
+                                    cinn::common::make_bool(false),    // ta
+                                    cinn::common::make_bool(false),    // tb
+                                    K,                                 // lda
+                                    N,                                 // ldb
+                                    N,                                 // ldc
+                                    cinn::common::make_zero<float>(),  // beta
+                                    A.tensor(),                        // A
+                                    B.tensor(),                        // B
                                 });
       },
       "extern_call");
@@ -204,7 +207,7 @@ TEST(cinn_cpu_mkl_gemm_fp32, test) {
 
   auto stages = CreateStages({call, out});
 
-  auto target = common::DefaultHostTarget();
+  auto target = cinn::common::DefaultHostTarget();
   target.arch = Target::Arch::X86;
   ir::Module::Builder builder("module0", target);
 
@@ -221,17 +224,21 @@ TEST(cinn_cpu_mkl_gemm_fp32, test) {
   auto fn_ptr = reinterpret_cast<void (*)(void *, int32_t)>(fn);
 
   // test with real data
-  auto *A_buf = common::BufferBuilder(Float(32), {M.as_int32(), K.as_int32()})
-                    .set_random()
-                    .Build();
-  auto *B_buf = common::BufferBuilder(Float(32), {K.as_int32(), N.as_int32()})
-                    .set_random()
-                    .Build();
-  auto *C_buf = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
-                    .set_zero()
-                    .Build();
+  auto *A_buf =
+      cinn::common::BufferBuilder(Float(32), {M.as_int32(), K.as_int32()})
+          .set_random()
+          .Build();
+  auto *B_buf =
+      cinn::common::BufferBuilder(Float(32), {K.as_int32(), N.as_int32()})
+          .set_random()
+          .Build();
+  auto *C_buf =
+      cinn::common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+          .set_zero()
+          .Build();
 
-  auto args = common::ArgsBuilder().Add(A_buf).Add(B_buf).Add(C_buf).Build();
+  auto args =
+      cinn::common::ArgsBuilder().Add(A_buf).Add(B_buf).Add(C_buf).Build();
 
   fn_ptr(args.data(), args.size());
 

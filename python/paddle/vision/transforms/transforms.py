@@ -664,7 +664,7 @@ class RandomHorizontalFlip(BaseTransform):
 
     Shape:
         - img(PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
-        - output(PIL.Image|np.ndarray|Paddle.Tensor): A horiziotal flipped image.
+        - output(PIL.Image|np.ndarray|Paddle.Tensor): A horizontal flipped image.
 
     Returns:
         A callable object of RandomHorizontalFlip.
@@ -673,15 +673,21 @@ class RandomHorizontalFlip(BaseTransform):
 
         .. code-block:: python
 
-            >>> import numpy as np
-            >>> from PIL import Image
-            >>> from paddle.vision.transforms import RandomHorizontalFlip
+            >>> import paddle
+            >>> fake_img = paddle.to_tensor([[[0, 0, 1], [0, 0, 1], [1, 1, 1]]])
+            >>> print(fake_img)
+            Tensor(shape=[1, 3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                   [[[0, 0, 1],
+                     [0, 0, 1],
+                     [1, 1, 1]]])
+            >>> transform = paddle.vision.transforms.RandomHorizontalFlip(prob=1)
+            >>> result = transform(fake_img)
+            >>> print(result)
+            Tensor(shape=[1, 3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                   [[[1, 0, 0],
+                     [1, 0, 0],
+                     [1, 1, 1]]])
 
-            >>> transform = RandomHorizontalFlip(0.5)
-            >>> fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
-            >>> fake_img = transform(fake_img)
-            >>> print(fake_img.size)
-            (320, 300)
     """
 
     def __init__(self, prob=0.5, keys=None):
@@ -726,14 +732,20 @@ class RandomVerticalFlip(BaseTransform):
 
         .. code-block:: python
 
-            >>> import numpy as np
-            >>> from PIL import Image
-            >>> from paddle.vision.transforms import RandomVerticalFlip
-            >>> transform = RandomVerticalFlip()
-            >>> fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
-            >>> fake_img = transform(fake_img)
-            >>> print(fake_img.size)
-            (320, 300)
+            >>> import paddle
+            >>> fake_img = paddle.to_tensor([[[0, 0, 1], [0, 0, 1], [1, 1, 1]]])
+            >>> print(fake_img)
+            Tensor(shape=[1, 3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                   [[[0, 0, 1],
+                     [0, 0, 1],
+                     [1, 1, 1]]])
+            >>> transform = paddle.vision.transforms.RandomVerticalFlip(prob=1)
+            >>> result = transform(fake_img)
+            >>> print(result)
+            Tensor(shape=[1, 3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                   [[[1, 1, 1],
+                     [0, 0, 1],
+                     [0, 0, 1]]])
 
     """
 
