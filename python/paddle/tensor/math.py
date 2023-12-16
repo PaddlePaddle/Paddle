@@ -7189,11 +7189,11 @@ def signbit(x, name=None):
 
             >>> import paddle
             >>> paddle.set_device('cpu')
-            >>> x = paddle.to_tensor([1.1, -2.1, 0., 2.5, -0.0], dtype='float32')
+            >>> x = paddle.to_tensor([-0., 1.1, -2.1, 0., 2.5], dtype='float32')
             >>> res = paddle.signbit(x)
             >>> print(res)
             Tensor(shape=[5], dtype=bool, place=Place(cpu), stop_gradient=True,
-            [False , True, False, False, True])
+            [True, False, True, False, False])
 
         .. code-block:: python
             :name: signbit-example-2
@@ -7225,7 +7225,7 @@ def signbit(x, name=None):
         ],
         "signbit",
     )
-
-    x = paddle.sign(x)
+    neg_zero_x = paddle.to_tensor(np.copysign(1, x.numpy()))
+    x = paddle.sign(neg_zero_x)
     out = paddle.cast(x < 0, dtype='bool')
     return out
