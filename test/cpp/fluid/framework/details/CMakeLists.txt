@@ -8,7 +8,7 @@ cc_test(
        scope
        phi
        common
-       memory
+       fluid_memory
        device_context
        gather_op_handle)
 
