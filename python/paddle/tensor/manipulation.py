@@ -6527,8 +6527,9 @@ def _index_fill_impl(x, index, axis, value, inplace):
     perm[axis] = 0
 
     if inplace:
-        paddle.transpose(x, perm)
+        paddle.transpose_(x, perm)
         paddle.index_put_(x, (index,), value)
+        paddle.transpose_(x, perm)
         return x
     else:
         out = paddle.transpose(x, perm)

@@ -85,12 +85,48 @@ void IfOp::Build(pir::Builder &builder,             // NOLINT
                           argument.output_types.size(),
                           size));
     for (size_t i = 0; i < size; ++i) {
-      PADDLE_ENFORCE_EQ(
-          op.operand(i).type(),
-          argument.output_types[i],
-          phi::errors::PreconditionNotMet("The output[%d] type of true block "
-                                          "and false block must be equal.",
-                                          i));
+      if (op.operand(i).type() != argument.output_types[i]) {
+        auto l_type = op.operand(i).type().dyn_cast<pir::DenseTensorType>();
+        auto r_type = argument.output_types[i].dyn_cast<pir::DenseTensorType>();
+        PADDLE_ENFORCE_EQ(l_type && r_type,
+                          true,
+                          phi::errors::PreconditionNotMet(
+                              "The output[%d] of true_block&false_block must "
+                              "be dense tensor type.",
+                              i));
+        PADDLE_ENFORCE_EQ(l_type.dtype(),
+                          r_type.dtype(),
+                          phi::errors::PreconditionNotMet(
+                              "The dtype in output[%d] of "
+                              "true_block&false_block must be equal.",
+                              i));
+        PADDLE_ENFORCE_EQ(l_type.data_layout(),
+                          r_type.data_layout(),
+                          phi::errors::PreconditionNotMet(
+                              "The date_layout in output[%d] of "
+                              "true_block&false_block must be equal.",
+                              i));
+        PADDLE_ENFORCE_EQ(l_type.lod(),
+                          r_type.lod(),
+                          phi::errors::PreconditionNotMet(
+                              "The lod in output[%d] of true_block&false_block "
+                              "must be equal.",
+                              i));
+        PADDLE_ENFORCE_EQ(l_type.offset(),
+                          r_type.offset(),
+                          phi::errors::PreconditionNotMet(
+                              "The offset in output[%d] of "
+                              "true_block&false_block must be equal.",
+                              i));
+        auto dim = common::ComputeCompatibleDim(l_type.dims(), r_type.dims());
+        auto new_type = DenseTensorType::get(builder.ir_context(),
+                                             l_type.dtype(),
+                                             dim,
+                                             l_type.data_layout(),
+                                             l_type.lod(),
+                                             l_type.offset());
+        argument.output_types[i] = new_type;
+      }
     }
   } else {
     PADDLE_ENFORCE(argument.output_types.empty(),
@@ -257,6 +293,7 @@ void WhileOp::Build(pir::Builder &builder,             // NOLINT
     argument.AddOutput(val.type());
     body.AddArgument(val.type());
   }
+  cond.set_attribute(kStopGradientAttrName, builder.bool_attr(true));
 }
 pir::Block &WhileOp::body() {
   pir::Region &body_region = (*this)->region(0);
