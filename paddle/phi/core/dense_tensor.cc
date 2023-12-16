@@ -235,6 +235,21 @@ void DenseTensor::set_meta(const DenseTensorMeta& meta) {
   }
 }
 
+void DenseTensor::set_meta_without_valid(const DenseTensorMeta& meta) {
+  meta_.dims = meta.dims;
+  meta_.dtype = meta.dtype;
+  meta_.is_scalar = meta.is_scalar;
+  meta_.layout = meta.layout;
+  meta_.lod = meta.lod;
+  meta_.offset = meta.offset;
+  meta_.use_gpudnn = meta.use_gpudnn;
+  if (meta.strides.size() == -1) {
+    meta_.strides = meta_.calc_strides(meta_.dims);
+  } else {
+    meta_.strides = meta.strides;
+  }
+}
+
 /* @jim19930609: This interface will be further modified until we finalized the
    design for Allocator - Allocation
    For now, we have to temporarily accommodate two independent use cases:

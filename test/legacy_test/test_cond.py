@@ -819,7 +819,7 @@ class TestCondBackward(unittest.TestCase):
                 fetch_list=[loss],
             )
 
-    # @test_with_pir_api
+    @test_with_pir_api
     def test_cond_backward(self):
         paddle.enable_static()
 

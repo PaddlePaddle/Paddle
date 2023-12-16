@@ -595,9 +595,10 @@ void BatchNormGradFunctor(const Context &ctx,
 // HIP do not support compute format of NHWC
 // auto compute_format = DataLayout::kNCHW;
 #else
-  const bool fast_nhwc_batch_norm = dtype == CUDNN_DATA_HALF &&
-                                    FLAGS_cudnn_batchnorm_spatial_persistent &&
-                                    (reserve_space.get_ptr() != nullptr);
+  const bool fast_nhwc_batch_norm =
+      dtype == CUDNN_DATA_HALF && FLAGS_cudnn_batchnorm_spatial_persistent &&
+          (reserve_space.get_ptr() != nullptr) ||
+      reserve_space->memory_size() == 0;
   auto compute_format = fast_nhwc_batch_norm && data_layout == DataLayout::kNHWC
                             ? DataLayout::kNHWC
                             : DataLayout::kNCHW;
@@ -967,7 +968,12 @@ void BatchNormGradFunctor(const Context &ctx,
         workspace_tensor.Resize({static_cast<int64_t>(workspace_size)});
         workspace_ptr =
             static_cast<void *>(ctx.template Alloc<uint8_t>(&workspace_tensor));
-
+        std::cout << "reserve_space_size " << reserve_space_size << std::endl;
+        uint8_t *reserve_space_ptr = nullptr;
+        if (reserve_space_size != 0) {
+          reserve_space_ptr =
+              const_cast<uint8_t *>(reserve_space->template data<uint8_t>());
+        }
         PADDLE_ENFORCE_GPU_SUCCESS(
             phi::dynload::cudnnBatchNormalizationBackwardEx(
                 /*handle=*/ctx.cudnn_handle(),
@@ -1002,7 +1008,9 @@ void BatchNormGradFunctor(const Context &ctx,
                 /*workspace=*/workspace_ptr,
                 /*workSpaceSizeInBytes=*/workspace_size,
                 /*reserveSpace=*/
-                const_cast<uint8_t *>(reserve_space->template data<uint8_t>()),
+                // const_cast<uint8_t *>(reserve_space->template
+                // data<uint8_t>()),
+                reserve_space_ptr,
                 /*reserveSpaceSizeInBytes=*/reserve_space_size));
 #else
         PADDLE_ENFORCE_GPU_SUCCESS(

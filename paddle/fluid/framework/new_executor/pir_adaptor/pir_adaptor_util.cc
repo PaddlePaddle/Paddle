@@ -295,11 +295,10 @@ void DeepCopyVariable(const Variable* src_var,
   if (src_var->IsType<phi::DenseTensor>()) {
     auto& src_tensor = src_var->Get<phi::DenseTensor>();
     auto* tmp_dst_tensor = dst_var->GetMutable<phi::DenseTensor>();
+    std::cout << "src_tensor.numel " << src_tensor.numel() << std::endl;
     tmp_dst_tensor->set_lod(src_tensor.lod());
     if (src_tensor.numel() <= 0) {
-      tmp_dst_tensor->Resize(src_tensor.dims());
-      tmp_dst_tensor->set_layout(src_tensor.layout());
-      tmp_dst_tensor->set_type(src_tensor.type());
+      tmp_dst_tensor->set_meta_without_valid(src_tensor.meta());
       return;
     }
     if (!src_tensor.initialized()) {
@@ -315,7 +314,14 @@ void DeepCopyVariable(const Variable* src_var,
   } else if (src_var->IsType<phi::SelectedRows>()) {
     auto& src_slr = src_var->Get<phi::SelectedRows>();
     auto* tmp_dst_slr = dst_var->GetMutable<phi::SelectedRows>();
-    if (src_slr.numel() <= 0) return;
+    tmp_dst_slr->set_rows(src_slr.rows());
+    tmp_dst_slr->set_height(src_slr.height());
+    auto& src_t = src_slr.value();
+    auto* dst_t = tmp_dst_slr->mutable_value();
+    if (src_t.numel() < 0) {
+      dst_t->set_meta(src_t.meta());
+      return;
+    }
     if (!src_slr.initialized()) {
       if (is_optional) {
         dst_var = nullptr;
@@ -325,16 +331,10 @@ void DeepCopyVariable(const Variable* src_var,
             "SelectedRows shouldn't be null"));
       }
     }
-    tmp_dst_slr->set_rows(src_slr.rows());
-    tmp_dst_slr->set_height(src_slr.height());
-
-    auto& src_t = src_slr.value();
-    auto* dst_t = tmp_dst_slr->mutable_value();
     framework::TensorCopy(src_t, src_t.place(), dst_t);
   } else if (src_var->IsType<phi::TensorArray>()) {
     auto src_tensor_array = src_var->Get<phi::TensorArray>();
     auto* dst_tensor_array = dst_var->GetMutable<phi::TensorArray>();
-    if (src_tensor_array.numel() <= 0) return;
     if (!src_tensor_array.initialized()) {
       if (is_optional) {
         dst_var = nullptr;
@@ -347,6 +347,10 @@ void DeepCopyVariable(const Variable* src_var,
     dst_tensor_array->clear();
     for (auto src_tensor : src_tensor_array) {
       phi::DenseTensor* tmp_dst_tensor = new phi::DenseTensor();
+      if (src_tensor.numel() < 0) {
+        tmp_dst_tensor->set_meta(src_tensor.meta());
+        continue;
+      }
       framework::TensorCopy(src_tensor, src_tensor.place(), tmp_dst_tensor);
       dst_tensor_array->push_back(*tmp_dst_tensor);
     }
