@@ -29,7 +29,7 @@ RUN apt-get update --allow-unauthenticated && \
   apt-get update && \
   apt-get install -y curl wget vim git unzip unrar tar xz-utils libssl-dev bzip2 gzip \ 
     coreutils ntp language-pack-zh-hans libsm6 libxext6 libxrender-dev libgl1-mesa-glx \
-    bison graphviz libjpeg-dev zlib1g-dev automake locales swig net-tools libtool kmod
+    bison graphviz libjpeg-dev zlib1g-dev automake locales swig net-tools libtool kmod libomp5 libomp-dev
 <install_cpu_package>
 
 # Downgrade gcc&&g++
@@ -178,7 +178,5 @@ RUN wget https://paddle-ci.cdn.bcebos.com/clang+llvm-3.8.0-x86_64-linux-gnu-ubun
     tar xf clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz && cd clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04 && \
     cp -rn * /usr/local && cd .. && rm -rf clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04 && rm -rf clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz 
 
-# To fix 'omp.h' file not found [clang-diagnostic-error] bug in clang-tidy_check
-RUN apt-get install -y libomp5 libomp-dev && apt-get clean -y
 
 EXPOSE 22
