@@ -102,6 +102,7 @@ class DemoNet(nn.Layer):
 class TestSimpleNetForSemiAutoParallel:
     def __init__(self):
         self._seed = eval(os.getenv("seed"))
+        self._ckpt_path = os.getenv("ckpt_path")
 
     def set_random_seed(self, seed):
         random.seed(seed)
@@ -129,7 +130,7 @@ class TestSimpleNetForSemiAutoParallel:
             for batch_id, (image, label) in enumerate(dist_loader()):
                 loss = dist_model(image, label)
                 loss_list.append(loss)
-        return np.array(loss_list)
+        return np.array(loss_list), dist_model
 
     def run_dynamic(self, layer, opt, data_loader):
         # create loss
@@ -167,7 +168,7 @@ class TestSimpleNetForSemiAutoParallel:
         )
 
         dy_losses = self.run_dynamic(dy_layer, dy_opt, data_loader)
-        dy2static_losses = self.run_dy2static(
+        dy2static_losses, _ = self.run_dy2static(
             dy2static_layer, dy2static_opt, data_loader
         )
 
@@ -203,13 +204,43 @@ class TestSimpleNetForSemiAutoParallel:
         dy2static_opt = paddle.optimizer.SGD(
             learning_rate=0.1, parameters=dy2static_layer.parameters()
         )
-
         dy_losses = self.run_dynamic(dy_layer, dy_opt, data_loader)
-        dy2static_losses = self.run_dy2static(
+        dy2static_losses, dist_model = self.run_dy2static(
             dy2static_layer, dy2static_opt, data_loader
         )
-
         np.testing.assert_allclose(dy_losses, dy2static_losses, rtol=1e-6)
+
+        # save load
+        state_dict_to_save = dist_model.state_dict()
+        dist.save_state_dict(state_dict_to_save, self._ckpt_path)
+        dist.barrier()
+        expected_local_state_dict = {}
+        need_load_state_dict = {}
+        with paddle.base.dygraph.guard():
+            for k, v in state_dict_to_save.items():
+                local_value = v._local_value()
+                expected_local_state_dict[k] = local_value.clone()
+                need_load_state_dict[k] = paddle.zeros_like(v)
+        dist_model.set_state_dict(need_load_state_dict)
+        program_state_dict = dist_model.state_dict()
+        for k, v in program_state_dict.items():
+            assert v.numpy().sum() == 0, f"key {k} is not zero: {v}"
+            assert k in expected_local_state_dict
+            assert (
+                need_load_state_dict[k].numpy().sum() == 0
+            ), f"key {k} is not zero: {need_load_state_dict[k]}"
+        dist.load_state_dict(need_load_state_dict, self._ckpt_path)
+        dist_model.set_state_dict(need_load_state_dict)
+        program_state_dict = dist_model.state_dict()
+        for k, v in program_state_dict.items():
+            local_tensor = v._local_value()
+            assert (
+                k in expected_local_state_dict
+            ), f"key {k} not in expected_local_state_dict:{expected_local_state_dict}"
+            np.testing.assert_equal(
+                local_tensor.numpy(),
+                expected_local_state_dict[k].numpy(),
+            )
 
     def run_test_case(self):
         self.test_dp_demo_net()
