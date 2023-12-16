@@ -6776,7 +6776,7 @@ def slice_scatter(x, value, axis=0, start=None, stop=None, step=1, name=None):
             >>> value = paddle.ones((8, 2))
             >>> res = paddle.slice_scatter(x, value, axis=1, start=2, stop=6, step=2)
             >>> print(res)
-            Tensor(shape=[8, 8], dtype=float64, place=Place(cpu), stop_gradient=True,
+            Tensor(shape=[8, 8], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0., 0., 1., 0., 1., 0., 0., 0.],
              [0., 0., 1., 0., 1., 0., 0., 0.],
              [0., 0., 1., 0., 1., 0., 0., 0.],
