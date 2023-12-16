@@ -3474,7 +3474,7 @@
 
 - op: number_count
   inputs :
-    {numbers: Numbers, upper_range: UpperRange}
+    {numbers: Numbers}
   outputs :
     out : Out
 
