@@ -356,10 +356,12 @@ SpmdInfo ElementwiseBinaryGradInferSpmd(const DistMetaTensor& x,
                                         const DistMetaTensor& y,
                                         const DistMetaTensor& out_grad,
                                         int64_t axis) {
-  TensorDistAttr x_dist_attr = out_grad.dist_attr();
-  TensorDistAttr y_dist_attr = out_grad.dist_attr();
-  TensorDistAttr x_grad_dist_attr = out_grad.dist_attr();
-  TensorDistAttr y_grad_dist_attr = out_grad.dist_attr();
+  TensorDistAttr out_grad_dist_attr = out_grad.dist_attr();
+  out_grad_dist_attr.clean_partial_status();
+  TensorDistAttr x_dist_attr = out_grad_dist_attr;
+  TensorDistAttr y_dist_attr = out_grad_dist_attr;
+  TensorDistAttr x_grad_dist_attr = out_grad_dist_attr;
+  TensorDistAttr y_grad_dist_attr = out_grad_dist_attr;
 
   PADDLE_ENFORCE_GE(
       out_grad.dims().size(),
@@ -393,7 +395,7 @@ SpmdInfo ElementwiseBinaryGradInferSpmd(const DistMetaTensor& x,
             << ". The global dim of out_grad is " << out_grad.dims();
     // Step 1: remove the useless dimensions which is not appear in input x.
     int64_t diff = out_grad.dims().size() - x.dims().size();
-    auto dims_mapping = x_dist_attr.dims_mapping();
+    auto dims_mapping = out_grad_dist_attr.dims_mapping();
     dims_mapping.erase(dims_mapping.begin(), dims_mapping.begin() + diff);
     // Step 2: get the explicit reduce dimensions
     std::vector<int64_t> explicit_reduce_dims =
@@ -428,7 +430,7 @@ SpmdInfo ElementwiseBinaryGradInferSpmd(const DistMetaTensor& x,
             << ". The global dim of out_grad is " << out_grad.dims();
     // Step 1: remove the useless dimensions which is not appear in input y.
     int64_t diff = out_grad.dims().size() - y.dims().size();
-    auto dims_mapping = y_dist_attr.dims_mapping();
+    auto dims_mapping = out_grad_dist_attr.dims_mapping();
     dims_mapping.erase(dims_mapping.begin(), dims_mapping.begin() + diff);
     // Step 2: get the explicit reduce dimensions
     std::vector<int64_t> explicit_reduce_dims =
@@ -456,7 +458,7 @@ SpmdInfo ElementwiseBinaryGradInferSpmd(const DistMetaTensor& x,
     }
   }
 
-  return {{x_dist_attr, y_dist_attr, out_grad.dist_attr()},
+  return {{x_dist_attr, y_dist_attr, out_grad_dist_attr},
           {x_grad_dist_attr, y_grad_dist_attr}};
 }
 

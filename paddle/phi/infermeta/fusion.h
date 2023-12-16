@@ -38,6 +38,44 @@ void AddLayernormXPUInferMeta(const MetaTensor& x,
                               float epsilon,
                               MetaTensor* out);
 
+void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
+                                      const MetaTensor& key_cache,
+                                      const MetaTensor& value_cache,
+                                      const MetaTensor& seq_lens_encoder,
+                                      const MetaTensor& seq_lens_decoder,
+                                      const MetaTensor& seq_lens_this_time,
+                                      const MetaTensor& padding_offsets,
+                                      const MetaTensor& cum_offsets,
+                                      const MetaTensor& cu_seqlens_q,
+                                      const MetaTensor& cu_seqlens_k,
+                                      const MetaTensor& block_tables,
+                                      const MetaTensor& pre_key_cache,
+                                      const MetaTensor& pre_value_cache,
+                                      const MetaTensor& rope_emb,
+                                      const MetaTensor& mask,
+                                      const MetaTensor& tgt_mask,
+                                      const MetaTensor& cache_k_quant_scales,
+                                      const MetaTensor& cache_v_quant_scales,
+                                      const MetaTensor& cache_k_dequant_scales,
+                                      const MetaTensor& cache_v_dequant_scales,
+                                      const MetaTensor& qkv_out_scale,
+                                      const MetaTensor& qkv_bias,
+                                      const MetaTensor& out_shift,
+                                      const MetaTensor& out_smooth,
+                                      int max_seq_len,
+                                      int block_size,
+                                      bool use_neox_style,
+                                      bool dynamic_cachekv_quant,
+                                      const int quant_round_type,
+                                      const float quant_max_bound,
+                                      const float quant_min_bound,
+                                      const float out_scale,
+                                      const std::string& compute_dtype,
+                                      MetaTensor* fmha_out,
+                                      MetaTensor* qkv_out,
+                                      MetaTensor* key_cache_out,
+                                      MetaTensor* value_cache_out);
+
 void Conv1dXPUInferMeta(const MetaTensor& x,
                         const MetaTensor& x_max,
                         const MetaTensor& filter,
@@ -737,6 +775,20 @@ void FusedBiasDropoutResidualLnGradInferMeta(
     MetaTensor* ln_scale_grad,
     MetaTensor* ln_bias_grad);
 
+void FusedDotProductAttentionInferMeta(const MetaTensor& q,
+                                       const MetaTensor& k,
+                                       const MetaTensor& v,
+                                       MetaTensor* out,
+                                       MetaTensor* softmax_out,
+                                       MetaTensor* rng_state);
+
+void FusedDotProductAttentionGradInferMeta(const MetaTensor& q,
+                                           const MetaTensor& k,
+                                           const MetaTensor& v,
+                                           MetaTensor* q_grad,
+                                           MetaTensor* k_grad,
+                                           MetaTensor* v_grad);
+
 void SkipLayerNormInferMeta(const MetaTensor& x,
                             const MetaTensor& y,
                             const MetaTensor& scale,
@@ -757,4 +809,17 @@ void FCInferMeta(const MetaTensor& input,
                  const std::string& activation_type,
                  const bool padding_weights,
                  MetaTensor* out);
+
+void VariableLengthMemoryEfficientAttentionInferMeta(
+    const MetaTensor& query,
+    const MetaTensor& key,
+    const MetaTensor& value,
+    const MetaTensor& seq_lens,
+    const MetaTensor& kv_seq_lens,
+    const MetaTensor& mask,
+    float scale,
+    bool causal,
+    int pre_cache_length,
+    MetaTensor* out);
+
 }  // namespace phi

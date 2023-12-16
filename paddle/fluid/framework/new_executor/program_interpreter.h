@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/framework/new_executor/interpreter_base_impl.h"
 
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/kernels/autotune/gpu_timer.h"
 #endif
 

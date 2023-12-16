@@ -181,7 +181,7 @@ struct VisitDataCudaArgMinMaxFunctor {
     // For 0D Tensor
     if (x.dims().size() == 0) {
       dev_ctx.template Alloc<IndType>(out);
-      phi::funcs::set_constant(dev_ctx, out, 0);
+      phi::funcs::set_constant(dev_ctx, out, static_cast<IndType>(0));
       return;
     }
 
@@ -211,6 +211,11 @@ void ArgMinMaxOpCUDAKernel(const Context& dev_ctx,
                            bool flatten,
                            DataType dtype,
                            DenseTensor* out) {
+  PADDLE_ENFORCE_GT(
+      x.numel(),
+      0,
+      phi::errors::InvalidArgument(
+          "argmin/argmax input numel must > 0, bug got %d", x.numel()));
   if (dtype == DataType::UNDEFINED) {
     phi::VisitDataTypeTiny(
         phi::DataType::INT64,
