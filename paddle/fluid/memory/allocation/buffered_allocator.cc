@@ -13,7 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/buffered_allocator.h"
-
+#include "paddle/fluid/platform/init_phi.h"
+REGISTER_FILE_SYMBOLS(buffered_allocator);
 namespace paddle {
 namespace memory {
 namespace allocation {

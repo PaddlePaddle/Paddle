@@ -62,8 +62,16 @@ class IR_API OpBase {
   Value operand_source(uint32_t index) const {
     return operation()->operand_source(index);
   }
+  Type operand_type(uint32_t index) const {
+    return operation()->operand_type(index);
+  }
 
   OpResult result(uint32_t index) const { return operation()->result(index); }
+
+  template <typename T = Type>
+  T result_type(uint32_t index) const {
+    return operation()->result_type<T>(index);
+  }
 
   void VerifySig() {}
 

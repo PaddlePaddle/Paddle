@@ -517,7 +517,17 @@ decomp_ops_contain_unused_output = {
 
 # This api is used for development for dynamic shape in prim, and will be removed in future.
 def _enable_prim_dynamic_shape():
-    if os.getenv("FLAGS_prim_skip_dynamic") == "1":
+    flag = os.getenv("FLAGS_prim_skip_dynamic")
+    if flag and flag.lower() in ("1", "true"):
+        return True
+    else:
+        return False
+
+
+# This api is used for development for sinking decomp in c++, and will be removed in future.
+def _enable_sink_decomp():
+    flag = os.getenv("FLAGS_sink_decomp")
+    if flag and flag.lower() in ("1", "true"):
         return True
     else:
         return False
@@ -529,6 +539,10 @@ def _set_prim_forward_blacklist(*args):
             raise TypeError("ops set in forward_blacklist must belong to str")
         else:
             prim_config["forward_blacklist"].add(item)
+
+
+def _reset_prim_forward_blacklist():
+    prim_config["forward_blacklist"] = set()
 
 
 def _set_prim_backward_blacklist(*args):
