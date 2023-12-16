@@ -43,7 +43,9 @@ class TestNumberCountOpInt64(op_test.OpTest):
         self.op_type = "number_count"
         self.python_api = number_count_wrapper
         x = np.random.randint(-1, upper_num, size=(1000, 2)).astype('int64')
-        self.inputs = {'numbers': x}
+        self.inputs = {
+            'Numbers': x,
+        }
         self.outputs = {'Out': count(x, upper_num)}
         self.attrs = {"upper_range": upper_num}
 

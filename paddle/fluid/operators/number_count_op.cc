@@ -31,7 +31,7 @@ class NumberCountOp : public framework::OperatorWithKernel {
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     // the dtype of the numbers should be same as int64
-    auto number_dtype = OperatorWithKernel::IndicateVarDataType(ctx, "numbers");
+    auto number_dtype = OperatorWithKernel::IndicateVarDataType(ctx, "Numbers");
 
     PADDLE_ENFORCE_EQ(number_dtype,
                       framework::proto::VarType::INT64,
