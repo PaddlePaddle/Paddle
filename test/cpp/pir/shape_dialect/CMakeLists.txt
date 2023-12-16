@@ -16,7 +16,14 @@ paddle_test(
   pir
   gtest)
 
-paddle_test(symbol_dim_expr_test SRCS symbol_dim_expr_test.cc DEPS pir gtest)
+paddle_test(
+  symbol_dim_expr_test
+  SRCS
+  symbol_dim_expr_test.cc
+  DEPS
+  pir
+  op_dialect_vjp
+  gtest)
 
 if(WITH_CINN)
   paddle_test(
