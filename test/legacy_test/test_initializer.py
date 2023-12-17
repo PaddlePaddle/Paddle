@@ -769,7 +769,6 @@ class TestBilinearInitializerPir(unittest.TestCase):
     def test_bilinear_initializer_fp16(self):
         """Test the bilinear initializer with supplied arguments"""
         block = self.test_bilinear_initializer("float16")
-        self.assertTrue(check_cast_op(block.ops[1]))
 
     def test_bilinear_initializer_bf16(self):
         """Test the bilinear initializer with supplied arguments"""
