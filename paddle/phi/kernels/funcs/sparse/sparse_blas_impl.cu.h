@@ -207,8 +207,6 @@ class CuSparseOutSpMatDescriptor {
   explicit CuSparseOutSpMatDescriptor(const phi::SparseCsrTensor& x,
                                       const phi::GPUContext& dev_ctx)
       : dev_ctx_(dev_ctx) {
-    std::cout << x.crows().dtype() << " " << x.cols().dtype() << " "
-              << x.values().dtype() << "\n";
     CreateOutCsrDescriptor<T>(x, dev_ctx_, &descriptor_);
     VLOG(6) << "Create csr cusparseSpMatDescr_t " << &descriptor_;
   }
@@ -233,8 +231,6 @@ class CuSparseSpMatDescriptor {
   explicit CuSparseSpMatDescriptor(const phi::SparseCsrTensor& x,
                                    const phi::GPUContext& dev_ctx)
       : dev_ctx_(dev_ctx) {
-    std::cout << x.crows().dtype() << " " << x.cols().dtype() << " "
-              << x.values().dtype() << "\n";
     PD_VISIT_BASE_INTEGRAL_TYPES(
         x.non_zero_crows().dtype(), "Csr CuSparseSpMatDescriptor", ([&] {
           CreateCsrDescriptor<T, data_t>(x, dev_ctx_, &descriptor_);
@@ -516,7 +512,7 @@ void SparseBlas<phi::GPUContext>::SPMM(bool transa,
 
   cudaDataType_t gpu_type = GetGpuDataType<T>();
   size_t buffer_size1 = 0, buffer_size2 = 0;
-  // void *tmp_buffer_ptr1=nullptr, *tmp_buffer_ptr2=nullptr;
+
   dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
     phi::dynload::cusparseSpGEMM_workEstimation(handle,
                                                 GetTransposeOperation(transa),
@@ -595,7 +591,6 @@ void SparseBlas<phi::GPUContext>::SPMM(bool transa,
     phi::dynload::cusparseSpMatGetSize(
         out_descriptor.descriptor(), &C_num_rows1, &C_num_cols1, &C_nnz1);
   });
-  std::cout << C_nnz1 << "\n";
 
   DenseTensor* mat_out_values = mat_out->mutable_values();
   DenseTensor* mat_out_crows = mat_out->mutable_crows();
@@ -609,9 +604,9 @@ void SparseBlas<phi::GPUContext>::SPMM(bool transa,
   meta_out_cols.set_dims(common::make_ddim({C_nnz1}));
   meta_out_values.set_dtype(mat_a.values().dtype());
   meta_out_values.set_dims(common::make_ddim({C_nnz1}));
-  dev_ctx_.template Alloc<T>(mat_out_values, C_nnz1 * sizeof(float));
-  dev_ctx_.template Alloc<int>(mat_out_cols, C_nnz1 * sizeof(int));
-  dev_ctx_.template Alloc<int>(mat_out_crows, (C_num_rows1 + 1) * sizeof(int));
+  dev_ctx_.template Alloc<T>(mat_out_values);
+  dev_ctx_.template Alloc<int>(mat_out_cols);
+  dev_ctx_.template Alloc<int>(mat_out_crows);
 
   T* out_values = mat_out_values->data<T>();
   int* out_crows = mat_out_crows->data<int>();
@@ -636,9 +631,6 @@ void SparseBlas<phi::GPUContext>::SPMM(bool transa,
                                       CUSPARSE_SPGEMM_DEFAULT,
                                       spgemm_descriptor.descriptor());
   });
-  for (int i = 0; i < mat_out_values->numel(); i++) {
-    std::cout << out_values[i] << "\n";
-  }
 }
 
 /************* DENSE*DENSE->SPARSE MATMUL ************/

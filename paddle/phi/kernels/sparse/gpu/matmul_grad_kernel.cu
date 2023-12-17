@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/sparse/sparse_blas.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 #include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
+#include "paddle/phi/kernels/sparse/unary_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace phi {
@@ -140,6 +141,49 @@ void MatmulCsrDenseGradKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+void MatmulCsrCsrGradKernel(const Context& dev_ctx,
+                            const SparseCsrTensor& x,
+                            const SparseCsrTensor& y,
+                            const SparseCsrTensor& dout,
+                            SparseCsrTensor* dx,
+                            SparseCsrTensor* dy) {
+#if CUDA_VERSION >= 11000
+  auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
+  // dx{SparseCsr} = dout{SparseCsr} * y'{SparseCsr}
+  if (dx) {
+    auto dims_numel = y.dims().size();
+    SparseCsrTensor tmp_y;
+    if (dims_numel == 2) {
+      tmp_y = TransposeCsr<T, Context>(dev_ctx, y, {1, 0});
+    } else {
+      tmp_y = TransposeCsr<T, Context>(dev_ctx, y, {0, 2, 1});
+    }
+
+    sparse_blas.SPMM(
+        false, false, static_cast<T>(1), dout, tmp_y, static_cast<T>(0), dx);
+  }
+
+  // dy{SparseCsr} = x'{SparseCsr} * dout{SparseCsr}
+  if (dy) {
+    auto dims_numel = x.dims().size();
+    SparseCsrTensor tmp_x;
+    if (dims_numel == 2) {
+      tmp_x = TransposeCsr<T, Context>(dev_ctx, x, {1, 0});
+    } else {
+      tmp_x = TransposeCsr<T, Context>(dev_ctx, x, {0, 2, 1});
+    }
+
+    sparse_blas.SPMM(
+        false, false, static_cast<T>(1), tmp_x, dout, static_cast<T>(0), dy);
+  }
+#else
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "backward of 'sparse.matmul' use cusparseSPGEMM, which is supported from "
+      "CUDA 11.3"));
+#endif
+}
+
+template <typename T, typename Context>
 void MaskedMatmulCsrGradKernel(const Context& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& y,
@@ -217,3 +261,13 @@ PD_REGISTER_KERNEL(masked_matmul_csr_grad,
                    phi::sparse::MaskedMatmulCsrGradKernel,
                    float,
                    double) {}
+
+PD_REGISTER_KERNEL(matmul_csr_csr_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::MatmulCsrCsrGradKernel,
+                   float,
+                   double) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+  kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+}

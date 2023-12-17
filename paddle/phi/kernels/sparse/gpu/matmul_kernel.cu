@@ -206,7 +206,7 @@ void MatmulKernelImpl(const Context& dev_ctx,
                       const TensorType& x,
                       const TensorType& y,
                       TensorType* out) {
-#if CUDA_VERSION >= 11000 || HIP_VERSION >= 402
+#if CUDA_VERSION >= 11000
   std::vector<int64_t> xdim_vec = common::vectorize(x.dims());
   std::vector<int64_t> ydim_vec = common::vectorize(y.dims());
   auto x_ndims = xdim_vec.size();
@@ -251,15 +251,9 @@ void MatmulKernelImpl(const Context& dev_ctx,
   sparse_blas.SPMM(
       false, false, static_cast<T>(1), x, y, static_cast<T>(0), out);
 #else
-#ifdef PADDLE_WITH_CUDA
   PADDLE_THROW(
       phi::errors::Unimplemented("forward of 'sparse.matmul' use cusparseSpMM, "
                                  "which is supported from CUDA 11.0"));
-#elif defined(PADDLE_WITH_HIP)
-  PADDLE_THROW(phi::errors::Unimplemented(
-      "forward of 'sparse.matmul' use rocsparse_spmm, "
-      "which is supported from ROCM 4.2.0"));
-#endif
 #endif
 }
 
