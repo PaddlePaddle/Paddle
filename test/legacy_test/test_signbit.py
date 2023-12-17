@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 
 
-def np_signbit(x: np.ndarray):
+def ref_np_signbit(x: np.ndarray):
     return np.signbit(x)
 
 
@@ -59,7 +59,7 @@ class TestSignbitAPI(unittest.TestCase):
             x = paddle.to_tensor(np_x)
             out = paddle.signbit(x)
             np_out = out.numpy()
-            out_expected = np_signbit(np_x)
+            out_expected = ref_np_signbit(np_x)
             np.testing.assert_allclose(np_out, out_expected, rtol=1e-05)
 
     def test_input_type(self):
