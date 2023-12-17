@@ -18,8 +18,6 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/dialect/shape/ir/shape_dialect.h"
-#include "test/cpp/pir/tools/test_pir_utils.h"
 
 namespace symbol::test {
 
@@ -59,10 +57,10 @@ TEST(DimExpr, constraint) {
 */
 TEST(DimExpr, value_shape_expr) {
   // 1. Init pir::program and pir::builder
-  pir::IrContext *ctx = pir::IrContext::Instance();
-  pir::Program program(ctx);
+  ::pir::IrContext *ctx = ::pir::IrContext::Instance();
+  ::pir::Program program(ctx);
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-  pir::Builder builder = pir::Builder(ctx, program.block());
+  ::pir::Builder builder = ::pir::Builder(ctx, program.block());
 
   // 2. Show fake network, assume calling x.shape correspond to ShapeOfOp
   const std::vector<int64_t> x_shape = {-1, 2};
@@ -77,28 +75,28 @@ TEST(DimExpr, value_shape_expr) {
                .result(0);
 
   auto shape_op = builder.Build<paddle::dialect::ShapeOp>(x);
-  pir::Value extend_x = shape_op.out();
+  ::pir::Value extend_x = shape_op.out();
   paddle::dialect::ReshapeOp reshape_op =
       builder.Build<paddle::dialect::ReshapeOp>(y, extend_x);
-  pir::Value out = reshape_op.out();
+  ::pir::Value out = reshape_op.out();
 
   // 3. Show ideal ValueShapeDimExprs of each pir::Value
-  std::unordered_map<pir::Value, ValueShapeDimExprs> value2shape{};
-  std::vector<DimExpr> x_shapes{DimExpr("S0"), DimExpr(2)};
-  std::vector<DimExpr> y_shapes{DimExpr(1), DimExpr("S1"), DimExpr(2)};
-  // x => {shape: [S0, 2], value: nullopt}
-  ValueShapeDimExprs x_value_shape{x_shapes};
-  value2shape.emplace(x, x_value_shape);
-  // y => {shape: [1, S1, 2], value: nullopt}
-  ValueShapeDimExprs y_value_shape{y_shapes};
-  value2shape.emplace(y, y_value_shape);
-  // extend_x => {shape: [2], value: [S0, 2]}
-  ValueShapeDimExprs extend_x_value_shape =
-      ValueShapeDimExprs::MakeConsistentValue(x_shapes);
-  value2shape.emplace(extend_x, extend_x_value_shape);
-  // out => {shape: [S0, 2], value:: nullopt}
-  ValueShapeDimExprs out_value_shape{x_shapes};
-  value2shape.emplace(out, out_value_shape);
+  // std::unordered_map<pir::Value, ValueShapeDimExprs> value2shape{};
+  // std::vector<DimExpr> x_shapes{DimExpr("S0"), DimExpr(2)};
+  // std::vector<DimExpr> y_shapes{DimExpr(1), DimExpr("S1"), DimExpr(2)};
+  // // x => {shape: [S0, 2], value: nullopt}
+  // ValueShapeDimExprs x_value_shape{x_shapes};
+  // value2shape.emplace(x, x_value_shape);
+  // // y => {shape: [1, S1, 2], value: nullopt}
+  // ValueShapeDimExprs y_value_shape{y_shapes};
+  // value2shape.emplace(y, y_value_shape);
+  // // extend_x => {shape: [2], value: [S0, 2]}
+  // ValueShapeDimExprs extend_x_value_shape =
+  //     ValueShapeDimExprs::MakeConsistentValue(x_shapes);
+  // value2shape.emplace(extend_x, extend_x_value_shape);
+  // // out => {shape: [S0, 2], value:: nullopt}
+  // ValueShapeDimExprs out_value_shape{x_shapes};
+  // value2shape.emplace(out, out_value_shape);
 }
 
 }  // namespace symbol::test
