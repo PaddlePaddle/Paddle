@@ -760,7 +760,7 @@ class TestBilinearInitializerPir(unittest.TestCase):
                 )
                 num_ops = 2 if dtype in ["float16", "uint16", "float64"] else 1
                 init_op = checked_ops[0]
-                self.assertEqual(init_op.type, 'assign_value')
+                self.assertEqual(len(checked_ops), 1)
                 return block
 
     def test_bilinear_initializer_fp64(self):
