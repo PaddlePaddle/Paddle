@@ -866,7 +866,7 @@ class TestNumpyArrayInitializer(unittest.TestCase):
 class TestNumpyArrayInitializerPir(unittest.TestCase):
     def setUp(self):
         self.init_uniform_op_name = 'pd_op.uniform'
-        self.init_normal_op_name = 'pd_op.gaussian'
+        self.init_normal_op_name = 'pd_op.assign_value'
         self.set_parameter_op_name = 'builtin.set_parameter'
 
     def get_init_ops_by_op_name(self, block, op_name):
