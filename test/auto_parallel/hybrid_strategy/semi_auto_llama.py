@@ -42,6 +42,8 @@ class Config:
     use_flash_attention = False
     sequence_parallel = False
     rope = True
+    recompute = False
+    recompute_granularity = None
 
 
 class RandomDataset(Dataset):
@@ -87,6 +89,9 @@ class TestLlamaAuto:
         self.pp = int(os.getenv("pp"))
         if os.getenv("use_sp") == "true":
             self.config.sequence_parallel = True
+        if os.getenv("recompute") == "true":
+            self.config.recompute = True
+        self.config.recompute_granularity = os.getenv("recompute_granularity")
         self.gradient_accumulation_steps = int(os.getenv("acc_step"))
 
         self.init_dist_env()

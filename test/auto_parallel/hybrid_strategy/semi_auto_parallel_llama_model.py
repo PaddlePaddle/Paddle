@@ -20,6 +20,7 @@ import paddle
 import paddle.distributed as dist
 import paddle.nn.functional as F
 from paddle import nn
+from paddle.distributed.fleet.utils import recompute
 
 try:
     from paddle.nn.functional.flash_attention import flash_attention
@@ -237,14 +238,31 @@ class LlamaAttentionAuto(nn.Layer):
         key_states = repeat_kv(key_states, self.num_key_value_groups)
         value_states = repeat_kv(value_states, self.num_key_value_groups)
 
-        outputs = scaled_dot_product_attention(
-            query_states,
-            self.config,
-            key_states,
-            value_states,
-            attention_mask,
-            output_attentions,
-        )
+        if (
+            self.config.recompute
+            and self.config.recompute_granularity == "core_attn"
+        ):
+            outputs = recompute(
+                scaled_dot_product_attention,
+                query_states,
+                self.config,
+                key_states,
+                value_states,
+                attention_mask,
+                output_attentions,
+                None,
+                False,
+            )
+        else:
+            outputs = scaled_dot_product_attention(
+                query_states,
+                self.config,
+                key_states,
+                value_states,
+                attention_mask,
+                output_attentions,
+            )
+
         if output_attentions:
             attn_output, attn_weights = outputs
         else:
@@ -380,14 +398,29 @@ class LlamaDecoderLayerAuto(nn.Layer):
         hidden_states = self.input_layernorm(hidden_states)
 
         # Self Attention
-        outputs = self.self_attn(
-            hidden_states,
-            position_ids,
-            past_key_value,
-            attention_mask,
-            output_attentions,
-            use_cache,
-        )
+        if (
+            self.config.recompute
+            and self.config.recompute_granularity == "full_attn"
+        ):
+            outputs = recompute(
+                self.self_attn,
+                hidden_states,
+                position_ids,
+                past_key_value,
+                attention_mask,
+                output_attentions,
+                use_cache,
+                None,
+            )
+        else:
+            outputs = self.self_attn(
+                hidden_states,
+                position_ids,
+                past_key_value,
+                attention_mask,
+                output_attentions,
+                use_cache,
+            )
         if type(outputs) is tuple:
             hidden_states = outputs[0]
         else:
@@ -634,14 +667,29 @@ class LlamaModelAuto(nn.Layer):
                     [dist.Shard(0), dist.Replicate()],
                 )
 
-            layer_outputs = decoder_layer(
-                hidden_states,
-                position_ids,
-                attention_mask,
-                output_attentions,
-                past_key_value,
-                use_cache,
-            )
+            if (
+                self.config.recompute
+                and self.config.recompute_granularity == "full"
+            ):
+                layer_outputs = recompute(
+                    decoder_layer,
+                    hidden_states,
+                    position_ids,
+                    attention_mask,
+                    output_attentions,
+                    past_key_value,
+                    use_cache,
+                    None,
+                )
+            else:
+                layer_outputs = decoder_layer(
+                    hidden_states,
+                    position_ids,
+                    attention_mask,
+                    output_attentions,
+                    past_key_value,
+                    use_cache,
+                )
             pre_ipp = decoder_layer.ipp
 
             if type(layer_outputs) is tuple:
@@ -982,7 +1030,7 @@ def scaled_dot_product_attention(
             alibi = alibi.reshape([bsz, num_heads, 1, -1])
             attn_weights = attn_weights + alibi
 
-        if attn_weights.shape != [bsz, num_heads, q_len, kv_seq_len]:
+        if list(attn_weights.shape) != [bsz, num_heads, q_len, kv_seq_len]:
             raise ValueError(
                 f"Attention weights should be of shape {(bsz, num_heads, q_len, kv_seq_len)}, but is"
                 f" {attn_weights.shape}"
@@ -995,7 +1043,7 @@ def scaled_dot_product_attention(
             attention_mask = get_triangle_upper_mask(attn_weights)
 
         attention_mask = attention_mask.reshape([bsz, 1, q_len, kv_seq_len])
-        if attention_mask.shape != [bsz, 1, q_len, kv_seq_len]:
+        if list(attention_mask.shape) != [bsz, 1, q_len, kv_seq_len]:
             raise ValueError(
                 f"Attention mask should be of shape {(bsz, 1, q_len, kv_seq_len)}, but is {attention_mask.shape}"
             )
