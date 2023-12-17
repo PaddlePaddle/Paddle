@@ -79,6 +79,7 @@ TEST(DimExpr, value_shape_expr) {
   paddle::dialect::ReshapeOp reshape_op =
       builder.Build<paddle::dialect::ReshapeOp>(y, extend_x);
   ::pir::Value out = reshape_op.out();
+  cout << out.use_count();
 
   // 3. Show ideal ValueShapeDimExprs of each pir::Value
   // std::unordered_map<pir::Value, ValueShapeDimExprs> value2shape{};
