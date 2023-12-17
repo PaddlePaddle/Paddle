@@ -257,9 +257,12 @@ class DistModel:
         returns the corresponding distributed main program of ``mode``.
 
         Args:
-            mode (str|None, optional): The mode of DistModel. It can be
-            'train', 'eval' or 'predict', if it is not set, the current
-            mode will be used.
+            mode (str|None, optional): Can be 'train' , 'eval' , 'predict' or None.
+                'train' : Return the distributed main program for training.
+                'eval' : Return the distributed main program for evaluation.
+                'predict' : Return the distributed main program for prediction.
+                None : The current mode of the DistModel will be used.
+                Default : None.
 
         Returns:
             The distributed main program of ``mode``.
@@ -273,9 +276,12 @@ class DistModel:
         which is used for initializing the parameters.
 
         Args:
-            mode (str|None, optional): The mode of DistModel. It can be
-            'train', 'eval' or 'predict', if it is not set, the current
-            mode will be used.
+            mode (str|None, optional): Can be 'train' , 'eval' , 'predict' or None.
+                'train' : Return the distributed startup program for training.
+                'eval' : Return the distributed startup program for evaluation.
+                'predict' : Return the distributed startup program for prediction.
+                None: The current mode of the DistModel will be used.
+                Default : None.
 
         Returns:
             The distributed startup program of ``mode``.
@@ -289,9 +295,12 @@ class DistModel:
         the whole variables and operators of the given ``layer``.
 
         Args:
-            mode (str|None, optional): The mode of DistModel. It can be
-            'train', 'eval' or 'predict', if it is not set, the current
-            mode will be used.
+            mode (str|None, optional): Can be 'train', 'eval', 'predict' or None.
+                'train' : Return the main program for training.
+                'eval' : Return the main program for evaluation.
+                'predict' : Return the main program for prediction.
+                None : The current mode of the DistModel will be used.
+                Default : None.
 
         Returns:
             The serial main program of ``mode``.
@@ -304,9 +313,12 @@ class DistModel:
         Get the corresponding serial startup program of ``mode``.
 
         Args:
-            mode (str|None, optional): The mode of DistModel. It can be
-            'train', 'eval' or 'predict', if it is not set, the current
-            mode will be used.
+            mode (str|None, optional): Can be 'train' , 'eval' , 'predict' or None.
+                'train' : Return the serial startup program for training.
+                'eval' : Return the serial startup program for evaluation.
+                'predict' : Return the serial startup program for prediction.
+                None : The current mode of the DistModel will be used.
+                Default : None.
 
         Returns:
             The serial startup program of ``mode``.
@@ -510,9 +522,10 @@ class Strategy(auto_strategy.BaseConfig):
     ``pipeline`` is used to configure the pipeline parallelism strategy.
 
     Args:
-        config(dict|None, optional): If ``config`` is None, use default configurations.
-        If it is a dict, the items inside the dict will be used to set the configurations,
-        and the others remain the default values.
+        config(dict|None, optional): The user-defined configurations.
+            If ``config`` is None, use default configurations. If it is
+            a dict, the items inside the dict will be used to set the
+            configurations, and the others remain the default values.
 
     Examples:
         .. code-block:: python
@@ -716,12 +729,8 @@ def to_static(
             pipeline parallelism). Default: None.
 
     Returns:
-        - DistModel: A DistModel that contains corresponding computational graph
-            for the input ``layer`` and provides APIs for training, evaluation
-            and prediction.
-
-        - DistributedDataLoader: An optimized data loader that can be used
-            to generate data.
+        DistModel: A DistModel instance converted the input ``layer``.
+        DistributedDataLoader: An optimized data loader that can be used to generate data.
 
     Examples:
         .. code-block:: python
