@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.base import core
 
 
 def ref_np_signbit(x: np.ndarray):
@@ -25,7 +26,7 @@ def ref_np_signbit(x: np.ndarray):
 
 class TestSignbitAPI(unittest.TestCase):
     def setUp(self) -> None:
-        self.support_dtypes = [
+        self.cuda_support_dtypes = [
             'float16',
             'float32',
             'float64',
@@ -35,32 +36,53 @@ class TestSignbitAPI(unittest.TestCase):
             'int32',
             'int64',
         ]
-        if paddle.device.get_device() == 'cpu':
-            self.support_dtypes = [
-                'float32',
-                'float64',
-                'uint8',
-                'int8',
-                'int16',
-                'int32',
-                'int64',
-            ]
+        self.cpu_support_dtypes = [
+            'float32',
+            'float64',
+            'uint8',
+            'int8',
+            'int16',
+            'int32',
+            'int64',
+        ]
+        self.place = [paddle.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.place.append(paddle.CUDAPlace(0))
 
     def test_dtype(self):
-        for dtype in self.support_dtypes:
-            x = paddle.to_tensor(
-                np.random.randint(-10, 10, size=[12, 20, 2]).astype(dtype)
-            )
-            paddle.signbit(x)
+        def run(place):
+            paddle.disable_static(place)
+            if type(place) == type(paddle.CUDAPlace(0)):
+                support_dtypes = self.cuda_support_dtypes
+            else:
+                support_dtypes = self.cpu_support_dtypes
+
+            for dtype in support_dtypes:
+                x = paddle.to_tensor(
+                    np.random.randint(-10, 10, size=[12, 20, 2]).astype(dtype)
+                )
+                paddle.signbit(x)
+        for place in self.place:
+            run(place)
 
     def test_float(self):
-        for dtype in self.support_dtypes:
-            np_x = np.random.randint(-10, 10, size=[12, 20, 2]).astype(dtype)
-            x = paddle.to_tensor(np_x)
-            out = paddle.signbit(x)
-            np_out = out.numpy()
-            out_expected = ref_np_signbit(np_x)
-            np.testing.assert_allclose(np_out, out_expected, rtol=1e-05)
+        def run(place):
+            paddle.disable_static(place)
+            if type(place) == type(paddle.CUDAPlace(0)):
+                support_dtypes = self.cuda_support_dtypes
+            else:
+                support_dtypes = self.cpu_support_dtypes
+
+            for dtype in support_dtypes:
+                np_x = np.random.randint(-10, 10, size=[12, 20, 2]).astype(dtype)
+                x = paddle.to_tensor(np_x)
+                out = paddle.signbit(x)
+                np_out = out.numpy()
+                out_expected = ref_np_signbit(np_x)
+                np.testing.assert_allclose(np_out, out_expected, rtol=1e-05)
+        for place in self.place:
+            run(place)
+
 
     def test_input_type(self):
         with self.assertRaises(TypeError):
