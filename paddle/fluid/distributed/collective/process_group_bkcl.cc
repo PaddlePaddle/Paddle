@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/distributed/collective/process_group_bkcl.h"
 
+#include "paddle/common/errors.h"
 #include "paddle/fluid/distributed/collective/bkcl_tools.h"
 #include "paddle/fluid/distributed/collective/common.h"
 #include "paddle/fluid/framework/convert_utils.h"
@@ -25,7 +26,6 @@
 #include "paddle/phi/core/distributed/check/static_check.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 
 namespace paddle {
 namespace distributed {
@@ -110,7 +110,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Recv(
       [&](phi::distributed::BKCLCommContext* comm_context,
           XPUStream stream,
           int rank_in_group) {
-        VLOG(3) << "[bkcl_recv] "
+        VLOG(3) << "bkcl_recv "
                 << "recvbuff: " << tensor->data()
                 << ", count: " << tensor->numel() << ", datatype: "
                 << BKCLDTypeToString(phi::ToBKCLDataType(tensor->dtype()))
@@ -146,7 +146,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Send(
       [&](phi::distributed::BKCLCommContext* comm_context,
           XPUStream stream,
           int rank_in_group) {
-        VLOG(3) << "[bkcl_send] "
+        VLOG(3) << "bkcl_send "
                 << "sendbuff: " << tensor_maybe_partial.data()
                 << ", count: " << tensor_maybe_partial.numel() << ", datatype: "
                 << BKCLDTypeToString(
@@ -360,7 +360,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Broadcast(
       [&](phi::distributed::BKCLCommContext* comm_context, XPUStream stream) {
         int root = opts.source_rank + opts.source_root;
 
-        VLOG(3) << "[bkcl_broadcast] "
+        VLOG(3) << "bkcl_broadcast "
                 << "sendbuff: " << tensor_tmp.data()
                 << ", recvbuff: " << out_tensor->data()
                 << ", count: " << tensor_tmp.numel() << ", datatype: "
@@ -397,7 +397,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllGather(
                                                      phi::AllocationType::XPU);
   return Collective(
       [&](phi::distributed::BKCLCommContext* comm_context, XPUStream stream) {
-        VLOG(3) << "bkcl_all_gather"
+        VLOG(3) << "bkcl_all_gather "
                 << "sendbuff: " << in_tensor_maybe_partial.data()
                 << ", recvbuff: " << out_tensor->data()
                 << ", count: " << in_tensor_maybe_partial.numel()
@@ -427,7 +427,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Reduce(
       paddle::experimental::CheckAndTrans2NewContiguousTensor(in_tensor);
   return Collective(
       [&](phi::distributed::BKCLCommContext* comm_context, XPUStream stream) {
-        VLOG(3) << "[bkcl_reduce] "
+        VLOG(3) << "bkcl_reduce "
                 << "sendbuff: " << tensor_tmp.data()
                 << ", recvbuff: " << out_tensor->data()
                 << ", count: " << tensor_tmp.numel() << ", datatype: "
@@ -461,7 +461,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::ReduceScatter(
       paddle::experimental::CheckAndTrans2NewContiguousTensor(in_tensor);
   return Collective(
       [&](phi::distributed::BKCLCommContext* comm_context, XPUStream stream) {
-        VLOG(3) << "[bkcl_reduce_scatter] "
+        VLOG(3) << "bkcl_reduce_scatter "
                 << "sendbuff: " << tensor_tmp.data()
                 << ", recvbuff: " << out_tensor->data()
                 << ", count: " << tensor_tmp.numel() << ", datatype: "

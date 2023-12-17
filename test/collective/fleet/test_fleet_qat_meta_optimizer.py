@@ -33,7 +33,7 @@ class SimpleNet(nn.Layer):
 
     def forward(self, x):
         x = self.linear1(x)
-        x = self.linear2(x)
+        x = self.linear2(x) + x
         x = self.linear3(x)
         return x
 
@@ -91,10 +91,12 @@ class TestFleetWithQAT(unittest.TestCase):
         self.assertEqual(
             ops_type.count('matmul_v2'), 3
         )  # SimpleNet has 3 linear layers
-        self.assertEqual(ops_type.count('quantize_linear'), 6)
-        # There are three linear layers and each layer has this op in weight.
+        self.assertEqual(ops_type.count('quantize_linear'), 7)
+        # There are three linear layers and each layer has two quantize linear.
+        # Also, the input of skip connection has one quantize linear.
+        # Hence, there are 3 * 2 + 1 = 7 quantize linear.
         self.assertEqual(
-            ops_type.count('dequantize_linear'), 6
+            ops_type.count('dequantize_linear'), 7
         )  # Dequantize Op will follow quantize op (fake quantize), so the number is same.
 
     def test_fleet_with_qat(self):
@@ -113,9 +115,6 @@ class TestFleetWithQAT(unittest.TestCase):
             else base.CPUPlace()
         )
         eval_prog = train_prog.clone(for_test=True)
-        optimizer.qat_init(
-            place, scope=paddle.static.global_scope(), test_program=eval_prog
-        )
         self.execute_program(train_prog, startup_prog, input_x, input_y)
         self.valid_program(train_prog, eval_prog)
 
@@ -124,17 +123,6 @@ class TestFleetWithAMPQAT(TestFleetWithQAT):
     def setup_strategy(self, strategy):
         strategy.qat = True
         strategy.amp = True
-
-    def valid_program(self, train_prog, eval_prog):
-        ops_type = [op.type for op in train_prog.block(0).ops]
-        self.assertEqual(
-            ops_type.count('matmul_v2'), 3
-        )  # SimpleNet has 3 linear layers
-        self.assertEqual(ops_type.count('quantize_linear'), 6)
-        # There are three linear layers and each layer has this op in weight.
-        self.assertEqual(
-            ops_type.count('dequantize_linear'), 6
-        )  # Dequantize Op will follow quantize op (fake quantize), so the number is same.
 
 
 if __name__ == "__main__":

@@ -60,7 +60,7 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
                            const std::string& rng_name) {
   // q
   // [batch_size, seq_len_q, num_heads, head_dim]
-  auto q_shape = phi::vectorize(q.dims());
+  auto q_shape = common::vectorize(q.dims());
   int q_ndim = q_shape.size();
   auto q_dist_attr = q.dist_attr();
   int q_dims_mapping_size = q_dist_attr.dims_mapping().size();
@@ -85,7 +85,7 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
 
   // k
   // [batch_size, seq_len_kv, num_heads, head_dim]
-  auto k_shape = phi::vectorize(k.dims());
+  auto k_shape = common::vectorize(k.dims());
   int k_ndim = k_shape.size();
   auto k_dist_attr = k.dist_attr();
   int k_dims_mapping_size = k_dist_attr.dims_mapping().size();
@@ -95,10 +95,10 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
       phi::errors::InvalidArgument("The Tensor k's shape must be [batch_size, "
                                    "seq_len_kv, num_heads, head_dim]"));
 
-  auto k_batch_size = q_shape[0];
-  auto k_seq_len = q_shape[1];
-  auto k_num_heads = q_shape[2];
-  auto k_head_dim = q_shape[3];
+  auto k_batch_size = k_shape[0];
+  auto k_seq_len = k_shape[1];
+  auto k_num_heads = k_shape[2];
+  auto k_head_dim = k_shape[3];
 
   PADDLE_ENFORCE_EQ(
       batch_size,
@@ -112,7 +112,7 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
       num_heads,
       k_num_heads,
       phi::errors::InvalidArgument(
-          "The Tensor q and k's k_num_heads [%d] vs [%d] are not matched.",
+          "The Tensor q and k's num_heads [%d] vs [%d] are not matched.",
           num_heads,
           k_num_heads));
 
@@ -134,7 +134,7 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
 
   // v
   // [batch_size, seq_len_kv, num_heads, head_dim]
-  auto v_shape = phi::vectorize(v.dims());
+  auto v_shape = common::vectorize(v.dims());
   int v_ndim = v_shape.size();
   auto v_dist_attr = v.dist_attr();
   int v_dims_mapping_size = v_dist_attr.dims_mapping().size();
@@ -160,7 +160,7 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
       num_heads,
       v_num_heads,
       phi::errors::InvalidArgument(
-          "The Tensor q and v's k_num_heads [%d] vs [%d] are not matched.",
+          "The Tensor q and v's num_heads [%d] vs [%d] are not matched.",
           num_heads,
           v_num_heads));
 
@@ -175,7 +175,7 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
   PADDLE_ENFORCE_EQ(
       v_ndim,
       v_dims_mapping_size,
-      phi::errors::InvalidArgument("The Tensor q's rank [%d] and Its "
+      phi::errors::InvalidArgument("The Tensor v's rank [%d] and Its "
                                    "dims_mapping size [%d] are not matched.",
                                    v_ndim,
                                    v_dims_mapping_size));
@@ -183,9 +183,9 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
   // fixed_seed_offset
   // TODO(liuzhenhai): process fixed_seed_offset and attn_mask
   auto fixed_seed_offset_dist_attr = fixed_seed_offset.dist_attr();
-  auto fixed_seed_offset_shape = phi::vectorize(fixed_seed_offset.dims());
+  auto fixed_seed_offset_shape = common::vectorize(fixed_seed_offset.dims());
   // attn_mask
-  auto attn_mask_shape = phi::vectorize(attn_mask.dims());
+  auto attn_mask_shape = common::vectorize(attn_mask.dims());
   int mask_ndim = attn_mask_shape.size();
   auto attn_mask_dist_attr = attn_mask.dist_attr();
   int mask_dims_mapping_size = attn_mask_dist_attr.dims_mapping().size();
@@ -289,7 +289,7 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
                                bool causal) {
   // q
   // [batch_size, seq_len_q, num_heads, head_dim]
-  auto q_shape = phi::vectorize(q.dims());
+  auto q_shape = common::vectorize(q.dims());
   int q_ndim = q_shape.size();
   auto q_dist_attr = q.dist_attr();
   int q_dims_mapping_size = q_dist_attr.dims_mapping().size();
@@ -314,7 +314,7 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
 
   // k
   // [batch_size, seq_len_kv, num_heads, head_dim]
-  auto k_shape = phi::vectorize(k.dims());
+  auto k_shape = common::vectorize(k.dims());
   int k_ndim = k_shape.size();
   auto k_dist_attr = k.dist_attr();
   int k_dims_mapping_size = k_dist_attr.dims_mapping().size();
@@ -324,10 +324,10 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
       phi::errors::InvalidArgument("The Tensor k's shape must be [batch_size, "
                                    "seq_len_kv, num_heads, head_dim]"));
 
-  auto k_batch_size = q_shape[0];
-  auto k_seq_len = q_shape[1];
-  auto k_num_heads = q_shape[2];
-  auto k_head_dim = q_shape[3];
+  auto k_batch_size = k_shape[0];
+  auto k_seq_len = k_shape[1];
+  auto k_num_heads = k_shape[2];
+  auto k_head_dim = k_shape[3];
 
   PADDLE_ENFORCE_EQ(
       batch_size,
@@ -341,7 +341,7 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
       num_heads,
       k_num_heads,
       phi::errors::InvalidArgument(
-          "The Tensor q and k's k_num_heads [%d] vs [%d] are not matched.",
+          "The Tensor q and k's num_heads [%d] vs [%d] are not matched.",
           num_heads,
           k_num_heads));
 
@@ -363,7 +363,7 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
 
   // v
   // [batch_size, seq_len_kv, num_heads, head_dim]
-  auto v_shape = phi::vectorize(v.dims());
+  auto v_shape = common::vectorize(v.dims());
   int v_ndim = v_shape.size();
   auto v_dist_attr = v.dist_attr();
   int v_dims_mapping_size = v_dist_attr.dims_mapping().size();
@@ -411,10 +411,10 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
 
   // fixed_seed_offset
   auto seed_offset_dist_attr = seed_offset.dist_attr();
-  auto seed_offset_shape = phi::vectorize(seed_offset.dims());
+  auto seed_offset_shape = common::vectorize(seed_offset.dims());
 
   // attn_mask
-  auto attn_mask_shape = phi::vectorize(attn_mask.dims());
+  auto attn_mask_shape = common::vectorize(attn_mask.dims());
   int mask_ndim = attn_mask_shape.size();
   auto attn_mask_dist_attr = attn_mask.dist_attr();
   int mask_dims_mapping_size = attn_mask_dist_attr.dims_mapping().size();
@@ -428,13 +428,13 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
                                      mask_dims_mapping_size));
   }
 
-  auto out_shape = phi::vectorize(out.dims());
+  auto out_shape = common::vectorize(out.dims());
   auto out_dist_attr = out.dist_attr();
 
-  auto softmax_lse_shape = phi::vectorize(softmax_lse.dims());
+  auto softmax_lse_shape = common::vectorize(softmax_lse.dims());
   auto softmax_lse_dist_attr = softmax_lse.dist_attr();
 
-  auto out_grad_shape = phi::vectorize(out_grad.dims());
+  auto out_grad_shape = common::vectorize(out_grad.dims());
   auto out_grad_dist_attr = out_grad.dist_attr();
 
   std::string alphabet = "abcdefghijklmnopqrstuvwxyz";

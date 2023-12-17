@@ -68,9 +68,8 @@ from .communication import (  # noqa: F401
 
 from .auto_parallel.process_mesh import ProcessMesh
 
+from paddle.base.core import ReduceType, Placement
 from .auto_parallel.placement_type import (
-    ReduceType,
-    Placement,
     Shard,
     Replicate,
     Partial,
@@ -84,6 +83,9 @@ from .auto_parallel.api import (
     dtensor_from_fn,
     reshard,
     shard_layer,
+    shard_optimizer,
+    to_static,
+    Strategy,
 )
 
 from .fleet import BoxPSDataset  # noqa: F401
@@ -102,6 +104,9 @@ from .sharding import (  # noqa: F401
 )
 
 from . import rpc  # noqa: F401
+
+from .checkpoint.save_state_dict import save_state_dict
+from .checkpoint.load_state_dict import load_state_dict
 
 __all__ = [
     "io",
@@ -157,4 +162,9 @@ __all__ = [
     "Shard",
     "Replicate",
     "Partial",
+    "save_state_dict",
+    "load_state_dict",
+    "shard_optimizer",
+    "to_static",
+    "Strategy",
 ]

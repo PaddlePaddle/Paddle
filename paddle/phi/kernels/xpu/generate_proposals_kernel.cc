@@ -88,16 +88,16 @@ std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
   SortDescending<T>(dev_ctx, scores_slice, &index_sort, pre_nms_top_n);
 
   DenseTensor scores_sel, bbox_sel, anchor_sel, var_sel;
-  scores_sel.Resize(phi::make_ddim({index_sort.numel(), 1}));
+  scores_sel.Resize(common::make_ddim({index_sort.numel(), 1}));
   dev_ctx.template Alloc<T>(&scores_sel);
 
-  bbox_sel.Resize(phi::make_ddim({index_sort.numel(), 4}));
+  bbox_sel.Resize(common::make_ddim({index_sort.numel(), 4}));
   dev_ctx.template Alloc<T>(&bbox_sel);
 
-  anchor_sel.Resize(phi::make_ddim({index_sort.numel(), 4}));
+  anchor_sel.Resize(common::make_ddim({index_sort.numel(), 4}));
   dev_ctx.template Alloc<T>(&anchor_sel);
 
-  var_sel.Resize(phi::make_ddim({index_sort.numel(), 4}));
+  var_sel.Resize(common::make_ddim({index_sort.numel(), 4}));
   dev_ctx.template Alloc<T>(&var_sel);
 
   int r = xpu::gather<T>(dev_ctx.x_context(),
@@ -145,7 +145,7 @@ std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
 
   // 2. box decode and clipping
   DenseTensor proposals;
-  proposals.Resize(phi::make_ddim({index_sort.numel(), 4}));
+  proposals.Resize(common::make_ddim({index_sort.numel(), 4}));
   dev_ctx.template Alloc<T>(&proposals);
 
   r = xpu::box_decoder<T>(dev_ctx.x_context(),
@@ -161,10 +161,10 @@ std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
 
   // 3. filter
   DenseTensor keep_index, keep_num_t;
-  keep_index.Resize(phi::make_ddim({pre_nms_num}));
+  keep_index.Resize(common::make_ddim({pre_nms_num}));
   dev_ctx.template Alloc<int>(&keep_index);
 
-  keep_num_t.Resize(phi::make_ddim({1}));
+  keep_num_t.Resize(common::make_ddim({1}));
   dev_ctx.template Alloc<int>(&keep_num_t);
   min_size = std::max(min_size, 1.0f);
   r = xpu::remove_small_boxes<T>(dev_ctx.x_context(),
@@ -191,17 +191,17 @@ std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
   // Handle the case when there is no keep index left
   if (keep_num == 0) {
     phi::funcs::SetConstant<phi::XPUContext, T> set_zero;
-    proposals_filter.Resize(phi::make_ddim({1, 4}));
+    proposals_filter.Resize(common::make_ddim({1, 4}));
     dev_ctx.template Alloc<T>(&proposals_filter);
-    scores_filter.Resize(phi::make_ddim({1, 1}));
+    scores_filter.Resize(common::make_ddim({1, 1}));
     dev_ctx.template Alloc<T>(&scores_filter);
     set_zero(dev_ctx, &proposals_filter, static_cast<T>(0));
     set_zero(dev_ctx, &scores_filter, static_cast<T>(0));
     return std::make_pair(proposals_filter, scores_filter);
   }
-  proposals_filter.Resize(phi::make_ddim({keep_num, 4}));
+  proposals_filter.Resize(common::make_ddim({keep_num, 4}));
   dev_ctx.template Alloc<T>(&proposals_filter);
-  scores_filter.Resize(phi::make_ddim({keep_num, 1}));
+  scores_filter.Resize(common::make_ddim({keep_num, 1}));
   dev_ctx.template Alloc<T>(&scores_filter);
   r = xpu::gather<T>(dev_ctx.x_context(),
                      proposals.data<T>(),
@@ -245,9 +245,9 @@ std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
   }
 
   DenseTensor scores_nms, proposals_nms;
-  proposals_nms.Resize(phi::make_ddim({keep_index.numel(), 4}));
+  proposals_nms.Resize(common::make_ddim({keep_index.numel(), 4}));
   dev_ctx.template Alloc<T>(&proposals_nms);
-  scores_nms.Resize(phi::make_ddim({keep_index.numel(), 1}));
+  scores_nms.Resize(common::make_ddim({keep_index.numel(), 1}));
   dev_ctx.template Alloc<T>(&scores_nms);
   r = xpu::gather<T>(dev_ctx.x_context(),
                      proposals_filter.data<T>(),
@@ -307,10 +307,10 @@ void GenerateProposalsKernel(const Context& dev_ctx,
   int w_bbox = bbox_dim[3];
 
   DenseTensor bbox_deltas_swap, scores_swap;
-  bbox_deltas_swap.Resize(phi::make_ddim({num, h_bbox, w_bbox, c_bbox}));
+  bbox_deltas_swap.Resize(common::make_ddim({num, h_bbox, w_bbox, c_bbox}));
   dev_ctx.template Alloc<T>(&bbox_deltas_swap);
 
-  scores_swap.Resize(phi::make_ddim({num, h_score, w_score, c_score}));
+  scores_swap.Resize(common::make_ddim({num, h_score, w_score, c_score}));
   dev_ctx.template Alloc<T>(&scores_swap);
 
   std::vector<int> axis = {0, 2, 3, 1};
@@ -330,14 +330,14 @@ void GenerateProposalsKernel(const Context& dev_ctx,
 
   DenseTensor tmp_anchors = anchors;
   DenseTensor tmp_variances = variances;
-  tmp_anchors.Resize(phi::make_ddim({tmp_anchors.numel() / 4, 4}));
-  tmp_variances.Resize(phi::make_ddim({tmp_variances.numel() / 4, 4}));
+  tmp_anchors.Resize(common::make_ddim({tmp_anchors.numel() / 4, 4}));
+  tmp_variances.Resize(common::make_ddim({tmp_variances.numel() / 4, 4}));
 
   // output
-  rpn_rois->Resize(phi::make_ddim({bbox_deltas.numel() / 4, 4}));
+  rpn_rois->Resize(common::make_ddim({bbox_deltas.numel() / 4, 4}));
   dev_ctx.template Alloc<T>(rpn_rois);
 
-  rpn_roi_probs->Resize(phi::make_ddim({scores.numel(), 1}));
+  rpn_roi_probs->Resize(common::make_ddim({scores.numel(), 1}));
   dev_ctx.template Alloc<T>(rpn_roi_probs);
 
   auto place = dev_ctx.GetPlace();
@@ -352,8 +352,9 @@ void GenerateProposalsKernel(const Context& dev_ctx,
     DenseTensor bbox_deltas_slice = bbox_deltas_swap.Slice(i, i + 1);
     DenseTensor scores_slice = scores_swap.Slice(i, i + 1);
 
-    bbox_deltas_slice.Resize(phi::make_ddim({h_bbox * w_bbox * c_bbox / 4, 4}));
-    scores_slice.Resize(phi::make_ddim({h_score * w_score * c_score, 1}));
+    bbox_deltas_slice.Resize(
+        common::make_ddim({h_bbox * w_bbox * c_bbox / 4, 4}));
+    scores_slice.Resize(common::make_ddim({h_score * w_score * c_score, 1}));
 
     std::pair<DenseTensor, DenseTensor> tensor_pair =
         ProposalForOneImage<T>(dev_ctx,
@@ -392,7 +393,7 @@ void GenerateProposalsKernel(const Context& dev_ctx,
   }
 
   if (rpn_rois_num != nullptr) {
-    rpn_rois_num->Resize(phi::make_ddim({num}));
+    rpn_rois_num->Resize(common::make_ddim({num}));
     dev_ctx.template Alloc<int>(rpn_rois_num);
     int* num_data = rpn_rois_num->data<int>();
     memory_utils::Copy(
@@ -403,8 +404,8 @@ void GenerateProposalsKernel(const Context& dev_ctx,
   lod.emplace_back(offset);
   rpn_rois->set_lod(lod);
   rpn_roi_probs->set_lod(lod);
-  rpn_rois->Resize(phi::make_ddim({num_proposals, 4}));
-  rpn_roi_probs->Resize(phi::make_ddim({num_proposals, 1}));
+  rpn_rois->Resize(common::make_ddim({num_proposals, 4}));
+  rpn_roi_probs->Resize(common::make_ddim({num_proposals, 1}));
 }
 }  // namespace phi
 

@@ -1762,8 +1762,8 @@
   optional : boxes_num
 
 - backward_op : put_along_axis_grad
-  forward : put_along_axis (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign") -> Tensor(out)
-  args : (Tensor arr, Tensor indices, Tensor out_grad, int axis, str reduce)
+  forward : put_along_axis (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign", bool include_self = true) -> Tensor(out)
+  args : (Tensor arr, Tensor indices, Tensor values, Tensor out, Tensor out_grad, int axis, str reduce, bool include_self)
   output : Tensor(arr_grad), Tensor(values_grad)
   infer_meta :
     func : GeneralBinaryGradInferMeta
@@ -2282,6 +2282,7 @@
   infer_meta :
     func : KernelWithXShapeInferMeta
     param: [xshape, out_grad]
+    spmd_rule : SqueezeGradInferSpmd
   kernel :
     func : squeeze_grad
     data_type : out_grad
@@ -2527,6 +2528,7 @@
   infer_meta :
     func : KernelWithXShapeInferMeta
     param: [xshape, out_grad]
+    spmd_rule : UnsqueezeGradInferSpmd
   kernel :
     func : unsqueeze_grad
     param : [xshape, out_grad]

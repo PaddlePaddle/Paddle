@@ -38,7 +38,6 @@
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/core/distributed/xccl_comm_context.h"
 #endif
-
 #ifdef PADDLE_WITH_XPU_BKCL
 #include "paddle/phi/backends/xpu/xpu_info.h"
 #include "paddle/phi/core/distributed/bkcl_comm_context.h"
@@ -201,6 +200,9 @@ void CommContextManager::CreateBKCLCommContext(
     std::memcpy(&bkcl_id, bkcl_id_wrapper.data(), bkcl_id_wrapper.size());
   }
 
+  VLOG(3) << "init BKCLCommContext rank: " << rank << ", size: " << size
+          << ", unique_comm_key: " << unique_comm_key
+          << ", unique_key: " << unique_key;
   auto bkcl_comm_context =
       std::make_unique<BKCLCommContext>(rank, size, bkcl_id);
 

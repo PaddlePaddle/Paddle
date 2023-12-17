@@ -39,9 +39,10 @@ namespace hlir {
 namespace framework {
 namespace pir {
 
+class PrettyNamer;
 using GroupPtr = std::shared_ptr<Group>;
 
-using common::Target;
+using cinn::common::Target;
 class OpLowererImpl;
 
 typedef bool (OpLowererImpl::*ScheduleDetermineFunction)(::pir::Operation*);
@@ -74,6 +75,8 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
       bool apply_op_schedule = false,
       bool apply_group_schedule = true,
       bool apply_pass = true);
+
+  void InsertNameGeneToScope(std::shared_ptr<Scope> scope);
 
  private:
   /**
@@ -162,6 +165,7 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
    * @return The lowered func bodies of Op set.
    */
   std::vector<ir::Expr> LowerOps(
+      const GroupPtr& group,
       const std::vector<::pir::Operation*>& ops,
       bool apply_op_schedule,
       ScheduleDetermineFunction schedule_determine_func,
@@ -218,7 +222,33 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
   inline bool DyShapeScheduleDetermineFunction(::pir::Operation* op);
 
  private:
+  std::vector<ir::Tensor> CollectInputTensor(
+      const GroupPtr& group,
+      const ::pir::Operation* op,
+      std::vector<ir::Tensor>* func_args,
+      std::unordered_map<::pir::Value, ir::Tensor>* tensor_map);
+
+  ir::Tensor GetTensor(const GroupPtr& group, const ::pir::Value& value);
+
+  void CollectOutputInfo(::pir::Operation* op,
+                         std::vector<Type>* out_types,
+                         std::vector<std::vector<int>>* out_shapes);
+
+  std::string ValueName(::pir::Value value);
+
+  common::Type GetTensorDtype(
+      const std::string& name,
+      const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map);
+
+  bool IsInTensorMap(
+      const std::string& name,
+      const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map);
+
+  common::Type GetTensorDtype(const ::pir::Value& value);
+
   Target target_;
+
+  PrettyNamer* name_gene_;
 };
 
 }  // namespace pir

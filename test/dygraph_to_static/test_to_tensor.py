@@ -21,8 +21,6 @@ from dygraph_to_static_utils import (
     ToStaticMode,
     disable_test_case,
     test_legacy_and_pt_and_pir,
-    test_legacy_only,
-    test_pir_only,
 )
 
 import paddle
@@ -184,6 +182,7 @@ class TestToTensorReturnVal(Dy2StTestBase):
 
 
 class TestStatic(Dy2StTestBase):
+    @test_legacy_and_pt_and_pir
     def test_static(self):
         paddle.enable_static()
         main_prog = paddle.static.Program()
@@ -194,6 +193,7 @@ class TestStatic(Dy2StTestBase):
             else:
                 place = paddle.CPUPlace()
 
+            paddle.set_default_dtype("float64")
             x = paddle.to_tensor(
                 paddle.randn([5, 2]),
                 dtype='float64',
@@ -201,7 +201,8 @@ class TestStatic(Dy2StTestBase):
                 place=place,
             )
 
-            out = paddle.static.nn.fc(x, 1)
+            fc_net = paddle.nn.Linear(2, 1)
+            out = fc_net(x)
 
             sgd = paddle.optimizer.SGD()
             sgd.minimize(paddle.mean(out))
@@ -212,29 +213,27 @@ class TestStatic(Dy2StTestBase):
 
 
 class TestInt16(Dy2StTestBase):
-    @test_legacy_only
+    @test_legacy_and_pt_and_pir
     def test_static(self):
         import numpy as np
 
         paddle.enable_static()
         data = np.array([1, 2], dtype="int16")
         x = paddle.to_tensor(data)
-        self.assertTrue(x.dtype == paddle.framework.core.VarDesc.VarType.INT16)
+        if paddle.base.framework.use_pir_api():
+            self.assertTrue(x.dtype == paddle.base.libpaddle.DataType.INT16)
+        else:
+            self.assertTrue(
+                x.dtype == paddle.framework.core.VarDesc.VarType.INT16
+            )
 
         y = paddle.to_tensor([1, 2], dtype="int16")
-        self.assertTrue(y.dtype == paddle.framework.core.VarDesc.VarType.INT16)
-
-    @test_pir_only
-    def test_static_pir(self):
-        import numpy as np
-
-        paddle.enable_static()
-        data = np.array([1, 2], dtype="int16")
-        x = paddle.to_tensor(data)
-        self.assertTrue(x.dtype == paddle.base.libpaddle.DataType.INT16)
-
-        y = paddle.to_tensor([1, 2], dtype="int16")
-        self.assertTrue(y.dtype == paddle.base.libpaddle.DataType.INT16)
+        if paddle.base.framework.use_pir_api():
+            self.assertTrue(y.dtype == paddle.base.libpaddle.DataType.INT16)
+        else:
+            self.assertTrue(
+                y.dtype == paddle.framework.core.VarDesc.VarType.INT16
+            )
 
 
 if __name__ == '__main__':

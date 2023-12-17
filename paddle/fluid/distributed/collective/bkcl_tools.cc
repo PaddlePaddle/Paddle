@@ -54,7 +54,7 @@ std::string BKCLDTypeToString(BKCLDataType dtype) {
 
 #undef PD_BKCL_DTYPE_TO_STR
   PADDLE_THROW(phi::errors::InvalidArgument(
-      "This datatype %d in nccl is not supported.", static_cast<int>(dtype)));
+      "This datatype %d in bkcl is not supported.", static_cast<int>(dtype)));
 }
 
 std::string BKCLRedTypeToString(BKCLOp op) {

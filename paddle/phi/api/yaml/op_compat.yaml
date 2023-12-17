@@ -111,6 +111,8 @@
     {inputs : X}
   outputs:
     {out : Out}
+  extra :
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
 - op : addmm
   backward : addmm_grad
@@ -242,6 +244,14 @@
   outputs :
     out : Out
     indices : Indices
+
+- op : array_to_tensor(tensor_array_to_tensor)
+  backward : tanh_shrink_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+    out_index : OutIndex
 
 - op : as_complex
   inputs :
@@ -447,6 +457,8 @@
     x : X
   outputs :
     out : Out
+  extra :
+    attrs : [bool use_mkldnn = false]
 
 - op : ceil
   backward : ceil_grad
@@ -568,24 +580,6 @@
              int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
   get_expected_kernel_type :
     conv2d : GetConvExpectedKernelType
-
-- op : conv2d_fusion
-  inputs :
-    input : Input
-    filter : Filter
-    bias : Bias
-    residual_data : ResidualData
-  outputs :
-    output : Output
-    outputs : Outputs
-  extra :
-    attrs : [bool is_test = false, bool use_cudnn = true, bool fuse_relu_before_depthwise_conv = false, bool use_mkldnn = false,
-             bool use_quantizer = false, str mkldnn_data_type = "float32", bool fuse_relu = false,
-             str fuse_activation = "", float fuse_beta = 0.0f, bool use_addto = false,
-             bool fuse_residual_connection = false, float Scale_in = 1.0f, float Scale_out = 1.0f,
-             float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}', bool force_fp32_output = false]
-  get_expected_kernel_type :
-    conv2d_fusion : GetConvExpectedKernelType
 
 - op : conv2d_transpose
   backward : conv2d_transpose_grad, conv2d_transpose_double_grad (conv2d_transpose_grad_grad)
@@ -1105,6 +1099,7 @@
     {start_axis : start_axis, stop_axis : stop_axis}
   extra :
     outputs : [xshape]
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
   manual_signature : [flatten, flatten_grad]
 
 - op : flip
@@ -1291,7 +1286,29 @@
 - op : fused_conv2d
   extra :
     attrs : [bool use_cudnn = false, float fuse_alpha = 0.0f, float fuse_beta = 0.0f, float Scale_in = 1.0f,
-             float Scale_out = 1.0f, float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}']
+             float Scale_out = 1.0f, float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}', bool use_mkldnn = true, str mkldnn_data_type = "float32"]
+
+- op : fused_conv2d_add_act
+  inputs :
+    input : Input
+    filter : Filter
+    bias : Bias
+    residual_data : ResidualData
+  outputs :
+    output : Output
+    outputs : Outputs
+  extra :
+    attrs : [bool is_test = false, bool use_cudnn = true, bool fuse_relu_before_depthwise_conv = false, bool use_mkldnn = false,
+             bool use_quantizer = false, str mkldnn_data_type = "float32", bool fuse_relu = false,
+             str fuse_activation = "", float fuse_beta = 0.0f, bool use_addto = false,
+             bool fuse_residual_connection = false, float Scale_in = 1.0f, float Scale_out = 1.0f,
+             float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}', bool force_fp32_output = false]
+  get_expected_kernel_type :
+    fused_conv2d_add_act : GetConvExpectedKernelType
+
+- op : fused_conv3d
+  extra :
+    attrs : [bool use_mkldnn = true, str mkldnn_data_type = "float32"]
 
 - op : fused_embedding_eltwise_layernorm
   inputs :
@@ -1380,6 +1397,10 @@
     scale_data : Scale_data
     shift_data : Shift_data
     scale_weights : Scale_weights
+
+- op : fusion_lstm
+  extra :
+    attrs : [bool use_mkldnn = true, str mkldnn_data_type = "float32"]
 
 - op : fusion_repeated_fc_relu
   inputs :
@@ -2424,7 +2445,7 @@
   outputs :
     out : Result
   attrs :
-    {axis : Axis, reduce : Reduce}
+    {axis : Axis, reduce : Reduce, include_self: Include_self}
 
 - op : pylayer
   backward : pylayer_grad
@@ -2612,6 +2633,13 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : row_conv
+  backward : row_conv_grad
+  inputs :
+    {x : X, filter : Filter}
+  outputs :
+    {out : Out}
+
 - op : rsqrt
   backward : rsqrt_grad, rsqrt_double_grad (rsqrt_grad_grad)
   inputs :
@@ -2708,6 +2736,18 @@
 
 - op : send_uv (graph_send_uv)
   backward : send_uv_grad (graph_send_uv_grad)
+
+- op : sequence_mask
+  inputs:
+    x : X
+  attrs:
+    max_len: maxlen
+  outputs:
+    y : Y
+  scalar :
+    max_len :
+      data_type : int
+      tensor_name : MaxLenTensor
 
 - op : sequence_softmax
   backward : sequence_softmax_grad
@@ -2820,6 +2860,13 @@
   outputs :
     out : Out
 
+- op : soft_relu
+  backward : soft_relu_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : softmax
   backward : softmax_grad
   inputs :
@@ -2886,6 +2933,8 @@
       axis :
         data_type : int
         support_tensor : true
+  extra :
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
 - op : split_with_num
   scalar :
@@ -3345,6 +3394,12 @@
   outputs:
     {out: Out}
 
+- op: decayed_adagrad
+  inputs:
+    {param : Param, grad : Grad, moment : Moment, learning_rate : LearningRate}
+  outputs:
+    {param_out : ParamOut, moment_out : MomentOut}
+
 - op: dpsgd
   inputs:
     {param: Param,grad: Grad,learning_rate: LearningRate}
@@ -3384,6 +3439,12 @@
   outputs :
     out : Out
 
+- op: lod_array_length
+  inputs :
+    {x: X}
+  outputs :
+    out : Out
+
 - op: logspace
   inputs:
     {start: Start, stop: Stop, num: Num, base: Base}
@@ -3408,6 +3469,13 @@
 - op: memcpy_d2h
   inputs :
     x : X
+  outputs :
+    out : Out
+
+- op: read_from_array
+  inputs:
+    array : X
+    i : I
   outputs :
     out : Out
 

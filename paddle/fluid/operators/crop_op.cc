@@ -44,16 +44,16 @@ class CropOp : public framework::OperatorWithKernel {
       for (size_t i = 0; i < shape.size(); ++i) {
         tensor_shape[i] = static_cast<int64_t>(shape[i]);
       }
-      ctx->SetOutputDim("Out", phi::make_ddim(tensor_shape));
+      ctx->SetOutputDim("Out", common::make_ddim(tensor_shape));
     } else {
       auto y_dim = ctx->GetInputDim("Y");
-      PADDLE_ENFORCE_EQ(phi::arity(x_dim),
-                        phi::arity(y_dim),
+      PADDLE_ENFORCE_EQ(common::arity(x_dim),
+                        common::arity(y_dim),
                         platform::errors::InvalidArgument(
                             "The number of dimensions (%d) of CropOp's input(X)"
                             " must be equal to that (%d) of input(Y).",
-                            phi::arity(x_dim),
-                            phi::arity(y_dim)));
+                            common::arity(x_dim),
+                            common::arity(y_dim)));
       ctx->SetOutputDim("Out", y_dim);
     }
   }

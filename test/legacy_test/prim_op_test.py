@@ -192,7 +192,10 @@ class OpTestUtils:
                     tmp = input_arguments[idx_of_op_proto_arguments]
                     idx_of_op_proto_arguments += 1
                 else:
-                    tmp = Empty()  # use the default value
+                    # tmp = Empty()  # use the default value
+                    tmp = parse_attri_value(
+                        arg_name, op_proto_ins, op_proto_attrs
+                    )
 
                 if isinstance(tmp, Empty):
                     results.append(get_default(idx, api_defaults))

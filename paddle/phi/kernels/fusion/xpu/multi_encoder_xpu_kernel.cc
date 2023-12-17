@@ -43,6 +43,17 @@ void MultiEncoderXPUKernel(const Context& ctx,
                            DenseTensor* out,
                            DenseTensor* x_fp16,
                            DenseTensor* out_fp16) {
+  const int* seq_lod_data =
+      seq_lod.get_ptr() == nullptr ? nullptr : seq_lod.get_ptr()->data<int>();
+  const int* max_seq_len_data = max_seq_len.get_ptr() == nullptr
+                                    ? nullptr
+                                    : max_seq_len.get_ptr()->data<int>();
+  if (seq_lod_data) {
+    out->Resize(
+        {seq_lod.get_ptr()->numel() - 1, max_seq_len_data[0], x.dims()[2]});
+    out_fp16->Resize(
+        {seq_lod.get_ptr()->numel() - 1, max_seq_len_data[0], x.dims()[2]});
+  }
   // XPU2 only support fp16 input/output.
   auto x_dtype = x.dtype();
   const XPUTypeFP16* x_fp16_data = nullptr;
@@ -91,11 +102,7 @@ void MultiEncoderXPUKernel(const Context& ctx,
   }
   const float* mask_data =
       mask.get_ptr() == nullptr ? nullptr : mask.get_ptr()->data<float>();
-  const int* seq_lod_data =
-      seq_lod.get_ptr() == nullptr ? nullptr : seq_lod.get_ptr()->data<int>();
-  const int* max_seq_len_data = max_seq_len.get_ptr() == nullptr
-                                    ? nullptr
-                                    : max_seq_len.get_ptr()->data<int>();
+
   xpu::Activation_t qkv_act(static_cast<xpu::Activation_t::act_enum>(act_type));
 
   int batch = x.dims()[0];

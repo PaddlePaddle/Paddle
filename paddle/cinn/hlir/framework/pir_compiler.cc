@@ -42,44 +42,49 @@ std::unique_ptr<Program> PirCompiler::Build() {
   return std::move(Build(groups));
 }
 
-std::vector<pir::CUDAJITInfo> PirCompiler::BuildCUDAJITInfo(
+std::vector<pir::CINNKernelInfo> PirCompiler::BuildCUDAJITInfo(
     const std::vector<pir::GroupPtr>& groups) {
-  std::vector<pir::CUDAJITInfo> vec_res;
+  std::vector<pir::CINNKernelInfo> cinn_kernel_info_vecs(groups.size());
 
-  auto op_lowerer = CreateOpLowerer<pir::GroupPtr>(target_);
+  if (FLAGS_cinn_bucket_compile) {
+    for (int i = 0; i < groups.size(); ++i) {
+      group_compilation_contexts_.emplace_back(target_, groups[i], scope_);
+    }
+    auto worker_fn = [&](int index) {
+      CompilationTask task(&group_compilation_contexts_[index]);
+      task();
+      cinn_kernel_info_vecs[index] = task.BuildPirCINNKernelInfo();
+    };
+    utils::parallel_run(
+        worker_fn, utils::SequenceDispatcher(0, groups.size()), -1);
+  } else {
+    auto op_lowerer = CreateOpLowerer<pir::GroupPtr>(target_);
 
-  std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
-  for (int i = 0; i < groups.size(); ++i) {
-    lowered_funcs.emplace_back(op_lowerer.Lower(groups[i]));
+    std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
+    for (int i = 0; i < groups.size(); ++i) {
+      lowered_funcs.emplace_back(op_lowerer.Lower(groups[i]));
+    }
+
+    for (auto&& lowered_func : lowered_funcs) {
+      ProcessFunction(lowered_func);
+    }
+    compiler_ = backends::Compiler::Create(target_);
+    auto build_module = m_builder_.Build();
+    compiler_->Build(build_module, "");
+
+    auto fn_ptrs = compiler_->GetFnPtr();
+
+    for (int idx = 0; idx < groups.size(); ++idx) {
+      pir::CINNKernelInfo cinn_kernel_info;
+      auto fn_name = groups[idx]->FuncName();
+      auto fn_ptr = compiler_->Lookup(fn_name);
+      cinn_kernel_info.fn_ptr = fn_ptr;
+      cinn_kernel_info.int_args_map = groups[idx]->int_args_map;
+
+      cinn_kernel_info_vecs[idx] = cinn_kernel_info;
+    }
   }
-
-  for (auto&& lowered_func : lowered_funcs) {
-    ProcessFunction(lowered_func);
-  }
-
-  compiler_ = backends::Compiler::Create(target_);
-  auto build_module = m_builder_.Build();
-  compiler_->Build(build_module, "");
-
-  auto instructions = BuildInstructions(groups);
-
-  auto fn_ptrs = compiler_->GetFnPtr();
-
-  auto* compilter_ptr = compiler_.release();
-  for (int idx = 0; idx < groups.size(); ++idx) {
-    pir::CUDAJITInfo jit_info;
-    jit_info.fn_ptr = fn_ptrs[idx];
-    jit_info.compiler = reinterpret_cast<void*>(compilter_ptr);
-
-    lowered_funcs[idx][0]->cuda_axis_info.CopyBlockDimsTo(
-        &(jit_info.block_dims));
-
-    lowered_funcs[idx][0]->cuda_axis_info.CopyGridDimsTo(&(jit_info.grid_dims));
-
-    vec_res.push_back(jit_info);
-  }
-
-  return vec_res;
+  return cinn_kernel_info_vecs;
 }
 
 std::unique_ptr<Program> PirCompiler::Build(

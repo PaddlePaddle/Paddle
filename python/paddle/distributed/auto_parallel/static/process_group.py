@@ -187,9 +187,31 @@ class ProcessGroup:
                     )
             elif core.is_compiled_with_xpu():
                 place = core.XPUPlace(genv.device_id)
-                core.BKCLParallelContext(strategy, place).init_with_ring_id(
-                    ring_id
-                )
+                use_new_comm = paddle.get_flags(
+                    "FLAGS_dynamic_static_unified_comm"
+                )["FLAGS_dynamic_static_unified_comm"]
+                if use_new_comm:
+                    store = core.create_or_get_global_tcp_store()
+                    endpoints_str = ""
+                    for endpoint in strategy.trainer_endpoints:
+                        endpoints_str += endpoint
+                    endpoints_str += f"ring_id:{ring_id}"
+                    endpoints_str_hash = hashlib.md5(
+                        endpoints_str.encode(encoding='UTF-8')
+                    ).hexdigest()
+
+                    core.CommContextManager.set_device_id(genv.device_id)
+                    core.CommContextManager.create_bkcl_comm_context(
+                        store,
+                        str(ring_id),
+                        strategy.local_rank,
+                        strategy.nranks,
+                        endpoints_str_hash,
+                    )
+                else:
+                    core.BKCLParallelContext(strategy, place).init_with_ring_id(
+                        ring_id
+                    )
             elif genv.device_type in core.get_all_custom_device_type():
                 place = core.CustomPlace(genv.device_type, genv.device_id)
                 core.XCCLParallelContext(strategy, place).init_with_ring_id(

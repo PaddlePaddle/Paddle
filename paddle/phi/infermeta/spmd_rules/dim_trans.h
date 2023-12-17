@@ -158,5 +158,10 @@ std::vector<std::vector<int64_t>> InferFromDimTrans(
     const DistMetaTensor& input_spec,
     const std::vector<std::shared_ptr<DimTrans>>& dim_trans);
 
+std::vector<std::vector<int64_t>> InferFromDimTrans(
+    const DistMetaTensor& input_spec,
+    const std::vector<int64_t>& input_shape,
+    const std::vector<std::shared_ptr<DimTrans>>& dim_trans);
+
 }  // namespace distributed
 }  // namespace phi

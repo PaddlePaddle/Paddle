@@ -23,7 +23,7 @@ Type ShapedTypeInterface::GetElementType() const {
 
 std::vector<int64_t> ShapedTypeInterface::GetDyShape() const {
   if (dy_shape_.size() == 0) {
-    auto ddim_vec = vectorize(impl_->get_shape(*this));
+    auto ddim_vec = common::vectorize(impl_->get_shape(*this));
     dy_shape_ = ddim_vec;
     std::replace(dy_shape_.begin(),
                  dy_shape_.end(),

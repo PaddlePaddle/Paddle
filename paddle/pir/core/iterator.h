@@ -15,7 +15,7 @@
 #pragma once
 #include <iterator>
 #include <list>
-#include "paddle/pir/core/macros.h"
+#include "paddle/common/macros.h"
 namespace pir {
 
 class Operation;

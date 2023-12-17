@@ -21,7 +21,6 @@
 #ifdef CINN_WITH_CUDA
 #include "paddle/cinn/runtime/cuda/cuda_util.h"
 #endif
-#include "paddle/cinn/adt/m_expr.h"
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/utils/string.h"
 
@@ -31,7 +30,7 @@ namespace cinn {
 namespace hlir {
 namespace framework {
 
-using DTypeDict = absl::flat_hash_map<std::string, common::Type>;
+using DTypeDict = absl::flat_hash_map<std::string, cinn::common::Type>;
 using ShapeDict = absl::flat_hash_map<std::string, shape_t>;
 
 void Graph::Initialize(const frontend::Program& prog,
@@ -51,7 +50,7 @@ void Graph::Initialize(const frontend::Program& prog,
     Shared<Node> node_ptr(node_tmp);
     node_tmp->attrs.attr_store = temp->attrs;
     for (auto& input_v : temp->inputs) {
-      common::GraphNode* graph_node = this->RetrieveNode(input_v->id);
+      cinn::common::GraphNode* graph_node = this->RetrieveNode(input_v->id);
       if (!graph_node) {
         dtype_dict[input_v->id] = input_v->type;
         shape_dict[input_v->id] = input_v->shape;
@@ -65,7 +64,7 @@ void Graph::Initialize(const frontend::Program& prog,
     }
     int out_idx = 0;
     for (auto& output_v : temp->outputs) {
-      common::GraphNode* graph_node = this->RetrieveNode(output_v->id);
+      cinn::common::GraphNode* graph_node = this->RetrieveNode(output_v->id);
       if (!graph_node) {
         dtype_dict[output_v->id] = output_v->type;
         shape_dict[output_v->id] = output_v->shape;
@@ -92,10 +91,11 @@ std::vector<std::vector<Node*>> Graph::FusionGroupsToGroups() {
   std::vector<std::vector<Node*>> groups;
   if (fusion_groups.empty()) {
     // if no fusion_groups, the graph will be treated as a big group
-    const auto& nodes = this->CollectNodes([](const common::GraphNode* node) {
-      return node->safe_as<Node>() != nullptr &&
-             node->safe_as<Node>()->op() != nullptr;
-    });
+    const auto& nodes =
+        this->CollectNodes([](const cinn::common::GraphNode* node) {
+          return node->safe_as<Node>() != nullptr &&
+                 node->safe_as<Node>()->op() != nullptr;
+        });
     std::vector<Node*> group;
     group.reserve(nodes.size());
     for (auto* node : nodes) {
@@ -200,8 +200,9 @@ std::string Graph::DebugGroupedGraph(
     const auto& shape = shape_dict.count(id)
                             ? cinn::utils::Join(shape_dict.at(id), ", ")
                             : "-1";
-    const auto& dtype =
-        dtype_dict.count(id) ? common::Type2Str(dtype_dict.at(id)) : "float32";
+    const auto& dtype = dtype_dict.count(id)
+                            ? cinn::common::Type2Str(dtype_dict.at(id))
+                            : "float32";
 
     // generator python create_input code
     debug_str << "    " << id << " = builder.create_input(type=\"" << dtype

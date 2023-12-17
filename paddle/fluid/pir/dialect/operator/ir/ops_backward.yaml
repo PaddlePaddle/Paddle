@@ -633,6 +633,16 @@
     data_type: out_grad
   optional : sequence_length
 
+- backward_op : row_conv_grad
+  forward: row_conv (Tensor x, Tensor filter) -> Tensor(out)
+  args: (Tensor x, Tensor filter, Tensor out_grad)
+  output: Tensor(x_grad),Tensor(filter_grad)
+  infer_meta :
+    func : RowConvGradInferMeta
+    param : [out_grad, filter]
+  kernel:
+    func : row_conv_grad
+
 - backward_op : rrelu_grad
   forward : rrelu (Tensor x, float lower, float upper, bool is_test) -> Tensor(out), Tensor(noise)
   args : (Tensor x, Tensor noise, Tensor out_grad)
@@ -685,6 +695,16 @@
   composite: slice_grad(input, out_grad, axes, starts, ends, infer_flags, decrease_axis, input_grad)
   backward : slice_double_grad
   no_need_buffer : input
+
+- backward_op : soft_relu_grad
+  forward : soft_relu (Tensor x, float threshold) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad, float threshold)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
+  kernel :
+    func : soft_relu_grad
 
 - backward_op : softmax_grad
   forward : softmax (Tensor x, int axis) -> Tensor(out)

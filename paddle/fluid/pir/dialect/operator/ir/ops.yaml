@@ -201,14 +201,14 @@
     func : c_concat
 
 - op : c_embedding
-  args : (Tensor weight, Tensor x, int64_t start_index=0)
+  args : (Tensor weight, Tensor x, int64_t start_index=0, int64_t vocab_size=-1)
   output : Tensor(out)
   infer_meta :
     func : CEmbeddingInferMeta
     param : [weight, x, start_index]
   kernel :
     func : c_embedding
-    param : [weight, x, start_index]
+    param : [weight, x, start_index, vocab_size]
     data_type : weight
   backward : c_embedding_grad
 
@@ -297,6 +297,15 @@
   args : (Tensor x, Place place, bool blocking)
   output : Tensor(out)
   invoke : copy_to_impl(x, place, blocking)
+
+- op : decayed_adagrad
+  args : (Tensor param, Tensor grad, Tensor moment, Tensor learning_rate, float decay = 0.95f, float epsilon = 1.0e-6f)
+  output : Tensor(param_out), Tensor(moment_out)
+  infer_meta :
+    func : DecayedAdagradInferMeta
+  kernel :
+    func : decayed_adagrad
+    data_type : param
 
 - op : decode_jpeg
   args : (Tensor x, str mode, Place place)
@@ -1046,6 +1055,14 @@
   intermediate : reserve
   view : (dropout_state_in -> dropout_state_out)
 
+- op : row_conv
+  args : (Tensor x, Tensor filter)
+  output : Tensor(out)
+  infer_meta :
+     func: RowConvInferMeta
+  kernel :
+     func : row_conv
+
 - op : rrelu
   args : (Tensor x, float lower, float upper, bool is_test)
   output : Tensor(out), Tensor(noise)
@@ -1132,6 +1149,16 @@
   kernel :
     func : slice
   backward : slice_grad
+
+- op : soft_relu
+  args : (Tensor x, float threshold = 20.0f)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : soft_relu
+  backward : soft_relu_grad
 
 - op : softmax
   args : (Tensor x, int axis)
