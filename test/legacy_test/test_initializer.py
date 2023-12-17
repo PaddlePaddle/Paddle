@@ -749,7 +749,7 @@ class TestBilinearInitializerPir(unittest.TestCase):
             with paddle.static.program_guard(main, startup):
                 param = paddle.pir.core.create_parameter(
                     dtype=dtype,
-                    shape=[5, 10],
+                    shape=[8, 1, 3, 3],
                     name="param",
                     initializer=paddle.nn.initializer.Bilinear(),
                 )
