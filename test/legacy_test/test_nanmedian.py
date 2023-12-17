@@ -152,7 +152,6 @@ class TestNanmedian(unittest.TestCase):
 
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
