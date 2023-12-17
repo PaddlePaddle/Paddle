@@ -381,6 +381,7 @@ from .math import (  # noqa: F401
     vander,
 )
 from .random import (  # noqa: F401
+    binomial,
     exponential_,
     multinomial,
     normal,

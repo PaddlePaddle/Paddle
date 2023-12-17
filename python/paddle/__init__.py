@@ -489,6 +489,7 @@ from .tensor.math import (  # noqa: F401
     vander,
 )
 from .tensor.random import (
+    binomial,
     bernoulli,
     check_shape,
     multinomial,
@@ -529,6 +530,10 @@ from .tensor.stat import (
     quantile,
     std,
     var,
+)
+
+from .nn.functional.distance import (  # noqa: F401
+    pdist,
 )
 from .tensor.to_string import set_printoptions
 
@@ -708,6 +713,7 @@ __all__ = [
     'sin_',
     'dist',
     'cdist',
+    'pdist',
     'unbind',
     'meshgrid',
     'arange',
@@ -743,6 +749,7 @@ __all__ = [
     'expm1',
     'expm1_',
     'bernoulli',
+    'binomial',
     'poisson',
     'sinh',
     'sinh_',

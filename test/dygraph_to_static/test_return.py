@@ -334,8 +334,7 @@ class TestReturnIf(Dy2StTestBase):
     def init_dygraph_func(self):
         self.dygraph_func = test_return_if
 
-    def _run(self, to_static=False):
-        paddle.jit.enable_to_static(to_static)
+    def _run(self):
         with base.dygraph.guard():
             res = self.dygraph_func(self.input)
             if isinstance(res, (tuple, list)):
@@ -345,8 +344,10 @@ class TestReturnIf(Dy2StTestBase):
             return res
 
     def _test_value_impl(self):
-        dygraph_res = self._run(to_static=False)
-        static_res = self._run(to_static=True)
+        with enable_to_static_guard(False):
+            dygraph_res = self._run()
+        with enable_to_static_guard(True):
+            static_res = self._run()
         if isinstance(dygraph_res, tuple):
             self.assertTrue(isinstance(static_res, tuple))
             self.assertEqual(len(dygraph_res), len(static_res))
@@ -393,8 +394,7 @@ class TestReturnInWhile(Dy2StTestBase):
     def init_dygraph_func(self):
         self.dygraph_func = test_return_in_while
 
-    def _run(self, to_static=False):
-        paddle.jit.enable_to_static(to_static)
+    def _run(self):
         with base.dygraph.guard():
             res = self.dygraph_func(self.input)
             if isinstance(res, (tuple, list)):
@@ -404,8 +404,10 @@ class TestReturnInWhile(Dy2StTestBase):
             return res
 
     def _test_value_impl(self):
-        dygraph_res = self._run(to_static=False)
-        static_res = self._run(to_static=True)
+        with enable_to_static_guard(False):
+            dygraph_res = self._run()
+        with enable_to_static_guard(True):
+            static_res = self._run()
         if isinstance(dygraph_res, tuple):
             self.assertTrue(isinstance(static_res, tuple))
             self.assertEqual(len(dygraph_res), len(static_res))
@@ -447,8 +449,7 @@ class TestReturnIfElse(Dy2StTestBase):
     def init_dygraph_func(self):
         self.dygraph_func = test_return_if_else
 
-    def _run(self, to_static=False):
-        paddle.jit.enable_to_static(to_static)
+    def _run(self):
         with base.dygraph.guard():
             res = self.dygraph_func(self.input)
             if isinstance(res, (tuple, list)):
@@ -458,8 +459,10 @@ class TestReturnIfElse(Dy2StTestBase):
             return res
 
     def _test_value_impl(self):
-        dygraph_res = self._run(to_static=False)
-        static_res = self._run(to_static=True)
+        with enable_to_static_guard(False):
+            dygraph_res = self._run()
+        with enable_to_static_guard(True):
+            static_res = self._run()
         if isinstance(dygraph_res, tuple):
             self.assertTrue(isinstance(static_res, tuple))
             self.assertEqual(len(dygraph_res), len(static_res))
