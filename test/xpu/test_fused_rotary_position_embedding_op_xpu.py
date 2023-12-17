@@ -355,29 +355,12 @@ class XPUTestFusedRotaryPositionEmbedding(unittest.TestCase):
         paddle.disable_static()
 
 
-# class XPUTestFusedRotaryPositionEmbedding2(XPUTestFusedRotaryPositionEmbedding):
-#     def init_case(self):
-#         self.shape = [2, 2048, 16, 128]
-#         self.dtype = "float32"
-
-# class XPUTestFusedRotaryPositionEmbedding3(XPUTestFusedRotaryPositionEmbedding):
-#     def init_case(self):
-#         self.shape = [1, 4096, 8, 64]
-#         self.dtype = "float32"
-
-
 class XPUTestFusedRotaryPositionEmbeddingFp16_1(
     XPUTestFusedRotaryPositionEmbedding
 ):
     def init_case(self):
         self.shape = [2, 8, 2, 16]
         self.dtype = "float16"
-
-
-# class XPUTestFusedRotaryPositionEmbeddingFp16_2(XPUTestFusedRotaryPositionEmbedding):
-#     def init_case(self):
-#         self.shape = [2, 2048, 16, 128]
-#         self.dtype = "float16"
 
 
 class XPUTestFusedRotaryPositionEmbeddingBf16_1(unittest.TestCase):
