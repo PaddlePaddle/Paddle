@@ -47,3 +47,7 @@ if(WITH_CUDA)
   cinn_nv_test(test_fp16_bf16_cuda SRCS float16_bfloat16_cuda_test.cu DEPS
                gtest glog)
 endif()
+if(NOT CINN_ONLY)
+  cinn_cc_test(dim_expr_simplify_test SRCS dim_expr_simplify_test.cc DEPS
+               cinncore)
+endif()

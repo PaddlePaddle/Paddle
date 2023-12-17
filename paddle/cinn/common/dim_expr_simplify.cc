@@ -1,9 +1,23 @@
-#include "paddle/cinn/common/dim_expr_util.h"
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "paddle/cinn/common/dim_expr_simplify.h"
 #include <numeric>
 
 namespace cinn::common {
 
-using namespace symbol;
+using namespace symbol;  // NOLINT
 
 namespace {
 
@@ -40,7 +54,6 @@ template <template <typename> class Op>
 struct SimplifyUnitOneOperand {
   using dim_expr_type = Op<DimExpr>;
 
-
   DimExpr Rewrite(const DimExpr& expr) {
     const auto& [operand] = *expr.Get<Op<DimExpr>>();
     if (operand.template Has<std::int64_t>() &&
@@ -67,7 +80,6 @@ struct SimplifyOneOperandTrait<Reciprocal> {
 template <template <typename> class Op>
 struct SimplifyOperands {
   using dim_expr_type = Op<DimExpr>;
-
 
   DimExpr Rewrite(const DimExpr& expr) {
     const auto& [operands] = expr.Get<Op<DimExpr>>();
@@ -191,8 +203,8 @@ struct IsLhsBeforeRhsStruct<Mul<DimExpr>, Mul<DimExpr>> final
     : public IsListLhsBeforeListRhsStruct<Mul> {};
 
 template <>
-struct IsLhsBeforeRhsStruct<Broadcast<DimExpr>, Broadcast<DimExpr>>
-    final : public IsListLhsBeforeListRhsStruct<Broadcast> {};
+struct IsLhsBeforeRhsStruct<Broadcast<DimExpr>, Broadcast<DimExpr>> final
+    : public IsListLhsBeforeListRhsStruct<Broadcast> {};
 
 bool IsLhsBeforeRhs(const DimExpr& lhs, const DimExpr& rhs) {
   return std::visit(
@@ -208,7 +220,6 @@ bool IsLhsBeforeRhs(const DimExpr& lhs, const DimExpr& rhs) {
 template <template <typename> class Op>
 struct SortOperands {
   using dim_expr_type = Op<DimExpr>;
-
 
   DimExpr Rewrite(const DimExpr& expr) {
     const auto& [operands] = expr.Get<Op<DimExpr>>();
@@ -341,7 +352,6 @@ template <template <typename> class Op>
 struct FlattenOperands {
   using dim_expr_type = Op<DimExpr>;
 
-
   DimExpr Rewrite(const DimExpr& expr) {
     if (!HasNested<Op>(expr)) {
       return expr;
@@ -376,7 +386,6 @@ template <template <typename> class Op>
 struct FoldUnitConstant {
   using dim_expr_type = Op<DimExpr>;
 
-
   DimExpr Rewrite(const DimExpr& expr) {
     const auto [operands] = expr.Get<Op<DimExpr>>();
     if (GetConstDimCount<Op>(operands) == 0) {
@@ -406,7 +415,6 @@ struct FoldUnitConstant {
 template <template <typename> class Op>
 struct FoldConstants {
   using dim_expr_type = Op<DimExpr>;
-
 
   DimExpr Rewrite(const DimExpr& expr) {
     const auto [operands] = expr.Get<Op<DimExpr>>();
@@ -506,8 +514,7 @@ ConstRational GetConstRationalImpl(const Reciprocal<DimExpr>& value) {
 
 ConstRational GetConstRational(const DimExpr& expr) {
   return std::visit(
-      [&](const auto& impl) { return GetConstRationalImpl(impl); },
-      expr);
+      [&](const auto& impl) { return GetConstRationalImpl(impl); }, expr);
 }
 
 ConstRational MulConstRational(const ConstRational& lhs,
@@ -616,7 +623,6 @@ template <template <typename> class Op>
 struct FoldInversedPairToUnit {
   using dim_expr_type = Op<DimExpr>;
 
-
   struct SearchResult {
     int value_pos;
     int inverse_value_pos;
@@ -670,7 +676,6 @@ struct FoldInversedPairToUnit {
 
 struct FoldRedundantSymbolicBroadcast {
   using dim_expr_type = Broadcast<DimExpr>;
-
 
   struct MaxInt64 {
     std::int64_t value;
@@ -728,7 +733,6 @@ struct FoldRedundantSymbolicBroadcast {
 struct FoldRedundantBroadcast {
   using dim_expr_type = Broadcast<DimExpr>;
 
-  
   struct SearchResult {
     int value_pos;
     int same_value_pos;
@@ -813,4 +817,4 @@ DimExpr Simplify(const DimExpr& expr) {
 
 DimExpr SimplifyDimExpr(const DimExpr& expr) { return Simplify(expr); }
 
-}
+}  // namespace cinn::common
