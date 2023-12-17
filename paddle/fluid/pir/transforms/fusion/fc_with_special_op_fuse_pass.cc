@@ -46,13 +46,26 @@ class SqueezeFcFusePattern
     pat.Tensor("add_out") = add(pat.Tensor("matmul_out"), pat.Tensor("bias"));
     // Constrains the activation is none
     pat.RequireNativeCall([&](const pir::drr::MatchContext &match_ctx) {
-      if (match_ctx.Tensor("x").Shape().size() == 4 &&
+      auto axis_type =
+          dynamic_cast<const pir::drr::IrValue &>(match_ctx.Tensor("axis"))
+              .get()
+              .type();
+      if (axis_type.isa<pir::VectorType>() &&
+          axis_type.dyn_cast<pir::VectorType>().size() != 2) {
+        return false;
+      }
+
+      if (!axis_type.isa<pir::VectorType>() &&
           match_ctx.Tensor("axis").Shape().size() > 0 &&
-          match_ctx.Tensor("axis").Shape().at(0) == 2 &&
-          match_ctx.Tensor("x").Shape().at(2) == 1 &&
-          match_ctx.Tensor("x").Shape().at(3) == 1 &&
-          match_ctx.Attr<bool>("transpose_x") == false &&
-          match_ctx.Attr<bool>("transpose_y") == false) {
+          match_ctx.Tensor("axis").Shape().at(0) != 2) {
+        return false;
+      }
+
+      if (match_ctx.Tensor("x").Shape().size() != 4 ||
+          match_ctx.Tensor("x").Shape().at(2) != 1 ||
+          match_ctx.Tensor("x").Shape().at(3) != 1 ||
+          match_ctx.Attr<bool>("transpose_x") == true ||
+          match_ctx.Attr<bool>("transpose_y") == true) {
         return false;
       }
 
@@ -169,7 +182,28 @@ class ReshapeFcFusePattern
       if (mul > target) {
         return false;
       }
+      /*
+      reshape_in:[2,12,12,128]
+      reshape_out:[2,144,128]
+      shape:[2,144,128]
+      n = len(reshape_in)
+      m = len(reshape_out)
 
+      request:
+      1. reshape_in[i:] = reshape_in[i]*reshape_in[i+1]...*reshape_in[n-1]
+      reshape_in[i:]=reshape_out=[j]
+      2.reshape_in[:i]=reshape_out[:j]
+      e.g.:
+                                        288(reshape_out[:2])
+                i    shape[2,144,128]   |  |  j(invariable)
+      [2,12,12,128]------------------->[2,144,128]
+       |    |   |                              |
+       |    |   |reshape_in[i]=reshape_out[j]  |
+       \    /
+        288(reshape_in[:3])
+
+
+      */
       while (target != mul) {
         if (mul <= 0 || mul > target) {
           return false;

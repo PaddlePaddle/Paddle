@@ -26,7 +26,15 @@ paddle.enable_static()
     not paddle.base.core.is_compiled_with_cuda(),
     "core is not complied with CUDA",
 )
-class TestFcFusePassPattern(PassTest):
+class TestFcElementwiseLayerNormFusePattern(PassTest):
+    r"""
+    fc     Y1
+     \     /
+       Add
+        |
+      LayerNrom
+    """
+
     def is_program_valid(self, program=None):
         return True
 
@@ -34,7 +42,7 @@ class TestFcFusePassPattern(PassTest):
         for x_shape in [[3, 2]]:
             for w_shape in [[2, 3]]:
                 for y_shape in [[1, 3]]:
-                    for with_relu in [False]:
+                    for with_relu in [True, False]:
                         with paddle.pir_utils.IrGuard():
                             pir_program = paddle.static.Program()
                             with paddle.pir.core.program_guard(pir_program):
@@ -81,6 +89,7 @@ class TestFcFusePassPattern(PassTest):
                                 self.valid_op_map = {
                                     "pd_op.add": 0,
                                     "pd_op.relu": 0,
+                                    "pd_op.matmul": 0,
                                     "pd_op.fused_fc_elementwise_layernorm": 1,
                                 }
 
