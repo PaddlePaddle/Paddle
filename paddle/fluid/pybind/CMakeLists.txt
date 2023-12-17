@@ -4,7 +4,7 @@ set(PYBIND_DEPS
     pybind
     python
     proto_desc
-    memory
+    staticgraph_executor_statistics
     executor
     fleet_wrapper
     box_wrapper
@@ -35,12 +35,12 @@ set(PYBIND_DEPS
     cost_model
     cuda_graph_with_memory_pool
     fleet_executor
-    plan
     global_utils
+    plan
     phi_utils
     phi
-    pir_adaptor
     op_dialect_vjp
+    pir_adaptor
     program_translator
     pir_transforms
     pir

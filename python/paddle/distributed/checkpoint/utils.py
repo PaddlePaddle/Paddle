@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import copy
 from typing import List, Tuple, Union
 
@@ -41,7 +42,7 @@ def compute_local_shape_and_global_offset(
     mesh = np.array(process_mesh.process_ids).reshape(process_mesh.shape)
     # deal with cross mesh case
     if paddle.distributed.get_rank() not in mesh:
-        return ((), ())
+        return (None, None)
     rank_coordinator = get_coordinator(mesh, paddle.distributed.get_rank())
     local_shape = copy.copy(global_shape)
     global_offset = [0 for _ in global_shape]
