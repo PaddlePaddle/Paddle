@@ -143,8 +143,8 @@ class TestLambOpWithCombinedOp(unittest.TestCase):
             feed_x = np.random.random(size=(10, 13)).astype('float32')
             feed_y = np.random.random(size=(10, 1)).astype('float32')
 
-            main_program = base.Program()
-            startup_program = base.Program()
+            main_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
             with base.program_guard(main_program, startup_program):
                 avg_loss = _build_static_model(main_program, startup_program)
                 lamb_kernel = paddle.optimizer.Lamb(learning_rate=0.2)
@@ -158,8 +158,8 @@ class TestLambOpWithCombinedOp(unittest.TestCase):
                 fetch_list=[avg_loss],
             )
 
-            main = base.Program()
-            startup = base.Program()
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
             with base.program_guard(main, startup):
                 loss = _build_static_model(main, startup)
                 lamb = LAMBOptimizer(learning_rate=0.2)
