@@ -729,7 +729,7 @@ def to_static(
             pipeline parallelism). Default: None.
 
     Returns:
-        DistModel: A DistModel instance converted the input ``layer``.
+        DistModel: A ``DistModel`` instance converted the input ``layer``.
         DistributedDataLoader: An optimized data loader that can be used to generate data.
 
     Examples:
