@@ -48,35 +48,49 @@ void XToRReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                                DistTensor* out) {
   VLOG(3) << "Call XToRReshardFunction Eval";
   const auto& in_dist_attr = in.dist_attr();
+  const auto& in_mesh = in_dist_attr.process_mesh();
 
   DistTensor tmp_result;
   TensorDistAttr tmp_dist_attr = in_dist_attr;
   if (in_dist_attr.is_shard()) {
-    // if 'x' is 's', invoke s2r
+    // if 'x' is 's', invoke in-mesh s2r
+    // if (in_mesh.contains(cur_global_rank)) {
     SToRReshardFunction s_to_r_func;
-    PADDLE_ENFORCE(
-        s_to_r_func.IsSuitable(in, tmp_dist_attr),
-        phi::errors::InvalidArgument(
-            "Invoke the s to r reshard function is not valid from %s to %s.",
-            in_dist_attr,
-            tmp_dist_attr));
     s_to_r_func.Eval(dev_ctx, in, tmp_dist_attr, &tmp_result);
+    // } else {
+    //   SetDistProps(&tmp_result, in.dims(), tmp_dist_attr);
+    //   SetValue(&tmp_result, in.value());
+    // }
   } else if (in_dist_attr.is_partial()) {
     // if 'x' is 'p', invoke p2r
+    // if (in_mesh.contains(cur_global_rank)) {
     PToRReshardFunction p_to_r_func;
-    PADDLE_ENFORCE(
-        p_to_r_func.IsSuitable(in, tmp_dist_attr),
-        phi::errors::InvalidArgument(
-            "Invoke the p to r reshard function is not valid from %s to %s.",
-            in_dist_attr,
-            tmp_dist_attr));
     p_to_r_func.Eval(dev_ctx, in, tmp_dist_attr, &tmp_result);
+    // } else {
+    //   SetDistProps(&tmp_result, in.dims(), tmp_dist_attr);
+    //   SetValue(&tmp_result, in.value());
+    // }
   } else {
-    // if 'x' is 'r', do nothing
+    // if 'x' is 'r', just copy
+    tmp_result = in;
   }
+
   // send to out mesh
-  SameStatusReshardFunction same_status_func;
-  same_status_func.Eval(dev_ctx, tmp_result, out_dist_attr, out);
+  // set tmp_result mesh
+  TensorDistAttr tmp_dist_attr_send = tmp_result.dist_attr();
+  const auto tmp_mesh_send =
+      ProcessMesh({1}, {in_mesh.process_ids()[0]}, {in_mesh.dim_names()[0]});
+  tmp_dist_attr_send.set_process_mesh(tmp_mesh_send);
+  SetDistProps(&tmp_result, tmp_dist_attr_send);
+
+  // if out_mesh is same as in_mesh[0], do not need to do p2p comm
+  if (out_dist_attr.process_mesh() != tmp_mesh_send) {
+    SameStatusReshardFunction same_status_func;
+    same_status_func.Eval(dev_ctx, tmp_result, out_dist_attr, out);
+  } else {
+    SetDistProps(out, tmp_result.dims(), out_dist_attr);
+    SetValue(out, tmp_result.value());
+  }
 }
 
 }  // namespace distributed

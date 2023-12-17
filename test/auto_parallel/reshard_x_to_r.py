@@ -29,8 +29,7 @@ class TestReshardXToR:
         self._shard = eval(os.getenv("shard"))
         self._backend = os.getenv("backend")
         self._in_mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
-        # TODO: set out_mesh to [0]
-        self._out_mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+        self._out_mesh = dist.ProcessMesh([0], dim_names=["x"])
 
     def _set_place(self):
         if self._backend == "cpu":
