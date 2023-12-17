@@ -155,7 +155,7 @@ class TestLambOpWithCombinedOp(unittest.TestCase):
             output = executor.run(
                 program=main_program,
                 feed={'X': feed_x, 'Y': feed_y},
-                fetch_list=[avg_loss.name],
+                fetch_list=[avg_loss],
             )
 
             main = base.Program()
@@ -170,7 +170,7 @@ class TestLambOpWithCombinedOp(unittest.TestCase):
             out = exe.run(
                 program=main,
                 feed={'X': feed_x, 'Y': feed_y},
-                fetch_list=[loss.name],
+                fetch_list=[loss],
             )
 
             np.testing.assert_allclose(out, output, rtol=1e-05)
@@ -231,8 +231,7 @@ class TestLambOpMultiPrecision(unittest.TestCase):
         weight, bias = linear.weight, linear.bias
         exe = paddle.static.Executor(place)
         scope = paddle.static.Scope()
-        x = main_prog.global_block().var(x.name)
-        if x.dtype == core.VarDesc.VarType.FP16:
+        if x.dtype in (core.VarDesc.VarType.FP16, core.DataType.FLOAT16):
             x_np = x_np.astype(np.float16)
 
         def get_parameter(var):
@@ -261,7 +260,7 @@ class TestLambOpMultiPrecision(unittest.TestCase):
 
             weight_np, bias_np = None, None
             for i in range(n):
-                feed_dict = {x.name: x_np}
+                feed_dict = {'x' : x_np}
                 weight_np, bias_np = exe.run(
                     main_prog, feed=feed_dict, fetch_list=[weight, bias]
                 )
