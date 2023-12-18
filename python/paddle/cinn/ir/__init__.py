@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from paddle.base import core
+
 from .ir_context import (  # noqa: F401
     ElseContext,
     ForContext,
@@ -23,8 +24,6 @@ from .ir_context import (  # noqa: F401
     ScheduleBlockContext,
     ThenContext,
 )
-
-from .ir_api import sequential
 
 __all__ = []
 ignore_cpp_module = [
@@ -44,3 +43,32 @@ for name in dir(core.cinn.ir):
     if name not in ignore_cpp_module:
         globals()[name] = getattr(core.cinn.ir, name)
         __all__.append(name)
+
+from paddle.cinn.ir import PackedFunc, Registry
+
+
+def get_global_func(name):
+    return Registry.get(name)
+
+
+def register(name, override=False):
+    def _register_fn(fn):
+        Registry.register(name, override).set_body(PackedFunc(fn))
+        return Registry.get(name)
+
+    return _register_fn
+
+
+def register_packed_func(name, override=False):
+    def _register(fn):
+        def _packed(args, rv):
+            _args = []
+            for i in range(len(args)):
+                _args.append(args[i])
+            r = fn(*_args)
+            rv.set(r)
+
+        Registry.register(name, override).set_body(PackedFunc(_packed))
+        return Registry.get(name)
+
+    return _register

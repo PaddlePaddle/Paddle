@@ -28,7 +28,6 @@
 import os
 
 from .runtime.cinn_jit import to_cinn_llir  # noqa: F401
-from .version import full_version as __version__  # noqa: F401
 
 cinndir = os.path.dirname(os.path.abspath(__file__))
 runtime_include_dir = os.path.join(cinndir, "libs")
