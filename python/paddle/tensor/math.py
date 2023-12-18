@@ -778,7 +778,7 @@ def logaddexp(x, y, name=None):
 
 def subtract(x, y, name=None):
     """
-    Substract two tensors element-wise. The equation is:
+    Subtract two tensors element-wise. The equation is:
 
     .. math::
         out = x - y
@@ -1629,7 +1629,7 @@ def nan_to_num(x, nan=0.0, posinf=None, neginf=None, name=None):
              -99.                                    ])
     """
     # NOTE(tiancaishaonvjituizi): it seems that paddle handles the dtype of python float number
-    # incorrectly, so we have to explicitly contruct tensors here
+    # incorrectly, so we have to explicitly construct tensors here
     posinf_value = paddle.full_like(x, float("+inf"))
     neginf_value = paddle.full_like(x, float("-inf"))
     nan = paddle.full_like(x, nan)
@@ -2251,7 +2251,7 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
     y_shape = y.shape
     if not len(x_shape) == len(y_shape) == 2:
         raise ValueError(
-            "The dimention of x, y should be 2 but receive x's shape: {}, y's shape: {}".format(
+            "The dimension of x, y should be 2 but receive x's shape: {}, y's shape: {}".format(
                 x_shape, y_shape
             )
         )
@@ -2291,7 +2291,7 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
             )
     else:
         raise ValueError(
-            "The dimention of input should be 2 or 1 but receive input's shape: {}".format(
+            "The dimension of input should be 2 or 1 but receive input's shape: {}".format(
                 input_shape
             )
         )
@@ -2331,7 +2331,7 @@ def addmm_(input, x, y, beta=1.0, alpha=1.0, name=None):
     y_shape = y.shape
     if not len(x_shape) == len(y_shape) == 2:
         raise ValueError(
-            "The dimention of x, y should be 2 but receive x's shape: {}, y's shape: {}".format(
+            "The dimension of x, y should be 2 but receive x's shape: {}, y's shape: {}".format(
                 x_shape, y_shape
             )
         )
@@ -2371,7 +2371,7 @@ def addmm_(input, x, y, beta=1.0, alpha=1.0, name=None):
             )
     else:
         raise ValueError(
-            "The dimention of input should be 2 or 1 but receive input's shape: {}".format(
+            "The dimension of input should be 2 or 1 but receive input's shape: {}".format(
                 input_shape
             )
         )
