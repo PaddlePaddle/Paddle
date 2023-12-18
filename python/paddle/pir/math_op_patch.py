@@ -17,8 +17,8 @@ import warnings
 
 from paddle import _C_ops
 from paddle.base.libpaddle import DataType
-from paddle.base.wrapped_decorator import wrap_decorator
 
+from ..base.framework import fake_interface_only
 from . import Value
 
 _already_patch_value = False
@@ -31,21 +31,6 @@ _supported_int_dtype_ = [
     DataType.INT32,
     DataType.INT64,
 ]
-
-
-def _fake_interface_only_(func):
-    def __impl__(*args, **kwargs):
-        raise AssertionError(
-            f"'{func.__name__}' only can be called by `paddle.Tensor` in dynamic graph mode. Suggestions:\n"
-            "  1. If you are in static graph mode, you can switch to dynamic graph mode by turning off `paddle.enable_static()` or calling `paddle.disable_static()`.\n"
-            "  2. If you are using `@paddle.jit.to_static`, you can call `paddle.jit.enable_to_static(False)`. "
-            f"If you have to translate dynamic graph to static graph, please use other API to replace '{func.__name__}'."
-        )
-
-    return __impl__
-
-
-fake_interface_only = wrap_decorator(_fake_interface_only_)
 
 
 def create_tensor_with_batchsize(ref_var, value, dtype):
