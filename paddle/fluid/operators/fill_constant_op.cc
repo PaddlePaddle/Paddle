@@ -143,7 +143,7 @@ class FillConstantOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddAttr<paddle::experimental::Scalar>("value",
                                           "(Scalar) The value to be filled")
-        .SetDefault({});
+        .SetDefault(0.0f);
     AddAttr<std::string>(
         "str_value",
         "(string, default empty) The str convert to value to be filled")
