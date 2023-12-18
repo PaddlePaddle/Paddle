@@ -56,7 +56,7 @@ void TileGradKernel(const Context& dev_ctx,
                     const IntArray& repeat_times,
                     DenseTensor* x_grad) {
   auto x_dims = x.dims();
-  auto vec_x_dims = phi::vectorize<int>(x_dims);
+  auto vec_x_dims = common::vectorize<int>(x_dims);
   auto repeat_times_data = repeat_times.GetData();
   if (repeat_times_data.size() < vec_x_dims.size()) {
     int diff = vec_x_dims.size() - repeat_times_data.size();

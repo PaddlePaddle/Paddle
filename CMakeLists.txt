@@ -54,13 +54,14 @@ option(WITH_XPU "Compile PaddlePaddle with BAIDU KUNLUN XPU" OFF)
 option(WITH_XPU_KP "Compile PaddlePaddle with BAIDU XPU compiler " OFF)
 option(WITH_XPU_XFT "Compile PaddlePaddle with BAIDU XPU-XFT" OFF)
 option(WITH_XPU_PLUGIN "Compile PaddlePaddle with BAIDU XPU plugin" OFF)
+option(WITH_XPU_XHPC "Compile PaddlePaddle with BAIDU XPU-HPC library" OFF)
 option(WITH_WIN_DUMP_DBG "Compile with windows core dump debug mode" OFF)
 option(WITH_ROCM "Compile PaddlePaddle with ROCM platform" OFF)
 option(WITH_IPU "Compile PaddlePaddle with Graphcore IPU" OFF)
 option(WITH_ONNXRUNTIME "Compile PaddlePaddle with ONNXRUNTIME" OFF)
 option(WITH_CUSPARSELT "Compile PaddlePaddle with CUSPARSELT" OFF)
 option(WITH_SETUP_INSTALL "Compile PaddlePaddle with setup.py" OFF)
-option(WITH_SHARED_PHI "Compile PaddlePaddle with SHARED LIB of PHI" OFF)
+option(WITH_SHARED_PHI "Compile PaddlePaddle with SHARED LIB of PHI" ON)
 option(CINN_ONLY "Compile CINN only in Paddle" OFF)
 option(CINN_WITH_CUDNN "Compile CINN with CUDNN support" ON)
 
@@ -85,6 +86,9 @@ if(WITH_GPU AND WITH_XPU_KP)
 endif()
 if(WITH_GPU AND WITH_XPU_XFT)
   message(FATAL_ERROR "Error when compile GPU and XPU-XFT at the same time")
+endif()
+if(WITH_GPU AND WITH_XPU_XHPC)
+  message(FATAL_ERROR "Error when compile GPU and XPU-HPC at the same time")
 endif()
 if(WITH_GPU AND WITH_ROCM)
   message(FATAL_ERROR "Error when compile CUDA and ROCM at the same time")
@@ -124,6 +128,9 @@ if(WIN32)
   message("Build static library of PHI")
   set(CMAKE_SUPPRESS_REGENERATION ON)
   set(CMAKE_STATIC_LIBRARY_PREFIX lib)
+  set(WITH_SHARED_PHI
+      OFF
+      CACHE BOOL "Disable WITH_SHARED_PHI when compiling PADDLE ON WIN32" FORCE)
 
   set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /bigobj")
   set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /bigobj")
@@ -335,7 +342,9 @@ unset(WITH_RECORD_BUILDTIME CACHE)
 
 # PY_VERSION
 if(NOT PY_VERSION)
-  set(PY_VERSION 3.7)
+  set(PY_VERSION 3.8)
+elseif(${PY_VERSION} VERSION_LESS 3.8)
+  message(FATAL_ERROR "Paddle only support Python version>=3.8 now")
 endif()
 set(PYBIND11_PYTHON_VERSION ${PY_VERSION})
 
@@ -444,6 +453,14 @@ if(NOT WITH_XPU AND WITH_XPU_BKCL)
   set(WITH_XPU_BKCL
       OFF
       CACHE STRING "Disable BKCL when compiling without XPU" FORCE)
+endif()
+
+if(NOT WITH_XPU AND WITH_XPU_XHPC)
+  message(
+    WARNING "Disable XHPC when compiling without XPU. Force WITH_XPU_XHPC=OFF.")
+  set(WITH_XPU_XHPC
+      OFF
+      CACHE STRING "Disable XHPC when compiling without XPU" FORCE)
 endif()
 
 if(WITH_NCCL)
@@ -586,13 +603,6 @@ include(flags) # set paddle compile flags
 
 if(WITH_CINN)
   message(STATUS "Compile Paddle with CINN.")
-  message(
-    WARNING
-      "Enable WITH_SHARED_PHI when compiling with CINN. Force WITH_SHARED_PHI=ON."
-  )
-  set(WITH_SHARED_PHI
-      ON
-      CACHE BOOL "Enable WITH_SHARED_PHI when compiling with CINN" FORCE)
   # TODO(6clc): Use CINN_WITH_CUDNN to completely replace WITH_CUDNN in CINN.
   #             Use WITH_GPU to completely replace WITH_CUDA in CINN.
   set(WITH_MKL_CBLAS ${WITH_MKL})

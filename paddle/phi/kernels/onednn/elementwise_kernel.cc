@@ -77,8 +77,18 @@ void ElementwiseKernel(const OneDNNContext& dev_ctx,
     std::swap(non_const_x, non_const_y);
   }
 
-  const auto src_x_memory = handler.AcquireSrcMemory(non_const_x);
-  const auto src_y_memory = handler.AcquireSecondSrcMemory(non_const_y);
+  const auto src_x_memory =
+      handler.swin_case ? (x.numel() == y.numel()
+                               ? handler.AcquireExtendSrcMemory(non_const_x, 0)
+                               : handler.AcquireSrcMemory(non_const_x))
+                        : handler.AcquireSrcMemory(non_const_x);
+
+  const auto src_y_memory =
+      handler.swin_case ? (x.numel() == y.numel()
+                               ? handler.AcquireSecondSrcMemory(non_const_y)
+                               : handler.AcquireExtendSrcMemory(non_const_y, 1))
+                        : handler.AcquireSecondSrcMemory(non_const_y);
+
   // (jczaja) For Inplace src and dst should be the same memory object.
   // So x should share buffer with z. But UT mechanics is testing inplace
   // execution for this op not checking that x can be bradcasted to match in

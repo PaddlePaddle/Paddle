@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/core/macros.h"
+#include "paddle/common/macros.h"
 
 namespace phi {
 namespace distributed {

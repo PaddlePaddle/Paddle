@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "paddle/cinn/backends/llvm/codegen_llvm.h"
+#include "paddle/cinn/runtime/intrinsic.h"
 
 PD_DECLARE_bool(cinn_bucket_compile);
 
@@ -47,7 +48,13 @@ class CodeGenCUDA_Host : public CodeGenLLVM {
   }
 
   llvm::Value *Visit(const ir::Call *op) override {
-    return LowerCUDAKernelCall(op);
+    if (op->name == runtime::intrinsic::get_value_in_cuda_kernel_args) {
+      return LowerParseArgsValueCall(op);
+    } else if (op->name == runtime::intrinsic::call_cuda_kernel) {
+      return LowerCUDAKernelCall(op);
+    } else {
+      CINN_NOT_IMPLEMENTED;
+    }
   }
 
  private:
@@ -67,6 +74,8 @@ class CodeGenCUDA_Host : public CodeGenLLVM {
   llvm::Value *LowerGPUKernelLauncher(const ir::_LoweredFunc_ *func);
 
   llvm::Value *LowerHostFunc(const ir::_LoweredFunc_ *func);
+
+  llvm::Value *LowerParseArgsValueCall(const ir::Call *call_ir);
 
   llvm::Value *LowerCUDAKernelCall(const ir::Call *op);
 };

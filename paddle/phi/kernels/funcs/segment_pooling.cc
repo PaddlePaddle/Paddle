@@ -56,7 +56,7 @@ class SegmentPoolFunctor<phi::CPUContext, T, IndexT> {
       Tensor in_t = input.Slice(last_idx, idx);
 
       int64_t h = idx - last_idx;
-      auto in_e = EigenMatrix<T>::From(in_t, phi::make_ddim({h, w}));
+      auto in_e = EigenMatrix<T>::From(in_t, common::make_ddim({h, w}));
       auto out_e = EigenVector<T>::Flatten(out_t);
 
       auto reduce_dim = Eigen::array<int, 1>({{0}});

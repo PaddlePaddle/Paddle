@@ -21,6 +21,7 @@ if(WITH_ARM_BRPC)
     sendrecv_rpc
     arm_brpc
     phi
+    common
     glog
     snappy
     device_context)
@@ -39,6 +40,7 @@ else()
     sendrecv_rpc
     ${EXTERNAL_BRPC_DEPS}
     phi
+    common
     zlib
     device_context)
 endif()

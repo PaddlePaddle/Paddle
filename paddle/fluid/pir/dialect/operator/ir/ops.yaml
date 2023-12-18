@@ -1,5 +1,7 @@
-# The apis in this file are unstandardized that may caused by a variety of reasons,
-# we are trying to fix these apis and will move standardized apis into ops.yaml.
+# The operators included in this file are:
+# 1) Operators defined only in PIR, dynamic graphs do not exist;
+# 2) The definitions of static graphs and dynamic graphs are inconsistent, but the final definition plan has not yet been clarified.
+# After the definition is clearly defined, migrate to paddle /fluid/pir/dialect/operator/ir/update_ops.yaml or paddle/phi/api/yaml/ops.yaml
 
 - op : adadelta_
   args : (Tensor param, Tensor grad, Tensor avg_squared_grad, Tensor avg_squared_update, Tensor learning_rate, Tensor master_param, float rho, float epsilon, bool multi_precision)
@@ -82,19 +84,6 @@
     func : ReduceInferMeta
   kernel :
     func : any
-
-- op : arange
-  args : (Scalar start, Scalar end, Scalar step, DataType dtype=DataType::FLOAT64, Place place=CPUPlace())
-  output : Tensor(out)
-  infer_meta :
-    func : ArangeInferMeta
-    param : [start, end, step, dtype]
-  kernel :
-    func : arange
-    param : [start, end, step]
-    data_type : dtype
-    backend : place
-  support_tensor : [start, end, step]
 
 - op : assert
   args : (Tensor cond, Tensor[] data, int64_t summarize = -1)
@@ -212,14 +201,14 @@
     func : c_concat
 
 - op : c_embedding
-  args : (Tensor weight, Tensor x, int64_t start_index=0)
+  args : (Tensor weight, Tensor x, int64_t start_index=0, int64_t vocab_size=-1)
   output : Tensor(out)
   infer_meta :
     func : CEmbeddingInferMeta
     param : [weight, x, start_index]
   kernel :
     func : c_embedding
-    param : [weight, x, start_index]
+    param : [weight, x, start_index, vocab_size]
     data_type : weight
   backward : c_embedding_grad
 
@@ -308,6 +297,15 @@
   args : (Tensor x, Place place, bool blocking)
   output : Tensor(out)
   invoke : copy_to_impl(x, place, blocking)
+
+- op : decayed_adagrad
+  args : (Tensor param, Tensor grad, Tensor moment, Tensor learning_rate, float decay = 0.95f, float epsilon = 1.0e-6f)
+  output : Tensor(param_out), Tensor(moment_out)
+  infer_meta :
+    func : DecayedAdagradInferMeta
+  kernel :
+    func : decayed_adagrad
+    data_type : param
 
 - op : decode_jpeg
   args : (Tensor x, str mode, Place place)
@@ -1057,6 +1055,14 @@
   intermediate : reserve
   view : (dropout_state_in -> dropout_state_out)
 
+- op : row_conv
+  args : (Tensor x, Tensor filter)
+  output : Tensor(out)
+  infer_meta :
+     func: RowConvInferMeta
+  kernel :
+     func : row_conv
+
 - op : rrelu
   args : (Tensor x, float lower, float upper, bool is_test)
   output : Tensor(out), Tensor(noise)
@@ -1143,6 +1149,16 @@
   kernel :
     func : slice
   backward : slice_grad
+
+- op : soft_relu
+  args : (Tensor x, float threshold = 20.0f)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : soft_relu
+  backward : soft_relu_grad
 
 - op : softmax
   args : (Tensor x, int axis)

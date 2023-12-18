@@ -93,7 +93,7 @@ class TransferLayoutFunctor {
         }
         auto out_tz = out_tensor.dims().size() == 0
                           ? std::vector<int64_t>{1}
-                          : phi::vectorize(out_tensor.dims());
+                          : common::vectorize(out_tensor.dims());
         dnnl::memory::data_type in_type =
             phi::funcs::ToOneDNNDataType(in_tensor.dtype());
 
@@ -134,7 +134,7 @@ class TransferLayoutFunctor {
                        const phi::DenseTensor &in,
                        phi::DenseTensor *out) const {
     PADDLE_ENFORCE_EQ(
-        phi::arity(in.dims()),
+        common::arity(in.dims()),
         4,
         platform::errors::InvalidArgument(
             "Input dimension arity only can be 4, the input dimension is %s.",
@@ -149,7 +149,7 @@ class TransferLayoutFunctor {
       dst_dim[i] = src_dim[axis[i]];
     }
 
-    out->Resize(phi::make_ddim(dst_dim));
+    out->Resize(common::make_ddim(dst_dim));
     out->mutable_data(in.place(), in.type());
 
     framework::VisitDataType(

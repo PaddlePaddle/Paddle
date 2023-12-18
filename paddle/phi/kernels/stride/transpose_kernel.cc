@@ -41,6 +41,7 @@ void TransposeStridedKernel(const Context& ctx,
 
   out->set_meta(meta);
   out->ResetHolder(x.Holder());
+  out->ShareInplaceVersionCounterWith(x);
 }
 
 }  // namespace phi

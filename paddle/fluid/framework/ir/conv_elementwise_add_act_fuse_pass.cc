@@ -40,7 +40,7 @@ framework::proto::OpDesc PrepareOpDesc(
     float alpha) {
   auto proto = base_desc;
   framework::OpDesc desc(proto, nullptr);
-  desc.SetType("conv2d_fusion");
+  desc.SetType("fused_conv2d_add_act");
   desc.SetInput("Bias", {bias});
   desc.SetInput("ResidualData", {});
   desc.SetAttr("activation", activation);
@@ -194,9 +194,9 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
     bool cutlass_can_fuse = CutlassTeller::Instance()->CbaCanSupport(
         conv_op->Op(), scope, act_op_type, Get<int>("gpu_device_id"));
     bool cudnn_can_fuse = cudnn_act_set.count(act_op_type);
-    // When this conv2d_fusion specified by problem size and act type is not
-    // supported by cutlass and not supported by cuDNN, we should not apply this
-    // pass.
+    // When this fused_conv2d_add_act specified by problem size and act type is
+    // not supported by cutlass and not supported by cuDNN, we should not apply
+    // this pass.
     if (!cutlass_can_fuse && !cudnn_can_fuse) {
       return;
     }

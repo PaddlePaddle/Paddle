@@ -52,7 +52,7 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
     return Expr(make_shared<FloatImm>(op->type(), op->value));
   }
   Expr Visit(const ir::StringImm* op) override {
-    return Expr(common::make_shared<StringImm>(op->value));
+    return Expr(cinn::common::make_shared<StringImm>(op->value));
   }
 
   Expr Visit(const ir::Cast* op) override {
@@ -367,7 +367,7 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
       arguments.push_back(Visit(args));
     }
 
-    auto n = common::make_shared<ir::PrimitiveNode>();
+    auto n = cinn::common::make_shared<ir::PrimitiveNode>();
     n->name = op->name;
     n->attrs = op->attrs;  // attrs are PODs
     n->arguments = arguments;

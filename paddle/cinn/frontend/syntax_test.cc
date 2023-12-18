@@ -63,7 +63,7 @@ TEST(syntax, basic) {
 
 TEST(syntax, program_execute_multi_elementwise_add) {
   auto program = CreateAddProgram();
-  Target target = common::DefaultTarget();
+  Target target = cinn::common::DefaultTarget();
   std::unordered_set<std::string> fetch_ids;
   auto graph = Optimize(&program, fetch_ids, target);
   // auto graph    = std::make_shared<hlir::framework::Graph>(*program, target);
@@ -84,7 +84,7 @@ TEST(syntax, program_execute_multi_elementwise_add) {
 
 TEST(syntax, program_execute_multi_elementwise_add2) {
   auto program = CreateAddProgram();
-  Target target = common::DefaultTarget();
+  Target target = cinn::common::DefaultTarget();
   std::unordered_set<std::string> fetch_ids;
   auto graph = Optimize(&program, fetch_ids, target);
   LOG(INFO) << "graph:\n" << graph->Visualize();
@@ -119,7 +119,7 @@ std::get<2>(programTuple);
 
   LOG(INFO) << "program:\n" << *program;
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
   std::unordered_set<std::string> fetch_ids;
   auto graph = cinn::frontend::Optimize(program.get(), fetch_ids, target);
 

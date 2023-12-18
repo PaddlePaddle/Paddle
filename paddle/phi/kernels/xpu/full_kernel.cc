@@ -34,7 +34,7 @@ void FullKernel(const Context& dev_ctx,
                 DataType dtype,
                 DenseTensor* out) {
   using XPUInTDType = typename XPUTypeTrait<T>::Type;
-  out->Resize(phi::make_ddim(shape.GetData()));
+  out->Resize(common::make_ddim(shape.GetData()));
   int numel = out->numel();
   dev_ctx.template Alloc<T>(out);
   auto out_data = reinterpret_cast<XPUInTDType*>(out->data<T>());
@@ -109,7 +109,7 @@ void FullBatchSizeLikeKernel(const Context& dev_ctx,
     // set the correct batch size for the LoDTensor.
     auto odims = out->dims();
     odims[out_batch_size_dim] = static_cast<int>(x.lod().back().size()) - 1;
-    FullKernel<T, Context>(dev_ctx, phi::vectorize(odims), val, dtype, out);
+    FullKernel<T, Context>(dev_ctx, common::vectorize(odims), val, dtype, out);
   }
   FullLikeKernel<T, Context>(dev_ctx, x, val, dtype, out);
 }
@@ -120,6 +120,7 @@ PD_REGISTER_KERNEL(full,
                    ALL_LAYOUT,
                    phi::FullKernel,
                    float,
+                   double,
                    int8_t,
                    uint8_t,
                    int16_t,
@@ -134,6 +135,7 @@ PD_REGISTER_KERNEL(full_like,
                    ALL_LAYOUT,
                    phi::FullLikeKernel,
                    float,
+                   double,
                    uint8_t,
                    int16_t,
                    int,

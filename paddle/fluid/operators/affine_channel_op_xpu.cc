@@ -37,7 +37,7 @@ class AffineChannelXPUKernel : public framework::OpKernel<T> {
     y->mutable_data<T>(ctx.GetPlace());
 
     const phi::DataLayout layout =
-        phi::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
+        common::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
 
     auto dims = x->dims();
     int N = dims[0];
@@ -99,7 +99,7 @@ class AffineChannelGradXPUKernel : public framework::OpKernel<T> {
     auto* dbias = ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
 
     const phi::DataLayout layout =
-        phi::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
+        common::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
 
     auto dims = x->dims();
     int N = dims[0];

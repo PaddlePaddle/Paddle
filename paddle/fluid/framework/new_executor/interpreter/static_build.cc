@@ -29,12 +29,14 @@
 
 PHI_DECLARE_bool(cache_inference_while_scope);
 
-// These Ops is OperatorBase, but we have been handle them in static build
-std::set<std::string> OperatorBasesHandledInStaticBuild = {
-    "read", "conditional_block", "while"};
-
 std::set<std::string> OperatorBasesMustRunInStaticBuild = {
     "create_double_buffer_reader", "create_py_reader"};
+
+std::set<std::string> OpsHandledInStaticBuild = {"conditional_block",
+                                                 "fused_rms_norm",
+                                                 "fused_rms_norm_grad",
+                                                 "read",
+                                                 "while"};
 
 std::set<std::string> OpsCanSkipedFakeAllocInStaticBuild = {
     "c_comm_init",
@@ -131,6 +133,11 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
   std::set<std::pair<std::string, KernelCode>> invalid_ops;
   for (auto& op : block.AllOps()) {
     auto op_type = op->Type();
+    if (OpsCanSkipedFakeAllocInStaticBuild.count(op_type) ||
+        OpsHandledInStaticBuild.count(op_type)) {
+      continue;
+    }
+
     const framework::OpInfo& info = OpInfoMap::Instance().Get(op_type);
     auto op_base =
         info.Creator()(op_type, op->Inputs(), op->Outputs(), op->GetAttrMap());
@@ -157,13 +164,10 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
     KernelCode kernel_code = static_cast<KernelCode>(
         (in_black_list << 5) + (is_operator_base << 4) + (is_custom_op << 3) +
         (use_mkldnn << 2) + (sub_block_can_not_static_build << 1));
-    if (!OpsCanSkipedFakeAllocInStaticBuild.count(op_type)) {
-      if (in_black_list ||
-          (is_operator_base &&
-           !OperatorBasesHandledInStaticBuild.count(op_type)) ||
-          is_custom_op || use_mkldnn || sub_block_can_not_static_build) {
-        invalid_ops.insert(std::make_pair(op_type, kernel_code));
-      }
+
+    if (in_black_list || is_operator_base || is_custom_op || use_mkldnn ||
+        sub_block_can_not_static_build) {
+      invalid_ops.insert(std::make_pair(op_type, kernel_code));
     }
   }
 
@@ -944,14 +948,36 @@ void FakeInitializeOutputsForStructureKernel(
 
   const VariableNameMap& outputs = op.Outputs();
   for (auto& item : outputs) {
-    const std::string& parameter_name = item.first;
-    auto multi_output_var = execution_context->MultiOutputVar(parameter_name);
+    const std::string& output_parameter_name = item.first;
+    auto multi_output_var =
+        execution_context->MultiOutputVar(output_parameter_name);
     for (Variable* var : multi_output_var) {
       phi::TensorBase* out_tensor = GetTensorFormVar(var);
-      if (TensorShouldBeFakeInitialized(op, parameter_name, out_tensor)) {
+      if (TensorShouldBeFakeInitialized(
+              op, output_parameter_name, out_tensor)) {
         phi::Place place = execution_context->GetPlace();
         phi::DataType dtype =
             phi::TransToPhiDataType(op_kernel_type.data_type_);
+        // temporarily hack for extern op fused_rms_norm
+        if (op.Type() == "fused_rms_norm") {
+          if (output_parameter_name == "invvar") {
+            dtype = DataType::FLOAT32;
+          } else if (output_parameter_name == "y") {
+            dtype = GetInputDType(execution_context->Context(), "x");
+          }
+          VLOG(4) << "Set fused_rms_norm output " << output_parameter_name
+                  << " to " << dtype;
+        }
+        if (op.Type() == "fused_rms_norm_grad") {
+          if (output_parameter_name == paddle::Grad("x")) {
+            dtype = GetInputDType(execution_context->Context(), "x");
+          } else if (output_parameter_name == paddle::Grad("scale")) {
+            dtype = GetInputDType(execution_context->Context(), "scale");
+          }
+          VLOG(4) << "Set fused_rms_norm_grad output " << output_parameter_name
+                  << " to " << dtype;
+        }
+
         phi::DataLayout layout = out_tensor->layout();
         FakeInitializeTensorBase(execution_context->device_context(),
                                  place,

@@ -1,3 +1,8 @@
+# The operators included in this file are:
+# 1) Operators defined only in PIR, dynamic graphs do not exist;
+# 2) The definitions of static graphs and dynamic graphs are inconsistent, but the final definition plan has not yet been clarified.
+# After the definition is clearly defined, migrate to paddle /fluid/pir/dialect/operator/ir/update_ops.yaml or paddle/phi/api/yaml/ops.yaml
+
 - backward_op : add_double_grad
   forward : add_grad (Tensor x, Tensor y, Tensor grad_out, int axis = -1) -> Tensor(grad_x), Tensor(grad_y)
   args : (Tensor y, Tensor grad_out, Tensor grad_x_grad, Tensor grad_y_grad, int axis = -1)
@@ -628,6 +633,16 @@
     data_type: out_grad
   optional : sequence_length
 
+- backward_op : row_conv_grad
+  forward: row_conv (Tensor x, Tensor filter) -> Tensor(out)
+  args: (Tensor x, Tensor filter, Tensor out_grad)
+  output: Tensor(x_grad),Tensor(filter_grad)
+  infer_meta :
+    func : RowConvGradInferMeta
+    param : [out_grad, filter]
+  kernel:
+    func : row_conv_grad
+
 - backward_op : rrelu_grad
   forward : rrelu (Tensor x, float lower, float upper, bool is_test) -> Tensor(out), Tensor(noise)
   args : (Tensor x, Tensor noise, Tensor out_grad)
@@ -680,6 +695,16 @@
   composite: slice_grad(input, out_grad, axes, starts, ends, infer_flags, decrease_axis, input_grad)
   backward : slice_double_grad
   no_need_buffer : input
+
+- backward_op : soft_relu_grad
+  forward : soft_relu (Tensor x, float threshold) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad, float threshold)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
+  kernel :
+    func : soft_relu_grad
 
 - backward_op : softmax_grad
   forward : softmax (Tensor x, int axis) -> Tensor(out)

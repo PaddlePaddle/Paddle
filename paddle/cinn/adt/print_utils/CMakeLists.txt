@@ -4,9 +4,8 @@ if(NOT CINN_ONLY)
   gather_srcs(
     cinnapi_src
     SRCS
-    print_constant.cc
+    print_dim_expr.cc
     print_equations.cc
-    print_loop_size.cc
     print_map_expr.cc
     print_schedule_descriptor.cc
     print_schedule_dim.cc

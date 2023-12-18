@@ -19,7 +19,9 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
+#include "paddle/phi/infermeta/spmd_rules/rules.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace phi {
 namespace distributed {
@@ -28,7 +30,7 @@ using phi::distributed::auto_parallel::str_join;
 
 SpmdInfo SoftmaxInferSpmd(const DistMetaTensor& x, int axis) {
   // Step0: Verify input args based on softmax logic
-  auto x_shape = phi::vectorize(x.dims());
+  auto x_shape = common::vectorize(x.dims());
   int x_ndim = x_shape.size();
   auto x_dist_attr_src = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
@@ -96,8 +98,8 @@ SpmdInfo SoftmaxInferSpmdReverse(const DistMetaTensor& x,
                                  const DistMetaTensor& out,
                                  int axis) {
   // Step0: verify input args based on softmax logic
-  auto x_shape = phi::vectorize(x.dims());
-  auto out_shape = phi::vectorize(out.dims());
+  auto x_shape = common::vectorize(x.dims());
+  auto out_shape = common::vectorize(out.dims());
   int x_ndim = x_shape.size();
   int out_ndim = out_shape.size();
   auto out_dist_attr_src = out.dist_attr();
@@ -148,6 +150,59 @@ SpmdInfo SoftmaxInferSpmdReverse(const DistMetaTensor& x,
           << "Input dims_mapping: [" << str_join(x_dims_mapping) << "]\n\n";
 
   return {{x_dist_attr}, {out_dist_attr_dst}};
+}
+
+SpmdInfo SoftmaxGradInferSpmd(const DistMetaTensor& out,
+                              const DistMetaTensor& out_grad,
+                              int axis) {
+  axis = axis < 0 ? out.dims().size() + axis : axis;
+
+  PADDLE_ENFORCE_EQ(out_grad.dims().size(),
+                    out_grad.dist_attr().dims_mapping().size(),
+                    phi::errors::InvalidArgument(
+                        "The Tensor out_grad's rank [%d] and out_grad's "
+                        "dims_mapping size [%d] are not matched.",
+                        out_grad.dims().size(),
+                        out_grad.dist_attr().dims_mapping().size()));
+
+  PADDLE_ENFORCE_GE(
+      out_grad.dist_attr().dims_mapping().size(),
+      axis,
+      phi::errors::InvalidArgument("The Tensor out_grad's rank [%d] must be "
+                                   "greater than axis [%d].",
+                                   out_grad.dist_attr().dims_mapping().size(),
+                                   axis));
+
+  // To keeping consistent with forward propagation, sharding on softmax_axis
+  // is not supported now, the axis should be resharded as replicated.
+  auto out_grad_dims_mapping = out_grad.dist_attr().dims_mapping();
+  if (out_grad_dims_mapping[axis] >= 0) {
+    out_grad_dims_mapping[axis] = -1;
+    VLOG(6) << "SoftmaxGradInferSpmd: The out_grad's softmax_axis is reshard "
+               "to be replicated: "
+            << "original dims_mapping["
+            << str_join(out_grad.dist_attr().dims_mapping()) << "], "
+            << "resharded dims_mapping[" << str_join(out_grad_dims_mapping)
+            << "].";
+  }
+  auto out_dims_mapping = out.dist_attr().dims_mapping();
+  if (out_dims_mapping[axis] >= 0) {
+    out_dims_mapping[axis] = -1;
+    VLOG(6) << "SoftmaxGradInferSpmd: The out's softmax_axis is reshard "
+               "to be replicated: "
+            << "original dims_mapping["
+            << str_join(out.dist_attr().dims_mapping()) << "], "
+            << "resharded dims_mapping[" << str_join(out_dims_mapping) << "].";
+  }
+
+  auto out_dist_attr = CopyTensorDistAttrForOutput(out.dist_attr());
+  out_dist_attr.set_dims_mapping(out_dims_mapping);
+  auto out_grad_dist_attr = CopyTensorDistAttrForOutput(out_grad.dist_attr());
+  out_grad_dist_attr.set_dims_mapping(out_grad_dims_mapping);
+
+  return ElementwiseBinaryInferSpmd(
+      DistMetaTensor(out.dims(), out_dist_attr),
+      DistMetaTensor(out_grad.dims(), out_grad_dist_attr));
 }
 
 }  // namespace distributed

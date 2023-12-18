@@ -30,7 +30,7 @@ class LegacyKernelInstruction : public InstructionBase {
   LegacyKernelInstruction(size_t id,
                           const platform::Place& place,
                           ::pir::Operation* op,
-                          const ValueExecutionInfo& value_exec_info);
+                          const ValueExecutionInfo* value_exec_info);
 
   ~LegacyKernelInstruction();
   phi::Kernel* PhiKernel() const { return phi_kernel_; }
@@ -65,7 +65,7 @@ class LegacyKernelInstruction : public InstructionBase {
 
   ::pir::Operation* op_{nullptr};  // not owned
 
-  const ValueExecutionInfo& value_exec_info_;  // not owned
+  const ValueExecutionInfo* value_exec_info_;  // not owned
 };
 
 }  // namespace framework

@@ -211,7 +211,7 @@ bool GraphEdgeCompare::operator()(const Shared<GraphEdge> &a,
 }
 
 std::set<GraphNode *> Graph::CollectNodes(
-    std::function<bool(const common::GraphNode *)> &&teller) {
+    std::function<bool(const cinn::common::GraphNode *)> &&teller) {
   std::set<GraphNode *> res;
   for (auto *node : nodes()) {
     if (teller(node)) res.insert(node);

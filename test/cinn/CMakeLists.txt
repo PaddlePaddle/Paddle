@@ -311,5 +311,3 @@ if(WITH_GPU)
   endforeach()
 
 endif()
-
-add_subdirectory(adt)

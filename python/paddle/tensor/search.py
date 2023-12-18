@@ -99,7 +99,7 @@ def argsort(x, axis=-1, descending=False, name=None):
               [1, 1, 0, 2],
               [0, 2, 1, 1]]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         _, ids = _C_ops.argsort(x, axis, descending)
         return ids
     else:
@@ -1136,7 +1136,7 @@ def searchsorted(
              [1, 3, 4, 5]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.searchsorted(sorted_sequence, values, out_int32, right)
     else:
         check_variable_and_dtype(

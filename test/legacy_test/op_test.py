@@ -671,6 +671,8 @@ class OpTest(unittest.TestCase):
         input_dtype_set = set()
         infer_dtype(inputs, input_dtype_set)
         dtype_list = [
+            np.dtype(np.complex128),
+            np.dtype(np.complex64),
             np.dtype(np.float64),
             np.dtype(np.float32),
             np.dtype(np.float16),
@@ -3171,7 +3173,7 @@ class OpTest(unittest.TestCase):
             if tensor_ndim > 0 and tensor_size < 100:
                 self.__class__.input_shape_is_large = False
 
-        if not type(output_names) is list:
+        if type(output_names) is not list:
             output_names = [output_names]
 
         if numeric_place is None:

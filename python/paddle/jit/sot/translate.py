@@ -85,6 +85,8 @@ def symbolic_translate(fn: Callable[P, R], **kwargs) -> Callable[P, R]:
 
     """
 
+    kwargs.setdefault('training', True)
+
     def callback(frame):
         return eval_frame_callback(frame, **kwargs)
 

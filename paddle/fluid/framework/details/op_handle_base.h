@@ -56,7 +56,7 @@ class OpHandleBase {
     node_->WrappedBy(this);
   }
 
-  virtual ~OpHandleBase() PADDLE_MAY_THROW;
+  TEST_API virtual ~OpHandleBase() PADDLE_MAY_THROW;
 
   std::string DebugString() const;
 
@@ -68,13 +68,14 @@ class OpHandleBase {
 
   virtual std::string Name() const = 0;
 
-  void Run(DeviceType use_device);
+  TEST_API void Run(DeviceType use_device);
 
-  virtual void RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx);
+  TEST_API virtual void RecordWaitEventOnCtx(
+      platform::DeviceContext *waited_ctx);
 
-  void AddInput(VarHandleBase *in);
+  TEST_API void AddInput(VarHandleBase *in);
 
-  void AddOutput(VarHandleBase *out);
+  TEST_API void AddOutput(VarHandleBase *out);
 
   // This method adds the wait events of all the input on all the device
   // context.
@@ -82,14 +83,14 @@ class OpHandleBase {
   // NOTE: wait_for_feed is added to wait for feed var, since it has
   // generated op, no event and cannot perform event wait. It is only
   // used in fetch_async_op_handle currently.
-  virtual void WaitInputVarGenerated(bool wait_for_feed = false);
+  TEST_API virtual void WaitInputVarGenerated(bool wait_for_feed = false);
 
   // This method adds the wait events of all the input on the specified device
   // context.
   // NOTE: This Wait is asynchronous operation.
-  virtual void WaitInputVarGenerated(const platform::Place &place);
+  TEST_API virtual void WaitInputVarGenerated(const platform::Place &place);
 
-  virtual bool NeedWait(VarHandleBase *in_var);
+  TEST_API virtual bool NeedWait(VarHandleBase *in_var);
 
   // If the Op involves data transfer of multiple devices that
   // will likely block other computations.
@@ -127,7 +128,7 @@ class OpHandleBase {
 
   const ir::Node *Node() const { return node_; }
 
-  void SetLocalExecScopes(
+  TEST_API void SetLocalExecScopes(
       const std::unordered_map<Scope *, Scope *> &scope_map);
 
   void SetIsVariantScope(bool is_variant_scope) {
@@ -144,8 +145,8 @@ class OpHandleBase {
 
   virtual void RunImpl() = 0;
 
-  virtual void InitCUDA();
-  virtual void InitXPU();
+  TEST_API virtual void InitCUDA();
+  TEST_API virtual void InitXPU();
 
   ir::Node *node_;
   std::vector<VarHandleBase *> inputs_;

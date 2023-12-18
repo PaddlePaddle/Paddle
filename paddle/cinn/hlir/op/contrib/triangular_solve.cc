@@ -33,8 +33,8 @@ namespace cinn {
 namespace hlir {
 namespace op {
 
-using common::CINNValue;
-using common::CINNValuePack;
+using cinn::common::CINNValue;
+using cinn::common::CINNValuePack;
 
 std::shared_ptr<framework::OpStrategy> StrategyForTriangularSolve(
     const framework::NodeAttr &attrs,

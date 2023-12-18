@@ -210,7 +210,23 @@ class Controller(ControllerBase):
 
     def _get_entrypoint(self):
         if self.ctx.args.training_script.endswith('.py'):
-            entrypoint = [sys.executable, "-u", self.ctx.args.training_script]
+            if os.environ.get("WITH_COVERAGE") == "ON":
+                entrypoint = [
+                    sys.executable,
+                    "-u",
+                    "-m",
+                    "coverage",
+                    "run",
+                    "--branch",
+                    "-p",
+                    self.ctx.args.training_script,
+                ]
+            else:
+                entrypoint = [
+                    sys.executable,
+                    "-u",
+                    self.ctx.args.training_script,
+                ]
         else:
             entrypoint = [self.ctx.args.training_script]
 

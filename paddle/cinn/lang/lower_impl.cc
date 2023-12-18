@@ -208,12 +208,12 @@ std::string CompuGraphNode::id() const {
  * @param t The tensor.
  * @param stages The stage map.
  */
-void CreateCompGraphWithInlineTensors(common::Graph* graph,
+void CreateCompGraphWithInlineTensors(cinn::common::Graph* graph,
                                       const ir::Tensor& t,
                                       StageMap stages,
                                       std::set<ir::Tensor>* visited) {
   if (visited->count(t)) return;
-  common::GraphNode* t_node = graph->RetrieveNode(t->name);
+  cinn::common::GraphNode* t_node = graph->RetrieveNode(t->name);
   if (!t_node) {
     t_node = graph->RegisterNode(t->name, new CompuGraphNode(t));
   }
@@ -239,10 +239,10 @@ void CreateCompGraphWithInlineTensors(common::Graph* graph,
   }
 }
 
-std::unique_ptr<common::Graph> CreateCompGraphWithInlineTensorHidden(
+std::unique_ptr<cinn::common::Graph> CreateCompGraphWithInlineTensorHidden(
     const std::vector<ir::Tensor>& tensors, StageMap stages) {
   // create a graph with inline tensor first.
-  std::unique_ptr<common::Graph> graph(new common::Graph);
+  std::unique_ptr<cinn::common::Graph> graph(new cinn::common::Graph);
   std::set<ir::Tensor> visited;
   for (auto& t : tensors) {
     CreateCompGraphWithInlineTensors(graph.get(), t, stages, &visited);
@@ -251,9 +251,9 @@ std::unique_ptr<common::Graph> CreateCompGraphWithInlineTensorHidden(
   // greedy remove the inline tensor, each time merge the inputs of an inline
   // tensor to its sink node.
 
-  std::set<common::GraphNode*> inline_nodes;
+  std::set<cinn::common::GraphNode*> inline_nodes;
   do {
-    inline_nodes = graph->CollectNodes([&](const common::GraphNode* x) {
+    inline_nodes = graph->CollectNodes([&](const cinn::common::GraphNode* x) {
       auto* comp_node = x->safe_as<CompuGraphNode>();
       return stages[comp_node->tensor]->inlined();
     });
@@ -295,7 +295,7 @@ std::unique_ptr<common::Graph> CreateCompGraphWithInlineTensorHidden(
   return graph;
 }
 
-void CompuGraphAddCtrlDepLinks(common::Graph* graph, StageMap stages) {
+void CompuGraphAddCtrlDepLinks(cinn::common::Graph* graph, StageMap stages) {
   for (auto& x : graph->nodes()) {
     auto* node = x->safe_as<CompuGraphNode>();
     CHECK(node);
@@ -309,14 +309,14 @@ void CompuGraphAddCtrlDepLinks(common::Graph* graph, StageMap stages) {
   }
 }
 
-std::unique_ptr<common::Graph> CreateCompGraph(
+std::unique_ptr<cinn::common::Graph> CreateCompGraph(
     const std::vector<ir::Tensor>& tensors, StageMap stages, bool hide_inline) {
   if (hide_inline) {
     auto graph = CreateCompGraphWithInlineTensorHidden(tensors, stages);
     CompuGraphAddCtrlDepLinks(graph.get(), stages);
     return graph;
   } else {
-    auto graph = std::make_unique<common::Graph>();
+    auto graph = std::make_unique<cinn::common::Graph>();
     std::set<ir::Tensor> visited;
     for (auto& t : tensors) {
       CreateCompGraphWithInlineTensors(graph.get(), t, stages, &visited);
@@ -559,7 +559,7 @@ std::vector<ir::LoweredFunc> LowerImpl::operator()() {
       func_iterator = ir::ScheduleBlockRealize::Make(
           {},
           ir::ScheduleBlock::Make(
-              {}, {}, {}, common::UniqName("root"), func_iterator));
+              {}, {}, {}, cinn::common::UniqName("root"), func_iterator));
     }
     std::set<std::string> temp_tensor_names;
     for (auto& t : temp_tensor_args_) temp_tensor_names.insert(t->name);
@@ -609,7 +609,7 @@ std::vector<ir::LoweredFunc> LowerImpl::operator()() {
     std::unordered_set<std::string> buffer_name_set;
     // TODO(Superjomn) write buffer latter.
 
-    if (target_ == common::DefaultNVGPUTarget()) {
+    if (target_ == cinn::common::DefaultNVGPUTarget()) {
       for (auto& t : new_temp_tensors) {
         if (!tensor_map.count(t->name)) continue;
         auto& tt = tensor_map.at(t->name);
@@ -630,7 +630,7 @@ std::vector<ir::LoweredFunc> LowerImpl::operator()() {
     }
 
     ir::LoweredFunc func;
-    if (target_ == common::DefaultNVGPUTarget()) {
+    if (target_ == cinn::common::DefaultNVGPUTarget()) {
       auto func_args2 =
           GenFuncArgForSplitKernel(func_iterator, new_temp_tensors);
       std::string new_fn_name = fn_name_;
@@ -745,7 +745,7 @@ std::vector<Expr> LowerImpl::GenerateFunctionBody(
         for (auto& var : tensor->reduce_axis) {
           CHECK(var->lower_bound.defined());
           CHECK(var->upper_bound.defined());
-          CHECK(common::is_zero(var->lower_bound));
+          CHECK(cinn::common::is_zero(var->lower_bound));
           CHECK(var->upper_bound.is_constant());
           int_shape.push_back(
               static_cast<int>(var->upper_bound.get_constant()));
@@ -754,7 +754,7 @@ std::vector<Expr> LowerImpl::GenerateFunctionBody(
         std::vector<Var> block_vars;
         std::vector<Expr> iter_values;
         std::vector<Var> axis_vars =
-            common::GenDefaultAxis(tensor->shape.size());
+            cinn::common::GenDefaultAxis(tensor->shape.size());
         // bind var_values
         axis_vars.insert(axis_vars.end(),
                          tensor->reduce_axis.begin(),
@@ -779,7 +779,7 @@ std::vector<Expr> LowerImpl::GenerateFunctionBody(
             ir::ScheduleBlock::Make(
                 block_vars, {}, {}, tensor->name, store_body));
         // iter_values, ir::ScheduleBlock::Make(block_vars, {}, {},
-        // common::UniqName(tensor->name), store_body));
+        // cinn::common::UniqName(tensor->name), store_body));
         VLOG(3) << "store body\n" << store_body;
       }
       tuple_to_expr[tensor->name] = store_body;
@@ -795,7 +795,7 @@ std::vector<Expr> LowerImpl::GenerateFunctionBody(
 
     if (group_expr.defined()) {
       cuda_axis_info_.emplace_back(std::move(temp_cuda_axis_info));
-      if (target_ == common::DefaultNVGPUTarget() && !all_temp_tensor) {
+      if (target_ == cinn::common::DefaultNVGPUTarget() && !all_temp_tensor) {
         exprs.push_back(group_expr);
         Expr body = ir::Block::Make(exprs);
         result.push_back(body);
@@ -805,7 +805,7 @@ std::vector<Expr> LowerImpl::GenerateFunctionBody(
       }
     }
   }
-  if (target_ == common::DefaultHostTarget()) {
+  if (target_ == cinn::common::DefaultHostTarget()) {
     Expr body = ir::Block::Make(exprs);
     result.push_back(body);
     exprs.clear();
