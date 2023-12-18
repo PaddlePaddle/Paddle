@@ -62,7 +62,7 @@ TEST(DimExpr, value_shape_expr) {
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ::pir::Builder builder = ::pir::Builder(ctx, program.block());
 
-  // 2. Show fake network, assume calling x.shape correspond to ShapeOfOp
+  // 2. Show fake network, assume calling x.shape correspond to ShapeOp
   const std::vector<int64_t> x_shape = {-1, 2};
   const std::vector<int64_t> y_shape = {1, -1, 2};
   auto x = builder
