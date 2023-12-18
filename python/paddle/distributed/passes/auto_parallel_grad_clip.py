@@ -455,7 +455,7 @@ class ClipGradByGloblNormPass(PassBase):
                             inputs={},
                             outputs={'Out': [input_var]},
                             attrs={
-                                'shape': [1],
+                                'shape': [],
                                 'dtype': input_var.dtype,
                                 'value': 0,
                                 'force_cpu': False,
