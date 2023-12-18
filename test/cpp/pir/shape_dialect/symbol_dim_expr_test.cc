@@ -111,10 +111,10 @@ TEST(DimExpr, value_shape_expr) {
   ValueShapeDimExprs extend_x_value_shape2 =
       ValueShapeDimExprs::MakeConsistentValueShape(extend_x_shape,
                                                    extend_x_value_func);
-  ASSERT_EQ(extend_x_value_shape.shape().size(),
-            extend_x_value_shape2.shape().size());
-  ASSERT_EQ(extend_x_value_shape.value().size(),
-            extend_x_value_shape2.value().size());
+  ASSERT_EQ(extend_x_value_shape.shape().value().size(),
+            extend_x_value_shape2.shape().value().size());
+  ASSERT_EQ(extend_x_value_shape.value().value().size(),
+            extend_x_value_shape2.value().value().size());
 }
 
 TEST(DimExpr, equal) {
