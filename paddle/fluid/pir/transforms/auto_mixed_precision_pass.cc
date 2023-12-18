@@ -82,24 +82,24 @@ class AutoMixedPrecisionPattern : public pir::RewritePattern {
       pir::PatternBenefit benefit = 1,
       const std::vector<std::string>& generated_names = {})
       : RewritePattern(MatchAnyOpTypeTag(), benefit, context, generated_names) {
-    precision_mode_ = precision_mode;  // should be set by user
-    place_ = place;                    // should be set by user
-    enable_low_precision_io_ = enable_low_precision_io;
-    SetDefaultBlacklist();
-    SetDefaultWhitelist();
+    // precision_mode_ = precision_mode;  // should be set by user
+    // place_ = place;                    // should be set by user
+    // // enable_low_precision_io_ = enable_low_precision_io;
+    // SetDefaultBlacklist();
+    // SetDefaultWhitelist();
   }
 
   void SetDefaultBlacklist() {
-    black_list_.insert({
-        paddle::dialect::ExpOp::name(),
-        paddle::dialect::SquareOp::name(),
-        paddle::dialect::LogOp::name(),
-        // paddle::dialect::FetchOp::name(),
+    // black_list_.insert({
+    //     paddle::dialect::ExpOp::name(),
+    //     paddle::dialect::SquareOp::name(),
+    //     paddle::dialect::LogOp::name(),
+    //     // paddle::dialect::FetchOp::name(),
 
-        // paddle::dialect::Mean::name(),
-        // paddle::dialect::Sum::name(),
-        paddle::dialect::SigmoidCrossEntropyWithLogitsOp::name(),
-    });
+    //     // paddle::dialect::Mean::name(),
+    //     // paddle::dialect::Sum::name(),
+    //     paddle::dialect::SigmoidCrossEntropyWithLogitsOp::name(),
+    // });
   }
 
   void SetDefaultWhitelist() {
@@ -117,29 +117,108 @@ class AutoMixedPrecisionPattern : public pir::RewritePattern {
         op->isa<paddle::dialect::FullIntArrayOp>())
       return false;
 
-    if (!enable_low_precision_io_) {
-      if (op->isa<paddle::dialect::FeedOp>()) return false;
-    }
+    // if (!enable_low_precision_io_) {
+    //   if (op->isa<paddle::dialect::FeedOp>()) return false;
+    // }
 
     // if op is a full op, its user cannot be a scale op
-    if (op->isa<paddle::dialect::FullOp>()) {
-      auto use_ops = GetUseOpsForOutput(op, 0);
-      for (auto [use_op, idx] : use_ops) {
-        if (use_op->isa<paddle::dialect::ScaleOp>()) {
-          return false;
-        }
-      }
-    }
+    //   if (op->isa<paddle::dialect::FullOp>()) {
+    //     auto use_ops = GetUseOpsForOutput(op, 0);
+    //     for (auto [use_op, idx] : use_ops) {
+    //       if (use_op->isa<paddle::dialect::ScaleOp>()) {
+    //         return false;
+    //       }
+    //     }
+    //   }
 
-    if (!IsBuiltinOp(op)) {
-      return OpHasFloatResult(op);
-    }
+    //   if (!IsBuiltinOp(op)) {
+    //     return OpHasFloatResult(op);
+    //   }
 
+    //   return true;
+    // }
+    return true;
+  }
+};
+
+class AutoMixedPrecisionPass : public pir::Pass {
+ public:
+  AutoMixedPrecisionPass(const phi::Place& place,
+                         const phi::DataType& precision_mode)
+      : pir::Pass("auto_mixed_precision_pass", 1),
+        place_(place),
+        precision_mode_(precision_mode) {}
+
+  bool Initialize(pir::IrContext* context) override {
+    pir::RewritePatternSet ps(context);
+    ps.Add<AutoMixedPrecisionPattern>(context, place_, precision_mode_);
+    // ps.Add<FoldMultiCastOpPattern>(context);
+    patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
     return true;
   }
 
-  void Rewrite(pir::Operation* op,
-               pir::PatternRewriter& rewriter) const override {  // NOLINT
+  void Run(pir::Operation* op) override {
+    pir::GreedyRewriteConfig cfg;
+    cfg.use_top_down_traversal = true;
+    cfg.max_iterations = 2;
+    pir::ApplyPatternsGreedily(op->region(0), patterns_, cfg);
+  }
+
+  bool CanApplyOn(pir::Operation* op) const override {
+    return op->isa<::pir::ModuleOp>() && op->num_regions() > 0 &&
+           place_ == paddle::PlaceType::kGPU &&
+           (precision_mode_ == phi::DataType::FLOAT16 ||
+            precision_mode_ == phi::DataType::BFLOAT16);
+  }
+
+ private:
+  pir::FrozenRewritePatternSet patterns_;
+  phi::Place place_;
+  phi::DataType precision_mode_;
+  bool enable_low_precision_io_;
+
+  std::unordered_set<std::string> black_list_;
+  std::unordered_set<std::string> white_list_;
+
+  std::unordered_set<pir::Operation*> op_run_low_precision_;
+
+  void ProcessBlock(pir::Block* block) {}
+
+  void GetOpPrecision(pir::Block* block) {
+    for (auto& op_item : *block) {
+      VLOG(6) << "op name " << op_item.name();
+      auto op_name = op_item.name();
+      bool support_low_precision = true;
+      if (black_list.count(op_name)) {
+        support_low_precision = false;
+      } else if (IsBuiltinOp(&op_item)) {  // other builtin ops
+        if (op->isa<pir::ParameterOp>() || op->isa<pir::SetParameterOp>())
+          support_low_precision = false;
+      } else if (op_item->isa<paddle::dialect::FeedOp>() ||
+                 op_item->isa<paddle::dialect::FetchOp>()) {
+        support_low_precision = enable_low_precision_io_;
+      } else if (OpHasFloatResult(&op_item)) {  // pd op with float result
+        auto op_type = op_name.substr(op_name.find(".") + 1);
+        auto backend = ConvertPlaceToBackend(place_);
+        support_low_precision =
+            OpSupportPrecision(op_type, backend, precision_mode_);
+      }
+      if (support_low_precision) {
+        op_run_low_precision_.insert(&op_item);
+      }
+    }
+  }
+
+  void UpdateOpPrecision(pir::Block* block) {
+    for (auto& op_item : *block) {
+      if (op_run_low_precision_.count(&op_item)) {
+        RewriteOp(&op_item);
+      }
+    }
+  }
+
+  void RewriteOp(pir::Operation* op,
+                 pir::PatternRewriter& rewriter) const {  // NOLINT
     LOG(INFO) << "Rewrite op " << op->name() << std::endl;
     if (IsBuiltinOp(op)) {
       RewriteBuiltinOp(op, rewriter);
@@ -149,14 +228,6 @@ class AutoMixedPrecisionPattern : public pir::RewritePattern {
       return;
     }
   }
-
- private:
-  std::unordered_set<std::string> black_list_;
-  std::unordered_set<std::string> white_list_;
-  phi::DataType precision_mode_{phi::DataType::UNDEFINED};
-
-  phi::Place place_;
-  bool enable_low_precision_io_;
 
   bool PhiKernelSupportPrecision(
       const std::string& op_type,
@@ -522,42 +593,6 @@ class AutoMixedPrecisionPattern : public pir::RewritePattern {
       }
     }
   }
-};
-
-class AutoMixedPrecisionPass : public pir::Pass {
- public:
-  AutoMixedPrecisionPass(const phi::Place& place,
-                         const phi::DataType& precision_mode)
-      : pir::Pass("auto_mixed_precision_pass", 1),
-        place_(place),
-        precision_mode_(precision_mode) {}
-
-  bool Initialize(pir::IrContext* context) override {
-    pir::RewritePatternSet ps(context);
-    ps.Add<AutoMixedPrecisionPattern>(context, place_, precision_mode_);
-    // ps.Add<FoldMultiCastOpPattern>(context);
-    patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
-    return true;
-  }
-
-  void Run(pir::Operation* op) override {
-    pir::GreedyRewriteConfig cfg;
-    cfg.use_top_down_traversal = true;
-    cfg.max_iterations = 2;
-    pir::ApplyPatternsGreedily(op->region(0), patterns_, cfg);
-  }
-
-  bool CanApplyOn(pir::Operation* op) const override {
-    return op->isa<::pir::ModuleOp>() && op->num_regions() > 0 &&
-           place_ == paddle::PlaceType::kGPU &&
-           (precision_mode_ == phi::DataType::FLOAT16 ||
-            precision_mode_ == phi::DataType::BFLOAT16);
-  }
-
- private:
-  pir::FrozenRewritePatternSet patterns_;
-  phi::Place place_;
-  phi::DataType precision_mode_;
 };
 
 }  // namespace
