@@ -1589,7 +1589,10 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
                     else:
                         extra_args = ""
                     if op_info.onednn_layout_transform is None:
-                        layout_transform_arg, layout_transform_inputs = "", []
+                        layout_transform_arg, layout_transform_inputs = (
+                            "",
+                            r"\{\}",
+                        )
                     else:
                         (
                             layout_transform_arg,
@@ -1616,8 +1619,12 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
                         extra_args=extra_args,
                         layout_transform_arg=layout_transform_arg,
                         layout_transform_inputs=layout_transform_inputs,
-                        is_onednn_only=op_info.is_onednn_only,
-                        dynamic_fallback=op_info.dynamic_fallback,
+                        is_onednn_only="true"
+                        if op_info.is_onednn_only
+                        else "false",
+                        dynamic_fallback="true"
+                        if op_info.dynamic_fallback
+                        else "false",
                     )
                 # generate op verify function str
                 op_verify_str = ''
