@@ -250,7 +250,7 @@ class TestSemiAutoParallelLlamaACC(test_base.CommunicationTestDistBase):
         )
         for envs in envs_list:
             self.run_test_case(
-                "semi_auto_llama_acc.py",
+                "semi_auto_llama.py",
                 user_defined_envs=envs,
             )
 
