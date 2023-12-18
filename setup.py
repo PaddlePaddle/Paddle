@@ -1150,23 +1150,6 @@ def get_package_data_and_package_dir():
             ]
 
     if env_dict.get("WITH_XPU") == 'ON':
-        # only change rpath in Release mode,
-        if env_dict.get("CMAKE_BUILD_TYPE") == 'Release':
-            if os.name != 'nt':
-                if env_dict.get("APPLE") == "1":
-                    command = (
-                        "install_name_tool -id \"@loader_path/\" "
-                        + env_dict.get("XPU_API_LIB")
-                    )
-                else:
-                    command = "patchelf --set-rpath '$ORIGIN/' " + env_dict.get(
-                        "XPU_API_LIB"
-                    )
-                if os.system(command) != 0:
-                    raise Exception(
-                        'patch ' + env_dict.get("XPU_API_LIB") + 'failed ,',
-                        "command: %s" % command,
-                    )
         shutil.copy(env_dict.get("XPU_API_LIB"), libs_path)
         package_data['paddle.libs'] += [env_dict.get("XPU_API_LIB_NAME")]
         xpu_rt_lib_list = glob.glob(env_dict.get("XPU_RT_LIB") + '*')

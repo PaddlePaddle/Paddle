@@ -1725,7 +1725,7 @@ def conv3d_transpose(
     op_type = 'conv3d_transpose'
     data_format_ = "NHWC" if channel_last else "NCHW"
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         pre_bias = _C_ops.conv3d_transpose(
             x,
             weight,
