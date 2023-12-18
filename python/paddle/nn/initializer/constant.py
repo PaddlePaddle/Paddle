@@ -61,7 +61,7 @@ class ConstantInitializer(Initializer):
             (
                 framework.Variable,
                 framework.EagerParamBase,
-                paddle.pir.OpResult,
+                paddle.pir.Value,
                 paddle.pir.core.ParameterMeta,
             ),
         )

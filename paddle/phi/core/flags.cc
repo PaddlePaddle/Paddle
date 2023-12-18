@@ -767,6 +767,18 @@ PHI_DEFINE_EXPORTED_string(tracer_mkldnn_ops_on,
 
 /**
  * Debug related FLAG
+ * Name: static_runtime_data_save_path
+ * Since Version: 2.6.0
+ * Value Range: string, default=./
+ * Example:
+ * Note: set the static runtime tensor save path.
+ */
+PHI_DEFINE_EXPORTED_string(static_runtime_data_save_path,
+                           "./",
+                           "set the static runtime tensor save path");
+
+/**
+ * Debug related FLAG
  * Name: tracer_mkldnn_ops_off
  * Since Version: 2.0.0
  * Value Range: string, default=empty
@@ -838,6 +850,19 @@ PHI_DEFINE_EXPORTED_bool(
     apply_pass_to_program,
     false,
     "It controls whether to apply IR pass to program when using Fleet APIs");
+
+/**
+ * Debug related FLAG
+ * Name: FLAGS_save_static_runtime_data
+ * Since Version: 2.6.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: It controls whether to save runtime tensor in static mode.
+ */
+PHI_DEFINE_EXPORTED_bool(
+    save_static_runtime_data,
+    false,
+    "It controls whether to save runtime tensor in static mode");
 
 /**
  * Distributed related FLAG
@@ -1427,6 +1452,9 @@ PHI_DEFINE_EXPORTED_int32(
     "been dropped when you are profiling, try increasing this value.");
 
 PHI_DEFINE_EXPORTED_bool(print_ir, false, "Whether print ir debug str.");
+PHI_DEFINE_EXPORTED_bool(prim_skip_dynamic,
+                         false,
+                         "Whether to skip decomping op with dynamic shape.");
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_XPU_BKCL)

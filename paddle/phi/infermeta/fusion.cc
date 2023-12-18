@@ -132,9 +132,23 @@ void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
                                       const MetaTensor& rope_emb,
                                       const MetaTensor& mask,
                                       const MetaTensor& tgt_mask,
+                                      const MetaTensor& cache_k_quant_scales,
+                                      const MetaTensor& cache_v_quant_scales,
+                                      const MetaTensor& cache_k_dequant_scales,
+                                      const MetaTensor& cache_v_dequant_scales,
+                                      const MetaTensor& qkv_out_scale,
+                                      const MetaTensor& qkv_bias,
+                                      const MetaTensor& out_shift,
+                                      const MetaTensor& out_smooth,
                                       int max_seq_len,
                                       int block_size,
                                       bool use_neox_style,
+                                      bool dynamic_cachekv_quant,
+                                      const int quant_round_type,
+                                      const float quant_max_bound,
+                                      const float quant_min_bound,
+                                      const float out_scale,
+                                      const std::string& compute_dtype,
                                       MetaTensor* fmha_out,
                                       MetaTensor* qkv_out,
                                       MetaTensor* key_cache_out,
@@ -159,13 +173,74 @@ void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
           "The input_dims[1] must be equal to 3 * num_head * dim_head"));
 
   fmha_out->set_dims({input_dims[0], num_head * dim_head});
-  fmha_out->set_dtype(qkv.dtype());
   qkv_out->set_dims(qkv.dims());
-  qkv_out->set_dtype(qkv.dtype());
   key_cache_out->set_dims(key_cache_dims);
   key_cache_out->set_dtype(key_cache.dtype());
   value_cache_out->set_dims(key_cache_dims);
   value_cache_out->set_dtype(value_cache.dtype());
+
+  auto FBADtypeCheck = [](const MetaTensor& check_tensor,
+                          const std::string& tensor_name,
+                          const std::string& compute_dtype) {
+    if (compute_dtype == "bf16") {
+      PADDLE_ENFORCE_EQ(
+          check_tensor.dtype(),
+          phi::DataType::BFLOAT16,
+          phi::errors::InvalidArgument(
+              "Input(%s) dtype must be the same with Attr(compute_dtype)",
+              tensor_name));
+    } else if (compute_dtype == "fp16") {
+      PADDLE_ENFORCE_EQ(
+          check_tensor.dtype(),
+          phi::DataType::FLOAT16,
+          phi::errors::InvalidArgument(
+              "Input(%s) dtype must be the same with Attr(compute_dtype)",
+              tensor_name));
+    } else if (compute_dtype == "fp32") {
+      PADDLE_ENFORCE_EQ(
+          check_tensor.dtype(),
+          phi::DataType::FLOAT32,
+          phi::errors::InvalidArgument(
+              "Input(%s) dtype must be the same with Attr(compute_dtype)",
+              tensor_name));
+    }
+  };
+
+  // In the case of quantization enabled, the dtype for computation is
+  // determined based on compute_dtype.
+  if (qkv.dtype() == phi::DataType::INT32) {
+    PADDLE_ENFORCE_NE(
+        compute_dtype,
+        "default",
+        phi::errors::InvalidArgument(
+            "If Input(x) dtype is INT32, Attr(compute_dtype) must be set."));
+    if (out_scale > 0) {
+      fmha_out->set_dtype(phi::DataType::INT8);
+    } else {
+      if (compute_dtype == "bf16") {
+        fmha_out->set_dtype(phi::DataType::BFLOAT16);
+      } else if (compute_dtype == "fp16") {
+        fmha_out->set_dtype(phi::DataType::FLOAT16);
+      } else if (compute_dtype == "fp32") {
+        fmha_out->set_dtype(phi::DataType::FLOAT32);
+      } else {
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "In the case of quantization enabled with Input(x) INT32, "
+            "Attr(compute_dtype) must be set in (bf16, fp16, fp32), "
+            "but get compute_dtype (%s)",
+            compute_dtype));
+      }
+    }
+  } else {
+    if (compute_dtype != "default") {
+      FBADtypeCheck(qkv, "qkv", compute_dtype);
+    }
+    if (out_scale > 0) {
+      fmha_out->set_dtype(phi::DataType::INT8);
+    } else {
+      fmha_out->set_dtype(qkv.dtype());
+    }
+  }
 }
 
 void Conv1dXPUInferMeta(const MetaTensor& x,
@@ -849,6 +924,160 @@ void FusedAttentionGradInferMeta(const MetaTensor& out_grad,
   if (out_linear_out_grad) {
     out_linear_out_grad->set_dims(out_linear_out.dims());
   }
+}
+
+void FusedBiasDropoutResidualLnInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& residual,
+    const MetaTensor& bias,
+    const MetaTensor& ln_scale,
+    const MetaTensor& ln_bias,
+    const float dropout_rate,
+    const bool is_test,
+    const bool dropout_fix_seed,
+    const int dropout_seed,
+    const std::string& dropout_implementation,
+    const float ln_epsilon,
+    MetaTensor* y,
+    MetaTensor* bias_dropout_residual_out,
+    MetaTensor* dropout_mask_out,
+    MetaTensor* ln_mean,
+    MetaTensor* ln_variance) {
+  PADDLE_ENFORCE_EQ(dropout_rate >= 0.0f && dropout_rate <= 1.0f,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "'dropout_rate' must be between 0.0 and 1.0."));
+  PADDLE_ENFORCE_EQ(
+      dropout_implementation == "downgrade_in_infer" ||
+          dropout_implementation == "upscale_in_train",
+      true,
+      phi::errors::InvalidArgument(
+          "dropout_implementation can only be downgrade_in_infer or "
+          "upscale_in_train"));
+  PADDLE_ENFORCE_EQ(ln_epsilon >= 0.0f && ln_epsilon <= 0.001f,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "'epsilon' of the LayerNorm should be between "
+                        "0.0 and 0.001, But received [%s].",
+                        ln_epsilon));
+  auto x_dim = x.dims();
+  int left = 1;
+  for (int i = 0; i < x_dim.size() - 1; i++) {
+    left *= x_dim[i];
+  }
+  bias_dropout_residual_out->set_dims(x.dims());
+  if (is_test == false) {
+    dropout_mask_out->set_dims(x.dims());
+  }
+  ln_mean->set_dims({left});
+  ln_variance->set_dims({left});
+  y->set_dims(x.dims());
+}
+
+void FusedBiasDropoutResidualLnGradInferMeta(
+    const MetaTensor& y_grad,
+    const MetaTensor& x,
+    const MetaTensor& residual,
+    const MetaTensor& bias,
+    const MetaTensor& ln_scale,
+    const MetaTensor& ln_bias,
+    const MetaTensor& ln_mean,
+    const MetaTensor& ln_variance,
+    const MetaTensor& bias_dropout_residual_out,
+    const MetaTensor& dropout_mask_out,
+    const float dropout_rate,
+    const bool is_test,
+    const bool dropout_fix_seed,
+    const int dropout_seed,
+    const std::string& dropout_implementation,
+    const float ln_epsilon,
+    MetaTensor* x_grad,
+    MetaTensor* residual_grad,
+    MetaTensor* bias_grad,
+    MetaTensor* ln_scale_grad,
+    MetaTensor* ln_bias_grad) {
+  PADDLE_ENFORCE_EQ(is_test,
+                    false,
+                    phi::errors::InvalidArgument(
+                        "GradOp is only callable when is_test is false"));
+  if (ln_scale_grad) {
+    ln_scale_grad->set_dims(ln_scale.dims());
+    ln_scale_grad->set_dtype(y_grad.dtype());
+  }
+  if (ln_bias_grad) {
+    ln_bias_grad->set_dims(ln_bias.dims());
+    ln_bias_grad->set_dtype(y_grad.dtype());
+  }
+  if (residual_grad) {
+    residual_grad->set_dims(residual.dims());
+    residual_grad->set_dtype(y_grad.dtype());
+  }
+  if (bias_grad) {
+    bias_grad->set_dims(bias.dims());
+    bias_grad->set_dtype(y_grad.dtype());
+  }
+  if (x_grad) {
+    x_grad->set_dims(x.dims());
+    x_grad->set_dtype(y_grad.dtype());
+  }
+}
+
+void FusedDotProductAttentionInferMeta(const MetaTensor& q,
+                                       const MetaTensor& k,
+                                       const MetaTensor& v,
+                                       MetaTensor* out,
+                                       MetaTensor* softmax_out,
+                                       MetaTensor* rng_state) {
+  // q input shape: [batch_size, q_seq_len, num_heads, head_size]
+  // k, v input shape: [batch_size, kv_seq_len, num_heads, head_size]
+  auto q_dim = q.dims();
+  auto k_dim = k.dims();
+  auto v_dim = v.dims();
+
+  // check shape
+  PADDLE_ENFORCE(q_dim.size() == 4 && k_dim.size() == 4 && v_dim.size() == 4,
+                 phi::errors::InvalidArgument(
+                     "The dimensions of q, k, v must be 4"
+                     "(batch_size, seq_len, num_heads, head_size),"
+                     "but received dimensions of"
+                     "Input is [%d], [%d], [%d]",
+                     q_dim.size(),
+                     k_dim.size(),
+                     v_dim.size()));
+
+  PADDLE_ENFORCE(q_dim[0] == k_dim[0] && k_dim[0] == v_dim[0],
+                 phi::errors::InvalidArgument(
+                     "The first dimension of q, k, v must be equal"
+                     "but received dimensions of"
+                     "Input is [%d], [%d], [%d]",
+                     q_dim[0],
+                     k_dim[0],
+                     v_dim[0]));
+
+  // [batch_size, num_heads, q_seqlen, 1]
+  std::vector<int64_t> softmax_out_shape({q_dim[0], q_dim[2], q_dim[1], 1});
+
+  out->set_dims(q_dim);
+  softmax_out->set_dims(
+      DDim(softmax_out_shape.data(), softmax_out_shape.size()));
+
+  // rng_state: {seed, offset}
+  std::vector<int64_t> rng_state_shape({2});
+  rng_state->set_dims(DDim(rng_state_shape.data(), rng_state_shape.size()));
+}
+
+void FusedDotProductAttentionGradInferMeta(const MetaTensor& q,
+                                           const MetaTensor& k,
+                                           const MetaTensor& v,
+                                           MetaTensor* q_grad,
+                                           MetaTensor* k_grad,
+                                           MetaTensor* v_grad) {
+  auto q_dim = q.dims();
+  auto k_dim = k.dims();
+  auto v_dim = v.dims();
+  q_grad->set_dims(q_dim);
+  k_grad->set_dims(k_dim);
+  v_grad->set_dims(v_dim);
 }
 
 void FusedFeedForwardInferMeta(const MetaTensor& x,
@@ -3330,102 +3559,6 @@ void SelfDPAttenInferMeta(const MetaTensor& x,
   out->set_dims(out_dims);
   out->share_lod(x);
   out->set_dtype(x.dtype());
-}
-
-void FusedBiasDropoutResidualLnInferMeta(
-    const MetaTensor& x,
-    const MetaTensor& residual,
-    const MetaTensor& bias,
-    const MetaTensor& ln_scale,
-    const MetaTensor& ln_bias,
-    const float dropout_rate,
-    const bool is_test,
-    const bool dropout_fix_seed,
-    const int dropout_seed,
-    const std::string& dropout_implementation,
-    const float ln_epsilon,
-    MetaTensor* y,
-    MetaTensor* bias_dropout_residual_out,
-    MetaTensor* dropout_mask_out,
-    MetaTensor* ln_mean,
-    MetaTensor* ln_variance) {
-  PADDLE_ENFORCE_EQ(dropout_rate >= 0.0f && dropout_rate <= 1.0f,
-                    true,
-                    phi::errors::InvalidArgument(
-                        "'dropout_rate' must be between 0.0 and 1.0."));
-  PADDLE_ENFORCE_EQ(
-      dropout_implementation == "downgrade_in_infer" ||
-          dropout_implementation == "upscale_in_train",
-      true,
-      phi::errors::InvalidArgument(
-          "dropout_implementation can only be downgrade_in_infer or "
-          "upscale_in_train"));
-  PADDLE_ENFORCE_EQ(ln_epsilon >= 0.0f && ln_epsilon <= 0.001f,
-                    true,
-                    phi::errors::InvalidArgument(
-                        "'epsilon' of the LayerNorm should be between "
-                        "0.0 and 0.001, But received [%s].",
-                        ln_epsilon));
-  auto x_dim = x.dims();
-  int left = 1;
-  for (int i = 0; i < x_dim.size() - 1; i++) {
-    left *= x_dim[i];
-  }
-  bias_dropout_residual_out->set_dims(x.dims());
-  if (is_test == false) {
-    dropout_mask_out->set_dims(x.dims());
-  }
-  ln_mean->set_dims({left});
-  ln_variance->set_dims({left});
-  y->set_dims(x.dims());
-}
-
-void FusedBiasDropoutResidualLnGradInferMeta(
-    const MetaTensor& y_grad,
-    const MetaTensor& x,
-    const MetaTensor& residual,
-    const MetaTensor& bias,
-    const MetaTensor& ln_scale,
-    const MetaTensor& ln_bias,
-    const MetaTensor& ln_mean,
-    const MetaTensor& ln_variance,
-    const MetaTensor& bias_dropout_residual_out,
-    const MetaTensor& dropout_mask_out,
-    const float dropout_rate,
-    const bool is_test,
-    const bool dropout_fix_seed,
-    const int dropout_seed,
-    const std::string& dropout_implementation,
-    const float ln_epsilon,
-    MetaTensor* x_grad,
-    MetaTensor* residual_grad,
-    MetaTensor* bias_grad,
-    MetaTensor* ln_scale_grad,
-    MetaTensor* ln_bias_grad) {
-  PADDLE_ENFORCE_EQ(is_test,
-                    false,
-                    phi::errors::InvalidArgument(
-                        "GradOp is only callable when is_test is false"));
-  if (ln_scale_grad) {
-    ln_scale_grad->set_dims(ln_scale.dims());
-    ln_scale_grad->set_dtype(y_grad.dtype());
-  }
-  if (ln_bias_grad) {
-    ln_bias_grad->set_dims(ln_bias.dims());
-    ln_bias_grad->set_dtype(y_grad.dtype());
-  }
-  if (residual_grad) {
-    residual_grad->set_dims(residual.dims());
-    residual_grad->set_dtype(y_grad.dtype());
-  }
-  if (bias_grad) {
-    bias_grad->set_dims(bias.dims());
-    bias_grad->set_dtype(y_grad.dtype());
-  }
-  if (x_grad) {
-    x_grad->set_dims(x.dims());
-    x_grad->set_dtype(y_grad.dtype());
-  }
 }
 
 void SkipLayerNormInferMeta(const MetaTensor& x,

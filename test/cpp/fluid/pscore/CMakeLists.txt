@@ -76,18 +76,4 @@ paddle_test(heter_listen_and_server_test SRCS heter_listen_and_server_test.cc
 
 set_source_files_properties(
   switch_server_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-cc_binary(
-  switch_server_test
-  SRCS
-  switch_server_test.cc
-  DEPS
-  executor
-  scope
-  common
-  proto_desc
-  generated_op
-  heter_listen_and_serv_op
-  ${RPC_DEPS}
-  ${DISTRIBUTE_DEPS}
-  phi
-  common)
+paddle_test(switch_server_test SRCS switch_server_test.cc)

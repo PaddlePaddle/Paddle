@@ -478,14 +478,19 @@ def _accumulate_gradients_by_sum_op_(
             "sum",
             {"X": renamed_vars[var_name]},
             {"Out": [var_name]},
-            {"use_mkldnn": False, "op_device": op_device},
+            {"op_device": op_device},
         )
     )
     renamed_vars[var_name] = [var_name]
 
 
 def _accumulate_gradients_by_add_ops_(
-    var_name, renamed_vars, pending_sum_ops, op_idx, op_device=""
+    var_name,
+    renamed_vars,
+    pending_sum_ops,
+    op_idx,
+    op_device="",
+    grad_var_to_var=None,
 ):
     """
     Use several inplace add op to accumulate_gradients, the gradients are stored in renamed_vars.
@@ -505,9 +510,15 @@ def _accumulate_gradients_by_add_ops_(
                 "grad_add",
                 {"X": [x_name], "Y": [y_name]},
                 {"Out": [out_name]},
-                {"use_mkldnn": False, "op_device": op_device},
+                {"op_device": op_device},
             )
         )
+        # record mapping between out grad var name and fwd var name (only for auto parallel)
+        if grad_var_to_var is not None:
+            if var_name in grad_var_to_var:
+                grad_var_to_var[out_name] = grad_var_to_var[var_name]
+            else:
+                grad_var_to_var[out_name] = var_name
     renamed_vars[var_name] = [var_name]
 
 
@@ -539,6 +550,8 @@ def _addup_repetitive_outputs_(
     var_device = collections.defaultdict(str)
 
     def _change_order_by_topo_order(var_name):
+        if topo_order_for_backward is None:
+            return
         origin_names = renamed_vars[var_name]
         origin_names.sort(key=lambda x: topo_order_for_grad_name[x])
 
@@ -570,6 +583,7 @@ def _addup_repetitive_outputs_(
                         pending_sum_ops,
                         idx,
                         var_device[var_name],
+                        grad_var_to_var,
                     )
 
         for param_idx, param_name in enumerate(op_desc.output_names()):
@@ -1596,12 +1610,12 @@ def _append_backward_ops_(
             program._appending_grad_times
         ]
     # sum parameter's gradients' var given multiple var gradient
-    topo_order = _topo_order_map(block, target_vars)
     if os.environ.get("FLAGS_program_topo_reorder", "False") in [
         'True',
         '1',
         'true',
     ]:
+        topo_order = _topo_order_map(block, target_vars)
         topo_order_for_backward = _topo_bwd_order_map(
             topo_order, get_backward_op_desc
         )

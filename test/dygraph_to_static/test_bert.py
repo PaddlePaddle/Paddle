@@ -23,8 +23,6 @@ from bert_utils import get_bert_config, get_feed_data_reader
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
-    test_ast_only,
-    test_pt_only,
     test_sot_only,
 )
 from predictor_utils import PredictorTools
@@ -269,18 +267,6 @@ class TestBert(Dy2StTestBase):
         out = output()
         return out
 
-    @test_pt_only
-    def test_train_pir(self):
-        static_loss, static_ppl = self.train_static(
-            self.bert_config, self.data_reader
-        )
-        dygraph_loss, dygraph_ppl = self.train_dygraph(
-            self.bert_config, self.data_reader
-        )
-        np.testing.assert_allclose(static_loss, dygraph_loss, rtol=1e-05)
-        np.testing.assert_allclose(static_ppl, dygraph_ppl, rtol=1e-05)
-
-    @test_ast_only
     def test_train(self):
         static_loss, static_ppl = self.train_static(
             self.bert_config, self.data_reader
