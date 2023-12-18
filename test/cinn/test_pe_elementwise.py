@@ -16,11 +16,12 @@
 
 import unittest
 
-import cinn
 import numpy as np
 import scipy
-from cinn import Target, ir, lang, pe, runtime
-from cinn.poly import create_stages
+
+from paddle import cinn
+from paddle.cinn import Target, ir, lang, pe, runtime
+from paddle.cinn.poly import create_stages
 
 
 class TestPEElementwise(unittest.TestCase):

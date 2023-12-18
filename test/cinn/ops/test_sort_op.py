@@ -14,11 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from cinn.frontend import NetBuilder
 from op_test import OpTest
 from op_test_helper import TestCaseHelper, run_test
 
 import paddle
+from paddle.cinn.frontend import NetBuilder
 
 
 class TestSortOp(OpTest):

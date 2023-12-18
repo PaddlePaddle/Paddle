@@ -13,11 +13,12 @@
 # limitations under the License.
 
 
-import cinn
 import numpy as np
-from cinn import ir, to_cinn_llir
-from cinn.runtime.data_array import DataArray
-from cinn.schedule import IRSchedule as sch
+
+from paddle import cinn
+from paddle.cinn import ir, to_cinn_llir
+from paddle.cinn.runtime.data_array import DataArray
+from paddle.cinn.schedule import IRSchedule as sch
 
 
 @to_cinn_llir

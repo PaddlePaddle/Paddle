@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from cinn.common import is_compiled_with_cuda
-from cinn.frontend import NetBuilder
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
 
 import paddle
 import paddle.nn.functional as F
+from paddle.cinn.common import is_compiled_with_cuda
+from paddle.cinn.frontend import NetBuilder
 
 
 @OpTestTool.skip_if(

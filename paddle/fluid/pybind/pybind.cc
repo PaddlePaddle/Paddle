@@ -79,6 +79,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/prim/utils/utils.h"
 #ifdef PADDLE_WITH_CUDA
+#include "paddle/cinn/pybind/bind.h"
 #include "paddle/fluid/memory/allocation/cuda_ipc_allocator.h"
 #endif
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
@@ -3043,6 +3044,7 @@ All parameter, weight, gradient are variables in Paddle.
 
 #if defined(PADDLE_WITH_CINN)
   BindTest(&m);
+  cinn::pybind::BindCINN(&m);
 #endif
 
   BindPir(&m);

@@ -17,8 +17,8 @@
 import unittest
 from math import isclose
 
-import cinn
-from cinn import ir
+from paddle import cinn
+from paddle.cinn import ir
 
 
 class TestPackedFunc(unittest.TestCase):

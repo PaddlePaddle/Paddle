@@ -17,9 +17,10 @@
 import logging
 import unittest
 
-import cinn
 import numpy as np
-from cinn import common, framework, ir, lang, runtime
+
+from paddle import cinn
+from paddle.cinn import common, framework, ir, lang, runtime
 
 
 class SingleOpTester(unittest.TestCase):
