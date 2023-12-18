@@ -518,7 +518,7 @@ PD_REGISTER_SPMD_RULE(
 
 PD_REGISTER_SPMD_RULE(flash_attention,
                       PD_INFER_SPMD(phi::distributed::FlashAttInferSpmdStatic),
-                      PD_INFER_SPMD(phi::distributed::FlattenInferSpmdReverse));
+                      PD_INFER_SPMD(phi::distributed::FlashAttInferSpmdReverse));
 
 // reshape rule
 PD_REGISTER_SPMD_RULE(reshape,

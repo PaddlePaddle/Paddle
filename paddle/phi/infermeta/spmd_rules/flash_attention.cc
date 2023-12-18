@@ -223,7 +223,7 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
   // [batch_size,  num_heads, seq_len_q, seq_len_kv]
   std::string softmax_axes = {
       batch_axis, num_heads_axis, seq_len_q_axis, seq_len_kv_axis};
-  // [batch_size,  num_heads, seq_len_q, seq_len_kv]
+  // [batch_size,  num_heads, seq_len_q]
   std::string softmax_lse_axes = {batch_axis, num_heads_axis, seq_len_q_axis};
 
   auto q_dist_attr_dst = UnShardTensorDims(q_dist_attr, {1, 3});
@@ -373,7 +373,7 @@ SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
   auto softmax_lse_shape = common::vectorize(softmax_lse.dims());
   int softmax_lse_ndim = softmax_lse_shape.size();
   auto softmax_lse_dist_attr = softmax_lse.dist_attr();
-  int softmax_lse_dims_mapping_size = out_dist_attr.dims_mapping().size();
+  int softmax_lse_dims_mapping_size = softmax_lse_dist_attr.dims_mapping().size();
   PADDLE_ENFORCE_EQ(out_ndim,
                     4,
                     phi::errors::InvalidArgument(
@@ -385,12 +385,12 @@ SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
       softmax_lse_dims_mapping_size,
       phi::errors::InvalidArgument("The Tensor softmax_lse's rank [%d] and Its "
                                    "dims_mapping size [%d] are not matched.",
-                                   out_ndim,
-                                   out_dims_mapping_size));
+                                   softmax_lse_ndim,
+                                   softmax_lse_dims_mapping_size));
 
-  auto batch_size_2 = out_shape[0];
-  auto num_heads_2 = out_shape[1];
-  auto seq_len_q_2 = out_shape[2];
+  auto batch_size_2 = softmax_lse_shape[0];
+  auto num_heads_2 = softmax_lse_shape[1];
+  auto seq_len_q_2 = softmax_lse_shape[2];
 
   PADDLE_ENFORCE_EQ(
       batch_size,
@@ -446,17 +446,16 @@ SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
   // [batch_size,  num_heads, seq_len_q, seq_len_kv]
   std::string softmax_axes = {
       batch_axis, num_heads_axis, seq_len_q_axis, seq_len_kv_axis};
-  // [batch_size,  num_heads, seq_len_q, seq_len_kv]
+  // [batch_size,  num_heads, seq_len_q]
   std::string softmax_lse_axes = {batch_axis, num_heads_axis, seq_len_q_axis};
 
   auto out_dist_attr_dst = UnShardTensorDims(out_dist_attr, {1, 3});
-  auto softmax_lse_dist_attr_dst =
-      UnShardTensorDims(softmax_lse_dist_attr, {2, 3});
+  auto softmax_lse_dist_attr_dst = UnShardTensorDims(softmax_lse_dist_attr, {2});
 
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
 
-  axes_sharding_info.emplace_back(q_axes, out_dist_attr_dst.dims_mapping());
-  axes_sharding_info.emplace_back(k_axes,
+  axes_sharding_info.emplace_back(out_axes, out_dist_attr_dst.dims_mapping());
+  axes_sharding_info.emplace_back(softmax_lse_axes,
                                   softmax_lse_dist_attr_dst.dims_mapping());
 
   auto axis_to_dim_map = ShardingMergeForTensors(axes_sharding_info);

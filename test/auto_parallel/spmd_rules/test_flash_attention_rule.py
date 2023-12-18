@@ -63,8 +63,8 @@ class TestFlashAttentionSPMDRule(unittest.TestCase):
 
         softmax_lse_dist_attr = TensorDistAttr()
         softmax_lse_dist_attr.process_mesh = process_mesh
-        softmax_lse_dist_attr.dims_mapping = [0, 1, -1, -1]
-        softmax_lse_shape = [2, 64, 1024, 512]
+        softmax_lse_dist_attr.dims_mapping = [0, 1, -1]
+        softmax_lse_shape = [2, 64, 512]
         softmax_lse_spec = DistTensorSpec(
             softmax_lse_shape, softmax_lse_dist_attr
         )
@@ -87,15 +87,14 @@ class TestFlashAttentionSPMDRule(unittest.TestCase):
             0.0,
             False,
             False,
-            False,
-            ""
+            False
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
 
         self.assertEqual(len(result_dist_attrs), 2)
         self.assertEqual(len(infered_input_dist_attrs), 5)
-        self.assertEqual(len(infered_output_dist_attrs), 3)
+        self.assertEqual(len(infered_output_dist_attrs), 4)
 
         self.assertEqual(
             infered_input_dist_attrs[0].dims_mapping, [0, -1, 1, -1]
@@ -110,7 +109,7 @@ class TestFlashAttentionSPMDRule(unittest.TestCase):
             infered_output_dist_attrs[0].dims_mapping, [0, -1, 1, -1]
         )
         self.assertEqual(
-            infered_output_dist_attrs[1].dims_mapping, [0, 1, -1, -1]
+            infered_output_dist_attrs[2].dims_mapping, [0, 1, -1]
         )
 
     def test_infer_backward(self):
@@ -128,14 +127,13 @@ class TestFlashAttentionSPMDRule(unittest.TestCase):
             False,
             False,
             False,
-            "",
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
 
         self.assertEqual(len(result_dist_attrs), 2)
         self.assertEqual(len(infered_input_dist_attrs), 5)
-        self.assertEqual(len(infered_output_dist_attrs), 3)
+        self.assertEqual(len(infered_output_dist_attrs), 4)
 
         self.assertEqual(
             infered_input_dist_attrs[0].dims_mapping, [0, -1, 1, -1]
@@ -150,7 +148,7 @@ class TestFlashAttentionSPMDRule(unittest.TestCase):
             infered_output_dist_attrs[0].dims_mapping, [0, -1, 1, -1]
         )
         self.assertEqual(
-            infered_output_dist_attrs[1].dims_mapping, [0, 1, -1, -1]
+            infered_output_dist_attrs[2].dims_mapping, [0, 1, -1, -1]
         )
 
 
