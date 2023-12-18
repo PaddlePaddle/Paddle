@@ -144,7 +144,7 @@ class DimExpr : public DimExprBase {
 //                   | Broadcastable DimExpr
 using DimExprConstraint = std::variant<Equal<DimExpr>, Broadcastable<DimExpr>>;
 
-// ValueShapeDimExprs = tShape [DimExpr] | tValue [DimExpr]
+// ValueShapeDimExprs = tValue [DimExpr] | tShape [DimExpr]
 template <typename T>
 class ValueShape {
  public:
@@ -159,45 +159,26 @@ class ValueShape {
   static ValueShape MakeConsistentValueShape(
       const std::vector<T>& shape,
       const std::function<std::optional<T>(int)>& GetValueByIndex) {
-    if (shape.size() > 1) {
-      return ValueShape{shape, std::nullopt};
-    }
-    std::vector<T> value{};
     if (shape.empty()) {
-      CHECK(GetValueByIndex(0).has_value());
-      value.push_back(GetValueByIndex(0).value());
-      return ValueShape(value, shape);
+      if (!GetValueByIndex(0).has_value()) {
+        return ValueShape(std::nullopt, shape);
+      }
+      return ValueShape({GetValueByIndex(0).value()}, shape);
     } else if (shape.size() == 1) {
-      CHECK(shape.at(0).Has<std::int64_t>());
+      if (!shape.at(0).Has<std::int64_t>()) {
+        return ValueShape(std::nullopt, shape);
+      }
+      std::vector<T> value{};
       std::int64_t value_size = shape.at(0).Get<std::int64_t>();
       for (std::size_t i = 0; i < value_size; ++i) {
-        CHECK(GetValueByIndex(i).has_value());
+        if (!GetValueByIndex(i).has_value()) {
+          return ValueShape(std::nullopt, shape);
+        }
         value.push_back(GetValueByIndex(i).value());
-        return ValueShape(value, shape);
       }
-    } else {
-      LOG(FATAL) << "shape.size() > 1, error!";
-    }
-  }
-
-  static ValueShape MakeConsistentValueShape(const std::vector<T>& shape,
-                                             const std::vector<T>& value) {
-    CHECK_LE(shape.size(), 1);
-    std::vector<T> value{};
-    if (shape.empty()) {
-      CHECK(GetValueByIndex(0).has_value());
-      value.push_back(GetValueByIndex(0).value());
       return ValueShape(value, shape);
-    } else if (shape.size() == 1) {
-      CHECK(shape.at(0).Has<std::int64_t>());
-      std::int64_t value_size = shape.at(0).Get<std::int64_t>();
-      for (std::size_t i = 0; i < value_size; ++i) {
-        CHECK(GetValueByIndex(i).has_value());
-        value.push_back(GetValueByIndex(i).value());
-        return ValueShape(value, shape);
-      }
     } else {
-      LOG(FATAL) << "shape.size() > 1, error!";
+      return ValueShape(std::nullopt, shape);
     }
   }
 
