@@ -340,7 +340,6 @@ SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
   auto batch_size = out_shape[0];
   auto seq_len_q = out_shape[1];
   auto num_heads = out_shape[2];
-  auto head_dim_v = out_shape[3];
 
   PADDLE_ENFORCE_EQ(
       out_ndim,
@@ -362,10 +361,17 @@ SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
                         "The Tensor softmax_lse's shape must be [batch_size, "
                         "num_heads, seq_len_q, seq_len_kv]"));
 
+   PADDLE_ENFORCE_EQ(
+      softmax_lse_ndim,
+      softmax_lse_dims_mapping_size,
+      phi::errors::InvalidArgument("The Tensor softmax_lse's rank [%d] and Its "
+                                   "dims_mapping size [%d] are not matched.",
+                                   out_ndim,
+                                   out_dims_mapping_size));                      
+
   auto batch_size_2 = out_shape[0];
   auto num_heads_2 = out_shape[1];
   auto seq_len_q_2 = out_shape[2];
-  auto seq_len_kv = out_shape[3];
 
   PADDLE_ENFORCE_EQ(
       batch_size,

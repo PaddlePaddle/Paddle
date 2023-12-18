@@ -31,8 +31,7 @@ class TestFlashAttentionSPMDRule(unittest.TestCase):
     def setUp(self):
         self.rule = core.get_phi_spmd_rule("flash_attention")
         process_mesh = auto.ProcessMesh(mesh=[[0, 1, 2], [3, 4, 5]])
-
-        self.process_mesh = OrderedDict()
+        self.process_mesh = process_mesh
 
         q_tensor_dist_attr = TensorDistAttr()
         q_tensor_dist_attr.process_mesh = process_mesh
@@ -89,7 +88,7 @@ class TestFlashAttentionSPMDRule(unittest.TestCase):
             False,
             False,
             False,
-            "",
+            ""
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
