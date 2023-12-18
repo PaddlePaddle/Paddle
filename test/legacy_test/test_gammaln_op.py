@@ -146,7 +146,7 @@ class TestGammalnOpApi(unittest.TestCase):
         x = paddle.to_tensor(self.x_np)
         out = paddle.gammaln(x)
         out_ref = ref_gammaln(self.x_np)
-        np.testing.assert_allclose(out_ref, out.numpy(), rolt=1e-5, atol=1e-5)
+        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-5, atol=1e-5)
         paddle.enable_static()
 
 
