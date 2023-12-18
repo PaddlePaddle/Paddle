@@ -54,16 +54,16 @@ class TestSemiautoSaveLoad:
         dist.save_state_dict(state_dict, self._ckpt_path)
         metadata_path = os.path.join(self._ckpt_path, "0.metadata")
         metadata = paddle.load(metadata_path)
-        assert len(metadata.flatten_mapping) == len(
+        assert len(metadata.flat_mapping) == len(
             expected_mapping
-        ), f"expect {len(expected_mapping)}, but got {len(metadata.flatten_mapping)}"
-        for key in metadata.flatten_mapping:
+        ), f"expect {len(expected_mapping)}, but got {len(metadata.flat_mapping)}"
+        for key in metadata.flat_mapping:
             assert (
                 key in expected_mapping
             ), f"expect {key} in flatten_mapping, but not found"
             assert (
-                metadata.flatten_mapping[key] == expected_mapping[key]
-            ), f"expect {metadata.flatten_mapping[key]} == {expected_mapping[key]}, but not equal"
+                metadata.flat_mapping[key] == expected_mapping[key]
+            ), f"expect {metadata.flat_mapping[key]} == {expected_mapping[key]}, but not equal"
 
     def run_test_case(self):
         self.test_flatten_mapping()
