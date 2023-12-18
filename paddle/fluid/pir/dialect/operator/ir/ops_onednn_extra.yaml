@@ -16,6 +16,7 @@
   layout_transform :
     arg_name: data_format
     tensors: x
+  dynamic_fallback : True
 
 - op : batch_norm
   extra_args : bool fuse_with_relu=false

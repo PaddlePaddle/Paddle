@@ -1769,6 +1769,10 @@ def OpGenerator(
                     )
                 else:
                     item["layout_transform"] = None
+                if 'dynamic_fallback' in op:
+                    item["dynamic_fallback"] = op['dynamic_fallback']
+                else:
+                    item["dynamic_fallback"] = False
                 item["attrs"] = parse_extra_args(op_name, op['extra_args'])
                 ops_onednn_extra_map[op_name] = item
         op_yaml_files.insert(0, onednn_yaml_file)
@@ -1820,6 +1824,7 @@ def OpGenerator(
                     op["is_onednn_only"] = onednn_item["is_onednn_only"]
                     op["extra_args"] = onednn_item["extra_args"]
                     op["layout_transform"] = onednn_item["layout_transform"]
+                    op["dynamic_fallback"] = onednn_item["dynamic_fallback"]
                     op["attrs"] = op["attrs"] + onednn_item["attrs"]
                 else:
                     continue

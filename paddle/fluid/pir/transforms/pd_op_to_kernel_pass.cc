@@ -387,6 +387,46 @@ static pir::Type BuildOutputType(pir::Type type,
   }
 }
 
+#ifdef PADDLE_WITH_DNNL
+template <class IrType1, class IrType2>
+static pir::Type create_type(pir::Type type,
+                             const phi::Place& place,
+                             const phi::DataLayout& layout,
+                             pir::Type out_dtype,
+                             pir::IrContext* ctx) {
+  auto input_type = type.dyn_cast<IrType1>();
+  return IrType2::get(ctx,
+                      place,
+                      out_dtype,
+                      input_type.dims(),
+                      layout,
+                      input_type.lod(),
+                      input_type.offset());
+}
+
+static pir::Type BuildOutputType(pir::Type type,
+                                 const phi::Place& place,
+                                 const phi::DataLayout& layout,
+                                 pir::IrContext* ctx) {
+  if (type.isa<DenseTensorType>()) {
+    auto out_dtype = type.dyn_cast<DenseTensorType>().dtype();
+    return create_type<DenseTensorType, AllocatedDenseTensorType>(
+        type, place, layout, out_dtype, ctx);
+  } else if (type.isa<SelectedRowsType>()) {
+    auto out_dtype = type.dyn_cast<SelectedRowsType>().dtype();
+    return create_type<SelectedRowsType, AllocatedSelectedRowsType>(
+        type, place, layout, out_dtype, ctx);
+  } else if (type.isa<DenseTensorArrayType>()) {
+    auto array_type = type.dyn_cast<DenseTensorArrayType>();
+    return AllocatedDenseTensorArrayType::get(
+        ctx, place, array_type.dtype(), layout);
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "BuildOutputType only support DenseTensorType and SelectedRowsType"));
+  }
+}
+#endif
+
 pir::OpResult AddDtypeTransferOp(pir::Value in,
                                  pir::Block* block,
                                  const phi::KernelKey& kernel_key,
@@ -629,6 +669,37 @@ std::string GetKernelName(const OpYamlInfoParser* op_info_parser,
   return kernel_fn_str;
 }
 
+bool SupportsMKLDNN(const phi::DataType data_type) const {
+  auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
+      phi::TransToPhiKernelName(type_));
+  auto has_phi_kernel =
+      std::any_of(phi_kernels.begin(),
+                  phi_kernels.end(),
+                  [data_type](phi::KernelKeyMap::const_reference kern_pair) {
+                    return kern_pair.first.backend() == phi::Backend::ONEDNN &&
+                           kern_pair.first.dtype() == data_type;
+                  });
+  if (has_phi_kernel) {
+    return true;
+  } else {
+    auto op_kernel_iter = OperatorWithKernel::AllOpKernels().find(type_);
+    if (op_kernel_iter == OperatorWithKernel::AllOpKernels().end()) {
+      return false;
+    } else {
+      auto& op_kernels = op_kernel_iter->second;
+      return std::any_of(
+          op_kernels.begin(),
+          op_kernels.end(),
+          [data_type](OpKernelMap::const_reference kern_pair) {
+            return platform::is_cpu_place(kern_pair.first.place_) &&
+                   kern_pair.first.library_type_ == LibraryType::kMKLDNN &&
+                   kern_pair.first.data_type_ ==
+                       paddle::framework::TransToProtoVarType(data_type);
+          });
+    }
+  }
+}
+
 phi::KernelKey GetKernelKey(
     pir::Operation* op,
     const phi::Place& place,
@@ -857,6 +928,13 @@ phi::KernelKey GetKernelKey(
                "to GPU";
   }
 
+#ifdef PADDLE_WITH_DNNL
+  if (op->HasTrait<OneDNNTrait>() && res.backend() == phi::Backend::CPU &&
+      SupportsMKLDNN(res.dtype())) {
+    res.set_backend(phi::Backend::ONEDNN);
+    res.set_layout(phi::DataLayout::ONEDNN);
+  }
+#endif
   return res;
 }
 
@@ -1324,7 +1402,17 @@ std::vector<pir::Type> BuildOutputs(pir::Operation* op_item,
     } else if (result_type.isa<DenseTensorType>() ||
                result_type.isa<SelectedRowsType>() ||
                result_type.isa<DenseTensorArrayType>()) {
+#ifdef PADDLE_WITH_DNNL
+      if (kernel_key.backend() == phi::Backend::ONEDNN) {
+        op_output_types.push_back(BuildOutputType(
+            result_type, out_place, phi::DataLayout::ONEDNN, ctx));
+      } else {
+        op_output_types.push_back(BuildOutputType(result_type, out_place, ctx));
+      }
+#else
       op_output_types.push_back(BuildOutputType(result_type, out_place, ctx));
+#endif
+
     } else if (result_type.isa<pir::VectorType>()) {
       std::vector<pir::Type> vec_inner_types;
       auto base_types = result_type.dyn_cast<pir::VectorType>().data();
@@ -1332,8 +1420,18 @@ std::vector<pir::Type> BuildOutputs(pir::Operation* op_item,
         if (base_type) {
           if (base_type.isa<DenseTensorType>() ||
               base_type.isa<SelectedRowsType>()) {
+#ifdef PADDLE_WITH_DNNL
+            if (kernel_key.backend() == phi::Backend::ONEDNN) {
+              vec_inner_types.push_back(BuildOutputType(
+                  base_type, out_place, phi::DataLayout::ONEDNN, ctx));
+            } else {
+              vec_inner_types.push_back(
+                  BuildOutputType(base_type, out_place, ctx));
+            }
+#else
             vec_inner_types.push_back(
                 BuildOutputType(base_type, out_place, ctx));
+#endif
           } else {
             PADDLE_THROW(phi::errors::Unimplemented(
                 "only support dense tensor and selected rows in vector type "
@@ -1344,6 +1442,11 @@ std::vector<pir::Type> BuildOutputs(pir::Operation* op_item,
           pir::Type fp32_dtype = pir::Float32Type::get(ctx);
           phi::DDim dims = {};
           phi::DataLayout data_layout = phi::DataLayout::NCHW;
+#ifdef PADDLE_WITH_DNNL
+          if (kernel_key.backend() == phi::Backend::ONEDNN) {
+            data_layout = phi::DataLayout::ONEDNN;
+          }
+#endif
           phi::LoD lod = {{}};
           size_t offset = 0;
           auto dense_tensor_dtype = DenseTensorType::get(
