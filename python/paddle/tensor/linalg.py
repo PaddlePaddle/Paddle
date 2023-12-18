@@ -1259,7 +1259,7 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
             )
         if fweights.min() < 0:
             raise ValueError(
-                "The value of Input(fweights) cannot be negtive, but received "
+                "The value of Input(fweights) cannot be negative, but received "
                 f"min of Input(fweights) is {fweights.min()}."
             )
         if not paddle.all(fweights == paddle.round(fweights.astype('float64'))):
@@ -1284,7 +1284,7 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
             )
         if aweights.min() < 0:
             raise ValueError(
-                "The value of Input(aweights) cannot be negtive, but received "
+                "The value of Input(aweights) cannot be negative, but received "
                 f"min of Input(aweights) is {aweights.min()}."
             )
         if w is not None:
@@ -2010,11 +2010,11 @@ def svd(x, full_matrices=False, name=None):
 
     Args:
         x (Tensor): The input tensor. Its shape should be `[..., N, M]`,
-            where `...` is zero or more batch dimensions. N and M can be arbitraty
-            positive number. Note that if x is sigular matrices, the grad is numerical
+            where `...` is zero or more batch dimensions. N and M can be arbitrary
+            positive number. Note that if x is singular matrices, the grad is numerical
             instable. The data type of x should be float32 or float64.
-        full_matrices (bool, optional): A flag to control the behavor of svd.
-            If full_matrices = True, svd op will compute full U and V matrics,
+        full_matrices (bool, optional): A flag to control the behavior of svd.
+            If full_matrices = True, svd op will compute full U and V metrics,
             which means shape of U is `[..., N, N]`, shape of V is `[..., M, M]`. K = min(M, N).
             If full_matrices = False, svd op will use a economic method to store U and V.
             which means shape of U is `[..., N, K]`, shape of V is `[..., M, K]`. K = min(M, N).
@@ -2027,7 +2027,7 @@ def svd(x, full_matrices=False, name=None):
         - S (Tensor), is the singular value decomposition result S.
         - VH (Tensor), VH is the conjugate transpose of V, which is the singular value decomposition result V.
 
-        Tuple of 3 tensors(U, S, VH): VH is the conjugate transpose of V. S is the singlar value vectors of matrics with shape `[..., K]`
+        Tuple of 3 tensors(U, S, VH): VH is the conjugate transpose of V. S is the singular value vectors of metrics with shape `[..., K]`
 
     Examples:
         .. code-block:: python
@@ -2088,7 +2088,7 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
 
     Args:
         x (Tensor): The input tensor. Its shape should be `[..., N, M]`,
-            where `...` is zero or more batch dimensions. N and M can be arbitraty
+            where `...` is zero or more batch dimensions. N and M can be arbitrary
             positive number. The data type of x should be float32 or float64.
         q (int, optional): a slightly overestimated rank of :math:`X`.
             Default value is :math:`q=min(6,N,M)`.
@@ -2886,7 +2886,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
     Args:
         x (Tensor): The input tensor. Its shape should be (*, m, n)
             where * is zero or more batch dimensions. m and n can be
-            arbitraty positive number. The data type of x should be
+            arbitrary positive number. The data type of x should be
             float32 or float64 or complex64 or complex128. When data
             type is complex64 or cpmplex128, hermitian should be set
             True.

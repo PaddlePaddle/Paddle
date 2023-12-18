@@ -149,10 +149,10 @@ def tensor_array_to_tensor(input, axis=1, use_stack=False, name=None):
                     'tensor_array_to_tensor',
                 )
                 if not input_x.is_dense_tensor_array_type():
-                    raise TypeError("input should be tensor array vairable")
+                    raise TypeError("input should be tensor array variable")
         else:
             if not input.is_dense_tensor_array_type():
-                raise TypeError("input should be tensor array vairable")
+                raise TypeError("input should be tensor array variable")
         return paddle._pir_ops.array_to_tensor(input, axis, use_stack)
     else:
         check_type(input, 'input', (list, Variable), 'tensor_array_to_tensor')
