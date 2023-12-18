@@ -312,14 +312,6 @@ void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    bool adaptive,
                                    MetaTensor* dx);
 
-void FractionalMaxPoolWithIndexGradInferMeta(
-    const MetaTensor& x,
-    const MetaTensor& mask,
-    const MetaTensor& dout,
-    const std::vector<int>& output_size,
-    float random_u,
-    MetaTensor* dx);
-
 void MeshgridGradInferMeta(const std::vector<const MetaTensor*>& inputs,
                            const std::vector<const MetaTensor*>& outputs_grad,
                            std::vector<MetaTensor*> inputs_grad);

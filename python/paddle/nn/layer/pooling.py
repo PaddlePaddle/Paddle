@@ -1417,7 +1417,7 @@ class MaxUnPool3D(Layer):
 
 
 class FractionalMaxPool2D(Layer):
-    """
+    r"""
     This operation applies 2D fractional max pooling on input tensor, which is described in the paper:
 
     [1] Ben Graham, Fractional Max-Pooling. 2015. http://arxiv.org/abs/1412.6071
@@ -1428,7 +1428,7 @@ class FractionalMaxPool2D(Layer):
 
     .. math::
 
-        alpha &= size_{input} / size_{output}
+        \alpha &= size_{input} / size_{output}
 
         index_{start} &= ceil( \alpha * (i + u) - 1)
 
@@ -1436,7 +1436,7 @@ class FractionalMaxPool2D(Layer):
 
         Output &= max(Input[index_{start}:index_{end}])
 
-        where, u in range (0, 1), i = 0,1,2...size_{output}
+        where, u \in (0, 1), i = 0,1,2...size_{output}
 
     The ``u`` from the formula is the parameter ``random_u``, and subtract ``1`` for the index starts from ``0``
     instead of ``1`` where ``ceil`` works.
@@ -1458,7 +1458,7 @@ class FractionalMaxPool2D(Layer):
 
     Shape:
         - x(Tensor): The input tensor of fractional max pool2d operator, which is a 4-D tensor.
-          The data type can be float32, float64.
+          The data type can be float16, bfloat16, float32, float64.
         - output(Tensor): The output tensor of fractional max pool2d operator, which is a 4-D tensor.
           The data type is same as input x.
 
@@ -1516,7 +1516,7 @@ class FractionalMaxPool2D(Layer):
 
 
 class FractionalMaxPool3D(Layer):
-    """
+    r"""
     This operation applies 3D fractional max pooling on input tensor, which is described in the paper:
 
     [1] Ben Graham, Fractional Max-Pooling. 2015. http://arxiv.org/abs/1412.6071
@@ -1527,7 +1527,7 @@ class FractionalMaxPool3D(Layer):
 
     .. math::
 
-        alpha &= size_{input} / size_{output}
+        \alpha &= size_{input} / size_{output}
 
         index_{start} &= ceil( \alpha * (i + u) - 1)
 
@@ -1535,7 +1535,7 @@ class FractionalMaxPool3D(Layer):
 
         Output &= max(Input[index_{start}:index_{end}])
 
-        where, u in range (0, 1), i = 0,1,2...size_{output}
+        where, u \in (0, 1), i = 0,1,2...size_{output}
 
     The ``u`` from the formula is the parameter ``random_u``, and subtract ``1`` for the index starts from ``0``
     instead of ``1`` where ``ceil`` works.
@@ -1557,7 +1557,7 @@ class FractionalMaxPool3D(Layer):
 
     Shape:
         - x(Tensor): The input tensor of fractional max pool3d operator, which is a 5-D tensor.
-          The data type can be float32, float64.
+          The data type can be float16, bfloat16, float32, float64.
         - output(Tensor): The output tensor of fractional max pool3d operator, which is a 5-D tensor.
           The data type is same as input x.
 

@@ -2099,7 +2099,7 @@ def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
 def fractional_max_pool2d(
     x, output_size, random_u=None, return_mask=False, name=None
 ):
-    """
+    r"""
     This operation applies 2D fractional max pooling on input tensor, which is described in the paper:
 
     [1] Ben Graham, Fractional Max-Pooling. 2015. http://arxiv.org/abs/1412.6071
@@ -2110,7 +2110,7 @@ def fractional_max_pool2d(
 
     ..  math::
 
-        alpha &= size_{input} / size_{output}
+        \alpha &= size_{input} / size_{output}
 
         index_{start} &= ceil( \alpha * (i + u) - 1)
 
@@ -2118,7 +2118,7 @@ def fractional_max_pool2d(
 
         Output &= max(Input[index_{start}:index_{end}])
 
-        where, u in range (0, 1), i = 0,1,2...size_{output}
+        where, u \in (0, 1), i = 0,1,2...size_{output}
 
     The ``u`` from the formula is the parameter ``random_u``, and subtract ``1`` for the index starts from ``0``
     instead of ``1`` where ``ceil`` works.
@@ -2129,7 +2129,7 @@ def fractional_max_pool2d(
     the random sequence, giving the final pooling output is ``[2, 4, 1, 5, 3]``.
 
     Parameters:
-        x (Tensor): The input tensor of fractional max pool2d operator, which is a 4-D tensor. The data type can be float32, float64.
+        x (Tensor): The input tensor of fractional max pool2d operator, which is a 4-D tensor. The data type can be float16, bfloat16, float32, float64.
         output_size(int|list|tuple): The output size. If output size is a tuple or list, it must contain
             two element, (H, W). H and W can be either a int, or None which means the size will be the same as that of
             the input.
@@ -2195,7 +2195,10 @@ def fractional_max_pool2d(
         l_type = 'fractional_max_pool2d_with_index'
 
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64'], 'fractional_max_pool2d'
+            x,
+            'x',
+            ['uint16', 'float16', 'float32', 'float64'],
+            'fractional_max_pool2d',
         )
         check_type(return_mask, 'return_mask', bool, 'fractional_max_pool2d')
 
@@ -2229,7 +2232,7 @@ def fractional_max_pool2d(
 def fractional_max_pool3d(
     x, output_size, random_u=None, return_mask=False, name=None
 ):
-    """
+    r"""
     This operation applies 3D fractional max pooling on input tensor, which is described in the paper:
 
     [1] Ben Graham, Fractional Max-Pooling. 2015. http://arxiv.org/abs/1412.6071
@@ -2240,7 +2243,7 @@ def fractional_max_pool3d(
 
     ..  math::
 
-        alpha &= size_{input} / size_{output}
+        \alpha &= size_{input} / size_{output}
 
         index_{start} &= ceil( \alpha * (i + u) - 1)
 
@@ -2248,7 +2251,7 @@ def fractional_max_pool3d(
 
         Output &= max(Input[index_{start}:index_{end}])
 
-        where, u in range (0, 1), i = 0,1,2...size_{output}
+        where, u \in (0, 1), i = 0,1,2...size_{output}
 
     The ``u`` from the formula is the parameter ``random_u``, and subtract ``1`` for the index starts from ``0``
     instead of ``1`` where ``ceil`` works.
@@ -2259,7 +2262,7 @@ def fractional_max_pool3d(
     the random sequence, giving the final pooling output is ``[2, 4, 1, 5, 3]``.
 
     Parameters:
-        x (Tensor): The input tensor of fractional max pool3d operator, which is a 5-D tensor. The data type can be float32, float64.
+        x (Tensor): The input tensor of fractional max pool3d operator, which is a 5-D tensor. The data type can be float16, bfloat16, float32, float64.
         output_size(int|list|tuple): The output size. If output size is a tuple or list, it must contain
             three element, (D, H, W). D, H and W can be either a int, or None which means the size will be the same as that of
             the input.
@@ -2329,7 +2332,10 @@ def fractional_max_pool3d(
         l_type = 'fractional_max_pool3d_with_index'
 
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64'], 'fractional_max_pool3d'
+            x,
+            'x',
+            ['uint16', 'float16', 'float32', 'float64'],
+            'fractional_max_pool3d',
         )
         check_type(return_mask, 'return_mask', bool, 'fractional_max_pool3d')
 

@@ -916,7 +916,8 @@
   args : (Tensor x, Tensor mask, Tensor out_grad, int[] output_size, float random_u)
   output : Tensor(x_grad)
   infer_meta :
-    func : FractionalMaxPoolWithIndexGradInferMeta
+    func : UnchangedInferMeta
+    param : [x]
   kernel :
     func : fractional_max_pool2d_with_index_grad
 
@@ -925,7 +926,8 @@
   args : (Tensor x, Tensor mask, Tensor out_grad, int[] output_size, float random_u)
   output : Tensor(x_grad)
   infer_meta :
-    func : FractionalMaxPoolWithIndexGradInferMeta
+    func : UnchangedInferMeta
+    param : [x]
   kernel :
     func : fractional_max_pool3d_with_index_grad
 

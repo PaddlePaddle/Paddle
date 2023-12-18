@@ -127,13 +127,6 @@ class TestFractionalMaxPool2DAPI(unittest.TestCase):
             x=self.x_np, output_size=[2, 5], random_u=0.7
         )
 
-        # self.res_4_np = fractional_pool2d_forward(
-        #     x=self.x_np,
-        #     output_size=[3, 3],
-        #     pool_type="max",
-        #     data_format="NHWC",
-        #     random_u=0.1)
-
         self.res_5_np = fractional_pool2d_forward(
             x=self.x_np, output_size=[None, 3], random_u=0.6
         )
@@ -160,9 +153,6 @@ class TestFractionalMaxPool2DAPI(unittest.TestCase):
                 x=x, output_size=[2, 5], random_u=0.7
             )
 
-            # out_4 = paddle.nn.functional.fractional_max_pool2d(
-            #    x=x, output_size=[3, 3], data_format="NHWC", random_u=0.1)
-
             out_5 = paddle.nn.functional.fractional_max_pool2d(
                 x=x, output_size=[None, 3], random_u=0.6
             )
@@ -179,8 +169,6 @@ class TestFractionalMaxPool2DAPI(unittest.TestCase):
             np.testing.assert_allclose(res_2, self.res_2_np)
 
             np.testing.assert_allclose(res_3, self.res_3_np)
-
-            # np.testing.assert_allclose(res_4, self.res_4_np)
 
             np.testing.assert_allclose(res_5, self.res_5_np)
 
@@ -205,9 +193,6 @@ class TestFractionalMaxPool2DAPI(unittest.TestCase):
             out_3 = paddle.nn.functional.fractional_max_pool2d(
                 x=x, output_size=[2, 5], return_mask=True, random_u=0.7
             )
-
-            # out_4 = paddle.nn.functional.fractional_max_pool2d(
-            #    x=x, output_size=[3, 3], data_format="NHWC", return_mask=True, random_u=0.1)
 
             out_5 = paddle.nn.functional.fractional_max_pool2d(
                 x=x, output_size=[None, 3], return_mask=True, random_u=0.6
@@ -235,8 +220,6 @@ class TestFractionalMaxPool2DAPI(unittest.TestCase):
 
             self.assertEqual(res_3.shape, mask_3.shape)
 
-            # self.assertEqual(res_4.shape, mask_4.shape)
-
             self.assertEqual(res_5.shape, mask_5.shape)
 
     def test_dynamic_graph(self):
@@ -259,9 +242,6 @@ class TestFractionalMaxPool2DAPI(unittest.TestCase):
                 x=x, output_size=[2, 5], random_u=0.7
             )
 
-            # out_4 = paddle.nn.functional.fractional_max_pool2d(
-            #    x=x, output_size=[3, 3], data_format="NHWC", random_u=0.1)
-
             out_5 = paddle.nn.functional.fractional_max_pool2d(
                 x=x, output_size=[None, 3], random_u=0.6
             )
@@ -271,8 +251,6 @@ class TestFractionalMaxPool2DAPI(unittest.TestCase):
             np.testing.assert_allclose(out_2.numpy(), self.res_2_np)
 
             np.testing.assert_allclose(out_3.numpy(), self.res_3_np)
-
-            # np.testing.assert_allclose(out_4.numpy(), self.res_4_np)
 
             np.testing.assert_allclose(out_5.numpy(), self.res_5_np)
 
@@ -291,13 +269,6 @@ class TestFractionalMaxPool2DClassAPI(unittest.TestCase):
         self.res_3_np = fractional_pool2d_forward(
             x=self.x_np, output_size=[2, 5], random_u=0.7
         )
-
-        # self.res_4_np = fractional_pool2d_forward(
-        #    x=self.x_np,
-        #    output_size=[3, 3],
-        #    pool_type="max",
-        #    data_format="NHWC",
-        #    random_u=0.1)
 
         self.res_5_np = fractional_pool2d_forward(
             x=self.x_np, output_size=[None, 3], random_u=0.6
@@ -328,10 +299,6 @@ class TestFractionalMaxPool2DClassAPI(unittest.TestCase):
             )
             out_3 = fractional_max_pool(x=x)
 
-            #    fractional_max_pool = paddle.nn.FractionalMaxPool2D(
-            #        output_size=[3, 3], data_format="NHWC", random_u=0.1)
-            #    out_4 = fractional_max_pool(x=x)
-
             fractional_max_pool = paddle.nn.FractionalMaxPool2D(
                 output_size=[None, 3], random_u=0.6
             )
@@ -349,8 +316,6 @@ class TestFractionalMaxPool2DClassAPI(unittest.TestCase):
             np.testing.assert_allclose(res_2, self.res_2_np)
 
             np.testing.assert_allclose(res_3, self.res_3_np)
-
-            # np.testing.assert_allclose(res_4, self.res_4_np)
 
             np.testing.assert_allclose(res_5, self.res_5_np)
 
@@ -377,10 +342,6 @@ class TestFractionalMaxPool2DClassAPI(unittest.TestCase):
             )
             out_3 = fractional_max_pool(x=x)
 
-            # fractional_max_pool = paddle.nn.FractionalMaxPool2D(
-            #    output_size=[3, 3], data_format="NHWC", random_u=0.1)
-            # out_4 = fractional_max_pool(x=x)
-
             fractional_max_pool = paddle.nn.FractionalMaxPool2D(
                 output_size=[None, 3], random_u=0.6
             )
@@ -392,8 +353,6 @@ class TestFractionalMaxPool2DClassAPI(unittest.TestCase):
 
             np.testing.assert_allclose(out_3.numpy(), self.res_3_np)
 
-            # np.testing.assert_allclose(out_4.numpy(), self.res_4_np)
-
             np.testing.assert_allclose(out_5.numpy(), self.res_5_np)
 
 
@@ -404,9 +363,57 @@ class TestOutDtype(unittest.TestCase):
         check_out_dtype(
             api_fn,
             in_specs=[(shape,)],
-            expect_dtypes=['float32', 'float64'],
+            expect_dtypes=['uint16', 'float16', 'float32', 'float64'],
             output_size=16,
         )
+
+
+class TestFractionalMaxPool2DAPIDtype(unittest.TestCase):
+    def test_dtypes(self):
+        for dtype_np, dtype_paddle in zip(
+            ('uint16', 'float16', 'float32', 'float64'),
+            ('bfloat16', 'float16', 'float32', 'float64'),
+        ):
+            x_np = np.random.random([2, 3, 7, 7]).astype(dtype_np)
+            res_np = fractional_pool2d_forward(
+                x=x_np, output_size=[3, 3], random_u=0.3
+            )
+
+            x_paddle = paddle.to_tensor(x_np).astype(dtype_paddle)
+            out = paddle.nn.functional.fractional_max_pool2d(
+                x=x_paddle, output_size=[3, 3], random_u=0.3
+            )
+
+            np.testing.assert_allclose(out.numpy(), res_np)
+
+
+class TestFractionalMaxPool2DAPIErrorRandomU(unittest.TestCase):
+    def test_error_random_u(self):
+        x_np = np.random.random([2, 3, 7, 7])
+
+        # error random_u of `<0`
+        with self.assertRaises(ValueError):
+            res_np = paddle.nn.functional.fractional_max_pool2d(
+                x=x_np, output_size=[3, 3], random_u=-0.2
+            )
+
+        # error random_u of `0`
+        with self.assertRaises(ValueError):
+            res_np = paddle.nn.functional.fractional_max_pool2d(
+                x=x_np, output_size=[3, 3], random_u=0
+            )
+
+        # error random_u of `1`
+        with self.assertRaises(ValueError):
+            res_np = paddle.nn.functional.fractional_max_pool2d(
+                x=x_np, output_size=[3, 3], random_u=1
+            )
+
+        # error random_u of `>1`
+        with self.assertRaises(ValueError):
+            res_np = paddle.nn.functional.fractional_max_pool2d(
+                x=x_np, output_size=[3, 3], random_u=1.2
+            )
 
 
 if __name__ == '__main__':

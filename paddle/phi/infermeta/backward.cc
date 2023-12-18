@@ -662,16 +662,6 @@ void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
   dx->share_meta(x);
 }
 
-void FractionalMaxPoolWithIndexGradInferMeta(
-    const MetaTensor& x,
-    const MetaTensor& mask,
-    const MetaTensor& dout,
-    const std::vector<int>& output_size,
-    float random_u,
-    MetaTensor* dx) {
-  dx->share_meta(x);
-}
-
 void MemoryEfficientAttentionGradInferMeta(const MetaTensor& query,
                                            const MetaTensor& key,
                                            const MetaTensor& value,
