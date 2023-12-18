@@ -81,9 +81,9 @@ def get_real_op_inputs(op):
 
 def update_no_grad_set_by_stopgradient(block, no_grad_set):
     for op in block.ops:
-        # if op.name() in ["pd_op.if" , "pd_op.while"]:
-        #     for sub_block in op.blocks():
-        #         update_no_grad_set_by_stopgradient(sub_block, no_grad_set)
+        if op.name() in ["pd_op.if", "pd_op.while"]:
+            for sub_block in op.blocks():
+                update_no_grad_set_by_stopgradient(sub_block, no_grad_set)
         for value in op.results():
             if value.stop_gradient and value not in no_grad_set:
                 no_grad_set.add(value)
@@ -494,8 +494,6 @@ def append_backward_ops(
     def make_input_with_input_stopgradient(op):
         inputs = []
         input_grad_stopgradients = []
-        # if op.name() == "pd_op.add":
-        #     breakpoint()
         for input, grad_semantic in zip(
             get_real_op_inputs(op), get_grad_semantic_info(op)
         ):
@@ -718,7 +716,6 @@ def append_backward_ops(
                         for sub_block in op.blocks():
                             build_pipe_for_block(sub_block)
                         with dynamic_shape_prim_vjp_guard(op, inputs):
-                            # breakpoint()
                             input_grads = paddle.framework.core.call_vjp(
                                 op,
                                 inputs,

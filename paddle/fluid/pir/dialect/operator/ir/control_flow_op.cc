@@ -385,7 +385,7 @@ std::vector<std::vector<pir::OpResult>> WhileOp::Vjp(
                     out_grads.size() + 1,
                     phi::errors::InvalidArgument(
                         "while op's inputs' size should equal to "
-                        "output_grads' size, Now the inputs's size is %d ."
+                        "output_grads' size + 1, Now the inputs's size is %d ."
                         "the output_grads size is %d.",
                         inputs.size(),
                         out_grads.size()));

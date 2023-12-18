@@ -100,7 +100,6 @@ class TestBuildModuleWithWhileOp(unittest.TestCase):
                 out,
                 [full_op1.result(0)],
             )
-            print(main_program)
 
             self.assertEqual(
                 grad_outs[0].get_defining_op().name(), "pd_op.while"
