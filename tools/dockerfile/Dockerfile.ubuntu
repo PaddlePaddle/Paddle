@@ -30,7 +30,6 @@ RUN apt-get update && \
     python-matplotlib \
     automake locales swig  \
     liblapack-dev liblapacke-dev \
-    libomp5 libomp-dev \
     net-tools libtool module-init-tools && \
     apt-get clean -y
 
