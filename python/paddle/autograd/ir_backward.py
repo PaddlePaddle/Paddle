@@ -81,6 +81,9 @@ def get_real_op_inputs(op):
 
 def update_no_grad_set_by_stopgradient(block, no_grad_set):
     for op in block.ops:
+        # if op.name() in ["pd_op.if" , "pd_op.while"]:
+        #     for sub_block in op.blocks():
+        #         update_no_grad_set_by_stopgradient(sub_block, no_grad_set)
         for value in op.results():
             if value.stop_gradient and value not in no_grad_set:
                 no_grad_set.add(value)
@@ -137,6 +140,7 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
                 [feedop],
             )
             state.value_to_valuegrad[output] = [[grad]]
+
     # add input for bwd first op
     complete_outputs = outputs
     complete_gradoutputs = grad_outputs
@@ -255,6 +259,12 @@ def update_no_grad_set_after_prune(
     from outputs to inputs add value not in the path to no_grad_set,
     '''
     inputs_set = set(inputs)
+    for input in inputs:
+        if not input.use_empty():
+            for used_op in input.all_used_ops():
+                for item in get_real_op_inputs(used_op):
+                    inputs_set.add(item)
+
     if inputs_set:
         for op in block.ops:
             if some_in_set(get_real_op_inputs(op), inputs_set):
@@ -465,12 +475,9 @@ def append_backward_ops(
                 ):
                     append_full_like(0.0, input, input, state, backward_ops)
                 output_grads.append(state.value_to_valuegrad[input][0])
-
         return zero_flag, outputs, output_grads
 
-    def make_input_with_input_stopgradient(op):
-        inputs = []
-        input_grad_stopgradients = []
+    def get_grad_semantic_info(op):
         if op.name() in [
             "builtin.combine",
             "pd_op.if",
@@ -482,9 +489,13 @@ def append_backward_ops(
             ]
         else:
             grad_semantic_info = op.get_input_grad_semantics()
+        return grad_semantic_info
 
+    def make_input_with_input_stopgradient(op):
+        inputs = []
+        input_grad_stopgradients = []
         for input, grad_semantic in zip(
-            get_real_op_inputs(op), grad_semantic_info
+            get_real_op_inputs(op), get_grad_semantic_info(op)
         ):
             if not grad_semantic:
                 if (
@@ -528,7 +539,8 @@ def append_backward_ops(
                     else [input]
                 )
                 inputs.append(tmp_input)
-                if input.get_defining_op() is None or input in no_grad_set:
+
+                if input in no_grad_set or input.stop_gradient is True:
                     input_grad_stopgradients.append([True])
                 else:
                     input_grad_stopgradients.append([False])
@@ -537,15 +549,9 @@ def append_backward_ops(
 
     def update_input_grad_map(op, input_grads, origin_inputs):
         i = 0
-        if (
-            op.name() == "builtin.combine"
-            or op.name() == "pd_op.if"
-            or op.name() == "pd_op.while"
+        for input, grad_semantic in zip(
+            origin_inputs, get_grad_semantic_info(op)
         ):
-            grad_semantic_info = [True for _ in range(len(origin_inputs))]
-        else:
-            grad_semantic_info = op.get_input_grad_semantics()
-        for input, grad_semantic in zip(origin_inputs, grad_semantic_info):
             if not grad_semantic:
                 continue
             if (
@@ -565,9 +571,13 @@ def append_backward_ops(
                     state.value_to_valuegrad[input].append([input_grad])
             i += 1
 
-    def append_yield(block, base_inputs, base_inputs_grad):
+    def append_yield(block, base_op, base_inputs, base_inputs_grad):
         with block:
             inputs_grad = []
+            if base_op.name() == "pd_op.while":
+                new_cond = paddle.base.libpaddle.pir.cf_has_elements(base_op)
+                inputs_grad.append(new_cond)
+
             for value, value_grad in zip(base_inputs, base_inputs_grad):
                 if value_grad is None:
                     continue
@@ -595,14 +605,22 @@ def append_backward_ops(
     # -----------------only for control flow-----------------#
     # tuple_push value to tuple_pop value
     control_flow_value_to_copyvalue_map = {}
+    control_flow_copyvalue_to_value_map = {}
 
     if (
         len(effective_forward_ops) > 1
         and effective_forward_ops[-1].name() == "cf.yield"
     ):
         yield_op = effective_forward_ops[-1]
+        if base_op.name() == "pd_op.while":
+            # while op yield [cond, loop_vars],
+            # but outputs only has loop_vars.
+            inside_outputs = yield_op.operands_source()[1:]
+        else:
+            inside_outputs = yield_op.operands_source()
+
         for outside_output, inside_output in zip(
-            base_op.results(), yield_op.operands_source()
+            base_op.results(), inside_outputs
         ):
             state.inside_value_to_outside_value_map[
                 inside_output
@@ -645,7 +663,9 @@ def append_backward_ops(
                         control_flow_value_to_copyvalue_map[
                             output[0]
                         ] = copy_output[0]
-
+                        control_flow_copyvalue_to_value_map[
+                            copy_output[0]
+                        ] = output[0]
                 else:
                     # all(zero_flag) support this op has no contribution for grad
                     # should be delete (prune sub_graph)
@@ -725,15 +745,16 @@ def append_backward_ops(
                     state.op_to_opgrad[op] = []
 
         if fwd_block != bwd_block:
-            append_yield(bwd_block, base_inputs, base_input_grads)
+            append_yield(bwd_block, base_op, base_inputs, base_input_grads)
 
 
 def prepare_backward_prune_set(inputs, outputs):
     outputs_fwd_set = set()
     for input_ in inputs:
         if not input_.use_empty():
-            for item in get_real_op_inputs(input_.first_use().owner()):
-                outputs_fwd_set.add(item)
+            for used_op in input_.all_used_ops():
+                for item in get_real_op_inputs(used_op):
+                    outputs_fwd_set.add(item)
         else:
             logging.warning("input privided by inputs has no use")
 

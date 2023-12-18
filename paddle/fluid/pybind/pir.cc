@@ -697,6 +697,14 @@ void BindValue(py::module *m) {
                 kAttrIsPersisable,
                 BoolAttribute::get(pir::IrContext::Instance(), persistable));
           })
+      .def("all_used_ops",
+           [](Value &self) -> py::list {
+             py::list op_list;
+             for (auto it = self.use_begin(); it != self.use_end(); ++it) {
+               op_list.append(it.owner());
+             }
+             return op_list;
+           })
       .def(
           "get_defining_op",
           [](Value self) -> pir::Operation * {

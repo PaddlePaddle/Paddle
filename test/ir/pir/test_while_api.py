@@ -102,6 +102,47 @@ class TestBuildModuleWithWhileOp(unittest.TestCase):
             )
             print(main_program)
 
+            self.assertEqual(
+                grad_outs[0].get_defining_op().name(), "pd_op.while"
+            )
+
+
+def cond2(i, j, ten):
+    return i < ten
+
+
+def body2(i, j, ten):
+    i = i + j
+    return [i, j, ten]
+
+
+class TestBuildModuleWithWhile2Op(unittest.TestCase):
+    def test_add_n_program(self):
+        main_program = paddle.static.Program()
+        with paddle.pir.core.program_guard(main_program):
+            i = paddle.full(
+                shape=[1], fill_value=0, dtype='int64'
+            )  # loop counter
+            j = paddle.full(
+                shape=[1], fill_value=2, dtype='int64'
+            )  # loop counter
+            ten = paddle.full(
+                shape=[1], fill_value=10, dtype='int64'
+            )  # loop length
+            i.stop_gradient = False
+            j.stop_gradient = False
+            i_, j_, ten_ = paddle.static.nn.while_loop(
+                cond2, body2, [i, j, ten]
+            )
+            out = i_ - j_
+
+            grad_outs = grad(
+                out,
+                [i, j],
+            )
+
+            print(main_program)
+
 
 if __name__ == "__main__":
     unittest.main()

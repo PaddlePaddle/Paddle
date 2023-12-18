@@ -406,6 +406,10 @@ void HasElementsOp::Build(pir::Builder &builder,             // NOLINT
   argument.AddInput(container);
   argument.AddOutput(
       DenseTensorType::get(builder.ir_context(), builder.bool_type(), {1}));
+  std::vector<pir::Attribute> outs_stop_gradient{builder.bool_attr(true)};
+  argument.AddAttribute(
+      kStopGradientAttrName,
+      pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
 }
 void HasElementsOp::VerifySig() {
   VLOG(4) << "Verifying inputs, outputs ,attributes for: HasElementsOp.";
