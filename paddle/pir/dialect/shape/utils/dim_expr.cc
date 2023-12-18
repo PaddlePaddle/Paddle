@@ -72,7 +72,7 @@ bool DimExprEqual(const Op<DimExpr>& lhs, const Op<DimExpr>& rhs) {
   if (lhs.operands->size() != rhs.operands->size()) {
     return false;
   }
-  for (std::size_t i = 0; i < lhs->size(); ++i) {
+  for (std::size_t i = 0; i < lhs.operands->size(); ++i) {
     if (lhs.operands->at(i) != rhs.operands->at(i)) {
       return false;
     }
