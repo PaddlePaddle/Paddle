@@ -96,8 +96,10 @@ class NumpyArrayInitializer(Initializer):
             values = [int(v) for v in np_value.flat]
         elif out_dtype in (
             core.VarDesc.VarType.INT8,
+            core.VarDesc.VarType.UINT8,
             core.DataType.INT8,
-        ) or out_dtype in (core.VarDesc.VarType.UINT8, core.DataType.UINT8):
+            core.DataType.UINT8,
+        ):
             value_name = "int8_values"
             values = [int(v) for v in np_value.flat]
         else:
