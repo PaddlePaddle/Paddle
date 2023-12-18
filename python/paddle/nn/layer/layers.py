@@ -1401,7 +1401,8 @@ class Layer:
             ):
                 outputs = self.forward(*inputs, **kwargs)
         else:
-            outputs = self.forward(*inputs, **kwargs)
+            with paddle.static.name_struct(self.__class__.__name__):
+                outputs = self.forward(*inputs, **kwargs)
 
         for forward_post_hook in self._forward_post_hooks.values():
             hook_result = forward_post_hook(self, inputs, outputs)
