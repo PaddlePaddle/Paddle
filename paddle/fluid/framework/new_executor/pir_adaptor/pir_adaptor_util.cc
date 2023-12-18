@@ -390,7 +390,7 @@ void BuildValue(pir::Value value,
     var = CreateVar(value, var_name_prefix, false, value_exe_info);
   }
   if (is_optional) {
-    VLOG(6) << "value %s is optional, so var %s is null", value.impl(), var;
+    VLOG(6) << "value %s is optional so var is null", value.impl();
     return;
   }
   // Only support DenseTensor or Vector<DenseTensor>
