@@ -80,14 +80,14 @@ void GradTensorHolder::CopyValueFromTensor(size_t slot_id,
     if (t.defined()) {
       // Fill 1.0, use full to support complex, one_like don't support it.
       if (t.is_dense_tensor()) {
-        buffer_[slot_id][rank] =
-            paddle::experimental::full(t.shape(), 1, t.dtype(), t.place());
+        buffer_[slot_id][rank] = paddle::experimental::full(
+            t.shape(), paddle::experimental::Scalar(1.0), t.dtype(), t.place());
       } else if (t.is_sparse_csr_tensor() || t.is_sparse_coo_tensor()) {
         buffer_[slot_id][rank] =
             paddle::experimental::sparse::full_like(t, 1, t.dtype());
       } else if (t.is_dist_tensor()) {
-        auto init_grad =
-            paddle::experimental::full(t.shape(), 1, t.dtype(), t.place());
+        auto init_grad = paddle::experimental::full(
+            t.shape(), paddle::experimental::Scalar(1.0), t.dtype(), t.place());
         auto global_dense_t =
             std::static_pointer_cast<phi::DenseTensor>(init_grad.impl());
         auto dist_t =

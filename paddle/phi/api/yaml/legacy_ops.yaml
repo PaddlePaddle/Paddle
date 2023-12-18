@@ -479,7 +479,7 @@
     backend : place
 
 - op : full_
-  args : (Tensor output, IntArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
+  args : (Tensor output, IntArray shape, Scalar(Scalar) value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
   output : Tensor(out)
   inplace : (output -> out)
   infer_meta :
