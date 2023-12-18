@@ -135,10 +135,9 @@ if(WITH_MKLDNN)
       ${PYTHON_EXECUTABLE} ${op_gen_file} --op_yaml_files ${op_yaml_files}
       --op_compat_yaml_file ${op_compat_yaml_file} --namespaces
       ${onednn_op_namespace} --dialect_name ${onednn_dialect_name}
-      --op_def_h_file ${onednn_op_header_file_tmp} --op_info_file
-      ${op_info_file_tmp} --op_def_cc_file ${onednn_op_source_file_tmp}
-      --onednn_yaml_file ${pir_op_onednn_yaml} --ops_onednn_extra_yaml_file
-      ${pd_ops_onednn_extra_yaml_file})
+      --op_def_h_file ${onednn_op_header_file_tmp} --op_def_cc_file
+      ${onednn_op_source_file_tmp} --onednn_yaml_file ${pir_op_onednn_yaml}
+      --ops_onednn_extra_yaml_file ${pd_ops_onednn_extra_yaml_file})
 
   set(generated_files_onednn_pd_op "${onednn_op_header_file}"
                                    "${onednn_op_source_file}")
