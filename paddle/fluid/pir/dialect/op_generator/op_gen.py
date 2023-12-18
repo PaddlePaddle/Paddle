@@ -29,6 +29,7 @@ from op_interface_gen import (
 from op_kerneltype_gen import gen_kernel_type_for_var_str
 from op_member_func_gen import gen_op_get_inputs_outputs_str
 from op_verify_gen import gen_verify_func_str
+from ops_onednn_extra_parser import parse_extra_args, parse_layout_transform
 from parse_kernel_key_gen import gen_parse_kernel_key_str
 from reify_infer_shape_gen import gen_reify_infer_shape_str
 from vjp_interface_black_list import vjp_interface_black_list
@@ -1753,41 +1754,28 @@ def OpGenerator(
     # (2) parse yaml files
     op_compat_parser = OpCompatParser(op_compat_yaml_file)
 
-    # if dialect_name == "pd_onednn_op":
-    #     with open(ops_onednn_extra_yaml_file, "r") as f:
-    #         ops_onednn_extra = yaml.safe_load(f)
-    #         op_yaml_items_map = {}
-    #         for op in op_yaml_items:
-    #             op_yaml_items_map[op['name']] = op
-    #         op_yaml_items_onednn = []
-    #         for op in ops_onednn_extra:
-    #             op_name = op['op']
-    #             item = op_yaml_items_map[op_name]
-    #             assert (
-    #                 item is not None
-    #             ), f"OneDnn op {op_name} in {ops_onednn_extra_yaml_file} is not define in ops.yaml."
-    #             item["is_onednn_only"] = False
-    #             item["extra_args"] = parse_extra_args(op_name, op['extra_args'])
-    #             if 'layout_transform' in op:
-    #                 item["layout_transform"] = parse_layout_transform(
-    #                     op_name, op['layout_transform']
-    #                 )
-    #             else:
-    #                 item["layout_transform"] = None
-    #             item["attrs"] = item["attrs"] + parse_extra_args(
-    #                 op_name, op['extra_args']
-    #             )
-    #             op_yaml_items_onednn.append(item)
-    #         op_yaml_items = op_yaml_items_onednn
-
-    #     with open(onednn_yaml_file, "r") as f:
-    #         onednn_ops = yaml.safe_load(f)
-    #         for op in onednn_ops:
-    #             op["is_onednn_only"] = True
-    #         op_yaml_items = op_yaml_items + onednn_ops
+    if dialect_name == "pd_onednn_op":
+        with open(ops_onednn_extra_yaml_file, "r") as f:
+            ops_onednn_extra = yaml.safe_load(f)
+            ops_onednn_extra_map = {}
+            for op in ops_onednn_extra:
+                op_name = op['op']
+                item = {}
+                item["is_onednn_only"] = False
+                item["extra_args"] = parse_extra_args(op_name, op['extra_args'])
+                if 'layout_transform' in op:
+                    item["layout_transform"] = parse_layout_transform(
+                        op_name, op['layout_transform']
+                    )
+                else:
+                    item["layout_transform"] = None
+                item["attrs"] = parse_extra_args(op_name, op['extra_args'])
+                ops_onednn_extra_map[op_name] = item
+        op_yaml_files.insert(0, onednn_yaml_file)
 
     op_infos = []
     all_op_info_items = {}
+    first_file = True
     for yaml_file in op_yaml_files:
         op_yaml_items = []
         with open(yaml_file, "r") as f:
@@ -1823,11 +1811,25 @@ def OpGenerator(
                 ) = op_compat_parser.parse_support_tensor(op)
                 op_compat_item['scalar'] = scalar_item
                 op_compat_item['int_array'] = int_array_item
-
-            op_info_items[op['name']] = OpInfoParser(op, op_compat_item)
-            all_op_info_items[op['name']] = OpInfoParser(op, op_compat_item)
+            if dialect_name == "pd_onednn_op":
+                if first_file:
+                    first_file = False
+                    op["is_onednn_only"] = True
+                elif op['name'] in ops_onednn_extra_map:
+                    onednn_item = ops_onednn_extra_map[op['name']]
+                    op["is_onednn_only"] = onednn_item["is_onednn_only"]
+                    op["extra_args"] = onednn_item["extra_args"]
+                    op["layout_transform"] = onednn_item["layout_transform"]
+                    op["attrs"] = op["attrs"] + onednn_item["attrs"]
+                else:
+                    continue
+            item = OpInfoParser(op, op_compat_item)
+            op_info_items[op['name']] = item
+            all_op_info_items[op['name']] = item
 
         op_infos.append(op_info_items)
+    if dialect_name == "pd_onednn_op":
+        op_infos = [all_op_info_items]
 
     # (3) auto code gen
     op_list_strs = []
