@@ -535,11 +535,11 @@ bool IsAllEqualUnaryOp(const pir::Operation& op) {
 }
 
 void InferSymbolicShapeAllEqualUnary(
-    const pir::Operation& op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
-  auto operand_source = op.operand_source(0);
-  auto operand_source_id = pir::GetValueId(operand_source);
-  auto rst = op.result(0);
-  auto rst_id = pir::GetValueId(rst);
+    pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  auto operand_source = op->operand_source(0);
+  auto operand_source_id = pir::GetValueId(&operand_source);
+  auto rst = op->result(0);
+  auto rst_id = pir::GetValueId(&rst);
   shape_analysis->value_to_valueshape_expr_[rst_id] =
       shape_analysis->value_to_valueshape_expr_[operand_source_id];
 }
@@ -554,21 +554,21 @@ bool IsAllEqualBinaryOp(const pir::Operation& op) {
 }
 
 void InferSymbolicShapeAllEqualBinary(
-    const pir::Operation& op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
-  auto operand_source = op.operand_source(0);
-  auto operand_source_id = pir::GetValueId(operand_source);
-  auto rst = op.result(0);
-  auto rst_id = pir::GetValueId(rst);
+    pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  auto operand_source = op->operand_source(0);
+  auto operand_source_id = pir::GetValueId(&operand_source);
+  auto rst = op->result(0);
+  auto rst_id = pir::GetValueId(&rst);
   shape_analysis->value_to_valueshape_expr_[rst_id] =
       shape_analysis->value_to_valueshape_expr_[operand_source_id];
 }
 
-void InferSymbolicShapePdShape(const pir::Operation& op,
+void InferSymbolicShapePdShape(pir::Operation* op,
                                pir::ShapeConstraintIRAnalysis* shape_analysis) {
-  auto operand_source = op.operand_source(0);
-  auto operand_source_id = pir::GetValueId(operand_source);
-  auto rst = op.result(0);
-  auto rst_id = pir::GetValueId(rst);
+  auto operand_source = op->operand_source(0);
+  auto operand_source_id = pir::GetValueId(&operand_source);
+  auto rst = op->result(0);
+  auto rst_id = pir::GetValueId(&rst);
   std::pair<std::vector<std::string>, std::vector<std::string>> value_shape;
 
   auto type = rst.type();
@@ -590,11 +590,11 @@ void InferSymbolicShapePdShape(const pir::Operation& op,
 }
 
 void InferSymbolicShapeCinnSlice(
-    const pir::Operation& op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
-  auto operand_source = op.operand_source(0);
-  auto operand_source_id = pir::GetValueId(operand_source);
-  auto rst = op.result(0);
-  auto rst_id = pir::GetValueId(rst);
+    pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  auto operand_source = op->operand_source(0);
+  auto operand_source_id = pir::GetValueId(&operand_source);
+  auto rst = op->result(0);
+  auto rst_id = pir::GetValueId(&rst);
   std::pair<std::vector<std::string>, std::vector<std::string>> value_shape;
 
   auto type = rst.type();
@@ -610,7 +610,7 @@ void InferSymbolicShapeCinnSlice(
     value_shape.first.emplace_back(sym_name);
   }
 
-  auto attributes = op.attributes();
+  auto attributes = op->attributes();
 
   auto attr_starts = attributes["starts"].dyn_cast<ArrayAttribute>().AsVector();
   auto start = attr_starts[0].dyn_cast<Int64Attribute>().data();
@@ -628,10 +628,10 @@ void InferSymbolicShapeCinnSlice(
 }
 
 void InferSymbolicShapeBuiltinCombine(
-    const pir::Operation& op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
+    pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
   std::pair<std::vector<std::string>, std::vector<std::string>> value_shape;
-  for (auto operand_source : op.operands_source()) {
-    auto operand_source_id = pir::GetValueId(operand_source);
+  for (auto operand_source : op->operands_source()) {
+    auto operand_source_id = pir::GetValueId(&operand_source);
     auto source_shape_vec =
         shape_analysis->value_to_valueshape_expr_[operand_source_id].second;
     for (int i = 0; i < source_shape_vec.size(); i++) {
@@ -639,18 +639,18 @@ void InferSymbolicShapeBuiltinCombine(
     }
   }
 
-  auto rst = op.result(0);
-  auto rst_id = pir::GetValueId(rst);
+  auto rst = op->result(0);
+  auto rst_id = pir::GetValueId(&rst);
 
   shape_analysis->value_to_valueshape_expr_[rst_id] = value_shape;
 }
 
-void InferSymbolicShapeStack(const pir::Operation& op,
+void InferSymbolicShapeStack(pir::Operation* op,
                              pir::ShapeConstraintIRAnalysis* shape_analysis) {
-  auto operand_source = op.operand_source(0);
-  auto operand_source_id = pir::GetValueId(operand_source);
-  auto rst = op.result(0);
-  auto rst_id = pir::GetValueId(rst);
+  auto operand_source = op->operand_source(0);
+  auto operand_source_id = pir::GetValueId(&operand_source);
+  auto rst = op->result(0);
+  auto rst_id = pir::GetValueId(&rst);
   std::pair<std::vector<std::string>, std::vector<std::string>> value_shape;
 
   value_shape.second =
@@ -658,12 +658,12 @@ void InferSymbolicShapeStack(const pir::Operation& op,
   shape_analysis->value_to_valueshape_expr_[rst_id] = value_shape;
 }
 
-void InferSymbolicShapeReshape(const pir::Operation& op,
+void InferSymbolicShapeReshape(pir::Operation* op,
                                pir::ShapeConstraintIRAnalysis* shape_analysis) {
-  auto operand_source_1 = op.operand_source(1);
-  auto operand_source_1_id = pir::GetValueId(operand_source_1);
-  auto rst = op.result(0);
-  auto rst_id = pir::GetValueId(rst);
+  auto operand_source_1 = op->operand_source(1);
+  auto operand_source_1_id = pir::GetValueId(&operand_source_1);
+  auto rst = op->result(0);
+  auto rst_id = pir::GetValueId(&rst);
 
   std::pair<std::vector<std::string>, std::vector<std::string>> value_shape;
 
@@ -673,12 +673,12 @@ void InferSymbolicShapeReshape(const pir::Operation& op,
 }
 
 void debug_print_op_info(
-    const pir::Operation& op,
+    pir::Operation* op,
     pir::ShapeConstraintIRAnalysis* shape_analysis = nullptr) {
-  VLOG(0) << op.name() << ", num_operands: " << op.num_operands();
-  for (auto& rst : op.results()) {
+  VLOG(0) << op->name() << ", num_operands: " << op->num_operands();
+  for (auto& rst : op->results()) {
     auto type = rst.type();
-    auto value_id = pir::GetValueId(rst);
+    auto value_id = pir::GetValueId(&rst);
     std::ostringstream print_stream;
     print_stream << ">>>> result(" << rst.index() << ") 's ID: " << value_id;
     if (shape_analysis != nullptr) {
@@ -708,7 +708,7 @@ void CreateSymDimsForAllValues(const pir::ModuleOp& module_op) {
         if (op.num_operands() == 0) {
           // Need new syms for -1s
           for (auto& rst : op.results()) {
-            auto value_id = pir::GetValueId(rst);
+            auto value_id = pir::GetValueId(&rst);
             std::pair<std::vector<std::string>, std::vector<std::string>>
                 value_shape;
             auto type = rst.type();
@@ -737,21 +737,21 @@ void CreateSymDimsForAllValues(const pir::ModuleOp& module_op) {
             shape_analysis.value_to_valueshape_expr_[value_id] = value_shape;
           }
         } else if (IsAllEqualUnaryOp(op)) {
-          InferSymbolicShapeAllEqualUnary(op, &shape_analysis);
+          InferSymbolicShapeAllEqualUnary(&op, &shape_analysis);
         } else if (IsAllEqualBinaryOp(op)) {
-          InferSymbolicShapeAllEqualBinary(op, &shape_analysis);
+          InferSymbolicShapeAllEqualBinary(&op, &shape_analysis);
         } else if (op.name() == "pd_op.shape") {
-          InferSymbolicShapePdShape(op, &shape_analysis);
+          InferSymbolicShapePdShape(&op, &shape_analysis);
         } else if (op.name() == "cinn_op.slice") {
-          InferSymbolicShapeCinnSlice(op, &shape_analysis);
+          InferSymbolicShapeCinnSlice(&op, &shape_analysis);
         } else if (op.name() == "builtin.combine") {
-          InferSymbolicShapeBuiltinCombine(op, &shape_analysis);
+          InferSymbolicShapeBuiltinCombine(&op, &shape_analysis);
         } else if (op.name() == "pd_op.stack") {
-          InferSymbolicShapeStack(op, &shape_analysis);
+          InferSymbolicShapeStack(&op, &shape_analysis);
         } else if (op.name() == "pd_op.reshape") {
-          InferSymbolicShapeReshape(op, &shape_analysis);
+          InferSymbolicShapeReshape(&op, &shape_analysis);
         }
-        debug_print_op_info(op, &shape_analysis);
+        debug_print_op_info(&op, &shape_analysis);
       }
     }
   }

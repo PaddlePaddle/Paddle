@@ -165,9 +165,9 @@ ShapeConstraintIRAnalysis& ShapeAnalysisManager::Get(pir::Program* program) {
   return it->second;
 }
 
-std::string GetValueId(const Value& val) {
-  auto op_id = val.defining_op()->id();
-  auto val_idx = val.dyn_cast<OpResult>().index();
+std::string GetValueId(Value* val) {
+  auto op_id = val->defining_op()->id();
+  auto val_idx = val->dyn_cast<OpResult>().index();
 
   return "op_" + std::to_string(op_id) + "_rst_" + std::to_string(val_idx);
 }
