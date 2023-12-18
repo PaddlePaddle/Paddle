@@ -23,6 +23,7 @@
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
 
 #include "paddle/pir/core/builtin_op.h"
+#include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_registry.h"
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
@@ -46,10 +47,7 @@ class SqueezeFcFusePattern
     pat.Tensor("add_out") = add(pat.Tensor("matmul_out"), pat.Tensor("bias"));
     // Constrains the activation is none
     pat.RequireNativeCall([&](const pir::drr::MatchContext &match_ctx) {
-      auto axis_type =
-          dynamic_cast<const pir::drr::IrValue &>(match_ctx.Tensor("axis"))
-              .get()
-              .type();
+      auto axis_type = match_ctx.Tensor("axis").Dtype().get();
       if (axis_type.isa<pir::VectorType>() &&
           axis_type.dyn_cast<pir::VectorType>().size() != 2) {
         return false;
