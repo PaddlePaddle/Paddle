@@ -18,12 +18,12 @@ limitations under the License. */
 #include <limits>
 #include <string>
 #include <utility>
+#include "paddle/common/layout.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/api/lib/backend_set.h"
 #include "paddle/phi/api/lib/data_type_set.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
@@ -52,7 +52,7 @@ enum class KernelType {
 // TODO(chenweihang): support DataLayout and DataType selected
 struct KernelKeySet {
   BackendSet backend_set{Backend::UNDEFINED};
-  DataLayout layout{DataLayout::UNDEFINED};
+  phi::DataLayout layout{phi::DataLayout::UNDEFINED};
   DataType dtype{DataType::UNDEFINED};
 
   // TODO(chenweihang): iterate all kernelkey for kernel selection
@@ -239,9 +239,10 @@ Backend ParseBackend(T t, Args... args) {
 }
 Backend ParseBackendWithInputOrder(const Place& place, const Tensor& tensor);
 
-DataLayout ParseLayout(DataLayout layout);
-DataLayout ParseLayout(const Tensor& tensor);
-DataLayout ParseLayoutWithInputOrder(DataLayout layout, const Tensor& tensor);
+phi::DataLayout ParseLayout(phi::DataLayout layout);
+phi::DataLayout ParseLayout(const Tensor& tensor);
+phi::DataLayout ParseLayoutWithInputOrder(phi::DataLayout layout,
+                                          const Tensor& tensor);
 
 template <typename... Args>
 bool AllInputsAreDistTensor(const Args&... args) {

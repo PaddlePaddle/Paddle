@@ -157,6 +157,13 @@ class OpConverter {
         it = Registry<OpConverter>::Global().Lookup("custom_plugin_creater");
         break;
 
+      case OpConverterType::CustomGenericPluginCreater:
+        LOG(INFO) << "There is no OpConverter for type " << op_desc.Type()
+                  << ", now use custom_generic_plugin_creater!";
+        it = Registry<OpConverter>::Global().Lookup(
+            "custom_generic_plugin_creater");
+        break;
+
       default:
         CHECK(false) << "no OpConverter for optype " << op_desc.Type();
     }

@@ -103,7 +103,7 @@ GraphView MakeOpsGraphViewForPartition(
     equations->emplace_back(equation);
   });
 
-  return Graph::New(equations)->GetGraphView();
+  return Graph<Variable, Equation>::New(equations)->GetGraphView();
 }
 
 template <typename DoEachT>
@@ -249,7 +249,7 @@ GraphView MakeParametersGraphViewForPartition(
   VisitProducerConsumerTensorIndexPair(
       op_stmts, EquationCtx4OpStmt, AsOutput4Index, CollectEquation);
 
-  return Graph::New(equations)->GetGraphView();
+  return Graph<Variable, Equation>::New(equations)->GetGraphView();
 }
 
 GraphView MakeGlobalEquationGraphViewForPartition(
@@ -261,7 +261,8 @@ GraphView MakeGlobalEquationGraphViewForPartition(
       MakeOpsGraphViewForPartition(EquationCtx4OpStmt, op_stmts);
 
   const auto& direction_equation_view =
-      Graph::New(direction_equation_generator->GetDirectionEquations())
+      Graph<Variable, Equation>::New(
+          direction_equation_generator->GetDirectionEquations())
           ->GetGraphView();
 
   const auto& parameters_graph_view = MakeParametersGraphViewForPartition(
@@ -329,6 +330,13 @@ std::unordered_map<AnchorIndex, AnchorGroup> PartitionOpStmtsIntoAnchorGroups(
   const auto& equation_graph_view = MakeGlobalEquationGraphViewForPartition(
       EquationCtx4OpStmt, op_stmts, direction_equation_generator);
 
+  Equations graph_equations{};
+  {
+    Variable start = *candidate_anchor_indexes->begin();
+    equation_graph_view.BfsWalkFunction(
+        start, [&](const Function* f) { graph_equations->emplace_back(*f); });
+  }
+
   std::unordered_set<OpStmt> all_visited_op_stmts{};
   while (!candidate_anchor_indexes->empty()) {
     AnchorIndex anchor_index =
@@ -388,19 +396,16 @@ tBreak<bool> AggregateAnchorGroupOpStmt(const AnchorGroup& igroup_spec,
   return tBreak<bool>{false};
 }
 
-void CheckEquationSolvable(
-    const AnchorGroup& igroup_spec,
-    const std::shared_ptr<const EquationFunctionConstantsProvider>&
-        constants_provider,
-    const std::shared_ptr<DirectionEquationGenerator>&
-        direction_equation_generator) {
+void CheckEquationSolvable(const AnchorGroup& igroup_spec,
+                           const std::shared_ptr<DirectionEquationGenerator>&
+                               direction_equation_generator) {
   const auto& equation_graph_view =
       MakeGlobalEquationGraphViewForPartition(igroup_spec.EquationCtx4OpStmt,
                                               igroup_spec.op_stmts,
                                               direction_equation_generator);
 
   const auto& init_var2value = MakeAnchorIndex2Ok(igroup_spec);
-  IndexExprInferContext ctx{init_var2value, constants_provider};
+  IndexExprInferContext ctx{init_var2value};
 
   const auto& IsOpSolved = [&](const auto& op_stmt) {
     const auto& equation_ctx = *igroup_spec.EquationCtx4OpStmt(op_stmt);

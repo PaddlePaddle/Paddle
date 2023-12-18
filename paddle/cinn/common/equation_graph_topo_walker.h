@@ -110,7 +110,7 @@ class EquationGraphTopoWalker final {
     for (VarIterT iter = begin; iter != end; ++iter) {
       VisitNextFunctions(*iter, [&](FT f) { starts.emplace_back(f); });
     }
-    common::BfsWalker<FT> bfs_walker{BfsVisitNextFunction};
+    cinn::common::BfsWalker<FT> bfs_walker{BfsVisitNextFunction};
     bfs_walker(starts.begin(), starts.end(), FunctionVisitor);
   }
 

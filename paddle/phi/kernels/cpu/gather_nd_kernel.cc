@@ -27,7 +27,7 @@ void GatherNdKernel(const Context &ctx,
                     DenseTensor *out) {
   ctx.template Alloc<T>(out);
   if (x.numel() == 0) return;
-
+  if (index.dims()[0] == 0 && index.numel() == 0) return;
   auto index_type = index.dtype();
   bool index_type_match =
       index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64;

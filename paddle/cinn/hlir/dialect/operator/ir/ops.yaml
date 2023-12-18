@@ -16,6 +16,22 @@
   kernel :
     func : frobenius_norm
 
+- op : reduce_min
+  args : (Tensor x, int64_t[] dim,  bool keep_dim)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceInferMeta
+  kernel :
+    func : frobenius_norm
+
+- op : reduce_prod
+  args : (Tensor x, int64_t[] dim,  bool keep_dim)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceInferMeta
+  kernel :
+    func : frobenius_norm
+
 - op : reduce_sum
   args : (Tensor x, int64_t[] dim,  bool keep_dim)
   output : Tensor(out)
@@ -40,6 +56,14 @@
     param : [x]
   kernel :
     func : scale
+
+- op : slice
+  args : (Tensor x, int64_t[] axes, int64_t[] starts, int64_t[] ends, int64_t[] infer_flags, int64_t[] decrease_axis)
+  output : Tensor
+  infer_meta :
+    func : SliceRawInferMeta
+  kernel :
+    func : slice
 
 - op : uniform_random
   args : (int64_t[] shape,  float min, float max, int seed, DataType dtype, int diag_num = 0, int diag_step=0, float diag_val=1.0)

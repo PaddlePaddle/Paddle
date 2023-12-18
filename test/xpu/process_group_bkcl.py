@@ -52,26 +52,23 @@ class TestProcessGroupFp32(unittest.TestCase):
         )
         sys.stdout.write(f"rank {pg.rank()}: test new group api ok\n")
 
-        # TODO(zhangxiaoci) allreduce unittest raise error
         # test allreduce sum
         # rank 0
-        # x = np.random.random(self.shape).astype(self.dtype)
-        # tensor_x = paddle.to_tensor(x)
+        x = np.random.random(self.shape).astype(self.dtype)
+        tensor_x = paddle.to_tensor(x)
         # rank 1
-        # y = np.random.random(self.shape).astype(self.dtype)
-        # tensor_y = paddle.to_tensor(y)
+        y = np.random.random(self.shape).astype(self.dtype)
+        tensor_y = paddle.to_tensor(y)
 
-        # sum_result = tensor_x + tensor_y
-        # if pg.rank() == 0:
-        #    task = dist.all_reduce(tensor_x)
-        #    assert np.array_equal(tensor_x, sum_result)
-        # else:
-        #    task = dist.all_reduce(tensor_y)
-        #    assert np.array_equal(tensor_y, sum_result)
+        sum_result = tensor_x + tensor_y
+        if pg.rank() == 0:
+            task = dist.all_reduce(tensor_x)
+            np.testing.assert_array_equal(tensor_x, sum_result)
+        else:
+            task = dist.all_reduce(tensor_y)
+            np.testing.assert_array_equal(tensor_y, sum_result)
 
-        # sys.stdout.write(
-        #    "rank {}: test allreduce sum api ok\n".format(pg.rank())
-        # )
+        sys.stdout.write(f"rank {pg.rank()}: test allreduce sum api ok\n")
 
         # test broadcast
         # rank 0

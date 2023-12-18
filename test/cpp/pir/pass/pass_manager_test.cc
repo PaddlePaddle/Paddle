@@ -104,10 +104,8 @@ struct CountOpAnalysis {
     LOG(INFO) << "In CountOpAnalysis, op is " << container_op->name() << "\n";
     for (size_t i = 0; i < container_op->num_regions(); ++i) {
       auto &region = container_op->region(i);
-      for (auto block : region) {
-        for (auto it = block->begin(); it != block->end(); ++it) {
-          ++count;
-        }
+      for (auto &block : region) {
+        count += block.size();
       }
     }
 

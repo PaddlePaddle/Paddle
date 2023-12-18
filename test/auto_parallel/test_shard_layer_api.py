@@ -57,17 +57,11 @@ class TestShardLayer(unittest.TestCase):
                 for name, param in layer.named_parameters():
                     if 'weight' in name:
                         dist_param = dist.shard_tensor(
-                            param,
-                            dist_attr=dist.DistAttr(
-                                mesh=process_mesh, sharding_specs=[None, None]
-                            ),
+                            param, process_mesh, [dist.Replicate()]
                         )
                     else:
                         dist_param = dist.shard_tensor(
-                            param,
-                            dist_attr=dist.DistAttr(
-                                mesh=process_mesh, sharding_specs=[None]
-                            ),
+                            param, process_mesh, [dist.Replicate()]
                         )
                     layer.add_parameter(name, dist_param)
 
@@ -93,7 +87,7 @@ class TestShardLayer(unittest.TestCase):
 
         def input_fn(inputs, process_mesh):
             return dist.shard_tensor(
-                inputs[0], dist_attr=dist.DistAttr(process_mesh, [None, None])
+                inputs[0], process_mesh, [dist.Replicate()]
             )
 
         def output_fn(outputs, process_mesh):

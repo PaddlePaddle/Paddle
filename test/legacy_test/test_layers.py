@@ -34,6 +34,7 @@ from paddle.incubate.layers.nn import (
     rank_attention,
     shuffle_batch,
 )
+from paddle.pir_utils import test_with_pir_api
 from paddle.tensor import random
 
 
@@ -275,6 +276,7 @@ class TestLayer(LayerTest):
 
             self.assertRaises(TypeError, test_type)
 
+    @test_with_pir_api
     def test_SyncBatchNorm(self):
         if core.is_compiled_with_cuda():
             with self.static_graph():
@@ -912,52 +914,77 @@ class TestLayer(LayerTest):
 
         shape = (2, 4, 3, 3)
 
+        def _test_static_specific(input):
+            with self.static_graph():
+                X = paddle.static.data(name='X', shape=shape, dtype='float32')
+                ret = paddle.static.nn.instance_norm(input=X)
+                static_ret = self.get_static_graph_result(
+                    feed={'X': input}, fetch_list=[ret]
+                )[0]
+            return static_ret
+
+        def _test_static(input):
+            with self.static_graph():
+                X = paddle.static.data(name='X', shape=shape, dtype='float32')
+                instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
+                ret = instanceNorm(X)
+                static_ret2 = self.get_static_graph_result(
+                    feed={'X': input}, fetch_list=[ret]
+                )[0]
+            return static_ret2
+
+        def _test_dygraph_1(input):
+            with self.dynamic_graph():
+                instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
+                dy_ret = instanceNorm(to_variable(input))
+                dy_rlt_value = dy_ret.numpy()
+
+            return dy_rlt_value
+
+        def _test_dygraph_2(input):
+            with self.dynamic_graph():
+                instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
+                dy_ret = instanceNorm(to_variable(input))
+                dy_rlt_value2 = dy_ret.numpy()
+            return dy_rlt_value2
+
         input = np.random.random(shape).astype('float32')
-
-        with self.static_graph():
-            X = paddle.static.data(name='X', shape=shape, dtype='float32')
-            ret = paddle.static.nn.instance_norm(input=X)
-            static_ret = self.get_static_graph_result(
-                feed={'X': input}, fetch_list=[ret]
-            )[0]
-
-        with self.static_graph():
-            X = paddle.static.data(name='X', shape=shape, dtype='float32')
-            instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
-            ret = instanceNorm(X)
-            static_ret2 = self.get_static_graph_result(
-                feed={'X': input}, fetch_list=[ret]
-            )[0]
-
-        with self.dynamic_graph():
-            instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
-            dy_ret = instanceNorm(to_variable(input))
-            dy_rlt_value = dy_ret.numpy()
-
-        with self.dynamic_graph():
-            instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
-            dy_ret = instanceNorm(to_variable(input))
-            dy_rlt_value2 = dy_ret.numpy()
+        static_ret = _test_static_specific(input)
+        static_ret2 = _test_static(input)
+        dy_rlt_value = _test_dygraph_1(input)
+        dy_rlt_value2 = _test_dygraph_2(input)
 
         np.testing.assert_allclose(static_ret, dy_rlt_value, rtol=1e-05)
         np.testing.assert_allclose(static_ret, dy_rlt_value2, rtol=1e-05)
         np.testing.assert_allclose(static_ret, static_ret2, rtol=1e-05)
 
-        with self.static_graph():
-            # the input of InstanceNorm must be Variable.
-            def test_Variable():
-                instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
-                ret1 = instanceNorm(input)
+        with paddle.pir_utils.IrGuard():
+            static_ret_pir = _test_static(input)
 
-            self.assertRaises(TypeError, test_Variable)
+        np.testing.assert_allclose(static_ret2, static_ret_pir, rtol=1e-05)
 
-            # the input dtype of InstanceNorm must be float32 or float64
-            def test_type():
-                input = np.random.random(shape).astype('int32')
-                instanceNorm = paddle.nn.InstanceNorm2D(num_features=shape[1])
-                ret2 = instanceNorm(input)
+        def _test_errors():
+            with self.static_graph():
+                # the input of InstanceNorm must be Variable.
+                def test_Variable():
+                    instanceNorm = paddle.nn.InstanceNorm2D(
+                        num_features=shape[1]
+                    )
+                    ret1 = instanceNorm(input)
 
-            self.assertRaises(TypeError, test_type)
+                self.assertRaises(TypeError, test_Variable)
+
+                # the input dtype of InstanceNorm must be float32 or float64
+                def test_type():
+                    input = np.random.random(shape).astype('int32')
+                    instanceNorm = paddle.nn.InstanceNorm2D(
+                        num_features=shape[1]
+                    )
+                    ret2 = instanceNorm(input)
+
+                self.assertRaises(TypeError, test_type)
+
+        _test_errors()
 
     def test_spectral_norm(self):
         if core.is_compiled_with_cuda():

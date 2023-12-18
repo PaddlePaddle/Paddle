@@ -17,7 +17,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_set>
 #include <vector>
-#include "paddle/phi/core/macros.h"
+#include "paddle/common/macros.h"
 namespace phi {
 namespace funcs {
 

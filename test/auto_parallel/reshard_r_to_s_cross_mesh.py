@@ -43,23 +43,11 @@ class TestReshardRToSCrossMesh:
         paddle.seed(self._seeds)
         value = paddle.uniform(self._shape, self._dtype)
 
-        in_shard_specs = [None for i in range(len(self._shape))]
-        out_shard_specs = [None for i in range(len(self._shape))]
-        out_shard_specs[self._shard] = "x"
+        in_placements = [dist.Replicate()]
+        input_tensor = dist.shard_tensor(value, self._in_mesh, in_placements)
+        out_placements = [dist.Shard(self._shard)]
+        out = dist.reshard(input_tensor, self._out_mesh, out_placements)
 
-        dist_attr = dist.DistAttr(
-            mesh=self._in_mesh, sharding_specs=in_shard_specs
-        )
-        out_dist_attr = dist.DistAttr(
-            mesh=self._out_mesh, sharding_specs=out_shard_specs
-        )
-
-        input_tensor = dist.shard_tensor(value, dist_attr=dist_attr)
-
-        reshard_func = core.RToSReshardFunctionCrossMesh()
-        assert reshard_func.is_suitable(input_tensor, out_dist_attr)
-
-        out = reshard_func.eval(dev_ctx, input_tensor, out_dist_attr)
         out_shape = list(self._shape)
 
         if out_shape[self._shard] % 2 == 0:

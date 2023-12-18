@@ -32,7 +32,7 @@ pir::OpResult zeros_like(const pir::Value& x,
                          phi::DataType dtype = phi::DataType::UNDEFINED,
                          const Place& place = {});
 
-pir::OpResult get_parameter(const std::string& name);
+pir::OpResult parameter(const std::string& name);
 
 void set_parameter(const pir::Value& parameter, const std::string& name);
 
@@ -67,6 +67,10 @@ pir::OpResult array_length(pir::Value x);
 pir::OpResult array_read(pir::Value array, pir::Value i);
 
 pir::OpResult array_write_(pir::Value array, pir::Value x, pir::Value i);
+
+std::tuple<pir::OpResult, pir::OpResult> array_to_tensor(pir::Value x,
+                                                         int axis,
+                                                         bool use_stack);
 
 }  // namespace dialect
 }  // namespace paddle

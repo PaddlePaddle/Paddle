@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include <vector>
 
+#include "paddle/common/ddim.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -35,9 +35,9 @@ void AddmmKernelImpl(const Context& dev_ctx,
                      float alpha,
                      DenseTensor* out) {
 #if CUDA_VERSION >= 11000
-  std::vector<int64_t> input_dim = phi::vectorize(input.dims());
-  std::vector<int64_t> x_dim = phi::vectorize(x.dims());
-  std::vector<int64_t> y_dim = phi::vectorize(y.dims());
+  std::vector<int64_t> input_dim = common::vectorize(input.dims());
+  std::vector<int64_t> x_dim = common::vectorize(x.dims());
+  std::vector<int64_t> y_dim = common::vectorize(y.dims());
   auto rank = input_dim.size();
 
   PADDLE_ENFORCE_GE(

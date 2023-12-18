@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase, test_legacy_and_pir
+from dygraph_to_static_utils import Dy2StTestBase
 
 import paddle
 
@@ -66,7 +66,7 @@ class TestCINN(Dy2StTestBase):
 
             res.append(out.numpy())
 
-            if use_cinn and paddle.device.is_compiled_with_cinn():
+            if use_cinn and paddle.is_compiled_with_cinn():
                 self.assertTrue(
                     paddle.framework.core.is_run_with_cinn(),
                     msg="The test was not running with CINN! Please check.",
@@ -79,7 +79,6 @@ class TestCINN(Dy2StTestBase):
 
         return res
 
-    @test_legacy_and_pir
     def test_cinn(self):
         dy_res = self.train(use_cinn=False)
         cinn_res = self.train(use_cinn=True)

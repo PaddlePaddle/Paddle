@@ -77,12 +77,12 @@ struct GroupInfoAttributeStorage : public pir::AttributeStorage {
   ParamKey data_;
 };
 
-struct JITInfoAttributeStorage : public pir::AttributeStorage {
-  using ParamKey = cinn::hlir::framework::pir::CUDAJITInfo;
-  explicit JITInfoAttributeStorage(const ParamKey& key) : data_(key) {}
+struct CINNKernelInfoAttributeStorage : public pir::AttributeStorage {
+  using ParamKey = cinn::hlir::framework::pir::CINNKernelInfo;
+  explicit CINNKernelInfoAttributeStorage(const ParamKey& key) : data_(key) {}
 
-  static JITInfoAttributeStorage* Construct(const ParamKey& key) {
-    return new JITInfoAttributeStorage(key);
+  static CINNKernelInfoAttributeStorage* Construct(const ParamKey& key) {
+    return new CINNKernelInfoAttributeStorage(key);
   }
 
   static std::size_t HashValue(const ParamKey& key) {

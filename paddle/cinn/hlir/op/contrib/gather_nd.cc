@@ -41,8 +41,8 @@ namespace cinn {
 namespace hlir {
 namespace op {
 
-using common::CINNValue;
-using common::CINNValuePack;
+using cinn::common::CINNValue;
+using cinn::common::CINNValuePack;
 
 ir::Tensor GatherNd(const ir::Tensor &x,
                     const ir::Tensor &index,
@@ -62,16 +62,17 @@ ir::Tensor GatherNd(const ir::Tensor &x,
         std::vector<Expr> indices_position;
         for (size_t i = 0; i < index_shape_size - 1; ++i) {
           indices_position.push_back(
-              ir::Cast::Make(common::Int(32), indices[i]));
+              ir::Cast::Make(cinn::common::Int(32), indices[i]));
         }
-        indices_position.push_back(ir::Cast::Make(common::Int(32), Expr(0)));
+        indices_position.push_back(
+            ir::Cast::Make(cinn::common::Int(32), Expr(0)));
         size_t indices_position_size = indices_position.size();
         std::vector<Expr> real_indices;
         for (size_t i = 0; i < index_shape.back().as_int32(); ++i) {
           indices_position[indices_position_size - 1] =
-              ir::Cast::Make(common::Int(32), Expr(i));
+              ir::Cast::Make(cinn::common::Int(32), Expr(i));
           real_indices.push_back(
-              ir::Cast::Make(common::Int(32), index(indices_position)));
+              ir::Cast::Make(cinn::common::Int(32), index(indices_position)));
         }
         if (real_indices.size() == x_shape_size) {
           return x(real_indices);
@@ -127,7 +128,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForGatherNd(
                                                  lang::RetValue *ret) {
     CHECK(!args.empty()) << "The input argument of gather_nd_schedule is "
                             "empty! Please check.\n";
-    common::CINNValuePack arg_pack = args[0];
+    cinn::common::CINNValuePack arg_pack = args[0];
     std::vector<Expr> vec_ast;
     for (int i = 0; i < arg_pack.size(); i++) {
       if (arg_pack[i].is_expr()) {
@@ -150,9 +151,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForGatherNd(
         pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target, true);
       }
     }
-    std::vector<common::CINNValue> res{
-        common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-    *ret = common::CINNValuePack{res};
+    std::vector<cinn::common::CINNValue> res{
+        cinn::common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+    *ret = cinn::common::CINNValuePack{res};
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();

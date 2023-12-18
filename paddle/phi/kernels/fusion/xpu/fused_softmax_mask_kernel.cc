@@ -56,8 +56,8 @@ void FusedSoftmaxMaskKernel(const Context& dev_ctx,
             idx,
             mask_dim[idx]));
   }
-  std::vector<int64_t> x_shape = phi::vectorize<int64_t>(x.dims());
-  std::vector<int64_t> mask_shape = phi::vectorize<int64_t>(mask.dims());
+  std::vector<int64_t> x_shape = common::vectorize<int64_t>(x.dims());
+  std::vector<int64_t> mask_shape = common::vectorize<int64_t>(mask.dims());
 
   // int softmax_with_mask(Context* ctx, const T* x, const T* mask, T* y, const
   // std::vector<int64_t>& x_shape, const std::vector<int64_t>& mask_shape);

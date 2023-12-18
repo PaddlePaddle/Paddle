@@ -60,9 +60,8 @@ TEST(BuildCinnPassTest, AllOpSupportCinn) {
   LOG(INFO) << "after pass: " << *origin_program;
 
   CHECK_EQ(origin_program->block()->size(), 1u);
-  pir::Operation* group_op = origin_program->block()->front();
-  pir::Block* group_block =
-      group_op->dyn_cast<cinn::dialect::GroupOp>().block();
+  pir::Operation& group_op = origin_program->block()->front();
+  pir::Block* group_block = group_op.dyn_cast<cinn::dialect::GroupOp>().block();
   CHECK_EQ(group_block->size(), 6u);
 
   std::vector<std::string> op_names = {
@@ -74,8 +73,8 @@ TEST(BuildCinnPassTest, AllOpSupportCinn) {
       pir::YieldOp::name(),
   };
   int index = 0;
-  for (auto iter : *group_block) {
-    CHECK_EQ(iter->name(), op_names[index++]);
+  for (auto& op : *group_block) {
+    CHECK_EQ(op.name(), op_names[index++]);
   }
 }
 
@@ -121,8 +120,8 @@ TEST(BuildCinnPassTest, NoOpSupportCinn) {
       paddle::dialect::UnsqueezeOp::name(),
   };
   int index = 0;
-  for (auto iter : *origin_program->block()) {
-    CHECK_EQ(iter->name(), op_names[index++]);
+  for (auto& op : *origin_program->block()) {
+    CHECK_EQ(op.name(), op_names[index++]);
   }
 }
 
@@ -163,9 +162,8 @@ TEST(BuildCinnPassTest, OneCinnSubgraph) {
   LOG(INFO) << "after pass: " << *origin_program;
 
   CHECK_EQ(origin_program->block()->size(), 4u);
-  pir::Operation* group_op = origin_program->block()->front();
-  pir::Block* group_block =
-      group_op->dyn_cast<cinn::dialect::GroupOp>().block();
+  pir::Operation& group_op = origin_program->block()->front();
+  pir::Block* group_block = group_op.dyn_cast<cinn::dialect::GroupOp>().block();
   CHECK_EQ(group_block->size(), 4u);
 
   std::vector<std::string> op_names = {
@@ -175,8 +173,8 @@ TEST(BuildCinnPassTest, OneCinnSubgraph) {
       pir::YieldOp::name(),
   };
   int index = 0;
-  for (auto iter : *group_block) {
-    CHECK_EQ(iter->name(), op_names[index++]);
+  for (auto& op : *group_block) {
+    CHECK_EQ(op.name(), op_names[index++]);
   }
 }
 
@@ -219,7 +217,7 @@ TEST(BuildCinnPassTest, MultiCinnSubgraph) {
   LOG(INFO) << "after pass: " << *origin_program;
 
   CHECK_EQ(origin_program->block()->size(), 6u);
-  pir::Operation* group_op = origin_program->block()->front();
+  pir::Operation* group_op = &origin_program->block()->front();
   pir::Block* group_block =
       group_op->dyn_cast<cinn::dialect::GroupOp>().block();
   CHECK_EQ(group_block->size(), 3u);
@@ -230,11 +228,11 @@ TEST(BuildCinnPassTest, MultiCinnSubgraph) {
       pir::YieldOp::name(),
   };
   int index = 0;
-  for (auto iter : *group_block) {
-    CHECK_EQ(iter->name(), op_names_front[index++]);
+  for (auto& op : *group_block) {
+    CHECK_EQ(op.name(), op_names_front[index++]);
   }
 
-  group_op = origin_program->block()->back();
+  group_op = &origin_program->block()->back();
   group_block = group_op->dyn_cast<cinn::dialect::GroupOp>().block();
   CHECK_EQ(group_block->size(), 2u);
 
@@ -243,7 +241,7 @@ TEST(BuildCinnPassTest, MultiCinnSubgraph) {
       pir::YieldOp::name(),
   };
   index = 0;
-  for (auto iter : *group_block) {
-    CHECK_EQ(iter->name(), op_names_back[index++]);
+  for (auto& op : *group_block) {
+    CHECK_EQ(op.name(), op_names_back[index++]);
   }
 }

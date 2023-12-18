@@ -17,13 +17,14 @@ limitations under the License. */
 namespace common {
 
 // Disable the copy and assignment operator for a class.
-
+#ifndef DISABLE_COPY_AND_ASSIGN
 #define DISABLE_COPY_AND_ASSIGN(classname)         \
  private:                                          \
   classname(const classname&) = delete;            \
   classname(classname&&) = delete;                 \
   classname& operator=(const classname&) = delete; \
   classname& operator=(classname&&) = delete
+#endif
 
 #define PD_STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg) \
   _PD_STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg)
@@ -47,6 +48,25 @@ namespace common {
 #define UNUSED __attribute__((unused))
 #endif
 
+// Because most enforce conditions would evaluate to true, we can use
+// __builtin_expect to instruct the C++ compiler to generate code that
+// always forces branch prediction of true.
+// This generates faster binary code. __builtin_expect is since C++11.
+// For more details, please check https://stackoverflow.com/a/43870188/724872.
+#if !defined(_WIN32)
+#define UNLIKELY(condition) __builtin_expect(static_cast<bool>(condition), 0)
+#else
+// there is no equivalent intrinsics in msvc.
+#define UNLIKELY(condition) (condition)
+#endif
+
+#if !defined(_WIN32)
+#define LIKELY(condition) __builtin_expect(static_cast<bool>(condition), 1)
+#else
+// there is no equivalent intrinsics in msvc.
+#define LIKELY(condition) (condition)
+#endif
+
 #define PD_CONCATENATE(arg1, arg2) PD_CONCATENATE1(arg1, arg2)
 #define PD_CONCATENATE1(arg1, arg2) PD_CONCATENATE2(arg1, arg2)
 #define PD_CONCATENATE2(arg1, arg2) arg1##arg2
@@ -59,8 +79,10 @@ namespace common {
 #endif
 
 #ifndef PADDLE_WITH_MUSL
-#if defined(__FLT_MAX__)
+#ifndef FLT_MAX  //  Fix windows_cuda12.0
+#ifdef __FLT_MAX__
 #define FLT_MAX __FLT_MAX__
+#endif
 #endif  // __FLT_MAX__
 #endif  // PADDLE_WITH_MUSL
 
