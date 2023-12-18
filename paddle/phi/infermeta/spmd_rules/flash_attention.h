@@ -33,6 +33,21 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
                            bool is_test = false,
                            const std::string& rng_name = "");
 
+SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
+                                  const DistMetaTensor& k,
+                                  const DistMetaTensor& v,
+                                  const DistMetaTensor& fixed_seed_offset,
+                                  const DistMetaTensor& attn_mask,
+                                  const DistMetaTensor& out,
+                                  const DistMetaTensor& softmax,
+                                  const DistMetaTensor& softmax_lse,
+                                  const DistMetaTensor& seed_offset,
+                                  float dropout,
+                                  bool causal,
+                                  bool return_softmax,
+                                  bool is_test,
+                                  const std::string& rng_name);
+
 SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
                                const DistMetaTensor& k,
                                const DistMetaTensor& v,
