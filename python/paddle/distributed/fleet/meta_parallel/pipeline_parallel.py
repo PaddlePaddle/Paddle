@@ -800,6 +800,7 @@ class PipelineParallel(MetaParallelBase):
                         [t.grad for t in input_tensor if not t.stop_gradient]
                     )
                 else:
+                    # assert is not none
                     input_tensor_grad = input_tensor.grad
             if self._enable_timer:
                 self.timers("backward_step").stop()

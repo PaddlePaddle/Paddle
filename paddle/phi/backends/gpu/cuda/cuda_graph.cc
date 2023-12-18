@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
+#include "paddle/utils/flags.h"
 
 #include <array>
 #include <queue>
@@ -25,6 +26,8 @@ cudaError_t cudaGetFuncBySymbol(cudaFunction_t *functionPtr,
   return cudaSuccess;
 }
 #endif
+
+PD_DECLARE_bool(use_cuda_malloc_async_allocator);
 
 namespace phi {
 namespace backends {
@@ -215,8 +218,13 @@ void CUDAGraph::EndSegmentCapture() {
       CUDAGraphNodeLauncher::Instance().GetParameterSettersForExecGraph(graph));
 
   cudaGraphExec_t exec_graph;
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      cudaGraphInstantiate(&exec_graph, graph, nullptr, nullptr, 0));
+  if (FLAGS_use_cuda_malloc_async_allocator) {
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaGraphInstantiateWithFlags(
+        &exec_graph, graph, cudaGraphInstantiateFlagAutoFreeOnLaunch));
+  } else {
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cudaGraphInstantiate(&exec_graph, graph, nullptr, nullptr, 0));
+  }
   VLOG(10) << "End to capture CUDA Graph with ID " << capturing_graph_->id_
            << ", segment id " << capturing_graph_->graphs_.size()
            << ", memory pool id " << capturing_graph_->pool_id_;
