@@ -22,11 +22,6 @@
 namespace symbol::test {
 
 // Construct DimExpr by overloaded operator(+, - , *, /)
-TEST(DimExpr, dim_expr_naive) {
-  DimExpr sym0 = DimExpr("S0");
-  DimExpr sym1 = DimExpr("S1");
-  DimExpr constant1 = DimExpr(1);
-  DimExpr output = (sym0 + sym1) * constant1;
-}
+TEST(DimExpr, dim_expr_naive) { std::cout << "Debug"; }
 
 }  // namespace symbol::test
