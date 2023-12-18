@@ -22,9 +22,6 @@ from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
-RTOL = {'float32': 1e-03, 'float64': 1e-05}
-ATOL = {'float32': 1e-03, 'float64': 1e-05}
-
 
 def numpy_ref(x, value, axis=0, start=None, stop=None, step=1):
     _x = np.copy(x)
@@ -53,8 +50,12 @@ class TestSliceScatterApi(unittest.TestCase):
         self.init_dtype()
         self.init_shape()
 
-        self.x_np = np.random.random(self.x_shape).astype(self.dtype)
-        self.value_np = np.random.random(self.value_shape).astype(self.dtype)
+        self.x_np = np.random.random(self.x_shape).astype(
+            'uint16' if self.dtype == 'bfloat16' else self.dtype
+        )
+        self.value_np = np.random.random(self.value_shape).astype(
+            'uint16' if self.dtype == 'bfloat16' else self.dtype
+        )
         self.place = [paddle.CPUPlace()]
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
@@ -107,9 +108,7 @@ class TestSliceScatterApi(unittest.TestCase):
                 step=self.step,
             )
 
-            np.testing.assert_allclose(
-                res, out_ref, rtol=RTOL[self.dtype], atol=ATOL[self.dtype]
-            )
+            np.testing.assert_allclose(res, out_ref)
 
     def test_api_dygraph(self):
         for place in self.place:
@@ -133,14 +132,75 @@ class TestSliceScatterApi(unittest.TestCase):
                 step=self.step,
             )
 
-            np.testing.assert_allclose(
-                out.numpy(),
-                out_ref,
-                rtol=RTOL[self.dtype],
-                atol=ATOL[self.dtype],
-            )
+            np.testing.assert_allclose(out.numpy(), out_ref)
 
             paddle.enable_static()
+
+
+class TestSliceScatterApiIntComplex128(TestSliceScatterApi):
+    def init_dtype(self):
+        self.dtype = 'complex128'
+
+
+class TestSliceScatterApiIntComplex64(TestSliceScatterApi):
+    def init_dtype(self):
+        self.dtype = 'complex64'
+
+
+class TestSliceScatterApiInt64(TestSliceScatterApi):
+    def init_dtype(self):
+        self.dtype = 'int64'
+
+
+class TestSliceScatterApiInt32(TestSliceScatterApi):
+    def init_dtype(self):
+        self.dtype = 'int32'
+
+
+class TestSliceScatterApiInt16(TestSliceScatterApi):
+    def init_dtype(self):
+        # old ir `set_value` not support this dtype
+        if paddle.framework.in_dynamic_or_pir_mode():
+            self.dtype = 'int16'
+        else:
+            self.dtype = 'float64'
+
+
+class TestSliceScatterApiInt8(TestSliceScatterApi):
+    def init_dtype(self):
+        # old ir `set_value` not support this dtype
+        if paddle.framework.in_dynamic_or_pir_mode():
+            self.dtype = 'int8'
+        else:
+            self.dtype = 'float64'
+
+
+class TestSliceScatterApiUint8(TestSliceScatterApi):
+    def init_dtype(self):
+        # old ir `set_value` not support this dtype
+        if paddle.framework.in_dynamic_or_pir_mode():
+            self.dtype = 'uint8'
+        else:
+            self.dtype = 'float64'
+
+
+class TestSliceScatterApiBool(TestSliceScatterApi):
+    def init_dtype(self):
+        self.dtype = 'bool'
+
+
+class TestSliceScatterApiBfloat16(TestSliceScatterApi):
+    def init_dtype(self):
+        # old ir `set_value` not support this dtype
+        if paddle.framework.in_dynamic_or_pir_mode():
+            self.dtype = 'bfloat16'
+        else:
+            self.dtype = 'float64'
+
+
+class TestSliceScatterApiFloat16(TestSliceScatterApi):
+    def init_dtype(self):
+        self.dtype = 'float16'
 
 
 class TestSliceScatterApiFloat32(TestSliceScatterApi):

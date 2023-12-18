@@ -6812,21 +6812,8 @@ def slice_scatter(x, value, axis=0, start=None, stop=None, step=1, name=None):
     axes = [axis]
     none_axes = []
     decrease_axes = []
-    inputs = {'Input': x}
-    attrs = {
-        'axes': axes,
-        'starts': starts,
-        'ends': ends,
-        'steps': steps,
-        'decrease_axes': decrease_axes,
-        'none_axes': none_axes,
-    }
-
     dtype = x.dtype
-    attrs['dtype'] = dtype
-
     value = value.astype(dtype)
-    inputs["ValueTensor"] = value
 
     if in_dynamic_or_pir_mode():
         return _C_ops.set_value_with_tensor(
@@ -6840,6 +6827,21 @@ def slice_scatter(x, value, axis=0, start=None, stop=None, step=1, name=None):
             none_axes,
         )
     else:
+        attrs = {
+            'axes': axes,
+            'starts': starts,
+            'ends': ends,
+            'steps': steps,
+            'decrease_axes': decrease_axes,
+            'none_axes': none_axes,
+            'dtype': dtype,
+        }
+
+        inputs = {
+            'Input': x,
+            'ValueTensor': value,
+        }
+
         helper = LayerHelper('slice_scatter', **locals())
         output = helper.create_variable_for_type_inference(dtype=x.dtype)
         cur_block = default_main_program().current_block()
