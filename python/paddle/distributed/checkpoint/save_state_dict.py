@@ -209,7 +209,7 @@ def save_state_dict(
             global_state_dict_metadata
         )
         metadata.storage_metadata = dedup_key_in_dict(global_storage_metadata)
-        metadata.flatten_mapping = dedup_key_in_dict(global_flatten_mapping)
+        metadata.flat_mapping = dedup_key_in_dict(global_flatten_mapping)
         if coordinator_rank == paddle.distributed.get_rank():
             logger.debug(f"metadata:{metadata}")
             paddle.save(metadata, os.path.join(path, f"{unique_id}.metadata"))
