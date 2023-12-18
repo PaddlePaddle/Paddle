@@ -69,7 +69,6 @@ class ConvOneDNNHandlerT
             cpu_place,
             funcs::CreateKey(
                 dev_ctx, common::vectorize(input->dims()), unique_name)) {
-    std::cout << "ConvOneDNNHandlerT" << std::endl;
     if (unlikely(!this->isCached())) {
       PADDLE_ENFORCE_EQ(
           input->layout(),
@@ -143,10 +142,8 @@ class ConvOneDNNHandlerT
       std::vector<int64_t> strides(begin(strides_in), end(strides_in));
       std::vector<int64_t> paddings(begin(paddings_in), end(paddings_in));
       std::vector<int64_t> dilations(begin(dilations_in), end(dilations_in));
-      std::cout << "ConvOneDNNHandlerT2" << std::endl;
       UpdatePaddingAndDilation(
           &paddings, &dilations, padding_algorithm, data_dims, strides, ksize);
-      std::cout << "ConvOneDNNHandlerT3" << std::endl;
       std::transform(
           dilations.begin(), dilations.end(), dilations.begin(), [](int64_t i) {
             return i - 1;
@@ -158,11 +155,9 @@ class ConvOneDNNHandlerT
       funcs::GetGroupConvWeightsTz(weights_tz, groups);
 
       const auto dst_tz = common::vectorize(output->dims());
-      std::cout << "ConvOneDNNHandlerT4" << std::endl;
+
       const dnnl::memory::dims stride_dims = strides;
-      std::cout << "ConvOneDNNHandlerT5" << std::endl;
       const auto onednn_paddings = funcs::ToOneDNNPadding(paddings);
-      std::cout << "ConvOneDNNHandlerT6" << std::endl;
       const dnnl::memory::dims dilations_dims = dilations;
       /* create memory descriptor for convolution without specified format
        * ('any') which lets a primitive (convolution in this case) choose
@@ -176,46 +171,34 @@ class ConvOneDNNHandlerT
 
       dnnl::memory::desc src_md, weights_md;
       if (funcs::is_int8<T>()) {
-        std::cout << "ConvOneDNNHandlerT7" << std::endl;
         src_md = funcs::OneDNNMemDesc(src_tz,
                                       funcs::ToOneDNNDataType(input->dtype()),
                                       chosen_memory_format);
-        std::cout << "ConvOneDNNHandlerT8" << std::endl;
         weights_md = funcs::OneDNNMemDesc(
             weights_tz, dnnl::memory::data_type::s8, chosen_memory_format);
-        std::cout << "ConvOneDNNHandlerT9" << std::endl;
       } else {
-        std::cout << "ConvOneDNNHandlerT10" << std::endl;
         src_md = funcs::OneDNNMemDesc(src_tz, data_type, chosen_memory_format);
-        std::cout << "ConvOneDNNHandlerT11" << std::endl;
         weights_md = funcs::OneDNNMemDesc(
             weights_tz, data_type, funcs::OneDNNMemoryFormat::any);
-        std::cout << "ConvOneDNNHandlerT12" << std::endl;
       }
       if (input->dims().size() == 4 && input->dims()[1] <= 4) {
         chosen_memory_format = funcs::OneDNNMemoryFormat::nhwc;
       }
-      std::cout << "ConvOneDNNHandlerT13" << std::endl;
       const auto dst_md = funcs::OneDNNMemDesc(
           dst_tz, funcs::OneDNNGetDataType<T_out>(), chosen_memory_format);
-      std::cout << "ConvOneDNNHandlerT14" << std::endl;
       const auto fwd_prop_kind = dnnl::prop_kind::forward_inference;
-      std::cout << "ConvOneDNNHandlerT15" << std::endl;
       const dnnl::primitive_attr conv_attr = CreateConvAttrs(filter,
                                                              groups,
                                                              force_fp32_output,
                                                              fuse_residual_conn,
                                                              fuse_activation);
 
-      std::cout << "ConvOneDNNHandlerT16" << std::endl;
       if (bias) {
         auto bias_tz = common::vectorize(bias->dims());
-        std::cout << "ConvOneDNNHandlerT17" << std::endl;
         dnnl::memory::desc bias_md =
             funcs::OneDNNMemDesc(bias_tz,
                                  dnnl::memory::data_type::f32,
                                  funcs::OneDNNMemoryFormat::x);
-        std::cout << "ConvOneDNNHandlerT18" << std::endl;
 
         this->AcquireForwardPrimitiveDescriptor(
             conv_attr,
@@ -229,9 +212,7 @@ class ConvOneDNNHandlerT
             dilations_dims,
             onednn_paddings[0],
             onednn_paddings[1]);
-        std::cout << "ConvOneDNNHandlerT19" << std::endl;
       } else {
-        std::cout << "ConvOneDNNHandlerT20" << std::endl;
         this->AcquireForwardPrimitiveDescriptor(
             conv_attr,
             fwd_prop_kind,
@@ -243,7 +224,6 @@ class ConvOneDNNHandlerT
             dilations_dims,
             onednn_paddings[0],
             onednn_paddings[1]);
-        std::cout << "ConvOneDNNHandlerT21" << std::endl;
       }
     }
   }
@@ -273,7 +253,6 @@ class ConvOneDNNHandlerT
             cpu_place,
             funcs::CreateKey(
                 dev_ctx, common::vectorize(in->dims()), unique_name)) {
-    std::cout << "ConvOneDNNHandlerT22" << std::endl;
     if (unlikely(!this->isBwdCached())) {
       PADDLE_ENFORCE_EQ(
           in->layout(),
@@ -315,11 +294,9 @@ class ConvOneDNNHandlerT
       auto filter_data_dims =
           common::slice_ddim(filter_dims, 2, filter_dims.size());
       auto ksize = common::vectorize(filter_data_dims);
-      std::cout << "ConvOneDNNHandlerT23" << std::endl;
 
       UpdatePaddingAndDilation(
           &paddings, &dilations, padding_algorithm, data_dims, strides, ksize);
-      std::cout << "ConvOneDNNHandlerT24" << std::endl;
 
       auto src_tz = common::vectorize(in->dims());
       auto weights_tz = common::vectorize(filter->dims());
@@ -334,7 +311,6 @@ class ConvOneDNNHandlerT
        */
       const auto chosen_memory_format = funcs::OneDNNMemoryFormat::any;
       const auto weights_format = funcs::OneDNNMemoryFormat::any;
-      std::cout << "ConvOneDNNHandlerT25" << std::endl;
 
       auto src_md = funcs::OneDNNMemDesc(
           src_tz, funcs::OneDNNGetDataType<T>(), chosen_memory_format);
@@ -348,7 +324,6 @@ class ConvOneDNNHandlerT
           weights_tz, funcs::OneDNNGetDataType<T>(), weights_format);
       auto diff_dst_md = funcs::OneDNNMemDesc(
           dst_tz, funcs::OneDNNGetDataType<T>(), chosen_memory_format);
-      std::cout << "ConvOneDNNHandlerT26" << std::endl;
 
       auto onednn_paddings = funcs::ToOneDNNPadding(paddings);
       std::transform(
@@ -362,12 +337,10 @@ class ConvOneDNNHandlerT
       dnnl::primitive_attr conv_attr;
       if (bias) {
         auto bias_tz = common::vectorize(bias->dims());
-        std::cout << "ConvOneDNNHandlerT27" << std::endl;
         dnnl::memory::desc bias_md =
             funcs::OneDNNMemDesc(bias_tz,
                                  dnnl::memory::data_type::f32,
                                  funcs::OneDNNMemoryFormat::x);
-        std::cout << "ConvOneDNNHandlerT28" << std::endl;
 
         this->AcquireForwardPrimitiveDescriptor(
             conv_attr,
@@ -381,9 +354,7 @@ class ConvOneDNNHandlerT
             dilations_dims,
             onednn_paddings[0],
             onednn_paddings[1]);
-        std::cout << "ConvOneDNNHandlerT29" << std::endl;
       } else {
-        std::cout << "ConvOneDNNHandlerT30" << std::endl;
         this->AcquireForwardPrimitiveDescriptor(
             conv_attr,
             dnnl::prop_kind::forward_inference,
@@ -395,9 +366,7 @@ class ConvOneDNNHandlerT
             dilations_dims,
             onednn_paddings[0],
             onednn_paddings[1]);
-        std::cout << "ConvOneDNNHandlerT31" << std::endl;
       }
-      std::cout << "ConvOneDNNHandlerT32" << std::endl;
 
       this->AcquireBackwardPrimitiveDescriptor(
           dnnl::algorithm::convolution_direct,
@@ -408,7 +377,6 @@ class ConvOneDNNHandlerT
           dilations_dims,
           onednn_paddings[0],
           onednn_paddings[1]);
-      std::cout << "ConvOneDNNHandlerT33" << std::endl;
 
       this->AcquireBackwardWeightsPrimitiveDescriptor(
           dnnl::algorithm::convolution_direct,
@@ -420,7 +388,6 @@ class ConvOneDNNHandlerT
           onednn_paddings[0],
           onednn_paddings[1]);
     }
-    std::cout << "ConvOneDNNHandlerT34" << std::endl;
   }
 
   dnnl::primitive_attr CreateConvAttrs(const DenseTensor* filter,

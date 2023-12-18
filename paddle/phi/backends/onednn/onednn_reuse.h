@@ -318,28 +318,16 @@ class OneDNNHandlerT {
   typename std::enable_if<std::is_same<typename std::decay<First>::type,
                                        dnnl::primitive_attr>::value>::type
   CreateForwardPrimitiveDescriptor(First&& first, Args&&... args) {
-    try {
-      fwd_pd_ = std::make_shared<typename TForward::primitive_desc>(
-          engine_, std::forward<Args>(args)..., first);
-    } catch (std::exception& ex) {
-      LOG(WARNING) << ex.what();
-      PADDLE_THROW(phi::errors::Unavailable("wanghuan7"));
-      std::rethrow_exception(std::current_exception());
-    }
+    fwd_pd_ = std::make_shared<typename TForward::primitive_desc>(
+        engine_, std::forward<Args>(args)..., first);
   }
 
   template <class First, class... Args>
   typename std::enable_if<!std::is_same<typename std::decay<First>::type,
                                         dnnl::primitive_attr>::value>::type
   CreateForwardPrimitiveDescriptor(First&& first, Args&&... args) {
-    try {
-      fwd_pd_ = std::make_shared<typename TForward::primitive_desc>(
-          engine_, std::forward<First>(first), std::forward<Args>(args)...);
-    } catch (std::exception& ex) {
-      LOG(WARNING) << ex.what();
-      PADDLE_THROW(phi::errors::Unavailable("wanghuan8"));
-      std::rethrow_exception(std::current_exception());
-    }
+    fwd_pd_ = std::make_shared<typename TForward::primitive_desc>(
+        engine_, std::forward<First>(first), std::forward<Args>(args)...);
   }
 
   template <typename... Args>
@@ -354,14 +342,8 @@ class OneDNNHandlerT {
     bwd_pd_ = std::static_pointer_cast<typename TBackward::primitive_desc>(
         dev_ctx_.GetBlob(key_pd));
     if (bwd_pd_ == nullptr) {
-      try {
-        bwd_pd_ = std::make_shared<typename TBackward::primitive_desc>(
-            engine_, std::forward<Args>(args)..., *fwd_pd_);
-      } catch (std::exception& ex) {
-        LOG(WARNING) << ex.what();
-        PADDLE_THROW(phi::errors::Unavailable("wanghuan1"));
-        std::rethrow_exception(std::current_exception());
-      }
+      bwd_pd_ = std::make_shared<typename TBackward::primitive_desc>(
+          engine_, std::forward<Args>(args)..., *fwd_pd_);
       dev_ctx_.SetBlob(key_pd, bwd_pd_);
     }
   }
@@ -379,14 +361,8 @@ class OneDNNHandlerT {
         std::static_pointer_cast<typename TBackward_params::primitive_desc>(
             dev_ctx_.GetBlob(key_pd));
     if (bwd_w_pd_ == nullptr) {
-      try {
-        bwd_w_pd_ = std::make_shared<typename TBackward_params::primitive_desc>(
-            engine_, std::forward<Args>(args)..., *fwd_pd_);
-      } catch (std::exception& ex) {
-        LOG(WARNING) << ex.what();
-        PADDLE_THROW(phi::errors::Unavailable("wanghuan2"));
-        std::rethrow_exception(std::current_exception());
-      }
+      bwd_w_pd_ = std::make_shared<typename TBackward_params::primitive_desc>(
+          engine_, std::forward<Args>(args)..., *fwd_pd_);
       dev_ctx_.SetBlob(key_pd, bwd_w_pd_);
     }
   }
@@ -645,28 +621,16 @@ class OneDNNHandlerNoCachingT {
   typename std::enable_if<std::is_same<typename std::decay<First>::type,
                                        dnnl::primitive_attr>::value>::type
   CreateForwardPrimitiveDescriptor(First&& first, Args&&... args) {
-    try {
-      fwd_pd_ = std::make_shared<typename TForward::primitive_desc>(
-          engine_, std::forward<Args>(args)..., first);
-    } catch (std::exception& ex) {
-      LOG(WARNING) << ex.what();
-      PADDLE_THROW(phi::errors::Unavailable("wanghuan3"));
-      std::rethrow_exception(std::current_exception());
-    }
+    fwd_pd_ = std::make_shared<typename TForward::primitive_desc>(
+        engine_, std::forward<Args>(args)..., first);
   }
 
   template <class First, class... Args>
   typename std::enable_if<!std::is_same<typename std::decay<First>::type,
                                         dnnl::primitive_attr>::value>::type
   CreateForwardPrimitiveDescriptor(First&& first, Args&&... args) {
-    try {
-      fwd_pd_ = std::make_shared<typename TForward::primitive_desc>(
-          engine_, std::forward<First>(first), std::forward<Args>(args)...);
-    } catch (std::exception& ex) {
-      LOG(WARNING) << ex.what();
-      PADDLE_THROW(phi::errors::Unavailable("wanghuan4"));
-      std::rethrow_exception(std::current_exception());
-    }
+    fwd_pd_ = std::make_shared<typename TForward::primitive_desc>(
+        engine_, std::forward<First>(first), std::forward<Args>(args)...);
   }
 
   template <typename... Args>
@@ -676,14 +640,8 @@ class OneDNNHandlerNoCachingT {
     PADDLE_ENFORCE_NOT_NULL(
         fwd_pd_,
         errors::Unavailable("Get oneDNN Forward primitive %s failed."));
-    try {
-      bwd_pd_ = std::make_shared<typename TBackward::primitive_desc>(
-          engine_, std::forward<Args>(args)..., *fwd_pd_);
-    } catch (std::exception& ex) {
-      LOG(WARNING) << ex.what();
-      PADDLE_THROW(phi::errors::Unavailable("wanghuan5"));
-      std::rethrow_exception(std::current_exception());
-    }
+    bwd_pd_ = std::make_shared<typename TBackward::primitive_desc>(
+        engine_, std::forward<Args>(args)..., *fwd_pd_);
   }
 
   template <typename... Args>
@@ -695,14 +653,8 @@ class OneDNNHandlerNoCachingT {
         errors::Unavailable("Get oneDNN Forward primitive %s failed."));
     auto bwd_desc =
         typename TBackward_params::desc(std::forward<Args>(args)...);
-    try {
-      bwd_w_pd_ = std::make_shared<typename TBackward_params::primitive_desc>(
-          bwd_desc, engine_, *fwd_pd_);
-    } catch (std::exception& ex) {
-      LOG(WARNING) << ex.what();
-      PADDLE_THROW(phi::errors::Unavailable("wanghuan6"));
-      std::rethrow_exception(std::current_exception());
-    }
+    bwd_w_pd_ = std::make_shared<typename TBackward_params::primitive_desc>(
+        bwd_desc, engine_, *fwd_pd_);
   }
 
   std::shared_ptr<dnnl::memory> AcquireMemoryFromPrimitive(
