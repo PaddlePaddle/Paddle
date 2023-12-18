@@ -43,37 +43,42 @@ class TestSqueezeFcFusePattern(PassTest):
 
     def sample_program(self):
         for y_shape in [[128], [1, 128]]:
-            pir_program = None
-            with paddle.pir_utils.IrGuard():
-                pir_program = paddle.static.Program()
-                with paddle.pir.core.program_guard(pir_program):
-                    x = paddle.static.data(
-                        name='x', shape=[3, 255, 1, 1], dtype='float32'
-                    )
-                    w = paddle.static.data(
-                        name='w', shape=[255, 128], dtype='float32'
-                    )
-                    y = paddle.static.data(
-                        name='y', shape=y_shape, dtype='float32'
-                    )
+            for w_shape in [[128, 128]]:
+                pir_program = None
+                with paddle.pir_utils.IrGuard():
+                    pir_program = paddle.static.Program()
+                    with paddle.pir.core.program_guard(pir_program):
+                        x = paddle.static.data(
+                            name='x', shape=[3, 128, 1, 1], dtype='float32'
+                        )
+                        w = paddle.static.data(
+                            name='w', shape=w_shape, dtype='float32'
+                        )
+                        y = paddle.static.data(
+                            name='y', shape=y_shape, dtype='float32'
+                        )
 
-                    out = paddle.add(paddle.matmul(paddle.squeeze(x), w), y)
+                        out = paddle.add(
+                            paddle.matmul(paddle.squeeze(x, [2, 3]), w), y
+                        )
 
-            self.pass_list = ['fc_with_special_op_fuse_pass']
-            self.feeds = {
-                "x": np.random.random([3, 255, 1, 1]).astype("float32"),
-                "w": np.random.random([255, 128]).astype("float32"),
-                "y": np.random.random(y_shape).astype("float32"),
-            }
-            self.fetch_list = [out]
-            self.valid_op_map = {
-                "pd_op.add": 0,
-                "pd_op.squeeze": 0,
-                "pd_op.matmul": 0,
-                "pd_op.fc": 1,
-            }
+                        self.pass_list = ['fc_with_special_op_fuse_pass']
+                        self.feeds = {
+                            "x": np.random.random([3, 128, 1, 1]).astype(
+                                "float32"
+                            ),
+                            "y": np.random.random(y_shape).astype("float32"),
+                            "w": np.random.random(w_shape).astype("float32"),
+                        }
+                        self.fetch_list = [out]
+                        self.valid_op_map = {
+                            "pd_op.add": 0,
+                            "pd_op.squeeze": 0,
+                            "pd_op.matmul": 0,
+                            "pd_op.fc": 1,
+                        }
 
-            yield pir_program, False
+                        yield pir_program, False
 
     def setUp(self):
         self.place_runtime = "gpu"
@@ -121,21 +126,21 @@ class TestReshapeFcFusePattern(PassTest):
                         paddle.matmul(paddle.reshape(x, [3, 144, -1]), w), y
                     )
 
-            self.pass_list = ['fc_with_special_op_fuse_pass']
-            self.feeds = {
-                "x": np.random.random([3, 255, 1, 1]).astype("float32"),
-                "w": np.random.random([255, 128]).astype("float32"),
-                "y": np.random.random(y_shape).astype("float32"),
-            }
-            self.fetch_list = [out]
-            self.valid_op_map = {
-                "pd_op.add": 0,
-                "pd_op.reshape": 0,
-                "pd_op.matmul": 0,
-                "pd_op.fc": 1,
-            }
+                    self.pass_list = ['fc_with_special_op_fuse_pass']
+                    self.feeds = {
+                        "x": np.random.random([3, 255, 1, 1]).astype("float32"),
+                        "w": np.random.random([255, 128]).astype("float32"),
+                        "y": np.random.random(y_shape).astype("float32"),
+                    }
+                    self.fetch_list = [out]
+                    self.valid_op_map = {
+                        "pd_op.add": 0,
+                        "pd_op.reshape": 0,
+                        "pd_op.matmul": 0,
+                        "pd_op.fc": 1,
+                    }
 
-            yield pir_program, False
+                    yield pir_program, False
 
     def setUp(self):
         self.place_runtime = "gpu"
@@ -183,21 +188,21 @@ class TestFlattenFcFusePattern(PassTest):
                         paddle.matmul(paddle.flatten(x, start_axis=1), w), y
                     )
 
-            self.pass_list = ['fc_with_special_op_fuse_pass']
-            self.feeds = {
-                "x": np.random.random([3, 255, 1, 1]).astype("float32"),
-                "w": np.random.random([255, 128]).astype("float32"),
-                "y": np.random.random(y_shape).astype("float32"),
-            }
-            self.fetch_list = [out]
-            self.valid_op_map = {
-                "pd_op.add": 0,
-                "pd_op.flatten": 0,
-                "pd_op.matmul": 0,
-                "pd_op.fc": 1,
-            }
+                    self.pass_list = ['fc_with_special_op_fuse_pass']
+                    self.feeds = {
+                        "x": np.random.random([3, 255, 1, 1]).astype("float32"),
+                        "w": np.random.random([255, 128]).astype("float32"),
+                        "y": np.random.random(y_shape).astype("float32"),
+                    }
+                    self.fetch_list = [out]
+                    self.valid_op_map = {
+                        "pd_op.add": 0,
+                        "pd_op.flatten": 0,
+                        "pd_op.matmul": 0,
+                        "pd_op.fc": 1,
+                    }
 
-            yield pir_program, False
+                    yield pir_program, False
 
     def setUp(self):
         self.place_runtime = "gpu"
