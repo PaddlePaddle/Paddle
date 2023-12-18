@@ -15,13 +15,13 @@
 #pragma once
 
 #include "paddle/cinn/adt/adt.h"
+#include "paddle/cinn/adt/dim_expr.h"
 
 namespace cinn::adt {
 
 class AutoSize final {};
 
-// LoopSize = Int64
-DEFINE_ADT_UNION(LoopSize, std::int64_t);
+using LoopSize = DimExpr;
 
 // S(Spatial): S0 = BlockIdx; S1 = ThreadIdx
 // LoopType = S0x | S0y | S0z | S1x | S1y | S1z | Temporal | Vectorize |
@@ -119,9 +119,5 @@ class ScheduleMesh;
 
 LoopDescriptors CreateScheduleDescriptor(const ScheduleMesh& sched_mesh,
                                          const List<LoopType>& loop_types);
-
-LoopDescriptors MakeNaiveScheduleDescriptor(
-    const std::shared_ptr<KGroup>& kgroup,
-    const std::shared_ptr<IGroup>& igroup);
 
 }  // namespace cinn::adt

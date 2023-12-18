@@ -114,27 +114,6 @@ void TuplePopOp::VerifySig() {
   VLOG(4) << "End Verifying for TuplePopOp.";
 }
 
-void HasElementsOp::Build(Builder &builder,             // NOLINT
-                          OperationArgument &argument,  // NOLINT
-                          Value stack) {
-  argument.AddInput(stack);
-  argument.AddOutput(builder.bool_type());
-}
-void HasElementsOp::VerifySig() {
-  VLOG(4) << "Verifying inputs, outputs ,attributes for: HasElementsOp.";
-  // Verify inputs:
-  IR_ENFORCE(num_operands() == 1u, "The size of inputs must equal to 1.");
-  IR_ENFORCE(operand_source(0).type().isa<StackType>(),
-             "The first input of cf.has_elements must be stack_type.");
-
-  // No attributes should be verify.
-
-  // Verify outputs:
-  IR_ENFORCE(num_results() == 1u, "The size of outputs must be equal to 1.");
-  IR_ENFORCE((*this)->result_type(0) == BoolType::get(ir_context()),
-             "The type of cf.has_elements' output is not correct.");
-}
-
 void StackCreateOp::Build(Builder &builder, OperationArgument &argument) {
   auto stack_type = StackType::get(builder.ir_context());
   auto inlet_type = InletType::get(builder.ir_context());
@@ -205,4 +184,3 @@ IR_DEFINE_EXPLICIT_TYPE_ID(pir::YieldOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::StackCreateOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::TuplePushOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::TuplePopOp)
-IR_DEFINE_EXPLICIT_TYPE_ID(pir::HasElementsOp)

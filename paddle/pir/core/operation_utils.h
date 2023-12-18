@@ -104,7 +104,7 @@ struct OperationArgument {
   /// Create a region that should be attached to the operation.  These regions
   /// can be filled in immediately without waiting for Operation to be
   /// created.  When it is, the region bodies will be transferred.
-  Region* AddRegion();
+  Region& AddRegion();
 
   /// Take a region that should be attached to the Operation.  The body of the
   /// region will be transferred when the Operation is created.  If the

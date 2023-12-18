@@ -31,30 +31,30 @@ inline void ResizeToChannelFirst(const DeviceContext& context,
     // input
     transformed_input->Resize(input->dims());
 
-    auto in_dims_vec = vectorize(input->dims());
+    auto in_dims_vec = common::vectorize(input->dims());
     in_dims_vec[1] = input->dims()[4];
     in_dims_vec[2] = input->dims()[1];
     in_dims_vec[3] = input->dims()[2];
     in_dims_vec[4] = input->dims()[3];
-    transformed_input->Resize(make_ddim(in_dims_vec));
+    transformed_input->Resize(common::make_ddim(in_dims_vec));
     context.template Alloc<T>(transformed_input);
   } else if (dim == 2) {
     // input
     transformed_input->Resize(input->dims());
 
-    auto in_dims_vec = vectorize(input->dims());
+    auto in_dims_vec = common::vectorize(input->dims());
     in_dims_vec[1] = input->dims()[3];
     in_dims_vec[2] = input->dims()[1];
     in_dims_vec[3] = input->dims()[2];
-    transformed_input->Resize(make_ddim(in_dims_vec));
+    transformed_input->Resize(common::make_ddim(in_dims_vec));
     context.template Alloc<T>(transformed_input);
   } else if (dim == 1) {
     transformed_input->Resize(input->dims());
 
-    auto in_dims_vec = vectorize(input->dims());
+    auto in_dims_vec = common::vectorize(input->dims());
     in_dims_vec[1] = input->dims()[2];
     in_dims_vec[2] = input->dims()[1];
-    transformed_input->Resize(make_ddim(in_dims_vec));
+    transformed_input->Resize(common::make_ddim(in_dims_vec));
     context.template Alloc<T>(transformed_input);
   }
 }
@@ -68,31 +68,31 @@ inline void ResizeToChannelLast(const DeviceContext& context,
     // input
     transformed_input->Resize(input->dims());
 
-    auto in_dims_vec = vectorize(input->dims());
+    auto in_dims_vec = common::vectorize(input->dims());
     in_dims_vec[1] = input->dims()[2];
     in_dims_vec[2] = input->dims()[3];
     in_dims_vec[3] = input->dims()[4];
     in_dims_vec[4] = input->dims()[1];
-    transformed_input->Resize(make_ddim(in_dims_vec));
+    transformed_input->Resize(common::make_ddim(in_dims_vec));
     context.template Alloc<T>(transformed_input);
 
   } else if (dim == 2) {
     // input
     transformed_input->Resize(input->dims());
 
-    auto in_dims_vec = vectorize(input->dims());
+    auto in_dims_vec = common::vectorize(input->dims());
     in_dims_vec[1] = input->dims()[2];
     in_dims_vec[2] = input->dims()[3];
     in_dims_vec[3] = input->dims()[1];
-    transformed_input->Resize(make_ddim(in_dims_vec));
+    transformed_input->Resize(common::make_ddim(in_dims_vec));
     context.template Alloc<T>(transformed_input);
   } else if (dim == 1) {
     transformed_input->Resize(input->dims());
 
-    auto in_dims_vec = vectorize(input->dims());
+    auto in_dims_vec = common::vectorize(input->dims());
     in_dims_vec[1] = input->dims()[2];
     in_dims_vec[2] = input->dims()[1];
-    transformed_input->Resize(make_ddim(in_dims_vec));
+    transformed_input->Resize(common::make_ddim(in_dims_vec));
     context.template Alloc<T>(transformed_input);
   }
 }

@@ -34,9 +34,9 @@ namespace hlir {
 namespace op {
 
 TEST(GenerateCode_Cpu, LookupTable) {
-  common::Context::Global().ResetNameId();
+  cinn::common::Context::Global().ResetNameId();
 
-  common::Target target = common::DefaultHostTarget();
+  cinn::common::Target target = cinn::common::DefaultHostTarget();
 
   lang::Placeholder<float> in1("in1", {10, 20});
   lang::Placeholder<int64_t> in2("in2", std::vector<int32_t>{2, 2, 1});
@@ -72,9 +72,9 @@ TEST(GenerateCode_Gpu, LookupTable) {
   if (!cinn::runtime::IsCompiledWithCUDA()) {
     return;
   }
-  common::Context::Global().ResetNameId();
+  cinn::common::Context::Global().ResetNameId();
 
-  common::Target target = common::DefaultNVGPUTarget();
+  cinn::common::Target target = cinn::common::DefaultNVGPUTarget();
 
   lang::Placeholder<float> in1("in1", {10, 20});
   lang::Placeholder<int64_t> in2("in2", std::vector<int32_t>{2, 2, 1});

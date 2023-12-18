@@ -56,18 +56,18 @@ std::shared_ptr<::pir::Program> BuildGroupProgram() {
   const float value_one = 1.0;
   const std::vector<int64_t> shape = {64, 128};
   auto group_op1 = builder.Build<cinn::dialect::GroupOp>(
-      CreateDenseTensorTypes(phi::make_ddim(shape)));
+      CreateDenseTensorTypes(common::make_ddim(shape)));
   pir::Block* block1 = group_op1.block();
-  builder.SetInsertionPointToEnd(block1);
+  builder.SetInsertionPointToBlockEnd(block1);
   auto full_op_x = builder.Build<paddle::dialect::FullOp>(
       shape, value_one, phi::DataType::FLOAT32, phi::GPUPlace());
   builder.Build<::pir::YieldOp>(std::vector<::pir::Value>{full_op_x.out()});
 
-  builder.SetInsertionPointToEnd(program->block());
+  builder.SetInsertionPointToBlockEnd(program->block());
   auto group_op2 = builder.Build<cinn::dialect::GroupOp>(
-      CreateDenseTensorTypes(phi::make_ddim(shape)));
+      CreateDenseTensorTypes(common::make_ddim(shape)));
   pir::Block* block2 = group_op2.block();
-  builder.SetInsertionPointToEnd(block2);
+  builder.SetInsertionPointToBlockEnd(block2);
 
   auto tan_op_x = builder.Build<paddle::dialect::TanOp>(group_op1->result(0));
   auto relu_op_x = builder.Build<paddle::dialect::ReluOp>(tan_op_x->result(0));
@@ -109,24 +109,24 @@ std::shared_ptr<::pir::Program> BuildGroupProgramByBlock() {
   const float value_one = 1.0;
   const std::vector<int64_t> shape = {64, 128};
   std::unique_ptr<::pir::Block> block1(new ::pir::Block());
-  builder.SetInsertionPointToEnd(block1.get());
+  builder.SetInsertionPointToBlockEnd(block1.get());
   auto full_op_x = builder.Build<paddle::dialect::FullOp>(
       shape, value_one, phi::DataType::FLOAT32, phi::GPUPlace());
   builder.Build<::pir::YieldOp>(std::vector<::pir::Value>{full_op_x.out()});
 
-  builder.SetInsertionPointToEnd(program->block());
+  builder.SetInsertionPointToBlockEnd(program->block());
   auto group_op1 = builder.Build<cinn::dialect::GroupOp>(std::move(block1));
 
   // ------- Group op 2 ---------
   std::unique_ptr<::pir::Block> block2(new ::pir::Block());
-  builder.SetInsertionPointToEnd(block2.get());
+  builder.SetInsertionPointToBlockEnd(block2.get());
   auto tan_op_x = builder.Build<paddle::dialect::TanOp>(group_op1->result(0));
   auto relu_op_x = builder.Build<paddle::dialect::ReluOp>(tan_op_x->result(0));
   auto tan_op_y = builder.Build<paddle::dialect::TanOp>(relu_op_x->result(0));
   auto relu_op_y = builder.Build<paddle::dialect::ReluOp>(tan_op_y->result(0));
   builder.Build<::pir::YieldOp>(std::vector<::pir::Value>{relu_op_y.out()});
 
-  builder.SetInsertionPointToEnd(program->block());
+  builder.SetInsertionPointToBlockEnd(program->block());
   auto group_op2 = builder.Build<cinn::dialect::GroupOp>(std::move(block2));
 
   return program;
@@ -168,33 +168,33 @@ std::shared_ptr<::pir::Program> BuildGroupProgramForLowering() {
       shape, value, phi::DataType::FLOAT32, phi::GPUPlace());
 
   auto group_op1 = builder.Build<cinn::dialect::GroupOp>(
-      CreateDenseTensorTypes(phi::make_ddim(shape)));
+      CreateDenseTensorTypes(common::make_ddim(shape)));
   pir::Block* block1 = group_op1.block();
-  builder.SetInsertionPointToEnd(block1);
+  builder.SetInsertionPointToBlockEnd(block1);
   auto sin = builder.Build<paddle::dialect::SinOp>(full_x->result(0));
 
   builder.Build<::pir::YieldOp>(std::vector<::pir::Value>{
       sin.out(),
   });
 
-  builder.SetInsertionPointToEnd(program->block());
+  builder.SetInsertionPointToBlockEnd(program->block());
   auto group_op2 = builder.Build<cinn::dialect::GroupOp>(
-      CreateDenseTensorTypes(phi::make_ddim(shape)));
+      CreateDenseTensorTypes(common::make_ddim(shape)));
   pir::Block* block2 = group_op2.block();
-  builder.SetInsertionPointToEnd(block2);
+  builder.SetInsertionPointToBlockEnd(block2);
   auto cos_op = builder.Build<paddle::dialect::CosOp>(full_y->result(0));
   builder.Build<::pir::YieldOp>(std::vector<::pir::Value>{cos_op.out()});
 
-  builder.SetInsertionPointToEnd(program->block());
+  builder.SetInsertionPointToBlockEnd(program->block());
   auto group_op3 = builder.Build<cinn::dialect::GroupOp>(
-      CreateDenseTensorTypes(phi::make_ddim(shape)));
+      CreateDenseTensorTypes(common::make_ddim(shape)));
   pir::Block* block3 = group_op3.block();
-  builder.SetInsertionPointToEnd(block3);
+  builder.SetInsertionPointToBlockEnd(block3);
   auto add = builder.Build<paddle::dialect::AddOp>(group_op1->result(0),
                                                    group_op2->result(0));
   builder.Build<::pir::YieldOp>(std::vector<::pir::Value>{add.out()});
 
-  builder.SetInsertionPointToEnd(program->block());
+  builder.SetInsertionPointToBlockEnd(program->block());
   auto exp = builder.Build<paddle::dialect::ExpOp>(group_op3->result(0));
 
   builder.Build<paddle::dialect::FetchOp>(exp.out(), "out", 0);

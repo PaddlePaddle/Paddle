@@ -26,7 +26,6 @@ import argparse
 import collections
 import itertools
 import os
-import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, TypeVar
@@ -94,6 +93,12 @@ def parse_args():
         default=convert_to_arch_list("All"),
         help="The CUDA architecture to be generated.",
     )
+    parser.add_argument(
+        "--gen_dir",
+        type=str,
+        default="autogen_variable",
+        help="The directory to save the generated files.",
+    )
     args = parser.parse_args()
     args.max_arch = find_max_arch(args.cuda_arch)
     return args
@@ -152,6 +157,7 @@ void  {NAME}({CPP_CLASS} default_fmha, Params &params, const phi::GPUContext& ct
       problem0_device,
       problem1_device,
       params.num_batches,
+      params.pre_cache_length,
       params.num_heads,
       params.head_size,
       params.value_head_size);
@@ -209,7 +215,7 @@ void  {NAME}({CPP_CLASS} default_fmha, Params &params, const phi::GPUContext& ct
   cutlass::Status status;
   size_t workspace_size = fmha.get_workspace_size(args);
   phi::DenseTensor workspace;
-  workspace.Resize(phi::make_ddim({{static_cast<int64_t>(workspace_size)}}));
+  workspace.Resize(common::make_ddim({{static_cast<int64_t>(workspace_size)}}));
   ctx.template Alloc<uint8_t>(&workspace);
   status = fmha.initialize(args, workspace.data<uint8_t>());
   if (status != cutlass::Status::kSuccess) {{
@@ -399,7 +405,7 @@ void dispatch_{family_name}(const ::phi::GPUContext &ctx, T cb) {{
     declarations += "} // namespace phi\n"
     declarations += f"#endif // {enable_def}\n"
 
-    autogen_dir = Path(args.dst_path) / "autogen_variable"
+    autogen_dir = Path(args.dst_path) / args.gen_dir
     os.makedirs(autogen_dir, exist_ok=True)
     declaration_path = autogen_dir / f"{family_name}.h"
     declaration_path.write_text(declarations)
@@ -486,6 +492,7 @@ struct Params {{
 
   bool causal;
   bool mask_broadcast_head;
+  int pre_cache_length;
 }};
 
 __global__ static void get_problem_sizes(const int* seq_lens,
@@ -493,6 +500,7 @@ __global__ static void get_problem_sizes(const int* seq_lens,
                                          GemmCoord* problem_sizes0,
                                          GemmCoord* problem_sizes1,
                                          const int bs,
+                                         const int pre_cache_length,
                                          const int num_head,
                                          const int head_size,
                                          const int value_head_size) {{
@@ -501,7 +509,7 @@ __global__ static void get_problem_sizes(const int* seq_lens,
   if (bi < bs && hi < num_head) {{
     int id = bi * num_head + hi;
     int m = seq_lens[bi];
-    int mkv = kv_seq_lens[bi];
+    int mkv = kv_seq_lens[bi] + (m == 0 ? 0 : pre_cache_length);
     int k0 = head_size;
     int k1 = value_head_size;
     GemmCoord problem0(m, mkv, k0);
@@ -546,14 +554,12 @@ struct ToPhiDTypeTrait {{
 #endif
 '''
 
-    path = Path(args.dst_path) / "autogen_variable"
+    path = Path(args.dst_path) / args.gen_dir
     os.makedirs(path, exist_ok=True)
     path = Path(path) / "memory_efficient_variable_attention.h"
     path.write_text(main_header_content)
 
 
-if os.path.exists(Path(args.dst_path) / "autogen_variable"):
-    shutil.rmtree(Path(args.dst_path) / "autogen_variable")
 forward_impl = "paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/autogen_variable/memory_efficient_variable_attention.h"
 
 write_main_header()

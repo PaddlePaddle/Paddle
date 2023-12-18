@@ -1258,6 +1258,12 @@ def is_gradient_clip_op(op):
     ).startswith("/gradient_clip")
 
 
+def is_reshard_op(op):
+    return op.desc.has_attr(
+        "op_namescope"
+    ) and "/auto_parallel/reshard" in op.desc.attr('op_namescope')
+
+
 def is_prim_op(op):
     return op.type.endswith("_p")
 
@@ -1296,12 +1302,14 @@ def set_var_dist_attr(dist_context, var, dims_mapping, process_mesh, **kwargs):
     if "mark_annotated" in kwargs and kwargs["mark_annotated"]:
         tensor_dist_attr.mark_annotated("dims_mapping")
         tensor_dist_attr.mark_annotated("process_mesh")
+    if "chunk_id" in kwargs and kwargs["chunk_id"]:
+        tensor_dist_attr.chunk_id = kwargs["chunk_id"]
     dist_context.set_tensor_dist_attr_for_program(var, tensor_dist_attr)
     return tensor_dist_attr
 
 
 def naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-    new_op, process_mesh, ref_mapping, ctx
+    new_op, process_mesh, ref_mapping, ctx, **kwargs
 ):
     assert process_mesh is not None
     assert ref_mapping is not None
@@ -1314,11 +1322,13 @@ def naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
         new_op_dist_attr.set_output_dims_mapping(output_varname, ref_mapping)
 
     new_op_dist_attr.process_mesh = process_mesh
+    if "chunk_id" in kwargs and kwargs["chunk_id"]:
+        new_op_dist_attr.chunk_id = kwargs["chunk_id"]
     ctx.set_op_dist_attr_for_program(new_op, new_op_dist_attr)
 
 
 def naive_set_dist_op_attr_for_program_by_mesh(
-    new_op, process_mesh, ctx, is_recompute=False
+    new_op, process_mesh, ctx, **kwargs
 ):
     assert process_mesh is not None
 
@@ -1334,7 +1344,10 @@ def naive_set_dist_op_attr_for_program_by_mesh(
         new_op_dist_attr.set_output_dims_mapping(output_varname, mapping)
 
     new_op_dist_attr.process_mesh = process_mesh
-    new_op_dist_attr.is_recompute = is_recompute
+    if "is_recompute" in kwargs:
+        new_op_dist_attr.is_recompute = kwargs["is_recompute"]
+    if "chunk_id" in kwargs:
+        new_op_dist_attr.chunk_id = kwargs["chunk_id"]
     ctx.set_op_dist_attr_for_program(new_op, new_op_dist_attr)
 
 
@@ -2197,10 +2210,9 @@ def insert_dependencies_for_vars(
     for post_var in post_vars:
         assert block.has_var(post_var.name)
 
+    post_dist_attr = dist_context.get_tensor_dist_attr_for_program(post_vars[0])
     if process_mesh is None:
-        process_mesh = dist_context.get_tensor_dist_attr_for_program(
-            post_vars[0]
-        ).process_mesh
+        process_mesh = post_dist_attr.process_mesh
     assert process_mesh is not None
 
     use_nop = True
@@ -2232,6 +2244,7 @@ def insert_dependencies_for_vars(
         depend_op_dist_attr.impl_type = "default"
         depend_op_dist_attr.process_mesh = process_mesh
         depend_op_dist_attr.is_recompute = is_recompute
+        depend_op_dist_attr.chunk_id = post_dist_attr.chunk_id
         for input_varname in depend_op.desc.input_arg_names():
             var = block.var(input_varname)
             mapping = dist_context.get_tensor_dist_attr_for_program(
@@ -2386,3 +2399,64 @@ def get_dist_tensor_spec(dist_op, name, is_input=True):
     else:
         tensor_dist_attr = dist_op.dist_attr.get_output_dist_attr(name)
     return DistTensorSpec(tensor_shape, tensor_dist_attr)
+
+
+# get grad_var_to_var from distributed context, recording the mapping from backward grad variable to forward variable
+# which is used for decomposing backward ops when enabling prim after distributed
+def get_grad_var_to_var(dist_context):
+    # get grad_var_to_var in distributed context
+    grad_var_to_var_map = dist_context._dist_op_context.grad_var_to_var
+    assert len(grad_var_to_var_map.keys()) == 1, "invalid grad_var_to_var"
+    grad_var_to_var = grad_var_to_var_map[1]
+    return grad_var_to_var
+
+
+# update grad_var_to_var manually according to different distributed pass or strategy, thus recording complete and correct mapping between backward to forward
+def update_grad_var_to_var(program, strategy, grad_var_to_var):
+    from paddle.distributed.fleet.meta_optimizers.common import (
+        OP_ROLE_KEY,
+        OpRole,
+    )
+
+    # update grad_var_to_var according to different distributed pass
+    first_backward_op_idx = -1
+    for idx, op in enumerate(program.global_block().ops):
+        # process @RESHARD variable in distributed training
+        if (
+            op.has_attr("op_namescope")
+            and op.attr("op_namescope") == "/auto_parallel/reshard"
+        ):
+            reshard_op_types = [
+                "split",
+                "assign",
+                "cast",
+                "c_concat",
+                "concat",
+                "c_allgather",
+            ]
+            if op.desc.type() in reshard_op_types:
+                input_names = op.desc.input("X")
+                output_names = op.desc.output("Out")
+                if input_names[0] in grad_var_to_var.keys():
+                    for output_name in output_names:
+                        grad_var_to_var[output_name] = grad_var_to_var[
+                            input_names[0]
+                        ]
+
+        # process amp pass in distributed training
+        if (
+            strategy.amp.enable
+            and op.has_attr(OP_ROLE_KEY)
+            and (op.attr(OP_ROLE_KEY) & int(OpRole.Backward))
+            and (op.attr(OP_ROLE_KEY) & int(OpRole.Loss))
+        ):
+            first_backward_op_idx = idx
+
+    # process amp pass in distributed training
+    if first_backward_op_idx != -1:
+        scale_loss_op = program.global_block().ops[first_backward_op_idx - 1]
+        scale_loss_var_name = scale_loss_op.desc.output("Out")[0]
+        first_backward_op = program.global_block().ops[first_backward_op_idx]
+        scale_loss_grad_var_name = first_backward_op.desc.output("Out")[0]
+        if scale_loss_grad_var_name not in grad_var_to_var.keys():
+            grad_var_to_var[scale_loss_grad_var_name] = scale_loss_var_name

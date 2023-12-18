@@ -17,6 +17,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
+#include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
 #include "paddle/fluid/pir/drr/api/match_context.h"
@@ -75,6 +76,56 @@ class MaxOpPattern : public pir::drr::DrrPatternBase<MaxOpPattern> {
     pir::drr::ResultPattern res = pattern.ResultPattern();
     const auto &cinn_reduce_max =
         res.Op(cinn::dialect::ReduceMaxOp::name(),
+               {{"dim", pattern.Attr("axis_info")},
+                {"keep_dim", pattern.Attr("keep_dim")}});
+    res.Tensor("ret") = cinn_reduce_max(res.Tensor("arg0"));
+  }
+};
+
+class MinOpPattern : public pir::drr::DrrPatternBase<MinOpPattern> {
+ public:
+  void operator()(pir::drr::DrrPatternContext *ctx) const override {
+    // Source Pattern
+    pir::drr::SourcePattern pattern = ctx->SourcePattern();
+    const auto &full_int_array =
+        pattern.Op(paddle::dialect::FullIntArrayOp::name(),
+                   {{"value", pattern.Attr("axis_info")},
+                    {"dtype", pattern.Attr("dtype_2")},
+                    {"place", pattern.Attr("place_2")}});
+
+    const auto &pd_max = pattern.Op(paddle::dialect::MinOp::name(),
+                                    {{"keepdim", pattern.Attr("keep_dim")}});
+    pattern.Tensor("ret") = pd_max(pattern.Tensor("arg0"), full_int_array());
+
+    // Result patterns
+    pir::drr::ResultPattern res = pattern.ResultPattern();
+    const auto &cinn_reduce_max =
+        res.Op(cinn::dialect::ReduceMinOp::name(),
+               {{"dim", pattern.Attr("axis_info")},
+                {"keep_dim", pattern.Attr("keep_dim")}});
+    res.Tensor("ret") = cinn_reduce_max(res.Tensor("arg0"));
+  }
+};
+
+class ProdOpPattern : public pir::drr::DrrPatternBase<ProdOpPattern> {
+ public:
+  void operator()(pir::drr::DrrPatternContext *ctx) const override {
+    // Source Pattern
+    pir::drr::SourcePattern pattern = ctx->SourcePattern();
+    const auto &full_int_array =
+        pattern.Op(paddle::dialect::FullIntArrayOp::name(),
+                   {{"value", pattern.Attr("axis_info")},
+                    {"dtype", pattern.Attr("dtype_2")},
+                    {"place", pattern.Attr("place_2")}});
+
+    const auto &pd_max = pattern.Op(paddle::dialect::ProdOp::name(),
+                                    {{"keepdim", pattern.Attr("keep_dim")}});
+    pattern.Tensor("ret") = pd_max(pattern.Tensor("arg0"), full_int_array());
+
+    // Result patterns
+    pir::drr::ResultPattern res = pattern.ResultPattern();
+    const auto &cinn_reduce_max =
+        res.Op(cinn::dialect::ReduceProdOp::name(),
                {{"dim", pattern.Attr("axis_info")},
                 {"keep_dim", pattern.Attr("keep_dim")}});
     res.Tensor("ret") = cinn_reduce_max(res.Tensor("arg0"));
@@ -247,6 +298,28 @@ class ConcatOpPattern
   }
 };
 
+class PowOpPattern : public pir::OpRewritePattern<paddle::dialect::PowOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::PowOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::PowOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    auto factor = op->attribute("y").dyn_cast<pir::FloatAttribute>().data();
+    auto full_op =
+        rewriter.Build<paddle::dialect::FullOp>(std::vector<int64_t>({1}),
+                                                factor,
+                                                phi::DataType::FLOAT32,
+                                                phi::CPUPlace());
+
+    auto elementwise_pow = rewriter.Build<paddle::dialect::ElementwisePowOp>(
+        op->operand_source(0), full_op->result(0));
+    rewriter.ReplaceAllUsesWith(op.result(0), elementwise_pow.result(0));
+    rewriter.EraseOp(op);
+
+    return true;
+  }
+};
+
 class SplitOpPattern : public pir::OpRewritePattern<paddle::dialect::SplitOp> {
  public:
   using pir::OpRewritePattern<paddle::dialect::SplitOp>::OpRewritePattern;
@@ -331,6 +404,54 @@ class AddNOpPattern : public pir::OpRewritePattern<paddle::dialect::AddNOp> {
     rewriter.EraseOp(combine_op);
 
     return true;
+  }
+};
+
+class ExpandOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::ExpandOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::ExpandOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::ExpandOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    auto out_shape_gen_op = op->operand_source(1)
+                                .dyn_cast<pir::OpResult>()
+                                .owner()
+                                ->dyn_cast<paddle::dialect::FullIntArrayOp>();
+
+    if (out_shape_gen_op) {
+      auto section_attr = out_shape_gen_op.attribute("value")
+                              .dyn_cast<pir::ArrayAttribute>()
+                              .AsVector();
+
+      std::vector<int64_t> output_shape;
+      if (section_attr.size() > 0) {
+        for (size_t i = 0; i < section_attr.size(); ++i) {
+          output_shape.push_back(
+              section_attr[i].dyn_cast<::pir::Int64Attribute>().data());
+        }
+      }
+
+      auto in_dim = op.operand_source(0)
+                        .type()
+                        .dyn_cast<paddle::dialect::DenseTensorType>()
+                        .dims();
+
+      auto broadcast_axis =
+          cinn::hlir::framework::pir::GetBroadcastAxis(in_dim, output_shape);
+
+      auto out = rewriter
+                     .Build<cinn::dialect::BroadcastOp>(
+                         op.operand_source(0), broadcast_axis, output_shape)
+                     .result(0);
+
+      rewriter.ReplaceAllUsesWith(op.result(0), out);
+
+      rewriter.EraseOp(op);
+      return true;
+    }
+
+    return false;
   }
 };
 
@@ -452,9 +573,11 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add<ReshapeOpPattern>(context);
   ps.Add<ConcatOpPattern>(context);
   ps.Add<SliceOpPattern>(context);
+  ps.Add<PowOpPattern>(context);
   ps.Add<SplitWithNumOpPattern>(context);
   ps.Add<AddNOpPattern>(context);
   ps.Add<SplitOpPattern>(context);
+  ps.Add<ExpandOpPattern>(context);
   // ps.Add(UniformOpPattern().Build(context));
 
   return ps;

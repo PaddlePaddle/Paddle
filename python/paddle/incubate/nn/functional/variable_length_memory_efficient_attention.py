@@ -34,6 +34,7 @@ def variable_length_memory_efficient_attention(
     mask=None,
     scale=None,
     causal=False,
+    pre_cache_length=0,
 ):
     """
     Cutlass Memory Efficient Variable Attention.
@@ -48,6 +49,7 @@ def variable_length_memory_efficient_attention(
         mask (Tensor): The Mask Tensor. Its shape is [batchsize, 1, query_seq_len, key_seq_len].
         scale (Float): The attention matrix's scale. Default is sqrt(1.0 / head_size).
         causal (Bool): Whether causal masking is used or not. Default is False.
+        pre_cache_length (Int): The length of the pre-cache. Default is 0.
     Returns:
         Tensor: the output Tensor.
 
@@ -74,6 +76,7 @@ def variable_length_memory_efficient_attention(
             >>> mask = paddle.randn([batch, 1, seq_len, seq_len], dtype=dtype)
 
             >>> scale = float(1.0 / math.sqrt(head_size))
+            >>> pre_cache_length = 0
 
             >>> def naive_attention_impl(query, key, value, mask, scale):
             ...     qk_res = paddle.matmul(query, key, transpose_y=True)
@@ -84,7 +87,7 @@ def variable_length_memory_efficient_attention(
             ...     return result
 
             >>> out = naive_attention_impl(query, key, value, mask, scale)
-            >>> # equals to: out = variable_length_memory_efficient_attention(query, key, value, seq_lens, seq_lens, mask, scale)
+            >>> # equals to: out = variable_length_memory_efficient_attention(query, key, value, seq_lens, seq_lens, mask, scale, pre_cache_length)
 
             >>> print(out.shape) # [batch, seq_len, num_head, head_size]
             [1, 8, 256, 32]
@@ -95,7 +98,15 @@ def variable_length_memory_efficient_attention(
 
     if in_dynamic_or_pir_mode():
         return _C_ops.variable_length_memory_efficient_attention(
-            query, key, value, seq_lens, kv_seq_lens, mask, scale, causal
+            query,
+            key,
+            value,
+            seq_lens,
+            kv_seq_lens,
+            mask,
+            scale,
+            causal,
+            pre_cache_length,
         )
 
     helper = LayerHelper(
@@ -112,7 +123,11 @@ def variable_length_memory_efficient_attention(
             'kv_seq_lens': kv_seq_lens,
             "mask": mask,
         },
-        attrs={"scale": scale, "causal": causal},
+        attrs={
+            "scale": scale,
+            "causal": causal,
+            "pre_cache_length": pre_cache_length,
+        },
         outputs={'out': out},
     )
     return out

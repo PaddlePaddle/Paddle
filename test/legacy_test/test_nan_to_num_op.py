@@ -19,6 +19,7 @@ import numpy as np
 
 import paddle
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 # from op_test import OpTest
 
@@ -61,6 +62,7 @@ class TestNanToNum(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static(self):
         x_np = np.array([[1, np.nan, -2], [np.inf, 0, -np.inf]]).astype(
             np.float32

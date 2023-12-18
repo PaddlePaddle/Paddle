@@ -154,7 +154,7 @@ class FillConstantRewriterPass : public ProgramPass {
 
   void ApplyImpl(Program* program,
                  const std::unordered_set<std::string>& fetch_ids,
-                 const common::Target& target) override {
+                 const cinn::common::Target& target) override {
     auto input2instr = GetInput2Instr(program);
 
     std::unordered_set<const Instruction*> remove_instr;

@@ -12,13 +12,110 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from functools import reduce
+
 import numpy as np
 
 import paddle
 from paddle import base
+from paddle.common_ops_import import LayerHelper
+
+
+def pir_fc(hidden, size, activation, param_attr, bias_attr):
+    helper = LayerHelper("fc", **locals())
+    if not isinstance(hidden, (list, tuple)):
+        hidden = [hidden]
+    matmul_results = []
+    for i, input in enumerate(hidden):
+        input_shape = input.shape
+        num_flatten_dims = len(input_shape) - 1
+        param_shape = [
+            reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
+        ] + [size]
+
+        w = helper.create_parameter(
+            attr=param_attr, shape=param_shape, dtype=input.dtype, is_bias=False
+        )
+        out = paddle.matmul(input, w)
+        matmul_results.append(out)
+
+    if len(matmul_results) == 1:
+        pre_bias = matmul_results[0]
+    else:
+        pre_bias = paddle.add_n(matmul_results)
+    bias = helper.create_parameter(
+        attr=bias_attr,
+        shape=pre_bias.shape[-1:],
+        dtype=pre_bias.dtype,
+        is_bias=True,
+    )
+    out = paddle.add(pre_bias, bias)
+    act_op = getattr(paddle._C_ops, activation)
+    if activation == 'softmax':
+        return act_op(out, -1)
+    return act_op(out)
+
+
+def pir_simple_fc_net_with_inputs(img, label, class_num=10):
+    hidden = img
+    param_attr = base.ParamAttr(initializer=paddle.nn.initializer.Uniform())
+    bias_attr = base.ParamAttr(
+        initializer=paddle.nn.initializer.Constant(value=1.0)
+    )
+    for _ in range(2):
+        hidden = pir_fc(
+            hidden,
+            size=100,
+            activation='relu',
+            param_attr=param_attr,
+            bias_attr=bias_attr,
+        )
+    prediction = pir_fc(
+        hidden,
+        size=class_num,
+        activation='softmax',
+        param_attr=param_attr,
+        bias_attr=bias_attr,
+    )
+    loss = paddle.nn.functional.softmax_with_cross_entropy(prediction, label)
+
+    loss = paddle.mean(loss)
+    return loss
+
+
+def pir_batchnorm_fc_with_inputs(img, label, class_num=10):
+    hidden = img
+    param_attr = base.ParamAttr(initializer=paddle.nn.initializer.Uniform())
+    bias_attr = base.ParamAttr(
+        initializer=paddle.nn.initializer.Constant(value=1.0)
+    )
+    for _ in range(2):
+        hidden = pir_fc(
+            hidden,
+            size=200,
+            activation='relu',
+            param_attr=param_attr,
+            bias_attr=bias_attr,
+        )
+        batch_norm = paddle.nn.BatchNorm(200)
+        hidden = batch_norm(hidden)
+
+    prediction = pir_fc(
+        hidden,
+        size=class_num,
+        activation='softmax',
+        param_attr=param_attr,
+        bias_attr=bias_attr,
+    )
+    loss = paddle.nn.functional.softmax_with_cross_entropy(prediction, label)
+    loss = paddle.mean(loss)
+    return loss
 
 
 def simple_fc_net_with_inputs(img, label, class_num=10):
+    if paddle.framework.in_pir_mode():
+        return pir_simple_fc_net_with_inputs(img, label, class_num)
+
     hidden = img
     for _ in range(2):
         hidden = paddle.static.nn.fc(
@@ -46,6 +143,9 @@ def simple_fc_net(use_feed=None):
 
 
 def batchnorm_fc_with_inputs(img, label, class_num=10):
+    if paddle.framework.in_pir_mode():
+        return pir_batchnorm_fc_with_inputs(img, label, class_num)
+
     hidden = img
     for _ in range(2):
         hidden = paddle.static.nn.fc(

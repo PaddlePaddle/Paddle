@@ -72,14 +72,14 @@ TEST(test_tracer, test_trace_op) {
 
   auto* x_in_tensor = x_in->MutableVar()->GetMutable<phi::DenseTensor>();
   auto* y_in_tensor = y_in->MutableVar()->GetMutable<phi::DenseTensor>();
-  x_in_tensor->Resize(phi::make_ddim(dims1));
+  x_in_tensor->Resize(common::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place,
                        mutable_x,
                        place,
                        src_data.data(),
                        sizeof(float) * src_data.size());
-  y_in_tensor->Resize(phi::make_ddim(dims2));
+  y_in_tensor->Resize(common::make_ddim(dims2));
   auto* mutable_y = y_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place,
                        mutable_y,
@@ -124,14 +124,14 @@ TEST(test_tracer, test_trace_op_with_backward) {
 
   auto* x_in_tensor = x_in->MutableVar()->GetMutable<phi::DenseTensor>();
   auto* y_in_tensor = y_in->MutableVar()->GetMutable<phi::DenseTensor>();
-  x_in_tensor->Resize(phi::make_ddim(dims1));
+  x_in_tensor->Resize(common::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place,
                        mutable_x,
                        place,
                        src_data.data(),
                        sizeof(float) * src_data.size());
-  y_in_tensor->Resize(phi::make_ddim(dims2));
+  y_in_tensor->Resize(common::make_ddim(dims2));
   auto* mutable_y = y_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place,
                        mutable_y,
@@ -170,14 +170,14 @@ TEST(test_tracer, test_track_backward_output) {
 
   auto* x_in_tensor = x_in->MutableVar()->GetMutable<phi::DenseTensor>();
   auto* y_in_tensor = y_in->MutableVar()->GetMutable<phi::DenseTensor>();
-  x_in_tensor->Resize(phi::make_ddim(dims1));
+  x_in_tensor->Resize(common::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place,
                        mutable_x,
                        place,
                        src_data.data(),
                        sizeof(float) * src_data.size());
-  y_in_tensor->Resize(phi::make_ddim(dims2));
+  y_in_tensor->Resize(common::make_ddim(dims2));
   auto* mutable_y = y_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place,
                        mutable_y,
@@ -215,14 +215,14 @@ TEST(test_tracer, test_track_backward_input) {
 
   auto* x_in_tensor = x_in->MutableVar()->GetMutable<phi::DenseTensor>();
   auto* y_in_tensor = y_in->MutableVar()->GetMutable<phi::DenseTensor>();
-  x_in_tensor->Resize(phi::make_ddim(dims1));
+  x_in_tensor->Resize(common::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place,
                        mutable_x,
                        place,
                        src_data.data(),
                        sizeof(float) * src_data.size());
-  y_in_tensor->Resize(phi::make_ddim(dims2));
+  y_in_tensor->Resize(common::make_ddim(dims2));
   auto* mutable_y = y_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place,
                        mutable_y,
@@ -263,14 +263,14 @@ TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
 
   auto* x_in_tensor = x_in->MutableVar()->GetMutable<phi::DenseTensor>();
   auto* y_in_tensor = y_in->MutableVar()->GetMutable<phi::DenseTensor>();
-  x_in_tensor->Resize(phi::make_ddim(dims1));
+  x_in_tensor->Resize(common::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place,
                        mutable_x,
                        place,
                        src_data.data(),
                        sizeof(float) * src_data.size());
-  y_in_tensor->Resize(phi::make_ddim(dims2));
+  y_in_tensor->Resize(common::make_ddim(dims2));
   auto* mutable_y = y_in_tensor->mutable_data<float>(gpu_place);
   paddle::memory::Copy(gpu_place,
                        mutable_y,
@@ -400,14 +400,14 @@ TEST(test_tracer, test_var_without_grad_var) {
 
   auto* x_in_tensor = x_in->MutableVar()->GetMutable<phi::DenseTensor>();
   auto* y_in_tensor = y_in->MutableVar()->GetMutable<phi::DenseTensor>();
-  x_in_tensor->Resize(phi::make_ddim(dims1));
+  x_in_tensor->Resize(common::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place,
                        mutable_x,
                        place,
                        src_data.data(),
                        sizeof(float) * src_data.size());
-  y_in_tensor->Resize(phi::make_ddim(dims2));
+  y_in_tensor->Resize(common::make_ddim(dims2));
   auto* mutable_y = y_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place,
                        mutable_y,
@@ -619,14 +619,14 @@ TEST(test_tracer, eager_tracer) {
 
   auto* x_in_tensor = x_in->MutableVar()->GetMutable<phi::DenseTensor>();
   auto* y_in_tensor = y_in->MutableVar()->GetMutable<phi::DenseTensor>();
-  x_in_tensor->Resize(phi::make_ddim(dims1));
+  x_in_tensor->Resize(common::make_ddim(dims1));
   auto* mutable_x = x_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place,
                        mutable_x,
                        place,
                        src_data.data(),
                        sizeof(float) * src_data.size());
-  y_in_tensor->Resize(phi::make_ddim(dims2));
+  y_in_tensor->Resize(common::make_ddim(dims2));
   auto* mutable_y = y_in_tensor->mutable_data<float>(place);
   paddle::memory::Copy(place,
                        mutable_y,

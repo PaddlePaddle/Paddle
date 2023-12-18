@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include "paddle/fluid/pybind/eager_utils.h"
 #include <Python.h>
+#include "paddle/common/exception.h"
 #include "paddle/pir/core/value.h"
 // Avoid a problem with copysign defined in pyconfig.h on Windows.
 #ifdef copysign
@@ -39,6 +40,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/pir.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
+#include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -135,9 +137,13 @@ void ConvertToDistTensor(Tensor* x, const phi::distributed::ProcessMesh* mesh) {
             "as it's not phi::DenseTensor.",
             x->name()));
     phi::distributed::TensorDistAttr dist_attr(
-        phi::vectorize(x->impl()->dims()));
+        common::vectorize(x->impl()->dims()));
     dist_attr.set_process_mesh(*mesh);
     auto dense_t = std::static_pointer_cast<phi::DenseTensor>(x->impl());
+    // auto parallel in dygraph doesn't support strided kernel.
+    if (!dense_t->meta().is_contiguous()) {
+      *dense_t = paddle::experimental::Trans2Contiguous(*dense_t);
+    }
     x->set_impl(
         std::make_shared<phi::distributed::DistTensor>(dense_t, dist_attr));
   }
@@ -1873,7 +1879,7 @@ paddle::Tensor CreateTensorFromVarDesc(
 
   auto var_type = var_desc.GetType();
 
-  auto ddims = phi::make_ddim(dims);
+  auto ddims = common::make_ddim(dims);
   tensor.set_name(var_desc.Name());
   auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
   autograd_meta->SetPersistable(false);
@@ -1910,7 +1916,7 @@ paddle::Tensor CreateTensorFromVarDesc(
   return tensor;
 }
 
-PyObject* GetEmpytyTensorsWithVarDesc(PyObject* self, PyObject* args) {
+PyObject* GetEmptyTensorsWithVarDesc(PyObject* self, PyObject* args) {
   std::vector<paddle::Tensor> result;
   std::unordered_map<std::string, paddle::Tensor> out_tensor_map;
 
@@ -1956,12 +1962,12 @@ PyObject* GetEmpytyTensorsWithVarDesc(PyObject* self, PyObject* args) {
 paddle::Tensor CreateTensorFromOpResult(const pir::OpResult& op_result) {
   auto tensor = paddle::Tensor();
 
-  auto dims = phi::vectorize(GetOpResultDims(op_result));
+  auto dims = phi::vectorize(GetValueDims(op_result));
   auto ddims = phi::make_ddim(dims);
   auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
   autograd_meta->SetPersistable(false);
   autograd_meta->SetStopGradient(
-      GetOpResultBoolAttr(op_result, kAttrStopGradients));
+      GetValueBoolAttr(op_result, kAttrStopGradients));
 
   if (op_result.type().isa<paddle::dialect::DenseTensorType>()) {
     // TODO(jiabin): Maybe support LOD later
@@ -2091,9 +2097,24 @@ paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
   }
 }
 
+PyObject* CastPyArg2ValuePreHook(PyObject* obj) {
+  PyObject* hook = static_op_arg_pre_cast_hook_get();
+  if (hook == Py_None) {
+    return obj;
+  }
+  Py_INCREF(obj);
+  PyObject* result = PyObject_CallFunction(hook, "O", obj);
+  PADDLE_ENFORCE(result,
+                 paddle::platform::errors::Fatal(
+                     "Call static_op_arg_pre_cast_hook failed."));
+  Py_DECREF(obj);
+  return result;
+}
+
 pir::Value CastPyArg2Value(PyObject* obj,
                            const std::string& op_type,
                            size_t arg_pos) {
+  obj = CastPyArg2ValuePreHook(obj);
   if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
     return ::pybind11::handle(obj).cast<pir::OpResult>();
   } else if (PyObject_TypeCheck(obj, g_ir_value_pytype)) {
@@ -2127,6 +2148,7 @@ std::vector<pir::Value> CastPyArg2VectorOfValue(PyObject* obj,
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyList_GetItem(obj, i);
+      item = CastPyArg2ValuePreHook(item);
       if (PyObject_TypeCheck(item, g_ir_opresult_pytype)) {
         value_list.emplace_back(::pybind11::handle(item).cast<pir::OpResult>());
       } else if (item == Py_None) {
@@ -2146,6 +2168,7 @@ std::vector<pir::Value> CastPyArg2VectorOfValue(PyObject* obj,
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyTuple_GetItem(obj, i);
+      item = CastPyArg2ValuePreHook(item);
       if (PyObject_TypeCheck(item, g_ir_opresult_pytype)) {
         value_list.emplace_back(::pybind11::handle(item).cast<pir::OpResult>());
       } else if (item == Py_None) {
@@ -2575,6 +2598,50 @@ void* UnPackHook::operator()(void* packed_value, void* other) {
   return reinterpret_cast<void*>(ret);
 }
 
+/* ------------------ for SetStaticOpArgPreCastHook ----------------------- */
+
+static Py_tss_t static_op_arg_pre_cast_hook_key = {0, 0};
+
+inline static PyObject* static_op_arg_pre_cast_hook_get() {
+  void* result = PyThread_tss_get(&static_op_arg_pre_cast_hook_key);
+  if (result == NULL) {
+    return Py_None;
+  } else {
+    return reinterpret_cast<PyObject*>(result);
+  }
+}
+
+inline static void static_op_arg_pre_cast_hook_set(PyObject* obj) {
+  PyThread_tss_set(&static_op_arg_pre_cast_hook_key, obj);
+}
+
+static PyObject* set_static_op_arg_pre_cast_hook(PyObject* new_callback,
+                                                 PyThreadState* tstate) {
+  PyObject* old_callback = static_op_arg_pre_cast_hook_get();
+  Py_INCREF(new_callback);
+  static_op_arg_pre_cast_hook_set(new_callback);
+
+  return old_callback;
+}
+
+PyObject* SetStaticOpArgPreCastHook(PyObject* dummy, PyObject* callback) {
+  if (callback != Py_None && !PyCallable_Check(callback)) {
+    VLOG(7) << "callback is not a callable or none, invalid arguments.";
+    Py_INCREF(Py_None);
+    return Py_None;
+  }
+  return set_static_op_arg_pre_cast_hook(callback, PyThreadState_GET());
+}
+
+PyMODINIT_FUNC PyInit__static_op_arg_pre_cast_hook() {
+  auto result = PyThread_tss_create(&static_op_arg_pre_cast_hook_key);
+  VLOG(7) << "Set PyThread_tss_create return: " << result;
+
+  Py_INCREF(Py_None);
+  static_op_arg_pre_cast_hook_set(Py_None);
+  return NULL;
+}
+
 /* ------------------ for auto parallel ----------------------- */
 
 void DistTensorTypeParser::operator()(const Tensor& x) {
@@ -2665,16 +2732,21 @@ void DistTensorConverter::operator()(paddle::optional<std::vector<Tensor>>* x) {
 
 static PyMethodDef EagerUtilMethods[] = {
     {"create_empty_tensors_with_var_descs",
-     (PyCFunction)(void (*)(void))GetEmpytyTensorsWithVarDesc,
+     (PyCFunction)(void (*)(void))GetEmptyTensorsWithVarDesc,
      METH_VARARGS,
-     "GetEmpytyTensorsWithVarDesc"},
+     "GetEmptyTensorsWithVarDesc"},
     {"create_empty_tensors_with_op_results",
      (PyCFunction)(void (*)(void))GetEmpytyTensorsWithOpResult,
      METH_VARARGS,
      "GetEmpytyTensorsWithOpResult."},
+    {"set_static_op_arg_pre_cast_hook",
+     (PyCFunction)SetStaticOpArgPreCastHook,
+     METH_O,
+     "Set hook for pre cast a static OP argument."},
     {nullptr, nullptr, 0, nullptr}};
 
 void BindEagerUtils(PyObject* module) {
+  PyInit__static_op_arg_pre_cast_hook();
   if (PyModule_AddFunctions(module, EagerUtilMethods) < 0) {
     PADDLE_THROW(platform::errors::Fatal(
         "Init Paddle error in BindEagerUtils(PyModule_AddFunctions)."));

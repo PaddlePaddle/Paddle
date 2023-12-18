@@ -75,6 +75,14 @@ prim_white_list = [
     "tanh_triple_grad",
 ]
 
+# white ops list whose kernel can automaically do type promotion.
+# future will get this list from same place with static graph.
+type_promote_white_list = {
+    "add": ["x", "y"],
+    "subtract": ["x", "y"],
+    "where": ["x", "y"],
+}
+
 # dict of special api that forward api's output will affect bacward api's output
 # bacward api's output usually affected by backward api's input
 special_prune_dict = {
@@ -248,6 +256,8 @@ TEST_API {} {}({}) {{
 {}
   // AMP Logic
 {}
+  // Type promotion Logic
+{}
   // Layout autotune
 {}
   // Get Input AutoGradMeta
@@ -315,6 +325,8 @@ TEST_API {} {}({}) {{
   // Dygraph Record Event
 {}
   // AMP Logic
+{}
+  // Type promotion Logic
 {}
   // Layout autotune
 {}
@@ -447,7 +459,8 @@ FORWARD_CC_FILE_TEMPLATE = """
 #include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/api/lib/data_transform.h"
-
+#include "paddle/fluid/eager/type_promotion_utils.h"
+#include "paddle/phi/common/type_promotion.h"
 PHI_DECLARE_bool(check_nan_inf);
 PHI_DECLARE_string(tensor_operants_mode);
 {}
@@ -512,6 +525,21 @@ AMP_LOGIC_TEMPLATE = """  if (egr::Controller::Instance().GetAMPLevel() != paddl
     }}
   }}
 """
+
+TYPE_PROMOTION_LOGIC_TEMPLATE = """   if (phi::NeedTypePromotion({x}.dtype(), {y}.dtype())) {{
+    VLOG(5) << "got different data type, run type protmotion automatically.";
+    LOG(WARNING) << "got different data type, run type protmotion automatically, this may cause data type been changed.";
+    {op_name}
+    auto promotion_type = phi::GetPromoteDtype(op_name, {x}.dtype(), {y}.dtype());
+
+    auto new_{x} = egr::PromoteCast("{x}", {x}, promotion_type);
+    auto new_{y} = egr::PromoteCast("{y}", {y}, promotion_type);
+
+    {return_value}
+  }}
+"""
+
+
 LAYOUT_LOGIC_TEMPLATE = """
   if (egr::Controller::Instance().UseLayoutAutoTune()) {{
     paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> tensors_vector = {};
@@ -1459,6 +1487,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         inputs_call_list = ["" for i in range(num_inputs)]
 
         amp_inputs_call_list = ["" for i in range(num_inputs)]
+        type_promote_inputs_call_list = ["" for i in range(num_inputs)]
         amp_tensors_vector_list = []
         amp_tensors_vector_optional_list = []
         amp_autocast_list = []
@@ -1470,6 +1499,11 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             inputs_call_list[pos] = f"{name}"
             amp_inputs_call_list[pos] = f"new_{name}"
             is_optional = name in optional_inputs
+            if forward_api_name in type_promote_white_list:
+                if name in type_promote_white_list[forward_api_name]:
+                    type_promote_inputs_call_list[pos] = f"new_{name}"
+                else:
+                    type_promote_inputs_call_list[pos] = f"{name}"
             if IsPlainTensorType(ttype):
                 if is_optional:
                     if (
@@ -1804,7 +1838,28 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 amp_autocast_list_str,
                 amp_call_str,
             )
+        # Forward type promotion logic
+        if forward_api_name in type_promote_white_list:
+            # only support two inputs
+            x = type_promote_white_list[forward_api_name][0]
+            y = type_promote_white_list[forward_api_name][1]
+            type_promote_inputs_call_args_str = ", ".join(
+                type_promote_inputs_call_list
+            )
+            type_promote_call_list = f"return {forward_ad_function_name}({type_promote_inputs_call_args_str});"
 
+            type_promotion_logic_str = TYPE_PROMOTION_LOGIC_TEMPLATE.format(
+                x=x,
+                y=y,
+                op_name=kernel_trans2_op_name_str,
+                return_value=type_promote_call_list,
+            )
+        else:
+            type_promotion_logic_str = (
+                "\n VLOG(5) << \" No Type Promotion for {} api. \"; ".format(
+                    forward_ad_function_name
+                )
+            )
         # Forward layout autotune
         layout_autotune_list_str = "    ".join(
             layout_autotune_list
@@ -1849,6 +1904,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     forward_api_name,
                     dygraph_event_str,
                     amp_logic_str,
+                    type_promotion_logic_str,
                     layout_logic_str,
                     forward_api_name,
                     before_log_str,
@@ -1871,6 +1927,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 forward_api_name,
                 dygraph_event_str,
                 amp_logic_str,
+                type_promotion_logic_str,
                 layout_logic_str,
                 inputs_autograd_meta_str,
                 forward_api_name,
@@ -2534,7 +2591,9 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
   """
             else:
                 grad_function_call_str = f"""
-  if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled()) {{
+  std::string grad_op_name = "{composite_grad_api_name}";
+  auto need_skip = paddle::prim::StaticCompositeContext::Instance().CheckSkipCompOps(grad_op_name);
+  if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {{
 {indent}bool original_global_grad = egr::Controller::Instance().HasGrad();
 {indent}if(!create_graph){{
 {indent}{indent}egr::Controller::Instance().SetHasGrad(create_graph);

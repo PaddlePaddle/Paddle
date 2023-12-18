@@ -41,8 +41,8 @@ void GatherNdKernel(const Context &ctx,
         0,
         phi::errors::InvalidArgument("end_size[%d] should be 0", end_size));
     // remain dim
-    auto remain_ddim = phi::slice_ddim(index_dims, 0, index_dims_size - 1);
-    int64_t remain_numel = phi::product(remain_ddim);
+    auto remain_ddim = common::slice_ddim(index_dims, 0, index_dims_size - 1);
+    int64_t remain_numel = common::product(remain_ddim);
 
     int64_t x_numel = x.numel();
     int64_t y_numel = out->numel();
@@ -78,8 +78,8 @@ void GatherNdKernel(const Context &ctx,
                                    DataType::INT32,
                                    DataType::INT64));
 
-  auto x_shape = phi::vectorize<int>(x.dims());
-  auto index_shape = phi::vectorize<int>(index.dims());
+  auto x_shape = common::vectorize<int>(x.dims());
+  auto index_shape = common::vectorize<int>(index.dims());
   if (index_shape.size() == 1) {
     index_shape.insert(index_shape.begin(), 1);
   }

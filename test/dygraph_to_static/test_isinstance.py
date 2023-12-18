@@ -28,6 +28,7 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    enable_to_static_guard,
     test_legacy_and_pt_and_pir,
 )
 
@@ -77,10 +78,9 @@ class SequentialLayer(nn.Layer):
 
 
 def train(model, to_static):
-    paddle.jit.enable_to_static(to_static)
-
-    x = paddle.ones(shape=[2, 3], dtype='int32')
-    out = model(x)
+    with enable_to_static_guard(to_static):
+        x = paddle.ones(shape=[2, 3], dtype='int32')
+        out = model(x)
 
     return out.numpy()
 
@@ -88,24 +88,34 @@ def train(model, to_static):
 class TestIsinstance(Dy2StTestBase):
     @test_legacy_and_pt_and_pir
     def test_isinstance_simple_return_layer(self):
-        model = paddle.jit.to_static(IsInstanceLayer(SimpleReturnLayer()))
-        self._test_model(model)
+        model_creator = lambda: paddle.jit.to_static(
+            IsInstanceLayer(SimpleReturnLayer())
+        )
+        self._test_model(model_creator)
 
+    @test_legacy_and_pt_and_pir
     def test_isinstance_add_attr_layer(self):
-        model = paddle.jit.to_static(IsInstanceLayer(AddAttrLayer()))
-        self._test_model(model)
+        model_creator = lambda: paddle.jit.to_static(
+            IsInstanceLayer(AddAttrLayer())
+        )
+        self._test_model(model_creator)
 
+    @test_legacy_and_pt_and_pir
     def test_sequential_layer(self):
-        layers = []
-        for i in range(5):
-            layers.append(SimpleReturnLayer())
-            layers.append(AddAttrLayer())
-        model = paddle.jit.to_static(SequentialLayer(layers))
-        self._test_model(model)
+        def model_creator():
+            layers = []
+            for i in range(5):
+                layers.append(SimpleReturnLayer())
+                layers.append(AddAttrLayer())
+            return paddle.jit.to_static(SequentialLayer(layers))
 
-    def _test_model(self, model):
-        st_out = train(model, to_static=True)
-        dy_out = train(model, to_static=False)
+        self._test_model(model_creator)
+
+    def _test_model(self, model_creator):
+        st_model = model_creator()
+        st_out = train(st_model, to_static=True)
+        dy_model = model_creator()
+        dy_out = train(dy_model, to_static=False)
         np.testing.assert_allclose(
             dy_out,
             st_out,

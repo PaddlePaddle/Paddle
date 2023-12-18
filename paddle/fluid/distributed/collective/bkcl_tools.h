@@ -102,6 +102,8 @@ class XPUEventManager {
 
 BKCLOp ToBKCLRedType(ReduceOp reduction);
 std::string SerializeBKCLUniqueId(const BKCLUniqueId& bkclId);
+std::string BKCLDTypeToString(BKCLDataType dtype);
+std::string BKCLRedTypeToString(BKCLOp op);
 
 }  // namespace distributed
 }  // namespace paddle

@@ -13,9 +13,7 @@
 # limitations under the License.
 from typing import cast
 
-from paddle.base.core import Partial, Placement, ReduceType, Replicate, Shard
-
-__all__ = ["ReduceType", "Placement", "Replicate", "Shard", "Partial"]
+from paddle.base.core import Partial, Replicate, Shard
 
 
 def to_placements(dim_map, mesh, partial_idx=[]):
@@ -50,6 +48,20 @@ def to_placements(dim_map, mesh, partial_idx=[]):
             placements[m] = Shard(i)
 
     return placements
+
+
+def check_placements_equal(this, that):
+    assert isinstance(this, list) and isinstance(that, list)
+    small_placemets = this if len(this) < len(that) else that
+    large_placements = that if len(this) < len(that) else this
+    for i in range(len(large_placements)):
+        if i < len(small_placemets):
+            if small_placemets[i] != large_placements[i]:
+                return False
+        else:
+            if large_placements[i] != Replicate():
+                return False
+    return True
 
 
 def to_dim_map(placements, tensor_dims):

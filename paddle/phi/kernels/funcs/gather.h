@@ -18,10 +18,10 @@ limitations under the License. */
 #include <cstring>
 #include <vector>
 
+#include "paddle/common/ddim.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/macros.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 namespace phi {
 namespace funcs {
@@ -111,8 +111,8 @@ void CPUGatherNd(const phi::CPUContext& ctx UNUSED,
   // final dim
   int64_t end_size = index_dims[index_dims_size - 1];
   // remain dim
-  auto remain_ddim = phi::slice_ddim(index_dims, 0, index_dims_size - 1);
-  int64_t remain_numel = phi::product(remain_ddim);
+  auto remain_ddim = common::slice_ddim(index_dims, 0, index_dims_size - 1);
+  int64_t remain_numel = common::product(remain_ddim);
   // slice size
   int64_t slice_size = 1;
   for (int64_t i = end_size; i < input_dims_size; ++i) {
@@ -195,7 +195,7 @@ void GatherV2Function(const phi::CPUContext& ctx,
     outer_dim_size *= input_dim[i];
     out_dim_vec.push_back(input_dim[i]);
   }
-  auto out_dim = phi::make_ddim(out_dim_vec);
+  auto out_dim = common::make_ddim(out_dim_vec);
 
   out->Resize(out_dim);
   auto* out_data = ctx.Alloc<T>(out);
@@ -247,7 +247,7 @@ void GatherV2GradFunction(const phi::CPUContext& ctx,
   auto* out_data = ctx.Alloc<T>(out);
   auto out_dim = out->dims();
   int64_t out_index_dim_size = out_dim[axis_index];
-  phi::funcs::set_constant(ctx, out, 0.0);
+  phi::funcs::set_constant(ctx, out, static_cast<T>(0.0));
 
   for (int64_t i = 0; i < inner_dim_size; i++) {
     for (int64_t j = 0; j < input_index_dim_size; j++) {

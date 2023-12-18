@@ -20,6 +20,7 @@ from decorator_helper import prog_scope
 from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
+import paddle.distributed as dist
 from paddle import base
 from paddle.base import Program, core, program_guard
 from paddle.pir_utils import test_with_pir_api
@@ -798,8 +799,10 @@ class TestConcatDoubleGradCheck(unittest.TestCase):
 
         data1 = paddle.static.data('data1', [2, 3], dtype)
         data1.persistable = True
+        data1.stop_gradient = False
         data2 = paddle.static.data('data2', [2, 3], dtype)
         data2.persistable = True
+        data2.stop_gradient = False
         out = paddle.concat([data1, data2])
         data1_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
         data2_arr = np.random.uniform(-1, 1, data2.shape).astype(dtype)
@@ -840,8 +843,10 @@ class TestConcatTripleGradCheck(unittest.TestCase):
 
         data1 = paddle.static.data('data1', [2, 3, 4], dtype)
         data1.persistable = True
+        data1.stop_gradient = False
         data2 = paddle.static.data('data2', [2, 3, 4], dtype)
         data2.persistable = True
+        data2.stop_gradient = False
         out = paddle.concat([data1, data2], 1)
         data1_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
         data2_arr = np.random.uniform(-1, 1, data2.shape).astype(dtype)
@@ -897,11 +902,11 @@ class TestConcatOpAutoParallel(OpTest):
 
     def init_inputs(self):
         self.inputs = {'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)]}
-        self.input_specs = {
+        self.placements = {
             'X': [
-                ('x0', [None, None, 'x']),
-                ('x1', [None, None, 'x']),
-                ('x2', [None, None, 'x']),
+                ('x0', [dist.Shard(2)]),
+                ('x1', [dist.Shard(2)]),
+                ('x2', [dist.Shard(2)]),
             ]
         }
 
@@ -909,12 +914,12 @@ class TestConcatOpAutoParallel(OpTest):
         self.check_grad(
             ['x0'],
             'Out',
-            check_auto_parallel=False,
+            check_auto_parallel=True,
         )
         self.check_grad(
             ['x0', 'x1', 'x2'],
             'Out',
-            check_auto_parallel=False,
+            check_auto_parallel=True,
         )
 
     def init_test_data(self):

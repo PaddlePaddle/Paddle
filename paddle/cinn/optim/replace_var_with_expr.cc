@@ -158,7 +158,7 @@ std::vector<std::vector<Expr>> CollectTensorIndex(
   std::vector<std::vector<Expr>> result = mutator(source);
   for (auto& i : result) {
     for (auto& j : i) {
-      j = common::AutoSimplify(j);
+      j = cinn::common::AutoSimplify(j);
     }
   }
   return result;

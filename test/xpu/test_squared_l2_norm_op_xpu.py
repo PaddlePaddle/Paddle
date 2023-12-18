@@ -20,6 +20,7 @@ from get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test import convert_float_to_uint16
 from op_test_xpu import XPUOpTest
 
 import paddle
@@ -41,10 +42,25 @@ class XPUTestSquaredL2NormOp(XPUOpTestWrapper):
             self.use_mkldnn = False
             self.max_relative_error = 0.05
             self.set_inputs()
-            self.inputs = {'X': self.x}
-            self.outputs = {
-                'Out': np.array([np.square(np.linalg.norm(self.x))])
-            }
+
+            if self.dtype == np.uint16:
+                # bfloat16 actually
+                new_x = convert_float_to_uint16(self.x)
+            else:
+                new_x = self.x.astype(self.dtype)
+
+            out = np.square(np.linalg.norm(self.x))
+
+            if self.dtype == np.uint16:
+                # bfloat16 actually
+                new_out = convert_float_to_uint16(out)
+            else:
+                new_out = out.astype(self.dtype)
+
+            new_out = np.array([new_out])
+
+            self.inputs = {'X': new_x}
+            self.outputs = {'Out': new_out}
 
         def test_check_output(self):
             self.check_output_with_place(self.place)
@@ -53,21 +69,17 @@ class XPUTestSquaredL2NormOp(XPUOpTestWrapper):
             self.check_grad_with_place(self.place, ['X'], 'Out')
 
         def set_inputs(self):
-            self.x = np.random.uniform(-1, 1, (13, 19)).astype(self.in_type)
+            self.x = np.random.uniform(-1, 1, (13, 19))
             self.x[np.abs(self.x) < self.max_relative_error] = 0.1
 
     class TestSquaredL2NormOp_1(TestSquaredL2NormOp):
         def set_inputs(self):
-            self.x = np.random.uniform(-0.2, 0.2, (8, 128, 24)).astype(
-                self.in_type
-            )
+            self.x = np.random.uniform(-0.2, 0.2, (8, 128, 24))
             self.x[np.abs(self.x) < self.max_relative_error] = 0.02
 
     class TestSquaredL2NormOp_2(TestSquaredL2NormOp):
         def set_inputs(self):
-            self.x = np.random.uniform(-0.1, 0.1, (2, 128, 256)).astype(
-                self.in_type
-            )
+            self.x = np.random.uniform(-0.1, 0.1, (2, 128, 256))
             self.x[np.abs(self.x) < self.max_relative_error] = 0.01
 
 

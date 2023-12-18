@@ -57,10 +57,10 @@ using dim3 = phi::kps::dim3;
 
 #endif
 
+#include "paddle/common/array.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_utils.h"
-#include "paddle/phi/core/utils/array.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -288,8 +288,8 @@ struct ReduceConfig {
                      const KPDevice& dev_ctx,
                      phi::DenseTensor* tmp) {
     if (should_reduce_again) {
-      tmp->Resize(
-          phi::make_ddim({static_cast<int64_t>(left_num * grid.z * grid.y)}));
+      tmp->Resize(common::make_ddim(
+          {static_cast<int64_t>(left_num * grid.z * grid.y)}));
       tmp_data = dev_ctx.Alloc<MPType>(tmp);
     }
   }
@@ -1060,7 +1060,7 @@ void ReduceKernel(const KPDevice& dev_ctx,
 #endif
   dev_ctx.Alloc<Ty>(y);
 
-  auto x_dim = phi::vectorize<int>(x.dims());
+  auto x_dim = common::vectorize<int>(x.dims());
 
   if (x_dim.size() == 0) {
     std::vector<const DenseTensor*> inputs = {&x};
@@ -1238,13 +1238,13 @@ void ReduceFunctor(const Context& context,
   DDim out_dims = output->dims();
   if (keep_dim && x_rank > 1) {
     const int kDelFlag = -2;
-    auto dims_vector = phi::vectorize(out_dims);
+    auto dims_vector = common::vectorize(out_dims);
     for (size_t i = 0; i < dims_ref.size(); ++i) {
       dims_vector[dims_ref[i]] = kDelFlag;
     }
     dims_vector.erase(remove(dims_vector.begin(), dims_vector.end(), kDelFlag),
                       dims_vector.end());
-    out_dims = phi::make_ddim(dims_vector);
+    out_dims = common::make_ddim(dims_vector);
   }
   auto& place = *context.eigen_device();
   Functor functor;

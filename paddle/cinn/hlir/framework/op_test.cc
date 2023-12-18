@@ -46,7 +46,7 @@ TEST(Operator, GetAttrs) {
   NodeAttr attrs;
   std::vector<ir::Tensor> inputs{A, B};
   std::vector<Type> type{Float(32)};
-  common::Target target = common::DefaultHostTarget();
+  cinn::common::Target target = cinn::common::DefaultHostTarget();
   auto impl = OpStrategy::SelectImpl(
       strategy[add](attrs, inputs, type, {{100, 32}}, target));
 
@@ -56,10 +56,10 @@ TEST(Operator, GetAttrs) {
   std::string func_name = "add1";
 
   std::string out_name = "C";
-  common::CINNValuePack cinn_input =
-      common::CINNValuePack{{common::CINNValue(A),
-                             common::CINNValue(B),
-                             common::CINNValue(out_name)}};
+  cinn::common::CINNValuePack cinn_input =
+      cinn::common::CINNValuePack{{cinn::common::CINNValue(A),
+                                   cinn::common::CINNValue(B),
+                                   cinn::common::CINNValue(out_name)}};
   std::vector<std::string> input_output_names{"A", "B", out_name};
 
   auto funcs = framework::GetFuncFromImpl(

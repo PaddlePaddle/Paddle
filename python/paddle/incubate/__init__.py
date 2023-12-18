@@ -46,6 +46,11 @@ from .tensor import (
     segment_min,
     segment_sum,
 )
+from .framework import (
+    get_rng_state,
+    set_rng_state,
+    register_rng_state_as_index,
+)
 
 __all__ = [
     'LookAhead',

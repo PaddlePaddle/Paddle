@@ -401,6 +401,7 @@ class TestSigmoid(TestActivation):
             max_relative_error=0.01,
             check_prim=True,
             check_pir=True,
+            check_prim_pir=True,
         )
 
 
@@ -2539,7 +2540,9 @@ class TestLeakyRelu(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(
+            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
+        )
 
 
 class TestLeakyReluAlpha1(TestLeakyRelu):
@@ -3015,6 +3018,7 @@ class TestHardSwish(TestActivation):
             else False,
             only_check_prim=self.if_only_check_prim(),
             check_pir=True,
+            check_prim_pir=True,
         )
 
     def test_check_output(self):

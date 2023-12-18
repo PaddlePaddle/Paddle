@@ -59,7 +59,7 @@ class IR_API Region {
   const Block &back() const { return *blocks_.back(); }
 
   void push_back(Block *block);
-  Block *emplace_back();
+  Block &emplace_back();
   void push_front(Block *block);
   Iterator insert(ConstIterator position, Block *block);
   Iterator erase(ConstIterator position);

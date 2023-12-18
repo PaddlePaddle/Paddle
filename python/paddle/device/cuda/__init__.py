@@ -107,9 +107,6 @@ def synchronize(device=None):
             >>> paddle.device.cuda.synchronize(paddle.CUDAPlace(0))
 
     '''
-
-    device_id = -1
-
     if device is not None:
         if isinstance(device, int):
             device_id = device
@@ -117,7 +114,14 @@ def synchronize(device=None):
             device_id = device.get_device_id()
         else:
             raise ValueError("device type must be int or paddle.CUDAPlace")
-
+    else:
+        place = paddle.framework._current_expected_place()
+        if paddle.is_compiled_with_cuda() and isinstance(
+            place, paddle.CUDAPlace
+        ):
+            device_id = place.get_device_id()
+        else:
+            device_id = -1
     return core._device_synchronize(device_id)
 
 
