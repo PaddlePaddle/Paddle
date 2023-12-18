@@ -65,7 +65,7 @@ class ExprExecutor:
             # some nodes don't need to parse, such as ast.Load
             return node
         if isinstance(node, (ast.Lambda, ast.Starred)):
-            raise Exception("Current not suporrted: Lambda, Starred")
+            raise Exception("Current not supported: Lambda, Starred")
 
         cls_fields = {}
         for field in node.__class__._fields:

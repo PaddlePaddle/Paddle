@@ -37,6 +37,8 @@ from . import (  # noqa: F401
     dist_split,
     dist_transpose,
     dist_update_loss_scaling,
+    dist_concat,
+    dist_unsqueeze2,
 )
 from .common import (  # noqa: F401
     DistributedOperatorImpl,
