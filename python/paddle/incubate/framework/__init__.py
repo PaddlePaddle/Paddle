@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .random import get_rng_state, set_rng_state, register_rng_state_as_index
+from .random import (  # noqa: F401
+    get_rng_state,
+    register_rng_state_as_index,
+    set_rng_state,
+)
 
 __all__ = []

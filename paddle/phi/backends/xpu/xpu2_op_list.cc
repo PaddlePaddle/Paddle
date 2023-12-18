@@ -1146,6 +1146,8 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"fused_feedforward_grad",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
+      {"qkv_attention_xpu",
+       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"lod_reset",
        XPUKernelSet({phi::DataType::FLOAT32,
                      phi::DataType::FLOAT16,
