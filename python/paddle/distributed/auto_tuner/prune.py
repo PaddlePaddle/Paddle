@@ -534,6 +534,7 @@ def prune_by_memory_estimation(tuner_cfg, cur_cfg, history_cfgs=[]):
         )
 
 
+@register_prune
 def prune_by_sharding_overlap(tuner_cfg, cur_cfg, history_cfgs=[]):
     """Prune by sharding overlap for single dp estimation"""
     if "sharding_overlap" in cur_cfg:

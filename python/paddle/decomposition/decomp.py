@@ -12,24 +12,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+import os
 import typing
 import warnings
 
 import paddle
 from paddle import pir
 from paddle.autograd import ir_backward
-from paddle.base import log_helper
 from paddle.base.core import (
     call_decomp,
     decomp_ops_contain_unused_output,
     has_decomp,
 )
 from paddle.base.libpaddle.pir import Block, Operation, Program
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.framework import core
 
 from . import register
 
-logger = log_helper.get_logger(__name__, logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+
+# For sinking decomp in c++. In future, sinking decomp will be implemented in c++ by default and then this api will be removed.
+@signature_safe_contextmanager
+def sink_decomp_guard():
+    sink_decomp = core._enable_sink_decomp()
+    try:
+        if not sink_decomp:
+            os.environ['FLAGS_sink_decomp'] = 'true'
+        yield
+    finally:
+        if not sink_decomp:
+            os.environ['FLAGS_sink_decomp'] = 'false'
 
 
 def _build_tensor_tuple(xs):
@@ -201,6 +215,9 @@ def decompose(
     Returns:
         dst_vars (list): A list contains all vars which replace origin ones in src_vars.
     """
+    if core._enable_sink_decomp():
+        blacklist = core.prim_config["forward_blacklist"] | blacklist
+        return core.sinking_decomp(program, src_vars, blacklist, whitelist)
     if not core._is_fwd_prim_enabled():
         return src_vars
     if not isinstance(program, Program):
@@ -219,9 +236,11 @@ def decompose(
     blacklist = core.prim_config["forward_blacklist"] | blacklist
 
     logger.debug(
-        f'Lowering source program {program} into primitive program, the blacklist which will be ignored in lowering {blacklist}, \
-                  and the whitelist which will be processed in lowering {whitelist}. \
-                  The finally set that will be decomposed is: (ops & ops have decomposite rule & whitelist) - blacklist'
+        f'Lowering source program into primitive program. Source program is: \n \
+{program}\n \
+The finally set that will be decomposed is: (ops & ops have decomposite rule & whitelist) - blacklist.\n \
+The blacklist which will be ignored in lowering is: {blacklist},\n \
+and the whitelist which will be processed in lowering is: {whitelist}.'
     )
 
     if len(blacklist) > 0 and len(whitelist) > 0:
