@@ -2014,7 +2014,7 @@ def svd(x, full_matrices=False, name=None):
             positive number. Note that if x is singular matrices, the grad is numerical
             instable. The data type of x should be float32 or float64.
         full_matrices (bool, optional): A flag to control the behavior of svd.
-            If full_matrices = True, svd op will compute full U and V metrics,
+            If full_matrices = True, svd op will compute full U and V matrices,
             which means shape of U is `[..., N, N]`, shape of V is `[..., M, M]`. K = min(M, N).
             If full_matrices = False, svd op will use a economic method to store U and V.
             which means shape of U is `[..., N, K]`, shape of V is `[..., M, K]`. K = min(M, N).
@@ -2027,7 +2027,7 @@ def svd(x, full_matrices=False, name=None):
         - S (Tensor), is the singular value decomposition result S.
         - VH (Tensor), VH is the conjugate transpose of V, which is the singular value decomposition result V.
 
-        Tuple of 3 tensors(U, S, VH): VH is the conjugate transpose of V. S is the singular value vectors of metrics with shape `[..., K]`
+        Tuple of 3 tensors(U, S, VH): VH is the conjugate transpose of V. S is the singular value vectors of matrices with shape `[..., K]`
 
     Examples:
         .. code-block:: python
