@@ -126,8 +126,7 @@ class NumpyArrayInitializer(Initializer):
                 out_var._share_underline_tensor_to(var)
             return None
         elif in_pir_mode():
-            out_var = _C_ops.assign_value_(
-                out_var,
+            out_var = _C_ops.assign_value(
                 list(self._value.shape),
                 out_dtype,
                 values,
