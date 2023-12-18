@@ -384,6 +384,8 @@ const dnnl::memory::desc& DenseTensor::mem_desc() const {
     *storage_properties_ptr = std::make_unique<OneDNNStorageProperties>();
     static_cast<OneDNNStorageProperties*>(storage_properties_ptr->get())
         ->mem_desc = dnnl::memory::desc();
+    static_cast<OneDNNStorageProperties*>(storage_properties_ptr->get())
+        ->format = dnnl::memory::format_tag::undef;
   }
   return this->storage_properties<OneDNNStorageProperties>().mem_desc;
 }
