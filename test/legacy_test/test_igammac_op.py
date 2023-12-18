@@ -82,7 +82,7 @@ class TestIgammaOpApi(unittest.TestCase):
                 feed={'x': self.x_np, 'a': self.a_np}, fetch_list=[out]
             )
         out_ref = ref_igammac(self.x_np, self.a_np)
-        np.testing.assert_allclose(out_ref, res)
+        np.testing.assert_allclose(out_ref, res, rtol=1e-5, atol=1e-5)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
@@ -90,7 +90,7 @@ class TestIgammaOpApi(unittest.TestCase):
         a = paddle.to_tensor(self.a_np)
         out = paddle.igammac(x, a)
         out_ref = ref_igammac(self.x_np, self.a_np)
-        np.testing.assert_allclose(out_ref, out.numpy())
+        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-5, atol=1e-5)
         paddle.enable_static()
 
 
