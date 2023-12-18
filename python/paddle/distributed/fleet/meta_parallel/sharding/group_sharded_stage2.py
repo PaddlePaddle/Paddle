@@ -155,6 +155,8 @@ class GroupShardedStage2(nn.Layer):
         # Set backward pass hooks
         self._bw_hooks = []
 
+        self.scale_in_opt = False
+
         # TODO (Baibaifan) Set tasks flow support asynchronous communicate
         # self._tasks_flow = deque()
 
@@ -232,13 +234,20 @@ class GroupShardedStage2(nn.Layer):
 
     def _grad_scale(self):
         """
-        Before the optimization, scale the gradients before allreduce of dp_group.
+        this function will do 2 things:
+        1.  Before the optimization, scale main_grad to support gradient merge if param has main_grad, or to support fused_linear_param_grad_add gradient merge.
+        2.  Before the optimization, scale the gradients before allreduce of dp_group.
         """
 
-        if self._dp_group is None or self._dp_group.nranks <= 1:
-            return
+        need_dp_scale = self._dp_group is not None and self._dp_group.nranks > 1
+        if self.scale_in_opt:
+            scale_factor = self._world_size_scaling
         else:
-            scale_factor = 1.0 / (self._dp_group.nranks)
+            scale_factor = 1.0
+
+        if need_dp_scale:
+            dp_scale_factor = 1.0 / (self._dp_group.nranks)
+            scale_factor = scale_factor * dp_scale_factor
 
         # Scale grad storages
         for dtype in self._grad_storages.keys():
@@ -249,7 +258,6 @@ class GroupShardedStage2(nn.Layer):
                 self._grad_storages[dtype][self._rank].buffer.scale_(
                     scale=scale_factor
                 )
-
         # Scale grads of params
         with paddle.no_grad():
             for param in self._trainable_params:
@@ -258,11 +266,14 @@ class GroupShardedStage2(nn.Layer):
                         param.main_grad.scale_(scale=scale_factor)
                     elif param.grad is not None:
                         param.grad.scale_(scale=scale_factor)
-                # param._reset_grad_inplace_version(True)
 
-            # Scale grads of master params with offload strategy
+        # Scale grads of master params with offload strategy
         if self._offload:
-            self._sharding_optimizers[0]._offload_scale_grad(scale_factor)
+            if need_dp_scale is False:
+                return
+            self._sharding_optimizers[0]._offload_scale_grad(
+                scale=1.0 / (self._dp_group.nranks)
+            )
 
     def _init_internal_storage(self, needs_fresh):
         """
@@ -379,15 +390,21 @@ class GroupShardedStage2(nn.Layer):
     def _get_scaled_grad_fn(self, param):
         @paddle.autograd.no_grad()
         def scale(grad):
-            if hasattr(param, "main_grad"):
-                param.main_grad.scale_(self._world_size_scaling)
-            else:
-                if grad is not None and grad._is_initialized():
+            # do gradient scale separately
+            # For grad scale, we need to do it in the backward hook due to fp16 may overflow if we first add grad and then scale
+            # For main_grad scale and fused_linear_param_grad_add, we do scale in the optimizer.
+            if not self.scale_in_opt:
+                if (
+                    not hasattr(param, "main_grad")
+                    and grad is not None
+                    and grad.dtype == Type.fp16.value
+                ):
+                    assert (
+                        grad._is_initialized()
+                    ), "grad should be initialized in stage2"
                     grad.scale_(self._world_size_scaling)
                 else:
-                    assert param.grad is not None
-                    assert param.grad._is_initialized()
-                    param.grad.scale_(self._world_size_scaling)
+                    self.scale_in_opt = True
 
         return scale
 

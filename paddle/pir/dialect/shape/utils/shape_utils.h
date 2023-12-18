@@ -82,6 +82,8 @@ class IR_API ShapeConstraintIRAnalysis : public ShapeAnalysis {
     return "S" + std::to_string(next_sym_idx_++);
   }
 
+  symbol::DimExprBuilder CreateDimExprBuilder() override;
+
  private:
   // The operation this analysis runs on.
   ModuleOp m_;
@@ -92,6 +94,7 @@ class IR_API ShapeConstraintIRAnalysis : public ShapeAnalysis {
   std::unordered_map<Value, std::vector<shape::SymbolicDimOp>>
       value_to_sym_dims_;
   int64_t next_sym_idx_ = 0;
+  std::vector<symbol::DimExprConstraint> constraints_;
 
  public:
   explicit ShapeConstraintIRAnalysis(std::shared_ptr<pir::Program>&& program)
