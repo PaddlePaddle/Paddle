@@ -52,6 +52,7 @@ TEST(DimExpr, constraint) {
 }
 
 TEST(DimExpr, equal) {
+  DimExprBuilder builder{nullptr};
   DimExpr sym0 = DimExpr("S0");
   DimExpr sym1 = DimExpr("S1");
   DimExpr constant1 = DimExpr(1);
@@ -61,12 +62,24 @@ TEST(DimExpr, equal) {
   ASSERT_EQ(sym0 - sym1, sym0 - sym1);
   ASSERT_NE(sym0 - sym1, sym1 - sym0);
   ASSERT_EQ(sym0 - constant1, DimExpr("S0") - constant1);
-  ASSERT_EQ(sym0 * sym1, sym0 * sym2);
+  ASSERT_EQ(sym0 * sym1, sym0 * sym1);
   ASSERT_NE(sym0 * sym1, sym1 * sym0);
   ASSERT_EQ(sym0 * constant1, DimExpr("S0") * constant1);
   ASSERT_EQ(sym0 / sym1, sym0 / sym1);
   ASSERT_NE(sym0 / sym1, sym1 / sym0);
   ASSERT_EQ(sym0 / constant1, DimExpr("S0") / constant1);
+  ASSERT_EQ(builder.Max(sym0, sym1), builder.Max(sym0, sym1));
+  ASSERT_NE(builder.Max(sym0, sym1), builder.Max(sym1, sym0));
+  ASSERT_EQ(builder.Max(sym0, constant1),
+            builder.Max(DimExpr("S0"), constant1));
+  ASSERT_EQ(builder.Min(sym0, sym1), builder.Min(sym0, sym1));
+  ASSERT_NE(builder.Min(sym0, sym1), builder.Min(sym1, sym0));
+  ASSERT_EQ(builder.Min(sym0, constant1),
+            builder.Min(DimExpr("S0"), constant1));
+  ASSERT_EQ(builder.Broadcast(sym0, sym1), builder.Broadcast(sym0, sym1));
+  ASSERT_NE(builder.Broadcast(sym0, sym1), builder.Broadcast(sym1, sym0));
+  ASSERT_EQ(builder.Broadcast(sym0, constant1),
+            builder.Broadcast(DimExpr("S0"), constant1));
 }
 
 }  // namespace symbol::test

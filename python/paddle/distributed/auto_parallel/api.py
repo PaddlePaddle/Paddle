@@ -298,6 +298,7 @@ class DistModel:
         inner_strategy.sharding = copy.deepcopy(strategy.sharding)
         inner_strategy.gradient_merge = copy.deepcopy(strategy.gradient_merge)
         inner_strategy.pipeline = copy.deepcopy(strategy.pipeline)
+        inner_strategy.recompute = copy.deepcopy(strategy.recompute)
         return inner_strategy
 
     def __call__(self, *args):
@@ -519,6 +520,11 @@ class Strategy(auto_strategy.BaseConfig):
         )
         self._fused_passes = FusePasses(config_dict)
 
+        config_dict = self._config_dict.get(
+            auto_strategy.constants.RECOMPUTE, None
+        )
+        self._recompute = auto_strategy.RecomputeConfig(config_dict)
+
     @property
     def sharding(self):
         """
@@ -626,6 +632,10 @@ class Strategy(auto_strategy.BaseConfig):
                 >>> strategy.pipeline.micro_batch_size = 2
         """
         return self._pipeline
+
+    @property
+    def recompute(self):
+        return self._recompute
 
 
 def to_static(
