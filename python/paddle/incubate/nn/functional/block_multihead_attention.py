@@ -243,6 +243,14 @@ def block_multihead_attention(
             ...     block_tables,
             ...     None, # pre_key_cache
             ...     None, # pre_value_cache
+            ...     None, # cache_k_quant_scales
+            ...     None, # cache_v_quant_scales
+            ...     None, # cache_k_dequant_scales
+            ...     None, # cache_v_dequant_scales
+            ...     None, # qkv_out_scale
+            ...     None, # qkv_bias
+            ...     None, # out_shift
+            ...     None, # out_smooth
             ...     None, # rotary_embs
             ...     None, # attn_mask
             ...     None, # tgt_mask
