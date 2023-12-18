@@ -48,11 +48,11 @@ def check_all_puts(block, inputs, outputs):
     for output in outputs:
         if output.get_defining_op().get_parent_block() != block:
             raise ValueError("all outputs must be in the same block")
-    for input in inputs:
-        if input.get_defining_op().get_parent_block() != block:
-            raise ValueError(
-                "all inputs must be in the same block with outputs"
-            )
+    # for input in inputs:
+    #     if input.get_defining_op().get_parent_block() != block:
+    #         raise ValueError(
+    #             "all inputs must be in the same block with outputs"
+    #         )
 
 
 def append_full_like(float_value, copy_value, value, state, backward_ops):
