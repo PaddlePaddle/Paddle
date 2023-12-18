@@ -4343,6 +4343,7 @@ class TestThresholdedReluAPI(unittest.TestCase):
     # test paddle.nn.ThresholdedReLU, paddle.nn.functional.thresholded_relu
     def setUp(self):
         self.threshold = 15
+        self.value = 5
         np.random.seed(1024)
         self.x_np = np.random.uniform(-20, 20, [10, 12]).astype(np.float64)
         self.x_np[np.abs(self.x_np) < 0.005] = 0.02
