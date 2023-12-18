@@ -212,6 +212,167 @@ Expr AddUnitLoop(const std::vector<Expr>& exprs, const Expr& block) {
   return Expr{nullptr};
 }
 
+Expr GetStoreOfSBlock(const Expr& block) {
+  CHECK(block.As<ScheduleBlockRealize>());
+  std::set<Expr> find_store = ir_utils::CollectIRNodesWithoutTensor(
+      block, [&](const Expr* x) { return x->As<Store>(); }, true);
+  CHECK_EQ(find_store.size(), 1U)
+      << "One block should only have one Store node!(except for root block)";
+  return *find_store.begin();
+}
+
+Tensor GetStoreTensorOfSBlock(const Expr& block) {
+  CHECK(block.As<ScheduleBlockRealize>());
+  Expr find_store = GetStoreOfSBlock(block);
+  CHECK(find_store.As<Store>()->tensor.as_tensor());
+  return find_store.As<Store>()->tensor.as_tensor_ref();
+}
+
+std::vector<Expr> GetConsumerSBlocks(const Expr& block, const Expr& root) {
+  CHECK(block.As<ScheduleBlockRealize>());
+  CHECK(root.As<ScheduleBlockRealize>());
+  std::vector<Expr> consumers;
+  std::string store_tensor_name = GetStoreTensorOfSBlock(block)->name;
+  if (IsReduceInitTensorName(store_tensor_name)) {
+    std::string consumer_name = GetOriginalReduceTensorName(store_tensor_name);
+    auto consumer =
+        ir_utils::CollectIRNodesWithoutTensor(root, [&](const Expr* x) {
+          return x->As<ScheduleBlockRealize>() &&
+                 x->As<ScheduleBlockRealize>()
+                         ->schedule_block.As<ScheduleBlock>()
+                         ->name == consumer_name;
+        });
+    CHECK_EQ(consumer.size(), 1);
+    return {*consumer.begin()};
+  }
+
+  auto find_blocks =
+      ir_utils::CollectIRNodesWithoutTensor(root, [&](const Expr* x) {
+        return x->As<ScheduleBlockRealize>() && *x != block && *x != root;
+      });
+  for (auto& find_block : find_blocks) {
+    CHECK(find_block.As<ScheduleBlockRealize>()
+              ->schedule_block.As<ScheduleBlock>());
+    auto block_body = find_block.As<ScheduleBlockRealize>()
+                          ->schedule_block.As<ScheduleBlock>()
+                          ->body;
+    auto find_load_or_call =
+        ir_utils::CollectIRNodesWithoutTensor(block_body, [&](const Expr* x) {
+          if (x->As<Call>()) {
+            const std::vector<Expr>& read_args = x->As<Call>()->read_args;
+            for (const Expr& arg : read_args) {
+              if (arg.as_tensor() &&
+                  arg.as_tensor_ref()->name == store_tensor_name) {
+                return true;
+              }
+            }
+          }
+          return x->As<Load>() && x->As<Load>()->tensor.as_tensor_ref()->name ==
+                                      store_tensor_name;
+        });
+    if (!find_load_or_call.empty()) consumers.emplace_back(find_block);
+  }
+  return consumers;
+}
+
+std::vector<std::pair<Expr, Expr>> GetLoadsAndSBlocksOfSBlock(
+    const Expr& block, const Expr& root) {
+  CHECK(block.As<ScheduleBlockRealize>());
+  CHECK(root.As<ScheduleBlockRealize>());
+
+  Expr store = GetStoreOfSBlock(block);
+  std::vector<Expr> consumer_blocks = GetConsumerSBlocks(block, root);
+  std::vector<std::pair<Expr, Expr>> loads_and_blocks;
+  for (const Expr& consumer_block : consumer_blocks) {
+    ir_utils::CollectIRNodesWithoutTensor(consumer_block, [&](const Expr* x) {
+      if (x->As<Load>() &&
+          (x->As<Load>()->name() == store.As<Store>()->name())) {
+        loads_and_blocks.emplace_back(*x, consumer_block);
+      }
+      return false;
+    });
+  }
+  return loads_and_blocks;
+}
+
+std::unordered_map<std::string, std::unordered_map<ir::Var, ir::Expr>>
+CollectVarToForMap(const std::vector<Expr>& exprs,
+                   const std::vector<Expr>& blocks) {
+  std::unordered_map<std::string, std::unordered_map<ir::Var, ir::Expr>>
+      for_map;
+  for (const ir::Expr& block : blocks) {
+    std::string block_name = block.As<ir::ScheduleBlockRealize>()
+                                 ->schedule_block.As<ir::ScheduleBlock>()
+                                 ->name;
+    std::vector<ir::Expr> for_exprs = GetLoops(exprs, block);
+    for (ir::Expr for_expr : for_exprs) {
+      for_map[block_name][for_expr.As<ir::For>()->loop_var] = for_expr;
+      VLOG(6) << "for_map.insert: <" << block_name << ", "
+              << for_expr.As<ir::For>()->loop_var->name << ">";
+    }
+  }
+  return for_map;
+}
+
+std::unordered_map<ir::Var, ir::Expr> GetIterVarToValueOfSBlock(
+    ir::Expr block) {
+  ir::ScheduleBlockRealize* s_block_realize =
+      block.As<ir::ScheduleBlockRealize>();
+  CHECK_NOTNULL(s_block_realize);
+  ir::ScheduleBlock* s_block =
+      s_block_realize->schedule_block.As<ir::ScheduleBlock>();
+  CHECK_NOTNULL(s_block);
+  CHECK_EQ(s_block_realize->iter_values.size(), s_block->iter_vars.size());
+  std::unordered_map<ir::Var, ir::Expr> iter_var2iter_values;
+  for (size_t i = 0; i < s_block_realize->iter_values.size(); ++i) {
+    iter_var2iter_values.emplace(s_block->iter_vars[i],
+                                 s_block_realize->iter_values[i]);
+  }
+  return iter_var2iter_values;
+}
+
+ir::Expr ReplaceVarWithExpr(const ir::Expr& source,
+                            const std::vector<ir::Var>& candidates,
+                            const std::vector<ir::Expr>& targets) {
+  CHECK_EQ(candidates.size(), targets.size())
+      << "In ReplaceExpr, the size of Vars to be replaces must be equal to the "
+         "size of targets Exprs! Please check.";
+  ir::Expr copied = ir::ir_utils::IRCopy(source);
+  if (candidates.empty()) return copied;
+  std::map<Var, Expr, CompVar> replacing_map;
+  for (int i = 0; i < candidates.size(); ++i) {
+    // If the Var to be candidates is equal to the candidate, we skip it.
+    if (targets[i].is_var() && targets[i].as_var_ref() == candidates[i])
+      continue;
+    replacing_map[candidates[i]] = targets[i];
+  }
+  MappingVarToExprMutator mapper(replacing_map);
+  mapper(&copied);
+  return copied;
+}
+
+std::vector<ir::Expr> GetIterValuesOfAccess(ir::Expr load_or_store,
+                                            ir::Expr block) {
+  CHECK(load_or_store.As<ir::Load>() || load_or_store.As<ir::Store>());
+  std::vector<ir::Expr> indices = load_or_store.As<ir::Load>()
+                                      ? load_or_store.As<ir::Load>()->indices
+                                      : load_or_store.As<ir::Store>()->indices;
+  ir::ScheduleBlockRealize* s_block_realize =
+      block.As<ir::ScheduleBlockRealize>();
+  CHECK_NOTNULL(s_block_realize);
+  ir::ScheduleBlock* s_block =
+      s_block_realize->schedule_block.As<ir::ScheduleBlock>();
+  CHECK_NOTNULL(s_block);
+
+  std::vector<ir::Expr> iter_values;
+  for (ir::Expr index : indices) {
+    ir::Expr index_value = ReplaceVarWithExpr(
+        index, s_block->iter_vars, s_block_realize->iter_values);
+    iter_values.push_back(index_value);
+  }
+  return iter_values;
+}
+
 }  // namespace analyzer
 }  // namespace ir
 }  // namespace cinn

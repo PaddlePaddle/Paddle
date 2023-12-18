@@ -58,9 +58,10 @@ struct SymbolicExprLimit {
 // The set consisting of all integers in the interval from min to max
 class SingleIntervalIntSet {
  public:
-  explicit SingleIntervalIntSet(const ir::Expr& min,
-                                const ir::Expr& max,
-                                cas_intervals_t var_intervals = {});
+  explicit SingleIntervalIntSet(
+      const ir::Expr& min = SymbolicExprLimit::positive_inf,
+      const ir::Expr& max = SymbolicExprLimit::negative_inf,
+      cas_intervals_t var_intervals = {});
   SingleIntervalIntSet(const SingleIntervalIntSet& set) = default;
   SingleIntervalIntSet(SingleIntervalIntSet&& set) = default;
   SingleIntervalIntSet& operator=(const SingleIntervalIntSet& set) = default;

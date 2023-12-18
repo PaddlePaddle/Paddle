@@ -45,6 +45,28 @@ DeviceAPI GetDeviceAPI(const std::vector<Expr>& exprs);
 
 Expr AddUnitLoop(const std::vector<Expr>& exprs, const Expr& block);
 
+Expr GetStoreOfSBlock(const Expr& block);
+
+Tensor GetStoreTensorOfSBlock(const Expr& block);
+
+std::vector<Expr> GetConsumerSBlocks(const Expr& block, const Expr& root);
+
+std::vector<std::pair<Expr, Expr>> GetLoadsAndSBlocksOfSBlock(const Expr& block,
+                                                              const Expr& root);
+
+std::unordered_map<std::string, std::unordered_map<ir::Var, ir::Expr>>
+CollectVarToForMap(const std::vector<Expr>& exprs,
+                   const std::vector<Expr>& blocks);
+
+std::unordered_map<ir::Var, ir::Expr> GetIterVarToValueOfSBlock(ir::Expr block);
+
+ir::Expr ReplaceVarWithExpr(const ir::Expr& source,
+                            const std::vector<ir::Var>& candidates,
+                            const std::vector<ir::Expr>& targets);
+
+std::vector<ir::Expr> GetIterValuesOfAccess(ir::Expr load_or_store,
+                                            ir::Expr block);
+
 }  // namespace analyzer
 }  // namespace ir
 }  // namespace cinn
