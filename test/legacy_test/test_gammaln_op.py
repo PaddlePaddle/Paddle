@@ -120,13 +120,16 @@ class TestGammalnBF16Op(OpTest):
 class TestGammalnOpApi(unittest.TestCase):
     def setUp(self):
         self.shape = [2, 3, 4, 5]
-        self.dtype = "float64"
+        self.init_dtype_type()
         self.x_np = np.random.random(self.shape).astype(self.dtype) + 1
         self.place = (
             paddle.CUDAPlace(0)
             if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
+
+    def init_dtype_type(self):
+        self.dtype = "float64"
 
     def test_static_api(self):
         paddle.enable_static()
@@ -145,6 +148,11 @@ class TestGammalnOpApi(unittest.TestCase):
         out_ref = ref_gammaln(self.x_np)
         np.testing.assert_allclose(out_ref, out.numpy())
         paddle.enable_static()
+
+
+class TestGammalnOpApiFp32(TestGammalnOpApi):
+    def init_dtype_type(self):
+        self.dtype = "float32"
 
 
 if __name__ == "__main__":
