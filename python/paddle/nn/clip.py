@@ -661,6 +661,8 @@ class ClipGradByGlobalNorm(ClipGradBase):
         # are so many hard code depends on `add_n` in the legacy static
         # manual hybrid-parallel.
         self._async_add_n = None
+        # just for auto parallel.
+        self._pp_mesh = None
 
     def __str__(self):
         return "Gradient Clip By GlobalNorm, global_norm=%f" % (self.clip_norm)
@@ -713,16 +715,61 @@ class ClipGradByGlobalNorm(ClipGradBase):
         global_norm_var = []
         if len(sum_square_list_fp16) > 0:
             global_norm_var_fp16 = async_add_n(sum_square_list_fp16)
+            if self._pp_mesh is not None:
+                # sync pp
+                global_norm_var_fp16 = (
+                    paddle.distributed.auto_parallel.api.dtensor_from_local(
+                        global_norm_var_fp16._local_value().reshape([-1]),
+                        self._pp_mesh,
+                        [paddle.distributed.Partial()],
+                    )
+                )
+                global_norm_var_fp16 = paddle.distributed.reshard(
+                    global_norm_var_fp16,
+                    self._pp_mesh,
+                    [paddle.distributed.Replicate()],
+                )
             global_norm_var.append(global_norm_var_fp16.astype(sum_dtype))
         if len(sum_square_list_fp32) > 0:
             global_norm_var_fp32 = async_add_n(sum_square_list_fp32)
+            if self._pp_mesh is not None:
+                # sync pp
+                global_norm_var_fp32 = (
+                    paddle.distributed.auto_parallel.api.dtensor_from_local(
+                        global_norm_var_fp32._local_value().reshape([-1]),
+                        self._pp_mesh,
+                        [paddle.distributed.Partial()],
+                    )
+                )
+                global_norm_var_fp32 = paddle.distributed.reshard(
+                    global_norm_var_fp32,
+                    self._pp_mesh,
+                    [paddle.distributed.Replicate()],
+                )
             if sum_dtype == 'float32':
                 global_norm_var.append(global_norm_var_fp32)
             else:
                 global_norm_var.append(global_norm_var_fp32.astype(sum_dtype))
         if len(sum_square_list) > 0:
             global_norm_var_fp64 = async_add_n(sum_square_list)
+            if self._pp_mesh is not None:
+                # sync pp
+                global_norm_var_fp64 = (
+                    paddle.distributed.auto_parallel.api.dtensor_from_local(
+                        global_norm_var_fp64._local_value().reshape([-1]),
+                        self._pp_mesh,
+                        [paddle.distributed.Partial()],
+                    )
+                )
+                global_norm_var_fp64 = paddle.distributed.reshard(
+                    global_norm_var_fp64,
+                    self._pp_mesh,
+                    [paddle.distributed.Replicate()],
+                )
             global_norm_var.append(global_norm_var_fp64)
+
+        if self._pp_mesh is not None:
+            global_norm_var = [t._local_value() for t in global_norm_var]
         global_norm_var = async_add_n(global_norm_var)
         global_norm_var = paddle.sqrt(global_norm_var)
         max_global_norm = paddle.full(
