@@ -56,7 +56,7 @@ class TestIgammaOpFp32(TestIgammaOp):
 class TestIgammaOpApi(unittest.TestCase):
     def setUp(self):
         self.shape = [2, 3, 4, 5]
-        self.dtype = "float64"
+        self.init_dtype_type()
         self.x_np = np.random.random(self.shape).astype(self.dtype) + 1
         self.a_np = np.random.random(self.shape).astype(self.dtype) + 1
         self.place = (
@@ -64,6 +64,9 @@ class TestIgammaOpApi(unittest.TestCase):
             if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
+
+    def init_dtype_type(self):
+        self.dtype = "float64"
 
     def test_static_api(self):
         paddle.enable_static()
@@ -86,6 +89,11 @@ class TestIgammaOpApi(unittest.TestCase):
         out_ref = ref_igamma(self.x_np, self.a_np)
         np.testing.assert_allclose(out_ref, out.numpy())
         paddle.enable_static()
+
+
+class TestIgammaOpFp32Api(TestIgammaOpApi):
+    def init_dtype_type(self):
+        self.dtype = "float32"
 
 
 if __name__ == "__main__":
