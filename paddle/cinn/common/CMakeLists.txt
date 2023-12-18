@@ -21,7 +21,8 @@ gather_srcs(
   union_find.cc
   python_interpreter_guard.cc
   nvgpu_dev_info.cc
-  integer_set.cc)
+  integer_set.cc
+  dim_expr_simplify.cc)
 
 message(STATUS "srcs: ${cinnapi_src}")
 

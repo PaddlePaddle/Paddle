@@ -23,7 +23,7 @@ namespace {
 
 template <typename T>
 DimExpr TrySimplifyPass(const DimExpr& expr) {
-  if (!expr.Has<typename T::dim_expr_type>(expr)) {
+  if (!expr.Has<typename T::dim_expr_type>()) {
     return expr;
   }
   return T().Rewrite(expr);
@@ -134,6 +134,16 @@ struct GetOrderValue<Negative<DimExpr>> {
   static constexpr int value = 70;
 };
 
+template <>
+struct GetOrderValue<Max<DimExpr>> {
+  static constexpr int value = 80;
+};
+
+template <>
+struct GetOrderValue<Min<DimExpr>> {
+  static constexpr int value = 90;
+};
+
 bool IsLhsBeforeRhs(const DimExpr& lhs, const DimExpr& rhs);
 
 template <template <typename> class Op>
@@ -213,8 +223,8 @@ bool IsLhsBeforeRhs(const DimExpr& lhs, const DimExpr& rhs) {
                                     std::decay_t<decltype(rhs)>>::Call(lhs,
                                                                        rhs);
       },
-      lhs,
-      rhs);
+      lhs.variant(),
+      rhs.variant());
 }
 
 template <template <typename> class Op>
@@ -272,7 +282,7 @@ struct VisitEachInversableOperandStruct {
       }
     } else if (expr.Has<Inversed<DimExpr>>()) {
       const auto& [operand] = expr.Get<Inversed<DimExpr>>();
-      Call(operand, DoEach, depth, !is_inversed);
+      Call(operand->data, DoEach, depth, !is_inversed);
     } else {
       DoEach(expr, depth, is_inversed);
     }
@@ -514,7 +524,8 @@ ConstRational GetConstRationalImpl(const Reciprocal<DimExpr>& value) {
 
 ConstRational GetConstRational(const DimExpr& expr) {
   return std::visit(
-      [&](const auto& impl) { return GetConstRationalImpl(impl); }, expr);
+      [&](const auto& impl) { return GetConstRationalImpl(impl); },
+      expr.variant());
 }
 
 ConstRational MulConstRational(const ConstRational& lhs,

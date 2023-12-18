@@ -49,7 +49,7 @@ DimExpr DimExprBuilder::Min(const DimExpr& lhs, const DimExpr& rhs) {
 }
 
 DimExpr DimExprBuilder::Broadcast(const DimExpr& lhs, const DimExpr& rhs) {
-  return BroadcastDimExpr(std::vector{lhs, rhs});
+  return BroadcastDimExpr{List<DimExpr>{lhs, rhs}};
 }
 
 std::vector<DimExpr> DimExprBuilder::ConstShape(
