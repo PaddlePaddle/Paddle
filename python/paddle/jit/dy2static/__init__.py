@@ -26,7 +26,6 @@ from .convert_operators import (  # noqa: F401
     convert_logical_or as Or,
     convert_pop as Pop,
     convert_shape as Shape,
-    convert_shape_compare,
     convert_var_dtype as AsDtype,
     convert_while_loop as While,
     indexable as Indexable,
