@@ -2302,15 +2302,20 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (!with_dynamic_shape) {
         if (tile_inputs.find("repeat_times_tensor") != tile_inputs.end()) {
           if (!desc.Input("repeat_times_tensor").empty()) {
+            VLOG(3) << "Tile op: repeat_times_tensor is not empty.";
             return false;
           }
         }
         if (tile_inputs.find("RepeatTimes") != tile_inputs.end()) {
           if (!desc.Input("RepeatTimes").empty()) {
+            VLOG(3) << "Tile op: RepeatTimes is not empty.";
             return false;
           }
         }
-        if (!desc.HasAttr("repeat_times")) return false;
+        if (!desc.HasAttr("repeat_times")) {
+          VLOG(3) << "Tile op:`repeat_times` is not set.";
+          return false;
+        }
       }
     }
 #endif
