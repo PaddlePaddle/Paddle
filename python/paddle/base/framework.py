@@ -34,7 +34,6 @@ import numpy as np
 
 import paddle.version as paddle_version
 
-from .. import pir
 from . import core, unique_name
 from .libpaddle import DataType
 from .proto import (
@@ -1170,6 +1169,8 @@ def convert_np_dtype_to_dtype_(np_dtype):
 
     """
     if in_pir_mode():
+        from .. import pir
+
         return pir.core.convert_np_dtype_to_dtype_(np_dtype)
 
     # Convert the data type string to numpy data type.
