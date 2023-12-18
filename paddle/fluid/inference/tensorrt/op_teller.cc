@@ -1812,12 +1812,6 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
     }
-    if (op_type == "size") {
-      if (!with_dynamic_shape) {
-        VLOG(3) << "Ops(" << op_type << ") do not support static shape yet.";
-        return false;
-      }
-    }
 
     if (op_type == "pad3d") {
 #if !IS_TRT_VERSION_GE(8200)
@@ -2987,8 +2981,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "dequantize_linear",
       "share_data",
       "bitwise_and",
-      "bitwise_or",
-      "size"};
+      "bitwise_or"};
 
   std::unordered_set<std::string> teller_set{
       "matrix_multiply",
@@ -3159,8 +3152,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "dequantize_linear",
       "share_data",
       "bitwise_and",
-      "bitwise_or",
-      "size"};
+      "bitwise_or"};
 };
 
 struct GenericPluginTeller : public Teller {
