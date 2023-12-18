@@ -116,9 +116,9 @@ def save_state_dict(
         assert isinstance(
             state_dict, dict
         ), "The state_dict should be a dictionary."
-        state_dict, mapping = flatten_state_dict(state_dict)
-        if len(state_dict) > 0:
-            for val in state_dict.values():
+        flat_state_dict, mapping = flatten_state_dict(state_dict)
+        if len(flat_state_dict) > 0:
+            for val in flat_state_dict.values():
                 assert isinstance(
                     val, paddle.Tensor
                 ), "Only support dygraph Tensor now, support static DistributedTensor later"
@@ -143,12 +143,12 @@ def save_state_dict(
         if use_dist:
             check_file_name(file_name, process_group)
             # the parameter_name and order in state_dict should be the same
-            check_state_dict(state_dict, process_group)
+            check_state_dict(flat_state_dict, process_group)
         metadata = Metadata()
         local_state_dict = {}
         local_state_dict_metadata = {}
         local_storage_metadata = {}
-        for key, val in state_dict.items():
+        for key, val in flat_state_dict.items():
             if isinstance(val, paddle.Tensor):
                 # Case1: not initialized means this tensor is placed in another mesh which do not contain this rank
                 if not val._is_initialized():
