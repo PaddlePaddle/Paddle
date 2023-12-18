@@ -277,6 +277,26 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
           {out, softmax, softmax_lse, seed_offset}};
 }
 
+SpmdInfo FlashAttInferSpmdStatic(const DistMetaTensor& q,
+                                 const DistMetaTensor& k,
+                                 const DistMetaTensor& v,
+                                 const DistMetaTensor& fixed_seed_offset,
+                                 const DistMetaTensor& attn_mask,
+                                 float dropout,
+                                 bool causal,
+                                 bool return_softmax,
+                                 bool is_test) {
+  return FlashAttInferSpmd(q,
+                           k,
+                           v,
+                           fixed_seed_offset,
+                           attn_mask,
+                           dropout,
+                           causal,
+                           return_softmax,
+                           is_test);
+}
+
 SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
                                   const DistMetaTensor& k,
                                   const DistMetaTensor& v,
@@ -289,8 +309,7 @@ SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
                                   float dropout,
                                   bool causal,
                                   bool return_softmax,
-                                  bool is_test,
-                                  const std::string& rng_name) {
+                                  bool is_test) {
   // q
   // [batch_size, seq_len_q, num_heads, head_dim]
   auto q_shape = common::vectorize(q.dims());
@@ -361,13 +380,13 @@ SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
                         "The Tensor softmax_lse's shape must be [batch_size, "
                         "num_heads, seq_len_q, seq_len_kv]"));
 
-   PADDLE_ENFORCE_EQ(
+  PADDLE_ENFORCE_EQ(
       softmax_lse_ndim,
       softmax_lse_dims_mapping_size,
       phi::errors::InvalidArgument("The Tensor softmax_lse's rank [%d] and Its "
                                    "dims_mapping size [%d] are not matched.",
                                    out_ndim,
-                                   out_dims_mapping_size));                      
+                                   out_dims_mapping_size));
 
   auto batch_size_2 = out_shape[0];
   auto num_heads_2 = out_shape[1];
