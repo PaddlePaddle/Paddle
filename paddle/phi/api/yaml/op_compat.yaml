@@ -3474,7 +3474,7 @@
 
 - op: number_count
   inputs :
-    {numbers: Numbers}
+    {numbers: numbers}
   outputs :
     out : Out
 

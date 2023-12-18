@@ -723,7 +723,7 @@ template <typename T>
 class NumberCountOpCustomDeviceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto numbers = context.Input<phi::DenseTensor>("Numbers");
+    auto numbers = context.Input<phi::DenseTensor>("numbers");
     auto upper_range = context.Attr<int>("upper_range");
     auto number_count = context.Output<phi::DenseTensor>("Out");
     const auto& dev_ctx = context.template device_context<phi::CustomContext>();

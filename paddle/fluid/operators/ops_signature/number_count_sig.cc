@@ -18,7 +18,7 @@ namespace phi {
 
 KernelSignature NumberCountOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("number_count", {"Numbers"}, {"upper_range"}, {"Out"});
+  return KernelSignature("number_count", {"numbers"}, {"upper_range"}, {"Out"});
 }
 
 }  // namespace phi

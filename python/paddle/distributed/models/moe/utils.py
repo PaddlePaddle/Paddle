@@ -49,7 +49,7 @@ def _number_count(numbers, upper_range):
 
         helper.append_op(
             type=op_type,
-            inputs={'Numbers': numbers},
+            inputs={'numbers': numbers},
             outputs={'Out': out},
             attrs={'upper_range': upper_range},
         )

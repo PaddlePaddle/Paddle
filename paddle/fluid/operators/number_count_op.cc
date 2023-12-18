@@ -22,7 +22,7 @@ class NumberCountOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Numbers"), "Input", "Numbers", "NumberCount");
+    OP_INOUT_CHECK(ctx->HasInput("numbers"), "Input", "numbers", "NumberCount");
     OP_INOUT_CHECK(
         ctx->HasOutput("Out"), "Output", "number_count", "NumberCount");
   }
@@ -31,7 +31,7 @@ class NumberCountOp : public framework::OperatorWithKernel {
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     // the dtype of the numbers should be same as int64
-    auto number_dtype = OperatorWithKernel::IndicateVarDataType(ctx, "Numbers");
+    auto number_dtype = OperatorWithKernel::IndicateVarDataType(ctx, "numbers");
 
     PADDLE_ENFORCE_EQ(number_dtype,
                       framework::proto::VarType::INT64,
@@ -44,7 +44,7 @@ class NumberCountOp : public framework::OperatorWithKernel {
 class NumberCountOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Numbers", "(Tensor) The input gate index tensor.");
+    AddInput("numbers", "(Tensor) The input gate index tensor.");
     AddOutput("Out", "(Tensor) The output number count tensor.");
     AddAttr<int>("upper_range", "(int), The number of different numbers.");
 
