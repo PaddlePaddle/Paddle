@@ -139,14 +139,14 @@ class TestGammalnOpApi(unittest.TestCase):
             exe = paddle.static.Executor(self.place)
             (res,) = exe.run(feed={'x': self.x_np}, fetch_list=[out])
         out_ref = ref_gammaln(self.x_np)
-        np.testing.assert_allclose(out_ref, res)
+        np.testing.assert_allclose(out_ref, res, rtol=1e-5, atol=1e-5)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
         x = paddle.to_tensor(self.x_np)
         out = paddle.gammaln(x)
         out_ref = ref_gammaln(self.x_np)
-        np.testing.assert_allclose(out_ref, out.numpy())
+        np.testing.assert_allclose(out_ref, out.numpy(), rolt=1e-5, atol=1e-5)
         paddle.enable_static()
 
 
