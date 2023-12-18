@@ -94,8 +94,8 @@ execute_process(
     ${PYTHON_EXECUTABLE} ${op_gen_file} --op_yaml_files ${op_yaml_files}
     --op_compat_yaml_file ${op_compat_yaml_file} --namespaces ${op_namespace}
     --dialect_name ${dialect_name} --op_def_h_file ${op_header_file_tmp}
-    --op_def_cc_file ${op_src_files_tmp} --op_vjp_cc_file
-    ${op_vjp_src_file_tmp})
+    --op_info_file ${op_info_file_tmp} --op_def_cc_file ${op_src_files_tmp}
+    --op_vjp_cc_file ${op_vjp_src_file_tmp})
 
 set(generated_files_pd_op
     "${op_header_file}"
