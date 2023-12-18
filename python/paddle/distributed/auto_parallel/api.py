@@ -730,7 +730,7 @@ def to_static(
 
     Returns:
         DistModel: A ``DistModel`` instance converted the input ``layer``.
-        DistributedDataLoader: An optimized data loader that can be used to generate data.
+        DistributedDataLoader: An optimized data loader that can be used to generate data, it's usage is the same as ``paddle.io.DataLoader`` .
 
     Examples:
         .. code-block:: python
