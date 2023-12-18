@@ -1565,6 +1565,8 @@ void ApplyPirPass(Program &forward_program) {  // NOLINT
                         : nullptr;
 
   pir::PassManager pass_manager(ctx);
+  VLOG(0) << "========= AddPass ===========";
+  pass_manager.AddPass(pir::CreateShapeOptimizationPass());
   cinn::dialect::ir::PdOp2CinnOpConverter(&forward_program);
 
   pass_manager.AddPass(
