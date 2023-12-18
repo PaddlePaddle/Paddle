@@ -297,8 +297,8 @@ void DeepCopyVariable(const Variable* src_var,
     auto* tmp_dst_tensor = dst_var->GetMutable<phi::DenseTensor>();
     std::cout << "src_tensor.numel " << src_tensor.numel() << std::endl;
     tmp_dst_tensor->set_lod(src_tensor.lod());
-    if (src_tensor.numel() <= 0) {
-      tmp_dst_tensor->set_meta_without_valid(src_tensor.meta());
+    if (src_tensor.numel() == 0) {
+      tmp_dst_tensor->set_meta(src_tensor.meta());
       return;
     }
     if (!src_tensor.initialized()) {
@@ -318,7 +318,7 @@ void DeepCopyVariable(const Variable* src_var,
     tmp_dst_slr->set_height(src_slr.height());
     auto& src_t = src_slr.value();
     auto* dst_t = tmp_dst_slr->mutable_value();
-    if (src_t.numel() < 0) {
+    if (src_t.numel() == 0) {
       dst_t->set_meta(src_t.meta());
       return;
     }
@@ -347,7 +347,7 @@ void DeepCopyVariable(const Variable* src_var,
     dst_tensor_array->clear();
     for (auto src_tensor : src_tensor_array) {
       phi::DenseTensor* tmp_dst_tensor = new phi::DenseTensor();
-      if (src_tensor.numel() < 0) {
+      if (src_tensor.numel() == 0) {
         tmp_dst_tensor->set_meta(src_tensor.meta());
         continue;
       }

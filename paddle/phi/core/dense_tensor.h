@@ -126,8 +126,6 @@ class TEST_API DenseTensor : public TensorBase,
 
   void set_meta(const DenseTensorMeta& meta);
 
-  void set_meta_without_valid(const DenseTensorMeta& meta);
-
   /// \brief Test whether the metadata is valid.
   /// \return Whether the metadata is valid.
   bool valid() const noexcept override { return meta_.valid(); }

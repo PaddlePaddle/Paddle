@@ -79,8 +79,8 @@ void ShareVarData(const Variable* src_var, Variable* dst_var) {
     auto* tmp_dst_tensor = dst_var->GetMutable<phi::DenseTensor>();
     std::cout << "tmp_dst_tensor.numel() " << tmp_dst_tensor->numel()
               << std::endl;
-    if (src_tensor.numel() <= 0) {
-      tmp_dst_tensor->set_meta_without_valid(src_tensor.meta());
+    if (src_tensor.numel() == 0) {
+      tmp_dst_tensor->set_meta(src_tensor.meta());
       return;
     }
     std::cout << "tmp_dst_tensor.numel() " << tmp_dst_tensor->numel()
@@ -91,20 +91,20 @@ void ShareVarData(const Variable* src_var, Variable* dst_var) {
     auto* dst_t = tmp_dst_slr->mutable_value();
     auto& src_slr = src_var->Get<phi::SelectedRows>();
     auto& src_t = src_slr.value();
-    if (src_t.numel() <= 0) {
-      dst_t->set_meta_without_valid(src_t.meta());
+    if (src_t.numel() == 0) {
+      dst_t->set_meta(src_t.meta());
       return;
     }
     dst_t->ShareDataWith(src_t);
   } else if (src_var->IsType<phi::TensorArray>()) {
     auto src_tensor_array = src_var->Get<phi::TensorArray>();
     auto* dst_tensor_array = dst_var->GetMutable<phi::TensorArray>();
-    if (src_tensor_array.numel() <= 0) return;
+    if (src_tensor_array.numel() == 0) return;
     dst_tensor_array->clear();
     for (auto src_tensor : src_tensor_array) {
       phi::DenseTensor* tmp_dst_tensor = new phi::DenseTensor();
-      if (src_tensor.numel() <= 0) {
-        tmp_dst_tensor->set_meta_without_valid(src_tensor.meta());
+      if (src_tensor.numel() == 0) {
+        tmp_dst_tensor->set_meta(src_tensor.meta());
       } else {
         tmp_dst_tensor->ShareDataWith(src_tensor);
       }
