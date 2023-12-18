@@ -144,27 +144,58 @@ class DimExpr : public DimExprBase {
 //                   | Broadcastable DimExpr
 using DimExprConstraint = std::variant<Equal<DimExpr>, Broadcastable<DimExpr>>;
 
-// ValueShapeDimExprs = tShape [DimExpr] | tValue [DimExpr]
+// ValueShapeDimExprs = tValue [DimExpr] | tShape [DimExpr]
 template <typename T>
 class ValueShape {
  public:
   explicit ValueShape(const std::vector<T>& shape)
-      : shape_(shape), value_(std::nullopt) {}
+      : value_(std::nullopt), shape_(shape) {}
+  ValueShape() = default;
+  ValueShape(const ValueShape&) = default;
+  ValueShape(ValueShape&&) = default;
+  ValueShape& operator=(const ValueShape&) = default;
+  ValueShape& operator=(ValueShape&&) = default;
 
-  static ValueShape MakeConsistentValue(const std::vector<T>& value) {
-    T size(std::int64_t(value.size()));
-    return ValueShape(std::vector<T>{size}, value);
+  static ValueShape MakeConsistentValueShape(
+      const std::vector<T>& shape,
+      const std::function<std::optional<T>(int)>& GetValueByIndex) {
+    if (shape.empty()) {
+      if (!GetValueByIndex(0).has_value()) {
+        return ValueShape(std::nullopt, shape);
+      }
+      return ValueShape({GetValueByIndex(0).value()}, shape);
+    } else if (shape.size() == 1) {
+      if (!shape.at(0).template Has<std::int64_t>()) {
+        return ValueShape(std::nullopt, shape);
+      }
+      std::vector<T> value{};
+      std::int64_t value_size = shape.at(0).template Get<std::int64_t>();
+      for (std::size_t i = 0; i < value_size; ++i) {
+        if (!GetValueByIndex(i).has_value()) {
+          return ValueShape(std::nullopt, shape);
+        }
+        value.push_back(GetValueByIndex(i).value());
+      }
+      return ValueShape(value, shape);
+    } else {
+      return ValueShape(std::nullopt, shape);
+    }
+  }
+
+  static ValueShape MakeConsistentValueShape(const std::vector<T>& value) {
+    T shape(std::int64_t(value.size()));
+    return ValueShape(std::vector<T>{shape}, value);
   }
 
   const std::optional<std::vector<T>>& shape() const { return shape_; }
   const std::optional<std::vector<T>>& value() const { return value_; }
 
  private:
-  explicit ValueShape(const std::vector<T>& shape, const std::vector<T>& value)
-      : shape_(shape), value_(value) {}
+  explicit ValueShape(const std::vector<T>& value, const std::vector<T>& shape)
+      : value_(value), shape_(shape) {}
 
-  std::optional<std::vector<T>> shape_;
   std::optional<std::vector<T>> value_;
+  std::optional<std::vector<T>> shape_;
 };
 
 using ValueShapeDimExprs = ValueShape<DimExpr>;
