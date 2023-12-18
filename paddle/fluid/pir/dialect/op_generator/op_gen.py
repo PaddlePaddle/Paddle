@@ -1591,7 +1591,7 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
                     if op_info.onednn_layout_transform is None:
                         layout_transform_arg, layout_transform_inputs = (
                             "",
-                            r"{}",
+                            "",
                         )
                     else:
                         (
