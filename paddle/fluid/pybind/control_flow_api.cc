@@ -89,7 +89,10 @@ void BindWhileOp(py::module* m) {
     WhileOp in python api.
   )DOC");
   while_op.def("body", &WhileOp::body, return_value_policy::reference)
-      .def("as_operation", &WhileOp::operation, return_value_policy::reference);
+      .def("as_operation", &WhileOp::operation, return_value_policy::reference)
+      .def("block_arguments",
+           &WhileOp::block_args,
+           return_value_policy::reference);
 }
 
 void GetUsedExternalValueImpl(

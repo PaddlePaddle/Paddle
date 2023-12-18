@@ -313,6 +313,7 @@ pir::Block &WhileOp::body() {
   if (body_region.empty()) body_region.emplace_back();
   return body_region.front();
 }
+
 pir::Value WhileOp::cond() { return (*this)->operand_source(0); }
 
 void WhileOp::Print(pir::IrPrinter &printer) {

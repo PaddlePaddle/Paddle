@@ -141,7 +141,27 @@ class TestBuildModuleWithWhile2Op(unittest.TestCase):
                 [i, j],
             )
 
-            print(main_program)
+            self.assertEqual(
+                grad_outs[0].get_defining_op().name(), "pd_op.while"
+            )
+            self.assertEqual(
+                main_program.global_block()
+                .ops[-1]
+                .as_while_op()
+                .body()
+                .ops[-2]
+                .name(),
+                "pd_op.add",
+            )
+            self.assertEqual(
+                main_program.global_block()
+                .ops[-1]
+                .as_while_op()
+                .body()
+                .ops[-4]
+                .name(),
+                "cf.has_elements",
+            )
 
 
 if __name__ == "__main__":

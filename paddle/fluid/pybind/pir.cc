@@ -305,11 +305,15 @@ void BindBlock(py::module *m) {
           [](Block &self) { return &self.front(); },
           return_value_policy::reference)
       .def_property_readonly(
+          "parent_op",
+          [](Block &self) { return self.GetParentOp(); },
+          return_value_policy::reference)
+      .def_property_readonly(
           "program",
           [](Block &self) { return self.GetParentOp()->GetParentProgram(); },
           return_value_policy::reference)
       .def_property_readonly(
-          "get_parent",
+          "parent_block",
           [](Block &self) { return self.GetParentOp()->GetParent(); },
           return_value_policy::reference)
       .def_property_readonly("ops",
