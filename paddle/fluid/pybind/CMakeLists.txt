@@ -114,7 +114,7 @@ if(NOT WIN32)
 endif()
 
 if(WITH_PYTHON)
-  set(PYBIND_DEPS ${PYBIND_DEPS} python)
+  set(PYBIND_DEPS ${PYBIND_DEPS} py_func_op)
 endif()
 
 set(PYBIND_SRCS
