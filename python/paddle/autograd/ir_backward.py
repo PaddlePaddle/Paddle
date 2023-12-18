@@ -12,12 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import collections
 import logging
 from collections.abc import Sequence
 
 import paddle.pir
-from paddle.autograd.backward_utils import State, dynamic_shape_prim_vjp_guard
+from paddle.autograd.backward_utils import (
+    State,
+    ValueDict,
+    ValueSet,
+    dynamic_shape_prim_vjp_guard,
+)
 from paddle.base.libpaddle.pir import (
     build_pipe_for_block,
     get_used_external_value,
@@ -55,11 +62,11 @@ def check_all_puts(block, inputs, outputs):
             )
 
 
-def append_full_like(float_value, value, state, backward_ops):
+def append_full_like(float_value, copy_value, value, state, backward_ops):
     value_grad = paddle.full_like(
-        value,
+        copy_value,
         float_value,
-        dtype=value.dtype,
+        dtype=copy_value.dtype,
     )
     full_like_op = value_grad.get_defining_op()
     full_op = full_like_op.operand_source(1).get_defining_op()
@@ -118,7 +125,7 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
         # fwd : op1 -> op2 -> op3 -> output
         # bwd : op1G <- op2G <- op3G <- outputG <- full_likeop/feedop
         if grad is None:
-            append_full_like(1.0, output, state, backward_ops)
+            append_full_like(1.0, output, output, state, backward_ops)
         else:
             if output.shape != grad.shape:
                 raise ValueError(
@@ -141,7 +148,7 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
     complete_outputs = outputs
     complete_gradoutputs = grad_outputs
 
-    visited_output = set()
+    visited_output = ValueSet()
     for output in outputs:
         if output in visited_output:
             continue
@@ -156,7 +163,7 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
                     ]
                 else:
                     grad_value = append_full_like(
-                        0.0, opresult, state, backward_ops
+                        0.0, opresult, opresult, state, backward_ops
                     )
                     visited_output.add(opresult)
 
@@ -168,7 +175,7 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
 
 def some_in_set(value_list, value_set):
     def operand2value(values):
-        value_set = set()
+        value_set = ValueSet()
         for item in values:
             if isinstance(item, paddle.pir.OpOperand):
                 value_set.add(item.source())
@@ -246,7 +253,7 @@ def prune_ops(total_ops, inputs_set, outputs_set, no_grad_set):
 
 
 def update_no_grad_set_after_prune(
-    block, effective_forward_ops, no_grad_set, inputs, outputs
+    total_ops, effective_forward_ops, no_grad_set, inputs, outputs
 ):
     '''
     update no_grad_set after forward prune
@@ -254,9 +261,9 @@ def update_no_grad_set_after_prune(
     from inputs to outputs add value not in the path to no_grad_set,
     from outputs to inputs add value not in the path to no_grad_set,
     '''
-    inputs_set = set(inputs)
+    inputs_set = ValueSet(inputs)
     if inputs_set:
-        for op in block.ops:
+        for op in total_ops:
             if some_in_set(get_real_op_inputs(op), inputs_set):
                 for value in op.results():
                     if value not in no_grad_set:
@@ -267,12 +274,12 @@ def update_no_grad_set_after_prune(
                 if value not in inputs_set:
                     no_grad_set.add(value)
 
-    outputs_set = set(outputs)
-    no_grad_set_tmp = set()
+    outputs_set = ValueSet(outputs)
+    no_grad_set_tmp = ValueSet()
     for op in reversed(effective_forward_ops):
         for output in op.results():
             if output not in outputs_set and not some_in_set(
-                [output], set(get_real_op_inputs(op))
+                [output], ValueSet(get_real_op_inputs(op))
             ):
                 no_grad_set_tmp.add(output)
 
@@ -441,7 +448,9 @@ def append_backward_ops(
                     # last bwd_op return None because input in no_grad_set,
                     # but this bwd_op need a input.
 
-                    append_full_like(0.0, value, state, backward_ops)
+                    append_full_like(
+                        0.0, new_value[0], value, state, backward_ops
+                    )
                     zero_flag[i] = True
 
             outputs.append(new_value)
@@ -562,7 +571,7 @@ def append_backward_ops(
                     inputs_grad.append(state.value_to_valuegrad[value][0][0])
                 else:
                     value_grad = append_full_like(
-                        0.0, value, state, backward_ops
+                        0.0, value, value, state, backward_ops
                     )
                     inputs_grad.append(value_grad)
             paddle.base.libpaddle.pir.cf_yield(inputs_grad)
@@ -575,7 +584,7 @@ def append_backward_ops(
 
     # -----------------only for control flow-----------------#
     # tuple_push value to pop value
-    control_flow_value_to_copyvalue_map = {}
+    control_flow_value_to_copyvalue_map = ValueDict()
 
     if (
         len(effective_forward_ops) > 1
@@ -710,7 +719,7 @@ def append_backward_ops(
 
 
 def prepare_backward_prune_set(inputs, outputs):
-    outputs_fwd_set = set()
+    outputs_fwd_set = ValueSet()
     for input_ in inputs:
         if not input_.use_empty():
             for item in get_real_op_inputs(input_.first_use().owner()):
@@ -718,7 +727,7 @@ def prepare_backward_prune_set(inputs, outputs):
         else:
             logging.warning("input privided by inputs has no use")
 
-    inputs_fwd_set = set()
+    inputs_fwd_set = ValueSet()
     for output in outputs:
         inputs_fwd_set.add(output)
 
@@ -728,24 +737,24 @@ def prepare_backward_prune_set(inputs, outputs):
 def create_backward_prune_set(
     outputs_fwd_set, inputs_fwd_set, no_grad_set, state
 ):
-    outputs_set = set()
+    outputs_set = ValueSet()
     for item in outputs_fwd_set:
         if state.value_to_valuegrad[item] != []:
             outputs_set.add(state.value_to_valuegrad[item][0][0])
 
-    inputs_set = set()
+    inputs_set = ValueSet()
     for item in inputs_fwd_set:
         if state.value_to_valuegrad[item] != []:
             inputs_set.add(state.value_to_valuegrad[item][0][0])
 
-    inputs_set_tmp = set()
+    inputs_set_tmp = ValueSet()
     for out_grad in inputs_set:
         if not out_grad.use_empty():
             for item in get_real_op_inputs(out_grad.first_use().owner()):
                 inputs_set_tmp.add(item)
     inputs_set.update(inputs_set_tmp)
 
-    no_gradvar_set = set()  # grad_value of value in no_grad_set
+    no_gradvar_set = ValueSet()  # grad_value of value in no_grad_set
     for key in state.value_to_valuegrad:
         if key in no_grad_set and state.value_to_valuegrad[key] != []:
             no_gradvar_set.add(state.value_to_valuegrad[key][0][0])
@@ -781,21 +790,24 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
     block = outputs[0].get_defining_op().get_parent_block()
     state = State(block)
 
-    # check all inputs and outputs in the same block
-    check_all_puts(block, inputs, outputs)
     # update no_grad_set if some value stop_gradient=True
     update_no_grad_set_by_stopgradient(block, no_grad_set)
     complete_outputs, _, backward_ops = prepare_grad_outputs(
         grad_outputs, outputs, state
     )
 
-    inputs_set = set(inputs)
-    outputs_set = set(complete_outputs)
+    inputs_set = ValueSet(inputs)
+    outputs_set = ValueSet(complete_outputs)
+    total_ops = []
+    if block.get_parent is not None:
+        total_ops += block.get_parent.ops
+    total_ops += block.ops
+
     effective_forward_ops, _ = prune_ops(
-        block.ops, inputs_set, outputs_set, no_grad_set
+        total_ops, inputs_set, outputs_set, no_grad_set
     )
     update_no_grad_set_after_prune(
-        block, effective_forward_ops, no_grad_set, inputs, complete_outputs
+        total_ops, effective_forward_ops, no_grad_set, inputs, complete_outputs
     )
 
     outputs_fwd_set, inputs_fwd_set = prepare_backward_prune_set(
@@ -824,7 +836,7 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
     state.turn_map()
 
     for bwd_op in inverse_sort_op(remove_ops):
-        if bwd_op.result(0) in grad_outputs:
+        if bwd_op.result(0) in ValueSet(grad_outputs):
             continue
         if bwd_op.result(0).use_empty():
             remove_op(block, bwd_op, state)
@@ -864,7 +876,10 @@ def calc_gradient(outputs, inputs, grad_outputs, no_grad_set):
     """
     # record input value and its gradient (Value to Value)
     input_to_inputgrad_map = calc_gradient_helper(
-        outputs, inputs, grad_outputs=grad_outputs, no_grad_set=no_grad_set
+        outputs,
+        inputs,
+        grad_outputs=grad_outputs,
+        no_grad_set=ValueSet(no_grad_set),
     )
 
     inputgrad = []
@@ -957,18 +972,23 @@ def grad(
     check_type(
         no_grad_vars,
         'no_grad_vars',
-        ((paddle.pir.Value, paddle.pir.OpResult), list, tuple, set, type(None)),
+        (
+            (paddle.pir.Value, paddle.pir.OpResult),
+            list,
+            tuple,
+            set,
+            ValueSet,
+            type(None),
+        ),
         'paddle.autograd.ir_backward.grad',
     )
     outputs = _as_list(outputs)
     inputs = _as_list(inputs)
     grad_outputs = _as_list(grad_outputs)
     if no_grad_vars is None:
-        no_grad_set = set()
-    elif no_grad_vars is not set:
-        no_grad_set = set(no_grad_vars)
+        no_grad_set = ValueSet()
     else:
-        no_grad_set = no_grad_vars
+        no_grad_set = ValueSet(no_grad_vars)
 
     input_grad = calc_gradient(outputs, inputs, grad_outputs, no_grad_set)
 

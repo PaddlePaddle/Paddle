@@ -33,14 +33,14 @@
     data_type : x
 
 - op : block_multihead_attention_
-  args : (Tensor qkv, Tensor key_cache, Tensor value_cache, Tensor seq_lens_encoder, Tensor seq_lens_decoder, Tensor seq_lens_this_time, Tensor padding_offsets, Tensor cum_offsets, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor block_tables, Tensor pre_key_cache, Tensor pre_value_cache, Tensor rope_emb, Tensor mask,  Tensor tgt_mask, int max_seq_len, int block_size, bool use_neox_style)
+  args : (Tensor qkv, Tensor key_cache, Tensor value_cache, Tensor seq_lens_encoder, Tensor seq_lens_decoder, Tensor seq_lens_this_time, Tensor padding_offsets, Tensor cum_offsets, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor block_tables, Tensor pre_key_cache, Tensor pre_value_cache, Tensor rope_emb, Tensor mask,  Tensor tgt_mask, Tensor cache_k_quant_scales, Tensor cache_v_quant_scales, Tensor cache_k_dequant_scales, Tensor cache_v_dequant_scales, Tensor qkv_out_scale, Tensor qkv_bias, Tensor out_shift, Tensor out_smooth, int max_seq_len, int block_size, bool use_neox_style, bool dynamic_cachekv_quant=false, int quant_round_type=1, float quant_max_bound=127.0, float quant_min_bound=-127.0, float out_scale=-1, str compute_dtype = "default")
   output : Tensor(fmha_out), Tensor(qkv_out), Tensor(key_cache_out), Tensor(value_cache_out)
   infer_meta :
     func : BlockMultiheadAttentionInferMeta
   kernel :
     func : block_multihead_attention
     data_type : qkv
-  optional : pre_key_cache, pre_value_cache, rope_emb, mask, tgt_mask
+  optional : pre_key_cache, pre_value_cache, rope_emb, mask, tgt_mask, cache_k_quant_scales, cache_v_quant_scales, cache_k_dequant_scales, cache_v_dequant_scales, qkv_out_scale, qkv_bias, out_shift, out_smooth
   inplace : (qkv -> qkv_out), (key_cache -> key_cache_out), (value_cache -> value_cache_out)
   support_dygraph_mode : true
 
@@ -195,6 +195,18 @@
   kernel :
     func : fused_dconv_drelu_dbn
     data_type : grad_output
+
+- op : fused_dot_product_attention
+  args : (Tensor q, Tensor k, Tensor v, Tensor mask, float scaling_factor, float dropout_probability, bool is_training = false, bool is_causal_masking = false)
+  output : Tensor(out), Tensor(softmax_out), Tensor(rng_state)
+  infer_meta :
+    func : FusedDotProductAttentionInferMeta
+    param : [q, k, v]
+  kernel :
+    func : fused_dot_product_attention
+    data_type : q
+  backward : fused_dot_product_attention_grad
+  support_dygraph_mode : true
 
 - op : fused_dropout_add
   args : (Tensor x, Tensor y, Tensor seed_tensor, Scalar p, bool is_test, str mode, int seed = 0, bool fix_seed = false)
@@ -390,6 +402,16 @@
     func : multihead_matmul
     data_type : input
   optional : bias_qk
+
+- op : qkv_attention_xpu
+  args : (Tensor q, Tensor k, Tensor v, Tensor q_max, Tensor k_max, Tensor v_max, float alpha, int head_num, int head_dim, DataType out_dtype)
+  output : Tensor(qkv), Tensor(qkv_max)
+  infer_meta :
+    func : QKVAttentionXPUInferMeta
+  kernel :
+    func : qkv_attention_xpu
+    data_type : q
+  optional : q_max, k_max, v_max
 
 - op : quantize_xpu
   args : (Tensor x, DataType out_dtype, float scale = 1.0f)

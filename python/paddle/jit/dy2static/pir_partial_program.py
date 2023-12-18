@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import itertools
+from functools import cached_property
 
 import numpy as np
 
@@ -20,6 +21,7 @@ import paddle
 import paddle.pir.core as ir_static
 from paddle import _legacy_C_ops
 from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
+from paddle.autograd.backward_utils import ValueDict
 from paddle.autograd.ir_backward import grad
 from paddle.base import core, framework
 from paddle.base.compiler import BuildStrategy
@@ -31,20 +33,6 @@ from paddle.pir import Value, fake_op_result, is_fake_op_result
 from .utils import RETURN_NO_VALUE_MAGIC_NUM, backend_guard
 
 __all__ = []
-
-
-class cached_property:
-    """
-    Descriptor to implement lazy initialization of property.
-    """
-
-    def __init__(self, function):
-        self.function = function
-
-    def __get__(self, instance, cls):
-        val = self.function(instance)
-        setattr(instance, self.function.__name__, val)
-        return val
 
 
 class NestSequence:
@@ -71,7 +59,7 @@ class NestSequence:
         """
         Flattens the nested sequences into single list and remove duplicate variables + non-variable elements.
         """
-        variable_map = {}  # Value -> list idx
+        variable_map = ValueDict()  # opresult -> list idx
         variable_list = []
         for value in paddle.utils.flatten(self._raw_input):
             if not isinstance(value, Value):
@@ -121,7 +109,7 @@ class RunableProgram:
 
     @classmethod
     def _get_value_name_map_from_program(cls, program):
-        ret = {}
+        ret = ValueDict()
         ret[fake_op_result()] = "FakeVar"
         for op in program.global_block().ops:
             if op.name() == "pd_op.data":
@@ -471,7 +459,6 @@ class PartialProgramLayer:
         """
         In sot, inputs and outputs of partial program only contain tensors, so we can skip some step to speed up
         """
-        return self.__call__(inputs)
         out_vars = self._prepare_outputs()
         attrs = self._prepare_attributes()
         _legacy_C_ops.pir_run_program(

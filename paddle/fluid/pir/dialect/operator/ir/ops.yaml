@@ -1055,6 +1055,14 @@
   intermediate : reserve
   view : (dropout_state_in -> dropout_state_out)
 
+- op : row_conv
+  args : (Tensor x, Tensor filter)
+  output : Tensor(out)
+  infer_meta :
+     func: RowConvInferMeta
+  kernel :
+     func : row_conv
+
 - op : rrelu
   args : (Tensor x, float lower, float upper, bool is_test)
   output : Tensor(out), Tensor(noise)
@@ -1419,6 +1427,15 @@
     func: FusedFeedForwardInferMeta
   optional: dropout1_seed, dropout2_seed, linear1_bias, linear2_bias, ln1_scale, ln1_bias, ln2_scale, ln2_bias, ln2_mean, ln2_variance, ln1_mean, ln1_variance, ln1_out
   backward: fused_feedforward_grad
+
+- op: number_count
+  args: (Tensor numbers, int upper_range)
+  output: Tensor(out)
+  infer_meta:
+     func: NumberCountInferMeta
+  kernel:
+     func: number_count
+     data_type: numbers
 
 - op: sparse_momentum
   args: (Tensor param, Tensor grad, Tensor velocity, Tensor index, Tensor learning_rate, Tensor master_param,float mu, Scalar axis=0, bool use_nesterov=false,str regularization_method="", float regularization_coeff=0.0f, bool multi_precision=false, float rescale_grad=1.0f)

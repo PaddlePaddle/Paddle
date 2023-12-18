@@ -310,8 +310,9 @@ def monkey_patch_variable():
     @static_only
     def append(self, var):
         """
-        **Notes**:
-           **The type variable must be LoD Tensor Array.
+
+        Note:
+           The type variable must be LoD Tensor Array.
 
         """
         if not isinstance(var, Variable):
