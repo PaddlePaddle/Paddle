@@ -17,6 +17,7 @@
 #include <memory>
 #include <string>
 
+#include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
@@ -66,7 +67,14 @@ OpSupportedInfos(const std::string& place,
   std::unordered_set<std::string> all_ops;
   const auto& op_info = framework::OpInfoMap::Instance().map();
   for (const auto& item : op_info) {
-    all_ops.emplace(item.first);
+    const std::string op_type = item.first;
+    // The dtype of custom op is RAW(runtime decided type), skip it since we
+    // cannot determine its supported dtype here.
+    if (egr::Controller::Instance().GetOpMetaInfoMap().count(op_type)) {
+      VLOG(6) << "Skip custom op " << op_type << " for checking amp supported!";
+      continue;
+    }
+    all_ops.emplace(op_type);
   }
 
   std::unordered_set<std::string> supported_ops;
