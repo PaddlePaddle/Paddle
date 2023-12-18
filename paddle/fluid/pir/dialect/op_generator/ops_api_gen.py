@@ -125,6 +125,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'fused_dconv_drelu_dbn',
     'fused_dot_product_attention',
     'recv_v2',
+    'retinanet_detection_output',
     'rnn_',
     'row_conv',
     'seed',
