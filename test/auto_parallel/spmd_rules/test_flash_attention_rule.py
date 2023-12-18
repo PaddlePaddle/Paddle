@@ -144,9 +144,7 @@ class TestFlashAttentionSPMDRule(unittest.TestCase):
         self.assertEqual(
             infered_output_dist_attrs[0].dims_mapping, [0, -1, 1, -1]
         )
-        self.assertEqual(
-            infered_output_dist_attrs[2].dims_mapping, [0, 1, -1, -1]
-        )
+        self.assertEqual(infered_output_dist_attrs[2].dims_mapping, [0, 1, -1])
 
 
 if __name__ == "__main__":

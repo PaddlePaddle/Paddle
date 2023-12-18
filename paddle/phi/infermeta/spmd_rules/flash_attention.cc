@@ -467,7 +467,7 @@ SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
   auto v_dist_attr_dst = MapDims(v_dist_attr, axis_to_dim_map, v_axes);
   out_dist_attr_dst = MapDims(out_dist_attr_dst, axis_to_dim_map, out_axes);
   softmax_lse_dist_attr_dst =
-      MapDims(softmax_lse_dist_attr_dst, axis_to_dim_map, softmax_axes);
+      MapDims(softmax_lse_dist_attr_dst, axis_to_dim_map, softmax_lse_axes);
 
   // TODO(liuzhenhai): process fixed_seed and  attn_mask
 
