@@ -102,6 +102,10 @@ PD_REGISTER_SPMD_RULE(
     unsqueeze,
     PD_INFER_SPMD(phi::distributed::UnsqueezeInferSpmd),
     PD_INFER_SPMD(phi::distributed::UnsqueezeInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(
+    unsqueeze2,
+    PD_INFER_SPMD(phi::distributed::UnsqueezeInferSpmd),
+    PD_INFER_SPMD(phi::distributed::UnsqueezeInferSpmdReverse));
 
 // elementwise unary rule
 PD_REGISTER_SPMD_RULE(
