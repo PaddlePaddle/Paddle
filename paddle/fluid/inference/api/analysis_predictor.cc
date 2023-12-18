@@ -119,6 +119,9 @@
 
 PHI_DECLARE_bool(enable_pir_in_executor);
 PHI_DECLARE_bool(pir_apply_inplace_pass);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PHI_DECLARE_bool(inference_switch_stream);
+#endif
 
 namespace paddle {
 namespace {
@@ -2362,6 +2365,7 @@ bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
         }));
     auto &pool = paddle::experimental::DeviceContextPool::Instance();
     pool.SyncDeviceContext(place_);
+    FLAGS_inference_switch_stream = true;
   }
 
   return ZeroCopyRun();

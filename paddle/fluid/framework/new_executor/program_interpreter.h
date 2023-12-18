@@ -125,6 +125,7 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   void BuildSkipShareLoDInfo();
   void UpdateSyncOpNum();
   void AnalyseExecuteOrderForTrace();
+  void UpdateDevCtx(std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
 
   // inplace
   void BuildInplace();

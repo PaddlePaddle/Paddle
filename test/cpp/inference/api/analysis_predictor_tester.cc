@@ -705,6 +705,7 @@ TEST(Tensor, RunWithExternalStream) {
   cudaStreamCreate(&external_stream);
   Config tmp_config(config);
   tmp_config.SetExecStream(external_stream);
+  tmp_config.EnableNewExecutor();
   predictor->Run();
   paddle_infer::experimental::InternalUtils::RunWithExternalStream(
       predictor.get(), external_stream);
