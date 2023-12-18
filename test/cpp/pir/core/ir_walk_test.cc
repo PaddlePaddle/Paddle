@@ -14,6 +14,7 @@
 
 #include <gtest/gtest.h>
 
+#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/pir/core/block.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_dialect.h"
@@ -22,36 +23,43 @@
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/utils.h"
+#include "test/cpp/pir/tools/test_dialect.h"
+#include "test/cpp/pir/tools/test_pir_utils.h"
 
-TEST(region, erase_op_test) {
-  // (1) Init environment.
+TEST(region, walk_test) {
   pir::IrContext* ctx = pir::IrContext::Instance();
-
-  // (2) Create an empty program object
   pir::Program program(ctx);
   pir::Builder builder = pir::Builder(ctx, program.block());
+  ctx->GetOrRegisterDialect<test::TestDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
-  // (3) Def a = ConstantOp("2.0"); b = ConstantOp("2.0");
   pir::FloatAttribute fp_attr = builder.float_attr(2.0f);
   pir::Float32Type fp32_type = builder.float32_type();
   pir::OpResult a =
       builder.Build<pir::ConstantOp>(fp_attr, fp32_type)->result(0);
   pir::OpResult b =
       builder.Build<pir::ConstantOp>(fp_attr, fp32_type)->result(0);
-
-  // (6) Def c = CombineOp(a, b)
   builder.Build<pir::CombineOp>(std::vector<pir::Value>{a, b});
+  pir::Type dtype = pir::Float32Type::get(ctx);
+  phi::DDim dims = {2, 2};
+  pir::Operation* op =
+      test::CreateDenseTensorOp(ctx, dims, {"op_temp"}, {"op_attr"}, dtype);
 
-  // Test pir::Block::erase
+  // Test pir::Op::Walk
+  size_t op_size = 0;
+  op->Walk([&](pir::Operation* op) { op_size++; });
+  EXPECT_EQ(op_size, 1u);
+
+  // Test pir::Block::Walk
+  size_t block_size = 0;
   pir::Block* block = program.block();
-  EXPECT_EQ(block->size(), 3u);
-  block->erase(block->back());
-  EXPECT_EQ(block->size(), 2u);
+  block->Walk([&](pir::Block* block) { block_size++; });
+  EXPECT_EQ(block_size, 0u);
 
-  // Test pir::Region::erase
+  // Test pir::Region::Walk
+  size_t region_size = 0;
   pir::Region& region = program.module_op()->region(0);
   region.push_back(new pir::Block());
-  EXPECT_EQ(region.size(), 2u);
-  region.erase(region.begin());
-  EXPECT_EQ(region.size(), 1u);
+  region.Walk([&](pir::Region* region) { region_size++; });
+  EXPECT_EQ(region_size, 0u);
 }

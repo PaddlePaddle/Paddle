@@ -19,7 +19,7 @@ namespace pir::detail {
 
 // Defines utilities for walking and visiting operations.
 void Walk(Operation *op,
-          std::function<void(Region *)> callback,
+          const std::function<void(Region *)> &callback,
           WalkOrder order) {
   // No early increment here for they can't be erased from a callback.
   for (auto &region : *op) {
@@ -34,7 +34,7 @@ void Walk(Operation *op,
 }
 
 void Walk(Operation *op,
-          std::function<void(Block *)> callback,
+          const std::function<void(Block *)> &callback,
           WalkOrder order) {
   for (auto &region : *op) {
     // Early increment here in the case where the block is erased.
@@ -51,7 +51,7 @@ void Walk(Operation *op,
 }
 
 void Walk(Operation *op,
-          std::function<void(Operation *)> callback,
+          const std::function<void(Operation *)> &callback,
           WalkOrder order) {
   if (order == WalkOrder::PreOrder) callback(op);
 
@@ -64,11 +64,6 @@ void Walk(Operation *op,
   }
 
   if (order == WalkOrder::PostOrder) callback(op);
-}
-
-template <WalkOrder Order = WalkOrder::PostOrder, typename FuncTy>
-IR_API void Walk(Operation *op, FuncTy &&callback) {
-  return detail::Walk(op, callback, Order);
 }
 
 }  // namespace pir::detail

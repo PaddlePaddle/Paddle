@@ -71,7 +71,12 @@ class IR_API Region {
   template <WalkOrder Order = WalkOrder::PostOrder, typename FuncT>
   void Walk(FuncT &&callback) {
     for (auto &block : *this) {
-      block.Walk<Order>(callback);
+      // block.Walk<Order>(callback);
+      auto begin = block.begin();
+      auto end = block.end();
+      for (auto &op = begin; op != end; ++op) {
+        detail::Walk<Order>(&*op, callback);
+      }
     }
   }
 
