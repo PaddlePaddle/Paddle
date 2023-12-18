@@ -85,17 +85,17 @@ TEST(DimExpr, value_shape_expr) {
   std::unordered_map<pir::Value, ValueShapeDimExprs> value2shape{};
   std::vector<DimExpr> x_shapes{DimExpr("S0"), DimExpr(2)};
   std::vector<DimExpr> y_shapes{DimExpr(1), DimExpr("S1"), DimExpr(2)};
-  // x => {shape: [S0, 2], value: nullopt}
+  // x => {value: nullopt, shape: [S0, 2]}
   ValueShapeDimExprs x_value_shape{x_shapes};
   value2shape.emplace(x, x_value_shape);
-  // y => {shape: [1, S1, 2], value: nullopt}
+  // y => {value: nullopt, shape: [1, S1, 2]}
   ValueShapeDimExprs y_value_shape{y_shapes};
   value2shape.emplace(y, y_value_shape);
-  // extend_x => {shape: [2], value: [S0, 2]}
+  // extend_x => {value: [S0, 2], shape: [2]}
   ValueShapeDimExprs extend_x_value_shape =
       ValueShapeDimExprs::MakeConsistentValue(x_shapes);
   value2shape.emplace(extend_x, extend_x_value_shape);
-  // out => {shape: [S0, 2], value:: nullopt}
+  // out => {value:: nullopt, shape: [S0, 2]}
   ValueShapeDimExprs out_value_shape{x_shapes};
   value2shape.emplace(out, out_value_shape);
 }

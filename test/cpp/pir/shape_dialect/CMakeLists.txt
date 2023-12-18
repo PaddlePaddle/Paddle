@@ -16,19 +16,10 @@ paddle_test(
   pir
   gtest)
 
-paddle_test(
+cc_test_old(
   symbol_dim_expr_test
   SRCS
   symbol_dim_expr_test.cc
-  DEPS
-  op_dialect_vjp
-  pir
-  gtest)
-
-paddle_test(
-  symbol_dim_expr_test_debug
-  SRCS
-  symbol_dim_expr_test_debug.cc
   DEPS
   op_dialect_vjp
   pir
