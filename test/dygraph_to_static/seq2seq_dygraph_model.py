@@ -297,7 +297,7 @@ class BaseModel(paddle.nn.Layer):
         loss = paddle.nn.functional.softmax_with_cross_entropy(
             logits=dec_output, label=label, soft_label=False
         )
-        loss = paddle.squeeze(loss, axes=[2])
+        loss = paddle.squeeze(loss, axis=[2])
         max_tar_seq_len = paddle.shape(tar)[1]
         tar_mask = paddle.static.nn.sequence_lod.sequence_mask(
             tar_sequence_length, maxlen=max_tar_seq_len, dtype='float32'
@@ -835,7 +835,7 @@ class AttentionModel(paddle.nn.Layer):
         loss = paddle.nn.functional.softmax_with_cross_entropy(
             logits=dec_output, label=label, soft_label=False
         )
-        loss = paddle.squeeze(loss, axes=[2])
+        loss = paddle.squeeze(loss, axis=[2])
         max_tar_seq_len = paddle.shape(tar)[1]
         tar_mask = paddle.static.nn.sequence_lod.sequence_mask(
             tar_sequence_length, maxlen=max_tar_seq_len, dtype='float32'
