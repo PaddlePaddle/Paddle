@@ -19,6 +19,8 @@
 
 namespace pir {
 
+std::string GetValueId(const Value& val);
+
 // Helper class to query and manipulate shape constraint IR on buffer level.
 class IR_API ShapeAnalysis {
  public:
@@ -71,6 +73,15 @@ class IR_API ShapeConstraintIRAnalysis : public ShapeAnalysis {
                       Value rhs,
                       std::vector<int> rhs_dim_idxs) override;
 
+  std::unordered_map<
+      std::string,
+      std::pair<std::vector<std::string>, std::vector<std::string>>>
+      value_to_valueshape_expr_;
+
+  inline const std::string GetNextSymName() {
+    return "S" + std::to_string(next_sym_idx_++);
+  }
+
  private:
   // The operation this analysis runs on.
   ModuleOp m_;
@@ -80,6 +91,7 @@ class IR_API ShapeConstraintIRAnalysis : public ShapeAnalysis {
   // dimension size of the memref value.
   std::unordered_map<Value, std::vector<shape::SymbolicDimOp>>
       value_to_sym_dims_;
+  int64_t next_sym_idx_ = 0;
 
  public:
   explicit ShapeConstraintIRAnalysis(std::shared_ptr<pir::Program>&& program)
