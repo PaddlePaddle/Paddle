@@ -69,7 +69,7 @@ class ValueDict:
         return ret
 
     def update(self, other_dict):
-        for key, val in other_dict:
+        for key, val in other_dict.items():
             self[key] = val
 
     def keys(self):
@@ -85,7 +85,7 @@ class ValueDict:
 
     def pop(self, key):
         if not self.__contains__(key):
-            raise KeyError(key)
+            raise KeyError(f'{key} is not in ValueDict')
         return self._items.pop(ValueWrapper(key))
 
     def __setitem__(self, key, val: Any):

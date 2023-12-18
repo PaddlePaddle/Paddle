@@ -450,6 +450,13 @@ class TestMathOpPatchesPir(unittest.TestCase):
                 (output_x,) = exe.run(main_program, fetch_list=[x.size])
                 self.assertEqual(output_x, 24)
 
+    def test_hash_error(self):
+        with paddle.pir_utils.IrGuard():
+            _, _, program_guard = new_program()
+            with program_guard:
+                x = paddle.static.data('x', [2, 3])
+                self.assertRaises(NotImplementedError, hash, x)
+
     def test_clone(self):
         x_np = np.random.random(size=[100, 10]).astype('float64')
         with paddle.pir_utils.IrGuard():
