@@ -211,6 +211,17 @@ OpInfoTuple {op_name}::GetOpInfo() {{
   return std::make_tuple(inputs, attributes, outputs, run_time_info, "{origin_op_name}");
 }}
 """
+
+OP_INFO_ONEDNN_TEMPLATE = """
+OpInfoTuple {op_name}::GetOpInfo() {{
+  std::vector<paddle::dialect::OpInputInfo> inputs = {{ {inputs} }};
+  std::vector<paddle::dialect::OpAttributeInfo> attributes = {{ {attributes} }};
+  std::vector<paddle::dialect::OpOutputInfo> outputs = {{ {outputs} }};
+  paddle::dialect::OpRunTimeInfo run_time_info = paddle::dialect::OpRunTimeInfo("{infer_meta_func}", {{"{infer_meta_param}"}}, "{kernel_func}", {{"{kernel_param}"}}, {{{kernel_key_dtype}}}, {{{kernel_key_backend}}}, {{{inplace}}}, {{{view}}}, {{{extra_args}}}, "{layout_transform_arg}", {{{layout_transform_inputs}}}, {is_onednn_only}, {dynamic_fallback});
+  return std::make_tuple(inputs, attributes, outputs, run_time_info, "{origin_op_name}");
+}}
+"""
+
 CONSTRUCT_INPUT_INFO_TEMPLATE = """paddle::dialect::OpInputInfo("{name}", "{typename}", {optional}, {no_need_buffer}, {is_mutable_attribute}, {with_grad_semantic})"""
 CONSTRUCT_OUTPUT_INFO_TEMPLATE = """paddle::dialect::OpOutputInfo("{name}", "{typename}", {optional}, {intermediate})"""
 CONSTRUCT_ATTRIBUTE_INFO_TEMPLATE = """paddle::dialect::OpAttributeInfo("{name}", "{typename}", "{data_type}")"""
@@ -465,10 +476,12 @@ class OpInfoParser:
             self.onednn_extra_args = self.op_yaml_item["extra_args"]
             self.onednn_layout_transform = self.op_yaml_item["layout_transform"]
             self.is_onednn_only = self.op_yaml_item["is_onednn_only"]
+            self.dynamic_fallback = self.op_yaml_item["dynamic_fallback"]
         else:
             self.onednn_extra_args = []
             self.onednn_layout_transform = None
             self.is_onednn_only = False
+            self.dynamic_fallback = False
 
     def parse_op_traits(self):
         if 'traits' in self.op_yaml_item:
@@ -1566,6 +1579,46 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
                     origin_op_name=op_info.op_yaml_item['name'],
                 )
 
+                if dialect_name == "pd_onednn_op":
+                    if len(op_info.onednn_extra_args) > 0:
+                        args_name = []
+                        for arg in op_info.onednn_extra_args:
+                            args_name.append(arg["name"])
+
+                        extra_args = '"' + '", "'.join(args_name) + '"'
+                    else:
+                        extra_args = ""
+                    if op_info.onednn_layout_transform is None:
+                        layout_transform_arg, layout_transform_inputs = "", []
+                    else:
+                        (
+                            layout_transform_arg,
+                            layout_transform_inputs,
+                        ) = op_info.onednn_layout_transform
+                        layout_transform_inputs = (
+                            '"' + '", "'.join(layout_transform_inputs) + '"'
+                        )
+
+                    op_info_func_str = OP_INFO_ONEDNN_TEMPLATE.format(
+                        op_name=op_class_name,
+                        inputs=inputs_info_str,
+                        attributes=attribute_info_str,
+                        outputs=outputs_info_str,
+                        infer_meta_func=infer_meta_func_str,
+                        infer_meta_param=infer_meta_param_str,
+                        kernel_func=kernel_func_str,
+                        kernel_param=kernel_param_str,
+                        kernel_key_dtype=kernel_key_dtype,
+                        kernel_key_backend=kernel_key_backend,
+                        inplace=inplace_str,
+                        view=view_str,
+                        origin_op_name=op_info.op_yaml_item['name'],
+                        extra_args=extra_args,
+                        layout_transform_arg=layout_transform_arg,
+                        layout_transform_inputs=layout_transform_inputs,
+                        is_onednn_only=op_info.is_onednn_only,
+                        dynamic_fallback=op_info.dynamic_fallback,
+                    )
                 # generate op verify function str
                 op_verify_str = ''
                 if not op_info.custom_verify:

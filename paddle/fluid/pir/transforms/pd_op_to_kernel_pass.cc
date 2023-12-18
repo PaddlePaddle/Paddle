@@ -669,7 +669,7 @@ std::string GetKernelName(const OpYamlInfoParser* op_info_parser,
   return kernel_fn_str;
 }
 
-bool SupportsMKLDNN(const phi::DataType data_type) const {
+bool SupportsMKLDNN(const phi::DataType data_type) {
   auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
       phi::TransToPhiKernelName(type_));
   auto has_phi_kernel =
