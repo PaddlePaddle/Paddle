@@ -27,7 +27,6 @@ def ref_np_signbit(x: np.ndarray):
 class TestSignbitAPI(unittest.TestCase):
     def setUp(self) -> None:
         self.cuda_support_dtypes = [
-            'float16',
             'float32',
             'float64',
             'uint8',
@@ -52,7 +51,7 @@ class TestSignbitAPI(unittest.TestCase):
     def test_dtype(self):
         def run(place):
             paddle.disable_static(place)
-            if type(place) == type(paddle.CUDAPlace(0)):
+            if core.is_compiled_with_cuda():
                 support_dtypes = self.cuda_support_dtypes
             else:
                 support_dtypes = self.cpu_support_dtypes
@@ -69,7 +68,7 @@ class TestSignbitAPI(unittest.TestCase):
     def test_float(self):
         def run(place):
             paddle.disable_static(place)
-            if type(place) == type(paddle.CUDAPlace(0)):
+            if core.is_compiled_with_cuda():
                 support_dtypes = self.cuda_support_dtypes
             else:
                 support_dtypes = self.cpu_support_dtypes

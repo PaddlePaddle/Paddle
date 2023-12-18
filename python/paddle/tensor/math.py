@@ -7225,7 +7225,7 @@ def signbit(x, name=None):
         ],
         "signbit",
     )
-    neg_zero_x = paddle.to_tensor(np.copysign(1, x.numpy()))
+    neg_zero_x = paddle.to_tensor(np.copysign(1, x.numpy()), dtype=x.dtype)
     x = paddle.sign(neg_zero_x)
     out = paddle.cast(x < 0, dtype='bool')
     return out
