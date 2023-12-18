@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-from collections import OrderedDict
 
 from paddle.distributed.auto_parallel.static.dist_attribute import (
     DistTensorSpec,
@@ -87,7 +86,7 @@ class TestFlashAttentionSPMDRule(unittest.TestCase):
             0.0,
             False,
             False,
-            False
+            False,
         )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
@@ -108,9 +107,7 @@ class TestFlashAttentionSPMDRule(unittest.TestCase):
         self.assertEqual(
             infered_output_dist_attrs[0].dims_mapping, [0, -1, 1, -1]
         )
-        self.assertEqual(
-            infered_output_dist_attrs[2].dims_mapping, [0, 1, -1]
-        )
+        self.assertEqual(infered_output_dist_attrs[2].dims_mapping, [0, 1, -1])
 
     def test_infer_backward(self):
         result_dist_attrs = self.rule.infer_backward(

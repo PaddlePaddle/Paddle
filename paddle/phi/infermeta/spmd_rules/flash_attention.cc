@@ -373,7 +373,8 @@ SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
   auto softmax_lse_shape = common::vectorize(softmax_lse.dims());
   int softmax_lse_ndim = softmax_lse_shape.size();
   auto softmax_lse_dist_attr = softmax_lse.dist_attr();
-  int softmax_lse_dims_mapping_size = softmax_lse_dist_attr.dims_mapping().size();
+  int softmax_lse_dims_mapping_size =
+      softmax_lse_dist_attr.dims_mapping().size();
   PADDLE_ENFORCE_EQ(out_ndim,
                     4,
                     phi::errors::InvalidArgument(
@@ -450,7 +451,8 @@ SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
   std::string softmax_lse_axes = {batch_axis, num_heads_axis, seq_len_q_axis};
 
   auto out_dist_attr_dst = UnShardTensorDims(out_dist_attr, {1, 3});
-  auto softmax_lse_dist_attr_dst = UnShardTensorDims(softmax_lse_dist_attr, {2});
+  auto softmax_lse_dist_attr_dst =
+      UnShardTensorDims(softmax_lse_dist_attr, {2});
 
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
 
