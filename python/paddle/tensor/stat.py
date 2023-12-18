@@ -16,8 +16,10 @@
 
 import paddle
 from paddle import _C_ops
-from paddle.base.libpaddle import DataType
-from paddle.framework import in_dynamic_mode, in_dynamic_or_pir_mode
+from paddle.framework import (
+    in_dynamic_mode,
+    in_dynamic_or_pir_mode,
+)
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
 from ..common_ops_import import Variable
@@ -439,7 +441,8 @@ def median(x, axis=None, keepdim=False, name=None):
     tensor_topk, idx = paddle.topk(x, kth + 1, axis=axis, largest=False)
     dtype = (
         'float64'
-        if x.dtype in [core.VarDesc.VarType.FP64, DataType.FLOAT64]
+        if x.dtype
+        in [core.VarDesc.VarType.FP64, paddle.base.core.DataType.FLOAT64]
         else 'float32'
     )
     if sz & 1 == 0:
@@ -499,7 +502,7 @@ def _compute_quantile(
         In order to obtain higher precision, data type of results will be float64.
     """
     # Validate x
-    if not isinstance(x, Variable):
+    if not isinstance(x, (Variable, paddle.pir.Value)):
         raise TypeError("input x should be a Tensor.")
 
     # Validate q
@@ -582,7 +585,7 @@ def _compute_quantile(
     indices = []
 
     for q_num in q:
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             q_num = paddle.to_tensor(q_num, dtype='float64')
         if ignore_nan:
             indices.append(q_num * (valid_counts - 1))
@@ -618,10 +621,10 @@ def _compute_quantile(
         if interpolation == "midpoint":
             return (tensor_upper + tensor_below) / 2
 
-        weights = (index - indices_below).astype('float64')
+        weights = (index - indices_below).astype(paddle.float64)
         return paddle.lerp(
-            tensor_below.astype("float64"),
-            tensor_upper.astype("float64"),
+            tensor_below.astype(paddle.float64),
+            tensor_upper.astype(paddle.float64),
             weights,
         )
 

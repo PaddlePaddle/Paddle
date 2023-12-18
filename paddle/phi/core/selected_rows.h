@@ -44,7 +44,7 @@ class SelectedRows : public TensorBase,
  public:
   SelectedRows(const std::vector<int64_t>& rows, const int64_t& height);
 
-  SelectedRows();
+  TEST_API SelectedRows();
 
   const DenseTensor& value() const { return impl_->value(); }
 

@@ -23,6 +23,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/allocator.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/flags.h"
 
 #ifdef PADDLE_WITH_NCCL
@@ -143,22 +144,22 @@ using DecoratedAllocationPtr =
 
 template <typename T>
 static T&& FillValue(T&& allocation) {
-#if defined(PADDLE_WITH_NCCL)
+#if defined(PADDLE_WITH_CUDA)
   if (allocation != nullptr) {
     if (FLAGS_sync_after_alloc || FLAGS_alloc_fill_value >= 0) {
-      cudaDeviceSynchronize();
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
       if (FLAGS_alloc_fill_value >= 0) {
         VLOG(10) << "Set " << FLAGS_alloc_fill_value << " on "
                  << allocation->ptr() << " " << allocation->place() << " "
                  << allocation->size();
         if (platform::is_gpu_place(allocation->place())) {
-          cudaMemset(
-              allocation->ptr(), FLAGS_alloc_fill_value, allocation->size());
+          PADDLE_ENFORCE_GPU_SUCCESS(cudaMemset(
+              allocation->ptr(), FLAGS_alloc_fill_value, allocation->size()));
         } else {
           std::memset(
               allocation->ptr(), FLAGS_alloc_fill_value, allocation->size());
         }
-        cudaDeviceSynchronize();
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
       }
     }
   }

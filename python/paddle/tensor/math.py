@@ -621,7 +621,6 @@ def _elementwise_op(helper):
     )
 
     axis = helper.kwargs.get('axis', -1)
-    use_mkldnn = helper.kwargs.get('use_mkldnn', False)
     name = helper.kwargs.get('name', None)
 
     if out is None:
@@ -636,7 +635,7 @@ def _elementwise_op(helper):
         type=op_type,
         inputs={'X': x, 'Y': y},
         outputs={'Out': out},
-        attrs={'axis': axis, 'use_mkldnn': use_mkldnn},
+        attrs={'axis': axis},
     )
     return helper.append_activation(out)
 
@@ -779,7 +778,7 @@ def logaddexp(x, y, name=None):
 
 def subtract(x, y, name=None):
     """
-    Substract two tensors element-wise. The equation is:
+    Subtract two tensors element-wise. The equation is:
 
     .. math::
         out = x - y
@@ -1630,7 +1629,7 @@ def nan_to_num(x, nan=0.0, posinf=None, neginf=None, name=None):
              -99.                                    ])
     """
     # NOTE(tiancaishaonvjituizi): it seems that paddle handles the dtype of python float number
-    # incorrectly, so we have to explicitly contruct tensors here
+    # incorrectly, so we have to explicitly construct tensors here
     posinf_value = paddle.full_like(x, float("+inf"))
     neginf_value = paddle.full_like(x, float("-inf"))
     nan = paddle.full_like(x, nan)
@@ -2029,7 +2028,7 @@ def add_n(inputs, name=None):
             type='sum',
             inputs={'X': inputs},
             outputs={'Out': out},
-            attrs={'use_mkldnn': False},
+            attrs={},
         )
 
         return out
@@ -2252,7 +2251,7 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
     y_shape = y.shape
     if not len(x_shape) == len(y_shape) == 2:
         raise ValueError(
-            "The dimention of x, y should be 2 but receive x's shape: {}, y's shape: {}".format(
+            "The dimension of x, y should be 2 but receive x's shape: {}, y's shape: {}".format(
                 x_shape, y_shape
             )
         )
@@ -2292,7 +2291,7 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
             )
     else:
         raise ValueError(
-            "The dimention of input should be 2 or 1 but receive input's shape: {}".format(
+            "The dimension of input should be 2 or 1 but receive input's shape: {}".format(
                 input_shape
             )
         )
@@ -2332,7 +2331,7 @@ def addmm_(input, x, y, beta=1.0, alpha=1.0, name=None):
     y_shape = y.shape
     if not len(x_shape) == len(y_shape) == 2:
         raise ValueError(
-            "The dimention of x, y should be 2 but receive x's shape: {}, y's shape: {}".format(
+            "The dimension of x, y should be 2 but receive x's shape: {}, y's shape: {}".format(
                 x_shape, y_shape
             )
         )
@@ -2372,7 +2371,7 @@ def addmm_(input, x, y, beta=1.0, alpha=1.0, name=None):
             )
     else:
         raise ValueError(
-            "The dimention of input should be 2 or 1 but receive input's shape: {}".format(
+            "The dimension of input should be 2 or 1 but receive input's shape: {}".format(
                 input_shape
             )
         )
@@ -6230,6 +6229,11 @@ def sgn(x, name=None):
         paddle.float64,
         paddle.complex64,
         paddle.complex128,
+        DataType.FLOAT16,
+        DataType.FLOAT32,
+        DataType.FLOAT64,
+        DataType.COMPLEX64,
+        DataType.COMPLEX128,
     ]:
         raise TypeError(
             f"The data type of input must be one of ['float16', 'float32', 'float64', 'complex64', 'complex128'], but got {x.dtype}"
@@ -6317,12 +6321,17 @@ def take(x, index, mode='raise', name=None):
             f"'mode' in 'take' should be 'raise', 'wrap', 'clip', but received {mode}."
         )
 
-    if in_dynamic_mode():
-        if not isinstance(index, (paddle.Tensor, Variable)):
+    if in_dynamic_or_pir_mode():
+        if not isinstance(index, (paddle.Tensor, Variable, paddle.pir.Value)):
             raise TypeError(
                 f"The type of 'index' must be Tensor, but got {type(index)}"
             )
-        if index.dtype not in [paddle.int32, paddle.int64]:
+        if index.dtype not in [
+            paddle.int32,
+            paddle.int64,
+            DataType.INT32,
+            DataType.INT64,
+        ]:
             raise TypeError(
                 "The data type of 'index' must be one of ['int32', 'int64'], but got {}".format(
                     index.dtype

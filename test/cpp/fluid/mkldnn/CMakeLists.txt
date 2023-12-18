@@ -67,7 +67,6 @@ if(WIN32 AND WITH_TESTING)
     DEPS
     fleet_executor
     conditional_block_op
-    standalone_executor
     executor
     recurrent_op_helper
     recurrent_op
@@ -94,13 +93,26 @@ cc_test(
   SRCS test_mkldnn_pool_adaptive_op.cc
   DEPS fleet_executor
        conditional_block_op
-       standalone_executor
        executor
        op_registry
        generated_static_op
        generated_op
        phi
        common
+       scope
+       device_context
+       enforce)
+
+cc_test(
+  test_mkldnn_squeeze
+  SRCS test_mkldnn_squeeze.cc
+  DEPS fleet_executor
+       conditional_block_op
+       executor
+       op_registry
+       generated_static_op
+       generated_op
+       phi
        scope
        device_context
        enforce)
