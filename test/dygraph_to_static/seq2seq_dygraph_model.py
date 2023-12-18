@@ -841,7 +841,6 @@ class AttentionModel(paddle.nn.Layer):
             tar_sequence_length, maxlen=max_tar_seq_len, dtype='float32'
         )
         loss = loss * tar_mask
-        loss = paddle.mean(loss, axis=[0])
-        loss = fluid.layers.reduce_sum(loss)
+        loss = paddle.sum(loss)
 
         return loss
