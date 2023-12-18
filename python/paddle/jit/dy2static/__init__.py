@@ -30,7 +30,6 @@ from .convert_operators import convert_load as Ld  # noqa: F401
 from .convert_operators import indexable as Indexable  # noqa: F401
 from .variable_trans_func import create_bool_as_type  # noqa: F401
 from .variable_trans_func import to_static_variable  # noqa: F401
-from .convert_operators import convert_shape_compare  # noqa: F401
 from .assert_transformer import AssertTransformer
 from .ast_transformer import DygraphToStaticAst
 from .program_translator import convert_to_static
