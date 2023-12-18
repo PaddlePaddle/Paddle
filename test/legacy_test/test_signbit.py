@@ -62,6 +62,7 @@ class TestSignbitAPI(unittest.TestCase):
                     np.random.randint(-10, 10, size=[12, 20, 2]).astype(dtype)
                 )
                 paddle.signbit(x)
+
         for place in self.place:
             run(place)
 
@@ -74,15 +75,17 @@ class TestSignbitAPI(unittest.TestCase):
                 support_dtypes = self.cpu_support_dtypes
 
             for dtype in support_dtypes:
-                np_x = np.random.randint(-10, 10, size=[12, 20, 2]).astype(dtype)
+                np_x = np.random.randint(-10, 10, size=[12, 20, 2]).astype(
+                    dtype
+                )
                 x = paddle.to_tensor(np_x)
                 out = paddle.signbit(x)
                 np_out = out.numpy()
                 out_expected = ref_np_signbit(np_x)
                 np.testing.assert_allclose(np_out, out_expected, rtol=1e-05)
+
         for place in self.place:
             run(place)
-
 
     def test_input_type(self):
         with self.assertRaises(TypeError):
