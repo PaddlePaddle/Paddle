@@ -69,11 +69,11 @@ bool DimExprEqual(const Reciprocal<DimExpr>& lhs,
 
 template <template <typename> class Op>
 bool DimExprEqual(const Op<DimExpr>& lhs, const Op<DimExpr>& rhs) {
-  if (lhs->size() != rhs->size()) {
+  if (lhs.operands->size() != rhs.operands->size()) {
     return false;
   }
   for (std::size_t i = 0; i < lhs->size(); ++i) {
-    if (lhs->at(i) != rhs->at(i)) {
+    if (lhs.operands->at(i) != rhs.operands->at(i)) {
       return false;
     }
   }
