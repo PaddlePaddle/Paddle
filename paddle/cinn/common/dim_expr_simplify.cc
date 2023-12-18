@@ -31,6 +31,10 @@ DimExpr TrySimplifyPass(const DimExpr& expr) {
 
 DimExpr Simplify(const DimExpr& expr);
 
+/*
+ * Simplify Example:
+ * Negative(dim_expr) => Negative(Simplify(dim_expr))
+ */
 template <template <typename> class Op>
 struct SimplifyOneOperand {
   using dim_expr_type = Op<DimExpr>;
@@ -50,6 +54,11 @@ struct SimplifyOneOperand {
 template <template <typename> class Op>
 struct SimplifyOneOperandTrait;
 
+/*
+ * Simplify Example:
+ * Negative(DimExpr(0)) => DimExpr(0)
+ * Reciprocal(DimExpr(1)) => DimExpr(1)
+ */
 template <template <typename> class Op>
 struct SimplifyUnitOneOperand {
   using dim_expr_type = Op<DimExpr>;
@@ -77,6 +86,11 @@ struct SimplifyOneOperandTrait<Reciprocal> {
   static constexpr std::int64_t unit = 1;
 };
 
+/*
+ * Simplify Example:
+ * Add(dim_expr0, dim_expr1, ...) =>
+ * Add(Simplify(dim_expr0), Simplify(dim_expr1), ...)
+ */
 template <template <typename> class Op>
 struct SimplifyOperands {
   using dim_expr_type = Op<DimExpr>;
@@ -227,6 +241,9 @@ bool IsLhsBeforeRhs(const DimExpr& lhs, const DimExpr& rhs) {
       rhs.variant());
 }
 
+/*
+ * Sort operands in DimExpr
+ */
 template <template <typename> class Op>
 struct SortOperands {
   using dim_expr_type = Op<DimExpr>;
@@ -358,6 +375,11 @@ struct GetInversed<Broadcast> {
   }
 };
 
+/*
+ * Simplify Example:
+ * Add(dim_expr0, Add(dim_expr1, dim_expr2)) =>
+ * Add(dim_expr0, dim_expr1, dim_expr2)
+ */
 template <template <typename> class Op>
 struct FlattenOperands {
   using dim_expr_type = Op<DimExpr>;
@@ -392,6 +414,10 @@ size_t GetConstDimCount(const List<DimExpr>& exprs) {
   return cnt;
 }
 
+/*
+ * Simplify Example:
+ * Add(dim_expr0, 0) => dim_expr0
+ */
 template <template <typename> class Op>
 struct FoldUnitConstant {
   using dim_expr_type = Op<DimExpr>;
@@ -422,6 +448,10 @@ struct FoldUnitConstant {
   }
 };
 
+/*
+ * Simplify Example:
+ * Add(dim_expr0, 0, 1, 2) => Add(dim_expr0, 3)
+ */
 template <template <typename> class Op>
 struct FoldConstants {
   using dim_expr_type = Op<DimExpr>;
@@ -630,6 +660,10 @@ struct FoldOperandTrait<Broadcast> {
   }
 };
 
+/*
+ * Simplify Example:
+ * Mul(2, Reciprocal(2)) => 1
+ */
 template <template <typename> class Op>
 struct FoldInversedPairToUnit {
   using dim_expr_type = Op<DimExpr>;
@@ -685,6 +719,10 @@ struct FoldInversedPairToUnit {
   }
 };
 
+/*
+ * Simplify Example:
+ * Broadcast(2, dim_expr) => 2
+ */
 struct FoldRedundantSymbolicBroadcast {
   using dim_expr_type = Broadcast<DimExpr>;
 
@@ -741,6 +779,11 @@ struct FoldRedundantSymbolicBroadcast {
   }
 };
 
+/*
+ * Simplify Example:
+ * Broadcast(dim_expr0, Broadcast(dim_expr1, dim_expr2)) =>
+ * Broadcast(dim_expr0, dim_expr1, dim_expr2)
+ */
 struct FoldRedundantBroadcast {
   using dim_expr_type = Broadcast<DimExpr>;
 

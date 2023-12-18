@@ -51,6 +51,16 @@ TEST(DimExpr, constraint) {
   ASSERT_EQ(static_cast<int>(constraints.size()), 1);
 }
 
+TEST(Simplify, NumberArithmetic) {
+  DimExpr number = DimExpr(5);
+  DimExpr zero0 = number + number - number;
+  ASSERT_TRUE((zero0.Has<std::int64_t>()));
+  ASSERT_EQ((zero0.Get<std::int64_t>()), 0);
+  DimExpr zero1 = number * DimExpr(1) / number;
+  ASSERT_TRUE((zero1.Has<std::int64_t>()));
+  ASSERT_EQ((zero1.Get<std::int64_t>()), 0);
+}
+
 TEST(DimExpr, equal) {
   DimExprBuilder builder{nullptr};
   DimExpr sym0 = DimExpr("S0");
