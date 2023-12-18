@@ -76,7 +76,7 @@ class NumpyArrayInitializer(Initializer):
                 type=core.VarDesc.VarType.LOD_TENSOR,
                 persistable=False,
             )
-        if var.dtype in [core.DataType.FLOAT16, core.DataType.BFLOAT16]:
+        elif var.dtype in [core.DataType.FLOAT16, core.DataType.BFLOAT16]:
             out_var = var
             out_dtype = core.DataType.FLOAT32
             np_value = self._value.astype("float32")
