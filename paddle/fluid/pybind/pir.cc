@@ -308,6 +308,10 @@ void BindBlock(py::module *m) {
           "program",
           [](Block &self) { return self.GetParentOp()->GetParentProgram(); },
           return_value_policy::reference)
+      .def_property_readonly(
+          "get_parent",
+          [](Block &self) { return self.GetParentOp()->GetParent(); },
+          return_value_policy::reference)
       .def_property_readonly("ops",
                              [](Block &self) -> py::list {
                                py::list op_list;
@@ -1189,7 +1193,9 @@ SplitedResult SplitForwardBackward(
             dtype,
             place);
     counter += 1;
-    backward_value_map[v] = op->results()[0].Value::impl();
+    pir::Value target = op->results()[0].Value::impl();
+    target.set_type(v.type());
+    backward_value_map[v] = target;
   };
 
   auto create_output_fn_forward = [&ctx,
