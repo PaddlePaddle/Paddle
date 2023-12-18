@@ -1921,7 +1921,7 @@ def OpGenerator(
 
         if dialect_name == "pd_onednn_op":
             op_def_h_file_tmp = (
-                "/data/Eager/Paddle/paddle/fluid/pir/dialect/operator/ir/pd_op.h\"\n#include \""
+                "paddle/fluid/pir/dialect/operator/ir/pd_op.h\"\n#include \""
                 + op_def_h_file
             )
         else:
