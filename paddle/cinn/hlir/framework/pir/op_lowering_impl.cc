@@ -872,8 +872,7 @@ ir::Tensor OpLowererImpl::GetTensor(const GroupPtr& group,
   auto dtype = type_info.dtype();
   std::string input_id = ValueName(value);
   if (group->shape_analysis != nullptr) {
-    auto sym_vec =
-        group->shape_analysis->GetOrCreateSymbolicDimsForRankedValue(value);
+    const auto& sym_vec = group->shape_analysis->GetValueShapeDimExprs(value);
     std::vector<ir::Dim> sym_shape;
     for (auto& sym : sym_vec) {
       sym_shape.emplace_back(ir::Dim(input_id + "_" + sym.GetSymName(), sym));

@@ -15,13 +15,15 @@
 #pragma once
 
 #include <memory>
+#include "paddle/pir/dialect/shape/utils/shape_utils.h"
 #include "paddle/pir/pass/pass.h"
 
 namespace cinn {
 namespace dialect {
 namespace ir {
 
-std::unique_ptr<pir::Pass> CreateDynamicReshapeOpPass();
+std::unique_ptr<pir::Pass> CreateDynamicReshapeOpPass(
+    const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis);
 
 }  // namespace ir
 }  // namespace dialect

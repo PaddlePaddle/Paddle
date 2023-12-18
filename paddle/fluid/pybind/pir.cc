@@ -66,6 +66,7 @@
 #ifdef PADDLE_WITH_CINN
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/dynamic_reshape_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/cinn_group_lowering_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
@@ -1574,6 +1575,9 @@ void ApplyPirPass(Program &forward_program) {  // NOLINT
 
   if (has_dynamic_shape) {
     pass_manager.AddPass(pir::CreateInferSymbolicShapePass(shape_analysis));
+    pass_manager.AddPass(
+        cinn::dialect::ir::CreateDynamicReshapeOpPass(shape_analysis));
+    pass_manager.AddPass(pir::CreateDeadCodeEliminationPass());
   }
 
   pass_manager.AddPass(

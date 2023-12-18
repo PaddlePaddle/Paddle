@@ -27,10 +27,15 @@ namespace ir {
 class DynamicReshapeOpPattern
     : public pir::OpRewritePattern<paddle::dialect::ReshapeOp> {
  public:
-  using pir::OpRewritePattern<paddle::dialect::ReshapeOp>::OpRewritePattern;
+  DynamicReshapeOpPattern(
+      pir::IrContext* context,
+      const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis)
+      : pir::OpRewritePattern<paddle::dialect::ReshapeOp>::OpRewritePattern(
+            context),
+        shape_analysis_(shape_analysis) {}
 
   bool MatchAndRewrite(paddle::dialect::ReshapeOp op,
-                       pir::PatternRewriter &rewriter) const override {
+                       pir::PatternRewriter& rewriter) const override {
     auto scale_factor_gen_op =
         op->operand_source(1).dyn_cast<pir::OpResult>().owner();
     auto output = op.result(0);
@@ -43,31 +48,48 @@ class DynamicReshapeOpPattern
 
     auto cinn_reshape = rewriter.Build<cinn::dialect::ReshapeOp>(
         op->operand_source(0).dyn_cast<pir::OpResult>(), shape);
-    rewriter.ReplaceAllUsesWith(op.result(0), cinn_reshape.result(0));
+
+    CHECK(shape_analysis_->HasValueShapeDimExprs(output))
+        << "Can't find DimExpr for output of reshape in shape_analysis.";
+    const auto& out_origin_expr_shape =
+        shape_analysis_->GetValueShapeDimExprs(output);
+    shape_analysis_->SetValueShapeDimExprs(cinn_reshape.result(0),
+                                           out_origin_expr_shape);
+
+    rewriter.ReplaceAllUsesWith(output, cinn_reshape.result(0));
     rewriter.EraseOp(op);
 
     return true;
   }
+
+ private:
+  std::shared_ptr<pir::ShapeConstraintIRAnalysis> shape_analysis_;
 };
 
 class DynamicReshapeOpPass : public pir::PatternRewritePass {
  public:
-  DynamicReshapeOpPass()
-      : PatternRewritePass("cinn_dynamic_reshape_op_pass", 1) {}
+  DynamicReshapeOpPass(
+      const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis)
+      : PatternRewritePass("cinn_dynamic_reshape_op_pass", /*opt_level=*/1),
+        shape_analysis_(shape_analysis) {}
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
+  pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add<DynamicReshapeOpPattern>(context);
+    ps.Add<DynamicReshapeOpPattern>(context, shape_analysis_);
     return ps;
   }
 
-  bool CanApplyOn(pir::Operation *op) const override {
+  bool CanApplyOn(pir::Operation* op) const override {
     return op->isa<cinn::dialect::GroupOp>() && op->num_regions() > 0;
   }
+
+ private:
+  std::shared_ptr<pir::ShapeConstraintIRAnalysis> shape_analysis_;
 };
 
-std::unique_ptr<pir::Pass> CreateDynamicReshapeOpPass() {
-  return std::make_unique<DynamicReshapeOpPass>();
+std::unique_ptr<pir::Pass> CreateDynamicReshapeOpPass(
+    const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis) {
+  return std::make_unique<DynamicReshapeOpPass>(shape_analysis);
 }
 
 }  // namespace ir
