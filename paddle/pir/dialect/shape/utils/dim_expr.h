@@ -149,22 +149,72 @@ template <typename T>
 class ValueShape {
  public:
   explicit ValueShape(const std::vector<T>& shape)
-      : shape_(shape), value_(std::nullopt) {}
+      : value_(std::nullopt), shape_(shape) {}
+  ValueShape() = default;
+  ValueShape(const ValueShape&) = default;
+  ValueShape(ValueShape&&) = default;
+  ValueShape& operator=(const ValueShape&) = default;
+  ValueShape& operator=(ValueShape&&) = default;
 
-  static ValueShape MakeConsistentValue(const std::vector<T>& value) {
-    T size(std::int64_t(value.size()));
-    return ValueShape(std::vector<T>{size}, value);
+  static ValueShape MakeConsistentValueShape(
+      const std::vector<T>& shape,
+      const std::function<std::optional<T>(int)>& GetValueByIndex) {
+    if (shape.size() > 1) {
+      return ValueShape{shape, std::nullopt};
+    }
+    std::vector<T> value{};
+    if (shape.empty()) {
+      CHECK(GetValueByIndex(0).has_value());
+      value.push_back(GetValueByIndex(0).value());
+      return ValueShape(value, shape);
+    } else if (shape.size() == 1) {
+      CHECK(shape.at(0).Has<std::int64_t>());
+      std::int64_t value_size = shape.at(0).Get<std::int64_t>();
+      for (std::size_t i = 0; i < value_size; ++i) {
+        CHECK(GetValueByIndex(i).has_value());
+        value.push_back(GetValueByIndex(i).value());
+        return ValueShape(value, shape);
+      }
+    } else {
+      LOG(FATAL) << "shape.size() > 1, error!";
+    }
+  }
+
+  static ValueShape MakeConsistentValueShape(const std::vector<T>& shape,
+                                             const std::vector<T>& value) {
+    CHECK_LE(shape.size(), 1);
+    std::vector<T> value{};
+    if (shape.empty()) {
+      CHECK(GetValueByIndex(0).has_value());
+      value.push_back(GetValueByIndex(0).value());
+      return ValueShape(value, shape);
+    } else if (shape.size() == 1) {
+      CHECK(shape.at(0).Has<std::int64_t>());
+      std::int64_t value_size = shape.at(0).Get<std::int64_t>();
+      for (std::size_t i = 0; i < value_size; ++i) {
+        CHECK(GetValueByIndex(i).has_value());
+        value.push_back(GetValueByIndex(i).value());
+        return ValueShape(value, shape);
+      }
+    } else {
+      LOG(FATAL) << "shape.size() > 1, error!";
+    }
+  }
+
+  static ValueShape MakeConsistentValueShape(const std::vector<T>& value) {
+    T shape(std::int64_t(value.size()));
+    return ValueShape(std::vector<T>{shape}, value);
   }
 
   const std::optional<std::vector<T>>& shape() const { return shape_; }
   const std::optional<std::vector<T>>& value() const { return value_; }
 
  private:
-  explicit ValueShape(const std::vector<T>& shape, const std::vector<T>& value)
-      : shape_(shape), value_(value) {}
+  explicit ValueShape(const std::vector<T>& value, const std::vector<T>& shape)
+      : value_(value), shape_(shape) {}
 
-  std::optional<std::vector<T>> shape_;
   std::optional<std::vector<T>> value_;
+  std::optional<std::vector<T>> shape_;
 };
 
 using ValueShapeDimExprs = ValueShape<DimExpr>;
