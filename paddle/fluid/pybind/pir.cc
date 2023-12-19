@@ -738,7 +738,6 @@ void BindValue(py::module *m) {
             return nullptr;
           },
           return_value_policy::reference)
-      .def("numel", [](Value self) { return phi::product(GetValueDims(self)); })
       .def("type", &Value::type)
       .def("is_dense_tensor_type",
            [](Value self) {
@@ -785,23 +784,9 @@ void BindValue(py::module *m) {
              print_stream << ")";
              return print_stream.str();
            })
-      .def("__neg__",
-           [](Value self) {
-             return paddle::dialect::scale(self, -1.0, 0.0, true);
-           })
       .def("is_same", &Value::operator==)
       .def("hash", [](Value self) { return std::hash<pir::Value>{}(self); })
       .def("__repr__", &Value2String);
-  // For basaic operators
-  OVERRIDE_OPERATOR_FOR_EACH(__add__, add, 1.0, other, true);
-  OVERRIDE_OPERATOR_FOR_EACH(__sub__, subtract, 1.0, -1.0 * other, true);
-  OVERRIDE_OPERATOR_FOR_EACH(__mul__, multiply, other, 0.0, false);
-  OVERRIDE_OPERATOR_FOR_EACH(__truediv__, divide, 1.0 / other, 0.0, false);
-  // For compare opeartors
-  OVERRIDE_COMPARE_OP_FOR_EACH(__lt__, less_than);
-  OVERRIDE_COMPARE_OP_FOR_EACH(__le__, less_equal);
-  OVERRIDE_COMPARE_OP_FOR_EACH(__gt__, greater_than);
-  OVERRIDE_COMPARE_OP_FOR_EACH(__ge__, greater_equal);
 }
 
 void BindOpOperand(py::module *m) {
