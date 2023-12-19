@@ -788,14 +788,14 @@ def update_op_dims_mapping(
             fw_results[1][output_idx]._partial_dims()
             != output_dist_attr._partial_dims()
         ):
-            _logger.info(
-                "Changed: Op [{}], tensor name [{}], Original partial on [{}], Infered partial on [{}]".format(
-                    dist_op.serial_op.type,
-                    output_arg_names[i],
-                    output_dist_attr._partial_dims(),
-                    fw_results[1][output_idx]._partial_dims(),
-                )
-            )
+            # _logger.info(
+            #     "Changed: Op [{}], tensor name [{}], Original partial on [{}], Infered partial on [{}]".format(
+            #         dist_op.serial_op.type,
+            #         output_arg_names[i],
+            #         output_dist_attr._partial_dims(),
+            #         fw_results[1][output_idx]._partial_dims(),
+            #     )
+            # )
             output_dist_attr._clean_partial_status()
             output_dist_attr._set_partial_dims(
                 list(fw_results[1][0]._partial_dims())
