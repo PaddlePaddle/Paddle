@@ -34,7 +34,7 @@ SpmdInfo FusedLinearParamGradAddInferSpmd(const DistMetaTensor& x,
   auto weight_grad_dist_attr =
       PADDLE_GET_CONST(TensorDistAttr, dy_spmd_info.second[0]);
 
-  weight_grad_dist_attr =  ReduceGradBroadCastDims(2, weight_grad_dist_attr);
+  weight_grad_dist_attr = ReduceGradBroadCastDims(2, weight_grad_dist_attr);
 
   TensorDistAttr dweight_dist_attr = dweight.dist_attr();
   auto dweight_shape = common::vectorize(dweight.dims());
