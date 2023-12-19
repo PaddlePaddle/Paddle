@@ -1977,6 +1977,12 @@ template class FractionalMaxPool2dWithIndexFunctor<CPUContext, float, int>;
 template class FractionalMaxPool2dWithIndexGradFunctor<CPUContext, float, int>;
 template class FractionalMaxPool2dWithIndexFunctor<CPUContext, double, int>;
 template class FractionalMaxPool2dWithIndexGradFunctor<CPUContext, double, int>;
+template class FractionalMaxPool2dWithIndexFunctor<CPUContext,
+                                                   dtype::float16,
+                                                   int>;
+template class FractionalMaxPool2dWithIndexGradFunctor<CPUContext,
+                                                       dtype::float16,
+                                                       int>;
 
 /*
  * All tensors are in NCDHW format.
@@ -2128,6 +2134,12 @@ template class FractionalMaxPool3dWithIndexFunctor<CPUContext, float, int>;
 template class FractionalMaxPool3dWithIndexGradFunctor<CPUContext, float, int>;
 template class FractionalMaxPool3dWithIndexFunctor<CPUContext, double, int>;
 template class FractionalMaxPool3dWithIndexGradFunctor<CPUContext, double, int>;
+template class FractionalMaxPool3dWithIndexFunctor<CPUContext,
+                                                   dtype::float16,
+                                                   int>;
+template class FractionalMaxPool3dWithIndexGradFunctor<CPUContext,
+                                                       dtype::float16,
+                                                       int>;
 
 }  // namespace funcs
 }  // namespace phi
