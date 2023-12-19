@@ -128,7 +128,6 @@ if(WITH_CINN)
     op_debug_string_test.cc
     DEPS
     executor
-    common
     fleet_executor
     recurrent_op_helper
     recurrent_op
@@ -136,7 +135,7 @@ if(WITH_CINN)
     ${COMMON_OP_DEPS}
     python)
 else()
-  paddle_test(op_debug_string_test SRCS op_debug_string_test.cc DEPS common)
+  paddle_test(op_debug_string_test SRCS op_debug_string_test.cc)
 endif()
 
 if(WITH_GPU)
