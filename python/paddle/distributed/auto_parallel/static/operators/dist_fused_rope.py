@@ -17,6 +17,7 @@ import logging
 from paddle.base.log_helper import get_logger
 
 from ..completion import get_phi_spmd_rule
+from ..dist_attribute import DistTensorSpec
 from ..utils import get_dist_tensor_spec
 from .common import (
     DistributedOperatorImplContainer,
@@ -36,27 +37,64 @@ class DistributedFusedRope(DistributedOperatorImplContainer):
 
     @staticmethod
     def update_dims_mapping(dist_op):
-        # step1: prepare inputs need for rule (order args as PHI definition and filter out unnecessary args)
+        # step1: prepare inputs need for rule (order args as PHI definition and filter out unnecessary args), build fake spec for optional args
+
         op_desc = dist_op.serial_op.desc
         q = op_desc.input('q')[0]
-        k = op_desc.input('k')[0]
-        v = op_desc.input('v')[0]
-        sin = op_desc.input('sin')[0]
-        cos = op_desc.input('cos')[0]
-        position_ids = op_desc.input('position_ids')[0]
+        k = op_desc.input('k')[0] if op_desc.HasInput('k') else None
+        v = op_desc.input('v')[0] if op_desc.HasInput('v') else None
+        sin = op_desc.input('sin')[0] if op_desc.HasInput('sin') else None
+        cos = op_desc.input('cos')[0] if op_desc.HasInput('cos') else None
+        position_ids = (
+            op_desc.input('position_ids')[0]
+            if op_desc.HasInput('position_ids')
+            else None
+        )
         out_q = op_desc.output('out_q')[0]
-        out_k = op_desc.output('out_k')[0]
-        out_v = op_desc.output('out_v')[0]
+        out_k = (
+            op_desc.output('out_k')[0] if op_desc.HasOutput('out_k') else None
+        )
+        out_v = (
+            op_desc.output('out_v')[0] if op_desc.HasOutput('out_v') else None
+        )
 
         q_spec = get_dist_tensor_spec(dist_op, q)
-        k_spec = get_dist_tensor_spec(dist_op, k)
-        v_spec = get_dist_tensor_spec(dist_op, v)
-        sin_spec = get_dist_tensor_spec(dist_op, sin)
-        cos_spec = get_dist_tensor_spec(dist_op, cos)
-        position_ids_spec = get_dist_tensor_spec(dist_op, position_ids)
+        k_spec = (
+            get_dist_tensor_spec(dist_op, k)
+            if k is not None
+            else DistTensorSpec()
+        )
+        v_spec = (
+            get_dist_tensor_spec(dist_op, v)
+            if v is not None
+            else DistTensorSpec()
+        )
+        sin_spec = (
+            get_dist_tensor_spec(dist_op, sin)
+            if sin is not None
+            else DistTensorSpec()
+        )
+        cos_spec = (
+            get_dist_tensor_spec(dist_op, cos)
+            if cos is not None
+            else DistTensorSpec()
+        )
+        position_ids_spec = (
+            get_dist_tensor_spec(dist_op, position_ids)
+            if position_ids is not None
+            else DistTensorSpec()
+        )
         out_q_spec = get_dist_tensor_spec(dist_op, out_q, is_input=False)
-        out_k_spec = get_dist_tensor_spec(dist_op, out_k, is_input=False)
-        out_v_spec = get_dist_tensor_spec(dist_op, out_v, is_input=False)
+        out_k_spec = (
+            get_dist_tensor_spec(dist_op, out_k, is_input=False)
+            if out_k is not None
+            else DistTensorSpec()
+        )
+        out_v_spec = (
+            get_dist_tensor_spec(dist_op, out_v, is_input=False)
+            if out_v is not None
+            else DistTensorSpec()
+        )
 
         # step2: infer spmd
         rule = get_phi_spmd_rule("fused_rotary_position_embedding")
@@ -76,14 +114,49 @@ class DistributedFusedRope(DistributedOperatorImplContainer):
             out_v_spec,
         )
 
+        # remove optional args in spmd results
+        input_args = [q, k, v, sin, cos, position_ids]
+        output_args = [out_q, out_k, out_v]
+        fw_and_bw_results_without_optional_arg = []
+        for results in [fw_results, bw_results]:
+            input_results = results[0]
+            output_results = results[1]
+            input_results_without_optional_arg = []
+            output_results_without_optional_arg = []
+            for idx, input_arg in enumerate(input_args):
+                if input_arg is not None:
+                    input_results_without_optional_arg.append(
+                        input_results[idx]
+                    )
+            for idx, output_arg in enumerate(output_args):
+                if output_arg is not None:
+                    output_results_without_optional_arg.append(
+                        output_results[idx]
+                    )
+
+            fw_and_bw_results_without_optional_arg.append(
+                [
+                    input_results_without_optional_arg,
+                    output_results_without_optional_arg,
+                ]
+            )
+
         # step3: update dist_attr
         # tensor order following order in PHI defition
         changed = update_op_dims_mapping(
             dist_op,
-            [q, k, v, sin, cos, position_ids],
-            [out_q, out_k, out_v],
-            fw_results,
-            bw_results,
+            [
+                input_arg
+                for input_arg in [q, k, v, sin, cos, position_ids]
+                if input_arg is not None
+            ],
+            [
+                output_arg
+                for output_arg in [out_q, out_k, out_v]
+                if output_arg is not None
+            ],
+            fw_results=fw_and_bw_results_without_optional_arg[0],
+            bw_results=fw_and_bw_results_without_optional_arg[1],
         )
 
         return changed
