@@ -22,10 +22,6 @@
 namespace phi {
 namespace funcs {
 namespace sparse {
-template <typename T, typename IntT>
-SparseCsrTensor CSRTanspose(const phi::GPUContext& dev_ctx,
-                            const phi::SparseCsrTensor& x);
-
 template <typename DeviceContext>
 class SparseBlas {
  public:

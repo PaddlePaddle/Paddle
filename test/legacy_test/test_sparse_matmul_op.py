@@ -93,7 +93,7 @@ class TestMatmulSparseDense(unittest.TestCase):
         self.check_result([8, 16, 12], [8, 12, 10], 'csr')
 
 
-class TestMatmulCSRCSR(unittest.TestCase):
+class TestMatmulCsrCsr(unittest.TestCase):
     # x: csr sparse, y: csr sparse, out: csr sparse
     def check_result(self, x_shape, y_shape):
         mask = paddle.randint(0, 2, x_shape)
@@ -157,7 +157,7 @@ class TestMatmulCSRCSR(unittest.TestCase):
         self.check_result([8, 16, 12], [8, 12, 10])
 
 
-class TestMatmulCOOCOO(unittest.TestCase):
+class TestMatmulCooCoo(unittest.TestCase):
     # x: coo sparse, y: coo sparse, out: coo sparse
     def check_result(self, x_shape, y_shape):
         mask = paddle.randint(0, 2, x_shape)
