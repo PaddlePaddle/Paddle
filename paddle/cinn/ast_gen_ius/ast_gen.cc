@@ -21,6 +21,8 @@
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 
+PD_DECLARE_bool(cinn_new_group_scheduler);
+
 namespace cinn {
 namespace ast_gen_ius {
 
@@ -90,13 +92,17 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
     std::vector<ir::Expr> iter_values;
     // reduce body and reduce init schedule block should have different objects
     // for same axis so we re-create objects
-    std::vector<Var> axis_vars = common::GenDefaultAxis(axis_len);
+    std::vector<Var> axis_vars = cinn::common::GenDefaultAxis(axis_len);
     for (int i = 0; i < shape.size(); ++i) {
+      if (FLAGS_cinn_new_group_scheduler && shape[i] == Expr(1)) {
+        optim::ReplaceVarWithExpr(&init_body, axis[i], Expr(0));
+        continue;
+      }
       block_vars.push_back(Var(Expr(0),
                                shape[i],
                                cinn::UniqName("i" + std::to_string(i)),
                                /*is_reduce = */ false));
-      optim::ReplaceVarWithExpr(&init_body, axis[i], block_vars[i]);
+      optim::ReplaceVarWithExpr(&init_body, axis[i], block_vars.back());
       axis_vars[i]->is_reduce_axis = false;
       if (shape[i] == Expr(1)) {
         iter_values.push_back(Expr(0));
@@ -118,8 +124,12 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
     std::vector<ir::Expr> reduce_iter_values;
     // reduce body and reduce init schedule block should have different objects
     // for same axis so we re-create objects
-    std::vector<Var> reduce_axis_vars = common::GenDefaultAxis(axis_len);
+    std::vector<Var> reduce_axis_vars = cinn::common::GenDefaultAxis(axis_len);
     for (int i = 0; i < shape.size(); ++i) {
+      if (FLAGS_cinn_new_group_scheduler && shape[i] == Expr(1)) {
+        optim::ReplaceVarWithExpr(&reduce_body, axis[i], Expr(0));
+        continue;
+      }
       reduce_block_vars.push_back(Var(Expr(0),
                                       shape[i],
                                       cinn::UniqName("i" + std::to_string(i)),
@@ -142,12 +152,20 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
       reduce_axis_var->is_reduce_axis = true;
       reduce_iter_values.push_back(reduce_axis_var);
     }
+
+    int non_zero_axis_size = 0;
     for (int i = 0; i < axis.size(); ++i) {
-      optim::ReplaceVarWithExpr(&reduce_body, axis[i], reduce_block_vars[i]);
-    }
-    for (int i = axis.size(); i < reduce_block_vars.size(); ++i) {
+      if (FLAGS_cinn_new_group_scheduler && shape[i] == Expr(1)) {
+        continue;
+      }
       optim::ReplaceVarWithExpr(
-          &reduce_body, reduce_axis[i - axis.size()], reduce_block_vars[i]);
+          &reduce_body, axis[i], reduce_block_vars[non_zero_axis_size]);
+      ++non_zero_axis_size;
+    }
+    for (int i = non_zero_axis_size; i < reduce_block_vars.size(); ++i) {
+      optim::ReplaceVarWithExpr(&reduce_body,
+                                reduce_axis[i - non_zero_axis_size],
+                                reduce_block_vars[i]);
     }
 
     reduce_body = ir::ScheduleBlockRealize::Make(
@@ -166,6 +184,9 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
     // Put the two parts together
     ir::Expr body = ir::Block::Make({init_body, reduce_body});
     for (int i = static_cast<int>(axis_len) - 1; i >= 0; --i) {
+      if (shape[i] == Expr(1)) {
+        continue;
+      }
       ir::Var loop_var = axis[i];
       ir::Expr loop_extent = shape[i];
       body = ir::For::Make(
@@ -182,7 +203,7 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
     // create schedule block itervars, i0,i1...
     std::vector<ir::Var> block_vars;
     std::vector<ir::Expr> iter_values;
-    std::vector<Var> axis_vars = common::GenDefaultAxis(axis_len);
+    std::vector<Var> axis_vars = cinn::common::GenDefaultAxis(axis_len);
     for (int i = 0; i < shape.size(); ++i) {
       block_vars.push_back(Var(
           Expr(0), shape[i], cinn::UniqName("i" + std::to_string(i)), false));

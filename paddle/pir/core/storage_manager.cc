@@ -17,7 +17,7 @@
 #include <memory>
 #include <unordered_map>
 
-#include "paddle/pir/core/enforce.h"
+#include "paddle/common/enforce.h"
 
 namespace pir {
 // This is a structure for creating, caching, and looking up Storage of

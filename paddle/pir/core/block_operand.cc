@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include "paddle/pir/core/block_operand.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/block.h"
 #include "paddle/pir/core/block_operand_impl.h"
-#include "paddle/pir/core/enforce.h"
 
 namespace pir {
 

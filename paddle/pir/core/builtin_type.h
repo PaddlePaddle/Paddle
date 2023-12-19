@@ -59,7 +59,6 @@ class DenseTensorType : public Type::TypeBase<DenseTensorType,
  public:
   using Base::Base;
   using Dim = DenseTensorTypeStorage::Dim;
-  using DataLayout = DenseTensorTypeStorage::DataLayout;
   using LoD = DenseTensorTypeStorage::LoD;
 
   Type dtype() const;

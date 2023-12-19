@@ -99,7 +99,7 @@ def argsort(x, axis=-1, descending=False, name=None):
               [1, 1, 0, 2],
               [0, 2, 1, 1]]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         _, ids = _C_ops.argsort(x, axis, descending)
         return ids
     else:
@@ -145,7 +145,7 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
         axis (int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is x.ndim. when axis < 0, it works the same way
             as axis + R. Default is None, the input `x` will be into the flatten tensor, and selecting the min value index.
-        keepdim (bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimentions is one fewer than x since the axis is squeezed. Default is False.
+        keepdim (bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimensions is one fewer than x since the axis is squeezed. Default is False.
         dtype (str|np.dtype, optional): Data type of the output tensor which can
                     be int32, int64. The default value is ``int64`` , and it will
                     return the int64 indices.
@@ -1136,7 +1136,7 @@ def searchsorted(
              [1, 3, 4, 5]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.searchsorted(sorted_sequence, values, out_int32, right)
     else:
         check_variable_and_dtype(

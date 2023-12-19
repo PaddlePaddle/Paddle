@@ -412,12 +412,12 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
       ComputeMergedQKVMatmulForward<T>(ctx, config, query, qkv_out);
 
       if (config.CanUseFlashAttn()) {
-        qkv_transpose_out->Resize(phi::make_ddim({3,
-                                                  config.batch_size,
-                                                  config.seq_len_m,
-                                                  config.seq_len_r,
-                                                  config.num_heads,
-                                                  config.head_dim}));
+        qkv_transpose_out->Resize(common::make_ddim({3,
+                                                     config.batch_size,
+                                                     config.seq_len_m,
+                                                     config.seq_len_r,
+                                                     config.num_heads,
+                                                     config.head_dim}));
       }
       AllocWithDebugInfo<T>(dev_ctx, "qkv_transpose_out", qkv_transpose_out);
     } else {

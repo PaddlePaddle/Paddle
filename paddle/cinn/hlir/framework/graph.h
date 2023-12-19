@@ -198,16 +198,20 @@ class Graph : public cinn::common::Graph {
   std::vector<std::shared_ptr<Group>> fusion_groups;
 
   void RegisterNode(size_t key, Node* node) {
-    this->common::Graph::RegisterNode(key, node->as<common::GraphNode>());
+    this->cinn::common::Graph::RegisterNode(
+        key, node->as<cinn::common::GraphNode>());
   }
   void RegisterNode(size_t key, NodeData* node) {
-    this->common::Graph::RegisterNode(key, node->as<common::GraphNode>());
+    this->cinn::common::Graph::RegisterNode(
+        key, node->as<cinn::common::GraphNode>());
   }
   void RegisterNode(const std::string& key, Node* node) {
-    this->common::Graph::RegisterNode(key, node->as<common::GraphNode>());
+    this->cinn::common::Graph::RegisterNode(
+        key, node->as<cinn::common::GraphNode>());
   }
   void RegisterNode(const std::string& key, NodeData* node) {
-    this->common::Graph::RegisterNode(key, node->as<common::GraphNode>());
+    this->cinn::common::Graph::RegisterNode(
+        key, node->as<cinn::common::GraphNode>());
   }
 
   /**

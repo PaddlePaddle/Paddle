@@ -29,7 +29,7 @@ namespace pybind {
 /**
  * A base context that represents the CINN IR that need context information
  */
-class IRContextNode : public common::Object {
+class IRContextNode : public cinn::common::Object {
  public:
   std::vector<ir::Expr> exprs;
 
@@ -60,7 +60,7 @@ class IRContext {
   void add_expr(Expr expr) { data_->exprs.push_back(expr); }
 
  public:
-  common::Shared<IRContextNode> data_;
+  cinn::common::Shared<IRContextNode> data_;
 
  public:
   template <typename TIRContextNode>
@@ -196,7 +196,7 @@ class ElseContextNode : public IRContextNode {
 /**
  * A stack used to store current IRContext
  */
-class IRBuilderNode : public common::Object {
+class IRBuilderNode : public cinn::common::Object {
  public:
   std::vector<IRContext> contexts;
   Expr result;
@@ -226,7 +226,7 @@ class IRBuilder {
   static IRBuilder CurrentIRBuilder();
 
  public:
-  common::Shared<IRBuilderNode> data_;
+  cinn::common::Shared<IRBuilderNode> data_;
 };
 
 std::vector<IRBuilder>* IRBuilderStack();

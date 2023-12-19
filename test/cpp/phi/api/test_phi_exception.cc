@@ -13,7 +13,7 @@ limitations under the License. */
 #include <string>
 
 #include "gtest/gtest.h"
-#include "paddle/phi/api/ext/exception.h"
+#include "paddle/common/exception.h"
 
 namespace paddle {
 namespace tests {

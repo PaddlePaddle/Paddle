@@ -125,7 +125,7 @@ void PNormKernel(const Context& dev_ctx,
 
   } else {
     DenseTensor porder_tensor;
-    phi::DDim pdim = phi::make_ddim({1});
+    phi::DDim pdim = common::make_ddim({1});
     porder_tensor.Resize(pdim);
     dev_ctx.template Alloc<T>(&porder_tensor);
     r = xpu::constant(

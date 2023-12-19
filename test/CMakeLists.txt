@@ -91,6 +91,38 @@ function(bash_test_modules TARGET_NAME)
   endif()
 endfunction()
 
+function(set_pit_tests_properties)
+  file(STRINGS "${CMAKE_SOURCE_DIR}/test/white_list/pir_op_test_white_list"
+       PIR_OP_TESTS)
+  foreach(IR_OP_TEST ${PIR_OP_TESTS})
+    if(TEST ${IR_OP_TEST})
+      set_tests_properties(
+        ${IR_OP_TEST} PROPERTIES ENVIRONMENT "FLAGS_PIR_OPTEST_WHITE_LIST=True")
+    endif()
+  endforeach()
+
+  file(STRINGS "${CMAKE_SOURCE_DIR}/test/white_list/pir_op_test_no_check_list"
+       PIR_OP_NO_CHECK_TESTS)
+  foreach(IR_OP_TEST ${PIR_OP_NO_CHECK_TESTS})
+    if(TEST ${IR_OP_TEST})
+      set_tests_properties(${IR_OP_TEST} PROPERTIES ENVIRONMENT
+                                                    "FLAGS_PIR_NO_CHECK=True")
+    endif()
+  endforeach()
+
+  file(STRINGS
+       "${CMAKE_SOURCE_DIR}/test/white_list/pir_op_test_precision_white_list"
+       PIR_OP_RELAXED_TESTS)
+  foreach(IR_OP_TEST ${PIR_OP_RELAXED_TESTS})
+    if(TEST ${IR_OP_TEST})
+      set_tests_properties(
+        ${IR_OP_TEST} PROPERTIES ENVIRONMENT
+                                 "FLAGS_PIR_OPTEST_RELAX_CHECK=True")
+    endif()
+  endforeach()
+
+endfunction()
+
 if(WITH_TESTING)
   if(WITH_CINN)
     add_subdirectory(cpp/cinn)
@@ -189,6 +221,7 @@ if(${len} GREATER_EQUAL 1)
       if(WITH_SHARED_IR)
         target_link_libraries(${test_name} $<TARGET_LINKER_FILE:pir>)
       endif()
+      target_link_libraries(${test_name} $<TARGET_LINKER_FILE:common>)
       add_dependencies(${test_name} ${paddle_lib} paddle_gtest_main_new)
       if(WITH_GPU)
         target_link_libraries(${test_name} ${CUDA_CUDART_LIBRARY}
@@ -200,7 +233,7 @@ if(${len} GREATER_EQUAL 1)
       if(APPLE)
         target_link_libraries(
           ${test_name}
-          "-Wl,-rpath,$<TARGET_FILE_DIR:${paddle_lib}> -Wl,-rpath,$<TARGET_FILE_DIR:phi> -Wl,-rpath,$<TARGET_FILE_DIR:pir>"
+          "-Wl,-rpath,$<TARGET_FILE_DIR:${paddle_lib}> -Wl,-rpath,$<TARGET_FILE_DIR:phi> -Wl,-rpath,$<TARGET_FILE_DIR:pir> -Wl,-rpath,$<TARGET_FILE_DIR:common>"
         )
       endif()
       if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
@@ -239,9 +272,6 @@ endif()
 
 if(TARGET layer_test)
   add_dependencies(layer_test jit_download_program)
-  add_dependencies(layer_test_new jit_download_program)
-  set_tests_properties(layer_test_new PROPERTIES ENVIRONMENT
-                                                 "FLAGS_jit_engine_type=New")
 endif()
 
 if(TEST buddy_allocator_test)
@@ -258,3 +288,5 @@ add_custom_target(build_tests)
 if(${len} GREATER_EQUAL 1)
   add_dependencies(build_tests ${test_names})
 endif()
+
+set_pit_tests_properties()

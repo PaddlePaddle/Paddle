@@ -31,6 +31,7 @@ class TestSimpleNetHybridStrategyForSemiAutoParallel(
         self._dtype = os.getenv("dtype")
         self._backend = os.getenv("backend")
         self._seed = eval(os.getenv("seed"))
+        self._ckpt_path = os.getenv("ckpt_path")
         self._mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
         self._pp_mesh0 = dist.ProcessMesh(
             [[0, 1], [2, 3]], dim_names=["x", "y"]
@@ -102,6 +103,32 @@ class TestSimpleNetHybridStrategyForSemiAutoParallel(
             self.check_tensor_eq(
                 self.dp_mp_pp_parameters[3], self.base_parameters[3]
             )
+
+        # save load
+        state_dict = model.state_dict()
+        paddle.distributed.save_state_dict(state_dict, self._ckpt_path)
+        paddle.distributed.barrier()
+        expected_local_state_dict = {}
+        need_load_state_dict = {}
+        for k, v in state_dict.items():
+            expected_local_state_dict[k] = (
+                v._local_value().clone() if v._is_initialized() else None
+            )
+            need_load_state_dict[k] = (
+                paddle.zeros_like(v) if v._is_initialized() else v
+            )
+        model.set_state_dict(need_load_state_dict)
+        paddle.distributed.load_state_dict(
+            need_load_state_dict, self._ckpt_path
+        )
+        model.set_state_dict(need_load_state_dict)
+        state_dict = model.state_dict()
+        for k, v in state_dict.items():
+            assert k in expected_local_state_dict, k
+            if v._is_initialized():
+                self.check_tensor_eq(
+                    v._local_value(), expected_local_state_dict[k]
+                )
 
     def run_test_case(self):
         self.test_dp_mp_pp_demo_net()

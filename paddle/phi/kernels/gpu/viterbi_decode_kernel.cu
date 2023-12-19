@@ -188,7 +188,7 @@ struct GetMaxValue {
                   const DenseTensor& input,
                   T* max_value) {
     DenseTensor out_data;
-    out_data.Resize(phi::make_ddim({1}));
+    out_data.Resize(common::make_ddim({1}));
     dev_ctx.template Alloc<T>(&out_data);
     switch (ComputeBlockSize(input.numel())) {
       FIXED_BLOCK_DIM_CASE(
@@ -267,9 +267,9 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
   DenseTensor alpha =
       float_tensor_buffer.GetBufferBlock({batch_size, n_labels});
   DenseTensor zero = int_tensor_buffer.GetBufferBlock({batch_size, 1});
-  int_functor(dev_ctx, &zero, 0);
+  int_functor(dev_ctx, &zero, static_cast<int64_t>(0));
   DenseTensor one = int_tensor_buffer.GetBufferBlock({batch_size, 1});
-  int_functor(dev_ctx, &one, 1);
+  int_functor(dev_ctx, &one, static_cast<int64_t>(1));
   DenseTensor float_one = float_tensor_buffer.GetBufferBlock({batch_size, 1});
   float_functor(dev_ctx, &float_one, static_cast<T>(1.0));
   DenseTensor alpha_trn_sum =

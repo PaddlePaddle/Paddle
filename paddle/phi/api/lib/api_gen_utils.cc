@@ -338,8 +338,8 @@ void TransStride(const Context& dev_ctx,
                          phi::StridedCopyKernel<data_t, Context>(
                              dev_ctx,
                              *from,
-                             phi::vectorize<int64_t>(to->dims()),
-                             phi::vectorize<int64_t>(to->strides()),
+                             common::vectorize<int64_t>(to->dims()),
+                             common::vectorize<int64_t>(to->strides()),
                              to->offset(),
                              to);
                        }));
@@ -357,8 +357,8 @@ void TransStride(const Context& dev_ctx,
                            phi::StridedCopyKernel<data_t, Context>(
                                dev_ctx,
                                *from[i],
-                               phi::vectorize<int64_t>(to[i]->dims()),
-                               phi::vectorize<int64_t>(to[i]->strides()),
+                               common::vectorize<int64_t>(to[i]->dims()),
+                               common::vectorize<int64_t>(to[i]->strides()),
                                to[i]->offset(),
                                to[i]);
                          }));
@@ -377,8 +377,8 @@ void TransStride(phi::DeviceContext* dev_ctx,
                            phi::StridedCopyKernel<data_t, phi::CPUContext>(
                                *cpu_ctx,
                                *from,
-                               phi::vectorize<int64_t>(to->dims()),
-                               phi::vectorize<int64_t>(to->strides()),
+                               common::vectorize<int64_t>(to->dims()),
+                               common::vectorize<int64_t>(to->strides()),
                                to->offset(),
                                to);
                          }));
@@ -392,8 +392,8 @@ void TransStride(phi::DeviceContext* dev_ctx,
                            phi::StridedCopyKernel<data_t, phi::GPUContext>(
                                *gpu_ctx,
                                *from,
-                               phi::vectorize<int64_t>(to->dims()),
-                               phi::vectorize<int64_t>(to->strides()),
+                               common::vectorize<int64_t>(to->dims()),
+                               common::vectorize<int64_t>(to->strides()),
                                to->offset(),
                                to);
                          }));
@@ -408,8 +408,8 @@ void TransStride(phi::DeviceContext* dev_ctx,
                            phi::StridedCopyKernel<data_t, phi::XPUContext>(
                                *xpu_ctx,
                                *from,
-                               phi::vectorize<int64_t>(to->dims()),
-                               phi::vectorize<int64_t>(to->strides()),
+                               common::vectorize<int64_t>(to->dims()),
+                               common::vectorize<int64_t>(to->strides()),
                                to->offset(),
                                to);
                          }));
@@ -430,8 +430,8 @@ void TransStrideLegacy(phi::DeviceContext* dev_ctx,
                            phi::StridedCopyKernel<data_t, phi::CPUContext>(
                                *cpu_ctx,
                                *from,
-                               phi::vectorize<int64_t>(to->dims()),
-                               phi::vectorize<int64_t>(to->strides()),
+                               common::vectorize<int64_t>(to->dims()),
+                               common::vectorize<int64_t>(to->strides()),
                                to->offset(),
                                to);
                          }));
@@ -444,8 +444,8 @@ void TransStrideLegacy(phi::DeviceContext* dev_ctx,
                            phi::StridedCopyKernel<data_t, phi::GPUContext>(
                                *gpu_ctx,
                                *from,
-                               phi::vectorize<int64_t>(to->dims()),
-                               phi::vectorize<int64_t>(to->strides()),
+                               common::vectorize<int64_t>(to->dims()),
+                               common::vectorize<int64_t>(to->strides()),
                                to->offset(),
                                to);
                          }));
@@ -459,8 +459,8 @@ void TransStrideLegacy(phi::DeviceContext* dev_ctx,
                            phi::StridedCopyKernel<data_t, phi::XPUContext>(
                                *xpu_ctx,
                                *from,
-                               phi::vectorize<int64_t>(to->dims()),
-                               phi::vectorize<int64_t>(to->strides()),
+                               common::vectorize<int64_t>(to->dims()),
+                               common::vectorize<int64_t>(to->strides()),
                                to->offset(),
                                to);
                          }));
@@ -481,8 +481,8 @@ void TransStride(phi::DeviceContext* dev_ctx,
                              phi::StridedCopyKernel<data_t, phi::CPUContext>(
                                  *cpu_ctx,
                                  *from[i],
-                                 phi::vectorize<int64_t>(to[i]->dims()),
-                                 phi::vectorize<int64_t>(to[i]->strides()),
+                                 common::vectorize<int64_t>(to[i]->dims()),
+                                 common::vectorize<int64_t>(to[i]->strides()),
                                  to[i]->offset(),
                                  to[i]);
                            }));
@@ -496,8 +496,8 @@ void TransStride(phi::DeviceContext* dev_ctx,
                              phi::StridedCopyKernel<data_t, phi::GPUContext>(
                                  *gpu_ctx,
                                  *from[i],
-                                 phi::vectorize<int64_t>(to[i]->dims()),
-                                 phi::vectorize<int64_t>(to[i]->strides()),
+                                 common::vectorize<int64_t>(to[i]->dims()),
+                                 common::vectorize<int64_t>(to[i]->strides()),
                                  to[i]->offset(),
                                  to[i]);
                            }));
@@ -512,8 +512,8 @@ void TransStride(phi::DeviceContext* dev_ctx,
                              phi::StridedCopyKernel<data_t, phi::XPUContext>(
                                  *xpu_ctx,
                                  *from[i],
-                                 phi::vectorize<int64_t>(to[i]->dims()),
-                                 phi::vectorize<int64_t>(to[i]->strides()),
+                                 common::vectorize<int64_t>(to[i]->dims()),
+                                 common::vectorize<int64_t>(to[i]->strides()),
                                  to[i]->offset(),
                                  to[i]);
                            }));
@@ -649,11 +649,9 @@ std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
       VLOG(3) << "CreateKernelDistOutput function set generated output "
                  "dist_tensor as Tensor's impl";
       if (out->is_dist_tensor()) {
-        VLOG(3)
-            << "out is DistTensor, set its DistAttr to generated DistOutput.";
-        dist_output->unsafe_set_dist_attr(
-            std::static_pointer_cast<phi::distributed::DistTensor>(out->impl())
-                ->dist_attr());
+        VLOG(3) << "out is DistTensor, set DistAttr:" << dist_attr
+                << " to generated DistOutput.";
+        dist_output->unsafe_set_dist_attr(dist_attr);
       }
       out->set_impl(dist_output);
     }
@@ -721,7 +719,7 @@ void SetReplicatedDistAttrForOutput(
   if (out) {
     // For inplace output, we also need to set replicated dist attr
     auto dist_attr =
-        phi::distributed::TensorDistAttr(phi::vectorize(out->dims()));
+        phi::distributed::TensorDistAttr(common::vectorize(out->dims()));
     dist_attr.set_process_mesh(process_mesh);
     out->unsafe_set_dist_attr(dist_attr);
   }

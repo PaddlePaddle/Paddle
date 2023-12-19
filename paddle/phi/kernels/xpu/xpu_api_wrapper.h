@@ -122,9 +122,9 @@ static void GetFCInfo(const phi::DDim& x_dims,
                       bool trans_y,
                       XpuFcInfo* info) {
   DDim new_x_dims =
-      (x_dims.size() > 1) ? x_dims : phi::make_ddim({1, x_dims[0]});
+      (x_dims.size() > 1) ? x_dims : common::make_ddim({1, x_dims[0]});
   DDim new_y_dims =
-      (y_dims.size() > 1) ? y_dims : phi::make_ddim({y_dims[0], 1});
+      (y_dims.size() > 1) ? y_dims : common::make_ddim({y_dims[0], 1});
 
   auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(new_x_dims, 0, trans_x);
   auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(new_y_dims, 0, trans_y);

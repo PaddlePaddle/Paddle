@@ -14,10 +14,10 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/common/ddim.h"
+#include "paddle/common/layout.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/common/layout.h"
-#include "paddle/phi/core/ddim.h"
-#include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_meta.h"
 

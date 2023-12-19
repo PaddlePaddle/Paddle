@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/pir/dialect/shape/utils/dim_expr_builder.h"
 #include "paddle/pir/dialect/shape/utils/shape_optimization_utils.h"
 #include "paddle/pir/dialect/shape/utils/symbol_table.h"
 
@@ -46,6 +47,8 @@ class IR_API ShapeAnalysis {
 
   // Returns true if the two value have the same number elements.
   virtual bool IsSameNumElements(Value lhs, Value rhs);
+
+  virtual symbol::DimExprBuilder CreateDimExprBuilder() = 0;
 };
 
 // A subclass to impement `ShapeAnalysis` on buffer level.
@@ -71,7 +74,9 @@ class IR_API ShapeConstraintIRAnalysis : public ShapeAnalysis {
                       Value rhs,
                       std::vector<int> rhs_dim_idxs) override;
 
- protected:
+  symbol::DimExprBuilder CreateDimExprBuilder() override;
+
+ private:
   // The operation this analysis runs on.
   ModuleOp m_;
   // The `SymbolicDimMgr` this analysis holds.
@@ -80,24 +85,19 @@ class IR_API ShapeConstraintIRAnalysis : public ShapeAnalysis {
   // dimension size of the memref value.
   std::unordered_map<Value, std::vector<shape::SymbolicDimOp>>
       value_to_sym_dims_;
-};
+  std::vector<symbol::DimExprConstraint> constraints_;
 
-class MockShapeConstraintIRAnalysis : public ShapeConstraintIRAnalysis {
  public:
-  explicit MockShapeConstraintIRAnalysis(
-      std::unique_ptr<pir::Program>&& program)
-      : ShapeConstraintIRAnalysis(program->module_op()),
-        program_(std::move(program)) {}
+  explicit ShapeConstraintIRAnalysis(std::shared_ptr<pir::Program>&& program)
+      : ShapeConstraintIRAnalysis(program->module_op()) {
+    program_ = std::move(program);
+  }
 
-  explicit MockShapeConstraintIRAnalysis(pir::IrContext* ctx)
-      : MockShapeConstraintIRAnalysis(std::make_unique<pir::Program>(ctx)) {}
-
-  MockShapeConstraintIRAnalysis(MockShapeConstraintIRAnalysis&& other) = delete;
-  MockShapeConstraintIRAnalysis(const MockShapeConstraintIRAnalysis& other) =
-      delete;
+  explicit ShapeConstraintIRAnalysis(pir::IrContext* ctx)
+      : ShapeConstraintIRAnalysis(std::make_shared<pir::Program>(ctx)) {}
 
  private:
-  std::unique_ptr<pir::Program> program_;
+  std::shared_ptr<pir::Program> program_;
 };
 
 class IR_API ShapeAnalysisManager {

@@ -15,6 +15,7 @@
     data_type : x
   inplace: (x -> out)
   backward : abs_grad
+  interfaces : paddle::dialect::ReifyInferShapeInterface
 
 - op : accuracy
   args : (Tensor x, Tensor indices, Tensor label)
@@ -322,6 +323,14 @@
   kernel:
     func: bincount
   optional: weights
+
+- op : binomial
+  args : (Tensor count, Tensor prob)
+  output : Tensor(out)
+  infer_meta :
+    func : BinomialInferMeta
+  kernel :
+    func : binomial
 
 - op : bitwise_and
   args : (Tensor x, Tensor y)
@@ -934,7 +943,6 @@
   kernel :
     func : flash_attn
     data_type : q
-  intermediate : softmax_lse, seed_offset
   backward : flash_attn_grad
 
 - op : flash_attn_unpadded
@@ -1250,8 +1258,6 @@
     data_type : x
   inplace : (x -> out)
   backward : index_put_grad
-  data_transform :
-    skip_transform : indices
 
 - op : index_sample
   args : (Tensor x, Tensor index)
@@ -2035,7 +2041,7 @@
   backward : psroi_pool_grad
 
 - op : put_along_axis
-  args : (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign")
+  args : (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign", bool include_self = true)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -2304,6 +2310,7 @@
   output : Tensor(param_out), Tensor(master_param_out)
   infer_meta :
     func : SgdInferMeta
+    spmd_rule : SgdInferSpmd
   kernel :
     func : sgd {dense, dense, dense, dense -> dense, dense},
            sgd_dense_param_sparse_grad {dense, dense, selected_rows, dense -> dense, dense},
@@ -2489,6 +2496,7 @@
   output : Tensor(out), Tensor(xshape)
   infer_meta :
     func : SqueezeWithXShapeInferMeta
+    spmd_rule : SqueezeInferSpmd
   kernel :
     func : squeeze
     data_type : x
@@ -2714,6 +2722,7 @@
   output : Tensor(out), Tensor(xshape)
   infer_meta :
     func : UnsqueezeWithXShapeInferMeta
+    spmd_rule : UnsqueezeInferSpmd
   kernel :
     func : unsqueeze
     data_type : x
@@ -2743,16 +2752,6 @@
   data_transform :
     skip_transform : found_infinite
   inplace : (x -> out), (prev_loss_scaling -> loss_scaling), (in_good_steps -> out_good_steps), (in_bad_steps -> out_bad_steps)
-
-- op : variable_length_memory_efficient_attention
-  args : (Tensor query, Tensor key, Tensor value, Tensor seq_lens, Tensor kv_seq_lens, Tensor mask, float scale, bool causal)
-  output : Tensor
-  infer_meta :
-    func : VariableLengthMemoryEfficientAttentionInferMeta
-  kernel :
-    func : variable_length_memory_efficient_attention
-    data_type : query
-  optional : mask
 
 - op : view_dtype
   args : (Tensor input, DataType dtype)

@@ -174,7 +174,7 @@ TEST(PirCompier, CompileSoftmax) {
 
   std::unordered_map<std::string, ::pir::Attribute> op_attrs{
       {cinn::dialect::JitKernelOp::kAttrName,
-       cinn::dialect::CUDAJITInfoAttribute::get(ctx, fn_ptr_res[0])},
+       cinn::dialect::CINNKernelInfoAttribute::get(ctx, fn_ptr_res[0])},
   };
 
   std::vector<pir::Type> vec_types;
@@ -188,7 +188,7 @@ TEST(PirCompier, CompileSoftmax) {
 
   new_program->block()->push_back(cinn_op);
 
-  builder.SetInsertionPointToEnd(new_program->block());
+  builder.SetInsertionPointToBlockEnd(new_program->block());
   builder.Build<paddle::dialect::FetchOp>(
       cinn_op->result(cinn_op->num_results() - 1), "out", 0);
 
@@ -207,7 +207,6 @@ TEST(PirCompier, CompileSoftmax) {
   executor.Run({}, true);
   auto out_tensor =
       executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
-
   bool res0 = simple_cmp(out_tensor.data<float>()[0], 1.0 / 16);
   EXPECT_EQ(res0, true);
 }

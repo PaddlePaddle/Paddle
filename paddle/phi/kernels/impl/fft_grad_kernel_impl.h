@@ -18,8 +18,8 @@
 #include <string>
 #include <vector>
 
+#include "paddle/common/ddim.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/kernels/complex_kernel.h"
@@ -92,10 +92,10 @@ void FFTC2RGradKernel(const Context& ctx,
 
   const int64_t double_length =
       out_grad.dims()[axes.back()] - x_grad->dims()[axes.back()];
-  const phi::DDim strides = phi::stride(x_grad->dims());
+  const phi::DDim strides = common::stride(x_grad->dims());
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-  const thrust::device_vector<int64_t> strides_g(phi::vectorize(strides));
+  const thrust::device_vector<int64_t> strides_g(common::vectorize(strides));
   const int64_t* pstrides = thrust::raw_pointer_cast(strides_g.data());
 #else
   const int64_t* pstrides = strides.Get();

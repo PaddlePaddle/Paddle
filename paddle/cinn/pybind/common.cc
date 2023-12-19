@@ -27,11 +27,11 @@ namespace py = pybind11;
 
 namespace cinn::pybind {
 
-using common::bfloat16;
-using common::CINNValue;
-using common::float16;
-using common::Target;
-using common::Type;
+using cinn::common::bfloat16;
+using cinn::common::CINNValue;
+using cinn::common::float16;
+using cinn::common::Target;
+using cinn::common::Type;
 using utils::GetStreamCnt;
 using utils::StringFormat;
 
@@ -41,7 +41,7 @@ void BindType(py::module *);
 void BindShared(py::module *);
 void BindCinnValue(py::module *);
 
-void ResetGlobalNameID() { common::Context::Global().ResetNameId(); }
+void ResetGlobalNameID() { cinn::common::Context::Global().ResetNameId(); }
 
 void BindTarget(py::module *m) {
   py::class_<Target> target(*m, "Target");
@@ -57,9 +57,9 @@ void BindTarget(py::module *m) {
       .def("defined", &Target::defined)
       .def("runtime_arch", &Target::runtime_arch);
 
-  m->def("DefaultHostTarget", &common::DefaultHostTarget)
-      .def("DefaultNVGPUTarget", &common::DefaultNVGPUTarget)
-      .def("DefaultTarget", &common::DefaultTarget);
+  m->def("DefaultHostTarget", &cinn::common::DefaultHostTarget)
+      .def("DefaultNVGPUTarget", &cinn::common::DefaultNVGPUTarget)
+      .def("DefaultTarget", &cinn::common::DefaultTarget);
 
   m->def("get_target", &cinn::runtime::CurrentTarget::GetCurrentTarget);
   m->def("set_target",
@@ -153,68 +153,68 @@ void BindType(py::module *m) {
       .value("HandleHandle", Type::cpp_type_t::HandleHandle)
       .export_values();
 
-  m->def("Void", &common::Void)
-      .def("Int", &common::Int, py::arg("bits"), py::arg("lanes") = 1)
-      .def("UInt", &common::UInt, py::arg("bits"), py::arg("lanes") = 1)
+  m->def("Void", &cinn::common::Void)
+      .def("Int", &cinn::common::Int, py::arg("bits"), py::arg("lanes") = 1)
+      .def("UInt", &cinn::common::UInt, py::arg("bits"), py::arg("lanes") = 1)
       .def("Float",
-           &common::Float,
+           &cinn::common::Float,
            py::arg("bits"),
            py::arg("lanes") = 1,
            py::arg("st") = Type::specific_type_t::None)
-      .def("Float16", &common::Float16, py::arg("lanes") = 1)
-      .def("BFloat16", &common::BFloat16, py::arg("lanes") = 1)
-      .def("Bool", &common::Bool, py::arg("lanes") = 1)
-      .def("String", &common::String);
+      .def("Float16", &cinn::common::Float16, py::arg("lanes") = 1)
+      .def("BFloat16", &cinn::common::BFloat16, py::arg("lanes") = 1)
+      .def("Bool", &cinn::common::Bool, py::arg("lanes") = 1)
+      .def("String", &cinn::common::String);
 
   m->def(
        "make_const",
        [](const Type &type, int32_t val) -> Expr {
-         return common::make_const(type, val);
+         return cinn::common::make_const(type, val);
        },
        py::arg("type"),
        py::arg("val"))
       .def(
           "make_const",
           [](const Type &type, int64_t val) -> Expr {
-            return common::make_const(type, val);
+            return cinn::common::make_const(type, val);
           },
           py::arg("type"),
           py::arg("val"))
       .def(
           "make_const",
           [](const Type &type, float val) -> Expr {
-            return common::make_const(type, val);
+            return cinn::common::make_const(type, val);
           },
           py::arg("type"),
           py::arg("val"))
       .def(
           "make_const",
           [](const Type &type, double val) -> Expr {
-            return common::make_const(type, val);
+            return cinn::common::make_const(type, val);
           },
           py::arg("type"),
           py::arg("val"))
       .def(
           "make_const",
           [](const Type &type, bool val) -> Expr {
-            return common::make_const(type, val);
+            return cinn::common::make_const(type, val);
           },
           py::arg("type"),
           py::arg("val"));
 
   m->def("type_of", [](absl::string_view dtype) {
-    return common::Str2Type(dtype.data());
+    return cinn::common::Str2Type(dtype.data());
   });
 }
 
 void BindShared(py::module *m) {
-  py::class_<common::RefCount> ref_count(*m, "RefCount");
+  py::class_<cinn::common::RefCount> ref_count(*m, "RefCount");
   ref_count.def(py::init<>())
-      .def("inc", &common::RefCount::Inc)
-      .def("dec", &common::RefCount::Dec)
-      .def("is_zero", &common::RefCount::is_zero)
-      .def("to_string", &common::RefCount::to_string)
-      .def("val", &common::RefCount::val);
+      .def("inc", &cinn::common::RefCount::Inc)
+      .def("dec", &cinn::common::RefCount::Dec)
+      .def("is_zero", &cinn::common::RefCount::is_zero)
+      .def("to_string", &cinn::common::RefCount::to_string)
+      .def("val", &cinn::common::RefCount::val);
 }
 
 // TODO(wanghaipeng03) using true_type or false_type as tag disptcher losses
@@ -240,8 +240,8 @@ inline void __binary_op_visitor_dispatch(
 }
 
 void BindCinnValue(py::module *m) {
-  using common::_CINNValuePack_;
-  using common::CINNValuePack;
+  using cinn::common::_CINNValuePack_;
+  using cinn::common::CINNValuePack;
 
   DefineShared<_CINNValuePack_>(m, "_CINNValuePack_");
 
@@ -259,7 +259,7 @@ void BindCinnValue(py::module *m) {
       .def("__len__", &_CINNValuePack_::size)
       .def("type_info", &_CINNValuePack_::type_info);
 
-  py::class_<CINNValuePack, common::Shared<_CINNValuePack_>>
+  py::class_<CINNValuePack, cinn::common::Shared<_CINNValuePack_>>
       cinn_value_pack_shared(*m, "CINNValuePack");
   cinn_value_pack_shared.def(py::init<_CINNValuePack_ *>())
       .def("__getitem__",

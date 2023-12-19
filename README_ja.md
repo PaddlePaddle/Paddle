@@ -17,21 +17,22 @@ PaddlePaddle GitHub へようこそ。
 PaddlePaddle は中国初の独立系 R&D ディープラーニングプラットフォームとして、2016年からプロのコミュニティに正式にオープンソース化されました。コアとなる深層学習フレームワーク、基本モデルライブラリ、エンドツーエンドの開発キット、ツール＆コンポーネント、さらにサービスプラットフォームを網羅する、高度な技術と豊富な機能を備えた産業プラットフォームです。
 PaddlePaddle は、工業化に対するコミットメントを持つ工業的実践から生まれたものです。製造業、農業、企業サービスなど幅広い分野で採用され、800万人以上の開発者、22万以上の企業、80万以上のモデルを生み出しています。それにより PaddlePaddle は、ますます多くのパートナーの AI 商用化を支援しています。
 
-
 ## インストール
 
 ### PaddlePaddle の最新リリース: [v2.5](https://github.com/PaddlePaddle/Paddle/tree/release/2.5)
 
 私たちのビジョンは、PaddlePaddle を通じて、誰もが深層学習を行えるようにすることです。
 PaddlePaddle の最新機能を追跡するために、私たちの[リリースのお知らせ](https://github.com/PaddlePaddle/Paddle/releases)を参照してください。
-### 最新の安定版リリースのインストール:
-```
+
+### 最新の安定版リリースのインストール
+
+``` sh
 # CPU
 pip install paddlepaddle
 # GPU
 pip install paddlepaddle-gpu
-
 ```
+
 インストール方法については、[クイックインストール](https://www.paddlepaddle.org.cn/install/quick)をご覧ください
 
 この度、開発者の皆様が Tesla V100 のオンライン計算資源を無償で取得できるようになりました。AI Studio でプログラムを作成した場合、1日あたり8時間のオンライン学習が可能です。[スタートはこちら](https://aistudio.baidu.com/aistudio/index)。
@@ -42,23 +43,19 @@ pip install paddlepaddle-gpu
 
     PaddlePaddle ディープラーニングフレームワークは、ニューラルネットワークをアーキテクトするプログラマブルスキームを活用することで、技術的負担を軽減しながら開発を容易にする。宣言型プログラミングと命令型プログラミングの両方をサポートし、開発の柔軟性と高い実行性能を両立しています。 ニューラル・アーキテクチャは、アルゴリズムによって自動的に設計され、人間の専門家が設計したものよりも優れた性能を発揮する可能性があります。
 
-
--  **ディープニューラルネットワークの超大規模学習をサポート**
+- **ディープニューラルネットワークの超大規模学習をサポート**
 
     PaddlePaddle は、超大規模なディープニューラルネットワークのトレーニングでブレークスルーを起こしました。数百のノードに分散したデータソースを用いて、1000億の特徴量と数兆のパラメータを持つディープネットワークのトレーニングをサポートする、世界初の大規模オープンソース・トレーニング・プラットフォームを立ち上げたのです。PaddlePaddle は、超大規模ディープラーニングモデルのオンラインディープラーニングの課題を克服し、さらに1兆以上のパラメータでリアルタイムにモデル更新を実現しました。
      [詳しくはこちら](https://github.com/PaddlePaddle/Fleet)
-
 
 - **総合的な展開環境に対応した高性能推論エンジン**
 
    PaddlePaddle は、サードパーティのオープンソースフレームワークで学習されたモデルとの互換性があるだけでなく、様々な生産シナリオに対応した完全な推論エンジン、システム、スイートを提供しています。当社の推論エンジン、システム、スイートには、[Paddle Inference](https://paddle-inference.readthedocs.io/en/master/guides/introduction/index_intro.html) があります： [Paddle Serving](https://github.com/PaddlePaddle/Serving): 高性能なサーバーおよびクラウド推論用のネイティブ推論ライブラリ： [Paddle Serving](https://github.com/PaddlePaddle/Paddle-Lite): 分散型やパイプライン型プロダクションに適したサービス指向フレームワーク; [Paddle Lite](https://github.com/PaddlePaddle/Paddle-Lite)： モバイルや IoT 環境向けの超軽量推論エンジン; [Paddle.js](https://www.paddlepaddle.org.cn/paddle/paddlejs)： ブラウザやミニアプリのためのフロントエンド推論エンジンです。さらに、各シナリオの主要なハードウェアに最適化することで、Paddle の推論エンジンは他の主流フレームワークのほとんどを凌駕しています。
 
-
 - **オープンソースリポジトリによる業界指向のモデルやライブラリ**
 
      PaddlePaddle は、業界で長い間実践され、磨かれてきた100以上の主流モデルを含み、維持しています。これらのモデルの中には、主要な国際コンペティションで主要な賞を受賞したものもあります。一方、PaddlePaddle は、産業用アプリケーションの迅速な開発を促進するために、200以上のプレトレーニングモデル（そのうちのいくつかはソースコード付き）をさらに整備しています。
      [詳しくはこちら](https://github.com/PaddlePaddle/models)
-
 
 ## ドキュメント
 
@@ -93,4 +90,5 @@ pip install paddlepaddle-gpu
 - [Edge Deployments](https://aistudio.baidu.com/aistudio/course/introduce/22690): モバイル、IoT から Web、アプレットまで、エッジの展開を紹介するコース。
 
 ## Copyright とライセンス
+
 PaddlePaddle は [Apache-2.0 license](LICENSE) の下で提供されています。

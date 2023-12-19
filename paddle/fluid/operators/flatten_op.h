@@ -38,7 +38,7 @@ class Flatten2Kernel : public framework::OpKernel<T> {
 
     auto *out = context.Output<phi::DenseTensor>("Out");
 
-    auto out_dims = phi::make_ddim(GetOutputShape(axes, x_dims));
+    auto out_dims = common::make_ddim(GetOutputShape(axes, x_dims));
 
     out->mutable_data(context.GetPlace(), in->type());
     framework::TensorCopy(
@@ -78,7 +78,7 @@ class Flatten2GradKernel : public framework::OpKernel<T> {
     auto *d_out = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
 
     auto xshape_dims = ctx.Input<phi::DenseTensor>("XShape")->dims();
-    auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
+    auto x_dims = common::slice_ddim(xshape_dims, 1, xshape_dims.size());
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopy(

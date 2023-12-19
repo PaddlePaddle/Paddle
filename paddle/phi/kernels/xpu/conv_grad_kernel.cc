@@ -48,11 +48,11 @@ void ConvGradKernel(const Context& dev_ctx,
           ("XPU doesn't support data_format is NDHWC in conv grad op.")));
 
   phi::DDim in_data_dims =
-      phi::slice_ddim(input.dims(), 2, input.dims().size());
+      common::slice_ddim(input.dims(), 2, input.dims().size());
   phi::DDim filter_data_dims =
-      phi::slice_ddim(filter.dims(), 2, filter.dims().size());
-  std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
-  std::vector<int> filter_shape = phi::vectorize<int>(filter.dims());
+      common::slice_ddim(filter.dims(), 2, filter.dims().size());
+  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
+  std::vector<int> filter_shape = common::vectorize<int>(filter.dims());
   UpdatePaddingAndDilation(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
@@ -269,11 +269,11 @@ void Conv3DGradKernel(const Context& dev_ctx,
   if (!input_grad && !filter_grad) return;
 
   phi::DDim in_data_dims =
-      phi::slice_ddim(input.dims(), 2, input.dims().size());
+      common::slice_ddim(input.dims(), 2, input.dims().size());
   phi::DDim filter_data_dims =
-      phi::slice_ddim(filter.dims(), 2, filter.dims().size());
-  std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
-  std::vector<int> filter_shape = phi::vectorize<int>(filter.dims());
+      common::slice_ddim(filter.dims(), 2, filter.dims().size());
+  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
+  std::vector<int> filter_shape = common::vectorize<int>(filter.dims());
   UpdatePaddingAndDilation(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 

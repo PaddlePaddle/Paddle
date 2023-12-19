@@ -17,7 +17,7 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase
+from dygraph_to_static_utils import Dy2StTestBase, enable_to_static_guard
 
 import paddle
 
@@ -72,9 +72,8 @@ class TestGrad(Dy2StTestBase):
         self.x.stop_gradient = False
 
     def _run(self, func, to_static):
-        paddle.jit.enable_to_static(to_static)
-        ret = func(self.x).numpy()
-        paddle.jit.enable_to_static(True)
+        with enable_to_static_guard(to_static):
+            ret = func(self.x).numpy()
         return ret
 
     def test_forward(self):
