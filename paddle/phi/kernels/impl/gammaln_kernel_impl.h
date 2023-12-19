@@ -27,7 +27,7 @@ struct GammalnFunctor {
   HOSTDEVICE void operator()(int64_t idx) const {
     using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     const MT mp_x = static_cast<MT>(x_[idx]);
-    output_[idx] = static_cast<T>(std::lgamma(mp_x));
+    output_[idx] = static_cast<T>(Eigen::numext::lgamma(mp_x));
   }
 
  private:
