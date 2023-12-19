@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    static_guard,
     test_ast_only,
     test_legacy_and_pt,
     test_legacy_and_pt_and_pir,
@@ -30,7 +31,6 @@ from paddle.nn import clip
 
 SEED = 2020
 np.random.seed(SEED)
-paddle.enable_static()
 
 
 def len_with_tensor(x):
@@ -51,11 +51,6 @@ def len_with_lod_tensor_array(x):
 
 class TestLen(Dy2StTestBase):
     def setUp(self):
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
         self.x_data = np.random.random([10, 16]).astype('float32')
         self.init_func()
 
@@ -63,15 +58,14 @@ class TestLen(Dy2StTestBase):
         self.func = len_with_tensor
 
     def _run(self, to_static):
-        with base.dygraph.guard(self.place):
-            if to_static:
-                out = paddle.jit.to_static(self.func)(self.x_data)
-            else:
-                out = self.func(self.x_data)
+        if to_static:
+            out = paddle.jit.to_static(self.func)(self.x_data)
+        else:
+            out = self.func(self.x_data)
 
-            if isinstance(out, paddle.Tensor):
-                out = out.numpy()
-            return out
+        if isinstance(out, paddle.Tensor):
+            out = out.numpy()
+        return out
 
     @test_ast_only
     @test_legacy_and_pt_and_pir
@@ -90,7 +84,6 @@ class TestLenWithTensorArray(TestLen):
 # The unittest is used to test coverage by fake transformed code.
 def len_with_selected_rows(place):
     # create selected_rows variable
-    paddle.enable_static()
     non_used_initializer = paddle.nn.initializer.Constant(0.0)
     var = paddle.static.create_parameter(
         name="X",
@@ -130,7 +123,6 @@ def len_with_selected_rows(place):
 
 
 def legacy_len_with_selected_rows(place):
-    paddle.enable_static()
     block = paddle.static.default_main_program().global_block()
     # create selected_rows variable
     var = block.create_var(
@@ -177,17 +169,20 @@ class TestLenWithSelectedRows(Dy2StTestBase):
     @test_ast_only
     @test_legacy_and_pt
     def test_len_legacy(self):
-        selected_rows_var_len, var_tensor_len = legacy_len_with_selected_rows(
-            self.place
-        )
+        with static_guard():
+            (
+                selected_rows_var_len,
+                var_tensor_len,
+            ) = legacy_len_with_selected_rows(self.place)
         self.assertEqual(selected_rows_var_len, var_tensor_len)
 
     @test_ast_only
     @test_pir_only
     def test_len(self):
-        selected_rows_var_len, var_tensor_len = len_with_selected_rows(
-            self.place
-        )
+        with static_guard():
+            selected_rows_var_len, var_tensor_len = len_with_selected_rows(
+                self.place
+            )
         self.assertEqual(selected_rows_var_len, var_tensor_len)
 
 
