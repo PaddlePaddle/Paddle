@@ -29,7 +29,7 @@ cc_library(
   new_executor
   SRCS ${new_executor_srcs}
   DEPS ${new_executor_deps})
-add_dependencies(new_executor xxhash)
+add_dependencies(new_executor xxhash framework_proto)
 if(WITH_MKLDNN)
   add_dependencies(new_executor mkldnn)
 endif()
