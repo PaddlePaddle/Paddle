@@ -510,23 +510,70 @@ def prune_by_memory_estimation(tuner_cfg, cur_cfg, history_cfgs=[]):
             "max_mem_usage should be set when using memory estimation tool"
         )
 
-    memory_estimation_cmd = f"python {memory_estimation_tool} --dp_degree {cur_cfg['dp_degree']} --mp_degree {cur_cfg['mp_degree']} \
-                                --pp_degree {cur_cfg['pp_degree']} --vpp_degree {cur_cfg['vpp_degree']} \
-                                --sharding_degree {cur_cfg['sharding_degree']} --sharding_stage {cur_cfg['sharding_stage']} \
-                                --use_recompute {cur_cfg['use_recompute']} --micro_batch_size {cur_cfg['micro_batch_size']} \
-                                --recompute_granularity {cur_cfg['recompute_granularity']} \
-                                --hidden_size {model_cfg['hidden_size']} --num_attention_heads {model_cfg['num_attention_heads']} \
-                                --num_layers {model_cfg['num_layers']} --max_sequence_length {model_cfg['max_sequence_length']} \
-                                --vocab_size {model_cfg['vocab_size']} --intermediate_size {model_cfg['intermediate_size']} "
+    # get distributed strategy
+    dp_degree = cur_cfg['dp_degree']
+    mp_degree = cur_cfg['mp_degree']
+    pp_degree = cur_cfg['pp_degree']
+    vpp_degree = cur_cfg['vpp_degree']
+    sharding_degree = cur_cfg['sharding_degree']
+    sharding_stage = cur_cfg['sharding_stage']
+    use_recompute = cur_cfg['use_recompute']
+    micro_batch_size = cur_cfg['micro_batch_size']
+    recompute_granularity = cur_cfg['recompute_granularity']
+
+    memory_estimation_cmd = f"python {memory_estimation_tool} --dp_degree {dp_degree} --mp_degree {mp_degree} \
+                                --pp_degree {pp_degree} --vpp_degree {vpp_degree} \
+                                --sharding_degree {sharding_degree} --sharding_stage {sharding_stage} \
+                                --use_recompute {use_recompute} --micro_batch_size {micro_batch_size} \
+                                --recompute_granularity {recompute_granularity}"
+
+    # get model config
+    hidden_size = model_cfg.get('hidden_size', None)
+    memory_estimation_cmd += (
+        f" --hidden_size {hidden_size}" if hidden_size is not None else ""
+    )
+    num_attention_heads = model_cfg.get('num_attention_heads', None)
+    memory_estimation_cmd += (
+        f" --num_attention_heads {num_attention_heads}"
+        if num_attention_heads is not None
+        else ""
+    )
+    num_layers = model_cfg.get('num_layers', None)
+    memory_estimation_cmd += (
+        f" --num_layers {num_layers}" if num_layers is not None else ""
+    )
+    max_sequence_length = model_cfg.get('max_sequence_length', None)
+    memory_estimation_cmd += (
+        f" --max_sequence_length {max_sequence_length}"
+        if max_sequence_length is not None
+        else ""
+    )
+    vocab_size = model_cfg.get('vocab_size', None)
+    memory_estimation_cmd += (
+        f" --vocab_size {vocab_size}" if vocab_size is not None else ""
+    )
+    intermediate_size = model_cfg.get('intermediate_size', None)
+    memory_estimation_cmd += (
+        f" --intermediate_size {intermediate_size}"
+        if intermediate_size is not None
+        else ""
+    )
+
     result = subprocess.run(
         memory_estimation_cmd,
         shell=True,
         capture_output=True,
         text=True,
     )
+
     if result.returncode == 0:
         cur_memory_usage = round(float(result.stdout), 2)
         cur_cfg["estimated_memory_usage"] = cur_memory_usage
+        msg = f"estimated memory usage: {cur_memory_usage} GB"
+        memory_exceeded = cur_memory_usage > max_memory_usage
+        if memory_exceeded:
+            msg += ", WILL BE PRUNED!"
+        logger.info(msg)
         return cur_memory_usage > max_memory_usage
     else:
         raise ValueError(

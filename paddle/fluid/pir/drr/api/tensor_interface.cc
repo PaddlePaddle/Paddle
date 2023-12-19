@@ -30,7 +30,7 @@ bool DtypeInterface::operator==(const DtypeInterface& other) const {
   return *dtype_ == *other.dtype_;
 }
 
-IrDtype DtypeInterface::dtype() const { return *(this->dtype_); }
+IrDtype DtypeInterface::get() const { return *(this->dtype_); }
 
 }  // namespace drr
 }  // namespace pir

@@ -63,35 +63,95 @@ struct BinaryDimExpr {
 };
 
 template <typename T>
-struct VariadicDimExpr {
-  explicit VariadicDimExpr(const std::vector<T>& vec)
-      : data(std::make_shared<Data>(vec)) {}
+class List final {
+ public:
+  List(const List&) = default;
+  List(List&&) = default;
+  List& operator=(const List&) = default;
+  List& operator=(List&&) = default;
 
-  using Data = std::vector<T>;
+  using value_type = T;
 
-  const Data& operator*() const { return *data; }
-  Data& operator*() { return *data; }
-  const Data* operator->() const { return data.get(); }
-  Data* operator->() { return data.get(); }
+  explicit List() : vector_(std::make_shared<std::vector<T>>()) {}
 
-  std::shared_ptr<Data> data;
+  template <
+      typename Arg,
+      std::enable_if_t<!std::is_same_v<std::decay_t<Arg>, List>, bool> = true>
+  explicit List(Arg&& arg)
+      : vector_(std::make_shared<std::vector<T>>(
+            std::vector<T>{std::forward<Arg>(arg)})) {}
+
+  template <typename Arg0, typename Arg1, typename... Args>
+  List(Arg0&& arg0, Arg1&& arg1, Args&&... args)
+      : vector_(std::make_shared<std::vector<T>>(
+            std::vector<T>{std::forward<Arg0>(arg0),
+                           std::forward<Arg1>(arg1),
+                           std::forward<Args>(args)...})) {}
+
+  bool operator==(const List& other) const {
+    if (&vector() == &other.vector()) {
+      return true;
+    }
+    return vector() == other.vector();
+  }
+
+  bool operator!=(const List& other) const { return !(*this == other); }
+
+  std::vector<T>& operator*() const { return *vector_; }
+  std::vector<T>* operator->() const { return vector_.get(); }
+
+  const std::vector<T>& vector() const { return *vector_; }
+
+  const auto& Get(std::size_t idx) const { return vector_->at(idx); }
+
+ private:
+  std::shared_ptr<std::vector<T>> vector_;
 };
 
-#define DEFINE_DIM_EXPR_SUBCLASS(class_name, base) \
-  template <typename T>                            \
-  struct class_name : public base<T> {             \
-    using base<T>::base;                           \
-  };
+template <typename T>
+struct Negative final : public UnaryDimExpr<T> {
+  using UnaryDimExpr<T>::UnaryDimExpr;
+};
 
-DEFINE_DIM_EXPR_SUBCLASS(Negative, UnaryDimExpr);
-DEFINE_DIM_EXPR_SUBCLASS(Reciprocal, UnaryDimExpr);
-DEFINE_DIM_EXPR_SUBCLASS(Add, VariadicDimExpr);
-DEFINE_DIM_EXPR_SUBCLASS(Mul, VariadicDimExpr);
-DEFINE_DIM_EXPR_SUBCLASS(Max, VariadicDimExpr);
-DEFINE_DIM_EXPR_SUBCLASS(Min, VariadicDimExpr);
-DEFINE_DIM_EXPR_SUBCLASS(Broadcast, VariadicDimExpr);
-DEFINE_DIM_EXPR_SUBCLASS(Equal, BinaryDimExpr);
-DEFINE_DIM_EXPR_SUBCLASS(Broadcastable, BinaryDimExpr);
+template <typename T>
+struct Reciprocal final : public UnaryDimExpr<T> {
+  using UnaryDimExpr<T>::UnaryDimExpr;
+};
+
+template <typename T>
+struct Add final {
+  List<T> operands;
+};
+
+template <typename T>
+struct Mul final {
+  List<T> operands;
+};
+
+template <typename T>
+struct Max final {
+  List<T> operands;
+};
+
+template <typename T>
+struct Min final {
+  List<T> operands;
+};
+
+template <typename T>
+struct Broadcast final {
+  List<T> operands;
+};
+
+template <typename T>
+struct Equal final : public BinaryDimExpr<T> {
+  using BinaryDimExpr<T>::BinaryDimExpr;
+};
+
+template <typename T>
+struct Broadcastable final : public BinaryDimExpr<T> {
+  using BinaryDimExpr<T>::BinaryDimExpr;
+};
 
 class DimExpr;
 
@@ -125,6 +185,16 @@ class DimExpr : public DimExprBase {
 
   template <typename T>
   const T& dyn_cast() const {
+    return std::get<T>(*this);
+  }
+
+  template <typename T>
+  bool Has() const {
+    return std::holds_alternative<T>(*this);
+  }
+
+  template <typename T>
+  const T& Get() const {
     return std::get<T>(*this);
   }
 

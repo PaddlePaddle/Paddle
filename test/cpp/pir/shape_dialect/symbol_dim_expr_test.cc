@@ -99,6 +99,16 @@ TEST(DimExpr, value_shape_expr) {
   value2shape.emplace(out, out_value_shape);
 }
 
+TEST(Simplify, NumberArithmetic) {
+  DimExpr number = DimExpr(5);
+  DimExpr add_minus = number + number - number;
+  ASSERT_TRUE((add_minus.Has<std::int64_t>()));
+  ASSERT_EQ((add_minus.Get<std::int64_t>()), 5);
+  DimExpr mul_div = number * DimExpr(1) / number;
+  ASSERT_TRUE((mul_div.Has<std::int64_t>()));
+  ASSERT_EQ((mul_div.Get<std::int64_t>()), 1);
+}
+
 TEST(DimExpr, equal) {
   DimExprBuilder builder{nullptr};
   DimExpr sym0 = DimExpr("S0");

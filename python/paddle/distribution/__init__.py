@@ -17,6 +17,7 @@ from paddle.distribution.bernoulli import Bernoulli
 from paddle.distribution.beta import Beta
 from paddle.distribution.categorical import Categorical
 from paddle.distribution.cauchy import Cauchy
+from paddle.distribution.continuous_bernoulli import ContinuousBernoulli
 from paddle.distribution.dirichlet import Dirichlet
 from paddle.distribution.distribution import Distribution
 from paddle.distribution.gumbel import Gumbel
@@ -25,6 +26,7 @@ from paddle.distribution.independent import Independent
 from paddle.distribution.kl import kl_divergence, register_kl
 from paddle.distribution.lognormal import LogNormal
 from paddle.distribution.multinomial import Multinomial
+from paddle.distribution.multivariate_normal import MultivariateNormal
 from paddle.distribution.normal import Normal
 from paddle.distribution.transform import *  # noqa: F403
 from paddle.distribution.transformed_distribution import TransformedDistribution
@@ -37,10 +39,12 @@ __all__ = [
     'Beta',
     'Categorical',
     'Cauchy',
+    'ContinuousBernoulli',
     'Dirichlet',
     'Distribution',
     'ExponentialFamily',
     'Multinomial',
+    'MultivariateNormal',
     'Normal',
     'Uniform',
     'kl_divergence',
