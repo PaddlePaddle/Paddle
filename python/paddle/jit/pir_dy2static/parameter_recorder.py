@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import paddle
+from paddle.autograd.backward_utils import ValueDict
 
 from ..dy2static.program_translator import _program_hash, synchronized
 
@@ -68,7 +69,7 @@ class InplaceMap:
     def add(self, program, origin_value, new_value):
         key = _program_hash(program)
         if key not in self.params_dict:
-            self.params_dict[key] = {}
+            self.params_dict[key] = ValueDict()
         inplace_dict = self.params_dict[key]
         inplace_dict[origin_value] = new_value
 
@@ -80,7 +81,7 @@ class InplaceMap:
             return None
         root_var = inplace_dict[value]
         saved = []
-        while root_var in inplace_dict.keys():
+        while inplace_dict.__contains__(root_var):
             saved.append(root_var)
             root_var = inplace_dict[root_var]
         for var in saved:

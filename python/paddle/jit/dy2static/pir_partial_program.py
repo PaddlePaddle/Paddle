@@ -93,19 +93,19 @@ class NestSequence:
 
 class UnionFindSet:
     def __init__(self):
-        self.father = {}
+        self.father = ValueDict()
 
     def union(self, x, y):
         # x -> y
         father_x = self.find_root(x)
         father_y = self.find_root(y)
-        if not (father_x == father_y):
+        if not (father_x.is_same(father_y)):
             self.father[father_x] = father_y
 
     def find_root(self, x):
-        if x not in self.father:
+        if not self.father.__contains__(x):
             self.father[x] = x
-        if self.father[x] == x:
+        if self.father[x].is_same(x):
             return x
         self.father[x] = self.find_root(self.father[x])
         return self.father[x]
@@ -147,13 +147,13 @@ class RunableProgram:
     def _get_name_defining_op(cls, program, value):
         for op in program.global_block().ops:
             if op.name() == "pd_op.data":
-                if value == op.result(0):
+                if value.is_same(op.result(0)):
                     return op
             if op.name() == "builtin.set_parameter":
-                if value == op.operand(0).source():
+                if value.is_same(op.operand(0).source()):
                     return op
             if op.name() == "builtin.parameter":
-                if value == op.result(0):
+                if value.is_same(op.result(0)):
                     return op
         return None
 
