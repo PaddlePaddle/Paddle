@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
-#include<iostream>
 #include <bitset>
+#include <iostream>
 
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/data_layout.h"
@@ -47,6 +47,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 #endif
 #if IS_TRT_VERSION_GE(7000)
     teller_set.insert("tile");
+    int8_teller_set.insert("tile");
     teller_set.insert("flatten_contiguous_range");
     int8_teller_set.insert("flatten_contiguous_range");
     teller_set.insert("rnn");
@@ -103,15 +104,11 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     // do not support the op which is labeled the `skip_quant`
-    if ((desc.HasAttr("namescope") &&
-         PADDLE_GET_CONST(std::string, desc.GetAttr("op_namescope")) ==
-             "/skip_quant_2/") ||
-        desc.HasAttr("skip_quant"))
-        {
-          std::cout<<"skip_quant被设置了true"<<std::endl;
-          return true;
-        }
-    std::cout<<"skip_quant已经跑了"<<std::endl;
+    // if ((desc.HasAttr("namescope") &&
+    //      PADDLE_GET_CONST(std::string, desc.GetAttr("op_namescope")) ==
+    //          "/skip_quant_2/") ||
+    //     desc.HasAttr("skip_quant"))
+    //   return false;
     std::unordered_set<std::string> act_op_list = {
         "relu",       "relu6",       "sigmoid",
         "elu",        "selu",        "softsign",
@@ -3295,6 +3292,7 @@ struct CustomGenericPluginTeller : public Teller {
         return false;
       }
       return true;
+      git
     }
     VLOG(3) << op_type << " has no meta info";
     return false;
@@ -3308,15 +3306,11 @@ bool OpTeller::Tell(const framework::ir::Node* node,
   const std::string op_type = node->Op()->Type();
   const framework::OpDesc desc = *node->Op();
   // do not support the op which is labeled the `skip_quant`
-  if ((desc.HasAttr("namescope") &&
-       PADDLE_GET_CONST(std::string, desc.GetAttr("op_namescope")) ==
-           "/skip_quant_2/") ||
-      desc.HasAttr("skip_quant"))
-      {
-        VLOG(3) << op_type << " 下面is labeled the `skip_quant`";
-        return true;
-      } 
-  std::cout<<"skip_quant在行3311被设置了"<<std::endl;
+  // if ((desc.HasAttr("namescope") &&
+  //      PADDLE_GET_CONST(std::string, desc.GetAttr("op_namescope")) ==
+  //          "/skip_quant_2/") ||
+  //     desc.HasAttr("skip_quant"))
+  //   return false;
   auto& default_teller = GetDefaultTeller();
   if ((*default_teller)(desc,
                         use_no_calib_int8,
