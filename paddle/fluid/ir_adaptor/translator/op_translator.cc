@@ -2758,7 +2758,7 @@ struct ReadArrayOpTranscriber : public OpTranscriber {
           "pd_op.read_array");
     }
     
-      return op_info;
+    return op_info;
   }
 };
 
