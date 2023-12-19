@@ -42,8 +42,7 @@ if(WITH_TESTING AND WITH_CINN)
     pir_transforms
     pir)
 
-  paddle_test(test_ir_op_fusion SRCS ir_op_fusion_test.cc DEPS cinn_op_dialect
-              pir)
+  paddle_test(test_ir_op_fusion SRCS ir_op_fusion_test.cc)
 
   paddle_test(
     test_pir_all_path
