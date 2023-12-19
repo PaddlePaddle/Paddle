@@ -23,8 +23,6 @@ gather_srcs(
   nvgpu_dev_info.cc
   integer_set.cc)
 
-message(STATUS "srcs: ${cinnapi_src}")
-
 cinn_cc_test(test_equation_graph_topo_walker SRCS
              equation_graph_topo_walker_test.cc DEPS gtest glog)
 cinn_cc_test(test_dfs_walker SRCS dfs_walker_test.cc DEPS gtest glog)
