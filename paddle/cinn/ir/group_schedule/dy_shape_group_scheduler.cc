@@ -26,15 +26,19 @@ void DynamicShapeGroupScheduler::Schedule() {
   ir::Expr block_realize0 = node0->Block();
   ir::Expr block_realize1 = node1->Block();
 
-  auto block0 = ir_sch_->GetBlock("var");
-  ir_sch_->ComputeInline(block0);
-  auto reorder1 = ir_sch_->Reorder("var_1", {1, 0});
-
-  auto loops1 = ir_sch_->GetLoops("var_1");
-  auto splited_loops1 = ir_sch_->Split(loops1[1], {-1, 1, 32});
-  ir_sch_->Bind(splited_loops1[1], "blockIdx.x");
-  ir_sch_->Bind(splited_loops1[2], "threadIdx.x");
-
+  std::vector<Expr> all_blocks = ir_sch_->GetAllBlocks();
+  auto block0 = all_blocks[0];
+  if (all_blocks.size() > 1) {
+    ir_sch_->ComputeInline(block0);
+    all_blocks = ir_sch_->GetAllBlocks();
+    block0 = all_blocks[0];
+  }
+  std::vector<Expr> block0_loops = ir_sch_->GetLoops(block0);
+  ir_sch_->Fuse(block0_loops);
+  all_blocks = ir_sch_->GetAllBlocks();
+  block0_loops = ir_sch_->GetLoops(all_blocks[0]);
+  auto splited_loops1 = ir_sch_->DySplit(block0_loops[0], {1024, -1});
+  ir_sch_->Bind(splited_loops1[0], "threadIdx.x");
   ir::Expr predicate1 = ir::LE::Make(Expr(1023), Expr(1024));
   std::unique_ptr<ir::IRSchedule> new_ir_sch1 =
       std::make_unique<ir::IRSchedule>(*ir_sch_);

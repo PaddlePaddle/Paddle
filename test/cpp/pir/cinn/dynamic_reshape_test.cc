@@ -38,6 +38,7 @@
 #include "paddle/pir/dialect/shape/utils/shape_utils.h"
 #include "paddle/pir/pass/pass_manager.h"
 
+PD_DECLARE_bool(cinn_bucket_compile);
 using cinn::hlir::framework::pir::Group;
 using cinn::hlir::framework::pir::GroupPtr;
 
@@ -80,18 +81,22 @@ BuildGroupProgramForLowering() {
   auto group_op = builder.Build<cinn::dialect::GroupOp>(
       CreateDenseTensorTypes(common::make_ddim({1, -1, 2})));
   builder.SetInsertionPointToBlockEnd(group_op.block());
-  auto exp = builder.Build<paddle::dialect::ExpOp>(x);
-  auto reshape = builder.Build<cinn::dialect::ReshapeOp>(
-      exp.result(0), std::vector<int>{-1, 1, 1});
-  auto sub = builder.Build<paddle::dialect::SubtractOp>(y, reshape.result(0));
-  builder.Build<::pir::YieldOp>(std::vector<::pir::Value>{sub.result(0)});
+  // auto exp = builder.Build<paddle::dialect::ExpOp>(x);
+  // auto reshape = builder.Build<cinn::dialect::ReshapeOp>(
+  //     exp.result(0), std::vector<int>{-1, 1, 1});
+  auto reshape =
+      builder.Build<cinn::dialect::ReshapeOp>(x, std::vector<int>{2, -1});
+  // auto sub = builder.Build<paddle::dialect::SubtractOp>(y,
+  // reshape.result(0));
+  builder.Build<::pir::YieldOp>(std::vector<::pir::Value>{reshape.result(0)});
 
   builder.SetInsertionPointToBlockEnd(program->block());
   builder.Build<paddle::dialect::FetchOp>(group_op->result(0), "out", 0);
 
   std::vector<GroupPtr> groups;
-  groups.emplace_back(std::make_shared<Group>(std::vector<::pir::Operation*>(
-      {exp.operation(), reshape.operation(), sub.operation()})));
+  groups.emplace_back(std::make_shared<Group>(std::vector<::pir::Operation*>({
+      reshape.operation(),
+  })));
   groups[0]->output_ops.insert(groups[0]->ops.back());
   groups[0]->shape_analysis = shape_analysis;
 
@@ -99,12 +104,8 @@ BuildGroupProgramForLowering() {
       shape_analysis->GetOrCreateSymbolicDimsForRankedValue(x);
   const auto& y_sym_shape =
       shape_analysis->GetOrCreateSymbolicDimsForRankedValue(y);
-  auto& exp_sym_shape =
-      shape_analysis->GetOrCreateSymbolicDimsForRankedValue(exp.result(0));
   auto& reshape_sym_shape =
       shape_analysis->GetOrCreateSymbolicDimsForRankedValue(reshape.result(0));
-  auto& sub_sym_shape =
-      shape_analysis->GetOrCreateSymbolicDimsForRankedValue(sub.result(0));
 
   auto set_sym_shape = [](const std::vector<pir::shape::SymbolicDimOp>& source,
                           std::vector<pir::shape::SymbolicDimOp>* target) {
@@ -114,14 +115,15 @@ BuildGroupProgramForLowering() {
     }
   };
 
-  set_sym_shape(x_sym_shape, &exp_sym_shape);
-  set_sym_shape(y_sym_shape, &reshape_sym_shape);
-  set_sym_shape(reshape_sym_shape, &sub_sym_shape);
+  // set_sym_shape(x_sym_shape, &exp_sym_shape);
+  set_sym_shape(x_sym_shape, &reshape_sym_shape);
+  // set_sym_shape(reshape_sym_shape, &sub_sym_shape);
 
   return {program, groups};
 }
 
 TEST(ReshapeOpGroup, CINNLowering) {
+  FLAGS_cinn_bucket_compile = true;
   // Step 1: Construct pir::Program
   auto program_info = BuildGroupProgramForLowering();
   auto program = std::get<0>(program_info);
@@ -153,5 +155,6 @@ TEST(ReshapeOpGroup, CINNLowering) {
   ASSERT_EQ(scope->var_names().size(), 4);
 
   cinn::hlir::framework::PirCompiler ir_compiler(*program, target, scope);
+  VLOG(-1) << "can run here";
   auto fn_ptr_res = ir_compiler.BuildCUDAJITInfo(groups);
 }
