@@ -70,10 +70,4 @@ void ASGDKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(asgd,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::ASGDKernel,
-                   phi::dtype::bfloat16,
-                   float,
-                   double) {}
+PD_REGISTER_KERNEL(asgd, CPU, ALL_LAYOUT, phi::ASGDKernel, float, double) {}

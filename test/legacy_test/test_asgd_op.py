@@ -15,9 +15,16 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+)
+from utils import dygraph_guard
 
 import paddle
+from paddle.base import core
+
+paddle.enable_static()
 
 
 def asgd_wrapper(
@@ -42,44 +49,342 @@ def asgd_wrapper(
     )
 
 
-class TestASGDOp(OpTest):
+class TestASGDOpMixin:
     def setUp(self):
-        self.op_type = "asgd"
-        self.python_api = asgd_wrapper
-        self.python_out_sig = ['Out']
-        self.conf()
-        params = np.random.random((self.h, self.w)).astype("float32")
-        learning_rate = np.array([0.1]).astype("float32")
-        n = np.array([1000]).astype("float32")
-        grads = np.random.random((self.h, self.w)).astype("float32")
-        ds = np.random.random((self.h, self.w)).astype("float32")
-        ys = np.random.random((self.h, self.w)).astype("float32")
-
-        ds_out = ds - ys + grads
-        ys_out = grads.copy()
-        params_out = params - (learning_rate / n) * ds_out
+        self.init_basic_info()
+        self.init_input()
+        self.update_input_dtype()
+        self.init_output()
+        self.update_output_dtype()
 
         self.inputs = {
-            "param": params,
-            "learning_rate": learning_rate,
-            "grad": grads,
-            "d": ds,
-            "y": ys,
-            "n": n,
+            "param": self.params,
+            "learning_rate": self.learning_rate,
+            "grad": self.grads,
+            "d": self.ds,
+            "y": self.ys,
+            "n": self.n,
         }
 
         self.outputs = {
-            "param_out": params_out,
-            "d_out": ds_out,
-            "y_out": ys_out,
+            "param_out": self.params_out,
+            "d_out": self.ds_out,
+            "y_out": self.ys_out,
         }
 
-    def conf(self):
+    def init_basic_info(self):
+        self.op_type = "asgd"
+        self.python_api = asgd_wrapper
+        self.python_out_sig = ['Out']
         self.h = 102
         self.w = 105
 
+    def init_input(self):
+        self.params = np.random.random((self.h, self.w))
+        self.learning_rate = np.array([0.001])
+        self.n = np.array([1000])
+        self.grads = np.random.random((self.h, self.w))
+        self.ds = np.random.random((self.h, self.w))
+        self.ys = np.random.random((self.h, self.w))
+
+    def init_output(self):
+        self.ds_out = self.ds - self.ys + self.grads
+        self.ys_out = self.grads.copy()
+        self.params_out = (
+            self.params - (self.learning_rate / self.n) * self.ds_out
+        )
+
+    def update_input_dtype(self):
+        pass
+
+    def update_output_dtype(self):
+        pass
+
     def test_check_output(self):
         self.check_output(check_pir=True)
+
+
+class TestASGDOp(TestASGDOpMixin, OpTest):
+    pass
+
+
+class TestCase1(TestASGDOp):
+    def update_input_dtype(self):
+        self.params = self.params.astype("float32")
+        self.learning_rate = self.learning_rate.astype("float32")
+        self.n = self.n.astype("float32")
+        self.grads = self.grads.astype("float32")
+        self.ds = self.ds.astype("float32")
+        self.ys = self.ys.astype("float32")
+
+
+class TestCase2(TestASGDOp):
+    def update_input_dtype(self):
+        self.params = self.params.astype("float16")
+        self.learning_rate = self.learning_rate.astype("float16")
+        self.n = self.n.astype("float16")
+        self.grads = self.grads.astype("float16")
+        self.ds = self.ds.astype("float16")
+        self.ys = self.ys.astype("float16")
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
+
+
+class TestCase3(TestASGDOp):
+    def update_input_dtype(self):
+        self.params = convert_float_to_uint16(self.params)
+        self.learning_rate = convert_float_to_uint16(self.learning_rate)
+        self.n = convert_float_to_uint16(self.n)
+        self.grads = convert_float_to_uint16(self.grads)
+        self.ds = convert_float_to_uint16(self.ds)
+        self.ys = convert_float_to_uint16(self.ys)
+
+    def update_output_dtype(self):
+        self.ds_out = convert_float_to_uint16(self.ds_out)
+        self.ys_out = convert_float_to_uint16(self.ys_out)
+        self.params_out = convert_float_to_uint16(self.params_out)
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
+
+
+class TestCase4(TestASGDOp):
+    def init_input(self):
+        self.params = np.random.random((self.h, self.w))
+        self.learning_rate = np.array([0.001])
+        self.n = np.array([1])
+        self.grads = np.random.random((self.h, self.w))
+        self.ds = np.random.random((self.h, self.w))
+        self.ys = np.random.random((self.h, self.w))
+
+
+class TestASGDV2(unittest.TestCase):
+    def test_asgd_dygraph(self):
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = paddle.to_tensor(value)
+        linear = paddle.nn.Linear(13, 5)
+
+        asgd = paddle.optimizer.ASGD(
+            learning_rate=0.001,
+            batch_num=2,
+            parameters=linear.parameters(),
+        )
+        out = linear(a)
+        out.backward()
+        asgd.step()
+        asgd.clear_gradients()
+
+    def test_raise_error(self):
+        self.assertRaises(
+            ValueError,
+            paddle.optimizer.ASGD,
+            batch_num=2,
+            learning_rate=None,
+        )
+        self.assertRaises(
+            ValueError,
+            paddle.optimizer.ASGD,
+            batch_num=None,
+        )
+        self.assertRaises(
+            ValueError,
+            paddle.optimizer.ASGD,
+            batch_num=-2,
+        )
+
+    def test_asgd_group_dygraph(self):
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = paddle.to_tensor(value)
+        linear_1 = paddle.nn.Linear(13, 5)
+        linear_2 = paddle.nn.Linear(5, 3)
+        asgd = paddle.optimizer.ASGD(
+            learning_rate=0.001,
+            batch_num=2,
+            parameters=[
+                {'params': linear_1.parameters()},
+                {
+                    'params': linear_2.parameters(),
+                    'learning_rate': 0.0001,
+                },
+            ],
+        )
+        out = linear_1(a)
+        out = linear_2(out)
+        out.backward()
+        asgd.step()
+        asgd.clear_gradients()
+
+
+class TestASGDMultiPrecision(unittest.TestCase):
+    def dygraph_asgd_mp(self, mp):
+        paddle.disable_static()
+        paddle.seed(10)
+        paddle.set_device('gpu')
+        input = paddle.randn((2, 2))
+        model = paddle.nn.Linear(2, 2)
+        optimizer = paddle.optimizer.ASGD(
+            batch_num=2, parameters=model.parameters(), multi_precision=mp
+        )
+        if mp:
+            model = paddle.amp.decorate(models=model, level='O2')
+            scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+        for idx in range(5):
+            if mp:
+                with paddle.amp.auto_cast(level='O2'):
+                    output = model(input)
+                    loss = paddle.mean(output)
+                scaled = scaler.scale(loss)
+                scaled.backward()
+                scaler.minimize(optimizer, scaled)
+                optimizer.clear_grad()
+            else:
+                output = model(input)
+                loss = paddle.mean(output)
+                optimizer.step()
+                optimizer.clear_grad()
+
+        return output, model.parameters()
+
+    def static_asgd_mp(self, mp):
+        paddle.enable_static()
+        paddle.seed(10)
+        np.random.seed(10)
+        exe = paddle.static.Executor('gpu')
+        train_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        optimizer = paddle.optimizer.ASGD(batch_num=2, multi_precision=mp)
+
+        if mp:
+            optimizer = paddle.static.amp.decorate(
+                optimizer,
+                init_loss_scaling=128.0,
+                use_dynamic_loss_scaling=True,
+                use_pure_fp16=True,
+                use_fp16_guard=False,
+            )
+        with paddle.static.program_guard(train_program, startup_program):
+            if mp:
+                data = paddle.static.data(
+                    shape=[2, 2], name='X', dtype='float16'
+                )
+            else:
+                data = paddle.static.data(
+                    shape=[2, 2], name='X', dtype='float32'
+                )
+            hidden = paddle.static.nn.fc(x=data, size=10)
+            loss = paddle.mean(hidden)
+            optimizer.minimize(loss)
+        exe.run(startup_program)
+
+        if mp:
+            optimizer.amp_init(
+                place=paddle.CUDAPlace(0), scope=paddle.static.global_scope()
+            )
+            x = np.random.random(size=(2, 2)).astype('float16')
+        else:
+            x = np.random.random(size=(2, 2)).astype('float32')
+        out = []
+        for idx in range(5):
+            (loss_data,) = exe.run(
+                train_program, feed={"X": x}, fetch_list=[loss.name]
+            )
+            out.append(loss_data)
+        return out
+
+    def test_main(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        "Test dygraph mode"
+        output1_dy, params1_dy = self.dygraph_asgd_mp(mp=True)
+        output2_dy, params2_dy = self.dygraph_asgd_mp(mp=False)
+        np.testing.assert_allclose(
+            output1_dy.astype('float32').numpy(),
+            output2_dy.astype('float32').numpy(),
+            rtol=1e-05,
+            atol=0.1,
+        )
+        for idx in range(len(params1_dy)):
+            np.testing.assert_allclose(
+                params1_dy[idx].astype('float32').numpy(),
+                params2_dy[idx].astype('float32').numpy(),
+                rtol=1e-05,
+                atol=0.1,
+            )
+        "Test static graph mode"
+        output1_st = self.static_asgd_mp(mp=True)
+        output2_st = self.static_asgd_mp(mp=False)
+        for idx in range(len(output1_st)):
+            np.testing.assert_allclose(
+                output1_st[idx].astype('float32'),
+                output2_st[idx].astype('float32'),
+                rtol=1e-05,
+                atol=0.1,
+            )
+
+
+class TestASGDSimple(unittest.TestCase):
+    def setUp(self) -> None:
+        self.data = np.random.random(size=(2, 2)).astype('float32')
+
+    def run_static(self):
+        with paddle.pir_utils.IrGuard():
+            paddle.seed(10)
+            np.random.seed(10)
+
+            exe = paddle.static.Executor('gpu')
+            train_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+
+            with paddle.static.program_guard(train_program, startup_program):
+                input = paddle.static.data(
+                    shape=[2, 2], name='input', dtype='float32'
+                )
+                model = paddle.nn.Linear(2, 2)
+                output = model(input)
+                loss = paddle.mean(output)
+
+                optimizer = paddle.optimizer.ASGD(
+                    batch_num=2,
+                )
+                optimizer.minimize(loss)
+
+            exe.run(startup_program)
+            out = []
+            for _ in range(5):
+                (loss_data,) = exe.run(
+                    train_program, feed={"input": self.data}, fetch_list=[loss]
+                )
+                out.append(loss_data)
+            return out
+
+    def run_dygraph(self):
+        with dygraph_guard():
+            paddle.seed(10)
+            np.random.seed(10)
+
+            out = []
+            model = paddle.nn.Linear(2, 2)
+            optimizer = paddle.optimizer.ASGD(
+                batch_num=2, parameters=model.parameters()
+            )
+            for _ in range(5):
+                output = model(paddle.to_tensor(self.data))
+                loss = paddle.mean(output)
+                out.append(loss.numpy())
+                loss.backward()
+                optimizer.step()
+                optimizer.clear_grad()
+            return out
+
+    def test_main(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        out1 = self.run_dygraph()
+        out2 = self.run_static()
+        np.testing.assert_allclose(out1, out2)
 
 
 if __name__ == "__main__":

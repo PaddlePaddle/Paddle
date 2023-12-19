@@ -96,7 +96,6 @@ void ASGDKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-#ifdef PADDLE_WITH_CUDA
 PD_REGISTER_KERNEL(asgd,
                    GPU,
                    ALL_LAYOUT,
@@ -110,18 +109,3 @@ PD_REGISTER_KERNEL(asgd,
     kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
   }
 }
-#endif
-
-#ifdef PADDLE_WITH_HIP
-PD_REGISTER_KERNEL(asgd,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::ASGDKernel,
-                   phi::dtype::float16,
-                   float,
-                   double) {
-  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
-    kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
-  }
-}
-#endif
