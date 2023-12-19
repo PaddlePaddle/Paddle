@@ -1375,7 +1375,7 @@ def decode_jpeg(x, mode='unchanged', name=None):
             >>> print(img.shape)
             [3, 400, 300]
     """
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.decode_jpeg(x, mode, _current_expected_place())
     else:
         inputs = {'X': x}

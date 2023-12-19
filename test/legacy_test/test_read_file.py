@@ -72,7 +72,6 @@ class TestReadFileWithStatic(unittest.TestLoader):
                 img = decode_jpeg(img_bytes)
                 img_cv2 = cv2.imread(self.img_path)
                 exe = paddle.static.Executor(place)
-                exe.run(paddle.static.default_startup_program())
                 out = exe.run(
                     paddle.static.default_main_program(), fetch_list=[img]
                 )
