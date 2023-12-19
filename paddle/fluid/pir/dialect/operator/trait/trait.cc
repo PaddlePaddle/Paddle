@@ -14,6 +14,10 @@
 
 #include "paddle/fluid/pir/dialect/operator/trait/custom_vjp.h"
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
+#include "paddle/fluid/pir/dialect/operator/trait/onednn.h"
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::InplaceTrait)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::CustomVjpTrait)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNTrait)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNOnlyTrait)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNDynamicFallbackTrait)
