@@ -918,6 +918,7 @@ def launch():
                     ] = multi_dp_performace
 
             error_info = None
+            cur_cfg["has_error"] = has_error
             if has_error:
                 error_info = []
                 error_task_nums += 1
