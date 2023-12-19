@@ -91,7 +91,6 @@ class TestStaticReshard(unittest.TestCase):
     def set_random_seed(self, seed):
         random.seed(seed)
         np.random.seed(seed)
-        paddle.seed(seed)
 
     def create_data_loader(self):
         images = np.random.rand(BATCH_SIZE, BATCH_SIZE, IMAGE_SIZE).astype(
