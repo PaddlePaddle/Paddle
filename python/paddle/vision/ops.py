@@ -15,11 +15,9 @@
 import numpy as np
 
 import paddle
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 from paddle.framework import (
-    in_dynamic_mode,
     in_dynamic_or_pir_mode,
-    in_pir_mode,
 )
 from paddle.tensor.math import _add_with_axis
 from paddle.utils import convert_to_list
@@ -1324,9 +1322,7 @@ def read_file(filename, name=None):
             [142773]
     """
 
-    if in_dynamic_mode():
-        return _legacy_C_ops.read_file('filename', filename)
-    elif in_pir_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.read_file(filename)
     else:
         inputs = {}
