@@ -233,7 +233,7 @@ class TestLlamaAuto:
         st_loss = self.run_dy2static()
         print(dy_loss, st_loss)
         if int(dist.get_rank()) == 7:
-            np.testing.assert_allclose(dy_loss, st_loss, atol=1e-5)
+            np.testing.assert_equal(dy_loss, st_loss)
 
 
 if __name__ == '__main__':
