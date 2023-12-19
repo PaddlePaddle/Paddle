@@ -184,6 +184,7 @@ bool AllInputDenseTensor(pir::Operation* op) {
 }
 
 bool IsSupportCinn(pir::Operation* op) {
+  return true;
   if (!AllInputDenseTensor(op)) {
     return false;
   }

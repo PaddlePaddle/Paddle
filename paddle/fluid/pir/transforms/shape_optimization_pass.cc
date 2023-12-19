@@ -623,6 +623,8 @@ void InferSymbolicShapeCinnSlice(
   for (int i = start; i < end; i++) {
     value_shape.second.emplace_back(source_shape_vec[i]);
   }
+  value_shape.first.clear();
+  value_shape.first.emplace_back(std::to_string(value_shape.second.size()));
 
   shape_analysis->value_to_valueshape_expr_[rst_id] = value_shape;
 }
@@ -641,6 +643,7 @@ void InferSymbolicShapeBuiltinCombine(
 
   auto rst = op->result(0);
   auto rst_id = pir::GetValueId(&rst);
+  value_shape.first.emplace_back(std::to_string(value_shape.second.size()));
 
   shape_analysis->value_to_valueshape_expr_[rst_id] = value_shape;
 }
@@ -655,6 +658,7 @@ void InferSymbolicShapeStack(pir::Operation* op,
 
   value_shape.second =
       shape_analysis->value_to_valueshape_expr_[operand_source_id].second;
+  value_shape.first.emplace_back(std::to_string(value_shape.second.size()));
   shape_analysis->value_to_valueshape_expr_[rst_id] = value_shape;
 }
 
@@ -698,13 +702,65 @@ void debug_print_op_info(
   }
 }
 
+void UpdateValueId2Value(
+    pir::Operation* op,
+    std::unordered_map<std::string, pir::Value>* value_id2value) {
+  for (auto& value : op->results()) {
+    auto value_id = pir::GetValueId(&value);
+    value_id2value->emplace(value_id, value);
+  }
+  for (auto& value : op->operands_source()) {
+    auto value_id = pir::GetValueId(&value);
+    value_id2value->emplace(value_id, value);
+  }
+}
+
+std::vector<symbol::DimExpr> String2DimExprs(
+    const std::vector<std::string>& expr_strs) {
+  std::vector<symbol::DimExpr> ret{};
+  for (const auto& expr_str : expr_strs) {
+    if (expr_str[0] >= '0' && expr_str[0] <= '9') {
+      ret.emplace_back(std::atoi(expr_str.c_str()));
+    } else {
+      ret.emplace_back(expr_str);
+    }
+  }
+  return ret;
+}
+
+symbol::ValueShapeDimExprs String2ValueShapeDimExprs(
+    const std::pair<std::vector<std::string>, std::vector<std::string>>&
+        value_shape_str) {
+  const auto& [values, shapes] = value_shape_str;
+  std::vector<symbol::DimExpr> value_expr = String2DimExprs(shapes);
+  std::vector<symbol::DimExpr> shape_expr = String2DimExprs(values);
+  if (value_expr.empty()) {
+    return symbol::ValueShapeDimExprs{shape_expr};
+  } else {
+    return symbol::ValueShapeDimExprs::MakeConsistentValueShape(value_expr);
+  }
+}
+
+void UpdateShapeAnalysisValue2ValueShapeDimExprs(
+    pir::ShapeConstraintIRAnalysis* shape_analysis,
+    const std::unordered_map<std::string, pir::Value>& value_id2value) {
+  for (const auto& [value_id, value_shape_str] :
+       shape_analysis->value_to_valueshape_expr_) {
+    auto value = value_id2value.at(value_id);
+    shape_analysis->SetValueShapeDimExprs(
+        value, String2ValueShapeDimExprs(value_shape_str));
+  }
+}
+
 void CreateSymDimsForAllValues(const pir::ModuleOp& module_op) {
   auto shape_analysis_mgr = pir::ShapeAnalysisManager::Instance();
   pir::ShapeConstraintIRAnalysis& shape_analysis =
       shape_analysis_mgr.Get(const_cast<pir::ModuleOp&>(module_op).program());
+  std::unordered_map<std::string, pir::Value> value_id2value{};
   for (int i = 0; i < module_op->num_regions(); i++) {
     for (auto& block : module_op->region(i)) {
       for (auto& op : block) {
+        UpdateValueId2Value(&op, &value_id2value);
         if (op.num_operands() == 0) {
           // Need new syms for -1s
           for (auto& rst : op.results()) {
@@ -733,6 +789,15 @@ void CreateSymDimsForAllValues(const pir::ModuleOp& module_op) {
                 auto i = item.dyn_cast<Int64Attribute>();
                 value_shape.second.emplace_back(std::to_string(i.data()));
               }
+            } else if (op.name() == "pd_op.full") {
+              auto attributes = op.attributes();
+              auto attr = attributes["value"];
+              auto arr = attr.dyn_cast<FloatAttribute>();
+              value_shape.second.emplace_back(
+                  std::to_string(static_cast<int>(arr.data())));
+              value_shape.first.clear();
+              value_shape.first.emplace_back(
+                  std::to_string(value_shape.second.size()));
             }
             shape_analysis.value_to_valueshape_expr_[value_id] = value_shape;
           }
@@ -755,6 +820,7 @@ void CreateSymDimsForAllValues(const pir::ModuleOp& module_op) {
       }
     }
   }
+  UpdateShapeAnalysisValue2ValueShapeDimExprs(&shape_analysis, value_id2value);
 }
 
 class ShapeOptimizationPass : public pir::Pass {

@@ -29,20 +29,20 @@ def apply_to_static(net, use_cinn, input_spec=None):
     )
 
 
-# def reshape(x):
-#     y = paddle.exp(x)
-#     out = paddle.reshape(y, x.shape)
-#     return out
-
-
 def reshape(x):
     y = paddle.exp(x)
-    z = y - x
-    i = paddle.shape(x)[0]
-    j = paddle.shape(y)[1]
-    out = paddle.reshape(z, shape=[i, j])
-    # out = paddle.reshape(z, shape=[128, 4, 2])
+    out = paddle.reshape(y, x.shape) - x
     return out
+
+
+# def reshape(x):
+#     y = paddle.exp(x)
+#     z = y - x
+#     i = paddle.shape(x)[0]
+#     j = paddle.shape(y)[1]
+#     out = paddle.reshape(z, shape=[i, j])
+#     # out = paddle.reshape(z, shape=[128, 4, 2])
+#     return out
 
 
 class CINNReshapeSubGraphNet(paddle.nn.Layer):
