@@ -270,6 +270,8 @@ if(WITH_XPU)
   pass_library(fc_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(reshape_unstack_concat_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
+  pass_library(qk_qkv_attention_xpu_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
   pass_library(multi_encoder_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(multi_encoder_xpu_adaptive_seqlen_fuse_pass inference DIR xpu
@@ -350,6 +352,17 @@ cc_library(
   fused_feedforward_pass
   SRCS fused_feedforward_pass.cc
   DEPS pass graph_pattern_detector)
+
+if(WITH_CUDNN_FRONTEND)
+  cc_library(
+    fuse_dot_product_attention_pass
+    SRCS fuse_dot_product_attention_pass.cc
+    DEPS pass graph_pattern_detector)
+  cc_library(
+    fuse_resunit_pass
+    SRCS fuse_resunit_pass.cc
+    DEPS pass graph_pattern_detector)
+endif()
 
 set(GLOB_PASS_LIB
     ${INFER_IR_PASSES}

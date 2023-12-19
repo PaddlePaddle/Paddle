@@ -60,7 +60,6 @@ from .creation import (  # noqa: F401
     zeros,
     zeros_like,
 )
-
 from .einsum import einsum  # noqa: F401
 from .linalg import (  # noqa: F401
     bincount,
@@ -146,8 +145,11 @@ from .manipulation import (  # noqa: F401
     cast,
     cast_,
     chunk,
+    column_stack,
     concat,
     diagonal_scatter,
+    dsplit,
+    dstack,
     expand,
     expand_as,
     flatten,
@@ -156,6 +158,8 @@ from .manipulation import (  # noqa: F401
     flip as reverse,
     gather,
     gather_nd,
+    hsplit,
+    hstack,
     index_add,
     index_add_,
     index_fill,
@@ -164,6 +168,8 @@ from .manipulation import (  # noqa: F401
     index_put_,
     masked_fill,
     masked_fill_,
+    masked_scatter,
+    masked_scatter_,
     moveaxis,
     put_along_axis,
     put_along_axis_,
@@ -172,6 +178,7 @@ from .manipulation import (  # noqa: F401
     reshape_,
     roll,
     rot90,
+    row_stack,
     scatter,
     scatter_,
     scatter_nd,
@@ -185,6 +192,7 @@ from .manipulation import (  # noqa: F401
     stack,
     strided_slice,
     take_along_axis,
+    tensor_split,
     tensordot,
     tile,
     unbind,
@@ -198,6 +206,7 @@ from .manipulation import (  # noqa: F401
     view,
     view_as,
     vsplit,
+    vstack,
 )
 from .math import (  # noqa: F401
     abs,
@@ -371,6 +380,7 @@ from .math import (  # noqa: F401
     vander,
 )
 from .random import (  # noqa: F401
+    binomial,
     exponential_,
     multinomial,
     normal,
@@ -603,6 +613,9 @@ tensor_method_func = [
     'shard_index',
     'slice',
     'split',
+    'tensor_split',
+    'hsplit',
+    'dsplit',
     'vsplit',
     'chunk',
     'tensordot',
@@ -767,6 +780,8 @@ tensor_method_func = [
     'atleast_2d',
     'atleast_3d',
     'diagonal_scatter',
+    'masked_scatter',
+    'masked_scatter_',
     "combinations",
 ]
 

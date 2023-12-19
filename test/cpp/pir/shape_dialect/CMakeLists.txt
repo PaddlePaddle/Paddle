@@ -2,6 +2,8 @@ paddle_test(shape_op_test SRCS shape_op_test.cc DEPS pir gtest)
 
 paddle_test(shape_struct_test SRCS shape_struct_test.cc DEPS pir gtest)
 
+paddle_test(symbol_dim_expr_test SRCS symbol_dim_expr_test.cc DEPS pir gtest)
+
 if(WITH_CINN)
   paddle_test(
     shape_optimization_test

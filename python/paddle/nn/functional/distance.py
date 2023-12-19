@@ -106,3 +106,40 @@ def pairwise_distance(x, y, p=2.0, epsilon=1e-6, keepdim=False, name=None):
         )
 
         return out
+
+
+def pdist(x, p=2.0, name=None):
+    r'''
+    Computes the p-norm distance between every pair of row vectors in the input.
+
+    Args:
+        x (Tensor): The input tensor with shape :math:`N \times M`.
+        p (float, optional): The value for the p-norm distance to calculate between each vector pair. Default: :math:`2.0`.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor with shape :math:`N(N-1)/2` , the dtype is same as input tensor.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.seed(2023)
+            >>> a = paddle.randn([4, 5])
+            >>> print(a)
+            Tensor(shape=[4, 5], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[ 0.06132207,  1.11349595,  0.41906244, -0.24858207, -1.85169315],
+                    [-1.50370061,  1.73954511,  0.13331604,  1.66359663, -0.55764782],
+                    [-0.59911072, -0.57773495, -1.03176904, -0.33741450, -0.29695082],
+                    [-1.50258386,  0.67233968, -1.07747352,  0.80170447, -0.06695852]])
+            >>> pdist_out=paddle.pdist(a)
+            >>> print(pdist_out)
+            Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [2.87295413, 2.79758120, 3.02793980, 3.40844536, 1.89435327, 1.93171620])
+    '''
+
+    x_shape = list(x.shape)
+    assert len(x_shape) == 2, "The x must be 2-dimensional"
+    d = paddle.linalg.norm(x[..., None, :] - x[..., None, :, :], p=p, axis=-1)
+    mask = ~paddle.tril(paddle.ones(d.shape, dtype='bool'))
+    return paddle.masked_select(d, mask)
