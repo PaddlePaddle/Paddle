@@ -15,6 +15,7 @@
 #pragma once
 #include <vector>
 
+#include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
 #include "paddle/pir/core/op_base.h"
 
@@ -137,7 +138,7 @@ class HasElementsOp : public pir::Op<HasElementsOp> {
 ///      print(summarize number of elements in data)
 ///   }
 ///
-class AssertOp : public pir::Op<AssertOp> {
+class AssertOp : public pir::Op<AssertOp, OpYamlInfoInterface> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.assert"; }
@@ -150,6 +151,7 @@ class AssertOp : public pir::Op<AssertOp> {
                     pir::Value data_,
                     int64_t summarize);
 
+  static OpInfoTuple GetOpInfo();
   void VerifySig();
 
   pir::Value cond() { return operand_source(0); }

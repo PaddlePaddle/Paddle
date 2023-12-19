@@ -476,6 +476,29 @@ void AssertOp::Build(pir::Builder &builder,             // NOLINT
   argument.AddAttribute("summarize", attr_summarize);
 }
 
+OpInfoTuple AssertOp::GetOpInfo() {
+  std::vector<paddle::dialect::OpInputInfo> inputs = {
+      paddle::dialect::OpInputInfo("cond",
+                                   "paddle::dialect::DenseTensorType",
+                                   false,
+                                   false,
+                                   false,
+                                   false),
+      paddle::dialect::OpInputInfo(
+          "data",
+          "pir::VectorType<paddle::dialect::DenseTensorType>",
+          false,
+          false,
+          false,
+          false)};
+  std::vector<paddle::dialect::OpAttributeInfo> attributes = {
+      paddle::dialect::OpAttributeInfo("summarize", "pir::Int64Attribute", "")};
+  std::vector<paddle::dialect::OpOutputInfo> outputs = {};
+  paddle::dialect::OpRunTimeInfo run_time_info = paddle::dialect::OpRunTimeInfo(
+      "", {""}, "assert", {"cond", "data", "summarize"}, {"cond"}, {}, {}, {});
+  return std::make_tuple(inputs, attributes, outputs, run_time_info, "assert");
+}
+
 void AssertOp::VerifySig() {
   VLOG(4) << "Start Verifying inputs, outputs and attributes for: AssertOp.";
   VLOG(4) << "Verifying inputs:";
