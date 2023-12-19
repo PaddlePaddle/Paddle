@@ -125,18 +125,9 @@ if(WITH_CINN)
   paddle_test(
     op_debug_string_test
     SRCS
-    op_debug_string_test.cc
-    DEPS
-    executor
-    common
-    fleet_executor
-    recurrent_op_helper
-    recurrent_op
-    elementwise_add_op
-    ${COMMON_OP_DEPS}
-    python)
+    op_debug_string_test.cc)
 else()
-  paddle_test(op_debug_string_test SRCS op_debug_string_test.cc DEPS common)
+  paddle_test(op_debug_string_test SRCS op_debug_string_test.cc)
 endif()
 
 if(WITH_GPU)
