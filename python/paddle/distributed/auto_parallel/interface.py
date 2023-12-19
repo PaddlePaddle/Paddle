@@ -221,7 +221,12 @@ def recompute(op):
             default_prog = paddle.static.default_main_program()
             cur_block = default_prog.current_block()
             op_size = len(cur_block.ops)
-            output = self._op(*args, **kwargs)
+            if paddle.base.dygraph.base.in_to_static_mode():
+                output = paddle.jit.dy2static.convert_call_func.convert_call(
+                    self._op
+                )(*args, **kwargs)
+            else:
+                output = self._op(*args, **kwargs)
             new_op_size = len(cur_block.ops)
 
             for idx in range(op_size, new_op_size):
@@ -265,7 +270,12 @@ def exclude_ops_in_recompute(run_function):
             default_prog = paddle.static.default_main_program()
             cur_block = default_prog.current_block()
             op_size = len(cur_block.ops)
-            output = self._run_function(*args, **kwargs)
+            if paddle.base.dygraph.base.in_to_static_mode():
+                output = paddle.jit.dy2static.convert_call_func.convert_call(
+                    self._run_function
+                )(*args, **kwargs)
+            else:
+                output = self._run_function(*args, **kwargs)
             new_op_size = len(cur_block.ops)
 
             for idx in range(op_size, new_op_size):

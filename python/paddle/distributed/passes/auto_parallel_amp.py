@@ -58,7 +58,6 @@ world_process_group = get_world_process_group()
 __amp_skip_ops__ = [
     'create_py_reader',
     'create_double_buffer_reader',
-    'cast',
     'while',
 ]
 
@@ -402,6 +401,12 @@ class AMPState:
         """
         num_cast_ops = 0
         var_name_dict = {}
+        if op.type == "cast":
+            in_var = block._find_var_recursive(op.input('X')[0])
+            out_var = block._find_var_recursive(op.output('Out')[0])
+            op._set_attr('in_dtype', in_var.dtype)
+            out_var.desc.set_dtype(paddle.dtype(op.attr('out_dtype')))
+            return num_cast_ops
         for in_name in op.input_names:
             if (
                 src_dtype == core.VarDesc.VarType.FP32
@@ -525,6 +530,21 @@ class AMPState:
         original_id = op.desc.original_id()
         dist_op_context = dist_context.dist_op_context
         fwd_op_id = self.grad_op_to_op_map[original_id]
+
+        if op.type == "cast":
+            in_name = op.input('X')[0]
+            out_name = op.output('Out')[0]
+            in_var = block._find_var_recursive(in_name)
+            out_var = block._find_var_recursive(out_name)
+            in_var_fw = block._find_var_recursive(in_name[: in_name.find("@")])
+            out_var_fw = block._find_var_recursive(
+                out_name[: out_name.find("@")]
+            )
+            op._set_attr('in_dtype', in_var_fw.dtype)
+            op._set_attr('out_dtype', out_var_fw.dtype)
+            in_var.desc.set_dtype(in_var_fw.dtype)
+            out_var.desc.set_dtype(out_var_fw.dtype)
+            return num_cast_ops
 
         for in_name in op.input_names:
             if src_dtype == core.VarDesc.VarType.FP32 and _keep_fp32_input(
