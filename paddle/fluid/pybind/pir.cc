@@ -321,11 +321,15 @@ void BindBlock(py::module *m) {
           [](Block &self) { return &self.front(); },
           return_value_policy::reference)
       .def_property_readonly(
+          "parent_op",
+          [](Block &self) { return self.GetParentOp(); },
+          return_value_policy::reference)
+      .def_property_readonly(
           "program",
           [](Block &self) { return self.GetParentOp()->GetParentProgram(); },
           return_value_policy::reference)
       .def_property_readonly(
-          "get_parent",
+          "parent_block",
           [](Block &self) { return self.GetParentOp()->GetParent(); },
           return_value_policy::reference)
       .def_property_readonly("ops",
@@ -717,6 +721,14 @@ void BindValue(py::module *m) {
                 kAttrIsPersisable,
                 BoolAttribute::get(pir::IrContext::Instance(), persistable));
           })
+      .def("all_used_ops",
+           [](Value &self) -> py::list {
+             py::list op_list;
+             for (auto it = self.use_begin(); it != self.use_end(); ++it) {
+               op_list.append(it.owner());
+             }
+             return op_list;
+           })
       .def(
           "get_defining_op",
           [](Value self) -> pir::Operation * {
