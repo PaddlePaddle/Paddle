@@ -1532,7 +1532,7 @@ def bernoulli_(x, p=0.5, name=None):
             >>> # doctest: -SKIP
 
     """
-    if 0 <= p and p <= 1:
+    if not (0 <= p and p <= 1):
         raise ValueError(f"bernoulli_ expects p to be in [0, 1], but got p={p}")
 
     check_variable_and_dtype(x, "x", ["float32", "float64"], "exponential")
@@ -1541,7 +1541,7 @@ def bernoulli_(x, p=0.5, name=None):
     return x.set_value((x < p).astype(x.dtype))
 
 
-def log_normal(shape, mean=0.0, std=1.0, seed=0, dtype=None, name=None):
+def log_normal(mean=1.0, std=1.0, shape=None, dtype=None, name=None):
     r"""
     Returns a Tensor filled with random values sampled from a Log Normal
     Distribution, with ``mean``, ``std``, ``shape`` and ``dtype``.
@@ -1594,6 +1594,7 @@ def log_normal(shape, mean=0.0, std=1.0, seed=0, dtype=None, name=None):
 
             :name: log_normal-example-3
             >>> import paddle
+            >>> mean_tensor = paddle.to_tensor([1.0, 2.0, 3.0])
             >>> std_tensor = paddle.to_tensor([1.0, 2.0, 3.0])
             >>> out3 = paddle.log_normal(mean=mean_tensor, std=std_tensor)
             >>> print(out3)
@@ -1603,31 +1604,78 @@ def log_normal(shape, mean=0.0, std=1.0, seed=0, dtype=None, name=None):
             >>> # doctest: -SKIP
 
     """
-    op_type_for_check = 'gaussian/standard_normal/randn/normal'
-    supported_dtypes = ['float32', 'float64', 'float16', 'uint16', 'bfloat16']
-
-    if dtype is None:
-        dtype = paddle.framework.get_default_dtype()
-        if dtype not in supported_dtypes:
-            raise TypeError(
-                "{} only supports {}, but the default dtype is {}".format(
-                    op_type_for_check, supported_dtypes, dtype
-                )
+    if not in_dynamic_or_pir_mode():
+        check_type(mean, 'mean', (list, tuple, Variable), 'log_normal')
+        check_type(std, 'std', (list, tuple, Variable), 'log_normal')
+        if isinstance(mean, Variable):
+            check_dtype(
+                mean.dtype,
+                'mean',
+                ['float32', 'float64'],
+                'log_normal',
+                "If mean is a Tensor, it's data type only support float32, float64",
             )
-    if not isinstance(dtype, core.VarDesc.VarType):
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        if isinstance(std, Variable):
+            check_dtype(
+                std.dtype,
+                'std',
+                ['float16', 'float32', 'float64'],
+                'log_normal',
+                "If std is a Tensor, it's data type only support float32, float64",
+            )
+        if shape is not None:
+            check_shape(shape, 'log_normal')
 
-    n_mean = paddle.log(mean**2 / paddle.sqrt(mean**2 + std**2))
-    n_std = paddle.sqrt(paddle.log(1 + (std**2 / mean**2)))
+    def normalize_mean_std(mean, std):
+        n_mean = paddle.log(mean**2 / paddle.sqrt(mean**2 + std**2))
+        n_std = paddle.sqrt(paddle.log(1 + (std**2 / mean**2)))
+        return n_mean, n_std
 
-    distribution = gaussian(
-        shape, mean=n_mean, std=n_std, seed=seed, dtype=dtype
-    )
+    if isinstance(mean, Variable):
+        check_dtype(
+                mean.dtype,
+                'mean',
+                ['float16', 'float32', 'float64'],
+                'log_normal',
+                "If mean is a Tensor, it's data type only support float32, float64",
+            )
+        if isinstance(std, Variable):
+            check_dtype(
+                std.dtype,
+                'std',
+                ['float16', 'float32', 'float64'],
+                'log_normal',
+                "If std is a Tensor, it's data type only support float32, float64",
+            )
+            if std.dtype != mean.dtype:
+                std = paddle.cast(std, mean.dtype)
+            mean_shape = paddle.shape(mean)
+            std = paddle.reshape(std, mean_shape)
+        else:
+            std = paddle.to_tensor(std)
+        n_mean, n_std = normalize_mean_std(mean, std)
+        distribution = normal(
+            shape=paddle.shape(mean), mean=n_mean, std=n_std, name=name
+        )
+    elif isinstance(std, Variable):
+        mean = paddle.to_tensor(mean)
+        n_mean, n_std = normalize_mean_std(mean, std)
+        distribution = normal(
+            shape=paddle.shape(std), mean=n_mean, std=n_std, name=name
+        )
+    else:
+        mean = paddle.to_tensor(mean)
+        std = paddle.to_tensor(std)
+        n_mean, n_std = normalize_mean_std(mean, std)
+        distribution = normal(
+            mean=n_mean, std=n_std, shape=shape, name=name
+        )
+
     return paddle.exp(distribution)
 
 
 @dygraph_only
-def log_normal_(x, mean=0.0, std=1.0, seed=0, name=None):
+def log_normal_(x, mean=0.0, std=1.0, name=None):
     r"""
     This inplace OP fill input Tensor ``x`` with random number from a Log Normal Distribution
     with ``mean`` and ``std``. The Log Normal Distribution is defined as follows:
@@ -1667,7 +1715,12 @@ def log_normal_(x, mean=0.0, std=1.0, seed=0, name=None):
             >>> # doctest: -SKIP
 
     """
+    if not isinstance(mean, Variable):
+        mean = paddle.to_tensor(mean)
+    if not isinstance(std, Variable):
+        std = paddle.to_tensor(std)
+
     n_mean = paddle.log(mean**2 / paddle.sqrt(mean**2 + std**2))
     n_std = paddle.sqrt(paddle.log(1 + (std**2 / mean**2)))
 
-    return gaussian_(x, mean=n_mean, std=n_std, seed=seed).exp_()
+    return normal_(x, mean=n_mean, std=n_std).exp_()
