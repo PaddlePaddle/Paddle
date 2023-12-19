@@ -191,7 +191,8 @@ class ValueShape {
   const std::optional<std::vector<T>>& value() const { return value_; }
 
  private:
-  explicit ValueShape(const std::vector<T>& value, const std::vector<T>& shape)
+  explicit ValueShape(const std::optional<std::vector<T>>& value,
+                      const std::optional<std::vector<T>>& shape)
       : value_(value), shape_(shape) {}
 
   std::optional<std::vector<T>> value_;
