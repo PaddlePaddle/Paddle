@@ -1550,13 +1550,9 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
         self._forward_only = forward_only
 
         assert (
-            self.accumulate_steps >= self.num_stages
-        ), "accumulate_steps({}) should be larger than num_stages({}) for pipeline with interleave".format(
-            self.accumulate_steps, self.num_stages
-        )
-        assert (
-            self.accumulate_steps < 2 * self.num_stages
-        ), "accumulate_steps({}) should be smaller than 2 * num_stages({}) for pipeline with interleave".format(
+            self.accumulate_steps == self.num_stages
+            or self.accumulate_steps % self.num_stages != 0
+        ), "accumulate_steps({}) and num_stages({}) should be a multiple or accumulate_steps % num_stages == 0".format(
             self.accumulate_steps, self.num_stages
         )
 
