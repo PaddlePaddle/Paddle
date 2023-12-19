@@ -51,6 +51,16 @@ TEST(DimExpr, constraint) {
   ASSERT_EQ(static_cast<int>(constraints.size()), 1);
 }
 
+TEST(Simplify, NumberArithmetic) {
+  DimExpr number = DimExpr(5);
+  DimExpr add_minus = number + number - number;
+  ASSERT_TRUE((add_minus.Has<std::int64_t>()));
+  ASSERT_EQ((add_minus.Get<std::int64_t>()), 5);
+  DimExpr mul_div = number * DimExpr(1) / number;
+  ASSERT_TRUE((mul_div.Has<std::int64_t>()));
+  ASSERT_EQ((mul_div.Get<std::int64_t>()), 1);
+}
+
 TEST(DimExpr, equal) {
   DimExprBuilder builder{nullptr};
   DimExpr sym0 = DimExpr("S0");
@@ -80,6 +90,20 @@ TEST(DimExpr, equal) {
   ASSERT_NE(builder.Broadcast(sym0, sym1), builder.Broadcast(sym1, sym0));
   ASSERT_EQ(builder.Broadcast(sym0, constant1),
             builder.Broadcast(DimExpr("S0"), constant1));
+}
+
+TEST(DimExpr, print) {
+  imExprBuilder builder{nullptr};
+  DimExpr sym0 = DimExpr("S0");
+  DimExpr sym1 = DimExpr("S1");
+  DimExpr constant1 = DimExpr(1);
+  ASSERT_EQ((ToTxtString(sym0 + sym1 + constant1)), "Add(S0, S1, 1)");
+  ASSERT_EQ((ToTxtString(sym0 - sym1 + constant1)), "Add(S0, -S1, 1)");
+  ASSERT_EQ((ToTxtString(sym0 * sym1)), "Mul(S0, S1)");
+  ASSERT_EQ((ToTxtString(sym0 / sym1)), "Mul(S0, 1 / (S1))");
+  ASSERT_EQ((ToTxtString(builder.Max(sym0, sym1))), "Max(S0, S1)");
+  ASSERT_EQ((ToTxtString(builder.Min(sym0, sym1))), "Min(S0, S1)");
+  ASSERT_EQ((ToTxtString(builder.Broadcast(sym0, sym1))), "Broadcast(S0, S1)");
 }
 
 }  // namespace symbol::test

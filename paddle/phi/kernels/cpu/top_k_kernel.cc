@@ -246,7 +246,14 @@ void TopkKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    topk, CPU, ALL_LAYOUT, phi::TopkKernel, float, double, int32_t, int64_t) {
+PD_REGISTER_KERNEL(topk,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::TopkKernel,
+                   float,
+                   double,
+                   int32_t,
+                   int64_t,
+                   phi::dtype::float16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
 }
