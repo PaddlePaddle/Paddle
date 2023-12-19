@@ -39,7 +39,7 @@ namespace distributed {
 // and dim2 referes to the second shape value in (6, 8).
 class DimTrans {
  public:
-  enum class Type { INPUTDIM, SINGLETON, FLATTEN, SPLIT };
+  enum class Type { INPUTDIM, SINGLETON, FLATTEN, SPLIT, BROADCAST };
 
   DimTrans() = default;
 
@@ -83,6 +83,29 @@ class Singleton : public DimTrans {
  public:
   Singleton();
   std::string to_string() override;
+};
+
+// Broadcast indicates that the output dimension is obtained by broadcasting the
+// Singleton dimensions
+class Broadcast : public DimTrans {
+ public:
+  Broadcast();
+
+  explicit Broadcast(const std::shared_ptr<DimTrans> dim, int64_t dim_size);
+
+  virtual ~Broadcast();
+
+  const std::shared_ptr<DimTrans>& dim() const;
+
+  void set_dim(const std::shared_ptr<DimTrans> dim);
+
+  int64_t dim_size() const;
+
+  std::string to_string() override;
+
+ private:
+  std::shared_ptr<DimTrans> dim_;
+  int64_t dim_size_;
 };
 
 // Flatten indicates that the output dimension

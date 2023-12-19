@@ -51,6 +51,29 @@ std::string InputDim::to_string() {
 
 Singleton::Singleton() : DimTrans(DimTrans::Type::SINGLETON) {}
 
+Broadcast::Broadcast() : DimTrans(DimTrans::Type::BROADCAST) { dim_ = nullptr; }
+
+Broadcast::Broadcast(const std::shared_ptr<DimTrans> dim, int64_t dim_size)
+    : DimTrans(DimTrans::Type::BROADCAST) {
+  dim_ = dim;
+  dim_size_ = dim_size;
+}
+
+Broadcast::~Broadcast() { dim_ = nullptr; }
+
+const std::shared_ptr<DimTrans>& Broadcast::dim() const { return dim_; }
+
+void Broadcast::set_dim(std::shared_ptr<DimTrans> dim) { dim_ = dim; }
+
+int64_t Broadcast::dim_size() const { return dim_size_; }
+
+std::string Broadcast::to_string() {
+  std::string ret_str("Broadcast(");
+  ret_str += dim_->to_string() + ", ";
+  ret_str += std::to_string(dim_size_) + ")";
+  return ret_str;
+}
+
 std::string Singleton::to_string() { return "Singleton()"; }
 
 Flatten::Flatten() : DimTrans(DimTrans::Type::FLATTEN) {}
@@ -262,6 +285,8 @@ std::shared_ptr<DimTrans> GetDimTrans(
     }
   } else if (type == DimTrans::Type::SINGLETON) {
     ret_dim_trans = nullptr;
+  } else if (type == DimTrans::Type::BROADCAST) {
+    ret_dim_trans = nullptr;
   }
   return ret_dim_trans;
 }
@@ -281,6 +306,10 @@ void GetUsedInputDim(const std::shared_ptr<DimTrans> dim_trans,
   } else if (dim_trans->type() == DimTrans::Type::SPLIT) {
     std::shared_ptr<Split> split = std::dynamic_pointer_cast<Split>(dim_trans);
     GetUsedInputDim(split->input(), seen_dims);
+  } else if (dim_trans->type() == DimTrans::Type::BROADCAST) {
+    std::shared_ptr<Broadcast> broadcast =
+        std::dynamic_pointer_cast<Broadcast>(dim_trans);
+    GetUsedInputDim(broadcast->dim(), seen_dims);
   } else {
     return;
   }
