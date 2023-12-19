@@ -79,8 +79,8 @@ struct VariadicDimExpr {
 
 #define DEFINE_DIM_EXPR_SUBCLASS(class_name, base) \
   template <typename T>                            \
-  struct class_name : public base<T> {             \
-    using base<T>::base;                           \
+  struct class_name : public base {                \
+    using base::base;                              \
   };
 
 DEFINE_DIM_EXPR_SUBCLASS(Negative, UnaryDimExpr);
