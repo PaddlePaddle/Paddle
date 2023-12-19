@@ -128,10 +128,16 @@ class DimExpr : public DimExprBase {
     return std::get<T>(*this);
   }
 
+  const DimExprBase& variant() const {
+    return static_cast<const DimExprBase&>(*this);
+  }
+
   DimExpr operator+(const DimExpr& other) const;
   DimExpr operator-(const DimExpr& other) const;
   DimExpr operator*(const DimExpr& other) const;
   DimExpr operator/(const DimExpr& other) const;
+  bool operator==(const DimExpr& other) const;
+  bool operator!=(const DimExpr& other) const;
 };
 
 // DimExprConstraint = Equal DimExpr
