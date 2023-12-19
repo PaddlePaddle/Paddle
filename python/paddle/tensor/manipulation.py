@@ -6759,8 +6759,8 @@ def slice_scatter(x, value, axis=0, start=None, stop=None, step=1, name=None):
         x (Tensor) : The input Tensor. Supported data types are `bool`, `float16`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `bfloat16`, `complex64`, `complex128`.
         value (Tensor) : The tensor to embed into x. Supported data types are `bool`, `float16`, `float32`, `float64`, `uint8`, `int8`, `int16`, `int32`, `int64`, `bfloat16`, `complex64`, `complex128`.
         axis (int) : the dimension to insert the value. Default is 0.
-        start (int, optional) : the start index of where to insert. Default is 0.
-        stop (int, optional) : the stop index of where to insert. Default is x.shape[axis].
+        start (int, optional) : the start index of where to insert. Default is `None` which will be converted to `0`.
+        stop (int, optional) : the stop index of where to insert. Default is `None` which will be converted to x.shape[axis].
         step (int, optional) : the step for each insert. Default is 1.
         name (str, optional): Name for the operation (optional, default is None).
 
