@@ -19,6 +19,7 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_onednn_dialect.h"
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/core/program.h"
 
@@ -31,6 +32,7 @@ std::unique_ptr<Program> TranslateLegacyProgramToProgram(
     const LegacyProgramDesc& legacy_program) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<dialect::OneDNNOperatorDialect>();
   auto program = std::make_unique<Program>(ctx);
   translator::ProgramTranslator program_translator(&legacy_program,
                                                    program.get());
