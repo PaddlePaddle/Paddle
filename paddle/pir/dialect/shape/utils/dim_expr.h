@@ -165,11 +165,11 @@ class ValueShape {
       }
       return ValueShape({GetValueByIndex(0).value()}, shape);
     } else if (shape.size() == 1) {
-      if (!shape.at(0).Has<std::int64_t>()) {
+      if (!shape.at(0).template Has<std::int64_t>()) {
         return ValueShape(std::nullopt, shape);
       }
       std::vector<T> value{};
-      std::int64_t value_size = shape.at(0).Get<std::int64_t>();
+      std::int64_t value_size = shape.at(0).template Get<std::int64_t>();
       for (std::size_t i = 0; i < value_size; ++i) {
         if (!GetValueByIndex(i).has_value()) {
           return ValueShape(std::nullopt, shape);

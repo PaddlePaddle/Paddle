@@ -147,10 +147,6 @@ ShapeConstraintIRAnalysis::GetOrCreateSymbolicDimsForRankedValue(
   return value_to_sym_dims_.at(value);
 }
 
-symbol::DimExprBuilder ShapeConstraintIRAnalysis::CreateDimExprBuilder() {
-  return symbol::DimExprBuilder(&constraints_);
-}
-
 ShapeAnalysisManager& ShapeAnalysisManager::Instance() {
   static ShapeAnalysisManager instance;
   return instance;

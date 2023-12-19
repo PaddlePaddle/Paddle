@@ -51,8 +51,6 @@ class IR_API ShapeAnalysis {
 
   // Returns true if the two value have the same number elements.
   virtual bool IsSameNumElements(Value lhs, Value rhs);
-
-  virtual symbol::DimExprBuilder CreateDimExprBuilder() = 0;
 };
 
 // A subclass to impement `ShapeAnalysis` on buffer level.

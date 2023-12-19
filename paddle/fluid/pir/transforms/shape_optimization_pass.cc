@@ -701,7 +701,7 @@ void debug_print_op_info(
 void CreateSymDimsForAllValues(const pir::ModuleOp& module_op) {
   auto shape_analysis_mgr = pir::ShapeAnalysisManager::Instance();
   pir::ShapeConstraintIRAnalysis& shape_analysis =
-      shape_analysis_mgr.Get(module_op.program());
+      shape_analysis_mgr.Get(const_cast<pir::ModuleOp&>(module_op).program());
   for (int i = 0; i < module_op->num_regions(); i++) {
     for (auto& block : module_op->region(i)) {
       for (auto& op : block) {
