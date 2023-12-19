@@ -13,6 +13,7 @@ set(new_executor_deps
     global_utils
     garbage_collector
     executor_gc_helper
+    device_event_base
     framework_proto)
 
 if(WITH_CINN AND NOT CINN_ONLY)
