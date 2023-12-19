@@ -35,7 +35,7 @@ class TestFusedParamGradAddForSemiAutoParallel:
 
     def test_body(self):
         x_shape = [4, 16, 32]
-        y_shape = [4, 32, 64]
+        y_shape = [4, 16, 64]
 
         paddle.seed(self._seed)
         np.random.seed(self._seed)
@@ -65,8 +65,8 @@ class TestFusedParamGradAddForSemiAutoParallel:
         weight_grad, bias_grad = run_acc_step(x, y)
 
         # test mp col split
-        x_placements = ([dist.Shard(0), dist.Replicate()],)
-        y_placements = ([dist.Shard(0), dist.Shard(2)],)
+        x_placements = [dist.Shard(0), dist.Replicate()]
+        y_placements = [dist.Shard(0), dist.Shard(2)]
 
         dist_x = dist.shard_tensor(x_np, self._mesh, x_placements)
         dist_y = dist.shard_tensor(y_np, self._mesh, y_placements)
