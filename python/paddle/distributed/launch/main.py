@@ -751,15 +751,21 @@ def launch():
                     auto_tuner.add_cfg(cur_cfg)
                     continue
 
-            c = controllers.init(ctx)
             # for single dp estimation and not run sharding overlap
             if tuner_cfg["search_algo"]["name"] != "grid":
                 # estimated_num_gpus means need single dp estimation
-                if "estimated_num_gpus" in tuner_cfg["search_algo"]:
-                    if cur_cfg["sharding_degree"] == 1:
-                        os.environ["FLAGS_shard_bypass_dygraph_optimizer"] = "1"
-                    else:
-                        os.environ["FLAGS_shard_bypass_dygraph_optimizer"] = "0"
+                bypass_optimizer_flag = "0"
+                if (
+                    "estimated_num_gpus" in tuner_cfg["search_algo"]
+                    and cur_cfg["sharding_degree"] == 1
+                ):
+                    bypass_optimizer_flag = "1"
+                ctx.set_envs(
+                    {
+                        "FLAGS_shard_bypass_dygraph_optimizer": bypass_optimizer_flag
+                    }
+                )
+            c = controllers.init(ctx)
             c.run()
 
             task_end_time = time.time()

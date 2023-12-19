@@ -39,6 +39,10 @@ namespace ir {
 static const char kParamScopeAttr[] = "__param_scope__";  // NOLINT
 
 static const std::vector<std::string> support_subgraph_passes = {
+    "feed_fetch_subgraph_pass",
+    "set_subgraph_edge_pass",
+    "trt_map_ops_to_matrix_multiply_pass",
+    "tensorrt_subgraph_pass",
     "simplify_with_basic_ops_pass",
     "fused_multi_transformer_encoder_pass",
     "fused_multi_transformer_decoder_pass",
@@ -128,7 +132,8 @@ Graph *Pass::Apply(Graph *graph) const {
   } else {
     subgraph_passes = support_subgraph_passes;
   }
-  if (graph->IsMainGraph() &&
+  if (FLAGS_all_blocks_convert_trt && FLAGS_convert_all_blocks &&
+      graph->IsMainGraph() &&
       (std::count(subgraph_passes.begin(), subgraph_passes.end(), Type()) ||
        std::count(support_subgraph_generate_passes.begin(),
                   support_subgraph_generate_passes.end(),
