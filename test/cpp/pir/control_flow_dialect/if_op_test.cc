@@ -91,7 +91,7 @@ TEST(if_op_test, build_by_block) {
   std::unique_ptr<pir::Block> false_block(new pir::Block());
   builder.SetInsertionPointToStart(false_block.get());
   auto full_op_2 = builder.Build<paddle::dialect::FullOp>(
-      std::vector<int64_t>{2}, true, phi::DataType::BOOL);
+      std::vector<int64_t>{3}, true, phi::DataType::BOOL);
   builder.Build<pir::YieldOp>(std::vector<pir::Value>{full_op_2.out()});
 
   builder.SetInsertionPointToBlockEnd(block);
@@ -112,6 +112,10 @@ TEST(if_op_test, build_by_block) {
   EXPECT_EQ(vec.size(), 2u);
   EXPECT_EQ(vec[0], &if_op.true_block());
   EXPECT_EQ(vec[1], &if_op.false_block());
+  EXPECT_EQ(if_op.num_results(), 1u);
+  auto type = if_op.result_type(0).dyn_cast<DenseTensorType>();
+  EXPECT_TRUE(type);
+  EXPECT_EQ(type.dims(), common::DDim{-1});
 }
 
 TEST(if_op_test, network_with_backward) {

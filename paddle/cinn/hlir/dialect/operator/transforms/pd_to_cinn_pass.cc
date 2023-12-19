@@ -225,6 +225,46 @@ class ReshapeOpPattern
   }
 };
 
+class IsCloseOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::IscloseOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::IscloseOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::IscloseOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    auto rtol_op = op->operand_source(2)
+                       .dyn_cast<pir::OpResult>()
+                       .owner()
+                       ->dyn_cast<paddle::dialect::FullOp>();
+
+    auto atol_op = op->operand_source(3)
+                       .dyn_cast<pir::OpResult>()
+                       .owner()
+                       ->dyn_cast<paddle::dialect::FullOp>();
+
+    if (rtol_op && atol_op) {
+      auto rtol_val =
+          rtol_op.attribute("value").dyn_cast<::pir::FloatAttribute>().data();
+      auto atol_val =
+          atol_op.attribute("value").dyn_cast<::pir::FloatAttribute>().data();
+      auto equal_nan =
+          op->attribute("equal_nan").dyn_cast<::pir::BoolAttribute>().data();
+
+      auto cinn_isclose =
+          rewriter.Build<cinn::dialect::IscloseOp>(op->operand_source(0),
+                                                   op->operand_source(1),
+                                                   rtol_val,
+                                                   atol_val,
+                                                   equal_nan);
+      rewriter.ReplaceAllUsesWith(op.result(0), cinn_isclose.result(0));
+      rewriter.EraseOp(op);
+
+      return true;
+    }
+    return false;
+  }
+};
+
 class SliceOpPattern : public pir::OpRewritePattern<paddle::dialect::SliceOp> {
  public:
   using pir::OpRewritePattern<paddle::dialect::SliceOp>::OpRewritePattern;
@@ -570,6 +610,8 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
       context);  // NOTE, scale op pattern should before AddBroadcastTo
   ps.Add(SumOpPattern().Build(context));
   ps.Add(MaxOpPattern().Build(context));
+  ps.Add(MinOpPattern().Build(context));
+  ps.Add(ProdOpPattern().Build(context));
   ps.Add<ReshapeOpPattern>(context);
   ps.Add<ConcatOpPattern>(context);
   ps.Add<SliceOpPattern>(context);
@@ -578,6 +620,7 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add<AddNOpPattern>(context);
   ps.Add<SplitOpPattern>(context);
   ps.Add<ExpandOpPattern>(context);
+  ps.Add<IsCloseOpPattern>(context);
   // ps.Add(UniformOpPattern().Build(context));
 
   return ps;
