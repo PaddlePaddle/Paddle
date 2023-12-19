@@ -281,23 +281,23 @@ PD_REGISTER_KERNEL(matmul_csr_dense_grad,
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
-// PD_REGISTER_KERNEL(matmul_csr_csr_grad,
-//                    GPU,
-//                    ALL_LAYOUT,
-//                    phi::sparse::MatmulCsrCsrGradKernel,
-//                    float,
-//                    double) {
-//   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
-// }
+PD_REGISTER_KERNEL(matmul_csr_csr_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::MatmulCsrCsrGradKernel,
+                   float,
+                   double) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+}
 
-// PD_REGISTER_KERNEL(matmul_coo_coo_grad,
-//                    GPU,
-//                    ALL_LAYOUT,
-//                    phi::sparse::MatmulCooCooGradKernel,
-//                    float,
-//                    double) {
-//   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
-// }
+PD_REGISTER_KERNEL(matmul_coo_coo_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::MatmulCooCooGradKernel,
+                   float,
+                   double) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
 
 PD_REGISTER_KERNEL(masked_matmul_csr_grad,
                    GPU,
