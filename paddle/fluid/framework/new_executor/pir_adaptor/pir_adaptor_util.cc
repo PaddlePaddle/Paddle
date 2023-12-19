@@ -418,12 +418,14 @@ void HandleForSpecialOp(pir::Operation* op,
       if (op_name == paddle::dialect::DataOp::name()) {
         auto shape = op->attribute<dialect::IntArrayAttribute>("shape");
         auto dtype = op->attribute<dialect::DataTypeAttribute>("dtype");
-        auto place = op->attribute<dialect::PlaceAttribute>("place");
+        auto place = op->attribute<dialect::PlaceAttribute>("place").data();
+        if (place.GetType() == phi::AllocationType::UNDEFINED) {
+          place = phi::CPUPlace();
+        }
         phi::DenseTensorMeta meta(dtype.data(),
                                   phi::make_ddim(shape.data().GetData()));
         t->set_meta(meta);
-        auto* dev_ctx =
-            platform::DeviceContextPool::Instance().Get(place.data());
+        auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
         dev_ctx->Alloc(t, dtype.data());
         VLOG(10) << "alloc var: " << op->attribute<pir::StrAttribute>("name")
                  << " " << t->initialized();
