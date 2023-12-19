@@ -393,7 +393,7 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
       if (input->is_none()) {
         continue;
       }
-      Value ir_val = res_match_ctx.GetIrValue(input->name()).get();
+      auto ir_val = res_match_ctx.GetIrValue(input->name());
       if (ir_val) {
         Operation* ir_input_op = ir_val.dyn_cast<pir::OpResult>().owner();
         if (max_input_op_index < op_2_temp_program_index.at(ir_input_op)) {

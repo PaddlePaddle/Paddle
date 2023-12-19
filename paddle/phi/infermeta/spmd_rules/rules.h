@@ -102,6 +102,10 @@ PD_REGISTER_SPMD_RULE(
     unsqueeze,
     PD_INFER_SPMD(phi::distributed::UnsqueezeInferSpmd),
     PD_INFER_SPMD(phi::distributed::UnsqueezeInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(
+    unsqueeze2,
+    PD_INFER_SPMD(phi::distributed::UnsqueezeInferSpmd),
+    PD_INFER_SPMD(phi::distributed::UnsqueezeInferSpmdReverse));
 
 // elementwise unary rule
 PD_REGISTER_SPMD_RULE(
@@ -515,6 +519,11 @@ PD_REGISTER_SPMD_RULE(
     layer_norm,
     PD_INFER_SPMD(phi::distributed::LayerNormInferSpmd),
     PD_INFER_SPMD(phi::distributed::LayerNormInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(
+    flash_attention,
+    PD_INFER_SPMD(phi::distributed::FlashAttInferSpmdStatic),
+    PD_INFER_SPMD(phi::distributed::FlashAttInferSpmdReverse));
 
 // reshape rule
 PD_REGISTER_SPMD_RULE(reshape,

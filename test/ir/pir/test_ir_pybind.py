@@ -16,6 +16,7 @@ import unittest
 
 import paddle
 from paddle import pir
+from paddle.autograd.backward_utils import ValueSet
 
 paddle.enable_static()
 
@@ -98,7 +99,7 @@ class TestPybind(unittest.TestCase):
         self.assertEqual(matmul_op.result(0).stop_gradient, True)
 
         # test opresult hash
-        result_set = set()
+        result_set = ValueSet()
         for opresult in matmul_op.results():
             result_set.add(opresult)
         # test opresult hash and hash(opresult) == hash(operesult)
@@ -106,22 +107,26 @@ class TestPybind(unittest.TestCase):
         # test value hash and hash(value) == hash(operesult)
         self.assertTrue(add_op.operands_source()[0] in result_set)
         # test value == value
-        self.assertEqual(
-            add_op.operands_source()[0], add_op.operands_source()[0]
+        self.assertTrue(
+            add_op.operands_source()[0].is_same(add_op.operands_source()[0])
         )
         # test value == opresult
-        self.assertEqual(add_op.operands_source()[0], matmul_op.results()[0])
+        self.assertTrue(
+            add_op.operands_source()[0].is_same(matmul_op.results()[0])
+        )
         # test opresult print
         self.assertTrue(
             'dtype=pd_op.tensor<4x4xf32>'
             in add_op.operands_source()[0].__str__()
         )
         # test opresult == value
-        self.assertEqual(
-            add_op.operands()[0].source(), add_op.operands_source()[0]
+        self.assertTrue(
+            add_op.operands()[0].source().is_same(add_op.operands_source()[0])
         )
         # test opresult == opresult
-        self.assertEqual(add_op.operands()[0].source(), matmul_op.results()[0])
+        self.assertTrue(
+            add_op.operands()[0].source().is_same(matmul_op.results()[0])
+        )
 
         # test opresult print
         self.assertEqual(
