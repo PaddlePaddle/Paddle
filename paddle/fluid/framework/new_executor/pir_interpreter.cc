@@ -96,7 +96,7 @@ PirInterpreter::PirInterpreter(const platform::Place& place,
       ir_stream_analyzer_(place),
       fetch_var_names_(fetch_var_names),
       enable_job_schedule_profiler_(false) {
-  VLOG(4) << "PirInterpreter(): " << this << " on " << place_;
+  VLOG(2) << "PirInterpreter(): " << this << " on " << place_;
 
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
   completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
@@ -125,7 +125,7 @@ PirInterpreter::PirInterpreter(const platform::Place& place,
     SchedulingPriority rhs_scheduling_priority =
         vec_instruction_base_[rhs]->GetSchedulingPriority();
     if (lhs_scheduling_priority == rhs_scheduling_priority) {
-      return lhs < rhs;
+      return lhs > rhs;
     }
     return lhs_scheduling_priority > rhs_scheduling_priority;
   };
@@ -159,7 +159,7 @@ PirInterpreter::PirInterpreter(
       value_exe_info_(value_exe_info),
       ir_stream_analyzer_(place),
       fetch_var_names_(fetch_var_names) {
-  VLOG(4) << "PirInterpreter(): " << this << " on " << place_;
+  VLOG(2) << "PirInterpreter(): " << this << " on " << place_;
 
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
   completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
@@ -187,7 +187,7 @@ PirInterpreter::PirInterpreter(
     SchedulingPriority rhs_scheduling_priority =
         vec_instruction_base_[rhs]->GetSchedulingPriority();
     if (lhs_scheduling_priority == rhs_scheduling_priority) {
-      return lhs < rhs;
+      return lhs > rhs;
     }
     return lhs_scheduling_priority > rhs_scheduling_priority;
   };
@@ -605,13 +605,13 @@ void PirInterpreter::AnalyseExecuteOrderForTrace(
   SchedulingQueue ready_ops(compare);
 
   std::stringstream ss;
-  if (VLOG_IS_ON(6)) {
+  if (VLOG_IS_ON(2)) {
     ss << "\nLeaf nodes: ";
   }
   for (size_t instr_id = 0; instr_id < dependecy_count_->size(); ++instr_id) {
     if ((*dependecy_count_)[instr_id] == 0) {
       ready_ops.push(instr_id);
-      if (VLOG_IS_ON(6)) {
+      if (VLOG_IS_ON(2)) {
         ss << instr_id << "[" << vec_instruction_base_[instr_id]->Name()
            << "]->";
       }
@@ -623,7 +623,7 @@ void PirInterpreter::AnalyseExecuteOrderForTrace(
     ready_ops.pop();
     trace_order.push_back(now_id);
 
-    if (VLOG_IS_ON(6)) {
+    if (VLOG_IS_ON(2)) {
       ss << "\n" << now_id << " downstreams: ";
     }
 
@@ -632,7 +632,7 @@ void PirInterpreter::AnalyseExecuteOrderForTrace(
     for (size_t next_op_id : next_op_set) {
       if (IsReady(next_op_id)) {
         ready_ops.push(next_op_id);
-        if (VLOG_IS_ON(6)) {
+        if (VLOG_IS_ON(2)) {
           ss << next_op_id << "[" << vec_instruction_base_[next_op_id]->Name()
              << "]->";
         }
@@ -648,7 +648,7 @@ void PirInterpreter::AnalyseExecuteOrderForTrace(
 
   trace_execute_order_ = trace_order;
 
-  if (VLOG_IS_ON(6)) {
+  if (VLOG_IS_ON(2)) {
     std::cout << "======================== pir interpreter trace order "
                  "========================"
               << std::endl;
@@ -747,7 +747,7 @@ std::string PirInterpreter::DebugInstructions() {
      << "\n";
   uint64_t instr_idx = 0;
   for (auto& instr : vec_instruction_base_) {
-    ss << std::setw(10) << instr_idx++ << ": ";
+    ss << instr_idx++ << ": ";
 
     std::stringstream ss_outputs;
     for (auto& output : instr->Outputs()) {
@@ -757,9 +757,9 @@ std::string PirInterpreter::DebugInstructions() {
       }
       ss_outputs << ") ";
     }
-    ss << std::setw(40) << ss_outputs.str();
+    ss << ss_outputs.str();
 
-    ss << std::setw(40) << " = " << instr->Name();
+    ss << " = " << instr->Name();
 
     std::stringstream ss_inputs;
     for (auto& input : instr->Inputs()) {
@@ -777,11 +777,8 @@ std::string PirInterpreter::DebugInstructions() {
        var_id++) {
     auto* var = value_exe_info_->GetVarList()[var_id];
     auto var_name = value_exe_info_->GetVarName(var);
-    ss << std::setw(5) << var_id << " -> " << std::setw(50) << var_name
-       << " -> " << std::setw(50) << var;
+    ss << var_id << " -> " << var_name << " -> " << var << "\n";
   }
-  ss << "----------------------------------------------------------------------"
-        "---------------\n";
   return ss.str();
 }
 
@@ -789,9 +786,9 @@ std::string PirInterpreter::DebugDependency() {
   std::map<size_t, std::set<size_t>> op_downstream_map =
       ir_dependency_builder_.OpDownstreamMap();
   std::stringstream ss;
-  ss << std::setw(7) << "id -> down_stream_id\n";
+  ss << "id -> down_stream_id\n";
   for (auto const& pair : op_downstream_map) {
-    ss << std::setw(7) << pair.first << " -> ";
+    ss << pair.first << " -> ";
     std::copy(pair.second.begin(),
               pair.second.end(),
               std::ostream_iterator<size_t>(ss, " "));
@@ -852,9 +849,6 @@ std::vector<std::string> PirInterpreter::DebugInfo() {
 }
 
 void PirInterpreter::BuildInstructionDependences() {
-  if (VLOG_IS_ON(6)) {
-    VLOG(6) << DebugInstructions();
-  }
   // analysis the dependences between instructions, add next_instr_list to each
   // instr, and set the dependecy_count_
   size_t instr_num = vec_instruction_base_.size();
@@ -1283,13 +1277,6 @@ paddle::framework::FetchList PirInterpreter::Run(
     PreAnalysis();
     VLOG(4) << "Done PreAnalysis";
 
-    if (VLOG_IS_ON(1)) {
-      std::vector<std::string> instr_debug_info = DebugInfo();
-      for (auto& item : instr_debug_info) {
-        std::cout << item << std::endl;
-      }
-    }
-
     // Run
     if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
         execution_config_.used_for_inference ||
@@ -1372,13 +1359,6 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
 
     PreAnalysis();
     VLOG(4) << "Done PreAnalysis";
-
-    if (VLOG_IS_ON(1)) {
-      std::vector<std::string> instr_debug_info = DebugInfo();
-      for (auto& item : instr_debug_info) {
-        std::cout << item << std::endl;
-      }
-    }
 
     // Run
     if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
@@ -1685,17 +1665,15 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
       }
     }
 #endif
-    VLOG(4) << "begin to run op " << instr_node->Name();
-    VLOG(4) << "begin: " << __func__ << " OP id:" << instr_node->Id()
+    VLOG(2) << "\nbegin: " << __func__ << " OP id:" << instr_node->Id()
             << " name:" << instr_node->Name() << " type:"
             << (instr_node->KernelType() == OpFuncType::kCpuSync
                     ? "kCpuSync"
                     : (instr_node->KernelType() == OpFuncType::kGpuSync
                            ? "kGpuSync"
                            : "kGpuAsync"))
-            << " runs on " << platform::GetCurrentThreadName();
-
-    VLOG(4) << cur_place << " Before:"
+            << " runs on " << platform::GetCurrentThreadName() << "\n"
+            << "Before: " << cur_place << " "
             << instr_node->DebugStringEx(scope_, value_exe_info_.get());
     if (!instr_node->IsArtificial()) {
       instr_node->Run();
@@ -1708,17 +1686,15 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
                 << "): context wait and get last error";
 #endif
       }
-      VLOG(4) << "done instruction node run";
-      VLOG(4) << "done: " << __func__ << " OP id:" << instr_node->Id()
+      VLOG(2) << "\ndone: " << __func__ << " OP id:" << instr_node->Id()
               << " name:" << instr_node->Name() << " type:"
               << (instr_node->KernelType() == OpFuncType::kCpuSync
                       ? "kCpuSync"
                       : (instr_node->KernelType() == OpFuncType::kGpuSync
                              ? "kGpuSync"
                              : "kGpuAsync"))
-              << " runs on " << platform::GetCurrentThreadName();
-
-      VLOG(4) << cur_place << " After:"
+              << " runs on " << platform::GetCurrentThreadName() << "\n"
+              << "After: " << cur_place << " "
               << instr_node->DebugStringEx(scope_, value_exe_info_.get());
       CheckGC(instr_node);
       VLOG(4) << "done CheckGC";
@@ -1771,6 +1747,13 @@ void PirInterpreter::PreAnalysis() {
 
   CalculateLastLiveOps();
   VLOG(4) << "Done CalculateLastLiveOps";
+
+  if (VLOG_IS_ON(2)) {
+    std::vector<std::string> instr_debug_info = DebugInfo();
+    for (auto& item : instr_debug_info) {
+      std::cout << item << std::endl;
+    }
+  }
 
   AnalyseExecuteOrderForTrace(ir_dependency_builder_.OpDownstreamMap(),
                               ir_instruction_scheduling_priority_less);

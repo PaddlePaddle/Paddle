@@ -150,7 +150,8 @@ static double GetDenseTensorEleSum(const Scope& scope,
   if (var == nullptr) {
     return std::numeric_limits<double>::quiet_NaN();
   }
-  if (var->IsType<phi::DenseTensor>() && var->IsInitialized()) {
+  if (var->IsType<phi::DenseTensor>() &&
+      var->Get<phi::DenseTensor>().initialized()) {
     phi::DenseTensor cpu_tensor;
     paddle::platform::CPUPlace place;
     paddle::framework::TensorCopy(
@@ -328,7 +329,7 @@ std::string InstructionBase::DebugStringEx(
     bool is_no_need_buffer_var = (!no_need_buffer_vars.empty() &&
                                   no_need_buffer_vars.count(input.first) > 0);
     auto var_name = value_exe_info->GetVarName(input.first);
-    ss << var_name << ": [";
+    ss << var_name << ":[";
     if (scope) {
       if (!VarInited(*scope, var_name)) {
         ss << "uninited";
@@ -337,18 +338,18 @@ std::string InstructionBase::DebugStringEx(
                                                   : GetDtype(*scope, var_name);
         std::string place = is_no_need_buffer_var ? "unknown_place"
                                                   : GetPlace(*scope, var_name);
-        ss << "dtype=" << dtype << "; ";
-        ss << "place=" << place << "; ";
+        ss << "dtype=" << dtype << ";";
+        ss << "place=" << place << ";";
 
-        ss << "dim=" << GetDimsDebug(*scope, var_name, true) << "; ";
-        ss << "lod=" << GetLoDDebug(*scope, var_name) << "; ";
+        ss << "dim=" << GetDimsDebug(*scope, var_name, true) << ";";
+        ss << "lod=" << GetLoDDebug(*scope, var_name) << ";";
         int row_size = GetRowSize(*scope, var_name);
         if (row_size >= 0) {
-          ss << "row_size=" << row_size << "; ";
+          ss << "row_size=" << row_size << ";";
         }
         double ele_sum = GetDenseTensorEleSum(*scope, var_name);
         if (!std::isnan(ele_sum)) {
-          ss << "ele_sum=" << ele_sum << "; ";
+          ss << "ele_sum=" << ele_sum << ";";
         }
       }
     }
@@ -363,23 +364,23 @@ std::string InstructionBase::DebugStringEx(
   for (auto it = Outputs().begin(); it != Outputs().end();) {
     auto& output = *it;
     auto var_name = value_exe_info->GetVarName(output.first);
-    ss << var_name << ": [";
+    ss << var_name << ":[";
     if (scope) {
       if (!VarInited(*scope, var_name)) {
         ss << "uninited";
       } else {
         std::string dtype = GetDtype(*scope, var_name);
-        ss << "dtype=" << dtype << "; ";
-        ss << "place=" << GetPlace(*scope, var_name) << "; ";
-        ss << "dim=" << GetDimsDebug(*scope, var_name, true) << "; ";
-        ss << "lod=" << GetLoDDebug(*scope, var_name) << "; ";
+        ss << "dtype=" << dtype << ";";
+        ss << "place=" << GetPlace(*scope, var_name) << ";";
+        ss << "dim=" << GetDimsDebug(*scope, var_name, true) << ";";
+        ss << "lod=" << GetLoDDebug(*scope, var_name) << ";";
         int row_size = GetRowSize(*scope, var_name);
         if (row_size >= 0) {
-          ss << "row_size=" << row_size << "; ";
+          ss << "row_size=" << row_size << ";";
         }
         double ele_sum = GetDenseTensorEleSum(*scope, var_name);
         if (!std::isnan(ele_sum)) {
-          ss << "ele_sum=" << ele_sum << "; ";
+          ss << "ele_sum=" << ele_sum << ";";
         }
       }
     }
