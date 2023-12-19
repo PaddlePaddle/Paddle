@@ -30,8 +30,16 @@ class OneDNNOnlyTrait : public pir::OpTraitBase<OneDNNOnlyTrait> {
       : pir::OpTraitBase<OneDNNOnlyTrait>(op) {}
 };
 
+class OneDNNDynamicFallbackTrait
+    : public pir::OpTraitBase<OneDNNDynamicFallbackTrait> {
+ public:
+  explicit OneDNNDynamicFallbackTrait(pir::Operation *op)
+      : pir::OpTraitBase<OneDNNDynamicFallbackTrait>(op) {}
+};
+
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNTrait)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNOnlyTrait)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNDynamicFallbackTrait)

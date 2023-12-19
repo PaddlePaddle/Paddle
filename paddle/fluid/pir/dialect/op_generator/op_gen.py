@@ -1174,6 +1174,9 @@ def AutoCodeGen(op_info_items, all_op_info_items, namespaces, dialect_name):
             if op_info.is_onednn_only:
                 op_traits += ["paddle::dialect::OneDNNOnlyTrait"]
 
+            if op_info.dynamic_fallback:
+                op_traits += ["paddle::dialect::OneDNNDynamicFallbackTrait"]
+
             op_traits_str = ""
             if len(op_traits) > 0:
                 op_traits_str = "," + ",".join(op_traits)

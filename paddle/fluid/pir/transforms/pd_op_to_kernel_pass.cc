@@ -17,6 +17,7 @@
 #include <iostream>
 
 #include "paddle/fluid/framework/op_kernel_type.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
@@ -669,9 +670,10 @@ std::string GetKernelName(const OpYamlInfoParser* op_info_parser,
   return kernel_fn_str;
 }
 
-bool SupportsMKLDNN(const phi::DataType data_type) {
-  auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
-      phi::TransToPhiKernelName(type_));
+bool SupportsMKLDNN(const std::string& kernel_name,
+                    const phi::DataType data_type) {
+  auto phi_kernels =
+      phi::KernelFactory::Instance().SelectKernelMap(kernel_name);
   auto has_phi_kernel =
       std::any_of(phi_kernels.begin(),
                   phi_kernels.end(),
@@ -682,17 +684,26 @@ bool SupportsMKLDNN(const phi::DataType data_type) {
   if (has_phi_kernel) {
     return true;
   } else {
-    auto op_kernel_iter = OperatorWithKernel::AllOpKernels().find(type_);
-    if (op_kernel_iter == OperatorWithKernel::AllOpKernels().end()) {
+    auto op_kernel_iter =
+        paddle::framework::OperatorWithKernel::AllOpKernels().find(
+            phi::TransToFluidOpName(kernel_name));
+    if (op_kernel_iter ==
+        paddle::framework::OperatorWithKernel::AllOpKernels().end()) {
       return false;
     } else {
       auto& op_kernels = op_kernel_iter->second;
       return std::any_of(
           op_kernels.begin(),
           op_kernels.end(),
-          [data_type](OpKernelMap::const_reference kern_pair) {
+          [data_type](std::unordered_map<
+                      paddle::framework::OpKernelType,
+                      std::function<void(
+                          const paddle::framework::ExecutionContext&)>,
+                      paddle::framework::OpKernelType::Hash>::const_reference
+                          kern_pair) {
             return platform::is_cpu_place(kern_pair.first.place_) &&
-                   kern_pair.first.library_type_ == LibraryType::kMKLDNN &&
+                   kern_pair.first.library_type_ ==
+                       paddle::framework::LibraryType::kMKLDNN &&
                    kern_pair.first.data_type_ ==
                        paddle::framework::TransToProtoVarType(data_type);
           });
@@ -930,7 +941,7 @@ phi::KernelKey GetKernelKey(
 
 #ifdef PADDLE_WITH_DNNL
   if (op->HasTrait<OneDNNTrait>() && res.backend() == phi::Backend::CPU &&
-      SupportsMKLDNN(res.dtype())) {
+      SupportsMKLDNN(kernel_fn_str, res.dtype())) {
     res.set_backend(phi::Backend::ONEDNN);
     res.set_layout(phi::DataLayout::ONEDNN);
   }
