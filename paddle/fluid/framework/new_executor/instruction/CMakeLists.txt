@@ -10,9 +10,11 @@ cc_library(
        tuple_push_instruction.cc
        tuple_pop_instruction.cc
        builtin_combine_instruction.cc
-       instruction_util.cc)
-# DEPS pir_adaptor phi common framework_proto)
-
+       instruction_util.cc
+  DEPS framework_proto)
+if(WITH_MKLDNN)
+  add_dependencies(instruction_base mkldnn)
+endif()
 if(WITH_CINN AND NOT CINN_ONLY)
   cc_library(
     cinn_jit_instruction NOT_FOR_INFER
