@@ -163,7 +163,8 @@ class ValueShape {
       if (!GetValueByIndex(0).has_value()) {
         return ValueShape(std::nullopt, shape);
       }
-      return ValueShape({GetValueByIndex(0).value()}, shape);
+      std::vector<T> value{GetValueByIndex(0).value()};
+      return ValueShape(value, shape);
     } else if (shape.size() == 1) {
       if (!shape.at(0).template Has<std::int64_t>()) {
         return ValueShape(std::nullopt, shape);
