@@ -43,7 +43,7 @@ class Config:
     use_cache = True
     use_flash_attention = False
     sequence_parallel = False
-    rope = True
+    rope = True  #
 
 
 class RandomDataset(Dataset):
