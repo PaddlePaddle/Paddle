@@ -778,7 +778,7 @@ def logaddexp(x, y, name=None):
 
 def subtract(x, y, name=None):
     """
-    Substract two tensors element-wise. The equation is:
+    Subtract two tensors element-wise. The equation is:
 
     .. math::
         out = x - y
@@ -1629,7 +1629,7 @@ def nan_to_num(x, nan=0.0, posinf=None, neginf=None, name=None):
              -99.                                    ])
     """
     # NOTE(tiancaishaonvjituizi): it seems that paddle handles the dtype of python float number
-    # incorrectly, so we have to explicitly contruct tensors here
+    # incorrectly, so we have to explicitly construct tensors here
     posinf_value = paddle.full_like(x, float("+inf"))
     neginf_value = paddle.full_like(x, float("-inf"))
     nan = paddle.full_like(x, nan)
@@ -2251,7 +2251,7 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
     y_shape = y.shape
     if not len(x_shape) == len(y_shape) == 2:
         raise ValueError(
-            "The dimention of x, y should be 2 but receive x's shape: {}, y's shape: {}".format(
+            "The dimension of x, y should be 2 but receive x's shape: {}, y's shape: {}".format(
                 x_shape, y_shape
             )
         )
@@ -2291,7 +2291,7 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
             )
     else:
         raise ValueError(
-            "The dimention of input should be 2 or 1 but receive input's shape: {}".format(
+            "The dimension of input should be 2 or 1 but receive input's shape: {}".format(
                 input_shape
             )
         )
@@ -2331,7 +2331,7 @@ def addmm_(input, x, y, beta=1.0, alpha=1.0, name=None):
     y_shape = y.shape
     if not len(x_shape) == len(y_shape) == 2:
         raise ValueError(
-            "The dimention of x, y should be 2 but receive x's shape: {}, y's shape: {}".format(
+            "The dimension of x, y should be 2 but receive x's shape: {}, y's shape: {}".format(
                 x_shape, y_shape
             )
         )
@@ -2371,7 +2371,7 @@ def addmm_(input, x, y, beta=1.0, alpha=1.0, name=None):
             )
     else:
         raise ValueError(
-            "The dimention of input should be 2 or 1 but receive input's shape: {}".format(
+            "The dimension of input should be 2 or 1 but receive input's shape: {}".format(
                 input_shape
             )
         )
@@ -4632,6 +4632,7 @@ def sign(x, name=None):
                 'int32',
                 'int64',
                 'float16',
+                'bfloat16',
                 'float32',
                 'float64',
             ],
@@ -7169,3 +7170,62 @@ def combinations(x, r=2, with_replacement=False, name=None):
         grids[i] = grids[i].masked_select(mask)
 
     return paddle.stack(grids, 1)
+
+
+def signbit(x, name=None):
+    r"""
+    Tests if each element of input has its sign bit set or not.
+
+    Args:
+        x (Tensor): The input Tensor. Must be one of the following types: float16, float32, float64, bfloat16, uint8, int8, int16, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None).For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): The output Tensor. The sign bit of the corresponding element of the input tensor, True means negative, False means positive.
+
+    Examples:
+        .. code-block:: python
+            :name: signbit-example-1
+
+            >>> import paddle
+            >>> paddle.set_device('cpu')
+            >>> x = paddle.to_tensor([-0., 1.1, -2.1, 0., 2.5], dtype='float32')
+            >>> res = paddle.signbit(x)
+            >>> print(res)
+            Tensor(shape=[5], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [True, False, True, False, False])
+
+        .. code-block:: python
+            :name: signbit-example-2
+
+            >>> import paddle
+            >>> paddle.set_device('cpu')
+            >>> x = paddle.to_tensor([-5, -2, 3], dtype='int32')
+            >>> res = paddle.signbit(x)
+            >>> print(res)
+            Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [True , True , False])
+    """
+    if not isinstance(x, (paddle.Tensor, Variable)):
+        raise TypeError(f"x must be tensor type, but got {type(x)}")
+
+    check_variable_and_dtype(
+        x,
+        "x",
+        [
+            'float16',
+            'float32',
+            'float64',
+            'bfloat16',
+            'uint8',
+            'int8',
+            'int16',
+            'int32',
+            'int64',
+        ],
+        "signbit",
+    )
+    neg_zero_x = paddle.to_tensor(np.copysign(1, x.numpy()), dtype=x.dtype)
+    x = paddle.sign(neg_zero_x)
+    out = paddle.cast(x < 0, dtype='bool')
+    return out
