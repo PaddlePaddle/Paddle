@@ -38,6 +38,34 @@ class TestTensorApplyAPI(unittest.TestCase):
 
         self.assertRaises(RuntimeError, fn, self.x)
 
+    def test_to_pir(self):
+        def fn(x):
+            y = x.apply(self.function)
+            return y
+
+        with paddle.jit.api.sot_mode_guard(False):
+            paddle.disable_static()
+            jit_g = paddle.jit.to_static(fn)
+            out = jit_g(self.x)
+
+        np.testing.assert_allclose(
+            self.function(self.x).numpy(), out.numpy(), rtol=1e-05
+        )
+
+    def test_to_legacy_ir(self):
+        def fn(x):
+            y = x.apply(self.function)
+            return y
+
+        with paddle.jit.api.sot_mode_guard(False):
+            with paddle.pir_utils.IrGuard():
+                paddle.disable_static()
+                jit_g = paddle.jit.to_static(fn)
+                out = jit_g(self.x)
+        np.testing.assert_allclose(
+            self.function(self.x).numpy(), out.numpy(), rtol=1e-05
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
