@@ -1632,7 +1632,24 @@ class TestDygraphInplaceIndexFill(TestDygraphInplace):
         return paddle.index_fill(var, self.index, self.axis, self.value)
 
 
-class TestDygraphInplaceIndexFill(TestDygraphInplace):
+class TestDygraphInplaceBernoulli(TestDygraphInplace):
+    def init_data(self):
+        self.shape = (20, 40)
+        self.x = np.random.random(self.shape)
+        self.dtype = "float32"
+        self.mean = 0
+        self.std = 1
+        self.seed = 100
+        self.p = 0.5
+
+    def inplace_api_processing(self, var):
+        return paddle.bernoulli_(var, p=self.p)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.bernoulli(paddle.zeros(self.shape) + self.p)
+
+
+class TestDygraphInplaceLogNormal(TestDygraphInplace):
     def init_data(self):
         self.shape = (20, 40)
         self.x = np.random.random(self.shape)
@@ -1642,7 +1659,10 @@ class TestDygraphInplaceIndexFill(TestDygraphInplace):
         self.seed = 100
 
     def inplace_api_processing(self, var):
-        return paddle.log_normal_(self.x, self.shape, self.mean, self.std, self.seed)
+        return paddle.log_normal_(var, self.shape, self.mean, self.std, self.seed)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.log_normal(var, self.index, self.axis, self.value)
 
 
 if __name__ == '__main__':
