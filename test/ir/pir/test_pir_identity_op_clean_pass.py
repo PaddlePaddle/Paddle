@@ -174,21 +174,21 @@ class TestRemoveRedundentCastPattern(PassTest):
         return True
 
     def sample_program(self):
-        for type_1 in ["float16"]:
-            for type_2 in ["int32"]:
+        for type_1 in ["float32"]:
+            for type_2 in ["float16"]:
                 with paddle.pir_utils.IrGuard():
                     main_prog = paddle.static.Program()
                     start_prog = paddle.static.Program()
                     with paddle.pir.core.program_guard(main_prog, start_prog):
                         x = paddle.static.data(
-                            name='x', shape=[3, 1, 28, 28], dtype="float32"
+                            name='x', shape=[3, 1, 28, 28], dtype="int32"
                         )
                         out = paddle.cast(paddle.cast(x, type_1), type_2)
                         out = paddle.assign(out)
                         self.pass_list = ['identity_op_clean_pass']
                         self.feeds = {
                             "x": np.random.random((3, 1, 28, 28)).astype(
-                                "float32"
+                                "int32"
                             )
                         }
                         self.fetch_list = [out]

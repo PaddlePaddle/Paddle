@@ -86,6 +86,7 @@ class TestConv2dAddActFusePattern(PassTest):
     def setUp(self):
         if core.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
+        self.pass_accuracy_verification = True
 
     def sample_program(self):
         yield self.build_ir_progam(), False
