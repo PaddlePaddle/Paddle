@@ -122,10 +122,7 @@ cc_test(
   DEPS lod_tensor device_context generated_static_op)
 
 if(WITH_CINN)
-  paddle_test(
-    op_debug_string_test
-    SRCS
-    op_debug_string_test.cc)
+  paddle_test(op_debug_string_test SRCS op_debug_string_test.cc)
 else()
   paddle_test(op_debug_string_test SRCS op_debug_string_test.cc)
 endif()
