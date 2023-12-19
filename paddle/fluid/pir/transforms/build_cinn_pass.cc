@@ -184,6 +184,10 @@ bool AllInputDenseTensor(pir::Operation* op) {
 }
 
 bool IsSupportCinn(pir::Operation* op) {
+  if (op->dyn_cast<paddle::dialect::DataOp>()) {
+    return false;
+  }
+  return true;
   if (!AllInputDenseTensor(op)) {
     return false;
   }

@@ -22,6 +22,8 @@
 
 namespace pir {
 
+std::string GetValueId(Value* val);
+
 // Helper class to query and manipulate shape constraint IR on buffer level.
 class IR_API ShapeAnalysis {
  public:
@@ -49,8 +51,6 @@ class IR_API ShapeAnalysis {
 
   // Returns true if the two value have the same number elements.
   virtual bool IsSameNumElements(Value lhs, Value rhs);
-
-  virtual symbol::DimExprBuilder CreateDimExprBuilder() = 0;
 };
 
 // A subclass to impement `ShapeAnalysis` on buffer level.
@@ -76,19 +76,27 @@ class IR_API ShapeConstraintIRAnalysis : public ShapeAnalysis {
                       Value rhs,
                       std::vector<int> rhs_dim_idxs) override;
 
-  symbol::DimExprBuilder CreateDimExprBuilder() override;
+  std::unordered_map<
+      std::string,
+      std::pair<std::vector<std::string>, std::vector<std::string>>>
+      value_to_valueshape_expr_;
 
   bool HasValueShapeDimExprs(Value value) const {
-    return value_to_value_shape_dim_exprs_.find(value)
-           != value_to_value_shape_dim_exprs_.end();
+    return value_to_value_shape_dim_exprs_.find(value) !=
+           value_to_value_shape_dim_exprs_.end();
   }
 
   const symbol::ValueShapeDimExprs& GetValueShapeDimExprs(Value value) const {
     return value_to_value_shape_dim_exprs_.at(value);
   }
 
-  void SetValueShapeDimExprs(Value value, const symbol::ValueShapeDimExprs& value_shape_dim_exprs) {
+  void SetValueShapeDimExprs(
+      Value value, const symbol::ValueShapeDimExprs& value_shape_dim_exprs) {
     value_to_value_shape_dim_exprs_[value] = value_shape_dim_exprs;
+  }
+
+  inline const std::string GetNextSymName() {
+    return "S" + std::to_string(next_sym_idx_++);
   }
 
  private:
@@ -102,7 +110,7 @@ class IR_API ShapeConstraintIRAnalysis : public ShapeAnalysis {
       value_to_sym_dims_;
   std::unordered_map<Value, symbol::ValueShapeDimExprs>
       value_to_value_shape_dim_exprs_;
-  std::vector<symbol::DimExprConstraint> constraints_;
+  int64_t next_sym_idx_ = 0;
 
  public:
   explicit ShapeConstraintIRAnalysis(std::shared_ptr<pir::Program>&& program)

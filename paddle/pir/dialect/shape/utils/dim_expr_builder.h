@@ -44,6 +44,9 @@ class DimExprBuilder {
                               const std::vector<DimExpr>& rhs);
   std::pair<std::vector<DimExpr>, std::vector<DimExpr>> SplitAt(
       const std::vector<DimExpr>, int index);
+  ValueShapeDimExprs MakeConsistentValueShape(
+      const std::vector<DimExpr>& shape,
+      const std::function<std::optional<DimExpr>(int)>& GetByIndex);
 
   const std::vector<DimExprConstraint>& constaints() const;
 
