@@ -42,6 +42,16 @@ class TestSemiAutoParallelDPMPStrategy(test_base.CommunicationTestDistBase):
             )
             ckpt_path.cleanup()
 
+    def test_fused_linear_param_grad_add(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_parallel_for_fused_linear_param_grad_add.py",
+                user_defined_envs=envs,
+            )
+
 
 class TestSemiAutoParallelHybridStrategy(test_base.CommunicationTestDistBase):
     def setUp(self):
