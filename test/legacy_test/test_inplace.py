@@ -879,11 +879,12 @@ class TestDygraphInplaceNeg(TestDygraphInplaceWithContinuous):
 
 class TestDygraphInplaceIgamma(TestDygraphInplaceWithContinuous):
     def init_data(self):
+        self.shape = (3, 40)
+        self.dtype = "float32"
         self.input_var_numpy = (
             np.random.random(self.shape).astype(self.dtype) + 1
         )
-        self.dtype = "float32"
-        self.a = paddle.randn([10, 10], dtype="float32")
+        self.a = paddle.randn([10, 10], dtype=self.dtype)
 
     def inplace_api_processing(self, var):
         return paddle.igamma_(var, a=self.a)
@@ -894,11 +895,12 @@ class TestDygraphInplaceIgamma(TestDygraphInplaceWithContinuous):
 
 class TestDygraphInplaceIgammac(TestDygraphInplaceWithContinuous):
     def init_data(self):
+        self.shape = (3, 40)
+        self.dtype = "float32"
         self.input_var_numpy = (
             np.random.random(self.shape).astype(self.dtype) + 1
         )
-        self.dtype = "float32"
-        self.a = paddle.randn([10, 10], dtype="float32")
+        self.a = paddle.randn([10, 10], dtype=self.dtype)
 
     def inplace_api_processing(self, var):
         return paddle.igammac_(var, a=self.a)
