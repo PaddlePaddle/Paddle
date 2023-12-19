@@ -1670,4 +1670,4 @@ def log_normal_(x, mean=0.0, std=1.0, seed=0, name=None):
     n_mean = paddle.log(mean**2 / paddle.sqrt(mean**2 + std**2))
     n_std = paddle.sqrt(paddle.log(1 + (std**2 / mean**2)))
 
-    return gaussian_(x, mean=mean, std=std, seed=seed).exp_()
+    return gaussian_(x, mean=n_mean, std=n_std, seed=seed).exp_()
