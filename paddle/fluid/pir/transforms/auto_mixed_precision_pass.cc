@@ -15,6 +15,7 @@
 #include "paddle/fluid/pir/transforms/auto_mixed_precision_pass.h"
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 
 #include "paddle/common/enforce.h"
@@ -180,43 +181,39 @@ class AutoMixedPrecisionPass : public pir::Pass {
   std::unordered_set<std::string> black_list_;
   std::unordered_set<std::string> white_list_;
 
-  std::unordered_set<pir::Operation*> op_run_low_precision_;
-  std::unordered_map<pir::Value, paddle::dialect::CastOp> cached_cast_ops_;
+  mutable std::unordered_set<pir::Operation*> op_run_low_precision_;
+  mutable std::unordered_map<pir::Value, paddle::dialect::CastOp>
+      cached_cast_ops_;
 
   void ProcessBlock(pir::Block* block) {}
 
   void GetOpPrecision(pir::Block* block) {
     for (auto& op_item : *block) {
-      VLOG(6) << "op name " << op_item.name();
-      auto op_name = op_item.name();
+      auto op = &op_item;
+      VLOG(6) << "op name " << op->name();
+      auto op_name = op->name();
       bool support_low_precision = true;
-      if (black_list.count(op_name)) {
+      if (black_list_.count(op_name)) {
         support_low_precision = false;
-      } else if (IsBuiltinOp(&op_item)) {  // other builtin ops
+      } else if (IsBuiltinOp(op)) {  // other builtin ops
         if (op->isa<pir::ParameterOp>() || op->isa<pir::SetParameterOp>())
           support_low_precision = false;
-      } else if (op_item->isa<paddle::dialect::FeedOp>() ||
-                 op_item->isa<paddle::dialect::FetchOp>()) {
+      } else if (op->isa<paddle::dialect::FeedOp>() ||
+                 op->isa<paddle::dialect::FetchOp>()) {
         support_low_precision = enable_low_precision_io_;
-      } else if (OpHasFloatResult(&op_item)) {  // pd op with float result
+      } else if (OpHasFloatResult(op)) {  // pd op with float result
         auto op_type = op_name.substr(op_name.find(".") + 1);
         auto backend = ConvertPlaceToBackend(place_);
         support_low_precision =
             OpSupportPrecision(op_type, backend, precision_mode_);
       }
       if (support_low_precision) {
-        op_run_low_precision_.insert(&op_item);
+        op_run_low_precision_.insert(op);
       }
     }
   }
 
-  void UpdateOpPrecision(pir::Block* block) {
-    for (auto& op_item : *block) {
-      if (op_run_low_precision_.count(&op_item)) {
-        RewriteOp(&op_item);
-      }
-    }
-  }
+  void UpdateOpPrecision(pir::Block* block) {}
 
   void RewriteOp(pir::Operation* op,
                  pir::PatternRewriter& rewriter) const {  // NOLINT
