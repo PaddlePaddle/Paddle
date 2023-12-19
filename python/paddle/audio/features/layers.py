@@ -15,8 +15,7 @@ from functools import partial
 from typing import Optional, Union
 
 import paddle
-import paddle.nn as nn
-from paddle import Tensor
+from paddle import Tensor, nn
 
 from ..functional import compute_fbank_matrix, create_dct, power_to_db
 from ..functional.window import get_window
@@ -44,18 +43,18 @@ class Spectrogram(nn.Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.audio.features import Spectrogram
+            >>> import paddle
+            >>> from paddle.audio.features import Spectrogram
 
-            sample_rate = 16000
-            wav_duration = 0.5
-            num_channels = 1
-            num_frames = sample_rate * wav_duration
-            wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
-            waveform = wav_data.tile([num_channels, 1])
+            >>> sample_rate = 16000
+            >>> wav_duration = 0.5
+            >>> num_channels = 1
+            >>> num_frames = sample_rate * wav_duration
+            >>> wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
+            >>> waveform = wav_data.tile([num_channels, 1])
 
-            feature_extractor = Spectrogram(n_fft=512, window = 'hann', power = 1.0)
-            feats = feature_extractor(waveform)
+            >>> feature_extractor = Spectrogram(n_fft=512, window = 'hann', power = 1.0)
+            >>> feats = feature_extractor(waveform)
     """
 
     def __init__(
@@ -129,18 +128,18 @@ class MelSpectrogram(nn.Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.audio.features import MelSpectrogram
+            >>> import paddle
+            >>> from paddle.audio.features import MelSpectrogram
 
-            sample_rate = 16000
-            wav_duration = 0.5
-            num_channels = 1
-            num_frames = sample_rate * wav_duration
-            wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
-            waveform = wav_data.tile([num_channels, 1])
+            >>> sample_rate = 16000
+            >>> wav_duration = 0.5
+            >>> num_channels = 1
+            >>> num_frames = sample_rate * wav_duration
+            >>> wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
+            >>> waveform = wav_data.tile([num_channels, 1])
 
-            feature_extractor = MelSpectrogram(sr=sample_rate, n_fft=512, window = 'hann', power = 1.0)
-            feats = feature_extractor(waveform)
+            >>> feature_extractor = MelSpectrogram(sr=sample_rate, n_fft=512, window = 'hann', power = 1.0)
+            >>> feats = feature_extractor(waveform)
     """
 
     def __init__(
@@ -232,18 +231,18 @@ class LogMelSpectrogram(nn.Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.audio.features import LogMelSpectrogram
+            >>> import paddle
+            >>> from paddle.audio.features import LogMelSpectrogram
 
-            sample_rate = 16000
-            wav_duration = 0.5
-            num_channels = 1
-            num_frames = sample_rate * wav_duration
-            wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
-            waveform = wav_data.tile([num_channels, 1])
+            >>> sample_rate = 16000
+            >>> wav_duration = 0.5
+            >>> num_channels = 1
+            >>> num_frames = sample_rate * wav_duration
+            >>> wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
+            >>> waveform = wav_data.tile([num_channels, 1])
 
-            feature_extractor = LogMelSpectrogram(sr=sample_rate, n_fft=512, window = 'hann', power = 1.0)
-            feats = feature_extractor(waveform)
+            >>> feature_extractor = LogMelSpectrogram(sr=sample_rate, n_fft=512, window = 'hann', power = 1.0)
+            >>> feats = feature_extractor(waveform)
     """
 
     def __init__(
@@ -336,18 +335,18 @@ class MFCC(nn.Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.audio.features import MFCC
+            >>> import paddle
+            >>> from paddle.audio.features import MFCC
 
-            sample_rate = 16000
-            wav_duration = 0.5
-            num_channels = 1
-            num_frames = sample_rate * wav_duration
-            wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
-            waveform = wav_data.tile([num_channels, 1])
+            >>> sample_rate = 16000
+            >>> wav_duration = 0.5
+            >>> num_channels = 1
+            >>> num_frames = sample_rate * wav_duration
+            >>> wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
+            >>> waveform = wav_data.tile([num_channels, 1])
 
-            feature_extractor = MFCC(sr=sample_rate, n_fft=512, window = 'hann')
-            feats = feature_extractor(waveform)
+            >>> feature_extractor = MFCC(sr=sample_rate, n_fft=512, window = 'hann')
+            >>> feats = feature_extractor(waveform)
     """
 
     def __init__(

@@ -14,8 +14,8 @@
 
 import paddle
 import paddle.distributed as dist
-import paddle.distributed.communication.stream as stream
-import paddle.framework as framework
+from paddle import framework
+from paddle.distributed.communication import stream
 
 from .serialization_utils import (
     convert_object_to_tensor,
@@ -37,7 +37,7 @@ def broadcast(tensor, src, group=None, sync_op=True):
 
     Args:
         tensor (Tensor): The tensor to send if current rank is the source, or the tensor to receive otherwise. Its data type
-            should be float16, float32, float64, int32, int64, int8, uint8, bool or bfloat16.
+            should be float16, float32, float64, int32, int64, int8, uint8, bool, bfloat16, complex64 or complex128.
         src (int): The source rank in global view.
         group (Group, optional): The group instance return by new_group or None for global default group.
         sync_op (bool, optional): Whether this op is a sync op. The default value is True.
@@ -48,18 +48,18 @@ def broadcast(tensor, src, group=None, sync_op=True):
     Examples:
         .. code-block:: python
 
-            # required: distributed
-            import paddle
-            import paddle.distributed as dist
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle
+            >>> import paddle.distributed as dist
 
-            dist.init_parallel_env()
-            if dist.get_rank() == 0:
-                data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
-            else:
-                data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
-            dist.broadcast(data, src=1)
-            print(data)
-            # [[1, 2, 3], [1, 2, 3]] (2 GPUs)
+            >>> dist.init_parallel_env()
+            >>> if dist.get_rank() == 0:
+            ...     data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
+            >>> else:
+            ...     data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
+            >>> dist.broadcast(data, src=1)
+            >>> print(data)
+            >>> # [[1, 2, 3], [1, 2, 3]] (2 GPUs)
     """
     return stream.broadcast(
         tensor,
@@ -89,20 +89,20 @@ def broadcast_object_list(object_list, src, group=None):
     Examples:
         .. code-block:: python
 
-            # required: distributed
-            import paddle.distributed as dist
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle.distributed as dist
 
-            dist.init_parallel_env()
-            if dist.get_rank() == 0:
-                object_list = [{"foo": [1, 2, 3]}]
-            else:
-                object_list = [{"bar": [4, 5, 6]}]
-            dist.broadcast_object_list(object_list, src=1)
-            print(object_list)
-            # [{"bar": [4, 5, 6]}] (2 GPUs)
+            >>> dist.init_parallel_env()
+            >>> if dist.get_rank() == 0:
+            ...     object_list = [{"foo": [1, 2, 3]}]
+            >>> else:
+            ...     object_list = [{"bar": [4, 5, 6]}]
+            >>> dist.broadcast_object_list(object_list, src=1)
+            >>> print(object_list)
+            >>> # [{"bar": [4, 5, 6]}] (2 GPUs)
     """
     assert (
-        framework.in_dygraph_mode()
+        framework.in_dynamic_mode()
     ), "broadcast_object_list doesn't support static graph mode."
 
     rank = dist.get_rank()
@@ -115,10 +115,10 @@ def broadcast_object_list(object_list, src, group=None):
             obj_tensor, obj_size = convert_object_to_tensor(obj)
             obj_tensors.append(obj_tensor)
             obj_sizes.append(obj_size)
-        obj_size_tensor = paddle.concat(obj_sizes)
+        obj_size_tensor = paddle.stack(obj_sizes)
     else:
         obj_size_tensor = paddle.empty([obj_nums], dtype="int64")
-    broadcast(obj_size_tensor, src)
+    broadcast(obj_size_tensor, src, group)
 
     if rank == src:
         # cast to uint8 to keep the same dtype
@@ -126,7 +126,7 @@ def broadcast_object_list(object_list, src, group=None):
     else:
         data_len = paddle.sum(obj_size_tensor).item()
         obj_data_tensor = paddle.empty([data_len], dtype="uint8")
-    broadcast(obj_data_tensor, src)
+    broadcast(obj_data_tensor, src, group)
 
     offset = 0
     for i in range(obj_nums):

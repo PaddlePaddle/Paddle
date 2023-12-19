@@ -22,6 +22,8 @@ from paddle.framework import core
 # Use to store the previous and current process mesh
 _g_previous_process_mesh = None
 _g_current_process_mesh = None
+# {shape_process_ids : unique_id}
+_g_unique_process_mesh_map = {}
 
 
 def get_current_process_mesh():
@@ -42,6 +44,30 @@ def reset_current_process_mesh():
     _g_current_process_mesh = _g_previous_process_mesh
 
 
+def get_unique_id_for_process_mesh(shape, process_ids):
+    key = f"shape {shape}, process_ids {process_ids}"
+    global _g_unique_process_mesh_map
+    if key in _g_unique_process_mesh_map:
+        unique_id = _g_unique_process_mesh_map[key]
+    else:
+        unique_id = len(_g_unique_process_mesh_map) + 1
+        _g_unique_process_mesh_map[key] = unique_id
+
+    return unique_id
+
+
+def retrive_unique_id_for_process_mesh(shape, process_ids):
+    key = f"shape {shape}, process_ids {process_ids}"
+    global _g_unique_process_mesh_map
+    assert key in _g_unique_process_mesh_map
+    return _g_unique_process_mesh_map[key]
+
+
+def get_unique_process_mesh_map():
+    global _g_unique_process_mesh_map
+    return _g_unique_process_mesh_map
+
+
 class ProcessMesh(core.ProcessMesh):
     """
     The `ProcessMesh` object describes the Cartesian topology of the used processes.
@@ -55,11 +81,12 @@ class ProcessMesh(core.ProcessMesh):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
+            >>> import paddle.distributed as dist
 
-            mesh = auto.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=["x", "y"])
-            assert mesh.shape == [2, 3]
-            assert mesh.process_ids == [2, 4, 5, 0, 1, 3]
+            >>> mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=["x", "y"])
+            >>> assert mesh.shape == [2, 3]
+            >>> assert mesh.process_ids == [2, 4, 5, 0, 1, 3]
 
     """
 
@@ -106,7 +133,7 @@ class ProcessMesh(core.ProcessMesh):
         unique_dim_names = set(self._dim_names)
         assert len(unique_dim_names) == len(
             self._dim_names
-        ), 'All dim_names {} must be unique.'.format(dim_names)
+        ), f'All dim_names {dim_names} must be unique.'
 
         # Follow the requirement for using pybind11
         core.ProcessMesh.__init__(
@@ -114,15 +141,20 @@ class ProcessMesh(core.ProcessMesh):
         )
 
         # Store all process meshes
-        from .dist_context import get_default_distributed_context
+        from .static.dist_context import get_default_distributed_context
 
         default_dist_cxt = get_default_distributed_context()
         default_dist_cxt.add_process_mesh(self)
         # Add new processes to process group 0
-        from .process_group import get_process_group
+        from .static.process_group import get_process_group
 
         pg0 = get_process_group(0)
         pg0.add_ranks(self.process_ids)
+
+        # Uniqe Mesh Id
+        self._unique_id = get_unique_id_for_process_mesh(
+            self._shape, self._process_ids
+        )
 
     @property
     def mesh(self):
@@ -130,6 +162,23 @@ class ProcessMesh(core.ProcessMesh):
         Get the underlying mesh of ProcessMesh.
         """
         return self._mesh
+
+    @property
+    def dim_names(self):
+        """
+        Get the underlying dimension names of ProcessMesh.
+        """
+        return self._dim_names
+
+    @property
+    def unique_id(self):
+        """
+        Get the unique id of ProcessMesh.
+        NOTE
+        Unique id only take process_ids and shape into account.
+        Different ProcessMesh with same process_ids and shape have same unique id.
+        """
+        return self._unique_id
 
     def __getitem__(self, index):
         if isinstance(index, tuple):
@@ -155,6 +204,24 @@ class ProcessMesh(core.ProcessMesh):
             else:
                 return ProcessMesh([new_mesh])
 
+    def get_dim_size(self, dim_name):
+        assert dim_name in self._dim_names
+        return self._shape[self._dim_names.index(dim_name)]
+
+    def get_mesh_with_dim(self, dim_name):
+        assert (
+            dim_name in self._dim_names
+        ), f'{dim_name} is not a valid dim name.'
+        index_axis = self._dim_names.index(dim_name)
+        new_order = [index_axis] + [
+            i for i in range(len(self._dim_names)) if i != index_axis
+        ]
+        new_dim_names = [dim_name] + [
+            dim for dim in self._dim_names if dim != dim_name
+        ]
+        new_mesh = self._mesh.transpose(new_order)
+        return ProcessMesh(new_mesh, new_dim_names)
+
     def __enter__(self):
         set_current_process_mesh(self)
         default_prog = paddle.static.default_main_program()
@@ -163,14 +230,14 @@ class ProcessMesh(core.ProcessMesh):
         self._old_op_size = len(cur_block.ops)
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
-        from .dist_op import DistributedOperator
-        from .dist_tensor import DistributedTensor
+        from .static.dist_op import DistributedOperator
+        from .static.dist_tensor import DistributedTensor
 
         default_prog = paddle.static.default_main_program()
         cur_block = default_prog.current_block()
         new_var_names = list(cur_block.vars.keys())
         new_op_size = len(cur_block.ops)
-        from .dist_context import get_default_distributed_context
+        from .static.dist_context import get_default_distributed_context
 
         default_dist_ctx = get_default_distributed_context()
         for name in new_var_names:

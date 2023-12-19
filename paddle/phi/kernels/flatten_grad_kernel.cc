@@ -27,7 +27,7 @@ void FlattenGradKernel(const Context& dev_ctx,
                        DenseTensor* x_grad) {
   auto xshape_dims = xshape.dims();
   dev_ctx.Alloc(x_grad, out_grad.dtype());
-  auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
+  auto x_dims = common::slice_ddim(xshape_dims, 1, xshape_dims.size());
   phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
   x_grad->Resize(x_dims);
 }
@@ -73,4 +73,19 @@ PD_REGISTER_KERNEL(flatten_grad,
                    int,
                    int64_t) {}
 
+#endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+PD_REGISTER_KERNEL(flatten_grad,
+                   Custom,
+                   ALL_LAYOUT,
+                   phi::FlattenGradKernel,
+                   float,
+                   phi::dtype::float16,
+                   double,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
 #endif

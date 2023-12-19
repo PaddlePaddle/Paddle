@@ -9,22 +9,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/convert/utils.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/plugin/many_emb_layernorm_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin/many_emb_layernorm_varseqlen_plugin.h"
-#include "paddle/phi/core/ddim.h"
-
-namespace paddle {
-namespace framework {
-class Scope;
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
 
 namespace paddle {
 namespace inference {
@@ -35,7 +26,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(4) << "convert fluid EmbEltwiseLayerNorm op to tensorrt layer";
+    VLOG(4) << "convert EmbEltwiseLayerNorm op to tensorrt layer";
     // get the presistable var's data
     auto GetWeight = [&](const std::string& var_name,
                          framework::DDim* dim) -> TensorRTEngine::Weight {
@@ -49,8 +40,8 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     auto pos_id_name = engine_->tensorrt_transformer_posid();
     auto mask_id_name = engine_->tensorrt_transformer_maskid();
-    bool flag_varseqlen =
-        engine_->use_varseqlen() && pos_id_name != "" && mask_id_name != "";
+    bool flag_varseqlen = engine_->use_varseqlen() && !pos_id_name.empty() &&
+                          !mask_id_name.empty();
     // bool with_fp16 = engine_->WithFp16() &&
     // !engine_->disable_trt_plugin_fp16(); int hidden = 0; Declare inputs
     std::vector<nvinfer1::ITensor*> input_ids;
@@ -63,8 +54,8 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     framework::DDim bias_dims, scale_dims;
     TensorRTEngine::Weight bias_weight, scale_weight;
 
-    int64_t bias_size = phi::product(bias_dims);
-    int64_t scale_size = phi::product(scale_dims);
+    int64_t bias_size = common::product(bias_dims);
+    int64_t scale_size = common::product(scale_dims);
     nvinfer1::ILayer* layer = nullptr;
     bool enable_int8 = op_desc.HasAttr("enable_int8");
 
@@ -90,8 +81,8 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       }
       bias_weight = GetWeight(op_desc.Input("Bias").front(), &bias_dims);
       scale_weight = GetWeight(op_desc.Input("Scale").front(), &scale_dims);
-      bias_size = phi::product(bias_dims);
-      scale_size = phi::product(scale_dims);
+      bias_size = common::product(bias_dims);
+      scale_size = common::product(scale_dims);
       // other_id(except pos_id)
       engine_->SetITensor("word_id", input_ids[1]);
 
@@ -198,8 +189,8 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       }
       bias_weight = GetWeight(op_desc.Input("Bias").front(), &bias_dims);
       scale_weight = GetWeight(op_desc.Input("Scale").front(), &scale_dims);
-      bias_size = phi::product(bias_dims);
-      scale_size = phi::product(scale_dims);
+      bias_size = common::product(bias_dims);
+      scale_size = common::product(scale_dims);
 
       int output_fp16 = static_cast<int>((engine_->WithFp16() == 1) ? 1 : 0);
       if (enable_int8) {

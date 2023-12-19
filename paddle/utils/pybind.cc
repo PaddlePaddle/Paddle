@@ -13,25 +13,40 @@
 // limitations under the License.
 
 #include "paddle/utils/pybind.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/flags.h"
 
+PHI_DECLARE_string(tensor_operants_mode);
 namespace paddle {
 namespace pybind {
 
-PyTypeObject* p_tensor_type;
-PyTypeObject* p_string_tensor_type;
-
+PyTypeObject* p_tensor_type = nullptr;
+PyTypeObject* p_string_tensor_type = nullptr;
+// PyTypeObject* PyFloat_Type;
+PyTypeObject* PyLong_Type;
 bool PyCheckTensor(PyObject* obj) {
   if (!p_tensor_type) {
     return false;
   }
-  return PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type));
+  return PyObject_TypeCheck(obj, p_tensor_type);
 }
 
-paddle::experimental::Tensor CastPyArg2Tensor(PyObject* obj, ssize_t arg_pos) {
-  if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type)) ||
-      PyObject_IsInstance(obj,
-                          reinterpret_cast<PyObject*>(p_string_tensor_type))) {
+void ShareTensor(PyObject* src, PyObject* dst) {
+  if (PyObject_TypeCheck(src, p_tensor_type) &&
+      PyObject_TypeCheck(dst, p_tensor_type)) {
+    auto& src_tensor = reinterpret_cast<TensorObject*>(src)->tensor;
+    const auto& dst_tensor = reinterpret_cast<TensorObject*>(dst)->tensor;
+    src_tensor = dst_tensor;
+  } else {
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("Share tensor only support DenseTensor."));
+  }
+}
+
+paddle::Tensor& CastPyArg2Tensor(PyObject* obj, Py_ssize_t arg_pos) {
+  if (PyObject_TypeCheck(obj, p_tensor_type) ||
+      PyObject_TypeCheck(obj, p_string_tensor_type)) {
     return reinterpret_cast<TensorObject*>(obj)->tensor;
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
@@ -42,7 +57,7 @@ paddle::experimental::Tensor CastPyArg2Tensor(PyObject* obj, ssize_t arg_pos) {
   }
 }
 
-PyObject* ToPyObject(const paddle::experimental::Tensor& value,
+PyObject* ToPyObject(const paddle::Tensor& value,
                      bool return_py_none_if_not_initialize) {
   if (return_py_none_if_not_initialize && !value.initialized()) {
     RETURN_PY_NONE
@@ -57,7 +72,7 @@ PyObject* ToPyObject(const paddle::experimental::Tensor& value,
   }
   if (obj) {
     auto v = reinterpret_cast<TensorObject*>(obj);
-    new (&(v->tensor)) paddle::experimental::Tensor();
+    new (&(v->tensor)) paddle::Tensor();
     v->tensor = value;
   } else {
     PADDLE_THROW(
@@ -65,6 +80,8 @@ PyObject* ToPyObject(const paddle::experimental::Tensor& value,
   }
   return obj;
 }
+
+void EnableTensorOperantsToPhiMode() { FLAGS_tensor_operants_mode = "phi"; }
 
 }  // namespace pybind
 }  // namespace paddle

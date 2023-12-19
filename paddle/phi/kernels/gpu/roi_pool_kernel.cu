@@ -14,9 +14,9 @@
 
 #include "paddle/phi/kernels/roi_pool_kernel.h"
 
-#include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -111,14 +111,17 @@ void RoiPoolKernel(const Context& dev_ctx,
                    DenseTensor* arg_max) {
   auto x_dims = x.dims();
   int batch_size = x_dims[0];
-  auto in_stride = phi::stride(x_dims);
+  auto in_stride = common::stride(x_dims);
   int channels = x_dims[1];
   int height = x_dims[2];
   int width = x_dims[3];
 
   int rois_num = boxes.dims()[0];
 
-  if (rois_num == 0) return;
+  if (rois_num == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
 
   int output_size = out->numel();
   int blocks = NumBlocks(output_size);
@@ -141,12 +144,12 @@ void RoiPoolKernel(const Context& dev_ctx,
             boxes_batch_size,
             batch_size));
     std::vector<int> boxes_num_list(boxes_batch_size);
-    paddle::memory::Copy(phi::CPUPlace(),
-                         boxes_num_list.data(),
-                         gplace,
-                         boxes_num->data<int>(),
-                         sizeof(int) * boxes_batch_size,
-                         0);
+    memory_utils::Copy(phi::CPUPlace(),
+                       boxes_num_list.data(),
+                       gplace,
+                       boxes_num->data<int>(),
+                       sizeof(int) * boxes_batch_size,
+                       0);
     int start = 0;
     for (int n = 0; n < boxes_batch_size; ++n) {
       for (int i = start; i < start + boxes_num_list[n]; ++i) {
@@ -184,17 +187,17 @@ void RoiPoolKernel(const Context& dev_ctx,
   }
 
   int bytes = box_batch_id_list.numel() * sizeof(int);
-  auto box_ptr = paddle::memory::Alloc(
+  auto box_ptr = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       bytes,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   int* box_id_data = reinterpret_cast<int*>(box_ptr->ptr());
-  paddle::memory::Copy(gplace,
-                       box_id_data,
-                       phi::CPUPlace(),
-                       box_batch_id_data,
-                       bytes,
-                       dev_ctx.stream());
+  memory_utils::Copy(gplace,
+                     box_id_data,
+                     phi::CPUPlace(),
+                     box_batch_id_data,
+                     bytes,
+                     dev_ctx.stream());
 
   T* output_data = dev_ctx.template Alloc<T>(out);
   int64_t* arg_max_data = dev_ctx.template Alloc<int64_t>(arg_max);

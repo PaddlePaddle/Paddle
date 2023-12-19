@@ -143,18 +143,19 @@ void BlockDesc::PrependAllocatedOp(std::unique_ptr<OpDesc> &&op_desc) {
 
 OpDesc *BlockDesc::InsertOp(size_t index) {
   need_update_ = true;
-  auto it = ops_.begin() + index;
+  auto it = ops_.begin() + index;  // NOLINT
   std::unique_ptr<OpDesc> new_op(new OpDesc(this));
   it = ops_.insert(it, std::move(new_op));
   return (*it).get();
 }
 
 void BlockDesc::RemoveOp(size_t s, size_t e) {
-  if (ops_.begin() + s >= ops_.end() || ops_.begin() + e > ops_.end()) {
+  if (ops_.begin() + s >= ops_.end() ||  // NOLINT
+      ops_.begin() + e > ops_.end()) {   // NOLINT
     return;
   }
   need_update_ = true;
-  ops_.erase(ops_.begin() + s, ops_.begin() + e);
+  ops_.erase(ops_.begin() + s, ops_.begin() + e);  // NOLINT
 }
 
 void BlockDesc::RemoveOpInternal(const OpDesc *op_desc) {
@@ -162,11 +163,15 @@ void BlockDesc::RemoveOpInternal(const OpDesc *op_desc) {
   for (auto it = ops_.begin(); it != ops_.end(); ++it) {
     if (it->get() == op_desc) {
       ops_.erase(it);
+      need_update_ = true;
       break;
     }
   }
 }
-
+void BlockDesc::RemoveVar(const std::string &name) {
+  need_update_ = true;
+  vars_.erase(name);
+}
 std::vector<OpDesc *> BlockDesc::AllOps() const {
   std::vector<OpDesc *> res;
   for (const auto &op : ops_) {
@@ -236,7 +241,7 @@ proto::BlockDesc *BlockDesc::Proto() {
 BlockDesc::BlockDesc(ProgramDesc *prog, proto::BlockDesc *desc)
     : prog_(prog), desc_(desc), need_update_(false) {
   for (const proto::VarDesc &var_desc : desc_->vars()) {
-    vars_[var_desc.name()].reset(new VarDesc(var_desc));
+    vars_[var_desc.name()] = std::make_unique<VarDesc>(var_desc);
   }
 
   for (const proto::OpDesc &op_desc : desc_->ops()) {
@@ -313,7 +318,13 @@ void BlockDesc::MoveFrom(BlockDesc *block) {
       } else if (attr_type == proto::AttrType::BLOCK) {
         ProgramDesc *program = block->Program();
         std::vector<framework::BlockDesc *> old_block_desc;
-        for (int i = 0; i < program->Proto()->blocks_size(); ++i) {
+        // NOTE(GhostScreaming): don't use program->proto()->blocks_size(),
+        // previous assignment of new Variable in vars_ use std::move,
+        // which makes 'var_ptr' which holded by 'block' a nullptr.
+        // block->Program()->proto() will calls Flush() at first,
+        // a null var_ptr will cause segmentation fault.
+        int block_size = static_cast<int>(program->Size());
+        for (int i = 0; i < block_size; ++i) {
           // record all block desc's ptr from origin block's program
           old_block_desc.emplace_back(program->MutableBlock(i));
         }

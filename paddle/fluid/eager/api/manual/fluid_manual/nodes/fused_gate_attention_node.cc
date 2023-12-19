@@ -20,21 +20,18 @@
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/phi/api/all.h"
 
-paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                     egr::kSlotSmallVectorSize>
+paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
 fused_gate_attentionGradNodeCompat::operator()(
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+    paddle::small_vector<std::vector<paddle::Tensor>,
                          egr::kSlotSmallVectorSize>& grads,
     bool create_graph,
     bool is_new_grad) {
   VLOG(3) << "Running Eager Backward Node: fused_gate_attentionGradNodeCompat";
 
   const auto& out_metas = OutputMeta();
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                       egr::kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
       outputs(12);
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                       egr::kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
       hooked_grads0 =
           fused_gate_attentionGradNodeCompat::ApplyGradientHooks(grads);
 
@@ -46,6 +43,11 @@ fused_gate_attentionGradNodeCompat::operator()(
   bool has_gating = true;
   if (attr_map_.count("has_gating")) {
     has_gating = PADDLE_GET_CONST(bool, attr_map_.at("has_gating"));
+  }
+
+  bool use_flash_attn = false;
+  if (attr_map_.count("use_flash_attn")) {
+    use_flash_attn = PADDLE_GET_CONST(bool, attr_map_.at("use_flash_attn"));
   }
 
   std::map<std::string, std::vector<std::shared_ptr<egr::EagerVariable>>> ins0 =
@@ -169,6 +171,13 @@ fused_gate_attentionGradNodeCompat::operator()(
     if ((!out_metas[6].empty()) && (!out_metas[6][0].IsStopGradient()))
       outs0["NonbatchedBias@GRAD"] = {std::make_shared<egr::EagerVariable>(
           egr::Controller::Instance().GenerateUniqueName())};
+  }
+
+  if (use_flash_attn) {
+    auto SrcMask = egr::EagerUtils::RecoverTensorWrapper(&this->SrcMask_);
+    ins0["SrcMask"] = egr::EagerUtils::TrySyncToVars(SrcMask);
+    auto SoftmaxLse = egr::EagerUtils::RecoverTensorWrapper(&this->SoftmaxLse_);
+    ins0["SoftmaxLse"] = egr::EagerUtils::TrySyncToVars(SoftmaxLse);
   }
 
   auto& attrs_map0 = this->attr_map_;

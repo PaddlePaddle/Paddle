@@ -28,7 +28,9 @@ namespace cub = hipcub;
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -217,7 +219,8 @@ __global__ void BlockScanKernel(T* d_out,
 }
 
 template <typename Context, typename T>
-typename std::enable_if<!std::is_same<T, phi::dtype::float16>::value>::type
+typename std::enable_if<!std::is_same<T, phi::dtype::float16>::value &&
+                        !std::is_same<T, phi::dtype::bfloat16>::value>::type
 ThrustCumsumKernel(const Context& dev_ctx,
                    const T* in_data,
                    T* out_data,
@@ -227,7 +230,9 @@ ThrustCumsumKernel(const Context& dev_ctx,
 #ifdef __HIPCC__
   const auto& policy = thrust::hip::par.on(dev_ctx.stream());
 #else
-  const auto& policy = thrust::cuda::par.on(dev_ctx.stream());
+  phi::memory_utils::ThrustAllocator<cudaStream_t> allocator(dev_ctx.GetPlace(),
+                                                             dev_ctx.stream());
+  const auto& policy = thrust::cuda::par(allocator).on(dev_ctx.stream());
 #endif
   if (reverse) {
     thrust::reverse_iterator<thrust::device_ptr<const T>> reversed_in(
@@ -257,6 +262,15 @@ typename std::enable_if<std::is_same<T, phi::dtype::float16>::value>::type
 ThrustCumsumKernel(const Context& dev_ctx,
                    const phi::dtype::float16* in_data,
                    phi::dtype::float16* out_data,
+                   int64_t size,
+                   bool reverse,
+                   bool exclusive) {}
+
+template <typename Context, typename T>
+typename std::enable_if<std::is_same<T, phi::dtype::bfloat16>::value>::type
+ThrustCumsumKernel(const Context& dev_ctx,
+                   const phi::dtype::bfloat16* in_data,
+                   phi::dtype::bfloat16* out_data,
                    int64_t size,
                    bool reverse,
                    bool exclusive) {}
@@ -301,6 +315,7 @@ void ScanKernel(const Context& dev_ctx,
   // Use thrust for parallel acceleration when the input size is equal to the
   // length of the ‘axis’ dimension.
   if (!std::is_same<T, phi::dtype::float16>::value &&
+      !std::is_same<T, phi::dtype::bfloat16>::value &&
       std::is_same<Op, cub::Sum>::value && size == out_dims[axis]) {
     ThrustCumsumKernel<Context, T>(
         dev_ctx, in_data, out_data, size, reverse, exclusive);
@@ -423,6 +438,7 @@ PD_REGISTER_KERNEL(cumsum,
                    ALL_LAYOUT,
                    phi::CumsumKernel,
                    float,
+                   phi::dtype::float16,
                    double,
                    int16_t,
                    int,
@@ -440,7 +456,8 @@ PD_REGISTER_KERNEL(cumsum,
                    int16_t,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(logcumsumexp,
                    GPU,
@@ -448,5 +465,6 @@ PD_REGISTER_KERNEL(logcumsumexp,
                    phi::LogcumsumexpKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 #endif

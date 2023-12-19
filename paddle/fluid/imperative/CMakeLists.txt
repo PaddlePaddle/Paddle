@@ -1,11 +1,11 @@
 cc_library(
   imperative_flag
   SRCS flags.cc
-  DEPS gflags flags)
+  DEPS phi common)
 cc_library(
   var_helper
   SRCS var_helper.cc
-  DEPS tensor selected_rows extended_tensor)
+  DEPS tensor phi common)
 if(WITH_XPU)
   cc_library(
     prepared_operator
@@ -20,8 +20,8 @@ if(WITH_XPU)
          op_kernel_type
          data_transform
          nan_inf_utils
-         scalar
-         int_array
+         phi
+         common
          var_helper
          profiler
          place)
@@ -38,8 +38,8 @@ else()
          op_kernel_type
          data_transform
          nan_inf_utils
-         scalar
-         int_array
+         phi
+         common
          var_helper
          profiler
          place)
@@ -47,14 +47,19 @@ endif()
 cc_library(
   layer
   SRCS layer.cc
-  DEPS prepared_operator math_function imperative_flag variable_helper
-       op_registry var_helper)
+  DEPS prepared_operator
+       phi
+       common
+       imperative_flag
+       variable_helper
+       op_registry
+       var_helper)
 add_subdirectory(jit)
 if(WITH_GPU)
   cc_library(
     layout_autotune
     SRCS layout_autotune.cc
-    DEPS op_info phi_backends)
+    DEPS op_info phi common)
 else()
   cc_library(
     layout_autotune
@@ -76,19 +81,21 @@ cc_library(
        garbage_collector
        var_helper
        layout_autotune
-       ops_extra_info)
+       ops_extra_info
+       phi
+       common)
 cc_library(
   basic_engine
   SRCS basic_engine.cc
-  DEPS layer gradient_accumulator switch_autotune)
+  DEPS layer gradient_accumulator phi common)
 cc_library(
   engine
   SRCS basic_engine.cc partial_grad_engine.cc
-  DEPS layer gradient_accumulator switch_autotune)
+  DEPS layer gradient_accumulator phi common)
 cc_library(
   imperative_profiler
   SRCS profiler.cc
-  DEPS flags)
+  DEPS phi common)
 if(NOT WIN32)
   if(WITH_NCCL OR WITH_RCCL)
     cc_library(
@@ -123,30 +130,26 @@ if(NOT WIN32)
       SRCS reducer.cc
       DEPS layer)
   endif()
-  if(WITH_ASCEND_CL)
+  if(WITH_CUSTOM_DEVICE)
     cc_library(
-      hccl_context
-      SRCS hccl_context.cc
+      xccl_context
+      SRCS xccl_context.cc
       DEPS collective_helper device_context tensor var_type_traits)
-    cc_library(
-      reducer
-      SRCS reducer.cc
-      DEPS layer)
-  endif()
-  if(WITH_CNCL)
-    cc_library(
-      cncl_context
-      SRCS cncl_context.cc
-      DEPS collective_helper device_context tensor var_type_traits)
-    cc_library(
-      reducer
-      SRCS reducer.cc
-      DEPS layer)
+    if(NOT
+       (WITH_NCCL
+        OR WITH_RCCL
+        OR WITH_XPU_BKCL
+        OR WITH_GLOO))
+      cc_library(
+        reducer
+        SRCS reducer.cc
+        DEPS layer)
+    endif()
   endif()
   if(WITH_NCCL
      OR WITH_RCCL
      OR WITH_XPU_BKCL
-     OR WITH_ASCEND_CL)
+     OR WITH_CUSTOM_DEVICE)
     cc_library(
       heter_ccl_context
       SRCS heter_ccl_context.cc
@@ -155,7 +158,7 @@ if(NOT WIN32)
   cc_library(
     data_loader
     SRCS data_loader.cc
-    DEPS enforce)
+    DEPS enforce common)
 endif()
 if(WITH_GLOO)
   cc_library(
@@ -166,9 +169,7 @@ if(WITH_GLOO)
      OR (NOT
          (WITH_NCCL
           OR WITH_RCCL
-          OR WITH_XPU_BKCL
-          OR WITH_ASCEND_CL
-          OR WITH_CNCL)
+          OR WITH_XPU_BKCL)
         ))
     cc_library(
       reducer
@@ -177,38 +178,13 @@ if(WITH_GLOO)
   endif()
 endif()
 
-if(WITH_MLU)
-  set(MLU_DEPS mlu_baseop)
-endif()
-
-if(NOT WITH_ASCEND_CL)
-  cc_library(
-    gradient_accumulator
-    SRCS gradient_accumulator.cc
-    DEPS blas
-         operator
-         lod_tensor
-         selected_rows_utils
-         selected_rows_functor
-         var_type_traits
-         layer
-         math_function
-         phi_tensor
-         ${MLU_DEPS})
-else()
-  cc_library(
-    gradient_accumulator
-    SRCS gradient_accumulator.cc
-    DEPS blas
-         operator
-         lod_tensor
-         selected_rows_utils
-         selected_rows_functor
-         var_type_traits
-         layer
-         math_function
-         npu_op_runner
-         phi_tensor)
-endif()
-
-add_subdirectory(tests)
+cc_library(
+  gradient_accumulator
+  SRCS gradient_accumulator.cc
+  DEPS operator
+       lod_tensor
+       selected_rows_utils
+       var_type_traits
+       layer
+       phi
+       common)

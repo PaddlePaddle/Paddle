@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/program_utils.h"
 
+#include <google/protobuf/text_format.h>
 #include "paddle/fluid/framework/block_desc.h"
 
 namespace paddle {
@@ -90,15 +91,15 @@ void ProgramProcessor::GetInputsOutputsInBlock(
   // NOTE: Here assumes that all variables are input or output of Ops,
 
   for (OpDesc *op : current_block.AllOps()) {
-    for (auto iname : op->InputNames()) {
-      for (auto in_var_name : op->Input(iname)) {
+    for (auto const &iname : op->InputNames()) {
+      for (auto const &in_var_name : op->Input(iname)) {
         VLOG(3) << "insert inner_inputs_name:" << in_var_name;
         inner_inputs->insert(in_var_name);
       }
     }
 
-    for (auto oname : op->OutputNames()) {
-      for (auto out_var_name : op->Output(oname)) {
+    for (auto const &oname : op->OutputNames()) {
+      for (auto const &out_var_name : op->Output(oname)) {
         VLOG(3) << "insert out_var_name:" << out_var_name;
         inner_outputs->insert(out_var_name);
       }
@@ -150,7 +151,7 @@ void ProgramProcessor::AddDepToBlockOp(const BlockDesc &block) {
       VLOG(3) << "sub_outputs.size:" << sub_outputs.size();
 
       auto *op_inputs = op->MutableInputs();
-      std::vector<std::string> *op_input_var_vec;
+      std::vector<std::string> *op_input_var_vec = nullptr;
       VLOG(3) << "op_type:>>>>>>" << op_type;
       if (op_type.compare("while") == 0) {
         op_input_var_vec = &((*op_inputs)["kX"]);
@@ -163,7 +164,7 @@ void ProgramProcessor::AddDepToBlockOp(const BlockDesc &block) {
         continue;
       }
 
-      for (auto sub_input : sub_inputs) {
+      for (auto const &sub_input : sub_inputs) {
         if (std::find(op_input_var_vec->begin(),
                       op_input_var_vec->end(),
                       sub_input) == op_input_var_vec->end())
@@ -175,7 +176,7 @@ void ProgramProcessor::AddDepToBlockOp(const BlockDesc &block) {
       auto *op_outputs = op->MutableOutputs();
       auto *op_output_var_vec = &((*op_outputs)["kOutputs"]);
 
-      for (auto sub_output : sub_outputs) {
+      for (auto const &sub_output : sub_outputs) {
         if (std::find(op_output_var_vec->begin(),
                       op_output_var_vec->end(),
                       sub_output) == op_output_var_vec->end())
@@ -187,7 +188,32 @@ void ProgramProcessor::AddDepToBlockOp(const BlockDesc &block) {
   }
 }
 
-ProgramProcessor::ProgramProcessor() {}
+ProgramProcessor::ProgramProcessor() = default;
+
+// write to file
+void WriteToFile(const std::string &file_path, const std::string &msg) {
+  FILE *fp = fopen(file_path.c_str(), "w");
+  if (fp == NULL) {
+    LOG(WARNING) << "open write file path=" << file_path << " failed";
+    return;
+  }
+  fwrite(msg.c_str(), 1, msg.length(), fp);
+  fclose(fp);
+}
+void DumpProgramDescFile(const std::string &name, const ProgramDesc &program) {
+  ProgramDesc *new_prog = const_cast<ProgramDesc *>(&program);
+  std::string print_str;
+  google::protobuf::TextFormat::Printer printer;
+  printer.SetUseShortRepeatedPrimitives(true);
+  printer.SetSingleLineMode(false);
+  const ::google::protobuf::Message *message =
+      reinterpret_cast<const ::google::protobuf::Message *>(new_prog->Proto());
+  printer.PrintToString(*message, &print_str);
+
+  char filename[512] = {0};
+  snprintf(filename, sizeof(filename), "./%s_%lu.proto", name.c_str(), time(0));
+  WriteToFile(filename, print_str);
+}
 
 }  // namespace framework
 }  // namespace paddle

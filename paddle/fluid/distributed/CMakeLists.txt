@@ -4,10 +4,14 @@ add_subdirectory(fleet_executor)
 if(WITH_PYTHON)
   py_proto_compile(pslib_py_proto SRCS ps.proto)
   py_proto_compile(ps_py_proto SRCS the_one_ps.proto)
-  file(MAKE_DIRECTORY
-       ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto)
+  add_custom_target(ps_py_proto_init)
+  add_custom_command(
+    TARGET ps_py_proto_init
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+            ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto)
+  add_dependencies(ps_py_proto ps_py_proto_init)
   set(PSLIB_PROTO_DSTPATH
-      "${PADDLE_SOURCE_DIR}/python/paddle/incubate/fleet/parameter_server/pslib/"
+      "${PADDLE_SOURCE_DIR}/python/paddle/incubate/distributed/fleet/parameter_server/pslib/"
   )
   if(NOT WIN32)
     add_custom_command(
@@ -52,7 +56,7 @@ endif()
 proto_library(ps_framework_proto SRCS the_one_ps.proto)
 
 set(DISTRIBUTE_COMPILE_FLAGS
-    "-Wno-error=unused-value -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
+    "-Wno-error=unused-value -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=parentheses -Wno-error=unused-result"
 )
 
 if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)

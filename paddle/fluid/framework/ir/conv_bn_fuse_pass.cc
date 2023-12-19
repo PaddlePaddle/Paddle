@@ -18,6 +18,7 @@
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -39,7 +40,7 @@ namespace {
 template <typename T1, typename T2>
 void ConvertTensorType(phi::DenseTensor* tensor) {
   phi::DenseTensor tmp_tensor;
-  tmp_tensor.set_type(paddle::experimental::CppTypeToDataType<T2>::Type());
+  tmp_tensor.set_type(phi::CppTypeToDataType<T2>::Type());
   tmp_tensor.Resize(tensor->dims());
   auto* tmp_data = tmp_tensor.mutable_data<T2>(paddle::platform::CPUPlace());
   auto* data = tensor->mutable_data<T1>(paddle::platform::CPUPlace());
@@ -157,7 +158,7 @@ void recompute_bias_and_weights(const Scope* scope,
 
   // ConvTranspose weights are in IOHW format
   if (conv_type == "conv2d_transpose") {
-    int kernel_size = weights_shape[2] * weights_shape[3];
+    int kernel_size = static_cast<int>(weights_shape[2] * weights_shape[3]);
     for (int i = 0; i < weights->numel();) {
       for (int j = 0; j < weights_shape[1]; ++j) {
         for (int k = 0; k < kernel_size; ++k, ++i) {
@@ -166,7 +167,7 @@ void recompute_bias_and_weights(const Scope* scope,
       }
     }
   } else {
-    auto weights_shape_2d = phi::flatten_to_2d(weights_shape, 1);
+    auto weights_shape_2d = common::flatten_to_2d(weights_shape, 1);
 
     EigenMatrixArrayMap weights_array_2d(
         weights_data, weights_shape_2d[0], weights_shape_2d[1]);
@@ -311,6 +312,14 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);
 
+  VLOG(3) << "Running conv_bn_fuse_pass.";
+  if (graph->IsMainGraph()) {
+    VLOG(3) << "The ID of block running conv_bn_fuse_pass is: 0(main_graph)";
+  } else {
+    VLOG(3) << "The ID of block running conv_bn_fuse_pass is: "
+            << graph->GetBlockId();
+  }
+
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
       scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
@@ -346,12 +355,12 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
       return;
     }
 
-    // conv_weight fp32 --> fp16
+    // conv_weight fp16 --> fp32
     auto* conv_weight_tensor =
         scope->FindVar(conv_weight->Name())->GetMutable<phi::DenseTensor>();
     auto tensor_type = conv_weight_tensor->dtype();
 
-    if (tensor_type == paddle::experimental::DataType::FLOAT16) {
+    if (tensor_type == phi::DataType::FLOAT16) {
       ConvertTensorType<float16, float>(conv_weight_tensor);
     }
 
@@ -366,16 +375,16 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
     auto input_names = conv->Op()->InputNames();
     bool has_bias = std::find(input_names.begin(), input_names.end(), "Bias") !=
                         input_names.end() &&
-                    conv->Op()->Input("Bias").size() > 0;
+                    !conv->Op()->Input("Bias").empty();
     bool mkldnn_with_bias = is_mkldnn && has_bias;
 
     // Create eltwise_y (conv bias) variable
-    phi::DenseTensor* eltwise_y_in_tensor;
-    Node* eltwise_y_in_node;
+    phi::DenseTensor* eltwise_y_in_tensor = nullptr;
+    Node* eltwise_y_in_node = nullptr;
     if (!mkldnn_with_bias) {
       VarDesc eltwise_y_in_desc(
           patterns::PDNodeName("fuse_conv_bn", conv_type() + "_eltwise_y_in"));
-      eltwise_y_in_desc.SetShape(phi::vectorize(bn_bias_tensor->dims()));
+      eltwise_y_in_desc.SetShape(common::vectorize(bn_bias_tensor->dims()));
       eltwise_y_in_desc.SetDataType(
           framework::TransToProtoVarType(bn_bias_tensor->dtype()));
       eltwise_y_in_desc.SetLoDLevel(bn_bias->Var()->GetLoDLevel());
@@ -402,7 +411,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
                                  epsilon,
                                  conv_type());
 
-      if (tensor_type == paddle::experimental::DataType::FLOAT16) {
+      if (tensor_type == phi::DataType::FLOAT16) {
         ConvertTensorType<float, float16>(conv_weight_tensor);
         ConvertTensorType<float, float16>(eltwise_y_in_tensor);
       }
@@ -413,7 +422,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
     if (is_mkldnn) {
       if (conv->Op()->Type() == "conv2d" ||
           conv->Op()->Type() == "depthwise_conv2d") {
-        conv->Op()->SetType("fused_conv2d");
+        ConvertToFusedOp(conv->Op());
       }
       if (mkldnn_with_bias) {
         // reuse existing conv bias node
@@ -443,7 +452,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
                                    epsilon,
                                    conv_type());
 
-        if (tensor_type == paddle::experimental::DataType::FLOAT16) {
+        if (tensor_type == phi::DataType::FLOAT16) {
           ConvertTensorType<float, float16>(conv_weight_tensor);
           ConvertTensorType<float, float16>(conv_bias_tensor);
         }
@@ -611,6 +620,15 @@ void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);
 
+  VLOG(3) << "Running conv_eltwiseadd_bn_fuse_pass.";
+  if (graph->IsMainGraph()) {
+    VLOG(3) << "The ID of block running conv_eltwiseadd_bn_fuse_pass is: "
+               "0(main_graph)";
+  } else {
+    VLOG(3) << "The ID of block running conv_eltwiseadd_bn_fuse_pass is: "
+            << graph->GetBlockId();
+  }
+
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
       scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
@@ -661,7 +679,7 @@ void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
         scope->FindVar(conv_weight->Name())->GetMutable<phi::DenseTensor>();
     auto tensor_type = conv_weight_tensor->dtype();
 
-    if (tensor_type == paddle::experimental::DataType::FLOAT16) {
+    if (tensor_type == phi::DataType::FLOAT16) {
       ConvertTensorType<float16, float>(conv_weight_tensor);
       ConvertTensorType<float16, float>(eltwise_y_in_tensor);
     }
@@ -673,7 +691,8 @@ void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
       // Create eltwise_y (conv bias) variable
       VarDesc eltwise_y_in_desc(patterns::PDNodeName(
           name_scope_, "eltwise_y_in" + std::to_string(found_conv_bn_count)));
-      eltwise_y_in_desc.SetShape(phi::vectorize(eltwise_y_in_tensor->dims()));
+      eltwise_y_in_desc.SetShape(
+          common::vectorize(eltwise_y_in_tensor->dims()));
       eltwise_y_in_desc.SetDataType(
           framework::TransToProtoVarType(eltwise_y_in_tensor->dtype()));
       eltwise_y_in_desc.SetLoDLevel(eltwise_y_in->Var()->GetLoDLevel());
@@ -720,7 +739,7 @@ void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
                                  conv_type());
     }
 
-    if (tensor_type == paddle::experimental::DataType::FLOAT16) {
+    if (tensor_type == phi::DataType::FLOAT16) {
       ConvertTensorType<float, float16>(conv_weight_tensor);
       ConvertTensorType<float, float16>(eltwise_y_in_tensor);
     }
@@ -755,7 +774,7 @@ void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
   AddStatis(found_conv_bn_count);
 }
 
-ConvTransposeBNFusePass::ConvTransposeBNFusePass() {
+ConvTransposeBNFusePass::ConvTransposeBNFusePass() {  // NOLINT
   AddOpCompat(OpCompat("conv2d_transpose"))
       .AddInput("Input")
       .IsTensor()
@@ -799,7 +818,8 @@ ConvTransposeBNFusePass::ConvTransposeBNFusePass() {
       .End();
 }
 
-ConvTransposeEltwiseAddBNFusePass::ConvTransposeEltwiseAddBNFusePass() {
+ConvTransposeEltwiseAddBNFusePass::
+    ConvTransposeEltwiseAddBNFusePass() {  // NOLINT
   AddOpCompat(OpCompat("conv2d_transpose"))
       .AddInput("Input")
       .IsTensor()
@@ -843,7 +863,7 @@ ConvTransposeEltwiseAddBNFusePass::ConvTransposeEltwiseAddBNFusePass() {
       .End();
 }
 
-DepthwiseConvBNFusePass::DepthwiseConvBNFusePass() {
+DepthwiseConvBNFusePass::DepthwiseConvBNFusePass() {  // NOLINT
   AddOpCompat(OpCompat("depthwise_conv2d"))
       .AddInput("Input")
       .IsTensor()

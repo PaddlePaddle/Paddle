@@ -16,25 +16,16 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/plugin/elementwise_op_plugin.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
 class EqualOpConverter : public OpConverter {
  public:
-  EqualOpConverter() {}
+  EqualOpConverter() = default;
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
+    VLOG(3) << "convert equal op to tensorrt layer";
     framework::OpDesc op_desc(op, nullptr);
     nvinfer1::ILayer* layer = nullptr;
 
@@ -83,10 +74,11 @@ class EqualOpConverter : public OpConverter {
 
 class NotEqualOpConverter : public OpConverter {
  public:
-  NotEqualOpConverter() {}
+  NotEqualOpConverter() = default;
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
+    VLOG(3) << "convert not_equal op to tensorrt layer";
     framework::OpDesc op_desc(op, nullptr);
     nvinfer1::ILayer* layer = nullptr;
 

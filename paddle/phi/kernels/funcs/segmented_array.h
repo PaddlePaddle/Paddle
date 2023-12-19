@@ -15,13 +15,18 @@
 #pragma once
 
 #include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 namespace funcs {
 
+#ifndef PADDLE_WITH_HIP
 #if !defined(_WIN32)
 #define PADDLE_ALIGN(x) __attribute__((aligned(x)))
+#else
+#define PADDLE_ALIGN(x)
+#endif
 #else
 #define PADDLE_ALIGN(x)
 #endif
@@ -107,7 +112,7 @@ struct ArraySetterBase {
                      void* src,
                      size_t num_bytes,
                      bool use_cuda_graph = false) {
-    allocation = paddle::memory::Alloc(
+    allocation = phi::memory_utils::Alloc(
         ctx.GetPlace(),
         num_bytes,
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));

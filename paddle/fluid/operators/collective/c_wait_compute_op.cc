@@ -21,6 +21,10 @@ class Scope;
 }  // namespace paddle
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
+#include "paddle/phi/core/flags.h"
+PHI_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 namespace paddle {
@@ -46,16 +50,40 @@ class CWaitComputeOp : public framework::OperatorBase {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     int ring_id = Attr<int>("ring_id");
 
-    auto compute_stream =
+    gpuStream_t compute_stream =
         static_cast<phi::GPUContext*>(
             platform::DeviceContextPool::Instance().Get(place))
             ->stream();
-    auto comm_stream =
-        platform::NCCLCommContext::Instance().Get(ring_id, place)->stream();
+    gpuStream_t comm_stream = nullptr;
+    gpuEvent_t event = nullptr;
 
-    auto event = platform::NCCLCommContext::Instance()
-                     .Get(ring_id, place)
-                     ->compute_event();
+    const auto& comm_context_manager =
+        phi::distributed::CommContextManager::GetInstance();
+    if (FLAGS_dynamic_static_unified_comm) {
+      PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id)),
+                        true,
+                        platform::errors::InvalidArgument(
+                            "You choose to use new communication library by "
+                            "setting environment "
+                            "variable FLAGS_dynamic_static_unified_comm True. "
+                            "But ring_id(%d) is "
+                            "not found in comm_context_manager.",
+                            std::to_string(ring_id)));
+      phi::distributed::NCCLCommContext* comm_ctx =
+          static_cast<phi::distributed::NCCLCommContext*>(
+              comm_context_manager.Get(std::to_string(ring_id)));
+      comm_stream = comm_ctx->GetStream();
+      event = comm_ctx->GetComputeEvent();
+      VLOG(3) << "new comm_context_manager has rid " << ring_id;
+    } else {
+      comm_stream =
+          platform::NCCLCommContext::Instance().Get(ring_id, place)->stream();
+
+      event = platform::NCCLCommContext::Instance()
+                  .Get(ring_id, place)
+                  ->compute_event();
+      VLOG(3) << "old NCCLCommContext has rid " << ring_id;
+    }
 
 // compute_stream-->event-->comm_stream
 #ifdef PADDLE_WITH_HIP
@@ -74,7 +102,7 @@ class CWaitComputeOp : public framework::OperatorBase {
 
 class CWaitComputeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "(Tensor) Dependency of the variable need to sync")
         .AsDuplicable();
     AddOutput("Out", "(Tensor) Dependency of the variable need to sync")

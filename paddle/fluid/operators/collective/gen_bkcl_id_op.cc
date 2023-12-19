@@ -165,7 +165,7 @@ class GenBKCLIdOp : public framework::OperatorBase {
 class GenBKCLIdOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddOutput("BKCLID", "Raw variable contains a BKCL UniqueId instaces.");
+    AddOutput("BKCLID", "Raw variable contains a BKCL UniqueId instances.");
     AddComment(R"DOC(
 GenBKCLId operator
 
@@ -186,11 +186,11 @@ For trainer 1~n: start a gRPC server to get the UniqueId, once got, stop the ser
         .SetDefault(1);
     AddAttr<bool>("use_hierarchical_allreduce",
                   "(bool default false) "
-                  "Wheter to use hierarchical allreduce.")
+                  "Whether to use hierarchical allreduce.")
         .SetDefault(false);
     AddAttr<int>("hierarchical_allreduce_inter_nranks",
                  "(int default 1) "
-                 "Wheter to use hierarchical allreduce.")
+                 "Whether to use hierarchical allreduce.")
         .SetDefault(-1);
   }
 };

@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/utils/flat_hash_map.h"
-
+#include "paddle/utils/test_macros.h"
 namespace paddle {
 namespace framework {
 
@@ -48,6 +48,7 @@ class OpInfo {
   OpAttrChecker* checker_{nullptr};
   InferVarTypeFN infer_var_type_;
   InferShapeFN infer_shape_;
+  InferMetaFN infer_meta_;
   InferInplaceOpFN infer_inplace_;
   InferNoNeedBufferVarsFN infer_no_need_buffer_vars_;
   DygraphGradOpMakerFN dygraph_grad_op_maker_;
@@ -91,9 +92,13 @@ class OpInfo {
   // some ops don't have grad_op_maker, add check before use GradOpMaker()
   bool HasGradOpMaker() const { return grad_op_maker_ != nullptr; }
 
+  bool HasCompGradOpMaker() const { return grad_comp_op_maker_ != nullptr; }
+
   bool HasNonEmptyGradOpMaker() const {
     return grad_op_maker_ != nullptr && !use_empty_grad_op_desc_maker_;
   }
+
+  bool HasEmptyGradOpMaker() const { return use_empty_grad_op_desc_maker_; }
 
   const DygraphGradOpMakerFN& DygraphGradOpMaker() const {
     // Normally, proto_ should not be null, except some special operators, such
@@ -124,7 +129,7 @@ class OpInfo {
   }
 };
 
-class OpInfoMap {
+class TEST_API OpInfoMap {
  public:
   static OpInfoMap& Instance();
 

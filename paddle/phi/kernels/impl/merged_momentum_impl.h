@@ -14,10 +14,12 @@
 
 #pragma once
 
+#include "glog/logging.h"
+
+#include "paddle/common/macros.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/hostdevice.h"
-#include "paddle/phi/core/macros.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/impl/momentum_kernel_impl.h"
 #include "paddle/phi/kernels/merged_momentum_kernel.h"
@@ -282,7 +284,7 @@ void MergedMomentumInnerCompute(
           multi_precision ? master_params_opt.get()[idx]->data<MT>() : nullptr;
       MT *master_out_data =
           multi_precision ? master_params_out[idx]->data<MT>() : nullptr;
-      if (paddle::platform::is_cpu_place(ctx.GetPlace())) {
+      if (ctx.GetPlace().GetType() == phi::AllocationType::CPU) {
         phi::CPUDenseMomentumFunctor<MT> functor;
         functor(params[idx],
                 grads[idx],
@@ -295,24 +297,43 @@ void MergedMomentumInnerCompute(
                 params_out[idx],
                 velocitys_out[idx]);
         VLOG(10) << "Launch MergedMomentum cpu kernel.";
-      } else if (paddle::platform::is_gpu_place(ctx.GetPlace())) {
+      } else if (ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
         phi::funcs::ForRange<Context> for_range(
             static_cast<const Context &>(ctx), params[idx]->numel());
-#define PADDLE_LAUNCH_DENSE_MTMOMENTUM_KERNEL(__nesterov, __reg_type) \
-  phi::DenseMomentumFunctor<T, MT, __reg_type, __nesterov> functor(   \
-      params[idx]->data<T>(),                                         \
-      grads[idx]->data<T>(),                                          \
-      velocitys[idx]->data<MT>(),                                     \
-      lr_temp->data<MPType>(),                                        \
-      master_in_data,                                                 \
-      static_cast<MT>(mu),                                            \
-      static_cast<MT>(rescale_grad),                                  \
-      params[idx]->numel(),                                           \
-      regularization_coeff,                                           \
-      params_out[idx]->data<T>(),                                     \
-      velocitys_out[idx]->data<MT>(),                                 \
-      master_out_data);                                               \
-  for_range(functor);
+        const auto grad_type = grads[idx]->dtype();
+#define PADDLE_LAUNCH_DENSE_MTMOMENTUM_KERNEL(__nesterov, __reg_type)   \
+  if (grad_type == phi::DataType::FLOAT32) {                            \
+    DenseMomentumFunctor<T, float, MT, __reg_type, __nesterov> functor( \
+        params[idx]->data<T>(),                                         \
+        grads[idx]->data<float>(),                                      \
+        velocitys[idx]->data<MT>(),                                     \
+        lr_temp->data<MPType>(),                                        \
+        master_in_data,                                                 \
+        static_cast<MT>(mu),                                            \
+        static_cast<MT>(rescale_grad),                                  \
+        params[idx]->numel(),                                           \
+        regularization_coeff,                                           \
+        params_out[idx]->data<T>(),                                     \
+        velocitys_out[idx]->data<MT>(),                                 \
+        master_out_data);                                               \
+    for_range(functor);                                                 \
+  } else {                                                              \
+    DenseMomentumFunctor<T, T, MT, __reg_type, __nesterov> functor(     \
+        params[idx]->data<T>(),                                         \
+        grads[idx]->data<T>(),                                          \
+        velocitys[idx]->data<MT>(),                                     \
+        lr_temp->data<MPType>(),                                        \
+        master_in_data,                                                 \
+        static_cast<MT>(mu),                                            \
+        static_cast<MT>(rescale_grad),                                  \
+        params[idx]->numel(),                                           \
+        regularization_coeff,                                           \
+        params_out[idx]->data<T>(),                                     \
+        velocitys_out[idx]->data<MT>(),                                 \
+        master_out_data);                                               \
+    for_range(functor);                                                 \
+  }
+
         if (use_nesterov) {
           if (regularization_flag == phi::RegularizationType::kL2DECAY) {
             PADDLE_LAUNCH_DENSE_MTMOMENTUM_KERNEL(

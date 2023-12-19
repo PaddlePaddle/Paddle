@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,13 +25,14 @@ void WhereKernel(const Context& ctx,
                  const DenseTensor& x,
                  const DenseTensor& y,
                  DenseTensor* out) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
   const bool* cond_data = condition.data<bool>();
-  const T* x_data = x.data<T>();
-  const T* y_data = y.data<T>();
-  T* out_data = ctx.template Alloc<T>(out);
+  const XPUType* x_data = reinterpret_cast<const XPUType*>(x.data<T>());
+  const XPUType* y_data = reinterpret_cast<const XPUType*>(y.data<T>());
+  XPUType* out_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(out));
 
-  auto cond_dims = phi::vectorize<int>(condition.dims());
-  auto x_dims = phi::vectorize<int>(x.dims());
+  auto cond_dims = common::vectorize<int>(condition.dims());
+  auto x_dims = common::vectorize<int>(x.dims());
 
   // use [1] to replace [], because xpu not support []
   if (cond_dims.size() == 0) {
@@ -44,10 +45,18 @@ void WhereKernel(const Context& ctx,
   int ret = xpu::select(
       ctx.x_context(), cond_data, x_data, y_data, out_data, cond_dims, x_dims);
 
-  PADDLE_ENFORCE_XDNN_SUCCESS(ret, "select");
+  PADDLE_ENFORCE_XDNN_SUCCESS(ret, "xpu::select");
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    where, XPU, ALL_LAYOUT, phi::WhereKernel, float, int, int64_t) {}
+PD_REGISTER_KERNEL(where,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::WhereKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

@@ -95,7 +95,7 @@ class TemplateVariable {
     strings_[identifier] = expression;
   }
 
-  void Remove(std::string identifier, std::string expression) {
+  void Remove(std::string identifier, std::string expression UNUSED) {
     for (auto it = strings_.begin(); it != strings_.end();) {
       if (it->first == identifier) {
         it = strings_.erase(it);

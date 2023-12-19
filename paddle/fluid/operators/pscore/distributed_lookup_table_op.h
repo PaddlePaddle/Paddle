@@ -23,7 +23,7 @@
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class DistributedLookupTableKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -119,10 +119,10 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
         auto *id_tensor = id_vars[i]->GetMutable<phi::DenseTensor>();
         auto *out_tensor = out_vars[i]->GetMutable<phi::DenseTensor>();
 
-        auto id_dims = id_tensor->dims();
-        out_tensor->Resize(phi::make_ddim({static_cast<int64_t>(id_dims[0]),
-                                           static_cast<int64_t>(id_dims[1]),
-                                           static_cast<int64_t>(emb_dim)}));
+        auto id_dims = common::vectorize<int64_t>(id_tensor->dims());
+        out_tensor->Resize(common::make_ddim({static_cast<int64_t>(id_dims[0]),
+                                              static_cast<int64_t>(id_dims[1]),
+                                              static_cast<int64_t>(emb_dim)}));
       }
     }
   }

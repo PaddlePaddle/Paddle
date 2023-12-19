@@ -30,13 +30,13 @@ void TransposeGradKernel(const Context& dev_ctx,
 
   const auto& onednn_engine = dev_ctx.GetEngine();
 
-  if (axis.size() == 1) {
+  if (axis.size() == 1 || axis.empty()) {
     Copy<Context>(dev_ctx, out_grad, out_grad.place(), false, x_grad);
     x_grad->set_mem_desc(out_grad.mem_desc());
     return;
   }
 
-  std::vector<int64_t> out_grad_tz = vectorize(out_grad.dims());
+  std::vector<int64_t> out_grad_tz = common::vectorize(out_grad.dims());
   funcs::ReorderOneDNNHandler reorder_handler(
       out_grad_tz,
       out_grad.dtype(),

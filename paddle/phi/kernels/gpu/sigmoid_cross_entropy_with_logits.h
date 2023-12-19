@@ -16,7 +16,6 @@
 
 #include <algorithm>
 
-#include "paddle/fluid/memory/malloc.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_helper.h"
 #include "paddle/phi/core/hostdevice.h"
@@ -36,11 +35,7 @@ namespace cub = hipcub;
 
 namespace phi {
 
-#ifdef __HIPCC__
-static constexpr int kNumCUDAThreads = 256;
-#else
 static constexpr int kNumCUDAThreads = 512;
-#endif
 static constexpr int kNumMaxinumNumBlocks = 4096;
 
 static inline int NumBlocks(const int N) {
@@ -53,17 +48,6 @@ struct NonzeroFunctor {
   HOSTDEVICE explicit inline NonzeroFunctor() {}
   HOSTDEVICE inline T operator()(const T x) const {
     return static_cast<T>(static_cast<double>(x) != 0);
-  }
-};
-
-template <typename T>
-struct DivFunctor {
-  const T norm_;
-  HOSTDEVICE inline DivFunctor(const T norm) : norm_(norm) {}
-
-  HOSTDEVICE inline T operator()(T loss) {
-    loss /= norm_;
-    return loss;
   }
 };
 

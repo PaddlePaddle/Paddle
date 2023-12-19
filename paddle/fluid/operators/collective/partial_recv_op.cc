@@ -68,15 +68,15 @@ class PartialRecvOp : public framework::OperatorWithKernel {
                             i,
                             out_shape[i]));
     }
-    auto out_dims = phi::make_ddim(out_shape);
-    int numel = phi::product(out_dims);
+    auto out_dims = common::make_ddim(out_shape);
+    int64_t numel = common::product(out_dims);
     PADDLE_ENFORCE_EQ(
         (numel % num),
         0,
         platform::errors::InvalidArgument(
             "The output numel (%d) must be divisible by num(%d)", numel, num));
 
-    ctx->SetOutputDim("Out", phi::make_ddim(out_shape));
+    ctx->SetOutputDim("Out", common::make_ddim(out_shape));
   }
 
  protected:
@@ -91,19 +91,14 @@ class PartialRecvOp : public framework::OperatorWithKernel {
 
 class PartialRecvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddOutput("Out", "(Tensor) tensor to receive.");
     AddAttr<int>("ring_id", "(int default 0) nccl communication ring id.")
         .SetDefault(0);
     AddAttr<int>("peer", "(int default 0) rank id for sender.").SetDefault(0);
     AddAttr<int>("dtype", "(int default 5('float32')) data type of tensor.")
         .SetDefault(5);
-#if defined(PADDLE_WITH_ASCEND_CL)
-    AddAttr<std::string>("tag", "(string default tag) tag for broadcasting.")
-        .SetDefault("tag");
-    AddAttr<int>("srTag", "(string default tag) tag for broadcasting.")
-        .SetDefault(0);
-#endif
+
     AddAttr<std::vector<int>>("out_shape", "shape of the output tensor.")
         .SetDefault(std::vector<int>());
     AddAttr<bool>(
@@ -134,9 +129,12 @@ REGISTER_OP_WITHOUT_GRADIENT(partial_recv,
                              ops::PartialRecvOp,
                              ops::PartialRecvOpMaker);
 
-REGISTER_OP_CPU_KERNEL(partial_recv,
-                       ops::PartialRecvOpCPUKernel<float>,
-                       ops::PartialRecvOpCPUKernel<double>,
-                       ops::PartialRecvOpCPUKernel<int>,
-                       ops::PartialRecvOpCPUKernel<int64_t>,
-                       ops::PartialRecvOpCPUKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(partial_recv,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::PartialRecvOpCPUKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

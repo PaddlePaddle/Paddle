@@ -5,18 +5,9 @@ endif()
 proto_library(interceptor_message_proto SRCS interceptor_message.proto)
 
 if(WITH_ARM_BRPC)
-  set(BRPC_DEPS arm_brpc snappy gflags glog)
+  set(BRPC_DEPS arm_brpc snappy phi common glog)
 elseif(WITH_DISTRIBUTE AND NOT WITH_PSLIB)
-  set(BRPC_DEPS
-      brpc
-      ssl
-      crypto
-      protobuf
-      zlib
-      leveldb
-      snappy
-      gflags
-      glog)
+  set(BRPC_DEPS ${EXTERNAL_BRPC_DEPS} zlib phi common)
 else()
   set(BRPC_DEPS "")
 endif()
@@ -24,8 +15,7 @@ endif()
 cc_library(
   task_loop_thread_pool
   SRCS task_loop_thread_pool.cc task_loop_thread.cc task_loop.cc
-  DEPS enforce glog)
-
+  DEPS enforce glog common)
 cc_library(
   fleet_executor
   SRCS fleet_executor.cc
@@ -43,18 +33,19 @@ cc_library(
        message_service.cc
        message_bus.cc
        dist_model_tensor_wrapper.cc
-  DEPS proto_desc
+  DEPS naive_executor
+       proto_desc
        standalone_executor
        fleet_executor_desc_proto
        interceptor_message_proto
        task_loop_thread_pool
        collective_helper
-       op_registry
        executor_gc_helper
-       gflags
+       op_registry
+       phi
+       common
        glog
        ${BRPC_DEPS})
-
 if(WITH_DISTRIBUTE)
   set(DISTRIBUTE_COMPILE_FLAGS
       "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor"

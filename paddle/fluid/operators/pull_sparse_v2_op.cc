@@ -40,9 +40,9 @@ class PullSparseV2Op : public framework::OperatorWithKernel {
     outs_dims.resize(n_ids);
     for (size_t i = 0; i < n_ids; ++i) {
       const auto ids_dims = all_ids_dim[i];
-      auto out_dim = phi::vectorize(ids_dims);
+      auto out_dim = common::vectorize(ids_dims);
       out_dim.push_back(hidden_size);
-      outs_dims[i] = phi::make_ddim(out_dim);
+      outs_dims[i] = common::make_ddim(out_dim);
     }
     ctx->SetOutputsDim("Out", outs_dims);
     for (size_t i = 0; i < n_ids; ++i) {
@@ -135,5 +135,7 @@ REGISTER_OPERATOR(pull_sparse_v2,
                   ops::PushSparseV2OpMaker<paddle::framework::OpDesc>,
                   ops::PushSparseV2OpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(push_sparse_v2, ops::PushSparseV2Op);
-REGISTER_OP_CPU_KERNEL(pull_sparse_v2, ops::PullSparseV2CPUKernel<float>)
-REGISTER_OP_CPU_KERNEL(push_sparse_v2, ops::PushSparseV2CPUKernel<float>)
+PD_REGISTER_STRUCT_KERNEL(
+    pull_sparse_v2, CPU, ALL_LAYOUT, ops::PullSparseV2CPUKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    push_sparse_v2, CPU, ALL_LAYOUT, ops::PushSparseV2CPUKernel, float) {}

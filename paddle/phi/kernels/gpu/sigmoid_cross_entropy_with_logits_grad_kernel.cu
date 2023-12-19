@@ -14,7 +14,9 @@
 
 #include "paddle/phi/kernels/sigmoid_cross_entropy_with_logits_grad_kernel.h"
 
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/gpu/sigmoid_cross_entropy_with_logits.h"
+#include "paddle/phi/kernels/scale_kernel.h"
 
 namespace phi {
 
@@ -51,14 +53,50 @@ struct SigmoidBwdFunctor {
   }
 };
 
+template <typename T>
+struct SigmoidBwdPosWeightFunctor {
+  T ignore_index_;
+  T eps = static_cast<T>(1e-5);
+
+  HOSTDEVICE inline SigmoidBwdPosWeightFunctor(const T ignore_index)
+      : ignore_index_(ignore_index) {}
+
+  HOSTDEVICE inline phi::Array<T, 2> operator()(const T x,
+                                                const T label,
+                                                const T pos_weight,
+                                                const T dout) {
+    T counts;
+    T dx_data;
+
+    T diff = label - static_cast<T>(ignore_index_);
+    if ((diff > -eps) && (diff < eps)) {
+      dx_data = static_cast<T>(0.);
+      counts = 0;
+    } else {
+      T simoid_x =
+          static_cast<T>(1) / (static_cast<T>(1) + phi::funcs::real_exp(-x));
+      T diff = simoid_x * pos_weight - label;
+      dx_data = dout * diff;
+      counts = 1;
+    }
+    phi::Array<T, 2> outs;
+
+    outs[0] = dx_data;
+    outs[1] = counts;
+    return outs;
+  }
+};
+
 template <typename T, typename Context>
-void SigmoidCrossEntropyWithLogitsGradKernel(const Context &dev_ctx,
-                                             const DenseTensor &x,
-                                             const DenseTensor &label,
-                                             const DenseTensor &out_grad,
-                                             bool normalize,
-                                             int ignore_index,
-                                             DenseTensor *in_grad) {
+void SigmoidCrossEntropyWithLogitsGradKernel(
+    const Context &dev_ctx,
+    const DenseTensor &x,
+    const DenseTensor &label,
+    const paddle::optional<DenseTensor> &pos_weight,
+    const DenseTensor &out_grad,
+    bool normalize,
+    int ignore_index,
+    DenseTensor *in_grad) {
   auto dx_data = dev_ctx.template Alloc<T>(in_grad);
 
   // Temporary memory
@@ -69,16 +107,24 @@ void SigmoidCrossEntropyWithLogitsGradKernel(const Context &dev_ctx,
   dev_ctx.template Alloc<T>(counts_tensor);
   counts_tensor->Resize(in_grad->dims());
 
-  std::vector<const DenseTensor *> ins = {&x, &label, &out_grad};
   std::vector<DenseTensor *> outs = {in_grad, counts_tensor};
-  auto functor = SigmoidBwdFunctor<T>(ignore_index);
-  phi::funcs::ElementwiseKernel<T, decltype(functor), 2>(
-      dev_ctx, ins, &outs, functor);
+  if (pos_weight.get_ptr() == nullptr) {
+    std::vector<const DenseTensor *> ins = {&x, &label, &out_grad};
+    auto functor = SigmoidBwdFunctor<T>(ignore_index);
+    phi::funcs::ElementwiseKernel<T, decltype(functor), 2>(
+        dev_ctx, ins, &outs, functor);
+  } else {
+    std::vector<const DenseTensor *> ins = {
+        &x, &label, pos_weight.get_ptr(), &out_grad};
+    auto functor = SigmoidBwdPosWeightFunctor<T>(ignore_index);
+    phi::funcs::ElementwiseKernel<T, decltype(functor), 2>(
+        dev_ctx, ins, &outs, functor);
+  }
   if (normalize) {
     DenseTensor *norm_tensor = new DenseTensor();
     norm_tensor->Resize({sizeof(T)});
     dev_ctx.template Alloc<T>(norm_tensor);
-    auto dims = phi::vectorize(counts_tensor->dims());
+    auto dims = common::vectorize(counts_tensor->dims());
     std::vector<int> reduce_dim = {};
     for (int i = 0; i < dims.size(); i++) {
       reduce_dim.push_back(i);
@@ -87,22 +133,20 @@ void SigmoidCrossEntropyWithLogitsGradKernel(const Context &dev_ctx,
     funcs::ReduceKernel<T, T, kps::AddFunctor, NonzeroFunctor<T>>(
         dev_ctx, *counts_tensor, norm_tensor, NonzeroFunctor<T>(), reduce_dim);
     T *norm = dev_ctx.template Alloc<T>(norm_tensor);
-    auto norm_cpu_mem = paddle::memory::Alloc(phi::CPUPlace(), sizeof(T));
+    auto norm_cpu_mem = phi::memory_utils::Alloc(phi::CPUPlace(), sizeof(T));
     T *norm_cpu_ptr = reinterpret_cast<T *>(norm_cpu_mem->ptr());
-    paddle::memory::Copy(phi::CPUPlace(),
-                         norm_cpu_ptr,
-                         dev_ctx.GetPlace(),
-                         norm,
-                         sizeof(T),
-                         dev_ctx.stream());
+    memory_utils::Copy(phi::CPUPlace(),
+                       norm_cpu_ptr,
+                       dev_ctx.GetPlace(),
+                       norm,
+                       sizeof(T),
+                       dev_ctx.stream());
     dev_ctx.Wait();
     auto eps = static_cast<T>(1e-5);
     *norm_cpu_ptr = *norm_cpu_ptr > eps ? *norm_cpu_ptr : eps;
 
-    std::vector<const DenseTensor *> div_ins = {in_grad};
-    std::vector<DenseTensor *> div_outs = {in_grad};
-    auto div_functor = DivFunctor<T>(*norm_cpu_ptr);
-    phi::funcs::ElementwiseKernel<T>(dev_ctx, div_ins, &div_outs, div_functor);
+    phi::ScaleKernel<T>(
+        dev_ctx, *in_grad, (1.0 / *norm_cpu_ptr), 0.0f, false, in_grad);
 
     delete norm_tensor;
   }

@@ -28,6 +28,23 @@ class InplaceOpVarPass : public FusePassBase {
 
  private:
   virtual ~InplaceOpVarPass() = default;
+
+  int ApplyImpl(ir::Graph* graph,
+                const std::unordered_set<std::string>& deny_var_names) const;
+
+  bool IsValidInplaceOp(
+      Node* node, const std::unordered_set<std::string>& deny_var_names) const;
+
+  std::vector<std::string> GetControlFlowVarNames(ir::Graph* graph) const;
+
+  std::set<std::string> inplace_ops_{"reshape",
+                                     "reshape2",
+                                     "unsqueeze",
+                                     "unsqueeze2",
+                                     "squeeze",
+                                     "squeeze2",
+                                     "flatten_contiguous_range"};
+  std::set<std::string> control_flow_ops_{"while", "conditional_block"};
 };
 
 }  // namespace ir

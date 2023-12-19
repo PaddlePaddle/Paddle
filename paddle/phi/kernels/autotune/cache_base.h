@@ -18,12 +18,13 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/common/errors.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
+#include "paddle/phi/core/flags.h"
 
-DECLARE_int32(search_cache_max_number);
+PHI_DECLARE_int32(search_cache_max_number);
 
-inline void HashCombine(std::size_t* seed) {}
+inline void HashCombine(std::size_t* seed UNUSED) {}
 
 // combine hash value
 // https://stackoverflow.com/questions/2590677/how-do-i-combine-hash-values-in-c0x
@@ -211,6 +212,35 @@ class ConvAlgorithmsCache : public AlgorithmsCache<ConvCacheKey,
     }
     AlgorithmsCacheBase::hash_[key] = algo;
   }
+};
+
+template <typename KeyT, typename AlgorithmT>
+class MatmulAlgorithmsCache : public AlgorithmsCache<KeyT, AlgorithmT> {
+ public:
+  MatmulAlgorithmsCache() : AlgorithmsCache<KeyT, AlgorithmT>() {}
+
+  bool FindSubKey(const KeyT& sub_key) {
+    std::lock_guard<std::mutex> lock(*(this->cache_mutex_));
+    bool ret = (sub_hash_.find(sub_key) != sub_hash_.end()) ? true : false;
+    return ret;
+  }
+
+  void SetSubKey(const KeyT& sub_key, void* algo) {
+    std::lock_guard<std::mutex> lock(*(this->cache_mutex_));
+    sub_hash_[sub_key] = algo;
+  }
+
+  void* GetSubKey(const KeyT& sub_key) {
+    std::lock_guard<std::mutex> lock(*(this->cache_mutex_));
+    PADDLE_ENFORCE_NE(
+        sub_hash_.find(sub_key),
+        sub_hash_.end(),
+        phi::errors::PreconditionNotMet("The key does not exist."));
+    return sub_hash_[sub_key];
+  }
+
+ private:
+  std::unordered_map<KeyT, void*> sub_hash_;
 };
 
 }  // namespace autotune

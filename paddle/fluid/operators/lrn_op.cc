@@ -20,7 +20,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
@@ -45,18 +45,18 @@ struct LRNFunctor<phi::CPUContext, T> {
                   T beta,
                   const DataLayout data_layout) {
     auto place = ctx.GetPlace();
-    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(ctx);
-    phi::funcs::Transpose<phi::CPUContext, T, 4> transpose;
     auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
+    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
+    phi::funcs::Transpose<phi::CPUContext, T, 4> transpose;
     phi::DenseTensor in_transpose, mid_transpose, out_transpose;
     // if channel_last, transpose to channel_first
     if (data_layout == DataLayout::kNHWC) {
       auto in_dims = input.dims();
       std::vector<int64_t> shape(
           {in_dims[0], in_dims[3], in_dims[1], in_dims[2]});
-      in_transpose.mutable_data<T>(phi::make_ddim(shape), place);
-      mid_transpose.mutable_data<T>(phi::make_ddim(shape), place);
-      out_transpose.mutable_data<T>(phi::make_ddim(shape), place);
+      in_transpose.mutable_data<T>(common::make_ddim(shape), place);
+      mid_transpose.mutable_data<T>(common::make_ddim(shape), place);
+      out_transpose.mutable_data<T>(common::make_ddim(shape), place);
       std::vector<int> axis = {0, 3, 1, 2};
       transpose(dev_ctx, input, &in_transpose, axis);
     } else {
@@ -232,13 +232,13 @@ class LRNOp : public framework::OperatorWithKernel {
       const std::string& var_name,
       const phi::DenseTensor& tensor,
       const phi::KernelKey& expected_kernel_type) const override {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
         (tensor.layout() != phi::DataLayout::ONEDNN)) {
       auto attrs = Attrs();
       auto ar = paddle::framework::AttrReader(attrs);
       const std::string data_format = ar.Get<std::string>("data_format");
-      auto dl = phi::StringToDataLayout(data_format);
+      auto dl = common::StringToDataLayout(data_format);
       // Some models may have intentionally set "AnyLayout" for lrn
       // op. Treat this as NCHW (default data_format value)
       if (dl != phi::DataLayout::kAnyLayout) {
@@ -355,13 +355,13 @@ class LRNOpGrad : public framework::OperatorWithKernel {
       const std::string& var_name,
       const phi::DenseTensor& tensor,
       const phi::KernelKey& expected_kernel_type) const override {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
         (tensor.layout() != phi::DataLayout::ONEDNN)) {
       auto attrs = Attrs();
       auto ar = paddle::framework::AttrReader(attrs);
       const std::string data_format = ar.Get<std::string>("data_format");
-      auto dl = phi::StringToDataLayout(data_format);
+      auto dl = common::StringToDataLayout(data_format);
       // Some models may have intentionally set "AnyLayout" for lrn
       // op. Treat this as NCHW (default data_format value)
       if (dl != phi::DataLayout::kAnyLayout) {
@@ -400,5 +400,7 @@ REGISTER_OPERATOR(lrn,
                   ops::LRNGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(lrn_grad, ops::LRNOpGrad);
-REGISTER_OP_CPU_KERNEL(lrn, ops::LRNKernel<phi::CPUContext, float>);
-REGISTER_OP_CPU_KERNEL(lrn_grad, ops::LRNGradKernel<phi::CPUContext, float>);
+
+PD_REGISTER_STRUCT_KERNEL(lrn, CPU, ALL_LAYOUT, ops::LRNKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    lrn_grad, CPU, ALL_LAYOUT, ops::LRNGradKernel, float) {}

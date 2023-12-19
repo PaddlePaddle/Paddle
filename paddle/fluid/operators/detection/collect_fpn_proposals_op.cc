@@ -140,9 +140,12 @@ REGISTER_OPERATOR(
     ops::CollectFpnProposalsOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(collect_fpn_proposals,
-                       ops::CollectFpnProposalsOpKernel<float>,
-                       ops::CollectFpnProposalsOpKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(collect_fpn_proposals,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::CollectFpnProposalsOpKernel,
+                          float,
+                          double) {}
 REGISTER_OP_VERSION(collect_fpn_proposals)
     .AddCheckpoint(
         R"ROC(

@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include "glog/logging.h"
+
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
@@ -58,7 +60,7 @@ void SlogDeterminantGradKernel(const Context& dev_ctx,
     VLOG(3) << "The input matrix not invertible!";
     x_grad->Resize(x.dims());
     phi::Full<T>(dev_ctx,
-                 phi::vectorize(x.dims()),
+                 common::vectorize(x.dims()),
                  std::numeric_limits<T>::quiet_NaN(),
                  x_grad);
     return;

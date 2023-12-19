@@ -27,7 +27,7 @@ cc_library(
 cc_library(
   buffered_reader
   SRCS buffered_reader.cc
-  DEPS reader simple_threadpool)
+  DEPS reader simple_threadpool fluid_memory)
 
 reader_library(create_double_buffer_reader_op SRCS
                create_double_buffer_reader_op.cc DEPS buffered_reader)
@@ -35,6 +35,5 @@ reader_library(create_py_reader_op SRCS create_py_reader_op.cc DEPS py_reader)
 
 op_library(read_op DEPS py_reader buffered_reader)
 
-cc_test(reader_blocking_queue_test SRCS reader_blocking_queue_test.cc)
 # Export local libraries to parent
 # set(READER_LIBRARY ${LOCAL_READER_LIBS} PARENT_SCOPE)

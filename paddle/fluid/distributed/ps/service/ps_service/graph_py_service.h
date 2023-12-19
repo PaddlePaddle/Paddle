@@ -143,13 +143,13 @@ class GraphPyServer : public GraphPyService {
 
   void start_server(bool block = true);
   ::paddle::distributed::PSParameter GetServerProto();
-  std::shared_ptr<paddle::distributed::GraphBrpcServer> get_ps_server() {
+  std::shared_ptr<::paddle::distributed::GraphBrpcServer> get_ps_server() {
     return pserver_ptr;
   }
 
  protected:
   int rank;
-  std::shared_ptr<paddle::distributed::GraphBrpcServer> pserver_ptr;
+  std::shared_ptr<::paddle::distributed::GraphBrpcServer> pserver_ptr;
   std::thread* server_thread;
 };
 class GraphPyClient : public GraphPyService {
@@ -162,14 +162,14 @@ class GraphPyClient : public GraphPyService {
     set_client_id(client_id);
     GraphPyService::set_up(ips_str, shard_num, node_types, edge_types);
   }
-  std::shared_ptr<paddle::distributed::GraphBrpcClient> get_ps_client() {
+  std::shared_ptr<::paddle::distributed::GraphBrpcClient> get_ps_client() {
     return worker_ptr;
   }
   void bind_local_server(int local_channel_index,
                          GraphPyServer& server) {  // NOLINT
     worker_ptr->set_local_channel(local_channel_index);
     worker_ptr->set_local_graph_service(
-        (paddle::distributed::GraphBrpcService*)server.get_ps_server()
+        (::paddle::distributed::GraphBrpcService*)server.get_ps_server()
             ->get_service());
   }
   void StopServer();
@@ -209,7 +209,7 @@ class GraphPyClient : public GraphPyService {
  protected:
   mutable std::mutex mutex_;
   int client_id;
-  std::shared_ptr<paddle::distributed::GraphBrpcClient> worker_ptr;
+  std::shared_ptr<::paddle::distributed::GraphBrpcClient> worker_ptr;
   std::thread* client_thread;
   bool stoped_ = false;
 };

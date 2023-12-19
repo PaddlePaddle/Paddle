@@ -49,10 +49,13 @@ PD_REGISTER_KERNEL(sum_raw,
                    float,
                    double,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int16_t,
+                   int8_t,
+                   uint8_t,
                    int,
                    int64_t,
                    complex64,
                    complex128) {
-  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }

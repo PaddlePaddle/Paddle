@@ -26,8 +26,9 @@ SparseCsrTensor::SparseCsrTensor() {
 inline void check_shape(const DDim& dims) {
   bool valid = dims.size() == 2 || dims.size() == 3;
 
-  PADDLE_ENFORCE(
+  PADDLE_ENFORCE_EQ(
       valid,
+      true,
       phi::errors::InvalidArgument("the SparseCsrTensor only support 2-D or "
                                    "3-D Tensor, but get %d-D Tensor",
                                    dims.size()));
@@ -65,10 +66,10 @@ SparseCsrTensor::SparseCsrTensor(const DenseTensor& non_zero_crows,
   meta_.dtype = non_zero_elements.dtype();
 }
 
-SparseCsrTensor::SparseCsrTensor(const SparseCsrTensor& other)
-    : non_zero_crows_(other.non_zero_crows_),
-      non_zero_cols_(other.non_zero_cols_),
-      non_zero_elements_(other.non_zero_elements_) {
+SparseCsrTensor::SparseCsrTensor(const SparseCsrTensor& other) {
+  this->non_zero_crows_ = other.non_zero_crows_;
+  this->non_zero_cols_ = other.non_zero_cols_;
+  this->non_zero_elements_ = other.non_zero_elements_;
   set_meta(other.meta());
 }
 
@@ -88,12 +89,20 @@ void* SparseCsrTensor::AllocateFrom(Allocator* allocator,
       allocator, dtype, requested_size, fake_alloc);
 }
 
+void SparseCsrTensor::set_type(const DataType dtype) { meta_.dtype = dtype; }
+
+void SparseCsrTensor::set_layout(const DataLayout layout) {
+  meta_.layout = layout;
+}
+
 void SparseCsrTensor::Resize(const DDim& dense_dims,
                              const int64_t non_zero_num) {
-  PADDLE_ENFORCE(this->initialized(),
-                 phi::errors::InvalidArgument(
-                     "the SparseCsrTensor must be initialized when call Resize "
-                     "function."));
+  PADDLE_ENFORCE_EQ(
+      this->initialized(),
+      true,
+      phi::errors::InvalidArgument(
+          "the SparseCsrTensor must be initialized when call Resize "
+          "function."));
   check_shape(dense_dims);
 
   int64_t crows_size = dense_dims[0] + 1;
@@ -102,10 +111,10 @@ void SparseCsrTensor::Resize(const DDim& dense_dims,
     crows_size = dense_dims[0] * (dense_dims[1] + 1);
   }
 
-  DDim crows_dims = phi::make_ddim({crows_size});
+  DDim crows_dims = common::make_ddim({crows_size});
   this->non_zero_crows_.Resize(crows_dims);
 
-  DDim col_dims = phi::make_ddim({non_zero_num});
+  DDim col_dims = common::make_ddim({non_zero_num});
   this->non_zero_cols_.Resize(col_dims);
   this->non_zero_elements_.Resize(col_dims);
 }
@@ -133,16 +142,18 @@ void SparseCsrTensor::SetMember(const DenseTensor& non_zero_crows,
 }
 
 void SparseCsrTensor::set_meta(SparseTensorMeta&& meta) {
-  PADDLE_ENFORCE(!meta_.valid(),
-                 phi::errors::InvalidArgument(
-                     "Only when the original attribute of Tensor is "
-                     "incomplete, can it be reset."));
+  PADDLE_ENFORCE_EQ(meta_.valid(),
+                    false,
+                    phi::errors::InvalidArgument(
+                        "Only when the original attribute of Tensor is "
+                        "incomplete, can it be reset."));
   meta_ = std::move(meta);
 }
 
 void SparseCsrTensor::set_meta(const SparseTensorMeta& meta) {
-  PADDLE_ENFORCE(
+  PADDLE_ENFORCE_EQ(
       meta.valid(),
+      true,
       phi::errors::InvalidArgument(
           "Input meta is invalid, please check the meta attribute."));
   meta_.dims = meta.dims;

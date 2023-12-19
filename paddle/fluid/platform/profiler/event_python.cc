@@ -21,19 +21,17 @@ namespace platform {
 
 HostPythonNode::~HostPythonNode() {
   // delete all runtime or device nodes and recursive delete children
-  for (auto it = children_node_ptrs.begin(); it != children_node_ptrs.end();
-       ++it) {
-    delete *it;
+  for (auto& children_node_ptr : children_node_ptrs) {
+    delete children_node_ptr;
   }
-  for (auto it = runtime_node_ptrs.begin(); it != runtime_node_ptrs.end();
-       ++it) {
-    delete *it;
+  for (auto& runtime_node_ptr : runtime_node_ptrs) {
+    delete runtime_node_ptr;
   }
-  for (auto it = device_node_ptrs.begin(); it != device_node_ptrs.end(); ++it) {
-    delete *it;
+  for (auto& device_node_ptr : device_node_ptrs) {
+    delete device_node_ptr;
   }
-  for (auto it = mem_node_ptrs.begin(); it != mem_node_ptrs.end(); ++it) {
-    delete *it;
+  for (auto& mem_node_ptr : mem_node_ptrs) {
+    delete mem_node_ptr;
   }
 }
 
@@ -50,26 +48,23 @@ HostPythonNode* ProfilerResult::CopyTree(HostTraceEventNode* root) {
   host_python_node->end_ns = root->EndNs();
   host_python_node->process_id = root->ProcessId();
   host_python_node->thread_id = root->ThreadId();
-  for (auto it = root->GetChildren().begin(); it != root->GetChildren().end();
-       ++it) {
-    host_python_node->children_node_ptrs.push_back(CopyTree(*it));
+  for (auto child : root->GetChildren()) {
+    host_python_node->children_node_ptrs.push_back(CopyTree(child));
   }
   // copy its CudaRuntimeTraceEventNode
-  for (auto runtimenode = root->GetRuntimeTraceEventNodes().begin();
-       runtimenode != root->GetRuntimeTraceEventNodes().end();
-       ++runtimenode) {
+  for (auto runtimenode : root->GetRuntimeTraceEventNodes()) {
     HostPythonNode* runtime_python_node = new HostPythonNode();
-    runtime_python_node->name = (*runtimenode)->Name();
-    runtime_python_node->type = (*runtimenode)->Type();
-    runtime_python_node->start_ns = (*runtimenode)->StartNs();
-    runtime_python_node->end_ns = (*runtimenode)->EndNs();
-    runtime_python_node->process_id = (*runtimenode)->ProcessId();
-    runtime_python_node->thread_id = (*runtimenode)->ThreadId();
-    runtime_python_node->correlation_id = (*runtimenode)->CorrelationId();
+    runtime_python_node->name = runtimenode->Name();
+    runtime_python_node->type = runtimenode->Type();
+    runtime_python_node->start_ns = runtimenode->StartNs();
+    runtime_python_node->end_ns = runtimenode->EndNs();
+    runtime_python_node->process_id = runtimenode->ProcessId();
+    runtime_python_node->thread_id = runtimenode->ThreadId();
+    runtime_python_node->correlation_id = runtimenode->CorrelationId();
     host_python_node->runtime_node_ptrs.push_back(runtime_python_node);
     // copy DeviceTraceEventNode
-    for (auto devicenode = (*runtimenode)->GetDeviceTraceEventNodes().begin();
-         devicenode != (*runtimenode)->GetDeviceTraceEventNodes().end();
+    for (auto devicenode = runtimenode->GetDeviceTraceEventNodes().begin();
+         devicenode != runtimenode->GetDeviceTraceEventNodes().end();
          ++devicenode) {
       DevicePythonNode* device_python_node = new DevicePythonNode();
       device_python_node->name = (*devicenode)->Name();
@@ -107,21 +102,19 @@ HostPythonNode* ProfilerResult::CopyTree(HostTraceEventNode* root) {
     }
   }
   // copy MemTraceEventNode
-  for (auto memnode = root->GetMemTraceEventNodes().begin();
-       memnode != root->GetMemTraceEventNodes().end();
-       memnode++) {
+  for (auto memnode : root->GetMemTraceEventNodes()) {
     MemPythonNode* mem_python_node = new MemPythonNode();
-    mem_python_node->timestamp_ns = (*memnode)->TimeStampNs();
-    mem_python_node->addr = (*memnode)->Addr();
-    mem_python_node->type = (*memnode)->Type();
-    mem_python_node->process_id = (*memnode)->ProcessId();
-    mem_python_node->thread_id = (*memnode)->ThreadId();
-    mem_python_node->increase_bytes = (*memnode)->IncreaseBytes();
-    mem_python_node->place = (*memnode)->Place();
-    mem_python_node->current_allocated = (*memnode)->CurrentAllocated();
-    mem_python_node->current_reserved = (*memnode)->CurrentReserved();
-    mem_python_node->peak_allocated = (*memnode)->PeakAllocated();
-    mem_python_node->peak_reserved = (*memnode)->PeakReserved();
+    mem_python_node->timestamp_ns = memnode->TimeStampNs();
+    mem_python_node->addr = memnode->Addr();
+    mem_python_node->type = memnode->Type();
+    mem_python_node->process_id = memnode->ProcessId();
+    mem_python_node->thread_id = memnode->ThreadId();
+    mem_python_node->increase_bytes = memnode->IncreaseBytes();
+    mem_python_node->place = memnode->Place();
+    mem_python_node->current_allocated = memnode->CurrentAllocated();
+    mem_python_node->current_reserved = memnode->CurrentReserved();
+    mem_python_node->peak_allocated = memnode->PeakAllocated();
+    mem_python_node->peak_reserved = memnode->PeakReserved();
     host_python_node->mem_node_ptrs.push_back(mem_python_node);
   }
   // copy OperatorSupplementEventNode's information if exists
@@ -147,8 +140,8 @@ ProfilerResult::ProfilerResult(
       device_property_map_(device_property_map) {
   if (tree_ != nullptr) {
     std::map<uint64_t, HostTraceEventNode*> nodetrees = tree_->GetNodeTrees();
-    for (auto it = nodetrees.begin(); it != nodetrees.end(); ++it) {
-      thread_event_trees_map_[it->first] = CopyTree(it->second);
+    for (auto& nodetree : nodetrees) {
+      thread_event_trees_map_[nodetree.first] = CopyTree(nodetree.second);
     }
   }
 }
@@ -159,18 +152,16 @@ ProfilerResult::ProfilerResult(std::unique_ptr<NodeTrees> tree,
     : tree_(tree.release()), extra_info_(extra_info) {
   if (tree_ != nullptr) {
     std::map<uint64_t, HostTraceEventNode*> nodetrees = tree_->GetNodeTrees();
-    for (auto it = nodetrees.begin(); it != nodetrees.end(); ++it) {
-      thread_event_trees_map_[it->first] = CopyTree(it->second);
+    for (auto& nodetree : nodetrees) {
+      thread_event_trees_map_[nodetree.first] = CopyTree(nodetree.second);
     }
   }
 }
 
 ProfilerResult::~ProfilerResult() {
   // delete all root nodes
-  for (auto it = thread_event_trees_map_.begin();
-       it != thread_event_trees_map_.end();
-       ++it) {
-    delete it->second;
+  for (auto& item : thread_event_trees_map_) {
+    delete item.second;
   }
 }
 

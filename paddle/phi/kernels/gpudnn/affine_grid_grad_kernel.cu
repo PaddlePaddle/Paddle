@@ -15,7 +15,7 @@
 #ifndef PADDLE_WITH_HIP
 
 #include "paddle/phi/kernels/affine_grid_grad_kernel.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
@@ -35,7 +35,7 @@ void AffineGridGradCudnnKernel(const Context& dev_ctx,
                                bool align_corners,
                                DenseTensor* input_grad) {
   PADDLE_ENFORCE_EQ(
-      paddle::platform::is_gpu_place(dev_ctx.GetPlace()),
+      dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU,
       true,
       phi::errors::InvalidArgument(
           "Only support for CUDAPlace.Please switch your context from "
@@ -58,9 +58,8 @@ void AffineGridGradCudnnKernel(const Context& dev_ctx,
   const T* output_grad_data = output_grad.data<T>();
   T* theta_grad_data = dev_ctx.template Alloc<T>(theta_grad);
 
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      paddle::platform::dynload::cudnnSpatialTfGridGeneratorBackward(
-          handle, cudnn_st_desc, output_grad_data, theta_grad_data));
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSpatialTfGridGeneratorBackward(
+      handle, cudnn_st_desc, output_grad_data, theta_grad_data));
 }
 
 }  // namespace phi

@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import paddle
-from paddle import _legacy_C_ops
-from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.framework import Variable, _non_static_mode
-from paddle.fluid.layer_helper import LayerHelper
+from paddle import _C_ops
+from paddle.base.data_feeder import check_variable_and_dtype
+from paddle.base.framework import Variable
+from paddle.base.layer_helper import LayerHelper
+from paddle.framework import in_dynamic_mode
 
 __all__ = []
 
@@ -68,33 +69,34 @@ def reindex_graph(
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = [0, 1, 2]
-            neighbors = [8, 9, 0, 4, 7, 6, 7]
-            count = [2, 3, 2]
-            x = paddle.to_tensor(x, dtype="int64")
-            neighbors = paddle.to_tensor(neighbors, dtype="int64")
-            count = paddle.to_tensor(count, dtype="int32")
-            reindex_src, reindex_dst, out_nodes = paddle.geometric.reindex_graph(x, neighbors, count)
-            # reindex_src: [3, 4, 0, 5, 6, 7, 6]
-            # reindex_dst: [0, 0, 1, 1, 1, 2, 2]
-            # out_nodes: [0, 1, 2, 8, 9, 4, 7, 6]
+            >>> x = [0, 1, 2]
+            >>> neighbors = [8, 9, 0, 4, 7, 6, 7]
+            >>> count = [2, 3, 2]
+            >>> x = paddle.to_tensor(x, dtype="int64")
+            >>> neighbors = paddle.to_tensor(neighbors, dtype="int64")
+            >>> count = paddle.to_tensor(count, dtype="int32")
+            >>> reindex_src, reindex_dst, out_nodes = paddle.geometric.reindex_graph(x, neighbors, count)
+            >>> print(reindex_src.numpy())
+            [3 4 0 5 6 7 6]
+            >>> print(reindex_dst.numpy())
+            [0 0 1 1 1 2 2]
+            >>> print(out_nodes.numpy())
+            [0 1 2 8 9 4 7 6]
 
     """
     use_buffer_hashtable = (
         True if value_buffer is not None and index_buffer is not None else False
     )
 
-    if _non_static_mode():
-        reindex_src, reindex_dst, out_nodes = _legacy_C_ops.graph_reindex(
+    if in_dynamic_mode():
+        reindex_src, reindex_dst, out_nodes = _C_ops.reindex_graph(
             x,
             neighbors,
             count,
             value_buffer,
             index_buffer,
-            "flag_buffer_hashtable",
-            use_buffer_hashtable,
         )
         return reindex_src, reindex_dst, out_nodes
 
@@ -130,7 +132,6 @@ def reindex_graph(
             "Reindex_Dst": reindex_dst,
             "Out_Nodes": out_nodes,
         },
-        attrs={"flag_buffer_hashtable": use_buffer_hashtable},
     )
     return reindex_src, reindex_dst, out_nodes
 
@@ -184,41 +185,42 @@ def reindex_heter_graph(
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = [0, 1, 2]
-            neighbors_a = [8, 9, 0, 4, 7, 6, 7]
-            count_a = [2, 3, 2]
-            x = paddle.to_tensor(x, dtype="int64")
-            neighbors_a = paddle.to_tensor(neighbors_a, dtype="int64")
-            count_a = paddle.to_tensor(count_a, dtype="int32")
-            neighbors_b = [0, 2, 3, 5, 1]
-            count_b = [1, 3, 1]
-            neighbors_b = paddle.to_tensor(neighbors_b, dtype="int64")
-            count_b = paddle.to_tensor(count_b, dtype="int32")
-            neighbors = [neighbors_a, neighbors_b]
-            count = [count_a, count_b]
-            reindex_src, reindex_dst, out_nodes = paddle.geometric.reindex_heter_graph(x, neighbors, count)
-            # reindex_src: [3, 4, 0, 5, 6, 7, 6, 0, 2, 8, 9, 1]
-            # reindex_dst: [0, 0, 1, 1, 1, 2, 2, 0, 1, 1, 1, 2]
-            # out_nodes: [0, 1, 2, 8, 9, 4, 7, 6, 3, 5]
+            >>> x = [0, 1, 2]
+            >>> neighbors_a = [8, 9, 0, 4, 7, 6, 7]
+            >>> count_a = [2, 3, 2]
+            >>> x = paddle.to_tensor(x, dtype="int64")
+            >>> neighbors_a = paddle.to_tensor(neighbors_a, dtype="int64")
+            >>> count_a = paddle.to_tensor(count_a, dtype="int32")
+            >>> neighbors_b = [0, 2, 3, 5, 1]
+            >>> count_b = [1, 3, 1]
+            >>> neighbors_b = paddle.to_tensor(neighbors_b, dtype="int64")
+            >>> count_b = paddle.to_tensor(count_b, dtype="int32")
+            >>> neighbors = [neighbors_a, neighbors_b]
+            >>> count = [count_a, count_b]
+            >>> reindex_src, reindex_dst, out_nodes = paddle.geometric.reindex_heter_graph(x, neighbors, count)
+            >>> print(reindex_src.numpy())
+            [3 4 0 5 6 7 6 0 2 8 9 1]
+            >>> print(reindex_dst.numpy())
+            [0 0 1 1 1 2 2 0 1 1 1 2]
+            >>> print(out_nodes.numpy())
+            [0 1 2 8 9 4 7 6 3 5]
 
     """
     use_buffer_hashtable = (
         True if value_buffer is not None and index_buffer is not None else False
     )
 
-    if _non_static_mode():
+    if in_dynamic_mode():
         neighbors = paddle.concat(neighbors, axis=0)
         count = paddle.concat(count, axis=0)
-        reindex_src, reindex_dst, out_nodes = _legacy_C_ops.graph_reindex(
+        reindex_src, reindex_dst, out_nodes = _C_ops.reindex_graph(
             x,
             neighbors,
             count,
             value_buffer,
             index_buffer,
-            "flag_buffer_hashtable",
-            use_buffer_hashtable,
         )
         return reindex_src, reindex_dst, out_nodes
 
@@ -264,6 +266,5 @@ def reindex_heter_graph(
             "Reindex_Dst": reindex_dst,
             "Out_Nodes": out_nodes,
         },
-        attrs={"flag_buffer_hashtable": use_buffer_hashtable},
     )
     return reindex_src, reindex_dst, out_nodes

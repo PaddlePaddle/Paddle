@@ -20,15 +20,16 @@
 #include <netdb.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <array>
 #endif
 
 #include <cstdlib>
 #include <cstring>
 
+#include "paddle/common/errors.h"
 #include "paddle/phi/core/distributed/gloo_utils.h"
 #include "paddle/phi/core/distributed/store/tcp_utils.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 
 namespace phi {
 namespace distributed {
@@ -87,6 +88,21 @@ std::shared_ptr<gloo::transport::Device> CreateGlooDevice() {
     return CreateDeviceForInterface(std::string(ifname));
   } else {
     return CreateDefaultDevice();
+  }
+}
+
+void send_recv(SendRecvOptions* opts) {
+  const auto& context = opts->context;
+  gloo::transport::UnboundBuffer* in = opts->in.get();
+  gloo::transport::UnboundBuffer* out = opts->out.get();
+  const auto slot = gloo::Slot::build(kSendRecvSlotPrefix, opts->tag);
+
+  if (context->rank == opts->src) {
+    in->send(opts->dst, slot);
+    in->waitSend(opts->timeout);
+  } else if (context->rank == opts->dst) {
+    out->recv(opts->src, slot);
+    out->waitRecv(opts->timeout);
   }
 }
 

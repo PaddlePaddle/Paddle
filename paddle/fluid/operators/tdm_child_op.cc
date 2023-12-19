@@ -24,7 +24,7 @@ namespace paddle {
 namespace operators {
 class TDMChildOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X",
              "X(Tensor), dtype support int32/int64, X variable is the "
              "node id of TDM-Tree");
@@ -89,10 +89,10 @@ class TDMChildOp : public framework::OperatorWithKernel {
             info_dims.size(),
             info_dims));
 
-    auto output_dims = phi::vectorize(input_dims);
+    auto output_dims = common::vectorize(input_dims);
     output_dims.push_back(child_nums);
-    ctx->SetOutputDim("Child", phi::make_ddim(output_dims));
-    ctx->SetOutputDim("LeafMask", phi::make_ddim(output_dims));
+    ctx->SetOutputDim("Child", common::make_ddim(output_dims));
+    ctx->SetOutputDim("LeafMask", common::make_ddim(output_dims));
 
     if (ctx->GetOutputsVarType("Child")[0] ==
         framework::proto::VarType::LOD_TENSOR) {
@@ -119,9 +119,12 @@ REGISTER_OPERATOR(
     ops::TDMChildOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(
-    tdm_child,
-    ops::TDMChildKernel<paddle::platform::CPUPlace, float>,
-    ops::TDMChildKernel<paddle::platform::CPUPlace, double>,
-    ops::TDMChildKernel<paddle::platform::CPUPlace, int>,
-    ops::TDMChildKernel<paddle::platform::CPUPlace, int64_t>);
+
+PD_REGISTER_STRUCT_KERNEL(tdm_child,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::TDMChildKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}

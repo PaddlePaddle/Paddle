@@ -1,8 +1,10 @@
 set(INTERPRETER_SRCS data_transfer.cc dependency_builder.cc execution_config.cc
-                     interpreter_util.cc stream_analyzer.cc)
+                     interpreter_util.cc static_build.cc stream_analyzer.cc)
 
 set(INTERPRETER_DEPS
+    buffered_reader
     device_context
+    global_utils
     op_registry
     scope
     framework_proto
@@ -12,8 +14,8 @@ set(INTERPRETER_DEPS
     trainer_desc_proto
     glog
     lod_rank_table
-    fs
-    shell
+    framework_io
+    string_helper
     fleet_wrapper
     heter_wrapper
     ps_gpu_wrapper
@@ -28,10 +30,21 @@ set(INTERPRETER_DEPS
     enforce
     scope
     glog
+    phi
+    common
     ${DEVICE_EVENT_LIBS}
     glog)
+
+if(WITH_CINN AND NOT CINN_ONLY)
+  set(INTERPRETER_DEPS ${INTERPRETER_DEPS} cinn_jit_instruction)
+endif()
 
 cc_library(
   interpreter
   SRCS ${INTERPRETER_SRCS}
-  DEPS ${INTERPRETER_DEPS})
+  DEPS standalone_executor ${INTERPRETER_DEPS})
+
+cc_library(
+  plan
+  SRCS plan.cc
+  DEPS proto_desc framework_proto)

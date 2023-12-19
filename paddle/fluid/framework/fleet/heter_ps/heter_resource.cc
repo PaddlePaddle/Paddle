@@ -23,10 +23,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #endif
+#include "paddle/phi/core/flags.h"
 #include "paddle/utils/string/string_helper.h"
 
-DECLARE_bool(enable_auto_detect_gpu_topo);
-DECLARE_bool(enable_auto_rdma_trans);
+PHI_DECLARE_bool(enable_auto_detect_gpu_topo);
+PHI_DECLARE_bool(enable_auto_rdma_trans);
 
 namespace paddle {
 namespace framework {
@@ -55,13 +56,13 @@ GPUResource::GPUResource(std::vector<int> &dev_ids, int index) {
 GPUResource::~GPUResource() {
   platform::CUDADeviceGuard guard(dev_id_);
   for (size_t i = 0; i < local_streams_.size(); ++i) {
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(local_streams_[i]));
+    PADDLE_WARN_GPU_SUCCESS(cudaStreamDestroy(local_streams_[i]));
   }
   for (size_t i = 0; i < comm_streams_.size(); ++i) {
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(comm_streams_[i]));
+    PADDLE_WARN_GPU_SUCCESS(cudaStreamDestroy(comm_streams_[i]));
   }
   for (size_t i = 0; i < remote_streams_.size(); ++i) {
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(remote_streams_[i]));
+    PADDLE_WARN_GPU_SUCCESS(cudaStreamDestroy(remote_streams_[i]));
   }
 }
 
@@ -202,7 +203,8 @@ bool GpuRDMAChecker::check_device_status(const int &device_count,
       }
       continue;
     }
-    if (strncmp(card_name.c_str(), "mlx5", 4) != 0) {
+    if ((strncmp(card_name.c_str(), "mlx5", 4) != 0) &&
+        (strncmp(card_name.c_str(), "NIC", 3) != 0)) {
       continue;
     }
     for (int j = 0; j < device_count; ++j) {
@@ -248,6 +250,7 @@ HeterPsResource::HeterPsResource(const std::vector<int> &dev_ids) {
     resources_.push_back(resource);
     devid_2_index_[dev_ids_[i]] = i;
   }
+  keys2rank_vec_.resize(dev_ids.size());
 }
 
 ppStream HeterPsResource::comm_stream(int dev_num, int stream_num) {

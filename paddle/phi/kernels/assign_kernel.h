@@ -34,8 +34,20 @@ DenseTensor Assign(const Context& dev_ctx, const DenseTensor& x) {
   MetaTensor meta_out(&out);
   MetaTensor meta_x(x);
   UnchangedInferMeta(meta_x, &meta_out);
-  AssignKernel<Context>(dev_ctx, x, &out);
+  if (x.initialized()) {
+    AssignKernel<Context>(dev_ctx, x, &out);
+  }
   return out;
+}
+
+template <typename Context>
+void Assign(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) {
+  MetaTensor meta_out(out);
+  MetaTensor meta_x(x);
+  UnchangedInferMeta(meta_x, &meta_out);
+  if (x.initialized()) {
+    AssignKernel<Context>(dev_ctx, x, out);
+  }
 }
 
 // In order to be compatible with the `AsDispensable` input in the original

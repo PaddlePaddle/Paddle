@@ -25,11 +25,9 @@ namespace cub = hipcub;
 #endif
 
 #include <algorithm>
-
-#include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/common/ddim.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
-#include "paddle/phi/core/ddim.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
@@ -270,7 +268,7 @@ __device__ void SelectKernelImpl(OutT *out,
   using IdT = int64_t;
   // Set index data type
   using Add = kps::AddFunctor<IdT>;  // for cumsum
-  using Cast = NonZeroFunctor<InT>;  // for mask
+  using Cast = NonZeroFunctor<MT>;   // for mask
 
   IdT init_idx = static_cast<IdT>(0.0f);
   MT init_mask = static_cast<MT>(0.0f);
@@ -391,8 +389,8 @@ void SelectKernel(const KPDevice &dev_ctx,
   using CT = int64_t;  // set Count_data Type
   const int t_size = sizeof(CT);
 
-  const paddle::platform::CUDAPlace &cuda_place = dev_ctx.GetPlace();
-  paddle::platform::CPUPlace cpu_place = paddle::platform::CPUPlace();
+  const phi::GPUPlace &cuda_place = dev_ctx.GetPlace();
+  phi::CPUPlace cpu_place = phi::CPUPlace();
 
   // 1.1 get stored data num of per block
   const int kVecSize = 4;
@@ -434,22 +432,22 @@ void SelectKernel(const KPDevice &dev_ctx,
   // 3.1 set temp ptr for in;
   // 3.1 alloc for out
   // 3.1.1 get true_num for gpu place the last cumsum is the true_num
-  paddle::memory::Copy(cpu_place,
-                       &total_true_num,
-                       cuda_place,
-                       cumsum_data + need_grids,
-                       t_size,
-                       dev_ctx.stream());
+  memory_utils::Copy(cpu_place,
+                     &total_true_num,
+                     cuda_place,
+                     cumsum_data + need_grids,
+                     t_size,
+                     dev_ctx.stream());
 
   dev_ctx.Wait();
   // 3.1.2 allock for out with total_true_num
   std::vector<int64_t> out_dim = {static_cast<int64_t>(total_true_num)};
 
   if (SelectData == 1) {
-    out->Resize(phi::make_ddim(out_dim));
+    out->Resize(common::make_ddim(out_dim));
   } else if (SelectData == 0) {  // == 0 where_index
     out_dim.push_back(static_cast<int64_t>(rank));
-    out->Resize(phi::make_ddim(out_dim));
+    out->Resize(common::make_ddim(out_dim));
   }
   auto out_data = dev_ctx.template Alloc<OutT>(out);
   // 3.2 get true data's index according to cond_data and cumsum_data

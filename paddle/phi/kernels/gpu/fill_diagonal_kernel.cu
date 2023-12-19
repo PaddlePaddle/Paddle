@@ -50,11 +50,7 @@ void FillDiagonalKernel(const Context& ctx,
                         int offset,
                         bool wrap,
                         DenseTensor* out) {
-#ifdef __HIPCC__
-  const int64_t kMaxBlockDim = 256;
-#else
   const int64_t kMaxBlockDim = 512;
-#endif
   phi::Copy(ctx, x, ctx.GetPlace(), false, out);
 
   T* out_data = ctx.template Alloc<T>(out);

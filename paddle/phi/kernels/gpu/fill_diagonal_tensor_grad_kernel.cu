@@ -17,8 +17,8 @@
 #include <algorithm>
 #include <vector>
 
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -48,11 +48,7 @@ void FillDiagonalTensorGradKernel(const Context &ctx,
                                   int dim1,
                                   int dim2,
                                   DenseTensor *x_grad) {
-#ifdef __HIPCC__
-  const int64_t kMaxBlockDim = 256;
-#else
   const int64_t kMaxBlockDim = 512;
-#endif
   auto matrows = 1;
 
   if (x_grad) {
@@ -77,15 +73,15 @@ void FillDiagonalTensorGradKernel(const Context &ctx,
 
     auto stream = ctx.stream();
     DenseTensor tensor_tmp;
-    tensor_tmp.Resize(phi::make_ddim({2 + matrows}));
+    tensor_tmp.Resize(common::make_ddim({2 + matrows}));
     int64_t *memory_block_cu = ctx.template Alloc<int64_t>(&tensor_tmp);
     const auto gpu_place = ctx.GetPlace();
-    paddle::memory::Copy(gpu_place,
-                         memory_block_cu,
-                         CPUPlace(),
-                         memory_block.data(),
-                         sizeof(int64_t) * (2 + matrows),
-                         stream);
+    memory_utils::Copy(gpu_place,
+                       memory_block_cu,
+                       CPUPlace(),
+                       memory_block.data(),
+                       sizeof(int64_t) * (2 + matrows),
+                       stream);
 
     int64_t *strides_cu = &memory_block_cu[0], *matdim_cu = &memory_block_cu[2];
 
@@ -106,6 +102,7 @@ PD_REGISTER_KERNEL(fill_diagonal_tensor_grad,
                    double,
                    int64_t,
                    int,
+                   int16_t,
                    int8_t,
                    uint8_t,
                    phi::dtype::float16,

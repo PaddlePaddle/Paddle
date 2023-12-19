@@ -14,6 +14,10 @@
 
 #pragma once
 #include <string>
+#include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/framework/ir/xpu/quant_utils.h"
+#include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace framework {
@@ -44,6 +48,78 @@ namespace ir {
   }
 
 int ConvertActivationType(std::string act_type);
+
+Node* FindNodeWithName(Graph* graph, std::string name);
+
+std::vector<Node*> FindOpNodeByInputName(Graph* graph,
+                                         const std::string& var_name);
+
+template <typename T>
+size_t HashTensor(const phi::DenseTensor& in);
+
+template <typename Tcpu,
+          typename Txpu,
+          typename std::enable_if<!std::is_same<Tcpu, Txpu>::value, Tcpu>::type*
+              ptr = nullptr>
+void ConvertWeightWrapper(phi::DenseTensor* weight,
+                          phi::DenseTensor* weight_max,
+                          phi::DenseTensor* scale_max,
+                          bool transpose,
+                          const std::vector<float>& weight_scales,
+                          bool per_channel_quant) {
+  ConvertWithQuant<Tcpu, Txpu>(
+      weight, weight_max, scale_max, transpose, per_channel_quant);
+}
+
+template <typename Tcpu,
+          typename Txpu,
+          typename std::enable_if<std::is_same<Tcpu, Txpu>::value, Tcpu>::type*
+              ptr = nullptr>
+void ConvertWeightWrapper(phi::DenseTensor* weight,
+                          phi::DenseTensor* weight_max,
+                          phi::DenseTensor* scale_max,
+                          bool transpose,
+                          const std::vector<float>& weight_scales,
+                          bool per_channel_quant) {
+  ConvertWithoutQuant<Tcpu>(
+      weight, weight_max, scale_max, transpose, weight_scales);
+}
+
+// 1. Quant weight from fp32 to int16/int31/int8
+// 2. Weight data is in-place update.
+// 3. Generate weight max tensor
+template <typename Tcpu, typename Txpu>
+void PrepareWeight(Graph* graph,
+                   Scope* scope,
+                   BlockDesc* block,
+                   Node* weight,
+                   Node** dst_weight,
+                   Node** dst_weight_max,
+                   Node** dst_scale_max,
+                   bool transpose,
+                   const std::vector<float>& weight_scales,
+                   bool per_channel_quant = false);
+
+void PrepareBias(
+    Graph* graph, Scope* scope, BlockDesc* block, Node* src, Node** dst);
+
+inline std::string FindOutputNameByVarName(framework::OpDesc* op,
+                                           const std::string& searched_name) {
+  std::string ret;
+  for (const auto& name : op->OutputNames())
+    for (const auto& output_name : op->Output(name))
+      if (output_name == searched_name) ret = name;
+  return ret;
+}
+
+inline std::string FindInputNameByVarName(framework::OpDesc* op,
+                                          const std::string& searched_name) {
+  std::string ret;
+  for (const auto& name : op->InputNames())
+    for (const auto& input_name : op->Input(name))
+      if (input_name == searched_name) ret = name;
+  return ret;
+}
 
 }  // namespace ir
 }  // namespace framework

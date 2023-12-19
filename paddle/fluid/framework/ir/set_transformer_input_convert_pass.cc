@@ -56,7 +56,7 @@ void SetTransformerInputConvertPass::ApplyImpl(ir::Graph *graph) const {
   std::string pos_id = Get<std::string>("tensorrt_transformer_posid");
 
   if (!(graph->Has(framework::ir::kMultiheadMatmulPass) && with_dynamic_shape &&
-        (pos_id != ""))) {
+        (!pos_id.empty()))) {
     VLOG(3) << "Transformer model need MultiheadMatmul, and "
                "with_dynamic_shape. Stop this pass, "
                "please reconfig.";

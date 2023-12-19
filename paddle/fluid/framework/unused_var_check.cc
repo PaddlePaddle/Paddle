@@ -18,12 +18,11 @@ limitations under the License. */
 
 #include <string>
 
-#include "gflags/gflags.h"
 #include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
-
+#include "paddle/fluid/platform/flags.h"
 PADDLE_DEFINE_EXPORTED_bool(
     enable_unused_var_check,
     false,
@@ -60,8 +59,6 @@ static const std::unordered_set<std::string> &GetOpWithUnusedVarAllowSet() {
       "batch_norm_grad",                    // 0
       "sync_batch_norm",                    // 0
       "sync_batch_norm_grad",               // 0
-      "inplace_abn",                        // 0
-      "inplace_abn_grad",                   // 0
       "dgc_momentum",                       // 0
       "fake_quantize_range_abs_max",        // 0
       "rmsprop",                            // 0

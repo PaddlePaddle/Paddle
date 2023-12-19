@@ -16,17 +16,31 @@ import paddle
 from paddle import framework
 
 # (TODO: GhostScreaming) It will be removed later.
-from paddle.fluid import core
-from paddle.framework import (
+from paddle.base import core
+from paddle.distributed.parallel import (
     _split_tensors,
     build_groups,
-    in_dygraph_mode,
+    in_dynamic_mode,
     sync_params_buffers,
 )
 
 from .log_util import logger
 
 __all__ = []
+
+
+def obtain_optimizer_parameters_list(optimizer):
+    if getattr(optimizer, '_param_groups', None) and isinstance(
+        optimizer._param_groups[0], dict
+    ):
+        parameters_list = []
+        for group in optimizer._param_groups:
+            for param in group['params']:
+                parameters_list.append(param)
+    else:
+        parameters_list = list(optimizer._parameter_list)
+
+    return parameters_list
 
 
 def _apply_collective_grads(parameters, comm_group, bucket_size, scale=None):
@@ -59,7 +73,7 @@ def _apply_collective_grads(parameters, comm_group, bucket_size, scale=None):
         # need to div nranks
         if scale is not None:
             div_factor = paddle.to_tensor(scale, dtype=coalesced_grad.dtype)
-            paddle.fluid.framework._dygraph_tracer().trace_op(
+            paddle.base.framework._dygraph_tracer().trace_op(
                 type="elementwise_div",
                 inputs={'X': coalesced_grad, 'Y': div_factor},
                 outputs={'Out': coalesced_grad},
@@ -77,8 +91,13 @@ def _apply_collective_grads_eager(
     grad_vars = []
 
     for param in parameters:
+        g_var = None
         if param.trainable and (param._grad_ivar() is not None):
             g_var = param._grad_ivar()
+        if param.trainable and hasattr(param, "main_grad"):
+            assert param._grad_ivar() is None, "param.grad is not None"
+            g_var = param.main_grad
+        if g_var is not None:
             assert (
                 not g_var.is_sparse()
             ), "Now, it doesn't support sparse parameters"
@@ -111,7 +130,7 @@ def _broadcast_data_help(data, shape, dtype, hcg):
     src_rank = hcg.get_model_parallel_group_src_rank()
     mp_rank = hcg.get_model_parallel_rank()
 
-    shape_gpu = paddle.to_tensor(shape, dtype="int32")
+    shape_gpu = shape._copy_to(data.place, False)
     paddle.distributed.broadcast(
         shape_gpu, src=src_rank, group=model_parallel_group, sync_op=True
     )
@@ -126,7 +145,7 @@ def _broadcast_data_help(data, shape, dtype, hcg):
     )
 
     if mp_rank != 0:
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             data._clear_data()
             input_data._share_buffer_to(data)
         else:
@@ -136,42 +155,58 @@ def _broadcast_data_help(data, shape, dtype, hcg):
             )
 
 
+def _broadcast_object_list_help(object_list, hcg):
+    model_parallel_group = hcg.get_model_parallel_group()
+    src_rank = hcg.get_model_parallel_group_src_rank()
+    mp_rank = hcg.get_model_parallel_rank()
+
+    paddle.distributed.broadcast_object_list(
+        object_list, src=src_rank, group=model_parallel_group
+    )
+
+
 def broadcast_input_data(hcg, *inputs, **kwargs):
     cur_device = paddle.get_device()
     dev = cur_device.split(":")[0]
-    assert dev in [
-        "xpu",
-        "gpu",
-        "npu",
-    ], f"Only support xpu, gpu and npu now, but this is {dev}"
+    assert (
+        dev
+        in [
+            "xpu",
+            "gpu",
+        ]
+        or dev in paddle.device.get_all_custom_device_type()
+    ), f"Only support xpu, gpu and custom_device now, but this is {dev}"
     dev_idx = int(cur_device.split(':')[1])
     if dev == "gpu":
         place = paddle.CUDAPlace(dev_idx)
+    elif dev in paddle.device.get_all_custom_device_type():
+        place = paddle.CustomPlace(dev, dev_idx)
+        dev = 'custom'
     else:
         place = eval(f"paddle.{dev.upper()}Place")(dev_idx)
 
     for v in inputs:
-        if isinstance(v, (core.VarBase, core.eager.Tensor)):
+        if isinstance(v, core.eager.Tensor):
             with framework.no_grad():
-                if in_dygraph_mode() and not eval(f"v.place.is_{dev}_place")():
+                if in_dynamic_mode() and not eval(f"v.place.is_{dev}_place")():
                     v_gpu = v._copy_to(place, True)
                     v._clear_data()
                     v_gpu._share_buffer_to(v)
-                _broadcast_data_help(v, v.shape, v.dtype, hcg)
+                _broadcast_data_help(v, paddle.shape(v), v.dtype, hcg)
         else:
-            logger.error("it doesn't support data type {}".format(type(v)))
+            _broadcast_object_list_help(v, hcg)
 
     for k, v in kwargs.items():
-        if isinstance(v, (core.VarBase, core.eager.Tensor)):
+        if isinstance(v, core.eager.Tensor):
             with framework.no_grad():
-                if in_dygraph_mode() and not eval(f"v.place.is_{dev}_place")():
+                if in_dynamic_mode() and not eval(f"v.place.is_{dev}_place")():
                     v_gpu = v._copy_to(place, True)
                     v._clear_data()
                     v_gpu._share_buffer_to(v)
-                _broadcast_data_help(v, v.shape, v.dtype, hcg)
+                _broadcast_data_help(v, paddle.shape(v), v.dtype, hcg)
             kwargs[k] = v
         else:
-            logger.error("it doesn't support data type {}".format(type(v)))
+            kwargs[k] = _broadcast_object_list_help(v, hcg)
     return inputs, kwargs
 
 
@@ -196,7 +231,7 @@ def fused_allreduce_gradients_with_group(
 ):
     apply_func = (
         _apply_collective_grads_eager
-        if in_dygraph_mode()
+        if in_dynamic_mode()
         else _apply_collective_grads
     )
     with framework.no_grad():
@@ -204,26 +239,27 @@ def fused_allreduce_gradients_with_group(
 
 
 def fused_allreduce_gradients(parameter_list, hcg):
-    data_parallel_group = None if hcg is None else hcg.get_data_parallel_group()
-    logger.debug("dp start fuse allreduce gradients")
-    fused_allreduce_gradients_with_group(parameter_list, data_parallel_group)
+    group = None
+    scale = None
+    if hcg is not None:
+        dp_enabled = hcg.get_data_parallel_world_size() > 1
+        sep_enabled = hcg.get_sep_parallel_world_size() > 1
+        assert (
+            dp_enabled or sep_enabled
+        ), f"dp_enabled {dp_enabled}; sep_enabled {sep_enabled}"
+        group = None
+        # sep all reduce is not scaled
+        scale = 1.0
+        if dp_enabled:
+            group = hcg.get_data_parallel_group()
+            scale = scale / group.nranks
+        if sep_enabled:
+            sep_group = hcg.get_sep_parallel_group()
+            dp_sep_group = hcg.get_dp_sep_parallel_group()
+            group = sep_group if group is None else dp_sep_group
 
-
-def sharding_reduce_gradients(parameter_list, hcg):
-    # TODO allreduce --> reduce
-    # TODO merge grad / nrank with dp
-    logger.debug("sharding start gradients sync")
-    with framework.no_grad():
-
-        sharding_nrank = hcg.get_sharding_parallel_group().nranks
-        for param in parameter_list:
-            if param.trainable and (param._grad_ivar() is not None):
-                param.grad.scale_(1.0 / sharding_nrank)
-                paddle.distributed.all_reduce(
-                    param.grad,
-                    group=hcg.get_sharding_parallel_group(),
-                    sync_op=True,
-                )
+    logger.debug("dp or sep start fuse allreduce gradients")
+    fused_allreduce_gradients_with_group(parameter_list, group, scale=scale)
 
 
 def broadcast_sharding_parameters(model, hcg):
@@ -234,3 +270,18 @@ def broadcast_sharding_parameters(model, hcg):
     sync_params_buffers(
         model, sharding_parallel_group, src_rank, is_model_parallel=False
     )
+
+
+def broadcast_sep_parameters(model, hcg):
+    # TODO TO save memory, use un-fused broadcast to avoid potentional OOM
+    logger.debug("sep start init parameters sync")
+    sep_group = hcg.get_sep_parallel_group()
+    src_rank = hcg.get_sep_parallel_group_src_rank()
+    sync_params_buffers(model, sep_group, src_rank, is_model_parallel=False)
+
+
+def unwrap_optimizer(optimizer, optimizer_instances=()):
+    _inner_opt = optimizer
+    while isinstance(_inner_opt, optimizer_instances):
+        _inner_opt = _inner_opt._inner_opt
+    return _inner_opt

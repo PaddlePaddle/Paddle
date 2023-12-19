@@ -27,7 +27,7 @@ struct CustomDeviceEventWrapper {
         platform::errors::PreconditionNotMet(
             "Required device shall be CustomPlace, but received %d. ", place));
 
-    device_id_ = place.device;
+    device_id_ = place.device;  // NOLINT
     PADDLE_ENFORCE_GT(
         device_id_,
         -1,

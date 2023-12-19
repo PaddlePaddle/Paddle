@@ -25,8 +25,8 @@ limitations under the License. */
 #include <unordered_set>
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
-#include "gflags/gflags.h"
-#include "glog/logging.h"  // For VLOG()
+#include "glog/logging.h"               // For VLOG()
+#include "paddle/common/macros.h"
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/details/op_registry.h"
 #include "paddle/fluid/framework/grad_op_desc_maker.h"
@@ -34,7 +34,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/shape_inference.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace framework {
@@ -69,7 +71,7 @@ class Version;
 }  // namespace framework
 }  // namespace paddle
 
-DECLARE_bool(check_kernel_launch);
+PHI_DECLARE_bool(check_kernel_launch);
 
 namespace paddle {
 namespace framework {
@@ -103,7 +105,7 @@ struct OperatorRegistrar : public Registrar {
   }
 };
 
-class OpRegistry {
+class TEST_API OpRegistry {
  public:
   /**
    * @brief Return an OperatorBase constructed by type, inputs, outputs, attrs.
@@ -147,7 +149,7 @@ class OpRegistry {
 };
 
 template <typename PlaceType>
-inline void CheckKernelLaunch(const char* op_type) {}
+inline void CheckKernelLaunch(const char* op_type UNUSED) {}
 
 #ifdef PADDLE_WITH_CUDA
 template <>
@@ -176,7 +178,7 @@ inline void RegisterKernelClass(const char* op_type,
   if (std::is_same<PlaceType, platform::CustomPlace>::value) {
     OpKernelType key(ToDataType(std::type_index(typeid(T))),
                      platform::CustomPlace(library_type),
-                     phi::StringToDataLayout(data_layout),
+                     common::StringToDataLayout(data_layout),
                      LibraryType::kPlain,
                      customized_type_value);
     OperatorWithKernel::AllOpKernels()[op_type][key] = func;
@@ -185,7 +187,7 @@ inline void RegisterKernelClass(const char* op_type,
 #endif
   OpKernelType key(ToDataType(std::type_index(typeid(T))),
                    PlaceType(),
-                   phi::StringToDataLayout(data_layout),
+                   common::StringToDataLayout(data_layout),
                    StringToLibraryType(library_type),
                    customized_type_value);
   OperatorWithKernel::AllOpKernels()[op_type][key] = func;
@@ -218,9 +220,9 @@ struct OpKernelRegistrarFunctor<PlaceType, false, I, KernelTypes...> {
 
 template <typename PlaceType, size_t I, typename... KernelType>
 struct OpKernelRegistrarFunctor<PlaceType, true, I, KernelType...> {
-  void operator()(const char* op_type,
-                  const char* library_type,
-                  int customized_type_value) const {}
+  void operator()(const char* op_type UNUSED,
+                  const char* library_type UNUSED,
+                  int customized_type_value UNUSED) const {}
 };
 
 // User can register many kernel in one place. The data type could be
@@ -256,9 +258,9 @@ struct OpKernelRegistrarFunctorEx<PlaceType,
                                   true,
                                   I,
                                   DataTypeAndKernelType...> {
-  void operator()(const char* op_type,
-                  const char* library_type,
-                  int customized_type_value) const {}
+  void operator()(const char* op_type UNUSED,
+                  const char* library_type UNUSED,
+                  int customized_type_value UNUSED) const {}
 };
 
 template <typename PlaceType, size_t I, typename... DataTypeAndKernelType>
@@ -373,12 +375,6 @@ struct OpKernelRegistrarFunctorEx<PlaceType,
 #define REGISTER_OP_XPU_KERNEL(op_type, ...) \
   REGISTER_OP_KERNEL(op_type, XPU, ::paddle::platform::XPUPlace, __VA_ARGS__)
 
-#define REGISTER_OP_NPU_KERNEL(op_type, ...) \
-  REGISTER_OP_KERNEL(op_type, NPU, ::paddle::platform::NPUPlace, __VA_ARGS__)
-
-#define REGISTER_OP_MLU_KERNEL(op_type, ...) \
-  REGISTER_OP_KERNEL(op_type, MLU, ::paddle::platform::MLUPlace, __VA_ARGS__)
-
 #define REGISTER_OP_KERNEL_EX(op_type, library_type, place_class,  \
                               customized_name,                     \
                               customized_type_value,               \
@@ -415,18 +411,6 @@ struct OpKernelRegistrarFunctorEx<PlaceType,
       ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue, \
       __VA_ARGS__)
 
-#define REGISTER_OP_NPU_KERNEL_FUNCTOR(op_type, ...)                  \
-  REGISTER_OP_KERNEL_EX(                                              \
-      op_type, NPU, ::paddle::platform::NPUPlace, DEFAULT_TYPE,       \
-      ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue, \
-      __VA_ARGS__)
-
-#define REGISTER_OP_MLU_KERNEL_FUNCTOR(op_type, ...)                  \
-  REGISTER_OP_KERNEL_EX(                                              \
-      op_type, MLU, ::paddle::platform::MLUPlace, DEFAULT_TYPE,       \
-      ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue, \
-      __VA_ARGS__)
-
 #define REGISTER_OP_IPU_KERNEL_FUNCTOR(op_type, ...)                  \
   REGISTER_OP_KERNEL_EX(                                              \
       op_type, IPU, ::paddle::platform::IPUPlace, DEFAULT_TYPE,       \
@@ -442,7 +426,7 @@ struct OpKernelRegistrarFunctorEx<PlaceType,
   STATIC_ASSERT_GLOBAL_NAMESPACE(                          \
       __use_op_itself_##op_type,                           \
       "USE_OP_ITSELF must be called in global namespace"); \
-  extern int TouchOpRegistrar_##op_type();                 \
+  TEST_API extern int TouchOpRegistrar_##op_type();                 \
   UNUSED static int use_op_itself_##op_type##_ = TouchOpRegistrar_##op_type()
 
 #define USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(op_type,                     \
@@ -485,11 +469,28 @@ struct OpKernelRegistrarFunctorEx<PlaceType,
   USE_OP_KERNEL(op_type)
 // clang-format on
 
+template <typename StructureKernel, typename enable = void>
+struct StructKernelImpl;
+
 template <typename StructureKernel>
-struct StructKernelImpl {
+struct StructKernelImpl<
+    StructureKernel,
+    typename std::enable_if<std::is_base_of<paddle::framework::OpKernelBase,
+                                            StructureKernel>::value>::type> {
   static void Compute(phi::KernelContext* ctx) {
     auto exe_ctx = static_cast<paddle::framework::ExecutionContext*>(ctx);
     StructureKernel().Compute(*exe_ctx);
+  }
+};
+
+template <typename StructureKernel>
+struct StructKernelImpl<
+    StructureKernel,
+    typename std::enable_if<!std::is_base_of<paddle::framework::OpKernelBase,
+                                             StructureKernel>::value>::type> {
+  static void Compute(phi::KernelContext* ctx) {
+    auto exe_ctx = static_cast<paddle::framework::ExecutionContext*>(ctx);
+    StructureKernel()(*exe_ctx);
   }
 };
 

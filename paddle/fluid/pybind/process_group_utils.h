@@ -56,16 +56,23 @@ struct ConcatDenseTensor<platform::CustomDeviceContext, T> {
   void operator()(const platform::CustomDeviceContext &context,
                   const std::vector<phi::DenseTensor> &in,
                   phi::DenseTensor *out,
-                  int axis = 0) {
-    auto *out_data = out->data<T>();
-    auto *device = phi::DeviceManager::GetDeviceWithPlace(context.GetPlace());
-    size_t offset = 0;
-    for (const auto &tensor : in) {
-      const auto *in_data = tensor.data<T>();
-      auto sz = tensor.numel() * sizeof(T);
-      device->MemoryCopyD2D(out_data + offset, in_data, sz, nullptr);
-      offset += sz;
-    }
+                  int axis UNUSED = 0) {
+    VLOG(10) << "ConcatDenseTensor: " << in.size();
+    auto kernel_result =
+        phi::KernelFactory::Instance().SelectKernelOrThrowError(
+            "concat",
+            phi::KernelKey(phi::TransToPhiBackend(context.GetPlace()),
+                           phi::DataLayout::ALL_LAYOUT,
+                           phi::CppTypeToDataType<T>::Type()));
+    const auto &kernel = kernel_result.kernel;
+    using kernel_signature =
+        void (*)(const phi::DeviceContext &,
+                 const std::vector<const phi::DenseTensor *> &,
+                 const phi::Scalar &,
+                 phi::DenseTensor *);
+    auto *kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+    std::vector<const phi::DenseTensor *> inputs;
+    (*kernel_fn)(context, inputs, phi::Scalar(0), out);
   }
 };
 
@@ -74,15 +81,38 @@ struct SplitDenseTensor<platform::CustomDeviceContext, T> {
   void operator()(const platform::CustomDeviceContext &context,
                   const phi::DenseTensor &in,
                   std::vector<phi::DenseTensor *> *out,
-                  int axis = 0) {
-    auto *in_data = in.data<T>();
-    auto *device = phi::DeviceManager::GetDeviceWithPlace(context.GetPlace());
-    size_t offset = 0;
-    for (auto *p_tensor : *out) {
-      auto *out_data = p_tensor->data<T>();
-      auto sz = p_tensor->numel() * sizeof(T);
-      device->MemoryCopyD2D(out_data, in_data + offset, sz, nullptr);
-      offset += sz;
+                  int axis UNUSED = 0) {
+    VLOG(10) << "SplitDenseTensor: " << out->size();
+    auto kernel_result =
+        phi::KernelFactory::Instance().SelectKernelOrThrowError(
+            "split_with_num",
+            phi::KernelKey(phi::TransToPhiBackend(context.GetPlace()),
+                           phi::DataLayout::ALL_LAYOUT,
+                           phi::CppTypeToDataType<T>::Type()));
+    const auto &kernel = kernel_result.kernel;
+    using kernel_signature = void (*)(const phi::DeviceContext &,
+                                      const phi::DenseTensor &,
+                                      int,
+                                      const phi::Scalar &,
+                                      std::vector<phi::DenseTensor *>);
+    auto *kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+
+    auto in_dims = common::vectorize(in.dims());
+    auto origin_out_dims = common::vectorize(out->at(0)->dims());
+    for (auto *tensor : *out) {
+      if (origin_out_dims.size() != in_dims.size()) {
+        std::vector<int> new_dims({1});
+        new_dims.insert(
+            new_dims.end(), origin_out_dims.begin(), origin_out_dims.end());
+        tensor->Resize(common::make_ddim(new_dims));
+      }
+    }
+    (*kernel_fn)(context, in, out->size(), phi::Scalar(0), *out);
+    for (auto *tensor : *out) {
+      auto tensor_dims = common::vectorize(tensor->dims());
+      if (tensor_dims.size() != origin_out_dims.size()) {
+        tensor->Resize(common::make_ddim(origin_out_dims));
+      }
     }
   }
 };
@@ -232,7 +262,7 @@ void SplitDenseTensorWithType(const phi::XPUContext &dev_ctx,
 
 void ConcatTensor(const phi::DeviceContext &dev_ctx,
                   const std::vector<phi::DenseTensor> &tensor_list,
-                  const experimental::Tensor *tensor) {
+                  const Tensor *tensor) {
   auto *dense_tensor =
       std::dynamic_pointer_cast<phi::DenseTensor>(tensor->impl()).get();
 
@@ -285,7 +315,7 @@ void ConcatTensor(const phi::DeviceContext &dev_ctx,
 
 void SplitTensor(const phi::DeviceContext &dev_ctx,
                  const phi::DenseTensor &tensor,
-                 const std::vector<experimental::Tensor> *tensor_list) {
+                 const std::vector<Tensor> *tensor_list) {
   std::vector<phi::DenseTensor *> dense_list;
   for (auto &tensor : *tensor_list) {
     auto *p_tensor =

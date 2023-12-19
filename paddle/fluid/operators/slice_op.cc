@@ -18,6 +18,9 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 
 namespace paddle {
@@ -126,7 +129,7 @@ class SliceOp : public framework::OperatorWithKernel {
     }
 
     ctx->SetOutputDim("Out", out_dims);
-    if (axes.size() > 0 && axes[0] != 0) {
+    if (!axes.empty() && axes[0] != 0) {
       ctx->ShareLoD("Input", /*->*/ "Out");
     }
   }
@@ -148,10 +151,10 @@ class SliceOp : public framework::OperatorWithKernel {
                               ctx.GetPlace());
       }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
       auto input_data_type =
           framework::OperatorWithKernel::IndicateVarDataType(ctx, "Input");
-      auto vec_dims = phi::vectorize(in_tensor.dims());
+      auto vec_dims = common::vectorize(in_tensor.dims());
       bool all_zero_dims = std::all_of(
           vec_dims.cbegin(), vec_dims.cend(), [](int64_t i) { return i == 0; });
       if (!all_zero_dims && this->CanMKLDNNBeUsed(ctx, input_data_type)) {
@@ -161,7 +164,7 @@ class SliceOp : public framework::OperatorWithKernel {
         // created, so in that scenario a fallback is needed
         if (ctx.Input<phi::DenseTensor>("Input")
                 ->mem_desc()
-                .data.format_desc.blocking.inner_nblks == 0) {
+                .get_inner_nblks() == 0) {
           return phi::KernelKey(phi::Backend::ONEDNN,
                                 phi::DataLayout::ONEDNN,
                                 phi::TransToPhiDataType(input_data_type));
@@ -201,8 +204,7 @@ class SliceOpVarTypeInference : public framework::VarTypeInference {
     auto x_name = "Input";
     auto out_name = "Out";
     auto decrease_axis = ctx->GetAttr("decrease_axis");
-    auto not_decrease =
-        paddle::get<std::vector<int>>(decrease_axis).size() == 0;
+    auto not_decrease = paddle::get<std::vector<int>>(decrease_axis).empty();
     if (not_decrease) {
       // The default type of out is phi::DenseTensor.
       // However, if no axis is decreased and the type of input is not
@@ -330,7 +332,7 @@ class SliceOpGrad : public framework::OperatorWithKernel {
     auto input_data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       // OneDNN uses blocking format, which cannot be always supported with
       // reorders, because if blocked dimension is not divisible by 8 or
@@ -338,7 +340,7 @@ class SliceOpGrad : public framework::OperatorWithKernel {
       // created, so in that scenario a fallback is needed
       if (ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"))
               ->mem_desc()
-              .data.format_desc.blocking.inner_nblks == 0) {
+              .get_inner_nblks() == 0) {
         return phi::KernelKey(phi::Backend::ONEDNN,
                               phi::DataLayout::ONEDNN,
                               phi::TransToPhiDataType(input_data_type));
@@ -409,6 +411,40 @@ class SliceOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+class SliceCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    paddle::Tensor input = this->GetSingleForwardInput("Input");
+    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    paddle::Tensor input_grad = this->GetSingleInputGrad("Input");
+
+    auto dx_ptr = this->GetOutputPtr(&input_grad);
+    std::string dx_name = this->GetOutputName(input_grad);
+    auto axes = this->Attr<std::vector<int>>("axes");
+    auto starts = this->Attr<std::vector<int>>("starts");
+    auto ends = this->Attr<std::vector<int>>("ends");
+    auto infer_flags = this->Attr<std::vector<int>>("infer_flags");
+    auto decrease_axis = this->Attr<std::vector<int>>("decrease_axis");
+    VLOG(6) << "Runing slice_grad composite func";
+    std::vector<int64_t> new_axes =
+        std::vector<int64_t>(axes.begin(), axes.end());
+    std::vector<int64_t> new_infer_flags =
+        std::vector<int64_t>(infer_flags.begin(), infer_flags.end());
+    std::vector<int64_t> new_decrease_axis =
+        std::vector<int64_t>(decrease_axis.begin(), decrease_axis.end());
+    prim::slice_grad<prim::DescTensor>(input,
+                                       out_grad,
+                                       new_axes,
+                                       paddle::experimental::IntArray(starts),
+                                       paddle::experimental::IntArray(ends),
+                                       new_infer_flags,
+                                       new_decrease_axis,
+                                       dx_ptr);
+    this->RecoverOutputName(input_grad, dx_name);
+  }
+};
 template <typename T>
 class SliceDoubleOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
@@ -447,6 +483,7 @@ REGISTER_OPERATOR(slice,
                   ops::SliceOpMaker,
                   ops::SliceOpGradMaker<paddle::framework::OpDesc>,
                   ops::SliceOpGradMaker<paddle::imperative::OpBase>,
+                  ops::SliceCompositeGradOpMaker,
                   ops::SliceOpVarTypeInference);
 REGISTER_OPERATOR(slice_grad,
                   ops::SliceOpGrad,

@@ -17,15 +17,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/engine.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -34,7 +25,7 @@ class PrelnGroupnormActOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(4) << "convert a fluid preln_groupnorm_act op to tensorrt "
+    VLOG(4) << "convert a preln_groupnorm_act op to tensorrt "
                "preln_groupnorm_act plugin";
 
     framework::OpDesc op_desc(op, nullptr);

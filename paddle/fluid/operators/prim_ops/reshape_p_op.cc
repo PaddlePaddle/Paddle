@@ -53,8 +53,8 @@ Autograd primitive reshape_p operator.
 
 static int64_t product(const std::vector<int64_t> &shape) {
   int64_t rslt = 1;
-  for (size_t i = 0; i < shape.size(); ++i) {
-    rslt *= shape[i];
+  for (auto item : shape) {
+    rslt *= item;
   }
   return rslt;
 }

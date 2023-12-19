@@ -23,8 +23,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using ElementwiseType = phi::ElementwiseType;
-
 template <typename OutT, typename Functor, int NumOuts = 1>
 void LaunchSameDimsElementwiseCudaKernel(
     const KPDevice &ctx,
@@ -42,11 +40,11 @@ void LaunchSameDimsElementwiseCudaKernel(
   std::vector<std::unique_ptr<phi::DenseTensor>> pt_outputs_tmp;
   for (auto in : ins) {
     pt_inputs_tmp.emplace_back(
-        std::move(paddle::experimental::MakePhiDenseTensor(*in)));
+        std::move(std::make_unique<phi::DenseTensor>(*in)));
   }
   for (auto out : *outs) {
     pt_outputs_tmp.emplace_back(
-        std::move(paddle::experimental::MakePhiDenseTensor(*out)));
+        std::move(std::make_unique<phi::DenseTensor>(*out)));
   }
   for (int i = 0; i < pt_inputs_tmp.size(); i++) {
     pt_inputs.push_back(pt_inputs_tmp[i].get());

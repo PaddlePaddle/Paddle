@@ -15,16 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -36,7 +26,7 @@ class DropoutOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "convert a fluid dropout op to tensorrt dropout layer";
+    VLOG(3) << "convert a dropout op to tensorrt dropout layer";
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
@@ -59,7 +49,7 @@ class DropoutOpConverter : public OpConverter {
 
     platform::CPUPlace cpu_place;
     std::unique_ptr<phi::DenseTensor> weight_tensor(new phi::DenseTensor());
-    weight_tensor->Resize(phi::make_ddim({1}));
+    weight_tensor->Resize(common::make_ddim({1}));
     auto* weight_data =
         weight_tensor->mutable_data<float>(platform::CPUPlace());
     weight_data[0] = 1 - dropout_prob;

@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+#include "paddle/utils/test_macros.h"
 
 namespace phi {
 
@@ -40,20 +41,14 @@ class TypeInfo {
 };
 
 template <typename BaseT, typename DerivedT>
-class TypeInfoTraits {
+class TEST_API TypeInfoTraits {
  public:
   static const TypeInfo<BaseT> kType;
-  TypeInfoTraits() {
-    static_cast<BaseT*>(static_cast<DerivedT*>(this))->type_info_ = kType;
-  }
-  static bool classof(const BaseT* obj) { return obj->type_info() == kType; }
+  TypeInfoTraits();
+  static bool classof(const BaseT* obj);
 };
 
 template <typename BaseT>
 TypeInfo<BaseT> RegisterStaticType(const std::string& type);
-
-template <typename BaseT, typename DerivedT>
-const TypeInfo<BaseT> TypeInfoTraits<BaseT, DerivedT>::kType =
-    RegisterStaticType<BaseT>(DerivedT::name());
 
 }  // namespace phi

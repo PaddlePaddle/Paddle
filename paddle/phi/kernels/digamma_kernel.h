@@ -19,7 +19,7 @@
 namespace phi {
 
 /**
- * @brief This kernrel is used to perform elementwise digamma for x.
+ * @brief This kernel is used to perform elementwise digamma for x.
  *        $$out = \Psi(x) = \frac{ \Gamma^{'}(x) }{ \Gamma(x) }$$
  * @param  ctx     device context
  * @param  x       the input tensor of digamma

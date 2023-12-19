@@ -23,7 +23,7 @@ __all__ = []
 
 def normal_(x, mean=0.0, std=1.0):
     temp_value = paddle.normal(mean, std, shape=x.shape)
-    x.set_value(temp_value)
+    paddle.assign(temp_value, x)
     return x
 
 
@@ -34,7 +34,7 @@ class SpectralNorm:
         if n_power_iterations <= 0:
             raise ValueError(
                 'Expected n_power_iterations to be positive, but '
-                'got n_power_iterations={}'.format(n_power_iterations)
+                f'got n_power_iterations={n_power_iterations}'
             )
         self.n_power_iterations = n_power_iterations
         self.eps = eps
@@ -61,7 +61,7 @@ class SpectralNorm:
         if do_power_iteration:
             with paddle.no_grad():
                 for _ in range(self.n_power_iterations):
-                    v.set_value(
+                    paddle.assign(
                         F.normalize(
                             paddle.matmul(
                                 weight_mat,
@@ -71,15 +71,17 @@ class SpectralNorm:
                             ),
                             axis=0,
                             epsilon=self.eps,
-                        )
+                        ),
+                        v,
                     )
 
-                    u.set_value(
+                    paddle.assign(
                         F.normalize(
                             paddle.matmul(weight_mat, v),
                             axis=0,
                             epsilon=self.eps,
-                        )
+                        ),
+                        u,
                     )
                 if self.n_power_iterations > 0:
                     u = u.clone()
@@ -102,7 +104,7 @@ class SpectralNorm:
             if isinstance(hook, SpectralNorm) and hook.name == name:
                 raise RuntimeError(
                     "Cannot register two spectral_norm hooks on "
-                    "the same parameter {}".format(name)
+                    f"the same parameter {name}"
                 )
 
         fn = SpectralNorm(name, n_power_iterations, dim, eps)
@@ -180,28 +182,27 @@ def spectral_norm(
         Layer, the original layer with the spectral norm hook.
 
     Examples:
-       .. code-block:: python
+        .. code-block:: python
 
-            from paddle.nn import Conv2D
-            from paddle.nn.utils import spectral_norm
-
-            conv = Conv2D(3, 1, 3)
-            sn_conv = spectral_norm(conv)
-            print(sn_conv)
-            # Conv2D(3, 1, kernel_size=[3, 3], data_format=NCHW)
-            print(sn_conv.weight)
-            # Tensor(shape=[1, 3, 3, 3], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
-            #        [[[[-0.21090528,  0.18563725, -0.14127982],
-            #           [-0.02310637,  0.03197737,  0.34353802],
-            #           [-0.17117859,  0.33152047, -0.28408015]],
-            #
-            #          [[-0.13336606, -0.01862637,  0.06959272],
-            #           [-0.02236020, -0.27091628, -0.24532901],
-            #           [ 0.27254242,  0.15516677,  0.09036587]],
-            #
-            #          [[ 0.30169338, -0.28146112, -0.11768346],
-            #           [-0.45765871, -0.12504843, -0.17482486],
-            #           [-0.36866254, -0.19969313,  0.08783543]]]])
+            >>> from paddle.nn import Conv2D
+            >>> from paddle.nn.utils import spectral_norm
+            >>> paddle.seed(2023)
+            >>> conv = Conv2D(3, 1, 3)
+            >>> sn_conv = spectral_norm(conv)
+            >>> print(sn_conv)
+            Conv2D(3, 1, kernel_size=[3, 3], data_format=NCHW)
+            >>> # Conv2D(3, 1, kernel_size=[3, 3], data_format=NCHW)
+            >>> print(sn_conv.weight)
+            Tensor(shape=[1, 3, 3, 3], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[[[ 0.01668976,  0.30305523,  0.11405435],
+               [-0.06765547, -0.50396705, -0.40925547],
+               [ 0.47344422,  0.03628403,  0.45277366]],
+              [[-0.15177251, -0.16305730, -0.15723954],
+               [-0.28081197, -0.09183260, -0.08081978],
+               [-0.40895155,  0.18298769, -0.29325116]],
+              [[ 0.21819633, -0.01822380, -0.50351536],
+               [-0.06262003,  0.17713565,  0.20517939],
+               [ 0.16659889, -0.14333329,  0.05228264]]]])
 
     """
 

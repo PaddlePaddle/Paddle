@@ -85,7 +85,7 @@ class DetectionMAPOp : public framework::OperatorWithKernel {
               "Input(PosCount) is not null."));
     }
 
-    ctx->SetOutputDim("MAP", phi::make_ddim({1}));
+    ctx->SetOutputDim("MAP", common::make_ddim({1}));
   }
 
  protected:
@@ -224,7 +224,6 @@ REGISTER_OPERATOR(
     ops::DetectionMAPOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(
-    detection_map,
-    ops::DetectionMAPOpKernel<paddle::platform::CPUPlace, float>,
-    ops::DetectionMAPOpKernel<paddle::platform::CPUPlace, double>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    detection_map, CPU, ALL_LAYOUT, ops::DetectionMAPOpKernel, float, double) {}

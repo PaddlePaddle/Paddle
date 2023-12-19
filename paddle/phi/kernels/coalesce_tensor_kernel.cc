@@ -17,6 +17,8 @@
 #include <sstream>
 #include <vector>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/device_memory_aligment.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -79,7 +81,7 @@ void GetMemSizeAndDtype(const std::vector<const DenseTensor *> &lod_tensors,
                          size_of_dtype
                    : static_cast<size_t>(size);
     const void *ptr =
-        lod_tensors[i]->IsInitialized() ? lod_tensors[i]->data() : nullptr;
+        lod_tensors[i]->initialized() ? lod_tensors[i]->data() : nullptr;
     VLOG(4) << size << " " << len;
     ss << "input(" << i << "-th tensor) dim:(" << lod_tensors[i]->dims() << ") "
        << " addres:" << ptr << " len: " << len << ", ";
@@ -127,7 +129,7 @@ void CoalesceTensorKernel(const Context &dev_ctx,
         output[i],
         errors::InvalidArgument("The %d-th output tensor cannot be nullptr.",
                                 i));
-    if (!input[i]->IsInitialized()) {
+    if (!input[i]->initialized()) {
       has_not_init_in_vars = true;
     }
   }
@@ -141,8 +143,8 @@ void CoalesceTensorKernel(const Context &dev_ctx,
     int64_t accumulated_ranks = 0;
     for (size_t i = 0; i < input.size(); ++i) {
       phi::DDim dims(concated_shapes.data() + accumulated_ranks,
-                     concated_ranks[i]);
-      if (!input[i]->IsInitialized()) {
+                     static_cast<int>(concated_ranks[i]));
+      if (!input[i]->initialized()) {
         PADDLE_ENFORCE_EQ(
             input[i],
             output[i],
@@ -185,25 +187,26 @@ void CoalesceTensorKernel(const Context &dev_ctx,
   size_t numel = 0;
 
   if (size_of_dtype == -1) {
-    size_of_dtype = paddle::experimental::SizeOf(dtype);
+    size_of_dtype = static_cast<int>(phi::SizeOf(dtype));
   }
   GetMemSizeAndDtype(
       input, &numel, size_of_dtype, dev_ctx.GetPlace(), use_align, align_size);
 
   // Alloc the continuous space
   void *fused_tensor_ptr = dev_ctx.Alloc(
-      &fused_output->Resize(phi::make_ddim({static_cast<int64_t>(numel)})),
+      &fused_output->Resize(common::make_ddim({static_cast<int64_t>(numel)})),
       dtype);
   VLOG(10) << "Fused tensor addr " << fused_tensor_ptr;
 
   // Init the continuous space
   size_t offset = 0;
   if (copy_data) {
-    for (size_t i = 0; i < input.size(); ++i) {
-      size_t len = static_cast<size_t>(input[i]->numel());
-      auto sub_tensor = fused_output->Slice(static_cast<int64_t>(offset),
-                                            static_cast<int64_t>(offset + len));
-      phi::Copy(dev_ctx, *input[i], dev_ctx.GetPlace(), false, &sub_tensor);
+    for (auto item : input) {
+      size_t len = static_cast<size_t>(item->numel());
+      auto sub_tensor = fused_output->Slice(
+          static_cast<int64_t>(offset),
+          static_cast<int64_t>(offset) + static_cast<int64_t>(len));
+      phi::Copy(dev_ctx, *item, dev_ctx.GetPlace(), false, &sub_tensor);
 
       offset += use_align
                     ? phi::Alignment(
@@ -215,13 +218,14 @@ void CoalesceTensorKernel(const Context &dev_ctx,
     phi::VisitDataType(
         dtype, FillConstantVisitor<Context>(dev_ctx, fused_output, constant));
   } else if (persist_output) {
-    for (size_t i = 0; i < output.size(); ++i) {
-      size_t len = static_cast<size_t>(output[i]->numel());
-      auto sub_tensor = fused_output->Slice(static_cast<int64_t>(offset),
-                                            static_cast<int64_t>(offset + len));
+    for (auto &item : output) {
+      size_t len = static_cast<size_t>(item->numel());
+      auto sub_tensor = fused_output->Slice(
+          static_cast<int64_t>(offset),
+          static_cast<int64_t>(offset) + static_cast<int64_t>(len));
       // some var may not persistable, or persistable var may not init
-      if (output[i]->IsInitialized()) {
-        phi::Copy(dev_ctx, *output[i], dev_ctx.GetPlace(), false, &sub_tensor);
+      if (item->initialized()) {
+        phi::Copy(dev_ctx, *item, dev_ctx.GetPlace(), false, &sub_tensor);
       }
       offset += use_align
                     ? phi::Alignment(
@@ -241,8 +245,9 @@ void CoalesceTensorKernel(const Context &dev_ctx,
     auto dim = output[i]->dims();
     VLOG(4) << len << " " << dim << " " << offset;
     output[i]
-        ->ShareDataWith(fused_output->Slice(static_cast<int64_t>(offset),
-                                            static_cast<int64_t>(offset + len)))
+        ->ShareDataWith(fused_output->Slice(
+            static_cast<int64_t>(offset),
+            static_cast<int64_t>(offset) + static_cast<int64_t>(len)))
         .Resize(dim);
     len = use_align ? phi::Alignment(
                           len * size_of_dtype, dev_ctx.GetPlace(), align_size) /
@@ -270,9 +275,27 @@ PD_REGISTER_KERNEL(coalesce_tensor,
                    phi::CoalesceTensorKernel,
                    int,
                    float,
-                   double) {}
+                   double) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
+}
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_CUDA
+PD_REGISTER_KERNEL(coalesce_tensor,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::CoalesceTensorKernel,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   int,
+                   float,
+                   double) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
+}
+#endif
+
+#ifdef PADDLE_WITH_HIP
 PD_REGISTER_KERNEL(coalesce_tensor,
                    GPU,
                    ALL_LAYOUT,
@@ -282,6 +305,7 @@ PD_REGISTER_KERNEL(coalesce_tensor,
                    float,
                    double) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
 }
 #endif
 
@@ -295,5 +319,6 @@ PD_REGISTER_KERNEL(coalesce_tensor,
                    float,
                    double) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
 }
 #endif

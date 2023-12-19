@@ -14,27 +14,25 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/backends/all_context.h"
+#include "glog/logging.h"
+
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/elementwise_utils.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 #endif
 
-#ifdef __HIPCC__
-constexpr int ELEMWISE_MAX_BLOCK_DIM = 256;
-#else
 constexpr int ELEMWISE_MAX_BLOCK_DIM = 1024;
-#endif
 
 #define BLOCK_X 32
 #define BLOCK_Y 32
@@ -113,40 +111,42 @@ static void ElemwiseGradBroadcast1CPU(const T *x,
                                       DY_OP dy_op,
                                       T *dx,
                                       T *dy) {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
   if (is_xsize_larger) {
-    for (int i = 0; i < h; ++i) {
-      for (int j = 0; j < w; ++j) {
+    for (int j = 0; j < w; ++j) {
+      MPType sum_y = static_cast<MPType>(0);
+      for (int i = 0; i < h; ++i) {
         int x_offset = i * w + j;
         if (dx != nullptr) {
           dx[x_offset] =
               dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
         }
         if (dy != nullptr) {
-          T tmp = dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
-          if (i == 0) {
-            dy[j] = tmp;
-          } else {
-            dy[j] += tmp;
-          }
+          sum_y += static_cast<MPType>(
+              dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]));
         }
       }
+      if (dy != nullptr) {
+        dy[j] = static_cast<T>(sum_y);
+      }
     }
-  } else {  // x.dims < y.dims, broadcast for x.
-    for (int i = 0; i < h; ++i) {
-      for (int j = 0; j < w; ++j) {
+  } else {
+    for (int j = 0; j < w; ++j) {
+      MPType sum_x = static_cast<MPType>(0);
+      for (int i = 0; i < h; ++i) {
         int y_offset = i * w + j;
         if (dy != nullptr) {
           dy[y_offset] =
               dy_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
         }
         if (dx != nullptr) {
-          T tmp = dx_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
-          if (i == 0) {
-            dx[j] = tmp;
-          } else {
-            dx[j] += tmp;
-          }
+          sum_x += static_cast<MPType>(
+              dx_op(x[j], y[y_offset], out[y_offset], dout[y_offset]));
         }
+      }
+      if (dx != nullptr) {
+        dx[j] = static_cast<T>(sum_x);
       }
     }
   }
@@ -165,9 +165,12 @@ static void ElemwiseGradBroadcast2CPU(const T *x,
                                       DY_OP dy_op,
                                       T *dx,
                                       T *dy) {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
   if (is_xsize_larger) {
-    for (int i = 0; i < pre; ++i) {
-      for (int j = 0; j < n; ++j) {
+    for (int j = 0; j < n; ++j) {
+      MPType sum_y = static_cast<MPType>(0);
+      for (int i = 0; i < pre; ++i) {
         for (int k = 0; k < post; ++k) {
           int x_offset = i * n * post + j * post + k;
           if (dx != nullptr) {
@@ -175,19 +178,19 @@ static void ElemwiseGradBroadcast2CPU(const T *x,
                 dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
           }
           if (dy != nullptr) {
-            T tmp = dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
-            if (i == 0 && k == 0) {
-              dy[j] = tmp;
-            } else {
-              dy[j] += tmp;
-            }
+            sum_y += static_cast<MPType>(
+                dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]));
           }
         }
       }
+      if (dy != nullptr) {
+        dy[j] = static_cast<T>(sum_y);
+      }
     }
-  } else {  // x.dims < y.dims, broadcast for x.
-    for (int i = 0; i < pre; ++i) {
-      for (int j = 0; j < n; ++j) {
+  } else {
+    for (int j = 0; j < n; ++j) {
+      MPType sum_x = static_cast<MPType>(0);
+      for (int i = 0; i < pre; ++i) {
         for (int k = 0; k < post; ++k) {
           int y_offset = i * n * post + j * post + k;
           if (dy != nullptr) {
@@ -195,14 +198,13 @@ static void ElemwiseGradBroadcast2CPU(const T *x,
                 dy_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
           }
           if (dx != nullptr) {
-            T tmp = dx_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
-            if (i == 0 && k == 0) {
-              dx[j] = tmp;
-            } else {
-              dx[j] += tmp;
-            }
+            sum_x += static_cast<MPType>(
+                dx_op(x[j], y[y_offset], out[y_offset], dout[y_offset]));
           }
         }
+      }
+      if (dx != nullptr) {
+        dx[j] = static_cast<T>(sum_x);
       }
     }
   }
@@ -242,8 +244,8 @@ void CommonElementwiseBroadcastBackward(const CPUContext &ctx,
   }
 
   VLOG(3) << "CommonElementwiseBroadcastBackward xdims:"
-          << phi::make_ddim(x_dims_array)
-          << " ydim:" << phi::make_ddim(y_dims_array);
+          << common::make_ddim(x_dims_array)
+          << " ydim:" << common::make_ddim(y_dims_array);
 
   CommonGradBroadcastCPU<T, DX_OP, DY_OP, Tout>(x,
                                                 y,
@@ -381,17 +383,17 @@ template <typename DeviceContext,
           typename Tout = T>
 void ElemwiseGradComputeNoBroadcast(const DeviceContext &dev_ctx,
                                     const DDim &x_dim,
-                                    const DDim &y_dim,
+                                    const DDim &y_dim UNUSED,
                                     const DenseTensor &x,
                                     const DenseTensor &y,
                                     const DenseTensor &out,
                                     const DenseTensor &dout,
-                                    int axis,
+                                    int axis UNUSED,
                                     DenseTensor *dx,
                                     DenseTensor *dy,
                                     DX_OP dx_op,
                                     DY_OP dy_op) {
-  size_t N = static_cast<size_t>(phi::product(x_dim));
+  size_t N = static_cast<size_t>(common::product(x_dim));
   phi::funcs::ForRange<DeviceContext> for_range(dev_ctx, N);
   for_range(ElemwiseGradNoBroadcast<T, DX_OP, DY_OP, Tout>{
       x.data<T>(),
@@ -987,7 +989,7 @@ static void ElemwiseGradBroadcast1CUDA(gpuStream_t stream,
     dim3 grid_size = dim3((w + BLOCK_X - 1) / BLOCK_X);
     auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
     auto *ctx = static_cast<GPUContext *>(
-        paddle::platform::DeviceContextPool::Instance().Get(gplace));
+        phi::DeviceContextPool::Instance().Get(gplace));
     phi::backends::gpu::LimitGridDim(*ctx, &grid_size);
     FastElemwiseGradBroadcast1CUDAKernel<<<grid_size, block_size, 0, stream>>>(
         x, y, out, dout, h, w, is_xsize_larger, dx_op, dy_op, dx, dy);
@@ -1011,8 +1013,8 @@ static void ElemwiseGradBroadcast2CUDA(gpuStream_t stream,
   int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, pre * post);
   dim3 grid_size = dim3(n);
   auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
-  auto *ctx = static_cast<GPUContext *>(
-      paddle::platform::DeviceContextPool::Instance().Get(gplace));
+  auto *ctx =
+      static_cast<GPUContext *>(phi::DeviceContextPool::Instance().Get(gplace));
   phi::backends::gpu::LimitGridDim(*ctx, &grid_size);
   ElemwiseGradBroadcast2CUDAKernel<<<grid_size, block_size, 0, stream>>>(
       x, y, out, dout, pre, n, post, is_xsize_larger, dx_op, dy_op, dx, dy);
@@ -1533,7 +1535,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
   // One part buffer for x_strides_array, rest for y_strides_array and
   // out_dims_array.
   size_t tmp_total_bytes = bytes * 3;
-  auto tmp_buffer = paddle::memory::Alloc(
+  auto tmp_buffer = phi::memory_utils::Alloc(
       ctx.GetPlace(),
       tmp_total_bytes,
       phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
@@ -1543,19 +1545,19 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
   int *out_dims_array_gpu =
       reinterpret_cast<int *>(y_strides_array_gpu + max_dim);
 
-  paddle::memory::Copy(gplace,
-                       x_strides_array_gpu,
-                       cplace,
-                       x_strides_array.data(),
-                       bytes,
-                       ctx.stream());
-  paddle::memory::Copy(gplace,
-                       y_strides_array_gpu,
-                       cplace,
-                       y_strides_array.data(),
-                       bytes,
-                       ctx.stream());
-  paddle::memory::Copy(
+  memory_utils::Copy(gplace,
+                     x_strides_array_gpu,
+                     cplace,
+                     x_strides_array.data(),
+                     bytes,
+                     ctx.stream());
+  memory_utils::Copy(gplace,
+                     y_strides_array_gpu,
+                     cplace,
+                     y_strides_array.data(),
+                     bytes,
+                     ctx.stream());
+  memory_utils::Copy(
       gplace, out_dims_array_gpu, cplace, out_dims_array, bytes, ctx.stream());
 
   const int out_size = std::accumulate(
@@ -1564,7 +1566,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
   int y_block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, y_threads);
   if (dx) {
     size_t dx_total_bytes = bytes * 2;
-    auto dx_tmp_buffer = paddle::memory::Alloc(
+    auto dx_tmp_buffer = phi::memory_utils::Alloc(
         ctx.GetPlace(),
         dx_total_bytes,
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
@@ -1572,18 +1574,18 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
     int *x_dims_order_gpu =
         reinterpret_cast<int *>(x_strides_order_gpu + max_dim);
 
-    paddle::memory::Copy(gplace,
-                         x_strides_order_gpu,
-                         cplace,
-                         x_strides_order.data(),
-                         bytes,
-                         ctx.stream());
-    paddle::memory::Copy(gplace,
-                         x_dims_order_gpu,
-                         cplace,
-                         x_dims_order.data(),
-                         bytes,
-                         ctx.stream());
+    memory_utils::Copy(gplace,
+                       x_strides_order_gpu,
+                       cplace,
+                       x_strides_order.data(),
+                       bytes,
+                       ctx.stream());
+    memory_utils::Copy(gplace,
+                       x_dims_order_gpu,
+                       cplace,
+                       x_dims_order.data(),
+                       bytes,
+                       ctx.stream());
     CommonGradBroadcastCUDAKernel<T, DX_OP, Tout>
         <<<x_blocks, x_block_size, 0, ctx.stream()>>>(x_strides_array_gpu,
                                                       y_strides_array_gpu,
@@ -1603,7 +1605,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
   if (dy) {
     // One part buffer for y_strides_order_gpu, the other for y_dims_order_gpu
     size_t dy_total_bytes = bytes * 2;
-    auto dy_tmp_buffer = paddle::memory::Alloc(
+    auto dy_tmp_buffer = phi::memory_utils::Alloc(
         ctx.GetPlace(),
         dy_total_bytes,
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
@@ -1611,18 +1613,18 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
     int *y_dims_order_gpu =
         reinterpret_cast<int *>(y_strides_order_gpu + max_dim);
 
-    paddle::memory::Copy(gplace,
-                         y_strides_order_gpu,
-                         cplace,
-                         y_strides_order.data(),
-                         bytes,
-                         ctx.stream());
-    paddle::memory::Copy(gplace,
-                         y_dims_order_gpu,
-                         cplace,
-                         y_dims_order.data(),
-                         bytes,
-                         ctx.stream());
+    memory_utils::Copy(gplace,
+                       y_strides_order_gpu,
+                       cplace,
+                       y_strides_order.data(),
+                       bytes,
+                       ctx.stream());
+    memory_utils::Copy(gplace,
+                       y_dims_order_gpu,
+                       cplace,
+                       y_dims_order.data(),
+                       bytes,
+                       ctx.stream());
     CommonGradBroadcastCUDAKernel<T, DY_OP, Tout>
         <<<y_blocks, y_block_size, 0, ctx.stream()>>>(x_strides_array_gpu,
                                                       y_strides_array_gpu,
@@ -1675,8 +1677,8 @@ void CommonElementwiseBroadcastBackward(const GPUContext &ctx,
   }
 
   VLOG(3) << "CommonElementwiseBroadcastBackward xdims:"
-          << phi::make_ddim(x_dims_array)
-          << " ydim:" << phi::make_ddim(y_dims_array);
+          << common::make_ddim(x_dims_array)
+          << " ydim:" << common::make_ddim(y_dims_array);
 
   CommonGradBroadcastCUDA<T, DX_OP, DY_OP, Tout>(x,
                                                  y,

@@ -28,7 +28,7 @@ inline void SetXShape(const DenseTensor &x, DenseTensor *xshape) {
   for (int i = 0; i < in_dims.size(); ++i) {
     xshape_dims[i + 1] = in_dims[i];
   }
-  xshape->ResizeAndAllocate(phi::make_ddim(xshape_dims));
+  xshape->ResizeAndAllocate(common::make_ddim(xshape_dims));
   xshape->ResetLoD(x.meta().lod);
 }
 
@@ -52,6 +52,7 @@ inline void GetBroadcastDimsArrays(const DDim &x_dims,
           "Axis should be less than or equal to %d, but received axis is %d.",
           max_dim,
           axis));
+
   if (x_dims.size() > y_dims.size()) {
     std::fill(y_dims_array, y_dims_array + axis, 1);
     if (axis + y_dims.size() < max_dim) {
@@ -68,7 +69,7 @@ inline void GetBroadcastDimsArrays(const DDim &x_dims,
     std::copy(y_dims.Get(), y_dims.Get() + y_dims.size(), y_dims_array);
   }
 
-  for (int i = 0; i < max_dim; i++) {
+  for (int i = 0; i < max_dim; ++i) {
     PADDLE_ENFORCE_EQ(
         x_dims_array[i] == y_dims_array[i] || x_dims_array[i] <= 1 ||
             y_dims_array[i] <= 1,
@@ -113,7 +114,7 @@ static DDim ExtendDims2Rank(const DDim &in_dims, int rank) {
   for (int i = in_dims.size() - 1, j = rank - 1; i >= 0; --i, --j) {
     shapes[j] = in_dims[i];
   }
-  return make_ddim(shapes);
+  return common::make_ddim(shapes);
 }
 
 template <size_t D>
@@ -180,8 +181,8 @@ static inline std::vector<int64_t> MatrixGetBroadcastBatchPortion(
 // batch_size of matrix
 static inline std::tuple<std::vector<int64_t>, std::vector<int64_t>>
 MatrixGetBroadcastDims(const DenseTensor &x, const DenseTensor &y) {
-  std::vector<int64_t> x_dims_vec = phi::vectorize(x.dims());
-  std::vector<int64_t> y_dims_vec = phi::vectorize(y.dims());
+  std::vector<int64_t> x_dims_vec = common::vectorize(x.dims());
+  std::vector<int64_t> y_dims_vec = common::vectorize(y.dims());
 
   std::vector<int64_t>::const_iterator f1 = x_dims_vec.begin();
   std::vector<int64_t>::const_iterator l1 = x_dims_vec.end() - 2;
@@ -211,7 +212,7 @@ inline DDim GetOutputDims(const DDim &s_dims, const DDim &l_dims) {
   if (s_dims.size() > l_dims.size()) {
     return GetOutputDims(l_dims, s_dims);
   }
-  std::vector<int64_t> shapes = phi::vectorize<int64_t>(l_dims);
+  std::vector<int64_t> shapes = common::vectorize<int64_t>(l_dims);
   for (int i = s_dims.size() - 1, j = l_dims.size() - 1; i >= 0; --i, --j) {
     int64_t s = s_dims[i];
     int64_t l = l_dims[j];
@@ -229,7 +230,7 @@ inline DDim GetOutputDims(const DDim &s_dims, const DDim &l_dims) {
       }
     }
   }
-  return phi::make_ddim(shapes);
+  return common::make_ddim(shapes);
 }
 
 inline int64_t CalStride(phi::DDim dim) {
@@ -241,6 +242,59 @@ inline int64_t CalStride(phi::DDim dim) {
     dimsum *= dim[i];
   }
   return strides;
+}
+
+inline std::vector<int32_t> GetPermuteShape(const std::vector<int> &axis,
+                                            const DDim &in_dims) {
+  std::vector<int32_t> out_dims(in_dims.size());
+  for (size_t i = 0; i < axis.size(); i++) {
+    out_dims[i] = in_dims[axis[i]];
+  }
+  return out_dims;
+}
+
+inline std::vector<int32_t> GetFlattenShape(const int axis,
+                                            const std::vector<int> &in_dims) {
+  int64_t outer = 1, inner = 1;
+  for (int i = 0; i < static_cast<int>(in_dims.size()); ++i) {
+    if (i < axis) {
+      outer *= in_dims[i];
+    } else {
+      inner *= in_dims[i];
+    }
+  }
+  std::vector<int32_t> out_shape(2);
+  out_shape[0] = outer;
+  out_shape[1] = inner;
+  return out_shape;
+}
+
+inline void FCOutputSize(const DDim &in_dims,
+                         const DDim &w_dims,
+                         std::vector<int64_t> &out_dims,  // NOLINT
+                         int in_num_col_dims,
+                         bool padding_weights) {
+  auto in_mat_dims = common::flatten_to_2d(in_dims, in_num_col_dims);
+  auto w_dims0 = padding_weights ? w_dims[0] - 4 : w_dims[0];
+  auto w_dims1 = padding_weights ? w_dims[1] - 4 : w_dims[1];
+  PADDLE_ENFORCE_EQ(
+      in_mat_dims[1],
+      w_dims0,
+      phi::errors::InvalidArgument(
+          "The input's second dimension and weight's first dimension is "
+          "expected to be the same. But received input's second dimension is "
+          "%d, input's shape is %s; weight's first dimension is %d, weight's "
+          "shape is %s.",
+          in_mat_dims[1],
+          in_mat_dims,
+          w_dims0,
+          common::make_ddim({w_dims0, w_dims1})));
+
+  out_dims.reserve(static_cast<size_t>(in_num_col_dims + 1));
+  for (int i = 0; i < in_num_col_dims; ++i) {
+    out_dims.push_back(in_dims[i]);
+  }
+  out_dims.push_back(w_dims1);
 }
 
 }  // namespace funcs

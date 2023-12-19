@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/multiplex_grad_kernel.h"
 
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
@@ -43,11 +43,11 @@ void MultiplexGradKernel(const Context& ctx,
   for (auto i = 0; i < rows; i++) {
     size_t k = static_cast<size_t>(index[i]);
     if (ins_grad[k]) {
-      paddle::memory::Copy(ctx.GetPlace(),
-                           ins_grad[k]->data<T>() + i * cols,
-                           ctx.GetPlace(),
-                           out_grad.data<T>() + i * cols,
-                           cols * sizeof(T));
+      memory_utils::Copy(ctx.GetPlace(),
+                         ins_grad[k]->data<T>() + i * cols,
+                         ctx.GetPlace(),
+                         out_grad.data<T>() + i * cols,
+                         cols * sizeof(T));
     }
   }
 }
@@ -61,4 +61,6 @@ PD_REGISTER_KERNEL(multiplex_grad,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

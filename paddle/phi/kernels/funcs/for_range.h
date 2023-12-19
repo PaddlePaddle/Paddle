@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "paddle/common/macros.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
-
 namespace phi {
 namespace funcs {
 
@@ -29,7 +29,8 @@ struct ForRange {
 
 template <>
 struct ForRange<phi::CPUContext> {
-  ForRange(const phi::CPUContext& dev_ctx, size_t limit) : limit_(limit) {}
+  ForRange(const phi::CPUContext& dev_ctx UNUSED, size_t limit)
+      : limit_(limit) {}
 
   template <typename Function>
   void operator()(Function func) const {
@@ -64,10 +65,7 @@ struct ForRange<phi::GPUContext> {
 
   template <typename Function>
   inline void operator()(Function func) const {
-#ifdef __HIPCC__
-    // HIP will throw core dump when threads > 256
-    constexpr int num_threads = 256;
-#elif WITH_NV_JETSON
+#if WITH_NV_JETSON
     // JETSON_NANO will throw core dump when threads > 128
     int num_thread = 256;
     backends::gpu::ChangeThreadNum(dev_ctx_, &num_thread, 128);

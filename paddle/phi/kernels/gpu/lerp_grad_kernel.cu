@@ -18,12 +18,14 @@
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
 
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/broadcast_tensors_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 namespace phi {
 
@@ -35,16 +37,18 @@ __global__ void LerpGradKernelImpl(const T* weight,
                                    const int out_size,
                                    const int x_size,
                                    const int y_size) {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   CUDA_KERNEL_LOOP_TYPE(idx, out_size, int64_t) {
-    T temp_dx = weight[idx] * dout[idx];
+    MPType temp_dx =
+        static_cast<MPType>(weight[idx]) * static_cast<MPType>(dout[idx]);
     if (dx) {
       if (idx < x_size) {
-        dx[idx] = dout[idx] - temp_dx;
+        dx[idx] = static_cast<T>(static_cast<MPType>(dout[idx]) - temp_dx);
       }
     }
     if (dy) {
       if (idx < y_size) {
-        dy[idx] = temp_dx;
+        dy[idx] = static_cast<T>(temp_dx);
       }
     }
   }
@@ -58,17 +62,18 @@ __global__ void LerpGradScalarKernelImpl(const T* weight,
                                          const int out_size,
                                          const int x_size,
                                          const int y_size) {
-  T weight_scalar = weight[0];
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType weight_scalar = static_cast<MPType>(weight[0]);
   CUDA_KERNEL_LOOP_TYPE(idx, out_size, int64_t) {
-    T temp_dx = weight_scalar * dout[idx];
+    MPType temp_dx = weight_scalar * static_cast<MPType>(dout[idx]);
     if (dx) {
       if (idx < x_size) {
-        dx[idx] = dout[idx] - temp_dx;
+        dx[idx] = static_cast<T>(static_cast<MPType>(dout[idx]) - temp_dx);
       }
     }
     if (dy) {
       if (idx < y_size) {
-        dy[idx] = temp_dx;
+        dy[idx] = static_cast<T>(temp_dx);
       }
     }
   }
@@ -77,10 +82,10 @@ __global__ void LerpGradScalarKernelImpl(const T* weight,
 bool XYNeedReduce(const DenseTensor& x,
                   const DenseTensor& y,
                   const DenseTensor& out) {
-  auto x_dims =
-      x.dims().size() ? x.dims() : make_ddim(std::vector<int64_t>(1, 1));
-  auto y_dims =
-      y.dims().size() ? y.dims() : make_ddim(std::vector<int64_t>(1, 1));
+  auto x_dims = x.dims().size() ? x.dims()
+                                : common::make_ddim(std::vector<int64_t>(1, 1));
+  auto y_dims = y.dims().size() ? y.dims()
+                                : common::make_ddim(std::vector<int64_t>(1, 1));
 
   auto out_dims = out.dims();
   if (out_dims.size() == 0) {
@@ -237,16 +242,15 @@ void LerpGradKernel(const Context& ctx,
                              x_grad_data,
                              y_grad_data);
 
-    auto zero_dim = make_ddim(std::vector<int64_t>(1, 1));
+    auto zero_dim = common::make_ddim(std::vector<int64_t>(1, 1));
     if (x_grad) {
       std::vector<int> reduce_axis_x =
           funcs::GetReduceDim(x_grad->dims().size() ? x_grad->dims() : zero_dim,
                               b_xgrad.dims(),
                               -1);
       if (!reduce_axis_x.empty()) {
-        phi::funcs::
-            ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-                ctx, b_xgrad, x_grad, kps::IdentityFunctor<T>(), reduce_axis_x);
+        phi::SumKernel<T, Context>(
+            ctx, b_xgrad, reduce_axis_x, b_xgrad.dtype(), false, x_grad);
       } else {
         x_grad->ShareDataWith(b_xgrad);
       }
@@ -258,9 +262,8 @@ void LerpGradKernel(const Context& ctx,
                               b_ygrad.dims(),
                               -1);
       if (!reduce_axis_y.empty()) {
-        phi::funcs::
-            ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-                ctx, b_ygrad, y_grad, kps::IdentityFunctor<T>(), reduce_axis_y);
+        phi::SumKernel<T, Context>(
+            ctx, b_ygrad, reduce_axis_y, b_ygrad.dtype(), false, y_grad);
       } else {
         y_grad->ShareDataWith(b_ygrad);
       }
@@ -270,5 +273,11 @@ void LerpGradKernel(const Context& ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    lerp_grad, GPU, ALL_LAYOUT, phi::LerpGradKernel, float, double) {}
+PD_REGISTER_KERNEL(lerp_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::LerpGradKernel,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   float,
+                   double) {}

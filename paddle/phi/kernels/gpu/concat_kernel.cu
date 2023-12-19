@@ -83,15 +83,16 @@ void ConcatKernel(const Context& dev_ctx,
       if (in->numel() == 0UL) {
         continue;
       }
-      auto in_stride = phi::stride_numel(in->dims());
-      auto out_stride = phi::stride_numel(out->dims());
-      phi::funcs::StridedNumelCopyWithAxis<T>(dev_ctx,
-                                              axis,
-                                              out->data<T>() + output_offset,
-                                              out_stride,
-                                              in->data<T>(),
-                                              in_stride,
-                                              in_stride[axis]);
+      auto in_stride = common::stride_numel(in->dims());
+      auto out_stride = common::stride_numel(out->dims());
+      phi::funcs::StridedNumelCopyWithAxis<T, Context>(
+          dev_ctx,
+          axis,
+          out->data<T>() + output_offset,
+          out_stride,
+          in->data<T>(),
+          in_stride,
+          in_stride[axis]);
       output_offset += in_stride[axis];
     }
   } else {
@@ -121,6 +122,7 @@ PD_REGISTER_KERNEL(concat,
                    int,
                    uint8_t,
                    int8_t,
+                   int16_t,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,

@@ -189,4 +189,5 @@ PD_REGISTER_KERNEL(prelu_grad,
                    phi::PReluGradKernel,
                    float,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    double) {}

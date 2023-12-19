@@ -97,3 +97,6 @@ inline SparseBlasT<DeviceContext, T> GetSparseBlas(
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11000
 #include "paddle/phi/kernels/funcs/sparse/sparse_blas_impl.cu.h"
 #endif
+#if defined(PADDLE_WITH_HIP) && HIP_VERSION >= 402
+#include "paddle/phi/kernels/funcs/sparse/sparse_blas_impl.hip.h"
+#endif

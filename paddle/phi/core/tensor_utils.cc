@@ -14,15 +14,15 @@ limitations under the License. */
 
 #include "paddle/phi/core/tensor_utils.h"
 
+#include "glog/logging.h"
+
+#include "paddle/phi/api/lib/data_transform.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
-
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/device_context.h"
 
 namespace phi {
 
@@ -32,6 +32,12 @@ void Copy(const Context& dev_ctx,
           Place dst_place,
           bool blocking,
           DenseTensor* dst) {
+  if (!src.meta().is_contiguous()) {
+    DenseTensor src_copy = paddle::experimental::Trans2Contiguous(src);
+    Copy(dev_ctx, src_copy, dst_place, blocking, dst);
+    return;
+  }
+
   auto* src_ptr = src.data();
   const auto& src_place = src.place();
 
@@ -56,7 +62,7 @@ void Copy(const Context& dev_ctx,
   void* dst_ptr = nullptr;
   if (dst_place.GetType() == AllocationType::CPU) {
     dst_ptr = dev_ctx.HostAlloc(dst, src.dtype());
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     dst->set_layout(src.layout());
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -65,7 +71,6 @@ void Copy(const Context& dev_ctx,
     dst_ptr = dev_ctx.Alloc(
         dst, src.dtype(), 0, dst_place.GetType() == AllocationType::GPUPINNED);
 #endif
-
 #ifdef PADDLE_WITH_XPU
   } else if (dst_place.GetType() == AllocationType::XPU) {
     dst_ptr = dev_ctx.Alloc(dst, src.dtype());
@@ -76,7 +81,7 @@ void Copy(const Context& dev_ctx,
 #endif
   }
 
-  auto size = src.numel() * paddle::experimental::SizeOf(src.dtype());
+  auto size = src.numel() * phi::SizeOf(src.dtype());
   if (UNLIKELY(size) == 0) {
     return;
   }
@@ -100,13 +105,13 @@ void Copy(const Context& dev_ctx,
 
   if (src_place.GetType() == AllocationType::CPU &&
       dst_place.GetType() == AllocationType::CPU) {
-    paddle::memory::Copy(src_place, dst_ptr, src_place, src_ptr, size);
+    memory_utils::Copy(src_place, dst_ptr, src_place, src_ptr, size);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   } else if ((src_place.GetType() == AllocationType::CPU ||
               src_place.GetType() == AllocationType::GPUPINNED) &&  // NOLINT
              (dst_place.GetType() == AllocationType::CPU ||
               dst_place.GetType() == AllocationType::GPUPINNED)) {
-    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, nullptr);
+    memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size, nullptr);
   } else if (src_place.GetType() == AllocationType::GPU &&  // NOLINT
              dst_place.GetType() == AllocationType::CPU) {
     auto src_gpu_place = src_place;
@@ -129,7 +134,7 @@ void Copy(const Context& dev_ctx,
     auto stream =
         blocking ? nullptr
                  : reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
-    paddle::memory::Copy(
+    memory_utils::Copy(
         dst_cpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
   } else if ((src_place.GetType() == AllocationType::CPU ||
               src_place.GetType() == AllocationType::GPUPINNED) &&  // NOLINT
@@ -154,7 +159,7 @@ void Copy(const Context& dev_ctx,
     auto stream =
         blocking ? nullptr
                  : reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
-    paddle::memory::Copy(
+    memory_utils::Copy(
         dst_gpu_place, dst_ptr, src_cpu_place, src_ptr, size, stream);
   } else if (src_place.GetType() == AllocationType::GPU &&  // NOLINT
              dst_place.GetType() == AllocationType::GPU) {
@@ -171,16 +176,16 @@ void Copy(const Context& dev_ctx,
         blocking ? nullptr
                  : reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
     if (src_place.GetType() == dst_place.GetType()) {
-      paddle::memory::Copy(
+      memory_utils::Copy(
           dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
     } else {
       if (ctx_place.GetType() == src_place.GetType()) {
-        paddle::memory::Copy(
+        memory_utils::Copy(
             dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
         phi::DeviceContextPool::Instance().Get(src.place())->Wait();
       } else if (ctx_place.GetType() == dst_place.GetType()) {
         phi::DeviceContextPool::Instance().Get(src.place())->Wait();
-        paddle::memory::Copy(
+        memory_utils::Copy(
             dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
       } else {
         PADDLE_THROW(errors::Unavailable(
@@ -209,16 +214,16 @@ void Copy(const Context& dev_ctx,
     auto stream =
         blocking ? nullptr
                  : reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
-    paddle::memory::Copy(
+    memory_utils::Copy(
         dst_cuda_pinned_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
 #endif
 #ifdef PADDLE_WITH_XPU
   } else if (src_place.GetType() == AllocationType::XPU &&  // NOLINT
              dst_place.GetType() == AllocationType::CPU) {
-    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+    memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   } else if (src_place.GetType() == AllocationType::CPU &&
              dst_place.GetType() == AllocationType::XPU) {
-    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+    memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   } else if (src_place.GetType() == AllocationType::XPU &&
              dst_place.GetType() == AllocationType::XPU) {
     if (src_ptr == dst_ptr) {
@@ -226,7 +231,7 @@ void Copy(const Context& dev_ctx,
               << dst_place;
       return;
     }
-    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+    memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   } else if (src_place.GetType() == AllocationType::CUSTOM &&  // NOLINT
@@ -235,26 +240,27 @@ void Copy(const Context& dev_ctx,
         blocking
             ? nullptr
             : reinterpret_cast<const phi::CustomContext&>(dev_ctx).stream();
-    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
+    memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
   } else if (src_place.GetType() == AllocationType::CPU &&  // NOLINT
              dst_place.GetType() == AllocationType::CUSTOM) {
     auto stream =
         blocking
             ? nullptr
             : reinterpret_cast<const phi::CustomContext&>(dev_ctx).stream();
-    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
+    memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
   } else if (src_place.GetType() == AllocationType::CUSTOM &&  // NOLINT
              dst_place.GetType() == AllocationType::CUSTOM) {
     auto stream =
         blocking
             ? nullptr
             : reinterpret_cast<const phi::CustomContext&>(dev_ctx).stream();
-    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
+    memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
 #endif
   } else {
     PADDLE_THROW(errors::Unimplemented(
         "Copy from %s to %s is not supported.", src_place, dst_place));
   }
+  dst->set_strides(src.strides());
 }
 
 template <typename Context>
@@ -319,6 +325,16 @@ void Copy(const Context& dev_ctx,
   dst->set_dims(src.dims());
 }
 
+template <typename Context>
+void Copy(const Context& dev_ctx UNUSED,
+          const TensorArray& src UNUSED,
+          Place dst_place UNUSED,
+          bool blocking UNUSED,
+          TensorArray* dst UNUSED) {
+  // NOTE(Ruibiao): implements Copy() for TensorArray when needed.
+  PADDLE_THROW(errors::Unimplemented("Copy for TensorArray is unimplemented."));
+}
+
 template void Copy(const CPUContext& dev_ctx,
                    const DenseTensor& src,
                    Place dst_place,
@@ -365,6 +381,18 @@ template void Copy(const DeviceContext& dev_ctx,
                    Place dst_place,
                    bool blocking,
                    SparseCsrTensor* dst);
+
+template void Copy(const CPUContext& dev_ctx,
+                   const TensorArray& src,
+                   Place dst_place,
+                   bool blocking,
+                   TensorArray* dst);
+
+template void Copy(const DeviceContext& dev_ctx,
+                   const TensorArray& src,
+                   Place dst_place,
+                   bool blocking,
+                   TensorArray* dst);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template void Copy(const GPUContext& dev_ctx,
@@ -387,6 +415,11 @@ template void Copy(const GPUContext& dev_ctx,
                    Place dst_place,
                    bool blocking,
                    SparseCsrTensor* dst);
+template void Copy(const GPUContext& dev_ctx,
+                   const TensorArray& src,
+                   Place dst_place,
+                   bool blocking,
+                   TensorArray* dst);
 #endif
 
 #ifdef PADDLE_WITH_XPU
@@ -395,6 +428,11 @@ template void Copy(const XPUContext& dev_ctx,
                    Place dst_place,
                    bool blocking,
                    DenseTensor* dst);
+template void Copy(const XPUContext& dev_ctx,
+                   const TensorArray& src,
+                   Place dst_place,
+                   bool blocking,
+                   TensorArray* dst);
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -403,14 +441,24 @@ template void Copy(const CustomContext& dev_ctx,
                    Place dst_place,
                    bool blocking,
                    DenseTensor* dst);
+template void Copy(const CustomContext& dev_ctx,
+                   const TensorArray& src,
+                   Place dst_place,
+                   bool blocking,
+                   TensorArray* dst);
 #endif
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 template void Copy(const OneDNNContext& dev_ctx,
                    const DenseTensor& src,
                    Place dst_place,
                    bool blocking,
                    DenseTensor* dst);
+template void Copy(const OneDNNContext& dev_ctx,
+                   const TensorArray& src,
+                   Place dst_place,
+                   bool blocking,
+                   TensorArray* dst);
 #endif
 
 template <typename T>
@@ -426,22 +474,21 @@ void TensorFromVector(const std::vector<T>& src,
   auto size = src.size() * sizeof(T);
 
   if (dst_place.GetType() == AllocationType::CPU) {
-    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+    memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   else if (dst_place.GetType() == AllocationType::GPU) {  // NOLINT
-    paddle::memory::Copy(
-        dst_place,
-        dst_ptr,
-        src_place,
-        src_ptr,
-        size,
-        reinterpret_cast<const phi::GPUContext&>(ctx).stream());
+    memory_utils::Copy(dst_place,
+                       dst_ptr,
+                       src_place,
+                       src_ptr,
+                       size,
+                       reinterpret_cast<const phi::GPUContext&>(ctx).stream());
   }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   else if (dst_place.GetType() == AllocationType::CUSTOM) {  // NOLINT
-    paddle::memory::Copy(
+    memory_utils::Copy(
         dst_place,
         dst_ptr,
         src_place,
@@ -452,7 +499,7 @@ void TensorFromVector(const std::vector<T>& src,
 #endif
 #ifdef PADDLE_WITH_XPU
   else if (dst_place.GetType() == AllocationType::XPU) {  // NOLINT
-    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+    memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
 #endif
   else {  // NOLINT
@@ -481,28 +528,27 @@ void TensorFromVector(const std::vector<bool>& src,
   auto size = src.size() * sizeof(bool);
 
   if (dst_place.GetType() == AllocationType::CPU) {
-    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+    memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   else if (dst_place.GetType() == AllocationType::GPU) {  // NOLINT
-    paddle::memory::Copy(
-        dst_place,
-        dst_ptr,
-        src_place,
-        src_ptr,
-        size,
-        reinterpret_cast<const phi::GPUContext&>(ctx).stream());
+    memory_utils::Copy(dst_place,
+                       dst_ptr,
+                       src_place,
+                       src_ptr,
+                       size,
+                       reinterpret_cast<const phi::GPUContext&>(ctx).stream());
   }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   else if (dst_place.GetType() == AllocationType::CUSTOM) {  // NOLINT
     auto stream = reinterpret_cast<const phi::CustomContext&>(ctx).stream();
-    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
+    memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
   }
 #endif
 #ifdef PADDLE_WITH_XPU
   else if (dst_place.GetType() == AllocationType::XPU) {  // NOLINT
-    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+    memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
 #endif
   else {  // NOLINT
@@ -574,22 +620,21 @@ void TensorFromArray(const T* src,
   auto size = array_size * sizeof(T);
 
   if (dst_place.GetType() == AllocationType::CPU) {
-    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+    memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   else if (dst_place.GetType() == AllocationType::GPU) {  // NOLINT
-    paddle::memory::Copy(
-        dst_place,
-        dst_ptr,
-        src_place,
-        src_ptr,
-        size,
-        reinterpret_cast<const phi::GPUContext&>(ctx).stream());
+    memory_utils::Copy(dst_place,
+                       dst_ptr,
+                       src_place,
+                       src_ptr,
+                       size,
+                       reinterpret_cast<const phi::GPUContext&>(ctx).stream());
   }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   else if (dst_place.GetType() == AllocationType::CUSTOM) {  // NOLINT
-    paddle::memory::Copy(
+    memory_utils::Copy(
         dst_place,
         dst_ptr,
         src_place,
@@ -600,7 +645,7 @@ void TensorFromArray(const T* src,
 #endif
 #ifdef PADDLE_WITH_XPU
   else if (dst_place.GetType() == AllocationType::XPU) {  // NOLINT
-    paddle::memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+    memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
 #endif
   else {  // NOLINT
@@ -675,28 +720,26 @@ void TensorToVector(const phi::DenseTensor& src,
   auto dst_ptr = static_cast<void*>(dst->data());
 
   if (src.place().GetType() == AllocationType::CPU) {
-    paddle::memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size);
+    memory_utils::Copy(dst_place, dst_ptr, src.place(), src_ptr, size);
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   else if (src.place().GetType() == AllocationType::GPU) {  // NOLINT
-    paddle::memory::Copy(
-        dst_place,
-        dst_ptr,
-        src.place(),
-        src_ptr,
-        size,
-        reinterpret_cast<const phi::GPUContext&>(ctx).stream());
+    memory_utils::Copy(dst_place,
+                       dst_ptr,
+                       src.place(),
+                       src_ptr,
+                       size,
+                       reinterpret_cast<const phi::GPUContext&>(ctx).stream());
   }
 #endif
 #if defined(PADDLE_WITH_XPU)
   else if (src.place().GetType() == AllocationType::XPU) {  // NOLINT
-    paddle::memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size);
+    memory_utils::Copy(dst_place, dst_ptr, src.place(), src_ptr, size);
   }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   else if (src.place().GetType() == AllocationType::CUSTOM) {  // NOLINT
-    paddle::memory::Copy(
-        dst_place, dst_ptr, src.place(), src_ptr, size, nullptr);
+    memory_utils::Copy(dst_place, dst_ptr, src.place(), src_ptr, size, nullptr);
   }
 #endif
   else {  // NOLINT
@@ -719,28 +762,26 @@ void TensorToVector(const phi::DenseTensor& src,
   auto dst_ptr = static_cast<void*>(array);
 
   if (src.place().GetType() == AllocationType::CPU) {
-    paddle::memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size);
+    memory_utils::Copy(dst_place, dst_ptr, src.place(), src_ptr, size);
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   else if (src.place().GetType() == AllocationType::GPU) {  // NOLINT
-    paddle::memory::Copy(
-        dst_place,
-        dst_ptr,
-        src.place(),
-        src_ptr,
-        size,
-        reinterpret_cast<const phi::GPUContext&>(ctx).stream());
+    memory_utils::Copy(dst_place,
+                       dst_ptr,
+                       src.place(),
+                       src_ptr,
+                       size,
+                       reinterpret_cast<const phi::GPUContext&>(ctx).stream());
   }
 #endif
 #if defined(PADDLE_WITH_XPU)
   else if (src.place().GetType() == AllocationType::XPU) {  // NOLINT
-    paddle::memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size);
+    memory_utils::Copy(dst_place, dst_ptr, src.place(), src_ptr, size);
   }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   else if (src.place().GetType() == AllocationType::CUSTOM) {  // NOLINT
-    paddle::memory::Copy(
-        dst_place, dst_ptr, src.place(), src_ptr, size, nullptr);
+    memory_utils::Copy(dst_place, dst_ptr, src.place(), src_ptr, size, nullptr);
   }
 #endif
   for (unsigned int i = 0; i < src.numel(); i++) {
@@ -801,7 +842,7 @@ void TensorToVector(const phi::DenseTensor& src, std::vector<T>* dst) {
           "The input tensor should be CPU device, but actually it is in %s.",
           src.place()));
 
-  paddle::memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size);
+  memory_utils::Copy(dst_place, dst_ptr, src.place(), src_ptr, size);
 }
 
 template <>
@@ -822,7 +863,7 @@ void TensorToVector(const phi::DenseTensor& src, std::vector<bool>* dst) {
           "The input tensor should be CPU device, but actually it is in %s.",
           src.place()));
 
-  paddle::memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size);
+  memory_utils::Copy(dst_place, dst_ptr, src.place(), src_ptr, size);
 
   for (unsigned int i = 0; i < src.numel(); i++) {
     (*dst)[i] = static_cast<bool>(array[i]);
@@ -874,7 +915,7 @@ phi::DenseTensor ReshapeToMatrix(const phi::DenseTensor& src,
   }
   phi::DenseTensor res;
   res.ShareDataWith(src);
-  res.Resize(phi::flatten_to_2d(src.dims(), num_col_dims));
+  res.Resize(common::flatten_to_2d(src.dims(), num_col_dims));
   return res;
 }
 
@@ -912,5 +953,41 @@ template phi::dtype::float16 GetValue(const phi::DenseTensor* x);
 template phi::dtype::complex<float> GetValue(const phi::DenseTensor* x);
 
 template phi::dtype::complex<double> GetValue(const phi::DenseTensor* x);
+
+template <typename T>
+std::vector<T> GetVectorFromTensor(const phi::DenseTensor* x) {
+  std::vector<T> vec_new_data;
+  if (phi::TransToProtoVarType(x->dtype()) == ProtoDataType::INT32) {
+    auto* data = x->data<int>();
+    phi::DenseTensor cpu_attr_tensor;
+    if (x->place().GetType() != phi::AllocationType::CPU) {
+      phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+      auto dev_ctx = pool.Get(x->place());
+      phi::Copy(*dev_ctx, *x, CPUPlace(), true, &cpu_attr_tensor);
+      data = cpu_attr_tensor.data<int>();
+    }
+    vec_new_data = std::vector<T>(data, data + x->numel());
+  } else if (phi::TransToProtoVarType(x->dtype()) == ProtoDataType::INT64) {
+    auto* data = x->data<int64_t>();
+    phi::DenseTensor cpu_attr_tensor;
+    if (x->place().GetType() != phi::AllocationType::CPU) {
+      phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+      auto dev_ctx = pool.Get(x->place());
+      phi::Copy(*dev_ctx, *x, CPUPlace(), true, &cpu_attr_tensor);
+      data = cpu_attr_tensor.data<int64_t>();
+    }
+    // NOTE: Converting int64 to int32 may cause data overflow.
+    vec_new_data = std::vector<T>(data, data + x->numel());
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The dtype of Tensor must be int32 or int64, but received: %s",
+        phi::TransToProtoVarType(x->dtype())));
+  }
+  return vec_new_data;
+}
+
+template std::vector<int32_t> GetVectorFromTensor(const phi::DenseTensor* x);
+
+template std::vector<int64_t> GetVectorFromTensor(const phi::DenseTensor* x);
 
 }  // namespace phi

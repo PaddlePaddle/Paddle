@@ -34,14 +34,42 @@ void GatherNdGradKernel(const Context &ctx,
       ctx.x_context(), dx_data, x_grad->numel(), static_cast<T>(0));
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
 
-  if (out_grad.numel() == 0) return;
+  if (out_grad.numel() == 0) {
+    return;
+  }
 
   if (index.numel() == 0) {
-    r = xpu::copy(ctx.x_context(),
-                  out_grad.data<T>(),
-                  x_grad->data<T>(),
-                  x_grad->numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
+    auto index_dims = index.dims();
+    auto index_dims_size = index_dims.size();
+    // final dim
+    int64_t end_size = index_dims[index_dims_size - 1];
+    PADDLE_ENFORCE_EQ(
+        end_size,
+        0,
+        phi::errors::InvalidArgument("end_size[%d] should be 0", end_size));
+    // remain dim
+    auto remain_ddim = common::slice_ddim(index_dims, 0, index_dims_size - 1);
+    int64_t remain_numel = common::product(remain_ddim);
+
+    int64_t x_numel = x.numel();
+    int64_t out_grad_numel = out_grad.numel();
+    PADDLE_ENFORCE_EQ(
+        x_numel * remain_numel,
+        out_grad_numel,
+        phi::errors::InvalidArgument(
+            "x_numel[%d] * remain_numel[%d] should match out_grad_numel[%d]",
+            x_numel,
+            remain_numel,
+            out_grad_numel));
+
+    // int reduce_sum(Context* ctx, const T* x, T* y, const std::vector<int>&
+    // xshape, const std::vector<int>& rdims)
+    int r = xpu::reduce_sum(ctx.x_context(),
+                            out_grad.data<T>(),
+                            x_grad->data<T>(),
+                            {remain_numel, x_numel},
+                            {0});
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_sum");
     return;
   }
 
@@ -57,23 +85,18 @@ void GatherNdGradKernel(const Context &ctx,
                                    phi::DataType::INT32,
                                    phi::DataType::INT64));
 
-  int index_size =
-      static_cast<int>(index.dims().size() == 0 ? 1 : index.dims()[0]);
-  auto x_shape = phi::vectorize<int64_t>(x_grad->dims());
-  auto index_shape = phi::vectorize<int64_t>(index.dims());
+  auto x_shape = common::vectorize<int64_t>(x_grad->dims());
+  auto index_shape = common::vectorize<int64_t>(index.dims());
   if (index_shape.size() == 1) {
     index_shape.insert(index_shape.begin(), 1);
   }
   xpu::VectorParam<int64_t> x_vec = {
       x_shape.data(), static_cast<int>(x_shape.size()), nullptr};
 
-  DenseTensor index_cpu(index.type());
-  phi::Copy(ctx, index, phi::CPUPlace(), false, &index_cpu);
-
+  int index_size = static_cast<int>(index.numel());
   if (index_type == phi::DataType::INT32) {
     auto index_data = const_cast<int *>(index.data<int>());
-    xpu::VectorParam<int> index_vec{
-        index_cpu.data<int>(), index_size, index_data};
+    xpu::VectorParam<int> index_vec{nullptr, index_size, index_data};
     r = xpu::scatter_nd<T, int>(ctx.x_context(),
                                 nullptr,
                                 out_grad.data<T>(),
@@ -84,8 +107,7 @@ void GatherNdGradKernel(const Context &ctx,
                                 false);
   } else {
     auto index_data = const_cast<int64_t *>(index.data<int64_t>());
-    xpu::VectorParam<int64_t> index_vec{
-        index_cpu.data<int64_t>(), index_size, index_data};
+    xpu::VectorParam<int64_t> index_vec{nullptr, index_size, index_data};
     r = xpu::scatter_nd<T, int64_t>(ctx.x_context(),
                                     nullptr,
                                     out_grad.data<T>(),

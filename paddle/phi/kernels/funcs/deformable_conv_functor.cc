@@ -99,7 +99,7 @@ inline void ModulatedDeformableIm2colCPUKernel(
 }
 
 template <typename T, typename Context>
-void ModulatedDeformableIm2col(const Context& dev_ctx,
+void ModulatedDeformableIm2col(const Context& dev_ctx UNUSED,
                                const T* data_im,
                                const T* data_offset,
                                const T* data_mask,
@@ -111,8 +111,10 @@ void ModulatedDeformableIm2col(const Context& dev_ctx,
                                const std::vector<int>& dilations,
                                const int deformable_groups,
                                T* data_col) {
-  int channel_per_deformable_group = im_shape[0] / deformable_groups;
-  int num_kernels = im_shape[0] * col_shape[1] * col_shape[2] * col_shape[3];
+  int channel_per_deformable_group =
+      static_cast<int>(im_shape[0] / deformable_groups);
+  int num_kernels = static_cast<int>(im_shape[0] * col_shape[1] * col_shape[2] *
+                                     col_shape[3]);
 
   // get outputs of im2col with offset by bilinear interpolation
   ModulatedDeformableIm2colCPUKernel(num_kernels,

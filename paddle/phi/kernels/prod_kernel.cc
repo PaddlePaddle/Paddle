@@ -48,7 +48,9 @@ PD_REGISTER_KERNEL(prod_infer,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 #endif
 
 #if defined(PADDLE_WITH_XPU_KP) && !defined(PADDLE_WITH_XPU)

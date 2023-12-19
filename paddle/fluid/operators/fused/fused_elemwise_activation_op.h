@@ -616,7 +616,7 @@ static void RunGradFunctors(const framework::ExecutionContext &ctx,
   }
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class FusedElemwiseActivationKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -655,7 +655,7 @@ class FusedElemwiseActivationKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class FusedElemwiseActivationGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -765,5 +765,14 @@ class FusedElemwiseActivationGradKernel : public framework::OpKernel<T> {
     }
   }
 };
+
+template <typename T, typename DeviceContext>
+class FusedElemwiseAddActivationKernel
+    : public FusedElemwiseActivationKernel<T, DeviceContext> {};
+
+template <typename T, typename DeviceContext>
+class FusedElemwiseAddActivationGradKernel
+    : public FusedElemwiseActivationGradKernel<T, DeviceContext> {};
+
 }  // namespace operators
 }  // namespace paddle

@@ -114,7 +114,9 @@ class LookupTableKernel : public framework::OpKernel<T> {
                        table + id_index * row_width,
                        row_width * sizeof(T));
               } else {
-                auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(context);
+                auto &dev_ctx =
+                    context.template device_context<phi::CPUContext>();
+                auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
                 blas.VCOPY(row_width,
                            table + id_index * row_width,
                            output + i * row_width);
@@ -145,7 +147,9 @@ class LookupTableKernel : public framework::OpKernel<T> {
                      table + id_index * row_width,
                      row_width * sizeof(T));
             } else {
-              auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(context);
+              auto &dev_ctx =
+                  context.template device_context<phi::CPUContext>();
+              auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
               blas.VCOPY(row_width,
                          table + id_index * row_width,
                          output + i * row_width);
@@ -203,7 +207,7 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
 
       auto d_output_dims = d_output->dims();
       auto d_output_dims_2d =
-          phi::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
+          common::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
       PADDLE_ENFORCE_EQ(d_table_value->dims(),
                         d_output_dims_2d,
                         platform::errors::InvalidArgument(

@@ -14,20 +14,21 @@
 
 #include "paddle/fluid/distributed/collective/bkcl_tools.h"
 
-#include "paddle/fluid/distributed/collective/types.h"
-
 namespace paddle {
 namespace distributed {
 
 BKCLOp ToBKCLRedType(ReduceOp reduction) {
   static const std::map<ReduceOp, BKCLOp> red_type = {
+      {ReduceOp::MIN, BKCL_MIN},
+      {ReduceOp::MAX, BKCL_MAX},
       {ReduceOp::SUM, BKCL_ADD},
   };
   auto it = red_type.find(reduction);
   PADDLE_ENFORCE_EQ(it != red_type.end(),
                     true,
                     platform::errors::InvalidArgument(
-                        "Invalid bkcl reduction. Must be BKCL_ADD"));
+                        "Invalid bkcl reduction. Must be BKCL_MIN | BKCL_MAX | "
+                        "BKCL_ADD"));
   return it->second;
 }
 
@@ -38,6 +39,30 @@ std::string SerializeBKCLUniqueId(const BKCLUniqueId& bkclID) {
     oss << std::hex << static_cast<int>(bytes[i]);
   }
   return oss.str();
+}
+
+std::string BKCLDTypeToString(BKCLDataType dtype) {
+#define PD_BKCL_DTYPE_TO_STR(__bkcl_dtype, __str_dtype) \
+  if (dtype == __bkcl_dtype) return __str_dtype;
+  PD_BKCL_DTYPE_TO_STR(BKCL_FLOAT, "float32");
+  PD_BKCL_DTYPE_TO_STR(BKCL_FLOAT16, "float16");
+  PD_BKCL_DTYPE_TO_STR(BKCL_BFLOAT16, "bfloat16");
+  PD_BKCL_DTYPE_TO_STR(BKCL_FLOAT64, "float64");
+  PD_BKCL_DTYPE_TO_STR(BKCL_UINT8, "uint8");
+  PD_BKCL_DTYPE_TO_STR(BKCL_INT32, "int32");
+  PD_BKCL_DTYPE_TO_STR(BKCL_INT64, "int64");
+
+#undef PD_BKCL_DTYPE_TO_STR
+  PADDLE_THROW(phi::errors::InvalidArgument(
+      "This datatype %d in bkcl is not supported.", static_cast<int>(dtype)));
+}
+
+std::string BKCLRedTypeToString(BKCLOp op) {
+  if (op == BKCL_ADD) return "SUM";
+  if (op == BKCL_PRODUCT) return "PROD";
+  if (op == BKCL_MIN) return "MIN";
+  if (op == BKCL_MAX) return "MAX";
+  return "UDF_" + std::to_string(op);
 }
 
 }  //  namespace distributed

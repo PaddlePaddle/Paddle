@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/cross_entropy_kernel.h"
 
+#include "glog/logging.h"
+
 #ifdef __NVCC__
 #include "cub/cub.cuh"
 #endif
@@ -72,7 +74,7 @@ struct ExpAddFunctor {
 /*
   Cross entropy soft label with dynamic size on axis (log2_elements is
   varibale).
-  - if the input is softmax，compute loss with softmax
+  - if the input is softmax, compute loss with softmax
   - if the input is log_softmax, compute loss with log_softmax and update
   softmax
 */
@@ -88,11 +90,7 @@ __global__ void CrossEntropySoftLabel(T* loss,
   const int kDimCeil = 1 << log2_elements;
   const int kVSize = sizeof(VecT) / sizeof(T);
 
-#ifdef __HIPCC__
-  const int kThreadPerBlock = 256;
-#else
   const int kThreadPerBlock = 512;
-#endif
   const int kBatchPerBlock = 1;
   const int kWarpSize = 32;  // (dim < 32) ? dim : 32;
   const int kBatchSize = 1;
@@ -468,8 +466,8 @@ __global__ void VectorizedSoftmaxForward(T* loss,
   using VecT = kps::details::VectorType<T, VecSize>;
 
   // each block deal with one batch
-  logits += blockIdx.x * mid_dim;
-  softmax += blockIdx.x * mid_dim;
+  logits += static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(mid_dim);
+  softmax += static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(mid_dim);
 
   const int input_offset = ((uint64_t)logits) % ALIGN_BYTES / sizeof(T);
   const int output_offset = ((uint64_t)softmax) % ALIGN_BYTES / sizeof(T);
@@ -559,7 +557,7 @@ __global__ void WarpSoftmaxForwardSoftLabel(T* loss,
     // max index to read
     int idx_max = (i < local_batches) ? element_count : 0;
     int idx_max_v = idx_max / kVSize;
-
+#pragma unroll
     // read data
     for (int it = 0; it < kIterationsV; ++it) {
       int src_idx = threadIdx.x + it * kWarpSize;
@@ -659,7 +657,7 @@ __global__ void WarpSoftmaxForwardSoftLabel(T* loss,
 
   // loss
   phi::WarpReduceSum<AccT, kBatchSize, kWarpSize>(sumloss);
-
+#pragma unroll
   for (int i = 0; i < kBatchSize; i++) {
     if (i >= local_batches) break;
     loss[first_batch + i] = sumloss[i];
@@ -716,11 +714,7 @@ static void SoftmaxWithCrossEntropySoftLabel(const GPUContext& dev_ctx,
                                              int N,
                                              int dim,
                                              int D) {
-#ifdef __HIPCC__
-  constexpr int kMaxBlockDim = 256;
-#else
   constexpr int kMaxBlockDim = 512;
-#endif
   int64_t block_dim = dim >= kMaxBlockDim
                           ? kMaxBlockDim
                           : (1 << static_cast<int>(std::log2(dim)));
@@ -797,11 +791,7 @@ static void SoftmaxWithCrossEntropySoftLabel(const GPUContext& dev_ctx,
 
     const int kDimLog2 = static_cast<int>(Log2Ceil(dim));
     const int kDimCeil = 1 << kDimLog2;
-#ifdef __HIPCC__
-    int kThreadPerBlock = 256;
-#else
     int kThreadPerBlock = 512;
-#endif
 
     int kBatchPerBlock = 1;
     int blocks = (N * D + kBatchPerBlock - 1) / kBatchPerBlock;
@@ -1165,6 +1155,8 @@ static void SoftmaxWithCrossEntropyHardLabel(const GPUContext& dev_ctx,
                                              int dim,
                                              int D,
                                              const int ignore_index) {
+  VLOG(7) << "rank=" << rank << ", axis = " << axis << ", N = " << N
+          << ", dim = " << dim << ", D = " << D;
   auto stream = dev_ctx.stream();
   constexpr int max_dim = 320;
   if (D == 1) {
@@ -1247,11 +1239,11 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
                                        int axis,
                                        DenseTensor* softmax,
                                        DenseTensor* loss) {
-  PADDLE_ENFORCE_EQ(
-      dev_ctx.GetPlace().GetType(),
-      AllocationType::GPU,
-      phi::errors::Unavailable("softmax_with_cross_entropy operator's "
-                               "CUDA kernel only runs on GPU device."));
+  VLOG(7) << "logits.shape={" << logits.dims() << "}, label.shape={"
+          << label.dims() << "}, soft_label=" << soft_label
+          << ", use_softmax=" << use_softmax
+          << ", numeric_stable_mode=" << numeric_stable_mode
+          << ", ignore_index=" << ignore_index << ", axis=" << axis;
 
   // do not with softmax op, and input is softmax
   if (!use_softmax) {
@@ -1304,11 +1296,7 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
 
       const int kDimLog2 = static_cast<int>(Log2Ceil(axis_dim));
       const int kDimCeil = 1 << kDimLog2;
-#ifdef __HIPCC__
-      int kThreadPerBlock = 256;
-#else
       int kThreadPerBlock = 512;
-#endif
       int kBatchPerBlock = 1;
       int blocks = (n * d + kBatchPerBlock - 1) / kBatchPerBlock;
       dim3 threads(kThreadPerBlock / kBatchPerBlock, kBatchPerBlock, 1);
@@ -1428,7 +1416,7 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
   if (soft_label) {
     PADDLE_ENFORCE_EQ(
         dtype,
-        paddle::experimental::CppTypeToDataType<T>::Type(),
+        phi::CppTypeToDataType<T>::Type(),
         phi::errors::InvalidArgument("The Input(Label) should be with the "
                                      "same data type as Input(Logits)."));
     CrossEntropyWithSoftmaxCUDAKernel<T, T>(dev_ctx,
@@ -1475,8 +1463,7 @@ PD_REGISTER_KERNEL(cross_entropy_with_softmax,
                    phi::CrossEntropyWithSoftmaxKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::float16) {}
 #else
 PD_REGISTER_KERNEL(cross_entropy_with_softmax,
                    GPU,

@@ -30,6 +30,7 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/data_device_transform.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -37,7 +38,6 @@
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/phi/core/ddim.h"
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
@@ -99,9 +99,9 @@ void CopyTensorDeviceToCpu(void *dst_ptr, void *src_ptr, int total_bytes);
 
 void CopyTensorCpuToDevice(void *dst_ptr, void *src_ptr, int total_bytes);
 
-std::string ConvertType(paddle::experimental::DataType type);
+std::string ConvertType(phi::DataType type);
 
-int GetDataByte(paddle::experimental::DataType type);
+int GetDataByte(phi::DataType type);
 
 std::string GenerateRandomKey();
 
@@ -114,27 +114,26 @@ void QuantizeOnnx(std::string onnx_file_name,
                   std::string dataset_path,
                   std::string dataset_plugin_path);
 
-static paddle::experimental::DataType DLNNE2FluidDataType(
-    dl::nne::DataType type) {
+static phi::DataType DLNNE2FluidDataType(dl::nne::DataType type) {
   switch (type) {
     case dl::nne::DataType::kFLOAT32:
-      return paddle::experimental::DataType::FLOAT32;
+      return phi::DataType::FLOAT32;
     case dl::nne::DataType::kINT32:
-      return paddle::experimental::DataType::INT32;
+      return phi::DataType::INT32;
     case dl::nne::DataType::kINT64:
-      return paddle::experimental::DataType::INT64;
+      return phi::DataType::INT64;
     case dl::nne::DataType::kFLOAT16:
-      return paddle::experimental::DataType::FLOAT16;
+      return phi::DataType::FLOAT16;
     case dl::nne::DataType::kUINT8:
-      return paddle::experimental::DataType::UINT8;
+      return phi::DataType::UINT8;
     case dl::nne::DataType::kINT8:
-      return paddle::experimental::DataType::INT8;
+      return phi::DataType::INT8;
     case dl::nne::DataType::kBOOL:
-      return paddle::experimental::DataType::BOOL;
+      return phi::DataType::BOOL;
     default:
       PADDLE_THROW(platform::errors::InvalidArgument(
           "unknown fluid datatype in Fluid op converter"));
-      return paddle::experimental::DataType::FLOAT32;
+      return phi::DataType::FLOAT32;
   }
 }
 
@@ -277,7 +276,7 @@ class DlnneEngineOp : public framework::OperatorBase {
 
       std::string rlym_file_name =
           subgraph_root_path_ + "/" + engine_key_ + ".rlym";
-      // quantize don't support set quantized ouput model path now,
+      // quantize don't support set quantized output model path now,
       // the quantized model file is in current dir
       std::string quantized_rlym_file_name = engine_key_ + ".quantized.rlym";
 
@@ -424,7 +423,7 @@ class DlnneEngineOp : public framework::OperatorBase {
         // convert input and copy to Dlnne engine's buffer
         auto &t = inference::analysis::GetFromScope<phi::DenseTensor>(scope, x);
 
-        auto t_shape = phi::vectorize<int64_t>(t.dims());
+        auto t_shape = common::vectorize<int64_t>(t.dims());
         std::vector<int64_t> runtime_input_shape(t_shape.begin(),
                                                  t_shape.end());
         const int bind_index = index;
@@ -462,19 +461,19 @@ class DlnneEngineOp : public framework::OperatorBase {
       ele_num = 1;
       void *buffer = nullptr;
       // TODO(pei.jiang): add more type
-      if (type == paddle::experimental::DataType::FLOAT32) {
+      if (type == phi::DataType::FLOAT32) {
         buffer = static_cast<void *>(t.data<float>());
         data_bytes = 4;
         dtype = 0;
-      } else if (type == paddle::experimental::DataType::INT64) {
+      } else if (type == phi::DataType::INT64) {
         buffer = static_cast<void *>(t.data<int64_t>());
         data_bytes = 8;
         dtype = 1;
-      } else if (type == paddle::experimental::DataType::INT32) {
+      } else if (type == phi::DataType::INT32) {
         buffer = static_cast<void *>(t.data<int32_t>());
         data_bytes = 4;
         dtype = 2;
-      } else if (type == paddle::experimental::DataType::FLOAT16) {
+      } else if (type == phi::DataType::FLOAT16) {
         buffer = static_cast<void *>(t.data<paddle::platform::float16>());
         data_bytes = 2;
         dtype = 3;
@@ -485,7 +484,7 @@ class DlnneEngineOp : public framework::OperatorBase {
       }
       input_buffers[bind_index] = buffer;
 
-      auto t_shape = phi::vectorize<int64_t>(t.dims());
+      auto t_shape = common::vectorize<int64_t>(t.dims());
       std::vector<int64_t> runtime_input_shape(t_shape.begin(), t_shape.end());
       for (auto &size : t_shape) {
         data_bytes = data_bytes * size;
@@ -563,7 +562,7 @@ class DlnneEngineOp : public framework::OperatorBase {
 
       VLOG(4) << bind_index << ": out_shapes[bind_index] dim:"
               << out_shapes[bind_index].size();
-      fluid_t->Resize(phi::make_ddim(out_shapes[bind_index]));
+      fluid_t->Resize(common::make_ddim(out_shapes[bind_index]));
 
       dl::nne::DataType dl_type = out_types[bind_index];
       if (dlnne_log_flag_) {
@@ -679,7 +678,7 @@ class DlnneEngineOp : public framework::OperatorBase {
 
       // TODO(pei.jiang): refine this code, because when run dlnne create
       // engine, there is same code
-      auto t_shape = phi::vectorize<int64_t>(t.dims());
+      auto t_shape = common::vectorize<int64_t>(t.dims());
       std::vector<int64_t> input_shape(t_shape.begin(), t_shape.end());
       calib_data_shape_map.emplace(x, input_shape);
       std::string data_type = inference::ConvertType(t.type());

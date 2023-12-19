@@ -33,6 +33,8 @@ class CReduceMaxOpMaker : public CReduceOpMaker {
   std::string GetName() const override { return "Max"; }
 };
 
+DEFINE_C_REDUCE_CPU_KERNEL(CReduceMax, kRedMax)
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -43,9 +45,12 @@ REGISTER_OP_WITHOUT_GRADIENT(c_reduce_max,
                              ops::CReduceOp,
                              ops::CReduceMaxOpMaker);
 
-REGISTER_OP_CPU_KERNEL(c_reduce_max,
-                       ops::CReduceOpCPUKernel<ops::kRedMax, float>,
-                       ops::CReduceOpCPUKernel<ops::kRedMax, double>,
-                       ops::CReduceOpCPUKernel<ops::kRedMax, int>,
-                       ops::CReduceOpCPUKernel<ops::kRedMax, int64_t>,
-                       ops::CReduceOpCPUKernel<ops::kRedMax, plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(c_reduce_max,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::CReduceMaxCPUKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

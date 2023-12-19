@@ -124,8 +124,8 @@ inline static void calcAuc(const int64_t *stat_pos,
   while (idx >= 0) {
     totPosPrev = totPos;
     totNegPrev = totNeg;
-    totPos += stat_pos[idx];
-    totNeg += stat_neg[idx];
+    totPos += static_cast<double>(stat_pos[idx]);
+    totNeg += static_cast<double>(stat_neg[idx]);
     *auc += trapezoidArea(totNeg, totNegPrev, totPos, totPosPrev);
     --idx;
   }
@@ -207,4 +207,8 @@ void AucKernel(const Context &dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(auc, CPU, ALL_LAYOUT, phi::AucKernel, float) {}
+PD_REGISTER_KERNEL(auc, CPU, ALL_LAYOUT, phi::AucKernel, float) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT64);
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
+  kernel->OutputAt(2).SetDataType(phi::DataType::INT64);
+}

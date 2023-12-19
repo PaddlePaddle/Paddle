@@ -25,7 +25,7 @@ namespace phi {
 template <typename T, typename Context>
 void SplitKernel(const Context& dev_ctx,
                  const DenseTensor& x,
-                 const IntArray& sections,
+                 const IntArray& sections UNUSED,
                  const Scalar& axis_scalar,
                  std::vector<DenseTensor*> outs) {
   std::vector<const DenseTensor*> shape_refer;
@@ -37,7 +37,8 @@ void SplitKernel(const Context& dev_ctx,
   int axis = axis_scalar.to<int>();
   // Sometimes direct copies will be faster, this maybe need deeply analysis.
   if (axis == 0 && outs.size() < 10) {
-    phi::funcs::StridedMemcpyWithAxis0<T>(dev_ctx, x, shape_refer, &outs);
+    phi::funcs::StridedMemcpyWithAxis0<T, Context>(
+        dev_ctx, x, shape_refer, &outs);
   } else {
     phi::funcs::SplitFunctor<Context, T> functor;
     functor(dev_ctx, x, shape_refer, axis, &outs);

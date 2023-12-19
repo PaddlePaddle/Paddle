@@ -38,21 +38,21 @@ class FillConstantOp : public framework::OperatorWithKernel {
                 "than 0. But received: shape[%u] = %d; shape = [%s].",
                 i,
                 shape[i],
-                phi::make_ddim(shape)));
+                common::make_ddim(shape)));
       }
     }
     if (shape.empty() && ctx->HasInput("ShapeTensor")) {
       auto shape_dims = ctx->GetInputDim("ShapeTensor");
       int num_ele = 1;
       for (int i = 0; i < shape_dims.size(); ++i) {
-        num_ele *= shape_dims[i];
+        num_ele *= static_cast<int>(shape_dims[i]);
       }
       auto vec_dims = std::vector<int>(num_ele, -1);
-      ctx->SetOutputDim("Out", phi::make_ddim(vec_dims));
+      ctx->SetOutputDim("Out", common::make_ddim(vec_dims));
 
       return;
     }
-    ctx->SetOutputDim("Out", phi::make_ddim(shape));
+    ctx->SetOutputDim("Out", common::make_ddim(shape));
   }
 
  protected:
@@ -94,9 +94,6 @@ class FillConstantOp : public framework::OperatorWithKernel {
           break;
         case 3:
           kt.set_backend(phi::Backend::XPU);
-          break;
-        case 4:
-          kt.set_backend(phi::Backend::NPU);
           break;
         default:
           PADDLE_THROW(platform::errors::Unimplemented(
@@ -161,8 +158,7 @@ class FillConstantOpMaker : public framework::OpProtoAndCheckerMaker {
                  "0: CPUPlace. "
                  "1: CUDAPlace. "
                  "2: CUDAPinnedPlace. "
-                 "3: XPUPlace. "
-                 "4: NPUPlace. ")
+                 "3: XPUPlace. ")
         .SetDefault(-1);
     AddOutput("Out",
               "(Tensor) Tensor of specified shape will be filled "

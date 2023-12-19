@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/core/ddim.h"
+#include "paddle/common/ddim.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/pool_grad_kernel.h"
@@ -142,7 +142,7 @@ void PoolGradRawKernel(const Context& ctx,
 
 template <typename Context, typename T1, typename T2 = int>
 void MaxPoolWithIndexGradRawKernel(const Context& ctx,
-                                   const DenseTensor& x,
+                                   const DenseTensor& x UNUSED,
                                    const DenseTensor& mask,
                                    const DenseTensor& dout,
                                    const std::vector<int>& kernel_size,
@@ -163,7 +163,7 @@ void MaxPoolWithIndexGradRawKernel(const Context& ctx,
 
   if (dx) {
     ctx.template Alloc<T1>(dx);
-    funcs::set_constant(ctx, dx, 0);
+    funcs::set_constant(ctx, dx, static_cast<T1>(0));
 
     switch (kernel_size_.size()) {
       case 2: {
@@ -192,7 +192,7 @@ void Pool2dGradKernel(const Context& ctx,
                       const IntArray& kernel_size,
                       const std::vector<int>& strides,
                       const std::vector<int>& paddings,
-                      bool ceil_mode,
+                      bool ceil_mode UNUSED,
                       bool exclusive,
                       const std::string& data_format,
                       const std::string& pooling_type,
@@ -283,7 +283,7 @@ void Pool3dGradKernel(const Context& ctx,
                       const std::vector<int>& kernel_size,
                       const std::vector<int>& strides,
                       const std::vector<int>& paddings,
-                      bool ceil_mode,
+                      bool ceil_mode UNUSED,
                       bool exclusive,
                       const std::string& data_format,
                       const std::string& pooling_type,

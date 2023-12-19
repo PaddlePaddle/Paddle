@@ -23,7 +23,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void GatherNdGradKernel(const Context &ctx,
-                        const DenseTensor &x,
+                        const DenseTensor &x UNUSED,
                         const DenseTensor &index,
                         const DenseTensor &out_grad,
                         DenseTensor *x_grad) {
@@ -58,8 +58,13 @@ PD_REGISTER_KERNEL(gather_nd_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::GatherNdGradKernel,
+                   bool,
                    float,
                    double,
-                   int64_t,
                    int,
-                   uint8_t) {}
+                   int8_t,
+                   int64_t,
+                   int16_t,
+                   uint8_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

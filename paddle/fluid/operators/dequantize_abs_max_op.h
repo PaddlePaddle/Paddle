@@ -16,9 +16,9 @@ limitations under the License. */
 
 #include <vector>
 
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/phi/core/ddim.h"
 
 namespace phi {
 class DenseTensor;
@@ -36,7 +36,7 @@ struct DequantizeFunctor {
                   phi::DenseTensor* out);
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class DequantizeMaxAbsKernel : public framework::OpKernel<T> {
  public:
   virtual void Compute(const framework::ExecutionContext& ctx) const {

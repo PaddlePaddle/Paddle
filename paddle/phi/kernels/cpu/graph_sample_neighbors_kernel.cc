@@ -178,7 +178,7 @@ void GraphSampleNeighborsKernel(
   const T* row_data = row.data<T>();
   const T* col_ptr_data = col_ptr.data<T>();
   const T* x_data = x.data<T>();
-  int bs = x.dims()[0];
+  int bs = static_cast<int>(x.dims()[0]);
 
   std::vector<T> output;
   std::vector<int> output_count;
@@ -226,4 +226,6 @@ PD_REGISTER_KERNEL(graph_sample_neighbors,
                    ALL_LAYOUT,
                    phi::GraphSampleNeighborsKernel,
                    int,
-                   int64_t) {}
+                   int64_t) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
+}

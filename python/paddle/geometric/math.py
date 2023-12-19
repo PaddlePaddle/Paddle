@@ -13,9 +13,9 @@
 # limitations under the License.
 
 from paddle import _C_ops
-from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.framework import in_dygraph_mode
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base.data_feeder import check_variable_and_dtype
+from paddle.base.layer_helper import LayerHelper
+from paddle.framework import in_dynamic_or_pir_mode
 
 __all__ = []
 
@@ -43,20 +43,22 @@ def segment_sum(data, segment_ids, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            data = paddle.to_tensor([[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float32')
-            segment_ids = paddle.to_tensor([0, 0, 1], dtype='int32')
-            out = paddle.geometric.segment_sum(data, segment_ids)
-            #Outputs: [[4., 4., 4.], [4., 5., 6.]]
+            >>> import paddle
+            >>> data = paddle.to_tensor([[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float32')
+            >>> segment_ids = paddle.to_tensor([0, 0, 1], dtype='int32')
+            >>> out = paddle.geometric.segment_sum(data, segment_ids)
+            >>> print(out.numpy())
+            [[4. 4. 4.]
+             [4. 5. 6.]]
 
     """
-    if in_dygraph_mode():
-        return _C_ops.segment_pool(data, segment_ids, "SUM")[0]
+    if in_dynamic_or_pir_mode():
+        return _C_ops.segment_pool(data, segment_ids, "SUM")
     else:
         check_variable_and_dtype(
             data,
             "X",
-            ("float32", "float64", "int32", "int64", "float16"),
+            ("float32", "float64", "int32", "int64", "float16", "uint16"),
             "segment_pool",
         )
         check_variable_and_dtype(
@@ -99,22 +101,23 @@ def segment_mean(data, segment_ids, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            data = paddle.to_tensor([[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float32')
-            segment_ids = paddle.to_tensor([0, 0, 1], dtype='int32')
-            out = paddle.geometric.segment_mean(data, segment_ids)
-            #Outputs: [[2., 2., 2.], [4., 5., 6.]]
+            >>> import paddle
+            >>> data = paddle.to_tensor([[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float32')
+            >>> segment_ids = paddle.to_tensor([0, 0, 1], dtype='int32')
+            >>> out = paddle.geometric.segment_mean(data, segment_ids)
+            >>> print(out.numpy())
+            [[2. 2. 2.]
+             [4. 5. 6.]]
 
     """
 
-    if in_dygraph_mode():
-        return _C_ops.segment_pool(data, segment_ids, "MEAN")[0]
+    if in_dynamic_or_pir_mode():
+        return _C_ops.segment_pool(data, segment_ids, "MEAN")
     else:
-
         check_variable_and_dtype(
             data,
             "X",
-            ("float32", "float64", "int32", "int64", "float16"),
+            ("float32", "float64", "int32", "int64", "float16", "uint16"),
             "segment_pool",
         )
         check_variable_and_dtype(
@@ -156,21 +159,23 @@ def segment_min(data, segment_ids, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            data = paddle.to_tensor([[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float32')
-            segment_ids = paddle.to_tensor([0, 0, 1], dtype='int32')
-            out = paddle.geometric.segment_min(data, segment_ids)
-            #Outputs:  [[1., 2., 1.], [4., 5., 6.]]
+            >>> import paddle
+            >>> data = paddle.to_tensor([[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float32')
+            >>> segment_ids = paddle.to_tensor([0, 0, 1], dtype='int32')
+            >>> out = paddle.geometric.segment_min(data, segment_ids)
+            >>> print(out.numpy())
+            [[1. 2. 1.]
+             [4. 5. 6.]]
 
     """
 
-    if in_dygraph_mode():
-        return _C_ops.segment_pool(data, segment_ids, "MIN")[0]
+    if in_dynamic_or_pir_mode():
+        return _C_ops.segment_pool(data, segment_ids, "MIN")
     else:
         check_variable_and_dtype(
             data,
             "X",
-            ("float32", "float64", "int32", "int64", "float16"),
+            ("float32", "float64", "int32", "int64", "float16", "uint16"),
             "segment_pool",
         )
         check_variable_and_dtype(
@@ -212,21 +217,23 @@ def segment_max(data, segment_ids, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            data = paddle.to_tensor([[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float32')
-            segment_ids = paddle.to_tensor([0, 0, 1], dtype='int32')
-            out = paddle.geometric.segment_max(data, segment_ids)
-            #Outputs: [[3., 2., 3.], [4., 5., 6.]]
+            >>> import paddle
+            >>> data = paddle.to_tensor([[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float32')
+            >>> segment_ids = paddle.to_tensor([0, 0, 1], dtype='int32')
+            >>> out = paddle.geometric.segment_max(data, segment_ids)
+            >>> print(out.numpy())
+            [[3. 2. 3.]
+             [4. 5. 6.]]
 
     """
 
-    if in_dygraph_mode():
-        return _C_ops.segment_pool(data, segment_ids, "MAX")[0]
+    if in_dynamic_or_pir_mode():
+        return _C_ops.segment_pool(data, segment_ids, "MAX")
     else:
         check_variable_and_dtype(
             data,
             "X",
-            ("float32", "float64", "int32", "int64", "float16"),
+            ("float32", "float64", "int32", "int64", "float16", "uint16"),
             "segment_pool",
         )
         check_variable_and_dtype(

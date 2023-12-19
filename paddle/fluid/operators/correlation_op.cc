@@ -97,15 +97,16 @@ class CorrelationOp : public framework::OperatorWithKernel {
                           "Input(Y) of CorrelationOp must be 4 dims."
                           "But received dims is %d.",
                           in2_dims.size()));
-    std::vector<int64_t> output_shape = CorrelationOutputSize(in_dims[0],
-                                                              in_dims[2],
-                                                              in_dims[3],
-                                                              stride1,
-                                                              stride2,
-                                                              kernel_size,
-                                                              pad_size,
-                                                              max_displacement);
-    ctx->SetOutputDim("Output", phi::make_ddim(output_shape));
+    std::vector<int64_t> output_shape =
+        CorrelationOutputSize(static_cast<int>(in_dims[0]),
+                              static_cast<int>(in_dims[2]),
+                              static_cast<int>(in_dims[3]),
+                              stride1,
+                              stride2,
+                              kernel_size,
+                              pad_size,
+                              max_displacement);
+    ctx->SetOutputDim("Output", common::make_ddim(output_shape));
   }
 
  protected:
@@ -165,7 +166,7 @@ class CorrelationOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CorrelationKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -186,6 +187,6 @@ REGISTER_OPERATOR(correlation,
                   ops::CorrelationOpGradMaker<paddle::framework::OpDesc>,
                   ops::CorrelationOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(correlation_grad, ops::CorrelationOpGrad);
-REGISTER_OP_CPU_KERNEL(correlation,
-                       ops::CorrelationKernel<float>,
-                       ops::CorrelationKernel<double>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    correlation, CPU, ALL_LAYOUT, ops::CorrelationKernel, float, double) {}

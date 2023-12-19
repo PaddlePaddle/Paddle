@@ -3,36 +3,11 @@ set_source_files_properties(${BRPC_SRCS})
 
 if(WITH_HETERPS)
 
-  set(BRPC_DEPS
-      brpc
-      ssl
-      crypto
-      protobuf
-      gflags
-      glog
-      zlib
-      leveldb
-      snappy
-      gflags
-      glog
-      device_context
-      rocksdb)
+  set(BRPC_DEPS ${EXTERNAL_BRPC_DEPS} phi common zlib device_context rocksdb)
 
 else()
 
-  set(BRPC_DEPS
-      brpc
-      ssl
-      crypto
-      protobuf
-      gflags
-      glog
-      zlib
-      leveldb
-      snappy
-      gflags
-      glog
-      device_context)
+  set(BRPC_DEPS ${EXTERNAL_BRPC_DEPS} phi common zlib device_context)
 
 endif()
 
@@ -43,6 +18,7 @@ brpc_library(
   PROTO
   sendrecv.proto
   DEPS
+  ps_framework_proto
   ${BRPC_DEPS})
 
 #set_property(GLOBAL PROPERTY RPC_DEPS sendrecv_rpc ${BRPC_DEPS} string_helper)
@@ -122,9 +98,10 @@ cc_library(
        simple_threadpool
        simple_rpc
        scope
-       math_function
-       selected_rows_functor
+       phi
+       common
        ps_gpu_wrapper
+       fleet
        ${RPC_DEPS})
 
 #cc_library(
@@ -150,7 +127,7 @@ cc_library(
 #cc_library(
 #  communicator
 #  SRCS communicator/communicator.cc
-#  DEPS scope client table math_function selected_rows_functor ${RPC_DEPS})
+#  DEPS scope client table phi common ${RPC_DEPS})
 #cc_library(
 #  ps_service
 #  SRCS ps_service/service.cc

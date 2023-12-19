@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.framework import _apply_pass as _apply_cpp_pass
-from paddle.framework import core
+from paddle.framework import (
+    _apply_pass as _apply_cpp_pass,
+    core,
+)
 from paddle.static import Executor
 
 from .pass_base import CPPPassWrapper, PassType, register_pass
@@ -84,6 +86,19 @@ class FusedAttentionPass(CPPPassWrapper):
         return PassType.FUSION_OPT
 
 
+@register_pass("fused_feedforward")
+class FusedFeedforwardPass(CPPPassWrapper):
+    def __init__(self):
+        super().__init__()
+
+    @property
+    def cpp_name(self):
+        return "fused_feedforward_pass"
+
+    def _type(self):
+        return PassType.FUSION_OPT
+
+
 @register_pass("fuse_gemm_epilogue")
 class FuseGemmEpiloguePass(CPPPassWrapper):
     def __init__(self):
@@ -92,6 +107,32 @@ class FuseGemmEpiloguePass(CPPPassWrapper):
     @property
     def cpp_name(self):
         return "fuse_gemm_epilogue_pass"
+
+    def _type(self):
+        return PassType.FUSION_OPT
+
+
+@register_pass("fuse_adamw")
+class FuseAdamWPass(CPPPassWrapper):
+    def __init__(self):
+        super().__init__()
+
+    @property
+    def cpp_name(self):
+        return "fuse_adamw_op_pass"
+
+    def _type(self):
+        return PassType.FUSION_OPT
+
+
+@register_pass("fuse_dot_product_attention")
+class FuseDotProductAttentionPass(CPPPassWrapper):
+    def __init__(self):
+        super().__init__()
+
+    @property
+    def cpp_name(self):
+        return "fuse_dot_product_attention_pass"
 
     def _type(self):
         return PassType.FUSION_OPT
@@ -127,6 +168,19 @@ class InplaceAddtoOpPass(CPPPassWrapper):
         return PassType.CALC_OPT
 
 
+@register_pass("fuse_resunit")
+class FuseResUnitPass(CPPPassWrapper):
+    def __init__(self):
+        super().__init__()
+
+    @property
+    def cpp_name(self):
+        return "fuse_resunit_pass"
+
+    def _type(self):
+        return PassType.FUSION_OPT
+
+
 def _set_cinn_op_flag(flag_name, extra_ops):
     values = core.globals()[flag_name]
     values = [v.strip() for v in values.split(";") if v.strip()]
@@ -149,7 +203,6 @@ class BuildCINNPass(CPPPassWrapper):
         return PassType.CALC_OPT
 
     def _apply_single_impl(self, main_program, startup_program, context):
-
         assert (
             'FLAGS_allow_cinn_ops' in core.globals()
         ), "PaddlePaddle is not compiled with CINN support"
@@ -175,7 +228,6 @@ class BuildCINNPass(CPPPassWrapper):
                 )
 
             else:
-
                 tmp_main_program = Executor._add_fetch_ops(
                     main_program, fetch_list, 'fetch'
                 )

@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,9 +19,13 @@
 #include "paddle/fluid/operators/controlflow/control_flow_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
+#include "paddle/fluid/platform/flags.h"
+
+PHI_DECLARE_bool(cache_inference_while_scope);
+
 namespace paddle {
 namespace framework {
 class InferShapeContext;
@@ -45,40 +49,6 @@ static std::string GetSkipEagerDeletionVarsDebugString(
     str.push_back(' ');
   }
   return str;
-}
-
-static void TransferVariablePlace(const framework::Scope *scope,
-                                  const std::string &var_name,
-                                  const phi::Place &dst_place,
-                                  const platform::DeviceContext &dev_ctx) {
-  framework::Variable *var = scope->FindVar(var_name);
-  if (var == nullptr) {
-    VLOG(4) << "[TransferVariablePlace]"
-            << "lost in_var: " << var_name;
-    return;
-  }
-  if (var->Type() != framework::proto::VarType::LOD_TENSOR) {
-    VLOG(10) << "[TransferVariablePlace]" << var_name << " type changed:"
-             << framework::TransToPhiDataType(
-                    framework::ToVarType(var->Type()));
-    return;
-  }
-  phi::DenseTensor *t = var->GetMutable<phi::DenseTensor>();
-  if (t->place() == dst_place) {
-    VLOG(10) << "[TransferVariablePlace]"
-             << "no need transfer: " << var_name;
-    return;
-  }
-
-  phi::DenseTensor *new_t = new phi::DenseTensor;
-  framework::TensorCopy(*t, dst_place, new_t);
-  dev_ctx.Wait();
-
-  t->set_meta(new_t->meta());
-  t->ResetHolder(new_t->Holder());
-
-  VLOG(4) << "[TransferVariablePlace]" << var_name
-          << " place: " << new_t->place();
 }
 
 }  // namespace
@@ -108,9 +78,9 @@ class WhileOp : public framework::OperatorBase {
             cond.numel(),
             ".\n"));
 
-#ifdef PADDLE_WITH_MKLDNN
-    // (jczaja) Executor on being destroyed clears oneDNN cache and
-    // resets registered model data layout. This is unwanted for nested
+#ifdef PADDLE_WITH_DNNL
+    // Executor on being destroyed clears oneDNN cache and resets
+    // registered model data layout. This is unwanted for nested
     // Executors (executors declared inside control ops)
     platform::DontClearMKLDNNCache(dev_place);
 #endif
@@ -120,7 +90,6 @@ class WhileOp : public framework::OperatorBase {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
 
-    auto *program = block->Program();
     bool is_test = Attr<bool>("is_test");
 
     std::set<std::string> no_copy_var_names;
@@ -155,7 +124,7 @@ class WhileOp : public framework::OperatorBase {
     auto step_scopes =
         scope.FindVar(Output(kStepScopes))->GetMutable<StepScopeVar>();
 
-    if (step_scopes->size() > 0) {
+    if (!step_scopes->empty()) {
       platform::DeviceContextPool::Instance().Get(dev_place)->Wait();
       for (auto &s : *step_scopes) {
         if (scope.HasKid(s)) {
@@ -199,27 +168,26 @@ class WhileOp : public framework::OperatorBase {
       }
     }
 
-    if (FLAGS_control_flow_use_new_executor) {
-      LOG_FIRST_N(INFO, 1) << "[ControlFlow][WhileOp] New Executor is Running.";
-      if (!core_ || !platform::is_same_place(core_->GetPlace(), dev_place)) {
-        framework::Scope placeholder;  // Don't care if it's valid, just for
-                                       // initialize InterpreterCore
-        framework::interpreter::ExecutionConfig execution_config;
-        execution_config.create_local_scope = false;
-        execution_config.used_for_control_flow_op = true;
-        execution_config.skip_gc_vars =
-            std::set<std::string>(skip_vars.begin(), skip_vars.end());
+    LOG_FIRST_N(INFO, 1) << "[ControlFlow][WhileOp] New Executor is Running.";
+    if (!core_ || !platform::is_same_place(core_->GetPlace(), dev_place)) {
+      framework::Scope placeholder;  // Don't care if it's valid, just for
+                                     // initialize InterpreterCore
+      framework::interpreter::ExecutionConfig execution_config;
+      execution_config.create_local_scope = false;
+      execution_config.used_for_control_flow_op = true;
+      execution_config.skip_gc_vars =
+          std::set<std::string>(skip_vars.begin(), skip_vars.end());
+// add for performance in gpugraph transformer mode
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_GPU_GRAPH)
+      execution_config.used_for_inference = true;
+#endif
 
-        core_.reset(new framework::InterpreterCore(
-            dev_place, *block, &placeholder, execution_config));
-      }
-    } else {
-      if (!executor_ ||
-          !platform::is_same_place(executor_->GetPlace(), dev_place)) {
-        executor_.reset(new framework::Executor(dev_place));
-        ctx_ = executor_->Prepare(*program, block->ID(), skip_vars);
-      }
+      core_.reset(new framework::InterpreterCore(
+          dev_place, *block, &placeholder, execution_config));
     }
+
+    core_->SetOutputHooks(output_hookfuncs_);
+    core_->SetInputHooks(input_hookfuncs_);
 
     if (!is_test) {
       while (cond_data) {
@@ -244,22 +212,17 @@ class WhileOp : public framework::OperatorBase {
             }
           }
         }
-        if (FLAGS_control_flow_use_new_executor) {
-          BuildScopeForControlFlowOp(*core_, *block, &current_scope);
-          core_->reset_scope(&current_scope);
-          core_->Run({}, false);
 
-          // restore inputs place
-          for (const auto &n : input_var_original_places) {
-            const std::string &in_name = n.first;
-            const phi::Place &original_place = n.second;
-            // input vars exist in `scope` not `current_scope`
-            TransferVariablePlace(&scope, in_name, original_place, dev_ctx);
-          }
+        BuildScopeForControlFlowOp(*core_, *block, &current_scope);
+        core_->reset_scope(&current_scope);
+        core_->Run({}, false);
 
-        } else {
-          executor_->RunPreparedContext(
-              ctx_.get(), &current_scope, false, true, true);
+        // restore inputs place
+        for (const auto &n : input_var_original_places) {
+          const std::string &in_name = n.first;
+          const phi::Place &original_place = n.second;
+          // input vars exist in `scope` not `current_scope`
+          TransferVariablePlace(&scope, in_name, original_place, dev_ctx);
         }
 
         for (auto &var_rename : rename_vars) {
@@ -271,18 +234,23 @@ class WhileOp : public framework::OperatorBase {
             scope.FindVar(Input(kCondition))->Get<phi::DenseTensor>());
       }
     } else {
-      auto &current_scope = scope.NewScope();
-
-      if (FLAGS_control_flow_use_new_executor) {
-        BuildScopeForControlFlowOp(*core_, *block, &current_scope);
-        core_->reset_scope(&current_scope);
+      framework::Scope *current_scope = nullptr;
+      if (!FLAGS_cache_inference_while_scope) {
+        current_scope = &(scope.NewScope());
+        BuildScopeForControlFlowOp(*core_, *block, current_scope);
+        core_->reset_scope(current_scope);
       } else {
-        executor_->CreateVariables(*program, &current_scope, block->ID());
+        if (cached_inference_scope_ == nullptr) {
+          cached_inference_scope_ = &(scope.NewScope());
+          BuildScopeForControlFlowOp(*core_, *block, cached_inference_scope_);
+          core_->reset_scope(cached_inference_scope_);
+        }
+        current_scope = cached_inference_scope_;
       }
 
       while (cond_data) {
-        for (auto &name : current_scope.LocalVarNames()) {
-          auto *var = current_scope.Var(name);
+        for (auto &name : current_scope->LocalVarNames()) {
+          auto *var = current_scope->Var(name);
           if (var->IsType<phi::DenseTensor>()) {
             // Clear all lod information for all lod_tensors.
             auto *t = var->GetMutable<phi::DenseTensor>();
@@ -295,18 +263,15 @@ class WhileOp : public framework::OperatorBase {
           }
         }
 
-        if (FLAGS_control_flow_use_new_executor) {
-          core_->Run({}, false);
-        } else {
-          executor_->RunPreparedContext(
-              ctx_.get(), &current_scope, false, false, false);
-        }
+        core_->Run({}, false);
 
         cond_data = GetCondData(
             scope.FindVar(Input(kCondition))->Get<phi::DenseTensor>());
       }
 
-      scope.DeleteScope(&current_scope);
+      if (!FLAGS_cache_inference_while_scope) {
+        scope.DeleteScope(current_scope);
+      }
     }
   }
 
@@ -314,6 +279,7 @@ class WhileOp : public framework::OperatorBase {
   mutable std::shared_ptr<framework::Executor> executor_{nullptr};
   mutable std::unique_ptr<framework::ExecutorPrepareContext> ctx_{nullptr};
   mutable std::shared_ptr<framework::InterpreterCore> core_{nullptr};
+  mutable framework::Scope *cached_inference_scope_{nullptr};
 };
 
 class WhileOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -367,7 +333,6 @@ class WhileGradOp : public framework::OperatorBase {
     auto &dev_ctx = *pool.Get(dev_place);
 
     auto *block = Attr<framework::BlockDesc *>(kStepBlock);
-    auto *program = block->Program();
     auto *parent_block = block->ParentBlock();
 
     auto &skip_vars = Attr<std::vector<std::string>>(kSkipEagerDeletionVars);
@@ -391,28 +356,20 @@ class WhileGradOp : public framework::OperatorBase {
                           outside_og_names.size(),
                           inside_og_names.size()));
 
-    if (FLAGS_control_flow_use_new_executor) {
-      LOG_FIRST_N(INFO, 1)
-          << "[ControlFlow][WhileGradOp] New Executor is Running.";
-      if (!core_ || !platform::is_same_place(core_->GetPlace(), dev_place)) {
-        std::set<std::string> skip_gc_vars(skip_vars.begin(), skip_vars.end());
-        framework::Scope placeholder;  // Don't care if it's valid, just for
-                                       // initialize InterpreterCore
-        framework::interpreter::ExecutionConfig execution_config;
-        execution_config.create_local_scope = false;
-        execution_config.used_for_control_flow_op = true;
-        execution_config.skip_gc_vars =
-            std::set<std::string>(skip_vars.begin(), skip_vars.end());
+    LOG_FIRST_N(INFO, 1)
+        << "[ControlFlow][WhileGradOp] New Executor is Running.";
+    if (!core_ || !platform::is_same_place(core_->GetPlace(), dev_place)) {
+      std::set<std::string> skip_gc_vars(skip_vars.begin(), skip_vars.end());
+      framework::Scope placeholder;  // Don't care if it's valid, just for
+                                     // initialize InterpreterCore
+      framework::interpreter::ExecutionConfig execution_config;
+      execution_config.create_local_scope = false;
+      execution_config.used_for_control_flow_op = true;
+      execution_config.skip_gc_vars =
+          std::set<std::string>(skip_vars.begin(), skip_vars.end());
 
-        core_.reset(new framework::InterpreterCore(
-            dev_place, *block, &placeholder, execution_config));
-      }
-    } else {
-      if (!executor_ ||
-          !platform::is_same_place(executor_->GetPlace(), dev_place)) {
-        executor_.reset(new framework::Executor(dev_place));
-        ctx_ = executor_->Prepare(*program, block->ID(), skip_vars);
-      }
+      core_.reset(new framework::InterpreterCore(
+          dev_place, *block, &placeholder, execution_config));
     }
 
     for (auto cur_scope_iter = step_scopes->rbegin();
@@ -444,10 +401,10 @@ class WhileGradOp : public framework::OperatorBase {
             auto shape = var_desc->GetShape();
             VLOG(8) << "Found uninitialized tensor " << outside_og_name
                     << " in step 0, fill it with 0.0f. dims="
-                    << phi::make_ddim(shape);
+                    << common::make_ddim(shape);
             framework::AttributeMap attrs;
             attrs["dtype"] = var_desc->GetDataType();
-            attrs["shape"] = phi::vectorize<int>(phi::make_ddim(shape));
+            attrs["shape"] = common::vectorize<int>(common::make_ddim(shape));
             attrs["value"] = 0.0f;
 
             auto var_name = outside_og_name;
@@ -504,14 +461,9 @@ class WhileGradOp : public framework::OperatorBase {
         }
       }
 
-      if (FLAGS_control_flow_use_new_executor) {
-        BuildScopeForControlFlowOp(*core_, *block, *cur_scope_iter);
-        core_->reset_scope(*cur_scope_iter);
-        core_->Run({}, false);
-      } else {
-        executor_->RunPreparedContext(
-            ctx_.get(), *cur_scope_iter, false, true, true);
-      }
+      BuildScopeForControlFlowOp(*core_, *block, *cur_scope_iter);
+      core_->reset_scope(*cur_scope_iter);
+      core_->Run({}, false);
 
       // The Outputs(kXGRAD) contains the names of the gradient of parameters
       // and inputs.
@@ -593,7 +545,7 @@ class WhileGradOp : public framework::OperatorBase {
             framework::AttributeMap attrs;
             attrs["dtype"] =
                 framework::TransToProtoVarType(inside_tensor.dtype());
-            attrs["shape"] = phi::vectorize<int>(inside_tensor.dims());
+            attrs["shape"] = common::vectorize<int>(inside_tensor.dims());
             attrs["value"] = 0.0f;
 
             auto var_name = pg_ig_names[param_id];

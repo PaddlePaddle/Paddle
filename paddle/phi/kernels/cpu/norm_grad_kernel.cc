@@ -28,8 +28,8 @@ void NormGradKernel(const Context& ctx,
                     const DenseTensor& norm,
                     const DenseTensor& out_grad,
                     int axis,
-                    float epsilon,
-                    bool is_test,
+                    float epsilon UNUSED,
+                    bool is_test UNUSED,
                     DenseTensor* x_grad) {
   auto* in_x = &x;
   auto* in_dy = &out_grad;
@@ -40,7 +40,7 @@ void NormGradKernel(const Context& ctx,
 
   auto xdim = in_x->dims();
   if (axis < 0) axis = xdim.size() + axis;
-  int pre, n, post;
+  int pre = 0, n = 0, post = 0;
   funcs::GetPrePostNumel(xdim, axis, &pre, &n, &post);
 
   auto* place = ctx.eigen_device();

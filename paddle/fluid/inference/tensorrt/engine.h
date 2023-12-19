@@ -14,8 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <NvInfer.h>
-
 #include <cstdint>
 #include <map>
 #include <memory>
@@ -25,24 +23,23 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
+#include <NvInfer.h>
 #include "NvInferRuntimeCommon.h"
-#include "paddle/fluid/framework/lod_tensor.h"
+
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/inference/api/paddle_analysis_config.h"
-#include "paddle/fluid/inference/engine.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
-#include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 #include "paddle/fluid/inference/utils/singleton.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/stream.h"
-#include "paddle/utils/any.h"
 
-DECLARE_bool(trt_ibuilder_cache);
+PHI_DECLARE_bool(trt_ibuilder_cache);
 
 namespace paddle {
 namespace inference {
@@ -52,130 +49,65 @@ namespace plugin {
 class PluginTensorRT;
 }  // namespace plugin
 
-using FluidDT = framework::proto::VarType_Type;
-using TRT_DT = nvinfer1::DataType;
-
-namespace {  // NOLINT
-
-TRT_DT FluidDataType2TRT(FluidDT type) {
-  switch (type) {
-    case FluidDT::VarType_Type_FP32:
-      return TRT_DT::kFLOAT;
-    case FluidDT::VarType_Type_INT32:
-    case FluidDT::VarType_Type_INT64:
-      return TRT_DT::kINT32;
-    case FluidDT::VarType_Type_FP16:
-      return TRT_DT::kHALF;
-#if IS_TRT_VERSION_GE(8400)
-    case FluidDT::VarType_Type_BOOL:
-      return TRT_DT::kBOOL;
-#endif
-    default:
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "unknown fluid datatype in TRT op converter"));
-  }
-  return TRT_DT::kINT32;
-}
-
-// The T can be int32 or int64 type.
-template <typename T>
-nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape,
-                            std::string input,
-                            bool with_dynamic_shape = false) {
-  PADDLE_ENFORCE_GT(shape.size(),
-                    0UL,
-                    platform::errors::InvalidArgument(
-                        "TensorRT's tensor input requires at least 1 "
-                        "dimensions, but input %s has %d dims.",
-                        input,
-                        shape.size()));
-
-  auto ShapeStr = [](const std::vector<T>& shape) {
-    std::ostringstream os;
-    os << "[";
-    for (size_t i = 0; i < shape.size(); ++i) {
-      if (i == shape.size() - 1) {
-        os << shape[i];
-      } else {
-        os << shape[i] << ",";
-      }
-    }
-    os << "]";
-    return os.str();
-  };
-  if (!with_dynamic_shape) {
-    if (shape.size() == 4UL) {
-      if (shape[2] == -1 || shape[3] == -1) {
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "The input [%s] shape of trt subgraph is %s, please enable "
-            "trt dynamic_shape mode by SetTRTDynamicShapeInfo.",
-            input,
-            ShapeStr(shape)));
-      }
-      return nvinfer1::Dims3(shape[1], shape[2], shape[3]);
-    } else if (shape.size() == 5UL) {
-      if (shape[2] == -1 || shape[3] == -1 || shape[4] == -1) {
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "The input [%s] shape of trt subgraph is %s, please enable "
-            "trt dynamic_shape mode by SetTRTDynamicShapeInfo.",
-            input,
-            ShapeStr(shape)));
-      }
-      return nvinfer1::Dims4(shape[1], shape[2], shape[3], shape[4]);
-    } else if (shape.size() == 3UL) {
-      if (shape[1] == -1 || shape[2] == -1) {
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "The input [%s] shape of trt subgraph is %s, please enable "
-            "trt dynamic_shape mode by SetTRTDynamicShapeInfo.",
-            input,
-            ShapeStr(shape)));
-      }
-      return nvinfer1::Dims2(shape[1], shape[2]);
-    } else if (shape.size() == 2UL) {
-      if (shape[1] == -1) {
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "The input [%s] shape of trt subgraph is %s, please enable "
-            "trt dynamic_shape mode by SetTRTDynamicShapeInfo.",
-            input,
-            ShapeStr(shape)));
-      }
-      nvinfer1::Dims dims;
-      dims.nbDims = 1;
-      dims.d[0] = shape[1];
-      return dims;
-    }
-    // static shape doesn't support 1D op so far.
-    PADDLE_ENFORCE_NE(shape.size(),
-                      1UL,
-                      platform::errors::InvalidArgument(
-                          "The input [%s] shape of trt subgraph is %s."
-                          "it's not supported by trt so far",
-                          input,
-                          ShapeStr(shape)));
-
-    nvinfer1::Dims dims;
-    dims.nbDims = shape.size() - 1;
-    for (size_t i = 1; i < shape.size(); i++) {
-      dims.d[i - 1] = shape[i];
-    }
-    return dims;
-  } else {
-    if (shape.size() == 4UL) {
-      return nvinfer1::Dims4(shape[0], shape[1], shape[2], shape[3]);
-    } else if (shape.size() == 3UL) {
-      return nvinfer1::Dims3(shape[0], shape[1], shape[2]);
-    }
-    nvinfer1::Dims dims;
-    dims.nbDims = shape.size();
-    for (size_t i = 0; i < shape.size(); i++) {
-      dims.d[i] = shape[i];
-    }
-    return dims;
-  }
-}
-}  // namespace
-
 class TRTInt8Calibrator;
+
+// The code is mainly from TensorRT, thanks to the project.
+class TrtCudaGraph {
+ public:
+  TrtCudaGraph() = default;
+  ~TrtCudaGraph() {
+    if (cuda_graph_exec_) {
+      cudaGraphExecDestroy(cuda_graph_exec_);
+    }
+  }
+
+  void BeginCapture(cudaStream_t stream) {
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cudaStreamBeginCapture(stream, cudaStreamCaptureModeThreadLocal));
+  }
+
+  bool Launch(cudaStream_t stream) {
+    return cudaGraphLaunch(cuda_graph_exec_, stream);
+  }
+
+  void EndCapture(cudaStream_t stream) {
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamEndCapture(stream, &cuda_graph_));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaGraphInstantiate(
+        &cuda_graph_exec_, cuda_graph_, nullptr, nullptr, 0));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaGraphDestroy(cuda_graph_));
+  }
+
+  void EndCaptureOnError(cudaStream_t stream) {
+    // There are two possibilities why stream capture would fail:
+    // (1) stream is in cudaErrorStreamCaptureInvalidated state.
+    // (2) TRT reports a failure.
+    // In case (1), the returning cuda_graph_ should be nullptr.
+    // In case (2), the returning cuda_graph_ is not nullptr, but it should not
+    // be used.
+    const auto ret = cudaStreamEndCapture(stream, &cuda_graph_);
+    if (ret == cudaErrorStreamCaptureInvalidated) {
+      PADDLE_ENFORCE_EQ(cuda_graph_ == nullptr,
+                        true,
+                        platform::errors::PreconditionNotMet(
+                            "CudaGraph capture stream failed."));
+    } else {
+      PADDLE_ENFORCE_GPU_SUCCESS(ret);
+      PADDLE_ENFORCE_NOT_NULL(
+          cuda_graph_,
+          phi::errors::PreconditionNotMet("CudaGraph capture stream failed."));
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaGraphDestroy(cuda_graph_));
+      cuda_graph_ = nullptr;
+    }
+    // Clean up any cuda error.
+    cudaGetLastError();
+    LOG(WARNING) << "The TRT CUDA graph capture on the stream has failed.";
+  }
+
+ private:
+  DISABLE_COPY_AND_ASSIGN(TrtCudaGraph);
+  cudaGraph_t cuda_graph_{};
+  cudaGraphExec_t cuda_graph_exec_{};
+};
 
 /*
  * TensorRT Engine.
@@ -189,10 +121,61 @@ class TensorRTEngine {
   using PredictorID = int;
 
  public:
+  /*
+   * Construction parameters of TensorRTEngine.
+   */
+  struct ConstructionParams {
+    // The max batch size.
+    int32_t max_batch_size;
+
+    // The max memory size the engine uses.
+    int64_t max_workspace_size;
+
+    // The precision of engine.
+    phi::DataType precision{phi::DataType::FLOAT32};
+
+    TRTInt8Calibrator* calibrator{nullptr};
+
+    // Use for engine context memory sharing.
+    bool context_memory_sharing{false};
+
+    int device_id{0};
+
+    bool with_dynamic_shape{false};
+
+    bool use_dla{false};
+    int dla_core{0};
+
+    ShapeMapType min_input_shape;
+    ShapeMapType max_input_shape;
+    ShapeMapType optim_input_shape;
+    ShapeMapType min_shape_tensor;
+    ShapeMapType max_shape_tensor;
+    ShapeMapType optim_shape_tensor;
+
+    bool use_inspector{false};
+    std::string engine_info_path{""};
+
+    //
+    // From tensorrt_subgraph_pass, only used for OpConverter.
+    //
+    bool use_varseqlen{false};
+    bool with_interleaved{false};
+    std::string tensorrt_transformer_posid;
+    std::string tensorrt_transformer_maskid;
+    bool enable_low_precision_io{false};
+    // Setting the disable_trt_plugin_fp16 to true means that TRT plugin will
+    // not run fp16. When running fp16, the output accuracy of the model will be
+    // affected, closing the plugin fp16 may bring some improvement on accuracy.
+    bool disable_trt_plugin_fp16{false};
+    int optimization_level{3};
+    bool use_explicit_quantization{false};
+  };
+
   // Weight is model parameter.
   class Weight {
    public:
-    Weight() = default;
+    Weight() { w_ = nvinfer1::Weights{}; }
     Weight(nvinfer1::DataType dtype, void* value, size_t num_elem) {
       w_.type = dtype;
       w_.values = value;
@@ -214,71 +197,14 @@ class TensorRTEngine {
     nvinfer1::Weights w_;
   };
 
-  TensorRTEngine(
-      int max_batch,
-      int64_t max_workspace,
-      AnalysisConfig::Precision precision = AnalysisConfig::Precision::kFloat32,
-      TRTInt8Calibrator* calibrator = nullptr,
-      int device_id = 0,
-      const ShapeMapType min_input_shape = {},
-      const ShapeMapType max_input_shape = {},
-      const ShapeMapType optim_input_shape = {},
-      const ShapeMapType min_shape_tensor = {},
-      const ShapeMapType max_shape_tensor = {},
-      const ShapeMapType optim_shape_tensor = {},
-      bool disable_trt_plugin_fp16 = false,
-      phi::DataType model_precision = phi::DataType::FLOAT32,
-      nvinfer1::ILogger& logger = NaiveLogger::Global())
-      : max_batch_(max_batch),
-        max_workspace_(max_workspace),
-        precision_(precision),
-        calibrator_(calibrator),
-        device_id_(device_id),
-        min_input_shape_(min_input_shape),
-        max_input_shape_(max_input_shape),
-        optim_input_shape_(optim_input_shape),
-        min_shape_tensor_(min_shape_tensor),
-        max_shape_tensor_(max_shape_tensor),
-        optim_shape_tensor_(optim_shape_tensor),
-        disable_trt_plugin_fp16_(disable_trt_plugin_fp16),
-        model_precision_(model_precision),
-        logger_(logger) {
-    if (min_input_shape_.size() != 0 && max_input_shape_.size() != 0 &&
-        optim_input_shape_.size() != 0) {
-      PADDLE_ENFORCE_EQ(
-          min_input_shape_.size(),
-          max_input_shape_.size(),
-          platform::errors::InvalidArgument(
-              "The min_input_shape_'s size(%d) should be equal to the "
-              "size(%d) of max_input_shape_",
-              min_input_shape_.size(),
-              max_input_shape_.size()));
-      PADDLE_ENFORCE_EQ(
-          min_input_shape_.size(),
-          optim_input_shape_.size(),
-          platform::errors::InvalidArgument(
-              "The min_input_shape_'s size(%d) should be equal to the "
-              "size(%d) of optim_input_shape_",
-              min_input_shape_.size(),
-              optim_input_shape_.size()));
-#if IS_TRT_VERSION_GE(6000)
-      with_dynamic_shape_ = true;
-#else
-      LOG(WARNING) << "Using dynamic shape of TRT need ensure that the TRT "
-                      "version should be at least 6.";
-#endif
-    }
-    dy::initLibNvInferPlugins(&logger, "");
-  }
-
-  ~TensorRTEngine() {
-    for (auto& attr : attrs_) {
-      if (attr_dels_.find(attr.first) != attr_dels_.end()) {
-        attr_dels_[attr.first]();
-      }
-    }
-    attrs_.clear();
-    attr_dels_.clear();
+  TensorRTEngine(const ConstructionParams& params,
+                 nvinfer1::ILogger& logger = NaiveLogger::Global())
+      : params_(params), logger_(logger) {
+    dy::initLibNvInferPlugins(&logger_, "");
+    static std::once_flag trt_plugin_registered;
+    std::call_once(trt_plugin_registered, []() {
+      tensorrt::plugin::TrtPluginRegistry::Global()->RegistToTrt();
+    });
   }
 
   // Add an input and set its name, data type and dimension.
@@ -307,15 +233,6 @@ class TensorRTEngine {
 
   nvinfer1::ICudaEngine* engine() { return infer_engine_.get(); }
   nvinfer1::IExecutionContext* context();
-
-  int GetProfileIndex() {
-    if (max_profile_num_ > 1) {
-      std::unique_lock<std::mutex> lock(mutex_);
-      return profile_index_[predictor_id_per_thread];
-    } else {
-      return 0;
-    }
-  }
 
   int GetBindingsOffset() {
     return (binding_num_ / max_profile_num_) * GetProfileIndex();
@@ -352,22 +269,19 @@ class TensorRTEngine {
 
   void Deserialize(const std::string& engine_serialized_data);
 
-  void SetRuntimeBatch(size_t batch_size);
-  int GetRuntimeBatch();
-
   bool WithFp16() {
-    bool enable_fp16 = (precision_ == AnalysisConfig::Precision::kHalf);
+    bool enable_fp16 = (precision() == phi::DataType::FLOAT16);
     bool support_fp16 = infer_builder_->platformHasFastFp16();
-    return enable_fp16 && support_fp16;
+    // below is consistent with setFlag in engine.cc
+    bool fall_back_fp16 = WithInt8() && !use_dla();
+    return (enable_fp16 || fall_back_fp16) && support_fp16;
   }
 
   bool WithInt8() {
-    bool enable_int8 = (precision_ == AnalysisConfig::Precision::kInt8);
+    bool enable_int8 = (precision() == phi::DataType::INT8);
     bool support_int8 = infer_builder_->platformHasFastInt8();
     return enable_int8 && support_int8;
   }
-
-  int GetDeviceId() { return device_id_; }
 
   nvinfer1::IPluginV2Layer* AddPlugin(nvinfer1::ITensor* const* inputs,
                                       int num_inputs,
@@ -405,6 +319,14 @@ class TensorRTEngine {
     return quant_dynamic_range_.count(tensor);
   }
 
+  void SetRunFloat(const std::unordered_set<std::string>& ops) {
+    trt_ops_run_float_ = ops;
+  }
+
+  bool OpIsRunFloat(const std::string& op) const {
+    return trt_ops_run_float_.count(op) > 0;
+  }
+
   // A pointer to CPU memory is needed of the TRT weight.
   // Before TRT runs, fluid loads weight into GPU storage.
   // so we need to copy the weights from GPU to CPU in our op converter.
@@ -431,19 +353,6 @@ class TensorRTEngine {
     suffix_counter += 1;
   }
 
-  void SetUseOSS(bool use_varseqlen) { use_varseqlen_ = use_varseqlen; }
-  void SetUseDLA(bool use_dla) { use_dla_ = use_dla; }
-  void SetDLACore(int dla_core) { dla_core_ = dla_core; }
-  void SetWithErnie(bool with_ernie) { with_ernie_ = with_ernie; }
-  void SetWithInterleaved(bool with_interleaved) {
-    with_interleaved_ = with_interleaved;
-  }
-  void SetTransformerPosid(std::string tensorrt_transformer_posid) {
-    tensorrt_transformer_posid_ = tensorrt_transformer_posid;
-  }
-  void SetTransformerMaskid(std::string tensorrt_transformer_maskid) {
-    tensorrt_transformer_maskid_ = tensorrt_transformer_maskid;
-  }
   void ClearWeights() {
     for (auto& weight_pair : weight_map) {
       weight_pair.second.reset(nullptr);
@@ -461,80 +370,150 @@ class TensorRTEngine {
                std::vector<void*>* buffers,
                cudaStream_t stream = nullptr);
 
+  bool Enqueue(nvinfer1::IExecutionContext* context,
+               std::vector<void*>* buffers,
+               int batch,
+               cudaStream_t stream);
+
   nvinfer1::INetworkDefinition* network() { return infer_network_.get(); }
 
-  ShapeMapType min_input_shape() { return min_input_shape_; }
-  ShapeMapType max_input_shape() { return max_input_shape_; }
-  ShapeMapType optim_input_shape() { return optim_input_shape_; }
-  ShapeMapType min_shape_tensor() { return min_shape_tensor_; }
-  ShapeMapType max_shape_tensor() { return max_shape_tensor_; }
-  ShapeMapType optim_shape_tensor() { return optim_shape_tensor_; }
+  ShapeMapType& min_input_shape() { return params_.min_input_shape; }
+  ShapeMapType& max_input_shape() { return params_.max_input_shape; }
+  ShapeMapType& optim_input_shape() { return params_.optim_input_shape; }
+  ShapeMapType& min_shape_tensor() { return params_.min_shape_tensor; }
+  ShapeMapType& max_shape_tensor() { return params_.max_shape_tensor; }
+  ShapeMapType& optim_shape_tensor() { return params_.optim_shape_tensor; }
 
   bool AdjustDynamicShapeRange(const ShapeMapType& runtime_input_shape,
-                               std::vector<std::string>* changed) {
+                               const ShapeMapType& runtime_shape_tensor,
+                               std::vector<std::string>* changed,
+                               std::vector<std::string>* tensor_changed) {
     bool ret = false;
     changed->clear();
+    tensor_changed->clear();
     for (const auto& it : runtime_input_shape) {
       auto name = it.first;
       auto input_shape = it.second;
-      PADDLE_ENFORCE_EQ(
-          min_input_shape_.count(name),
-          true,
-          platform::errors::InvalidArgument(
-              "TRT dynamic_shape min_input_shape %s not found.", name));
-      PADDLE_ENFORCE_EQ(min_input_shape_[name].size(),
-                        input_shape.size(),
-                        platform::errors::InvalidArgument(
-                            "TRT dynamic_shape min_input_shape %s size not "
-                            "equal, the min_input_shape[%s].size()=%d"
-                            ", but the runtime_input_shape[%s].size()=%d.",
-                            name,
-                            name,
-                            min_input_shape_[name].size(),
-                            name,
-                            input_shape.size()));
-      auto bak_min_shape = min_input_shape_[name];
-      auto bak_max_shape = max_input_shape_[name];
+      // Make 0-D tensor to 1-D tensor.
+      if (input_shape.empty()) {
+        input_shape.push_back(1);
+      }
       bool min_change = false;
       bool max_change = false;
-      for (size_t d = 0; d < input_shape.size(); ++d) {
-        if (input_shape[d] < min_input_shape_[name][d]) {
-          ret = true;
-          min_change = true;
-          min_input_shape_[name][d] = input_shape[d];
-        }
-        if (input_shape[d] > max_input_shape_[name][d]) {
-          ret = true;
-          max_change = true;
-          max_input_shape_[name][d] = input_shape[d];
+      std::vector<int> bak_min_shape;
+      std::vector<int> bak_max_shape;
+      if (!params_.min_input_shape.count(name)) {
+        params_.min_input_shape[name] = input_shape;
+        params_.max_input_shape[name] = input_shape;
+        params_.optim_input_shape[name] = input_shape;
+        min_change = true;
+        max_change = true;
+        ret = true;
+      } else {
+        PADDLE_ENFORCE_EQ(params_.min_input_shape[name].size(),
+                          input_shape.size(),
+                          platform::errors::InvalidArgument(
+                              "TRT dynamic_shape min_input_shape %s size not "
+                              "equal, the min_input_shape[%s].size()=%d"
+                              ", but the runtime_input_shape[%s].size()=%d.",
+                              name,
+                              name,
+                              params_.min_input_shape[name].size(),
+                              name,
+                              input_shape.size()));
+
+        bak_min_shape = params_.min_input_shape[name];
+        bak_max_shape = params_.max_input_shape[name];
+        for (size_t d = 0; d < input_shape.size(); ++d) {
+          if (input_shape[d] < params_.min_input_shape[name][d]) {
+            ret = true;
+            min_change = true;
+            params_.min_input_shape[name][d] = input_shape[d];
+          }
+          if (input_shape[d] > params_.max_input_shape[name][d]) {
+            ret = true;
+            max_change = true;
+            params_.max_input_shape[name][d] = input_shape[d];
+          }
         }
       }
-
       if (min_change)
-        LOG(INFO) << "refactor shape range: " << name << ", min_shape from "
-                  << Vec2Str(bak_min_shape) << " to "
-                  << Vec2Str(min_input_shape_[name]);
+        LOG(INFO) << "refactor tensor shape range: " << name
+                  << ", min_shape from " << Vec2Str(bak_min_shape) << " to "
+                  << Vec2Str(params_.min_input_shape[name]);
       if (max_change)
-        LOG(INFO) << "refactor shape range: " << name << ", max_shape from "
-                  << Vec2Str(bak_max_shape) << " to "
-                  << Vec2Str(max_input_shape_[name]);
+        LOG(INFO) << "refactor tensor shape range: " << name
+                  << ", max_shape from " << Vec2Str(bak_max_shape) << " to "
+                  << Vec2Str(params_.max_input_shape[name]);
       if (min_change || max_change) changed->push_back(name);
+    }
+    for (const auto& it : runtime_shape_tensor) {
+      auto name = it.first;
+      auto shape_tensor = it.second;
+      bool min_change = false;
+      bool max_change = false;
+      std::vector<int> bak_min_shape;
+      std::vector<int> bak_max_shape;
+      if (!params_.min_shape_tensor.count(name)) {
+        params_.min_shape_tensor[name] = shape_tensor;
+        params_.max_shape_tensor[name] = shape_tensor;
+        params_.optim_shape_tensor[name] = shape_tensor;
+        min_change = true;
+        max_change = true;
+        ret = true;
+      } else {
+        PADDLE_ENFORCE_EQ(params_.min_shape_tensor[name].size(),
+                          shape_tensor.size(),
+                          platform::errors::InvalidArgument(
+                              "TRT dynamic_shape min_shape_tensor %s size not "
+                              "equal, the min_shape_tensor[%s].size()=%d"
+                              ", but the runtime_shape_tensor[%s].size()=%d.",
+                              name,
+                              name,
+                              params_.min_shape_tensor[name].size(),
+                              name,
+                              shape_tensor.size()));
+
+        bak_min_shape = params_.min_shape_tensor[name];
+        bak_max_shape = params_.max_shape_tensor[name];
+        for (size_t d = 0; d < shape_tensor.size(); ++d) {
+          if (shape_tensor[d] < params_.min_shape_tensor[name][d]) {
+            ret = true;
+            min_change = true;
+            params_.min_shape_tensor[name][d] = shape_tensor[d];
+          }
+          if (shape_tensor[d] > params_.max_shape_tensor[name][d]) {
+            ret = true;
+            max_change = true;
+            params_.max_shape_tensor[name][d] = shape_tensor[d];
+          }
+        }
+      }
+      if (min_change)
+        LOG(INFO) << "refactor shape tensor range: " << name
+                  << ", min_shape from " << Vec2Str(bak_min_shape) << " to "
+                  << Vec2Str(params_.min_shape_tensor[name]);
+      if (max_change)
+        LOG(INFO) << "refactor shape tensor range: " << name
+                  << ", max_shape from " << Vec2Str(bak_max_shape) << " to "
+                  << Vec2Str(params_.max_shape_tensor[name]);
+      if (min_change || max_change) tensor_changed->push_back(name);
     }
     return ret;
   }
 
-  bool use_varseqlen() { return use_varseqlen_; }
-  bool with_ernie() { return with_ernie_; }
-  bool with_interleaved() { return with_interleaved_; }
-  std::string tensorrt_transformer_posid() {
-    return tensorrt_transformer_posid_;
+  bool use_varseqlen() { return params_.use_varseqlen; }
+  bool use_dla() { return params_.use_dla; }
+  bool with_interleaved() { return params_.with_interleaved; }
+  const std::string& tensorrt_transformer_posid() {
+    return params_.tensorrt_transformer_posid;
   }
-  std::string tensorrt_transformer_maskid() {
-    return tensorrt_transformer_maskid_;
+  const std::string& tensorrt_transformer_maskid() {
+    return params_.tensorrt_transformer_maskid;
   }
-  bool disable_trt_plugin_fp16() { return disable_trt_plugin_fp16_; }
-  bool with_dynamic_shape() { return with_dynamic_shape_; }
-  AnalysisConfig::Precision precision() { return precision_; }
+  bool disable_trt_plugin_fp16() { return params_.disable_trt_plugin_fp16; }
+  bool with_dynamic_shape() { return params_.with_dynamic_shape; }
+  phi::DataType precision() { return params_.precision; }
 
 #if IS_TRT_VERSION_GE(6000)
   nvinfer1::IPluginV2Layer* AddDynamicPlugin(
@@ -546,139 +525,54 @@ class TensorRTEngine {
   }
 #endif
 
-  bool Has(const std::string& attr_name) const {
-    return attrs_.count(attr_name) > 0;
-  }
-
-  void Erase(const std::string& attr_name) {
-    if (!Has(attr_name)) {
-      return;
-    }
-    if (attr_dels_.find(attr_name) != attr_dels_.end()) {
-      attr_dels_[attr_name]();
-      attr_dels_.erase(attr_name);
-    }
-    attrs_.erase(attr_name);
-  }
-
-  // Set a pointer to the attribute. Engine takes ownership of the attribute.
-  template <typename AttrType>
-  void Set(const std::string& attr_name, AttrType* attr) {
-    if (attrs_.count(attr_name) == 0) {
-      PADDLE_ENFORCE_EQ(
-          attrs_.count(attr_name),
-          0,
-          platform::errors::AlreadyExists(
-              "Attribute %s already set in trt engine.", attr_name));
-    } else {
-      VLOG(3) << "Setting the attribute " << attr_name << " for trt engine "
-              << this;
-    }
-    attrs_[attr_name] = attr;
-    attr_dels_[attr_name] = [attr, attr_name]() {
-      VLOG(3) << "deleting " << attr_name;
-      delete attr;
-    };
-  }
-
-  // Set a pointer to the attribute. Engine doesn't take ownership. Caller
-  // should delete the attribute.
-  template <typename AttrType>
-  void SetNotOwned(const std::string& attr_name, AttrType* attr) {
-    PADDLE_ENFORCE_EQ(
-        attrs_.count(attr_name),
-        0,
-        platform::errors::AlreadyExists(
-            "Attribute %s already set in trt engine.", attr_name));
-    attrs_[attr_name] = attr;
-  }
-
-  // Get a reference to the attributed previously set.
-  template <typename AttrType>
-  AttrType& Get(const std::string& attr_name) const {
-    PADDLE_ENFORCE_NE(attrs_.find(attr_name),
-                      attrs_.end(),
-                      platform::errors::InvalidArgument(
-                          "Attribute %s not found in trt engine.", attr_name));
-    try {
-      return *paddle::any_cast<AttrType*>(attrs_.at(attr_name));
-    } catch (paddle::bad_any_cast&) {
-      auto TypeToString = [](const std::type_info& info) -> std::string {
-        if (std::type_index(info) == std::type_index(typeid(bool*))) {
-          return "bool";
-        } else if (std::type_index(info) == std::type_index(typeid(int*))) {
-          return "int";
-        } else if (std::type_index(info) ==
-                   std::type_index(typeid(const int*))) {
-          return "const int";
-        } else if (std::type_index(info) ==
-                   std::type_index(typeid(std::string*))) {
-          return "std::string";
-        }
-        return info.name();
-      };
-
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Invalid type for attritube %s, expected: %s, actual: %s.",
-          attr_name,
-          TypeToString(typeid(AttrType*)),
-          TypeToString(attrs_.at(attr_name).type())));
-    }
-  }
-
   void SetProfileNum(int num) { max_profile_num_ = num; }
 
-  void GetEngineInfo();
+  void SetScope(const framework::Scope* scope) { scope_ = scope; }
 
-  void SetUseInspector(bool use_inspector) { use_inspector_ = use_inspector; }
-  void SetScope(const framework::Scope& scope) { scope_ = &scope; }
+  void SetAllNodesLowerToTrt(bool all_nodes_offload_to_trt) {
+    // all nodes are in trt, so we can use cudaGraph to optimize runtime.
+    startup_with_cudagraph_ = all_nodes_offload_to_trt;
+  }
 
-  void SetContextMemorySharing(bool context_memory_sharing) {
-    context_memory_sharing_ = context_memory_sharing;
+  bool LowPrecisionIOEnabled() const { return params_.enable_low_precision_io; }
+
+  bool use_explicit_quantization() const {
+    return params_.use_explicit_quantization;
   }
 
  private:
   // Each ICudaEngine object is bound to a specific GPU when it is instantiated,
   // ensure that the thread is associated with the correct device by calling
-  // freshDeviceId().
-  void freshDeviceId();
-  // Used for convert weight into Itensor
-  const framework::Scope* scope_;
+  // FreshDeviceId().
+  void FreshDeviceId();
 
-  // the max batch size
-  int max_batch_;
-  // the runtime batch size
-  static int runtime_batch_;
-  // the max memory size the engine uses
-  int64_t max_workspace_;
+  void GetEngineInfo(const std::string& engine_info_path);
 
-  AnalysisConfig::Precision precision_;
-  TRTInt8Calibrator* calibrator_;
-  // batch size of the current data, will be updated each Executation.
-  int batch_size_{-1};
+  int device_id() { return params_.device_id; }
 
-  // use for engine context memory sharing
-  bool context_memory_sharing_{false};
+  int GetProfileIndex() {
+    if (max_profile_num_ > 1) {
+      std::unique_lock<std::mutex> lock(mutex_);
+      return profile_index_[predictor_id_per_thread];
+    } else {
+      return 0;
+    }
+  }
 
-  int device_id_;
+ private:
+  //
+  // Construction parameters.
+  //
+  ConstructionParams params_;
+
+  //
+  // The following are runtime parameters.
+  //
+
   int max_profile_num_{1};
   int cur_profile_num_{0};
   std::unordered_map<PredictorID, int> profile_index_;
-  ShapeMapType min_input_shape_;
-  ShapeMapType max_input_shape_;
-  ShapeMapType optim_input_shape_;
-  ShapeMapType min_shape_tensor_;
-  ShapeMapType max_shape_tensor_;
-  ShapeMapType optim_shape_tensor_;
-  bool disable_trt_plugin_fp16_{false};
-  phi::DataType model_precision_{phi::DataType::FLOAT32};
-  bool use_varseqlen_{false};
-  bool use_dla_{false};
-  int dla_core_{0};
-  bool with_ernie_{false};
-  bool with_interleaved_{false};
-  std::string tensorrt_transformer_posid_;
-  std::string tensorrt_transformer_maskid_;
+
   nvinfer1::ILogger& logger_;
 
   // max data size for the buffers.
@@ -692,17 +586,24 @@ class TensorRTEngine {
   // TensorRT related internal members
   infer_ptr<nvinfer1::IBuilder> infer_builder_;
   infer_ptr<nvinfer1::INetworkDefinition> infer_network_;
+  infer_ptr<nvinfer1::IRuntime> infer_runtime_;
   infer_ptr<nvinfer1::ICudaEngine> infer_engine_;
   std::unordered_map<PredictorID, infer_ptr<nvinfer1::IExecutionContext>>
       infer_context_;
   infer_ptr<nvinfer1::IHostMemory> ihost_memory_;
   std::unordered_map<nvinfer1::ITensor*, float> quant_dynamic_range_;
 
-  std::unordered_map<std::string, paddle::any> attrs_;
-  std::unordered_map<std::string, std::function<void(void)>> attr_dels_;
+  // cudagraph related
+  TrtCudaGraph cuda_graph_;
+  bool cudagraph_inited_{false};
+  bool startup_with_cudagraph_{false};
 
-  // For dynamic shape
-  bool with_dynamic_shape_{false};
+  // Used for convert weight into Itensor
+  const framework::Scope* scope_{nullptr};
+
+  // specify run on float to avoid overflow
+  std::unordered_set<std::string> trt_ops_run_float_;
+
 #if IS_TRT_VERSION_GE(6000)
   int binding_num_;
   infer_ptr<nvinfer1::IBuilderConfig> infer_builder_config_;
@@ -710,7 +611,6 @@ class TensorRTEngine {
   std::vector<std::unique_ptr<plugin::DynamicPluginTensorRT>> owned_pluginv2_;
 #endif
   std::mutex mutex_;
-  bool use_inspector_;
 
  public:
   thread_local static int predictor_id_per_thread;
@@ -745,7 +645,7 @@ class TRTEngineManager {
 
   bool Empty() const {
     std::lock_guard<std::mutex> lock(mutex_);
-    return engines_.size() == 0;
+    return engines_.empty();
   }
 
   bool Has(const std::string& name) const {
@@ -759,39 +659,13 @@ class TRTEngineManager {
     return engines_.at(name).get();
   }
 
-  TensorRTEngine* Create(
-      std::string name,
-      int max_batch,
-      int64_t max_workspace,
-      AnalysisConfig::Precision precision = AnalysisConfig::Precision::kFloat32,
-      TRTInt8Calibrator* calibrator = nullptr,
-      int device_id = 0,
-      const std::map<std::string, std::vector<int>> min_input_shape = {},
-      const std::map<std::string, std::vector<int>> max_input_shape = {},
-      const std::map<std::string, std::vector<int>> optim_input_shape = {},
-      const std::map<std::string, std::vector<int>> min_shape_tensor = {},
-      const std::map<std::string, std::vector<int>> max_shape_tensor = {},
-      const std::map<std::string, std::vector<int>> optim_shape_tensor = {},
-      bool disable_trt_plugin_fp16 = false,
-      phi::DataType model_precision = phi::DataType::FLOAT32,
-      nvinfer1::ILogger& logger = NaiveLogger::Global()) {
-    auto* p = new TensorRTEngine(max_batch,
-                                 max_workspace,
-                                 precision,
-                                 calibrator,
-                                 device_id,
-                                 min_input_shape,
-                                 max_input_shape,
-                                 optim_input_shape,
-                                 min_shape_tensor,
-                                 max_shape_tensor,
-                                 optim_shape_tensor,
-                                 disable_trt_plugin_fp16,
-                                 model_precision,
-                                 logger);
+  TensorRTEngine* Create(const std::string& name,
+                         const TensorRTEngine::ConstructionParams& params,
+                         nvinfer1::ILogger& logger = NaiveLogger::Global()) {
+    auto engine = std::make_unique<TensorRTEngine>(params, logger);
     std::lock_guard<std::mutex> lock(mutex_);
-    engines_[name].reset(p);
-    return p;
+    engines_[name].reset(engine.release());
+    return engines_[name].get();
   }
 
   void DeleteAll() {
@@ -811,7 +685,7 @@ class TRTEngineManager {
     }
   }
 
-  void updateContextMemorySize(size_t mem_size, PredictorID predictor_id) {
+  void UpdateContextMemorySize(size_t mem_size, PredictorID predictor_id) {
     VLOG(3) << "TensorRT engine context memory size is "
             << mem_size / 1024.0 / 1024.0 << "MiB in predictor id "
             << predictor_id;
@@ -826,24 +700,24 @@ class TRTEngineManager {
     }
 
     if (size_updated) {
-      releaseContextMemory(predictor_id);
+      ReleaseContextMemory(predictor_id);
     }
   }
 
-  void* getContextMemory(PredictorID predictor_id,
+  void* GetContextMemory(PredictorID predictor_id,
                          const phi::GPUPlace& place,
                          const phi::Stream& stream) {
     std::lock_guard<std::mutex> lock(mutex_);
-    static auto alignment = getAlignmentSize(place);
+    static auto alignment = GetAlignmentSize(place);
     if (context_memorys_.count(predictor_id) == 0) {
       auto context_memory =
           memory::Alloc(place, max_ctx_mem_size_ + alignment, stream);
       context_memorys_[predictor_id] = std::move(context_memory);
     }
-    return getAlignedMemory(context_memorys_[predictor_id]->ptr(), alignment);
+    return GetAlignedMemory(context_memorys_[predictor_id]->ptr(), alignment);
   }
 
-  void releaseContextMemory(PredictorID predictor_id) {
+  void ReleaseContextMemory(PredictorID predictor_id) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (context_memorys_.count(predictor_id)) {
       context_memorys_[predictor_id].reset(nullptr);
@@ -852,12 +726,12 @@ class TRTEngineManager {
   }
 
  private:
-  size_t getAlignmentSize(const phi::GPUPlace& place) {
+  size_t GetAlignmentSize(const phi::GPUPlace& place) {
     const auto& prop = platform::GetDeviceProperties(place.GetDeviceId());
     return prop.textureAlignment;
   }
 
-  void* getAlignedMemory(void* addr, size_t alignment) {
+  void* GetAlignedMemory(void* addr, size_t alignment) {
     return reinterpret_cast<void*>(uintptr_t(addr) & (~(alignment - 1)));
   }
 

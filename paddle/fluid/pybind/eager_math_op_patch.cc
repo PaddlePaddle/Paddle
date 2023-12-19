@@ -44,13 +44,14 @@ typedef SSIZE_T ssize_t;
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/fluid/pybind/tensor_py.h"
-#include "paddle/phi/core/ddim.h"
+#include "paddle/phi/common/type_promotion.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -102,15 +103,13 @@ void InitTensorWithNumpyValue(const py::object& array,
   } else if (platform::is_cuda_pinned_place(place)) {
     SetTensorFromPyArray<platform::CUDAPinnedPlace>(
         impl_ptr, array, place, zero_copy);
-  } else if (platform::is_npu_place(place)) {
-    SetTensorFromPyArray<platform::NPUPlace>(impl_ptr, array, place, zero_copy);
   } else if (platform::is_custom_place(place)) {
     SetTensorFromPyArray<platform::CustomPlace>(
         impl_ptr, array, place, zero_copy);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "
-        "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace/CustomPlace"));
+        "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/CustomPlace"));
   }
 }
 
@@ -166,18 +165,20 @@ void SetDevice(paddle::platform::Place place) {
 
 // scalar func only support add, radd, sub, rsub, mul, rmul, div, truediv.
 // this function will update gradually.
-paddle::experimental::Tensor CallScalarFuction(
-    const paddle::experimental::Tensor& self_tensor,
-    double other,
-    std::string op_type) {
-  paddle::experimental::Tensor ret;
+paddle::Tensor CallScalarFuction(const paddle::Tensor& self_tensor,
+                                 double other,
+                                 std::string op_type) {
+  paddle::Tensor ret;
   if (op_type == "add" || op_type == "radd") {
-    ret = scale_ad_func(self_tensor, phi::Scalar(1.0), other, true);
+    ret = scale_ad_func(
+        self_tensor, phi::Scalar(1.0), static_cast<float>(other), true);
   } else if (op_type == "sub") {
-    ret = scale_ad_func(self_tensor, phi::Scalar(1.0), -other, true);
+    ret = scale_ad_func(
+        self_tensor, phi::Scalar(1.0), static_cast<float>(-other), true);
 
   } else if (op_type == "rsub") {
-    ret = scale_ad_func(self_tensor, phi::Scalar(-1.0), other, true);
+    ret = scale_ad_func(
+        self_tensor, phi::Scalar(-1.0), static_cast<float>(other), true);
   } else if (op_type == "mul") {
     ret = scale_ad_func(self_tensor, phi::Scalar(other), 0.0, true);
   } else if (op_type == "div") {
@@ -203,8 +204,8 @@ static PyObject* tensor__add__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::experimental::Tensor ret;
-  paddle::experimental::Tensor self_tensor = self->tensor;
+  paddle::Tensor ret;
+  paddle::Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -230,12 +231,12 @@ static PyObject* tensor__add__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::experimental::Tensor other_tensor;
+  paddle::Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
-    other_tensor = paddle::experimental::Tensor(place);
+    other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
@@ -247,10 +248,16 @@ static PyObject* tensor__add__method(TensorObject* self,
     }
   }
 
-  // 3. promote types or unify right var type to left var
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+  }
+
+  // 3. promote types or unify right var type to left var, float type promotion
+  // mv to add_ad_func
   phi::DataType lhs_dtype = self_tensor.dtype();
   phi::DataType rhs_dtype = other_tensor.dtype();
-  if (lhs_dtype != rhs_dtype) {
+  if (lhs_dtype != rhs_dtype && !phi::NeedTypePromotion(lhs_dtype, rhs_dtype)) {
     // note: only op_type in _supported_promote_complex_types_ should promote
     // dtype
     if (_complex_dtypes.find(lhs_dtype) != _complex_dtypes.end() ||
@@ -305,8 +312,8 @@ static PyObject* tensor__sub__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::experimental::Tensor ret;
-  paddle::experimental::Tensor self_tensor = self->tensor;
+  paddle::Tensor ret;
+  paddle::Tensor self_tensor = self->tensor;
 
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
   // 1. scalar exists cases
@@ -331,12 +338,12 @@ static PyObject* tensor__sub__method(TensorObject* self,
     return ToPyObject(ret);
   }
   // 2. create or get tensor for other_obj
-  paddle::experimental::Tensor other_tensor;
+  paddle::Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
-    other_tensor = paddle::experimental::Tensor(place);
+    other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
@@ -348,10 +355,16 @@ static PyObject* tensor__sub__method(TensorObject* self,
     }
   }
 
-  // 3. promote types or unify right var type to left var
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+  }
+
+  // 3. promote types or unify right var type to left var, float type promotion
+  // mv to subtract_ad_func
   phi::DataType lhs_dtype = self_tensor.dtype();
   phi::DataType rhs_dtype = other_tensor.dtype();
-  if (lhs_dtype != rhs_dtype) {
+  if (lhs_dtype != rhs_dtype && !phi::NeedTypePromotion(lhs_dtype, rhs_dtype)) {
     if (_complex_dtypes.find(lhs_dtype) != _complex_dtypes.end() ||
         _complex_dtypes.find(rhs_dtype) != _complex_dtypes.end()) {
       phi::DataType promote_dtype =
@@ -376,6 +389,7 @@ static PyObject* tensor__sub__method(TensorObject* self,
       other_tensor = cast_ad_func(other_tensor, lhs_dtype);
     }
   }
+
   // 4. calculation
   VLOG(6) << "Calling subtract_ad_func in tensor__sub__method";
   {
@@ -402,8 +416,8 @@ static PyObject* tensor__rsub__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::experimental::Tensor ret;
-  paddle::experimental::Tensor self_tensor = self->tensor;
+  paddle::Tensor ret;
+  paddle::Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -428,12 +442,12 @@ static PyObject* tensor__rsub__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::experimental::Tensor other_tensor;
+  paddle::Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
-    other_tensor = paddle::experimental::Tensor(place);
+    other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
@@ -445,10 +459,16 @@ static PyObject* tensor__rsub__method(TensorObject* self,
     }
   }
 
-  // 3. promote types or unify right var type to left var
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+  }
+
+  // 3. promote types or unify right var type to left var, float type promotion
+  // mv to subtract_ad_func
   phi::DataType lhs_dtype = self_tensor.dtype();
   phi::DataType rhs_dtype = other_tensor.dtype();
-  if (lhs_dtype != rhs_dtype) {
+  if (lhs_dtype != rhs_dtype && !phi::NeedTypePromotion(lhs_dtype, rhs_dtype)) {
     if (_complex_dtypes.find(lhs_dtype) != _complex_dtypes.end() ||
         _complex_dtypes.find(rhs_dtype) != _complex_dtypes.end()) {
       phi::DataType promote_dtype =
@@ -500,8 +520,8 @@ static PyObject* tensor__mul__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::experimental::Tensor ret;
-  paddle::experimental::Tensor self_tensor = self->tensor;
+  paddle::Tensor ret;
+  paddle::Tensor self_tensor = self->tensor;
 
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
@@ -527,20 +547,20 @@ static PyObject* tensor__mul__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::experimental::Tensor other_tensor;
+  paddle::Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
-    other_tensor = paddle::experimental::Tensor(place);
+    other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__mul__", 0);
     if (PyComplex_Check(other_obj)) {
       eager_gil_scoped_release guard;
-      other_tensor =
-          full_ad_func({1}, value, DataType::COMPLEX64, self_tensor.place());
+      other_tensor = full_ad_func(
+          self_tensor.shape(), value, DataType::COMPLEX64, self_tensor.place());
     } else {
       eager_gil_scoped_release guard;
       other_tensor = full_ad_func(
@@ -548,10 +568,16 @@ static PyObject* tensor__mul__method(TensorObject* self,
     }
   }
 
-  // 3. promote types or unify right var type to left var
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+  }
+
+  // 3. promote types or unify right var type to left var, float type promotion
+  // mv to multiply_ad_func
   phi::DataType lhs_dtype = self_tensor.dtype();
   phi::DataType rhs_dtype = other_tensor.dtype();
-  if (lhs_dtype != rhs_dtype) {
+  if (lhs_dtype != rhs_dtype && !phi::NeedTypePromotion(lhs_dtype, rhs_dtype)) {
     // note: only op_type in _supported_promote_complex_types_ should promote
     // dtype
     if (_complex_dtypes.find(lhs_dtype) != _complex_dtypes.end() ||
@@ -606,8 +632,8 @@ static PyObject* tensor__div__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::experimental::Tensor ret;
-  paddle::experimental::Tensor self_tensor = self->tensor;
+  paddle::Tensor ret;
+  paddle::Tensor self_tensor = self->tensor;
 
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
@@ -633,12 +659,12 @@ static PyObject* tensor__div__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::experimental::Tensor other_tensor;
+  paddle::Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
-    other_tensor = paddle::experimental::Tensor(place);
+    other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
@@ -652,6 +678,11 @@ static PyObject* tensor__div__method(TensorObject* self,
       other_tensor = full_ad_func(
           self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
+  }
+
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
   }
 
   // 3. promote types or unify right var type to left var
@@ -721,8 +752,8 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::experimental::Tensor ret;
-  paddle::experimental::Tensor self_tensor = self->tensor;
+  paddle::Tensor ret;
+  paddle::Tensor self_tensor = self->tensor;
 
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
@@ -747,7 +778,7 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::experimental::Tensor other_tensor;
+  paddle::Tensor other_tensor;
   if (has_other_double) {
     eager_gil_scoped_release guard;
     other_tensor = full_ad_func(self_tensor.shape(),
@@ -758,7 +789,7 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
-    other_tensor = paddle::experimental::Tensor(place);
+    other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
@@ -772,6 +803,11 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
       other_tensor = full_ad_func(
           self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
+  }
+
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
   }
 
   // 3. promote types or unify right var type to left var
@@ -840,8 +876,8 @@ static PyObject* tensor__gt__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::experimental::Tensor ret;
-  paddle::experimental::Tensor self_tensor = self->tensor;
+  paddle::Tensor ret;
+  paddle::Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -865,7 +901,7 @@ static PyObject* tensor__gt__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::experimental::Tensor other_tensor;
+  paddle::Tensor other_tensor;
   if (has_other_double) {
     eager_gil_scoped_release guard;
     other_tensor = full_ad_func(self_tensor.shape(),
@@ -876,7 +912,7 @@ static PyObject* tensor__gt__method(TensorObject* self,
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
-    other_tensor = paddle::experimental::Tensor(place);
+    other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
@@ -890,6 +926,11 @@ static PyObject* tensor__gt__method(TensorObject* self,
       other_tensor = full_ad_func(
           self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
+  }
+
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
   }
 
   // 3. promote types or unify right var type to left var
@@ -930,8 +971,8 @@ static PyObject* tensor__ge__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::experimental::Tensor ret;
-  paddle::experimental::Tensor self_tensor = self->tensor;
+  paddle::Tensor ret;
+  paddle::Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -955,7 +996,7 @@ static PyObject* tensor__ge__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::experimental::Tensor other_tensor;
+  paddle::Tensor other_tensor;
   if (has_other_double) {
     eager_gil_scoped_release guard;
     other_tensor = full_ad_func(self_tensor.shape(),
@@ -966,7 +1007,7 @@ static PyObject* tensor__ge__method(TensorObject* self,
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
-    other_tensor = paddle::experimental::Tensor(place);
+    other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
@@ -980,6 +1021,11 @@ static PyObject* tensor__ge__method(TensorObject* self,
       other_tensor = full_ad_func(
           self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
+  }
+
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
   }
 
   // 3. promote types or unify right var type to left var
@@ -1020,19 +1066,19 @@ static PyObject* tensor__mod__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::experimental::Tensor ret;
-  paddle::experimental::Tensor self_tensor = self->tensor;
+  paddle::Tensor ret;
+  paddle::Tensor self_tensor = self->tensor;
 
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
   // there is no scalar_mod function for __mod__ now
-  float other_double = 0.0;
+  float other_double = 0.0f;
   bool has_other_double = false;
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
     if (PyFloat_Check(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__mod__", 0);
+      other_double = CastPyArg2Double(other_obj, "__mod__", 0);  // NOLINT
       has_other_double = true;
       if (_supported_int_dtype_.find(self_tensor.dtype()) !=
           _supported_int_dtype_.end()) {
@@ -1040,13 +1086,13 @@ static PyObject* tensor__mod__method(TensorObject* self,
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__mod__", 0);
+      other_double = CastPyArg2Double(other_obj, "__mod__", 0);  // NOLINT
       has_other_double = true;
     }
   }
 
   // 2. create or get tensor for other_obj
-  paddle::experimental::Tensor other_tensor;
+  paddle::Tensor other_tensor;
   if (has_other_double) {
     eager_gil_scoped_release guard;
     other_tensor = full_ad_func(self_tensor.shape(),
@@ -1057,7 +1103,7 @@ static PyObject* tensor__mod__method(TensorObject* self,
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
-    other_tensor = paddle::experimental::Tensor(place);
+    other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
@@ -1071,6 +1117,11 @@ static PyObject* tensor__mod__method(TensorObject* self,
       other_tensor = full_ad_func(
           self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
+  }
+
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
   }
 
   // 3. promote types or unify right var type to left var
@@ -1110,19 +1161,19 @@ static PyObject* tensor__matmul__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::experimental::Tensor ret;
-  paddle::experimental::Tensor self_tensor = self->tensor;
+  paddle::Tensor ret;
+  paddle::Tensor self_tensor = self->tensor;
 
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
   // there is no scalar_matmul function for __matmul__ now
-  float other_double = 0.0;
+  float other_double = 0.0f;
   bool has_other_double = false;
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
     if (PyFloat_Check(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__matmul__", 0);
+      other_double = CastPyArg2Double(other_obj, "__matmul__", 0);  // NOLINT
       has_other_double = true;
       if (_supported_int_dtype_.find(self_tensor.dtype()) !=
           _supported_int_dtype_.end()) {
@@ -1130,13 +1181,13 @@ static PyObject* tensor__matmul__method(TensorObject* self,
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__matmul__", 0);
+      other_double = CastPyArg2Double(other_obj, "__matmul__", 0);  // NOLINT
       has_other_double = true;
     }
   }
 
   // 2. create or get tensor for other_obj
-  paddle::experimental::Tensor other_tensor;
+  paddle::Tensor other_tensor;
   if (has_other_double) {
     eager_gil_scoped_release guard;
     other_tensor = full_ad_func({1},
@@ -1147,7 +1198,7 @@ static PyObject* tensor__matmul__method(TensorObject* self,
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
-    other_tensor = paddle::experimental::Tensor(place);
+    other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
@@ -1161,6 +1212,11 @@ static PyObject* tensor__matmul__method(TensorObject* self,
       other_tensor =
           full_ad_func({1}, value, self_tensor.dtype(), self_tensor.place());
     }
+  }
+
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
   }
 
   // 3. promote types or unify right var type to left var
@@ -1219,18 +1275,18 @@ static PyObject* tensor__lt__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::experimental::Tensor ret;
-  paddle::experimental::Tensor self_tensor = self->tensor;
+  paddle::Tensor ret;
+  paddle::Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
   // there is no scalar function for __lt__ now
-  float other_double = 0.0;
+  float other_double = 0.0f;
   bool has_other_double = false;
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
     if (PyFloat_Check(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__lt__", 0);
+      other_double = CastPyArg2Double(other_obj, "__lt__", 0);  // NOLINT
       has_other_double = true;
       if (_supported_int_dtype_.find(self_tensor.dtype()) !=
           _supported_int_dtype_.end()) {
@@ -1238,13 +1294,13 @@ static PyObject* tensor__lt__method(TensorObject* self,
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__lt__", 0);
+      other_double = CastPyArg2Double(other_obj, "__lt__", 0);  // NOLINT
       has_other_double = true;
     }
   }
 
   // 2. create or get tensor for other_obj
-  paddle::experimental::Tensor other_tensor;
+  paddle::Tensor other_tensor;
   if (has_other_double) {
     eager_gil_scoped_release guard;
     other_tensor = full_ad_func(self_tensor.shape(),
@@ -1255,7 +1311,7 @@ static PyObject* tensor__lt__method(TensorObject* self,
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
-    other_tensor = paddle::experimental::Tensor(place);
+    other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
@@ -1269,6 +1325,11 @@ static PyObject* tensor__lt__method(TensorObject* self,
       other_tensor = full_ad_func(
           self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
+  }
+
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
   }
 
   // 3. promote types or unify right var type to left var
@@ -1309,18 +1370,18 @@ static PyObject* tensor__le__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::experimental::Tensor ret;
-  paddle::experimental::Tensor self_tensor = self->tensor;
+  paddle::Tensor ret;
+  paddle::Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
   // there is no scalar function for __le__ now
-  float other_double = 0.0;
+  float other_double = 0.0f;
   bool has_other_double = false;
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
     if (PyFloat_Check(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__le__", 0);
+      other_double = CastPyArg2Double(other_obj, "__le__", 0);  // NOLINT
       has_other_double = true;
       if (_supported_int_dtype_.find(self_tensor.dtype()) !=
           _supported_int_dtype_.end()) {
@@ -1328,13 +1389,13 @@ static PyObject* tensor__le__method(TensorObject* self,
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other_double = CastPyArg2Double(other_obj, "__le__", 0);
+      other_double = CastPyArg2Double(other_obj, "__le__", 0);  // NOLINT
       has_other_double = true;
     }
   }
 
   // 2. create or get tensor for other_obj
-  paddle::experimental::Tensor other_tensor;
+  paddle::Tensor other_tensor;
   if (has_other_double) {
     eager_gil_scoped_release guard;
     other_tensor = full_ad_func(self_tensor.shape(),
@@ -1345,7 +1406,7 @@ static PyObject* tensor__le__method(TensorObject* self,
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
-    other_tensor = paddle::experimental::Tensor(place);
+    other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
@@ -1359,6 +1420,11 @@ static PyObject* tensor__le__method(TensorObject* self,
       other_tensor = full_ad_func(
           self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
+  }
+
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
   }
 
   // 3. promote types or unify right var type to left var
@@ -1398,8 +1464,8 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::experimental::Tensor ret;
-  paddle::experimental::Tensor self_tensor = self->tensor;
+  paddle::Tensor ret;
+  paddle::Tensor self_tensor = self->tensor;
 
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
@@ -1425,7 +1491,7 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::experimental::Tensor other_tensor;
+  paddle::Tensor other_tensor;
   if (has_other_double) {
     eager_gil_scoped_release guard;
     other_tensor = full_ad_func(self_tensor.shape(),
@@ -1436,7 +1502,7 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
-    other_tensor = paddle::experimental::Tensor(place);
+    other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
@@ -1450,6 +1516,11 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
       other_tensor =
           full_ad_func({1}, value, self_tensor.dtype(), self_tensor.place());
     }
+  }
+
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
   }
 
   // 3. promote types or unify right var type to left var
@@ -1493,8 +1564,8 @@ static PyObject* tensor__pow__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::experimental::Tensor ret;
-  paddle::experimental::Tensor self_tensor = self->tensor;
+  paddle::Tensor ret;
+  paddle::Tensor self_tensor = self->tensor;
 
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
@@ -1520,12 +1591,12 @@ static PyObject* tensor__pow__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::experimental::Tensor other_tensor;
+  paddle::Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
-    other_tensor = paddle::experimental::Tensor(place);
+    other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
@@ -1539,6 +1610,11 @@ static PyObject* tensor__pow__method(TensorObject* self,
       other_tensor =
           full_ad_func({1}, value, self_tensor.dtype(), self_tensor.place());
     }
+  }
+
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
   }
 
   // 3. promote types or unify right var type to left var
@@ -1579,8 +1655,8 @@ static PyObject* tensor__rpow__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::experimental::Tensor ret;
-  paddle::experimental::Tensor self_tensor = self->tensor;
+  paddle::Tensor ret;
+  paddle::Tensor self_tensor = self->tensor;
 
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
@@ -1606,7 +1682,7 @@ static PyObject* tensor__rpow__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::experimental::Tensor other_tensor;
+  paddle::Tensor other_tensor;
   if (has_other_double) {
     eager_gil_scoped_release guard;
     other_tensor = full_ad_func(self_tensor.shape(),
@@ -1617,7 +1693,7 @@ static PyObject* tensor__rpow__method(TensorObject* self,
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
-    other_tensor = paddle::experimental::Tensor(place);
+    other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
@@ -1631,6 +1707,11 @@ static PyObject* tensor__rpow__method(TensorObject* self,
       other_tensor = full_ad_func(
           self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
+  }
+
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
   }
 
   // 3. promote types or unify right var type to left var
@@ -1671,8 +1752,8 @@ static PyObject* tensor__ne__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::experimental::Tensor ret;
-  paddle::experimental::Tensor self_tensor = self->tensor;
+  paddle::Tensor ret;
+  paddle::Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -1696,7 +1777,7 @@ static PyObject* tensor__ne__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::experimental::Tensor other_tensor;
+  paddle::Tensor other_tensor;
   if (has_other_double) {
     eager_gil_scoped_release guard;
     other_tensor = full_ad_func(self_tensor.shape(),
@@ -1707,7 +1788,7 @@ static PyObject* tensor__ne__method(TensorObject* self,
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
-    other_tensor = paddle::experimental::Tensor(place);
+    other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
@@ -1721,6 +1802,11 @@ static PyObject* tensor__ne__method(TensorObject* self,
       other_tensor =
           full_ad_func({1}, value, self_tensor.dtype(), self_tensor.place());
     }
+  }
+
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
   }
 
   // 3. promote types or unify right var type to left var
@@ -1761,8 +1847,8 @@ static PyObject* tensor__eq__method(TensorObject* self,
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
 
-  paddle::experimental::Tensor ret;
-  paddle::experimental::Tensor self_tensor = self->tensor;
+  paddle::Tensor ret;
+  paddle::Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases
@@ -1786,7 +1872,7 @@ static PyObject* tensor__eq__method(TensorObject* self,
   }
 
   // 2. create or get tensor for other_obj
-  paddle::experimental::Tensor other_tensor;
+  paddle::Tensor other_tensor;
   if (has_other_double) {
     eager_gil_scoped_release guard;
     other_tensor = full_ad_func(self_tensor.shape(),
@@ -1797,7 +1883,7 @@ static PyObject* tensor__eq__method(TensorObject* self,
     other_tensor = CastPyArg2Tensor(other_obj, 0);
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
-    other_tensor = paddle::experimental::Tensor(place);
+    other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
@@ -1811,6 +1897,11 @@ static PyObject* tensor__eq__method(TensorObject* self,
       other_tensor =
           full_ad_func({1}, value, self_tensor.dtype(), self_tensor.place());
     }
+  }
+
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
   }
 
   // 3. promote types or unify right var type to left var
@@ -1836,92 +1927,92 @@ static PyObject* tensor__eq__method(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyMethodDef math_op_patch_methods[] = {
+PyMethodDef math_op_patch_methods[] = {  // NOLINT
     {"__add__",
-     (PyCFunction)(void (*)(void))tensor__add__method,
+     (PyCFunction)(void (*)())tensor__add__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__radd__",
-     (PyCFunction)(void (*)(void))tensor__add__method,
+     (PyCFunction)(void (*)())tensor__add__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__sub__",
-     (PyCFunction)(void (*)(void))tensor__sub__method,
+     (PyCFunction)(void (*)())tensor__sub__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__rsub__",
-     (PyCFunction)(void (*)(void))tensor__rsub__method,
+     (PyCFunction)(void (*)())tensor__rsub__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__mul__",
-     (PyCFunction)(void (*)(void))tensor__mul__method,
+     (PyCFunction)(void (*)())tensor__mul__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__rmul__",
-     (PyCFunction)(void (*)(void))tensor__mul__method,
+     (PyCFunction)(void (*)())tensor__mul__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__div__",
-     (PyCFunction)(void (*)(void))tensor__div__method,
+     (PyCFunction)(void (*)())tensor__div__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__truediv__",
-     (PyCFunction)(void (*)(void))tensor__div__method,
+     (PyCFunction)(void (*)())tensor__div__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__rdiv__",
-     (PyCFunction)(void (*)(void))tensor__rdiv__method,
+     (PyCFunction)(void (*)())tensor__rdiv__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__rtruediv__",
-     (PyCFunction)(void (*)(void))tensor__rdiv__method,
+     (PyCFunction)(void (*)())tensor__rdiv__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__floordiv__",
-     (PyCFunction)(void (*)(void))tensor__floordiv__method,
+     (PyCFunction)(void (*)())tensor__floordiv__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__pow__",
-     (PyCFunction)(void (*)(void))tensor__pow__method,
+     (PyCFunction)(void (*)())tensor__pow__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__rpow__",
-     (PyCFunction)(void (*)(void))tensor__rpow__method,
+     (PyCFunction)(void (*)())tensor__rpow__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__mod__",
-     (PyCFunction)(void (*)(void))tensor__mod__method,
+     (PyCFunction)(void (*)())tensor__mod__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__matmul__",
-     (PyCFunction)(void (*)(void))tensor__matmul__method,
+     (PyCFunction)(void (*)())tensor__matmul__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__gt__",
-     (PyCFunction)(void (*)(void))tensor__gt__method,
+     (PyCFunction)(void (*)())tensor__gt__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__ge__",
-     (PyCFunction)(void (*)(void))tensor__ge__method,
+     (PyCFunction)(void (*)())tensor__ge__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__lt__",
-     (PyCFunction)(void (*)(void))tensor__lt__method,
+     (PyCFunction)(void (*)())tensor__lt__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__le__",
-     (PyCFunction)(void (*)(void))tensor__le__method,
+     (PyCFunction)(void (*)())tensor__le__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__eq__",
-     (PyCFunction)(void (*)(void))tensor__eq__method,
+     (PyCFunction)(void (*)())tensor__eq__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
+     nullptr},
     {"__ne__",
-     (PyCFunction)(void (*)(void))tensor__ne__method,
+     (PyCFunction)(void (*)())tensor__ne__method,
      METH_VARARGS | METH_KEYWORDS,
-     NULL},
-    {NULL, NULL, 0, NULL}};
+     nullptr},
+    {nullptr, nullptr, 0, nullptr}};
 
 }  // namespace pybind
 }  // namespace paddle

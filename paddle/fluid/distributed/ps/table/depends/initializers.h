@@ -21,9 +21,9 @@
 #include <utility>
 #include <vector>
 
-#include "gflags/gflags.h"
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/operators/truncated_gaussian_random_op.h"
+#include "paddle/phi/core/generator.h"
+#include "paddle/utils/flags.h"
 
 namespace paddle {
 namespace distributed {
@@ -64,7 +64,7 @@ class UniformInitializer : public Initializer {
     max_ = std::stof(attrs[3]);
 
     dist_ = std::uniform_real_distribution<float>(min_, max_);
-    random_engine_ = framework::GetCPURandomEngine(seed_);
+    random_engine_ = phi::GetCPURandomEngine(seed_);
   }
 
   float GetValue() override { return dist_(*random_engine_); }
@@ -90,7 +90,7 @@ class GaussianInitializer : public Initializer {
     mean_ = std::stof(attrs[2]);
     std_ = std::stof(attrs[3]);
 
-    random_engine_ = framework::GetCPURandomEngine(seed_);
+    random_engine_ = phi::GetCPURandomEngine(seed_);
 
     dist_ = std::normal_distribution<float>(mean_, std_);
   }
@@ -120,17 +120,17 @@ class TruncatedGaussianInitializer : public Initializer {
 
     std::uniform_real_distribution<float> dist_(
         std::numeric_limits<float>::min(), 1.0);
-    random_engine_ = framework::GetCPURandomEngine(seed_);
+    random_engine_ = phi::GetCPURandomEngine(seed_);
   }
 
   float GetValue() override {
-    paddle::operators::TruncatedNormal<float> truncated_normal(mean_, std_);
+    ::paddle::operators::TruncatedNormal<float> truncated_normal(mean_, std_);
     float value = truncated_normal(dist_(*random_engine_));
     return value;
   }
 
   void GetValue(float *value, int numel) {
-    paddle::operators::TruncatedNormal<float> truncated_normal(mean_, std_);
+    ::paddle::operators::TruncatedNormal<float> truncated_normal(mean_, std_);
     for (int x = 0; x < numel; ++x) {
       value[x] = truncated_normal(dist_(*random_engine_));
     }

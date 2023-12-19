@@ -16,9 +16,9 @@ limitations under the License. */
 
 #include <vector>
 
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace operators {
@@ -44,7 +44,7 @@ struct ChannelDequantizeFunctor {
                   phi::DenseTensor* out);
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class FakeDequantizeMaxAbsKernel : public framework::OpKernel<T> {
  public:
   virtual void Compute(const framework::ExecutionContext& ctx) const {
@@ -62,7 +62,7 @@ class FakeDequantizeMaxAbsKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class FakeChannelWiseDequantizeMaxAbsKernel : public framework::OpKernel<T> {
  public:
   virtual void Compute(const framework::ExecutionContext& ctx) const {

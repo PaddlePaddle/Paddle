@@ -16,10 +16,10 @@
 
 #include <thrust/random.h>
 
-#include "gflags/gflags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
+#include "paddle/utils/flags.h"
 
 namespace phi {
 
@@ -54,21 +54,18 @@ struct UniformGenerator {
 };
 
 template <typename T, typename Context>
-void UniformRawKernel(const Context& dev_ctx,
-                      const IntArray& shape,
-                      DataType dtype,
-                      const Scalar& min,
-                      const Scalar& max,
-                      int seed,
-                      int diag_num,
-                      int diag_step,
-                      float diag_val,
-                      DenseTensor* out) {
-  out->Resize(phi::make_ddim(shape.GetData()));
+void UniformKernel(const Context& dev_ctx,
+                   const IntArray& shape,
+                   DataType dtype,
+                   const Scalar& min,
+                   const Scalar& max,
+                   int seed,
+                   DenseTensor* out) {
+  out->Resize(common::make_ddim(shape.GetData()));
   dev_ctx.template Alloc<T>(out);
   if (seed == 0) {
     // Use global Generator seed
-    using MT = typename kps::details::MPTypeTrait<T>::Type;
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     funcs::uniform_distribution<MT> dist;
     funcs::uniform_real_transform<MT> trans(min.to<float>(), max.to<float>());
     funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);
@@ -77,19 +74,20 @@ void UniformRawKernel(const Context& dev_ctx,
     auto func = UniformGenerator<T>(static_cast<T>(min.to<float>()),
                                     static_cast<T>(max.to<float>()),
                                     seed,
-                                    diag_num,
-                                    diag_step,
-                                    static_cast<T>(diag_val));
+                                    0,
+                                    0,
+                                    static_cast<T>(0.0));
     IndexKernel<T, UniformGenerator<T>>(dev_ctx, out, func);
   }
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(uniform_raw,
+PD_REGISTER_KERNEL(uniform,
                    GPU,
                    ALL_LAYOUT,
-                   phi::UniformRawKernel,
+                   phi::UniformKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

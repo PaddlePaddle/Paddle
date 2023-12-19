@@ -22,16 +22,21 @@ void RepeatsTensor2IndexTensor(const Context& ctx,
                                const DenseTensor& repeats,
                                DenseTensor* index) {
   DenseTensor repeats_cpu_copy;
-  if (!paddle::platform::is_cpu_place(repeats.place())) {
-    phi::Copy(
-        ctx, repeats, paddle::platform::CPUPlace(), true, &repeats_cpu_copy);
+  if (repeats.place().GetType() != phi::AllocationType::CPU) {
+    phi::Copy(ctx, repeats, phi::CPUPlace(), true, &repeats_cpu_copy);
   }
-  const RepeatsT* repeats_data = paddle::platform::is_cpu_place(repeats.place())
-                                     ? repeats.data<RepeatsT>()
-                                     : repeats_cpu_copy.data<RepeatsT>();
+  const RepeatsT* repeats_data =
+      repeats.place().GetType() == phi::AllocationType::CPU
+          ? repeats.data<RepeatsT>()
+          : repeats_cpu_copy.data<RepeatsT>();
 
   int64_t index_size = 0;
   for (int i = 0; i < repeats.dims()[0]; i++) {
+    PADDLE_ENFORCE_GE(repeats_data[i],
+                      0,
+                      phi::errors::InvalidArgument(
+                          "repeats must grater or equal than 0, but got %d",
+                          repeats_data[i]));
     index_size += repeats_data[i];
   }
   std::vector<RepeatsT> index_vec(index_size);
@@ -40,7 +45,7 @@ void RepeatsTensor2IndexTensor(const Context& ctx,
     std::fill_n(index_vec.begin() + offset, repeats_data[i], i);
     offset += repeats_data[i];
   }
-  index->Resize(phi::make_ddim({index_size}));
+  index->Resize(common::make_ddim({index_size}));
 
   phi::TensorFromVector<RepeatsT>(index_vec, ctx, index);
 }

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/common/scalar.h"
 
+#include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/api/lib/tensor_copy.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"

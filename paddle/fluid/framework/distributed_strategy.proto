@@ -23,11 +23,19 @@ enum Mode {
   HETER = 4; // support XPU and GPU computing server
 }
 
+message RefinedOpsPattern {
+    repeated string main_ops = 1;
+    optional int32 num = 2 [default = 0];
+    repeated string pre_ops = 3;
+    repeated string suf_ops = 4;
+}
+
 message RecomputeConfig {
   repeated string checkpoints = 1;
   optional bool enable_offload = 2 [ default = false ];
   repeated int32 checkpoint_shape = 3;
   optional bool enable_tuning = 4 [ default = false ]; // incubate for auto parallel
+  repeated RefinedOpsPattern refined_ops_patterns = 5;
 }
 
 message ShardingConfig {
@@ -48,6 +56,39 @@ message ShardingConfig {
   optional bool _dp_as_optimizer_sharding = 13 [ default = false ];
   optional int32 stage = 14 [ default = 1 ];
   optional bool enable_tuning = 15 [ default = false ]; // incubate for auto parallel
+  optional bool use_calc_stream = 16 [default = false];
+}
+
+// for dygraph
+message MpConfig {
+    optional bool sync_param= 1 [ default = true ];
+    optional bool sync_grad= 2 [ default = false ];
+    optional bool sync_moment= 3 [ default = false ];
+    optional string sync_mode= 4 [ default = 'broadcast' ];
+    // Support all_reduce(dx) overlap with matmul(dw) in ColumnParallelLinear
+    optional bool mp_async_allreduce= 5 [default = false ];
+    // Support skip c_identity in ColumnParallelLinear and RowParallelLinear. Only works when mp_async_allreduce is true.
+    optional bool mp_skip_c_identity= 6 [default = false ];
+    // Support fused_linear_param_grad_add in ColumnParallelLinear. Only works when mp_async_allreduce is true.
+    optional bool mp_fused_linear_param_grad_add= 7 [default = false ];
+    // Broadcast mp input data
+    optional bool need_broadcast_data=8 [default = true];
+}
+
+message PpConfig {
+    optional bool dp_comm_overlap = 1 [ default = false ];
+    optional bool delay_scale_loss = 2 [ default = false ];
+    optional bool enable_timer = 3 [ default = false ];
+    optional bool sharding_comm_overlap = 4 [ default = false ];
+    optional bool profiling = 5 [ default = false ];
+}
+
+message DygraphShardingConfig {
+  optional bool tensor_fusion = 1 [ default = false ];
+  optional int32 accumulate_steps = 2 [ default = 1 ];
+  optional bool comm_overlap = 3 [ default = false ];
+  optional bool split_param = 4 [ default = false ];
+  optional bool fuse_optimizer = 5 [ default = true ];
 }
 
 message HybridConfig {
@@ -55,6 +96,10 @@ message HybridConfig {
   optional int32 mp_degree = 2 [ default = 1 ];
   optional int32 pp_degree = 3 [ default = 1 ];
   optional int32 sharding_degree = 4 [ default = 1 ];
+  optional int32 sep_degree = 5 [ default = 1 ];
+  optional MpConfig mp_configs = 6;
+  optional PpConfig pp_configs = 7;
+  optional DygraphShardingConfig sharding_configs = 8;
 }
 
 message AMPConfig {
@@ -71,6 +116,7 @@ message AMPConfig {
   optional bool use_fp16_guard = 11 [ default = true ];
   optional bool use_optimizer_fp16 = 12
       [ default = false ]; // auto parallel effective only
+  optional bool use_pure_bf16 = 13 [ default = false ];
 }
 
 message LocalSGDConfig {
@@ -125,6 +171,9 @@ message BuildStrategy {
   optional bool fuse_gemm_epilogue = 16 [ default = false ];
   optional string debug_graphviz_path = 17;
   optional bool fused_attention = 18 [ default = false];
+  optional bool fused_feedforward = 19 [ default = false];
+  optional bool fuse_dot_product_attention = 20 [ default = false ];
+  optional bool fuse_resunit = 21 [ default = false ];
 }
 
 message ExecutionStrategy {
@@ -249,7 +298,7 @@ message SparseNaiveSGDRuleParameter { // SparseNaiveSGDRule
 }
 
 message
-    SparseAdagradSGDRuleParameter { // SparseAdaGradSGDRule|StdAdaGradSGDRule
+    SparseAdagradSGDRuleParameter { // SparseAdaGradSGDRule|StdAdaGradSGDRule|SparseAdaGradV2SGDRule
   optional double learning_rate = 1 [ default = 0.05 ];
   optional double initial_g2sum = 2 [ default = 3.0 ];
   optional double initial_range = 3 [ default = 0.0001 ];
@@ -288,7 +337,9 @@ message CtrAccessorParameter {
   optional float delete_after_unseen_days = 8 [ default = 30 ];
   optional int32 ssd_unseenday_threshold = 9 [ default = 1 ];
   optional bool show_scale = 10 [ default = true ];
-  repeated float load_filter_slots = 11;
+  optional bool zero_init = 11 [ default = true ];
+  repeated float load_filter_slots = 12;
+  repeated float save_filter_slots = 13;
 }
 
 message TableAccessorSaveParameter {
@@ -335,7 +386,7 @@ message DistributedStrategy {
   optional float last_comm_group_size_MB = 27 [ default = 1 ];
   optional bool find_unused_parameters = 28 [ default = false ];
   optional bool tensor_parallel = 29 [ default = false ];
-  optional bool without_graph_optimization = 30 [ default = false ];
+  optional bool without_graph_optimization = 30 [ default = true ];
   optional int32 fuse_grad_size_in_num = 31 [ default = 8 ];
   optional bool calc_comm_same_stream = 32 [ default = false ];
   optional bool asp = 33 [ default = false ];

@@ -306,7 +306,8 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
     }
 
     int begin_norm_axis = mean_dim.front();
-    if (begin_norm_axis < 0) begin_norm_axis += x_shape.size();
+    if (begin_norm_axis < 0)
+      begin_norm_axis += static_cast<int>(x_shape.size());
     const auto& gamma_shape = gamma->Var()->GetShape();
     const auto& beta_shape = beta->Var()->GetShape();
 
@@ -336,7 +337,7 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
 
     // gamma/beta must be a 1-dimensional tensor of size on layer_norm
     auto layer_norm_x_mat_dims =
-        phi::flatten_to_2d(phi::make_ddim(x_shape), begin_norm_axis);
+        common::flatten_to_2d(common::make_ddim(x_shape), begin_norm_axis);
     auto* gamma_tensor =
         scope->FindVar(gamma->Name())->GetMutable<phi::DenseTensor>();
     VarDesc new_gamma_desc(patterns::PDNodeName("layer_norm_fuse", "Scale"));
@@ -348,7 +349,7 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
     auto* new_gamma_node = g->CreateVarNode(&new_gamma_desc);
     auto* new_gamma_tensor =
         scope->Var(new_gamma_node->Name())->GetMutable<phi::DenseTensor>();
-    new_gamma_tensor->Resize(phi::make_ddim({layer_norm_x_mat_dims[1]}));
+    new_gamma_tensor->Resize(common::make_ddim({layer_norm_x_mat_dims[1]}));
     memcpy(new_gamma_tensor->mutable_data<float>(platform::CPUPlace()),
            gamma_tensor->mutable_data<float>(platform::CPUPlace()),
            layer_norm_x_mat_dims[1] * sizeof(float));
@@ -365,14 +366,14 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
     auto* new_beta_tensor =
         scope->Var(new_beta_node->Name())->GetMutable<phi::DenseTensor>();
 
-    new_beta_tensor->Resize(phi::make_ddim({layer_norm_x_mat_dims[1]}));
+    new_beta_tensor->Resize(common::make_ddim({layer_norm_x_mat_dims[1]}));
     memcpy(new_beta_tensor->mutable_data<float>(platform::CPUPlace()),
            beta_tensor->mutable_data<float>(platform::CPUPlace()),
            layer_norm_x_mat_dims[1] * sizeof(float));
 
     // ------------------ op creation and placement ---------------------------
 
-    OpDesc ln_op_desc;
+    OpDesc ln_op_desc(x_mean->Op()->Block());
     ln_op_desc.SetType("layer_norm");
     ln_op_desc.SetInput("X", {x->Name()});
     ln_op_desc.SetInput("Scale", {new_gamma_node->Name()});
@@ -403,12 +404,10 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
                           x_mean_out,
                           x_sub_mean,
                           x_sub_mean_out,
-                          sqr_pow,
                           x_sub_mean_sqr,
                           x_sub_mean_sqr_out,
                           std_dev,
                           std_dev_out,
-                          eps,
                           std_dev_eps,
                           std_dev_eps_out,
                           std_dev_eps_sqrt,
@@ -417,9 +416,7 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
                           division_out,
                           scale,
                           scale_out,
-                          shift,
-                          gamma,
-                          beta});
+                          shift});
     found_layer_norm_count++;
   };
 

@@ -16,9 +16,9 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/fc_functor.h"
+#include "paddle/phi/kernels/funcs/jit/kernels.h"
 #include "paddle/phi/kernels/funcs/sequence2batch.h"
 
 namespace paddle {
@@ -72,7 +72,7 @@ void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
                         wx_dims[0],
                         x_dims[1]));
 
-  int frame_size = wx_dims[1] / 4;
+  int frame_size = static_cast<int>(wx_dims[1] / 4);
   auto wh_dims = ctx->GetInputDim("WeightH");
 
   PADDLE_ENFORCE_EQ(wh_dims.size(),
@@ -141,11 +141,12 @@ void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
   ctx->SetOutputDim("Cell", out_dims);
   ctx->ShareLoD("X", "Hidden");
   ctx->ShareLoD("X", "Cell");
-  int xx_width;
+  int xx_width = 0;
   if (ctx->Attrs().Get<bool>("use_seq")) {
-    xx_width = wx_dims[1];
+    xx_width = static_cast<int>(wx_dims[1]);
   } else {
-    xx_width = x_dims[1] > wx_dims[1] ? wx_dims[1] : x_dims[1];
+    xx_width =
+        static_cast<int>(x_dims[1] > wx_dims[1] ? wx_dims[1] : x_dims[1]);
 
     OP_INOUT_CHECK(ctx->HasOutput("BatchedInput"),
                    "Output",
@@ -268,14 +269,6 @@ void FusionLSTMOpMaker::Make() {
                        "`tanh` by default.")
       .SetDefault("tanh")
       .InEnum({"sigmoid", "tanh", "relu", "identity"});
-  AddAttr<bool>("use_mkldnn",
-                "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false);
-  AddAttr<std::string>(
-      "mkldnn_data_type",
-      "(string, default \"float32\"). Data type of mkldnn kernel")
-      .SetDefault("float32")
-      .InEnum({"float32", "int8", "bfloat16"});
   AddAttr<float>("Scale_data",
                  "Scale to be used for int8 input/output data."
                  "Only used with MKL-DNN INT8.")
@@ -298,11 +291,10 @@ This operator fuse the X into LSTM, more details can refer to LSTM op.
 )DOC");
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FuisonLSTMKernel : public framework::OpKernel<T> {
  public:
 #define INIT_BASE_DEFINES                                    \
-  using DeviceContext = phi::CPUContext;                     \
   auto* x = ctx.Input<phi::DenseTensor>("X");                \
   auto* h0 = ctx.Input<phi::DenseTensor>("H0");              \
   auto* c0 = ctx.Input<phi::DenseTensor>("C0");              \
@@ -320,35 +312,35 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
   const int D = wh_dims[0];                                  \
   const int D4 = wh_dims[1]
 
-#define INIT_OTHER_DEFINES                                                     \
-  const T* x_data = x->data<T>();                                              \
-  const T* wx_data = wx->data<T>();                                            \
-  const T* wh_data = wh->data<T>();                                            \
-  /* diagonal weight*/                                                         \
-  const T* wp_data = bias->data<T>() + D4;                                     \
-  /* for peephole only*/                                                       \
-  T* checked_cell_data = nullptr;                                              \
-  auto place = ctx.GetPlace();                                                 \
-  if (use_peepholes) {                                                         \
-    /* w_ic * Ct-1, w_fc * Ct-1  ; w_oc * Ct => ih*/                           \
-    auto* checked_cell = ctx.Output<phi::DenseTensor>("CheckedCell");          \
-    checked_cell_data = checked_cell->mutable_data<T>(place);                  \
-  }                                                                            \
-  const jit::lstm_attr_t attr(                                                 \
-      D,                                                                       \
-      jit::to_kerneltype(ctx.Attr<std::string>("gate_activation")),            \
-      jit::to_kerneltype(ctx.Attr<std::string>("candidate_activation")),       \
-      jit::to_kerneltype(ctx.Attr<std::string>("cell_activation")),            \
-      use_peepholes);                                                          \
-  jit::lstm_t one_step;                                                        \
-  one_step.wp = wp_data;                                                       \
-  one_step.checked = checked_cell_data;                                        \
-  auto ComputeC1H1 =                                                           \
-      jit::KernelFuncs<jit::LSTMC1H1Tuple<T>, platform::CPUPlace>::Cache().At( \
-          attr);                                                               \
-  auto ComputeCtHt =                                                           \
-      jit::KernelFuncs<jit::LSTMCtHtTuple<T>, platform::CPUPlace>::Cache().At( \
-          attr)
+#define INIT_OTHER_DEFINES                                                    \
+  const T* x_data = x->data<T>();                                             \
+  const T* wx_data = wx->data<T>();                                           \
+  const T* wh_data = wh->data<T>();                                           \
+  /* diagonal weight*/                                                        \
+  const T* wp_data = bias->data<T>() + D4;                                    \
+  /* for peephole only*/                                                      \
+  T* checked_cell_data = nullptr;                                             \
+  auto place = ctx.GetPlace();                                                \
+  if (use_peepholes) {                                                        \
+    /* w_ic * Ct-1, w_fc * Ct-1  ; w_oc * Ct => ih*/                          \
+    auto* checked_cell = ctx.Output<phi::DenseTensor>("CheckedCell");         \
+    checked_cell_data = checked_cell->mutable_data<T>(place);                 \
+  }                                                                           \
+  const phi::jit::lstm_attr_t attr(                                           \
+      D,                                                                      \
+      phi::jit::to_kerneltype(ctx.Attr<std::string>("gate_activation")),      \
+      phi::jit::to_kerneltype(ctx.Attr<std::string>("candidate_activation")), \
+      phi::jit::to_kerneltype(ctx.Attr<std::string>("cell_activation")),      \
+      use_peepholes);                                                         \
+  phi::jit::lstm_t one_step;                                                  \
+  one_step.wp = wp_data;                                                      \
+  one_step.checked = checked_cell_data;                                       \
+  auto ComputeC1H1 = phi::jit::KernelFuncs<phi::jit::LSTMC1H1Tuple<T>,        \
+                                           platform::CPUPlace>::Cache()       \
+                         .At(attr);                                           \
+  auto ComputeCtHt = phi::jit::KernelFuncs<phi::jit::LSTMCtHtTuple<T>,        \
+                                           platform::CPUPlace>::Cache()       \
+                         .At(attr)
 
 // Wh GEMM
 #define GEMM_WH_ADDON(bs, prev, out) \
@@ -370,16 +362,16 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     INIT_BASE_DEFINES;
     INIT_OTHER_DEFINES;
     auto x_lod = x->lod();
-    const int total_T = x_dims[0];
-    const int N = x_lod[0].size() - 1;
+    const int total_T = static_cast<int>(x_dims[0]);
+    const int N = static_cast<int>(x_lod[0].size() - 1);
     const T* h0_data = h0 ? h0->data<T>() : nullptr;
     const T* c0_data = c0 ? c0->data<T>() : nullptr;
     T* xx_data = xx->mutable_data<T>(place);
     T* h_out_data = hidden_out->mutable_data<T>(place);
     T* c_out_data = cell_out->mutable_data<T>(place);
-    auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
-
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
+
     phi::funcs::FCFunctor<DeviceContext, T> fc;
     fc(dev_ctx, total_T, D4, M, x_data, wx_data, xx_data, bias->data<T>());
 
@@ -396,7 +388,7 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
 
     for (int i = 0; i < N; ++i) {
       int bid = is_reverse ? N - 1 - i : i;
-      int seq_len = x_lod[0][bid + 1] - x_lod[0][bid];
+      int seq_len = static_cast<int>(x_lod[0][bid + 1] - x_lod[0][bid]);
       const T* prev_c_data = nullptr;
       const T* prev_h_data = nullptr;
       int tstart = 0;
@@ -477,7 +469,7 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
 
     auto batched_lod = batched_input->lod();
     const auto& seq_order = batched_lod[2];
-    const int max_bs = seq_order.size();
+    const int max_bs = static_cast<int>(seq_order.size());
     reordered_h0->Resize({max_bs, D});
     reordered_c0->Resize({max_bs, D});
 
@@ -521,13 +513,14 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
 
     // compute kernel part
     const auto& batch_starts = batched_lod[0];
-    const int max_seq_len = batch_starts.size() - 1;
+    const int max_seq_len = static_cast<int>(batch_starts.size() - 1);
     const int offset = tstart * max_bs * D;
     batched_input_data = batched_input_data + offset * 4;
     batched_h_out_data = batched_h_out_data + offset;
     batched_c_out_data = batched_c_out_data + offset;
     for (int step = tstart; step < max_seq_len; ++step) {
-      const int cur_bs = batch_starts[step + 1] - batch_starts[step];
+      const int cur_bs =
+          static_cast<int>(batch_starts[step + 1] - batch_starts[step]);
       GEMM_WH_ADDON(cur_bs, prev_h_data, batched_input_data);
       T* cur_in_data = batched_input_data;
       T* cur_prev_c_data = prev_c_data;
@@ -580,6 +573,5 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(fusion_lstm, ops::FusionLSTMOp, ops::FusionLSTMOpMaker);
 
-REGISTER_OP_CPU_KERNEL(fusion_lstm,
-                       ops::FuisonLSTMKernel<float>,
-                       ops::FuisonLSTMKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(
+    fusion_lstm, CPU, ALL_LAYOUT, ops::FuisonLSTMKernel, float, double) {}

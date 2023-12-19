@@ -118,7 +118,8 @@ class OpBase {
     attrs_[name] = v;
   }
 
-  void SetBlockAttr(const std::string& name, framework::BlockDesc* block) {
+  void SetBlockAttr(const std::string& name UNUSED,
+                    framework::BlockDesc* block UNUSED) {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "SetBlockAttr is not support in dygraph OpBase"));
   }

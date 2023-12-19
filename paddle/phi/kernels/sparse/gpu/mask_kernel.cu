@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/mask_kernel.h"
 
+#include "paddle/common/ddim.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -50,10 +50,10 @@ __global__ void MaskKernel(const T* x_ptr,
 }
 
 template <typename T, typename IntT>
-void SparseMaskGPUKernel(const GPUContext& dev_ctx,
-                         const DenseTensor& x,
-                         const SparseCooTensor& mask,
-                         SparseCooTensor* out) {
+void MaskCooGPUKernel(const GPUContext& dev_ctx,
+                      const DenseTensor& x,
+                      const SparseCooTensor& mask,
+                      SparseCooTensor* out) {
   const DDim& dims = x.dims();
   PADDLE_ENFORCE_EQ(
       x.dims(),
@@ -61,6 +61,13 @@ void SparseMaskGPUKernel(const GPUContext& dev_ctx,
       phi::errors::InvalidArgument("the input x and mask must have the shape"));
   const DenseTensor& indices = mask.indices();
   const DenseTensor& values = mask.values();
+  DenseTensor out_indices = phi::EmptyLike<IntT>(dev_ctx, indices);
+  DenseTensor out_values = phi::EmptyLike<T>(dev_ctx, values);
+  if (mask.nnz() <= 0) {
+    out->SetMember(out_indices, out_values, dims, true);
+    return;
+  }
+
   const int sparse_dim = mask.sparse_dim();
   DenseTensor sparse_offsets = phi::Empty<GPUContext>(
       dev_ctx,
@@ -74,9 +81,6 @@ void SparseMaskGPUKernel(const GPUContext& dev_ctx,
                                      sizeof(int64_t) * sparse_dim,
                                      gpuMemcpyHostToDevice,
                                      dev_ctx.stream());
-
-  DenseTensor out_indices = phi::EmptyLike<T>(dev_ctx, indices);
-  DenseTensor out_values = phi::EmptyLike<T>(dev_ctx, values);
 
   phi::Copy(dev_ctx, indices, dev_ctx.GetPlace(), false, &out_indices);
 
@@ -108,13 +112,13 @@ void SparseMaskGPUKernel(const GPUContext& dev_ctx,
  * x and mask must have the same shape.
  **/
 template <typename T, typename Context>
-void SparseMaskKernel(const Context& dev_ctx,
-                      const DenseTensor& x,
-                      const SparseCooTensor& mask,
-                      SparseCooTensor* out) {
+void MaskCooKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const SparseCooTensor& mask,
+                   SparseCooTensor* out) {
   PD_VISIT_BASE_INTEGRAL_TYPES(
-      mask.indices().dtype(), "SparseMaskGPUKernel", ([&] {
-        SparseMaskGPUKernel<T, data_t>(dev_ctx, x, mask, out);
+      mask.indices().dtype(), "MaskCooGPUKernel", ([&] {
+        MaskCooGPUKernel<T, data_t>(dev_ctx, x, mask, out);
       }));
 }
 
@@ -155,17 +159,17 @@ __global__ void MaskCopy(const IntT* mask_indexs,
 }
 
 template <typename T, typename IntT>
-void SparseMaskHelperGPUKernel(const GPUContext& dev_ctx,
-                               const SparseCooTensor& x,
-                               const DenseTensor& mask_indices,
-                               DenseTensor* out) {
+void MaskHelperCooGPUKernel(const GPUContext& dev_ctx,
+                            const SparseCooTensor& x,
+                            const DenseTensor& mask_indices,
+                            DenseTensor* out) {
   PADDLE_ENFORCE_EQ(
       mask_indices.dims().size(),
       2,
       phi::errors::InvalidArgument("the mask_indices must be 2-D tensor"));
 
   const int32_t sparse_dim = x.sparse_dim();
-  auto indices_dtype = paddle::experimental::CppTypeToDataType<IntT>::Type();
+  auto indices_dtype = phi::CppTypeToDataType<IntT>::Type();
 
   std::vector<IntT> sparse_offsets(sparse_dim);
 
@@ -279,23 +283,23 @@ void SparseMaskHelperGPUKernel(const GPUContext& dev_ctx,
 }
 
 template <typename T, typename Context>
-void SparseMaskHelperKernel(const Context& dev_ctx,
-                            const SparseCooTensor& x,
-                            const DenseTensor& mask_indices,
-                            DenseTensor* out) {
+void MaskHelperCooKernel(const Context& dev_ctx,
+                         const SparseCooTensor& x,
+                         const DenseTensor& mask_indices,
+                         DenseTensor* out) {
   PD_VISIT_BASE_INTEGRAL_TYPES(
-      x.indices().dtype(), "SparseMaskHelperGPUKernel", ([&] {
-        SparseMaskHelperGPUKernel<T, data_t>(dev_ctx, x, mask_indices, out);
+      x.indices().dtype(), "MaskHelperCooGPUKernel", ([&] {
+        MaskHelperCooGPUKernel<T, data_t>(dev_ctx, x, mask_indices, out);
       }));
 }
 
 }  // namespace sparse
 }  // namespace phi
 
-PD_REGISTER_KERNEL(mask,
+PD_REGISTER_KERNEL(mask_coo,
                    GPU,
                    ALL_LAYOUT,
-                   phi::sparse::SparseMaskKernel,
+                   phi::sparse::MaskCooKernel,
                    float,
                    double,
                    phi::dtype::float16,
@@ -303,14 +307,15 @@ PD_REGISTER_KERNEL(mask,
                    int8_t,
                    int16_t,
                    int,
-                   int64_t) {
+                   int64_t,
+                   bool) {
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
-PD_REGISTER_KERNEL(mask_helper,
+PD_REGISTER_KERNEL(mask_helper_coo,
                    GPU,
                    ALL_LAYOUT,
-                   phi::sparse::SparseMaskHelperKernel,
+                   phi::sparse::MaskHelperCooKernel,
                    float,
                    double,
                    phi::dtype::float16,

@@ -121,7 +121,7 @@ int64_t MemoryReusePass::GetMemorySize(const details::VarHandle &var) const {
   return std::accumulate(shapes.begin(),
                          shapes.end(),
                          static_cast<int64_t>(1),
-                         std::multiplies<int64_t>()) *
+                         std::multiplies<>()) *
          sizeof_dtype;
 }
 

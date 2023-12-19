@@ -51,7 +51,7 @@ class BilateralSliceOp : public framework::OperatorWithKernel {
     int64_t coeffs_chans = grid_dims[1];
     int64_t input_chans = input_dims[1];
 
-    int64_t output_chans;
+    int64_t output_chans = 0;
     if ((!ctx->IsRuntime()) && ((coeffs_chans < 0) || (input_chans < 0))) {
       output_chans = -1;
     } else {
@@ -81,7 +81,7 @@ class BilateralSliceOp : public framework::OperatorWithKernel {
     output_dims.push_back(h);
     output_dims.push_back(w);
 
-    ctx->SetOutputDim("Out", phi::make_ddim(output_dims));
+    ctx->SetOutputDim("Out", common::make_ddim(output_dims));
   }
 
  protected:
@@ -175,7 +175,7 @@ class BilateralSliceGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class BilateralSliceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -196,6 +196,10 @@ REGISTER_OPERATOR(bilateral_slice,
                   ops::BilateralSliceGradMaker<paddle::framework::OpDesc>,
                   ops::BilateralSliceGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(bilateral_slice_grad, ops::BilateralSliceOpGrad);
-REGISTER_OP_CPU_KERNEL(bilateral_slice,
-                       ops::BilateralSliceKernel<float>,
-                       ops::BilateralSliceKernel<double>);
+
+PD_REGISTER_STRUCT_KERNEL(bilateral_slice,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::BilateralSliceKernel,
+                          float,
+                          double) {}

@@ -35,7 +35,7 @@ void CalculateGrad(const Context& ctx,
                    int64_t index_size,
                    int64_t slice_size,
                    T* x_grad,
-                   const DenseTensor& out_grad_tensor,
+                   const DenseTensor& out_grad_tensor UNUSED,
                    const DenseTensor& y) {
   std::vector<int64_t> reduce_idx;
   bool reduce = ReduceGrad(out_grad_dims, x_grad_dims, reduce_idx);
@@ -60,12 +60,12 @@ void CalculateGrad(const Context& ctx,
       }
     } else {
       const auto& bcast_info = phi::CalcBCastInfo(out_grad_dims, x_grad_dims);
-      auto out_grad_dims_1 = phi::vectorize<int>(out_grad_dims);
+      auto out_grad_dims_1 = common::vectorize<int>(out_grad_dims);
       std::vector<int> out_grad_dims_2(out_grad_dims_1.begin() + 1,
                                        out_grad_dims_1.end());
       out_grad_dims_2.emplace(out_grad_dims_2.begin(), x_grad_dims[0]);
       DenseTensor x_grad_v2 = phi::Empty<T, Context>(ctx, out_grad_dims_2);
-      phi::funcs::SetConstant<Context, T>()(ctx, &x_grad_v2, T(0));
+      phi::funcs::SetConstant<Context, T>()(ctx, &x_grad_v2, static_cast<T>(0));
       T* x_grad_v2_data = x_grad_v2.data<T>();
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
@@ -83,12 +83,12 @@ void CalculateGrad(const Context& ctx,
           }
         }
       }
-      DenseTensor x_grad_out = phi::Sum<T, Context>(
-          ctx,
-          x_grad_v2,
-          phi::IntArray(reduce_idx),
-          paddle::experimental::CppTypeToDataType<T>::Type(),
-          true);
+      DenseTensor x_grad_out =
+          phi::Sum<T, Context>(ctx,
+                               x_grad_v2,
+                               phi::IntArray(reduce_idx),
+                               phi::CppTypeToDataType<T>::Type(),
+                               true);
       memcpy(x_grad, x_grad_out.data<T>(), x_grad_out.numel() * sizeof(T));
     }
   } else if (message_op == "MUL") {
@@ -117,12 +117,12 @@ void CalculateGrad(const Context& ctx,
         }
       }
     } else {
-      auto out_grad_dims_1 = phi::vectorize<int>(out_grad_dims);
+      auto out_grad_dims_1 = common::vectorize<int>(out_grad_dims);
       std::vector<int> out_grad_dims_2(out_grad_dims_1.begin() + 1,
                                        out_grad_dims_1.end());
       out_grad_dims_2.emplace(out_grad_dims_2.begin(), x_grad_dims[0]);
       DenseTensor x_grad_v2 = phi::Empty<T, Context>(ctx, out_grad_dims_2);
-      phi::funcs::SetConstant<Context, T>()(ctx, &x_grad_v2, T(0));
+      phi::funcs::SetConstant<Context, T>()(ctx, &x_grad_v2, static_cast<T>(0));
       T* x_grad_v2_data = x_grad_v2.data<T>();
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
@@ -145,12 +145,12 @@ void CalculateGrad(const Context& ctx,
           }
         }
       }
-      DenseTensor x_grad_out = phi::Sum<T, Context>(
-          ctx,
-          x_grad_v2,
-          phi::IntArray(reduce_idx),
-          paddle::experimental::CppTypeToDataType<T>::Type(),
-          true);
+      DenseTensor x_grad_out =
+          phi::Sum<T, Context>(ctx,
+                               x_grad_v2,
+                               phi::IntArray(reduce_idx),
+                               phi::CppTypeToDataType<T>::Type(),
+                               true);
       memcpy(x_grad, x_grad_out.data<T>(), x_grad_out.numel() * sizeof(T));
     }
   }

@@ -40,8 +40,8 @@ void SetLoD(DstLoD* dst, const SrcLoD& src) {
     dst->emplace_back(v);
   }
 }
-template void SetLoD<framework::LoD, paddle::lite::LoD>(
-    framework::LoD* dst, const paddle::lite::LoD& src);
+template void SetLoD<framework::LoD, paddle::lite_api::lod_t>(
+    framework::LoD* dst, const paddle::lite_api::lod_t& src);
 
 platform::Place GetNativePlace(const TargetType& type, int id = 0) {
   switch (type) {
@@ -197,7 +197,7 @@ void InitDstTensor(paddle::lite_api::Tensor* dst, const phi::DenseTensor& src) {
       GetLiteTargetType(src.place()));
   dst->SetPrecision(
       GetLitePrecisionType(framework::TransToProtoVarType(src.dtype())));
-  paddle::lite::LoD lite_lod;
+  paddle::lite_api::lod_t lite_lod;
   SetLoD(&lite_lod, src.lod());
   dst->SetLoD(lite_lod);
 }
@@ -218,7 +218,7 @@ void TensorCopyAsync(paddle::lite_api::Tensor* dst,
   const platform::Place& dst_place = GetNativePlace(dst->target());
   const size_t bytes =
       static_cast<size_t>(src.numel()) * phi::SizeOf(src.dtype());
-  dst->Resize(phi::vectorize(src.dims()));
+  dst->Resize(common::vectorize(src.dims()));
   const void* src_data = src.data();
   void* dst_data{nullptr};
   dst_data = GetLiteTensorDataPtr(
@@ -236,7 +236,7 @@ template <>
 void TensorCopyAsync(phi::DenseTensor* dst,
                      const paddle::lite_api::Tensor& src,
                      const platform::DeviceContext& ctx) {
-  dst->Resize(phi::make_ddim(src.shape()));
+  dst->Resize(common::make_ddim(src.shape()));
   InitDstTensor(dst, src);
   const platform::Place& src_place = GetNativePlace(src.target());
   const platform::Place& dst_place = dst->place();
@@ -254,12 +254,12 @@ void TensorCopyAsync(phi::DenseTensor* dst,
 
 template <>
 void TensorDataShare(paddle::lite_api::Tensor* dst, phi::DenseTensor* src) {
-  dst->Resize(phi::vectorize(src->dims()));
+  dst->Resize(common::vectorize(src->dims()));
   dst->ShareExternalMemory(
       src->data(), src->memory_size(), GetLiteTargetType(src->place()));
   dst->SetPrecision(
       GetLitePrecisionType(framework::TransToProtoVarType(src->dtype())));
-  paddle::lite::LoD lite_lod;
+  paddle::lite_api::lod_t lite_lod;
   SetLoD(&lite_lod, src->lod());
   dst->SetLoD(lite_lod);
 }
@@ -273,7 +273,7 @@ void TensorDataShare(phi::DenseTensor* dst, paddle::lite_api::Tensor* src) {
       framework::SizeOfType(GetNativePrecisionType(src->precision()));
   std::shared_ptr<phi::Allocation> holder(new phi::Allocation(
       src_raw_data, memory_size, GetNativePlace(src->target())));
-  dst->Resize(phi::make_ddim(src->shape()));
+  dst->Resize(common::make_ddim(src->shape()));
   SetLoD(dst->mutable_lod(), src->lod());
   dst->ResetHolderWithType(
       holder,

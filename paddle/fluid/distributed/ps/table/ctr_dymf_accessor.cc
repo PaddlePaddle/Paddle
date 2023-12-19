@@ -14,10 +14,9 @@
 
 #include "paddle/fluid/distributed/ps/table/ctr_dymf_accessor.h"
 
-#include <gflags/gflags.h>
-
 #include "glog/logging.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/utils/flags.h"
 
 namespace paddle {
 namespace distributed {
@@ -48,6 +47,13 @@ int CtrDymfAccessor::Initialize() {
     _filtered_slots.insert(_config.ctr_accessor_param().load_filter_slots(i));
     VLOG(0) << "CtrDymfAccessor::Initialize() load filter slot:"
             << _config.ctr_accessor_param().load_filter_slots(i);
+  }
+  for (int i = 0; i < _config.ctr_accessor_param().save_filter_slots_size();
+       i++) {
+    _save_filtered_slots.insert(
+        _config.ctr_accessor_param().save_filter_slots(i));
+    VLOG(0) << "CtrDymfAccessor::Initialize() save filter slot:"
+            << _config.ctr_accessor_param().save_filter_slots(i);
   }
   VLOG(0) << " INTO CtrDymfAccessor::Initialize(); embed_sgd_dim:"
           << common_feature_value.embed_sgd_dim
@@ -117,6 +123,15 @@ bool CtrDymfAccessor::FilterSlot(float* value) {
     return true;
   }
   return false;
+}
+
+bool CtrDymfAccessor::SaveFilterSlot(float* value) {
+  // 热启时过滤掉_filtered_slots中的feasign
+  if (_save_filtered_slots.find(common_feature_value.Slot(value)) !=
+      _save_filtered_slots.end()) {
+    return false;
+  }
+  return true;
 }
 
 bool CtrDymfAccessor::Save(float* value, int param) {

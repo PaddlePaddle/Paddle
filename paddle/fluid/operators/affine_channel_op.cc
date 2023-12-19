@@ -70,8 +70,8 @@ class AffineChannelOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     auto scale_dims = ctx->GetInputDim("Scale");
     auto b_dims = ctx->GetInputDim("Bias");
-    const phi::DataLayout data_layout =
-        phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
+    const phi::DataLayout data_layout = common::StringToDataLayout(
+        ctx->Attrs().Get<std::string>("data_layout"));
 
     const int64_t C =
         (data_layout == phi::DataLayout::kNCHW ? x_dims[1]
@@ -184,7 +184,7 @@ template <typename T>
 using ConstEigenVectorArrayMap =
     Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, 1>>;
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class AffineChannelKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -196,12 +196,13 @@ class AffineChannelKernel : public framework::OpKernel<T> {
     y->mutable_data<T>(ctx.GetPlace());
 
     const phi::DataLayout layout =
-        phi::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
+        common::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
 
     auto dims = x->dims();
-    int N = dims[0];
-    int C = layout == phi::DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
-    int HxW = x->numel() / N / C;
+    int N = static_cast<int>(dims[0]);
+    int C = static_cast<int>(
+        layout == phi::DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1]);
+    int HxW = static_cast<int>(x->numel() / N / C);
 
     auto* scale_d = scale->data<T>();
     auto* bias_d = bias->data<T>();
@@ -228,7 +229,7 @@ class AffineChannelKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class AffineChannelGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -242,12 +243,13 @@ class AffineChannelGradKernel : public framework::OpKernel<T> {
     auto* dbias = ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
 
     const phi::DataLayout layout =
-        phi::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
+        common::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
 
     auto dims = x->dims();
-    int N = dims[0];
-    int C = layout == phi::DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
-    int HxW = x->numel() / N / C;
+    int N = static_cast<int>(dims[0]);
+    int C = static_cast<int>(
+        layout == phi::DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1]);
+    int HxW = static_cast<int>(x->numel() / N / C);
 
     auto* dy_d = dy->data<T>();
     auto* scale_d = scale->data<T>();
@@ -353,9 +355,12 @@ REGISTER_OPERATOR(affine_channel_grad,
                   ops::AffineChannelNoNeedBufferVarsInference,
                   ops::AffineChannelGradInplaceInferer);
 
-REGISTER_OP_CPU_KERNEL(affine_channel,
-                       ops::AffineChannelKernel<CPU, float>,
-                       ops::AffineChannelKernel<CPU, double>);
-REGISTER_OP_CPU_KERNEL(affine_channel_grad,
-                       ops::AffineChannelGradKernel<CPU, float>,
-                       ops::AffineChannelGradKernel<CPU, double>);
+PD_REGISTER_STRUCT_KERNEL(
+    affine_channel, CPU, ALL_LAYOUT, ops::AffineChannelKernel, float, double) {}
+
+PD_REGISTER_STRUCT_KERNEL(affine_channel_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::AffineChannelGradKernel,
+                          float,
+                          double) {}

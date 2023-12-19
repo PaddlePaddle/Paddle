@@ -39,29 +39,19 @@ def _simple_network():
     return input, out, weight
 
 
-def _prepare_data(device_count):
+def _prepare_data():
     """
-    Prepare feeding data for simple network. The shape is [device_count, 2, 2].
+    Prepare feeding data for simple network. The shape is [1, 2, 2].
 
-    Args:
-        device_count (int): The number of devices.
     """
     # Prepare the feeding data.
     np_input_single = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
-    if device_count == 1:
-        return np_input_single.reshape(device_count, 2, 2)
-    else:
-        input_list = []
-        for i in range(device_count):
-            input_list.append(np_input_single)
-        np_input_muti = np.array(input_list)
-        np_input_muti = np_input_muti.reshape(device_count, 2, 2)
-        return np_input_muti
+    return np_input_single.reshape(1, 2, 2)
 
 
 def _is_cuda_available():
     """
-    Check whether CUDA is avaiable.
+    Check whether CUDA is available.
     """
     try:
         assert len(paddle.static.cuda_places()) > 0
@@ -70,30 +60,14 @@ def _is_cuda_available():
         logging.warning(
             "You are using GPU version PaddlePaddle, but there is no GPU "
             "detected on your machine. Maybe CUDA devices is not set properly."
-            "\n Original Error is {}".format(e)
-        )
-        return False
-
-
-def _is_npu_available():
-    """
-    Check whether NPU is avaiable.
-    """
-    try:
-        assert len(paddle.static.npu_places()) > 0
-        return True
-    except Exception as e:
-        logging.warning(
-            "You are using NPU version PaddlePaddle, but there is no NPU "
-            "detected on your machine. Maybe NPU devices is not set properly."
-            "\n Original Error is {}".format(e)
+            f"\n Original Error is {e}"
         )
         return False
 
 
 def _is_xpu_available():
     """
-    Check whether XPU is avaiable.
+    Check whether XPU is available.
     """
     try:
         assert len(paddle.static.xpu_places()) > 0
@@ -102,27 +76,26 @@ def _is_xpu_available():
         logging.warning(
             "You are using XPU version PaddlePaddle, but there is no XPU "
             "detected on your machine. Maybe XPU devices is not set properly."
-            "\n Original Error is {}".format(e)
+            f"\n Original Error is {e}"
         )
         return False
 
 
-def _run_dygraph_single(use_cuda, use_xpu, use_npu):
+def _run_dygraph_single(use_cuda, use_xpu, use_custom, custom_device_name):
     """
-    Testing the simple network in dygraph mode using one CPU/GPU/XPU/NPU.
+    Testing the simple network in dygraph mode using one CPU/GPU/XPU.
 
     Args:
         use_cuda (bool): Whether running with CUDA.
         use_xpu (bool): Whether running with XPU.
-        use_npu (bool): Whether running with NPU.
     """
     paddle.disable_static()
     if use_cuda:
         paddle.set_device('gpu')
     elif use_xpu:
         paddle.set_device('xpu')
-    elif use_npu:
-        paddle.set_device('npu')
+    elif use_custom:
+        paddle.set_device(custom_device_name)
     else:
         paddle.set_device('cpu')
     weight_attr = paddle.ParamAttr(
@@ -134,7 +107,7 @@ def _run_dygraph_single(use_cuda, use_xpu, use_npu):
     linear = paddle.nn.Linear(
         2, 4, weight_attr=weight_attr, bias_attr=bias_attr
     )
-    input_np = _prepare_data(1)
+    input_np = _prepare_data()
     input_tensor = paddle.to_tensor(input_np)
     linear_out = linear(input_tensor)
     out = paddle.tensor.sum(linear_out)
@@ -145,14 +118,13 @@ def _run_dygraph_single(use_cuda, use_xpu, use_npu):
     opt.step()
 
 
-def _run_static_single(use_cuda, use_xpu, use_npu):
+def _run_static_single(use_cuda, use_xpu, use_custom, custom_device_name):
     """
-    Testing the simple network with executor running directly, using one CPU/GPU/XPU/NPU.
+    Testing the simple network with executor running directly, using one CPU/GPU/XPU.
 
     Args:
         use_cuda (bool): Whether running with CUDA.
         use_xpu (bool): Whether running with XPU.
-        use_npu (bool): Whether running with NPU.
     """
     paddle.enable_static()
     with paddle.static.scope_guard(paddle.static.Scope()):
@@ -169,8 +141,8 @@ def _run_static_single(use_cuda, use_xpu, use_npu):
             place = paddle.CUDAPlace(0)
         elif use_xpu:
             place = paddle.XPUPlace(0)
-        elif use_npu:
-            place = paddle.NPUPlace(0)
+        elif use_custom:
+            place = paddle.CustomPlace(custom_device_name, 0)
         else:
             place = paddle.CPUPlace()
 
@@ -178,55 +150,64 @@ def _run_static_single(use_cuda, use_xpu, use_npu):
         exe.run(startup_prog)
         exe.run(
             train_prog,
-            feed={input.name: _prepare_data(1)},
+            feed={input.name: _prepare_data()},
             fetch_list=[out.name, param_grads[1].name],
         )
     paddle.disable_static()
 
 
-def _run_static_parallel(use_cuda, use_xpu, use_npu, device_list):
+def train_for_run_parallel():
+    """
+    train script for parallel training check
+    """
+
+    # to avoid cyclic import
+    class LinearNet(paddle.nn.Layer):
+        """
+        simple fc network for parallel training check
+        """
+
+        def __init__(self):
+            super().__init__()
+            self._linear1 = paddle.nn.Linear(10, 10)
+            self._linear2 = paddle.nn.Linear(10, 1)
+
+        def forward(self, x):
+            """
+            forward
+            """
+            return self._linear2(self._linear1(x))
+
+    paddle.distributed.init_parallel_env()
+
+    layer = LinearNet()
+    dp_layer = paddle.DataParallel(layer)
+
+    loss_fn = paddle.nn.MSELoss()
+    adam = paddle.optimizer.Adam(
+        learning_rate=0.001, parameters=dp_layer.parameters()
+    )
+
+    inputs = paddle.randn([10, 10], 'float32')
+    outputs = dp_layer(inputs)
+    labels = paddle.randn([10, 1], 'float32')
+    loss = loss_fn(outputs, labels)
+
+    loss.backward()
+    adam.step()
+    adam.clear_grad()
+
+
+def _run_parallel(device_list):
     """
     Testing the simple network in data parallel mode, using multiple CPU/GPU.
 
     Args:
         use_cuda (bool): Whether running with CUDA.
         use_xpu (bool): Whether running with XPU.
-        use_npu (bool): Whether running with NPU.
         device_list (int): The specified devices.
     """
-    paddle.enable_static()
-    with paddle.static.scope_guard(paddle.static.Scope()):
-        train_prog = paddle.static.Program()
-        startup_prog = paddle.static.Program()
-        with paddle.static.program_guard(train_prog, startup_prog):
-            input, out, _ = _simple_network()
-            loss = paddle.tensor.mean(out)
-            loss.persistable = True
-            paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
-
-        compiled_prog = paddle.static.CompiledProgram(
-            train_prog
-        ).with_data_parallel(loss_name=loss.name, places=device_list)
-
-        if use_cuda:
-            place = paddle.CUDAPlace(0)
-        elif use_xpu:
-            place = paddle.XPUPlace(0)
-            compiled_prog = train_prog
-        elif use_npu:
-            place = paddle.NPUPlace(0)
-            compiled_prog = train_prog
-        else:
-            place = paddle.CPUPlace()
-
-        exe = paddle.static.Executor(place)
-        exe.run(startup_prog)
-        exe.run(
-            compiled_prog,
-            feed={input.name: _prepare_data(len(device_list))},
-            fetch_list=[loss.name],
-        )
-    paddle.disable_static()
+    paddle.distributed.spawn(train_for_run_parallel, nprocs=len(device_list))
 
 
 def run_check():
@@ -237,29 +218,36 @@ def run_check():
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            paddle.utils.run_check()
-            # Running verify PaddlePaddle program ...
-            # W1010 07:21:14.972093  8321 device_context.cc:338] Please NOTE: device: 0, CUDA Capability: 70, Driver API Version: 11.0, Runtime API Version: 10.1
-            # W1010 07:21:14.979770  8321 device_context.cc:346] device: 0, cuDNN Version: 7.6.
-            # PaddlePaddle works well on 1 GPU.
-            # PaddlePaddle works well on 8 GPUs.
-            # PaddlePaddle is installed successfully! Let's start deep learning with PaddlePaddle now.
+            >>> paddle.utils.run_check()
+            >>> # doctest: +SKIP('the output will change in different run')
+            Running verify PaddlePaddle program ...
+            I0818 15:35:08.335391 30540 program_interpreter.cc:173] New Executor is Running.
+            I0818 15:35:08.398319 30540 interpreter_util.cc:529] Standalone Executor is Used.
+            PaddlePaddle works well on 1 CPU.
+            PaddlePaddle is installed successfully! Let's start deep learning with PaddlePaddle now.
     """
 
     print("Running verify PaddlePaddle program ... ")
 
     use_cuda = False
     use_xpu = False
-    use_npu = False
+    use_custom = False
+    custom_device_name = None
 
     if paddle.is_compiled_with_cuda():
         use_cuda = _is_cuda_available()
     elif paddle.is_compiled_with_xpu():
         use_xpu = _is_xpu_available()
-    elif paddle.is_compiled_with_npu():
-        use_npu = _is_npu_available()
+    elif len(paddle.framework.core.get_all_custom_device_type()) > 0:
+        use_custom = True
+        if len(paddle.framework.core.get_all_custom_device_type()) > 1:
+            logging.warning(
+                "More than one kind of custom devices detected, but run check would only be executed on {}.".format(
+                    paddle.framework.core.get_all_custom_device_type()[0]
+                )
+            )
 
     if use_cuda:
         device_str = "GPU"
@@ -267,43 +255,48 @@ def run_check():
     elif use_xpu:
         device_str = "XPU"
         device_list = paddle.static.xpu_places()
-    elif use_npu:
-        device_str = "NPU"
-        device_list = paddle.static.npu_places()
-    else:
-        device_str = "CPU"
-        device_list = paddle.static.cpu_places(device_count=2)
-    device_count = len(device_list)
-
-    _run_static_single(use_cuda, use_xpu, use_npu)
-    _run_dygraph_single(use_cuda, use_xpu, use_npu)
-    print("PaddlePaddle works well on 1 {}.".format(device_str))
-
-    try:
-        _run_static_parallel(use_cuda, use_xpu, use_npu, device_list)
-        print(
-            "PaddlePaddle works well on {} {}s.".format(
-                device_count, device_str
+    elif use_custom:
+        device_str = paddle.framework.core.get_all_custom_device_type()[0]
+        custom_device_name = device_str
+        device_list = list(
+            range(
+                paddle.framework.core.get_custom_device_count(
+                    custom_device_name
+                )
             )
         )
+    else:
+        device_str = "CPU"
+        device_list = paddle.static.cpu_places(device_count=1)
+    device_count = len(device_list)
+
+    _run_static_single(use_cuda, use_xpu, use_custom, custom_device_name)
+    _run_dygraph_single(use_cuda, use_xpu, use_custom, custom_device_name)
+    print(f"PaddlePaddle works well on 1 {device_str}.")
+
+    try:
+        if len(device_list) > 1:
+            if use_custom:
+                import os
+
+                os.environ['PADDLE_DISTRI_BACKEND'] = "xccl"
+            _run_parallel(device_list)
+            print(f"PaddlePaddle works well on {device_count} {device_str}s.")
         print(
             "PaddlePaddle is installed successfully! Let's start deep learning with PaddlePaddle now."
         )
     except Exception as e:
         logging.warning(
-            "PaddlePaddle meets some problem with {} {}s. This may be caused by:"
+            f"PaddlePaddle meets some problem with {device_count} {device_str}s. This may be caused by:"
             "\n 1. There is not enough GPUs visible on your system"
             "\n 2. Some GPUs are occupied by other process now"
             "\n 3. NVIDIA-NCCL2 is not installed correctly on your system. Please follow instruction on https://github.com/NVIDIA/nccl-tests "
-            "\n to test your NCCL, or reinstall it following https://docs.nvidia.com/deeplearning/sdk/nccl-install-guide/index.html".format(
-                device_count, device_str
-            )
+            "\n to test your NCCL, or reinstall it following https://docs.nvidia.com/deeplearning/sdk/nccl-install-guide/index.html"
         )
 
-        logging.warning("\n Original Error is: {}".format(e))
+        logging.warning(f"\n Original Error is: {e}")
         print(
-            "PaddlePaddle is installed successfully ONLY for single {}! "
-            "Let's start deep learning with PaddlePaddle now.".format(
-                device_str
-            )
+            f"PaddlePaddle is installed successfully ONLY for single {device_str}! "
+            "Let's start deep learning with PaddlePaddle now."
         )
+        raise e

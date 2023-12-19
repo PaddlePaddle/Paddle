@@ -46,8 +46,7 @@ void GLOOParallelContext::Init() {
   int port = std::stoi(addr[1]);
   gloo_wrapper->SetHttpStore(host, port, "worker");
   gloo_wrapper->Init();
-  device_ = std::unique_ptr<phi::CPUContext>(
-      new phi::CPUContext(platform::CPUPlace()));
+  device_ = std::make_unique<phi::CPUContext>(platform::CPUPlace());
   device_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                             .GetAllocator(platform::CPUPlace())
                             .get());
@@ -166,7 +165,7 @@ void GLOOParallelContext::AllReduce(const phi::SelectedRows &src,
   auto *dst_tensor = dst->mutable_value();
   auto dims = src_tensor.dims();
   dims[0] = rows_num;
-  auto feature_size = phi::product(dims) / dims[0];
+  auto feature_size = common::product(dims) / dims[0];
   dst_tensor->Resize(dims);
 
   std::vector<size_t> element_nums = rows_num_vector;

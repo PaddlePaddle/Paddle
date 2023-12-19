@@ -45,8 +45,7 @@ struct EmbeddingCPUSparseFunctor {
     int64_t row_width = table_t.value().dims()[1];
     const auto* table = table_t.value().template data<T>();
     auto* output = dev_ctx_.template Alloc<T>(output_t);
-    auto input_data_type =
-        paddle::framework::TransToProtoVarType(table_t.value().dtype());
+    auto input_data_type = table_t.value().dtype();
 
     for (int64_t i = 0; i < ids_numel; ++i) {
       if (padding_idx_ != kNoPadding && ids[i] == padding_idx_) {
@@ -66,7 +65,7 @@ struct EmbeddingCPUSparseFunctor {
             phi::errors::InvalidArgument(
                 "the input key should be exists. But received %d.", id_index));
 
-        if (input_data_type == paddle::framework::proto::VarType::BF16) {
+        if (input_data_type == phi::DataType::BFLOAT16) {
           memcpy(output + i * row_width,
                  table + id_index * row_width,
                  row_width * sizeof(T));

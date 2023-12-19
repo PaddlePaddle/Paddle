@@ -16,23 +16,23 @@
 
 #include <random>
 
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void RandintRawKernel(const Context& dev_ctx,
-                      int low,
-                      int high,
-                      const IntArray& shape,
-                      DataType dtype,
-                      int seed,
-                      DenseTensor* out) {
+void RandintKernel(const Context& dev_ctx,
+                   int low,
+                   int high,
+                   const IntArray& shape,
+                   DataType dtype,
+                   DenseTensor* out) {
+  int seed = 0;
   int64_t size = out->numel();
-  out->Resize(phi::make_ddim(shape.GetData()));
+  out->Resize(common::make_ddim(shape.GetData()));
   T* data = dev_ctx.template Alloc<T>(out);
   auto numel = out->numel();
   std::shared_ptr<std::mt19937_64> engine;
@@ -47,27 +47,14 @@ void RandintRawKernel(const Context& dev_ctx,
   for (int64_t i = 0; i < numel; ++i) {
     data_cpu[i] = dist(*engine);
   }
-  paddle::memory::Copy(dev_ctx.GetPlace(),
-                       data,
-                       phi::CPUPlace(),
-                       reinterpret_cast<void*>(data_cpu.get()),
-                       size * sizeof(T));
-}
-
-template <typename T, typename Context>
-void RandintKernel(const Context& dev_ctx,
-                   int low,
-                   int high,
-                   const IntArray& shape,
-                   DataType dtype,
-                   DenseTensor* out) {
-  RandintRawKernel<T>(dev_ctx, low, high, shape, dtype, 0, out);
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     data,
+                     phi::CPUPlace(),
+                     reinterpret_cast<void*>(data_cpu.get()),
+                     size * sizeof(T));
 }
 
 }  // namespace phi
-
-PD_REGISTER_KERNEL(
-    randint_raw, XPU, ALL_LAYOUT, phi::RandintRawKernel, int, int64_t) {}
 
 PD_REGISTER_KERNEL(randint, XPU, ALL_LAYOUT, phi::RandintKernel, int, int64_t) {
 }

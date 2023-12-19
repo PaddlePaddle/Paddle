@@ -30,7 +30,7 @@ static DenseTensor Fill(const Context& ctx,
                         std::vector<int> shape,
                         float fill_value) {
   DenseTensor ret;
-  ret.Resize(make_ddim(shape));
+  ret.Resize(common::make_ddim(shape));
   ctx.template Alloc<T>(&ret);
   funcs::SetConstant<Context, T>()(ctx, &ret, T(fill_value));
   return ret;
@@ -53,7 +53,7 @@ static DenseTensor Unsqueeze(const DenseTensor& x, int axis = 0) {
   // don't copy data, only change the dims
   DenseTensor out;
   out.ShareDataWith(x);
-  std::vector<int> out_shape = phi::vectorize<int>(x.dims());
+  std::vector<int> out_shape = common::vectorize<int>(x.dims());
   if (axis >= 0) {
     auto index = (out_shape.begin() + axis);
     out_shape.insert(index, 1);
@@ -61,13 +61,13 @@ static DenseTensor Unsqueeze(const DenseTensor& x, int axis = 0) {
     auto index = (out_shape.end() + axis + 1);
     out_shape.insert(index, 1);
   }
-  out.Resize(phi::make_ddim(out_shape));
+  out.Resize(common::make_ddim(out_shape));
   return out;
 }
 
 template <typename T, typename Context>
 void SvdGradKernel(const Context& dev_ctx,
-                   const DenseTensor& x,
+                   const DenseTensor& x UNUSED,
                    const DenseTensor& u,
                    const DenseTensor& vh,
                    const DenseTensor& s,
@@ -83,27 +83,17 @@ void SvdGradKernel(const Context& dev_ctx,
   DenseTensor U, VH, dU, dV, dVH;
   if (full_matrices) {
     // if full_matrices is set, slice the U and VT to k columns
-    U = SliceKernel<T, Context>(
-        dev_ctx, u, {u.dims().size() - 1}, {0}, {k}, {1}, {});
-    VH = SliceKernel<T, Context>(
-        dev_ctx, vh, {vh.dims().size() - 2}, {0}, {k}, {1}, {});
+    U = Slice<T, Context>(dev_ctx, u, {u.dims().size() - 1}, {0}, {k});
+    // If m < n for input matrices A, we partition A = [X|Y] and R = [U|V]
+
+    VH = Slice<T, Context>(dev_ctx, vh, {vh.dims().size() - 2}, {0}, {k});
     if (u_grad.get_ptr() != nullptr) {
-      dU = SliceKernel<T, Context>(dev_ctx,
-                                   *(u_grad.get_ptr()),
-                                   {u.dims().size() - 1},
-                                   {0},
-                                   {k},
-                                   {1},
-                                   {});
+      dU = Slice<T, Context>(
+          dev_ctx, *(u_grad.get_ptr()), {u.dims().size() - 1}, {0}, {k});
     }
     if (vh_grad.get_ptr() != nullptr) {
-      dVH = SliceKernel<T, Context>(dev_ctx,
-                                    *(vh_grad.get_ptr()),
-                                    {vh.dims().size() - 2},
-                                    {0},
-                                    {k},
-                                    {1},
-                                    {});
+      dVH = Slice<T, Context>(
+          dev_ctx, *(vh_grad.get_ptr()), {vh.dims().size() - 2}, {0}, {k});
     }
   } else {
     U = u;

@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 
-DEFINE_bool(profile, false, "Turn on profiler for fluid");
+PD_DEFINE_bool(profile, false, "Turn on profiler for fluid");  // NOLINT
 
 namespace paddle {
 namespace {
@@ -82,8 +82,6 @@ bool NativePaddlePredictor::Init(
     place_ = paddle::platform::CUDAPlace(config_.device);
   } else if (config_.use_xpu) {
     place_ = paddle::platform::XPUPlace(config_.device);
-  } else if (config_.use_npu) {
-    place_ = paddle::platform::NPUPlace(config_.device);
   } else {
     place_ = paddle::platform::CPUPlace();
   }
@@ -94,12 +92,13 @@ bool NativePaddlePredictor::Init(
                             platform::errors::PreconditionNotMet(
                                 "The sub_scope should not be nullptr."));
   } else {
+    paddle::framework::InitMemoryMethod();
     paddle::framework::InitDevices();
     paddle::framework::InitDefaultKernelSignatureMap();
-    scope_.reset(new paddle::framework::Scope());
+    scope_ = std::make_unique<paddle::framework::Scope>();
   }
 
-  executor_.reset(new paddle::framework::Executor(place_));
+  executor_ = std::make_unique<paddle::framework::Executor>(place_);
 
   // Initialize the inference program
   if (!config_.model_dir.empty()) {
@@ -214,8 +213,8 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
 
   for (size_t i = 0; i < inputs.size(); ++i) {
     auto &input = feed_tensors_[i];
-    framework::DDim ddim = phi::make_ddim(inputs[i].shape);
-    void *input_ptr;
+    framework::DDim ddim = common::make_ddim(inputs[i].shape);
+    void *input_ptr = nullptr;
     if (inputs[i].dtype == PaddleDType::INT64) {
       input_ptr = input.mutable_data<int64_t>(ddim, place_);
     } else if (inputs[i].dtype == PaddleDType::FLOAT32) {
@@ -236,7 +235,7 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
             "The data of input tensor should not be null."));
     PADDLE_ENFORCE_EQ(
         inputs[i].data.length(),
-        input.numel() * paddle::experimental::SizeOf(input.dtype()),
+        input.numel() * phi::SizeOf(input.dtype()),
         paddle::platform::errors::InvalidArgument(
             "The data contained in the input PaddleTensor had wrong length."));
 
@@ -278,23 +277,6 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
       PADDLE_THROW(platform::errors::Unavailable(
           "Not compile with XPU, should not reach here."));
 #endif
-    } else {
-#ifdef PADDLE_WITH_ASCEND_CL
-      platform::DeviceContextPool &pool =
-          platform::DeviceContextPool::Instance();
-      auto *dev_ctx =
-          static_cast<const platform::NPUDeviceContext *>(pool.Get(place_));
-      auto dst_npu_place = place_;
-      memory::Copy(dst_npu_place,
-                   static_cast<void *>(input_ptr),
-                   platform::CPUPlace(),
-                   inputs[i].data.data(),
-                   inputs[i].data.length(),
-                   dev_ctx->stream());
-#else
-      PADDLE_THROW(platform::errors::Unavailable(
-          "Not compile with NPU, should not reach here."));
-#endif
     }
 
     // TODO(Superjomn) Low performance, need optimization for heavy LoD copy.
@@ -305,7 +287,7 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
     input.set_lod(lod);
     int idx = -1;
     if (config_.specify_input_name) {
-      idx = feed_names_[inputs[i].name];
+      idx = static_cast<int>(feed_names_[inputs[i].name]);
     } else {
       idx = PADDLE_GET_CONST(int, feeds_[i]->GetAttr("col"));
     }
@@ -317,7 +299,7 @@ template <typename T>
 void NativePaddlePredictor::GetFetchOne(const phi::DenseTensor &fetch,
                                         PaddleTensor *output) {
   // set shape.
-  auto shape = phi::vectorize(fetch.dims());
+  auto shape = common::vectorize(fetch.dims());
   output->shape.assign(shape.begin(), shape.end());
   // set data.
   const T *data = fetch.data<T>();
@@ -391,7 +373,6 @@ CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(
     std::vector<std::string> flags;
     if (config.fraction_of_gpu_memory >= 0.0f ||
         config.fraction_of_gpu_memory <= 0.95f) {
-      flags.push_back("dummpy");
       std::string flag = "--fraction_of_gpu_memory_to_use=" +
                          num2str<float>(config.fraction_of_gpu_memory);
       flags.push_back(flag);

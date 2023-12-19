@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..fluid.unique_name import generate  # noqa: F401
-from ..fluid.unique_name import generate_with_ignorable_key  # noqa: F401
-from ..fluid.unique_name import guard  # noqa: F401
-from ..fluid.unique_name import switch  # noqa: F401
+from ..base.unique_name import (
+    generate,
+    generate_with_ignorable_key,  # noqa: F401
+    guard,
+    switch,
+)
 
-__all__ = ['generate', 'switch', 'guard']  # noqa
+__all__ = ['generate', 'switch', 'guard']

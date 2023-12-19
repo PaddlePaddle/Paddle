@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
@@ -75,7 +77,7 @@ void DepthwiseConvKernel(const Context& dev_ctx,
   auto filter_dims = filter.dims();
 
   DDim in_data_dims;
-  const phi::DataLayout data_layout = phi::StringToDataLayout(data_format);
+  const phi::DataLayout data_layout = common::StringToDataLayout(data_format);
   if (data_layout != phi::DataLayout::kNHWC) {
     in_data_dims = slice_ddim(in_dims, 2, in_dims.size());
   } else {
@@ -83,7 +85,7 @@ void DepthwiseConvKernel(const Context& dev_ctx,
   }
 
   DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
@@ -127,4 +129,5 @@ PD_REGISTER_KERNEL(depthwise_conv2d,
                    phi::DepthwiseConvKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

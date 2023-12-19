@@ -29,6 +29,8 @@
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/pir/core/program.h"
+#include "paddle/pir/core/value.h"
 
 namespace paddle {
 namespace framework {

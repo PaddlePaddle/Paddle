@@ -109,6 +109,10 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) Set to true for inference only, false "
                   "for training.")
         .SetDefault(false);
+    AddAttr<bool>(
+        "in_pir_pt_mode",
+        "(bool, default false) Set to true when need to run in pir mode")
+        .SetDefault(false);
     AddAttr<int64_t>(
         "program_id",
         "(int64_t)"
@@ -138,6 +142,14 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<std::string>>("out_grad_names",
                                       "std::vector<std::string>"
                                       "The names of output gradients.")
+        .SetDefault({});
+    AddAttr<std::vector<std::string>>("x_names",
+                                      "std::vector<std::string>"
+                                      "The names of input tensors.")
+        .SetDefault({});
+    AddAttr<std::vector<std::string>>("x_grad_names",
+                                      "std::vector<std::string>"
+                                      "The names of input gradients.")
         .SetDefault({});
     AddComment(R"DOC(
 RunProgram operator.
@@ -253,7 +265,7 @@ REGISTER_OPERATOR(run_program,
 REGISTER_OPERATOR(run_program_grad, ops::RunProgramGradOp);
 
 /* see [Why use single type kernel] */
-REGISTER_OP_CPU_KERNEL(run_program,
-                       ops::RunProgramOpKernel<phi::CPUContext, float>)
-REGISTER_OP_CPU_KERNEL(run_program_grad,
-                       ops::RunProgramGradOpKernel<phi::CPUContext, float>)
+PD_REGISTER_STRUCT_KERNEL(
+    run_program, CPU, ALL_LAYOUT, ops::RunProgramOpKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    run_program_grad, CPU, ALL_LAYOUT, ops::RunProgramGradOpKernel, float) {}

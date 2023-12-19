@@ -27,7 +27,7 @@ namespace phi {
 
 template <typename Context, typename T, int64_t Rank>
 struct ArgMaxFunctor {
-  void operator()(const Context& ctx,
+  void operator()(const Context& ctx UNUSED,
                   const DenseTensor& in,
                   DenseTensor* index_tensor,
                   const int64_t& axis) {
@@ -69,7 +69,7 @@ void GumbelSoftmaxKernelHelper(const Context& ctx,
 
   // For 0D Tensor
   if (rank == 0) {
-    phi::funcs::set_constant(ctx, out, 1.0);
+    phi::funcs::set_constant(ctx, out, static_cast<T>(1.0));
     return;
   }
 

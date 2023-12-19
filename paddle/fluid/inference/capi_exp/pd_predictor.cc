@@ -68,7 +68,7 @@ __pd_give PD_IOInfos* PD_PredictorGetInputInfos(
 
   PD_IOInfos* input_infos = new PD_IOInfos;
   input_infos->size = names.size();
-  input_infos->io_info = names.empty() ? NULL : new PD_IOInfo*[names.size()];
+  input_infos->io_info = names.empty() ? nullptr : new PD_IOInfo*[names.size()];
   for (size_t i = 0; i < names.size(); i++) {
     const std::string& name = names[i];
     input_infos->io_info[i] = new PD_IOInfo;
@@ -99,7 +99,8 @@ __pd_give PD_IOInfos* PD_PredictorGetOutputInfos(
 
   PD_IOInfos* output_infos = new PD_IOInfos;
   output_infos->size = names.size();
-  output_infos->io_info = names.empty() ? NULL : new PD_IOInfo*[names.size()];
+  output_infos->io_info =
+      names.empty() ? nullptr : new PD_IOInfo*[names.size()];
   for (size_t i = 0; i < names.size(); i++) {
     const std::string& name = names[i];
     output_infos->io_info[i] = new PD_IOInfo;
@@ -139,7 +140,7 @@ __pd_give PD_Tensor* PD_PredictorGetOutputHandle(
 
 PD_Bool PD_PredictorRun(__pd_keep PD_Predictor* pd_predictor) {
   CHECK_AND_CONVERT_PD_PREDICTOR;
-  return predictor->Run();
+  return predictor->Run();  // NOLINT
 }
 
 void PD_PredictorClearIntermediateTensor(__pd_keep PD_Predictor* pd_predictor) {

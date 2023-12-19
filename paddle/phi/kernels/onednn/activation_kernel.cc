@@ -49,7 +49,7 @@ void EltwiseForward(const OneDNNContext& dev_ctx,
                     float beta,
                     DenseTensor* out,
                     dnnl::algorithm algorithm) {
-  PADDLE_ENFORCE_EQ(paddle::platform::is_cpu_place(dev_ctx.GetPlace()),
+  PADDLE_ENFORCE_EQ(dev_ctx.GetPlace().GetType() == phi::AllocationType::CPU,
                     true,
                     phi::errors::PreconditionNotMet(
                         "Operator DNNL eletwise_forward must use ONEDNNPlace"));
@@ -154,17 +154,13 @@ DEFINE_ONEDNN_ACTIVATION_KERNEL(Round, RoundOneDNNFunctor)
 DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Elu, EluOneDNNFunctor, alpha)
 DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, ReluOneDNNFunctor, alpha)
 DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Mish, MishOneDNNFunctor, threshold)
-DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(SwishRaw, SwishOneDNNFunctor, beta)
 
 template <typename T, typename Context>
-void HardSwishRawKernel(const Context& dev_ctx,
-                        const DenseTensor& x,
-                        float threshold,
-                        float scale,
-                        float offset,
-                        DenseTensor* out) {
+void HardSwishKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     DenseTensor* out) {
   HardSwishOneDNNFunctor<T> functor;
-  functor(dev_ctx, x, threshold, 0, out);
+  functor(dev_ctx, x, 1.0 / 6.0, 1.0 / 2.0, out);
 }
 
 template <typename T, typename Context>
@@ -182,12 +178,19 @@ void GeluKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void Relu6RawKernel(const Context& dev_ctx,
-                    const DenseTensor& x,
-                    float threshold,
-                    DenseTensor* out) {
+void Relu6Kernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 DenseTensor* out) {
   Relu6OneDNNFunctor<T> functor;
-  functor(dev_ctx, x, 0, threshold, out);
+  functor(dev_ctx, x, 0, 6.0, out);
+}
+
+template <typename T, typename Context>
+void SwishKernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 DenseTensor* out) {
+  SwishOneDNNFunctor<T> functor;
+  functor(dev_ctx, x, 1.0, 0, out);
 }
 
 }  // namespace phi
@@ -202,12 +205,12 @@ PD_REGISTER_ACTIVATION_KERNEL(abs, AbsKernel)
 PD_REGISTER_ACTIVATION_KERNEL(elu, EluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(exp, ExpKernel)
 PD_REGISTER_ACTIVATION_KERNEL(gelu, GeluKernel)
-PD_REGISTER_ACTIVATION_KERNEL(hardswish_raw, HardSwishRawKernel)
+PD_REGISTER_ACTIVATION_KERNEL(hardswish, HardSwishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(leaky_relu, LeakyReluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(mish, MishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(relu, ReluKernel)
-PD_REGISTER_ACTIVATION_KERNEL(relu6_raw, Relu6RawKernel)
+PD_REGISTER_ACTIVATION_KERNEL(relu6, Relu6Kernel)
 PD_REGISTER_ACTIVATION_KERNEL(sigmoid, SigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(sqrt, SqrtKernel)
-PD_REGISTER_ACTIVATION_KERNEL(swish_raw, SwishRawKernel)
+PD_REGISTER_ACTIVATION_KERNEL(swish, SwishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(tanh, TanhKernel)

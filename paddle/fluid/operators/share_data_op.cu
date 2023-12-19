@@ -14,13 +14,17 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/share_data_op.h"
 
-REGISTER_OP_CUDA_KERNEL(
-    share_data,
-    paddle::operators::ShareDataKernel<bool>,
-    paddle::operators::ShareDataKernel<int>,
-    paddle::operators::ShareDataKernel<int8_t>,
-    paddle::operators::ShareDataKernel<uint8_t>,
-    paddle::operators::ShareDataKernel<paddle::platform::float16>,
-    paddle::operators::ShareDataKernel<int64_t>,
-    paddle::operators::ShareDataKernel<float>,
-    paddle::operators::ShareDataKernel<double>);
+namespace ops = paddle::operators;
+namespace plat = paddle::platform;
+PD_REGISTER_STRUCT_KERNEL(share_data,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::ShareDataKernel,
+                          bool,
+                          int,
+                          int8_t,
+                          uint8_t,
+                          int64_t,
+                          float,
+                          double,
+                          plat::float16) {}

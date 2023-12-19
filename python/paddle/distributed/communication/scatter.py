@@ -16,8 +16,8 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-import paddle.distributed.communication.stream as stream
-import paddle.framework as framework
+from paddle import framework
+from paddle.distributed.communication import stream
 
 from .serialization_utils import (
     convert_object_to_tensor,
@@ -51,22 +51,22 @@ def scatter(tensor, tensor_list=None, src=0, group=None, sync_op=True):
     Examples:
         .. code-block:: python
 
-            # required: distributed
-            import paddle
-            import paddle.distributed as dist
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle
+            >>> import paddle.distributed as dist
 
-            dist.init_parallel_env()
-            if dist.get_rank() == 0:
-                data1 = paddle.to_tensor([7, 8, 9])
-                data2 = paddle.to_tensor([10, 11, 12])
-                dist.scatter(data1, src=1)
-            else:
-                data1 = paddle.to_tensor([1, 2, 3])
-                data2 = paddle.to_tensor([4, 5, 6])
-                dist.scatter(data1, tensor_list=[data1, data2], src=1)
-            print(data1, data2)
-            # [1, 2, 3] [10, 11, 12] (2 GPUs, out for rank 0)
-            # [4, 5, 6] [4, 5, 6] (2 GPUs, out for rank 1)
+            >>> dist.init_parallel_env()
+            >>> if dist.get_rank() == 0:
+            ...     data1 = paddle.to_tensor([7, 8, 9])
+            ...     data2 = paddle.to_tensor([10, 11, 12])
+            ...     dist.scatter(data1, src=1)
+            >>> else:
+            ...     data1 = paddle.to_tensor([1, 2, 3])
+            ...     data2 = paddle.to_tensor([4, 5, 6])
+            ...     dist.scatter(data1, tensor_list=[data1, data2], src=1)
+            >>> print(data1, data2)
+            >>> # [1, 2, 3] [10, 11, 12] (2 GPUs, out for rank 0)
+            >>> # [4, 5, 6] [4, 5, 6] (2 GPUs, out for rank 1)
     """
     return stream.scatter(tensor, tensor_list, src, group, sync_op)
 
@@ -93,22 +93,22 @@ def scatter_object_list(
     Examples:
         .. code-block:: python
 
-            # required: distributed
-            import paddle.distributed as dist
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle.distributed as dist
 
-            dist.init_parallel_env()
-            out_object_list = []
-            if dist.get_rank() == 0:
-                in_object_list = [{'foo': [1, 2, 3]}, {'foo': [4, 5, 6]}]
-            else:
-                in_object_list = [{'bar': [1, 2, 3]}, {'bar': [4, 5, 6]}]
-            dist.scatter_object_list(out_object_list, in_object_list, src=1)
-            print(out_object_list)
-            # [{'bar': [1, 2, 3]}] (2 GPUs, out for rank 0)
-            # [{'bar': [4, 5, 6]}] (2 GPUs, out for rank 1)
+            >>> dist.init_parallel_env()
+            >>> out_object_list = []
+            >>> if dist.get_rank() == 0:
+            ...     in_object_list = [{'foo': [1, 2, 3]}, {'foo': [4, 5, 6]}]
+            >>> else:
+            ...     in_object_list = [{'bar': [1, 2, 3]}, {'bar': [4, 5, 6]}]
+            >>> dist.scatter_object_list(out_object_list, in_object_list, src=1)
+            >>> print(out_object_list)
+            >>> # [{'bar': [1, 2, 3]}] (2 GPUs, out for rank 0)
+            >>> # [{'bar': [4, 5, 6]}] (2 GPUs, out for rank 1)
     """
     assert (
-        framework.in_dygraph_mode()
+        framework.in_dynamic_mode()
     ), "scatter_object_list doesn't support static graph mode."
 
     rank = dist.get_rank()
@@ -122,8 +122,7 @@ def scatter_object_list(
             in_obj_sizes.append(obj_size)
         max_obj_size_tensor = max(in_obj_sizes)
     else:
-        # NOTE: shape can be [] after 0D tensor support
-        max_obj_size_tensor = paddle.empty([1], dtype="int64")
+        max_obj_size_tensor = paddle.empty([], dtype="int64")
     stream.broadcast(max_obj_size_tensor, src)
     max_obj_size = int(max_obj_size_tensor.item())
 
@@ -135,11 +134,10 @@ def scatter_object_list(
         in_tensor = paddle.to_tensor(numpy_data)
         in_tensor_list.append(in_tensor)
     out_tensor = paddle.empty([max_obj_size], dtype="uint8")
-    scatter(out_tensor, in_tensor_list if rank == src else None, src)
+    scatter(out_tensor, in_tensor_list if rank == src else None, src, group)
 
-    # NOTE: shape can be [] after 0D tensor support
-    out_tensor_size = paddle.empty([1], dtype="int64")
-    scatter(out_tensor_size, in_obj_sizes if rank == src else None, src)
+    out_tensor_size = paddle.empty([], dtype="int64")
+    scatter(out_tensor_size, in_obj_sizes if rank == src else None, src, group)
 
     out_object_list.clear()
     out_object_list.append(

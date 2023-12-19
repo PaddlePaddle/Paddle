@@ -15,14 +15,19 @@ limitations under the License. */
 #include "paddle/fluid/operators/sequence_ops/sequence_reshape_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(sequence_reshape,
-                        ops::SequenceReshapeKernel<phi::GPUContext, float>,
-                        ops::SequenceReshapeKernel<phi::GPUContext, double>,
-                        ops::SequenceReshapeKernel<phi::GPUContext, int>,
-                        ops::SequenceReshapeKernel<phi::GPUContext, int64_t>);
-REGISTER_OP_CUDA_KERNEL(
-    sequence_reshape_grad,
-    ops::SequenceReshapeGradKernel<phi::GPUContext, float>,
-    ops::SequenceReshapeGradKernel<phi::GPUContext, double>,
-    ops::SequenceReshapeGradKernel<phi::GPUContext, int64_t>,
-    ops::SequenceReshapeGradKernel<phi::GPUContext, int>);
+PD_REGISTER_STRUCT_KERNEL(sequence_reshape,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SequenceReshapeKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
+PD_REGISTER_STRUCT_KERNEL(sequence_reshape_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SequenceReshapeGradKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}

@@ -27,9 +27,12 @@ void ScatterKernel(const Context &ctx,
                    const DenseTensor &updates,
                    bool overwrite,
                    DenseTensor *out) {
+  using XPUTypeT = typename XPUTypeTrait<T>::Type;
   out->Resize(x.dims());
-  ctx.template Alloc<T>(out);
-  int ret = xpu::copy(ctx.x_context(), x.data<T>(), out->data<T>(), x.numel());
+  auto *x_data = reinterpret_cast<const XPUTypeT *>(x.data<T>());
+  auto *updates_data = reinterpret_cast<const XPUTypeT *>(updates.data<T>());
+  auto *out_data = reinterpret_cast<XPUTypeT *>(ctx.template Alloc<T>(out));
+  int ret = xpu::copy(ctx.x_context(), x_data, out_data, x.numel());
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "copy");
   // Apply ScatterUpdate: Out[index] = Updates[:]
   const auto &index_type = index.dtype();
@@ -76,13 +79,11 @@ void ScatterKernel(const Context &ctx,
   }
 
   int dim0 = static_cast<int>(x.dims()[0]);
-  int dim1 =
-      static_cast<int>(phi::product(phi::slice_ddim(x_dims, 1, x_dims.size())));
-  T *out_data = out->data<T>();
-  const T *updates_data = updates.data<T>();
+  int dim1 = static_cast<int>(
+      common::product(common::slice_ddim(x_dims, 1, x_dims.size())));
 
   DenseTensor indices_cpu(index.type());
-  phi::Copy(ctx, index, phi::CPUPlace(), false, &indices_cpu);
+  phi::Copy(ctx, index, phi::CPUPlace(), true, &indices_cpu);
 
   int r = 0;
   if (index_type == phi::DataType::INT32) {
@@ -113,5 +114,11 @@ void ScatterKernel(const Context &ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    scatter, XPU, ALL_LAYOUT, phi::ScatterKernel, float, int, int64_t) {}
+PD_REGISTER_KERNEL(scatter,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::ScatterKernel,
+                   float,
+                   int,
+                   int64_t,
+                   phi::dtype::float16) {}

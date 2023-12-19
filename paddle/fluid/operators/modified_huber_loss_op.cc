@@ -38,7 +38,7 @@ class ModifiedHuberLossOp : public framework::OperatorWithKernel {
                                           x_dims.size()));
 
     if (ctx->IsRuntime() ||
-        (phi::product(x_dims) > 0 && phi::product(y_dims) > 0)) {
+        (common::product(x_dims) > 0 && common::product(y_dims) > 0)) {
       PADDLE_ENFORCE_EQ(
           x_dims,
           y_dims,
@@ -176,7 +176,11 @@ REGISTER_OPERATOR(
     ops::ModifiedHuberLossGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(modified_huber_loss_grad, ops::ModifiedHuberLossGradOp);
 
-REGISTER_OP_CPU_KERNEL(modified_huber_loss,
-                       ops::ModifiedHuberLossKernel<phi::CPUContext, float>);
-REGISTER_OP_CPU_KERNEL(modified_huber_loss_grad,
-                       ops::ModifiedHuberLossGradCPUKernel<float>);
+PD_REGISTER_STRUCT_KERNEL(
+    modified_huber_loss, CPU, ALL_LAYOUT, ops::ModifiedHuberLossKernel, float) {
+}
+PD_REGISTER_STRUCT_KERNEL(modified_huber_loss_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::ModifiedHuberLossGradCPUKernel,
+                          float) {}

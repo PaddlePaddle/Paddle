@@ -25,7 +25,7 @@ namespace operators {
 
 class TDMSamplerOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X",
              "X(Tensor), Input variable which"
              "mapping the leaf node idx of tdm tree,"
@@ -101,15 +101,16 @@ class TDMSamplerOp : public framework::OperatorWithKernel {
     }
 
     auto input_dims = ctx->GetInputDim("X");
-    auto ddim = phi::make_ddim({-1, sample_res_length});
+    auto ddim = common::make_ddim({-1, sample_res_length});
     if (ctx->IsRuntime()) {
-      auto output_dims = phi::vectorize(input_dims);
+      auto output_dims = common::vectorize(input_dims);
       auto batch_size = output_dims[0];
-      ctx->SetOutputDim("Out", phi::make_ddim({batch_size, sample_res_length}));
+      ctx->SetOutputDim("Out",
+                        common::make_ddim({batch_size, sample_res_length}));
       ctx->SetOutputDim("Labels",
-                        phi::make_ddim({batch_size, sample_res_length}));
+                        common::make_ddim({batch_size, sample_res_length}));
       ctx->SetOutputDim("Mask",
-                        phi::make_ddim({batch_size, sample_res_length}));
+                        common::make_ddim({batch_size, sample_res_length}));
     } else {
       ctx->SetOutputDim("Out", ddim);
       ctx->SetOutputDim("Labels", ddim);
@@ -136,9 +137,12 @@ REGISTER_OPERATOR(
     ops::TDMSamplerOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(
-    tdm_sampler,
-    ops::TDMSamplerKernel<paddle::platform::CPUPlace, float>,
-    ops::TDMSamplerKernel<paddle::platform::CPUPlace, double>,
-    ops::TDMSamplerKernel<paddle::platform::CPUPlace, int>,
-    ops::TDMSamplerKernel<paddle::platform::CPUPlace, int64_t>);
+
+PD_REGISTER_STRUCT_KERNEL(tdm_sampler,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::TDMSamplerKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}

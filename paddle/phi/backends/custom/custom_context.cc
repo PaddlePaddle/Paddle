@@ -44,9 +44,15 @@ struct CustomContext::Impl {
 
   void Wait() const { stream_->Wait(); }
 
+  phi::ccl::CCLComm xccl_comm() const { return comm_; }
+
+  void set_xccl_comm(phi::ccl::CCLComm comm) { comm_ = comm; }
+
   Place place_;
 
   std::shared_ptr<phi::stream::Stream> stream_;
+
+  phi::ccl::CCLComm comm_;
 };
 
 void CustomContext::Init() { impl_->Init(); }
@@ -66,8 +72,17 @@ void CustomContext::SetStream(std::shared_ptr<phi::stream::Stream> stream) {
 void CustomContext::Wait() const { return impl_->Wait(); }
 
 CustomContext::CustomContext(const CustomPlace& place)
-    : DeviceContext(), impl_(std::make_unique<Impl>(place)) {}
+    : DeviceContext(), impl_(std::make_unique<Impl>(place)) {
+  impl_->Init();
+}
 
-CustomContext::~CustomContext() {}
+CustomContext::~CustomContext() { impl_.reset(); }
 
+phi::ccl::CCLComm CustomContext::xccl_comm() const {
+  return impl_->xccl_comm();
+}
+
+void CustomContext::set_xccl_comm(phi::ccl::CCLComm comm) {
+  impl_->set_xccl_comm(comm);
+}
 }  // namespace phi

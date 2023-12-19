@@ -23,6 +23,7 @@ namespace cub = hipcub;
 #include "paddle/phi/kernels/distribute_fpn_proposals_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/detection/bbox_util.h"
 #include "paddle/phi/kernels/funcs/distribute_fpn_proposals_functor.h"
@@ -30,9 +31,7 @@ namespace cub = hipcub;
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-#include "paddle/fluid/memory/allocation/allocator.h"
-#include "paddle/fluid/memory/memcpy.h"
-#include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/memory_utils.h"
 
 namespace phi {
 
@@ -188,7 +187,7 @@ void DistributeFpnProposalsKernel(
                                             sizeof(int) * 8,
                                             dev_ctx.stream());
   // Allocate temporary storage
-  auto d_temp_storage = paddle::memory::Alloc(place, temp_storage_bytes);
+  auto d_temp_storage = phi::memory_utils::Alloc(place, temp_storage_bytes);
 
   // Run sorting operation
   // sort target level to get corresponding index
@@ -220,12 +219,12 @@ void DistributeFpnProposalsKernel(
   int start = 0;
 
   std::vector<int> sub_lod_list_cpu(lod_size * num_level);
-  paddle::memory::Copy(phi::CPUPlace(),
-                       sub_lod_list_cpu.data(),
-                       place,
-                       sub_lod_list_data,
-                       sizeof(int) * lod_size * num_level,
-                       dev_ctx.stream());
+  memory_utils::Copy(phi::CPUPlace(),
+                     sub_lod_list_cpu.data(),
+                     place,
+                     sub_lod_list_data,
+                     sizeof(int) * lod_size * num_level,
+                     dev_ctx.stream());
   dev_ctx.Wait();
 
   for (int i = 0; i < num_level; ++i) {
@@ -267,4 +266,7 @@ PD_REGISTER_KERNEL(distribute_fpn_proposals,
                    ALL_LAYOUT,
                    phi::DistributeFpnProposalsKernel,
                    float,
-                   double) {}
+                   double) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
+  kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
+}

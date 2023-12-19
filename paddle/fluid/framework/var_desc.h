@@ -24,11 +24,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/type_defs.h"
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace framework {
 
-using paddle::distributed::auto_parallel::TensorDistAttr;
+using phi::distributed::TensorDistAttr;
 
 // convert between std::vector and protobuf repeated.
 template <typename T>
@@ -62,7 +63,7 @@ inline void VectorToRepeated(const std::vector<bool> &vec,
   }
 }
 
-class VarDesc {
+class TEST_API VarDesc {
  public:
   explicit VarDesc(const std::string &name) {
     desc_.set_name(name);
@@ -75,6 +76,8 @@ class VarDesc {
 
   // Explicitly implement the copy constructor for auto parallel
   VarDesc(const VarDesc &other);
+
+  ~VarDesc();
 
   VarDesc &operator=(const VarDesc &other) {
     desc_ = other.desc_;
@@ -210,7 +213,7 @@ class VarDesc {
   proto::VarType::TensorDesc *mutable_tensor_desc();
   std::vector<proto::VarType::TensorDesc *> mutable_tensor_descs();
 
-  // it it really needed? or just mantain a ptr from block?
+  // Is it really needed? Or just mantain a ptr from the block?
   proto::VarDesc desc_;
   AttributeMap attrs_;
 

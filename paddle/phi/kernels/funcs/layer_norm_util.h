@@ -45,7 +45,7 @@ class RowwiseMean2D<phi::GPUContext, T> {
     DDim ones_dim({right_});
     divisor_.Resize(ones_dim);
     dev_ctx.template Alloc<T>(&divisor_);
-    phi::funcs::set_constant(dev_ctx, &divisor_, 1.0 / right);
+    phi::funcs::set_constant(dev_ctx, &divisor_, static_cast<T>(1.0 / right));
   }
   void operator()(const phi::GPUContext& context,
                   const DenseTensor& input,
@@ -70,7 +70,9 @@ class RowwiseMean2D<phi::GPUContext, T> {
 template <typename T>
 class RowwiseMean2D<phi::CPUContext, T> {
  public:
-  RowwiseMean2D(int left, int right, const DeviceContext& dev_ctx) {}
+  RowwiseMean2D(int left UNUSED,
+                int right UNUSED,
+                const DeviceContext& dev_ctx UNUSED) {}
 
   void operator()(const phi::CPUContext& context,
                   const DenseTensor& input,
@@ -100,7 +102,7 @@ class ColwiseSum2D<phi::GPUContext, T> {
     DDim ones_dim({left_});
     divisor_.Resize(ones_dim);
     dev_ctx.template Alloc<T>(&divisor_);
-    phi::funcs::set_constant(dev_ctx, &divisor_, 1.0);
+    phi::funcs::set_constant(dev_ctx, &divisor_, static_cast<T>(1.0));
   }
 
   void operator()(const phi::GPUContext& context,
@@ -126,7 +128,9 @@ class ColwiseSum2D<phi::GPUContext, T> {
 template <typename T>
 class ColwiseSum2D<phi::CPUContext, T> {
  public:
-  ColwiseSum2D(int left, int right, const phi::CPUContext& dev_ctx) {}
+  ColwiseSum2D(int left UNUSED,
+               int right UNUSED,
+               const phi::CPUContext& dev_ctx UNUSED) {}
 
   void operator()(const phi::CPUContext& context,
                   const DenseTensor& input,

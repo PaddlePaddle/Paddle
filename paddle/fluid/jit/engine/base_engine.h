@@ -19,7 +19,7 @@
 namespace paddle {
 namespace jit {
 
-using Tensor = paddle::experimental::Tensor;
+using Tensor = paddle::Tensor;
 using DenseTensor = phi::DenseTensor;
 
 class BaseEngine {

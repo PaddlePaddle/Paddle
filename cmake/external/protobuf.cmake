@@ -182,12 +182,13 @@ if(NOT "${PROTOBUF_ROOT}" STREQUAL "")
   endif()
 endif()
 
-function(build_protobuf TARGET_NAME BUILD_FOR_HOST)
+function(build_protobuf TARGET_NAME)
   string(REPLACE "extern_" "" TARGET_DIR_NAME "${TARGET_NAME}")
   set(PROTOBUF_PREFIX_DIR ${THIRD_PARTY_PATH}/${TARGET_DIR_NAME})
   set(PROTOBUF_SOURCE_DIR
       ${THIRD_PARTY_PATH}/${TARGET_DIR_NAME}/src/${TARGET_NAME})
   set(PROTOBUF_INSTALL_DIR ${THIRD_PARTY_PATH}/install/${TARGET_DIR_NAME})
+  set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/${TARGET_DIR_NAME})
 
   set(${TARGET_NAME}_INCLUDE_DIR
       "${PROTOBUF_INSTALL_DIR}/include"
@@ -209,22 +210,18 @@ function(build_protobuf TARGET_NAME BUILD_FOR_HOST)
       PARENT_SCOPE)
 
   set(OPTIONAL_CACHE_ARGS "")
-  set(OPTIONAL_ARGS "")
-  if(BUILD_FOR_HOST)
-    set(OPTIONAL_ARGS "-Dprotobuf_WITH_ZLIB=OFF")
-  else()
-    set(OPTIONAL_ARGS
-        "-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
-        "-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}"
-        "-DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}"
-        "-DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}"
-        "-DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}"
-        "-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}"
-        "-DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}"
-        "-DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}"
-        "-Dprotobuf_WITH_ZLIB=ON"
-        "-DZLIB_ROOT:FILEPATH=${ZLIB_ROOT}"
-        ${EXTERNAL_OPTIONAL_ARGS})
+  set(OPTIONAL_ARGS
+      "-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
+      "-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}"
+      "-DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}"
+      "-DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}"
+      "-DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}"
+      "-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}"
+      "-DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}"
+      "-DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}"
+      "-Dprotobuf_WITH_ZLIB=ON"
+      ${EXTERNAL_OPTIONAL_ARGS})
+  if(NOT APPLE)
     set(OPTIONAL_CACHE_ARGS "-DZLIB_ROOT:STRING=${ZLIB_ROOT}")
   endif()
   if(WIN32)
@@ -234,13 +231,7 @@ function(build_protobuf TARGET_NAME BUILD_FOR_HOST)
         "-Dprotobuf_MSVC_STATIC_RUNTIME=${MSVC_STATIC_CRT}")
   endif()
 
-  if(WITH_ASCEND AND NOT WITH_ASCEND_CXX11)
-    set(PROTOBUF_REPOSITORY https://gitee.com/tianjianhe/protobuf.git)
-    set(PROTOBUF_TAG v21.12)
-  elseif(WITH_ASCEND_CL AND NOT WITH_ASCEND_CXX11)
-    set(PROTOBUF_REPOSITORY https://gitee.com/tianjianhe/protobuf.git)
-    set(PROTOBUF_TAG v21.12)
-  elseif(WITH_IPU)
+  if(WITH_IPU)
     set(PROTOBUF_REPOSITORY ${GIT_URL}/protocolbuffers/protobuf.git)
     set(PROTOBUF_TAG v21.12)
   elseif(WIN32)
@@ -248,8 +239,13 @@ function(build_protobuf TARGET_NAME BUILD_FOR_HOST)
     # Change the tag to support building with vs2019
     set(PROTOBUF_TAG 01a05a53f40ca2ac5f0af10c6cc0810bee39b792)
   else()
-    set(PROTOBUF_REPOSITORY ${GIT_URL}/protocolbuffers/protobuf.git)
-    set(PROTOBUF_TAG v21.12)
+    if(WITH_PSLIB)
+      set(PROTOBUF_REPOSITORY "${GIT_URL}/google/protobuf.git")
+      set(PROTOBUF_TAG "9f75c5aa851cd877fb0d93ccc31b8567a6706546")
+    else()
+      set(PROTOBUF_REPOSITORY ${GIT_URL}/protocolbuffers/protobuf.git)
+      set(PROTOBUF_TAG v21.12)
+    endif()
     if(WITH_GPU)
       if(${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0
          AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 12.0)
@@ -290,14 +286,15 @@ function(build_protobuf TARGET_NAME BUILD_FOR_HOST)
   else()
     ExternalProject_Add(
       ${TARGET_NAME}
-      ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
-      GIT_REPOSITORY ${PROTOBUF_REPOSITORY}
-      GIT_TAG ${PROTOBUF_TAG}
+      ${EXTERNAL_PROJECT_LOG_ARGS}
       PREFIX ${PROTOBUF_PREFIX_DIR}
+      SOURCE_DIR ${SOURCE_DIR}
       UPDATE_COMMAND ""
+      PATCH_COMMAND
+      COMMAND cd ${SOURCE_DIR} && git checkout ${PROTOBUF_TAG}
       DEPENDS zlib
       CONFIGURE_COMMAND
-        ${CMAKE_COMMAND} ${PROTOBUF_SOURCE_DIR}/cmake ${OPTIONAL_ARGS}
+        ${CMAKE_COMMAND} ${SOURCE_DIR}/cmake ${OPTIONAL_ARGS}
         -G${CMAKE_GENERATOR} -Dprotobuf_BUILD_TESTS=OFF -DCMAKE_SKIP_RPATH=ON
         -DCMAKE_POSITION_INDEPENDENT_CODE=ON
         -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
@@ -320,9 +317,7 @@ function(build_protobuf TARGET_NAME BUILD_FOR_HOST)
   endif()
 endfunction()
 
-if(WITH_ASCEND OR WITH_ASCEND_CL)
-  set(PROTOBUF_VERSION 21.12)
-elseif(WITH_IPU)
+if(WITH_IPU)
   set(PROTOBUF_VERSION 21.12)
 elseif(WITH_ARM_BRPC)
   set(PROTOBUF_VERSION 21.12-baidu-ee-common)
@@ -340,7 +335,7 @@ else()
 endif()
 
 if(NOT PROTOBUF_FOUND)
-  build_protobuf(extern_protobuf FALSE)
+  build_protobuf(extern_protobuf)
 
   set(PROTOBUF_INCLUDE_DIR
       ${extern_protobuf_INCLUDE_DIR}

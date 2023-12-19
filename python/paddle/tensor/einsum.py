@@ -22,13 +22,15 @@ import opt_einsum
 
 from paddle import _C_ops
 
-from ..fluid.data_feeder import check_type, check_variable_and_dtype
-from ..fluid.framework import in_dygraph_mode
-from ..fluid.layer_helper import LayerHelper
+from ..base.data_feeder import check_type, check_variable_and_dtype
+from ..base.framework import in_dynamic_or_pir_mode
+from ..base.layer_helper import LayerHelper
 from .linalg import matmul, transpose
 from .manipulation import reshape, squeeze, unsqueeze
-from .math import multiply
-from .math import sum as paddle_sum
+from .math import (
+    multiply,
+    sum as paddle_sum,
+)
 
 __all__ = []
 
@@ -232,7 +234,7 @@ def build_global_view(nop_labels, rhs, n_bcast_dims):
 
     g_labels_sum = ''.join(labels)
     g_labels = g_labels_out + g_labels_sum
-    g_view = list(map(lambda i: build_view(i, g_labels), nop_labels))
+    g_view = [build_view(i, g_labels) for i in nop_labels]
     g_nout = len(g_labels_out)
     g_count = count
 
@@ -337,7 +339,7 @@ def plan_matmul(plan, g_view, op1, op2, g_supports, g_shape, I, J1, J2, K):
     # Then apply matmul(x, y, transpose_x=False, tranpose_y=True)
     var1, var2 = f'op{op1}', f'op{op2}'
 
-    op1_view, op2_view = [g_view[op] for op in (op1, op2)]
+    op1_view, op2_view = (g_view[op] for op in (op1, op2))
 
     I1 = [idx for idx in I if op1_view[idx] >= 0]
     I2 = [idx for idx in I if op2_view[idx] >= 0]
@@ -347,7 +349,7 @@ def plan_matmul(plan, g_view, op1, op2, g_supports, g_shape, I, J1, J2, K):
     op2_view = np.array(op2_view)
     op2_dims = op2_view[I2 + J2 + K]
 
-    op1_mask, op2_mask = [g_supports[op] for op in (op1, op2)]
+    op1_mask, op2_mask = (g_supports[op] for op in (op1, op2))
     op1_vshape = np.array([s if m else 1 for s, m in zip(g_shape, op1_mask)])
     op2_vshape = np.array([s if m else 1 for s, m in zip(g_shape, op2_mask)])
     vshape = np.maximum(op1_vshape, op2_vshape)
@@ -491,7 +493,6 @@ def plan_summation(
     for ax, dim1, dim2 in zip(
         range(n_bcast, ndim), op1_view[n_bcast:], op2_view[n_bcast:]
     ):
-
         if (dim1 != -1) != (dim2 != -1):
             if dim1 != -1:
                 J1.append(ax)
@@ -741,7 +742,7 @@ def parse_fake_shape(equation, operands, labels):
     list of shape
 
     """
-    origin_labels = map(lambda x: x.strip(), equation.split(','))
+    origin_labels = (x.strip() for x in equation.split(','))
     shaped = collections.namedtuple('shaped', ['shape'])
 
     def fake_shape(ori_label, label, op):
@@ -833,7 +834,7 @@ def gen_einsum_op(equation, *operands):
     EinsumOp Python Interface:
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.einsum(operands, equation)[0]
     else:
         assert len(operands) <= 2, "Only support two operands in EinsumOp."
@@ -844,7 +845,7 @@ def gen_einsum_op(equation, *operands):
         check_type(equation, 'equation', str, 'einsum')
         helper = LayerHelper('einsum', **locals())
         out = helper.create_variable_for_type_inference(dtype=operands[0].dtype)
-        attrs = dict()
+        attrs = {}
         attrs['equation'] = equation
         caches = [
             helper.create_variable_for_type_inference(dtype=operands[0].dtype)
@@ -954,73 +955,69 @@ def einsum(equation, *operands):
     Examples:
         .. code-block:: python
 
-            import paddle
-            paddle.seed(102)
-            x = paddle.rand([4])
-            y = paddle.rand([5])
+            >>> import paddle
+            >>> paddle.seed(102)
+            >>> x = paddle.rand([4])
+            >>> y = paddle.rand([5])
 
-            # sum
-            print(paddle.einsum('i->', x))
-            # Tensor(shape=[], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #   1.95791852)
+            >>> # sum
+            >>> print(paddle.einsum('i->', x))
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            1.81225157)
 
-            # dot
-            print(paddle.einsum('i,i->', x, x))
-            # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #   [1.45936954])
+            >>> # dot
+            >>> print(paddle.einsum('i,i->', x, x))
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            1.13530672)
 
-            # outer
-            print(paddle.einsum("i,j->ij", x, y))
-            # Tensor(shape=[4, 5], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #   [[0.00079869, 0.00120950, 0.00136844, 0.00187187, 0.00192194],
-            #    [0.23455200, 0.35519385, 0.40186870, 0.54970956, 0.56441545],
-            #    [0.11773264, 0.17828843, 0.20171674, 0.27592498, 0.28330654],
-            #    [0.32897076, 0.49817693, 0.56364071, 0.77099484, 0.79162055]])
+            >>> # outer
+            >>> print(paddle.einsum("i,j->ij", x, y))
+            Tensor(shape=[4, 5], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[0.26443148, 0.05962684, 0.25360870, 0.21900642, 0.56994802],
+                    [0.20955276, 0.04725220, 0.20097610, 0.17355499, 0.45166403],
+                    [0.35836059, 0.08080698, 0.34369346, 0.29680005, 0.77240014],
+                    [0.00484230, 0.00109189, 0.00464411, 0.00401047, 0.01043695]])
 
-            A = paddle.rand([2, 3, 2])
-            B = paddle.rand([2, 2, 3])
+            >>> A = paddle.rand([2, 3, 2])
+            >>> B = paddle.rand([2, 2, 3])
 
-            # transpose
-            print(paddle.einsum('ijk->kji', A))
-            #  Tensor(shape=[2, 3, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #   [[[0.95649719, 0.49684682],
-            #     [0.80071914, 0.46258664],
-            #     [0.49814570, 0.33383518]],
-            #
-            #    [[0.07637714, 0.29374704],
-            #     [0.51470858, 0.51907635],
-            #     [0.99066722, 0.55802226]]])
+            >>> # transpose
+            >>> print(paddle.einsum('ijk->kji', A))
+            Tensor(shape=[2, 3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[[0.50882483, 0.56067896],
+                     [0.84598064, 0.36310029],
+                     [0.55289471, 0.33273944]],
+                    [[0.04836850, 0.73811269],
+                     [0.29769155, 0.28137168],
+                     [0.84636718, 0.67521429]]])
 
-            # batch matrix multiplication
-            print(paddle.einsum('ijk, ikl->ijl', A,B))
-            # Tensor(shape=[2, 3, 3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #   [[[0.32172769, 0.50617385, 0.41394392],
-            #     [0.51736701, 0.49921003, 0.38730967],
-            #     [0.69078457, 0.42282537, 0.30161136]],
-            #
-            #    [[0.32043904, 0.18164253, 0.27810261],
-            #     [0.50226176, 0.24512935, 0.39881429],
-            #     [0.51476848, 0.23367381, 0.39229113]]])
+            >>> # batch matrix multiplication
+            >>> print(paddle.einsum('ijk, ikl->ijl', A,B))
+            Tensor(shape=[2, 3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[[0.36321065, 0.42009076, 0.40849245],
+                     [0.74353045, 0.79189068, 0.81345987],
+                     [0.90488225, 0.79786193, 0.93451476]],
+                    [[0.12680580, 1.06945944, 0.79821426],
+                     [0.07774551, 0.55068684, 0.44512171],
+                     [0.08053084, 0.80583858, 0.56031936]]])
 
-            # Ellipsis transpose
-            print(paddle.einsum('...jk->...kj', A))
-            # Tensor(shape=[2, 2, 3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #   [[[0.95649719, 0.80071914, 0.49814570],
-            #     [0.07637714, 0.51470858, 0.99066722]],
-            #
-            #    [[0.49684682, 0.46258664, 0.33383518],
-            #     [0.29374704, 0.51907635, 0.55802226]]])
+            >>> # Ellipsis transpose
+            >>> print(paddle.einsum('...jk->...kj', A))
+            Tensor(shape=[2, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[[0.50882483, 0.84598064, 0.55289471],
+                     [0.04836850, 0.29769155, 0.84636718]],
+                    [[0.56067896, 0.36310029, 0.33273944],
+                     [0.73811269, 0.28137168, 0.67521429]]])
 
-            # Ellipsis batch matrix multiplication
-            print(paddle.einsum('...jk, ...kl->...jl', A,B))
-            # Tensor(shape=[2, 3, 3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #   [[[0.32172769, 0.50617385, 0.41394392],
-            #     [0.51736701, 0.49921003, 0.38730967],
-            #     [0.69078457, 0.42282537, 0.30161136]],
-            #
-            #    [[0.32043904, 0.18164253, 0.27810261],
-            #     [0.50226176, 0.24512935, 0.39881429],
-            #     [0.51476848, 0.23367381, 0.39229113]]])
+            >>> # Ellipsis batch matrix multiplication
+            >>> print(paddle.einsum('...jk, ...kl->...jl', A,B))
+            Tensor(shape=[2, 3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[[0.36321065, 0.42009076, 0.40849245],
+                     [0.74353045, 0.79189068, 0.81345987],
+                     [0.90488225, 0.79786193, 0.93451476]],
+                    [[0.12680580, 1.06945944, 0.79821426],
+                     [0.07774551, 0.55068684, 0.44512171],
+                     [0.08053084, 0.80583858, 0.56031936]]])
 
     """
     import os
@@ -1047,7 +1044,7 @@ def einsum(equation, *operands):
     # To handle broadcasting, we should first know how many dimensions are there
     # We need to use that number to generate output labels
     # e.g. 1 for ['ij', 'i.', '.k']
-    n_bcast_dims = max(map(lambda s: s.count('.'), nop_labels))
+    n_bcast_dims = max(s.count('.') for s in nop_labels)
 
     # Build the data structures for planning. It's helpful to think of all the operands
     # broadcasting together from a global view. In this view, dimensions from multiple

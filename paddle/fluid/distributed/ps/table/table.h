@@ -22,6 +22,7 @@
 #include <string>
 #include <utility>
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/distributed/common/afs_warpper.h"
 #include "paddle/fluid/distributed/ps/table/accessor.h"
 #include "paddle/fluid/distributed/ps/table/depends/sparse_utils.h"
@@ -77,22 +78,22 @@ class Table {
   virtual int32_t Push(TableContext &context) = 0;  // NOLINT
 
   // only for barrier
-  virtual int32_t Barrier(const uint32_t trainer_id,
-                          const std::string barrier_type) {
+  virtual int32_t Barrier(const uint32_t trainer_id UNUSED,
+                          const std::string barrier_type UNUSED) {
     return 0;
   }
 
   // only for barrier table
   virtual int32_t SetTableMap(
-      std::unordered_map<uint32_t, std::shared_ptr<Table>> *table_map) {
+      std::unordered_map<uint32_t, std::shared_ptr<Table>> *table_map UNUSED) {
     return 0;
   }
 
   // only for tensor table
   virtual int32_t SetProgramEnv(
-      framework::Scope *scope,
-      platform::Place place,
-      const std::vector<framework::ProgramDesc> *sub_program) {
+      framework::Scope *scope UNUSED,
+      platform::Place place UNUSED,
+      const std::vector<framework::ProgramDesc> *sub_program UNUSED) {
     return 0;
   }
 
@@ -113,25 +114,32 @@ class Table {
   // 指定保存路径
   virtual int32_t Save(const std::string &path,
                        const std::string &converter) = 0;
+
+#ifdef PADDLE_WITH_GPU_GRAPH
+  // pglbox支持将非9008 slot的feature额外保存一份，实际支持用户可配置过滤slot
+  virtual int32_t Save_v2(const std::string &path,
+                          const std::string &converter) = 0;
+#endif
+
   // for cache
   virtual int32_t SaveCache(
-      const std::string &path,
-      const std::string &param,
-      paddle::framework::Channel<std::pair<uint64_t, std::string>>
-          &shuffled_channel) {
+      const std::string &path UNUSED,
+      const std::string &param UNUSED,
+      ::paddle::framework::Channel<std::pair<uint64_t, std::string>>
+          &shuffled_channel UNUSED) {
     return 0;
   }
 
   virtual int64_t CacheShuffle(
-      const std::string &path,
-      const std::string &param,
-      double cache_threshold,
+      const std::string &path UNUSED,
+      const std::string &param UNUSED,
+      double cache_threshold UNUSED,
       std::function<std::future<int32_t>(
           int msg_type, int to_pserver_id, std::string &msg)>  // NOLINT
-          send_msg_func,
-      paddle::framework::Channel<std::pair<uint64_t, std::string>>
-          &shuffled_channel,
-      const std::vector<Table *> &table_ptrs) {
+          send_msg_func UNUSED,
+      ::paddle::framework::Channel<std::pair<uint64_t, std::string>>
+          &shuffled_channel UNUSED,
+      const std::vector<Table *> &table_ptrs UNUSED) {
     return 0;
   }
 
@@ -149,7 +157,7 @@ class Table {
 
   virtual void *GetShard(size_t shard_idx) = 0;
   virtual std::pair<int64_t, int64_t> PrintTableStat() { return {0, 0}; }
-  virtual int32_t CacheTable(uint16_t pass_id) { return 0; }
+  virtual int32_t CacheTable(uint16_t pass_id UNUSED) { return 0; }
 
   // for patch model
   virtual void Revert() {}
@@ -160,7 +168,7 @@ class Table {
   virtual int32_t InitializeAccessor();
   virtual int32_t InitializeShard() = 0;
   virtual std::string TableDir(const std::string &model_dir) {
-    return paddle::string::format_string(
+    return ::paddle::string::format_string(
         "%s/%03d/", model_dir.c_str(), _config.table_id());
   }
 

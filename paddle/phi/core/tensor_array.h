@@ -63,11 +63,17 @@ class TensorArray : public TensorBase,
   /// \brief This overrided function is not used in TensorArray.
   const Place& place() const override;
 
-  /// \brief This overrided function is not used in TensorArray.
   DataType dtype() const override;
 
-  /// \brief This overrided function is not used in TensorArray.
+#ifndef PADDLE_WITH_CUSTOM_KERNEL
+  void set_type(const DataType dtype);
+#endif
+
   DataLayout layout() const override;
+
+#ifndef PADDLE_WITH_CUSTOM_KERNEL
+  void set_layout(const DataLayout layout);
+#endif
 
   /// \brief This overrided function is not used in TensorArray.
   bool valid() const override;
@@ -129,6 +135,8 @@ class TensorArray : public TensorBase,
   }
 
  private:
+  DataType dtype_{DataType::UNDEFINED};
+  DataLayout layout_{DataLayout::NCHW};
   std::vector<DenseTensor> tensors_;
 };
 

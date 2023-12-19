@@ -20,7 +20,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class SequenceConvXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -154,7 +154,7 @@ class SequenceConvXPUKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class SequenceConvGradXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -363,12 +363,12 @@ class SequenceConvGradXPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_XPU_KERNEL(
-    sequence_conv,
-    ops::SequenceConvXPUKernel<paddle::platform::XPUDeviceContext, float>);
-
-REGISTER_OP_XPU_KERNEL(
-    sequence_conv_grad,
-    ops::SequenceConvGradXPUKernel<paddle::platform::XPUDeviceContext, float>);
+PD_REGISTER_STRUCT_KERNEL(
+    sequence_conv, XPU, ALL_LAYOUT, ops::SequenceConvXPUKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(sequence_conv_grad,
+                          XPU,
+                          ALL_LAYOUT,
+                          ops::SequenceConvGradXPUKernel,
+                          float) {}
 
 #endif

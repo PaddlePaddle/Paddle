@@ -241,28 +241,21 @@ void ComputeINT8(const OneDNNContext& dev_ctx,
             {DNNL_ARG_DST, *dst_memory_p}};
 
         if (bias) {
-          std::vector<float> bias_scales;
-          auto p_scales_tuple =
-              std::make_shared<std::tuple<float, std::vector<float>>>(
-                  std::make_tuple(static_cast<float>(mask_reorder),
-                                  bias_scales));
-          if (dev_ctx.HasDnnAttr("Bias_scales")) {
-            bias_scales = PADDLE_GET_CONST(std::vector<float>,
-                                           dev_ctx.GetDnnAttr("Bias_scales"));
-            p_scales_tuple =
-                std::make_shared<std::tuple<float, std::vector<float>>>(
-                    std::make_tuple(static_cast<float>(mask_reorder),
-                                    bias_scales));
-          } else {
-            p_scales_tuple = handler.get_int8_bias_scales(
-                filter, groups, scale_weights_data);
-          }
-          auto bias_memory_p = handler.AcquireBiasMemoryWithReorder(
-              bias,
-              true,
-              std::get<1>(*p_scales_tuple),
-              std::get<0>(*p_scales_tuple));
+          auto bias_memory_p = handler.AcquireBiasMemoryWithReorder(bias, true);
           args.insert({DNNL_ARG_BIAS, *bias_memory_p});
+        }
+
+        auto src_scales_memory = handler.AcquireScalesMemory(DNNL_ARG_SRC);
+        args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC, *src_scales_memory});
+
+        auto wei_scales_memory = handler.AcquireScalesMemory(DNNL_ARG_WEIGHTS);
+        args.insert(
+            {DNNL_ARG_ATTR_SCALES | DNNL_ARG_WEIGHTS, *wei_scales_memory});
+
+        if (!force_fp32_output) {
+          auto dst_scales_memory = handler.AcquireScalesMemory(DNNL_ARG_DST);
+          args.insert(
+              {DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST, *dst_scales_memory});
         }
 
         auto& astream = OneDNNContext::tls().get_stream();

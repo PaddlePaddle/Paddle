@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/selected_rows/uniform_kernel.h"
+#include "paddle/phi/kernels/legacy/uniform_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -78,12 +79,23 @@ PD_REGISTER_KERNEL(uniform_sr,
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
-PD_REGISTER_KERNEL(
-    uniform_raw_sr, GPU, ALL_LAYOUT, phi::sr::UniformRawKernel, float, double) {
-}
+PD_REGISTER_KERNEL(uniform_raw_sr,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sr::UniformRawKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
-PD_REGISTER_KERNEL(
-    uniform_sr, GPU, ALL_LAYOUT, phi::sr::UniformKernel, float, double) {}
+PD_REGISTER_KERNEL(uniform_sr,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sr::UniformKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 #endif
 
 #if defined(PADDLE_WITH_XPU)

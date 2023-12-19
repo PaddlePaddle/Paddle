@@ -15,11 +15,11 @@
 #ifndef PADDLE_WITH_HIP
 // HIP not support cusolver
 
-#include "paddle/fluid/memory/malloc.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/impl/lu_kernel_impl.h"
 #include "paddle/phi/kernels/lu_kernel.h"
 
@@ -105,7 +105,7 @@ void lu_decomposed_kernel(const Context& dev_ctx,
   int lwork;
   cusolver_bufferSize(cusolverH, m, n, d_A, lda, &lwork);
 
-  auto work_buff = paddle::memory::Alloc(
+  auto work_buff = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       lwork * sizeof(T),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
@@ -127,11 +127,7 @@ void LUKernel(const Context& dev_ctx,
               DenseTensor* out,
               DenseTensor* pivots,
               DenseTensor* infos) {
-#ifdef __HIPCC__
-  const int64_t kMaxBlockDim = 256;
-#else
   const int64_t kMaxBlockDim = 512;
-#endif
 
   *out = Transpose2DTo6D<Context, T>(dev_ctx, x);
 
@@ -142,16 +138,16 @@ void LUKernel(const Context& dev_ctx,
   int n = static_cast<int>(outdims[outrank - 2]);
   int lda = std::max(1, m);
   if (pivot) {
-    auto ipiv_dims = phi::slice_ddim(outdims, 0, outrank - 1);
+    auto ipiv_dims = common::slice_ddim(outdims, 0, outrank - 1);
     ipiv_dims[outrank - 2] = std::min(m, n);
     pivots->Resize(ipiv_dims);
   }
   dev_ctx.template Alloc<int>(pivots);
   auto ipiv_data = pivots->data<int>();
 
-  auto info_dims = phi::slice_ddim(outdims, 0, outrank - 2);
+  auto info_dims = common::slice_ddim(outdims, 0, outrank - 2);
   if (info_dims.size() == 0) {
-    info_dims = phi::make_ddim({1});
+    info_dims = common::make_ddim({1});
   }
   infos->Resize(info_dims);
   dev_ctx.template Alloc<int>(infos);
@@ -183,6 +179,9 @@ PD_REGISTER_KERNEL(lu,  // cuda_only
                    ALL_LAYOUT,
                    phi::LUKernel,
                    float,
-                   double) {}
+                   double) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
+  kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
+}
 
 #endif  // not PADDLE_WITH_HIP

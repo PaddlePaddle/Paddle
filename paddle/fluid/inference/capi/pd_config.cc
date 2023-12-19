@@ -278,7 +278,7 @@ void PD_EnableDlnne(
     std::unordered_set<std::string> disable_nodes_by_ouputs,
     std::map<std::string, std::vector<int64_t>> dlnne_input_shape_dict,
     bool use_calib_mode,
-    AnalysisConfig::Precision precision_mode) {
+    PD_ACPrecision precision_mode) {
   PADDLE_ENFORCE_NOT_NULL(
       config,
       paddle::platform::errors::InvalidArgument(

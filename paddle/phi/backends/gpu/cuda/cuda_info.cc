@@ -14,6 +14,8 @@
 
 #include "paddle/phi/backends/gpu/gpu_info.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/core/enforce.h"
 
 static std::once_flag g_device_props_size_init_flag;
@@ -62,7 +64,12 @@ static int GetGPUDeviceCountImpl() {
     }
   }
   int count;
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaGetDeviceCount(&count));
+  status = cudaGetDeviceCount(&count);
+  if (status != cudaSuccess) {
+    VLOG(2) << "You have gpu driver and cuda installed, but the machine not "
+               "has any gpu card.";
+    count = 0;
+  }
   return count;
 }
 

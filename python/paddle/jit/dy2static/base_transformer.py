@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid import unique_name
+from paddle.base import unique_name
 from paddle.jit.dy2static.utils import (
     FOR_ITER_INDEX_PREFIX,
     FOR_ITER_ITERATOR_PREFIX,
@@ -33,7 +33,7 @@ __all__ = []
 class BaseTransformer(gast.NodeTransformer):
     def visit(self, node):
         if not isinstance(node, gast.AST):
-            msg = ('Expected "gast.AST", but got "{}".').format(type(node))
+            msg = f'Expected "gast.AST", but got "{type(node)}".'
             raise ValueError(msg)
         origin_info = getattr(node, ORIGI_INFO, None)
 
@@ -139,9 +139,8 @@ class ForLoopTuplePreTransformer(BaseTransformer):
     >>>     body
     """
 
-    def __init__(self, wrapper_root):
-        self.wrapper_root = wrapper_root
-        self.root = wrapper_root.node
+    def __init__(self, root):
+        self.root = root
 
     def transform(self):
         self.visit(self.root)
@@ -205,7 +204,7 @@ class ForNodeVisitor:
 
     In this process, the semantics of for does not change.
 
-    Now only can parse 3 type statements (Here var is VarBase(Tensor) or python variable):
+    Now only can parse 3 type statements (Here var is Tensor(Tensor) or python variable):
         1). for x in range(var[*]|var.numpy()[*])
         2). for x in var|var.numpy()
         3). for i, x enumerate(var|var.numpy())
@@ -391,8 +390,8 @@ class ForNodeVisitor:
             index_init_value_str = '0'
             index_init_var_name = self.iter_idx_name
 
-        index_init_node_source_str = "{target} = {value}".format(
-            target=index_init_var_name, value=index_init_value_str
+        index_init_node_source_str = (
+            f"{index_init_var_name} = {index_init_value_str}"
         )
 
         index_init_node = gast.parse(index_init_node_source_str).body[0]
@@ -457,9 +456,7 @@ class ForNodeVisitor:
         else:
             init_value_str = '0'
 
-        enum_init_node_source_str = "{} = {}".format(
-            self.enum_idx_name, init_value_str
-        )
+        enum_init_node_source_str = f"{self.enum_idx_name} = {init_value_str}"
         enum_init_node = gast.parse(enum_init_node_source_str).body[0]
         return enum_init_node
 

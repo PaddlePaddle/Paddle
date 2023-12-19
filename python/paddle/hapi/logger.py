@@ -54,7 +54,7 @@ def setup_logger(output=None, name="hapi", log_level=logging.INFO):
             filename = os.path.join(output, "log.txt")
 
         if local_rank > 0:
-            filename = filename + ".rank{}".format(local_rank)
+            filename = filename + f".rank{local_rank}"
 
         if not os.path.exists(os.path.dirname(filename)):
             os.makedirs(os.path.dirname(filename))

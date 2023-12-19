@@ -42,7 +42,7 @@ class CReduceScatterOp : public framework::OperatorWithKernel {
 
 class CReduceScatterOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "(Tensor) tensor to be allgather");
     AddOutput("Out", "(Tensor) the allgather result");
     AddAttr<int>("ring_id", "(int default 0) communication ring id.")
@@ -50,10 +50,7 @@ class CReduceScatterOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("nranks",
                  "Total trainer count of the distributed training job")
         .SetDefault(1);
-#if defined(PADDLE_WITH_ASCEND_CL)
-    AddAttr<std::string>("tag", "(string default tag) tag for reduce scatter.")
-        .SetDefault("tag");
-#endif
+
     AddAttr<bool>(
         "use_calc_stream",
         "(bool default false) eject CUDA operations to calculation stream.")
@@ -76,9 +73,12 @@ REGISTER_OP_WITHOUT_GRADIENT(c_reducescatter,
                              ops::CReduceScatterOp,
                              ops::CReduceScatterOpMaker);
 
-REGISTER_OP_CPU_KERNEL(c_reducescatter,
-                       ops::CReduceScatterOpCPUKernel<float>,
-                       ops::CReduceScatterOpCPUKernel<double>,
-                       ops::CReduceScatterOpCPUKernel<int>,
-                       ops::CReduceScatterOpCPUKernel<int64_t>,
-                       ops::CReduceScatterOpCPUKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(c_reducescatter,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::CReduceScatterOpCPUKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

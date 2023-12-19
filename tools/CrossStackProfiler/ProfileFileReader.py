@@ -26,7 +26,7 @@ from CspFileReader import (
     getLogger,
 )
 
-import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
+from paddle.base.proto.profiler import profiler_pb2
 
 
 class profileFileReader(FileReader):
@@ -103,7 +103,6 @@ class profileFileReader(FileReader):
         return newList
 
     def _getPipeLineInfo(self, profileList, q=None):
-
         res = {}
         for profile in profileList:
             rankId = self.getRankId(profile)
@@ -204,8 +203,8 @@ class profileFileReader(FileReader):
 
     def _allocate_pids(self, profile_dict, gpuId, initPid):
         chrome_trace = ChromeTraceFormatter()
-        devices = dict()
-        mem_devices = dict()
+        devices = {}
+        mem_devices = {}
 
         initLineNum = initPid + 1
         lineDelta = len(profile_dict.keys())
@@ -328,7 +327,6 @@ class profileFileReader(FileReader):
     def _allocate_events(self, profile_dict, devices, gpuId):
         chrome_trace = ChromeTraceFormatter()
         for k, profile_pb in profile_dict.items():
-
             rankId = int(k.split(".")[-1])
 
             for event in profile_pb.events:
@@ -383,7 +381,7 @@ class profileFileReader(FileReader):
             mem_list = []
             end_profiler = 0
             for mevent in profile_pb.mem_events:
-                crt_info = dict()
+                crt_info = {}
                 crt_info['time'] = mevent.start_ns
                 crt_info['size'] = mevent.bytes
                 if mevent.place in place_to_str:
@@ -403,7 +401,7 @@ class profileFileReader(FileReader):
                 crt_info['thread_id'] = mevent.thread_id
                 crt_info['device_id'] = mevent.device_id
                 mem_list.append(crt_info)
-                crt_info = dict()
+                crt_info = {}
                 crt_info['place'] = place
                 crt_info['pid'] = pid
                 crt_info['thread_id'] = mevent.thread_id

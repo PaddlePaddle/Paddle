@@ -21,8 +21,9 @@ import sys
 import tarfile
 import time
 import zipfile
+from urllib.parse import urlparse
 
-import requests
+import httpx
 
 try:
     from tqdm import tqdm
@@ -36,11 +37,9 @@ except:
         def update(self, n):
             self.n += n
             if self.total is None:
-                sys.stderr.write("\r{0:.1f} bytes".format(self.n))
+                sys.stderr.write(f"\r{self.n:.1f} bytes")
             else:
-                sys.stderr.write(
-                    "\r{0:.1f}%".format(100 * self.n / float(self.total))
-                )
+                sys.stderr.write(f"\r{100 * self.n / float(self.total):.1f}%")
             sys.stderr.flush()
 
         def __enter__(self):
@@ -84,10 +83,10 @@ def get_weights_path_from_url(url, md5sum=None):
     Examples:
         .. code-block:: python
 
-            from paddle.utils.download import get_weights_path_from_url
+            >>> from paddle.utils.download import get_weights_path_from_url
 
-            resnet18_pretrained_weight_url = 'https://paddle-hapi.bj.bcebos.com/models/resnet18.pdparams'
-            local_weight_path = get_weights_path_from_url(resnet18_pretrained_weight_url)
+            >>> resnet18_pretrained_weight_url = 'https://paddle-hapi.bj.bcebos.com/models/resnet18.pdparams'
+            >>> local_weight_path = get_weights_path_from_url(resnet18_pretrained_weight_url)
 
     """
     path = get_path_from_url(url, WEIGHTS_HOME, md5sum)
@@ -112,7 +111,7 @@ def _get_unique_endpoints(trainer_endpoints):
             continue
         ips.add(ip)
         unique_endpoints.add(endpoint)
-    logger.info("unique_endpoints {}".format(unique_endpoints))
+    logger.info(f"unique_endpoints {unique_endpoints}")
     return unique_endpoints
 
 
@@ -138,7 +137,7 @@ def get_path_from_url(
 
     from paddle.distributed import ParallelEnv
 
-    assert is_url(url), "downloading from {} not a url".format(url)
+    assert is_url(url), f"downloading from {url} not a url"
     # parse path after download to decompress under root_dir
     fullpath = _map_path(url, root_dir)
     # Mainly used to solve the problem of downloading data from different
@@ -146,7 +145,7 @@ def get_path_from_url(
     # data, and the same ip will only download data once.
     unique_endpoints = _get_unique_endpoints(ParallelEnv().trainer_endpoints[:])
     if osp.exists(fullpath) and check_exist and _md5check(fullpath, md5sum):
-        logger.info("Found {}".format(fullpath))
+        logger.info(f"Found {fullpath}")
     else:
         if ParallelEnv().current_endpoint in unique_endpoints:
             fullpath = _download(url, root_dir, md5sum, method=method)
@@ -167,61 +166,62 @@ def _get_download(url, fullname):
     # using requests.get method
     fname = osp.basename(fullname)
     try:
-        req = requests.get(url, stream=True)
+        with httpx.stream(
+            "GET", url, timeout=None, follow_redirects=True
+        ) as req:
+            if req.status_code != 200:
+                raise RuntimeError(
+                    f"Downloading from {url} failed with code "
+                    f"{req.status_code}!"
+                )
+
+            tmp_fullname = fullname + "_tmp"
+            total_size = req.headers.get('content-length')
+            with open(tmp_fullname, 'wb') as f:
+                if total_size:
+                    with tqdm(total=(int(total_size) + 1023) // 1024) as pbar:
+                        for chunk in req.iter_bytes(chunk_size=1024):
+                            f.write(chunk)
+                            pbar.update(1)
+                else:
+                    for chunk in req.iter_bytes(chunk_size=1024):
+                        if chunk:
+                            f.write(chunk)
+            shutil.move(tmp_fullname, fullname)
+            return fullname
+
     except Exception as e:  # requests.exceptions.ConnectionError
         logger.info(
-            "Downloading {} from {} failed with exception {}".format(
-                fname, url, str(e)
-            )
+            f"Downloading {fname} from {url} failed with exception {str(e)}"
         )
         return False
 
-    if req.status_code != 200:
-        raise RuntimeError(
-            "Downloading from {} failed with code "
-            "{}!".format(url, req.status_code)
+
+def _wget_download(url: str, fullname: str):
+    try:
+        assert urlparse(url).scheme in (
+            'http',
+            'https',
+        ), 'Only support https and http url'
+        # using wget to download url
+        tmp_fullname = fullname + "_tmp"
+        # –user-agent
+        command = f'wget -O {tmp_fullname} -t {DOWNLOAD_RETRY_LIMIT} {url}'
+        subprc = subprocess.Popen(
+            command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
+        _ = subprc.communicate()
 
-    # For protecting download interupted, download to
-    # tmp_fullname firstly, move tmp_fullname to fullname
-    # after download finished
-    tmp_fullname = fullname + "_tmp"
-    total_size = req.headers.get('content-length')
-    with open(tmp_fullname, 'wb') as f:
-        if total_size:
-            with tqdm(total=(int(total_size) + 1023) // 1024) as pbar:
-                for chunk in req.iter_content(chunk_size=1024):
-                    f.write(chunk)
-                    pbar.update(1)
-        else:
-            for chunk in req.iter_content(chunk_size=1024):
-                if chunk:
-                    f.write(chunk)
-    shutil.move(tmp_fullname, fullname)
-
-    return fullname
-
-
-def _wget_download(url, fullname):
-    # using wget to download url
-    tmp_fullname = fullname + "_tmp"
-    # –user-agent
-    command = 'wget -O {} -t {} {}'.format(
-        tmp_fullname, DOWNLOAD_RETRY_LIMIT, url
-    )
-    subprc = subprocess.Popen(
-        command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-    )
-    _ = subprc.communicate()
-
-    if subprc.returncode != 0:
-        raise RuntimeError(
-            '{} failed. Please make sure `wget` is installed or {} exists'.format(
-                command, url
+        if subprc.returncode != 0:
+            raise RuntimeError(
+                f'{command} failed. Please make sure `wget` is installed or {url} exists'
             )
-        )
 
-    shutil.move(tmp_fullname, fullname)
+        shutil.move(tmp_fullname, fullname)
+
+    except Exception as e:  # requests.exceptions.ConnectionError
+        logger.info(f"Downloading {url} failed with exception {str(e)}")
+        return False
 
     return fullname
 
@@ -242,9 +242,7 @@ def _download(url, path, md5sum=None, method='get'):
     method (str): which download method to use. Support `wget` and `get`. Default is `get`.
 
     """
-    assert method in _download_methods, 'make sure `{}` implemented'.format(
-        method
-    )
+    assert method in _download_methods, f'make sure `{method}` implemented'
 
     if not osp.exists(path):
         os.makedirs(path)
@@ -253,13 +251,14 @@ def _download(url, path, md5sum=None, method='get'):
     fullname = osp.join(path, fname)
     retry_cnt = 0
 
-    logger.info("Downloading {} from {}".format(fname, url))
+    logger.info(f"Downloading {fname} from {url}")
     while not (osp.exists(fullname) and _md5check(fullname, md5sum)):
+        logger.info(f"md5check {fullname} and {md5sum}")
         if retry_cnt < DOWNLOAD_RETRY_LIMIT:
             retry_cnt += 1
         else:
             raise RuntimeError(
-                "Download from {} failed. " "Retry limit reached".format(url)
+                f"Download from {url} failed. " "Retry limit reached"
             )
 
         if not _download_methods[method](url, fullname):
@@ -273,7 +272,7 @@ def _md5check(fullname, md5sum=None):
     if md5sum is None:
         return True
 
-    logger.info("File {} md5 checking...".format(fullname))
+    logger.info(f"File {fullname} md5 checking...")
     md5 = hashlib.md5()
     with open(fullname, 'rb') as f:
         for chunk in iter(lambda: f.read(4096), b""):
@@ -282,8 +281,8 @@ def _md5check(fullname, md5sum=None):
 
     if calc_md5sum != md5sum:
         logger.info(
-            "File {} md5 check failed, {}(calc) != "
-            "{}(base)".format(fullname, calc_md5sum, md5sum)
+            f"File {fullname} md5 check failed, {calc_md5sum}(calc) != "
+            f"{md5sum}(base)"
         )
         return False
     return True
@@ -293,9 +292,9 @@ def _decompress(fname):
     """
     Decompress for zip and tar file
     """
-    logger.info("Decompressing {}...".format(fname))
+    logger.info(f"Decompressing {fname}...")
 
-    # For protecting decompressing interupted,
+    # For protecting decompressing interrupted,
     # decompress to fpath_tmp directory firstly, if decompress
     # successed, move decompress files to fpath and delete
     # fpath_tmp and remove download compress file.
@@ -305,7 +304,7 @@ def _decompress(fname):
     elif zipfile.is_zipfile(fname):
         uncompressed_path = _uncompress_file_zip(fname)
     else:
-        raise TypeError("Unsupport compress file type {}".format(fname))
+        raise TypeError(f"Unsupport compress file type {fname}")
 
     return uncompressed_path
 

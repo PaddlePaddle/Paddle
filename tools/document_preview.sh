@@ -47,7 +47,7 @@ function get_docs_pr_num_from_paddle_pr_info(){
 # Attention:
 # 1. /FluidDoc will be used as the workspace of PaddlePaddle/docs. 
 # 2. And /docs is used as the output of doc-build process.
-# 3. If conflicted with yours, please modify the defination of FLUIDDOCDIR and
+# 3. If conflicted with yours, please modify the definition of FLUIDDOCDIR and
 #    OUTPUTDIR in the subsequent codes.
 # 4. The doc-build process is controlled under EnvVar BUILD_DOC and UPLOAD_DOC.
 #    All the Chinese and English docs will be generated, and then uploaded.
@@ -58,11 +58,11 @@ UPLOAD_DOC=${UPLOAD_DOC:=false}
 
 CURPWD=${PWD}
 
-if [ -f /usr/local/python3.7.0/bin/sphinx-build ] ; then
+if [ -f /usr/local/python3.8.0/bin/sphinx-build ] ; then
     if [ -f /usr/local/bin/sphinx-build ] ; then
         rm /usr/local/bin/sphinx-build
     fi
-    ln -s /usr/local/python3.7.0/bin/sphinx-build /usr/local/bin/sphinx-build
+    ln -s /usr/local/python3.8.0/bin/sphinx-build /usr/local/bin/sphinx-build
 fi
 
 if [ "${BUILD_DOC}" = "true" ] &&  [ -x /usr/local/bin/sphinx-build ] ; then

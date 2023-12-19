@@ -11,6 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
@@ -46,10 +47,11 @@ struct EigenErfGrad<Eigen::DefaultDevice, T> {
   }
 };
 
-#define INSTANTIATION(FUNCTOR)                           \
-  template struct FUNCTOR<Eigen::DefaultDevice, float>;  \
-  template struct FUNCTOR<Eigen::DefaultDevice, double>; \
-  template struct FUNCTOR<Eigen::DefaultDevice, dtype::float16>
+#define INSTANTIATION(FUNCTOR)                                   \
+  template struct FUNCTOR<Eigen::DefaultDevice, float>;          \
+  template struct FUNCTOR<Eigen::DefaultDevice, double>;         \
+  template struct FUNCTOR<Eigen::DefaultDevice, dtype::float16>; \
+  template struct FUNCTOR<Eigen::DefaultDevice, dtype::bfloat16>
 INSTANTIATION(EigenErf);
 INSTANTIATION(EigenErfGrad);
 #undef INSTANTIATION

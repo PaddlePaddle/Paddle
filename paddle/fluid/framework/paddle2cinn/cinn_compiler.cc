@@ -22,32 +22,41 @@
 #include <string>
 #include <unordered_map>
 
-#include "cinn/auto_schedule/auto_tuner.h"
-#include "cinn/auto_schedule/tuning.h"
-#include "cinn/common/target.h"
-#include "cinn/common/type.h"
-#include "cinn/frontend/op_mapper_registry.h"
-#include "cinn/frontend/optimize.h"
-#include "cinn/frontend/syntax.h"
-#include "cinn/hlir/framework/graph.h"
-#include "cinn/hlir/framework/graph_compiler.h"
-#include "gflags/gflags.h"
+#include "paddle/cinn/adt/generate_map_expr.h"
+#include "paddle/cinn/auto_schedule/auto_tuner.h"
+#include "paddle/cinn/auto_schedule/tuning.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/common/type.h"
+#include "paddle/cinn/frontend/op_mapper_registry.h"
+#include "paddle/cinn/frontend/optimize.h"
+#include "paddle/cinn/frontend/syntax.h"
+#include "paddle/cinn/hlir/framework/graph.h"
+#include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/graph_compiler_util.h"
+#include "paddle/cinn/hlir/framework/visualize_helper.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/paddle2cinn/build_cinn_pass.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_graph_symbolization.h"
+#include "paddle/fluid/framework/paddle2cinn/transform_desc.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/analysis/dot.h"
 #include "paddle/fluid/operators/cinn/cinn_launch_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/phi/core/flags.h"
+#include "paddle/pir/core/program.h"
+#include "paddle/pir/core/value.h"
+#include "paddle/utils/flags.h"
 
-DECLARE_bool(enable_pe_launch_cinn);
-DECLARE_bool(enable_cinn_auto_tune);
+PHI_DECLARE_bool(enable_pe_launch_cinn);
+PHI_DECLARE_bool(enable_cinn_auto_tune);
+PHI_DECLARE_string(cinn_subgraph_graphviz_dir);
 namespace paddle {
 namespace framework {
 namespace paddle2cinn {
@@ -57,6 +66,8 @@ using ::cinn::common::Target;
 using ::cinn::frontend::Optimize;
 using ::cinn::frontend::paddle::InplaceOutSuffix;
 using ::cinn::hlir::framework::BuildScope;
+using ::cinn::hlir::framework::CompilationContext;
+using ::cinn::hlir::framework::CompilationResult;
 using ::cinn::hlir::framework::GraphCompiler;
 using inference::analysis::Dot;
 using ir::Graph;
@@ -72,18 +83,40 @@ const CinnCompiledObject &CinnCompiler::Compile(
     const std::map<std::string, const phi::DenseTensor *> &input_tensors,
     const Target &target,
     void *stream) {
-  VLOG(4) << "-- The graph to be compiled is:\n" << VizGraph(graph);
   CinnCacheKeyByAddress cur_key_by_address(
       graph, input_tensors, target.arch_str());
   CinnCacheKeyByStructure cur_key_by_struct;
 
   if (!cache_by_address_.count(cur_key_by_address)) {
+    VLOG(4) << "Not found CinnCompiledObject in cache_by_address_.";
     // generate the structure cache key
     cur_key_by_struct.SetKey(graph, input_tensors, target.arch_str());
     if (!cache_by_struct_.count(cur_key_by_struct)) {
+      VLOG(4) << "Not found CinnCompiledObject in cache_by_struct_.";
       std::int64_t compiled_num = real_compiled_num_.fetch_add(1);
+
+      if (!FLAGS_cinn_subgraph_graphviz_dir.empty()) {
+        const std::string &viz_path = FLAGS_cinn_subgraph_graphviz_dir +
+                                      "/fusion_groups_" +
+                                      std::to_string(compiled_num) + "/";
+        if (!::cinn::hlir::framework::MakeDirectory(
+                viz_path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)) {
+          LOG_IF(WARNING, compiled_num == 0)
+              << "Failed to make directory: \"" << viz_path
+              << "\", the CINN subgraph's graphviz dot file will not print.";
+        } else {
+          LOG_IF(INFO, compiled_num == 0)
+              << "The CINN subgraph's graphviz dot file will writing into "
+                 "path: \""
+              << FLAGS_cinn_subgraph_graphviz_dir << "\"";
+          ::cinn::hlir::framework::WriteToFile(viz_path + "cinn_subgraph.dot",
+                                               VizGraph(graph));
+        }
+      }
+
       auto compiled_res =
           CompileGraph(graph, input_tensors, target, compiled_num, stream);
+
       std::unique_lock<std::mutex> guard(lock_);
       // double check cache_by_struct_
       if (!cache_by_struct_.count(cur_key_by_struct)) {
@@ -180,7 +213,8 @@ std::string CinnCompiler::VizGraph(const Graph &graph) const {
             shape.begin(), shape.end(), shape_str.begin(), [](const auto &val) {
               return std::to_string(val);
             });
-        label += "\n" + string::join_strings(shape_str, ',');
+        label += "\n[" + string::join_strings(shape_str, ',') + "]";
+        label += "\n" + VarDataTypeToString(n->Var()->GetDataType());
       }
       dot.AddNode(
           node_id,
@@ -288,13 +322,12 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
           << cinn_graph->Visualize();
 
   auto scope = BuildScope(target, cinn_graph);
-  auto graph_compiler =
-      std::make_unique<GraphCompiler>(target, scope, cinn_graph);
-  GraphCompiler::CompileOptions options;
-  options.with_instantiate_variables = false;
+  CompilationContext context(cinn_graph, scope, target);
+  context.with_instantiate_variables = false;
   if (!FLAGS_enable_pe_launch_cinn) {
-    options.with_buffer_handle_instruction_inserted = true;
+    context.with_buffer_handle_instruction_inserted = true;
   }
+  auto graph_compiler = std::make_unique<GraphCompiler>(context);
   std::unique_ptr<AutoTuner> auto_tuner;
   if (FLAGS_enable_cinn_auto_tune) {
     VLOG(4) << "Compile with auto-tune";
@@ -303,14 +336,15 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
     ::cinn::auto_schedule::TuningOptions tuning_options;
     tuning_options.num_measure_trials = 0;
     auto tuning_result = auto_tuner->Tune(tuning_options);
-    options.Apply(tuning_result);
+    context.ApplyTuningResult(tuning_result);
   }
-  auto compiled_res =
-      graph_compiler->Build(options, std::move(fetch_ids), stream);
+  context.fetch_var_ids = std::move(fetch_ids);
+  context.stream = stream;
+  auto compiled_res = graph_compiler->Build(&context);
   auto compiled_obj = std::make_unique<CinnCompiledObject>();
   *compiled_obj = {std::move(graph_compiler),
                    std::move(auto_tuner),
-                   std::move(compiled_res.runtime_program),
+                   std::move(compiled_res.RuntimeProgram()),
                    scope,
                    symbol.var_model_to_program_map()};
   compiled_obj->cached_index = compiled_num;

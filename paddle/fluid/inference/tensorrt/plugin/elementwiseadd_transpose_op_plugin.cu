@@ -86,9 +86,16 @@ bool ElementwiseAddTransposePluginDynamic::supportsFormatCombination(
   }
   // output 0
   if (pos == 2) {
-    return (in.type == in_out[0].type) &&
-           (in.format == nvinfer1::TensorFormat::kLINEAR ||
-            in.format == nvinfer1::TensorFormat::kHWC8);
+    // 7.0.0.11 test_pcpvt_base_trt_fp16.py failed if support C8.
+    // Only support linear format in lower versions of TRT
+#if IS_TRT_VERSION_GE(7100)
+    bool support_format = in.format == nvinfer1::TensorFormat::kLINEAR ||
+                          in.format == nvinfer1::TensorFormat::kHWC8;
+#else
+    bool support_format = in.format == nvinfer1::TensorFormat::kLINEAR;
+#endif
+
+    return (in.type == in_out[0].type) && (support_format);
   }
 }
 void ElementwiseAddTransposePluginDynamic::configurePlugin(
@@ -124,7 +131,7 @@ void ElementwiseAddTransposePluginDynamic::configurePlugin(
   if (x_numel <= 0) {
     return;
   }
-  ele_out_tensor_.Resize(phi::make_ddim(x_shape));
+  ele_out_tensor_.Resize(common::make_ddim(x_shape));
   paddle::platform::DeviceContextPool &pool =
       paddle::platform::DeviceContextPool::Instance();
   platform::CUDAPlace place(platform::GetCurrentDeviceId());
@@ -132,20 +139,20 @@ void ElementwiseAddTransposePluginDynamic::configurePlugin(
   const phi::GPUContext &dev_ctx = *device_context;
 
   if (x_type == nvinfer1::DataType::kFLOAT) {
-    x_meta_ =
-        phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim(x_shape));
-    y_meta_ =
-        phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim(y_shape));
-    out_meta_ =
-        phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim(out_shape));
+    x_meta_ = phi::DenseTensorMeta(phi::DataType::FLOAT32,
+                                   common::make_ddim(x_shape));
+    y_meta_ = phi::DenseTensorMeta(phi::DataType::FLOAT32,
+                                   common::make_ddim(y_shape));
+    out_meta_ = phi::DenseTensorMeta(phi::DataType::FLOAT32,
+                                     common::make_ddim(out_shape));
     dev_ctx.template Alloc<float>(&ele_out_tensor_, x_numel * sizeof(float));
   } else if (x_type == nvinfer1::DataType::kHALF) {
-    x_meta_ =
-        phi::DenseTensorMeta(phi::DataType::FLOAT16, phi::make_ddim(x_shape));
-    y_meta_ =
-        phi::DenseTensorMeta(phi::DataType::FLOAT16, phi::make_ddim(y_shape));
-    out_meta_ =
-        phi::DenseTensorMeta(phi::DataType::FLOAT16, phi::make_ddim(out_shape));
+    x_meta_ = phi::DenseTensorMeta(phi::DataType::FLOAT16,
+                                   common::make_ddim(x_shape));
+    y_meta_ = phi::DenseTensorMeta(phi::DataType::FLOAT16,
+                                   common::make_ddim(y_shape));
+    out_meta_ = phi::DenseTensorMeta(phi::DataType::FLOAT16,
+                                     common::make_ddim(out_shape));
     dev_ctx.template Alloc<phi::dtype::float16>(
         &ele_out_tensor_, x_numel * sizeof(phi::dtype::float16));
   }

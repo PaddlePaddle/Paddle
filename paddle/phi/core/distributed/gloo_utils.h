@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <gloo/allreduce.h>
+#include <gloo/math.h>
 #include <gloo/transport/tcp/device.h>
 #include <gloo/types.h>
 
@@ -21,7 +23,10 @@
 #include <memory>
 #include <string>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/reduce_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -99,8 +104,109 @@ void SetInput(P* opts, const phi::DenseTensor& tensor) {
                  tensor.numel());
 }
 
+template <typename T, typename P>
+void SetInputForScatter(P* opts, const phi::DenseTensor& tensor, int nranks) {
+  std::vector<T*> ret;
+  ret.reserve(nranks);
+  T* raw_pointer = reinterpret_cast<T*>(const_cast<void*>(tensor.data()));
+  size_t offset = 0;
+  for (int i = 0; i < nranks; i++) {
+    ret.push_back(raw_pointer + offset);
+    offset += tensor.numel() / nranks;
+  }
+  opts->setInputs(ret, tensor.numel() / nranks);
+}
+
+template <typename T, typename P>
+void SetReduceFunc(P* opts, int reduce_type) {
+  // gloo only support mutable data input
+  ReduceType reduce_type_enum = static_cast<ReduceType>(reduce_type);
+  switch (reduce_type_enum) {
+    case ReduceType::kRedSum:
+      opts->setReduceFunction(
+          static_cast<void (*)(void*, const void*, const void*, size_t)>(
+              &gloo::sum<T>));
+      break;
+    case ReduceType::kRedMax:
+      opts->setReduceFunction(
+          static_cast<void (*)(void*, const void*, const void*, size_t)>(
+              &gloo::max<T>));
+      break;
+    case ReduceType::kRedMin:
+      opts->setReduceFunction(
+          static_cast<void (*)(void*, const void*, const void*, size_t)>(
+              &gloo::min<T>));
+      break;
+    case ReduceType::kRedProd:
+      opts->setReduceFunction(
+          static_cast<void (*)(void*, const void*, const void*, size_t)>(
+              &gloo::product<T>));
+      break;
+    case ReduceType::kRedAll:
+      // NOTE(zhonghui): There is no reduce_all math function for gloo, just use
+      // min to replace
+      opts->setReduceFunction(
+          static_cast<void (*)(void*, const void*, const void*, size_t)>(
+              &gloo::min<T>));
+      break;
+    default:
+      PADDLE_THROW(
+          errors::InvalidArgument("Unsupport reduce type: %d.", reduce_type));
+  }
+}
+
 // env preparation
 std::shared_ptr<gloo::transport::Device> CreateGlooDevice();
+
+constexpr uint8_t kSendRecvSlotPrefix = 0x08;
+
+class SendRecvOptions {
+ public:
+  explicit SendRecvOptions(const std::shared_ptr<gloo::Context>& context)
+      : context(context), timeout(context->getTimeout()) {}
+
+  template <typename T>
+  void setInput(T* ptr, size_t elements) {
+    this->in = context->createUnboundBuffer(ptr, elements * sizeof(T));
+  }
+
+  template <typename T>
+  void setOutput(T* ptr, size_t elements) {
+    this->out = context->createUnboundBuffer(ptr, elements * sizeof(T));
+  }
+
+  void setSrc(int src) { this->src = src; }
+
+  void setDst(int dst) { this->dst = dst; }
+
+  void setTag(uint32_t tag) { this->tag = tag; }
+
+  void setTimeout(std::chrono::milliseconds timeout) {
+    this->timeout = timeout;
+  }
+
+ protected:
+  std::shared_ptr<gloo::Context> context;
+  std::unique_ptr<gloo::transport::UnboundBuffer> in;
+  std::unique_ptr<gloo::transport::UnboundBuffer> out;
+
+  // Rank of process to send_recv from.
+  int src = -1;
+
+  // Rank of process to send_recv to.
+  int dst = -1;
+
+  // Tag for this operation.
+  // Must be unique across operations executing in parallel.
+  uint32_t tag = 0;
+
+  // End-to-end timeout for this operation.
+  std::chrono::milliseconds timeout;
+
+  friend void send_recv(SendRecvOptions*);
+};
+
+void send_recv(SendRecvOptions* opts);
 
 }  // namespace distributed
 }  // namespace phi

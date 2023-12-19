@@ -14,10 +14,18 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/api/ext/exception.h"
-#include "paddle/phi/api/include/tensor.h"
+#include <vector>
+
+#include "paddle/common/exception.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/tensor_ref.h"
+
+namespace common {
+class DDim;
+}  // namespace common
 
 namespace paddle {
+class Tensor;
 namespace experimental {
 
 template <typename T>
@@ -47,11 +55,15 @@ class IntArrayBase {
 
   void SetFromTensor(bool val) { is_from_tensor_ = val; }
 
+  explicit IntArrayBase(const common::DDim& dims);
+
   // The Tensor must have one dim
   IntArrayBase(const T& tensor);  // NOLINT
 
   // The Tensor in vec must have only one element
   IntArrayBase(const std::vector<T>& tensor_list);  // NOLINT
+
+  explicit IntArrayBase(const std::vector<phi::TensorRef>& tensor_ref_list);
 
   template <typename OtherT>
   IntArrayBase(const IntArrayBase<OtherT>& other) : array_(other.GetData()) {}
@@ -78,6 +90,7 @@ class IntArrayBase {
 
   void AssignDataFromTensor(const T& tensor) {
     size_t n = tensor.numel();
+
     array_.reserve(n);
     switch (tensor.dtype()) {
       case DataType::INT32:
@@ -103,8 +116,7 @@ class IntArrayBase {
   bool is_from_tensor_{false};
 };
 
-using IntArray =
-    paddle::experimental::IntArrayBase<paddle::experimental::Tensor>;
+using IntArray = paddle::experimental::IntArrayBase<paddle::Tensor>;
 
 }  // namespace experimental
 }  // namespace paddle

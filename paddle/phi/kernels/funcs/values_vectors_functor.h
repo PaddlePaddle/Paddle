@@ -13,13 +13,13 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/memory/memory.h"
 #ifdef PADDLE_WITH_CUDA
+#include "paddle/common/errors.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
-#include "paddle/phi/core/errors.h"
 #endif  // PADDLE_WITH_CUDA
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
@@ -190,12 +190,12 @@ static void CheckEighResult(const GPUContext &dev_ctx,
                             const int64_t batch_size,
                             int *info) {
   std::vector<int> error_info(batch_size);
-  paddle::memory::Copy(phi::CPUPlace(),
-                       error_info.data(),
-                       dev_ctx.GetPlace(),
-                       info,
-                       sizeof(int) * batch_size,
-                       dev_ctx.stream());
+  memory_utils::Copy(phi::CPUPlace(),
+                     error_info.data(),
+                     dev_ctx.GetPlace(),
+                     info,
+                     sizeof(int) * batch_size,
+                     dev_ctx.stream());
   dev_ctx.Wait();
   for (auto i = 0; i < batch_size; ++i) {
     CheckEighResult(i, error_info[i]);
@@ -281,16 +281,16 @@ struct MatrixEighFunctor<CPUContext, T> {
         input.type() == phi::DataType::COMPLEX128) {
       lrwork = std::max<int>(1, static_cast<int>(rwork_opt));
 
-      rwork_tensor.Resize(phi::make_ddim({lrwork}));
+      rwork_tensor.Resize(common::make_ddim({lrwork}));
       rwork_data = dev_ctx.template Alloc<ValueType>(&rwork_tensor);
     }
 
     DenseTensor iwork_tensor, work_tensor;
 
-    iwork_tensor.Resize(phi::make_ddim({liwork}));
+    iwork_tensor.Resize(common::make_ddim({liwork}));
     int *iwork_data = dev_ctx.template Alloc<int>(&iwork_tensor);
 
-    work_tensor.Resize(phi::make_ddim({lwork}));
+    work_tensor.Resize(common::make_ddim({lwork}));
     T *work_data = dev_ctx.template Alloc<T>(&work_tensor);
 
     for (auto i = 0; i < batch_size; i++) {
@@ -405,7 +405,7 @@ struct MatrixEighFunctor<GPUContext, T> {
                 &workspace_size);
     }
     size_t total_bytes = sizeof(T) * workspace_size + sizeof(int) * batch_size;
-    auto work = paddle::memory::Alloc(
+    auto work = phi::memory_utils::Alloc(
         dev_ctx.GetPlace(),
         total_bytes,
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));

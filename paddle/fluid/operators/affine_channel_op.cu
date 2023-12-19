@@ -48,7 +48,7 @@ __global__ void KeAffineChannelCUDA(const T* x,
   }
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class AffineChannelCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -60,7 +60,7 @@ class AffineChannelCUDAKernel : public framework::OpKernel<T> {
     y->mutable_data<T>(ctx.GetPlace());
 
     const phi::DataLayout layout =
-        phi::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
+        common::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
     auto dims = x->dims();
@@ -132,7 +132,7 @@ __global__ void AffineChannelScaleBiasGradientCUDAKernel(const T* dy,
   }
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class AffineChannelGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -147,7 +147,7 @@ class AffineChannelGradCUDAKernel : public framework::OpKernel<T> {
     auto* dbias = ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
 
     const phi::DataLayout layout =
-        phi::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
+        common::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
     auto dims = dy->dims();
@@ -211,9 +211,15 @@ class AffineChannelGradCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 using CUDA = phi::GPUContext;
 
-REGISTER_OP_CUDA_KERNEL(affine_channel,
-                        ops::AffineChannelCUDAKernel<CUDA, float>,
-                        ops::AffineChannelCUDAKernel<CUDA, double>);
-REGISTER_OP_CUDA_KERNEL(affine_channel_grad,
-                        ops::AffineChannelGradCUDAKernel<CUDA, float>,
-                        ops::AffineChannelGradCUDAKernel<CUDA, double>);
+PD_REGISTER_STRUCT_KERNEL(affine_channel,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::AffineChannelCUDAKernel,
+                          float,
+                          double) {}
+PD_REGISTER_STRUCT_KERNEL(affine_channel_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::AffineChannelGradCUDAKernel,
+                          float,
+                          double) {}

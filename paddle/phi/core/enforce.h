@@ -11,19 +11,7 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef __GNUC__
-#include <cxxabi.h>  // for __cxa_demangle
-#endif               // __GNUC__
-
-#if !defined(_WIN32)
-#include <dlfcn.h>   // dladdr
-#include <unistd.h>  // sleep, usleep
-#else                // _WIN32
-#ifndef NOMINMAX
-#define NOMINMAX  // msvc max/min macro conflict with std::min/max
-#endif
-#include <windows.h>  // GetModuleFileName, Sleep
-#endif
+#include "paddle/common/enforce.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include <cublas_v2.h>
@@ -33,8 +21,6 @@ limitations under the License. */
 #include <cusparse.h>
 #include <thrust/system/cuda/error.h>
 #include <thrust/system_error.h>
-
-#include "paddle/phi/core/external_error.pb.h"
 #endif  // PADDLE_WITH_CUDA
 
 #ifdef PADDLE_WITH_HIP
@@ -53,19 +39,10 @@ limitations under the License. */
 #include <string>
 #include <type_traits>
 #include <utility>
-
+#include "paddle/common/macros.h"
 #if !defined(_WIN32) && !defined(PADDLE_WITH_MUSL)
 #include <execinfo.h>
 #endif
-
-#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
-#include "gflags/gflags.h"
-#include "glog/logging.h"
-#include "paddle/phi/core/errors.h"
-
-#include "paddle/phi/backends/dynload/port.h"
-#include "paddle/utils/string/printf.h"
-#include "paddle/utils/string/to_string.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/cublas.h"
@@ -74,7 +51,6 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/cusolver.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #include <error.h>
-
 #include "paddle/phi/backends/dynload/nccl.h"
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_CUDA
@@ -86,70 +62,22 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/rocblas.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_RCCL)
 #include <error.h>  // NOLINT
-
 #include "paddle/phi/backends/dynload/rccl.h"
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_HIP
 
 // Note: these headers for simplify demangle type string
-#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/type_defs.h"
 // Note: this header for simplify HIP and CUDA type string
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/backends/gpu/gpu_types.h"
 #endif
-
-#include "paddle/utils/variant.h"
-
-DECLARE_int32(call_stack_level);
-
-namespace phi {
-class ErrorSummary;
-}  // namespace phi
-
-namespace phi {
-namespace proto {}  // namespace proto
-}  // namespace phi
+#if defined(PADDLE_WITH_XPU_BKCL)
+#include "xpu/bkcl.h"
+#endif
 
 namespace phi {
 namespace enforce {
-
-/** HELPER MACROS AND FUNCTIONS **/
-#ifndef PADDLE_MAY_THROW
-#define PADDLE_MAY_THROW noexcept(false)
-#endif
-
-// Because most enforce conditions would evaluate to true, we can use
-// __builtin_expect to instruct the C++ compiler to generate code that
-// always forces branch prediction of true.
-// This generates faster binary code. __builtin_expect is since C++11.
-// For more details, please check https://stackoverflow.com/a/43870188/724872.
-#if !defined(_WIN32)
-#define UNLIKELY(condition) __builtin_expect(static_cast<bool>(condition), 0)
-#else
-// there is no equivalent intrinsics in msvc.
-#define UNLIKELY(condition) (condition)
-#endif
-
-#if !defined(_WIN32)
-#define LIKELY(condition) __builtin_expect(static_cast<bool>(condition), 1)
-#else
-// there is no equivalent intrinsics in msvc.
-#define LIKELY(condition) (condition)
-#endif
-
-#if defined _WIN32 && defined PADDLE_ON_INFERENCE && defined PADDLE_NO_PYTHON
-#define HANDLE_THE_ERROR try {
-#define END_HANDLE_THE_ERROR            \
-  }                                     \
-  catch (const std::exception& e) {     \
-    std::cout << e.what() << std::endl; \
-    throw;                              \
-  }
-#else
-#define HANDLE_THE_ERROR
-#define END_HANDLE_THE_ERROR
-#endif
 
 #ifdef __GNUC__
 inline std::string demangle(std::string name) {
@@ -229,21 +157,22 @@ struct BinaryCompareMessageConverter {
 template <>
 struct BinaryCompareMessageConverter<false> {
   template <typename T>
-  static const char* Convert(const char* expression, const T& value) {
+  static const char* Convert(const char* expression, const T& value UNUSED) {
     return expression;
   }
 };
 }  // namespace details
 
-std::string GetCurrentTraceBackString(bool for_signal = false);
-std::string SimplifyErrorTypeFormat(const std::string& str);
+TEST_API int GetCallStackLevel();
+TEST_API std::string GetCurrentTraceBackString(bool for_signal = false);
+TEST_API std::string SimplifyErrorTypeFormat(const std::string& str);
 
 template <typename StrType>
 static std::string GetErrorSumaryString(StrType&& what,
                                         const char* file,
                                         int line) {
   std::ostringstream sout;
-  if (FLAGS_call_stack_level > 1) {
+  if (GetCallStackLevel() > 1) {
     sout << "\n----------------------\nError Message "
             "Summary:\n----------------------\n";
   }
@@ -270,7 +199,7 @@ template <typename StrType>
 static std::string GetTraceBackString(StrType&& what,
                                       const char* file,
                                       int line) {
-  if (FLAGS_call_stack_level > 1) {
+  if (GetCallStackLevel() > 1) {
     // FLAGS_call_stack_level>1 means showing c++ call stack
     return GetCurrentTraceBackString() + GetErrorSumaryString(what, file, line);
   } else {
@@ -287,6 +216,17 @@ inline bool is_error(bool stat) { return !stat; }
     throw ::phi::enforce::EnforceNotMet(__ERROR_SUMMARY, __FILE__, __LINE__); \
     END_HANDLE_THE_ERROR                                                      \
   } while (0)
+
+/**
+ * [Why declare function ThrowWarnInternal instead of defining macro
+ * __THROW_WARN_INTERNAL__?]
+ * ThrowWarnInternal uses `LOG` macro to display warning message, which depends
+ * on third-party header file "logging.h". However, "logging.h" has not been
+ * exposed to site-package yet, so that error will occur when we include
+ * "enforce.h" header file. Hence, we declare function in enforce.h and define
+ * it in enforce.cc file.
+ */
+void ThrowWarnInternal(const std::string& message);
 
 /** ENFORCE EXCEPTION AND MACROS **/
 
@@ -310,28 +250,28 @@ struct EnforceNotMet : public std::exception {
     simple_err_str_ = SimplifyErrorTypeFormat(err_str_);
   }
 
-  EnforceNotMet(const phi::ErrorSummary& error, const char* file, int line)
+  EnforceNotMet(const common::ErrorSummary& error, const char* file, int line)
       : code_(error.code()),
         err_str_(GetTraceBackString(error.to_string(), file, line)) {
     simple_err_str_ = SimplifyErrorTypeFormat(err_str_);
   }
 
   const char* what() const noexcept override {
-    if (FLAGS_call_stack_level > 1) {
+    if (GetCallStackLevel() > 1) {
       return err_str_.c_str();
     } else {
       return simple_err_str_.c_str();
     }
   }
 
-  phi::ErrorCode code() const { return code_; }
+  common::ErrorCode code() const { return code_; }
 
   const std::string& error_str() const { return err_str_; }
 
   const std::string& simple_error_str() const { return simple_err_str_; }
 
   void set_error_str(std::string str) {
-    if (FLAGS_call_stack_level > 1) {
+    if (GetCallStackLevel() > 1) {
       err_str_ = str;
     } else {
       simple_err_str_ = str;
@@ -342,11 +282,11 @@ struct EnforceNotMet : public std::exception {
 
  private:
   // Used to determine the final type of exception thrown
-  phi::ErrorCode code_ = phi::ErrorCode::LEGACY;
+  common::ErrorCode code_ = common::ErrorCode::LEGACY;
   // Complete error message
   // e.g. InvalidArgumentError: ***
   std::string err_str_;
-  // Simple errror message used when no C++ stack and python compile stack
+  // Simple error message used when no C++ stack and python compile stack
   // e.g. (InvalidArgument) ***
   std::string simple_err_str_;
 };
@@ -410,48 +350,59 @@ struct EnforceNotMet : public std::exception {
  *    PADDLE_ENFORCE(a, b, "some simple enforce failed between %d numbers", 2)
  */
 
-#define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                    \
-  do {                                                         \
-    if (UNLIKELY(nullptr == (__VAL))) {                        \
-      auto __summary__ = phi::ErrorSummary(__VA_ARGS__);       \
-      auto __message__ = ::paddle::string::Sprintf(            \
-          "%s\n  [Hint: " #__VAL " should not be null.]",      \
-          __summary__.error_message());                        \
-      __THROW_ERROR_INTERNAL__(                                \
-          phi::ErrorSummary(__summary__.code(), __message__)); \
-    }                                                          \
+#define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                               \
+  do {                                                                    \
+    if (UNLIKELY(nullptr == (__VAL))) {                                   \
+      auto __summary__ = phi::ErrorSummary(__VA_ARGS__);                  \
+      auto __message__ = ::paddle::string::Sprintf(                       \
+          "%s\n  [Hint: " #__VAL " should not be null.]",                 \
+          __summary__.error_message());                                   \
+      __THROW_ERROR_INTERNAL__(                                           \
+          phi::ErrorSummary(__summary__.code(), std::move(__message__))); \
+    }                                                                     \
   } while (0)
 
-#define __PADDLE_BINARY_COMPARE(__VAL1, __VAL2, __CMP, __INV_CMP, ...)  \
-  do {                                                                  \
-    auto __val1 = (__VAL1);                                             \
-    auto __val2 = (__VAL2);                                             \
-    using __TYPE1__ = decltype(__val1);                                 \
-    using __TYPE2__ = decltype(__val2);                                 \
-    using __COMMON_TYPE1__ =                                            \
-        ::phi::details::CommonType1<__TYPE1__, __TYPE2__>;              \
-    using __COMMON_TYPE2__ =                                            \
-        ::phi::details::CommonType2<__TYPE1__, __TYPE2__>;              \
-    bool __is_not_error = (static_cast<__COMMON_TYPE1__>(__val1))__CMP( \
-        static_cast<__COMMON_TYPE2__>(__val2));                         \
-    if (UNLIKELY(!__is_not_error)) {                                    \
-      auto __summary__ = phi::ErrorSummary(__VA_ARGS__);                \
-      constexpr bool __kCanToString__ =                                 \
-          ::phi::details::CanToString<__TYPE1__>::kValue &&             \
-          ::phi::details::CanToString<__TYPE2__>::kValue;               \
-      auto __message__ = ::paddle::string::Sprintf(                     \
-          "%s\n  [Hint: Expected %s " #__CMP                            \
-          " %s, but received %s " #__INV_CMP " %s.]",                   \
-          __summary__.error_message(),                                  \
-          #__VAL1,                                                      \
-          #__VAL2,                                                      \
-          ::phi::details::BinaryCompareMessageConverter<                \
-              __kCanToString__>::Convert(#__VAL1, __val1),              \
-          ::phi::details::BinaryCompareMessageConverter<                \
-              __kCanToString__>::Convert(#__VAL2, __val2));             \
-      __THROW_ERROR_INTERNAL__(                                         \
-          phi::ErrorSummary(__summary__.code(), __message__));          \
-    }                                                                   \
+#define PADDLE_WARN_NOT_NULL(__VAL, ...)                         \
+  do {                                                           \
+    if (UNLIKELY(nullptr == (__VAL))) {                          \
+      auto __summary__ = phi::ErrorSummary(__VA_ARGS__);         \
+      auto __message__ = ::paddle::string::Sprintf(              \
+          "%s\n  [Hint: " #__VAL " should not be null.]",        \
+          __summary__.error_message());                          \
+      ::phi::enforce::ThrowWarnInternal(std::move(__message__)); \
+    }                                                            \
+  } while (0)
+
+#define __PADDLE_BINARY_COMPARE(__VAL1, __VAL2, __CMP, __INV_CMP, ...)    \
+  do {                                                                    \
+    auto __val1 = (__VAL1);                                               \
+    auto __val2 = (__VAL2);                                               \
+    using __TYPE1__ = decltype(__val1);                                   \
+    using __TYPE2__ = decltype(__val2);                                   \
+    using __COMMON_TYPE1__ =                                              \
+        ::phi::details::CommonType1<__TYPE1__, __TYPE2__>;                \
+    using __COMMON_TYPE2__ =                                              \
+        ::phi::details::CommonType2<__TYPE1__, __TYPE2__>;                \
+    bool __is_not_error = (static_cast<__COMMON_TYPE1__>(__val1))__CMP(   \
+        static_cast<__COMMON_TYPE2__>(__val2));                           \
+    if (UNLIKELY(!__is_not_error)) {                                      \
+      auto __summary__ = phi::ErrorSummary(__VA_ARGS__);                  \
+      constexpr bool __kCanToString__ =                                   \
+          ::phi::details::CanToString<__TYPE1__>::kValue &&               \
+          ::phi::details::CanToString<__TYPE2__>::kValue;                 \
+      auto __message__ = ::paddle::string::Sprintf(                       \
+          "%s\n  [Hint: Expected %s " #__CMP                              \
+          " %s, but received %s " #__INV_CMP " %s.]",                     \
+          __summary__.error_message(),                                    \
+          #__VAL1,                                                        \
+          #__VAL2,                                                        \
+          ::phi::details::BinaryCompareMessageConverter<                  \
+              __kCanToString__>::Convert(#__VAL1, __val1),                \
+          ::phi::details::BinaryCompareMessageConverter<                  \
+              __kCanToString__>::Convert(#__VAL2, __val2));               \
+      __THROW_ERROR_INTERNAL__(                                           \
+          phi::ErrorSummary(__summary__.code(), std::move(__message__))); \
+    }                                                                     \
   } while (0)
 
 #define PADDLE_ENFORCE_EQ(__VAL0, __VAL1, ...) \
@@ -468,6 +419,59 @@ struct EnforceNotMet : public std::exception {
   __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <=, >, __VA_ARGS__)
 
 /** EXTENDED TOOL FUNCTIONS WITH CHECKING **/
+
+/*
+ * Summary: This macro is used to get Variable or internal type
+ *   data (such as LoDTensor or SelectedRows) of the Input and
+ *   Output in op, generally used when call scope.FindVar(Input/
+ *   Output("Name")) or ctx.Input<LoDTensor>().
+ *   Firstly this macro check whether the obtained pointer is null,
+ *   and then return data if it is not null.
+ *
+ * Note: This macro is only suitable for specific scenarios and
+ *   does not intended to be widely used. If it cannot meet the
+ *   requirements, please use other PADDLE_ENFORCE** check macro.
+ *
+ * Parameters:
+ *     __PTR: pointer
+ *     __ROLE: (string), Input or Output
+ *     __NAME: (string), Input or Output name
+ *     __OP_TYPE: (string), the op type
+ *
+ * Return: The data pointed to by the pointer.
+ *
+ * Examples:
+ *    GET_DATA_SAFELY(ctx.Input<LoDTensor>("X"), "Input", "X", "Mul");
+ */
+#define GET_DATA_SAFELY(__PTR, __ROLE, __NAME, __OP_TYPE)               \
+  (([&]() -> std::add_lvalue_reference<decltype(*(__PTR))>::type {      \
+    auto* __ptr = (__PTR);                                              \
+    if (UNLIKELY(nullptr == __ptr)) {                                   \
+      auto __summary__ = phi::errors::NotFound(                         \
+          "Unable to get %s data of %s %s in operator %s. "             \
+          "Possible reasons are:\n"                                     \
+          "  1. The %s is not the %s of operator %s;\n"                 \
+          "  2. The %s has no corresponding variable passed in;\n"      \
+          "  3. The %s corresponding variable is not initialized.",     \
+          phi::demangle(                                                \
+              typeid(std::add_lvalue_reference<decltype(*__ptr)>::type) \
+                  .name()),                                             \
+          __ROLE,                                                       \
+          __NAME,                                                       \
+          __OP_TYPE,                                                    \
+          __NAME,                                                       \
+          __ROLE,                                                       \
+          __OP_TYPE,                                                    \
+          __NAME,                                                       \
+          __NAME);                                                      \
+      auto __message__ = ::paddle::string::Sprintf(                     \
+          "%s\n  [Hint: pointer " #__PTR " should not be null.]",       \
+          __summary__.error_message());                                 \
+      __THROW_ERROR_INTERNAL__(                                         \
+          phi::ErrorSummary(__summary__.code(), __message__));          \
+    }                                                                   \
+    return *__ptr;                                                      \
+  })())
 
 /*
  * Summary: This PADDLE_GET(_**) series macros are used to call paddle::get
@@ -549,162 +553,30 @@ namespace details {
 template <typename T>
 struct ExternalApiType {};
 
-#define DEFINE_EXTERNAL_API_TYPE(type, success_value, proto_type) \
-  template <>                                                     \
-  struct ExternalApiType<type> {                                  \
-    using Type = type;                                            \
-    static constexpr Type kSuccess = success_value;               \
-    static constexpr const char* kTypeString = #proto_type;       \
-    static constexpr phi::proto::ApiType kProtoType =             \
-        phi::proto::ApiType::proto_type;                          \
+#define DEFINE_EXTERNAL_API_TYPE(type, success_value) \
+  template <>                                         \
+  struct ExternalApiType<type> {                      \
+    using Type = type;                                \
+    static constexpr Type kSuccess = success_value;   \
   }
 
-DEFINE_EXTERNAL_API_TYPE(cudaError_t, cudaSuccess, CUDA);
-DEFINE_EXTERNAL_API_TYPE(curandStatus_t, CURAND_STATUS_SUCCESS, CURAND);
-DEFINE_EXTERNAL_API_TYPE(cudnnStatus_t, CUDNN_STATUS_SUCCESS, CUDNN);
-DEFINE_EXTERNAL_API_TYPE(cublasStatus_t, CUBLAS_STATUS_SUCCESS, CUBLAS);
-DEFINE_EXTERNAL_API_TYPE(cusparseStatus_t, CUSPARSE_STATUS_SUCCESS, CUSPARSE);
-DEFINE_EXTERNAL_API_TYPE(cusolverStatus_t, CUSOLVER_STATUS_SUCCESS, CUSOLVER);
-DEFINE_EXTERNAL_API_TYPE(cufftResult_t, CUFFT_SUCCESS, CUFFT);
-DEFINE_EXTERNAL_API_TYPE(CUresult, CUDA_SUCCESS, CU);
+DEFINE_EXTERNAL_API_TYPE(cudaError_t, cudaSuccess);
+DEFINE_EXTERNAL_API_TYPE(curandStatus_t, CURAND_STATUS_SUCCESS);
+DEFINE_EXTERNAL_API_TYPE(cudnnStatus_t, CUDNN_STATUS_SUCCESS);
+DEFINE_EXTERNAL_API_TYPE(cublasStatus_t, CUBLAS_STATUS_SUCCESS);
+DEFINE_EXTERNAL_API_TYPE(cusparseStatus_t, CUSPARSE_STATUS_SUCCESS);
+DEFINE_EXTERNAL_API_TYPE(cusolverStatus_t, CUSOLVER_STATUS_SUCCESS);
+DEFINE_EXTERNAL_API_TYPE(cufftResult_t, CUFFT_SUCCESS);
+DEFINE_EXTERNAL_API_TYPE(CUresult, CUDA_SUCCESS);
 
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
-DEFINE_EXTERNAL_API_TYPE(ncclResult_t, ncclSuccess, NCCL);
+DEFINE_EXTERNAL_API_TYPE(ncclResult_t, ncclSuccess);
 #endif
 
 }  // namespace details
 
 template <typename T>
-inline const char* GetErrorMsgUrl(T status) {
-  using __CUDA_STATUS_TYPE__ = decltype(status);
-  phi::proto::ApiType proto_type =
-      details::ExternalApiType<__CUDA_STATUS_TYPE__>::kProtoType;
-  switch (proto_type) {
-    case phi::proto::ApiType::CUDA:
-    case phi::proto::ApiType::CU:
-      return "https://docs.nvidia.com/cuda/cuda-runtime-api/"
-             "group__CUDART__TYPES.html#group__CUDART__TYPES_"
-             "1g3f51e3575c2178246db0a94a430e0038";
-      break;
-    case phi::proto::ApiType::CURAND:
-      return "https://docs.nvidia.com/cuda/curand/"
-             "group__HOST.html#group__HOST_1gb94a31d5c165858c96b6c18b70644437";
-      break;
-    case phi::proto::ApiType::CUDNN:
-      return "https://docs.nvidia.com/deeplearning/cudnn/api/"
-             "index.html#cudnnStatus_t";
-      break;
-    case phi::proto::ApiType::CUBLAS:
-      return "https://docs.nvidia.com/cuda/cublas/index.html#cublasstatus_t";
-      break;
-    case phi::proto::ApiType::CUSOLVER:
-      return "https://docs.nvidia.com/cuda/cusolver/"
-             "index.html#cuSolverSPstatus";
-      break;
-    case phi::proto::ApiType::NCCL:
-      return "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/api/"
-             "types.html#ncclresult-t";
-      break;
-    case phi::proto::ApiType::CUFFT:
-      return "https://docs.nvidia.com/cuda/cufft/index.html#cufftresult";
-    case phi::proto::ApiType::CUSPARSE:
-      return "https://docs.nvidia.com/cuda/cusparse/"
-             "index.html#cusparseStatus_t";
-      break;
-    default:
-      return "Unknown type of External API, can't get error message URL!";
-      break;
-  }
-}
-
-template <typename T>
-inline std::string GetExternalErrorMsg(T status) {
-  std::ostringstream sout;
-  bool _initSucceed = false;
-  phi::proto::ExternalErrorDesc externalError;
-  if (externalError.ByteSizeLong() == 0) {
-    std::string filePath;
-#if !defined(_WIN32)
-    Dl_info info;
-    if (dladdr(reinterpret_cast<void*>(GetCurrentTraceBackString), &info)) {
-      std::string strModule(info.dli_fname);
-      const size_t last_slash_idx = strModule.find_last_of("/");
-      std::string compare_path = strModule.substr(strModule.length() - 6);
-      if (std::string::npos != last_slash_idx) {
-        strModule.erase(last_slash_idx, std::string::npos);
-      }
-      if (compare_path.compare("avx.so") == 0) {
-        filePath =
-            strModule +
-            "/../include/third_party/externalError/data/externalErrorMsg.pb";
-      } else {
-        filePath = strModule +
-                   "/../../third_party/externalError/data/externalErrorMsg.pb";
-      }
-    }
-#else
-    char buf[512];
-    MEMORY_BASIC_INFORMATION mbi;
-    HMODULE h_module =
-        (::VirtualQuery(GetCurrentTraceBackString, &mbi, sizeof(mbi)) != 0)
-            ? (HMODULE)mbi.AllocationBase
-            : NULL;
-    GetModuleFileName(h_module, buf, 512);
-    std::string strModule(buf);
-    const size_t last_slash_idx = strModule.find_last_of("\\");
-    std::string compare_path = strModule.substr(strModule.length() - 7);
-    if (std::string::npos != last_slash_idx) {
-      strModule.erase(last_slash_idx, std::string::npos);
-    }
-    if (compare_path.compare("avx.pyd") == 0) {
-      filePath = strModule +
-                 "\\..\\include\\third_"
-                 "party\\externalerror\\data\\externalErrorMsg.pb";
-    } else {
-      filePath =
-          strModule +
-          "\\..\\..\\third_party\\externalerror\\data\\externalErrorMsg.pb";
-    }
-#endif
-    std::ifstream fin(filePath, std::ios::in | std::ios::binary);
-    _initSucceed = externalError.ParseFromIstream(&fin);
-  }
-  using __CUDA_STATUS_TYPE__ = decltype(status);
-  phi::proto::ApiType proto_type =
-      details::ExternalApiType<__CUDA_STATUS_TYPE__>::kProtoType;
-  if (_initSucceed) {
-    for (int i = 0; i < externalError.errors_size(); ++i) {
-      if (proto_type == externalError.errors(i).type()) {
-        for (int j = 0; j < externalError.errors(i).messages_size(); ++j) {
-          if (status == externalError.errors(i).messages(j).code()) {
-            sout << "\n  [Hint: "
-                 << externalError.errors(i).messages(j).message() << "]";
-            return sout.str();
-          }
-        }
-      }
-    }
-  }
-
-  sout << "\n  [Hint: Please search for the error code(" << status
-       << ") on website (" << GetErrorMsgUrl(status)
-       << ") to get Nvidia's official solution and advice about "
-       << details::ExternalApiType<__CUDA_STATUS_TYPE__>::kTypeString
-       << " Error.]";
-  return sout.str();
-}
-
-template std::string GetExternalErrorMsg<cudaError_t>(cudaError_t);
-template std::string GetExternalErrorMsg<curandStatus_t>(curandStatus_t);
-template std::string GetExternalErrorMsg<cudnnStatus_t>(cudnnStatus_t);
-template std::string GetExternalErrorMsg<cublasStatus_t>(cublasStatus_t);
-template std::string GetExternalErrorMsg<cusparseStatus_t>(cusparseStatus_t);
-template std::string GetExternalErrorMsg<cusolverStatus_t>(cusolverStatus_t);
-template std::string GetExternalErrorMsg<cufftResult_t>(cufftResult_t);
-template std::string GetExternalErrorMsg<CUresult>(CUresult);
-#if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
-template std::string GetExternalErrorMsg<ncclResult_t>(ncclResult_t);
-#endif
+std::string GetExternalErrorMsg(T status);
 
 /*************** CUDA ERROR ***************/
 inline bool is_error(cudaError_t e) { return e != cudaSuccess; }
@@ -828,6 +700,19 @@ inline std::string build_nvidia_error_msg(ncclResult_t nccl_result) {
       auto __summary__ = phi::errors::External(              \
           ::phi::enforce::build_nvidia_error_msg(__cond__)); \
       __THROW_ERROR_INTERNAL__(__summary__);                 \
+    }                                                        \
+  } while (0)
+
+#define PADDLE_WARN_GPU_SUCCESS(COND)                        \
+  do {                                                       \
+    auto __cond__ = (COND);                                  \
+    using __CUDA_STATUS_TYPE__ = decltype(__cond__);         \
+    constexpr auto __success_type__ =                        \
+        ::phi::enforce::details::ExternalApiType<            \
+            __CUDA_STATUS_TYPE__>::kSuccess;                 \
+    if (UNLIKELY(__cond__ != __success_type__)) {            \
+      ::phi::enforce::ThrowWarnInternal(                     \
+          ::phi::enforce::build_nvidia_error_msg(__cond__)); \
     }                                                        \
   } while (0)
 
@@ -1034,6 +919,19 @@ DEFINE_EXTERNAL_API_TYPE(ncclResult_t, ncclSuccess);
       auto __summary__ = phi::errors::External(            \
           ::phi::enforce::build_rocm_error_msg(__cond__)); \
       __THROW_ERROR_INTERNAL__(__summary__);               \
+    }                                                      \
+  } while (0)
+
+#define PADDLE_WARN_GPU_SUCCESS(COND)                      \
+  do {                                                     \
+    auto __cond__ = (COND);                                \
+    using __CUDA_STATUS_TYPE__ = decltype(__cond__);       \
+    constexpr auto __success_type__ =                      \
+        ::phi::enforce::details::ExternalApiType<          \
+            __CUDA_STATUS_TYPE__>::kSuccess;               \
+    if (UNLIKELY(__cond__ != __success_type__)) {          \
+      ::phi::enforce::ThrowWarnInternal(                   \
+          ::phi::enforce::build_rocm_error_msg(__cond__)); \
     }                                                      \
   } while (0)
 

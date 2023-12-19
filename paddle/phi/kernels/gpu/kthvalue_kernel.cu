@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/kthvalue_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
@@ -46,7 +46,7 @@ bool SortKthvalue(const phi::GPUContext& dev_ctx,
   auto cu_stream = dev_ctx.stream();
   DenseTensor input_indices;
   const std::vector<int64_t> dims = {num_rows, num_cols};
-  auto dim = phi::make_ddim(dims);
+  auto dim = common::make_ddim(dims);
   input_indices.Resize(dim);
   dev_ctx.template Alloc<int64_t>(&input_indices);
   size_t temp_storage_bytes = -1;
@@ -140,7 +140,7 @@ bool SortKthvalue(const phi::GPUContext& dev_ctx,
   auto e_tmp_indices =
       EigenMatrix<int64_t>::From(static_cast<const DenseTensor>(temp_indices));
   std::vector<int> odims = {static_cast<int>(num_rows), static_cast<int>(1)};
-  dim = phi::make_ddim(odims);
+  dim = common::make_ddim(odims);
   auto e_values = EigenMatrix<T>::From(*out_tensor, dim);
   auto e_tmp_values =
       EigenMatrix<T>::From(static_cast<const DenseTensor>(temp_values));
@@ -163,7 +163,6 @@ void KthvalueKernel(const Context& dev_ctx,
   const auto& in_dims = x.dims();
   if (axis < 0) axis += in_dims.size();
   auto out_dims = output->dims();
-  const T* input_data = x.data<T>();
   T* output_data = dev_ctx.template Alloc<T>(output);
   int64_t* indices_data = dev_ctx.template Alloc<int64_t>(indices);
 
@@ -177,18 +176,31 @@ void KthvalueKernel(const Context& dev_ctx,
                           k));
 
     phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, output);
-    phi::funcs::set_constant(dev_ctx, indices, 0);
+    phi::funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
     return;
   }
+
   if (axis == in_dims.size() - 1) {
     const int64_t& input_height =
-        phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
+        common::product(common::slice_ddim(in_dims, 0, in_dims.size() - 1));
     const int64_t& input_width = in_dims[in_dims.size() - 1];
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 9000
+    const T* input_data = x.data<T>();
+    funcs::LaunchGatherKthValue<T>(dev_ctx,
+                                   input_data,
+                                   input_width,
+                                   input_height,
+                                   k,
+                                   output_data,
+                                   indices_data);
+#else
     PADDLE_ENFORCE_EQ(
         SortKthvalue<T>(
             dev_ctx, &x, input_width, input_height, k, output, indices),
         true,
         phi::errors::External("KthvalueOP: Error when use cub sorting"));
+#endif
+
     return;
   } else {
     std::vector<int> trans;
@@ -209,7 +221,7 @@ void KthvalueKernel(const Context& dev_ctx,
       for (int i = axis + 1; i < in_dims.size(); i++) {
         tmp_out_shape.emplace_back(in_dims[i]);
       }
-      DDim tmp_out_dims = phi::make_ddim(tmp_out_shape);
+      DDim tmp_out_dims = common::make_ddim(tmp_out_shape);
       output->Resize(tmp_out_dims);
       indices->Resize(tmp_out_dims);
     }
@@ -222,18 +234,28 @@ void KthvalueKernel(const Context& dev_ctx,
     trans_out_dims[in_dims.size() - 1] = 1;
     DenseTensor trans_input;
     trans_input.Resize(trans_dims);
-    dev_ctx.template Alloc<T>(&trans_input);
+    T* tran_input_data = dev_ctx.template Alloc<T>(&trans_input);
     int ndims = trans.size();
     funcs::TransCompute<phi::GPUContext, T>(
         ndims, dev_ctx, x, &trans_input, trans);
     DenseTensor trans_ind, trans_out;
     trans_ind.Resize(trans_out_dims);
     trans_out.Resize(trans_out_dims);
-    dev_ctx.template Alloc<int64_t>(&trans_ind);
-    dev_ctx.template Alloc<T>(&trans_out);
-    const int64_t input_height =
-        phi::product(phi::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
+    int64_t* tran_indices_data = dev_ctx.template Alloc<int64_t>(&trans_ind);
+    T* tran_output_data = dev_ctx.template Alloc<T>(&trans_out);
+    const int64_t input_height = common::product(
+        common::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
     const int64_t input_width = trans_dims[trans_dims.size() - 1];
+
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 9000
+    funcs::LaunchGatherKthValue<T>(dev_ctx,
+                                   tran_input_data,
+                                   input_width,
+                                   input_height,
+                                   k,
+                                   tran_output_data,
+                                   tran_indices_data);
+#else
     PADDLE_ENFORCE_EQ(
         SortKthvalue<T>(dev_ctx,
                         &trans_input,
@@ -244,6 +266,7 @@ void KthvalueKernel(const Context& dev_ctx,
                         &trans_ind),
         true,
         phi::errors::External("KthvalueOP: Error when use cub sorting"));
+#endif
     funcs::TransCompute<phi::GPUContext, int64_t>(
         ndims, dev_ctx, trans_ind, indices, trans);
     funcs::TransCompute<phi::GPUContext, T>(
@@ -263,4 +286,8 @@ PD_REGISTER_KERNEL(kthvalue,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
+}

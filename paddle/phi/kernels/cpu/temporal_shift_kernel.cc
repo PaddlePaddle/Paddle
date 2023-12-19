@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/temporal_shift_kernel.h"
 
+#include "paddle/common/layout.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -92,27 +92,27 @@ void TemporalShiftKernel(const Context& dev_ctx,
   auto* input = &x;
   auto* output = out;
   int t = seg_num;
-  const DataLayout data_layout = phi::StringToDataLayout(data_format_str);
+  const DataLayout data_layout = common::StringToDataLayout(data_format_str);
 
-  const int nt = input->dims()[0];
-  const int c =
-      (data_layout == DataLayout::kNCHW ? input->dims()[1] : input->dims()[3]);
-  const int h =
-      (data_layout == DataLayout::kNCHW ? input->dims()[2] : input->dims()[1]);
-  const int w =
-      (data_layout == DataLayout::kNCHW ? input->dims()[3] : input->dims()[2]);
+  const int nt = static_cast<int>(input->dims()[0]);
+  const int c = static_cast<int>(
+      data_layout == DataLayout::kNCHW ? input->dims()[1] : input->dims()[3]);
+  const int h = static_cast<int>(
+      data_layout == DataLayout::kNCHW ? input->dims()[2] : input->dims()[1]);
+  const int w = static_cast<int>(
+      data_layout == DataLayout::kNCHW ? input->dims()[3] : input->dims()[2]);
 
   const int hw = h * w;
   const int chw = c * hw;
   const int tchw = t * chw;
   const int ntchw = nt * chw;
 
-  const int c1 = static_cast<int>(c * shift_ratio);
-  const int c2 = static_cast<int>(c * 2 * shift_ratio);
+  const int c1 = static_cast<int>(static_cast<float>(c) * shift_ratio);
+  const int c2 = static_cast<int>(static_cast<float>(c) * 2.f * shift_ratio);
 
   DDim out_dims =
-      (data_layout == DataLayout::kNCHW ? phi::make_ddim({nt, c, h, w})
-                                        : phi::make_ddim({nt, h, w, c}));
+      (data_layout == DataLayout::kNCHW ? common::make_ddim({nt, c, h, w})
+                                        : common::make_ddim({nt, h, w, c}));
   const T* input_data = input->data<T>();
   output->Resize(out_dims);
   T* output_data = dev_ctx.template Alloc<T>(output);

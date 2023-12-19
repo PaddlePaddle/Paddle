@@ -30,11 +30,6 @@ void TakeAlongAxisGradKernel(const Context& dev_ctx,
                              const DenseTensor& out_grad,
                              int axis,
                              DenseTensor* x_grad) {
-  PADDLE_ENFORCE_EQ(
-      paddle::platform::is_gpu_place(dev_ctx.GetPlace()),
-      true,
-      errors::PreconditionNotMet("This kernel only runs on GPU."));
-
   // We need to know the shape of input matrix to determine the shape of grad
   // matrix of input.
   x_grad->Resize(x.dims());
@@ -51,10 +46,16 @@ void TakeAlongAxisGradKernel(const Context& dev_ctx,
         axis,
         index,
         out_grad,
+        true,
         dev_ctx);  // the gradient of gather is scatter
   } else if (index_type == DataType::INT64) {
     phi::funcs::gpu_scatter_add_kernel<T, int64_t>(
-        *x_grad, axis, index, out_grad, dev_ctx);
+        *x_grad, axis, index, out_grad, true, dev_ctx);
+  } else {
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("The data type of input index is expected "
+                                     "to be int32 or int64, but recieved %s.",
+                                     phi::DataTypeToString(index_type)));
   }
 }
 
@@ -68,4 +69,5 @@ PD_REGISTER_KERNEL(take_along_axis_grad,
                    double,
                    int64_t,
                    int,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

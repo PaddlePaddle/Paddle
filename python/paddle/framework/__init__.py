@@ -14,69 +14,78 @@
 
 # TODO: import framework api under this directory
 
-from . import random  # noqa: F401
-from .random import seed  # noqa: F401
-from .framework import get_default_dtype  # noqa: F401
-from .framework import set_default_dtype  # noqa: F401
-from .framework import set_grad_enabled  # noqa: F401
-from .framework import is_grad_enabled  # noqa: F401
-
-from ..fluid.param_attr import ParamAttr  # noqa: F401
-from ..fluid.core import CPUPlace  # noqa: F401
-from ..fluid.core import IPUPlace  # noqa: F401
-from ..fluid.core import CUDAPlace  # noqa: F401
-from ..fluid.core import CUDAPinnedPlace  # noqa: F401
-from ..fluid.core import NPUPlace  # noqa: F401
-from ..fluid.core import MLUPlace  # noqa: F401
-from ..fluid.core import CustomPlace  # noqa: F401
-from ..fluid.core import VarBase  # noqa: F401
-
-from ..fluid import core  # noqa: F401
-from ..fluid.dygraph.base import no_grad_ as no_grad  # noqa: F401
-from ..fluid.dygraph.base import grad  # noqa: F401
-from .io import save  # noqa: F401
-from .io import load  # noqa: F401
-from ..fluid.dygraph.parallel import DataParallel  # noqa: F401
-
-from ..fluid import monkey_patch_variable
-from ..fluid.dygraph import monkey_patch_math_varbase
-from ..fluid.framework import disable_signal_handler  # noqa: F401
-from ..fluid.framework import get_flags  # noqa: F401
-from ..fluid.framework import set_flags  # noqa: F401
-from ..fluid.dygraph.base import enable_dygraph as disable_static  # noqa: F401
-from ..fluid.dygraph.base import disable_dygraph as enable_static  # noqa: F401
-from ..fluid.framework import _non_static_mode as in_dynamic_mode  # noqa: F401
-from ..fluid.framework import (  # noqa: F401
-    _non_static_mode,  # temporary used for hackson
+from ..base import core  # noqa: F401
+from ..base.core import (  # noqa: F401
+    CPUPlace,
+    CUDAPinnedPlace,
+    CUDAPlace,
+    CustomPlace,
+    IPUPlace,
+    XPUPlace,
 )
-from ..fluid.framework import (
-    _current_expected_place,
-    _get_paddle_place,
-)  # noqa: F401
-from ..fluid.framework import dygraph_only  # noqa: F401
-from ..fluid.framework import dygraph_not_support  # noqa: F401
-from ..fluid.framework import (
-    convert_np_dtype_to_dtype_,
-    _varbase_creator,
+from ..base.dygraph import base, to_variable  # noqa: F401
+from ..base.dygraph.base import (  # noqa: F401
+    disable_dygraph as enable_static,
+    enable_dygraph as disable_static,
+    grad,
+    no_grad_ as no_grad,
+)
+from ..base.framework import (  # noqa: F401
+    Block,
+    IrGraph,
     OpProtoHolder,
-)  # noqa: F401
-from ..fluid.framework import _dygraph_tracer  # noqa: F401
-from ..fluid.framework import generate_control_dev_var_name  # noqa: F401
-
-from ..fluid.layer_helper import LayerHelper  # noqa: F401
-from ..fluid.framework import in_dygraph_mode  # noqa: F401
-from ..fluid.framework import _global_flags  # noqa: F401
-from ..fluid.framework import _apply_pass  # noqa: F401
-from ..fluid.framework import switch_main_program
-from ..fluid.framework import switch_startup_program
-from ..fluid.framework import _set_expected_place  # noqa: F401
-from ..fluid.framework import Block, Program  # noqa: F401
-from ..fluid.framework import IrGraph  # noqa: F401
-from ..fluid.dygraph import parallel_helper  # noqa: F401
-from ..fluid.dygraph.parallel import (
-    _split_tensors,
-    build_groups,
-    sync_params_buffers,
+    Parameter,
+    Program,
+    _apply_pass,
+    _create_tensor,
+    _current_expected_place,
+    _current_expected_place_,
+    _dygraph_tracer,
+    _get_paddle_place,
+    _global_flags,
+    _set_expected_place,
+    _stride_in_no_check_dy2st_diff as _no_check_dy2st_diff,
+    convert_np_dtype_to_dtype_,
+    deprecate_stat_dict,
+    disable_signal_handler,
+    dygraph_not_support,
+    dygraph_only,
+    generate_control_dev_var_name,
+    get_flags,
+    in_dygraph_mode as in_dynamic_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
+    set_flags,
+    switch_main_program,
+    switch_startup_program,
+    use_pir_api,
 )
+from ..base.layer_helper import LayerHelper  # noqa: F401
+from .io import async_save, clear_async_save_task_queue  # noqa: F401
+
+# isort: off
+# Do the *DUPLICATED* monkey-patch for the tensor object.
+# We need remove the duplicated code here once we fix
+# the illogical implement in the monkey-patch methods later.
+from ..base.dygraph.math_op_patch import monkey_patch_math_tensor  # noqa: F401
+from ..base.layers.math_op_patch import monkey_patch_variable  # noqa: F401
+
+# isort: on
+from ..base.param_attr import ParamAttr  # noqa: F401
+from . import random  # noqa: F401
+from .framework import get_default_dtype, set_default_dtype  # noqa: F401
+from .io import load, save  # noqa: F401
+from .io_utils import (  # noqa: F401
+    _clone_var_in_block_,
+    _load_program_scope,
+    _open_file_buffer,
+    _pack_loaded_dict,
+    _pickle_loads_mac,
+    _unpack_saved_dict,
+    is_belong_to_optimizer,
+    is_parameter,
+    is_persistable,
+)
+from .random import seed  # noqa: F401
 
 __all__ = []

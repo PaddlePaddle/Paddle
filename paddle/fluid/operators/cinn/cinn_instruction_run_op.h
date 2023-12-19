@@ -19,8 +19,8 @@
 #include <string>
 #include <vector>
 
-#include "cinn/hlir/framework/graph_compiler.h"
-#include "cinn/hlir/framework/instruction.h"
+#include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/instruction.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
@@ -34,7 +34,7 @@ using CinnInstruction = ::cinn::hlir::framework::Instruction;
 using CinnCompiledObject = framework::paddle2cinn::CinnCompiledObject;
 using CinnCompiler = framework::paddle2cinn::CinnCompiler;
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class CinnInstructionRunOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

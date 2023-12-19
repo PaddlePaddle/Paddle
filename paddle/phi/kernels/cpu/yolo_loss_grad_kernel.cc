@@ -128,24 +128,24 @@ void YoloLossGradKernel(const Context& dev_ctx,
                         const std::vector<int>& anchors,
                         const std::vector<int>& anchor_mask,
                         int class_num,
-                        float ignore_thresh,
+                        float ignore_thresh UNUSED,
                         int downsample_ratio,
                         bool use_label_smooth,
-                        float scale_x_y,
+                        float scale_x_y UNUSED,
                         DenseTensor* x_grad,
-                        DenseTensor* gt_box_grad,
-                        DenseTensor* gt_label_grad,
-                        DenseTensor* gt_score_grad) {
+                        DenseTensor* gt_box_grad UNUSED,
+                        DenseTensor* gt_label_grad UNUSED,
+                        DenseTensor* gt_score_grad UNUSED) {
   auto* input = &x;
   auto input_grad = x_grad;
   auto* objness_mask = &objectness_mask;
 
-  const int n = input_grad->dims()[0];
-  const int c = input_grad->dims()[1];
-  const int h = input_grad->dims()[2];
-  const int w = input_grad->dims()[3];
-  const int mask_num = anchor_mask.size();
-  const int b = gt_match_mask.dims()[1];
+  const int n = static_cast<int>(input_grad->dims()[0]);
+  const int c = static_cast<int>(input_grad->dims()[1]);
+  const int h = static_cast<int>(input_grad->dims()[2]);
+  const int w = static_cast<int>(input_grad->dims()[3]);
+  const int mask_num = static_cast<int>(anchor_mask.size());
+  const int b = static_cast<int>(gt_match_mask.dims()[1]);
   int input_size = downsample_ratio * h;
 
   const int stride = h * w;
@@ -169,7 +169,7 @@ void YoloLossGradKernel(const Context& dev_ctx,
   T* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
   memset(input_grad_data, 0, input_grad->numel() * sizeof(T));
 
-  const T* gt_score_data;
+  const T* gt_score_data = nullptr;
   DenseTensor gtscore;
   if (!(gt_score.is_initialized())) {
     gtscore.Resize({n, b});

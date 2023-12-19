@@ -18,10 +18,10 @@ from collections.abc import Iterable
 import numpy as np
 
 import paddle
+from paddle.base.data_feeder import check_type, convert_dtype
+from paddle.base.framework import Variable
 from paddle.distribution import distribution
-from paddle.fluid.data_feeder import check_type, convert_dtype
-from paddle.fluid.framework import _non_static_mode
-from paddle.fluid.layers import tensor
+from paddle.framework import in_dynamic_mode
 from paddle.tensor import random
 
 
@@ -54,54 +54,61 @@ class Normal(distribution.Distribution):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.distribution import Normal
+            >>> import paddle
+            >>> from paddle.distribution import Normal
 
-            # Define a single scalar Normal distribution.
-            dist = Normal(loc=0., scale=3.)
-            # Define a batch of two scalar valued Normals.
-            # The first has mean 1 and standard deviation 11, the second 2 and 22.
-            dist = Normal(loc=[1., 2.], scale=[11., 22.])
-            # Get 3 samples, returning a 3 x 2 tensor.
-            dist.sample([3])
+            >>> # Define a single scalar Normal distribution.
+            >>> dist = Normal(loc=0., scale=3.)
+            >>> # Define a batch of two scalar valued Normals.
+            >>> # The first has mean 1 and standard deviation 11, the second 2 and 22.
+            >>> dist = Normal(loc=[1., 2.], scale=[11., 22.])
+            >>> # Get 3 samples, returning a 3 x 2 tensor.
+            >>> dist.sample([3])
 
-            # Define a batch of two scalar valued Normals.
-            # Both have mean 1, but different standard deviations.
-            dist = Normal(loc=1., scale=[11., 22.])
+            >>> # Define a batch of two scalar valued Normals.
+            >>> # Both have mean 1, but different standard deviations.
+            >>> dist = Normal(loc=1., scale=[11., 22.])
 
-            # Complete example
-            value_tensor = paddle.to_tensor([0.8], dtype="float32")
+            >>> # Complete example
+            >>> value_tensor = paddle.to_tensor([0.8], dtype="float32")
 
-            normal_a = Normal([0.], [1.])
-            normal_b = Normal([0.5], [2.])
-            sample = normal_a.sample([2])
-            # a random tensor created by normal distribution with shape: [2, 1]
-            entropy = normal_a.entropy()
-            # [1.4189385] with shape: [1]
-            lp = normal_a.log_prob(value_tensor)
-            # [-1.2389386] with shape: [1]
-            p = normal_a.probs(value_tensor)
-            # [0.28969154] with shape: [1]
-            kl = normal_a.kl_divergence(normal_b)
-            # [0.34939718] with shape: [1]
+            >>> normal_a = Normal([0.], [1.])
+            >>> normal_b = Normal([0.5], [2.])
+            >>> sample = normal_a.sample([2])
+            >>> # a random tensor created by normal distribution with shape: [2, 1]
+            >>> entropy = normal_a.entropy()
+            >>> print(entropy)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [1.41893852])
+            >>> lp = normal_a.log_prob(value_tensor)
+            >>> print(lp)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [-1.23893857])
+            >>> p = normal_a.probs(value_tensor)
+            >>> print(p)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [0.28969154])
+            >>> kl = normal_a.kl_divergence(normal_b)
+            >>> print(kl)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [0.34939718])
     """
 
     def __init__(self, loc, scale, name=None):
-        if not _non_static_mode():
+        if not in_dynamic_mode():
             check_type(
                 loc,
                 'loc',
-                (int, float, np.ndarray, tensor.Variable, list, tuple),
+                (int, float, np.ndarray, Variable, list, tuple),
                 'Normal',
             )
             check_type(
                 scale,
                 'scale',
-                (int, float, np.ndarray, tensor.Variable, list, tuple),
+                (int, float, np.ndarray, Variable, list, tuple),
                 'Normal',
             )
 
-        self.batch_size_unknown = False
         self.all_arg_is_float = False
         self.name = name if name is not None else 'Normal'
         self.dtype = 'float32'
@@ -112,7 +119,6 @@ class Normal(distribution.Distribution):
             scale = float(scale)
 
         if self._validate_args(loc, scale):
-            self.batch_size_unknown = True
             self.loc = loc
             self.scale = scale
             self.dtype = convert_dtype(loc.dtype)
@@ -129,7 +135,6 @@ class Normal(distribution.Distribution):
                 'float64',
             ]:
                 self.dtype = scale.dtype
-            # pylint: disable=unbalanced-tuple-unpacking
             self.loc, self.scale = self._to_tensor(loc, scale)
             if self.dtype != convert_dtype(self.loc.dtype):
                 self.loc = paddle.cast(self.loc, dtype=self.dtype)
@@ -168,18 +173,17 @@ class Normal(distribution.Distribution):
         if not isinstance(shape, Iterable):
             raise TypeError('sample shape must be Iterable object.')
 
-        if not _non_static_mode():
+        if not in_dynamic_mode():
             check_type(seed, 'seed', (int), 'sample')
 
         shape = list(shape)
         batch_shape = list((self.loc + self.scale).shape)
         name = self.name + '_sample'
-
-        if self.batch_size_unknown:
+        if -1 in batch_shape:
             output_shape = shape + batch_shape
-            zero_tmp = tensor.fill_constant_batch_size_like(
-                self.loc + self.scale, batch_shape + shape, self.dtype, 0.0
-            )
+            fill_shape = list(batch_shape + shape)
+            fill_shape[0] = paddle.shape(self.loc + self.scale)[0].item()
+            zero_tmp = paddle.full(fill_shape, 0.0, self.dtype)
             zero_tmp_reshape = paddle.reshape(zero_tmp, output_shape)
 
             zero_tmp_shape = paddle.shape(zero_tmp_reshape)
@@ -193,7 +197,7 @@ class Normal(distribution.Distribution):
             output_shape = shape + batch_shape
             output = random.gaussian(
                 output_shape, mean=0.0, std=1.0, seed=seed, dtype=self.dtype
-            ) * (tensor.zeros(output_shape, dtype=self.dtype) + self.scale)
+            ) * (paddle.zeros(output_shape, dtype=self.dtype) + self.scale)
             output = paddle.add(output, self.loc, name=name)
             if self.all_arg_is_float:
                 return paddle.reshape(output, shape, name=name)
@@ -236,12 +240,16 @@ class Normal(distribution.Distribution):
         """
         name = self.name + '_entropy'
         batch_shape = list((self.loc + self.scale).shape)
-        zero_tmp = tensor.fill_constant_batch_size_like(
-            self.loc + self.scale, batch_shape, self.dtype, 0.0
-        )
+        if -1 in batch_shape:
+            fill_shape = list(batch_shape)
+            fill_shape[0] = paddle.shape(self.loc + self.scale)[0].item()
+            fill_dtype = (self.loc + self.scale).dtype
+            zero_tmp = paddle.full(fill_shape, 0.0, fill_dtype)
+        else:
+            zero_tmp = paddle.full(batch_shape, 0.0, self.dtype)
         return paddle.add(
             0.5 + zero_tmp,
-            0.5 * math.log(2 * math.pi) + paddle.log((self.scale + zero_tmp)),
+            0.5 * math.log(2 * math.pi) + paddle.log(self.scale + zero_tmp),
             name=name,
         )
 
@@ -321,7 +329,7 @@ class Normal(distribution.Distribution):
             Tensor, kl-divergence between two normal distributions.The data type is float32.
 
         """
-        if not _non_static_mode():
+        if not in_dynamic_mode():
             check_type(other, 'other', Normal, 'kl_divergence')
 
         name = self.name + '_kl_divergence'

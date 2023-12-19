@@ -28,12 +28,22 @@ static __device__ __forceinline__ phi::dtype::float16 Exp(
   return ::Eigen::numext::exp(x);
 }
 
+static __device__ __forceinline__ phi::dtype::bfloat16 Exp(
+    phi::dtype::bfloat16 x) {
+  return ::Eigen::numext::exp(x);
+}
+
 static __device__ __forceinline__ float Exp(float x) { return expf(x); }
 
 static __device__ __forceinline__ double Exp(double x) { return exp(x); }
 
 static __device__ __forceinline__ phi::dtype::float16 Log(
     phi::dtype::float16 x) {
+  return ::Eigen::numext::log(x);
+}
+
+static __device__ __forceinline__ phi::dtype::bfloat16 Log(
+    phi::dtype::bfloat16 x) {
   return ::Eigen::numext::log(x);
 }
 

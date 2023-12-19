@@ -204,13 +204,20 @@ DEFINE_ONEDNN_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(LeakyRelu,
 DEFINE_ONEDNN_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Mish,
                                                   MishOneDNNGradFunctor,
                                                   threshold);
-DEFINE_ONEDNN_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Swish,
-                                                  SwishOneDNNGradFunctor,
-                                                  beta);
+
+template <typename T, typename Context>
+void SwishGradKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& dout,
+                     DenseTensor* dx) {
+  SwishOneDNNGradFunctor<T> functor;
+  float beta = 1.0;
+  functor(dev_ctx, x, dout, beta, 0, dx);
+}
 
 template <typename T, typename Context>
 void EluGradKernel(const Context& dev_ctx,
-                   const DenseTensor& x,
+                   const DenseTensor& x UNUSED,
                    const DenseTensor& out,
                    const DenseTensor& dout,
                    float alpha,
@@ -238,21 +245,22 @@ template <typename T, typename Context>
 void HardSwishGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& dout,
-                         float threshold,
-                         float scale,
-                         float offset,
                          DenseTensor* dx) {
   HardSwishOneDNNGradFunctor<T> functor;
-  functor(dev_ctx, x, dout, 0, 0, dx);
+  // the formula of oneDNN hardswish primitive is:
+  // d=s*max(0,min(1,alpha*s+beta)). here, we set alpha=1/6, beta=1/2, to make
+  // the formula equal to the hardswish definition in Paddle:
+  // https://www.paddlepaddle.org.cn/documentation/docs/en/api/paddle/nn/functional/hardswish_en.html
+  functor(dev_ctx, x, dout, 1.0 / 6.0, 1.0 / 2.0, dx);
 }
 
 template <typename T, typename Context>
 void Relu6GradKernel(const Context& dev_ctx,
                      const DenseTensor& out,
                      const DenseTensor& dout,
-                     float threshold,
                      DenseTensor* dx) {
   Relu6OneDNNGradUseOutFunctor<T> functor;
+  float threshold = 6;
   functor(dev_ctx, out, dout, 0, threshold, dx);
 }
 

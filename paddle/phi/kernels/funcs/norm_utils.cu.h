@@ -24,7 +24,7 @@ limitations under the License. */
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
 #endif
-#include "paddle/phi/common/layout.h"
+#include "paddle/common/layout.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 
@@ -467,11 +467,7 @@ void NormDoubleGradFunctor(const DeviceContext &ctx,
     set_constant(ctx, &scale_tmp, static_cast<T>(1));
   }
   const T *scale_data = Scale ? Scale->data<T>() : scale_tmp.data<T>();
-#ifdef __HIPCC__
-  const int block = 256;
-#else
   const int block = 512;
-#endif
   int max_threads = ctx.GetMaxPhysicalThreadCount();
   const int max_blocks = std::max(max_threads / block, 1);
   int grid = std::min(C, max_blocks);

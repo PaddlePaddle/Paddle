@@ -62,7 +62,7 @@ void NonZeroKernel(const Context& dev_ctx,
     }
   }
   auto true_num = true_index.size();
-  out->Resize(phi::make_ddim({static_cast<int64_t>(true_num), rank}));
+  out->Resize(common::make_ddim({static_cast<int64_t>(true_num), rank}));
   auto* out_ptr = dev_ctx.template Alloc<int64_t>(out);
 
   if (true_num == 0) {
@@ -90,6 +90,9 @@ PD_REGISTER_KERNEL(nonzero,
                    int64_t,
                    int,
                    int16_t,
+                   phi::dtype::bfloat16,
                    bool,
                    float,
-                   double) {}
+                   double) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::INT64);
+}

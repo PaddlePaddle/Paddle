@@ -18,7 +18,7 @@ limitations under the License. */
 #include <string>
 
 #include "glog/logging.h"
-#include "paddle/phi/api/ext/exception.h"
+#include "paddle/common/exception.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 
 namespace phi {
@@ -35,19 +35,19 @@ const char *AllocationTypeStr(AllocationType type) {
       return "gpu_pinned";
     case AllocationType::XPU:
       return "xpu";
-    case AllocationType::NPU:
-      return "npu";
-    case AllocationType::NPUPINNED:
-      return "npu_pinned";
     case AllocationType::IPU:
       return "ipu";
-    case AllocationType::MLU:
-      return "mlu";
     default:
       PD_THROW("Invalid phi device type.");
       return {};
   }
 }
+
+Place::Place(AllocationType type, const std::string &dev_type)
+    : device(0),
+      alloc_type_(type),
+      device_type_id_(phi::CustomRegisteredDeviceMap::Instance()
+                          .GetOrRegisterGlobalDeviceTypeId(dev_type)) {}
 
 std::string Place::DebugString() const {
   std::ostringstream os;
@@ -59,7 +59,6 @@ std::string Place::DebugString() const {
     os << AllocationTypeStr(alloc_type_);
   }
   if (alloc_type_ == AllocationType::GPUPINNED ||
-      alloc_type_ == AllocationType::NPUPINNED ||
       alloc_type_ == AllocationType::CPU) {
     os << ")";
   } else {
@@ -78,8 +77,6 @@ Place GetPinnedPlace(const Place &place) {
     case AllocationType::GPU:
       return phi::GPUPinnedPlace();
       break;
-    case AllocationType::NPU:
-      return phi::NPUPinnedPlace();
     default:
       return place;
   }

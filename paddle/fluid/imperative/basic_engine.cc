@@ -30,10 +30,11 @@
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-DECLARE_bool(sort_sum_gradient);
+PHI_DECLARE_bool(sort_sum_gradient);
 
 namespace paddle {
 namespace imperative {
@@ -111,7 +112,7 @@ void BasicEngine::Init(
     if (grad_tensor == nullptr) {
       grad_var->Resize(fwd_var.dims());
       grad_var->mutable_data(fwd_var.place(), fwd_var.type());
-      phi::funcs::set_constant(*dev_ctx, grad_var, 1.0);
+      phi::funcs::set_constant(*dev_ctx, grad_var, 1.0f);
     } else {
       paddle::framework::TensorCopy(grad_tensor->Var().Get<phi::DenseTensor>(),
                                     fwd_var.place(),
@@ -125,9 +126,10 @@ void BasicEngine::Init(
                                     [init_grad_var];
     if (!accumulator) {
       if (FLAGS_sort_sum_gradient) {
-        accumulator.reset(new SortedGradientAccumulator(init_grad_var));
+        accumulator =
+            std::make_unique<SortedGradientAccumulator>(init_grad_var);
       } else {
-        accumulator.reset(new EagerGradientAccumulator(init_grad_var));
+        accumulator = std::make_unique<EagerGradientAccumulator>(init_grad_var);
       }
     }
     accumulator->IncreaseRefCnt();
@@ -166,7 +168,7 @@ void BasicEngine::CheckBackwardInputs(const OpBase& op) {
         VLOG(6) << "Set ungenerated Grad: " << var->Name()
                 << " as zero with dtype "
                 << framework::DataTypeToString(var->ForwardDataType());
-        phi::funcs::set_constant(*dev_ctx, tensor, 0.0);
+        phi::funcs::set_constant(*dev_ctx, tensor, 0.0f);
       }
     }
   }
@@ -184,7 +186,7 @@ void BasicEngine::PrepareGradAccumulators(
       if (!var) continue;
 
       bool find_grad_node_of_var = false;
-      if (grad_pending_nodes.size()) {
+      if (!grad_pending_nodes.empty()) {
         // Because Inplace op overwrites the grad_node of the input grad_var. So
         // only the information of grad_pending_node can be used to find the
         // grad_node of grad_var.
@@ -224,9 +226,11 @@ void BasicEngine::PrepareGradAccumulators(
 
             if (!accumulator) {
               if (FLAGS_sort_sum_gradient) {
-                accumulator.reset(new SortedGradientAccumulator(var.get()));
+                accumulator =
+                    std::make_unique<SortedGradientAccumulator>(var.get());
               } else {
-                accumulator.reset(new EagerGradientAccumulator(var.get()));
+                accumulator =
+                    std::make_unique<EagerGradientAccumulator>(var.get());
               }
             }
 
@@ -250,13 +254,14 @@ void BasicEngine::PrepareGradAccumulators(
         }
       }
 
-      if (!grad_pending_nodes.size() || !find_grad_node_of_var) {
+      if (grad_pending_nodes.empty() || !find_grad_node_of_var) {
         auto& accumulator = accumulators_[var.get()];
         if (!accumulator) {
           if (FLAGS_sort_sum_gradient) {
-            accumulator.reset(new SortedGradientAccumulator(var.get()));
+            accumulator =
+                std::make_unique<SortedGradientAccumulator>(var.get());
           } else {
-            accumulator.reset(new EagerGradientAccumulator(var.get()));
+            accumulator = std::make_unique<EagerGradientAccumulator>(var.get());
           }
         }
 
@@ -281,9 +286,9 @@ void BasicEngine::PrepareDeps() {
   std::queue<GradOpNode*> q;
   std::unordered_set<GradOpNode*> visited;
 
-  for (size_t i = 0; i < init_nodes_.size(); ++i) {
-    q.push(init_nodes_[i].get());
-    visited.insert(init_nodes_[i].get());
+  for (auto& init_node : init_nodes_) {
+    q.push(init_node.get());
+    visited.insert(init_node.get());
   }
 
   while (!q.empty()) {
@@ -359,7 +364,7 @@ static void PerformBackwardInplace(const std::string& op_type,
       for (auto& p : ins) {
         if (p.first == pair.first) {
           // has at least one var
-          if (p.second.size() > 0 && p.second[0]) {
+          if (!p.second.empty() && p.second[0]) {
             auto& in_var = p.second[0];
             VLOG(10) << p.first << " use_count: " << in_var.use_count();
             // the refcount of var to be inplaced should be 1
@@ -377,7 +382,7 @@ static void PerformBackwardInplace(const std::string& op_type,
       }
       for (auto& p : *outs) {
         if (p.first == pair.second) {
-          if (p.second.size() > 0 && p.second[0]) {
+          if (!p.second.empty() && p.second[0]) {
             auto& out_var = p.second[0];
             if (out_var->Type() == framework::proto::VarType::LOD_TENSOR) {
               out_tensor =
@@ -408,9 +413,9 @@ void BasicEngine::Execute() {
   PrepareDeps();
   // Start execute Computation graph
   std::queue<std::shared_ptr<GradOpNode>> q;
-  for (size_t i = 0; i < init_nodes_.size(); ++i) {
-    if (node_deps_[init_nodes_[i].get()] == 0) {
-      q.push(std::move(init_nodes_[i]));
+  for (auto& init_node : init_nodes_) {
+    if (node_deps_[init_node.get()] == 0) {
+      q.push(std::move(init_node));
     }
   }
 
@@ -459,7 +464,7 @@ void BasicEngine::Execute() {
                              std::unique_ptr<GradientAccumulator>>::iterator
               iter;
           bool flag_find_grad = false;
-          if (grad_pending_nodes.size()) {
+          if (!grad_pending_nodes.empty()) {
             VLOG(10) << "Find gradient of var (" << var->Name()
                      << ") with grad_node.";
             for (auto& grad_pending_node : grad_pending_nodes) {
@@ -478,7 +483,7 @@ void BasicEngine::Execute() {
                       << " in accumulators_with_grad_node_";
             }
           }
-          if (!grad_pending_nodes.size() || !flag_find_grad) {
+          if (grad_pending_nodes.empty() || !flag_find_grad) {
             VLOG(10) << "Find gradient of var (" << var->Name()
                      << ") with no grad_node.";
             iter = accumulators_.find(var.get());
@@ -600,7 +605,7 @@ void BasicEngine::Execute() {
           }
         } catch (platform::EnforceNotMet& exception) {
           Clear();
-          throw std::move(exception);
+          throw exception;
         } catch (std::exception& ex) {
           Clear();
           PADDLE_THROW(platform::errors::External("%s", ex.what()));
@@ -615,7 +620,7 @@ void BasicEngine::Execute() {
       }
 
       for (auto& pair : inplace_output_grad_var_list_) {
-        *pair.first = std::move(*pair.second);
+        *pair.first = *pair.second;
       }
 
       // Step 2: Sum Gradient of This graph

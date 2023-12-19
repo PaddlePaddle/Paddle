@@ -61,8 +61,10 @@ inline bool equal_pointees(OptionalPointee const& x, OptionalPointee const& y) {
 }
 
 template <class OptionalPointee>
-struct equal_pointees_t
-    : std::binary_function<OptionalPointee, OptionalPointee, bool> {
+struct equal_pointees_t {
+  using first_argument_type = OptionalPointee;
+  using second_argument_type = OptionalPointee;
+  using result_type = bool;
   bool operator()(OptionalPointee const& x, OptionalPointee const& y) const {
     return equal_pointees(x, y);
   }
@@ -83,8 +85,10 @@ inline bool less_pointees(OptionalPointee const& x, OptionalPointee const& y) {
 }
 
 template <class OptionalPointee>
-struct less_pointees_t
-    : std::binary_function<OptionalPointee, OptionalPointee, bool> {
+struct less_pointees_t {
+  using first_argument_type = OptionalPointee;
+  using second_argument_type = OptionalPointee;
+  using result_type = bool;
   bool operator()(OptionalPointee const& x, OptionalPointee const& y) const {
     return less_pointees(x, y);
   }

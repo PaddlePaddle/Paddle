@@ -81,7 +81,7 @@ message ServerServiceParameter {
     optional string server_class      = 1 [ default = "DownpourBrpcPsServer" ];
     optional string client_class      = 2 [ default = "DownpourBrpcPsClient" ];
     optional string service_class     = 3 [ default = "DownpourPsService"];
-    optional uint32 start_server_port = 4 [ default = 0 ];  //will find a avaliable port from it
+    optional uint32 start_server_port = 4 [ default = 0 ];  //will find a available port from it
     optional uint32 server_thread_num = 5 [ default = 12 ];
 }
 

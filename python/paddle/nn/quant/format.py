@@ -17,13 +17,14 @@ from typing import List, Tuple
 
 import paddle
 from paddle import _legacy_C_ops as _C_ops
-from paddle.framework import in_dygraph_mode
-from paddle.nn import Layer
+from paddle.framework import in_dynamic_mode
+
+from ..layer.layers import Layer
 
 
 class LinearQuanterDequanter(Layer):
     def __init__(self, quanter, dequanter):
-        super(LinearQuanterDequanter, self).__init__()
+        super().__init__()
         self._quanter = quanter
         self._dequanter = dequanter
 
@@ -37,6 +38,7 @@ class LinearQuanterDequanter(Layer):
 
     @staticmethod
     def from_quanter(quanter):
+        assert quanter is not None
         return LinearQuanterDequanter(
             LinearQuanter.from_quanter(quanter),
             LinearDequanter.from_quanter(quanter),
@@ -45,8 +47,17 @@ class LinearQuanterDequanter(Layer):
 
 class LinearQuanter(Layer):
     def __init__(self, scales, zero_point=None, quant_axis=None, bit_length=8):
-        super(LinearQuanter, self).__init__()
-        self._scales = paddle.to_tensor(scales, dtype="float32")
+        super().__init__()
+        scales = paddle.to_tensor(scales, dtype="float32")
+        scale_attr = paddle.framework.ParamAttr(
+            name=paddle.utils.unique_name.generate('quant_dequant.scale'),
+            initializer=paddle.nn.initializer.Constant(1.0),
+            trainable=False,
+        )
+        self._scales = self.create_parameter(
+            shape=scales.shape, attr=scale_attr, dtype="float32"
+        )
+        self._scales.set_value(scales)
         self._zero_point = (
             paddle.zeros([1], dtype="float32")
             if zero_point is None
@@ -56,16 +67,16 @@ class LinearQuanter(Layer):
         self._bit_length = bit_length
 
     def forward(self, input):
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             return _C_ops.quantize_linear(
-                input,
+                input.cast('float32'),
                 self._scales,
                 self._zero_point,
                 "quant_axis",
                 self._quant_axis,
                 "bit_length",
                 self._bit_length,
-            )
+            ).cast(input.dtype)
         else:
             out = self._helper.create_variable_for_type_inference(input.dtype)
             self._helper.append_op(
@@ -85,7 +96,6 @@ class LinearQuanter(Layer):
 
     @staticmethod
     def from_quanter(quanter):
-
         return LinearQuanter(
             quanter.scales(),
             zero_point=quanter.zero_points(),
@@ -96,8 +106,17 @@ class LinearQuanter(Layer):
 
 class LinearDequanter(Layer):
     def __init__(self, scales, zero_point=None, quant_axis=None, bit_length=8):
-        super(LinearDequanter, self).__init__()
-        self._scales = paddle.to_tensor(scales, dtype="float32")
+        super().__init__()
+        scales = paddle.to_tensor(scales, dtype="float32")
+        scale_attr = paddle.framework.ParamAttr(
+            name=paddle.utils.unique_name.generate('quant_dequant.scale'),
+            initializer=paddle.nn.initializer.Constant(1.0),
+            trainable=False,
+        )
+        self._scales = self.create_parameter(
+            shape=scales.shape, attr=scale_attr, dtype="float32"
+        )
+        self._scales.set_value(scales)
         self._zero_point = (
             paddle.zeros([1], dtype="float32")
             if zero_point is None
@@ -107,16 +126,16 @@ class LinearDequanter(Layer):
         self._bit_length = bit_length
 
     def forward(self, input):
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             return _C_ops.dequantize_linear(
-                input,
+                input.cast('float32'),
                 self._scales,
                 self._zero_point,
                 "quant_axis",
                 self._quant_axis,
                 "bit_length",
                 self._bit_length,
-            )
+            ).cast(input.dtype)
         else:
             out = self._helper.create_variable_for_type_inference(input.dtype)
             self._helper.append_op(
@@ -149,33 +168,35 @@ class ConvertibleQuantedLayer(Layer, metaclass=abc.ABCMeta):
     It defines some functions to convert quantizers and observers to quantize
     or dequantize operators that maintain the quantization parameters used
     during inference.
+
     Examples:
-       .. code-block:: python
+        .. code-block:: python
 
-            # Given codes in ./customized_quanter.py
-            class CustomizedQuantedLayer(ConvertibleQuantedLayer):
-                def __init__(self):
-                    super(CustomizedQuantedLayer, self).__init__()
-                    self.weight_a = paddle.create_parameter(shape=[1], dtype='float32')
-                    self.weight_b = paddle.create_parameter(shape=[1], dtype='float32')
-                    self.quanter_for_weight_a = None
-                    self.activation_weight = None
-                def forward(self, input):
-                    qweight_a = self.quanter_for_weight_a(self.weight_a)
-                    weight_b = self.weight_b
-                    qinput = self.activation_weight(input)
-                    // compute with qweight_a, weight_b and qinput.
-                    return qweight * qinput + weight_b
-
-                def weights_to_quanters(self):
-                    return [('weight_a', 'quanter_for_weight_a')]
-
-                def activation_quanters(self):
-                    return ['activation_weight']
+            >>> # Given codes in ./customized_quanter.py
+            >>> class CustomizedQuantedLayer(ConvertibleQuantedLayer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...         self.weight_a = paddle.create_parameter(shape=[1], dtype='float32')
+            ...         self.weight_b = paddle.create_parameter(shape=[1], dtype='float32')
+            ...         self.quanter_for_weight_a = None
+            ...         self.activation_weight = None
+            ...
+            ...     def forward(self, input):
+            ...         qweight_a = self.quanter_for_weight_a(self.weight_a)
+            ...         weight_b = self.weight_b
+            ...         qinput = self.activation_weight(input)
+            ...         # compute with qweight_a, weight_b and qinput.
+            ...         return qweight * qinput + weight_b
+            ...
+            ...     def weights_to_quanters(self):
+            ...         return [('weight_a', 'quanter_for_weight_a')]
+            ...
+            ...     def activation_quanters(self):
+            ...         return ['activation_weight']
     """
 
     def __init__(self):
-        super(ConvertibleQuantedLayer, self).__init__()
+        super().__init__()
         self.converted = False
 
     @abc.abstractmethod
@@ -208,6 +229,8 @@ class ConvertibleQuantedLayer(Layer, metaclass=abc.ABCMeta):
             self, quanter_name
         ), f"{quanter_name} is not attribute of current layer."
         quanter = getattr(self, quanter_name)
+        if quanter is None:
+            return None
         quanter = LinearQuanterDequanter.from_quanter(quanter)
         setattr(self, quanter_name, quanter)
         self._sub_layers[quanter_name] = quanter
@@ -219,14 +242,15 @@ class ConvertibleQuantedLayer(Layer, metaclass=abc.ABCMeta):
         qweight = quanter(weight)
         weight.set_value(qweight)
 
-    def _convert(self):
+    def _convert(self, remain_weight=False):
         r"""Convert current layer to onnx style for inference."""
         assert not self.converted, "The model should be converted only once."
         for weight_name, quanter_name in self.weights_to_quanters():
             qdq = self._convert_quanter_to_qdq(quanter_name)
-            self._quant_weights(weight_name, qdq._quanter)
-            qdq._quanter = None
-            qdq._sub_layers['_quanter'] = None
+            if qdq is not None and remain_weight is False:
+                self._quant_weights(weight_name, qdq._quanter)
+                qdq._quanter = None
+                qdq._sub_layers['_quanter'] = None
 
         for quanter_name in self.activation_quanters():
             self._convert_quanter_to_qdq(quanter_name)

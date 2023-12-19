@@ -4,9 +4,10 @@ if(WITH_TESTING)
   set(paddle_gtest_main_deps
       device_context
       gtest
-      gflags
+      phi
+      common
       init
-      memory
+      allocator
       phi_utils
       proto_desc)
 

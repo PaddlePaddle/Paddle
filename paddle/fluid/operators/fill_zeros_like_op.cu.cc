@@ -19,26 +19,30 @@ limitations under the License. */
 #include "paddle/fluid/platform/float16.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    fill_zeros_like,
-    ops::FillZerosLikeKernel<phi::GPUContext, int>,
-    ops::FillZerosLikeKernel<phi::GPUContext, int64_t>,
-    ops::FillZerosLikeKernel<phi::GPUContext, float>,
-    ops::FillZerosLikeKernel<phi::GPUContext, double>,
-    ops::FillZerosLikeKernel<phi::GPUContext, paddle::platform::float16>,
-    ops::FillZerosLikeKernel<phi::GPUContext, bool>,
-    ops::FillZerosLikeKernel<phi::GPUContext, paddle::platform::complex<float>>,
-    ops::FillZerosLikeKernel<phi::GPUContext,
-                             paddle::platform::complex<double>>);
+namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(
-    fill_zeros_like2,
-    ops::FillZerosLikeKernel<phi::GPUContext, int>,
-    ops::FillZerosLikeKernel<phi::GPUContext, int64_t>,
-    ops::FillZerosLikeKernel<phi::GPUContext, float>,
-    ops::FillZerosLikeKernel<phi::GPUContext, double>,
-    ops::FillZerosLikeKernel<phi::GPUContext, paddle::platform::float16>,
-    ops::FillZerosLikeKernel<phi::GPUContext, bool>,
-    ops::FillZerosLikeKernel<phi::GPUContext, paddle::platform::complex<float>>,
-    ops::FillZerosLikeKernel<phi::GPUContext,
-                             paddle::platform::complex<double>>);
+PD_REGISTER_STRUCT_KERNEL(fill_zeros_like,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FillZerosLikeKernel,
+                          int,
+                          int64_t,
+                          float,
+                          double,
+                          plat::float16,
+                          bool,
+                          plat::complex<float>,
+                          plat::complex<double>) {}
+
+PD_REGISTER_STRUCT_KERNEL(fill_zeros_like2,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FillZerosLikeKernel2,
+                          int,
+                          int64_t,
+                          float,
+                          double,
+                          plat::float16,
+                          bool,
+                          plat::complex<float>,
+                          plat::complex<double>) {}

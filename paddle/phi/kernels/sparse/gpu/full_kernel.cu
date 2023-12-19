@@ -18,23 +18,10 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 
 namespace phi {
-
-template <typename InT, typename OutT = InT>
-struct FullFunctor {
-  OutT value;
-
-  template <typename VType>
-  explicit inline FullFunctor(VType val) {
-    value = static_cast<OutT>(val);
-  }
-
-  __device__ __forceinline__ OutT operator()() const {
-    return static_cast<OutT>(value);
-  }
-};
 
 template <typename T, typename Context>
 void FullLikeCooKernel(const Context& dev_ctx,
@@ -46,16 +33,8 @@ void FullLikeCooKernel(const Context& dev_ctx,
       dev_ctx, x.indices(), dev_ctx.GetPlace(), false, out->mutable_indices());
 
   DenseTensor* values = out->mutable_values();
-  values->Resize(x.values().dims());
-  dev_ctx.template Alloc<T>(values);
-
-  std::vector<const DenseTensor*> inputs = {};
-  std::vector<DenseTensor*> outputs = {values};
-  int numel = values->numel();
-  if (numel > 0) {
-    phi::funcs::ElementwiseKernel<T>(
-        dev_ctx, inputs, &outputs, FullFunctor<T>(val.to<T>()));
-  }
+  phi::Full<T, Context>(
+      dev_ctx, common::vectorize(x.values().dims()), val, values);
   out->set_dims(x.dims());
 }
 
@@ -72,16 +51,9 @@ void FullLikeCsrKernel(const Context& dev_ctx,
       dev_ctx, x.cols(), dev_ctx.GetPlace(), false, out->mutable_cols());
 
   DenseTensor* values = out->mutable_values();
-  values->Resize(x.values().dims());
-  dev_ctx.template Alloc<T>(values);
+  phi::Full<T, Context>(
+      dev_ctx, common::vectorize(x.values().dims()), val, values);
 
-  std::vector<const DenseTensor*> inputs = {};
-  std::vector<DenseTensor*> outputs = {values};
-  int numel = values->numel();
-  if (numel > 0) {
-    phi::funcs::ElementwiseKernel<T>(
-        dev_ctx, inputs, &outputs, FullFunctor<T>(val.to<T>()));
-  }
   out->set_dims(x.dims());
 }
 

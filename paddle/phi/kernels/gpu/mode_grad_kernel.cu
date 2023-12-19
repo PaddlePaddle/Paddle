@@ -15,6 +15,8 @@
 #include "paddle/phi/kernels/mode_grad_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/mode.h"
@@ -64,7 +66,7 @@ void ModeGradKernel(const Context& dev_ctx,
 
   // For 0D Tensor
   if (in_dims.size() == 0) {
-    phi::funcs::set_constant(dev_ctx, x_grad, 1.0);
+    phi::funcs::set_constant(dev_ctx, x_grad, static_cast<T>(1.0));
     return;
   }
 
@@ -89,4 +91,6 @@ PD_REGISTER_KERNEL(mode_grad,
                    float,
                    double,
                    int32_t,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

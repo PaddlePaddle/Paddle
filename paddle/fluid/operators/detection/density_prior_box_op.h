@@ -18,7 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -123,7 +123,7 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
     }
     phi::DenseTensor var_t;
     var_t.mutable_data<T>(
-        phi::make_ddim({1, static_cast<int>(variances.size())}),
+        common::make_ddim({1, static_cast<int>(variances.size())}),
         ctx.GetPlace());
 
     auto var_et = phi::EigenTensor<T, 2>::From(var_t);

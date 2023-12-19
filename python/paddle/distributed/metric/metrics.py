@@ -154,16 +154,12 @@ def print_metric(metric_ptr, name):
     """
     if name.find("wuauc") != -1:
         metric = metric_ptr.get_wuauc_metric_msg(name)
-        monitor_msg = (
-            "%s: User Count=%.0f INS Count=%.0f UAUC=%.6f WUAUC=%.6f "
-            % (name, metric[0], metric[1], metric[4], metric[5])
-        )
+        monitor_msg = f"{name}: User Count={metric[0]:.0f} INS Count={metric[1]:.0f} UAUC={metric[4]:.6f} WUAUC={metric[5]:.6f} "
     else:
         metric = metric_ptr.get_metric_msg(name)
         monitor_msg = (
-            "%s: AUC=%.6f BUCKET_ERROR=%.6f MAE=%.6f RMSE=%.6f "
-            "Actual CTR=%.6f Predicted CTR=%.6f COPC=%.6f INS Count=%.0f"
-            % (
+            "{}: AUC={:.6f} BUCKET_ERROR={:.6f} MAE={:.6f} RMSE={:.6f} "
+            "Actual CTR={:.6f} Predicted CTR={:.6f} COPC={:.6f} INS Count={:.0f}".format(
                 name,
                 metric[0],
                 metric[1],

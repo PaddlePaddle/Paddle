@@ -40,8 +40,9 @@
 #ifdef _WIN32
 #define cpuid(reg, x) __cpuidex(reg, x, 0)
 #else
-#if !defined(WITH_NV_JETSON) && !defined(PADDLE_WITH_ARM) && \
-    !defined(PADDLE_WITH_SW) && !defined(PADDLE_WITH_MIPS)
+#if !defined(WITH_NV_JETSON) && !defined(PADDLE_WITH_ARM) &&  \
+    !defined(PADDLE_WITH_SW) && !defined(PADDLE_WITH_MIPS) && \
+    !defined(PADDLE_WITH_LOONGARCH)
 #include <cpuid.h>
 inline void cpuid(int reg[4], int x) {
   __cpuid_count(x, 0, reg[0], reg[1], reg[2], reg[3]);
@@ -49,6 +50,8 @@ inline void cpuid(int reg[4], int x) {
 #endif
 #endif
 #endif
+
+#include "paddle/utils/test_macros.h"
 
 namespace phi {
 namespace backends {
@@ -74,15 +77,6 @@ size_t CUDAPinnedMinChunkSize();
 //! Get the maximum chunk size for buddy allocator.
 size_t CUDAPinnedMaxChunkSize();
 
-//! Get the maximum allocation size for a machine.
-size_t NPUPinnedMaxAllocSize();
-
-//! Get the minimum chunk size for buddy allocator.
-size_t NPUPinnedMinChunkSize();
-
-//! Get the maximum chunk size for buddy allocator.
-size_t NPUPinnedMaxChunkSize();
-
 typedef enum {
   isa_any,
   sse42,
@@ -97,7 +91,7 @@ typedef enum {
 } cpu_isa_t;  // Instruction set architecture
 
 // May I use some instruction
-bool MayIUse(const cpu_isa_t cpu_isa);
+TEST_API bool MayIUse(const cpu_isa_t cpu_isa);
 }  // namespace cpu
 }  // namespace backends
 }  // namespace phi

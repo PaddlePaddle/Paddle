@@ -47,27 +47,37 @@ class Imikolov(Dataset):
 
         .. code-block:: python
 
-            import paddle
-            from paddle.text.datasets import Imikolov
+            >>> import paddle
+            >>> from paddle.text.datasets import Imikolov
 
-            class SimpleNet(paddle.nn.Layer):
-                def __init__(self):
-                    super().__init__()
+            >>> class SimpleNet(paddle.nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...
+            ...     def forward(self, src, trg):
+            ...         return paddle.sum(src), paddle.sum(trg)
 
-                def forward(self, src, trg):
-                    return paddle.sum(src), paddle.sum(trg)
 
+            >>> imikolov = Imikolov(mode='train', data_type='SEQ', window_size=2)
 
-            imikolov = Imikolov(mode='train', data_type='SEQ', window_size=2)
-
-            for i in range(10):
-                src, trg = imikolov[i]
-                src = paddle.to_tensor(src)
-                trg = paddle.to_tensor(trg)
-
-                model = SimpleNet()
-                src, trg = model(src, trg)
-                print(src.shape, trg.shape)
+            >>> for i in range(10):
+            ...     src, trg = imikolov[i]
+            ...     src = paddle.to_tensor(src)
+            ...     trg = paddle.to_tensor(trg)
+            ...
+            ...     model = SimpleNet()
+            ...     src, trg = model(src, trg)
+            ...     print(src.item(), trg.item())
+            2076 2075
+            2076 2075
+            675 674
+            4 3
+            464 463
+            2076 2075
+            865 864
+            2076 2075
+            2076 2075
+            1793 1792
 
     """
 
@@ -83,13 +93,13 @@ class Imikolov(Dataset):
         assert data_type.upper() in [
             'NGRAM',
             'SEQ',
-        ], "data type should be 'NGRAM', 'SEQ', but got {}".format(data_type)
+        ], f"data type should be 'NGRAM', 'SEQ', but got {data_type}"
         self.data_type = data_type.upper()
 
         assert mode.lower() in [
             'train',
             'test',
-        ], "mode should be 'train', 'test', but got {}".format(mode)
+        ], f"mode should be 'train', 'test', but got {mode}"
         self.mode = mode.lower()
 
         self.window_size = window_size
@@ -147,7 +157,7 @@ class Imikolov(Dataset):
     def _load_anno(self):
         self.data = []
         with tarfile.open(self.data_file) as tf:
-            filename = './simple-examples/data/ptb.{}.txt'.format(self.mode)
+            filename = f'./simple-examples/data/ptb.{self.mode}.txt'
             f = tf.extractfile(filename)
 
             UNK = self.word_idx['<unk>']
@@ -168,7 +178,7 @@ class Imikolov(Dataset):
                         continue
                     self.data.append((src_seq, trg_seq))
                 else:
-                    assert False, 'Unknow data type'
+                    raise AssertionError('Unknow data type')
 
     def __getitem__(self, idx):
         return tuple([np.array(d) for d in self.data[idx]])

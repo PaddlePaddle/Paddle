@@ -26,8 +26,11 @@ from paddle.static.quantization import (
     quant_config,
 )
 
-from ..auto_parallel.converter import Converter
-from ..auto_parallel.dist_attribute import OperatorDistAttr, TensorDistAttr
+from ..auto_parallel.static.converter import Converter
+from ..auto_parallel.static.dist_attribute import (
+    OperatorDistAttr,
+    TensorDistAttr,
+)
 from .pass_base import PassBase, register_pass
 
 TRANSFORM_PASS_OP_TYPES = list(
@@ -62,7 +65,6 @@ class QuantizationPass(PassBase):
         return True
 
     def _apply_single_impl(self, main_program, startup_program, context):
-
         dist_context = self.get_attr("dist_context")
         params_grads = self.get_attr("params_grads")
         mode = self.get_attr("mode")
@@ -76,7 +78,7 @@ class QuantizationPass(PassBase):
         )
 
         # 0. record the relation among blocks
-        parent_idx_dict = dict()
+        parent_idx_dict = {}
         for block in main_program.blocks:
             parent_idx_dict[block.idx] = block.parent_idx
 
@@ -300,7 +302,7 @@ class QuantizationPass(PassBase):
                     for slot_name in quant_op.desc.input_names():
                         in_name = quant_op.desc.input(slot_name)[0]
                         input_var = block._var_recursive(in_name)
-                        ref_dims_mapping = [-1]
+                        ref_dims_mapping = [-1 for i in input_var.shape]
                         if slot_name == "X":
                             continue
                         elif slot_name in ['Scale', 'ZeroPoint']:
@@ -333,7 +335,7 @@ class QuantizationPass(PassBase):
                     for slot_name in quant_op.desc.output_names():
                         output_name = quant_op.desc.output(slot_name)[0]
                         output_var = block._var_recursive(output_name)
-                        ref_dims_mapping = [-1]
+                        ref_dims_mapping = [-1 for i in output_var.shape]
                         if slot_name == "Y":
                             dist_context.set_tensor_dist_attr_for_program(
                                 output_var, consume_input_dist_attr

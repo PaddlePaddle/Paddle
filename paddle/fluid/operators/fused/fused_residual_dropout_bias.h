@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/operators/fused/fused_dropout_common.h"
+#include "paddle/phi/common/amp_type_traits.h"
 
 namespace paddle {
 namespace operators {
@@ -45,8 +46,8 @@ __forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
     OutType *dst,
     MaskType *mask,
     const bool is_test,
-    typename details::MPTypeTrait<T>::Type *mean_val,
-    typename details::MPTypeTrait<T>::Type *var_val,
+    typename phi::dtype::MPTypeTrait<T>::Type *mean_val,
+    typename phi::dtype::MPTypeTrait<T>::Type *var_val,
     Functor act_func,
     const float quant_last_in_scale = 1.0,
     const float *dequant_out_scale_data = nullptr,
@@ -61,7 +62,7 @@ __forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
   using StoreOutType = phi::AlignedVector<OutType, VecSize>;
 
   using MaskStoreT = phi::AlignedVector<MaskType, VecSize>;
-  using U = typename details::MPTypeTrait<T>::Type;
+  using U = typename phi::dtype::MPTypeTrait<T>::Type;
 
   LoadInType src_vec;
   LoadT residual_vec;

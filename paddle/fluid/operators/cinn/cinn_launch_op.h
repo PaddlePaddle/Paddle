@@ -20,18 +20,21 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include "cinn/common/target.h"
-#include "gflags/gflags.h"
+#include "paddle/cinn/common/target.h"
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #include "paddle/fluid/operators/cinn/cinn_launch_context.h"
 #include "paddle/fluid/operators/cinn/cinn_op_helper.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/phi/core/flags.h"
+#include "paddle/pir/core/program.h"
+#include "paddle/pir/core/value.h"
 
-DECLARE_bool(enable_pe_launch_cinn);
-DECLARE_bool(enable_interpretercore_launch_cinn);
+PHI_DECLARE_bool(enable_pe_launch_cinn);
+PHI_DECLARE_bool(enable_interpretercore_launch_cinn);
 namespace paddle {
 namespace operators {
 
@@ -54,9 +57,16 @@ void LaunchCinnExecution(const CinnCompiledObject& compiled_obj,
 // Set cinn FLAGS (such as FLAGS_cinn_cudnn_deterministic) with paddle's FLAGS.
 void SetCinnRuntimeFlags();
 
+// set CINN global random seed
+template <typename DeviceContext>
+void SetCinnRandomSeed();
+
+// set CINN compile target
+void SetCinnTarget(const ::cinn::common::Target& target);
+
 }  // namespace details
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class CinnLaunchOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -111,6 +121,7 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
         "Step 2. Get compilation result of the graph");
     // Step 2. Get compilation result of the graph
     auto target = details::PlaceToCinnTarget(place);
+    details::SetCinnTarget(target);
     using ClockType = std::chrono::steady_clock;
     std::chrono::time_point<ClockType> start_t, end_t;
     if (VLOG_IS_ON(1)) {
@@ -125,6 +136,11 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
           end_t - start_t);
       VLOG(1) << "Ends to compile at thread " << std::this_thread::get_id()
               << " , time cost : " << time_sec.count() << " ms";
+
+      const auto& visible_names =
+          cinn_compiled_object.launch_context->GetVisibleVarNames();
+      VLOG(1) << "These CINN variable can visible by Paddle: "
+              << string::join_strings(visible_names, ", ");
     }
     details::DebugCinnCompiledResult(cinn_compiled_object);
     auto* launch_context = cinn_compiled_object.launch_context.get();
@@ -132,6 +148,9 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     platform::RecordEvent record_event_3("Step 3. Set CINN runtime FLAGS.");
     // Step 3. Set CINN runtime FLAGS, such as FLAGS_cinn_cudnn_deterministic.
     details::SetCinnRuntimeFlags();
+
+    // set CINN global random seed
+    details::SetCinnRandomSeed<DeviceContext>();
 
     // Step 4. Execute the compiled CINN instructions by a PE or
     //         by the CINN compiled program in sequential order

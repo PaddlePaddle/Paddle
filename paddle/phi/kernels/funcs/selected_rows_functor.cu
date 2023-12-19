@@ -15,6 +15,8 @@ limitations under the License. */
 #include <set>
 #include <vector>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
@@ -76,35 +78,35 @@ struct SelectedRowsAdd<phi::GPUContext, T> {
     auto* in1_data = in1_value.data<T>();
 
     auto in1_place = input1.place();
-    PADDLE_ENFORCE_EQ(paddle::platform::is_gpu_place(in1_place),
+    PADDLE_ENFORCE_EQ(in1_place.GetType() == phi::AllocationType::GPU,
                       true,
                       phi::errors::InvalidArgument(
                           "The running environment is not on the GPU place."));
     auto in2_place = input2.place();
-    PADDLE_ENFORCE_EQ(paddle::platform::is_gpu_place(in2_place),
+    PADDLE_ENFORCE_EQ(in2_place.GetType() == phi::AllocationType::GPU,
                       true,
                       phi::errors::InvalidArgument(
                           "The running environment is not on the GPU place."));
     auto out_place = context.GetPlace();
-    PADDLE_ENFORCE_EQ(paddle::platform::is_gpu_place(out_place),
+    PADDLE_ENFORCE_EQ(out_place.GetType() == phi::AllocationType::GPU,
                       true,
                       phi::errors::InvalidArgument(
                           "The running environment is not on the GPU place."));
 
-    paddle::memory::Copy(out_place,
-                         out_data,
-                         in1_place,
-                         in1_data,
-                         in1_value.numel() * sizeof(T),
-                         context.stream());
+    memory_utils::Copy(out_place,
+                       out_data,
+                       in1_place,
+                       in1_data,
+                       in1_value.numel() * sizeof(T),
+                       context.stream());
 
     auto* in2_data = in2_value.data<T>();
-    paddle::memory::Copy(out_place,
-                         out_data + in1_value.numel(),
-                         in2_place,
-                         in2_data,
-                         in2_value.numel() * sizeof(T),
-                         context.stream());
+    memory_utils::Copy(out_place,
+                       out_data + in1_value.numel(),
+                       in2_place,
+                       in2_data,
+                       in2_value.numel() * sizeof(T),
+                       context.stream());
   }
 };
 
@@ -237,24 +239,24 @@ struct SelectedRowsAddTo<phi::GPUContext, T> {
     }
 
     auto in1_place = input1.place();
-    PADDLE_ENFORCE_EQ(paddle::platform::is_gpu_place(in1_place),
+    PADDLE_ENFORCE_EQ(in1_place.GetType() == phi::AllocationType::GPU,
                       true,
                       phi::errors::InvalidArgument(
                           "The running environment is not on the GPU place."));
     auto in2_place = input2->place();
-    PADDLE_ENFORCE_EQ(paddle::platform::is_gpu_place(in1_place),
+    PADDLE_ENFORCE_EQ(in1_place.GetType() == phi::AllocationType::GPU,
                       true,
                       phi::errors::InvalidArgument(
                           "The running environment is not on the GPU place."));
 
     auto* in1_data = in1_value.data<T>();
     auto* in2_data = in2_value->data<T>();
-    paddle::memory::Copy(in2_place,
-                         in2_data + input2_offset,
-                         in1_place,
-                         in1_data,
-                         in1_value.numel() * sizeof(T),
-                         context.stream());
+    memory_utils::Copy(in2_place,
+                       in2_data + input2_offset,
+                       in1_place,
+                       in1_data,
+                       in1_value.numel() * sizeof(T),
+                       context.stream());
   }
 };
 
@@ -333,6 +335,10 @@ template struct SelectedRowsAddToTensor<phi::GPUContext, double>;
 template struct SelectedRowsAddToTensor<phi::GPUContext, int>;
 template struct SelectedRowsAddToTensor<phi::GPUContext, int64_t>;
 template struct SelectedRowsAddToTensor<phi::GPUContext, phi::dtype::float16>;
+template struct SelectedRowsAddToTensor<phi::GPUContext,
+                                        phi::dtype::complex<float>>;
+template struct SelectedRowsAddToTensor<phi::GPUContext,
+                                        phi::dtype::complex<double>>;
 
 namespace scatter {
 
@@ -393,8 +399,8 @@ struct MergeAddImpl {
     out.set_rows(merge_rows);
     out.set_height(input.height());
     DenseTensor* out_tensor = out.mutable_value();
-    out_tensor->Resize(
-        phi::make_ddim({static_cast<int64_t>(merge_rows.size()), input_width}));
+    out_tensor->Resize(common::make_ddim(
+        {static_cast<int64_t>(merge_rows.size()), input_width}));
     context.template Alloc<T>(out_tensor);
 
     phi::funcs::SetConstant<DeviceContext, T> constant_functor;
@@ -465,8 +471,8 @@ struct MergeAddImpl {
     out.set_height(input_height);
 
     DenseTensor* out_tensor = out.mutable_value();
-    out_tensor->Resize(
-        phi::make_ddim({static_cast<int64_t>(merge_rows.size()), input_width}));
+    out_tensor->Resize(common::make_ddim(
+        {static_cast<int64_t>(merge_rows.size()), input_width}));
     context.template Alloc<T>(out_tensor);
 
     phi::funcs::SetConstant<DeviceContext, T> constant_functor;

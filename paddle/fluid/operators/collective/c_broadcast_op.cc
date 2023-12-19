@@ -35,17 +35,14 @@ class CBroadcastOp : public framework::OperatorWithKernel {
 
 class CBroadcastOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "(Tensor) tensor to be broadcasted.");
     AddOutput("Out", "(Tensor) the result of broadcast.");
     AddAttr<int>("ring_id", "(int default 0) nccl communication ring id.")
         .SetDefault(0);
     AddAttr<int>("root", "(int default 0) root id for broadcasting.")
         .SetDefault(0);
-#if defined(PADDLE_WITH_ASCEND_CL)
-    AddAttr<std::string>("tag", "(string default tag) tag for broadcasting.")
-        .SetDefault("tag");
-#endif
+
     AddAttr<bool>(
         "use_calc_stream",
         "(bool default false) eject CUDA operations to calculation stream.")
@@ -68,9 +65,12 @@ REGISTER_OP_WITHOUT_GRADIENT(c_broadcast,
                              ops::CBroadcastOp,
                              ops::CBroadcastOpMaker);
 
-REGISTER_OP_CPU_KERNEL(c_broadcast,
-                       ops::CBroadcastOpCPUKernel<float>,
-                       ops::CBroadcastOpCPUKernel<double>,
-                       ops::CBroadcastOpCPUKernel<int>,
-                       ops::CBroadcastOpCPUKernel<int64_t>,
-                       ops::CBroadcastOpCPUKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(c_broadcast,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::CBroadcastOpCPUKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

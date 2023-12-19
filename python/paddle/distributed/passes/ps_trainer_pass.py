@@ -17,7 +17,7 @@ import os
 from _collections import defaultdict
 
 import paddle
-import paddle.fluid.framework as framework
+from paddle.base import framework
 from paddle.distributed.passes.pass_base import PassBase, register_pass
 from paddle.framework import core
 from paddle.static import Parameter, Program
@@ -277,7 +277,7 @@ class DistributedOpsPass(PassBase):
                     if input_indexes[i] == 1:
                         move_ops.append((global_block.ops[i], i))
                 for i, op in enumerate(move_ops):
-                    queue = list()
+                    queue = []
                     visited = set()
                     queue.append(op[1])
                     visited.add(op[0])
@@ -334,11 +334,11 @@ class DistributedOpsPass(PassBase):
                     assert global_block.desc.op(i) == global_block.ops[i].desc
 
         if attrs['use_ps_gpu']:
-            gpups_inputs_idxs = list()
-            gpups_outputs_idxs = list()
-            gpups_inputs = list()
-            gpups_outputs = list()
-            gpups_w_size = list()
+            gpups_inputs_idxs = []
+            gpups_outputs_idxs = []
+            gpups_inputs = []
+            gpups_outputs = []
+            gpups_w_size = []
             gpups_min_distributed_idx = len(_program.global_block().ops) + 1
 
         for param, ops in pull_sparse_ops.items():
@@ -405,7 +405,7 @@ class DistributedOpsPass(PassBase):
                 gpups_outputs.extend(outputs)
                 gpups_w_size.extend([w.shape[1]] * len(inputs))
                 gpups_min_distributed_idx = min(
-                    min(op_idxs), gpups_min_distributed_idx
+                    *op_idxs, gpups_min_distributed_idx
                 )
                 continue
 
@@ -466,7 +466,7 @@ class DistributedOpsPass(PassBase):
             PSGPU = core.PSGPU()
             try:
                 gpu_slot = [int(var.name) for var in gpups_inputs]
-            except (ValueError):
+            except ValueError:
                 raise ValueError(
                     "The slot name in gpups Should be able to convert to integer."
                 )
@@ -612,7 +612,7 @@ class DeleteOptimizesPass(PassBase):
             main_program, remote_optimize_ops, local_optimize_ops
         )
 
-        if hasattr(attrs['origin_main_program'], 'lr_sheduler'):
+        if hasattr(attrs['origin_main_program'], 'lr_scheduler'):
             self._add_lr_var(main_program, attrs)
 
 
@@ -773,6 +773,9 @@ class PsGpuPass(PassBase):
         optimize_op_role_vars = []
         optimize_need_delete_vars = []
         for op in get_optimize_ops(program):
+            # print("op=%s, input_names=%s" % (op, op.input_names))
+            if "Param" not in op.input_names:
+                continue
             for name in op.input("Param"):
                 if name in embedding_w:
                     optimize_op_role_vars.extend(op.attr("op_role_var"))
@@ -922,7 +925,6 @@ class SplitHeterWorkerOpsPass(PassBase):
         first_op_index_fp = len(heter_block.ops)
 
         if stage_id < len(program_block_ops_list):
-
             heter_block_bp = heter_program._create_block(pre_block_idx)
             optimizer_block.append(heter_block_bp)
 
@@ -1370,7 +1372,7 @@ class SplitFlOpsPass(PassBase):
         return party_program_map
 
     def _insert_partA_communicate_op(self, block, idx):
-        comm_info = "forward_joint_{}_{}@fl_ps".format(1, 2)
+        comm_info = f"forward_joint_{1}_{2}@fl_ps"
         block._insert_op(
             idx,
             type='send_and_recv',
@@ -1392,10 +1394,9 @@ class SplitFlOpsPass(PassBase):
                 RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
             },
         )
-        return
 
     def _insert_partB_communicate_op(self, block, idx):
-        comm_info = "backward_joint_{}_{}@fl_ps".format(2, 1)
+        comm_info = f"backward_joint_{2}_{1}@fl_ps"
         block._insert_op(
             idx,
             type='send_and_recv',
@@ -1417,7 +1418,6 @@ class SplitFlOpsPass(PassBase):
                 RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
             },
         )
-        return
 
     def _create_var_for_block(self, vars, block):
         for var in vars:
@@ -1523,7 +1523,7 @@ class SplitFlOpsPass(PassBase):
             bp_op_list + push_sparse_op_list, self.partA_program, 1
         )
         # 2.1. insert partA recv op
-        block_input_flag = "backward_joint_{}_{}@fl_ps".format(2, 1)
+        block_input_flag = f"backward_joint_{2}_{1}@fl_ps"
         grad_to_block_id = block_input_flag + ":" + str(second_block.idx)
         attrs = {
             "message_to_block_id": [grad_to_block_id],
@@ -1584,7 +1584,7 @@ class SplitFlOpsPass(PassBase):
         add_send_op(self.ori_main_program, second_block, dense_grad_vars)
 
         # 3. insert partB recv op
-        block_input_flag = "forward_joint_{}_{}@fl_ps".format(1, 2)
+        block_input_flag = f"forward_joint_{1}_{2}@fl_ps"
         grad_to_block_id = block_input_flag + ":" + str(second_block.idx)
         attrs = {
             "message_to_block_id": [grad_to_block_id],

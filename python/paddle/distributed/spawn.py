@@ -18,6 +18,9 @@ import signal
 import sys
 import warnings
 
+# deprecated module import
+# (TODO: GhostScreaming) It will be removed later.
+from paddle.base import core
 from paddle.device import get_device
 from paddle.distributed.cloud_utils import (
     _get_trainers_num,
@@ -35,10 +38,6 @@ from paddle.distributed.utils.launch_utils import (
     _print_arguments,
     get_host_name_ip,
 )
-
-# deprecated module import
-# (TODO: GhostScreaming) It will be removed later.
-from paddle.fluid import core
 from paddle.framework import set_flags
 
 __all__ = []
@@ -76,7 +75,6 @@ def _options_valid_check(options):
         'ips',
         'gpus',
         'xpus',
-        'mlus',
         'print_config',
         'backend',
     ]
@@ -109,15 +107,13 @@ def _get_default_nprocs():
         return core.get_cuda_device_count()
     elif 'xpu' in device:
         return core.get_xpu_device_count()
-    elif 'mlu' in device:
-        return core.get_mlu_device_count()
     elif 'cpu' in device:
         return multiprocessing.cpu_count()
+    elif device in core.get_available_custom_device():
+        return core.get_custom_device_count(device.split(":")[0])
     else:
         raise RuntimeError(
-            "`paddle.distributed.spawn` does not support parallel training on device `{}` now.".format(
-                device
-            )
+            f"`paddle.distributed.spawn` does not support parallel training on device `{device}` now."
         )
 
 
@@ -127,15 +123,13 @@ def _get_default_backend():
         return 'nccl'
     elif 'xpu' in device:
         return 'bkcl'
-    elif 'mlu' in device:
-        return 'cncl'
     elif 'cpu' in device:
         return 'gloo'
+    elif device in core.get_available_custom_device():
+        return 'xccl'
     else:
         raise RuntimeError(
-            "`paddle.distributed.spawn` does not support parallel training on device `{}` now.".format(
-                device
-            )
+            f"`paddle.distributed.spawn` does not support parallel training on device `{device}` now."
         )
 
 
@@ -216,9 +210,10 @@ def _get_subprocess_env_list(nprocs, options):
             for card_id in selected_device_list:
                 if card_id not in env_devices_list:
                     raise ValueError(
-                        "The selected gpu card %s cannot found in "
-                        "CUDA_VISIBLE_DEVICES (%s)."
-                        % (card_id, ",".join(env_devices_list))
+                        "The selected gpu card {} cannot found in "
+                        "CUDA_VISIBLE_DEVICES ({}).".format(
+                            card_id, ",".join(env_devices_list)
+                        )
                     )
 
     elif options['backend'] == 'bkcl':
@@ -256,48 +251,10 @@ def _get_subprocess_env_list(nprocs, options):
             for card_id in selected_device_list:
                 if card_id not in env_devices_list:
                     raise ValueError(
-                        "The selected xpu card %s cannot found in "
-                        "XPU_VISIBLE_DEVICES (%s)."
-                        % (card_id, ",".join(env_devices_list))
-                    )
-    elif options['backend'] == 'cncl':
-        args.selected_devices = options.get('mlus', None)
-        if args.selected_devices is None:
-            args.selected_devices = options.get('selected_devices', None)
-        env_devices = os.getenv("MLU_VISIBLE_DEVICES", None)
-        if env_devices is None or env_devices == "":
-            env_devices_list = [
-                str(x) for x in range(core.get_mlu_device_count())
-            ]
-        else:
-            env_devices_list = env_devices.split(',')
-        if args.selected_devices is None:
-            if len(env_devices_list) < nprocs:
-                raise RuntimeError(
-                    "the number of visible devices(%d) is less than the number "
-                    "of spawn processes(%d), please ensure that the correct "
-                    "`nprocs` argument is passed or the environment variable "
-                    "`MLU_VISIBLE_DEVICES` is correctly configured."
-                    % (len(env_devices_list), nprocs)
-                )
-            args.selected_devices = ",".join(
-                [str(env_devices_list[x]) for x in range(0, nprocs)]
-            )
-        else:
-            selected_device_list = args.selected_devices.split(',')
-            if len(selected_device_list) != nprocs:
-                raise ValueError(
-                    "The number of selected devices(%s) is not equal to "
-                    "the number of spawn processes(%d), please ensure that the "
-                    "correct `nprocs` and `mlus` arguments are passed."
-                    % (len(selected_device_list), nprocs)
-                )
-            for card_id in selected_device_list:
-                if card_id not in env_devices_list:
-                    raise ValueError(
-                        "The selected mlu card %s cannot found in "
-                        "MLU_VISIBLE_DEVICES (%s)."
-                        % (card_id, ",".join(env_devices_list))
+                        "The selected xpu card {} cannot found in "
+                        "XPU_VISIBLE_DEVICES ({}).".format(
+                            card_id, ",".join(env_devices_list)
+                        )
                     )
     elif options['backend'] == 'gloo':
         # TODO check gpu / xpu flag must not exist
@@ -317,6 +274,29 @@ def _get_subprocess_env_list(nprocs, options):
         assert (
             _get_trainers_num() == 1
         ), "CPUONLY spawn doesn't support multi-trainer"
+    elif options['backend'] == 'xccl':
+        args.selected_devices = None
+        custom_device_name = core.get_all_custom_device_type()[0]
+        env_devices = os.getenv(f"FLAGS_selected_{custom_device_name}s", None)
+        if env_devices is None or env_devices == "":
+            env_devices_list = [
+                str(x)
+                for x in range(core.get_custom_device_count(custom_device_name))
+            ]
+        else:
+            env_devices_list = env_devices.split(',')
+
+        if len(env_devices_list) < nprocs:
+            raise RuntimeError(
+                "the number of visible devices(%d) is less than the number "
+                "of spawn processes(%d), please ensure that the correct "
+                "`nprocs` argument is passed or the environment variable "
+                "`FLAGS_selected_%ss` is correctly configured."
+                % (len(env_devices_list), nprocs, custom_device_name)
+            )
+        args.selected_devices = ",".join(
+            [str(env_devices_list[x]) for x in range(0, nprocs)]
+        )
 
     # set other inner args
     args.node_ip = options.get('node_ip', None)
@@ -331,7 +311,7 @@ def _get_subprocess_env_list(nprocs, options):
 
     # get cluster and pod config
     if options['backend'] == 'gloo':
-        devices_per_proc = [x for x in range(0, nprocs)]
+        devices_per_proc = list(range(0, nprocs))
         cluster, pod = get_cluster_from_args(
             args, DeviceMode.CPU, devices_per_proc
         )
@@ -373,8 +353,6 @@ def _set_trainer_env(env_dict, backend):
         set_flags({'FLAGS_selected_gpus': env_dict['FLAGS_selected_gpus']})
     elif backend == 'bkcl':
         set_flags({'FLAGS_selected_xpus': env_dict['FLAGS_selected_xpus']})
-    elif backend == 'cncl':
-        set_flags({'FLAGS_selected_mlus': env_dict['FLAGS_selected_mlus']})
     else:
         # NOTE(xiongkun) why not raise Error ?
         # So far, we added support for CPU parallel, and will be applied when paddle is not
@@ -474,9 +452,9 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
     Start multiple processes with ``spawn`` method for parallel training.
 
     .. note::
-        ``spawn`` now only supports GPU or XPU or MLU collective mode. The collective mode
-        of GPU and XPU and MLU cannot be started at the same time, so the option `gpus` and
-        `xpus` and 'mlus' cannot be configured at the same time.
+        ``spawn`` now only supports GPU or XPU collective mode. The collective mode
+        of GPU and XPU cannot be started at the same time, so the option `gpus` and
+        `xpus` cannot be configured at the same time.
 
     Args:
         func (function): The target function is called by spawned process.
@@ -503,8 +481,6 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
             selected gpus, such as "0,1,2,3". Default: None;
             (3) xpus (string): The training process will run on the
             selected xpus, such as "0,1,2,3". Default: None;
-            (4) mlus (string): The training process will run on the
-            selected mlus, such as "0,1,2,3". Default: None;
             (5) ips (string): Paddle cluster nodes ips, such as
             "192.168.0.16,192.168.0.17". Default: "127.0.0.1" .
 
@@ -514,79 +490,74 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn as nn
-            import paddle.optimizer as opt
-            import paddle.distributed as dist
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> import paddle
+            >>> import paddle.nn as nn
+            >>> import paddle.optimizer as opt
+            >>> import paddle.distributed as dist
 
-            class LinearNet(nn.Layer):
-                def __init__(self):
-                    super().__init__()
-                    self._linear1 = nn.Linear(10, 10)
-                    self._linear2 = nn.Linear(10, 1)
+            >>> class LinearNet(nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...         self._linear1 = nn.Linear(10, 10)
+            ...         self._linear2 = nn.Linear(10, 1)
+            ...     def forward(self, x):
+            ...         return self._linear2(self._linear1(x))
 
-                def forward(self, x):
-                    return self._linear2(self._linear1(x))
+            >>> def train(print_result=False):
+            ...     # 1. initialize parallel environment
+            ...     group = dist.init_parallel_env()
+            ...     process_group = group.process_group if group else None
+            ...     # 2. create data parallel layer & optimizer
+            ...     layer = LinearNet()
+            ...     dp_layer = paddle.DataParallel(layer, group = process_group)
+            ...     loss_fn = nn.MSELoss()
+            ...     adam = opt.Adam(
+            ...         learning_rate=0.001, parameters=dp_layer.parameters())
+            ...     # 3. run layer
+            ...     inputs = paddle.randn([10, 10], 'float32')
+            ...     outputs = dp_layer(inputs)
+            ...     labels = paddle.randn([10, 1], 'float32')
+            ...     loss = loss_fn(outputs, labels)
+            ...     if print_result is True:
+            ...         print("loss:", loss.numpy())
+            ...     loss.backward()
+            ...     adam.step()
+            ...     adam.clear_grad()
 
-            def train(print_result=False):
-                # 1. initialize parallel environment
-                group = dist.init_parallel_env()
-                process_group = group.process_group if group else None
+            >>> # Usage 1: only pass function.
+            >>> # If your training method no need any argument, and
+            >>> # use all visible devices for parallel training.
+            >>> if __name__ == '__main__':
+            ...     dist.spawn(train)
 
-                # 2. create data parallel layer & optimizer
-                layer = LinearNet()
-                dp_layer = paddle.DataParallel(layer, group = process_group)
+            >>> # Usage 2: pass function and arguments.
+            >>> # If your training method need some arguments, and
+            >>> # use all visible devices for parallel training.
+            >>> if __name__ == '__main__':
+            ...     dist.spawn(train, args=(True,))
 
-                loss_fn = nn.MSELoss()
-                adam = opt.Adam(
-                    learning_rate=0.001, parameters=dp_layer.parameters())
+            >>> # Usage 3: pass function, arguments and nprocs.
+            >>> # If your training method need some arguments, and
+            >>> # only use part of visible devices for parallel training.
+            >>> # If your machine hold 8 cards {0,1,2,3,4,5,6,7},
+            >>> # this case will use cards {0,1}; If you set
+            >>> # CUDA_VISIBLE_DEVICES=4,5,6,7, this case will use
+            >>> # cards {4,5}
+            >>> if __name__ == '__main__':
+            ...     dist.spawn(train, args=(True,), nprocs=2)
 
-                # 3. run layer
-                inputs = paddle.randn([10, 10], 'float32')
-                outputs = dp_layer(inputs)
-                labels = paddle.randn([10, 1], 'float32')
-                loss = loss_fn(outputs, labels)
+            >>> # Usage 4: pass function, arguments, nprocs and gpus.
+            >>> # If your training method need some arguments, and
+            >>> # only use part of visible devices for parallel training,
+            >>> # but you can't set your machine's environment variable
+            >>> # CUDA_VISIBLE_DEVICES, such as it is None or all cards
+            >>> # {0,1,2,3,4,5,6,7}, you can pass `gpus` to
+            >>> # select the GPU cards you want to use. For example,
+            >>> # this case will use cards {4,5} if your machine hold 8 cards.
+            >>> if __name__ == '__main__':
+            ...     dist.spawn(train, args=(True,), nprocs=2, gpus='4,5')
 
-                if print_result is True:
-                    print("loss:", loss.numpy())
-
-                loss.backward()
-
-                adam.step()
-                adam.clear_grad()
-
-            # Usage 1: only pass function.
-            # If your training method no need any argument, and
-            # use all visible devices for parallel training.
-            if __name__ == '__main__':
-                dist.spawn(train)
-
-            # Usage 2: pass function and arguments.
-            # If your training method need some arguments, and
-            # use all visible devices for parallel training.
-            if __name__ == '__main__':
-                dist.spawn(train, args=(True,))
-
-            # Usage 3: pass function, arguments and nprocs.
-            # If your training method need some arguments, and
-            # only use part of visible devices for parallel training.
-            # If your machine hold 8 cards {0,1,2,3,4,5,6,7},
-            # this case will use cards {0,1}; If you set
-            # CUDA_VISIBLE_DEVICES=4,5,6,7, this case will use
-            # cards {4,5}
-            if __name__ == '__main__':
-                dist.spawn(train, args=(True,), nprocs=2)
-
-            # Usage 4: pass function, arguments, nprocs and gpus.
-            # If your training method need some arguments, and
-            # only use part of visible devices for parallel training,
-            # but you can't set your machine's environment variable
-            # CUDA_VISIBLE_DEVICES, such as it is None or all cards
-            # {0,1,2,3,4,5,6,7}, you can pass `gpus` to
-            # select the GPU cards you want to use. For example,
-            # this case will use cards {4,5} if your machine hold 8 cards.
-            if __name__ == '__main__':
-                dist.spawn(train, args=(True,), nprocs=2, gpus='4,5')
     """
     # Give an error hint when the users enter a configuration option
     # that does not exist

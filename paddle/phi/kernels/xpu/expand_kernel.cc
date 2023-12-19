@@ -27,7 +27,7 @@ void ExpandKernel(const Context& ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto in_dims = x.dims();
   auto expand_shape = shape.GetData();
-  auto vec_in_dims = phi::vectorize<int>(in_dims);
+  auto vec_in_dims = common::vectorize<int>(in_dims);
   auto diff = expand_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   std::vector<int> final_expand_shape(vec_in_dims.size());
@@ -78,7 +78,7 @@ void ExpandKernel(const Context& ctx,
   auto rank = x.dims().size();
   PADDLE_ENFORCE_GE(
       rank,
-      1,
+      0,
       phi::errors::InvalidArgument(
           "The rank of the input 'X' for expand_v2_npu op must be positive, "
           "but the value received is %d.",
@@ -94,14 +94,17 @@ void ExpandKernel(const Context& ctx,
           shape_size,
           rank));
 
-  DDim out_dims = phi::make_ddim(final_expand_shape);
+  DDim out_dims = common::make_ddim(final_expand_shape);
   out->Resize(out_dims);
   ctx.template Alloc<T>(out);
   auto& x_shape = vec_in_dims;
-  auto out_shape = phi::vectorize<int>(out_dims);
+  auto out_shape = common::vectorize<int>(out_dims);
+  if (shape_size == 0) {
+    x_shape = {1};
+    out_shape = {1};
+  }
 
   int r = XPU_SUCCESS;
-
   if (std::is_same<T, bool>::value) {
     auto x_data = reinterpret_cast<const int8_t*>(x.data<T>());
     auto out_data = reinterpret_cast<int8_t*>(out->data<T>());

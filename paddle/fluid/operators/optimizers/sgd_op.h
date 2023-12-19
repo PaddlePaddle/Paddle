@@ -18,8 +18,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/var_type_traits.h"
-#include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/phi/kernels/funcs/jit/kernels.h"
 
 namespace paddle {
 namespace operators {
@@ -43,16 +43,16 @@ struct sgd_dense_param_kernel<T,
     const auto *grad = ctx.Input<phi::DenseTensor>("Grad");
 
     const auto sz = param_out->numel();
-    jit::sgd_attr_t attr(1, sz, 1, sz, 1);
+    phi::jit::sgd_attr_t attr(1, sz, 1, sz, 1);
     const T *lr = learning_rate->data<T>();
     const T *param_data = param->data<T>();
     const T *grad_data = grad->data<T>();
     int64_t rows_idx = 0;
     T *out_data = param_out->mutable_data<T>(ctx.GetPlace());
 
-    auto sgd =
-        jit::KernelFuncs<jit::SgdTuple<T>, platform::CPUPlace>::Cache().At(
-            attr);
+    auto sgd = phi::jit::KernelFuncs<phi::jit::SgdTuple<T>,
+                                     platform::CPUPlace>::Cache()
+                   .At(attr);
     sgd(lr, param_data, grad_data, &rows_idx, out_data, &attr);
   }
 };
@@ -76,16 +76,16 @@ struct sgd_dense_param_kernel<T,
     const int64_t *rows_data = grad_rows.data();
     T *out_data = param_out->mutable_data<T>(ctx.GetPlace());
 
-    jit::sgd_attr_t attr;
+    phi::jit::sgd_attr_t attr;
     attr.param_height = param_out->dims()[0];
     attr.param_width = param_out->numel() / attr.param_height;
     attr.grad_height = grad_rows.size();  // note: it is not grad->height()
     attr.grad_width = grad_value.numel() / attr.grad_height;
     attr.selected_rows_size = grad_rows.size();
 
-    auto sgd =
-        jit::KernelFuncs<jit::SgdTuple<T>, platform::CPUPlace>::Cache().At(
-            attr);
+    auto sgd = phi::jit::KernelFuncs<phi::jit::SgdTuple<T>,
+                                     platform::CPUPlace>::Cache()
+                   .At(attr);
     sgd(lr, param_data, grad_data, rows_data, out_data, &attr);
   }
 };

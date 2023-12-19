@@ -14,18 +14,14 @@
 
 #include <string>
 
-#include "paddle/phi/backends/onednn/onednn_reuse.h"
+#include "paddle/phi/backends/onednn/matmul_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 
-using dnnl::engine;
-using dnnl::inner_product_forward;
 using dnnl::memory;
-using dnnl::prop_kind;
-using dnnl::stream;
-using phi::ReshapeToMatrix;
 
 namespace phi {
+namespace fusion {
 
 template <typename XT, typename YT, typename OT>
 class FusedMatmulOneDNNHandler
@@ -113,7 +109,8 @@ class FusedMatmulOneDNNHandler
 
     // TODO(jczaja): Why not for int8??
     if (!funcs::is_int8<OT>() && is_output_fused) {
-      out_strides = FakeTransposeStrides(out_ddims);
+      std::vector<int> transpose_axis = {0, 2, 1, 3};
+      out_strides = phi::funcs::FakeTransposeStrides(out_ddims, transpose_axis);
     }
 
     auto x_md = memory::desc(x_dims, funcs::OneDNNGetDataType<XT>(), x_strides);
@@ -132,94 +129,124 @@ class FusedMatmulOneDNNHandler
                                                 scale_y,
                                                 scale_in_eltwise,
                                                 scale_out,
-                                                force_fp32_output);
+                                                force_fp32_output,
+                                                out_ddims);
 
     this->AcquireForwardPrimitiveDescriptor(matmul_attrs, x_md, y_md, out_md);
   }
 
-  float ComputeOutputScale(float matmul_alpha,
-                           const float scale_x,
-                           const float scale_y,
-                           const float scale_in_eltwise,
-                           const float scale_out,
-                           const bool force_fp32_output) {
-    float f_scale_out = force_fp32_output ? 1.0f : scale_out;
-    matmul_alpha *= f_scale_out / (scale_x * scale_y);
-    return matmul_alpha;
-  }
-
-  dnnl::primitive_attr CreateMatmulAttrs(const OneDNNContext &dev_ctx,
-                                         const DenseTensor *residual_data,
-                                         const float matmul_alpha,
-                                         const std::string &fuse_activation,
-                                         const float fuse_alpha,
-                                         const float fuse_beta,
-                                         const float fused_output_scale,
-                                         const float scale_x,
-                                         const float scale_y,
-                                         const float scale_in_eltwise,
-                                         const float scale_out,
-                                         const bool force_fp32_output) {
+  dnnl::primitive_attr CreateMatmulAttrs(
+      const OneDNNContext &dev_ctx,
+      const DenseTensor *residual_data,
+      const float matmul_alpha,
+      const std::string &fuse_activation,
+      const float fuse_alpha,
+      const float fuse_beta,
+      const float fused_output_scale,
+      const float scale_x,
+      const float scale_y,
+      const float scale_in_eltwise,
+      const float scale_out,
+      const bool force_fp32_output,
+      const std::vector<int64_t> &out_ddims) {
     dnnl::primitive_attr matmul_attrs;
     dnnl::post_ops post_operations;
 
-    float computed_scale_out = ComputeOutputScale(matmul_alpha,
-                                                  scale_x,
-                                                  scale_y,
-                                                  scale_in_eltwise,
-                                                  scale_out,
-                                                  force_fp32_output);
-    if (computed_scale_out != 1.0f) {
-      matmul_attrs.set_output_scales(0, {computed_scale_out});
+    if (scale_x != 1.0f) {
+      matmul_attrs.set_scales_mask(DNNL_ARG_SRC, 0);
+    }
+
+    // alpha can be folded to weight scale
+    if (scale_y != 1.0f || matmul_alpha != 1.0f) {
+      matmul_attrs.set_scales_mask(DNNL_ARG_WEIGHTS, 0);
+    }
+
+    if (!force_fp32_output && scale_out != 1.0f) {
+      matmul_attrs.set_scales_mask(DNNL_ARG_DST, 0);
     }
 
     if (residual_data) {
+      // fill 1 in the front of adesc, to make residual ndims to be same as dst
+      // dims
+      int dst_size = out_ddims.size();
+      int origin_size = residual_data->mem_desc().get_ndims();
+      auto reshaped_md = residual_data->mem_desc();
+      dnnl::memory::dims expanded_dims = residual_data->mem_desc().get_dims();
+      if (origin_size < dst_size) {
+        expanded_dims.insert(expanded_dims.begin(), dst_size - origin_size, 1);
+        reshaped_md = residual_data->mem_desc().reshape(expanded_dims);
+      }
+
       auto residual_data_tz = vectorize(residual_data->dims());
-      auto residual_data_md = memory::desc(residual_data_tz,
-                                           funcs::OneDNNGetDataType<OT>(),
-                                           dnnl::memory::format_tag::any);
+      auto chosen_memory_format = funcs::OneDNNMemoryFormat::any;
+      dnnl::memory::desc residual_data_md;
+      if (out_ddims.size() > 0 && out_ddims[0] > 1 &&
+          residual_data_tz.size() == 4 && residual_data_tz[0] == 1 &&
+          residual_data_tz[1] > 1 && residual_data_tz[2] > 1 &&
+          residual_data_tz[3] > 1) {
+        chosen_memory_format = funcs::OneDNNMemoryFormat::nchw;
+        residual_data_md = memory::desc(
+            out_ddims, funcs::OneDNNGetDataType<OT>(), chosen_memory_format);
+      } else {
+        residual_data_md = reshaped_md;
+      }
+
       post_operations.append_binary(dnnl::algorithm::binary_add,
                                     residual_data_md);
       if (scale_in_eltwise != 0.0f) {
-        float sum_scale = scale_out / scale_in_eltwise;
+        float sum_scale = 1.f / scale_in_eltwise;
         post_operations.append_sum(sum_scale);
       }
     }
 
     funcs::AppendActivation(
-        dev_ctx, post_operations, 1.0f, fuse_activation, fuse_alpha, fuse_beta);
+        dev_ctx, post_operations, fuse_activation, fuse_alpha, fuse_beta);
 
     if (fused_output_scale != 1.0f) {
       post_operations.append_eltwise(
-          1.0, dnnl::algorithm::eltwise_linear, fused_output_scale, 0.0f);
+          dnnl::algorithm::eltwise_linear, fused_output_scale, 0.0f);
     }
 
     matmul_attrs.set_post_ops(post_operations);
     return matmul_attrs;
   }
 
-  std::vector<int64_t> FakeTransposeStrides(
-      const std::vector<int64_t> &matmul_out_dims) const {
-    // fuse matmul_v2 + transpose + reshape guarantees that output is 4D and
-    // transpose axis are: {0, 2, 1, 3}
-    std::vector<int64_t> transpose_axis = {0, 2, 1, 3};
-    std::vector<int64_t> fake_strides(transpose_axis.size());
-    int ndims = static_cast<int>(transpose_axis.size());
-
-    int total_stride = 1;
-
-    for (int i = ndims - 1; i >= 0; --i) {
-      fake_strides[transpose_axis[i]] = total_stride;
-      total_stride *= matmul_out_dims[transpose_axis[i]];
-    }
-
-    return fake_strides;
-  }
-
   std::shared_ptr<memory> AcquireWeightsMemory(const DenseTensor *input) {
     const YT *input_data = input->data<YT>();
     return this->AcquireMemoryFromPrimitive(
         this->fwd_pd_->weights_desc(), funcs::to_void_cast<YT>(input_data));
+  }
+
+  std::shared_ptr<dnnl::memory> AcquireSrcMemoryResidual(
+      const DenseTensor *input) {
+    const XT *input_data = input->data<XT>();
+    auto residual_memory_p = this->AcquireMemoryFromPrimitive(
+        input->mem_desc(), phi::funcs::to_void_cast<XT>(input_data));
+    return residual_memory_p;
+  }
+
+  std::shared_ptr<dnnl::memory> AcquireSrcMemoryStride(
+      const DenseTensor *input) {
+    const XT *input_data = input->data<XT>();
+    std::shared_ptr<dnnl::memory> src_mem =
+        this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc());
+    auto residual_vec = vectorize(input->dims());
+    int IC = residual_vec[1];
+    int IH = residual_vec[2];
+    int IW = residual_vec[3];
+    size_t size = this->fwd_pd_->dst_desc().get_size() / sizeof(XT);
+    XT *dst = static_cast<XT *>(src_mem->get_data_handle());
+
+#if defined(_OPENMP)
+#pragma omp parallel for
+#endif
+    for (size_t i = 0; i < size; ++i) {
+      auto mod_i =
+          static_cast<int>(i - floor(i / (IC * IH * IW)) * (IC * IH * IW));
+      // Make 1*C*H*W to N*C*H*W to avoid broadcast overhead
+      dst[i] = input_data[mod_i];
+    }
+    return src_mem;
   }
 
   std::shared_ptr<dnnl::memory> AcquireDstMemory(const OneDNNContext &dev_ctx,
@@ -235,80 +262,6 @@ class FusedMatmulOneDNNHandler
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr);
   }
 };
-
-static DDim RowMatrixDimsFromVector(const DDim &x_dim) {
-  return x_dim.size() > 1 ? x_dim : make_ddim({1, x_dim[0]});
-}
-
-static DDim ColumnMatrixDimsFromVector(const DDim &y_dim) {
-  return y_dim.size() > 1 ? y_dim : make_ddim({y_dim[0], 1});
-}
-
-static std::vector<int64_t> TransposeAxis(const std::vector<int64_t> &x,
-                                          const std::vector<int> &axis) {
-  size_t in_rank = x.size();
-  size_t axis_size = axis.size();
-
-  auto axis_set = std::set<int>(axis.begin(), axis.end());
-  PADDLE_ENFORCE_EQ(axis_set.size(),
-                    axis_size,
-                    phi::errors::InvalidArgument(
-                        "In an axis array, elements must be unique."));
-
-  PADDLE_ENFORCE_EQ(
-      in_rank,
-      axis_size,
-      phi::errors::InvalidArgument("The input dimension's size "
-                                   "should be equal to the axis's size. "
-                                   "But received dimension is %d, "
-                                   "axis's size is %d",
-                                   in_rank,
-                                   axis_size));
-
-  PADDLE_ENFORCE_LT(*std::max_element(axis.begin(), axis.end()),
-                    axis_size,
-                    phi::errors::InvalidArgument(
-                        "Axis values must be ranging from 0 to (dims - 1)."));
-
-  std::vector<int64_t> new_x(x.size());
-  for (size_t i = 0; i < x.size(); i++) {
-    new_x[i] = x[axis[i]];
-  }
-  return new_x;
-}
-
-static std::vector<int64_t> GetInputStrides(const std::string input_name,
-                                            const DDim &input_dims,
-                                            std::vector<int> shape,
-                                            std::vector<int> axis,
-                                            const bool transpose_input) {
-  auto new_dims = input_dims;
-  if (!shape.empty() && !axis.empty()) {
-    new_dims = input_dims.reshape(shape).transpose(axis);
-  }
-
-  auto &MatrixDimsFromVector =
-      input_name == "X" ? RowMatrixDimsFromVector : ColumnMatrixDimsFromVector;
-  funcs::MatDescriptor mat_dim = funcs::CreateMatrixDescriptor(
-      MatrixDimsFromVector(new_dims), 0, transpose_input);
-
-  std::vector<int64_t> strides;
-  if (!shape.empty()) {
-    auto shape2 = input_dims.reshape(shape);
-    strides.push_back(1);
-    for (auto i = shape2.size() - 1; i > 0; --i) {
-      strides.insert(strides.begin(),
-                     strides.front() * static_cast<int64_t>(shape2[i]));
-    }
-    strides = TransposeAxis(strides, axis);
-    if (shape.size() == 2)
-      strides.insert(strides.begin(),
-                     static_cast<int64_t>(shape[0] * shape[1]));
-    mat_dim.stride_ = strides[0];
-    if (mat_dim.trans_) std::swap(*strides.rbegin(), *(++strides.rbegin()));
-  }
-  return strides;
-}
 
 template <typename T, typename T_out>
 void ExecuteFusedMatmul(const OneDNNContext &dev_ctx,
@@ -366,9 +319,49 @@ void ExecuteFusedMatmul(const OneDNNContext &dev_ctx,
       {DNNL_ARG_DST, *dst_memory_p}};
 
   if (residual_data) {
-    const auto residual_data_memory_p = handler.AcquireSrcMemory(residual_data);
+    auto residual_data_vec = vectorize(residual_data->dims());
+    std::shared_ptr<dnnl::memory> residual_data_memory_p;
+    if (std::max((x_dims)[0], (y_dims)[0]) > 1 &&
+        residual_data_vec.size() == 4 && residual_data_vec[0] == 1 &&
+        residual_data_vec[1] > 1 && residual_data_vec[2] > 1 &&
+        residual_data_vec[3] > 1) {
+      residual_data_memory_p = handler.AcquireSrcMemoryStride(residual_data);
+    } else {
+      residual_data_memory_p = handler.AcquireSrcMemoryResidual(residual_data);
+    }
     matmul_args.insert({DNNL_ARG_ATTR_MULTIPLE_POST_OP(0) | DNNL_ARG_SRC_1,
                         *residual_data_memory_p});
+  }
+
+  if (scale_x != 1.0f) {
+    dnnl::memory::desc src_scales_md(
+        {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
+    auto src_scales_mem =
+        std::make_shared<dnnl::memory>(src_scales_md, dev_ctx.GetEngine());
+    *reinterpret_cast<float *>(src_scales_mem->get_data_handle()) =
+        1.f / scale_x;
+    matmul_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC, *src_scales_mem});
+  }
+
+  if (scale_y != 1.0f || matmul_alpha != 1.0f) {
+    dnnl::memory::desc wei_scales_md(
+        {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
+    auto wei_scales_mem =
+        std::make_shared<dnnl::memory>(wei_scales_md, dev_ctx.GetEngine());
+    *reinterpret_cast<float *>(wei_scales_mem->get_data_handle()) =
+        matmul_alpha / scale_y;
+    matmul_args.insert(
+        {DNNL_ARG_ATTR_SCALES | DNNL_ARG_WEIGHTS, *wei_scales_mem});
+  }
+
+  if (!force_fp32_output && scale_out != 1.0f) {
+    dnnl::memory::desc dst_scales_md(
+        {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
+    auto dst_scales_mem =
+        std::make_shared<dnnl::memory>(dst_scales_md, dev_ctx.GetEngine());
+    *reinterpret_cast<float *>(dst_scales_mem->get_data_handle()) =
+        1.f / scale_out;
+    matmul_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST, *dst_scales_mem});
   }
 
   auto &astream = OneDNNContext::tls().get_stream();
@@ -378,10 +371,11 @@ void ExecuteFusedMatmul(const OneDNNContext &dev_ctx,
   if (is_output_fused && !funcs::is_int8<T_out>()) {
     auto permuted_md =
         dst_memory_p->get_desc().permute_axes(fused_transpose_Out);
-    out->set_mem_desc(permuted_md.reshape(vectorize<int64_t>(out->dims())));
-  } else {
     out->set_mem_desc(
-        dst_memory_p->get_desc().reshape(vectorize<int64_t>(out->dims())));
+        permuted_md.reshape(common::vectorize<int64_t>(out->dims())));
+  } else {
+    out->set_mem_desc(dst_memory_p->get_desc().reshape(
+        common::vectorize<int64_t>(out->dims())));
   }
 }
 
@@ -389,9 +383,9 @@ std::vector<int64_t> GetInputShape(DDim input_dims,
                                    std::vector<int> shape,
                                    std::vector<int> axis) {
   if (!shape.empty() && !axis.empty()) {
-    return vectorize(input_dims.reshape(shape).transpose(axis));
+    return common::vectorize(input_dims.reshape(shape).transpose(axis));
   }
-  return vectorize(input_dims);
+  return common::vectorize(input_dims);
 }
 
 void CalculateMatrixDims(const std::vector<int64_t> &x_dims,
@@ -422,7 +416,7 @@ void CalculateMatrixDims(const std::vector<int64_t> &x_dims,
   }
 
   if (!is_output_fused && x_dims.size() > 2 && y_dims.size() > 2) {
-    auto out_dims = vectorize(out->dims());
+    auto out_dims = common::vectorize(out->dims());
     for (size_t i = 0; i < (*x_bd_dims).size() - 2; ++i) {
       PADDLE_ENFORCE_EQ(
           (*x_bd_dims)[i] == (*y_bd_dims)[i] || (*x_bd_dims)[i] == 1 ||
@@ -438,7 +432,7 @@ void CalculateMatrixDims(const std::vector<int64_t> &x_dims,
               (*y_bd_dims)[i]));
       (out_dims)[i] = std::max((*x_bd_dims)[i], (*y_bd_dims)[i]);
     }
-    out->Resize(make_ddim((out_dims)));
+    out->Resize(common::make_ddim((out_dims)));
   }
 }
 
@@ -460,7 +454,7 @@ void FusedMatmulKernel(const Context &dev_ctx,
                        const std::vector<int> &fused_transpose_Y,
                        const std::vector<int> &fused_reshape_Out,
                        const std::vector<int> &fused_transpose_Out,
-                       const std::string &mkldnn_data_type,
+                       const std::string &mkldnn_data_type UNUSED,
                        const float scale_x,
                        const float scale_y,
                        const float scale_in_eltwise,
@@ -492,10 +486,10 @@ void FusedMatmulKernel(const Context &dev_ctx,
   auto is_output_fused =
       !fused_reshape_Out.empty() && !fused_transpose_Out.empty();
 
-  auto x_strides_override = GetInputStrides(
-      "X", x.dims(), fused_reshape_X, fused_transpose_X, transpose_x);
-  auto y_strides_override = GetInputStrides(
-      "Y", y.dims(), fused_reshape_Y, fused_transpose_Y, transpose_y);
+  auto x_strides_override = funcs::GetInputStrides(
+      "X", x.dims(), transpose_x, fused_reshape_X, fused_transpose_X);
+  auto y_strides_override = funcs::GetInputStrides(
+      "Y", y.dims(), transpose_y, fused_reshape_Y, fused_transpose_Y);
 
   int ndims = std::max(x_dims.size(), y_dims.size());
   ndims = std::max(ndims, 3);
@@ -605,13 +599,16 @@ void FusedMatmulKernel(const Context &dev_ctx,
   }
 }
 
+}  // namespace fusion
 }  // namespace phi
 
 PD_REGISTER_KERNEL(fused_matmul,
                    OneDNN,
                    ONEDNN,
-                   phi::FusedMatmulKernel,
+                   phi::fusion::FusedMatmulKernel,
                    float,
                    phi::dtype::bfloat16,
                    int8_t,
-                   uint8_t) {}
+                   uint8_t) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}

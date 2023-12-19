@@ -122,7 +122,7 @@ class BertTokenizer {
   InvVocab inv_vocab_;
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FasterTokenizerKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -176,11 +176,12 @@ class FasterTokenizerKernel : public framework::OpKernel<T> {
     }
 
     input_ids->Resize(
-        phi::make_ddim({static_cast<int64_t>(batch_size),
-                        static_cast<int64_t>(batch_max_seq_len)}));
+        common::make_ddim({static_cast<int64_t>(batch_size),
+                           static_cast<int64_t>(batch_max_seq_len)}));
     auto* input_ids_data = input_ids->mutable_data<T>(ctx.GetPlace());
-    seg_ids->Resize(phi::make_ddim({static_cast<int64_t>(batch_size),
-                                    static_cast<int64_t>(batch_max_seq_len)}));
+    seg_ids->Resize(
+        common::make_ddim({static_cast<int64_t>(batch_size),
+                           static_cast<int64_t>(batch_max_seq_len)}));
     auto* seg_ids_data = seg_ids->mutable_data<T>(ctx.GetPlace());
 
     auto pad_token_id = tokenizer.GetPadTokenID();

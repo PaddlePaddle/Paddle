@@ -23,6 +23,7 @@
 #include "brpc/channel.h"
 #include "brpc/controller.h"
 #include "brpc/server.h"
+#include "paddle/common/macros.h"
 #include "paddle/fluid/distributed/ps/service/brpc_utils.h"
 #include "paddle/fluid/distributed/ps/service/ps_client.h"
 #include "paddle/fluid/distributed/ps/service/sendrecv.pb.h"
@@ -30,7 +31,6 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor_util.h"
-
 namespace brpc {
 class Channel;
 class Controller;
@@ -63,7 +63,7 @@ class DownpourPsClientService : public PsService {
                        PsResponseMessage *response,
                        ::google::protobuf::Closure *done);
 
-  virtual void FLService(::google::protobuf::RpcController *controller,
+  virtual void FLService(::google::protobuf::RpcController *controller UNUSED,
                          const CoordinatorReqMessage *request,
                          CoordinatorResMessage *response,
                          ::google::protobuf::Closure *done) {

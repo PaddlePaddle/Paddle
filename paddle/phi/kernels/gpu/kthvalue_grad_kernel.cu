@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/kthvalue_grad_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -47,7 +46,7 @@ void KthvalueGradKernel(const Context& dev_ctx,
   T* x_grad_data = dev_ctx.template Alloc<T>(d_x);
   // For 0D Tensor
   if (in_dims.size() == 0) {
-    phi::funcs::set_constant(dev_ctx, d_x, 1.0);
+    phi::funcs::set_constant(dev_ctx, d_x, static_cast<T>(1.0));
     return;
   }
 
@@ -75,4 +74,6 @@ PD_REGISTER_KERNEL(kthvalue_grad,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16) {}

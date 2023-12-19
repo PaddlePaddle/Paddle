@@ -71,7 +71,7 @@ class SequenceExpandAsOp : public framework::OperatorWithKernel {
         out_first_dim = x_dims[0];
       } else {
         for (size_t i = 1; i < y_lod[0].size(); ++i) {
-          out_first_dim += (y_lod[0][i] - y_lod[0][i - 1]);
+          out_first_dim += static_cast<int64_t>(y_lod[0][i] - y_lod[0][i - 1]);
         }
       }
       out_dims[0] = out_first_dim;
@@ -209,14 +209,19 @@ REGISTER_OPERATOR(
 REGISTER_OPERATOR(sequence_expand_as_grad,
                   ops::SequenceExpandAsOpGrad,
                   ops::SequenceExpandAsGradOpNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(sequence_expand_as,
-                       ops::SequenceExpandAsKernel<phi::CPUContext, float>,
-                       ops::SequenceExpandAsKernel<phi::CPUContext, double>,
-                       ops::SequenceExpandAsKernel<phi::CPUContext, int>,
-                       ops::SequenceExpandAsKernel<phi::CPUContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    sequence_expand_as_grad,
-    ops::SequenceExpandAsGradKernel<phi::CPUContext, float>,
-    ops::SequenceExpandAsGradKernel<phi::CPUContext, double>,
-    ops::SequenceExpandAsGradKernel<phi::CPUContext, int>,
-    ops::SequenceExpandAsGradKernel<phi::CPUContext, int64_t>);
+PD_REGISTER_STRUCT_KERNEL(sequence_expand_as,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::SequenceExpandAsKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
+PD_REGISTER_STRUCT_KERNEL(sequence_expand_as_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::SequenceExpandAsGradKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}

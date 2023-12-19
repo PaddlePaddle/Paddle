@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import paddle
-import paddle.distributed.communication.stream as stream
-import paddle.framework as framework
+from paddle import framework
+from paddle.distributed.communication import stream
 
 
 class ReduceOp:
@@ -34,18 +34,18 @@ class ReduceOp:
     Examples:
         .. code-block:: python
 
-            # required: distributed
-            import paddle
-            import paddle.distributed as dist
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle
+            >>> import paddle.distributed as dist
 
-            dist.init_parallel_env()
-            if dist.get_rank() == 0:
-                data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
-            else:
-                data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
-            dist.all_reduce(data, op=dist.ReduceOp.SUM)
-            print(data)
-            # [[5, 7, 9], [5, 7, 9]] (2 GPUs)
+            >>> dist.init_parallel_env()
+            >>> if dist.get_rank() == 0:
+            ...     data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
+            >>> else:
+            ...     data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
+            >>> dist.all_reduce(data, op=dist.ReduceOp.SUM)
+            >>> print(data)
+            >>> # [[5, 7, 9], [5, 7, 9]] (2 GPUs)
     """
 
     SUM = 0
@@ -56,7 +56,7 @@ class ReduceOp:
 
 
 def _get_reduce_op(reduce_op, func_name):
-    if framework.in_dygraph_mode():
+    if framework.in_dynamic_mode():
         if reduce_op == ReduceOp.SUM:
             return framework.core.ReduceOp.SUM
         elif reduce_op == ReduceOp.MAX:
@@ -67,17 +67,17 @@ def _get_reduce_op(reduce_op, func_name):
             return framework.core.ReduceOp.PRODUCT
     else:
         if reduce_op == ReduceOp.SUM:
-            return 'c_{}_sum'.format(func_name)
+            return f'c_{func_name}_sum'
         elif reduce_op == ReduceOp.MAX:
-            return 'c_{}_max'.format(func_name)
+            return f'c_{func_name}_max'
         elif reduce_op == ReduceOp.MIN:
-            return 'c_{}_min'.format(func_name)
+            return f'c_{func_name}_min'
         elif reduce_op == ReduceOp.PROD:
-            return 'c_{}_prod'.format(func_name)
+            return f'c_{func_name}_prod'
         else:
-            return 'c_{}'.format(func_name)
+            return f'c_{func_name}'
 
-    raise ValueError("Unknown reduce_op type for {}.".format(func_name))
+    raise ValueError(f"Unknown reduce_op type for {func_name}.")
 
 
 def reduce(tensor, dst, op=ReduceOp.SUM, group=None, sync_op=True):
@@ -106,19 +106,19 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, sync_op=True):
     Examples:
         .. code-block:: python
 
-            # required: distributed
-            import paddle
-            import paddle.distributed as dist
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle
+            >>> import paddle.distributed as dist
 
-            dist.init_parallel_env()
-            if dist.get_rank() == 0:
-                data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
-            else:
-                data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
-            dist.reduce(data, dst=0)
-            print(data)
-            # [[5, 7, 9], [5, 7, 9]] (2 GPUs, out for rank 0)
-            # [[1, 2, 3], [1, 2, 3]] (2 GPUs, out for rank 1)
+            >>> dist.init_parallel_env()
+            >>> if dist.get_rank() == 0:
+            ...     data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
+            >>> else:
+            ...     data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
+            >>> dist.reduce(data, dst=0)
+            >>> print(data)
+            >>> # [[5, 7, 9], [5, 7, 9]] (2 GPUs, out for rank 0)
+            >>> # [[1, 2, 3], [1, 2, 3]] (2 GPUs, out for rank 1)
     """
     return stream.reduce(
         tensor,
@@ -182,4 +182,4 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, sync_op=True):
             gdst,
         )
     else:
-        raise ValueError("Unknown parameter: {}.".format(op))
+        raise ValueError(f"Unknown parameter: {op}.")

@@ -19,7 +19,6 @@ import warnings
 from paddle.utils import gast
 
 from .base_transformer import BaseTransformer
-from .static_analysis import AstNodeWrapper
 from .utils import RE_PYMODULE, RE_PYNAME, ast_to_source_code
 
 __all__ = []
@@ -27,7 +26,6 @@ __all__ = []
 IGNORE_NAMES = [
     'declarative',
     'to_static',
-    'dygraph_to_static_func',
     'wraps',
     'staticmethod',
     'classmethod',
@@ -40,12 +38,8 @@ class DecoratorTransformer(BaseTransformer):
     Transform decorators.
     """
 
-    def __init__(self, wrapper_root):
-        assert isinstance(wrapper_root, AstNodeWrapper), (
-            "Type of input node should be AstNodeWrapper, but received %s ."
-            % type(wrapper_root)
-        )
-        self.root = wrapper_root.node
+    def __init__(self, root):
+        self.root = root
 
         self.ancestor_nodes = []
 
@@ -87,9 +81,7 @@ class DecoratorTransformer(BaseTransformer):
                 # match case like:
                 # @a.d.g.deco
                 re_tmp = re.match(
-                    r'({module})*({name})$'.format(
-                        name=RE_PYNAME, module=RE_PYMODULE
-                    ),
+                    fr'({RE_PYMODULE})*({RE_PYNAME})$',
                     deco_full_name,
                 )
                 deco_name = re_tmp.group(2)
@@ -156,7 +148,7 @@ class DecoratorTransformer(BaseTransformer):
 
         args = [arg.id for arg in node.args.args]
         arg_str = ','.join(args)
-        callfun_str = 'return {}({})'.format(decoed_func, arg_str)
+        callfun_str = f'return {decoed_func}({arg_str})'
         callfun_node = gast.parse(callfun_str).body[0]
 
         node.body = [orig_func_node] + decofun_nodes + [callfun_node]

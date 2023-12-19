@@ -29,8 +29,11 @@ class ShuffleChannelMKLDNNHandler
       : phi::funcs::OneDNNHandlerNoCachingT<T, dnnl::shuffle_forward>(
             engine, cpu_place) {
     static constexpr int channel_axis = 1;
-    this->AcquireForwardPrimitiveDescriptor(
-        dnnl::prop_kind::forward_training, x->mem_desc(), channel_axis, group);
+    this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
+                                            x->mem_desc(),
+                                            x->mem_desc(),
+                                            channel_axis,
+                                            group);
   }
 };
 

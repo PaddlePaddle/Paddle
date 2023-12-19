@@ -405,7 +405,7 @@ char const* EmbLayerNormPlugin::getPluginNamespace() const noexcept {
   return mNamespace.c_str();
 }
 
-EmbLayerNormPluginCreator::EmbLayerNormPluginCreator() {}
+EmbLayerNormPluginCreator::EmbLayerNormPluginCreator() = default;
 
 char const* EmbLayerNormPluginCreator::getPluginName() const noexcept {
   return EMB_LAYER_NORM_NAME;

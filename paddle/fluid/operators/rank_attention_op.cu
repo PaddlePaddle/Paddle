@@ -24,7 +24,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class RankAttentionCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -150,7 +150,7 @@ class RankAttentionCUDAKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class RankAttentionGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -242,11 +242,17 @@ class RankAttentionGradOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using GPUCtx = phi::GPUContext;
-REGISTER_OP_CUDA_KERNEL(rank_attention,
-                        ops::RankAttentionCUDAKernel<GPUCtx, float>,
-                        ops::RankAttentionCUDAKernel<GPUCtx, double>);
 
-REGISTER_OP_CUDA_KERNEL(rank_attention_grad,
-                        ops::RankAttentionGradOpCUDAKernel<GPUCtx, float>,
-                        ops::RankAttentionGradOpCUDAKernel<GPUCtx, double>);
+PD_REGISTER_STRUCT_KERNEL(rank_attention,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::RankAttentionCUDAKernel,
+                          float,
+                          double) {}
+
+PD_REGISTER_STRUCT_KERNEL(rank_attention_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::RankAttentionGradOpCUDAKernel,
+                          float,
+                          double) {}

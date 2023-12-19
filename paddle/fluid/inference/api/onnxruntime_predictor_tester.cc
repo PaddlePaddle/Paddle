@@ -25,11 +25,11 @@
 #include "paddle/fluid/inference/api/onnxruntime_predictor.h"
 #include "paddle/fluid/inference/api/paddle_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
-#include "paddle/fluid/inference/tests/api/tester_helper.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
+#include "test/cpp/inference/api/tester_helper.h"
 
-DEFINE_string(dirname, "", "dirname to tests.");
+PD_DEFINE_string(dirname, "", "dirname to tests.");
 
 namespace paddle {
 

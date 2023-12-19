@@ -106,7 +106,7 @@ class PrecisionRecallOp : public framework::OperatorWithKernel {
       if (ctx->IsRuntime()) {
         PADDLE_ENFORCE_EQ(
             weights_dims,
-            phi::make_ddim({max_probs_dims[0], 1}),
+            common::make_ddim({max_probs_dims[0], 1}),
             platform::errors::InvalidArgument(
                 "The shape of PrecisionRecallOp Input(Weights) should be "
                 "[batch_size, 1]. But the shape we received is [%d, %d]",
@@ -120,7 +120,7 @@ class PrecisionRecallOp : public framework::OperatorWithKernel {
       if (ctx->IsRuntime()) {
         PADDLE_ENFORCE_EQ(
             states_dims,
-            phi::make_ddim({cls_num, 4}),
+            common::make_ddim({cls_num, 4}),
             platform::errors::InvalidArgument(
                 "The shape of PrecisionRecallOp Input(StatesInfo) should be "
                 "[class_number, 4]. But the shape we received is [%d, %d]",
@@ -242,7 +242,9 @@ REGISTER_OPERATOR(
     ops::PrecisionRecallOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(
-    precision_recall,
-    ops::PrecisionRecallKernel<paddle::platform::CPUPlace, float>,
-    ops::PrecisionRecallKernel<paddle::platform::CPUPlace, double>);
+PD_REGISTER_STRUCT_KERNEL(precision_recall,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::PrecisionRecallKernel,
+                          float,
+                          double) {}

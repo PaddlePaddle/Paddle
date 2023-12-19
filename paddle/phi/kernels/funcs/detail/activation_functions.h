@@ -18,9 +18,9 @@ limitations under the License. */
 #include <stdexcept>
 #include <string>
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/core/hostdevice.h"
-
 namespace phi {
 namespace funcs {
 namespace detail {
@@ -104,7 +104,7 @@ DEVICE T TanhV2(const T a) {
 namespace backward {
 
 template <typename T>
-DEVICE T Identity(const T a, const T b) {
+DEVICE T Identity(const T a, const T b UNUSED) {
   return a;
 }
 

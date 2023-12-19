@@ -12,8 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
+#include "glog/logging.h"
+
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/selected_rows.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/lamb_functors.h"
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
@@ -35,6 +39,7 @@ void ComputeRowImpl(const Context& dev_ctx,
                     float beta1_f,
                     float beta2_f,
                     float epsilon_f,
+                    bool always_adapt,
                     bool multi_precision,
                     DenseTensor* param_out,
                     DenseTensor* mom1_out,
@@ -58,6 +63,7 @@ void LambKernel(const Context& dev_ctx,
                 float beta1,
                 float beta2,
                 float epsilon,
+                bool always_adapt,
                 bool multi_precision,
                 DenseTensor* param_out,
                 DenseTensor* moment1_out,
@@ -81,6 +87,7 @@ void LambKernel(const Context& dev_ctx,
                                          beta1,
                                          beta2,
                                          epsilon,
+                                         always_adapt,
                                          multi_precision,
                                          param_out,
                                          moment1_out,
@@ -103,6 +110,7 @@ void LambKernel(const Context& dev_ctx,
                                          beta1,
                                          beta2,
                                          epsilon,
+                                         always_adapt,
                                          multi_precision,
                                          param_out,
                                          moment1_out,
@@ -128,7 +136,8 @@ void ComputeRowImpl(const Context& dev_ctx,
                     float beta1_f,
                     float beta2_f,
                     float epsilon_f,
-                    bool multi_precision,
+                    bool always_adapt,
+                    bool multi_precision UNUSED,
                     DenseTensor* param_out,
                     DenseTensor* mom1_out,
                     DenseTensor* mom2_out,
@@ -151,7 +160,7 @@ void ComputeRowImpl(const Context& dev_ctx,
                                      ? skip_update->data<bool>()
                                      : nullptr;
   if (skip_update_flag &&
-      paddle::platform::is_cpu_place(skip_update->place()) &&
+      skip_update->place().GetType() == phi::AllocationType::CPU &&
       (*skip_update_flag)) {
     return;
   }
@@ -224,7 +233,7 @@ void ComputeRowImpl(const Context& dev_ctx,
   phi::MixVector<int64_t> mixv_grad_merge_rows(grad_merge_rows);
   const int64_t* rows = mixv_grad_merge_rows.Data(dev_ctx.GetPlace());
   auto row_numel = grad_tensor.numel() / grad_merge.rows().size();
-  if (paddle::platform::is_gpu_place(dev_ctx.GetPlace()) &&
+  if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU &&
       beta1_pow.place() == phi::CPUPlace() &&
       beta2_pow.place() == phi::CPUPlace()) {
     SparseLambMomentREGUpdateFunctor<T> moment_update_functor(
@@ -282,35 +291,48 @@ void ComputeRowImpl(const Context& dev_ctx,
   // Update parameter
   // The code in the following part is exactly the same as that in
   // paddle/phi/kernels/impl/lamb_kernel_impl.h Please modify it together
+
+  // DenseTensor p_norm_t;
+  // p_norm_t.Resize(common::make_ddim({1}));
+  // auto* p_norm_ptr = dev_ctx.template Alloc<MT>(&p_norm_t);
+
+  // DenseTensor trust_ratio_div_norm_t;
+  // trust_ratio_div_norm_t.Resize(common::make_ddim({1}));
+  // auto* trust_ratio_div_norm_ptr =
+  //     dev_ctx.template Alloc<MT>(&trust_ratio_div_norm_t);
+
   DenseTensor p_norm_t;
-  p_norm_t.Resize(phi::make_ddim({1}));
-  auto* p_norm_ptr = dev_ctx.template Alloc<MT>(&p_norm_t);
+  DataType dtype = phi::CppTypeToDataType<MT>::Type();
+  FullKernel<MT, Context>(
+      dev_ctx, std::vector<int64_t>({1}), 0, dtype, &p_norm_t);
+  auto* p_norm_ptr = p_norm_t.data<MT>();
 
   DenseTensor trust_ratio_div_norm_t;
-  trust_ratio_div_norm_t.Resize(phi::make_ddim({1}));
-  auto* trust_ratio_div_norm_ptr =
-      dev_ctx.template Alloc<MT>(&trust_ratio_div_norm_t);
+  FullKernel<MT, Context>(
+      dev_ctx, std::vector<int64_t>({1}), 0, dtype, &trust_ratio_div_norm_t);
+  auto* trust_ratio_div_norm_ptr = trust_ratio_div_norm_t.data<MT>();
 
   // TODO(zengjinle): remove the following Eigen operations when
   // *skip_update == true.
-  paddle::memory::Buffer buffer(dev_ctx.GetPlace());
-  phi::funcs::SquaredL2Norm(
-      dev_ctx,
-      reinterpret_cast<const MT*>(IsMultiPrecision ? master_param_ptr
-                                                   : param_ptr),
-      p_norm_ptr,
-      numel,
-      &buffer);
-  phi::funcs::SquaredL2Norm(
-      dev_ctx, trust_ratio_div_ptr, trust_ratio_div_norm_ptr, numel, &buffer);
+  if (weight_decay > static_cast<MT>(0) || always_adapt) {
+    memory_utils::Buffer buffer(dev_ctx.GetPlace());
+    phi::funcs::SquaredL2Norm(
+        dev_ctx,
+        reinterpret_cast<const MT*>(IsMultiPrecision ? master_param_ptr
+                                                     : param_ptr),
+        p_norm_ptr,
+        numel,
+        &buffer);
+    phi::funcs::SquaredL2Norm(
+        dev_ctx, trust_ratio_div_ptr, trust_ratio_div_norm_ptr, numel, &buffer);
+  }
 
   if (VLOG_IS_ON(1)) {
     const auto& name = "Param";
     auto pn = phi::funcs::ToVector(p_norm_ptr, 1, dev_ctx.GetPlace());
     auto tn =
         phi::funcs::ToVector(trust_ratio_div_norm_ptr, 1, dev_ctx.GetPlace());
-    auto dtype = paddle::framework::DataTypeToString(
-        paddle::framework::DataTypeTrait<T>::DataType());
+    auto dtype = DataTypeToString(phi::CppTypeToDataType<T>::Type());
     VLOG(1) << "Param " << dtype << " " << name << " pn = " << pn[0]
             << " , tn = " << tn[0];
   }

@@ -19,21 +19,68 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/matmul_kernel_impl.h"
 
+#ifdef PADDLE_WITH_CUDA
 PD_REGISTER_KERNEL(matmul,
                    GPU,
                    ALL_LAYOUT,
                    phi::MatmulKernel,
                    float,
                    double,
+                   int32_t,
+                   int64_t,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::dtype::complex<double>,
+                   int8_t) {
+  if (kernel_key.dtype() == phi::DataType::INT8) {
+    kernel->OutputAt(0).SetDataType(phi::DataType::INT32);
+  }
+}
+#else
+PD_REGISTER_KERNEL(matmul,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MatmulKernel,
+                   float,
+                   double,
+                   int32_t,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
+  if (kernel_key.dtype() == phi::DataType::INT8) {
+    kernel->OutputAt(0).SetDataType(phi::DataType::INT32);
+  }
+}
+#endif
 
+#ifdef PADDLE_WITH_CUDA
+PD_REGISTER_KERNEL(matmul_with_flatten,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MatmulWithFlattenKernel,
+                   int8_t,
+                   float,
+                   double,
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16) {
+  if (kernel_key.dtype() == phi::DataType::INT8) {
+    kernel->OutputAt(0).SetDataType(phi::DataType::INT32);
+  }
+}
+#else
 PD_REGISTER_KERNEL(matmul_with_flatten,
                    GPU,
                    ALL_LAYOUT,
                    phi::MatmulWithFlattenKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16) {
+  if (kernel_key.dtype() == phi::DataType::INT8) {
+    kernel->OutputAt(0).SetDataType(phi::DataType::INT32);
+  }
+}
+#endif

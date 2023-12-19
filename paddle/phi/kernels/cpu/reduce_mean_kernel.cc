@@ -36,5 +36,14 @@ void MeanRawKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    mean_raw, CPU, ALL_LAYOUT, phi::MeanRawKernel, float, double, bool) {}
+PD_REGISTER_KERNEL(mean_raw,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::MeanRawKernel,
+                   float,
+                   double,
+                   bool,
+                   int,
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

@@ -21,7 +21,7 @@ class NearestInterpolateOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "convert a fluid nearest_interp op";
+    VLOG(3) << "convert a nearest_interp op to tensorrt op";
 
     framework::OpDesc op_desc(op, nullptr);
 
@@ -33,7 +33,7 @@ class NearestInterpolateOpConverter : public OpConverter {
 
     auto data_layout = !op_desc.HasAttr("data_layout")
                            ? phi::DataLayout::kNCHW
-                           : phi::StringToDataLayout(PADDLE_GET_CONST(
+                           : common::StringToDataLayout(PADDLE_GET_CONST(
                                  std::string, op_desc.GetAttr("data_layout")));
     auto interp_method =
         PADDLE_GET_CONST(std::string, op_desc.GetAttr("interp_method"));

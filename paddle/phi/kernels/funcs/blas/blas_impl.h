@@ -71,7 +71,7 @@ struct CBlas<phi::dtype::bfloat16> {
   }
 
   template <typename... ARGS>
-  static void VCOPY(ARGS... args) {
+  static void VCOPY(ARGS... args UNUSED) {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Blas VCOPY do not supported on CPU with bfloat16,"
         " please check your code"));

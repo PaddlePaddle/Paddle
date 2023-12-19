@@ -110,7 +110,7 @@ static std::unique_ptr<CUDAGraphWithInOuts> CaptureCUDAGraph(
     inputs.insert(inputs.end(), input_tensors.begin(), input_tensors.end());
   }
 
-  auto func = [&](const std::vector<const phi::DenseTensor *> &inputs) {
+  auto func = [&](const std::vector<const phi::DenseTensor *> &inputs UNUSED) {
     callable(ctx);
     std::vector<phi::DenseTensor *> outputs;
     for (const auto &name : output_names) {

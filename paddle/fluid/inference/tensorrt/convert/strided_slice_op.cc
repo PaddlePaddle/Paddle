@@ -122,7 +122,7 @@ class StridedSliceOpConverter : public OpConverter {
       layer->setInput(2, *size_tensor);
       layer->setInput(3, *step_tensor);
 
-      if (decrease_axises.size() > 0) {
+      if (!decrease_axises.empty()) {
         std::vector<int32_t> gather_indices;
         for (int i = 0; i < trt_size_dims.nbDims; i++) {
           if (decrease_axises.end() !=
@@ -159,9 +159,9 @@ class StridedSliceOpConverter : public OpConverter {
       nvinfer1::Dims real_trt_size_dims;
       real_trt_size_dims.nbDims = 0;
 
-      if (decrease_axises.size() > 0) {
-        for (size_t i = 0; i < decrease_axises.size(); i++) {
-          decrease_axises[i]--;
+      if (!decrease_axises.empty()) {
+        for (auto& decrease_axis : decrease_axises) {
+          decrease_axis--;
         }
         for (int i = 0; i < trt_size_dims.nbDims; i++) {
           if (decrease_axises.end() !=

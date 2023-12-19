@@ -15,11 +15,16 @@
 from collections import OrderedDict
 
 import paddle
-from paddle.distributed.auto_parallel.operators.common import (
+from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
+from paddle.distributed.auto_parallel.static.dist_attribute import (
+    OperatorDistAttr,
+    TensorDistAttr,
+)
+from paddle.distributed.auto_parallel.static.operators.common import (
     is_data_parallel_reduce_op,
     is_data_parallel_scale_op,
 )
-from paddle.distributed.auto_parallel.utils import (
+from paddle.distributed.auto_parallel.static.utils import (
     find_higher_order_backward_op,
     get_var_numel,
     insert_dependencies_for_vars,
@@ -29,7 +34,6 @@ from paddle.distributed.auto_parallel.utils import (
     ring_id_to_process_group,
 )
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
-from paddle.fluid.executor import _is_enable_standalone_executor
 from paddle.static import default_main_program
 from paddle.utils import unique_name
 
@@ -87,13 +91,11 @@ class DataParallelOptimizationPass(PassBase):
         return PassType.COMM_OPT
 
     def _apply_single_impl(self, main_program, startup_program, context):
-
         self.dist_context = self.get_attr("dist_context")
         self.global_rank = int(self.get_attr("global_rank"))
         self.use_sharding = self.get_attr("use_sharding")
         self.coalesce_prefix = 'coalesce_grad'
-        if _is_enable_standalone_executor():
-            self.gradient_sync_stream = "gradient_sync_stream"
+        self.gradient_sync_stream = "gradient_sync_stream"
 
         with paddle.static.program_guard(main_program, startup_program):
             self._analyze_program()
@@ -107,7 +109,6 @@ class DataParallelOptimizationPass(PassBase):
                 self.summary(grad_group)
 
     def _prune_grad_scaling(self):
-
         if not self._could_be_prune():
             return
 
@@ -125,7 +126,6 @@ class DataParallelOptimizationPass(PassBase):
         self._calc_wait_comms()
 
     def _fuse_allreduce(self):
-
         if not self._could_be_fuse():
             return []
 
@@ -146,14 +146,13 @@ class DataParallelOptimizationPass(PassBase):
         scaled_grads = []
 
         for op in ops:
-
             if is_data_parallel_reduce_op(op):
                 grad_name = op.output_arg_names[0]
                 if grad_name in self._grad_name_to_group_map:
                     continue
                 assert op.has_attr(
                     "ring_id"
-                ), "Unexpected: comm op [{}] has NOT ring id.".format(str(op))
+                ), f"Unexpected: comm op [{str(op)}] has NOT ring id."
                 group = ring_id_to_process_group(op.attr("ring_id"))
 
                 assert (
@@ -195,7 +194,6 @@ class DataParallelOptimizationPass(PassBase):
         return len(self._group_to_grad_name_map) > 0
 
     def _could_be_prune(self):
-
         return self.dist_context.gradient_scale and (
             self._support_rescale_grad or self._all_dp_groups_same_degree()
         )
@@ -203,18 +201,15 @@ class DataParallelOptimizationPass(PassBase):
     def _all_dp_groups_same_degree(self):
         return (
             len(
-                set(
-                    [
-                        len(group.ranks)
-                        for group in self._group_to_grad_name_map.keys()
-                    ]
-                )
+                {
+                    len(group.ranks)
+                    for group in self._group_to_grad_name_map.keys()
+                }
             )
             == 1
         )
 
     def _scale_backward_initial_grad(self):
-
         block = default_main_program().global_block()
         dp_degree = len(list(self._group_to_grad_name_map.keys())[0].ranks)
 
@@ -222,7 +217,7 @@ class DataParallelOptimizationPass(PassBase):
             if is_loss_grad_op(op):
                 assert op.type == 'fill_constant', (
                     "loss_grad_op must be fill_constant op, "
-                    "but this op is {}".format(op.type)
+                    f"but this op is {op.type}"
                 )
                 assert op.has_attr('value')
                 loss_scale = float(op.attr('value'))
@@ -240,7 +235,6 @@ class DataParallelOptimizationPass(PassBase):
         block._sync_with_cpp()
 
     def _update_opt_rescale_grad(self):
-
         block = default_main_program().global_block()
         scaled_grads = set()
 
@@ -251,14 +245,10 @@ class DataParallelOptimizationPass(PassBase):
             ):
                 assert op.has_attr(
                     'rescale_grad'
-                ), "Unexpected: op [{}] is supported to have [rescale_grad] attribute.".format(
-                    str(op)
-                )
+                ), f"Unexpected: op [{str(op)}] is supported to have [rescale_grad] attribute."
                 assert (
                     len(op.input("Grad")) == 1
-                ), "Unexpected: op [{}] is supported to have only one input grad var.".format(
-                    str(op)
-                )
+                ), f"Unexpected: op [{str(op)}] is supported to have only one input grad var."
 
                 grad_name = op.input("Grad")[0]
                 dp_degree = len(
@@ -312,9 +302,7 @@ class DataParallelOptimizationPass(PassBase):
         block._sync_with_cpp()
 
     def _calc_wait_comms(self):
-
-        if _is_enable_standalone_executor():
-            return
+        return
 
         block = default_main_program().global_block()
 
@@ -365,7 +353,6 @@ class DataParallelOptimizationPass(PassBase):
         # here we try to wait for all kernel in that comm stream to be finish which is not that optimized.
         for i in sorted(indices, reverse=True):
             for ring_id in op_idx_to_sync_ring_id_map[i]:
-
                 block._insert_op_without_sync(
                     i,
                     type='c_wait_comm',
@@ -425,7 +412,7 @@ class DataParallelOptimizationPass(PassBase):
 
         def op_depend_on_group(op, group):
             vars_ = set(op.input_arg_names + op.output_arg_names)
-            grad_names = set([grad.name for grad in group.gradients])
+            grad_names = {grad.name for grad in group.gradients}
             return len(vars_.intersection(grad_names)) > 0
 
         for i, op in enumerate(ops):
@@ -451,26 +438,44 @@ class DataParallelOptimizationPass(PassBase):
         return grad_groups
 
     def _update_program(self, grad_groups):
-
         block = default_main_program().global_block()
 
         remove_op_types = ['scale', 'c_allreduce_sum', 'c_wait_compute']
 
         for i, group in enumerate(grad_groups[::-1]):
-
             # skip unfused big tensor
             if len(group.gradients) <= 1:
                 group.coalesce_var = group.gradients[0]
                 continue
 
+            ref_process_mesh = set()
+            concated_shapes = []
+            concated_ranks = []
+            for grad_ in group.gradients:
+                grad_dist_attr = (
+                    self.dist_context.get_tensor_dist_attr_for_program(grad_)
+                )
+                ref_process_mesh.update(
+                    set(grad_dist_attr.process_mesh.process_ids)
+                )
+
+                shape = grad_.shape
+                concated_shapes.extend(shape)
+                concated_ranks.append(len(shape))
+
             # create coalesce tensor
             group.coalesce_var = block.create_var(
-                name=unique_name.generate(
-                    self.coalesce_prefix + '_{}'.format(i)
-                ),
+                name=unique_name.generate(self.coalesce_prefix + f'_{i}'),
                 dtype=group.dtype,
                 persistable=False,
                 stop_gradient=True,
+            )
+
+            tensor_dist_attr = TensorDistAttr()
+            tensor_dist_attr.process_mesh = ProcessMesh(list(ref_process_mesh))
+            tensor_dist_attr.dims_mapping = []
+            self.dist_context.set_tensor_dist_attr_for_program(
+                group.coalesce_var, tensor_dist_attr
             )
 
             # update allreduce & scale op
@@ -478,7 +483,7 @@ class DataParallelOptimizationPass(PassBase):
                 scale_op = block.ops[group.scale_op_idx]
                 assert (
                     scale_op.type == 'scale'
-                ), "should found scale op but found {}".format(str(scale_op))
+                ), f"should found scale op but found {str(scale_op)}"
                 scale_op._rename_input(
                     scale_op.input_arg_names[0], group.coalesce_var.name
                 )
@@ -489,14 +494,28 @@ class DataParallelOptimizationPass(PassBase):
             allreduce_op = block.ops[group.allreduce_op_idx]
             assert (
                 allreduce_op.type == 'c_allreduce_sum'
-            ), "should found c_allreduce_sum op but found {}".format(
-                str(allreduce_op)
+            ), f"should found c_allreduce_sum op but found {str(allreduce_op)}"
+            allreduce_op_dist_attr = (
+                self.dist_context.get_op_dist_attr_for_program(allreduce_op)
             )
-            allreduce_op._rename_input(
-                allreduce_op.input_arg_names[0], group.coalesce_var.name
+            old_in_name = allreduce_op.input_arg_names[0]
+            new_in_name = group.coalesce_var.name
+            allreduce_op._rename_input(old_in_name, new_in_name)
+            input_dist_attr = allreduce_op_dist_attr.get_input_dist_attr(
+                old_in_name
             )
-            allreduce_op._rename_output(
-                allreduce_op.output_arg_names[0], group.coalesce_var.name
+            allreduce_op_dist_attr.set_input_dist_attr(
+                new_in_name, input_dist_attr
+            )
+
+            old_out_name = allreduce_op.output_arg_names[0]
+            new_out_name = group.coalesce_var.name
+            allreduce_op._rename_output(old_out_name, new_out_name)
+            out_dist_attr = allreduce_op_dist_attr.get_output_dist_attr(
+                old_out_name
+            )
+            allreduce_op_dist_attr.set_output_dist_attr(
+                new_out_name, out_dist_attr
             )
 
             # remvoe un-used op
@@ -508,19 +527,12 @@ class DataParallelOptimizationPass(PassBase):
             for idx in sorted(remove_op_indices, reverse=True):
                 assert (
                     block.ops[idx].type in remove_op_types
-                ), "Unexpected: try to remove op {}".format(str(block.ops[idx]))
+                ), f"Unexpected: try to remove op {str(block.ops[idx])}"
                 block._remove_op(idx, False)
 
             # insert coalesce op
-            concated_shapes = []
-            concated_ranks = []
-            for grad_ in group.gradients:
-                shape = grad_.shape
-                concated_shapes.extend(shape)
-                concated_ranks.append(len(shape))
-
             grad_names = [grad.name for grad in group.gradients]
-            block._insert_op_without_sync(
+            coalesce_op = block._insert_op_without_sync(
                 group.coalesce_op_idx,
                 type="coalesce_tensor",
                 inputs={"Input": grad_names},
@@ -538,35 +550,49 @@ class DataParallelOptimizationPass(PassBase):
                 },
             )
 
+            op_dist_attr = OperatorDistAttr()
+            op_dist_attr.impl_idx = 0
+            op_dist_attr.impl_type = "default"
+            op_dist_attr.process_mesh = ProcessMesh(list(ref_process_mesh))
+            for in_name in coalesce_op.input_arg_names:
+                in_var = block.var(in_name)
+                in_var_dist_attr = (
+                    self.dist_context.get_tensor_dist_attr_for_program(in_var)
+                )
+                op_dist_attr.set_input_dims_mapping(
+                    in_name, in_var_dist_attr.dims_mapping
+                )
+            for out_name in coalesce_op.output_arg_names:
+                out_var = block.var(out_name)
+                out_var_dist_attr = (
+                    self.dist_context.get_tensor_dist_attr_for_program(out_var)
+                )
+                op_dist_attr.set_output_dims_mapping(
+                    out_name, out_var_dist_attr.dims_mapping
+                )
+
+            self.dist_context.set_op_dist_attr_for_program(
+                coalesce_op, op_dist_attr
+            )
+
         block._sync_with_cpp()
-        # TODO update dist attr
 
     def _add_dependencies(self, grad_groups):
         # NOTE Currently, auto_parallel need to adopt for two executors: Sequential executor (old exe) and Graph based
         # multiple stream executor(standalone exe). This function just for standalone exe. Refactor here
         # in future when only one executor stay.
 
-        if not _is_enable_standalone_executor() or len(grad_groups) == 0:
+        if len(grad_groups) == 0:
             return
         block = default_main_program().global_block()
 
         # Build maps
-        vars_to_coalesce_map = {}
         coalesce_to_vars_map = {}
-
         for group in grad_groups:
-            grad_names = []
-            coalesce_name = group.coalesce_var.name
-            for grad in group.gradients:
-                vars_to_coalesce_map[grad.name] = coalesce_name
-                grad_names.append(grad.name)
-            coalesce_to_vars_map[coalesce_name] = grad_names
+            coalesce_to_vars_map[group.coalesce_var.name] = group
 
         # analyze dependencies
-        # Record ONLY the last grad that generated before allreduce
-        # NOTE need to be update when we allow multiple calc stream for backward calc
-        not_sync_coalesces = []
-        prior_allreduce_deps = {}
+        dep_map = {}
         for idx, op in reversed(list(enumerate(block.ops))):
             if is_forward_op(op):
                 break
@@ -575,86 +601,41 @@ class DataParallelOptimizationPass(PassBase):
 
             if is_data_parallel_reduce_op(op):
                 coalesce_var_name = op.output_arg_names[0]
-
-                # NOTE only add extra deps for fused tensor, other tensor rely on
-                # data flow analysis of executor.
                 if self.coalesce_prefix in coalesce_var_name:
-                    prior_allreduce_deps[coalesce_var_name] = [
-                        idx,
-                        None,
-                        coalesce_var_name,
+                    group = coalesce_to_vars_map[coalesce_var_name]
+                    dep_map[idx] = [
+                        (
+                            idx,
+                            group.gradients[-1],
+                            group.coalesce_var,
+                            op.attr(OP_ROLE_KEY),
+                        )
                     ]
-                    not_sync_coalesces.append(coalesce_var_name)
-                continue
+                    dep_map[idx].append(
+                        (
+                            idx + 1,
+                            group.coalesce_var,
+                            group.gradients,
+                            op.attr(OP_ROLE_KEY),
+                        )
+                    )
 
-            for out_name in op.output_arg_names:
-                var_name = vars_to_coalesce_map.get(out_name, None)
-                if var_name in not_sync_coalesces:
-                    prior_allreduce_deps[var_name][1] = out_name
-                    not_sync_coalesces.remove(var_name)
-        assert (
-            len(not_sync_coalesces) == 0
-        ), "Unexpected: {} has NOT been add prior Dep before allreduce.".format(
-            not_sync_coalesces
-        )
-
-        # Record ONLY the first grad that used after allreduce
-        # NOTE need to be update when we allow multiple calc stream for backward calc
-        not_sync_coalesces = []
-        post_allreduce_deps = {}
-        for idx, op in enumerate(block.ops):
-            if is_forward_op(op):
-                continue
-
-            if is_data_parallel_reduce_op(op):
-                coalesce_var_name = op.input_arg_names[0]
-                if self.coalesce_prefix in coalesce_var_name:
-                    post_allreduce_deps[coalesce_var_name] = [
-                        None,
-                        coalesce_var_name,
-                        None,
-                    ]
-                    not_sync_coalesces.append(coalesce_var_name)
-                continue
-
-            for out_name in op.input_arg_names:
-                var_name = vars_to_coalesce_map.get(out_name, None)
-                if var_name in not_sync_coalesces:
-                    post_allreduce_deps[var_name][0] = idx
-                    post_allreduce_deps[var_name][2] = out_name
-                    not_sync_coalesces.remove(var_name)
-
-        assert (
-            len(not_sync_coalesces) == 0
-        ), "Unexpected: {} has NOT been add post Dep after allreduce.".format(
-            not_sync_coalesces
-        )
-
-        # Update program IR insert dependencise op
-        dep_var_pairs = []
-        for deps in [prior_allreduce_deps, post_allreduce_deps]:
-            for pair in deps.values():
-                dep_var_pairs.append(pair)
-
-        dep_var_pairs.sort(key=lambda x: x[0], reverse=True)
-        for idx, prior_name, post_name in dep_var_pairs:
-            prior_var = block.var(prior_name)
-            post_var = block.var(post_name)
-            depend_op = insert_dependencies_for_vars(
-                block,
-                idx,
-                prior_var,
-                post_var,
-                self.dist_context,
-                OpRole.Backward,
-                process_mesh=[
-                    -1
-                ],  # hack to avoid initialize the dist attr for coalesce var
-                is_recompute=False,
-                sync=False,
-                op_namescope="data_parallel_overlap_dep",
-            )
-            depend_op.dist_attr.execution_stream = self.gradient_sync_stream
+        # insert dependency op
+        indice = sorted(dep_map.keys(), reverse=True)
+        for i in indice:
+            for idx, prior_vars, post_vars, op_role in dep_map[i][::-1]:
+                depend_op = insert_dependencies_for_vars(
+                    block,
+                    idx,
+                    prior_vars,
+                    post_vars,
+                    self.dist_context,
+                    op_role,
+                    is_recompute=False,
+                    sync=False,
+                    op_namescope="data_parallel_overlap_dep",
+                )
+                depend_op.dist_attr.execution_stream = self.gradient_sync_stream
         block._sync_with_cpp()
 
         # remove naive synchronization & assign allreduce stream
@@ -712,13 +693,9 @@ class DataParallelOptimizationPass(PassBase):
                 fused_grads
             )
             self._logger.debug(
-                "the following [{}] gradients are not fused: ".format(
-                    len(individual_grads)
-                )
+                f"the following [{len(individual_grads)}] gradients are not fused: "
             )
-            self._logger.debug(
-                "individual gradient {}".format(individual_grads)
-            )
+            self._logger.debug(f"individual gradient {individual_grads}")
 
 
 class GradientsGroup:
@@ -779,9 +756,7 @@ class GradientsGroup:
             grad_op = self.ops[grad_op_idx]
             assert (
                 grad_var.name in grad_op.output_arg_names
-            ), "grad [{}] should be output of {}".format(
-                grad_var.name, str(grad_op)
-            )
+            ), f"grad [{grad_var.name}] should be output of {str(grad_op)}"
             self.coalesce_op_idx = grad_op_idx
 
     def finalize(self):

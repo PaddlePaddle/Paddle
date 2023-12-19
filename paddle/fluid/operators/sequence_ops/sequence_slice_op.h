@@ -40,7 +40,7 @@ inline LoD SequenceSliceLoD(const T& in,
   return out_lod;
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class SequenceSliceOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -130,8 +130,8 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
     out->Resize(out_dims);
     out->set_lod(out_lod);
 
-    auto in_stride = phi::stride(in->dims());
-    auto out_stride = phi::stride(out->dims());
+    auto in_stride = common::stride(in->dims());
+    auto out_stride = common::stride(out->dims());
 
     size_t out_offset = 0;
     for (size_t i = 0; i < n; ++i) {
@@ -151,7 +151,7 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class SequenceSliceGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -193,9 +193,9 @@ class SequenceSliceGradOpKernel : public framework::OpKernel<T> {
         Tensor out_grad_t =
             out_grad->Slice(static_cast<int>(out_lod[0][i]),
                             static_cast<int>(out_lod[0][i + 1]));
-        auto out_grad_stride = phi::stride(out_grad_t.dims());
+        auto out_grad_stride = common::stride(out_grad_t.dims());
 
-        auto x_grad_stride = phi::stride(x_grad->dims());
+        auto x_grad_stride = common::stride(x_grad->dims());
 
         Tensor x_grad_t = x_grad->Slice(
             static_cast<int>(lod[0][i] + offset_data[i]),

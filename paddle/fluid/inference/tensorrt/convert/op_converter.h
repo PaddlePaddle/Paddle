@@ -27,6 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
 #include "paddle/fluid/inference/utils/singleton.h"
+#include "paddle/phi/common/data_type.h"
 
 namespace paddle {
 namespace inference {
@@ -56,27 +57,15 @@ class OpConverter {
 
     OpConverter* it{nullptr};
 
-    auto op_converter_type_map = OpTeller::Global().GetOpConverterTypeMap();
-    switch (op_converter_type_map.at(op_desc.Type())) {
+    auto converter_type = static_cast<OpConverterType>(
+        PADDLE_GET_CONST(int, op_desc.GetAttr("converter_type")));
+    switch (converter_type) {
       case OpConverterType::Default:
-        if (op_desc.Type() == "mul") {
-          PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(),
-                            1UL,
-                            platform::errors::InvalidArgument(
-                                "The input op mul's Input(\"Y\")."
-                                "size() should equal to 1, but reveceid "
-                                "Input(\"Y\").size() = %u.",
-                                op_desc.Input("Y").size()));
-          std::string Y = op_desc.Input("Y")[0];
-          if (parameters.count(Y)) {
-            it = Registry<OpConverter>::Global().Lookup("fc");
-          }
-        }
         if (op_desc.Type().find("elementwise") != std::string::npos) {
           static std::unordered_set<std::string> add_tensor_op_set{
-              "add", "mul", "sub", "div", "max", "min", "pow"};
+              "add", "mul", "sub", "div", "max", "min", "pow", "mod"};
           static std::unordered_set<std::string> add_weight_op_set{
-              "add", "mul", "sub", "div", "max", "min", "pow"};
+              "add", "mul", "sub", "div", "max", "min", "pow", "mod"};
           PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(),
                             1UL,
                             platform::errors::InvalidArgument(
@@ -151,14 +140,6 @@ class OpConverter {
               platform::errors::Unimplemented("no OpConverter for optype [%s]",
                                               op_desc.Type()));
         }
-        // lookup_table_v2 == lookup_table
-        if (op_desc.Type() == "lookup_table_v2") {
-          it = Registry<OpConverter>::Global().Lookup("lookup_table");
-          PADDLE_ENFORCE_NOT_NULL(
-              it,
-              platform::errors::Unimplemented("no OpConverter for optype [%s]",
-                                              op_desc.Type()));
-        }
         if (!it) {
           it = Registry<OpConverter>::Global().Lookup(op_desc.Type());
         }
@@ -176,6 +157,13 @@ class OpConverter {
         it = Registry<OpConverter>::Global().Lookup("custom_plugin_creater");
         break;
 
+      case OpConverterType::CustomGenericPluginCreater:
+        LOG(INFO) << "There is no OpConverter for type " << op_desc.Type()
+                  << ", now use custom_generic_plugin_creater!";
+        it = Registry<OpConverter>::Global().Lookup(
+            "custom_generic_plugin_creater");
+        break;
+
       default:
         CHECK(false) << "no OpConverter for optype " << op_desc.Type();
     }
@@ -186,7 +174,7 @@ class OpConverter {
                                         op_desc.Type()));
 
     it->SetEngine(engine);
-    engine->SetScope(scope);
+    engine->SetScope(&scope);
     it->SetBlockDesc(block);
     (*it)(op, scope, test_mode);
 
@@ -289,7 +277,7 @@ class OpConverter {
     }
   }
 
-  // The scope  here should be inited with the parameter vars.
+  // The scope here should be inited with the parameter vars.
   void ConvertBlockToTRTEngine(
       framework::BlockDesc* block_desc,
       const framework::Scope& scope,
@@ -298,9 +286,15 @@ class OpConverter {
       const std::vector<std::string>& outputs,
       TensorRTEngine* engine) {
     engine->InitNetwork();
-    bool all_dynamic_shape_set = true;
-    for (auto& input : inputs) {
+    for (auto input : inputs) {
       if (parameters.count(input)) continue;
+      // NOTE(liuyuanle): It is a trick. If you need a name [input], then you
+      // need to use [input.substr(0, idx)].
+      // Maybe we insert suffix of "_cast_auto_mixed.tmp_" in
+      // auto_mixed_precision_pass.
+      auto idx = input.find("_cast_auto_mixed.tmp_");
+      input = input.substr(0, idx);
+
       auto* var = block_desc->FindVar(input);
       PADDLE_ENFORCE_NOT_NULL(
           var,
@@ -311,20 +305,27 @@ class OpConverter {
           FluidDT::VarType_Type_LOD_TENSOR,
           platform::errors::InvalidArgument("TensorRT engine only takes "
                                             "LoDTensor as input"));
+      nvinfer1::DataType in_dtype = FluidDataType2TRT(var->GetDataType());
+      if (engine->precision() == phi::DataType::FLOAT16 &&
+          in_dtype == nvinfer1::DataType::kFLOAT &&
+          engine->LowPrecisionIOEnabled()) {
+        in_dtype = nvinfer1::DataType::kHALF;
+      }
+
       auto var_shape = var->GetShape();
       if (engine->with_dynamic_shape()) {
 #if IS_TRT_VERSION_GE(6000)
-        auto min_input_shape = engine->min_input_shape()[input];
-        auto max_input_shape = engine->max_input_shape()[input];
-        auto optim_input_shape = engine->optim_input_shape()[input];
-        size_t ranks = min_input_shape.size();
-        if (ranks == 0) {
-          all_dynamic_shape_set = false;
-          LOG(INFO) << "trt input [" << input.c_str()
-                    << "] dynamic shape info not set, please check and retry.";
-          // check other input
-          continue;
+        if (!(engine->min_input_shape().count(input) &&
+              engine->max_input_shape().count(input) &&
+              engine->optim_input_shape().count(input))) {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "Cannot get %s min/max/opt shape", input));
         }
+        auto min_input_shape = engine->min_input_shape().at(input);
+        auto max_input_shape = engine->max_input_shape().at(input);
+        auto optim_input_shape = engine->optim_input_shape().at(input);
+        size_t ranks = min_input_shape.size();
+
         std::vector<int64_t> input_shape;
         // input_shape.push_back(-1);
         for (size_t i = 0; i < ranks; i++) {
@@ -341,26 +342,14 @@ class OpConverter {
           }
         }
         engine->DeclareInput(
-            input,
-            FluidDataType2TRT(
-                var->Proto()->type().lod_tensor().tensor().data_type()),
-            Vec2TRT_Dims(input_shape, input, true));
+            input, in_dtype, Vec2TRT_Dims(input_shape, input, true));
 #endif
       } else {
-        engine->DeclareInput(
-            input,
-            FluidDataType2TRT(
-                var->Proto()->type().lod_tensor().tensor().data_type()),
-            Vec2TRT_Dims(var_shape, input));
-        VLOG(1) << "Set trt input [" << input << "] type is "
-                << var->Proto()->type().lod_tensor().tensor().data_type();
+        engine->DeclareInput(input, in_dtype, Vec2TRT_Dims(var_shape, input));
       }
+      VLOG(1) << "set trt engine input dtype " << static_cast<int>(in_dtype);
     }
-    PADDLE_ENFORCE_EQ(all_dynamic_shape_set,
-                      true,
-                      platform::errors::InvalidArgument(
-                          "some trt inputs dynamic shape info not set, "
-                          "check the INFO log above for more details."));
+
     framework::proto::BlockDesc* block_proto = block_desc->Proto();
     ConvertBlock(*block_proto, parameters, scope, engine);
 
@@ -375,16 +364,42 @@ class OpConverter {
           FluidDT::VarType_Type_LOD_TENSOR,
           platform::errors::InvalidArgument(
               "The output tensor in TensorRT subgraph should be LoDTensor"));
-      engine->DeclareOutput(
-          output,
-          FluidDataType2TRT(
-              var->Proto()->type().lod_tensor().tensor().data_type()));
-      VLOG(6) << "DeclareOutput(name: " << output << ", dtype: "
-              << var->Proto()->type().lod_tensor().tensor().data_type() << ")";
+      nvinfer1::DataType out_dtype = FluidDataType2TRT(var->GetDataType());
+      if (engine->precision() == phi::DataType::FLOAT16 &&
+          out_dtype == nvinfer1::DataType::kFLOAT &&
+          engine->LowPrecisionIOEnabled()) {
+        out_dtype = nvinfer1::DataType::kHALF;
+      }
+      engine->DeclareOutput(output, out_dtype);
+      VLOG(1) << "set trt engine output dtype " << static_cast<int>(out_dtype);
     }
 
     engine->FreezeNetwork();
     engine->ClearWeights();
+  }
+
+  void SupportFP32MixPrecision(const std::string& output_name,
+                               const std::string& op_type,
+                               nvinfer1::ILayer* layer) {
+    if (engine_->OpIsRunFloat(output_name) || engine_->OpIsRunFloat(op_type)) {
+#if IS_TRT_VERSION_GE(8210)
+      VLOG(3) << op_type << "(output: " << output_name << ")"
+              << " is forced to run in FP32 precision.";
+      layer->resetPrecision();
+      layer->setPrecision(nvinfer1::DataType::kFLOAT);
+#else
+      VLOG(3)
+          << op_type << "(output: " << output_name << ")"
+          << ": Set layer precision needs TensorRT version 8.2.1 and after.";
+#endif
+    }
+  }
+
+  nvinfer1::ITensor* Cast(nvinfer1::ITensor* input, nvinfer1::DataType dtype) {
+    auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Identity, *input);
+    layer->setOutputType(0, dtype);
+    layer->getOutput(0)->setType(dtype);
+    return layer->getOutput(0);
   }
 
   // rank(result) = rank(input)
@@ -395,6 +410,59 @@ class OpConverter {
     auto* result =
         TRT_ENGINE_ADD_LAYER(engine_, Gather, *input, *indices_tensor, axis)
             ->getOutput(0);
+    return result;
+  }
+
+  nvinfer1::ITensor* Unsqueeze(nvinfer1::ITensor* input,
+                               const std::vector<int32_t> axis) {
+    const auto dims = input->getDimensions();
+    const std::unordered_set<int32_t> axis_data(axis.begin(), axis.end());
+    std::vector<int32_t> subscripts(dims.nbDims);
+    std::iota(subscripts.begin(), subscripts.end(), 0);
+    for (const auto& axis_value : axis_data) {
+      subscripts.insert(subscripts.begin() + axis_value, dims.nbDims);
+    }
+    nvinfer1::ITensor* input_shape{nullptr};
+    if (engine_->with_dynamic_shape()) {
+      input_shape = Shape(input);
+    } else {
+      input_shape = Add1DConstantLayer(dims);
+    }
+    auto* new_dim =
+        TRT_ENGINE_ADD_LAYER(engine_,
+                             Gather,
+                             *Concat(std::vector<nvinfer1::ITensor*>{
+                                 input_shape, Add1DConstantLayer(1)}),
+                             *Add1DConstantLayer(subscripts),
+                             0)
+            ->getOutput(0);
+    auto result = Reshape(input, new_dim);
+    return result;
+  }
+
+  nvinfer1::ITensor* Squeeze(nvinfer1::ITensor* input,
+                             const std::vector<int32_t> axis) {
+    const auto dims = input->getDimensions();
+    std::vector<int32_t> subscripts(dims.nbDims);
+    std::iota(subscripts.begin(), subscripts.end(), 0);
+    auto p =
+        std::remove_if(subscripts.begin(), subscripts.end(), [axis](int x) {
+          return std::find(axis.begin(), axis.end(), x) != axis.end();
+        });
+    subscripts.resize(p - subscripts.begin());
+
+    nvinfer1::ITensor* input_shape{nullptr};
+    if (engine_->with_dynamic_shape()) {
+      input_shape = Shape(input);
+    } else {
+      input_shape = Add1DConstantLayer(dims);
+    }
+
+    auto* new_dim =
+        TRT_ENGINE_ADD_LAYER(
+            engine_, Gather, *input_shape, *Add1DConstantLayer(subscripts), 0)
+            ->getOutput(0);
+    auto result = Reshape(input, new_dim);
     return result;
   }
 
@@ -414,6 +482,70 @@ class OpConverter {
 
   nvinfer1::ITensor* Shape(nvinfer1::ITensor* input) {
     return TRT_ENGINE_ADD_LAYER(engine_, Shape, *input)->getOutput(0);
+  }
+
+  nvinfer1::ITensor* Reshape(nvinfer1::ITensor* input,
+                             nvinfer1::ITensor* newShape,
+                             const std::string& name = "") {
+    auto* shuffle = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
+    if (engine_->with_dynamic_shape()) {
+      shuffle->setInput(1, *newShape);
+    } else {
+      auto shape = newShape->getDimensions();
+      shuffle->setReshapeDimensions(shape);
+    }
+    if (!name.empty()) {
+      shuffle->setName(name.c_str());
+    }
+    return shuffle->getOutput(0);
+  }
+
+  nvinfer1::ITensor* Reshape(nvinfer1::ITensor* input,
+                             nvinfer1::Dims shape,
+                             const std::string& name = "") {
+    auto* shuffle = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
+    shuffle->setReshapeDimensions(shape);
+    if (!name.empty()) {
+      shuffle->setName(name.c_str());
+    }
+    return shuffle->getOutput(0);
+  }
+
+  nvinfer1::ITensor* BroadcastTensor(nvinfer1::ITensor* input,
+                                     const int nbDims,
+                                     const std::string& name = "") {
+    auto oldShape = Shape(input);
+    auto oldShapeDims = oldShape->getDimensions();
+    const int rank = oldShapeDims.nbDims;
+    if (rank > nbDims) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Cannot broadcast a higher rank tensor to a lower rank tensor."));
+    }
+    if (rank < nbDims) {
+      nvinfer1::ITensor* concat_shape_tensor;
+      auto* one_rank_tensor =
+          Add1DConstantLayer(std::vector<int32_t>(nbDims - rank, 1));
+      std::vector<nvinfer1::ITensor*> itensors;
+      itensors.push_back(one_rank_tensor);
+      itensors.push_back(oldShape);
+      concat_shape_tensor = Concat(itensors);
+      input = Reshape(input, concat_shape_tensor, name);
+    }
+    return input;
+  }
+
+  nvinfer1::ITensor* BroadcastTensors(nvinfer1::ITensor* a,
+                                      nvinfer1::ITensor* b,
+                                      const std::string& name = "") {
+    const int aDims = a->getDimensions().nbDims;
+    const int bDims = b->getDimensions().nbDims;
+    if (aDims == bDims) {
+      VLOG(3) << "Broadcast two equal rank tensors";
+    }
+    if (aDims > bDims) {
+      return BroadcastTensor(b, aDims, name);
+    }
+    return BroadcastTensor(a, bDims, name);
   }
 
   // Concat not make rank changed
@@ -485,6 +617,14 @@ class OpConverter {
     return c;
   }
 
+  nvinfer1::ITensor* Pow(nvinfer1::ITensor* a, nvinfer1::ITensor* b) {
+    nvinfer1::ITensor* c =
+        TRT_ENGINE_ADD_LAYER(
+            engine_, ElementWise, *a, *b, nvinfer1::ElementWiseOperation::kPOW)
+            ->getOutput(0);
+    return c;
+  }
+
   nvinfer1::ITensor* Act(nvinfer1::ITensor* a,
                          nvinfer1::ActivationType act_type) {
     nvinfer1::ITensor* c =
@@ -496,6 +636,12 @@ class OpConverter {
   nvinfer1::ITensor* GetEleTensorOfShape(nvinfer1::ITensor* shape_tensor,
                                          int index,
                                          bool is_scalar = false) {
+    PADDLE_ENFORCE_GE(
+        index,
+        0,
+        platform::errors::PreconditionNotMet(
+            "The index should be greater or equal than 0, but got %d", index));
+
     auto* tensor =
         TRT_ENGINE_ADD_LAYER(engine_,
                              Gather,
@@ -602,6 +748,9 @@ class OpConverter {
       const std::string& layer_type,
       const std::vector<std::string>& output_tensor_names,
       bool test_mode = false) {
+    if (layer == nullptr) {
+      return;
+    }
     size_t num_out = output_tensor_names.size();
     std::string layer_name = layer_type + " (Output: ";
     for (size_t i = 0; i < num_out; i++) {
@@ -612,6 +761,23 @@ class OpConverter {
       }
       layer_name += output_tensor_names[i];
       if (i != num_out - 1) layer_name += ", ";
+    }
+    for (size_t i = 0; i < num_out; i++) {
+      nvinfer1::Dims tmp_dims = layer->getOutput(i)->getDimensions();
+      std::vector<int> tmp_vec;
+      for (int i = 0; i < tmp_dims.nbDims; i++)
+        tmp_vec.push_back(tmp_dims.d[i]);
+
+      VLOG(3) << output_tensor_names[i] << "'s dimension :["
+              << string::join_strings(tmp_vec, ',') << "]";
+      // The following check may cause errors in CI, but is necessary in the
+      // latest version.
+      // PADDLE_ENFORCE_GE(
+      //     layer->getOutput(i)->getDimensions().nbDims,
+      //     0,
+      //     platform::errors::InvalidArgument(
+      //         "Error occures in Paddle-TRT layer with output name: %s",
+      //         output_tensor_names[i].c_str()));
     }
     layer->setName((layer_name + ")").c_str());
   }
@@ -632,11 +798,6 @@ class OpConverter {
   bool test_mode_;
 
  private:
-  // registered op converter map, whose key is the fluid op type, and value is
-  // the pointer position of corresponding OpConverter class.
-  std::unordered_map<std::string, OpConverter*> converters_;
-  // fluid inference scope
-  framework::Scope* scope_{nullptr};
   std::mutex mut_;
 };
 

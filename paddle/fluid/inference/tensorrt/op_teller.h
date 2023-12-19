@@ -40,7 +40,8 @@ namespace tensorrt {
 struct Teller {
   virtual bool operator()(const framework::OpDesc& desc,
                           bool use_no_calib_int8 = false,
-                          bool with_dynamic_shape = false) = 0;
+                          bool with_dynamic_shape = false,
+                          bool use_explicit_quantization = false) = 0;
 
   virtual ~Teller() = default;
 };
@@ -58,7 +59,8 @@ struct Teller {
 enum class OpConverterType {
   Default = 0,
   GenericPluginCreater,
-  CustomPluginCreater
+  CustomPluginCreater,
+  CustomGenericPluginCreater
 };
 /*
  * class OpTeller helps to tell whether a fluid
@@ -74,7 +76,8 @@ class OpTeller {
 
   bool Tell(const framework::ir::Node* node,
             bool use_no_calib_int8 = false,
-            bool with_dynamic_shape = false);
+            bool with_dynamic_shape = false,
+            bool use_explicit_quantization = false);
 
   std::unique_ptr<Teller>& GetDefaultTeller() { return tellers_.at(0); }
 
@@ -82,12 +85,12 @@ class OpTeller {
 
   std::unique_ptr<Teller>& GetCustomPluginTeller() { return tellers_.at(2); }
 
-  void SetOpConverterType(std::string name, OpConverterType type) {
-    op_converter_type_map_[name] = type;
+  std::unique_ptr<Teller>& GetCustomGenericPluginTeller() {
+    return tellers_.at(3);
   }
 
-  const std::map<std::string, OpConverterType>& GetOpConverterTypeMap() const {
-    return op_converter_type_map_;
+  void SetOpConverterType(framework::OpDesc* op_desc, OpConverterType type) {
+    op_desc->SetAttr("converter_type", static_cast<int>(type));
   }
 
  private:
@@ -95,7 +98,6 @@ class OpTeller {
 
  private:
   std::vector<std::unique_ptr<Teller>> tellers_;
-  std::map<std::string, OpConverterType> op_converter_type_map_;
 };
 
 }  // namespace tensorrt

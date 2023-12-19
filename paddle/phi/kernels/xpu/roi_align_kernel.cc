@@ -14,9 +14,9 @@
 
 #include "paddle/phi/kernels/roi_align_kernel.h"
 
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -40,7 +40,10 @@ void RoiAlignKernel(const Context& dev_ctx,
 
   int rois_num = boxes.dims()[0];
 
-  if (rois_num == 0) return;
+  if (rois_num == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
 
   DenseTensor roi_batch_id_list;
   roi_batch_id_list.Resize({rois_num});
@@ -62,11 +65,11 @@ void RoiAlignKernel(const Context& dev_ctx,
             batch_size));
 
     std::vector<int> rois_num_list(rois_batch_size);
-    paddle::memory::Copy(cplace,
-                         rois_num_list.data(),
-                         xplace,
-                         boxes_num->data<int>(),
-                         sizeof(int) * rois_batch_size);
+    memory_utils::Copy(cplace,
+                       rois_num_list.data(),
+                       xplace,
+                       boxes_num->data<int>(),
+                       sizeof(int) * rois_batch_size);
     cpu_lod = new int[rois_batch_size + 1];
     cpu_lod[0] = 0;
     for (int i = 0; i < rois_batch_size; i++) {
@@ -111,37 +114,33 @@ void RoiAlignKernel(const Context& dev_ctx,
     }
   }
 
-  int* roi_id_data = nullptr;
-  int r = xpu_malloc(reinterpret_cast<void**>(&roi_id_data),
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+  int* roi_id_data = RAII_GUARD.alloc_l3_or_gm<int>(rois_batch_size + 1);
+  PADDLE_ENFORCE_NOT_NULL(
+      roi_id_data, errors::ResourceExhausted("XPU has no enough memory"));
+  memory_utils::Copy(xplace,
+                     roi_id_data,
+                     cplace,
+                     cpu_lod,
                      (rois_batch_size + 1) * sizeof(int));
-  PADDLE_ENFORCE_XPU_SUCCESS(r);
-  paddle::memory::Copy(xplace,
-                       roi_id_data,
-                       cplace,
-                       cpu_lod,
-                       (rois_batch_size + 1) * sizeof(int));
   delete[] cpu_lod;
-  r = xpu::roi_align<T, int>(dev_ctx.x_context(),
-                             x.data<T>(),
-                             dev_ctx.template Alloc<T>(out),
-                             boxes.data<T>(),
-                             roi_id_data,
-                             batch_size,
-                             channels,
-                             height,
-                             width,
-                             out->dims()[0],
-                             pooled_height,
-                             pooled_width,
-                             spatial_scale,
-                             sampling_ratio,
-                             true,
-                             aligned);
+  int r = xpu::roi_align<T, int>(dev_ctx.x_context(),
+                                 x.data<T>(),
+                                 dev_ctx.template Alloc<T>(out),
+                                 boxes.data<T>(),
+                                 roi_id_data,
+                                 batch_size,
+                                 channels,
+                                 height,
+                                 width,
+                                 out->dims()[0],
+                                 pooled_height,
+                                 pooled_width,
+                                 spatial_scale,
+                                 sampling_ratio,
+                                 true,
+                                 aligned);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "roi_align");
-  if (dev_ctx.x_context()->xpu_stream) {
-    dev_ctx.Wait();
-  }
-  xpu_free(roi_id_data);
 }
 
 }  // namespace phi

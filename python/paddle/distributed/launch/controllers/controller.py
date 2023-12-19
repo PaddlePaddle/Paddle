@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import os
 import signal
 import sys
@@ -36,6 +37,13 @@ class ControllerBase:
         signal.signal(signal.SIGTERM, self.signal_handler)
         signal.signal(signal.SIGABRT, self.signal_handler)
         signal.signal(signal.SIGINT, self.signal_handler)
+        if ctx.is_auto_tuner_mode():
+            if not ctx.run_best:
+                # set per task timeout
+                signal.signal(signal.SIGALRM, self.not_exit_signal_handler)
+                signal.alarm(ctx.max_time_per_task)
+            else:
+                signal.alarm(0)
 
         self.ctx = ctx
         self.master = Master.factory(self.ctx)
@@ -54,12 +62,17 @@ class ControllerBase:
         self.join_server = None
 
     def deploy_pod(self):
+        assert (
+            len(self.pod.containers) + len(self.pod.init_containers) > 0
+        ), "No container in the pod"
 
-        assert len(self.pod.containers) > 0, "No container in the pod"
+        self.ctx.logger.info(f"Run {self.pod}")
+        if len(self.pod.init_containers) > 0:
+            self.ctx.logger.debug(self.pod.init_containers[0])
+        if len(self.pod.containers) > 0:
+            self.ctx.logger.debug(self.pod.containers[0])
 
-        self.ctx.logger.info("Run {}".format(self.pod))
-        self.ctx.logger.debug(self.pod.containers[0])
-
+        self.save_pod_env()
         self.ctx.status.run()
         self.pod.deploy()
 
@@ -77,7 +90,7 @@ class ControllerBase:
         '''
         # TODO(kuizhiqing) unify ctx.status and master status
 
-        self.ctx.logger.info("Watching {}".format(self.pod))
+        self.ctx.logger.info(f"Watching {self.pod}")
 
         while not self.ctx.status.is_done():
             status = self.pod.watch(timeout=2)
@@ -95,7 +108,7 @@ class ControllerBase:
                 while self.pod.logs():
                     pass
 
-                self.ctx.logger.info("Pod {}".format(status))
+                self.ctx.logger.info(f"Pod {status}")
                 return True
 
             # self failure
@@ -106,8 +119,8 @@ class ControllerBase:
                 self.master.restart_peer()
 
                 fc = self.pod.failed_container()
-                self.ctx.logger.info("Pod {}".format(status))
-                self.ctx.logger.error("Container failed !!!\n{}".format(fc[0]))
+                self.ctx.logger.info(f"Pod {status}")
+                self.ctx.logger.error(f"Container failed !!!\n{fc[0]}")
                 self.ctx.logger.info(
                     "------------------------- ERROR LOG DETAIL -------------------------"
                 )
@@ -125,6 +138,11 @@ class ControllerBase:
                 self.ctx.status.is_restarting()
                 and self.master.get_status() != self.ctx.status.COMPLETED
             ):
+                # when peer failure, stop peer
+                if self.ctx.args.elastic_level == -1:
+                    self.pod.stop(timeout=3)
+                    return True
+
                 self.pod.stop(timeout=30)
                 return False
 
@@ -136,12 +154,13 @@ class ControllerBase:
         self.master.stop()
         self.pod.stop(timeout=30)
 
-    def finalize(self):
+    def finalize(self, exit=True):
         self.pod.join()
         self.master.stop()
 
-        self.ctx.logger.info("Exit code {}".format(self.pod.exit_code))
-        sys.exit(self.pod.exit_code)
+        self.ctx.logger.info(f"Exit code {self.pod.exit_code}")
+        if exit:
+            sys.exit(self.pod.exit_code)
 
     def signal_handler(self, sigint, frame):
         if hasattr(self, 'sigint'):
@@ -149,13 +168,25 @@ class ControllerBase:
             self.pod.stop(timeout=10)
             sys.exit(sigint)
 
-        self.ctx.logger.info("Terminating with signal {}".format(sigint))
+        self.ctx.logger.info(f"Terminating with signal {sigint}")
 
         self.sigint = sigint
         self.ctx.status.done()
         self.stop(sigint=sigint)
-        self.ctx.logger.info("Exit with signal {}".format(sigint))
+        self.ctx.logger.info(f"Exit with signal {sigint}")
         sys.exit(sigint)
+
+    def not_exit_signal_handler(self, sigint, frame):
+        if hasattr(self, 'sigint'):
+            self.ctx.logger.info("Force quit in 10 seconds...")
+            self.pod.stop(timeout=10)
+
+        self.ctx.logger.info(f"Terminating with signal {sigint}")
+
+        self.sigint = sigint
+        self.ctx.status.done()
+        self.stop(sigint=sigint)
+        self.ctx.logger.info(f"Exit with signal {sigint}")
 
 
 class Controller(ControllerBase):
@@ -179,7 +210,23 @@ class Controller(ControllerBase):
 
     def _get_entrypoint(self):
         if self.ctx.args.training_script.endswith('.py'):
-            entrypoint = [sys.executable, "-u", self.ctx.args.training_script]
+            if os.environ.get("WITH_COVERAGE") == "ON":
+                entrypoint = [
+                    sys.executable,
+                    "-u",
+                    "-m",
+                    "coverage",
+                    "run",
+                    "--branch",
+                    "-p",
+                    self.ctx.args.training_script,
+                ]
+            else:
+                entrypoint = [
+                    sys.executable,
+                    "-u",
+                    self.ctx.args.training_script,
+                ]
         else:
             entrypoint = [self.ctx.args.training_script]
 
@@ -199,6 +246,7 @@ class Controller(ControllerBase):
         c = Container(
             entrypoint=(entrypoint or self._get_entrypoint()),
             env=(self.ctx.get_envs() if use_ctx_env else {}),
+            overwrite_log=self.ctx.args.log_overwrite,
         )
         c.outfile, c.errfile = self._get_out_err_file(out, err)
         c.update_env(envs)
@@ -212,8 +260,9 @@ class Controller(ControllerBase):
         log_file=None,
         is_init=False,
     ):
-
         if not container:
+            envs = copy.deepcopy(envs)
+            envs['PADDLE_LOG_DIR'] = str(os.path.abspath(self.ctx.args.log_dir))
             container = self.new_container(
                 entrypoint=entrypoint, envs=envs, out=log_file, err=log_file
             )
@@ -244,11 +293,44 @@ class Controller(ControllerBase):
 
         f = os.path.join(
             self.ctx.args.log_dir,
-            '{}.{}.log'.format(self.job.id, self.pod.name),
+            f'{self.job.id}.{self.pod.name}.log',
         )
         try:
             os.makedirs(os.path.dirname(f), exist_ok=True)
             with open(f, 'a+') as fd:
+                if fd.tell() == 0:
+                    fd.write(str(os.environ))
+                    fd.write("\n")
                 fd.write(str(info))
+                fd.write("\n")
         except Exception as e:
-            self.ctx.logger.error("save log failed because {}".format(e))
+            self.ctx.logger.error(f"save log failed because {e}")
+
+    def save_pod_env(self):
+        assert (
+            len(self.pod.containers) + len(self.pod.init_containers) > 0
+        ), "No container in the pod"
+
+        if not self.ctx.args.log_dir:
+            return
+
+        for c in self.pod.init_containers:
+            self._save_container_env(c, is_init=True)
+
+        for c in self.pod.containers:
+            self._save_container_env(c)
+
+    def _save_container_env(self, container, is_init=False):
+        f = os.path.join(
+            self.ctx.args.log_dir,
+            f'envlog.init.{container.rank}'
+            if is_init
+            else f'envlog.{container.rank}',
+        )
+        try:
+            os.makedirs(os.path.dirname(f), exist_ok=True)
+            with open(f, container.log_mode) as fd:
+                for k, v in sorted(container.env.items()):
+                    fd.write(str(f"{k}={v}\n"))
+        except Exception as e:
+            self.ctx.logger.error(f"save pod env log failed because {e}")

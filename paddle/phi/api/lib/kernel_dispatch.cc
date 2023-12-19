@@ -11,15 +11,15 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 #include "paddle/phi/api/lib/kernel_dispatch.h"
-
+#include <glog/logging.h>
 #ifdef _MSC_VER
 #include <intrin.h>
 #endif
 
 #include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/string_tensor_utils.h"
 #include "paddle/phi/core/tensor_utils.h"
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -50,6 +50,8 @@ bool HasAllocation(const phi::TensorBase& t) {
   } else if (phi::StringTensor::classof(&t)) {
     return phi::StringTensorUtils::GetHolder(
                static_cast<const phi::StringTensor&>(t)) != nullptr;
+  } else if (phi::distributed::DistTensor::classof(&t)) {
+    return static_cast<const phi::distributed::DistTensor&>(t).defined();
   } else {
     return false;
   }
@@ -58,14 +60,23 @@ bool HasAllocation(const phi::TensorBase& t) {
 BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
   if (HasAllocation(t) && t.place().GetType() != AllocationType::UNDEFINED) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
+    // See Note [ Why `SetDevice` when parsing custom place? ]
     if (t.place().GetType() == AllocationType::CUSTOM) {
       phi::DeviceManager::SetDevice(t.place());
     }
 #endif
     phi::Backend backend_key = phi::TransToPhiBackend(t.place());
     BackendSet backend_set(backend_key);
+    VLOG(10) << "update BackendSet by tensor: add [" << backend_key << "]";
     if (backend_key == Backend::GPU && phi::DenseTensor::classof(&t) &&
         static_cast<const phi::DenseTensor&>(t).meta().use_gpudnn) {
+      backend_set = backend_set | BackendSet(Backend::GPUDNN);
+    } else if (backend_key == Backend::GPU &&
+               phi::distributed::DistTensor::classof(&t) &&
+               static_cast<const phi::distributed::DistTensor&>(t)
+                   .value()
+                   .meta()
+                   .use_gpudnn) {
       backend_set = backend_set | BackendSet(Backend::GPUDNN);
     }
     return backend_set;
@@ -74,14 +85,17 @@ BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
 }
 
 std::size_t CountLeadingZeros(uint32_t val) {
-#if defined(__clang__) || defined(__GNUC__)
-  return __builtin_clz(val);
-#elif defined(_MSC_VER)
-  return __lzcnt(val);
-#else
   if (val == 0) {
     return 32;
   }
+#if defined(__clang__) || defined(__GNUC__)
+  return __builtin_clz(val);
+#elif defined(_MSC_VER)
+  // windows don't have built-in clz/ctz function
+  DWORD Index;
+  _BitScanReverse(&Index, val);
+  return (uint32_t)Index ^ 31;
+#else
   std::size_t zero_bits = 0;
   for (std::size_t shift = 32 >> 1; shift; shift >>= 1) {
     uint32_t tmp = val >> shift;
@@ -112,7 +126,7 @@ DataType ParseDataType(const std::vector<Tensor>& tensors) {
   auto n = tensors.size();
   for (size_t i = 1; i < n; ++i) {
     if (tensors[i].type() != dtype) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "The data_type of input tensor in list isn't consistent, "
           "the first tensor is %s, but %dth tensor is %s.",
           dtype,
@@ -128,6 +142,20 @@ DataType ParseDataTypeWithInputOrder(DataType dtype, const Tensor& tensor) {
 }
 
 Backend ParseBackend(const Place& place) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  /**
+   * [ Why `SetDevice` when parsing custom place? ]
+   * Users are able to call C++ APIs under customOP + customDevice scenario. To
+   * make sure `GetDevice` function outputs the accurate place when executing
+   * `GetDeviceContextByBackend` function in C++ API, we need to call
+   * `SetDevice` first. However, in dygraph mode, `SetDevice` is called at
+   * CPython level and calling C++ API directly in customOP cannot reach
+   * CPython. Hence, we need to manually set the device here.
+   */
+  if (place.GetType() == AllocationType::CUSTOM) {
+    phi::DeviceManager::SetDevice(place);
+  }
+#endif
   return phi::TransToPhiBackend(place);
 }
 Backend ParseBackend(const Tensor& tensor) {
@@ -146,11 +174,12 @@ Backend ParseBackendWithInputOrder(const Place& place, const Tensor& tensor) {
              : ParseBackend(tensor);
 }
 
-DataLayout ParseLayout(DataLayout layout) { return layout; }
-DataLayout ParseLayout(const Tensor& tensor) { return tensor.layout(); }
+phi::DataLayout ParseLayout(phi::DataLayout layout) { return layout; }
+phi::DataLayout ParseLayout(const Tensor& tensor) { return tensor.layout(); }
 
-DataLayout ParseLayoutWithInputOrder(DataLayout layout, const Tensor& tensor) {
-  return layout != DataLayout::UNDEFINED ? layout : ParseLayout(tensor);
+phi::DataLayout ParseLayoutWithInputOrder(phi::DataLayout layout,
+                                          const Tensor& tensor) {
+  return layout != phi::DataLayout::UNDEFINED ? layout : ParseLayout(tensor);
 }
 
 }  // namespace experimental

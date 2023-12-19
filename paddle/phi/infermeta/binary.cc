@@ -18,15 +18,21 @@ limitations under the License. */
 #include <vector>
 
 #include "glog/logging.h"
-
+#include "paddle/common/ddim.h"
+#include "paddle/common/layout.h"
+#include "paddle/phi/api/lib/data_type_set.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/type_traits.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/core/utils/data_type.h"
+#include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
+
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/phi/backends/onednn/onednn_helper.h"
+#endif
 
 namespace phi {
 namespace detail {
@@ -70,12 +76,12 @@ static void BinarySameInputDimsCheck(const MetaTensor& x,
 
 // Used in MatrixRankTolInferMeta
 static DDim CheckAndGetOutputDim(const DDim& dim_x) {
-  auto x_vec = phi::vectorize(dim_x);
+  auto x_vec = common::vectorize(dim_x);
   if (x_vec.size() == 2) {
-    return phi::make_ddim({1});
+    return common::make_ddim({});
   }
   x_vec.erase(x_vec.end() - 2, x_vec.end());
-  return phi::make_ddim(x_vec);
+  return common::make_ddim(x_vec);
 }
 
 }  // namespace detail
@@ -85,14 +91,7 @@ void AllValueCompareInferMeta(const MetaTensor& x,
                               MetaTensor* out,
                               MetaConfig config) {
   detail::BinarySameInputDimsCheck(x, y, config);
-
-  auto x_dims = x.dims();
-  auto y_dims = y.dims();
-  if (x_dims.size() == 0 && y_dims.size() == 0) {
-    out->set_dims(phi::make_ddim({}));
-  } else {
-    out->set_dims(phi::make_ddim({1}));
-  }
+  out->set_dims(common::make_ddim({}));
   out->set_dtype(DataType::BOOL);
 }
 
@@ -136,9 +135,32 @@ void KLDivInferMeta(const MetaTensor& x,
   if ("none" == reduction) {
     out->set_dims(dim_x);
   } else {
-    out->set_dims({1});
+    out->set_dims(common::make_ddim({}));
   }
   out->set_dtype(x.dtype());
+}
+
+void ArrayWriteInferMeta(const MetaTensor& array,
+                         const MetaTensor& x,
+                         MetaTensor* out,
+                         MetaConfig config) {
+  out->set_dtype(array.dtype());
+  out->set_layout(array.layout());
+}
+
+void ArrayReadInferMeta(const MetaTensor& array,
+                        const Scalar& i,
+                        MetaTensor* out,
+                        MetaConfig config) {
+  if (!config.is_runtime) {
+    out->set_dims({-1});
+  } else {
+    double index = i.to<int64_t>();
+    out->set_dims(array.dims(index));
+    out->share_lod(array, index);
+  }
+  out->set_dtype(array.dtype());
+  out->set_layout(array.layout());
 }
 
 void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
@@ -166,6 +188,8 @@ void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   if (x.dtype() == DataType::INT32 || x.dtype() == DataType::INT64 ||
       y.dtype() == DataType::INT32 || y.dtype() == DataType::INT64) {
     out->set_dtype(DataType::FLOAT64);
+  } else {
+    out->set_dtype(x.dtype());
   }
 }
 
@@ -188,7 +212,7 @@ void BCELossInferMeta(const MetaTensor& input,
 
   bool check = true;
   if ((!config.is_runtime) &&
-      (phi::product(input_dims) <= 0 || phi::product(label_dims) <= 0)) {
+      (common::product(input_dims) <= 0 || common::product(label_dims) <= 0)) {
     check = false;
   }
 
@@ -243,7 +267,7 @@ void BincountInferMeta(const MetaTensor& x,
             weights_dim,
             input_dim));
   }
-  out->set_dims(phi::make_ddim({-1}));
+  out->set_dims(common::make_ddim({-1}));
   if (weights) {
     out->set_dtype(weights.dtype());
   } else {
@@ -253,9 +277,37 @@ void BincountInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void BinomialInferMeta(const MetaTensor& count,
+                       const MetaTensor& prob,
+                       MetaTensor* out,
+                       MetaConfig config) {
+  auto count_dims = count.dims();
+  auto prob_dims = prob.dims();
+
+  bool check = true;
+  if ((!config.is_runtime) &&
+      (phi::product(count_dims) <= 0 || phi::product(prob_dims) <= 0)) {
+    check = false;
+  }
+
+  if (check) {
+    PADDLE_ENFORCE_EQ(count_dims,
+                      prob_dims,
+                      phi::errors::InvalidArgument(
+                          "Input(count) and Input(prob) shall have the same "
+                          "shape. But received: the shape of Input(count) is "
+                          "[%s], the shape of Input(prob) is [%s].",
+                          count_dims,
+                          prob_dims));
+  }
+
+  out->set_dims(count_dims);
+  out->set_dtype(DataType::INT64);
+}
+
 void BmmInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
-  std::vector<int64_t> x_dims = phi::vectorize(x.dims());
-  std::vector<int64_t> y_dims = phi::vectorize(y.dims());
+  std::vector<int64_t> x_dims = common::vectorize(x.dims());
+  std::vector<int64_t> y_dims = common::vectorize(y.dims());
   std::size_t x_ndims = x_dims.size();
   std::size_t y_ndims = y_dims.size();
 
@@ -271,30 +323,30 @@ void BmmInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
                         "Input(Y) of BmmOp must be 3-dimensional in BmmOp, "
                         "but received Y's shape: [%s].",
                         y_ndims));
-  PADDLE_ENFORCE_EQ(
+  std::vector<int64_t> dim_out;
+  auto cal_shape_fn = [](int64_t x, int64_t y, const std::string& error_str) {
+    if (x == -1) {
+      return y;
+    } else if (y == -1) {
+      return x;
+    }
+    PADDLE_ENFORCE_EQ(x, y, phi::errors::InvalidArgument(error_str, x, y));
+    return x;
+  };
+  cal_shape_fn(x_dims[2],
+               y_dims[1],
+               "Input(X)'s width must be equal with Input(Y)'s height in BmmOp,"
+               "but receive X's width: [%s],"
+               "Y's height: [%s].");
+  dim_out.push_back(cal_shape_fn(
       x_dims[0],
       y_dims[0],
-      phi::errors::InvalidArgument(
-          "Input(X) and Input(Y) must have the same batch size in BmmOp, "
-          "but received X's batch size: [%s],"
-          "Y's batch size [%s]",
-          x_dims[0],
-          y_dims[0]));
-  PADDLE_ENFORCE_EQ(
-      x_dims[2],
-      y_dims[1],
-      phi::errors::InvalidArgument(
-          "Input(X)'s width must be equal with Input(Y)'s height in BmmOp,"
-          "but receive X's width: [%s],"
-          "Y's height: [%s].",
-          x_dims[2],
-          y_dims[1]));
-
-  std::vector<int64_t> dim_out;
-  dim_out.push_back(x_dims[0]);
+      "Input(X) and Input(Y) must have the same batch size in BmmOp, "
+      "but received X's batch size: [%s],"
+      "Y's batch size [%s]"));
   dim_out.push_back(x_dims[1]);
   dim_out.push_back(y_dims[2]);
-  out->set_dims(phi::make_ddim(dim_out));
+  out->set_dims(common::make_ddim(dim_out));
   out->share_lod(x);
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
@@ -334,8 +386,8 @@ void CholeskySolveInferMeta(const MetaTensor& x,
                                    x_dims[x_dims_n - 2],
                                    y_dims[y_dims_n - 2]));
 
-  std::vector<int64_t> x_dims_vec = phi::vectorize(x_dims);
-  std::vector<int64_t> y_dims_vec = phi::vectorize(y_dims);
+  std::vector<int64_t> x_dims_vec = common::vectorize(x_dims);
+  std::vector<int64_t> y_dims_vec = common::vectorize(y_dims);
 
   std::vector<int64_t> x_dims_vec_cut(x_dims_vec.begin(), x_dims_vec.end() - 2);
   std::vector<int64_t> y_dims_vec_cut(y_dims_vec.begin(), y_dims_vec.end() - 2);
@@ -348,7 +400,7 @@ void CholeskySolveInferMeta(const MetaTensor& x,
                           {x_dims_vec[x_dims_n - 2], x_dims_vec[x_dims_n - 1]});
 
   // dim of 'out' is the same with 'X' after broadcast
-  out->set_dims(phi::make_ddim(x_broadcast_dims));
+  out->set_dims(common::make_ddim(x_broadcast_dims));
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
   out->share_lod(x);
@@ -377,11 +429,12 @@ void CompareRawInferMeta(const MetaTensor& x,
                                   max_dim,
                                   axis);
 
-    out->set_dims(make_ddim(out_dims_array));
+    out->set_dims(common::make_ddim(out_dims_array));
     out->share_lod(x);
   }
-
-  out->set_dtype(DataType::BOOL);
+  if (!out->is_same_tensor(x)) {
+    out->set_dtype(DataType::BOOL);
+  }
 }
 
 void CompareInferMeta(const MetaTensor& x,
@@ -401,20 +454,15 @@ void CompareAllInferMeta(const MetaTensor& x,
       errors::InvalidArgument(
           "The size of dim_y should not be greater than dim_x's."));
   out->share_lod(x);
-  if (!x.dims().size() || !y.dims().size()) {
-    out->set_dims(make_ddim({}));
-  } else {
-    out->set_dims(make_ddim({1}));
-  }
-  out->set_dtype(DataType::BOOL);
+  out->set_dims(common::make_ddim({}));
 }
 
 void ComplexInferMeta(const MetaTensor& x,
                       const MetaTensor& y,
                       MetaTensor* out) {
   if (x.dims() == y.dims()) {
-    auto sizes = vectorize(x.dims());
-    out->set_dims(phi::make_ddim(sizes));
+    auto sizes = common::vectorize(x.dims());
+    out->set_dims(common::make_ddim(sizes));
     out->set_dtype(dtype::ToComplex(x.dtype()));
     // NOTE(chenfeiyu): lod & broadcasting is intrinsically contradictory
     // so tensors with lod are not supported here
@@ -435,7 +483,7 @@ void ComplexInferMeta(const MetaTensor& x,
                                        out_dims_array.data(),
                                        max_dim,
                                        axis);
-    out->set_dims(phi::make_ddim(out_dims_array));
+    out->set_dims(common::make_ddim(out_dims_array));
     out->set_dtype(dtype::ToComplex(x.dtype()));
   }
 }
@@ -454,7 +502,7 @@ void ConvInferMeta(const MetaTensor& input,
   std::vector<int> dilations = dilations_t;
   auto in_dims = input.dims();
   auto filter_dims = filter.dims();
-  int dilation_size = dilations.size();
+  int dilation_size = static_cast<int>(dilations.size());
   for (int i = 0; i < dilation_size; ++i) {
     PADDLE_ENFORCE_GT(
         dilations[i],
@@ -496,7 +544,7 @@ void ConvInferMeta(const MetaTensor& input,
           filter_dims,
           filter_dims.size()));
 
-  int stride_size = strides.size();
+  int stride_size = static_cast<int>(strides.size());
   for (int i = 0; i < stride_size; ++i) {
     PADDLE_ENFORCE_GT(
         strides[i],
@@ -520,7 +568,7 @@ void ConvInferMeta(const MetaTensor& input,
           in_dims.size(),
           in_dims,
           strides.size(),
-          phi::make_ddim(strides),
+          common::make_ddim(strides),
           in_sub_stride_size));
 
   const auto input_channels =
@@ -563,14 +611,15 @@ void ConvInferMeta(const MetaTensor& input,
 
   DDim in_data_dims;
   if (channel_last) {
-    in_data_dims = phi::slice_ddim(in_dims, 1, in_dims.size() - 1);
+    in_data_dims = common::slice_ddim(in_dims, 1, in_dims.size() - 1);
   } else {
-    in_data_dims = phi::slice_ddim(in_dims, 2, in_dims.size());
+    in_data_dims = common::slice_ddim(in_dims, 2, in_dims.size());
   }
 
-  DDim filter_data_dims = phi::slice_ddim(filter_dims, 2, filter_dims.size());
+  DDim filter_data_dims =
+      common::slice_ddim(filter_dims, 2, filter_dims.size());
 
-  std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
   phi::UpdatePaddingAndDilation(
       &paddings, &dilations, padding_algorithm, in_data_dims, strides, ksize);
 
@@ -583,11 +632,12 @@ void ConvInferMeta(const MetaTensor& input,
         (in_data_dims[i] <= 0 || filter_dims[i + 2] <= 0)) {
       output_shape.push_back(-1);
     } else {
-      const int dkernel = dilations[i] * (filter_data_dims[i] - 1) + 1;
-      int output_size =
+      const int dkernel =
+          static_cast<int>(dilations[i] * (filter_data_dims[i] - 1) + 1);
+      int output_size = static_cast<int>(
           (in_data_dims[i] + paddings[2 * i] + paddings[2 * i + 1] - dkernel) /
               strides[i] +
-          1;
+          1);
       output_shape.push_back(output_size);
     }
   }
@@ -595,7 +645,7 @@ void ConvInferMeta(const MetaTensor& input,
     output_shape.push_back(filter_dims[0]);
   }
 
-  out->set_dims(make_ddim(output_shape));
+  out->set_dims(common::make_ddim(output_shape));
   out->set_dtype(input.dtype());
 }
 
@@ -641,7 +691,7 @@ void ConvTransposeInferMeta(const MetaTensor& x,
 
   const DataLayout data_layout = config.is_run_mkldnn_kernel
                                      ? DataLayout::kNCHW
-                                     : phi::StringToDataLayout(data_format);
+                                     : common::StringToDataLayout(data_format);
 
   PADDLE_ENFORCE_EQ(
       x_dims.size() == 4 || x_dims.size() == 5,
@@ -664,7 +714,7 @@ void ConvTransposeInferMeta(const MetaTensor& x,
           filter_dims,
           filter_dims.size()));
 
-  int stride_size = strides.size();
+  int stride_size = static_cast<int>(strides.size());
   for (int i = 0; i < stride_size; ++i) {
     PADDLE_ENFORCE_GT(
         strides[i],
@@ -689,14 +739,14 @@ void ConvTransposeInferMeta(const MetaTensor& x,
           x_dims.size(),
           x_dims,
           strides.size()));
-  if (output_size.size())
+  if (!output_size.empty())
     PADDLE_ENFORCE_EQ(
         output_size.size(),
         strides.size(),
         errors::InvalidArgument(
             "The Attr(output_size) and Attr(stride) of Op(conv_transpose) "
             "should be the same."));
-  if (output_padding.size())
+  if (!output_padding.empty())
     PADDLE_ENFORCE_EQ(
         output_padding.size(),
         strides.size(),
@@ -729,7 +779,7 @@ void ConvTransposeInferMeta(const MetaTensor& x,
     x_data_dims = slice_ddim(x_dims, 1, x_dims.size() - 1);
   }
   DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
-  std::vector<int> ksize = vectorize<int>(filter_data_dims);
+  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(
       &paddings_, &dilations_, padding_algorithm, x_data_dims, strides, ksize);
 
@@ -738,14 +788,14 @@ void ConvTransposeInferMeta(const MetaTensor& x,
     output_shape.push_back(filter_dims[1] * groups);
   }
   const int offset = (data_layout != DataLayout::kNHWC ? 2 : 1);
-  for (size_t i = 0; i < strides.size(); ++i) {
+  for (int i = 0; i < static_cast<int>(strides.size()); ++i) {
     auto filter_extent = dilations_[i] * (filter_dims[i + 2] - 1) + 1;
     auto infer_shape = (config.is_runtime || x_dims[i + offset] > 0)
                            ? (x_dims[i + offset] - 1) * strides[i] -
                                  paddings_[2 * i] - paddings_[2 * i + 1] +
                                  filter_extent
                            : -1;
-    if (output_size.size()) {
+    if (!output_size.empty()) {
       if (config.is_runtime) {
         PADDLE_ENFORCE_GE(
             output_size[i],
@@ -754,7 +804,7 @@ void ConvTransposeInferMeta(const MetaTensor& x,
                 "output_size of Op(ConvTransposeOp) should not be "
                 "less than the infered output size. But received output_size = "
                 "[%s], whose dim %d is less than the infered output size [%s]",
-                make_ddim(output_size).to_str(),
+                common::make_ddim(output_size).to_str(),
                 i,
                 infer_shape));
         PADDLE_ENFORCE_LT(
@@ -765,14 +815,14 @@ void ConvTransposeInferMeta(const MetaTensor& x,
                 "than infered size + stride. But received output_size = [%s], "
                 "whose dim %d is not less than the infered output size (%d) + "
                 "stride (%d) = %d",
-                make_ddim(output_size).to_str(),
+                common::make_ddim(output_size).to_str(),
                 i,
                 infer_shape,
                 strides[i],
                 infer_shape + strides[i]));
       }
       output_shape.push_back(output_size[i]);
-    } else if (output_padding.size()) {
+    } else if (!output_padding.empty()) {
       if (config.is_runtime) {
         PADDLE_ENFORCE_GE(
             output_padding[i],
@@ -781,7 +831,7 @@ void ConvTransposeInferMeta(const MetaTensor& x,
                 "output_padding of Op(ConvTransposeOp) should not be "
                 "less than the 0. But received output_padding = "
                 "[%s], whose dim %d is less than 0",
-                make_ddim(output_padding).to_str(),
+                common::make_ddim(output_padding).to_str(),
                 i));
         PADDLE_ENFORCE_LT(
             output_padding[i],
@@ -792,7 +842,7 @@ void ConvTransposeInferMeta(const MetaTensor& x,
                 "[%s], "
                 "whose dim %d is not less than either stride (%d)  or "
                 "dilation (%d)",
-                make_ddim(output_size).to_str(),
+                common::make_ddim(output_size).to_str(),
                 i,
                 strides[i],
                 dilations_[i]));
@@ -806,7 +856,7 @@ void ConvTransposeInferMeta(const MetaTensor& x,
     output_shape.push_back(filter_dims[1] * groups);
   }
 
-  out->set_dims(make_ddim(output_shape));
+  out->set_dims(common::make_ddim(output_shape));
   out->set_dtype(x.dtype());
 }
 
@@ -896,7 +946,6 @@ void CrossEntropyWithSoftmaxInferMeta(const MetaTensor& logits,
   auto logits_dims = logits.dims();
   auto labels_dims = label.dims();
   auto logits_rank = logits_dims.size();
-  auto labels_rank = labels_dims.size();
   PADDLE_ENFORCE_GE(axis,
                     -logits_rank,
                     phi::errors::InvalidArgument(
@@ -928,12 +977,6 @@ void CrossEntropyWithSoftmaxInferMeta(const MetaTensor& logits,
         phi::errors::InvalidArgument("Attr(axis) can only be -1 "
                                      "when not in numeric_stable_mode."));
   }
-
-  PADDLE_ENFORCE_EQ(
-      (logits_rank - 1 != labels_rank) && (logits_rank != labels_rank),
-      false,
-      phi::errors::InvalidArgument("Expected input_dims - 1 == label_dims "
-                                   "or input_dims == label_dims."));
 
   if (soft_label) {
     if (config.is_runtime || (logits_dims[axis] > 0 && labels_dims[axis] > 0)) {
@@ -995,19 +1038,19 @@ void DistInferMeta(const MetaTensor& x,
   auto x_dims = x.dims();
   auto y_dims = y.dims();
 
-  PADDLE_ENFORCE_NE(phi::product(x_dims),
+  PADDLE_ENFORCE_NE(common::product(x_dims),
                     0,
                     phi::errors::InvalidArgument(
                         "The Input(X) has not been initialized properly. The "
                         "shape of Input(X) = [%s].",
                         x_dims));
-  PADDLE_ENFORCE_NE(phi::product(y_dims),
+  PADDLE_ENFORCE_NE(common::product(y_dims),
                     0,
                     phi::errors::InvalidArgument(
                         "The Input(Y) has not been initialized properly. The "
                         "shape of Input(Y) = [%s].",
                         y_dims));
-  out->set_dims({1});
+  out->set_dims(common::make_ddim({}));
   out->set_dtype(x.dtype());
 }
 
@@ -1037,27 +1080,27 @@ void DistributeFpnProposalsInferMeta(
           max_level,
           min_level));
   // Set the output shape
-  for (size_t i = 0; i < multi_fpn_rois.size(); ++i) {
+  for (auto& multi_fpn_roi : multi_fpn_rois) {
     DDim out_dim = {-1, 4};
-    if (multi_fpn_rois[i] == nullptr) {
+    if (multi_fpn_roi == nullptr) {
       continue;
     }
-    multi_fpn_rois[i]->set_dims(out_dim);
-    multi_fpn_rois[i]->set_dtype(fpn_rois.dtype());
+    multi_fpn_roi->set_dims(out_dim);
+    multi_fpn_roi->set_dtype(fpn_rois.dtype());
   }
   restore_index->set_dims({-1, 1});
   restore_index->set_dtype(DataType::INT32);
-  for (size_t i = 0; i < multi_level_rois_num.size(); ++i) {
-    if (multi_level_rois_num[i] == nullptr) {
+  for (auto& item : multi_level_rois_num) {
+    if (item == nullptr) {
       continue;
     }
-    multi_level_rois_num[i]->set_dims({-1});
-    multi_level_rois_num[i]->set_dtype(DataType::INT32);
+    item->set_dims({-1});
+    item->set_dtype(DataType::INT32);
   }
 
   if (!config.is_runtime) {
-    for (size_t i = 0; i < multi_fpn_rois.size(); ++i) {
-      multi_fpn_rois[i]->share_lod(fpn_rois);
+    for (auto& multi_fpn_roi : multi_fpn_rois) {
+      multi_fpn_roi->share_lod(fpn_rois);
     }
   }
 }
@@ -1099,7 +1142,7 @@ void DropoutNdInferMeta(const MetaTensor& x,
       x_dims.size(),
       phi::errors::InvalidArgument(
           "The length of axis is expected to be less than or equal to the "
-          "dimension size of x. But recieved the length of axis is %d, the "
+          "dimension size of x. But received the length of axis is %d, the "
           "dimension size of x is %d, x's shape is {%s}.",
           axis.size(),
           x_dims.size(),
@@ -1111,9 +1154,9 @@ void DropoutNdInferMeta(const MetaTensor& x,
         phi::errors::InvalidArgument(
             "The %d-th value of axis is expected to be greater ot "
             "equal to 0 and less than the dimensions of x. But "
-            "recieved axis is {%s}, the dimension size of x is %d.",
+            "received axis is {%s}, the dimension size of x is %d.",
             i,
-            phi::make_ddim(axis),
+            common::make_ddim(axis),
             x_dims.size()));
   }
 
@@ -1126,17 +1169,17 @@ void DropoutNdInferMeta(const MetaTensor& x,
 
     std::for_each(
         axis.begin(), axis.end(), [&mask_dims, &x_dims](const int64_t& t) {
-          mask_dims[t] = x_dims[t];
+          mask_dims[t] = x_dims[static_cast<int>(t)];
         });
 
-    mask->set_dims(make_ddim(mask_dims));
+    mask->set_dims(common::make_ddim(mask_dims));
     mask->set_dtype(DataType::UINT8);
   }
 }
 
 void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   auto x_dims = x.dims();
-  auto x_rank = static_cast<size_t>(x_dims.size());
+  int x_rank = static_cast<int>(x_dims.size());
   PADDLE_ENFORCE_EQ(true,
                     1 == x_rank || 2 == x_rank,
                     phi::errors::PreconditionNotMet(
@@ -1147,14 +1190,14 @@ void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   auto y_dims = y.dims();
   PADDLE_ENFORCE_EQ(
       true,
-      x_rank == static_cast<size_t>(y_dims.size()),
+      x_rank == static_cast<int>(y_dims.size()),
       phi::errors::PreconditionNotMet(
           "ShapeError: The shape of input tensor Y: %s should match with "
           "input tenosr X: %s",
           y_dims.to_str(),
           x_dims.to_str()));
   bool shape_match = true;
-  for (size_t i = 0; i < x_rank; ++i) {
+  for (int i = 0; i < x_rank; ++i) {
     if (x_dims[i] != y_dims[i]) {
       shape_match = false;
       break;
@@ -1169,8 +1212,9 @@ void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
                         "with input tensor Y: %s",
                         x_dims.to_str(),
                         y_dims.to_str()));
-
-  x_dims[x_dims.size() - 1] = 1;
+  std::vector<int64_t> x_dims_vec = common::vectorize(x_dims);
+  std::vector<int64_t> x_dims_vec_cut(x_dims_vec.begin(), x_dims_vec.end() - 1);
+  x_dims = common::make_ddim(x_dims_vec_cut);
   out->set_dims(x_dims);
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
@@ -1179,13 +1223,14 @@ void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
 void ElementwiseInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
                           MetaTensor* out) {
-  return ElementwiseRawInferMeta(x, y, -1, std::move(out));
+  return ElementwiseRawInferMeta(x, y, -1, out);
 }
 
 void ElementwiseRawInferMeta(const MetaTensor& x,
                              const MetaTensor& y,
                              int axis,
-                             MetaTensor* out) {
+                             MetaTensor* out,
+                             MetaConfig config) {
   if (x.dims() != y.dims()) {
     auto x_dims = x.dims();
     auto y_dims = y.dims();
@@ -1214,6 +1259,25 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
     std::vector<int> x_dims_array(max_dim);
     std::vector<int> y_dims_array(max_dim);
     std::vector<int> out_dims_array(max_dim);
+#ifdef PADDLE_WITH_DNNL
+    bool should_rotate =
+        config.is_run_mkldnn_kernel &&
+        (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
+         phi::DataLayout::kNHWC) &&
+        (x_dims.size() >= 3 || y_dims.size() >= 3);
+    if (should_rotate) {
+      // Pick bigger shape and rotate this one
+      bool x_over_y = (x_dims.size() > y_dims.size());
+      auto vdims = x_over_y ? common::vectorize<int>(x_dims)
+                            : common::vectorize<int>(y_dims);
+      std::rotate(vdims.begin() + 1, vdims.begin() + 2, vdims.end());
+      if (x_over_y) {
+        x_dims = common::make_ddim(vdims);
+      } else {
+        y_dims = common::make_ddim(vdims);
+      }
+    }
+#endif
     funcs::GetBroadcastDimsArrays(x_dims,
                                   y_dims,
                                   x_dims_array.data(),
@@ -1221,13 +1285,26 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
                                   out_dims_array.data(),
                                   max_dim,
                                   axis);
-    auto out_dims = phi::make_ddim(out_dims_array);
+#ifdef PADDLE_WITH_DNNL
+    if (should_rotate) {
+      std::rotate(out_dims_array.begin() + 1,
+                  out_dims_array.end() - 1,
+                  out_dims_array.end());
+    }
+#endif
+    auto out_dims = common::make_ddim(out_dims_array);
     out->set_dims(out_dims);
   } else {
     out->set_dims(x.dims());
   }
-
-  out->set_dtype(x.dtype());
+  // dtype need promote when meet input dtype with more precision
+  paddle::experimental::DataTypeSet dtype_set{x.dtype()};
+  dtype_set = dtype_set | paddle::experimental::DataTypeSet(y.dtype());
+  DataType promote_result = PromoteTypes(dtype_set);
+  if (promote_result == DataType::UNDEFINED) {
+    promote_result = x.dtype();
+  }
+  out->set_dtype(promote_result);
   out->set_layout(x.layout());
   out->share_lod(x);
 }
@@ -1250,11 +1327,48 @@ void EmbeddingInferMeta(const MetaTensor& x,
           table_dims.size(),
           table_dims));
 
-  auto output_dims = phi::vectorize(ids_dims);
+  auto output_dims = common::vectorize(ids_dims);
   output_dims.push_back(table_dims[1]);
-  out->set_dims(phi::make_ddim(output_dims));
+  out->set_dims(common::make_ddim(output_dims));
   out->set_dtype(weight.dtype());
   out->share_lod(x);
+}
+
+void CEmbeddingInferMeta(const MetaTensor& weight,
+                         const MetaTensor& x,
+                         int64_t start_index,
+                         MetaTensor* out) {
+  const auto& table_dims = weight.dims();
+  const auto& ids_dims = x.dims();
+  int ids_rank = ids_dims.size();
+
+  VLOG(5) << "ids rank is " << ids_rank << std::endl;
+  PADDLE_ENFORCE_EQ(
+      table_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "ShapeError: The dimensions of the 'c_embedding' must be 2. "
+          "But received c_embedding's dimensions = %d, "
+          "c_embedding's shape = [%s].",
+          table_dims.size(),
+          table_dims));
+
+  auto output_dims = common::vectorize(ids_dims);
+  output_dims.push_back(table_dims[1]);
+  out->set_dims(common::make_ddim(output_dims));
+  out->set_dtype(weight.dtype());
+  out->share_lod(x);
+
+  const auto height = table_dims[0];
+  const auto width = table_dims[1];
+  PADDLE_ENFORCE_EQ(
+      (height > 0 && width > 0 && start_index >= 0),
+      true,
+      phi::errors::InvalidArgument(
+          "height:%ld width:%ld start_index:%ld must not have negative values",
+          height,
+          width,
+          start_index));
 }
 
 void ExpandAsInferMeta(const MetaTensor& x,
@@ -1279,7 +1393,7 @@ void ExpandAsInferMeta(const MetaTensor& x,
                         "to %d. But received: rank %u.",
                         MAX_RANK_SUPPORTED,
                         target_shape.size()));
-  out->set_dims(phi::make_ddim(target_shape));
+  out->set_dims(common::make_ddim(target_shape));
   out->set_dtype(x.dtype());
 #undef MAX_RANK_SUPPORTED
 }
@@ -1295,6 +1409,149 @@ void FillDiagonalTensorInferMeta(const MetaTensor& x,
                               "Output Tensor (out) should not be nullptr."));
   out->set_dims(x.dims());
   out->set_dtype(x.dtype());
+}
+
+void FusedDropoutAddInferMeta(const MetaTensor& x,
+                              const MetaTensor& y,
+                              MetaTensor* out,
+                              MetaTensor* seed_offset) {
+  out->share_meta(x);
+  if (seed_offset) {
+    seed_offset->set_dims({2});
+    seed_offset->set_dtype(DataType::INT64);
+  }
+}
+
+// Used in FusedMatmulInferMeta
+static std::vector<int64_t> GetInputShape(phi::DDim dim,
+                                          std::vector<int> shape,
+                                          std::vector<int> axis) {
+  PADDLE_ENFORCE_GT(dim.size(),
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The Input(%s) has not been initialized properly. The "
+                        "shape of Input(%s) = [%s].",
+                        dim));
+
+  auto is_input_fused = (!shape.empty() && !axis.empty());
+  if (is_input_fused) {
+    dim = dim.reshape(shape).transpose(axis);
+  }
+  return common::vectorize(dim);
+}
+
+void FusedMatmulInferMeta(const MetaTensor& x,
+                          const MetaTensor& y,
+                          const MetaTensor& residual_data,
+                          bool transpose_x,
+                          bool transpose_y,
+                          const float matmul_alpha,
+                          const std::string& fuse_activation,
+                          const float fuse_lapha,
+                          const float fuse_beat,
+                          const float fused_output_scale,
+                          const std::vector<int>& fused_reshape_X,
+                          const std::vector<int>& fused_transpose_X,
+                          const std::vector<int>& fused_reshape_Y,
+                          const std::vector<int>& fused_transpose_Y,
+                          const std::vector<int>& fused_reshape_Out,
+                          const std::vector<int>& fused_transpose_Out,
+                          const std::string& mkldnn_data_type,
+                          const float scale_x,
+                          const float scale_y,
+                          const float scale_scale_in_eltwise,
+                          const float scale_out,
+                          const bool force_fp32_output,
+                          MetaTensor* out) {
+  std::vector<int64_t> dims_x =
+      GetInputShape(x.dims(), fused_reshape_X, fused_transpose_X);
+  std::vector<int64_t> dims_y =
+      GetInputShape(y.dims(), fused_reshape_Y, fused_transpose_Y);
+  auto ndims_x = dims_x.size();
+  auto ndims_y = dims_y.size();
+  PADDLE_ENFORCE_GT(ndims_x,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The Input(X) dims size must be greater than 0,"
+                        " but received dims size is 0. "));
+  PADDLE_ENFORCE_GT(ndims_y,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The Input(Y) dims size must be greater than 0,"
+                        " but received dims size is 0. "));
+  bool x_broadcasted = false;
+  bool y_broadcasted = false;
+
+  if (ndims_x == 1) {
+    dims_x.insert(dims_x.begin(), 1);
+    ndims_x = 2;
+    x_broadcasted = true;
+  }
+
+  if (ndims_y == 1) {
+    dims_y.push_back(1);
+    ndims_y = 2;
+    y_broadcasted = true;
+  }
+
+  size_t M = 0, N = 0;
+  if (transpose_x) {
+    M = dims_x[ndims_x - 1];
+  } else {
+    M = dims_x[ndims_x - 2];
+  }
+  if (transpose_y) {
+    N = dims_y[ndims_y - 2];
+  } else {
+    N = dims_y[ndims_y - 1];
+  }
+
+  std::vector<int64_t> new_dims;
+  if (ndims_x > ndims_y) {
+    new_dims.assign(dims_x.begin(), dims_x.end() - 2);
+  } else if (ndims_x < ndims_y) {
+    new_dims.assign(dims_y.begin(), dims_y.end() - 2);
+  } else {
+    new_dims.reserve(ndims_x);
+    for (size_t i = 0; i < ndims_x - 2; ++i) {
+      new_dims.push_back(std::max(dims_x[i], dims_y[i]));
+    }
+  }
+  if (!x_broadcasted) {
+    new_dims.push_back(M);  // NOLINT
+  }
+  if (!y_broadcasted) {
+    new_dims.push_back(N);  // NOLINT
+  }
+  if (x_broadcasted && y_broadcasted) {
+    new_dims.push_back(1);
+  }
+
+  auto ddim_out = common::make_ddim(new_dims);
+
+  std::vector<int> shape = fused_reshape_Out;
+  const std::vector<int>& axis = fused_transpose_Out;
+
+  auto is_output_fused = (!shape.empty() && !axis.empty());
+  if (is_output_fused) {
+    ddim_out = ddim_out.transpose(axis).reshape(shape);
+  }
+  out->set_dims(ddim_out);
+  bool is_int8 = (x.dtype() == DataType::UINT8 || x.dtype() == DataType::INT8);
+  bool is_bfloat16 = (x.dtype() == DataType::BFLOAT16);
+  bool fuse_relu = false;
+  if (fuse_activation == "relu" || fuse_activation == "relu6") {
+    fuse_relu = true;
+  }
+  if (force_fp32_output || ((!is_int8) && (!is_bfloat16))) {
+    out->set_dtype(DataType::FLOAT32);
+  } else if (is_bfloat16) {
+    out->set_dtype(DataType::BFLOAT16);
+  } else if (fuse_relu) {
+    out->set_dtype(DataType::UINT8);
+  } else {
+    out->set_dtype(DataType::INT8);
+  }
 }
 
 void GatherInferMeta(const MetaTensor& x,
@@ -1347,6 +1604,8 @@ void GatherInferMeta(const MetaTensor& x,
     if (input_dim.size() == 1) {
       // the index is a 0D tensor and the x is a 1D tensor
       out->set_dims(phi::DDim(phi::Dim<0>()));
+      out->set_dtype(x.dtype());
+      out->share_lod(x);
     } else {
       if (axis.FromTensor() || axis_v == 0) {
         // decrease the output dimension
@@ -1354,19 +1613,19 @@ void GatherInferMeta(const MetaTensor& x,
         for (int i = 1; i < input_dim.size(); ++i) {
           out_dim_vec.emplace_back(input_dim[i]);
         }
-        auto output_dims = phi::make_ddim(out_dim_vec);
+        auto output_dims = common::make_ddim(out_dim_vec);
         out->set_dims(output_dims);
         out->set_dtype(x.dtype());
         out->share_lod(x);
       } else {
         std::vector<int> out_dim_vec;
         for (int i = 0; i < axis_v; i++) {
-          out_dim_vec.push_back(input_dim[i]);
+          out_dim_vec.push_back(input_dim[i]);  // NOLINT
         }
         for (int i = axis_v + 1; i < input_dim.size(); i++) {
-          out_dim_vec.push_back(input_dim[i]);
+          out_dim_vec.push_back(input_dim[i]);  // NOLINT
         }
-        auto output_dims = phi::make_ddim(out_dim_vec);
+        auto output_dims = common::make_ddim(out_dim_vec);
         out->set_dims(output_dims);
         out->set_dtype(x.dtype());
         out->share_lod(x);
@@ -1375,23 +1634,23 @@ void GatherInferMeta(const MetaTensor& x,
   } else {
     if (axis.FromTensor() || axis_v == 0) {
       // if axis.FromTensor(), we can not obtain correct shape of output
-      int batch_size = index_dims[0];
+      int batch_size = static_cast<int>(index_dims[0]);
       phi::DDim output_dims(input_dim);
       output_dims[0] = batch_size;
       out->set_dims(output_dims);
       out->set_dtype(x.dtype());
       out->share_lod(x);
     } else {
-      int index_size = index_dims[0];
+      int index_size = static_cast<int>(index_dims[0]);
       std::vector<int> out_dim_vec;
       for (int i = 0; i < axis_v; i++) {
-        out_dim_vec.push_back(input_dim[i]);
+        out_dim_vec.push_back(input_dim[i]);  // NOLINT
       }
       out_dim_vec.push_back(index_size);
       for (int i = axis_v + 1; i < input_dim.size(); i++) {
-        out_dim_vec.push_back(input_dim[i]);
+        out_dim_vec.push_back(input_dim[i]);  // NOLINT
       }
-      auto output_dims = phi::make_ddim(out_dim_vec);
+      auto output_dims = common::make_ddim(out_dim_vec);
       out->set_dims(output_dims);
       out->set_dtype(x.dtype());
       out->share_lod(x);
@@ -1405,7 +1664,7 @@ void GatherNdInferMeta(const MetaTensor& x,
   auto x_dims = x.dims();
   auto x_dims_size = x_dims.size();
   auto index_dims = index.dims();
-  auto index_dims_size = index_dims.size();
+  int index_dims_size = index_dims.size();
 
   PADDLE_ENFORCE_LE(
       index_dims[index_dims_size - 1],
@@ -1423,11 +1682,13 @@ void GatherNdInferMeta(const MetaTensor& x,
   for (int i = 0; i < index_dims_size - 1; ++i) {
     result_dims.emplace_back(index_dims[i]);
   }
-  for (int i = index_dims[index_dims_size - 1]; i < x_dims_size; ++i) {
+  for (int i = static_cast<int>(index_dims[index_dims_size - 1]);
+       i < x_dims_size;
+       ++i) {
     result_dims.emplace_back(x_dims[i]);
   }
 
-  out->set_dims(phi::make_ddim(result_dims));
+  out->set_dims(common::make_ddim(result_dims));
   out->share_lod(x);
   out->set_dtype(x.dtype());
 }
@@ -1528,8 +1789,8 @@ void HuberLossInferMeta(const MetaTensor& input,
                         input_dims.size(),
                         label_dims.size()));
 
-  bool contain_unknown_dim = phi::contain_unknown_dim(input_dims) ||
-                             phi::contain_unknown_dim(label_dims);
+  bool contain_unknown_dim = common::contain_unknown_dim(input_dims) ||
+                             common::contain_unknown_dim(label_dims);
   if (config.is_runtime || !contain_unknown_dim) {
     PADDLE_ENFORCE_EQ(
         input_dims,
@@ -1615,12 +1876,39 @@ void IndexSelectInferMeta(const MetaTensor& x,
       true,
       phi::errors::InvalidArgument("The length of Input(Index) can't be 0."));
 
-  auto output_dim = phi::vectorize(input_dim);
+  auto output_dim = common::vectorize(input_dim);
   if (dim < 0) {
     dim += input_dim.size();
   }
   output_dim[dim] = index_dim[0];
-  output->set_dims(phi::make_ddim(output_dim));
+  output->set_dims(common::make_ddim(output_dim));
+  output->set_dtype(x.dtype());
+  output->set_layout(x.layout());
+  output->share_lod(x);
+}
+
+void IndexSelectStridedInferMeta(const MetaTensor& x,
+                                 int64_t index,
+                                 int dim,
+                                 MetaTensor* output) {
+  auto input_dim = x.dims();
+
+  PADDLE_ENFORCE_EQ(
+      dim < input_dim.size() && dim >= (0 - input_dim.size()),
+      true,
+      phi::errors::OutOfRange(
+          "Attr(dim) is out of range, It's expected "
+          "to be in range of [-%d, %d]. But received Attr(dim) = %d.",
+          input_dim.size(),
+          input_dim.size() - 1,
+          dim));
+
+  auto output_dim = common::vectorize(input_dim);
+  if (dim < 0) {
+    dim += input_dim.size();
+  }
+  output_dim.erase(output_dim.begin() + dim);
+  output->set_dims(common::make_ddim(output_dim));
   output->set_dtype(x.dtype());
   output->set_layout(x.layout());
   output->share_lod(x);
@@ -1709,7 +1997,7 @@ void KronInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
     int64_t dim_yi = (i < rank - rank_y) ? 1 : dim_y.at(i - (rank - rank_y));
     dim_out.push_back(dim_xi == -1 || dim_yi == -1 ? -1 : dim_xi * dim_yi);
   }
-  out->set_dims(phi::make_ddim(dim_out));
+  out->set_dims(common::make_ddim(dim_out));
   out->set_dtype(x.dtype());
 }
 
@@ -1722,7 +2010,7 @@ void LogLossInferMeta(const MetaTensor& input,
   auto label_dims = label.dims();
 
   if (config.is_runtime ||
-      (phi::product(pred_dims) > 0 && phi::product(label_dims) > 0)) {
+      (common::product(pred_dims) > 0 && common::product(label_dims) > 0)) {
     PADDLE_ENFORCE_EQ(
         pred_dims,
         label_dims,
@@ -1755,6 +2043,15 @@ void LogLossInferMeta(const MetaTensor& input,
   out->share_lod(input);
 }
 
+void LogicalBinaryInferMeta(const MetaTensor& x,
+                            const MetaTensor& y,
+                            MetaTensor* out) {
+  ElementwiseInferMeta(x, y, out);
+  if (!(out->is_same_tensor(x))) {
+    out->set_dtype(DataType::BOOL);
+  }
+}
+
 void LUUnpackInferMeta(const MetaTensor& x,
                        const MetaTensor& pivots,
                        bool unpack_ludata,
@@ -1777,8 +2074,8 @@ void LUUnpackInferMeta(const MetaTensor& x,
       2,
       phi::errors::InvalidArgument("The rank of input must greater than 2."));
 
-  int m = x_dims[x_rank - 1];
-  int n = x_dims[x_rank - 2];
+  int m = static_cast<int>(x_dims[x_rank - 1]);
+  int n = static_cast<int>(x_dims[x_rank - 2]);
   int min_mn = std::min(m, n);
   if (unpack_ludata) {
     auto ldims = x_dims;
@@ -1872,8 +2169,8 @@ void MatmulInferMeta(const MetaTensor& x,
                      bool trans_x,
                      bool trans_y,
                      MetaTensor* out) {
-  std::vector<int64_t> dims_x = phi::vectorize(x.dims());
-  std::vector<int64_t> dims_y = phi::vectorize(y.dims());
+  std::vector<int64_t> dims_x = common::vectorize(x.dims());
+  std::vector<int64_t> dims_y = common::vectorize(y.dims());
   auto ndims_x = dims_x.size();
   auto ndims_y = dims_y.size();
   PADDLE_ENFORCE_GT(ndims_x,
@@ -1900,7 +2197,7 @@ void MatmulInferMeta(const MetaTensor& x,
     y_broadcasted = true;
   }
 
-  size_t M, N;
+  size_t M = 0, N = 0;
   if (trans_x) {
     M = dims_x[ndims_x - 1];
   } else {
@@ -1924,19 +2221,20 @@ void MatmulInferMeta(const MetaTensor& x,
     }
   }
   if (!x_broadcasted) {
-    new_dims.push_back(M);
+    new_dims.push_back(M);  // NOLINT
   }
   if (!y_broadcasted) {
-    new_dims.push_back(N);
-  }
-  if (x_broadcasted && y_broadcasted) {
-    new_dims.push_back(1);
+    new_dims.push_back(N);  // NOLINT
   }
 
-  auto ddim_out = phi::make_ddim(new_dims);
+  auto ddim_out = common::make_ddim(new_dims);
 
   out->set_dims(ddim_out);
-  out->set_dtype(x.dtype());
+  if (x.dtype() == phi::DataType::INT8) {
+    out->set_dtype(phi::DataType::INT32);
+  } else {
+    out->set_dtype(x.dtype());
+  }
   out->set_layout(x.layout());
 }
 
@@ -1952,7 +2250,7 @@ void MatmulWithFlattenInferMeta(const MetaTensor& x,
           << " x_num_col_dims=" << x_num_col_dims
           << " y_num_col_dims=" << y_num_col_dims;
 
-  PADDLE_ENFORCE_NE(phi::product(y_dims),
+  PADDLE_ENFORCE_NE(common::product(y_dims),
                     0,
                     phi::errors::PreconditionNotMet(
                         "The Input variable Y has not "
@@ -1980,8 +2278,8 @@ void MatmulWithFlattenInferMeta(const MetaTensor& x,
           y_dims,
           y_num_col_dims));
 
-  auto x_mat_dims = phi::flatten_to_2d(x_dims, x_num_col_dims);
-  auto y_mat_dims = phi::flatten_to_2d(y_dims, y_num_col_dims);
+  auto x_mat_dims = common::flatten_to_2d(x_dims, x_num_col_dims);
+  auto y_mat_dims = common::flatten_to_2d(y_dims, y_num_col_dims);
 
   PADDLE_ENFORCE_EQ(
       x_mat_dims[1],
@@ -2010,8 +2308,12 @@ void MatmulWithFlattenInferMeta(const MetaTensor& x,
     output_dims.push_back(y_dims[i]);
   }
 
-  out->set_dims(phi::make_ddim(output_dims));
-  out->set_dtype(x.dtype());
+  out->set_dims(common::make_ddim(output_dims));
+  if (x.dtype() == phi::DataType::INT8) {
+    out->set_dtype(phi::DataType::INT32);
+  } else {
+    out->set_dtype(x.dtype());
+  }
   out->share_lod(x);
 }
 
@@ -2073,6 +2375,18 @@ void MatrixNMSInferMeta(const MetaTensor& bboxes,
   }
 }
 
+void MatrixRankStaticInferMeta(const MetaTensor& x,
+                               const MetaTensor& atol_tensor,
+                               bool use_default_tol,
+                               bool hermitian,
+                               MetaTensor* out) {
+  if (atol_tensor) {
+    MatrixRankTolInferMeta(x, atol_tensor, use_default_tol, hermitian, out);
+  } else {
+    MatrixRankInferMeta(x, use_default_tol, hermitian, out);
+  }
+}
+
 void MatrixRankTolInferMeta(const MetaTensor& x,
                             const MetaTensor& atol_tensor,
                             bool use_default_tol,
@@ -2085,8 +2399,8 @@ void MatrixRankTolInferMeta(const MetaTensor& x,
       phi::errors::InvalidArgument("The dims of input must be greater than 2"));
 
   if (hermitian) {
-    int rows = dim_x[dim_x.size() - 2];
-    int cols = dim_x[dim_x.size() - 1];
+    int rows = static_cast<int>(dim_x[dim_x.size() - 2]);
+    int cols = static_cast<int>(dim_x[dim_x.size() - 1]);
     PADDLE_ENFORCE_EQ(rows,
                       cols,
                       phi::errors::InvalidArgument(
@@ -2109,7 +2423,7 @@ void MatrixRankTolInferMeta(const MetaTensor& x,
                                        out_dims_array.data(),
                                        max_dim,
                                        axis);
-    out->set_dims(phi::make_ddim(out_dims_array));
+    out->set_dims(common::make_ddim(out_dims_array));
   }
   out->share_lod(x);
 }
@@ -2136,7 +2450,7 @@ void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out) {
                         dim_x,
                         dim_vec));
 
-  auto dim_out = phi::make_ddim({dim_x[0]});
+  auto dim_out = common::make_ddim({dim_x[0]});
 
   out->set_dims(dim_out);
   out->set_dtype(x.dtype());
@@ -2152,7 +2466,7 @@ void PReluInferMeta(const MetaTensor& x,
                     MetaConfig config) {
   auto x_dim = x.dims();
   if (mode == "all") {
-    PADDLE_ENFORCE_EQ(phi::product(alpha.dims()),
+    PADDLE_ENFORCE_EQ(common::product(alpha.dims()),
                       1,
                       phi::errors::InvalidArgument(
                           "For mode 'all', size of weight Alpha must be one. "
@@ -2196,12 +2510,12 @@ void PReluInferMeta(const MetaTensor& x,
   } else if (mode == "element") {
     auto alpha_dim = alpha.dims();
     auto alpha_rank = alpha_dim.size();
-    auto x_rank = x_dim.size();
+    int x_rank = x_dim.size();
     PADDLE_ENFORCE_GE(x_rank,
                       1,
                       phi::errors::InvalidArgument(
                           "For mode 'element', rank of input X must be "
-                          "equal or larger than 2. But recevied X's "
+                          "equal or larger than 1. But recevied X's "
                           "rank: %d",
                           x_rank));
     PADDLE_ENFORCE_EQ(
@@ -2215,7 +2529,7 @@ void PReluInferMeta(const MetaTensor& x,
             x_rank));
     size_t x_product = 1;
     size_t alpha_product = 1;
-    for (int64_t i = x_rank - 1; i > 0; i--) {
+    for (int i = x_rank - 1; i > 0; i--) {
       x_product *= x_dim[i];
       alpha_product *= alpha_dim[i];
     }
@@ -2247,11 +2561,10 @@ inline void ExpandAspectRatios(const std::vector<float>& input_aspect_ratior,
   constexpr float epsilon = 1e-6;
   output_aspect_ratior->clear();
   output_aspect_ratior->push_back(1.0f);
-  for (size_t i = 0; i < input_aspect_ratior.size(); ++i) {
-    float ar = input_aspect_ratior[i];
+  for (auto ar : input_aspect_ratior) {
     bool already_exist = false;
-    for (size_t j = 0; j < output_aspect_ratior->size(); ++j) {
-      if (fabs(ar - output_aspect_ratior->at(j)) < epsilon) {
+    for (auto item : *output_aspect_ratior) {
+      if (fabs(ar - item) < epsilon) {
         already_exist = true;
         break;
       }
@@ -2268,9 +2581,9 @@ inline void ExpandAspectRatios(const std::vector<float>& input_aspect_ratior,
 void PriorBoxInferMeta(const MetaTensor& input,
                        const MetaTensor& image,
                        const std::vector<float>& min_sizes,
+                       const std::vector<float>& max_sizes,
                        const std::vector<float>& aspect_ratios,
                        const std::vector<float>& variances,
-                       const std::vector<float>& max_sizes,
                        bool flip,
                        bool clip,
                        float step_w,
@@ -2305,7 +2618,7 @@ void PriorBoxInferMeta(const MetaTensor& input,
   ExpandAspectRatios(aspect_ratios, flip, &aspect_ratios_vec);
 
   size_t num_priors = aspect_ratios_vec.size() * min_sizes.size();
-  if (max_sizes.size() > 0) {
+  if (!max_sizes.empty()) {
     PADDLE_ENFORCE_EQ(
         max_sizes.size(),
         min_sizes.size(),
@@ -2336,13 +2649,13 @@ void PriorBoxInferMeta(const MetaTensor& input,
   std::vector<int64_t> dim_vec(4);
   dim_vec[0] = input_dims[2];
   dim_vec[1] = input_dims[3];
-  dim_vec[2] = num_priors;
+  dim_vec[2] = static_cast<int64_t>(num_priors);
   dim_vec[3] = 4;
 
   out->set_dtype(input.dtype());
   var->set_dtype(input.dtype());
-  out->set_dims(phi::make_ddim(dim_vec));
-  var->set_dims(phi::make_ddim(dim_vec));
+  out->set_dims(common::make_ddim(dim_vec));
+  var->set_dims(common::make_ddim(dim_vec));
 }
 
 void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
@@ -2350,7 +2663,7 @@ void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
                                               int dim,
                                               MetaTensor* out) {
   const auto& input_dim = x.dims();
-  auto output_dim = phi::vectorize(input_dim);
+  auto output_dim = common::vectorize(input_dim);
   PADDLE_ENFORCE_EQ(
       dim < input_dim.size() && dim >= (0 - input_dim.size()),
       true,
@@ -2387,10 +2700,26 @@ void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
   }
   output_dim[dim] = -1;
 
-  out->set_dims(phi::make_ddim(output_dim));
+  out->set_dims(common::make_ddim(output_dim));
   out->share_lod(x);
   out->set_dtype(x.dtype());
 }
+
+void RowConvInferMeta(const MetaTensor& x,
+                      const MetaTensor& filter,
+                      MetaTensor* out) {
+  auto filter_dims = filter.dims();
+  PADDLE_ENFORCE_EQ(filter_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "Input(Filter)'s dimensions should be 2. Received: "
+                        "Input(Filter)'s shape: [%s].",
+                        filter_dims));
+  out->set_dims(x.dims());
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+}
+
 void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
                            const MetaTensor& value,
                            bool out_int32,
@@ -2398,13 +2727,19 @@ void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
                            MetaTensor* out) {
   auto sequences_dims = sorted_sequence.dims();
   auto values_dims = value.dims();
+  PADDLE_ENFORCE_GE(
+      sequences_dims.size(),
+      1,
+      phi::errors::InvalidArgument(
+          "Input sequences's dimension(%d) must be greater or equal than 1",
+          sequences_dims.size()));
 
   bool flag = true;
   if (sequences_dims.size() != values_dims.size()) {
     flag = false;
   }
-  const auto& sequences_dims_size = sequences_dims.size();
-  for (int64_t dim = 0; dim < sequences_dims_size - 1; ++dim) {
+  const int& sequences_dims_size = sequences_dims.size();
+  for (int dim = 0; dim < sequences_dims_size - 1; ++dim) {
     if (sequences_dims[dim] != values_dims[dim]) {
       flag = false;
       break;
@@ -2443,6 +2778,24 @@ void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
   } else {
     out->set_dtype(DataType::INT64);
   }
+}
+
+void SequenceMaskInferMeta(const MetaTensor& x,
+                           const MetaTensor& max_len_tensor,
+                           int maxlen,
+                           int out_dtype,
+                           MetaTensor* y) {
+  auto dim = common::vectorize<int>(x.dims());
+
+  if (max_len_tensor) {
+    dim.push_back(-1);
+  } else {
+    dim.push_back(maxlen > 0 ? maxlen : -1);
+  }
+
+  y->set_dims(common::make_ddim(dim));
+  auto out_phi_dtype = phi::TransToPhiDataType(out_dtype);
+  y->set_dtype(out_phi_dtype);
 }
 
 void SoftmaxMaskFuseInferMeta(const MetaTensor& x,
@@ -2484,47 +2837,6 @@ void SegmentPoolInferMeta(const MetaTensor& x,
     summed_ids->set_dtype(x.dtype());
     summed_ids->set_layout(x.layout());
   }
-}
-
-void SigmoidCrossEntropyWithLogitsInferMeta(const MetaTensor& x,
-                                            const MetaTensor& label,
-                                            bool normalize,
-                                            int ignore_index,
-                                            MetaTensor* out,
-                                            MetaConfig config) {
-  auto x_dims = x.dims();
-  auto labels_dims = label.dims();
-  int rank = x_dims.size();
-  PADDLE_ENFORCE_EQ(rank,
-                    labels_dims.size(),
-                    phi::errors::InvalidArgument(
-                        "Input(X) and Input(Label) shall have the same rank."
-                        "But received: the rank of Input(X) is [%d], "
-                        "the rank of Input(Label) is [%d].",
-                        rank,
-                        labels_dims.size()));
-
-  bool check = true;
-  if ((!config.is_runtime) &&
-      (phi::product(x_dims) <= 0 || phi::product(labels_dims) <= 0)) {
-    check = false;
-  }
-
-  if (check) {
-    PADDLE_ENFORCE_EQ(
-        phi::slice_ddim(x_dims, 0, rank),
-        phi::slice_ddim(labels_dims, 0, rank),
-        phi::errors::InvalidArgument(
-            "Input(X) and Input(Label) shall have the same shape "
-            "except the last dimension. But received: the shape of "
-            "Input(X) is [%s], the shape of Input(Label) is [%s].",
-            x_dims,
-            labels_dims));
-  }
-
-  out->set_dims(x_dims);
-  out->set_dtype(x.dtype());
-  out->share_lod(x);
 }
 
 void TakeAlongAxisInferMeta(const MetaTensor& x,
@@ -2591,8 +2903,8 @@ void TriangularSolveInferMeta(const MetaTensor& x,
                         x_dims[x_dims_n - 2],
                         x_dims[x_dims_n - 1]));
 
-  std::vector<int64_t> x_dims_vec = phi::vectorize(x_dims);
-  std::vector<int64_t> y_dims_vec = phi::vectorize(y_dims);
+  std::vector<int64_t> x_dims_vec = common::vectorize(x_dims);
+  std::vector<int64_t> y_dims_vec = common::vectorize(y_dims);
 
   std::vector<int64_t> x_dims_vec_cut(x_dims_vec.begin(), x_dims_vec.end() - 2);
   std::vector<int64_t> y_dims_vec_cut(y_dims_vec.begin(), y_dims_vec.end() - 2);
@@ -2605,10 +2917,31 @@ void TriangularSolveInferMeta(const MetaTensor& x,
                           {y_dims_vec[y_dims_n - 2], y_dims_vec[y_dims_n - 1]});
 
   // dim of 'out' is the same with 'Y' after broadcast
-  out->set_dims(phi::make_ddim(y_broadcast_dims));
+  out->set_dims(common::make_ddim(y_broadcast_dims));
   out->set_dtype(y.dtype());
   out->set_layout(y.layout());
   out->share_lod(y);
+}
+
+void TopPSamplingInferMeta(const MetaTensor& x,
+                           const MetaTensor& ps,
+                           const MetaTensor& threshold,
+                           int random_seed,
+                           MetaTensor* out,
+                           MetaTensor* ids) {
+  auto x_dims = x.dims();
+  auto ps_dims = ps.dims();
+  PADDLE_ENFORCE_EQ(x_dims[0],
+                    ps_dims[0],
+                    phi::errors::InvalidArgument(
+                        "The x_dims[0] must be equal to ps_dims[0] "
+                        "But received x_dims[0] = %d and ps_dims[0] = %d.",
+                        x_dims[0],
+                        ps_dims[0]));
+  ids->set_dims(common::make_ddim({x_dims[0], 1}));
+  ids->set_dtype(DataType::INT64);
+  out->set_dims(common::make_ddim({x_dims[0], 1}));
+  out->set_dtype(x.dtype());
 }
 
 void LstsqInferMeta(const MetaTensor& x,
@@ -2624,9 +2957,9 @@ void LstsqInferMeta(const MetaTensor& x,
   int x_rank = x_dims.size();
   int y_rank = y_dims.size();
 
-  int m = x_dims[x_rank - 2];
-  int n = x_dims[x_rank - 1];
-  int nrhs = y_dims[x_rank - 1];
+  int m = static_cast<int>(x_dims[x_rank - 2]);
+  int n = static_cast<int>(x_dims[x_rank - 1]);
+  int nrhs = static_cast<int>(y_dims[x_rank - 1]);
 
   PADDLE_ENFORCE_GE(
       x_rank,
@@ -2674,24 +3007,24 @@ void LstsqInferMeta(const MetaTensor& x,
           m,
           y_dims[y_rank - 2]));
 
-  rank->set_dims(phi::make_ddim(batch_dims_vec));
+  rank->set_dims(common::make_ddim(batch_dims_vec));
 
   if (m > n) {
     batch_dims_vec.emplace_back(nrhs);
-    residuals->set_dims(phi::make_ddim(batch_dims_vec));
+    residuals->set_dims(common::make_ddim(batch_dims_vec));
     batch_dims_vec.pop_back();
   } else {
-    residuals->set_dims(phi::make_ddim({0}));
+    residuals->set_dims(common::make_ddim({0}));
   }
   residuals->set_dtype(y.dtype());
 
   batch_dims_vec.emplace_back(std::min(m, n));
-  singular_values->set_dims(phi::make_ddim(batch_dims_vec));
+  singular_values->set_dims(common::make_ddim(batch_dims_vec));
   singular_values->set_dtype(y.dtype());
 
   batch_dims_vec[x_rank - 2] = n;
   batch_dims_vec.emplace_back(nrhs);
-  solution->set_dims(phi::make_ddim(batch_dims_vec));
+  solution->set_dims(common::make_ddim(batch_dims_vec));
   solution->set_dtype(y.dtype());
 }
 
@@ -2710,7 +3043,7 @@ void YoloBoxInferMeta(const MetaTensor& x,
                       MetaConfig config) {
   auto dim_x = x.dims();
   auto dim_imgsize = img_size.dims();
-  int anchor_num = anchors.size() / 2;
+  int anchor_num = static_cast<int>(anchors.size() / 2);
 
   PADDLE_ENFORCE_EQ(
       dim_x.size(),
@@ -2793,18 +3126,18 @@ void YoloBoxInferMeta(const MetaTensor& x,
                         "But received class_num (%s)",
                         class_num));
 
-  int box_num;
+  int box_num = 0;
   if ((dim_x[2] > 0 && dim_x[3] > 0) || config.is_runtime) {
-    box_num = dim_x[2] * dim_x[3] * anchor_num;
+    box_num = static_cast<int>(dim_x[2] * dim_x[3] * anchor_num);
   } else {
     box_num = -1;
   }
   std::vector<int64_t> dim_boxes({dim_x[0], box_num, 4});
-  boxes->set_dims(phi::make_ddim(dim_boxes));
+  boxes->set_dims(common::make_ddim(dim_boxes));
   boxes->set_dtype(x.dtype());
 
   std::vector<int64_t> dim_scores({dim_x[0], box_num, class_num});
-  scores->set_dims(phi::make_ddim(dim_scores));
+  scores->set_dims(common::make_ddim(dim_scores));
 }
 
 void ValueCompareInferMeta(const MetaTensor& x,
@@ -2821,8 +3154,8 @@ void SolveInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   auto x_dims = x.dims();
   auto y_dims = y.dims();
 
-  std::vector<int64_t> x_dims_vec = phi::vectorize(x.dims());
-  std::vector<int64_t> y_dims_vec = phi::vectorize(y.dims());
+  std::vector<int64_t> x_dims_vec = common::vectorize(x.dims());
+  std::vector<int64_t> y_dims_vec = common::vectorize(y.dims());
 
   auto x_dims_n = x_dims_vec.size();
   auto y_dims_n = y_dims_vec.size();
@@ -2868,7 +3201,7 @@ void SolveInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
     y_broadcasted = true;
   }
 
-  size_t M, N;
+  size_t M = 0, N = 0;
   if (trans_x) {
     M = x_dims_vec[x_dims_n - 1];
   } else {
@@ -2887,16 +3220,16 @@ void SolveInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
     new_dims.assign(y_dims_vec.begin(), y_dims_vec.end() - 2);
   }
   if (!x_broadcasted) {
-    new_dims.push_back(M);
+    new_dims.push_back(M);  // NOLINT
   }
   if (!y_broadcasted) {
-    new_dims.push_back(N);
+    new_dims.push_back(N);  // NOLINT
   }
   if (x_broadcasted && y_broadcasted) {
     new_dims.push_back(1);
   }
 
-  auto out_dims = phi::make_ddim(new_dims);
+  auto out_dims = common::make_ddim(new_dims);
 
   out->set_dims(out_dims);
   out->set_dtype(x.dtype());
@@ -2938,7 +3271,7 @@ void UnpoolInferMeta(const MetaTensor& x,
   if (config.is_runtime || !output_size.FromTensor()) {
     output_size_val = output_size.GetData();
   }
-  for (size_t i = 0; i < ksize.size(); ++i) {
+  for (int i = 0; i < static_cast<int>(ksize.size()); ++i) {
     if (!config.is_runtime && in_x_dims[i + 2] <= 0) {
       output_shape.push_back(-1);
     } else {
@@ -2946,7 +3279,7 @@ void UnpoolInferMeta(const MetaTensor& x,
     }
   }
   if (out != nullptr) {
-    out->set_dims(phi::make_ddim(output_shape));
+    out->set_dims(common::make_ddim(output_shape));
     out->set_dtype(x.dtype());
   }
 }
@@ -2979,7 +3312,7 @@ void Unpool3dInferMeta(const MetaTensor& x,
                         in_y_dims));
 
   std::vector<int64_t> output_shape({in_x_dims[0], in_x_dims[1]});
-  for (size_t i = 0; i < ksize.size(); ++i) {
+  for (int i = 0; i < static_cast<int>(ksize.size()); ++i) {
     if (!config.is_runtime && in_x_dims[i + 2] <= 0) {
       output_shape.push_back(-1);
     } else {
@@ -2987,9 +3320,38 @@ void Unpool3dInferMeta(const MetaTensor& x,
     }
   }
   if (out != nullptr) {
-    out->set_dims(phi::make_ddim(output_shape));
+    out->set_dims(common::make_ddim(output_shape));
     out->set_dtype(x.dtype());
   }
+}
+
+void WeightDequantizeInferMeta(const MetaTensor& x,
+                               const MetaTensor& scale,
+                               const std::string& algo,
+                               DataType out_dtype,
+                               MetaTensor* out) {
+  PADDLE_ENFORCE_EQ(x.dims().size(),
+                    2UL,
+                    phi::errors::InvalidArgument(
+                        "The x tensor of dequantize op must be 2D, but got[%d]",
+                        x.dims().size()));
+  PADDLE_ENFORCE_EQ(
+      scale.dims().size(),
+      1UL,
+      phi::errors::InvalidArgument(
+          "The scale tensor of dequantize op must be 1D, but got[%d]",
+          scale.dims().size()));
+  PADDLE_ENFORCE_EQ(scale.dims()[0],
+                    x.dims()[0],
+                    phi::errors::InvalidArgument(
+                        "The scale tensor's shape must be equal to the x "
+                        "tensor's shape, but got [%d] not equal to [%d]",
+                        scale.dims()[0],
+                        x.dims()[0]));
+  int n = x.dims()[1];
+  int k = x.dims()[0];
+  out->set_dims(common::make_ddim({n, k}));
+  out->set_dtype(out_dtype);
 }
 
 }  // namespace phi

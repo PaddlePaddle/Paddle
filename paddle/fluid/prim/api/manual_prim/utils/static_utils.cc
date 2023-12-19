@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_desc.h"
@@ -21,18 +22,17 @@
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/fluid/prim/utils/static/static_global_utils.h"
 #include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/utils/data_type.h"
 namespace paddle {
 namespace prim {
-using Tensor = paddle::experimental::Tensor;
+using Tensor = paddle::Tensor;
 template <>
-Tensor empty<DescTensor>(const paddle::experimental::IntArray& shape,
-                         paddle::experimental::DataType dtype,
-                         const paddle::Place& place) {
+TEST_API Tensor empty<DescTensor>(const paddle::experimental::IntArray& shape,
+                                  phi::DataType dtype,
+                                  const paddle::Place& place) {
   framework::VarDesc* new_var =
       StaticCompositeContext::Instance().GetBlock()->Var(
-          std::move(StaticCompositeContext::Instance().GenerateUniqueName()));
+          StaticCompositeContext::Instance().GenerateUniqueName());
   new_var->SetShape(shape.GetData());
   new_var->SetDataType(framework::TransToProtoVarType(dtype));
   // Place is not supported in static mode
@@ -41,34 +41,32 @@ Tensor empty<DescTensor>(const paddle::experimental::IntArray& shape,
 
 template <>
 Tensor empty_like<DescTensor>(const Tensor& x,
-                              paddle::experimental::DataType dtype,
+                              phi::DataType dtype,
                               const paddle::Place& place) {
   return empty<prim::DescTensor>(
       paddle::experimental::IntArray(x.shape()), x.dtype(), paddle::Place());
 }
 
 template <>
-void set_output<DescTensor>(const paddle::experimental::Tensor& x_tmp,
-                            paddle::experimental::Tensor* x) {
+void set_output<DescTensor>(const paddle::Tensor& x_tmp, paddle::Tensor* x) {
   x->set_impl(x_tmp.impl());
 }
 
 template <>
-void by_pass<DescTensor>(const paddle::experimental::Tensor& x,
-                         paddle::experimental::Tensor* out) {
-  Tensor new_out =
-      empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
+void by_pass<DescTensor>(const paddle::Tensor& x, paddle::Tensor* real_out) {
   framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
   framework::OpDesc* op = block->AppendOp();
   op->SetType("assign");
   op->SetInput("X",
                {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
+  auto out = empty<DescTensor>({}, x.dtype(), paddle::Place());
   op->SetOutput(
-      "Out", {std::static_pointer_cast<prim::DescTensor>(out->impl())->Name()});
+      "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
   op->CheckAttrs();
   op->InferVarType(block);
   op->InferShape(*block);
-  set_output<DescTensor>(new_out, out);
+
+  set_output<DescTensor>(out, real_out);
 }
 
 }  // namespace prim

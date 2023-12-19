@@ -49,8 +49,9 @@ void FusedBroadcastOpHandle::RunImpl() {
   for (size_t i = 0; i < in_var_handles.size(); ++i) {
     BroadcastOneVar(
         *in_var_handles[i],
-        std::vector<VarHandle *>(out_var_handles.begin() + i * place_num,
-                                 out_var_handles.begin() + (i + 1) * place_num),
+        std::vector<VarHandle *>(
+            out_var_handles.begin() + i * place_num,         // NOLINT
+            out_var_handles.begin() + (i + 1) * place_num),  // NOLINT
         local_exec_scopes_);
   }
 }

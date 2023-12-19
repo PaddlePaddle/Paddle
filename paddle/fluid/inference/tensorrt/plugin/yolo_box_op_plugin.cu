@@ -437,7 +437,7 @@ nvinfer1::IPluginV2Ext* YoloBoxPlugin::clone() const TRT_NOEXCEPT {
                            input_w_);
 }
 
-YoloBoxPluginCreator::YoloBoxPluginCreator() {}
+YoloBoxPluginCreator::YoloBoxPluginCreator() = default;
 
 void YoloBoxPluginCreator::setPluginNamespace(const char* lib_namespace)
     TRT_NOEXCEPT {

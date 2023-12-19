@@ -52,7 +52,7 @@ class IOUSimilarityOp : public framework::OperatorWithKernel {
             "The shape of Y is [M, 4], but got dimension = %d.", y_dims[1]));
 
     ctx->ShareLoD("X", /*->*/ "Out");
-    ctx->SetOutputDim("Out", phi::make_ddim({x_dims[0], y_dims[0]}));
+    ctx->SetOutputDim("Out", common::make_ddim({x_dims[0], y_dims[0]}));
   }
 };
 
@@ -114,6 +114,5 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL(iou_similarity,
-                       ops::IOUSimilarityKernel<phi::CPUContext, float>,
-                       ops::IOUSimilarityKernel<phi::CPUContext, double>);
+PD_REGISTER_STRUCT_KERNEL(
+    iou_similarity, CPU, ALL_LAYOUT, ops::IOUSimilarityKernel, float, double) {}

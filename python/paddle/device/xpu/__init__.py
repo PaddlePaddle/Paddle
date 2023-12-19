@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from paddle.fluid import core
+from paddle.base import core
 from paddle.utils import deprecated
 
 __all__ = [
@@ -28,7 +27,7 @@ __all__ = [
     reason="synchronize in paddle.device.xpu will be removed in future",
 )
 def synchronize(device=None):
-    '''
+    """
     Wait for the compute on the given XPU device to finish.
 
     Parameters:
@@ -38,14 +37,14 @@ def synchronize(device=None):
     Examples:
         .. code-block:: python
 
-            # required: xpu
-            import paddle
+            >>> # doctest: +REQUIRES(env:XPU)
+            >>> import paddle
+            >>> paddle.device.set_device('xpu')
+            >>> paddle.device.xpu.synchronize()
+            >>> paddle.device.xpu.synchronize(0)
+            >>> paddle.device.xpu.synchronize(paddle.XPUPlace(0))
 
-            paddle.device.xpu.synchronize()
-            paddle.device.xpu.synchronize(0)
-            paddle.device.xpu.synchronize(paddle.XPUPlace(0))
-
-    '''
+    """
 
     device_id = -1
 
@@ -58,3 +57,28 @@ def synchronize(device=None):
             raise ValueError("device type must be int or paddle.XPUPlace")
 
     return core._xpu_device_synchronize(device_id)
+
+
+def device_count():
+    '''
+    Return the number of XPUs available.
+
+    Returns:
+        int: the number of XPUs available.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> paddle.device.xpu.device_count()
+
+    '''
+
+    num_xpus = (
+        core.get_xpu_device_count()
+        if hasattr(core, 'get_xpu_device_count')
+        else 0
+    )
+
+    return num_xpus

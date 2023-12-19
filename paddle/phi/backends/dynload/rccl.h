@@ -44,6 +44,7 @@ extern void* rccl_dso_handle;
   __macro(ncclCommInitAll);             \
   __macro(ncclGetUniqueId);             \
   __macro(ncclCommInitRank);            \
+  __macro(ncclCommAbort);               \
   __macro(ncclCommDestroy);             \
   __macro(ncclCommCount);               \
   __macro(ncclCommCuDevice);            \
@@ -55,6 +56,7 @@ extern void* rccl_dso_handle;
   __macro(ncclGroupEnd);                \
   __macro(ncclReduce);                  \
   __macro(ncclReduceScatter);           \
+  __macro(ncclCommGetAsyncError);       \
   __macro(ncclGetErrorString);
 
 RCCL_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_RCCL_WRAP)
@@ -64,6 +66,11 @@ RCCL_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_RCCL_WRAP)
 RCCL_RAND_ROUTINE_EACH_AFTER_2212(DECLARE_DYNAMIC_LOAD_RCCL_WRAP)
 #endif
 
+#if NCCL_VERSION_CODE >= 2304
+#define RCCL_RAND_ROUTINE_EACH_AFTER_2304(__macro) __macro(ncclGetVersion);
+RCCL_RAND_ROUTINE_EACH_AFTER_2304(DECLARE_DYNAMIC_LOAD_RCCL_WRAP)
+#endif
+
 #if NCCL_VERSION_CODE >= 2703
 #define RCCL_RAND_ROUTINE_EACH_AFTER_2703(__macro) \
   __macro(ncclSend);                               \
@@ -71,5 +78,11 @@ RCCL_RAND_ROUTINE_EACH_AFTER_2212(DECLARE_DYNAMIC_LOAD_RCCL_WRAP)
 RCCL_RAND_ROUTINE_EACH_AFTER_2703(DECLARE_DYNAMIC_LOAD_RCCL_WRAP)
 #endif
 
+#if NCCL_VERSION_CODE >= 21100
+#define RCCL_RAND_ROUTINE_EACH_AFTER_21100(__macro) \
+  __macro(ncclRedOpCreatePreMulSum);                \
+  __macro(ncclRedOpDestroy);
+RCCL_RAND_ROUTINE_EACH_AFTER_21100(DECLARE_DYNAMIC_LOAD_RCCL_WRAP)
+#endif
 }  // namespace dynload
 }  // namespace phi

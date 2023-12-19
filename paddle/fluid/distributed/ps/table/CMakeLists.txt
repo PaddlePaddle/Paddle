@@ -18,7 +18,7 @@ set_source_files_properties(
 cc_library(
   graph_node
   SRCS ${graphDir}/graph_node.cc
-  DEPS WeightedSampler enforce)
+  DEPS WeightedSampler enforce common)
 set_source_files_properties(
   memory_dense_table.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 set_source_files_properties(
@@ -36,19 +36,18 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
 
 set(TABLE_SRC memory_dense_table.cc barrier_table.cc common_graph_table.cc)
 #set(EXTERN_DEP rocksdb)
-
 cc_library(
   common_table
   SRCS ${TABLE_SRC}
-  DEPS ${TABLE_DEPS}
-       ${RPC_DEPS}
+  DEPS ${RPC_DEPS}
        graph_edge
        graph_node
        device_context
        string_helper
        simple_threadpool
        xxhash
-       generator)
+       phi
+       common)
 
 set_source_files_properties(
   tensor_accessor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
@@ -91,9 +90,10 @@ cc_library(
        ps_framework_proto
        string_helper
        device_context
-       gflags
+       phi
+       common
        glog
-       fs
+       framework_io
        afs_wrapper
        rocksdb
        eigen3)

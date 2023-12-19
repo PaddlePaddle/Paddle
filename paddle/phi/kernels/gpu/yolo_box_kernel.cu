@@ -14,10 +14,9 @@
 
 #include "paddle/phi/kernels/yolo_box_kernel.h"
 
-#include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/yolo_box_util.h"
@@ -130,11 +129,12 @@ void YoloBoxKernel(const Context& dev_ctx,
 
   int bytes = sizeof(int) * anchors.size();
   DenseTensor tmp_anchors;
-  tmp_anchors.Resize(phi::make_dim(anchors.size()));
+  using common::make_dim;
+  tmp_anchors.Resize(make_dim(anchors.size()));
   int* anchors_data = dev_ctx.template Alloc<int>(&tmp_anchors);
   const auto gplace = dev_ctx.GetPlace();
   const auto cplace = phi::CPUPlace();
-  paddle::memory::Copy(
+  memory_utils::Copy(
       gplace, anchors_data, cplace, anchors.data(), bytes, dev_ctx.stream());
 
   const T* input_data = input->data<T>();

@@ -14,9 +14,9 @@
 
 #pragma once
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/backends/callback_manager.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/core/macros.h"
 
 namespace phi {
 
@@ -65,6 +65,8 @@ class Stream {
   bool Query() const;
   void Synchronize() const;
   const Place& GetPlace() const;
+
+  static void ReleaseAll();
 
  private:
   DISABLE_COPY_AND_ASSIGN(Stream);

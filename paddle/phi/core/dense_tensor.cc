@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/phi/core/dense_tensor.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
@@ -37,10 +39,10 @@ limitations under the License. */
  * In the future, the necessary components will be moved to the this library,
  * or the corresponding components will be re-implemented.
  */
-#include "paddle/fluid/memory/malloc.h"
 
 namespace phi {
 
+DenseTensor::~DenseTensor() = default;
 DenseTensor::DenseTensor(Allocator* a, const DenseTensorMeta& meta)
     : meta_(meta), holder_(a->Allocate(SizeOf(dtype()) * numel())) {}
 
@@ -51,35 +53,39 @@ DenseTensor::DenseTensor(const std::shared_ptr<phi::Allocation>& holder,
                          const DenseTensorMeta& meta)
     : meta_(meta), holder_(holder) {}
 
-DenseTensor::DenseTensor(const DenseTensor& other) : meta_(other.meta()) {
+DenseTensor::DenseTensor(const DenseTensor& other) {
+  this->meta_ = other.meta();
   holder_ = other.holder_;
   storage_properties_ =
       std::move(CopyStorageProperties(other.storage_properties_));
   inplace_version_counter_ = other.inplace_version_counter_;
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   mem_desc_ = other.mem_desc_;
 #endif
 }
 
 DenseTensor& DenseTensor::operator=(const DenseTensor& other) {
+  if (this == &other) {
+    return *this;
+  }
   meta_ = other.meta();
   holder_ = other.holder_;
   storage_properties_ =
       std::move(CopyStorageProperties(other.storage_properties_));
   inplace_version_counter_ = other.inplace_version_counter_;
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   mem_desc_ = other.mem_desc_;
 #endif
   return *this;
 }
 
-DenseTensor& DenseTensor::operator=(DenseTensor&& other) {
+DenseTensor& DenseTensor::operator=(DenseTensor&& other) noexcept {
   meta_ = std::move(other.meta_);
   std::swap(holder_, other.holder_);
   storage_properties_ = std::move(other.storage_properties_);
   std::swap(inplace_version_counter_, other.inplace_version_counter_);
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   mem_desc_ = other.mem_desc_;
 #endif
   return *this;
@@ -105,7 +111,7 @@ void* DenseTensor::AllocateFrom(Allocator* allocator,
       phi::errors::InvalidArgument(
           "Required allocator shall not be nullptr, but received nullptr."));
   if (this->dtype() != dtype) {
-    VLOG(10) << "change data type in mutbale_data, target dtype - " << dtype;
+    VLOG(10) << "change data type in mutable_data, target dtype - " << dtype;
     meta_.dtype = dtype;
   }
 
@@ -114,8 +120,9 @@ void* DenseTensor::AllocateFrom(Allocator* allocator,
   if (fake_alloc) {
     bytes = 0;
   } else {
-    PADDLE_ENFORCE(
+    PADDLE_ENFORCE_EQ(
         valid(),
+        true,
         phi::errors::PreconditionNotMet("The meta data must be valid when "
                                         "call the mutable data function."));
     if (requested_size) {
@@ -156,11 +163,11 @@ template <typename T>
 const T* DenseTensor::data() const {
   PADDLE_ENFORCE_EQ(
       dtype(),
-      paddle::experimental::CppTypeToDataType<T>::Type(),
+      phi::CppTypeToDataType<T>::Type(),
       phi::errors::InvalidArgument(
           "The type of data we are trying to retrieve (%s) does not match the "
           "type of data (%s) currently contained in the container.",
-          paddle::experimental::CppTypeToDataType<T>::Type(),
+          phi::CppTypeToDataType<T>::Type(),
           dtype()));
   return static_cast<const T*>(data());
 }
@@ -168,12 +175,13 @@ const T* DenseTensor::data() const {
 template <typename T>
 T* DenseTensor::data() {
   T* ret = static_cast<T*>(data());
-  PADDLE_ENFORCE(
-      (dtype() == paddle::experimental::CppTypeToDataType<T>::Type()),
+  PADDLE_ENFORCE_EQ(
+      dtype(),
+      phi::CppTypeToDataType<T>::Type(),
       phi::errors::InvalidArgument(
           "The type of data we are trying to retrieve (%s) does not match the "
           "type of data (%s) currently contained in the container.",
-          paddle::experimental::CppTypeToDataType<T>::Type(),
+          phi::CppTypeToDataType<T>::Type(),
           dtype()));
   return ret;
 }
@@ -199,16 +207,18 @@ const void* DenseTensor::data() const {
 }
 
 void DenseTensor::set_meta(DenseTensorMeta&& meta) {
-  PADDLE_ENFORCE(!meta_.valid(),
-                 phi::errors::InvalidArgument(
-                     "Only when the original attribute of Tensor is "
-                     "incomplete, can it be reset."));
+  PADDLE_ENFORCE_EQ(meta_.valid(),
+                    false,
+                    phi::errors::InvalidArgument(
+                        "Only when the original attribute of Tensor is "
+                        "incomplete, can it be reset."));
   meta_ = std::move(meta);
 }
 
 void DenseTensor::set_meta(const DenseTensorMeta& meta) {
-  PADDLE_ENFORCE(
+  PADDLE_ENFORCE_EQ(
       meta.valid(),
+      true,
       phi::errors::InvalidArgument(
           "Input meta is invalid, please check the meta attribute."));
   meta_.dims = meta.dims;
@@ -218,6 +228,11 @@ void DenseTensor::set_meta(const DenseTensorMeta& meta) {
   meta_.lod = meta.lod;
   meta_.offset = meta.offset;
   meta_.use_gpudnn = meta.use_gpudnn;
+  if (meta.strides.size() == -1) {
+    meta_.strides = meta_.calc_strides(meta_.dims);
+  } else {
+    meta_.strides = meta.strides;
+  }
 }
 
 /* @jim19930609: This interface will be further modified until we finalized the
@@ -231,7 +246,21 @@ void DenseTensor::set_meta(const DenseTensorMeta& meta) {
    call to mutable_data(place)
    */
 void DenseTensor::ResizeAndAllocate(const DDim& dims) {
+  if (meta_.dims.size() != -1 && meta_.dims != dims) {
+    PADDLE_ENFORCE_EQ(meta_.is_contiguous(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Right now Resize is only supported for contiguous "
+                          "Tensor. Tensor dims is %s, Tensor layout is %s, "
+                          "Tensor stride is %s. New dims is %s.",
+                          meta_.dims,
+                          meta_.layout,
+                          meta_.strides,
+                          dims));
+  }
   meta_.dims = dims;
+  meta_.strides = meta_.calc_strides(meta_.dims);
+
   if (holder_ != nullptr && place().GetType() != AllocationType::UNDEFINED) {
     mutable_data(place());
   }
@@ -239,9 +268,9 @@ void DenseTensor::ResizeAndAllocate(const DDim& dims) {
 
 void DenseTensor::ResetLoD(const LoD& lod) { meta_.lod = lod; }
 
-#define DATA_MEMBER_FUNC_INSTANTIATION(dtype)      \
-  template const dtype* DenseTensor::data() const; \
-  template dtype* DenseTensor::data();
+#define DATA_MEMBER_FUNC_INSTANTIATION(dtype)               \
+  template TEST_API const dtype* DenseTensor::data() const; \
+  template TEST_API dtype* DenseTensor::data();
 
 DATA_MEMBER_FUNC_INSTANTIATION(bool);
 DATA_MEMBER_FUNC_INSTANTIATION(int8_t);
@@ -277,8 +306,11 @@ const DeviceT& DenseTensor::storage_properties() const {
 }
 
 template const NPUStorageProperties& DenseTensor::storage_properties() const;
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 template const OneDNNStorageProperties& DenseTensor::storage_properties() const;
+#endif
+#ifdef PADDLE_WITH_XPU
+template const XPUStorageProperties& DenseTensor::storage_properties() const;
 #endif
 
 bool DenseTensor::storage_properties_initialized() const {

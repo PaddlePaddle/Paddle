@@ -23,10 +23,13 @@ namespace phi {
 template <typename T, typename Context>
 void SqueezeInferKernel(const Context& dev_ctx,
                         const DenseTensor& x,
-                        const IntArray& axes,
+                        const IntArray& axes UNUSED,
                         DenseTensor* out) {
   auto out_dims = out->dims();
   dev_ctx.template Alloc<T>(out);
+  if (x.Holder() == out->Holder()) {
+    return;
+  }
   phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   out->Resize(out_dims);  // copy will reset the dims.
 }
@@ -36,7 +39,7 @@ void SqueezeKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const IntArray& axes,
                    DenseTensor* out,
-                   DenseTensor* xshape) {
+                   DenseTensor* xshape UNUSED) {
   SqueezeInferKernel<T, Context>(dev_ctx, x, axes, out);
 }
 
@@ -46,14 +49,16 @@ PD_REGISTER_KERNEL(squeeze_infer,
                    CPU,
                    ALL_LAYOUT,
                    phi::SqueezeInferKernel,
+                   bool,
                    float,
                    double,
-                   phi::dtype::bfloat16,
-                   bool,
                    int,
-                   uint8_t,
                    int8_t,
                    int64_t,
+                   int16_t,
+                   uint8_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
@@ -61,14 +66,16 @@ PD_REGISTER_KERNEL(squeeze,
                    CPU,
                    ALL_LAYOUT,
                    phi::SqueezeKernel,
+                   bool,
                    float,
                    double,
-                   phi::dtype::bfloat16,
-                   bool,
                    int,
-                   uint8_t,
                    int8_t,
                    int64_t,
+                   int16_t,
+                   uint8_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -76,15 +83,16 @@ PD_REGISTER_KERNEL(squeeze_infer,
                    GPU,
                    ALL_LAYOUT,
                    phi::SqueezeInferKernel,
+                   bool,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   bool,
                    int,
-                   uint8_t,
                    int8_t,
                    int64_t,
+                   int16_t,
+                   uint8_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
@@ -92,15 +100,16 @@ PD_REGISTER_KERNEL(squeeze,
                    GPU,
                    ALL_LAYOUT,
                    phi::SqueezeKernel,
+                   bool,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   bool,
                    int,
-                   uint8_t,
                    int8_t,
                    int64_t,
+                   int16_t,
+                   uint8_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 #endif
@@ -113,6 +122,7 @@ PD_REGISTER_KERNEL(squeeze_infer,
                    float,
                    double,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    bool,
                    int,
                    uint8_t,
@@ -126,6 +136,7 @@ PD_REGISTER_KERNEL(squeeze,
                    float,
                    double,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    bool,
                    int,
                    uint8_t,

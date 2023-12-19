@@ -48,7 +48,7 @@ class MinusOp : public framework::OperatorWithKernel {
     auto y_dims = ctx->GetInputDim("Y");
 
     if (ctx->IsRuntime() ||
-        (phi::product(x_dims) > 0 && phi::product(y_dims) > 0)) {
+        (common::product(x_dims) > 0 && common::product(y_dims) > 0)) {
       PADDLE_ENFORCE_EQ(
           x_dims,
           y_dims,
@@ -155,6 +155,8 @@ REGISTER_OPERATOR(minus,
                   ops::MinusOpMaker,
                   ops::MinusGradDescMaker,
                   ops::MinusGradMaker);
-REGISTER_OP_CPU_KERNEL(minus, ops::MinusKernel<phi::CPUContext, float>);
+PD_REGISTER_STRUCT_KERNEL(minus, CPU, ALL_LAYOUT, ops::MinusKernel, float) {}
 
-REGISTER_OP_CUDA_KERNEL(minus, ops::MinusKernel<phi::GPUContext, float>);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_STRUCT_KERNEL(minus, GPU, ALL_LAYOUT, ops::MinusKernel, float) {}
+#endif

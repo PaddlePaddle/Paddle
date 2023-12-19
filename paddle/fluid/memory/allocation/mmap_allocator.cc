@@ -17,16 +17,18 @@
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 
 #include <fcntl.h>
-#include <stdlib.h>
 #include <sys/mman.h>
+#include <cstdlib>
 
+#include <atomic>
 #include <random>
 #include <string>
 
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/flags.h"
 
-DECLARE_bool(use_shm_cache);
+PHI_DECLARE_bool(use_shm_cache);
 
 namespace paddle {
 namespace memory {
@@ -34,12 +36,15 @@ namespace allocation {
 
 std::string GetIPCName() {
   static std::random_device rd;
+  static std::atomic<uint64_t> counter{0};
   std::string handle = "/paddle_";
 #ifdef _WIN32
   handle += std::to_string(GetCurrentProcessId());
 #else
   handle += std::to_string(getpid());
 #endif
+  handle += "_";
+  handle += std::to_string(counter.fetch_add(1));
   handle += "_";
   handle += std::to_string(rd());
   return handle;
@@ -216,19 +221,18 @@ void RefcountedMemoryMapAllocation::close() {
 }
 
 MemoryMapWriterAllocation::~MemoryMapWriterAllocation() {
-  PADDLE_ENFORCE_NE(
-      munmap(this->ptr(), this->size()),
-      -1,
-      platform::errors::Unavailable("could not unmap the shared memory file %s",
-                                    this->ipc_name()));
+  if (munmap(this->ptr(), this->size()) == -1) {
+    platform::errors::Unavailable("could not unmap the shared memory file %s",
+                                  this->ipc_name());
+  }
 }
 
 MemoryMapReaderAllocation::~MemoryMapReaderAllocation() {
-  PADDLE_ENFORCE_NE(
-      munmap(this->ptr(), this->size()),
-      -1,
-      platform::errors::Unavailable("could not unmap the shared memory file %s",
-                                    this->ipc_name()));
+  if (munmap(this->ptr(), this->size()) == -1) {
+    platform::errors::Unavailable("could not unmap the shared memory file %s",
+                                  this->ipc_name());
+  }
+
   /* Here we do not pay attention to the result of shm_unlink,
      because the memory mapped file may have been cleared due to the
      MemoryMapFdSet::Clear() */
@@ -265,7 +269,7 @@ std::shared_ptr<MemoryMapWriterAllocation> AllocateMemoryMapWriterAllocation(
                     platform::errors::Unavailable(
                         "Fruncate a file to a specified length failed!"));
 
-  void *ptr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+  void *ptr = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
   PADDLE_ENFORCE_NE(ptr,
                     MAP_FAILED,
                     platform::errors::Unavailable(
@@ -317,7 +321,7 @@ void MemoryMapFdSet::Clear() {
   VLOG(3) << "PID: " << getpid() << ", MemoryMapFdSet: set size - "
           << fd_set_.size();
   std::lock_guard<std::mutex> guard(mtx_);
-  for (auto fd : fd_set_) {
+  for (auto const &fd : fd_set_) {
     int rlt = shm_unlink(fd.c_str());
     if (rlt == 0) {
       VLOG(3) << "PID: " << getpid() << ", MemoryMapFdSet: clear " << fd;
@@ -341,10 +345,11 @@ int MemoryMapAllocationPool::FindFromCache(const int &flag,
                                            const std::string &file_name,
                                            bool check_refcount) {
   std::lock_guard<std::mutex> guard(mtx_);
-  for (size_t idx = 0; idx < memory_map_allocations_.size(); idx++) {
+  for (int idx = 0; idx < static_cast<int>(memory_map_allocations_.size());
+       idx++) {
     if (memory_map_allocations_.at(idx).flags_ == flag &&
         memory_map_allocations_.at(idx).data_size_ == data_size) {
-      if (file_name == "" ||
+      if (file_name.empty() ||
           memory_map_allocations_.at(idx).file_name_ == file_name) {
         if (!check_refcount || reinterpret_cast<CountInfo *>(
                                    memory_map_allocations_.at(idx).mmap_ptr_)
@@ -370,7 +375,7 @@ void MemoryMapAllocationPool::SetMaxPoolSize(const int &size) {
 
 void MemoryMapAllocationPool::Clear() {
   std::lock_guard<std::mutex> guard(mtx_);
-  for (auto mmap : memory_map_allocations_) {
+  for (auto const &mmap : memory_map_allocations_) {
     int rlt = shm_unlink(mmap.file_name_.c_str());
     if (rlt == 0) {
       VLOG(4) << "MemoryMapAllocationPool: clear " << mmap.file_name_;
@@ -387,7 +392,7 @@ void MemoryMapAllocationPool::Clear() {
   memory_map_allocations_.clear();
 }
 
-MemoryMapAllocationPool::~MemoryMapAllocationPool() { Clear(); }
+MemoryMapAllocationPool::~MemoryMapAllocationPool() { Clear(); }  // NOLINT
 
 }  // namespace allocation
 }  // namespace memory

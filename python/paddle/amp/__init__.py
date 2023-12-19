@@ -12,19 +12,93 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .auto_cast import auto_cast  # noqa: F401
-from .auto_cast import decorate  # noqa: F401
-from .auto_cast import amp_guard  # noqa: F401
-from .auto_cast import amp_decorate  # noqa: F401
-from .auto_cast import low_precision_op_list  # noqa: F401
-from .auto_cast import WHITE_LIST  # noqa: F401
-from .auto_cast import BLACK_LIST  # noqa: F401
-from .auto_cast import PURE_FP16_WHITE_LIST  # noqa: F401
-from .auto_cast import PURE_FP16_BLACK_LIST  # noqa: F401
+from .auto_cast import (  # noqa: F401
+    auto_cast,
+    decorate,
+    amp_guard,
+    amp_decorate,
+)
+from .amp_lists import (  # noqa: F401
+    white_list,
+    black_list,
+)
 
-from . import grad_scaler  # noqa: F401
-from .grad_scaler import GradScaler  # noqa: F401
-from .grad_scaler import AmpScaler  # noqa: F401
-from .grad_scaler import OptimizerState  # noqa: F401
+from . import (  # noqa: F401
+    debugging,
+    grad_scaler,
+    accuracy_compare,
+)
 
-__all__ = ['auto_cast', 'GradScaler', 'decorate']
+from .grad_scaler import (  # noqa: F401
+    GradScaler,
+    AmpScaler,
+    OptimizerState,
+)
+
+from paddle.base import core
+from paddle.base.framework import (
+    _current_expected_place,
+    _get_paddle_place,
+)
+
+__all__ = [
+    'auto_cast',
+    'GradScaler',
+    'decorate',
+    'is_float16_supported',
+    'is_bfloat16_supported',
+]
+
+
+def is_float16_supported(device=None):
+    """
+    Determine whether the place supports float16 in the auto-mixed-precision training.
+
+    Args:
+        device (str|None, optional): Specify the running device.
+            It can be ``cpu``, ``gpu``, ``xpu``, ``gpu:x`` and ``xpu:x``,
+            where ``x`` is the index of the GPUs or XPUs. if device is None, the device is the current device. Default: None.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.amp.is_float16_supported() # True or False
+            False
+    """
+
+    device = (
+        _current_expected_place()
+        if device is None
+        else _get_paddle_place(device)
+    )
+
+    return core.is_float16_supported(device)
+
+
+def is_bfloat16_supported(device=None):
+    """
+    Determine whether the place supports bfloat16 in the auto-mixed-precision training.
+
+    Args:
+        device (str|None, optional): Specify the running device.
+            It can be ``cpu``, ``gpu``, ``xpu``, ``gpu:x`` and ``xpu:x``,
+            where ``x`` is the index of the GPUs or XPUs. if device is None, the device is the current device. Default: None.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.amp.is_bfloat16_supported() # True or False
+            True
+    """
+
+    device = (
+        _current_expected_place()
+        if device is None
+        else _get_paddle_place(device)
+    )
+
+    return core.is_bfloat16_supported(device)

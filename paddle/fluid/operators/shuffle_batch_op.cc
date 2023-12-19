@@ -12,12 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/shuffle_batch_op.h"
-
+#include <atomic>
+#include <cstring>
+#include <ctime>
 #include <memory>
+#include <random>
+#include <string>
+#include <utility>
+#include <vector>
 
+#include "glog/logging.h"
+#include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/var_type_inference.h"
+#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/platform/timer.h"
+#include "paddle/phi/core/mixed_vector.h"
 
 namespace paddle {
 namespace operators {
@@ -51,7 +63,7 @@ class ShuffleBatchOp : public framework::OperatorWithKernel {
     ctx->ShareLoD("X", "Out");
     ctx->ShareDim("Seed", "SeedOut");
     ctx->ShareLoD("Seed", "SeedOut");
-    ctx->SetOutputDim("ShuffleIdx", phi::make_ddim({-1}));
+    ctx->SetOutputDim("ShuffleIdx", common::make_ddim({-1}));
   }
 
  protected:
@@ -158,15 +170,3 @@ REGISTER_OPERATOR(shuffle_batch,
                   ops::ShuffleBatchGradOpMaker<paddle::framework::OpDesc>,
                   ops::ShuffleBatchGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(shuffle_batch_grad, ops::ShuffleBatchOpGrad);
-
-REGISTER_OP_CPU_KERNEL(shuffle_batch,
-                       ops::ShuffleBatchKernel<float>,
-                       ops::ShuffleBatchKernel<double>,
-                       ops::ShuffleBatchKernel<int32_t>,
-                       ops::ShuffleBatchKernel<int64_t>);
-
-REGISTER_OP_CPU_KERNEL(shuffle_batch_grad,
-                       ops::ShuffleBatchGradKernel<float>,
-                       ops::ShuffleBatchGradKernel<double>,
-                       ops::ShuffleBatchGradKernel<int32_t>,
-                       ops::ShuffleBatchGradKernel<int64_t>);

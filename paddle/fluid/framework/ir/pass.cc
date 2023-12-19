@@ -28,7 +28,7 @@ class Graph;
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
@@ -36,9 +36,13 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-static const char kParamScopeAttr[] = "__param_scope__";
+static const char kParamScopeAttr[] = "__param_scope__";  // NOLINT
 
 static const std::vector<std::string> support_subgraph_passes = {
+    "feed_fetch_subgraph_pass",
+    "set_subgraph_edge_pass",
+    "trt_map_ops_to_matrix_multiply_pass",
+    "tensorrt_subgraph_pass",
     "simplify_with_basic_ops_pass",
     "fused_multi_transformer_encoder_pass",
     "fused_multi_transformer_decoder_pass",
@@ -50,6 +54,41 @@ static const std::vector<std::string> support_subgraph_passes = {
     "delete_quant_dequant_linear_op_pass",
     "delete_weight_dequant_linear_op_pass",
 };
+
+static const std::vector<std::string> xpu_support_subgraph_passes = {
+    "delete_assign_op_pass",
+    "delete_dropout_op_pass",
+    "delete_concat_op_pass",
+    "identity_op_clean_pass",
+    "delete_op_device_pass",
+    "constant_folding_pass",
+    "delete_elementwise_mul_op_pass",
+    "generate_sequence_xpu_fuse_pass",
+    "embedding_with_eltwise_add_xpu_fuse_pass",
+    "multi_encoder_xpu_fuse_pass",
+    "multi_encoder_xpu_adaptive_seqlen_fuse_pass",
+    "multi_encoder_xpu_slice_fuse_pass",
+    "fused_multi_transformer_cachekv_layout_trans_pass",
+    "fused_multi_transformer_int8_cachekv_layout_trans_pass",
+    "one_beam_size_fuse_pass",
+    "stack_fuse_pass",
+    "fused_multi_transformer_xpu_pass",
+    "fused_multi_transformer_int8_xpu_quant_pass",
+    "xpu_delete_cast_op_pass",
+    "fc_xpu_fuse_pass",
+    "link_xpu_op_max_pass",
+    "xpu_delete_cast_op_pass",
+};
+
+static std::vector<std::string> support_subgraph_generate_passes;
+
+void Pass::AddSupportSubgraphPass(const std::string &pass_type) {
+  if (std::find(support_subgraph_generate_passes.begin(),
+                support_subgraph_generate_passes.end(),
+                pass_type) == support_subgraph_generate_passes.end()) {
+    support_subgraph_generate_passes.push_back(pass_type);
+  }
+}
 
 Graph *Pass::Apply(Graph *graph) const {
   VLOG(10) << "start to apply pass " << Type() << " to graph";
@@ -86,9 +125,19 @@ Graph *Pass::Apply(Graph *graph) const {
   }
   graph->Get<PassRecorder>(kPassRecorder).insert(Type());
 
-  if (graph->IsMainGraph() && std::count(support_subgraph_passes.begin(),
-                                         support_subgraph_passes.end(),
-                                         Type())) {
+  std::vector<std::string> subgraph_passes;
+  bool use_xpu = Has("use_xpu") && Get<bool>("use_xpu");
+  if (use_xpu) {
+    subgraph_passes = xpu_support_subgraph_passes;
+  } else {
+    subgraph_passes = support_subgraph_passes;
+  }
+  if (FLAGS_all_blocks_convert_trt && FLAGS_convert_all_blocks &&
+      graph->IsMainGraph() &&
+      (std::count(subgraph_passes.begin(), subgraph_passes.end(), Type()) ||
+       std::count(support_subgraph_generate_passes.begin(),
+                  support_subgraph_generate_passes.end(),
+                  Type()))) {
     for (size_t i = 1; i < graph->SubGraphsSize(); i++) {
       auto *sub_graph = graph->GetSubGraph(i);
       if (!sub_graph->Has(framework::ir::kParamScopeAttr)) {
@@ -116,7 +165,7 @@ Graph *Pass::Apply(Graph *graph) const {
     }
   }
   applied_ = true;
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   // Clear mkl-dnn cache,
   // Passes can change params, tensors, so caching need to be discarded
   platform::ClearMKLDNNCache(paddle::platform::CPUPlace());

@@ -12,16 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.distributed.auto_parallel.operators.common import (
+from paddle.distributed.auto_parallel.static.operators.common import (
     is_amp_flag_sync_op,
     is_data_parallel_reduce_op,
     is_global_norm_sync_op,
 )
-from paddle.distributed.auto_parallel.utils import (
+from paddle.distributed.auto_parallel.static.utils import (
     OpRole,
     insert_dependencies_for_vars,
+    is_comm_op,
 )
-from paddle.fluid.executor import _is_enable_standalone_executor
 
 from .auto_parallel_sharding import ShardingPass, _supported_optimizer_type
 from .pass_base import PassBase, register_pass
@@ -68,11 +68,8 @@ class AutoParalSupplementDepPass(PassBase):
         return True
 
     def _apply_single_impl(self, main_program, startup_program, context):
-
         # TODO general this pass for all case.
-        if not _is_enable_standalone_executor or not _sharding_pass_applied(
-            context
-        ):
+        if not _sharding_pass_applied(context):
             return
 
         self._dist_context = self.get_attr("dist_context", None)
@@ -113,7 +110,11 @@ class AutoParalSupplementDepPass(PassBase):
         for idx, op in enumerate(main_block.ops):
             if op.type == "check_finite_and_unscale":
                 if first_check_op:
-                    last_backward_op = main_block.ops[idx - 1]
+                    last_backward_op = None
+                    for last_idx in range(idx - 1, 0, -1):
+                        if not is_comm_op(main_block.ops[last_idx]):
+                            last_backward_op = main_block.ops[last_idx]
+                            break
                     prior_varname = last_backward_op.output_arg_names[0]
                     first_check_op = False
                 deps_map[idx] = (
@@ -138,7 +139,7 @@ class AutoParalSupplementDepPass(PassBase):
                 prior_varname = op.output("ParamOut")[0]
 
         # insert deps
-        indice = sorted(list(deps_map.keys()), reverse=True)
+        indice = sorted(deps_map.keys(), reverse=True)
         for idx in indice:
             prior_var = main_block.var(deps_map[idx][0])
             post_var = main_block.var(deps_map[idx][1])
@@ -150,9 +151,6 @@ class AutoParalSupplementDepPass(PassBase):
                 post_var,
                 self._dist_context,
                 OpRole.Optimize,
-                process_mesh=[
-                    -1
-                ],  # hack to avoid initialize the dist attr for coalesc var
                 is_recompute=False,
                 sync=False,
                 op_namescope=op_namescope,

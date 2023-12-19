@@ -1,19 +1,146 @@
 [tool.black]
-exclude = "build"
 line-length = 80
 skip-string-normalization = true
+extend-exclude = '''
+(
+    third_party/.+      # Exclude third_party directory
+    | build/.+          # Exclude build directory
+)
+'''
 
-[tool.isort]
-profile = "black"
-line_length = 80
-known_first_party = ["paddle"]
-skip = ["build", "__init__.py"]
-extend_skip_glob = [
-    # These files do not need to be formatted,
-    # see .flake8 for more details
-    "python/paddle/fluid/[!t]**",
-    "python/paddle/fluid/tra**",
-    "python/paddle/utils/gast/**",
-    "python/paddle/fluid/tests/unittests/npu/**",
-    "python/paddle/fluid/tests/unittests/mlu/**",
+[tool.ruff]
+exclude = [
+    "./build",
+    "third_party",
+    "./python/paddle/utils/gast/**",
 ]
+line-length = 80
+target-version = "py38"
+
+[tool.ruff.lint]
+select = [
+    # Pycodestyle
+    "E",
+    "W",
+
+    # Pyflakes
+    "F",
+
+    # Isort
+    "I",
+
+    # Comprehensions
+    "C4",
+
+    # Pyupgrade
+    "UP",
+
+    # NumPy-specific rules
+    "NPY001",
+    "NPY003",
+
+    # Bugbear
+    "B002",
+    "B003",
+    "B004",
+    "B009",
+    "B010",
+    "B011",
+    "B012",
+    "B013",
+    "B014",
+    "B015",
+    "B016",
+    "B017",
+    "B018",
+    "B019",
+    "B020",
+    "B021",
+    "B022",
+    "B025",
+    "B029",
+    "B032",
+
+    # Pylint
+    "PLE",
+    "PLC0414",
+    "PLC3002",
+    "PLR0206",
+    "PLR0402",
+    "PLR1701",
+    "PLR1711",
+    "PLR1722",
+    "PLW3301",
+
+    # Pygrep-hooks
+    "PGH004",
+]
+unfixable = [
+    "NPY001"
+]
+ignore = [
+    # Whitespace before ‘,’, ‘;’, or ‘:’, it is not compatible with black
+    "E203",
+    # Module level import not at top of file
+    "E402",
+    # Line too long (82 > 79 characters)
+    "E501",
+    # Do not compare types, use `isinstance()`
+    "E721",
+    # Do not use bare except, specify exception instead
+    "E722",
+    # Do not assign a lambda expression, use a def
+    "E731",
+    # Do not use variables named ‘l’, ‘O’, or ‘I’
+    "E741",
+    # `name` may be undefined, or defined from star imports: `module`
+    "F405",
+    # Local variable name is assigned to but never used
+    "F841",
+    # It not met the "Explicit is better than implicit" rule
+    "UP015",
+    # It will cause the performance regression on python3.10
+    "UP038",
+]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+known-first-party = ["paddle"]
+
+[tool.ruff.lint.per-file-ignores]
+# These files need tabs for testing.
+"test/dygraph_to_static/test_legacy_error.py" = ["E101", "W191"]
+# Ignore compare with True in sot unittest
+"test/sot/test_dup_top.py" = ["E712"]
+# Ignore undefined variables in CMake config and some dygraph_to_static tests
+".cmake-format.py" = ["F821"]
+"test/dygraph_to_static/test_closure_analysis.py" = ["F821"]
+"python/paddle/static/amp/decorator.py" = ["F821"]
+# Ignore version check in setup.py
+"setup.py" = ["UP036"]
+# Ignore unnecessary comprehension in dy2st unittest test_loop
+"test/dygraph_to_static/test_loop.py" = ["C416", "F821"]
+# Ignore unnecessary lambda in dy2st unittest test_lambda
+"test/dygraph_to_static/test_lambda.py" = ["PLC3002"]
+
+# temp ignore unused imports in all distributed files
+"python/paddle/distributed/transpiler/__init__.py" = ["F401"]
+"python/paddle/incubate/distributed/fleet/parameter_server/distribute_transpiler/__init__.py" = ["F401", "I001"]
+"python/paddle/distributed/fleet/runtime/__init__.py" = ["F401"]
+"python/paddle/distributed/transpiler/details/__init__.py" = ["F401", "I001"]
+"python/paddle/incubate/distributed/models/moe/gate/__init__.py" = ["F401", "I001"]
+"python/paddle/incubate/distributed/models/moe/__init__.py" = ["F401", "I001"]
+"python/paddle/incubate/distributed/utils/io/__init__.py" = ["F401", "I001"]
+"python/paddle/distributed/fleet/elastic/__init__.py" = ["F401", "I001"]
+
+# temp ignore isort
+"python/paddle/amp/__init__.py" = ["I001"]
+"python/paddle/distributed/__init__.py" = ["I001"]
+"python/paddle/distributed/communication/stream/__init__.py" = ["I001"]
+"python/paddle/distributed/launch/context/__init__.py" = ["I001"]
+"python/paddle/distributed/launch/controllers/__init__.py" = ["I001"]
+"python/paddle/distributed/passes/__init__.py" = ["I001"]
+"python/paddle/distributed/rpc/__init__.py" = ["I001"]
+"python/paddle/distribution/__init__.py" = ["I001"]
+"python/paddle/incubate/distributed/fleet/__init__.py" = ["I001"]
+"python/paddle/incubate/distributed/fleet/parameter_server/pslib/__init__.py" = ["I001"]

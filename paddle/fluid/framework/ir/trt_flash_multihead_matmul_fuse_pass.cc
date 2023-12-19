@@ -21,6 +21,7 @@
 #include "paddle/fluid/framework/op_version_registry.h"
 #ifdef PADDLE_WITH_TENSORRT
 #include "paddle/fluid/inference/tensorrt/helper.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 #endif
 namespace paddle {
 namespace framework {
@@ -64,8 +65,8 @@ namespace patterns {
 //     output
 
 PDNode* TrtFlashMultiHeadMatmulPattern::operator()() {
-  std::unordered_set<std::string> mul_ops{"mul", "matmul_v2"};
-  std::unordered_set<std::string> matmul_ops{"matmul", "matmul_v2"};
+  std::unordered_set<std::string> mul_ops{"matrix_multiply"};
+  std::unordered_set<std::string> matmul_ops{"matrix_multiply"};
   auto* input0 = pattern->NewNode(input0_repr());
   input0->assert_is_ops_input(mul_ops);
   VLOG(5) << "Start match TrtFlashMultiHeadMatmulPattern";
@@ -208,23 +209,6 @@ PDNode* TrtFlashMultiHeadMatmulPattern::operator()() {
 }  // namespace patterns
 
 TrtFlashMultiHeadMatmulFusePass::TrtFlashMultiHeadMatmulFusePass() {
-  AddOpCompat(OpCompat("mul"))
-      .AddInput("X")  // the shape shoule be (B, S, N*H)
-      .IsTensor()
-      .End()
-      .AddInput("Y")  // the shape shoule be (N*H, N*H)
-      .IsTensor()
-      .End()
-      .AddOutput("Out")  // the shape shoule be (B, S, N*H)
-      .IsTensor()
-      .End()
-      .AddAttr("x_num_col_dims")
-      .IsNumEQ(2)
-      .End()
-      .AddAttr("y_num_col_dims")
-      .IsNumEQ(1)
-      .End();
-
   AddOpCompat(OpCompat("reshape2"))
       .AddInput("X")
       .IsTensor()
@@ -267,43 +251,6 @@ TrtFlashMultiHeadMatmulFusePass::TrtFlashMultiHeadMatmulFusePass() {
 
   // QK (B, H, S, N)*(B, H, S, N) -> (B, H, S, S)
   // QKV (B, H, S, S)*(B, H, S, N) -> (B, H, S, N)
-  AddOpCompat(OpCompat("matmul"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddInput("Y")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddAttr("alpha")
-      .IsType<float>()  // QK(anyvalue, will copy to new op) QKV(1.0)
-      .End()
-      .AddAttr("transpose_X")
-      .IsBoolEQ(false)
-      .End()
-      .AddAttr("transpose_Y")  // QK(true) QKV(false)
-      .IsType<bool>()
-      .End();
-
-  AddOpCompat(OpCompat("matmul_v2"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddInput("Y")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddAttr("trans_x")
-      .IsBoolEQ(false)
-      .End()
-      .AddAttr("trans_y")  // QK(true) QKV(false)
-      .IsType<bool>()
-      .End();
-
   AddOpCompat(OpCompat("softmax"))
       .AddInput("X")
       .IsTensor()
@@ -320,6 +267,14 @@ int TrtFlashMultiHeadMatmulFusePass::BuildFlashFusion(
     Graph* graph, const std::string& name_scope, Scope* scope) const {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
+  bool use_trt_fma = false;
+
+#ifdef PADDLE_WITH_TENSORRT
+  int sm = platform::GetGPUComputeCapability(platform::GetCurrentDeviceId());
+  use_trt_fma = sm >= 80 ? true : false;
+#endif
+  // Lora's attention weight cannot be manipulated during pass processing
+  bool weight_is_constant = false;
 
   // Create pattern.
   patterns::TrtFlashMultiHeadMatmulPattern multihead_pattern(pattern,
@@ -352,73 +307,88 @@ int TrtFlashMultiHeadMatmulFusePass::BuildFlashFusion(
     int head_number =
         PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape"))
             .at(2);
-
+    int head_size =
+        PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape"))
+            .at(3);
     multihead_op_desc.SetType("flash_multihead_matmul");
     multihead_op_desc.SetInput("Input", {input0->Name()});
-
-    auto* wq_tensor =
-        scope->FindVar(mul0_w->Name())->GetMutable<phi::DenseTensor>();
-    auto* wk_tensor =
-        scope->FindVar(mul1_w->Name())->GetMutable<phi::DenseTensor>();
-    auto* wv_tensor =
-        scope->FindVar(mul2_w->Name())->GetMutable<phi::DenseTensor>();
+    if (mul0_w->Var()->Persistable() && mul1_w->Var()->Persistable() &&
+        mul2_w->Var()->Persistable()) {
+      weight_is_constant = true;
+    }
     // check the scale
-    int hidden_out = wq_tensor->dims()[1];
-    int head_size = hidden_out / head_number;
+    int hidden_out = head_number * head_size;
     if (abs(scale_attr - 1.0f / sqrt(static_cast<float>(head_size))) > 1e-5) {
       VLOG(3) << "scale of muilthead matmul do not fit the requirement of "
                  "flash attention plugin, Stop fusing.";
       return;
     }
-
-    float* wq_data = wq_tensor->data<float>();
-    float* wk_data = wk_tensor->data<float>();
-    float* wv_data = wv_tensor->data<float>();
-    // combined_w_dims = [in,3,out]
-    auto combined_w_dims =
-        phi::make_ddim({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
-    auto* combined_w_desc = mul0_w->Var();
-    combined_w_desc->SetShape({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
-    combined_w_desc->SetPersistable(true);
-    phi::DenseTensor tmp_combined_w_tensor;
-    tmp_combined_w_tensor.Resize(combined_w_dims);
-    float* tmp_combined_w_data =
-        dev_ctx->template HostAlloc<float>(&tmp_combined_w_tensor);
-
-    std::vector<const float*> w_vec = {wq_data, wk_data, wv_data};
-    int dims_h = combined_w_dims[0], dims_w = combined_w_dims[2];
-    // dims_h=in_feature, dims_w=out_feature
-    // Combine the three fc weights together.
-    // weight [Hidden_in * 3 * N * H]
-    for (int i = 0; i < dims_h; i++) {
-      for (int j = 0; j < 3; j++) {
-        for (int k = 0; k < dims_w; k++) {
-          int out_index = i * (3 * dims_w) + j * dims_w + k;
-          int in_index = i * dims_w + k;
-          tmp_combined_w_data[out_index] = w_vec[j][in_index];
+    if (use_trt_fma && weight_is_constant) {
+      auto* wq_tensor =
+          scope->FindVar(mul0_w->Name())->GetMutable<phi::DenseTensor>();
+      auto* wk_tensor =
+          scope->FindVar(mul1_w->Name())->GetMutable<phi::DenseTensor>();
+      auto* wv_tensor =
+          scope->FindVar(mul2_w->Name())->GetMutable<phi::DenseTensor>();
+      float* wq_data = wq_tensor->data<float>();
+      float* wk_data = wk_tensor->data<float>();
+      float* wv_data = wv_tensor->data<float>();
+      // auto dims = wq_tensor->dims();
+      // combined_w_dims = [in,3,out]
+      auto combined_w_dims =
+          common::make_ddim({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
+      auto* combined_w_desc = mul0_w->Var();
+      combined_w_desc->SetShape(
+          {wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
+      combined_w_desc->SetPersistable(true);
+      phi::DenseTensor tmp_combined_w_tensor;
+      tmp_combined_w_tensor.Resize(combined_w_dims);
+      float* tmp_combined_w_data =
+          dev_ctx->template HostAlloc<float>(&tmp_combined_w_tensor);
+      std::vector<const float*> w_vec = {wq_data, wk_data, wv_data};
+      int dims_h = combined_w_dims[0], dims_w = combined_w_dims[2];
+      // dims_h=in_feature, dims_w=out_feature
+      // Combine the three fc weights together.
+      // weight [Hidden_in * 3 * N * H]
+      for (int i = 0; i < dims_h; i++) {
+        for (int j = 0; j < 3; j++) {
+          for (int k = 0; k < dims_w; k++) {
+            int out_index = i * (3 * dims_w) + j * dims_w + k;
+            int in_index = i * dims_w + k;
+            tmp_combined_w_data[out_index] = w_vec[j][in_index];
+          }
         }
       }
+      // clear weight for reuse
+      wq_tensor->clear();
+      wq_tensor->Resize(combined_w_dims);
+      float* new_combined_w_data = dev_ctx->template HostAlloc<float>(
+          wq_tensor, sizeof(float) * wq_tensor->numel());
+      memcpy(new_combined_w_data,
+             tmp_combined_w_data,
+             sizeof(float) * wq_tensor->numel());
+
+      scope->EraseVars({mul1_w->Name(), mul2_w->Name()});
+      multihead_op_desc.SetInput("W", {mul0_w->Name()});
+
+    } else {
+      multihead_op_desc.SetInput("weight_query", {mul0_w->Name()});
+      multihead_op_desc.SetInput("weight_key", {mul1_w->Name()});
+      multihead_op_desc.SetInput("weight_value", {mul2_w->Name()});
     }
-    // clear weight for reuse
-    wq_tensor->clear();
-    wq_tensor->Resize(combined_w_dims);
-
-    float* new_combined_w_data = dev_ctx->template HostAlloc<float>(
-        wq_tensor, sizeof(float) * wq_tensor->numel());
-    memcpy(new_combined_w_data,
-           tmp_combined_w_data,
-           sizeof(float) * wq_tensor->numel());
-
-    scope->EraseVars({mul1_w->Name(), mul2_w->Name()});
-
-    multihead_op_desc.SetInput("W", {mul0_w->Name()});
-    multihead_op_desc.SetOutput("Out", {reshape2_qkv_out->Name()});
-    multihead_op_desc.SetAttr("alpha", scale_attr);
+    multihead_op_desc.SetAttr("scale", scale_attr);
+    multihead_op_desc.SetAttr("hidden_out", hidden_out);
     multihead_op_desc.SetAttr("head_number", head_number);
-
+    multihead_op_desc.SetOutput("Out", {reshape2_qkv_out->Name()});
+    multihead_op_desc.SetAttr("use_trt_fma", use_trt_fma);
+    multihead_op_desc.SetAttr("weight_is_constant", weight_is_constant);
     auto* multihead = graph->CreateOpNode(&multihead_op_desc);
     IR_NODE_LINK_TO(input0, multihead);
     IR_NODE_LINK_TO(mul0_w, multihead);
+    if (!use_trt_fma || !weight_is_constant) {
+      IR_NODE_LINK_TO(mul1_w, multihead);
+      IR_NODE_LINK_TO(mul2_w, multihead);
+    }
     IR_NODE_LINK_TO(multihead, reshape2_qkv_out);
   };
   int fusion_count{0};
@@ -524,11 +494,14 @@ int TrtFlashMultiHeadMatmulFusePass::BuildFlashFusion(
                                                   reshape2_qkv,
                                                   scale});
     // Remove unneeded nodes.
+    if (!use_trt_fma || !weight_is_constant) {
+      marked_nodes.erase(mul1_w);
+      marked_nodes.erase(mul2_w);
+    }
     GraphSafeRemoveNodes(graph, marked_nodes);
     ++fusion_count;
   };
   gpd(graph, handler);
-
   return fusion_count;
 }
 
@@ -549,6 +522,7 @@ void TrtFlashMultiHeadMatmulFusePass::ApplyImpl(Graph* graph) const {
   // if no tensorrt, early stop
   return;
 #endif
+
   bool with_dynamic_shape = Get<bool>("with_dynamic_shape");
   if (!with_dynamic_shape) {
     VLOG(3) << "Flash attention oss plugin need trt "
@@ -569,11 +543,8 @@ REGISTER_PASS(trt_flash_multihead_matmul_fuse_pass,
 REGISTER_PASS_CAPABILITY(trt_flash_multihead_matmul_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("mul", 0)
             .LE("elementwise_add", 1)
             .EQ("reshape2", 0)
             .EQ("transpose2", 0)
             .EQ("scale", 0)
-            .LE("matmul", 1)
-            .EQ("matmul_v2", 0)
             .EQ("softmax", 0));

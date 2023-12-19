@@ -41,8 +41,8 @@ void MemoryDenseTable::CreateInitializer(const std::string &attr,
 
 int32_t MemoryDenseTable::Initialize() {
   _shards_task_pool.resize(task_pool_size_);
-  for (size_t i = 0; i < _shards_task_pool.size(); ++i) {
-    _shards_task_pool[i].reset(new ::ThreadPool(1));
+  for (auto &shard_task : _shards_task_pool) {
+    shard_task.reset(new ::ThreadPool(1));
   }
 
   sync = _config.common().sync();
@@ -205,8 +205,8 @@ int32_t MemoryDenseTable::_PushDense(const float *values, size_t num) {
         });
   }
 
-  for (size_t shard_id = 0; shard_id < tasks.size(); ++shard_id) {
-    tasks[shard_id].wait();
+  for (auto &task : tasks) {
+    task.wait();
   }
   VLOG(2) << "debug MemoryDenseTable::_push_dense done";
   return 0;

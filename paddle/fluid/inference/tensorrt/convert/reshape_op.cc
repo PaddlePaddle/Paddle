@@ -12,15 +12,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -32,6 +23,7 @@ class ReshapeOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
+    VLOG(3) << "convert a paddle reshape op to tensorrt layer";
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
@@ -45,12 +37,12 @@ class ReshapeOpConverter : public OpConverter {
     bool one_input = false;
     if (engine_->with_dynamic_shape()) {
       if (op_desc.Inputs().find("ShapeTensor") != op_desc.Inputs().end() &&
-          op_desc.Input("ShapeTensor").size() > 0) {
+          !op_desc.Input("ShapeTensor").empty()) {
         for (auto name : op_desc.Input("ShapeTensor"))
           concat_inputs.push_back(engine_->GetITensor(name));
         real_shape_tensor = Concat(concat_inputs);
       } else if (op_desc.Inputs().find("Shape") != op_desc.Inputs().end() &&
-                 op_desc.Input("Shape").size() > 0) {
+                 !op_desc.Input("Shape").empty()) {
         real_shape_tensor = engine_->GetITensor(op_desc.Input("Shape")[0]);
       } else {
         reshape_dim.nbDims = nbDims_num;

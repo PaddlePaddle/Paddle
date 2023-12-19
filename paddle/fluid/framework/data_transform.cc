@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_device_transform.h"
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/data_type_transform.h"
+#include "paddle/phi/api/lib/data_transform.h"
 
 namespace paddle {
 namespace framework {
@@ -24,7 +25,7 @@ class Variable;
 }  // namespace framework
 }  // namespace paddle
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
@@ -47,9 +48,16 @@ void TransformData(const phi::KernelKey &expected_kernel_type,
   phi::DenseTensor out;
   const DataLayout lin = kernel_type_for_var.layout();
   const DataLayout lout = expected_kernel_type.layout();
+
+  if (NeedTransform2Contiguous(in.meta().is_contiguous())) {
+    out = paddle::experimental::Trans2Contiguous(in);
+    transformed = true;
+    PassTensorData(&out, &in);
+  }
+
   // do layout transform
   if (NeedTransformLayout(lout, lin)) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if (lin == DataLayout::ONEDNN || lout == DataLayout::ONEDNN) {
       PADDLE_ENFORCE_EQ(
           !(lin == DataLayout::ONEDNN && lout == DataLayout::ONEDNN),
@@ -60,9 +68,6 @@ void TransformData(const phi::KernelKey &expected_kernel_type,
       if (lin != DataLayout::ONEDNN && lout == DataLayout::ONEDNN) {
         // Case1 - transform from Non-ONEDNN OPKernel to ONEDNN OPKernel
         // Just set layout/format. No real transform occur
-
-        auto out_format = phi::funcs::OneDNNFormatForSize(
-            in.dims().size(), phi::funcs::ToOneDNNFormat(lin));
         out.ShareDataWith(input_tensor);
         // For NHWC data we need reshape of tensors as MKL-DNN
         // is expecting NHWC dims description order
@@ -72,10 +77,9 @@ void TransformData(const phi::KernelKey &expected_kernel_type,
           // NHWC or NCHW
           phi::OneDNNContext::tls().set_cur_paddle_data_layout(lin);
         }
-        dnnl::memory::desc out_mem_desc(
-            vectorize(out.dims()),
-            phi::funcs::ToOneDNNDataType(in.dtype()),
-            out_format);
+
+        dnnl::memory::desc out_mem_desc =
+            phi::funcs::make_memory_desc(out, lin);
         out.set_mem_desc(out_mem_desc);
       } else {
         // Case2 - transfrom from ONEDNN OPKernel to Non-ONEDNN OPKernel
@@ -137,7 +141,7 @@ void SetTensorToVariable(const Variable &in_var,
     auto *tran_lod_tensor = out_var->GetMutable<phi::DenseTensor>();
     tran_lod_tensor->set_lod(in_lod_tensor.lod());
     tran_lod_tensor->set_layout(in_lod_tensor.layout());
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     tran_lod_tensor->set_mem_desc(in_lod_tensor.mem_desc());
 #endif
     tran_lod_tensor->ShareDataWith(tensor);
@@ -154,6 +158,32 @@ void SetTensorToVariable(const Variable &in_var,
         "but the input variable type is %s.",
         ToTypeName(in_var.Type())));
   }
+}
+
+phi::GetKernelTypeForVarContext BuildGetKernelTypeForVarContext(
+    const phi::KernelKey &kernel_key,
+    const AttributeMap &fluid_attrs,
+    phi::AttributeMap *phi_attrs,
+    bool has_infer_varkernel_fn) {
+  // According to "GetKernelTypeForVar" in some ops executed with oneDNN,
+  // the only "string" member, such as "data_layout" 、"data_format" of
+  // AttibuteMap is useful. In the future the other args maybe used. Because the
+  // "phi" module should not depend on the "fluid", transform
+  // "framework::AttributeMap" to "phi::AttributeMap".
+  if (has_infer_varkernel_fn) {
+    for (auto &attr : fluid_attrs) {
+      switch (attr.second.index()) {
+        case 3:  // string type in framwork::Attribute
+          (*phi_attrs)[attr.first] = PADDLE_GET_CONST(std::string, attr.second);
+          break;
+        default:
+          VLOG(6) << "GetKernelTypeForVarContext currently only use "
+                     "std::string. You add other type if need.";
+          break;
+      }
+    }
+  }
+  return phi::GetKernelTypeForVarContext(&kernel_key, phi_attrs);
 }
 
 }  // namespace framework

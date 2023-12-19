@@ -47,7 +47,7 @@ class GlobalScatterOp : public framework::OperatorWithKernel {
                           "But received input's dimension = %d.",
                           ndim_input));
 
-    framework::DDim out_dims = phi::make_ddim({-1, -1});
+    framework::DDim out_dims = common::make_ddim({-1, -1});
     ctx->SetOutputDim("Out", out_dims);
   }
 
@@ -61,7 +61,7 @@ class GlobalScatterOp : public framework::OperatorWithKernel {
 
 class GlobalScatterOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "(Tensor) tensor send.");
     AddInput("local_count",
              "(Tensor) Tensor which has n_expert * world_size elements that "
@@ -81,7 +81,7 @@ class GlobalScatterOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Global Scatter Operator
 Scatter data in X which has been put together belong to one expert
-to n_expert * world_size exeperts according to local_count
+to n_expert * world_size experts according to local_count
 and receive tensors from n_expert * world_size experts according
 to global_count.
 )DOC");
@@ -115,9 +115,12 @@ REGISTER_OPERATOR(global_scatter,
                   ops::GlobalScatterOpGradMaker<paddle::framework::OpDesc>,
                   ops::GlobalScatterOpGradMaker<paddle::imperative::OpBase>)
 
-REGISTER_OP_CPU_KERNEL(global_scatter,
-                       ops::GlobalScatterOpCPUKernel<float>,
-                       ops::GlobalScatterOpCPUKernel<double>,
-                       ops::GlobalScatterOpCPUKernel<int>,
-                       ops::GlobalScatterOpCPUKernel<int64_t>,
-                       ops::GlobalScatterOpCPUKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(global_scatter,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::GlobalScatterOpCPUKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

@@ -50,7 +50,7 @@ bool HasBias(ir::Node* conv_op) {
   auto input_names = conv_op->Op()->InputNames();
   return std::find(input_names.begin(), input_names.end(), "Bias") !=
              input_names.end() &&
-         conv_op->Op()->Input("Bias").size() > 0;
+         !conv_op->Op()->Input("Bias").empty();
 }
 
 template <typename T>
@@ -76,7 +76,7 @@ void QuantizeConvInput(Scope* scope,
 
 }  // namespace
 
-ParamsQuantizationMkldnnPass::ParamsQuantizationMkldnnPass() {
+ParamsQuantizationMkldnnPass::ParamsQuantizationMkldnnPass() {  // NOLINT
   AddOpCompat(OpCompat("fused_conv2d"))
       .AddInput("Input")
       .IsTensor()

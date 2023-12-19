@@ -126,7 +126,7 @@ PDNode *FCElementwiseLayerNorm::operator()(PDNode *x) {
 
 template <typename T>
 static bool IsEqual(const std::vector<T> &x, const std::vector<T> &y) {
-  if (!(x.size() > 0U && y.size() > 0U) || x.size() != y.size()) {
+  if (!(!x.empty() && !y.empty()) || x.size() != y.size()) {
     return false;
   }
   for (size_t i = 0; i < x.size(); ++i) {
@@ -255,8 +255,8 @@ void FCElementwiseLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     int begin_norm_axis =
         PADDLE_GET_CONST(int, layer_norm->Op()->GetAttr("begin_norm_axis"));
     auto layer_norm_x_dims = fc_out->Var()->GetShape();
-    auto layer_norm_x_mat_dims =
-        phi::flatten_to_2d(phi::make_ddim(layer_norm_x_dims), begin_norm_axis);
+    auto layer_norm_x_mat_dims = common::flatten_to_2d(
+        common::make_ddim(layer_norm_x_dims), begin_norm_axis);
     if (fc_w->Var()->GetShape()[1] != layer_norm_x_mat_dims[1]) {
       return;
     }
@@ -283,13 +283,13 @@ void FCElementwiseLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
 
     // outputs
     new_desc.SetOutput("Out", {layer_norm_out->Name()});
-    bool lnm_has_output = layer_norm_mean->outputs.size() > 0U;
+    bool lnm_has_output = !layer_norm_mean->outputs.empty();
     if (lnm_has_output) {
       new_desc.SetOutput("Mean", {layer_norm_mean->Name()});
     } else {
       del_node_set.insert(layer_norm_mean);
     }
-    bool lnv_has_output = layer_norm_variance->outputs.size() > 0U;
+    bool lnv_has_output = !layer_norm_variance->outputs.empty();
     if (lnv_has_output) {
       new_desc.SetOutput("Variance", {layer_norm_variance->Name()});
     } else {

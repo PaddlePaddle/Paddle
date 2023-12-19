@@ -51,7 +51,7 @@ void AttentionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
       ctx->HasOutput("LSTMOUT"), "Output", "LSTMOUT", "AttentionLstm");
 
   auto x_dims = ctx->GetInputDim("X");
-  const int M = x_dims[1];
+  const int M = static_cast<int>(x_dims[1]);
   PADDLE_ENFORCE_EQ(x_dims.size(),
                     2,
                     platform::errors::InvalidArgument(
@@ -59,7 +59,7 @@ void AttentionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
                         x_dims.size()));
 
   auto w_dims = ctx->GetInputDim("LSTMWeight");
-  const int D = w_dims[1] / 4;
+  const int D = static_cast<int>(w_dims[1] / 4);
   PADDLE_ENFORCE_EQ(
       w_dims.size(),
       2,
@@ -107,7 +107,7 @@ void AttentionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
             "Expected input(H0)'s dimension is 2. But received %d.",
             h_dims.size()));
     if (ctx->IsRuntime() ||
-        (phi::product(c_dims) > 0 && phi::product(h_dims) > 0)) {
+        (common::product(c_dims) > 0 && common::product(h_dims) > 0)) {
       PADDLE_ENFORCE_EQ(h_dims,
                         c_dims,
                         platform::errors::InvalidArgument(
@@ -340,12 +340,10 @@ inline void vec_softmax(const int n, const T* x, T* y) {
   phi::funcs::vec_scal<T>(n, static_cast<T>(1) / scalar, y);  // scale
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class AttentionLSTMKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    using DeviceContext = phi::CPUContext;
-
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* h0 = ctx.Input<phi::DenseTensor>("H0");
     auto* c0 = ctx.Input<phi::DenseTensor>("C0");
@@ -366,18 +364,18 @@ class AttentionLSTMKernel : public framework::OpKernel<T> {
 
     // some shape should be reshape here since infershape can not get lod info
     auto x_lod = x->lod();
-    const int N = x_lod[0].size() - 1;  // batch size
-    auto x_dims = x->dims();            // T x M
-    auto w_dims = lstm_w->dims();       // (D+M) x 4D
-    const int total_T = x_dims[0];
-    const int M = x_dims[1];      // x frame size
-    const int D = w_dims[1] / 4;  // gate frame size
-    const int D2 = D * 2;
-    const int D3 = D * 3;
-    const int D4 = w_dims[1];
-    int max_seq_len = x_lod[0][1];
+    const int N = static_cast<int>(x_lod[0].size() - 1);  // batch size
+    auto x_dims = x->dims();                              // T x M
+    auto w_dims = lstm_w->dims();                         // (D+M) x 4D
+    const int total_T = static_cast<int>(x_dims[0]);
+    const int M = static_cast<int>(x_dims[1]);      // x frame size
+    const int D = static_cast<int>(w_dims[1] / 4);  // gate frame size
+    const int D2 = static_cast<int>(D * 2);
+    const int D3 = static_cast<int>(D * 3);
+    const int D4 = static_cast<int>(w_dims[1]);
+    int max_seq_len = static_cast<int>(x_lod[0][1]);
     for (int i = 1; i < N; ++i) {
-      int len = x_lod[0][i + 1] - x_lod[0][i];
+      int len = static_cast<int>(x_lod[0][i + 1] - x_lod[0][i]);
       max_seq_len = max_seq_len < len ? len : max_seq_len;
     }
     PADDLE_ENFORCE_EQ(
@@ -424,10 +422,10 @@ class AttentionLSTMKernel : public framework::OpKernel<T> {
     T* lstm_x_data = lstm_x->mutable_data<T>(ctx.GetPlace());
     T* lstm_out_data = lstm_out->mutable_data<T>(ctx.GetPlace());
 
-    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(ctx);
-
     // x(TxM) * fc (Mx1) part of atten_wgt(M+D)x1
     auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
+    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
+
     phi::funcs::FCFunctor<DeviceContext, T> fc;
     fc(dev_ctx,
        total_T,
@@ -445,7 +443,7 @@ class AttentionLSTMKernel : public framework::OpKernel<T> {
     T* cur_cell_out_data = cell_out_data;
     T* cur_hidden_out_data = hidden_out_data;
     for (int i = 0; i < N; ++i) {
-      int seq_len = x_lod[0][i + 1] - x_lod[0][i];
+      int seq_len = static_cast<int>(x_lod[0][i + 1] - x_lod[0][i]);
       prev_cell_data = c0_data + i * D;
       prev_hidden_data = h0_data ? h0_data + i * D : NULL;
       for (int step = 0; step < seq_len; ++step) {
@@ -525,6 +523,5 @@ REGISTER_OPERATOR(attention_lstm,
                   ops::AttentionLSTMOp,
                   ops::AttentionLSTMOpMaker);
 
-REGISTER_OP_CPU_KERNEL(attention_lstm,
-                       ops::AttentionLSTMKernel<float>,
-                       ops::AttentionLSTMKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(
+    attention_lstm, CPU, ALL_LAYOUT, ops::AttentionLSTMKernel, float, double) {}

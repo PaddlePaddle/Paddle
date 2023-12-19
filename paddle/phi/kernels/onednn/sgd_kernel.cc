@@ -25,10 +25,10 @@ void SGDDenseKernel(const Context& dev_ctx,
                     const DenseTensor& param,
                     const DenseTensor& learning_rate,
                     const DenseTensor& grad,
-                    const paddle::optional<DenseTensor>& master_param,
-                    bool multi_precision,
+                    const paddle::optional<DenseTensor>& master_param UNUSED,
+                    bool multi_precision UNUSED,
                     DenseTensor* param_out,
-                    DenseTensor* master_param_out) {
+                    DenseTensor* master_param_out UNUSED) {
   auto* out_data = dev_ctx.template Alloc<T>(param_out);
   const T* param_data = param.data<T>();
   const auto* grad_data = grad.data<T>();
@@ -43,13 +43,13 @@ void SGDDenseKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void SGDDenseParamSparseGradKernel(
     const Context& dev_ctx,
-    const DenseTensor& param,
+    const DenseTensor& param UNUSED,
     const DenseTensor& learning_rate,
     const SelectedRows& grad,
-    const paddle::optional<DenseTensor>& master_param,
-    bool multi_precision,
+    const paddle::optional<DenseTensor>& master_param UNUSED,
+    bool multi_precision UNUSED,
     DenseTensor* param_out,
-    DenseTensor* master_param_out) {
+    DenseTensor* master_param_out UNUSED) {
   const auto& grad_value = grad.value();
   const auto& grad_rows = grad.rows();
   const auto grad_height = grad.height();

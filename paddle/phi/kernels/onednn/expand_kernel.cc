@@ -36,7 +36,7 @@ void ExpandKernel(const Context& dev_ctx,
                   DenseTensor* out) {
   const auto& onednn_engine = dev_ctx.GetEngine();
 
-  auto x_vec_dims = vectorize(x.dims());
+  auto x_vec_dims = common::vectorize(x.dims());
 
   auto out_new_dims = shape.GetData();
 
@@ -48,7 +48,7 @@ void ExpandKernel(const Context& dev_ctx,
     x_vec_dims = GetExtendedXDims(x_vec_dims, out_new_dims.size());
   }
 
-  out->Resize(make_ddim(out_new_dims));
+  out->Resize(common::make_ddim(out_new_dims));
   funcs::BroadcastDataOneDNNHandler<T> handler(dnnl::algorithm::binary_add,
                                                onednn_engine,
                                                dev_ctx.GetPlace(),
@@ -65,7 +65,9 @@ void ExpandKernel(const Context& dev_ctx,
   const std::unordered_map<int, dnnl::memory> args = {
       {DNNL_ARG_SRC_0, *dst_memory_p},
       {DNNL_ARG_SRC_1, *src_memory_p},
-      {DNNL_ARG_DST, *dst_memory_p}};
+      {DNNL_ARG_DST, *dst_memory_p},
+      {DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC_0, handler.Get_Scale_Memory(0.0f)},
+      {DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC_1, handler.Get_Scale_Memory(1.0f)}};
 
   auto& astream = OneDNNContext::tls().get_stream();
   binary_p->execute(astream, args);

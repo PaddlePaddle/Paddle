@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/lod_utils.h"
 

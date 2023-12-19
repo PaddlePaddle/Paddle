@@ -12,28 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _C_ops, _legacy_C_ops, get_flags, in_dynamic_mode
+from paddle import _C_ops, _legacy_C_ops, get_flags, in_dynamic_mode, pir
+from paddle.base.framework import _global_flags, in_dynamic_or_pir_mode
 from paddle.device import (
     get_all_custom_device_type,
     is_compiled_with_cuda,
-    is_compiled_with_npu,
     is_compiled_with_rocm,
 )
-from paddle.fluid.framework import _global_flags, in_dygraph_mode
+from paddle.tensor.manipulation import reshape
 from paddle.tensor.math import _add_with_axis
 
+from ...base.data_feeder import check_dtype, check_variable_and_dtype
+from ...base.layer_helper import LayerHelper
 from ...common_ops_import import Variable
 from ...device import get_cudnn_version
-from ...fluid.data_feeder import check_dtype, check_variable_and_dtype
-from ...fluid.layer_helper import LayerHelper
-from ...fluid.layers.utils import (
+from ...framework import no_grad
+from ...tensor.manipulation import squeeze, unsqueeze
+from ...utils import (
     _contain_var,
     _convert_to_tensor_list,
     _is_symmetric_padding,
     convert_to_list,
 )
-from ...framework import no_grad
-from ...tensor.manipulation import squeeze, unsqueeze
 
 __all__ = []
 
@@ -60,9 +60,7 @@ def _update_padding_nd(padding, channel_last, num_dims):
         padding = padding.upper()
         if padding not in ["SAME", "VALID"]:
             raise ValueError(
-                "Unknown padding: '{}'. It can only be 'SAME' or 'VALID'.".format(
-                    padding
-                )
+                f"Unknown padding: '{padding}'. It can only be 'SAME' or 'VALID'."
             )
         if padding == "VALID":
             padding_algorithm = "VALID"
@@ -77,8 +75,8 @@ def _update_padding_nd(padding, channel_last, num_dims):
         if len(padding) == 2 + num_dims and _is_list_or_tuple(padding[0]):
             if not _zero_padding_in_batch_and_channel(padding, channel_last):
                 raise ValueError(
-                    "Non-zero padding({}) in the batch or channel dimensions "
-                    "is not supported.".format(padding)
+                    f"Non-zero padding({padding}) in the batch or channel dimensions "
+                    "is not supported."
                 )
             padding_algorithm = "EXPLICIT"
             padding = _exclude_padding_in_batch_and_channel(
@@ -97,16 +95,14 @@ def _update_padding_nd(padding, channel_last, num_dims):
             padding_algorithm = "EXPLICIT"
             padding = convert_to_list(padding, num_dims, 'padding')
         else:
-            raise ValueError("In valid padding: {}".format(padding))
+            raise ValueError(f"In valid padding: {padding}")
     # for integer padding
     else:
         padding_algorithm = "EXPLICIT"
         padding = convert_to_list(padding, num_dims, 'padding')
-    if not all([p >= 0 for p in padding]):
+    if not all(p >= 0 for p in padding):
         raise ValueError(
-            "Invalid padding, all value should be larger than or equal to 0, but received: {}".format(
-                padding
-            )
+            f"Invalid padding, all value should be larger than or equal to 0, but received: {padding}"
         )
     return padding, padding_algorithm
 
@@ -124,12 +120,10 @@ def _conv_nd(
     channel_dim=1,
     op_type="conv2d",
     use_cudnn=True,
-    use_mkldnn=False,
     name=None,
 ):
-
     # Due to the poor performance of NHWC, we transpose the input to NCHW.
-    if in_dygraph_mode() and op_type == "conv2d":
+    if in_dynamic_or_pir_mode() and op_type == "conv2d":
         pre_bias = _C_ops.conv2d(
             x,
             weight,
@@ -158,7 +152,7 @@ def _conv_nd(
         else:
             return pre_bias
 
-    if in_dygraph_mode() and op_type == "depthwise_conv2d":
+    if in_dynamic_or_pir_mode() and op_type == "depthwise_conv2d":
         pre_bias = _C_ops.depthwise_conv2d(
             x,
             weight,
@@ -177,7 +171,7 @@ def _conv_nd(
         else:
             return pre_bias
 
-    if in_dygraph_mode() and op_type == "conv3d":
+    if in_dynamic_or_pir_mode() and op_type == "conv3d":
         pre_bias = _C_ops.conv3d(
             x,
             weight,
@@ -208,8 +202,6 @@ def _conv_nd(
             groups,
             'use_cudnn',
             use_cudnn,
-            'use_mkldnn',
-            use_mkldnn,
             'fuse_relu_before_depthwise_conv',
             False,
             "padding_algorithm",
@@ -230,13 +222,12 @@ def _conv_nd(
             'dilations': dilation,
             'groups': groups,
             'use_cudnn': use_cudnn,
-            'use_mkldnn': use_mkldnn,
             'fuse_relu_before_depthwise_conv': False,
             "padding_algorithm": padding_algorithm,
             "data_format": data_format,
         }
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], op_type
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], op_type
         )
         helper = LayerHelper(op_type, **locals())
         dtype = helper.input_dtype(input_param_name='x')
@@ -247,12 +238,30 @@ def _conv_nd(
         )
         if bias is not None:
             out = helper.create_variable_for_type_inference(dtype)
-            helper.append_op(
-                type='elementwise_add',
-                inputs={'X': [pre_bias], 'Y': [bias]},
-                outputs={'Out': [out]},
-                attrs={'axis': channel_dim, 'use_mkldnn': use_mkldnn},
-            )
+            x_shape = list(pre_bias.shape)
+            y_shape = list(bias.shape)
+            if channel_dim == -1 or len(x_shape) == len(y_shape):
+                helper.append_op(
+                    type='elementwise_add',
+                    inputs={'X': [pre_bias], 'Y': [bias]},
+                    outputs={'Out': [out]},
+                    attrs={'axis': -1},
+                )
+            else:
+                assert len(x_shape) > len(
+                    y_shape
+                ), 'The length of pre_bias must greater than the length of bias'
+                padding = len(x_shape) - len(y_shape) - channel_dim
+                bias = reshape(
+                    bias, [1] * channel_dim + y_shape + [1] * padding
+                )
+
+                helper.append_op(
+                    type='elementwise_add',
+                    inputs={'X': [pre_bias], 'Y': [bias]},
+                    outputs={'Out': [out]},
+                    attrs={'axis': -1},
+                )
         else:
             out = pre_bias
     return out
@@ -351,24 +360,24 @@ def conv1d(
     Examples:
         .. code-block:: python
 
-          import paddle
-          import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-          x = paddle.to_tensor([[[4, 8, 1, 9],
-                                 [7, 2, 0, 9],
-                                 [6, 9, 2, 6]]], dtype="float32")
-          w = paddle.to_tensor([[[9, 3, 4],
-                                 [0, 0, 7],
-                                 [2, 5, 6]],
-                                [[0, 3, 4],
-                                 [2, 9, 7],
-                                 [5, 6, 8]]], dtype="float32")
+            >>> x = paddle.to_tensor([[[4, 8, 1, 9],
+            ...                        [7, 2, 0, 9],
+            ...                        [6, 9, 2, 6]]], dtype="float32")
+            >>> w = paddle.to_tensor([[[9, 3, 4],
+            ...                        [0, 0, 7],
+            ...                        [2, 5, 6]],
+            ...                       [[0, 3, 4],
+            ...                        [2, 9, 7],
+            ...                        [5, 6, 8]]], dtype="float32")
 
-          y = F.conv1d(x, w)
-          print(y)
-          # Tensor(shape=[1, 2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-          #        [[[133., 238.],
-          #          [160., 211.]]])
+            >>> y = F.conv1d(x, w)
+            >>> print(y)
+            Tensor(shape=[1, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[133., 238.],
+            [160., 211.]]])
     """
     cudnn_version = get_cudnn_version()
     if cudnn_version is not None:
@@ -379,7 +388,7 @@ def conv1d(
     if data_format not in ["NCL", "NLC"]:
         raise ValueError(
             "Attr(data_format) should be 'NCL' or 'NLC'. "
-            "Received Attr(data_format): {}.".format(data_format)
+            f"Received Attr(data_format): {data_format}."
         )
 
     channel_last = data_format == "NLC"
@@ -387,22 +396,18 @@ def conv1d(
     conv2d_data_format = "NHWC" if channel_last else "NCHW"
     if len(x.shape) != 3:
         raise ValueError(
-            "Input x should be 3D tensor, but received x with the shape of {}".format(
-                x.shape
-            )
+            f"Input x should be 3D tensor, but received x with the shape of {x.shape}"
         )
     num_channels = x.shape[channel_dim]
     num_filters = weight.shape[0]
     if num_channels < 0:
         raise ValueError(
-            "The channel dimension of the input({}) "
-            "should be defined. Received: {}.".format(x.shape, num_channels)
+            f"The channel dimension of the input({x.shape}) "
+            f"should be defined. Received: {num_channels}."
         )
     if groups <= 0:
         raise ValueError(
-            "The groups of conv1d should be greater than 0. Received groups: {}".format(
-                groups
-            )
+            f"The groups of conv1d should be greater than 0. Received groups: {groups}"
         )
     if num_channels % groups != 0:
         raise ValueError(
@@ -426,12 +431,13 @@ def conv1d(
         padding = [0] + padding
     else:
         raise ValueError(
-            "The size of padding's dimension should be 1 or 2. But got padding={}".format(
-                padding
-            )
+            f"The size of padding's dimension should be 1 or 2. But got padding={padding}"
         )
     stride = [1] + convert_to_list(stride, 1, 'stride')
     dilation = [1] + convert_to_list(dilation, 1, 'dilation')
+    from ...tensor.creation import assign as paddle_assign
+
+    weight = paddle_assign(weight)
     weight = unsqueeze(weight, axis=[-2])
 
     l_type = "conv2d"
@@ -446,17 +452,10 @@ def conv1d(
         l_type = 'depthwise_conv2d'
         use_cudnn = False
 
-    # NPU only supports depthwise_conv2d when  "input_channel = output_channel = groups"
-    if is_compiled_with_npu():
-        if num_channels == groups and num_channels == num_filters:
-            l_type = 'depthwise_conv2d'
-        else:
-            l_type = 'conv2d'
-
     squeeze_aixs = -3 if channel_last else -2
     x = unsqueeze(x, axis=[squeeze_aixs])
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         if l_type == 'conv2d':
             out = _C_ops.conv2d(
                 x,
@@ -493,7 +492,6 @@ def conv1d(
             'dilations': dilation,
             'groups': groups,
             'use_cudnn': use_cudnn,
-            'use_mkldnn': False,
             'fuse_relu_before_depthwise_conv': False,
             "padding_algorithm": padding_algorithm,
             "data_format": conv2d_data_format,
@@ -619,44 +617,40 @@ def conv2d(
     Examples:
         .. code-block:: python
 
-          import paddle
-          import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-          x_var = paddle.randn((2, 3, 8, 8), dtype='float32')
-          w_var = paddle.randn((6, 3, 3, 3), dtype='float32')
+            >>> x_var = paddle.randn((2, 3, 8, 8), dtype='float32')
+            >>> w_var = paddle.randn((6, 3, 3, 3), dtype='float32')
 
-          y_var = F.conv2d(x_var, w_var)
+            >>> y_var = F.conv2d(x_var, w_var)
 
-          print(y_var.shape)
-          # [2, 6, 6, 6]
+            >>> print(y_var.shape)
+            [2, 6, 6, 6]
     """
     # entry checks
     if data_format not in ["NCHW", "NHWC"]:
         raise ValueError(
             "Attr(data_format) should be 'NCHW' or 'NHWC'. "
-            "Received Attr(data_format): {}.".format(data_format)
+            f"Received Attr(data_format): {data_format}."
         )
 
     channel_last = data_format == "NHWC"
     channel_dim = -1 if channel_last else 1
     if len(x.shape) != 4:
         raise ValueError(
-            "Input x should be 4D tensor, but received x with the shape of {}".format(
-                x.shape
-            )
+            f"Input x should be 4D tensor, but received x with the shape of {x.shape}"
         )
     num_channels = x.shape[channel_dim]
     num_filters = weight.shape[0]
     if num_channels < 0:
         raise ValueError(
-            "The channel dimension of the input({}) "
-            "should be defined. Received: {}.".format(x.shape, num_channels)
+            f"The channel dimension of the input({x.shape}) "
+            f"should be defined. Received: {num_channels}."
         )
     if groups <= 0:
         raise ValueError(
-            "The groups of conv2d should be greater than 0. Received groups: {}".format(
-                groups
-            )
+            f"The groups of conv2d should be greater than 0. Received groups: {groups}"
         )
     if num_channels % groups != 0:
         raise ValueError(
@@ -696,7 +690,7 @@ def conv2d(
         else:
             use_cudnn = False
     else:
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             pre_bias = _C_ops.conv2d(
                 x,
                 weight,
@@ -734,15 +728,6 @@ def conv2d(
             else:
                 return pre_bias
 
-    use_mkldnn = _global_flags()["FLAGS_use_mkldnn"]
-
-    # NPU only supports depthwise_conv2d when  "input_channel = output_channel = groups"
-    if is_compiled_with_npu():
-        if num_channels == groups and num_channels == num_filters:
-            l_type = 'depthwise_conv2d'
-        else:
-            l_type = 'conv2d'
-
     if (
         is_compiled_with_cuda()
         and get_flags("FLAGS_conv2d_disable_cudnn")[
@@ -764,7 +749,6 @@ def conv2d(
         channel_dim,
         l_type,
         use_cudnn,
-        use_mkldnn,
         name,
     )
 
@@ -881,20 +865,20 @@ def conv1d_transpose(
     Examples:
         .. code-block:: python
 
-          import paddle
-          import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-          # shape: (1, 2, 4)
-          x = paddle.to_tensor([[[4, 0, 9, 7],
-                                [8, 0, 9, 2,]]], dtype="float32")
-          # shape: (2, 1, 2)
-          w = paddle.to_tensor([[[7, 0]],
-                                [[4, 2]]], dtype="float32")
+            >>> # shape: (1, 2, 4)
+            >>> x = paddle.to_tensor([[[4, 0, 9, 7],
+            >>>                       [8, 0, 9, 2,]]], dtype="float32")
+            >>> # shape: (2, 1, 2)
+            >>> w = paddle.to_tensor([[[7, 0]],
+            >>>                       [[4, 2]]], dtype="float32")
 
-          y = F.conv1d_transpose(x, w)
-          print(y)
-          # Tensor(shape=[1, 1, 5], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-          #        [[[60., 16., 99., 75., 4. ]]])
+            >>> y = F.conv1d_transpose(x, w)
+            >>> print(y)
+            Tensor(shape=[1, 1, 5], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[60., 16., 99., 75., 4. ]]])
     """
     cudnn_version = get_cudnn_version()
     if cudnn_version is not None:
@@ -905,30 +889,24 @@ def conv1d_transpose(
     if data_format not in ['NCL', 'NLC']:
         raise ValueError(
             "Attr(data_format) of conv2d_transpose got wrong value: "
-            "received {}, but only 'NCL' or 'NLC' are supported.".format(
-                data_format
-            )
+            f"received {data_format}, but only 'NCL' or 'NLC' are supported."
         )
     channel_last = data_format == "NLC"
     channel_dim = -1 if channel_last else 1
     if len(x.shape) != 3:
         raise ValueError(
-            "Input x should be 3D tensor, but received x with the shape of {}".format(
-                x.shape
-            )
+            f"Input x should be 3D tensor, but received x with the shape of {x.shape}"
         )
 
     num_channels = x.shape[channel_dim]
     if num_channels < 0:
         raise ValueError(
-            "The channel dimension of the input({}) "
-            "should be defined. Received: {}.".format(x.shape, num_channels)
+            f"The channel dimension of the input({x.shape}) "
+            f"should be defined. Received: {num_channels}."
         )
     if groups <= 0:
         raise ValueError(
-            "The groups of conv1d_transpose should be greater than 0. Received groups: {}".format(
-                groups
-            )
+            f"The groups of conv1d_transpose should be greater than 0. Received groups: {groups}"
         )
     if num_channels % groups != 0:
         raise ValueError(
@@ -946,9 +924,7 @@ def conv1d_transpose(
         padding = padding + [0]
     else:
         raise ValueError(
-            "The size of padding's dimension should 1 or 2. But got padding={}".format(
-                padding
-            )
+            f"The size of padding's dimension should 1 or 2. But got padding={padding}"
         )
 
     stride = convert_to_list(stride, 1, 'stride') + [1]
@@ -979,9 +955,7 @@ def conv1d_transpose(
     if len(output_padding) > 0 and output_padding[0] > stride[0]:
         raise ValueError(
             "The size of output_padding should not be greater than stride."
-            "But got output_padding={} and stride={}".format(
-                output_padding[0], stride[0]
-            )
+            f"But got output_padding={output_padding[0]} and stride={stride[0]}"
         )
 
     if len(weight.shape) != 3:
@@ -1008,7 +982,7 @@ def conv1d_transpose(
     x = unsqueeze(x, axis=[squeeze_axis])
     weight = unsqueeze(weight, axis=[-1])
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         out = getattr(_C_ops, op_type)(
             x,
             weight,
@@ -1079,7 +1053,7 @@ def conv2d_transpose(
     If bias attribution and activation type are provided, bias is added to
     the output of the convolution, and the corresponding activation function
     is applied to the final result.
-    See more detail in :ref:`api_nn_conv_ConvTranspose2d` .
+    See more detail in :ref:`api_paddle_nn_Conv2DTranspose` .
 
     For each input :math:`X`, the equation is:
 
@@ -1177,32 +1151,28 @@ def conv2d_transpose(
     Examples:
         .. code-block:: python
 
-          import paddle
-          import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-          x_var = paddle.randn((2, 3, 8, 8), dtype='float32')
-          w_var = paddle.randn((3, 6, 3, 3), dtype='float32')
+            >>> x_var = paddle.randn((2, 3, 8, 8), dtype='float32')
+            >>> w_var = paddle.randn((3, 6, 3, 3), dtype='float32')
 
-          y_var = F.conv2d_transpose(x_var, w_var)
+            >>> y_var = F.conv2d_transpose(x_var, w_var)
 
-          print(y_var.shape)
-          # [2, 6, 10, 10]
+            >>> print(y_var.shape)
+            [2, 6, 10, 10]
     """
 
     if data_format not in ['NCHW', 'NHWC']:
         raise ValueError(
             "Attr(data_format) of conv2d_transpose got wrong value: "
-            "received {}, but only 'NCHW' or 'NHWC' are supported.".format(
-                data_format
-            )
+            f"received {data_format}, but only 'NCHW' or 'NHWC' are supported."
         )
     channel_last = data_format == "NHWC"
     channel_dim = -1 if channel_last else 1
     if len(x.shape) != 4:
         raise ValueError(
-            "Input x should be 4D tensor, but received x with the shape of {}".format(
-                x.shape
-            )
+            f"Input x should be 4D tensor, but received x with the shape of {x.shape}"
         )
     if len(weight.shape) != 4:
         raise ValueError(
@@ -1213,14 +1183,12 @@ def conv2d_transpose(
     num_channels = x.shape[channel_dim]
     if num_channels < 0:
         raise ValueError(
-            "The channel dimension of the input({}) "
-            "should be defined. Received: {}.".format(x.shape, num_channels)
+            f"The channel dimension of the input({x.shape}) "
+            f"should be defined. Received: {num_channels}."
         )
     if groups <= 0:
         raise ValueError(
-            "The groups of conv2d_transpose should be greater than 0. Received groups: {}".format(
-                groups
-            )
+            f"The groups of conv2d_transpose should be greater than 0. Received groups: {groups}"
         )
     if num_channels % groups != 0:
         raise ValueError(
@@ -1257,7 +1225,7 @@ def conv2d_transpose(
                 output_size = convert_to_list(output_size, 2, 'output_size')
         elif isinstance(output_size, int):
             output_size = convert_to_list(output_size, 2, 'output_size')
-        elif isinstance(output_size, Variable):
+        elif isinstance(output_size, (Variable, pir.Value)):
             check_dtype(
                 output_size.dtype,
                 'output_size',
@@ -1289,7 +1257,7 @@ def conv2d_transpose(
         op_type = 'depthwise_conv2d_transpose'
         use_cudnn = False
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         op = (
             _C_ops.conv2d_transpose
             if op_type == 'conv2d_transpose'
@@ -1325,7 +1293,10 @@ def conv2d_transpose(
             'data_format': data_format,
         }
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'conv2d_transpose'
+            x,
+            'x',
+            ['float16', 'uint16', 'float32', 'float64'],
+            'conv2d_transpose',
         )
         helper = LayerHelper(op_type, **locals())
         pre_bias = helper.create_variable_for_type_inference(x.dtype)
@@ -1335,7 +1306,30 @@ def conv2d_transpose(
         )
 
         if bias is not None:
-            out = _add_with_axis(pre_bias, bias, axis=channel_dim)
+            out = helper.create_variable_for_type_inference(x.dtype)
+            x_shape = list(pre_bias.shape)
+            y_shape = list(bias.shape)
+            if channel_dim == -1 or len(x_shape) == len(y_shape):
+                helper.append_op(
+                    type='elementwise_add',
+                    inputs={'X': [pre_bias], 'Y': [bias]},
+                    outputs={'Out': [out]},
+                    attrs={'axis': -1},
+                )
+            else:
+                assert len(x_shape) > len(
+                    y_shape
+                ), 'The length of pre_bias must greater than the length of bias'
+                padding = len(x_shape) - len(y_shape) - channel_dim
+                bias = reshape(
+                    bias, [1] * channel_dim + y_shape + [1] * padding
+                )
+                helper.append_op(
+                    type='elementwise_add',
+                    inputs={'X': [pre_bias], 'Y': [bias]},
+                    outputs={'Out': [out]},
+                    attrs={'axis': -1},
+                )
         else:
             out = pre_bias
 
@@ -1444,58 +1438,50 @@ def conv3d(
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-            x_var = paddle.randn((2, 3, 8, 8, 8), dtype='float32')
-            w_var = paddle.randn((6, 3, 3, 3, 3), dtype='float32')
+            >>> x_var = paddle.randn((2, 3, 8, 8, 8), dtype='float32')
+            >>> w_var = paddle.randn((6, 3, 3, 3, 3), dtype='float32')
 
-            y_var = F.conv3d(x_var, w_var)
+            >>> y_var = F.conv3d(x_var, w_var)
 
-            print(y_var.shape)
-            # [2, 6, 6, 6, 6]
+            >>> print(y_var.shape)
+            [2, 6, 6, 6, 6]
     """
     # entry check
     if data_format not in ["NCDHW", "NDHWC"]:
         raise ValueError(
             "Attr(data_format) should be 'NCDHW' or 'NDHWC'. Received "
-            "Attr(data_format): {}.".format(data_format)
+            f"Attr(data_format): {data_format}."
         )
 
     channel_last = data_format == "NDHWC"
     channel_dim = -1 if channel_last else 1
     if len(x.shape) != 5:
         raise ValueError(
-            "Input x should be 5D tensor, but received x with the shape of {}".format(
-                x.shape
-            )
+            f"Input x should be 5D tensor, but received x with the shape of {x.shape}"
         )
     num_channels = x.shape[channel_dim]
     num_filters = weight.shape[0]
     if num_channels < 0:
         raise ValueError(
-            "The channel dimension of the input({}) should be defined. "
-            "Received: {}.".format(x.shape, num_channels)
+            f"The channel dimension of the input({x.shape}) should be defined. "
+            f"Received: {num_channels}."
         )
     if groups <= 0:
         raise ValueError(
-            "The groups of conv3d should be greater than 0. Received groups: {}".format(
-                groups
-            )
+            f"The groups of conv3d should be greater than 0. Received groups: {groups}"
         )
     if num_channels % groups != 0:
         raise ValueError(
             "The number of input channels must be divisible by Attr(groups). "
-            "Received: number of channels({}), groups({}).".format(
-                num_channels, groups
-            )
+            f"Received: number of channels({num_channels}), groups({groups})."
         )
     if num_filters % groups != 0:
         raise ValueError(
             "The number of filters must be divisible by Attr(groups). "
-            "Received: number of filters({}), groups({}).".format(
-                num_filters, groups
-            )
+            f"Received: number of filters({num_filters}), groups({groups})."
         )
 
     cudnn_version = get_cudnn_version()
@@ -1523,7 +1509,6 @@ def conv3d(
         channel_dim,
         op_type,
         use_cudnn,
-        False,
         name,
     )
 
@@ -1553,7 +1538,7 @@ def conv3d_transpose(
     If bias attribution and activation type are provided, bias is added to
     the output of the convolution, and the corresponding activation function
     is applied to the final result.
-    See more detail in :ref:`api_nn_conv_ConvTranspose3d` .
+    See more detail in :ref:`api_paddle_nn_Conv3DTranspose` .
 
     For each input :math:`X`, the equation is:
 
@@ -1656,33 +1641,31 @@ def conv3d_transpose(
         variable storing transposed convolution and non-linearity activation result.
 
     Examples:
-       .. code-block:: python
+        .. code-block:: python
 
-          import paddle
-          import paddle.nn.functional as F
+            >>> import paddle
+            >>> import paddle.nn.functional as F
 
-          x_var = paddle.randn((2, 3, 8, 8, 8), dtype='float32')
-          w_var = paddle.randn((3, 6, 3, 3, 3), dtype='float32')
+            >>> x_var = paddle.randn((2, 3, 8, 8, 8), dtype='float32')
+            >>> w_var = paddle.randn((3, 6, 3, 3, 3), dtype='float32')
 
-          y_var = F.conv3d_transpose(x_var, w_var)
+            >>> y_var = F.conv3d_transpose(x_var, w_var)
 
-          print(y_var.shape)
-          # [2, 6, 10, 10, 10]
+            >>> print(y_var.shape)
+            [2, 6, 10, 10, 10]
     """
     # entry checks
     if data_format not in ["NCDHW", "NDHWC"]:
         raise ValueError(
             "Attr(data_format) should be 'NCDHW' or 'NDHWC'. Received "
-            "Attr(data_format): {}.".format(data_format)
+            f"Attr(data_format): {data_format}."
         )
 
     channel_last = data_format == "NDHWC"
     channel_dim = -1 if channel_last else 1
     if len(x.shape) != 5:
         raise ValueError(
-            "Input x should be 5D tensor, but received x with the shape of {}".format(
-                x.shape
-            )
+            f"Input x should be 5D tensor, but received x with the shape of {x.shape}"
         )
     if len(weight.shape) != 5:
         raise ValueError(
@@ -1694,21 +1677,17 @@ def conv3d_transpose(
     num_filters = weight.shape[1]
     if num_channels < 0:
         raise ValueError(
-            "The channel dimension of the input({}) should be defined. "
-            "Received: {}.".format(x.shape, num_channels)
+            f"The channel dimension of the input({x.shape}) should be defined. "
+            f"Received: {num_channels}."
         )
     if groups <= 0:
         raise ValueError(
-            "The groups of conv3d_transpose should be greater than 0. Received groups: {}".format(
-                groups
-            )
+            f"The groups of conv3d_transpose should be greater than 0. Received groups: {groups}"
         )
     if num_channels % groups != 0:
         raise ValueError(
             "The number of input channels must be divisible by Attr(groups). "
-            "Received: number of channels({}), groups({}).".format(
-                num_channels, groups
-            )
+            f"Received: number of channels({num_channels}), groups({groups})."
         )
 
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 3)
@@ -1746,7 +1725,7 @@ def conv3d_transpose(
     op_type = 'conv3d_transpose'
     data_format_ = "NHWC" if channel_last else "NCHW"
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         pre_bias = _C_ops.conv3d_transpose(
             x,
             weight,

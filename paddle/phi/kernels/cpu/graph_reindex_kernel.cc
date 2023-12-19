@@ -29,19 +29,22 @@ void GraphReindexKernel(const Context& dev_ctx,
                         const DenseTensor& count,
                         const paddle::optional<DenseTensor>& hashtable_value,
                         const paddle::optional<DenseTensor>& hashtable_index,
-                        bool flag_buffer_hashtable,
                         DenseTensor* reindex_src,
                         DenseTensor* reindex_dst,
                         DenseTensor* out_nodes) {
   const T* x_data = x.data<T>();
   const T* neighbors_data = neighbors.data<T>();
   const int* count_data = count.data<int>();
-  const int bs = x.dims()[0];
-  const int num_edges = neighbors.dims()[0];
+  const int bs = static_cast<int>(x.dims()[0]);
+  const int num_edges = static_cast<int>(neighbors.dims()[0]);
 
   std::unordered_map<T, T> node_map;
   std::vector<T> unique_nodes;
   int reindex_id = 0;
+  PADDLE_ENFORCE_NE(
+      0,
+      bs,
+      errors::InvalidArgument("The first of dims should not be equal to 0."));
   for (int i = 0; i < bs; i++) {
     T node = x_data[i];
     unique_nodes.emplace_back(node);
@@ -60,7 +63,7 @@ void GraphReindexKernel(const Context& dev_ctx,
   }
   // Reindex Dst
   // Add support for multi-type edges reindex
-  int num_edge_types = count.dims()[0] / bs;
+  int num_edge_types = static_cast<int>(count.dims()[0] / bs);
   int cnt = 0;
   for (int i = 0; i < num_edge_types; i++) {
     for (int j = 0; j < bs; j++) {

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/conv_grad_kernel.h"
+#include "paddle/phi/core/compat/get_kerneltype_forvar_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/data_layout_transform.h"
@@ -56,8 +57,6 @@ void ConvGradKernel(const Context& dev_ctx,
                         "Operator oneDNN ConvGrad must use CPUPlace"));
   const auto& onednn_engine = dev_ctx.GetEngine();
 
-  const auto* bias =
-      dev_ctx.HasDnnInput("Bias") ? dev_ctx.GetDnnInput("Bias") : nullptr;
   bool is_test = dev_ctx.HasDnnAttr("is_test")
                      ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("is_test"))
                      : false;
@@ -74,7 +73,7 @@ void ConvGradKernel(const Context& dev_ctx,
                                                          dev_ctx.GetPlace(),
                                                          &input,
                                                          &filter,
-                                                         bias,
+                                                         nullptr,
                                                          &out_grad,
                                                          strides,
                                                          paddings,
@@ -124,9 +123,9 @@ void ConvGradKernel(const Context& dev_ctx,
                 funcs::ToOneDNNDataType(filter.dtype());
             // for 3d conv with groups (six dimensional data reorder to
             // goidhw) for 2d conv with groups (five dimensional data reorder
-            // to goihw) auto weights_tz = phi::vectorize(filter->dims());
+            // to goihw) auto weights_tz = common::vectorize(filter->dims());
 
-            auto weights_tz = diff_weights_memory_p->get_desc().dims();
+            auto weights_tz = diff_weights_memory_p->get_desc().get_dims();
             dnnl::memory::format_tag out_format =
                 weights_tz.size() == 6 ? dnnl::memory::format_tag::goidhw
                                        : dnnl::memory::format_tag::goihw;
@@ -150,10 +149,10 @@ void ConvGradKernel(const Context& dev_ctx,
             dnnl::memory::format_tag target_format =
                 weights_tz.size() == 6 ? dnnl::memory::format_tag::oidhw
                                        : dnnl::memory::format_tag::oihw;
-            filter_grad->set_mem_desc(
-                dnnl::memory::desc(phi::vectorize<int64_t>(filter_grad->dims()),
-                                   in_type,
-                                   target_format));
+            filter_grad->set_mem_desc(dnnl::memory::desc(
+                common::vectorize<int64_t>(filter_grad->dims()),
+                in_type,
+                target_format));
           } else {
             filter_grad->set_mem_desc(diff_weights_memory_p->get_desc());
           }
@@ -235,6 +234,29 @@ void Conv3DGradKernel(const Context& dev_ctx,
                              filter_grad);
 }
 
+KernelKey ConvGradGetKernelTypeForVar(const GetKernelTypeForVarContext* ctx) {
+  const std::string& var_name = ctx->GetVarName();
+  const DenseTensor& tensor = ctx->GetTensor();
+  const KernelKey& expected_kernel_type = ctx->GetKernelKey();
+  const AttributeMap& attrs = ctx->GetAttrs();
+  // Only input require reshaping, weights and
+  // bias are having shape in NCHW order
+  if (((var_name == "Input") || (var_name == "Output@GRAD")) &&
+      (expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
+      (tensor.layout() != phi::DataLayout::ONEDNN)) {
+    auto it = attrs.find("data_format");
+    const std::string data_format = PADDLE_GET_CONST(std::string, it->second);
+    auto dl = common::StringToDataLayout(data_format);
+    // Some models may have intentionally set "AnyLayout" for pool
+    // op. Treat this as NCHW (default data_format value)
+    if (dl != phi::DataLayout::kAnyLayout) {
+      return phi::KernelKey(tensor.place(), dl, expected_kernel_type.dtype());
+    }
+  }
+  return phi::KernelKey(
+      tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(conv2d_grad,
@@ -242,13 +264,19 @@ PD_REGISTER_KERNEL(conv2d_grad,
                    ONEDNN,
                    phi::ConvGradKernel,
                    float,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16) {
+  kernel->get_kerneltype_forvar_fn_ = phi::ConvGradGetKernelTypeForVar;
+}
 
 PD_REGISTER_KERNEL(depthwise_conv2d_grad,
                    OneDNN,
                    ONEDNN,
                    phi::DepthwiseConvGradKernel,
                    float,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16) {
+  kernel->get_kerneltype_forvar_fn_ = phi::ConvGradGetKernelTypeForVar;
+}
 
-PD_REGISTER_KERNEL(conv3d_grad, OneDNN, ONEDNN, phi::Conv3DGradKernel, float) {}
+PD_REGISTER_KERNEL(conv3d_grad, OneDNN, ONEDNN, phi::Conv3DGradKernel, float) {
+  kernel->get_kerneltype_forvar_fn_ = phi::ConvGradGetKernelTypeForVar;
+}

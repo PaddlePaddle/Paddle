@@ -68,5 +68,5 @@ REGISTER_OP_WITHOUT_GRADIENT(dgc_clip_by_norm,
                              ops::DGCClipByNormOp,
                              ops::DGCClipByNormOpMaker);
 
-REGISTER_OP_CPU_KERNEL(dgc_clip_by_norm,
-                       ops::DGCClipByNormKernel<phi::CPUContext, float>);
+PD_REGISTER_STRUCT_KERNEL(
+    dgc_clip_by_norm, CPU, ALL_LAYOUT, ops::DGCClipByNormKernel, float) {}

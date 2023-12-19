@@ -20,12 +20,15 @@
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/phi/api/all.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
+#include "paddle/utils/test_macros.h"
 
 namespace egr {
 /**
  * GradNodeBase is base class of all grad node, which is what should be used by
  * eager execution, we define most of backward autograd members here, and for
- * each Operator, they should hold their onw forward Inputs as TensorWrapper.
+ * each Operator, they should hold their own forward Inputs as TensorWrapper.
  *
  * The GradNodeBase will be held in autograd_meta, and it is also a member of
  * Edge, which indicates the edge of backward graph.
@@ -40,7 +43,7 @@ namespace egr {
  *
  * NOTE: GradNodeBase holds its own inputs and Outputs
  *
- * Edge is defined to descripe depend of backward, an Edge is what linked
+ * Edge is defined to describe depend of backward, an Edge is what linked
  * between two node, it should contain a Node and rank of this Node (this is
  * used to indicate which input of grad this edge belong).
  **/
@@ -158,17 +161,43 @@ class GradSlotMeta {
   Edge& GetMutableEdge() { return adj_edge_; }
   const Edge& GetEdge() const { return adj_edge_; }
 
+  const phi::distributed::TensorDistAttr& DistAttr() const {
+    return dist_attr_;
+  }
+
+  void SetDistAttr(const phi::distributed::TensorDistAttr& dist_attr) {
+    dist_attr_ = dist_attr;
+    is_dist_meta_ = true;
+  }
+
+  const phi::DDim& DistTensorGlobalDims() const {
+    return dist_tensor_global_dims_;
+  }
+
+  void SetDistTensorGlobalDims(const phi::DDim& dims) {
+    dist_tensor_global_dims_ = dims;
+    is_dist_meta_ = true;
+  }
+
+  bool IsDistMeta() const { return is_dist_meta_; }
+
  private:
   bool stop_gradient_{false};
   phi::Place place_;
   std::shared_ptr<phi::DenseTensorMeta> meta_ = nullptr;
   Edge adj_edge_;
+  // For dygraph semi-auto parallel
+  // Save the dist attr of the forward input Tensor for proper resharding
+  // operation when compute the input Tensor's gradient
+  phi::distributed::TensorDistAttr dist_attr_;
+  phi::DDim dist_tensor_global_dims_;
+  bool is_dist_meta_{false};
 };
 
 class GradNodeBase {
  public:
   GradNodeBase() { VLOG(7) << "Construct GradNodeBase"; }
-  GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num);
+  TEST_API GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num);
   // TODO(jiabin): Should we have other constructor here?
   virtual ~GradNodeBase() { VLOG(7) << "Destruct GradNodeBase"; }
 
@@ -178,13 +207,13 @@ class GradNodeBase {
    * vector of Tensor which contains grads input of current operator
    *
    * Note: why we need backward inputs and outputs construct as vector of vector
-   * of paddle::experimental::Tensor?
+   * of paddle::Tensor?
    * Since all of paddle op composite in form of {"Slot name ", vector<Var>},
    * so, vector of vector is better choice to fit this format.
    * **/
-  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+  virtual paddle::small_vector<std::vector<paddle::Tensor>,
                                kSlotSmallVectorSize>
-  operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+  operator()(paddle::small_vector<std::vector<paddle::Tensor>,
                                   kSlotSmallVectorSize>& grads,  // NOLINT
              bool create_graph = false,
              bool is_new_grad = false) = 0;
@@ -203,12 +232,14 @@ class GradNodeBase {
 
   /**
    * Get Input Meta of current Grad node**/
-  const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
-  InputMeta() const;
+  TEST_API const
+      paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+      InputMeta() const;
   /**
    * Get Output Meta of current Grad node**/
-  const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
-  OutputMeta() const;
+  TEST_API const
+      paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+      OutputMeta() const;
 
   paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
   MutableOutputMeta();
@@ -216,23 +247,23 @@ class GradNodeBase {
    * Set bwd ins and outs info with forward vars
    * **/
 
-  void SetGradInMeta(const std::vector<paddle::experimental::Tensor>& fwd_out,
+  void SetGradInMeta(const std::vector<paddle::Tensor>& fwd_out,
                      size_t slot_rank);
-  void SetGradInMeta(const paddle::experimental::Tensor& fwd_out,
-                     size_t slot_rank);
+  void SetGradInMeta(const paddle::Tensor& fwd_out, size_t slot_rank);
 
-  void SetGradOutMeta(const std::vector<paddle::experimental::Tensor>& fwd_in,
+  void SetGradOutMeta(const std::vector<paddle::Tensor>& fwd_in,
                       size_t slot_rank);
-  void SetGradOutMeta(
-      const std::vector<const paddle::experimental::Tensor*>& fwd_in,
-      size_t slot_rank);
-  void SetGradOutMeta(const paddle::experimental::Tensor& fwd_in,
+  void SetGradOutMeta(const std::vector<const paddle::Tensor*>& fwd_in,
+                      size_t slot_rank);
+  void SetGradOutMeta(const paddle::Tensor& fwd_in, size_t slot_rank);
+  void SetGradOutMeta(const paddle::Tensor& fwd_in,
+                      const AutogradMeta* fwd_in_other,
                       size_t slot_rank);
   /**
    * Default setters for Grad in/out meta this should be used for same special
    * Node which will not create by user
    * **/
-  void SetDefaultGradInOutMeta();
+  TEST_API void SetDefaultGradInOutMeta();
   /**
    * Register GradientHook
    * **/
@@ -250,6 +281,10 @@ class GradNodeBase {
     }
     return true;
   }
+
+  std::vector<std::shared_ptr<egr::GradNodeBase>> NextFunctions();
+
+  uintptr_t GetPtr() const;
 
   /**
    * Apply GradientHook
@@ -269,18 +304,16 @@ class GradNodeBase {
     gradient_hooks_ = hooks;
   }
 
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                       kSlotSmallVectorSize>
-  ApplyGradientHooks(
-      const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                                 kSlotSmallVectorSize>& tensors);
+  paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
+  ApplyGradientHooks(const paddle::small_vector<std::vector<paddle::Tensor>,
+                                                kSlotSmallVectorSize>& tensors);
 
   /**
    * Handle Complex - Real Type Promotion
    * **/
   void HandleComplexGradToRealGrad(
-      paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                           kSlotSmallVectorSize>* out_grads);
+      paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>*
+          out_grads);
   bool NeedComplexToRealConversion() { return need_complex_to_real_; }
 
   virtual std::string name() { return "GradNodeBase"; }
@@ -292,6 +325,18 @@ class GradNodeBase {
 
   void SetIsTensorWrappersCleared(bool is_tensor_wrappers_cleared) {
     is_tensor_wrappers_cleared_ = is_tensor_wrappers_cleared;
+  }
+
+  void SetForwardTrace(std::string trace) { forward_trace_ = trace; }
+
+  std::string GetForwardTrace() { return forward_trace_; }
+
+  /**
+   * The following interfaces are designed for auto parallel
+   * **/
+  bool IsRunAutoParallel() const { return is_run_auto_parallel_; }
+  void SetIsRunAutoParallel(bool is_run_auto_parallel) {
+    is_run_auto_parallel_ = is_run_auto_parallel;
   }
 
  private:
@@ -319,6 +364,12 @@ class GradNodeBase {
   bool need_complex_to_real_ = false;
 
   bool is_tensor_wrappers_cleared_ = false;
+  // The trace of forward function
+  std::string forward_trace_ = "";
+
+  // With this flag, short-circuit the backward traversal of Tensor and
+  // set the DistAttr to reduce the impact on scheduling performance
+  bool is_run_auto_parallel_{false};
 };
 
 }  // namespace egr

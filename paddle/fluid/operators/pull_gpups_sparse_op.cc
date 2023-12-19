@@ -53,9 +53,10 @@ class PullGpuPSSparseOp : public framework::OperatorWithKernel {
                             "Shape error in %lu id, the last dimension of the "
                             "'Ids' tensor must be 1.",
                             i));
-      auto out_dim = phi::vectorize(phi::slice_ddim(ids_dims, 0, ids_rank - 1));
+      auto out_dim =
+          common::vectorize(common::slice_ddim(ids_dims, 0, ids_rank - 1));
       out_dim.push_back(embedding_size);
-      outs_dims[i] = phi::make_ddim(out_dim);
+      outs_dims[i] = common::make_ddim(out_dim);
     }
     ctx->SetOutputsDim("Out", outs_dims);
     for (size_t i = 0; i < n_ids; ++i) {
@@ -145,9 +146,16 @@ REGISTER_OPERATOR(pull_gpups_sparse,
                   ops::PushGpuPSSparseOpMaker<paddle::framework::OpDesc>,
                   ops::PushGpuPSSparseOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(push_gpups_sparse, ops::PushGpuPSSparseOp);
-REGISTER_OP_CPU_KERNEL(pull_gpups_sparse,
-                       ops::PullGpuPSSparseCPUKernel<float>,
-                       ops::PullGpuPSSparseCPUKernel<double>)
-REGISTER_OP_CPU_KERNEL(push_gpups_sparse,
-                       ops::PushGpuPSSparseCPUKernel<float>,
-                       ops::PushGpuPSSparseCPUKernel<double>)
+
+PD_REGISTER_STRUCT_KERNEL(pull_gpups_sparse,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::PullGpuPSSparseCPUKernel,
+                          float,
+                          double) {}
+PD_REGISTER_STRUCT_KERNEL(push_gpups_sparse,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::PushGpuPSSparseCPUKernel,
+                          float,
+                          double) {}

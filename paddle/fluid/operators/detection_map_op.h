@@ -56,7 +56,7 @@ inline void GetAccumulation(std::vector<std::pair<T, int>> in_pairs,
   }
 }
 
-template <typename Place, typename T>
+template <typename T, typename DeviceContext>
 class DetectionMAPOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -257,12 +257,12 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
     }
 
     int* pos_count_data = output_pos_count->mutable_data<int>(
-        phi::make_ddim({class_num, 1}), ctx.GetPlace());
+        common::make_ddim({class_num, 1}), ctx.GetPlace());
 
     T* true_pos_data = output_true_pos->mutable_data<T>(
-        phi::make_ddim({true_pos_count, 2}), ctx.GetPlace());
+        common::make_ddim({true_pos_count, 2}), ctx.GetPlace());
     T* false_pos_data = output_false_pos->mutable_data<T>(
-        phi::make_ddim({false_pos_count, 2}), ctx.GetPlace());
+        common::make_ddim({false_pos_count, 2}), ctx.GetPlace());
     true_pos_count = 0;
     false_pos_count = 0;
     std::vector<size_t> true_pos_starts = {0};

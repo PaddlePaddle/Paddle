@@ -28,9 +28,9 @@ using namespace std;  // NOLINT
 namespace paddle {
 namespace distributed {
 
-paddle::distributed::PSParameter load_from_prototxt(
+::paddle::distributed::PSParameter load_from_prototxt(
     const std::string& filename) {
-  paddle::distributed::PSParameter param;
+  ::paddle::distributed::PSParameter param;
   int file_descriptor = open(filename.c_str(), O_RDONLY);
 
   if (file_descriptor == -1) {
@@ -50,8 +50,8 @@ paddle::distributed::PSParameter load_from_prototxt(
 
 void PSCore::InitGFlag(const std::string& gflags) {
   VLOG(3) << "Init With Gflags:" << gflags;
-  std::vector<std::string> flags = paddle::string::split_string(gflags);
-  if (flags.size() < 1) {
+  std::vector<std::string> flags = ::paddle::string::split_string(gflags);
+  if (flags.empty()) {
     flags.push_back("-max_body_size=314217728");
     flags.push_back("-socket_max_unwritten_bytes=2048000000");
     flags.push_back("-max_connection_pool_size=1950");
@@ -64,7 +64,7 @@ void PSCore::InitGFlag(const std::string& gflags) {
   }
   int params_cnt = flags.size();
   char** params_ptr = &(flags_ptr[0]);
-  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&params_cnt, &params_ptr, true);
+  ::paddle::flags::ParseCommandLineFlags(&params_cnt, &params_ptr);
 }
 
 int PSCore::InitServer(
@@ -76,12 +76,12 @@ int PSCore::InitServer(
     const std::vector<framework::ProgramDesc>& server_sub_program) {
   google::protobuf::TextFormat::ParseFromString(dist_desc, &_ps_param);
   InitGFlag(_ps_param.init_gflags());
-  _ps_env = paddle::distributed::PaddlePSEnvironment();
+  _ps_env = ::paddle::distributed::PaddlePSEnvironment();
   _ps_env.SetPsServers(host_sign_list, node_num);
   _ps_env.SetTrainers(trainers);
   int ret = 0;
-  _server_ptr = std::shared_ptr<paddle::distributed::PSServer>(
-      paddle::distributed::PSServerFactory::Create(_ps_param));
+  _server_ptr = std::shared_ptr<::paddle::distributed::PSServer>(
+      ::paddle::distributed::PSServerFactory::Create(_ps_param));
   ret = _server_ptr->Configure(_ps_param, _ps_env, index, server_sub_program);
   CHECK(ret == 0) << "failed to configure server";
   return ret;
@@ -89,13 +89,14 @@ int PSCore::InitServer(
 
 int PSCore::InitWorker(
     const std::string& dist_desc,
-    const std::map<uint64_t, std::vector<paddle::distributed::Region>>& regions,
+    const std::map<uint64_t, std::vector<::paddle::distributed::Region>>&
+        regions,
     const std::vector<std::string>* host_sign_list,
     int node_num,
     int index) {
   google::protobuf::TextFormat::ParseFromString(dist_desc, &_ps_param);
   InitGFlag(_ps_param.init_gflags());
-  _ps_env = paddle::distributed::PaddlePSEnvironment();
+  _ps_env = ::paddle::distributed::PaddlePSEnvironment();
   _ps_env.SetPsServers(host_sign_list, node_num);
   int ret = 0;
   VLOG(1) << "PSCore::InitWorker";
@@ -132,6 +133,6 @@ int PSCore::StopServer() {
   stop_status.wait();
   return 0;
 }
-paddle::distributed::PSParameter* PSCore::GetParam() { return &_ps_param; }
+::paddle::distributed::PSParameter* PSCore::GetParam() { return &_ps_param; }
 }  // namespace distributed
 }  // namespace paddle

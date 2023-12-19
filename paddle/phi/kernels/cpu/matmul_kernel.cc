@@ -25,6 +25,8 @@ PD_REGISTER_KERNEL(matmul,
                    phi::MatmulKernel,
                    float,
                    double,
+                   int32_t,
+                   int64_t,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 

@@ -18,10 +18,12 @@ from functools import reduce
 
 import paddle
 from paddle.optimizer import Optimizer
+from paddle.utils import deprecated
 
 from .line_search_dygraph import _strong_wolfe
 
 
+@deprecated(since="2.5.0", update_to="paddle.optimizer.LBFGS", level=1)
 class LBFGS(Optimizer):
     r"""
     The L-BFGS is a quasi-Newton method for solving an unconstrained optimization problem over a differentiable function.
@@ -40,7 +42,7 @@ class LBFGS(Optimizer):
         Jorge Nocedal, Stephen J. Wright, Numerical Optimization, Second Edition, 2006. pp179: Algorithm 7.5 (L-BFGS).
 
     Args:
-        lr (float, optional): learning rate .The default value is 1.
+        learning_rate (float, optional): learning rate .The default value is 1.
         max_iter (int, optional): maximal number of iterations per optimization step.
             The default value is 20.
         max_eval (int, optional): maximal number of function evaluations per optimization
@@ -55,15 +57,15 @@ class LBFGS(Optimizer):
             This parameter is required in dygraph mode. The default value is None.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
             It canbe a float value as coeff of L2 regularization or \
-            :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
-            If a parameter has set regularizer using :ref:`api_fluid_ParamAttr` already, \
+            :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
+            If a parameter has set regularizer using :ref:`api_paddle_ParamAttr` already, \
             the regularization setting here in optimizer will be ignored for this parameter. \
             Otherwise, the regularization setting here in optimizer will take effect. \
             Default None, meaning there is no regularization.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of \
             some derived class of ``GradientClipBase`` . There are three cliping strategies \
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , \
-            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
+            ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` , \
+            :ref:`api_paddle_nn_ClipGradByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
@@ -74,51 +76,49 @@ class LBFGS(Optimizer):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import numpy as np
-            from paddle.incubate.optimizer import LBFGS
+            >>> import paddle
+            >>> import numpy as np
+            >>> from paddle.incubate.optimizer import LBFGS
 
-            paddle.disable_static()
-            np.random.seed(0)
-            np_w = np.random.rand(1).astype(np.float32)
-            np_x = np.random.rand(1).astype(np.float32)
+            >>> paddle.disable_static()
+            >>> np.random.seed(0)
+            >>> np_w = np.random.rand(1).astype(np.float32)
+            >>> np_x = np.random.rand(1).astype(np.float32)
 
-            inputs = [np.random.rand(1).astype(np.float32) for i in range(10)]
-            # y = 2x
-            targets = [2 * x for x in inputs]
+            >>> inputs = [np.random.rand(1).astype(np.float32) for i in range(10)]
+            >>> # y = 2x
+            >>> targets = [2 * x for x in inputs]
 
-            class Net(paddle.nn.Layer):
-                def __init__(self):
-                    super(Net, self).__init__()
-                    w = paddle.to_tensor(np_w)
-                    self.w = paddle.create_parameter(shape=w.shape, dtype=w.dtype, default_initializer=paddle.nn.initializer.Assign(w))
+            >>> class Net(paddle.nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...         w = paddle.to_tensor(np_w)
+            ...         self.w = paddle.create_parameter(shape=w.shape, dtype=w.dtype, default_initializer=paddle.nn.initializer.Assign(w))
+            ...     def forward(self, x):
+            ...         return self.w * x
 
-                def forward(self, x):
-                    return self.w * x
+            >>> net = Net()
+            >>> opt = LBFGS(learning_rate=1, max_iter=1, max_eval=None, tolerance_grad=1e-07, tolerance_change=1e-09, history_size=100, line_search_fn='strong_wolfe', parameters=net.parameters())
+            >>> def train_step(inputs, targets):
+            ...     def closure():
+            ...         outputs = net(inputs)
+            ...         loss = paddle.nn.functional.mse_loss(outputs, targets)
+            ...         print('loss: ', loss.item())
+            ...         opt.clear_grad()
+            ...         loss.backward()
+            ...         return loss
+            ...     opt.step(closure)
 
-            net = Net()
-            opt = LBFGS(lr=1, max_iter=1, max_eval=None, tolerance_grad=1e-07, tolerance_change=1e-09, history_size=100, line_search_fn='strong_wolfe', parameters=net.parameters())
-            def train_step(inputs, targets):
-                def closure():
-                    outputs = net(inputs)
-                    loss = paddle.nn.functional.mse_loss(outputs, targets)
-                    print('loss: ', loss.item())
-                    opt.clear_grad()
-                    loss.backward()
-                    return loss
-                opt.step(closure)
-
-
-            for input, target in zip(inputs, targets):
-                input = paddle.to_tensor(input)
-                target = paddle.to_tensor(target)
-                train_step(input, target)
+            >>> for input, target in zip(inputs, targets):
+            ...     input = paddle.to_tensor(input)
+            ...     target = paddle.to_tensor(target)
+            ...     train_step(input, target)
 
     """
 
     def __init__(
         self,
-        lr=1.0,
+        learning_rate=1.0,
         max_iter=20,
         max_eval=None,
         tolerance_grad=1e-7,
@@ -133,7 +133,7 @@ class LBFGS(Optimizer):
         if max_eval is None:
             max_eval = max_iter * 5 // 4
 
-        self.lr = lr
+        self.learning_rate = learning_rate
         self.max_iter = max_iter
         self.max_eval = max_eval
         self.tolerance_grad = tolerance_grad
@@ -202,7 +202,7 @@ class LBFGS(Optimizer):
     def _add_grad(self, alpha, direction):
         offset = 0
         for p in self._params:
-            numel = p.numel().item()
+            numel = reduce(lambda x, y: x * y, p.shape)
             p = paddle.assign(
                 p.add(
                     direction[offset : offset + numel].reshape(p.shape) * alpha
@@ -227,18 +227,20 @@ class LBFGS(Optimizer):
         return loss, flat_grad
 
     def step(self, closure):
-        """Performs a single optimization step.
+        """
+        Performs a single optimization step.
+
         Args:
             closure (callable): A closure that reevaluates the model
                 and returns the loss.
+
         """
 
         with paddle.no_grad():
-
             # Make sure the closure is always called with grad enabled
-            closure = paddle.set_grad_enabled(True)(closure)
+            closure = paddle.enable_grad()(closure)
 
-            lr = self.lr
+            learning_rate = self.learning_rate
             max_iter = self.max_iter
             max_eval = self.max_eval
             tolerance_grad = self.tolerance_grad
@@ -342,9 +344,11 @@ class LBFGS(Optimizer):
                 ############################################################
                 # reset initial guess for step size
                 if state['n_iter'] == 1:
-                    alpha = min(1.0, 1.0 / flat_grad.abs().sum()) * lr
+                    alpha = (
+                        min(1.0, 1.0 / flat_grad.abs().sum()) * learning_rate
+                    )
                 else:
-                    alpha = lr
+                    alpha = learning_rate
 
                 # directional derivative
                 gtd = flat_grad.dot(d)
@@ -376,7 +380,7 @@ class LBFGS(Optimizer):
                     # no line search, simply move with fixed-step
                     self._add_grad(alpha, d)
                     if n_iter != max_iter:
-                        with paddle.set_grad_enabled(True):
+                        with paddle.enable_grad():
                             loss = float(closure())
                         flat_grad = self._gather_flat_grad()
                         opt_cond = flat_grad.abs().max() <= tolerance_grad

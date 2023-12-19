@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/uniform_inplace_grad_kernel.h"
 
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
 
@@ -29,7 +30,7 @@ void UniformInplaceGradKernel(const Context& ctx,
                               int diag_step,
                               float diag_val,
                               DenseTensor* x_grad) {
-  auto dims = vectorize(x_grad->dims());
+  auto dims = common::vectorize(x_grad->dims());
   float value = static_cast<float>(0.0f);
   phi::FullKernel<T>(ctx, dims, value, phi::DataType::UNDEFINED, x_grad);
 }
@@ -41,4 +42,6 @@ PD_REGISTER_KERNEL(uniform_inplace_grad,
                    ALL_LAYOUT,
                    phi::UniformInplaceGradKernel,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

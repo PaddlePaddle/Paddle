@@ -16,15 +16,17 @@ limitations under the License. */
 
 #include <mutex>
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/api/include/dll_decl.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/core/macros.h"
 #include "paddle/utils/flat_hash_map.h"
 
 namespace phi {
 class DeviceContext;
 class CPUContext;
 class GPUContext;
+class Allocator;
+class CUDAStream;
 }  // namespace phi
 
 namespace paddle {
@@ -69,6 +71,8 @@ class PADDLE_API DeviceContextPool {
 
   phi::DeviceContext* GetMutable(const Place& place);
 
+  void SyncDeviceContext(const Place& place);
+
   template <AllocationType T>
   const typename DefaultDeviceContextType<T>::TYPE* Get(const Place& place) {
     return reinterpret_cast<const typename DefaultDeviceContextType<T>::TYPE*>(
@@ -86,4 +90,20 @@ class PADDLE_API DeviceContextPool {
 };
 
 }  // namespace experimental
+}  // namespace paddle
+
+namespace paddle {
+
+/**
+ * Get the Allocator for the passed place.
+ */
+PADDLE_API phi::Allocator* GetAllocator(const phi::Place& place);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+/**
+ * Get the current CUDA stream for the passed CUDA device.
+ */
+PADDLE_API phi::CUDAStream* GetCurrentCUDAStream(const phi::Place& place);
+#endif
+
 }  // namespace paddle

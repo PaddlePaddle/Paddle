@@ -25,12 +25,10 @@ namespace cub = hipcub;
 #include <thrust/device_ptr.h>
 #include <thrust/iterator/reverse_iterator.h>
 
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
-
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/memory/malloc.h"
 
 namespace phi {
 namespace funcs {
@@ -50,7 +48,7 @@ static void CubInclusiveScan(InputIterator x_iter,
                              size_t n,
                              BinaryOp op,
                              const phi::GPUContext &dev_ctx) {
-  paddle::memory::allocation::AllocationPtr allocation;
+  phi::Allocator::AllocationPtr allocation;
   void *temp_storage = nullptr;
   size_t temp_storage_bytes = 0;
   for (size_t i = 0; i < 2; ++i) {
@@ -64,7 +62,7 @@ static void CubInclusiveScan(InputIterator x_iter,
                                        dev_ctx.stream()));
     if (i == 0 && temp_storage_bytes > 0) {
       allocation =
-          paddle::memory::Alloc(dev_ctx.GetPlace(), temp_storage_bytes);
+          phi::memory_utils::Alloc(dev_ctx.GetPlace(), temp_storage_bytes);
       temp_storage = allocation->ptr();
     }
   }
@@ -247,8 +245,8 @@ void InclusiveScan(const T *x,
 
   if (outer_dim == 1 && inner_dim == 1) {
     if (reverse) {
-      auto x_reverse_iter = MakeThrustReverseIterator(x + mid_dim);
-      auto y_reverse_iter = MakeThrustReverseIterator(y + mid_dim);
+      auto x_reverse_iter = thrust::make_reverse_iterator(x + mid_dim);
+      auto y_reverse_iter = thrust::make_reverse_iterator(y + mid_dim);
       CubInclusiveScan(x_reverse_iter, y_reverse_iter, mid_dim, op, dev_ctx);
     } else {
       CubInclusiveScan(x, y, mid_dim, op, dev_ctx);

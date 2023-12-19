@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/selected_rows/hsigmoid_loss_grad_kernel.h"
 
+#include <set>
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/mixed_vector.h"
@@ -46,7 +48,6 @@ void HSigmoidLossGradKernel(const Context& ctx,
                             const DenseTensor& pre_out,
                             const DenseTensor& out_grad,
                             int num_classes,
-                            bool remote_prefetch,
                             bool is_sparse,
                             DenseTensor* x_grad,
                             SelectedRows* w_grad,
@@ -60,7 +61,7 @@ void HSigmoidLossGradKernel(const Context& ctx,
   w_grad->set_height(w.dims()[0]);
   auto* w_grad_value = w_grad->mutable_value();
   phi::DDim temp_dim(w.dims());
-  temp_dim[0] = real_rows.size();
+  temp_dim[0] = static_cast<int>(real_rows.size());
   w_grad_value->Resize(temp_dim);
   phi::HSigmoidLossGradKernelImpl<T>(ctx,
                                      x,
@@ -72,7 +73,6 @@ void HSigmoidLossGradKernel(const Context& ctx,
                                      pre_out,
                                      out_grad,
                                      num_classes,
-                                     remote_prefetch,
                                      is_sparse,
                                      x_grad,
                                      w_grad_value,

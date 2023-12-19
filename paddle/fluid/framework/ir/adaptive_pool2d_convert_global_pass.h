@@ -32,7 +32,7 @@ class Graph;
 class AdaptivePool2dConvertGlobalPass : public FusePassBase {
  public:
   AdaptivePool2dConvertGlobalPass();
-  virtual ~AdaptivePool2dConvertGlobalPass() {}
+  virtual ~AdaptivePool2dConvertGlobalPass() = default;
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;

@@ -17,7 +17,14 @@
 #if defined(_M_X64) || defined(__x86_64__) || defined(_M_IX86) || \
     defined(__i386__)
 #define __PADDLE_x86__
+// Note(risemeup1):undef __SSE2__ to avoid fp16 conflict between cuda and gcc12
+#ifdef __SSE2__
+#undef __SSE2__
 #include <immintrin.h>
+#define __SSE2__
+#else
+#include <immintrin.h>
+#endif
 #endif
 #include <stdint.h>
 
@@ -44,10 +51,14 @@
 #include <hip/hip_fp16.h>
 #endif
 
+#ifndef PADDLE_WITH_HIP
 #if !defined(_WIN32)
 #define PADDLE_ALIGN(x) __attribute__((aligned(x)))
 #else
 #define PADDLE_ALIGN(x) __declspec(align(x))
+#endif
+#else
+#define PADDLE_ALIGN(x)
 #endif
 
 #define CUDA_ARCH_FP16_SUPPORTED(CUDA_ARCH) (CUDA_ARCH >= 600)
@@ -208,7 +219,7 @@ struct PADDLE_ALIGN(2) float16 {
     return *this;
   }
 
-// Conversion opertors
+// Conversion operators
 #ifdef PADDLE_CUDA_FP16
   HOSTDEVICE inline half to_half() const {
 #if defined(PADDLE_WITH_HIP) || CUDA_VERSION >= 9000
@@ -1064,7 +1075,7 @@ struct numeric_limits<phi::dtype::float16> {
     return phi::dtype::raw_uint16_to_float16(0x7bff);
   }
   HOSTDEVICE static phi::dtype::float16 epsilon() {
-    return phi::dtype::raw_uint16_to_float16(0x0800);
+    return phi::dtype::raw_uint16_to_float16(0x1400);
   }
   HOSTDEVICE static phi::dtype::float16 round_error() {
     return phi::dtype::float16(0.5);

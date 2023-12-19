@@ -14,8 +14,8 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/operator_unsqueeze2_onednn_fuse_pass.h"
 
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
@@ -26,7 +26,10 @@ using string::PrettyLogDetail;
 
 void FuseOperatorUnsqueeze2OneDNNPass::ApplyImpl(Graph *graph) const {
   std::vector<std::pair<std::string, int>> ops_and_outputs = {
-      {"transpose2", 2}, {"elementwise_mul", 1}};
+      {"fused_transpose", 2},
+      {"transpose2", 2},
+      {"fused_elementwise_mul", 1},
+      {"elementwise_mul", 1}};
 
   for (const auto &op_and_outputs : ops_and_outputs)
     FuseUnsqueeze2(graph, op_and_outputs.first, op_and_outputs.second);
@@ -73,8 +76,7 @@ void FuseOperatorUnsqueeze2OneDNNPass::FuseUnsqueeze2(
     bool has_axes_tensor_list =
         std::find(names.begin(), names.end(), "AxesTensorList") != names.end();
 
-    if (has_axes_tensor &&
-        unsqueeze2_op->Op()->Input("AxesTensor").size() > 0) {
+    if (has_axes_tensor && !unsqueeze2_op->Op()->Input("AxesTensor").empty()) {
       VLOG(4) << "Cannot fuse " << op_type
               << " and unsqueeze2 because unsqueeze2 dims are specified by "
                  "AxesTensor!";
@@ -82,13 +84,14 @@ void FuseOperatorUnsqueeze2OneDNNPass::FuseUnsqueeze2(
     }
 
     if (has_axes_tensor_list &&
-        unsqueeze2_op->Op()->Input("AxesTensorList").size() > 0) {
+        !unsqueeze2_op->Op()->Input("AxesTensorList").empty()) {
       VLOG(4) << "Cannot fuse " << op_type
               << " and unsqueeze2 because unsqueeze2 dims are specified by "
                  "AxesTensorList!";
       return;
     }
 
+    ConvertToFusedOp(operator_op->Op());
     operator_op->Op()->SetAttr("fused_unsqueeze2_axes", unsqueeze2_axes);
     operator_op->Op()->SetOutput("Out", {unsqueeze2_out->Name()});
 
@@ -115,5 +118,6 @@ REGISTER_PASS(operator_unsqueeze2_onednn_fuse_pass,
 REGISTER_PASS_CAPABILITY(operator_unsqueeze2_onednn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .GE("unsqueeze2", 0)
-            .GE("transpose2", 0));
+            .EQ("unsqueeze2", 0)
+            .EQ("fused_transpose", 0)
+            .EQ("transpose2", 0));

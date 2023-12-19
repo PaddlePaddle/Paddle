@@ -33,7 +33,7 @@ inline int Im2SeqOutputSize(
   return output_size;
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class Im2SequenceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -153,7 +153,7 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class Im2SequenceGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

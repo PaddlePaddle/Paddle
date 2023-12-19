@@ -37,7 +37,7 @@ static void ReplaceOutputVar(Node* op, Node* old_var, Node* new_var) {
 }
 
 PDNode* MultiHeadMatmulRoformerPattern::operator()() {
-  std::unordered_set<std::string> matmul_ops{"matmul", "matmul_v2"};
+  std::unordered_set<std::string> matmul_ops{"matrix_multiply"};
   auto* input0 = pattern->NewNode(input0_repr());
   input0->assert_is_ops_input(matmul_ops);
 
@@ -53,9 +53,9 @@ PDNode* MultiHeadMatmulRoformerPattern::operator()() {
   auto* mul0_out_var =
       pattern->NewNode(mul0_out_repr())->assert_is_ops_output(matmul_ops);
 
-  decltype(mul0) eltadd0;
-  decltype(mul0) eltadd0_b_var;
-  decltype(mul0) eltadd0_out_var;
+  decltype(mul0) eltadd0 = nullptr;
+  decltype(mul0) eltadd0_b_var = nullptr;
+  decltype(mul0) eltadd0_out_var = nullptr;
 
   mul0_out_var->AsIntermediate()->assert_is_op_input("elementwise_add");
 
@@ -165,9 +165,9 @@ PDNode* MultiHeadMatmulRoformerPattern::operator()() {
   auto* mul1_out_var =
       pattern->NewNode(mul1_out_repr())->assert_is_ops_output(matmul_ops);
 
-  decltype(mul1) eltadd1;
-  decltype(mul1) eltadd1_b_var;
-  decltype(mul1) eltadd1_out_var;
+  decltype(mul1) eltadd1 = nullptr;
+  decltype(mul1) eltadd1_b_var = nullptr;
+  decltype(mul1) eltadd1_out_var = nullptr;
 
   mul1_out_var->AsIntermediate()->assert_is_op_input("elementwise_add");
   eltadd1 = pattern->NewNode(eltadd1_repr())->assert_is_op("elementwise_add");
@@ -232,9 +232,9 @@ PDNode* MultiHeadMatmulRoformerPattern::operator()() {
   auto* mul2_out_var =
       pattern->NewNode(mul2_out_repr())->assert_is_ops_output(matmul_ops);
 
-  decltype(mul2) eltadd2;
-  decltype(mul2) eltadd2_b_var;
-  decltype(mul2) eltadd2_out_var;
+  decltype(mul2) eltadd2 = nullptr;
+  decltype(mul2) eltadd2_b_var = nullptr;
+  decltype(mul2) eltadd2_out_var = nullptr;
 
   mul2_out_var->AsIntermediate()->assert_is_op_input("elementwise_add");
   eltadd2 = pattern->NewNode(eltadd2_repr())->assert_is_op("elementwise_add");
@@ -313,23 +313,6 @@ PDNode* MultiHeadMatmulRoformerPattern::operator()() {
 }  // namespace patterns
 
 MultiHeadMatmulRoformerFusePass::MultiHeadMatmulRoformerFusePass() {
-  AddOpCompat(OpCompat("mul"))
-      .AddInput("X")  // the shape shoule be (B, S, N*H)
-      .IsTensor()
-      .End()
-      .AddInput("Y")  // the shape shoule be (N*H, N*H)
-      .IsTensor()
-      .End()
-      .AddOutput("Out")  // the shape shoule be (B, S, N*H)
-      .IsTensor()
-      .End()
-      .AddAttr("x_num_col_dims")
-      .IsNumEQ(2)
-      .End()
-      .AddAttr("y_num_col_dims")
-      .IsNumEQ(1)
-      .End();
-
   AddOpCompat(OpCompat("elementwise_add"))
       .AddInput("X")
       // in bias, shape is (B, S, N*H),
@@ -394,43 +377,6 @@ MultiHeadMatmulRoformerFusePass::MultiHeadMatmulRoformerFusePass() {
 
   // QK (B, H, S, N)*(B, H, S, N) -> (B, H, S, S)
   // QKV (B, H, S, S)*(B, H, S, N) -> (B, H, S, N)
-  AddOpCompat(OpCompat("matmul"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddInput("Y")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddAttr("alpha")
-      .IsType<float>()  // QK(anyvalue, will copy to new op) QKV(1.0)
-      .End()
-      .AddAttr("transpose_X")
-      .IsBoolEQ(false)
-      .End()
-      .AddAttr("transpose_Y")  // QK(true) QKV(false)
-      .IsType<bool>()
-      .End();
-
-  AddOpCompat(OpCompat("matmul_v2"))
-      .AddInput("X")
-      .IsTensor()
-      .End()
-      .AddInput("Y")
-      .IsTensor()
-      .End()
-      .AddOutput("Out")
-      .IsTensor()
-      .End()
-      .AddAttr("trans_x")
-      .IsBoolEQ(false)
-      .End()
-      .AddAttr("trans_y")  // QK(true) QKV(false)
-      .IsType<bool>()
-      .End();
-
   AddOpCompat(OpCompat("softmax"))
       .AddInput("X")
       .IsTensor()
@@ -503,8 +449,8 @@ int MultiHeadMatmulRoformerFusePass::BuildFusion(Graph* graph,
     auto* bv_data = bv_tensor->mutable_data<float>(platform::CPUPlace());
 
     auto combined_w_dims =
-        phi::make_ddim({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
-    auto combined_bias_dims = phi::make_ddim({3, bq_tensor->dims()[0]});
+        common::make_ddim({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
+    auto combined_bias_dims = common::make_ddim({3, bq_tensor->dims()[0]});
 
     // reuse the mul0_w and eltadd_0_b nodes for the combined nodes.
     auto* combined_w_desc = mul0_w->Var();
@@ -521,7 +467,8 @@ int MultiHeadMatmulRoformerFusePass::BuildFusion(Graph* graph,
         tmp_combined_w_tensor.mutable_data<float>(platform::CPUPlace());
 
     std::vector<float*> w_vec = {wq_data, wk_data, wv_data};
-    int dims_h = combined_w_dims[0], dims_w = combined_w_dims[2];
+    int dims_h = static_cast<int>(combined_w_dims[0]),
+        dims_w = static_cast<int>(combined_w_dims[2]);
     // Combine the three fc weights together.
     for (int i = 0; i < dims_h; i++) {
       for (int j = 0; j < 3; j++) {
@@ -825,6 +772,4 @@ REGISTER_PASS_CAPABILITY(multihead_matmul_roformer_fuse_pass)
             .EQ("reshape2", 0)
             .EQ("transpose2", 0)
             .EQ("scale", 0)
-            .LE("matmul", 1)
-            .EQ("matmul_v2", 0)
             .EQ("softmax", 0));

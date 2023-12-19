@@ -50,11 +50,7 @@ void FillDiagonalGradKernel(const Context& ctx,
                             int offset,
                             bool wrap,
                             DenseTensor* x_grad) {
-#ifdef __HIPCC__
-  const int64_t kMaxBlockDim = 256;
-#else
   const int64_t kMaxBlockDim = 512;
-#endif
   auto* in_data = ctx.template Alloc<T>(x_grad);
 
   phi::Copy(ctx, out_grad, ctx.GetPlace(), false, x_grad);

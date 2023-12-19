@@ -14,12 +14,14 @@
 
 import numpy as np
 
-import paddle.fluid as fluid
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.layers import utils
-from paddle.fluid.param_attr import ParamAttr
-from paddle.nn import Layer
-from paddle.nn import initializer as I
+import paddle
+from paddle import base
+from paddle.base.layer_helper import LayerHelper
+from paddle.base.param_attr import ParamAttr
+from paddle.nn import (
+    Layer,
+    initializer as I,
+)
 
 
 def resnet_unit(
@@ -49,10 +51,9 @@ def resnet_unit(
     is_test,
     act,
 ):
-
     helper = LayerHelper('resnet_unit', **locals())
-    bn_param_dtype = fluid.core.VarDesc.VarType.FP32
-    bit_mask_dtype = fluid.core.VarDesc.VarType.INT32
+    bn_param_dtype = base.core.VarDesc.VarType.FP32
+    bit_mask_dtype = base.core.VarDesc.VarType.INT32
     out = helper.create_variable_for_type_inference(x.dtype)
     bit_mask = helper.create_variable_for_type_inference(
         dtype=bit_mask_dtype, stop_gradient=True
@@ -184,7 +185,9 @@ class ResNetUnit(Layer):
         self._stride = stride
         self._stride_z = stride_z
         self._dilation = 1
-        self._kernel_size = utils.convert_to_list(filter_size, 2, 'kernel_size')
+        self._kernel_size = paddle.utils.convert_to_list(
+            filter_size, 2, 'kernel_size'
+        )
         self._padding = (filter_size - 1) // 2
         self._groups = 1
         self._momentum = momentum
@@ -212,7 +215,7 @@ class ResNetUnit(Layer):
 
         is_nchw = data_format == 'NCHW'
         # initial filter
-        bn_param_dtype = fluid.core.VarDesc.VarType.FP32
+        bn_param_dtype = base.core.VarDesc.VarType.FP32
         if not is_nchw:
             bn_param_shape = [1, 1, 1, num_filters]
             filter_x_shape = [

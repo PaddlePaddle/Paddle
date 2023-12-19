@@ -20,21 +20,18 @@
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/phi/api/all.h"
 
-paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                     egr::kSlotSmallVectorSize>
+paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
 fused_bias_dropout_residual_layer_normGradNodeCompat::operator()(
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+    paddle::small_vector<std::vector<paddle::Tensor>,
                          egr::kSlotSmallVectorSize>& grads,
     bool create_graph,
     bool is_new_grad) {
   const auto& out_metas = OutputMeta();
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                       egr::kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
       outputs(5);
   VLOG(3) << "Running Eager Backward Node: "
              "fused_bias_dropout_residual_layer_normGradNodeCompat";
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                       egr::kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
       hooked_grads0 = fused_bias_dropout_residual_layer_normGradNodeCompat::
           ApplyGradientHooks(grads);
   std::map<std::string, std::vector<std::shared_ptr<egr::EagerVariable>>> ins0 =

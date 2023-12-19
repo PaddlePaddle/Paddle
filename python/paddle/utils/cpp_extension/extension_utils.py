@@ -16,6 +16,7 @@ import atexit
 import collections
 import glob
 import hashlib
+import importlib.abc
 import importlib.util
 import json
 import logging
@@ -23,6 +24,7 @@ import os
 import re
 import subprocess
 import sys
+import sysconfig
 import textwrap
 import threading
 import warnings
@@ -36,8 +38,8 @@ try:
 except ImportError:
     DEVNULL = open(os.devnull, 'wb')
 
-from ...fluid import core
-from ...fluid.framework import OpProtoHolder
+from ...base import core
+from ...base.framework import OpProtoHolder
 from ...sysconfig import get_include, get_lib
 
 logger = logging.getLogger("utils.cpp_extension")
@@ -172,6 +174,7 @@ def custom_write_stub(resource, pyfile):
         import sys
         import types
         import paddle
+        import importlib.abc
         import importlib.util
 
         cur_dir = os.path.dirname(os.path.abspath(__file__))
@@ -179,6 +182,9 @@ def custom_write_stub(resource, pyfile):
 
         def __bootstrap__():
             assert os.path.exists(so_path)
+            # load custom op shared library with abs path
+            custom_ops = paddle.utils.cpp_extension.load_op_meta_info_and_register_op(so_path)
+
             if os.name == 'nt' or sys.platform.startswith('darwin'):
                 # Cpp Extension only support Linux now
                 mod = types.ModuleType(__name__)
@@ -190,13 +196,10 @@ def custom_write_stub(resource, pyfile):
                     assert isinstance(spec.loader, importlib.abc.Loader)
                     spec.loader.exec_module(mod)
                 except ImportError:
-                    print('using custom operator only')
                     mod = types.ModuleType(__name__)
 
-            # load custom op shared library with abs path
-            custom_ops = paddle.utils.cpp_extension.load_op_meta_info_and_register_op(so_path)
-            for custom_ops in custom_ops:
-                setattr(mod, custom_ops, eval(custom_ops))
+            for custom_op in custom_ops:
+                setattr(mod, custom_op, eval(custom_op))
 
         __bootstrap__()
 
@@ -290,7 +293,7 @@ class VersionManager:
         self.version = self.hasher(version_field)
 
     def hasher(self, version_field):
-        from paddle.fluid.layers.utils import flatten
+        from paddle.utils import flatten
 
         md5 = hashlib.md5()
         for field in version_field._fields:
@@ -445,13 +448,13 @@ def get_rocm_arch_flags(cflags):
     return cflags
 
 
-def _get_fluid_path():
+def _get_base_path():
     """
-    Return installed fluid dir path.
+    Return installed base dir path.
     """
     import paddle
 
-    return os.path.join(os.path.dirname(paddle.__file__), 'fluid')
+    return os.path.join(os.path.dirname(paddle.__file__), 'base')
 
 
 def _get_core_name():
@@ -467,8 +470,8 @@ def _get_lib_core_path():
     Return real path of libcore_(no)avx.dylib on MacOS.
     """
     raw_core_name = _get_core_name()
-    lib_core_name = "lib{}.dylib".format(raw_core_name[:-3])
-    return os.path.join(_get_fluid_path(), lib_core_name)
+    lib_core_name = f"lib{raw_core_name[:-3]}.dylib"
+    return os.path.join(_get_base_path(), lib_core_name)
 
 
 def _get_dll_core_path():
@@ -477,25 +480,25 @@ def _get_dll_core_path():
     """
     raw_core_name = _get_core_name()
     dll_core_name = "libpaddle.dll"
-    return os.path.join(_get_fluid_path(), dll_core_name)
+    return os.path.join(_get_base_path(), dll_core_name)
 
 
 def _reset_so_rpath(so_path):
     """
     NOTE(Aurelius84): Runtime path of libpaddle.so is modified into `@loader_path/../libs`
     in setup.py.in. While loading custom op, `@loader_path` is the dirname of custom op
-    instead of `paddle/fluid`. So we modify `@loader_path` from custom dylib into `@rpath`
+    instead of `paddle/base`. So we modify `@loader_path` from custom dylib into `@rpath`
     to ensure dynamic loader find it correctly.
 
-    Moreover, we will add `-rpath site-packages/paddle/fluid` while linking the dylib so
+    Moreover, we will add `-rpath site-packages/paddle/base` while linking the dylib so
     that we don't need to set `LD_LIBRARY_PATH` any more.
     """
     assert os.path.exists(so_path)
     if OS_NAME.startswith("darwin"):
         origin_runtime_path = "@loader_path/../libs/"
-        rpath = "@rpath/{}".format(_get_core_name())
-        cmd = 'install_name_tool -change {} {} {}'.format(
-            origin_runtime_path, rpath, so_path
+        rpath = f"@rpath/{_get_core_name()}"
+        cmd = (
+            f'install_name_tool -change {origin_runtime_path} {rpath} {so_path}'
         )
 
         run_cmd(cmd)
@@ -509,13 +512,13 @@ def _get_include_dirs_when_compiling(compile_dir):
     include_dirs_file = 'includes.txt'
     path = os.path.abspath(compile_dir)
     include_dirs_file = os.path.join(path, include_dirs_file)
-    assert os.path.isfile(include_dirs_file), "File {} does not exist".format(
+    assert os.path.isfile(
         include_dirs_file
-    )
+    ), f"File {include_dirs_file} does not exist"
     with open(include_dirs_file, 'r') as f:
         include_dirs = [line.strip() for line in f.readlines() if line.strip()]
 
-    extra_dirs = ['paddle/fluid/platform']
+    extra_dirs = ['paddle/base/platform']
     all_include_dirs = list(include_dirs)
     for extra_dir in extra_dirs:
         for include_dir in include_dirs:
@@ -544,6 +547,7 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
     include_dirs = list(kwargs.get('include_dirs', []))
     include_dirs.extend(compile_include_dirs)
     include_dirs.extend(find_paddle_includes(use_cuda))
+    include_dirs.extend(find_python_includes())
 
     kwargs['include_dirs'] = include_dirs
 
@@ -560,13 +564,11 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
                 extra_compile_args[compiler] = []
 
     if IS_WINDOWS:
-        # TODO(zhouwei): may append compile flags in future
-        pass
         # append link flags
         extra_link_args = kwargs.get('extra_link_args', [])
         extra_link_args.extend(MSVC_LINK_FLAGS)
         lib_core_name = create_sym_link_if_not_exist()
-        extra_link_args.append('{}'.format(lib_core_name))
+        extra_link_args.append(f'{lib_core_name}')
         if use_cuda:
             extra_link_args.extend(['cudadevrt.lib', 'cudart_static.lib'])
         kwargs['extra_link_args'] = extra_link_args
@@ -577,15 +579,15 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
         # On Linux, GCC support '-l:xxx.so' to specify the library name
         # without `lib` prefix.
         if OS_NAME.startswith('linux'):
-            extra_link_args.append('-l:{}'.format(_get_core_name()))
+            extra_link_args.append(f'-l:{_get_core_name()}')
         # ----------------------- MacOS Platform ----------------------- #
         else:
             # See _reset_so_rpath for details.
-            extra_link_args.append('-Wl,-rpath,{}'.format(_get_fluid_path()))
+            extra_link_args.append(f'-Wl,-rpath,{_get_base_path()}')
             # On MacOS, ld don't support `-l:xx`, so we create a
             # liblibpaddle.dylib symbol link.
             lib_core_name = create_sym_link_if_not_exist()
-            extra_link_args.append('-l{}'.format(lib_core_name))
+            extra_link_args.append(f'-l{lib_core_name}')
         # -----------------------   -- END --    ----------------------- #
 
         add_compile_flag(extra_compile_args, ['-w'])  # disable warning
@@ -604,7 +606,7 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
         kwargs['runtime_library_dirs'] = runtime_library_dirs
 
     if compile_dir is None:
-        # Add this compile option to isolate fluid headers
+        # Add this compile option to isolate base headers
         add_compile_flag(extra_compile_args, ['-DPADDLE_WITH_CUSTOM_KERNEL'])
     kwargs['extra_compile_args'] = extra_compile_args
 
@@ -619,7 +621,7 @@ def create_sym_link_if_not_exist():
     assert OS_NAME.startswith('darwin') or IS_WINDOWS
 
     raw_core_name = _get_core_name()
-    core_path = os.path.join(_get_fluid_path(), raw_core_name)
+    core_path = os.path.join(_get_base_path(), raw_core_name)
     if IS_WINDOWS:
         new_dll_core_path = _get_dll_core_path()
         # create symbol link on windows
@@ -636,7 +638,7 @@ def create_sym_link_if_not_exist():
                         raw_core_name,
                     )
                 )
-                run_cmd('mklink /H {} {}'.format(new_dll_core_path, core_path))
+                run_cmd(f'mklink /H {new_dll_core_path} {core_path}')
         # libpaddle with lib suffix
         assert os.path.exists(new_dll_core_path)
         return raw_core_name[:-4] + ".lib"
@@ -786,6 +788,22 @@ def find_paddle_includes(use_cuda=False):
     return include_dirs
 
 
+def find_python_includes():
+    """
+    Return necessary include dir path of Python.h.
+    """
+    # sysconfig.get_path('include') gives us the location of Python.h
+    # Explicitly specify 'posix_prefix' scheme on non-Windows platforms to workaround error on some MacOS
+    # installations where default `get_path` points to non-existing `/Library/Python/M.m/include` folder
+    python_include_path = sysconfig.get_path(
+        'include', scheme='nt' if IS_WINDOWS else 'posix_prefix'
+    )
+    if python_include_path is not None:
+        assert isinstance(python_include_path, str)
+        return [python_include_path]
+    return []
+
+
 def find_clang_cpp_include(compiler='clang'):
     std_v1_includes = None
     try:
@@ -853,8 +871,8 @@ def find_paddle_libraries(use_cuda=False):
             cuda_lib_dir = find_cuda_libraries()
             paddle_lib_dirs.extend(cuda_lib_dir)
 
-    # add `paddle/fluid` to search `libpaddle.so`
-    paddle_lib_dirs.append(_get_fluid_path())
+    # add `paddle/base` to search `libpaddle.so`
+    paddle_lib_dirs.append(_get_base_path())
 
     return paddle_lib_dirs
 
@@ -869,8 +887,7 @@ def add_compile_flag(extra_compile_args, flags):
 
 
 def is_cuda_file(path):
-
-    cuda_suffix = set(['.cu'])
+    cuda_suffix = {'.cu'}
     items = os.path.splitext(path)
     assert len(items) > 1
     return items[-1] in cuda_suffix
@@ -889,10 +906,10 @@ def get_build_directory(verbose=False):
 
     .. code-block:: python
 
-        from paddle.utils.cpp_extension import get_build_directory
+        >>> from paddle.utils.cpp_extension import get_build_directory
 
-        build_dir = get_build_directory()
-        print(build_dir)
+        >>> build_dir = get_build_directory()
+        >>> print(build_dir)
 
     """
     root_extensions_directory = os.environ.get('PADDLE_EXTENSION_DIR')
@@ -926,19 +943,17 @@ def parse_op_info(op_name):
     """
     if op_name not in OpProtoHolder.instance().op_proto_map:
         raise ValueError(
-            "Please load {} shared library file firstly by `paddle.utils.cpp_extension.load_op_meta_info_and_register_op(...)`".format(
-                op_name
-            )
+            f"Please load {op_name} shared library file firstly by `paddle.utils.cpp_extension.load_op_meta_info_and_register_op(...)`"
         )
     op_proto = OpProtoHolder.instance().get_op_proto(op_name)
 
     in_names = [x.name for x in op_proto.inputs]
-    out_names = [x.name for x in op_proto.outputs]
     attr_names = [
         x.name for x in op_proto.attrs if x.name not in DEFAULT_OP_ATTR_NAMES
     ]
+    out_names = [x.name for x in op_proto.outputs]
 
-    return in_names, out_names, attr_names
+    return in_names, attr_names, out_names
 
 
 def _import_module_from_library(module_name, build_directory, verbose=False):
@@ -953,12 +968,10 @@ def _import_module_from_library(module_name, build_directory, verbose=False):
         dynamic_suffix = '.so'
     ext_path = os.path.join(build_directory, module_name + dynamic_suffix)
     if not os.path.exists(ext_path):
-        raise FileNotFoundError(
-            "Extension path: {} does not exist.".format(ext_path)
-        )
+        raise FileNotFoundError(f"Extension path: {ext_path} does not exist.")
 
     # load custom op_info and kernels from .so shared library
-    log_v('loading shared library from: {}'.format(ext_path), verbose)
+    log_v(f'loading shared library from: {ext_path}', verbose)
     op_names = load_op_meta_info_and_register_op(ext_path)
 
     if os.name == 'nt' or sys.platform.startswith('darwin'):
@@ -1006,7 +1019,7 @@ def _generate_python_module(
     api_file = os.path.join(
         build_directory, module_name + '_' + thread_id + '.py'
     )
-    log_v("generate api file: {}".format(api_file), verbose)
+    log_v(f"generate api file: {api_file}", verbose)
 
     # delete the temp file before exit python process
     atexit.register(lambda: remove_if_exit(api_file))
@@ -1021,65 +1034,157 @@ def _generate_python_module(
     return custom_module
 
 
+def _gen_output_content(
+    op_name,
+    in_names,
+    out_names,
+    ins_map,
+    attrs_map,
+    outs_list,
+    inplace_reverse_idx,
+):
+    # ' ' * tab space * tab number
+    indent = ' ' * 4 * 2
+    dynamic_content = f"""res = []
+{indent}start_idx = 0"""
+    static_content = f"""ins = {{}}
+{indent}ins_map = {ins_map}
+{indent}outs = {{}}
+{indent}outs_list = {outs_list}
+{indent}for key, value in ins_map.items():
+{indent}    # handle optional inputs
+{indent}    if value is not None:
+{indent}        ins[key] = value
+{indent}helper = LayerHelper("{op_name}", **locals())
+"""
+    for out_idx, out_name in enumerate(out_names):
+        in_idx = -1
+        if out_idx in inplace_reverse_idx:
+            in_idx = inplace_reverse_idx[out_idx]
+        if (
+            in_idx != -1
+            and "@VECTOR" in in_names[in_idx]
+            and "@OPTIONAL" in in_names[in_idx]
+        ):
+            # inplace optional vector<Tensor> output case
+            lower_in_names = in_names[in_idx].split("@")[0].lower()
+            dynamic_content += f"""
+{indent}if {lower_in_names} is not None:
+{indent}    res.append(outs[start_idx: start_idx + len({lower_in_names})])
+{indent}    start_idx += len({lower_in_names})
+{indent}else:
+{indent}    res.append(None)
+{indent}    start_idx += 1"""
+            if IS_WINDOWS:
+                static_content += f"""
+{indent}if {lower_in_names} is not None:
+{indent}    outs['{out_name}'] = [helper.create_variable(dtype='float32') for _ in range(len({lower_in_names}))]"""
+            else:
+                static_content += f"""
+{indent}if {lower_in_names} is not None:
+{indent}    outs['{out_name}'] = {lower_in_names}"""
+
+        elif (
+            in_idx != -1 and "@VECTOR" in in_names[in_idx]
+        ):  # inplace vector<Tensor> output case
+            lower_in_names = in_names[in_idx].split("@")[0].lower()
+            dynamic_content += f"""
+{indent}res.append(outs[start_idx: start_idx + len({lower_in_names})])
+{indent}start_idx += len({lower_in_names})"""
+            if IS_WINDOWS:
+                static_content += f"""
+{indent}outs['{out_name}'] = [helper.create_variable(dtype='float32') for _ in range(len({lower_in_names}))]"""
+            else:
+                static_content += f"""
+{indent}outs['{out_name}'] = {lower_in_names}"""
+        elif (
+            in_idx != -1 and "@OPTIONAL" in in_names[in_idx]
+        ):  # inplace optional Tensor output case, handle inplace None input
+            lower_in_names = in_names[in_idx].split("@")[0].lower()
+            dynamic_content += f"""
+{indent}if {lower_in_names} is not None:
+{indent}    res.append(outs[start_idx])
+{indent}else:
+{indent}    res.append(None)
+{indent}start_idx += 1"""
+            if IS_WINDOWS:
+                static_content += f"""
+{indent}if {lower_in_names} is not None:
+{indent}    outs['{out_name}'] = helper.create_variable(dtype='float32')"""
+            else:
+                static_content += f"""
+{indent}if {lower_in_names} is not None:
+{indent}    outs['{out_name}'] = {lower_in_names}"""
+        elif (
+            in_idx != -1 and not IS_WINDOWS
+        ):  # inplace Tensor output case, handle inplace None input
+            lower_in_names = in_names[in_idx].lower()
+            dynamic_content += f"""
+{indent}res.append(outs[start_idx])
+{indent}start_idx += 1"""
+            static_content += f"""
+{indent}outs['{out_name}'] = {lower_in_names}"""
+        else:  # general/inplace Tensor output case
+            dynamic_content += f"""
+{indent}res.append(outs[start_idx])
+{indent}start_idx += 1"""
+            static_content += f"""
+{indent}outs['{out_name}'] = helper.create_variable(dtype='float32')"""
+
+    dynamic_content += f"""
+{indent}return res[0] if len(res)==1 else res"""
+
+    static_content += f"""
+{indent}helper.append_op(type="{op_name}", inputs=ins, outputs=outs, attrs={attrs_map})
+{indent}res = [outs[out_name] if out_name in outs.keys() else None for out_name in outs_list]
+{indent}return res[0] if len(res)==1 else res"""
+
+    return dynamic_content, static_content
+
+
 def _custom_api_content(op_name):
     (
-        params_str,
-        ins_str,
-        attrs_str,
-        outs_str,
+        params_list,
+        ins_map,
+        attrs_map,
+        outs_list,
         in_names,
-        attrs_names,
+        attr_names,
+        out_names,
+        inplace_reverse_idx,
     ) = _get_api_inputs_str(op_name)
-    lower_in_names = [p.split("@")[0].lower() for p in in_names]
+    dynamic_content, static_content = _gen_output_content(
+        op_name,
+        in_names,
+        out_names,
+        ins_map,
+        attrs_map,
+        outs_list,
+        inplace_reverse_idx,
+    )
     API_TEMPLATE = textwrap.dedent(
         """
-        import paddle.fluid.core as core
-        from paddle.fluid.core import VarBase, CustomOpKernelContext
-        from paddle.fluid.framework import _dygraph_tracer, in_dygraph_mode
-        from paddle.fluid.layer_helper import LayerHelper
+        import paddle.base.core as core
+        from paddle.framework import in_dynamic_mode
+        from paddle.base.layer_helper import LayerHelper
 
-        def {op_name}({inputs}):
-            # prepare inputs and outputs
-            ins = {ins}
-            attrs = {attrs}
-            outs = {{}}
-            out_names = {out_names}
-
+        def {op_name}({params_list}):
             # The output variable's dtype use default value 'float32',
             # and the actual dtype of output variable will be inferred in runtime.
-            if in_dygraph_mode():
-                ctx = CustomOpKernelContext()
-                for i in {in_names}:
-                    ctx.add_inputs(i)
-                for j in {attr_names}:
-                    ctx.add_attr(j)
-                for out_name in out_names:
-                    outs[out_name] = core.eager.Tensor()
-                    ctx.add_outputs(outs[out_name])
-                core.eager._run_custom_op(ctx, "{op_name}", True)
+            if in_dynamic_mode():
+                outs = core.eager._run_custom_op("{op_name}", {params_list})
+                {dynamic_content}
             else:
-                helper = LayerHelper("{op_name}", **locals())
-                for out_name in out_names:
-                    outs[out_name] = helper.create_variable(dtype='float32')
-
-                helper.append_op(type="{op_name}", inputs=ins, outputs=outs, attrs=attrs)
-
-            res = [outs[out_name] for out_name in out_names]
-
-            return res[0] if len(res)==1 else res
+                {static_content}
             """
     ).lstrip()
 
     # generate python api file
     api_content = API_TEMPLATE.format(
         op_name=op_name,
-        inputs=params_str,
-        ins=ins_str,
-        attrs=attrs_str,
-        # "[x, y, z]""
-        in_names="[" + ",".join(lower_in_names) + "]",
-        attr_names="[" + ",".join(attrs_names) + "]",
-        out_names=outs_str,
+        params_list=params_list,
+        dynamic_content=dynamic_content,
+        static_content=static_content,
     )
 
     return api_content
@@ -1090,12 +1195,10 @@ def _load_module_from_file(api_file_path, module_name, verbose=False):
     Load module from python file.
     """
     if not os.path.exists(api_file_path):
-        raise FileNotFoundError(
-            "File : {} does not exist.".format(api_file_path)
-        )
+        raise FileNotFoundError(f"File : {api_file_path} does not exist.")
 
     # Unique readable module name to place custom api.
-    log_v('import module from file: {}'.format(api_file_path), verbose)
+    log_v(f'import module from file: {api_file_path}', verbose)
     ext_name = "_paddle_cpp_extension_" + module_name
 
     # load module with RWLock
@@ -1111,30 +1214,42 @@ def _get_api_inputs_str(op_name):
     """
     Returns string of api parameters and inputs dict.
     """
-    in_names, out_names, attr_names = parse_op_info(op_name)
+    in_names, attr_names, out_names = parse_op_info(op_name)
     # e.g: x, y, z
     param_names = in_names + attr_names
     # NOTE(chenweihang): we add suffix `@VECTOR` for std::vector<Tensor> input,
     # but the string contains `@` cannot used as argument name, so we split
     # input name by `@`, and only use first substr as argument
-    params_str = ','.join([p.split("@")[0].lower() for p in param_names])
+    params_list = ','.join([p.split("@")[0].lower() for p in param_names])
     # e.g: {'X': x, 'Y': y, 'Z': z}
-    ins_str = "{%s}" % ','.join(
+    ins_map = "{%s}" % ','.join(
         [
             "'{}' : {}".format(in_name, in_name.split("@")[0].lower())
             for in_name in in_names
         ]
     )
     # e.g: {'num': n}
-    attrs_str = "{%s}" % ",".join(
+    attrs_map = "{%s}" % ",".join(
         [
             "'{}' : {}".format(attr_name, attr_name.split("@")[0].lower())
             for attr_name in attr_names
         ]
     )
     # e.g: ['Out', 'Index']
-    outs_str = "[%s]" % ','.join(["'{}'".format(name) for name in out_names])
-    return params_str, ins_str, attrs_str, outs_str, in_names, attr_names
+    outs_list = "[%s]" % ','.join([f"'{name}'" for name in out_names])
+
+    inplace_reverse_idx = core.eager._get_custom_operator_inplace_map(op_name)
+
+    return (
+        params_list,
+        ins_map,
+        attrs_map,
+        outs_list,
+        in_names,
+        attr_names,
+        out_names,
+        inplace_reverse_idx,
+    )
 
 
 def _write_setup_file(
@@ -1143,6 +1258,7 @@ def _write_setup_file(
     file_path,
     build_dir,
     include_dirs,
+    library_dirs,
     extra_cxx_cflags,
     extra_cuda_cflags,
     link_args,
@@ -1164,6 +1280,7 @@ def _write_setup_file(
             {prefix}Extension(
                 sources={sources},
                 include_dirs={include_dirs},
+                library_dirs={library_dirs},
                 extra_compile_args={{'cxx':{extra_cxx_cflags}, 'nvcc':{extra_cuda_cflags}}},
                 extra_link_args={extra_link_args})],
         cmdclass={{"build_ext" : BuildExtension.with_options(
@@ -1173,22 +1290,23 @@ def _write_setup_file(
     ).lstrip()
 
     with_cuda = False
-    if any([is_cuda_file(source) for source in sources]):
+    if any(is_cuda_file(source) for source in sources):
         with_cuda = True
-    log_v("with_cuda: {}".format(with_cuda), verbose)
+    log_v(f"with_cuda: {with_cuda}", verbose)
 
     content = template.format(
         name=name,
         prefix='CUDA' if with_cuda else 'Cpp',
         sources=list2str(sources),
         include_dirs=list2str(include_dirs),
+        library_dirs=list2str(library_dirs),
         extra_cxx_cflags=list2str(extra_cxx_cflags),
         extra_cuda_cflags=list2str(extra_cuda_cflags),
         extra_link_args=list2str(link_args),
         build_dir=build_dir,
     )
 
-    log_v('write setup.py into {}'.format(file_path), verbose)
+    log_v(f'write setup.py into {file_path}', verbose)
     with open(file_path, 'w') as f:
         f.write(content)
 
@@ -1200,7 +1318,7 @@ def list2str(args):
     if args is None:
         return '[]'
     assert isinstance(args, (list, tuple))
-    args = ["{}".format(arg) for arg in args]
+    args = [f"{arg}" for arg in args]
     return repr(args)
 
 
@@ -1218,27 +1336,19 @@ def _jit_compile(file_path, verbose=False):
         py_version = subprocess.check_output([interpreter, '-V'])
         py_version = py_version.decode()
         log_v(
-            "Using Python interpreter: {}, version: {}".format(
-                interpreter, py_version.strip()
-            ),
+            f"Using Python interpreter: {interpreter}, version: {py_version.strip()}",
             verbose,
         )
     except Exception:
         _, error, _ = sys.exc_info()
         raise RuntimeError(
-            'Failed to check Python interpreter with `{}`, errors: {}'.format(
-                interpreter, error
-            )
+            f'Failed to check Python interpreter with `{interpreter}`, errors: {error}'
         )
 
     if IS_WINDOWS:
-        compile_cmd = 'cd /d {} && {} {} build'.format(
-            ext_dir, interpreter, setup_file
-        )
+        compile_cmd = f'cd /d {ext_dir} && {interpreter} {setup_file} build'
     else:
-        compile_cmd = 'cd {} && {} {} build'.format(
-            ext_dir, interpreter, setup_file
-        )
+        compile_cmd = f'cd {ext_dir} && {interpreter} {setup_file} build'
 
     print("Compiling user custom op, it will cost a few seconds.....")
     run_cmd(compile_cmd, verbose)
@@ -1253,7 +1363,7 @@ def parse_op_name_from(sources):
         pattern = re.compile(r'PD_BUILD_OP\(([^,\)]+)\)')
         content = re.sub(r'\s|\t|\n', '', content)
         op_name = pattern.findall(content)
-        op_name = set([re.sub('_grad', '', name) for name in op_name])
+        op_name = {re.sub('_grad', '', name) for name in op_name}
 
         return op_name
 
@@ -1271,7 +1381,7 @@ def run_cmd(command, verbose=False):
     Execute command with subprocess.
     """
     # logging
-    log_v("execute command: {}".format(command), verbose)
+    log_v(f"execute command: {command}", verbose)
 
     # execute command
     try:
@@ -1283,9 +1393,7 @@ def run_cmd(command, verbose=False):
             return subprocess.check_call(command, shell=True, stdout=DEVNULL)
     except Exception:
         _, error, _ = sys.exc_info()
-        raise RuntimeError(
-            "Failed to run command: {}, errors: {}".format(compile, error)
-        )
+        raise RuntimeError(f"Failed to run command: {compile}, errors: {error}")
 
 
 def check_abi_compatibility(compiler, verbose=False):
@@ -1343,9 +1451,7 @@ def check_abi_compatibility(compiler, verbose=False):
         # check compiler version failed
         _, error, _ = sys.exc_info()
         warnings.warn(
-            'Failed to check compiler version for {}: {}'.format(
-                compiler, error
-            )
+            f'Failed to check compiler version for {compiler}: {error}'
         )
         return False
 

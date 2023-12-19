@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .. import Layer
 from .. import functional as F
+from .layers import Layer
 
 __all__ = []
 
@@ -40,7 +40,7 @@ class PairwiseDistance(Layer):
 
     Shape:
         - x: :math:`[N, D]` or :math:`[D]`, where :math:`N` is batch size, :math:`D`
-          is the dimension of the data. Available data type is float32, float64.
+          is the dimension of the data. Available data type is float16, float32, float64.
         - y: :math:`[N, D]` or :math:`[D]`, y have the same dtype as x.
         - output: The same dtype as input tensor.
             - If :attr:`keepdim` is True, the output shape is :math:`[N, 1]` or :math:`[1]`,
@@ -51,15 +51,14 @@ class PairwiseDistance(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
-            x = paddle.to_tensor([[1., 3.], [3., 5.]], dtype=paddle.float64)
-            y = paddle.to_tensor([[5., 6.], [7., 8.]], dtype=paddle.float64)
-            dist = paddle.nn.PairwiseDistance()
-            distance = dist(x, y)
-            print(distance)
-            # Tensor(shape=[2], dtype=float64, place=Place(gpu:0), stop_gradient=True,
-            #        [4.99999860, 4.99999860])
-
+            >>> import paddle
+            >>> x = paddle.to_tensor([[1., 3.], [3., 5.]], dtype=paddle.float64)
+            >>> y = paddle.to_tensor([[5., 6.], [7., 8.]], dtype=paddle.float64)
+            >>> dist = paddle.nn.PairwiseDistance()
+            >>> distance = dist(x, y)
+            >>> print(distance)
+            Tensor(shape=[2], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [4.99999860, 4.99999860])
     """
 
     def __init__(self, p=2.0, epsilon=1e-6, keepdim=False, name=None):
@@ -70,7 +69,6 @@ class PairwiseDistance(Layer):
         self.name = name
 
     def forward(self, x, y):
-
         return F.pairwise_distance(
             x, y, self.p, self.epsilon, self.keepdim, self.name
         )

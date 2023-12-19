@@ -25,7 +25,8 @@
 #include <unordered_set>
 #include <vector>
 
-#include "gflags/gflags.h"
+#include "paddle/common/macros.h"
+#include "paddle/utils/flags.h"
 
 namespace paddle {
 namespace distributed {
@@ -115,19 +116,23 @@ class PSEnvironment {
   explicit PSEnvironment() {}  // NOLINT
   virtual ~PSEnvironment() {}
 
-  virtual int32_t SetPsServers(uint64_t *host_sign_list, int node_num) {
+  virtual int32_t SetPsServers(uint64_t *host_sign_list UNUSED,
+                               int node_num UNUSED) {
     return 0;
   }
   virtual int32_t SetPsServers(
-      const std::vector<std::string> *host_endpoint_list, int node_num) {
+      const std::vector<std::string> *host_endpoint_list UNUSED,
+      int node_num UNUSED) {
     return 0;
   }
 
-  virtual int32_t SetPsClients(uint64_t *host_sign_list, int node_num) {
+  virtual int32_t SetPsClients(uint64_t *host_sign_list UNUSED,
+                               int node_num UNUSED) {
     return 0;
   }
 
-  virtual int32_t SetPsClients(std::string *host_endpoint_list, int node_num) {
+  virtual int32_t SetPsClients(std::string *host_endpoint_list UNUSED,
+                               int node_num UNUSED) {
     return 0;
   }
 

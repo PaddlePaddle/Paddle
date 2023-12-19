@@ -14,7 +14,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/fused_multi_transformer_encoder_pass.h"  // NOLINT
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-
+#ifndef UNUSED
+#define UNUSED __attribute__((unused))
+#endif
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -180,7 +182,7 @@ TEST(FusedMultiTransformerEncoderPass, basic) {
   // FFN: post LayerNorm
   auto* ffn_ln_scale = layers.data("ffn_ln_scale", {1024}, true);
   auto* ffn_ln_bias = layers.data("ffn_ln_bias", {1024}, true);
-  layers.layer_norm(ffn_out, ffn_ln_scale, ffn_ln_bias)[0];
+  UNUSED auto res = layers.layer_norm(ffn_out, ffn_ln_scale, ffn_ln_bias)[0];
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
   graph->Set("__param_scope__", CreateParamScope());
@@ -190,11 +192,11 @@ TEST(FusedMultiTransformerEncoderPass, basic) {
       PassRegistry::Instance().Get("fused_multi_transformer_encoder_pass");
   if (pass.get() == nullptr)
     LOG(INFO) << "get fused_multi_transformer_encoder_pass failed";
-  int num_nodes_before = graph->Nodes().size();
+  int num_nodes_before = static_cast<int>(graph->Nodes().size());
   VLOG(3) << DebugString(graph);
 
   graph.reset(pass->Apply(graph.release()));
-  int num_nodes_after = graph->Nodes().size();
+  int num_nodes_after = static_cast<int>(graph->Nodes().size());
   VLOG(3) << DebugString(graph);
   int num_fused_nodes_after = GetNumOpNodes(graph, "fused_multi_transformer");
 
@@ -355,7 +357,7 @@ TEST(MultiDevicesFusedMultiTransformerEncoderPass, basic) {
   // FFN: post LayerNorm
   auto* ffn_ln_scale = layers.data("ffn_ln_scale", {1024}, true);
   auto* ffn_ln_bias = layers.data("ffn_ln_bias", {1024}, true);
-  layers.layer_norm(ffn_out, ffn_ln_scale, ffn_ln_bias)[0];
+  UNUSED auto res = layers.layer_norm(ffn_out, ffn_ln_scale, ffn_ln_bias)[0];
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
   graph->Set("__param_scope__", CreateParamScope());
@@ -366,11 +368,11 @@ TEST(MultiDevicesFusedMultiTransformerEncoderPass, basic) {
   if (pass.get() == nullptr)
     LOG(INFO)
         << "get multi_devices_fused_multi_transformer_encoder_pass failed";
-  int num_nodes_before = graph->Nodes().size();
+  int num_nodes_before = static_cast<int>(graph->Nodes().size());
   VLOG(3) << DebugString(graph);
 
   graph.reset(pass->Apply(graph.release()));
-  int num_nodes_after = graph->Nodes().size();
+  int num_nodes_after = static_cast<int>(graph->Nodes().size());
   VLOG(3) << DebugString(graph);
   int num_fused_nodes_after = GetNumOpNodes(graph, "fused_multi_transformer");
 
@@ -516,11 +518,11 @@ TEST(FusedMultiTransformerEncoderFuseQKVPass, basic) {
       "fused_multi_transformer_encoder_fuse_qkv_pass");
   if (pass.get() == nullptr)
     LOG(INFO) << "get fused_multi_transformer_encoder_fuse_qkv_pass failed";
-  int num_nodes_before = graph->Nodes().size();
+  int num_nodes_before = static_cast<int>(graph->Nodes().size());
   VLOG(3) << DebugString(graph);
 
   graph.reset(pass->Apply(graph.release()));
-  int num_nodes_after = graph->Nodes().size();
+  int num_nodes_after = static_cast<int>(graph->Nodes().size());
   VLOG(3) << DebugString(graph);
   int num_fused_nodes_after = GetNumOpNodes(graph, "fused_multi_transformer");
 
@@ -676,11 +678,11 @@ TEST(MultiDevicesFusedMultiTransformerEncoderFuseQKVPass, basic) {
     LOG(INFO)
         << "get multi_devices_fused_multi_transformer_encoder_fuse_qkv_pass "
            "failed";
-  int num_nodes_before = graph->Nodes().size();
+  int num_nodes_before = static_cast<int>(graph->Nodes().size());
   VLOG(3) << DebugString(graph);
 
   graph.reset(pass->Apply(graph.release()));
-  int num_nodes_after = graph->Nodes().size();
+  int num_nodes_after = static_cast<int>(graph->Nodes().size());
   VLOG(3) << DebugString(graph);
   int num_fused_nodes_after = GetNumOpNodes(graph, "fused_multi_transformer");
 

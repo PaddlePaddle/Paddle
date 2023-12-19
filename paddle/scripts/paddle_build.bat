@@ -24,7 +24,11 @@ rem -------clean up environment-----------
 set work_dir=%cd%
 if not defined cache_dir set cache_dir=%work_dir:Paddle=cache%
 if not exist %cache_dir%\tools (
-    git clone https://github.com/zhouwei25/tools.git %cache_dir%\tools
+    cd /d cache_dir
+    python -m pip install wget
+    python -c "import wget;wget.download('https://paddle-ci.gz.bcebos.com/window_requirement/tools.zip')"
+    tar xf tools.zip
+    cd /d work_dir
 )
 taskkill /f /im cmake.exe /t 2>NUL
 taskkill /f /im ninja.exe /t 2>NUL
@@ -105,10 +109,9 @@ if %ERRORLEVEL% NEQ 0 (
 if "%WITH_PYTHON%" == "ON" (
     where python
     where pip
-    pip install wheel
-    pip install pyyaml
-    pip install wget
-    pip install -r %work_dir%\python\requirements.txt
+    python -m pip install --upgrade pip
+    python -m pip install -r %work_dir%\paddle\scripts\compile_requirements.txt
+    python -m pip install -r %work_dir%\python\requirements.txt
     if !ERRORLEVEL! NEQ 0 (
         echo pip install requirements.txt failed!
         exit /b 5
@@ -187,7 +190,7 @@ if "%WITH_SCCACHE%"=="ON" (
     :: Localy storage on windows
     if not exist %SCCACHE_ROOT% mkdir %SCCACHE_ROOT%
     set SCCACHE_DIR=%SCCACHE_ROOT%\.cache
-    
+
     :: Sccache will shut down if a source file takes more than 10 mins to compile
     set SCCACHE_IDLE_TIMEOUT=0
     set SCCACHE_CACHE_SIZE=100G
@@ -211,7 +214,7 @@ if "%WITH_SCCACHE%"=="ON" (
 :install_sccache
 echo There is not sccache in this PC, will install sccache.
 echo Download package from https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe
-%PYTHON_ROOT%\python.exe -c "import wget;wget.download('https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe')"
+python -c "import wget;wget.download('https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe')"
 xcopy sccache.exe %SCCACHE_ROOT%\ /Y
 del sccache.exe
 goto:eof
@@ -400,8 +403,8 @@ if %day_now% NEQ %day_before% (
 )
 
 echo set -ex > cache.sh
-echo md5_content=$(cat %work_dir:\=/%/cmake/external/*.cmake  ^|md5sum ^| awk '{print $1}') >> cache.sh
-echo echo ${md5_content}^>md5.txt >> cache.sh
+echo md5_content=$(cat %work_dir:\=/%/cmake/external/*.cmake^|md5sum^|awk '{print $1}')$(git submodule status^|md5sum^|awk '{print $1}')>>cache.sh
+echo echo ${md5_content}^>md5.txt>>cache.sh
 
 %cache_dir%\tools\busybox64.exe cat cache.sh
 %cache_dir%\tools\busybox64.exe bash cache.sh
@@ -413,14 +416,59 @@ if "%WITH_GPU%"=="ON" (
 ) else (
     set sub_dir=cpu
 )
+
+@ECHO ON
+cd /d %work_dir%
+python -c "import wget;wget.download('https://paddle-windows.bj.bcebos.com/third_party_code/%sub_dir%/%md5%.tar.gz')" 2>nul
+if !ERRORLEVEL! EQU 0 (
+    echo Getting source code of third party : extracting ...
+    tar -xf %md5%.tar.gz
+    del %md5%.tar.gz
+    if !errorlevel! EQU 0 (
+        echo Getting source code of third party : successful
+    )
+) else (
+    git submodule update --init --recursive
+    set BCE_FILE=%cache_dir%\bce-python-sdk-new\BosClient.py
+    echo Uploading source code of third_party: checking bce ...
+    if not exist %cache_dir%\bce-python-sdk-new (
+        echo There is no bce in this PC, will install bce.
+        cd /d %cache_dir%
+        echo Download package from https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz
+        python -c "import wget;wget.download('https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz')"
+        python -c "import shutil;shutil.unpack_archive('bos_new.tar.gz', extract_dir='./bce-python-sdk-new',format='gztar')"
+    )
+    python -m pip install pycryptodome
+    python -m pip install bce-python-sdk==0.8.74
+    if !errorlevel! EQU 0 (
+        cd /d %work_dir%
+        echo Uploading source code of third party: compressing ...
+        tar -zcf %md5%.tar.gz ./third_party ./.git/modules
+        if !errorlevel! EQU 0 (
+            echo Uploading source code of third party: uploading ...
+            python !BCE_FILE! %md5%.tar.gz paddle-windows/third_party_code/%sub_dir% 1>nul
+            if !errorlevel! EQU 0 (
+                echo Upload source code of third party %md5% to bos paddle-windows/third_party_code/%sub_dir% successfully.
+            ) else (
+                echo Failed upload source code of third party to bos, reason: upload failed.
+            )
+        ) else (
+            echo Failed upload source code of third party to bos, reason: compress failed.
+        )
+        del %md5%.tar.gz
+    ) else (
+        echo Failed upload source code of third party to bos, reason: install bce failed.
+    )
+)
+
 set THIRD_PARTY_HOME=%cache_dir:\=/%/third_party/%sub_dir%
 set THIRD_PARTY_PATH=%THIRD_PARTY_HOME%/%md5%
 
 echo %task_name%|findstr build >nul && (
     echo %task_name% is a whl-build task, will only reuse local third_party cache.
     goto :cmake_impl
-) || ( 
-    echo %task_name% is a PR-CI-Windows task, will try to reuse bos and local third_party cache both. 
+) || (
+    echo %task_name% is a PR-CI-Windows task, will try to reuse bos and local third_party cache both.
 )
 
 if not exist %THIRD_PARTY_PATH% (
@@ -429,11 +477,11 @@ if not exist %THIRD_PARTY_PATH% (
     if not exist %THIRD_PARTY_HOME% mkdir "%THIRD_PARTY_HOME%"
     cd /d %THIRD_PARTY_HOME%
     echo Getting third party: downloading ...
-    %PYTHON_ROOT%\python.exe -c "import wget;wget.download('https://paddle-windows.bj.bcebos.com/third_party/%sub_dir%/%md5%.tar.gz')" 2>nul
+    python -c "import wget;wget.download('https://paddle-windows.bj.bcebos.com/third_party/%sub_dir%/%md5%.tar.gz')" 2>nul
     if !ERRORLEVEL! EQU 0 (
         echo Getting third party: extracting ...
         tar -xf %md5%.tar.gz
-        if !ERRORLEVEL! EQU 0 ( 
+        if !ERRORLEVEL! EQU 0 (
             echo Get third party from bos successfully.
         ) else (
             echo Get third party failed, reason: extract failed, will build locally.
@@ -448,7 +496,9 @@ if not exist %THIRD_PARTY_PATH% (
     echo Found reusable third_party cache in %THIRD_PARTY_PATH%, will reuse it.
 )
 
+
 :cmake_impl
+cd /d %work_dir%\%BUILD_DIR%
 echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
 -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DPYTHON_EXECUTABLE=%PYTHON_EXECUTABLE% -DON_INFER=%ON_INFER% ^
 -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
@@ -457,6 +507,15 @@ echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -D
 -DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME% -DCUDA_ARCH_BIN=%CUDA_ARCH_BIN% -DCUB_PATH=%THIRD_PARTY_HOME%/cub ^
 -DCUDA_TOOLKIT_ROOT_DIR="%CUDA_TOOLKIT_ROOT_DIR%" -DNEW_RELEASE_ALL=%NEW_RELEASE_ALL% -DNEW_RELEASE_PYPI=%NEW_RELEASE_PYPI% ^
 -DNEW_RELEASE_JIT=%NEW_RELEASE_JIT% -DWITH_ONNXRUNTIME=%WITH_ONNXRUNTIME%
+
+echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
+-DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DPYTHON_EXECUTABLE=%PYTHON_EXECUTABLE% -DON_INFER=%ON_INFER% ^
+-DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
+-DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
+-DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT="%TENSORRT_ROOT%" -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
+-DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME% -DCUDA_ARCH_BIN=%CUDA_ARCH_BIN% -DCUB_PATH=%THIRD_PARTY_HOME%/cub ^
+-DCUDA_TOOLKIT_ROOT_DIR="%CUDA_TOOLKIT_ROOT_DIR%" -DNEW_RELEASE_ALL=%NEW_RELEASE_ALL% -DNEW_RELEASE_PYPI=%NEW_RELEASE_PYPI% ^
+-DNEW_RELEASE_JIT=%NEW_RELEASE_JIT% -DWITH_ONNXRUNTIME=%WITH_ONNXRUNTIME% >> %work_dir%\win_cmake.sh
 
 cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
 -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DPYTHON_EXECUTABLE=%PYTHON_EXECUTABLE% -DON_INFER=%ON_INFER% ^
@@ -501,7 +560,7 @@ if %GENERATOR% == "Ninja" (
 )
 
 if %ERRORLEVEL% NEQ 0 (
-    set /a build_times=%build_times%+1  
+    set /a build_times=%build_times%+1
     if %build_times% GEQ %retry_times% (
         exit /b 7
     ) else (
@@ -563,25 +622,24 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 if "%UPLOAD_TP_FILE%"=="ON" (
-    set BCE_FILE=%cache_dir%\bce-python-sdk-0.8.33\BosClient.py
+    set BCE_FILE=%cache_dir%\bce-python-sdk-new\BosClient.py
     echo Uploading third_party: checking bce ...
-    if not exist %cache_dir%\bce-python-sdk-0.8.33 (
+    if not exist %cache_dir%\bce-python-sdk-new (
         echo There is no bce in this PC, will install bce.
         cd /d %cache_dir%
-        echo Download package from https://paddle-windows.bj.bcebos.com/bce-python-sdk-0.8.33.tar.gz
-        %PYTHON_ROOT%\python.exe -c "import wget;wget.download('https://paddle-windows.bj.bcebos.com/bce-python-sdk-0.8.33.tar.gz')"
-        %PYTHON_ROOT%\python.exe -c "import shutil;shutil.unpack_archive('bce-python-sdk-0.8.33.tar.gz', extract_dir='./',format='gztar')"
-        cd /d %cache_dir%\bce-python-sdk-0.8.33
-        %PYTHON_ROOT%\python.exe setup.py install 1>nul
-        del %cache_dir%\bce-python-sdk-0.8.33.tar.gz
+        echo Download package from https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz
+        python -c "import wget;wget.download('https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz')"
+        python -c "import shutil;shutil.unpack_archive('bos_new.tar.gz', extract_dir='./bce-python-sdk-new',format='gztar')"
     )
+    python -m pip install pycryptodome
+    python -m pip install bce-python-sdk==0.8.74
     if !errorlevel! EQU 0 (
         cd /d %THIRD_PARTY_HOME%
         echo Uploading third_party: compressing ...
         tar -zcf %md5%.tar.gz %md5%
         if !errorlevel! EQU 0 (
             echo Uploading third_party: uploading ...
-            %PYTHON_ROOT%\python.exe !BCE_FILE! %md5%.tar.gz paddle-windows/third_party/%sub_dir% 1>nul
+            python !BCE_FILE! %md5%.tar.gz paddle-windows/third_party/%sub_dir% 1>nul
             if !errorlevel! EQU 0 (
                 echo Upload third party %md5% to bos paddle-windows/third_party/%sub_dir% successfully.
             ) else (
@@ -643,6 +701,10 @@ set /p PADDLE_WHL_FILE_WIN=< whl_file.txt
 pip uninstall -y paddlepaddle
 pip uninstall -y paddlepaddle-gpu
 pip install %PADDLE_WHL_FILE_WIN%
+%PYTHON_ROOT%\python.exe -m pip uninstall -y paddlepaddle
+%PYTHON_ROOT%\python.exe -m pip uninstall -y paddlepaddle-gpu
+%PYTHON_ROOT%\python.exe -m pip install %PADDLE_WHL_FILE_WIN%
+
 if %ERRORLEVEL% NEQ 0 (
     echo pip install whl package failed!
     exit /b 1
@@ -665,7 +727,6 @@ echo    ========================================
 echo    Step 4. Running unit tests ...
 echo    ========================================
 
-pip install requests
 pip install -r %work_dir%\python\unittest_py\requirements.txt
 if %ERRORLEVEL% NEQ 0 (
     echo pip install unittest requirements.txt failed!
@@ -676,19 +737,20 @@ for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
 set start=%start:~4,10%
 
 set FLAGS_call_stack_level=2
+set FLAGS_set_to_1d=False
 dir %THIRD_PARTY_PATH:/=\%\install\openblas\lib
 dir %THIRD_PARTY_PATH:/=\%\install\openblas\bin
 dir %THIRD_PARTY_PATH:/=\%\install\zlib\bin
 dir %THIRD_PARTY_PATH:/=\%\install\mklml\lib
-dir %THIRD_PARTY_PATH:/=\%\install\mkldnn\bin
+dir %THIRD_PARTY_PATH:/=\%\install\mkldnn\lib
 dir %THIRD_PARTY_PATH:/=\%\install\warpctc\bin
 dir %THIRD_PARTY_PATH:/=\%\install\onnxruntime\lib
 
 set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\install\openblas\bin;^
 %THIRD_PARTY_PATH:/=\%\install\zlib\bin;%THIRD_PARTY_PATH:/=\%\install\mklml\lib;^
-%THIRD_PARTY_PATH:/=\%\install\mkldnn\bin;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;^
+%THIRD_PARTY_PATH:/=\%\install\mkldnn\lib;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;^
 %THIRD_PARTY_PATH:/=\%\install\onnxruntime\lib;%THIRD_PARTY_PATH:/=\%\install\paddle2onnx\lib;^
-%work_dir%\%BUILD_DIR%\paddle\fluid\inference;%work_dir%\%BUILD_DIR%\paddle\fluid\inference\capi_exp;^
+%work_dir%\%BUILD_DIR%\paddle\fluid\inference;%work_dir%\%BUILD_DIR%\paddle\fluid\pybind;%work_dir%\%BUILD_DIR%\paddle\fluid\inference\capi_exp;%work_dir%\%BUILD_DIR%\paddle\ir;^
 %PATH%
 
 REM TODO: make ut find .dll in install\onnxruntime\lib
@@ -711,8 +773,8 @@ call :timestamp "%start%" "%end%" "TestCases Total"
 
 if %error_code% NEQ 0 (
     exit /b 8
-) else ( 
-    goto:eof 
+) else (
+    goto:eof
 )
 
 :parallel_test_base_gpu
@@ -730,14 +792,6 @@ set CUDA_DEVICE_COUNT=1
 
 :: For hypothesis tests(mkldnn op and inference pass), we set use 'ci' profile
 set HYPOTHESIS_TEST_PROFILE=ci
-echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
--DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DON_INFER=%ON_INFER% ^
--DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
--DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
--DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT="%TENSORRT_ROOT%" -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
--DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME% -DCUB_PATH=%THIRD_PARTY_HOME%/cub ^
--DCUDA_TOOLKIT_ROOT_DIR="%CUDA_TOOLKIT_ROOT_DIR%" -DNEW_RELEASE_ALL=%NEW_RELEASE_ALL% -DNEW_RELEASE_PYPI=%NEW_RELEASE_PYPI% ^
--DNEW_RELEASE_JIT=%NEW_RELEASE_JIT% >> %work_dir%\win_cmake.sh
 
 %cache_dir%\tools\busybox64.exe bash %work_dir%\tools\windows\run_unittests.sh %NIGHTLY_MODE% %PRECISION_TEST% %WITH_GPU%
 
@@ -807,7 +861,7 @@ echo    ========================================
 echo    Step 7. Testing fluid library with infer_ut for inference ...
 echo    ========================================
 
-cd /d %work_dir%\paddle\fluid\inference\tests\infer_ut
+cd /d %work_dir%\test\cpp\inference\infer_ut
 %cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo %TENSORRT_ROOT% %WITH_ONNXRUNTIME% %MSVC_STATIC_CRT% "%CUDA_TOOLKIT_ROOT_DIR%"
 goto:eof
 

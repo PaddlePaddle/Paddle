@@ -152,7 +152,7 @@ __global__ void KeTemporalShiftBwNHWC(const T* output_grad,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class TemporalShiftOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -165,7 +165,7 @@ class TemporalShiftOpCUDAKernel : public framework::OpKernel<T> {
     int t = ctx.Attr<int>("seg_num");
     float shift_ratio = ctx.Attr<float>("shift_ratio");
     const std::string data_format_str = ctx.Attr<std::string>("data_format");
-    const DataLayout data_layout = phi::StringToDataLayout(data_format_str);
+    const DataLayout data_layout = common::StringToDataLayout(data_format_str);
 
     const int nt = input->dims()[0];
     const int c = (data_layout == DataLayout::kNCHW ? input->dims()[1]
@@ -184,8 +184,8 @@ class TemporalShiftOpCUDAKernel : public framework::OpKernel<T> {
     const int c2 = static_cast<int>(c * 2 * shift_ratio);
 
     framework::DDim out_dims =
-        (data_layout == DataLayout::kNCHW ? phi::make_ddim({nt, c, h, w})
-                                          : phi::make_ddim({nt, h, w, c}));
+        (data_layout == DataLayout::kNCHW ? common::make_ddim({nt, c, h, w})
+                                          : common::make_ddim({nt, h, w, c}));
     const T* input_data = input->data<T>();
     T* output_data = output->mutable_data<T>(out_dims, ctx.GetPlace());
 
@@ -208,7 +208,7 @@ class TemporalShiftOpCUDAKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class TemporalShiftGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -219,7 +219,7 @@ class TemporalShiftGradOpCUDAKernel : public framework::OpKernel<T> {
     int t = ctx.Attr<int>("seg_num");
     float shift_ratio = ctx.Attr<float>("shift_ratio");
     const std::string data_format_str = ctx.Attr<std::string>("data_format");
-    const DataLayout data_layout = phi::StringToDataLayout(data_format_str);
+    const DataLayout data_layout = common::StringToDataLayout(data_format_str);
 
     const int nt = output_grad->dims()[0];
     const int c = (data_layout == DataLayout::kNCHW ? output_grad->dims()[1]
@@ -238,8 +238,8 @@ class TemporalShiftGradOpCUDAKernel : public framework::OpKernel<T> {
     const int c2 = static_cast<int>(c * 2 * shift_ratio);
 
     framework::DDim in_grad_dims =
-        (data_layout == DataLayout::kNCHW ? phi::make_ddim({nt, c, h, w})
-                                          : phi::make_ddim({nt, h, w, c}));
+        (data_layout == DataLayout::kNCHW ? common::make_ddim({nt, c, h, w})
+                                          : common::make_ddim({nt, h, w, c}));
     const T* output_grad_data = output_grad->data<T>();
     T* input_grad_data =
         input_grad->mutable_data<T>(in_grad_dims, ctx.GetPlace());
@@ -267,13 +267,19 @@ class TemporalShiftGradOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    temporal_shift,
-    ops::TemporalShiftOpCUDAKernel<float>,
-    ops::TemporalShiftOpCUDAKernel<double>,
-    ops::TemporalShiftOpCUDAKernel<paddle::platform::float16>);
-REGISTER_OP_CUDA_KERNEL(
-    temporal_shift_grad,
-    ops::TemporalShiftGradOpCUDAKernel<float>,
-    ops::TemporalShiftGradOpCUDAKernel<double>,
-    ops::TemporalShiftGradOpCUDAKernel<paddle::platform::float16>);
+namespace plat = paddle::platform;
+
+PD_REGISTER_STRUCT_KERNEL(temporal_shift,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::TemporalShiftOpCUDAKernel,
+                          float,
+                          double,
+                          plat::float16) {}
+PD_REGISTER_STRUCT_KERNEL(temporal_shift_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::TemporalShiftGradOpCUDAKernel,
+                          float,
+                          double,
+                          plat::float16) {}

@@ -22,6 +22,7 @@
 #include "paddle/phi/kernels/abs_kernel.h"
 #include "paddle/phi/kernels/activation_kernel.h"
 #include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/isfinite_kernel.h"
 #include "paddle/phi/kernels/scale_kernel.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 #include "paddle/phi/kernels/trunc_kernel.h"
@@ -88,23 +89,9 @@ DEFINE_SPARSE_UNARY_KERNEL(Log1p)
 DEFINE_SPARSE_UNARY_KERNEL(Relu)
 DEFINE_SPARSE_UNARY_KERNEL(Abs)
 DEFINE_SPARSE_UNARY_KERNEL(Expm1)
+DEFINE_SPARSE_UNARY_KERNEL(Relu6)
 DEFINE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(Pow, factor)
-DEFINE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(Relu6Raw, threshold)
 DEFINE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(LeakyRelu, alpha)
-
-template <typename T, typename Context>
-void Relu6CooKernel(const Context& dev_ctx,
-                    const SparseCooTensor& x,
-                    SparseCooTensor* out) {
-  Relu6RawCooKernel<T, Context>(dev_ctx, x, 6, out);
-}
-
-template <typename T, typename Context>
-void Relu6CsrKernel(const Context& dev_ctx,
-                    const SparseCsrTensor& x,
-                    SparseCsrTensor* out) {
-  Relu6RawCsrKernel<T, Context>(dev_ctx, x, 6, out);
-}
 
 template <typename T, typename Context>
 void ScaleCooKernel(const Context& dev_ctx,
@@ -168,7 +155,6 @@ void CastCooKernel(const Context& dev_ctx,
   } else {
     phi::MetaTensor meta(out_values);
     meta.set_dims(x_values.dims());
-    meta.set_dtype(value_dtype);
     phi::CastKernel<T, Context>(dev_ctx, x_values, value_dtype, out_values);
   }
   out->SetIndicesDict(x.GetIndicesDict());
@@ -214,9 +200,47 @@ void CastCsrKernel(const Context& dev_ctx,
   } else {
     phi::MetaTensor meta(out_values);
     meta.set_dims(x_values.dims());
-    meta.set_dtype(value_dtype);
     phi::CastKernel<T, Context>(dev_ctx, x_values, value_dtype, out_values);
   }
+}
+
+template <typename T, typename Context>
+void IsnanCooKernel(const Context& dev_ctx,
+                    const SparseCooTensor& x,
+                    SparseCooTensor* out) {
+  *(out->mutable_indices()) = x.indices();
+  const DenseTensor& x_values = x.non_zero_elements();
+  DenseTensor* out_values = out->mutable_non_zero_elements();
+
+  phi::MetaTensor meta(out_values);
+  meta.set_dims(x_values.dims());
+  meta.set_dtype(DataType::BOOL);
+
+  phi::IsnanKernel<T, Context>(
+      dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements());
+  out->SetIndicesDict(x.GetIndicesDict());
+}
+
+template <typename T, typename Context>
+void IsnanCsrKernel(const Context& dev_ctx,
+                    const SparseCsrTensor& x,
+                    SparseCsrTensor* out) {
+  const DenseTensor& x_crows = x.crows();
+  const DenseTensor& x_cols = x.cols();
+  const DenseTensor& x_values = x.non_zero_elements();
+  DenseTensor* out_crows = out->mutable_crows();
+  DenseTensor* out_cols = out->mutable_cols();
+  DenseTensor* out_values = out->mutable_non_zero_elements();
+
+  *out_crows = x_crows;
+  *out_cols = x_cols;
+
+  phi::MetaTensor meta(out_values);
+  meta.set_dims(x_values.dims());
+  meta.set_dtype(DataType::BOOL);
+
+  phi::IsnanKernel<T, Context>(
+      dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements());
 }
 
 }  // namespace sparse

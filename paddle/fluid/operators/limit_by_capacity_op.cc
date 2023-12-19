@@ -12,7 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/limit_by_capacity_op.h"
+#include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_registry.h"
+
+#if defined(PADDLE_WITH_GLOO)
+#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -75,11 +81,6 @@ class LimitByCapacityOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
-
-REGISTER_OP_CPU_KERNEL(limit_by_capacity,
-                       ops::LimitByCapacityOpCPUKernel<int>,
-                       ops::LimitByCapacityOpCPUKernel<int64_t>);
 
 REGISTER_OP_WITHOUT_GRADIENT(limit_by_capacity,
                              ops::LimitByCapacityOp,

@@ -38,18 +38,23 @@ void Conv3dCooGradCPUKernel(const CPUContext& dev_ctx,
                             const DenseTensor& rulebook,
                             const DenseTensor& counter,
                             const SparseCooTensor& out_grad,
-                            const std::vector<int>& paddings,
-                            const std::vector<int>& dilations,
-                            const std::vector<int>& strides,
-                            const int groups,
+                            const std::vector<int>& paddings UNUSED,
+                            const std::vector<int>& dilations UNUSED,
+                            const std::vector<int>& strides UNUSED,
+                            const int groups UNUSED,
                             const bool subm,
                             const std::string& key,
                             SparseCooTensor* x_grad,
                             DenseTensor* kernel_grad) {
   const auto& kernel_dims = kernel.dims();
-  const int kernel_size = kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
-  const int in_channels = kernel_dims[3];
-  const int out_channels = kernel_dims[4];
+  const bool is2D = kernel_dims.size() == 4 ? true : false;
+  const int kernel_size =
+      static_cast<int>(is2D ? kernel_dims[0] * kernel_dims[1]
+                            : kernel_dims[0] * kernel_dims[1] * kernel_dims[2]);
+  const int in_channels =
+      static_cast<int>(is2D ? kernel_dims[2] : kernel_dims[3]);
+  const int out_channels =
+      static_cast<int>(is2D ? kernel_dims[3] : kernel_dims[4]);
 
   int rulebook_len = 0;
   const IntT* rulebook_ptr = phi::funcs::sparse::GetRulebookPtr<IntT>(
@@ -210,7 +215,6 @@ void Conv3dCooGradKernel(const Context& dev_ctx,
                                           kernel_grad);
       }));
 }
-
 }  // namespace sparse
 }  // namespace phi
 

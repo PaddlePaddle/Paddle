@@ -15,13 +15,14 @@
 import numpy as np
 
 from paddle import _C_ops
-from paddle.fluid.data_feeder import (
+from paddle.base.data_feeder import (
     check_dtype,
     check_type,
     check_variable_and_dtype,
 )
-from paddle.fluid.framework import Variable, in_dygraph_mode
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base.framework import Variable
+from paddle.base.layer_helper import LayerHelper
+from paddle.framework import in_dynamic_or_pir_mode
 
 from .utils import (
     convert_out_size_to_list,
@@ -87,26 +88,34 @@ def send_u_recv(
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype="float32")
-            indexes = paddle.to_tensor([[0, 1], [1, 2], [2, 1], [0, 0]], dtype="int32")
-            src_index, dst_index = indexes[:, 0], indexes[:, 1]
-            out = paddle.geometric.send_u_recv(x, src_index, dst_index, reduce_op="sum")
-            # Outputs: [[0., 2., 3.], [2., 8., 10.], [1., 4., 5.]]
+            >>> x = paddle.to_tensor([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype="float32")
+            >>> indexes = paddle.to_tensor([[0, 1], [1, 2], [2, 1], [0, 0]], dtype="int32")
+            >>> src_index, dst_index = indexes[:, 0], indexes[:, 1]
+            >>> out = paddle.geometric.send_u_recv(x, src_index, dst_index, reduce_op="sum")
+            >>> print(out.numpy())
+            [[ 0. 2. 3.]
+             [ 2. 8. 10.]
+             [ 1. 4. 5.]]
 
-            x = paddle.to_tensor([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype="float32")
-            indexes = paddle.to_tensor([[0, 1], [2, 1], [0, 0]], dtype="int32")
-            src_index, dst_index = indexes[:, 0], indexes[:, 1]
-            out_size = paddle.max(dst_index) + 1
-            out = paddle.geometric.send_u_recv(x, src_index, dst_index, reduce_op="sum", out_size=out_size)
-            # Outputs: [[0., 2., 3.], [[2., 8., 10.]]]
+            >>> x = paddle.to_tensor([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype="float32")
+            >>> indexes = paddle.to_tensor([[0, 1], [2, 1], [0, 0]], dtype="int32")
+            >>> src_index, dst_index = indexes[:, 0], indexes[:, 1]
+            >>> out_size = paddle.max(dst_index) + 1
+            >>> out = paddle.geometric.send_u_recv(x, src_index, dst_index, reduce_op="sum", out_size=out_size)
+            >>> print(out.numpy())
+            [[ 0. 2. 3.]
+             [ 2. 8. 10.]]
 
-            x = paddle.to_tensor([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype="float32")
-            indexes = paddle.to_tensor([[0, 1], [2, 1], [0, 0]], dtype="int32")
-            src_index, dst_index = indexes[:, 0], indexes[:, 1]
-            out = paddle.geometric.send_u_recv(x, src_index, dst_index, reduce_op="sum")
-            # Outputs: [[0., 2., 3.], [2., 8., 10.], [0., 0., 0.]]
+            >>> x = paddle.to_tensor([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype="float32")
+            >>> indexes = paddle.to_tensor([[0, 1], [2, 1], [0, 0]], dtype="int32")
+            >>> src_index, dst_index = indexes[:, 0], indexes[:, 1]
+            >>> out = paddle.geometric.send_u_recv(x, src_index, dst_index, reduce_op="sum")
+            >>> print(out.numpy())
+            [[ 0. 2. 3.]
+             [ 2. 8. 10.]
+             [ 0. 0. 0.]]
 
     """
 
@@ -118,8 +127,8 @@ def send_u_recv(
 
     # TODO(daisiming): Should we add judgement for out_size: max(dst_index) + 1.
 
-    if in_dygraph_mode():
-        out_size = convert_out_size_to_list(out_size)
+    if in_dynamic_or_pir_mode():
+        out_size = convert_out_size_to_list(out_size, 'graph_send_recv')
         return _C_ops.send_u_recv(
             x, src_index, dst_index, reduce_op.upper(), out_size
         )
@@ -246,29 +255,37 @@ def send_ue_recv(
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype="float32")
-            y = paddle.to_tensor([1, 1, 1, 1], dtype="float32")
-            indexes = paddle.to_tensor([[0, 1], [1, 2], [2, 1], [0, 0]], dtype="int32")
-            src_index, dst_index = indexes[:, 0], indexes[:, 1]
-            out = paddle.geometric.send_ue_recv(x, y, src_index, dst_index, message_op="add", reduce_op="sum")
-            # Outputs: [[1., 3., 4.], [4., 10., 12.], [2., 5., 6.]]
+            >>> x = paddle.to_tensor([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype="float32")
+            >>> y = paddle.to_tensor([1, 1, 1, 1], dtype="float32")
+            >>> indexes = paddle.to_tensor([[0, 1], [1, 2], [2, 1], [0, 0]], dtype="int32")
+            >>> src_index, dst_index = indexes[:, 0], indexes[:, 1]
+            >>> out = paddle.geometric.send_ue_recv(x, y, src_index, dst_index, message_op="add", reduce_op="sum")
+            >>> print(out.numpy())
+            [[ 1. 3. 4.]
+             [ 4. 10. 12.]
+             [ 2. 5. 6.]]
 
-            x = paddle.to_tensor([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype="float32")
-            y = paddle.to_tensor([1, 1, 1], dtype="float32")
-            indexes = paddle.to_tensor([[0, 1], [2, 1], [0, 0]], dtype="int32")
-            src_index, dst_index = indexes[:, 0], indexes[:, 1]
-            out_size = paddle.max(dst_index) + 1
-            out = paddle.geometric.send_ue_recv(x, y, src_index, dst_index, message_op="add", reduce_op="sum", out_size=out_size)
-            # Outputs: [[1., 3., 4.], [[4., 10., 12.]]]
+            >>> x = paddle.to_tensor([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype="float32")
+            >>> y = paddle.to_tensor([1, 1, 1], dtype="float32")
+            >>> indexes = paddle.to_tensor([[0, 1], [2, 1], [0, 0]], dtype="int32")
+            >>> src_index, dst_index = indexes[:, 0], indexes[:, 1]
+            >>> out_size = paddle.max(dst_index) + 1
+            >>> out = paddle.geometric.send_ue_recv(x, y, src_index, dst_index, message_op="add", reduce_op="sum", out_size=out_size)
+            >>> print(out.numpy())
+            [[ 1. 3. 4.]
+             [ 4. 10. 12.]]
 
-            x = paddle.to_tensor([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype="float32")
-            y = paddle.to_tensor([1, 1, 1], dtype="float32")
-            indexes = paddle.to_tensor([[0, 1], [2, 1], [0, 0]], dtype="int32")
-            src_index, dst_index = indexes[:, 0], indexes[:, 1]
-            out = paddle.geometric.send_ue_recv(x, y, src_index, dst_index, message_op="add", reduce_op="sum")
-            # Outputs: [[1., 3., 4.], [4., 10., 12.], [0., 0., 0.]]
+            >>> x = paddle.to_tensor([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype="float32")
+            >>> y = paddle.to_tensor([1, 1, 1], dtype="float32")
+            >>> indexes = paddle.to_tensor([[0, 1], [2, 1], [0, 0]], dtype="int32")
+            >>> src_index, dst_index = indexes[:, 0], indexes[:, 1]
+            >>> out = paddle.geometric.send_ue_recv(x, y, src_index, dst_index, message_op="add", reduce_op="sum")
+            >>> print(out.numpy())
+            [[ 1. 3. 4.]
+             [ 4. 10. 12.]
+             [ 0. 0. 0.]]
 
     """
 
@@ -295,8 +312,8 @@ def send_ue_recv(
 
     # TODO(daisiming): Should we add judgement for out_size: max(dst_index) + 1.
 
-    if in_dygraph_mode():
-        out_size = convert_out_size_to_list(out_size)
+    if in_dynamic_or_pir_mode():
+        out_size = convert_out_size_to_list(out_size, 'graph_send_ue_recv')
         return _C_ops.send_ue_recv(
             x,
             y,
@@ -424,15 +441,19 @@ def send_uv(x, y, src_index, dst_index, message_op="add", name=None):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype="float32")
-            y = paddle.to_tensor([[0, 1, 2], [2, 3, 4], [4, 5, 6]], dtype="float32")
-            indexes = paddle.to_tensor([[0, 1], [1, 2], [2, 1], [0, 0]], dtype="int32")
-            src_index = indexes[:, 0]
-            dst_index = indexes[:, 1]
-            out = paddle.geometric.send_uv(x, y, src_index, dst_index, message_op="add")
-            # Outputs: [[2., 5., 7.], [5., 9., 11.], [4., 9., 11.], [0., 3., 5.]]
+            >>> x = paddle.to_tensor([[0, 2, 3], [1, 4, 5], [2, 6, 7]], dtype="float32")
+            >>> y = paddle.to_tensor([[0, 1, 2], [2, 3, 4], [4, 5, 6]], dtype="float32")
+            >>> indexes = paddle.to_tensor([[0, 1], [1, 2], [2, 1], [0, 0]], dtype="int32")
+            >>> src_index = indexes[:, 0]
+            >>> dst_index = indexes[:, 1]
+            >>> out = paddle.geometric.send_uv(x, y, src_index, dst_index, message_op="add")
+            >>> print(out.numpy())
+            [[ 2. 5. 7.]
+             [ 5. 9. 11.]
+             [ 4. 9. 11.]
+             [ 0. 3. 5.]]
 
     """
 
@@ -451,10 +472,9 @@ def send_uv(x, y, src_index, dst_index, message_op="add", name=None):
         message_op = 'mul'
         y = 1.0 / (y + 1e-12)
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.send_uv(x, y, src_index, dst_index, message_op.upper())
     else:
-
         helper = LayerHelper("graph_send_uv", **locals())
         check_variable_and_dtype(
             x,

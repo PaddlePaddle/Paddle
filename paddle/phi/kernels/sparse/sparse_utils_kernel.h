@@ -144,33 +144,33 @@ DenseTensor CsrToDense(const Context& dev_ctx, const SparseCsrTensor& x) {
 }
 
 template <typename T, typename Context>
-void ValuesCooKernel(const Context& dev_ctx,
+void ValuesCooKernel(const Context& dev_ctx UNUSED,
                      const SparseCooTensor& x,
                      DenseTensor* out) {
   *out = x.non_zero_elements();
 }
 
 template <typename T, typename Context>
-void ValuesCsrKernel(const Context& dev_ctx,
+void ValuesCsrKernel(const Context& dev_ctx UNUSED,
                      const SparseCsrTensor& x,
                      DenseTensor* out) {
   *out = x.non_zero_elements();
 }
 
 template <typename T, typename Context>
-void IndicesCooKernel(const Context& dev_ctx,
+void IndicesCooKernel(const Context& dev_ctx UNUSED,
                       const SparseCooTensor& x,
                       DenseTensor* out) {
   *out = x.indices();
 }
 
 template <typename T, typename Context>
-void SparseCooTensorKernel(const Context& dev_ctx,
+void SparseCooTensorKernel(const Context& dev_ctx UNUSED,
                            const DenseTensor& values,
                            const DenseTensor& indices,
                            const std::vector<int64_t>& shape,
                            SparseCooTensor* out) {
-  *out = SparseCooTensor(indices, values, phi::make_ddim(shape));
+  *out = SparseCooTensor(indices, values, common::make_ddim(shape));
 }
 
 }  // namespace sparse

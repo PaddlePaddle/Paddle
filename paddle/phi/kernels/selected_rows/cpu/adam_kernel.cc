@@ -14,12 +14,17 @@
 
 #include "paddle/phi/kernels/selected_rows/adam_kernel.h"
 
+#include "glog/logging.h"
+#include "paddle/utils/flags.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/threadpool.h"
 #include "paddle/phi/kernels/funcs/adam_functors.h"
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
+
+PD_DECLARE_int32(inner_op_parallelism);
 
 namespace phi {
 namespace sr {
@@ -34,21 +39,21 @@ void AdamDenseParamSparseGradKernel(
     const DenseTensor& moment2,
     const DenseTensor& beta1_pow,
     const DenseTensor& beta2_pow,
-    const paddle::optional<DenseTensor>& master_param,
+    const paddle::optional<DenseTensor>& master_param UNUSED,
     const paddle::optional<DenseTensor>& skip_update,
     const Scalar& beta1,
     const Scalar& beta2,
     const Scalar& epsilon,
     bool lazy_mode,
     int64_t min_row_size_to_use_multithread,
-    bool multi_precision,
+    bool multi_precision UNUSED,
     bool use_global_beta_pow,
     DenseTensor* param_out,
     DenseTensor* moment1_out,
     DenseTensor* moment2_out,
     DenseTensor* beta1_pow_out,
     DenseTensor* beta2_pow_out,
-    DenseTensor* master_param_outs) {
+    DenseTensor* master_param_outs UNUSED) {
   VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
 
   bool skip_update_ = false;
@@ -69,8 +74,10 @@ void AdamDenseParamSparseGradKernel(
     phi::Copy(dev_ctx, param, dev_ctx.GetPlace(), false, param_out);
     phi::Copy(dev_ctx, moment1, dev_ctx.GetPlace(), false, moment1_out);
     phi::Copy(dev_ctx, moment2, dev_ctx.GetPlace(), false, moment2_out);
-    phi::Copy(dev_ctx, beta1_pow, dev_ctx.GetPlace(), false, beta1_pow_out);
-    phi::Copy(dev_ctx, beta2_pow, dev_ctx.GetPlace(), false, beta2_pow_out);
+    if (!use_global_beta_pow) {
+      phi::Copy(dev_ctx, beta1_pow, dev_ctx.GetPlace(), false, beta1_pow_out);
+      phi::Copy(dev_ctx, beta2_pow, dev_ctx.GetPlace(), false, beta2_pow_out);
+    }
     return;
   }
 
@@ -96,7 +103,7 @@ void AdamDenseParamSparseGradKernel(
                               "value is:%d.",
                               beta2_pow_out->numel()));
 
-  if (grad.rows().size() == 0) {
+  if (grad.rows().empty()) {
     VLOG(3) << "grad row size is 0!!";
     return;
   }
@@ -111,7 +118,7 @@ void AdamDenseParamSparseGradKernel(
   }
 
   phi::SelectedRows tmp_grad_merge;
-  const phi::SelectedRows* grad_merge_ptr;
+  const phi::SelectedRows* grad_merge_ptr = nullptr;
   if (is_strict_sorted) {
     grad_merge_ptr = &grad;
   } else {
@@ -185,12 +192,12 @@ void AdamDenseParamSparseGradKernel(
                  "multi thread, currently "
               << param_row_count;
     }
-    for (size_t i = 0; i < grad_rows.size(); ++i) {
+    for (int i = 0; i < static_cast<int>(grad_rows.size()); ++i) {
       row_id_to_grad_row_offset[grad_rows[i]] = i;
     }
     std::vector<std::future<void>> fs;
-    int64_t line_in_each_thread =
-        param_row_count / FLAGS_inner_op_parallelism + 1;
+    int64_t line_in_each_thread = static_cast<int64_t>(
+        param_row_count / FLAGS_inner_op_parallelism + static_cast<int64_t>(1));
     for (int i = 0; i < FLAGS_inner_op_parallelism; ++i) {
       int64_t start = i * line_in_each_thread;
       int64_t end = (i + 1) * line_in_each_thread;
@@ -222,7 +229,7 @@ void AdamDenseParamSparseGradKernel(
         }
       }));
     }
-    for (size_t i = 0; i < fs.size(); ++i) fs[i].wait();
+    for (auto& item : fs) item.wait();
   }
 #endif    // !_WIN32
   else {  // NOLINT

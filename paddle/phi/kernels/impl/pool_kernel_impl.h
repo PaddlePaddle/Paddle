@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <algorithm>
 
-#include "paddle/phi/core/ddim.h"
+#include "paddle/common/ddim.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/pool_kernel.h"
 
@@ -228,7 +228,7 @@ void Pool2dKernel(const Context& ctx,
                   const IntArray& kernel_size,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
-                  bool ceil_mode,
+                  bool ceil_mode UNUSED,
                   bool exclusive,
                   const std::string& data_format,
                   const std::string& pooling_type,
@@ -279,7 +279,7 @@ void Pool3dKernel(const Context& ctx,
                   const std::vector<int>& kernel_size,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
-                  bool ceil_mode,
+                  bool ceil_mode UNUSED,
                   bool exclusive,
                   const std::string& data_format,
                   const std::string& pooling_type,

@@ -16,7 +16,7 @@ import copy
 from typing import Dict, Union
 
 import paddle
-import paddle.nn as nn
+from paddle import nn
 from paddle.nn import Layer
 
 from .factory import QuanterFactory
@@ -32,7 +32,7 @@ DEFAULT_QAT_LAYER_MAPPINGS: Dict[Layer, Layer] = {
 DEFAULT_LEAVES = [nn.ReLU, nn.AvgPool2D]
 
 
-class SingleLayerConfig(object):
+class SingleLayerConfig:
     r"""
     Configure how to quantize the activations and weights of a single layer.
 
@@ -57,7 +57,7 @@ class SingleLayerConfig(object):
         return f"activation: {self._activation}\nweight: {self._weight}"
 
 
-class QuantConfig(object):
+class QuantConfig:
     r"""
     Configure how to quantize a model or a part of the model. It will map each layer to
     an instance of SingleLayerConfig by the settings. It provides diverse methods to set
@@ -68,14 +68,17 @@ class QuantConfig(object):
         weight(QuanterFactory): The global quantizer used to quantize the weights.
 
     Examples:
-       .. code-block:: python
+        .. code-block:: python
 
-          from paddle.quantization import QuantConfig
-          from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+            >>> from paddle.quantization import QuantConfig
+            >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
 
-          quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
-          q_config = QuantConfig(activation=quanter, weight=quanter)
-          print(q_config)
+            >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
+            >>> q_config = QuantConfig(activation=quanter, weight=quanter)
+            >>> print(q_config)
+            Global config:
+            activation: FakeQuanterWithAbsMaxObserver(name=None,moving_rate=0.9,bit_length=8,dtype=float32)
+            weight: FakeQuanterWithAbsMaxObserver(name=None,moving_rate=0.9,bit_length=8,dtype=float32)
 
     """
 
@@ -89,6 +92,7 @@ class QuantConfig(object):
         self._type2config = {}
         self._model = None
         self._qat_layer_mapping = copy.deepcopy(DEFAULT_QAT_LAYER_MAPPINGS)
+        self._customized_qat_layer_mapping = {}
 
         self._customized_leaves = []
 
@@ -99,31 +103,36 @@ class QuantConfig(object):
         weight: QuanterFactory = None,
     ):
         r"""
-         Set the quantization config by layer. It has the highest priority among
-         all the setting methods.
+        Set the quantization config by layer. It has the highest priority among
+        all the setting methods.
 
-         Args:
-             layer(Union[Layer, list]): One or a list of layers.
-             activation(QuanterFactory): Quanter used for activations.
-             weight(QuanterFactory): Quanter used for weights.
+        Args:
+            layer(Union[Layer, list]): One or a list of layers.
+            activation(QuanterFactory): Quanter used for activations.
+            weight(QuanterFactory): Quanter used for weights.
 
-         Examples:
-        .. code-block:: python
+        Examples:
+            .. code-block:: python
 
-             import paddle
-             from paddle.nn import Linear
-             from paddle.quantization import QuantConfig
-             from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+                >>> import paddle
+                >>> from paddle.nn import Linear
+                >>> from paddle.quantization import QuantConfig
+                >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
 
-             class Model(paddle.nn.Layer):
-                 def __init__(self):
-                     super(Model, self).__init__()
-                     self.fc = Linear(576, 120)
-             model = Model()
-             quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
-             q_config = QuantConfig(activation=None, weight=None)
-             q_config.add_layer_config([model.fc], activation=quanter, weight=quanter)
-             print(q_config)
+                >>> class Model(paddle.nn.Layer):
+                ...    def __init__(self):
+                ...        super().__init__()
+                ...        self.fc = Linear(576, 120)
+                >>> model = Model()
+                >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
+                >>> q_config = QuantConfig(activation=None, weight=None)
+                >>> q_config.add_layer_config([model.fc], activation=quanter, weight=quanter)
+                >>> # doctest: +SKIP('random memory address')
+                >>> print(q_config)
+                Global config:
+                None
+                Layer prefix config:
+                {'linear_0': <paddle.quantization.config.SingleLayerConfig object at 0x7fe41a680ee0>}
 
         """
         if isinstance(layer, list):
@@ -143,31 +152,36 @@ class QuantConfig(object):
         weight: QuanterFactory = None,
     ):
         r"""
-         Set the quantization config by full name of layer. Its priority is
-         lower than `add_layer_config`.
+        Set the quantization config by full name of layer. Its priority is
+        lower than `add_layer_config`.
 
-         Args:
-             layer_name(Union[str, list]): One or a list of layers' full name.
-             activation(QuanterFactory): Quanter used for activations.
-             weight(QuanterFactory): Quanter used for weights.
+        Args:
+            layer_name(Union[str, list]): One or a list of layers' full name.
+            activation(QuanterFactory): Quanter used for activations.
+            weight(QuanterFactory): Quanter used for weights.
 
-         Examples:
-        .. code-block:: python
+        Examples:
+            .. code-block:: python
 
-             import paddle
-             from paddle.nn import Linear
-             from paddle.quantization import QuantConfig
-             from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+                >>> import paddle
+                >>> from paddle.nn import Linear
+                >>> from paddle.quantization import QuantConfig
+                >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
 
-             class Model(paddle.nn.Layer):
-                 def __init__(self):
-                     super(Model, self).__init__()
-                     self.fc = Linear(576, 120)
-             model = Model()
-             quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
-             q_config = QuantConfig(activation=None, weight=None)
-             q_config.add_name_config([model.fc.full_name()], activation=quanter, weight=quanter)
-             print(q_config)
+                >>> class Model(paddle.nn.Layer):
+                ...     def __init__(self):
+                ...         super().__init__()
+                ...         self.fc = Linear(576, 120)
+                >>> model = Model()
+                >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
+                >>> q_config = QuantConfig(activation=None, weight=None)
+                >>> q_config.add_name_config([model.fc.full_name()], activation=quanter, weight=quanter)
+                >>> # doctest: +SKIP('random memory address')
+                >>> print(q_config)
+                Global config:
+                None
+                Layer prefix config:
+                {'linear_0': <paddle.quantization.config.SingleLayerConfig object at 0x7fe41a680fd0>}
 
         """
         if isinstance(layer_name, str):
@@ -197,22 +211,27 @@ class QuantConfig(object):
             weight(QuanterFactory): Quanter used for weights.
 
         Examples:
-        .. code-block:: python
+            .. code-block:: python
 
-            import paddle
-            from paddle.nn import Linear
-            from paddle.quantization import QuantConfig
-            from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+                >>> import paddle
+                >>> from paddle.nn import Linear
+                >>> from paddle.quantization import QuantConfig
+                >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
 
-            class Model(paddle.nn.Layer):
-                def __init__(self):
-                    super(Model, self).__init__()
-                    self.fc = Linear(576, 120)
-            model = Model()
-            quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
-            q_config = QuantConfig(activation=None, weight=None)
-            q_config.add_type_config([Linear], activation=quanter, weight=quanter)
-            print(q_config)
+                >>> class Model(paddle.nn.Layer):
+                ...     def __init__(self):
+                ...         super().__init__()
+                ...         self.fc = Linear(576, 120)
+                >>> model = Model()
+                >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
+                >>> q_config = QuantConfig(activation=None, weight=None)
+                >>> q_config.add_type_config([Linear], activation=quanter, weight=quanter)
+                >>> # doctest: +SKIP('random memory address')
+                >>> print(q_config)
+                Global config:
+                None
+                Layer type config:
+                {<class 'paddle.nn.layer.common.Linear'>: <paddle.quantization.config.SingleLayerConfig object at 0x7fe41a680a60>}
 
         """
         if isinstance(layer_type, type) and issubclass(
@@ -239,18 +258,18 @@ class QuantConfig(object):
             target(type): The type of layers that will be converted to.
 
         Examples:
-        .. code-block:: python
+            .. code-block:: python
 
-            from paddle.nn import Conv2D
-            from paddle.quantization import QuantConfig
-            from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
-            quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
-            q_config = QuantConfig(activation=None, weight=None)
-            class CustomizedQuantedConv2D:
-                def forward(self, x):
-                    pass
-                    # add some code for quantization simulation
-            q_config.add_qat_layer_mapping(Conv2D, CustomizedQuantedConv2D)
+                >>> from paddle.nn import Conv2D
+                >>> from paddle.quantization import QuantConfig
+                >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+                >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
+                >>> q_config = QuantConfig(activation=None, weight=None)
+                >>> class CustomizedQuantedConv2D:
+                ...     def forward(self, x):
+                ...         pass
+                ...         # add some code for quantization simulation
+                >>> q_config.add_qat_layer_mapping(Conv2D, CustomizedQuantedConv2D)
         """
         assert isinstance(source, type) and issubclass(
             source, paddle.nn.Layer
@@ -259,6 +278,7 @@ class QuantConfig(object):
             source, paddle.nn.Layer
         ), "The target layer should be a subclass of paddle.nn.qat.Layer"
         self._qat_layer_mapping[source] = target
+        self._customized_qat_layer_mapping[source] = target
 
     def add_customized_leaf(self, layer_type: type):
         r"""
@@ -270,13 +290,13 @@ class QuantConfig(object):
             layer_type(type): The type of layer to be declared as leaf.
 
         Examples:
-        .. code-block:: python
+            .. code-block:: python
 
-            from paddle.nn import Sequential
-            from paddle.quantization import QuantConfig
-            from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
-            q_config = QuantConfig(activation=None, weight=None)
-            q_config.add_customized_leaf(Sequential)
+                >>> from paddle.nn import Sequential
+                >>> from paddle.quantization import QuantConfig
+                >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+                >>> q_config = QuantConfig(activation=None, weight=None)
+                >>> q_config.add_customized_leaf(Sequential)
 
         """
         self._customized_leaves.append(layer_type)
@@ -296,7 +316,11 @@ class QuantConfig(object):
 
     def _get_qat_layer(self, layer: Layer):
         q_config = self._get_config_by_layer(layer)
-        return self.qat_layer_mappings[type(layer)](layer, q_config)
+
+        target_type = self._customized_qat_layer_mapping.get(
+            type(layer), self.qat_layer_mappings.get(type(layer))
+        )
+        return target_type(layer, q_config)
 
     def _has_observer_config(self, layer: Layer):
         r"""
@@ -373,22 +397,22 @@ class QuantConfig(object):
             model(Layer): The model to be specified by the config.
 
         Examples:
-        .. code-block:: python
+            .. code-block:: python
 
-            import paddle
-            from paddle.nn import Linear, Sequential
-            from paddle.quantization import QuantConfig
-            from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+                >>> import paddle
+                >>> from paddle.nn import Linear, Sequential
+                >>> from paddle.quantization import QuantConfig
+                >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
 
-            class Model(paddle.nn.Layer):
-                def __init__(self):
-                    super(Model, self).__init__()
-                    self.fc = Sequential(Linear(576, 120),Linear(576, 120))
-            model = Model()
-            quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
-            q_config = QuantConfig(activation=None, weight=None)
-            q_config.add_layer_config([model.fc], activation=quanter, weight=quanter)
-            q_config._specify(model)
+                >>> class Model(paddle.nn.Layer):
+                ...     def __init__(self):
+                ...         super().__init__()
+                ...         self.fc = Sequential(Linear(576, 120),Linear(576, 120))
+                >>> model = Model()
+                >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
+                >>> q_config = QuantConfig(activation=None, weight=None)
+                >>> q_config.add_layer_config([model.fc], activation=quanter, weight=quanter)
+                >>> q_config._specify(model)
         """
         self._model = model
         self._specify_helper(self._model)
@@ -397,6 +421,7 @@ class QuantConfig(object):
         for child in model.children():
             layer_prefix = child.full_name()
             config = self._layer2config.get(model, self.global_config)
+
             config = self._type2config.get(type(child), config)
             config = self._prefix2config.get(layer_prefix, config)
             if config is not None:
@@ -413,26 +438,21 @@ class QuantConfig(object):
         return self._details_helper(self._model)
 
     def _details_helper(self, layer: Layer):
-        extra_lines = []
         sublayer_lines = []
         for name, sublayer in layer.named_children():
             sublayer_str = self._details_helper(sublayer)
             sublayer_str = self._addindent(sublayer_str, 2)
-            sublayer_lines.append(
-                '('
-                + name
-                + '): '
-                + sublayer_str
-                + ', '
-                + str(self._layer2config[sublayer])
-            )
+            if sublayer in self._layer2config:
+                sublayer_lines.append(
+                    '('
+                    + name
+                    + '): '
+                    + sublayer_str
+                    + ', '
+                    + str(self._layer2config[sublayer])
+                )
 
         final_str = layer.__class__.__name__ + '('
-        if extra_lines:
-            if len(extra_lines) > 1:
-                final_str += '\n  ' + '\n  '.join(extra_lines) + '\n'
-            elif len(extra_lines) == 1:
-                final_str += extra_lines[0]
         if sublayer_lines:
             final_str += '\n  ' + '\n  '.join(sublayer_lines) + '\n'
 

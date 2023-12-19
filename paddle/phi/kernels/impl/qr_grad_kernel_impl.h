@@ -38,7 +38,7 @@ static DenseTensor Fill(const Context& ctx,
                         std::vector<int> shape,
                         float fill_value) {
   DenseTensor ret;
-  ret.Resize(make_ddim(shape));
+  ret.Resize(common::make_ddim(shape));
   ctx.template Alloc<T>(&ret);
   funcs::SetConstant<Context, T>()(ctx, &ret, T(fill_value));
   return ret;
@@ -88,7 +88,7 @@ void QrGradKernel(const Context& ctx,
   auto m_gt_n_case = [](const Context& ctx,
                         const DenseTensor& dQ,
                         const DenseTensor& dR,
-                        const DenseTensor& A,
+                        const DenseTensor& A UNUSED,
                         const DenseTensor& Q,
                         const DenseTensor& R) -> DenseTensor {
     // Hai-Jun Liao, Jin-Guo Liu, Lei Wang, Tao Xiang (2019). Differentiable
@@ -101,7 +101,7 @@ void QrGradKernel(const Context& ctx,
       R_term =
           Matmul<T, Context>(ctx, R, TransposeLast2Dim<T, Context>(ctx, dR));
     } else {
-      R_term = Fill<T, Context>(ctx, phi::vectorize<int>(R.dims()), 0);
+      R_term = Fill<T, Context>(ctx, common::vectorize<int>(R.dims()), 0);
     }
 
     // dQ^H * Q
@@ -110,7 +110,7 @@ void QrGradKernel(const Context& ctx,
       Q_term =
           Matmul<T, Context>(ctx, TransposeLast2Dim<T, Context>(ctx, dQ), Q);
     } else {
-      Q_term = Fill<T, Context>(ctx, phi::vectorize<int>(R.dims()), 0);
+      Q_term = Fill<T, Context>(ctx, common::vectorize<int>(R.dims()), 0);
     }
 
     DenseTensor M_tmp1 = Subtract<T, Context>(ctx, R_term, Q_term);
@@ -149,23 +149,19 @@ void QrGradKernel(const Context& ctx,
     // Calculate dX and dY individually and concatenate them to get dA
     ctx.template Alloc<phi::dtype::Real<T>>(&dA);
 
-    auto Y = SliceKernel<T, Context>(
-        ctx, A, {A.dims().size() - 1}, {m}, {n}, {1}, {});
-    auto U = SliceKernel<T, Context>(
-        ctx, R, {R.dims().size() - 1}, {0}, {m}, {1}, {});
+    auto Y = Slice<T, Context>(ctx, A, {A.dims().size() - 1}, {m}, {n});
+    auto U = Slice<T, Context>(ctx, R, {R.dims().size() - 1}, {0}, {m});
     DenseTensor dY, dX, dV, dR_tmp, dQ_prime;
 
     if (dR.initialized()) {
-      dV = SliceKernel<T, Context>(
-          ctx, dR, {dR.dims().size() - 1}, {m}, {n}, {1}, {});
-      dR_tmp = SliceKernel<T, Context>(
-          ctx, dR, {dR.dims().size() - 1}, {0}, {m}, {1}, {});
+      dV = Slice<T, Context>(ctx, dR, {dR.dims().size() - 1}, {m}, {n});
+      dR_tmp = Slice<T, Context>(ctx, dR, {dR.dims().size() - 1}, {0}, {m});
       // Y * dV^H
       dQ_prime =
           Matmul<T, Context>(ctx, Y, TransposeLast2Dim<T, Context>(ctx, dV));
     } else {
-      dV = Fill<T, Context>(ctx, phi::vectorize<int>(Y.dims()), 0);
-      dQ_prime = Fill<T, Context>(ctx, phi::vectorize<int>(Q.dims()), 0);
+      dV = Fill<T, Context>(ctx, common::vectorize<int>(Y.dims()), 0);
+      dQ_prime = Fill<T, Context>(ctx, common::vectorize<int>(Q.dims()), 0);
     }
 
     if (dQ.initialized()) {

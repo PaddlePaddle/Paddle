@@ -1,1 +1,1 @@
-cc_library(activation_functions SRCS avx_functions.cc)
+collect_srcs(kernels_srcs SRCS avx_functions.cc)

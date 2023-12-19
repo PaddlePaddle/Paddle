@@ -23,10 +23,14 @@ limitations under the License. */
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/infermeta/backward.h"
 
-DECLARE_bool(use_mkldnn);
+PHI_DECLARE_bool(use_mkldnn);
 
 namespace paddle {
 namespace operators {
@@ -79,6 +83,22 @@ class ActivationGradOpMaker : public framework::SingleGradOpMaker<T> {
     }
   }
 };
+// class HardSwishCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
+//  public:
+//   using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+//  protected:
+//   void Apply() override {
+//     paddle::Tensor x = this->GetSingleForwardInput("X");
+//     paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
+//     paddle::Tensor dx = this->GetSingleInputGrad("X");
+//     auto* dx_ptr = this->GetOutputPtr(&dx);
+//     std::string dx_name = this->GetOutputName(dx);
+//     VLOG(6) << "Runing hardswish_grad composite func";
+//     prim::hardswish_grad<prim::DescTensor>(x, out_grad, dx_ptr);
+//     this->RecoverOutputName(dx, dx_name);
+//   }
+// };
 
 phi::KernelKey GetKernelType(const framework::ExecutionContext& ctx,
                              const framework::OperatorWithKernel& oper,
@@ -156,62 +176,6 @@ $$out = \ln(1 + \exp(\max(\min(x, threshold), -threshold)))$$
   }
 };
 
-class Relu6OpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X",
-             "Input of relu6 operator, an N-D Tensor, "
-             "with data type float32, float64.");
-    AddOutput(
-        "Out",
-        "Output of relu6 operator, a Tensor with the same shape as input.");
-    AddAttr<float>("threshold",
-                   "The threshold value of Relu6. Default is 6.0. ")
-        .SetDefault(6.0f);
-    AddComment(R"DOC(
-Relu6 Activation Operator.
-
-$$out = \min(\max(0, x), threshold)$$
-
-)DOC");
-  }
-};
-
-class STanhOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X",
-             "Input of STanh operator."
-             " A Tensor with type float32, float64.");
-    AddOutput("Out", "Output of STanh operator. A Tensor with type float32.");
-    AddAttr<float>("scale_a", "The scale parameter of a for the input. ")
-        .SetDefault(0.67f);
-    AddAttr<float>("scale_b", "The scale parameter of b for the input")
-        .SetDefault(1.7159f);
-    AddComment(R"DOC(
-STanh Activation Operator.
-
-$$out = b * \\frac{e^{a * x} - e^{-a * x}}{e^{a * x} + e^{-a * x}}$$
-
-)DOC");
-  }
-};
-
-class SwishOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X", "Input of Swish operator");
-    AddOutput("Out", "Output of Swish operator");
-    AddAttr<float>("beta", "Constant beta of swish operator").SetDefault(1.0f);
-    AddComment(R"DOC(
-Swish Activation Operator.
-
-$$out = \\frac{x}{1 + e^{- \beta \ x}}$$
-
-)DOC");
-  }
-};
-
 class MishOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -233,32 +197,6 @@ Mish Activation Operator.
           \end{cases}
 
     out = x * \tanh(softplus(x))
-
-)DOC");
-  }
-};
-
-class HardSwishOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X", "Input of HardSwish operator");
-    AddOutput("Out", "Output of HardSwish operator");
-    AddAttr<float>("threshold", "The threshold parameter of HardSwish operator")
-        .SetDefault(6.0f);
-    AddAttr<float>("scale", "The scale parameter of HardSwish operator")
-        .SetDefault(6.0f);
-    AddAttr<float>("offset", "The offset parameter of HardSwish operator")
-        .SetDefault(3.0f);
-    AddComment(R"DOC(
-HardSwish Activation Operator.
-
-The hard version of swish(https://arxiv.org/pdf/1905.02244.pdf).
-
-$$out = \frac{x * (min(max(0, x+offset), threshold))}{scale}$$
-
-The threshold and scale should be positive. The offset can be either positive or negative.
-The default parameters are set according to the above reference.
-It is recommended to use the defaults for this activation.
 
 )DOC");
   }
@@ -384,11 +322,22 @@ DECLARE_INPLACE_OP_INFERER(ActivationTripleGradOpInplaceInferer,
                            {"DDX", "D_DOut"});
 
 DECLARE_INPLACE_OP_INFERER(ActFwdInplaceInferer, {"X", "Out"});
+
+#define DEFINE_ACTIVATION_CPU_KERNEL(op_name, functor, grad_functor)           \
+  template <typename T, typename DeviceContext>                                \
+  class op_name##Kernel : public ActivationKernel<DeviceContext, functor<T>> { \
+  };                                                                           \
+                                                                               \
+  template <typename T, typename DeviceContext>                                \
+  class op_name##GradKernel                                                    \
+      : public ActivationGradKernel<DeviceContext, grad_functor<T>> {};
+
+DEFINE_ACTIVATION_CPU_KERNEL(SoftRelu, SoftReluFunctor, SoftReluGradFunctor)
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 #define REGISTER_ACTIVATION_OP(KERNEL_TYPE, OP_NAME, functor, grad_functor) \
   REGISTER_OPERATOR(                                                        \
@@ -407,28 +356,40 @@ namespace plat = paddle::platform;
                     ops::ActivationOpGrad,                                  \
                     ops::ActivationGradOpInplaceInferer);
 
-#define REGISTER_ACTIVATION_CPU_KERNEL(                                     \
-    act_type, op_name, functor, grad_functor)                               \
-  REGISTER_OP_CPU_KERNEL(                                                   \
-      act_type,                                                             \
-      ops::ActivationKernel<phi::CPUContext, ops::functor<float>>,          \
-      ops::ActivationKernel<phi::CPUContext, ops::functor<double>>);        \
-  REGISTER_OP_CPU_KERNEL(                                                   \
-      act_type##_grad,                                                      \
-      ops::ActivationGradKernel<phi::CPUContext, ops::grad_functor<float>>, \
-      ops::ActivationGradKernel<phi::CPUContext, ops::grad_functor<double>>);
+#define REGISTER_ACTIVATION_OP_WITH_COMP(                              \
+    KERNEL_TYPE, OP_NAME, functor, grad_functor)                       \
+  REGISTER_OPERATOR(                                                   \
+      KERNEL_TYPE,                                                     \
+      ops::ActivationOp,                                               \
+      ops::OP_NAME##OpMaker,                                           \
+      ops::ActivationOpInferVarType,                                   \
+      ops::ActivationGradOpMaker<ops::grad_functor<float>::FwdDeps(),  \
+                                 paddle::framework::OpDesc>,           \
+      ops::ActivationGradOpMaker<ops::grad_functor<float>::FwdDeps(),  \
+                                 paddle::imperative::OpBase>,          \
+      ops::OP_NAME##CompositeGradOpMaker,                              \
+      std::conditional<ops::CanInplaceAct<ops::grad_functor<float>>(), \
+                       ops::ActFwdInplaceInferer,                      \
+                       void>::type);                                   \
+  REGISTER_OPERATOR(KERNEL_TYPE##_grad,                                \
+                    ops::ActivationOpGrad,                             \
+                    ops::ActivationGradOpInplaceInferer);
 
 FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_OP);
-FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_CPU_KERNEL);
 
-REGISTER_ACTIVATION_OP(relu6, Relu6, Relu6Functor, Relu6GradFunctor);
+#define REGISTER_ACTIVATION_CPU_KERNEL(act_type, op_name)                \
+  PD_REGISTER_STRUCT_KERNEL(                                             \
+      act_type, CPU, ALL_LAYOUT, ops::op_name##Kernel, float, double) {} \
+  PD_REGISTER_STRUCT_KERNEL(act_type##_grad,                             \
+                            CPU,                                         \
+                            ALL_LAYOUT,                                  \
+                            ops::op_name##GradKernel,                    \
+                            float,                                       \
+                            double) {}
+
+REGISTER_ACTIVATION_CPU_KERNEL(soft_relu, SoftRelu)
+
 REGISTER_ACTIVATION_OP(mish, Mish, MishFunctor, MishGradFunctor);
-REGISTER_ACTIVATION_OP(stanh, STanh, STanhFunctor, STanhGradFunctor);
-REGISTER_ACTIVATION_OP(hard_swish,
-                       HardSwish,
-                       HardSwishFunctor,
-                       HardSwishGradFunctor);
-REGISTER_ACTIVATION_OP(swish, Swish, SwishFunctor, SwishGradFunctor);
 
 /* ==========================  register checkpoint ===========================*/
 REGISTER_OP_VERSION(leaky_relu)
@@ -456,12 +417,5 @@ REGISTER_OP_VERSION(softplus).AddCheckpoint(
     paddle::framework::compatible::OpVersionDesc()
         .NewAttr("beta", "The beta value of the new formula", 1.0f)
         .NewAttr("threshold", "The threshold value of the new formula", 20.0f));
-
-REGISTER_OP_VERSION(mish).AddCheckpoint(
-    R"ROC(add new attributes [use_mkldnn], and when computing softplus the formula is changed as the new veriosn of softplus)ROC",
-    paddle::framework::compatible::OpVersionDesc().NewAttr(
-        "use_mkldnn",
-        "(bool, default false) Only used in mkldnn kernel",
-        false));
 
 /* ========================================================================== */

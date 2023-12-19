@@ -40,7 +40,7 @@ struct DequantizeFunctor<phi::CPUContext, T> {
     const float* dict_data = dict->data<float>();
     const T* input_data = in->data<T>();
     float* output_data = out->mutable_data<float>(dev_ctx.GetPlace());
-    int ind = in->numel();
+    int ind = static_cast<int>(in->numel());
     for (size_t i = 0; i < (unsigned)ind; i++) {
       if (input_data[i] < 0) {
         output_data[i] = -dict_data[input_data[i] + 128];
@@ -107,7 +107,6 @@ This calculation is an opposite operation of QuantizeLogOp:
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = phi::CPUContext;
 
 REGISTER_OPERATOR(
     dequantize_log,
@@ -115,4 +114,6 @@ REGISTER_OPERATOR(
     ops::DequantizeLogOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(dequantize_log, ops::DequantizeLogKernel<CPU, int8_t>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    dequantize_log, CPU, ALL_LAYOUT, ops::DequantizeLogKernel, int8_t) {}

@@ -29,7 +29,7 @@ void TakeAlongAxisKernel(const Context& dev_ctx,
                          int axis,
                          DenseTensor* out) {
   PADDLE_ENFORCE_EQ(
-      paddle::platform::is_cpu_place(dev_ctx.GetPlace()),
+      dev_ctx.GetPlace().GetType() == phi::AllocationType::CPU,
       true,
       errors::PreconditionNotMet("This kernel only runs on CPU."));
 
@@ -38,9 +38,11 @@ void TakeAlongAxisKernel(const Context& dev_ctx,
 
   const auto& index_type = index.dtype();
   if (index_type == DataType::INT32) {
-    phi::funcs::cpu_gather_kernel<T, int32_t>(x, axis, index, *out, dev_ctx);
+    phi::funcs::cpu_gather_kernel<T, int32_t>(
+        x, axis, index, *out, true, dev_ctx);
   } else if (index_type == DataType::INT64) {
-    phi::funcs::cpu_gather_kernel<T, int64_t>(x, axis, index, *out, dev_ctx);
+    phi::funcs::cpu_gather_kernel<T, int64_t>(
+        x, axis, index, *out, true, dev_ctx);
   }
 }
 

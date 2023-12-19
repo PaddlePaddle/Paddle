@@ -20,8 +20,8 @@
 #include <algorithm>
 #include <vector>
 
-#include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/abs_kernel.h"
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
@@ -92,7 +92,7 @@ void GesvdjBatched<float>(const phi::GPUContext& dev_ctx,
                                             ldt,
                                             &lwork,
                                             gesvdj_params));
-  auto workspace = paddle::memory::Alloc(
+  auto workspace = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       lwork * sizeof(float),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
@@ -118,12 +118,12 @@ void GesvdjBatched<float>(const phi::GPUContext& dev_ctx,
                                                           info,
                                                           gesvdj_params));
     int error_info;
-    paddle::memory::Copy(phi::CPUPlace(),
-                         &error_info,
-                         dev_ctx.GetPlace(),
-                         info,
-                         sizeof(int),
-                         dev_ctx.stream());
+    memory_utils::Copy(phi::CPUPlace(),
+                       &error_info,
+                       dev_ctx.GetPlace(),
+                       info,
+                       sizeof(int),
+                       dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         error_info,
         0,
@@ -171,7 +171,7 @@ void GesvdjBatched<double>(const phi::GPUContext& dev_ctx,
                                             ldt,
                                             &lwork,
                                             gesvdj_params));
-  auto workspace = paddle::memory::Alloc(
+  auto workspace = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       lwork * sizeof(double),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
@@ -198,12 +198,12 @@ void GesvdjBatched<double>(const phi::GPUContext& dev_ctx,
                                                           gesvdj_params));
     // check the error info
     int error_info;
-    paddle::memory::Copy(phi::CPUPlace(),
-                         &error_info,
-                         dev_ctx.GetPlace(),
-                         info,
-                         sizeof(int),
-                         dev_ctx.stream());
+    memory_utils::Copy(phi::CPUPlace(),
+                       &error_info,
+                       dev_ctx.GetPlace(),
+                       info,
+                       sizeof(int),
+                       dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         error_info,
         0,
@@ -235,7 +235,7 @@ void SyevjBatched<float>(const phi::GPUContext& dev_ctx,
   PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnCreateSyevjInfo(&params));
   PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnSsyevj_bufferSize(
       handle, jobz, uplo, n, A, lda, W, &lwork, params));
-  auto workspace = paddle::memory::Alloc(
+  auto workspace = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       lwork * sizeof(float),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
@@ -254,12 +254,12 @@ void SyevjBatched<float>(const phi::GPUContext& dev_ctx,
                                                          params));
 
     int error_info;
-    paddle::memory::Copy(phi::CPUPlace(),
-                         &error_info,
-                         dev_ctx.GetPlace(),
-                         info,
-                         sizeof(int),
-                         dev_ctx.stream());
+    memory_utils::Copy(phi::CPUPlace(),
+                       &error_info,
+                       dev_ctx.GetPlace(),
+                       info,
+                       sizeof(int),
+                       dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         error_info,
         0,
@@ -290,7 +290,7 @@ void SyevjBatched<double>(const phi::GPUContext& dev_ctx,
   PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnCreateSyevjInfo(&params));
   PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnDsyevj_bufferSize(
       handle, jobz, uplo, n, A, lda, W, &lwork, params));
-  auto workspace = paddle::memory::Alloc(
+  auto workspace = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       lwork * sizeof(double),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
@@ -309,12 +309,12 @@ void SyevjBatched<double>(const phi::GPUContext& dev_ctx,
                                                          info,
                                                          params));
     int error_info;
-    paddle::memory::Copy(phi::CPUPlace(),
-                         &error_info,
-                         dev_ctx.GetPlace(),
-                         info,
-                         sizeof(int),
-                         dev_ctx.stream());
+    memory_utils::Copy(phi::CPUPlace(),
+                       &error_info,
+                       dev_ctx.GetPlace(),
+                       info,
+                       sizeof(int),
+                       dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         error_info,
         0,
@@ -340,6 +340,18 @@ void MatrixRankTolKernel(const Context& dev_ctx,
   auto dim_out = out->dims();
   int rows = dim_x[dim_x.size() - 2];
   int cols = dim_x[dim_x.size() - 1];
+  PADDLE_ENFORCE_NE(
+      rows,
+      0,
+      phi::errors::InvalidArgument("The input Tensor x's shape[-2] should not "
+                                   "be 0, but shape is %s now.",
+                                   dim_x));
+  PADDLE_ENFORCE_NE(
+      cols,
+      0,
+      phi::errors::InvalidArgument("The input Tensor x's shape[-1] should not "
+                                   "be 0, but shape is %s now.",
+                                   dim_x));
   int k = std::min(rows, cols);
   auto numel = x.numel();
   int batches = numel / (rows * cols);
@@ -352,7 +364,7 @@ void MatrixRankTolKernel(const Context& dev_ctx,
   // Must Copy X once, because the gesvdj will destory the content when exit.
   DenseTensor x_tmp;
   phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, &x_tmp);
-  auto info = paddle::memory::Alloc(
+  auto info = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       sizeof(int) * batches,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
@@ -407,11 +419,10 @@ void MatrixRankTolKernel(const Context& dev_ctx,
   tol_tensor.Resize(dim_out);
   dev_ctx.template Alloc<T>(&tol_tensor);
 
-  funcs::ElementwiseCompute<GreaterElementFunctor<T>, T, T>(
+  funcs::ElementwiseCompute<GreaterElementFunctor<T>, T>(
       dev_ctx,
       atol_tensor,
       rtol_tensor,
-      -1,
       GreaterElementFunctor<T>(),
       &tol_tensor);
 
@@ -421,12 +432,10 @@ void MatrixRankTolKernel(const Context& dev_ctx,
   compare_result.Resize(detail::NewAxisDim(dim_out, k));
   dev_ctx.template Alloc<int64_t>(&compare_result);
 
-  int axis = -1;
   funcs::ElementwiseCompute<funcs::GreaterThanFunctor<T, int64_t>, T, int64_t>(
       dev_ctx,
       eigenvalue_tensor,
       tol_tensor,
-      axis,
       funcs::GreaterThanFunctor<T, int64_t>(),
       &compare_result);
 
@@ -445,6 +454,8 @@ PD_REGISTER_KERNEL(matrix_rank_tol,  // cuda_only
                    ALL_LAYOUT,
                    phi::MatrixRankTolKernel,
                    float,
-                   double) {}
+                   double) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::INT64);
+}
 
 #endif  // not PADDLE_WITH_HIP

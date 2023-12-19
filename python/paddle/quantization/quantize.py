@@ -25,7 +25,7 @@ from .base_quanter import BaseQuanter
 from .config import QuantConfig
 
 
-class Quantization(object, metaclass=abc.ABCMeta):
+class Quantization(metaclass=abc.ABCMeta):
     r"""
     Abstract class used to prepares a copy of the model for quantization calibration or quantization-aware training.
     Args:
@@ -40,41 +40,45 @@ class Quantization(object, metaclass=abc.ABCMeta):
         r"""Create a model for quantization-aware training or post-training quantization."""
         pass
 
-    def convert(self, model: Layer, inplace=False):
-        r"""Convert the quantization model to onnx style. And the converted
+    def convert(self, model: Layer, inplace=False, remain_weight=False):
+        r"""Convert the quantization model to ONNX style. And the converted
         model can be saved as inference model by calling paddle.jit.save.
         Args:
-            model(Layer) - The quantized model to be covnerted.
-            inplace(bool) - Whether to modify the model in-place.
+            model(Layer) - The quantized model to be converted.
+            inplace(bool, optional) - Whether to modify the model in-place, default is False.
+            remain_weight(bool, optional) - Whether to remain weights in floats, default is False.
 
         Return: The converted model
 
         Examples:
-        .. code-block:: python
-            import paddle
-            from paddle.quantization import QAT, QuantConfig
-            from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
-            from paddle.vision.models import LeNet
+            .. code-block:: python
 
-            quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
-            q_config = QuantConfig(activation=quanter, weight=quanter)
-            qat = QAT(q_config)
-            model = LeNet()
-            quantized_model = qat.quantize(model)
-            converted_model = qat.convert(quantized_model)
-            dummy_data = paddle.rand([1, 1, 32, 32], dtype="float32")
-            paddle.jit.save(converted_model, "./quant_deploy", [dummy_data])
+                >>> import paddle
+                >>> from paddle.quantization import QAT, QuantConfig
+                >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+                >>> from paddle.vision.models import LeNet
+
+                >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
+                >>> q_config = QuantConfig(activation=quanter, weight=quanter)
+                >>> qat = QAT(q_config)
+                >>> model = LeNet()
+                >>> quantized_model = qat.quantize(model)
+                >>> converted_model = qat.convert(quantized_model)
+                >>> dummy_data = paddle.rand([1, 1, 32, 32], dtype="float32")
+                >>> paddle.jit.save(converted_model, "./quant_deploy", [dummy_data])
         """
         _model = model if inplace else copy.deepcopy(model)
         replaced = {}
         for name, child in _model.named_children():
             quant_dequant = None
             if isinstance(child, ConvertibleQuantedLayer):
-                child._convert()
+                if child.weight_quanter.scales() is None:
+                    continue
+                child._convert(remain_weight=remain_weight)
             elif isinstance(child, BaseQuanter):
                 quant_dequant = LinearQuanterDequanter.from_quanter(child)
             else:
-                self.convert(child, inplace=True)
+                self.convert(child, inplace=True, remain_weight=remain_weight)
             if quant_dequant is not None:
                 replaced[name] = quant_dequant
         for key, value in replaced.items():
@@ -84,11 +88,13 @@ class Quantization(object, metaclass=abc.ABCMeta):
     def _convert_to_quant_layers(self, model: Layer, config: QuantConfig):
         replaced = {}
         for name, child in model.named_children():
-            if config._is_quantifiable(child):
-                if type(child) not in config.qat_layer_mappings:
-                    self._convert_to_quant_layers(child, config)
-                else:
-                    replaced[name] = config._get_qat_layer(child)
+            if (
+                config._is_quantifiable(child)
+                and type(child) in config.qat_layer_mappings
+            ):
+                replaced[name] = config._get_qat_layer(child)
+            else:
+                self._convert_to_quant_layers(child, config)
         for key, value in replaced.items():
             model._sub_layers[key] = value
 

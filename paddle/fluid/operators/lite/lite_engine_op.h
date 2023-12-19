@@ -63,6 +63,10 @@ class LiteEngineOp : public framework::OperatorBase {
     zero_copy_ = Attr<bool>("zero_copy");
   }
 
+  void SetEngine(paddle::lite_api::PaddlePredictor *engine) {
+    engine_ = engine;
+  }
+
  protected:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
@@ -82,12 +86,6 @@ class LiteEngineOp : public framework::OperatorBase {
               << engine_->GetInputNames()[i] << ")";
       inference::lite::utils::TensorCopy(&dst_t, &src_t, *ctx, zero_copy_);
     }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (platform::is_gpu_place(dev_place)) {
-      platform::GpuStreamSync(
-          static_cast<const phi::GPUContext *>(ctx)->stream());
-    }
-#endif
     VLOG(3) << "lite engine run";
     engine_->Run();
     VLOG(3) << "lite engine run done";
@@ -100,12 +98,6 @@ class LiteEngineOp : public framework::OperatorBase {
               << engine_->GetOutputNames()[i] << ")";
       inference::lite::utils::TensorCopy(dst_t, &src_t, *ctx, zero_copy_);
     }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (platform::is_gpu_place(dev_place)) {
-      platform::GpuStreamSync(
-          static_cast<const phi::GPUContext *>(ctx)->stream());
-    }
-#endif
   }
 };
 

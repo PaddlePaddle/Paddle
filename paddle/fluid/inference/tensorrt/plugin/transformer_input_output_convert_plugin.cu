@@ -12,8 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/inference/tensorrt/plugin/transformer_input_output_convert_plugin.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/common/memory_utils.h"
+
 #include "cub/cub.cuh"
+#include "paddle/fluid/inference/tensorrt/plugin/transformer_input_output_convert_plugin.h"
 
 namespace paddle {
 namespace inference {
@@ -178,16 +182,15 @@ int TransformerInputConvertPlugin::enqueue(
   const int32_t HiddenSize = input0_desc.dims.d[2];  // hidden size
 
   // Determine temporary device storage requirements
-  void* d_temp_storage = NULL;
   size_t temp_storage_bytes = 0;
   cub::DeviceScan::ExclusiveSum(
-      d_temp_storage, temp_storage_bytes, input1, output2, B + 1);
+      NULL, temp_storage_bytes, input1, output2, B + 1);
   // Allocate temporary storage
-  cudaMalloc(&d_temp_storage, temp_storage_bytes);
-
+  platform::CUDAPlace place(platform::GetCurrentDeviceId());
+  auto d_temp_storage = phi::memory_utils::Alloc(place, temp_storage_bytes);
   // Run exclusive prefix sum
   cub::DeviceScan::ExclusiveSum(
-      d_temp_storage, temp_storage_bytes, input1, output2, B + 1);
+      d_temp_storage->ptr(), temp_storage_bytes, input1, output2, B + 1);
   const int32_t vector_length = HiddenSize;
   int32_t num_threads;
   if (vector_length < 1024) {

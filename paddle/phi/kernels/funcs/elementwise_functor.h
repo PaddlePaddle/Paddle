@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/common/macros.h"
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"
@@ -23,6 +25,8 @@ limitations under the License. */
 
 #include "xpu/kernel/math_xpu2.h"  // pow()
 #endif
+#include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/type_safe_sign_math.h"
 
 namespace phi {
 namespace funcs {
@@ -36,8 +40,29 @@ struct AddFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const { return a + b; }
 };
 template <typename T>
-struct InverseAddFunctor {
-  inline HOSTDEVICE T operator()(const T a, const T b) const { return b + a; }
+using InverseAddFunctor = AddFunctor<T>;
+
+template <typename T, typename Ty = T>
+struct MultiPrecisionAddFunctor {
+  inline HOSTDEVICE T operator()(const T x, const Ty y) const {
+    return x + static_cast<T>(y);
+  }
+};
+
+// Float32Bfloat16Add
+template <typename T>
+struct Float32Bfloat16AddFunctor {
+  inline HOSTDEVICE T operator()(const T x, const phi::bfloat16 y) {
+    return x + static_cast<T>(y);
+  }
+};
+
+// Float32Float16Add
+template <typename T>
+struct Float32Float16AddFunctor {
+  inline HOSTDEVICE T operator()(const T x, const phi::float16 y) {
+    return x + static_cast<T>(y);
+  }
 };
 
 // Subtract
@@ -62,15 +87,7 @@ struct MultiplyFunctor<bool> {
   }
 };
 template <typename T>
-struct InverseMultiplyFunctor {
-  inline HOSTDEVICE T operator()(const T a, const T b) const { return b * a; }
-};
-template <>
-struct InverseMultiplyFunctor<bool> {
-  inline HOSTDEVICE bool operator()(const bool a, const bool b) const {
-    return b && a;
-  }
-};
+using InverseMultiplyFunctor = MultiplyFunctor<T>;
 
 template <typename T>
 struct IsZeroFunctor {
@@ -115,7 +132,7 @@ struct DivGradXYFunctor {
     // dy = - dout * out / y
     phi::Array<OutT, 2> outs;
     outs[0] = a / c;
-    outs[1] = -a * b / c;
+    outs[1] = -a * ((b / c) / c);
     return outs;
   }
 };
@@ -128,7 +145,7 @@ struct DivGradXYFunctor<ComplexType<InT>, ComplexType<OutT>> {
       const ComplexType<InT> c) {
     phi::Array<ComplexType<OutT>, 2> outs;
     ComplexType<InT> c_conj(c.real, -c.imag);
-    ComplexType<InT> out_div_c_conj((b / c).real, -(b / c).imag);
+    ComplexType<InT> out_div_c_conj(((b / c) / c).real, -((b / c) / c).imag);
     outs[0] = a / c_conj;
     outs[1] = -a * out_div_c_conj;
     return outs;
@@ -155,7 +172,7 @@ struct DivGradXFunctor<ComplexType<T>> {
 template <typename T>
 struct DivGradYFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b, const T c) const {
-    return -a * b / c;
+    return -a * ((b / c) / c);
   }
 };
 
@@ -165,7 +182,7 @@ struct DivGradYFunctor<ComplexType<T>> {
   inline HOSTDEVICE ComplexType<T> operator()(const ComplexType<T> a,
                                               const ComplexType<T> b,
                                               const ComplexType<T> c) const {
-    ComplexType<T> out_div_c_conj((b / c).real, -(b / c).imag);
+    ComplexType<T> out_div_c_conj(((b / c) / c).real, -((b / c) / c).imag);
     return -a * out_div_c_conj;
   }
 };
@@ -185,6 +202,17 @@ struct FMinFunctor<dtype::float16> {
     float float_b = static_cast<float>(b);
     auto result = std::fmin(float_a, float_b);
     return static_cast<dtype::float16>(result);
+  }
+};
+
+template <>
+struct FMinFunctor<dtype::bfloat16> {
+  inline HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16 a,
+                                               const dtype::bfloat16 b) const {
+    float float_a = static_cast<float>(a);
+    float float_b = static_cast<float>(b);
+    auto result = std::fmin(float_a, float_b);
+    return static_cast<dtype::bfloat16>(result);
   }
 };
 
@@ -228,6 +256,17 @@ struct FMaxFunctor<dtype::float16> {
 };
 
 template <>
+struct FMaxFunctor<dtype::bfloat16> {
+  inline HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16 a,
+                                               const dtype::bfloat16 b) const {
+    float float_a = static_cast<float>(a);
+    float float_b = static_cast<float>(b);
+    auto result = std::fmax(float_a, float_b);
+    return static_cast<dtype::bfloat16>(result);
+  }
+};
+
+template <>
 struct FMaxFunctor<int> {
   inline HOSTDEVICE int operator()(const int a, const int b) const {
     float float_a = static_cast<float>(a);
@@ -249,7 +288,7 @@ struct FMaxFunctor<int64_t> {
 
 template <typename T>
 struct FMaxGradDx {
-  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+  HOSTDEVICE T operator()(T x, T y, T out UNUSED, T dout) const {
     return dout * static_cast<T>((x >= y) || isnan(y));
   }
 };
@@ -258,7 +297,7 @@ template <>
 struct FMaxGradDx<dtype::float16> {
   HOSTDEVICE dtype::float16 operator()(dtype::float16 x,
                                        dtype::float16 y,
-                                       dtype::float16 out,
+                                       dtype::float16 out UNUSED,
                                        dtype::float16 dout) const {
     return dout * static_cast<dtype::float16>((x >= y) || dtype::isnan(y));
   }
@@ -266,7 +305,7 @@ struct FMaxGradDx<dtype::float16> {
 
 template <>
 struct FMaxGradDx<int> {
-  HOSTDEVICE int operator()(int x, int y, int out, int dout) const {
+  HOSTDEVICE int operator()(int x, int y, int out UNUSED, int dout) const {
     return dout * static_cast<int>((x >= y));
   }
 };
@@ -275,7 +314,7 @@ template <>
 struct FMaxGradDx<int64_t> {
   HOSTDEVICE int64_t operator()(int64_t x,
                                 int64_t y,
-                                int64_t out,
+                                int64_t out UNUSED,
                                 int64_t dout) const {
     return dout * static_cast<int64_t>((x >= y));
   }
@@ -283,7 +322,7 @@ struct FMaxGradDx<int64_t> {
 
 template <typename T>
 struct FMaxGradDy {
-  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+  HOSTDEVICE T operator()(T x, T y, T out UNUSED, T dout) const {
     return dout * static_cast<T>(!((x >= y) || isnan(y)));
   }
 };
@@ -292,7 +331,7 @@ template <>
 struct FMaxGradDy<dtype::float16> {
   HOSTDEVICE dtype::float16 operator()(dtype::float16 x,
                                        dtype::float16 y,
-                                       dtype::float16 out,
+                                       dtype::float16 out UNUSED,
                                        dtype::float16 dout) const {
     return dout * static_cast<dtype::float16>(!((x >= y) || dtype::isnan(y)));
   }
@@ -302,7 +341,7 @@ template <>
 struct FMaxGradDy<int64_t> {
   HOSTDEVICE int64_t operator()(int64_t x,
                                 int64_t y,
-                                int64_t out,
+                                int64_t out UNUSED,
                                 int64_t dout) const {
     return dout * static_cast<int64_t>(!((x >= y)));
   }
@@ -310,14 +349,14 @@ struct FMaxGradDy<int64_t> {
 
 template <>
 struct FMaxGradDy<int> {
-  HOSTDEVICE int operator()(int x, int y, int out, int dout) const {
+  HOSTDEVICE int operator()(int x, int y, int out UNUSED, int dout) const {
     return dout * static_cast<int>(!((x >= y)));
   }
 };
 
 template <typename T>
 struct FMinGradDx {
-  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+  HOSTDEVICE T operator()(T x, T y, T out UNUSED, T dout) const {
     return dout * static_cast<T>((x <= y) || isnan(y));
   }
 };
@@ -326,7 +365,7 @@ template <>
 struct FMinGradDx<dtype::float16> {
   HOSTDEVICE dtype::float16 operator()(dtype::float16 x,
                                        dtype::float16 y,
-                                       dtype::float16 out,
+                                       dtype::float16 out UNUSED,
                                        dtype::float16 dout) const {
     return dout * static_cast<dtype::float16>((x <= y) || dtype::isnan(y));
   }
@@ -334,7 +373,7 @@ struct FMinGradDx<dtype::float16> {
 
 template <>
 struct FMinGradDx<int> {
-  HOSTDEVICE int operator()(int x, int y, int out, int dout) const {
+  HOSTDEVICE int operator()(int x, int y, int out UNUSED, int dout) const {
     return dout * static_cast<int>((x <= y));
   }
 };
@@ -343,7 +382,7 @@ template <>
 struct FMinGradDx<int64_t> {
   HOSTDEVICE int64_t operator()(int64_t x,
                                 int64_t y,
-                                int64_t out,
+                                int64_t out UNUSED,
                                 int64_t dout) const {
     return dout * static_cast<int64_t>((x <= y));
   }
@@ -351,7 +390,7 @@ struct FMinGradDx<int64_t> {
 
 template <typename T>
 struct FMinGradDy {
-  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+  HOSTDEVICE T operator()(T x, T y, T out UNUSED, T dout) const {
     return dout * static_cast<T>(!((x <= y) || isnan(y)));
   }
 };
@@ -360,7 +399,7 @@ template <>
 struct FMinGradDy<dtype::float16> {
   HOSTDEVICE dtype::float16 operator()(dtype::float16 x,
                                        dtype::float16 y,
-                                       dtype::float16 out,
+                                       dtype::float16 out UNUSED,
                                        dtype::float16 dout) const {
     return dout * static_cast<dtype::float16>(!((x <= y) || dtype::isnan(y)));
   }
@@ -368,7 +407,7 @@ struct FMinGradDy<dtype::float16> {
 
 template <>
 struct FMinGradDy<int> {
-  HOSTDEVICE int operator()(int x, int y, int out, int dout) const {
+  HOSTDEVICE int operator()(int x, int y, int out UNUSED, int dout) const {
     return dout * static_cast<int>(!((x <= y)));
   }
 };
@@ -377,7 +416,7 @@ template <>
 struct FMinGradDy<int64_t> {
   HOSTDEVICE int64_t operator()(int64_t x,
                                 int64_t y,
-                                int64_t out,
+                                int64_t out UNUSED,
                                 int64_t dout) const {
     return dout * static_cast<int64_t>(!((x <= y)));
   }
@@ -538,6 +577,20 @@ struct RemainderFunctor<dtype::float16> {
   }
 };
 
+template <>
+struct RemainderFunctor<dtype::bfloat16> {
+  inline HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16 a,
+                                               const dtype::bfloat16 b) const {
+    float b_float = static_cast<float>(b);
+    float res = fmod(static_cast<float>(a), b_float);
+
+    // Accoding to #PR26732: in dividen % divsor
+    // remainder shall have the same sign as divsor.
+    if ((res != 0.0f) && ((res < 0.0f) != (b_float < 0.0f))) res += b_float;
+    return static_cast<dtype::bfloat16>(res);
+  }
+};
+
 template <typename T, typename Enable = void>
 struct InverseRemainderFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
@@ -565,87 +618,280 @@ struct ElementwiseHeavisideFunctor {
   }
 };
 
-template <typename T>
+template <typename T, typename Enable = void>
 struct FloorDivideFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
 #ifndef PADDLE_WITH_XPU_KP
     PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
 #endif
+
+    if (phi::is_negative(a) != phi::is_negative(b)) {
+      // Subtracts one from the results of truncation division if the
+      // divisor and dividend have different sign(bit)s and the remainder of
+      // the division is nonzero
+      const auto quot = a / b;
+      const auto rem = a % b;
+      auto ret = rem ? quot - 1 : quot;
+      return static_cast<T>(ret);
+    }
+
     return static_cast<T>(a / b);
   }
 };
 
 template <typename T>
+struct FloorDivideFunctor<
+    T,
+    typename std::enable_if_t<std::is_floating_point<T>::value>> {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    if (UNLIKELY(b == 0)) {
+      // Divide by zero: return standard IEEE result
+      return static_cast<T>(a / b);
+    }
+
+    auto mod = std::fmod(a, b);
+    auto div = (a - mod) / b;
+    if ((mod != 0) && (b < 0) != (mod < 0)) {
+      div -= T(1);
+    }
+
+    T floordiv;
+    if (div != 0) {
+      floordiv = std::floor(div);
+      if (div - floordiv > T(0.5)) {
+        floordiv += T(1.0);
+      }
+    } else {
+      floordiv = phi::copysign(T(0), a / b);
+    }
+    return floordiv;
+  }
+};
+
+template <>
+struct FloorDivideFunctor<dtype::float16> {
+  inline HOSTDEVICE dtype::float16 operator()(const dtype::float16 a,
+                                              const dtype::float16 b) const {
+    float b_float = static_cast<float>(b);
+    float a_float = static_cast<float>(a);
+
+    if (UNLIKELY(b_float == 0)) {
+      // Divide by zero: return standard IEEE result
+      return static_cast<dtype::float16>(a_float / b_float);
+    }
+
+    auto mod = std::fmod(a_float, b_float);
+    auto div = (a_float - mod) / b_float;
+    if ((mod != 0) && (b_float < 0) != (mod < 0)) {
+      div -= static_cast<float>(1);
+    }
+
+    float floordiv;
+    if (div != 0) {
+      floordiv = std::floor(div);
+      if (div - floordiv > static_cast<float>(0.5)) {
+        floordiv += static_cast<float>(1.0);
+      }
+    } else {
+      floordiv = phi::copysign(static_cast<float>(0), a_float / b_float);
+    }
+
+    return static_cast<dtype::float16>(floordiv);
+  }
+};
+
+template <>
+struct FloorDivideFunctor<dtype::bfloat16> {
+  inline HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16 a,
+                                               const dtype::bfloat16 b) const {
+    float b_float = static_cast<float>(b);
+    float a_float = static_cast<float>(a);
+
+    if (UNLIKELY(b_float == 0)) {
+      // Divide by zero: return standard IEEE result
+      return static_cast<dtype::bfloat16>(a_float / b_float);
+    }
+
+    auto mod = std::fmod(a_float, b_float);
+    auto div = (a_float - mod) / b_float;
+    if ((mod != 0) && (b_float < 0) != (mod < 0)) {
+      div -= static_cast<float>(1);
+    }
+
+    float floordiv;
+    if (div != 0) {
+      floordiv = std::floor(div);
+      if (div - floordiv > static_cast<float>(0.5)) {
+        floordiv += static_cast<float>(1.0);
+      }
+    } else {
+      floordiv = phi::copysign(static_cast<float>(0), a_float / b_float);
+    }
+
+    return static_cast<dtype::bfloat16>(floordiv);
+  }
+};
+
+template <typename T, typename Enable = void>
 struct InverseFloorDivideFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
 #ifndef PADDLE_WITH_XPU_KP
     PADDLE_ENFORCE(a != 0, DIV_ERROR_INFO);
 #endif
+    if (phi::is_negative(a) != phi::is_negative(b)) {
+      // Subtracts one from the results of truncation division if the
+      // divisor and dividend have different sign(bit)s and the remainder of
+      // the division is nonzero
+      const auto quot = b / a;
+      const auto rem = b % a;
+      auto ret = rem ? quot - 1 : quot;
+      return static_cast<T>(ret);
+    }
+
     return static_cast<T>(b / a);
   }
 };
 
 template <typename T>
-struct ElementwisePowFunctor {
+struct InverseFloorDivideFunctor<
+    T,
+    typename std::enable_if_t<std::is_floating_point<T>::value>> {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
-// TODO(wujionghao): A potential speed improvement is supporting different
-// types in C++.
-#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
-    // On CUDAPlace, std::pow(3, 1) calls pow(float, float), and
-    // it will return a float number like 2.99... , which floor to 2
-    // when cast to int by default and it is wrong.
-    // Use llrint to cast it to the nearest integer, which is 3.
-    if (std::is_integral<T>::value) {
-      return std::llrint(
-          std::pow(static_cast<double>(a), static_cast<double>(b)));
+    if (UNLIKELY(a == 0)) {
+      // Divide by zero: return standard IEEE result
+      return static_cast<T>(b / a);
     }
-#endif
+
+    auto mod = std::fmod(b, a);
+    auto div = (b - mod) / a;
+    if ((mod != 0) && (a < 0) != (mod < 0)) {
+      div -= T(1);
+    }
+
+    T floordiv;
+    if (div != 0) {
+      floordiv = std::floor(div);
+      if (div - floordiv > T(0.5)) {
+        floordiv += T(1.0);
+      }
+    } else {
+      floordiv = phi::copysign(T(0), b / a);
+    }
+    return floordiv;
+  }
+};
+
+template <>
+struct InverseFloorDivideFunctor<dtype::float16> {
+  inline HOSTDEVICE dtype::float16 operator()(const dtype::float16 a,
+                                              const dtype::float16 b) const {
+    float b_float = static_cast<float>(a);
+    float a_float = static_cast<float>(b);
+
+    if (UNLIKELY(b_float == 0)) {
+      // Divide by zero: return standard IEEE result
+      return static_cast<dtype::float16>(a_float / b_float);
+    }
+
+    auto mod = std::fmod(a_float, b_float);
+    auto div = (a_float - mod) / b_float;
+    if ((mod != 0) && (b_float < 0) != (mod < 0)) {
+      div -= static_cast<float>(1);
+    }
+
+    float floordiv;
+    if (div != 0) {
+      floordiv = std::floor(div);
+      if (div - floordiv > static_cast<float>(0.5)) {
+        floordiv += static_cast<float>(1.0);
+      }
+    } else {
+      floordiv = phi::copysign(static_cast<float>(0), a_float / b_float);
+    }
+
+    return static_cast<dtype::float16>(floordiv);
+  }
+};
+
+template <>
+struct InverseFloorDivideFunctor<dtype::bfloat16> {
+  inline HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16 a,
+                                               const dtype::bfloat16 b) const {
+    float b_float = static_cast<float>(a);
+    float a_float = static_cast<float>(b);
+
+    if (UNLIKELY(b_float == 0)) {
+      // Divide by zero: return standard IEEE result
+      return static_cast<dtype::bfloat16>(a_float / b_float);
+    }
+
+    auto mod = std::fmod(a_float, b_float);
+    auto div = (a_float - mod) / b_float;
+    if ((mod != 0) && (b_float < 0) != (mod < 0)) {
+      div -= static_cast<float>(1);
+    }
+
+    float floordiv;
+    if (div != 0) {
+      floordiv = std::floor(div);
+      if (div - floordiv > static_cast<float>(0.5)) {
+        floordiv += static_cast<float>(1.0);
+      }
+    } else {
+      floordiv = phi::copysign(static_cast<float>(0), a_float / b_float);
+    }
+
+    return static_cast<dtype::bfloat16>(floordiv);
+  }
+};
+
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+template <typename T, typename MPType>
+inline HOSTDEVICE typename std::enable_if<std::is_integral<T>::value, T>::type
+compute_pow(const T a, const T b) {
+  // TODO(wujionghao): A potential speed improvement is supporting different
+  // types in C++.
+  // On CUDAPlace, std::pow(3, 1) calls pow(float, float), and
+  // it will return a float number like 2.99... , which floor to 2
+  // when cast to int by default and it is wrong.
+  // Use llrint to cast it to the nearest integer, which is 3.
+  return std::llrint(std::pow(static_cast<double>(a), static_cast<double>(b)));
+}
+template <typename T, typename MPType>
+inline HOSTDEVICE typename std::enable_if<!std::is_integral<T>::value, T>::type
+compute_pow(const T a, const T b) {
+  MPType a_val = static_cast<MPType>(a);
+  MPType b_val = static_cast<MPType>(b);
 #ifdef PADDLE_WITH_XPU_KP
-    return pow(a, b);
+  return static_cast<T>(pow(a_val, b_val));
 #endif
-    return std::pow(a, b);
+  return static_cast<T>(std::pow(a_val, b_val));
+}
+#else
+template <typename T, typename MPType>
+inline HOSTDEVICE T compute_pow(const T a, const T b) {
+  MPType a_val = static_cast<MPType>(a);
+  MPType b_val = static_cast<MPType>(b);
+#ifdef PADDLE_WITH_XPU_KP
+  return static_cast<T>(pow(a_val, b_val));
+#endif
+  return static_cast<T>(std::pow(a_val, b_val));
+}
+#endif
+
+template <typename T>
+struct ElementwisePowFunctor {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    return compute_pow<T, MPType>(a, b);
   }
 };
 
 template <typename T>
 struct ElementwiseInversePowFunctor {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   inline HOSTDEVICE T operator()(const T a, const T b) const {
-// TODO(wujionghao): A potential speed improvement is supporting different
-// types in C++.
-#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
-    // On CUDAPlace, std::pow(3, 1) calls pow(float, float), and
-    // it will return a float number like 2.99... , which floor to 2
-    // when cast to int by default and it is wrong.
-    // Use llrint to cast it to the nearest integer, which is 3.
-    if (std::is_integral<T>::value) {
-      return std::llrint(
-          std::pow(static_cast<double>(b), static_cast<double>(a)));
-    }
-#endif
-#ifdef PADDLE_WITH_XPU_KP
-    return pow(b, a);
-#endif
-    return std::pow(b, a);
-  }
-};
-
-template <>
-struct ElementwisePowFunctor<dtype::float16> {
-  inline HOSTDEVICE dtype::float16 operator()(const dtype::float16 a,
-                                              const dtype::float16 b) const {
-    float f_a = static_cast<float>(a);
-    float f_b = static_cast<float>(b);
-    return static_cast<dtype::float16>(std::pow(f_a, f_b));
-  }
-};
-
-template <>
-struct ElementwiseInversePowFunctor<dtype::float16> {
-  inline HOSTDEVICE dtype::float16 operator()(const dtype::float16 a,
-                                              const dtype::float16 b) const {
-    float f_a = static_cast<float>(a);
-    float f_b = static_cast<float>(b);
-    return static_cast<dtype::float16>(std::pow(f_b, f_a));
+    return compute_pow<T, MPType>(b, a);
   }
 };
 

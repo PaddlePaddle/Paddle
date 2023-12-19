@@ -28,7 +28,7 @@ class Command:
         self.np_path = self.prefix + '/np'
 
     def set_np(self, np):
-        self.etcd.put(self.np_path, '{}'.format(np).encode('latin-1'))
+        self.etcd.put(self.np_path, f'{np}'.encode('latin-1'))
 
     def scale_np(self, np):
         if self.etcd.get(self.np_path)[0] is not None:
@@ -44,7 +44,6 @@ class Command:
 
 
 if __name__ == '__main__':
-
     parser = argparse.ArgumentParser(description='Elastic Command')
     parser.add_argument(
         "--elastic_server", type=str, help="etcd server host:port"
@@ -72,6 +71,6 @@ if __name__ == '__main__':
     if args.action == "clean":
         cmd.clean()
 
-    print("action {} done".format(args.action))
+    print(f"action {args.action} done")
 
     cmd.close()

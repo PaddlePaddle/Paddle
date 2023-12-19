@@ -27,15 +27,15 @@ template <typename T,
           template <typename>
           class ReduceOp,
           template <typename, typename>
-          class TransformOp>
+          class TransformOp,
+          bool IsMean = false>
 void Reduce(const KPDevice& dev_ctx,
             const DenseTensor& x,
             bool reduce_all,
             const std::vector<int64_t>& dims,
             bool keep_dim,
             DataType out_dtype,
-            DenseTensor* out,
-            bool is_mean = false) {
+            DenseTensor* out) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   std::vector<int> reduce_dims =
       phi::funcs::details::GetReduceDim(dims, x.dims().size(), reduce_all);
@@ -47,44 +47,35 @@ void Reduce(const KPDevice& dev_ctx,
 #ifndef PADDLE_WITH_XPU_KP
   if (out_dtype != phi::DataType::UNDEFINED && out_dtype != x.dtype()) {
     auto tmp_tensor = phi::Cast<T>(dev_ctx, x, out_dtype);
-    PD_VISIT_BOOL_AND_FLOATING_AND_COMPLEX_AND_3_TYPES(
+    PD_VISIT_BOOL_AND_FLOATING_AND_COMPLEX_AND_4_TYPES(
         phi::DataType::INT32,
         phi::DataType::INT64,
         phi::DataType::FLOAT16,
+        phi::DataType::BFLOAT16,
         out_dtype,
         "ReduceKernel",
         ([&] {
-          using MPType = typename kps::details::MPTypeTrait<data_t>::Type;
+          using MPType = typename phi::dtype::MPTypeTrait<data_t>::Type;
           phi::funcs::ReduceKernel<data_t,
                                    data_t,
                                    ReduceOp,
-                                   TransformOp<data_t, MPType>>(
+                                   TransformOp<data_t, MPType>,
+                                   IsMean>(
               dev_ctx,
               tmp_tensor,
               out,
               TransformOp<data_t, MPType>(reduce_num),
-              reduce_dims,
-              is_mean);
+              reduce_dims);
         }));
   } else {
-    using MPType = typename kps::details::MPTypeTrait<T>::Type;
-    phi::funcs::ReduceKernel<T, T, ReduceOp, TransformOp<T, MPType>>(
-        dev_ctx,
-        x,
-        out,
-        TransformOp<T, MPType>(reduce_num),
-        reduce_dims,
-        is_mean);
+    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+    phi::funcs::ReduceKernel<T, T, ReduceOp, TransformOp<T, MPType>, IsMean>(
+        dev_ctx, x, out, TransformOp<T, MPType>(reduce_num), reduce_dims);
   }
 #else
-  using MPType = typename kps::details::MPTypeTrait<T>::Type;
-  phi::funcs::ReduceKernel<T, T, ReduceOp, TransformOp<T, MPType>>(
-      dev_ctx,
-      x,
-      out,
-      TransformOp<T, MPType>(reduce_num),
-      reduce_dims,
-      is_mean);
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  phi::funcs::ReduceKernel<T, T, ReduceOp, TransformOp<T, MPType>, IsMean>(
+      dev_ctx, x, out, TransformOp<T, MPType>(reduce_num), reduce_dims);
 #endif
 }
 }  // namespace phi

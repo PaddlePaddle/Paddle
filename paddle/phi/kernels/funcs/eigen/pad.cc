@@ -61,9 +61,12 @@ struct EigenPad<Eigen::DefaultDevice, T, Rank> {
 INSTANTIATION(EigenPad, bool);
 INSTANTIATION(EigenPad, uint8_t);
 INSTANTIATION(EigenPad, int);
+INSTANTIATION(EigenPad, int8_t);
+INSTANTIATION(EigenPad, int16_t);
 INSTANTIATION(EigenPad, int64_t);
 INSTANTIATION(EigenPad, float);
 INSTANTIATION(EigenPad, double);
+INSTANTIATION(EigenPad, dtype::float16);
 INSTANTIATION(EigenPad, dtype::bfloat16);
 INSTANTIATION(EigenPad, dtype::complex<float>);
 INSTANTIATION(EigenPad, dtype::complex<double>);

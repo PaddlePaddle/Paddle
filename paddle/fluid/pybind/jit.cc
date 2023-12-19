@@ -13,15 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/pybind/jit.h"
-
+#include "glog/logging.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/layer.h"
-#include "paddle/fluid/platform/place.h"
-
 #include "paddle/fluid/jit/function.h"
 #include "paddle/fluid/jit/function_schema.h"
 #include "paddle/fluid/jit/layer.h"
 #include "paddle/fluid/jit/serializer.h"
+#include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/pybind/eval_frame.h"
+#include "paddle/fluid/pybind/eval_frame_tools.h"
+#include "paddle/utils/pybind.h"
 
 namespace py = pybind11;
 
@@ -56,6 +58,55 @@ void BindJit(pybind11::module *m) {
          [](const std::string &path, const platform::CUDAPlace &cuda_place) {
            return paddle::jit::Load(path, cuda_place);
          });
+}
+
+void BindEvalFrame(pybind11::module *m) {
+  PyInit__eval_frame();
+  m->def(
+      "set_eval_frame",
+      [](const py::object &py_func) {
+        VLOG(5) << "start call set_eval_frame_py.";
+        auto ret = set_eval_frame_py(py_func.ptr());
+        auto obj = py::reinterpret_borrow<py::object>(ret);
+        return obj;
+      },
+      py::arg("callback"));
+
+  m->def(
+      "sot_setup_codes_with_graph",
+      [](const py::object &py_codes) {
+        auto ret = setup_codes_with_graph(py_codes.ptr());
+        auto obj = py::reinterpret_borrow<py::object>(ret);
+        return obj;
+      },
+      py::arg("py_codes"));
+
+  m->def(
+      "sot_set_with_graph",
+      [](const py::object &py_codes) {
+        auto ret = set_with_graph(py_codes.ptr());
+        auto obj = py::reinterpret_borrow<py::object>(ret);
+        return obj;
+      },
+      py::arg("py_codes"));
+
+  m->def(
+      "eval_frame_no_skip_codes",
+      [](const py::object &py_codes) {
+        auto ret = no_skip_codes(py_codes.ptr());
+        auto obj = py::reinterpret_borrow<py::object>(ret);
+        return obj;
+      },
+      py::arg("py_codes"));
+
+  m->def(
+      "eval_frame_skip_file_prefix",
+      [](const py::object &py_codes) {
+        auto ret = skip_file_prefix(py_codes.ptr());
+        auto obj = py::reinterpret_borrow<py::object>(ret);
+        return obj;
+      },
+      py::arg("py_codes"));
 }
 
 }  // namespace pybind

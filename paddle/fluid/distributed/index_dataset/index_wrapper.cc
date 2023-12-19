@@ -52,7 +52,7 @@ int TreeIndex::Load(const std::string filename) {
         platform::errors::InvalidArgument(
             "Read from file: %s failed. Valid Format is "
             "an integer representing the length of the following string, "
-            "and the string itself.We got an iteger[% d], "
+            "and the string itself.We got an integer[% d], "
             "but the following string's length is [%d].",
             filename,
             num,
@@ -75,7 +75,7 @@ int TreeIndex::Load(const std::string filename) {
 
       // PADDLE_ENFORCE_NE(node.id(), 0,
       //                  platform::errors::InvalidArgument(
-      //                      "Node'id should not be equel to zero."));
+      //                      "Node'id should not be equal to zero."));
       if (node.is_leaf()) {
         id_codes_map_[node.id()] = code;
       }
@@ -97,9 +97,9 @@ int TreeIndex::Load(const std::string filename) {
 std::vector<IndexNode> TreeIndex::GetNodes(const std::vector<uint64_t>& codes) {
   std::vector<IndexNode> nodes;
   nodes.reserve(codes.size());
-  for (size_t i = 0; i < codes.size(); i++) {
-    if (CheckIsValid(codes[i])) {
-      nodes.push_back(data_.at(codes[i]));
+  for (auto code : codes) {
+    if (CheckIsValid(code)) {
+      nodes.push_back(data_.at(code));
     } else {
       nodes.push_back(fake_node_);
     }
@@ -128,11 +128,11 @@ std::vector<uint64_t> TreeIndex::GetAncestorCodes(
   res.reserve(ids.size());
 
   int cur_level;
-  for (size_t i = 0; i < ids.size(); i++) {
-    if (id_codes_map_.find(ids[i]) == id_codes_map_.end()) {
+  for (auto id : ids) {
+    if (id_codes_map_.find(id) == id_codes_map_.end()) {
       res.push_back(max_code_);
     } else {
-      auto code = id_codes_map_.at(ids[i]);
+      auto code = id_codes_map_.at(id);
       cur_level = meta_.height() - 1;
 
       while (level >= 0 && cur_level > level) {

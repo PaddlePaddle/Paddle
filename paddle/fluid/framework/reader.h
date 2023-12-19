@@ -19,9 +19,9 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace framework {
@@ -73,7 +73,7 @@ class ReaderBase {
   virtual ~ReaderBase();
 
  protected:
-  virtual void ReadNextImpl(paddle::framework::LoDTensorArray* out) {}
+  virtual void ReadNextImpl(paddle::framework::LoDTensorArray* out UNUSED) {}
 
   virtual void ShutdownImpl() {}
 
@@ -92,8 +92,6 @@ class ReaderBase {
   std::vector<proto::VarType::Type> var_types_;
 
   // Whether to check the shape and dtype of fed variables.
-  // For Backward compatibility, variables created by old API fluid.layers.data
-  // doesn't check shape but fluid.data checks.
   std::vector<bool> need_check_feed_;
 
  private:

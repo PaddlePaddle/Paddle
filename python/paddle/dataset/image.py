@@ -31,37 +31,15 @@ the image layout as follows.
 """
 
 import os
-
-# FIXME(minqiyang): this is an ugly fix for the numpy bug reported here
-# https://github.com/numpy/numpy/issues/12497
-import subprocess
-import sys
+import tarfile
 
 import numpy as np
 
-interpreter = sys.executable
-# Note(zhouwei): if use Python/C 'PyRun_SimpleString', 'sys.executable'
-# will be the C++ executable on Windows
-if sys.platform == 'win32' and 'python.exe' not in interpreter:
-    interpreter = sys.exec_prefix + os.sep + 'python.exe'
-import_cv2_proc = subprocess.Popen(
-    [interpreter, "-c", "import cv2"],
-    stdout=subprocess.PIPE,
-    stderr=subprocess.PIPE,
-)
-out, err = import_cv2_proc.communicate()
-retcode = import_cv2_proc.poll()
-if retcode != 0:
+try:
+    import cv2
+except ImportError:
     cv2 = None
-else:
-    try:
-        import cv2
-    except ImportError:
-        cv2 = None
-
-import os
 import pickle
-import tarfile
 
 __all__ = []
 
@@ -89,17 +67,17 @@ def batch_images_from_tar(
     :type data_file: string
     :param dataset_name: 'train','test' or 'valid'
     :type dataset_name: string
-    :param img2label: a dic with image file name as key
+    :param img2label: a dict with image file name as key
                     and image's label as value
-    :type img2label: dic
+    :type img2label: dict
     :param num_per_batch: image number per batch file
     :type num_per_batch: int
     :return: path of list file containing paths of batch file
     :rtype: string
     """
     batch_dir = data_file + "_batch"
-    out_path = "%s/%s_%s" % (batch_dir, dataset_name, os.getpid())
-    meta_file = "%s/%s_%s.txt" % (batch_dir, dataset_name, os.getpid())
+    out_path = f"{batch_dir}/{dataset_name}_{os.getpid()}"
+    meta_file = f"{batch_dir}/{dataset_name}_{os.getpid()}.txt"
 
     if os.path.exists(out_path):
         return meta_file
@@ -116,9 +94,7 @@ def batch_images_from_tar(
             data.append(tf.extractfile(mem).read())
             labels.append(img2label[mem.name])
             if len(data) == num_per_batch:
-                output = {}
-                output['label'] = labels
-                output['data'] = data
+                output = {'label': labels, 'data': data}
                 pickle.dump(
                     output,
                     open('%s/batch_%d' % (out_path, file_id), 'wb'),
@@ -128,16 +104,14 @@ def batch_images_from_tar(
                 data = []
                 labels = []
     if len(data) > 0:
-        output = {}
-        output['label'] = labels
-        output['data'] = data
+        output = {'label': labels, 'data': data}
         pickle.dump(
             output, open('%s/batch_%d' % (out_path, file_id), 'wb'), protocol=2
         )
 
-    with open(meta_file, 'a') as meta:
+    with open(meta_file, mode='a') as meta:
         for file in os.listdir(out_path):
-            meta.write(os.path.abspath("%s/%s" % (out_path, file)) + "\n")
+            meta.write(os.path.abspath(f"{out_path}/{file}") + "\n")
     return meta_file
 
 
@@ -149,9 +123,9 @@ def load_image_bytes(bytes, is_color=True):
 
     .. code-block:: python
 
-        with open('cat.jpg') as f:
-            im = load_image_bytes(f.read())
-
+        >>> with open('cat.jpg') as f:
+        ...     im = load_image_bytes(f.read())
+        ...
     :param bytes: the input image bytes array.
     :type bytes: str
     :param is_color: If set is_color True, it will load and
@@ -160,7 +134,6 @@ def load_image_bytes(bytes, is_color=True):
     :type is_color: bool
     """
     assert _check_cv2() is True
-
     flag = 1 if is_color else 0
     file_bytes = np.asarray(bytearray(bytes), dtype=np.uint8)
     img = cv2.imdecode(file_bytes, flag)
@@ -175,7 +148,7 @@ def load_image(file, is_color=True):
 
     .. code-block:: python
 
-        im = load_image('cat.jpg')
+        >>> im = load_image('cat.jpg')
 
     :param file: the input image path.
     :type file: string
@@ -205,8 +178,8 @@ def resize_short(im, size):
 
     .. code-block:: python
 
-        im = load_image('cat.jpg')
-        im = resize_short(im, 256)
+        >>> im = load_image('cat.jpg')
+        >>> im = resize_short(im, 256)
 
     :param im: the input image with HWC layout.
     :type im: ndarray
@@ -235,9 +208,9 @@ def to_chw(im, order=(2, 0, 1)):
 
     .. code-block:: python
 
-        im = load_image('cat.jpg')
-        im = resize_short(im, 256)
-        im = to_chw(im)
+        >>> im = load_image('cat.jpg')
+        >>> im = resize_short(im, 256)
+        >>> im = to_chw(im)
 
     :param im: the input image with HWC layout.
     :type im: ndarray
@@ -257,7 +230,8 @@ def center_crop(im, size, is_color=True):
 
     .. code-block:: python
 
-        im = center_crop(im, 224)
+        >>> im = load_image('cat.jpg')
+        >>> im = center_crop(im, 224)
 
     :param im: the input image with HWC layout.
     :type im: ndarray
@@ -285,7 +259,8 @@ def random_crop(im, size, is_color=True):
 
     .. code-block:: python
 
-        im = random_crop(im, 224)
+        >>> im = load_image('cat.jpg')
+        >>> im = random_crop(im, 224)
 
     :param im: the input image with HWC layout.
     :type im: ndarray
@@ -314,7 +289,8 @@ def left_right_flip(im, is_color=True):
 
     .. code-block:: python
 
-        im = left_right_flip(im)
+        >>> im = load_image('cat.jpg')
+        >>> im = left_right_flip(im)
 
     :param im: input image with HWC layout or HW layout for gray image
     :type im: ndarray
@@ -338,7 +314,8 @@ def simple_transform(
 
     .. code-block:: python
 
-        im = simple_transform(im, 256, 224, True)
+        >>> im = load_image('cat.jpg')
+        >>> im = simple_transform(im, 256, 224, True)
 
     :param im: The input image with HWC layout.
     :type im: ndarray
@@ -392,7 +369,7 @@ def load_and_transform(
 
     .. code-block:: python
 
-        im = load_and_transform('cat.jpg', 256, 224, True)
+        >>> im = load_and_transform('cat.jpg', 256, 224, True)
 
     :param filename: The file name of input image.
     :type filename: string

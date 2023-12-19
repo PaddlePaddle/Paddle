@@ -14,9 +14,9 @@
 
 #include "paddle/phi/kernels/roi_align_kernel.h"
 
-#include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -153,7 +153,10 @@ void RoiAlignKernel(const Context& dev_ctx,
 
   int rois_num = boxes.dims()[0];
 
-  if (rois_num == 0) return;
+  if (rois_num == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
 
   int output_size = out->numel();
   int blocks = NumBlocks(output_size);
@@ -179,12 +182,12 @@ void RoiAlignKernel(const Context& dev_ctx,
             batch_size));
 
     std::vector<int> boxes_num_list(boxes_batch_size);
-    paddle::memory::Copy(cplace,
-                         boxes_num_list.data(),
-                         gplace,
-                         boxes_num->data<int>(),
-                         sizeof(int) * boxes_batch_size,
-                         0);
+    memory_utils::Copy(cplace,
+                       boxes_num_list.data(),
+                       gplace,
+                       boxes_num->data<int>(),
+                       sizeof(int) * boxes_batch_size,
+                       0);
     int start = 0;
     for (int n = 0; n < boxes_batch_size; ++n) {
       for (int i = start; i < start + boxes_num_list[n]; ++i) {
@@ -227,12 +230,12 @@ void RoiAlignKernel(const Context& dev_ctx,
     }
   }
   int bytes = roi_batch_id_list.numel() * sizeof(int);
-  auto roi_ptr = paddle::memory::Alloc(
+  auto roi_ptr = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       bytes,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
-  paddle::memory::Copy(
+  memory_utils::Copy(
       gplace, roi_id_data, cplace, roi_batch_id_data, bytes, dev_ctx.stream());
   GPURoiAlignForward<T>
       <<<blocks, threads, 0, dev_ctx.stream()>>>(output_size,

@@ -14,10 +14,12 @@
 
 #include "paddle/fluid/eager/custom_operator/custom_operator_node.h"
 
+#include "paddle/fluid/eager/custom_operator/custom_operator_utils.h"
 #include "paddle/fluid/framework/custom_operator.h"
-#include "paddle/fluid/framework/op_meta_info_helper.h"
+#include "paddle/fluid/framework/custom_operator_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
+#include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace egr {
@@ -34,17 +36,12 @@ static void ConstructFwdAndBwdMap(
   }
 
   VLOG(7) << "Construct DoubleGrad's CustomEdgesSlotMap ";
-  auto inputs_names =
-      paddle::framework::OpMetaInfoHelper::GetInputs(vec_map[1]);
-  auto outputs_names =
-      paddle::framework::OpMetaInfoHelper::GetOutputs(vec_map[1]);
-  auto attrs_names = paddle::framework::OpMetaInfoHelper::GetAttrs(vec_map[1]);
-  auto grad_outputs_names =
-      paddle::framework::OpMetaInfoHelper::GetOutputs(vec_map[2]);
-  auto grad_inputs_names =
-      paddle::framework::OpMetaInfoHelper::GetInputs(vec_map[2]);
-  auto grad_attrs_names =
-      paddle::framework::OpMetaInfoHelper::GetAttrs(vec_map[2]);
+  auto inputs_names = paddle::OpMetaInfoHelper::GetInputs(vec_map[1]);
+  auto outputs_names = paddle::OpMetaInfoHelper::GetOutputs(vec_map[1]);
+  auto attrs_names = paddle::OpMetaInfoHelper::GetAttrs(vec_map[1]);
+  auto grad_outputs_names = paddle::OpMetaInfoHelper::GetOutputs(vec_map[2]);
+  auto grad_inputs_names = paddle::OpMetaInfoHelper::GetInputs(vec_map[2]);
+  auto grad_attrs_names = paddle::OpMetaInfoHelper::GetAttrs(vec_map[2]);
   std::vector<std::unordered_map<int, int>> res(5);
   in_out_map[op_type].push_back(res);
   // Prepare pos map for grad_outputs
@@ -63,7 +60,7 @@ static void ConstructFwdAndBwdMap(
                   << "'s No." << j << " inputs: " << inputs_names[j]
                   << " related to No." << i
                   << " grad_outputs: " << grad_outputs_names[i];
-          in_out_map[op_type][1][0][j] = i;
+          in_out_map[op_type][1][0][j] = i;  // NOLINT
         }
       }
     } else {
@@ -75,7 +72,7 @@ static void ConstructFwdAndBwdMap(
                     << "'s No." << j << " inputs: " << inputs_names[j]
                     << " related to No." << i
                     << " grad_outputs: " << grad_outputs_names[i];
-            in_out_map[op_type][1][0][j] = i;
+            in_out_map[op_type][1][0][j] = i;  // NOLINT
           }
         }
       } else {
@@ -88,7 +85,7 @@ static void ConstructFwdAndBwdMap(
                       << "'s No." << j << " inputs: " << inputs_names[j]
                       << " related to No." << i
                       << " grad_outputs: " << grad_outputs_names[i];
-              in_out_map[op_type][1][0][j] = i;
+              in_out_map[op_type][1][0][j] = i;  // NOLINT
             }
           }
         } else {
@@ -111,7 +108,7 @@ static void ConstructFwdAndBwdMap(
                   << "'s No." << j << " outputs: " << outputs_names[j]
                   << " related to No." << i
                   << " grad_inputs's grad: " << grad_inputs_names[i];
-          in_out_map[op_type][1][1][j] = i;
+          in_out_map[op_type][1][1][j] = i;  // NOLINT
         }
       }
     } else {
@@ -124,7 +121,7 @@ static void ConstructFwdAndBwdMap(
                     << "'s No." << j << " outputs: " << outputs_names[j]
                     << " related to No." << i
                     << " grad_inputs fwd outputs: " << grad_inputs_names[i];
-            in_out_map[op_type][1][2][j] = i;
+            in_out_map[op_type][1][2][j] = i;  // NOLINT
           }
         }
       } else {
@@ -134,7 +131,7 @@ static void ConstructFwdAndBwdMap(
                     << "'s No." << j << " inputs: " << inputs_names[j]
                     << " related to No." << i
                     << " grad_inputs fwd inputs: " << grad_inputs_names[i];
-            in_out_map[op_type][1][3][j] = i;
+            in_out_map[op_type][1][3][j] = i;  // NOLINT
           }
         }
       }
@@ -158,66 +155,80 @@ static void ConstructFwdAndBwdMap(
                 << "'s No." << j << " attrs: " << attrs_names[j]
                 << " related to No." << i
                 << " grad_attrs: " << grad_attrs_names[i];
-        in_out_map[op_type][1][4][j] = i;
+        in_out_map[op_type][1][4][j] = i;  // NOLINT
       }
     }
   }
 }
 
-paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                     kSlotSmallVectorSize>
-RunCustomOpNode::operator()(
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                         kSlotSmallVectorSize>& grads,
-    bool create_graph,
-    bool is_new_grad) {  // NOLINT
+paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
+RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
+                                                 kSlotSmallVectorSize>& grads,
+                            bool create_graph,
+                            bool is_new_grad) {  // NOLINT
   paddle::CustomOpKernelContext ctx;
-  auto grad_inputs_name = paddle::framework::OpMetaInfoHelper::GetInputs(
-      egr::Controller::Instance().GetOpMetaInfoMap().at(op_type_)[1]);
-  auto grad_outputs_names = paddle::framework::OpMetaInfoHelper::GetOutputs(
-      egr::Controller::Instance().GetOpMetaInfoMap().at(op_type_)[1]);
-  auto map = egr::Controller::Instance().GetCustomEdgesSlotMap().at(op_type_);
-  auto kernel_map = egr::Controller::Instance().GetOpMetaInfoMap();
+  const auto& meta_info_map = egr::Controller::Instance().GetOpMetaInfoMap();
+  const auto& vec_map = meta_info_map.at(op_type_);
+  const auto& grad_inputs_name =
+      paddle::OpMetaInfoHelper::GetInputs(vec_map[1]);
+  const auto& grad_outputs_names =
+      paddle::OpMetaInfoHelper::GetOutputs(vec_map[1]);
+  const auto& map =
+      egr::Controller::Instance().GetCustomEdgesSlotMap().at(op_type_);
 
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                       kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
       tmp_ins(grad_inputs_name.size());
   VLOG(7) << " Prepare Backward inputs of grads with size: " << grads.size()
           << ", whose grad_inputs_name size is: " << grad_inputs_name.size();
   auto hooked_grads = ApplyGradientHooks(grads);
   for (size_t i = 0; i < hooked_grads.size(); i++) {
-    if (map[0][1].find(i) != map[0][1].end()) {
-      VLOG(7) << "Insert grad: " << i << " to grad_inputs: " << map[0][1][i];
-      tmp_ins[map[0][1][i]] = hooked_grads[i];
+    if (map[0][1].find(static_cast<int>(i)) != map[0][1].end()) {
+      VLOG(7) << "Insert grad: " << i
+              << " to grad_inputs: " << map[0][1].at(static_cast<int>(i));
+      tmp_ins[map[0][1].at(static_cast<int>(i))] = hooked_grads[i];
     }
   }
 
-  for (auto it : fwd_outs) {
+  for (auto it : fwd_outs) {  // NOLINT
     VLOG(7) << "Insert fwd_outs to grad_inputs: " << it.first;
     tmp_ins[it.first] = RunCustomOpNode::Recover(&(it.second));
   }
 
-  for (auto it : fwd_ins) {
+  for (auto it : fwd_ins) {  // NOLINT
+    // NOTE(HongyuJia): returned tensor maybe un-defined tensor when inputs
+    // optional<Tensor>
     VLOG(7) << "Insert fwd_ins to grad_inputs: " << it.first;
     tmp_ins[it.first] = RunCustomOpNode::Recover(&(it.second));
   }
 
   VLOG(6) << "Prepare Grad inputs";
-  for (const auto& in : tmp_ins) {
+  for (auto& in : tmp_ins) {
+    for (auto& tensor : in) {
+      if (tensor.initialized() && tensor.is_dense_tensor() &&
+          !std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl())
+               ->meta()
+               .is_contiguous()) {
+        tensor.set_impl(std::make_shared<phi::DenseTensor>(
+            std::move(paddle::experimental::Trans2Contiguous(*(
+                std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl()))))));
+      }
+    }
+
     ctx.EmplaceBackInputs(in);
   }
   VLOG(6) << "Prepare Grad attrs";
   ctx.EmplaceBackAttrs(attrs_);
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                       kSlotSmallVectorSize>
-      outs(OutputMeta().size());
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                       kSlotSmallVectorSize>
+  // NOTE(HongyuJia): grad_outputs_names.size() <= OutputMeta().size():
+  // OutputMeta().size() indicates input size of forward op,
+  // grad_outputs_names.size() indicates output size of backward op.
+  paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize> outs(
+      OutputMeta().size());
+  paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
       tmp_outs(grad_outputs_names.size());
   VLOG(6) << "Prepare Grad outputs for size: " << grad_outputs_names.size();
   for (size_t i = 0; i < OutputMeta().size(); i++) {
-    if (map[0][0].find(i) != map[0][0].end()) {
-      int grad_output_idx = map[0][0][i];
+    if (map[0][0].find(static_cast<int>(i)) != map[0][0].end()) {
+      int grad_output_idx = map[0][0].at(static_cast<int>(i));
       VLOG(7) << "Insert grad outputs: " << i
               << " with size: " << OutputMeta()[grad_output_idx].size()
               << " to tmp_outputs: " << grad_output_idx;
@@ -239,38 +250,53 @@ RunCustomOpNode::operator()(
   }
   VLOG(7) << "Run Kernel of Grad Custom Op: " << op_type_ << "_grad";
 
-  (*paddle::framework::OpMetaInfoHelper::GetKernelFn(
-      kernel_map.at(op_type_)[1]))(&ctx);
+  run_custom_op_impl(vec_map[1], false, false, ctx);
 
-  VLOG(7) << "Get AutogradMeta for inputs and outputs for Custom Op";
-  std::vector<std::vector<egr::AutogradMeta*>> ins_auto_grad_metas;
-  std::vector<std::vector<egr::AutogradMeta*>> outs_auto_grad_metas;
-  VLOG(7) << "We got slot num of ins is: " << ctx.InputRange().size();
-  ins_auto_grad_metas.resize(ctx.InputRange().size());
-  VLOG(7) << "We got slot num of outs is: " << ctx.OutputRange().size();
-  outs_auto_grad_metas.resize(ctx.OutputRange().size());
-
-  for (size_t i = 0; i < ctx.InputRange().size(); i++) {
-    ins_auto_grad_metas[i] =
-        egr::EagerUtils::nullable_autograd_meta(ctx.InputsBetween(
-            ctx.InputRangeAt(i).first, ctx.InputRangeAt(i).second));
+  for (size_t i = 0; i < ctx.OutputRange().size(); ++i) {
+    auto output_pair = ctx.OutputRangeAt(i);
+    outs[i] = ctx.OutputsBetween(output_pair.first, output_pair.second);
   }
 
+  // handle optional None output when construct backward graph
   for (size_t i = 0; i < ctx.OutputRange().size(); i++) {
-    outs_auto_grad_metas[i] =
-        egr::EagerUtils::unsafe_autograd_meta(ctx.OutputsBetweeen(
-            ctx.OutputRangeAt(i).first, ctx.OutputRangeAt(i).second));
+    if (ctx.OutputRangeAt(i).first + 1 == ctx.OutputRangeAt(i).second) {
+      paddle::Tensor* out_tensor =
+          ctx.MutableOutputAt(ctx.OutputRangeAt(i).first);
+      if (!out_tensor->initialized()) {
+        PADDLE_ENFORCE(
+            paddle::framework::detail::IsOptionalVar(
+                grad_outputs_names.at(i)) ||
+                out_tensor->is_dist_tensor(),
+            phi::errors::InvalidArgument(
+                "Custom grad operator's %d-th output is not initialized. "
+                "Please check your implementation again. If you are "
+                "using inplace optional outputs, then you must use "
+                "`paddle::Optional` to decorate this output",
+                i));
+        // We can also consider using `autograd_meta` to tolerant nullptr.
+        out_tensor->set_autograd_meta(std::make_shared<egr::AutogradMeta>());
+      }
+    }
   }
+
+  VLOG(7) << "Get AutogradMeta for inputs and outputs for Custom grad Op";
+  size_t slot_ins_num = ctx.InputRange().size();
+  size_t slot_outs_num = ctx.OutputRange().size();
+  VLOG(7) << "We got slot num of ins is: " << slot_ins_num;
+  VLOG(7) << "We got slot num of outs is: " << slot_outs_num;
+  std::vector<egr::AutogradMeta*> ins_auto_grad_metas =
+      egr::EagerUtils::nullable_autograd_meta(*ctx.AllMutableInput());
+  std::vector<egr::AutogradMeta*> outs_auto_grad_metas =
+      egr::EagerUtils::unsafe_autograd_meta(*ctx.AllMutableOutput());
+
   bool require_any_grad = false;
   bool trace_backward = egr::Controller::Instance().HasGrad() && create_graph;
-  for (size_t i = 0; i < ins_auto_grad_metas.size(); i++) {
+  for (auto& ins_auto_grad_meta : ins_auto_grad_metas) {
     require_any_grad =
-        require_any_grad || egr::EagerUtils::ComputeRequireGrad(
-                                trace_backward, &(ins_auto_grad_metas[i]));
+        require_any_grad ||
+        egr::EagerUtils::ComputeRequireGrad(trace_backward, ins_auto_grad_meta);
   }
 
-  auto meta_info_map = egr::Controller::Instance().GetOpMetaInfoMap();
-  const auto& vec_map = meta_info_map.at(op_type_);
   if (require_any_grad && (vec_map.size() > 2)) {
     paddle::platform::RecordEvent node_creation_record_event(
         "Custom Op " + op_type_ + " double_grad node_creation",
@@ -278,68 +304,70 @@ RunCustomOpNode::operator()(
         1);
     VLOG(6) << " Construct Grad for Custom Op: " << op_type_;
     ConstructFwdAndBwdMap(vec_map, op_type_);
-    for (size_t i = 0; i < outs_auto_grad_metas.size(); i++) {
-      egr::EagerUtils::PassStopGradient(false, &(outs_auto_grad_metas[i]));
+    for (auto& outs_auto_grad_meta : outs_auto_grad_metas) {
+      egr::EagerUtils::PassStopGradient(false, outs_auto_grad_meta);
     }
+    // NOTE(HongyuJia): Does here needs to be consistent with forward process,
+    // PassStopGradient to ins_auto_grad_metas?
     auto grad_node = std::make_shared<egr::RunCustomOpDoubleGradNode>(
-        outs_auto_grad_metas.size(), ins_auto_grad_metas.size(), op_type_);
+        slot_outs_num, slot_ins_num, op_type_);
 
-    auto slot_map =
-        egr::Controller::Instance().GetCustomEdgesSlotMap().at(op_type_);
+    const auto& slot_map = map;
     // Prepare Grad outputs
     size_t no_grad_cnt = 0;
-    for (size_t i = 0; i < ins_auto_grad_metas.size(); i++) {
-      const std::vector<paddle::experimental::Tensor>& in_tensors =
-          ctx.InputsBetween(ctx.InputRangeAt(i).first,
-                            ctx.InputRangeAt(i).second);
+    for (size_t i = 0; i < slot_ins_num; i++) {
+      const std::vector<paddle::Tensor>& in_tensors = ctx.InputsBetween(
+          ctx.InputRangeAt(i).first, ctx.InputRangeAt(i).second);
 
-      if (slot_map[1][0].find(i) != slot_map[1][0].end()) {
-        grad_node->SetGradOutMeta(in_tensors, slot_map[1][0][i]);
-      } else {
+      if (slot_map[1][0].find(static_cast<int>(i)) != slot_map[1][0].end()) {
         grad_node->SetGradOutMeta(in_tensors,
-                                  ins_auto_grad_metas.size() - 1 - no_grad_cnt);
+                                  slot_map[1][0].at(static_cast<int>(i)));
+      } else {
+        grad_node->SetGradOutMeta(in_tensors, slot_ins_num - 1 - no_grad_cnt);
         no_grad_cnt++;
       }
     }
 
     // Prepare Grad inputs with grad of fwd outputs
-    for (size_t i = 0; i < outs_auto_grad_metas.size(); i++) {
-      const std::vector<paddle::experimental::Tensor>& out_tensors =
-          ctx.OutputsBetweeen(ctx.OutputRangeAt(i).first,
-                              ctx.OutputRangeAt(i).second);
-      egr::EagerUtils::SetOutRankWithSlot(&(outs_auto_grad_metas[i]), i);
-      egr::EagerUtils::SetHistory(&(outs_auto_grad_metas[i]), grad_node);
+    for (size_t i = 0; i < slot_outs_num; i++) {
+      const auto& size_pair = ctx.OutputRangeAt(i);
+      const std::vector<paddle::Tensor>& out_tensors =
+          ctx.OutputsBetween(size_pair.first, size_pair.second);
+      for (size_t j = size_pair.first; j < size_pair.second; j++) {
+        // SetOutRankWithSlot: slot_id = i, rank = j - size_pair.first
+        outs_auto_grad_metas[j]->SetSingleOutRankWithSlot(i,
+                                                          j - size_pair.first);
+        egr::EagerUtils::SetHistory(outs_auto_grad_metas[j], grad_node);
+      }
       grad_node->SetGradInMeta(out_tensors, i);
     }
 
     // Prepare Grad inputs with fwd outputs
-    for (auto it = slot_map[1][2].begin(); it != slot_map[1][2].end(); it++) {
-      VLOG(7) << "Prepare fwd_outs: " << it->first
-              << " to grad_inputs: " << it->second;
-      grad_node->fwd_outs[it->second] =
+    for (auto item : slot_map[1][2]) {
+      VLOG(7) << "Prepare fwd_outs: " << item.first
+              << " to grad_inputs: " << item.second;
+      grad_node->fwd_outs[item.second] =
           egr::RunCustomOpNode::ConstructTensorWrapper(
-              ctx.OutputsBetweeen(ctx.OutputRangeAt(it->first).first,
-                                  ctx.OutputRangeAt(it->first).second));
+              ctx.OutputsBetween(ctx.OutputRangeAt(item.first).first,
+                                 ctx.OutputRangeAt(item.first).second));
     }
 
     // Prepare Grad inputs with fwd inputs
-    for (auto it = slot_map[1][3].begin(); it != slot_map[1][3].end(); it++) {
-      VLOG(7) << "Prepare fwd_ins: " << it->first
-              << " to grad_inputs: " << it->second;
-      grad_node->fwd_ins[it->second] =
+    for (auto item : slot_map[1][3]) {
+      VLOG(7) << "Prepare fwd_ins: " << item.first
+              << " to grad_inputs: " << item.second;
+      grad_node->fwd_ins[item.second] =
           egr::RunCustomOpNode::ConstructTensorWrapper(
-              ctx.InputsBetween(ctx.InputRangeAt(it->first).first,
-                                ctx.InputRangeAt(it->first).second));
+              ctx.InputsBetween(ctx.InputRangeAt(item.first).first,
+                                ctx.InputRangeAt(item.first).second));
     }
 
-    auto attrs_names = paddle::framework::OpMetaInfoHelper::GetAttrs(
-        meta_info_map.at(op_type_)[2]);
-    std::vector<paddle::any> attrs(attrs_names.size());
+    std::vector<paddle::any> attrs(attrs_.size());
     // Prepare attrs for Grad node
-    for (auto it = slot_map[1][4].begin(); it != slot_map[1][4].end(); it++) {
-      VLOG(7) << "Prepare fwd attrs: " << it->first
-              << " to grad_attrs: " << it->second;
-      attrs[it->second] = attrs_[it->first];
+    for (auto item : slot_map[1][4]) {
+      VLOG(7) << "Prepare fwd attrs: " << item.first
+              << " to grad_attrs: " << item.second;
+      attrs[item.second] = attrs_[item.first];
     }
     grad_node->SetAttrs(attrs);
   }
@@ -347,25 +375,23 @@ RunCustomOpNode::operator()(
   return outs;
 }
 
-paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                     kSlotSmallVectorSize>
+paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
 RunCustomOpDoubleGradNode::operator()(
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                         kSlotSmallVectorSize>& grads,
+    paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>&
+        grads,
     bool create_graph,
     bool is_new_grad) {  // NOLINT
   paddle::CustomOpKernelContext ctx;
-  auto meta_info_map = egr::Controller::Instance().GetOpMetaInfoMap();
+  const auto& meta_info_map = egr::Controller::Instance().GetOpMetaInfoMap();
   const auto& vec_map = meta_info_map.at(op_type_);
-  auto grad_inputs_name =
-      paddle::framework::OpMetaInfoHelper::GetInputs(vec_map[2]);
-  auto grad_outputs_names =
-      paddle::framework::OpMetaInfoHelper::GetOutputs(vec_map[2]);
-  auto map = egr::Controller::Instance().GetCustomEdgesSlotMap().at(op_type_);
-  auto kernel_map = egr::Controller::Instance().GetOpMetaInfoMap();
+  const auto& grad_inputs_name =
+      paddle::OpMetaInfoHelper::GetInputs(vec_map[2]);
+  const auto& grad_outputs_names =
+      paddle::OpMetaInfoHelper::GetOutputs(vec_map[2]);
+  const auto& map =
+      egr::Controller::Instance().GetCustomEdgesSlotMap().at(op_type_);
 
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                       kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
       tmp_ins(grad_inputs_name.size());
   VLOG(7) << " Prepare Backward inputs of grads with size: " << grads.size()
           << ", whose grad_inputs_name size is: " << grad_inputs_name.size();
@@ -373,18 +399,19 @@ RunCustomOpDoubleGradNode::operator()(
   auto hooked_grads = ApplyGradientHooks(grads);
 
   for (size_t i = 0; i < hooked_grads.size(); i++) {
-    if (map[1][1].find(i) != map[1][1].end()) {
-      VLOG(7) << "Insert grad: " << i << " to grad_inputs: " << map[1][1][i];
-      tmp_ins[map[1][1][i]] = hooked_grads[i];
+    if (map[1][1].find(static_cast<int>(i)) != map[1][1].end()) {
+      VLOG(7) << "Insert grad: " << i
+              << " to grad_inputs: " << map[1][1].at(static_cast<int>(i));
+      tmp_ins[map[1][1].at(static_cast<int>(i))] = hooked_grads[i];
     }
   }
 
-  for (auto it : fwd_outs) {
+  for (auto it : fwd_outs) {  // NOLINT
     VLOG(7) << "Insert fwd_outs to grad_inputs: " << it.first;
     tmp_ins[it.first] = RunCustomOpDoubleGradNode::Recover(&(it.second));
   }
 
-  for (auto it : fwd_ins) {
+  for (auto it : fwd_ins) {  // NOLINT
     VLOG(7) << "Insert fwd_ins to grad_inputs: " << it.first;
     tmp_ins[it.first] = RunCustomOpDoubleGradNode::Recover(&(it.second));
   }
@@ -395,21 +422,15 @@ RunCustomOpDoubleGradNode::operator()(
   }
   VLOG(6) << "Prepare Grad attrs";
   ctx.EmplaceBackAttrs(attrs_);
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                       kSlotSmallVectorSize>
-      outs(OutputMeta().size());
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                       kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize> outs(
+      OutputMeta().size());
+  paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
       tmp_outs(grad_outputs_names.size());
   VLOG(6) << "Prepare Grad outputs for size: " << grad_outputs_names.size();
 
-  for (const auto& name : grad_outputs_names) {
-    VLOG(6) << "Prepare Grad outputs name is: " << name;
-  }
-
   for (size_t i = 0; i < OutputMeta().size(); i++) {
-    if (map[1][0].find(i) != map[1][0].end()) {
-      int grad_output_idx = map[1][0][i];
+    if (map[1][0].find(static_cast<int>(i)) != map[1][0].end()) {
+      int grad_output_idx = map[1][0].at(static_cast<int>(i));
       VLOG(7) << "Insert grad outputs: " << i
               << " with size: " << OutputMeta()[grad_output_idx].size()
               << " to tmp_outputs: " << grad_output_idx;
@@ -428,10 +449,14 @@ RunCustomOpDoubleGradNode::operator()(
     VLOG(7) << "Prepare grad outputs size: " << tmp_outs[i].size();
     ctx.EmplaceBackOutputs(tmp_outs[i]);
   }
-  VLOG(7) << "Run Kernel of Grad Custom Op: " << name();
+  VLOG(7) << "Run Kernel of Grad Custom Op: " << op_type_ << "_grad_grad";
 
-  (*paddle::framework::OpMetaInfoHelper::GetKernelFn(
-      kernel_map.at(op_type_)[2]))(&ctx);
+  run_custom_op_impl(vec_map[2], false, true, ctx);
+
+  for (size_t i = 0; i < ctx.OutputRange().size(); ++i) {
+    auto output_pair = ctx.OutputRangeAt(i);
+    outs[i] = ctx.OutputsBetween(output_pair.first, output_pair.second);
+  }
 
   return outs;
 }

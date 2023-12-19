@@ -18,9 +18,9 @@
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
+#include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-
 PADDLE_DEFINE_EXPORTED_bool(
     cpu_deterministic,
     false,
@@ -63,7 +63,7 @@ void ReduceOpHandle::RunImpl() {
           in_var_handles.size(),
           places_.size()));
 
-  VarHandle *out_var_handle;
+  VarHandle *out_var_handle = nullptr;
   {
     auto out_var_handles = DynamicCast<VarHandle>(outputs_);
 
@@ -189,13 +189,13 @@ void ReduceOpHandle::RunImpl() {
           out_var_handle->place(), pre_in.dtype());
 
       auto out_p = out_var_handle->place();
-      int root_id = out_p.device;
+      int root_id = out_p.device;  // NOLINT
       std::vector<std::function<void()>> all_reduce_calls;
       for (size_t i = 0; i < var_scopes.size(); ++i) {
         auto &p = in_places[i];
         auto &lod_tensor = *lod_tensors[i];
 
-        int dev_id = p.device;
+        int dev_id = p.device;  // NOLINT
         auto &nccl_ctx = nccl_ctxs_->at(dev_id);
 
         void *buffer = const_cast<void *>(lod_tensor.data());

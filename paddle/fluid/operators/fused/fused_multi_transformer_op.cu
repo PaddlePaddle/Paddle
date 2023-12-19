@@ -1,8 +1,11 @@
 /* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,7 +19,7 @@ namespace operators {
 
 #if CUDA_VERSION >= 11060  // Use cublasLt to fuse FFN operation.
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -106,13 +109,13 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     // (transA, transB, compute_bias) = (false, trans_qkvw, false)
     // Since we fused QKVBias into QKVBiasAddTransposeSplit kernel, here we set
     // compute_bias as false.
-    auto qkv_compute = AttnMatMul<T>(dev_ctx,
-                                     false,
-                                     trans_qkvw,
-                                     token_num,
-                                     output_size,
-                                     input_size,
-                                     /*compute_bias=*/false);
+    auto qkv_compute = phi::fusion::AttnMatMul<T>(dev_ctx,
+                                                  false,
+                                                  trans_qkvw,
+                                                  token_num,
+                                                  output_size,
+                                                  input_size,
+                                                  /*compute_bias=*/false);
 
     phi::DenseTensor qkv_out;
     qkv_out.Resize({{token_num, 3, num_head, dim_head}});
@@ -216,7 +219,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     auto out_linear_biases = ctx.MultiInput<phi::DenseTensor>("OutLinearBias");
     int ring_id = ctx.Attr<int>("ring_id");
     // (transA, transB, compute_bias) = (false, false, false)
-    auto out_linear_compute = AttnMatMul<T>(
+    auto out_linear_compute = phi::fusion::AttnMatMul<T>(
         dev_ctx, false, false, token_num, dim_embed, hidden_size, false);
 
     // 5. ln(residual + bias)
@@ -257,7 +260,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     auto ffn2_weights = ctx.MultiInput<phi::DenseTensor>("FFN2Weight");
     auto ffn2_biases = ctx.MultiInput<phi::DenseTensor>("FFN2Bias");
 
-    auto ffn2_linear_compute = AttnMatMul<T>(
+    auto ffn2_linear_compute = phi::fusion::AttnMatMul<T>(
         dev_ctx, false, false, token_num, dim_embed, dim_ffn, false);
 
     // 8. ffn2 Layernorm residual bias
@@ -372,7 +375,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                 dim_head,
                 time_step->data<int>()[0],
                 rotary_emb_dims,
-                1. / sqrt(dim_head));
+                1. / std::sqrt(dim_head));
       } else if (cache_kv_out) {  // generation context stage
         const phi::DenseTensor *pre_cache_kv_tensor =
             pre_caches.size() > 0 ? pre_caches[i] : nullptr;
@@ -393,7 +396,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                                         dim_head,
                                         compute_bias);
         // q_transpose_out_data [bs, head_num, seq_len, dim_head]
-        // kv_transpose_out_data [2， bs, head_num, seq_len, dim_head]
+        // kv_transpose_out_data [2, bs, head_num, seq_len, dim_head]
         if (rotary_emb_dims != 0) {
           auto *rotary_emb_data = rotary_tensor->data<T>();
           const int *sequence_lengths_data =
@@ -480,7 +483,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                                         compute_bias);
 
         // q_transpose_out_data [bs, head_num, seq_len, dim_head]
-        // kv_transpose_out_data [2， bs, head_num, seq_len, dim_head]
+        // kv_transpose_out_data [2, bs, head_num, seq_len, dim_head]
         if (rotary_emb_dims != 0) {
           auto *rotary_emb_data = rotary_tensor->data<T>();
           const int *sequence_lengths_data =
@@ -682,7 +685,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 
 #else
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -772,13 +775,13 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     // (transA, transB, compute_bias) = (false, trans_qkvw, false)
     // Since we fused QKVBias into QKVBiasAddTransposeSplit kernel, here we
     // set compute_bias as false.
-    auto qkv_compute = AttnMatMul<T>(dev_ctx,
-                                     false,
-                                     trans_qkvw,
-                                     token_num,
-                                     output_size,
-                                     input_size,
-                                     /*compute_bias=*/false);
+    auto qkv_compute = phi::fusion::AttnMatMul<T>(dev_ctx,
+                                                  false,
+                                                  trans_qkvw,
+                                                  token_num,
+                                                  output_size,
+                                                  input_size,
+                                                  /*compute_bias=*/false);
 
     phi::DenseTensor qkv_out;
     qkv_out.Resize({{token_num, 3, num_head, dim_head}});
@@ -882,7 +885,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     auto out_linear_biases = ctx.MultiInput<phi::DenseTensor>("OutLinearBias");
     int ring_id = ctx.Attr<int>("ring_id");
     // (transA, transB, compute_bias) = (false, false, false)
-    auto out_linear_compute = AttnMatMul<T>(
+    auto out_linear_compute = phi::fusion::AttnMatMul<T>(
         dev_ctx, false, false, token_num, dim_embed, hidden_size, false);
 
     // 5. ln(residual + bias)
@@ -909,7 +912,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     auto ffn1_weight_dim = ffn1_weights[0]->dims();
 
     int dim_ffn = ffn1_weight_dim[1];
-    auto ffn1_linear_compute = AttnMatMul<T>(
+    auto ffn1_linear_compute = phi::fusion::AttnMatMul<T>(
         dev_ctx, false, false, token_num, dim_ffn, dim_embed, false);
     phi::DenseTensor ffn1_out;
     ffn1_out.Resize({{token_num, dim_ffn}});
@@ -931,7 +934,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     // 8. ffn2 matmul
     auto ffn2_weights = ctx.MultiInput<phi::DenseTensor>("FFN2Weight");
     auto ffn2_biases = ctx.MultiInput<phi::DenseTensor>("FFN2Bias");
-    auto ffn2_linear_compute = AttnMatMul<T>(
+    auto ffn2_linear_compute = phi::fusion::AttnMatMul<T>(
         dev_ctx, false, false, token_num, dim_embed, dim_ffn, false);
 
     // 9. ffn2 residual bias
@@ -1046,7 +1049,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                 dim_head,
                 time_step->data<int>()[0],
                 rotary_emb_dims,
-                1. / sqrt(dim_head));
+                1. / std::sqrt(dim_head));
       } else if (cache_kv_out) {  // generation context stage
         const phi::DenseTensor *pre_cache_kv_tensor =
             pre_caches.size() > 0 ? pre_caches[i] : nullptr;
@@ -1068,7 +1071,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                                         compute_bias);
 
         // q_transpose_out_data [bs, head_num, seq_len, dim_head]
-        // kv_transpose_out_data [2， bs, head_num, seq_len, dim_head]
+        // kv_transpose_out_data [2, bs, head_num, seq_len, dim_head]
         if (rotary_emb_dims != 0) {
           auto *rotary_emb_data = rotary_tensor->data<T>();
           const int *sequence_lengths_data =
@@ -1155,7 +1158,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                                         compute_bias);
 
         // q_transpose_out_data [bs, head_num, seq_len, dim_head]
-        // kv_transpose_out_data [2， bs, head_num, seq_len, dim_head]
+        // kv_transpose_out_data [2, bs, head_num, seq_len, dim_head]
         if (rotary_emb_dims != 0) {
           auto *rotary_emb_data = rotary_tensor->data<T>();
           const int *sequence_lengths_data =
@@ -1367,6 +1370,9 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(fused_multi_transformer,
-                        ops::FusedMultiTransformerOpKernel<plat::float16>,
-                        ops::FusedMultiTransformerOpKernel<float>);
+PD_REGISTER_STRUCT_KERNEL(fused_multi_transformer,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FusedMultiTransformerOpKernel,
+                          float,
+                          plat::float16) {}

@@ -107,11 +107,7 @@ void AttentionLSTMFusePass::FindWhileOp(Graph* graph) const {
   gpd.mutable_pattern()->NewNode(
       [&](Node* n) { return fused_external_ops.count(n->id()); }, "while");
 
-  if (!graph->Has(kGraphvizMarkedNodeAttr)) {
-    graph->Set(kGraphvizMarkedNodeAttr, new GraphVizPass::marked_nodes_t);
-  }
-  auto& marked_nodes =
-      graph->Get<GraphVizPass::marked_nodes_t>(kGraphvizMarkedNodeAttr);
+  auto& marked_nodes = GetMarkedNodes(graph);
 
   auto handle = [&](const GraphPatternDetector::subgraph_t& subgraph,
                     Graph* g) {
@@ -268,12 +264,12 @@ void PrepareParameters(Graph* graph, const Param& param, ir::Node* lstm_op) {
       platform::errors::InvalidArgument(
           "phi::DenseTensor attention bias dimension size(%d) must be 1.",
           attention_bias_t->dims().size()));
-  attention_bias_t->Resize(phi::make_ddim({1, attention_bias_t->dims()[0]}));
+  attention_bias_t->Resize(common::make_ddim({1, attention_bias_t->dims()[0]}));
 
   auto* attention_scalar_bias_t =
       scope.FindVar(param.AttentionScalarBias)->GetMutable<phi::DenseTensor>();
   attention_scalar_bias_t->Resize(
-      phi::make_ddim({1, attention_scalar_bias_t->dims()[0]}));
+      common::make_ddim({1, attention_scalar_bias_t->dims()[0]}));
 
   PrepareLSTMWeight(W_forget_w0_t,
                     W_forget_w1_t,
@@ -298,9 +294,9 @@ void PrepareLSTMWeight(const phi::DenseTensor& W_forget_w0,
                        const phi::DenseTensor& W_cell_w0,
                        const phi::DenseTensor& W_cell_w1,
                        phi::DenseTensor* out) {
-  int D = W_forget_w0.dims()[0];
-  int M = W_forget_w1.dims()[0];
-  out->Resize(phi::make_ddim({D + M, 4 * D}));
+  int D = static_cast<int>(W_forget_w0.dims()[0]);
+  int M = static_cast<int>(W_forget_w1.dims()[0]);
+  out->Resize(common::make_ddim({D + M, 4 * D}));
   VLOG(3) << "LSTMWeight resized to " << out->dims();
 
   float* out_data = out->mutable_data<float>(platform::CPUPlace());
@@ -346,8 +342,8 @@ void PrepareLSTMBias(const phi::DenseTensor& B_forget,
       platform::errors::InvalidArgument(
           "phi::DenseTensor B forget dimension size(%d) must be 1.",
           B_forget.dims().size()));
-  int D = B_forget.dims()[0];
-  out->Resize(phi::make_ddim({1, 4 * D}));
+  int D = static_cast<int>(B_forget.dims()[0]);
+  out->Resize(common::make_ddim({1, 4 * D}));
   auto* out_data = out->mutable_data<float>(platform::CPUPlace());
   for (size_t i = 0; i < tensors.size(); i++) {
     memcpy(out_data + D * i, tensors[i], D * sizeof(float));

@@ -36,8 +36,8 @@ void* GetNVRTCDsoHandle();
 void* GetCUDADsoHandle();
 void* GetWarpCTCDsoHandle();
 void* GetWarpRNNTDsoHandle();
+void* GetFlashAttnDsoHandle();
 void* GetNCCLDsoHandle();
-void* GetHCCLDsoHandle();
 void* GetTensorRtDsoHandle();
 void* GetMKLMLDsoHandle();
 void* GetLAPACKDsoHandle();
@@ -47,6 +47,7 @@ void* GetCUFFTDsoHandle();
 void* GetMKLRTDsoHandle();
 void* GetROCFFTDsoHandle();
 void* GetCusparseLtDsoHandle();
+void* GetXPTIDsoHandle();
 
 void SetPaddleLibPath(const std::string&);
 

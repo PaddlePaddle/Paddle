@@ -18,8 +18,8 @@
 #include <mutex>  // NOLINT
 
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
+#include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-#include "paddle/phi/core/flags.h"
 
 PADDLE_DEFINE_EXPORTED_READONLY_bool(
     free_idle_chunk,
@@ -36,6 +36,10 @@ PADDLE_DEFINE_EXPORTED_READONLY_bool(
     "chunk would be freed when no cache hit; if false, idle "
     "chunk would be freed when out of memory occurs. This flag "
     "only works when FLAGS_allocator_strategy=auto_growth.");
+
+PADDLE_DEFINE_EXPORTED_READONLY_bool(print_allocator_trace_info,
+                                     false,
+                                     "print trace memory info");
 
 namespace paddle {
 namespace memory {
@@ -54,6 +58,7 @@ AutoGrowthBestFitAllocator::AutoGrowthBestFitAllocator(
   total_alloc_size_ = 0;
   total_free_times_ = 0;
   total_free_size_ = 0;
+  VLOG(4) << "chunk_size_:" << chunk_size_;
 }
 
 phi::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
@@ -187,7 +192,9 @@ uint64_t AutoGrowthBestFitAllocator::FreeIdleChunks() {
     }
   }
 
-  Trace();
+  if (FLAGS_print_allocator_trace_info) {
+    Trace();
+  }
   return bytes;
 }
 
@@ -198,12 +205,15 @@ void AutoGrowthBestFitAllocator::Trace() const {
     cur_idle_bytes += it->second->size_;
   }
 
-  VLOG(1) << "alloc:" << total_alloc_size_ / static_cast<double>(1024 * 1024)
-          << "m free:" << total_free_size_ / static_cast<double>(1024 * 1024)
+  VLOG(1) << "alloc:"
+          << total_alloc_size_ / static_cast<double>(1024 * 1024)  // NOLINT
+          << "m free:"
+          << total_free_size_ / static_cast<double>(1024 * 1024)  // NOLINT
           << "m busy:"
-          << (total_alloc_size_ - total_free_size_) /
+          << (total_alloc_size_ - total_free_size_) /  // NOLINT
                  static_cast<double>(1024 * 1024)
-          << "m idle:" << cur_idle_bytes / static_cast<double>(1024 * 1024)
+          << "m idle:"
+          << cur_idle_bytes / static_cast<double>(1024 * 1024)  // NOLINT
           << "m alloc_times:" << total_alloc_times_
           << " free_times:" << total_free_times_
           << " free_blocks_num:" << free_blocks_.size()

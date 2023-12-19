@@ -26,6 +26,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "crypto/cipher.h"
@@ -38,7 +39,8 @@ namespace paddle {
 using PaddleDType = paddle_infer::DataType;
 using PaddlePlace = paddle_infer::PlaceType;
 using PaddleDataLayout = paddle_infer::DataLayout;
-using paddle_infer::Exp_OutputHookFunc;
+using paddle_infer::InputTensorHookFunc;
+using paddle_infer::OutputTensorHookFunc;
 
 /// \brief Memory manager for PaddleTensor.
 ///
@@ -136,9 +138,9 @@ class PD_INFER_DECL PaddleBuf {
 
   ~PaddleBuf() { Free(); }
   PaddleBuf& operator=(const PaddleBuf&);
-  PaddleBuf& operator=(PaddleBuf&&);
+  PaddleBuf& operator=(PaddleBuf&&) noexcept;
   PaddleBuf() = default;
-  PaddleBuf(PaddleBuf&& other);
+  PaddleBuf(PaddleBuf&& other) noexcept;
 
  private:
   void Free();
@@ -220,6 +222,16 @@ class PD_INFER_DECL PaddlePredictor {
   virtual bool Run(const std::vector<PaddleTensor>& inputs,
                    std::vector<PaddleTensor>* output_data,
                    int batch_size = -1) = 0;
+
+  /// \brief This interface takes input and runs the network (Recommended).
+  /// \param[in] inputs An list of Tensor as the input to the network.
+  /// \param[out] output_data Pointer to the tensor list, which holds the output
+  /// Tensor
+  /// \return Whether the run is successful
+  virtual bool Run(const std::vector<paddle::Tensor>& inputs,
+                   std::vector<paddle::Tensor>* outputs) {
+    return false;
+  }
 
   /// \brief  Used to get the name of the network input.
   /// Be inherited by AnalysisPredictor, Only used in ZeroCopy scenarios.
@@ -307,11 +319,14 @@ class PD_INFER_DECL PaddlePredictor {
   /// \brief Register a output hook function to operate the intermediate tensor
   /// of op output. when using this function, memory reuse should be tured off.
   /// The hook function signature is void(const std::string&, const
-  /// std::string&, const Tensor&>). Here, the first parameter is op's
+  /// std::string&, const paddle::Tensor&>). Here, the first parameter is op's
   /// type, the second param is output var name of the op, and the third
   /// parameter is output tensor with the var name.
   ///
-  virtual void RegisterOutputHook(const Exp_OutputHookFunc& hookfunc) {}
+  virtual void RegisterOutputHook(const OutputTensorHookFunc& hookfunc) {}
+
+  /// \brief Same as RegisterOutputHook
+  virtual void RegisterInputHook(const InputTensorHookFunc& hookfunc) {}
 
   /// \brief Clone an existing predictor
   /// When using clone, the same network will be created,
@@ -350,7 +365,6 @@ struct PD_INFER_DECL NativeConfig : public PaddlePredictor::Config {
   /// GPU related fields.
   bool use_xpu{false};
   bool use_gpu{false};
-  bool use_npu{false};
   int device{0};
   float fraction_of_gpu_memory{
       -1.f};  ///< Change to a float in (0,1] if needed.
@@ -446,7 +460,7 @@ PD_INFER_DECL int PaddleDtypeSize(PaddleDType dtype);
 
 PD_INFER_DECL std::string get_version();
 
-PD_INFER_DECL std::string UpdateDllFlag(const char* name, const char* value);
+PD_INFER_DECL void UpdateDllFlag(const char* name, const char* value);
 
 PD_INFER_DECL std::shared_ptr<framework::Cipher> MakeCipher(
     const std::string& config_file);
@@ -462,6 +476,29 @@ class Predictor;
 class Tensor;
 using Config = paddle::AnalysisConfig;
 namespace experimental {
+struct XpuRuntimeConfig {
+  // xpu_context(from baidu::xpu::api::create_context) for execution.
+  // If context is nullptr, default context is used.
+  void* context{nullptr};
+  // Stream for execution.
+  // Note: It has a higher priority than stream in "context"
+  void* stream{nullptr};
+  // Available l3 size (Byte)
+  // For kunlun1, max l3_size is 16773120 Byte
+  // For kunlun2, max l3_size is 67104768 Byte
+  // Note: If it is difference from l3_size in "context", new l3 buffer is
+  // malloced.
+  size_t l3_size{16773120};
+  // If l3_ptr is not nullptr, it is used as l3 buffer.
+  // If l3_ptr is nullptr, new l3 buffer will be created.
+  void* l3_ptr{nullptr};
+  // Available l3 size for autotune.
+  // If l3_autotune_size is 0, autotune is closed.
+  // Note: The remaining l3 size (l3_size - l3_autotune_size) is for
+  // kernels (both paddle/xdnn kernels)
+  size_t l3_autotune_size{0};
+};
+
 // Unstable interface, may be modified or deleted in the future.
 class PD_INFER_DECL InternalUtils {
  public:
@@ -470,6 +507,7 @@ class PD_INFER_DECL InternalUtils {
                                     cudaStream_t stream);
   static bool RunWithExternalStream(paddle_infer::Predictor* pred,
                                     hipStream_t stream);
+  static bool RunWithRuntimeConfig(paddle_infer::Predictor* pred, void* config);
 
   static void UpdateConfigInterleaved(paddle_infer::Config* c,
                                       bool with_interleaved);
@@ -479,6 +517,9 @@ class PD_INFER_DECL InternalUtils {
 
   static void SetTransformerMaskid(
       paddle_infer::Config* c, const std::string& tensorrt_transformer_maskid);
+
+  static void DisableTensorRtHalfOps(
+      paddle_infer::Config* c, const std::unordered_set<std::string>& ops);
 
   static void SyncStream(paddle_infer::Predictor* pred);
   static void SyncStream(cudaStream_t stream);

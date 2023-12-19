@@ -15,7 +15,7 @@
 Print all signature of a python module in alphabet order.
 
 Usage:
-    ./print_signature  "paddle.fluid" > signature.txt
+    ./print_signature  "paddle.base" > signature.txt
 """
 
 import argparse
@@ -54,9 +54,7 @@ def md5(doc):
     except UnicodeDecodeError as e:
         md5sum = None
         print(
-            "Error({}) occurred when `md5({})`, discard it.".format(
-                str(e), doc
-            ),
+            f"Error({str(e)}) occurred when `md5({doc})`, discard it.",
             file=sys.stderr,
         )
 
@@ -88,7 +86,7 @@ def visit_all_module(mod):
     if mod_name != 'paddle' and not mod_name.startswith('paddle.'):
         return
 
-    if mod_name.startswith('paddle.fluid.core'):
+    if mod_name.startswith('paddle.base.core'):
         return
 
     if mod in visited_modules:
@@ -164,7 +162,7 @@ def get_all_api(root_path='paddle', attr="__all__"):
     )
 
     return [
-        (sorted(list(api_info['all_names']))[0], md5(api_info['docstring']))
+        (sorted(api_info['all_names'])[0], md5(api_info['docstring']))
         for api_info in api_info_dict.values()
     ]
 
@@ -192,7 +190,7 @@ def insert_api_into_dict(full_name, gen_doc_anno=None):
             api_info_dict[fc_id]["all_names"].add(full_name)
         else:
             api_info_dict[fc_id] = {
-                "all_names": set([full_name]),
+                "all_names": {full_name},
                 "id": fc_id,
                 "object": obj,
                 "type": type(obj).__name__,
@@ -263,7 +261,6 @@ def check_public_api():
         paddle.text,
         paddle.utils,
         paddle.utils.download,
-        paddle.utils.profiler,
         paddle.utils.cpp_extension,
         paddle.sysconfig,
         paddle.vision,
@@ -320,9 +317,7 @@ def check_public_api():
             cur_name = module + '.' + member_name
             instance = eval(cur_name)
             doc_md5 = md5(instance.__doc__)
-            member_dict[cur_name] = "({}, ('document', '{}'))".format(
-                cur_name, doc_md5
-            )
+            member_dict[cur_name] = f"({cur_name}, ('document', '{doc_md5}'))"
 
 
 def check_allmodule_callable():
@@ -354,7 +349,7 @@ def parse_args():
         dest='skipped',
         type=str,
         help='Skip Checking submodules',
-        default='paddle.fluid.libpaddle.eager.ops',
+        default='paddle.base.libpaddle.eager.ops',
     )
 
     if len(sys.argv) == 1:
@@ -380,7 +375,7 @@ if __name__ == '__main__':
         for k, api_info in api_info_dict.items():
             # 1. the shortest suggested_name may be renamed;
             # 2. some api's fullname is not accessable, the module name of it is overrided by the function with the same name;
-            api_name = sorted(list(api_info['all_names']))[0]
+            api_name = sorted(api_info['all_names'])[0]
             all_api_names_to_k[api_name] = k
         all_api_names_sorted = sorted(all_api_names_to_k.keys())
         for api_name in all_api_names_sorted:
@@ -388,12 +383,12 @@ if __name__ == '__main__':
                 continue
             api_info = api_info_dict[all_api_names_to_k[api_name]]
             print(
-                "{0} ({2}, ('document', '{1}'))".format(
+                "{} ({}, ('document', '{}'))".format(
                     api_name,
-                    md5(api_info['docstring']),
                     api_info['signature']
                     if 'signature' in api_info
                     else 'ArgSpec()',
+                    md5(api_info['docstring']),
                 )
             )
 
@@ -402,7 +397,7 @@ if __name__ == '__main__':
     else:
         for erroritem in ErrorSet:
             print(
-                "Error, new function {} is unreachable".format(erroritem),
+                f"Error, new function {erroritem} is unreachable",
                 file=sys.stderr,
             )
         sys.exit(1)

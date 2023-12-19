@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/fluid/memory/memcpy.h"
-#include "paddle/phi/core/ddim.h"
+#include "paddle/common/ddim.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/device_context.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -32,19 +32,19 @@ template <typename T>
 struct StridedMemcpyFunctor<T, 0> {
   void operator()(const phi::DeviceContext& dev_ctx,
                   const T* src,
-                  const int64_t* src_stride,
-                  const int64_t* dst_dim,
-                  const int64_t* dst_stride,
+                  const int64_t* src_stride UNUSED,
+                  const int64_t* dst_dim UNUSED,
+                  const int64_t* dst_stride UNUSED,
                   T* dst) const {
     auto place = dev_ctx.GetPlace();
     if (place.GetType() == phi::AllocationType::CPU) {
       auto& cpu_place = place;
-      paddle::memory::Copy(cpu_place, dst, cpu_place, src, sizeof(T));
+      memory_utils::Copy(cpu_place, dst, cpu_place, src, sizeof(T));
     } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       auto& gpu_place = place;
       auto& cuda_ctx = reinterpret_cast<const phi::GPUContext&>(dev_ctx);
-      paddle::memory::Copy(
+      memory_utils::Copy(
           gpu_place, dst, gpu_place, src, sizeof(T), cuda_ctx.stream());
 #else
       PADDLE_THROW(
@@ -58,25 +58,25 @@ template <typename T>
 struct StridedMemcpyFunctor<T, 1> {
   void operator()(const phi::DeviceContext& dev_ctx,
                   const T* src,
-                  const int64_t* src_stride,
+                  const int64_t* src_stride UNUSED,
                   const int64_t* dst_dim,
-                  const int64_t* dst_stride,
+                  const int64_t* dst_stride UNUSED,
                   T* dst) const {
     auto place = dev_ctx.GetPlace();
     if (place.GetType() == phi::AllocationType::CPU) {
       auto& cpu_place = place;
-      paddle::memory::Copy(
+      memory_utils::Copy(
           cpu_place, dst, cpu_place, src, sizeof(T) * dst_dim[0]);
     } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       auto& gpu_place = place;
       auto& cuda_ctx = reinterpret_cast<const phi::GPUContext&>(dev_ctx);
-      paddle::memory::Copy(gpu_place,
-                           dst,
-                           gpu_place,
-                           src,
-                           sizeof(T) * dst_dim[0],
-                           cuda_ctx.stream());
+      memory_utils::Copy(gpu_place,
+                         dst,
+                         gpu_place,
+                         src,
+                         sizeof(T) * dst_dim[0],
+                         cuda_ctx.stream());
 #else
       PADDLE_THROW(
           phi::errors::Unavailable("Paddle is not compiled with GPU."));

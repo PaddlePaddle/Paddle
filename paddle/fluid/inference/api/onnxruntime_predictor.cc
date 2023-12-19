@@ -187,7 +187,7 @@ bool ONNXRuntimePredictor::Init() {
   session_ = std::make_shared<Ort::Session>(
       *env_, onnx_proto, static_cast<size_t>(out_size), session_options);
   InitBinding();
-
+  paddle::framework::InitMemoryMethod();
   delete onnx_proto;
   onnx_proto = nullptr;
   return true;
@@ -198,7 +198,7 @@ std::unique_ptr<PaddlePredictor>
 CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kONNXRuntime>(
     const AnalysisConfig &config) {
   if (config.glog_info_disabled()) {
-    FLAGS_logtostderr = 1;
+    FLAGS_logtostderr = true;
     FLAGS_minloglevel = 2;  // GLOG_ERROR
   }
 
@@ -317,7 +317,7 @@ Ort::Value ONNXRuntimePredictor::GetOrtValue(const ONNXDesc &desc,
   size_t size =
       tensor->numel() *
       framework::SizeOfType(framework::TransToProtoVarType(tensor->dtype()));
-  std::vector<int64_t> shape = phi::vectorize<int64_t>(tensor->dims());
+  std::vector<int64_t> shape = common::vectorize<int64_t>(tensor->dims());
   return Ort::Value::CreateTensor(memory_info,
                                   static_cast<void *>(tensor->data()),
                                   size,

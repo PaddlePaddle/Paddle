@@ -43,7 +43,7 @@ struct LRNFunctor {
                   const DataLayout data_layout = DataLayout::kAnyLayout);
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class LRNKernel : public framework::OpKernel<T> {
  public:
   // f(x) = x * ( k + alpha * SUM((x)^2) )^(-beta)
@@ -56,7 +56,7 @@ class LRNKernel : public framework::OpKernel<T> {
 
     const std::string data_layout_str = ctx.Attr<std::string>("data_format");
     const phi::DataLayout data_layout =
-        phi::StringToDataLayout(data_layout_str);
+        common::StringToDataLayout(data_layout_str);
     // NCHW
     int N = x_dims[0];
     int C = (data_layout != DataLayout::kNHWC ? x_dims[1] : x_dims[3]);
@@ -136,7 +136,7 @@ struct LRNGradFunctor {
  * The upper and lower is the same as forward. The logic of the sum
  * is also the same as forward.
  */
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class LRNGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -147,7 +147,7 @@ class LRNGradKernel : public framework::OpKernel<T> {
     const phi::DenseTensor& mid = *ctx.Input<phi::DenseTensor>("MidOut");
     const std::string data_layout_str = ctx.Attr<std::string>("data_format");
     const phi::DataLayout data_layout =
-        phi::StringToDataLayout(data_layout_str);
+        common::StringToDataLayout(data_layout_str);
 
     auto x_g = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     x_g->mutable_data<T>(ctx.GetPlace());

@@ -14,7 +14,7 @@
 
 #include "paddle/phi/kernels/trunc_kernel.h"
 
-#include <math.h>
+#include <cmath>
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"

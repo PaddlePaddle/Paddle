@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/core/macros.h"
+#include "paddle/common/macros.h"
 
 namespace phi {
 namespace distributed {
@@ -23,6 +23,9 @@ class CommContext {
  public:
   CommContext(int rank, int size) : rank_(rank), size_(size) {}
   virtual ~CommContext() = default;
+
+  int GetRank() const { return rank_; }
+  int GetSize() const { return size_; }
 
  protected:
   int rank_;

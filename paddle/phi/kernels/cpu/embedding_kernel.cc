@@ -48,14 +48,8 @@ struct EmbeddingCPUFunctor {
     dev_ctx_.template Alloc<T>(out_);
     auto* output = out_->data<T>();
 
-#if defined(_OPENMP) && !defined(PADDLE_WITH_CUDA)
-#pragma omp parallel for
-#endif
-
     for (int64_t i = 0; i < ids_numel; ++i) {
-      if (padding_idx_ != kNoPadding && ids[i] == padding_idx_) {
-        memset(output + i * row_width, 0, row_width * sizeof(T));
-      } else {
+      if (padding_idx_ == kNoPadding && ids[i] != padding_idx_) {
         PADDLE_ENFORCE_LT(
             ids[i],
             row_number,
@@ -74,6 +68,17 @@ struct EmbeddingCPUFunctor {
                 "value.",
                 row_number,
                 ids[i]));
+      }
+    }
+
+#if defined(_OPENMP) && !defined(PADDLE_WITH_CUDA)
+#pragma omp parallel for
+#endif
+
+    for (int64_t i = 0; i < ids_numel; ++i) {
+      if (padding_idx_ != kNoPadding && ids[i] == padding_idx_) {
+        memset(output + i * row_width, 0, row_width * sizeof(T));
+      } else {
         memcpy(output + i * row_width,
                table + ids[i] * row_width,
                row_width * sizeof(T));
@@ -103,7 +108,8 @@ void EmbeddingKernel(const Context& ctx,
     functor.template apply<int64_t>();
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
-        "emebdding input only support int32 and int64"));
+        "emebdding input only support int32 and int64, but get %s",
+        input.dtype()));
   }
 }
 
@@ -116,4 +122,5 @@ PD_REGISTER_KERNEL(embedding,
                    float,
                    double,
                    int8_t,
+                   phi::dtype::float16,
                    phi::dtype::bfloat16) {}

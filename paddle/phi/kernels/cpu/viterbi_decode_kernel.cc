@@ -34,7 +34,7 @@ namespace phi {
 
 template <typename Context, typename T, typename IndType>
 struct Argmax {
-  void operator()(const Context& dev_ctx,
+  void operator()(const Context& dev_ctx UNUSED,
                   const DenseTensor& input,
                   DenseTensor* out_idx,
                   DenseTensor* out,
@@ -113,7 +113,7 @@ template <typename Context,
           class CompareFunctor,
           typename T>
 struct GetMask {
-  void operator()(const Context& dev_ctx,
+  void operator()(const Context& dev_ctx UNUSED,
                   const DenseTensor& lhs,
                   const DenseTensor& rhs,
                   DenseTensor* mask) {
@@ -127,7 +127,7 @@ template <typename Context,
           class BinaryFunctor,
           typename T>
 struct BinaryOperation {
-  void operator()(const Context& dev_ctx,
+  void operator()(const Context& dev_ctx UNUSED,
                   const DenseTensor& lhs,
                   const DenseTensor& rhs,
                   DenseTensor* output) {
@@ -188,8 +188,8 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
   DenseTensor tpath =
       int_tensor_buffer.GetBufferBlock({max_seq_len, batch_size});
   auto batch_path = funcs::Unbind(tpath);
-  for (auto it = batch_path.begin(); it != batch_path.end(); ++it) {
-    it->Resize({batch_size});
+  for (auto& item : batch_path) {
+    item.Resize({batch_size});
   }
   // create and init required tensor
   DenseTensor input_exp =
@@ -202,9 +202,9 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
   DenseTensor alpha =
       float_tensor_buffer.GetBufferBlock({batch_size, n_labels});
   DenseTensor zero = int_tensor_buffer.GetBufferBlock({batch_size, 1});
-  int_functor(dev_ctx, &zero, 0);
+  int_functor(dev_ctx, &zero, static_cast<int64_t>(0));
   DenseTensor one = int_tensor_buffer.GetBufferBlock({batch_size, 1});
-  int_functor(dev_ctx, &one, 1);
+  int_functor(dev_ctx, &one, static_cast<int64_t>(1));
   DenseTensor float_one = float_tensor_buffer.GetBufferBlock({batch_size, 1});
   float_functor(dev_ctx, &float_one, static_cast<T>(1.0));
   DenseTensor alpha_trn_sum =
@@ -318,4 +318,6 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    viterbi_decode, CPU, ALL_LAYOUT, phi::ViterbiDecodeKernel, float, double) {}
+    viterbi_decode, CPU, ALL_LAYOUT, phi::ViterbiDecodeKernel, float, double) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
+}

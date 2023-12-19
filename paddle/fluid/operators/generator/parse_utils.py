@@ -16,17 +16,33 @@ import re
 from copy import copy
 from typing import Any, Dict, List, Tuple
 
-from tests import is_attr, is_input, is_output, is_vec
+from tests_utils import is_attr, is_input, is_output, is_vec
 from type_mapping import opmaker_attr_types_map
 
 
-def to_named_dict(items: List[Dict]) -> Dict[str, Dict]:
+def to_named_dict(items: List[Dict], is_op=False) -> Dict[str, Dict]:
     named_dict = {}
-    for item in items:
-        if "name" not in item:
-            raise KeyError(f"name not in {item}")
-        name = item["name"]
-        named_dict[name] = item
+    if is_op:
+        for item in items:
+            if "name" not in item:
+                raise KeyError(f"name not in {item}")
+            item["name"] = (
+                item["name"] if item["name"][-1] != '_' else item["name"][:-1]
+            )
+            if "forward" in item:
+                item["forward"]["name"] = (
+                    item["forward"]["name"]
+                    if item["forward"]["name"][-1] != '_'
+                    else item["forward"]["name"][:-1]
+                )
+            name = item["name"]
+            named_dict[name] = item
+    else:
+        for item in items:
+            if "name" not in item:
+                raise KeyError(f"name not in {item}")
+            name = item["name"]
+            named_dict[name] = item
     return named_dict
 
 
@@ -35,7 +51,7 @@ def parse_arg(op_name: str, s: str) -> Dict[str, str]:
     1. typename name
     2. typename name = default_value
     """
-    typename, rest = [item.strip() for item in s.split(" ", 1)]
+    typename, rest = (item.strip() for item in s.split(" ", 1))
     assert (
         len(typename) > 0
     ), f"The arg typename should not be empty. Please check the args of {op_name} in yaml."
@@ -44,7 +60,7 @@ def parse_arg(op_name: str, s: str) -> Dict[str, str]:
         rest.count("=") <= 1
     ), f"There is more than 1 = in an arg in {op_name}"
     if rest.count("=") == 1:
-        name, default_value = [item.strip() for item in rest.split("=", 1)]
+        name, default_value = (item.strip() for item in rest.split("=", 1))
         assert (
             len(name) > 0
         ), f"The arg name should not be empty. Please check the args of {op_name} in yaml."
@@ -134,6 +150,8 @@ def parse_output(op_name: str, s: str) -> Dict[str, str]:
 
 
 def parse_outputs(op_name: str, outputs: str) -> List[Dict]:
+    if outputs is None:
+        return []
     outputs = parse_plain_list(outputs, sep=",")
     output_items = []
     for output in outputs:
@@ -153,12 +171,18 @@ def parse_candidates(s: str) -> Dict[str, Any]:
     delimiter = ">" if ">" in s else ","
     ordered = delimiter == ">"
     candidates = parse_plain_list(s, delimiter)
+    candidates = list(filter(None, candidates))
     return {"ordered": ordered, "candidates": candidates}
 
 
 def parse_plain_list(s: str, sep=",") -> List[str]:
-    items = [item.strip() for item in s.strip().split(sep)]
-    return items
+    if sep == ",":
+        patten = re.compile(r',(?![^{]*\})')  # support "int[] a={1,2}"
+        items = re.split(patten, s.strip())
+        items = [x.strip() for x in items]
+        return items
+    else:
+        return [item.strip() for item in s.strip().split(sep)]
 
 
 def parse_kernel(op_name: str, kernel_config: Dict[str, Any]) -> Dict[str, Any]:
@@ -176,9 +200,13 @@ def parse_kernel(op_name: str, kernel_config: Dict[str, Any]) -> Dict[str, Any]:
         'layout': None,
         'data_type': None,
         'dispatch': {},
+        'force_backend': None,
     }
     if 'param' in kernel_config:
         kernel['param'] = kernel_config['param']
+
+    if 'force_backend' in kernel_config:
+        kernel['force_backend'] = kernel_config["force_backend"]
 
     if 'backend' in kernel_config:
         kernel['backend'] = parse_candidates(kernel_config["backend"])
@@ -240,12 +268,22 @@ def parse_kernel(op_name: str, kernel_config: Dict[str, Any]) -> Dict[str, Any]:
     return kernel
 
 
+def delete_bracket(name: str):
+    if name[0] == "(":
+        name = name.lstrip("(")
+    if name[-1] == ")":
+        name = name.rstrip(")")
+    return name
+
+
 def parse_inplace(op_name: str, inplace_cfg: str) -> Dict[str, str]:
     inplace_map = {}
     inplace_cfg = inplace_cfg.lstrip("(").rstrip(")")
     pairs = parse_plain_list(inplace_cfg)
     for pair in pairs:
         in_name, out_name = parse_plain_list(pair, sep="->")
+        in_name = delete_bracket(in_name)
+        out_name = delete_bracket(out_name)
         inplace_map[out_name] = in_name
     return inplace_map
 
@@ -254,7 +292,7 @@ def parse_invoke(op_name: str, invoke_config: str) -> Dict[str, Any]:
     invoke_config = invoke_config.strip()
     func, rest = invoke_config.split("(", 1)
     func = func.strip()
-    args = rest.rstrip(")").strip()
+    args = rest[:-1].strip()  # deal the last ')'
     invocation = {"func": func, "args": args}
     return invocation
 
@@ -326,9 +364,20 @@ def check_op_config(op_entry, op_name):
         'no_need_buffer',
         'data_transform',
         'composite',
+        'support_dygraph_mode',
+        'support_tensor',
+        'traits',
+        'interfaces',
     )
-    infer_meta_key_set = ('func', 'param')
-    kernel_key_set = ('func', 'param', 'data_type', 'layout', 'backend')
+    infer_meta_key_set = ('func', 'param', 'spmd_rule')
+    kernel_key_set = (
+        'func',
+        'param',
+        'data_type',
+        'layout',
+        'backend',
+        'force_backend',
+    )
     for key in op_entry.keys():
         assert (
             key in base_key_set
@@ -462,6 +511,21 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
     else:
         data_trans = None
 
+    if "support_tensor" in op_entry.keys():
+        support_tensor = op_entry["support_tensor"]
+    else:
+        support_tensor = []
+
+    if "traits" in op_entry.keys():
+        trait_list = parse_plain_list(op_entry["traits"])
+    else:
+        trait_list = []
+
+    if "interfaces" in op_entry.keys():
+        interface_list = parse_plain_list(op_entry["interfaces"])
+    else:
+        interface_list = []
+
     op = {
         "name": op_name,
         "inputs": inputs,
@@ -469,38 +533,56 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
         "outputs": outputs,
         "no_need_buffer": no_buffer_args,
         "data_transform": data_trans,
+        "support_tensor": support_tensor,
+        "traits": trait_list,
+        "interfaces": interface_list,
     }
 
-    # invokes another op ?
-    is_base_op = "invoke" not in op_entry
+    # op should be is_base_op or is_invoke_op or is_only_composite_op
+    is_base_op = True
+    if "invoke" in op_entry:
+        is_base_op = False
+    if "composite" in op_entry and "kernel" not in op_entry:
+        is_base_op = False
 
     if is_base_op:
         # kernel
-        kernel = parse_kernel(op_name, op_entry["kernel"])
-        if kernel["param"] is None:
-            kernel["param"] = input_names + attr_names
+        if "kernel" in op_entry:
+            kernel = parse_kernel(op_name, op_entry["kernel"])
+            if kernel["param"] is None:
+                kernel["param"] = input_names + attr_names
+            op.update({"kernel": kernel})
 
         # infer meta
-        infer_meta = parse_infer_meta(op_entry["infer_meta"])
-        if infer_meta["param"] is None:
-            infer_meta["param"] = copy(kernel["param"])
+        if "infer_meta" in op_entry:
+            infer_meta = parse_infer_meta(op_entry["infer_meta"])
+            if infer_meta["param"] is None:
+                infer_meta["param"] = copy(kernel["param"])
+            op.update({"infer_meta": infer_meta})
+        # else:
+        #     assert(outputs == []), f"No infer_meta is given in {op_name}."
 
         # inplace
         if "inplace" in op_entry:
             inplace_pairs = parse_inplace(op_name, op_entry["inplace"])
         else:
             inplace_pairs = None
+        # view
+        if "view" in op_entry:
+            view_pairs = parse_inplace(op_name, op_entry["view"])
+        else:
+            view_pairs = None
         op.update(
             {
-                "infer_meta": infer_meta,
-                "kernel": kernel,
                 "inplace": inplace_pairs,
+                "view": view_pairs,
             }
         )
-    else:
-        # invoke
-        invoke = parse_invoke(op_name, op_entry["invoke"])
-        op["invoke"] = invoke
+
+    # has invoke ?
+    if "invoke" in op_entry:
+        invoke_dict = parse_invoke(op_name, op_entry["invoke"])
+        op.update({"invoke": invoke_dict})
 
     # has composite ?
     if "composite" in op_entry:
@@ -583,7 +665,7 @@ def cross_validate(ops):
                 assert len(fw_call["inputs"]) <= len(
                     fw_op["inputs"]
                 ), f"{name}: forward call has more inputs than the op "
-                for (input, input_) in zip(fw_call["inputs"], fw_op["inputs"]):
+                for input, input_ in zip(fw_call["inputs"], fw_op["inputs"]):
                     assert (
                         input["typename"] == input_["typename"]
                     ), f"type mismatch in {name} and {fw_name}"
@@ -591,7 +673,7 @@ def cross_validate(ops):
                 assert len(fw_call["attrs"]) <= len(
                     fw_op["attrs"]
                 ), f"{name}: forward call has more attrs than the op "
-                for (attr, attr_) in zip(fw_call["attrs"], fw_op["attrs"]):
+                for attr, attr_ in zip(fw_call["attrs"], fw_op["attrs"]):
                     if attr["typename"] == "Scalar":
                         # special case for Scalar, fw_call can omit the type
                         assert re.match(
@@ -605,7 +687,7 @@ def cross_validate(ops):
                 assert len(fw_call["outputs"]) == len(
                     fw_op["outputs"]
                 ), f"{name}: forward call has more outputs than the op "
-                for (output, output_) in zip(
+                for output, output_ in zip(
                     fw_call["outputs"], fw_op["outputs"]
                 ):
                     assert (

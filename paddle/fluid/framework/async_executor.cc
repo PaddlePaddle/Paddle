@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/async_executor.h"
 
-#include "gflags/gflags.h"
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
@@ -32,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/io.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/pybind/pybind.h"
+#include "paddle/utils/flags.h"
 
 // phi
 #include "paddle/phi/kernels/declarations.h"
@@ -113,14 +113,14 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
   }
 
   /*
-    readerDesc: protobuf description for reader initlization
+    readerDesc: protobuf description for reader initialization
     argument: class_name, batch_size, use_slot, queue_size, buffer_size,
     padding_index
 
     reader:
     1) each thread has a reader, reader will read input data and
     put it into input queue
-    2) each reader has a Next() iterface, that can fetch an instance
+    2) each reader has a Next() interface, that can fetch an instance
     from the input queue
    */
   // todo: should be factory method for creating datafeed
@@ -136,12 +136,12 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
   for (auto& worker : workers) {
 #ifdef PADDLE_WITH_PSLIB
     if (mode == "mpi") {
-      worker.reset(new AsyncExecutorThreadWorker);
+      worker = std::make_unique<AsyncExecutorThreadWorker>();
     } else {
-      worker.reset(new ExecutorThreadWorker);
+      worker = std::make_unique<ExecutorThreadWorker>();
     }
 #else
-    worker.reset(new ExecutorThreadWorker);
+    worker = std::make_unique<ExecutorThreadWorker>();
 #endif
   }
 

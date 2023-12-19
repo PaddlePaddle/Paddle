@@ -23,7 +23,7 @@ class Squeeze2OpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(4) << "convert a fluid squeeze2 op to tensorrt shuffle layer";
+    VLOG(4) << "convert a squeeze2 op to tensorrt shuffle layer";
 
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
@@ -32,8 +32,22 @@ class Squeeze2OpConverter : public OpConverter {
     auto output_name = op_desc.Output("Out")[0];
 
     // Get Attrs
-    std::vector<int> axes =
-        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("axes"));
+    std::vector<int> axes;
+    if (op_desc.HasAttr("axes")) {
+      axes = PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("axes"));
+    }
+    if (axes.empty()) {
+      for (int i = 0; i < input_dims.nbDims; i++) {
+        if (input_dims.d[i] == -1) {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "The necessary attributes of the squeeze2 operator axes is "
+              "missing."));
+        } else if (input_dims.d[i] == 1) {
+          axes.push_back(engine_->with_dynamic_shape() ? i : i + 1);
+        }
+      }
+    }
+
     PADDLE_ENFORCE_GT(
         axes.size(),
         0,
@@ -43,13 +57,13 @@ class Squeeze2OpConverter : public OpConverter {
             axes.size()));
 
     std::vector<bool> should_squeeze(input_dims.nbDims, false);
-    for (size_t i = 0; i < axes.size(); i++) {
+    for (int& axis : axes) {
       if (engine_->with_dynamic_shape()) {
-        axes[i] += (axes[i] < 0) ? input_dims.nbDims : 0;
+        axis += (axis < 0) ? input_dims.nbDims : 0;
       } else {
-        axes[i] += (axes[i] < 0) ? input_dims.nbDims : -1;
+        axis += (axis < 0) ? input_dims.nbDims : -1;
       }
-      should_squeeze[axes[i]] = true;
+      should_squeeze[axis] = true;
     }
 
     nvinfer1::Dims trt_out_dims;

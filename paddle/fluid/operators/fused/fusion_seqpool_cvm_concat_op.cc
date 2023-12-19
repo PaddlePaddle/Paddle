@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/operators/jit/kernels.h"
+#include "paddle/phi/kernels/funcs/jit/kernels.h"
 
 namespace paddle {
 namespace operators {
@@ -96,7 +96,7 @@ Fusion Sequence Pool of pooltype(sum, average and sqrt) and Concat Operator.
 )DOC");
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FusionSeqPoolCVMConcatKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -117,20 +117,20 @@ class FusionSeqPoolCVMConcatKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     T* y_data = out->mutable_data<T>(place);
 
-    int w = ins[0]->numel() / x0_dims[0];
+    int w = static_cast<int>(ins[0]->numel() / x0_dims[0]);
     PADDLE_ENFORCE_EQ(y_dims[1] % w,
                       0,
                       paddle::platform::errors::InvalidArgument(
                           "The output of dims[1] should be dividable of w"));
-    jit::seq_pool_attr_t attr(w, jit::SeqPoolType::kSum);
+    phi::jit::seq_pool_attr_t attr(w, phi::jit::SeqPoolType::kSum);
     if (pooltype == "AVERAGE") {
-      attr.type = jit::SeqPoolType::kAvg;
+      attr.type = phi::jit::SeqPoolType::kAvg;
     } else if (pooltype == "SQRT") {
-      attr.type = jit::SeqPoolType::kSqrt;
+      attr.type = phi::jit::SeqPoolType::kSqrt;
     }
-    auto seqpool =
-        jit::KernelFuncs<jit::SeqPoolTuple<T>, platform::CPUPlace>::Cache().At(
-            attr);
+    auto seqpool = phi::jit::KernelFuncs<phi::jit::SeqPoolTuple<T>,
+                                         platform::CPUPlace>::Cache()
+                       .At(attr);
     size_t n = ins.size();
     size_t dst_step_size = n * w;
     for (size_t i = 0; i < n; ++i) {
@@ -172,6 +172,9 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL(fusion_seqpool_cvm_concat,
-                       ops::FusionSeqPoolCVMConcatKernel<float>,
-                       ops::FusionSeqPoolCVMConcatKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(fusion_seqpool_cvm_concat,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::FusionSeqPoolCVMConcatKernel,
+                          float,
+                          double) {}

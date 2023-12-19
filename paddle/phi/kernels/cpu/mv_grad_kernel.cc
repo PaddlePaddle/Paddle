@@ -32,8 +32,8 @@ void MvGradKernel(const Context& dev_ctx,
   auto dvec = vec_grad;
 
   const auto& dim_x = x.dims();
-  int m = dim_x[0];
-  int n = dim_x[1];
+  int m = static_cast<int>(dim_x[0]);
+  int n = static_cast<int>(dim_x[1]);
 
   // get data ptr
   const T* x_data = x.data<T>();

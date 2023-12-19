@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import copy
+import ipaddress
+import json
 import random
 import sys
 import threading
@@ -22,6 +24,12 @@ from paddle.distributed.launch.utils.kv_client import KVClient
 from paddle.distributed.launch.utils.kv_server import KVServer
 
 ETCD_PROTOCAL = 'etcd://'
+
+
+def _cmp_by_ip(x):
+    x = json.loads(x)
+    ip_x = x.get('candidate', '127.0.0.1:8080').split(':')[0]
+    return int(ipaddress.IPv4Address(ip_x))
 
 
 class Master:
@@ -80,14 +88,12 @@ class HTTPMaster(Master):
                         self.role = Master.MAIN
                         break
                     except Exception as e:
-                        self.ctx.logger.warning(
-                            "start master failed {}".format(e)
-                        )
+                        self.ctx.logger.warning(f"start master failed {e}")
                         time.sleep(0.1)
                         continue
         else:
             port = self.ctx.node.get_free_port()
-            self.endpoint = "{}:{}".format(self.ctx.node.ip, port)
+            self.endpoint = f"{self.ctx.node.ip}:{port}"
             self.server = KVServer(port)
             self.role = Master.MAIN
 
@@ -119,7 +125,7 @@ class HTTPMaster(Master):
     def _start_server(self):
         if self.server and not self.server.started:
             self.server.start()
-            self.ctx.logger.debug("KV server start at {}".format(self.endpoint))
+            self.ctx.logger.debug(f"KV server start at {self.endpoint}")
 
     def _stop_server(self):
         if self.server and not self.server.stopped:
@@ -130,7 +136,6 @@ class HTTPMaster(Master):
         self._stop_server()
 
     def sync_peers(self, prefix, key, value, size, rank=-1) -> (list, int):
-
         if size < 2:
             return [value], 0
 
@@ -147,7 +152,7 @@ class HTTPMaster(Master):
 
         # 'aaaaaa' make sure main pod (master server) as rank 0
         ky = 'aaaaaa' if rank < 0 and self.role == Master.MAIN else key
-        k = "{}/{}/{}".format(prefix, ky, rank)
+        k = f"{prefix}/{ky}/{rank}"
 
         while not self.ctx.status.is_done():
             if not self.client.put(k, value):
@@ -156,9 +161,13 @@ class HTTPMaster(Master):
                 continue
 
             rjson = self.client.get_prefix(prefix)
-            self.ctx.logger.debug("sync peers {}".format(rjson))
+            self.ctx.logger.debug(f"sync peers {rjson}")
             if rjson and len(rjson) == size:
-                if rank < 0:
+                if self.ctx.args.sort_ip:
+                    ret = sorted(rjson.values(), key=_cmp_by_ip)
+                    idx = ret.index(value)
+                    return ret, idx
+                elif rank < 0:
                     keys = list(rjson.keys())
                     keys.sort()
                     ret = [rjson[k] for k in keys]
@@ -184,8 +193,13 @@ class ETCDMaster(Master):
 
         import etcd3
 
+        from ..utils.etcd_client import ETCDClient
+
         host, port = self.endpoint.split(':')
-        self.client = etcd3.client(host=host, port=port)
+        if ctx.is_auto_tuner_mode():
+            self.client = ETCDClient(host=host, port=port)
+        else:
+            self.client = etcd3.client(host=host, port=port)
 
     def sync_peers(self, prefix, key, value, size, rank=-1) -> (list, int):
         '''
@@ -198,21 +212,26 @@ class ETCDMaster(Master):
 
         self.ctx.logger.info("Waiting peer start...")
 
-        path = "{}/{}/{}".format(prefix, key, rank)
+        path = f"{prefix}/{key}/{rank}"
 
         self.client.delete_prefix(prefix)
 
-        self.ctx.logger.debug("sync path {} value {}".format(path, value))
+        self.ctx.logger.debug(f"sync path {path} value {value}")
 
         while not self.ctx.status.is_done():
             self.client.put(path, value.encode('latin-1'))
 
-            result = [i for i in self.client.get_prefix(prefix)]
+            result = list(self.client.get_prefix(prefix))
             result = copy.deepcopy(result)
-            self.ctx.logger.debug("sync peers {}".format(result))
+            self.ctx.logger.debug(f"sync peers {result}")
 
             if len(result) == size:
-                if rank < 0:
+                if self.ctx.args.sort_ip:
+                    values = [i[0].decode() for i in result]
+                    ret = sorted(values, key=_cmp_by_ip)
+                    idx = ret.index(value)
+                    return ret, idx
+                elif rank < 0:
                     keys = [i[1].key.decode() for i in result]
                     sorted_keys = [i[1].key.decode() for i in result]
                     sorted_keys.sort()
@@ -225,9 +244,7 @@ class ETCDMaster(Master):
                     for v, k in result:
                         ii = int(k.key.decode().split('/')[-1])
                         if ii < 0:
-                            self.ctx.logger.error(
-                                "rank {} error in sync".format(ii)
-                            )
+                            self.ctx.logger.error(f"rank {ii} error in sync")
                         ret[ii] = v.decode()
                     return ret, rank
             else:
@@ -238,14 +255,14 @@ class ETCDMaster(Master):
             self.ctx.logger.warning("Heartbeat already done")
             return
 
-        self.job_prefix = '/paddle/{}'.format(job_id)
-        self.heartbeat_prefix = '{}/heartbeat'.format(self.job_prefix)
-
+        self.job_prefix = f'/paddle/{job_id}'
+        self.heartbeat_prefix = f'{self.job_prefix}/heartbeat'
+        self.client.delete_prefix(self.job_prefix)
         lease = self.client.lease(ttl)
 
         # self.client.delete_prefix(self.job_prefix)
 
-        beat_path = "{}/{}".format(self.heartbeat_prefix, pod_id)
+        beat_path = f"{self.heartbeat_prefix}/{pod_id}"
         self.client.put(beat_path, pod_id.encode('latin-1'), lease=lease)
 
         def _beat_watch(event):
@@ -265,7 +282,7 @@ class ETCDMaster(Master):
                         )
                         self.ctx.logger.debug("Heartbeat register again")
                 except Exception as e:
-                    self.ctx.logger.error("Heartbeat error {}".format(e))
+                    self.ctx.logger.error(f"Heartbeat error {e}")
                 time.sleep(ttl / 2)
             self.ctx.logger.debug("Heartbeat done")
             self.client.cancel_watch(beat_watch)
@@ -279,7 +296,7 @@ class ETCDMaster(Master):
         peer_alive = [
             i[0].decode() for i in self.client.get_prefix(self.heartbeat_prefix)
         ]
-        self.ctx.logger.debug("peer alive {}".format(peer_alive))
+        self.ctx.logger.debug(f"peer alive {peer_alive}")
         return peer_alive
 
     def wait_peer_ready(self, replicas_min, replicas_max, timeout):
@@ -314,7 +331,7 @@ class ETCDMaster(Master):
             self.job_prefix,
             status.encode('latin-1'),
             lease=self.client.lease(600),
-        ), "set status failed {}".format(status)
+        ), f"set status failed {status}"
 
     def get_status(self):
         value = self.client.get(self.job_prefix)[0]

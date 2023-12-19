@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/optimizers/pow2_decay_with_linear_warmup_op.h"
-
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -26,7 +24,7 @@ class Pow2DecayWithLinearWarmupOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
-    auto dim = phi::make_ddim({1});
+    auto dim = common::make_ddim({1});
     ctx->SetOutputDim("LearningRateOut", dim);
     ctx->SetOutputDim("StepOut", dim);
   }
@@ -42,7 +40,7 @@ class Pow2DecayWithLinearWarmupOp : public framework::OperatorWithKernel {
 class Pow2DecayWithLinearWarmupOpMaker
     : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("LearningRate", "(Tensor) The input learning rate Tensor.");
     AddInput("Step", "(Tensor) The input global step Tensor.");
     AddOutput("LearningRateOut",
@@ -78,12 +76,7 @@ When step_num > total_steps, lr = end_lr
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(pow2_decay_with_linear_warmup,
                              ops::Pow2DecayWithLinearWarmupOp,
                              ops::Pow2DecayWithLinearWarmupOpMaker);
-REGISTER_OP_CPU_KERNEL(
-    pow2_decay_with_linear_warmup,
-    ops::Pow2DecayWithLinearWarmupOpKernel<phi::CPUContext, double>,
-    ops::Pow2DecayWithLinearWarmupOpKernel<phi::CPUContext, float>);

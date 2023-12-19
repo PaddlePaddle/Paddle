@@ -30,16 +30,16 @@ class AbsmaxObserver(ObserverFactory):
             For details, please refer to :ref:`api_guide_Name`. Default is None.
 
     Examples:
-       .. code-block:: python
+        .. code-block:: python
 
-            from paddle.quantization import QuantConfig
-            from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
-            quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.99)
-            q_config = QuantConfig(activation=quanter, weight=quanter)
+            >>> from paddle.quantization import QuantConfig
+            >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+            >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.99)
+            >>> q_config = QuantConfig(activation=quanter, weight=quanter)
     """
 
     def __init__(self, quant_bits=8):
-        super(AbsmaxObserver, self).__init__(quant_bits=quant_bits)
+        super().__init__(quant_bits=quant_bits)
 
     def _get_class(self):
         return AbsmaxObserverLayer
@@ -53,7 +53,7 @@ class AbsmaxObserverLayer(BaseObserver):
     INIT_ABS_MAX = 1e-7
 
     def __init__(self, layer, quant_bits=8):
-        super(AbsmaxObserverLayer, self).__init__()
+        super().__init__()
         self._quant_bits = quant_bits
         self.abs_max_val = paddle.to_tensor(AbsmaxObserverLayer.INIT_ABS_MAX)
 

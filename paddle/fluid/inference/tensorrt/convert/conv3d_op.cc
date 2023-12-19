@@ -15,16 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -36,7 +26,7 @@ void ConvertConv3d(TensorRTEngine* engine,
                    RegistFunc fadd_layer,
                    SetDilationFunc fset_dilation,
                    const std::string& name) {
-  VLOG(3) << "convert a fluid " << name << " op to tensorrt layer without bias";
+  VLOG(3) << "convert a " << name << " op to tensorrt layer without bias";
 
   framework::OpDesc op_desc(op, nullptr);
 
@@ -108,7 +98,7 @@ void ConvertConv3d(TensorRTEngine* engine,
   layer->setStrideNd(nv_strides);
   layer->setPrePadding(nv_pre_paddings);
   nvinfer1::Dims3 nv_post_paddings = nv_pre_paddings;
-  if (output_padding.size() > 0) {
+  if (!output_padding.empty()) {
 // Here is consistent with op_teller.cc
 #if IS_TRT_VERSION_GE(8400)
     nv_post_paddings.d[0] -= output_padding[0];

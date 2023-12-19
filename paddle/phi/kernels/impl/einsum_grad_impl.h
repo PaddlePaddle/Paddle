@@ -13,6 +13,8 @@
 // limitations under the License.
 #pragma once
 
+#include "glog/logging.h"
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/impl/einsum_impl.h"
@@ -59,7 +61,7 @@ DenseTensor PerformTileAndReduction(const Context& dev_ctx,
       }
     }
   }
-  t.Resize(make_ddim(resize_dims));
+  t.Resize(common::make_ddim(resize_dims));
   DenseTensor after_tile;
   if (std::all_of(repeat_times.begin(), repeat_times.end(), [](int x) {
         return x == 1;
@@ -98,7 +100,7 @@ DenseTensor PerformTileAndReduction(const Context& dev_ctx,
   }
   VLOG(5) << "PermformTileAndReduction: recover shape: "
           << paddle::string::join_strings(recover_shape, ",");
-  ret.Resize(make_ddim(recover_shape));
+  ret.Resize(common::make_ddim(recover_shape));
   // undiagonalize by einsum equation. only contain undiagonal operations.
   DenseTensor out;
   VLOG(5) << "Undiagonal by einsum with args: " << op_label + "->" + equ;
@@ -150,7 +152,7 @@ void EinsumGradKernel(const Context& dev_ctx,
   if (x.size() == 1) {  // Unary
     auto splits = paddle::string::split_string(equation, "->");
     auto left = splits[0];
-    right = splits[1].substr(1);
+    right = splits[1];
     auto new_equation = right + "->" + gather_labels_except_reduction(left);
     auto new_operands = std::vector<const DenseTensor*>();
     new_operands.push_back(&out_grad);
@@ -169,8 +171,7 @@ void EinsumGradKernel(const Context& dev_ctx,
     auto splits = paddle::string::split_string(equation, "->");
     auto left = splits[0];
     auto ops = paddle::string::split_string(left, ",");
-    right = splits[1].substr(1);
-
+    right = splits[1];
     auto equation_for_A =
         ops[1] + "," + right + "->" + gather_labels_except_reduction(ops[0]);
     auto equation_for_B =

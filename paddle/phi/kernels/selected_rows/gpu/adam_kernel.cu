@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/selected_rows/adam_kernel.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/float16.h"
@@ -138,8 +140,10 @@ void AdamDenseParamSparseGradKernel(
     phi::Copy(dev_ctx, param, dev_ctx.GetPlace(), false, param_out);
     phi::Copy(dev_ctx, moment1, dev_ctx.GetPlace(), false, moment1_out);
     phi::Copy(dev_ctx, moment2, dev_ctx.GetPlace(), false, moment2_out);
-    phi::Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, beta1_pow_out);
-    phi::Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, beta2_pow_out);
+    if (!use_global_beta_pow) {
+      phi::Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, beta1_pow_out);
+      phi::Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, beta2_pow_out);
+    }
     return;
   }
 
@@ -288,4 +292,14 @@ PD_REGISTER_KERNEL(adam_dense_param_sparse_grad,
   kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(8).SetBackend(phi::Backend::ALL_BACKEND);
+
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(5).SetDataType(phi::DataType::FLOAT32);
+  }
+  kernel->OutputAt(3).SetBackend(phi::Backend::UNDEFINED);
+  kernel->OutputAt(4).SetBackend(phi::Backend::UNDEFINED);
 }

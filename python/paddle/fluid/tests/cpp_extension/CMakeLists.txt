@@ -1,5 +1,0 @@
-py_test(test_cpp_extension_setup SRCS test_cpp_extension_setup.py)
-py_test(test_cpp_extension_jit SRCS test_cpp_extension_jit.py)
-
-set_tests_properties(test_cpp_extension_setup PROPERTIES TIMEOUT 120)
-set_tests_properties(test_cpp_extension_jit PROPERTIES TIMEOUT 120)

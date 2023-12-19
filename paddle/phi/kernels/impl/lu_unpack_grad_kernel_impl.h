@@ -20,15 +20,15 @@ namespace phi {
 
 template <typename T, typename Context>
 void LUUnpackGradKernel(const Context& dev_ctx,
-                        const DenseTensor& x,
-                        const DenseTensor& pivots,
-                        const DenseTensor& l,
-                        const DenseTensor& u,
-                        const DenseTensor& pmat,
+                        const DenseTensor& x UNUSED,
+                        const DenseTensor& pivots UNUSED,
+                        const DenseTensor& l UNUSED,
+                        const DenseTensor& u UNUSED,
+                        const DenseTensor& pmat UNUSED,
                         const DenseTensor& l_grad,
                         const DenseTensor& u_grad,
-                        bool unpack_ludata,
-                        bool unpack_pivots,
+                        bool unpack_ludata UNUSED,
+                        bool unpack_pivots UNUSED,
                         DenseTensor* x_grad) {
   dev_ctx.template Alloc<T>(x_grad);
 
@@ -64,7 +64,7 @@ void LUUnpackGradKernel(const Context& dev_ctx,
   std::vector<int64_t> axes = {xrank - 2, xrank - 1};
   std::vector<int64_t> slice_starts(2, 0);
   std::vector<int64_t> slice_ends(2, 0);
-  auto valuedims = vectorize(xdims);
+  auto valuedims = common::vectorize(xdims);
 
   phi::funcs::SetConstant<Context, T> setter;
   setter(dev_ctx, x_grad, static_cast<T>(0));

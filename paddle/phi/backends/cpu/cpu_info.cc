@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/backends/cpu/cpu_info.h"
+#include <array>
 
 #ifdef __APPLE__
 #include <sys/sysctl.h>
@@ -34,18 +35,18 @@ limitations under the License. */
 
 #include "paddle/phi/core/flags.h"
 
-DECLARE_double(fraction_of_cpu_memory_to_use);
-DECLARE_uint64(initial_cpu_memory_in_mb);
-DECLARE_double(fraction_of_cuda_pinned_memory_to_use);
+PD_DECLARE_double(fraction_of_cpu_memory_to_use);
+PD_DECLARE_uint64(initial_cpu_memory_in_mb);
+PD_DECLARE_double(fraction_of_cuda_pinned_memory_to_use);
 
 // If use_pinned_memory is true, CPUAllocator calls mlock, which
 // returns pinned and locked memory as staging areas for data exchange
 // between host and device.  Allocates too much would reduce the amount
 // of memory available to the system for paging.  So, by default, we
 // should set false to use_pinned_memory.
-PADDLE_DEFINE_EXPORTED_bool(use_pinned_memory,
-                            true,
-                            "If set, allocate cpu pinned memory.");
+PHI_DEFINE_EXPORTED_bool(use_pinned_memory,  // NOLINT
+                         true,
+                         "If set, allocate cpu pinned memory.");
 
 namespace phi {
 namespace backends {
@@ -53,12 +54,12 @@ namespace cpu {
 
 size_t CpuTotalPhysicalMemory() {
 #ifdef __APPLE__
-  int mib[2];
+  std::array<int, 2> mib;
   mib[0] = CTL_HW;
   mib[1] = HW_MEMSIZE;
   int64_t size = 0;
   size_t len = sizeof(size);
-  if (sysctl(mib, 2, &size, &len, NULL, 0) == 0) {
+  if (sysctl(mib.data(), 2, &size, &len, NULL, 0) == 0) {
     return static_cast<size_t>(size);
   }
   return 0L;
@@ -77,7 +78,8 @@ size_t CpuTotalPhysicalMemory() {
 size_t CpuMaxAllocSize() {
   // For distributed systems, it requires configuring and limiting
   // the fraction of memory to use.
-  return FLAGS_fraction_of_cpu_memory_to_use * CpuTotalPhysicalMemory();
+  return static_cast<size_t>(FLAGS_fraction_of_cpu_memory_to_use *
+                             static_cast<double>(CpuTotalPhysicalMemory()));
 }
 
 size_t CpuMaxChunkSize() {
@@ -96,7 +98,8 @@ size_t CpuMinChunkSize() {
 size_t CUDAPinnedMaxAllocSize() {
   // For distributed systems, it requires configuring and limiting
   // the fraction of memory to use.
-  return FLAGS_fraction_of_cuda_pinned_memory_to_use * CpuTotalPhysicalMemory();
+  return static_cast<size_t>(FLAGS_fraction_of_cuda_pinned_memory_to_use *
+                             static_cast<double>(CpuTotalPhysicalMemory()));
 }
 
 size_t CUDAPinnedMinChunkSize() {
@@ -108,23 +111,6 @@ size_t CUDAPinnedMaxChunkSize() {
   // Allow to allocate the maximum chunk size is roughly 1/256 of CUDA_PINNED
   // memory.
   return CUDAPinnedMaxAllocSize() / 256;
-}
-
-size_t NPUPinnedMaxAllocSize() {
-  // For distributed systems, it requires configuring and limiting
-  // the fraction of memory to use.
-  return FLAGS_fraction_of_cuda_pinned_memory_to_use * CpuTotalPhysicalMemory();
-}
-
-size_t NPUPinnedMinChunkSize() {
-  // Allow to allocate the minimum chunk size is 64 KB.
-  return 1 << 16;
-}
-
-size_t NPUPinnedMaxChunkSize() {
-  // Allow to allocate the maximum chunk size is roughly 1/256 of NPU_PINNED
-  // memory.
-  return NPUPinnedMaxAllocSize() / 256;
 }
 
 #ifdef PADDLE_WITH_XBYAK
@@ -165,14 +151,15 @@ bool MayIUse(const cpu_isa_t cpu_isa) {
   if (cpu_isa == isa_any) {
     return true;
   } else {
-#if !defined(WITH_NV_JETSON) && !defined(PADDLE_WITH_ARM) && \
-    !defined(PADDLE_WITH_SW) && !defined(PADDLE_WITH_MIPS)
-    int reg[4];
-    cpuid(reg, 0);
+#if !defined(WITH_NV_JETSON) && !defined(PADDLE_WITH_ARM) &&  \
+    !defined(PADDLE_WITH_SW) && !defined(PADDLE_WITH_MIPS) && \
+    !defined(PADDLE_WITH_LOONGARCH)
+    std::array<int, 4> reg;
+    cpuid(reg.data(), 0);
     int nIds = reg[0];
     if (nIds >= 0x00000001) {
       // EAX = 1
-      cpuid(reg, 0x00000001);
+      cpuid(reg.data(), 0x00000001);
       // AVX: ECX Bit 28
       if (cpu_isa == avx) {
         int avx_mask = (1 << 28);
@@ -181,7 +168,7 @@ bool MayIUse(const cpu_isa_t cpu_isa) {
     }
     if (nIds >= 0x00000007) {
       // EAX = 7
-      cpuid(reg, 0x00000007);
+      cpuid(reg.data(), 0x00000007);
       if (cpu_isa == avx2) {
         // AVX2: EBX Bit 5
         int avx2_mask = (1 << 5);
@@ -199,7 +186,7 @@ bool MayIUse(const cpu_isa_t cpu_isa) {
                 (reg[1] & avx512bw_mask) && (reg[1] & avx512vl_mask));
       }
       // EAX = 7, ECX = 1
-      cpuid(reg, 0x00010007);
+      cpuid(reg.data(), 0x00010007);
       if (cpu_isa == avx512_bf16) {
         // AVX512BF16: EAX Bit 5
         int avx512bf16_mask = (1 << 5);

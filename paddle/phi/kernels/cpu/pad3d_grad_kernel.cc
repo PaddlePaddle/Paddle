@@ -26,7 +26,7 @@ void ConstPad3DGradNCDHW(T* d_in_data,
                          const int in_depth,
                          const int in_height,
                          const int in_width,
-                         const int out_depth,
+                         const int out_depth UNUSED,
                          const int out_height,
                          const int out_width,
                          const int pad_front,
@@ -52,7 +52,7 @@ void ConstPad3DGradNDHWC(T* d_in_data,
                          const int in_depth,
                          const int in_height,
                          const int in_width,
-                         const int out_depth,
+                         const int out_depth UNUSED,
                          const int out_height,
                          const int out_width,
                          const int pad_front,
@@ -83,7 +83,7 @@ void ReflectPad3DGradNCDHW(T* d_in_data,
                            const int in_depth,
                            const int in_height,
                            const int in_width,
-                           const int out_depth,
+                           const int out_depth UNUSED,
                            const int out_height,
                            const int out_width,
                            const int pad_front,
@@ -114,7 +114,7 @@ void ReflectPad3DGradNDHWC(T* d_in_data,
                            const int in_depth,
                            const int in_height,
                            const int in_width,
-                           const int out_depth,
+                           const int out_depth UNUSED,
                            const int out_height,
                            const int out_width,
                            const int pad_front,
@@ -149,7 +149,7 @@ void ReplicatePad3DGradNCDHW(T* d_in_data,
                              const int in_depth,
                              const int in_height,
                              const int in_width,
-                             const int out_depth,
+                             const int out_depth UNUSED,
                              const int out_height,
                              const int out_width,
                              const int pad_front,
@@ -173,7 +173,7 @@ void ReplicatePad3DGradNDHWC(T* d_in_data,
                              const int in_depth,
                              const int in_height,
                              const int in_width,
-                             const int out_depth,
+                             const int out_depth UNUSED,
                              const int out_height,
                              const int out_width,
                              const int pad_front,
@@ -201,7 +201,7 @@ void CircularPad3DGradNCDHW(T* d_in_data,
                             const int in_depth,
                             const int in_height,
                             const int in_width,
-                            const int out_depth,
+                            const int out_depth UNUSED,
                             const int out_height,
                             const int out_width,
                             const int pad_front,
@@ -224,7 +224,7 @@ void CircularPad3DGradNDHWC(T* d_in_data,
                             const int in_depth,
                             const int in_height,
                             const int in_width,
-                            const int out_depth,
+                            const int out_depth UNUSED,
                             const int out_height,
                             const int out_width,
                             const int pad_front,
@@ -360,11 +360,11 @@ void Pad3DGradNDHWC(T* d_in_data,
 
 template <typename T, typename Context>
 void Pad3dGradKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
+                     const DenseTensor& x UNUSED,
                      const DenseTensor& out_grad,
                      const IntArray& paddings,
                      const std::string& mode,
-                     float pad_value,
+                     float pad_value UNUSED,
                      const std::string& data_format,
                      DenseTensor* x_grad) {
   std::vector<int64_t> pads = paddings.GetData();
@@ -377,18 +377,18 @@ void Pad3dGradKernel(const Context& dev_ctx,
   T* d_in_data = dev_ctx.template Alloc<T>(d_in);
   phi::funcs::SetConstant<Context, T>()(dev_ctx, d_in, static_cast<T>(0));
 
-  const int pad_left = pads[0];
-  const int pad_top = pads[2];
-  const int pad_front = pads[4];
-  const int num = d_in_dims[0];
+  const int pad_left = static_cast<int>(pads[0]);
+  const int pad_top = static_cast<int>(pads[2]);
+  const int pad_front = static_cast<int>(pads[4]);
+  const int num = static_cast<int>(d_in_dims[0]);
   if (data_format == "NCDHW") {
-    const int channels = d_in_dims[1];
-    const int in_depth = d_in_dims[2];
-    const int in_height = d_in_dims[3];
-    const int in_width = d_in_dims[4];
-    const int out_depth = d_out_dims[2];
-    const int out_height = d_out_dims[3];
-    const int out_width = d_out_dims[4];
+    const int channels = static_cast<int>(d_in_dims[1]);
+    const int in_depth = static_cast<int>(d_in_dims[2]);
+    const int in_height = static_cast<int>(d_in_dims[3]);
+    const int in_width = static_cast<int>(d_in_dims[4]);
+    const int out_depth = static_cast<int>(d_out_dims[2]);
+    const int out_height = static_cast<int>(d_out_dims[3]);
+    const int out_width = static_cast<int>(d_out_dims[4]);
 
     std::map<std::string,
              void (*)(T*,
@@ -427,13 +427,13 @@ void Pad3dGradKernel(const Context& dev_ctx,
                    d_out_data,
                    func_map[mode]);
   } else {
-    const int channels = d_in_dims[4];
-    const int in_depth = d_in_dims[1];
-    const int in_height = d_in_dims[2];
-    const int in_width = d_in_dims[3];
-    const int out_depth = d_out_dims[1];
-    const int out_height = d_out_dims[2];
-    const int out_width = d_out_dims[3];
+    const int channels = static_cast<int>(d_in_dims[4]);
+    const int in_depth = static_cast<int>(d_in_dims[1]);
+    const int in_height = static_cast<int>(d_in_dims[2]);
+    const int in_width = static_cast<int>(d_in_dims[3]);
+    const int out_depth = static_cast<int>(d_out_dims[1]);
+    const int out_height = static_cast<int>(d_out_dims[2]);
+    const int out_width = static_cast<int>(d_out_dims[3]);
 
     std::map<std::string,
              void (*)(T*,
@@ -476,5 +476,11 @@ void Pad3dGradKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    pad3d_grad, CPU, ALL_LAYOUT, phi::Pad3dGradKernel, float, double) {}
+PD_REGISTER_KERNEL(pad3d_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::Pad3dGradKernel,
+                   float,
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

@@ -28,7 +28,6 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/memory_block.h"
 #include "paddle/fluid/memory/allocation/system_allocator.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/device/npu/npu_info.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 
 namespace paddle {
@@ -127,6 +126,7 @@ class BuddyAllocator {
   std::mutex mutex_;
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   std::function<size_t()> init_allocate_size_func_, re_allocate_size_func_;
+  bool use_custom_device_ = false;
 #endif
 };
 

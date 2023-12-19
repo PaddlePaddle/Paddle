@@ -227,8 +227,10 @@ class DownpourPServerBrpcClosure : public PServerClosure {
   PsRequestMessage *request(size_t i) { return &_requests[i]; }
   PsResponseMessage *response(size_t i) { return &_responses[i]; }
   brpc::Controller *cntl(size_t i) { return _cntls[i].get(); }
-  int check_response(size_t request_idx, int cmd_id) { return 1; }
-  int check_save_response(size_t request_idx, int cmd_id) { return 1; }
+  int check_response(size_t request_idx UNUSED, int cmd_id UNUSED) { return 1; }
+  int check_save_response(size_t request_idx UNUSED, int cmd_id UNUSED) {
+    return 1;
+  }
 
  private:
   std::atomic<int32_t> _waiting_num;

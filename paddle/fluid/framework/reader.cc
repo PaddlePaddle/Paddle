@@ -72,7 +72,7 @@ void ReaderBase::Start() {
   }
 }
 
-ReaderBase::~ReaderBase() {}
+ReaderBase::~ReaderBase() = default;
 
 DecoratedReader::~DecoratedReader() {
   VLOG(1) << "~DecoratedReader";

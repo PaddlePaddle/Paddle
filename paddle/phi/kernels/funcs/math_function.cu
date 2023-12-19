@@ -11,15 +11,15 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+
 #include <algorithm>
 #include <vector>
 
-#include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/math_function_impl.h"
@@ -32,8 +32,12 @@ namespace funcs {
 // Copyright (c) 2017 - 2022 NVIDIA CORPORATION & AFFILIATES. All rights
 // reserved. SPDX-License-Identifier: BSD-3-Clause
 template <typename T>
-__global__ void batch_transpose_kernel(
-    T* output, const T* input, const int batch, const int M, const int N) {
+__global__ void batch_transpose_kernel(T* output,
+                                       const T* input,
+                                       const int batch,
+                                       const int M,
+                                       const int N,
+                                       int swizzle) {
   const int num = M * N;
   // "+1" to avoid smem bank conflict
   __shared__ T shbuf[32 * (32 + 1)];
@@ -41,8 +45,8 @@ __global__ void batch_transpose_kernel(
   const int32_t wid = tid / 32;
   const int32_t lid = tid % 32;
   const int32_t batch_i = blockIdx.z;
-  const int32_t mi0 = blockIdx.y * 32;
-  const int32_t ni0 = blockIdx.x * 32;
+  const int32_t mi0 = (blockIdx.y * swizzle + blockIdx.x % swizzle) * 32;
+  const int32_t ni0 = blockIdx.x / swizzle * 32;
 
   const size_t input_idx = batch_i * num + (mi0 + wid) * N + ni0;
   const T* A = input + input_idx;
@@ -88,25 +92,62 @@ __global__ void batch_transpose_kernel(
 }
 
 template <typename T>
-void BatchTranspose(T* output, const T* input, int batch, int m, int n) {
-  dim3 grid((n + 31) / 32, (m + 31) / 32, batch);
+void BatchTranspose(T* output,
+                    const T* input,
+                    int64_t batch,
+                    int64_t m,
+                    int64_t n,
+                    const phi::GPUContext* dev_ctx) {
+  int64_t device_id = dev_ctx->GetPlace().GetDeviceId();
+  const auto& prop = phi::backends::gpu::GetDeviceProperties(device_id);
+  int max_grid_y = prop.maxGridSize[1];
+  int64_t input_num = batch * m * n;
+
+  if (input_num >= std::numeric_limits<int>::max()) {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Unsupported input size, batch: %ld,m: %ld, n: %ld", batch, m, n));
+  }
+
+  dim3 logical_grid((n + 31) / 32, (m + 31) / 32, batch);
   dim3 block(32, 8);
-  batch_transpose_kernel<<<grid, block>>>(output, input, batch, m, n);
+  // we set swizzle to 2 default.
+  int swizzle = (logical_grid.y + max_grid_y - 1) / max_grid_y;
+  swizzle = std::max(swizzle, 2);
+  dim3 physical_grid(logical_grid.x * swizzle,
+                     (logical_grid.y + swizzle - 1) / swizzle,
+                     batch);
+  batch_transpose_kernel<<<physical_grid, block>>>(
+      output, input, batch, m, n, swizzle);
 }
 
 using float16 = phi::dtype::float16;
 using bfloat16 = phi::dtype::bfloat16;
 
-template void BatchTranspose(
-    float16* output, const float16* input, int batch, int m, int n);
-template void BatchTranspose(
-    float* output, const float* input, int batch, int m, int n);
+template void BatchTranspose(float16* output,
+                             const float16* input,
+                             int64_t batch,
+                             int64_t m,
+                             int64_t n,
+                             const phi::GPUContext* dev_ctx);
+template void BatchTranspose(float* output,
+                             const float* input,
+                             int64_t batch,
+                             int64_t m,
+                             int64_t n,
+                             const phi::GPUContext* dev_ctx);
+template void BatchTranspose(bfloat16* output,
+                             const bfloat16* input,
+                             int64_t batch,
+                             int64_t m,
+                             int64_t n,
+                             const phi::GPUContext* dev_ctx);
 
 template struct SetConstant<phi::GPUContext, float16>;
 template struct SetConstant<phi::GPUContext, bfloat16>;
 template struct SetConstant<phi::GPUContext, float>;
 template struct SetConstant<phi::GPUContext, double>;
 template struct SetConstant<phi::GPUContext, uint8_t>;
+template struct SetConstant<phi::GPUContext, int8_t>;
 template struct SetConstant<phi::GPUContext, int>;
 template struct SetConstant<phi::GPUContext, int16_t>;
 template struct SetConstant<phi::GPUContext, int64_t>;
@@ -114,20 +155,18 @@ template struct SetConstant<phi::GPUContext, bool>;
 template struct SetConstant<phi::GPUContext, phi::dtype::complex<float>>;
 template struct SetConstant<phi::GPUContext, phi::dtype::complex<double>>;
 
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, float16>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext,
-                            bfloat16>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, float>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, double>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, uint8_t>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, int>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, int16_t>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, int64_t>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, bool>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext,
-                            phi::dtype::complex<float>>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext,
-                            phi::dtype::complex<double>>;
+template struct SetConstant<phi::GPUPinnedContext, float16>;
+template struct SetConstant<phi::GPUPinnedContext, bfloat16>;
+template struct SetConstant<phi::GPUPinnedContext, float>;
+template struct SetConstant<phi::GPUPinnedContext, double>;
+template struct SetConstant<phi::GPUPinnedContext, uint8_t>;
+template struct SetConstant<phi::GPUPinnedContext, int8_t>;
+template struct SetConstant<phi::GPUPinnedContext, int>;
+template struct SetConstant<phi::GPUPinnedContext, int16_t>;
+template struct SetConstant<phi::GPUPinnedContext, int64_t>;
+template struct SetConstant<phi::GPUPinnedContext, bool>;
+template struct SetConstant<phi::GPUPinnedContext, phi::dtype::complex<float>>;
+template struct SetConstant<phi::GPUPinnedContext, phi::dtype::complex<double>>;
 
 #define DEFINE_GPU_TRANS(RANK)                                     \
   template struct Transpose<phi::GPUContext, bool, RANK>;          \
@@ -151,6 +190,14 @@ DEFINE_GPU_TRANS(3);
 DEFINE_GPU_TRANS(4);
 DEFINE_GPU_TRANS(5);
 DEFINE_GPU_TRANS(6);
+
+template <typename T>
+__global__ void FillConstantKernel(const int N, T* a, const T val) {
+  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
+       i += blockDim.x * gridDim.x) {
+    a[i] = val;
+  }
+}
 
 #define REINTERPRET(T, DST_PTR, SRC_PTR) \
   T* DST_PTR = reinterpret_cast<T*>(SRC_PTR)
@@ -182,17 +229,17 @@ void TransposeNormal<DeviceContext, T>::operator()(
     phi::DenseTensor* out,
     const std::vector<int>& axis) {
   const int rank = axis.size();
-  auto in_stride = phi::stride(in.dims());
-  auto out_stride = phi::stride(out->dims());
+  auto in_stride = common::stride(in.dims());
+  auto out_stride = common::stride(out->dims());
   auto* in_ptr = in.data<T>();
   auto* out_ptr = out->data<T>();
 
   // copy in_stride, out_stride, axis to gpu device
-  const paddle::platform::CUDAPlace& cuda_place = context.GetPlace();
-  paddle::platform::CPUPlace cpu_place = paddle::platform::CPUPlace();
+  const phi::GPUPlace& cuda_place = context.GetPlace();
+  phi::CPUPlace cpu_place = phi::CPUPlace();
   size_t size = 3 * rank * sizeof(int64_t);
-  auto cpu_buf_holder = paddle::memory::Alloc(cpu_place, size);
-  auto cuda_buf_holder = paddle::memory::Alloc(cuda_place, size);
+  auto cpu_buf_holder = phi::memory_utils::Alloc(cpu_place, size);
+  auto cuda_buf_holder = phi::memory_utils::Alloc(cuda_place, size);
   REINTERPRET(int64_t, cpu_buf, cpu_buf_holder->ptr());
   REINTERPRET(int64_t, cuda_buf, cuda_buf_holder->ptr());
   for (int i = 0; i < rank; ++i) {
@@ -200,7 +247,7 @@ void TransposeNormal<DeviceContext, T>::operator()(
     cpu_buf[rank + i] = out_stride[i];
     cpu_buf[2 * rank + i] = axis[i];
   }
-  paddle::memory::Copy(
+  memory_utils::Copy(
       cuda_place, cuda_buf, cpu_place, cpu_buf, size, context.stream());
   REINTERPRET(const int64_t, in_stride_ptr, cuda_buf);
   REINTERPRET(const int64_t, out_stride_ptr, cuda_buf + rank);
@@ -232,10 +279,10 @@ struct TransposeNormal<phi::GPUContext, T> {
 
     // copy in_stride, out_stride, axis to gpu device
     const phi::GPUPlace& cuda_place = context.GetPlace();
-    phi::CPUPlace cpu_place = paddle::platform::CPUPlace();
+    phi::CPUPlace cpu_place = phi::CPUPlace();
     size_t size = 3 * rank * sizeof(int64_t);
-    auto cpu_buf_holder = paddle::memory::Alloc(cpu_place, size);
-    auto cuda_buf_holder = paddle::memory::Alloc(cuda_place, size);
+    auto cpu_buf_holder = phi::memory_utils::Alloc(cpu_place, size);
+    auto cuda_buf_holder = phi::memory_utils::Alloc(cuda_place, size);
     REINTERPRET(int64_t, cpu_buf, cpu_buf_holder->ptr());
     REINTERPRET(int64_t, cuda_buf, cuda_buf_holder->ptr());
     for (int i = 0; i < rank; ++i) {
@@ -243,7 +290,7 @@ struct TransposeNormal<phi::GPUContext, T> {
       cpu_buf[rank + i] = out_stride[i];
       cpu_buf[2 * rank + i] = axis[i];
     }
-    paddle::memory::Copy(
+    memory_utils::Copy(
         cuda_place, cuda_buf, cpu_place, cpu_buf, size, context.stream());
     REINTERPRET(const int64_t, in_stride_ptr, cuda_buf);
     REINTERPRET(const int64_t, out_stride_ptr, cuda_buf + rank);
@@ -287,7 +334,7 @@ DEFINE_GPU_TRANS_NORMAL(phi::dtype::complex<float>);
 DEFINE_GPU_TRANS_NORMAL(phi::dtype::complex<double>);
 
 struct TensorSetConstantGPU {
-  TensorSetConstantGPU(const paddle::platform::DeviceContext& context,
+  TensorSetConstantGPU(const phi::DeviceContext& context,
                        phi::DenseTensor* tensor,
                        float value)
       : context_(context), tensor_(tensor), value_(value) {}
@@ -300,16 +347,15 @@ struct TensorSetConstantGPU {
             static_cast<T>(value_));
   }
 
-  const paddle::platform::DeviceContext& context_;
+  const phi::DeviceContext& context_;
   phi::DenseTensor* tensor_;
   float value_;
 };
 
 template <>
-void set_constant_with_place<paddle::platform::CUDAPlace>(
-    const paddle::platform::DeviceContext& context,
-    phi::DenseTensor* tensor,
-    float value) {
+void set_constant_with_place<phi::GPUPlace>(const phi::DeviceContext& context,
+                                            phi::DenseTensor* tensor,
+                                            float value) {
   phi::VisitDataType(tensor->dtype(),
                      TensorSetConstantGPU(context, tensor, value));
 }

@@ -112,11 +112,10 @@ class FileReader:
 
         if not isinstance(self._args[key], type):
             raise TypeError(
-                "Invalid type of key [%s] in args dict, it should be a %s!"
-                % (key, type)
+                f"Invalid type of key [{key}] in args dict, it should be a {type}!"
             )
 
-        exec("self._%s = self._args[\"%s\"]" % (key, key))
+        exec(f"self._{key} = self._args[\"{key}\"]")
 
     def _align_ts(self, ts):
         return ts - self._minTimeStamp
@@ -139,7 +138,7 @@ class FileReader:
 
         self._checkArgsKey("dataPath", str)
         if not os.path.exists(self._dataPath):
-            raise IOError(
+            raise OSError(
                 "input data path [%s] not existed!" % (self._dataPath)
             )
 
@@ -206,8 +205,9 @@ class FileReader:
             )
         else:
             self._logger.info(
-                "file list in dir [%s] is : %s !"
-                % (self._dataPath, ',  '.join(self._fileList))
+                "file list in dir [{}] is : {} !".format(
+                    self._dataPath, ',  '.join(self._fileList)
+                )
             )
 
         return self._fileList
@@ -220,7 +220,7 @@ class FileReader:
             )
 
         if not os.path.isfile(fileName):
-            raise IOError("[%s] is not a valid file!" % (fileName))
+            raise OSError("[%s] is not a valid file!" % (fileName))
 
         try:
             prefix_str = fileName.split(sed)[-1]
@@ -298,7 +298,7 @@ class FileReader:
     def getDict(self, name, groupId, gpuId, tmpPath="./tmp"):
         fileName = self.getFileName(name, groupId, gpuId, tmpPath)
         if not os.path.isfile(fileName):
-            raise IOError("[%s] is not existed!" % fileName)
+            raise OSError("[%s] is not existed!" % fileName)
 
         data = {}
         with open(fileName, "r") as rf:

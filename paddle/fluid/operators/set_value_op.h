@@ -33,34 +33,6 @@ namespace operators {
 
 using DDim = framework::DDim;
 
-inline std::string GetValueName(framework::proto::VarType::Type data_type) {
-  std::string value_name;
-  switch (data_type) {
-    case framework::proto::VarType::INT32:
-      value_name = "int32_values";
-      break;
-    case framework::proto::VarType::INT64:
-      value_name = "int64_values";
-      break;
-    case framework::proto::VarType::FP32:
-      value_name = "fp32_values";
-      break;
-    case framework::proto::VarType::FP64:
-      value_name = "fp64_values";
-      break;
-    case framework::proto::VarType::BOOL:
-      value_name = "bool_values";
-      break;
-
-    default:
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Unsupported data type(code %d) for SetValue operator, only "
-          "supports bool, int32, float32 and int64.",
-          data_type));
-  }
-  return value_name;
-}
-
 // check whether the tensor with dimension of second can assign to the
 // tensor with dimension of first
 inline void CheckIsDimsMatch(const framework::DDim first,

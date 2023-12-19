@@ -20,17 +20,17 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/generator.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename T>
 static inline void random_permate(T* data_ptr, int num, unsigned int seed) {
-  auto engine = framework::GetCPURandomEngine(seed);
+  auto engine = phi::GetCPURandomEngine(seed);
   for (int i = 0; i < num; ++i) {
     data_ptr[i] = static_cast<T>(i);
   }
@@ -54,7 +54,7 @@ class RandpermKernel : public framework::OpKernel<T> {
 
     } else {
       phi::DenseTensor tmp_tensor;
-      tmp_tensor.Resize(phi::make_ddim({n}));
+      tmp_tensor.Resize(common::make_ddim({n}));
       T* tmp_data = tmp_tensor.mutable_data<T>(platform::CPUPlace());
       random_permate<T>(tmp_data, n, seed);
       framework::TensorCopy(tmp_tensor, ctx.GetPlace(), out_tensor);

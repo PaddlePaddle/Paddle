@@ -18,17 +18,17 @@
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/phi/api/all.h"
+#include "paddle/utils/test_macros.h"
 namespace egr {
 namespace egr_utils_api {
 
 int64_t RegisterGradientHookForTensor(
-    const paddle::experimental::Tensor& tensor,
-    const std::function<paddle::experimental::Tensor(
-        const paddle::experimental::Tensor&)>& hook);
+    const paddle::Tensor& tensor,
+    const std::function<paddle::Tensor(const paddle::Tensor&)>& hook);
 
-void RegisterReduceHookForTensor(const paddle::experimental::Tensor& tensor,
+void RegisterReduceHookForTensor(const paddle::Tensor& tensor,
                                  const std::function<void()>& hook);
-void RetainGradForTensor(const paddle::experimental::Tensor& tensor);
+TEST_API void RetainGradForTensor(const paddle::Tensor& tensor);
 
 void RegisterBackwardFinalHook(const std::function<void()>& hook);
 

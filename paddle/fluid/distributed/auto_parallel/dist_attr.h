@@ -21,10 +21,11 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/distributed/auto_parallel/auto_parallel.pb.h"
-#include "paddle/fluid/distributed/auto_parallel/process_mesh.h"
-#include "paddle/fluid/distributed/auto_parallel/utils.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/distributed/auto_parallel/auto_parallel.pb.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
+#include "paddle/phi/core/distributed/auto_parallel/utils.h"
 
 namespace paddle {
 
@@ -39,6 +40,10 @@ class VarDesc;
 }  // namespace framework
 
 namespace distributed {
+
+using phi::distributed::ProcessMesh;
+using phi::distributed::TensorDistAttr;
+
 namespace auto_parallel {
 
 using framework::BlockDesc;
@@ -46,97 +51,11 @@ using framework::OpDesc;
 using framework::ProgramDesc;
 using framework::VarDesc;
 
+using phi::distributed::auto_parallel::OperatorDistAttrProto;
+
 constexpr const char* kDefault = "default";
 
-class TensorDistAttr {
- public:
-  TensorDistAttr() = default;
-
-  explicit TensorDistAttr(const VarDesc& tensor);
-
-  TensorDistAttr(const TensorDistAttr& tensor);
-
-  TensorDistAttr& operator=(const TensorDistAttr& dist_attr);
-
-  void copy_from(const TensorDistAttr& dist_attr);
-
-  const ProcessMesh& process_mesh() const { return process_mesh_; }
-
-  void set_process_mesh(const ProcessMesh& process_mesh);
-
-  const std::vector<int64_t>& dims_mapping() const { return dims_mapping_; }
-
-  void set_dims_mapping(const std::vector<int64_t>& dims_mapping);
-
-  void set_default_dims_mapping(const std::vector<int64_t>& tensor_shape);
-
-  int64_t batch_dim() const { return batch_dim_; }
-
-  void set_batch_dim(int64_t batch_dim);
-
-  const std::vector<bool>& dynamic_dims() const { return dynamic_dims_; }
-
-  void set_dynamic_dims(const std::vector<bool>& dynamic_dims);
-
-  void set_default_dynamic_dims(const std::vector<int64_t>& tensor_shape);
-
-  const std::map<std::string, bool>& annotated() const { return annotated_; }
-
-  void set_annotated(const std::map<std::string, bool>& annotated);
-
-  bool is_annotated(const std::string& name) const {
-    return annotated_.count(name) == 1 && annotated_.at(name) == true;
-  }
-
-  void mark_annotated(const std::string& name);
-
-  void clear_annotated() { annotated_.clear(); }
-
-  bool verify_process_mesh(const ProcessMesh& process_mesh) const;
-
-  bool verify_dims_mapping(const std::vector<int64_t>& dims_mapping,
-                           const std::vector<int64_t>& tensor_shape) const;
-
-  bool verify_batch_dim(int64_t dim,
-                        const std::vector<int64_t>& tensor_shape) const;
-
-  bool verify_dynamic_dims(const std::vector<bool>& dynamic_dims,
-                           const std::vector<int64_t>& tensor_shape) const;
-
-  bool verify_annotated(const std::map<std::string, bool>& annotated) const;
-
-  bool verify(const VarDesc* tensor = nullptr) const;
-
-  // TensorDistAttr from_string(const std::string& dist_str);
-  std::string to_string() const;
-
-  void from_proto(const TensorDistAttrProto& proto);
-
-  TensorDistAttrProto to_proto() const;
-
-  std::string serialize_to_string();
-
-  void parse_from_string(const std::string& data);
-
- private:
-  static std::vector<std::string> fields_;
-  ProcessMesh process_mesh_;
-  std::vector<int64_t> dims_mapping_;
-  int64_t batch_dim_{0};
-  std::vector<bool> dynamic_dims_;
-  std::map<std::string, bool> annotated_;
-};
-
-inline std::ostream& operator<<(std::ostream& os, const TensorDistAttr& obj) {
-  os << obj.to_string();
-  return os;
-}
-
-bool operator==(const TensorDistAttr& lhs, const TensorDistAttr& rhs);
-
-inline bool operator!=(const TensorDistAttr& lhs, const TensorDistAttr& rhs) {
-  return !operator==(lhs, rhs);
-}
+std::vector<int64_t> get_tensor_shape(const VarDesc* tensor);
 
 class OperatorDistAttr {
  public:
@@ -212,6 +131,10 @@ class OperatorDistAttr {
 
   void set_impl_idx(const int64_t& impl_idx) { impl_idx_ = impl_idx; }
 
+  int64_t chunk_id() const { return chunk_id_; }
+
+  void set_chunk_id(const int64_t& chunk_id) { chunk_id_ = chunk_id; }
+
   bool is_recompute() const { return is_recompute_; }
 
   void set_is_recompute(bool is_recompute) { is_recompute_ = is_recompute; }
@@ -220,6 +143,26 @@ class OperatorDistAttr {
 
   void set_execution_stream(const std::string& execution_stream) {
     execution_stream_ = execution_stream;
+  }
+
+  void set_event_to_record(const std::string& event_name) {
+    event_to_record_ = event_name;
+  }
+
+  void set_force_record_event(bool force_record_event) {
+    force_record_event_ = force_record_event;
+  }
+
+  void set_events_to_wait(const std::vector<std::string>& events_to_wait) {
+    events_to_wait_ = events_to_wait;
+  }
+
+  bool force_record_event() const { return force_record_event_; }
+
+  const std::string& event_to_record() const { return event_to_record_; }
+
+  const std::vector<std::string>& events_to_wait() const {
+    return events_to_wait_;
   }
 
   int stream_priority() const { return stream_priority_; }
@@ -285,6 +228,14 @@ class OperatorDistAttr {
 
   void parse_from_string(const std::string& data);
 
+  static std::string unique_name(std::string key) {
+    static std::atomic<int> id_{0};
+    return key + "_" + std::to_string(id_++);
+  }
+
+  double run_time_us() const { return this->run_time_us_; }
+  void set_run_time_us(const double& us) { this->run_time_us_ = us; }
+
  private:
   static std::vector<std::string> fields_;
   std::map<std::string, TensorDistAttr> input_dist_attrs_;
@@ -293,11 +244,17 @@ class OperatorDistAttr {
   std::string op_type_;
   std::string impl_type_ = kDefault;
   int64_t impl_idx_ = 0;
+  int64_t chunk_id_ = 0;
   bool is_recompute_ = false;
   std::string execution_stream_ = kDefault;
+  bool force_record_event_ = false;
+  std::vector<std::string> events_to_wait_;
+  std::string event_to_record_ = unique_name("event");  // event_idx
   int stream_priority_ = 0;          // lower value, higher priority
   int64_t scheduling_priority_ = 0;  // lower value, higher priority
   std::map<std::string, bool> annotated_;
+  double run_time_us_ = -1.0;  // stores the actual run time (us) of relevant
+                               // op, negative value means invalid.
 };
 
 inline std::ostream& operator<<(std::ostream& os, const OperatorDistAttr& obj) {

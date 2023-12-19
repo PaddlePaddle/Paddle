@@ -74,13 +74,13 @@ TEST(FCFusePass, basic) {
   fuse_pass->Set("use_gpu", new bool(true));
   sparse_pass->Set("use_gpu", new bool(true));
   graph->Set("__param_scope__", CreateParamScope());
-  int num_nodes_before = graph->Nodes().size();
+  int num_nodes_before = static_cast<int>(graph->Nodes().size());
   int num_mul_nodes_before = GetNumOpNodes(graph, "mul");
   VLOG(3) << DebugString(graph);
 
   graph.reset(fuse_pass->Apply(graph.release()));
   graph.reset(sparse_pass->Apply(graph.release()));
-  int num_nodes_after = graph->Nodes().size();
+  int num_nodes_after = static_cast<int>(graph->Nodes().size());
   int num_fc_nodes_after = GetNumOpNodes(graph, "fc");
   int num_sparse_fc_nodes_after = GetNumOpNodes(graph, "sparse_fc");
   VLOG(3) << DebugString(graph);

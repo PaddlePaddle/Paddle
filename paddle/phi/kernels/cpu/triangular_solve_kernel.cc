@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/triangular_solve_kernel.h"
 
+#include "paddle/common/ddim.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/expand_kernel.h"
@@ -37,8 +37,8 @@ void TriangularSolveKernel(const Context& dev_ctx,
   std::vector<int64_t> y_bst_dims_vec;
   std::tie(x_bst_dims_vec, y_bst_dims_vec) =
       funcs::MatrixGetBroadcastDims(x, y);
-  int x_bst_ndim = x_bst_dims_vec.size();
-  int y_bst_ndim = y_bst_dims_vec.size();
+  int x_bst_ndim = static_cast<int>(x_bst_dims_vec.size());
+  int y_bst_ndim = static_cast<int>(y_bst_dims_vec.size());
 
   // Tensor broadcast to 'out' and temp 'x_bst'
   IntArray x_bst_dims(x_bst_dims_vec);
@@ -46,7 +46,7 @@ void TriangularSolveKernel(const Context& dev_ctx,
   const T* x_bst_data = x_bst.data<T>();
   ExpandKernel<T, Context>(dev_ctx, x, x_bst_dims, &x_bst);
 
-  out->Resize(phi::make_ddim(y_bst_dims_vec));
+  out->Resize(common::make_ddim(y_bst_dims_vec));
   T* out_data = dev_ctx.template Alloc<T>(out);
   IntArray y_bst_dims(y_bst_dims_vec);
   ExpandKernel<T, Context>(dev_ctx, y, y_bst_dims, out);
@@ -56,7 +56,7 @@ void TriangularSolveKernel(const Context& dev_ctx,
   int N = static_cast<int>(y_bst_dims_vec[y_bst_ndim - 1]);
   int batch_size = 1;
   for (int i = 0; i < x_bst_ndim - 2; i++) {
-    batch_size *= x_bst_dims_vec[i];
+    batch_size *= static_cast<int>(x_bst_dims_vec[i]);
   }
 
   auto blas = phi::funcs::GetBlas<CPUContext, T>(dev_ctx);

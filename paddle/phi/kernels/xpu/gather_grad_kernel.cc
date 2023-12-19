@@ -25,7 +25,6 @@ void GatherGradKernel(const Context& dev_ctx,
                       const DenseTensor& index,
                       const DenseTensor& out_grad,
                       const Scalar& axis,
-                      bool overwrite,
                       DenseTensor* x_grad) {
   auto axis_v = axis.to<int>();
   const auto& index_type = index.dtype();
@@ -68,7 +67,7 @@ void GatherGradKernel(const Context& dev_ctx,
         xshape,
         index.dims().size() == 0 ? 1 : index.dims()[0],
         axis_v,
-        overwrite);
+        false);
   } else {
     xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
     int* index_int_ptr_l3 = RAII_GUARD.alloc_l3_or_gm<int32_t>(index.numel());
@@ -86,7 +85,7 @@ void GatherGradKernel(const Context& dev_ctx,
         xshape,
         index.dims().size() == 0 ? 1 : index.dims()[0],
         axis_v,
-        overwrite);
+        false);
   }
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "gather_grad");
 }

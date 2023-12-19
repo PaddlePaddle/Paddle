@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/impl/add_n_kernel_impl.h"
 
+#include "glog/logging.h"
+
 namespace phi {
 
 template <typename T, typename Context>
@@ -24,7 +26,7 @@ void AddNKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
 
   bool in_place = false;
-  if (x.size() > 0 && x[0]->initialized() && DenseTensor::classof(x[0])) {
+  if (!x.empty() && x[0]->initialized() && DenseTensor::classof(x[0])) {
     if ((static_cast<const DenseTensor*>(x[0]))->Holder() == out->Holder()) {
       in_place = true;
     }
@@ -87,7 +89,10 @@ PD_REGISTER_KERNEL(add_n,
                    double,
                    int,
                    phi::dtype::bfloat16,
-                   int64_t) {}
+                   phi::dtype::float16,
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(add_n_array,
                    CPU,
@@ -97,4 +102,7 @@ PD_REGISTER_KERNEL(add_n_array,
                    double,
                    int,
                    phi::dtype::bfloat16,
-                   int64_t) {}
+                   phi::dtype::float16,
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

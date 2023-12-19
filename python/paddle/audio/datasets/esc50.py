@@ -37,7 +37,7 @@ class ESC50(AudioClassificationDataset):
     Args:
        mode (str, optional): It identifies the dataset mode (train or dev). Default:train.
        split (int, optional): It specify the fold of dev dataset. Default:1.
-       feat_type (str, optional): It identifies the feature type that user wants to extrace of an audio file. Default:raw.
+       feat_type (str, optional): It identifies the feature type that user wants to extract of an audio file. Default:raw.
        archive(dict, optional): it tells where to download the audio archive. Default:None.
 
     Returns:
@@ -47,25 +47,36 @@ class ESC50(AudioClassificationDataset):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            mode = 'dev'
-            esc50_dataset = paddle.audio.datasets.ESC50(mode=mode,
-                                                    feat_type='raw')
-            for idx in range(5):
-                audio, label = esc50_dataset[idx]
-                # do something with audio, label
-                print(audio.shape, label)
-                # [audio_data_length] , label_id
+            >>> mode = 'dev'
+            >>> esc50_dataset = paddle.audio.datasets.ESC50(mode=mode,
+            ...                                         feat_type='raw')
+            >>> for idx in range(5):
+            ...     audio, label = esc50_dataset[idx]
+            ...     # do something with audio, label
+            ...     print(audio.shape, label)
+            ...     # [audio_data_length] , label_id
+            [220500] 0
+            [220500] 14
+            [220500] 36
+            [220500] 36
+            [220500] 19
 
-            esc50_dataset = paddle.audio.datasets.ESC50(mode=mode,
-                                                    feat_type='mfcc',
-                                                    n_mfcc=40)
-            for idx in range(5):
-                audio, label = esc50_dataset[idx]
-                # do something with mfcc feature, label
-                print(audio.shape, label)
-                # [feature_dim, length] , label_id
+            >>> esc50_dataset = paddle.audio.datasets.ESC50(mode=mode,
+            ...                                         feat_type='mfcc',
+            ...                                         n_mfcc=40)
+            >>> for idx in range(5):
+            ...     audio, label = esc50_dataset[idx]
+            ...     # do something with mfcc feature, label
+            ...     print(audio.shape, label)
+            ...     # [feature_dim, length] , label_id
+            [40, 1723] 0
+            [40, 1723] 14
+            [40, 1723] 36
+            [40, 1723] 36
+            [40, 1723] 19
+
     """
 
     archive = {

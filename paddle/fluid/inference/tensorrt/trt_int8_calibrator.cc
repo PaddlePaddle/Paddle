@@ -37,7 +37,7 @@ TRTInt8Calibrator::TRTInt8Calibrator(
     std::string input_name = it.first;
     int data_size = it.second;
     int num_ele = data_size / sizeof(int16_t);
-    framework::DDim data_shape = phi::make_ddim({num_ele});
+    framework::DDim data_shape = common::make_ddim({num_ele});
     temp_tensor.Resize(data_shape);
     data_tensors_.push_back(temp_tensor);
     data_buffers_[input_name] = std::pair<void*, size_t>(
@@ -115,11 +115,14 @@ bool TRTInt8Calibrator::getBatch(void** bindings,
   for (int i = 0; i < num_bindings; i++) {
     auto it = data_buffers_.find(names[i]);
     if (it == data_buffers_.end()) {
-      PADDLE_THROW(
-          platform::errors::Fatal("Calibration engine asked for unknown tensor "
-                                  "name '%s' at position %d.",
-                                  names[i],
-                                  i));
+      try {
+        PADDLE_THROW(platform::errors::Fatal(
+            "Calibration engine asked for unknown tensor "
+            "name '%s' at position %d.",
+            names[i],
+            i));
+      } catch (std::exception& e) {
+      }
     }
     bindings[i] = it->second.first;
   }

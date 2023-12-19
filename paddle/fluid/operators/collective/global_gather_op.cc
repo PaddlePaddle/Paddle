@@ -44,7 +44,7 @@ class GlobalGatherOp : public framework::OperatorWithKernel {
                           "The input tensor's dimension must be 2. "
                           "But received input's dimension = %d.",
                           ndim_input));
-    framework::DDim out_dims = phi::make_ddim({-1, -1});
+    framework::DDim out_dims = common::make_ddim({-1, -1});
     ctx->SetOutputDim("Out", out_dims);
   }
 
@@ -58,7 +58,7 @@ class GlobalGatherOp : public framework::OperatorWithKernel {
 
 class GlobalGatherOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "(Tensor) tensor send.");
     AddInput("local_count",
              "(Tensor) Tensor which has n_expert * world_size elements that "
@@ -77,7 +77,7 @@ class GlobalGatherOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
     AddComment(R"DOC(
 Global Gather Operator
-Gather data in X to n_expert * world_size exeperts according to
+Gather data in X to n_expert * world_size experts according to
 local_count and receive tensors from n_expert * world_size experts according
 to global_count.
 )DOC");
@@ -111,9 +111,12 @@ REGISTER_OPERATOR(global_gather,
                   ops::GlobalGatherOpGradMaker<paddle::framework::OpDesc>,
                   ops::GlobalGatherOpGradMaker<paddle::imperative::OpBase>)
 
-REGISTER_OP_CPU_KERNEL(global_gather,
-                       ops::GlobalGatherOpCPUKernel<float>,
-                       ops::GlobalGatherOpCPUKernel<double>,
-                       ops::GlobalGatherOpCPUKernel<int>,
-                       ops::GlobalGatherOpCPUKernel<int64_t>,
-                       ops::GlobalGatherOpCPUKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(global_gather,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::GlobalGatherOpCPUKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

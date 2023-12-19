@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid import unique_name
+from paddle.base import unique_name
 from paddle.utils import gast
 
 from .base_transformer import BaseTransformer
@@ -42,10 +42,6 @@ RETURN_VALUE_INIT_NAME = '__return_value_init'
 # solve it in dy2stat, we put float64 value with this magic number at Static
 # graph as a place holder to indicate the returning placeholder means no value
 # should return.
-
-# Assign not support float64, use float32 value as magic number.
-RETURN_NO_VALUE_MAGIC_NUM = 1.77113e27
-RETURN_NO_VALUE_VAR_NAME = "__no_value_return_var"
 
 
 def get_return_size(return_node):
@@ -134,9 +130,8 @@ class ReturnTransformer(BaseTransformer):
     SingleReturnTransformer don't care the nested function def.
     """
 
-    def __init__(self, wrapper_root):
-        self.wrapper_root = wrapper_root
-        self.root = wrapper_root.node
+    def __init__(self, root):
+        self.root = root
         pre_transformer = ReplaceReturnNoneTransformer(self.root)
         pre_transformer.transform()
 
@@ -343,7 +338,6 @@ class SingleReturnTransformer(BaseTransformer):
         max_return_length,
         parent_node_of_return,
     ):
-
         assert max_return_length >= 0, "Input illegal max_return_length"
         i = index_in_list(stmt_list, return_node)
         if i == -1:

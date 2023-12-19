@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/embedding_grad_kernel.h"
 
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/embedding_util.h"
 
@@ -28,6 +28,7 @@ void EmbeddingGradKernel(const Context& ctx,
                          const DenseTensor& out_grad,
                          int64_t padding_idx,
                          DenseTensor* weight_grad) {
+  using XPUT = typename XPUTypeTrait<T>::Type;
   DDim table_dim;
   table_dim = weight.dims();
 
@@ -62,14 +63,15 @@ void EmbeddingGradKernel(const Context& ctx,
   int ym = static_cast<int>(ids_numel);
   int n = d_table_t->dims()[1];
 
-  int r = xpu::embedding_grad<T, int64_t>(dev_ctx.x_context(),
-                                          d_output_data,
-                                          ids_data,
-                                          d_table_data,
-                                          xm,
-                                          n,
-                                          ym,
-                                          padding_idx);
+  int r = xpu::embedding_grad<XPUT, int64_t>(
+      dev_ctx.x_context(),
+      reinterpret_cast<const XPUT*>(d_output_data),
+      ids_data,
+      reinterpret_cast<XPUT*>(d_table_data),
+      xm,
+      n,
+      ym,
+      padding_idx);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "embedding_grad");
 }
 
@@ -99,11 +101,11 @@ void EmbeddingSparseGradKernel(const Context& ctx,
     int r = xpu::cast<int32_t, int64_t>(
         ctx.x_context(), input.data<int>(), id_t, input.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
-    paddle::memory::Copy(CPUPlace(),
-                         ids_cpu.data(),
-                         input.place(),
-                         id_t,
-                         sizeof(int64_t) * input.numel());
+    memory_utils::Copy(CPUPlace(),
+                       ids_cpu.data(),
+                       input.place(),
+                       id_t,
+                       sizeof(int64_t) * input.numel());
     ids = CopyIdsToVector<int, int64_t>(ids_cpu);
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
@@ -140,16 +142,21 @@ void EmbeddingSparseGradKernel(const Context& ctx,
                         d_table_value->dims(),
                         d_output_dims_2d));
 
-  paddle::memory::Copy(CPUPlace(),
-                       d_table_data,
-                       xpu_place,
-                       d_output_data,
-                       d_output->numel() * sizeof(T));
+  memory_utils::Copy(CPUPlace(),
+                     d_table_data,
+                     xpu_place,
+                     d_output_data,
+                     d_output->numel() * sizeof(T));
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    embedding_grad, XPU, ALL_LAYOUT, phi::EmbeddingGradKernel, float) {}
+PD_REGISTER_KERNEL(embedding_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::EmbeddingGradKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(embedding_sparse_grad,
                    XPU,
                    ALL_LAYOUT,

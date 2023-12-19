@@ -1,16 +1,19 @@
-cc_library(
-  shell
-  SRCS shell.cc
-  DEPS string_helper glog timer enforce)
-cc_library(
-  fs
-  SRCS fs.cc
-  DEPS string_helper glog enforce shell)
-
-cc_test(
-  test_fs
-  SRCS test_fs.cc
-  DEPS fs shell)
+file(GLOB framework_io_srcs "*.cc")
 if(WITH_CRYPTO)
-  add_subdirectory(crypto)
+  file(GLOB framework_io_crypto_srcs "crypto/*.cc")
+  set(framework_io_srcs ${framework_io_srcs} ${framework_io_crypto_srcs})
+endif()
+
+set(framework_io_deps glog timer phi)
+if(WITH_CRYPTO)
+  set(framework_io_deps ${framework_io_deps} cryptopp)
+endif()
+
+cc_library(
+  framework_io
+  SRCS ${framework_io_srcs}
+  DEPS ${framework_io_deps})
+
+if(WITH_MKLDNN)
+  add_dependencies(framework_io mkldnn)
 endif()

@@ -32,7 +32,7 @@ void BCELossGradKernel(const Context& dev_ctx,
   auto x_data = input.data<T>();
   auto label_data = label.data<T>();
 
-  int x_numel = input.numel();
+  int x_numel = static_cast<int>(input.numel());
 
   // dx = dout * ((x - label)/(x - x^2))
   for (int i = 0; i < x_numel; ++i) {

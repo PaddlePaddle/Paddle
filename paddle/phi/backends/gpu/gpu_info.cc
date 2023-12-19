@@ -17,9 +17,12 @@ limitations under the License. */
 #include <sstream>
 #include <vector>
 
-#include "gflags/gflags.h"
+#include "glog/logging.h"
+#include "paddle/utils/flags.h"
 
-DECLARE_string(selected_gpus);
+#include "paddle/phi/common/memory_utils.h"
+
+PD_DECLARE_string(selected_gpus);
 
 namespace phi {
 namespace backends {
@@ -44,7 +47,7 @@ std::vector<int> GetSelectedDevices() {
   std::vector<int> devices;
   if (!FLAGS_selected_gpus.empty()) {
     auto devices_str = Split(FLAGS_selected_gpus, ',');
-    for (auto id : devices_str) {
+    for (auto const& id : devices_str) {
       devices.push_back(atoi(id.c_str()));
     }
   } else {
@@ -54,6 +57,30 @@ std::vector<int> GetSelectedDevices() {
     }
   }
   return devices;
+}
+
+constexpr static float fraction_reserve_gpu_memory = 0.05f;
+
+size_t GpuAvailableMemToAlloc() {
+  size_t total = 0;
+  size_t available = 0;
+  memory_utils::GpuMemoryUsage(&available, &total);
+  size_t reserving =
+      static_cast<size_t>(fraction_reserve_gpu_memory * available);
+  // If available size is less than minimum chunk size, no usable memory exists
+  size_t available_to_alloc = available - reserving;
+  size_t min_chunk_size = GpuMinChunkSize();
+  if (available_to_alloc < min_chunk_size) {
+    available_to_alloc = 0;
+  }
+  VLOG(10) << "GPU usage " << (available >> 20) << "M/" << (total >> 20)
+           << "M, " << (available_to_alloc >> 20) << "M available to allocate";
+  return available_to_alloc;
+}
+
+size_t GpuMinChunkSize() {
+  // Allow to allocate the minimum chunk size is 256 bytes.
+  return 1 << 8;
 }
 
 }  // namespace gpu

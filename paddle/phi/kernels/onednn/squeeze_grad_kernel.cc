@@ -23,9 +23,11 @@ template <typename T, typename Context>
 void SqueezeGradKernel(const Context& dev_ctx,
                        const DenseTensor& xshape,
                        const DenseTensor& dout,
-                       const IntArray& axes,
+                       const IntArray& axes UNUSED,
                        DenseTensor* dx) {
-  auto dout_vec_dims = vectorize(dout.dims());
+  auto dout_vec_dims = dout.dims().size() != 0 ? common::vectorize(dout.dims())
+                                               : std::vector<int64_t>{1};
+
   auto dout_type = funcs::ToOneDNNDataType(dout.dtype());
 
   funcs::ReorderOneDNNHandler reorder_handler(
@@ -46,7 +48,7 @@ void SqueezeGradKernel(const Context& dev_ctx,
 
   auto dx_dims = slice_ddim(xshape.dims(), 1, xshape.dims().size());
   dx->Resize(dx_dims);
-  reorder_dst_memory_p->get_desc().reshape(vectorize(dx_dims));
+  reorder_dst_memory_p->get_desc().reshape(common::vectorize(dx_dims));
 }
 
 }  // namespace phi

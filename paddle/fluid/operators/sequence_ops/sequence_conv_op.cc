@@ -269,9 +269,11 @@ REGISTER_OPERATOR(sequence_conv_grad,
                   ops::SequenceConvGradOp,
                   ops::SequenceConvGradNoNeedBufferVarsInference);
 
-REGISTER_OP_CPU_KERNEL(sequence_conv,
-                       ops::SequenceConvKernel<phi::CPUContext, float>,
-                       ops::SequenceConvKernel<phi::CPUContext, double>);
-REGISTER_OP_CPU_KERNEL(sequence_conv_grad,
-                       ops::SequenceConvGradKernel<phi::CPUContext, float>,
-                       ops::SequenceConvGradKernel<phi::CPUContext, double>);
+PD_REGISTER_STRUCT_KERNEL(
+    sequence_conv, CPU, ALL_LAYOUT, ops::SequenceConvKernel, float, double) {}
+PD_REGISTER_STRUCT_KERNEL(sequence_conv_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::SequenceConvGradKernel,
+                          float,
+                          double) {}

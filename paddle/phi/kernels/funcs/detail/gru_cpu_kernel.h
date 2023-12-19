@@ -130,7 +130,7 @@ void hl_avx_gru_forward_reset_output(OpResetOutput op_reset_output,
 #ifdef __AVX__
   __m256 r_value_update_gate, r_value_update_gate_last = _mm256_set1_ps(0.0f);
   __m256 r_value_reset_gate, r_value_reset_gate_last = _mm256_set1_ps(0.0f);
-  __m256 r_value_reset_output;
+  __m256 r_value_reset_output = _mm256_setzero_ps();
   __m256 r_prev_out = _mm256_set1_ps(0.0f),
          r_prev_out_last = _mm256_set1_ps(0.0f);
   __m256 r_reset_bias = _mm256_set1_ps(0.0f);
@@ -932,13 +932,13 @@ inline void gru_backward(const Context &context,
 
 template <class OpGruGrad, typename T, typename Context>
 inline void cpu_gru_backward(const Context &context,
-                             OpGruGrad op_gru_grad,
+                             OpGruGrad op_gru_grad UNUSED,
                              phi::funcs::GRUMetaValue<T> value,
                              phi::funcs::GRUMetaGrad<T> grad,
                              int frame_size,
                              int batch_size,
-                             ActivationType active_node,
-                             ActivationType active_gate) {
+                             ActivationType active_node UNUSED,
+                             ActivationType active_gate UNUSED) {
   for (int b = 0; b < batch_size; ++b) {
     // eigen
     gru_backward(context, value, grad, frame_size);

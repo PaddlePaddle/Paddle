@@ -18,6 +18,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/phi/backends/dynload/cupti_lib_path.h"
+#include "paddle/phi/backends/dynload/port.h"
 #include "paddle/phi/core/enforce.h"
 
 #if defined(_WIN32)
@@ -26,94 +27,100 @@ limitations under the License. */
 
 // TODO(wilber): The phi computing library requires a component to manage flags
 // (maybe not use gflags).
-#include "gflags/gflags.h"
 #include "glog/logging.h"
+#include "paddle/phi/core/flags.h"
 
-DEFINE_string(cudnn_dir,
-              "",
-              "Specify path for loading libcudnn.so. For instance, "
-              "/usr/local/cudnn/lib. If empty [default], dlopen "
-              "will search cudnn from LD_LIBRARY_PATH");
+PHI_DEFINE_string(cudnn_dir,  // NOLINT
+                  "",
+                  "Specify path for loading libcudnn.so. For instance, "
+                  "/usr/local/cudnn/lib. If empty [default], dlopen "
+                  "will search cudnn from LD_LIBRARY_PATH");
 
-DEFINE_string(
+PHI_DEFINE_string(  // NOLINT
     cuda_dir,
     "",
     "Specify path for loading cuda library, such as libcublas, libcublasLt "
     "libcurand, libcusolver. For instance, /usr/local/cuda/lib64. "
     "If default, dlopen will search cuda from LD_LIBRARY_PATH");
 
-DEFINE_string(nccl_dir,
-              "",
-              "Specify path for loading nccl library, such as libnccl.so. "
-              "For instance, /usr/local/cuda/lib64. If default, "
-              "dlopen will search cuda from LD_LIBRARY_PATH");
+PHI_DEFINE_string(nccl_dir,  // NOLINT
+                  "",
+                  "Specify path for loading nccl library, such as libnccl.so. "
+                  "For instance, /usr/local/cuda/lib64. If default, "
+                  "dlopen will search cuda from LD_LIBRARY_PATH");
 
-DEFINE_string(hccl_dir,
-              "",
-              "Specify path for loading hccl library, such as libhccl.so. "
-              "For instance, "
-              "/usr/local/Ascend/ascend-toolkit/latest/fwkacllib/lib64/. If "
-              "default, "
-              "dlopen will search hccl from LD_LIBRARY_PATH");
+PHI_DEFINE_string(cupti_dir,
+                  "",
+                  "Specify path for loading cupti.so.");  // NOLINT
 
-DEFINE_string(cupti_dir, "", "Specify path for loading cupti.so.");
-
-DEFINE_string(
+PHI_DEFINE_string(  // NOLINT
     tensorrt_dir,
     "",
     "Specify path for loading tensorrt library, such as libnvinfer.so.");
 
-DEFINE_string(mklml_dir, "", "Specify path for loading libmklml_intel.so.");
+PHI_DEFINE_string(mklml_dir,
+                  "",
+                  "Specify path for loading libmklml_intel.so.");  // NOLINT
 
-DEFINE_string(lapack_dir, "", "Specify path for loading liblapack.so.");
+PHI_DEFINE_string(lapack_dir,
+                  "",
+                  "Specify path for loading liblapack.so.");  // NOLINT
 
-DEFINE_string(mkl_dir,
-              "",
-              "Specify path for loading libmkl_rt.so. "
-              "For insrance, /opt/intel/oneapi/mkl/latest/lib/intel64/."
-              "If default, "
-              "dlopen will search mkl from LD_LIBRARY_PATH");
+PHI_DEFINE_string(mkl_dir,  // NOLINT
+                  "",
+                  "Specify path for loading libmkl_rt.so. "
+                  "For insrance, /opt/intel/oneapi/mkl/latest/lib/intel64/."
+                  "If default, "
+                  "dlopen will search mkl from LD_LIBRARY_PATH");
 
-DEFINE_string(op_dir, "", "Specify path for loading user-defined op library.");
+PHI_DEFINE_string(op_dir,  // NOLINT
+                  "",
+                  "Specify path for loading user-defined op library.");
 
-DEFINE_string(cusparselt_dir, "", "Specify path for loading libcusparseLt.so.");
+PHI_DEFINE_string(cusparselt_dir,  // NOLINT
+                  "",
+                  "Specify path for loading libcusparseLt.so.");
 
 #ifdef PADDLE_WITH_HIP
 
-DEFINE_string(miopen_dir,
-              "",
-              "Specify path for loading libMIOpen.so. For instance, "
-              "/opt/rocm/miopen/lib. If empty [default], dlopen "
-              "will search miopen from LD_LIBRARY_PATH");
+PHI_DEFINE_string(miopen_dir,
+                  "",
+                  "Specify path for loading libMIOpen.so. For instance, "
+                  "/opt/rocm/miopen/lib. If empty [default], dlopen "
+                  "will search miopen from LD_LIBRARY_PATH");
 
-DEFINE_string(rocm_dir,
-              "",
-              "Specify path for loading rocm library, such as librocblas, "
-              "libmiopen, libhipsparse. For instance, /opt/rocm/lib. "
-              "If default, dlopen will search rocm from LD_LIBRARY_PATH");
+PHI_DEFINE_string(rocm_dir,
+                  "",
+                  "Specify path for loading rocm library, such as librocblas, "
+                  "libmiopen, libhipsparse. For instance, /opt/rocm/lib. "
+                  "If default, dlopen will search rocm from LD_LIBRARY_PATH");
 
-DEFINE_string(rccl_dir,
-              "",
-              "Specify path for loading rccl library, such as librccl.so. "
-              "For instance, /opt/rocm/rccl/lib. If default, "
-              "dlopen will search rccl from LD_LIBRARY_PATH");
+PHI_DEFINE_string(rccl_dir,
+                  "",
+                  "Specify path for loading rccl library, such as librccl.so. "
+                  "For instance, /opt/rocm/rccl/lib. If default, "
+                  "dlopen will search rccl from LD_LIBRARY_PATH");
+#endif
+
+#ifdef PADDLE_WITH_XPU
+PD_DEFINE_string(xpti_dir, "", "Specify path for loading libxpti.so.");
 #endif
 
 namespace phi {
 namespace dynload {
 
 struct PathNode {
-  PathNode() {}
+  PathNode() = default;
   std::string path = "";
 };
 
-static constexpr char cupti_lib_path[] = CUPTI_LIB_PATH;
+static constexpr char cupti_lib_path[] = CUPTI_LIB_PATH;  // NOLINT
 
 // NOTE: In order to adapt to the default installation path of cuda
 #if defined(_WIN32) && defined(PADDLE_WITH_CUDA)
 static constexpr char cuda_lib_path[] = CUDA_TOOLKIT_ROOT_DIR "/bin";
 #else
-static constexpr char cuda_lib_path[] = "/usr/local/cuda/lib64";
+static constexpr char cuda_lib_path[] = "/usr/local/cuda/lib64";  // NOLINT
 #endif
 
 static PathNode s_py_site_pkg_path;
@@ -178,9 +185,9 @@ static inline std::string join(const std::string& part1,
 static inline std::vector<std::string> split(
     const std::string& str, const std::string separator = " ") {
   std::vector<std::string> str_list;
-  std::string::size_type firstPos;
+  std::string::size_type firstPos = 0;
   firstPos = str.find_first_not_of(separator, 0);
-  std::string::size_type lastPos;
+  std::string::size_type lastPos = 0;
   lastPos = str.find_first_of(separator, firstPos);
   while (std::string::npos != firstPos && std::string::npos != lastPos) {
     str_list.push_back(str.substr(firstPos, lastPos - firstPos));
@@ -256,7 +263,7 @@ static inline void* GetDsoHandleFromSearchPath(
 #endif  // !_WIN32
   std::vector<std::string> dso_names = split(dso_name, ";");
   void* dso_handle = nullptr;
-  for (auto dso : dso_names) {
+  for (auto const& dso : dso_names) {
     // 1. search in user config path by FLAGS
     dso_handle = GetDsoHandleFromSpecificPath(config_path, dso, dynload_flags);
     // 2. search in system default path
@@ -265,7 +272,7 @@ static inline void* GetDsoHandleFromSearchPath(
     }
     // 3. search in extra paths
     if (nullptr == dso_handle) {
-      for (auto path : extra_paths) {
+      for (auto const& path : extra_paths) {
         VLOG(3) << "extra_paths: " << path;
         dso_handle = GetDsoHandleFromSpecificPath(path, dso, dynload_flags);
       }
@@ -394,7 +401,7 @@ void* GetROCFFTDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "librocfft.dylib");
 #else
-  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "librocfft.so");
+  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libhipfft.so");
 #endif
 }
 #endif
@@ -427,6 +434,8 @@ void* GetCusparseDsoHandle() {
 #elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
   return GetDsoHandleFromSearchPath(
       FLAGS_cuda_dir, win_cusparse_lib, true, {cuda_lib_path});
+#elif defined(PADDLE_WITH_HIP)
+  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "librocsparse.so");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcusparse.so");
 #endif
@@ -484,6 +493,20 @@ void* GetWarpRNNTDsoHandle() {
 #endif
 }
 
+void* GetFlashAttnDsoHandle() {
+  std::string flashattn_dir = "";
+  if (!s_py_site_pkg_path.path.empty()) {
+    flashattn_dir = s_py_site_pkg_path.path;
+  }
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(flashattn_dir, "libflashattn.dylib");
+#elif defined(_WIN32)
+  return GetDsoHandleFromSearchPath(flashattn_dir, "flashattn.dll");
+#else
+  return GetDsoHandleFromSearchPath(flashattn_dir, "libflashattn.so");
+#endif
+}
+
 void* GetNCCLDsoHandle() {
 #ifdef PADDLE_WITH_HIP
   std::string warning_msg(
@@ -503,24 +526,6 @@ void* GetNCCLDsoHandle() {
 #elif defined(PADDLE_WITH_HIP) && defined(PADDLE_WITH_RCCL)
   return GetDsoHandleFromSearchPath(
       FLAGS_rccl_dir, "librccl.so", true, {}, warning_msg);
-#else
-  return GetDsoHandleFromSearchPath(
-      FLAGS_nccl_dir, "libnccl.so", true, {}, warning_msg);
-#endif
-}
-void* GetHCCLDsoHandle() {
-  std::string warning_msg(
-      "You may need to install 'hccl2' from Huawei official website: "
-      "before install PaddlePaddle.");
-#if defined(__APPLE__) || defined(__OSX__)
-  return GetDsoHandleFromSearchPath(
-      FLAGS_nccl_dir, "libnccl.dylib", true, {}, warning_msg);
-#elif defined(PADDLE_WITH_HIP) && defined(PADDLE_WITH_RCCL)
-  return GetDsoHandleFromSearchPath(FLAGS_rccl_dir, "librccl.so", true);
-
-#elif defined(PADDLE_WITH_ASCEND_CL)
-  return GetDsoHandleFromSearchPath(
-      FLAGS_hccl_dir, "libhccl.so", true, {}, warning_msg);
 #else
   return GetDsoHandleFromSearchPath(
       FLAGS_nccl_dir, "libnccl.so", true, {}, warning_msg);
@@ -603,6 +608,14 @@ void* GetCusparseLtDsoHandle() {
       "Your CUDA_VERSION less 11.2, not support cusparseLt. "
       "If you want to use cusparseLt, please upgrade CUDA and rebuild "
       "PaddlePaddle.");
+  return nullptr;
+#endif
+}
+
+void* GetXPTIDsoHandle() {
+#ifdef PADDLE_WITH_XPTI
+  return GetDsoHandleFromSearchPath(FLAGS_xpti_dir, "libxpti.so");
+#else
   return nullptr;
 #endif
 }

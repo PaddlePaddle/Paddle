@@ -127,11 +127,13 @@ class BoxDecoderAndAssignOp : public framework::OperatorWithKernel {
               box_score_dims[1],
               prior_box_dims[1]));
     }
-    ctx->SetOutputDim("DecodeBox",
-                      phi::make_ddim({target_box_dims[0], target_box_dims[1]}));
+    ctx->SetOutputDim(
+        "DecodeBox",
+        common::make_ddim({target_box_dims[0], target_box_dims[1]}));
     ctx->ShareLoD("TargetBox", /*->*/ "DecodeBox");
-    ctx->SetOutputDim("OutputAssignBox",
-                      phi::make_ddim({prior_box_dims[0], prior_box_dims[1]}));
+    ctx->SetOutputDim(
+        "OutputAssignBox",
+        common::make_ddim({prior_box_dims[0], prior_box_dims[1]}));
     ctx->ShareLoD("PriorBox", /*->*/ "OutputAssignBox");
   }
 };
@@ -225,6 +227,9 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL(box_decoder_and_assign,
-                       ops::BoxDecoderAndAssignKernel<phi::CPUContext, float>,
-                       ops::BoxDecoderAndAssignKernel<phi::CPUContext, double>);
+PD_REGISTER_STRUCT_KERNEL(box_decoder_and_assign,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::BoxDecoderAndAssignKernel,
+                          float,
+                          double) {}

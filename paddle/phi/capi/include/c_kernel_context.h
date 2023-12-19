@@ -14,7 +14,7 @@
 
 #pragma once
 
-#if !defined(_WIN32) && !defined(__APPLE__)
+#if !defined(_WIN32)
 
 #include "paddle/phi/capi/include/c_data_type.h"
 #include "paddle/phi/capi/include/c_device_context.h"

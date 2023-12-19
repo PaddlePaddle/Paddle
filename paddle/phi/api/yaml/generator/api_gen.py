@@ -66,7 +66,7 @@ class ForwardAPI(BaseAPI):
                     input_tensor_code = (
                         input_tensor_code
                         + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt(0), {trans_flag});"""
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt(0), {trans_flag}, kernel_result.is_stride_kernel);"""
                     )
                 else:
                     # do nothing
@@ -164,6 +164,29 @@ class ForwardAPI(BaseAPI):
                     f"std::get<{i}>(api_output)" for i in return_out_list
                 ]
             return 'return std::make_tuple(' + ", ".join(selected_code) + ');'
+
+    def gene_fallback_code_after_gene_output_of_vector(
+        self, code_indent, output_idx, is_inplace, is_optional
+    ):
+        fallback_code = ""
+        if is_inplace and is_optional:
+            fallback_code = f"""
+{code_indent}  if (kernel_result.has_fallback_cpu) {{
+{code_indent}    for (size_t i = 0; i < kernel_out_{output_idx}.size(); ++i) {{
+{code_indent}      kernel_out_{output_idx}[i] = const_cast<phi::DenseTensor*>({PREFIX_TENSOR_NAME}{self.inplace_map[self.outputs['names'][output_idx]]}->at(i));
+{code_indent}    }}
+{code_indent}  }}"""
+        elif is_inplace:
+            fallback_code = f"""
+{code_indent}  if (kernel_result.has_fallback_cpu) {{
+{code_indent}    for (size_t i = 0; i < kernel_out_{output_idx}.size(); ++i) {{
+{code_indent}      kernel_out_{output_idx}[i] = const_cast<phi::DenseTensor*>({PREFIX_TENSOR_NAME}{self.inplace_map[self.outputs['names'][output_idx]]}[i]);
+{code_indent}    }}
+{code_indent}  }}"""
+        else:
+            fallback_code = ""
+
+        return fallback_code
 
     def gene_output(
         self,
@@ -271,11 +294,29 @@ class ForwardAPI(BaseAPI):
                                 "SetInplaceOptionalVectorKernelOutput"
                             )
                             get_out_code = f"std::get<{i}>(api_output)"
-                    output_create = (
-                        output_create
-                        + f"""
+                            output_create = (
+                                output_create
+                                + f"""
 {code_indent}  auto kernel_out_{i} = {set_out_func}({self.outputs['out_size_expr'][i]}, {get_out_code});"""
-                    )
+                                + self.gene_fallback_code_after_gene_output_of_vector(
+                                    code_indent, i, True, True
+                                )
+                            )
+                        else:
+                            output_create = (
+                                output_create
+                                + f"""
+{code_indent}  auto kernel_out_{i} = {set_out_func}({self.outputs['out_size_expr'][i]}, {get_out_code});"""
+                                + self.gene_fallback_code_after_gene_output_of_vector(
+                                    code_indent, i, True, False
+                                )
+                            )
+                    else:
+                        output_create = (
+                            output_create
+                            + f"""
+{code_indent}  auto kernel_out_{i} = {set_out_func}({self.outputs['out_size_expr'][i]}, {get_out_code});"""
+                        )
 
                 else:
                     output_create = (
@@ -305,12 +346,40 @@ class ForwardAPI(BaseAPI):
                         )
         else:
             raise ValueError(
-                "{} : Output error: the output should not be empty.".format(
-                    self.api
-                )
+                f"{self.api} : Output error: the output should not be empty."
             )
 
         return kernel_output, output_names, output_create
+
+    def reset_view_after_fallback(
+        self, out_dtype_list, code_indent='', inplace_flag=False
+    ):
+        remap_code = ''
+
+        if len(out_dtype_list) == 1:
+            if (
+                not inplace_flag
+                and self.view_map is not None
+                and self.outputs['names'][0] in self.view_map
+            ):
+                remap_code += f"""
+{code_indent}    phi::DenseTensor * {self.view_map[self.outputs['names'][0]]}_remap = static_cast<phi::DenseTensor*>({self.view_map[self.outputs['names'][0]]}.impl().get());
+{code_indent}    {self.view_map[self.outputs['names'][0]]}_remap->ShareBufferWith(*kernel_out);
+{code_indent}    kernel_out->ShareInplaceVersionCounterWith(*{self.view_map[self.outputs['names'][0]]}_remap);
+"""
+        elif len(out_dtype_list) > 1:
+            for i in range(len(out_dtype_list)):
+                if (
+                    not inplace_flag
+                    and self.view_map is not None
+                    and self.outputs['names'][i] in self.view_map
+                ):
+                    remap_code += f"""
+{code_indent}    phi::DenseTensor * {self.view_map[self.outputs['names'][i]]}_remap = static_cast<phi::DenseTensor*>({self.view_map[self.outputs['names'][i]]}.impl().get());
+{code_indent}    {self.view_map[self.outputs['names'][i]]}_remap->ShareBufferWith(*kernel_out_{i});
+{code_indent}    kernel_out_{i}->ShareInplaceVersionCounterWith(*{self.view_map[self.outputs['names'][i]]}_remap);
+"""
+        return remap_code
 
 
 def header_include():
@@ -330,10 +399,13 @@ def source_include(header_file_path):
 #include <memory>
 
 #include "glog/logging.h"
+#include "paddle/utils/flags.h"
 
 #include "paddle/phi/api/lib/api_custom_impl.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
+#include "paddle/phi/api/lib/api_registry.h"
 #include "paddle/phi/api/lib/data_transform.h"
+#include "paddle/phi/api/include/tensor_utils.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -342,12 +414,18 @@ def source_include(header_file_path):
 #include "paddle/phi/infermeta/nullary.h"
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/infermeta/ternary.h"
+#include "paddle/phi/infermeta/fusion.h"
 
 #include "paddle/phi/api/profiler/event_tracing.h"
-#include "paddle/fluid/platform/profiler/supplement_tracing.h"
+#include "paddle/phi/api/profiler/supplement_tracing.h"
 
-DECLARE_bool(conv2d_disable_cudnn);
-DECLARE_int32(low_precision_op_list);
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/phi/infermeta/spmd_rules/rules.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
+#endif
+
+PD_DECLARE_bool(conv2d_disable_cudnn);
+PD_DECLARE_int32(low_precision_op_list);
 """
 
 
@@ -366,7 +444,20 @@ namespace experimental {
     )
 
 
-def generate_api(api_yaml_path, header_file_path, source_file_path):
+def declare_extension_api():
+    return """
+namespace paddle {
+PD_DECLARE_API(from_blob);
+#ifdef PADDLE_WITH_DISTRIBUTE
+PD_DECLARE_API(reshard);
+#endif
+}  // namespace paddle
+"""
+
+
+def generate_api(
+    api_yaml_path, is_fused_ops_yaml, header_file_path, source_file_path
+):
     apis = []
 
     for each_api_yaml in api_yaml_path:
@@ -384,7 +475,21 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
     header_file.write(header_include())
     header_file.write(namespace[0])
 
-    include_header_file = "paddle/phi/api/include/api.h"
+    include_header_file = (
+        "paddle/phi/api/include/fused_api.h"
+        if is_fused_ops_yaml is True
+        else "paddle/phi/api/include/api.h"
+    )
+    # not all fused ops supoort dygraph
+    if is_fused_ops_yaml is True:
+        new_apis = [
+            api
+            for api in apis
+            if "support_dygraph_mode" in api
+            and api["support_dygraph_mode"] is True
+        ]
+        apis = new_apis
+
     source_file.write(source_include(include_header_file))
     source_file.write(namespace[0])
 
@@ -398,6 +503,8 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])
+
+    source_file.write(declare_extension_api())
 
     header_file.close()
     source_file.close()
@@ -415,6 +522,12 @@ def main():
     )
 
     parser.add_argument(
+        '--is_fused_ops_yaml',
+        help='flag of fused ops yaml',
+        action='store_true',
+    )
+
+    parser.add_argument(
         '--api_header_path',
         help='output of generated api header code file',
         default='paddle/phi/api/include/api.h',
@@ -429,10 +542,13 @@ def main():
     options = parser.parse_args()
 
     api_yaml_path = options.api_yaml_path
+    is_fused_ops_yaml = options.is_fused_ops_yaml
     header_file_path = options.api_header_path
     source_file_path = options.api_source_path
 
-    generate_api(api_yaml_path, header_file_path, source_file_path)
+    generate_api(
+        api_yaml_path, is_fused_ops_yaml, header_file_path, source_file_path
+    )
 
 
 if __name__ == '__main__':

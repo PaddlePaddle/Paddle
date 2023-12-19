@@ -87,7 +87,7 @@ void FusedEmbeddingFCLSTMOp::InferShape(
   }
 
   auto wh_dims = ctx->GetInputDim("WeightH");
-  int frame_size = wh_dims[1] / 4;
+  int frame_size = static_cast<int>(wh_dims[1] / 4);
   PADDLE_ENFORCE_EQ(
       wh_dims.size(),
       2,
@@ -270,7 +270,7 @@ This operator fuse the X into LSTM, more details can refer to LSTM op.
 )DOC");
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
  public:
 #define INIT_VEC_FUNC                                                        \
@@ -303,15 +303,15 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
   bool is_reverse = ctx.Attr<bool>("is_reverse");               \
   bool use_peepholes = ctx.Attr<bool>("use_peepholes");
 
-#define INIT_BASE_SIZES                                \
-  auto ids_dims = ids->dims();             /* T x M*/  \
-  auto ids_numel = phi::product(ids_dims); /* T x 1*/  \
-  auto wh_dims = wh->dims();               /* D x 4D*/ \
-  const int D = wh_dims[0];                            \
-  const int D2 = D * 2;                                \
-  const int D3 = D * 3;                                \
-  int64_t row_number = embeddings->dims()[0];          \
-  int64_t row_width = embeddings->dims()[1];           \
+#define INIT_BASE_SIZES                                   \
+  auto ids_dims = ids->dims();                /* T x M*/  \
+  auto ids_numel = common::product(ids_dims); /* T x 1*/  \
+  auto wh_dims = wh->dims();                  /* D x 4D*/ \
+  const int D = wh_dims[0];                               \
+  const int D2 = D * 2;                                   \
+  const int D3 = D * 3;                                   \
+  int64_t row_number = embeddings->dims()[0];             \
+  int64_t row_width = embeddings->dims()[1];              \
   const int D4 = wh_dims[1];
 
 #define INIT_BASE_INPUT_DATAS                                        \
@@ -396,7 +396,6 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
   GET_Ht(ct, gates, ht)
 
   void SeqCompute(const framework::ExecutionContext& ctx) const {
-    using DeviceContext = phi::CPUContext;
     INIT_BASE_INPUT_OUTPUT
     INIT_BASE_SIZES
     INIT_VEC_FUNC
@@ -404,14 +403,15 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
 
     // log(INFO) << "====> SeqCompute" << "\n";
     auto ids_lod = ids->lod();
-    const int total_T = ids_dims[0];
-    const int N = ids_lod[0].size() - 1;
+    const int total_T = static_cast<int>(ids_dims[0]);
+    const int N = static_cast<int>(ids_lod[0].size() - 1);
     const T* h0_data = h0 ? h0->data<T>() : nullptr;
     const T* c0_data = c0 ? c0->data<T>() : nullptr;
     T* xx_data = xx->mutable_data<T>(place);
     T* h_out_data = hidden_out->mutable_data<T>(place);
     T* c_out_data = cell_out->mutable_data<T>(place);
-    auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
 
     for (int64_t i = 0; i < ids_numel; ++i) {
       PADDLE_ENFORCE_LT(
@@ -501,7 +501,6 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
   }
 
   void BatchCompute(const framework::ExecutionContext& ctx) const {
-    using DeviceContext = phi::CPUContext;
     INIT_BASE_INPUT_OUTPUT
     if (ids->lod()[0].size() == 2) {
       SeqCompute(ctx);
@@ -546,7 +545,7 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
 
     auto batched_lod = batched_input->lod();
     const auto& seq_order = batched_lod[2];
-    const int max_bs = seq_order.size();
+    const int max_bs = static_cast<int>(seq_order.size());
     reordered_h0->Resize({max_bs, D});
     reordered_c0->Resize({max_bs, D});
 
@@ -590,7 +589,7 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
       prev_c_data = batched_c_out_data;
     }
     const auto& batch_starts = batched_lod[0];
-    const int max_seq_len = batch_starts.size() - 1;
+    const int max_seq_len = static_cast<int>(batch_starts.size() - 1);
     const int offset = tstart * max_bs * D;
     batched_input_data = batched_input_data + offset * 4;
     batched_h_out_data = batched_h_out_data + offset;
@@ -617,7 +616,8 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
 
     if (use_peepholes) {
       for (int step = tstart; step < max_seq_len; ++step) {
-        const int cur_bs = batch_starts[step + 1] - batch_starts[step];
+        const int cur_bs =
+            static_cast<int>(batch_starts[step + 1] - batch_starts[step]);
         GEMM_WH_ADDON(cur_bs, prev_h_data, batched_input_data);
         DEFINE_CUR;
         for (int i = 0; i < cur_bs; ++i) {
@@ -629,7 +629,8 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
       }
     } else {
       for (int step = tstart; step < max_seq_len; ++step) {
-        const int cur_bs = batch_starts[step + 1] - batch_starts[step];
+        const int cur_bs =
+            static_cast<int>(batch_starts[step + 1] - batch_starts[step]);
         GEMM_WH_ADDON(cur_bs, prev_h_data, batched_input_data);
         DEFINE_CUR;
         for (int i = 0; i < cur_bs; ++i) {
@@ -681,6 +682,9 @@ REGISTER_OPERATOR(fused_embedding_fc_lstm,
                   ops::FusedEmbeddingFCLSTMOp,
                   ops::FusedEmbeddingFCLSTMOpMaker);
 
-REGISTER_OP_CPU_KERNEL(fused_embedding_fc_lstm,
-                       ops::FusedEmbeddingFCLSTMKernel<float>,
-                       ops::FusedEmbeddingFCLSTMKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(fused_embedding_fc_lstm,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::FusedEmbeddingFCLSTMKernel,
+                          float,
+                          double) {}

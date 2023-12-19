@@ -19,7 +19,6 @@
 namespace paddle {
 namespace operators {
 
-using phi::DataLayout;
 using phi::OneDNNContext;
 
 template <typename T>
@@ -28,7 +27,7 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()),
                       true,
-                      paddle::platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "Operator DNNL Transpose must use CPUPlace"));
     auto& dev_ctx = ctx.template device_context<OneDNNContext>();
     const auto& dnnl_engine = dev_ctx.GetEngine();
@@ -45,7 +44,7 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       return;
     }
 
-    auto x_vec_dims = phi::vectorize(x->dims());
+    auto x_vec_dims = common::vectorize(x->dims());
 
     auto x_type = phi::funcs::ToOneDNNDataType(x->dtype());
     phi::funcs::ReorderOneDNNHandler reorder_handler(
@@ -56,14 +55,13 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     auto dst_md =
         dnnl::memory::desc(x_vec_dims,
-                           x->mem_desc().data_type(),
+                           x->mem_desc().get_data_type(),
                            phi::funcs::GetPlainOneDNNFormat(x_vec_dims.size()));
-    // a trick is used here to fake transpose of out_md, so later it will be
-    // "untransposed", leaving output data in plain format tag
-    auto dst_strides = FakeTranposeStrides(dst_md, transpose_axis);
+    auto dst_strides =
+        phi::funcs::FakeTransposeStrides(dst_md.get_dims(), transpose_axis);
 
-    dst_md =
-        dnnl::memory::desc(x_vec_dims, x->mem_desc().data_type(), dst_strides);
+    dst_md = dnnl::memory::desc(
+        x_vec_dims, x->mem_desc().get_data_type(), dst_strides);
     auto dst_data =
         out->mutable_data(ctx.GetPlace(), x->type(), dst_md.get_size());
 
@@ -77,36 +75,7 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     astream.wait();
 
     out->set_mem_desc(reorder_dst_memory_p->get_desc().permute_axes(
-        TransposeToPermuteAxis(transpose_axis)));
-  }
-
- private:
-  // it is needed because oneDNN's permute axis understand axes order in
-  // different way PaddlePaddle's transpose
-  std::vector<int> TransposeToPermuteAxis(
-      const std::vector<int>& transpose_axis) const {
-    std::vector<int> permute_axis(transpose_axis.size());
-
-    for (size_t i = 0; i < transpose_axis.size(); ++i) {
-      permute_axis[transpose_axis[i]] = i;
-    }
-    return permute_axis;
-  }
-
-  std::vector<int64_t> FakeTranposeStrides(
-      const dnnl::memory::desc& dst_md,
-      const std::vector<int>& transpose_axis) const {
-    std::vector<int64_t> fake_strides(transpose_axis.size());
-    auto dims = dst_md.dims();
-    int total_stride = 1;
-    int ndims = static_cast<int>(dims.size());
-
-    for (int i = ndims - 1; i >= 0; --i) {
-      fake_strides[transpose_axis[i]] = total_stride;
-      total_stride *= dims[transpose_axis[i]];
-    }
-
-    return fake_strides;
+        phi::funcs::TransposeToPermuteAxes(transpose_axis)));
   }
 };
 
@@ -116,7 +85,7 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()),
                       true,
-                      paddle::platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "Operator DNNL TransposeGrad must use CPUPlace"));
 
     const auto* dout =
@@ -136,7 +105,7 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
       return;
     }
 
-    auto dout_vec_dims = phi::vectorize(dout->dims());
+    auto dout_vec_dims = common::vectorize(dout->dims());
     auto dout_type = phi::funcs::ToOneDNNDataType(dout->dtype());
 
     phi::funcs::ReorderOneDNNHandler reorder_handler(

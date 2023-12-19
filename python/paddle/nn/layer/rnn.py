@@ -20,23 +20,23 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops, framework, in_dynamic_mode
-from paddle.common_ops_import import Variable
-from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
-from paddle.fluid.framework import (
-    _non_static_mode,
+from paddle.base.data_feeder import check_type, check_variable_and_dtype
+from paddle.base.dygraph.base import NON_PERSISTABLE_VAR_NAME_SUFFIX
+from paddle.base.framework import (
     default_startup_program,
     in_dygraph_mode,
     program_guard,
 )
-from paddle.fluid.layers import control_flow, utils
-from paddle.fluid.layers.utils import flatten, map_structure
+from paddle.common_ops_import import Variable
 from paddle.framework import core
-from paddle.nn import Layer
-from paddle.nn import functional as F
-from paddle.nn import initializer as I
+from paddle.nn import (
+    functional as F,
+    initializer as I,
+)
 from paddle.tensor.manipulation import tensor_array_to_tensor
 
 from .container import LayerList
+from .layers import Layer
 
 __all__ = []
 
@@ -48,7 +48,7 @@ def rnn(
     sequence_length=None,
     time_major=False,
     is_reverse=False,
-    **kwargs
+    **kwargs,
 ):
     r"""
     rnn creates a recurrent neural network specified by RNNCell `cell`,
@@ -91,18 +91,22 @@ def rnn(
 
         .. code-block:: python
 
-            import paddle
-            paddle.disable_static()
+            >>> import paddle
 
-            cell = paddle.nn.SimpleRNNCell(16, 32)
+            >>> inputs = paddle.rand((4, 23, 16))
+            >>> prev_h = paddle.randn((4, 32))
 
-            inputs = paddle.rand((4, 23, 16))
-            prev_h = paddle.randn((4, 32))
-            outputs, final_states = paddle.nn.layer.rnn(cell, inputs, prev_h)
+            >>> cell = paddle.nn.SimpleRNNCell(16, 32)
+            >>> rnn = paddle.nn.RNN(cell)
+            >>> outputs, final_states = rnn(inputs, prev_h)
+            >>> print(outputs.shape)
+            [4, 23, 32]
+            >>> print(final_states.shape)
+            [4, 32]
 
     """
 
-    if _non_static_mode():
+    if in_dygraph_mode():
         return _rnn_dynamic_graph(
             cell,
             inputs,
@@ -110,7 +114,7 @@ def rnn(
             sequence_length,
             time_major,
             is_reverse,
-            **kwargs
+            **kwargs,
         )
     else:
         return _rnn_static_graph(
@@ -120,7 +124,7 @@ def rnn(
             sequence_length,
             time_major,
             is_reverse,
-            **kwargs
+            **kwargs,
         )
 
 
@@ -156,10 +160,10 @@ def _rnn_dynamic_graph(
     sequence_length=None,
     time_major=False,
     is_reverse=False,
-    **kwargs
+    **kwargs,
 ):
     time_step_index = 0 if time_major else 1
-    flat_inputs = flatten(inputs)
+    flat_inputs = paddle.utils.flatten(inputs)
     time_steps = flat_inputs[0].shape[time_step_index]
 
     if initial_states is None:
@@ -168,7 +172,7 @@ def _rnn_dynamic_graph(
         )
 
     if not time_major:
-        inputs = map_structure(_transpose_batch_time, inputs)
+        inputs = paddle.utils.map_structure(_transpose_batch_time, inputs)
 
     if sequence_length is not None:
         mask = paddle.static.nn.sequence_lod.sequence_mask(
@@ -177,7 +181,9 @@ def _rnn_dynamic_graph(
         mask = paddle.transpose(mask, [1, 0])
 
     if is_reverse:
-        inputs = map_structure(lambda x: paddle.reverse(x, axis=[0]), inputs)
+        inputs = paddle.utils.map_structure(
+            lambda x: paddle.reverse(x, axis=[0]), inputs
+        )
         mask = (
             paddle.reverse(mask, axis=[0])
             if sequence_length is not None
@@ -187,27 +193,27 @@ def _rnn_dynamic_graph(
     states = initial_states
     outputs = []
     for i in range(time_steps):
-        step_inputs = map_structure(lambda x: x[i], inputs)
+        step_inputs = paddle.utils.map_structure(lambda x: x[i], inputs)
         step_outputs, new_states = cell(step_inputs, states, **kwargs)
         if sequence_length is not None:
-            new_states = map_structure(
+            new_states = paddle.utils.map_structure(
                 partial(_maybe_copy, step_mask=mask[i]), states, new_states
             )
         states = new_states
         outputs = (
-            map_structure(lambda x: ArrayWrapper(x), step_outputs)
+            paddle.utils.map_structure(lambda x: ArrayWrapper(x), step_outputs)
             if i == 0
-            else map_structure(
+            else paddle.utils.map_structure(
                 lambda x, x_array: x_array.append(x), step_outputs, outputs
             )
         )
 
-    final_outputs = map_structure(
+    final_outputs = paddle.utils.map_structure(
         lambda x: paddle.stack(x.array, axis=time_step_index), outputs
     )
 
     if is_reverse:
-        final_outputs = map_structure(
+        final_outputs = paddle.utils.map_structure(
             lambda x: paddle.reverse(x, axis=time_step_index), final_outputs
         )
 
@@ -222,7 +228,7 @@ def _rnn_static_graph(
     sequence_length=None,
     time_major=False,
     is_reverse=False,
-    **kwargs
+    **kwargs,
 ):
     check_type(inputs, 'inputs', (Variable, list, tuple), 'rnn')
     if isinstance(inputs, (list, tuple)):
@@ -249,62 +255,63 @@ def _rnn_static_graph(
         initial_states = cell.get_initial_states(
             batch_ref=inputs, batch_dim_idx=1 if time_major else 0
         )
-    initial_states = map_structure(_switch_grad, initial_states)
+    initial_states = paddle.utils.map_structure(_switch_grad, initial_states)
 
     if not time_major:
-        inputs = map_structure(_transpose_batch_time, inputs)
+        inputs = paddle.utils.map_structure(_transpose_batch_time, inputs)
 
-    max_seq_len = paddle.shape(flatten(inputs)[0])[0]
+    max_seq_len = paddle.shape(paddle.utils.flatten(inputs)[0])[0]
     if sequence_length:
         mask = paddle.static.nn.sequence_lod.sequence_mask(
             sequence_length,
             maxlen=max_seq_len,
-            dtype=flatten(initial_states)[0].dtype,
+            dtype=paddle.utils.flatten(initial_states)[0].dtype,
         )
         mask = paddle.transpose(mask, [1, 0])
     if is_reverse:
-        inputs = map_structure(lambda x: paddle.reverse(x, axis=[0]), inputs)
+        inputs = paddle.utils.map_structure(
+            lambda x: paddle.reverse(x, axis=[0]), inputs
+        )
         mask = paddle.reverse(mask, axis=[0]) if sequence_length else None
 
-    with paddle.fluid.framework.device_guard("cpu"):
-        start_i = paddle.zeros([1], dtype="int64")
+    with paddle.base.framework.device_guard("cpu"):
+        start_i = paddle.zeros([], dtype="int64")
         end = max_seq_len
 
         end = paddle.cast(end, "int64")
         cond = start_i < end
-    while_op = control_flow.While(cond)
+    while_op = paddle.static.nn.control_flow.While(cond)
 
-    out_array = paddle.tensor.create_array(dtype=flatten(inputs)[0].dtype)
+    out_array = paddle.tensor.create_array(
+        dtype=paddle.utils.flatten(inputs)[0].dtype
+    )
 
-    init_array = map_structure(
+    init_array = paddle.utils.map_structure(
         lambda x: paddle.tensor.create_array(dtype=x.dtype), initial_states
     )
 
-    map_structure(
+    paddle.utils.map_structure(
         lambda x, y: paddle.tensor.array_write(x, start_i, y),
         initial_states,
         init_array,
     )
 
     with while_op.block():
-
         step_in = inputs[start_i]
-        # step_in = paddle.fluid.layers.Print( step_in, message="step in")
-        pre_state = map_structure(
+        # step_in = paddle.base.layers.Print( step_in, message="step in")
+        pre_state = paddle.utils.map_structure(
             lambda x: paddle.tensor.array_read(x, start_i), init_array
         )
-        # pre_state = paddle.fluid.layers.Print( pre_state, message="pre")
         outputs, new_states = cell(step_in, pre_state, **kwargs)
-        assert isinstance(outputs, paddle.fluid.framework.Variable)
-        utils.assert_same_structure(new_states, pre_state)
+        assert isinstance(outputs, paddle.base.framework.Variable)
+        paddle.utils.assert_same_structure(new_states, pre_state)
         if sequence_length:
             step_mask = paddle.unsqueeze(mask[start_i], 1)
-            # paddle.fluid.layers.Print( step_mask, message="mask")
             # new_states = map_structure(
             #     partial(_maybe_copy, step_mask=step_mask),
             #     pre_state, new_states
             # )
-            new_states = map_structure(
+            new_states = paddle.utils.map_structure(
                 lambda x, y: (x * step_mask + y * (1.0 - step_mask)),
                 new_states,
                 pre_state,
@@ -312,35 +319,36 @@ def _rnn_static_graph(
 
         paddle.tensor.array_write(outputs, start_i, out_array)
 
-        with paddle.fluid.framework.device_guard("cpu"):
-
+        with paddle.base.framework.device_guard("cpu"):
             start_i = paddle.tensor.increment(x=start_i, value=1)
-        map_structure(
+        paddle.utils.map_structure(
             lambda x, y: paddle.tensor.array_write(x, start_i, y),
             new_states,
             init_array,
         )
 
-        with paddle.fluid.framework.device_guard("cpu"):
+        with paddle.base.framework.device_guard("cpu"):
             new_cond = paddle.tensor.less_than(start_i, end)
             paddle.assign(new_cond, cond)
 
     out, _ = tensor_array_to_tensor(out_array, axis=0, use_stack=True)
 
-    all_state = map_structure(
+    all_state = paddle.utils.map_structure(
         lambda x: tensor_array_to_tensor(x, axis=0, use_stack=True)[0],
         init_array,
     )
     final_outputs = out
-    final_states = map_structure(lambda x: x[-1], all_state)
+    final_states = paddle.utils.map_structure(lambda x: x[-1], all_state)
 
     if is_reverse:
-        final_outputs = map_structure(
+        final_outputs = paddle.utils.map_structure(
             lambda x: paddle.reverse(x, axis=[0]), final_outputs
         )
 
     if not time_major:
-        final_outputs = map_structure(_transpose_batch_time, final_outputs)
+        final_outputs = paddle.utils.map_structure(
+            _transpose_batch_time, final_outputs
+        )
 
     return (final_outputs, final_states)
 
@@ -352,7 +360,7 @@ def birnn(
     initial_states=None,
     sequence_length=None,
     time_major=False,
-    **kwargs
+    **kwargs,
 ):
     r"""
     birnn creates a bidirectional recurrent neural network specified by
@@ -385,7 +393,7 @@ def birnn(
         outputs (Tensor): the outputs of the bidirectional RNN. It is the
             concatenation of the outputs from the forward RNN and backward
             RNN along the last axis.
-            If time major is True, the shape is `[time_steps, batch_size, size]`,
+            If time_major is True, the shape is `[time_steps, batch_size, size]`,
             else the shape is `[batch_size, time_steps, size]`, where size is
             `cell_fw.hidden_size + cell_bw.hidden_size`.
         final_states (tuple): A tuple of the final states of the forward
@@ -395,18 +403,17 @@ def birnn(
 
         .. code-block:: python
 
-            import paddle
-            paddle.disable_static()
+            >>> import paddle
 
-            cell_fw = paddle.nn.LSTMCell(16, 32)
-            cell_bw = paddle.nn.LSTMCell(16, 32)
-
-            inputs = paddle.rand((4, 23, 16))
-            hf, cf = paddle.rand((4, 32)), paddle.rand((4, 32))
-            hb, cb = paddle.rand((4, 32)), paddle.rand((4, 32))
-            initial_states = ((hf, cf), (hb, cb))
-            outputs, final_states = paddle.nn.layer.birnn(
-                cell_fw, cell_bw, inputs, initial_states)
+            >>> cell_fw = paddle.nn.LSTMCell(16, 32)
+            >>> cell_bw = paddle.nn.LSTMCell(16, 32)
+            >>> rnn = paddle.nn.BiRNN(cell_fw, cell_bw)
+            >>> inputs = paddle.rand((2, 23, 16))
+            >>> outputs, final_states = rnn(inputs)
+            >>> print(outputs.shape)
+            [2, 23, 64]
+            >>> print(final_states[0][0].shape)
+            [2, 32]
 
     """
 
@@ -425,7 +432,7 @@ def birnn(
         states_fw,
         sequence_length,
         time_major=time_major,
-        **kwargs
+        **kwargs,
     )
 
     outputs_bw, states_bw = rnn(
@@ -435,10 +442,10 @@ def birnn(
         sequence_length,
         time_major=time_major,
         is_reverse=True,
-        **kwargs
+        **kwargs,
     )
 
-    outputs = map_structure(
+    outputs = paddle.utils.map_structure(
         lambda x, y: paddle.concat([x, y], -1), outputs_fw, outputs_bw
     )
 
@@ -532,9 +539,9 @@ def concat_states(states, bidirectional=False, state_components=1):
 
     """
     if state_components == 1:
-        return paddle.stack(flatten(states))
+        return paddle.stack(paddle.utils.flatten(states))
     else:
-        states = flatten(states)
+        states = paddle.utils.flatten(states)
         componnets = []
         for i in range(state_components):
             componnets.append(states[i::state_components])
@@ -582,11 +589,11 @@ class RNNCellBase(Layer):
                 packed in the same structure as `shape` and `type` does.
         """
         # TODO: use inputs and batch_size
-        batch_ref = flatten(batch_ref)[0]
+        batch_ref = paddle.utils.flatten(batch_ref)[0]
 
         def _is_shape_sequence(seq):
             """For shape, list/tuple of integer is the finest-grained objection"""
-            if isinstance(seq, list) or isinstance(seq, tuple):
+            if isinstance(seq, (list, tuple)):
                 if reduce(
                     lambda flag, x: isinstance(x, int) and flag, seq, True
                 ):
@@ -598,33 +605,58 @@ class RNNCellBase(Layer):
 
         class Shape:
             def __init__(self, shape):
-                self.shape = shape if shape[0] == -1 else ([-1] + list(shape))
+                self.shape = (
+                    list(shape) if shape[0] == -1 else ([-1] + list(shape))
+                )
 
         # nested structure of shapes
         states_shapes = self.state_shape if shape is None else shape
-        is_sequence_ori = utils.is_sequence
-        utils.is_sequence = _is_shape_sequence
-        states_shapes = map_structure(lambda shape: Shape(shape), states_shapes)
-        utils.is_sequence = is_sequence_ori
+        is_sequence_ori = paddle.utils.layers_utils.is_sequence
+        paddle.utils.layers_utils.is_sequence = _is_shape_sequence
+        states_shapes = paddle.utils.map_structure(
+            lambda shape: Shape(shape), states_shapes
+        )
+        paddle.utils.layers_utils.is_sequence = is_sequence_ori
 
         # nested structure of dtypes
         try:
             states_dtypes = self.state_dtype if dtype is None else dtype
         except NotImplementedError:
             states_dtypes = framework.get_default_dtype()
-        if len(flatten(states_dtypes)) == 1:
-            dtype = flatten(states_dtypes)[0]
-            states_dtypes = map_structure(lambda shape: dtype, states_shapes)
+        if len(paddle.utils.flatten(states_dtypes)) == 1:
+            dtype = paddle.utils.flatten(states_dtypes)[0]
+            states_dtypes = paddle.utils.map_structure(
+                lambda shape: dtype, states_shapes
+            )
+        fill_shapes = states_shapes
+        if batch_ref.shape[batch_dim_idx] > 0:
+            if isinstance(fill_shapes, list):
+                for s in fill_shapes[0]:
+                    s.shape[0] = batch_ref.shape[batch_dim_idx]
+            elif isinstance(fill_shapes, tuple):
+                for s in fill_shapes:
+                    s.shape[0] = batch_ref.shape[batch_dim_idx]
+            else:
+                fill_shapes.shape[0] = batch_ref.shape[batch_dim_idx]
+        else:
+            if isinstance(fill_shapes, list):
+                for s in fill_shapes[0]:
+                    s.shape[0] = paddle.shape(batch_ref)[batch_dim_idx].item()
+            elif isinstance(fill_shapes, tuple):
+                for s in fill_shapes:
+                    s.shape[0] = paddle.shape(batch_ref)[batch_dim_idx].item()
+            else:
+                fill_shapes.shape[0] = paddle.shape(batch_ref)[
+                    batch_dim_idx
+                ].item()
 
-        init_states = map_structure(
-            lambda shape, dtype: paddle.fluid.layers.fill_constant_batch_size_like(
-                input=batch_ref,
+        init_states = paddle.utils.map_structure(
+            lambda shape, dtype: paddle.full(
                 shape=shape.shape,
+                fill_value=init_value,
                 dtype=dtype,
-                value=init_value,
-                input_dim_idx=batch_dim_idx,
             ),
-            states_shapes,
+            fill_shapes,
             states_dtypes,
         )
         return init_states
@@ -710,22 +742,21 @@ class SimpleRNNCell(RNNCellBase):
         - **states** (Tensor): shape `[batch_size, hidden_size]`, the new hidden state, corresponding to :math:`h_{t}` in the formula.
 
     Notes:
-        All the weights and bias are initialized with `Uniform(-std, std)` by default. Where std = :math:`\frac{1}{\sqrt{hidden\_size}}`. For more information about parameter initialization, please refer to :ref:`api_fluid_ParamAttr`.
+        All the weights and bias are initialized with `Uniform(-std, std)` by default. Where std = :math:`\frac{1}{\sqrt{hidden\_size}}`. For more information about parameter initialization, please refer to :ref:`api_paddle_ParamAttr`.
 
     Examples:
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.randn((4, 16))
-            prev_h = paddle.randn((4, 32))
+            >>> x = paddle.randn((4, 16))
+            >>> prev_h = paddle.randn((4, 32))
 
-            cell = paddle.nn.SimpleRNNCell(16, 32)
-            y, h = cell(x, prev_h)
-            print(y.shape)
-
-            #[4,32]
+            >>> cell = paddle.nn.SimpleRNNCell(16, 32)
+            >>> y, h = cell(x, prev_h)
+            >>> print(y.shape)
+            [4, 32]
 
     """
 
@@ -748,35 +779,72 @@ class SimpleRNNCell(RNNCellBase):
                 )
             )
         std = 1.0 / math.sqrt(hidden_size)
-        self.weight_ih = self.create_parameter(
-            (hidden_size, input_size),
-            weight_ih_attr,
-            default_initializer=I.Uniform(-std, std),
-        )
-        self.weight_hh = self.create_parameter(
-            (hidden_size, hidden_size),
-            weight_hh_attr,
-            default_initializer=I.Uniform(-std, std),
-        )
-        self.bias_ih = self.create_parameter(
-            (hidden_size,),
-            bias_ih_attr,
-            is_bias=True,
-            default_initializer=I.Uniform(-std, std),
-        )
-        self.bias_hh = self.create_parameter(
-            (hidden_size,),
-            bias_hh_attr,
-            is_bias=True,
-            default_initializer=I.Uniform(-std, std),
-        )
+        if weight_ih_attr is not False:
+            self.weight_ih = self.create_parameter(
+                (hidden_size, input_size),
+                weight_ih_attr,
+                default_initializer=I.Uniform(-std, std),
+            )
+        else:
+            self.weight_ih = self.create_parameter(
+                (hidden_size, input_size),
+                None,
+                default_initializer=I.Constant(1.0),
+            )
+            self.weight_ih.stop_gradient = True
+
+        if weight_hh_attr is not False:
+            self.weight_hh = self.create_parameter(
+                (hidden_size, hidden_size),
+                weight_hh_attr,
+                default_initializer=I.Uniform(-std, std),
+            )
+        else:
+            self.weight_hh = self.create_parameter(
+                (hidden_size, hidden_size),
+                None,
+                default_initializer=I.Constant(1.0),
+            )
+            self.weight_hh.stop_gradient = True
+
+        if bias_ih_attr is not False:
+            self.bias_ih = self.create_parameter(
+                (hidden_size,),
+                bias_ih_attr,
+                is_bias=True,
+                default_initializer=I.Uniform(-std, std),
+            )
+        else:
+            self.bias_ih = self.create_parameter(
+                (hidden_size,),
+                None,
+                is_bias=True,
+                default_initializer=I.Constant(0.0),
+            )
+            self.bias_ih.stop_gradient = True
+
+        if bias_hh_attr is not False:
+            self.bias_hh = self.create_parameter(
+                (hidden_size,),
+                bias_hh_attr,
+                is_bias=True,
+                default_initializer=I.Uniform(-std, std),
+            )
+        else:
+            self.bias_hh = self.create_parameter(
+                (hidden_size,),
+                None,
+                is_bias=True,
+                default_initializer=I.Constant(0.0),
+            )
+            self.bias_hh.stop_gradient = True
 
         self.input_size = input_size
         self.hidden_size = hidden_size
         if activation not in ["tanh", "relu"]:
             raise ValueError(
                 "activation for SimpleRNNCell should be tanh or relu, "
-                "but get {}".format(activation)
+                f"but get {activation}"
             )
         self.activation = activation
         self._activation_fn = paddle.tanh if activation == "tanh" else F.relu
@@ -864,28 +932,27 @@ class LSTMCell(RNNCellBase):
     Notes:
         All the weights and bias are initialized with `Uniform(-std, std)` by
         default. Where std = :math:`\frac{1}{\sqrt{hidden\_size}}`. For more
-        information about parameter initialization, please refer to :ref:`api_fluid_ParamAttr`.
+        information about parameter initialization, please refer to :ref:`api_paddle_ParamAttr`.
 
     Examples:
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.randn((4, 16))
-            prev_h = paddle.randn((4, 32))
-            prev_c = paddle.randn((4, 32))
+            >>> x = paddle.randn((4, 16))
+            >>> prev_h = paddle.randn((4, 32))
+            >>> prev_c = paddle.randn((4, 32))
 
-            cell = paddle.nn.LSTMCell(16, 32)
-            y, (h, c) = cell(x, (prev_h, prev_c))
+            >>> cell = paddle.nn.LSTMCell(16, 32)
+            >>> y, (h, c) = cell(x, (prev_h, prev_c))
 
-            print(y.shape)
-            print(h.shape)
-            print(c.shape)
-
-            #[4,32]
-            #[4,32]
-            #[4,32]
+            >>> print(y.shape)
+            [4, 32]
+            >>> print(h.shape)
+            [4, 32]
+            >>> print(c.shape)
+            [4, 32]
 
     """
 
@@ -907,28 +974,62 @@ class LSTMCell(RNNCellBase):
                 )
             )
         std = 1.0 / math.sqrt(hidden_size)
-        self.weight_ih = self.create_parameter(
-            (4 * hidden_size, input_size),
-            weight_ih_attr,
-            default_initializer=I.Uniform(-std, std),
-        )
-        self.weight_hh = self.create_parameter(
-            (4 * hidden_size, hidden_size),
-            weight_hh_attr,
-            default_initializer=I.Uniform(-std, std),
-        )
-        self.bias_ih = self.create_parameter(
-            (4 * hidden_size,),
-            bias_ih_attr,
-            is_bias=True,
-            default_initializer=I.Uniform(-std, std),
-        )
-        self.bias_hh = self.create_parameter(
-            (4 * hidden_size,),
-            bias_hh_attr,
-            is_bias=True,
-            default_initializer=I.Uniform(-std, std),
-        )
+        if weight_ih_attr is not False:
+            self.weight_ih = self.create_parameter(
+                (4 * hidden_size, input_size),
+                weight_ih_attr,
+                default_initializer=I.Uniform(-std, std),
+            )
+        else:
+            self.weight_ih = self.create_parameter(
+                (4 * hidden_size, input_size),
+                None,
+                default_initializer=I.Constant(1.0),
+            )
+            self.weight_ih.stop_gradient = True
+        if weight_hh_attr is not False:
+            self.weight_hh = self.create_parameter(
+                (4 * hidden_size, hidden_size),
+                weight_hh_attr,
+                default_initializer=I.Uniform(-std, std),
+            )
+        else:
+            self.weight_hh = self.create_parameter(
+                (4 * hidden_size, hidden_size),
+                None,
+                default_initializer=I.Constant(1.0),
+            )
+            self.weight_hh.stop_gradient = True
+        if bias_ih_attr is not False:
+            self.bias_ih = self.create_parameter(
+                (4 * hidden_size,),
+                bias_ih_attr,
+                is_bias=True,
+                default_initializer=I.Uniform(-std, std),
+            )
+        else:
+            self.bias_ih = self.create_parameter(
+                (4 * hidden_size,),
+                None,
+                is_bias=True,
+                default_initializer=I.Constant(0.0),
+            )
+            self.bias_ih.stop_gradient = True
+        if bias_hh_attr is not False:
+            self.bias_hh = self.create_parameter(
+                (4 * hidden_size,),
+                bias_hh_attr,
+                is_bias=True,
+                default_initializer=I.Uniform(-std, std),
+            )
+        else:
+            self.bias_hh = self.create_parameter(
+                (4 * hidden_size,),
+                None,
+                is_bias=True,
+                default_initializer=I.Constant(0.0),
+            )
+            self.bias_hh.stop_gradient = True
 
         self.hidden_size = hidden_size
         self.input_size = input_size
@@ -1026,25 +1127,25 @@ class GRUCell(RNNCellBase):
     Notes:
         All the weights and bias are initialized with `Uniform(-std, std)` by
         default. Where std = :math:`\frac{1}{\sqrt{hidden\_size}}`. For more
-        information about parameter initialization, please refer to s:ref:`api_fluid_ParamAttr`.
+        information about parameter initialization, please refer to s:ref:`api_paddle_ParamAttr`.
 
     Examples:
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.randn((4, 16))
-            prev_h = paddle.randn((4, 32))
+            >>> x = paddle.randn((4, 16))
+            >>> prev_h = paddle.randn((4, 32))
 
-            cell = paddle.nn.GRUCell(16, 32)
-            y, h = cell(x, prev_h)
+            >>> cell = paddle.nn.GRUCell(16, 32)
+            >>> y, h = cell(x, prev_h)
 
-            print(y.shape)
-            print(h.shape)
+            >>> print(y.shape)
+            [4, 32]
+            >>> print(h.shape)
+            [4, 32]
 
-            #[4,32]
-            #[4,32]
 
     """
 
@@ -1066,28 +1167,64 @@ class GRUCell(RNNCellBase):
                 )
             )
         std = 1.0 / math.sqrt(hidden_size)
-        self.weight_ih = self.create_parameter(
-            (3 * hidden_size, input_size),
-            weight_ih_attr,
-            default_initializer=I.Uniform(-std, std),
-        )
-        self.weight_hh = self.create_parameter(
-            (3 * hidden_size, hidden_size),
-            weight_hh_attr,
-            default_initializer=I.Uniform(-std, std),
-        )
-        self.bias_ih = self.create_parameter(
-            (3 * hidden_size,),
-            bias_ih_attr,
-            is_bias=True,
-            default_initializer=I.Uniform(-std, std),
-        )
-        self.bias_hh = self.create_parameter(
-            (3 * hidden_size,),
-            bias_hh_attr,
-            is_bias=True,
-            default_initializer=I.Uniform(-std, std),
-        )
+        if weight_ih_attr is not False:
+            self.weight_ih = self.create_parameter(
+                (3 * hidden_size, input_size),
+                weight_ih_attr,
+                default_initializer=I.Uniform(-std, std),
+            )
+        else:
+            self.weight_ih = self.create_parameter(
+                (3 * hidden_size, input_size),
+                None,
+                default_initializer=I.Constant(1.0),
+            )
+            self.weight_ih.stop_gradient = True
+        if weight_hh_attr is not False:
+            self.weight_hh = self.create_parameter(
+                (3 * hidden_size, hidden_size),
+                weight_hh_attr,
+                default_initializer=I.Uniform(-std, std),
+            )
+        else:
+            self.weight_hh = self.create_parameter(
+                (3 * hidden_size, hidden_size),
+                None,
+                default_initializer=I.Constant(1.0),
+            )
+            self.weight_hh.stop_gradient = True
+
+        if bias_ih_attr is not False:
+            self.bias_ih = self.create_parameter(
+                (3 * hidden_size,),
+                bias_ih_attr,
+                is_bias=True,
+                default_initializer=I.Uniform(-std, std),
+            )
+        else:
+            self.bias_ih = self.create_parameter(
+                (3 * hidden_size,),
+                None,
+                is_bias=True,
+                default_initializer=I.Constant(0.0),
+            )
+            self.bias_ih.stop_gradient = True
+
+        if bias_hh_attr is not False:
+            self.bias_hh = self.create_parameter(
+                (3 * hidden_size,),
+                bias_hh_attr,
+                is_bias=True,
+                default_initializer=I.Uniform(-std, std),
+            )
+        else:
+            self.bias_hh = self.create_parameter(
+                (3 * hidden_size,),
+                None,
+                is_bias=True,
+                default_initializer=I.Constant(0.0),
+            )
+            self.bias_hh.stop_gradient = True
 
         self.hidden_size = hidden_size
         self.input_size = input_size
@@ -1143,17 +1280,17 @@ class RNN(Layer):
             time steps. Defaults to False.
 
     Inputs:
-        - **inputs** (Tensor): A (possibly nested structure of) tensor[s]. The input sequences. If time major is False, the shape is `[batch_size, time_steps, input_size]`. If time major is True, the shape is `[time_steps, batch_size, input_size]` where `input_size` is the input size of the cell.
+        - **inputs** (Tensor): A (possibly nested structure of) tensor[s]. The input sequences. If time_major is False, the shape is `[batch_size, time_steps, input_size]`. If time_major is True, the shape is `[time_steps, batch_size, input_size]` where `input_size` is the input size of the cell.
         - **initial_states** (Tensor|list|tuple, optional): Tensor of a possibly nested structure of tensors, representing the initial state for the rnn cell. If not provided, `cell.get_initial_states` would be called to produce the initial states. Defaults to None.
         - **sequence_length** (Tensor, optional): shape `[batch_size]`, dtype: int64 or int32. The valid lengths of input sequences. Defaults to None.If `sequence_length` is not None, the inputs are treated as padded sequences. In each input sequence, elements whose time step index are not less than the valid length are treated as paddings.
         - **kwargs**: Additional keyword arguments to pass to `forward` of the cell.
 
-    Returns:
+    Outputs:
         - **outputs** (Tensor|list|tuple): the output sequences. If `time_major` is True, the shape is `[time_steps, batch_size, hidden_size]`, else `[batch_size, time_steps, hidden_size]`.
         - **final_states** (Tensor|list|tuple): final states of the cell. Tensor or a possibly nested structure of tensors which has the same structure with intial state. Each tensor in final states has the same shape and dtype as the corresponding tensor in initial states.
 
     Notes:
-        This class is a low level API for wrapping rnn cell into a RNN network.
+        This class is a low-level API for wrapping rnn cell into a RNN network.
         Users should take care of the state of the cell. If `initial_states` is
         passed to the `forward` method, make sure that it satisfies the
         requirements of the cell.
@@ -1162,20 +1299,19 @@ class RNN(Layer):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            inputs = paddle.rand((4, 23, 16))
-            prev_h = paddle.randn((4, 32))
+            >>> inputs = paddle.rand((4, 23, 16))
+            >>> prev_h = paddle.randn((4, 32))
 
-            cell = paddle.nn.SimpleRNNCell(16, 32)
-            rnn = paddle.nn.RNN(cell)
-            outputs, final_states = rnn(inputs, prev_h)
+            >>> cell = paddle.nn.SimpleRNNCell(16, 32)
+            >>> rnn = paddle.nn.RNN(cell)
+            >>> outputs, final_states = rnn(inputs, prev_h)
 
-            print(outputs.shape)
-            print(final_states.shape)
-
-            #[4,23,32]
-            #[4,32]
+            >>> print(outputs.shape)
+            [4, 23, 32]
+            >>> print(final_states.shape)
+            [4, 32]
 
     """
 
@@ -1198,7 +1334,7 @@ class RNN(Layer):
             sequence_length=sequence_length,
             time_major=self.time_major,
             is_reverse=self.is_reverse,
-            **kwargs
+            **kwargs,
         )
         return final_outputs, final_states
 
@@ -1213,7 +1349,7 @@ class BiRNN(Layer):
     Parameters:
         cell_fw (RNNCellBase): A RNNCellBase instance used for forward RNN.
         cell_bw (RNNCellBase): A RNNCellBase instance used for backward RNN.
-        time_major (bool): Whether the first dimension of the input means the
+        time_major (bool, optional): Whether the first dimension of the input means the
             time steps. Defaults to False.
 
     Inputs:
@@ -1223,7 +1359,7 @@ class BiRNN(Layer):
         - **kwargs**: Additional keyword arguments. Arguments passed to `forward` for each cell.
 
     Outputs:
-        - **outputs** (Tensor): the outputs of the bidirectional RNN. It is the concatenation of the outputs from the forward RNN and backward RNN along the last axis. If time major is True, the shape is `[time_steps, batch_size, size]`, else the shape is `[batch_size, time_steps, size]`, where size is `cell_fw.hidden_size + cell_bw.hidden_size`.
+        - **outputs** (Tensor): the outputs of the bidirectional RNN. It is the concatenation of the outputs from the forward RNN and backward RNN along the last axis. If time_major is True, the shape is `[time_steps, batch_size, size]`, else the shape is `[batch_size, time_steps, size]`, where size is `cell_fw.hidden_size + cell_bw.hidden_size`.
         - **final_states** (tuple): A tuple of the final states of the forward cell and backward cell.
 
     Notes:
@@ -1236,20 +1372,19 @@ class BiRNN(Layer):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            cell_fw = paddle.nn.LSTMCell(16, 32)
-            cell_bw = paddle.nn.LSTMCell(16, 32)
-            rnn = paddle.nn.BiRNN(cell_fw, cell_bw)
+            >>> cell_fw = paddle.nn.LSTMCell(16, 32)
+            >>> cell_bw = paddle.nn.LSTMCell(16, 32)
+            >>> rnn = paddle.nn.BiRNN(cell_fw, cell_bw)
 
-            inputs = paddle.rand((2, 23, 16))
-            outputs, final_states = rnn(inputs)
+            >>> inputs = paddle.rand((2, 23, 16))
+            >>> outputs, final_states = rnn(inputs)
 
-            print(outputs.shape)
-            print(final_states[0][0].shape,len(final_states),len(final_states[0]))
-
-            #[4,23,64]
-            #[2,32] 2 2
+            >>> print(outputs.shape)
+            [2, 23, 64]
+            >>> print(final_states[0][0].shape,len(final_states),len(final_states[0]))
+            [2, 32] 2 2
 
     """
 
@@ -1259,10 +1394,8 @@ class BiRNN(Layer):
         self.cell_bw = cell_bw
         if cell_fw.input_size != cell_bw.input_size:
             raise ValueError(
-                "input size of forward cell({}) does not equals"
-                "that of backward cell({})".format(
-                    cell_fw.input_size, cell_bw.input_size
-                )
+                f"input size of forward cell({cell_fw.input_size}) does not equals"
+                f"that of backward cell({cell_bw.input_size})"
             )
         for cell in [self.cell_fw, self.cell_bw]:
             if not hasattr(cell, "call"):
@@ -1285,7 +1418,7 @@ class BiRNN(Layer):
             initial_states,
             sequence_length,
             self.time_major,
-            **kwargs
+            **kwargs,
         )
         return outputs, final_states
 
@@ -1354,7 +1487,7 @@ class RNNBase(LayerList):
         else:
             raise ValueError(
                 "direction should be forward or bidirect (or bidirectional), "
-                "received direction = {}".format(direction)
+                f"received direction = {direction}"
             )
 
         self.could_use_cudnn = True
@@ -1417,7 +1550,8 @@ class RNNBase(LayerList):
             # dropout state may also can be hided and avoid saving
             # should dropout state be persistable for static-graph
             self._dropout_state = self.create_variable(
-                dtype=core.VarDesc.VarType.UINT8
+                dtype=core.VarDesc.VarType.UINT8,
+                name=f"dropout_state{NON_PERSISTABLE_VAR_NAME_SUFFIX}",
             )
             if in_dynamic_mode():
                 with paddle.no_grad():
@@ -1527,7 +1661,6 @@ class RNNBase(LayerList):
                 'Reserve': reserve,
                 'DropoutState': self._dropout_state,
             }
-
             self._helper.append_op(
                 type="rnn", inputs=inputs, outputs=outputs, attrs=attrs
             )
@@ -1548,11 +1681,15 @@ class RNNBase(LayerList):
                 -1,
                 self.hidden_size,
             )
+
+            fill_shape = list(state_shape)
+            if inputs.shape[batch_index] > 0:
+                fill_shape[1] = inputs.shape[batch_index]
+            else:
+                fill_shape[1] = paddle.shape(inputs)[batch_index].item()
             initial_states = tuple(
                 [
-                    paddle.fluid.layers.fill_constant_batch_size_like(
-                        inputs, state_shape, dtype, 0, batch_index, 1
-                    )
+                    paddle.full(shape=fill_shape, fill_value=0, dtype=dtype)
                     for _ in range(self.state_components)
                 ]
             )
@@ -1671,19 +1808,19 @@ class SimpleRNN(RNNBase):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            rnn = paddle.nn.SimpleRNN(16, 32, 2)
+            >>> rnn = paddle.nn.SimpleRNN(16, 32, 2)
 
-            x = paddle.randn((4, 23, 16))
-            prev_h = paddle.randn((2, 4, 32))
-            y, h = rnn(x, prev_h)
+            >>> x = paddle.randn((4, 23, 16))
+            >>> prev_h = paddle.randn((2, 4, 32))
+            >>> y, h = rnn(x, prev_h)
 
-            print(y.shape)
-            print(h.shape)
+            >>> print(y.shape)
+            [4, 23, 32]
+            >>> print(h.shape)
+            [2, 4, 32]
 
-            #[4,23,32]
-            #[2,4,32]
 
     """
 
@@ -1707,7 +1844,7 @@ class SimpleRNN(RNNBase):
         elif activation == "relu":
             mode = "RNN_RELU"
         else:
-            raise ValueError("Unknown activation '{}'".format(activation))
+            raise ValueError(f"Unknown activation '{activation}'")
         self.activation = activation
         super().__init__(
             mode,
@@ -1802,22 +1939,22 @@ class LSTM(RNNBase):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            rnn = paddle.nn.LSTM(16, 32, 2)
+            >>> rnn = paddle.nn.LSTM(16, 32, 2)
 
-            x = paddle.randn((4, 23, 16))
-            prev_h = paddle.randn((2, 4, 32))
-            prev_c = paddle.randn((2, 4, 32))
-            y, (h, c) = rnn(x, (prev_h, prev_c))
+            >>> x = paddle.randn((4, 23, 16))
+            >>> prev_h = paddle.randn((2, 4, 32))
+            >>> prev_c = paddle.randn((2, 4, 32))
+            >>> y, (h, c) = rnn(x, (prev_h, prev_c))
 
-            print(y.shape)
-            print(h.shape)
-            print(c.shape)
+            >>> print(y.shape)
+            [4, 23, 32]
+            >>> print(h.shape)
+            [2, 4, 32]
+            >>> print(c.shape)
+            [2, 4, 32]
 
-            #[4,23,32]
-            #[2,4,32]
-            #[2,4,32]
 
     """
 
@@ -1924,19 +2061,19 @@ class GRU(RNNBase):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            rnn = paddle.nn.GRU(16, 32, 2)
+            >>> rnn = paddle.nn.GRU(16, 32, 2)
 
-            x = paddle.randn((4, 23, 16))
-            prev_h = paddle.randn((2, 4, 32))
-            y, h = rnn(x, prev_h)
+            >>> x = paddle.randn((4, 23, 16))
+            >>> prev_h = paddle.randn((2, 4, 32))
+            >>> y, h = rnn(x, prev_h)
 
-            print(y.shape)
-            print(h.shape)
+            >>> print(y.shape)
+            [4, 23, 32]
+            >>> print(h.shape)
+            [2, 4, 32]
 
-            #[4,23,32]
-            #[2,4,32]
 
     """
 

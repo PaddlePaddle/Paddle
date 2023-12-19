@@ -16,11 +16,10 @@ import warnings
 
 import paddle
 from paddle import _C_ops
-from paddle.fluid.framework import in_dygraph_mode
-from paddle.fluid.regularizer import L2DecayRegularizer
+from paddle.framework import in_dynamic_or_pir_mode
+from paddle.regularizer import L2Decay
 
-from ..fluid import core, framework, unique_name
-from ..fluid.layer_helper import LayerHelper
+from ..base import core, framework
 from .optimizer import Optimizer
 
 __all__ = []
@@ -55,20 +54,20 @@ class Momentum(Optimizer):
         parameters (list|tuple, optional): List|Tuple of ``Tensor`` to update to minimize ``loss``. \
             This parameter is required in dygraph mode. And you can specify different options for \
             different parameter groups such as the learning rate, weight decay, etc, \
-            then the parameters are list of dict. Note that the learning_rate in paramter groups \
+            then the parameters are list of dict. Note that the learning_rate in parameter groups \
             represents the scale of base learning_rate. \
             The default value is None in static graph mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
-            It canbe a float value as coeff of L2 regularization or \
-            :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
-            If a parameter has set regularizer using :ref:`api_fluid_ParamAttr` already, \
+            It can be a float value as coeff of L2 regularization or \
+            :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
+            If a parameter has set regularizer using :ref:`api_paddle_ParamAttr` already, \
             the regularization setting here in optimizer will be ignored for this parameter. \
             Otherwise, the regularization setting here in optimizer will take effect. \
             Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
-            some derived class of ``GradientClipBase`` . There are three cliping strategies
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
-            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
+        grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of
+            some derived class of ``GradientClipBase`` . There are three clipping strategies
+            ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` ,
+            :ref:`api_paddle_nn_ClipGradByValue` ). Default None, meaning there is no gradient clipping.
         multi_precision (bool, optional): Whether to use multi-precision during weight updating. Default is false.
         rescale_grad (float, optional): Multiply the gradient with `rescale_grad` before updating. \
             Often choose to be ``1.0/batch_size``.
@@ -80,41 +79,42 @@ class Momentum(Optimizer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            inp = paddle.uniform([10, 10], dtype="float32", min=-0.1, max=0.1)
-            linear = paddle.nn.Linear(10, 10)
-            inp = paddle.to_tensor(inp)
-            out = linear(inp)
-            loss = paddle.mean(out)
-            beta1 = paddle.to_tensor([0.9], dtype="float32")
-            beta2 = paddle.to_tensor([0.99], dtype="float32")
-            momentum = paddle.optimizer.Momentum(learning_rate=0.1, parameters=linear.parameters(), weight_decay=0.01)
-            back = out.backward()
-            momentum.step()
-            momentum.clear_grad()
+            >>> inp = paddle.uniform([10, 10], dtype="float32", min=-0.1, max=0.1)
+            >>> linear = paddle.nn.Linear(10, 10)
+            >>> inp = paddle.to_tensor(inp)
+            >>> out = linear(inp)
+            >>> loss = paddle.mean(out)
+            >>> beta1 = paddle.to_tensor([0.9], dtype="float32")
+            >>> beta2 = paddle.to_tensor([0.99], dtype="float32")
+            >>> momentum = paddle.optimizer.Momentum(learning_rate=0.1, parameters=linear.parameters(), weight_decay=0.01)
+            >>> back = out.backward()
+            >>> momentum.step()
+            >>> momentum.clear_grad()
 
-            #Note that the learning_rate of linear_2 is 0.01.
-            linear_1 = paddle.nn.Linear(10, 10)
-            linear_2 = paddle.nn.Linear(10, 10)
-            inp = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
-            out = linear_1(inp)
-            out = linear_2(out)
-            loss = paddle.mean(out)
-            momentum = paddle.optimizer.Momentum(
-                learning_rate=0.1,
-                parameters=[{
-                    'params': linear_1.parameters()
-                }, {
-                    'params': linear_2.parameters(),
-                    'weight_decay': 0.001,
-                    'learning_rate': 0.1
-                }],
-                weight_decay=0.01,
-                momentum=0.9)
-            out.backward()
-            momentum.step()
-            momentum.clear_grad()
+            >>> # Note that the learning_rate of linear_2 is 0.01.
+            >>> linear_1 = paddle.nn.Linear(10, 10)
+            >>> linear_2 = paddle.nn.Linear(10, 10)
+            >>> inp = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
+            >>> out = linear_1(inp)
+            >>> out = linear_2(out)
+            >>> loss = paddle.mean(out)
+            >>> momentum = paddle.optimizer.Momentum(
+            ...     learning_rate=0.1,
+            ...     parameters=[{
+            ...         'params': linear_1.parameters()
+            ...     }, {
+            ...         'params': linear_2.parameters(),
+            ...         'weight_decay': 0.001,
+            ...         'learning_rate': 0.1
+            ...     }],
+            ...     weight_decay=0.01,
+            ...     momentum=0.9
+            ... )
+            >>> out.backward()
+            >>> momentum.step()
+            >>> momentum.clear_grad()
 
     """
     _velocity_acc_str = "velocity"
@@ -137,9 +137,7 @@ class Momentum(Optimizer):
         if momentum is None:
             raise ValueError("momentum is not set")
 
-        predicate = lambda regular: isinstance(
-            regular, (L2DecayRegularizer, float)
-        )
+        predicate = lambda regular: isinstance(regular, (L2Decay, float))
         if isinstance(parameters, list):
             if isinstance(parameters[0], dict):
                 for param_group in parameters:
@@ -193,78 +191,20 @@ class Momentum(Optimizer):
         reg_method = ""
         reg_coeff = 0.0
 
-        if isinstance(weight_decay, L2DecayRegularizer):
+        if isinstance(weight_decay, L2Decay):
             reg_method = "l2_decay"
-            reg_coeff = weight_decay._regularization_coeff
+            reg_coeff = weight_decay._coeff
         if isinstance(weight_decay, float):
             reg_method = "l2_decay"
             reg_coeff = weight_decay
         return reg_method, reg_coeff
 
-    def _create_master_weight(self, param):
-        if param.name in self._master_weights:
-            var = self._master_weights[param.name]
-        else:
-            assert isinstance(self.helper, LayerHelper)
-
-            var_name = param.name + "_fp32_master"
-            var_name = unique_name.generate(var_name)
-            var = paddle.static.create_global_var(
-                name=var_name,
-                shape=param.shape,
-                value=0,
-                dtype='float32',
-                persistable=True,
-            )
-            block = self.helper.startup_program.global_block()
-            block.append_op(
-                type="cast",
-                inputs={"X": [param]},
-                outputs={"Out": [var]},
-                attrs={
-                    "in_dtype": param.dtype,
-                    "out_dtype": core.VarDesc.VarType.FP32,
-                },
-            )
-            self._master_weights[param.name] = var
-        return var
-
-    def _get_accumulator(self, name, param):
-        """Utility function to fetch an accumulator for a parameter
-
-        Args:
-            name: name of the accumulator
-            param: parameter variable for which accumulator is to be fetched
-
-        Returns:
-            accumulator variable for the parameter
-        """
-        if self._name is not None:
-            name = self._name + "_" + name
-        find_master = (
-            self._multi_precision and param.dtype == core.VarDesc.VarType.FP16
-        )
-        target_param = (
-            self._master_weights[param.name] if find_master else param
-        )
-        target_name = target_param.name
-        if (
-            name not in self._accumulators
-            or target_name not in self._accumulators[name]
-        ):
-            raise Exception(
-                "Accumulator {} does not exist for parameter {}".format(
-                    name, target_name
-                )
-            )
-        return self._accumulators[name][target_name]
-
     def _create_accumulators(self, block, parameters):
         '''
-        if framework._non_static_mode():
+        if framework.in_dynamic_mode():
             return
         '''
-        assert isinstance(block, framework.Block)
+        assert isinstance(block, (framework.Block, paddle.pir.Block))
 
         if isinstance(parameters, dict):
             parameters = self._update_param_group(parameters)
@@ -272,17 +212,17 @@ class Momentum(Optimizer):
         for p in parameters:
             if p.name in self._already_create_accumulater:
                 continue
-            if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
+            if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
                 self._add_accumulator(self._velocity_acc_str, master_p)
                 self._already_create_accumulater.add(p.name)
                 continue
             if (
-                p.dtype == core.VarDesc.VarType.FP16
+                self._is_dtype_fp16_or_bf16(p.dtype)
                 and not self._multi_precision
             ):
                 warnings.warn(
-                    "Accumulating with FP16 in optimizer can lead to poor accuracy or slow convergence."
+                    "Accumulating with FP16/BF16 in optimizer can lead to poor accuracy or slow convergence."
                     "Consider using multi_precision=True option of the Momentum optimizer."
                 )
             self._add_accumulator(self._velocity_acc_str, p)
@@ -296,7 +236,7 @@ class Momentum(Optimizer):
         # If ParamAttr is set to L2Decay, we skip doing regularization here. And then we fused
         # L2Decay with momentum which can refer to _append_optimize_op below.
         if hasattr(param, 'regularizer') and isinstance(
-            param.regularizer, L2DecayRegularizer
+            param.regularizer, L2Decay
         ):
             return grad
         return super()._create_regularization_of_grad(
@@ -308,7 +248,7 @@ class Momentum(Optimizer):
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)
 
-        velocity_acc = self._get_accumulator(
+        velocity_acc = self._get_accumulator_master(
             self._velocity_acc_str, param_and_grad[0]
         )
         lr = self._create_param_lr(param_and_grad)
@@ -319,17 +259,16 @@ class Momentum(Optimizer):
         regularization_coeff = self._regularization_coeff
         if hasattr(param, 'regularizer'):
             # we skip param's l2decay before, so fuse it with momentum here.
-            if isinstance(param.regularizer, L2DecayRegularizer):
+            if isinstance(param.regularizer, L2Decay):
                 regularization_method = "l2_decay"
-                regularization_coeff = param.regularizer._regularization_coeff
+                regularization_coeff = param.regularizer._coeff
             # the param's regularization has been done before, we avoid do l2decay in momentum.
             elif param.regularizer is not None:
                 regularization_method = ""
                 regularization_coeff = 0.0
 
-        find_master = (
-            self._multi_precision
-            and param_and_grad[0].dtype == core.VarDesc.VarType.FP16
+        find_master = self._multi_precision and self._is_dtype_fp16_or_bf16(
+            param_and_grad[0].dtype
         )
         master_weight = (
             self._master_weights[param_and_grad[0].name]
@@ -337,7 +276,7 @@ class Momentum(Optimizer):
             else None
         )
 
-        if in_dygraph_mode():
+        if in_dynamic_or_pir_mode():
             if isinstance(param_and_grad, dict):
                 self._update_regularization(param_and_grad['weight_decay'])
             return _C_ops.momentum_(
@@ -392,7 +331,7 @@ class Momentum(Optimizer):
 
     def _multi_tensor_init(self, target_block, parameters, param_group_idx):
         """
-        All parameters used for optimizer (such as: parameters, master_weight, velocity_acc for momentum) calculations are grouped into a python list by data type (float16, float32).
+        All parameters used for optimizer (such as: parameters, master_weight, velocity_acc for momentum) calculations are grouped into a python list by data type (float16, bf16, float32).
         This function will be overridden in the corresponding optimizer file.
 
         Args:
@@ -401,16 +340,16 @@ class Momentum(Optimizer):
         """
         self._create_accumulators(target_block, parameters)
         for param in parameters:
-            velocity_acc = self._get_accumulator(self._velocity_acc_str, param)
+            velocity_acc = self._get_accumulator_master(
+                self._velocity_acc_str, param
+            )
             regularization_method = self._regularization_method
             regularization_coeff = self._regularization_coeff
             if hasattr(param, 'regularizer'):
                 # we skip param's l2decay before, so fuse it with momentum here.
-                if isinstance(param.regularizer, L2DecayRegularizer):
+                if isinstance(param.regularizer, L2Decay):
                     regularization_method = "l2_decay"
-                    regularization_coeff = (
-                        param.regularizer._regularization_coeff
-                    )
+                    regularization_coeff = param.regularizer._coeff
                 elif param.regularizer is not None:
                     regularization_method = ""
                     regularization_coeff = 0.0
@@ -428,7 +367,7 @@ class Momentum(Optimizer):
                 self._regularization_coeff_dict['FP32_LODTensor'][
                     param_group_idx
                 ].append(regularization_coeff)
-            elif param.dtype == paddle.float16:
+            elif self._is_dtype_fp16_or_bf16(param.dtype):
                 self._param_dict['FP16_LODTensor'][param_group_idx].append(
                     param
                 )
@@ -451,7 +390,7 @@ class Momentum(Optimizer):
                 ].append(regularization_coeff)
             else:
                 raise ValueError(
-                    "Now multi_tensor_momentum only support fp32 and fp16 parameters and grad is LOD_TENSOR."
+                    "Now multi_tensor_momentum only support fp32, fp16 or bf16 parameters and grad is LOD_TENSOR."
                 )
 
     def _append_optimize_multi_tensor_op(
@@ -482,7 +421,7 @@ class Momentum(Optimizer):
                         lr = self._create_param_lr(param_and_grad)
                         lr_dict['FP32_LODTensor'].append(lr)
                     elif (
-                        param_and_grad[0].dtype == paddle.float16
+                        self._is_dtype_fp16_or_bf16(param_and_grad[0].dtype)
                         and param_and_grad[1].type
                         == core.VarDesc.VarType.LOD_TENSOR
                     ):
@@ -494,7 +433,7 @@ class Momentum(Optimizer):
                 if param_and_grad[1] is None:
                     continue
                 if param_and_grad[0].stop_gradient is False:
-                    param_grad_dict = dict()
+                    param_grad_dict = {}
                     param_grad_dict['params'] = param_and_grad
                     param_grad_dict.update(
                         {
@@ -513,7 +452,7 @@ class Momentum(Optimizer):
                         lr = self._create_param_lr(param_and_grad)
                         lr_dict['FP32_LODTensor'].append(lr)
                     elif (
-                        param_and_grad[0].dtype == paddle.float16
+                        self._is_dtype_fp16_or_bf16(param_and_grad[0].dtype)
                         and param_and_grad[1].type
                         == core.VarDesc.VarType.LOD_TENSOR
                     ):
@@ -533,13 +472,17 @@ class Momentum(Optimizer):
                     else None
                 )
 
-                if in_dygraph_mode():
+                if in_dynamic_or_pir_mode():
                     found_inf = self._get_auxiliary_var('found_inf')
                     if found_inf:
-                        if isinstance(found_inf, core.eager.Tensor):
+                        if isinstance(
+                            found_inf, (core.eager.Tensor, paddle.pir.OpResult)
+                        ):
                             self._set_auxiliary_var('found_inf', True)
                     else:
-                        if isinstance(found_inf, core.eager.Tensor):
+                        if isinstance(
+                            found_inf, (core.eager.Tensor, paddle.pir.OpResult)
+                        ):
                             self._set_auxiliary_var('found_inf', False)
                         _, _, _ = _C_ops.merged_momentum_(
                             self._param_dict[key][param_group_idx],
@@ -598,7 +541,6 @@ class Momentum(Optimizer):
                         attrs=attrs,
                         stop_gradient=True,
                     )
-        return None
 
     def _update_param_group(self, parameters):
         self._momentum = parameters.get(

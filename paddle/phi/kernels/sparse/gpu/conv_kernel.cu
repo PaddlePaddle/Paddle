@@ -18,11 +18,12 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/core/visit_type.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/scatter.cu.h"
 #include "paddle/phi/kernels/funcs/sparse/scatter.cu.h"
 #include "paddle/phi/kernels/sparse/gpu/conv.cu.h"
-#ifdef PADDLE_WITH_CUTLASS
+#if defined(PADDLE_WITH_CUTLASS) && SPCONV_WITH_CUTLASS
 #include "paddle/phi/kernels/sparse/gpu/gather_gemm_scatter.h"
 #endif
 
@@ -30,6 +31,41 @@ limitations under the License. */
 
 namespace phi {
 namespace sparse {
+
+#define GATHER_GEMM_SCATTER(arch, input_type, x_nnz, kernel)             \
+  ({                                                                     \
+    const input_type* kernel_ptr = kernel.data<input_type>();            \
+    const input_type* x_nnz_ptr = x_nnz.data<input_type>();              \
+    for (int i = 0; i < kernel_size; i++) {                              \
+      if (h_counter_ptr[i] <= 0) {                                       \
+        continue;                                                        \
+      }                                                                  \
+      const int M = h_counter_ptr[i];                                    \
+      const int K = in_channels;                                         \
+      const int N = out_channels;                                        \
+      const input_type* tmp_kernel_ptr = kernel_ptr + i * K * N;         \
+      const IntT* gather_indices = rulebook_ptr + h_offsets_ptr[i];      \
+      const IntT* scatter_indices =                                      \
+          rulebook_ptr + rulebook_len + h_offsets_ptr[i];                \
+      const size_t key = autotune::GenKey(M / features_num_range, N, K); \
+      GatherGemmScatterDriver<arch, false, false>(                       \
+          dev_ctx,                                                       \
+          key,                                                           \
+          x_nnz_ptr,                                                     \
+          tmp_kernel_ptr,                                                \
+          out_values_ptr,                                                \
+          out_values_ptr,                                                \
+          M,                                                             \
+          N,                                                             \
+          K,                                                             \
+          gather_indices,                                                \
+          static_cast<const IntT*>(nullptr),                             \
+          scatter_indices,                                               \
+          static_cast<T>(1.0),                                           \
+          static_cast<T>(1.0),                                           \
+          nullptr);                                                      \
+    }                                                                    \
+  })
 
 template <typename T, typename IntT>
 void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
@@ -49,8 +85,14 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
   // if x.layout != NDHWC then transpose(x), transpose(weight)
   const auto& x_dims = x.dims();
   const auto& kernel_dims = kernel.dims();
-  int kernel_size = kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
-  DDim out_dims = {1, 1, 1, 1, 1};
+  const bool is2D = x_dims.size() == 4 ? true : false;
+  int kernel_size = is2D ? kernel_dims[0] * kernel_dims[1]
+                         : kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
+
+  int rank = is2D ? 4 : 5;
+  std::vector<int> out_dims_vec(rank, 1);
+  DDim out_dims = common::make_ddim(out_dims_vec);
+
   std::vector<int> kernel_sizes(kernel_dims.size());
   for (int i = 0; i < kernel_dims.size(); i++) {
     kernel_sizes[i] = kernel_dims[i];
@@ -66,8 +108,8 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
 
   phi::funcs::sparse::GetOutShape(
       x_dims, kernel_sizes, subm_paddings, dilations, subm_strides, &out_dims);
-  const int in_channels = kernel_dims[3];
-  const int out_channels = kernel_dims[4];
+  const int in_channels = is2D ? kernel_dims[2] : kernel_dims[3];
+  const int out_channels = is2D ? kernel_dims[3] : kernel_dims[4];
   DenseTensor h_counter, h_offsets;
   h_counter.Resize({kernel_size});
   h_offsets.Resize({kernel_size + 1});
@@ -82,7 +124,14 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
   DenseTensor out_index = phi::Empty<int>(dev_ctx, {1});
   DenseTensor unique_value = phi::Empty<int>(dev_ctx, {1});
 
-  VLOG(6) << "call SubmConv3D or Conv3D " << subm << " and the key is " << key;
+  if (is2D) {
+    VLOG(6) << "call SubmConv2D or Conv2D " << subm << " and the key is "
+            << key;
+  } else {
+    VLOG(6) << "call SubmConv3D or Conv3D " << subm << " and the key is "
+            << key;
+  }
+
   int rulebook_len = 0;
   const IntT* rulebook_ptr = nullptr;
   bool need_product_rulebook = true;
@@ -123,45 +172,39 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
         dev_ctx, x, key, tmp_rulebook, h_counter, out, rulebook, counter);
   }
 
-#ifdef PADDLE_WITH_CUTLASS
+#if defined(PADDLE_WITH_CUTLASS) && SPCONV_WITH_CUTLASS
+  bool mixed_precision = dev_ctx.GetComputeCapability() >= 75 &&
+                         dev_ctx.GetComputeCapability() < 80 &&
+                         std::is_same<T, float>::value;
   bool cutlass = true;
   if (dev_ctx.GetComputeCapability() < 75) cutlass = false;
-  if (in_channels % 4 != 0 || out_channels % 4 != 0) {
+  if (in_channels % 8 != 0 || out_channels % 8 != 0) {
     if (std::is_same<T, phi::dtype::float16>::value) cutlass = false;
+    if (mixed_precision) cutlass = false;
+  }
+  if (in_channels % 4 != 0 || out_channels % 4 != 0) {
     if (std::is_same<T, float>::value) cutlass = false;
   }
+  if (std::is_same<T, double>::value) cutlass = false;
   if (!std::is_same<IntT, int32_t>::value) cutlass = false;
+
   if (cutlass) {
     auto* out_values = out->mutable_non_zero_elements();
     T* out_values_ptr = out_values->data<T>();
     phi::funcs::SetConstant<GPUContext, T> set_zero;
     set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
 
-    const T* kernel_ptr = kernel.data<T>();
-    for (int i = 0; i < kernel_size; i++) {
-      if (h_counter_ptr[i] <= 0) {
-        continue;
-      }
-
-      const int M = h_counter_ptr[i];
-      const int K = in_channels;
-      const int N = out_channels;
-      const T* tmp_kernel_ptr = kernel_ptr + i * K * N;
-      const IntT* gather_indices = rulebook_ptr + h_offsets_ptr[i];
-      const IntT* scatter_indices =
-          rulebook_ptr + rulebook_len + h_offsets_ptr[i];
-      dispatchKernel(dev_ctx,
-                     x.non_zero_elements().data<T>(),
-                     tmp_kernel_ptr,
-                     out_values_ptr,
-                     out_values_ptr,
-                     M,
-                     N,
-                     K,
-                     gather_indices,
-                     scatter_indices,
-                     cutlass,
-                     x.dtype());
+    if (mixed_precision) {
+      DenseTensor kernel_fp16 =
+          phi::Cast<T, GPUContext>(dev_ctx, kernel, DataType::FLOAT16);
+      DenseTensor x_nnz_fp16 = phi::Cast<T, GPUContext>(
+          dev_ctx, x.non_zero_elements(), DataType::FLOAT16);
+      GATHER_GEMM_SCATTER(75, phi::dtype::float16, x_nnz_fp16, kernel_fp16);
+    } else {
+      if (dev_ctx.GetComputeCapability() < 80)
+        GATHER_GEMM_SCATTER(75, T, x.non_zero_elements(), kernel);
+      else
+        GATHER_GEMM_SCATTER(80, T, x.non_zero_elements(), kernel);
     }
   } else {
 #endif
@@ -243,7 +286,7 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                                      out_channels,
                                      1,
                                      out_values_ptr);
-#ifdef PADDLE_WITH_CUTLASS
+#if defined(PADDLE_WITH_CUTLASS) && SPCONV_WITH_CUTLASS
   }
 #endif
 }
@@ -283,7 +326,6 @@ void Conv3dCooKernel(const Context& dev_ctx,
                                                                counter);
                                }));
 }
-
 }  // namespace sparse
 }  // namespace phi
 
@@ -295,4 +337,7 @@ PD_REGISTER_KERNEL(conv3d_coo,
                    double,
                    phi::dtype::float16) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+  kernel->OutputAt(0).SetDataType(paddle::DataType::UNDEFINED);
+  kernel->OutputAt(1).SetDataType(paddle::DataType::INT32);
+  kernel->OutputAt(2).SetDataType(paddle::DataType::INT32);
 }

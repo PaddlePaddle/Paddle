@@ -52,6 +52,14 @@ struct NCCLDynamicCheck {
                          int world_size,
                          ncclComm_t comm);
 
+  // can be used to check gather and all gather
+  static void CheckGatherShape(const phi::DenseTensor& in_tensor,
+                               const std::vector<phi::DenseTensor>& out_tensors,
+                               int root_rank,
+                               int cur_rank,
+                               int world_size,
+                               ncclComm_t comm);
+
  private:
   // `0` represents default stream for both cuda & hip
   static constexpr gpuStream_t kDefaultStream = 0;

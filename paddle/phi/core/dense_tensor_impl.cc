@@ -12,23 +12,23 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/memory/malloc.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 /* --------------------------- */
-/*   From phi::DenseTensor    */
+/*   From phi::DenseTensor     */
 /* --------------------------- */
 DenseTensor::DenseTensor() {
-  meta_.dtype = paddle::experimental::DataType::FLOAT32;
+  meta_.dtype = phi::DataType::FLOAT32;
   meta_.offset = 0;
 }
 
-DenseTensor::DenseTensor(paddle::experimental::DataType dtype) {
+DenseTensor::DenseTensor(phi::DataType dtype) {
   meta_.dtype = dtype;
   meta_.offset = 0;
 }
@@ -42,16 +42,18 @@ void DenseTensor::check_memory_size() const {
       holder_,
       phi::errors::PreconditionNotMet("Tensor holds no memory. "
                                       "Call Tensor::mutable_data firstly."));
-  PADDLE_ENFORCE_LE(
-      numel() * SizeOf(dtype()),
-      memory_size(),
-      phi::errors::PreconditionNotMet(
-          "Tensor's dimension is out of bound."
-          "Tensor's dimension must be equal or less than the size of its "
-          "memory."
-          "But received Tensor's dimension is %d, memory's size is %d.",
-          numel() * SizeOf(dtype()),
-          memory_size()));
+  if (meta_.is_contiguous()) {
+    PADDLE_ENFORCE_LE(
+        numel() * SizeOf(dtype()),
+        memory_size(),
+        phi::errors::PreconditionNotMet(
+            "Tensor's dimension is out of bound."
+            "Tensor's dimension must be equal or less than the size of its "
+            "memory."
+            "But received Tensor's dimension is %d, memory's size is %d.",
+            numel() * SizeOf(dtype()),
+            memory_size()));
+  }
 }
 
 const Place& DenseTensor::place() const {
@@ -62,13 +64,18 @@ const Place& DenseTensor::place() const {
   return holder_->place();
 }
 
-paddle::experimental::DataType DenseTensor::type() const { return meta_.dtype; }
+phi::DataType DenseTensor::type() const { return meta_.dtype; }
 
-void DenseTensor::set_layout(const DataLayout layout) { meta_.layout = layout; }
+void DenseTensor::set_layout(const DataLayout layout) {
+  if (meta_.strides.size() == -1) {
+    meta_.strides = meta_.calc_strides(meta_.dims);
+  }
+  meta_.layout = layout;
+}
 
 // Note: When you reset holder, you need to ensure the offset is correct
 void DenseTensor::ResetHolder(const std::shared_ptr<phi::Allocation>& holder) {
-  if (holder_) {
+  if (holder_ && meta_.is_contiguous()) {
     PADDLE_ENFORCE_LE(
         numel() * static_cast<int64_t>(SizeOf(dtype())) +
             static_cast<int64_t>(meta_.offset),
@@ -80,18 +87,15 @@ void DenseTensor::ResetHolder(const std::shared_ptr<phi::Allocation>& holder) {
 }
 
 void DenseTensor::ResetHolderWithType(
-    const std::shared_ptr<phi::Allocation>& holder,
-    paddle::experimental::DataType type) {
+    const std::shared_ptr<phi::Allocation>& holder, phi::DataType type) {
   set_type(type);
   ResetHolder(holder);
 }
 
-void DenseTensor::set_type(paddle::experimental::DataType type) {
-  meta_.dtype = type;
-}
+void DenseTensor::set_type(phi::DataType type) { meta_.dtype = type; }
 
 void* DenseTensor::mutable_data(const Place& place,
-                                paddle::experimental::DataType type,
+                                phi::DataType type,
                                 size_t requested_size) {
   set_type(type);
   PADDLE_ENFORCE_GE(
@@ -111,7 +115,7 @@ void* DenseTensor::mutable_data(const Place& place,
   if (holder_ == nullptr || !(holder_->place() == place) ||
       holder_->size() < size + meta_.offset) {
     holder_.reset();
-    holder_ = paddle::memory::AllocShared(place, size);
+    holder_ = memory_utils::AllocShared(place, size);
     meta_.offset = 0;
   }
   return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
@@ -123,7 +127,7 @@ void* DenseTensor::mutable_data(const Place& place, size_t requested_size) {
 }
 
 void* DenseTensor::mutable_data(const Place& place,
-                                paddle::experimental::DataType type,
+                                phi::DataType type,
                                 const phi::Stream& stream) {
   set_type(type);
   PADDLE_ENFORCE_GE(
@@ -140,9 +144,9 @@ void* DenseTensor::mutable_data(const Place& place,
   if (holder_ == nullptr || !(holder_->place() == place) ||
       holder_->size() < size + meta_.offset ||
       !(place.GetType() == phi::AllocationType::GPU &&
-        paddle::memory::InSameStream(holder_, stream))) {
+        memory_utils::InSameStream(holder_, stream))) {
     holder_.reset();
-    holder_ = paddle::memory::AllocShared(place, size, stream);
+    holder_ = memory_utils::AllocShared(place, size, stream);
     meta_.offset = 0;
   }
   return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
@@ -159,7 +163,20 @@ inline T* DenseTensor::mutable_data(const DDim& dims,
                                     const Place& place,
                                     size_t requested_size) {
   static_assert(std::is_pod<T>::value, "T must be POD");
+  if (meta_.dims.size() != -1 && meta_.dims != dims) {
+    PADDLE_ENFORCE_EQ(meta_.is_contiguous(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Right now Resize is only supported for contiguous "
+                          "Tensor. Tensor dims is %s, Tensor layout is %s, "
+                          "Tensor stride is %s. New dims is %s.",
+                          meta_.dims,
+                          meta_.layout,
+                          meta_.strides,
+                          dims));
+  }
   meta_.dims = dims;
+  meta_.strides = meta_.calc_strides(meta_.dims);
   return mutable_data<T>(place, requested_size);
 }
 
@@ -167,9 +184,7 @@ template <typename T>
 inline T* DenseTensor::mutable_data(const Place& place, size_t requested_size) {
   static_assert(std::is_pod<T>::value, "T must be POD");
   return reinterpret_cast<T*>(
-      mutable_data(place,
-                   paddle::experimental::CppTypeToDataType<T>::Type(),
-                   requested_size));
+      mutable_data(place, phi::CppTypeToDataType<T>::Type(), requested_size));
 }
 
 void DenseTensor::ShareBufferWith(const DenseTensor& tensor, bool only_buffer) {
@@ -180,11 +195,11 @@ void DenseTensor::ShareBufferWith(const DenseTensor& tensor, bool only_buffer) {
   }
 }
 
-#define LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(dtype)                \
-  template dtype* DenseTensor::mutable_data(                        \
-      const DDim& dims, const Place& place, size_t requested_size); \
-  template dtype* DenseTensor::mutable_data(const Place& place,     \
-                                            size_t requested_size);
+#define LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(dtype)                     \
+  template TEST_API dtype* DenseTensor::mutable_data(                    \
+      const DDim& dims, const Place& place, size_t requested_size);      \
+  template TEST_API dtype* DenseTensor::mutable_data(const Place& place, \
+                                                     size_t requested_size);
 
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(bool)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(int8_t)
@@ -255,7 +270,20 @@ size_t DenseTensor::NumElements(size_t level) const {
 }
 
 DenseTensor& DenseTensor::Resize(const DDim& dims) {
+  if (meta_.dims.size() != -1 && meta_.dims != dims) {
+    PADDLE_ENFORCE_EQ(meta_.is_contiguous(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Right now Resize is only supported for contiguous "
+                          "Tensor. Tensor dims is %s, Tensor layout is %s, "
+                          "Tensor stride is %s. New dims is %s.",
+                          meta_.dims,
+                          meta_.layout,
+                          meta_.strides,
+                          dims));
+  }
   meta_.dims = dims;
+  meta_.strides = meta_.calc_strides(meta_.dims);
   return *this;
 }
 
@@ -312,7 +340,7 @@ std::vector<DenseTensor> DenseTensor::Split(int64_t split_size,
           "split expects split_size be non-negative, but got split_size is %d",
           split_size));
 
-  int64_t numel_size = meta_.dims[axis];
+  int64_t numel_size = meta_.dims[static_cast<int>(axis)];
 
   int64_t num_splits = 1;
   if (split_size != 0) {
@@ -343,12 +371,12 @@ std::vector<DenseTensor> DenseTensor::Chunk(int64_t chunks,
       phi::errors::OutOfRange(
           "chunks expects to be greater than 0, but got chunks is %d", chunks));
 
-  int64_t numel_size = meta_.dims[axis];
+  int64_t numel_size = meta_.dims[static_cast<int>(axis)];
   int64_t split_size = (numel_size + chunks - 1) / chunks;
   return Split(split_size, axis);
 }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 const dnnl::memory::desc& DenseTensor::mem_desc() const { return mem_desc_; }
 #endif
 
@@ -363,9 +391,10 @@ DenseTensor& DenseTensor::ShareDataWith(const DenseTensor& src) {
   meta_.layout = src.meta_.layout;
   meta_.offset = src.meta_.offset;
   meta_.use_gpudnn = src.meta_.use_gpudnn;
+  meta_.strides = src.meta_.strides;
   storage_properties_ =
       std::move(CopyStorageProperties(src.storage_properties_));
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   mem_desc_ = src.mem_desc_;
 #endif
   return *this;

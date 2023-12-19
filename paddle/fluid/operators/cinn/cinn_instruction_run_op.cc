@@ -118,5 +118,9 @@ REGISTER_OPERATOR(
     ops::CinnInstructionRunOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(cinn_instruction_run,
-                       ops::CinnInstructionRunOpKernel<phi::CPUContext, float>);
+
+PD_REGISTER_STRUCT_KERNEL(cinn_instruction_run,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::CinnInstructionRunOpKernel,
+                          float) {}

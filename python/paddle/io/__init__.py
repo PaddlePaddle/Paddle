@@ -14,23 +14,27 @@
 
 # TODO: define all functions about input & output in this directory
 
-from ..fluid.io import DataLoader  # noqa: F401
-from ..fluid.dataloader import Dataset  # noqa: F401
-from ..fluid.dataloader import IterableDataset  # noqa: F401
-from ..fluid.dataloader import BatchSampler  # noqa: F401
-from ..fluid.dataloader import get_worker_info  # noqa: F401
-from ..fluid.dataloader import TensorDataset  # noqa: F401
-from ..fluid.dataloader import Sampler  # noqa: F401
-from ..fluid.dataloader import SequenceSampler  # noqa: F401
-from ..fluid.dataloader import RandomSampler  # noqa: F401
-from ..fluid.dataloader import DistributedBatchSampler  # noqa: F401
-from ..fluid.dataloader import ComposeDataset  # noqa: F401
-from ..fluid.dataloader import ChainDataset  # noqa: F401
-from ..fluid.dataloader import WeightedRandomSampler  # noqa: F401
-from ..fluid.dataloader import Subset  # noqa: F401
-from ..fluid.dataloader import random_split  # noqa: F401
+from .dataloader import (
+    BatchSampler,
+    ChainDataset,
+    ComposeDataset,
+    ConcatDataset,
+    Dataset,
+    DistributedBatchSampler,
+    IterableDataset,
+    RandomSampler,
+    Sampler,
+    SequenceSampler,
+    Subset,
+    SubsetRandomSampler,
+    TensorDataset,
+    WeightedRandomSampler,
+    get_worker_info,
+    random_split,
+)
+from .reader import DataLoader
 
-__all__ = [  # noqa
+__all__ = [
     'Dataset',
     'IterableDataset',
     'TensorDataset',
@@ -46,4 +50,6 @@ __all__ = [  # noqa
     'WeightedRandomSampler',
     'random_split',
     'Subset',
+    'SubsetRandomSampler',
+    'ConcatDataset',
 ]

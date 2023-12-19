@@ -23,11 +23,11 @@ inline std::vector<int64_t> CalculateReducedDims(
     const std::vector<int64_t>& reduce_dims,  // NOLINT
     bool reduce_all,
     bool keep_dim) {
-  if (keep_dim) return vectorize(output->dims());
+  if (keep_dim) return common::vectorize(output->dims());
 
   if (reduce_all) return std::vector<int64_t>(input->dims().size(), 1);
 
-  std::vector<int64_t> output_dims(vectorize(input->dims()));
+  std::vector<int64_t> output_dims(common::vectorize(input->dims()));
   for (size_t i = 0; i < reduce_dims.size(); ++i) {
     // handle negative dims, f.e. "-1" means rightmost dimension
     int index = (reduce_dims[i] >= 0) ? reduce_dims[i]
@@ -48,7 +48,7 @@ void ReduceKernel(const Context& dev_ctx,
                   dnnl::algorithm reduction_type) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   const auto& onednn_engine = dev_ctx.GetEngine();
-  auto x_tz = vectorize(x.dims());
+  auto x_tz = common::vectorize(x.dims());
   auto out_tz =
       CalculateReducedDims(&x, out, dims.GetData(), reduce_all, keep_dim);
 
@@ -77,8 +77,10 @@ void ReduceKernel(const Context& dev_ctx,
     reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
     astream.wait();
 
-    out->set_mem_desc(reorder_dst_memory_p->get_desc().reshape(
-        vectorize<int64_t>(out->dims())));
+    const auto reshape_dims = out->dims().size() != 0
+                                  ? common::vectorize<int64_t>(out->dims())
+                                  : std::vector<int64_t>{1};
+    out->set_mem_desc(reorder_dst_memory_p->get_desc().reshape(reshape_dims));
   } else {
     funcs::ReductionOneDNNHandler<T> handler(reduction_type,
                                              0.0f,
@@ -100,8 +102,10 @@ void ReduceKernel(const Context& dev_ctx,
     reduction_p->execute(astream, reduction_args);
     astream.wait();
 
-    out->set_mem_desc(
-        dst_memory_p->get_desc().reshape(vectorize<int64_t>(out->dims())));
+    const auto reshape_dims = out->dims().size() != 0
+                                  ? common::vectorize<int64_t>(out->dims())
+                                  : std::vector<int64_t>{1};
+    out->set_mem_desc(dst_memory_p->get_desc().reshape(reshape_dims));
   }
 }
 
@@ -114,14 +118,14 @@ void ReduceGradKernel(const Context& dev_ctx,
                       bool reduce_all,
                       DenseTensor* x_grad,
                       dnnl::algorithm binary_type,
-                      dnnl::algorithm reduction_type,
+                      dnnl::algorithm reduction_type UNUSED,
                       float scale_x,
                       float scale_y) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   const auto& onednn_engine = dev_ctx.GetEngine();
   auto out_grad_tz = CalculateReducedDims(
       x_grad, &out_grad, dims.GetData(), reduce_all, keep_dim);
-  auto x_grad_tz = vectorize(x_grad->dims());
+  auto x_grad_tz = common::vectorize(x_grad->dims());
 
   funcs::BroadcastDataOneDNNHandler<T> handler(binary_type,
                                                onednn_engine,
@@ -139,7 +143,11 @@ void ReduceGradKernel(const Context& dev_ctx,
   const std::unordered_map<int, dnnl::memory> args = {
       {DNNL_ARG_SRC_0, *dst_memory_p},
       {DNNL_ARG_SRC_1, *src_memory_p},
-      {DNNL_ARG_DST, *dst_memory_p}};
+      {DNNL_ARG_DST, *dst_memory_p},
+      {DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC_0,
+       handler.Get_Scale_Memory(scale_x)},
+      {DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC_1,
+       handler.Get_Scale_Memory(scale_y)}};
 
   auto& astream = OneDNNContext::tls().get_stream();
   binary_prim->execute(astream, args);

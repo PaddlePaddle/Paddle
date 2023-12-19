@@ -13,7 +13,8 @@
 
 import logging
 
-from paddle.fluid.optimizer import LarsMomentumOptimizer, Momentum
+from paddle.incubate.optimizer import LarsMomentumOptimizer
+from paddle.optimizer import Momentum
 
 from .meta_optimizer_base import MetaOptimizerBase
 
@@ -26,7 +27,7 @@ class LarsOptimizer(MetaOptimizerBase):
         self.inner_opt = optimizer
         self.lars_opt = None
         # we do not allow meta optimizer to be inner optimizer currently
-        self.meta_optimizers_white_list = ["GraphExecutionOptimizer"]
+        self.meta_optimizers_white_list = []
         self.meta_optimizers_black_list = []
 
     def _set_basic_info(
@@ -98,7 +99,7 @@ class LarsOptimizer(MetaOptimizerBase):
         return self.lars_opt.apply_gradients(params_grads=params_grads)
 
     def apply_optimize(self, loss, startup_program, params_grads):
-        return self.lars_opt.apply_optimize(
+        return self.lars_opt._apply_optimize(
             loss, startup_program=startup_program, params_grads=params_grads
         )
 

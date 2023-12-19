@@ -23,15 +23,18 @@ class Watcher:
     def __init__(self, ctx):
         self.ctx = ctx
 
-        self.interval = 30
+        self.interval = 5
 
         self.gpu_util = []
+
+        if not self.ctx.args.enable_gpu_log:
+            return
 
         # gpu log file
         self.gpus = self.ctx.args.devices or self.ctx.node.device.labels
         if len(self.gpus) > 0:
             fn = os.path.join(
-                self.ctx.args.log_dir, "{}.gpu.log".format(self.ctx.args.job_id)
+                self.ctx.args.log_dir, f"{self.ctx.args.job_id}.gpu.log"
             )
             os.makedirs(os.path.dirname(fn), exist_ok=True)
             self.gpu_fd = open(fn, 'w')

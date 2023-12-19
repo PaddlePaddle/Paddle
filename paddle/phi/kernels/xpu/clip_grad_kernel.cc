@@ -34,11 +34,11 @@ void ClipGradKernel(const Context& ctx,
                      reinterpret_cast<const XPUDataType*>(out_grad.data<T>()),
                      reinterpret_cast<XPUDataType*>(x_grad->data<T>()),
                      x.numel(),
-                     min.to<T>(),
-                     max.to<T>());
+                     min.to<XPUDataType>(),
+                     max.to<XPUDataType>());
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "clip_grad");
 }
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    clip_grad, XPU, ALL_LAYOUT, phi::ClipGradKernel, float, int) {}
+    clip_grad, XPU, ALL_LAYOUT, phi::ClipGradKernel, float, int64_t, int) {}

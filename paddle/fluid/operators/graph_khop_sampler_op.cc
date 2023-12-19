@@ -136,6 +136,10 @@ using CPU = phi::CPUContext;
 REGISTER_OPERATOR(graph_khop_sampler,
                   ops::GraphKhopSamplerOP,
                   ops::GraphKhopSamplerOpMaker);
-REGISTER_OP_CPU_KERNEL(graph_khop_sampler,
-                       ops::GraphKhopSamplerOpKernel<CPU, int32_t>,
-                       ops::GraphKhopSamplerOpKernel<CPU, int64_t>);
+
+PD_REGISTER_STRUCT_KERNEL(graph_khop_sampler,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::GraphKhopSamplerOpKernel,
+                          int32_t,
+                          int64_t) {}

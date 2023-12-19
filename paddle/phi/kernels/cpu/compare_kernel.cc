@@ -33,10 +33,31 @@ inline void CompareKernelImpl(const Context& ctx,
   ctx.template Alloc<bool>(out);
   if (x.dims().size() >= y.dims().size()) {
     funcs::ElementwiseCompute<Functor, T, bool>(
-        ctx, x, y, axis, Functor(), out);
+        ctx, x, y, Functor(), out, axis);
   } else {
     funcs::ElementwiseCompute<InverseFunctor, T, bool>(
-        ctx, x, y, axis, InverseFunctor(), out);
+        ctx, x, y, InverseFunctor(), out, axis);
+  }
+}
+
+template <typename T,
+          typename Context,
+          typename Functor,
+          typename InverseFunctor>
+inline void InplaceCompareKernelImpl(const Context& ctx,
+                                     const DenseTensor& x,
+                                     const DenseTensor& y,
+                                     int axis,
+                                     DenseTensor* out) {
+  auto x_origin = x;
+  out->set_type(phi::DataType::BOOL);
+  ctx.template Alloc<bool>(out);
+  if (x_origin.dims().size() >= y.dims().size()) {
+    funcs::ElementwiseCompute<Functor, T, bool>(
+        ctx, x_origin, y, Functor(), out, axis);
+  } else {
+    funcs::ElementwiseCompute<InverseFunctor, T, bool>(
+        ctx, x_origin, y, InverseFunctor(), out, axis);
   }
 }
 
@@ -59,7 +80,7 @@ inline void CompareAllKernelImpl(const Context& ctx,
       tmp_data[0] = Functor()(x.data<T>()[0], y.data<T>()[0]);
     } else {
       funcs::ElementwiseCompute<Functor, T, bool>(
-          ctx, x, y, 0, Functor(), &tmp);
+          ctx, x, y, Functor(), &tmp, 0);
     }
     auto tmp_flat = EigenVector<bool>::Flatten(tmp);
     auto out_es = EigenScalar<bool>::From(*out);
@@ -79,31 +100,28 @@ PD_REGISTER_KERNEL(equal_all,
                    int,
                    int64_t,
                    float,
-                   double) {}
+                   double) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
+}
 
-#define PD_REGISTER_COMPARE_KERNEL(name, func) \
-  PD_REGISTER_KERNEL(name,                     \
-                     CPU,                      \
-                     ALL_LAYOUT,               \
-                     phi::func##Kernel,        \
-                     bool,                     \
-                     int16_t,                  \
-                     int,                      \
-                     int64_t,                  \
-                     float,                    \
-                     double,                   \
-                     phi::dtype::float16) {}   \
-  PD_REGISTER_KERNEL(name##_raw,               \
-                     CPU,                      \
-                     ALL_LAYOUT,               \
-                     phi::func##RawKernel,     \
-                     bool,                     \
-                     int16_t,                  \
-                     int,                      \
-                     int64_t,                  \
-                     float,                    \
-                     double,                   \
-                     phi::dtype::float16) {}
+#define PD_REGISTER_COMPARE_KERNEL(name, func)            \
+  PD_REGISTER_KERNEL(name,                                \
+                     CPU,                                 \
+                     ALL_LAYOUT,                          \
+                     phi::func##Kernel,                   \
+                     bool,                                \
+                     int,                                 \
+                     uint8_t,                             \
+                     int8_t,                              \
+                     int16_t,                             \
+                     int64_t,                             \
+                     float,                               \
+                     double,                              \
+                     phi::dtype::float16,                 \
+                     phi::dtype::bfloat16) {              \
+    kernel->OutputAt(0).SetDataType(phi::DataType::BOOL); \
+  }
+
 PD_REGISTER_COMPARE_KERNEL(less_than, LessThan)
 PD_REGISTER_COMPARE_KERNEL(less_equal, LessEqual)
 PD_REGISTER_COMPARE_KERNEL(greater_than, GreaterThan)

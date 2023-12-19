@@ -16,10 +16,10 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
+from paddle.base.data_feeder import check_type, convert_dtype
+from paddle.base.framework import Variable
 from paddle.distribution import distribution
-from paddle.fluid.data_feeder import check_type, convert_dtype
-from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
-from paddle.fluid.layers import tensor
+from paddle.framework import in_dynamic_mode
 from paddle.tensor import random
 
 
@@ -62,47 +62,56 @@ class Uniform(distribution.Distribution):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.distribution import Uniform
+            >>> import paddle
+            >>> from paddle.distribution import Uniform
+            >>> paddle.seed(2023)
 
-            # Without broadcasting, a single uniform distribution [3, 4]:
-            u1 = Uniform(low=3.0, high=4.0)
-            # 2 distributions [1, 3], [2, 4]
-            u2 = Uniform(low=[1.0, 2.0], high=[3.0, 4.0])
-            # 4 distributions
-            u3 = Uniform(low=[[1.0, 2.0], [3.0, 4.0]],
-                        high=[[1.5, 2.5], [3.5, 4.5]])
+            >>> # Without broadcasting, a single uniform distribution [3, 4]:
+            >>> u1 = Uniform(low=3.0, high=4.0)
+            >>> # 2 distributions [1, 3], [2, 4]
+            >>> u2 = Uniform(low=[1.0, 2.0], high=[3.0, 4.0])
+            >>> # 4 distributions
+            >>> u3 = Uniform(low=[[1.0, 2.0], [3.0, 4.0]],
+            ...             high=[[1.5, 2.5], [3.5, 4.5]])
+            ...
+            >>> # With broadcasting:
+            >>> u4 = Uniform(low=3.0, high=[5.0, 6.0, 7.0])
 
-            # With broadcasting:
-            u4 = Uniform(low=3.0, high=[5.0, 6.0, 7.0])
+            >>> # Complete example
+            >>> value_tensor = paddle.to_tensor([0.8], dtype="float32")
 
-            # Complete example
-            value_tensor = paddle.to_tensor([0.8], dtype="float32")
+            >>> uniform = Uniform([0.], [2.])
 
-            uniform = Uniform([0.], [2.])
+            >>> sample = uniform.sample([2])
+            >>> # a random tensor created by uniform distribution with shape: [2, 1]
+            >>> entropy = uniform.entropy()
+            >>> print(entropy)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [0.69314718])
 
-            sample = uniform.sample([2])
-            # a random tensor created by uniform distribution with shape: [2, 1]
-            entropy = uniform.entropy()
-            # [0.6931472] with shape: [1]
-            lp = uniform.log_prob(value_tensor)
-            # [-0.6931472] with shape: [1]
-            p = uniform.probs(value_tensor)
-            # [0.5] with shape: [1]
+            >>> lp = uniform.log_prob(value_tensor)
+            >>> print(lp)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [-0.69314718])
+
+            >>> p = uniform.probs(value_tensor)
+            >>> print(p)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [0.50000000])
     """
 
     def __init__(self, low, high, name=None):
-        if not _non_static_mode():
+        if not in_dynamic_mode():
             check_type(
                 low,
                 'low',
-                (int, float, np.ndarray, tensor.Variable, list, tuple),
+                (int, float, np.ndarray, Variable, list, tuple),
                 'Uniform',
             )
             check_type(
                 high,
                 'high',
-                (int, float, np.ndarray, tensor.Variable, list, tuple),
+                (int, float, np.ndarray, Variable, list, tuple),
                 'Uniform',
             )
 
@@ -117,7 +126,6 @@ class Uniform(distribution.Distribution):
             high = float(high)
 
         if self._validate_args(low, high):
-            self.batch_size_unknown = True
             self.low = low
             self.high = high
             self.dtype = convert_dtype(low.dtype)
@@ -134,7 +142,6 @@ class Uniform(distribution.Distribution):
                 'float64',
             ]:
                 self.dtype = high.dtype
-            # pylint: disable=unbalanced-tuple-unpacking
             self.low, self.high = self._to_tensor(low, high)
             if self.dtype != convert_dtype(self.low.dtype):
                 self.low = paddle.cast(self.low, dtype=self.dtype)
@@ -153,17 +160,17 @@ class Uniform(distribution.Distribution):
             Tensor, A tensor with prepended dimensions shape. The data type is float32.
 
         """
-        if not _non_static_mode():
+        if not in_dynamic_mode():
             check_type(shape, 'shape', (list), 'sample')
             check_type(seed, 'seed', (int), 'sample')
 
         name = self.name + '_sample'
         batch_shape = list((self.low + self.high).shape)
-        if self.batch_size_unknown:
+        if -1 in batch_shape:
             output_shape = shape + batch_shape
-            zero_tmp = tensor.fill_constant_batch_size_like(
-                self.low + self.high, batch_shape + shape, self.dtype, 0.0
-            )
+            fill_shape = list(batch_shape + shape)
+            fill_shape[0] = paddle.shape(self.low + self.high)[0].item()
+            zero_tmp = paddle.full(fill_shape, 0.0, self.dtype)
             uniform_random_tmp = random.uniform_random_batch_size_like(
                 zero_tmp,
                 zero_tmp.shape,
@@ -186,7 +193,7 @@ class Uniform(distribution.Distribution):
             output = paddle.uniform(
                 output_shape, dtype=self.dtype, min=0.0, max=1.0, seed=seed
             ) * (
-                tensor.zeros(output_shape, dtype=self.dtype)
+                paddle.zeros(output_shape, dtype=self.dtype)
                 + (self.high - self.low)
             )
             output = paddle.add(output, self.low, name=name)
@@ -206,7 +213,7 @@ class Uniform(distribution.Distribution):
 
         """
         value = self._check_values_dtype_in_probs(self.low, value)
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             # ensure value in [low, high]
             lb_bool = self.low < value
             ub_bool = value < self.high
@@ -235,7 +242,7 @@ class Uniform(distribution.Distribution):
 
         """
         value = self._check_values_dtype_in_probs(self.low, value)
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             lb_bool = self.low < value
             ub_bool = value < self.high
             lb = _C_ops.cast(lb_bool, value.dtype)

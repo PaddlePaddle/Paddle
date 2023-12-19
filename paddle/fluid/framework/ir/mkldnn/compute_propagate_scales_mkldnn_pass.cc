@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/compute_propagate_scales_mkldnn_pass.h"
 
-#include <float.h>
+#include <cfloat>
 
 #include <algorithm>
 
@@ -37,13 +37,13 @@ void ComputePropagateScalesMkldnnPass::GetTensorFromVector(
 void ComputePropagateScalesMkldnnPass::GetQuantInfo(
     ir::Graph* graph, StringPairMap* var_quant_scales) const {
   std::unordered_map<std::string, std::vector<float>> info_map{};
-  GetInfoFromTheFirstOp(graph, "has_quant_info", "var_quant_scales", &info_map);
+  GetInfoFromTheTmpOp(graph, "has_quant_info", "var_quant_scales", &info_map);
 
-  for (auto iter = info_map.begin(); iter != info_map.end(); iter++) {
+  for (auto& item : info_map) {
     phi::DenseTensor tensor;
-    GetTensorFromVector(iter->second, &tensor);
+    GetTensorFromVector(item.second, &tensor);
     auto pair = std::make_pair(false, tensor);
-    var_quant_scales->insert(std::make_pair(iter->first, pair));
+    var_quant_scales->insert(std::make_pair(item.first, pair));
   }
 }
 
@@ -121,7 +121,7 @@ void ComputePropagateScalesMkldnnPass::ComputeVarScales(
 
       phi::DenseTensor tmp_tensor;
       std::vector<int64_t> reshape_dims = {dims[0], volume};
-      tmp_tensor.Resize(phi::make_ddim(reshape_dims));
+      tmp_tensor.Resize(common::make_ddim(reshape_dims));
       auto* weight_data = weight_tensor->data<float>();
       auto* tmp_data = tmp_tensor.mutable_data<float>(phi::CPUPlace());
       for (int i = 0; i < weight_tensor->numel(); i++) {
@@ -412,7 +412,7 @@ std::unordered_set<std::string> ComputePropagateScalesMkldnnPass::UpdateScales(
       auto out_iter = var_quant_scales->find(op_node->Op()->Output("Out")[0]);
       if (out_iter != var_quant_scales->end()) {
         std::vector<std::string> input_names = op_node->Op()->Input("X");
-        for (auto input_name : input_names) {
+        for (auto const& input_name : input_names) {
           auto concat_in_iter = var_quant_scales->find(input_name);
           if (concat_in_iter == var_quant_scales->end())
             (*var_quant_scales)[input_name] = out_iter->second;
@@ -476,7 +476,7 @@ void ComputePropagateScalesMkldnnPass::PropagateScales(
   auto waiting_for_scale =
       UpdateScales(graph, var_quant_scales, scale_immutable_ops);
   std::unordered_set<std::string> waiting_for_scale_prev{};
-  while (waiting_for_scale.size() != 0 &&
+  while (!waiting_for_scale.empty() &&
          waiting_for_scale != waiting_for_scale_prev) {
     waiting_for_scale_prev.clear();
     waiting_for_scale_prev.insert(waiting_for_scale.begin(),
@@ -492,6 +492,7 @@ void ComputePropagateScalesMkldnnPass::ApplyImpl(ir::Graph* graph) const {
   FusePassBase::Init(pattern_name, graph);
 
   const std::unordered_set<std::string> scale_immutable_ops = {
+      "fused_transpose",
       "transpose2",
       "reshape2",
       "pool2d",
@@ -509,9 +510,9 @@ void ComputePropagateScalesMkldnnPass::ApplyImpl(ir::Graph* graph) const {
   UpdateReluOutputScales(graph, &var_quant_scales);
   PropagateScales(graph, &var_quant_scales, scale_immutable_ops);
 
-  // save var_quant_scales in the first op's attr
+  // save var_quant_scales in the temporary save op's attr
   // for cpu_quantize_pass
-  SaveInfoInTheFirstOp(
+  SaveInfoInTheTmpOp(
       graph, "has_quant_info", "var_quant_scales", var_quant_scales);
 }
 

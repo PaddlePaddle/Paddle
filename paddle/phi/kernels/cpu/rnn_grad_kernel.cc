@@ -32,7 +32,7 @@ template <typename T>
 void BackupTensor(const CPUContext& dev_ctx,
                   DenseTensor* dst,
                   DenseTensor* src) {
-  dst->Resize(src->dims());
+  dst->Resize(src->dims());  // NOLINT
   dev_ctx.Alloc<T>(dst);
   Copy(dev_ctx, *src, dev_ctx.GetPlace(), false, dst);
 }
@@ -53,24 +53,24 @@ void CreateLstmGrad(phi::funcs::LstmMetaGrad<T>* lstm_grad) {
 
 template <typename T>
 struct GradCell {
-  virtual ~GradCell() {}
-  virtual void operator()(const CPUContext& dev_ctx,
-                          DenseTensor* gate_tensor,
-                          DenseTensor* state_tensor,
-                          DenseTensor* act_state_tensor,
-                          DenseTensor* hidden_tensor,
-                          const DenseTensor* weight_hh,
-                          DenseTensor* pre_hidden,
-                          DenseTensor* pre_state,
-                          DenseTensor* grad_hidden,
-                          DenseTensor* grad_state,
-                          DenseTensor* grad_gate,
-                          DenseTensor* grad_weight_hh,
-                          DenseTensor* grad_pre_hidden,
-                          DenseTensor* grad_pre_state,
-                          DenseTensor* grad_bias_hh,
-                          const DenseTensor& mask_tensor,
-                          bool has_sequence_length) const {}
+  virtual ~GradCell() = default;
+  virtual void operator()(const CPUContext& dev_ctx UNUSED,
+                          DenseTensor* gate_tensor UNUSED,
+                          DenseTensor* state_tensor UNUSED,
+                          DenseTensor* act_state_tensor UNUSED,
+                          DenseTensor* hidden_tensor UNUSED,
+                          const DenseTensor* weight_hh UNUSED,
+                          DenseTensor* pre_hidden UNUSED,
+                          DenseTensor* pre_state UNUSED,
+                          DenseTensor* grad_hidden UNUSED,
+                          DenseTensor* grad_state UNUSED,
+                          DenseTensor* grad_gate UNUSED,
+                          DenseTensor* grad_weight_hh UNUSED,
+                          DenseTensor* grad_pre_hidden UNUSED,
+                          DenseTensor* grad_pre_state UNUSED,
+                          DenseTensor* grad_bias_hh UNUSED,
+                          const DenseTensor& mask_tensor UNUSED,
+                          bool has_sequence_length UNUSED) const {}
 
   void postprocess_pre_hidden_grad(const CPUContext& dev_ctx,
                                    DenseTensor* grad_pre_hidden,
@@ -82,9 +82,9 @@ struct GradCell {
     if (has_sequence_length) {
       auto& place = *dev_ctx.eigen_device();
       auto mask = EigenMatrix<T>::From(
-          mask_tensor, phi::make_ddim({mask_tensor.dims()[1], 1}));
-      auto mask_broadcast =
-          mask.broadcast(Eigen::DSizes<int, 2>(1, grad_pre_hidden->dims()[2]));
+          mask_tensor, common::make_ddim({mask_tensor.dims()[1], 1}));
+      auto mask_broadcast = mask.broadcast(Eigen::DSizes<int, 2>(
+          1, static_cast<int>(grad_pre_hidden->dims()[2])));
       auto pre_hidden_grad = EigenMatrix<T>::Reshape(
           *grad_pre_hidden, grad_pre_hidden->dims().size() - 1);
       auto pre_hidden_bak_grad = EigenMatrix<T>::Reshape(
@@ -164,19 +164,19 @@ template <typename T, template <typename> class EigenActivationBackwardFunctor>
 struct SimpleRNNGradCell : GradCell<T> {
   void operator()(const CPUContext& dev_ctx,
                   DenseTensor* gate_tensor,
-                  DenseTensor* state_tensor,
-                  DenseTensor* act_state_tensor,
+                  DenseTensor* state_tensor UNUSED,
+                  DenseTensor* act_state_tensor UNUSED,
                   DenseTensor* hidden_tensor,
                   const DenseTensor* weight_hh,
                   DenseTensor* pre_hidden,
-                  DenseTensor* pre_state,
+                  DenseTensor* pre_state UNUSED,
                   DenseTensor* grad_hidden,
-                  DenseTensor* grad_state,
+                  DenseTensor* grad_state UNUSED,
                   DenseTensor* grad_gate,
                   DenseTensor* grad_weight_hh,
                   DenseTensor* grad_pre_hidden,
-                  DenseTensor* grad_pre_state,
-                  DenseTensor* grad_bias_hh,
+                  DenseTensor* grad_pre_state UNUSED,
+                  DenseTensor* grad_bias_hh UNUSED,
                   const DenseTensor& mask_tensor,
                   bool has_sequence_length) const override {
     DenseTensor grad_pre_hidden_bak;
@@ -218,17 +218,17 @@ struct GRUGradCell : GradCell<T> {
   void operator()(const CPUContext& dev_ctx,
                   DenseTensor* gate_tensor,
                   DenseTensor* state_tensor,
-                  DenseTensor* act_state_tensor,
-                  DenseTensor* hidden_tensor,
+                  DenseTensor* act_state_tensor UNUSED,
+                  DenseTensor* hidden_tensor UNUSED,
                   const DenseTensor* weight_hh,
                   DenseTensor* pre_hidden,
-                  DenseTensor* pre_state,
+                  DenseTensor* pre_state UNUSED,
                   DenseTensor* grad_hidden,
                   DenseTensor* grad_state,
                   DenseTensor* grad_gate,
                   DenseTensor* grad_weight_hh,
                   DenseTensor* grad_pre_hidden,
-                  DenseTensor* grad_pre_state,
+                  DenseTensor* grad_pre_state UNUSED,
                   DenseTensor* grad_bias_hh,
                   const DenseTensor& mask_tensor,
                   bool has_sequence_length) const override {
@@ -250,7 +250,7 @@ struct GRUGradCell : GradCell<T> {
     gru_value.gate_weight = weight_hh->data<T>();
 
     gru_grad.gate_grad = grad_gate->data<T>();
-    gru_grad.reset_output_grad = grad_state->data<T>();
+    gru_grad.reset_output_grad = grad_state->data<T>();  // NOLINT
     gru_grad.prev_out_grad = grad_pre_hidden->data<T>();
     gru_grad.output_grad = grad_hidden->data<T>();
     gru_grad.gate_weight_grad = grad_weight_hh->data<T>();
@@ -284,7 +284,7 @@ struct LSTMGradCell : GradCell<T> {
                   DenseTensor* gate_tensor,
                   DenseTensor* state_tensor,
                   DenseTensor* act_state_tensor,
-                  DenseTensor* hidden_tensor,
+                  DenseTensor* hidden_tensor UNUSED,
                   const DenseTensor* weight_hh,
                   DenseTensor* pre_hidden,
                   DenseTensor* pre_state,
@@ -294,7 +294,7 @@ struct LSTMGradCell : GradCell<T> {
                   DenseTensor* grad_weight_hh,
                   DenseTensor* grad_pre_hidden,
                   DenseTensor* grad_pre_state,
-                  DenseTensor* grad_bias_hh,
+                  DenseTensor* grad_bias_hh UNUSED,
                   const DenseTensor& mask_tensor,
                   bool has_sequence_length) const override {
     size_t frame_size = state_tensor->dims()[2];
@@ -314,9 +314,9 @@ struct LSTMGradCell : GradCell<T> {
     lstm_value.gate_value = gate_tensor->data<T>();
     lstm_value.state_value = state_tensor->data<T>();
     lstm_value.state_active_value = act_state_tensor->data<T>();
-    lstm_value.prev_state_value = pre_state->data<T>();
+    lstm_value.prev_state_value = pre_state->data<T>();  // NOLINT
 
-    lstm_grad.state_grad = grad_state->data<T>();
+    lstm_grad.state_grad = grad_state->data<T>();  // NOLINT
     lstm_grad.gate_grad = grad_gate->data<T>();
     lstm_grad.output_grad = grad_hidden->data<T>();
     lstm_grad.prev_state_grad = grad_pre_state->data<T>();
@@ -355,7 +355,7 @@ struct LSTMGradCell : GradCell<T> {
 template <typename T, typename GradCellType>
 struct GradLayer {
   explicit GradLayer(const GradCellType& cell) : cell_(cell) {}
-  virtual ~GradLayer() {}
+  virtual ~GradLayer() = default;
   void run_rnn_grad_function(
       const CPUContext& dev_ctx,
       const DenseTensor* input,
@@ -394,7 +394,7 @@ struct GradLayer {
     std::vector<DenseTensor> mask_tensor_list;
     int mask_min_length = time_step;
     if (has_sequence_length) {
-      mask_matrix.Resize(phi::make_ddim({time_step, input->dims()[1]}));
+      mask_matrix.Resize(common::make_ddim({time_step, input->dims()[1]}));
       CreateMaskMatrix<T>(
           dev_ctx, sequence_length, &mask_matrix, is_reverse, &mask_min_length);
       mask_tensor_list = Unbind(mask_matrix);
@@ -410,7 +410,7 @@ struct GradLayer {
          dev_ctx.GetPlace(),
          false,
          dynamic_grad_last_h);
-    if (last_c_grad_unbind.size() > 0) {
+    if (!last_c_grad_unbind.empty()) {
       dynamic_grad_last_c->Resize(last_c_grad_unbind[current_layer_idx].dims());
       dev_ctx.Alloc<T>(dynamic_grad_last_c);
       Copy(dev_ctx,
@@ -426,7 +426,7 @@ struct GradLayer {
     DenseTensor* dynamic_grad_pre_h = &c;
     DenseTensor* dynamic_grad_pre_c = &d;
     phi::funcs::SetConstant<CPUContext, T> zero;
-    if (init_h_grad_unbind->size() > 0) {
+    if (!init_h_grad_unbind->empty()) {
       dynamic_grad_pre_h->ShareDataWith(
           (*init_h_grad_unbind)[current_layer_idx]);
     } else {
@@ -434,7 +434,7 @@ struct GradLayer {
       dev_ctx.Alloc<T>(dynamic_grad_pre_h);
       zero(dev_ctx, dynamic_grad_pre_h, static_cast<T>(0.0));
     }
-    if (init_c_grad_unbind->size() > 0) {
+    if (!init_c_grad_unbind->empty()) {
       dynamic_grad_pre_c->ShareDataWith(
           (*init_c_grad_unbind)[current_layer_idx]);
     } else {
@@ -495,12 +495,12 @@ struct GradLayer {
       hidden = &(*output_tensor_unbind)[i];
       if (i == 0) {
         pre_hidden = &(*init_h_unbind)[current_layer_idx];
-        if (init_c_unbind->size() > 0) {
+        if (!init_c_unbind->empty()) {
           pre_state = &(*init_c_unbind)[current_layer_idx];
         }
       } else {
         pre_hidden = &(*output_tensor_unbind)[i - 1];
-        if (layer_state_tensor_unbind->size() > 0) {
+        if (!layer_state_tensor_unbind->empty()) {
           pre_state = &(*layer_state_tensor_unbind)[begin_idx + i - 1];
         }
       }
@@ -536,14 +536,14 @@ struct GradLayer {
                       mode);
 
     // copy the gradient to init_c init_h
-    if ((*init_h_grad_unbind).size() > 0 && time_step % 2 == 0) {
+    if (!(*init_h_grad_unbind).empty() && time_step % 2 == 0) {
       Copy(dev_ctx,
            *dynamic_grad_last_h,
            dev_ctx.GetPlace(),
            false,
            &((*init_h_grad_unbind)[current_layer_idx]));
     }
-    if ((*init_c_grad_unbind).size() > 0 && time_step % 2 == 0) {
+    if (!(*init_c_grad_unbind).empty() && time_step % 2 == 0) {
       Copy(dev_ctx,
            *dynamic_grad_last_c,
            dev_ctx.GetPlace(),
@@ -553,28 +553,28 @@ struct GradLayer {
   }
 
   virtual void operator()(
-      const CPUContext& dev_ctx,
-      const DenseTensor* input,
-      const DenseTensor* output,
-      const std::vector<DenseTensor>& init_h_unbind,
-      const std::vector<DenseTensor>& init_c_unbind,
-      const std::vector<DenseTensor>& last_h_grad_unbind,
-      const std::vector<DenseTensor>& last_c_grad_unbind,
-      const std::vector<DenseTensor>& gate_tensor_unbind,
-      const std::vector<DenseTensor>& state_tensor_unbind,
-      const std::vector<DenseTensor>& act_state_tensor_unbind,
-      const DenseTensor* output_grad,
-      const std::vector<std::vector<DenseTensor>>& parameter_lists,
-      const DenseTensor* sequence_length,
-      DenseTensor* input_grad,
-      std::vector<DenseTensor>* init_h_grad_unbind,
-      std::vector<DenseTensor>* init_c_grad_unbind,
-      const std::vector<std::vector<DenseTensor>>& weight_list_grad,
-      int layer_idx,
-      bool is_bidirec,
-      int hidden_size,
-      const std::string& mode,
-      int gate_num) {}
+      const CPUContext& dev_ctx UNUSED,
+      const DenseTensor* input UNUSED,
+      const DenseTensor* output UNUSED,
+      const std::vector<DenseTensor>& init_h_unbind UNUSED,
+      const std::vector<DenseTensor>& init_c_unbind UNUSED,
+      const std::vector<DenseTensor>& last_h_grad_unbind UNUSED,
+      const std::vector<DenseTensor>& last_c_grad_unbind UNUSED,
+      const std::vector<DenseTensor>& gate_tensor_unbind UNUSED,
+      const std::vector<DenseTensor>& state_tensor_unbind UNUSED,
+      const std::vector<DenseTensor>& act_state_tensor_unbind UNUSED,
+      const DenseTensor* output_grad UNUSED,
+      const std::vector<std::vector<DenseTensor>>& parameter_lists UNUSED,
+      const DenseTensor* sequence_length UNUSED,
+      DenseTensor* input_grad UNUSED,
+      std::vector<DenseTensor>* init_h_grad_unbind UNUSED,
+      std::vector<DenseTensor>* init_c_grad_unbind UNUSED,
+      const std::vector<std::vector<DenseTensor>>& weight_list_grad UNUSED,
+      int layer_idx UNUSED,
+      bool is_bidirec UNUSED,
+      int hidden_size UNUSED,
+      const std::string& mode UNUSED,
+      int gate_num UNUSED) {}
 
   void preprocess(const CPUContext& dev_ctx,
                   const DenseTensor* grad_output,
@@ -598,9 +598,9 @@ struct GradLayer {
                        const std::string& mode) {
     auto& place = *dev_ctx.eigen_device();
     auto mask = EigenMatrix<T>::From(
-        mask_tensor, phi::make_ddim({mask_tensor.dims()[1], 1}));
-    auto mask_broadcast =
-        mask.broadcast(Eigen::DSizes<int, 2>(1, grad_output->dims()[2]));
+        mask_tensor, common::make_ddim({mask_tensor.dims()[1], 1}));
+    auto mask_broadcast = mask.broadcast(
+        Eigen::DSizes<int, 2>(1, static_cast<int>(grad_output->dims()[2])));
 
     auto last_h_grad =
         EigenMatrix<T>::Reshape(*grad_last_h, grad_last_h->dims().size() - 1);
@@ -690,7 +690,7 @@ struct SingleGradLayer : GradLayer<T, GradCellType> {
   // explicit SingleGradLayer(GradCellType& cell) : cell_(cell) {}
   explicit SingleGradLayer(const GradCellType& cell)
       : GradLayer<T, GradCellType>(cell) {}
-  virtual ~SingleGradLayer() {}
+  ~SingleGradLayer() override = default;
   void operator()(const CPUContext& dev_ctx,
                   const DenseTensor* input,
                   const DenseTensor* output,
@@ -716,8 +716,8 @@ struct SingleGradLayer : GradLayer<T, GradCellType> {
     phi::funcs::SetConstant<CPUContext, T> zero;
     zero(dev_ctx, input_grad, static_cast<T>(0.0));
 
-    int time_step = input->dims()[0];
-    int batch_size = input->dims()[1];
+    int time_step = static_cast<int>(input->dims()[0]);
+    int batch_size = static_cast<int>(input->dims()[1]);
     int direction_num = is_bidirec ? 2 : 1;
 
     // in this section, create the gate_state_grad for the postprocess calculate
@@ -736,7 +736,7 @@ struct SingleGradLayer : GradLayer<T, GradCellType> {
 
     DenseTensor layer_state_tensor;
     std::vector<DenseTensor> layer_state_tensor_unbind;
-    if (state_tensor_unbind.size() > 0) {
+    if (!state_tensor_unbind.empty()) {
       layer_state_tensor = state_tensor_unbind[layer_idx];
       layer_state_tensor.Resize(
           {time_step * direction_num, batch_size, hidden_size});
@@ -745,7 +745,7 @@ struct SingleGradLayer : GradLayer<T, GradCellType> {
 
     DenseTensor layer_act_state_tensor;
     std::vector<DenseTensor> layer_act_state_tensor_unbind;
-    if (act_state_tensor_unbind.size() > 0) {
+    if (!act_state_tensor_unbind.empty()) {
       layer_act_state_tensor = act_state_tensor_unbind[layer_idx];
       layer_act_state_tensor.Resize(
           {time_step * direction_num, batch_size, hidden_size});
@@ -802,7 +802,7 @@ template <typename T, typename GradCellType>
 struct BidirGradLayer : GradLayer<T, GradCellType> {
   explicit BidirGradLayer(const GradCellType& cell)
       : GradLayer<T, GradCellType>(cell) {}
-  virtual ~BidirGradLayer() {}
+  ~BidirGradLayer() override = default;
   void operator()(const CPUContext& dev_ctx,
                   const DenseTensor* input,
                   const DenseTensor* output,
@@ -825,8 +825,8 @@ struct BidirGradLayer : GradLayer<T, GradCellType> {
                   int hidden_size,
                   const std::string& mode,
                   int gate_num) {
-    int time_step = input->dims()[0];
-    int batch_size = input->dims()[1];
+    int time_step = static_cast<int>(input->dims()[0]);
+    int batch_size = static_cast<int>(input->dims()[1]);
     int direction_num = is_bidirec ? 2 : 1;
     // split the output two tensor to output_forward, output_backward
     phi::funcs::SetConstant<CPUContext, T> zero;
@@ -881,7 +881,7 @@ struct BidirGradLayer : GradLayer<T, GradCellType> {
 
     DenseTensor layer_state_tensor;
     std::vector<DenseTensor> layer_state_tensor_unbind;
-    if (state_tensor_unbind.size() > 0) {
+    if (!state_tensor_unbind.empty()) {
       layer_state_tensor = state_tensor_unbind[layer_idx];
       layer_state_tensor.Resize(
           {time_step * direction_num, batch_size, hidden_size});
@@ -890,7 +890,7 @@ struct BidirGradLayer : GradLayer<T, GradCellType> {
 
     DenseTensor layer_act_state_tensor;
     std::vector<DenseTensor> layer_act_state_tensor_unbind;
-    if (act_state_tensor_unbind.size() > 0) {
+    if (!act_state_tensor_unbind.empty()) {
       layer_act_state_tensor = act_state_tensor_unbind[layer_idx];
       layer_act_state_tensor.Resize(
           {time_step * direction_num, batch_size, hidden_size});
@@ -978,11 +978,11 @@ void RnnGradFunc(const CPUContext& dev_ctx,
                  const std::vector<const DenseTensor*>& state_grad,
                  float dropout_prob,
                  bool is_bidirec,
-                 int input_size,
+                 int input_size UNUSED,
                  int hidden_size,
                  int num_layers,
                  const std::string& mode,
-                 int seed,
+                 int seed UNUSED,
                  bool is_test,
                  int gate_num,
                  DenseTensor* x_grad,
@@ -1009,8 +1009,8 @@ void RnnGradFunc(const CPUContext& dev_ctx,
   }
 
   // get the input_size, batch_size, time_step
-  const int time_step = x.dims()[0];
-  const int batch_size = x.dims()[1];
+  const int time_step = static_cast<int>(x.dims()[0]);
+  const int batch_size = static_cast<int>(x.dims()[1]);
   const int direction_num = is_bidirec ? 2 : 1;
 
   // allocate the memory and initization the x_grad
@@ -1036,8 +1036,8 @@ void RnnGradFunc(const CPUContext& dev_ctx,
   ResetParameterVector(
       weight_list, num_layers, gate_num, is_bidirec, &parameter_lists);
 
-  for (unsigned int i = 0; i < weight_grad_list.size(); ++i) {
-    dev_ctx.Alloc<T>(weight_grad_list[i]);
+  for (auto& weight_grad : weight_grad_list) {
+    dev_ctx.Alloc<T>(weight_grad);
   }
   std::vector<std::vector<DenseTensor>> parameter_lists_grad;
   parameter_lists_grad.reserve(num_layers);
@@ -1120,11 +1120,9 @@ void RnnGradFunc(const CPUContext& dev_ctx,
     hidden_tensor_unbind = Unbind(hidden_tensor);
   }
   // squeeze the hidden first dim
-  for (unsigned int i = 0; i < hidden_tensor_unbind.size(); i++) {
-    hidden_tensor_unbind[i].Resize(
-        phi::slice_ddim(hidden_tensor_unbind[i].dims(),
-                        1,
-                        hidden_tensor_unbind[i].dims().size()));
+  for (auto& hidden_tensor : hidden_tensor_unbind) {
+    hidden_tensor.Resize(common::slice_ddim(
+        hidden_tensor.dims(), 1, hidden_tensor.dims().size()));
   }
   // add the output tensor to the hidden vector
   DenseTensor tmp;

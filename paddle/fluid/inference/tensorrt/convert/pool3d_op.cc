@@ -15,16 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/plugin/pool3d_op_plugin.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -76,8 +66,7 @@ class Pool3dOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc &op,
                   const framework::Scope &scope,
                   bool test_mode) override {
-    VLOG(4)
-        << "convert a fluid pool3d op to tensorrt pool3d layer without bias";
+    VLOG(3) << "convert a pool3d op to tensorrt pool3d layer without bias";
     framework::OpDesc op_desc(op, nullptr);
     auto *input1 = engine_->GetITensor(op_desc.Input("X")[0]);
     nvinfer1::Dims input_shape = input1->getDimensions();

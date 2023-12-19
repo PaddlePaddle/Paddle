@@ -16,16 +16,15 @@ import os
 import warnings
 
 import paddle
-from paddle.fluid import core
-from paddle.fluid.core import (
+from paddle.base import core
+from paddle.base.core import (
     CUDAPlace,
     is_compiled_with_cuda,
     is_compiled_with_rocm,
 )
-from paddle.fluid.layers.utils import _hash_with_id
 
 if is_compiled_with_cuda() and not is_compiled_with_rocm():
-    from paddle.fluid.core import CUDAGraph as CoreCUDAGraph
+    from paddle.base.core import CUDAGraph as CoreCUDAGraph
 
     def is_cuda_graph_supported():
         return True
@@ -73,7 +72,7 @@ class CUDAGraph:
         os.makedirs(name=dirname, exist_ok=True)
         assert os.path.isdir(
             dirname
-        ), "The dirname {} should be a directory".format(dirname)
+        ), f"The dirname {dirname} should be a directory"
         if flags is None:
             flags = 2047  # only all information. It can be any integer inside [1, 2048)
         self._graph.print_to_dot_files(dirname, flags)
@@ -83,7 +82,7 @@ def wrap_cuda_graph(function, mode="thread_local", memory_pool="default"):
     assert mode in ALL_MODES
     if not paddle.in_dynamic_mode():
         # static graph mode
-        from paddle.fluid.framework import _cuda_graph_guard
+        from paddle.base.framework import _cuda_graph_guard
 
         global cuda_graph_id
         graph_id = str(cuda_graph_id)
@@ -395,7 +394,7 @@ def replace_cuda_graph_section(
         stop_gradient=True,
     )
 
-    program_id = _hash_with_id(section_program, ins_and_outs)
+    program_id = paddle.utils._hash_with_id(section_program, ins_and_outs)
 
     # insert the run_program_op into the block
     origin_block._insert_op(

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.jit.dy2static.static_analysis import AstNodeWrapper
 from paddle.jit.dy2static.utils import ast_to_source_code
 from paddle.utils import gast
 
@@ -26,12 +25,8 @@ class AssertTransformer(BaseTransformer):
     A class transforms python assert to convert_assert.
     """
 
-    def __init__(self, wrapper_root):
-        assert isinstance(
-            wrapper_root, AstNodeWrapper
-        ), "Input non-AstNodeWrapper node for the initialization of AssertTransformer."
-        self.wrapper_root = wrapper_root
-        self.root = wrapper_root.node
+    def __init__(self, root):
+        self.root = root
 
     def transform(self):
         self.visit(self.root)

@@ -14,14 +14,16 @@
 
 #include "paddle/phi/kernels/index_select_grad_kernel.h"
 
+#include "glog/logging.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/utils/flags.h"
 
-DECLARE_bool(cudnn_deterministic);
+PD_DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 
@@ -31,7 +33,6 @@ template <typename T, typename IndexT>
 __global__ void index_select_grad_cuda_kernel(const T* output_grad,
                                               T* input_grad,
                                               const IndexT* index,
-                                              int64_t nums,
                                               int64_t N,
                                               int64_t stride,
                                               int64_t size,
@@ -59,7 +60,7 @@ void IndexSelectGradKernel(const Context& ctx,
   auto input_dim = x_grad->dims();
   auto output_dim = out_grad.dims();
   dim = dim >= 0 ? dim : dim + input_dim.size();
-  auto stride_dim = phi::stride(input_dim);
+  auto stride_dim = common::stride(input_dim);
   int64_t stride = stride_dim[dim];
   int64_t size = output_dim[dim];
   int64_t delta = input_dim[dim] - size;
@@ -86,7 +87,7 @@ void IndexSelectGradKernel(const Context& ctx,
   auto stream = ctx.stream();
 
   unsigned int block_dim = PADDLE_CUDA_NUM_THREADS;
-  dim3 grid_dim = dim3((numel + block_dim - 1) / block_dim);
+  dim3 grid_dim = dim3((out_nums + block_dim - 1) / block_dim);
   phi::backends::gpu::LimitGridDim(ctx, &grid_dim);
 
   phi::funcs::SetConstant<phi::GPUContext, T> index_select_grad_init;
@@ -104,7 +105,6 @@ void IndexSelectGradKernel(const Context& ctx,
         <<<grid_dim, block_dim, 0, stream>>>(output_grad_data,
                                              in_grad_data,
                                              index_data,
-                                             index_nums,
                                              out_nums,
                                              stride,
                                              size,
@@ -115,7 +115,6 @@ void IndexSelectGradKernel(const Context& ctx,
         <<<grid_dim, block_dim, 0, stream>>>(output_grad_data,
                                              in_grad_data,
                                              index_data,
-                                             index_nums,
                                              out_nums,
                                              stride,
                                              size,
@@ -132,5 +131,8 @@ PD_REGISTER_KERNEL(index_select_grad,
                    float,
                    double,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>,
                    int,
                    int64_t) {}

@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 
-constexpr char kOutputString[] = "User Defined Output";
+constexpr char kOutputString[] = "User Defined Output";  // NOLINT
 class UserDefinedClass {
  public:
 };

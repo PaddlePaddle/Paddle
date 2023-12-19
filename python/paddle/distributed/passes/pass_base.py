@@ -85,7 +85,7 @@ class PassBase(ABC):
 
     def _check_conflict_including_common_rules(self, other_pass):
         return self._check_conflict(other_pass) and all(
-            [r(other_pass, self) for r in PassBase._COMMON_RULES]
+            r(other_pass, self) for r in PassBase._COMMON_RULES
         )
 
     def apply(self, main_programs, startup_programs, context=None):
@@ -96,10 +96,8 @@ class PassBase(ABC):
             return context
 
         if not all(
-            [
-                self._check_conflict_including_common_rules(p)
-                for p in context.passes
-            ]
+            self._check_conflict_including_common_rules(p)
+            for p in context.passes
         ):
             return context
 
@@ -132,7 +130,7 @@ def register_pass(name):
 
 def new_pass(name, pass_attrs={}):
     pass_class = PassBase._REGISTERED_PASSES.get(name)
-    assert pass_class is not None, "Pass {} is not registered".format(name)
+    assert pass_class is not None, f"Pass {name} is not registered"
     pass_obj = pass_class()
     for k, v in pass_attrs.items():
         pass_obj.set_attr(k, v)
@@ -230,7 +228,7 @@ def _make_rule_from_white_lists_dict(
 def _get_list_index(in_pass):
     assert (
         in_pass.name in PassBase._PASS_PROCESS_ORDER_LIST
-    ), "Pass {} is not in _PASS_PROCESS_ORDER_LIST".format(in_pass.name)
+    ), f"Pass {in_pass.name} is not in _PASS_PROCESS_ORDER_LIST"
     return PassBase._PASS_PROCESS_ORDER_LIST.index(in_pass.name)
 
 
@@ -249,11 +247,14 @@ PassBase._AFTER_WHITE_LISTS_DICT = {
 
 # The index of pass in this list represent the order in which the pass is processed.
 PassBase._PASS_PROCESS_ORDER_LIST = [
+    "fuse_resunit",
     "fuse_relu_depthwise_conv",
     "fuse_bn_add_act",
     "fuse_bn_act",
     "fused_attention",
+    "fused_feedforward",
     "fuse_gemm_epilogue",
+    "fuse_adamw",
     "fuse_optimizer",
 ]
 
@@ -323,10 +324,8 @@ def _solve_pass_conflict(passes, context):
     passes = []
     for p in old_passes:
         if all(
-            [
-                p._check_conflict_including_common_rules(applied_p)
-                for applied_p in context.passes
-            ]
+            p._check_conflict_including_common_rules(applied_p)
+            for applied_p in context.passes
         ):
             passes.append(p)
 

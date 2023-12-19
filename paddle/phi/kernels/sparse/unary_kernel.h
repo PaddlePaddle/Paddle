@@ -14,8 +14,8 @@
 
 #pragma once
 
+#include "paddle/common/ddim.h"
 #include "paddle/phi/common/int_array.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 
@@ -52,12 +52,25 @@ DECLARE_SPARSE_UNARY_KERNEL(Sinh)
 DECLARE_SPARSE_UNARY_KERNEL(Asinh)
 DECLARE_SPARSE_UNARY_KERNEL(Atanh)
 DECLARE_SPARSE_UNARY_KERNEL(Relu)
+DECLARE_SPARSE_UNARY_KERNEL(Isnan)
 DECLARE_SPARSE_UNARY_KERNEL(Tanh)
 DECLARE_SPARSE_UNARY_KERNEL(Square)
 DECLARE_SPARSE_UNARY_KERNEL(Sqrt)
 DECLARE_SPARSE_UNARY_KERNEL(Log1p)
 DECLARE_SPARSE_UNARY_KERNEL(Abs)
+DECLARE_SPARSE_UNARY_KERNEL(Expm1)
 DECLARE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(Pow, factor)
+DECLARE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(LeakyRelu, alpha)
+
+template <typename T, typename Context>
+void Relu6CooKernel(const Context& dev_ctx,
+                    const SparseCooTensor& x,
+                    SparseCooTensor* out);
+
+template <typename T, typename Context>
+void Relu6CsrKernel(const Context& dev_ctx,
+                    const SparseCsrTensor& x,
+                    SparseCsrTensor* out);
 
 template <typename T, typename Context>
 void ScaleCooKernel(const Context& dev_ctx,
@@ -144,6 +157,22 @@ SparseCsrTensor TransposeCsr(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+void SumCooKernel(const Context& dev_ctx,
+                  const SparseCooTensor& x,
+                  const IntArray& axis,
+                  DataType dtype,
+                  bool keep_dim,
+                  SparseCooTensor* out);
+
+template <typename T, typename Context>
+void SumCsrKernel(const Context& dev_ctx,
+                  const SparseCsrTensor& x,
+                  const IntArray& axis,
+                  DataType dtype,
+                  bool keep_dim,
+                  SparseCsrTensor* out);
+
+template <typename T, typename Context>
 SparseCooTensor ReluCoo(const Context& dev_ctx, const SparseCooTensor& x) {
   SparseCooTensor coo;
   ReluCooKernel<T, Context>(dev_ctx, x, &coo);
@@ -194,6 +223,22 @@ SparseCsrTensor ReshapeCsr(const Context& dev_ctx,
   ReshapeCsrKernel<T, Context>(dev_ctx, x, shape, &csr);
   return csr;
 }
+
+template <typename T, typename Context>
+void SliceCooKernel(const Context& dev_ctx,
+                    const SparseCooTensor& x,
+                    const phi::IntArray& axes,
+                    const phi::IntArray& starts,
+                    const phi::IntArray& ends,
+                    SparseCooTensor* out);
+
+template <typename T, typename Context>
+void SliceCsrKernel(const Context& dev_ctx,
+                    const SparseCsrTensor& x,
+                    const phi::IntArray& axes,
+                    const phi::IntArray& starts,
+                    const phi::IntArray& ends,
+                    SparseCsrTensor* out);
 
 }  // namespace sparse
 }  // namespace phi

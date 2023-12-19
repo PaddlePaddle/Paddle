@@ -199,7 +199,7 @@ struct SequenceExpandGradFunctor<phi::GPUContext, T> {
                   const phi::Vector<size_t>& x_lod,   /*expand source lod*/
                   const phi::Vector<size_t>& ref_lod, /*expand based lod*/
                   LoDTensor* dx) {
-    int x_item_length = phi::product(dx->dims()) / dx->dims()[0];
+    int x_item_length = common::product(dx->dims()) / dx->dims()[0];
     phi::Vector<size_t> out_offset(x_lod.size());
     GetOutputOffset(x_lod, ref_lod, &out_offset);
 
@@ -227,14 +227,19 @@ struct SequenceExpandGradFunctor<phi::GPUContext, T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(sequence_expand,
-                        ops::SequenceExpandKernel<phi::GPUContext, float>,
-                        ops::SequenceExpandKernel<phi::GPUContext, double>,
-                        ops::SequenceExpandKernel<phi::GPUContext, int>,
-                        ops::SequenceExpandKernel<phi::GPUContext, int64_t>);
-REGISTER_OP_CUDA_KERNEL(
-    sequence_expand_grad,
-    ops::SequenceExpandGradKernel<phi::GPUContext, float>,
-    ops::SequenceExpandGradKernel<phi::GPUContext, double>,
-    ops::SequenceExpandGradKernel<phi::GPUContext, int>,
-    ops::SequenceExpandGradKernel<phi::GPUContext, int64_t>);
+PD_REGISTER_STRUCT_KERNEL(sequence_expand,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SequenceExpandKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
+PD_REGISTER_STRUCT_KERNEL(sequence_expand_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SequenceExpandGradKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}

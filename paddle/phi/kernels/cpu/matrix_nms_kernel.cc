@@ -14,7 +14,9 @@
 
 #include "paddle/phi/kernels/matrix_nms_kernel.h"
 
+#include "paddle/common/ddim.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -71,7 +73,7 @@ struct decay_score<T, true> {
 
 template <typename T>
 struct decay_score<T, false> {
-  T operator()(T iou, T max_iou, T sigma) {
+  T operator()(T iou, T max_iou, T sigma UNUSED) {
     return (1. - iou) / (1. - max_iou);
   }
 };
@@ -217,7 +219,7 @@ size_t MultiClassMatrixNMS(const DenseTensor& scores,
   std::iota(perm.begin(), perm.end(), 0);
 
   std::partial_sort(perm.begin(),
-                    perm.begin() + num_det,
+                    perm.begin() + num_det,  // NOLINT
                     perm.end(),
                     [&all_scores](int lhs, int rhs) {
                       return all_scores[lhs] > all_scores[rhs];
@@ -255,7 +257,7 @@ void MatrixNMSKernel(const Context& ctx,
                      DenseTensor* out,
                      DenseTensor* index,
                      DenseTensor* roisnum) {
-  auto score_dims = scores.dims();
+  auto score_dims = common::vectorize<int>(scores.dims());
   auto batch_size = score_dims[0];
   auto num_boxes = score_dims[2];
   auto box_dim = bboxes.dims()[2];
@@ -293,23 +295,23 @@ void MatrixNMSKernel(const Context& ctx,
     num_per_batch.emplace_back(num_out);
   }
 
-  int64_t num_kept = offsets.back();
+  int64_t num_kept = static_cast<int64_t>(offsets.back());
   if (num_kept == 0) {
-    out->Resize(phi::make_ddim({0, out_dim}));
+    out->Resize(common::make_ddim({0, out_dim}));
     ctx.template Alloc<T>(out);
-    index->Resize(phi::make_ddim({0, 1}));
+    index->Resize(common::make_ddim({0, 1}));
     ctx.template Alloc<int>(index);
   } else {
-    out->Resize(phi::make_ddim({num_kept, out_dim}));
+    out->Resize(common::make_ddim({num_kept, out_dim}));
     ctx.template Alloc<T>(out);
-    index->Resize(phi::make_ddim({num_kept, 1}));
+    index->Resize(common::make_ddim({num_kept, 1}));
     ctx.template Alloc<int>(index);
     std::copy(detections.begin(), detections.end(), out->data<T>());
     std::copy(indices.begin(), indices.end(), index->data<int>());
   }
 
   if (roisnum != nullptr) {
-    roisnum->Resize(phi::make_ddim({batch_size}));
+    roisnum->Resize(common::make_ddim({batch_size}));
     ctx.template Alloc<int>(roisnum);
     std::copy(num_per_batch.begin(), num_per_batch.end(), roisnum->data<int>());
   }
@@ -318,4 +320,7 @@ void MatrixNMSKernel(const Context& ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    matrix_nms, CPU, ALL_LAYOUT, phi::MatrixNMSKernel, float, double) {}
+    matrix_nms, CPU, ALL_LAYOUT, phi::MatrixNMSKernel, float, double) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
+  kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
+}

@@ -30,15 +30,23 @@ void TransposeKernel(const Context& ctx,
                      const DenseTensor& x,
                      const std::vector<int>& axis,
                      DenseTensor* out) {
+  size_t x_rank = x.dims().size();
+  std::vector<int> formated_axis = axis;
+  for (size_t i = 0; i < axis.size(); i++) {
+    if (axis[i] < 0) {
+      formated_axis[i] = axis[i] + x_rank;
+    }
+  }
+
   ctx.template Alloc<T>(out);
   if (out->numel() == 0) {
     return;
   }
-  if (axis.size() == 0) {
+  if (formated_axis.size() == 0) {
     phi::Copy<Context>(ctx, x, ctx.GetPlace(), false, out);
     return;
   }
-  phi::funcs::TransposeGPUKernelDriver<T>(ctx, x, axis, out);
+  phi::funcs::TransposeGPUKernelDriver<T>(ctx, x, formated_axis, out);
 }
 
 }  // namespace phi
@@ -50,8 +58,11 @@ PD_REGISTER_KERNEL(transpose,
                    bool,
                    float,
                    double,
+                   int8_t,
+                   int16_t,
                    int32_t,
                    int64_t,
+                   uint8_t,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,

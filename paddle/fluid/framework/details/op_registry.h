@@ -23,6 +23,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/framework/grad_op_desc_maker.h"
 #include "paddle/fluid/framework/inplace_op_inference.h"
 #include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
@@ -161,7 +162,7 @@ class OperatorRegistrarRecursive<I, false, ARGS...> {
 template <size_t I, typename... ARGS>
 class OperatorRegistrarRecursive<I, true, ARGS...> {
  public:
-  OperatorRegistrarRecursive(const char* op_type, OpInfo* info) {}
+  OperatorRegistrarRecursive(const char* op_type UNUSED, OpInfo* info UNUSED) {}
 };
 
 template <typename T>
@@ -317,15 +318,38 @@ struct OpInfoFiller<T, kVarTypeInference> {
   }
 };
 
-template <typename T>
-struct OpInfoFiller<T, kShapeInference> {
-  void operator()(const char* op_type, OpInfo* info) const {
-    // Note: if fill InferShapeFN by this Filler, the infershape here
-    // will overwrite the op->InferShape func registered in kOperator Filler
+template <typename T, typename = void>
+struct InferMetaTrait {
+  static void call(const char* op_type UNUSED, OpInfo* info) {
     info->infer_shape_ = [](InferShapeContext* ctx) {
       T inference;
       inference(ctx);
     };
+  }
+};
+
+template <typename T>
+struct InferMetaTrait<T,
+                      decltype(std::declval<T>().infer_meta_(
+                          std::declval<phi::InferMetaContext*>()))> {
+  static void call(const char* op_type UNUSED, OpInfo* info) {
+    info->infer_shape_ = [](InferShapeContext* ctx) {
+      T inference;
+      inference(ctx);
+    };
+    info->infer_meta_ = [](phi::InferMetaContext* ctx) {
+      T inference;
+      inference.infer_meta_(ctx);
+    };
+  }
+};
+
+template <typename T>
+struct OpInfoFiller<T, kShapeInference> {
+  void operator()(const char* op_type UNUSED, OpInfo* info) const {
+    // Note: if fill InferShapeFN by this Filler, the infershape here
+    // will overwrite the op->InferShape func registered in kOperator Filler
+    InferMetaTrait<T>::call(op_type, info);
   }
 };
 
@@ -359,7 +383,7 @@ struct OpInfoFiller<T, kNoNeedBufferVarsInference> {
 // A fake OpInfoFiller of void
 template <>
 struct OpInfoFiller<void, kUnknown> {
-  void operator()(const char* op_type, OpInfo* info) const {}
+  void operator()(const char* op_type UNUSED, OpInfo* info UNUSED) const {}
 };
 
 }  // namespace details

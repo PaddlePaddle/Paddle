@@ -248,7 +248,7 @@ static inline T JaccardOverlap(const std::vector<T>& box1,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
  public:
   void NMSFast(const std::vector<std::vector<T>>& cls_dets,
@@ -267,14 +267,12 @@ class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
     selected_indices->clear();
     T adaptive_threshold = nms_threshold;
 
-    while (sorted_indices.size() != 0) {
+    while (!sorted_indices.empty()) {
       const int idx = sorted_indices.front().second;
       bool keep = true;
-      for (size_t k = 0; k < selected_indices->size(); ++k) {
+      for (const auto kept_idx : *selected_indices) {
         if (keep) {
-          const int kept_idx = (*selected_indices)[k];
           T overlap = T(0.);
-
           overlap = JaccardOverlap<T>(cls_dets[idx], cls_dets[kept_idx], false);
           keep = overlap <= adaptive_threshold;
         } else {
@@ -366,7 +364,7 @@ class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
       if (static_cast<bool>(preds.count(c))) {
         const std::vector<std::vector<T>> cls_dets = preds.at(c);
         NMSFast(cls_dets, nms_threshold, nms_eta, &(indices[c]));
-        num_det += indices[c].size();
+        num_det += static_cast<int>(indices[c].size());
       }
     }
 
@@ -374,8 +372,7 @@ class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
     for (const auto& it : indices) {
       int label = it.first;
       const std::vector<int>& label_indices = it.second;
-      for (size_t j = 0; j < label_indices.size(); ++j) {
-        int idx = label_indices[j];
+      for (auto idx : label_indices) {
         score_index_pairs.push_back(std::make_pair(preds.at(label)[idx][4],
                                                    std::make_pair(label, idx)));
       }
@@ -533,14 +530,14 @@ class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
       batch_starts.push_back(batch_starts.back() + num_nmsed_out);
     }
 
-    int num_kept = batch_starts.back();
+    int num_kept = static_cast<int>(batch_starts.back());
     if (num_kept == 0) {
       outs->Resize({0, out_dim});
     } else {
       outs->mutable_data<T>({num_kept, out_dim}, ctx.GetPlace());
       for (int i = 0; i < batch_size; ++i) {
-        int64_t s = batch_starts[i];
-        int64_t e = batch_starts[i + 1];
+        int64_t s = static_cast<int64_t>(batch_starts[i]);
+        int64_t e = static_cast<int64_t>(batch_starts[i + 1]);
         if (e > s) {
           phi::DenseTensor out = outs->Slice(s, e);
           MultiClassOutput(dev_ctx, all_nmsed_out[i], &out);
@@ -671,6 +668,9 @@ REGISTER_OPERATOR(
     ops::RetinanetDetectionOutputOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(retinanet_detection_output,
-                       ops::RetinanetDetectionOutputKernel<float>,
-                       ops::RetinanetDetectionOutputKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(retinanet_detection_output,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::RetinanetDetectionOutputKernel,
+                          float,
+                          double) {}

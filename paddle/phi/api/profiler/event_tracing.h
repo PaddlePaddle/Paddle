@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "paddle/phi/api/profiler/event.h"
 #include "paddle/phi/api/profiler/trace_event.h"
+#include "paddle/utils/test_macros.h"
 
 namespace phi {
 
@@ -28,17 +29,17 @@ static constexpr uint32_t kDefaultTraceLevel = 4;
 // Host event tracing. A trace starts when an object of this clas is created and
 // stops when the object is destroyed.
 // Chrome Trace Viewer Format: Duration Event/Complte Event
-class RecordEvent {
+class TEST_API RecordEvent {
  public:
   static bool IsEnabled();
   /**
-   * @param name: If your string argument has a longer lifetime (e.g.: string
+   * @param name If your string argument has a longer lifetime (e.g.: string
    * literal, static variables, etc) than the event, use 'const char* name'.
    * Do your best to avoid using 'std::string' as the argument type. It will
    * cause deep-copy to harm performance.
-   * @param type: Classification which is used to instruct the profiling
+   * @param type Classification which is used to instruct the profiling
    * data statistics.
-   * @param level: Used to filter events, works like glog VLOG(level).
+   * @param level Used to filter events, works like glog VLOG(level).
    * RecordEvent will works if HostTraceLevel >= level.
    */
   explicit RecordEvent(
@@ -48,11 +49,11 @@ class RecordEvent {
       const EventRole role = EventRole::kOrdinary);
 
   /**
-   * @param name: It is the caller's reponsibility to manage the underlying
+   * @param name It is the caller's reponsibility to manage the underlying
    * storage. RecordEvent stores the pointer.
-   * @param type: Classification which is used to instruct the profiling
+   * @param type Classification which is used to instruct the profiling
    * data statistics.
-   * @param level: Used to filter events, works like glog VLOG(level).
+   * @param level Used to filter events, works like glog VLOG(level).
    * RecordEvent will works if HostTraceLevel >= level.
    */
   explicit RecordEvent(

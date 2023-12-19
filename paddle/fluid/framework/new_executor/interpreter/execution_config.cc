@@ -18,12 +18,11 @@
 #include <thread>
 
 #include "paddle/fluid/platform/device/ipu/ipu_info.h"
-#include "paddle/fluid/platform/device/npu/npu_info.h"
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
 
-DECLARE_bool(new_executor_serial_run);
+PD_DECLARE_bool(new_executor_serial_run);
 
 namespace paddle {
 namespace framework {
@@ -51,7 +50,7 @@ inline std::tuple<int, int> GetThreadPoolConfig(const phi::Place& place,
     num_device_threads = 0;
     num_host_threads = 4;
   } else {
-    processor_count = std::thread::hardware_concurrency();
+    processor_count = static_cast<int>(std::thread::hardware_concurrency());
     if (processor_count) {
       if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -61,11 +60,6 @@ inline std::tuple<int, int> GetThreadPoolConfig(const phi::Place& place,
       if (platform::is_xpu_place(place)) {
 #if defined(PADDLE_WITH_XPU)
         device_count = phi::backends::xpu::GetXPUDeviceCount();
-#endif
-      }
-      if (platform::is_npu_place(place)) {
-#if defined(PADDLE_WITH_ASCEND_CL)
-        device_count = platform::GetNPUDeviceCount();
 #endif
       }
       if (platform::is_ipu_place(place)) {
@@ -97,8 +91,8 @@ inline std::tuple<int, int> GetThreadPoolConfig(const phi::Place& place,
       if (device_count) {
         auto num = processor_count / device_count / 2 -
                    (kNumGcThreads + num_device_threads);
-        num_host_threads =
-            num > 0 ? (num > kHostNumThreads ? kHostNumThreads : num) : 1;
+        num_host_threads = static_cast<int>(
+            num > 0 ? (num > kHostNumThreads ? kHostNumThreads : num) : 1);
       }
     }
   }

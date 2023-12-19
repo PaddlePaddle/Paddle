@@ -12,7 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/matmul_v2_op.h"
+#include <string>
+#include <vector>
+
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
@@ -31,40 +37,35 @@ static std::vector<int64_t> GetInputShape(phi::DDim dim,
   if (is_input_fused) {
     dim = dim.reshape(shape).transpose(axis);
   }
-  return phi::vectorize(dim);
+  return common::vectorize(dim);
 }
 
-class FusedMatmulOp : public MatMulV2Op {
+class FusedMatmulOp : public framework::OperatorWithKernel {
  public:
-  using MatMulV2Op::MatMulV2Op;
+  using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "fused_matmul");
-    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "fused_matmul");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "fused_matmul");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "matmul_v2");
+    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "matmul_v2");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "matmul_v2");
     bool trans_x = ctx->Attrs().Get<bool>("trans_x");
     bool trans_y = ctx->Attrs().Get<bool>("trans_y");
 
-    std::vector<int64_t> dims_x =
-        GetInputShape(ctx->GetInputDim("X"),
-                      ctx->Attrs().Get<std::vector<int>>("fused_reshape_X"),
-                      ctx->Attrs().Get<std::vector<int>>("fused_transpose_X"));
-    std::vector<int64_t> dims_y =
-        GetInputShape(ctx->GetInputDim("Y"),
-                      ctx->Attrs().Get<std::vector<int>>("fused_reshape_Y"),
-                      ctx->Attrs().Get<std::vector<int>>("fused_transpose_Y"));
-
+    std::vector<int64_t> dims_x = common::vectorize(ctx->GetInputDim("X"));
+    std::vector<int64_t> dims_y = common::vectorize(ctx->GetInputDim("Y"));
     auto ndims_x = dims_x.size();
     auto ndims_y = dims_y.size();
-    PADDLE_ENFORCE_GT(ndims_x,
-                      0,
-                      phi::errors::InvalidArgument(
-                          "The Input(X) dims size must be greater than 0,"
-                          " but received dims size is 0. "));
-    PADDLE_ENFORCE_GT(ndims_y,
-                      0,
-                      phi::errors::InvalidArgument(
-                          "The Input(Y) dims size must be greater than 0,"
-                          " but received dims size is 0. "));
+    PADDLE_ENFORCE_GT(
+        ndims_x,
+        0,
+        phi::errors::InvalidArgument(
+            "The first input tensor X's dimension size must be greater than 0,"
+            " but received the first input tensor X's dimension size is 0. "));
+    PADDLE_ENFORCE_GT(
+        ndims_y,
+        0,
+        phi::errors::InvalidArgument(
+            "The second input tensor Y's dimension size must be greater than 0,"
+            " but received the second input tensor Y's dimension size is 0. "));
 
     bool x_broadcasted = false;
     bool y_broadcasted = false;
@@ -81,7 +82,7 @@ class FusedMatmulOp : public MatMulV2Op {
       y_broadcasted = true;
     }
 
-    size_t M, N;
+    size_t M = 0, N = 0;
     if (trans_x) {
       M = dims_x[ndims_x - 1];
     } else {
@@ -105,33 +106,75 @@ class FusedMatmulOp : public MatMulV2Op {
       }
     }
     if (!x_broadcasted) {
-      new_dims.push_back(M);
+      new_dims.push_back(M);  // NOLINT
     }
     if (!y_broadcasted) {
-      new_dims.push_back(N);
-    }
-    if (x_broadcasted && y_broadcasted) {
-      new_dims.push_back(1);
+      new_dims.push_back(N);  // NOLINT
     }
 
-    auto ddim_out = phi::make_ddim(new_dims);
-
-    auto shape = ctx->Attrs().Get<std::vector<int>>("fused_reshape_Out");
-    auto axis = ctx->Attrs().Get<std::vector<int>>("fused_transpose_Out");
-
-    auto is_output_fused = (!shape.empty() && !axis.empty());
-    if (is_output_fused) {
-      ddim_out = ddim_out.transpose(axis).reshape(shape);
-    }
-
-    ctx->SetOutputDim("Out", ddim_out);
+    ctx->SetOutputDim("Out", common::make_ddim(new_dims));
     ctx->ShareLoD("X", "Out");
-  }
+  };
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto input_data_type =
+        OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
+  };
+
+  phi::KernelKey GetKernelTypeForVar(
+      const std::string& var_name,
+      const phi::DenseTensor& tensor,
+      const phi::KernelKey& expected_kernel_type) const override {
+    if (framework::IsComplexType(expected_kernel_type.dtype())) {
+      // only promote inputs’s types when contains complex input
+      return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
+    } else {
+#ifdef PADDLE_WITH_DNNL
+      // When matmul_v2 is first oneDNN op in a chain (there was some non oneDNN
+      // op previously) then we also need to rotate shape NHWC -> NCWH
+      if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
+          (tensor.layout() != phi::DataLayout::ONEDNN) &&
+          phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
+              phi::DataLayout::kNHWC) {
+        return phi::KernelKey(tensor.place(),
+                              phi::DataLayout::kNHWC,
+                              expected_kernel_type.dtype());
+      }
+#endif
+      return phi::KernelKey(
+          tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+    }
+  };
 };
 
-class FusedMatmulOpMaker : public MatMulV2OpMaker {
+class FusedMatmulOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() final {
+    AddInput("X", "tensor of shape (d0, d1 ... M, K)");
+    AddInput("Y", "tensor of shape (d0, d1 ... K, N)");
+    AddOutput("Out", "tensor of shape (d0, d1 ... M, N)");
+    AddAttr<bool>("trans_x",
+                  "Set true to transpose the last two dimensions of X before "
+                  "doing multiplication")
+        .SetDefault(false);
+    AddAttr<bool>("trans_y",
+                  "Set true to transpose the last two dimensions of Y before "
+                  "doing multiplication")
+        .SetDefault(false);
+    AddComment(
+        R"DOC(Matrix multiplication Out = X * Y. A has shape (d0, d1 ... M, K),
+        B has shape (d0, d1 ... K, N), Out has shape ((d0, d1 ... M, N)).
+        In addition, it also follows the broadcast rule which is similar as
+        numpy.matmul.
+)DOC");
+    Apply();
+  };
+
  protected:
-  void Apply() override {
+  void Apply() {
     AddInput("ResidualData",
              "Extra input from matmul_elementwise_add_mkldnn_fuse_pass")
         .AsDispensable()
@@ -198,9 +241,13 @@ class FusedMatmulOpMaker : public MatMulV2OpMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(fused_matmul,
+                            FusedMatmulInferShapeFunctor,
+                            PD_INFER_META(phi::FusedMatmulInferMeta));
 REGISTER_OPERATOR(
     fused_matmul,
     ops::FusedMatmulOp,
     ops::FusedMatmulOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    FusedMatmulInferShapeFunctor);

@@ -45,7 +45,7 @@ void LayerNormGradKernel(const Context &dev_ctx,
   auto *d_y = &out_grad;
 
   const auto &x_dims = x.dims();
-  auto matrix_dim = phi::flatten_to_2d(x_dims, begin_norm_axis);
+  auto matrix_dim = common::flatten_to_2d(x_dims, begin_norm_axis);
   int64_t batch_size = static_cast<int64_t>(matrix_dim[0]);
   int64_t feature_size = static_cast<int64_t>(matrix_dim[1]);
 
@@ -117,7 +117,12 @@ PD_REGISTER_KERNEL(layer_norm_grad,
                    ALL_LAYOUT,
                    phi::LayerNormGradKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+  }
+}
 #elif CUDNN_VERSION_MIN(8, 1, 0)
 PD_REGISTER_KERNEL(layer_norm_grad,
                    GPU,
@@ -126,7 +131,12 @@ PD_REGISTER_KERNEL(layer_norm_grad,
                    float,
                    double,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+  }
+}
 #else
 PD_REGISTER_KERNEL(layer_norm_grad,
                    GPU,
@@ -134,5 +144,10 @@ PD_REGISTER_KERNEL(layer_norm_grad,
                    phi::LayerNormGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+  }
+}
 #endif

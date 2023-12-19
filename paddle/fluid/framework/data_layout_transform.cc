@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/data_layout_transform.h"
+#include "paddle/fluid/framework/op_kernel_type.h"
 
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -91,7 +92,7 @@ void TransDataLayout(DataLayout from_layout,
     dst_dim[i] = src_dim[axis[i]];
   }
 
-  out->Resize(phi::make_ddim(dst_dim));
+  out->Resize(common::make_ddim(dst_dim));
   out->mutable_data(place, in.dtype());
 
   framework::VisitDataType(

@@ -51,10 +51,8 @@ if [ "$1" != "" ]; then
 fi
 
 FILE_WHITE_LIST="\
-    layer_norm_op.cc \
     box_clip_op.cc \
     box_clip_op.h \
-    random_crop_op.h \
     elementwise_op_function.cu.h \
     fused_elemwise_activation_op.cc \
     auc_op.cu \

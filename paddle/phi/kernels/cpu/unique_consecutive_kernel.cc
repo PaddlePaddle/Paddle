@@ -12,11 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/unique_consecutive_kernel.h"
-#include "paddle/phi/kernels/cpu/unique_consecutive_functor.h"
+#include <climits>
 
+#include "paddle/phi/kernels/cpu/unique_consecutive_functor.h"
+#include "paddle/phi/kernels/unique_consecutive_kernel.h"
+
+#include "paddle/common/errors.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 
@@ -28,12 +30,11 @@ void UniqueConsecutiveKernel(const Context& dev_ctx,
                              bool return_inverse,
                              bool return_counts,
                              const std::vector<int>& axis,
-                             int dtype,
+                             DataType dtype,
                              DenseTensor* out,
                              DenseTensor* index,
                              DenseTensor* counts) {
-  auto data_type = phi::TransToPhiDataType(dtype);
-  if (data_type == phi::DataType::INT32) {
+  if (dtype == phi::DataType::INT32) {
     PADDLE_ENFORCE_LE(
         x.numel(),
         INT_MAX,
@@ -46,14 +47,14 @@ void UniqueConsecutiveKernel(const Context& dev_ctx,
 
   if (axis.empty()) {
     phi::VisitDataTypeTiny(
-        data_type,
+        dtype,
         UniqueConsecutiveFlattenedTensorFunctor<Context, T>(
             dev_ctx, x, out, return_inverse, return_counts, index, counts));
   } else {
     int valid_axis = axis[0];
     if (valid_axis < 0) valid_axis += x.dims().size();
     phi::VisitDataTypeTiny(
-        data_type,
+        dtype,
         UniqueConsecutiveDimFunctor<Context, T>(dev_ctx,
                                                 x,
                                                 out,
@@ -74,4 +75,7 @@ PD_REGISTER_KERNEL(unique_consecutive,
                    float,
                    double,
                    int32_t,
-                   int64_t) {}
+                   int64_t) {
+  kernel->OutputAt(1).SetDataType(kernel_key.dtype());
+  kernel->OutputAt(2).SetDataType(kernel_key.dtype());
+}

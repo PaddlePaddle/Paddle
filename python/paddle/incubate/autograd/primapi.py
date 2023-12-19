@@ -16,8 +16,8 @@ import logging
 import typing
 
 import paddle
-from paddle.fluid import backward, core, framework
-from paddle.fluid.core import prim_config
+from paddle.base import backward, core, framework
+from paddle.base.core import prim_config
 from paddle.incubate.autograd import primx, utils
 
 
@@ -42,29 +42,29 @@ def forward_grad(outputs, inputs, grad_inputs=None):
 
         .. code-block:: python
 
-            import numpy as np
-            import paddle
+            >>> import numpy as np
+            >>> import paddle
 
-            paddle.enable_static()
-            paddle.incubate.autograd.enable_prim()
+            >>> paddle.enable_static()
+            >>> paddle.incubate.autograd.enable_prim()
 
-            startup_program = paddle.static.Program()
-            main_program = paddle.static.Program()
+            >>> startup_program = paddle.static.Program()
+            >>> main_program = paddle.static.Program()
 
-            with paddle.static.program_guard(main_program, startup_program):
-                x = paddle.static.data('x', shape=[1], dtype='float32')
-                y = x * x
-                y_grad = paddle.incubate.autograd.forward_grad(y, x)
-                paddle.incubate.autograd.prim2orig()
+            >>> with paddle.static.program_guard(main_program, startup_program):
+            ...     x = paddle.static.data('x', shape=[1], dtype='float32')
+            ...     y = x * x
+            ...     y_grad = paddle.incubate.autograd.forward_grad(y, x)
+            ...     paddle.incubate.autograd.prim2orig()
+            ...
+            >>> exe = paddle.static.Executor()
+            >>> exe.run(startup_program)
+            >>> y_grad = exe.run(main_program, feed={'x': np.array([2.]).astype('float32')}, fetch_list=[y_grad])
+            >>> print(y_grad)
+            [array([4.], dtype=float32)]
 
-            exe = paddle.static.Executor()
-            exe.run(startup_program)
-            y_grad = exe.run(main_program, feed={'x': np.array([2.]).astype('float32')}, fetch_list=[y_grad])
-            print(y_grad)
-            # [array([4.], dtype=float32)]
-
-            paddle.incubate.autograd.disable_prim()
-            paddle.disable_static()
+            >>> paddle.incubate.autograd.disable_prim()
+            >>> paddle.disable_static()
     """
     if not utils.prim_enabled():
         raise RuntimeError(
@@ -125,29 +125,29 @@ def grad(outputs, inputs, grad_outputs=None):
 
         .. code-block:: python
 
-            import numpy as np
-            import paddle
+            >>> import numpy as np
+            >>> import paddle
 
-            paddle.enable_static()
-            paddle.incubate.autograd.enable_prim()
+            >>> paddle.enable_static()
+            >>> paddle.incubate.autograd.enable_prim()
 
-            startup_program = paddle.static.Program()
-            main_program = paddle.static.Program()
-            with paddle.static.program_guard(main_program, startup_program):
-                x = paddle.static.data('x', shape=[1], dtype='float32')
-                x.stop_gradients = False
-                y = x * x
-                x_grad = paddle.incubate.autograd.grad(y, x)
-                paddle.incubate.autograd.prim2orig()
+            >>> startup_program = paddle.static.Program()
+            >>> main_program = paddle.static.Program()
+            >>> with paddle.static.program_guard(main_program, startup_program):
+            ...     x = paddle.static.data('x', shape=[1], dtype='float32')
+            ...     x.stop_gradients = False
+            ...     y = x * x
+            ...     x_grad = paddle.incubate.autograd.grad(y, x)
+            ...     paddle.incubate.autograd.prim2orig()
+            ...
+            >>> exe = paddle.static.Executor()
+            >>> exe.run(startup_program)
+            >>> x_grad = exe.run(main_program, feed={'x': np.array([2.]).astype('float32')}, fetch_list=[x_grad])
+            >>> print(x_grad)
+            [array([4.], dtype=float32)]
 
-            exe = paddle.static.Executor()
-            exe.run(startup_program)
-            x_grad = exe.run(main_program, feed={'x': np.array([2.]).astype('float32')}, fetch_list=[x_grad])
-            print(x_grad)
-            # [array([4.], dtype=float32)]
-
-            paddle.incubate.autograd.disable_prim()
-            paddle.disable_static()
+            >>> paddle.incubate.autograd.disable_prim()
+            >>> paddle.disable_static()
     """
     if not utils.prim_enabled():
         grad_inputs = backward.gradients(outputs, inputs, grad_outputs)
@@ -217,16 +217,35 @@ def grad(outputs, inputs, grad_outputs=None):
 
 
 @framework.static_only
-def to_prim(blocks):
-    """Search nonbasic ops which have be registered composite rules and replace them with primitive ops."""
+def to_prim(
+    blocks,
+    blacklist=frozenset(),
+    whitelist=frozenset(),
+    start_idx=-1,
+    backward_length=-1,
+):
+    """Search nonbasic ops which have be registered composite rules and replace them with primitive ops.
+    The operators in blacklist will be excluded from program when lowering into primitives, and only the
+    operators in whitelist will be lowering. The priority of blacklist is higher than whitelist, it means
+    an operator both in blacklist and whitelist will not be lowering.
+
+    The finally set that will be lowering is:
+        (blocks.ops & ops have decomposite rule & whitelist) - blacklist
+
+    Args:
+        blacklist(frozenset): The Operators that will be exclude when lowering into primitives.
+        whitelist(frozenset): Only the operators in whitelist will be lowering into primitives.
+        start_idx(int): If start_idx exceeds -1, ops[start_idx:] will be processed. Default: -1.
+        backward_length(int): If backward_length exceeds -1, ops[:-backward_length] will be processed. Default: -1.
+    """
     if not core._is_fwd_prim_enabled():
         return
-    if isinstance(blocks, paddle.fluid.framework.Block):
+    if isinstance(blocks, paddle.base.framework.Block):
         logging.info("Atomize composite op to primitive ops begin.")
         main_program = blocks.program
     elif isinstance(blocks, typing.Sequence):
         for item in blocks:
-            if not isinstance(item, paddle.fluid.framework.Block):
+            if not isinstance(item, paddle.base.framework.Block):
                 raise TypeError(
                     f"Expect block or sequence of blocks, but sequence contains {type(item)}."
                 )
@@ -235,9 +254,33 @@ def to_prim(blocks):
         raise TypeError(
             f"Expect block or sequence of blocks, but got {type(blocks)}."
         )
+    if not isinstance(blacklist, (set, frozenset)):
+        raise TypeError(
+            f'Expected type of blacklisst is set|frozenset, but got {type(blacklist)}.'
+        )
+    if not isinstance(whitelist, (set, frozenset)):
+        raise TypeError(
+            f'Expected type of whiltelist is set|frozenset, but got {type(whitelist)}.'
+        )
+
+    blacklist = prim_config["forward_blacklist"] | blacklist
+
     with framework.program_guard(main_program):
-        print("Lowering composite forward ops begin...")
-        primx._lower_composite(blocks, prim_config["forward_blacklist"])
+        logging.info("Lowering composite forward ops begin...")
+
+        if len(blacklist) > 0 and len(whitelist) > 0:
+            filter_ = lambda x: x.type in whitelist and x.type not in blacklist
+        elif len(blacklist) > 0 and len(whitelist) == 0:
+            filter_ = lambda x: x.type not in blacklist
+        elif len(blacklist) == 0 and len(whitelist) > 0:
+            filter_ = lambda x: x.type in whitelist
+        else:
+            filter_ = lambda x: True
+        primx._lower_composite(
+            blocks,
+            filter_,
+            start_idx=start_idx,
+            backward_length=backward_length,
+        )
         replace_ops = prim_config["composite_ops_record"]
-        print(f"Lowering composite forward ops finish: {replace_ops}")
-    return
+        logging.info(f"Lowering composite forward ops finish: {replace_ops}")

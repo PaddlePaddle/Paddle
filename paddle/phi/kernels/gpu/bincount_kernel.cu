@@ -34,13 +34,12 @@ __global__ void KernelBincount(const InputT* input,
                                const bool has_weights,
                                const T* weights,
                                OutT* output) {
-  if (!has_weights) {
-    for (int i = threadIdx.x; i < total_elements; i += blockDim.x) {
-      phi::CudaAtomicAdd(&output[input[i]], 1L);
-    }
-  } else {
-    for (int i = threadIdx.x; i < total_elements; i += blockDim.x) {
-      phi::CudaAtomicAdd(&output[input[i]], static_cast<OutT>(weights[i]));
+  int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  if (tid < total_elements) {
+    if (!has_weights) {
+      phi::CudaAtomicAdd(&output[input[tid]], 1L);
+    } else {
+      phi::CudaAtomicAdd(&output[input[tid]], static_cast<OutT>(weights[tid]));
     }
   }
 }
@@ -103,15 +102,13 @@ void BincountCUDAInner(const Context& dev_ctx,
 
   if (!has_weights) {
     int64_t* output_data = dev_ctx.template Alloc<int64_t>(output);
-    phi::funcs::SetConstant<Context, int64_t>()(dev_ctx, output, 0L);
+    phi::funcs::SetConstant<Context, int64_t>()(
+        dev_ctx, output, static_cast<int64_t>(0));
 
     KernelBincount<T, InputT, int64_t>
         <<<GET_BLOCKS(input_numel), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
             input_data, input_numel, has_weights, weights_data, output_data);
   } else {
-    const auto& weights_type =
-        paddle::framework::TransToProtoVarType(weights->dtype());
-
     if (weights->dtype() == DataType::FLOAT32) {
       float* output_data = dev_ctx.template Alloc<float>(output);
       phi::funcs::SetConstant<Context, float>()(
@@ -161,4 +158,6 @@ PD_REGISTER_KERNEL(bincount,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}

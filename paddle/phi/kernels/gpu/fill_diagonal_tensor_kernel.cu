@@ -17,7 +17,7 @@
 #include <algorithm>
 #include <vector>
 
-#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 
@@ -50,11 +50,7 @@ void FillDiagonalTensorKernel(const Context &ctx,
                               int dim1,
                               int dim2,
                               DenseTensor *out) {
-#ifdef __HIPCC__
-  const int64_t kMaxBlockDim = 256;
-#else
   const int64_t kMaxBlockDim = 512;
-#endif
   phi::Copy(ctx, x, ctx.GetPlace(), false, out);
 
   T *out_data = ctx.template Alloc<T>(out);
@@ -62,7 +58,7 @@ void FillDiagonalTensorKernel(const Context &ctx,
 
   auto out_dims = out->dims();
   auto matdims = y.dims();
-  auto fill_dims = phi::flatten_to_2d(matdims, matdims.size() - 1);
+  auto fill_dims = common::flatten_to_2d(matdims, matdims.size() - 1);
 
   int64_t new_dims[2];
   std::vector<int64_t> memory_block;
@@ -93,15 +89,15 @@ void FillDiagonalTensorKernel(const Context &ctx,
 
   auto stream = ctx.stream();
   DenseTensor tensor_tmp;
-  tensor_tmp.Resize(phi::make_ddim({2 + fill_dims[0]}));
+  tensor_tmp.Resize(common::make_ddim({2 + fill_dims[0]}));
   int64_t *memory_block_cu = ctx.template Alloc<int64_t>(&tensor_tmp);
   const auto gpu_place = ctx.GetPlace();
-  paddle::memory::Copy(gpu_place,
-                       memory_block_cu,
-                       CPUPlace(),
-                       memory_block.data(),
-                       sizeof(int64_t) * (2 + fill_dims[0]),
-                       stream);
+  memory_utils::Copy(gpu_place,
+                     memory_block_cu,
+                     CPUPlace(),
+                     memory_block.data(),
+                     sizeof(int64_t) * (2 + fill_dims[0]),
+                     stream);
 
   int64_t *strides_cu = &memory_block_cu[0], *matdim_cu = &memory_block_cu[2];
 
@@ -128,6 +124,7 @@ PD_REGISTER_KERNEL(fill_diagonal_tensor,
                    double,
                    int64_t,
                    int,
+                   int16_t,
                    int8_t,
                    uint8_t,
                    phi::dtype::float16,

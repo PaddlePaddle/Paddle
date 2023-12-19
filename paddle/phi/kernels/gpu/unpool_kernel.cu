@@ -80,11 +80,7 @@ class Unpool2dMaxFunctor {
     const T* input_data = input.data<T>();
     const int* indices_data = indices.data<int>();
     T* output_data = dev_ctx.template Alloc<T>(output);
-#ifdef __HIPCC__
-    int threads = 256;
-#else
     int threads = 1024;
-#endif
     int grid = (input.numel() + threads - 1) / threads;
     KernelUnpool2dMax<T>
         <<<grid, threads, 0, dev_ctx.stream()>>>(input.numel(),
@@ -117,11 +113,7 @@ class Unpool3dMaxFunctor {
     const T* input_data = input.data<T>();
     const int* indices_data = indices.data<int>();
     T* output_data = dev_ctx.template Alloc<T>(output);
-#ifdef __HIPCC__
-    int threads = 256;
-#else
     int threads = 1024;
-#endif
     int grid = (input.numel() + threads - 1) / threads;
     KernelUnpool3dMax<T>
         <<<grid, threads, 0, dev_ctx.stream()>>>(input.numel(),

@@ -24,7 +24,7 @@ limitations under the License. */
 public:
 /* @jim19930609: Remove dependency on protobuf after Tensor Unification.
  */
-explicit DenseTensor(paddle::experimental::DataType dtype);
+explicit DenseTensor(phi::DataType dtype);
 
 inline bool IsInitialized() const { return holder_ != nullptr; }
 
@@ -37,18 +37,18 @@ T* mutable_data(const DDim& dims,
                 size_t requested_size = 0);
 
 void* mutable_data(const phi::Place& place,
-                   paddle::experimental::DataType type,
+                   phi::DataType type,
                    size_t requested_size = 0);
 
 void* mutable_data(const phi::Place& place, size_t requested_size = 0);
 
 void* mutable_data(const phi::Place& place,
-                   paddle::experimental::DataType type,
+                   phi::DataType type,
                    const phi::Stream& stream);
 
 /* @jim19930609: Remove dependency on protobuf after Tensor Unification.
  */
-paddle::experimental::DataType type() const;
+phi::DataType type() const;
 
 // memory size returns the holding memory size in byte.
 size_t memory_size() const;
@@ -56,11 +56,6 @@ size_t memory_size() const;
 void check_memory_size() const;
 
 void set_layout(const DataLayout layout);
-
-void clear() {
-  holder_.reset();
-  meta_.offset = 0;
-}
 
 void ShareBufferWith(const DenseTensor& tensor, bool only_buffer=false);
 
@@ -84,9 +79,9 @@ std::shared_ptr<phi::Allocation> MoveMemoryHolder() {
 void ResetHolder(const std::shared_ptr<phi::Allocation>& holder);
 
 void ResetHolderWithType(const std::shared_ptr<phi::Allocation>& holder,
-                         paddle::experimental::DataType type);
+                         phi::DataType type);
 
-void set_type(paddle::experimental::DataType type);
+void set_type(phi::DataType type);
 
 InplaceVersion& InplaceVersionCounter() { return *inplace_version_counter_; }
 
@@ -109,7 +104,7 @@ We temporarily leave them here to unblock Tensor Unification progress.
 In the final state, we should come up with a MKLDNN_Tensor and move the
 following codes there.
 */
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 
 public:
 const dnnl::memory::desc& mem_desc() const;

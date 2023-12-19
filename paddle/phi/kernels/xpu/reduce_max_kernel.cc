@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,24 +22,32 @@
 namespace phi {
 
 template <typename T, typename Context>
-void MaxRawKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const IntArray& dims,
-                  bool keep_dim,
-                  bool reduce_all,
-                  DenseTensor* out) {
-  reduce_all = recompute_reduce_all(x, dims, reduce_all);
+void MaxKernel(const Context& dev_ctx,
+               const DenseTensor& x,
+               const IntArray& dims,
+               bool keep_dim,
+               DenseTensor* out) {
+  bool reduce_all = recompute_reduce_all(x, dims);
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto f = [](xpu::Context* ctx,
               const T* x,
               T* y,
               const std::vector<int>& xdims,
               const std::vector<int>& reduce_dims) {
+#ifndef PADDLE_WITH_XPU_PLUGIN
     return xpu::reduce_max<XPUType>(ctx,
                                     reinterpret_cast<const XPUType*>(x),
                                     reinterpret_cast<XPUType*>(y),
                                     xdims,
                                     reduce_dims);
+#else
+    return xpu::plugin::fast_reduce_max<XPUType>(
+        ctx,
+        reinterpret_cast<const XPUType*>(x),
+        reinterpret_cast<XPUType*>(y),
+        xdims,
+        reduce_dims);
+#endif
   };
 
   int r = XPUReduce<Context, T>(
@@ -49,4 +57,4 @@ void MaxRawKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(max_raw, XPU, ALL_LAYOUT, phi::MaxRawKernel, float) {}
+PD_REGISTER_KERNEL(max, XPU, ALL_LAYOUT, phi::MaxKernel, float, int, int64_t) {}

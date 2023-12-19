@@ -115,15 +115,15 @@ struct ChannelDequantizeFunctor<phi::CPUContext, T> {
           }
         }
       } else {
-        int batch_size = in->dims()[0];
-        int channel = in->dims()[1];
+        int batch_size = static_cast<int>(in->dims()[0]);
+        int channel = static_cast<int>(in->dims()[1]);
         const T* scale_one = scales[0]->data<T>();
         const T* scale_two = scales[1]->data<T>();
         for (int i = 0; i < batch_size; i++) {
           phi::DenseTensor one_batch_in = in->Slice(i, i + 1).Resize(
-              phi::slice_ddim(in->dims(), 1, in->dims().size()));
+              common::slice_ddim(in->dims(), 1, in->dims().size()));
           phi::DenseTensor one_batch_out = out->Slice(i, i + 1).Resize(
-              phi::slice_ddim(out->dims(), 1, out->dims().size()));
+              common::slice_ddim(out->dims(), 1, out->dims().size()));
           for (int j = 0; j < channel; j++) {
             T s = scale_one[j];
             phi::DenseTensor one_channel_in = one_batch_in.Slice(j, j + 1);
@@ -277,9 +277,12 @@ REGISTER_OPERATOR(
     ops::FakeDequantizeMaxAbsOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(fake_dequantize_max_abs,
-                       ops::FakeDequantizeMaxAbsKernel<CPU, float>,
-                       ops::FakeDequantizeMaxAbsKernel<CPU, double>);
+PD_REGISTER_STRUCT_KERNEL(fake_dequantize_max_abs,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::FakeDequantizeMaxAbsKernel,
+                          float,
+                          double) {}
 
 REGISTER_OPERATOR(
     fake_channel_wise_dequantize_max_abs,
@@ -287,9 +290,12 @@ REGISTER_OPERATOR(
     ops::FakeChannelWiseDequantizeMaxAbsOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(fake_channel_wise_dequantize_max_abs,
-                       ops::FakeChannelWiseDequantizeMaxAbsKernel<CPU, float>,
-                       ops::FakeChannelWiseDequantizeMaxAbsKernel<CPU, double>);
+PD_REGISTER_STRUCT_KERNEL(fake_channel_wise_dequantize_max_abs,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::FakeChannelWiseDequantizeMaxAbsKernel,
+                          float,
+                          double) {}
 
 REGISTER_OP_VERSION(fake_channel_wise_dequantize_max_abs)
     .AddCheckpoint(

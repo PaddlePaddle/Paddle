@@ -54,10 +54,10 @@ class AnchorGeneratorOp : public framework::OperatorWithKernel {
     std::vector<int64_t> dim_vec(4);
     dim_vec[0] = input_dims[2];
     dim_vec[1] = input_dims[3];
-    dim_vec[2] = num_anchors;
+    dim_vec[2] = static_cast<int64_t>(num_anchors);
     dim_vec[3] = 4;
-    ctx->SetOutputDim("Anchors", phi::make_ddim(dim_vec));
-    ctx->SetOutputDim("Variances", phi::make_ddim(dim_vec));
+    ctx->SetOutputDim("Anchors", common::make_ddim(dim_vec));
+    ctx->SetOutputDim("Variances", common::make_ddim(dim_vec));
   }
 
  protected:
@@ -175,6 +175,9 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL(anchor_generator,
-                       ops::AnchorGeneratorOpKernel<float>,
-                       ops::AnchorGeneratorOpKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(anchor_generator,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::AnchorGeneratorOpKernel,
+                          float,
+                          double) {}

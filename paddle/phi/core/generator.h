@@ -14,42 +14,128 @@ limitations under the License. */
 
 #pragma once
 
+#include <atomic>
 #include <cstdint>
+#include <deque>
 #include <memory>
+#include <mutex>  // NOLINT
 #include <random>
+#include <typeinfo>
+#include <utility>
+#include <vector>
+
+#include "paddle/phi/common/place.h"
 
 namespace phi {
 
+#define MAGIC_RANDOM_SEED 34342423252
 class Generator {
  public:
   struct GeneratorState {
-    int64_t device = -1;
-    uint64_t current_seed = 34342423252;
-    uint64_t thread_offset = 0;
-    std::mt19937_64 cpu_engine;
+    int64_t device;
+    uint64_t seed;
+    uint64_t offset;
+    std::shared_ptr<std::mt19937_64> cpu_engine;
+
+    GeneratorState(int64_t device_ = -1,
+                   uint64_t seed_ = MAGIC_RANDOM_SEED,
+                   uint64_t offset_ = 0)
+        : device(device_), seed(seed_), offset(offset_) {
+      std::seed_seq seq({seed});
+      cpu_engine = std::make_shared<std::mt19937_64>(seq);
+    }
+
+    void reset(uint64_t new_seed = MAGIC_RANDOM_SEED) {
+      std::seed_seq seq({new_seed});
+      cpu_engine->seed(seq);
+      offset = 0;
+      seed = new_seed;
+    }
+
+    GeneratorState clone() const {
+      GeneratorState state(device, seed, offset);
+      if (cpu_engine) {
+        // Clone the engine state
+        *(state.cpu_engine) = *cpu_engine;
+      }
+      return state;
+    }
   };
 
-  virtual ~Generator() = default;
+  Generator();
 
-  // get random state
-  virtual GeneratorState GetState() = 0;
-  // set random state
-  virtual void SetState(const GeneratorState&) = 0;
-  // get current seed
-  virtual uint64_t GetCurrentSeed() = 0;
-  // random a seed and get
-  virtual uint64_t Seed() = 0;
-  // set seed
-  virtual void SetCurrentSeed(uint64_t seed) = 0;
-  // get cpu engine
-  virtual std::shared_ptr<std::mt19937_64> GetCPUEngine() = 0;
-  // set cpu engine
-  virtual void SetCPUEngine(std::shared_ptr<std::mt19937_64>) = 0;
-  virtual uint64_t Random64() = 0;
-  virtual std::pair<uint64_t, uint64_t> IncrementOffset(
-      uint64_t increament_offset) = 0;
+  explicit Generator(uint64_t seed);
 
-  virtual uint64_t get_device_id() = 0;
+  Generator(uint64_t seed, int64_t device_id);
+
+  Generator(const Generator& other) = delete;
+
+  ~Generator() = default;
+
+  // Retrieves the cloned current state of the generator.
+  GeneratorState GetState();
+  // Directly sets the generator's current state to a specified state.
+  void SetState(const GeneratorState&);
+
+  // Retrieves the seed of the current generator state.
+  uint64_t GetCurrentSeed();
+  // Retrieves the offset of the current generator state.
+  uint64_t GetCurrentOffset();
+
+  // Retrieves the index of the current generator state.
+  uint64_t GetStateIndex();
+  // Sets the index for the current generator state, switching the active state.
+  void SetStateIndex(uint64_t StateIndex);
+
+  // Registers a new state with the generator and switch to new state.
+  // Returns the index of this new state.
+  uint64_t RegisterStateIndex(const GeneratorState&);
+
+  // Generates and sets a new random seed.
+  uint64_t Seed();
+  // Sets the seed of the current generator state.
+  void SetCurrentSeed(uint64_t seed);
+
+  // Retrieves cpu cpu_engine in current state.
+  std::shared_ptr<std::mt19937_64> GetCPUEngine();
+  // Set CPU random number generation cpu_engine to current state
+  void SetCPUEngine(std::shared_ptr<std::mt19937_64> cpu_engine);
+
+  uint64_t Random64();
+
+  // Increments the offset of the current generator state by a specified amount
+  // and returns the new seed and offset.
+  std::pair<uint64_t, uint64_t> IncrementOffset(uint64_t increment_offset);
+
+ private:
+  // Accesses the current generator state by index.
+  inline GeneratorState& state();
+  // Accesses the current cpu cpu_engine by index.
+  inline std::shared_ptr<std::mt19937_64> cpu_engine();
+  // Outputs detailed information about the current generator state to the log.
+  inline void print_state_info();
+
+  size_t current_index = 0;
+  std::vector<GeneratorState> states_;
+  mutable std::mutex mu_;
 };
+
+// The DefaultCPUGenerator is used in manual_seed()
+const std::shared_ptr<Generator>& DefaultCPUGenerator();
+
+const std::shared_ptr<Generator>& DefaultCUDAGenerator(int64_t device_id = -1);
+
+const std::shared_ptr<Generator>& DefaultXPUGenerator(int64_t device_id = -1);
+
+const std::shared_ptr<Generator>& DefaultCustomDeviceGenerator(
+    const phi::CustomPlace& place);
+
+std::shared_ptr<std::mt19937_64> GetCPURandomEngine(uint64_t);
+
+const std::shared_ptr<Generator>& SetRandomSeedGenerator(
+    const std::string& name, uint64_t seed);
+
+const std::shared_ptr<Generator>& GetRandomSeedGenerator(
+    const std::string& name);
 
 }  // namespace phi

@@ -32,7 +32,7 @@ class MulOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   phi::KernelKey GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const {
+      const framework::ExecutionContext& ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
@@ -57,7 +57,7 @@ class MulOpMaker : public framework::OpProtoAndCheckerMaker {
               flattened matrix is equal to the product of $X$'s first
               `x_num_col_dims` dimensions' sizes, and width of the flattened
               matrix is equal to the product of $X$'s last `rank(x) - num_col_dims`
-              dimensions' size. For example, suppose $X$ is a 6-dimensional
+              dimensions' size. For example, suppose $X$ is a 5-dimensional
               tensor with the shape [2, 3, 4, 5, 6], and `x_num_col_dims` = 3.
               Thus, the flattened matrix will have a shape [2 x 3 x 4, 5 x 6] =
               [24, 30].
@@ -104,7 +104,7 @@ class MulGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   phi::KernelKey GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const {
+      const framework::ExecutionContext& ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     return phi::KernelKey(input_data_type, ctx.GetPlace());
   }

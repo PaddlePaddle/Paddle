@@ -31,7 +31,6 @@ class LocalSGDOptimizer(MetaOptimizerBase):
         self.inner_opt = optimizer
         self.meta_optimizers_white_list = ['AMPOptimizer']
         self.meta_optimizers_black_list = [
-            "GraphExecutionOptimizer",
             "AdaptiveLocalSGDOptimizer",
         ]
         self.snapshot_key = '@SNAPSHOT'
@@ -46,11 +45,12 @@ class LocalSGDOptimizer(MetaOptimizerBase):
         if self.role_maker._worker_num() <= 1:
             return False
 
-        return (
-            isinstance(self.inner_opt, paddle.optimizer.momentum.Momentum)
-            or isinstance(self.inner_opt, paddle.fluid.optimizer.Momentum)
-            or isinstance(self.inner_opt, paddle.optimizer.sgd.SGD)
-            or isinstance(self.inner_opt, paddle.fluid.optimizer.SGD)
+        return isinstance(
+            self.inner_opt,
+            (
+                paddle.optimizer.momentum.Momentum,
+                paddle.optimizer.sgd.SGD,
+            ),
         )
 
     def _disable_strategy(self, dist_strategy):
@@ -113,7 +113,7 @@ class LocalSGDOptimizer(MetaOptimizerBase):
 
         p2s = self.create_snapshot_vars(main_block.program)
         with program_guard(main_block.program, startup_program):
-            step = paddle.fluid.layers.autoincreased_step_counter(begin=1)
+            step = paddle.optimizer.lr.autoincreased_step_counter(begin=1)
             k_steps = paddle.static.create_global_var(
                 name="k_steps",
                 shape=[1],
@@ -215,7 +215,6 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
         self.inner_opt = optimizer
         self.meta_optimizers_white_list = ['AMPOptimizer']
         self.meta_optimizers_black_list = [
-            "GraphExecutionOptimizer",
             "LocalSGDOptimizer",
         ]
         self.snapshot_key = '@SNAPSHOT'
@@ -230,11 +229,12 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
         if self.role_maker._worker_num() <= 1:
             return False
 
-        return (
-            isinstance(self.inner_opt, paddle.optimizer.Momentum)
-            or isinstance(self.inner_opt, paddle.fluid.optimizer.Momentum)
-            or isinstance(self.inner_opt, paddle.optimizer.sgd.SGD)
-            or isinstance(self.inner_opt, paddle.fluid.optimizer.SGD)
+        return isinstance(
+            self.inner_opt,
+            (
+                paddle.optimizer.Momentum,
+                paddle.optimizer.sgd.SGD,
+            ),
         )
 
     def _disable_strategy(self, dist_strategy):
@@ -330,7 +330,7 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
 
         p2s = self.create_snapshot_vars(main_block.program)
         with program_guard(main_block.program, startup_program):
-            step = paddle.fluid.layers.autoincreased_step_counter(begin=1)
+            step = paddle.optimizer.lr.autoincreased_step_counter(begin=1)
 
             k_steps = paddle.static.create_global_var(
                 name="k_steps",
@@ -351,7 +351,7 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
             last_step = paddle.static.create_global_var(
                 name="last_step",
                 shape=[1],
-                value=int(0),
+                value=0,
                 dtype='int64',
                 persistable=True,
             )

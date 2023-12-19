@@ -15,17 +15,13 @@ limitations under the License. */
 #pragma once
 #include <stddef.h>
 
+#include "paddle/common/errors.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
-#if defined(PADDLE_WITH_ASCEND_CL)
-#include "paddle/phi/backends/npu/npu_info.h"
-#endif
+
 #include "paddle/phi/backends/gpu/gpu_info.h"
-#ifdef PADDLE_WITH_MLU
-#include "paddle/phi/backends/mlu/mlu_info.h"
-#endif
+#include "paddle/phi/backends/xpu/xpu_info.h"
 
 namespace phi {
 
@@ -43,19 +39,12 @@ inline size_t Alignment(size_t size,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       alignment = phi::backends::gpu::GpuMinChunkSize();
 #elif defined(PADDLE_WITH_XPU)
-      alignment = alignment;
-#elif defined(PADDLE_WITH_ASCEND_CL)
-      alignment = phi::backends::npu::NPUMinChunkSize();
-#elif defined(PADDLE_WITH_MLU)
-      alignment = phi::backends::mlu::MLUMinChunkSize();
+      alignment = phi::backends::xpu::XPUMinChunkSize();
 #else
       PADDLE_THROW(phi::errors::PreconditionNotMet(
-          "Fluid is not compiled with CUDA/XPU/NPU/MLU."));
+          "Fluid is not compiled with CUDA/XPU."));
 #endif
     }
-  }
-  if (place.GetType() == phi::AllocationType::NPU) {
-    size += 32;  // required by ascendcl
   }
   size_t remaining = size % alignment;
   return remaining == 0 ? size : size + (alignment - remaining);

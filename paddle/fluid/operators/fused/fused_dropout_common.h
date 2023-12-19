@@ -19,12 +19,12 @@ limitations under the License. */
 #include <curand_kernel.h>
 
 #include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/fused/quant_dequant_kernel.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/functors.h"
 #include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"

@@ -54,12 +54,12 @@ class DpsgdOp : public framework::OperatorWithKernel {
                           "Output(ParamOut) of DpsgdOp should not be null."));
 
     auto lr_dims = ctx->GetInputDim("LearningRate");
-    PADDLE_ENFORCE_EQ(phi::product(lr_dims),
+    PADDLE_ENFORCE_EQ(common::product(lr_dims),
                       1,
                       platform::errors::InvalidArgument(
                           "Learning rate should have 1 dimension. But Received "
                           "LearningRate's dims [%s].",
-                          phi::product(lr_dims)));
+                          common::product(lr_dims)));
     auto param_dims = ctx->GetInputDim("Param");
     PADDLE_ENFORCE_EQ(
         param_dims,
@@ -131,6 +131,6 @@ CCS16 - Deep Learning with Differential Privacy.
 
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(dpsgd, ops::DpsgdOp, ops::DpsgdOpMaker);
-REGISTER_OP_CPU_KERNEL(dpsgd,
-                       ops::DpsgdOpKernel<phi::CPUContext, float>,
-                       ops::DpsgdOpKernel<phi::CPUContext, double>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    dpsgd, CPU, ALL_LAYOUT, ops::DpsgdOpKernel, float, double) {}

@@ -62,7 +62,7 @@ bool HasScale(OpDesc* const op_ptr,
   name->clear();
   std::unordered_map<std::string, Attribute> attr_map = op_ptr->GetAttrMap();
   std::unordered_map<std::string, Attribute>::iterator iter;
-  int len = regexp.size();
+  int len = static_cast<int>(regexp.size());
   for (iter = attr_map.begin(); iter != attr_map.end(); iter++) {
     if (regexp == iter->first.substr(0, len)) {
       *name = iter->first;
@@ -79,7 +79,7 @@ void VitAttentionFusePass::ApplyImpl(ir::Graph* graph) const {
   auto* scope = param_scope();
 
   // pattern
-  std::unordered_set<std::string> matmul_ops{"matmul", "matmul_v2"};
+  std::unordered_set<std::string> matmul_ops{"matrix_multiply"};
   PDNode* x = gpd.mutable_pattern()
                   ->NewNode("x")
                   ->assert_is_ops_input(matmul_ops, "X")
@@ -103,12 +103,12 @@ void VitAttentionFusePass::ApplyImpl(ir::Graph* graph) const {
     auto* w_tensor =
         scope->FindVar(matmul0_in_y->Name())->GetMutable<phi::DenseTensor>();
     auto w_dims =
-        phi::make_ddim({w_tensor->dims()[0], 3, w_tensor->dims()[1] / 3});
+        common::make_ddim({w_tensor->dims()[0], 3, w_tensor->dims()[1] / 3});
     w_tensor->Resize(w_dims);
 
     auto* b_tensor = scope->FindVar(elementwise0_in_y->Name())
                          ->GetMutable<phi::DenseTensor>();
-    auto bias_dims = phi::make_ddim({3, b_tensor->dims()[0] / 3});
+    auto bias_dims = common::make_ddim({3, b_tensor->dims()[0] / 3});
     b_tensor->Resize(bias_dims);
 
     desc.SetInput("W", {matmul0_in_y->Name()});
@@ -173,5 +173,4 @@ REGISTER_PASS_CAPABILITY(vit_attention_fuse_pass)
             .EQ("transpose2", 0)
             .EQ("slice", 0)
             .EQ("scale", 0)
-            .EQ("softmax", 0)
-            .EQ("matmul_v2", 0));
+            .EQ("softmax", 0));

@@ -18,40 +18,10 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/phi/core/tensor_utils.h"
+
 namespace paddle {
 namespace operators {
-
-template <typename T = int32_t>
-inline std::vector<T> GetDataFromTensor(const phi::DenseTensor* x) {
-  std::vector<T> vec_new_data;
-  if (framework::TransToProtoVarType(x->dtype()) ==
-      framework::proto::VarType::INT32) {
-    auto* data = x->data<int>();
-    phi::DenseTensor cpu_attr_tensor;
-    if (!platform::is_cpu_place(x->place())) {
-      paddle::framework::TensorCopySync(
-          *x, platform::CPUPlace(), &cpu_attr_tensor);
-      data = cpu_attr_tensor.data<int>();
-    }
-    vec_new_data = std::vector<T>(data, data + x->numel());
-  } else if (framework::TransToProtoVarType(x->dtype()) ==
-             framework::proto::VarType::INT64) {
-    auto* data = x->data<int64_t>();
-    phi::DenseTensor cpu_attr_tensor;
-    if (!platform::is_cpu_place(x->place())) {
-      paddle::framework::TensorCopySync(
-          *x, platform::CPUPlace(), &cpu_attr_tensor);
-      data = cpu_attr_tensor.data<int64_t>();
-    }
-    // NOTE: Converting int64 to int32 may cause data overflow.
-    vec_new_data = std::vector<T>(data, data + x->numel());
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "The dtype of Tensor must be int32 or int64, but received: %s",
-        framework::TransToProtoVarType(x->dtype())));
-  }
-  return vec_new_data;
-}
 
 template <typename T = int32_t>
 inline std::vector<T> GetDataFromTensorList(
@@ -60,7 +30,7 @@ inline std::vector<T> GetDataFromTensorList(
   for (size_t i = 0; i < list_tensor.size(); ++i) {
     auto tensor = list_tensor[i];
     PADDLE_ENFORCE_EQ(tensor->dims(),
-                      phi::make_ddim({1}),
+                      common::make_ddim({1}),
                       platform::errors::InvalidArgument(
                           "The shape of Tensor in list must be [1]. "
                           "But received its shape "
@@ -100,20 +70,20 @@ inline framework::DDim GetShape(const framework::ExecutionContext& ctx) {
   // 1. shape is a Tensor
   if (ctx.HasInput("ShapeTensor")) {
     auto* shape_tensor = ctx.Input<phi::DenseTensor>("ShapeTensor");
-    auto vec_shape = GetDataFromTensor<int>(shape_tensor);
-    return phi::make_ddim(vec_shape);
+    auto vec_shape = phi::GetVectorFromTensor<int>(shape_tensor);
+    return common::make_ddim(vec_shape);
   }
 
   // 2. shape is a list/tuple containing Tensor
   auto shape_tensor_list = ctx.MultiInput<phi::DenseTensor>("ShapeTensorList");
   if (shape_tensor_list.size() > 0) {
     auto vec_shape = GetDataFromTensorList(shape_tensor_list);
-    return phi::make_ddim(vec_shape);
+    return common::make_ddim(vec_shape);
   }
 
   // 3. shape is a list/tuple without containing Tensor
   auto vec_shape = ctx.Attr<std::vector<int64_t>>("shape");
-  return phi::make_ddim(vec_shape);
+  return common::make_ddim(vec_shape);
 }
 
 template <typename T>
@@ -122,7 +92,7 @@ inline T GetValue(const phi::DenseTensor* x) {
   if (!platform::is_cpu_place(x->place())) {
     phi::DenseTensor cpu_x;
     framework::TensorCopy(*x, platform::CPUPlace(), &cpu_x);
-#if defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU)
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     const platform::DeviceContext* dev_ctx = pool.Get(x->place());
     dev_ctx->Wait();

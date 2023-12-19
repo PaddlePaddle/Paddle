@@ -81,7 +81,7 @@ struct StringCaseConvertKernel {
 
 template <typename DeviceContext, typename CharConverter>
 struct AsciiCaseConverter {
-  void operator()(const DeviceContext& dev_ctx,
+  void operator()(const DeviceContext& dev_ctx UNUSED,
                   const pstring* in,
                   pstring* out,
                   size_t num) const {
@@ -96,7 +96,7 @@ template <typename DeviceContext,
           template <typename DeviceContextT>
           class CharConverter>
 struct UTF8CaseConverter {
-  void operator()(const DeviceContext& dev_ctx,
+  void operator()(const DeviceContext& dev_ctx UNUSED,
                   const pstring* in,
                   pstring* out,
                   size_t num) const {

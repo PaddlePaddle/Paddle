@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/common/transform.h"
 #include "paddle/phi/core/visit_type.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -180,7 +181,7 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
 
     phi::DenseTensor var_t;
     var_t.mutable_data<K>(
-        phi::make_ddim({1, static_cast<int>(variances.size())}),
+        common::make_ddim({1, static_cast<int>(variances.size())}),
         ctx.GetPlace());
     auto var_et = phi::EigenTensor<K, 2>::From(var_t);
 

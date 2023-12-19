@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/selected_rows/adam_kernel.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -23,7 +25,6 @@
 
 namespace phi {
 namespace sr {
-using float16 = dtype::float16;
 
 template <typename T, typename Context>
 void AdamDenseParamSparseGradKernel(
@@ -51,19 +52,23 @@ void AdamDenseParamSparseGradKernel(
     DenseTensor* beta2_pow_out,
     DenseTensor* master_param_outs) {
   using XPUType = typename XPUTypeTrait<T>::Type;
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   float* param_ptr = nullptr;
-  funcs::GetDataPointer<Context, float>(param, &param_ptr, dev_ctx);
+  funcs::GetDataPointer<Context, float>(
+      param, &param_ptr, dev_ctx, &RAII_GUARD);
 
   float* mom1_ptr = nullptr;
-  funcs::GetDataPointer<Context, float>(moment1, &mom1_ptr, dev_ctx);
+  funcs::GetDataPointer<Context, float>(
+      moment1, &mom1_ptr, dev_ctx, &RAII_GUARD);
 
   float* mom2_ptr = nullptr;
-  funcs::GetDataPointer<Context, float>(moment2, &mom2_ptr, dev_ctx);
+  funcs::GetDataPointer<Context, float>(
+      moment2, &mom2_ptr, dev_ctx, &RAII_GUARD);
 
   float* lr_ptr = nullptr;
-  funcs::GetDataPointer<Context, float>(learning_rate, &lr_ptr, dev_ctx);
+  funcs::GetDataPointer<Context, float>(
+      learning_rate, &lr_ptr, dev_ctx, &RAII_GUARD);
 
-  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   float* beta1_pow_ptr = nullptr;
   const float* beta1_const_pow_ptr = nullptr;
 
@@ -71,27 +76,28 @@ void AdamDenseParamSparseGradKernel(
     if (beta1_pow.dtype() == DataType::FLOAT16) {
       XPUType* beta1_pow_t =
           RAII_GUARD.alloc_l3_or_gm<XPUType>(beta1_pow.numel());
-      paddle::memory::Copy(param.place(),
-                           beta1_pow_t,
-                           beta1_pow.place(),
-                           beta1_pow.data<T>(),
-                           sizeof(T) * beta1_pow.numel());
+      memory_utils::Copy(param.place(),
+                         beta1_pow_t,
+                         beta1_pow.place(),
+                         beta1_pow.data<T>(),
+                         sizeof(T) * beta1_pow.numel());
 
       int r = xpu::cast<XPUType, float>(
           dev_ctx.x_context(), beta1_pow_t, beta1_pow_ptr, beta1_pow.numel());
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
     } else {
       beta1_pow_ptr = RAII_GUARD.alloc_l3_or_gm<float>(beta1_pow.numel());
-      paddle::memory::Copy(param.place(),
-                           beta1_pow_ptr,
-                           beta1_pow.place(),
-                           beta1_pow.data<T>(),
-                           sizeof(T) * beta1_pow.numel());
+      memory_utils::Copy(param.place(),
+                         beta1_pow_ptr,
+                         beta1_pow.place(),
+                         beta1_pow.data<T>(),
+                         sizeof(T) * beta1_pow.numel());
     }
 
   } else {
     if (beta1_pow.dtype() == DataType::FLOAT16)
-      funcs::GetDataPointer<Context, float>(beta1_pow, &beta1_pow_ptr, dev_ctx);
+      funcs::GetDataPointer<Context, float>(
+          beta1_pow, &beta1_pow_ptr, dev_ctx, &RAII_GUARD);
     else
       beta1_const_pow_ptr = beta1_pow.template data<float>();
   }
@@ -103,26 +109,27 @@ void AdamDenseParamSparseGradKernel(
     if (beta2_pow.dtype() == DataType::FLOAT16) {
       XPUType* beta2_pow_t =
           RAII_GUARD.alloc_l3_or_gm<XPUType>(beta2_pow.numel());
-      paddle::memory::Copy(param.place(),
-                           beta2_pow_t,
-                           beta2_pow.place(),
-                           beta2_pow.data<T>(),
-                           sizeof(T) * beta2_pow.numel());
+      memory_utils::Copy(param.place(),
+                         beta2_pow_t,
+                         beta2_pow.place(),
+                         beta2_pow.data<T>(),
+                         sizeof(T) * beta2_pow.numel());
 
       int r = xpu::cast<XPUType, float>(
           dev_ctx.x_context(), beta2_pow_t, beta2_pow_ptr, beta2_pow.numel());
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
     } else {
       beta2_pow_ptr = RAII_GUARD.alloc_l3_or_gm<float>(beta2_pow.numel());
-      paddle::memory::Copy(param.place(),
-                           beta2_pow_ptr,
-                           beta2_pow.place(),
-                           beta2_pow.data<T>(),
-                           sizeof(T) * beta2_pow.numel());
+      memory_utils::Copy(param.place(),
+                         beta2_pow_ptr,
+                         beta2_pow.place(),
+                         beta2_pow.data<T>(),
+                         sizeof(T) * beta2_pow.numel());
     }
   } else {
     if (beta2_pow.dtype() == DataType::FLOAT16)
-      funcs::GetDataPointer<Context, float>(beta2_pow, &beta2_pow_ptr, dev_ctx);
+      funcs::GetDataPointer<Context, float>(
+          beta2_pow, &beta2_pow_ptr, dev_ctx, &RAII_GUARD);
     else
       beta2_const_pow_ptr = beta2_pow.template data<float>();
   }
@@ -165,8 +172,10 @@ void AdamDenseParamSparseGradKernel(
     phi::Copy(dev_ctx, param, dev_ctx.GetPlace(), false, param_out);
     phi::Copy(dev_ctx, moment1, dev_ctx.GetPlace(), false, moment1_out);
     phi::Copy(dev_ctx, moment2, dev_ctx.GetPlace(), false, moment2_out);
-    phi::Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, beta1_pow_out);
-    phi::Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, beta2_pow_out);
+    if (!use_global_beta_pow) {
+      phi::Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, beta1_pow_out);
+      phi::Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, beta2_pow_out);
+    }
     return;
   }
 
@@ -222,7 +231,8 @@ void AdamDenseParamSparseGradKernel(
   auto& grad_merge = *grad_merge_ptr;
   auto& grad_tensor = grad_merge.value();
 
-  funcs::GetDataPointer<Context, float>(grad_tensor, &grad_c, dev_ctx);
+  funcs::GetDataPointer<Context, float>(
+      grad_tensor, &grad_c, dev_ctx, &RAII_GUARD);
 
   int row_count = grad_merge.rows().size();
   std::vector<int> rows(row_count);
@@ -233,11 +243,11 @@ void AdamDenseParamSparseGradKernel(
     rows[i] = static_cast<int>(merge_rows[i]);
   }
   xpu_wait(dev_ctx.x_context()->xpu_stream);
-  paddle::memory::Copy(dev_ctx.GetPlace(),
-                       xpu_rows,
-                       CPUPlace(),
-                       rows.data(),
-                       row_count * sizeof(int));
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     xpu_rows,
+                     CPUPlace(),
+                     rows.data(),
+                     row_count * sizeof(int));
   auto row_numel = grad_tensor.numel() / grad_merge.rows().size();
   auto ori_rows = param.numel() / row_numel;
 
@@ -264,11 +274,12 @@ void AdamDenseParamSparseGradKernel(
 
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "adam");
 
-  funcs::FreeData<float>(grad_tensor, grad_c);
-
-  funcs::CopyOutData<Context, float>(xpu_mom1_out, moment1_out, dev_ctx);
-  funcs::CopyOutData<Context, float>(xpu_mom2_out, moment1_out, dev_ctx);
-  funcs::CopyOutData<Context, float>(xpu_param_out, moment1_out, dev_ctx);
+  funcs::CopyOutData<Context, float>(
+      xpu_mom1_out, moment1_out, dev_ctx, &RAII_GUARD);
+  funcs::CopyOutData<Context, float>(
+      xpu_mom2_out, moment1_out, dev_ctx, &RAII_GUARD);
+  funcs::CopyOutData<Context, float>(
+      xpu_param_out, moment1_out, dev_ctx, &RAII_GUARD);
 
   if (!use_global_beta_pow) {
     // update in cpu and then copy to xpu
@@ -282,8 +293,12 @@ void AdamDenseParamSparseGradKernel(
       float* beta1_pow_out_p1 = nullptr;
 
       if (beta1_pow_out->dtype() == DataType::FLOAT16) {
-        funcs::Scale<Context, float>(
-            beta1_pow_out, beta1_pow, beta1_pow_ptr, beta1_, dev_ctx);
+        funcs::Scale<Context, float>(beta1_pow_out,
+                                     beta1_pow,
+                                     beta1_pow_ptr,
+                                     beta1_,
+                                     dev_ctx,
+                                     &RAII_GUARD);
       } else {
         const float* beta1_pow_data = beta1_pow.template data<float>();
         beta1_pow_out_p1 = dev_ctx.template Alloc<float>(beta1_pow_out);
@@ -300,8 +315,12 @@ void AdamDenseParamSparseGradKernel(
 
       float* beta2_pow_out_p1 = nullptr;
       if (beta2_pow_out->dtype() == DataType::FLOAT16) {
-        funcs::Scale<Context, float>(
-            beta2_pow_out, beta2_pow, beta2_pow_ptr, beta2_, dev_ctx);
+        funcs::Scale<Context, float>(beta2_pow_out,
+                                     beta2_pow,
+                                     beta2_pow_ptr,
+                                     beta2_,
+                                     dev_ctx,
+                                     &RAII_GUARD);
       } else {
         const float* beta2_pow_data = beta2_pow.template data<float>();
         beta2_pow_out_p1 = dev_ctx.template Alloc<float>(beta2_pow_out);
@@ -317,10 +336,6 @@ void AdamDenseParamSparseGradKernel(
       }
     }
   }
-  funcs::FreeData<float>(param, param_ptr);
-  funcs::FreeData<float>(moment1, mom1_ptr);
-  funcs::FreeData<float>(moment2, mom2_ptr);
-  funcs::FreeData<float>(learning_rate, lr_ptr);
 }
 }  // namespace sr
 }  // namespace phi
@@ -335,4 +350,6 @@ PD_REGISTER_KERNEL(adam_dense_param_sparse_grad,
   kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(8).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->OutputAt(3).SetBackend(phi::Backend::UNDEFINED);
+  kernel->OutputAt(4).SetBackend(phi::Backend::UNDEFINED);
 }

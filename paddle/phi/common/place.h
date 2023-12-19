@@ -14,10 +14,13 @@ limitations under the License. */
 
 #pragma once
 
+#include <cstdint>
 #include <string>
 #include <unordered_map>
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/api/include/dll_decl.h"
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 enum class PlaceType;
@@ -31,14 +34,11 @@ enum class AllocationType : int8_t {
   GPU = 2,
   GPUPINNED = 3,
   XPU = 4,
-  NPU = 5,
-  NPUPINNED = 6,
   IPU = 7,
-  MLU = 8,
   CUSTOM = 9,
 };
 
-class CustomRegisteredDeviceMap {
+class TEST_API CustomRegisteredDeviceMap {
  public:
   static CustomRegisteredDeviceMap& Instance();
 
@@ -55,9 +55,10 @@ class CustomRegisteredDeviceMap {
 const char* AllocationTypeStr(AllocationType type);
 
 /// \brief The place is used to specify where the data is stored.
-class PADDLE_API Place {
+class TEST_API Place {
  public:
-  Place() : device(0), alloc_type_(AllocationType::UNDEFINED) {}
+  Place()
+      : device(0), alloc_type_(AllocationType::UNDEFINED), device_type_id_(0) {}
 
   explicit Place(AllocationType type,
                  int8_t id,
@@ -67,11 +68,7 @@ class PADDLE_API Place {
         device_type_id_(phi::CustomRegisteredDeviceMap::Instance()
                             .GetOrRegisterGlobalDeviceTypeId(dev_type)) {}
 
-  explicit Place(AllocationType type, const std::string& dev_type = "")
-      : device(0),
-        alloc_type_(type),
-        device_type_id_(phi::CustomRegisteredDeviceMap::Instance()
-                            .GetOrRegisterGlobalDeviceTypeId(dev_type)) {}
+  explicit Place(AllocationType type, const std::string& dev_type = "");
 
   // See NOTE [ Why need to temporarily adapt to PlaceType? ]
   Place(paddle::PlaceType type);  // NOLINT
@@ -98,7 +95,7 @@ class PADDLE_API Place {
 
   std::string DebugString() const;
 
-  struct Hash {
+  struct TEST_API Hash {
     // Note: Now the number of bits we need does not exceed 32 bits, so there is
     // no need to use 64 bits. If needed in the future, it can be expanded,
     // but now we don’t over-design.
@@ -132,7 +129,7 @@ class CPUPlace : public Place {
   CPUPlace() : Place(AllocationType::CPU) {}
 
   CPUPlace(const CPUPlace&) = default;
-  CPUPlace(const Place& place) : Place(AllocationType::CPU) {}  // NOLINT
+  CPUPlace(const Place& place UNUSED) : Place(AllocationType::CPU) {}  // NOLINT
 };
 
 class GPUPlace : public Place {
@@ -150,7 +147,7 @@ class GPUPinnedPlace : public Place {
   GPUPinnedPlace() : Place(AllocationType::GPUPINNED) {}
 
   GPUPinnedPlace(const GPUPinnedPlace&) = default;
-  GPUPinnedPlace(const Place& place)  // NOLINT
+  GPUPinnedPlace(const Place& place UNUSED)  // NOLINT
       : Place(AllocationType::GPUPINNED) {}
 };
 
@@ -164,25 +161,6 @@ class XPUPlace : public Place {
       : Place(AllocationType::XPU, place.GetDeviceId()) {}
 };
 
-class NPUPlace : public Place {
- public:
-  NPUPlace() : Place(AllocationType::NPU, 0) {}
-  explicit NPUPlace(int device_id) : Place(AllocationType::NPU, device_id) {}
-
-  NPUPlace(const NPUPlace&) = default;
-  NPUPlace(const Place& place)  // NOLINT
-      : Place(AllocationType::NPU, place.GetDeviceId()) {}
-};
-
-class NPUPinnedPlace : public Place {
- public:
-  NPUPinnedPlace() : Place(AllocationType::NPUPINNED) {}
-
-  NPUPinnedPlace(const NPUPinnedPlace&) = default;
-  NPUPinnedPlace(const Place& place)  // NOLINT
-      : Place(AllocationType::NPUPINNED) {}
-};
-
 class IPUPlace : public Place {
  public:
   IPUPlace() : Place(AllocationType::IPU, 0) {}
@@ -191,16 +169,6 @@ class IPUPlace : public Place {
   IPUPlace(const IPUPlace&) = default;
   IPUPlace(const Place& place)  // NOLINT
       : Place(AllocationType::IPU, place.GetDeviceId()) {}
-};
-
-class MLUPlace : public Place {
- public:
-  MLUPlace() : Place(AllocationType::MLU, 0) {}
-  explicit MLUPlace(int device_id) : Place(AllocationType::MLU, device_id) {}
-
-  MLUPlace(const MLUPlace&) = default;
-  MLUPlace(const Place& place)  // NOLINT
-      : Place(AllocationType::MLU, place.GetDeviceId()) {}
 };
 
 class CustomPlace : public Place {
@@ -220,7 +188,7 @@ class CustomPlace : public Place {
   }
 };
 
-std::ostream& operator<<(std::ostream&, const Place&);
+TEST_API std::ostream& operator<<(std::ostream&, const Place&);
 
 Place GetPinnedPlace(const Place& place);
 
@@ -231,7 +199,6 @@ namespace experimental {
 using AllocationType = phi::AllocationType;
 using GPUPinnedPlace = phi::GPUPinnedPlace;
 using XPUPlace = phi::XPUPlace;
-using NPUPlace = phi::NPUPlace;
 }  // namespace experimental
 
 using AllocationType = phi::AllocationType;

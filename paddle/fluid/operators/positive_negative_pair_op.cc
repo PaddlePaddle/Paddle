@@ -40,7 +40,7 @@ class PositiveNegativePairOp : public framework::OperatorWithKernel {
                    "NeutralPair",
                    "positive_negative_pair");
 
-    auto scalar_dim = phi::make_ddim({1});
+    auto scalar_dim = common::make_ddim({1});
     if (ctx->HasInput("AccumulatePositivePair") ||
         ctx->HasInput("AccumulateNegativePair") ||
         ctx->HasInput("AccumulateNeutralPair")) {
@@ -253,7 +253,10 @@ namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(positive_negative_pair,
                              ops::PositiveNegativePairOp,
                              ops::PositiveNegativePairOpMaker);
-REGISTER_OP_CPU_KERNEL(
-    positive_negative_pair,
-    ops::PositiveNegativePairKernel<paddle::platform::CPUPlace, float>,
-    ops::PositiveNegativePairKernel<paddle::platform::CPUPlace, double>);
+
+PD_REGISTER_STRUCT_KERNEL(positive_negative_pair,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::PositiveNegativePairKernel,
+                          float,
+                          double) {}

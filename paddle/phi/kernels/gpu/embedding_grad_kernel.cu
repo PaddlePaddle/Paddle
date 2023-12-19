@@ -13,17 +13,21 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/embedding_grad_kernel.h"
+#include "paddle/phi/kernels/funcs/embedding_grad.h"
 
-#include "paddle/fluid/memory/memcpy.h"
+#include "glog/logging.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/mixed_vector.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/embedding_util.h"
+#include "paddle/utils/flags.h"
 
-DECLARE_bool(cudnn_deterministic);
+PD_DECLARE_int64(embedding_deterministic);
 
 namespace phi {
 
@@ -100,17 +104,21 @@ struct EmbeddingGradCUDAFunctor {
           cudaMemsetAsync(d_table, 0, N * D * sizeof(T), dev_ctx_.stream()));
 #endif
 
-      const int gridx = 2 * dev_ctx_.GetSMCount();
-      dim3 threads(128, 8);
-      dim3 grids(gridx, 1);
-
-      if (FLAGS_cudnn_deterministic) {
-        VLOG(2) << "Run grad kernel of embedding with single thread.";
-        grids.x = 1;
-        threads.y = 1;
+      if (FLAGS_embedding_deterministic == 1) {
+        phi::funcs::LaunchEmbeddingGradDeterministicKernel<T, IdT>(
+            dev_ctx_, ids, d_output, d_table, N, D, K);
+      } else {
+        const int gridx = 2 * dev_ctx_.GetSMCount();
+        dim3 threads(128, 8);
+        dim3 grids(gridx, 1);
+        if (FLAGS_embedding_deterministic > 1) {
+          VLOG(2) << "Run grad kernel of embedding with single thread.";
+          grids.x = 1;
+          threads.y = 1;
+        }
+        EmbeddingGrad<T, IdT><<<grids, threads, 0, dev_ctx_.stream()>>>(
+            d_table, d_output, ids, N, K, D);
       }
-      EmbeddingGrad<T, IdT><<<grids, threads, 0, dev_ctx_.stream()>>>(
-          d_table, d_output, ids, N, K, D);
     }
   }
 
@@ -182,12 +190,12 @@ struct EmbeddingSparseGradCUDAFunctor {
       InputTypeConvert<<<grids, threads, 0, stream>>>(
           ids_data, ids_num, mixv_new_rows.MutableData(gpu_place));
     } else {
-      paddle::memory::Copy(gpu_place,
-                           mixv_new_rows.CUDAMutableData(gpu_place),
-                           gpu_place,
-                           ids_data,
-                           ids_num * sizeof(int64_t),
-                           stream);
+      memory_utils::Copy(gpu_place,
+                         mixv_new_rows.CUDAMutableData(gpu_place),
+                         gpu_place,
+                         ids_data,
+                         ids_num * sizeof(int64_t),
+                         stream);
     }
 
     mixv_new_rows.CopyToCPU();
@@ -201,7 +209,7 @@ struct EmbeddingSparseGradCUDAFunctor {
     auto* d_output_data = d_output->template data<T>();
     auto d_output_dims = d_output->dims();
     auto d_output_dims_2d =
-        phi::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
+        common::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
     PADDLE_ENFORCE_EQ(d_table_value->dims(),
                       d_output_dims_2d,
                       phi::errors::InvalidArgument(
@@ -211,12 +219,12 @@ struct EmbeddingSparseGradCUDAFunctor {
                           "output@Grad's shape = [%s].",
                           d_table_value->dims(),
                           d_output_dims_2d));
-    paddle::memory::Copy(gpu_place,
-                         d_table_data,
-                         gpu_place,
-                         d_output_data,
-                         d_output->numel() * sizeof(T),
-                         stream);
+    memory_utils::Copy(gpu_place,
+                       d_table_data,
+                       gpu_place,
+                       d_output_data,
+                       d_output->numel() * sizeof(T),
+                       stream);
   }
 
  private:

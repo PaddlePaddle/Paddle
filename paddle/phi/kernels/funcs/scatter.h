@@ -17,8 +17,8 @@ limitations under the License. */
 #include <string>
 #include <unordered_set>
 
+#include "paddle/common/ddim.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -47,7 +47,7 @@ elementwise_inner_add(const phi::CPUContext& ctx,
 
 template <typename T, typename IndexT = int>
 typename std::enable_if<!std::is_floating_point<T>::value>::type
-elementwise_inner_add(const phi::CPUContext& ctx,
+elementwise_inner_add(const phi::CPUContext& ctx UNUSED,
                       const T* src_pointer,
                       T* dst_pointer,
                       size_t src_index,
@@ -72,7 +72,7 @@ elementwise_inner_add(const phi::CPUContext& ctx,
  * return: output tensor
  */
 template <typename T, typename IndexT = int>
-void ScatterAssign(const phi::CPUContext& ctx,
+void ScatterAssign(const phi::CPUContext& ctx UNUSED,
                    const DenseTensor& src,
                    const DenseTensor& index,
                    DenseTensor* output) {
@@ -241,10 +241,10 @@ void ScatterAssignAdd(const phi::CPUContext& ctx,
 // The function is only for scatter grad x,
 // however update grad use gather
 template <typename T, typename IndexT = int>
-void CPUScatterGradForX(const phi::CPUContext& ctx,
+void CPUScatterGradForX(const phi::CPUContext& ctx UNUSED,
                         const DenseTensor& index,
                         DenseTensor* output) {
-  int64_t index_size = index.dims()[0];
+  int64_t index_size = index.dims().size() == 0 ? 1 : index.dims()[0];
   auto dst_dims = output->dims();
   const IndexT* p_index = index.data<IndexT>();
   T* p_output = output->data<T>();
@@ -276,8 +276,8 @@ void ScatterNdAdd(const phi::CPUContext& ctx,
   // final dim
   int64_t end_size = index_dims[index_dims_size - 1];
   // remain dim
-  auto remain_ddim = phi::slice_ddim(index_dims, 0, index_dims_size - 1);
-  int64_t remain_numel = phi::product(remain_ddim);
+  auto remain_ddim = common::slice_ddim(index_dims, 0, index_dims_size - 1);
+  int64_t remain_numel = common::product(remain_ddim);
   // slice size
   int64_t slice_size = 1;
   for (int64_t i = end_size; i < output_dims_size; ++i) {

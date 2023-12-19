@@ -19,15 +19,28 @@ import unittest
 from io import StringIO
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import base
+from paddle.base import core
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
+sys.path.append(
+    os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "build", "test")
+    )
+)
+sys.path.append(
+    os.path.abspath(
+        os.path.join(
+            os.path.dirname(__file__), "..", "build", "test", "legacy_test"
+        )
+    )
+)
 import static_mode_white_list
 
 
 def main():
     sys.path.append(os.getcwd())
+    os.environ["FLAGS_dynamic_static_unified_comm"] = "false"
     if core.is_compiled_with_cuda() or core.is_compiled_with_rocm():
         if os.getenv('FLAGS_enable_gpu_memory_usage_log') is None:
             os.environ['FLAGS_enable_gpu_memory_usage_log'] = 'true'
@@ -40,12 +53,12 @@ def main():
             flag_need_static_mode = True
             paddle.enable_static()
         buffer = StringIO()
-        main = fluid.Program()
-        startup = fluid.Program()
-        scope = fluid.core.Scope()
-        with fluid.program_guard(main, startup):
-            with fluid.scope_guard(scope):
-                with fluid.unique_name.guard():
+        main = base.Program()
+        startup = base.Program()
+        scope = base.core.Scope()
+        with base.program_guard(main, startup):
+            with base.scope_guard(scope):
+                with base.unique_name.guard():
                     test_loader = unittest.TestLoader()
                     module = importlib.import_module(module_name)
                     tests = test_loader.loadTestsFromModule(module)
@@ -63,7 +76,7 @@ def main():
             paddle.disable_static()
 
     if some_test_failed:
-        exit(1)
+        sys.exit(1)
 
 
 if __name__ == '__main__':

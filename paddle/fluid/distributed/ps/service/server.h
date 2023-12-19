@@ -23,6 +23,7 @@
 
 #include "butil/endpoint.h"
 #include "google/protobuf/service.h"
+#include "paddle/common/macros.h"
 #include "paddle/fluid/distributed/common/registerer.h"
 #include "paddle/fluid/distributed/ps/service/env.h"
 #include "paddle/fluid/distributed/ps/service/sendrecv.pb.h"
@@ -56,8 +57,8 @@ namespace distributed {
 
 class Table;
 
-using paddle::distributed::PsRequestMessage;
-using paddle::distributed::PsResponseMessage;
+using ::paddle::distributed::PsRequestMessage;
+using ::paddle::distributed::PsResponseMessage;
 
 class PSServer {
  public:
@@ -96,7 +97,9 @@ class PSServer {
   virtual int32_t StartS2S() { return 0; }
 
   virtual ::std::future<int32_t> SendPServer2PServerMsg(
-      int msg_type, int to_pserver_id, const std::string &msg) {
+      int msg_type UNUSED,
+      int to_pserver_id UNUSED,
+      const std::string &msg UNUSED) {
     LOG(FATAL) << "NotImplementError: PSServer::send_pserver2pserver_msg";
     std::promise<int32_t> promise;
     std::future<int> fut = promise.get_future();
@@ -124,14 +127,14 @@ class PSServer {
     }
     return itr->second(msg_type, from_pserver_id, msg);
   }
-  virtual int32_t ReceiveFromPServer(int msg_type,
-                                     int pserver_id,
-                                     const std::string &msg) {
+  virtual int32_t ReceiveFromPServer(int msg_type UNUSED,
+                                     int pserver_id UNUSED,
+                                     const std::string &msg UNUSED) {
     LOG(FATAL) << "NotImplementError::PSServer::ReceiveFromPServer";
     return -1;
   }
 
-  paddle::framework::Channel<std::pair<uint64_t, std::string>> _shuffled_ins;
+  ::paddle::framework::Channel<std::pair<uint64_t, std::string>> _shuffled_ins;
 
  protected:
   virtual int32_t Initialize() = 0;

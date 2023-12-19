@@ -16,10 +16,11 @@
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/api/utils/hook_utils.h"
+#include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/tensor_wrapper.h"
 
+#include "paddle/common/layout.h"
 #include "paddle/phi/api/all.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/tensor_meta.h"
 
@@ -28,11 +29,43 @@
 #include "paddle/fluid/framework/variable.h"
 
 namespace egr {
+
+void SetGradOutputDistAttrIter::visit_element(paddle::Tensor* element,
+                                              const GradSlotMeta& meta) {
+  if (element == nullptr) {
+    VLOG(4) << "The input element is nullptr when calling "
+               "SetGradOutputDistAttrIter.";
+    return;
+  }
+  // Here the element is empty or defined DistTensor
+  VLOG(4) << "The input element is set DistTensor impl when calling "
+             "SetGradOutputDistAttrIter.";
+  element->set_impl(std::make_shared<phi::distributed::DistTensor>(
+      phi::DDim(), meta.DistAttr()));
+}
+
+void SetGradOutputDistAttrIter::visit(paddle::Tensor* element) {
+  if (!out_meta_[out_indexes_[cur_pos_]].empty()) {
+    visit_element(element, out_meta_[out_indexes_[cur_pos_]][0]);
+  }
+  cur_pos_++;
+}
+
+void SetGradOutputDistAttrIter::visit(
+    const std::vector<paddle::Tensor*>& elements) {
+  if (!out_meta_[out_indexes_[cur_pos_]].empty()) {
+    for (size_t i = 0; i < elements.size(); ++i) {
+      visit_element(elements.at(i), out_meta_[out_indexes_[cur_pos_]][i]);
+    }
+  }
+  cur_pos_++;
+}
+
 /**
  * Implementation of Eager Utils.
  **/
 
-AutogradMeta* EagerUtils::autograd_meta(paddle::experimental::Tensor* target) {
+AutogradMeta* EagerUtils::autograd_meta(paddle::Tensor* target) {
   auto* p_autograd_meta = target->get_autograd_meta();
   if (!p_autograd_meta) {
     auto p_autograd_meta_ptr = std::make_shared<AutogradMeta>();
@@ -42,8 +75,7 @@ AutogradMeta* EagerUtils::autograd_meta(paddle::experimental::Tensor* target) {
   return static_cast<AutogradMeta*>(p_autograd_meta);
 }
 
-AutogradMeta* EagerUtils::unsafe_autograd_meta(
-    const paddle::experimental::Tensor& target) {
+AutogradMeta* EagerUtils::unsafe_autograd_meta(const paddle::Tensor& target) {
   auto* p_autograd_meta = target.get_autograd_meta();
   PADDLE_ENFORCE(p_autograd_meta,
                  paddle::platform::errors::Fatal(
@@ -52,17 +84,16 @@ AutogradMeta* EagerUtils::unsafe_autograd_meta(
 }
 
 std::vector<AutogradMeta*> EagerUtils::unsafe_autograd_meta(
-    const std::vector<paddle::experimental::Tensor>& targets) {
+    const std::vector<paddle::Tensor>& targets) {
   std::vector<AutogradMeta*> metas;
   metas.reserve(targets.size());
-  for (const paddle::experimental::Tensor& t : targets) {
+  for (const paddle::Tensor& t : targets) {
     metas.emplace_back(unsafe_autograd_meta(t));
   }
   return metas;
 }
 
-AutogradMeta* EagerUtils::nullable_autograd_meta(
-    const paddle::experimental::Tensor& target) {
+AutogradMeta* EagerUtils::nullable_autograd_meta(const paddle::Tensor& target) {
   auto* p_autograd_meta = target.get_autograd_meta();
   if (!p_autograd_meta) return nullptr;
 
@@ -70,7 +101,7 @@ AutogradMeta* EagerUtils::nullable_autograd_meta(
 }
 
 AutogradMeta* EagerUtils::nullable_autograd_meta(
-    const paddle::optional<paddle::experimental::Tensor>& target) {
+    const paddle::optional<paddle::Tensor>& target) {
   if (target.get_ptr() != nullptr) {
     return EagerUtils::nullable_autograd_meta(*(target.get_ptr()));
   }
@@ -78,58 +109,58 @@ AutogradMeta* EagerUtils::nullable_autograd_meta(
 }
 
 std::vector<AutogradMeta*> EagerUtils::nullable_autograd_meta(
-    const std::vector<paddle::experimental::Tensor>& targets) {
+    const std::vector<paddle::Tensor>& targets) {
   std::vector<AutogradMeta*> metas;
   metas.reserve(targets.size());
-  for (const paddle::experimental::Tensor& t : targets) {
+  for (const paddle::Tensor& t : targets) {
     metas.emplace_back(nullable_autograd_meta(t));
   }
   return metas;
 }
 
 std::vector<AutogradMeta*> EagerUtils::nullable_autograd_meta(
-    const std::vector<paddle::experimental::Tensor*>& targets) {
+    const std::vector<paddle::Tensor*>& targets) {
   std::vector<AutogradMeta*> metas;
   metas.reserve(targets.size());
-  for (const paddle::experimental::Tensor* t : targets) {
+  for (const paddle::Tensor* t : targets) {
     metas.emplace_back(nullable_autograd_meta(*t));
   }
   return metas;
 }
 
 std::vector<AutogradMeta*> EagerUtils::autograd_meta(
-    std::vector<paddle::experimental::Tensor>* targets) {
+    std::vector<paddle::Tensor>* targets) {
   std::vector<AutogradMeta*> ret;
   ret.reserve(targets->size());
 
   // for autograd_meta we can tolerent it has nullptr.
-  for (size_t i = 0; i < targets->size(); i++) {
-    auto* p_autograd_meta = autograd_meta(&((*targets)[i]));
+  for (auto& target : *targets) {
+    auto* p_autograd_meta = autograd_meta(&target);
     ret.emplace_back(p_autograd_meta);
   }
   return ret;
 }
 
 std::vector<AutogradMeta*> EagerUtils::autograd_meta(
-    std::vector<paddle::experimental::Tensor*>* targets) {
+    std::vector<paddle::Tensor*>* targets) {
   std::vector<AutogradMeta*> ret;
   ret.reserve(targets->size());
 
   // for autograd_meta we can tolerent it has nullptr.
-  for (size_t i = 0; i < targets->size(); i++) {
-    auto* p_autograd_meta = autograd_meta((*targets)[i]);
+  for (auto& target : *targets) {
+    auto* p_autograd_meta = autograd_meta(target);
     ret.emplace_back(p_autograd_meta);
   }
   return ret;
 }
 
 std::pair<size_t, size_t> EagerUtils::OutRankInfo(
-    const paddle::experimental::Tensor& target) {
+    const paddle::Tensor& target) {
   return unsafe_autograd_meta(target)->OutRankInfo();
 }
 
 std::shared_ptr<GradNodeBase> EagerUtils::grad_node(
-    const paddle::experimental::Tensor& target) {
+    const paddle::Tensor& target) {
   auto* meta = nullable_autograd_meta(target);
   if (meta) {
     return meta->GetMutableGradNode();
@@ -138,8 +169,7 @@ std::shared_ptr<GradNodeBase> EagerUtils::grad_node(
   }
 }
 
-paddle::experimental::Tensor* EagerUtils::mutable_grad(
-    const paddle::experimental::Tensor& target) {
+paddle::Tensor* EagerUtils::mutable_grad(const paddle::Tensor& target) {
   auto* meta = nullable_autograd_meta(target);
   if (meta) {
     return meta->MutableGrad();
@@ -181,18 +211,41 @@ void EagerUtils::SetOutRankWithSlot(AutogradMeta* target, size_t slot_id) {
   target->SetSingleOutRankWithSlot(slot_id, 0);
 }
 
+bool EagerUtils::IsLeafTensor(const paddle::Tensor& target) {
+  std::shared_ptr<GradNodeBase> grad_node_ptr = grad_node(target);
+  if (!grad_node_ptr ||
+      std::dynamic_pointer_cast<GradNodeAccumulation>(grad_node_ptr)) {
+    return true;
+  }
+
+  return false;
+}
+
+void EagerUtils::CheckInplace(const paddle::Tensor& target,
+                              const AutogradMeta* autograd_meta,
+                              bool require_any_grad) {
+  if (require_any_grad && autograd_meta) {
+    PADDLE_ENFORCE_EQ(!autograd_meta->StopGradient() && IsLeafTensor(target),
+                      false,
+                      paddle::platform::errors::InvalidArgument(
+                          "Leaf Var (%s) that doesn't stop gradient "
+                          "can't use inplace strategy.",
+                          target.name()));
+  }
+}
+
 std::shared_ptr<egr::EagerVariable> EagerUtils::TrySyncToVar(
-    const paddle::experimental::Tensor& tensor) {
+    const paddle::Tensor& tensor) {
   return std::make_shared<egr::EagerVariable>(tensor);
 }
 
 std::vector<std::shared_ptr<egr::EagerVariable>> EagerUtils::TrySyncToVars(
-    const paddle::experimental::Tensor& tensor) {
+    const paddle::Tensor& tensor) {
   return {TrySyncToVar(tensor)};
 }
 
 std::vector<std::shared_ptr<egr::EagerVariable>> EagerUtils::TrySyncToVars(
-    paddle::experimental::Tensor* tensor) {
+    paddle::Tensor* tensor) {
   PADDLE_ENFORCE_NOT_NULL(
       tensor,
       paddle::platform::errors::Fatal(
@@ -202,7 +255,7 @@ std::vector<std::shared_ptr<egr::EagerVariable>> EagerUtils::TrySyncToVars(
 }
 
 std::vector<std::shared_ptr<egr::EagerVariable>> EagerUtils::TrySyncToVars(
-    const std::vector<paddle::experimental::Tensor*>& tensors) {
+    const std::vector<paddle::Tensor*>& tensors) {
   std::vector<std::shared_ptr<EagerVariable>> res;
   size_t num = tensors.size();
   res.reserve(num);
@@ -221,7 +274,7 @@ std::vector<std::shared_ptr<egr::EagerVariable>> EagerUtils::TrySyncToVars(
 }
 
 std::vector<std::shared_ptr<egr::EagerVariable>> EagerUtils::TrySyncToVars(
-    const std::vector<paddle::experimental::Tensor>& tensors) {
+    const std::vector<paddle::Tensor>& tensors) {
   std::vector<std::shared_ptr<EagerVariable>> res;
   size_t num = tensors.size();
   res.reserve(num);
@@ -272,8 +325,7 @@ void EagerUtils::HandleViewBetweenInputAndOutput(
 }
 
 void EagerUtils::HandleViewBetweenInputAndOutput(
-    const paddle::experimental::Tensor& input_tensor,
-    paddle::experimental::Tensor* view_output_tensor) {
+    const paddle::Tensor& input_tensor, paddle::Tensor* view_output_tensor) {
   PADDLE_ENFORCE_EQ(
       input_tensor.initialized(),
       true,
@@ -285,6 +337,10 @@ void EagerUtils::HandleViewBetweenInputAndOutput(
         std::dynamic_pointer_cast<phi::DenseTensor>(input_tensor.impl());
     if (view_output_tensor->impl() == nullptr) {
       view_output_tensor->set_impl(std::make_shared<phi::DenseTensor>());
+    } else {
+      PADDLE_ENFORCE(view_output_tensor->is_dense_tensor(),
+                     phi::errors::Unavailable(
+                         "DenseTensor can not be inplaced with other Tensor."));
     }
     auto view_output_dense_tensor =
         std::dynamic_pointer_cast<phi::DenseTensor>(view_output_tensor->impl());
@@ -296,12 +352,41 @@ void EagerUtils::HandleViewBetweenInputAndOutput(
             << view_output_tensor->name() << ") and Input Tensor("
             << input_tensor.name()
             << "), share allocation and inplace version.";
+  } else if (input_tensor.is_dist_tensor()) {
+    auto input_dense_tensor =
+        std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+            input_tensor.impl())
+            ->unsafe_mutable_value();
+    if (view_output_tensor->impl() == nullptr) {
+      view_output_tensor->set_impl(
+          std::make_shared<phi::distributed::DistTensor>(
+              input_tensor.dims(),
+              std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                  input_tensor.impl())
+                  ->dist_attr()));
+    } else {
+      PADDLE_ENFORCE(view_output_tensor->is_dist_tensor(),
+                     phi::errors::Unavailable(
+                         "DistTensor can not be inplaced with other Tensor."));
+    }
+    auto view_output_dense_tensor =
+        std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+            view_output_tensor->impl())
+            ->unsafe_mutable_value();
+    view_output_dense_tensor->ShareBufferWith(*input_dense_tensor);
+    view_output_dense_tensor->ShareInplaceVersionCounterWith(
+        *input_dense_tensor);
+
+    VLOG(4) << "Perform View between Output Tensor("
+            << view_output_tensor->name() << ") and Input Tensor("
+            << input_tensor.name()
+            << "), share allocation and inplace version.";
   }
 }
 
-std::vector<paddle::experimental::Tensor> EagerUtils::GetOutputs(
+std::vector<paddle::Tensor> EagerUtils::GetOutputs(
     const std::vector<std::shared_ptr<EagerVariable>>& outs) {
-  std::vector<paddle::experimental::Tensor> res;
+  std::vector<paddle::Tensor> res;
   res.reserve(outs.size());
   for (const auto& out : outs) {
     PADDLE_ENFORCE_NOT_NULL(
@@ -317,7 +402,7 @@ std::vector<paddle::experimental::Tensor> EagerUtils::GetOutputs(
   return res;
 }
 
-paddle::experimental::Tensor EagerUtils::GetOutput(
+paddle::Tensor EagerUtils::GetOutput(
     const std::shared_ptr<EagerVariable>& out) {
   PADDLE_ENFORCE_NOT_NULL(
       out.get(),
@@ -326,11 +411,11 @@ paddle::experimental::Tensor EagerUtils::GetOutput(
           "are tring to Get Output tensor from its shared_ptr, "
           "this error may indicate output is nullptr",
           out->name()));
-  return paddle::experimental::Tensor(out->GetTensorBase(), out->name());
+  return paddle::Tensor(out->GetTensorBase(), out->name());
 }
 
 void EagerUtils::GetOutput(const std::shared_ptr<EagerVariable>& out,
-                           paddle::experimental::Tensor* out_var) {
+                           paddle::Tensor* out_var) {
   PADDLE_ENFORCE_NOT_NULL(
       out_var,
       paddle::platform::errors::Fatal(
@@ -344,15 +429,15 @@ void EagerUtils::GetOutput(const std::shared_ptr<EagerVariable>& out,
 
 void EagerUtils::GetOutputs(
     const std::vector<std::shared_ptr<EagerVariable>>& outs,
-    std::vector<paddle::experimental::Tensor>* result) {
-  for (size_t i = 0; i < outs.size(); i++) {
-    result->emplace_back(outs[i]->GetTensorBase());
+    std::vector<paddle::Tensor>* result) {
+  for (const auto& out : outs) {
+    result->emplace_back(out->GetTensorBase());
   }
 }
 
 void EagerUtils::GetOutputs(
     const std::vector<std::shared_ptr<EagerVariable>>& outs,
-    const std::vector<paddle::experimental::Tensor*>& out_var) {
+    const std::vector<paddle::Tensor*>& out_var) {
   for (size_t i = 0; i < outs.size(); i++) {
     PADDLE_ENFORCE_NOT_NULL(
         out_var[i],
@@ -366,13 +451,12 @@ void EagerUtils::GetOutputs(
 }
 
 void EagerUtils::GetOutputs(const std::shared_ptr<EagerVariable>& out,
-                            std::vector<paddle::experimental::Tensor>* result) {
+                            std::vector<paddle::Tensor>* result) {
   result->emplace_back(out->GetTensorBase());
 }
 
-void EagerUtils::GetOutputs(
-    const std::shared_ptr<EagerVariable>& out,
-    const std::vector<paddle::experimental::Tensor*>& out_var) {
+void EagerUtils::GetOutputs(const std::shared_ptr<EagerVariable>& out,
+                            const std::vector<paddle::Tensor*>& out_var) {
   PADDLE_ENFORCE_NOT_NULL(
       out_var[0],
       paddle::platform::errors::Fatal(
@@ -383,23 +467,21 @@ void EagerUtils::GetOutputs(
   out_var[0]->set_impl(out->GetTensorBase());
 }
 
-void EagerUtils::Output2Result(
-    const std::vector<paddle::experimental::Tensor*>& out_var,
-    std::vector<paddle::experimental::Tensor>* result) {
+void EagerUtils::Output2Result(const std::vector<paddle::Tensor*>& out_var,
+                               std::vector<paddle::Tensor>* result) {
   result->reserve(out_var.size());
-  for (size_t i = 0; i < out_var.size(); i++) {
-    result->emplace_back(*out_var[i]);
+  for (auto* item : out_var) {
+    result->emplace_back(*item);
   }
 }
 
-paddle::experimental::Tensor EagerUtils::RecoverTensorWrapper(
-    TensorWrapper* tw) {
+paddle::Tensor EagerUtils::RecoverTensorWrapper(TensorWrapper* tw) {
   return tw->recover();
 }
 
-std::vector<paddle::experimental::Tensor> EagerUtils::RecoverTensorWrapper(
+std::vector<paddle::Tensor> EagerUtils::RecoverTensorWrapper(
     std::vector<TensorWrapper>* tw) {
-  std::vector<paddle::experimental::Tensor> ret;
+  std::vector<paddle::Tensor> ret;
   for (auto& t : *tw) {
     ret.emplace_back(t.recover());
   }
@@ -407,7 +489,7 @@ std::vector<paddle::experimental::Tensor> EagerUtils::RecoverTensorWrapper(
 }
 
 std::shared_ptr<egr::GradNodeBase> EagerUtils::GetGradAccumulationNode(
-    const paddle::experimental::Tensor& tensor) {
+    const paddle::Tensor& tensor) {
   auto* autograd_ptr = nullable_autograd_meta(tensor);
   if (!autograd_ptr) {
     return nullptr;
@@ -445,57 +527,401 @@ std::shared_ptr<egr::GradNodeBase> EagerUtils::GetGradAccumulationNode(
 }
 
 void EagerUtils::FillZeroForEmptyOptionalGradInput(
-    std::vector<paddle::experimental::Tensor>* in_grads,
+    std::vector<paddle::Tensor>* in_grads,
     const std::vector<GradSlotMeta>& grad_in_metas) {
   for (size_t i = 0; i < in_grads->size(); i++) {
-    paddle::experimental::Tensor& grad = (*in_grads)[i];
+    paddle::Tensor& grad = (*in_grads)[i];
     if (!grad.initialized() && grad_in_metas[i].HasTensorMeta()) {
-      auto tensor_with_zero = paddle::experimental::full(
-          phi::vectorize(grad_in_metas[i].GetTensorMeta().dims),
-          0.0,
-          grad_in_metas[i].GetTensorMeta().dtype,
-          grad_in_metas[i].GetPlace());
-      grad.set_impl(tensor_with_zero.impl());
+      if (grad_in_metas[i].IsDistMeta()) {
+        grad.set_impl(std::make_shared<phi::distributed::DistTensor>(
+            grad_in_metas[i].DistTensorGlobalDims(),
+            grad_in_metas[i].DistAttr()));
+        if (grad_in_metas[i].GetTensorMeta().dims.size() != -1) {
+          auto tensor_with_zero = paddle::experimental::full(
+              common::vectorize(grad_in_metas[i].GetTensorMeta().dims),
+              0.0,
+              grad_in_metas[i].GetTensorMeta().dtype,
+              grad_in_metas[i].GetPlace());
+          *(static_cast<phi::distributed::DistTensor*>(grad.impl().get())
+                ->unsafe_mutable_value()) =
+              *(static_cast<phi::DenseTensor*>(tensor_with_zero.impl().get()));
+        }
+      } else {
+        auto tensor_with_zero = paddle::experimental::full(
+            common::vectorize(grad_in_metas[i].GetTensorMeta().dims),
+            0.0,
+            grad_in_metas[i].GetTensorMeta().dtype,
+            grad_in_metas[i].GetPlace());
+        grad.set_impl(tensor_with_zero.impl());
+      }
     }
   }
 }
 
-void EagerUtils::FillZeroForEmptyGradInput(
-    paddle::experimental::Tensor* in_grad, const GradSlotMeta& grad_in_meta) {
+void EagerUtils::FillZeroForEmptyOptionalGradOutput(
+    std::vector<paddle::Tensor>* output_grads,
+    const std::vector<GradSlotMeta>& grad_output_metas) {
+  for (size_t i = 0; i < output_grads->size(); i++) {
+    if (grad_output_metas[i].IsStopGradient()) {
+      continue;
+    }
+    paddle::Tensor& grad = (*output_grads)[i];
+    if (!grad.initialized() && grad_output_metas[i].HasTensorMeta()) {
+      if (grad.defined() && grad.is_selected_rows()) {
+        continue;
+      }
+      if (grad_output_metas[i].IsDistMeta()) {
+        grad.set_impl(std::make_shared<phi::distributed::DistTensor>(
+            grad_output_metas[i].DistTensorGlobalDims(),
+            grad_output_metas[i].DistAttr()));
+        if (grad_output_metas[i].GetTensorMeta().dims.size() != -1) {
+          auto tensor_with_zero = paddle::experimental::full(
+              common::vectorize(grad_output_metas[i].GetTensorMeta().dims),
+              0.0,
+              grad_output_metas[i].GetTensorMeta().dtype,
+              grad_output_metas[i].GetPlace());
+          *(static_cast<phi::distributed::DistTensor*>(grad.impl().get())
+                ->unsafe_mutable_value()) =
+              *(static_cast<phi::DenseTensor*>(tensor_with_zero.impl().get()));
+        }
+      } else {
+        auto tensor_with_zero =
+            paddle::experimental::full(  // only create dense tensor.
+                common::vectorize(grad_output_metas[i].GetTensorMeta().dims),
+                0.0,
+                grad_output_metas[i].GetTensorMeta().dtype,
+                grad_output_metas[i].GetPlace());
+        grad.set_impl(tensor_with_zero.impl());
+      }
+    }
+  }
+}
+
+void EagerUtils::FillZeroForEmptyGradInput(paddle::Tensor* in_grad,
+                                           const GradSlotMeta& grad_in_meta) {
   if (!in_grad->initialized()) {
     PADDLE_ENFORCE(
         grad_in_meta.HasTensorMeta(),
         paddle::platform::errors::Fatal(
             "Unable to fill empty grad inputs due to empty GradSlotMeta"));
     const auto& tensor_meta = grad_in_meta.GetTensorMeta();
-    auto tensor_with_zero =
-        paddle::experimental::full(phi::vectorize(tensor_meta.dims),
-                                   0.0,
-                                   tensor_meta.dtype,
-                                   grad_in_meta.GetPlace());
-    in_grad->set_impl(tensor_with_zero.impl());
+    if (grad_in_meta.IsDistMeta()) {
+      in_grad->set_impl(std::make_shared<phi::distributed::DistTensor>(
+          grad_in_meta.DistTensorGlobalDims(), grad_in_meta.DistAttr()));
+      if (tensor_meta.dims.size() != -1) {
+        auto tensor_with_zero =
+            paddle::experimental::full(common::vectorize(tensor_meta.dims),
+                                       0.0,
+                                       tensor_meta.dtype,
+                                       grad_in_meta.GetPlace());
+        *(static_cast<phi::distributed::DistTensor*>(in_grad->impl().get())
+              ->unsafe_mutable_value()) =
+            *(static_cast<phi::DenseTensor*>(tensor_with_zero.impl().get()));
+      }
+    } else {
+      auto tensor_with_zero =
+          paddle::experimental::full(common::vectorize(tensor_meta.dims),
+                                     0.0,
+                                     tensor_meta.dtype,
+                                     grad_in_meta.GetPlace());
+      in_grad->set_impl(tensor_with_zero.impl());
+    }
   }
 }
 
 void EagerUtils::FillZeroForEmptyOptionalGradInput(
-    paddle::experimental::Tensor* in_grad, const GradSlotMeta& grad_in_meta) {
+    paddle::Tensor* in_grad, const GradSlotMeta& grad_in_meta) {
   if (!in_grad->initialized() && grad_in_meta.HasTensorMeta()) {
     const auto& tensor_meta = grad_in_meta.GetTensorMeta();
-    auto tensor_with_zero =
-        paddle::experimental::full(phi::vectorize(tensor_meta.dims),
-                                   0.0,
-                                   tensor_meta.dtype,
-                                   grad_in_meta.GetPlace());
-    in_grad->set_impl(tensor_with_zero.impl());
+    if (grad_in_meta.IsDistMeta()) {
+      in_grad->set_impl(std::make_shared<phi::distributed::DistTensor>(
+          grad_in_meta.DistTensorGlobalDims(), grad_in_meta.DistAttr()));
+      if (tensor_meta.dims.size() != -1) {
+        auto tensor_with_zero =
+            paddle::experimental::full(common::vectorize(tensor_meta.dims),
+                                       0.0,
+                                       tensor_meta.dtype,
+                                       grad_in_meta.GetPlace());
+        *(static_cast<phi::distributed::DistTensor*>(in_grad->impl().get())
+              ->unsafe_mutable_value()) =
+            *(static_cast<phi::DenseTensor*>(tensor_with_zero.impl().get()));
+      }
+    } else {
+      auto tensor_with_zero =
+          paddle::experimental::full(common::vectorize(tensor_meta.dims),
+                                     0.0,
+                                     tensor_meta.dtype,
+                                     grad_in_meta.GetPlace());
+      in_grad->set_impl(tensor_with_zero.impl());
+    }
   }
 }
 
 void EagerUtils::FillZeroForEmptyGradInput(
-    std::vector<paddle::experimental::Tensor>* in_grads,
+    std::vector<paddle::Tensor>* in_grads,
     const std::vector<GradSlotMeta>& grad_in_metas) {
   for (size_t i = 0; i < in_grads->size(); i++) {
     FillZeroForEmptyGradInput(&in_grads->at(i), grad_in_metas[i]);
   }
 }
 
+std::string EagerUtils::GradNodeStr(const egr::GradNodeBase& node) {
+  if (VLOG_IS_ON(6)) {
+    const char* GRAD_NODE_TEMPLATE =
+        "BackwardOutMeta: [ %s ], BackwardInMeta: [ %s ]";
+    const char* GRAD_SLOT_META_TEMPLATE = " {SlotSize: [%d]: %s} ";
+    const char* SLOT_INFO_TEMPLATE =
+        "SlotID: %s, StopGradients: %s, Edges[ %s ]";
+    auto out_metas = node.OutputMeta();
+    auto in_metas = node.InputMeta();
+    std::string out_slot_str = "";
+    std::string in_slot_str = "";
+    const char* EDGE_INFO_TEMPLATE = " { [%d, %d]: [%s, %s] }, ";
+    std::string slot_str = "";
+    for (size_t i = 0; i < out_metas.size(); i++) {
+      std::string edges_str = "";
+      std::string sg_str = "";
+      for (const GradSlotMeta& meta : out_metas[i]) {
+        const egr::Edge& edge = meta.GetEdge();
+        if (edge.IsInitialized()) {
+          edges_str += paddle::string::Sprintf(EDGE_INFO_TEMPLATE,
+                                               edge.GetEdgeRankInfo().first,
+                                               edge.GetEdgeRankInfo().second,
+                                               edge.GetGradNode(),
+                                               edge.GetGradNode()->name());
+        } else {
+          edges_str += paddle::string::Sprintf("{ NULL Edge }");
+        }
+        sg_str += meta.IsStopGradient() ? "1, " : "0, ";
+      }
+      out_slot_str +=
+          paddle::string::Sprintf(SLOT_INFO_TEMPLATE, i, sg_str, edges_str);
+    }
+    std::string out_meta_str = paddle::string::Sprintf(
+        GRAD_SLOT_META_TEMPLATE, out_metas.size(), out_slot_str);
+
+    for (size_t i = 0; i < in_metas.size(); i++) {
+      std::string edges_str = "";
+      std::string sg_str = "";
+      for (const GradSlotMeta& meta : in_metas[i]) {
+        edges_str += paddle::string::Sprintf("{ NULL Edge }");
+        sg_str += meta.IsStopGradient() ? "1, " : "0, ";
+      }
+      in_slot_str +=
+          paddle::string::Sprintf(SLOT_INFO_TEMPLATE, i, sg_str, edges_str);
+    }
+    std::string in_meta_str =
+        paddle::string::Sprintf(GRAD_SLOT_META_TEMPLATE, in_slot_str);
+    return paddle::string::Sprintf(
+        GRAD_NODE_TEMPLATE, out_meta_str, in_meta_str);
+  } else if (VLOG_IS_ON(5)) {
+    const char* GRAD_NODE_TEMPLATE =
+        "BackwardOutMeta: [ %s ], BackwardInMeta: [ %s ]";
+    const char* GRAD_SLOT_META_TEMPLATE = "SlotSize: %d";
+    std::string out_meta_str = paddle::string::Sprintf(
+        GRAD_SLOT_META_TEMPLATE, node.OutputMeta().size());
+    std::string in_meta_str = paddle::string::Sprintf(GRAD_SLOT_META_TEMPLATE,
+                                                      node.InputMeta().size());
+    return paddle::string::Sprintf(
+        GRAD_NODE_TEMPLATE, out_meta_str, in_meta_str);
+  } else {
+    return "[ Not specified grad node log level. ] ";
+  }
+}
+
+std::string EagerUtils::GradNodeStr(const paddle::Tensor& t) {
+  auto* ad_meta = nullable_autograd_meta(t);
+  if (ad_meta && (ad_meta->GetMutableGradNode().get())) {
+    return GradNodeStr((*ad_meta->GetMutableGradNode().get()));
+  } else {
+    return "None";
+  }
+}
+
+/**
+ * Print Input Output (level 0 means least info, level 2 means most info)
+ * **/
+std::string EagerUtils::TensorStr(const paddle::Tensor& t) {
+  std::string tensor_name_str = "";
+  if (t.name() == "") {
+    tensor_name_str = "None";
+  } else {
+    tensor_name_str = t.name();
+  }
+  const char* TENSOR_INFO_TEMPLATE =
+      "Type: %s, Dtype: %s, Place: %s, Shape: %s, DistAttr: %s";
+  std::string tensor_info_str = "";
+  if (t.defined()) {
+    if (t.is_dist_tensor()) {
+      const char* DIST_TENSOR_INFO_TEMPLATE =
+          "Type: %s, Dtype: %s, Place: %s, Is_defined: %s, Is_initialized: %s, "
+          "Shape: %s, DistAttr: %s";
+      auto dist_t =
+          std::static_pointer_cast<phi::distributed::DistTensor>(t.impl());
+      if (t.initialized()) {
+        tensor_info_str += paddle::string::Sprintf(
+            DIST_TENSOR_INFO_TEMPLATE,
+            t.impl()->type_info().name(),
+            t.dtype(),
+            t.place().DebugString(),
+            dist_t->defined(),
+            dist_t->initialized(),
+            paddle::string::Sprintf(
+                "%s, Local Shape: %s", t.dims(), dist_t->local_dims()),
+            dist_t->dist_attr());
+      } else {
+        tensor_info_str += paddle::string::Sprintf(DIST_TENSOR_INFO_TEMPLATE,
+                                                   t.impl()->type_info().name(),
+                                                   "Unknown",
+                                                   "Unknown",
+                                                   dist_t->defined(),
+                                                   dist_t->initialized(),
+                                                   t.dims(),
+                                                   dist_t->dist_attr());
+      }
+    } else {
+      if (t.initialized()) {
+        tensor_info_str += paddle::string::Sprintf(TENSOR_INFO_TEMPLATE,
+                                                   t.impl()->type_info().name(),
+                                                   t.dtype(),
+                                                   t.place().DebugString(),
+                                                   t.dims(),
+                                                   "Unknown");
+      } else {
+        tensor_info_str += paddle::string::Sprintf(TENSOR_INFO_TEMPLATE,
+                                                   t.impl()->type_info().name(),
+                                                   "Unknown",
+                                                   "Unknown",
+                                                   "Unknown",
+                                                   "Unknown");
+      }
+    }
+  } else {
+    tensor_info_str += "Unknown";
+  }
+  if (VLOG_IS_ON(11)) {
+    const char* TENSOR_PRINT_TEMPLATE =
+        "{Name: %s, Initialized: %d, Ptr: %d, "
+        "TensorInfo: [ %s ], Value:[ %s ], ADInfo:[ %s ]}";
+    auto* ad_meta = nullable_autograd_meta(t);
+    if (ad_meta && (ad_meta->WeakGrad().lock().get())) {
+      std::string ad_info_str = "";
+      const char* AD_INFO_TEMPLATE =
+          "Grad: [ %s ],  GradNode: [ %s ], StopGradient: [ %d ]";
+      ad_info_str += paddle::string::Sprintf(AD_INFO_TEMPLATE,
+                                             TensorStr(ad_meta->Grad()),
+                                             GradNodeStr(t),
+                                             ad_meta->StopGradient());
+      auto* data_ptr = dynamic_cast<phi::DenseTensor*>(t.impl().get());
+      if (t.is_initialized() && data_ptr) {
+        return paddle::string::Sprintf(TENSOR_PRINT_TEMPLATE,
+                                       tensor_name_str,
+                                       t.initialized(),
+                                       t.impl(),
+                                       tensor_info_str,
+                                       *data_ptr,
+                                       ad_info_str);
+      } else {
+        return paddle::string::Sprintf(TENSOR_PRINT_TEMPLATE,
+                                       tensor_name_str,
+                                       t.initialized(),
+                                       t.impl(),
+                                       tensor_info_str,
+                                       "None",
+                                       ad_info_str);
+      }
+    } else {
+      auto* data_ptr = dynamic_cast<phi::DenseTensor*>(t.impl().get());
+      if (t.is_initialized() && data_ptr) {
+        return paddle::string::Sprintf(TENSOR_PRINT_TEMPLATE,
+                                       tensor_name_str,
+                                       t.initialized(),
+                                       t.impl(),
+                                       tensor_info_str,
+                                       *data_ptr,
+                                       "None");
+      } else {
+        return paddle::string::Sprintf(TENSOR_PRINT_TEMPLATE,
+                                       tensor_name_str,
+                                       t.initialized(),
+                                       t.impl(),
+                                       tensor_info_str,
+                                       "None",
+                                       "None");
+      }
+    }
+  } else if (VLOG_IS_ON(6)) {
+    const char* TENSOR_PRINT_TEMPLATE =
+        "{Name: %s, Initialized: %d, Ptr: %d,"
+        "TensorInfo: [ %s ], ADInfo:[ %s ]}";
+    auto* ad_meta = nullable_autograd_meta(t);
+    if (ad_meta && (ad_meta->WeakGrad().lock().get())) {
+      std::string ad_info_str = "";
+      const char* AD_INFO_TEMPLATE =
+          "Grad: [ %s ],  GradNode: [ %s ], StopGradient: [ %d ]";
+      ad_info_str += paddle::string::Sprintf(AD_INFO_TEMPLATE,
+                                             TensorStr(ad_meta->Grad()),
+                                             GradNodeStr(t),
+                                             ad_meta->StopGradient());
+      return paddle::string::Sprintf(TENSOR_PRINT_TEMPLATE,
+                                     tensor_name_str,
+                                     t.initialized(),
+                                     t.impl(),
+                                     tensor_info_str,
+                                     ad_info_str);
+    } else {
+      return paddle::string::Sprintf(TENSOR_PRINT_TEMPLATE,
+                                     tensor_name_str,
+                                     t.initialized(),
+                                     t.impl(),
+                                     tensor_info_str,
+                                     "None");
+    }
+  } else if (VLOG_IS_ON(5)) {
+    const char* TENSOR_PRINT_TEMPLATE =
+        "{Name: %s, Initialized: %d , Ptr: %d, "
+        "TensorInfo: [ %s ]}";
+    return paddle::string::Sprintf(TENSOR_PRINT_TEMPLATE,
+                                   tensor_name_str,
+                                   t.initialized(),
+                                   t.impl(),
+                                   tensor_info_str);
+  } else if (VLOG_IS_ON(4)) {
+    const char* TENSOR_PRINT_TEMPLATE =
+        "{ Name: %s, Initialized: %d, Ptr: %d }";
+    return paddle::string::Sprintf(
+        TENSOR_PRINT_TEMPLATE, tensor_name_str, t.initialized(), t.impl());
+  } else {
+    return "[ Not specified tensor log level ]";
+  }
+}
+
+std::string EagerUtils::TensorStr(const std::vector<paddle::Tensor>& tensors) {
+  std::string tensors_str = "";
+  for (const auto& tensor : tensors) {
+    tensors_str += TensorStr(tensor) + ", ";
+  }
+  return "[ " + tensors_str + " ]";
+}
+
+std::string EagerUtils::TensorStr(const paddle::optional<paddle::Tensor>& t) {
+  if (!t.is_initialized()) {
+    return "{ UnDefinedTensor }";
+  } else {
+    return TensorStr((*t.get_ptr()));
+  }
+}
+
+std::string EagerUtils::TensorStr(
+    const paddle::optional<std::vector<paddle::Tensor>>& tensors) {
+  std::string tensors_str = "";
+  if (!tensors.is_initialized()) {
+    return "[ UnDefinedTensor List ]";
+  } else {
+    for (const auto& tensor : (*tensors.get_ptr())) {
+      tensors_str += TensorStr(tensor) + ", ";
+    }
+    return "[ " + tensors_str + " ]";
+  }
+}
 }  // namespace egr

@@ -287,11 +287,7 @@ void FillHashTable(const framework::ExecutionContext& ctx,
                    thrust::device_vector<T>* keys,
                    thrust::device_vector<T>* values,
                    thrust::device_vector<int64_t>* key_index) {
-#ifdef PADDLE_WITH_HIP
-  int block = 256;
-#else
   int block = 1024;
-#endif
   const auto& dev_ctx = ctx.cuda_device_context();
   int max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int grid_tmp = (num_input + block - 1) / block;
@@ -377,12 +373,8 @@ void ReindexFunc(const framework::ExecutionContext& ctx,
   subset->resize(unique_items.size());
   thrust::copy(unique_items.begin(), unique_items.end(), subset->begin());
 
-// Fill outputs with reindex result.
-#ifdef PADDLE_WITH_HIP
-  int block = 256;
-#else
+  // Fill outputs with reindex result.
   int block = 1024;
-#endif
   const auto& dev_ctx = ctx.cuda_device_context();
   int64_t max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int64_t grid_tmp = (outputs->size() + block - 1) / block;
@@ -412,7 +404,7 @@ void ReindexFunc(const framework::ExecutionContext& ctx,
                           thrust::raw_pointer_cast(values.data()));
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class GraphKhopSamplerOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -422,6 +414,31 @@ class GraphKhopSamplerOpCUDAKernel : public framework::OpKernel<T> {
     auto* vertices = ctx.Input<phi::DenseTensor>("X");
     std::vector<int> sample_sizes = ctx.Attr<std::vector<int>>("sample_sizes");
     bool return_eids = ctx.Attr<bool>("return_eids");
+
+    auto row_dims = src->dims();
+    auto row_dims_lens = row_dims.size();
+    auto col_dims = dst_count->dims();
+    auto col_dims_lens = col_dims.size();
+    auto x_dims = vertices->dims();
+    auto x_dims_lens = x_dims.size();
+    for (int i = 0; i < row_dims_lens; i++) {
+      PADDLE_ENFORCE_NE(
+          row_dims[i],
+          0,
+          phi::errors::InvalidArgument("The size of Row(X) should not be 0."));
+    }
+    for (int i = 0; i < col_dims_lens; i++) {
+      PADDLE_ENFORCE_NE(col_dims[i],
+                        0,
+                        phi::errors::InvalidArgument(
+                            "The size of Col_Ptr(X) should not be 0."));
+    }
+    for (int i = 0; i < x_dims_lens; i++) {
+      PADDLE_ENFORCE_NE(x_dims[i],
+                        0,
+                        phi::errors::InvalidArgument(
+                            "The size of Input_Node(X) should not be 0."));
+    }
 
     const T* src_data = src->data<T>();
     const T* dst_count_data = dst_count->data<T>();
@@ -643,6 +660,9 @@ class GraphKhopSamplerOpCUDAKernel : public framework::OpKernel<T> {
 using CUDA = phi::GPUContext;
 namespace ops = paddle::operators;
 
-REGISTER_OP_CUDA_KERNEL(graph_khop_sampler,
-                        ops::GraphKhopSamplerOpCUDAKernel<CUDA, int32_t>,
-                        ops::GraphKhopSamplerOpCUDAKernel<CUDA, int64_t>);
+PD_REGISTER_STRUCT_KERNEL(graph_khop_sampler,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::GraphKhopSamplerOpCUDAKernel,
+                          int32_t,
+                          int64_t) {}

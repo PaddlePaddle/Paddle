@@ -16,32 +16,32 @@ import inspect
 from os import path
 
 import paddle
-from paddle.fluid.proto import framework_pb2
+from paddle.base.proto import framework_pb2
 
-from ...fluid import core, unique_name
-from ...fluid.framework import OpProtoHolder
+from ...base import core, unique_name
+from ...base.framework import OpProtoHolder
 
 try:
-    from paddle.fluid.proto import pass_desc_pb2
+    from paddle.base.proto import pass_desc_pb2
 except ModuleNotFoundError:
     import sys
 
-    fluid_path = path.dirname(__file__) + '/../../fluid'
-    sys.path.append(path.join(fluid_path, 'proto'))
-    from paddle.fluid.proto import pass_desc_pb2
+    base_path = path.dirname(__file__) + '/../../base'
+    sys.path.append(path.join(base_path, 'proto'))
+    from paddle.base.proto import pass_desc_pb2
 
 
 class RegisterPassHelper:
-    _register_helpers = list()
+    _register_helpers = []
 
-    def __init__(self, pass_pairs, pass_type=str(), input_specs=dict()):
+    def __init__(self, pass_pairs, pass_type='', input_specs={}):
         self._pass_type = pass_type
         self._pass_pairs = pass_pairs
         self._input_specs = input_specs
         RegisterPassHelper._register_helpers.append(self)
 
     def _get_args_from_func(self, func):
-        args = list()
+        args = []
         arg_specs = inspect.getfullargspec(func)
         for arg_name in arg_specs.args:
             input_spec = self._input_specs.get(arg_name)
@@ -62,7 +62,7 @@ class RegisterPassHelper:
             default_attrs = core.get_op_attrs_default_value(
                 op_desc.type.encode()
             )
-            remove_attrs = list()
+            remove_attrs = []
             for attr in op_desc.attrs:
                 # attr must not in
                 if attr.name not in [
@@ -83,7 +83,7 @@ class RegisterPassHelper:
                 op_desc.attrs.remove(attr)
 
     def _func_to_program_desc(self, func, ops):
-        vars = list()
+        vars = []
         program = paddle.static.Program()
         startup_program = paddle.static.Program()
         with paddle.static.program_guard(program, startup_program):
@@ -118,7 +118,7 @@ class RegisterPassHelper:
                     conditions.append(element._condition)
                 _add_element_conditions(conditions, element._elements)
 
-        for (pattern, replace) in zip(patterns, replaces):
+        for pattern, replace in zip(patterns, replaces):
             # Convert maps of inputs and outputs.
             var_map = desc.var_maps.add()
             var_map.pattern_var = pattern.name
@@ -159,7 +159,7 @@ class RegisterPassHelper:
         multi_pass_desc.pass_type = self._pass_type
         # Traverse all pass pairs and convert them to PassDesc data.
         # Here need to add cache in the future.
-        for (pattern, replace) in self._pass_pairs:
+        for pattern, replace in self._pass_pairs:
             pass_desc = multi_pass_desc.pass_descs.add()
             # Convert ProgramDescs of pattern and replace subgraphs.
             pattern_vars, pattern_ops = self._func_to_program_desc(
@@ -184,7 +184,7 @@ class PassDesc:
             self._name = name
             self._operation_type = None
             self._element_index = element_index
-            self._elements = list()
+            self._elements = []
             self._operation = None
             self._condition = None
             self._mapped = None
@@ -287,9 +287,7 @@ class PassDesc:
                 ops = [o for o in pattern_ops if o._type == op]
                 if len(ops) <= index:
                     raise ValueError(
-                        "Index '{}' of operator '{}' is incorrect.".format(
-                            index, op
-                        )
+                        f"Index '{index}' of operator '{op}' is incorrect."
                     )
                 return PassDesc.AttrHelper(
                     ops[index], name, element_index=element_index
@@ -301,7 +299,7 @@ class PassDesc:
         def __init__(self, *args, **kwargs):
             block = paddle.static.default_main_program().current_block()
             self._var = paddle.static.data(*args, **kwargs)
-            self._attrs = dict()
+            self._attrs = {}
 
         def __getattr__(self, name):
             return getattr(self._var, name)
@@ -314,6 +312,31 @@ class PassDesc:
             return attr
 
     class OpHelper:
+        def _to_readable_code(self, skip_op_callstack=True):
+            assert isinstance(
+                skip_op_callstack, bool
+            ), "skip_op_callstack parameter's type is error, expect bool, received {}".format(
+                type(skip_op_callstack)
+            )
+            outputs_str = "{"
+            outputs_str += ", ".join(
+                [f"{k}={v}" for k, v in self._outputs.items()]
+            )
+            outputs_str += "}"
+
+            inputs_str = "{"
+            inputs_str += ", ".join(
+                [f"{k}={v}" for k, v in self._inputs.items()]
+            )
+            inputs_str += "}"
+
+            attrs_str = "{"
+            attrs_str += ", ".join([f"{k}={v}" for k, v in self._attrs.items()])
+            attrs_str += "}"
+
+            op_str = f"{outputs_str} = {self._type}(inputs={inputs_str}, {attrs_str})"
+            return op_str
+
         def __init__(self, type=None):
             self._type = type
 
@@ -327,7 +350,7 @@ class PassDesc:
                 raise ValueError(
                     "Each input argument needs to specify a parameter name."
                 )
-            for (in_name, in_args) in kwargs.items():
+            for in_name, in_args in kwargs.items():
                 op_input = self._inputs.get(in_name)
                 if op_input is None:
                     raise ValueError(
@@ -370,16 +393,14 @@ class PassDesc:
             self._proto = OpProtoHolder.instance().op_proto_map.get(self._type)
             if self._proto is None:
                 raise AttributeError(
-                    "type object 'OpHelper' has no attribute '{}'".format(
-                        self._type
-                    )
+                    f"type object 'OpHelper' has no attribute '{self._type}'"
                 )
             self._index = len(block.ops)
             self._desc = block.desc.append_op()
             self._desc.set_type(self._type)
-            self._attrs = dict()
-            self._inputs = {i.name: list() for i in self._proto.inputs}
-            self._outputs = {o.name: list() for o in self._proto.outputs}
+            self._attrs = {}
+            self._inputs = {i.name: [] for i in self._proto.inputs}
+            self._outputs = {o.name: [] for o in self._proto.outputs}
             block.ops.append(self)
 
         def Attr(self, name):
@@ -399,9 +420,7 @@ class PassDesc:
             output = self._outputs.get(name)
             if output is None:
                 raise ValueError(
-                    "Operator '{}' does not have output named '{}'.".format(
-                        self._type, name
-                    )
+                    f"Operator '{self._type}' does not have output named '{name}'."
                 )
             return output
 
@@ -418,7 +437,7 @@ class PassDesc:
     OP = OpHelper()
 
 
-def RegisterPass(function=None, input_specs=dict()):
+def RegisterPass(function=None, input_specs={}):
     """
     The function decorator of Register Pass. Decorator @RegisterPass handles
     the function and register it into a core.Pass instance. Use name of function
@@ -439,16 +458,16 @@ def RegisterPass(function=None, input_specs=dict()):
     Examples:
         .. code-block:: python
 
-        import paddle
-        from paddle.fluid.ir import RegisterPass
+            >>> import paddle
+            >>> from paddle.incubate.passes.ir import RegisterPass
 
-        @RegisterPass
-        def multi_add_to_addn():
-            def pattern(x, y, z):
-                return paddle.add(paddle.add(x, y), z)
-            def replace(x, y, z):
-                return paddle.add_n([x, y, z])
-            return pattern, replace
+            >>> @RegisterPass
+            >>> def multi_add_to_addn():
+            ...    def pattern(x, y, z):
+            ...        return paddle.add(paddle.add(x, y), z)
+            ...    def replace(x, y, z):
+            ...        return paddle.add_n([x, y, z])
+            ...    return pattern, replace
     """
 
     def _is_pass_pair(check_pair):

@@ -22,9 +22,11 @@
 #include <set>
 #include <string>
 #include <thread>  // NOLINT
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include "paddle/common/macros.h"
 #ifdef PADDLE_WITH_GLOO
 #include <gloo/broadcast.h>
 
@@ -51,13 +53,13 @@ class Dataset {
   Dataset() {}
   virtual ~Dataset() {}
   // do sample
-  virtual void TDMSample(const std::string tree_name,
-                         const std::string tree_path,
-                         const std::vector<uint16_t> tdm_layer_counts,
-                         const uint16_t start_sample_layer,
-                         const bool with_hierachy,
-                         const uint16_t seed_,
-                         const uint16_t sample_slot) {}
+  virtual void TDMSample(const std::string tree_name UNUSED,
+                         const std::string tree_path UNUSED,
+                         const std::vector<uint16_t> tdm_layer_counts UNUSED,
+                         const uint16_t start_sample_layer UNUSED,
+                         const bool with_hierachy UNUSED,
+                         const uint16_t seed_ UNUSED,
+                         const uint16_t sample_slot UNUSED) {}
   // set file list
   virtual void SetFileList(const std::vector<std::string>& filelist) = 0;
   // set readers' num
@@ -156,7 +158,7 @@ class Dataset {
   virtual void DestroyPreLoadReaders() = 0;
   // set preload thread num
   virtual void SetPreLoadThreadNum(int thread_num) = 0;
-  // seperate train thread and dataset thread
+  // separate train thread and dataset thread
   virtual void DynamicAdjustChannelNum(int channel_num,
                                        bool discard_remaining_ins = false) = 0;
   virtual void DynamicAdjustReadersNum(int thread_num) = 0;
@@ -168,11 +170,18 @@ class Dataset {
   virtual void SetGpuGraphMode(int is_graph_mode) = 0;
   virtual int GetGpuGraphMode() = 0;
   virtual bool GetEpochFinish() = 0;
+  virtual void ClearSampleState() = 0;
 
   virtual void SetPassId(uint32_t pass_id) = 0;
   virtual uint32_t GetPassID() = 0;
 
   virtual void DumpWalkPath(std::string dump_path, size_t dump_rate) = 0;
+  virtual void DumpSampleNeighbors(std::string dump_path) = 0;
+  virtual const std::vector<uint64_t>& GetGpuGraphTotalKeys() = 0;
+  virtual const std::vector<std::vector<uint64_t>*>& GetPassKeysVec() = 0;
+  virtual const std::vector<std::vector<uint32_t>*>& GetPassRanksVec() = 0;
+  virtual const std::vector<std::shared_ptr<HashTable<uint64_t, uint32_t>>>
+  GetPassKeys2RankTable() = 0;
 
  protected:
   virtual int ReceiveFromClient(int msg_type,
@@ -238,8 +247,9 @@ class DatasetImpl : public Dataset {
   virtual void WaitPreLoadDone();
   virtual void ReleaseMemory();
   virtual void LocalShuffle();
-  virtual void GlobalShuffle(int thread_num = -1) {}
-  virtual void SlotsShuffle(const std::set<std::string>& slots_to_replace) {}
+  virtual void GlobalShuffle(int thread_num UNUSED = -1) {}
+  virtual void SlotsShuffle(
+      const std::set<std::string>& slots_to_replace UNUSED) {}
   virtual const std::vector<T>& GetSlotsOriginalData() {
     return slots_shuffle_original_data_;
   }
@@ -251,12 +261,12 @@ class DatasetImpl : public Dataset {
   virtual void MergeByInsId() {}
   virtual void PreprocessInstance() {}
   virtual void PostprocessInstance() {}
-  virtual void SetCurrentPhase(int current_phase) {}
-  virtual void GenerateLocalTablesUnlock(int table_id,
-                                         int feadim,
-                                         int read_thread_num,
-                                         int consume_thread_num,
-                                         int shard_num) {}
+  virtual void SetCurrentPhase(int current_phase UNUSED) {}
+  virtual void GenerateLocalTablesUnlock(int table_id UNUSED,
+                                         int feadim UNUSED,
+                                         int read_thread_num UNUSED,
+                                         int consume_thread_num UNUSED,
+                                         int shard_num UNUSED) {}
   virtual void ClearLocalTables() {}
   virtual void CreatePreLoadReaders();
   virtual void DestroyPreLoadReaders();
@@ -267,7 +277,9 @@ class DatasetImpl : public Dataset {
   virtual void SetFleetSendSleepSeconds(int seconds);
   virtual std::vector<std::string> GetSlots();
   virtual bool GetEpochFinish();
+  virtual void ClearSampleState();
   virtual void DumpWalkPath(std::string dump_path, size_t dump_rate);
+  virtual void DumpSampleNeighbors(std::string dump_path);
 
   std::vector<paddle::framework::Channel<T>>& GetMultiOutputChannel() {
     return multi_output_channel_;
@@ -280,17 +292,27 @@ class DatasetImpl : public Dataset {
       return multi_consume_channel_;
     }
   }
-  std::vector<uint64_t>& GetGpuGraphTotalKeys() {
+  virtual const std::vector<uint64_t>& GetGpuGraphTotalKeys() {
     return gpu_graph_total_keys_;
+  }
+  virtual const std::vector<std::vector<uint64_t>*>& GetPassKeysVec() {
+    return keys_vec_;
+  }
+  virtual const std::vector<std::vector<uint32_t>*>& GetPassRanksVec() {
+    return ranks_vec_;
+  }
+  virtual const std::vector<std::shared_ptr<HashTable<uint64_t, uint32_t>>>
+  GetPassKeys2RankTable() {
+    return keys2rank_tables_;
   }
 
   virtual void SetPassId(uint32_t pass_id) { pass_id_ = pass_id; }
   virtual uint32_t GetPassID() { return pass_id_; }
 
  protected:
-  virtual int ReceiveFromClient(int msg_type,
-                                int client_id,
-                                const std::string& msg) {
+  virtual int ReceiveFromClient(int msg_type UNUSED,
+                                int client_id UNUSED,
+                                const std::string& msg UNUSED) {
     // TODO(yaoxuefeng) for SlotRecordDataset
     return -1;
   }
@@ -346,8 +368,15 @@ class DatasetImpl : public Dataset {
   std::vector<std::string> use_slots_;
   bool enable_heterps_ = false;
   int gpu_graph_mode_ = 0;
-  std::vector<std::vector<std::vector<uint64_t>>> gpu_graph_type_keys_;
   std::vector<uint64_t> gpu_graph_total_keys_;
+  typedef std::vector<uint64_t> KEYS;
+  typedef std::vector<uint32_t> RANKS;
+  std::vector<KEYS*> keys_vec_;
+  std::vector<RANKS*> ranks_vec_;
+  // keys: key id
+  // value: dest machine rank id
+  // vector: refer to multi gpu card.
+  std::vector<std::shared_ptr<HashTable<uint64_t, uint32_t>>> keys2rank_tables_;
   uint32_t pass_id_ = 0;
 };
 
@@ -410,6 +439,7 @@ class SlotRecordDataset : public DatasetImpl<SlotRecord> {
                                        bool discard_remaining_ins);
   virtual void PrepareTrain();
   virtual void DynamicAdjustReadersNum(int thread_num);
+  void DynamicAdjustBatchNum();
 
  protected:
   bool enable_heterps_ = true;

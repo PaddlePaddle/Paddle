@@ -42,7 +42,7 @@ void IndexAddGradKernel(const Context& ctx,
   auto output_dim = out_grad.dims();
   auto add_value_dim = add_value_grad->dims();
   dim = dim >= 0 ? dim : dim + input_dim.size();
-  auto stride_dim = phi::stride(input_dim);
+  auto stride_dim = common::stride(input_dim);
   int64_t stride = stride_dim[dim];
   int64_t size = add_value_dim[dim];
   int64_t delta = input_dim[dim] - size;
@@ -105,5 +105,6 @@ PD_REGISTER_KERNEL(index_add_grad,
                    float,
                    double,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int,
                    int64_t) {}

@@ -174,11 +174,7 @@ void CrossEntropyWithSoftmaxGradGPUKernel(const GPUContext& dev_ctx,
   const int64_t d = phi::funcs::SizeFromAxis(axis_v, logit_grad->dims());
   const int64_t remain = d / axis_dim;
 
-#ifdef __HIPCC__
-  int block = 256;
-#else
   int block = 512;
-#endif
   auto stream = dev_ctx.stream();
 
   // do not with softmax op, and input is softmax
@@ -249,7 +245,7 @@ void CrossEntropyWithSoftmaxGradKernel(const Context& dev_ctx,
   if (soft_label) {
     PADDLE_ENFORCE_EQ(
         dtype,
-        paddle::experimental::CppTypeToDataType<T>::Type(),
+        phi::CppTypeToDataType<T>::Type(),
         phi::errors::InvalidArgument("The Input(Label) should be with the "
                                      "same data type as kernel data type."));
     CrossEntropyWithSoftmaxGradGPUKernel<T, T>(dev_ctx,
@@ -297,8 +293,7 @@ PD_REGISTER_KERNEL(cross_entropy_with_softmax_grad,
                    phi::CrossEntropyWithSoftmaxGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::float16) {}
 #else
 PD_REGISTER_KERNEL(cross_entropy_with_softmax_grad,
                    GPU,

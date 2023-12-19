@@ -57,7 +57,7 @@ static inline bool CompareByBatchid(ScoreWithID<T> a, ScoreWithID<T> b) {
   return a.batch_id < b.batch_id;
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CollectFpnProposalsOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {

@@ -20,6 +20,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -83,19 +84,19 @@ class NoNeedBufferVarsInference {
   }
 };
 
-#define DECLARE_NO_NEED_BUFFER_VARS_INFERER(class_type, ...)          \
-  class class_type final                                              \
-      : public ::paddle::framework::NoNeedBufferVarsInference {       \
-   public:                                                            \
-    using ::paddle::framework::NoNeedBufferVarsInference::            \
-        NoNeedBufferVarsInference;                                    \
-                                                                      \
-    const std::unordered_set<std::string> &operator()(                \
-        const ::paddle::framework::InferNoNeedBufferVarsContext &ctx) \
-        const final {                                                 \
-      static std::unordered_set<std::string> __ret__{__VA_ARGS__};    \
-      return __ret__;                                                 \
-    }                                                                 \
+#define DECLARE_NO_NEED_BUFFER_VARS_INFERER(class_type, ...)         \
+  class class_type final                                             \
+      : public ::paddle::framework::NoNeedBufferVarsInference {      \
+   public:                                                           \
+    using ::paddle::framework::NoNeedBufferVarsInference::           \
+        NoNeedBufferVarsInference;                                   \
+                                                                     \
+    const std::unordered_set<std::string> &operator()(               \
+        const ::paddle::framework::InferNoNeedBufferVarsContext &ctx \
+            UNUSED) const final {                                    \
+      static std::unordered_set<std::string> __ret__{__VA_ARGS__};   \
+      return __ret__;                                                \
+    }                                                                \
   }
 
 class InferNoNeedBufferVarsFN {

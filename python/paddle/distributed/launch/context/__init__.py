@@ -38,11 +38,13 @@ class Context:
 
         if enable_plugin:
             self._enable_plugin()
+        self.max_time_per_task = -1
+        self.run_best = False
 
     def print(self):
         self.logger.info("-----------  Configuration  ----------------------")
         for arg, value in sorted(vars(self.args).items()):
-            self.logger.info("%s: %s" % (arg, value))
+            self.logger.info(f"{arg}: {value}")
         self.logger.info("--------------------------------------------------")
 
     def is_legacy_mode(self):
@@ -54,10 +56,15 @@ class Context:
 
         if len(self.unknown_args) > 0:
             self.logger.warning(
-                "Compatible mode enable with args {}".format(self.unknown_args)
+                f"Compatible mode enable with args {self.unknown_args}"
             )
             return True
 
+        return False
+
+    def is_auto_tuner_mode(self):
+        if self.args.auto_tuner_json:
+            return True
         return False
 
     def get_envs(self):
@@ -73,6 +80,8 @@ class Context:
 
     def get_logger(self, level=logging.INFO):
         logger = logging.getLogger("LAUNCH")
+        # forbid the child logger pass on to its parent
+        logger.propagate = False
         logger.setLevel(self.args.log_level.upper() or level)
         formatter = logging.Formatter(
             fmt='%(name)s %(levelname)s %(asctime)s %(message)s'
@@ -90,8 +99,9 @@ class Context:
 
     def set_env_in_args(self):
         for k, v in env_args_mapping.items():
+            attr, attr_type = v
             if k in self.envs:
                 print(
-                    f"LAUNCH WARNNING args {v} is override by env {self.envs[k]}"
+                    f"LAUNCH WARNNING args {attr} will be overridden by env: {k} value: {self.envs[k]}"
                 )
-                setattr(self.args, v, self.envs[k])
+                setattr(self.args, attr, attr_type(self.envs[k]))

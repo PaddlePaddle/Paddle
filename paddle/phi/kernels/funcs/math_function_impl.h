@@ -17,6 +17,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
@@ -34,17 +35,9 @@ void SetConstant<DeviceContext, T>::operator()(const DeviceContext& context,
 
 #ifdef PADDLE_WITH_XPU
 template <typename T>
-void SetConstant<XPUContext, T>::operator()(const XPUContext& context,
-                                            phi::DenseTensor* tensor,
-                                            T num) {
-  phi::VisitDataType(tensor->dtype(),
-                     TensorSetConstantXPU<T>(tensor, num, context.GetPlace()));
-}
-template <typename T>
-void SetConstant<paddle::platform::XPUDeviceContext, T>::operator()(
-    const paddle::platform::XPUDeviceContext& context,
-    phi::DenseTensor* tensor,
-    T num) {
+void SetConstant<phi::XPUContext, T>::operator()(const phi::XPUContext& context,
+                                                 phi::DenseTensor* tensor,
+                                                 T num) {
   phi::VisitDataType(tensor->dtype(),
                      TensorSetConstantXPU<T>(tensor, num, context.GetPlace()));
 }
@@ -65,7 +58,7 @@ void Transpose<DeviceContext, T, Rank>::operator()(
   auto* dev = context.eigen_device();
   // use 32bit index to speed up computation
   bool use_32bit_index = eigen_out.size() < Eigen::NumTraits<int>::highest();
-  bool is_gpu_place = paddle::platform::is_gpu_place(context.GetPlace());
+  bool is_gpu_place = context.GetPlace().GetType() == phi::AllocationType::GPU;
   if (use_32bit_index && is_gpu_place) {
     To32BitIndex(eigen_out).device(*dev) =
         To32BitIndex(eigen_in).shuffle(permute);

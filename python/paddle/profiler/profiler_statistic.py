@@ -15,7 +15,7 @@ import collections
 import re
 from enum import Enum
 
-from paddle.fluid.core import TracerEventType, TracerMemEventType
+from paddle.base.core import TracerEventType, TracerMemEventType
 from paddle.utils.flops import flops
 
 from .statistic_helper import (
@@ -48,7 +48,7 @@ _CommunicationOpName = ['allreduce', 'broadcast', 'rpc']
 
 class SortedKeys(Enum):
     r"""
-    SortedKeys is used to specify how to sort items when printing :ref:`summary <api_paddle_profiler_profiler_summary>` table.
+    SortedKeys is used to specify how to sort items when printing ``paddle.profiler.Profiler.summary`` table.
 
     The meaning of each SortedKeys is as following
 
@@ -187,7 +187,6 @@ def get_device_nodes(hostnode):
 
 def _build_layer_from_tree(nodetrees):
     def build_layer(node, depth=0):
-
         if "GradNode" in node.name:
             return [], 0
 
@@ -228,24 +227,24 @@ def _build_layer_from_tree(nodetrees):
 
 def _format_large_number(n, precision=2):
     if n // 1e12 > 0:
-        return "{} T".format(round(n / 1e12, precision))
+        return f"{round(n / 1e12, precision)} T"
     if n // 1e9 > 0:
-        return "{} G".format(round(n / 1e9, precision))
+        return f"{round(n / 1e9, precision)} G"
     if n // 1e6 > 0:
-        return "{} M".format(round(n / 1e6, precision))
+        return f"{round(n / 1e6, precision)} M"
     if n // 1e3 > 0:
-        return "{} K".format(round(n / 1e3, precision))
-    return "{}".format(round(n, precision))
+        return f"{round(n / 1e3, precision)} K"
+    return f"{round(n, precision)}"
 
 
 def _format_time(n, precision=2):
     if n // 1e9 > 0:
-        return "{} s".format(round(n / 1e9, precision))
+        return f"{round(n / 1e9, precision)} s"
     if n // 1e6 > 0:
-        return "{} ms".format(round(n / 1e6, precision))
+        return f"{round(n / 1e6, precision)} ms"
     if n // 1e3 > 0:
-        return "{} us".format(round(n / 1e3, precision))
-    return "{} ns".format(round(n, precision))
+        return f"{round(n / 1e3, precision)} us"
+    return f"{round(n, precision)} ns"
 
 
 def _gen_layer_flops(node, repeat=1):
@@ -277,9 +276,7 @@ def _gen_layer_flops(node, repeat=1):
             flops_n = _format_large_number(node.flops)
             flops_s = _format_large_number(node.flops * 1e9 / node.cpu_time)
             ret.append(
-                "{}{} latency: {}, FLOPs: {}, FLOPS: {}\n".format(
-                    align, name, tm, flops_n, flops_s
-                )
+                f"{align}{name} latency: {tm}, FLOPs: {flops_n}, FLOPS: {flops_s}\n"
             )
 
     for n in node[1:]:
@@ -365,7 +362,6 @@ class TimeRangeSummary:
                 )
             )  # device_id/type/stream_id
             for hostnode in hostnodes[1:]:  # skip root node
-
                 CPUTimeRange[hostnode.type].append(
                     (hostnode.start_ns, hostnode.end_ns)
                 )
@@ -452,10 +448,8 @@ class DistributedSummary:
 
                 # case 2: TracerEventType is Operator but is communication op
                 elif hostnode.type == TracerEventType.Operator and any(
-                    [
-                        name in hostnode.name.lower()
-                        for name in _CommunicationOpName
-                    ]
+                    name in hostnode.name.lower()
+                    for name in _CommunicationOpName
                 ):
                     self.cpu_communication_range.append(
                         (hostnode.start_ns, hostnode.end_ns)
@@ -472,7 +466,11 @@ class DistributedSummary:
                     for runtimenode in hostnode.runtime_node:
                         for devicenode in runtimenode.device_node:
                             if devicenode.type == TracerEventType.Kernel:
-                                if 'nccl' in devicenode.name.lower():
+                                kernel_name = devicenode.name.lower()
+                                if (
+                                    'nccl' in kernel_name
+                                    or 'xccl' in kernel_name
+                                ):
                                     self.gpu_communication_range.append(
                                         (devicenode.start_ns, devicenode.end_ns)
                                     )
@@ -882,7 +880,6 @@ def _build_table(
     max_src_column_width=75,
     views=None,
 ):
-
     from .profiler import SummaryView
 
     """Prints a summary of events."""
@@ -937,7 +934,6 @@ def _build_table(
     )
 
     if views is None or SummaryView.DeviceView in views:
-
         # ----- Print Device Summary ----- #
         headers = ['Device', 'Utilization (%)']
         name_column_width = 30
@@ -977,7 +973,7 @@ def _build_table(
                 )
             )
             utilization = gpu_time / total_time
-            row_values = ['GPU{}'.format(gpu_name), format_ratio(utilization)]
+            row_values = [f'GPU{gpu_name}', format_ratio(utilization)]
             append(row_format.format(*row_values))
 
         append(header_sep)
@@ -1010,7 +1006,7 @@ def _build_table(
 
         # construct table string
         append(add_title(line_length, "Overview Summary"))
-        append('Time unit: {}'.format(time_unit))
+        append(f'Time unit: {time_unit}')
         append(header_sep)
         append(row_format.format(*headers))
         append(header_sep)
@@ -1128,7 +1124,6 @@ def _build_table(
         append('')
 
     if views is None or SummaryView.ModelView in views:
-
         # ----- Print Model Summary Report ----- #
         model_perspective_items = (
             statistic_data.event_summary.model_perspective_items
@@ -1155,13 +1150,9 @@ def _build_table(
                         gpu_ratio = 0
                     else:
                         gpu_ratio = float(item.gpu_time) / gpu_total_time
-                    name = (
-                        '{}'.format(name)
-                        if 'ProfileStep' in name
-                        else '  {}'.format(name)
-                    )
+                    name = f'{name}' if 'ProfileStep' in name else f'  {name}'
                     row_values = [
-                        '{}'.format(name),
+                        f'{name}',
                         item.call,
                         '{} / {} / {} / {} / {}'.format(
                             format_time(item.cpu_time, unit=time_unit),
@@ -1237,7 +1228,7 @@ def _build_table(
 
             # construct table string
             append(add_title(line_length, "Model Summary"))
-            append('Time unit: {}'.format(time_unit))
+            append(f'Time unit: {time_unit}')
             append(header_sep)
             append(row_format.format(*headers))
             append(header_sep)
@@ -1253,7 +1244,6 @@ def _build_table(
             append('')
 
     if views is None or SummaryView.DistributedView in views:
-
         # ----- Print Distribution Summary Report ----- #
         if statistic_data.distributed_summary.communication_range:
             headers = [
@@ -1275,7 +1265,7 @@ def _build_table(
 
             # construct table string
             append(add_title(line_length, "Distribution Summary"))
-            append('Time unit: {}'.format(time_unit))
+            append(f'Time unit: {time_unit}')
             append(header_sep)
             append(row_format.format(*headers))
             append(header_sep)
@@ -1333,7 +1323,6 @@ def _build_table(
             append('')
 
     if views is None or SummaryView.OperatorView in views:
-
         # ----- Print Operator Summary Report ----- #
         if statistic_data.event_summary.items:
             all_row_values = []
@@ -1345,7 +1334,7 @@ def _build_table(
                     'All threads merged': statistic_data.event_summary.items
                 }
             for thread_id, items in thread_items.items():
-                all_row_values.append("Thread: {}".format(thread_id))
+                all_row_values.append(f"Thread: {thread_id}")
                 if sorted_by == SortedKeys.CPUTotal:
                     sorted_items = sorted(
                         items.items(), key=lambda x: x[1].cpu_time, reverse=True
@@ -1456,7 +1445,7 @@ def _build_table(
                                 ]
                                 innerop_name += "..."
                             row_values = [
-                                '  {}'.format(innerop_name),
+                                f'  {innerop_name}',
                                 innerop_node.call,
                                 '{} / {} / {} / {} / {}'.format(
                                     format_time(
@@ -1518,7 +1507,7 @@ def _build_table(
                                     ]
                                     device_node_name += "..."
                                 row_values = [
-                                    '    {}'.format(device_node_name),
+                                    f'    {device_node_name}',
                                     device_node.call,
                                     '- / - / - / - / -',
                                     '{} / {} / {} / {} / {}'.format(
@@ -1559,7 +1548,7 @@ def _build_table(
                                 ]
                                 device_node_name += "..."
                             row_values = [
-                                '  {}'.format(device_node_name),
+                                f'  {device_node_name}',
                                 device_node.call,
                                 '- / - / - / - / -',
                                 '{} / {} / {} / {} / {}'.format(
@@ -1619,7 +1608,7 @@ def _build_table(
 
             # construct table string
             append(add_title(line_length, "Operator Summary"))
-            append('Time unit: {}'.format(time_unit))
+            append(f'Time unit: {time_unit}')
             append(header_sep)
             append(row_format.format(*headers))
             append(header_sep)
@@ -1633,7 +1622,6 @@ def _build_table(
             append('')
 
     if views is None or SummaryView.KernelView in views:
-
         # ----- Print Kernel Summary Report ----- #
         if statistic_data.event_summary.kernel_items:
             all_row_values = []
@@ -1713,7 +1701,7 @@ def _build_table(
 
             # construct table string
             append(add_title(line_length, "Kernel Summary"))
-            append('Time unit: {}'.format(time_unit))
+            append(f'Time unit: {time_unit}')
             append(header_sep)
             append(row_format.format(*headers))
             append(header_sep)
@@ -1734,7 +1722,6 @@ def _build_table(
             append('')
 
     if views is None or SummaryView.MemoryManipulationView in views:
-
         # ----- Print Memory Manipulation Summary Report ----- #
         if statistic_data.event_summary.memory_manipulation_items:
             all_row_values = []
@@ -1809,7 +1796,7 @@ def _build_table(
 
             # construct table string
             append(add_title(line_length, "Memory Manipulation Summary"))
-            append('Time unit: {}'.format(time_unit))
+            append(f'Time unit: {time_unit}')
             append(header_sep)
             append(row_format.format(*headers))
             append(header_sep)
@@ -1820,7 +1807,6 @@ def _build_table(
             append('')
 
     if views is None or SummaryView.UDFView in views:
-
         # ----- Print UserDefined Summary Report ----- #
         if statistic_data.event_summary.userdefined_items:
             all_row_values = []
@@ -1838,7 +1824,7 @@ def _build_table(
                     'All threads merged': statistic_data.event_summary.userdefined_items
                 }
             for thread_id, items in userdefined_thread_items.items():
-                all_row_values.append("Thread: {}".format(thread_id))
+                all_row_values.append(f"Thread: {thread_id}")
                 if sorted_by == SortedKeys.CPUTotal:
                     sorted_items = sorted(
                         items.items(), key=lambda x: x[1].cpu_time, reverse=True
@@ -1956,7 +1942,7 @@ def _build_table(
 
             # construct table string
             append(add_title(line_length, "UserDefined Summary"))
-            append('Time unit: {}'.format(time_unit))
+            append(f'Time unit: {time_unit}')
             append(header_sep)
             append(row_format.format(*headers))
             append(header_sep)
@@ -1969,7 +1955,6 @@ def _build_table(
             append('')
 
     if views is None or SummaryView.MemoryView in views:
-
         # ----- Print Memory Summary Report ----- #
         if (
             statistic_data.memory_summary.allocated_items
@@ -2046,9 +2031,7 @@ def _build_table(
 
                 # construct table string
                 append(
-                    add_title(
-                        line_length, "Memory Summary - {}".format(device_type)
-                    )
+                    add_title(line_length, f"Memory Summary - {device_type}")
                 )
                 append(
                     'Peak Allocated Memory: {}'.format(

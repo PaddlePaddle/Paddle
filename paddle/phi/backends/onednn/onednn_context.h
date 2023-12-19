@@ -13,14 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include <memory>
 #include <mutex>     // NOLINT
 #include "dnnl.hpp"  // NOLINT
+#include "paddle/common/layout.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/attribute.h"
+#include "paddle/utils/test_macros.h"
 
 namespace phi {
 
@@ -76,10 +77,7 @@ class OneDNNContextThreadLocals {
   static constexpr size_t kMKLDNNSessionID_Default = 0;
   // mkldnn session id for cache clearing mode
   static constexpr size_t kMKLDNNSessionID_CacheClearing = -1;
-  static Body& fetch() {
-    thread_local Body b;
-    return b;
-  }
+  static Body& fetch();
 };
 
 class OneDNNContext : public CPUContext {
@@ -128,7 +126,7 @@ class OneDNNContext : public CPUContext {
   void SetBlob(const std::string& name, std::shared_ptr<void> data) const;
 
   // Calculate number of oneDNN objects cached
-  unsigned int GetCachedObjectsNumber(void) const;
+  TEST_API unsigned int GetCachedObjectsNumber(void) const;
 
   // Find a saved blob. Return nullptr if not found
   std::shared_ptr<void> GetBlob(const std::string& name) const;
@@ -157,7 +155,7 @@ class OneDNNContext : public CPUContext {
   const std::vector<std::string>& GetOutputsName(
       const std::string& output) const;
 
-  static const char* name() { return "OneDNNContext"; }
+  static const char* name();
 
  private:
   struct Impl;

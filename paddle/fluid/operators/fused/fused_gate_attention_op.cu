@@ -14,10 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/fused/attn_gemm.h"
 #include "paddle/fluid/operators/fused/fused_gate_attention.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/fusion/gpu/attn_gemm.h"
 
 namespace paddle {
 namespace operators {
@@ -73,8 +73,8 @@ void ComputeMergedQKVMatmulForward(const framework::ExecutionContext &ctx,
   int m = config.batch_size * config.seq_len_m * config.seq_len_r;
   int n = 3 * config.num_heads * config.head_dim;
   int k = config.q_dim;
-  auto qkv_compute =
-      AttnMatMul<T>(ctx.cuda_device_context(), false, true, m, n, k, false);
+  auto qkv_compute = phi::fusion::AttnMatMul<T>(
+      ctx.cuda_device_context(), false, true, m, n, k, false);
   qkv_compute.ComputeForward(qkv_weight, query, nullptr, qkv_out, nullptr);
 }
 
@@ -95,8 +95,8 @@ void ComputeMergedQKVMatmulBackward(const framework::ExecutionContext &ctx,
   int m = config.batch_size * config.seq_len_m * config.seq_len_r;
   int n = 3 * config.num_heads * config.head_dim;
   int k = config.q_dim;
-  auto qkv_compute =
-      AttnMatMul<T>(ctx.cuda_device_context(), false, true, m, n, k, false);
+  auto qkv_compute = phi::fusion::AttnMatMul<T>(
+      ctx.cuda_device_context(), false, true, m, n, k, false);
   qkv_compute.ComputeBackward(query,
                               qkv_weight,
                               qkv_out_grad,
@@ -125,7 +125,7 @@ void ComputeSeparatedQKVMatmulForward(const framework::ExecutionContext &ctx,
   int q_m = config.batch_size * config.seq_len_m * config.seq_len_r;
   int q_n = config.num_heads * config.head_dim;
   int q_k = config.q_dim;
-  auto q_compute = AttnMatMul<T>(
+  auto q_compute = phi::fusion::AttnMatMul<T>(
       ctx.cuda_device_context(), false, false, q_m, q_n, q_k, false);
   q_compute.ComputeForward(query_weight, query, nullptr, query_out, nullptr);
 
@@ -136,7 +136,7 @@ void ComputeSeparatedQKVMatmulForward(const framework::ExecutionContext &ctx,
   int kv_m = config.batch_size * config.seq_len_m * config.m_size;
   int kv_n = config.num_heads * config.head_dim;
   int kv_k = config.kv_dim;
-  auto kv_compute = AttnMatMul<T>(
+  auto kv_compute = phi::fusion::AttnMatMul<T>(
       ctx.cuda_device_context(), false, false, kv_m, kv_n, kv_k, false);
   kv_compute.ComputeForward(key_weight, key, nullptr, key_out, nullptr);
 
@@ -165,7 +165,7 @@ void ComputeSeparatedQKVMatmulBackward(const framework::ExecutionContext &ctx,
   int kv_m = config.batch_size * config.seq_len_m * config.m_size;
   int kv_n = config.num_heads * config.head_dim;
   int kv_k = config.kv_dim;
-  auto kv_compute = AttnMatMul<T>(
+  auto kv_compute = phi::fusion::AttnMatMul<T>(
       ctx.cuda_device_context(), false, false, kv_m, kv_n, kv_k, false);
   kv_compute.ComputeBackward(
       key, key_weight, key_out_grad, key_grad, key_weight_grad, nullptr, false);
@@ -193,7 +193,7 @@ void ComputeSeparatedQKVMatmulBackward(const framework::ExecutionContext &ctx,
   int q_m = config.batch_size * config.seq_len_m * config.seq_len_r;
   int q_n = config.num_heads * config.head_dim;
   int q_k = config.q_dim;
-  auto q_compute = AttnMatMul<T>(
+  auto q_compute = phi::fusion::AttnMatMul<T>(
       ctx.cuda_device_context(), false, false, q_m, q_n, q_k, false);
   q_compute.ComputeBackward(query,
                             query_weight,
@@ -209,7 +209,8 @@ void ComputeGatingLinearForward(const framework::ExecutionContext &ctx,
                                 const GateAttentionConfig<T> &config,
                                 const phi::DenseTensor *query,
                                 const phi::DenseTensor *fmha_out,
-                                phi::DenseTensor *gate_out) {
+                                phi::DenseTensor *gate_bias_out,
+                                bool use_fused_matmul_bias) {
   auto *gate_weight = ctx.Input<phi::DenseTensor>("GateWeight");
   auto *gate_bias = ctx.Input<phi::DenseTensor>("GateBias");
 
@@ -220,14 +221,18 @@ void ComputeGatingLinearForward(const framework::ExecutionContext &ctx,
   int m = config.batch_size * config.seq_len_m * config.seq_len_r;
   int n = config.num_heads * config.head_dim;
   int k = config.q_dim;
-  auto gate_attn_compute =
-      AttnMatMul<T>(ctx.cuda_device_context(), false, false, m, n, k, true);
-  gate_attn_compute.ComputeForward(
-      gate_weight, query, gate_bias, gate_out, gate_out);
+  auto gate_linear = phi::fusion::AttnMatMul<T>(
+      ctx.cuda_device_context(), false, false, m, n, k, true);
+  gate_linear.ComputeForward(gate_weight,
+                             query,
+                             gate_bias,
+                             gate_bias_out,
+                             gate_bias_out,
+                             use_fused_matmul_bias);
 
   // gate_out = sigmoid(gate_out) * fmha_out
-  std::vector<const phi::DenseTensor *> ins = {gate_out, fmha_out};
-  std::vector<phi::DenseTensor *> outs = {gate_out};
+  std::vector<const phi::DenseTensor *> ins = {gate_bias_out, fmha_out};
+  std::vector<phi::DenseTensor *> outs = {gate_bias_out};
   phi::funcs::ElementwiseKernel<T>(
       ctx.cuda_device_context(), ins, &outs, SigmoidMultiplyFunctor<T>());
 }
@@ -239,10 +244,12 @@ void ComputeGatingLinearBackward(const framework::ExecutionContext &ctx,
                                  const phi::DenseTensor *fmha_out,
                                  const phi::DenseTensor *gate_out_grad,
                                  phi::DenseTensor *query_grad,
-                                 phi::DenseTensor *fmha_out_grad) {
+                                 phi::DenseTensor *fmha_out_grad,
+                                 bool use_fused_matmul_bias) {
   const auto *gate_weight = ctx.Input<phi::DenseTensor>("GateWeight");
   const auto *gate_bias = ctx.Input<phi::DenseTensor>("GateBias");
   auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
+
   // Re-compute gate_bias_out
   phi::DenseTensor gate_bias_out;
   gate_bias_out.Resize(config.gate_out_dims);
@@ -251,10 +258,14 @@ void ComputeGatingLinearBackward(const framework::ExecutionContext &ctx,
   int m = config.batch_size * config.seq_len_m * config.seq_len_r;
   int n = config.num_heads * config.head_dim;
   int k = config.q_dim;
-  auto gate_attn_compute =
-      AttnMatMul<T>(ctx.cuda_device_context(), false, false, m, n, k, true);
-  gate_attn_compute.ComputeForward(
-      gate_weight, query, gate_bias, &gate_bias_out, &gate_bias_out);
+  auto gate_linear = phi::fusion::AttnMatMul<T>(
+      ctx.cuda_device_context(), false, false, m, n, k, true);
+  gate_linear.ComputeForward(gate_weight,
+                             query,
+                             gate_bias,
+                             &gate_bias_out,
+                             &gate_bias_out,
+                             use_fused_matmul_bias);
 
   // Gradient of sigmoid(gate_bias_out) * fmha_out
   // Compute inplace and save gate_bias_out_grad to gate_bias_out.
@@ -272,19 +283,22 @@ void ComputeGatingLinearBackward(const framework::ExecutionContext &ctx,
   dev_ctx.Alloc<T>(gate_weight_grad, gate_weight_grad->numel() * sizeof(T));
   dev_ctx.Alloc<T>(gate_bias_grad, gate_bias_grad->numel() * sizeof(T));
 
-  gate_attn_compute.ComputeBackward(query,
-                                    gate_weight,
-                                    &gate_bias_out,
-                                    query_grad,
-                                    gate_weight_grad,
-                                    gate_bias_grad);
+  gate_linear.ComputeBackward(query,
+                              gate_weight,
+                              &gate_bias_out,
+                              query_grad,
+                              gate_weight_grad,
+                              gate_bias_grad,
+                              false,
+                              use_fused_matmul_bias);
 }
 
 template <typename T>
 void ComputeOutputLinearForward(const framework::ExecutionContext &ctx,
                                 const GateAttentionConfig<T> &config,
                                 const phi::DenseTensor *fmha_or_gate_out,
-                                phi::DenseTensor *out) {
+                                phi::DenseTensor *out,
+                                bool use_fused_matmul_bias) {
   const auto *out_linear_weight =
       ctx.Input<phi::DenseTensor>("OutLinearWeight");
   const auto *out_linear_bias = ctx.Input<phi::DenseTensor>("OutLinearBias");
@@ -293,17 +307,22 @@ void ComputeOutputLinearForward(const framework::ExecutionContext &ctx,
   int m = config.batch_size * config.seq_len_m * config.seq_len_r;
   int n = config.q_dim;
   int k = config.num_heads * config.head_dim;
-  auto out_linear_compute =
-      AttnMatMul<T>(ctx.cuda_device_context(), false, false, m, n, k, true);
-  out_linear_compute.ComputeForward(
-      out_linear_weight, fmha_or_gate_out, out_linear_bias, out, out);
+  auto out_linear = phi::fusion::AttnMatMul<T>(
+      ctx.cuda_device_context(), false, false, m, n, k, true);
+  out_linear.ComputeForward(out_linear_weight,
+                            fmha_or_gate_out,
+                            out_linear_bias,
+                            out,
+                            out,
+                            use_fused_matmul_bias);
 }
 
 template <typename T>
 void ComputeOutputLinearBackward(const framework::ExecutionContext &ctx,
                                  const GateAttentionGradConfig<T> &config,
                                  const phi::DenseTensor *input,
-                                 phi::DenseTensor *input_grad) {
+                                 phi::DenseTensor *input_grad,
+                                 bool use_fused_matmul_bias) {
   auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
   const auto *out_grad =
       ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
@@ -323,17 +342,19 @@ void ComputeOutputLinearBackward(const framework::ExecutionContext &ctx,
   int m = config.batch_size * config.seq_len_m * config.seq_len_r;
   int n = config.q_dim;
   int k = config.num_heads * config.head_dim;
-  auto out_linear_compute =
-      AttnMatMul<T>(ctx.cuda_device_context(), false, false, m, n, k, true);
-  out_linear_compute.ComputeBackward(input,
-                                     out_linear_weight,
-                                     out_grad,
-                                     input_grad,
-                                     out_linear_weight_grad,
-                                     out_linear_bias_grad);
+  auto out_linear = phi::fusion::AttnMatMul<T>(
+      ctx.cuda_device_context(), false, false, m, n, k, true);
+  out_linear.ComputeBackward(input,
+                             out_linear_weight,
+                             out_grad,
+                             input_grad,
+                             out_linear_weight_grad,
+                             out_linear_bias_grad,
+                             false,
+                             use_fused_matmul_bias);
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -350,16 +371,16 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
     auto *v_transpose_out = ctx.Output<phi::DenseTensor>("ValueTransposeOut");
     auto *qkv_transpose_out = ctx.Output<phi::DenseTensor>("QKVTransposeOut");
 
-    auto *softmax_out = ctx.Output<phi::DenseTensor>("SoftmaxOut");
     auto *fmha_out = ctx.Output<phi::DenseTensor>("FMHAOut");
     auto *gate_out = ctx.Output<phi::DenseTensor>("GateOut");
     auto *out = ctx.Output<phi::DenseTensor>("Out");
 
     const bool merge_qkv = ctx.Attr<bool>("merge_qkv");
     const bool has_gating = ctx.Attr<bool>("has_gating");
+    const bool use_flash_attn = ctx.Attr<bool>("use_flash_attn");
 
+    bool use_fused_matmul_bias = true;
     auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
-    AllocWithDebugInfo<T>(dev_ctx, "softmax_out", softmax_out);
     AllocWithDebugInfo<T>(dev_ctx, "fmha_out", fmha_out);
     if (has_gating) {
       AllocWithDebugInfo<T>(dev_ctx, "gate_out", gate_out);
@@ -367,8 +388,14 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
     AllocWithDebugInfo<T>(dev_ctx, "out", out);
 
     // When seq_len_r = m_size, q_dim = kv_dim, QKV matmul can be merged.
-    GateAttentionConfig<T> config(
-        dev_ctx, query, key, query_weight, qkv_weight, merge_qkv, has_gating);
+    GateAttentionConfig<T> config(dev_ctx,
+                                  query,
+                                  key,
+                                  query_weight,
+                                  qkv_weight,
+                                  merge_qkv,
+                                  has_gating,
+                                  use_flash_attn);
 
     if (merge_qkv) {
       PADDLE_ENFORCE_EQ(
@@ -376,7 +403,7 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
           true,
           platform::errors::InvalidArgument(
               "key is expected to be nullptr or the same as "
-              "query, but recieved key=%p, query=%p.",
+              "query, but received key=%p, query=%p.",
               key,
               query));
 
@@ -384,6 +411,14 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
       phi::DenseTensor *qkv_out = config.GetQKVOut();
       ComputeMergedQKVMatmulForward<T>(ctx, config, query, qkv_out);
 
+      if (config.CanUseFlashAttn()) {
+        qkv_transpose_out->Resize(common::make_ddim({3,
+                                                     config.batch_size,
+                                                     config.seq_len_m,
+                                                     config.seq_len_r,
+                                                     config.num_heads,
+                                                     config.head_dim}));
+      }
       AllocWithDebugInfo<T>(dev_ctx, "qkv_transpose_out", qkv_transpose_out);
     } else {
       // 1. Separated QKV Matmul
@@ -399,30 +434,46 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
     }
 
     // 2. FMHA
-    auto fmha_compute = FMHAGateRef<T>(dev_ctx, merge_qkv);
-    fmha_compute.ComputeForward(nonbatched_bias,
-                                src_mask,
-                                q_transpose_out,
-                                k_transpose_out,
-                                v_transpose_out,
-                                qkv_transpose_out,
-                                softmax_out,
-                                fmha_out,
-                                gate_out,
-                                &config);
+    if (config.CanUseFlashAttn()) {
+      auto *softmax_lse = ctx.Output<phi::DenseTensor>("SoftmaxLse");
+      auto fmha_compute = FlashAttnWithGating<T>(dev_ctx, merge_qkv);
+      fmha_compute.ComputeForward(nonbatched_bias,
+                                  src_mask,
+                                  qkv_transpose_out,
+                                  softmax_lse,
+                                  fmha_out,
+                                  &config);
+    } else {
+      auto *softmax_out = ctx.Output<phi::DenseTensor>("SoftmaxOut");
+      AllocWithDebugInfo<T>(dev_ctx, "softmax_out", softmax_out);
+
+      auto fmha_compute = FMHAGateRef<T>(dev_ctx, merge_qkv);
+      fmha_compute.ComputeForward(nonbatched_bias,
+                                  src_mask,
+                                  q_transpose_out,
+                                  k_transpose_out,
+                                  v_transpose_out,
+                                  qkv_transpose_out,
+                                  softmax_out,
+                                  fmha_out,
+                                  gate_out,
+                                  &config);
+    }
 
     // 3. Gating Linear
     if (has_gating) {
-      ComputeGatingLinearForward<T>(ctx, config, query, fmha_out, gate_out);
+      ComputeGatingLinearForward<T>(
+          ctx, config, query, fmha_out, gate_out, use_fused_matmul_bias);
     }
 
     // 4. Output Linear
     phi::DenseTensor *fmha_or_gate_out = has_gating ? gate_out : fmha_out;
-    ComputeOutputLinearForward<T>(ctx, config, fmha_or_gate_out, out);
+    ComputeOutputLinearForward<T>(
+        ctx, config, fmha_or_gate_out, out, use_fused_matmul_bias);
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -441,7 +492,6 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
         ctx.Input<phi::DenseTensor>("ValueTransposeOut");
     const auto *qkv_transpose_out =
         ctx.Input<phi::DenseTensor>("QKVTransposeOut");
-    const auto *softmax_out = ctx.Input<phi::DenseTensor>("SoftmaxOut");
     const auto *fmha_out = ctx.Input<phi::DenseTensor>("FMHAOut");
     const auto *gate_out = ctx.Input<phi::DenseTensor>("GateOut");
 
@@ -453,12 +503,20 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
 
     bool has_gating = ctx.Attr<bool>("has_gating");
     bool merge_qkv = ctx.Attr<bool>("merge_qkv");
+    bool use_flash_attn = ctx.Attr<bool>("use_flash_attn");
 
+    bool use_fused_matmul_bias = true;
     auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     AllocWithDebugInfo<T>(dev_ctx, "query_grad", query_grad);
 
-    GateAttentionGradConfig<T> config(
-        dev_ctx, query, key, query_weight, qkv_weight, merge_qkv, has_gating);
+    GateAttentionGradConfig<T> config(dev_ctx,
+                                      query,
+                                      key,
+                                      query_weight,
+                                      qkv_weight,
+                                      merge_qkv,
+                                      has_gating,
+                                      use_flash_attn);
 
     phi::DenseTensor fmha_out_grad;
     fmha_out_grad.Resize(config.gate_out_dims);
@@ -468,7 +526,8 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
       phi::DenseTensor gate_out_grad;
       gate_out_grad.Resize(config.gate_out_dims);
       AllocWithDebugInfo<T>(dev_ctx, "gate_out_grad", &gate_out_grad);
-      ComputeOutputLinearBackward<T>(ctx, config, gate_out, &gate_out_grad);
+      ComputeOutputLinearBackward<T>(
+          ctx, config, gate_out, &gate_out_grad, use_fused_matmul_bias);
 
       // 2. Gradient of Gating Linear
       // Forward: gate_out = Sigmoid(Linear(fmha_out)) * fmha_out
@@ -478,10 +537,12 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
                                      fmha_out,
                                      &gate_out_grad,
                                      query_grad,
-                                     &fmha_out_grad);
+                                     &fmha_out_grad,
+                                     use_fused_matmul_bias);
     } else {
       // 1. Gradient of Output Linear: out = Linear(fmha_grad)
-      ComputeOutputLinearBackward<T>(ctx, config, fmha_out, &fmha_out_grad);
+      ComputeOutputLinearBackward<T>(
+          ctx, config, fmha_out, &fmha_out_grad, use_fused_matmul_bias);
     }
 
     // 3. Gradient of FMHA
@@ -490,16 +551,36 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
           dev_ctx, "nonbatched_bias_grad", nonbatched_bias_grad);
     }
 
-    auto fmha_compute = FMHAGateRef<T>(dev_ctx, merge_qkv);
-    fmha_compute.ComputeBackward(q_transpose_out,
-                                 k_transpose_out,
-                                 v_transpose_out,
-                                 qkv_transpose_out,
-                                 softmax_out,
-                                 &fmha_out_grad,
-                                 nullptr,
-                                 nonbatched_bias_grad,
-                                 &config);
+    if (config.CanUseFlashAttn()) {
+      const auto *nonbatched_bias =
+          ctx.Input<phi::DenseTensor>("NonbatchedBias");
+      const auto *src_mask = ctx.Input<phi::DenseTensor>("SrcMask");
+      const auto *softmax_lse = ctx.Input<phi::DenseTensor>("SoftmaxLse");
+
+      auto fmha_compute = FlashAttnWithGating<T>(dev_ctx, merge_qkv);
+      fmha_compute.ComputeBackward(qkv_transpose_out,
+                                   src_mask,
+                                   nonbatched_bias,
+                                   softmax_lse,
+                                   fmha_out,
+                                   &fmha_out_grad,
+                                   nullptr,
+                                   nonbatched_bias_grad,
+                                   &config);
+    } else {
+      const auto *softmax_out = ctx.Input<phi::DenseTensor>("SoftmaxOut");
+
+      auto fmha_compute = FMHAGateRef<T>(dev_ctx, merge_qkv);
+      fmha_compute.ComputeBackward(q_transpose_out,
+                                   k_transpose_out,
+                                   v_transpose_out,
+                                   qkv_transpose_out,
+                                   softmax_out,
+                                   &fmha_out_grad,
+                                   nullptr,
+                                   nonbatched_bias_grad,
+                                   &config);
+    }
 
     bool use_addto = has_gating ? true : false;
     if (merge_qkv) {
@@ -537,23 +618,35 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 #ifdef PADDLE_WITH_HIP
-REGISTER_OP_CUDA_KERNEL(fused_gate_attention,
-                        ops::FusedGateAttentionOpKernel<float>,
-                        ops::FusedGateAttentionOpKernel<plat::float16>,
-                        ops::FusedGateAttentionOpKernel<plat::bfloat16>);
-REGISTER_OP_CUDA_KERNEL(fused_gate_attention_grad,
-                        ops::FusedGateAttentionGradKernel<float>,
-                        ops::FusedGateAttentionGradKernel<plat::float16>,
-                        ops::FusedGateAttentionGradKernel<plat::bfloat16>);
+PD_REGISTER_STRUCT_KERNEL(fused_gate_attention,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FusedGateAttentionOpKernel,
+                          float,
+                          plat::float16,
+                          plat::bfloat16) {}
+PD_REGISTER_STRUCT_KERNEL(fused_gate_attention_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FusedGateAttentionGradKernel,
+                          float,
+                          plat::float16,
+                          plat::bfloat16) {}
 #else
-REGISTER_OP_CUDA_KERNEL(fused_gate_attention,
-                        ops::FusedGateAttentionOpKernel<float>,
-                        ops::FusedGateAttentionOpKernel<double>,
-                        ops::FusedGateAttentionOpKernel<plat::float16>,
-                        ops::FusedGateAttentionOpKernel<plat::bfloat16>);
-REGISTER_OP_CUDA_KERNEL(fused_gate_attention_grad,
-                        ops::FusedGateAttentionGradKernel<float>,
-                        ops::FusedGateAttentionGradKernel<double>,
-                        ops::FusedGateAttentionGradKernel<plat::float16>,
-                        ops::FusedGateAttentionGradKernel<plat::bfloat16>);
+PD_REGISTER_STRUCT_KERNEL(fused_gate_attention,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FusedGateAttentionOpKernel,
+                          float,
+                          double,
+                          plat::float16,
+                          plat::bfloat16) {}
+PD_REGISTER_STRUCT_KERNEL(fused_gate_attention_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FusedGateAttentionGradKernel,
+                          float,
+                          double,
+                          plat::float16,
+                          plat::bfloat16) {}
 #endif

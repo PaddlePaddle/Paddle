@@ -21,6 +21,8 @@
 #include <utility>
 #include <vector>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -35,10 +37,10 @@ void IndexSampleInner(const Context &context,
   auto input_dims = input.dims();
   auto index_dims = index.dims();
 
-  int batch_size = input_dims[0];
+  int batch_size = static_cast<int>(input_dims[0]);
   auto value_length = input_dims[1];
   auto index_length = index_dims[1];
-  int index_ids_num = index.numel();
+  int index_ids_num = static_cast<int>(index.numel());
 
   std::vector<T> input_vec;
   std::vector<IndexT> index_vec;
@@ -74,7 +76,7 @@ void IndexSampleInner(const Context &context,
     res[i] = v;
   }
 
-  auto ddim = phi::make_ddim({batch_size, index_length});
+  auto ddim = common::make_ddim({batch_size, index_length});
   context.template Alloc<T>(output);
   phi::TensorFromVector(res, context, output);
   output->Resize(ddim);
@@ -94,9 +96,9 @@ void IndexSampleKernel(const Context &ctx,
                     errors::InvalidArgument(
                         "Input(Index) holds the wrong type, it holds %s, but "
                         "desires to be %s or %s",
-                        phi::DataTypeToString(index_type),
-                        phi::DataTypeToString(DataType::INT32),
-                        phi::DataTypeToString(DataType::INT64)));
+                        DataTypeToString(index_type),
+                        DataTypeToString(DataType::INT32),
+                        DataTypeToString(DataType::INT64)));
   if (index_type == DataType::INT32) {
     IndexSampleInner<T, Context, int>(ctx, x, index, out);
   } else if (index_type == DataType::INT64) {
@@ -113,4 +115,6 @@ PD_REGISTER_KERNEL(index_sample,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

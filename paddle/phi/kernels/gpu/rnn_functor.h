@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 
@@ -99,24 +99,41 @@ class RNNDescriptors {
     // ------------------- cudnn dropout descriptors ---------------------
     size_t state_size;
     bool is_initialized = dropout_state->initialized();
-    if (!is_test_ && !is_initialized) {
 #ifdef PADDLE_WITH_HIP
+    if (!is_initialized) {
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::miopenDropoutGetStatesSize(handle, &state_size));
-#else
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::cudnnDropoutGetStatesSize(handle, &state_size));
-#endif
       dropout_state->Resize({static_cast<int64_t>(state_size)});
       dev_ctx.template Alloc<uint8_t>(dropout_state);
     }
-    dropout_desc_.descriptor(handle,
+    dropout_desc_.descriptor(handle,  // NOLINT
+                             dev_ctx.GetPlace(),
+                             is_initialized,
+                             dropout_prob_,
+                             dropout_state,
+                             seed_,
+                             state_size);
+#else
+    // Note(lvyongkang): delete `is_initialized` in condition, cause this will
+    // lead to bug in PIR mode, where rnn op has an input named
+    // `dropout_state_in`. `dropout_state_in` will share same buffer with
+    // `dropout_state_out`, this buffer is the dropput_state in kernel. And
+    // since `dropout_state_in` is input, so this buffer will be initialized in
+    // kernel.
+    if (!is_test_) {
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          phi::dynload::cudnnDropoutGetStatesSize(handle, &state_size));
+      dropout_state->Resize({static_cast<int64_t>(state_size)});
+      dev_ctx.template Alloc<uint8_t>(dropout_state);
+    }
+    dropout_desc_.descriptor(handle,  // NOLINT
                              dev_ctx.GetPlace(),
                              is_initialized,
                              dropout_prob_,
                              is_test_ ? nullptr : dropout_state,
                              seed_,
                              state_size);
+#endif
 
 // ------------------- cudnn rnn descriptors ---------------------
 #ifdef PADDLE_WITH_HIP
@@ -277,7 +294,7 @@ bool IsContinuous(const Type &weight_list) {
 }
 
 template <typename T>
-void WeightToTensor(const Place &place,
+void WeightToTensor(const Place &place UNUSED,
                     gpuStream_t stream,
                     const std::vector<const DenseTensor *> &weight_list,
                     DenseTensor *weight) {
@@ -287,12 +304,12 @@ void WeightToTensor(const Place &place,
     const T *in_data = weight_list[i]->data<T>();
     auto in_size = weight_list[i]->numel();
 
-    paddle::memory::Copy(weight->place(),
-                         weight_data + weight_offset,
-                         weight_list[i]->place(),
-                         in_data,
-                         in_size * sizeof(T),
-                         stream);
+    memory_utils::Copy(weight->place(),
+                       weight_data + weight_offset,
+                       weight_list[i]->place(),
+                       in_data,
+                       in_size * sizeof(T),
+                       stream);
     weight_offset += in_size;
   }
 }
@@ -310,12 +327,12 @@ void WeightListToTensor(const Place &place,
   for (size_t i = 0; i < tensor_list.size(); ++i) {
     const T *in_data = tensor_list[i].data<T>();
     auto in_size = tensor_list[i].numel();
-    paddle::memory::Copy(weight_whole->place(),
-                         weight_data + weight_offset,
-                         tensor_list[i].place(),
-                         in_data,
-                         in_size * sizeof(T),
-                         stream);
+    memory_utils::Copy(weight_whole->place(),
+                       weight_data + weight_offset,
+                       tensor_list[i].place(),
+                       in_data,
+                       in_size * sizeof(T),
+                       stream);
     weight_offset += in_size;
   }
 }

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.incubate.passes.ir as ir
+from paddle.incubate.passes import ir
 
 
 def set_resnet_unit_attrs(resnet_unit, has_shortcut):
@@ -90,7 +90,7 @@ def fuse_resnet_unit():
         varZ,
     ):
         bnX = pattern_conv_bn(x, filterX, scaleX, biasX, meanX, varX)
-        bnZ = pattern_conv_bn(x, filterZ, scaleZ, biasZ, meanZ, varZ)
+        bnZ = pattern_conv_bn(z, filterZ, scaleZ, biasZ, meanZ, varZ)
         ewadd = ir.PassDesc.OP.elementwise_add(
             X=bnX.Output("Y"), Y=bnZ.Output("Y")
         )

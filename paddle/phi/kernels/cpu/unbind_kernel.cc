@@ -21,9 +21,12 @@ PD_REGISTER_KERNEL(unbind,
                    CPU,
                    ALL_LAYOUT,
                    phi::UnbindKernel,
+                   bool,
                    float,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

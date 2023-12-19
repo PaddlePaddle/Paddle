@@ -28,10 +28,9 @@ void ExpandAs(const Context& context,
               DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto in_dims = x.dims();
-  auto vec_in_dims = phi::vectorize<int>(in_dims);
+  auto vec_in_dims = common::vectorize<int>(in_dims);
   auto diff = target_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
-
   for (size_t i = 0; i < vec_in_dims.size(); ++i) {
     PADDLE_ENFORCE_NE(target_shape[i],
                       0,
@@ -49,11 +48,24 @@ void ExpandAs(const Context& context,
               target_shape[i]));
     }
   }
-  phi::DDim out_dims = phi::make_ddim(target_shape);
+  if (target_shape.size() == 0) {
+    phi::DDim out_dims = common::make_ddim(target_shape);
+    out->Resize(out_dims);
+    context.template Alloc<T>(out);
+
+    int r = xpu::copy<XPUType>(context.x_context(),
+                               reinterpret_cast<const XPUType*>(x.data<T>()),
+                               reinterpret_cast<XPUType*>(out->data<T>()),
+                               x.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
+    return;
+  }
+
+  phi::DDim out_dims = common::make_ddim(target_shape);
   out->Resize(out_dims);
   context.template Alloc<T>(out);
   auto& x_shape = vec_in_dims;
-  auto out_shape = phi::vectorize<int>(out_dims);
+  auto out_shape = common::vectorize<int>(out_dims);
 
   int r = XPU_SUCCESS;
 
@@ -95,7 +107,7 @@ void ExpandAsKernel(const Context& ctx,
                         rank));
   PADDLE_ENFORCE_GE(
       rank,
-      1,
+      0,
       phi::errors::InvalidArgument("The rank (%d) of the input 'x' for "
                                    "expand_as_v2 op must be positive.",
                                    rank));

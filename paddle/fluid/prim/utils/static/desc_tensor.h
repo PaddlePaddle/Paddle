@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/var_desc.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/extended_tensor.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/utils/any.h"
@@ -27,7 +27,7 @@ class DescTensor : public phi::ExtendedTensor,
                    public phi::TypeInfoTraits<phi::TensorBase, DescTensor> {
  public:
   explicit DescTensor(framework::VarDesc* desc)
-      : desc_ptr_(desc), dims_(phi::make_ddim(desc->GetShape())) {}
+      : desc_ptr_(desc), dims_(common::make_ddim(desc->GetShape())) {}
   static const char* name() { return "DescTensor"; }
 
   std::string Name() const { return desc_ptr_->Name(); }
@@ -35,9 +35,11 @@ class DescTensor : public phi::ExtendedTensor,
   std::vector<int64_t> shape() const { return desc_ptr_->GetShape(); }
 
   const phi::DDim& dims() const override {
-    dims_ = phi::make_ddim(desc_ptr_->GetShape());
+    dims_ = common::make_ddim(desc_ptr_->GetShape());
     return dims_;
   }
+
+  int64_t numel() const override { return product(dims()); }
 
   DataType dtype() const override {
     return paddle::framework::TransToPhiDataType(desc_ptr_->GetDataType());
@@ -46,6 +48,8 @@ class DescTensor : public phi::ExtendedTensor,
   framework::VarDesc* get_ptr() { return desc_ptr_; }
 
   const phi::Place& place() const override { return place_; }
+
+  bool initialized() const override { return desc_ptr_ != nullptr; }
 
   // TODO(jiabin): override more operators here.
 

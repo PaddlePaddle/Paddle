@@ -25,7 +25,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void FoldGradKernel(const Context& ctx,
-                    const DenseTensor& x,
+                    const DenseTensor& x UNUSED,
                     const DenseTensor& out_grad,
                     const std::vector<int>& output_sizes,
                     const std::vector<int>& kernel_sizes,
@@ -53,8 +53,8 @@ void FoldGradKernel(const Context& ctx,
   int n_output_plane = n_input_plane / (kernel_sizes[0] * kernel_sizes[1]);
 
   DDim out_shape =
-      make_ddim({n_output_plane, output_sizes[0], output_sizes[1]});
-  DDim input_matrix_shape = make_ddim(
+      common::make_ddim({n_output_plane, output_sizes[0], output_sizes[1]});
+  DDim input_matrix_shape = common::make_ddim(
       {1, kernel_sizes[0], kernel_sizes[1], output_height, output_width});
 
   phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kCFO, Context, T> im2col;

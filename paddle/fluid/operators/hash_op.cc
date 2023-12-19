@@ -52,7 +52,7 @@ class HashOp : public framework::OperatorWithKernel {
     int num_hash = ctx->Attrs().Get<int>("num_hash");
     HashOutputSize(dims, out_dims, num_hash);
 
-    ctx->SetOutputDim("Out", phi::make_ddim(out_dims));
+    ctx->SetOutputDim("Out", common::make_ddim(out_dims));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
@@ -79,4 +79,6 @@ class HashOpMaker : public framework::OpProtoAndCheckerMaker {
 namespace ops = paddle::operators;
 
 REGISTER_OP_WITHOUT_GRADIENT(hash, ops::HashOp, ops::HashOpMaker);
-REGISTER_OP_CPU_KERNEL(hash, ops::HashKernel<int>, ops::HashKernel<int64_t>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    hash, CPU, ALL_LAYOUT, ops::HashKernel, int, int64_t) {}

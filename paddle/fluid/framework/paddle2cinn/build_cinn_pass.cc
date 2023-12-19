@@ -24,10 +24,10 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "cinn/frontend/op_mapper_registry.h"
-#include "cinn/frontend/op_mappers/use_op_mappers.h"
-#include "gflags/gflags.h"
 #include "glog/logging.h"
+#include "paddle/cinn/frontend/op_mapper_registry.h"
+#include "paddle/cinn/frontend/op_mappers/use_op_mappers.h"
+#include "paddle/fluid/framework/io/save_runtime_graph.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/node.h"
@@ -38,9 +38,13 @@ limitations under the License. */
 #include "paddle/fluid/operators/cinn/cinn_launch_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
+#include "paddle/phi/core/flags.h"
+#include "paddle/utils/flags.h"
 
-DECLARE_string(allow_cinn_ops);
-DECLARE_string(deny_cinn_ops);
+PD_DECLARE_string(allow_cinn_ops);
+PD_DECLARE_string(deny_cinn_ops);
+PHI_DECLARE_string(static_runtime_data_save_path);
+PHI_DECLARE_bool(save_static_runtime_data);
 
 namespace paddle {
 namespace framework {
@@ -510,8 +514,16 @@ void AnalyseClusterVariables(
     bool is_inference_stage,
     const std::unordered_set<std::string>& skip_gc_var_names) {
   // collecting all input and output of op
+  std::unordered_set<std::string> unused_outputs;
+  std::unordered_set<std::string> legacy_ops{"reshape2", "transpose2"};
   for (auto* op_node : cluster) {
     const auto& op_name = op_node->Name();
+    if (legacy_ops.count(op_name) && op_node->Op()->HasOutput("XShape")) {
+      for (const auto& var_name :
+           (*(op_node->Op()->MutableOutputs()))["XShape"]) {
+        unused_outputs.insert(var_name);
+      }
+    }
     for (auto* input_var_node : op_node->inputs) {
       if (!deny_var_set.count(input_var_node->Name())) {
         // ignore deny var node
@@ -527,9 +539,12 @@ void AnalyseClusterVariables(
   // remove output node from cluster_inputs,
   // and add cluster_internals node
   for (auto* var_node : *cluster_outputs) {
-    if (cluster_inputs->count(var_node) > 0) {
+    if ((cluster_inputs->count(var_node) > 0) ||
+        (unused_outputs.count(var_node->Name()))) {
       // if a input node also exists in output list, remove
-      cluster_inputs->erase(var_node);
+      if (cluster_inputs->count(var_node) > 0) {
+        cluster_inputs->erase(var_node);
+      }
 
       // the internal node is must an output node of sub-graph,
       // but not any input node of out-graph.
@@ -538,8 +553,12 @@ void AnalyseClusterVariables(
       for (size_t i = 0; i < var_node->outputs.size() && is_only_used_internal;
            ++i) {
         is_only_used_internal &= (cluster.count(var_node->outputs[i]) > 0);
+        VLOG(3) << "var_node->outputs[" << i << "]: " << var_node->Name()
+                << ", is_only_used_internal: " << is_only_used_internal;
       }
+
       if (is_only_used_internal) {
+        VLOG(3) << "insert internal var: " << var_node->Name();
         cluster_internals->insert(var_node);
       }
     }
@@ -705,6 +724,7 @@ void SearchAllSubgraphs(Graph* graph, bool is_inference_stage) {
       << "All deny var names are: " << GetDebugInfo(deny_var_set);
 
   auto* cinn_compiler = CinnCompiler::GetInstance();
+  int i = 0;
   for (const auto& node_vec : clusters) {
     // Classify var node to inputs, outputs, and internals.
     GraphNodeSet cluster_set(node_vec.begin(), node_vec.end());
@@ -732,6 +752,16 @@ void SearchAllSubgraphs(Graph* graph, bool is_inference_stage) {
       auto& sub_skip_gc_vars =
           subgraph->GetOrInit<std::unordered_set<std::string>>(kSkipGcVarNames);
       sub_skip_gc_vars = all_skip_gc_vars;
+    }
+    if (FLAGS_save_static_runtime_data) {
+      paddle::framework::save_runtime_cinn_graph(
+          *subgraph,
+          cluster_debug_info(cluster_set),
+          cluster_debug_info(cluster_inputs),
+          cluster_debug_info(cluster_outputs),
+          cluster_debug_info(cluster_internals),
+          FLAGS_static_runtime_data_save_path + "/cluster_" +
+              std::to_string(++i));
     }
     auto compilation_key = cinn_compiler->AddGraph(std::move(subgraph));
     VLOG(4) << "Compilation Key:\n"

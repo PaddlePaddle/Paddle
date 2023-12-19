@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
-
 #ifdef __NVCC__
 #include <cub/cub.cuh>
 #endif
@@ -177,10 +176,15 @@ struct SequenceSoftmaxGradFunctor<phi::GPUContext, T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(sequence_softmax,
-                        ops::SequenceSoftmaxKernel<phi::GPUContext, float>,
-                        ops::SequenceSoftmaxKernel<phi::GPUContext, double>);
-REGISTER_OP_CUDA_KERNEL(
-    sequence_softmax_grad,
-    ops::SequenceSoftmaxGradKernel<phi::GPUContext, float>,
-    ops::SequenceSoftmaxGradKernel<phi::GPUContext, double>);
+PD_REGISTER_STRUCT_KERNEL(sequence_softmax,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SequenceSoftmaxKernel,
+                          float,
+                          double) {}
+PD_REGISTER_STRUCT_KERNEL(sequence_softmax_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SequenceSoftmaxGradKernel,
+                          float,
+                          double) {}

@@ -19,27 +19,28 @@
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
-std::tuple<paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor>
+std::tuple<paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor>
 fused_gate_attention_dygraph_function(
-    const paddle::experimental::Tensor& Query,
-    const paddle::experimental::Tensor& Key,
-    const paddle::experimental::Tensor& QueryWeight,
-    const paddle::experimental::Tensor& KeyWeight,
-    const paddle::experimental::Tensor& ValueWeight,
-    const paddle::experimental::Tensor& QKVWeight,
-    const paddle::experimental::Tensor& NonbatchedBias,
-    const paddle::experimental::Tensor& SrcMask,
-    const paddle::experimental::Tensor& GateWeight,
-    const paddle::experimental::Tensor& GateBias,
-    const paddle::experimental::Tensor& OutLinearWeight,
-    const paddle::experimental::Tensor& OutLinearBias,
+    const paddle::Tensor& Query,
+    const paddle::Tensor& Key,
+    const paddle::Tensor& QueryWeight,
+    const paddle::Tensor& KeyWeight,
+    const paddle::Tensor& ValueWeight,
+    const paddle::Tensor& QKVWeight,
+    const paddle::Tensor& NonbatchedBias,
+    const paddle::Tensor& SrcMask,
+    const paddle::Tensor& GateWeight,
+    const paddle::Tensor& GateBias,
+    const paddle::Tensor& OutLinearWeight,
+    const paddle::Tensor& OutLinearBias,
     const paddle::framework::AttributeMap& attr_map) {
   paddle::platform::RecordEvent dygraph_entrance_record_event(
       "fused_gate_attention dygraph",
@@ -52,8 +53,7 @@ fused_gate_attention_dygraph_function(
       paddle::imperative::AmpLevel::O0) {
     VLOG(5) << "Check and Prepare For AMP";
 
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                         egr::kSlotSmallVectorSize>
+    paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
         amp_tensors_vector = {
             {Query}, {SrcMask}, {OutLinearWeight}, {OutLinearBias}};
     if (Key.initialized()) amp_tensors_vector.push_back({Key});
@@ -182,6 +182,9 @@ fused_gate_attention_dygraph_function(
        {"SoftmaxOut",
         {std::make_shared<egr::EagerVariable>(
             egr::Controller::Instance().GenerateUniqueName())}},
+       {"SoftmaxLse",
+        {std::make_shared<egr::EagerVariable>(
+            egr::Controller::Instance().GenerateUniqueName())}},
        {"FMHAOut",
         {std::make_shared<egr::EagerVariable>(
             egr::Controller::Instance().GenerateUniqueName())}},
@@ -247,21 +250,23 @@ fused_gate_attention_dygraph_function(
       true,
       {});
 
-  paddle::experimental::Tensor QueryTransposeOut;
+  paddle::Tensor QueryTransposeOut;
   egr::EagerUtils::GetOutput(outs["QueryTransposeOut"][0], &QueryTransposeOut);
-  paddle::experimental::Tensor KeyTransposeOut;
+  paddle::Tensor KeyTransposeOut;
   egr::EagerUtils::GetOutput(outs["KeyTransposeOut"][0], &KeyTransposeOut);
-  paddle::experimental::Tensor ValueTransposeOut;
+  paddle::Tensor ValueTransposeOut;
   egr::EagerUtils::GetOutput(outs["ValueTransposeOut"][0], &ValueTransposeOut);
-  paddle::experimental::Tensor QKVTransposeOut;
+  paddle::Tensor QKVTransposeOut;
   egr::EagerUtils::GetOutput(outs["QKVTransposeOut"][0], &QKVTransposeOut);
-  paddle::experimental::Tensor SoftmaxOut;
+  paddle::Tensor SoftmaxOut;
   egr::EagerUtils::GetOutput(outs["SoftmaxOut"][0], &SoftmaxOut);
-  paddle::experimental::Tensor FMHAOut;
+  paddle::Tensor SoftmaxLse;
+  egr::EagerUtils::GetOutput(outs["SoftmaxLse"][0], &SoftmaxLse);
+  paddle::Tensor FMHAOut;
   egr::EagerUtils::GetOutput(outs["FMHAOut"][0], &FMHAOut);
-  paddle::experimental::Tensor GateOut;
+  paddle::Tensor GateOut;
   egr::EagerUtils::GetOutput(outs["GateOut"][0], &GateOut);
-  paddle::experimental::Tensor Out;
+  paddle::Tensor Out;
   egr::EagerUtils::GetOutput(outs["Out"][0], &Out);
 
   {
@@ -296,8 +301,9 @@ fused_gate_attention_dygraph_function(
                                         p_autograd_GateOut,
                                         p_autograd_Out);
       // Create GradOpNode
-      auto grad_node = std::shared_ptr<fused_gate_attentionGradNodeCompat>(
-          new fused_gate_attentionGradNodeCompat(8, 12));
+      auto grad_node =
+          std::shared_ptr<fused_gate_attentionGradNodeCompat>(  // NOLINT
+              new fused_gate_attentionGradNodeCompat(9, 12));
 
       bool merge_qkv = true;
       if (attrs.count("merge_qkv")) {
@@ -307,6 +313,11 @@ fused_gate_attention_dygraph_function(
       bool has_gating = true;
       if (attrs.count("has_gating")) {
         has_gating = PADDLE_GET_CONST(bool, attrs.at("has_gating"));
+      }
+
+      bool use_flash_attn = false;
+      if (attrs.count("use_flash_attn")) {
+        use_flash_attn = PADDLE_GET_CONST(bool, attrs.at("use_flash_attn"));
       }
 
       // Set Attributes
@@ -355,6 +366,12 @@ fused_gate_attention_dygraph_function(
         grad_node->SetGradOutMeta(NonbatchedBias, 6);
       }
 
+      if (use_flash_attn) {
+        grad_node->SetTensorWrapperSoftmaxLse(SoftmaxLse);
+        grad_node->SetTensorWrapperSrcMask(SrcMask);
+        grad_node->SetGradOutMeta(SrcMask, 7);
+      }
+
       egr::EagerUtils::SetOutRankWithSlot(p_autograd_QueryTransposeOut, 0);
       grad_node->SetGradInMeta(QueryTransposeOut, 0);
       egr::EagerUtils::SetOutRankWithSlot(p_autograd_KeyTransposeOut, 1);
@@ -380,6 +397,7 @@ fused_gate_attention_dygraph_function(
                          ValueTransposeOut,
                          QKVTransposeOut,
                          SoftmaxOut,
+                         SoftmaxLse,
                          FMHAOut,
                          GateOut,
                          Out);

@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import astor
 
 from paddle.utils import gast
 
 from . import utils
 from .base_transformer import BaseTransformer
-from .static_analysis import AstNodeWrapper
 
 __all__ = []
 
@@ -28,13 +28,8 @@ class BasicApiTransformer(BaseTransformer):
     Class to transform basic API from dygraph to static graph.
     """
 
-    def __init__(self, wrapper_root):
-        assert isinstance(
-            wrapper_root, AstNodeWrapper
-        ), "Input non-AstNodeWrapper node for the initialization of BasicApiTransformer."
-
-        self.wrapper_root = wrapper_root
-        self.root = wrapper_root.node
+    def __init__(self, root):
+        self.root = root
         self.class_node_dict = {}
 
     def transform(self):
@@ -43,7 +38,7 @@ class BasicApiTransformer(BaseTransformer):
         attribute_transformer = AttributeJstTransformer(self.root)
         attribute_transformer.transform()
         self.visit(self.root)
-        return self.wrapper_root
+        return self.root
 
     def visit_Assign(self, node):
         if self._update_class_node_dict(node):
@@ -138,13 +133,8 @@ class NameloadJstTransformer(BaseTransformer):
     NOTE: we only deal with ctx=Load() case.
     """
 
-    def __init__(self, wrapper_root):
-        assert isinstance(
-            wrapper_root, AstNodeWrapper
-        ), "Input non-AstNodeWrapper node for the initialization of BasicApiTransformer."
-
-        self.wrapper_root = wrapper_root
-        self.root = wrapper_root.node
+    def __init__(self, root):
+        self.root = root
 
     def transform(self):
         self.visit(self.root)
@@ -152,9 +142,7 @@ class NameloadJstTransformer(BaseTransformer):
 
     def _surround_with_ld(self, node):
         node = (
-            gast.parse(
-                "_jst.Ld({})".format(utils.ast_to_source_code(node).strip())
-            )
+            gast.parse(f"_jst.Ld({utils.ast_to_source_code(node).strip()})")
             .body[0]
             .value
         )
@@ -164,23 +152,39 @@ class NameloadJstTransformer(BaseTransformer):
         """
         Can't convert name of function call, bacause this will affect CallTransformer.
         """
-        node.args = [self.generic_visit(arg) for arg in node.args]
+        node.args = [self.visit(arg) for arg in node.args]
+        node.func = self.visit(node.func)
         return node
+
+    def create_visit_with_convert_load(self, node_type, skip_fn=None):
+        def visit(node):
+            assert isinstance(node, node_type)
+            if skip_fn and skip_fn(node):
+                return node
+            self.generic_visit(node)
+            if isinstance(node.ctx, gast.Load):
+                node = self._surround_with_ld(node)
+            return node
+
+        return visit
 
     def visit_Attribute(self, node):
-        assert isinstance(node, gast.Attribute)
-        assert isinstance(node.attr, str)
-        self.generic_visit(node)
-        if isinstance(node.ctx, gast.Load):
-            node = self._surround_with_ld(node)
-        return node
+        def skip_fn(node):
+            if utils.ast_to_source_code(node).startswith(
+                "_jst."
+            ):  # skip _jst.xxx
+                return True
+            return False
+
+        return self.create_visit_with_convert_load(gast.Attribute, skip_fn)(
+            node
+        )
+
+    def visit_Subscript(self, node):
+        return self.create_visit_with_convert_load(gast.Subscript)(node)
 
     def visit_Name(self, node):
-        assert isinstance(node, gast.Name)
-        self.generic_visit(node)
-        if isinstance(node.ctx, gast.Load):
-            node = self._surround_with_ld(node)
-        return node
+        return self.create_visit_with_convert_load(gast.Name)(node)
 
 
 class AttributeJstTransformer(BaseTransformer):
@@ -197,11 +201,9 @@ class AttributeJstTransformer(BaseTransformer):
         assert isinstance(
             node, gast.AST
         ), "Input non-gast.AST node for the initialization of ToTensorTransformer."
-        self.interested_name = set(
-            [
-                'size',
-            ]
-        )
+        self.interested_name = {
+            'size',
+        }
         self.root = node
 
     def transform(self):
@@ -219,9 +221,7 @@ class AttributeJstTransformer(BaseTransformer):
             value = node.value
             node = (
                 gast.parse(
-                    "_jst.Attr({}, \"{}\")".format(
-                        utils.ast_to_source_code(value).strip(), attr
-                    )
+                    f"_jst.Attr({utils.ast_to_source_code(value).strip()}, \"{attr}\")"
                 )
                 .body[0]
                 .value
@@ -241,7 +241,7 @@ def is_to_variable(node):
 
 
 def to_assign_node(node):
-    # Transform dygraph api `fluid.dygraph.to_variable` alias `paddle.to_tensor` to static api `paddle.assign`.
+    # Transform dygraph api `base.dygraph.to_variable` alias `paddle.to_tensor` to static api `paddle.assign`.
     # NOTE:
     #   1. Api `to_variable` supports data type {float16, float32, float64, int16, int32, int64, uint8, uint16},
     #   but api `assign` only supports {float32, float64, int32, int64, bool};

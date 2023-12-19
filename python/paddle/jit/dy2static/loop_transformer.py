@@ -15,7 +15,7 @@
 import copy
 from collections import defaultdict
 
-from paddle.fluid import unique_name
+from paddle.base import unique_name
 from paddle.utils import gast
 
 from .base_transformer import (
@@ -24,8 +24,12 @@ from .base_transformer import (
     ForNodeVisitor,
 )
 from .ifelse_transformer import ARGS_NAME
-from .static_analysis import AstNodeWrapper, NodeVarType, StaticAnalysisVisitor
+from .static_analysis import NodeVarType, StaticAnalysisVisitor
 from .utils import (
+    FOR_BODY_PREFIX,
+    FOR_CONDITION_PREFIX,
+    WHILE_BODY_PREFIX,
+    WHILE_CONDITION_PREFIX,
     FunctionNameLivenessAnalysis,
     GetterSetterHelper,
     ast_to_source_code,
@@ -37,12 +41,6 @@ from .utils import (
 )
 
 __all__ = []
-
-WHILE_CONDITION_PREFIX = 'while_condition'
-WHILE_BODY_PREFIX = 'while_body'
-
-FOR_CONDITION_PREFIX = 'for_loop_condition'
-FOR_BODY_PREFIX = 'for_loop_body'
 
 
 def create_while_nodes(
@@ -509,16 +507,12 @@ class LoopTransformer(BaseTransformer):
     This class transforms python while/for statement into Static Graph Ast
     """
 
-    def __init__(self, wrapper_root):
-        assert isinstance(
-            wrapper_root, AstNodeWrapper
-        ), "Input non-AstNodeWrapper node for the initialization of LoopTransformer."
-        self.wrapper_root = wrapper_root
-        self.root = wrapper_root.node
+    def __init__(self, root):
+        self.root = root
         FunctionNameLivenessAnalysis(self.root)
 
     def transform(self):
-        ForLoopTuplePreTransformer(self.wrapper_root).transform()
+        ForLoopTuplePreTransformer(self.root).transform()
         self.visit(self.root)
 
     def visit_While(self, node):

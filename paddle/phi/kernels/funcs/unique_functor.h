@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #pragma once
+#include <set>
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
@@ -69,7 +71,7 @@ struct UniqueOpFunctor {
 
     if (count_ != nullptr) {
       // Resize the count tensor dims to allocate the memory
-      count_->Resize(phi::make_ddim({static_cast<int64_t>(uniq.size())}));
+      count_->Resize(common::make_ddim({static_cast<int64_t>(uniq.size())}));
       IndexT* count_data = context_.template Alloc<IndexT>(count_);
       // init count_data to 0
       memset(count_data, 0, uniq.size() * sizeof(IndexT));
@@ -82,9 +84,9 @@ struct UniqueOpFunctor {
                         phi::errors::InvalidArgument(
                             "Index holds the wrong type, it holds %s, "
                             "but desires to be %s or %s",
-                            phi::DataTypeToString(index_type),
-                            phi::DataTypeToString(DataType::INT32),
-                            phi::DataTypeToString(DataType::INT64)));
+                            DataTypeToString(index_type),
+                            DataTypeToString(DataType::INT32),
+                            DataTypeToString(DataType::INT64)));
 
       if (index_type == DataType::INT32) {
         for (auto i = 0; i < in_->numel(); ++i) {
@@ -99,7 +101,7 @@ struct UniqueOpFunctor {
       }
     }
 
-    out_->Resize(phi::make_ddim({static_cast<int64_t>(uniq.size())}));
+    out_->Resize(common::make_ddim({static_cast<int64_t>(uniq.size())}));
     auto* out_data = context_.template Alloc<InT>(out_);
     std::memcpy(out_data, uniq.data(), uniq.size() * sizeof(InT));
   }
@@ -139,12 +141,12 @@ static void UniqueFlattendTensor(const Context& context,
                                  bool return_counts) {
   const InT* in_data = in.data<InT>();
   std::set<InT> unique(in_data, in_data + in.numel());
-  out->Resize(phi::make_ddim({static_cast<int64_t>(unique.size())}));
+  out->Resize(common::make_ddim({static_cast<int64_t>(unique.size())}));
   auto* out_data = context.template Alloc<InT>(out);
   std::copy(unique.begin(), unique.end(), out_data);
 
   if (return_index) {
-    indices->Resize(phi::make_ddim({out->numel()}));
+    indices->Resize(common::make_ddim({out->numel()}));
     auto indices_data = context.template Alloc<IndexT>(indices);
     std::unordered_map<InT, IndexT> indices_map;
     indices_map.reserve(out->numel());
@@ -158,7 +160,7 @@ static void UniqueFlattendTensor(const Context& context,
   }
 
   if (return_inverse) {
-    index->Resize(phi::make_ddim({in.numel()}));
+    index->Resize(common::make_ddim({in.numel()}));
     auto inverse_data = context.template Alloc<IndexT>(index);
     std::unordered_map<InT, IndexT> inverse_map;
     inverse_map.reserve(out->numel());
@@ -171,7 +173,7 @@ static void UniqueFlattendTensor(const Context& context,
   }
 
   if (return_counts) {
-    count->Resize(phi::make_ddim({out->numel()}));
+    count->Resize(common::make_ddim({out->numel()}));
     auto count_data = context.template Alloc<IndexT>(count);
     std::unordered_map<InT, IndexT> counts_map;
     counts_map.reserve(out->numel());
@@ -188,7 +190,7 @@ static void UniqueFlattendTensor(const Context& context,
 }
 
 template <typename Context, typename ForwardIt, typename InT, typename IndexT>
-static ForwardIt UniqueDimImpl(const Context& context,
+static ForwardIt UniqueDimImpl(const Context& context UNUSED,
                                ForwardIt first,
                                ForwardIt last,
                                const std::vector<IndexT>& sorted_indices_vec,
@@ -238,16 +240,16 @@ static void UniqueDim(const Context& context,
   std::iota(permute.begin(), permute.end(), 0);
   permute[axis] = 0;
   permute[0] = axis;
-  std::vector<int64_t> in_trans_dims_vec(phi::vectorize(in.dims()));
+  std::vector<int64_t> in_trans_dims_vec(common::vectorize(in.dims()));
   in_trans_dims_vec[axis] = in.dims()[0];
   in_trans_dims_vec[0] = in.dims()[axis];
   DenseTensor in_trans;
-  phi::DDim in_trans_dims = phi::make_ddim(in_trans_dims_vec);
+  phi::DDim in_trans_dims = common::make_ddim(in_trans_dims_vec);
   in_trans.Resize(in_trans_dims);
   context.template Alloc<InT>(&in_trans);
   TransCompute<Context, InT>(in.dims().size(), context, in, &in_trans, permute);
   // reshape tensor: eg. [dim1, dim0, dim2] -> [dim1, dim0*dim2]
-  phi::DDim in_trans_flat_dims = phi::flatten_to_2d(in_trans_dims, 1);
+  phi::DDim in_trans_flat_dims = common::flatten_to_2d(in_trans_dims, 1);
   in_trans.Resize(in_trans_flat_dims);
 
   // sort indices
@@ -302,10 +304,10 @@ static void UniqueDim(const Context& context,
   DenseTensor out_trans;
   std::vector<int64_t> out_trans_dims_vec = in_trans_dims_vec;
   out_trans_dims_vec[0] = input_unbind.size();
-  out_trans.Resize(phi::make_ddim(out_trans_dims_vec));
+  out_trans.Resize(common::make_ddim(out_trans_dims_vec));
   context.template Alloc<InT>(&out_trans);
   std::swap(out_trans_dims_vec[0], out_trans_dims_vec[axis]);
-  out->Resize(phi::make_ddim(out_trans_dims_vec));
+  out->Resize(common::make_ddim(out_trans_dims_vec));
   context.template Alloc<InT>(out);
   concat_functor(context, input_unbind, 0, &out_trans);
   TransCompute<Context, InT>(

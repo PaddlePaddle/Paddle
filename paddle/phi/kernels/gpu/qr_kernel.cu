@@ -18,9 +18,9 @@
 #include <algorithm>
 #include <vector>
 
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/infermeta/unary.h"
@@ -40,7 +40,7 @@ static DenseTensor Fill(const Context& ctx,
                         std::vector<int> shape,
                         float fill_value) {
   DenseTensor ret;
-  ret.Resize(make_ddim(shape));
+  ret.Resize(common::make_ddim(shape));
   ctx.template Alloc<T>(&ret);
   funcs::SetConstant<Context, T>()(ctx, &ret, T(fill_value));
   return ret;
@@ -85,7 +85,7 @@ void QrKernel(const Context& ctx,
   phi::Copy(ctx, x, ctx.GetPlace(), false, &qr);
 
   // Prepare tau
-  auto tau_dims_vec = phi::vectorize<int>(x_dims);
+  auto tau_dims_vec = common::vectorize<int>(x_dims);
   tau_dims_vec.pop_back();
   tau_dims_vec[tau_dims_vec.size() - 1] = min_mn;
   DenseTensor tau = Fill<T, Context>(ctx, tau_dims_vec, 0);
@@ -101,8 +101,8 @@ void QrKernel(const Context& ctx,
 
   if (reduced_mode) {
     auto trans_qr = TransposeLast2Dim<T, Context>(ctx, qr);
-    auto sliced_qr = SliceKernel<T, Context>(
-        ctx, trans_qr, {trans_qr.dims().size() - 2}, {0}, {min_mn}, {1}, {});
+    auto sliced_qr = Slice<T, Context>(
+        ctx, trans_qr, {trans_qr.dims().size() - 2}, {0}, {min_mn});
     auto tmp_r = TrilTriu<T, Context>(ctx, sliced_qr, 0, false);
     // Transpose 'tmp_r' to retore the original row-major order
     phi::Copy(ctx, tmp_r, r->place(), false, r);
@@ -128,23 +128,23 @@ void QrKernel(const Context& ctx,
                                qr_stride,
                                tau_stride);
       auto trans_q = TransposeLast2Dim<T, Context>(ctx, qr);
-      auto sliced_q = SliceKernel<T, Context>(
-          ctx, trans_q, {trans_q.dims().size() - 1}, {0}, {min_mn}, {1}, {});
+      auto sliced_q = Slice<T, Context>(
+          ctx, trans_q, {trans_q.dims().size() - 1}, {0}, {min_mn});
       phi::Copy(ctx, sliced_q, q->place(), false, q);
     } else {
       if (m > n) {
-        auto new_qr_dims_vec = phi::vectorize<int>(x_dims);
+        auto new_qr_dims_vec = common::vectorize<int>(x_dims);
         new_qr_dims_vec[new_qr_dims_vec.size() - 1] = m;
         DenseTensor new_qr = Fill<T, Context>(ctx, new_qr_dims_vec, 0);
         auto new_qr_data = ctx.template Alloc<phi::dtype::Real<T>>(&new_qr);
         auto new_qr_stride = m * m;
         for (int i = 0; i < batch_size; ++i) {
-          paddle::memory::Copy(ctx.GetPlace(),
-                               (new_qr_data + i * new_qr_stride),
-                               ctx.GetPlace(),
-                               (qr_data + i * qr_stride),
-                               qr_stride * sizeof(phi::dtype::Real<T>),
-                               ctx.stream());
+          memory_utils::Copy(ctx.GetPlace(),
+                             (new_qr_data + i * new_qr_stride),
+                             ctx.GetPlace(),
+                             (qr_data + i * qr_stride),
+                             qr_stride * sizeof(phi::dtype::Real<T>),
+                             ctx.stream());
         }
         BatchedOrgqr<Context, T>(ctx,
                                  batch_size,
@@ -170,8 +170,8 @@ void QrKernel(const Context& ctx,
                                  qr_stride,
                                  tau_stride);
         auto trans_q = TransposeLast2Dim<T, Context>(ctx, qr);
-        auto sliced_q = SliceKernel<T, Context>(
-            ctx, trans_q, {trans_q.dims().size() - 1}, {0}, {m}, {1}, {});
+        auto sliced_q = Slice<T, Context>(
+            ctx, trans_q, {trans_q.dims().size() - 1}, {0}, {m});
         phi::Copy(ctx, sliced_q, q->place(), false, q);
       }
     }
@@ -195,11 +195,11 @@ void BatchedGeqrf<GPUContext, float>(const GPUContext& dev_ctx,
       phi::dynload::cusolverDnSgeqrf_bufferSize(handle, m, n, a, lda, &lwork));
 
   DenseTensor workspace = DenseTensor();
-  workspace.Resize(make_ddim({lwork}));
+  workspace.Resize(common::make_ddim({lwork}));
   float* workspace_ptr = dev_ctx.template Alloc<float>(&workspace);
 
   DenseTensor info = DenseTensor();
-  info.Resize(make_ddim({1}));
+  info.Resize(common::make_ddim({1}));
   int* info_d = dev_ctx.template Alloc<int>(&info);
 
   for (int i = 0; i < batch_size; ++i) {
@@ -218,12 +218,12 @@ void BatchedGeqrf<GPUContext, float>(const GPUContext& dev_ctx,
     // Do we need synchronized here?
     // check the error info
     int info_h;
-    paddle::memory::Copy(phi::CPUPlace(),
-                         &info_h,
-                         dev_ctx.GetPlace(),
-                         info_d,
-                         sizeof(int),
-                         dev_ctx.stream());
+    memory_utils::Copy(phi::CPUPlace(),
+                       &info_h,
+                       dev_ctx.GetPlace(),
+                       info_d,
+                       sizeof(int),
+                       dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         info_h,
         0,
@@ -249,11 +249,11 @@ void BatchedGeqrf<GPUContext, double>(const GPUContext& dev_ctx,
       phi::dynload::cusolverDnDgeqrf_bufferSize(handle, m, n, a, lda, &lwork));
 
   DenseTensor workspace = DenseTensor();
-  workspace.Resize(make_ddim({lwork}));
+  workspace.Resize(common::make_ddim({lwork}));
   double* workspace_ptr = dev_ctx.template Alloc<double>(&workspace);
 
   DenseTensor info = DenseTensor();
-  info.Resize(make_ddim({1}));
+  info.Resize(common::make_ddim({1}));
   int* info_d = dev_ctx.template Alloc<int>(&info);
 
   for (int i = 0; i < batch_size; ++i) {
@@ -272,12 +272,12 @@ void BatchedGeqrf<GPUContext, double>(const GPUContext& dev_ctx,
     // Do we need synchronized here?
     // check the error info
     int info_h;
-    paddle::memory::Copy(phi::CPUPlace(),
-                         &info_h,
-                         dev_ctx.GetPlace(),
-                         info_d,
-                         sizeof(int),
-                         dev_ctx.stream());
+    memory_utils::Copy(phi::CPUPlace(),
+                       &info_h,
+                       dev_ctx.GetPlace(),
+                       info_d,
+                       sizeof(int),
+                       dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         info_h,
         0,
@@ -304,11 +304,11 @@ void BatchedOrgqr<GPUContext, float>(const GPUContext& dev_ctx,
       handle, m, n, k, a, lda, tau, &lwork));
 
   DenseTensor workspace = DenseTensor();
-  workspace.Resize(make_ddim({lwork}));
+  workspace.Resize(common::make_ddim({lwork}));
   float* workspace_ptr = dev_ctx.template Alloc<float>(&workspace);
 
   DenseTensor info = DenseTensor();
-  info.Resize(make_ddim({1}));
+  info.Resize(common::make_ddim({1}));
   int* info_d = dev_ctx.template Alloc<int>(&info);
 
   for (int i = 0; i < batch_size; ++i) {
@@ -328,12 +328,12 @@ void BatchedOrgqr<GPUContext, float>(const GPUContext& dev_ctx,
     // Do we need synchronized here?
     // check the error info
     int info_h;
-    paddle::memory::Copy(phi::CPUPlace(),
-                         &info_h,
-                         dev_ctx.GetPlace(),
-                         info_d,
-                         sizeof(int),
-                         dev_ctx.stream());
+    memory_utils::Copy(phi::CPUPlace(),
+                       &info_h,
+                       dev_ctx.GetPlace(),
+                       info_d,
+                       sizeof(int),
+                       dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         info_h,
         0,
@@ -360,11 +360,11 @@ void BatchedOrgqr<GPUContext, double>(const GPUContext& dev_ctx,
       handle, m, n, k, a, lda, tau, &lwork));
 
   DenseTensor workspace = DenseTensor();
-  workspace.Resize(make_ddim({lwork}));
+  workspace.Resize(common::make_ddim({lwork}));
   double* workspace_ptr = dev_ctx.template Alloc<double>(&workspace);
 
   DenseTensor info = DenseTensor();
-  info.Resize(make_ddim({1}));
+  info.Resize(common::make_ddim({1}));
   int* info_d = dev_ctx.template Alloc<int>(&info);
 
   for (int i = 0; i < batch_size; ++i) {
@@ -384,12 +384,12 @@ void BatchedOrgqr<GPUContext, double>(const GPUContext& dev_ctx,
     // Do we need synchronized here?
     // check the error info
     int info_h;
-    paddle::memory::Copy(phi::CPUPlace(),
-                         &info_h,
-                         dev_ctx.GetPlace(),
-                         info_d,
-                         sizeof(int),
-                         dev_ctx.stream());
+    memory_utils::Copy(phi::CPUPlace(),
+                       &info_h,
+                       dev_ctx.GetPlace(),
+                       info_d,
+                       sizeof(int),
+                       dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         info_h,
         0,

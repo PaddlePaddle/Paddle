@@ -104,9 +104,8 @@ template <typename T>
 inline void MergeAttrs(const std::vector<OpDesc*>& ops,
                        const std::string& attr_name) {
   std::vector<T> res;
-  for (size_t i = 0; i < ops.size(); ++i) {
-    auto scale_vec =
-        PADDLE_GET_CONST(std::vector<T>, ops[i]->GetAttr(attr_name));
+  for (auto op : ops) {
+    auto scale_vec = PADDLE_GET_CONST(std::vector<T>, op->GetAttr(attr_name));
     res.insert(res.end(), scale_vec.begin(), scale_vec.end());
   }
   ops[0]->SetAttr(attr_name, res);
@@ -292,6 +291,16 @@ void FuseMultiTransformerLayerPass::ApplyImpl(Graph* graph) const {
       scope,
       platform::errors::Fatal("During the fuse_multi_transformer_layer pass, "
                               "The scope should not be null."));
+
+  VLOG(3) << "Running fuse_multi_transformer_layer_pass.";
+  if (graph->IsMainGraph()) {
+    VLOG(3) << "The ID of block running fuse_multi_transformer_layer_pass is: "
+               "0(main_graph)";
+  } else {
+    VLOG(3) << "The ID of block running fuse_multi_transformer_layer_pass is: "
+            << graph->GetBlockId();
+  }
+
   int fusion_count = BuildFusion(graph, name_scope_, scope);
 
   AddStatis(fusion_count);

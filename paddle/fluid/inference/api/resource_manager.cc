@@ -20,6 +20,7 @@
 #include <unordered_map>
 #include <utility>
 
+#include "paddle/common/errors.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "paddle/phi/backends/gpu/forwards.h"
@@ -28,7 +29,6 @@
 #include "paddle/phi/backends/gpu/gpu_resources.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
-#include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/generator.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
@@ -50,7 +50,7 @@ class EigenGpuStreamDevice : public Eigen::StreamInterface {
   EigenGpuStreamDevice() : scratch_(nullptr), semaphore_(nullptr) {
     Eigen::initializeDeviceProp();
   }
-  ~EigenGpuStreamDevice() override {}
+  ~EigenGpuStreamDevice() override = default;
 
   void Reinitialize(gpuStream_t cuda_stream,
                     phi::Allocator* allocator,
@@ -89,14 +89,14 @@ class EigenGpuStreamDevice : public Eigen::StreamInterface {
   }
 
   void* scratchpad() const override {
-    if (scratch_ == NULL) {
+    if (scratch_ == nullptr) {
       scratch_ = allocate(Eigen::kGpuScratchSize + sizeof(unsigned int));
     }
     return scratch_;
   }
 
   unsigned int* semaphore() const override {
-    if (semaphore_ == NULL) {
+    if (semaphore_ == nullptr) {
       char* scratch = static_cast<char*>(scratchpad()) + Eigen::kGpuScratchSize;
       semaphore_ = reinterpret_cast<unsigned int*>(scratch);
 #ifdef PADDLE_WITH_HIP
@@ -127,7 +127,7 @@ Eigen::DefaultDevice* CPUContextResource::GetCPUEigenDevice() const {
 }
 
 void CPUContextResource::InitCPUResource() {
-  cpu_eigen_device_.reset(new Eigen::DefaultDevice());
+  cpu_eigen_device_ = std::make_unique<Eigen::DefaultDevice>();
 }
 
 CPUContextResource::CPUContextResource() { InitCPUResource(); }
@@ -151,6 +151,7 @@ void GPUContextResource::InitGPUResource(void* stream) {
   }
 
   InitGpuProperties();
+  InitGpuEigenDevice();
 }
 
 void GPUContextResource::DestroyGPUResource() {
@@ -185,9 +186,9 @@ void GPUContextResource::InitGpuEigenDevice() {
   auto* allocator = paddle::memory::allocation::AllocatorFacade::Instance()
                         .GetAllocator(place_)
                         .get();
-  eigen_stream_.reset(new internal::EigenGpuStreamDevice());
+  eigen_stream_ = std::make_unique<internal::EigenGpuStreamDevice>();
   eigen_stream_->Reinitialize(stream_, allocator, place_);
-  gpu_eigen_device_.reset(new Eigen::GpuDevice(eigen_stream_.get()));
+  gpu_eigen_device_ = std::make_unique<Eigen::GpuDevice>(eigen_stream_.get());
 }
 
 void GPUContextResource::InitDnnHanlde() {
@@ -358,96 +359,17 @@ std::array<int, 3> GPUContextResource::GetGpuMaxGridDimSize() const {
   return max_grid_dim_size_;
 }
 
-void GPUContextResource::ReBindStream(gpuStream_t stream) {
-  owned_stream_ = false;
-  stream_ = stream;
-}
-
-void GPUContextResource::ReBindDnnHandle(gpuStream_t stream) const {
-  if (dnn_handle_) {
-#ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::miopenSetStream(dnn_handle_, stream));
-#else
-    PADDLE_RETRY_CUDA_SUCCESS(
-        phi::dynload::cudnnSetStream(dnn_handle_, stream));
 #endif
-  }
-}
 
-void GPUContextResource::ReBindBlasHandle(gpuStream_t stream) const {
-  if (blas_handle_) {
-#ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::rocblas_set_stream(blas_handle_, stream));
-#else
-    PADDLE_RETRY_CUDA_SUCCESS(
-        phi::dynload::cublasSetStream(blas_handle_, stream));
-#endif
-  }
+ResourceManager& ResourceManager::Instance() {
+  static ResourceManager* resource_manager = new ResourceManager;
+  return *resource_manager;
 }
-
-void GPUContextResource::ReBindBlasTensorCoreHandle(gpuStream_t stream) const {
-  if (blas_tensor_core_handle_) {
-#ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::rocblas_set_stream(blas_tensor_core_handle_, stream));
-#else
-    PADDLE_RETRY_CUDA_SUCCESS(
-        phi::dynload::cublasSetStream(blas_tensor_core_handle_, stream));
-#endif
-  }
-}
-
-void GPUContextResource::ReBindBlasTF32Handle(gpuStream_t stream) const {
-  if (blas_tf32_tensor_core_handle_) {
-#ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_set_stream(
-        blas_tf32_tensor_core_handle_, stream));
-#else
-    PADDLE_RETRY_CUDA_SUCCESS(
-        phi::dynload::cublasSetStream(blas_tf32_tensor_core_handle_, stream));
-#endif
-  }
-}
-
-void GPUContextResource::ReBindSolverDnHandle(gpuStream_t stream) const {
-  if (solver_handle_) {
-#ifndef PADDLE_WITH_HIP
-    PADDLE_RETRY_CUDA_SUCCESS(
-        phi::dynload::cusolverDnSetStream(solver_handle_, stream));
-#endif
-  }
-}
-
-void GPUContextResource::ReBindSparseHandle(gpuStream_t stream) const {
-  if (sparse_handle_) {
-#if defined(PADDLE_WITH_CUDA)
-// The generic APIs is supported from CUDA10.1
-#if CUDA_VERSION >= 11000
-    PADDLE_RETRY_CUDA_SUCCESS(
-        phi::dynload::cusparseSetStream(sparse_handle_, stream));
-#endif
-#endif
-  }
-}
-
-void GPUContextResource::ReBindEigenDevice(gpuStream_t stream,
-                                           GPUPlace place) const {
-  if (eigen_stream_) {
-    auto* allocator = paddle::memory::allocation::AllocatorFacade::Instance()
-                          .GetAllocator(place_)
-                          .get();
-    eigen_stream_->Reinitialize(stream, allocator, place);
-  }
-}
-
-#endif
 
 void ResourceManager::InitCPUResource() {
   std::lock_guard<std::mutex> lock_gurad(cpu_mutex_);
   if (cpu_resource_ == nullptr) {
-    cpu_resource_.reset(new CPUContextResource());
+    cpu_resource_ = std::make_unique<CPUContextResource>();
   }
 }
 
@@ -483,24 +405,16 @@ void ResourceManager::DestroyGPUResource(void* stream) {
 }
 
 void ResourceManager::Decrease(void* stream) {
-  PADDLE_ENFORCE_EQ(ref_count_.count(stream),
-                    true,
-                    platform::errors::InvalidArgument(
-                        "The stream[%p] not found in ref_count.", stream));
+  if (ref_count_.count(stream) == 0) return;
   --ref_count_[stream];
+
   if (ref_count_[stream] == 0) {
     ref_count_.erase(stream);
-    gpu_resources_.erase(stream);
+    if (gpu_resources_.count(stream) > 0) gpu_resources_.erase(stream);
   }
 }
 
-void ResourceManager::Increase(void* stream) {
-  PADDLE_ENFORCE_EQ(ref_count_.count(stream),
-                    true,
-                    platform::errors::InvalidArgument(
-                        "The stream[%p] not found in ref_count.", stream));
-  ++ref_count_[stream];
-}
+void ResourceManager::Increase(void* stream) { ++ref_count_[stream]; }
 
 GPUContextResource* ResourceManager::GetGPUResource(void* stream) const {
   PADDLE_ENFORCE_EQ(gpu_resources_.count(stream),
@@ -510,33 +424,29 @@ GPUContextResource* ResourceManager::GetGPUResource(void* stream) const {
   return gpu_resources_.at(stream).get();
 }
 
-void ResourceManager::GpuResourceReBindStream(void* old_stream,
+void ResourceManager::GpuResourceSwitchStream(void* old_stream,
                                               void* new_stream) {
+  // NOTE: add lock to support stream rebind in multi-thread
+  std::lock_guard<std::mutex> lock_gurad(gpu_mutex_);
+  if (old_stream == new_stream) return;
   PADDLE_ENFORCE_EQ(
       gpu_resources_.count(old_stream),
       true,
       platform::errors::InvalidArgument(
           "The stream[%p] not found in gpu_resources.", old_stream));
-  auto gpu_resource = std::move(gpu_resources_.at(old_stream));
-  DestroyGPUResource(old_stream);
-  PADDLE_ENFORCE_EQ(
-      ref_count_.count(old_stream),
-      0,
-      platform::errors::Fatal("gpu resources rebind stream failed."));
 
-  gpu_resource->ReBindStream(static_cast<gpuStream_t>(new_stream));
-  gpu_resource->ReBindDnnHandle(static_cast<gpuStream_t>(new_stream));
-  gpu_resource->ReBindBlasHandle(static_cast<gpuStream_t>(new_stream));
-  gpu_resource->ReBindBlasTensorCoreHandle(
-      static_cast<gpuStream_t>(new_stream));
-  gpu_resource->ReBindBlasTF32Handle(static_cast<gpuStream_t>(new_stream));
-  gpu_resource->ReBindSolverDnHandle(static_cast<gpuStream_t>(new_stream));
-  gpu_resource->ReBindSparseHandle(static_cast<gpuStream_t>(new_stream));
-  gpu_resource->ReBindEigenDevice(static_cast<gpuStream_t>(new_stream),
-                                  gpu_resource->Place());
+  // NOTE: stream may be used by multiple predictor, skip resource
+  //       operation if resource of new_stream is already exists
+  bool new_stream_existed = gpu_resources_.count(new_stream) > 0;
+  if (!new_stream_existed) {
+    auto place = gpu_resources_.at(old_stream)->Place();
+    std::unique_ptr<GPUContextResource> resource{
+        new GPUContextResource(place, new_stream)};
+    gpu_resources_.emplace(new_stream, std::move(resource));
+  }
 
-  ref_count_[new_stream]++;
-  gpu_resources_.emplace(new_stream, std::move(gpu_resource));
+  Decrease(old_stream);
+  Increase(new_stream);
 }
 
 int ResourceManager::RefCount(void* stream) const {
@@ -544,5 +454,4 @@ int ResourceManager::RefCount(void* stream) const {
   return ref_count_.at(stream);
 }
 #endif
-
 }  // namespace paddle

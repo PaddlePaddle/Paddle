@@ -14,8 +14,9 @@
 
 #pragma once
 
-#include "paddle/phi/common/layout.h"
-#include "paddle/phi/core/ddim.h"
+#include "paddle/common/ddim.h"
+#include "paddle/common/layout.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
@@ -86,14 +87,21 @@ inline std::vector<int> get_new_shape(
   for (size_t i = 0; i < list_new_shape_tensor.size(); ++i) {
     auto tensor = list_new_shape_tensor[i];
     phi::DeviceContext* dev_ctx = pool.Get(tensor->place());
-    PADDLE_ENFORCE_EQ(tensor->dims() == phi::make_ddim({1}) ||
-                          tensor->dims() == phi::make_ddim({}),
+    PADDLE_ENFORCE_EQ(tensor->dims() == common::make_ddim({1}) ||
+                          tensor->dims() == common::make_ddim({}),
                       true,
                       errors::InvalidArgument(
                           "The shape of dimension tensor should be [1] or [],"
                           "but received d%.",
                           tensor->dims()));
-
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    if (tensor->place().GetType() == phi::AllocationType::CUSTOM) {
+      DenseTensor temp;
+      phi::Copy(*dev_ctx, *tensor, phi::CPUPlace(), true, &temp);
+      vec_new_shape.push_back(static_cast<int32_t>(*temp.data<int32_t>()));
+      continue;
+    }
+#endif
 #ifdef PADDLE_WITH_XPU
     if (tensor->place().GetType() == phi::AllocationType::XPU) {
       DenseTensor temp;
@@ -122,20 +130,20 @@ inline std::vector<T> get_new_data_from_tensor(
   DenseTensor cpu_starts_tensor;
   auto& pool = phi::DeviceContextPool::Instance();
   phi::DeviceContext* dev_ctx = pool.Get(new_data_tensor->place());
-  if (paddle::platform::is_gpu_place(new_data_tensor->place())) {
+  if (new_data_tensor->place().GetType() == phi::AllocationType::GPU) {
     phi::Copy(
         *dev_ctx, *new_data_tensor, phi::CPUPlace(), true, &cpu_starts_tensor);
     new_data = cpu_starts_tensor.data<T>();
   }
-#ifdef PADDLE_WITH_ASCEND_CL
-  if (paddle::platform::is_npu_place(new_data_tensor->place())) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (new_data_tensor->place().GetType() == phi::AllocationType::CUSTOM) {
     phi::Copy(
         *dev_ctx, *new_data_tensor, phi::CPUPlace(), true, &cpu_starts_tensor);
     new_data = cpu_starts_tensor.data<T>();
   }
 #endif
 #ifdef PADDLE_WITH_XPU
-  if (paddle::platform::is_xpu_place(new_data_tensor->place())) {
+  if (new_data_tensor->place().GetType() == phi::AllocationType::XPU) {
     phi::Copy(
         *dev_ctx, *new_data_tensor, phi::CPUPlace(), true, &cpu_starts_tensor);
     new_data = cpu_starts_tensor.data<T>();

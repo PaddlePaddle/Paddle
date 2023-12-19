@@ -22,7 +22,7 @@
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include <thrust/random.h>
 
-#include "paddle/fluid/framework/generator.h"
+#include "paddle/phi/core/generator.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
@@ -75,7 +75,7 @@ inline std::vector<int64_t> GetNewDataFromShapeTensorList(
     auto tensor = list_new_shape_tensor[i];
     PADDLE_ENFORCE_EQ(
         tensor->dims(),
-        phi::make_ddim({1}),
+        common::make_ddim({1}),
         platform::errors::InvalidArgument(
             "Shape of dim tensor in uniform_random_op should be [1]"
             "But received tensor's dim=%s.",

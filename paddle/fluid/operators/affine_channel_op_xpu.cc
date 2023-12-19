@@ -25,7 +25,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class AffineChannelXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -37,7 +37,7 @@ class AffineChannelXPUKernel : public framework::OpKernel<T> {
     y->mutable_data<T>(ctx.GetPlace());
 
     const phi::DataLayout layout =
-        phi::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
+        common::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
 
     auto dims = x->dims();
     int N = dims[0];
@@ -85,7 +85,7 @@ class AffineChannelXPUKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class AffineChannelGradXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -99,7 +99,7 @@ class AffineChannelGradXPUKernel : public framework::OpKernel<T> {
     auto* dbias = ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
 
     const phi::DataLayout layout =
-        phi::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
+        common::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
 
     auto dims = x->dims();
     int N = dims[0];
@@ -144,11 +144,10 @@ class AffineChannelGradXPUKernel : public framework::OpKernel<T> {
                             "The reduce_sum XPU OP return wrong value[%d %s]",
                             r,
                             XPUAPIErrorMsg[r]));
-      T* tmp = nullptr;
-      r = xpu_malloc(reinterpret_cast<void**>(&tmp), dy->numel() * sizeof(T));
-      PADDLE_ENFORCE_EQ(r,
-                        xpu::Error_t::SUCCESS,
-                        platform::errors::External("no enough memory in xpu"));
+      xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+      T* tmp = RAII_GUARD.alloc_l3_or_gm<T>(dy->numel());
+      PADDLE_ENFORCE_NOT_NULL(
+          tmp, platform::errors::External("XPU has no enough memory"));
 
       r = xpu::mul<T>(
           dev_ctx.x_context(), dy_d, x->data<T>(), tmp, dy->numel());
@@ -166,10 +165,6 @@ class AffineChannelGradXPUKernel : public framework::OpKernel<T> {
                             "The reduce_sum XPU OP return wrong value[%d %s]",
                             r,
                             XPUAPIErrorMsg[r]));
-      if (dev_ctx.x_context()->xpu_stream) {
-        dev_ctx.Wait();
-      }
-      xpu_free(tmp);
     }
     if (dx_d) {
       r = xpu::broadcast_mul(
@@ -189,10 +184,12 @@ class AffineChannelGradXPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using XPU = paddle::platform::XPUDeviceContext;
 
-REGISTER_OP_XPU_KERNEL(affine_channel, ops::AffineChannelXPUKernel<XPU, float>);
-REGISTER_OP_XPU_KERNEL(affine_channel_grad,
-                       ops::AffineChannelGradXPUKernel<XPU, float>);
-
+PD_REGISTER_STRUCT_KERNEL(
+    affine_channel, XPU, ALL_LAYOUT, ops::AffineChannelXPUKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(affine_channel_grad,
+                          XPU,
+                          ALL_LAYOUT,
+                          ops::AffineChannelGradXPUKernel,
+                          float) {}
 #endif

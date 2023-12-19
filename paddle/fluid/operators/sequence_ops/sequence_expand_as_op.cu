@@ -70,7 +70,7 @@ struct SequenceExpandAsFunctor<phi::GPUContext, T> {
                   const phi::Vector<size_t> &ref_lod, /*expand referenced lod*/
                   phi::DenseTensor *out) {
     int height = x.dims()[0];
-    int width = phi::product(x.dims()) / height;
+    int width = common::product(x.dims()) / height;
 
     const int kThreadsPerBlock = 1024;
     int thread_x = kThreadsPerBlock;
@@ -100,7 +100,7 @@ struct SequenceExpandAsGradFunctor<phi::GPUContext, T> {
                   const phi::Vector<size_t> &ref_lod, /*expand based lod*/
                   phi::DenseTensor *dx) {
     int height = dx->dims()[0];
-    int width = phi::product(dx->dims()) / height;
+    int width = common::product(dx->dims()) / height;
 
     const int kThreadsPerBlock = 1024;
     int thread_x = kThreadsPerBlock;
@@ -130,14 +130,19 @@ struct SequenceExpandAsGradFunctor<phi::GPUContext, T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(sequence_expand_as,
-                        ops::SequenceExpandAsKernel<phi::GPUContext, float>,
-                        ops::SequenceExpandAsKernel<phi::GPUContext, double>,
-                        ops::SequenceExpandAsKernel<phi::GPUContext, int>,
-                        ops::SequenceExpandAsKernel<phi::GPUContext, int64_t>);
-REGISTER_OP_CUDA_KERNEL(
-    sequence_expand_as_grad,
-    ops::SequenceExpandAsGradKernel<phi::GPUContext, float>,
-    ops::SequenceExpandAsGradKernel<phi::GPUContext, double>,
-    ops::SequenceExpandAsGradKernel<phi::GPUContext, int>,
-    ops::SequenceExpandAsGradKernel<phi::GPUContext, int64_t>);
+PD_REGISTER_STRUCT_KERNEL(sequence_expand_as,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SequenceExpandAsKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
+PD_REGISTER_STRUCT_KERNEL(sequence_expand_as_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SequenceExpandAsGradKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}

@@ -20,18 +20,19 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/init_default_kernel_signature_map.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
+#include "paddle/utils/test_macros.h"
 
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
@@ -59,8 +60,6 @@ class KernelArgsNameMaker {
   virtual const paddle::small_vector<const char*>& GetOutputArgsNames() = 0;
   virtual const paddle::small_vector<const char*>& GetAttrsArgsNames() = 0;
 };
-
-void InitDefaultKernelSignatureMap();
 
 // TODO(Wilber): support others device context.
 template <typename T>

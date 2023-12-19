@@ -85,7 +85,11 @@
 #
 #   go_library(example SHARED)
 #
-
+# To build a unit test binary, which is an executable binary with libpaddle.so
+# automatically linked:
+#
+#   paddle_test(example SRCS example_test.cc)
+#
 # including binary directory for generated headers.
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 # including io directory for inference lib paddle_api.h
@@ -115,6 +119,19 @@ function(find_fluid_modules TARGET_NAME)
     get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
     set(fluid_modules ${fluid_modules} ${TARGET_NAME})
     set_property(GLOBAL PROPERTY FLUID_MODULES "${fluid_modules}")
+  endif()
+endfunction()
+
+# NOTE(Aurelius84): NOT_INFER_MODULES is used to tag
+# and not considered as DEPS for inference libs.
+set_property(GLOBAL PROPERTY NOT_INFER_MODULES "")
+
+function(ignore_infer_modules TARGET_NAME)
+  get_property(not_infer_modules GLOBAL PROPERTY NOT_INFER_MODULES)
+  list(FIND not_infer_modules TARGET_NAME is_found)
+  if(is_found EQUAL -1) # NOT FOUND
+    set(not_infer_modules ${not_infer_modules} ${TARGET_NAME})
+    set_property(GLOBAL PROPERTY NOT_INFER_MODULES "${not_infer_modules}")
   endif()
 endfunction()
 
@@ -335,7 +352,15 @@ function(check_coverage_opt TARGET_NAME SRCS)
 endfunction()
 
 function(cc_library TARGET_NAME)
-  set(options STATIC static SHARED shared INTERFACE interface)
+  set(options
+      STATIC
+      static
+      SHARED
+      shared
+      INTERFACE
+      interface
+      NOT_FOR_INFER
+      not_for_infer)
   set(oneValueArgs "")
   set(multiValueArgs SRCS DEPS)
   cmake_parse_arguments(cc_library "${options}" "${oneValueArgs}"
@@ -347,6 +372,9 @@ function(cc_library TARGET_NAME)
         CACHE STRING "output library name for target ${TARGET_NAME}")
   endif()
   if(cc_library_SRCS)
+    if(cc_library_NOT_FOR_INFER OR cc_library_not_for_infer)
+      ignore_infer_modules(${TARGET_NAME})
+    endif()
     if(cc_library_SHARED OR cc_library_shared) # build *.so
       add_library(${TARGET_NAME} SHARED ${cc_library_SRCS})
     elseif(cc_library_INTERFACE OR cc_library_interface)
@@ -364,20 +392,7 @@ function(cc_library TARGET_NAME)
         list(REMOVE_ITEM cc_library_DEPS warpctc)
         add_dependencies(${TARGET_NAME} warpctc)
       endif()
-      # Only deps libmklml.so, not link
-      if("${cc_library_DEPS};" MATCHES "mklml;")
-        list(REMOVE_ITEM cc_library_DEPS mklml)
-        if(NOT "${TARGET_NAME}" MATCHES "dynload_mklml")
-          list(APPEND cc_library_DEPS dynload_mklml)
-        endif()
-        add_dependencies(${TARGET_NAME} mklml)
-        if(WIN32)
-          target_link_libraries(${TARGET_NAME} ${MKLML_IOMP_LIB})
-        else()
-          target_link_libraries(${TARGET_NAME}
-                                "-L${MKLML_LIB_DIR} -liomp5 -Wl,--as-needed")
-        endif()
-      endif()
+
       # remove link to python, see notes at:
       # https://github.com/pybind/pybind11/blob/master/docs/compiling.rst#building-manually
       if("${cc_library_DEPS};" MATCHES "python;")
@@ -455,27 +470,13 @@ function(cc_test_build TARGET_NAME)
         list(REMOVE_ITEM cc_test_DEPS python)
         target_link_libraries(${TARGET_NAME} ${PYTHON_LIBRARIES})
       endif()
+      target_compile_definitions(${TARGET_NAME} PUBLIC STATIC_PADDLE)
     endif()
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
-    target_link_libraries(
-      ${TARGET_NAME}
-      ${cc_test_DEPS}
-      ${os_dependency_modules}
-      paddle_gtest_main
-      lod_tensor
-      memory
-      gtest
-      gflags
-      glog)
-    add_dependencies(
-      ${TARGET_NAME}
-      ${cc_test_DEPS}
-      paddle_gtest_main
-      lod_tensor
-      memory
-      gtest
-      gflags
-      glog)
+    target_link_libraries(${TARGET_NAME} ${cc_test_DEPS}
+                          ${os_dependency_modules} paddle_gtest_main gtest glog)
+    add_dependencies(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main gtest
+                     glog)
     common_link(${TARGET_NAME})
     if(WITH_ROCM)
       target_link_libraries(${TARGET_NAME} ${ROCM_HIPRTC_LIB})
@@ -497,12 +498,15 @@ function(cc_test_run TARGET_NAME)
       NAME ${TARGET_NAME}
       COMMAND ${cc_test_COMMAND} ${cc_test_ARGS}
       WORKING_DIRECTORY ${cc_test_DIR})
-    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
-                                              FLAGS_cpu_deterministic=true)
-    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
-                                              FLAGS_init_allocated_mem=true)
-    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
-                                              FLAGS_cudnn_deterministic=true)
+    set_property(
+      TEST ${TARGET_NAME}
+      PROPERTY
+        ENVIRONMENT
+        FLAGS_cpu_deterministic=true
+        FLAGS_init_allocated_mem=true
+        FLAGS_cudnn_deterministic=true
+        LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${PADDLE_BINARY_DIR}/python/paddle/libs:${PADDLE_BINARY_DIR}/python/paddle/base
+    )
     # No unit test should exceed 2 minutes.
     if(WIN32)
       set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 150)
@@ -575,20 +579,70 @@ function(cc_test_old TARGET_NAME)
     cc_test_build(${TARGET_NAME} SRCS ${cc_test_SRCS} DEPS ${cc_test_DEPS})
     # we dont test hcom op, because it need complex configuration
     # with more than one machine
-    if(NOT
-       ("${TARGET_NAME}" STREQUAL "c_broadcast_op_npu_test"
-        OR "${TARGET_NAME}" STREQUAL "c_allreduce_sum_op_npu_test"
-        OR "${TARGET_NAME}" STREQUAL "c_allreduce_max_op_npu_test"
-        OR "${TARGET_NAME}" STREQUAL "c_reducescatter_op_npu_test"
-        OR "${TARGET_NAME}" STREQUAL "c_allgather_op_npu_test"
-        OR "${TARGET_NAME}" STREQUAL "send_v2_op_npu_test"
-        OR "${TARGET_NAME}" STREQUAL "c_reduce_sum_op_npu_test"
-        OR "${TARGET_NAME}" STREQUAL "recv_v2_op_npu_test"))
-      cc_test_run(${TARGET_NAME} COMMAND ${TARGET_NAME} ARGS ${cc_test_ARGS})
-    endif()
+    cc_test_run(${TARGET_NAME} COMMAND ${TARGET_NAME} ARGS ${cc_test_ARGS})
   elseif(WITH_TESTING AND NOT TEST ${TARGET_NAME})
     add_test(NAME ${TARGET_NAME} COMMAND ${CMAKE_COMMAND} -E echo CI skip
                                          ${TARGET_NAME}.)
+  endif()
+endfunction()
+
+function(paddle_test_build TARGET_NAME)
+  if(WITH_TESTING)
+    set(oneValueArgs "")
+    set(multiValueArgs SRCS DEPS)
+    cmake_parse_arguments(paddle_test "${options}" "${oneValueArgs}"
+                          "${multiValueArgs}" ${ARGN})
+    add_executable(${TARGET_NAME} ${paddle_test_SRCS})
+    get_property(paddle_lib GLOBAL PROPERTY PADDLE_LIB_NAME)
+    target_link_libraries(${TARGET_NAME} $<TARGET_LINKER_FILE:${paddle_lib}>
+                          ${paddle_test_DEPS} common paddle_gtest_main_new)
+    add_dependencies(${TARGET_NAME} ${paddle_lib} ${paddle_test_DEPS} common
+                     paddle_gtest_main_new)
+    if(WITH_MKLDNN)
+      target_link_libraries(${TARGET_NAME} mkldnn)
+      add_dependencies(${TARGET_NAME} mkldnn)
+    endif()
+    if(WITH_SHARED_PHI)
+      target_link_libraries(${TARGET_NAME} $<TARGET_LINKER_FILE:phi>)
+      add_dependencies(${TARGET_NAME} phi)
+    endif()
+    if(WITH_SHARED_IR)
+      target_link_libraries(${TARGET_NAME} $<TARGET_LINKER_FILE:pir>)
+      add_dependencies(${TARGET_NAME} pir)
+    endif()
+    if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
+      target_link_libraries(${TARGET_NAME} ${PYTHON_LIBRARIES})
+    endif()
+    if(WITH_CINN AND NOT CINN_ONLY)
+      target_link_libraries(${TARGET_NAME} $<TARGET_LINKER_FILE:cinnapi>)
+      add_dependencies(${TARGET_NAME} cinnapi)
+    endif()
+    if(WITH_XPU)
+      target_link_libraries(${TARGET_NAME} xpulib)
+    endif()
+    if(WITH_ROCM)
+      target_link_libraries(${TARGET_NAME} ${ROCM_HIPRTC_LIB})
+    endif()
+    if(APPLE)
+      target_link_libraries(
+        ${TARGET_NAME}
+        "-Wl,-rpath,$<TARGET_FILE_DIR:${paddle_lib}> -Wl,-rpath,$<TARGET_FILE_DIR:phi> -Wl,-rpath,$<TARGET_FILE_DIR:pir> -Wl,-rpath,$<TARGET_FILE_DIR:common>"
+      )
+    endif()
+    common_link(${TARGET_NAME})
+    check_coverage_opt(${TARGET_NAME} ${paddle_test_SRCS})
+  endif()
+endfunction()
+
+function(paddle_test TARGET_NAME)
+  if(WITH_TESTING)
+    set(oneValueArgs "")
+    set(multiValueArgs SRCS DEPS ARGS)
+    cmake_parse_arguments(paddle_test "${options}" "${oneValueArgs}"
+                          "${multiValueArgs}" ${ARGN})
+    paddle_test_build(${TARGET_NAME} SRCS ${paddle_test_SRCS} DEPS
+                      ${paddle_test_DEPS})
+    cc_test_run(${TARGET_NAME} COMMAND ${TARGET_NAME} ARGS ${paddle_test_ARGS})
   endif()
 endfunction()
 
@@ -678,9 +732,10 @@ function(nv_test TARGET_NAME)
     # 2. cuda_add_executable does not support ccache.
     # Reference: https://cmake.org/cmake/help/v3.10/module/FindCUDA.html
     add_executable(${TARGET_NAME} ${nv_test_SRCS})
+    target_compile_definitions(${TARGET_NAME} PUBLIC STATIC_PADDLE)
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
     target_link_libraries(${TARGET_NAME} ${nv_test_DEPS}
-                          ${os_dependency_modules} paddle_gtest_main)
+                          ${os_dependency_modules} paddle_gtest_main phi)
     add_dependencies(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main)
     common_link(${TARGET_NAME})
     add_test(${TARGET_NAME} ${TARGET_NAME})
@@ -782,19 +837,17 @@ function(hip_test TARGET_NAME)
       ${hip_test_DEPS}
       paddle_gtest_main
       lod_tensor
-      memory
       gtest
-      gflags
       glog
+      phi
       ${os_dependency_modules})
     add_dependencies(
       ${TARGET_NAME}
       ${hip_test_DEPS}
       paddle_gtest_main
       lod_tensor
-      memory
       gtest
-      gflags
+      phi
       glog)
     common_link(${TARGET_NAME})
     add_test(${TARGET_NAME} ${TARGET_NAME})
@@ -889,9 +942,8 @@ function(xpu_test TARGET_NAME)
       ${xpu_test_DEPS}
       paddle_gtest_main
       lod_tensor
-      memory
       gtest
-      gflags
+      phi
       glog
       ${os_dependency_modules})
     add_dependencies(
@@ -899,9 +951,8 @@ function(xpu_test TARGET_NAME)
       ${xpu_test_DEPS}
       paddle_gtest_main
       lod_tensor
-      memory
       gtest
-      gflags
+      phi
       glog)
     common_link(${TARGET_NAME})
     add_test(${TARGET_NAME} ${TARGET_NAME})
@@ -1102,7 +1153,21 @@ function(py_proto_compile TARGET_NAME)
                         "${multiValueArgs}" ${ARGN})
   set(py_srcs)
   protobuf_generate_python(py_srcs ${py_proto_compile_SRCS})
-  add_custom_target(${TARGET_NAME} ALL DEPENDS ${py_srcs} protobuf)
+
+  add_custom_target(${TARGET_NAME}_replace DEPENDS ${py_srcs})
+
+  foreach(py_src ${py_srcs})
+    add_custom_command(
+      TARGET ${TARGET_NAME}_replace
+      POST_BUILD
+      COMMAND ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/cmake/replace_string.py
+              ${py_src}
+      COMMENT
+        "Replacing 'paddle.fluid' with 'paddle.base' generated by protobuf"
+      COMMENT "Replace ${py_src}")
+  endforeach()
+
+  add_custom_target(${TARGET_NAME} ALL DEPENDS protobuf ${TARGET_NAME}_replace)
 endfunction()
 
 function(py_test TARGET_NAME)

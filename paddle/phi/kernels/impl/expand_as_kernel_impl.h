@@ -30,10 +30,14 @@ void ExpandAs(const Context& context,
               const std::vector<int>& target_shape,
               DenseTensor* out) {
   auto in_dims = x.dims();
-  auto vec_in_dims = phi::vectorize<int>(in_dims);
+  auto vec_in_dims = common::vectorize<int>(in_dims);
   auto diff = target_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   std::vector<int> repeat_times(vec_in_dims.size());
+  if (Rank == 0) {
+    phi::Copy<Context>(context, x, context.GetPlace(), false, out);
+    return;
+  }
   for (size_t i = 0; i < vec_in_dims.size(); ++i) {
     PADDLE_ENFORCE_NE(
         target_shape[i],
@@ -78,8 +82,8 @@ void ExpandAs(const Context& context,
     bcast_dims[i] = repeat_times[i];
   }
 
-  phi::DDim new_in_dims = phi::make_ddim(vec_in_dims);
-  phi::DDim out_dims = phi::make_ddim(target_shape);
+  phi::DDim new_in_dims = common::make_ddim(vec_in_dims);
+  phi::DDim out_dims = common::make_ddim(target_shape);
 
   out->Resize(out_dims);
   context.template Alloc<T>(out);
@@ -108,7 +112,7 @@ void ExpandAsKernel(const Context& ctx,
                         rank));
   PADDLE_ENFORCE_GE(
       rank,
-      1,
+      0,
       errors::InvalidArgument("The rank (%d) of the input 'x' for "
                               "expand_as_v2 op must be positive.",
                               rank));
@@ -125,7 +129,7 @@ void ExpandAsKernel(const Context& ctx,
     if (target_shape[i] == -1) {
       if (y) {
         if (y->IsInitialized()) {
-          real_target_shape = phi::vectorize<int>(y->dims());
+          real_target_shape = common::vectorize<int>(y->dims());
         }
       }
       break;
@@ -133,6 +137,9 @@ void ExpandAsKernel(const Context& ctx,
   }
 
   switch (target_rank) {
+    case 0:
+      ExpandAs<Context, T, 0>(ctx, x, real_target_shape, out);
+      break;
     case 1:
       ExpandAs<Context, T, 1>(ctx, x, real_target_shape, out);
       break;
