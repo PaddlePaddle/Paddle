@@ -156,4 +156,6 @@ TEST(ReshapeOpGroup, CINNLowering) {
 
   cinn::hlir::framework::PirCompiler ir_compiler(*program, target, scope);
   auto fn_ptr_res = ir_compiler.BuildCUDAJITInfo(groups);
+  ASSERT_EQ(fn_ptr_res.size(), 1);
+  ASSERT_TRUE(fn_ptr_res[0].fn_ptr != nullptr);
 }
