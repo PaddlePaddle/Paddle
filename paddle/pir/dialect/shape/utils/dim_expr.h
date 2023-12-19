@@ -79,8 +79,8 @@ struct VariadicDimExpr {
 
 #define DEFINE_DIM_EXPR_SUBCLASS(class_name, base) \
   template <typename T>                            \
-  struct class_name : public base {                \
-    using base::base;                              \
+  struct class_name : public base<T> {             \
+    using base<T>::base;                           \
   };
 
 DEFINE_DIM_EXPR_SUBCLASS(Negative, UnaryDimExpr);
@@ -148,6 +148,7 @@ using DimExprConstraint = std::variant<Equal<DimExpr>, Broadcastable<DimExpr>>;
 template <typename T>
 class ValueShape {
  public:
+  ValueShape() = default;
   explicit ValueShape(const std::vector<T>& shape)
       : shape_(shape), value_(std::nullopt) {}
 
@@ -160,7 +161,8 @@ class ValueShape {
   const std::optional<std::vector<T>>& value() const { return value_; }
 
  private:
-  explicit ValueShape(const std::vector<T>& shape, const std::vector<T>& value)
+  explicit ValueShape(const std::vector<T>& shape,
+                      const std::optional<std::vector<T>>& value)
       : shape_(shape), value_(value) {}
 
   std::optional<std::vector<T>> shape_;
