@@ -97,24 +97,6 @@ TEST(DimExpr, value_shape_expr) {
   // out => {value:: nullopt, shape: [S0, 2]}
   ValueShapeDimExprs out_value_shape{x_shapes};
   value2shape.emplace(out, out_value_shape);
-
-  // 4. Two choice of constructing ValueShapeDimExprs
-  const auto& extend_x_value_func =
-      [&x_shapes](int idx) -> std::optional<DimExpr> {
-    if (idx < x_shapes.size()) {
-      return x_shapes.at(idx);
-    } else {
-      return std::nullopt;
-    }
-  };
-  std::vector<DimExpr> extend_x_shape{DimExpr{2}};
-  ValueShapeDimExprs extend_x_value_shape2 =
-      ValueShapeDimExprs::MakeConsistentValueShape(extend_x_shape,
-                                                   extend_x_value_func);
-  ASSERT_EQ(extend_x_value_shape.shape().value().size(),
-            extend_x_value_shape2.shape().value().size());
-  ASSERT_EQ(extend_x_value_shape.value().value().size(),
-            extend_x_value_shape2.value().value().size());
 }
 
 TEST(DimExpr, equal) {

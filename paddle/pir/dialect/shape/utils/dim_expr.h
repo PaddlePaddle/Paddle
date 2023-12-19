@@ -156,33 +156,6 @@ class ValueShape {
   ValueShape& operator=(const ValueShape&) = default;
   ValueShape& operator=(ValueShape&&) = default;
 
-  static ValueShape MakeConsistentValueShape(
-      const std::vector<T>& shape,
-      const std::function<std::optional<T>(int)>& GetValueByIndex) {
-    if (shape.empty()) {
-      if (!GetValueByIndex(0).has_value()) {
-        return ValueShape(std::nullopt, shape);
-      }
-      std::vector<T> value{GetValueByIndex(0).value()};
-      return ValueShape(value, shape);
-    } else if (shape.size() == 1) {
-      if (!shape.at(0).template Has<std::int64_t>()) {
-        return ValueShape(std::nullopt, shape);
-      }
-      std::vector<T> value{};
-      std::int64_t value_size = shape.at(0).template Get<std::int64_t>();
-      for (std::size_t i = 0; i < value_size; ++i) {
-        if (!GetValueByIndex(i).has_value()) {
-          return ValueShape(std::nullopt, shape);
-        }
-        value.push_back(GetValueByIndex(i).value());
-      }
-      return ValueShape(value, shape);
-    } else {
-      return ValueShape(std::nullopt, shape);
-    }
-  }
-
   static ValueShape MakeConsistentValueShape(const std::vector<T>& value) {
     T shape(std::int64_t(value.size()));
     return ValueShape(value, std::vector<T>{shape});
@@ -192,8 +165,7 @@ class ValueShape {
   const std::optional<std::vector<T>>& value() const { return value_; }
 
  private:
-  explicit ValueShape(const std::optional<std::vector<T>>& value,
-                      const std::optional<std::vector<T>>& shape)
+  explicit ValueShape(const std::vector<T>& value, const std::vector<T>& shape)
       : value_(value), shape_(shape) {}
 
   std::optional<std::vector<T>> value_;
