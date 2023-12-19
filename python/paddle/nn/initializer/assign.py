@@ -13,8 +13,6 @@
 # limitations under the License.
 import paddle
 from paddle import _C_ops
-from paddle.base.libpaddle import DataType
-from paddle.framework import in_dynamic_or_pir_mode
 
 from ...base import core, framework, unique_name
 from ...base.data_feeder import check_type
@@ -66,13 +64,7 @@ class NumpyArrayInitializer(Initializer):
         assert isinstance(block, (framework.Block, paddle.pir.Block))
 
         # to be compatible of fp16 initalizers
-        if var.dtype in [
-            core.VarDesc.VarType.FP16,
-            core.VarDesc.VarType.BF16,
-            DataType.FLOAT16,
-            DataType.UINT16,
-            DataType.BFLOAT16,
-        ]:
+        if var.dtype in [core.VarDesc.VarType.FP16, core.VarDesc.VarType.BF16]:
             out_dtype = core.VarDesc.VarType.FP32
             np_value = self._value.astype("float32")
             out_var = block.create_var(
@@ -118,7 +110,7 @@ class NumpyArrayInitializer(Initializer):
                 "saving it to file and 'load_op' to load it"
             )
 
-        if in_dynamic_or_pir_mode():
+        if in_dygraph_mode():
             _C_ops.assign_value_(
                 out_var,
                 list(self._value.shape),
@@ -129,9 +121,6 @@ class NumpyArrayInitializer(Initializer):
             if var.dtype in [
                 core.VarDesc.VarType.FP16,
                 core.VarDesc.VarType.BF16,
-                DataType.FLOAT16,
-                DataType.UINT16,
-                DataType.BFLOAT16,
             ]:
                 var_tmp = _C_ops.cast(out_var, var.dtype)
                 var_tmp._share_underline_tensor_to(var)
