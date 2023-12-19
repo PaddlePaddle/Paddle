@@ -1,6 +1,6 @@
 include(ExternalProject)
 
-set(ALLOCATOR_DEPS place stats profiler phi device_context)
+set(ALLOCATOR_DEPS place profiler phi common device_context)
 set(ALLOCATOR_SRCS
     allocator.cc
     cpu_allocator.cc
@@ -32,7 +32,7 @@ if(WITH_GPU OR WITH_ROCM)
 endif()
 
 if(WITH_GPU)
-  list(APPEND ALLOCATOR_DEPS phi)
+  list(APPEND ALLOCATOR_DEPS phi common)
 endif()
 
 if(CUDA_VERSION VERSION_GREATER_EQUAL 10.2)
@@ -70,84 +70,6 @@ target_link_libraries(allocator ${ALLOCATOR_DEPS})
 # Because it is needed to generate framework.pb.h used in some header files.
 add_dependencies(allocator framework_proto)
 set_property(GLOBAL PROPERTY FLUID_MODULES allocator)
-
-cc_test(
-  naive_best_fit_allocator_test
-  SRCS naive_best_fit_allocator_test.cc
-  DEPS allocator)
-cc_test_old(buffered_allocator_test SRCS buffered_allocator_test.cc DEPS
-            allocator)
-
-if(WITH_GPU)
-  nv_test(
-    thread_local_allocator_test
-    SRCS thread_local_allocator_test.cc
-    DEPS allocator)
-endif()
-if(WITH_ROCM)
-  hip_test(
-    thread_local_allocator_test
-    SRCS thread_local_allocator_test.cc
-    DEPS allocator)
-endif()
-
-if(WITH_GPU)
-  nv_test(
-    best_fit_allocator_test
-    SRCS best_fit_allocator_test.cc best_fit_allocator_test.cu
-    DEPS allocator memcpy)
-elseif(WITH_ROCM)
-  hip_test(
-    best_fit_allocator_test
-    SRCS best_fit_allocator_test.cc best_fit_allocator_test.cu
-    DEPS allocator memcpy)
-else()
-  cc_test_old(best_fit_allocator_test SRCS best_fit_allocator_test.cc DEPS
-              allocator)
-endif()
-
-cc_test_old(test_aligned_allocator SRCS test_aligned_allocator.cc DEPS
-            allocator)
-
-cc_test_old(retry_allocator_test SRCS retry_allocator_test.cc DEPS allocator)
-if(TEST retry_allocator_test)
-  set_tests_properties(retry_allocator_test PROPERTIES LABELS
-                                                       "RUN_TYPE=EXCLUSIVE")
-endif()
-
-cc_test(
-  allocator_facade_abs_flags_test
-  SRCS allocator_facade_abs_flags_test.cc
-  DEPS allocator)
-
-cc_test(
-  allocator_facade_frac_flags_test
-  SRCS allocator_facade_frac_flags_test.cc
-  DEPS allocator)
-
-cc_test(
-  auto_growth_best_fit_allocator_facade_test
-  SRCS auto_growth_best_fit_allocator_facade_test.cc
-  DEPS allocator)
-cc_test_old(auto_growth_best_fit_allocator_test SRCS
-            auto_growth_best_fit_allocator_test.cc DEPS allocator)
-
-if(NOT WIN32)
-  cc_test(
-    mmap_allocator_test
-    SRCS mmap_allocator_test.cc
-    DEPS allocator)
-endif()
-
-cc_test(
-  system_allocator_test
-  SRCS system_allocator_test.cc
-  DEPS allocator)
-
-cc_test(
-  buddy_allocator_test
-  SRCS buddy_allocator_test.cc
-  DEPS allocator)
 
 if(WITH_TESTING)
   # TODO(zhiqiu): why not win32? because wget is not found on windows

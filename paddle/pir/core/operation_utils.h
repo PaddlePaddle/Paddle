@@ -75,6 +75,9 @@ struct OperationArgument {
   template <class InputIt>
   void AddOutputs(InputIt first, InputIt last);
 
+  void AddOutputs(std::initializer_list<Type> type_list) {
+    AddOutputs(std::begin(type_list), std::end(type_list));
+  }
   template <class TypeContainer>
   void AddOutputs(const TypeContainer& type_container) {
     AddOutputs(std::begin(type_container), std::end(type_container));
@@ -101,7 +104,7 @@ struct OperationArgument {
   /// Create a region that should be attached to the operation.  These regions
   /// can be filled in immediately without waiting for Operation to be
   /// created.  When it is, the region bodies will be transferred.
-  Region* AddRegion();
+  Region& AddRegion();
 
   /// Take a region that should be attached to the Operation.  The body of the
   /// region will be transferred when the Operation is created.  If the

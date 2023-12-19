@@ -31,6 +31,32 @@ from .group_sharded_storage import GradStorage
 from .group_sharded_utils import GroupShardedClipGrad, Type, device_guard
 
 
+class OrderedSet:
+    def __init__(self, iterable=None):
+        self._data = OrderedDict.fromkeys(iterable or [])
+
+    def __contains__(self, item):
+        return item in self._data
+
+    def __iter__(self):
+        return iter(self._data)
+
+    def __len__(self):
+        return len(self._data)
+
+    def add(self, item):
+        self._data[item] = None
+
+    def discard(self, item):
+        self._data.pop(item, None)
+
+    def update(self, iterable):
+        self._data.update((item, None) for item in iterable)
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({list(self._data)})"
+
+
 def _all_gather(tensor, buffer_size, group):
     """
     The main difference with paddle.distributed.all_gather:
@@ -148,7 +174,7 @@ class GroupShardedStage3(nn.Layer):
             {}
         )  # {param.name: [(start0, end0),(start1, end1), ...]}
         self._trainable_params = {}  # {id(layer): [trainable_params]}
-        self._unslice_params = set()  # param's numel <= segment_size
+        self._unslice_params = OrderedSet()  # param's numel <= segment_size
         self._unslice_params2align = {}  # {param.name: param's align}
         self._grad_storages = {}  # {param.dtype: GradStorage}
 
@@ -161,23 +187,30 @@ class GroupShardedStage3(nn.Layer):
         self._ori_parameter_list = self._optim._parameter_list
         self._ori_param_groups = self._optim._param_groups
 
+        # check main_grad
+        self._check_main_grad()
+
         # Replace optimizer's _grad_clip
         if isinstance(self._optim._grad_clip, ClipGradByGlobalNorm):
             logging.warning(
                 "While using ClipGradByGlobalNorm in GroupShardedStage3, the grad clip of original optimizer will be changed."
             )
-            self._optim._grad_clip = GroupShardedClipGrad(
-                self._optim._grad_clip, paddle.get_device(), self._group
-            )
+            if self.use_main_grad:
+                self._optim._inner_opt._grad_clip = GroupShardedClipGrad(
+                    self._optim._inner_opt._grad_clip,
+                    paddle.get_device(),
+                    self._group,
+                )
+            else:
+                self._optim._grad_clip = GroupShardedClipGrad(
+                    self._optim._grad_clip, paddle.get_device(), self._group
+                )
             if self._optim._parameter_list and isinstance(
                 self._optim._parameter_list[0], dict
             ):
                 for item in self._optim._param_groups:
                     if "grad_clip" in item.keys():
                         item["grad_clip"] = self._optim._grad_clip
-
-        # check main_grad
-        self._check_main_grad()
 
         # Synchronous all ranks models
         if pertrain_sync_models:

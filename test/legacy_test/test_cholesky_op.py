@@ -109,9 +109,7 @@ class TestCholeskyOp(OpTest):
                     assert var.shape == arr.shape
                 feeds = {k.name: v for k, v in zip(root, x_init)}
                 exe.run(prog, feed=feeds, scope=scope)
-            grad_check(
-                root, out, x_init=x_init, place=place, program=prog, scope=scope
-            )
+            grad_check(x=root, y=out, x_init=x_init, place=place, program=prog)
 
     def init_config(self):
         self._upper = True

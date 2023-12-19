@@ -12,12 +12,11 @@ set(STANDALONE_EXECUTOR_DEPS
     interpreter
     interpretercore_garbage_collector
     workqueue
-    pd_op_dialect
-    pd_op_to_kernel_pass
+    op_dialect_vjp
+    pir_transforms
     pir_adaptor
     program_translator
     instruction_base
-    pd_inplace_pass
     pir
     plan)
 
@@ -29,4 +28,4 @@ cc_library(
 cc_library(
   staticgraph_executor_statistics
   SRCS executor_statistics.cc
-  DEPS enforce glog phi)
+  DEPS enforce glog phi common)

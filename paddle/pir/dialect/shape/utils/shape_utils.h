@@ -14,13 +14,14 @@
 
 #pragma once
 
+#include "paddle/pir/dialect/shape/utils/dim_expr_builder.h"
 #include "paddle/pir/dialect/shape/utils/shape_optimization_utils.h"
 #include "paddle/pir/dialect/shape/utils/symbol_table.h"
 
 namespace pir {
 
 // Helper class to query and manipulate shape constraint IR on buffer level.
-class ShapeAnalysis {
+class IR_API ShapeAnalysis {
  public:
   virtual ~ShapeAnalysis() = default;
 
@@ -46,20 +47,24 @@ class ShapeAnalysis {
 
   // Returns true if the two value have the same number elements.
   virtual bool IsSameNumElements(Value lhs, Value rhs);
+
+  virtual symbol::DimExprBuilder CreateDimExprBuilder() = 0;
 };
 
 // A subclass to impement `ShapeAnalysis` on buffer level.
 // The implementation is based on shape constraint ir.
-class ShapeConstraintIRAnalysis : public ShapeAnalysis {
+class IR_API ShapeConstraintIRAnalysis : public ShapeAnalysis {
  public:
   explicit ShapeConstraintIRAnalysis(ModuleOp m);
-
-  // auto-save updated shape constriant ir when destroying.
+  // Auto-save updated shape constriant ir when destroying.
   ~ShapeConstraintIRAnalysis();
 
   // Returns the `SymbolicDimMgr` this object holds.
   SymbolicDimMgr& symbolicDimMgr() { return mgr_; }
   const SymbolicDimMgr& symbolicDimMgr() const { return mgr_; }
+
+  const std::vector<shape::SymbolicDimOp>&
+  GetOrCreateSymbolicDimsForRankedValue(const Value& value);
 
   // Returns true if the two value have the same symbolic shape.
   bool IsShapeEqual(Value lhs, Value rhs) override;
@@ -68,6 +73,8 @@ class ShapeConstraintIRAnalysis : public ShapeAnalysis {
                       std::vector<int> lhs_dim_idxs,
                       Value rhs,
                       std::vector<int> rhs_dim_idxs) override;
+
+  symbol::DimExprBuilder CreateDimExprBuilder() override;
 
  private:
   // The operation this analysis runs on.
@@ -78,6 +85,29 @@ class ShapeConstraintIRAnalysis : public ShapeAnalysis {
   // dimension size of the memref value.
   std::unordered_map<Value, std::vector<shape::SymbolicDimOp>>
       value_to_sym_dims_;
+  std::vector<symbol::DimExprConstraint> constraints_;
+
+ public:
+  explicit ShapeConstraintIRAnalysis(std::shared_ptr<pir::Program>&& program)
+      : ShapeConstraintIRAnalysis(program->module_op()) {
+    program_ = std::move(program);
+  }
+
+  explicit ShapeConstraintIRAnalysis(pir::IrContext* ctx)
+      : ShapeConstraintIRAnalysis(std::make_shared<pir::Program>(ctx)) {}
+
+ private:
+  std::shared_ptr<pir::Program> program_;
+};
+
+class IR_API ShapeAnalysisManager {
+ public:
+  static ShapeAnalysisManager& Instance();
+  ShapeConstraintIRAnalysis& Get(pir::Program* program);
+
+ private:
+  ShapeAnalysisManager() {}
+  std::unordered_map<uint64_t, ShapeConstraintIRAnalysis> tables_;
 };
 
 }  // namespace pir

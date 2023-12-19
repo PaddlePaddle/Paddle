@@ -199,7 +199,7 @@ struct SequenceExpandGradFunctor<phi::GPUContext, T> {
                   const phi::Vector<size_t>& x_lod,   /*expand source lod*/
                   const phi::Vector<size_t>& ref_lod, /*expand based lod*/
                   LoDTensor* dx) {
-    int x_item_length = phi::product(dx->dims()) / dx->dims()[0];
+    int x_item_length = common::product(dx->dims()) / dx->dims()[0];
     phi::Vector<size_t> out_offset(x_lod.size());
     GetOutputOffset(x_lod, ref_lod, &out_offset);
 

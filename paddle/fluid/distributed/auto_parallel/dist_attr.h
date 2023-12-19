@@ -131,6 +131,10 @@ class OperatorDistAttr {
 
   void set_impl_idx(const int64_t& impl_idx) { impl_idx_ = impl_idx; }
 
+  int64_t chunk_id() const { return chunk_id_; }
+
+  void set_chunk_id(const int64_t& chunk_id) { chunk_id_ = chunk_id; }
+
   bool is_recompute() const { return is_recompute_; }
 
   void set_is_recompute(bool is_recompute) { is_recompute_ = is_recompute; }
@@ -229,6 +233,9 @@ class OperatorDistAttr {
     return key + "_" + std::to_string(id_++);
   }
 
+  double run_time_us() const { return this->run_time_us_; }
+  void set_run_time_us(const double& us) { this->run_time_us_ = us; }
+
  private:
   static std::vector<std::string> fields_;
   std::map<std::string, TensorDistAttr> input_dist_attrs_;
@@ -237,6 +244,7 @@ class OperatorDistAttr {
   std::string op_type_;
   std::string impl_type_ = kDefault;
   int64_t impl_idx_ = 0;
+  int64_t chunk_id_ = 0;
   bool is_recompute_ = false;
   std::string execution_stream_ = kDefault;
   bool force_record_event_ = false;
@@ -245,6 +253,8 @@ class OperatorDistAttr {
   int stream_priority_ = 0;          // lower value, higher priority
   int64_t scheduling_priority_ = 0;  // lower value, higher priority
   std::map<std::string, bool> annotated_;
+  double run_time_us_ = -1.0;  // stores the actual run time (us) of relevant
+                               // op, negative value means invalid.
 };
 
 inline std::ostream& operator<<(std::ostream& os, const OperatorDistAttr& obj) {

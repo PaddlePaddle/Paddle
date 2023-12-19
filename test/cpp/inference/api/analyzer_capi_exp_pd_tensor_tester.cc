@@ -56,7 +56,7 @@ void PD_run() {
 
   PD_TwoDimArraySize lod;
   lod.size = 0;
-  lod.data = NULL;
+  lod.data = nullptr;
   PD_TensorSetLod(tensor, &lod);
 
   PD_PredictorRun(predictor);

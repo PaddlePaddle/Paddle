@@ -275,6 +275,9 @@ void TensorAdd(const VarType& src, VarType* dst) {
       XPUTensorAddFunctor<platform::float16>(place, src_tensor, dst_tensor);
     } else if (data_type == framework::DataTypeTrait<double>::DataType()) {
       XPUTensorAddFunctor<double>(place, src_tensor, dst_tensor);
+    } else if (data_type ==
+               framework::DataTypeTrait<platform::bfloat16>::DataType()) {
+      XPUTensorAddFunctor<platform::bfloat16>(place, src_tensor, dst_tensor);
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Gradient accumulation of data type (%s) on place (%s) is not "
@@ -674,12 +677,12 @@ void EagerGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
         tensor->Resize(var->Var().Get<phi::DenseTensor>().dims());
         tensor->mutable_data(place,
                              framework::TransToPhiDataType(var->DataType()));
-        phi::funcs::set_constant(*dev_ctx, tensor, 0.0);
+        phi::funcs::set_constant(*dev_ctx, tensor, 0.0f);
       } else {
         auto* tensor = dst_var->MutableVar()->GetMutable<phi::DenseTensor>();
         tensor->mutable_data(place,
                              framework::TransToPhiDataType(var->DataType()));
-        phi::funcs::set_constant(*dev_ctx, tensor, 0.0);
+        phi::funcs::set_constant(*dev_ctx, tensor, 0.0f);
       }
     }
   }
@@ -814,12 +817,12 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
         tensor->Resize(var->Var().Get<phi::DenseTensor>().dims());
         tensor->mutable_data(place,
                              framework::TransToPhiDataType(var->DataType()));
-        phi::funcs::set_constant(*dev_ctx, tensor, 0.0);
+        phi::funcs::set_constant(*dev_ctx, tensor, 0.0f);
       } else {
         auto* tensor = dst_var->MutableVar()->GetMutable<phi::DenseTensor>();
         tensor->mutable_data(place,
                              framework::TransToPhiDataType(var->DataType()));
-        phi::funcs::set_constant(*dev_ctx, tensor, 0.0);
+        phi::funcs::set_constant(*dev_ctx, tensor, 0.0f);
       }
     }
     // looks like tmp_grad_vars will not have any member but just in case

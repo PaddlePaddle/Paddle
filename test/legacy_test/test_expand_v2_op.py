@@ -375,6 +375,7 @@ class TestExpandDoubleGradCheck(unittest.TestCase):
     def expand_wrapper(self, x):
         return paddle.expand(x[0], [2, 3])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -406,6 +407,7 @@ class TestExpandTripleGradCheck(unittest.TestCase):
     def expand_wrapper(self, x):
         return paddle.expand(x[0], [2, 3])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -537,6 +539,15 @@ class TestExpandV2CompOpInt64_t(OpTest):
 
     def test_check_output(self):
         self.check_output(check_prim=True)
+
+
+class TestExpandPirOpResultListShape(unittest.TestCase):
+    def test_opresult_list_shape(self):
+        with paddle.pir_utils.IrGuard():
+            x = paddle.static.data('x', [1, 3])
+            shape = [2, paddle.full([], 4)]
+            out = paddle.expand(x, shape)
+            np.testing.assert_array_equal(tuple(out.shape), (-1, -1))
 
 
 if __name__ == "__main__":

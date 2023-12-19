@@ -16,6 +16,7 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
+from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
@@ -27,6 +28,7 @@ from .manipulation import cast
 from .math import _get_reduce_axis
 
 __all__ = []
+
 
 # Consistent with kDefaultDim from C++ Backend
 K_DEFAULT_DIM = 9
@@ -717,7 +719,7 @@ def dist(x, y, p=2, name=None):
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
             0.)
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.dist(x, y, p)
 
     check_variable_and_dtype(
@@ -1041,7 +1043,7 @@ def cond(x, p=None, name=None):
                     type='elementwise_div',
                     inputs={'X': max_out, 'Y': min_out},
                     outputs={'Out': out},
-                    attrs={'aixs': axis, 'use_mkldnn': False},
+                    attrs={'aixs': axis},
                 )
                 return out
             if porder == -2:
@@ -1049,7 +1051,7 @@ def cond(x, p=None, name=None):
                     type='elementwise_div',
                     inputs={'X': min_out, 'Y': max_out},
                     outputs={'Out': out},
-                    attrs={'aixs': axis, 'use_mkldnn': False},
+                    attrs={'aixs': axis},
                 )
                 return out
 
@@ -1257,7 +1259,7 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
             )
         if fweights.min() < 0:
             raise ValueError(
-                "The value of Input(fweights) cannot be negtive, but received "
+                "The value of Input(fweights) cannot be negative, but received "
                 f"min of Input(fweights) is {fweights.min()}."
             )
         if not paddle.all(fweights == paddle.round(fweights.astype('float64'))):
@@ -1282,7 +1284,7 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
             )
         if aweights.min() < 0:
             raise ValueError(
-                "The value of Input(aweights) cannot be negtive, but received "
+                "The value of Input(aweights) cannot be negative, but received "
                 f"min of Input(aweights) is {aweights.min()}."
             )
         if w is not None:
@@ -1466,7 +1468,7 @@ def cross(x, y, axis=9, name=None):
              [0., 0., 0.],
              [0., 0., 0.]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         axis = K_DEFAULT_DIM if axis is None else axis
         return _C_ops.cross(x, y, axis)
     else:
@@ -1594,8 +1596,8 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
              [1, 1, 1, 1]])
 
     """
-    if in_dynamic_mode():
-        if isinstance(tol, Variable):
+    if in_dynamic_or_pir_mode():
+        if isinstance(tol, (Variable, paddle.pir.OpResult)):
             if tol.dtype != x.dtype:
                 tol_tensor = cast(tol, x.dtype)
             else:
@@ -1679,7 +1681,7 @@ def bmm(x, y, name=None):
               [60., 60.]]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.bmm(x, y)
     else:
         x_shape = x.shape
@@ -1737,7 +1739,7 @@ def histogram(input, bins=100, min=0, max=0, name=None):
             Tensor(shape=[4], dtype=int64, place=Place(cpu), stop_gradient=True,
             [0, 2, 1, 0])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.histogram(input, bins, min, max)
     else:
         helper = LayerHelper('histogram', **locals())
@@ -1785,10 +1787,15 @@ def bincount(x, weights=None, minlength=0, name=None):
             Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.        , 2.19999981, 0.40000001, 0.        , 0.50000000, 0.50000000])
     """
-    if x.dtype not in [paddle.int32, paddle.int64]:
+    if x.dtype not in [
+        paddle.int32,
+        paddle.int64,
+        DataType.INT32,
+        DataType.INT64,
+    ]:
         raise TypeError("Elements in Input(x) should all be integers")
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.bincount(x, weights, minlength)
     else:
         helper = LayerHelper('bincount', **locals())
@@ -1844,7 +1851,7 @@ def mv(x, vec, name=None):
             Tensor(shape=[2], dtype=float64, place=Place(cpu), stop_gradient=True,
             [14., 10.])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.mv(x, vec)
     else:
 
@@ -2003,11 +2010,11 @@ def svd(x, full_matrices=False, name=None):
 
     Args:
         x (Tensor): The input tensor. Its shape should be `[..., N, M]`,
-            where `...` is zero or more batch dimensions. N and M can be arbitraty
-            positive number. Note that if x is sigular matrices, the grad is numerical
+            where `...` is zero or more batch dimensions. N and M can be arbitrary
+            positive number. Note that if x is singular matrices, the grad is numerical
             instable. The data type of x should be float32 or float64.
-        full_matrices (bool, optional): A flag to control the behavor of svd.
-            If full_matrices = True, svd op will compute full U and V matrics,
+        full_matrices (bool, optional): A flag to control the behavior of svd.
+            If full_matrices = True, svd op will compute full U and V matrices,
             which means shape of U is `[..., N, N]`, shape of V is `[..., M, M]`. K = min(M, N).
             If full_matrices = False, svd op will use a economic method to store U and V.
             which means shape of U is `[..., N, K]`, shape of V is `[..., M, K]`. K = min(M, N).
@@ -2020,7 +2027,7 @@ def svd(x, full_matrices=False, name=None):
         - S (Tensor), is the singular value decomposition result S.
         - VH (Tensor), VH is the conjugate transpose of V, which is the singular value decomposition result V.
 
-        Tuple of 3 tensors(U, S, VH): VH is the conjugate transpose of V. S is the singlar value vectors of matrics with shape `[..., K]`
+        Tuple of 3 tensors(U, S, VH): VH is the conjugate transpose of V. S is the singular value vectors of matrices with shape `[..., K]`
 
     Examples:
         .. code-block:: python
@@ -2050,7 +2057,7 @@ def svd(x, full_matrices=False, name=None):
             >>> #                  V * VH == I
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.svd(x, full_matrices)
     else:
         check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'svd')
@@ -2081,7 +2088,7 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
 
     Args:
         x (Tensor): The input tensor. Its shape should be `[..., N, M]`,
-            where `...` is zero or more batch dimensions. N and M can be arbitraty
+            where `...` is zero or more batch dimensions. N and M can be arbitrary
             positive number. The data type of x should be float32 or float64.
         q (int, optional): a slightly overestimated rank of :math:`X`.
             Default value is :math:`q=min(6,N,M)`.
@@ -2282,7 +2289,7 @@ def matrix_power(x, n, name=None):
              [-7.66666667 ,  8.         , -1.83333333 ],
              [ 1.80555556 , -1.91666667 ,  0.44444444 ]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.matrix_power(x, n)
     else:
         check_variable_and_dtype(
@@ -2342,7 +2349,7 @@ def qr(x, mode="reduced", name=None):
 
             >>> # one can verify : X = Q * R ;
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         q, r = _C_ops.qr(x, mode)
         if mode == "r":
             return r
@@ -2445,7 +2452,7 @@ def lu(x, pivot=True, get_infos=False, name=None):
             >>> # one can verify : X = P @ L @ U ;
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         lu, p, info = _C_ops.lu(x, pivot)
     else:
         check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'lu')
@@ -2548,7 +2555,7 @@ def lu_unpack(x, y, unpack_ludata=True, unpack_pivots=True, name=None):
         raise ValueError(
             f"The shape of Pivots should be (*, K), but received ndim is [{y.ndim} < 1]"
         )
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         P, L, U = _C_ops.lu_unpack(x, y, unpack_ludata, unpack_pivots)
         return P, L, U
     else:
@@ -2756,7 +2763,7 @@ def multi_dot(x, name=None):
             [10, 7]
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.multi_dot(x)
     else:
         check_type(x, 'x', (list, tuple), 'multi_dot')
@@ -2818,7 +2825,7 @@ def eigh(x, UPLO='L', name=None):
              [ 0.3826833963394165j    , -0.9238795042037964j    ]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.eigh(x, UPLO)
     else:
 
@@ -2879,7 +2886,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
     Args:
         x (Tensor): The input tensor. Its shape should be (*, m, n)
             where * is zero or more batch dimensions. m and n can be
-            arbitraty positive number. The data type of x should be
+            arbitrary positive number. The data type of x should be
             float32 or float64 or complex64 or complex128. When data
             type is complex64 or cpmplex128, hermitian should be set
             True.
@@ -2919,7 +2926,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             # one can verify : x * out * x = x ;
             # or              out * x * out = x ;
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if not hermitian:
             # combine svd and matmul op
             u, s, vt = _C_ops.svd(x, False)
@@ -3012,7 +3019,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
                 type='elementwise_mul',
                 inputs={'X': v, 'Y': st},
                 outputs={'Out': out_1},
-                attrs={'axis': -1, 'use_mkldnn': False},
+                attrs={'axis': -1},
             )
             out_1 = helper.append_activation(out_1)
 
@@ -3082,7 +3089,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
                 type='elementwise_mul',
                 inputs={'X': u, 'Y': st},
                 outputs={'Out': out_1},
-                attrs={'axis': -1, 'use_mkldnn': False},
+                attrs={'axis': -1},
             )
             out_1 = helper.append_activation(out_1)
 
@@ -3324,7 +3331,7 @@ def eigvalsh(x, UPLO='L', name=None):
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.17157286, 5.82842731])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         values, _ = _C_ops.eigvalsh(x, UPLO, x.stop_gradient)
         return values
     else:
@@ -3448,7 +3455,16 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
     else:
         raise RuntimeError("Only support lstsq api for CPU or CUDA device.")
 
-    if not (x.dtype == y.dtype and x.dtype in (paddle.float32, paddle.float64)):
+    if not (
+        x.dtype == y.dtype
+        and x.dtype
+        in (
+            paddle.float32,
+            paddle.float64,
+            paddle.base.core.DataType.FLOAT32,
+            paddle.base.core.DataType.FLOAT64,
+        )
+    ):
         raise ValueError(
             "Only support x and y have the same dtype such as 'float32' and 'float64'."
         )
@@ -3469,17 +3485,23 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
         )
 
     if rcond is None:
-        if x.dtype == paddle.float32:
+        if (
+            x.dtype == paddle.float32
+            or x.dtype == paddle.base.core.DataType.FLOAT32
+        ):
             rcond = 1e-7 * max(x.shape[-2], x.shape[-1])
-        elif x.dtype == paddle.float64:
+        elif (
+            x.dtype == paddle.float64
+            or x.dtype == paddle.base.core.DataType.FLOAT64
+        ):
             rcond = 1e-15 * max(x.shape[-2], x.shape[-1])
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         solution, residuals, rank, singular_values = _C_ops.lstsq(
             x, y, rcond, driver
         )
         if driver == "gels":
-            rank = paddle.empty(shape=[0], dtype=paddle.int32)
+            rank = paddle.empty(shape=[0], dtype="int32")
             singular_values = paddle.empty(shape=[0], dtype=x.dtype)
         elif driver == "gelsy":
             singular_values = paddle.empty(shape=[0], dtype=x.dtype)
@@ -3718,3 +3740,357 @@ def cdist(
     return paddle.linalg.norm(
         x[..., None, :] - y[..., None, :, :], p=p, axis=-1
     )
+
+
+def householder_product(x, tau, name=None):
+    r"""
+
+    Computes the first n columns of a product of Householder matrices.
+
+    This function can get the vector :math:`\omega_{i}` from matrix `x` (m x n), the :math:`i-1` elements are zeros, and the i-th is `1`, the rest of the elements are from i-th column of `x`.
+    And with the vector `tau` can calculate the first n columns of a product of Householder matrices.
+
+    :math:`H_i = I_m - \tau_i \omega_i \omega_i^H`
+
+    Args:
+        x (Tensor): A tensor with shape (*, m, n) where * is zero or more batch dimensions.
+        tau (Tensor): A tensor with shape (*, k) where * is zero or more batch dimensions.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor, the dtype is same as input tensor, the Q in QR decomposition.
+
+        :math:`out = Q = H_1H_2H_3...H_k`
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([[-1.1280,  0.9012, -0.0190],
+            ...         [ 0.3699,  2.2133, -1.4792],
+            ...         [ 0.0308,  0.3361, -3.1761],
+            ...         [-0.0726,  0.8245, -0.3812]])
+            >>> tau = paddle.to_tensor([1.7497, 1.1156, 1.7462])
+            >>> Q = paddle.linalg.householder_product(x, tau)
+            >>> print(Q)
+            Tensor(shape=[4, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [[-0.74969995, -0.02181768,  0.31115776],
+                    [-0.64721400, -0.12367040, -0.21738708],
+                    [-0.05389076, -0.37562513, -0.84836429],
+                    [ 0.12702821, -0.91822827,  0.36892807]])
+    """
+
+    check_dtype(
+        x.dtype,
+        'x',
+        [
+            'float32',
+            'float64',
+            'complex64',
+            'complex128',
+        ],
+        'householder_product',
+    )
+    check_dtype(
+        tau.dtype,
+        'tau',
+        [
+            'float32',
+            'float64',
+            'complex64',
+            'complex128',
+        ],
+        'householder_product',
+    )
+    assert (
+        x.dtype == tau.dtype
+    ), "The input x must have the same dtype with input tau.\n"
+    assert (
+        len(x.shape) >= 2
+        and len(tau.shape) >= 1
+        and len(x.shape) == len(tau.shape) + 1
+    ), (
+        "The input x must have more than 2 dimensions, and input tau must have more than 1 dimension,"
+        "and the dimension of x is 1 larger than the dimension of tau\n"
+    )
+    assert (
+        x.shape[-2] >= x.shape[-1]
+    ), "The rows of input x must be greater than or equal to the columns of input x.\n"
+    assert (
+        x.shape[-1] >= tau.shape[-1]
+    ), "The last dim of x must be greater than tau.\n"
+    for idx, _ in enumerate(x.shape[:-2]):
+        assert (
+            x.shape[idx] == tau.shape[idx]
+        ), "The input x must have the same batch dimensions with input tau.\n"
+
+    def _householder_product(x, tau):
+        m, n = x.shape[-2:]
+        k = tau.shape[-1]
+        Q = paddle.eye(m).astype(x.dtype)
+        for i in range(min(k, n)):
+            w = x[i:, i]
+            if in_dynamic_mode():
+                w[0] = 1
+            else:
+                w = paddle.static.setitem(w, 0, 1)
+            w = w.reshape([-1, 1])
+            if in_dynamic_mode():
+                if x.dtype in [paddle.complex128, paddle.complex64]:
+                    Q[:, i:] = Q[:, i:] - (
+                        Q[:, i:] @ w @ paddle.conj(w).T * tau[i]
+                    )
+                else:
+                    Q[:, i:] = Q[:, i:] - (Q[:, i:] @ w @ w.T * tau[i])
+            else:
+                Q = paddle.static.setitem(
+                    Q,
+                    (slice(None), slice(i, None)),
+                    Q[:, i:] - (Q[:, i:] @ w @ w.T * tau[i])
+                    if x.dtype in [paddle.complex128, paddle.complex64]
+                    else Q[:, i:] - (Q[:, i:] @ w @ w.T * tau[i]),
+                )
+        return Q[:, :n]
+
+    if len(x.shape) == 2:
+        return _householder_product(x, tau)
+    m, n = x.shape[-2:]
+    org_x_shape = x.shape
+    org_tau_shape = tau.shape
+    x = x.reshape((-1, org_x_shape[-2], org_x_shape[-1]))
+    tau = tau.reshape((-1, org_tau_shape[-1]))
+    n_batch = x.shape[0]
+    out = paddle.zeros([n_batch, m, n], dtype=x.dtype)
+    for i in range(n_batch):
+        if in_dynamic_mode():
+            out[i] = _householder_product(x[i], tau[i])
+        else:
+            out = paddle.static.setitem(
+                out, i, _householder_product(x[i], tau[i])
+            )
+    out = out.reshape(org_x_shape)
+    return out
+
+
+def histogramdd(
+    x, bins=10, ranges=None, density=False, weights=None, name=None
+):
+    r"""
+    Computes a multi-dimensional histogram of the values in a tensor.
+
+    Interprets the elements of an input tensor whose innermost dimension has size `N` as a collection of N-dimensional points. Maps each of the points into a set of N-dimensional bins and returns the number of points (or total weight) in each bin.
+
+    input `x` must be a tensor with at least 2 dimensions. If input has shape `(M, N)`, each of its `M` rows defines a point in N-dimensional space. If input has three or more dimensions, all but the last dimension are flattened.
+
+    Each dimension is independently associated with its own strictly increasing sequence of bin edges. Bin edges may be specified explicitly by passing a sequence of 1D tensors. Alternatively, bin edges may be constructed automatically by passing a sequence of integers specifying the number of equal-width bins in each dimension.
+
+    Args:
+        x (Tensor): The input tensor.
+        bins (Tensor[], int[], or int): If Tensor[], defines the sequences of bin edges. If int[], defines the number of equal-width bins in each dimension. If int, defines the number of equal-width bins for all dimensions.
+        ranges (sequence of float, optional): Defines the leftmost and rightmost bin edges in each dimension. If is None, set the minimum and maximum as leftmost and rightmost edges for each dimension.
+        density (bool, optional): If False (default), the result will contain the count (or total weight) in each bin. If True, each count (weight) is divided by the total count (total weight), then divided by the volume of its associated bin.
+        weights (Tensor, optional): By default, each value in the input has weight 1. If a weight tensor is passed, each N-dimensional coordinate in input contributes its associated weight towards its bin’s result. The weight tensor should have the same shape as the input tensor excluding its innermost dimension N.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        N-dimensional Tensor containing the values of the histogram. ``bin_edges(Tensor[])``,  sequence of N 1D Tensors containing the bin edges.
+
+    Examples:
+        .. code-block:: python
+            :name: exampl
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([[0., 1.], [1., 0.], [2.,0.], [2., 2.]])
+            >>> bins = [3,3]
+            >>> weights = paddle.to_tensor([1., 2., 4., 8.])
+            >>> paddle.histogramdd(x, bins=bins, weights=weights)
+            (Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [[0., 1., 0.],
+                    [2., 0., 0.],
+                    [4., 0., 8.]]), [Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [0.        , 0.66666669, 1.33333337, 2.        ]), Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [0.        , 0.66666669, 1.33333337, 2.        ])])
+
+        .. code-block:: python
+            :name: examp2
+
+            >>> import paddle
+            >>> y = paddle.to_tensor([[0., 0.], [1., 1.], [2., 2.]])
+            >>> bins = [2,2]
+            >>> ranges = [0., 1., 0., 1.]
+            >>> density = True
+            >>> paddle.histogramdd(y, bins=bins, ranges=ranges, density=density)
+            (Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [[2., 0.],
+                    [0., 2.]]), [Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [0.        , 0.50000000, 1.        ]), Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [0.        , 0.50000000, 1.        ])])
+
+
+    """
+
+    def __check_x(x):
+        assert (
+            len(x.shape) >= 2
+        ), "input x must be a tensor with at least 2 dimensions."
+        check_variable_and_dtype(
+            x,
+            'x',
+            [
+                'float32',
+                'float64',
+            ],
+            'histogramdd',
+        )
+
+    def __check_bins(bins, x):  # when Tensor[], check dtype
+        for bins_tensor in bins:
+            bins_tensor = paddle.to_tensor(bins_tensor)
+            check_variable_and_dtype(
+                bins_tensor,
+                'bins',
+                [
+                    'float32',
+                    'float64',
+                ],
+                'histogramdd',
+            )
+            assert (
+                bins_tensor.dtype == x.dtype
+            ), "When bins is Tensor[], the dtype of bins must be the same as x.\n"
+
+    def __check_weights(x, weights):
+        if weights is None:
+            return
+        x_shape, weights_shape = x.shape, weights.shape
+        assert len(x_shape) == len(weights_shape) + 1, (
+            "if weight tensor is provided,"
+            "it should have the same shape as the input tensor excluding its innermost dimension.\n"
+        )
+        for i, _ in enumerate(weights_shape):
+            assert weights_shape[i] == x_shape[i], (
+                "if weight tensor is provided,"
+                "it should have the same shape as the input tensor excluding its innermost dimension.\n"
+            )
+        check_variable_and_dtype(
+            weights,
+            'weights',
+            [
+                'float32',
+                'float64',
+            ],
+            'histogramdd',
+        )
+        assert (
+            weights.dtype == x.dtype
+        ), "The dtype of weights must be the same as x.\n"
+
+    def __check_ranges(D, ranges):
+        if ranges is None:
+            return
+        check_type(ranges, 'ranges', (list, tuple), 'histogramdd')
+        assert D * 2 == len(
+            ranges
+        ), "The length of ranges list must be %d\n" % (D * 2)
+
+    check_type(density, 'density', bool, 'histogramdd')
+
+    __check_x(x)
+    # weights
+    __check_weights(x, weights)
+    D = x.shape[-1]
+    reshaped_input = x.reshape([-1, D])
+    N = reshaped_input.shape[0]
+    reshaped_weights = None
+    if weights is not None:
+        weights = weights.astype(x.dtype)
+        reshaped_weights = weights.reshape([N])
+        assert reshaped_weights.shape[0] == N, (
+            "The size of weight must be %d" % N
+        )
+    # ranges
+    __check_ranges(D, ranges)
+    if ranges is None:
+        ranges = paddle.zeros([D, 2], dtype=x.dtype)
+        maxv = paddle.max(reshaped_input, axis=0).reshape([-1])
+        minv = paddle.min(reshaped_input, axis=0).reshape([-1])
+
+        if paddle.in_dynamic_mode():
+            ranges[:, 0] = minv
+            ranges[:, 1] = maxv
+        else:
+            ranges = paddle.static.setitem(ranges, (slice(None), 0), minv)
+            ranges = paddle.static.setitem(ranges, (slice(None), 1), maxv)
+    else:
+        ranges = paddle.to_tensor(ranges, dtype=x.dtype).reshape([D, 2])
+    # bins to edges
+    edges = []
+    hist_shape = []
+    dedges = []
+    if isinstance(bins, (int, list)):  # int or int[]
+        if isinstance(bins, int):
+            bins = [bins] * D
+        assert len(bins) == D, (
+            "The length of bins must be %d when bins is a list.\n" % D
+        )
+        for idx, r in enumerate(ranges):
+            if not isinstance(bins[idx], int):
+                raise ValueError(
+                    "The type of %d-th element in bins list must be int." % idx
+                )
+            e = paddle.linspace(r[0], r[1], bins[idx] + 1, x.dtype)
+            edges.append(e)
+            dedges.append(e.diff())
+    elif isinstance(
+        bins, tuple
+    ):  # tuple with D tensors for each innermost dimension
+        __check_bins(bins, x)
+        for bin in bins:
+            bin = paddle.to_tensor(bin)
+            edges.append(bin)
+            dedges.append(bin.diff())
+    else:
+        raise ValueError("Input bins must be Tensor[], int[], or int.")
+    hist_shape = [edge.shape[0] + 1 for edge in edges]
+    index_list = []
+    # edges shape: [D, linspaced]
+    # index_list shape: [D, N]
+    for idx, edge in enumerate(edges):
+        edge = paddle.to_tensor(edge)
+        index_list.append(
+            paddle.searchsorted(edge, reshaped_input[:, idx], right=True)
+        )
+    index_list = paddle.to_tensor(index_list)
+    for i in range(D):
+        on_edge = reshaped_input[:, i] == edges[i][-1]
+        if paddle.in_dynamic_mode():
+            index_list[i][on_edge] -= 1
+        else:
+            index_list = paddle.static.setitem(
+                index_list, (i, on_edge), index_list[i][on_edge] - 1
+            )
+    index_list = tuple(index_list)
+    lut = paddle.arange(
+        paddle.to_tensor(hist_shape).prod(),
+    ).reshape(hist_shape)
+    flattened_index = lut[index_list]
+    hist = paddle.bincount(
+        flattened_index,
+        reshaped_weights,
+        minlength=paddle.to_tensor(hist_shape).prod(),
+    )
+    hist = hist.reshape(hist_shape)
+    hist = hist.astype(x.dtype)
+
+    core = D * (slice(1, -1),)
+    hist = hist[core]
+
+    if density:
+        s = hist.sum()
+        for i in range(D):
+            shape = D * [1]
+            shape[i] = hist_shape[i] - 2
+            hist = hist / dedges[i].reshape(shape)
+        hist /= s
+
+    return (hist, edges)

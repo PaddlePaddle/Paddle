@@ -104,7 +104,7 @@ struct DotGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
       auto* data_dx = ctx.template Alloc<T>(tensor_dx);
       const auto* data_y = tensor_y->data<T>();
       const DDim& dim = tensor_x->dims();
-      size_t N = static_cast<size_t>(phi::product(dim));
+      size_t N = static_cast<size_t>(common::product(dim));
 
       auto _step = dim.size() > 0 ? dim[dim.size() - 1] : 1;
       auto step = _step != 0 ? _step : 1;
@@ -120,7 +120,7 @@ struct DotGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
       auto* data_dy = ctx.template Alloc<T>(tensor_dy);
       const auto* data_x = tensor_x->data<T>();
       const DDim& dim = tensor_y->dims();
-      size_t N = static_cast<size_t>(phi::product(dim));
+      size_t N = static_cast<size_t>(common::product(dim));
 
       auto _step = dim.size() > 0 ? dim[dim.size() - 1] : 1;
       auto step = _step != 0 ? _step : 1;

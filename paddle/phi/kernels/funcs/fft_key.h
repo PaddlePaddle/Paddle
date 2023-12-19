@@ -102,8 +102,8 @@ static FFTConfigKey create_fft_configkey(const DenseTensor& input,
     auto out_size = output.dims()[i];
     signal_size[i] = std::max(in_size, out_size);
   }
-  FFTConfigKey key(phi::vectorize(input.dims()),
-                   phi::vectorize(output.dims()),
+  FFTConfigKey key(common::vectorize(input.dims()),
+                   common::vectorize(output.dims()),
                    signal_size,
                    fft_type,
                    value_type);

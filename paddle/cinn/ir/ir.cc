@@ -29,7 +29,7 @@
 namespace cinn {
 namespace ir {
 
-using common::make_shared;
+using cinn::common::make_shared;
 
 Expr Cast::Make(Type t, Expr v) {
   CHECK(!t.is_unk());
@@ -389,7 +389,7 @@ Expr Store::index() const {
   if (indices.size() == 1) {
     return indices[0];
   }
-  Expr res = common::IndiceToAbsOffset(tensor_n->shape, indices);
+  Expr res = cinn::common::IndiceToAbsOffset(tensor_n->shape, indices);
   optim::Simplify(&res);
   return res;
 }
@@ -477,7 +477,7 @@ Expr Call::Make(Type type,
     CHECK(read_args[i].defined());
   }
 
-  auto node = common::make_shared<Call>(type);
+  auto node = cinn::common::make_shared<Call>(type);
   node->name = name;
   node->read_args = read_args;
   node->write_args = write_args;
@@ -623,7 +623,7 @@ Expr Load::index() const {
     if (indices.size() == 1) {
       return indices[0];
     }
-    Expr res = common::IndiceToAbsOffset(tensor_n->shape, indices);
+    Expr res = cinn::common::IndiceToAbsOffset(tensor_n->shape, indices);
     VLOG(3) << "Begin Load::index Simplify";
     optim::Simplify(&res);
     return res;
@@ -747,7 +747,7 @@ Expr Reduce::Make(Reduce::ReduceType reduce_type,
                   const std::vector<Var> &reduce_aixs) {
   CHECK(body.defined());
   CHECK(init.defined());
-  auto n = common::make_shared<Reduce>();
+  auto n = cinn::common::make_shared<Reduce>();
   n->init = init;
   n->body = body;
   n->reduce_type = reduce_type;

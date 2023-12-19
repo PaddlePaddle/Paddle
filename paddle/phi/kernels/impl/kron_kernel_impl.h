@@ -45,7 +45,7 @@ inline DenseTensor UnsqueezeTo(const DenseTensor &src, int ndims) {
     for (int i = ndims - rank; i < ndims; i++) {
       new_dim[i] = shape[i - ndims + rank];
     }
-    res.Resize(phi::make_ddim(new_dim));
+    res.Resize(common::make_ddim(new_dim));
   }
   return res;
 }
@@ -109,11 +109,11 @@ struct KronOpFunctor {
     const phi::DDim &dim_y = y.dims();
     const phi::DDim &dim_out = out->dims();
     const phi::DDim stride_x =
-        dim_x.size() == 0 ? phi::DDim(dim_x) : phi::stride(dim_x);
+        dim_x.size() == 0 ? phi::DDim(dim_x) : common::stride(dim_x);
     const phi::DDim stride_y =
-        dim_y.size() == 0 ? phi::DDim(dim_y) : phi::stride(dim_y);
+        dim_y.size() == 0 ? phi::DDim(dim_y) : common::stride(dim_y);
     const phi::DDim stride_out =
-        dim_out.size() == 0 ? phi::DDim(dim_out) : phi::stride(dim_out);
+        dim_out.size() == 0 ? phi::DDim(dim_out) : common::stride(dim_out);
 
     const int64_t *p_stride_x = nullptr, *p_stride_y = nullptr,
                   *p_stride_out = nullptr, *p_shape_y = nullptr;

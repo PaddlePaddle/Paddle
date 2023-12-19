@@ -14,13 +14,14 @@
 
 import numpy as np
 
+import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.tensor.math import _add_with_axis
 from paddle.utils import convert_to_list
 
 from ..base import core
 from ..base.data_feeder import check_type, check_variable_and_dtype
-from ..base.framework import Variable, in_dygraph_mode
+from ..base.framework import Variable, in_dygraph_mode, in_dynamic_or_pir_mode
 from ..base.layer_helper import LayerHelper
 from ..framework import _current_expected_place
 from ..nn import BatchNorm2D, Conv2D, Layer, ReLU, Sequential
@@ -188,7 +189,7 @@ def yolo_loss(
             ...                                    scale_x_y=1.)
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         loss = _C_ops.yolo_loss(
             x,
             gt_box,
@@ -365,7 +366,7 @@ def yolo_box(
             ...                                             clip_bbox=True,
             ...                                             scale_x_y=1.)
     """
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         boxes, scores = _C_ops.yolo_box(
             x,
             img_size,
@@ -510,7 +511,7 @@ def prior_box(
             max_sizes = [max_sizes]
         cur_max_sizes = max_sizes
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         step_w, step_h = steps
         if max_sizes is None:
             max_sizes = []
@@ -674,8 +675,8 @@ def box_coder(
             ...     box_normalized=False)
             ...
     """
-    if in_dygraph_mode():
-        if isinstance(prior_box_var, core.eager.Tensor):
+    if in_dynamic_or_pir_mode():
+        if isinstance(prior_box_var, (core.eager.Tensor, paddle.pir.Value)):
             output_box = _C_ops.box_coder(
                 prior_box,
                 prior_box_var,
@@ -1547,7 +1548,7 @@ def roi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
         output_size = (output_size, output_size)
 
     pooled_height, pooled_width = output_size
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         assert (
             boxes_num is not None
         ), "boxes_num should not be None in dygraph mode."
@@ -1707,7 +1708,7 @@ def roi_align(
         output_size = (output_size, output_size)
 
     pooled_height, pooled_width = output_size
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         assert (
             boxes_num is not None
         ), "boxes_num should not be None in dygraph mode."
@@ -1937,7 +1938,7 @@ def nms(
     """
 
     def _nms(boxes, iou_threshold):
-        if in_dygraph_mode():
+        if in_dynamic_or_pir_mode():
             return _C_ops.nms(boxes, iou_threshold)
 
         else:
@@ -1971,10 +1972,12 @@ def nms(
         categories is not None
     ), "if category_idxs is given, categories which is a list of unique id of all categories is necessary"
 
-    mask = paddle.zeros_like(scores, dtype=paddle.int32)
+    mask = paddle.zeros_like(scores, dtype='int32')
 
     for category_id in categories:
-        cur_category_boxes_idxs = paddle.where(category_idxs == category_id)[0]
+        cur_category_boxes_idxs = paddle.where(
+            paddle.equal(category_idxs, paddle.to_tensor(category_id))
+        )[0]
         shape = cur_category_boxes_idxs.shape[0]
         cur_category_boxes_idxs = paddle.reshape(
             cur_category_boxes_idxs, [shape]
@@ -1999,7 +2002,7 @@ def nms(
 
         updates = paddle.ones_like(
             cur_category_boxes_idxs[cur_category_keep_boxes_sub_idxs],
-            dtype=paddle.int32,
+            dtype='int32',
         )
         mask = paddle.scatter(
             mask,
@@ -2284,7 +2287,7 @@ def matrix_nms(
             ...                         score_threshold=0.5, post_threshold=0.1,
             ...                         nms_top_k=400, keep_top_k=200, normalized=False)
     """
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         out, index, rois_num = _C_ops.matrix_nms(
             bboxes,
             scores,

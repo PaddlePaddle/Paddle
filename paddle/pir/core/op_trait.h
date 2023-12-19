@@ -109,6 +109,12 @@ class OneResultTrait : public OpTraitBase<OneResultTrait> {
   static void Verify(Operation *op);
 };
 
+///
+/// \brief This trait marks the op can't be removed even if which has no output
+/// or the output isn't used.
+///
+class SideEffectTrait : public OpTraitBase<SideEffectTrait> {};
+
 }  // namespace pir
 
 IR_DECLARE_EXPLICIT_TYPE_ID(pir::SameOperandsShapeTrait)
@@ -118,3 +124,4 @@ IR_DECLARE_EXPLICIT_TYPE_ID(pir::SameOperandsAndResultElementTypeTrait)
 IR_DECLARE_EXPLICIT_TYPE_ID(pir::SameOperandsAndResultTypeTrait)
 IR_DECLARE_EXPLICIT_TYPE_ID(pir::SameTypeOperandsTrait)
 IR_DECLARE_EXPLICIT_TYPE_ID(pir::OneResultTrait)
+IR_DECLARE_EXPLICIT_TYPE_ID(pir::SideEffectTrait)

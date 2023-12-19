@@ -24,7 +24,9 @@ class ControlFlowDialect : public Dialect {
     initialize();
   }
   static const char *name() { return "cf"; }
-
+  void PrintType(Type type, std::ostream &os) const override;
+  void PrintOperation(Operation *op,
+                      IrPrinter &printer) const override;  // NOLINT
  private:
   void initialize();
 };

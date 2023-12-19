@@ -99,7 +99,7 @@ void CreateTensor(framework::Scope* scope,
                   const std::vector<int64_t>& shape) {
   auto* var = scope->Var(name);
   auto* tensor = var->GetMutable<phi::DenseTensor>();
-  auto dims = phi::make_ddim(shape);
+  auto dims = common::make_ddim(shape);
   tensor->Resize(dims);
   platform::Place place = platform::CPUPlace();
   RandomizeTensor(tensor, place);

@@ -115,6 +115,8 @@ class IR_API Type {
     return pir::cast<U>(*this);
   }
 
+  static Type dyn_cast_impl(Type type) { return type; }
+
   ///
   /// \brief Return true if this is an integer (any signedness) or an index
   /// type.

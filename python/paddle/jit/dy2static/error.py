@@ -21,8 +21,10 @@ import traceback
 import numpy as np  # noqa: F401
 
 from .origin_info import Location, OriginInfo, global_origin_info_map
-from .utils import _is_api_in_module_helper  # noqa: F401
-from .utils import RE_PYMODULE
+from .utils import (
+    RE_PYMODULE,
+    _is_api_in_module_helper,  # noqa: F401
+)
 
 __all__ = []
 

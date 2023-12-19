@@ -65,7 +65,7 @@ TEST(conv, conv) {
 
   auto c = program.conv2d(A, B, attrs);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
   program.SetInputs({A, B});
   program.Validate();
   LOG(INFO) << "Program:\n" << program;
@@ -112,7 +112,7 @@ TEST(conv_relu_conv, conv_relu_conv) {
   auto d = program.relu(c);
   auto e = program.conv2d(d, D, attrs);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
   program.SetInputs({A, B, D});
   program.Validate();
   LOG(INFO) << "Program:\n" << program;
@@ -162,7 +162,7 @@ TEST(conv_add_conv, conv_add_conv) {
   auto d = program.elementwise_add(c, C, 1);
   auto e = program.conv2d(d, D, attrs);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
   program.SetInputs({A, B, D});
   program.Validate();
   LOG(INFO) << "Program:\n" << program;
@@ -219,7 +219,7 @@ TEST(conv_bn_conv, conv_bn_conv) {
   auto d = program.batchnorm(c, Scale, Bias, Mean, Variance, attrs1);
   auto e = program.conv2d(d, D, attrs);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
   program.SetInputs({A, B, D});
   program.Validate();
   LOG(INFO) << "Program:\n" << program;
@@ -276,7 +276,7 @@ TEST(conv_pool2d_conv, conv_pool2d_conv) {
   auto d = program.pool2d(c, attrs2);
   auto e = program.conv2d(d, D, attrs);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
   program.SetInputs({A, B, D});
   program.Validate();
   LOG(INFO) << "Program:\n" << program;
@@ -328,7 +328,7 @@ TEST(conv_softmax_conv, conv_softmax_conv) {
   auto d = program.softmax(c, attrs1);
   auto e = program.conv2d(d, D, attrs);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
   program.SetInputs({A, B, D});
   program.Validate();
   LOG(INFO) << "Program:\n" << program;
@@ -377,7 +377,7 @@ TEST(conv_sigmoid_conv, conv_sigmoid_conv) {
   auto d = program.sigmoid(c);
   auto e = program.conv2d(d, D, attrs);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
   program.SetInputs({A, B, D});
   program.Validate();
   LOG(INFO) << "Program:\n" << program;
@@ -430,7 +430,7 @@ TEST(conv_mul_conv, conv_mul_conv) {
   auto d = program.mul(c, C, 1, 1);
   auto e = program.softmax(d, attrs1);
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
   program.SetInputs({A, B, D});
   program.Validate();
   LOG(INFO) << "Program:\n" << program;

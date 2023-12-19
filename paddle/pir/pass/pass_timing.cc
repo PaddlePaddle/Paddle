@@ -18,11 +18,14 @@
 #include <string>
 #include <unordered_map>
 
+#include "paddle/fluid/platform/init_phi.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_instrumentation.h"
 #include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pass/utils.h"
+
+REGISTER_FILE_SYMBOLS(pass_timing);
 
 namespace pir {
 namespace {

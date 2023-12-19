@@ -50,13 +50,13 @@ class TestParametes(unittest.TestCase):
         with paddle.static.program_guard(main_program):
             w = paddle.create_parameter(shape=[784, 200], dtype='float32')
         self.assertEqual(w.stop_gradient, False)
-        self.assertEqual(w.is_persistable, True)
+        self.assertEqual(w.persistable, True)
 
         # test for setter
         w.stop_gradient = True
-        w.is_persistable = False
+        w.persistable = False
         self.assertEqual(w.stop_gradient, True)
-        self.assertEqual(w.is_persistable, False)
+        self.assertEqual(w.persistable, False)
 
 
 if __name__ == '__main__':

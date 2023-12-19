@@ -22,6 +22,7 @@
 #include "paddle/cinn/hlir/framework/instruction.h"
 #include "paddle/cinn/hlir/framework/op_lowering_impl_base.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
+#include "paddle/cinn/ir/group_schedule/base_group_scheduler.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 #include "paddle/cinn/lang/packed_func.h"
@@ -36,7 +37,7 @@ namespace hlir {
 namespace framework {
 
 using GroupPtr = std::shared_ptr<Graph::Group>;
-using common::Target;
+using cinn::common::Target;
 class OpLowererImpl;
 
 typedef bool (OpLowererImpl::*ScheduleDetermineFunction)(Node*);
@@ -58,6 +59,18 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
                                      bool apply_op_schedule = true,
                                      bool apply_group_schedule = true,
                                      bool apply_pass = true);
+
+  std::vector<std::pair<ir::SymbolicPredicate, ir::LoweredFunc>> BucketLower(
+      const GroupPtr& group,
+      bool apply_op_schedule = false,
+      bool apply_group_schedule = true,
+      bool apply_pass = true) {
+    CINN_NOT_IMPLEMENTED;
+  }
+
+  void InsertNameGeneToScope(std::shared_ptr<Scope> scope) {
+    CINN_NOT_IMPLEMENTED;
+  }
 
  private:
   /**

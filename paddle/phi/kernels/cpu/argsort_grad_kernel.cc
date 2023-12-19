@@ -74,7 +74,7 @@ void ArgsortGradKernel(const Context& dev_ctx,
   // Do full assign
   if (axis == -1 || axis + 1 == in_dims.size()) {
     const int64_t input_height =
-        phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
+        common::product(common::slice_ddim(in_dims, 0, in_dims.size() - 1));
     const int64_t input_width = in_dims[in_dims.size() - 1];
 
     FullAssign<T, int64_t>(input_height,
@@ -108,8 +108,8 @@ void ArgsortGradKernel(const Context& dev_ctx,
     TransposeKernel<T, Context>(dev_ctx, out_grad, trans, &trans_dO);
     TransposeKernel<int64_t, Context>(dev_ctx, indices, trans, &trans_ind);
 
-    const int64_t input_height =
-        phi::product(phi::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
+    const int64_t input_height = common::product(
+        common::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
     const int64_t input_width = trans_dims[trans_dims.size() - 1];
 
     DenseTensor tmp_out;

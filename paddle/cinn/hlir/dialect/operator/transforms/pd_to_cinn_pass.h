@@ -22,18 +22,13 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
-class PdOpToCinnOpPass : public pir::Pass {
+class PdOpToCinnOpPass : public pir::PatternRewritePass {
  public:
   PdOpToCinnOpPass();
 
-  bool Initialize(pir::IrContext *context) override;
-
-  void Run(pir::Operation *op) override;
+  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override;
 
   bool CanApplyOn(pir::Operation *op) const override;
-
- private:
-  pir::FrozenRewritePatternSet patterns_;
 };
 
 void PdOp2CinnOpConverter(::pir::Program *program);

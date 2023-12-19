@@ -453,9 +453,62 @@ class TestReshapeAPI(unittest.TestCase):
         np.testing.assert_array_equal(res_3, input.reshape([5, 10]))
         np.testing.assert_array_equal(res_4, input.reshape(shape))
 
+    @test_with_pir_api
+    def _test_static_dtype(self):
+        places = [paddle.CPUPlace()] + (
+            [paddle.CUDAPlace(0)] if base.core.is_compiled_with_cuda() else []
+        )
+
+        dtypes = [
+            'float16',
+            'float32',
+            'float64',
+            'int16',
+            'int32',
+            'int64',
+            'int8',
+            'uint8',
+            'complex64',
+            'complex128',
+            'bfloat16',
+            'bool',
+        ]
+        for place in places:
+            for dtype in dtypes:
+                # core is not compiled with CUDA and not support the bfloat16
+                if (
+                    dtype == 'bfloat16'
+                    and not base.core.is_compiled_with_cuda()
+                ):
+                    continue
+
+                dtype_paddle = dtype
+                # numpy not support bfloat16, use uint16 instead
+                dtype_numpy = dtype if dtype != 'bfloat16' else 'uint16'
+
+                paddle.enable_static()
+                input = np.random.random([2, 25]).astype(dtype_numpy)
+                shape = [2, 5, 5]
+                main_prog = paddle.static.Program()
+                with paddle.static.program_guard(
+                    main_prog, paddle.static.Program()
+                ):
+                    x = self.data(name="x", shape=[2, 25], dtype=dtype_paddle)
+                    out_1 = self.reshape(x, shape)
+
+                exe = paddle.static.Executor(place=place)
+                res_1 = exe.run(
+                    main_prog,
+                    feed={"x": input},
+                    fetch_list=[out_1],
+                )[0]
+
+                np.testing.assert_array_equal(res_1, input.reshape(shape))
+
     def test_paddle_api(self):
         self._set_paddle_api()
         self._test_api()
+        self._test_static_dtype()
 
     def test_imperative(self):
         self._set_paddle_api()
@@ -678,6 +731,18 @@ class TestReshapeAPI_ZeroDim(unittest.TestCase):
             self.assertEqual(result[1].shape, (1,))
             self.assertEqual(result[2].shape, ())
             self.assertEqual(result[3].shape, (1,))
+
+
+class TestReshapePirOpResultListShape(unittest.TestCase):
+    def test_opresult_list_shape(self):
+        with paddle.pir_utils.IrGuard():
+            x = paddle.static.data(
+                'x',
+                [3],
+            )
+            shape = [1, paddle.full([], 3)]
+            out = paddle.reshape(x, shape)
+            np.testing.assert_array_equal(tuple(out.shape), (-1, -1))
 
 
 if __name__ == "__main__":

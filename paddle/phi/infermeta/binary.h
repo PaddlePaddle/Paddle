@@ -44,6 +44,16 @@ void KLDivInferMeta(const MetaTensor& x,
                     MetaTensor* out,
                     MetaConfig config = MetaConfig());
 
+void ArrayWriteInferMeta(const MetaTensor& array,
+                         const MetaTensor& x,
+                         MetaTensor* out,
+                         MetaConfig config = MetaConfig());
+
+void ArrayReadInferMeta(const MetaTensor& array,
+                        const Scalar& i,
+                        MetaTensor* out,
+                        MetaConfig config = MetaConfig());
+
 void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
 void BCELossInferMeta(const MetaTensor& input,
@@ -55,6 +65,11 @@ void BincountInferMeta(const MetaTensor& x,
                        const MetaTensor& weights,
                        const Scalar& minlength,
                        MetaTensor* out);
+
+void BinomialInferMeta(const MetaTensor& count,
+                       const MetaTensor& prob,
+                       MetaTensor* out,
+                       MetaConfig config = MetaConfig());
 
 void BmmInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
@@ -393,6 +408,11 @@ void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
                                               const MetaTensor& repeats,
                                               int dim,
                                               MetaTensor* out);
+
+void RowConvInferMeta(const MetaTensor& x,
+                      const MetaTensor& filter,
+                      MetaTensor* out);
+
 void PriorBoxInferMeta(const MetaTensor& input,
                        const MetaTensor& image,
                        const std::vector<float>& min_sizes,
@@ -442,6 +462,13 @@ void TriangularSolveInferMeta(const MetaTensor& x,
                               bool transpose,
                               bool unitriangular,
                               MetaTensor* out);
+
+void TopPSamplingInferMeta(const MetaTensor& x,
+                           const MetaTensor& ps,
+                           const MetaTensor& threshold,
+                           int random_seed,
+                           MetaTensor* out,
+                           MetaTensor* ids);
 
 void LstsqInferMeta(const MetaTensor& x,
                     const MetaTensor& y,

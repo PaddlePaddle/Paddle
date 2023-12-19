@@ -22,6 +22,7 @@ from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 
 def cast_wrapper(x, out_dtype=None):
@@ -223,6 +224,7 @@ class TestCastDoubleGradCheck(unittest.TestCase):
     def cast_wrapper(self, x):
         return paddle.cast(x[0], 'float64')
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -254,6 +256,7 @@ class TestCastTripleGradCheck(unittest.TestCase):
     def cast_wrapper(self, x):
         return paddle.cast(x[0], 'float64')
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.

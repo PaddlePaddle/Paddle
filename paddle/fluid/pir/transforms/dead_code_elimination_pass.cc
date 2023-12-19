@@ -16,7 +16,9 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/core/builtin_op.h"
+#include "paddle/pir/core/op_trait.h"
 #include "paddle/pir/core/program.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_registry.h"
 #include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
@@ -35,25 +37,16 @@ class DeadCodeEliminationPattern : public pir::RewritePattern {
   }
 
   bool Match(pir::Operation* op) const override {
-    if (op->isa<paddle::dialect::FetchOp>() ||
-        op->isa<paddle::dialect::ShadowOutputOp>())
-      return false;
+    if (op->HasTrait<pir::SideEffectTrait>()) return false;
 
+    if (op->isa<paddle::dialect::DataOp>()) {
+      return false;
+    }
     return op->use_empty();
   }
 
   void Rewrite(pir::Operation* op,
                pir::PatternRewriter& rewriter) const override {  // NOLINT
-    if (op->dyn_cast<pir::GetParameterOp>()) {
-      // Delete parameter from program.
-      pir::GetParameterOp get_parameter_op =
-          op->dyn_cast<pir::GetParameterOp>();
-      get_parameter_op->GetParentProgram()->parameters().erase(
-          get_parameter_op->attributes()
-              .at(get_parameter_op.attributes_name[0])
-              .dyn_cast<pir::StrAttribute>()
-              .AsString());
-    }
     rewriter.EraseOp(op);
   }
 };
@@ -73,7 +66,8 @@ class DeadCodeEliminationPass : public pir::Pass {
     pir::GreedyRewriteConfig cfg;
     cfg.use_top_down_traversal = true;
     cfg.max_iterations = 10;
-    pir::ApplyPatternsGreedily(op->region(0), patterns_, cfg);
+    auto [_, num_rewrites] = pir::ApplyPatternsGreedily(op, patterns_, cfg);
+    PrintStatistics(num_rewrites);
   }
 
  private:

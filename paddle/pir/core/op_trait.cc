@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/pir/core/op_trait.h"
-#include "paddle/pir/core/enforce.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/core/type_util.h"
 
 namespace {
@@ -228,3 +228,4 @@ IR_DEFINE_EXPLICIT_TYPE_ID(pir::SameOperandsAndResultElementTypeTrait)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::SameOperandsAndResultTypeTrait)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::SameTypeOperandsTrait)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::OneResultTrait)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::SideEffectTrait)

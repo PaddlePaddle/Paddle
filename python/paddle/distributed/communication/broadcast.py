@@ -37,7 +37,7 @@ def broadcast(tensor, src, group=None, sync_op=True):
 
     Args:
         tensor (Tensor): The tensor to send if current rank is the source, or the tensor to receive otherwise. Its data type
-            should be float16, float32, float64, int32, int64, int8, uint8, bool or bfloat16.
+            should be float16, float32, float64, int32, int64, int8, uint8, bool, bfloat16, complex64 or complex128.
         src (int): The source rank in global view.
         group (Group, optional): The group instance return by new_group or None for global default group.
         sync_op (bool, optional): Whether this op is a sync op. The default value is True.

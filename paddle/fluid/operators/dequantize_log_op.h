@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include <vector>
 
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/phi/core/ddim.h"
 
 namespace phi {
 class DenseTensor;

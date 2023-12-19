@@ -126,9 +126,6 @@ def map_readers(func, *readers):
 
 def shuffle(reader, buf_size):
     """
-    paddle.base.io.shuffle ( :ref:`api_base_io_shuffle` ) is recommended to use,
-    and paddle.reader.shuffle is an alias.
-
     This API creates a decorated reader that outputs the shuffled data.
 
     The output data from the origin reader will be saved into a buffer,
@@ -359,8 +356,6 @@ def buffered(reader, size):
 
 def firstn(reader, n):
     """
-    paddle.base.io.firstn ( :ref:`api_base_io_firstn` ) is recommended to use,
-    and paddle.reader.firstn is an alias.
 
     This API creates a decorated reader, and limits the max number of
     samples that reader could return.

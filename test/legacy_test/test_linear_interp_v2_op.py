@@ -321,7 +321,7 @@ class TestLinearInterpOpSizeTensor(TestLinearInterpOp):
             self.check_output(atol=1e-5, check_pir=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', in_place=True, check_pir=False)
+        self.check_grad(['X'], 'Out', in_place=True, check_pir=True)
 
 
 class TestLinearInterpOpAPI2_0(unittest.TestCase):
