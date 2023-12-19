@@ -370,16 +370,13 @@ class TestOutDtype(unittest.TestCase):
 
 class TestFractionalMaxPool2DAPIDtype(unittest.TestCase):
     def test_dtypes(self):
-        for dtype_np, dtype_paddle in zip(
-            ('uint16', 'float16', 'float32', 'float64'),
-            ('bfloat16', 'float16', 'float32', 'float64'),
-        ):
-            x_np = np.random.random([2, 3, 7, 7]).astype(dtype_np)
+        for dtype in ('uint16', 'float16', 'float32', 'float64'):
+            x_np = np.random.random([2, 3, 7, 7]).astype(dtype)
             res_np = fractional_pool2d_forward(
                 x=x_np, output_size=[3, 3], random_u=0.3
             )
 
-            x_paddle = paddle.to_tensor(x_np).astype(dtype_paddle)
+            x_paddle = paddle.to_tensor(x_np)
             out = paddle.nn.functional.fractional_max_pool2d(
                 x=x_paddle, output_size=[3, 3], random_u=0.3
             )
