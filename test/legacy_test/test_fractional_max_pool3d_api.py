@@ -409,11 +409,13 @@ class TestFractionalMaxPool3DAPIDtype(unittest.TestCase):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.disable_static(place=place)
 
-            dtypes = (
-                ('uint16', 'float16', 'float32', 'float64')
-                if use_cuda
-                else ('float16', 'float32', 'float64')
-            )
+            dtypes = ['float32', 'float64']
+
+            if core.is_float16_supported(place):
+                dtypes += ['float16']
+
+            if use_cuda and core.is_bfloat16_supported(place):
+                dtypes += ['uint16']
 
             for dtype in dtypes:
                 x_np = np.random.random([2, 3, 7, 7, 7]).astype(dtype)
