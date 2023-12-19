@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
-
+#include<iostream>
 #include <bitset>
 
 #include "paddle/fluid/framework/block_desc.h"
@@ -107,7 +107,11 @@ struct SimpleOpTypeSetTeller : public Teller {
          PADDLE_GET_CONST(std::string, desc.GetAttr("op_namescope")) ==
              "/skip_quant_2/") ||
         desc.HasAttr("skip_quant"))
-      return false;
+        {
+          std::cout<<"skip_quant被设置了true"<<std::endl;
+          return true;
+        }
+    std::cout<<"skip_quant已经跑了"<<std::endl;
     std::unordered_set<std::string> act_op_list = {
         "relu",       "relu6",       "sigmoid",
         "elu",        "selu",        "softsign",
@@ -3300,7 +3304,11 @@ bool OpTeller::Tell(const framework::ir::Node* node,
        PADDLE_GET_CONST(std::string, desc.GetAttr("op_namescope")) ==
            "/skip_quant_2/") ||
       desc.HasAttr("skip_quant"))
-    return false;
+      {
+        VLOG(3) << op_type << " 下面is labeled the `skip_quant`";
+        return true;
+      } 
+  std::cout<<"skip_quant在行3311被设置了"<<std::endl;
   auto& default_teller = GetDefaultTeller();
   if ((*default_teller)(desc,
                         use_no_calib_int8,
