@@ -79,7 +79,7 @@ using AttributeHandlerFn = std::function<pir::Attribute(
 using DenseTensorTypeStorage = paddle::dialect::DenseTensorTypeStorage;
 constexpr char kTargetDialectPrefix[] = "pd_op.";  // NOLINT
 #ifdef PADDLE_WITH_DNNL
-constexpr char kOneDnnTargetDialectPrefix[] = "pd_onednn_op.";  // NOLINT
+constexpr char kOneDNNTargetDialectPrefix[] = "pd_onednn_op.";  // NOLINT
 #endif
 constexpr char kEmptyVarName[] = "@EMPTY@";  // NOLINT
 
@@ -230,7 +230,7 @@ inline pir::Operation* InsertCreateArrayOp(pir::IrContext* ctx,
 inline std::string GetPrefix(const OpDesc& op_desc) {
 #ifdef PADDLE_WITH_DNNL
   return op_desc.GetAttrIfExists<bool>("use_mkldnn")
-             ? kOneDnnTargetDialectPrefix
+             ? kOneDNNTargetDialectPrefix
              : kTargetDialectPrefix;
 #else
   return kTargetDialectPrefix;

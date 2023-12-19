@@ -471,7 +471,7 @@ class OpInfoParser:
         # parse interfaces list
         self.interfaces_list = self.parse_op_interfaces()
 
-        # OneDnn info
+        # OneDNN info
         if "extra_args" in self.op_yaml_item:
             self.onednn_extra_args = self.op_yaml_item["extra_args"]
             self.onednn_layout_transform = self.op_yaml_item["layout_transform"]

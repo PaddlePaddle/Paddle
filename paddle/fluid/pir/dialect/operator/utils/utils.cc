@@ -58,6 +58,7 @@ const std::unordered_set<std::string> LegacyOpList = {
     SoftReluOp::name(),
     SoftReluGradOp::name()};
 
+const std::unordered_set<std::string> OneDNNLegacyOpList = {};
 enum class AttrType {
   UNDEFINED = 0,
   BOOL,
@@ -217,6 +218,10 @@ VariantType GetAttributeData(const pir::Attribute& attr) {
 }
 
 bool IsLegacyOp(const std::string& name) { return LegacyOpList.count(name); }
+
+bool IsOneDNNLegacyOp(const std::string& name) {
+  return OneDNNLegacyOpList.count(name);
+}
 
 bool IsEmptyValue(const pir::Value& value) {
   return !value.impl() || !value.type();

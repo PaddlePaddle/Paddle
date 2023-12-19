@@ -1,3 +1,23 @@
+set(instruction_base_srcs
+    instruction_base.cc
+    phi_kernel_instruction.cc
+    legacy_kernel_instruction.cc
+    if_instruction.cc
+    while_instruction.cc
+    select_input_instruction.cc
+    has_elements_instruction.cc
+    tuple_push_instruction.cc
+    tuple_pop_instruction.cc
+    builtin_combine_instruction.cc
+    instruction_util.cc)
+
+if(WITH_MKLDNN)
+  set(instruction_base_srcs
+      ${instruction_base_srcs} onednn_phi_kernel_instruction.cc
+      onednn_mixed_phi_kernel_instruction.cc
+      onednn_legacy_kernel_instruction.cc)
+endif()
+
 cc_library(
   instruction_base
   SRCS instruction_base.cc

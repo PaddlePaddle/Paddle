@@ -303,6 +303,49 @@ static pir::OpResult AddPlaceTransferOp(pir::Value in,
   return new_in;
 }
 
+static pir::OpResult AddOneDNN2PaddleLayoutTransferOp(
+    pir::Value in, const phi::DataLayout& dst_layout, pir::Block* block) {
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  auto in_alloc_type = in.type().dyn_cast<AllocatedDenseTensorType>();
+
+  phi::KernelKey kernel_key;
+  kernel_key.set_backend(phi::Backend::CPU);
+  kernel_key.set_layout(phi::DataLayout::ANY);
+  kernel_key.set_dtype(dialect::TransToPhiDataType(in_alloc_type.dtype()));
+
+  std::unordered_map<std::string, pir::Attribute> op_attribute;
+  op_attribute = {
+      {"op_name",
+       pir::StrAttribute::get(ctx, "pd_op.onednn_to_paddle_layout_kernel")},
+      {"kernel_name",
+       pir::StrAttribute::get(ctx, "onednn_to_paddle_layout_kernel")},
+      {"kernel_key", KernelAttribute::get(ctx, kernel_key)},
+      {"dst_layout",
+       pir::Int32Attribute::get(ctx, static_cast<int>(dst_layout))}};
+
+  auto out_type = AllocatedDenseTensorType::get(ctx,
+                                                in_alloc_type.place(),
+                                                in_alloc_type.dtype(),
+                                                in_alloc_type.dims(),
+                                                dst_layout,
+                                                in_alloc_type.lod(),
+                                                in_alloc_type.offset());
+
+  pir::OpInfo kernel_op_info = ctx->GetRegisteredOpInfo(PhiKernelOp::name());
+  pir::Operation* op =
+      pir::Operation::Create({in}, op_attribute, {out_type}, kernel_op_info);
+
+  auto in_op = in.dyn_cast<pir::OpResult>().owner();
+  if (in_op && in_op->HasAttribute(kAttrIsPersisable)) {
+    op->set_attribute(kAttrIsPersisable, in_op->attribute(kAttrIsPersisable));
+  }
+
+  block->push_back(op);
+  auto new_in = op->result(0);
+
+  return new_in;
+}
+
 static bool NeedTransformDataType(const phi::DataType& l,
                                   const phi::DataType& r) {
   return l != phi::DataType::ALL_DTYPE && r != phi::DataType::ALL_DTYPE &&
@@ -1759,6 +1802,22 @@ std::vector<pir::Value> BuildInputs(
         }
       }
     }
+
+    // 3. layout transfer(only for onednn)
+#ifdef PADDLE_WITH_DNNL
+    if (kernel_key.backend() == phi::Backend::CPU &&
+        cur_in.dyn_cast<pir::OpResult>().owner()->HasTrait<OneDNNTrait>()) {
+      auto new_in_type = new_in.type();
+      if (new_in_type.isa<AllocatedDenseTensorType>()) {
+        new_in = AddOneDNN2PaddleLayoutTransferOp(
+            new_in, phi::DataLayout::ANY, block);
+      } else {
+        PADDLE_THROW(
+            phi::errors::Unimplemented("PIR layout transfer only support "
+                                       "allocated dense tensor type for now"));
+      }
+    }
+#endif
     vec_inputs.push_back(new_in);
   }
   return vec_inputs;
@@ -1837,19 +1896,57 @@ pir::Operation* BuildKernelOp(
   if (op_item->HasTrait<InplaceTrait>()) {
     op_attribute.emplace("is_inplace", pir::BoolAttribute::get(ctx, true));
   }
-
-  pir::OpInfo phi_kernel_op_info =
-      ctx->GetRegisteredOpInfo(PhiKernelOp::name());
-
-  pir::OpInfo legacy_kernel_op_info =
-      ctx->GetRegisteredOpInfo(LegacyKernelOp::name());
+#ifdef PADDLE_WITH_DNNL
+#endif
   pir::Operation* op = nullptr;
-  if (IsLegacyOp(op_item->name())) {
-    op = pir::Operation::Create(
-        vec_inputs, op_attribute, op_output_types, legacy_kernel_op_info);
+  if (op_item->HasTrait<OneDNNTrait>()) {
+    if (IsOneDNNLegacyOp(op_item->name())) {
+      pir::OpInfo legacy_kernel_op_info =
+          ctx->GetRegisteredOpInfo(OneDNNLegacyKernelOp::name());
+      op = pir::Operation::Create(
+          vec_inputs, op_attribute, op_output_types, legacy_kernel_op_info);
+    } else {
+      auto op_info_parser = GetOpYamlInfoParser(op_item);
+      op_attribute.emplace("extra_args",
+                           op_info_parser->OpRuntimeInfo().extra_args);
+      op_attribute.emplace(
+          "layout_transform_arg",
+          op_info_parser->OpRuntimeInfo().layout_transform_arg);
+      op_attribute.emplace(
+          "layout_transform_inputs",
+          op_info_parser->OpRuntimeInfo().layout_transform_inputs);
+      op_attribute.emplace("is_onednn_only",
+                           op_info_parser->OpRuntimeInfo().is_onednn_only);
+      op_attribute.emplace("dynamic_fallback",
+                           op_info_parser->OpRuntimeInfo().dynamic_fallback);
+      if (op_item->HasTrait<OneDNNDynamicFallbackTrait>()) {
+        pir::OpInfo phi_kernel_op_info =
+            ctx->GetRegisteredOpInfo(OneDNNMixedPhiKernelOp::name());
+
+        op = pir::Operation::Create(
+            vec_inputs, op_attribute, op_output_types, phi_kernel_op_info);
+      } else {
+        pir::OpInfo phi_kernel_op_info =
+            ctx->GetRegisteredOpInfo(OneDNNPhiKernelOp::name());
+
+        op = pir::Operation::Create(
+            vec_inputs, op_attribute, op_output_types, phi_kernel_op_info);
+      }
+    }
   } else {
-    op = pir::Operation::Create(
-        vec_inputs, op_attribute, op_output_types, phi_kernel_op_info);
+    if (IsLegacyOp(op_item->name())) {
+      pir::OpInfo legacy_kernel_op_info =
+          ctx->GetRegisteredOpInfo(LegacyKernelOp::name());
+
+      op = pir::Operation::Create(
+          vec_inputs, op_attribute, op_output_types, legacy_kernel_op_info);
+    } else {
+      pir::OpInfo phi_kernel_op_info =
+          ctx->GetRegisteredOpInfo(PhiKernelOp::name());
+
+      op = pir::Operation::Create(
+          vec_inputs, op_attribute, op_output_types, phi_kernel_op_info);
+    }
   }
 
   (*map_op_pair)[op_item] = op;

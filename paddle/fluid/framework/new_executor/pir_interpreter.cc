@@ -34,6 +34,9 @@
 #include "paddle/phi/core/sparse_csr_tensor.h"
 
 #ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/framework/new_executor/instruction/onddnn_legacy_kernel_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/onednn_mixed_phi_kernel_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/onednn_phi_kernel_instruction.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
@@ -714,6 +717,22 @@ void PirInterpreter::BuildInstruction() {
       } else {
         CREATE_INSTR(PhiKernelInstruction);
       }
+#ifdef PADDLE_WITH_DNNL
+    } else if (op.dialect()->name() == "pd_onednn_kernel") {
+      auto op_name = op.attributes()
+                         .at("op_name")
+                         .dyn_cast<::pir::StrAttribute>()
+                         .AsString();
+      VLOG(6) << "process " << op_name;
+
+      if (op.isa<paddle::dialect::OneDNNPhiKernelOp>()) {
+        CREATE_INSTR(OneDNNPhiKernelInstruction);
+      } else if (op.isa<paddle::dialect::OneDNNMixedPhiKernelOp>()) {
+        CREATE_INSTR(OneDNNMixedPhiKernelInstruction);
+      } else {
+        CREATE_INSTR(OneDNNLegacyKernelInstruction);
+      }
+#endif
 #ifdef PADDLE_WITH_CINN
     } else if (op.dialect()->name() == "cinn_runtime") {
       CREATE_INSTR(CinnJitInstruction);
