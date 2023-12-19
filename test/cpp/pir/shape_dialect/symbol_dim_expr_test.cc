@@ -97,13 +97,13 @@ TEST(DimExpr, print) {
   DimExpr sym0 = DimExpr("S0");
   DimExpr sym1 = DimExpr("S1");
   DimExpr constant1 = DimExpr(1);
-  ASSERT_EQ(sym0 + sym1 + constant1, "Add(S0, S1, 1)");
-  ASSERT_EQ(sym0 - sym1 + constant1, "Add(S0, -S1, 1)");
-  ASSERT_EQ(sym0 * sym1, "Mul(S0, S1)");
-  ASSERT_EQ(sym0 / sym1, "Mul(S0, 1 / (S1))");
-  ASSERT_EQ(builder.Max(sym0, sym1), "Max(S0, S1)");
-  ASSERT_EQ(builder.Min(sym0, sym1), "Min(S0, S1)");
-  ASSERT_EQ(builder.Broadcast(sym0, sym1), "Broadcast(S0, S1)");
+  ASSERT_EQ(ToTxtString(sym0 + sym1 + constant1), "Add(S0, S1, 1)");
+  ASSERT_EQ(ToTxtString(sym0 - sym1 + constant1), "Add(S0, -S1, 1)");
+  ASSERT_EQ(ToTxtString(sym0 * sym1), "Mul(S0, S1)");
+  ASSERT_EQ(ToTxtString(sym0 / sym1), "Mul(S0, 1 / (S1))");
+  ASSERT_EQ(ToTxtString(builder.Max(sym0, sym1)), "Max(S0, S1)");
+  ASSERT_EQ(ToTxtString(builder.Min(sym0, sym1)), "Min(S0, S1)");
+  ASSERT_EQ(ToTxtString(builder.Broadcast(sym0, sym1)), "Broadcast(S0, S1)");
 }
 
 }  // namespace symbol::test
