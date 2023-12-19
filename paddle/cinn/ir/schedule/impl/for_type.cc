@@ -19,6 +19,22 @@
 namespace cinn {
 namespace ir {
 
+/** \brief A macro that guards the beginning of each implementation of schedule
+ */
+#define CINN_IR_SCHEDULE_BEGIN() try {
+/**
+ * \brief A macro that pairs with `CINN_IR_SCHEDULE_BEGIN`, handling potential
+ * errors and error message printing.
+ * @param primitive A string representing the kind of schedule primitive.
+ * @param err_msg_level A ScheduleErrorMessageLevel enum, level of error message
+ * printing
+ */
+#define CINN_IR_SCHEDULE_END(err_msg_level)                    \
+  }                                                            \
+  catch (const utils::ErrorHandler& err_hanlder) {             \
+    CINN_THROW(err_hanlder.FormatErrorMessage(err_msg_level)); \
+  }
+
 void DyScheduleImpl::MutateForType(const Expr& loop,
                                    ForType for_type,
                                    int factor) {
@@ -61,16 +77,24 @@ void DyScheduleImpl::Unroll(const Expr& loop) {
 
 void DyScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
 #ifdef CINN_WITH_CUDA
-  CHECK(loop.As<For>()->extent.is_constant())
-      << "The extent of loop to be binded should be constant!\n";
+  std::string primitive = "Bind";
+  std::ostringstream os;
+
+  if (!loop.As<For>()->extent.is_constant()) {
+    os << "The extent of loop to be binded should be constant!\n";
+    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+  }
+
   static std::set<std::string> thread_axes = {"blockIdx.x",
                                               "blockIdx.y",
                                               "blockIdx.z",
                                               "threadIdx.x",
                                               "threadIdx.y",
                                               "threadIdx.z"};
-  CHECK(thread_axes.count(thread_axis))
-      << "thread_axis " << thread_axis << " is not supported";
+  if (!thread_axes.count(thread_axis)) {
+    os << "The thread_axis which is " << thread_axis << " is not supported\n";
+    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+  }
   int offset = thread_axis.back() - 'x';
   auto cur_dev_info =
       common::DevInfoMgr<common::Target::Arch::NVGPU>::GetDevInfo(0);
@@ -81,17 +105,20 @@ void DyScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
     return extent <= (c == 'b' ? kMaxGridDims[offset] : kMaxBlockDims[offset]);
   };
   if (thread_axis[0] == 'b') {
-    CHECK(check_offset(thread_axis[0]))
-        << "Invalid Bind! The extent of loop is out of range on grid size!\n";
+    if (!check_offset(thread_axis[0])) {
+      os << "Invalid Bind! The extent of loop is out of range on grid size!\n";
+      throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+    }
     MutateForType(loop, ForType::GPUBlock, offset);
   } else {
-    CHECK(check_offset(thread_axis[0]))
-        << "Invalid Bind! The extent of loop is out of range on block size!\n";
+    if (!check_offset(thread_axis[0])) {
+      os << "Invalid Bind! The extent of loop is out of range on block size!\n";
+      throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+    }
     MutateForType(loop, ForType::GPUThread, offset);
   }
 #endif
 }
-
 }  // namespace ir
 }  // namespace cinn
 
@@ -135,6 +162,7 @@ void StScheduleImpl::Unroll(const Expr& loop) {
 
 void StScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
 #ifdef CINN_WITH_CUDA
+  CINN_IR_SCHEDULE_BEGIN();
   static std::set<std::string> thread_axes = {"blockIdx.x",
                                               "blockIdx.y",
                                               "blockIdx.z",
@@ -162,6 +190,7 @@ void StScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
         << "Invalid Bind! The extent of loop is out of range on block size!\n";
     MutateForType(loop, ForType::GPUThread, offset);
   }
+  CINN_IR_SCHEDULE_END(this->err_msg_level_);
 #endif
 }
 

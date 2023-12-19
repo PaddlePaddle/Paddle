@@ -13,10 +13,12 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/transforms/identity_op_clean_pass.h"
+#include <memory>
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
+#include "paddle/fluid/pir/drr/ir_value.h"
 #include "paddle/fluid/pir/transforms/fusion/conv2d_add_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
 
@@ -148,12 +150,10 @@ class RemoveUselessConcatPattern
     pat.Tensor("out") = pat.Op(paddle::dialect::ConcatOp::name())(
         pat.Tensor("combine_out"), pat.Tensor("axis"));
     pat.RequireNativeCall([&](const pir::drr::MatchContext &match_ctx) {
-      auto x_type = dynamic_cast<const pir::drr::IrValue &>(
-                        match_ctx.Tensor("combine_out"))
-                        .get()
-                        .type();
-      return x_type.isa<pir::VectorType>() &&
-             x_type.dyn_cast<pir::VectorType>().size() == 1;
+      auto combine_out = dynamic_cast<const pir::drr::IrValue &>(
+          match_ctx.Tensor("combine_out"));
+      return combine_out.type_isa<pir::VectorType>() &&
+             combine_out.type_dyn_cast<pir::VectorType>().size() == 1;
     });
     auto res = pat.ResultPattern();
     res.Tensor("out").Assign(res.Tensor("x"));

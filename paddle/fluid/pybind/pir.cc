@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pybind/pir.h"
+
 #include <Python.h>
 #include <algorithm>
 #include <memory>
@@ -23,12 +24,13 @@
 #include <utility>
 
 #include "paddle/fluid/framework/ir/pass.h"
-#include "paddle/fluid/pybind/pybind_variant_caster.h"
-
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/fluid/ir_adaptor/translator/utils.h"
+#include "paddle/fluid/pybind/control_flow_api.h"
+#include "paddle/fluid/pybind/pybind_variant_caster.h"
+
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
@@ -39,14 +41,24 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/attention_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/conv2d_add_act_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/conv2d_add_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/conv2d_bn_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/fc_elementwise_layernorm_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/fc_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/fc_with_special_op_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_dot_product_attention_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_dropout_add_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/fused_gemm_epilogue_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_linear_param_grad_add_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_weight_only_linear_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/matmul_scale_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/identity_op_clean_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
 #include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
-#include "paddle/fluid/pybind/control_flow_api.h"
+
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/block.h"
@@ -60,6 +72,7 @@
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pass/pass_registry.h"
+
 #include "paddle/utils/flags.h"
 #include "pybind11/stl.h"
 
@@ -79,6 +92,7 @@ using paddle::dialect::DenseTensorArrayType;
 using paddle::dialect::DenseTensorType;
 using paddle::dialect::IfOp;
 using paddle::dialect::SelectedRowsType;
+using paddle::dialect::WhileOp;
 
 using pir::Attribute;
 using pir::Block;
@@ -105,6 +119,9 @@ USE_PIR_PASS(inplace_pass);
 USE_PIR_PASS(replace_fetch_with_shadow_output_pass);
 USE_PIR_PASS(identity_op_clean_pass);
 USE_PIR_PASS(matmul_scale_fuse_pass);
+USE_PIR_PASS(fc_fuse_pass);
+USE_PIR_PASS(fc_with_special_op_fuse_pass);
+USE_PIR_PASS(fc_elementwise_layernorm_fuse_pass);
 USE_PIR_PASS(conv2d_bn_fuse_pass);
 USE_PIR_PASS(conv2d_add_fuse_pass);
 USE_PIR_PASS(conv2d_add_act_fuse_pass);
@@ -304,8 +321,16 @@ void BindBlock(py::module *m) {
           [](Block &self) { return &self.front(); },
           return_value_policy::reference)
       .def_property_readonly(
+          "parent_op",
+          [](Block &self) { return self.GetParentOp(); },
+          return_value_policy::reference)
+      .def_property_readonly(
           "program",
           [](Block &self) { return self.GetParentOp()->GetParentProgram(); },
+          return_value_policy::reference)
+      .def_property_readonly(
+          "parent_block",
+          [](Block &self) { return self.GetParentOp()->GetParent(); },
           return_value_policy::reference)
       .def_property_readonly("ops",
                              [](Block &self) -> py::list {
@@ -499,7 +524,15 @@ void BindOperation(py::module *m) {
              self.ReplaceAllUsesWith(op_results);
            })
       .def("as_if_op",
-           [](Operation &self) { return PyIfOp(self.dyn_cast<IfOp>()); });
+           [](Operation &self) { return PyIfOp(self.dyn_cast<IfOp>()); })
+      .def("as_while_op", [](Operation &self) -> WhileOp {
+        auto while_op = self.dyn_cast<WhileOp>();
+        if (!while_op) {
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "Can't cast non-while type Operation to WhileOp."));
+        }
+        return while_op;
+      });
   py::class_<Operation::BlockContainer> block_container(
       *m, "Operation_BlockContainer", R"DOC(
     The Operation_BlockContainer only use to walk all blocks in the operation.
@@ -688,6 +721,14 @@ void BindValue(py::module *m) {
                 kAttrIsPersisable,
                 BoolAttribute::get(pir::IrContext::Instance(), persistable));
           })
+      .def("all_used_ops",
+           [](Value &self) -> py::list {
+             py::list op_list;
+             for (auto it = self.use_begin(); it != self.use_end(); ++it) {
+               op_list.append(it.owner());
+             }
+             return op_list;
+           })
       .def(
           "get_defining_op",
           [](Value self) -> pir::Operation * {
@@ -748,8 +789,8 @@ void BindValue(py::module *m) {
            [](Value self) {
              return paddle::dialect::scale(self, -1.0, 0.0, true);
            })
-      .def("__eq__", &Value::operator==)
-      .def("__hash__", [](Value self) { return std::hash<pir::Value>{}(self); })
+      .def("is_same", &Value::operator==)
+      .def("hash", [](Value self) { return std::hash<pir::Value>{}(self); })
       .def("__repr__", &Value2String);
   // For basaic operators
   OVERRIDE_OPERATOR_FOR_EACH(__add__, add, 1.0, other, true);
@@ -1016,7 +1057,8 @@ static auto GetNoNeedBufferValue(const ::pir::Block *whole_block,
                                    no_need_buffer_values.end());
 }
 
-using OpResultMap = std::unordered_map<pir::OpResult, pir::OpResult>;
+using OpResultMap =
+    std::pair<std::vector<pir::OpResult>, std::vector<pir::OpResult>>;
 std::pair<std::shared_ptr<Program>, OpResultMap> CloneProgram(
     const Program &program) {
   // Limitation of this function:
@@ -1029,12 +1071,14 @@ std::pair<std::shared_ptr<Program>, OpResultMap> CloneProgram(
     auto *cloned_op = BuildOpFrom(&op, value_map);
     cloned_program->block()->push_back(cloned_op);
   }
-  std::unordered_map<pir::OpResult, pir::OpResult> op_result_map;
+  std::vector<pir::OpResult> associated_array_key, associated_array_value;
   for (auto &pair : value_map) {
-    op_result_map[pair.first.dyn_cast<pir::OpResult>()] =
-        pair.second.dyn_cast<pir::OpResult>();
+    associated_array_key.push_back(pair.first.dyn_cast<pir::OpResult>());
+    associated_array_value.push_back(pair.second.dyn_cast<pir::OpResult>());
   }
-  return std::make_pair(cloned_program, op_result_map);
+  return std::make_pair(
+      cloned_program,
+      std::make_pair(associated_array_key, associated_array_value));
 }
 
 void AppendSetParameter(Program *forward_program,
@@ -1172,7 +1216,9 @@ SplitedResult SplitForwardBackward(
             dtype,
             place);
     counter += 1;
-    backward_value_map[v] = op->results()[0].Value::impl();
+    pir::Value target = op->results()[0].Value::impl();
+    target.set_type(v.type());
+    backward_value_map[v] = target;
   };
 
   auto create_output_fn_forward = [&ctx,

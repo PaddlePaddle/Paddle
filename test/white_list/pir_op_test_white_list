@@ -220,6 +220,7 @@ test_nms_op
 test_nn_functional_hot_op
 test_nonzero_api
 test_norm_op
+test_number_count_op
 test_numel_op
 test_one_hot_v2_op
 test_one_hot_v2_op_static_build
@@ -256,6 +257,7 @@ test_reverse_op
 test_roi_align_op
 test_roi_pool_op
 test_roll_op
+test_row_conv_op
 test_rrelu_op
 test_scale_mkldnn_op
 test_scale_op
