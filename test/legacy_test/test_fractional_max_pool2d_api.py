@@ -370,47 +370,59 @@ class TestOutDtype(unittest.TestCase):
 
 class TestFractionalMaxPool2DAPIDtype(unittest.TestCase):
     def test_dtypes(self):
-        for dtype in ('uint16', 'float16', 'float32', 'float64'):
-            x_np = np.random.random([2, 3, 7, 7]).astype(dtype)
-            res_np = fractional_pool2d_forward(
-                x=x_np, output_size=[3, 3], random_u=0.3
-            )
+        for use_cuda in (
+            [False, True] if core.is_compiled_with_cuda() else [False]
+        ):
+            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            paddle.disable_static(place=place)
 
-            x_paddle = paddle.to_tensor(x_np)
-            out = paddle.nn.functional.fractional_max_pool2d(
-                x=x_paddle, output_size=[3, 3], random_u=0.3
-            )
+            for dtype in ('uint16', 'float16', 'float32', 'float64'):
+                x_np = np.random.random([2, 3, 7, 7]).astype(dtype)
+                res_np = fractional_pool2d_forward(
+                    x=x_np, output_size=[3, 3], random_u=0.3
+                )
 
-            np.testing.assert_allclose(out.numpy(), res_np)
+                x_paddle = paddle.to_tensor(x_np)
+                out = paddle.nn.functional.fractional_max_pool2d(
+                    x=x_paddle, output_size=[3, 3], random_u=0.3
+                )
+
+                np.testing.assert_allclose(out.numpy(), res_np)
 
 
 class TestFractionalMaxPool2DAPIErrorRandomU(unittest.TestCase):
     def test_error_random_u(self):
-        x_np = np.random.random([2, 3, 7, 7])
+        for use_cuda in (
+            [False, True] if core.is_compiled_with_cuda() else [False]
+        ):
+            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            paddle.disable_static(place=place)
 
-        # error random_u of `<0`
-        with self.assertRaises(ValueError):
-            res_np = paddle.nn.functional.fractional_max_pool2d(
-                x=x_np, output_size=[3, 3], random_u=-0.2
-            )
+            x_np = np.random.random([2, 3, 7, 7])
 
-        # error random_u of `0`
-        with self.assertRaises(ValueError):
-            res_np = paddle.nn.functional.fractional_max_pool2d(
-                x=x_np, output_size=[3, 3], random_u=0
-            )
+            # error random_u of `<0`
+            with self.assertRaises(ValueError):
+                res_np = paddle.nn.functional.fractional_max_pool2d(
+                    x=x_np, output_size=[3, 3], random_u=-0.2
+                )
 
-        # error random_u of `1`
-        with self.assertRaises(ValueError):
-            res_np = paddle.nn.functional.fractional_max_pool2d(
-                x=x_np, output_size=[3, 3], random_u=1
-            )
+            # error random_u of `0`
+            with self.assertRaises(ValueError):
+                res_np = paddle.nn.functional.fractional_max_pool2d(
+                    x=x_np, output_size=[3, 3], random_u=0
+                )
 
-        # error random_u of `>1`
-        with self.assertRaises(ValueError):
-            res_np = paddle.nn.functional.fractional_max_pool2d(
-                x=x_np, output_size=[3, 3], random_u=1.2
-            )
+            # error random_u of `1`
+            with self.assertRaises(ValueError):
+                res_np = paddle.nn.functional.fractional_max_pool2d(
+                    x=x_np, output_size=[3, 3], random_u=1
+                )
+
+            # error random_u of `>1`
+            with self.assertRaises(ValueError):
+                res_np = paddle.nn.functional.fractional_max_pool2d(
+                    x=x_np, output_size=[3, 3], random_u=1.2
+                )
 
 
 if __name__ == '__main__':
