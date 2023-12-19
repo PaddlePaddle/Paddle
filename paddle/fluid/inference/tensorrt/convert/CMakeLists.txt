@@ -87,6 +87,7 @@ list(
   sum_op.cc
   bitwise_and_op.cc
   bitwise_or_op.cc
+  size_op.cc
   shape_op.cc
   fill_constant_op.cc
   fused_token_prune_op.cc
